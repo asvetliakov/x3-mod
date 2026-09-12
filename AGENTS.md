@@ -72,3 +72,20 @@ Context discipline for agents (added 2026-09-12):
 - Reports to the orchestrator carry numbers, conclusions and paths, never pasted
   file contents. The main session keeps architecture decisions; subagents keep
   the bulk reading.
+
+Test coordination (added 2026-09-12):
+
+- The game now lives in the CrossOver bottle `X3` (`WineArch = arm64`: CrossOver
+  Preview's native arm64 Wine with FEX x86 emulation, `FEX_X87REDUCEDPRECISION=1`,
+  `WINEMSYNC=1`). The old `Steam` bottle (x86_64 Wine under Rosetta) remains.
+  `tools/manage.py` launches into `X3` (`X3M_BOTTLE` overrides). The fixture
+  runners under `verification/probe/` select their bottle through
+  `verification/probe/bottle.py`: `X3M_FIXTURE_BOTTLE` (default `Steam`, so the
+  recorded results stay comparable). Any other bottle writes its records under
+  `verification/results/bottle-<name>/`, and every summary records the bottle
+  name, WineArch and the two emulation environment lines. See
+  `docs/verification/bottles.md` for the X3 validation record.
+- One Wine runner at a time, across all agents and the user's game: before a
+  suite, confirm `game_guard.game_running()` prints `[]` and no other
+  `verification/probe/run_*.py`, fixture `.exe` or `wine ... fixture` process
+  exists; wait with foreground `sleep 90` loops rather than ending the turn.

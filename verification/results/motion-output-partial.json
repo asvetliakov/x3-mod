@@ -1,0 +1,460 @@
+{
+  "passed": false,
+  "status": "PARTIAL",
+  "game_launched": false,
+  "scope": "Live same-draw route (checkpoint B1 + temporal steps 1 and 3: RT2 current depth, per-draw jitter, cut detector, the temporal resolve at the bloom copy with copy-back) and the FP16 HDR scene path stage 1 (X3M_HDR: redirect, identity write-back, unwind ladder) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection, target readback and the reference resolve comparison. Bench runs time the boundary. Not gameplay validation.",
+  "variants": {
+    "plain": {},
+    "ownership": {
+      "X3M_OWNERSHIP": "1"
+    },
+    "depth": {
+      "X3M_OWNERSHIP": "1",
+      "X3M_DEPTH_COPY": "1",
+      "X3M_SCENE_DEPTH_CAPTURE": "1"
+    },
+    "admission": {
+      "X3M_OWNERSHIP": "1",
+      "X3M_ADMISSION": "1"
+    }
+  },
+  "cases": {
+    "seam-taa-hdr-tonemap-fault": {
+      "mode": "hdrtonemapfault",
+      "taa": true,
+      "checks": 132,
+      "restorations": 48,
+      "frames": 12,
+      "images": {
+        "1": {
+          "max": 0.499777609060132,
+          "mean": 0.2378019818126911,
+          "source": "hdr_1_1.rgba16f"
+        },
+        "2": {
+          "max": 0.4998605736544022,
+          "mean": 0.2935635448298,
+          "source": "taa_1_2.rgba16f"
+        },
+        "3": {
+          "max": 0.49962410289787584,
+          "mean": 0.24114144873806406,
+          "source": "taa_1_3.rgba16f"
+        },
+        "4": {
+          "max": 0.49968488153190016,
+          "mean": 0.2636794160669231,
+          "source": "taa_1_4.rgba16f"
+        },
+        "5": {
+          "max": 0.4998851424122961,
+          "mean": 0.2481604255689627,
+          "source": "taa_1_5.rgba16f"
+        },
+        "6": {
+          "max": 0.5000474697469741,
+          "mean": 0.23398861409073105,
+          "source": "taa_1_6.rgba16f"
+        },
+        "7": {
+          "max": 0.4998632089262003,
+          "mean": 0.2486295850845921,
+          "source": "hdr_1_7.rgba16f"
+        },
+        "8": {
+          "max": 0.4999177023663286,
+          "mean": 0.2363232470904588,
+          "source": "taa_1_8.rgba16f"
+        }
+      },
+      "failed_resolves": [
+        1,
+        7
+      ],
+      "hdr_frames": {
+        "0": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "0",
+          "ev": "0.00000",
+          "k": "1.00000"
+        },
+        "1": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.11279",
+          "k": "1.08132"
+        },
+        "2": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.22065",
+          "k": "1.16526"
+        },
+        "3": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "1",
+          "unwind_reason": "tonemap",
+          "fallback": "1",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.32428",
+          "k": "1.25204"
+        },
+        "4": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "pass",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.42391",
+          "k": "1.34156"
+        },
+        "5": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.51950",
+          "k": "1.43345"
+        },
+        "6": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.61149",
+          "k": "1.52783"
+        },
+        "7": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.69974",
+          "k": "1.62421"
+        },
+        "8": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.78457",
+          "k": "1.72258"
+        },
+        "9": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "0",
+          "ev": "0.78457",
+          "k": "1.72258"
+        },
+        "10": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.86610",
+          "k": "1.82273"
+        },
+        "11": {
+          "tonemap": "agx",
+          "tonemapped": "1",
+          "unwind": "0",
+          "unwind_reason": "none",
+          "fallback": "0",
+          "recheck": "none",
+          "meter": "00000000",
+          "stepped": "1",
+          "ev": "0.94442",
+          "k": "1.92441"
+        }
+      },
+      "taa_frames": {
+        "0": {
+          "taa_resolved": "1",
+          "taa_history": "0",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.00000"
+        },
+        "1": {
+          "taa_resolved": "0",
+          "taa_history": "0",
+          "taa_result": "80004005",
+          "taa_hdr": "1",
+          "taa_k": "1.08132"
+        },
+        "2": {
+          "taa_resolved": "1",
+          "taa_history": "0",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.16526"
+        },
+        "3": {
+          "taa_resolved": "1",
+          "taa_history": "1",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.25204"
+        },
+        "4": {
+          "taa_resolved": "1",
+          "taa_history": "1",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.34156"
+        },
+        "5": {
+          "taa_resolved": "1",
+          "taa_history": "1",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.43345"
+        },
+        "6": {
+          "taa_resolved": "1",
+          "taa_history": "1",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.52783"
+        },
+        "7": {
+          "taa_resolved": "0",
+          "taa_history": "0",
+          "taa_result": "80004005",
+          "taa_hdr": "1",
+          "taa_k": "1.62421"
+        },
+        "8": {
+          "taa_resolved": "1",
+          "taa_history": "0",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.72258"
+        },
+        "9": {
+          "taa_resolved": "1",
+          "taa_history": "0",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.72258"
+        },
+        "10": {
+          "taa_resolved": "1",
+          "taa_history": "1",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.82273"
+        },
+        "11": {
+          "taa_resolved": "1",
+          "taa_history": "1",
+          "taa_result": "00000000",
+          "taa_hdr": "1",
+          "taa_k": "1.92441"
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-taa-hdr-tonemap-fault-20260912-161234-906356",
+      "trace_sha256": "46836e85d79977c7469cd5272c2fea19f517c26f1e7d51362f59e769a184e2a3",
+      "dll_sha256": "a6a94d806fd0894062869c9eb9107e4b847d28fbe17a24cf1bc3eda7882fbd1f",
+      "exe_sha256": "11135a735a93044847639813bf4c9413dfd471cb2c73c0f34d9c2f6920d778a9"
+    }
+  },
+  "local_inputs": {
+    "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
+  },
+  "sources_before_build": {
+    "CMakeLists.txt": "1d96c51670d566c08f8da3b32293668a22a701e4a007e8d5430be48966e93911",
+    "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
+    "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
+    "src/ownership/application_admission_abi.cpp": "8ffab6e6793c7dc61cd1b6a4c88d1276939c858a9f8e3ab677db9fa72ca82866",
+    "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
+    "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
+    "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
+    "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
+    "src/ownership/d3d9_ownership.h": "b66dcc87f0efcfd2faaaf8cc3555bc2ff974e3325b5b214c44c7aa27a0f3a7af",
+    "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
+    "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
+    "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
+    "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
+    "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
+    "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
+    "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
+    "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
+    "src/proxy/capture.cpp": "5c01752b31062f1f847c440d516d18302d531352629fa196d358a937de3d767a",
+    "src/proxy/capture.h": "e573832e0771ad93c76d58dfc8ddc9b33aec5c7db5d4a6ca526797bb5736cf31",
+    "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
+    "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/d3d9.def": "779fb27ef4c46a58bf8fa85efbd234de06fa5e2640962a8dd1becbea8fae4af3",
+    "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
+    "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
+    "src/proxy/loader.cpp": "f07c790f9fdcdc7cdc5f78657bbea8ef5f3d2c9208548ffb70819b156267e145",
+    "src/proxy/loading_trace.cpp": "89fc26125e85b458ebe4e5a9dd440799f2a9af14ddd0bcfeb71eb626e69c4e87",
+    "src/proxy/loading_trace.h": "b4da3176c9852f3c9628c9a0d096400527d858360dcecae2d8a83a24a79032b0",
+    "src/proxy/mesh_adjacency_cache.cpp": "fec5bd312810bf8d3ea3ee894ae92a4317d97ac7ae9c746a0df55fad8a6b1062",
+    "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
+    "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
+    "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
+    "src/proxy/motion_output.cpp": "3b2f0058a026825f5c4a5ddd878ee34b12adf2b4af6f86c26be51eafed791f5f",
+    "src/proxy/motion_output.h": "2dfc2a414a10b4f690e61957fe358484e25f09a6f723bdadc22366fc129068b9",
+    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
+    "src/proxy/object_trace.cpp": "24500df408d5bfcabf80ba1760805820777aabce9b198af25462980a4797c712",
+    "src/proxy/object_trace.h": "968e7d0ca478a73d65a41b0bf86d60515c18c69c34ed476f493d3cb649634bc9",
+    "src/proxy/sampling_profiler.cpp": "a58979029c532538265e0aacf3a03e3cbb4bd88db2cd6833b53d460afbf4ea2d",
+    "src/proxy/sampling_profiler.h": "4dd65e4adce63b06eb8342b023403a8eba627aa355d53af26701f90588463d6f",
+    "src/proxy/scene_capture.cpp": "a91007b084984bd0b27f2827b2b4c3e06e5c54cf10fe1fd1002e6920bc061712",
+    "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
+    "src/proxy/scene_hook.cpp": "e41841be429f8b7fe8196ae368b3566fb8a8e869d15295c1c783d196d4f90f14",
+    "src/proxy/scene_hook.h": "67980b23d034e1b946cae1ee2d07752e816b707881f7a86af866e166a45f318e",
+    "src/proxy/telemetry.cpp": "9a7007bad54041bf9f0cdd0934c37ba9ec1c02c34c6fa16b8c798f5d8597a07c",
+    "src/proxy/telemetry.h": "c9ad8f908ed43b3787c2fc502baf3208ad9c5147df591d386503859b5dc6b507",
+    "src/renderer/camera_reprojection.h": "455c2ea1288fc29079c59bff356d0561c2168b03f8639a7e58aa53ffa9727d9b",
+    "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
+    "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
+    "src/renderer/exposure.cpp": "c13ee5e238368d75250b9f0433fcd900160c01c30bba3349205ec269b25afbcb",
+    "src/renderer/exposure.h": "cfb12f16fe0aa744362532aee350a66d5510831ca61b51d072157ab05f0548b9",
+    "src/renderer/hdr_meter_level0_program_inc.h": "e039567319c6ce2e476d92fc27e7b023f4e2a471dabfee60a6e3190bfb2628c1",
+    "src/renderer/hdr_meter_program.h": "ea4f7346dd49e6dacc538cda53194fcf75f11038f37b29cf78255865ad1a99d0",
+    "src/renderer/hdr_meter_reduce_program_inc.h": "d47413fafa4883e071db0deccf02e79217e8374633f24e473e358d95591f5d5e",
+    "src/renderer/hdr_pass.cpp": "ca6a208478a88557be902d6390b21c0941f2b543797c959e1e4403d414262b4e",
+    "src/renderer/hdr_pass.h": "3fed0662f5ee1d394a27be0cafc59ac1d7b2092c276e58f1cf56c64e522923b1",
+    "src/renderer/hdr_tonemap_program.h": "c5be42d1560349a2b59b353350c1a9b3d91adeea5bc8aa1ca28e83e635a9d0d7",
+    "src/renderer/hdr_tonemap_program_inc.h": "9fa78b9155ce774d369cf9952f77a04fcc53743c1bd4797f731532bb984bc18e",
+    "src/renderer/hdr_writeback_program.h": "c23f06aa2ba78bda2b804387cd53729d6f7658688954aacbea68d955c3ff7c25",
+    "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
+    "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
+    "src/renderer/material_motion.h": "93f0123a6a691ac2f7539f19d86b8a4c95b2db35b004643c2469b4d657370e41",
+    "src/renderer/material_radiance.cpp": "eb94856002a93d66b0e26aba98e4a44b683a458c384941e991d0164603cdeada",
+    "src/renderer/material_radiance.h": "a0df98c526cdd2ed5146ff460abe0c0f2a8ff46e9e95dcaed38336e372f6a3dc",
+    "src/renderer/material_radiance_profiles_inc.h": "1c0bc9af732a4d6faddfde90dd5a6d63b32cb0aa3aec85c09c4e4714307ec3b3",
+    "src/renderer/motion_history.cpp": "a8c6351ba47247a736de77e0ee104a163e626231f763f4c969375a2af18f3c9d",
+    "src/renderer/motion_history.h": "c5dc2e37548a16355ac073f01b57f47b549f1ab861b06497cda3fc43ac5a5568",
+    "src/renderer/motion_output_profiles.h": "2edaf43b60c052fd247ed15cc7dbc846e25c09c1f462d4acbb749f3a16d0c66e",
+    "src/renderer/motion_output_profiles_inc.h": "f5e3f000f363836b18e396b2360a040be78c36f87b22dae99d9ff4c8351a402e",
+    "src/renderer/motion_row_history.cpp": "f531fb35a46c755e0293748308fc6661e76b038b86999d73941a1d021c21d7fc",
+    "src/renderer/motion_row_history.h": "33fdf843864926fe71aa19c47007fcaa1f3b74abbf8e8b03b57f140c394d7d9b",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/rigid_motion.cpp": "a2ab93ead655a6cde523422b899d15a70afd493af5bb6ef84c9f69e47502b347",
+    "src/renderer/rigid_motion.h": "935fe54387bf1e62f0b04dabc291152b8508f8b6c25138a4a15e93b0f6b136ba",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
+    "src/renderer/temporal_pass.cpp": "60333a4b00c52e7e2450046ca499777ec46860838a0f11963a43756e4b712e1a",
+    "src/renderer/temporal_pass.h": "eb7f4c1054007c9012f58dc18b451f7b2f204e5d6c86418b6e417d9efeadf100",
+    "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
+    "src/renderer/temporal_resolve_program_inc.h": "03a6490776c80d3165a4b26c4ca00a8baeb8fd4bece866316964041598cf4dae",
+    "src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
+    "src/temporal/agx.hlsl": "69968342cbe3c8945ba37a8dabd88e41b602e20a7e8595ce72453a507bb51b3c",
+    "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
+    "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
+    "src/temporal/hdr_meter_level0_ps.hlsl": "e940abb3c73689d6b5b20def4618467c04153c3f3559f2ce5a2ef1762d2ed7b5",
+    "src/temporal/hdr_meter_reduce_ps.hlsl": "936cdb4e6bb29d206b082acdee05b07e6b866addb47cecd70785c5244db87b1a",
+    "src/temporal/hdr_writeback_ps.hlsl": "94d43598184cdaa0a2bbf8a2d16e640fb7eb5d63d2c7cde0e9efd99c3c782022",
+    "src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
+    "src/temporal/resolve.hlsl": "4bff455a5a2a868d77278f8c88e62553316b5e84625af406d133702b34a16d68",
+    "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
+    "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
+    "verification/probe/abi_check.cpp": "2a513bd733c43a9b4a5149fd3e16d410f8b71d96bec35cdd832b92e892e3ab31",
+    "verification/probe/build_motion_output.sh": "411a97bad16aab70efe7f00d5ed41627224bc56679dabb25895e2f5d19b1b4e2",
+    "verification/probe/motion_output_fixture.cpp": "172ddb6bc637ff6ef431ba5c1e6454976786b207cf972524bbba387fd6a7829e",
+    "verification/probe/run_motion_output.py": "84f5a5f206ae2ef772ce979ee4ecb845a6cc372ac01e6c1f5d8c3fb48b5e5497"
+  },
+  "build_commands": [
+    [
+      "cmake",
+      "-S",
+      ".",
+      "-B",
+      "build",
+      "-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake",
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+    ],
+    [
+      "cmake",
+      "--build",
+      "build",
+      "--clean-first",
+      "-j4"
+    ],
+    [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-c",
+      "verification/probe/abi_check.cpp",
+      "-o",
+      "verification/probe/build/abi_check.o"
+    ],
+    [
+      "sh",
+      "verification/probe/build_motion_output.sh"
+    ]
+  ],
+  "binaries": {
+    "verification/probe/build/motion_output_fixture.exe": "11135a735a93044847639813bf4c9413dfd471cb2c73c0f34d9c2f6920d778a9",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "a6a94d806fd0894062869c9eb9107e4b847d28fbe17a24cf1bc3eda7882fbd1f",
+    "build/d3d9.dll": "8cd380d0ac97abe1add185fb5e3ddbd1912e33e7917a1f3d98bea283dcda15f9"
+  },
+  "bench": {}
+}

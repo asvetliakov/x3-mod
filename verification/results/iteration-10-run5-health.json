@@ -1,0 +1,738 @@
+{
+ "tool": {
+  "name": "tools/analysis/analyze_iteration09.py",
+  "imports": "tools/analysis/analyze_iteration07_taa.py (record stream, window statistics)",
+  "companions": [
+   "tools/analysis/analyze_iteration08_taa.py",
+   "tools/analysis/analyze_camera_state.py",
+   "tools/analysis/analyze_motion_readback.py",
+   "tools/analysis/summarize_telemetry.py"
+  ]
+ },
+ "source": {
+  "log": "/tmp/x3-bottleX3-run5/session-20260912-170743-352.log",
+  "device": "1",
+  "width": 1280,
+  "height": 768
+ },
+ "witnesses": {
+  "object_lifetime": 1,
+  "object_trace": 1
+ },
+ "health": {
+  "status": "unavailable"
+ },
+ "timing_regimes": {
+  "0:lock_wait": {
+   "windows": 140,
+   "stall_windows": 0,
+   "split_us": 45000.0,
+   "bins": {
+    "0-20ms": 140,
+    "20-30ms": 0,
+    "30-40ms": 0,
+    "40-50ms": 0,
+    "50-60ms": 0,
+    "60-70ms": 0,
+    "70-100ms": 0,
+    ">=100ms": 0
+   },
+   "fast": {
+    "windows": 140,
+    "median_us": 0.08917911110182872
+   },
+   "slow": {
+    "windows": 0,
+    "median_us": null
+   },
+   "distribution": {
+    "status": "evaluated",
+    "windows": 140,
+    "samples": 3835150,
+    "window_mean_us": {
+     "p10": 0.08562033929224803,
+     "median": 0.08917911110182872,
+     "p90": 0.12409320913115979,
+     "min": 0.08274436090225563,
+     "max": 2.55
+    },
+    "window_min_us": {
+     "p10": 0.0,
+     "median": 0.0,
+     "p90": 0.0,
+     "min": 0.0,
+     "max": 1.9
+    }
+   },
+   "by_regime": {
+    "all": {
+     "status": "evaluated",
+     "windows": 140,
+     "samples": 3835150,
+     "window_mean_us": {
+      "p10": 0.08562033929224803,
+      "median": 0.08917911110182872,
+      "p90": 0.12409320913115979,
+      "min": 0.08274436090225563,
+      "max": 2.55
+     },
+     "window_min_us": {
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 1.9
+     }
+    }
+   },
+   "note": "the two regimes are different parts of the scene, not two configurations"
+  },
+  "1:draw_backend": {
+   "windows": 102,
+   "stall_windows": 0,
+   "split_us": 45000.0,
+   "bins": {
+    "0-20ms": 102,
+    "20-30ms": 0,
+    "30-40ms": 0,
+    "40-50ms": 0,
+    "50-60ms": 0,
+    "60-70ms": 0,
+    "70-100ms": 0,
+    ">=100ms": 0
+   },
+   "fast": {
+    "windows": 102,
+    "median_us": 2.6452560282238293
+   },
+   "slow": {
+    "windows": 0,
+    "median_us": null
+   },
+   "distribution": {
+    "status": "evaluated",
+    "windows": 102,
+    "samples": 3553430,
+    "window_mean_us": {
+     "p10": 2.4686167260651937,
+     "median": 2.6452560282238293,
+     "p90": 2.7334695233976225,
+     "min": 2.2346142691415314,
+     "max": 7170.3
+    },
+    "window_min_us": {
+     "p10": 0.9,
+     "median": 1.0,
+     "p90": 1.0,
+     "min": 0.8,
+     "max": 7170.3
+    }
+   },
+   "by_regime": {
+    "all": {
+     "status": "evaluated",
+     "windows": 102,
+     "samples": 3553430,
+     "window_mean_us": {
+      "p10": 2.4686167260651937,
+      "median": 2.6452560282238293,
+      "p90": 2.7334695233976225,
+      "min": 2.2346142691415314,
+      "max": 7170.3
+     },
+     "window_min_us": {
+      "p10": 0.9,
+      "median": 1.0,
+      "p90": 1.0,
+      "min": 0.8,
+      "max": 7170.3
+     }
+    }
+   },
+   "note": "the two regimes are different parts of the scene, not two configurations"
+  },
+  "1:frame_normal": {
+   "windows": 103,
+   "stall_windows": 0,
+   "split_us": 45000.0,
+   "bins": {
+    "0-20ms": 95,
+    "20-30ms": 2,
+    "30-40ms": 0,
+    "40-50ms": 0,
+    "50-60ms": 0,
+    "60-70ms": 0,
+    "70-100ms": 0,
+    ">=100ms": 6
+   },
+   "fast": {
+    "windows": 97,
+    "median_us": 8443.410084033614
+   },
+   "slow": {
+    "windows": 6,
+    "median_us": 310301.49399999995
+   },
+   "distribution": {
+    "status": "evaluated",
+    "windows": 103,
+    "samples": 10374,
+    "window_mean_us": {
+     "p10": 8303.970681297313,
+     "median": 8477.724999999999,
+     "p90": 12476.715132530118,
+     "min": 8275.305,
+     "max": 960770.4768115942
+    },
+    "window_min_us": {
+     "p10": 3159.8800000000006,
+     "median": 6499.5,
+     "p90": 10042.039999999997,
+     "min": 2140.3,
+     "max": 284411.1
+    }
+   },
+   "by_regime": {
+    "all": {
+     "status": "evaluated",
+     "windows": 103,
+     "samples": 10374,
+     "window_mean_us": {
+      "p10": 8303.970681297313,
+      "median": 8477.724999999999,
+      "p90": 12476.715132530118,
+      "min": 8275.305,
+      "max": 960770.4768115942
+     },
+     "window_min_us": {
+      "p10": 3159.8800000000006,
+      "median": 6499.5,
+      "p90": 10042.039999999997,
+      "min": 2140.3,
+      "max": 284411.1
+     }
+    }
+   },
+   "note": "the two regimes are different parts of the scene, not two configurations"
+  },
+  "1:present_normal": {
+   "windows": 103,
+   "stall_windows": 0,
+   "split_us": 45000.0,
+   "bins": {
+    "0-20ms": 103,
+    "20-30ms": 0,
+    "30-40ms": 0,
+    "40-50ms": 0,
+    "50-60ms": 0,
+    "60-70ms": 0,
+    "70-100ms": 0,
+    ">=100ms": 0
+   },
+   "fast": {
+    "windows": 103,
+    "median_us": 6.661344537815126
+   },
+   "slow": {
+    "windows": 0,
+    "median_us": null
+   },
+   "distribution": {
+    "status": "evaluated",
+    "windows": 103,
+    "samples": 10380,
+    "window_mean_us": {
+     "p10": 4.836327586206896,
+     "median": 6.661344537815126,
+     "p90": 8.895652661064425,
+     "min": 3.4330578512396692,
+     "max": 109.46666666666665
+    },
+    "window_min_us": {
+     "p10": 2.6,
+     "median": 3.4,
+     "p90": 4.279999999999999,
+     "min": 1.7,
+     "max": 18.3
+    }
+   },
+   "by_regime": {
+    "all": {
+     "status": "evaluated",
+     "windows": 103,
+     "samples": 10380,
+     "window_mean_us": {
+      "p10": 4.836327586206896,
+      "median": 6.661344537815126,
+      "p90": 8.895652661064425,
+      "min": 3.4330578512396692,
+      "max": 109.46666666666665
+     },
+     "window_min_us": {
+      "p10": 2.6,
+      "median": 3.4,
+      "p90": 4.279999999999999,
+      "min": 1.7,
+      "max": 18.3
+     }
+    }
+   },
+   "note": "the two regimes are different parts of the scene, not two configurations"
+  }
+ },
+ "camera": {
+  "status": "unavailable"
+ },
+ "samplers": {
+  "draw_blocks": {
+   "no_route_record": 1637
+  },
+  "states_recorded": {
+   "MAGFILTER": 26192,
+   "MAXANISOTROPY": 26192,
+   "MINFILTER": 26192,
+   "MIPFILTER": 26192,
+   "SRGBTEXTURE": 26192
+  },
+  "states_not_recorded": [
+   "ADDRESSU",
+   "ADDRESSV",
+   "ADDRESSW",
+   "BORDERCOLOR",
+   "MIPMAPLODBIAS",
+   "MAXMIPLEVEL",
+   "ELEMENTINDEX",
+   "DMAPOFFSET"
+  ],
+  "sharpness_states_missing": [
+   "MIPMAPLODBIAS"
+  ],
+  "per_class": {
+   "no_route_record": {
+    "MAGFILTER": {
+     "POINT": 14783,
+     "LINEAR": 11409
+    },
+    "MAXANISOTROPY": {
+     "1": 14733,
+     "16": 11430,
+     "4": 29
+    },
+    "MINFILTER": {
+     "POINT": 14783,
+     "ANISOTROPIC": 9473,
+     "LINEAR": 1936
+    },
+    "MIPFILTER": {
+     "NONE": 16601,
+     "LINEAR": 9566,
+     "POINT": 25
+    },
+    "SRGBTEXTURE": {
+     "0": 26192
+    }
+   }
+  },
+  "per_stage": {
+   "no_route_record": {
+    "0": {
+     "MAGFILTER": {
+      "LINEAR": 1587,
+      "POINT": 50
+     },
+     "MAXANISOTROPY": {
+      "16": 1608,
+      "4": 29
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1477,
+      "LINEAR": 110,
+      "POINT": 50
+     },
+     "MIPFILTER": {
+      "LINEAR": 1567,
+      "NONE": 45,
+      "POINT": 25
+     },
+     "SRGBTEXTURE": {
+      "0": 1637
+     }
+    },
+    "1": {
+     "MAGFILTER": {
+      "LINEAR": 1637
+     },
+     "MAXANISOTROPY": {
+      "16": 1637
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1636,
+      "LINEAR": 1
+     },
+     "MIPFILTER": {
+      "LINEAR": 1637
+     },
+     "SRGBTEXTURE": {
+      "0": 1637
+     }
+    },
+    "2": {
+     "MAGFILTER": {
+      "LINEAR": 1637
+     },
+     "MAXANISOTROPY": {
+      "16": 1637
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1619,
+      "LINEAR": 18
+     },
+     "MIPFILTER": {
+      "LINEAR": 1620,
+      "NONE": 17
+     },
+     "SRGBTEXTURE": {
+      "0": 1637
+     }
+    },
+    "3": {
+     "MAGFILTER": {
+      "LINEAR": 1637
+     },
+     "MAXANISOTROPY": {
+      "16": 1637
+     },
+     "MINFILTER": {
+      "LINEAR": 866,
+      "ANISOTROPIC": 771
+     },
+     "MIPFILTER": {
+      "NONE": 865,
+      "LINEAR": 772
+     },
+     "SRGBTEXTURE": {
+      "0": 1637
+     }
+    },
+    "4": {
+     "MAGFILTER": {
+      "LINEAR": 1637
+     },
+     "MAXANISOTROPY": {
+      "16": 1637
+     },
+     "MINFILTER": {
+      "LINEAR": 941,
+      "ANISOTROPIC": 696
+     },
+     "MIPFILTER": {
+      "NONE": 941,
+      "LINEAR": 696
+     },
+     "SRGBTEXTURE": {
+      "0": 1637
+     }
+    },
+    "5": {
+     "MAGFILTER": {
+      "LINEAR": 1637
+     },
+     "MAXANISOTROPY": {
+      "16": 1637
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1637
+     },
+     "MIPFILTER": {
+      "LINEAR": 1637
+     },
+     "SRGBTEXTURE": {
+      "0": 1637
+     }
+    },
+    "6": {
+     "MAGFILTER": {
+      "LINEAR": 1637
+     },
+     "MAXANISOTROPY": {
+      "16": 1637
+     },
+     "MINFILTER": {
+      "ANISOTROPIC": 1637
+     },
+     "MIPFILTER": {
+      "LINEAR": 1637
+     },
+     "SRGBTEXTURE": {
+      "0": 1637
+     }
+    }
+   }
+  },
+  "default_stages": {
+   "no_route_record": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ]
+  },
+  "stage0_signatures": [
+   {
+    "class": "no_route_record",
+    "min": "ANISOTROPIC",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 1477
+   },
+   {
+    "class": "no_route_record",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 82
+   },
+   {
+    "class": "no_route_record",
+    "min": "POINT",
+    "mag": "POINT",
+    "mip": "NONE",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 45
+   },
+   {
+    "class": "no_route_record",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "POINT",
+    "aniso": 4,
+    "srgb": 0,
+    "draws": 16
+   },
+   {
+    "class": "no_route_record",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "LINEAR",
+    "aniso": 4,
+    "srgb": 0,
+    "draws": 8
+   },
+   {
+    "class": "no_route_record",
+    "min": "POINT",
+    "mag": "POINT",
+    "mip": "POINT",
+    "aniso": 4,
+    "srgb": 0,
+    "draws": 5
+   },
+   {
+    "class": "no_route_record",
+    "min": "LINEAR",
+    "mag": "LINEAR",
+    "mip": "POINT",
+    "aniso": 16,
+    "srgb": 0,
+    "draws": 4
+   }
+  ],
+  "note": "capture.cpp records only the sampler states it enumerates; a texture LOD bias decision needs D3DSAMP_MIPMAPLODBIAS, which is not among them"
+ },
+ "resolve_lowpass": {
+  "history_weight": 0.9,
+  "reference": {
+   "period_px": 8,
+   "offset": 0.75,
+   "history_weight": 0.9,
+   "fixture_catmull_rom_amplitude": 0.93,
+   "fixture_bilinear_amplitude": 0.712,
+   "fixture_stationary_ramp_gradient_energy": 0.9947,
+   "model_catmull_rom_amplitude": 0.959411960181893,
+   "model_catmull_rom_error": 0.02941196018189296,
+   "model_bilinear_amplitude": 0.6628531556365865,
+   "model_bilinear_error": 0.04914684436341343
+  },
+  "table": [
+   {
+    "offset": 0.25,
+    "period_px": 2,
+    "catmull_rom_tap": 0.6875,
+    "catmull_rom_steady": 0.2622950819672131,
+    "bilinear_tap": 0.5,
+    "bilinear_steady": 0.18181818181818177
+   },
+   {
+    "offset": 0.25,
+    "period_px": 3,
+    "catmull_rom_tap": 0.8474672168253766,
+    "catmull_rom_steady": 0.4214439003494997,
+    "bilinear_tap": 0.6614378277661477,
+    "bilinear_steady": 0.24709297889479698
+   },
+   {
+    "offset": 0.25,
+    "period_px": 4,
+    "catmull_rom_tap": 0.9388011803624876,
+    "catmull_rom_steady": 0.6448328928482185,
+    "bilinear_tap": 0.7905694150420949,
+    "bilinear_steady": 0.34663543767855903
+   },
+   {
+    "offset": 0.25,
+    "period_px": 6,
+    "catmull_rom_tap": 0.9858929268846846,
+    "catmull_rom_steady": 0.8873400600522509,
+    "bilinear_tap": 0.9013878188659973,
+    "bilinear_steady": 0.5297986214199333
+   },
+   {
+    "offset": 0.25,
+    "period_px": 8,
+    "catmull_rom_tap": 0.9952994309127052,
+    "catmull_rom_steady": 0.959411960181893,
+    "bilinear_tap": 0.9434855817366555,
+    "bilinear_steady": 0.662853155636586
+   },
+   {
+    "offset": 0.25,
+    "period_px": 16,
+    "catmull_rom_tap": 0.9996914848491191,
+    "catmull_rom_steady": 0.9972310520037512,
+    "bilinear_tap": 0.9856240787905562,
+    "bilinear_steady": 0.8854389896422076
+   },
+   {
+    "offset": 0.25,
+    "period_px": 32,
+    "catmull_rom_tap": 0.9999804832275505,
+    "catmull_rom_steady": 0.9998243798957929,
+    "bilinear_tap": 0.9963907266485429,
+    "bilinear_steady": 0.968538517645617
+   },
+   {
+    "offset": 0.5,
+    "period_px": 2,
+    "catmull_rom_tap": 9.18485099360515e-17,
+    "catmull_rom_steady": 0.09999999999999999,
+    "bilinear_tap": 6.123233995736766e-17,
+    "bilinear_steady": 0.09999999999999998
+   },
+   {
+    "offset": 0.5,
+    "period_px": 3,
+    "catmull_rom_tap": 0.6875000000000001,
+    "catmull_rom_steady": 0.26229508196721313,
+    "bilinear_tap": 0.5000000000000001,
+    "bilinear_steady": 0.18181818181818182
+   },
+   {
+    "offset": 0.5,
+    "period_px": 4,
+    "catmull_rom_tap": 0.8838834764831844,
+    "catmull_rom_steady": 0.48898590742736786,
+    "bilinear_tap": 0.7071067811865476,
+    "bilinear_steady": 0.275024555137461
+   },
+   {
+    "offset": 0.5,
+    "period_px": 6,
+    "catmull_rom_tap": 0.9742785792574935,
+    "catmull_rom_steady": 0.8120226206877241,
+    "bilinear_tap": 0.8660254037844386,
+    "bilinear_steady": 0.45335614354292847
+   },
+   {
+    "offset": 0.5,
+    "period_px": 8,
+    "catmull_rom_tap": 0.9915290450295614,
+    "catmull_rom_steady": 0.9291619952053533,
+    "bilinear_tap": 0.9238795325112867,
+    "bilinear_steady": 0.5934421529852726
+   },
+   {
+    "offset": 0.5,
+    "period_px": 16,
+    "catmull_rom_tap": 0.9994497389158161,
+    "catmull_rom_steady": 0.995072055148834,
+    "bilinear_tap": 0.9807852804032304,
+    "bilinear_steady": 0.8525639967732991
+   },
+   {
+    "offset": 0.5,
+    "period_px": 32,
+    "catmull_rom_tap": 0.9999652755396954,
+    "catmull_rom_steady": 0.9996875774955845,
+    "bilinear_tap": 0.9951847266721969,
+    "bilinear_steady": 0.9584626627397282
+   },
+   {
+    "offset": 0.75,
+    "period_px": 2,
+    "catmull_rom_tap": 0.6875,
+    "catmull_rom_steady": 0.2622950819672131,
+    "bilinear_tap": 0.5,
+    "bilinear_steady": 0.18181818181818177
+   },
+   {
+    "offset": 0.75,
+    "period_px": 3,
+    "catmull_rom_tap": 0.8474672168253766,
+    "catmull_rom_steady": 0.4214439003494997,
+    "bilinear_tap": 0.6614378277661477,
+    "bilinear_steady": 0.24709297889479698
+   },
+   {
+    "offset": 0.75,
+    "period_px": 4,
+    "catmull_rom_tap": 0.9388011803624876,
+    "catmull_rom_steady": 0.6448328928482185,
+    "bilinear_tap": 0.7905694150420949,
+    "bilinear_steady": 0.34663543767855903
+   },
+   {
+    "offset": 0.75,
+    "period_px": 6,
+    "catmull_rom_tap": 0.9858929268846846,
+    "catmull_rom_steady": 0.8873400600522509,
+    "bilinear_tap": 0.9013878188659974,
+    "bilinear_steady": 0.5297986214199335
+   },
+   {
+    "offset": 0.75,
+    "period_px": 8,
+    "catmull_rom_tap": 0.9952994309127052,
+    "catmull_rom_steady": 0.959411960181893,
+    "bilinear_tap": 0.9434855817366556,
+    "bilinear_steady": 0.6628531556365865
+   },
+   {
+    "offset": 0.75,
+    "period_px": 16,
+    "catmull_rom_tap": 0.9996914848491193,
+    "catmull_rom_steady": 0.9972310520037534,
+    "bilinear_tap": 0.9856240787905561,
+    "bilinear_steady": 0.8854389896422067
+   },
+   {
+    "offset": 0.75,
+    "period_px": 32,
+    "catmull_rom_tap": 0.9999804832275504,
+    "catmull_rom_steady": 0.9998243798957918,
+    "bilinear_tap": 0.9963907266485429,
+    "bilinear_steady": 0.968538517645617
+   }
+  ],
+  "note": "a model of the resolve, not a measurement of this run: no colour or resolved image was read back without --taa-debug. It bounds the loss that the history resample alone causes under sustained fractional motion; the variance clip, the dilation and the hard depth rejection are separate and act on top."
+ }
+}

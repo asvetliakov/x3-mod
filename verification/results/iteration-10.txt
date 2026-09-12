@@ -1,0 +1,119 @@
+iteration 10: the new "X3" bottle (arm64 Wine + FEX) against the old one
+==========================================================================
+-- line kinds: run6 emits 92 kinds, baselines ['run1', 'run2', 'run3'] 94
+   new: motion_output_scene_hook_disagreement x16
+   absent (configuration): mesh_cache_bypass
+   absent (configuration): mesh_cache_fp_first
+   absent (configuration): mesh_cache_metric
+
+-- health run1  128 frame records
+   draws 48949 routed 25669 matched 25520 (0.99420)  gates {'gate1': 0, 'gate2': 15231, 'gate3': 1483, 'gate4': 6566, 'gate5': 0, 'gate6': 149}
+   taa attempted 108 resolved 108 history 105 skip {'0': 108, '2': 20} resolved_without_history 3
+   apply/restore failures 0/0  state shadow {'rs_queries': 231950, 'rs_hits': 231950, 'rs_gets': 1512, 'rs_resyncs': 0}  resets 0
+   scene_end source {'none': 20, 'stretchrect': 108} check {'0': 20, '3': 108}
+   camera states 38/42 policy {'1': 20, '2': 108} cuts 0 routed_without_camera 0
+
+-- health run2  94 frame records
+   draws 33285 routed 22134 matched 21656 (0.97840)  gates {'gate1': 0, 'gate2': 4616, 'gate3': 1025, 'gate4': 5510, 'gate5': 0, 'gate6': 478}
+   taa attempted 89 resolved 89 history 83 skip {'0': 89, '2': 5} resolved_without_history 6
+   apply/restore failures 0/0  state shadow {'rs_queries': 199484, 'rs_hits': 199481, 'rs_gets': 1249, 'rs_resyncs': 0}  resets 0
+   scene_end source {'hook': 89, 'none': 5} check {'0': 5, '1': 89}
+   camera states 37/38 policy {'1': 5, '2': 89} cuts 0 routed_without_camera 0
+
+-- health run6  278 frame records
+   draws 93278 routed 47213 matched 46818 (0.99163)  gates {'gate1': 0, 'gate2': 30902, 'gate3': 1779, 'gate4': 13384, 'gate5': 0, 'gate6': 395}
+   taa attempted 214 resolved 214 history 203 skip {'0': 214, '2': 64} resolved_without_history 11
+   apply/restore failures 0/0  state shadow {'rs_queries': 431026, 'rs_hits': 431026, 'rs_gets': 3332, 'rs_resyncs': 24}  resets 0
+   scene_end source {'hook': 214, 'none': 64} check {'0': 40, '1': 214, '4': 24}
+   camera states 77/85 policy {'1': 64, '2': 214} cuts 0 routed_without_camera 0
+
+-- precision (the FEX x87 question)
+   run1: view row-norm residual max 2.254e-04
+      projections p00=0.8 p11=1.333333 n=38
+      draw constants 7841/7881 (0.99492) max projection deviation 0.0003572674219065597
+      valid capture frames n=20 rotation 1.970e+00 translation 1.000e+00 projection 3.573e-04
+      motion row consistency pass max 0.0676 px unexplained 0.0
+      depth cross-check fail max error 0.09428846836090088 worst within 0.2869801914286137
+   run2: view row-norm residual max 2.254e-04
+      projections p00=0.8 p11=1.333333 n=37
+      draw constants 11419/11499 (0.99304) max projection deviation 0.00012779545128993597
+      valid capture frames n=24 rotation 1.999e+00 translation 1.000e+00 projection 1.278e-04
+      motion row consistency pass max 0.0618 px unexplained 0.0
+      depth cross-check fail max error 0.224603533744812 worst within 0.24623091217580997
+   run6: view row-norm residual max 1.810e-04
+      projections p00=0.8 p11=1.333333 n=72, p00=0.8000767 p11=1.333461 n=5
+      draw constants 15218/15258 (0.99738) max projection deviation 0.00010858813079539509
+      valid capture frames n=36 rotation 1.982e+00 translation 1.000e+00 projection 1.086e-04
+      motion row consistency pass max 0.0591 px unexplained 0.0
+      depth cross-check fail max error 0.15369808673858643 worst within 0.3346248242009762
+
+-- per-call metric medians, run6 over run2
+   route_gate            14.5047 us vs    12.2226 us  x1.187  calls 4639821/1257521  failures 0
+   route_draw             5.1124 us vs     7.0018 us  x0.730  calls 2089438/779212  failures 0
+   route_set_rt           0.6278 us vs     0.8167 us  x0.769  calls 8357752/3116848  failures 0
+   route_fill            62.3962 us vs    70.6147 us  x0.884  calls 12131/3919  failures 0
+   route_jitter           0.1723 us vs     0.2813 us  x0.613  calls 5428058/1962734  failures 0
+   taa_run              316.8184 us vs   374.8121 us  x0.845  calls 10697/3919  failures 0
+   taa_resolve_draw     277.8115 us vs   329.5639 us  x0.843  calls 10697/3919  failures 0
+   draw_backend           2.9967 us vs     2.8108 us  x1.066  calls 4639820/1257520  failures 0
+   frame_normal       18880.8358 us vs 42966.3417 us  x0.439  calls 14476/4126  failures 0
+   lock_wait              0.0946 us vs     0.2282 us  x0.414  calls 12788234/3730724  failures 0
+
+-- per-call metric medians, run5 over run1
+   draw_backend           2.6453 us vs     2.7583 us  x0.959  calls 3553430/2438084  failures 0
+   frame_normal        8477.7250 us vs 40713.7200 us  x0.208  calls 10374/6410  failures 0
+   lock_wait              0.0892 us vs     0.2288 us  x0.390  calls 3835150/6770226  failures 0
+
+-- frame time run6
+   scene/fast  n=201 mean 16.91 ms min 14.58 ms draws/f 358.4
+   scene/slow  n=10 mean 64.44 ms min 36.66 ms draws/f 854.9
+   profiler 2.97% of wall = 0.546 ms/frame; stamps 0.343 ms/frame
+-- frame time run5
+   scene/fast  n=83 mean 8.42 ms min 5.67 ms draws/f 320.1
+-- frame time run1
+   scene/fast  n=124 mean 33.08 ms min 30.67 ms draws/f 270.4
+   scene/slow  n=62 mean 58.74 ms min 55.42 ms draws/f 562.8
+   profiler 1.93% of wall = 0.705 ms/frame; stamps 0.547 ms/frame
+-- frame time run2
+   scene/fast  n=81 mean 34.24 ms min 30.82 ms draws/f 227.0
+   scene/slow  n=56 mean 64.43 ms min 57.37 ms draws/f 470.8
+   profiler 2.37% of wall = 1.005 ms/frame; stamps 0.524 ms/frame
+-- frame time run3
+   scene/fast  n=90 mean 24.05 ms min 21.69 ms draws/f 229.2
+   scene/slow  n=17 mean 47.69 ms min 45.96 ms draws/f 719.7
+
+-- speed-up run6 over run5 (scene, 10 bins)
+   draws    63.5    8.353 ms vs   8.332 ms  x1.00  windows 20/12
+   draws   112.8   10.793 ms vs   8.305 ms  x0.77  windows 12/4
+   draws   225.7   13.914 ms vs   8.362 ms  x0.60  windows 7/16
+   draws   269.2   16.560 ms vs   8.829 ms  x0.53  windows 14/4
+   draws   328.5   19.050 ms vs   8.430 ms  x0.44  windows 13/9
+   draws   373.4   19.699 ms vs   8.407 ms  x0.43  windows 14/13
+   draws   428.7   23.795 ms vs   8.485 ms  x0.36  windows 6/9
+   draws   573.9   29.437 ms vs  10.733 ms  x0.36  windows 4/2
+   draws   718.3   35.778 ms vs  11.518 ms  x0.32  windows 8/5
+   draws   775.6   40.438 ms vs  12.574 ms  x0.31  windows 4/3
+   factor min 0.311 median 0.435 max 0.997
+   slope through the origin: median 31.285 us/draw, sign test 10+/0- p=0.00195
+
+-- scene hook: records 278 checks {'None': 40, 'Agree': 214, 'Disagree': 24} source {'none': 64, 'hook': 214} resolved by {'hook': 214}
+   latched 239 all-agree False draws after hook max 0 outside-scene total 24
+   baseline: checks {'None': 5, 'Agree': 89} source {'none': 5, 'hook': 89}
+
+-- stationary-burst sharpness against the ideal supersampling floor
+   frames 4566-4569 interior 29688 px: measured 0.417 ideal 0.4681 ratio 0.8907 share of loss 0.9122
+      iteration-8 comparable mean 0.5707 [0.5773, 0.5811, 0.5634, 0.5609]  sentinel 0.9039  raw phase spread 0.0880
+   frames 4754-4757 interior 37230 px: measured 0.5346 ideal 0.6369 ratio 0.8393 share of loss 0.7801
+      iteration-8 comparable mean 0.644 [0.6495, 0.6401, 0.6444, 0.6419]  sentinel 0.9364  raw phase spread 0.0264
+   frames 5394-5397 interior 34207 px: measured 0.4548 ideal 0.4545 ratio 1.0007 share of loss 1.0006
+      iteration-8 comparable mean 0.5721 [0.5884, 0.5698, 0.5664, 0.5638]  sentinel 0.9119  raw phase spread 0.0704
+   frames 9711-9714 interior 79257 px: measured 0.5497 ideal 0.6264 ratio 0.8776 share of loss 0.8296
+      iteration-8 comparable mean 0.6912 [0.6986, 0.6811, 0.6849, 0.7003]  sentinel 0.951  raw phase spread 0.0446
+   frames 13128-13131 interior 22446 px: measured 0.715 ideal 0.769 ratio 0.9297 share of loss 0.8104
+      iteration-8 comparable mean 0.7853 [0.7895, 0.7791, 0.7817, 0.7908]  sentinel 0.9043  raw phase spread 0.0986
+   share of loss that is ideal supersampling: 0.7801 to 1.0006
+   baseline run share of loss: 0.8738 to 0.9252
+
+! CPU-side wall clock only; no GPU timing anywhere in this report.
+! The new-bottle route-on run does not follow the old runs' flight path before the station, so only the draw-count-normalised bins and the per-call metric medians compare; pooled means report occupancy, not speed.
+! A line kind that is absent because the run did not request the feature is flagged as configuration, not as a behaviour change.

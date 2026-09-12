@@ -1,0 +1,57 @@
+iteration 9: controlled route-on against route-off cost
+========================================================================
+CPU-side wall clock only; frame_normal is a Present-to-Present interval
+and contains application work, pacing and driver blocking.
+
+-- run run6  /tmp/x3-bottleX3-run6/session-20260912-171241-212.log
+   route=1 taa=1 taa_debug=1 jitter=1 rt_mode=perdraw scene_hook=1 hdr=0
+   profiler=1 object_trace=active mesh_cache_enabled=0  hdr metrics: none (expected)
+   windows total=251 loading=7 capture=17 scene_usable=211 menu_usable=12
+   phases: 0=scene[2..4] n=0 - ms, 1=menu[89..832] n=11 12.32 ms, 2=scene[891..1492] n=12 21.77 ms, 3=scene[1624..4367] n=30 12.13 ms, 4=scene[4389..12665] n=152 23.92 ms, 5=scene[12707..14408] n=17 11.71 ms, 6=menu[14522..14522] n=1 13.79 ms
+   phase check: disagreement
+   regime  windows  mean_ms   min_ms   draws/f  route_ms    taa_us
+   fast        201    16.91    14.58     358.4     5.255     308.7
+   slow         10    64.44    36.66     854.9    17.075     295.4
+   menu         12    12.34    10.99     648.3     0.118       0.0
+   profiler: 241.3 ticks/s, 32 threads -> 2.97% of wall = 0.546 ms/frame
+   telemetry stamps: 1904.7 spans/frame x 0.1801 us = 0.343 ms/frame
+   per-frame records (ordinary frames, n=178): draws 198 routed 120
+      route exclusive 3259.0 us/frame = 16.33 us/draw (26.82 us/routed draw)
+      gate 2522.5 (12.30 us/draw)  route_draw 613.2 (5.09 us/routed)  set_rt 310.8 (0.623 us/call)
+      jitter 59.5 (0.169 us/write)  fill 56.0  taa_run 303.6  taa_resolve_draw 264.9
+      scene_end_source={'hook': 178}
+   capture frames (n=36): 4 readbacks, readback 36323 us/frame (9081 us each); frame_capture interval median 413.6 ms
+
+-- run run2  /tmp/x3-iteration09-run2/session-20260912-162050-2040.log
+   route=1 taa=1 taa_debug=1 jitter=1 rt_mode=perdraw scene_hook=1 hdr=0
+   profiler=1 object_trace=active mesh_cache_enabled=0  hdr metrics: none (expected)
+   windows total=166 loading=4 capture=12 scene_usable=137 menu_usable=10
+   phases: 0=scene[2..4] n=0 - ms, 1=menu[26..207] n=9 39.99 ms, 2=scene[236..3460] n=119 41.32 ms, 3=scene[3480..4128] n=18 43.50 ms, 4=menu[4157..4157] n=1 38.24 ms
+   phase check: checked
+   regime  windows  mean_ms   min_ms   draws/f  route_ms    taa_us
+   fast         81    34.24    30.82     227.0     4.082     360.5
+   slow         56    64.43    57.37     470.8     9.050     391.0
+   menu         10    39.89    37.78     646.7     0.174       0.0
+   profiler: 192.3 ticks/s, 16 threads -> 2.37% of wall = 1.005 ms/frame
+   telemetry stamps: 1929.1 spans/frame x 0.2715 us = 0.524 ms/frame
+   per-frame records (ordinary frames, n=65): draws 248 routed 174
+      route exclusive 4604.2 us/frame = 17.37 us/draw (25.23 us/routed draw)
+      gate 2938.1 (11.61 us/draw)  route_draw 1306.2 (6.86 us/routed)  set_rt 589.9 (0.783 us/call)
+      jitter 125.7 (0.275 us/write)  fill 62.8  taa_run 354.3  taa_resolve_draw 313.4
+      scene_end_source={'hook': 65}
+   capture frames (n=24): 4 readbacks, readback 47732 us/frame (11933 us each); frame_capture interval median 377.1 ms
+
+-- run6 against run2  (path and configuration noise)
+   fast  16.91 ms (n=201, 358 draws/f) vs 34.24 ms (n=81, 227 draws/f) -> -17.33 ms (-50.6%)
+   slow  64.44 ms (n=10, 855 draws/f) vs 64.43 ms (n=56, 471 draws/f) -> +0.01 ms (+0.0%)
+   scene      14 bins over 66-784 draws: -58.86 us/draw (IQR -87.17..-37.03) -2.62 ms fixed | origin -75.40 us/draw | sign 0+/14- p=0.0001
+   menu        2 bins over 641-671 draws: -21.91 us/draw (IQR -21.91..-21.91) -13.12 ms fixed | origin -41.92 us/draw | sign 0+/2- p=0.5000
+   scene_min  14 bins over 66-784 draws: -54.99 us/draw (IQR -83.77..-34.70) -3.22 ms fixed | origin -71.66 us/draw | sign 0+/14- p=0.0001
+
+-- cost levers (run6, 198 draws/frame, route 3251 us/frame)
+   1. gate: per-draw selector/gate/history evaluation      now   2522.5 us  save   1261.2 us
+   2. telemetry stamps (one QPC pair + record per span)    now    343.0 us  save    343.0 us
+   3. lazy RT mode (X3M_MOTION_RT_MODE=lazy)               now    310.8 us  save    124.3 us
+   4. jitter constant writes (two per jittered draw)       now     59.5 us  save     29.8 us
+   5. sentinel fill (one fullscreen quad per frame)        now     56.0 us  save      0.0 us
+   6. temporal resolve (TemporalPass::run, inclusive)      now    303.6 us  save      0.0 us

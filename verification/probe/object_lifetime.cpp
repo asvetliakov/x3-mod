@@ -229,6 +229,7 @@ int main(){
             check(VirtualFree(page,0,MEM_RELEASE)!=0,"bucket page released");
         }
         SetEnvironmentVariableW(L"X3M_ENGINE_READS",nullptr);em::configure();
+        insert(primary,node);insert(primary,camera); // the retirement case below expects both present
     }
     // Production retirement keeps a previously published dispatcher callable,
     // while the fixture-only repeated-install seam above promises no such callers.

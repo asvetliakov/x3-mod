@@ -430,6 +430,59 @@ plus the sharpen/mip-bias pass: post-resolve contrast-adaptive sharpen (target
 MTF50 0.35 → 0.6 c/px) and MIPMAPLODBIAS instrumentation then −0.5 on routed
 mip-mapped stages; make `--scene-hook` the default resolve point.
 
+## Session handoff (2026-09-12 late evening, account switch pause)
+
+State at the pause: the orchestrator asked every running agent to stop at a
+safe point and write a handoff note; the tree was then committed as a WIP
+checkpoint (see git log). Note that the earlier handoff commit `a8d4309`
+already swept the in-flight source edits of items 1–4 above into history
+under its "handoff" message; the review-25 commit finishes them.
+
+Completed since the evening handoff:
+
+- **Review 24 (HDR stage 3) passed** — [review-24.md](verification/review-24.md).
+  Findings fixed: negative-luma weight poisoning the 3×3 stats (luma floored at
+  0 both ways, resolve program 4,487 words), `X3M_TAA_K` parse check,
+  identity twins assert `k=0`, runner exports `X3M_TELEMETRY_DRAW=1`. Suites:
+  motion-output 90 runs PASS, temporal-pass 448/204/386, temporal_run 78/78,
+  ownership 26 runs, scene-capture 4,908 checks, no-x87 0 violations, unittest
+  674/675 (one import error from the in-flight `bottle` module). Bench: HDR
+  TAA 1.935 ms vs 8-bit 2.317 ms at 5120×1440. Verdict: go, `--taa-k` unset
+  by default; not yet seen in game.
+- **New-bottle loading profile** —
+  [loading-profile-bottle-x3.md](reverse-engineering/loading-profile-bottle-x3.md).
+  FEX removed the adjacency bottleneck (GenerateAdjacency 69.15 s → 3.13 s per
+  run; the fast replacement is now a worst-case-tail fix, not the loading
+  fix). Save load on X3 = 65.5 s: a 25.3 s savegame-decode stall (13.9 M
+  `gzread` calls of ~3 bytes, 9.1 s in zlib + 2.6 s inflate; engine loop
+  0x004e9210) and a 25.0 s script/XML stall in the CRT per-file read path
+  (1,376 files; unhooked, needs a targeted probe). `inflate` 12.2 s per run,
+  `D3DXCreateMesh` 5.1 s, `gzread` per-call cost rose 0.20 → 0.66 µs under
+  FEX. The FEX profiler returns a constant bogus `Eip` (0x10000): hook timings
+  are the measurement, frame chains only a hint.
+
+In flight at the pause (each wrote `docs/verification/handoff-*.md` or its
+target doc with TODO marks; resume from those, do not restart from scratch):
+
+1. Fast exact-match GenerateAdjacency — `handoff-mesh-adjacency-fast.md`.
+2. Route-cost fix (direct engine reads) — `handoff-engine-reads.md`.
+3. Fixture bottle switch + FEX validation — `handoff-bottle-switch.md`.
+4. Run-6 route/TAA/FEX health — `docs/verification/iteration-10.md`.
+5. **gz read-ahead buffer** (`X3M_GZ_BUFFER=1`, `--gz-buffer`; new
+   src/proxy/gz_buffer.*; Ghidra of 0x004e9210 into
+   docs/reverse-engineering/savegame-gz-stream.md) — `handoff-gz-buffer.md`.
+6. Sampler-state/mip disassembly for the −0.5 mip bias —
+   docs/reverse-engineering/sampler-states-and-mips.md.
+7. Native-Windows portability audit (read-only) —
+   docs/architecture/native-windows-audit-2026-09-12.md.
+
+Then, unchanged: review 25 of items 1, 2 and 5 with the full suite chain,
+commit, build, install into X3, next user runs (`--mesh-adjacency verify`,
+`fast`, `--hdr --hdr-tonemap agx`, and `--gz-buffer` once its fixture passes),
+then post-resolve sharpen (RCAS-style, never fed to history, applied after
+tonemap on the HDR path), mip-bias instrumentation, and the scene hook as the
+default resolve point.
+
 ## Next user-managed runs (2026-09-12, installed build 4f46feee…)
 
 All runs use the installed build; logs land in the game's `x3-modern-captures`

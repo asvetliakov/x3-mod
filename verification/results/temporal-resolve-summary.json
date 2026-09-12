@@ -1,5 +1,13 @@
 {
-  "started_utc": "2026-09-12T12:31:53.483793+00:00",
+  "started_utc": "2026-09-12T13:32:17.301691+00:00",
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -16,13 +24,13 @@
   "source_sha256": {
     "verification/probe/temporal_resolve.cpp": "4261d032d311720b88bf833343278c3ffc17ef89057b652ae2fa162523a710d0",
     "verification/probe/temporal_build.sh": "46d38add5f799bc5ba039988306bc97988a11a9d054c18e8419846af433e5259",
-    "verification/probe/temporal_run.py": "69fdb7d4b213134b5f9c8d3437d323f21f70d18cc1474a17ba8308583d7fc233",
+    "verification/probe/temporal_run.py": "0f82ea30e5a21940cbfdd6ee14b74be77e79b2729a309f7a63f3c2521112a1f9",
     "src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
-    "src/temporal/resolve.hlsl": "4bff455a5a2a868d77278f8c88e62553316b5e84625af406d133702b34a16d68"
+    "src/temporal/resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16"
   },
   "freshly_built": true,
   "build_exit_code": 0,
-  "executable_sha256": "aaccc61c2357267e7e63d491355c023b2c7ca8adb25dd87057df51294ee5a5ba",
+  "executable_sha256": "af53547c4c6f17d224c59c6d4d0453142ca793676b5778ecf4124ae181982f83",
   "exit_code": 0,
   "sample_checks": 78,
   "passed_sample_checks": 78,

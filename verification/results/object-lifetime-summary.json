@@ -1,24 +1,36 @@
 {
-  "started_utc": "2026-09-10T21:28:29.400068+00:00",
+  "started_utc": "2026-09-12T13:42:33.136013+00:00",
   "game_launched": false,
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
   "fresh_build": true,
-  "passed": true,
+  "passed": false,
   "sources_before": {
-    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
-    "verification/probe/object_lifetime.cpp": "ad83ef3a20a445eac374fc2785a3acfa0511b072d3b84725ccdd9c7bf941eace",
-    "verification/probe/build_object_lifetime.sh": "40ccfc913e89b7e4605879ca3272b90e8e7744b40b24aa9ee8e179584f17ffb6",
-    "verification/probe/run_object_lifetime.py": "f919201eb9df469d434723fe6f0a3270874fe3141d623eaa85fd8617328b8763"
+    "src/proxy/engine_memory.cpp": "f2249e1b8524cc9498d63c175c9eceb9c6dbc580e3d0616058570542dfbba594",
+    "src/proxy/engine_memory.h": "7c86650667fab33f8761dd1d52076b3c60d3fb842811e58e74a16cb513d9f82e",
+    "verification/probe/object_lifetime.cpp": "00d4c6325c288ced72042b93df60766471d184e62c8fc3618c35a1e23b7baca6",
+    "verification/probe/build_object_lifetime.sh": "45498963d76f05bc412ef5286d15884271b105a132a9d0cb111df3173c22bf7d",
+    "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
   },
   "build_exit": 0,
   "sources_after_build": {
-    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
-    "verification/probe/object_lifetime.cpp": "ad83ef3a20a445eac374fc2785a3acfa0511b072d3b84725ccdd9c7bf941eace",
-    "verification/probe/build_object_lifetime.sh": "40ccfc913e89b7e4605879ca3272b90e8e7744b40b24aa9ee8e179584f17ffb6",
-    "verification/probe/run_object_lifetime.py": "f919201eb9df469d434723fe6f0a3270874fe3141d623eaa85fd8617328b8763"
+    "src/proxy/engine_memory.cpp": "f2249e1b8524cc9498d63c175c9eceb9c6dbc580e3d0616058570542dfbba594",
+    "src/proxy/engine_memory.h": "7c86650667fab33f8761dd1d52076b3c60d3fb842811e58e74a16cb513d9f82e",
+    "verification/probe/object_lifetime.cpp": "00d4c6325c288ced72042b93df60766471d184e62c8fc3618c35a1e23b7baca6",
+    "verification/probe/build_object_lifetime.sh": "45498963d76f05bc412ef5286d15884271b105a132a9d0cb111df3173c22bf7d",
+    "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
   },
-  "executable_sha256": "5fdbbfd3dd843bc3d47bee0b55e632cdfbd906f9a9ad0c2358743ad5ea4a8f6f",
+  "executable_sha256": "4650cb9dc55084eb807e9650b7c700d2cc2ec35345af42f274093e91619117af",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -28,17 +40,44 @@
     "/Users/asvetl/x3-mod/verification/probe/build",
     "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
   ],
-  "exit_code": 0,
-  "executable_sha256_after_run": "5fdbbfd3dd843bc3d47bee0b55e632cdfbd906f9a9ad0c2358743ad5ea4a8f6f",
+  "exit_code": 1,
+  "executable_sha256_after_run": "4650cb9dc55084eb807e9650b7c700d2cc2ec35345af42f274093e91619117af",
   "sources_after_run": {
-    "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
+    "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
-    "verification/probe/object_lifetime.cpp": "ad83ef3a20a445eac374fc2785a3acfa0511b072d3b84725ccdd9c7bf941eace",
-    "verification/probe/build_object_lifetime.sh": "40ccfc913e89b7e4605879ca3272b90e8e7744b40b24aa9ee8e179584f17ffb6",
-    "verification/probe/run_object_lifetime.py": "f919201eb9df469d434723fe6f0a3270874fe3141d623eaa85fd8617328b8763"
+    "src/proxy/engine_memory.cpp": "f2249e1b8524cc9498d63c175c9eceb9c6dbc580e3d0616058570542dfbba594",
+    "src/proxy/engine_memory.h": "7c86650667fab33f8761dd1d52076b3c60d3fb842811e58e74a16cb513d9f82e",
+    "verification/probe/object_lifetime.cpp": "00d4c6325c288ced72042b93df60766471d184e62c8fc3618c35a1e23b7baca6",
+    "verification/probe/build_object_lifetime.sh": "45498963d76f05bc412ef5286d15884271b105a132a9d0cb111df3173c22bf7d",
+    "verification/probe/run_object_lifetime.py": "8f2617641e1a4678138332cb818edeb1bc0789dd519311b6a77c661b4a80f121"
   },
-  "report_sha256": "06ac045839b9f2890527f28093cdeec85efa30e172651902eea48631b2d90def",
-  "checks": 533,
-  "failures": 0,
-  "backend_calls": 72
+  "report_sha256": "4b2922ccf066d25796c385d1f5671f3050bd372a82a81b359011bfe3f824144b",
+  "checks": 574,
+  "failures": 1,
+  "backend_calls": 80,
+  "read_path": {
+    "timing": [
+      {
+        "mode": "rpm",
+        "snapshot_us": "7.060",
+        "reads_per_call": "0.00",
+        "queries_per_call": "0.0000",
+        "syscalls_per_call": "12.00"
+      },
+      {
+        "mode": "direct",
+        "snapshot_us": "0.706",
+        "reads_per_call": "12.00",
+        "queries_per_call": "0.0197",
+        "syscalls_per_call": "0.00"
+      }
+    ],
+    "identity": [
+      {
+        "rpm": "853bfaca11e07f83",
+        "direct": "853bfaca11e07f83",
+        "equal": "1"
+      }
+    ]
+  }
 }

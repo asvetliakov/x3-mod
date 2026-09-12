@@ -5,7 +5,9 @@
     "docs/reverse-engineering/camera-state-and-frame-routine.md",
     "docs/reverse-engineering/executable.md",
     "docs/reverse-engineering/object-identity.md",
-    "docs/reverse-engineering/loading-profile-run1.md"
+    "docs/reverse-engineering/loading-profile-run1.md",
+    "docs/reverse-engineering/loading-profile-bottle-x3.md",
+    "docs/reverse-engineering/constant-uploads.md"
   ],
   "labels": {
     "0x00402710": {
@@ -469,6 +471,74 @@
     "0x00511f77": {
       "label": "CRT fread body (from _fread_s, uses __VEC_memcpy)",
       "source": "loading-profile-run1.md"
+    },
+    "0x0043ce30": {
+      "label": "type-table object construction: type lookup 0x00492970, node create 0x00486d10, per-part loop (+0x50, stride 0x44) via 0x0043d1d0",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x0044c620": {
+      "label": "orientation/rotation math (fsin/fcos/fpatan, helper 0x0052b5d0; from 0x0042fb20)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x0044ccc0": {
+      "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x00498140": {
+      "label": "movie playback driver (allocates, then 0x004cf460)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004b4f80": {
+      "label": "CPureDeviceStateManager::SetRenderState (filters via 0x004b5620, then device vtable+0xe4)",
+      "source": "constant-uploads.md"
+    },
+    "0x004cf460": {
+      "label": "DirectShow movie playback setup (CoCreateInstance of the X MPEG filter graph, Data\\mov\\%s, %05d.dat)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004d5a90": {
+      "label": "Win32 input / message handling (GetKeyboardLayout, MapVirtualKeyExA; helper 0x004d6850)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004e2530": {
+      "label": "collision query: recursive OBB-tree pair descent (children +0x3c/+0x40, half-extents +0x30..+0x38, leaf test 0x004e2190, budget DAT_0060854c)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004e29f0": {
+      "label": "collision helper wrapper (0x004e2780, 0x0052b5d0)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004e3280": {
+      "label": "collision: OBB/OBB separating-axis test (15 axes, fabsf 0x0040e710, 1e-6 margin from 0x00565600; returns failing axis index)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004e6a40": {
+      "label": "malloc + memset allocation wrapper (via 0x004b8b60)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004eeab0": {
+      "label": "thin wrapper over 0x004db520",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004efa70": {
+      "label": "overlay/glyph state helper (0x004dce20 -> 0x004ee6e0 == 0x18 -> 0x004b2730)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004f22c0": {
+      "label": "fpatan angle helper",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004f8600": {
+      "label": "text/overlay layout and string formatting (calls 0x004efa70)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x00517d8f": {
+      "label": "CRT file-lock release tail (LeaveCriticalSection, from 0x00524cfa)",
+      "source": "loading-profile-bottle-x3.md"
+    },
+    "0x0051f464": {
+      "label": "CRT _read text-mode body (ReadFile, MultiByteToWideChar, __malloc_crt)",
+      "source": "loading-profile-bottle-x3.md"
     }
   }
 }

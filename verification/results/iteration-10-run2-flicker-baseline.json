@@ -1,0 +1,7288 @@
+{
+  "source": {
+    "log": "session-20260912-162050-2040.log",
+    "bytes": 217449717,
+    "sha256": "805abac930b13d3c74608a0976c2f0555f9dad3a713fe23bff39b8d82c8ae2ff",
+    "captured_frames": [
+      629,
+      630,
+      631,
+      632,
+      903,
+      904,
+      905,
+      906,
+      1427,
+      1428,
+      1429,
+      1430,
+      1584,
+      1585,
+      1586,
+      1587,
+      1950,
+      1951,
+      1952,
+      1953,
+      3685,
+      3686,
+      3687,
+      3688
+    ],
+    "iteration07_module": "tools/analysis/analyze_iteration07_taa.py"
+  },
+  "configuration": {
+    "motion_capture_mode": [
+      {
+        "requested": "0",
+        "enabled": "0",
+        "reason": "write_exclusion_unavailable",
+        "scope": "private_rigid_diagnostic",
+        "temporal_consumer": "0"
+      }
+    ],
+    "motion_output_mode": [
+      {
+        "requested": "1",
+        "scope": "live_same_draw_diagnostic",
+        "history_requires": "object_trace,object_lifetime",
+        "temporal_consumer": "1",
+        "taa": "1",
+        "taa_debug": "1",
+        "jitter": "1",
+        "jitter_samples": "8",
+        "cut_median_px": "48.000",
+        "cut_missing": "0.250",
+        "rt_mode": "perdraw",
+        "frame_log": "60",
+        "sentinel": "auto",
+        "camera_cut_deg": "20.00",
+        "camera_log": "300",
+        "state_shadow": "1",
+        "scene_hook": "1",
+        "hdr": "0"
+      }
+    ],
+    "x3-modern-renderer": [
+      {
+        "version": "0.4",
+        "schema": "2",
+        "capture_start": "999999",
+        "capture_frames": "4",
+        "pointer_bits": "32"
+      }
+    ],
+    "ownership_mode": [
+      {
+        "requested": "1",
+        "depth_copy_requested": "0",
+        "depth_copy_enabled": "0",
+        "scope": "normal9",
+        "fallback": "native"
+      }
+    ],
+    "object_trace": [
+      {
+        "active": "1",
+        "status": "active",
+        "recovery_required": "0"
+      }
+    ],
+    "object_lifetime": [
+      {
+        "active": "1",
+        "status": "active_without_baseline",
+        "recovery_required": "0",
+        "baseline_complete": "0",
+        "baseline_entries": "0"
+      }
+    ],
+    "ownership_factory": [
+      {
+        "mode": "wrapped",
+        "native": "00cbadd8",
+        "public": "00cb5900",
+        "result": "00000000"
+      },
+      {
+        "mode": "wrapped",
+        "native": "00d8c2d0",
+        "public": "00d7bb80",
+        "result": "00000000"
+      },
+      {
+        "mode": "wrapped",
+        "native": "00d8e940",
+        "public": "00d8ea48",
+        "result": "00000000"
+      }
+    ],
+    "adapter": [
+      {
+        "description": "NVIDIA",
+        "driver": "nvd3dum.dll",
+        "vendor": "000010de",
+        "device": "00000191"
+      },
+      {
+        "description": "NVIDIA",
+        "driver": "nvd3dum.dll",
+        "vendor": "000010de",
+        "device": "00000191"
+      },
+      {
+        "description": "NVIDIA",
+        "driver": "nvd3dum.dll",
+        "vendor": "000010de",
+        "device": "00000191"
+      }
+    ],
+    "telemetry_presentation": [
+      {
+        "phase": "create_before",
+        "device": "0",
+        "thread": "288",
+        "focus_window": "027401d2",
+        "device_window": "027401d2",
+        "width": "1280",
+        "height": "768",
+        "format": "21",
+        "count": "1",
+        "msaa": "0",
+        "quality": "0",
+        "swap_effect": "1",
+        "windowed": "1",
+        "auto_depth": "1",
+        "depth_format": "77",
+        "flags": "00000003",
+        "refresh": "0",
+        "interval": "1"
+      },
+      {
+        "phase": "create_after",
+        "device": "0",
+        "thread": "288",
+        "focus_window": "027401d2",
+        "device_window": "027401d2",
+        "width": "1280",
+        "height": "768",
+        "format": "21",
+        "count": "1",
+        "msaa": "0",
+        "quality": "0",
+        "swap_effect": "1",
+        "windowed": "1",
+        "auto_depth": "1",
+        "depth_format": "77",
+        "flags": "00000003",
+        "refresh": "0",
+        "interval": "1"
+      }
+    ],
+    "capture_caps": [
+      {
+        "result": "00000000",
+        "streams": "16",
+        "vs_float_count": "256",
+        "ps_version": "ffff0300"
+      }
+    ],
+    "motion_output_device": [
+      {
+        "device": "1",
+        "enabled": "1",
+        "reason": "ok",
+        "detail": "stage=compare",
+        "result": "00000000",
+        "draw": "00000000",
+        "restore": "00000000",
+        "scene": "00000000",
+        "color_errors": "0",
+        "motion_errors": "0",
+        "depth_errors": "0",
+        "targets": "3",
+        "mrt": "4",
+        "vs_constants": "256",
+        "misc": "002ecff2",
+        "vs": "fffe0300",
+        "ps": "ffff0300",
+        "rgba32f": "00000000",
+        "history_available": "1",
+        "history_capacity": "4096",
+        "depth": "1",
+        "depth_reason": "ok",
+        "depth_detail": "stage=compare",
+        "r32f": "00000000",
+        "jitter": "1",
+        "jitter_samples": "8",
+        "taa": "1",
+        "taa_reason": "ok",
+        "taa_format": "00000000",
+        "taa_debug": "1",
+        "rt_mode": "perdraw",
+        "camera": "active",
+        "sentinel": "0",
+        "camera_cut_deg": "20.00",
+        "camera_log": "300",
+        "state_shadow": "1",
+        "scene_hook": "1",
+        "hdr": "0"
+      }
+    ],
+    "motion_output_target": [
+      {
+        "device": "1",
+        "width": "1280",
+        "height": "768",
+        "create": "00000000",
+        "level": "00000000",
+        "depth": "1",
+        "depth_create": "00000000",
+        "depth_level": "00000000"
+      }
+    ],
+    "motion_output_variant": [
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "6733b119142c8d42",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1896",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "37c34a7478544c14",
+        "transform": "0",
+        "create": "00000000",
+        "words": "798",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "5f82ecacd39529cd",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1907",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "37c34a7478544c14",
+        "transform": "0",
+        "create": "00000000",
+        "words": "798",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "fffdabd910793aba",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1790",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "494fe349b8bc12ec",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "d44db87778a43b61",
+        "transform": "0",
+        "create": "00000000",
+        "words": "590",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "167eb2d5629ab9d3",
+        "transform": "0",
+        "create": "00000000",
+        "words": "596",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "517540ae6d5e5410",
+        "transform": "0",
+        "create": "00000000",
+        "words": "539",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "b0602757fce6e870",
+        "transform": "0",
+        "create": "00000000",
+        "words": "550",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "99153c144030c396",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1497",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "0c1f3f0f440e4a0c",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1508",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "7c83ed50c9894e44",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1440",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "494fe349b8bc12ec",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "99153c144030c396",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1497",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "0c1f3f0f440e4a0c",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1508",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "7c83ed50c9894e44",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1440",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "494fe349b8bc12ec",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "5e0a10fe752b6140",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1496",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "63f96eba9eea7880",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1434",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "53a0a641107ed76c",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "ca6bfa4a6cca7e2a",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1470",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "8759c7838bbc86c2",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1402",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "53a0a641107ed76c",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "a66fb1981ba755b2",
+        "transform": "0",
+        "create": "00000000",
+        "words": "451",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "c30104cb0efb6675",
+        "transform": "0",
+        "create": "00000000",
+        "words": "580",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "c1452981fd0bff64",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1523",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "64bac8bb307eb896",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1534",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "e70adc744a38ca59",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1466",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "494fe349b8bc12ec",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "3006f8030a467739",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1454",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "462342e3e5781384",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1392",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "53a0a641107ed76c",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "496049cec2066ed3",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1922",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "37c34a7478544c14",
+        "transform": "0",
+        "create": "00000000",
+        "words": "798",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "f1b0e820c7b488c3",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1933",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "37c34a7478544c14",
+        "transform": "0",
+        "create": "00000000",
+        "words": "798",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "e6794b6ec37ff71a",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1816",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "494fe349b8bc12ec",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "1f26d41bcb7dac1e",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1474",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "4944d81dfe531b37",
+        "transform": "0",
+        "create": "00000000",
+        "words": "586",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "3b94320087e81945",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1406",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "53a0a641107ed76c",
+        "transform": "0",
+        "create": "00000000",
+        "words": "556",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "18d372968af4a480",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1463",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "33388c8897d428a5",
+        "transform": "0",
+        "create": "00000000",
+        "words": "633",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "ps",
+        "original": "9d27e7ba242f3831",
+        "transform": "0",
+        "create": "00000000",
+        "words": "1401",
+        "depth": "1"
+      },
+      {
+        "device": "1",
+        "kind": "vs",
+        "original": "37e6956afd8b8d76",
+        "transform": "0",
+        "create": "00000000",
+        "words": "593",
+        "depth": "1"
+      }
+    ],
+    "motion_output_taa": [
+      {
+        "device": "1",
+        "initialize": "00000000",
+        "references": "1"
+      }
+    ]
+  },
+  "taa": {
+    "frames": [
+      {
+        "frame": 0,
+        "captured": false,
+        "draws": 0,
+        "routed": 0,
+        "matched": 0,
+        "latched": 1,
+        "committed": 0,
+        "selector_state": 9,
+        "taa_attempted": 0,
+        "taa_resolved": 0,
+        "taa_history": 0,
+        "taa_skip": 2,
+        "taa_result": "00000001",
+        "taa_copy": "00000001",
+        "taa_restore": "00000000",
+        "taa_references": 0,
+        "jitter": 1,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          -0.166667
+        ],
+        "jitter_previous_px": [
+          0.0,
+          0.0
+        ],
+        "jittered_draws": 0,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 0,
+        "gates": {
+          "gate1": 0,
+          "gate2": 0,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 60,
+        "captured": false,
+        "draws": 638,
+        "routed": 0,
+        "matched": 0,
+        "latched": 0,
+        "committed": 0,
+        "selector_state": 9,
+        "taa_attempted": 0,
+        "taa_resolved": 0,
+        "taa_history": 0,
+        "taa_skip": 2,
+        "taa_result": "00000001",
+        "taa_copy": "00000001",
+        "taa_restore": "00000000",
+        "taa_references": 0,
+        "jitter": 0,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          0.0
+        ],
+        "jitter_previous_px": [
+          0.0,
+          0.0
+        ],
+        "jittered_draws": 0,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 0,
+        "gates": {
+          "gate1": 0,
+          "gate2": 638,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 120,
+        "captured": false,
+        "draws": 638,
+        "routed": 0,
+        "matched": 0,
+        "latched": 0,
+        "committed": 0,
+        "selector_state": 9,
+        "taa_attempted": 0,
+        "taa_resolved": 0,
+        "taa_history": 0,
+        "taa_skip": 2,
+        "taa_result": "00000001",
+        "taa_copy": "00000001",
+        "taa_restore": "00000000",
+        "taa_references": 0,
+        "jitter": 0,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          0.0
+        ],
+        "jitter_previous_px": [
+          0.0,
+          0.0
+        ],
+        "jittered_draws": 0,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 0,
+        "gates": {
+          "gate1": 0,
+          "gate2": 638,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 180,
+        "captured": false,
+        "draws": 674,
+        "routed": 0,
+        "matched": 0,
+        "latched": 0,
+        "committed": 0,
+        "selector_state": 9,
+        "taa_attempted": 0,
+        "taa_resolved": 0,
+        "taa_history": 0,
+        "taa_skip": 2,
+        "taa_result": "00000001",
+        "taa_copy": "00000001",
+        "taa_restore": "00000000",
+        "taa_references": 0,
+        "jitter": 0,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          0.0
+        ],
+        "jitter_previous_px": [
+          0.0,
+          0.0
+        ],
+        "jittered_draws": 0,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 0,
+        "gates": {
+          "gate1": 0,
+          "gate2": 674,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 240,
+        "captured": false,
+        "draws": 227,
+        "routed": 174,
+        "matched": 174,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 209,
+        "cut": 0,
+        "cut_median_px": 0.0014,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 174,
+        "gates": {
+          "gate1": 0,
+          "gate2": 16,
+          "gate3": 2,
+          "gate4": 35,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 300,
+        "captured": false,
+        "draws": 227,
+        "routed": 174,
+        "matched": 174,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 209,
+        "cut": 0,
+        "cut_median_px": 0.0013,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 174,
+        "gates": {
+          "gate1": 0,
+          "gate2": 16,
+          "gate3": 2,
+          "gate4": 35,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 360,
+        "captured": false,
+        "draws": 228,
+        "routed": 174,
+        "matched": 174,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 209,
+        "cut": 0,
+        "cut_median_px": 0.0016,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 174,
+        "gates": {
+          "gate1": 0,
+          "gate2": 17,
+          "gate3": 2,
+          "gate4": 35,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 420,
+        "captured": false,
+        "draws": 238,
+        "routed": 167,
+        "matched": 167,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 216,
+        "cut": 0,
+        "cut_median_px": 10.5945,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 167,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 2,
+          "gate4": 49,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 480,
+        "captured": false,
+        "draws": 344,
+        "routed": 245,
+        "matched": 245,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 312,
+        "cut": 0,
+        "cut_median_px": 7.528,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 216,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 2,
+          "gate4": 67,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 540,
+        "captured": false,
+        "draws": 302,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 270,
+        "cut": 0,
+        "cut_median_px": 0.0391,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 2,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 600,
+        "captured": false,
+        "draws": 301,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 269,
+        "cut": 0,
+        "cut_median_px": 0.0369,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 2,
+          "gate4": 54,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 629,
+        "captured": true,
+        "draws": 303,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          -0.166667
+        ],
+        "jitter_previous_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jittered_draws": 270,
+        "cut": 0,
+        "cut_median_px": 0.037,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 3,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 630,
+        "captured": true,
+        "draws": 302,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 1,
+        "jitter_px": [
+          -0.25,
+          0.166667
+        ],
+        "jitter_previous_px": [
+          0.0,
+          -0.166667
+        ],
+        "jittered_draws": 269,
+        "cut": 0,
+        "cut_median_px": 0.2242,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 3,
+          "gate4": 54,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 631,
+        "captured": true,
+        "draws": 302,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 269,
+        "cut": 0,
+        "cut_median_px": 0.2243,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 3,
+          "gate4": 54,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 632,
+        "captured": true,
+        "draws": 302,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 269,
+        "cut": 0,
+        "cut_median_px": 0.2244,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 3,
+          "gate4": 54,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 660,
+        "captured": false,
+        "draws": 303,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 270,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 3,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 720,
+        "captured": false,
+        "draws": 301,
+        "routed": 213,
+        "matched": 213,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 268,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 213,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 3,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 780,
+        "captured": false,
+        "draws": 252,
+        "routed": 179,
+        "matched": 173,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 220,
+        "cut": 0,
+        "cut_median_px": 10.228,
+        "cut_missing_fraction": 0.0335,
+        "cut_samples": 173,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 2,
+          "gate4": 41,
+          "gate5": 0,
+          "gate6": 6
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 840,
+        "captured": false,
+        "draws": 259,
+        "routed": 191,
+        "matched": 179,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 237,
+        "cut": 0,
+        "cut_median_px": 9.7781,
+        "cut_missing_fraction": 0.0628,
+        "cut_samples": 179,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 2,
+          "gate4": 46,
+          "gate5": 0,
+          "gate6": 12
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 900,
+        "captured": false,
+        "draws": 743,
+        "routed": 592,
+        "matched": 592,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 705,
+        "cut": 0,
+        "cut_median_px": 16.5987,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 592,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 17,
+          "gate4": 113,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 903,
+        "captured": true,
+        "draws": 760,
+        "routed": 609,
+        "matched": 597,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 724,
+        "cut": 0,
+        "cut_median_px": 17.6358,
+        "cut_missing_fraction": 0.0197,
+        "cut_samples": 597,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 15,
+          "gate4": 115,
+          "gate5": 0,
+          "gate6": 12
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 904,
+        "captured": true,
+        "draws": 747,
+        "routed": 598,
+        "matched": 592,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 713,
+        "cut": 0,
+        "cut_median_px": 45.3821,
+        "cut_missing_fraction": 0.01,
+        "cut_samples": 592,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 13,
+          "gate4": 115,
+          "gate5": 0,
+          "gate6": 6
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 905,
+        "captured": true,
+        "draws": 725,
+        "routed": 578,
+        "matched": 565,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 4,
+        "jitter_px": [
+          0.125,
+          0.277778
+        ],
+        "jitter_previous_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jittered_draws": 690,
+        "cut": 0,
+        "cut_median_px": 46.9906,
+        "cut_missing_fraction": 0.0225,
+        "cut_samples": 565,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 14,
+          "gate4": 112,
+          "gate5": 0,
+          "gate6": 13
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 906,
+        "captured": true,
+        "draws": 721,
+        "routed": 577,
+        "matched": 575,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 0,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 5,
+        "jitter_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jitter_previous_px": [
+          0.125,
+          0.277778
+        ],
+        "jittered_draws": 688,
+        "cut": 1,
+        "cut_median_px": 50.0988,
+        "cut_missing_fraction": 0.0035,
+        "cut_samples": 575,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 12,
+          "gate4": 111,
+          "gate5": 0,
+          "gate6": 2
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 960,
+        "captured": false,
+        "draws": 363,
+        "routed": 270,
+        "matched": 264,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 341,
+        "cut": 0,
+        "cut_median_px": 25.7213,
+        "cut_missing_fraction": 0.0222,
+        "cut_samples": 235,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 2,
+          "gate4": 71,
+          "gate5": 0,
+          "gate6": 6
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1020,
+        "captured": false,
+        "draws": 262,
+        "routed": 189,
+        "matched": 189,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 230,
+        "cut": 0,
+        "cut_median_px": 20.6998,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 189,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 2,
+          "gate4": 41,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1080,
+        "captured": false,
+        "draws": 217,
+        "routed": 158,
+        "matched": 158,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 183,
+        "cut": 0,
+        "cut_median_px": 2.0583,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 158,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 4,
+          "gate4": 25,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1140,
+        "captured": false,
+        "draws": 190,
+        "routed": 131,
+        "matched": 131,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 154,
+        "cut": 0,
+        "cut_median_px": 3.5957,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 131,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 6,
+          "gate4": 23,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1200,
+        "captured": false,
+        "draws": 205,
+        "routed": 144,
+        "matched": 144,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 169,
+        "cut": 0,
+        "cut_median_px": 3.1168,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 144,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 6,
+          "gate4": 25,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1260,
+        "captured": false,
+        "draws": 178,
+        "routed": 119,
+        "matched": 119,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 142,
+        "cut": 0,
+        "cut_median_px": 5.5443,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 90,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 6,
+          "gate4": 23,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1320,
+        "captured": false,
+        "draws": 89,
+        "routed": 54,
+        "matched": 54,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 0,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 62,
+        "cut": 1,
+        "cut_median_px": 87.3511,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 25,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 7,
+          "gate4": 8,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1380,
+        "captured": false,
+        "draws": 439,
+        "routed": 335,
+        "matched": 335,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 409,
+        "cut": 0,
+        "cut_median_px": 4.515,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 335,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 74,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1427,
+        "captured": true,
+        "draws": 466,
+        "routed": 360,
+        "matched": 360,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 6,
+        "jitter_px": [
+          0.375,
+          0.055556
+        ],
+        "jitter_previous_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jittered_draws": 436,
+        "cut": 0,
+        "cut_median_px": 0.1042,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 360,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 76,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1428,
+        "captured": true,
+        "draws": 466,
+        "routed": 360,
+        "matched": 360,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 436,
+        "cut": 0,
+        "cut_median_px": 0.3022,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 360,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 76,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1429,
+        "captured": true,
+        "draws": 466,
+        "routed": 360,
+        "matched": 360,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          -0.166667
+        ],
+        "jitter_previous_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jittered_draws": 436,
+        "cut": 0,
+        "cut_median_px": 0.3023,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 360,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 76,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1430,
+        "captured": true,
+        "draws": 467,
+        "routed": 360,
+        "matched": 360,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 1,
+        "jitter_px": [
+          -0.25,
+          0.166667
+        ],
+        "jitter_previous_px": [
+          0.0,
+          -0.166667
+        ],
+        "jittered_draws": 436,
+        "cut": 0,
+        "cut_median_px": 0.3022,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 360,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 11,
+          "gate4": 76,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1440,
+        "captured": false,
+        "draws": 467,
+        "routed": 360,
+        "matched": 360,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 436,
+        "cut": 0,
+        "cut_median_px": 0.104,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 360,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 11,
+          "gate4": 76,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1500,
+        "captured": false,
+        "draws": 269,
+        "routed": 200,
+        "matched": 200,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 243,
+        "cut": 0,
+        "cut_median_px": 16.2787,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 200,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 6,
+          "gate4": 43,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1560,
+        "captured": false,
+        "draws": 171,
+        "routed": 100,
+        "matched": 84,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 135,
+        "cut": 0,
+        "cut_median_px": 6.437,
+        "cut_missing_fraction": 0.16,
+        "cut_samples": 55,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 6,
+          "gate4": 35,
+          "gate5": 0,
+          "gate6": 16
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1584,
+        "captured": true,
+        "draws": 294,
+        "routed": 204,
+        "matched": 204,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 259,
+        "cut": 0,
+        "cut_median_px": 6.7628,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 175,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 5,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1585,
+        "captured": true,
+        "draws": 299,
+        "routed": 209,
+        "matched": 204,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 4,
+        "jitter_px": [
+          0.125,
+          0.277778
+        ],
+        "jitter_previous_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jittered_draws": 264,
+        "cut": 0,
+        "cut_median_px": 29.369,
+        "cut_missing_fraction": 0.0239,
+        "cut_samples": 175,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 5,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 5
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1586,
+        "captured": true,
+        "draws": 299,
+        "routed": 209,
+        "matched": 209,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 5,
+        "jitter_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jitter_previous_px": [
+          0.125,
+          0.277778
+        ],
+        "jittered_draws": 264,
+        "cut": 0,
+        "cut_median_px": 27.7704,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 180,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 5,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1587,
+        "captured": true,
+        "draws": 294,
+        "routed": 204,
+        "matched": 201,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 6,
+        "jitter_px": [
+          0.375,
+          0.055556
+        ],
+        "jitter_previous_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jittered_draws": 259,
+        "cut": 0,
+        "cut_median_px": 26.3795,
+        "cut_missing_fraction": 0.0147,
+        "cut_samples": 172,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 5,
+          "gate4": 55,
+          "gate5": 0,
+          "gate6": 3
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1620,
+        "captured": false,
+        "draws": 309,
+        "routed": 219,
+        "matched": 217,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 273,
+        "cut": 0,
+        "cut_median_px": 9.4821,
+        "cut_missing_fraction": 0.0091,
+        "cut_samples": 188,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 6,
+          "gate4": 54,
+          "gate5": 0,
+          "gate6": 2
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1680,
+        "captured": false,
+        "draws": 310,
+        "routed": 226,
+        "matched": 197,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 276,
+        "cut": 0,
+        "cut_median_px": 13.9709,
+        "cut_missing_fraction": 0.1283,
+        "cut_samples": 168,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 4,
+          "gate4": 50,
+          "gate5": 0,
+          "gate6": 29
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1740,
+        "captured": false,
+        "draws": 558,
+        "routed": 441,
+        "matched": 396,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 529,
+        "cut": 0,
+        "cut_median_px": 30.0737,
+        "cut_missing_fraction": 0.102,
+        "cut_samples": 396,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 9,
+          "gate4": 88,
+          "gate5": 0,
+          "gate6": 45
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1800,
+        "captured": false,
+        "draws": 543,
+        "routed": 411,
+        "matched": 363,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 0,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 505,
+        "cut": 1,
+        "cut_median_px": 52.2375,
+        "cut_missing_fraction": 0.1168,
+        "cut_samples": 363,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 18,
+          "gate4": 94,
+          "gate5": 0,
+          "gate6": 48
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1860,
+        "captured": false,
+        "draws": 342,
+        "routed": 242,
+        "matched": 225,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 306,
+        "cut": 0,
+        "cut_median_px": 17.6907,
+        "cut_missing_fraction": 0.0702,
+        "cut_samples": 196,
+        "gates": {
+          "gate1": 0,
+          "gate2": 30,
+          "gate3": 6,
+          "gate4": 64,
+          "gate5": 0,
+          "gate6": 17
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1920,
+        "captured": false,
+        "draws": 367,
+        "routed": 282,
+        "matched": 282,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 344,
+        "cut": 0,
+        "cut_median_px": 37.7939,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 253,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 3,
+          "gate4": 62,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1950,
+        "captured": true,
+        "draws": 717,
+        "routed": 576,
+        "matched": 520,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 1,
+        "jitter_px": [
+          -0.25,
+          0.166667
+        ],
+        "jitter_previous_px": [
+          0.0,
+          -0.166667
+        ],
+        "jittered_draws": 683,
+        "cut": 0,
+        "cut_median_px": 25.6587,
+        "cut_missing_fraction": 0.0972,
+        "cut_samples": 520,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 14,
+          "gate4": 107,
+          "gate5": 0,
+          "gate6": 56
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1951,
+        "captured": true,
+        "draws": 831,
+        "routed": 655,
+        "matched": 543,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 0,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 793,
+        "cut": 1,
+        "cut_median_px": 78.3907,
+        "cut_missing_fraction": 0.171,
+        "cut_samples": 543,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 18,
+          "gate4": 138,
+          "gate5": 0,
+          "gate6": 112
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1952,
+        "captured": true,
+        "draws": 857,
+        "routed": 683,
+        "matched": 643,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 0,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 820,
+        "cut": 1,
+        "cut_median_px": 76.8994,
+        "cut_missing_fraction": 0.0586,
+        "cut_samples": 643,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 17,
+          "gate4": 137,
+          "gate5": 0,
+          "gate6": 40
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1953,
+        "captured": true,
+        "draws": 849,
+        "routed": 678,
+        "matched": 672,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 0,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 4,
+        "jitter_px": [
+          0.125,
+          0.277778
+        ],
+        "jitter_previous_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jittered_draws": 814,
+        "cut": 1,
+        "cut_median_px": 67.0988,
+        "cut_missing_fraction": 0.0088,
+        "cut_samples": 672,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 15,
+          "gate4": 136,
+          "gate5": 0,
+          "gate6": 6
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 1980,
+        "captured": false,
+        "draws": 751,
+        "routed": 599,
+        "matched": 599,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 722,
+        "cut": 0,
+        "cut_median_px": 0.9336,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 599,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 9,
+          "gate4": 123,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2040,
+        "captured": false,
+        "draws": 715,
+        "routed": 566,
+        "matched": 565,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 682,
+        "cut": 0,
+        "cut_median_px": 4.7075,
+        "cut_missing_fraction": 0.0018,
+        "cut_samples": 536,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 13,
+          "gate4": 116,
+          "gate5": 0,
+          "gate6": 1
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2100,
+        "captured": false,
+        "draws": 708,
+        "routed": 559,
+        "matched": 559,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 669,
+        "cut": 0,
+        "cut_median_px": 0.6974,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 530,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 19,
+          "gate4": 110,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2160,
+        "captured": false,
+        "draws": 536,
+        "routed": 430,
+        "matched": 409,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 507,
+        "cut": 0,
+        "cut_median_px": 1.3884,
+        "cut_missing_fraction": 0.0488,
+        "cut_samples": 409,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 9,
+          "gate4": 77,
+          "gate5": 0,
+          "gate6": 21
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2220,
+        "captured": false,
+        "draws": 428,
+        "routed": 350,
+        "matched": 350,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 399,
+        "cut": 0,
+        "cut_median_px": 0.1736,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 350,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 9,
+          "gate4": 49,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2280,
+        "captured": false,
+        "draws": 393,
+        "routed": 319,
+        "matched": 319,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 365,
+        "cut": 0,
+        "cut_median_px": 0.9363,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 319,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 8,
+          "gate4": 46,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2340,
+        "captured": false,
+        "draws": 343,
+        "routed": 272,
+        "matched": 272,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 314,
+        "cut": 0,
+        "cut_median_px": 0.8989,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 272,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 9,
+          "gate4": 42,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2400,
+        "captured": false,
+        "draws": 292,
+        "routed": 215,
+        "matched": 215,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 262,
+        "cut": 0,
+        "cut_median_px": 0.2366,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 215,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 47,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2460,
+        "captured": false,
+        "draws": 248,
+        "routed": 167,
+        "matched": 167,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 218,
+        "cut": 0,
+        "cut_median_px": 0.3067,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 167,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 51,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2520,
+        "captured": false,
+        "draws": 227,
+        "routed": 144,
+        "matched": 144,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 197,
+        "cut": 0,
+        "cut_median_px": 1.0162,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 144,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 53,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2580,
+        "captured": false,
+        "draws": 224,
+        "routed": 140,
+        "matched": 140,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 191,
+        "cut": 0,
+        "cut_median_px": 0.4876,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 140,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 13,
+          "gate4": 51,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2640,
+        "captured": false,
+        "draws": 225,
+        "routed": 140,
+        "matched": 140,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 192,
+        "cut": 0,
+        "cut_median_px": 0.4813,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 140,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 13,
+          "gate4": 52,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2700,
+        "captured": false,
+        "draws": 206,
+        "routed": 124,
+        "matched": 124,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 176,
+        "cut": 0,
+        "cut_median_px": 0.1327,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 124,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 52,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2760,
+        "captured": false,
+        "draws": 186,
+        "routed": 106,
+        "matched": 106,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 156,
+        "cut": 0,
+        "cut_median_px": 0.1496,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 106,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 50,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2820,
+        "captured": false,
+        "draws": 200,
+        "routed": 119,
+        "matched": 119,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 170,
+        "cut": 0,
+        "cut_median_px": 0.2572,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 119,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 10,
+          "gate4": 51,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2880,
+        "captured": false,
+        "draws": 161,
+        "routed": 89,
+        "matched": 89,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 133,
+        "cut": 0,
+        "cut_median_px": 0.2522,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 89,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 8,
+          "gate4": 44,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 2940,
+        "captured": false,
+        "draws": 145,
+        "routed": 75,
+        "matched": 75,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 118,
+        "cut": 0,
+        "cut_median_px": 0.3846,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 75,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 7,
+          "gate4": 43,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3000,
+        "captured": false,
+        "draws": 145,
+        "routed": 75,
+        "matched": 75,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 118,
+        "cut": 0,
+        "cut_median_px": 1.5109,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 75,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 7,
+          "gate4": 43,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3060,
+        "captured": false,
+        "draws": 146,
+        "routed": 75,
+        "matched": 75,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 118,
+        "cut": 0,
+        "cut_median_px": 0.0819,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 75,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 7,
+          "gate4": 43,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3120,
+        "captured": false,
+        "draws": 145,
+        "routed": 75,
+        "matched": 75,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 118,
+        "cut": 0,
+        "cut_median_px": 6.419,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 75,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 7,
+          "gate4": 43,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3180,
+        "captured": false,
+        "draws": 144,
+        "routed": 75,
+        "matched": 75,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 118,
+        "cut": 0,
+        "cut_median_px": 0.2508,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 75,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 6,
+          "gate4": 43,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3240,
+        "captured": false,
+        "draws": 124,
+        "routed": 60,
+        "matched": 60,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 98,
+        "cut": 0,
+        "cut_median_px": 1.2331,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 60,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 6,
+          "gate4": 38,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3300,
+        "captured": false,
+        "draws": 118,
+        "routed": 61,
+        "matched": 61,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 92,
+        "cut": 0,
+        "cut_median_px": 7.2099,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 61,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 6,
+          "gate4": 31,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3360,
+        "captured": false,
+        "draws": 58,
+        "routed": 18,
+        "matched": 18,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 3,
+        "jitter_px": [
+          -0.375,
+          -0.055556
+        ],
+        "jitter_previous_px": [
+          0.25,
+          -0.388889
+        ],
+        "jittered_draws": 33,
+        "cut": 0,
+        "cut_median_px": 12.5208,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 18,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 5,
+          "gate4": 15,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3420,
+        "captured": false,
+        "draws": 61,
+        "routed": 18,
+        "matched": 18,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 22,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 4,
+        "gates": {
+          "gate1": 0,
+          "gate2": 35,
+          "gate3": 4,
+          "gate4": 4,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3480,
+        "captured": false,
+        "draws": 463,
+        "routed": 300,
+        "matched": 300,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 393,
+        "cut": 0,
+        "cut_median_px": 0.006,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 286,
+        "gates": {
+          "gate1": 0,
+          "gate2": 25,
+          "gate3": 45,
+          "gate4": 93,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3540,
+        "captured": false,
+        "draws": 430,
+        "routed": 260,
+        "matched": 260,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 6,
+        "jitter_px": [
+          0.375,
+          0.055556
+        ],
+        "jitter_previous_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jittered_draws": 361,
+        "cut": 0,
+        "cut_median_px": 3.8951,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 260,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 49,
+          "gate4": 101,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3600,
+        "captured": false,
+        "draws": 415,
+        "routed": 254,
+        "matched": 248,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 349,
+        "cut": 0,
+        "cut_median_px": 4.1333,
+        "cut_missing_fraction": 0.0236,
+        "cut_samples": 248,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 46,
+          "gate4": 95,
+          "gate5": 0,
+          "gate6": 6
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3660,
+        "captured": false,
+        "draws": 422,
+        "routed": 261,
+        "matched": 261,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 6,
+        "jitter_px": [
+          0.375,
+          0.055556
+        ],
+        "jitter_previous_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jittered_draws": 354,
+        "cut": 0,
+        "cut_median_px": 2.5464,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 247,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 48,
+          "gate4": 93,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3685,
+        "captured": true,
+        "draws": 422,
+        "routed": 261,
+        "matched": 261,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 7,
+        "jitter_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jitter_previous_px": [
+          0.375,
+          0.055556
+        ],
+        "jittered_draws": 354,
+        "cut": 0,
+        "cut_median_px": 1.707,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 247,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 48,
+          "gate4": 93,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3686,
+        "captured": true,
+        "draws": 422,
+        "routed": 261,
+        "matched": 261,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          -0.166667
+        ],
+        "jitter_previous_px": [
+          -0.4375,
+          0.388889
+        ],
+        "jittered_draws": 354,
+        "cut": 0,
+        "cut_median_px": 8.5625,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 247,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 48,
+          "gate4": 93,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3687,
+        "captured": true,
+        "draws": 437,
+        "routed": 275,
+        "matched": 261,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 1,
+        "jitter_px": [
+          -0.25,
+          0.166667
+        ],
+        "jitter_previous_px": [
+          0.0,
+          -0.166667
+        ],
+        "jittered_draws": 370,
+        "cut": 0,
+        "cut_median_px": 8.5627,
+        "cut_missing_fraction": 0.0509,
+        "cut_samples": 247,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 47,
+          "gate4": 95,
+          "gate5": 0,
+          "gate6": 14
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3688,
+        "captured": true,
+        "draws": 436,
+        "routed": 275,
+        "matched": 275,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 369,
+        "cut": 0,
+        "cut_median_px": 8.5607,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 261,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 47,
+          "gate4": 94,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3720,
+        "captured": false,
+        "draws": 439,
+        "routed": 276,
+        "matched": 276,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 372,
+        "cut": 0,
+        "cut_median_px": 23.7001,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 262,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 47,
+          "gate4": 96,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3780,
+        "captured": false,
+        "draws": 64,
+        "routed": 20,
+        "matched": 20,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 6,
+        "jitter_px": [
+          0.375,
+          0.055556
+        ],
+        "jitter_previous_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jittered_draws": 39,
+        "cut": 0,
+        "cut_median_px": 27.9427,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 20,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 5,
+          "gate4": 19,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3840,
+        "captured": false,
+        "draws": 66,
+        "routed": 18,
+        "matched": 18,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 41,
+        "cut": 0,
+        "cut_median_px": 3.7022,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 18,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 5,
+          "gate4": 23,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3900,
+        "captured": false,
+        "draws": 67,
+        "routed": 18,
+        "matched": 18,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 6,
+        "jitter_px": [
+          0.375,
+          0.055556
+        ],
+        "jitter_previous_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jittered_draws": 42,
+        "cut": 0,
+        "cut_median_px": 0.5681,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 18,
+        "gates": {
+          "gate1": 0,
+          "gate2": 20,
+          "gate3": 5,
+          "gate4": 24,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 3960,
+        "captured": false,
+        "draws": 65,
+        "routed": 18,
+        "matched": 18,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 39,
+        "cut": 0,
+        "cut_median_px": 0.6353,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 18,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 5,
+          "gate4": 21,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 4020,
+        "captured": false,
+        "draws": 65,
+        "routed": 18,
+        "matched": 18,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 6,
+        "jitter_px": [
+          0.375,
+          0.055556
+        ],
+        "jitter_previous_px": [
+          -0.125,
+          -0.277778
+        ],
+        "jittered_draws": 39,
+        "cut": 0,
+        "cut_median_px": 0.6778,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 18,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 5,
+          "gate4": 21,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 4080,
+        "captured": false,
+        "draws": 84,
+        "routed": 33,
+        "matched": 33,
+        "latched": 1,
+        "committed": 1,
+        "selector_state": 9,
+        "taa_attempted": 1,
+        "taa_resolved": 1,
+        "taa_history": 1,
+        "taa_skip": 0,
+        "taa_result": "00000000",
+        "taa_copy": "00000000",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 1,
+        "jitter_index": 2,
+        "jitter_px": [
+          0.25,
+          -0.388889
+        ],
+        "jitter_previous_px": [
+          -0.25,
+          0.166667
+        ],
+        "jittered_draws": 57,
+        "cut": 0,
+        "cut_median_px": 0.8846,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 33,
+        "gates": {
+          "gate1": 0,
+          "gate2": 21,
+          "gate3": 6,
+          "gate4": 24,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      },
+      {
+        "frame": 4140,
+        "captured": false,
+        "draws": 638,
+        "routed": 0,
+        "matched": 0,
+        "latched": 0,
+        "committed": 0,
+        "selector_state": 9,
+        "taa_attempted": 0,
+        "taa_resolved": 0,
+        "taa_history": 0,
+        "taa_skip": 2,
+        "taa_result": "00000001",
+        "taa_copy": "00000001",
+        "taa_restore": "00000000",
+        "taa_references": 12,
+        "jitter": 0,
+        "jitter_index": 0,
+        "jitter_px": [
+          0.0,
+          0.0
+        ],
+        "jitter_previous_px": [
+          0.0,
+          0.0
+        ],
+        "jittered_draws": 0,
+        "cut": 0,
+        "cut_median_px": 0.0,
+        "cut_missing_fraction": 0.0,
+        "cut_samples": 0,
+        "gates": {
+          "gate1": 0,
+          "gate2": 638,
+          "gate3": 0,
+          "gate4": 0,
+          "gate5": 0,
+          "gate6": 0
+        },
+        "apply_failures": 0,
+        "restore_failures": 0,
+        "scene_open": 0,
+        "active_queries": 0
+      }
+    ],
+    "records": 94,
+    "attempted": 89,
+    "resolved": 89,
+    "failed": 0,
+    "history_valid": 83,
+    "skip_histogram": {
+      "0": 89,
+      "2": 5
+    },
+    "skip_reasons": {
+      "0": "no skip (resolved)",
+      "2": "selector never reached the copy",
+      "3": "no jitter",
+      "6": "open application query"
+    },
+    "result_histogram": {
+      "00000001": 5,
+      "00000000": 89
+    },
+    "references_range": [
+      0,
+      12
+    ],
+    "captured_frames_all_resolved": false
+  },
+  "bursts": [
+    {
+      "index": 0,
+      "frames": [
+        629,
+        630,
+        631,
+        632
+      ],
+      "cut_median_px": [
+        0.037,
+        0.2242,
+        0.2243,
+        0.2244
+      ],
+      "cut_missing_fraction": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cut_samples": [
+        215,
+        215,
+        215,
+        215
+      ],
+      "cut_verdicts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "max_cut_median_px": 0.2244,
+      "max_cut_missing_fraction": 0.0,
+      "any_cut": false,
+      "stationary": false,
+      "jitter_px": [
+        [
+          0.0,
+          -0.166667
+        ],
+        [
+          -0.25,
+          0.166667
+        ],
+        [
+          0.25,
+          -0.388889
+        ],
+        [
+          -0.375,
+          -0.055556
+        ]
+      ]
+    },
+    {
+      "index": 1,
+      "frames": [
+        903,
+        904,
+        905,
+        906
+      ],
+      "cut_median_px": [
+        17.6358,
+        45.3821,
+        46.9906,
+        50.0988
+      ],
+      "cut_missing_fraction": [
+        0.0197,
+        0.01,
+        0.0225,
+        0.0035
+      ],
+      "cut_samples": [
+        597,
+        592,
+        565,
+        575
+      ],
+      "cut_verdicts": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "max_cut_median_px": 50.0988,
+      "max_cut_missing_fraction": 0.0225,
+      "any_cut": true,
+      "stationary": false,
+      "jitter_px": [
+        [
+          0.25,
+          -0.388889
+        ],
+        [
+          -0.375,
+          -0.055556
+        ],
+        [
+          0.125,
+          0.277778
+        ],
+        [
+          -0.125,
+          -0.277778
+        ]
+      ]
+    },
+    {
+      "index": 2,
+      "frames": [
+        1427,
+        1428,
+        1429,
+        1430
+      ],
+      "cut_median_px": [
+        0.1042,
+        0.3022,
+        0.3023,
+        0.3022
+      ],
+      "cut_missing_fraction": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cut_samples": [
+        360,
+        360,
+        360,
+        360
+      ],
+      "cut_verdicts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "max_cut_median_px": 0.3023,
+      "max_cut_missing_fraction": 0.0,
+      "any_cut": false,
+      "stationary": false,
+      "jitter_px": [
+        [
+          0.375,
+          0.055556
+        ],
+        [
+          -0.4375,
+          0.388889
+        ],
+        [
+          0.0,
+          -0.166667
+        ],
+        [
+          -0.25,
+          0.166667
+        ]
+      ]
+    },
+    {
+      "index": 3,
+      "frames": [
+        1584,
+        1585,
+        1586,
+        1587
+      ],
+      "cut_median_px": [
+        6.7628,
+        29.369,
+        27.7704,
+        26.3795
+      ],
+      "cut_missing_fraction": [
+        0.0,
+        0.0239,
+        0.0,
+        0.0147
+      ],
+      "cut_samples": [
+        175,
+        175,
+        180,
+        172
+      ],
+      "cut_verdicts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "max_cut_median_px": 29.369,
+      "max_cut_missing_fraction": 0.0239,
+      "any_cut": false,
+      "stationary": false,
+      "jitter_px": [
+        [
+          -0.375,
+          -0.055556
+        ],
+        [
+          0.125,
+          0.277778
+        ],
+        [
+          -0.125,
+          -0.277778
+        ],
+        [
+          0.375,
+          0.055556
+        ]
+      ]
+    },
+    {
+      "index": 4,
+      "frames": [
+        1950,
+        1951,
+        1952,
+        1953
+      ],
+      "cut_median_px": [
+        25.6587,
+        78.3907,
+        76.8994,
+        67.0988
+      ],
+      "cut_missing_fraction": [
+        0.0972,
+        0.171,
+        0.0586,
+        0.0088
+      ],
+      "cut_samples": [
+        520,
+        543,
+        643,
+        672
+      ],
+      "cut_verdicts": [
+        0,
+        1,
+        1,
+        1
+      ],
+      "max_cut_median_px": 78.3907,
+      "max_cut_missing_fraction": 0.171,
+      "any_cut": true,
+      "stationary": false,
+      "jitter_px": [
+        [
+          -0.25,
+          0.166667
+        ],
+        [
+          0.25,
+          -0.388889
+        ],
+        [
+          -0.375,
+          -0.055556
+        ],
+        [
+          0.125,
+          0.277778
+        ]
+      ]
+    },
+    {
+      "index": 5,
+      "frames": [
+        3685,
+        3686,
+        3687,
+        3688
+      ],
+      "cut_median_px": [
+        1.707,
+        8.5625,
+        8.5627,
+        8.5607
+      ],
+      "cut_missing_fraction": [
+        0.0,
+        0.0,
+        0.0509,
+        0.0
+      ],
+      "cut_samples": [
+        247,
+        247,
+        247,
+        261
+      ],
+      "cut_verdicts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "max_cut_median_px": 8.5627,
+      "max_cut_missing_fraction": 0.0509,
+      "any_cut": false,
+      "stationary": false,
+      "jitter_px": [
+        [
+          -0.4375,
+          0.388889
+        ],
+        [
+          0.0,
+          -0.166667
+        ],
+        [
+          -0.25,
+          0.166667
+        ],
+        [
+          0.25,
+          -0.388889
+        ]
+      ]
+    }
+  ],
+  "route": {
+    "totals": {
+      "draws": 33285,
+      "routed": 22134,
+      "matched": 21656,
+      "gates": {
+        "gate1": 0,
+        "gate2": 4616,
+        "gate3": 1025,
+        "gate4": 5510,
+        "gate5": 0,
+        "gate6": 478
+      },
+      "apply_failures": 0,
+      "restore_failures": 0
+    },
+    "captured": {
+      "frames": 24,
+      "draws": 12184,
+      "routed": 9152,
+      "matched": 8883,
+      "gates": {
+        "gate1": 0,
+        "gate2": 564,
+        "gate3": 381,
+        "gate4": 2087,
+        "gate5": 0,
+        "gate6": 269
+      }
+    },
+    "per_draw_gate_histogram": {
+      "0": 8883,
+      "3": 381,
+      "4": 2087,
+      "6": 269
+    },
+    "counter_consistency": [
+      {
+        "frame": 629,
+        "motion_route_lines": 273,
+        "routed_plus_gate345": 273,
+        "routed_sum": 215,
+        "matched_sum": 215,
+        "agrees": true
+      },
+      {
+        "frame": 630,
+        "motion_route_lines": 272,
+        "routed_plus_gate345": 272,
+        "routed_sum": 215,
+        "matched_sum": 215,
+        "agrees": true
+      },
+      {
+        "frame": 631,
+        "motion_route_lines": 272,
+        "routed_plus_gate345": 272,
+        "routed_sum": 215,
+        "matched_sum": 215,
+        "agrees": true
+      },
+      {
+        "frame": 632,
+        "motion_route_lines": 272,
+        "routed_plus_gate345": 272,
+        "routed_sum": 215,
+        "matched_sum": 215,
+        "agrees": true
+      },
+      {
+        "frame": 903,
+        "motion_route_lines": 739,
+        "routed_plus_gate345": 739,
+        "routed_sum": 609,
+        "matched_sum": 597,
+        "agrees": true
+      },
+      {
+        "frame": 904,
+        "motion_route_lines": 726,
+        "routed_plus_gate345": 726,
+        "routed_sum": 598,
+        "matched_sum": 592,
+        "agrees": true
+      },
+      {
+        "frame": 905,
+        "motion_route_lines": 704,
+        "routed_plus_gate345": 704,
+        "routed_sum": 578,
+        "matched_sum": 565,
+        "agrees": true
+      },
+      {
+        "frame": 906,
+        "motion_route_lines": 700,
+        "routed_plus_gate345": 700,
+        "routed_sum": 577,
+        "matched_sum": 575,
+        "agrees": true
+      },
+      {
+        "frame": 1427,
+        "motion_route_lines": 446,
+        "routed_plus_gate345": 446,
+        "routed_sum": 360,
+        "matched_sum": 360,
+        "agrees": true
+      },
+      {
+        "frame": 1428,
+        "motion_route_lines": 446,
+        "routed_plus_gate345": 446,
+        "routed_sum": 360,
+        "matched_sum": 360,
+        "agrees": true
+      },
+      {
+        "frame": 1429,
+        "motion_route_lines": 446,
+        "routed_plus_gate345": 446,
+        "routed_sum": 360,
+        "matched_sum": 360,
+        "agrees": true
+      },
+      {
+        "frame": 1430,
+        "motion_route_lines": 447,
+        "routed_plus_gate345": 447,
+        "routed_sum": 360,
+        "matched_sum": 360,
+        "agrees": true
+      },
+      {
+        "frame": 1584,
+        "motion_route_lines": 264,
+        "routed_plus_gate345": 264,
+        "routed_sum": 204,
+        "matched_sum": 204,
+        "agrees": true
+      },
+      {
+        "frame": 1585,
+        "motion_route_lines": 269,
+        "routed_plus_gate345": 269,
+        "routed_sum": 209,
+        "matched_sum": 204,
+        "agrees": true
+      },
+      {
+        "frame": 1586,
+        "motion_route_lines": 269,
+        "routed_plus_gate345": 269,
+        "routed_sum": 209,
+        "matched_sum": 209,
+        "agrees": true
+      },
+      {
+        "frame": 1587,
+        "motion_route_lines": 264,
+        "routed_plus_gate345": 264,
+        "routed_sum": 204,
+        "matched_sum": 201,
+        "agrees": true
+      },
+      {
+        "frame": 1950,
+        "motion_route_lines": 697,
+        "routed_plus_gate345": 697,
+        "routed_sum": 576,
+        "matched_sum": 520,
+        "agrees": true
+      },
+      {
+        "frame": 1951,
+        "motion_route_lines": 811,
+        "routed_plus_gate345": 811,
+        "routed_sum": 655,
+        "matched_sum": 543,
+        "agrees": true
+      },
+      {
+        "frame": 1952,
+        "motion_route_lines": 837,
+        "routed_plus_gate345": 837,
+        "routed_sum": 683,
+        "matched_sum": 643,
+        "agrees": true
+      },
+      {
+        "frame": 1953,
+        "motion_route_lines": 829,
+        "routed_plus_gate345": 829,
+        "routed_sum": 678,
+        "matched_sum": 672,
+        "agrees": true
+      },
+      {
+        "frame": 3685,
+        "motion_route_lines": 402,
+        "routed_plus_gate345": 402,
+        "routed_sum": 261,
+        "matched_sum": 261,
+        "agrees": true
+      },
+      {
+        "frame": 3686,
+        "motion_route_lines": 402,
+        "routed_plus_gate345": 402,
+        "routed_sum": 261,
+        "matched_sum": 261,
+        "agrees": true
+      },
+      {
+        "frame": 3687,
+        "motion_route_lines": 417,
+        "routed_plus_gate345": 417,
+        "routed_sum": 275,
+        "matched_sum": 261,
+        "agrees": true
+      },
+      {
+        "frame": 3688,
+        "motion_route_lines": 416,
+        "routed_plus_gate345": 416,
+        "routed_sum": 275,
+        "matched_sum": 275,
+        "agrees": true
+      }
+    ],
+    "counter_consistency_pass": true
+  },
+  "readbacks": {
+    "color": {
+      "records": 24,
+      "all_zero_result": true,
+      "frames": [
+        629,
+        630,
+        631,
+        632,
+        903,
+        904,
+        905,
+        906,
+        1427,
+        1428,
+        1429,
+        1430,
+        1584,
+        1585,
+        1586,
+        1587,
+        1950,
+        1951,
+        1952,
+        1953,
+        3685,
+        3686,
+        3687,
+        3688
+      ],
+      "bytes": [
+        3932160
+      ],
+      "dimensions": [
+        [
+          "1280",
+          "768"
+        ]
+      ]
+    },
+    "depth": {
+      "records": 24,
+      "all_zero_result": true,
+      "frames": [
+        629,
+        630,
+        631,
+        632,
+        903,
+        904,
+        905,
+        906,
+        1427,
+        1428,
+        1429,
+        1430,
+        1584,
+        1585,
+        1586,
+        1587,
+        1950,
+        1951,
+        1952,
+        1953,
+        3685,
+        3686,
+        3687,
+        3688
+      ],
+      "bytes": [
+        3932160
+      ],
+      "dimensions": [
+        [
+          "1280",
+          "768"
+        ]
+      ]
+    },
+    "motion": {
+      "records": 24,
+      "all_zero_result": true,
+      "frames": [
+        629,
+        630,
+        631,
+        632,
+        903,
+        904,
+        905,
+        906,
+        1427,
+        1428,
+        1429,
+        1430,
+        1584,
+        1585,
+        1586,
+        1587,
+        1950,
+        1951,
+        1952,
+        1953,
+        3685,
+        3686,
+        3687,
+        3688
+      ],
+      "bytes": [
+        15728640
+      ],
+      "dimensions": [
+        [
+          "1280",
+          "768"
+        ]
+      ]
+    },
+    "taa": {
+      "records": 24,
+      "all_zero_result": true,
+      "frames": [
+        629,
+        630,
+        631,
+        632,
+        903,
+        904,
+        905,
+        906,
+        1427,
+        1428,
+        1429,
+        1430,
+        1584,
+        1585,
+        1586,
+        1587,
+        1950,
+        1951,
+        1952,
+        1953,
+        3685,
+        3686,
+        3687,
+        3688
+      ],
+      "bytes": [
+        7864320
+      ],
+      "dimensions": [
+        [
+          "1280",
+          "768"
+        ]
+      ]
+    }
+  },
+  "diagnostics": {
+    "failure_records": [],
+    "reset_records": [],
+    "shutdown_records": [],
+    "nonzero_results": [],
+    "rejected_telemetry": 0
+  },
+  "telemetry": {
+    "metrics": {
+      "0:lock_wait": {
+        "device": "0",
+        "name": "lock_wait",
+        "count": 3730724,
+        "failures": 0,
+        "total_us": 861688.2000000001,
+        "min_us": 0.0,
+        "max_us": 2668.7,
+        "windows": 245,
+        "buckets": [
+          3730309,
+          249,
+          165,
+          1,
+          0,
+          0
+        ],
+        "mean_us": 0.2309707713569806,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9998887615379749,
+          6.674307721503922e-05,
+          4.4227340323218766e-05,
+          2.6804448680738644e-07,
+          0.0,
+          0.0
+        ]
+      },
+      "0:log_flush": {
+        "device": "0",
+        "name": "log_flush",
+        "count": 244,
+        "failures": 0,
+        "total_us": 192.5999999999999,
+        "min_us": 0.1,
+        "max_us": 26.6,
+        "windows": 244,
+        "buckets": [
+          243,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.7893442622950816,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9959016393442623,
+          0.004098360655737705,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "0:create_device": {
+        "device": "0",
+        "name": "create_device",
+        "count": 1,
+        "failures": 0,
+        "total_us": 13163.2,
+        "min_us": 13163.2,
+        "max_us": 13163.2,
+        "windows": 1,
+        "buckets": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "mean_us": 13163.2,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      "0:shader_inspect": {
+        "device": "0",
+        "name": "shader_inspect",
+        "count": 24345,
+        "failures": 0,
+        "total_us": 300263.99999999994,
+        "min_us": 1.6,
+        "max_us": 11459.0,
+        "windows": 34,
+        "buckets": [
+          13162,
+          11085,
+          76,
+          21,
+          1,
+          0
+        ],
+        "mean_us": 12.33370301910043,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.5406448962826043,
+          0.4553296364756624,
+          0.003121790922160608,
+          0.000862600123228589,
+          4.1076196344218524e-05,
+          0.0
+        ]
+      },
+      "0:shader_getfunction": {
+        "device": "0",
+        "name": "shader_getfunction",
+        "count": 24345,
+        "failures": 0,
+        "total_us": 14733.300000000001,
+        "min_us": 0.2,
+        "max_us": 152.5,
+        "windows": 34,
+        "buckets": [
+          24337,
+          7,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.6051879235982749,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9996713904292462,
+          0.00028753337440952967,
+          4.1076196344218524e-05,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "0:shader_hash": {
+        "device": "0",
+        "name": "shader_hash",
+        "count": 24345,
+        "failures": 0,
+        "total_us": 180980.29999999996,
+        "min_us": 0.4,
+        "max_us": 287.7,
+        "windows": 34,
+        "buckets": [
+          18357,
+          5958,
+          30,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 7.4339823372355704,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.7540357362908194,
+          0.24473197781885397,
+          0.0012322858903265558,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "0:shader_dump": {
+        "device": "0",
+        "name": "shader_dump",
+        "count": 63,
+        "failures": 0,
+        "total_us": 77494.2,
+        "min_us": 448.3,
+        "max_us": 11420.9,
+        "windows": 9,
+        "buckets": [
+          0,
+          0,
+          41,
+          21,
+          1,
+          0
+        ],
+        "mean_us": 1230.0666666666666,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0,
+          0.6507936507936508,
+          0.3333333333333333,
+          0.015873015873015872,
+          0.0
+        ]
+      },
+      "1:present_normal": {
+        "device": "1",
+        "name": "present_normal",
+        "count": 4133,
+        "failures": 0,
+        "total_us": 136457.59999999998,
+        "min_us": 7.9,
+        "max_us": 1034.4,
+        "windows": 166,
+        "buckets": [
+          34,
+          4000,
+          98,
+          1,
+          0,
+          0
+        ],
+        "mean_us": 33.01659811275102,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.008226469876602952,
+          0.9678199854827002,
+          0.023711589644326157,
+          0.00024195499637067505,
+          0.0,
+          0.0
+        ]
+      },
+      "1:frame_normal": {
+        "device": "1",
+        "name": "frame_normal",
+        "count": 4126,
+        "failures": 0,
+        "total_us": 330359366.8999998,
+        "min_us": 10067.8,
+        "max_us": 85608295.7,
+        "windows": 166,
+        "buckets": [
+          0,
+          0,
+          0,
+          0,
+          4104,
+          22
+        ],
+        "mean_us": 80067.70889481333,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9946679592825982,
+          0.005332040717401842
+        ]
+      },
+      "1:shader_vs_backend": {
+        "device": "1",
+        "name": "shader_vs_backend",
+        "count": 59,
+        "failures": 0,
+        "total_us": 1111.1000000000001,
+        "min_us": 2.7,
+        "max_us": 359.9,
+        "windows": 12,
+        "buckets": [
+          24,
+          34,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 18.83220338983051,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.4067796610169492,
+          0.576271186440678,
+          0.01694915254237288,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:shader_ps_backend": {
+        "device": "1",
+        "name": "shader_ps_backend",
+        "count": 58,
+        "failures": 0,
+        "total_us": 1083.4,
+        "min_us": 3.6,
+        "max_us": 106.3,
+        "windows": 12,
+        "buckets": [
+          19,
+          38,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 18.679310344827588,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.3275862068965517,
+          0.6551724137931034,
+          0.017241379310344827,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:texture": {
+        "device": "1",
+        "name": "texture",
+        "count": 1735,
+        "failures": 0,
+        "total_us": 46783.29999999999,
+        "min_us": 0.7,
+        "max_us": 478.8,
+        "windows": 56,
+        "buckets": [
+          234,
+          1463,
+          38,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 26.964438040345815,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.13487031700288185,
+          0.8432276657060519,
+          0.02190201729106628,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:cube_texture": {
+        "device": "1",
+        "name": "cube_texture",
+        "count": 34,
+        "failures": 0,
+        "total_us": 847.8000000000001,
+        "min_us": 8.6,
+        "max_us": 155.9,
+        "windows": 26,
+        "buckets": [
+          4,
+          29,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 24.93529411764706,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.11764705882352941,
+          0.8529411764705882,
+          0.029411764705882353,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:vertex_buffer": {
+        "device": "1",
+        "name": "vertex_buffer",
+        "count": 19241,
+        "failures": 0,
+        "total_us": 150898.30000000002,
+        "min_us": 0.9,
+        "max_us": 1273.6,
+        "windows": 102,
+        "buckets": [
+          16382,
+          2698,
+          160,
+          1,
+          0,
+          0
+        ],
+        "mean_us": 7.842539369055664,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.8514110493217608,
+          0.14022140221402213,
+          0.008315576113507615,
+          5.1972350709422586e-05,
+          0.0,
+          0.0
+        ]
+      },
+      "1:log_flush": {
+        "device": "1",
+        "name": "log_flush",
+        "count": 4398,
+        "failures": 0,
+        "total_us": 3482.0999999999967,
+        "min_us": 0.1,
+        "max_us": 146.9,
+        "windows": 242,
+        "buckets": [
+          4396,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.7917462482946787,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9995452478399273,
+          0.00022737608003638017,
+          0.00022737608003638017,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:stretch_backend": {
+        "device": "1",
+        "name": "stretch_backend",
+        "count": 4161,
+        "failures": 0,
+        "total_us": 4254.300000000001,
+        "min_us": 0.5,
+        "max_us": 282.7,
+        "windows": 177,
+        "buckets": [
+          4156,
+          2,
+          3,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 1.0224224945926463,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9987983657774573,
+          0.0004806536890170632,
+          0.0007209805335255948,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:draw_backend": {
+        "device": "1",
+        "name": "draw_backend",
+        "count": 1257520,
+        "failures": 0,
+        "total_us": 3664415.5,
+        "min_us": 0.5,
+        "max_us": 90600.3,
+        "windows": 176,
+        "buckets": [
+          1247758,
+          9000,
+          756,
+          5,
+          1,
+          0
+        ],
+        "mean_us": 2.914001765379477,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9922371015967937,
+          0.007156943825943126,
+          0.0006011832813792226,
+          3.976079903301736e-06,
+          7.952159806603474e-07,
+          0.0
+        ]
+      },
+      "1:index_buffer": {
+        "device": "1",
+        "name": "index_buffer",
+        "count": 19230,
+        "failures": 0,
+        "total_us": 48034.399999999994,
+        "min_us": 0.9,
+        "max_us": 561.9,
+        "windows": 101,
+        "buckets": [
+          18859,
+          358,
+          13,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 2.497888715548622,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9807072282891316,
+          0.018616744669786793,
+          0.0006760270410816432,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:route_gate": {
+        "device": "1",
+        "name": "route_gate",
+        "count": 1257521,
+        "failures": 0,
+        "total_us": 13286091.499999994,
+        "min_us": 0.1,
+        "max_us": 953.7,
+        "windows": 176,
+        "buckets": [
+          478104,
+          776366,
+          3051,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 10.565303879617115,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.3801956388799869,
+          0.617378159092373,
+          0.002426202027640095,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:depth_stencil": {
+        "device": "1",
+        "name": "depth_stencil",
+        "count": 1,
+        "failures": 0,
+        "total_us": 47.3,
+        "min_us": 47.3,
+        "max_us": 47.3,
+        "windows": 1,
+        "buckets": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 47.3,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:route_draw": {
+        "device": "1",
+        "name": "route_draw",
+        "count": 779212,
+        "failures": 0,
+        "total_us": 5430559.000000003,
+        "min_us": 3.9,
+        "max_us": 520.7,
+        "windows": 162,
+        "buckets": [
+          753775,
+          24277,
+          1160,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 6.96929590406719,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9673554822050995,
+          0.03115583435573374,
+          0.0014886834391667479,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:route_set_rt": {
+        "device": "1",
+        "name": "route_set_rt",
+        "count": 3116848,
+        "failures": 0,
+        "total_us": 2535031.2,
+        "min_us": 0.2,
+        "max_us": 501.9,
+        "windows": 162,
+        "buckets": [
+          3115767,
+          542,
+          539,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.8133316735368552,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9996531752591079,
+          0.00017389362586818478,
+          0.00017293111502389593,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:route_jitter": {
+        "device": "1",
+        "name": "route_jitter",
+        "count": 1962734,
+        "failures": 0,
+        "total_us": 558033.6,
+        "min_us": 0.1,
+        "max_us": 200.7,
+        "windows": 162,
+        "buckets": [
+          1962524,
+          100,
+          110,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 0.28431443078888935,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9998930063880281,
+          5.094933903422471e-05,
+          5.604427293764718e-05,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:route_fill": {
+        "device": "1",
+        "name": "route_fill",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 280535.3,
+        "min_us": 35.7,
+        "max_us": 1337.1,
+        "windows": 162,
+        "buckets": [
+          0,
+          3623,
+          295,
+          1,
+          0,
+          0
+        ],
+        "mean_us": 71.5833886195458,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.9244705281959683,
+          0.07527430466955856,
+          0.00025516713447307985,
+          0.0,
+          0.0
+        ]
+      },
+      "1:taa_run": {
+        "device": "1",
+        "name": "taa_run",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 1479483.8,
+        "min_us": 97.9,
+        "max_us": 11493.7,
+        "windows": 162,
+        "buckets": [
+          0,
+          2,
+          3872,
+          44,
+          1,
+          0
+        ],
+        "mean_us": 377.5156417453432,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0005103342689461597,
+          0.9880071446797652,
+          0.011227353916815515,
+          0.00025516713447307985,
+          0.0
+        ]
+      },
+      "1:taa_state_capture": {
+        "device": "1",
+        "name": "taa_state_capture",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 37634.100000000006,
+        "min_us": 5.4,
+        "max_us": 304.1,
+        "windows": 162,
+        "buckets": [
+          3293,
+          614,
+          12,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 9.602985455473336,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.840265373819852,
+          0.15667262056647105,
+          0.0030620056136769582,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:taa_copy_color": {
+        "device": "1",
+        "name": "taa_copy_color",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 15258.300000000005,
+        "min_us": 1.3,
+        "max_us": 247.7,
+        "windows": 162,
+        "buckets": [
+          3910,
+          5,
+          4,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 3.893416687930596,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9977034957897423,
+          0.0012758356723653994,
+          0.0010206685378923194,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:taa_copy_depth": {
+        "device": "1",
+        "name": "taa_copy_depth",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 8751.100000000002,
+        "min_us": 1.2,
+        "max_us": 64.4,
+        "windows": 162,
+        "buckets": [
+          3914,
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 2.23299311048737,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.9987241643276346,
+          0.0012758356723653994,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:taa_resolve_draw": {
+        "device": "1",
+        "name": "taa_resolve_draw",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 1306755.3,
+        "min_us": 53.9,
+        "max_us": 11437.3,
+        "windows": 162,
+        "buckets": [
+          0,
+          15,
+          3864,
+          39,
+          1,
+          0
+        ],
+        "mean_us": 333.4410053585098,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.003827507017096198,
+          0.9859658076039806,
+          0.009951518244450114,
+          0.00025516713447307985,
+          0.0
+        ]
+      },
+      "1:taa_state_apply": {
+        "device": "1",
+        "name": "taa_state_apply",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 70312.0,
+        "min_us": 12.6,
+        "max_us": 391.9,
+        "windows": 162,
+        "buckets": [
+          0,
+          3896,
+          23,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 17.941311559071192,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.9941311559071192,
+          0.005868844092880837,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:taa_copy_back": {
+        "device": "1",
+        "name": "taa_copy_back",
+        "count": 3919,
+        "failures": 0,
+        "total_us": 4131.100000000001,
+        "min_us": 0.5,
+        "max_us": 13.2,
+        "windows": 162,
+        "buckets": [
+          3918,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 1.0541209492217405,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.999744832865527,
+          0.00025516713447307985,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:capture_cpu": {
+        "device": "1",
+        "name": "capture_cpu",
+        "count": 12448,
+        "failures": 0,
+        "total_us": 13307667.900000002,
+        "min_us": 10.8,
+        "max_us": 7675.9,
+        "windows": 23,
+        "buckets": [
+          0,
+          260,
+          3119,
+          9069,
+          0,
+          0
+        ],
+        "mean_us": 1069.0607246143961,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.020886889460154243,
+          0.25056233933161953,
+          0.7285507712082262,
+          0.0,
+          0.0
+        ]
+      },
+      "1:snapshot": {
+        "device": "1",
+        "name": "snapshot",
+        "count": 12184,
+        "failures": 0,
+        "total_us": 11668322.600000001,
+        "min_us": 678.5,
+        "max_us": 7519.8,
+        "windows": 23,
+        "buckets": [
+          0,
+          0,
+          8127,
+          4057,
+          0,
+          0
+        ],
+        "mean_us": 957.6758535784637,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0,
+          0.6670223243598161,
+          0.3329776756401838,
+          0.0,
+          0.0
+        ]
+      },
+      "1:present_capture": {
+        "device": "1",
+        "name": "present_capture",
+        "count": 24,
+        "failures": 0,
+        "total_us": 3320.6,
+        "min_us": 100.1,
+        "max_us": 380.4,
+        "windows": 19,
+        "buckets": [
+          0,
+          0,
+          24,
+          0,
+          0,
+          0
+        ],
+        "mean_us": 138.35833333333332,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "1:frame_capture": {
+        "device": "1",
+        "name": "frame_capture",
+        "count": 30,
+        "failures": 0,
+        "total_us": 16062915.600000003,
+        "min_us": 39501.6,
+        "max_us": 1097216.9,
+        "windows": 19,
+        "buckets": [
+          0,
+          0,
+          0,
+          0,
+          6,
+          24
+        ],
+        "mean_us": 535430.5200000001,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.2,
+          0.8
+        ]
+      },
+      "1:route_readback": {
+        "device": "1",
+        "name": "route_readback",
+        "count": 96,
+        "failures": 0,
+        "total_us": 1133821.1,
+        "min_us": 6361.3,
+        "max_us": 23319.1,
+        "windows": 19,
+        "buckets": [
+          0,
+          0,
+          0,
+          36,
+          60,
+          0
+        ],
+        "mean_us": 11810.636458333334,
+        "bucket_labels": [
+          "<=10us",
+          "<=100us",
+          "<=1ms",
+          "<=10ms",
+          "<=100ms",
+          ">100ms"
+        ],
+        "bucket_fraction": [
+          0.0,
+          0.0,
+          0.0,
+          0.375,
+          0.625,
+          0.0
+        ]
+      }
+    },
+    "clock_hz": 10000000,
+    "windows": {
+      "0:lock_wait": {
+        "all": {
+          "status": "evaluated",
+          "windows": 245,
+          "samples": 3730724,
+          "window_mean_us": {
+            "p10": 0.1770700120141352,
+            "median": 0.22820049182699262,
+            "p90": 0.24877108433734937,
+            "min": 0.1628095975232198,
+            "max": 1.8
+          },
+          "window_min_us": {
+            "p10": 0.0,
+            "median": 0.1,
+            "p90": 0.1,
+            "min": 0.0,
+            "max": 1.8
+          }
+        },
+        "scene": {
+          "status": "evaluated",
+          "windows": 186,
+          "samples": 3327484,
+          "window_mean_us": {
+            "p10": 0.1843048286758171,
+            "median": 0.2312947510143235,
+            "p90": 0.24717026305164824,
+            "min": 0.1628095975232198,
+            "max": 0.3214136378256674
+          },
+          "window_min_us": {
+            "p10": 0.0,
+            "median": 0.1,
+            "p90": 0.1,
+            "min": 0.0,
+            "max": 0.1
+          }
+        },
+        "other": {
+          "status": "evaluated",
+          "windows": 56,
+          "samples": 403038,
+          "window_mean_us": {
+            "p10": 0.17481574265499814,
+            "median": 0.19418746769272432,
+            "p90": 0.23935121951219512,
+            "min": 0.17097957045573597,
+            "max": 0.6098570353649361
+          },
+          "window_min_us": {
+            "p10": 0.0,
+            "median": 0.1,
+            "p90": 0.1,
+            "min": 0.0,
+            "max": 0.1
+          }
+        }
+      },
+      "1:present_normal": {
+        "all": {
+          "status": "evaluated",
+          "windows": 166,
+          "samples": 4133,
+          "window_mean_us": {
+            "p10": 17.357253711201082,
+            "median": 34.5644347826087,
+            "p90": 62.71730769230769,
+            "min": 9.9,
+            "max": 509.3
+          },
+          "window_min_us": {
+            "p10": 11.45,
+            "median": 28.0,
+            "p90": 49.349999999999994,
+            "min": 7.9,
+            "max": 509.3
+          }
+        },
+        "scene": {
+          "status": "evaluated",
+          "windows": 151,
+          "samples": 3871,
+          "window_mean_us": {
+            "p10": 21.82391304347826,
+            "median": 36.73809523809524,
+            "p90": 61.784615384615385,
+            "min": 9.9,
+            "max": 95.4
+          },
+          "window_min_us": {
+            "p10": 14.6,
+            "median": 28.4,
+            "p90": 49.4,
+            "min": 8.7,
+            "max": 65.4
+          }
+        },
+        "other": {
+          "status": "evaluated",
+          "windows": 15,
+          "samples": 262,
+          "window_mean_us": {
+            "p10": 11.12797619047619,
+            "median": 13.44,
+            "p90": 226.82571428571418,
+            "min": 10.915384615384616,
+            "max": 509.3
+          },
+          "window_min_us": {
+            "p10": 8.6,
+            "median": 10.0,
+            "p90": 22.939999999999998,
+            "min": 7.9,
+            "max": 509.3
+          }
+        }
+      },
+      "1:frame_normal": {
+        "all": {
+          "status": "evaluated",
+          "windows": 166,
+          "samples": 4126,
+          "window_mean_us": {
+            "p10": 23437.906413043478,
+            "median": 42966.34166666666,
+            "p90": 76659.39401709402,
+            "min": 11805.995890410959,
+            "max": 85608295.7
+          },
+          "window_min_us": {
+            "p10": 21105.5,
+            "median": 38156.25,
+            "p90": 72902.75,
+            "min": 10067.8,
+            "max": 85608295.7
+          }
+        },
+        "scene": {
+          "status": "evaluated",
+          "windows": 151,
+          "samples": 3865,
+          "window_mean_us": {
+            "p10": 20291.673469387755,
+            "median": 43010.98333333333,
+            "p90": 75760.93076923076,
+            "min": 11805.995890410959,
+            "max": 11043112.466666667
+          },
+          "window_min_us": {
+            "p10": 18902.7,
+            "median": 38538.9,
+            "p90": 71718.2,
+            "min": 10067.8,
+            "max": 1295501.9
+          }
+        },
+        "other": {
+          "status": "evaluated",
+          "windows": 15,
+          "samples": 261,
+          "window_mean_us": {
+            "p10": 39335.09787692308,
+            "median": 42393.23333333333,
+            "p90": 20890563.61999999,
+            "min": 38237.79615384615,
+            "max": 85608295.7
+          },
+          "window_min_us": {
+            "p10": 36346.1,
+            "median": 37807.6,
+            "p90": 20696460.51999999,
+            "min": 32587.1,
+            "max": 85608295.7
+          }
+        }
+      },
+      "1:draw_backend": {
+        "all": {
+          "status": "evaluated",
+          "windows": 176,
+          "samples": 1257520,
+          "window_mean_us": {
+            "p10": 2.640095925831342,
+            "median": 2.810767521076638,
+            "p90": 3.319797487535277,
+            "min": 2.547591082109842,
+            "max": 1175.1
+          },
+          "window_min_us": {
+            "p10": 0.6,
+            "median": 0.7,
+            "p90": 0.8,
+            "min": 0.5,
+            "max": 1175.1
+          }
+        },
+        "scene": {
+          "status": "evaluated",
+          "windows": 162,
+          "samples": 1102448,
+          "window_mean_us": {
+            "p10": 2.6379721428206833,
+            "median": 2.7936314605267247,
+            "p90": 3.1952948994311097,
+            "min": 2.547591082109842,
+            "max": 1175.1
+          },
+          "window_min_us": {
+            "p10": 0.6,
+            "median": 0.7,
+            "p90": 0.7,
+            "min": 0.5,
+            "max": 1175.1
+          }
+        },
+        "other": {
+          "status": "evaluated",
+          "windows": 14,
+          "samples": 155072,
+          "window_mean_us": {
+            "p10": 3.038315939223866,
+            "median": 3.1055163022017584,
+            "p90": 5.9850678957503085,
+            "min": 3.021896243291592,
+            "max": 734.0
+          },
+          "window_min_us": {
+            "p10": 0.7,
+            "median": 0.8,
+            "p90": 0.8,
+            "min": 0.6,
+            "max": 734.0
+          }
+        }
+      }
+    },
+    "limits": [
+      "CPU-side wall-clock spans, never GPU execution time.",
+      "frame_normal is the interval between completed Presents: application work, pacing, resource loading and diagnostics are all inside it.",
+      "Only per-window count/failures/min/max/total and six duration buckets exist, so no median or percentile of frame time can be derived.",
+      "One session with the feature on throughout is not a controlled measurement of the resolve; use --run-b-log with a TAA-off run of the same scene."
+    ]
+  },
+  "boundary_stretchrect": {
+    "run": {
+      "status": "measured",
+      "samples": 24,
+      "preceding_events": [
+        "color_fill"
+      ],
+      "median_us": 24.549999999999997,
+      "mean_us": 24.65833333333333,
+      "min_us": 22.3,
+      "max_us": 28.6,
+      "note": "QPC between the last capture_event op=color_fill and op=stretch_rect of the same captured frame. Telemetry has no StretchRect metric in this build. With --taa-debug this bracket also contains the pre-resolve colour readback and the resolved FP16 readback, so it is an upper bound on the resolve, not a measurement of it."
+    },
+    "telemetry_metric_present": false
+  },
+  "timing_comparison": {
+    "status": "pending",
+    "note": "no --run-b-log: this report has one session with TAA on throughout, so the timing is not a controlled comparison. Re-run with the TAA-off capture of the same scene to populate this section."
+  },
+  "image_analysis": {
+    "status": "unavailable",
+    "reason": "no burst selected (none certified stationary)",
+    "captures": "/tmp/x3-iteration09-run2",
+    "selection": "bursts whose motion_output_cut median_px <= 0.01 in every frame",
+    "method_source": "analyze_iteration07_taa.analyze_burst_images (unchanged)",
+    "bursts": []
+  },
+  "flicker": {
+    "status": "unavailable",
+    "reason": "no burst selected (none certified stationary)",
+    "captures": "/tmp/x3-iteration09-run2",
+    "selection": "bursts whose motion_output_cut median_px <= 0.01 in every frame",
+    "bursts": []
+  }
+}

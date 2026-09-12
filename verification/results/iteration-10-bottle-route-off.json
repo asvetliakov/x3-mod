@@ -1,0 +1,1785 @@
+{
+ "runs": [
+  {
+   "label": "run5",
+   "path": "/tmp/x3-bottleX3-run5/session-20260912-170743-352.log",
+   "device": "1",
+   "configuration": {
+    "motion_output": {
+     "requested": "0",
+     "taa": "0",
+     "taa_debug": "0",
+     "jitter": "0",
+     "rt_mode": "perdraw",
+     "temporal_consumer": "0",
+     "scene_hook": "0",
+     "state_shadow": "1",
+     "hdr": "0",
+     "frame_log": "60"
+    },
+    "mesh_cache": {
+     "requested": "0",
+     "enabled": "0",
+     "activation": "await_public_mesh_and_buffer_contract",
+     "adjacency_metric_scope": "hook_service",
+     "restart_on_cleanup_failure": "1"
+    },
+    "profiler": {
+     "enabled": null,
+     "interval_us": null,
+     "report_s": null
+    },
+    "status": {
+     "object_trace": "disabled",
+     "camera_state": "disabled",
+     "scene_hook": "disabled",
+     "object_lifetime": "disabled"
+    },
+    "clock_hz": 10000000
+   },
+   "rejected": {},
+   "hdr_metrics_present": [],
+   "windows": {
+    "total": 103,
+    "loading": 4,
+    "capture": 6,
+    "scene_usable": 83,
+    "menu_usable": 8,
+    "min_frames": 5
+   },
+   "loading_gaps": [
+    {
+     "frame": 42,
+     "since_s": 14.411,
+     "gap_ms": 9726.1,
+     "frames": 38
+    },
+    {
+     "frame": 810,
+     "since_s": 90.302,
+     "gap_ms": 65459.5,
+     "frames": 69
+    },
+    {
+     "frame": 7962,
+     "since_s": 164.383,
+     "gap_ms": 7976.0,
+     "frames": 25
+    },
+    {
+     "frame": 10271,
+     "since_s": 194.105,
+     "gap_ms": 8784.0,
+     "frames": 38
+    }
+   ],
+   "phases": [
+    {
+     "phase": 0,
+     "label": "scene",
+     "windows": 2,
+     "usable": 0,
+     "capture_windows": 0,
+     "frames": [
+      2,
+      4
+     ],
+     "since_s": [
+      3.64,
+      5.681
+     ],
+     "mean_ms_median": null,
+     "route_us_per_frame_median": null,
+     "draws_median": 0.5,
+     "draws_spread_fraction": 0.0,
+     "inside_menu_band": false,
+     "flat": true
+    },
+    {
+     "phase": 1,
+     "label": "menu",
+     "windows": 9,
+     "usable": 7,
+     "capture_windows": 2,
+     "frames": [
+      120,
+      741
+     ],
+     "since_s": [
+      15.411,
+      48.856
+     ],
+     "mean_ms_median": 10.095,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 644.5,
+     "draws_spread_fraction": 0.0616,
+     "inside_menu_band": true,
+     "flat": true
+    },
+    {
+     "phase": 2,
+     "label": "scene",
+     "windows": 66,
+     "usable": 64,
+     "capture_windows": 2,
+     "frames": [
+      882,
+      7937
+     ],
+     "since_s": [
+      91.384,
+      157.378
+     ],
+     "mean_ms_median": 8.447,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 317.9,
+     "draws_spread_fraction": 1.9046,
+     "inside_menu_band": false,
+     "flat": false
+    },
+    {
+     "phase": 3,
+     "label": "scene",
+     "windows": 21,
+     "usable": 19,
+     "capture_windows": 2,
+     "frames": [
+      8063,
+      10233
+     ],
+     "since_s": [
+      165.383,
+      185.615
+     ],
+     "mean_ms_median": 8.382,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 368.3,
+     "draws_spread_fraction": 1.0179,
+     "inside_menu_band": false,
+     "flat": false
+    },
+    {
+     "phase": 4,
+     "label": "menu",
+     "windows": 1,
+     "usable": 1,
+     "capture_windows": 0,
+     "frames": [
+      10385,
+      10385
+     ],
+     "since_s": [
+      195.106,
+      195.106
+     ],
+     "mean_ms_median": 8.925,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 638.0,
+     "draws_spread_fraction": 0.0,
+     "inside_menu_band": true,
+     "flat": true
+    }
+   ],
+   "phase_check": {
+    "status": "unavailable",
+    "reason": "no motion_output_frame records"
+   },
+   "scene": {
+    "threshold_ms": 45.0,
+    "windows": 83,
+    "fast_occupancy": 1.0,
+    "histogram_10ms_bins": {
+     "0": 66,
+     "10": 16,
+     "20": 1
+    },
+    "fast": {
+     "windows": 83,
+     "frames": 9073,
+     "mean_ms": {
+      "n": 83,
+      "p10": 8.3,
+      "median": 8.423,
+      "p90": 11.492,
+      "min": 8.275,
+      "max": 23.996
+     },
+     "min_ms": {
+      "n": 83,
+      "p10": 3.007,
+      "median": 5.67,
+      "p90": 10.042,
+      "min": 2.14,
+      "max": 10.906
+     },
+     "draws_per_frame": {
+      "n": 83,
+      "p10": 63.1,
+      "median": 320.1,
+      "p90": 672.7,
+      "min": 40.0,
+      "max": 766.5
+     },
+     "draw_backend_us": {
+      "n": 83,
+      "p10": 2.46,
+      "median": 2.628,
+      "p90": 2.686,
+      "min": 2.235,
+      "max": 3.627
+     },
+     "present_normal_us": {
+      "n": 83,
+      "p10": 4.83,
+      "median": 6.305,
+      "p90": 8.758,
+      "min": 3.433,
+      "max": 10.737
+     },
+     "stretch_backend_us": {
+      "n": 83,
+      "p10": 1.344,
+      "median": 1.524,
+      "p90": 1.764,
+      "min": 1.178,
+      "max": 2.222
+     },
+     "log_flush_us": {
+      "n": 83,
+      "p10": 0.344,
+      "median": 0.433,
+      "p90": 0.516,
+      "min": 0.235,
+      "max": 0.717
+     },
+     "log_flush_per_frame": {
+      "n": 83,
+      "p10": 1.008,
+      "median": 1.008,
+      "p90": 1.011,
+      "min": 1.008,
+      "max": 1.062
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 83,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "taa_run_us_per_frame": {
+      "n": 83,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {},
+     "route_metrics_us_per_call": {}
+    },
+    "slow": {
+     "windows": 0
+    }
+   },
+   "menu": {
+    "windows": 8,
+    "frames": 704,
+    "mean_ms": {
+     "n": 8,
+     "p10": 9.219,
+     "median": 9.898,
+     "p90": 16.329,
+     "min": 8.925,
+     "max": 27.691
+    },
+    "min_ms": {
+     "n": 8,
+     "p10": 7.868,
+     "median": 8.111,
+     "p90": 8.394,
+     "min": 7.7,
+     "max": 8.523
+    },
+    "draws_per_frame": {
+     "n": 8,
+     "p10": 640.4,
+     "median": 644.4,
+     "p90": 677.0,
+     "min": 638.0,
+     "max": 683.2
+    },
+    "draw_backend_us": {
+     "n": 8,
+     "p10": 2.707,
+     "median": 2.737,
+     "p90": 2.778,
+     "min": 2.7,
+     "max": 2.8
+    },
+    "present_normal_us": {
+     "n": 8,
+     "p10": 6.006,
+     "median": 7.261,
+     "p90": 8.934,
+     "min": 5.661,
+     "max": 9.222
+    },
+    "stretch_backend_us": {
+     "n": 8,
+     "p10": 1.588,
+     "median": 1.802,
+     "p90": 1.923,
+     "min": 1.53,
+     "max": 2.003
+    },
+    "log_flush_us": {
+     "n": 8,
+     "p10": 0.498,
+     "median": 0.566,
+     "p90": 0.645,
+     "min": 0.489,
+     "max": 0.714
+    },
+    "log_flush_per_frame": {
+     "n": 8,
+     "p10": 1.009,
+     "median": 1.01,
+     "p90": 1.026,
+     "min": 1.009,
+     "max": 1.032
+    },
+    "route_exclusive_us_per_frame": {
+     "n": 8,
+     "p10": 0.0,
+     "median": 0.0,
+     "p90": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "taa_run_us_per_frame": {
+     "n": 8,
+     "p10": 0.0,
+     "median": 0.0,
+     "p90": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "route_metrics_us_per_frame": {},
+    "route_metrics_us_per_call": {}
+   },
+   "scene_draw_bins": {
+    "0": {
+     "draws_lo": 0.0,
+     "draws_hi": 50.0,
+     "windows": 1,
+     "frames": 27,
+     "draws_median": 40.0,
+     "mean_ms_median": 8.403,
+     "min_ms_median": 2.597,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "1": {
+     "draws_lo": 50.0,
+     "draws_hi": 100.0,
+     "windows": 12,
+     "frames": 1331,
+     "draws_median": 60.2,
+     "mean_ms_median": 8.332,
+     "min_ms_median": 2.738,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "2": {
+     "draws_lo": 100.0,
+     "draws_hi": 150.0,
+     "windows": 4,
+     "frames": 481,
+     "draws_median": 104.6,
+     "mean_ms_median": 8.305,
+     "min_ms_median": 3.727,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "3": {
+     "draws_lo": 150.0,
+     "draws_hi": 200.0,
+     "windows": 1,
+     "frames": 118,
+     "draws_median": 181.0,
+     "mean_ms_median": 8.485,
+     "min_ms_median": 4.939,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "4": {
+     "draws_lo": 200.0,
+     "draws_hi": 250.0,
+     "windows": 16,
+     "frames": 1843,
+     "draws_median": 229.1,
+     "mean_ms_median": 8.362,
+     "min_ms_median": 5.131,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "5": {
+     "draws_lo": 250.0,
+     "draws_hi": 300.0,
+     "windows": 4,
+     "frames": 442,
+     "draws_median": 266.6,
+     "mean_ms_median": 8.829,
+     "min_ms_median": 5.451,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "6": {
+     "draws_lo": 300.0,
+     "draws_hi": 350.0,
+     "windows": 9,
+     "frames": 1055,
+     "draws_median": 327.0,
+     "mean_ms_median": 8.43,
+     "min_ms_median": 5.67,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "7": {
+     "draws_lo": 350.0,
+     "draws_hi": 400.0,
+     "windows": 13,
+     "frames": 1519,
+     "draws_median": 382.3,
+     "mean_ms_median": 8.407,
+     "min_ms_median": 6.99,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "8": {
+     "draws_lo": 400.0,
+     "draws_hi": 450.0,
+     "windows": 9,
+     "frames": 996,
+     "draws_median": 430.1,
+     "mean_ms_median": 8.485,
+     "min_ms_median": 6.64,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "9": {
+     "draws_lo": 450.0,
+     "draws_hi": 500.0,
+     "windows": 1,
+     "frames": 104,
+     "draws_median": 482.7,
+     "mean_ms_median": 9.58,
+     "min_ms_median": 8.406,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "10": {
+     "draws_lo": 500.0,
+     "draws_hi": 550.0,
+     "windows": 1,
+     "frames": 113,
+     "draws_median": 521.7,
+     "mean_ms_median": 8.863,
+     "min_ms_median": 7.161,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "11": {
+     "draws_lo": 550.0,
+     "draws_hi": 600.0,
+     "windows": 2,
+     "frames": 189,
+     "draws_median": 561.2,
+     "mean_ms_median": 10.733,
+     "min_ms_median": 8.144,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "12": {
+     "draws_lo": 600.0,
+     "draws_hi": 650.0,
+     "windows": 1,
+     "frames": 89,
+     "draws_median": 618.2,
+     "mean_ms_median": 11.272,
+     "min_ms_median": 9.32,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "13": {
+     "draws_lo": 650.0,
+     "draws_hi": 700.0,
+     "windows": 1,
+     "frames": 89,
+     "draws_median": 686.4,
+     "mean_ms_median": 11.233,
+     "min_ms_median": 10.223,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "14": {
+     "draws_lo": 700.0,
+     "draws_hi": 750.0,
+     "windows": 5,
+     "frames": 430,
+     "draws_median": 711.3,
+     "mean_ms_median": 11.518,
+     "min_ms_median": 10.481,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "15": {
+     "draws_lo": 750.0,
+     "draws_hi": 800.0,
+     "windows": 3,
+     "frames": 247,
+     "draws_median": 763.5,
+     "mean_ms_median": 12.574,
+     "min_ms_median": 10.544,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    }
+   },
+   "menu_draw_bins": {
+    "12": {
+     "draws_lo": 600.0,
+     "draws_hi": 650.0,
+     "windows": 5,
+     "frames": 455,
+     "draws_median": 643.7,
+     "mean_ms_median": 9.701,
+     "min_ms_median": 8.112,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "13": {
+     "draws_lo": 650.0,
+     "draws_hi": 700.0,
+     "windows": 3,
+     "frames": 249,
+     "draws_median": 674.4,
+     "mean_ms_median": 10.461,
+     "min_ms_median": 8.039,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    }
+   },
+   "frame_records": {
+    "records": 0,
+    "normal": {
+     "status": "unavailable",
+     "records": 0
+    },
+    "capture": {
+     "status": "unavailable",
+     "records": 0
+    }
+   },
+   "profiler_share": {
+    "scene": {
+     "status": "absent",
+     "reason": "no profile_report delta records"
+    },
+    "menu": {
+     "status": "absent",
+     "reason": "no profile_report delta records"
+    }
+   },
+   "telemetry_stamps": {
+    "status": "estimated",
+    "menu_gate_us_per_call": null,
+    "stamp_us_assumed": 0.25,
+    "spans_per_frame_median": 0.0,
+    "ms_per_frame": 0.0
+   },
+   "capture_windows": [
+    {
+     "frame": 120,
+     "frames": 78,
+     "mean_ms": 11.87,
+     "max_ms": 260.12,
+     "frame_capture_ms": null,
+     "frame_capture_frames": 0,
+     "readback_us_per_frame": 0.0
+    },
+    {
+     "frame": 151,
+     "frames": 29,
+     "mean_ms": 8.68,
+     "max_ms": 16.06,
+     "frame_capture_ms": 414.81,
+     "frame_capture_frames": 2,
+     "readback_us_per_frame": 0.0
+    },
+    {
+     "frame": 1867,
+     "frames": 68,
+     "mean_ms": 8.28,
+     "max_ms": 14.48,
+     "frame_capture_ms": 220.82,
+     "frame_capture_frames": 2,
+     "readback_us_per_frame": 0.0
+    },
+    {
+     "frame": 2686,
+     "frames": 86,
+     "mean_ms": 8.44,
+     "max_ms": 14.83,
+     "frame_capture_ms": 141.04,
+     "frame_capture_frames": 2,
+     "readback_us_per_frame": 0.0
+    },
+    {
+     "frame": 8910,
+     "frames": 53,
+     "mean_ms": 8.42,
+     "max_ms": 16.1,
+     "frame_capture_ms": 279.37,
+     "frame_capture_frames": 2,
+     "readback_us_per_frame": 0.0
+    },
+    {
+     "frame": 9859,
+     "frames": 110,
+     "mean_ms": 8.32,
+     "max_ms": 14.29,
+     "frame_capture_ms": 42.65,
+     "frame_capture_frames": 2,
+     "readback_us_per_frame": 0.0
+    }
+   ],
+   "capture_frame_interval_ms": {
+    "n": 5,
+    "p10": 82.005,
+    "median": 220.825,
+    "p90": 360.635,
+    "min": 42.649,
+    "max": 414.813
+   },
+   "route_off": true
+  },
+  {
+   "label": "run3",
+   "path": "/tmp/x3-iteration09-run3/session-20260912-164116-2548.log",
+   "device": "1",
+   "configuration": {
+    "motion_output": {
+     "requested": "0",
+     "taa": "0",
+     "taa_debug": "0",
+     "jitter": "0",
+     "rt_mode": "perdraw",
+     "temporal_consumer": "0",
+     "scene_hook": "0",
+     "state_shadow": "1",
+     "hdr": "0",
+     "frame_log": "60"
+    },
+    "mesh_cache": {
+     "requested": "0",
+     "enabled": "0",
+     "activation": "await_public_mesh_and_buffer_contract",
+     "adjacency_metric_scope": "hook_service",
+     "restart_on_cleanup_failure": "1"
+    },
+    "profiler": {
+     "enabled": null,
+     "interval_us": null,
+     "report_s": null
+    },
+    "status": {
+     "object_trace": "disabled",
+     "camera_state": "disabled",
+     "scene_hook": "disabled",
+     "object_lifetime": "disabled"
+    },
+    "clock_hz": 10000000
+   },
+   "rejected": {},
+   "hdr_metrics_present": [],
+   "windows": {
+    "total": 125,
+    "loading": 4,
+    "capture": 2,
+    "scene_usable": 107,
+    "menu_usable": 10,
+    "min_frames": 5
+   },
+   "loading_gaps": [
+    {
+     "frame": 5,
+     "since_s": 35.918,
+     "gap_ms": 30157.0,
+     "frames": 1
+    },
+    {
+     "frame": 282,
+     "since_s": 151.713,
+     "gap_ms": 105455.7,
+     "frames": 1
+    },
+    {
+     "frame": 3287,
+     "since_s": 248.303,
+     "gap_ms": 20148.8,
+     "frames": 2
+    },
+    {
+     "frame": 4963,
+     "since_s": 309.164,
+     "gap_ms": 29911.9,
+     "frames": 5
+    }
+   ],
+   "phases": [
+    {
+     "phase": 0,
+     "label": "scene",
+     "windows": 2,
+     "usable": 0,
+     "capture_windows": 0,
+     "frames": [
+      2,
+      4
+     ],
+     "since_s": [
+      5.484,
+      22.088
+     ],
+     "mean_ms_median": null,
+     "route_us_per_frame_median": null,
+     "draws_median": 0.5,
+     "draws_spread_fraction": 0.0,
+     "inside_menu_band": false,
+     "flat": true
+    },
+    {
+     "phase": 1,
+     "label": "menu",
+     "windows": 11,
+     "usable": 9,
+     "capture_windows": 2,
+     "frames": [
+      29,
+      281
+     ],
+     "since_s": [
+      36.918,
+      78.267
+     ],
+     "mean_ms_median": 35.171,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 648.9,
+     "draws_spread_fraction": 0.0672,
+     "inside_menu_band": true,
+     "flat": true
+    },
+    {
+     "phase": 2,
+     "label": "scene",
+     "windows": 76,
+     "usable": 76,
+     "capture_windows": 0,
+     "frames": [
+      321,
+      3285
+     ],
+     "since_s": [
+      152.721,
+      233.506
+     ],
+     "mean_ms_median": 26.18,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 270.7,
+     "draws_spread_fraction": 2.2262,
+     "inside_menu_band": false,
+     "flat": false
+    },
+    {
+     "phase": 3,
+     "label": "scene",
+     "windows": 31,
+     "usable": 31,
+     "capture_windows": 0,
+     "frames": [
+      3315,
+      4958
+     ],
+     "since_s": [
+      249.314,
+      279.414
+     ],
+     "mean_ms_median": 20.963,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 101.3,
+     "draws_spread_fraction": 3.6355,
+     "inside_menu_band": false,
+     "flat": false
+    },
+    {
+     "phase": 4,
+     "label": "menu",
+     "windows": 1,
+     "usable": 1,
+     "capture_windows": 0,
+     "frames": [
+      4993,
+      4993
+     ],
+     "since_s": [
+      310.164,
+      310.164
+     ],
+     "mean_ms_median": 33.118,
+     "route_us_per_frame_median": 0.0,
+     "draws_median": 657.8,
+     "draws_spread_fraction": 0.0,
+     "inside_menu_band": true,
+     "flat": true
+    }
+   ],
+   "phase_check": {
+    "status": "unavailable",
+    "reason": "no motion_output_frame records"
+   },
+   "scene": {
+    "threshold_ms": 45.0,
+    "windows": 107,
+    "fast_occupancy": 0.8411,
+    "histogram_10ms_bins": {
+     "0": 1,
+     "10": 24,
+     "20": 40,
+     "30": 21,
+     "40": 20,
+     "50": 1
+    },
+    "fast": {
+     "windows": 90,
+     "frames": 4317,
+     "mean_ms": {
+      "n": 90,
+      "p10": 11.934,
+      "median": 24.046,
+      "p90": 34.794,
+      "min": 8.884,
+      "max": 43.467
+     },
+     "min_ms": {
+      "n": 90,
+      "p10": 10.626,
+      "median": 21.691,
+      "p90": 31.302,
+      "min": 7.811,
+      "max": 40.644
+     },
+     "draws_per_frame": {
+      "n": 90,
+      "p10": 73.7,
+      "median": 229.2,
+      "p90": 425.2,
+      "min": 49.9,
+      "max": 618.4
+     },
+     "draw_backend_us": {
+      "n": 90,
+      "p10": 2.706,
+      "median": 2.831,
+      "p90": 3.033,
+      "min": 2.528,
+      "max": 7.906
+     },
+     "present_normal_us": {
+      "n": 90,
+      "p10": 7.56,
+      "median": 9.934,
+      "p90": 12.931,
+      "min": 5.198,
+      "max": 22.294
+     },
+     "stretch_backend_us": {
+      "n": 90,
+      "p10": 1.342,
+      "median": 1.633,
+      "p90": 1.937,
+      "min": 1.12,
+      "max": 2.947
+     },
+     "log_flush_us": {
+      "n": 90,
+      "p10": 0.66,
+      "median": 0.759,
+      "p90": 0.873,
+      "min": 0.526,
+      "max": 1.162
+     },
+     "log_flush_per_frame": {
+      "n": 90,
+      "p10": 1.012,
+      "median": 1.024,
+      "p90": 1.034,
+      "min": 1.01,
+      "max": 1.067
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 90,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "taa_run_us_per_frame": {
+      "n": 90,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {},
+     "route_metrics_us_per_call": {}
+    },
+    "slow": {
+     "windows": 17,
+     "frames": 357,
+     "mean_ms": {
+      "n": 17,
+      "p10": 46.855,
+      "median": 47.689,
+      "p90": 49.516,
+      "min": 45.594,
+      "max": 50.305
+     },
+     "min_ms": {
+      "n": 17,
+      "p10": 43.438,
+      "median": 45.958,
+      "p90": 46.43,
+      "min": 40.887,
+      "max": 47.342
+     },
+     "draws_per_frame": {
+      "n": 17,
+      "p10": 642.4,
+      "median": 719.7,
+      "p90": 745.7,
+      "min": 547.7,
+      "max": 783.8
+     },
+     "draw_backend_us": {
+      "n": 17,
+      "p10": 2.768,
+      "median": 2.803,
+      "p90": 2.864,
+      "min": 2.742,
+      "max": 2.933
+     },
+     "present_normal_us": {
+      "n": 17,
+      "p10": 11.339,
+      "median": 11.714,
+      "p90": 13.101,
+      "min": 11.1,
+      "max": 16.2
+     },
+     "stretch_backend_us": {
+      "n": 17,
+      "p10": 1.633,
+      "median": 1.776,
+      "p90": 1.891,
+      "min": 1.538,
+      "max": 1.936
+     },
+     "log_flush_us": {
+      "n": 17,
+      "p10": 0.787,
+      "median": 0.817,
+      "p90": 0.845,
+      "min": 0.774,
+      "max": 0.881
+     },
+     "log_flush_per_frame": {
+      "n": 17,
+      "p10": 1.045,
+      "median": 1.048,
+      "p90": 1.05,
+      "min": 1.045,
+      "max": 1.05
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 17,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "taa_run_us_per_frame": {
+      "n": 17,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {},
+     "route_metrics_us_per_call": {}
+    }
+   },
+   "menu": {
+    "windows": 10,
+    "frames": 263,
+    "mean_ms": {
+     "n": 10,
+     "p10": 33.051,
+     "median": 34.966,
+     "p90": 45.832,
+     "min": 32.448,
+     "max": 49.04
+    },
+    "min_ms": {
+     "n": 10,
+     "p10": 31.711,
+     "median": 32.852,
+     "p90": 33.084,
+     "min": 31.698,
+     "max": 33.271
+    },
+    "draws_per_frame": {
+     "n": 10,
+     "p10": 628.7,
+     "median": 653.3,
+     "p90": 678.1,
+     "min": 563.2,
+     "max": 679.6
+    },
+    "draw_backend_us": {
+     "n": 10,
+     "p10": 2.685,
+     "median": 2.76,
+     "p90": 2.915,
+     "min": 2.679,
+     "max": 3.33
+    },
+    "present_normal_us": {
+     "n": 10,
+     "p10": 10.944,
+     "median": 11.731,
+     "p90": 12.142,
+     "min": 10.53,
+     "max": 12.817
+    },
+    "stretch_backend_us": {
+     "n": 10,
+     "p10": 1.893,
+     "median": 2.037,
+     "p90": 2.159,
+     "min": 1.675,
+     "max": 2.203
+    },
+    "log_flush_us": {
+     "n": 10,
+     "p10": 0.728,
+     "median": 0.79,
+     "p90": 0.814,
+     "min": 0.671,
+     "max": 0.904
+    },
+    "log_flush_per_frame": {
+     "n": 10,
+     "p10": 1.033,
+     "median": 1.034,
+     "p90": 1.054,
+     "min": 1.032,
+     "max": 1.167
+    },
+    "route_exclusive_us_per_frame": {
+     "n": 10,
+     "p10": 0.0,
+     "median": 0.0,
+     "p90": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "taa_run_us_per_frame": {
+     "n": 10,
+     "p10": 0.0,
+     "median": 0.0,
+     "p90": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "route_metrics_us_per_frame": {},
+    "route_metrics_us_per_call": {}
+   },
+   "scene_draw_bins": {
+    "0": {
+     "draws_lo": 0.0,
+     "draws_hi": 50.0,
+     "windows": 1,
+     "frames": 81,
+     "draws_median": 49.9,
+     "mean_ms_median": 12.435,
+     "min_ms_median": 10.636,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "1": {
+     "draws_lo": 50.0,
+     "draws_hi": 100.0,
+     "windows": 21,
+     "frames": 1610,
+     "draws_median": 75.0,
+     "mean_ms_median": 12.127,
+     "min_ms_median": 10.795,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "2": {
+     "draws_lo": 100.0,
+     "draws_hi": 150.0,
+     "windows": 4,
+     "frames": 243,
+     "draws_median": 106.7,
+     "mean_ms_median": 16.379,
+     "min_ms_median": 13.323,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "3": {
+     "draws_lo": 150.0,
+     "draws_hi": 200.0,
+     "windows": 3,
+     "frames": 140,
+     "draws_median": 197.6,
+     "mean_ms_median": 20.437,
+     "min_ms_median": 17.839,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "4": {
+     "draws_lo": 200.0,
+     "draws_hi": 250.0,
+     "windows": 23,
+     "frames": 972,
+     "draws_median": 222.6,
+     "mean_ms_median": 22.91,
+     "min_ms_median": 21.403,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "5": {
+     "draws_lo": 250.0,
+     "draws_hi": 300.0,
+     "windows": 10,
+     "frames": 396,
+     "draws_median": 270.7,
+     "mean_ms_median": 25.67,
+     "min_ms_median": 22.425,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "6": {
+     "draws_lo": 300.0,
+     "draws_hi": 350.0,
+     "windows": 8,
+     "frames": 294,
+     "draws_median": 325.2,
+     "mean_ms_median": 26.954,
+     "min_ms_median": 24.867,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "7": {
+     "draws_lo": 350.0,
+     "draws_hi": 400.0,
+     "windows": 8,
+     "frames": 248,
+     "draws_median": 391.1,
+     "mean_ms_median": 32.368,
+     "min_ms_median": 28.681,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "8": {
+     "draws_lo": 400.0,
+     "draws_hi": 450.0,
+     "windows": 8,
+     "frames": 238,
+     "draws_median": 428.1,
+     "mean_ms_median": 32.434,
+     "min_ms_median": 31.196,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "9": {
+     "draws_lo": 450.0,
+     "draws_hi": 500.0,
+     "windows": 2,
+     "frames": 47,
+     "draws_median": 481.7,
+     "mean_ms_median": 42.689,
+     "min_ms_median": 36.581,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "10": {
+     "draws_lo": 500.0,
+     "draws_hi": 550.0,
+     "windows": 2,
+     "frames": 47,
+     "draws_median": 532.9,
+     "mean_ms_median": 43.137,
+     "min_ms_median": 37.504,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "12": {
+     "draws_lo": 600.0,
+     "draws_hi": 650.0,
+     "windows": 2,
+     "frames": 44,
+     "draws_median": 616.9,
+     "mean_ms_median": 45.329,
+     "min_ms_median": 41.124,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "13": {
+     "draws_lo": 650.0,
+     "draws_hi": 700.0,
+     "windows": 2,
+     "frames": 43,
+     "draws_median": 677.2,
+     "mean_ms_median": 47.611,
+     "min_ms_median": 45.352,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "14": {
+     "draws_lo": 700.0,
+     "draws_hi": 750.0,
+     "windows": 11,
+     "frames": 230,
+     "draws_median": 724.3,
+     "mean_ms_median": 47.689,
+     "min_ms_median": 46.051,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "15": {
+     "draws_lo": 750.0,
+     "draws_hi": 800.0,
+     "windows": 2,
+     "frames": 41,
+     "draws_median": 767.4,
+     "mean_ms_median": 47.89,
+     "min_ms_median": 46.65,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    }
+   },
+   "menu_draw_bins": {
+    "11": {
+     "draws_lo": 550.0,
+     "draws_hi": 600.0,
+     "windows": 1,
+     "frames": 6,
+     "draws_median": 563.2,
+     "mean_ms_median": 45.476,
+     "min_ms_median": 33.271,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "12": {
+     "draws_lo": 600.0,
+     "draws_hi": 650.0,
+     "windows": 4,
+     "frames": 114,
+     "draws_median": 639.3,
+     "mean_ms_median": 34.239,
+     "min_ms_median": 32.183,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    },
+    "13": {
+     "draws_lo": 650.0,
+     "draws_hi": 700.0,
+     "windows": 5,
+     "frames": 143,
+     "draws_median": 673.5,
+     "mean_ms_median": 34.761,
+     "min_ms_median": 32.917,
+     "route_us_median": 0.0,
+     "taa_us_median": 0.0
+    }
+   },
+   "frame_records": {
+    "records": 0,
+    "normal": {
+     "status": "unavailable",
+     "records": 0
+    },
+    "capture": {
+     "status": "unavailable",
+     "records": 0
+    }
+   },
+   "profiler_share": {
+    "scene": {
+     "status": "absent",
+     "reason": "no profile_report delta records"
+    },
+    "menu": {
+     "status": "absent",
+     "reason": "no profile_report delta records"
+    }
+   },
+   "telemetry_stamps": {
+    "status": "estimated",
+    "menu_gate_us_per_call": null,
+    "stamp_us_assumed": 0.25,
+    "spans_per_frame_median": 0.0,
+    "ms_per_frame": 0.0
+   },
+   "capture_windows": [
+    {
+     "frame": 120,
+     "frames": 30,
+     "mean_ms": 32.83,
+     "max_ms": 49.89,
+     "frame_capture_ms": null,
+     "frame_capture_frames": 0,
+     "readback_us_per_frame": 0.0
+    },
+    {
+     "frame": 133,
+     "frames": 11,
+     "mean_ms": 33.24,
+     "max_ms": 35.44,
+     "frame_capture_ms": 328.57,
+     "frame_capture_frames": 2,
+     "readback_us_per_frame": 0.0
+    }
+   ],
+   "capture_frame_interval_ms": {
+    "n": 1,
+    "p10": 328.566,
+    "median": 328.566,
+    "p90": 328.566,
+    "min": 328.566,
+    "max": 328.566
+   },
+   "route_off": true
+  }
+ ],
+ "comparisons": [
+  {
+   "primary": "run5",
+   "baseline": "run3",
+   "controlled": false,
+   "role": "path and configuration noise",
+   "regimes": {
+    "fast": {
+     "status": "compared",
+     "primary": {
+      "windows": 83,
+      "mean_ms": 8.423,
+      "min_ms": 5.67,
+      "draws_per_frame": 320.1
+     },
+     "baseline": {
+      "windows": 90,
+      "mean_ms": 24.046,
+      "min_ms": 21.691,
+      "draws_per_frame": 229.2
+     },
+     "delta_mean_ms": -15.623,
+     "delta_mean_percent": -64.97,
+     "delta_min_ms": -16.021,
+     "delta_min_percent": -73.86,
+     "route_exclusive_ms": 0.0,
+     "route_share_of_delta": null,
+     "draws_per_frame_ratio": 1.397,
+     "note": "the two draw counts differ; see normalised"
+    },
+    "slow": {
+     "status": "unavailable",
+     "primary_windows": 0,
+     "baseline_windows": 17
+    }
+   },
+   "occupancy": {
+    "primary_fast_fraction": 1.0,
+    "baseline_fast_fraction": 0.8411
+   },
+   "normalised": {
+    "bin_width": 50.0,
+    "min_bin_windows": 2,
+    "scene": {
+     "bins": 9,
+     "delta_ms": {
+      "n": 9,
+      "p10": -35.487,
+      "median": -18.524,
+      "p90": -7.218,
+      "min": -36.171,
+      "max": -3.795
+     },
+     "draws_span": [
+      67.6,
+      765.5
+     ],
+     "origin_us_per_draw": {
+      "n": 9,
+      "p10": -66.82,
+      "median": -56.805,
+      "p90": -49.54,
+      "min": -76.386,
+      "max": -46.135
+     },
+     "sign_test": {
+      "status": "evaluated",
+      "bins": 9,
+      "positive": 0,
+      "negative": 9,
+      "p_two_sided": 0.00391
+     },
+     "pairs": [
+      {
+       "bin": 1,
+       "draws_lo": 50.0,
+       "draws": 67.6,
+       "primary_ms": 8.332,
+       "baseline_ms": 12.127,
+       "delta_ms": -3.795,
+       "primary_windows": 12,
+       "baseline_windows": 21,
+       "route_us": 0.0
+      },
+      {
+       "bin": 2,
+       "draws_lo": 100.0,
+       "draws": 105.7,
+       "primary_ms": 8.305,
+       "baseline_ms": 16.379,
+       "delta_ms": -8.074,
+       "primary_windows": 4,
+       "baseline_windows": 4,
+       "route_us": 0.0
+      },
+      {
+       "bin": 4,
+       "draws_lo": 200.0,
+       "draws": 225.8,
+       "primary_ms": 8.362,
+       "baseline_ms": 22.91,
+       "delta_ms": -14.548,
+       "primary_windows": 16,
+       "baseline_windows": 23,
+       "route_us": 0.0
+      },
+      {
+       "bin": 5,
+       "draws_lo": 250.0,
+       "draws": 268.6,
+       "primary_ms": 8.829,
+       "baseline_ms": 25.67,
+       "delta_ms": -16.841,
+       "primary_windows": 4,
+       "baseline_windows": 10,
+       "route_us": 0.0
+      },
+      {
+       "bin": 6,
+       "draws_lo": 300.0,
+       "draws": 326.1,
+       "primary_ms": 8.43,
+       "baseline_ms": 26.954,
+       "delta_ms": -18.524,
+       "primary_windows": 9,
+       "baseline_windows": 8,
+       "route_us": 0.0
+      },
+      {
+       "bin": 7,
+       "draws_lo": 350.0,
+       "draws": 386.7,
+       "primary_ms": 8.407,
+       "baseline_ms": 32.368,
+       "delta_ms": -23.961,
+       "primary_windows": 13,
+       "baseline_windows": 8,
+       "route_us": 0.0
+      },
+      {
+       "bin": 8,
+       "draws_lo": 400.0,
+       "draws": 429.1,
+       "primary_ms": 8.485,
+       "baseline_ms": 32.434,
+       "delta_ms": -23.949,
+       "primary_windows": 9,
+       "baseline_windows": 8,
+       "route_us": 0.0
+      },
+      {
+       "bin": 14,
+       "draws_lo": 700.0,
+       "draws": 717.8,
+       "primary_ms": 11.518,
+       "baseline_ms": 47.689,
+       "delta_ms": -36.171,
+       "primary_windows": 5,
+       "baseline_windows": 11,
+       "route_us": 0.0
+      },
+      {
+       "bin": 15,
+       "draws_lo": 750.0,
+       "draws": 765.5,
+       "primary_ms": 12.574,
+       "baseline_ms": 47.89,
+       "delta_ms": -35.316,
+       "primary_windows": 3,
+       "baseline_windows": 2,
+       "route_us": 0.0
+      }
+     ],
+     "status": "fitted",
+     "us_per_draw": -46.072,
+     "us_per_draw_p25": -55.948,
+     "us_per_draw_p75": -39.351,
+     "fixed_ms_per_frame": -3.5
+    },
+    "menu": {
+     "bins": 2,
+     "delta_ms": {
+      "n": 2,
+      "p10": -24.514,
+      "median": -24.419,
+      "p90": -24.324,
+      "min": -24.538,
+      "max": -24.3
+     },
+     "draws_span": [
+      641.5,
+      674.0
+     ],
+     "origin_us_per_draw": {
+      "n": 2,
+      "p10": -38.031,
+      "median": -37.152,
+      "p90": -36.273,
+      "min": -38.251,
+      "max": -36.053
+     },
+     "sign_test": {
+      "status": "evaluated",
+      "bins": 2,
+      "positive": 0,
+      "negative": 2,
+      "p_two_sided": 0.5
+     },
+     "pairs": [
+      {
+       "bin": 12,
+       "draws_lo": 600.0,
+       "draws": 641.5,
+       "primary_ms": 9.701,
+       "baseline_ms": 34.239,
+       "delta_ms": -24.538,
+       "primary_windows": 5,
+       "baseline_windows": 4,
+       "route_us": 0.0
+      },
+      {
+       "bin": 13,
+       "draws_lo": 650.0,
+       "draws": 674.0,
+       "primary_ms": 10.461,
+       "baseline_ms": 34.761,
+       "delta_ms": -24.3,
+       "primary_windows": 3,
+       "baseline_windows": 5,
+       "route_us": 0.0
+      }
+     ],
+     "status": "fitted",
+     "us_per_draw": 7.323,
+     "us_per_draw_p25": 7.323,
+     "us_per_draw_p75": 7.323,
+     "fixed_ms_per_frame": -29.236
+    },
+    "scene_min": {
+     "bins": 9,
+     "delta_ms": {
+      "n": 9,
+      "p10": -35.677,
+      "median": -19.197,
+      "p90": -9.288,
+      "min": -36.106,
+      "max": -8.057
+     },
+     "draws_span": [
+      67.6,
+      765.5
+     ],
+     "origin_us_per_draw": {
+      "n": 9,
+      "p10": -96.465,
+      "median": -58.868,
+      "p90": -49.077,
+      "min": -119.186,
+      "max": -47.167
+     },
+     "sign_test": {
+      "status": "evaluated",
+      "bins": 9,
+      "positive": 0,
+      "negative": 9,
+      "p_two_sided": 0.00391
+     },
+     "pairs": [
+      {
+       "bin": 1,
+       "draws_lo": 50.0,
+       "draws": 67.6,
+       "primary_ms": 2.738,
+       "baseline_ms": 10.795,
+       "delta_ms": -8.057,
+       "primary_windows": 12,
+       "baseline_windows": 21,
+       "route_us": 0.0
+      },
+      {
+       "bin": 2,
+       "draws_lo": 100.0,
+       "draws": 105.7,
+       "primary_ms": 3.727,
+       "baseline_ms": 13.323,
+       "delta_ms": -9.596,
+       "primary_windows": 4,
+       "baseline_windows": 4,
+       "route_us": 0.0
+      },
+      {
+       "bin": 4,
+       "draws_lo": 200.0,
+       "draws": 225.8,
+       "primary_ms": 5.131,
+       "baseline_ms": 21.403,
+       "delta_ms": -16.272,
+       "primary_windows": 16,
+       "baseline_windows": 23,
+       "route_us": 0.0
+      },
+      {
+       "bin": 5,
+       "draws_lo": 250.0,
+       "draws": 268.6,
+       "primary_ms": 5.451,
+       "baseline_ms": 22.425,
+       "delta_ms": -16.974,
+       "primary_windows": 4,
+       "baseline_windows": 10,
+       "route_us": 0.0
+      },
+      {
+       "bin": 6,
+       "draws_lo": 300.0,
+       "draws": 326.1,
+       "primary_ms": 5.67,
+       "baseline_ms": 24.867,
+       "delta_ms": -19.197,
+       "primary_windows": 9,
+       "baseline_windows": 8,
+       "route_us": 0.0
+      },
+      {
+       "bin": 7,
+       "draws_lo": 350.0,
+       "draws": 386.7,
+       "primary_ms": 6.99,
+       "baseline_ms": 28.681,
+       "delta_ms": -21.691,
+       "primary_windows": 13,
+       "baseline_windows": 8,
+       "route_us": 0.0
+      },
+      {
+       "bin": 8,
+       "draws_lo": 400.0,
+       "draws": 429.1,
+       "primary_ms": 6.64,
+       "baseline_ms": 31.196,
+       "delta_ms": -24.556,
+       "primary_windows": 9,
+       "baseline_windows": 8,
+       "route_us": 0.0
+      },
+      {
+       "bin": 14,
+       "draws_lo": 700.0,
+       "draws": 717.8,
+       "primary_ms": 10.481,
+       "baseline_ms": 46.051,
+       "delta_ms": -35.57,
+       "primary_windows": 5,
+       "baseline_windows": 11,
+       "route_us": 0.0
+      },
+      {
+       "bin": 15,
+       "draws_lo": 750.0,
+       "draws": 765.5,
+       "primary_ms": 10.544,
+       "baseline_ms": 46.65,
+       "delta_ms": -36.106,
+       "primary_windows": 3,
+       "baseline_windows": 2,
+       "route_us": 0.0
+      }
+     ],
+     "status": "fitted",
+     "us_per_draw": -41.277,
+     "us_per_draw_p25": -43.762,
+     "us_per_draw_p75": -38.498,
+     "fixed_ms_per_frame": -5.737
+    }
+   }
+  }
+ ],
+ "levers": {
+  "status": "unavailable",
+  "reason": "no routed ordinary frame records",
+  "label": "run5"
+ },
+ "parameters": {
+  "device": "1",
+  "gap_us": 2000000.0,
+  "min_frames": 5,
+  "split_us": 45000.0,
+  "bin_width": 50.0,
+  "min_bin_windows": 2,
+  "stamp_us": 0.25,
+  "suspend_us": 123.0,
+  "baseline": "run3"
+ },
+ "limits": [
+  "CPU-side QPC spans and Present-to-Present intervals; never GPU time.",
+  "Route metrics nest: only route_gate+route_draw+route_fill+route_jitter+route_lazy_flush are summed; route_set_rt is inside route_draw and the taa_* phases are inside taa_run.",
+  "The three sessions are the same build and save but not the same flight path, so pooled medians report occupancy; the draw-count normalisation and the run-1-against-run-2 slope carry the uncertainty.",
+  "Runs 1 and 2 also carry the sampling profiler and the object trace; the menu phase measures that overhead with the route enabled and nothing routed, and it is subtracted before any cost is attributed to the route.",
+  "Capture windows are excluded from every frame-time median; their readback cost is reported on its own.",
+  "A frame-time difference is not proof of causation: only the route metrics are direct measurements of route work."
+ ]
+}

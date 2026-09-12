@@ -1,0 +1,318 @@
+==== seam-taa-hdr-tonemap-fault exit=0
+CHECK DLL seam presence matches the requested mode PASS
+MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-taa-hdr-tonemap-fault-20260912-161234-906356\d3d9.dll burst=0 rt_mode=perdraw camera=0 sentinel=0 envmap=0 hook=0 state_shadow=1 hdr=1 hdrvalues=0 hdrfault=0 hdrramp=0 hdrexposure=0 hdrtonemapfault=1
+CHECK local files are the reviewed pair PASS
+CHECK reference device uses the system d3d9, not the proxy PASS
+CHECK hdrtonemapfault needs the seam, the HDR switch and its exports PASS
+RESTORE frame=0 label=fill differences=0
+EXPOSURE_STATE frame=0 ev=0.000000 ev_adapted=0.000000 ev_target=0.000000 avg_log_l=0.000000 dt=0.000000 exposure=1.000000 steps=0 k=1.000000
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=0 label=draw differences=0
+EXPECT frame=0 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=0 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=0 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=0 k=1.00000 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=0 history=0 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=0 hash=08a9871b1fc68ab4
+COLOR frame=0 hash=08a9871b1fc68ab4
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=0 motion=39e6e57a44fc2325 depth=85229d089288a325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=0 checked=3673 skipped=423 sentinel=3673 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=0 fault=0
+RESTORE frame=1 label=fill differences=0
+EXPOSURE_STATE frame=1 ev=0.112787 ev_adapted=0.112787 ev_target=2.876450 avg_log_l=-5.350381 dt=0.016000 exposure=1.081315 steps=1 k=1.081315
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=1 label=draw differences=0
+EXPECT frame=1 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=1 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=0
+RESTORE frame=1 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHECK a frame the route cannot resolve leaves the 8-bit main target untouched PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=1 history=0 cut=0 changed=0 policy=1 skipped=1
+COLOR_BEFORE frame=1 hash=26a47dd280fb979f
+COLOR frame=1 hash=26a47dd280fb979f
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=1 motion=39e6e57a44fc2325 depth=69a9471902b85325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=1 checked=3661 skipped=435 sentinel=3661 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=1 fault=14
+RESTORE frame=2 label=fill differences=0
+EXPOSURE_STATE frame=2 ev=0.220653 ev_adapted=0.220653 ev_target=2.863721 avg_log_l=-5.337652 dt=0.016000 exposure=1.165261 steps=2 k=1.165261
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=2 label=draw differences=0
+EXPECT frame=2 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=2 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=2 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=2 k=1.16526 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=2 history=0 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=2 hash=fa8465566724a8db
+COLOR frame=2 hash=fa8465566724a8db
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=2 motion=39e6e57a44fc2325 depth=d82d7cd42585e325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=2 checked=3669 skipped=427 sentinel=3669 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=2 fault=0
+RESTORE frame=3 label=fill differences=0
+EXPOSURE_STATE frame=3 ev=0.324283 ev_adapted=0.324283 ev_target=2.863576 avg_log_l=-5.337507 dt=0.016000 exposure=1.252042 steps=3 k=1.252042
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=3 label=draw differences=0
+EXPECT frame=3 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=3 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=3 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=3 x=0 y=0 before=ff203040 after=ff213850
+CHANGED frame=3 x=1 y=0 before=ff203040 after=ff213850
+CHANGED frame=3 x=2 y=0 before=ff203040 after=ff213850
+CHANGED frame=3 x=3 y=0 before=ff203040 after=ff213850
+TAA_HDR frame=3 k=1.25204 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=3 history=1 cut=0 changed=4096 policy=1 skipped=0
+COLOR_BEFORE frame=3 hash=25eb2752e5c6d4f2
+COLOR frame=3 hash=f5fab9acfc1cd899
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=3 motion=39e6e57a44fc2325 depth=85229d089288a325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=3 checked=3668 skipped=428 sentinel=3668 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=3 fault=11
+RESTORE frame=4 label=fill differences=0
+EXPOSURE_STATE frame=4 ev=0.423908 ev_adapted=0.423908 ev_target=2.865053 avg_log_l=-5.338984 dt=0.016000 exposure=1.341557 steps=4 k=1.341557
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=4 label=draw differences=0
+EXPECT frame=4 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=4 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=4 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=4 k=1.34156 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=4 history=1 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=4 hash=53a7844d7a755acc
+COLOR frame=4 hash=53a7844d7a755acc
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=4 motion=39e6e57a44fc2325 depth=18bcc69bdf539e25
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=4 checked=3667 skipped=429 sentinel=3667 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=4 fault=0
+RESTORE frame=5 label=fill differences=0
+EXPOSURE_STATE frame=5 ev=0.519496 ev_adapted=0.519496 ev_target=2.861711 avg_log_l=-5.335642 dt=0.016000 exposure=1.433454 steps=5 k=1.433454
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=5 label=draw differences=0
+EXPECT frame=5 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=5 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=5 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=5 k=1.43345 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=5 history=1 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=5 hash=28b65f9584576254
+COLOR frame=5 hash=28b65f9584576254
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=5 motion=39e6e57a44fc2325 depth=85229d089288a325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=5 checked=3669 skipped=427 sentinel=3669 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=5 fault=13
+RESTORE frame=6 label=fill differences=0
+EXPOSURE_STATE frame=6 ev=0.611486 ev_adapted=0.611486 ev_target=2.865536 avg_log_l=-5.339468 dt=0.016000 exposure=1.527832 steps=6 k=1.527832
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=6 label=draw differences=0
+EXPECT frame=6 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=6 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=6 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=6 k=1.52783 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=6 history=1 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=6 hash=007cede56d7f5c01
+COLOR frame=6 hash=007cede56d7f5c01
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=6 motion=39e6e57a44fc2325 depth=18bcc69bdf539e25
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=6 checked=3671 skipped=425 sentinel=3671 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=6 fault=0
+RESTORE frame=7 label=fill differences=0
+EXPOSURE_STATE frame=7 ev=0.699737 ev_adapted=0.699737 ev_target=2.862200 avg_log_l=-5.336131 dt=0.016000 exposure=1.624209 steps=7 k=1.624209
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=7 label=draw differences=0
+EXPECT frame=7 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=7 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=0
+RESTORE frame=7 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+CHECK a frame the route cannot resolve leaves the 8-bit main target untouched PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=7 history=0 cut=0 changed=0 policy=1 skipped=1
+COLOR_BEFORE frame=7 hash=25c2d27b1de34ad0
+COLOR frame=7 hash=25c2d27b1de34ad0
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=7 motion=39e6e57a44fc2325 depth=69a9471902b85325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=7 checked=3666 skipped=430 sentinel=3666 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=7 fault=14
+RESTORE frame=8 label=fill differences=0
+EXPOSURE_STATE frame=8 ev=0.784573 ev_adapted=0.784573 ev_target=2.863330 avg_log_l=-5.337261 dt=0.016000 exposure=1.722582 steps=8 k=1.722582
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=8 label=draw differences=0
+EXPECT frame=8 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=8 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=8 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=8 k=1.72258 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=8 history=0 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=8 hash=82ef98908a0df8cb
+COLOR frame=8 hash=82ef98908a0df8cb
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=8 motion=39e6e57a44fc2325 depth=85229d089288a325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=8 checked=3673 skipped=423 sentinel=3673 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=8 fault=0
+RESET PASS
+RESTORE frame=9 label=fill differences=0
+EXPOSURE_STATE frame=9 ev=0.784573 ev_adapted=0.784573 ev_target=2.863330 avg_log_l=-5.337261 dt=0.016000 exposure=1.722582 steps=8 k=1.722582
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=9 label=draw differences=0
+EXPECT frame=9 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=9 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=9 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=9 k=1.72258 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+CHECK a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip PASS
+TAA frame=9 history=0 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=9 hash=02c379bb0b976c1b
+COLOR frame=9 hash=02c379bb0b976c1b
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=9 motion=39e6e57a44fc2325 depth=69a9471902b85325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=9 checked=3661 skipped=435 sentinel=3661 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=9 fault=0
+RESTORE frame=10 label=fill differences=0
+EXPOSURE_STATE frame=10 ev=0.866098 ev_adapted=0.866098 ev_target=2.863721 avg_log_l=-5.337652 dt=0.016000 exposure=1.822726 steps=9 k=1.822726
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=10 label=draw differences=0
+EXPECT frame=10 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=10 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=10 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=10 k=1.82273 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=10 history=1 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=10 hash=8fe931ee142d90ab
+COLOR frame=10 hash=8fe931ee142d90ab
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=10 motion=39e6e57a44fc2325 depth=d82d7cd42585e325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=10 checked=3669 skipped=427 sentinel=3669 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=10 fault=0
+RESTORE frame=11 label=fill differences=0
+EXPOSURE_STATE frame=11 ev=0.944420 ev_adapted=0.944420 ev_target=2.863576 avg_log_l=-5.337507 dt=0.016000 exposure=1.924415 steps=10 k=1.924415
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=2 object=A routed=1 matched=0 jittered=1
+RESTORE frame=11 label=draw differences=0
+EXPECT frame=11 index=3 object=B routed=0 matched=0 jittered=1
+CAMERA_EXPECT frame=11 installed=0 policy=1 reason=2 cut=0 rotation_deg=0.0000 p00=0 p11=0 r00=0 r01=0 r02=0 r10=0 r11=0 r12=0 r20=0 r21=0 r22=0 resolve=1
+RESTORE frame=11 label=boundary differences=0
+CHECK the application's bloom copy receives the main target as resolved PASS
+TAA_HDR frame=11 k=1.92441 agx=1 worst_code=0 mismatches=0
+CHECK main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion) PASS
+CHECK reference FP16 output written PASS
+CHECK history use follows the script (first frame, Reset, cut and post-skip frames run current-only) PASS
+TAA frame=11 history=1 cut=0 changed=0 policy=1 skipped=0
+COLOR_BEFORE frame=11 hash=328c47f44c0a43dd
+COLOR frame=11 hash=328c47f44c0a43dd
+CHECK presented image written PASS
+CHECK motion target matches the main dimensions PASS
+CHECK depth target matches the main dimensions PASS
+MOTION_HASH frame=11 motion=39e6e57a44fc2325 depth=85229d089288a325
+CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
+MOTION frame=11 checked=3668 skipped=428 sentinel=3668 matched=0 mismatches=0 depth_written=2356 depth_mismatches=0
+CHECK motion target matches the CPU oracle PASS
+CHECK depth target matches the CPU oracle (z/w of the front-most routed draw, sentinel elsewhere) PASS
+HDR_TONEMAP_FAULT frame=11 fault=0
+CHECK reference device final Release reaches zero PASS
+CHECK reference factory final Release reaches zero PASS
+CHECK device final Release reaches zero with the route's objects released PASS
+CHECK factory final Release reaches zero PASS
+RESULT PASS checks=132 restorations=48 frames=12 motion_pixels=44015 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=44015 depth_written=28272 max_current_depth_error=0 coverage_frames=0 coverage_pixels=0 coverage_ambiguous=0 jitter=1 taa=1 taa_frames=12 taa_history_frames=6 taa_reference_frames=10 taa_changed_pixels=4096 taa_skipped_frames=2

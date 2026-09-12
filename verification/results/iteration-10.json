@@ -1,0 +1,7202 @@
+{
+ "tool": {
+  "name": "tools/analysis/analyze_iteration10.py",
+  "imports": [
+   "tools/analysis/analyze_iteration09.py",
+   "tools/analysis/analyze_iteration09_cost.py",
+   "tools/analysis/analyze_iteration09_run2.py",
+   "tools/analysis/analyze_camera_state.py",
+   "tools/analysis/analyze_motion_readback.py"
+  ]
+ },
+ "runs": {
+  "run6": {
+   "log": "/tmp/x3-bottleX3-run6/session-20260912-171241-212.log"
+  },
+  "run5": {
+   "log": "/tmp/x3-bottleX3-run5/session-20260912-170743-352.log"
+  },
+  "run1": {
+   "log": "/tmp/x3-iteration09-run1/session-20260912-160404-1632.log"
+  },
+  "run2": {
+   "log": "/tmp/x3-iteration09-run2/session-20260912-162050-2040.log"
+  },
+  "run3": {
+   "log": "/tmp/x3-iteration09-run3/session-20260912-164116-2548.log"
+  }
+ },
+ "line_kinds": {
+  "new_run": "run6",
+  "baselines": [
+   "run1",
+   "run2",
+   "run3"
+  ],
+  "diff": {
+   "new_kinds": [
+    {
+     "kind": "motion_output_scene_hook_disagreement",
+     "count": 16
+    }
+   ],
+   "missing_kinds": [
+    {
+     "kind": "mesh_cache_bypass",
+     "configuration": true
+    },
+    {
+     "kind": "mesh_cache_fp_first",
+     "configuration": true
+    },
+    {
+     "kind": "mesh_cache_metric",
+     "configuration": true
+    }
+   ],
+   "kinds_new_run": 92,
+   "kinds_baseline_union": 94
+  },
+  "counts": null
+ },
+ "metrics": {
+  "tables": {
+   "run6": {
+    "draw_backend": {
+     "windows": 265,
+     "calls": 4639820,
+     "median_us_per_call": 2.9967,
+     "mean_us_per_call": 3.0503,
+     "failures": 0
+    },
+    "frame_normal": {
+     "windows": 251,
+     "calls": 14476,
+     "median_us_per_call": 18880.8358,
+     "mean_us_per_call": 23944.199,
+     "failures": 0
+    },
+    "lock_wait": {
+     "windows": 311,
+     "calls": 12788234,
+     "median_us_per_call": 0.0946,
+     "mean_us_per_call": 0.0933,
+     "failures": 0
+    },
+    "route_draw": {
+     "windows": 216,
+     "calls": 2089438,
+     "median_us_per_call": 5.1124,
+     "mean_us_per_call": 5.1015,
+     "failures": 0
+    },
+    "route_fill": {
+     "windows": 227,
+     "calls": 12131,
+     "median_us_per_call": 62.3962,
+     "mean_us_per_call": 63.6643,
+     "failures": 0
+    },
+    "route_gate": {
+     "windows": 265,
+     "calls": 4639821,
+     "median_us_per_call": 14.5047,
+     "mean_us_per_call": 9.2891,
+     "failures": 0
+    },
+    "route_jitter": {
+     "windows": 216,
+     "calls": 5428058,
+     "median_us_per_call": 0.1723,
+     "mean_us_per_call": 0.1731,
+     "failures": 0
+    },
+    "route_set_rt": {
+     "windows": 216,
+     "calls": 8357752,
+     "median_us_per_call": 0.6278,
+     "mean_us_per_call": 0.6243,
+     "failures": 0
+    },
+    "taa_resolve_draw": {
+     "windows": 216,
+     "calls": 10697,
+     "median_us_per_call": 277.8115,
+     "mean_us_per_call": 289.6052,
+     "failures": 0
+    },
+    "taa_run": {
+     "windows": 216,
+     "calls": 10697,
+     "median_us_per_call": 316.8184,
+     "mean_us_per_call": 329.6713,
+     "failures": 0
+    }
+   },
+   "run5": {
+    "draw_backend": {
+     "windows": 102,
+     "calls": 3553430,
+     "median_us_per_call": 2.6453,
+     "mean_us_per_call": 2.6307,
+     "failures": 0
+    },
+    "frame_normal": {
+     "windows": 103,
+     "calls": 10374,
+     "median_us_per_call": 8477.725,
+     "mean_us_per_call": 18365.0974,
+     "failures": 0
+    },
+    "lock_wait": {
+     "windows": 140,
+     "calls": 3835150,
+     "median_us_per_call": 0.0892,
+     "mean_us_per_call": 0.0881,
+     "failures": 0
+    }
+   },
+   "run1": {
+    "draw_backend": {
+     "windows": 262,
+     "calls": 2438084,
+     "median_us_per_call": 2.7583,
+     "mean_us_per_call": 2.8336,
+     "failures": 0
+    },
+    "frame_normal": {
+     "windows": 256,
+     "calls": 6410,
+     "median_us_per_call": 40713.72,
+     "mean_us_per_call": 71480.5194,
+     "failures": 0
+    },
+    "lock_wait": {
+     "windows": 332,
+     "calls": 6770226,
+     "median_us_per_call": 0.2288,
+     "mean_us_per_call": 0.2279,
+     "failures": 0
+    },
+    "route_draw": {
+     "windows": 204,
+     "calls": 1171488,
+     "median_us_per_call": 6.7289,
+     "mean_us_per_call": 6.7227,
+     "failures": 0
+    },
+    "route_fill": {
+     "windows": 204,
+     "calls": 5268,
+     "median_us_per_call": 66.7446,
+     "mean_us_per_call": 70.2278,
+     "failures": 0
+    },
+    "route_gate": {
+     "windows": 262,
+     "calls": 2438085,
+     "median_us_per_call": 11.907,
+     "mean_us_per_call": 8.1521,
+     "failures": 0
+    },
+    "route_jitter": {
+     "windows": 204,
+     "calls": 2952324,
+     "median_us_per_call": 0.2796,
+     "mean_us_per_call": 0.2815,
+     "failures": 0
+    },
+    "route_set_rt": {
+     "windows": 204,
+     "calls": 4685952,
+     "median_us_per_call": 0.7868,
+     "mean_us_per_call": 0.7881,
+     "failures": 0
+    },
+    "taa_resolve_draw": {
+     "windows": 203,
+     "calls": 5268,
+     "median_us_per_call": 312.1429,
+     "mean_us_per_call": 321.6164,
+     "failures": 0
+    },
+    "taa_run": {
+     "windows": 203,
+     "calls": 5268,
+     "median_us_per_call": 352.4935,
+     "mean_us_per_call": 361.9443,
+     "failures": 0
+    }
+   },
+   "run2": {
+    "draw_backend": {
+     "windows": 176,
+     "calls": 1257520,
+     "median_us_per_call": 2.8108,
+     "mean_us_per_call": 2.914,
+     "failures": 0
+    },
+    "frame_normal": {
+     "windows": 166,
+     "calls": 4126,
+     "median_us_per_call": 42966.3417,
+     "mean_us_per_call": 80067.7089,
+     "failures": 0
+    },
+    "lock_wait": {
+     "windows": 245,
+     "calls": 3730724,
+     "median_us_per_call": 0.2282,
+     "mean_us_per_call": 0.231,
+     "failures": 0
+    },
+    "route_draw": {
+     "windows": 162,
+     "calls": 779212,
+     "median_us_per_call": 7.0018,
+     "mean_us_per_call": 6.9693,
+     "failures": 0
+    },
+    "route_fill": {
+     "windows": 162,
+     "calls": 3919,
+     "median_us_per_call": 70.6147,
+     "mean_us_per_call": 71.5834,
+     "failures": 0
+    },
+    "route_gate": {
+     "windows": 176,
+     "calls": 1257521,
+     "median_us_per_call": 12.2226,
+     "mean_us_per_call": 10.5653,
+     "failures": 0
+    },
+    "route_jitter": {
+     "windows": 162,
+     "calls": 1962734,
+     "median_us_per_call": 0.2813,
+     "mean_us_per_call": 0.2843,
+     "failures": 0
+    },
+    "route_set_rt": {
+     "windows": 162,
+     "calls": 3116848,
+     "median_us_per_call": 0.8167,
+     "mean_us_per_call": 0.8133,
+     "failures": 0
+    },
+    "taa_resolve_draw": {
+     "windows": 162,
+     "calls": 3919,
+     "median_us_per_call": 329.5639,
+     "mean_us_per_call": 333.441,
+     "failures": 0
+    },
+    "taa_run": {
+     "windows": 162,
+     "calls": 3919,
+     "median_us_per_call": 374.8121,
+     "mean_us_per_call": 377.5156,
+     "failures": 0
+    }
+   },
+   "run3": {
+    "draw_backend": {
+     "windows": 124,
+     "calls": 1298302,
+     "median_us_per_call": 2.8169,
+     "mean_us_per_call": 2.8531,
+     "failures": 0
+    },
+    "frame_normal": {
+     "windows": 125,
+     "calls": 4990,
+     "median_us_per_call": 28142.4143,
+     "mean_us_per_call": 61198.3199,
+     "failures": 0
+    },
+    "lock_wait": {
+     "windows": 190,
+     "calls": 1536418,
+     "median_us_per_call": 0.2041,
+     "mean_us_per_call": 0.2069,
+     "failures": 0
+    }
+   }
+  },
+  "comparisons": [
+   {
+    "primary": "run6",
+    "baseline": "run2",
+    "rows": [
+     {
+      "metric": "route_gate",
+      "primary_median_us": 14.5047,
+      "baseline_median_us": 12.2226,
+      "ratio": 1.1867,
+      "primary_calls": 4639821,
+      "baseline_calls": 1257521,
+      "failures": 0
+     },
+     {
+      "metric": "route_draw",
+      "primary_median_us": 5.1124,
+      "baseline_median_us": 7.0018,
+      "ratio": 0.7302,
+      "primary_calls": 2089438,
+      "baseline_calls": 779212,
+      "failures": 0
+     },
+     {
+      "metric": "route_set_rt",
+      "primary_median_us": 0.6278,
+      "baseline_median_us": 0.8167,
+      "ratio": 0.7687,
+      "primary_calls": 8357752,
+      "baseline_calls": 3116848,
+      "failures": 0
+     },
+     {
+      "metric": "route_fill",
+      "primary_median_us": 62.3962,
+      "baseline_median_us": 70.6147,
+      "ratio": 0.8836,
+      "primary_calls": 12131,
+      "baseline_calls": 3919,
+      "failures": 0
+     },
+     {
+      "metric": "route_jitter",
+      "primary_median_us": 0.1723,
+      "baseline_median_us": 0.2813,
+      "ratio": 0.6125,
+      "primary_calls": 5428058,
+      "baseline_calls": 1962734,
+      "failures": 0
+     },
+     {
+      "metric": "taa_run",
+      "primary_median_us": 316.8184,
+      "baseline_median_us": 374.8121,
+      "ratio": 0.8453,
+      "primary_calls": 10697,
+      "baseline_calls": 3919,
+      "failures": 0
+     },
+     {
+      "metric": "taa_resolve_draw",
+      "primary_median_us": 277.8115,
+      "baseline_median_us": 329.5639,
+      "ratio": 0.843,
+      "primary_calls": 10697,
+      "baseline_calls": 3919,
+      "failures": 0
+     },
+     {
+      "metric": "draw_backend",
+      "primary_median_us": 2.9967,
+      "baseline_median_us": 2.8108,
+      "ratio": 1.0661,
+      "primary_calls": 4639820,
+      "baseline_calls": 1257520,
+      "failures": 0
+     },
+     {
+      "metric": "frame_normal",
+      "primary_median_us": 18880.8358,
+      "baseline_median_us": 42966.3417,
+      "ratio": 0.4394,
+      "primary_calls": 14476,
+      "baseline_calls": 4126,
+      "failures": 0
+     },
+     {
+      "metric": "lock_wait",
+      "primary_median_us": 0.0946,
+      "baseline_median_us": 0.2282,
+      "ratio": 0.4145,
+      "primary_calls": 12788234,
+      "baseline_calls": 3730724,
+      "failures": 0
+     }
+    ],
+    "note": "per-call medians over telemetry_metric windows; a ratio below 1.0 is the primary run being cheaper per call. route_set_rt nests inside route_draw and taa_resolve_draw inside taa_run."
+   },
+   {
+    "primary": "run5",
+    "baseline": "run1",
+    "rows": [
+     {
+      "metric": "draw_backend",
+      "primary_median_us": 2.6453,
+      "baseline_median_us": 2.7583,
+      "ratio": 0.959,
+      "primary_calls": 3553430,
+      "baseline_calls": 2438084,
+      "failures": 0
+     },
+     {
+      "metric": "frame_normal",
+      "primary_median_us": 8477.725,
+      "baseline_median_us": 40713.72,
+      "ratio": 0.2082,
+      "primary_calls": 10374,
+      "baseline_calls": 6410,
+      "failures": 0
+     },
+     {
+      "metric": "lock_wait",
+      "primary_median_us": 0.0892,
+      "baseline_median_us": 0.2288,
+      "ratio": 0.3899,
+      "primary_calls": 3835150,
+      "baseline_calls": 6770226,
+      "failures": 0
+     }
+    ],
+    "note": "per-call medians over telemetry_metric windows; a ratio below 1.0 is the primary run being cheaper per call. route_set_rt nests inside route_draw and taa_resolve_draw inside taa_run."
+   }
+  ]
+ },
+ "health": [
+  {
+   "label": "run1",
+   "log": "/tmp/x3-iteration09-run1/session-20260912-160404-1632.log",
+   "frame_records": 128,
+   "draws": 48949,
+   "routed": 25669,
+   "matched": 25520,
+   "match_fraction": 0.9942,
+   "gates": {
+    "gate1": 0,
+    "gate2": 15231,
+    "gate3": 1483,
+    "gate4": 6566,
+    "gate5": 0,
+    "gate6": 149
+   },
+   "taa_attempted": 108,
+   "taa_resolved": 108,
+   "taa_history": 105,
+   "taa_skip": {
+    "0": 108,
+    "2": 20
+   },
+   "taa_result": {
+    "00000000": 108,
+    "00000001": 20
+   },
+   "resolved_without_history": 3,
+   "apply_failures": 0,
+   "restore_failures": 0,
+   "state_shadow": {
+    "rs_queries": 231950,
+    "rs_hits": 231950,
+    "rs_gets": 1512,
+    "rs_resyncs": 0
+   },
+   "scene_end_source": {
+    "none": 20,
+    "stretchrect": 108
+   },
+   "scene_end_check": {
+    "0": 20,
+    "3": 108
+   },
+   "camera_policy": {
+    "1": 20,
+    "2": 108
+   },
+   "camera_valid": {
+    "0": 20,
+    "1": 108
+   },
+   "cut_events": 3,
+   "camera_cut_events": 0,
+   "routed_frames_without_camera": 0,
+   "camera_states": 42,
+   "camera_states_valid": 38,
+   "camera_invalid_frames": [
+    0,
+    300,
+    600,
+    900
+   ],
+   "projections": [
+    {
+     "p00": 0.8,
+     "p11": 1.333333,
+     "records": 38,
+     "fov": {
+      "horizontal_deg": 102.68038349181982,
+      "vertical_deg": 73.73980904267732,
+      "aspect": 1.66666625
+     }
+    }
+   ],
+   "row_norm_deviation_max": 0.00022535021066372174,
+   "rotation_deg": {
+    "max": 6.2349,
+    "median": 0.52705
+   },
+   "reset_records": 0
+  },
+  {
+   "label": "run2",
+   "log": "/tmp/x3-iteration09-run2/session-20260912-162050-2040.log",
+   "frame_records": 94,
+   "draws": 33285,
+   "routed": 22134,
+   "matched": 21656,
+   "match_fraction": 0.9784,
+   "gates": {
+    "gate1": 0,
+    "gate2": 4616,
+    "gate3": 1025,
+    "gate4": 5510,
+    "gate5": 0,
+    "gate6": 478
+   },
+   "taa_attempted": 89,
+   "taa_resolved": 89,
+   "taa_history": 83,
+   "taa_skip": {
+    "0": 89,
+    "2": 5
+   },
+   "taa_result": {
+    "00000000": 89,
+    "00000001": 5
+   },
+   "resolved_without_history": 6,
+   "apply_failures": 0,
+   "restore_failures": 0,
+   "state_shadow": {
+    "rs_queries": 199484,
+    "rs_hits": 199481,
+    "rs_gets": 1249,
+    "rs_resyncs": 0
+   },
+   "scene_end_source": {
+    "hook": 89,
+    "none": 5
+   },
+   "scene_end_check": {
+    "0": 5,
+    "1": 89
+   },
+   "camera_policy": {
+    "1": 5,
+    "2": 89
+   },
+   "camera_valid": {
+    "0": 5,
+    "1": 89
+   },
+   "cut_events": 6,
+   "camera_cut_events": 0,
+   "routed_frames_without_camera": 0,
+   "camera_states": 38,
+   "camera_states_valid": 37,
+   "camera_invalid_frames": [
+    0
+   ],
+   "projections": [
+    {
+     "p00": 0.8,
+     "p11": 1.333333,
+     "records": 37,
+     "fov": {
+      "horizontal_deg": 102.68038349181982,
+      "vertical_deg": 73.73980904267732,
+      "aspect": 1.66666625
+     }
+    }
+   ],
+   "row_norm_deviation_max": 0.00022535021066372174,
+   "rotation_deg": {
+    "max": 5.8145,
+    "median": 0.8131
+   },
+   "reset_records": 0
+  },
+  {
+   "label": "run6",
+   "log": "/tmp/x3-bottleX3-run6/session-20260912-171241-212.log",
+   "frame_records": 278,
+   "draws": 93278,
+   "routed": 47213,
+   "matched": 46818,
+   "match_fraction": 0.99163,
+   "gates": {
+    "gate1": 0,
+    "gate2": 30902,
+    "gate3": 1779,
+    "gate4": 13384,
+    "gate5": 0,
+    "gate6": 395
+   },
+   "taa_attempted": 214,
+   "taa_resolved": 214,
+   "taa_history": 203,
+   "taa_skip": {
+    "0": 214,
+    "2": 64
+   },
+   "taa_result": {
+    "00000000": 214,
+    "00000001": 64
+   },
+   "resolved_without_history": 11,
+   "apply_failures": 0,
+   "restore_failures": 0,
+   "state_shadow": {
+    "rs_queries": 431026,
+    "rs_hits": 431026,
+    "rs_gets": 3332,
+    "rs_resyncs": 24
+   },
+   "scene_end_source": {
+    "hook": 214,
+    "none": 64
+   },
+   "scene_end_check": {
+    "0": 40,
+    "1": 214,
+    "4": 24
+   },
+   "camera_policy": {
+    "1": 64,
+    "2": 214
+   },
+   "camera_valid": {
+    "0": 40,
+    "1": 238
+   },
+   "cut_events": 11,
+   "camera_cut_events": 0,
+   "routed_frames_without_camera": 0,
+   "camera_states": 85,
+   "camera_states_valid": 77,
+   "camera_invalid_frames": [
+    0,
+    300,
+    600,
+    1500,
+    1800,
+    2100,
+    2400,
+    2700
+   ],
+   "projections": [
+    {
+     "p00": 0.8,
+     "p11": 1.333333,
+     "records": 72,
+     "fov": {
+      "horizontal_deg": 102.68038349181982,
+      "vertical_deg": 73.73980904267732,
+      "aspect": 1.66666625
+     }
+    },
+    {
+     "p00": 0.8000767,
+     "p11": 1.333461,
+     "records": 5,
+     "fov": {
+      "horizontal_deg": 102.67502444075913,
+      "vertical_deg": 73.7345289863581,
+      "aspect": 1.6666664583533055
+     }
+    }
+   ],
+   "row_norm_deviation_max": 0.00018104023557374838,
+   "rotation_deg": {
+    "max": 8.7313,
+    "median": 1.0196
+   },
+   "reset_records": 0
+  }
+ ],
+ "precision": {
+  "rows": [
+   {
+    "label": "run1",
+    "view_row_norm_deviation_max": 0.00022535021066372174,
+    "projections": [
+     {
+      "p00": 0.8,
+      "p11": 1.333333,
+      "records": 38
+     }
+    ],
+    "draw_constants": {
+     "draws": 7881,
+     "agreeing": 7841,
+     "fraction": 0.99492,
+     "max_rotation_deviation": 1.9699249596046484,
+     "max_projection_deviation": 0.0003572674219065597
+    },
+    "capture_frame_deviations": {
+     "frames": 20,
+     "rotation_max": 1.9699249596046484,
+     "translation_max": 1.0,
+     "projection_max": 0.0003572674219065597
+    },
+    "motion_row_consistency": {
+     "status": "pass",
+     "max_error_px": 0.0676249293926503,
+     "unexplained_fraction": 0.0,
+     "sampled_pixels": 547267
+    },
+    "depth_cross_check": {
+     "status": "fail",
+     "max_error": 0.09428846836090088,
+     "worst_within_fraction": 0.2869801914286137,
+     "compared_pixels": 1390511
+    },
+    "readback_integrity": "pass"
+   },
+   {
+    "label": "run2",
+    "view_row_norm_deviation_max": 0.00022535021066372174,
+    "projections": [
+     {
+      "p00": 0.8,
+      "p11": 1.333333,
+      "records": 37
+     }
+    ],
+    "draw_constants": {
+     "draws": 11499,
+     "agreeing": 11419,
+     "fraction": 0.99304,
+     "max_rotation_deviation": 1.9989166596046484,
+     "max_projection_deviation": 0.00012779545128993597
+    },
+    "capture_frame_deviations": {
+     "frames": 24,
+     "rotation_max": 1.9989166596046484,
+     "translation_max": 1.0,
+     "projection_max": 0.00012779545128993597
+    },
+    "motion_row_consistency": {
+     "status": "pass",
+     "max_error_px": 0.06182288838368777,
+     "unexplained_fraction": 0.0,
+     "sampled_pixels": 763070
+    },
+    "depth_cross_check": {
+     "status": "fail",
+     "max_error": 0.224603533744812,
+     "worst_within_fraction": 0.24623091217580997,
+     "compared_pixels": 3094462
+    },
+    "readback_integrity": "pass"
+   },
+   {
+    "label": "run6",
+    "view_row_norm_deviation_max": 0.00018104023557374838,
+    "projections": [
+     {
+      "p00": 0.8,
+      "p11": 1.333333,
+      "records": 72
+     },
+     {
+      "p00": 0.8000767,
+      "p11": 1.333461,
+      "records": 5
+     }
+    ],
+    "draw_constants": {
+     "draws": 15258,
+     "agreeing": 15218,
+     "fraction": 0.99738,
+     "max_rotation_deviation": 1.9820709414437645,
+     "max_projection_deviation": 0.00010858813079539509
+    },
+    "capture_frame_deviations": {
+     "frames": 36,
+     "rotation_max": 1.9820709414437645,
+     "translation_max": 1.0,
+     "projection_max": 0.00010858813079539509
+    },
+    "motion_row_consistency": {
+     "status": "pass",
+     "max_error_px": 0.05911845154372486,
+     "unexplained_fraction": 0.0,
+     "sampled_pixels": 1195394
+    },
+    "depth_cross_check": {
+     "status": "fail",
+     "max_error": 0.15369808673858643,
+     "worst_within_fraction": 0.3346248242009762,
+     "compared_pixels": 3404646
+    },
+    "readback_integrity": "pass"
+   }
+  ],
+  "note": "x87 reduced precision computes 80-bit operations at 64-bit, a relative error near 1e-16: it would show up as a widened residual, not as a changed value. A residual that did not grow is evidence against any effect on the values the route reads."
+ },
+ "cost": {
+  "runs": [
+   {
+    "label": "run6",
+    "path": "/tmp/x3-bottleX3-run6/session-20260912-171241-212.log",
+    "configuration": {
+     "motion_output": {
+      "requested": "1",
+      "taa": "1",
+      "taa_debug": "1",
+      "jitter": "1",
+      "rt_mode": "perdraw",
+      "temporal_consumer": "1",
+      "scene_hook": "1",
+      "state_shadow": "1",
+      "hdr": "0",
+      "frame_log": "60"
+     },
+     "mesh_cache": {
+      "requested": "0",
+      "enabled": "0",
+      "activation": "await_public_mesh_and_buffer_contract",
+      "adjacency_metric_scope": "hook_service",
+      "restart_on_cleanup_failure": "1"
+     },
+     "profiler": {
+      "enabled": "1",
+      "interval_us": "2000",
+      "report_s": "5"
+     },
+     "status": {
+      "object_trace": "active",
+      "camera_state": "active",
+      "scene_hook": "active",
+      "object_lifetime": "active_without_baseline"
+     },
+     "clock_hz": 10000000
+    },
+    "scene": {
+     "threshold_ms": 45.0,
+     "windows": 211,
+     "fast_occupancy": 0.9526,
+     "histogram_10ms_bins": {
+      "0": 36,
+      "10": 77,
+      "20": 45,
+      "30": 36,
+      "40": 7,
+      "50": 5,
+      "60": 1,
+      "70": 1,
+      "120": 2,
+      "260": 1
+     },
+     "fast": {
+      "windows": 201,
+      "frames": 12751,
+      "mean_ms": {
+       "n": 201,
+       "p10": 8.371,
+       "median": 16.911,
+       "p90": 37.345,
+       "min": 8.283,
+       "max": 43.376
+      },
+      "min_ms": {
+       "n": 201,
+       "p10": 4.979,
+       "median": 14.576,
+       "p90": 34.659,
+       "min": 1.84,
+       "max": 38.19
+      },
+      "draws_per_frame": {
+       "n": 201,
+       "p10": 60.2,
+       "median": 358.4,
+       "p90": 739.4,
+       "min": 8.0,
+       "max": 871.8
+      },
+      "draw_backend_us": {
+       "n": 201,
+       "p10": 2.84,
+       "median": 2.978,
+       "p90": 3.242,
+       "min": 2.027,
+       "max": 10.844
+      },
+      "present_normal_us": {
+       "n": 201,
+       "p10": 10.382,
+       "median": 32.759,
+       "p90": 78.162,
+       "min": 3.293,
+       "max": 105.919
+      },
+      "stretch_backend_us": {
+       "n": 189,
+       "p10": 1.255,
+       "median": 1.36,
+       "p90": 2.368,
+       "min": 1.114,
+       "max": 3.962
+      },
+      "log_flush_us": {
+       "n": 201,
+       "p10": 0.476,
+       "median": 0.585,
+       "p90": 0.683,
+       "min": 0.151,
+       "max": 1.282
+      },
+      "log_flush_per_frame": {
+       "n": 201,
+       "p10": 1.008,
+       "median": 1.017,
+       "p90": 1.037,
+       "min": 1.008,
+       "max": 1.059
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 201,
+       "p10": 126.2,
+       "median": 5255.1,
+       "p90": 15926.3,
+       "min": 36.9,
+       "max": 18219.3
+      },
+      "taa_run_us_per_frame": {
+       "n": 201,
+       "p10": 0.0,
+       "median": 308.7,
+       "p90": 414.2,
+       "min": 0.0,
+       "max": 1012.9
+      },
+      "route_metrics_us_per_frame": {
+       "route_draw": {
+        "n": 171,
+        "p10": 145.5,
+        "median": 1208.8,
+        "p90": 3167.4,
+        "min": 26.0,
+        "max": 3523.9
+       },
+       "route_fill": {
+        "n": 183,
+        "p10": 52.4,
+        "median": 62.0,
+        "p90": 79.2,
+        "min": 34.0,
+        "max": 174.9
+       },
+       "route_gate": {
+        "n": 201,
+        "p10": 123.3,
+        "median": 4084.1,
+        "p90": 12485.5,
+        "min": 2.3,
+        "max": 14347.3
+       },
+       "route_jitter": {
+        "n": 171,
+        "p10": 18.5,
+        "median": 104.0,
+        "p90": 264.8,
+        "min": 2.3,
+        "max": 290.5
+       },
+       "route_set_rt": {
+        "n": 171,
+        "p10": 71.4,
+        "median": 587.9,
+        "p90": 1555.9,
+        "min": 11.6,
+        "max": 1727.0
+       },
+       "taa_copy_back": {
+        "n": 171,
+        "p10": 0.8,
+        "median": 0.9,
+        "p90": 1.3,
+        "min": 0.6,
+        "max": 9.7
+       },
+       "taa_copy_color": {
+        "n": 171,
+        "p10": 3.4,
+        "median": 3.8,
+        "p90": 4.4,
+        "min": 2.7,
+        "max": 6.0
+       },
+       "taa_copy_depth": {
+        "n": 171,
+        "p10": 1.8,
+        "median": 2.1,
+        "p90": 2.7,
+        "min": 1.5,
+        "max": 5.2
+       },
+       "taa_resolve_draw": {
+        "n": 171,
+        "p10": 213.9,
+        "median": 281.8,
+        "p90": 375.8,
+        "min": 179.2,
+        "max": 975.7
+       },
+       "taa_run": {
+        "n": 171,
+        "p10": 257.3,
+        "median": 323.8,
+        "p90": 422.7,
+        "min": 222.3,
+        "max": 1012.9
+       },
+       "taa_state_apply": {
+        "n": 171,
+        "p10": 13.6,
+        "median": 15.1,
+        "p90": 19.6,
+        "min": 12.5,
+        "max": 28.3
+       },
+       "taa_state_capture": {
+        "n": 171,
+        "p10": 6.2,
+        "median": 8.0,
+        "p90": 9.1,
+        "min": 5.1,
+        "max": 12.5
+       }
+      },
+      "route_metrics_us_per_call": {
+       "route_draw": {
+        "n": 171,
+        "p10": 4.973,
+        "median": 5.094,
+        "p90": 5.408,
+        "min": 4.733,
+        "max": 6.717
+       },
+       "route_fill": {
+        "n": 183,
+        "p10": 52.351,
+        "median": 61.967,
+        "p90": 79.238,
+        "min": 34.251,
+        "max": 174.908
+       },
+       "route_gate": {
+        "n": 201,
+        "p10": 0.317,
+        "median": 14.191,
+        "p90": 15.749,
+        "min": 0.181,
+        "max": 17.269
+       },
+       "route_jitter": {
+        "n": 171,
+        "p10": 0.167,
+        "median": 0.172,
+        "p90": 0.178,
+        "min": 0.16,
+        "max": 0.198
+       },
+       "route_set_rt": {
+        "n": 171,
+        "p10": 0.604,
+        "median": 0.626,
+        "p90": 0.661,
+        "min": 0.563,
+        "max": 0.794
+       },
+       "taa_copy_back": {
+        "n": 171,
+        "p10": 0.752,
+        "median": 0.907,
+        "p90": 1.339,
+        "min": 0.617,
+        "max": 9.662
+       },
+       "taa_copy_color": {
+        "n": 171,
+        "p10": 3.359,
+        "median": 3.793,
+        "p90": 4.4,
+        "min": 2.662,
+        "max": 5.975
+       },
+       "taa_copy_depth": {
+        "n": 171,
+        "p10": 1.848,
+        "median": 2.121,
+        "p90": 2.672,
+        "min": 1.527,
+        "max": 5.178
+       },
+       "taa_resolve_draw": {
+        "n": 171,
+        "p10": 215.485,
+        "median": 281.842,
+        "p90": 375.833,
+        "min": 179.23,
+        "max": 1011.8
+       },
+       "taa_run": {
+        "n": 171,
+        "p10": 257.262,
+        "median": 323.804,
+        "p90": 421.568,
+        "min": 222.316,
+        "max": 1050.426
+       },
+       "taa_state_apply": {
+        "n": 171,
+        "p10": 13.605,
+        "median": 15.187,
+        "p90": 19.649,
+        "min": 12.369,
+        "max": 28.343
+       },
+       "taa_state_capture": {
+        "n": 171,
+        "p10": 6.123,
+        "median": 7.96,
+        "p90": 8.939,
+        "min": 5.088,
+        "max": 12.492
+       }
+      }
+     },
+     "slow": {
+      "windows": 10,
+      "frames": 174,
+      "mean_ms": {
+       "n": 10,
+       "p10": 53.779,
+       "median": 64.435,
+       "p90": 138.873,
+       "min": 50.328,
+       "max": 266.946
+      },
+      "min_ms": {
+       "n": 10,
+       "p10": 17.839,
+       "median": 36.662,
+       "p90": 42.117,
+       "min": 16.162,
+       "max": 45.892
+      },
+      "draws_per_frame": {
+       "n": 10,
+       "p10": 312.2,
+       "median": 854.9,
+       "p90": 868.7,
+       "min": 278.1,
+       "max": 869.2
+      },
+      "draw_backend_us": {
+       "n": 10,
+       "p10": 2.829,
+       "median": 2.861,
+       "p90": 2.923,
+       "min": 2.828,
+       "max": 2.96
+      },
+      "present_normal_us": {
+       "n": 10,
+       "p10": 41.164,
+       "median": 90.977,
+       "p90": 99.007,
+       "min": 39.044,
+       "max": 99.029
+      },
+      "stretch_backend_us": {
+       "n": 10,
+       "p10": 1.329,
+       "median": 1.378,
+       "p90": 1.552,
+       "min": 1.283,
+       "max": 1.788
+      },
+      "log_flush_us": {
+       "n": 10,
+       "p10": 0.492,
+       "median": 0.585,
+       "p90": 0.686,
+       "min": 0.421,
+       "max": 0.859
+      },
+      "log_flush_per_frame": {
+       "n": 10,
+       "p10": 1.04,
+       "median": 1.053,
+       "p90": 1.113,
+       "min": 1.038,
+       "max": 1.125
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 10,
+       "p10": 5982.2,
+       "median": 17074.9,
+       "p90": 17315.0,
+       "min": 5432.5,
+       "max": 17360.1
+      },
+      "taa_run_us_per_frame": {
+       "n": 10,
+       "p10": 263.3,
+       "median": 295.4,
+       "p90": 339.6,
+       "min": 259.0,
+       "max": 359.8
+      },
+      "route_metrics_us_per_frame": {
+       "route_draw": {
+        "n": 10,
+        "p10": 1112.7,
+        "median": 3349.6,
+        "p90": 3393.5,
+        "min": 990.6,
+        "max": 3420.6
+       },
+       "route_fill": {
+        "n": 10,
+        "p10": 61.3,
+        "median": 68.6,
+        "p90": 78.5,
+        "min": 60.1,
+        "max": 79.0
+       },
+       "route_gate": {
+        "n": 10,
+        "p10": 4699.3,
+        "median": 13366.6,
+        "p90": 13571.1,
+        "min": 4274.4,
+        "max": 13606.8
+       },
+       "route_jitter": {
+        "n": 10,
+        "p10": 97.8,
+        "median": 288.0,
+        "p90": 291.7,
+        "min": 88.5,
+        "max": 296.1
+       },
+       "route_set_rt": {
+        "n": 10,
+        "p10": 526.0,
+        "median": 1638.4,
+        "p90": 1657.3,
+        "min": 474.7,
+        "max": 1667.3
+       },
+       "taa_copy_back": {
+        "n": 10,
+        "p10": 0.8,
+        "median": 0.9,
+        "p90": 1.0,
+        "min": 0.8,
+        "max": 1.1
+       },
+       "taa_copy_color": {
+        "n": 10,
+        "p10": 3.8,
+        "median": 4.2,
+        "p90": 4.5,
+        "min": 3.7,
+        "max": 4.9
+       },
+       "taa_copy_depth": {
+        "n": 10,
+        "p10": 2.1,
+        "median": 2.2,
+        "p90": 2.5,
+        "min": 2.1,
+        "max": 3.1
+       },
+       "taa_resolve_draw": {
+        "n": 10,
+        "p10": 218.0,
+        "median": 252.3,
+        "p90": 299.3,
+        "min": 215.0,
+        "max": 318.3
+       },
+       "taa_run": {
+        "n": 10,
+        "p10": 263.3,
+        "median": 295.4,
+        "p90": 339.6,
+        "min": 259.0,
+        "max": 359.8
+       },
+       "taa_state_apply": {
+        "n": 10,
+        "p10": 14.8,
+        "median": 15.5,
+        "p90": 15.9,
+        "min": 14.7,
+        "max": 16.2
+       },
+       "taa_state_capture": {
+        "n": 10,
+        "p10": 8.3,
+        "median": 8.6,
+        "p90": 9.6,
+        "min": 8.1,
+        "max": 9.7
+       }
+      },
+      "route_metrics_us_per_call": {
+       "route_draw": {
+        "n": 10,
+        "p10": 4.955,
+        "median": 4.981,
+        "p90": 5.047,
+        "min": 4.824,
+        "max": 5.137
+       },
+       "route_fill": {
+        "n": 10,
+        "p10": 61.295,
+        "median": 68.642,
+        "p90": 76.88,
+        "min": 60.05,
+        "max": 78.991
+       },
+       "route_gate": {
+        "n": 10,
+        "p10": 15.195,
+        "median": 15.568,
+        "p90": 15.739,
+        "min": 15.021,
+        "max": 15.74
+       },
+       "route_jitter": {
+        "n": 10,
+        "p10": 0.171,
+        "median": 0.174,
+        "p90": 0.176,
+        "min": 0.168,
+        "max": 0.176
+       },
+       "route_set_rt": {
+        "n": 10,
+        "p10": 0.587,
+        "median": 0.609,
+        "p90": 0.623,
+        "min": 0.578,
+        "max": 0.661
+       },
+       "taa_copy_back": {
+        "n": 10,
+        "p10": 0.789,
+        "median": 0.9,
+        "p90": 1.017,
+        "min": 0.762,
+        "max": 1.088
+       },
+       "taa_copy_color": {
+        "n": 10,
+        "p10": 3.908,
+        "median": 4.166,
+        "p90": 4.514,
+        "min": 3.789,
+        "max": 4.85
+       },
+       "taa_copy_depth": {
+        "n": 10,
+        "p10": 2.115,
+        "median": 2.214,
+        "p90": 2.555,
+        "min": 2.1,
+        "max": 3.055
+       },
+       "taa_resolve_draw": {
+        "n": 10,
+        "p10": 217.951,
+        "median": 257.641,
+        "p90": 299.256,
+        "min": 214.975,
+        "max": 318.256
+       },
+       "taa_run": {
+        "n": 10,
+        "p10": 263.297,
+        "median": 300.832,
+        "p90": 339.571,
+        "min": 259.012,
+        "max": 359.756
+       },
+       "taa_state_apply": {
+        "n": 10,
+        "p10": 14.848,
+        "median": 15.461,
+        "p90": 16.223,
+        "min": 14.678,
+        "max": 16.5
+       },
+       "taa_state_capture": {
+        "n": 10,
+        "p10": 8.304,
+        "median": 8.638,
+        "p90": 9.646,
+        "min": 8.1,
+        "max": 9.725
+       }
+      }
+     }
+    },
+    "menu": {
+     "windows": 12,
+     "frames": 896,
+     "mean_ms": {
+      "n": 12,
+      "p10": 11.685,
+      "median": 12.342,
+      "p90": 13.778,
+      "min": 11.542,
+      "max": 39.055
+     },
+     "min_ms": {
+      "n": 12,
+      "p10": 10.766,
+      "median": 10.991,
+      "p90": 11.494,
+      "min": 10.457,
+      "max": 11.522
+     },
+     "draws_per_frame": {
+      "n": 12,
+      "p10": 636.2,
+      "median": 648.3,
+      "p90": 680.6,
+      "min": 522.0,
+      "max": 688.6
+     },
+     "draw_backend_us": {
+      "n": 12,
+      "p10": 3.002,
+      "median": 3.072,
+      "p90": 3.093,
+      "min": 2.975,
+      "max": 3.457
+     },
+     "present_normal_us": {
+      "n": 12,
+      "p10": 8.484,
+      "median": 9.545,
+      "p90": 10.794,
+      "min": 6.957,
+      "max": 10.867
+     },
+     "stretch_backend_us": {
+      "n": 12,
+      "p10": 1.977,
+      "median": 2.157,
+      "p90": 2.462,
+      "min": 1.922,
+      "max": 3.336
+     },
+     "log_flush_us": {
+      "n": 12,
+      "p10": 0.42,
+      "median": 0.497,
+      "p90": 0.547,
+      "min": 0.412,
+      "max": 0.556
+     },
+     "log_flush_per_frame": {
+      "n": 12,
+      "p10": 1.012,
+      "median": 1.012,
+      "p90": 1.014,
+      "min": 1.012,
+      "max": 1.143
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 12,
+      "p10": 114.0,
+      "median": 118.0,
+      "p90": 122.4,
+      "min": 92.1,
+      "max": 125.0
+     },
+     "taa_run_us_per_frame": {
+      "n": 12,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {
+      "route_gate": {
+       "n": 12,
+       "p10": 114.0,
+       "median": 118.0,
+       "p90": 122.4,
+       "min": 92.1,
+       "max": 125.0
+      }
+     },
+     "route_metrics_us_per_call": {
+      "route_gate": {
+       "n": 12,
+       "p10": 0.178,
+       "median": 0.18,
+       "p90": 0.184,
+       "min": 0.177,
+       "max": 0.185
+      }
+     }
+    },
+    "profiler_share": {
+     "scene": {
+      "status": "present",
+      "reports": 59,
+      "covered_s": 295.1,
+      "ticks": 71221,
+      "ticks_per_s": 241.3,
+      "threads_median": 32.0,
+      "suspend_us_per_thread": 123.0,
+      "share_of_wall": 0.02968,
+      "ms_per_frame_at_median": 0.546
+     },
+     "menu": {
+      "status": "present",
+      "reports": 72,
+      "covered_s": 360.2,
+      "ticks": 91616,
+      "ticks_per_s": 254.4,
+      "threads_median": 32.0,
+      "suspend_us_per_thread": 123.0,
+      "share_of_wall": 0.03129,
+      "ms_per_frame_at_median": 0.386
+     }
+    },
+    "telemetry_stamps": {
+     "status": "estimated",
+     "menu_gate_us_per_call": 0.1801,
+     "stamp_us_assumed": 0.1801,
+     "spans_per_frame_median": 1904.7,
+     "ms_per_frame": 0.343
+    },
+    "frame_records": {
+     "records": 278,
+     "normal": {
+      "status": "evaluated",
+      "records": 178,
+      "draws": {
+       "n": 178,
+       "p10": 59.0,
+       "median": 198.5,
+       "p90": 659.6,
+       "min": 28,
+       "max": 871
+      },
+      "routed": {
+       "n": 178,
+       "p10": 19.0,
+       "median": 120.0,
+       "p90": 515.6,
+       "min": 4,
+       "max": 683
+      },
+      "routed_fraction": {
+       "n": 178,
+       "p10": 0.2923,
+       "median": 0.5921,
+       "p90": 0.7826,
+       "min": 0.0976,
+       "max": 0.803
+      },
+      "route_exclusive_us": {
+       "n": 178,
+       "p10": 552.4,
+       "median": 3259.0,
+       "p90": 13068.7,
+       "min": 174.8,
+       "max": 19185.3
+      },
+      "route_us_per_draw": {
+       "n": 178,
+       "p10": 8.909,
+       "median": 16.333,
+       "p90": 20.13,
+       "min": 4.263,
+       "max": 22.889
+      },
+      "route_us_per_routed_draw": {
+       "n": 178,
+       "p10": 25.481,
+       "median": 26.821,
+       "p90": 30.5,
+       "min": 24.201,
+       "max": 67.8
+      },
+      "gate_us": {
+       "n": 178,
+       "p10": 390.3,
+       "median": 2522.5,
+       "p90": 10212.0,
+       "min": 92.0,
+       "max": 14883.1
+      },
+      "route_draw_us": {
+       "n": 178,
+       "p10": 98.9,
+       "median": 613.2,
+       "p90": 2581.5,
+       "min": 22.9,
+       "max": 3939.4
+      },
+      "fill_us": {
+       "n": 178,
+       "p10": 44.0,
+       "median": 56.0,
+       "p90": 86.0,
+       "min": 35.0,
+       "max": 156.0
+      },
+      "jitter_us": {
+       "n": 178,
+       "p10": 11.5,
+       "median": 59.5,
+       "p90": 220.7,
+       "min": 1.5,
+       "max": 314.3
+      },
+      "lazy_flush_us": {
+       "n": 178,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "set_rt_us": {
+       "n": 178,
+       "p10": 48.0,
+       "median": 310.8,
+       "p90": 1262.3,
+       "min": 9.7,
+       "max": 1822.7
+      },
+      "taa_run_us": {
+       "n": 178,
+       "p10": 233.0,
+       "median": 303.6,
+       "p90": 425.2,
+       "min": 103.2,
+       "max": 1254.3
+      },
+      "taa_capture_us": {
+       "n": 178,
+       "p10": 5.3,
+       "median": 7.5,
+       "p90": 8.7,
+       "min": 4.5,
+       "max": 12.9
+      },
+      "taa_copy_color_us": {
+       "n": 178,
+       "p10": 2.6,
+       "median": 3.5,
+       "p90": 4.6,
+       "min": 1.0,
+       "max": 47.1
+      },
+      "taa_copy_depth_us": {
+       "n": 178,
+       "p10": 1.7,
+       "median": 2.1,
+       "p90": 2.4,
+       "min": 1.3,
+       "max": 7.4
+      },
+      "taa_draw_us": {
+       "n": 178,
+       "p10": 188.7,
+       "median": 264.9,
+       "p90": 377.5,
+       "min": 65.4,
+       "max": 1215.8
+      },
+      "taa_apply_us": {
+       "n": 178,
+       "p10": 12.2,
+       "median": 14.5,
+       "p90": 18.2,
+       "min": 11.3,
+       "max": 143.3
+      },
+      "taa_copy_back_us": {
+       "n": 178,
+       "p10": 0.6,
+       "median": 0.8,
+       "p90": 1.2,
+       "min": 0.4,
+       "max": 25.3
+      },
+      "readback_us": {
+       "n": 178,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "gate_us_per_draw": {
+       "n": 178,
+       "p10": 6.312,
+       "median": 12.301,
+       "p90": 15.728,
+       "min": 2.244,
+       "max": 17.908
+      },
+      "route_draw_us_per_routed": {
+       "n": 178,
+       "p10": 4.844,
+       "median": 5.094,
+       "p90": 5.67,
+       "min": 3.943,
+       "max": 6.9
+      },
+      "set_rt_us_per_call": {
+       "n": 178,
+       "p10": 0.565,
+       "median": 0.623,
+       "p90": 0.699,
+       "min": 0.393,
+       "max": 0.8
+      },
+      "set_rt_per_routed_draw": {
+       "n": 178,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4.0,
+       "max": 4.0
+      },
+      "jitter_us_per_write": {
+       "n": 178,
+       "p10": 0.1585,
+       "median": 0.1694,
+       "p90": 0.1811,
+       "min": 0.1504,
+       "max": 0.2824
+      },
+      "jitter_writes_per_routed": {
+       "n": 178,
+       "p10": 2.408,
+       "median": 2.832,
+       "p90": 4.0,
+       "min": 2.0,
+       "max": 7.5
+      },
+      "scene_end_source": {
+       "hook": 178
+      },
+      "scene_end_check": {
+       "1": 178
+      },
+      "rt_mode": {
+       "perdraw": 178
+      },
+      "timing": {
+       "cpu_qpc": 178
+      }
+     },
+     "capture": {
+      "status": "evaluated",
+      "records": 36,
+      "draws": {
+       "n": 36,
+       "p10": 59.5,
+       "median": 490.5,
+       "p90": 803.0,
+       "min": 59,
+       "max": 809
+      },
+      "routed": {
+       "n": 36,
+       "p10": 19.0,
+       "median": 385.5,
+       "p90": 635.0,
+       "min": 19,
+       "max": 639
+      },
+      "routed_fraction": {
+       "n": 36,
+       "p10": 0.3194,
+       "median": 0.7757,
+       "p90": 0.7913,
+       "min": 0.3115,
+       "max": 0.7951
+      },
+      "route_exclusive_us": {
+       "n": 36,
+       "p10": 608.3,
+       "median": 10572.1,
+       "p90": 17600.6,
+       "min": 588.8,
+       "max": 18411.8
+      },
+      "route_us_per_draw": {
+       "n": 36,
+       "p10": 10.254,
+       "median": 21.554,
+       "p90": 23.71,
+       "min": 9.855,
+       "max": 24.798
+      },
+      "route_us_per_routed_draw": {
+       "n": 36,
+       "p10": 27.464,
+       "median": 28.639,
+       "p90": 32.303,
+       "min": 27.25,
+       "max": 37.198
+      },
+      "gate_us": {
+       "n": 36,
+       "p10": 405.5,
+       "median": 7806.6,
+       "p90": 12947.5,
+       "min": 399.7,
+       "max": 13704.0
+      },
+      "route_draw_us": {
+       "n": 36,
+       "p10": 132.1,
+       "median": 2515.6,
+       "p90": 4251.9,
+       "min": 119.9,
+       "max": 4570.7
+      },
+      "fill_us": {
+       "n": 36,
+       "p10": 43.8,
+       "median": 59.4,
+       "p90": 83.2,
+       "min": 39.1,
+       "max": 98.0
+      },
+      "jitter_us": {
+       "n": 36,
+       "p10": 14.9,
+       "median": 190.2,
+       "p90": 324.0,
+       "min": 14.4,
+       "max": 365.4
+      },
+      "lazy_flush_us": {
+       "n": 36,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "set_rt_us": {
+       "n": 36,
+       "p10": 69.5,
+       "median": 1394.4,
+       "p90": 2330.2,
+       "min": 58.3,
+       "max": 2544.7
+      },
+      "taa_run_us": {
+       "n": 36,
+       "p10": 161.6,
+       "median": 217.4,
+       "p90": 484.1,
+       "min": 130.5,
+       "max": 884.5
+      },
+      "taa_capture_us": {
+       "n": 36,
+       "p10": 9.0,
+       "median": 10.5,
+       "p90": 15.1,
+       "min": 8.2,
+       "max": 44.7
+      },
+      "taa_copy_color_us": {
+       "n": 36,
+       "p10": 1.9,
+       "median": 2.4,
+       "p90": 4.0,
+       "min": 1.1,
+       "max": 10.3
+      },
+      "taa_copy_depth_us": {
+       "n": 36,
+       "p10": 2.5,
+       "median": 3.2,
+       "p90": 7.5,
+       "min": 2.2,
+       "max": 7.9
+      },
+      "taa_draw_us": {
+       "n": 36,
+       "p10": 124.0,
+       "median": 161.3,
+       "p90": 368.2,
+       "min": 90.3,
+       "max": 645.8
+      },
+      "taa_apply_us": {
+       "n": 36,
+       "p10": 12.8,
+       "median": 15.2,
+       "p90": 25.4,
+       "min": 12.2,
+       "max": 57.4
+      },
+      "taa_copy_back_us": {
+       "n": 36,
+       "p10": 3.0,
+       "median": 3.8,
+       "p90": 6.4,
+       "min": 2.6,
+       "max": 41.0
+      },
+      "readback_us": {
+       "n": 36,
+       "p10": 31861.6,
+       "median": 36323.1,
+       "p90": 44691.9,
+       "min": 30621.0,
+       "max": 49565.9
+      },
+      "gate_us_per_draw": {
+       "n": 36,
+       "p10": 6.843,
+       "median": 15.927,
+       "p90": 16.994,
+       "min": 6.685,
+       "max": 17.821
+      },
+      "route_draw_us_per_routed": {
+       "n": 36,
+       "p10": 6.515,
+       "median": 6.768,
+       "p90": 7.41,
+       "min": 6.311,
+       "max": 9.926
+      },
+      "set_rt_us_per_call": {
+       "n": 36,
+       "p10": 0.861,
+       "median": 0.922,
+       "p90": 0.997,
+       "min": 0.767,
+       "max": 1.109
+      },
+      "set_rt_per_routed_draw": {
+       "n": 36,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4.0,
+       "max": 4.0
+      },
+      "jitter_us_per_write": {
+       "n": 36,
+       "p10": 0.1993,
+       "median": 0.2073,
+       "p90": 0.2466,
+       "min": 0.196,
+       "max": 0.7199
+      },
+      "jitter_writes_per_routed": {
+       "n": 36,
+       "p10": 2.431,
+       "median": 2.467,
+       "p90": 3.632,
+       "min": 2.39,
+       "max": 3.789
+      },
+      "readbacks": {
+       "n": 36,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4,
+       "max": 4
+      },
+      "readback_us_per_readback": {
+       "n": 36,
+       "p10": 7965.4,
+       "median": 9080.8,
+       "p90": 11173.0,
+       "min": 7655.2,
+       "max": 12391.5
+      },
+      "scene_end_source": {
+       "hook": 36
+      },
+      "scene_end_check": {
+       "1": 36
+      },
+      "rt_mode": {
+       "perdraw": 36
+      },
+      "timing": {
+       "cpu_qpc": 36
+      }
+     }
+    },
+    "phases": [
+     {
+      "phase": 0,
+      "label": "scene",
+      "windows": 2,
+      "usable": 0,
+      "capture_windows": 0,
+      "frames": [
+       2,
+       4
+      ],
+      "since_s": [
+       4.534,
+       6.436
+      ],
+      "mean_ms_median": null,
+      "route_us_per_frame_median": null,
+      "draws_median": 0.5,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": false,
+      "flat": true
+     },
+     {
+      "phase": 1,
+      "label": "menu",
+      "windows": 11,
+      "usable": 11,
+      "capture_windows": 0,
+      "frames": [
+       89,
+       832
+      ],
+      "since_s": [
+       14.924,
+       50.536
+      ],
+      "mean_ms_median": 12.325,
+      "route_us_per_frame_median": 118.5,
+      "draws_median": 650.2,
+      "draws_spread_fraction": 0.069,
+      "inside_menu_band": true,
+      "flat": true
+     },
+     {
+      "phase": 2,
+      "label": "scene",
+      "windows": 13,
+      "usable": 12,
+      "capture_windows": 0,
+      "frames": [
+       891,
+       1492
+      ],
+      "since_s": [
+       70.406,
+       84.942
+      ],
+      "mean_ms_median": 21.773,
+      "route_us_per_frame_median": 7764.7,
+      "draws_median": 462.7,
+      "draws_spread_fraction": 0.6846,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 3,
+      "label": "scene",
+      "windows": 30,
+      "usable": 30,
+      "capture_windows": 0,
+      "frames": [
+       1624,
+       4367
+      ],
+      "since_s": [
+       91.986,
+       121.671
+      ],
+      "mean_ms_median": 12.126,
+      "route_us_per_frame_median": 121.1,
+      "draws_median": 646.7,
+      "draws_spread_fraction": 1.0578,
+      "inside_menu_band": true,
+      "flat": false
+     },
+     {
+      "phase": 4,
+      "label": "scene",
+      "windows": 164,
+      "usable": 152,
+      "capture_windows": 12,
+      "frames": [
+       4389,
+       12665
+      ],
+      "since_s": [
+       150.617,
+       333.593
+      ],
+      "mean_ms_median": 23.923,
+      "route_us_per_frame_median": 7270.8,
+      "draws_median": 404.1,
+      "draws_spread_fraction": 1.8014,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 5,
+      "label": "scene",
+      "windows": 23,
+      "usable": 17,
+      "capture_windows": 5,
+      "frames": [
+       12707,
+       14408
+      ],
+      "since_s": [
+       339.662,
+       364.094
+      ],
+      "mean_ms_median": 11.711,
+      "route_us_per_frame_median": 3352.6,
+      "draws_median": 81.6,
+      "draws_spread_fraction": 3.7276,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 6,
+      "label": "menu",
+      "windows": 1,
+      "usable": 1,
+      "capture_windows": 0,
+      "frames": [
+       14522,
+       14522
+      ],
+      "since_s": [
+       372.702,
+       372.702
+      ],
+      "mean_ms_median": 13.792,
+      "route_us_per_frame_median": 117.4,
+      "draws_median": 646.4,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": true,
+      "flat": true
+     }
+    ],
+    "phase_check": {
+     "status": "disagreement",
+     "phases": [
+      {
+       "frames": [
+        2,
+        4
+       ],
+       "label": "scene",
+       "records": 0,
+       "routed_records": 0,
+       "agrees": true
+      },
+      {
+       "frames": [
+        89,
+        832
+       ],
+       "label": "menu",
+       "records": 12,
+       "routed_records": 0,
+       "agrees": true
+      },
+      {
+       "frames": [
+        891,
+        1492
+       ],
+       "label": "scene",
+       "records": 10,
+       "routed_records": 10,
+       "agrees": true
+      },
+      {
+       "frames": [
+        1624,
+        4367
+       ],
+       "label": "scene",
+       "records": 45,
+       "routed_records": 0,
+       "agrees": false
+      },
+      {
+       "frames": [
+        4389,
+        12665
+       ],
+       "label": "scene",
+       "records": 162,
+       "routed_records": 162,
+       "agrees": true
+      },
+      {
+       "frames": [
+        12707,
+        14408
+       ],
+       "label": "scene",
+       "records": 40,
+       "routed_records": 40,
+       "agrees": true
+      },
+      {
+       "frames": [
+        14522,
+        14522
+       ],
+       "label": "menu",
+       "records": 0,
+       "routed_records": 0,
+       "agrees": true
+      }
+     ]
+    }
+   },
+   {
+    "label": "run5",
+    "path": "/tmp/x3-bottleX3-run5/session-20260912-170743-352.log",
+    "configuration": {
+     "motion_output": {
+      "requested": "0",
+      "taa": "0",
+      "taa_debug": "0",
+      "jitter": "0",
+      "rt_mode": "perdraw",
+      "temporal_consumer": "0",
+      "scene_hook": "0",
+      "state_shadow": "1",
+      "hdr": "0",
+      "frame_log": "60"
+     },
+     "mesh_cache": {
+      "requested": "0",
+      "enabled": "0",
+      "activation": "await_public_mesh_and_buffer_contract",
+      "adjacency_metric_scope": "hook_service",
+      "restart_on_cleanup_failure": "1"
+     },
+     "profiler": {
+      "enabled": null,
+      "interval_us": null,
+      "report_s": null
+     },
+     "status": {
+      "object_trace": "disabled",
+      "camera_state": "disabled",
+      "scene_hook": "disabled",
+      "object_lifetime": "disabled"
+     },
+     "clock_hz": 10000000
+    },
+    "scene": {
+     "threshold_ms": 45.0,
+     "windows": 83,
+     "fast_occupancy": 1.0,
+     "histogram_10ms_bins": {
+      "0": 66,
+      "10": 16,
+      "20": 1
+     },
+     "fast": {
+      "windows": 83,
+      "frames": 9073,
+      "mean_ms": {
+       "n": 83,
+       "p10": 8.3,
+       "median": 8.423,
+       "p90": 11.492,
+       "min": 8.275,
+       "max": 23.996
+      },
+      "min_ms": {
+       "n": 83,
+       "p10": 3.007,
+       "median": 5.67,
+       "p90": 10.042,
+       "min": 2.14,
+       "max": 10.906
+      },
+      "draws_per_frame": {
+       "n": 83,
+       "p10": 63.1,
+       "median": 320.1,
+       "p90": 672.7,
+       "min": 40.0,
+       "max": 766.5
+      },
+      "draw_backend_us": {
+       "n": 83,
+       "p10": 2.46,
+       "median": 2.628,
+       "p90": 2.686,
+       "min": 2.235,
+       "max": 3.627
+      },
+      "present_normal_us": {
+       "n": 83,
+       "p10": 4.83,
+       "median": 6.305,
+       "p90": 8.758,
+       "min": 3.433,
+       "max": 10.737
+      },
+      "stretch_backend_us": {
+       "n": 83,
+       "p10": 1.344,
+       "median": 1.524,
+       "p90": 1.764,
+       "min": 1.178,
+       "max": 2.222
+      },
+      "log_flush_us": {
+       "n": 83,
+       "p10": 0.344,
+       "median": 0.433,
+       "p90": 0.516,
+       "min": 0.235,
+       "max": 0.717
+      },
+      "log_flush_per_frame": {
+       "n": 83,
+       "p10": 1.008,
+       "median": 1.008,
+       "p90": 1.011,
+       "min": 1.008,
+       "max": 1.062
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 83,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "taa_run_us_per_frame": {
+       "n": 83,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "route_metrics_us_per_frame": {},
+      "route_metrics_us_per_call": {}
+     },
+     "slow": {
+      "windows": 0
+     }
+    },
+    "menu": {
+     "windows": 8,
+     "frames": 704,
+     "mean_ms": {
+      "n": 8,
+      "p10": 9.219,
+      "median": 9.898,
+      "p90": 16.329,
+      "min": 8.925,
+      "max": 27.691
+     },
+     "min_ms": {
+      "n": 8,
+      "p10": 7.868,
+      "median": 8.111,
+      "p90": 8.394,
+      "min": 7.7,
+      "max": 8.523
+     },
+     "draws_per_frame": {
+      "n": 8,
+      "p10": 640.4,
+      "median": 644.4,
+      "p90": 677.0,
+      "min": 638.0,
+      "max": 683.2
+     },
+     "draw_backend_us": {
+      "n": 8,
+      "p10": 2.707,
+      "median": 2.737,
+      "p90": 2.778,
+      "min": 2.7,
+      "max": 2.8
+     },
+     "present_normal_us": {
+      "n": 8,
+      "p10": 6.006,
+      "median": 7.261,
+      "p90": 8.934,
+      "min": 5.661,
+      "max": 9.222
+     },
+     "stretch_backend_us": {
+      "n": 8,
+      "p10": 1.588,
+      "median": 1.802,
+      "p90": 1.923,
+      "min": 1.53,
+      "max": 2.003
+     },
+     "log_flush_us": {
+      "n": 8,
+      "p10": 0.498,
+      "median": 0.566,
+      "p90": 0.645,
+      "min": 0.489,
+      "max": 0.714
+     },
+     "log_flush_per_frame": {
+      "n": 8,
+      "p10": 1.009,
+      "median": 1.01,
+      "p90": 1.026,
+      "min": 1.009,
+      "max": 1.032
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 8,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "taa_run_us_per_frame": {
+      "n": 8,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {},
+     "route_metrics_us_per_call": {}
+    },
+    "profiler_share": {
+     "scene": {
+      "status": "absent",
+      "reason": "no profile_report delta records"
+     },
+     "menu": {
+      "status": "absent",
+      "reason": "no profile_report delta records"
+     }
+    },
+    "telemetry_stamps": {
+     "status": "estimated",
+     "menu_gate_us_per_call": null,
+     "stamp_us_assumed": 0.25,
+     "spans_per_frame_median": 0.0,
+     "ms_per_frame": 0.0
+    },
+    "frame_records": {
+     "records": 0,
+     "normal": {
+      "status": "unavailable",
+      "records": 0
+     },
+     "capture": {
+      "status": "unavailable",
+      "records": 0
+     }
+    },
+    "phases": [
+     {
+      "phase": 0,
+      "label": "scene",
+      "windows": 2,
+      "usable": 0,
+      "capture_windows": 0,
+      "frames": [
+       2,
+       4
+      ],
+      "since_s": [
+       3.64,
+       5.681
+      ],
+      "mean_ms_median": null,
+      "route_us_per_frame_median": null,
+      "draws_median": 0.5,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": false,
+      "flat": true
+     },
+     {
+      "phase": 1,
+      "label": "menu",
+      "windows": 9,
+      "usable": 7,
+      "capture_windows": 2,
+      "frames": [
+       120,
+       741
+      ],
+      "since_s": [
+       15.411,
+       48.856
+      ],
+      "mean_ms_median": 10.095,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 644.5,
+      "draws_spread_fraction": 0.0616,
+      "inside_menu_band": true,
+      "flat": true
+     },
+     {
+      "phase": 2,
+      "label": "scene",
+      "windows": 66,
+      "usable": 64,
+      "capture_windows": 2,
+      "frames": [
+       882,
+       7937
+      ],
+      "since_s": [
+       91.384,
+       157.378
+      ],
+      "mean_ms_median": 8.447,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 317.9,
+      "draws_spread_fraction": 1.9046,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 3,
+      "label": "scene",
+      "windows": 21,
+      "usable": 19,
+      "capture_windows": 2,
+      "frames": [
+       8063,
+       10233
+      ],
+      "since_s": [
+       165.383,
+       185.615
+      ],
+      "mean_ms_median": 8.382,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 368.3,
+      "draws_spread_fraction": 1.0179,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 4,
+      "label": "menu",
+      "windows": 1,
+      "usable": 1,
+      "capture_windows": 0,
+      "frames": [
+       10385,
+       10385
+      ],
+      "since_s": [
+       195.106,
+       195.106
+      ],
+      "mean_ms_median": 8.925,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 638.0,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": true,
+      "flat": true
+     }
+    ],
+    "phase_check": {
+     "status": "unavailable",
+     "reason": "no motion_output_frame records"
+    }
+   },
+   {
+    "label": "run1",
+    "path": "/tmp/x3-iteration09-run1/session-20260912-160404-1632.log",
+    "configuration": {
+     "motion_output": {
+      "requested": "1",
+      "taa": "1",
+      "taa_debug": "0",
+      "jitter": "1",
+      "rt_mode": "perdraw",
+      "temporal_consumer": "1",
+      "scene_hook": "0",
+      "state_shadow": "1",
+      "hdr": "0",
+      "frame_log": "60"
+     },
+     "mesh_cache": {
+      "requested": "0",
+      "enabled": "0",
+      "activation": "await_public_mesh_and_buffer_contract",
+      "adjacency_metric_scope": "hook_service",
+      "restart_on_cleanup_failure": "1"
+     },
+     "profiler": {
+      "enabled": "1",
+      "interval_us": "2000",
+      "report_s": "5"
+     },
+     "status": {
+      "object_trace": "active",
+      "camera_state": "active",
+      "scene_hook": "disabled",
+      "object_lifetime": "active_without_baseline"
+     },
+     "clock_hz": 10000000
+    },
+    "scene": {
+     "threshold_ms": 45.0,
+     "windows": 186,
+     "fast_occupancy": 0.6667,
+     "histogram_10ms_bins": {
+      "10": 7,
+      "20": 31,
+      "30": 64,
+      "40": 36,
+      "50": 17,
+      "60": 6,
+      "70": 24,
+      "80": 1
+     },
+     "fast": {
+      "windows": 124,
+      "frames": 4038,
+      "mean_ms": {
+       "n": 124,
+       "p10": 21.683,
+       "median": 33.076,
+       "p90": 41.705,
+       "min": 10.54,
+       "max": 44.961
+      },
+      "min_ms": {
+       "n": 124,
+       "p10": 19.452,
+       "median": 30.668,
+       "p90": 38.939,
+       "min": 9.892,
+       "max": 42.85
+      },
+      "draws_per_frame": {
+       "n": 124,
+       "p10": 160.0,
+       "median": 270.4,
+       "p90": 377.7,
+       "min": 40.0,
+       "max": 435.8
+      },
+      "draw_backend_us": {
+       "n": 124,
+       "p10": 2.563,
+       "median": 2.73,
+       "p90": 2.916,
+       "min": 2.454,
+       "max": 4.01
+      },
+      "present_normal_us": {
+       "n": 124,
+       "p10": 23.015,
+       "median": 32.508,
+       "p90": 40.092,
+       "min": 11.12,
+       "max": 47.156
+      },
+      "stretch_backend_us": {
+       "n": 124,
+       "p10": 0.715,
+       "median": 0.752,
+       "p90": 0.797,
+       "min": 0.658,
+       "max": 0.9
+      },
+      "log_flush_us": {
+       "n": 124,
+       "p10": 0.695,
+       "median": 0.738,
+       "p90": 0.813,
+       "min": 0.666,
+       "max": 5.894
+      },
+      "log_flush_per_frame": {
+       "n": 124,
+       "p10": 1.022,
+       "median": 1.033,
+       "p90": 1.042,
+       "min": 1.011,
+       "max": 1.083
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 124,
+       "p10": 2071.8,
+       "median": 4696.6,
+       "p90": 6659.6,
+       "min": 182.0,
+       "max": 8223.3
+      },
+      "taa_run_us_per_frame": {
+       "n": 124,
+       "p10": 293.2,
+       "median": 339.5,
+       "p90": 420.6,
+       "min": 282.9,
+       "max": 795.3
+      },
+      "route_metrics_us_per_frame": {
+       "route_draw": {
+        "n": 124,
+        "p10": 548.8,
+        "median": 1275.0,
+        "p90": 1823.1,
+        "min": 30.2,
+        "max": 2268.5
+       },
+       "route_fill": {
+        "n": 124,
+        "p10": 60.4,
+        "median": 66.5,
+        "p90": 83.5,
+        "min": 44.2,
+        "max": 272.9
+       },
+       "route_gate": {
+        "n": 124,
+        "p10": 1387.2,
+        "median": 3215.8,
+        "p90": 4565.9,
+        "min": 105.3,
+        "max": 5516.8
+       },
+       "route_jitter": {
+        "n": 124,
+        "p10": 68.0,
+        "median": 137.6,
+        "p90": 186.7,
+        "min": 2.3,
+        "max": 225.9
+       },
+       "route_set_rt": {
+        "n": 124,
+        "p10": 261.9,
+        "median": 603.5,
+        "p90": 860.7,
+        "min": 12.7,
+        "max": 1079.1
+       },
+       "taa_copy_back": {
+        "n": 124,
+        "p10": 0.9,
+        "median": 1.0,
+        "p90": 1.2,
+        "min": 0.9,
+        "max": 2.8
+       },
+       "taa_copy_color": {
+        "n": 124,
+        "p10": 2.3,
+        "median": 3.5,
+        "p90": 4.0,
+        "min": 1.8,
+        "max": 8.6
+       },
+       "taa_copy_depth": {
+        "n": 124,
+        "p10": 1.7,
+        "median": 1.8,
+        "p90": 2.0,
+        "min": 1.4,
+        "max": 2.5
+       },
+       "taa_resolve_draw": {
+        "n": 124,
+        "p10": 256.3,
+        "median": 300.5,
+        "p90": 377.1,
+        "min": 242.3,
+        "max": 755.7
+       },
+       "taa_run": {
+        "n": 124,
+        "p10": 293.2,
+        "median": 339.5,
+        "p90": 420.6,
+        "min": 282.9,
+        "max": 795.3
+       },
+       "taa_state_apply": {
+        "n": 124,
+        "p10": 15.5,
+        "median": 16.1,
+        "p90": 19.4,
+        "min": 14.6,
+        "max": 25.1
+       },
+       "taa_state_capture": {
+        "n": 124,
+        "p10": 7.5,
+        "median": 8.0,
+        "p90": 8.7,
+        "min": 5.7,
+        "max": 23.1
+       }
+      },
+      "route_metrics_us_per_call": {
+       "route_draw": {
+        "n": 124,
+        "p10": 6.606,
+        "median": 6.74,
+        "p90": 6.919,
+        "min": 6.18,
+        "max": 7.545
+       },
+       "route_fill": {
+        "n": 124,
+        "p10": 60.386,
+        "median": 66.474,
+        "p90": 83.519,
+        "min": 47.314,
+        "max": 272.913
+       },
+       "route_gate": {
+        "n": 124,
+        "p10": 8.729,
+        "median": 11.838,
+        "p90": 12.786,
+        "min": 2.634,
+        "max": 13.345
+       },
+       "route_jitter": {
+        "n": 124,
+        "p10": 0.268,
+        "median": 0.279,
+        "p90": 0.296,
+        "min": 0.261,
+        "max": 0.322
+       },
+       "route_set_rt": {
+        "n": 124,
+        "p10": 0.765,
+        "median": 0.785,
+        "p90": 0.815,
+        "min": 0.712,
+        "max": 0.867
+       },
+       "taa_copy_back": {
+        "n": 124,
+        "p10": 0.919,
+        "median": 1.0,
+        "p90": 1.16,
+        "min": 0.86,
+        "max": 2.821
+       },
+       "taa_copy_color": {
+        "n": 124,
+        "p10": 2.278,
+        "median": 3.496,
+        "p90": 3.975,
+        "min": 1.839,
+        "max": 8.643
+       },
+       "taa_copy_depth": {
+        "n": 124,
+        "p10": 1.686,
+        "median": 1.821,
+        "p90": 1.964,
+        "min": 1.428,
+        "max": 2.547
+       },
+       "taa_resolve_draw": {
+        "n": 124,
+        "p10": 256.294,
+        "median": 300.497,
+        "p90": 377.934,
+        "min": 242.321,
+        "max": 755.733
+       },
+       "taa_run": {
+        "n": 124,
+        "p10": 293.181,
+        "median": 339.494,
+        "p90": 421.718,
+        "min": 281.045,
+        "max": 795.296
+       },
+       "taa_state_apply": {
+        "n": 124,
+        "p10": 15.54,
+        "median": 16.11,
+        "p90": 19.351,
+        "min": 14.626,
+        "max": 25.071
+       },
+       "taa_state_capture": {
+        "n": 124,
+        "p10": 7.505,
+        "median": 7.985,
+        "p90": 8.727,
+        "min": 5.74,
+        "max": 23.077
+       }
+      }
+     },
+     "slow": {
+      "windows": 62,
+      "frames": 1052,
+      "mean_ms": {
+       "n": 62,
+       "p10": 47.109,
+       "median": 58.743,
+       "p90": 74.464,
+       "min": 45.947,
+       "max": 80.596
+      },
+      "min_ms": {
+       "n": 62,
+       "p10": 41.801,
+       "median": 55.419,
+       "p90": 71.81,
+       "min": 32.482,
+       "max": 78.608
+      },
+      "draws_per_frame": {
+       "n": 62,
+       "p10": 381.6,
+       "median": 562.8,
+       "p90": 758.3,
+       "min": 219.3,
+       "max": 828.2
+      },
+      "draw_backend_us": {
+       "n": 62,
+       "p10": 2.549,
+       "median": 2.636,
+       "p90": 2.775,
+       "min": 2.456,
+       "max": 5.368
+      },
+      "present_normal_us": {
+       "n": 62,
+       "p10": 41.22,
+       "median": 54.155,
+       "p90": 69.454,
+       "min": 30.795,
+       "max": 95.515
+      },
+      "stretch_backend_us": {
+       "n": 62,
+       "p10": 0.736,
+       "median": 0.771,
+       "p90": 0.816,
+       "min": 0.708,
+       "max": 1.115
+      },
+      "log_flush_us": {
+       "n": 62,
+       "p10": 0.705,
+       "median": 0.751,
+       "p90": 0.841,
+       "min": 0.633,
+       "max": 1.28
+      },
+      "log_flush_per_frame": {
+       "n": 62,
+       "p10": 1.048,
+       "median": 1.061,
+       "p90": 1.077,
+       "min": 1.045,
+       "max": 1.077
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 62,
+       "p10": 7229.3,
+       "median": 10737.9,
+       "p90": 14617.6,
+       "min": 4059.9,
+       "max": 15901.9
+      },
+      "taa_run_us_per_frame": {
+       "n": 62,
+       "p10": 309.8,
+       "median": 366.9,
+       "p90": 495.1,
+       "min": 265.9,
+       "max": 580.8
+      },
+      "route_metrics_us_per_frame": {
+       "route_draw": {
+        "n": 62,
+        "p10": 1953.1,
+        "median": 2983.9,
+        "p90": 4046.3,
+        "min": 1099.6,
+        "max": 4400.6
+       },
+       "route_fill": {
+        "n": 62,
+        "p10": 62.3,
+        "median": 66.0,
+        "p90": 87.2,
+        "min": 57.0,
+        "max": 114.0
+       },
+       "route_gate": {
+        "n": 62,
+        "p10": 4928.3,
+        "median": 7395.4,
+        "p90": 10080.4,
+        "min": 2755.5,
+        "max": 11003.8
+       },
+       "route_jitter": {
+        "n": 62,
+        "p10": 203.0,
+        "median": 302.2,
+        "p90": 411.9,
+        "min": 108.8,
+        "max": 440.5
+       },
+       "route_set_rt": {
+        "n": 62,
+        "p10": 917.2,
+        "median": 1398.2,
+        "p90": 1913.4,
+        "min": 519.5,
+        "max": 2059.9
+       },
+       "taa_copy_back": {
+        "n": 62,
+        "p10": 1.0,
+        "median": 1.0,
+        "p90": 1.2,
+        "min": 0.9,
+        "max": 2.2
+       },
+       "taa_copy_color": {
+        "n": 62,
+        "p10": 2.9,
+        "median": 3.5,
+        "p90": 4.0,
+        "min": 1.9,
+        "max": 4.4
+       },
+       "taa_copy_depth": {
+        "n": 62,
+        "p10": 1.8,
+        "median": 1.9,
+        "p90": 2.0,
+        "min": 1.7,
+        "max": 13.3
+       },
+       "taa_resolve_draw": {
+        "n": 62,
+        "p10": 263.2,
+        "median": 326.8,
+        "p90": 414.5,
+        "min": 222.4,
+        "max": 540.4
+       },
+       "taa_run": {
+        "n": 62,
+        "p10": 309.8,
+        "median": 366.9,
+        "p90": 495.1,
+        "min": 265.9,
+        "max": 580.8
+       },
+       "taa_state_apply": {
+        "n": 62,
+        "p10": 15.9,
+        "median": 16.5,
+        "p90": 18.7,
+        "min": 15.8,
+        "max": 38.4
+       },
+       "taa_state_capture": {
+        "n": 62,
+        "p10": 8.1,
+        "median": 8.3,
+        "p90": 9.0,
+        "min": 7.9,
+        "max": 25.0
+       }
+      },
+      "route_metrics_us_per_call": {
+       "route_draw": {
+        "n": 62,
+        "p10": 6.546,
+        "median": 6.702,
+        "p90": 6.823,
+        "min": 6.442,
+        "max": 6.92
+       },
+       "route_fill": {
+        "n": 62,
+        "p10": 62.353,
+        "median": 66.018,
+        "p90": 84.842,
+        "min": 57.023,
+        "max": 113.993
+       },
+       "route_gate": {
+        "n": 62,
+        "p10": 12.549,
+        "median": 13.059,
+        "p90": 13.357,
+        "min": 10.444,
+        "max": 13.65
+       },
+       "route_jitter": {
+        "n": 62,
+        "p10": 0.274,
+        "median": 0.281,
+        "p90": 0.293,
+        "min": 0.27,
+        "max": 0.306
+       },
+       "route_set_rt": {
+        "n": 62,
+        "p10": 0.768,
+        "median": 0.785,
+        "p90": 0.803,
+        "min": 0.731,
+        "max": 0.825
+       },
+       "taa_copy_back": {
+        "n": 62,
+        "p10": 0.969,
+        "median": 1.029,
+        "p90": 1.192,
+        "min": 0.862,
+        "max": 2.25
+       },
+       "taa_copy_color": {
+        "n": 62,
+        "p10": 2.901,
+        "median": 3.513,
+        "p90": 4.041,
+        "min": 1.877,
+        "max": 4.4
+       },
+       "taa_copy_depth": {
+        "n": 62,
+        "p10": 1.774,
+        "median": 1.886,
+        "p90": 2.02,
+        "min": 1.715,
+        "max": 13.329
+       },
+       "taa_resolve_draw": {
+        "n": 62,
+        "p10": 263.165,
+        "median": 326.786,
+        "p90": 414.455,
+        "min": 222.377,
+        "max": 540.395
+       },
+       "taa_run": {
+        "n": 62,
+        "p10": 309.76,
+        "median": 366.928,
+        "p90": 479.802,
+        "min": 265.859,
+        "max": 580.83
+       },
+       "taa_state_apply": {
+        "n": 62,
+        "p10": 15.871,
+        "median": 16.519,
+        "p90": 18.719,
+        "min": 15.75,
+        "max": 38.365
+       },
+       "taa_state_capture": {
+        "n": 62,
+        "p10": 8.115,
+        "median": 8.344,
+        "p90": 8.971,
+        "min": 7.895,
+        "max": 24.971
+       }
+      }
+     }
+    },
+    "menu": {
+     "windows": 52,
+     "frames": 1156,
+     "mean_ms": {
+      "n": 52,
+      "p10": 38.275,
+      "median": 43.095,
+      "p90": 60.479,
+      "min": 37.196,
+      "max": 79.191
+     },
+     "min_ms": {
+      "n": 52,
+      "p10": 36.043,
+      "median": 40.278,
+      "p90": 54.698,
+      "min": 34.561,
+      "max": 67.886
+     },
+     "draws_per_frame": {
+      "n": 52,
+      "p10": 639.4,
+      "median": 677.5,
+      "p90": 698.3,
+      "min": 636.0,
+      "max": 729.6
+     },
+     "draw_backend_us": {
+      "n": 52,
+      "p10": 2.964,
+      "median": 3.039,
+      "p90": 3.148,
+      "min": 2.813,
+      "max": 3.223
+     },
+     "present_normal_us": {
+      "n": 52,
+      "p10": 11.294,
+      "median": 12.862,
+      "p90": 15.871,
+      "min": 10.062,
+      "max": 24.65
+     },
+     "stretch_backend_us": {
+      "n": 52,
+      "p10": 1.875,
+      "median": 2.146,
+      "p90": 2.399,
+      "min": 1.696,
+      "max": 11.0
+     },
+     "log_flush_us": {
+      "n": 52,
+      "p10": 0.717,
+      "median": 0.777,
+      "p90": 0.827,
+      "min": 0.691,
+      "max": 0.904
+     },
+     "log_flush_per_frame": {
+      "n": 52,
+      "p10": 1.038,
+      "median": 1.043,
+      "p90": 1.059,
+      "min": 1.037,
+      "max": 1.077
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 52,
+      "p10": 167.8,
+      "median": 177.2,
+      "p90": 189.1,
+      "min": 158.8,
+      "max": 203.9
+     },
+     "taa_run_us_per_frame": {
+      "n": 52,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {
+      "route_gate": {
+       "n": 52,
+       "p10": 167.8,
+       "median": 177.2,
+       "p90": 189.1,
+       "min": 158.8,
+       "max": 203.9
+      }
+     },
+     "route_metrics_us_per_call": {
+      "route_gate": {
+       "n": 52,
+       "p10": 0.253,
+       "median": 0.264,
+       "p90": 0.277,
+       "min": 0.249,
+       "max": 0.298
+      }
+     }
+    },
+    "profiler_share": {
+     "scene": {
+      "status": "present",
+      "reports": 46,
+      "covered_s": 230.2,
+      "ticks": 36209,
+      "ticks_per_s": 157.3,
+      "threads_median": 19.0,
+      "suspend_us_per_thread": 123.0,
+      "share_of_wall": 0.01935,
+      "ms_per_frame_at_median": 0.705
+     },
+     "menu": {
+      "status": "present",
+      "reports": 80,
+      "covered_s": 400.4,
+      "ticks": 71994,
+      "ticks_per_s": 179.8,
+      "threads_median": 19.0,
+      "suspend_us_per_thread": 123.0,
+      "share_of_wall": 0.02212,
+      "ms_per_frame_at_median": 0.953
+     }
+    },
+    "telemetry_stamps": {
+     "status": "estimated",
+     "menu_gate_us_per_call": 0.2639,
+     "stamp_us_assumed": 0.2639,
+     "spans_per_frame_median": 2074.2,
+     "ms_per_frame": 0.547
+    },
+    "frame_records": {
+     "records": 128,
+     "normal": {
+      "status": "evaluated",
+      "records": 88,
+      "draws": {
+       "n": 88,
+       "p10": 152.1,
+       "median": 284.5,
+       "p90": 517.4,
+       "min": 61,
+       "max": 787
+      },
+      "routed": {
+       "n": 88,
+       "p10": 72.8,
+       "median": 200.5,
+       "p90": 399.4,
+       "min": 18,
+       "max": 629
+      },
+      "routed_fraction": {
+       "n": 88,
+       "p10": 0.4929,
+       "median": 0.711,
+       "p90": 0.7837,
+       "min": 0.2466,
+       "max": 0.8067
+      },
+      "route_exclusive_us": {
+       "n": 88,
+       "p10": 1906.5,
+       "median": 4967.9,
+       "p90": 9678.8,
+       "min": 494.8,
+       "max": 15125.1
+      },
+      "route_us_per_draw": {
+       "n": 88,
+       "p10": 12.777,
+       "median": 17.246,
+       "p90": 19.168,
+       "min": 7.548,
+       "max": 19.883
+      },
+      "route_us_per_routed_draw": {
+       "n": 88,
+       "p10": 23.583,
+       "median": 24.649,
+       "p90": 27.065,
+       "min": 22.602,
+       "max": 31.089
+      },
+      "gate_us": {
+       "n": 88,
+       "p10": 1235.4,
+       "median": 3410.4,
+       "p90": 6768.2,
+       "min": 306.7,
+       "max": 10333.9
+      },
+      "route_draw_us": {
+       "n": 88,
+       "p10": 512.1,
+       "median": 1338.3,
+       "p90": 2597.5,
+       "min": 119.1,
+       "max": 4300.3
+      },
+      "fill_us": {
+       "n": 88,
+       "p10": 52.4,
+       "median": 59.5,
+       "p90": 92.8,
+       "min": 41.3,
+       "max": 244.1
+      },
+      "jitter_us": {
+       "n": 88,
+       "p10": 64.1,
+       "median": 135.7,
+       "p90": 305.1,
+       "min": 15.0,
+       "max": 428.3
+      },
+      "lazy_flush_us": {
+       "n": 88,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "set_rt_us": {
+       "n": 88,
+       "p10": 234.7,
+       "median": 610.8,
+       "p90": 1195.3,
+       "min": 53.6,
+       "max": 2077.8
+      },
+      "taa_run_us": {
+       "n": 88,
+       "p10": 274.4,
+       "median": 326.7,
+       "p90": 440.2,
+       "min": 143.1,
+       "max": 1183.5
+      },
+      "taa_capture_us": {
+       "n": 88,
+       "p10": 6.9,
+       "median": 8.1,
+       "p90": 8.9,
+       "min": 4.8,
+       "max": 11.3
+      },
+      "taa_copy_color_us": {
+       "n": 88,
+       "p10": 1.8,
+       "median": 3.5,
+       "p90": 4.9,
+       "min": 1.4,
+       "max": 7.2
+      },
+      "taa_copy_depth_us": {
+       "n": 88,
+       "p10": 1.5,
+       "median": 1.9,
+       "p90": 2.3,
+       "min": 1.1,
+       "max": 2.5
+      },
+      "taa_draw_us": {
+       "n": 88,
+       "p10": 236.2,
+       "median": 292.6,
+       "p90": 397.5,
+       "min": 105.6,
+       "max": 1141.4
+      },
+      "taa_apply_us": {
+       "n": 88,
+       "p10": 14.5,
+       "median": 15.8,
+       "p90": 18.0,
+       "min": 13.7,
+       "max": 46.0
+      },
+      "taa_copy_back_us": {
+       "n": 88,
+       "p10": 0.8,
+       "median": 1.0,
+       "p90": 1.3,
+       "min": 0.6,
+       "max": 1.7
+      },
+      "readback_us": {
+       "n": 88,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "gate_us_per_draw": {
+       "n": 88,
+       "p10": 8.238,
+       "median": 11.61,
+       "p90": 13.197,
+       "min": 4.755,
+       "max": 13.886
+      },
+      "route_draw_us_per_routed": {
+       "n": 88,
+       "p10": 6.321,
+       "median": 6.578,
+       "p90": 7.327,
+       "min": 6.047,
+       "max": 9.308
+      },
+      "set_rt_us_per_call": {
+       "n": 88,
+       "p10": 0.725,
+       "median": 0.773,
+       "p90": 0.861,
+       "min": 0.667,
+       "max": 1.359
+      },
+      "set_rt_per_routed_draw": {
+       "n": 88,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4.0,
+       "max": 4.0
+      },
+      "jitter_us_per_write": {
+       "n": 88,
+       "p10": 0.2605,
+       "median": 0.2734,
+       "p90": 0.2842,
+       "min": 0.2491,
+       "max": 0.64
+      },
+      "jitter_writes_per_routed": {
+       "n": 88,
+       "p10": 2.39,
+       "median": 2.492,
+       "p90": 3.196,
+       "min": 2.294,
+       "max": 5.333
+      },
+      "scene_end_source": {
+       "stretchrect": 88
+      },
+      "scene_end_check": {
+       "3": 88
+      },
+      "rt_mode": {
+       "perdraw": 88
+      },
+      "timing": {
+       "cpu_qpc": 88
+      }
+     },
+     "capture": {
+      "status": "evaluated",
+      "records": 20,
+      "draws": {
+       "n": 20,
+       "p10": 249.0,
+       "median": 378.5,
+       "p90": 570.0,
+       "min": 249,
+       "max": 701
+      },
+      "routed": {
+       "n": 20,
+       "p10": 155.0,
+       "median": 228.0,
+       "p90": 463.7,
+       "min": 155,
+       "max": 560
+      },
+      "routed_fraction": {
+       "n": 20,
+       "p10": 0.5871,
+       "median": 0.7215,
+       "p90": 0.8007,
+       "min": 0.5858,
+       "max": 0.821
+      },
+      "route_exclusive_us": {
+       "n": 20,
+       "p10": 4166.0,
+       "median": 6228.9,
+       "p90": 12550.6,
+       "min": 4159.1,
+       "max": 14661.6
+      },
+      "route_us_per_draw": {
+       "n": 20,
+       "p10": 15.977,
+       "median": 19.693,
+       "p90": 21.511,
+       "min": 15.063,
+       "max": 22.514
+      },
+      "route_us_per_routed_draw": {
+       "n": 20,
+       "p10": 26.084,
+       "median": 26.856,
+       "p90": 28.015,
+       "min": 25.504,
+       "max": 29.695
+      },
+      "gate_us": {
+       "n": 20,
+       "p10": 2687.3,
+       "median": 4114.1,
+       "p90": 8177.0,
+       "min": 2681.1,
+       "max": 9617.5
+      },
+      "route_draw_us": {
+       "n": 20,
+       "p10": 1307.3,
+       "median": 1971.1,
+       "p90": 4044.4,
+       "min": 1294.9,
+       "max": 4607.7
+      },
+      "fill_us": {
+       "n": 20,
+       "p10": 45.3,
+       "median": 60.4,
+       "p90": 81.6,
+       "min": 41.6,
+       "max": 181.5
+      },
+      "jitter_us": {
+       "n": 20,
+       "p10": 125.5,
+       "median": 180.1,
+       "p90": 312.6,
+       "min": 122.5,
+       "max": 397.1
+      },
+      "lazy_flush_us": {
+       "n": 20,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "set_rt_us": {
+       "n": 20,
+       "p10": 720.8,
+       "median": 1047.8,
+       "p90": 2328.2,
+       "min": 708.0,
+       "max": 2513.7
+      },
+      "taa_run_us": {
+       "n": 20,
+       "p10": 431.3,
+       "median": 531.9,
+       "p90": 624.6,
+       "min": 410.0,
+       "max": 857.8
+      },
+      "taa_capture_us": {
+       "n": 20,
+       "p10": 7.8,
+       "median": 8.3,
+       "p90": 9.0,
+       "min": 7.7,
+       "max": 10.0
+      },
+      "taa_copy_color_us": {
+       "n": 20,
+       "p10": 3.0,
+       "median": 4.0,
+       "p90": 5.5,
+       "min": 2.6,
+       "max": 6.8
+      },
+      "taa_copy_depth_us": {
+       "n": 20,
+       "p10": 1.7,
+       "median": 2.0,
+       "p90": 2.2,
+       "min": 1.7,
+       "max": 14.5
+      },
+      "taa_draw_us": {
+       "n": 20,
+       "p10": 391.1,
+       "median": 483.3,
+       "p90": 581.4,
+       "min": 367.0,
+       "max": 818.1
+      },
+      "taa_apply_us": {
+       "n": 20,
+       "p10": 16.4,
+       "median": 17.8,
+       "p90": 18.9,
+       "min": 15.5,
+       "max": 24.0
+      },
+      "taa_copy_back_us": {
+       "n": 20,
+       "p10": 0.9,
+       "median": 1.2,
+       "p90": 1.3,
+       "min": 0.7,
+       "max": 1.8
+      },
+      "readback_us": {
+       "n": 20,
+       "p10": 21513.7,
+       "median": 23293.5,
+       "p90": 32470.3,
+       "min": 18336.9,
+       "max": 36653.0
+      },
+      "gate_us_per_draw": {
+       "n": 20,
+       "p10": 10.715,
+       "median": 12.513,
+       "p90": 14.412,
+       "min": 10.113,
+       "max": 14.51
+      },
+      "route_draw_us_per_routed": {
+       "n": 20,
+       "p10": 7.988,
+       "median": 8.321,
+       "p90": 9.02,
+       "min": 7.383,
+       "max": 9.246
+      },
+      "set_rt_us_per_call": {
+       "n": 20,
+       "p10": 1.064,
+       "median": 1.124,
+       "p90": 1.187,
+       "min": 0.921,
+       "max": 1.336
+      },
+      "set_rt_per_routed_draw": {
+       "n": 20,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4.0,
+       "max": 4.0
+      },
+      "jitter_us_per_write": {
+       "n": 20,
+       "p10": 0.2859,
+       "median": 0.29,
+       "p90": 0.3011,
+       "min": 0.2756,
+       "max": 0.3028
+      },
+      "jitter_writes_per_routed": {
+       "n": 20,
+       "p10": 2.336,
+       "median": 2.482,
+       "p90": 2.803,
+       "min": 2.317,
+       "max": 2.811
+      },
+      "readbacks": {
+       "n": 20,
+       "p10": 2.0,
+       "median": 2.0,
+       "p90": 2.0,
+       "min": 2,
+       "max": 2
+      },
+      "readback_us_per_readback": {
+       "n": 20,
+       "p10": 10756.8,
+       "median": 11646.8,
+       "p90": 16235.1,
+       "min": 9168.5,
+       "max": 18326.5
+      },
+      "scene_end_source": {
+       "stretchrect": 20
+      },
+      "scene_end_check": {
+       "3": 20
+      },
+      "rt_mode": {
+       "perdraw": 20
+      },
+      "timing": {
+       "cpu_qpc": 20
+      }
+     }
+    },
+    "phases": [
+     {
+      "phase": 0,
+      "label": "scene",
+      "windows": 1,
+      "usable": 0,
+      "capture_windows": 0,
+      "frames": [
+       4,
+       4
+      ],
+      "since_s": [
+       10.415,
+       10.415
+      ],
+      "mean_ms_median": null,
+      "route_us_per_frame_median": null,
+      "draws_median": 0.5,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": false,
+      "flat": true
+     },
+     {
+      "phase": 1,
+      "label": "menu",
+      "windows": 51,
+      "usable": 50,
+      "capture_windows": 0,
+      "frames": [
+       24,
+       1111
+      ],
+      "since_s": [
+       74.725,
+       160.359
+      ],
+      "mean_ms_median": 43.285,
+      "route_us_per_frame_median": 177.4,
+      "draws_median": 678.0,
+      "draws_spread_fraction": 0.0869,
+      "inside_menu_band": true,
+      "flat": true
+     },
+     {
+      "phase": 2,
+      "label": "scene",
+      "windows": 168,
+      "usable": 160,
+      "capture_windows": 8,
+      "frames": [
+       1163,
+       5454
+      ],
+      "since_s": [
+       212.958,
+       391.087
+      ],
+      "mean_ms_median": 37.624,
+      "route_us_per_frame_median": 5882.3,
+      "draws_median": 325.2,
+      "draws_spread_fraction": 1.5197,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 3,
+      "label": "scene",
+      "windows": 29,
+      "usable": 26,
+      "capture_windows": 2,
+      "frames": [
+       5471,
+       6381
+      ],
+      "since_s": [
+       410.072,
+       456.77
+      ],
+      "mean_ms_median": 34.087,
+      "route_us_per_frame_median": 4582.8,
+      "draws_median": 327.0,
+      "draws_spread_fraction": 1.0874,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 4,
+      "label": "menu",
+      "windows": 2,
+      "usable": 2,
+      "capture_windows": 0,
+      "frames": [
+       6410,
+       6436
+      ],
+      "since_s": [
+       472.825,
+       473.825
+      ],
+      "mean_ms_median": 38.485,
+      "route_us_per_frame_median": 161.0,
+      "draws_median": 641.4,
+      "draws_spread_fraction": 0.0084,
+      "inside_menu_band": true,
+      "flat": true
+     }
+    ],
+    "phase_check": {
+     "status": "checked",
+     "phases": [
+      {
+       "frames": [
+        4,
+        4
+       ],
+       "label": "scene",
+       "records": 0,
+       "routed_records": 0,
+       "agrees": true
+      },
+      {
+       "frames": [
+        24,
+        1111
+       ],
+       "label": "menu",
+       "records": 18,
+       "routed_records": 0,
+       "agrees": true
+      },
+      {
+       "frames": [
+        1163,
+        5454
+       ],
+       "label": "scene",
+       "records": 87,
+       "routed_records": 87,
+       "agrees": true
+      },
+      {
+       "frames": [
+        5471,
+        6381
+       ],
+       "label": "scene",
+       "records": 19,
+       "routed_records": 19,
+       "agrees": true
+      },
+      {
+       "frames": [
+        6410,
+        6436
+       ],
+       "label": "menu",
+       "records": 1,
+       "routed_records": 0,
+       "agrees": true
+      }
+     ]
+    }
+   },
+   {
+    "label": "run2",
+    "path": "/tmp/x3-iteration09-run2/session-20260912-162050-2040.log",
+    "configuration": {
+     "motion_output": {
+      "requested": "1",
+      "taa": "1",
+      "taa_debug": "1",
+      "jitter": "1",
+      "rt_mode": "perdraw",
+      "temporal_consumer": "1",
+      "scene_hook": "1",
+      "state_shadow": "1",
+      "hdr": "0",
+      "frame_log": "60"
+     },
+     "mesh_cache": {
+      "requested": "1",
+      "enabled": "0",
+      "activation": "await_public_mesh_and_buffer_contract",
+      "adjacency_metric_scope": "hook_service",
+      "restart_on_cleanup_failure": "1"
+     },
+     "profiler": {
+      "enabled": "1",
+      "interval_us": "2000",
+      "report_s": "5"
+     },
+     "status": {
+      "object_trace": "active",
+      "camera_state": "active",
+      "scene_hook": "active",
+      "object_lifetime": "active_without_baseline"
+     },
+     "clock_hz": 10000000
+    },
+    "scene": {
+     "threshold_ms": 45.0,
+     "windows": 137,
+     "fast_occupancy": 0.5912,
+     "histogram_10ms_bins": {
+      "10": 15,
+      "20": 9,
+      "30": 40,
+      "40": 28,
+      "50": 12,
+      "60": 13,
+      "70": 19,
+      "80": 1
+     },
+     "fast": {
+      "windows": 81,
+      "frames": 2806,
+      "mean_ms": {
+       "n": 81,
+       "p10": 17.277,
+       "median": 34.239,
+       "p90": 43.18,
+       "min": 11.806,
+       "max": 44.642
+      },
+      "min_ms": {
+       "n": 81,
+       "p10": 14.083,
+       "median": 30.823,
+       "p90": 39.696,
+       "min": 10.068,
+       "max": 42.465
+      },
+      "draws_per_frame": {
+       "n": 81,
+       "p10": 92.2,
+       "median": 227.0,
+       "p90": 358.1,
+       "min": 56.5,
+       "max": 433.1
+      },
+      "draw_backend_us": {
+       "n": 81,
+       "p10": 2.681,
+       "median": 2.842,
+       "p90": 3.038,
+       "min": 2.569,
+       "max": 4.083
+      },
+      "present_normal_us": {
+       "n": 81,
+       "p10": 19.835,
+       "median": 30.193,
+       "p90": 45.668,
+       "min": 14.867,
+       "max": 60.178
+      },
+      "stretch_backend_us": {
+       "n": 81,
+       "p10": 0.752,
+       "median": 0.78,
+       "p90": 0.841,
+       "min": 0.656,
+       "max": 1.04
+      },
+      "log_flush_us": {
+       "n": 81,
+       "p10": 0.711,
+       "median": 0.757,
+       "p90": 0.854,
+       "min": 0.64,
+       "max": 1.5
+      },
+      "log_flush_per_frame": {
+       "n": 81,
+       "p10": 1.018,
+       "median": 1.034,
+       "p90": 1.043,
+       "min": 1.013,
+       "max": 1.111
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 81,
+       "p10": 1357.5,
+       "median": 4081.7,
+       "p90": 6212.1,
+       "min": 433.2,
+       "max": 7117.1
+      },
+      "taa_run_us_per_frame": {
+       "n": 81,
+       "p10": 275.6,
+       "median": 360.5,
+       "p90": 443.0,
+       "min": 240.9,
+       "max": 553.9
+      },
+      "route_metrics_us_per_frame": {
+       "route_draw": {
+        "n": 81,
+        "p10": 366.0,
+        "median": 1130.7,
+        "p90": 1762.7,
+        "min": 104.6,
+        "max": 2001.3
+       },
+       "route_fill": {
+        "n": 81,
+        "p10": 61.0,
+        "median": 68.8,
+        "p90": 83.8,
+        "min": 35.2,
+        "max": 106.3
+       },
+       "route_gate": {
+        "n": 81,
+        "p10": 885.3,
+        "median": 2766.0,
+        "p90": 4212.2,
+        "min": 253.2,
+        "max": 4856.1
+       },
+       "route_jitter": {
+        "n": 81,
+        "p10": 34.3,
+        "median": 114.8,
+        "p90": 174.1,
+        "min": 10.3,
+        "max": 210.0
+       },
+       "route_set_rt": {
+        "n": 81,
+        "p10": 167.3,
+        "median": 532.4,
+        "p90": 835.6,
+        "min": 48.6,
+        "max": 925.4
+       },
+       "taa_copy_back": {
+        "n": 81,
+        "p10": 0.9,
+        "median": 1.0,
+        "p90": 1.3,
+        "min": 0.7,
+        "max": 1.6
+       },
+       "taa_copy_color": {
+        "n": 81,
+        "p10": 3.3,
+        "median": 3.7,
+        "p90": 4.1,
+        "min": 3.1,
+        "max": 13.6
+       },
+       "taa_copy_depth": {
+        "n": 81,
+        "p10": 2.0,
+        "median": 2.2,
+        "p90": 2.4,
+        "min": 1.7,
+        "max": 2.7
+       },
+       "taa_resolve_draw": {
+        "n": 81,
+        "p10": 234.9,
+        "median": 316.7,
+        "p90": 400.9,
+        "min": 200.8,
+        "max": 509.9
+       },
+       "taa_run": {
+        "n": 81,
+        "p10": 275.6,
+        "median": 360.5,
+        "p90": 443.0,
+        "min": 240.9,
+        "max": 553.9
+       },
+       "taa_state_apply": {
+        "n": 81,
+        "p10": 15.8,
+        "median": 16.7,
+        "p90": 21.1,
+        "min": 13.8,
+        "max": 26.2
+       },
+       "taa_state_capture": {
+        "n": 81,
+        "p10": 8.3,
+        "median": 9.1,
+        "p90": 10.1,
+        "min": 6.2,
+        "max": 16.5
+       }
+      },
+      "route_metrics_us_per_call": {
+       "route_draw": {
+        "n": 81,
+        "p10": 6.844,
+        "median": 7.039,
+        "p90": 7.282,
+        "min": 6.588,
+        "max": 7.642
+       },
+       "route_fill": {
+        "n": 81,
+        "p10": 61.026,
+        "median": 68.774,
+        "p90": 83.812,
+        "min": 39.65,
+        "max": 106.296
+       },
+       "route_gate": {
+        "n": 81,
+        "p10": 8.193,
+        "median": 11.65,
+        "p90": 12.749,
+        "min": 4.479,
+        "max": 13.31
+       },
+       "route_jitter": {
+        "n": 81,
+        "p10": 0.272,
+        "median": 0.279,
+        "p90": 0.3,
+        "min": 0.254,
+        "max": 0.332
+       },
+       "route_set_rt": {
+        "n": 81,
+        "p10": 0.797,
+        "median": 0.819,
+        "p90": 0.863,
+        "min": 0.76,
+        "max": 1.002
+       },
+       "taa_copy_back": {
+        "n": 81,
+        "p10": 0.897,
+        "median": 0.988,
+        "p90": 1.258,
+        "min": 0.733,
+        "max": 1.593
+       },
+       "taa_copy_color": {
+        "n": 81,
+        "p10": 3.349,
+        "median": 3.714,
+        "p90": 4.073,
+        "min": 3.133,
+        "max": 13.635
+       },
+       "taa_copy_depth": {
+        "n": 81,
+        "p10": 2.021,
+        "median": 2.209,
+        "p90": 2.4,
+        "min": 1.689,
+        "max": 2.665
+       },
+       "taa_resolve_draw": {
+        "n": 81,
+        "p10": 234.945,
+        "median": 316.722,
+        "p90": 400.925,
+        "min": 200.814,
+        "max": 509.948
+       },
+       "taa_run": {
+        "n": 81,
+        "p10": 275.621,
+        "median": 360.344,
+        "p90": 442.963,
+        "min": 240.854,
+        "max": 553.891
+       },
+       "taa_state_apply": {
+        "n": 81,
+        "p10": 15.779,
+        "median": 16.717,
+        "p90": 21.059,
+        "min": 13.811,
+        "max": 26.174
+       },
+       "taa_state_capture": {
+        "n": 81,
+        "p10": 8.347,
+        "median": 9.088,
+        "p90": 10.117,
+        "min": 6.189,
+        "max": 16.452
+       }
+      }
+     },
+     "slow": {
+      "windows": 56,
+      "frames": 945,
+      "mean_ms": {
+       "n": 56,
+       "p10": 47.421,
+       "median": 64.427,
+       "p90": 77.209,
+       "min": 45.377,
+       "max": 80.092
+      },
+      "min_ms": {
+       "n": 56,
+       "p10": 42.811,
+       "median": 57.365,
+       "p90": 74.18,
+       "min": 32.456,
+       "max": 78.374
+      },
+      "draws_per_frame": {
+       "n": 56,
+       "p10": 332.9,
+       "median": 470.8,
+       "p90": 722.3,
+       "min": 209.8,
+       "max": 908.5
+      },
+      "draw_backend_us": {
+       "n": 56,
+       "p10": 2.585,
+       "median": 2.719,
+       "p90": 2.866,
+       "min": 2.548,
+       "max": 3.038
+      },
+      "present_normal_us": {
+       "n": 56,
+       "p10": 37.171,
+       "median": 48.092,
+       "p90": 68.477,
+       "min": 26.564,
+       "max": 87.764
+      },
+      "stretch_backend_us": {
+       "n": 56,
+       "p10": 0.746,
+       "median": 0.794,
+       "p90": 0.883,
+       "min": 0.715,
+       "max": 2.857
+      },
+      "log_flush_us": {
+       "n": 56,
+       "p10": 0.705,
+       "median": 0.743,
+       "p90": 0.801,
+       "min": 0.647,
+       "max": 0.981
+      },
+      "log_flush_per_frame": {
+       "n": 56,
+       "p10": 1.047,
+       "median": 1.062,
+       "p90": 1.077,
+       "min": 1.036,
+       "max": 1.083
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 56,
+       "p10": 6059.2,
+       "median": 9049.7,
+       "p90": 14150.8,
+       "min": 3824.3,
+       "max": 17966.7
+      },
+      "taa_run_us_per_frame": {
+       "n": 56,
+       "p10": 311.0,
+       "median": 391.0,
+       "p90": 528.2,
+       "min": 274.2,
+       "max": 733.0
+      },
+      "route_metrics_us_per_frame": {
+       "route_draw": {
+        "n": 56,
+        "p10": 1691.9,
+        "median": 2551.0,
+        "p90": 3941.5,
+        "min": 1037.0,
+        "max": 5089.2
+       },
+       "route_fill": {
+        "n": 56,
+        "p10": 64.9,
+        "median": 73.3,
+        "p90": 91.2,
+        "min": 61.7,
+        "max": 156.9
+       },
+       "route_gate": {
+        "n": 56,
+        "p10": 4118.0,
+        "median": 6139.5,
+        "p90": 9758.9,
+        "min": 2601.2,
+        "max": 12299.3
+       },
+       "route_jitter": {
+        "n": 56,
+        "p10": 176.3,
+        "median": 250.9,
+        "p90": 405.4,
+        "min": 104.2,
+        "max": 515.9
+       },
+       "route_set_rt": {
+        "n": 56,
+        "p10": 783.2,
+        "median": 1214.7,
+        "p90": 1846.4,
+        "min": 482.2,
+        "max": 2384.6
+       },
+       "taa_copy_back": {
+        "n": 56,
+        "p10": 1.0,
+        "median": 1.1,
+        "p90": 1.3,
+        "min": 0.9,
+        "max": 1.4
+       },
+       "taa_copy_color": {
+        "n": 56,
+        "p10": 3.6,
+        "median": 3.8,
+        "p90": 4.1,
+        "min": 3.5,
+        "max": 15.0
+       },
+       "taa_copy_depth": {
+        "n": 56,
+        "p10": 2.1,
+        "median": 2.2,
+        "p90": 2.5,
+        "min": 2.1,
+        "max": 4.5
+       },
+       "taa_resolve_draw": {
+        "n": 56,
+        "p10": 272.3,
+        "median": 344.6,
+        "p90": 480.6,
+        "min": 232.7,
+        "max": 690.2
+       },
+       "taa_run": {
+        "n": 56,
+        "p10": 311.0,
+        "median": 391.0,
+        "p90": 528.2,
+        "min": 274.2,
+        "max": 733.0
+       },
+       "taa_state_apply": {
+        "n": 56,
+        "p10": 16.7,
+        "median": 17.4,
+        "p90": 25.3,
+        "min": 16.4,
+        "max": 34.6
+       },
+       "taa_state_capture": {
+        "n": 56,
+        "p10": 9.4,
+        "median": 9.7,
+        "p90": 10.3,
+        "min": 8.9,
+        "max": 29.3
+       }
+      },
+      "route_metrics_us_per_call": {
+       "route_draw": {
+        "n": 56,
+        "p10": 6.756,
+        "median": 6.903,
+        "p90": 7.066,
+        "min": 6.623,
+        "max": 7.113
+       },
+       "route_fill": {
+        "n": 56,
+        "p10": 64.91,
+        "median": 73.291,
+        "p90": 91.194,
+        "min": 61.692,
+        "max": 156.943
+       },
+       "route_gate": {
+        "n": 56,
+        "p10": 12.186,
+        "median": 13.293,
+        "p90": 13.748,
+        "min": 10.268,
+        "max": 13.961
+       },
+       "route_jitter": {
+        "n": 56,
+        "p10": 0.272,
+        "median": 0.282,
+        "p90": 0.305,
+        "min": 0.262,
+        "max": 0.318
+       },
+       "route_set_rt": {
+        "n": 56,
+        "p10": 0.772,
+        "median": 0.806,
+        "p90": 0.822,
+        "min": 0.746,
+        "max": 0.852
+       },
+       "taa_copy_back": {
+        "n": 56,
+        "p10": 0.982,
+        "median": 1.091,
+        "p90": 1.31,
+        "min": 0.93,
+        "max": 1.427
+       },
+       "taa_copy_color": {
+        "n": 56,
+        "p10": 3.615,
+        "median": 3.827,
+        "p90": 4.145,
+        "min": 3.481,
+        "max": 14.962
+       },
+       "taa_copy_depth": {
+        "n": 56,
+        "p10": 2.145,
+        "median": 2.226,
+        "p90": 2.503,
+        "min": 2.06,
+        "max": 4.529
+       },
+       "taa_resolve_draw": {
+        "n": 56,
+        "p10": 272.306,
+        "median": 344.594,
+        "p90": 480.583,
+        "min": 232.7,
+        "max": 690.222
+       },
+       "taa_run": {
+        "n": 56,
+        "p10": 311.85,
+        "median": 391.015,
+        "p90": 528.215,
+        "min": 274.214,
+        "max": 733.011
+       },
+       "taa_state_apply": {
+        "n": 56,
+        "p10": 16.669,
+        "median": 17.42,
+        "p90": 25.291,
+        "min": 16.39,
+        "max": 34.591
+       },
+       "taa_state_capture": {
+        "n": 56,
+        "p10": 9.375,
+        "median": 9.736,
+        "p90": 10.26,
+        "min": 8.933,
+        "max": 29.347
+       }
+      }
+     }
+    },
+    "menu": {
+     "windows": 10,
+     "frames": 228,
+     "mean_ms": {
+      "n": 10,
+      "p10": 39.177,
+      "median": 39.888,
+      "p90": 59.537,
+      "min": 38.238,
+      "max": 76.802
+     },
+     "min_ms": {
+      "n": 10,
+      "p10": 36.823,
+      "median": 37.776,
+      "p90": 38.188,
+      "min": 35.965,
+      "max": 39.477
+     },
+     "draws_per_frame": {
+      "n": 10,
+      "p10": 633.6,
+      "median": 646.7,
+      "p90": 665.1,
+      "min": 596.1,
+      "max": 671.5
+     },
+     "draw_backend_us": {
+      "n": 10,
+      "p10": 3.037,
+      "median": 3.081,
+      "p90": 3.438,
+      "min": 3.022,
+      "max": 3.837
+     },
+     "present_normal_us": {
+      "n": 10,
+      "p10": 11.078,
+      "median": 13.293,
+      "p90": 14.997,
+      "min": 10.915,
+      "max": 15.37
+     },
+     "stretch_backend_us": {
+      "n": 10,
+      "p10": 1.981,
+      "median": 2.142,
+      "p90": 2.381,
+      "min": 1.958,
+      "max": 2.436
+     },
+     "log_flush_us": {
+      "n": 10,
+      "p10": 0.725,
+      "median": 0.75,
+      "p90": 0.811,
+      "min": 0.714,
+      "max": 0.835
+     },
+     "log_flush_per_frame": {
+      "n": 10,
+      "p10": 1.038,
+      "median": 1.041,
+      "p90": 1.054,
+      "min": 1.038,
+      "max": 1.111
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 10,
+      "p10": 166.0,
+      "median": 174.1,
+      "p90": 179.8,
+      "min": 165.6,
+      "max": 184.1
+     },
+     "taa_run_us_per_frame": {
+      "n": 10,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {
+      "route_gate": {
+       "n": 10,
+       "p10": 166.0,
+       "median": 174.1,
+       "p90": 179.8,
+       "min": 165.6,
+       "max": 184.1
+      }
+     },
+     "route_metrics_us_per_call": {
+      "route_gate": {
+       "n": 10,
+       "p10": 0.258,
+       "median": 0.271,
+       "p90": 0.282,
+       "min": 0.256,
+       "max": 0.289
+      }
+     }
+    },
+    "profiler_share": {
+     "scene": {
+      "status": "present",
+      "reports": 37,
+      "covered_s": 185.1,
+      "ticks": 35601,
+      "ticks_per_s": 192.3,
+      "threads_median": 16.0,
+      "suspend_us_per_thread": 123.0,
+      "share_of_wall": 0.02366,
+      "ms_per_frame_at_median": 1.005
+     },
+     "menu": {
+      "status": "present",
+      "reports": 62,
+      "covered_s": 310.2,
+      "ticks": 62578,
+      "ticks_per_s": 201.8,
+      "threads_median": 16.0,
+      "suspend_us_per_thread": 123.0,
+      "share_of_wall": 0.02482,
+      "ms_per_frame_at_median": 0.99
+     }
+    },
+    "telemetry_stamps": {
+     "status": "estimated",
+     "menu_gate_us_per_call": 0.2715,
+     "stamp_us_assumed": 0.2715,
+     "spans_per_frame_median": 1929.1,
+     "ms_per_frame": 0.524
+    },
+    "frame_records": {
+     "records": 94,
+     "normal": {
+      "status": "evaluated",
+      "records": 65,
+      "draws": {
+       "n": 65,
+       "p10": 73.8,
+       "median": 248.0,
+       "p90": 508.4,
+       "min": 58,
+       "max": 751
+      },
+      "routed": {
+       "n": 65,
+       "p10": 25.2,
+       "median": 174.0,
+       "p90": 390.6,
+       "min": 18,
+       "max": 599
+      },
+      "routed_fraction": {
+       "n": 65,
+       "p10": 0.3446,
+       "median": 0.7017,
+       "p90": 0.7911,
+       "min": 0.2687,
+       "max": 0.8178
+      },
+      "route_exclusive_us": {
+       "n": 65,
+       "p10": 783.3,
+       "median": 4604.2,
+       "p90": 9714.1,
+       "min": 476.3,
+       "max": 14936.5
+      },
+      "route_us_per_draw": {
+       "n": 65,
+       "p10": 10.597,
+       "median": 17.371,
+       "p90": 19.694,
+       "min": 7.626,
+       "max": 24.985
+      },
+      "route_us_per_routed_draw": {
+       "n": 65,
+       "p10": 23.747,
+       "median": 25.231,
+       "p90": 28.55,
+       "min": 22.843,
+       "max": 38.978
+      },
+      "gate_us": {
+       "n": 65,
+       "p10": 531.2,
+       "median": 2938.1,
+       "p90": 6658.0,
+       "min": 289.6,
+       "max": 10226.2
+      },
+      "route_draw_us": {
+       "n": 65,
+       "p10": 182.5,
+       "median": 1306.2,
+       "p90": 2702.7,
+       "min": 124.5,
+       "max": 4253.0
+      },
+      "fill_us": {
+       "n": 65,
+       "p10": 49.2,
+       "median": 62.8,
+       "p90": 101.0,
+       "min": 42.9,
+       "max": 580.1
+      },
+      "jitter_us": {
+       "n": 65,
+       "p10": 26.7,
+       "median": 125.7,
+       "p90": 308.5,
+       "min": 12.4,
+       "max": 532.5
+      },
+      "lazy_flush_us": {
+       "n": 65,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "set_rt_us": {
+       "n": 65,
+       "p10": 86.8,
+       "median": 589.9,
+       "p90": 1266.8,
+       "min": 55.9,
+       "max": 1970.7
+      },
+      "taa_run_us": {
+       "n": 65,
+       "p10": 268.6,
+       "median": 354.3,
+       "p90": 493.6,
+       "min": 214.0,
+       "max": 5699.0
+      },
+      "taa_capture_us": {
+       "n": 65,
+       "p10": 7.7,
+       "median": 9.1,
+       "p90": 10.5,
+       "min": 6.6,
+       "max": 11.6
+      },
+      "taa_copy_color_us": {
+       "n": 65,
+       "p10": 3.0,
+       "median": 3.7,
+       "p90": 5.5,
+       "min": 2.0,
+       "max": 7.6
+      },
+      "taa_copy_depth_us": {
+       "n": 65,
+       "p10": 1.8,
+       "median": 2.3,
+       "p90": 2.7,
+       "min": 1.4,
+       "max": 3.3
+      },
+      "taa_draw_us": {
+       "n": 65,
+       "p10": 228.4,
+       "median": 313.4,
+       "p90": 425.7,
+       "min": 172.9,
+       "max": 5647.3
+      },
+      "taa_apply_us": {
+       "n": 65,
+       "p10": 14.8,
+       "median": 16.4,
+       "p90": 19.5,
+       "min": 14.4,
+       "max": 169.9
+      },
+      "taa_copy_back_us": {
+       "n": 65,
+       "p10": 0.7,
+       "median": 1.0,
+       "p90": 1.5,
+       "min": 0.6,
+       "max": 3.2
+      },
+      "readback_us": {
+       "n": 65,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "gate_us_per_draw": {
+       "n": 65,
+       "p10": 7.104,
+       "median": 11.614,
+       "p90": 13.27,
+       "min": 4.698,
+       "max": 15.054
+      },
+      "route_draw_us_per_routed": {
+       "n": 65,
+       "p10": 6.43,
+       "median": 6.855,
+       "p90": 7.612,
+       "min": 6.118,
+       "max": 10.019
+      },
+      "set_rt_us_per_call": {
+       "n": 65,
+       "p10": 0.731,
+       "median": 0.783,
+       "p90": 0.892,
+       "min": 0.667,
+       "max": 1.039
+      },
+      "set_rt_per_routed_draw": {
+       "n": 65,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4.0,
+       "max": 4.0
+      },
+      "jitter_us_per_write": {
+       "n": 65,
+       "p10": 0.2587,
+       "median": 0.2747,
+       "p90": 0.2965,
+       "min": 0.2474,
+       "max": 1.0141
+      },
+      "jitter_writes_per_routed": {
+       "n": 65,
+       "p10": 2.354,
+       "median": 2.516,
+       "p90": 3.379,
+       "min": 2.28,
+       "max": 4.667
+      },
+      "scene_end_source": {
+       "hook": 65
+      },
+      "scene_end_check": {
+       "1": 65
+      },
+      "rt_mode": {
+       "perdraw": 65
+      },
+      "timing": {
+       "cpu_qpc": 65
+      }
+     },
+     "capture": {
+      "status": "evaluated",
+      "records": 24,
+      "draws": {
+       "n": 24,
+       "p10": 299.0,
+       "median": 451.5,
+       "p90": 809.7,
+       "min": 294,
+       "max": 857
+      },
+      "routed": {
+       "n": 24,
+       "p10": 209.0,
+       "median": 317.5,
+       "p90": 641.2,
+       "min": 204,
+       "max": 683
+      },
+      "routed_fraction": {
+       "n": 24,
+       "p10": 0.6297,
+       "median": 0.7414,
+       "p90": 0.8005,
+       "min": 0.6185,
+       "max": 0.8033
+      },
+      "route_exclusive_us": {
+       "n": 24,
+       "p10": 5776.9,
+       "median": 8805.4,
+       "p90": 17513.7,
+       "min": 5518.9,
+       "max": 19101.9
+      },
+      "route_us_per_draw": {
+       "n": 24,
+       "p10": 17.897,
+       "median": 21.109,
+       "p90": 22.262,
+       "min": 17.196,
+       "max": 23.275
+      },
+      "route_us_per_routed_draw": {
+       "n": 24,
+       "p10": 27.025,
+       "median": 27.8,
+       "p90": 29.714,
+       "min": 26.836,
+       "max": 30.215
+      },
+      "gate_us": {
+       "n": 24,
+       "p10": 3688.2,
+       "median": 5648.1,
+       "p90": 11490.3,
+       "min": 3537.5,
+       "max": 12396.7
+      },
+      "route_draw_us": {
+       "n": 24,
+       "p10": 1804.2,
+       "median": 2832.6,
+       "p90": 5499.3,
+       "min": 1751.6,
+       "max": 6152.6
+      },
+      "fill_us": {
+       "n": 24,
+       "p10": 49.5,
+       "median": 61.2,
+       "p90": 84.9,
+       "min": 44.6,
+       "max": 252.7
+      },
+      "jitter_us": {
+       "n": 24,
+       "p10": 161.8,
+       "median": 246.2,
+       "p90": 469.4,
+       "min": 158.0,
+       "max": 501.5
+      },
+      "lazy_flush_us": {
+       "n": 24,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "set_rt_us": {
+       "n": 24,
+       "p10": 946.9,
+       "median": 1465.1,
+       "p90": 2924.4,
+       "min": 926.0,
+       "max": 3096.6
+      },
+      "taa_run_us": {
+       "n": 24,
+       "p10": 148.6,
+       "median": 225.9,
+       "p90": 574.6,
+       "min": 135.3,
+       "max": 848.7
+      },
+      "taa_capture_us": {
+       "n": 24,
+       "p10": 10.6,
+       "median": 11.2,
+       "p90": 14.3,
+       "min": 10.2,
+       "max": 20.3
+      },
+      "taa_copy_color_us": {
+       "n": 24,
+       "p10": 2.3,
+       "median": 2.6,
+       "p90": 3.0,
+       "min": 2.3,
+       "max": 7.2
+      },
+      "taa_copy_depth_us": {
+       "n": 24,
+       "p10": 2.3,
+       "median": 2.8,
+       "p90": 3.1,
+       "min": 2.1,
+       "max": 3.6
+      },
+      "taa_draw_us": {
+       "n": 24,
+       "p10": 99.0,
+       "median": 179.9,
+       "p90": 528.8,
+       "min": 93.3,
+       "max": 801.9
+      },
+      "taa_apply_us": {
+       "n": 24,
+       "p10": 15.9,
+       "median": 18.0,
+       "p90": 20.0,
+       "min": 15.2,
+       "max": 22.6
+      },
+      "taa_copy_back_us": {
+       "n": 24,
+       "p10": 2.6,
+       "median": 3.4,
+       "p90": 4.3,
+       "min": 2.2,
+       "max": 4.5
+      },
+      "readback_us": {
+       "n": 24,
+       "p10": 37796.6,
+       "median": 47732.2,
+       "p90": 55128.7,
+       "min": 36394.6,
+       "max": 60213.8
+      },
+      "gate_us_per_draw": {
+       "n": 24,
+       "p10": 11.564,
+       "median": 13.402,
+       "p90": 14.451,
+       "min": 11.257,
+       "max": 15.012
+      },
+      "route_draw_us_per_routed": {
+       "n": 24,
+       "p10": 8.494,
+       "median": 8.7,
+       "p90": 9.811,
+       "min": 8.352,
+       "max": 10.168
+      },
+      "set_rt_us_per_call": {
+       "n": 24,
+       "p10": 1.11,
+       "median": 1.147,
+       "p90": 1.277,
+       "min": 1.059,
+       "max": 1.487
+      },
+      "set_rt_per_routed_draw": {
+       "n": 24,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4.0,
+       "max": 4.0
+      },
+      "jitter_us_per_write": {
+       "n": 24,
+       "p10": 0.3007,
+       "median": 0.307,
+       "p90": 0.3145,
+       "min": 0.2989,
+       "max": 0.3539
+      },
+      "jitter_writes_per_routed": {
+       "n": 24,
+       "p10": 2.385,
+       "median": 2.462,
+       "p90": 2.689,
+       "min": 2.372,
+       "max": 2.713
+      },
+      "readbacks": {
+       "n": 24,
+       "p10": 4.0,
+       "median": 4.0,
+       "p90": 4.0,
+       "min": 4,
+       "max": 4
+      },
+      "readback_us_per_readback": {
+       "n": 24,
+       "p10": 9449.1,
+       "median": 11933.0,
+       "p90": 13782.2,
+       "min": 9098.6,
+       "max": 15053.5
+      },
+      "scene_end_source": {
+       "hook": 24
+      },
+      "scene_end_check": {
+       "1": 24
+      },
+      "rt_mode": {
+       "perdraw": 24
+      },
+      "timing": {
+       "cpu_qpc": 24
+      }
+     }
+    },
+    "phases": [
+     {
+      "phase": 0,
+      "label": "scene",
+      "windows": 2,
+      "usable": 0,
+      "capture_windows": 0,
+      "frames": [
+       2,
+       4
+      ],
+      "since_s": [
+       5.842,
+       24.262
+      ],
+      "mean_ms_median": null,
+      "route_us_per_frame_median": null,
+      "draws_median": 0.5,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": false,
+      "flat": true
+     },
+     {
+      "phase": 1,
+      "label": "menu",
+      "windows": 9,
+      "usable": 9,
+      "capture_windows": 0,
+      "frames": [
+       26,
+       207
+      ],
+      "since_s": [
+       41.398,
+       84.804
+      ],
+      "mean_ms_median": 39.99,
+      "route_us_per_frame_median": 173.5,
+      "draws_median": 648.3,
+      "draws_spread_fraction": 0.056,
+      "inside_menu_band": true,
+      "flat": true
+     },
+     {
+      "phase": 2,
+      "label": "scene",
+      "windows": 129,
+      "usable": 119,
+      "capture_windows": 10,
+      "frames": [
+       236,
+       3460
+      ],
+      "since_s": [
+       136.181,
+       280.987
+      ],
+      "mean_ms_median": 41.316,
+      "route_us_per_frame_median": 5414.5,
+      "draws_median": 303.8,
+      "draws_spread_fraction": 1.841,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 3,
+      "label": "scene",
+      "windows": 21,
+      "usable": 18,
+      "capture_windows": 2,
+      "frames": [
+       3480,
+       4128
+      ],
+      "since_s": [
+       295.697,
+       333.976
+      ],
+      "mean_ms_median": 43.502,
+      "route_us_per_frame_median": 6409.7,
+      "draws_median": 420.3,
+      "draws_spread_fraction": 0.9995,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 4,
+      "label": "menu",
+      "windows": 1,
+      "usable": 1,
+      "capture_windows": 0,
+      "frames": [
+       4157,
+       4157
+      ],
+      "since_s": [
+       350.263,
+       350.263
+      ],
+      "mean_ms_median": 38.238,
+      "route_us_per_frame_median": 176.2,
+      "draws_median": 645.0,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": true,
+      "flat": true
+     }
+    ],
+    "phase_check": {
+     "status": "checked",
+     "phases": [
+      {
+       "frames": [
+        2,
+        4
+       ],
+       "label": "scene",
+       "records": 0,
+       "routed_records": 0,
+       "agrees": true
+      },
+      {
+       "frames": [
+        26,
+        207
+       ],
+       "label": "menu",
+       "records": 3,
+       "routed_records": 0,
+       "agrees": true
+      },
+      {
+       "frames": [
+        236,
+        3460
+       ],
+       "label": "scene",
+       "records": 74,
+       "routed_records": 74,
+       "agrees": true
+      },
+      {
+       "frames": [
+        3480,
+        4128
+       ],
+       "label": "scene",
+       "records": 15,
+       "routed_records": 15,
+       "agrees": true
+      },
+      {
+       "frames": [
+        4157,
+        4157
+       ],
+       "label": "menu",
+       "records": 0,
+       "routed_records": 0,
+       "agrees": true
+      }
+     ]
+    }
+   },
+   {
+    "label": "run3",
+    "path": "/tmp/x3-iteration09-run3/session-20260912-164116-2548.log",
+    "configuration": {
+     "motion_output": {
+      "requested": "0",
+      "taa": "0",
+      "taa_debug": "0",
+      "jitter": "0",
+      "rt_mode": "perdraw",
+      "temporal_consumer": "0",
+      "scene_hook": "0",
+      "state_shadow": "1",
+      "hdr": "0",
+      "frame_log": "60"
+     },
+     "mesh_cache": {
+      "requested": "0",
+      "enabled": "0",
+      "activation": "await_public_mesh_and_buffer_contract",
+      "adjacency_metric_scope": "hook_service",
+      "restart_on_cleanup_failure": "1"
+     },
+     "profiler": {
+      "enabled": null,
+      "interval_us": null,
+      "report_s": null
+     },
+     "status": {
+      "object_trace": "disabled",
+      "camera_state": "disabled",
+      "scene_hook": "disabled",
+      "object_lifetime": "disabled"
+     },
+     "clock_hz": 10000000
+    },
+    "scene": {
+     "threshold_ms": 45.0,
+     "windows": 107,
+     "fast_occupancy": 0.8411,
+     "histogram_10ms_bins": {
+      "0": 1,
+      "10": 24,
+      "20": 40,
+      "30": 21,
+      "40": 20,
+      "50": 1
+     },
+     "fast": {
+      "windows": 90,
+      "frames": 4317,
+      "mean_ms": {
+       "n": 90,
+       "p10": 11.934,
+       "median": 24.046,
+       "p90": 34.794,
+       "min": 8.884,
+       "max": 43.467
+      },
+      "min_ms": {
+       "n": 90,
+       "p10": 10.626,
+       "median": 21.691,
+       "p90": 31.302,
+       "min": 7.811,
+       "max": 40.644
+      },
+      "draws_per_frame": {
+       "n": 90,
+       "p10": 73.7,
+       "median": 229.2,
+       "p90": 425.2,
+       "min": 49.9,
+       "max": 618.4
+      },
+      "draw_backend_us": {
+       "n": 90,
+       "p10": 2.706,
+       "median": 2.831,
+       "p90": 3.033,
+       "min": 2.528,
+       "max": 7.906
+      },
+      "present_normal_us": {
+       "n": 90,
+       "p10": 7.56,
+       "median": 9.934,
+       "p90": 12.931,
+       "min": 5.198,
+       "max": 22.294
+      },
+      "stretch_backend_us": {
+       "n": 90,
+       "p10": 1.342,
+       "median": 1.633,
+       "p90": 1.937,
+       "min": 1.12,
+       "max": 2.947
+      },
+      "log_flush_us": {
+       "n": 90,
+       "p10": 0.66,
+       "median": 0.759,
+       "p90": 0.873,
+       "min": 0.526,
+       "max": 1.162
+      },
+      "log_flush_per_frame": {
+       "n": 90,
+       "p10": 1.012,
+       "median": 1.024,
+       "p90": 1.034,
+       "min": 1.01,
+       "max": 1.067
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 90,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "taa_run_us_per_frame": {
+       "n": 90,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "route_metrics_us_per_frame": {},
+      "route_metrics_us_per_call": {}
+     },
+     "slow": {
+      "windows": 17,
+      "frames": 357,
+      "mean_ms": {
+       "n": 17,
+       "p10": 46.855,
+       "median": 47.689,
+       "p90": 49.516,
+       "min": 45.594,
+       "max": 50.305
+      },
+      "min_ms": {
+       "n": 17,
+       "p10": 43.438,
+       "median": 45.958,
+       "p90": 46.43,
+       "min": 40.887,
+       "max": 47.342
+      },
+      "draws_per_frame": {
+       "n": 17,
+       "p10": 642.4,
+       "median": 719.7,
+       "p90": 745.7,
+       "min": 547.7,
+       "max": 783.8
+      },
+      "draw_backend_us": {
+       "n": 17,
+       "p10": 2.768,
+       "median": 2.803,
+       "p90": 2.864,
+       "min": 2.742,
+       "max": 2.933
+      },
+      "present_normal_us": {
+       "n": 17,
+       "p10": 11.339,
+       "median": 11.714,
+       "p90": 13.101,
+       "min": 11.1,
+       "max": 16.2
+      },
+      "stretch_backend_us": {
+       "n": 17,
+       "p10": 1.633,
+       "median": 1.776,
+       "p90": 1.891,
+       "min": 1.538,
+       "max": 1.936
+      },
+      "log_flush_us": {
+       "n": 17,
+       "p10": 0.787,
+       "median": 0.817,
+       "p90": 0.845,
+       "min": 0.774,
+       "max": 0.881
+      },
+      "log_flush_per_frame": {
+       "n": 17,
+       "p10": 1.045,
+       "median": 1.048,
+       "p90": 1.05,
+       "min": 1.045,
+       "max": 1.05
+      },
+      "route_exclusive_us_per_frame": {
+       "n": 17,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "taa_run_us_per_frame": {
+       "n": 17,
+       "p10": 0.0,
+       "median": 0.0,
+       "p90": 0.0,
+       "min": 0.0,
+       "max": 0.0
+      },
+      "route_metrics_us_per_frame": {},
+      "route_metrics_us_per_call": {}
+     }
+    },
+    "menu": {
+     "windows": 10,
+     "frames": 263,
+     "mean_ms": {
+      "n": 10,
+      "p10": 33.051,
+      "median": 34.966,
+      "p90": 45.832,
+      "min": 32.448,
+      "max": 49.04
+     },
+     "min_ms": {
+      "n": 10,
+      "p10": 31.711,
+      "median": 32.852,
+      "p90": 33.084,
+      "min": 31.698,
+      "max": 33.271
+     },
+     "draws_per_frame": {
+      "n": 10,
+      "p10": 628.7,
+      "median": 653.3,
+      "p90": 678.1,
+      "min": 563.2,
+      "max": 679.6
+     },
+     "draw_backend_us": {
+      "n": 10,
+      "p10": 2.685,
+      "median": 2.76,
+      "p90": 2.915,
+      "min": 2.679,
+      "max": 3.33
+     },
+     "present_normal_us": {
+      "n": 10,
+      "p10": 10.944,
+      "median": 11.731,
+      "p90": 12.142,
+      "min": 10.53,
+      "max": 12.817
+     },
+     "stretch_backend_us": {
+      "n": 10,
+      "p10": 1.893,
+      "median": 2.037,
+      "p90": 2.159,
+      "min": 1.675,
+      "max": 2.203
+     },
+     "log_flush_us": {
+      "n": 10,
+      "p10": 0.728,
+      "median": 0.79,
+      "p90": 0.814,
+      "min": 0.671,
+      "max": 0.904
+     },
+     "log_flush_per_frame": {
+      "n": 10,
+      "p10": 1.033,
+      "median": 1.034,
+      "p90": 1.054,
+      "min": 1.032,
+      "max": 1.167
+     },
+     "route_exclusive_us_per_frame": {
+      "n": 10,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "taa_run_us_per_frame": {
+      "n": 10,
+      "p10": 0.0,
+      "median": 0.0,
+      "p90": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "route_metrics_us_per_frame": {},
+     "route_metrics_us_per_call": {}
+    },
+    "profiler_share": {
+     "scene": {
+      "status": "absent",
+      "reason": "no profile_report delta records"
+     },
+     "menu": {
+      "status": "absent",
+      "reason": "no profile_report delta records"
+     }
+    },
+    "telemetry_stamps": {
+     "status": "estimated",
+     "menu_gate_us_per_call": null,
+     "stamp_us_assumed": 0.25,
+     "spans_per_frame_median": 0.0,
+     "ms_per_frame": 0.0
+    },
+    "frame_records": {
+     "records": 0,
+     "normal": {
+      "status": "unavailable",
+      "records": 0
+     },
+     "capture": {
+      "status": "unavailable",
+      "records": 0
+     }
+    },
+    "phases": [
+     {
+      "phase": 0,
+      "label": "scene",
+      "windows": 2,
+      "usable": 0,
+      "capture_windows": 0,
+      "frames": [
+       2,
+       4
+      ],
+      "since_s": [
+       5.484,
+       22.088
+      ],
+      "mean_ms_median": null,
+      "route_us_per_frame_median": null,
+      "draws_median": 0.5,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": false,
+      "flat": true
+     },
+     {
+      "phase": 1,
+      "label": "menu",
+      "windows": 11,
+      "usable": 9,
+      "capture_windows": 2,
+      "frames": [
+       29,
+       281
+      ],
+      "since_s": [
+       36.918,
+       78.267
+      ],
+      "mean_ms_median": 35.171,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 648.9,
+      "draws_spread_fraction": 0.0672,
+      "inside_menu_band": true,
+      "flat": true
+     },
+     {
+      "phase": 2,
+      "label": "scene",
+      "windows": 76,
+      "usable": 76,
+      "capture_windows": 0,
+      "frames": [
+       321,
+       3285
+      ],
+      "since_s": [
+       152.721,
+       233.506
+      ],
+      "mean_ms_median": 26.18,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 270.7,
+      "draws_spread_fraction": 2.2262,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 3,
+      "label": "scene",
+      "windows": 31,
+      "usable": 31,
+      "capture_windows": 0,
+      "frames": [
+       3315,
+       4958
+      ],
+      "since_s": [
+       249.314,
+       279.414
+      ],
+      "mean_ms_median": 20.963,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 101.3,
+      "draws_spread_fraction": 3.6355,
+      "inside_menu_band": false,
+      "flat": false
+     },
+     {
+      "phase": 4,
+      "label": "menu",
+      "windows": 1,
+      "usable": 1,
+      "capture_windows": 0,
+      "frames": [
+       4993,
+       4993
+      ],
+      "since_s": [
+       310.164,
+       310.164
+      ],
+      "mean_ms_median": 33.118,
+      "route_us_per_frame_median": 0.0,
+      "draws_median": 657.8,
+      "draws_spread_fraction": 0.0,
+      "inside_menu_band": true,
+      "flat": true
+     }
+    ],
+    "phase_check": {
+     "status": "unavailable",
+     "reason": "no motion_output_frame records"
+    }
+   }
+  ]
+ },
+ "speedups": [
+  {
+   "primary": "run6",
+   "baseline": "run5",
+   "phase": "scene",
+   "bins": 10,
+   "rows": [
+    {
+     "draws": 63.5,
+     "primary_ms": 8.353,
+     "baseline_ms": 8.332,
+     "factor": 0.997,
+     "primary_windows": 20,
+     "baseline_windows": 12
+    },
+    {
+     "draws": 112.8,
+     "primary_ms": 10.793,
+     "baseline_ms": 8.305,
+     "factor": 0.769,
+     "primary_windows": 12,
+     "baseline_windows": 4
+    },
+    {
+     "draws": 225.7,
+     "primary_ms": 13.914,
+     "baseline_ms": 8.362,
+     "factor": 0.601,
+     "primary_windows": 7,
+     "baseline_windows": 16
+    },
+    {
+     "draws": 269.2,
+     "primary_ms": 16.56,
+     "baseline_ms": 8.829,
+     "factor": 0.533,
+     "primary_windows": 14,
+     "baseline_windows": 4
+    },
+    {
+     "draws": 328.5,
+     "primary_ms": 19.05,
+     "baseline_ms": 8.43,
+     "factor": 0.443,
+     "primary_windows": 13,
+     "baseline_windows": 9
+    },
+    {
+     "draws": 373.4,
+     "primary_ms": 19.699,
+     "baseline_ms": 8.407,
+     "factor": 0.427,
+     "primary_windows": 14,
+     "baseline_windows": 13
+    },
+    {
+     "draws": 428.7,
+     "primary_ms": 23.795,
+     "baseline_ms": 8.485,
+     "factor": 0.357,
+     "primary_windows": 6,
+     "baseline_windows": 9
+    },
+    {
+     "draws": 573.9,
+     "primary_ms": 29.437,
+     "baseline_ms": 10.733,
+     "factor": 0.365,
+     "primary_windows": 4,
+     "baseline_windows": 2
+    },
+    {
+     "draws": 718.3,
+     "primary_ms": 35.778,
+     "baseline_ms": 11.518,
+     "factor": 0.322,
+     "primary_windows": 8,
+     "baseline_windows": 5
+    },
+    {
+     "draws": 775.6,
+     "primary_ms": 40.438,
+     "baseline_ms": 12.574,
+     "factor": 0.311,
+     "primary_windows": 4,
+     "baseline_windows": 3
+    }
+   ],
+   "factor": {
+    "min": 0.311,
+    "median": 0.435,
+    "max": 0.997
+   },
+   "origin_us_per_draw": {
+    "n": 10,
+    "p10": 19.884,
+    "median": 31.285,
+    "p90": 35.734,
+    "min": 0.331,
+    "max": 35.926
+   },
+   "sign_test": {
+    "status": "evaluated",
+    "bins": 10,
+    "positive": 10,
+    "negative": 0,
+    "p_two_sided": 0.00195
+   },
+   "attribution": {
+    "scene_total_us_per_draw": 37.771,
+    "scene_total_us_per_draw_iqr": [
+     35.957,
+     41.203
+    ],
+    "scene_fixed_ms_per_frame": -2.407,
+    "menu_overhead_us_per_draw": 3.331,
+    "menu_overhead_bins": 2,
+    "menu_delta_ms": 2.181,
+    "profiler_share_of_wall": 0.02968,
+    "profiler_ms_per_frame": 0.546,
+    "telemetry_stamp_ms_per_frame": 0.343,
+    "route_attributed_us_per_draw": 34.44,
+    "route_metric_us_per_frame_median": 5281.9,
+    "draws_per_frame_median": 361.6,
+    "route_metric_us_per_draw": 14.608,
+    "route_attributed_ms_per_frame_at_median": 12.452,
+    "unexplained_us_per_draw": 19.832,
+    "note": "the sector slope minus the menu overhead is what the route adds per draw; the menu measures the profiler, object trace and per-draw telemetry with the route enabled and nothing routed, so it is not charged to the route. The profiler is a share of wall time and therefore lands mostly in the fixed term, not the slope."
+   },
+   "note": "paired medians of the same draws/frame bin; a factor above 1.0 is the primary run being faster. Menu frames can fall into a high-draw scene bin, which inflates a single bin rather than the slope."
+  }
+ ],
+ "scene_hook": {
+  "install": [
+   {
+    "active": "1",
+    "status": "active"
+   }
+  ],
+  "patch_site": {
+   "callsite_va": "0x004721b1",
+   "expected_bytes": "e8 9a 25 05 00",
+   "target_va": "0x004c4750",
+   "return_va": "0x004721b6",
+   "verified_by": "object_trace::executable_verified() SHA-256 + exact callsite bytes + resolved rel32 target (scene_hook.cpp); status=active is reached only after all three pass, the patch is written, FlushInstructionCache succeeds and the original page protection is restored"
+  },
+  "records": 278,
+  "check_distribution": {
+   "None": 40,
+   "Agree": 214,
+   "Disagree": 24
+  },
+  "source_distribution": {
+   "none": 64,
+   "hook": 214
+  },
+  "resolved_by_source": {
+   "hook": 214
+  },
+  "disagreement_records": [
+   {
+    "device": "1",
+    "frame": "2933",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2934",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2935",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2936",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2937",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2938",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2939",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2940",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2941",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2942",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2943",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2944",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2945",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2946",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2947",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   },
+   {
+    "device": "1",
+    "frame": "2948",
+    "installed": "1",
+    "signals": "1",
+    "outside_scene": "1",
+    "selector_state": "9",
+    "draws_after_hook": "0",
+    "bloom_copy_seen": "0",
+    "hook_scene_end": "0"
+   }
+  ],
+  "latched_frames": 239,
+  "latched_all_agree": false,
+  "latched_draws_after_hook_max": 0,
+  "latched_hook_signals": [
+   0,
+   1
+  ],
+  "latched_outside_scene_total": 24,
+  "unlatched_frames": [
+   {
+    "frame": 60,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 120,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 180,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 240,
+    "latched": 0,
+    "draws": 644,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 300,
+    "latched": 0,
+    "draws": 644,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 360,
+    "latched": 0,
+    "draws": 644,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 420,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 480,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 540,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 600,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 660,
+    "latched": 0,
+    "draws": 675,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 720,
+    "latched": 0,
+    "draws": 684,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 780,
+    "latched": 0,
+    "draws": 686,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1500,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1560,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1620,
+    "latched": 0,
+    "draws": 637,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1680,
+    "latched": 0,
+    "draws": 642,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1740,
+    "latched": 0,
+    "draws": 648,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1800,
+    "latched": 0,
+    "draws": 648,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1860,
+    "latched": 0,
+    "draws": 643,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1920,
+    "latched": 0,
+    "draws": 644,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 1980,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2040,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2100,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2160,
+    "latched": 0,
+    "draws": 676,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2220,
+    "latched": 0,
+    "draws": 679,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2280,
+    "latched": 0,
+    "draws": 682,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2340,
+    "latched": 0,
+    "draws": 680,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2400,
+    "latched": 0,
+    "draws": 680,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2460,
+    "latched": 0,
+    "draws": 680,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2520,
+    "latched": 0,
+    "draws": 680,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2580,
+    "latched": 0,
+    "draws": 682,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2640,
+    "latched": 0,
+    "draws": 691,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2700,
+    "latched": 0,
+    "draws": 690,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2760,
+    "latched": 0,
+    "draws": 704,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2820,
+    "latched": 0,
+    "draws": 703,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 2880,
+    "latched": 0,
+    "draws": 701,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 14460,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 14520,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   }
+  ],
+  "stretch_rect_records": 36,
+  "shutdown_records": []
+ },
+ "blur": {
+  "bursts": [
+   {
+    "status": "evaluated",
+    "frames": [
+     4566,
+     4567,
+     4568,
+     4569
+    ],
+    "motion": "stationary",
+    "cut_median_px_peak": 0.7936,
+    "rotation_deg_max": 1.0261,
+    "routed_interior_px": 29688,
+    "measured_per_frame": [
+     0.441,
+     0.4238,
+     0.4031,
+     0.4
+    ],
+    "measured": 0.417,
+    "four_phase_average": 0.4516,
+    "analytic_four_phase": 0.6569852612081852,
+    "analytic_resolve_kernel": 0.6810347168532878,
+    "scale_to_resolve_kernel": 1.036605776514493,
+    "ideal_floor": 0.4681,
+    "measured_over_ideal": 0.8907,
+    "share_of_loss_that_is_supersampling": 0.9122,
+    "iteration8_comparable_ratio": [
+     0.5773,
+     0.5811,
+     0.5634,
+     0.5609
+    ],
+    "iteration8_comparable_mean": 0.5707,
+    "sentinel_ratio": 0.9039,
+    "raw_phase_spread_routed_interior": 0.08802306973750665
+   },
+   {
+    "status": "evaluated",
+    "frames": [
+     4754,
+     4755,
+     4756,
+     4757
+    ],
+    "motion": "stationary",
+    "cut_median_px_peak": 0.0,
+    "rotation_deg_max": 1.0261,
+    "routed_interior_px": 37230,
+    "measured_per_frame": [
+     0.539,
+     0.5372,
+     0.5348,
+     0.5275
+    ],
+    "measured": 0.5346,
+    "four_phase_average": 0.6394,
+    "analytic_four_phase": 0.6838279441784585,
+    "analytic_resolve_kernel": 0.6812588109816469,
+    "scale_to_resolve_kernel": 0.9962430122683884,
+    "ideal_floor": 0.6369,
+    "measured_over_ideal": 0.8393,
+    "share_of_loss_that_is_supersampling": 0.7801,
+    "iteration8_comparable_ratio": [
+     0.6495,
+     0.6401,
+     0.6444,
+     0.6419
+    ],
+    "iteration8_comparable_mean": 0.644,
+    "sentinel_ratio": 0.9364,
+    "raw_phase_spread_routed_interior": 0.026410142809940466
+   },
+   {
+    "status": "evaluated",
+    "frames": [
+     5394,
+     5395,
+     5396,
+     5397
+    ],
+    "motion": "stationary",
+    "cut_median_px_peak": 0.9081,
+    "rotation_deg_max": 1.011,
+    "routed_interior_px": 34207,
+    "measured_per_frame": [
+     0.4797,
+     0.4581,
+     0.4438,
+     0.4378
+    ],
+    "measured": 0.4548,
+    "four_phase_average": 0.4562,
+    "analytic_four_phase": 0.6838279441784585,
+    "analytic_resolve_kernel": 0.6812588109816469,
+    "scale_to_resolve_kernel": 0.9962430122683884,
+    "ideal_floor": 0.4545,
+    "measured_over_ideal": 1.0007,
+    "share_of_loss_that_is_supersampling": 1.0006,
+    "iteration8_comparable_ratio": [
+     0.5884,
+     0.5698,
+     0.5664,
+     0.5638
+    ],
+    "iteration8_comparable_mean": 0.5721,
+    "sentinel_ratio": 0.9119,
+    "raw_phase_spread_routed_interior": 0.07040204345683808
+   },
+   {
+    "status": "evaluated",
+    "frames": [
+     9711,
+     9712,
+     9713,
+     9714
+    ],
+    "motion": "stationary",
+    "cut_median_px_peak": 0.0365,
+    "rotation_deg_max": 0.9529,
+    "routed_interior_px": 79257,
+    "measured_per_frame": [
+     0.548,
+     0.5388,
+     0.5578,
+     0.5543
+    ],
+    "measured": 0.5497,
+    "four_phase_average": 0.6424,
+    "analytic_four_phase": 0.6868938149896309,
+    "analytic_resolve_kernel": 0.6697956942785439,
+    "scale_to_resolve_kernel": 0.9751080584248017,
+    "ideal_floor": 0.6264,
+    "measured_over_ideal": 0.8776,
+    "share_of_loss_that_is_supersampling": 0.8296,
+    "iteration8_comparable_ratio": [
+     0.6986,
+     0.6811,
+     0.6849,
+     0.7003
+    ],
+    "iteration8_comparable_mean": 0.6912,
+    "sentinel_ratio": 0.951,
+    "raw_phase_spread_routed_interior": 0.044616128386834014
+   },
+   {
+    "status": "evaluated",
+    "frames": [
+     13128,
+     13129,
+     13130,
+     13131
+    ],
+    "motion": "stationary",
+    "cut_median_px_peak": 0.0427,
+    "rotation_deg_max": 0.9552,
+    "routed_interior_px": 22446,
+    "measured_per_frame": [
+     0.7523,
+     0.6731,
+     0.7253,
+     0.7093
+    ],
+    "measured": 0.715,
+    "four_phase_average": 0.7886,
+    "analytic_four_phase": 0.6868938149896309,
+    "analytic_resolve_kernel": 0.6697956942785439,
+    "scale_to_resolve_kernel": 0.9751080584248017,
+    "ideal_floor": 0.769,
+    "measured_over_ideal": 0.9297,
+    "share_of_loss_that_is_supersampling": 0.8104,
+    "iteration8_comparable_ratio": [
+     0.7895,
+     0.7791,
+     0.7817,
+     0.7908
+    ],
+    "iteration8_comparable_mean": 0.7853,
+    "sentinel_ratio": 0.9043,
+    "raw_phase_spread_routed_interior": 0.0985564902507005
+   }
+  ],
+  "share_of_loss": {
+   "min": 0.7801,
+   "max": 1.0006,
+   "median": 0.8296
+  },
+  "box_filter_reference": 0.6157504809262848,
+  "note": "mean squared central-difference luma gradient, resolved over raw, on the routed-interior class of stationary bursts; the floor is the burst's own four real jitter phases rescaled to the resolve's eight-phase kernel."
+ },
+ "blur_baseline": {
+  "bursts": [
+   {
+    "status": "evaluated",
+    "frames": [
+     629,
+     630,
+     631,
+     632
+    ],
+    "motion": "stationary",
+    "cut_median_px_peak": 0.2244,
+    "rotation_deg_max": 0.5138,
+    "routed_interior_px": 34361,
+    "measured_per_frame": [
+     0.4986,
+     0.5127,
+     0.521,
+     0.4878
+    ],
+    "measured": 0.505,
+    "four_phase_average": 0.6497,
+    "analytic_four_phase": 0.7614937203835671,
+    "analytic_resolve_kernel": 0.6651454735792512,
+    "scale_to_resolve_kernel": 0.8734746666646379,
+    "ideal_floor": 0.5675,
+    "measured_over_ideal": 0.8899,
+    "share_of_loss_that_is_supersampling": 0.8738,
+    "iteration8_comparable_ratio": [
+     0.6994,
+     0.725,
+     0.7097,
+     0.6997
+    ],
+    "iteration8_comparable_mean": 0.7085,
+    "sentinel_ratio": 0.9696,
+    "raw_phase_spread_routed_interior": 0.0703382298930109
+   },
+   {
+    "status": "evaluated",
+    "frames": [
+     1427,
+     1428,
+     1429,
+     1430
+    ],
+    "motion": "stationary",
+    "cut_median_px_peak": 0.3023,
+    "rotation_deg_max": 0.4477,
+    "routed_interior_px": 167472,
+    "measured_per_frame": [
+     0.6422,
+     0.6231,
+     0.6214,
+     0.6243
+    ],
+    "measured": 0.6277,
+    "four_phase_average": 0.6723,
+    "analytic_four_phase": 0.6868938149896309,
+    "analytic_resolve_kernel": 0.6697956942785439,
+    "scale_to_resolve_kernel": 0.9751080584248017,
+    "ideal_floor": 0.6556,
+    "measured_over_ideal": 0.9575,
+    "share_of_loss_that_is_supersampling": 0.9252,
+    "iteration8_comparable_ratio": [
+     0.6593,
+     0.6385,
+     0.6371,
+     0.6399
+    ],
+    "iteration8_comparable_mean": 0.6437,
+    "sentinel_ratio": 0.9262,
+    "raw_phase_spread_routed_interior": 0.015986628319681916
+   }
+  ],
+  "share_of_loss": {
+   "min": 0.8738,
+   "max": 0.9252,
+   "median": 0.8995
+  },
+  "box_filter_reference": 0.6157504809262848,
+  "note": "mean squared central-difference luma gradient, resolved over raw, on the routed-interior class of stationary bursts; the floor is the burst's own four real jitter phases rescaled to the resolve's eight-phase kernel."
+ },
+ "scene_hook_baseline": {
+  "install": [
+   {
+    "active": "1",
+    "status": "active"
+   }
+  ],
+  "patch_site": {
+   "callsite_va": "0x004721b1",
+   "expected_bytes": "e8 9a 25 05 00",
+   "target_va": "0x004c4750",
+   "return_va": "0x004721b6",
+   "verified_by": "object_trace::executable_verified() SHA-256 + exact callsite bytes + resolved rel32 target (scene_hook.cpp); status=active is reached only after all three pass, the patch is written, FlushInstructionCache succeeds and the original page protection is restored"
+  },
+  "records": 94,
+  "check_distribution": {
+   "None": 5,
+   "Agree": 89
+  },
+  "source_distribution": {
+   "none": 5,
+   "hook": 89
+  },
+  "resolved_by_source": {
+   "hook": 89
+  },
+  "latched_frames": 90,
+  "latched_all_agree": false,
+  "latched_draws_after_hook_max": 0,
+  "latched_hook_signals": [
+   0,
+   1
+  ],
+  "latched_outside_scene_total": 0,
+  "unlatched_frames": [
+   {
+    "frame": 60,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 120,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 180,
+    "latched": 0,
+    "draws": 674,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   },
+   {
+    "frame": 4140,
+    "latched": 0,
+    "draws": 638,
+    "routed": 0,
+    "check": "None",
+    "source": "none",
+    "hook_signals": 1,
+    "hook_outside_scene": 1,
+    "hook_state": "CameraState",
+    "draws_after_hook": 0,
+    "bloom_copy_seen": 0,
+    "taa_attempted": 0,
+    "taa_resolved": 0,
+    "taa_skip": 2
+   }
+  ],
+  "stretch_rect_records": 24,
+  "shutdown_records": []
+ },
+ "limits": [
+  "CPU-side wall clock only; no GPU timing anywhere in this report.",
+  "The new-bottle route-on run does not follow the old runs' flight path before the station, so only the draw-count-normalised bins and the per-call metric medians compare; pooled means report occupancy, not speed.",
+  "A line kind that is absent because the run did not request the feature is flagged as configuration, not as a behaviour change."
+ ]
+}

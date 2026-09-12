@@ -1,0 +1,115 @@
+ADJACENCY_CASE name=quad-16 faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=389.300 fast_us=275.900 speedup=1.41 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=4
+ADJACENCY_CASE name=quad-32 faces=2 vertices=4 bits=32 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=254.900 fast_us=1.500 speedup=169.93 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=4
+ADJACENCY_CASE name=exact-duplicates faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=53.600 fast_us=167.900 speedup=0.32 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=4
+ADJACENCY_CASE name=grid-neighbours-6.1e-5 faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=32.500 fast_us=1.400 speedup=23.21 quantized=1 representatives=6 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=6
+ADJACENCY_CASE name=signed-zero faces=2 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=24.500 fast_us=2.300 speedup=10.65 quantized=1 representatives=4 welded=2 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=4
+ADJACENCY_CASE name=nan-position faces=2 vertices=4 bits=16 epsilon=1e-06 status=non_finite native_hr=00000000 native_error=00001357 equal=0 mismatches=0 first=0 native_us=9.100 fast_us=0.600 speedup=15.17 quantized=0 representatives=0 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=0
+NATIVE_ADJACENCY -1 -1 1 0 -1 -1
+ADJACENCY_POLICY name=nan-position head_insertion=0 normal_selection=0 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=nan-position head_insertion=0 normal_selection=0 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=nan-position head_insertion=0 normal_selection=1 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=nan-position head_insertion=0 normal_selection=1 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=nan-position head_insertion=1 normal_selection=0 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=nan-position head_insertion=1 normal_selection=0 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=nan-position head_insertion=1 normal_selection=1 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=nan-position head_insertion=1 normal_selection=1 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_CASE name=position-offset-8 faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=17.000 fast_us=2.200 speedup=7.73 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=4
+ADJACENCY_CASE name=epsilon-zero faces=2 vertices=4 bits=16 epsilon=0 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=45.100 fast_us=1.200 speedup=37.58 quantized=0 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=4
+ADJACENCY_CASE name=unquantized-far faces=2 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=6 native_us=7.300 fast_us=195.000 speedup=0.04 quantized=0 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=4
+ADJACENCY_CASE name=unquantized-near-1.5e-6 faces=2 vertices=4 bits=16 epsilon=1e-06 status=epsilon_neighbour native_hr=00000000 native_error=00001357 equal=0 mismatches=0 first=0 native_us=6.900 fast_us=1.900 speedup=3.63 quantized=0 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=0
+NATIVE_ADJACENCY -1 -1 1 0 -1 -1
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=0 normal_selection=0 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=0 normal_selection=0 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=0 normal_selection=1 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=0 normal_selection=1 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=1 normal_selection=0 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=1 normal_selection=0 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=1 normal_selection=1 self_match=0 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_POLICY name=unquantized-near-1.5e-6 head_insertion=1 normal_selection=1 self_match=1 equal=0 mismatches=6
+POLICY_ADJACENCY 11259375 11259375 11259375 11259375 11259375 11259375
+ADJACENCY_CASE name=fan-tilted-abc faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=314.700 fast_us=20.400 speedup=15.43 quantized=1 representatives=5 welded=0 multi_candidates=1 normal_selected=1 degenerate_edges=0 unmatched=7
+NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=0 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=0 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=0 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=0 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=1 normal_selection=0 self_match=0 equal=0 mismatches=3
+POLICY_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=1 normal_selection=0 self_match=1 equal=0 mismatches=3
+POLICY_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=1 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-abc head_insertion=1 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_CASE name=fan-tilted-bac faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=12.200 fast_us=1.500 speedup=8.13 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=7
+NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=0 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=0 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=0 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=0 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=1 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=1 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=1 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-bac head_insertion=1 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_CASE name=fan-tilted-cba faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=47.000 fast_us=1.200 speedup=39.17 quantized=1 representatives=5 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=7
+NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=0 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=0 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=0 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=0 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=1 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=1 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=1 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-tilted-cba head_insertion=1 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_CASE name=fan-coplanar-abc faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=23.800 fast_us=4.500 speedup=5.29 quantized=1 representatives=4 welded=1 multi_candidates=1 normal_selected=0 degenerate_edges=0 unmatched=7
+NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=0 normal_selection=0 self_match=0 equal=0 mismatches=3
+POLICY_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=0 normal_selection=0 self_match=1 equal=0 mismatches=3
+POLICY_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=0 normal_selection=1 self_match=0 equal=0 mismatches=3
+POLICY_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=0 normal_selection=1 self_match=1 equal=0 mismatches=3
+POLICY_ADJACENCY 1 -1 -1 0 -1 -1 -1 -1 -1
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=1 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=1 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=1 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-abc head_insertion=1 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_CASE name=fan-coplanar-cba faces=3 vertices=5 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=9 native_us=9.000 fast_us=1.300 speedup=6.92 quantized=1 representatives=4 welded=1 multi_candidates=0 normal_selected=0 degenerate_edges=0 unmatched=7
+NATIVE_ADJACENCY 2 -1 -1 -1 -1 -1 0 -1 -1
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=0 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=0 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=0 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=0 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=1 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=1 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=1 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-coplanar-cba head_insertion=1 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_CASE name=fan-four faces=5 vertices=6 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=1 mismatches=0 first=15 native_us=52.800 fast_us=2.000 speedup=26.40 quantized=1 representatives=6 welded=0 multi_candidates=1 normal_selected=1 degenerate_edges=0 unmatched=11
+NATIVE_ADJACENCY 1 -1 -1 0 -1 -1 4 -1 -1 -1 -1 -1 2 -1 -1
+ADJACENCY_POLICY name=fan-four head_insertion=0 normal_selection=0 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-four head_insertion=0 normal_selection=0 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-four head_insertion=0 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-four head_insertion=0 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-four head_insertion=1 normal_selection=0 self_match=0 equal=0 mismatches=5
+POLICY_ADJACENCY 3 -1 -1 4 -1 -1 -1 -1 -1 0 -1 -1 1 -1 -1
+ADJACENCY_POLICY name=fan-four head_insertion=1 normal_selection=0 self_match=1 equal=0 mismatches=5
+POLICY_ADJACENCY 3 -1 -1 4 -1 -1 -1 -1 -1 0 -1 -1 1 -1 -1
+ADJACENCY_POLICY name=fan-four head_insertion=1 normal_selection=1 self_match=0 equal=1 mismatches=0
+ADJACENCY_POLICY name=fan-four head_insertion=1 normal_selection=1 self_match=1 equal=1 mismatches=0
+ADJACENCY_CASE name=degenerate-aba-aaa faces=3 vertices=4 bits=16 epsilon=1e-06 status=ok native_hr=00000000 native_error=00001357 equal=0 mismatches=2 first=0 native_us=84.800 fast_us=1.200 speedup=70.67 quantized=1 representatives=4 welded=0 multi_candidates=0 normal_selected=0 degenerate_edges=4 unmatched=7
+FAIL module output equals native D3DX error=4951
+MESH ADJACENCY FAIL module output equals native D3DX checks=530

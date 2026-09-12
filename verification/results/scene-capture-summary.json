@@ -1,10 +1,18 @@
 {
-  "started_utc": "2026-09-12T12:33:44.863669+00:00",
+  "started_utc": "2026-09-12T13:35:03.613010+00:00",
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
   "source_sha256": {
     "verification/probe/scene_capture_fixture.cpp": "0787fae64ef8eb341e88532ed78a7a2b82c1b8c01a03ba74b8f95ae19b03abab",
     "verification/probe/build_scene_capture.sh": "668637625afc590898fce8f9ac65df35b05a10ff82d92c649df8ce1c359baa8f",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_scene_capture.py": "690cfa683d46c82532d9de738118b56d80fe22db76a56918fb7aa4c613e13423",
+    "verification/probe/run_scene_capture.py": "1541719412f81cf55682e986a3bdda215faac153cbe7cc3ff1d10a759a1cd0b2",
     "src/ownership/d3d9_ownership.cpp": "a02251b9980e5d1729b29308a77376acf41d4d556f3020f2841c076f050c7505",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
@@ -42,7 +50,7 @@
     "C:\\X3\\d3dx9_37.dll",
     "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
   ],
-  "executable_sha256": "e0b545980077c633682c7b7270dc69ab3c4db7d5f65ca9d2ff008bc42a60c785",
+  "executable_sha256": "baecd0f3577c4c24750d72a14db404dcb05fb2700b2e609ab219f5b38be538d5",
   "exit_code": 0,
   "checks": 4908,
   "samples": 16,

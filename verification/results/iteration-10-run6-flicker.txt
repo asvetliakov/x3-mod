@@ -1,0 +1,41 @@
+iteration-08 TAA analysis of session-20260912-171241-212.log (295274646 bytes, sha256 c0fe801ccff79874…)
+TAA: 278 motion_output_frame records, attempted 214, resolved 214, failed 0, history valid 203
+  skip histogram {'0': 214, '2': 64}; results {'00000001': 64, '00000000': 214}; every captured frame resolved with history: False
+route totals: draws 93278 routed 47213 matched 46818 gates {'gate1': 0, 'gate2': 30902, 'gate3': 1779, 'gate4': 13384, 'gate5': 0, 'gate6': 395}
+  per-draw gate histogram {'0': 11802, '3': 316, '4': 2979, '6': 337}; counter consistency True
+burst 0 frames 4566-4569: cut median [0.1444, 0.7826, 0.7883, 0.7936] px, verdicts [0, 0, 0, 0], stationary=False
+burst 1 frames 4754-4757: cut median [0.0, 0.0, 0.0, 0.0] px, verdicts [0, 0, 0, 0], stationary=True
+burst 2 frames 5060-5063: cut median [9.699, 93.9339, 85.7371, 84.6463] px, verdicts [0, 1, 1, 1], stationary=False
+burst 3 frames 5394-5397: cut median [0.1431, 0.8983, 0.9032, 0.9081] px, verdicts [0, 0, 0, 0], stationary=False
+burst 4 frames 9711-9714: cut median [0.0023, 0.0271, 0.0087, 0.0365] px, verdicts [0, 0, 0, 0], stationary=False
+burst 5 frames 9977-9980: cut median [10.84, 67.7258, 62.7888, 59.6039] px, verdicts [0, 1, 1, 1], stationary=False
+burst 6 frames 13128-13131: cut median [0.0032, 0.0426, 0.0427, 0.0427] px, verdicts [0, 0, 0, 0], stationary=False
+burst 7 frames 13558-13561: cut median [1.1723, 9.7577, 10.261, 10.7944] px, verdicts [0, 0, 0, 0], stationary=False
+burst 8 frames 13934-13937: cut median [3.4773, 51.2042, 57.4024, 62.4164] px, verdicts [0, 1, 1, 1], stationary=False
+diagnostics: 0 failure records, 0 resets, 0 shutdown records, 0 nonzero readback results
+  window run/0:lock_wait/all: 311 windows, per-window mean median 0.1us, per-window min median 0.0us
+  window run/0:lock_wait/other: 74 windows, per-window mean median 0.1us, per-window min median 0.0us
+  window run/0:lock_wait/scene: 234 windows, per-window mean median 0.1us, per-window min median 0.0us
+  window run/1:draw_backend/all: 265 windows, per-window mean median 3.0us, per-window min median 1.0us
+  window run/1:draw_backend/other: 46 windows, per-window mean median 3.1us, per-window min median 1.1us
+  window run/1:draw_backend/scene: 219 windows, per-window mean median 3.0us, per-window min median 1.0us
+  window run/1:frame_normal/all: 251 windows, per-window mean median 18880.8us, per-window min median 14640.0us
+  window run/1:frame_normal/other: 47 windows, per-window mean median 12360.3us, per-window min median 11103.5us
+  window run/1:frame_normal/scene: 204 windows, per-window mean median 22538.6us, per-window min median 17752.5us
+  window run/1:present_normal/all: 251 windows, per-window mean median 32.0us, per-window min median 23.1us
+  window run/1:present_normal/other: 47 windows, per-window mean median 9.7us, per-window min median 5.2us
+  window run/1:present_normal/scene: 204 windows, per-window mean median 40.1us, per-window min median 30.6us
+  timing comparison: pending - no --run-b-log: this report has one session with TAA on throughout, so the timing is not a controlled comparison. Re-run with the TAA-off capture of the same scene to populate this section.
+tremble 4754->4755: jitter step (+0.5000,-0.5556) colour (+0.5048,-0.5581) resolved (+0.0360,-0.0461) residual tracking 0.6891 stable 0.0585 bound 0.0778 -> stable
+tremble 4755->4756: jitter step (-0.6250,+0.3333) colour (-0.6071,+0.3331) resolved (-0.0360,-0.0044) residual tracking 0.6789 stable 0.0363 bound 0.0778 -> stable
+tremble 4756->4757: jitter step (+0.5000,+0.3333) colour (+0.5011,+0.3345) resolved (+0.0225,+0.0325) residual tracking 0.5644 stable 0.0395 bound 0.0778 -> stable
+blur frame 4754: gradient energy ratio 0.6495, high-frequency fraction ratio 0.5303
+blur frame 4755: gradient energy ratio 0.6401, high-frequency fraction ratio 0.5002
+blur frame 4756: gradient energy ratio 0.6444, high-frequency fraction ratio 0.5220
+blur frame 4757: gradient energy ratio 0.6419, high-frequency fraction ratio 0.5326
+flicker burst 4754-4757:
+  sentinel: 887770 px (90.3%), raw rms 0.56 levels, resolved rms 0.07, aggregate ratio 0.015, ratio p25/p50/p75 0.005/0.006/0.010, flicker energy share 0.031
+  routed_interior: 37230 px (3.8%), raw rms 16.03 levels, resolved rms 1.58, aggregate ratio 0.010, ratio p25/p50/p75 0.004/0.005/0.008, flicker energy share 0.677
+  routed_edge: 58040 px (5.9%), raw rms 8.78 levels, resolved rms 0.83, aggregate ratio 0.009, ratio p25/p50/p75 0.004/0.005/0.006, flicker energy share 0.292
+  thin_feature: 32723 px (3.3%), raw rms 20.26 levels, resolved rms 1.99, aggregate ratio 0.010, ratio p25/p50/p75 0.004/0.006/0.009, flicker energy share 0.946
+  yellow guide lines: 403 px union, 123 in every frame (coverage flip 0.69), classes {'routed_interior': 214, 'routed_edge': 189}, 389 with RT2 depth in all frames, raw rms 35.44 levels, resolved rms 4.10, aggregate ratio 0.013

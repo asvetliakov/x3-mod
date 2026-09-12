@@ -1,0 +1,38 @@
+iteration 9: controlled route-on against route-off cost
+========================================================================
+CPU-side wall clock only; frame_normal is a Present-to-Present interval
+and contains application work, pacing and driver blocking.
+
+-- run run5  /tmp/x3-bottleX3-run5/session-20260912-170743-352.log
+   route=0 taa=0 taa_debug=0 jitter=0 rt_mode=perdraw scene_hook=0 hdr=0
+   profiler=None object_trace=disabled mesh_cache_enabled=0  hdr metrics: none (expected)
+   windows total=103 loading=4 capture=6 scene_usable=83 menu_usable=8
+   phases: 0=scene[2..4] n=0 - ms, 1=menu[120..741] n=7 10.10 ms, 2=scene[882..7937] n=64 8.45 ms, 3=scene[8063..10233] n=19 8.38 ms, 4=menu[10385..10385] n=1 8.93 ms
+   phase check: unavailable
+   regime  windows  mean_ms   min_ms   draws/f  route_ms    taa_us
+   fast         83     8.42     5.67     320.1     0.000       0.0
+   menu          8     9.90     8.11     644.4     0.000       0.0
+   profiler: absent
+   telemetry stamps: 0.0 spans/frame x 0.25 us = 0.000 ms/frame
+   capture frames: frame_capture interval median 220.8 ms
+
+-- run run3  /tmp/x3-iteration09-run3/session-20260912-164116-2548.log
+   route=0 taa=0 taa_debug=0 jitter=0 rt_mode=perdraw scene_hook=0 hdr=0
+   profiler=None object_trace=disabled mesh_cache_enabled=0  hdr metrics: none (expected)
+   windows total=125 loading=4 capture=2 scene_usable=107 menu_usable=10
+   phases: 0=scene[2..4] n=0 - ms, 1=menu[29..281] n=9 35.17 ms, 2=scene[321..3285] n=76 26.18 ms, 3=scene[3315..4958] n=31 20.96 ms, 4=menu[4993..4993] n=1 33.12 ms
+   phase check: unavailable
+   regime  windows  mean_ms   min_ms   draws/f  route_ms    taa_us
+   fast         90    24.05    21.69     229.2     0.000       0.0
+   slow         17    47.69    45.96     719.7     0.000       0.0
+   menu         10    34.97    32.85     653.3     0.000       0.0
+   profiler: absent
+   telemetry stamps: 0.0 spans/frame x 0.25 us = 0.000 ms/frame
+   capture frames: frame_capture interval median 328.6 ms
+
+-- run5 against run3  (path and configuration noise)
+   fast  8.42 ms (n=83, 320 draws/f) vs 24.05 ms (n=90, 229 draws/f) -> -15.62 ms (-65.0%)
+   slow  unavailable
+   scene       9 bins over 68-766 draws: -46.07 us/draw (IQR -55.95..-39.35) -3.50 ms fixed | origin -56.80 us/draw | sign 0+/9- p=0.0039
+   menu        2 bins over 642-674 draws: +7.32 us/draw (IQR +7.32..+7.32) -29.24 ms fixed | origin -37.15 us/draw | sign 0+/2- p=0.5000
+   scene_min   9 bins over 68-766 draws: -41.28 us/draw (IQR -43.76..-38.50) -5.74 ms fixed | origin -58.87 us/draw | sign 0+/9- p=0.0039
