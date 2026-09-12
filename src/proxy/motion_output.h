@@ -467,7 +467,10 @@ public:
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
     // Stage 2 exposure state: ev (consumed), ev_adapted, ev_target,
-    // avg_log_l, dt, exposure, steps, k (eight floats).
+    // avg_log_l, dt, exposure, steps, k (eight floats); with 16 floats also
+    // lit_fraction, lit_median_log, p99_max_log, ev_key, ev_limit, tiles,
+    // lit, lit_mean_log (the space-aware statistic); with 18 also ev_fresh
+    // (the target before the dead band) and the lit tiles' total weight.
     HRESULT fixture_hdr_exposure(float* out, std::size_t floats) const noexcept;
 #endif
 

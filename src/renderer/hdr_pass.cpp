@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <new>
 
 namespace x3m::renderer {
 namespace {
@@ -216,15 +217,32 @@ void HdrPass::release_target() noexcept {
 
 void HdrPass::release_chain() noexcept {
     for (unsigned i = 0; i < chain_max_levels; ++i) { drop(chain_[i]); chain_width_[i] = chain_height_[i] = 0; }
-    chain_count_ = 0;
+    chain_count_ = 0; tile_width_ = tile_height_ = 0;
     for (unsigned i = 0; i < 2; ++i) { drop(chain_ring_[i]); drop(chain_readback_[i]); chain_pending_[i] = false; }
 }
 
+// Levels, the two ring targets and the two readback surfaces, at the chain
+// format's texel size (the host copies are not device memory).
 std::uint64_t HdrPass::chain_bytes() const noexcept {
     std::uint64_t bytes = 0;
-    for (unsigned i = 0; i < chain_count_; ++i) bytes += std::uint64_t(chain_width_[i]) * chain_height_[i] * 4;
-    if (chain_ring_[0]) bytes += 2 * 4;
+    for (unsigned i = 0; i < chain_count_; ++i) bytes += std::uint64_t(chain_width_[i]) * chain_height_[i] * chain_texel_bytes_;
+    if (chain_ring_[0]) bytes += 4ull * tile_width_ * tile_height_ * chain_texel_bytes_;
     return bytes;
+}
+
+// The chain's geometry for a `width` x `height` scene: 4x per axis per
+// level until neither axis exceeds kMeterTileMax; that level is the tile
+// image (the ring), the ones before it the chain levels. Returns the number
+// of chain levels (max_levels + 1 when the scene needs more).
+static unsigned chain_geometry(UINT width, UINT height, UINT levels_w[], UINT levels_h[], unsigned max_levels, UINT* tile_w, UINT* tile_h) noexcept {
+    UINT w = width, h = height; unsigned count = 0;
+    for (;;) {
+        const UINT nw = (w + 3) / 4, nh = (h + 3) / 4;
+        if (nw <= kMeterTileMax && nh <= kMeterTileMax) { *tile_w = nw; *tile_h = nh; return count; }
+        if (count >= max_levels) return max_levels + 1;
+        levels_w[count] = nw; levels_h[count] = nh; ++count;
+        w = nw; h = nh;
+    }
 }
 
 unsigned HdrPass::references() const noexcept {
@@ -236,44 +254,50 @@ unsigned HdrPass::references() const noexcept {
     return n;
 }
 
-// The meter chain for a `width` x `height` scene: R32F render-target levels
-// of ceil(size / 4) per axis down to the last level above 1x1, then the two
-// 1x1 ring targets and their system-memory readback surfaces. Only level-0
-// surfaces are retained (one device reference each, in both reference
-// models); a failure releases everything and disables the meter.
+// The meter chain for a `width` x `height` scene: two-channel float
+// render-target levels of ceil(size / 4) per axis down to the level before
+// the tile image, then the two tile-image ring targets, their system-memory
+// readback surfaces and the host copies. Only level-0 surfaces are retained
+// (one device reference each, in both reference models); a failure releases
+// everything and disables the meter.
 HRESULT HdrPass::ensure_chain(UINT width, UINT height) noexcept {
     if (!caps_.meter || !device_) return S_FALSE;
+    UINT levels_w[chain_max_levels]{}, levels_h[chain_max_levels]{}, tile_w = 0, tile_h = 0;
+    const unsigned count = chain_geometry(width, height, levels_w, levels_h, chain_max_levels, &tile_w, &tile_h);
     if (chain_ring_[0] && chain_ring_[1] && chain_readback_[0] && chain_readback_[1]) {
         // Sized for this scene already?
-        UINT w = width, h = height; unsigned count = 0;
-        while (count < chain_max_levels) { const UINT nw = (w + 3) / 4, nh = (h + 3) / 4; if (nw == 1 && nh == 1) break; ++count; w = nw; h = nh; }
-        bool same = count == chain_count_;
-        w = width; h = height;
-        for (unsigned i = 0; same && i < count; ++i) { w = (w + 3) / 4; h = (h + 3) / 4; same = chain_[i] && chain_width_[i] == w && chain_height_[i] == h; }
+        bool same = count == chain_count_ && tile_w == tile_width_ && tile_h == tile_height_;
+        for (unsigned i = 0; same && i < count; ++i) same = chain_[i] && chain_width_[i] == levels_w[i] && chain_height_[i] == levels_h[i];
         if (same) return S_OK;
     }
     release_chain();
-    HRESULT hr = S_OK;
+    HRESULT hr = count > chain_max_levels ? E_OUTOFMEMORY : S_OK;
     auto level = [&](UINT w, UINT h, IDirect3DSurface9** out) {
         IDirect3DTexture9* texture = nullptr;
-        HRESULT r = call<CreateTextureFn>(CreateTexture)(device_, w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &texture, nullptr);
+        HRESULT r = call<CreateTextureFn>(CreateTexture)(device_, w, h, 1, D3DUSAGE_RENDERTARGET, caps_.chain_format, D3DPOOL_DEFAULT, &texture, nullptr);
         if (SUCCEEDED(r) && texture) r = texture->GetSurfaceLevel(0, out);
         else if (SUCCEEDED(r)) r = E_FAIL;
         drop(texture);
         return r;
     };
-    UINT w = width, h = height;
-    while (SUCCEEDED(hr)) {
-        const UINT nw = (w + 3) / 4, nh = (h + 3) / 4;
-        if (nw == 1 && nh == 1) break;
-        if (chain_count_ >= chain_max_levels) { hr = E_OUTOFMEMORY; break; }
-        hr = level(nw, nh, &chain_[chain_count_]);
-        if (SUCCEEDED(hr)) { chain_width_[chain_count_] = nw; chain_height_[chain_count_] = nh; ++chain_count_; }
-        w = nw; h = nh;
+    for (unsigned i = 0; SUCCEEDED(hr) && i < count; ++i) {
+        hr = level(levels_w[i], levels_h[i], &chain_[chain_count_]);
+        if (SUCCEEDED(hr)) { chain_width_[chain_count_] = levels_w[i]; chain_height_[chain_count_] = levels_h[i]; ++chain_count_; }
     }
     for (unsigned i = 0; SUCCEEDED(hr) && i < 2; ++i) {
-        hr = level(1, 1, &chain_ring_[i]);
-        if (SUCCEEDED(hr)) hr = call<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 1, 1, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &chain_readback_[i], nullptr);
+        hr = level(tile_w, tile_h, &chain_ring_[i]);
+        if (SUCCEEDED(hr)) hr = call<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, tile_w, tile_h, caps_.chain_format, D3DPOOL_SYSTEMMEM, &chain_readback_[i], nullptr);
+    }
+    if (SUCCEEDED(hr)) {
+        tile_width_ = tile_w; tile_height_ = tile_h;
+        const unsigned tiles = tile_w * tile_h;
+        if (tiles > tile_capacity_) {
+            tile_mean_.reset(new (std::nothrow) float[tiles]); tile_max_.reset(new (std::nothrow) float[tiles]);
+            tile_weight_.reset(new (std::nothrow) float[tiles]); tile_scratch_.reset(new (std::nothrow) TileSample[tiles]);
+            if (!tile_mean_ || !tile_max_ || !tile_weight_ || !tile_scratch_) { tile_mean_.reset(); tile_max_.reset(); tile_weight_.reset(); tile_scratch_.reset(); tile_capacity_ = 0; hr = E_OUTOFMEMORY; }
+            else tile_capacity_ = tiles;
+        }
+        if (SUCCEEDED(hr)) tile_weights(tile_weight_.get(), tile_w, tile_h, config_.params.meter_edge_weight);
     }
     if (FAILED(hr)) { release_chain(); caps_.meter = false; caps_.meter_reason = "chain"; }
     return hr;
@@ -432,11 +456,12 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     return op;
 }
 
-// The exposure meter (section 3): level 0 folds the log2 luminance of the
-// decoded scene into the first 4x reduction, the reduce program halves the
-// remaining levels by four per axis, the last draw lands in the current
-// 1x1 ring target and GetRenderTargetData queues its copy into the ring's
-// system-memory surface (locked at the next latch: never on this frame).
+// The exposure meter (section 3, the space-aware statistic): level 0 folds
+// the log2 luminance of the decoded scene into the first 4x reduction (mean
+// and maximum), the reduce program reduces the remaining levels by four per
+// axis, the last draw lands in the current ring target (the tile image) and
+// GetRenderTargetData queues its copy into the ring's system-memory surface
+// (locked at the next latch: never on this frame).
 // Runs inside copy_draw's state bracket: FVF, samplers, stage and render
 // states are already set; RT1.. and the depth surface are unbound; every
 // level binds RT0, viewport, program, constants and the previous level (its
@@ -452,7 +477,7 @@ HRESULT HdrPass::meter_chain(IDirect3DTexture9* scene_texture, UINT width, UINT 
     for (unsigned i = 0; SUCCEEDED(op) && i <= chain_count_; ++i) {
         const bool last = i == chain_count_;
         IDirect3DSurface9* dst = last ? chain_ring_[chain_slot_] : chain_[i];
-        const UINT dw = last ? 1u : chain_width_[i], dh = last ? 1u : chain_height_[i];
+        const UINT dw = last ? tile_width_ : chain_width_[i], dh = last ? tile_height_ : chain_height_[i];
         step(call<SetRtFn>(SetRenderTarget)(device_, 0, dst));
         const D3DVIEWPORT9 viewport{0, 0, dw, dh, 0.f, 1.f};
         step(call<SetViewportFn>(SetViewport)(device_, &viewport));
@@ -561,7 +586,7 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
     HRESULT hr = S_OK, restore_hr = S_OK, draw = S_OK, blend = S_OK, copy = S_OK, copy_restore = S_OK, scene_hr = S_OK, stretch = S_FALSE;
     HRESULT tonemap = S_FALSE, meter = S_FALSE;
     unsigned scene_errors = 0, sum_errors = 0, motion_errors = 0, depth_errors = 0, copy_errors = 0, stretch_errors = 0, tonemap_errors = 0, meter_errors = 0;
-    float meter_value = 0.f, meter_expected = 0.f;
+    float meter_value = 0.f, meter_max = 0.f, meter_expected = 0.f;
     const char* stage = "create";
     bool own_scene = false;
     do {
@@ -642,7 +667,8 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
         // Stage 2 (gated inside the feature): the AgX program must draw the
         // sum with the alpha carried and one value on every pixel; the meter
         // chain must reduce the 4x4 sum to the host reference of its clipped
-        // log2 luminance (exactly 6.0 for gamma2.2/sRGB: 322 clipped to 64).
+        // log2 luminance in both channels, the mean and the maximum (exactly
+        // 6.0 for gamma2.2/sRGB: 322 clipped to 64).
         // A failure demotes the tonemap or the meter to identity/manual and
         // never refuses the feature.
         if (caps_.tonemap && tonemap_shader_) {
@@ -677,13 +703,14 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
             IDirect3DSurface9* saved_levels[chain_max_levels]; const unsigned saved_count = chain_count_;
             for (unsigned i = 0; i < chain_max_levels; ++i) saved_levels[i] = chain_[i];
             const bool saved_pending = chain_pending_[chain_slot_];
-            meter = call<CreateTextureFn>(CreateTexture)(device_, 1, 1, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &one, nullptr);
+            const UINT saved_tile_w = tile_width_, saved_tile_h = tile_height_;
+            meter = call<CreateTextureFn>(CreateTexture)(device_, 1, 1, 1, D3DUSAGE_RENDERTARGET, caps_.chain_format, D3DPOOL_DEFAULT, &one, nullptr);
             if (SUCCEEDED(meter) && one) meter = one->GetSurfaceLevel(0, &one_surface);
-            if (SUCCEEDED(meter)) meter = call<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 1, 1, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &one_copy, nullptr);
+            if (SUCCEEDED(meter)) meter = call<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, 1, 1, caps_.chain_format, D3DPOOL_SYSTEMMEM, &one_copy, nullptr);
             if (SUCCEEDED(meter)) {
-                // A 4x4 scene reduces in one level-0 draw straight into the 1x1:
-                // run the production chain code on a temporary ring slot.
-                chain_ring_[chain_slot_] = one_surface; chain_readback_[chain_slot_] = one_copy; chain_count_ = 0;
+                // A 4x4 scene reduces in one level-0 draw straight into a 1x1
+                // tile image: run the production chain code on a temporary ring slot.
+                chain_ring_[chain_slot_] = one_surface; chain_readback_[chain_slot_] = one_copy; chain_count_ = 0; tile_width_ = tile_height_ = 1;
                 IDirect3DSurface9* current = nullptr;
                 if (FAILED(meter = call<GetRtFn>(GetRenderTarget)(device_, 0, &current)) || !current) { if (SUCCEEDED(meter)) meter = E_FAIL; }
                 else {
@@ -696,16 +723,19 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
                 }
                 chain_ring_[chain_slot_] = saved_ring; chain_readback_[chain_slot_] = saved_readback; chain_count_ = saved_count;
                 for (unsigned i = 0; i < chain_max_levels; ++i) chain_[i] = saved_levels[i];
-                chain_pending_[chain_slot_] = saved_pending;
+                chain_pending_[chain_slot_] = saved_pending; tile_width_ = saved_tile_w; tile_height_ = saved_tile_h;
                 if (SUCCEEDED(meter)) meter = call<GetRtDataFn>(GetRenderTargetData)(device_, one_surface, one_copy);
                 if (SUCCEEDED(meter) && SUCCEEDED(meter = one_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) {
-                    std::memcpy(&meter_value, lock.pBits, 4);
+                    float channels[2] = {0.f, 0.f};
+                    std::memcpy(channels, lock.pBits, 8);
                     one_copy->UnlockRect();
+                    meter_value = channels[0]; meter_max = channels[1];
                     const float sum[3] = {4.f, 16.f, 1.f};
                     const ExposureDecode decode = config_.decode == x3::temporal::AgxDecode::none ? ExposureDecode::None
                         : config_.decode == x3::temporal::AgxDecode::srgb ? ExposureDecode::Srgb : ExposureDecode::Gamma22;
                     meter_expected = meter_level0(sum, decode, config_.params);
                     if (!(std::fabs(meter_value - meter_expected) <= 1e-4f)) ++meter_errors;
+                    if (!(std::fabs(meter_max - meter_expected) <= 1e-4f)) ++meter_errors;
                 }
             }
             drop(one_copy); drop(one_surface); drop(one);
@@ -735,9 +765,9 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
     drop(single_shader); drop(mrt_shader);
     drop(color_copy); drop(depth_copy); drop(motion_copy); drop(scene_copy);
     drop(color); drop(depth_surface); drop(depth); drop(motion_surface); drop(motion); drop(scene_surface); drop(scene);
-    std::snprintf(detail, detail_size, "stage=%s result=%08lx draw=%08lx blend=%08lx copy=%08lx restore=%08lx copy_restore=%08lx scene=%08lx stretch=%08lx scene_errors=%u sum_errors=%u motion_errors=%u depth_errors=%u copy_errors=%u stretch_errors=%u targets=%u tonemap=%08lx tonemap_errors=%u meter=%08lx meter_errors=%u meter_value=%.5f meter_expected=%.5f",
+    std::snprintf(detail, detail_size, "stage=%s result=%08lx draw=%08lx blend=%08lx copy=%08lx restore=%08lx copy_restore=%08lx scene=%08lx stretch=%08lx scene_errors=%u sum_errors=%u motion_errors=%u depth_errors=%u copy_errors=%u stretch_errors=%u targets=%u tonemap=%08lx tonemap_errors=%u meter=%08lx meter_errors=%u meter_value=%.5f meter_max=%.5f meter_expected=%.5f",
                   stage, hr, draw, blend, copy, restore_hr, copy_restore, scene_hr, stretch, scene_errors, sum_errors, motion_errors, depth_errors, copy_errors, stretch_errors, with_depth ? 3u : 2u,
-                  tonemap, tonemap_errors, meter, meter_errors, double(meter_value), double(meter_expected));
+                  tonemap, tonemap_errors, meter, meter_errors, double(meter_value), double(meter_max), double(meter_expected));
     return ok;
 }
 
@@ -792,8 +822,9 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
         if (FAILED(hr) || !shader_) { reason = "shader"; std::snprintf(caps_.self_test_detail, sizeof caps_.self_test_detail, "create=%08lx", hr); drop(shader_); }
     }
     // Stage 2: the tonemap program and, with auto exposure, the meter chain
-    // (R32F render-target textures sampled by the reduce program). Each gates
-    // itself; a refusal keeps the identity write-back (X3M_HDR stays on).
+    // (two-channel float render-target textures sampled by the reduce
+    // program: G32R32F, else A32B32G32R32F). Each gates itself; a refusal
+    // keeps the identity write-back (X3M_HDR stays on).
     if (!std::strcmp(reason, "ok") && config_.tonemap == HdrTonemap::Agx) {
         caps_.tonemap_shader = fault(HdrFault::TonemapShader) ? E_FAIL
             : call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_tonemap_program()), &tonemap_shader_);
@@ -803,12 +834,18 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
             IDirect3D9* factory = nullptr; D3DDEVICE_CREATION_PARAMETERS creation{}; D3DDISPLAYMODE mode{};
             if (SUCCEEDED(call<GetDirect3DFn>(GetDirect3D)(device_, &factory)) && factory
                 && SUCCEEDED(call<GetCreationFn>(GetCreationParameters)(device_, &creation)) && SUCCEEDED(call<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &mode))) {
-                caps_.r32f_target = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, D3DFMT_R32F);
-                caps_.r32f_sampling = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format, 0, D3DRTYPE_TEXTURE, D3DFMT_R32F);
-            } else { caps_.r32f_target = E_FAIL; caps_.r32f_sampling = E_FAIL; }
+                const D3DFORMAT candidates[2] = {D3DFMT_G32R32F, D3DFMT_A32B32G32R32F};
+                const char* names[2] = {"G32R32F", "A32B32G32R32F"};
+                for (unsigned i = 0; i < 2; ++i) {
+                    caps_.chain_target = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, candidates[i]);
+                    caps_.chain_sampling = SUCCEEDED(caps_.chain_target) ? factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, mode.Format, 0, D3DRTYPE_TEXTURE, candidates[i]) : S_FALSE;
+                    if (SUCCEEDED(caps_.chain_target) && SUCCEEDED(caps_.chain_sampling)) { caps_.chain_format = candidates[i]; caps_.chain_format_name = names[i]; break; }
+                }
+            } else { caps_.chain_target = E_FAIL; caps_.chain_sampling = E_FAIL; }
             drop(factory);
-            if (FAILED(caps_.r32f_target)) caps_.meter_reason = "r32f_target";
-            else if (FAILED(caps_.r32f_sampling)) caps_.meter_reason = "r32f_sampling";
+            chain_texel_bytes_ = caps_.chain_format == D3DFMT_G32R32F ? 8u : 16u;
+            if (FAILED(caps_.chain_target)) caps_.meter_reason = "chain_target";
+            else if (FAILED(caps_.chain_sampling)) caps_.meter_reason = "chain_sampling";
             else {
                 caps_.meter_shader = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_meter_level0_program()), &meter_level0_shader_);
                 if (SUCCEEDED(caps_.meter_shader)) caps_.meter_shader = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_meter_reduce_program()), &meter_reduce_shader_);
@@ -854,12 +891,13 @@ void HdrPass::prepare_constants() noexcept {
         x3::temporal::prepare(agx_, 1.f, config_.clamp_max, config_.decode, config_.look);
 }
 
-// At the latch: the previous frame's 1x1 meter (queued into the ring's
-// system-memory surface by that frame's chain) is locked now -- a frame
-// later, so the lock does not wait on this frame's work -- and the host
-// adaptation step runs on it with the QPC interval between the two latches
-// (or the fixed fixture dt). The ring slot then advances for this frame's
-// chain and the tonemap constants take the new EV.
+// At the latch: the previous frame's tile image (queued into the ring's
+// system-memory surface by that frame's chain) is copied and locked now -- a
+// frame later, so the lock does not wait on this frame's work -- reduced to
+// the space-aware statistic, and the host adaptation step runs on it with
+// the QPC interval between the two latches (or the fixed fixture dt). The
+// ring slot then advances for this frame's chain and the tonemap constants
+// take the new EV.
 HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t frequency, bool timing) noexcept {
     HdrFrameBegin r{};
     float dt = config_.fixed_dt > 0.f ? config_.fixed_dt
@@ -868,16 +906,30 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
     if (meter_active() && chain_pending_[chain_slot_] && chain_ring_[chain_slot_] && chain_readback_[chain_slot_]) {
         const std::uint64_t begin = stamp(timing);
         D3DLOCKED_RECT lock{};
-        r.readback = call<GetRtDataFn>(GetRenderTargetData)(device_, chain_ring_[chain_slot_], chain_readback_[chain_slot_]);
+        const unsigned tiles = tile_width_ * tile_height_;
+        r.readback = tiles && tiles <= tile_capacity_ ? call<GetRtDataFn>(GetRenderTargetData)(device_, chain_ring_[chain_slot_], chain_readback_[chain_slot_]) : E_FAIL;
         if (SUCCEEDED(r.readback)) r.readback = chain_readback_[chain_slot_]->LockRect(&lock, nullptr, D3DLOCK_READONLY);
-        float value = 0.f;
-        if (SUCCEEDED(r.readback)) { std::memcpy(&value, lock.pBits, 4); chain_readback_[chain_slot_]->UnlockRect(); }
-        chain_pending_[chain_slot_] = false;
-        r.ticks_readback = stamp(timing) - begin;
-        if (SUCCEEDED(r.readback) && std::isfinite(value)) {
-            exposure_.step(value, dt);
-            r.stepped = true; r.avg_log_l = value; r.dt = exposure_.dt();
+        if (SUCCEEDED(r.readback)) {
+            // Texel .r = the tile's mean, .g = its maximum (the chain format's stride).
+            for (UINT y = 0; y < tile_height_; ++y) {
+                const char* row = static_cast<const char*>(lock.pBits) + y * lock.Pitch;
+                for (UINT x = 0; x < tile_width_; ++x) {
+                    float texel[2]; std::memcpy(texel, row + std::size_t(x) * chain_texel_bytes_, 8);
+                    tile_mean_[std::size_t(y) * tile_width_ + x] = texel[0]; tile_max_[std::size_t(y) * tile_width_ + x] = texel[1];
+                }
+            }
+            chain_readback_[chain_slot_]->UnlockRect();
         }
+        chain_pending_[chain_slot_] = false;
+        if (SUCCEEDED(r.readback)) {
+            // Non-finite tiles read as the floor inside; the statistic is finite.
+            const MeterStatistics m = meter_statistics(tile_mean_.get(), tile_max_.get(), tile_weight_.get(), tiles, tile_scratch_.get(), config_.params);
+            if (std::isfinite(m.avg_log_l) && std::isfinite(m.lit_median_log) && std::isfinite(m.p99_max_log)) {
+                exposure_.step(m, dt);
+                r.stepped = true; r.avg_log_l = m.avg_log_l; r.dt = exposure_.dt();
+            }
+        }
+        r.ticks_readback = stamp(timing) - begin;
     }
     chain_slot_ ^= 1u;
     prepare_constants();

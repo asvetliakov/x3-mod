@@ -8,8 +8,9 @@
 // the 8-bit target) or, with X3M_HDR_TONEMAP=agx, the AgX transform of
 // agx.hlsl (decode, clamp, exposure, look; alpha carried) -- the exposure
 // meter (a 4x-per-axis log-luminance reduction chain over the FP16 target
-// into a 1x1 R32F, read back one frame later through a two-surface ring and
-// adapted on the host by exposure.h) and the must-unwind ladder behind the
+// into a two-channel tile image -- mean and maximum per tile, no axis above
+// 128 texels -- read back one frame later through a two-surface ring, reduced
+// to the space-aware statistic and adapted on the host by exposure.h) and the must-unwind ladder behind the
 // write-back (tonemap draw -> identity draw -> StretchRect copy -> restore the
 // binding). Owned by MotionOutput, which decides WHEN to redirect, flush
 // and end (the logical-binding shim and the frame policy live there); this
@@ -19,6 +20,7 @@
 #include <d3d9.h>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include "exposure.h"
 #include "../temporal/agx.h"
 #include "../temporal/sharpen.h"
@@ -40,12 +42,17 @@ struct HdrCaps {
     // feature (a refusal falls back to the identity write-back, never
     // disables X3M_HDR). reason "ok", "off" (not requested), "shader",
     // "self_test"; meter_reason "ok", "off" (manual exposure or identity),
-    // "r32f_target", "r32f_sampling", "shader", "self_test".
+    // "chain_target", "chain_sampling", "shader", "self_test", "chain".
+    // chain_format: the two-channel float format the chain levels, the ring
+    // and the readback surfaces use -- G32R32F when it is a render target
+    // and samplable, else A32B32G32R32F (the self test's motion format).
     bool tonemap = false;
     const char* tonemap_reason = "off";
     bool meter = false;
     const char* meter_reason = "off";
-    HRESULT r32f_target = S_FALSE, r32f_sampling = S_FALSE, tonemap_shader = S_FALSE, meter_shader = S_FALSE;
+    HRESULT chain_target = S_FALSE, chain_sampling = S_FALSE, tonemap_shader = S_FALSE, meter_shader = S_FALSE;
+    D3DFORMAT chain_format = D3DFMT_UNKNOWN;
+    const char* chain_format_name = "-";
     // Post-resolve sharpen (X3M_TAA_SHARPEN > 0): its programs gate themselves
     // like the tonemap; a refusal keeps the unsharpened write-backs. reason
     // "ok", "off" (not requested), "shader".
@@ -102,8 +109,8 @@ struct HdrWriteback {
 struct HdrFrameBegin {
     bool stepped = false;                // a meter of the previous frame was consumed
     HRESULT readback = S_FALSE;          // LockRect of the ring surface (S_FALSE: nothing pending)
-    float avg_log_l = 0.f, dt = 0.f;     // what the step consumed (dt after the clamp)
-    std::uint64_t ticks_readback = 0;
+    float avg_log_l = 0.f, dt = 0.f;     // what the step consumed (dt after the clamp; the statistic is in the state)
+    std::uint64_t ticks_readback = 0;    // the copy, the lock and the host statistic
 };
 // Fault injection points of the fixture seam (verification/probe/
 // motion_output_fixture.cpp, case 4 of the design's section 7): each kind
@@ -144,15 +151,19 @@ public:
     bool sharpen_active() const noexcept { return caps_.sharpen && sharpen_shader_ && sharpen_failures_ < tonemap_failure_limit; }
     const ExposureState& exposure() const noexcept { return exposure_; }
     // At the latch of a frame (after the redirect bound): copies the previous
-    // frame's 1x1 meter from its ring target to system memory and locks it
-    // (the lagged 4-byte readback, a Present after the chain wrote it) and
-    // adapts the EV the coming write-back's tonemap consumes;
+    // frame's tile image from its ring target to system memory and locks it
+    // (the lagged readback, a Present after the chain wrote it), reduces it
+    // to the statistic (exposure.h meter_statistics) and adapts the EV the
+    // coming write-back's tonemap consumes;
     // `now_ticks`/`frequency` is the QPC stamp of this latch (dt against the
     // previous one, or fixed_dt).
     HdrFrameBegin begin_frame(std::uint64_t now_ticks, std::uint64_t frequency, bool timing) noexcept;
-    // Bytes of the meter chain's default-pool levels (0 without a chain).
+    // Bytes of the meter chain's levels, ring targets and readback surfaces
+    // (0 without a chain); the levels drawn per chain (the tile image last).
     std::uint64_t chain_bytes() const noexcept;
     unsigned chain_levels() const noexcept { return chain_count_ + (chain_ring_[0] ? 1u : 0u); }
+    unsigned tile_width() const noexcept { return tile_width_; }
+    unsigned tile_height() const noexcept { return tile_height_; }
     // Re-runs the self test (the recovery probe after an unwind). scene_open:
     // the application's scene is open, so no bracket of our own.
     bool recheck(bool scene_open, char* detail, std::size_t detail_size) noexcept;
@@ -207,7 +218,7 @@ private:
         bool timing = false;
     };
     static constexpr unsigned tonemap_failure_limit = 3;
-    static constexpr unsigned chain_max_levels = 8;   // 4^8 = 65536 px per axis
+    static constexpr unsigned chain_max_levels = 8;   // 4^8 = 65536 px per axis (levels before the tile image)
     static constexpr unsigned constant_count = x3::temporal::kSharpenRegister + 1; // c0..c23 saved (meter c0..c3, AgX c8..c21, sharpen c23)
     template<class Fn> Fn call(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
     bool self_test(bool with_depth, bool scene_open, char* detail, std::size_t detail_size) noexcept;
@@ -248,9 +259,10 @@ private:
     UINT width_ = 0, height_ = 0;
     UINT last_width_ = 0, last_height_ = 0;     // dimensions of the last created target (exposure reset on change)
     // Stage 2: the AgX program and its constant block, the meter programs,
-    // the chain levels (level-0 surfaces of R32F textures, containers
-    // obtained per use), the 1x1 ring targets and their system-memory
-    // readback surfaces, the host adaptation state.
+    // the chain levels (level-0 surfaces of two-channel float textures,
+    // containers obtained per use), the tile-image ring targets and their
+    // system-memory readback surfaces, the host copies of the tile image
+    // (sized once per chain) and the host adaptation state.
     IDirect3DPixelShader9* tonemap_shader_ = nullptr;
     IDirect3DPixelShader9* meter_level0_shader_ = nullptr;
     // Post-resolve sharpen: the identity+RCAS and AgX+RCAS programs, the c23
@@ -263,9 +275,14 @@ private:
     x3::temporal::AgxConstants agx_{};
     IDirect3DSurface9* chain_[chain_max_levels]{};
     UINT chain_width_[chain_max_levels]{}, chain_height_[chain_max_levels]{};
-    unsigned chain_count_ = 0;                  // levels before the 1x1 ring
-    IDirect3DSurface9* chain_ring_[2]{};        // 1x1 R32F render targets (level 0 of textures)
-    IDirect3DSurface9* chain_readback_[2]{};    // 1x1 R32F system-memory surfaces
+    unsigned chain_count_ = 0;                  // levels before the tile-image ring
+    UINT tile_width_ = 0, tile_height_ = 0;     // the ring's (tile image's) size
+    unsigned chain_texel_bytes_ = 0;            // 8 (G32R32F) or 16 (A32B32G32R32F)
+    IDirect3DSurface9* chain_ring_[2]{};        // tile-image render targets (level 0 of textures)
+    IDirect3DSurface9* chain_readback_[2]{};    // tile-image system-memory surfaces
+    std::unique_ptr<float[]> tile_mean_, tile_max_, tile_weight_;   // host copies and the centre weights, tile_capacity_ each
+    std::unique_ptr<TileSample[]> tile_scratch_;                     // the statistic's working copy
+    unsigned tile_capacity_ = 0;
     unsigned chain_slot_ = 0;                   // ring slot the current frame's chain writes
     bool chain_pending_[2]{};                   // ring[slot] holds a meter not yet copied and consumed
     ExposureState exposure_{};

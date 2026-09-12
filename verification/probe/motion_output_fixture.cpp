@@ -1612,11 +1612,17 @@ struct Fixture {
         api(d->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID), "fill"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 15), "write"); api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE), "cull");
         const D3DVIEWPORT9 vp{0, 0, W, H, 0, 1}; api(d->SetViewport(&vp), "SetViewport full");
     }
+    // The state the DLL's tonemap consumes this frame (after the latch): the
+    // EVs, the old 1x1 statistic (avg_log_l) and the space-aware one (the
+    // lit fraction, the lit median, the p99 maximum, ev_key, ev_limit, the
+    // tile counts, the lit mean; all log2 units).
     void exposure_state_line(const char* tag) {
         if (!hdr_exposure) return;
-        float e[8]{}; api(hdr_exposure(d.p, e, 8), "hdr exposure readback");
-        std::printf("%s frame=%llu ev=%.6f ev_adapted=%.6f ev_target=%.6f avg_log_l=%.6f dt=%.6f exposure=%.6f steps=%u k=%.6f\n",
-                    tag, frame, e[0], e[1], e[2], e[3], e[4], e[5], unsigned(e[6]), e[7]);
+        float e[16]{}; api(hdr_exposure(d.p, e, 16), "hdr exposure readback");
+        std::printf("%s frame=%llu ev=%.6f ev_adapted=%.6f ev_target=%.6f avg_log_l=%.6f dt=%.6f exposure=%.6f steps=%u k=%.6f"
+                    " lit_fraction=%.6f lit_median_log=%.6f p99_max_log=%.6f ev_key=%.6f ev_limit=%.6f tiles=%u lit=%u lit_mean_log=%.6f\n",
+                    tag, frame, e[0], e[1], e[2], e[3], e[4], e[5], unsigned(e[6]), e[7],
+                    e[8], e[9], e[10], e[11], e[12], unsigned(e[13]), unsigned(e[14]), e[15]);
     }
     // hdrramp: 64x65 target, row r = ramp_value(r) (0.001..64), columns
     // neutral / red / green / blue, alpha r/64. The presented cell centre and
@@ -1695,6 +1701,60 @@ struct Fixture {
         api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
         ++frame; ++frames_since_reset;
     }
+    // hdrexposure, the space-aware scenes: a background value over the whole
+    // target and up to eight rectangular patches of constant engine-space
+    // values (pixel rectangles, [x0, x1) x [y0, y1)); the description, the
+    // state the tonemap consumed and the presented background/patch centres
+    // are printed like the block frames.
+    struct Patch { unsigned x0, y0, x1, y1; float rgba[4]; };
+    struct Scene { float bg[4]; unsigned count; Patch patches[8]; };
+    static void format_rgba(char* p, std::size_t size, const float* v) {
+        char* end = p + size;
+        for (unsigned c = 0; c < 4; ++c) {
+            if (std::isfinite(v[c])) p += std::snprintf(p, std::size_t(end - p), "%s%.9g", c ? "," : "", double(v[c]));
+            else { unsigned bits; std::memcpy(&bits, &v[c], 4); p += std::snprintf(p, std::size_t(end - p), "%s0x%08x", c ? "," : "", bits); }
+        }
+    }
+    void hdrexposure_scene_frame(const Scene& s) {
+        frame_begin();
+        exposure_state_line("EXPOSURE_STATE");
+        constant_state();
+        constant_quad(0, 0, float(W), float(H), s.bg[0], s.bg[1], s.bg[2], s.bg[3]);
+        for (unsigned i = 0; i < s.count; ++i) {
+            const Patch& q = s.patches[i];
+            constant_quad(float(q.x0), float(q.y0), float(q.x1), float(q.y1), q.rgba[0], q.rgba[1], q.rgba[2], q.rgba[3]);
+        }
+        char text[80]; format_rgba(text, sizeof text, s.bg);
+        std::printf("EXPOSURE_SCENE frame=%llu bg=%s patches=%u", frame, text, s.count);
+        for (unsigned i = 0; i < s.count; ++i) {
+            const Patch& q = s.patches[i]; format_rgba(text, sizeof text, q.rgba);
+            std::printf(" p%u=%u,%u,%u,%u,%s", i, q.x0, q.y0, q.x1, q.y1, text);
+        }
+        std::printf("\n");
+        api(d->EndScene(), "EndScene");
+        const auto image = color_image();
+        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
+        write_presented(image);
+        // The background's code at the last pixel (no scene puts a patch there;
+        // the emitter covers (0, 0)) and each patch's centre; every pixel must
+        // carry the code of what covers it.
+        const DWORD bg_code = image[std::size_t(H) * W - 1];
+        DWORD centre[8]{};
+        for (unsigned i = 0; i < s.count; ++i) centre[i] = image[std::size_t((s.patches[i].y0 + s.patches[i].y1) / 2) * W + (s.patches[i].x0 + s.patches[i].x1) / 2];
+        unsigned nonuniform = 0;
+        for (unsigned y = 0; y < H; ++y) for (unsigned x = 0; x < W; ++x) {
+            DWORD expected = bg_code;
+            for (unsigned i = 0; i < s.count; ++i)   // later patches draw over earlier ones
+                if (x >= s.patches[i].x0 && x < s.patches[i].x1 && y >= s.patches[i].y0 && y < s.patches[i].y1) expected = centre[i];
+            nonuniform += image[std::size_t(y) * W + x] != expected;
+        }
+        std::printf("EXPOSURE_SCENE_PRESENTED frame=%llu bg=%08lx", frame, bg_code);
+        for (unsigned i = 0; i < s.count; ++i) std::printf(" p%u=%08lx", i, centre[i]);
+        std::printf(" nonuniform=%u\n", nonuniform);
+        require(!nonuniform, "the background and every patch present one code");
+        api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+        ++frame; ++frames_since_reset;
+    }
     void run_hdrexposure() {
         require(enabled && hdr && hdr_exposure, "hdrexposure needs the route, the HDR switch and the exposure export");
         const float dark[4][4] = {{.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}};
@@ -1714,6 +1774,38 @@ struct Fixture {
         const float poison[4][4] = {{nan, nan, nan, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}, {.18f, .18f, .18f, 1}};
         for (unsigned i = 0; i < 5; ++i) hdrexposure_frame(hazard);
         for (unsigned i = 0; i < 5; ++i) hdrexposure_frame(poison);
+        // The space-aware scenes (the tile image is 16x16 tiles of 4x4 pixels):
+        // 40-49 a black sky with one 16x16 lit patch at 0.3 (16 of 256 tiles
+        // lit: the key rule lifts the patch to the key, +1.35 EV, where the
+        // whole-frame log mean would have asked for +8); 50-59 a white
+        // full frame, the menu (pulled down by key_pull to -0.62 EV); 60-69
+        // mid-grey with 0.5 % super-bright pixels in five tiles (the p99 tile
+        // maximum is the clip: the highlight limit holds -2.13 EV although the
+        // key rule asks for +2); 70-79 uniform mid-grey (the key rule: +2.97,
+        // clamped to +2, as the 1x1 meter would have said).
+        const Scene sky{{0, 0, 0, 1}, 1, {{8, 8, 24, 24, {.3f, .3f, .3f, 1}}}};
+        const Scene menu{{1, 1, 1, 1}, 0, {}};
+        const Scene sparks{{.18f, .18f, .18f, 1}, 5, {{4, 4, 6, 6, {100, 100, 100, 1}}, {24, 16, 26, 18, {100, 100, 100, 1}}, {20, 32, 22, 34, {100, 100, 100, 1}},
+                                                     {16, 48, 18, 50, {100, 100, 100, 1}}, {56, 56, 58, 58, {100, 100, 100, 1}}}};
+        const Scene grey{{.18f, .18f, .18f, 1}, 0, {}};
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(sky);
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(menu);
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(sparks);
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(grey);
+        // The dead band (80-109): uniform frames whose key-rule targets sit
+        // inside the range, 0.35 (+0.86 EV), then 0.37 (+0.68) and 0.33 (+1.05),
+        // within 0.25 EV of the held target (it must not move), then 0.6
+        // (-0.21: it must). The emitter (110-119): a white left half over
+        // black with a mid-grey object (engine 0.459: decoded 0.18, the key)
+        // in the centre; the centre weighting keeps the object at the key
+        // (EV 0) where the unweighted median would sit on the emitter (-0.62).
+        const Scene level_a{{.35f, .35f, .35f, 1}, 0, {}}, level_b{{.37f, .37f, .37f, 1}, 0, {}}, level_c{{.33f, .33f, .33f, 1}, 0, {}}, level_d{{.6f, .6f, .6f, 1}, 0, {}};
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(level_a);
+        for (unsigned i = 0; i < 5; ++i) hdrexposure_scene_frame(level_b);
+        for (unsigned i = 0; i < 5; ++i) hdrexposure_scene_frame(level_c);
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(level_d);
+        const Scene emitter{{0, 0, 0, 1}, 2, {{0, 0, 32, 64, {1, 1, 1, 1}}, {16, 16, 48, 48, {.459f, .459f, .459f, 1}}}};
+        for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(emitter);
     }
     // hdrtonemapfault: the regular material/flat scene with the AgX write-back;
     // one injected fault per frame (11: the tonemap draw fails -> the identity

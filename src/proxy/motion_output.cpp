@@ -1135,11 +1135,13 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
             hdr_caps.stretch_conversion, unsigned(hdr_main_format), hdr_caps.mrt_blending, hdr_caps.self_test_targets, hdr_caps.self_test_detail, enabled_, depth_enabled_);
         // Stage 2: the tonemap and meter verdicts and the switches in force.
         const auto& c = hdr_config_; const auto& x = c.params;
-        log("hdr_tonemap device=%llu enabled=%u requested=%s tonemap=%u tonemap_reason=%s meter=%u meter_reason=%s look=%s decode=%s clamp=%g exposure=%s ev_manual=%.4f ev_offset=%.4f key=%.4f ev_min=%.2f ev_max=%.2f tau_up=%.3f tau_down=%.3f meter_floor=%g meter_clip=%g fixed_dt_ms=%.3f tonemap_shader=%08lx meter_shader=%08lx r32f_target=%08lx r32f_sampling=%08lx",
+        log("hdr_tonemap device=%llu enabled=%u requested=%s tonemap=%u tonemap_reason=%s meter=%u meter_reason=%s look=%s decode=%s clamp=%g exposure=%s ev_manual=%.4f ev_offset=%.4f key=%.4f ev_min=%.2f ev_max=%.2f tau_up=%.3f tau_down=%.3f meter_floor=%g meter_clip=%g meter_bg=%g meter_min_lit=%g white_target=%g key_pull=%g ev_deadband=%g edge_weight=%g tile_max=%u fixed_dt_ms=%.3f tonemap_shader=%08lx meter_shader=%08lx chain_format=%s chain_target=%08lx chain_sampling=%08lx",
             id_, hdr_enabled_, renderer::hdr_tonemap_name(c.tonemap), hdr_caps.tonemap, hdr_caps.tonemap_reason, hdr_caps.meter, hdr_caps.meter_reason,
             renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max), renderer::hdr_exposure_name(c.exposure),
             double(c.ev_manual), double(x.ev_offset), double(x.key), double(x.ev_min), double(x.ev_max), double(x.tau_up), double(x.tau_down),
-            double(x.meter_floor), double(x.meter_clip), double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.r32f_target, hdr_caps.r32f_sampling);
+            double(x.meter_floor), double(x.meter_clip), double(x.meter_bg), double(x.meter_min_lit), double(x.white_target), double(x.key_pull),
+            double(x.ev_deadband), double(x.meter_edge_weight), renderer::kMeterTileMax,
+            double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.chain_format_name, hdr_caps.chain_target, hdr_caps.chain_sampling);
         hdr_tonemap_disabled_logged_ = false; hdr_taa_k_ = 0.f;
     }
     log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_copy=%s taa_stretch_query=%08lx taa_stretch_test=%s taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u mip_bias=%g quad_fvf=%u",
@@ -2332,12 +2334,16 @@ void MotionOutput::log_hdr_frame() noexcept {
     // Stage 2 fields: the tonemap in force (identity | agx), its look and
     // decode, the exposure mode, the EV the frame's tonemap consumed, the
     // adapted/target EV, the metered log2 mean (avg_log_l) and its linear
-    // value (luma_mean), the dt of the step, the meter/readback HRESULTs and
-    // their CPU phases, the TAA weighting k exported for stage 3.
+    // value (luma_mean), the space-aware statistic (lit_fraction, luma_lit =
+    // the lit tiles' median, luma_p99 = the tile maxima's 99th percentile,
+    // ev_key, ev_limit, ev_fresh = this step's target before the dead band
+    // (ev_target is the held one), tiles, lit), the dt of the step, the
+    // meter/readback HRESULTs and their CPU phases, the TAA weighting k
+    // exported for stage 3.
     const bool tonemap = hdr_ && hdr_->tonemap_active();
     const auto& e = hdr_ ? hdr_->exposure() : renderer::ExposureState{};
     const auto& c = hdr_ ? hdr_->config() : renderer::HdrConfig{};
-    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
+    log("hdr_frame device=%llu frame=%llu hdr=%u redirected=%u end=%s writebacks=%lu flushes=%lu writeback_source=%s unwind=%u unwind_reason=%s unwind_draw=%08lx unwind_restore=%08lx unwind_stretch=%08lx unwind_bind=%08lx blocked=%u recheck=%s suspended=%lu resumed=%lu dirty_at_present=%u refused_msaa=%u target_create=%08lx latch_bind=%08lx target=%ux%u target_bytes=%llu caps=%s stretch_conversion=%08lx timing=%s redirect_us=%.1f writeback_us=%.1f writeback_draw_us=%.1f writeback_stretch_us=%.1f bind_us=%.1f recheck_us=%.1f tonemap=%s tonemapped=%u look=%s decode=%s clamp=%g exposure=%s ev=%.5f ev_adapted=%.5f ev_target=%.5f avg_log_l=%.5f luma_mean=%.6g lit_fraction=%.4f luma_lit=%.6g luma_p99=%.6g ev_key=%.5f ev_limit=%.5f ev_fresh=%.5f tiles=%u lit=%u dt_ms=%.3f stepped=%u steps=%u meter=%08lx readback=%08lx tonemap_draw=%08lx fallback=%u meter_us=%.1f readback_us=%.1f k=%.5f chain_bytes=%llu sharpen=%s sharpened=%u sharpen_fallback=%u",
         id_, frame_, hdr_enabled_, h.redirected, hdr_end_name(h.end), static_cast<unsigned long>(h.writebacks), static_cast<unsigned long>(h.flushes),
         hdr_source_name(h.source), h.unwind, h.unwind_reason, h.unwind_draw, h.unwind_restore, h.unwind_stretch, h.unwind_bind,
         h.blocked, h.recheck_ran ? (h.recheck_passed ? "pass" : "fail") : "none", static_cast<unsigned long>(h.suspended),
@@ -2347,7 +2353,9 @@ void MotionOutput::log_hdr_frame() noexcept {
         us(h.bind_ticks), us(h.recheck_ticks),
         tonemap ? "agx" : "identity", h.tonemap, renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max),
         renderer::hdr_exposure_name(c.exposure), double(e.ev()), double(e.ev_adapted()), double(e.ev_target()), double(e.avg_log_l()),
-        double(std::exp2(e.avg_log_l())), double(e.dt()) * 1000., h.stepped, e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback,
+        double(std::exp2(e.avg_log_l())), double(e.meter().lit_fraction), double(std::exp2(e.meter().lit_median_log)), double(std::exp2(e.meter().p99_max_log)),
+        double(e.ev_key()), double(e.ev_limit()), double(e.ev_fresh()), e.meter().tiles, e.meter().lit,
+        double(e.dt()) * 1000., h.stepped, e.steps(), h.meter, h.readback, h.tonemap_draw, h.fallback,
         us(h.meter_ticks), us(h.readback_ticks), double(hdr_taa_k_), hdr_ ? hdr_->chain_bytes() : 0ull,
         caps.sharpen_reason, h.sharpened, h.sharpen_fallback);
 }
@@ -2578,6 +2586,12 @@ HRESULT MotionOutput::fixture_hdr_exposure(float* out, std::size_t floats) const
     const auto& e = hdr_->exposure();
     out[0] = e.ev(); out[1] = e.ev_adapted(); out[2] = e.ev_target(); out[3] = e.avg_log_l();
     out[4] = e.dt(); out[5] = e.exposure(); out[6] = float(e.steps()); out[7] = hdr_taa_k_;
+    if (floats >= 16) {
+        const auto& m = e.meter();
+        out[8] = m.lit_fraction; out[9] = m.lit_median_log; out[10] = m.p99_max_log; out[11] = e.ev_key();
+        out[12] = e.ev_limit(); out[13] = float(m.tiles); out[14] = float(m.lit); out[15] = m.lit_mean_log;
+    }
+    if (floats >= 18) { out[16] = e.ev_fresh(); out[17] = e.meter().lit_weight; }
     return S_OK;
 }
 HRESULT MotionOutput::fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept {

@@ -1,22 +1,27 @@
 // Exposure meter, level 0 + first reduction, of the FP16 HDR scene path
 // (docs/architecture/hdr-scene-path.md §3, "Stage 2 implementation").
-// Original ps_3_0 fragment. One output texel of the first R32F chain level
-// averages the log2 luminance of the 4x4 block of scene pixels beneath it:
+// Original ps_3_0 fragment. One output texel of the first two-channel chain
+// level (G32R32F, or A32B32G32R32F where that is not a render target) holds
+// the mean and the maximum of the log2 luminance of the 4x4 block of scene
+// pixels beneath it:
 //
-//   L   = dot(decode(scene.rgb), (0.2126, 0.7152, 0.0722))
-//   out = mean over the 16 taps of log2(clamp(L, meterFloor, meterClip))
+//   L     = dot(decode(scene.rgb), (0.2126, 0.7152, 0.0722))
+//   v     = log2(clamp(L, meterFloor, meterClip))
+//   out.r = mean over the 16 taps of v,  out.g = max over the 16 taps of v
 //
 // which is exposure_reference.meter_level0 followed by one step of
 // reduce_chain (factor 4, taps clamped to the source through the CLAMP
 // sampler state, so odd sizes weight the edge texels exactly as the
 // reference does). The full-resolution level-0 image is never stored:
-// folding it into the first reduction saves a 4 B/px write and read.
+// folding it into the first reduction saves a write and read per pixel. The
+// chain stops at the tile image (no axis above 128 texels), which the host
+// reads back and reduces to the space-aware statistic (exposure.h).
 //
 // Contract
 //   s0   the FP16 scene target, point/clamp, LOD 0; sampled at texel centres
 //        of the SOURCE level (uv = (texel + 0.5) / sourceSize), so the
 //        interpolated TEXCOORD0 only selects the output texel.
-//   out  R32F, .r = the block mean of the log2 luminance.
+//   out  .r = the block mean of the log2 luminance, .g = its block maximum.
 //
 // Constants c0..c3 (the tonemap owns c8..c21; both are saved and restored
 // around the write-back):
@@ -55,8 +60,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
     // Output texel (x, y): uv * outputSize lands on x + 0.5, y + 0.5.
     float2 base = floor(uv * outputSize.xy) * 4.0;
     float acc = 0;
+    float peak = log2(meter.x);   // every tap is at least the floor
     [unroll] for (int ty = 0; ty < 4; ++ty)
         [unroll] for (int tx = 0; tx < 4; ++tx)
-            acc += tap(base + float2(tx, ty));
-    return float4(acc * (1.0 / 16.0), 0, 0, 1);
+        {
+            float v = tap(base + float2(tx, ty));
+            acc += v;
+            peak = max(peak, v);
+        }
+    return float4(acc * (1.0 / 16.0), peak, 0, 1);
 }

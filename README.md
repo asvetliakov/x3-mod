@@ -90,10 +90,15 @@ into an owned FP16 target and is written back into the game's 8-bit target.
 Alone it is stage 1, an identity write-back that leaves the picture unchanged
 (to within one 8-bit code) while the topology is exercised. `--hdr-tonemap`
 (env `X3M_HDR_TONEMAP=agx`) is stage 2: the write-back becomes the AgX
-tonemap of the FP16 scene with auto exposure (a GPU log-luminance meter, host
-adaptation), the looks `--hdr-look none|golden|punchy`, the decode
-`--hdr-decode gamma2.2|srgb|none`, `--hdr-ev` (offset), `--hdr-ev-manual`
-(fixed EV) and `--hdr-clamp`. Honest scope: the presented image is AgX
+tonemap of the FP16 scene with auto exposure (a GPU log-luminance tile
+meter reduced on the host to a space-aware statistic: the black sky is
+excluded, the centre-weighted median of the lit tiles maps to the key, the
+brightest 1 % of tiles are held under white, a dead band holds the target
+against small changes; EV −3..+2), the looks `--hdr-look none|golden|punchy`,
+the decode `--hdr-decode gamma2.2|srgb|none`, `--hdr-ev` (offset),
+`--hdr-ev-manual` (fixed EV), `--hdr-clamp`, and the meter's `--hdr-meter-bg`,
+`--hdr-white-target`, `--hdr-key-pull`, `--hdr-ev-deadband`,
+`--hdr-edge-weight`, `--hdr-ev-min/max`. Honest scope: the presented image is AgX
 tonemapped from a gamma-space FP16 scene (the decode is a documented
 approximation) and is still LDR to the game's bloom and GUI; verified
 against the Python reference synthetically, not in gameplay. With `--hdr`
