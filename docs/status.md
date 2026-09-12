@@ -53,11 +53,21 @@ CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
   ([bottles.md](verification/bottles.md) limitation 2 closed for the fixtures).
 - Merge note: main's `b10d129` did not compile (`loading_trace.h` used
   `ID3DXMesh` without a declaration); a forward declaration fixes it.
-- Suites (Steam bottle, clean rebuild; see the commit message for the
-  counts): temporal pass 508/278/2 with 386 samples, motion output full
-  suite, temporal_run, ownership integration, scene capture, loading trace,
-  object lifetime, object trace, the export runner, generator `--check`,
-  `check_no_x87.py`, 759 host unit tests.
+- Suites (Steam bottle, clean RelWithDebInfo rebuild by the motion runner):
+  motion output PASS, 97 cases + 26 benches (`seam-taa-quad-fvf` and
+  `seam-taa-copy-draw` byte-identical to `seam-taa-on`: 49,152/49,152
+  presented pixels exact, 8 history and 16 readback files equal; `seam-msaa`
+  refusal at frame 0); temporal pass 508/278/2 with 386 samples;
+  temporal_run 78 samples / 2 generations; ownership integration 26 cases;
+  scene capture 4,908 checks / 36 scenarios; object lifetime 574; object
+  trace 166; export runner 8/8 + 8/8; generator `--check` PASS;
+  `check_no_x87.py` clean; 759 host unit tests OK. X3/FEX bottle: motion
+  output PASS, 97 cases + 26 benches, the three `hdrexposure` cases 85
+  checks each (previously blocked by limitation 2). **Not green:**
+  `run_loading_trace.py` fails on the `mesh-adjacency-cache-off` case
+  (`checks=33272 failures=0` against the runner's `MESH_ADJACENCY_CHECKS`
+  2179) — main's `b10d129` adjacency rewrite, untouched here; its
+  `loading-trace` 85/85 and `loading-mesh` 123/123 cases pass.
 
 ## Latest checkpoint: review 25 — fast adjacency, direct engine reads, gz buffer, bottle X3 (2026-09-12 night)
 

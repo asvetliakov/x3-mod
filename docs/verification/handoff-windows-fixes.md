@@ -12,6 +12,19 @@ Baseline built here from the unmodified sources (`cmake -S . -B build
 (untracked; a copy at the session scratchpad `d3d9-baseline.dll`). Note the
 review-26 runner rebuilds with `RelWithDebInfo --clean-first`, so its hash differs.
 
+## Outcome (2026-09-12 ~23:20): complete
+
+Every item below is done and verified on the Steam bottle, plus the X3/FEX
+motion rerun; the final branch commit is "Native-Windows fixes D1–D3, W1, W3;
+engine_memory summary; FEX NaN bits (pre-review 28)". Suite record:
+motion output PASS (97 cases + 26 benches, twins byte-identical, msaa
+refusal), temporal pass 508/278/2 (386 samples), temporal_run 78/2,
+ownership integration 26 cases, scene capture 4,908 checks, object lifetime
+574, object trace 166, exports 8/8 + 8/8, generator --check PASS,
+check_no_x87 clean, 759 unit tests, X3 motion PASS (hdrexposure 85 ×3). Open:
+`run_loading_trace.py` fails on main's in-flight `mesh-adjacency-cache-off`
+inventory (33272 checks vs the runner's 2179; not this branch's work).
+
 ## Status per item (third pause, 2026-09-12 ~21:40; commit "Native-Windows fixes in progress (paused 2)")
 
 Everything below the table of the second pause still holds; what changed

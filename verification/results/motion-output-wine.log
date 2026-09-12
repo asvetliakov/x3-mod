@@ -108,5 +108,8 @@ msync: up and running.
 ==== seam-taa-hdr-tonemap-sharpen-on
 ==== bench-1280x768-taa-sharpen-on
 ==== bench-5120x1440-taa-sharpen-on
+==== seam-taa-quad-fvf
+==== seam-taa-copy-draw
+==== seam-msaa
 ==== bench-1280x768-hdr-tonemap-taa-sharpen-on
 ==== bench-5120x1440-hdr-tonemap-taa-sharpen-on

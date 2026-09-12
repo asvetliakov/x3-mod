@@ -454,8 +454,14 @@ nothing routed, jittered or filled, no RT1/RT2 is created and the resolve skip
 is 11 (Msaa). The device line now reports `taa_copy=`, `taa_stretch_query=`,
 `taa_stretch_test=` and `quad_fvf=`; the pass holds four device references
 after its lazy initialization (resolve, copy and quad vertex programs, the
-declaration; five with the sharpen). Numbers: see the summary's
-`native_windows` entry.
+declaration; five with the sharpen). Record (Steam bottle, 97 cases + 26
+benches PASS; X3 bottle the same): `seam-taa-quad-fvf` identical to
+`seam-taa-on` (12 presented frames, 16 RT1/RT2 readback files, 8 FP16
+history files, 164 checks / 51 restorations each); `seam-taa-copy-draw`
+history identical and presented frames 49,152 of 49,152 pixels exact
+(`max_code_difference=0`); `seam-msaa` `motion_output_msaa_refused device=1
+frame=0 msaa=2 width=64 height=64`, three frame lines `msaa=2 routed=0
+jittered=0 taa_skip=11`, 5 checks. Summary key `native_windows`.
 
 ## Ownership wrapper interaction
 
