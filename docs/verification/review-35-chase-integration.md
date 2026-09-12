@@ -127,4 +127,17 @@ Independent artifact review approved the exact candidate for commit and installa
 all 18 terminal manifests, 440 frozen sources, 41 linked objects, retained
 binaries/results and bottle provenance matched. The six-case CLI control manifest
 precedes the later `--camera-log 1` diagnostic addition; that updated command
-has a separate dry-run and will be included in the post-install record.
+has a separate dry-run and is included in the post-install record.
+
+## Installation checkpoint
+
+Qualification merge `2e5f1af` is committed and its exact DLL installed in bottle
+X3. The [installation record](../../verification/results/chase-install-20260913.json)
+binds the qualified bytes, app-local manifest, preserved EXE/configuration,
+previous DLL/manifest rollback copies and eleven post-install dry runs. The
+updated chase/TAA command explicitly logs the camera every frame. No game was
+launched; camera gameplay and native-Windows acceptance remain pending.
+
+Independent Sol/high post-install review recomputed the installed/build, manifest,
+EXE/configuration and rollback hashes, then reproduced all eleven exact dry-run
+command/environment records. No finding remained; the game guard was empty.

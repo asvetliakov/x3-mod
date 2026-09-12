@@ -1,8 +1,9 @@
 # X3 Modern Renderer: staged implementation and acceptance gates
 
 The user-added [modern chase camera](chase-camera.md) is goal 17. The
-existing prototype `7f4b251` is integrated, reviewed/fixed and fixture-qualified; install before its
-first user run. It replaces only the engine's external back view and remains
+existing prototype `7f4b251` is integrated, reviewed/fixed, fixture-qualified
+and installed at `2e5f1af`; its first user run is pending. It replaces only
+the engine's external back view and remains
 off by default; gameplay feel, menu behavior, aiming, TAA cuts and cost remain
 acceptance items. This integration precedes HDR bloom implementation.
 
@@ -21,7 +22,7 @@ Windows source compatibility remains distinct from native runtime verification.
 
 Reviews 30–34 are complete; the crypto cache and space-aware exposure meter
 are merged, and adjacency/reader fixes are qualified. The combined DLL is
-installed at `c85c5b5`; obtain the controlled user runs next.
+installed with the camera integration at `2e5f1af`; obtain the controlled user runs next.
 Sharpen 0.75 / mip bias −0.5 remain
 candidate defaults until 0.75 is measured in game. HDR bloom on the FP16 target
 is the next visual feature; use the [existing glow/compositor

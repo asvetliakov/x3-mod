@@ -18,32 +18,34 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-Current work: reviews 30–34 are complete, crypto and space-aware exposure are
-merged, reader/adjacency fixes are qualified, and the integrated build is
-installed in bottle X3. **Current install:** qualification checkpoint `c85c5b5`
-(production source `ae03d9a`), SHA-256
-`ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193`.
-The next step is the user's [controlled run groups](verification/next-runs-2026-09-13.md),
-continuing with reader verification after the accepted crypto run 17. The agent
-never launches the game. Reader, adjacency and exposure game acceptance remain
-pending. Chase-camera prototype `7f4b251` is integrated and source-reviewed, with all
-18 runtime suites and 907 host tests passing; 21 result-dependent host tests
-also passed against the refreshed reports. The final candidate is
-`47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad`.
-See [review 35](verification/review-35-chase-integration.md). Installation and
-first-game acceptance remain pending; the installed DLL above is unchanged.
+Current work: reviews 30–35 are complete. The existing chase-camera prototype
+`7f4b251` was merged, reviewed and fixed, then qualified with all 18 runtime
+suites, 907 host tests, 42 camera/site tests and 21 refreshed-result controls.
+**Current install:** qualification merge `2e5f1af`, DLL SHA-256
+`47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad`
+(11,587,494 bytes). The final audit matched 41 objects, 144 motion-source
+hashes, 17 exports and 211 no-x87 boundary functions with zero violations.
+See [review 35](verification/review-35-chase-integration.md) and the
+[qualification summary](../verification/results/chase-integration-summary.json).
 
-Installation was verified against the build and app-local manifest; X3AP.exe
-and cxbottle.conf are unchanged. All eight command variants passed post-install
-`--dry-run`; an independent Sol/high review reproduced their exact command and
-environment records and verified the installed files and rollback hashes.
-The previous review-30 DLL and manifest are retained in the local
-rollback directory recorded by
-[integrated-install-20260913.json](../verification/results/integrated-install-20260913.json).
-Review 30 was `3124e0b`, SHA-256
-`d648594bf346f8ccc8d5e476bcc26345d16741974f76c5b3769017075712e825`;
-the resumption started with review 29 (`a34c389`). Older entries below describe
-historical checkpoints and do not override this installed state or the goals.
+The camera is vanilla by default; only `--camera chase` enables it. First-game
+acceptance and tuning remain pending, including menu behavior, aim alignment,
+view-transition/TAA cuts, resolution changes and frame cost. Aggregate handler
+timing is now available with telemetry; it is not a measured FPS result.
+The user's [controlled run plan](verification/next-runs-2026-09-13.md) includes
+the thirteen camera checks. Reader 2a remains the next loading test after
+accepted crypto run 17; reader, adjacency and exposure game acceptance remain
+pending. The agent never launches the game. Native Windows remains untested.
+
+Installation matches the qualified DLL and app-local manifest. X3AP.exe and
+cxbottle.conf are unchanged; eleven launch variants passed post-install
+`--dry-run`, including the chase/TAA diagnostic with `--camera-log 1`.
+Independent post-install review reproduced all eleven command/environment records
+and verified the installed and preserved files. The previous DLL `ae2482fd…b193`
+and manifest are retained for rollback in the
+local directory recorded by
+[chase-install-20260913.json](../verification/results/chase-install-20260913.json).
+Older entries below are historical and do not override this installed state.
 
 The [run-16 offline comparison](verification/run16-exposure-baseline.md) recovers
 seven unresolved HDR inputs. Applying the candidate policy to them yields +2 EV
@@ -60,8 +62,8 @@ signature probe versus the earlier 12.835 s. The heuristic save gap was 27.574 s
 versus 35.707 s; different feature flags prevent assigning that whole-load
 change to the cache. Counters cover two reported windows, with no teardown
 total. Independent artifact review passed after correcting a ratio typo.
-The installed DLL is unchanged. Reader verify (group 2a) is the next loading
-test; chase-camera integration and full qualification are newly requested.
+That run used the preceding DLL. Reader verify (group 2a) remains the next
+loading test; the chase-camera integration is now installed as recorded above.
 
 ## Handoff (2026-09-13 early morning): read docs/handoff-2026-09-13.md first
 

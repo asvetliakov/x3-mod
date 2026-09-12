@@ -24,7 +24,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All are installed; run 17 accepts the crypto path on X3 (844-check probe 12.835 → 0.1353 s). Reader/adjacency acceptance remains. The 27.574 s save gap is not a controlled cache A/B. Diagnostic timings are not uninstrumented game FPS. |
 | 15 | macOS menu bar | Not started. Also track the separate game/macOS double cursor after alt-tab; first compare with vanilla. |
 | 16 | Clustered forward lighting | Not started. Material and light reconstruction precede implementation. |
-| 17 | Modern third-person chase camera | **In progress:** existing prototype `7f4b251` integrated and reviewed/fixed; full 18-suite chain, 907 host tests and camera/site checks passed. Installation and first game run pending. Engine external-back-view replacement, default vanilla; menu behavior, aiming, cuts, reset survival and frame cost require acceptance. |
+| 17 | Modern third-person chase camera | **In progress:** existing prototype `7f4b251` integrated and reviewed/fixed; full 18-suite chain, 907 host tests and camera/site checks passed. Installed at `2e5f1af`; first game run pending. Engine external-back-view replacement, default vanilla; menu behavior, aiming, cuts, reset survival and frame cost require acceptance. |
 
 Evidence: [iteration 13](verification/iteration-13.md),
 [HDR scene path](verification/hdr-scene-path.md),
@@ -43,13 +43,13 @@ they are not a measured final-image baseline.
    not close review 31 or establish native-Windows runtime behavior.
 2. Crypto cache reviewed/fixed and merged from `8794a5d` (572 checks per bottle);
    space-aware exposure branch `e897011` reviewed/fixed and merged
-   (98 motion/HDR cases per bottle). Both changes are installed at qualification
-   checkpoint `c85c5b5`;
+   (98 motion/HDR cases per bottle). Both changes were installed at qualification
+   checkpoint `c85c5b5` and retained in camera integration `2e5f1af`;
    run 17 accepts the crypto path on X3; exposure game acceptance remains pending.
 3. Reader/adjacency review and affected fixtures are complete (review 31).
    Checkpoint `ae03d9a` is committed. Combined selected motion/HDR and
    CryptoAPI checks and independent artifact review passed. Qualification
-   checkpoint `c85c5b5` is installed and its bytes and run commands verified.
+   checkpoint `c85c5b5` was installed and verified; `2e5f1af` now supersedes it.
 4. Ask the user for the handoff's six controlled run groups: crypto, reader verify
    then fast, adjacency verify then fast, sharpen 0.75, new exposure, vanilla
    cursor comparison. Reader fast requires zero verification mismatches;
@@ -58,8 +58,8 @@ they are not a measured final-image baseline.
    Copy each session and readbacks to a new `/tmp/x3-bottleX3-run<N>/` before
    bounded analysis; never read a large log whole or launch the game ourselves.
 5. Existing chase-camera prototype `7f4b251` is integrated, reviewed/fixed and
-   qualified by the full regression chain and camera host/site checks. Commit
-   and install the qualified candidate, then obtain the separate camera run
+   qualified by the full regression chain and camera host/site checks. Installed
+   at `2e5f1af`; obtain the separate camera run
    with the architecture review’s thirteen acceptance checks.
    Tune only from user impressions; combat tightness and optional scene fix
    remain disabled pending evidence.
