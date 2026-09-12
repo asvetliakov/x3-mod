@@ -43,9 +43,9 @@ const char* mode_name(Mode m){return m==Mode::Fast?"fast":m==Mode::Verify?"verif
 void verify_sink(const VerifyEvent& e){
     PreserveCpuState cpu;
     if(mismatch_lines++>=mismatch_line_limit)return;
-    log("resource_reader verify equal=%u size=%lu original_size=%lu mismatches=%lu first=%lu original_null=%u globals_ok=%u counters_ok=%u cursor_ok=%u catalogue=%u scrambled=%u our_us=%.3f original_us=%.3f",
+    log("resource_reader verify equal=%u size=%lu original_size=%lu mismatches=%lu first=%lu original_null=%u globals_ok=%u counters_ok=%u position_ok=%u cursor=%ld expected_cursor=%ld position=%ld expected_position=%ld catalogue=%u scrambled=%u our_us=%.3f original_us=%.3f",
         unsigned(e.equal),static_cast<unsigned long>(e.size),static_cast<unsigned long>(e.original_size),static_cast<unsigned long>(e.mismatches),static_cast<unsigned long>(e.first_mismatch),
-        unsigned(e.original_null),unsigned(e.globals_ok),unsigned(e.counters_ok),unsigned(e.cursor_ok),unsigned(e.catalogue),unsigned(e.scrambled),
+        unsigned(e.original_null),unsigned(e.globals_ok),unsigned(e.counters_ok),unsigned(e.cursor_ok),unsigned(e.position_ok),long(e.cursor),long(e.expected_cursor),e.position,e.expected_position,unsigned(e.catalogue),unsigned(e.scrambled),
         double(e.our_ticks)*1e6/double(frequency),double(e.original_ticks)*1e6/double(frequency));
 }
 // Reader entry stub:
@@ -147,10 +147,12 @@ void report() {
         const Statistics s=statistics();
         if(s.calls!=last_report_calls){
             last_report_calls=s.calls;
-            log("resource_reader_metric cumulative=1 mode=%s calls=%llu handled=%llu fallbacks=%llu bytes_in=%llu bytes_out=%llu fast_us=%.3f fast_max_us=%.3f original_us=%.3f verify_files=%llu verify_equal=%llu verify_mismatched=%llu verify_original_null=%llu catalogue=%llu scrambled=%llu "
+            log("resource_reader_metric cumulative=1 mode=%s calls=%llu handled=%llu fallbacks=%llu bytes_in=%llu bytes_out=%llu fast_us=%.3f fast_max_us=%.3f original_us=%.3f verify_files=%llu verify_equal=%llu verify_mismatched=%llu verify_original_null=%llu catalogue=%llu scrambled=%llu cursor_short=%llu "
+                "fast_read_us=%.3f fast_scan_us=%.3f fast_alloc_us=%.3f fast_inflate_us=%.3f "
                 "fallback_unopened=%llu fallback_gz_handle=%llu fallback_progress=%llu fallback_tell=%llu fallback_state=%llu fallback_length=%llu fallback_scratch=%llu fallback_short_read=%llu fallback_not_gzip=%llu fallback_method=%llu fallback_reserved=%llu fallback_header=%llu fallback_empty=%llu fallback_alloc=%llu fallback_init=%llu fallback_inflate=%llu fallback_size=%llu",
                 mode_name(mode_),s.calls,s.handled,s.fallbacks,s.bytes_in,s.bytes_out,double(s.ticks)*1e6/double(frequency),double(s.max_ticks)*1e6/double(frequency),double(s.original_ticks)*1e6/double(frequency),
-                s.verify_files,s.verify_equal,s.verify_mismatched,s.verify_original_null,s.catalogue,s.scrambled,
+                s.verify_files,s.verify_equal,s.verify_mismatched,s.verify_original_null,s.catalogue,s.scrambled,s.cursor_short,
+                double(s.read_ticks)*1e6/double(frequency),double(s.scan_ticks)*1e6/double(frequency),double(s.alloc_ticks)*1e6/double(frequency),double(s.inflate_ticks)*1e6/double(frequency),
                 s.reasons[1],s.reasons[2],s.reasons[3],s.reasons[4],s.reasons[5],s.reasons[6],s.reasons[7],s.reasons[8],s.reasons[9],s.reasons[10],s.reasons[11],s.reasons[12],s.reasons[13],s.reasons[14],s.reasons[15],s.reasons[16],s.reasons[17]);
         }
     }

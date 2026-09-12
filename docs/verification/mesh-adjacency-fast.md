@@ -224,6 +224,88 @@ and faces follow the attribute table. The module, the Python reference port and
 the fixture were rewritten to those rules; the evidence above is the result. The
 game acceptance run (item 5 of the handoff) is still to be made by the user.
 
+## Run 11 and the normalize dispatch (2026-09-13)
+
+The first in-game verify run with the review-28 module (bottle X3, review-29
+install, `/tmp/x3-bottleX3-run11/`, 48 MB session log) reported
+`verify_meshes=7636 verify_equal=7599 verify_mismatched=37
+verify_mismatch_entries=5056` (run 8: 167 meshes). The 37 mismatching meshes
+were dumped (`X3M_MESH_ADJACENCY_DUMP=1`; 37 files, 44 MB, 15 distinct meshes,
+all 16-bit except two, stride 64, position first, epsilon 1e-6, x87 control
+`0x023f`, MXCSR `0x9fc0`; game data, kept under `/tmp`). The per-mesh lines
+ranged from 3 to 1,631 mismatches; the two worst carried hundreds of
+`welded_degenerate_faces` and `repeated_neighbours`, the small ones none, and
+no rule of sections 2-3 distinguished them.
+
+**Reproduction.** The dumps replay offline (`tools/analysis/replay_mesh_adjacency.py`):
+
+* host build of the module (`1/sqrt`): 29 of 37 mismatch the in-game native
+  array, with the in-game module's own output reproduced on 25 (deterministic);
+  8 dumps replay *equal* to native on the host, which the `rsqrtss` module had
+  missed in the game;
+* `--wine` on X3 (`X3M_FIXTURE_BOTTLE=X3`): native d3dx9_37 equals the in-game
+  array on 37/37 (`native_equal_dump=1`), the module mismatches all 37 with the
+  game's counts;
+* `--wine` on Steam: native d3dx9_37 under Rosetta differs from the in-game
+  array on 36/37 dumps, and the module equals Steam's native on 33/37.
+
+So the mismatches were not in the call context but in the emulator: d3dx9_37
+computes different adjacency under FEX than under Rosetta, and the module
+matched Rosetta's. The eight dumps the host reproduced pointed at the normalize.
+
+**Root cause.** `D3DXVec3Normalize` is dispatched per process
+([rules, section 4](../reverse-engineering/d3dx-generate-adjacency.md)):
+`IsProcessorFeaturePresent(PF_3DNOW_INSTRUCTIONS_AVAILABLE)` returns 1 under
+FEX's arm64 Wine (0 under Rosetta; probe on both bottles), so D3DX takes its
+3DNow branch; the 3DNow installer's own CPUID check (`0x0074a892`, extended
+EDX bit 31, absent under FEX) then installs nothing and the process keeps the
+**generic** normalize (`0x005881fc`): x87 at 53 bits, a 512-segment linear
+interpolation of `1/sqrt` indexed by the float bits of `len2`, and vectors
+with `|len2 - 1| <= 1e-5` copied unnormalized. The module reproduced the SSE2
+table's `rsqrtss` everywhere. The two normalizes differ by a few float ulps,
+which is exactly the near-tie margin of the candidate score (rounded to a float
+before the compare), so some multi-candidate edges pick different faces, and
+each such pick cascades through the entry lifetimes into the 4-1,631
+mismatches per mesh. Evidence: the game's DLL's `D3DXVec3Normalize` equals a
+double-precision model of the generic code with the regenerated table on
+20,014 of 20,014 sample vectors on X3 and the `rsqrtss` model on 2,012 of
+2,012 on Steam (scratch probes; the table `DAT_0076c2a0` is reproduced 512/512
+from its generating rule, so no DLL data is copied).
+
+**Fix.** `Policy::normalize` (`Sse2` | `Generic`) in the module, the generic
+normalize implemented in double with the regenerated table; the service mirrors
+D3DX's dispatch from the same documented inputs (`d3dx_math_table`: registry,
+`IsProcessorFeaturePresent(7)`/`(6)`, CPUID) and selects the policy, falling
+back to native for the 3DNow and SSE tables (`fallback_math_table`); the init
+line logs `math_table=... normalize=...`; the dump header's `reserved[0]`
+records the table; the fixture detects the same way (`MESH ADJACENCY
+MATH_TABLE` line, `normalize=` per case, an `other_normalize` policy variant)
+and gains the `near-unit-normals` case (two candidates whose cross products are
+within 1e-5 of unit length: generic copies them and ties at exactly 1.0, SSE2
+normalizes and prefers the less tilted face by 1.4e-6; native picks face 2 on
+X3 and face 1 on Steam, `other_normalize` mismatches 3 on both); the Python
+port takes `normalize=` and the host tests cross-check both paths
+(`GenericNormalize`, `test_normalize_paths_match_reference`);
+`replay_mesh_adjacency.py --normalize {auto,sse2,generic}` (auto reads the
+header, `generic` for the run-11 dumps written before the field existed).
+
+**Replay after the fix.** X3: `MESH ADJACENCY REPLAY dumps=37 equal=37
+mismatched=0` (`MATH_TABLE table=generic normalize=generic`), and the host
+replay with `--normalize generic` equals the in-game array on 37/37. Steam
+(`table=sse2`): 33/37; the residual (dumps 13/3/34, one mesh, 7 entries; dump
+9, 4 entries) is Rosetta-only and not arithmetic: D3DX's own score function
+returns the module's values for the first differing lookup, a 3-face extract
+reproduces it, and the same extract is equal on X3. Its investigation, the
+16-bit-converter hypothesis and the exact next commands are in
+[handoff-adjacency-parity.md](handoff-adjacency-parity.md); the suites have
+not been rerun since the change (direct fixture runs on Steam: cache-off
+35,984 checks, cache-on 36,041, `near-unit-normals` equal to native), the host
+tests pass (23), `check_no_x87.py`: PASS (196 reachable functions, 0
+violations), `build/d3d9.dll` SHA-256
+`ef190bcbf84b8088378872e05bbfa77be437636a57b9c77a4db0e21377fd903f`, not
+installed. Fast mode stays blocked until an in-game verify run on X3 shows
+`verify_mismatched=0`.
+
 ## Computational state
 
 The game enters `GenerateAdjacency` with x87 control `0x027f` (53-bit precision)

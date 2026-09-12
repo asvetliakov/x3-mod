@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'analysis'))
 import analyze_loading_profile as alp  # noqa: E402
+import analyze_iteration08_loading as loading  # noqa: E402
 
 FREQ = 1000  # 1 kHz QPC keeps seconds readable: qpc 10000 is t = 0
 BASE = 0x00400000
@@ -288,10 +289,101 @@ class LoadingProfileTest(unittest.TestCase):
         self.assertEqual(result['probe_sites']['crt_fgetc']['status'], 'bytes_mismatch')
         text = alp.render(result)
         self.assertIn('Engine probes: 2 of 3 sites active (find_wrapper, resource_open).', text)
-        self.assertIn('| `resource_open` | 1,000 | 1,000 | 3.000 | 3.000 | 60.0 | 0 | loose=500, catalogue=500 |', text)
+        # No name_resolve/sopen_helper row in this window, so exclusive falls back to inclusive.
+        self.assertIn('| `resource_open` | 1,000 | 1,000 | 3.000 | 3.000 | 3.000 | 60.0 | 0 | loose=500, catalogue=500 |', text)
         self.assertIn('desync=1, caller 0x004e7942 700, caller 0x004ade9c 10', text)
         stall = gap['stalls'][0]   # the 5-20 s report stall carries the deltas reported at 20 s
         self.assertEqual(stall['hooked']['probes']['resource_open']['calls'], 300)
+
+    def test_probe_exclusive_column_follows_the_documented_nesting(self):
+        """resource_load -> open + read, open -> resolve + sopen, resolve -> findfirst;
+        the two texture sites share resource_load with nine other callers, so they get none."""
+        sites = ''.join(
+            f'loading_probe_site index={i} name={name} va=0x004e8780 length=5 timed=1 kind=plain '
+            'status=active x0=- x1=- x2=- x3=-\n'
+            for i, name in enumerate(('resource_load', 'resource_open', 'resource_read', 'name_resolve',
+                                      'sopen_helper', 'find_wrapper', 'texture_loader')))
+
+        def probe(site, ticks, calls=10):
+            return (f'loading_probe site={site} va=0x004e8780 qpc=15000 calls={calls} exits={calls} '
+                    f'inclusive_ticks={ticks} max_ticks={ticks} total_us=0 max_us=0 overflow=0 desync=0 '
+                    'bytes=0 x0=0 x1=0 x2=0 x3=0\n')
+
+        deltas = (summary(0, 0, 15000) + MENU_METRICS
+                  + probe('resource_load', 10_000) + probe('resource_open', 3_000)
+                  + probe('resource_read', 6_000) + probe('name_resolve', 1_200)
+                  + probe('sopen_helper', 1_000) + probe('find_wrapper', 400)
+                  + probe('texture_loader', 9_000)
+                  + summary(1, 4, 41500) + frame_metric(3, 30_500_000.0, 30_000_000.0))
+        result = self.run_pipeline(HEADER + sites + summary(1, 1, 11000) + deltas, symbols=None)
+        table = result['gaps'][0]['hooked']['probes']
+        self.assertAlmostEqual(table['resource_load']['exclusive_seconds'], 1.0)   # 10 - 3 - 6
+        self.assertAlmostEqual(table['resource_open']['exclusive_seconds'], 0.8)   # 3 - 1.2 - 1.0
+        self.assertAlmostEqual(table['name_resolve']['exclusive_seconds'], 0.8)    # 1.2 - 0.4
+        self.assertAlmostEqual(table['resource_read']['exclusive_seconds'], 6.0)   # no timed child
+        self.assertIsNone(table['texture_loader']['exclusive_seconds'])
+        self.assertEqual(table['resource_load']['exclusive_children'], ['resource_open', 'resource_read'])
+        self.assertIn('| `texture_loader` | 10 | 10 | 9.000 | — |', alp.render(result))
+
+    def test_probe_exclusive_is_clamped_at_zero_for_a_straddling_child(self):
+        """A window can report a child's exit without the parent's; the column stays >= 0."""
+        table = loading.probe_exclusive({
+            'resource_load': dict(inclusive_seconds=1.0),
+            'resource_open': dict(inclusive_seconds=0.4),
+            'resource_read': dict(inclusive_seconds=0.9)})
+        self.assertEqual(table['resource_load']['exclusive_seconds'], 0.0)
+
+    def test_write_side_table_lists_paths_and_reports_the_empty_case(self):
+        writes = (metric('CreateDirectoryA', 15000, ticks=7, count=2, byte_count=0, failures=2)
+                  + 'loading_probe_path op=CreateDirectoryA path=C:\\users\\x\\Documents\\Egosoft\n'
+                  + 'loading_probe_path op=WriteFile path=C:\\X3\\log00001.txt\n')
+        reads = ('loading_probe_site index=3 name=resource_read va=0x004e8880 length=6 timed=1 '
+                 'kind=resource_read status=active x0=plain x1=catalogue x2=- x3=-\n')
+        deltas = (summary(0, 0, 15000) + MENU_METRICS + writes
+                  + 'loading_probe site=resource_read va=0x004e8880 qpc=15000 calls=600 exits=600 '
+                    'inclusive_ticks=2000 max_ticks=40 total_us=0 max_us=0 overflow=0 desync=0 bytes=0 '
+                    'x0=100 x1=500 x2=0 x3=0\n'
+                  + summary(1, 4, 41500) + frame_metric(3, 30_500_000.0, 30_000_000.0))
+        result = self.run_pipeline(HEADER + reads + summary(1, 1, 11000) + deltas, symbols=None)
+        self.assertEqual([item['op'] for item in result['probe_paths']],
+                         ['CreateDirectoryA', 'WriteFile'])
+        text = alp.render(result)
+        self.assertIn('**Write-side file APIs**', text)
+        self.assertIn('| `CreateDirectoryA` | 2 | 2 | 0.007 | 0 | `C:\\users\\x\\Documents\\Egosoft` |', text)
+        self.assertIn('2 write-side calls (2 failed) against 500 catalogue reads', text)
+        # The same log without the write metric must state the negative explicitly.
+        plain = self.run_pipeline(HEADER + reads + summary(1, 1, 11000)
+                                  + summary(0, 0, 15000) + MENU_METRICS
+                                  + 'loading_probe site=resource_read va=0x004e8880 qpc=15000 calls=600 '
+                                    'exits=600 inclusive_ticks=2000 max_ticks=40 total_us=0 max_us=0 '
+                                    'overflow=0 desync=0 bytes=0 x0=100 x1=500 x2=0 x3=0\n'
+                                  + summary(1, 4, 41500) + frame_metric(3, 30_500_000.0, 30_000_000.0),
+                                  symbols=None)
+        self.assertIn('No write-side call (`CreateDirectoryA`', alp.render(plain))
+        self.assertIn('against 500 catalogue reads', alp.render(plain))
+
+    def test_instrumentation_cost_table_separates_measured_tail_from_probe_bound(self):
+        sites = ('loading_probe_site index=1 name=resource_open va=0x004e8780 length=5 timed=1 '
+                 'kind=resource_open status=active x0=loose x1=catalogue x2=failed x3=-\n'
+                 'loading_probe_site index=4 name=read_dispatch va=0x004e9210 length=5 timed=0 '
+                 'kind=read_dispatch status=active x0=plain x1=catalogue x2=gzhandle x3=unopened\n')
+        deltas = (summary(0, 0, 15000) + MENU_METRICS
+                  + 'loading_probe site=resource_open va=0x004e8780 qpc=15000 calls=1000 exits=1000 '
+                    'inclusive_ticks=3000 max_ticks=40 total_us=0 max_us=0 overflow=0 desync=0 bytes=0 '
+                    'x0=500 x1=500 x2=0 x3=0\n'
+                  + 'loading_probe site=read_dispatch va=0x004e9210 qpc=15000 calls=1000000 exits=0 '
+                    'inclusive_ticks=0 max_ticks=0 total_us=0 max_us=0 overflow=0 desync=0 bytes=4096 '
+                    'x0=0 x1=1000000 x2=0 x3=0\n'
+                  + summary(1, 4, 41500) + frame_metric(3, 30_500_000.0, 30_000_000.0))
+        result = self.run_pipeline(HEADER + sites + summary(1, 1, 11000) + deltas, symbols=None)
+        text = alp.render(result)
+        self.assertIn('**Instrumentation cost**', text)
+        # 1,477 hooked calls in MENU_METRICS, wrapper_tail_ticks=1 per row at 1 kHz = 3 ms.
+        self.assertIn('| import wrapper tails (measured) | 161,477 | 0.003 |', text)
+        self.assertIn(f'| timed probe stubs (bound, {alp.TIMED_PROBE_NS:.0f} ns/call) | 1,000 | 0.000 |', text)
+        self.assertIn(f'| count-only probe stubs (bound, {alp.COUNT_PROBE_NS:.0f} ns/call) | 1,000,000 | 0.143 |', text)
+        self.assertLess(alp.COUNT_PROBE_NS, alp.TIMED_PROBE_NS)
+        self.assertLess(alp.TIMED_PROBE_NS, alp.LIGHT_ENVELOPE_NS)
 
     def test_frame_end_lines_bound_gaps_when_the_log_has_no_telemetry(self):
         text = ('x3-modern-renderer version=0.4 schema=2 capture_start=120 capture_frames=1 pointer_bits=32\n'

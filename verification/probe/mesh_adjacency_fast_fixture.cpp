@@ -72,6 +72,16 @@ static std::vector<Case> cases(){
     all.push_back(fan("fan-tilted-cba",16,{2,1,0}));
     all.push_back(fan("fan-coplanar-abc",0,{0,1,2}));
     all.push_back(fan("fan-coplanar-cba",0,{2,1,0}));
+    // Normalize dispatch (run 11): two candidates whose cross products have
+    // |n|^2 within 1e-5 of 1, so the generic table copies them unnormalized and
+    // both score exactly 1.0 against the query (tie: the chain head, face 2,
+    // wins), while the SSE2 table normalizes and prefers the less tilted face 1
+    // by 1.4e-6. Native picks face 2 under FEX (generic) and face 1 under
+    // Rosetta or on x86 hardware (SSE2); the other_normalize variant mismatches.
+    {Case c;c.name="near-unit-normals";c.tie_evidence=true;
+        push_vertex(c,0,0,0);push_vertex(c,grid(16384),0,0);push_vertex(c,grid(-4),grid(16384),0);
+        push_vertex(c,grid(-1),grid(-16384),grid(-9));push_vertex(c,grid(-7),grid(-16384),grid(-29));
+        push_face(c,0,1,2);push_face(c,1,0,3);push_face(c,1,0,4);all.push_back(c);}
     {Case c=fan("fan-four",16,{0,1,2});push_vertex(c,grid(8),grid(-16),grid(-16));push_face(c,1,0,5);push_face(c,0,1,2);all.push_back(c);}
     {Case c=quad("degenerate-aba-aaa");c.tie_evidence=true;c.indices.clear();push_face(c,0,1,0);push_face(c,2,2,2);push_face(c,0,1,2);all.push_back(c);}
     {Case c=quad("degenerate-lookup");c.tie_evidence=true;c.indices.clear();push_face(c,0,1,0);push_face(c,1,0,2);all.push_back(c);}
@@ -168,7 +178,18 @@ static Native native_generate(ID3DXMesh* mesh,float epsilon,bool raw=false){
     const auto begin=qpc();n.hr=raw?g(mesh,epsilon,n.adjacency.data()):mesh->GenerateAdjacency(epsilon,n.adjacency.data());n.ticks=qpc()-begin;n.error=GetLastError();return n;
 }
 struct Fast {fast::Report report;std::vector<DWORD> adjacency;uint64_t ticks;};
-static Fast fast_generate(ID3DXMesh* mesh,const Case& c,const fast::Policy& policy={}){
+// The module must normalize with the D3DXVec3Normalize this process's D3DX
+// installed (loading_trace.h, d3dx_math_table): the SSE2 table under Rosetta
+// and on x86 hardware, the generic table under FEX. The fixture cannot reproduce
+// the 3DNow and SSE tables (native-only in the service) and refuses to run there.
+static fast::Normalize detected_normalize(){
+    const D3dxMathTable table=d3dx_math_table();
+    require(table==D3dxMathTable::Sse2||table==D3dxMathTable::Generic,"D3DX math table reproducible by the module");
+    return table==D3dxMathTable::Generic?fast::Normalize::Generic:fast::Normalize::Sse2;
+}
+static fast::Policy default_policy(){fast::Policy p;p.normalize=detected_normalize();return p;}
+static fast::Policy other_normalize(){fast::Policy p=default_policy();p.normalize=p.normalize==fast::Normalize::Generic?fast::Normalize::Sse2:fast::Normalize::Generic;return p;}
+static Fast fast_generate(ID3DXMesh* mesh,const Case& c,const fast::Policy& policy=default_policy()){
     Fast f;f.adjacency.assign(size_t(mesh->GetNumFaces())*3,0xabcdefu);void* vb=nullptr;void* ib=nullptr;
     ok(mesh->LockVertexBuffer(D3DLOCK_READONLY,&vb),"fast lock vb");ok(mesh->LockIndexBuffer(D3DLOCK_READONLY,&ib),"fast lock ib");
     fast::Input in;in.vertices=vb;in.vertex_count=mesh->GetNumVertices();in.stride=mesh->GetNumBytesPerVertex();in.position_offset=c.position_offset;
@@ -210,9 +231,9 @@ static bool replay_dump(Create create,IDirect3DDevice9* device,const char* label
     const size_t native_diff=mismatches(n.adjacency,d.native,first_native);
     const size_t diff=fa.report.status==fast::Status::Ok?mismatches(n.adjacency,fa.adjacency,first):n.adjacency.size();
     const size_t module_diff=fa.report.status==fast::Status::Ok?mismatches(fa.adjacency,d.module,first_module):fa.adjacency.size();
-    printf("REPLAY_CASE file=%s faces=%u vertices=%u bits=%u stride=%u position_offset=%u epsilon=%g options=%08x x87_control=%04x mxcsr=%08x dump_mismatches=%u dump_first=%u native_equal_dump=%u native_dump_diff=%u status=%s module_equal_native=%u mismatches=%u first=%u module_equal_dump_module=%u native_us=%.3f fast_us=%.3f representatives=%lu welded=%lu refused_welds=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu repeated_neighbours=%lu rsqrt=%s\n",
+    printf("REPLAY_CASE file=%s faces=%u vertices=%u bits=%u stride=%u position_offset=%u epsilon=%g options=%08x x87_control=%04x mxcsr=%08x dump_mismatches=%u dump_first=%u native_equal_dump=%u native_dump_diff=%u status=%s module_equal_native=%u mismatches=%u first=%u module_equal_dump_module=%u native_us=%.3f fast_us=%.3f representatives=%lu welded=%lu refused_welds=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu repeated_neighbours=%lu rsqrt=%s normalize=%s\n",
         label,unsigned(d.header.faces),unsigned(d.header.vertices),c.bits32?32u:16u,unsigned(d.header.stride),unsigned(d.header.position_offset),double(epsilon),unsigned(d.header.options),unsigned(d.header.x87_control),unsigned(d.header.mxcsr),unsigned(d.header.mismatches),unsigned(d.header.first),unsigned(native_diff==0),unsigned(native_diff),fast::status_name(unsigned(fa.report.status)),unsigned(diff==0),unsigned(diff),unsigned(first),unsigned(module_diff==0),us(n.ticks),us(fa.ticks),
-        DWORD(fa.report.representatives),DWORD(fa.report.welded),DWORD(fa.report.refused_welds),DWORD(fa.report.multi_candidates),DWORD(fa.report.normal_selected),DWORD(fa.report.degenerate_faces),DWORD(fa.report.welded_degenerate_faces),DWORD(fa.report.repeated_neighbours),fast::rsqrt_implementation());
+        DWORD(fa.report.representatives),DWORD(fa.report.welded),DWORD(fa.report.refused_welds),DWORD(fa.report.multi_candidates),DWORD(fa.report.normal_selected),DWORD(fa.report.degenerate_faces),DWORD(fa.report.welded_degenerate_faces),DWORD(fa.report.repeated_neighbours),fast::rsqrt_implementation(),fast::normalize_name(default_policy().normalize));
     if(diff){
         unsigned printed=0;
         for(size_t i=0;i<n.adjacency.size()&&printed<16;++i){
@@ -223,7 +244,7 @@ static bool replay_dump(Create create,IDirect3DDevice9* device,const char* label
             printf("REPLAY_MISMATCH file=%s index=%u face=%lu slot=%u native=%ld fast=%ld face_indices=%u,%u,%u other=%ld other_indices=%u,%u,%u\n",label,unsigned(i),(unsigned long)face,unsigned(i%3),n.adjacency[i]==0xffffffffu?-1L:long(n.adjacency[i]),fa.adjacency[i]==0xffffffffu?-1L:long(fa.adjacency[i]),own[0],own[1],own[2],neighbour==0xffffffffu?-1L:long(neighbour),other[0],other[1],other[2]);
         }
         struct Variant {const char* name;fast::Policy policy;};
-        Variant variants[7]={{"tail_insertion",{}},{"no_normal_selection",{}},{"no_weld_refusal",{}},{"index_order_sweep",{}},{"retire_own_entry",{}},{"keep_refused_entry",{}},{"later_slot_check",{}}};
+        Variant variants[8]={{"tail_insertion",default_policy()},{"no_normal_selection",default_policy()},{"no_weld_refusal",default_policy()},{"index_order_sweep",default_policy()},{"retire_own_entry",default_policy()},{"keep_refused_entry",default_policy()},{"later_slot_check",default_policy()},{"other_normalize",other_normalize()}};
         variants[0].policy.head_insertion=false;variants[1].policy.normal_selection=false;variants[2].policy.weld_refusal=false;variants[3].policy.heap_order=false;variants[4].policy.retire_own_entry=true;variants[5].policy.unlink_refused=false;variants[6].policy.later_slot_check=true;
         for(const auto& variant:variants){const Fast alt=fast_generate(mesh,c,variant.policy);size_t alt_first=0;const size_t alt_diff=alt.report.status==fast::Status::Ok?mismatches(n.adjacency,alt.adjacency,alt_first):alt.adjacency.size();
             printf("REPLAY_POLICY file=%s variant=%s equal=%u mismatches=%u\n",label,variant.name,unsigned(alt_diff==0),unsigned(alt_diff));}
@@ -233,6 +254,7 @@ static bool replay_dump(Create create,IDirect3DDevice9* device,const char* label
 }
 static int replay_main(Create create,IDirect3DDevice9* device,int argc,char** argv){
     unsigned dumps=0,equal=0,unreadable=0;
+    printf("MESH ADJACENCY MATH_TABLE table=%s normalize=%s rsqrt=%s\n",d3dx_math_table_name(d3dx_math_table()),fast::normalize_name(default_policy().normalize),fast::rsqrt_implementation());
     for(int i=2;i<argc;++i){
         wchar_t path[32768]{};MultiByteToWideChar(CP_ACP,0,argv[i],-1,path,32767);
         Dump d;if(!read_dump(path,d)){printf("REPLAY_UNREADABLE file=%s\n",argv[i]);++unreadable;continue;}
@@ -251,6 +273,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
         WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName="X3MeshAdjacencyFastFixture";RegisterClassA(&cls);window=CreateWindowA(cls.lpszClassName,"Original mesh adjacency fixture",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,cls.hInstance,nullptr);require(window!=nullptr,"window");
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=64;pp.BackBufferHeight=64;IDirect3DDevice9* device=nullptr;ok(api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device),"device");
         if(argc>1&&!std::strcmp(argv[1],"replay")){exit=replay_main(create,device,argc,argv);require(device->Release()==0,"replay device released");if(window)DestroyWindow(window);return exit;}
+        printf("MESH ADJACENCY MATH_TABLE table=%s normalize=%s rsqrt=%s\n",d3dx_math_table_name(d3dx_math_table()),fast::normalize_name(default_policy().normalize),fast::rsqrt_implementation());
         const auto all=cases();std::vector<Native> baselines;
         // Part A: uninstrumented native D3DX against the pure module.
         for(const auto& c:all){
@@ -263,13 +286,13 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int exit=1;
             require(!std::strcmp(status,c.expected_status),"module status as expected");
             size_t first=0;const size_t diff=fa.report.status==fast::Status::Ok?mismatches(n.adjacency,fa.adjacency,first):0;
             const bool equal=fa.report.status==fast::Status::Ok&&diff==0;
-            printf("ADJACENCY_CASE name=%s faces=%u vertices=%u bits=%u epsilon=%g status=%s native_hr=%08lx native_error=%08lx equal=%u mismatches=%u first=%u native_us=%.3f fast_us=%.3f speedup=%.2f quantized=%u representatives=%lu welded=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu refused_welds=%lu repeated_neighbours=%lu unmatched=%lu\n",
+            printf("ADJACENCY_CASE name=%s faces=%u vertices=%u bits=%u epsilon=%g status=%s native_hr=%08lx native_error=%08lx equal=%u mismatches=%u first=%u native_us=%.3f fast_us=%.3f speedup=%.2f quantized=%u representatives=%lu welded=%lu multi_candidates=%lu normal_selected=%lu degenerate_faces=%lu welded_degenerate_faces=%lu refused_welds=%lu repeated_neighbours=%lu unmatched=%lu normalize=%s\n",
                 c.name.c_str(),c.face_count(),c.vertex_count(),c.bits32?32u:16u,double(c.epsilon),status,n.hr,n.error,unsigned(equal),unsigned(diff),unsigned(first),us(n.ticks),us(fa.ticks),fa.ticks?double(n.ticks)/double(fa.ticks):0.0,
-                unsigned(fa.report.quantized),DWORD(fa.report.representatives),DWORD(fa.report.welded),DWORD(fa.report.multi_candidates),DWORD(fa.report.normal_selected),DWORD(fa.report.degenerate_faces),DWORD(fa.report.welded_degenerate_faces),DWORD(fa.report.refused_welds),DWORD(fa.report.repeated_neighbours),DWORD(fa.report.unmatched));
+                unsigned(fa.report.quantized),DWORD(fa.report.representatives),DWORD(fa.report.welded),DWORD(fa.report.multi_candidates),DWORD(fa.report.normal_selected),DWORD(fa.report.degenerate_faces),DWORD(fa.report.welded_degenerate_faces),DWORD(fa.report.refused_welds),DWORD(fa.report.repeated_neighbours),DWORD(fa.report.unmatched),fast::normalize_name(default_policy().normalize));
             if(c.tie_evidence||!equal){
                 print_adjacency("NATIVE_ADJACENCY",n.adjacency);
                 struct Variant {const char* name;fast::Policy policy;};
-                Variant variants[8]={{"default",{}},{"tail_insertion",{}},{"no_normal_selection",{}},{"no_weld_refusal",{}},{"index_order_sweep",{}},{"retire_own_entry",{}},{"keep_refused_entry",{}},{"later_slot_check",{}}};
+                Variant variants[9]={{"default",default_policy()},{"tail_insertion",default_policy()},{"no_normal_selection",default_policy()},{"no_weld_refusal",default_policy()},{"index_order_sweep",default_policy()},{"retire_own_entry",default_policy()},{"keep_refused_entry",default_policy()},{"later_slot_check",default_policy()},{"other_normalize",other_normalize()}};
                 variants[1].policy.head_insertion=false;variants[2].policy.normal_selection=false;variants[3].policy.weld_refusal=false;variants[4].policy.heap_order=false;variants[5].policy.retire_own_entry=true;variants[6].policy.unlink_refused=false;variants[7].policy.later_slot_check=true;
                 for(const auto& variant:variants){
                     const Fast alt=fast_generate(mesh,c,variant.policy);size_t alt_first=0;const size_t alt_diff=alt.report.status==fast::Status::Ok?mismatches(n.adjacency,alt.adjacency,alt_first):alt.adjacency.size();

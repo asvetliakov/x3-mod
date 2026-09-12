@@ -43,7 +43,11 @@ POLICIES = ('head_insertion', 'normal_selection', 'weld_refusal', 'heap_order', 
 DEFAULTS = dict(head_insertion=True, normal_selection=True, weld_refusal=True, heap_order=True, retire_own_entry=False, unlink_refused=True, later_slot_check=False)
 VARIANTS = {'tail_insertion': dict(head_insertion=False), 'no_normal_selection': dict(normal_selection=False), 'no_weld_refusal': dict(weld_refusal=False),
             'index_order_sweep': dict(heap_order=False), 'retire_own_entry': dict(retire_own_entry=True), 'keep_refused_entry': dict(unlink_refused=False),
-            'later_slot_check': dict(later_slot_check=True)}
+            'later_slot_check': dict(later_slot_check=True), 'other_normalize': dict(other_normalize=True)}
+# reserved[0] of the dump header (written since review 30): 1 + the D3DX math table
+# the dumping process detected (loading_trace.h D3dxMathTable), 0 in older dumps.
+MATH_TABLES = {0: 'unknown', 1: 'generic', 2: '3dnow', 3: 'sse2', 4: 'sse'}
+REPRODUCIBLE = {'generic': 'generic', 'sse2': 'sse2'}  # math table -> module normalize
 
 
 class Dump:
@@ -55,6 +59,7 @@ class Dump:
             raise ValueError(f'{path}: not a mesh adjacency dump')
         (self.faces, self.vertices, self.stride, self.position_offset, self.options, self.declaration_count,
          self.epsilon_bits, self.x87_control, self.mxcsr, self.mismatches, self.first) = fields[2:13]
+        self.math_table = MATH_TABLES.get(fields[13], 'unknown')
         self.bits32 = bool(self.options & 1)
         offset = HEADER.size
         self.declaration = [struct.unpack_from('<HHBBBB', data, offset + 8 * i) for i in range(self.declaration_count)]
@@ -78,8 +83,14 @@ class Dump:
 
     def describe(self):
         return (f'faces={self.faces} vertices={self.vertices} bits={32 if self.bits32 else 16} stride={self.stride} position_offset={self.position_offset} '
-                f'epsilon={self.epsilon:g} options={self.options:08x} x87_control={self.x87_control:04x} mxcsr={self.mxcsr:08x} '
+                f'epsilon={self.epsilon:g} options={self.options:08x} x87_control={self.x87_control:04x} mxcsr={self.mxcsr:08x} math_table={self.math_table} '
                 f'dump_mismatches={self.mismatches} dump_first={self.first} declaration={",".join("%d:%d:%d:%d" % (e[1], e[2], e[4], e[5]) for e in self.declaration)}')
+
+    def normalize(self, requested):
+        """The module normalize to replay with: the dump's recorded math table, else the request."""
+        if requested != 'auto':
+            return requested
+        return REPRODUCIBLE.get(self.math_table, 'sse2')
 
     def position(self, v):
         return tuple(ref.bits_to_float(c) for c in self.positions[v])
@@ -96,16 +107,20 @@ def build_host_driver():
     return directory, exe
 
 
-def run_host(exe, dump, **policy):
+def run_host(exe, dump, normalize='sse2', **policy):
+    other = policy.pop('other_normalize', False)
+    if other:
+        normalize = 'generic' if normalize == 'sse2' else 'sse2'
     flags = dict(DEFAULTS, **policy)
-    text = f'{dump.vertices} {dump.faces} {32 if dump.bits32 else 16} {dump.epsilon!r} {dump.stride} {dump.position_offset} ' + ' '.join(str(int(flags[p])) for p in POLICIES) + '\n'
+    text = (f'{dump.vertices} {dump.faces} {32 if dump.bits32 else 16} {dump.epsilon!r} {dump.stride} {dump.position_offset} '
+            + ' '.join(str(int(flags[p])) for p in POLICIES) + f' {int(normalize == "generic")}\n')
     text += ''.join(f'{x:08x} {y:08x} {z:08x} {hx:08x} {hy:08x} {hz:08x}\n' for (x, y, z), (hx, hy, hz) in zip(dump.positions, dump.heads))
     text += ''.join(f'{a} {b} {c}\n' for a, b, c in dump.face_list)
     out = subprocess.run([str(exe)], input=text, capture_output=True, text=True, check=True).stdout.splitlines()
     head = out[0].split()
     report = dict(status=head[0], representatives=int(head[1]), welded=int(head[2]), quantized=int(head[3]), degenerate_faces=int(head[4]),
                   welded_degenerate_faces=int(head[5]), refused_welds=int(head[6]), multi_candidates=int(head[7]), normal_selected=int(head[8]),
-                  repeated_neighbours=int(head[9]), unmatched=int(head[10]), rsqrt=head[11])
+                  repeated_neighbours=int(head[9]), unmatched=int(head[10]), rsqrt=head[11], normalize=head[12])
     adjacency = [UNUSED if v == '-1' else int(v) for v in out[1].split()] if head[0] == 'ok' else None
     return report, adjacency
 
@@ -141,7 +156,7 @@ def replay_wine(paths):
                '--dll', override, '--workdir', str(build), str(exe), 'replay'] + ['Z:' + str(Path(p).resolve()) for p in paths]
     run = subprocess.run(command, env=dict(os.environ, WINEDLLOVERRIDES=override), capture_output=True, text=True)
     for line in run.stdout.splitlines():
-        if line.startswith(('REPLAY_', 'MESH ADJACENCY REPLAY', 'FAIL')):
+        if line.startswith(('REPLAY_', 'MESH ADJACENCY REPLAY', 'MESH ADJACENCY MATH_TABLE', 'FAIL')):
             print(line)
     return run.returncode
 
@@ -152,6 +167,8 @@ def main():
     parser.add_argument('--reference', action='store_true', help='also run the Python reference port (slow on large meshes)')
     parser.add_argument('--wine', action='store_true', help='also replay through the Wine fixture against the real d3dx9_37 (Wine lock)')
     parser.add_argument('--limit', type=int, default=8, help='mismatching entries to print per dump (default 8)')
+    parser.add_argument('--normalize', choices=('auto', 'sse2', 'generic'), default='auto',
+                        help="the D3DXVec3Normalize of the dumping process: auto reads the dump header's math table (sse2 for older dumps)")
     args = parser.parse_args()
     files = []
     for p in args.paths:
@@ -164,23 +181,25 @@ def main():
     try:
         for path in files:
             dump = Dump(path)
-            report, adjacency = run_host(exe, dump)
+            normalize = dump.normalize(args.normalize)
+            report, adjacency = run_host(exe, dump, normalize)
             host_equal = adjacency is not None and adjacency == dump.native
             module_equal = adjacency is not None and adjacency == dump.module
             print(f'REPLAY file={path.name} {dump.describe()} host_status={report["status"]} host_equal_native={int(host_equal)} '
                   f'host_mismatches={len(mismatches(dump.native, adjacency)) if adjacency else "-"} host_equal_dump_module={int(module_equal)} '
                   f'representatives={report["representatives"]} welded={report["welded"]} refused_welds={report["refused_welds"]} '
                   f'multi_candidates={report["multi_candidates"]} normal_selected={report["normal_selected"]} degenerate_faces={report["degenerate_faces"]} '
-                  f'welded_degenerate_faces={report["welded_degenerate_faces"]} repeated_neighbours={report["repeated_neighbours"]} rsqrt={report["rsqrt"]}')
+                  f'welded_degenerate_faces={report["welded_degenerate_faces"]} repeated_neighbours={report["repeated_neighbours"]} rsqrt={report["rsqrt"]} '
+                  f'normalize={report["normalize"]}')
             if not host_equal:
                 failures += 1
                 if adjacency is not None:
                     explain(dump, adjacency, 'HOST_MISMATCH', args.limit)
                     for name, policy in VARIANTS.items():
-                        _, alt = run_host(exe, dump, **policy)
+                        _, alt = run_host(exe, dump, normalize, **policy)
                         print(f'  HOST_POLICY variant={name} equal_native={int(alt == dump.native)} mismatches={len(mismatches(dump.native, alt)) if alt else "-"}')
             if args.reference:
-                status, rep, reference = ref.generate(dump.positions, dump.face_list, dump.epsilon, head_bits=dump.heads)
+                status, rep, reference = ref.generate(dump.positions, dump.face_list, dump.epsilon, head_bits=dump.heads, normalize=normalize)
                 reference_equal = reference is not None and reference == dump.native
                 print(f'  REFERENCE file={path.name} status={status} equal_native={int(reference_equal)} equal_host={int(reference == adjacency)} '
                       f'refused_welds={rep["refused_welds"]} multi_candidates={rep["multi_candidates"]} normal_selected={rep["normal_selected"]}')

@@ -345,6 +345,12 @@ burst indicates a defect in the resolve.
 
 ### 2.4 Over-sharpening and flicker on the RCAS-modelled presented image
 
+> **Validated after the fact:** run D of [iteration-13.md](iteration-13.md)
+> reads the presented image back and finds it equal to the reference this
+> section models, to within half a code on all 16 of its stationary frames —
+> so the modelled table below is sound, and iteration 13 carries the measured
+> 1.0-vs-0.5 A/B.
+
 **A reference claim, not a GPU measurement.** Run 10 has no `present_1_*`
 readback (review 27 adds it), so `analyze_iteration12.py` models the presented
 image: RCAS at gain `sharpen_gain(0.5) = 0.5` of the resolved FP16 readback

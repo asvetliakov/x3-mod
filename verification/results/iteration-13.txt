@@ -1,0 +1,217 @@
+iteration 13: presented image measured at sharpen 1.0, mip bias -0.5, build a34c389
+===================================================================================
+log /tmp/x3-bottleX3-run14/session-20260912-234846-212.log  bottle X3
+
+-- 1. present readback vs RCAS(taa) at gain 1.000: pass (16 measured frames, 0 modelled)
+   worst max error 0.5000065 code (tolerance 0.5 + 0.001 rounding epsilon; excess over half a code 0.00000650), mean error 0.09177-0.15506(0.12662), frames outside tolerance 0
+   burst 7294-7297 stationary: max 0.5000065 mean 0.10914-0.10973(0.10938) sources ['present_readback']
+   burst 8500-8503 stationary: max 0.5000025 mean 0.09177-0.09316(0.09247) sources ['present_readback']
+   burst 13370-13373 stationary: max 0.5000000 mean 0.15216-0.15506(0.15341) sources ['present_readback']
+   burst 13640-13643 stationary: max 0.5000007 mean 0.14983-0.15237(0.15122) sources ['present_readback']
+
+-- 2. A/B rows (routed_interior; span min-max(mean) over the burst frames)
+   runD_1.0 7294 stationary s=1.0 (present_readback) cut 0.0000 px, interior 183066 px
+     changed 0.2737-0.2753(0.2745) max 21 codes mean 0.2741-0.2746(0.2743); gradient p/res 1.0911-1.0930(1.0919) p/raw 0.6299-0.6604(0.6442) r/raw 0.5763-0.6053(0.5900)
+     rise raw 0.85-1.62(1.24) res 1.05-1.64(1.21) pre 0.96-1.00(0.98) (recovered -0.142-0.436(0.208)); mtf50 raw 0.69-1.17(0.93) res 0.35-0.36(0.35) pre 0.40-0.47(0.44) (recovered 0.055-0.294(0.175))
+     escapes 0/0 strong-edge range 1.0287-1.0292(1.0289); excursion raw 0.431-0.484(0.454) res 0.295-0.331(0.313) pre 0.318-0.350(0.327)
+     flicker gate True energy p/res 1.2834; sentinel=1.278 routed_interior=1.231 routed_edge=1.370 thin_feature=1.207
+   runD_1.0 8500 stationary s=1.0 (present_readback) cut 0.7548 px, interior 70709 px
+     changed 0.2113-0.2123(0.2117) max 21 codes mean 0.2263-0.2303(0.2279); gradient p/res 1.1495-1.1610(1.1568) p/raw 0.4433-0.5016(0.4676) r/raw 0.3818-0.4363(0.4043)
+     rise raw 0.81-0.83(0.82) res 1.45-1.69(1.58) pre 1.16-1.25(1.21) (recovered 0.461-0.522(0.489)); mtf50 raw 1.23-1.31(1.26) res 0.26-0.29(0.27) pre 0.31-0.32(0.32) (recovered 0.039-0.056(0.047))
+     escapes 0/0 strong-edge range 1.0364-1.0378(1.0371); excursion raw 0.698-0.777(0.744) res 0.174-0.269(0.211) pre 0.213-0.327(0.260)
+     flicker gate False energy p/res 1.0817; sentinel=1.050 routed_interior=1.100 routed_edge=1.058 thin_feature=1.088
+   runD_1.0 13370 stationary s=1.0 (present_readback) cut 0.0103 px, interior 60428 px
+     changed 0.4503-0.4586(0.4539) max 20 codes mean 0.4143-0.4242(0.4189); gradient p/res 1.1363-1.1403(1.1381) p/raw 0.7071-0.7369(0.7259) r/raw 0.6219-0.6462(0.6378)
+     rise raw 0.89-0.90(0.90) res 1.15-1.25(1.20) pre 1.00-1.06(1.03) (recovered 0.525-0.616(0.563)); mtf50 raw 0.51-0.58(0.55) res 0.31-0.31(0.31) pre 0.34-0.36(0.34) (recovered 0.120-0.204(0.149))
+     escapes 0/0 strong-edge range 1.0319-1.0328(1.0324); excursion raw 0.372-0.474(0.412) res 0.199-0.216(0.209) pre 0.216-0.261(0.241)
+     flicker gate False energy p/res 1.0274; sentinel=1.005 routed_interior=1.086 routed_edge=1.019 thin_feature=1.107
+   runD_1.0 13640 stationary s=1.0 (present_readback) cut 0.0272 px, interior 192858 px
+     changed 0.4075-0.4133(0.4109) max 20 codes mean 0.3700-0.3713(0.3705); gradient p/res 1.1521-1.1577(1.1540) p/raw 0.6156-0.7372(0.6653) r/raw 0.5343-0.6398(0.5766)
+     rise raw 0.85-1.67(1.44) res 1.46-1.94(1.80) pre 1.16-1.75(1.50) (recovered 0.498-1.959(0.957)); mtf50 raw 0.65-0.67(0.66) res 0.27-0.31(0.28) pre 0.31-0.35(0.32) (recovered 0.096-0.116(0.104))
+     escapes 0/0 strong-edge range 1.0317-1.0325(1.0322); excursion raw 0.106-0.121(0.115) res 0.046-0.065(0.052) pre 0.056-0.072(0.064)
+     flicker gate False energy p/res 1.0618; sentinel=1.008 routed_interior=1.080 routed_edge=1.044 thin_feature=1.095
+   runD_0.75 7294 stationary s=0.75 (rcas_model) cut 0.0000 px, interior 183066 px
+     changed 0.2016-0.2027(0.2022) max 14 codes mean 0.1644-0.1645(0.1645); gradient p/res 1.0618-1.0627(1.0622) p/raw 0.6124-0.6427(0.6267) r/raw 0.5763-0.6053(0.5900)
+     rise raw 0.85-1.62(1.24) res 1.05-1.64(1.21) pre 1.00-1.63(1.16) (recovered -0.103-0.291(0.146)); mtf50 raw 0.69-1.17(0.93) res 0.35-0.36(0.35) pre 0.38-0.45(0.41) (recovered 0.027-0.238(0.129))
+     escapes 0/0 strong-edge range 1.0200-1.0202(1.0201); excursion raw 0.431-0.484(0.454) res 0.295-0.331(0.313) pre 0.296-0.318(0.304)
+     flicker gate True energy p/res 1.1237; sentinel=1.109 routed_interior=1.095 routed_edge=1.173 thin_feature=1.105
+   runD_0.75 8500 stationary s=0.75 (rcas_model) cut 0.7548 px, interior 70709 px
+     changed 0.1566-0.1576(0.1571) max 14 codes mean 0.1379-0.1405(0.1388); gradient p/res 1.0991-1.1051(1.1032) p/raw 0.4220-0.4796(0.4459) r/raw 0.3818-0.4363(0.4043)
+     rise raw 0.81-0.83(0.82) res 1.45-1.69(1.58) pre 1.30-1.42(1.36) (recovered 0.228-0.312(0.286)); mtf50 raw 1.23-1.31(1.26) res 0.26-0.29(0.27) pre 0.30-0.31(0.30) (recovered 0.023-0.039(0.031))
+     escapes 0/0 strong-edge range 1.0251-1.0260(1.0255); excursion raw 0.698-0.777(0.744) res 0.174-0.269(0.211) pre 0.210-0.314(0.246)
+     flicker gate False energy p/res 1.0542; sentinel=1.031 routed_interior=1.065 routed_edge=1.040 thin_feature=1.059
+   runD_0.75 13370 stationary s=0.75 (rcas_model) cut 0.0103 px, interior 60428 px
+     changed 0.3326-0.3392(0.3354) max 13 codes mean 0.2388-0.2430(0.2408); gradient p/res 1.0887-1.0905(1.0897) p/raw 0.6774-0.7046(0.6950) r/raw 0.6219-0.6462(0.6378)
+     rise raw 0.89-0.90(0.90) res 1.15-1.25(1.20) pre 1.05-1.12(1.08) (recovered 0.351-0.429(0.388)); mtf50 raw 0.51-0.58(0.55) res 0.31-0.31(0.31) pre 0.33-0.34(0.33) (recovered 0.072-0.134(0.095))
+     escapes 0/0 strong-edge range 1.0224-1.0230(1.0228); excursion raw 0.372-0.474(0.412) res 0.199-0.216(0.209) pre 0.218-0.244(0.233)
+     flicker gate False energy p/res 1.0179; sentinel=1.003 routed_interior=1.057 routed_edge=1.013 thin_feature=1.072
+   runD_0.75 13640 stationary s=0.75 (rcas_model) cut 0.0272 px, interior 192858 px
+     changed 0.3008-0.3042(0.3026) max 13 codes mean 0.2149-0.2183(0.2164); gradient p/res 1.0980-1.1018(1.0994) p/raw 0.5867-0.7036(0.6339) r/raw 0.5343-0.6398(0.5766)
+     rise raw 0.85-1.67(1.44) res 1.46-1.94(1.80) pre 1.25-1.82(1.66) (recovered 0.348-0.445(0.404)); mtf50 raw 0.65-0.67(0.66) res 0.27-0.31(0.28) pre 0.29-0.34(0.31) (recovered 0.066-0.077(0.069))
+     escapes 0/0 strong-edge range 1.0220-1.0227(1.0224); excursion raw 0.106-0.121(0.115) res 0.046-0.065(0.052) pre 0.057-0.069(0.060)
+     flicker gate False energy p/res 1.0405; sentinel=1.005 routed_interior=1.053 routed_edge=1.029 thin_feature=1.063
+   runD_0.5 7294 stationary s=0.5 (rcas_model) cut 0.0000 px, interior 183066 px
+     changed 0.1445-0.1451(0.1448) max 10 codes mean 0.1013-0.1016(0.1015); gradient p/res 1.0426-1.0433(1.0430) p/raw 0.6012-0.6311(0.6153) r/raw 0.5763-0.6053(0.5900)
+     rise raw 0.85-1.62(1.24) res 1.05-1.64(1.21) pre 1.02-1.65(1.18) (recovered -0.055-0.242(0.125)); mtf50 raw 0.69-1.17(0.93) res 0.35-0.36(0.35) pre 0.37-0.45(0.40) (recovered 0.019-0.125(0.085))
+     escapes 0/0 strong-edge range 1.0140-1.0142(1.0141); excursion raw 0.431-0.484(0.454) res 0.295-0.331(0.313) pre 0.294-0.325(0.305)
+     flicker gate True energy p/res 1.0723; sentinel=1.065 routed_interior=1.055 routed_edge=1.101 thin_feature=1.061
+   runD_0.5 8500 stationary s=0.5 (rcas_model) cut 0.7548 px, interior 70709 px
+     changed 0.1182-0.1194(0.1188) max 10 codes mean 0.0880-0.0898(0.0886); gradient p/res 1.0670-1.0706(1.0694) p/raw 0.4087-0.4655(0.4323) r/raw 0.3818-0.4363(0.4043)
+     rise raw 0.81-0.83(0.82) res 1.45-1.69(1.58) pre 1.35-1.50(1.43) (recovered 0.145-0.216(0.193)); mtf50 raw 1.23-1.31(1.26) res 0.26-0.29(0.27) pre 0.28-0.30(0.29) (recovered 0.015-0.027(0.021))
+     escapes 0/0 strong-edge range 1.0175-1.0179(1.0177); excursion raw 0.698-0.777(0.744) res 0.174-0.269(0.211) pre 0.199-0.291(0.233)
+     flicker gate False energy p/res 1.0367; sentinel=1.020 routed_interior=1.044 routed_edge=1.027 thin_feature=1.040
+   runD_0.5 13370 stationary s=0.5 (rcas_model) cut 0.0103 px, interior 60428 px
+     changed 0.2204-0.2253(0.2225) max 9 codes mean 0.1366-0.1389(0.1377); gradient p/res 1.0596-1.0606(1.0600) p/raw 0.6591-0.6851(0.6761) r/raw 0.6219-0.6462(0.6378)
+     rise raw 0.89-0.90(0.90) res 1.15-1.25(1.20) pre 1.08-1.15(1.12) (recovered 0.220-0.284(0.261)); mtf50 raw 0.51-0.58(0.55) res 0.31-0.31(0.31) pre 0.32-0.33(0.33) (recovered 0.053-0.091(0.070))
+     escapes 0/0 strong-edge range 1.0159-1.0163(1.0161); excursion raw 0.372-0.474(0.412) res 0.199-0.216(0.209) pre 0.220-0.231(0.228)
+     flicker gate False energy p/res 1.0120; sentinel=1.002 routed_interior=1.039 routed_edge=1.009 thin_feature=1.049
+   runD_0.5 13640 stationary s=0.5 (rcas_model) cut 0.0272 px, interior 192858 px
+     changed 0.2048-0.2060(0.2054) max 10 codes mean 0.1251-0.1283(0.1265); gradient p/res 1.0650-1.0679(1.0664) p/raw 0.5692-0.6827(0.6149) r/raw 0.5343-0.6398(0.5766)
+     rise raw 0.85-1.67(1.44) res 1.46-1.94(1.80) pre 1.34-1.88(1.72) (recovered 0.193-0.255(0.227)); mtf50 raw 0.65-0.67(0.66) res 0.27-0.31(0.28) pre 0.28-0.33(0.30) (recovered 0.039-0.058(0.046))
+     escapes 0/0 strong-edge range 1.0154-1.0159(1.0157); excursion raw 0.106-0.121(0.115) res 0.046-0.065(0.052) pre 0.053-0.071(0.058)
+     flicker gate False energy p/res 1.0273; sentinel=1.003 routed_interior=1.035 routed_edge=1.020 thin_feature=1.043
+   run10_0.5 1380 stationary s=0.5 (rcas_model) cut 0.0068 px, interior 71519 px
+     changed 0.1261-0.1270(0.1266) max 9 codes mean 0.0885-0.0886(0.0886); gradient p/res 1.0384-1.0399(1.0395) p/raw 0.5373-0.5577(0.5437) r/raw 0.5167-0.5370(0.5230)
+     rise raw 0.80-0.83(0.82) res 0.97-1.00(0.99) pre 0.94-0.96(0.94) (recovered 0.232-0.291(0.251)); mtf50 raw 1.34-1.39(1.36) res 0.42-0.44(0.43) pre 0.44-0.47(0.45) (recovered 0.004-0.032(0.019))
+     escapes 0/0 strong-edge range 1.0145-1.0147(1.0146); excursion raw 0.886-1.063(0.939) res 0.257-0.297(0.268) pre 0.302-0.317(0.308)
+     flicker gate True energy p/res 1.0701; sentinel=1.068 routed_interior=1.070 routed_edge=1.071 thin_feature=1.061
+   run10_0.5 2717 stationary s=0.5 (rcas_model) cut 0.2702 px, interior 66811 px
+     changed 0.1394-0.1417(0.1407) max 10 codes mean 0.0998-0.1012(0.1006); gradient p/res 1.0433-1.0498(1.0467) p/raw 0.4469-0.5216(0.4804) r/raw 0.4258-0.5000(0.4590)
+     rise raw 0.79-0.87(0.83) res 1.07-1.37(1.22) pre 1.04-1.31(1.16) (recovered 0.089-0.274(0.157)); mtf50 raw 1.35-1.39(1.38) res 0.31-0.36(0.33) pre 0.32-0.37(0.34) (recovered 0.007-0.015(0.010))
+     escapes 0/0 strong-edge range 1.0163-1.0168(1.0166); excursion raw 0.966-1.299(1.119) res 0.271-0.443(0.360) pre 0.273-0.485(0.397)
+     flicker gate False energy p/res 1.0360; sentinel=1.048 routed_interior=1.034 routed_edge=1.037 thin_feature=1.038
+   run10_0.5 3856 stationary s=0.5 (rcas_model) cut 0.8072 px, interior 63447 px
+     changed 0.1026-0.1045(0.1034) max 10 codes mean 0.0792-0.0835(0.0808); gradient p/res 1.0688-1.0722(1.0709) p/raw 0.4084-0.4862(0.4392) r/raw 0.3810-0.4549(0.4102)
+     rise raw 0.84-0.86(0.84) res 1.30-1.58(1.45) pre 1.16-1.38(1.28) (recovered 0.164-0.366(0.274)); mtf50 raw 0.69-1.24(0.84) res 0.28-0.31(0.30) pre 0.30-0.33(0.31) (recovered 0.012-0.037(0.028))
+     escapes 0/0 strong-edge range 1.0180-1.0183(1.0182); excursion raw 0.553-0.745(0.675) res 0.207-0.321(0.257) pre 0.227-0.331(0.278)
+     flicker gate False energy p/res 1.0376; sentinel=1.015 routed_interior=1.047 routed_edge=1.028 thin_feature=1.040
+   run10_0.5 9536 slow s=0.5 (rcas_model) cut 2.7726 px, interior 118248 px
+     changed 0.2104-0.2131(0.2113) max 10 codes mean 0.1248-0.1278(0.1260); gradient p/res 1.0497-1.0530(1.0518) p/raw 0.6293-0.7253(0.6811) r/raw 0.5976-0.6910(0.6476)
+     rise raw 1.94-2.68(2.31) res 2.25-2.49(2.39) pre 2.20-2.44(2.34) (recovered -0.312-0.180(-0.053)); mtf50 raw 0.31-0.32(0.32) res 0.21-0.26(0.23) pre 0.22-0.27(0.24) (recovered 0.101-0.171(0.137))
+     escapes 0/0 strong-edge range 1.0150-1.0158(1.0155); excursion raw 0.030-0.067(0.052) res 0.033-0.051(0.040) pre 0.032-0.055(0.041)
+     flicker gate False energy p/res 1.0326; sentinel=1.008 routed_interior=1.041 routed_edge=1.037 thin_feature=1.044
+
+-- 2b. same-scene A/B (identical frames, only the sharpen differs)
+   burst 7294 stationary (cut 0.0000 px): 0.5 (rcas_model) -> 1.0 (present_readback)
+     gradient_presented_over_resolved          1.0430 ->    1.0919 (0.0490)
+     presented_rise_10_90_px                   1.1807 ->    0.9788 (-0.2020)
+     presented_mtf50_cycles_per_px             0.3973 ->    0.4358 (0.0385)
+     rise_recovery_share                       0.1250 ->    0.2082 (0.0833)
+     mtf50_recovery_share                      0.0851 ->    0.1752 (0.0901)
+     presented_esf_excursion                   0.3052 ->    0.3273 (0.0222)
+     strong_edge_local_range_ratio             1.0141 ->    1.0289 (0.0149)
+     changed_fraction                          0.1448 ->    0.2745 (0.1297)
+     flicker energy p/res                      1.0723 ->    1.2834 (gate True)
+       sentinel           p/res 1.065 -> 1.278  res/raw 0.0119 pre/raw 0.0151
+       routed_interior    p/res 1.055 -> 1.231  res/raw 0.0073 pre/raw 0.0090
+       routed_edge        p/res 1.101 -> 1.370  res/raw 0.0060 pre/raw 0.0083
+       thin_feature       p/res 1.061 -> 1.207  res/raw 0.0070 pre/raw 0.0085
+   burst 8500 stationary (cut 0.7548 px): 0.5 (rcas_model) -> 1.0 (present_readback)
+     gradient_presented_over_resolved          1.0694 ->    1.1568 (0.0875)
+     presented_rise_10_90_px                   1.4320 ->    1.2080 (-0.2240)
+     presented_mtf50_cycles_per_px             0.2900 ->    0.3161 (0.0260)
+     rise_recovery_share                       0.1932 ->    0.4892 (0.2959)
+     mtf50_recovery_share                      0.0207 ->    0.0471 (0.0264)
+     presented_esf_excursion                   0.2333 ->    0.2601 (0.0268)
+     strong_edge_local_range_ratio             1.0177 ->    1.0371 (0.0193)
+     changed_fraction                          0.1188 ->    0.2117 (0.0929)
+     flicker energy p/res                      1.0367 ->    1.0817 (gate False)
+       sentinel           p/res 1.020 -> 1.050  res/raw 0.3131 pre/raw 0.3287
+       routed_interior    p/res 1.044 -> 1.100  res/raw 0.4956 pre/raw 0.5451
+       routed_edge        p/res 1.027 -> 1.058  res/raw 0.5053 pre/raw 0.5346
+       thin_feature       p/res 1.040 -> 1.088  res/raw 0.4445 pre/raw 0.4836
+   burst 13370 stationary (cut 0.0103 px): 0.5 (rcas_model) -> 1.0 (present_readback)
+     gradient_presented_over_resolved          1.0600 ->    1.1381 (0.0781)
+     presented_rise_10_90_px                   1.1192 ->    1.0298 (-0.0893)
+     presented_mtf50_cycles_per_px             0.3264 ->    0.3447 (0.0183)
+     rise_recovery_share                       0.2611 ->    0.5628 (0.3017)
+     mtf50_recovery_share                      0.0703 ->    0.1492 (0.0789)
+     presented_esf_excursion                   0.2277 ->    0.2410 (0.0132)
+     strong_edge_local_range_ratio             1.0161 ->    1.0324 (0.0162)
+     changed_fraction                          0.2225 ->    0.4539 (0.2314)
+     flicker energy p/res                      1.0120 ->    1.0274 (gate False)
+       sentinel           p/res 1.002 -> 1.005  res/raw 0.5998 pre/raw 0.6029
+       routed_interior    p/res 1.039 -> 1.086  res/raw 0.5225 pre/raw 0.5674
+       routed_edge        p/res 1.009 -> 1.019  res/raw 0.3526 pre/raw 0.3594
+       thin_feature       p/res 1.049 -> 1.107  res/raw 0.2193 pre/raw 0.2427
+   burst 13640 stationary (cut 0.0272 px): 0.5 (rcas_model) -> 1.0 (present_readback)
+     gradient_presented_over_resolved          1.0664 ->    1.1540 (0.0876)
+     presented_rise_10_90_px                   1.7246 ->    1.5016 (-0.2231)
+     presented_mtf50_cycles_per_px             0.3005 ->    0.3225 (0.0220)
+     rise_recovery_share                       0.2267 ->    0.9569 (0.7302)
+     mtf50_recovery_share                      0.0461 ->    0.1044 (0.0582)
+     presented_esf_excursion                   0.0584 ->    0.0638 (0.0054)
+     strong_edge_local_range_ratio             1.0157 ->    1.0322 (0.0165)
+     changed_fraction                          0.2054 ->    0.4109 (0.2055)
+     flicker energy p/res                      1.0273 ->    1.0618 (gate False)
+       sentinel           p/res 1.003 -> 1.008  res/raw 0.6895 pre/raw 0.6949
+       routed_interior    p/res 1.035 -> 1.080  res/raw 0.6790 pre/raw 0.7335
+       routed_edge        p/res 1.020 -> 1.044  res/raw 0.5725 pre/raw 0.5979
+       thin_feature       p/res 1.043 -> 1.095  res/raw 0.5196 pre/raw 0.5690
+
+-- 2c. over-sharpening indicators
+   runD_1.0 7294 s=1.0: escapes 0/0, halo 1.0289, excursion pre 0.327 (res 0.313, raw 0.454, vs res 0.014), flicker energy 1.2834 vs square law 1.1923 = 1.076
+   runD_1.0 8500 s=1.0: escapes 0/0, halo 1.0371, excursion pre 0.260 (res 0.211, raw 0.744, vs res 0.049), flicker energy 1.0817 vs square law 1.3383 = 0.808
+   runD_1.0 13370 s=1.0: escapes 0/0, halo 1.0324, excursion pre 0.241 (res 0.209, raw 0.412, vs res 0.032), flicker energy 1.0274 vs square law 1.2953 = 0.793
+   runD_1.0 13640 s=1.0: escapes 0/0, halo 1.0322, excursion pre 0.064 (res 0.052, raw 0.115, vs res 0.012), flicker energy 1.0618 vs square law 1.3317 = 0.797
+   runD_0.75 7294 s=0.75: escapes 0/0, halo 1.0201, excursion pre 0.304 (res 0.313, raw 0.454, vs res -0.009), flicker energy 1.1237 vs square law 1.1282 = 0.996
+   runD_0.75 8500 s=0.75: escapes 0/0, halo 1.0255, excursion pre 0.246 (res 0.211, raw 0.744, vs res 0.035), flicker energy 1.0542 vs square law 1.2170 = 0.866
+   runD_0.75 13370 s=0.75: escapes 0/0, halo 1.0228, excursion pre 0.233 (res 0.209, raw 0.412, vs res 0.024), flicker energy 1.0179 vs square law 1.1875 = 0.857
+   runD_0.75 13640 s=0.75: escapes 0/0, halo 1.0224, excursion pre 0.060 (res 0.052, raw 0.115, vs res 0.008), flicker energy 1.0405 vs square law 1.2087 = 0.861
+   runD_0.5 7294 s=0.5: escapes 0/0, halo 1.0141, excursion pre 0.305 (res 0.313, raw 0.454, vs res -0.008), flicker energy 1.0723 vs square law 1.0878 = 0.986
+   runD_0.5 8500 s=0.5: escapes 0/0, halo 1.0177, excursion pre 0.233 (res 0.211, raw 0.744, vs res 0.023), flicker energy 1.0367 vs square law 1.1436 = 0.907
+   runD_0.5 13370 s=0.5: escapes 0/0, halo 1.0161, excursion pre 0.228 (res 0.209, raw 0.412, vs res 0.019), flicker energy 1.0120 vs square law 1.1236 = 0.901
+   runD_0.5 13640 s=0.5: escapes 0/0, halo 1.0157, excursion pre 0.058 (res 0.052, raw 0.115, vs res 0.006), flicker energy 1.0273 vs square law 1.1371 = 0.903
+   run10_0.5 1380 s=0.5: escapes 0/0, halo 1.0146, excursion pre 0.308 (res 0.268, raw 0.939, vs res 0.040), flicker energy 1.0701 vs square law 1.0806 = 0.990
+   run10_0.5 2717 s=0.5: escapes 0/0, halo 1.0166, excursion pre 0.397 (res 0.360, raw 1.119, vs res 0.037), flicker energy 1.0360 vs square law 1.0956 = 0.946
+   run10_0.5 3856 s=0.5: escapes 0/0, halo 1.0182, excursion pre 0.278 (res 0.257, raw 0.675, vs res 0.021), flicker energy 1.0376 vs square law 1.1467 = 0.905
+   run10_0.5 9536 s=0.5: escapes 0/0, halo 1.0155, excursion pre 0.041 (res 0.040, raw 0.052, vs res 0.000), flicker energy 1.0326 vs square law 1.1064 = 0.933
+   flicker baseline session-20260912-171241-212.log frames [4754, 4755, 4756, 4757]: sentinel=0.0152 routed_interior=0.0097 routed_edge=0.0089 thin_feature=0.0096
+
+-- 3. mip bias unchanged (raw-frame sharpness and the bias counters)
+   runD_1.0: announced bias -0.5 sharpen 1.0, values ['-0.5'], biased 54275/54275 routed, failures 0, left on 0
+     stationary/slow raw rise 0.813-1.671(1.054) px, raw mtf50 0.509-1.315(0.852) c/px
+     burst 7294   stationary interior  183066 raw rise 0.85-1.62 raw mtf50 0.69-1.17 taa/raw 0.590
+     burst 7574   turning    interior    6128 raw rise 0.72-5.23 raw mtf50 0.71-1.34 taa/raw 0.472
+     burst 7921   turning    interior    2942 raw rise 0.87-0.87 raw mtf50 0.25-0.25 taa/raw 0.906
+     burst 8500   stationary interior   70709 raw rise 0.81-0.83 raw mtf50 1.23-1.31 taa/raw 0.404
+     burst 13370  stationary interior   60428 raw rise 0.89-0.90 raw mtf50 0.51-0.58 taa/raw 0.638
+     burst 13640  stationary interior  192858 raw rise 0.85-1.67 raw mtf50 0.65-0.67 taa/raw 0.577
+   run10_0.5: announced bias -0.5 sharpen 0.5, values ['-0.5'], biased 34625/34625 routed, failures 0, left on 0
+     stationary/slow raw rise 0.787-2.677(1.201) px, raw mtf50 0.312-1.393(1.005) c/px
+     burst 1380   stationary interior   71519 raw rise 0.80-0.83 raw mtf50 1.34-1.39 taa/raw 0.523
+     burst 1746   turning    interior    3576 raw rise 1.36-1.71 raw mtf50 0.44-1.31 taa/raw 0.610
+     burst 2717   stationary interior   66811 raw rise 0.79-0.87 raw mtf50 1.35-1.39 taa/raw 0.459
+     burst 3856   stationary interior   63447 raw rise 0.84-0.86 raw mtf50 0.69-1.24 taa/raw 0.410
+     burst 8369   turning    interior    3539 raw rise 0.98-5.25 raw mtf50 0.31-0.52 taa/raw 0.728
+     burst 9536   slow       interior  118248 raw rise 1.94-2.68 raw mtf50 0.31-0.32 taa/raw 0.648
+
+-- 4. health: 266 records, attempted 251 = resolved 251 (True), history 248, failures 0/0
+   history match 0.99596, shadow hits 0.999994, hook {'0': 15, '1': 251}, cuts [{'frame': 7922, 'cut_median_px': 80.3179, 'cut_missing': 0.03, 'cut_samples': 679, 'taa_history': 0, 'camera_rotation_deg': 7.6199}, {'frame': 7923, 'cut_median_px': 72.93, 'cut_missing': 0.119, 'cut_samples': 622, 'taa_history': 0, 'camera_rotation_deg': 7.6184}, {'frame': 7924, 'cut_median_px': 71.8737, 'cut_missing': 0.1286, 'cut_samples': 644, 'taa_history': 0, 'camera_rotation_deg': 7.6203}], camera cuts [], rotation max 7.6203 (floor 1.6258)
+   sharpen 251 resolves, failed lines 0/0, copy-back 0.0 us, taa_run 372.6 us; line kinds 87, failure kinds []
+   readback FAIL, failed ['displacement', 'depth']
+     readback_integrity     pass         frames=24 clean_frames=24
+     counter_consistency    pass         frames=24
+     history_pairing        pass         predictable_draws=6606 disagreements=0
+     static_consistency     unavailable  tolerance_px=0.01 max_error_px=None violations=0
+     displacement           fail         bound_px=64.0 valid_pixels=4188179 suspicious_pixels=141742 suspicious_fraction=0.03384334814724967 max_displacement_px=244.51710510253906
+     row_consistency        pass         tolerance_px=0.5 sampled_pixels=781504 unexplained_pixels=0 unexplained_fraction=0.0 max_error_px=0.07623252050885299
+     temporal_coverage      pass         minimum_fraction=0.9 criterion_min_matched_ratio=0.99 worst_covered_fraction=0.9877157231363448
+     depth_image_integrity  pass         valid_motion_without_depth=0
+     depth                  fail         sampling=nearest worst_within_fraction=0.35797049394048236 compared_pixels=3042698 previous_sentinel=24501 max_error=0.15452563762664795 tolerance=0.0001 minimum_within_fraction=0.99
+     taa_image              pass         threshold=0.00784313725490196
+   displacement fail: 141742 suspicious px over 64.0 px bound, max 244.5 px, in bursts ['7921']
+     burst 7294   stationary cut    0.000 px suspicious        0 in 0 frames, max 1.3 px
+     burst 7574   turning    cut   33.059 px suspicious        0 in 0 frames, max 56.4 px
+     burst 7921   turning    cut   80.318 px suspicious   141742 in 3 frames, max 244.5 px
+     burst 8500   stationary cut    0.755 px suspicious        0 in 0 frames, max 22.1 px
+     burst 13370  stationary cut    0.010 px suspicious        0 in 0 frames, max 3.4 px
+     burst 13640  stationary cut    0.027 px suspicious        0 in 0 frames, max 10.4 px
+   loads runD_1.0: total 54.51 s over 4 gaps [0]=7.984s@f36 [1]=34.027s@f642 [2]=5.608s@f13025 [3]=6.889s@f14318
+   loads run10_0.5: total 60.40 s over 4 gaps [0]=8.584s@f25 [1]=39.167s@f620 [2]=5.725s@f7658 [3]=6.920s@f10160
+   frame time runD:run10: 10.539 ms at 281.0 draws vs 10.444 ms at 275.5; matched 8 bins over [84.5, 815.2] draws, median delta -0.008 ms (-0.201 us/draw), sign p 1.0
+   line kinds {"new_kinds": [{"kind": "motion_output_present_readback", "count": 24}], "missing_kinds": [], "kinds_new_run": 87, "kinds_baseline_union": 86}
+
+-- open
+   * modelled, not measured, sharpen values: runD_0.75, runD_0.5, run10_0.5 (the RCAS reference validated at the measured value by section 1)
+   * readback checks failing: ['displacement', 'depth']

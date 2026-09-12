@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T19:22:47.262426+00:00",
+  "started_utc": "2026-09-12T20:32:48.288001+00:00",
   "bottle": {
     "name": "Steam",
     "wine_arch": "win64",
@@ -30,13 +30,14 @@
   },
   "freshly_built": true,
   "build_exit_code": 0,
-  "executable_sha256": "191bc6ccf9325117f51972b5bce9da55e96c408c7a92d8888a923cd40cfedd42",
-  "exit_code": 0,
-  "sample_checks": 78,
-  "passed_sample_checks": 78,
+  "executable_sha256": "e00b9a117d2105da9a11265cf61b47ec1914a6703814a62c761be4f2ee1da830",
+  "exit_code": null,
+  "timed_out": true,
+  "sample_checks": 39,
+  "passed_sample_checks": 39,
   "reset_passed": true,
-  "device_generations": 2,
+  "device_generations": 1,
   "sources_unchanged_after_run": true,
   "executable_unchanged_after_run": true,
-  "passed": true
+  "passed": false
 }

@@ -55,6 +55,17 @@ ADJACENCY = 'ID3DXMesh::GenerateAdjacency'
 TEXTURE = 'D3DXCreateTextureFromFileInMemoryEx'
 MODULE_KINDS = tuple(kind[5:] for kind in profile.LEAF_KINDS)
 
+# Instrumentation envelope components measured by the gz-buffer fixture on this
+# bottle (verification/results/bottle-X3/gz-buffer-summary.json,
+# docs/verification/loading-probes.md): the light span costs 351 ns per call, of
+# which 207.5 ns are its three QueryPerformanceCounter reads (69.2 ns each). A
+# timed probe reads the clock twice, a count-only probe not at all, so 351 ns and
+# the 143.6 ns non-clock remainder are upper bounds for the two probe kinds.
+LIGHT_ENVELOPE_NS = 351.0
+QPC_READ_NS = 69.2
+TIMED_PROBE_NS = LIGHT_ENVELOPE_NS - QPC_READ_NS
+COUNT_PROBE_NS = LIGHT_ENVELOPE_NS - 3 * QPC_READ_NS
+
 
 def scan(path, hash_source=True):
     """One streaming pass: loading/telemetry lines and profiler lines, kept apart."""
@@ -365,7 +376,8 @@ def analyze(path, threshold=2.0, hash_source=True, symbols=None, labels=None, to
     start_fields = parsed['start'] or {}
     result = dict(
         source=provenance, clock=clock, threshold_seconds=threshold, gap_source=gap_source,
-        probe_sites=anchors['probe_sites'], frame_ends=len(anchors['frame_ends']),
+        probe_sites=anchors['probe_sites'], probe_paths=anchors['probe_paths'],
+        frame_ends=len(anchors['frame_ends']),
         coverage_begin_seconds=(loading.seconds(anchors['coverage_begin_qpc'], clock)
                                 if anchors['coverage_begin_qpc'] and clock else None),
         hooks=anchors['hooks'], first_presents=anchors['first_presents'],
@@ -384,6 +396,13 @@ def analyze(path, threshold=2.0, hash_source=True, symbols=None, labels=None, to
             'Per-block leaf/frame/pair tables are truncated to the top 48/48/32 rows, so function sums are lower bounds; per-thread module splits and sample totals are exact.',
             'Frame RVAs are return addresses; inclusive-by-frame shares attribute DLL and wait time to the first main-executable frame, not to a full call stack.',
             'Gap labels are heuristics over hooked counts (label_gap); no phase marker exists in the log.',
+            'The probe exclusive column subtracts only the timed probe children of the documented nesting '
+            '(analyze_iteration08_loading.PROBE_CHILDREN); it still contains the hooked imports and the CRT work '
+            'below the site, and it is left blank for the two texture sites whose resource_load child has eleven callers.',
+            'Probe stub cost is a bound from the fixture envelope components, not a per-site measurement; '
+            'the wrapper tail column is measured.',
+            'Write-side paths are logged once each (first 16) and are placed by their report window, '
+            'so a path may be listed one window away from the interval that made the call.',
             'Function labels come from hand-maintained notes; an unlabelled function is merely undocumented, not unimportant.'])
     result['_parsed'] = parsed
     result['_intervals'] = intervals
@@ -425,7 +444,8 @@ def render_probes(probes, sites, limit=16):
     rows = sorted(probes.items(), key=lambda kv: -kv[1]['inclusive_seconds'])[:limit]
     if not rows:
         return []
-    lines = ['| Probe | Calls | Exits | Incl. s | Mean ms | Max ms | Bytes | Extras |', '| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |']
+    lines = ['| Probe | Calls | Exits | Incl. s | Excl. s | Mean ms | Max ms | Bytes | Extras |',
+             '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |']
     for site, m in rows:
         names = sites.get(site, {}).get('extras', ['x0', 'x1', 'x2', 'x3'])
         extras = ', '.join(f"{name}={m['x%d' % i]:,}" for i, name in enumerate(names) if name != '-' and m['x%d' % i])
@@ -433,9 +453,69 @@ def render_probes(probes, sites, limit=16):
             extras = (extras + ', ' if extras else '') + f"overflow={m['overflow']}, desync={m['desync']}"
         for caller, count in sorted(m.get('callers', {}).items(), key=lambda kv: -kv[1])[:4]:
             extras = (extras + ', ' if extras else '') + f"caller {caller} {count:,}"
-        lines.append(f"| `{site}` | {m['calls']:,} | {m['exits']:,} | {m['inclusive_seconds']:.3f} | {m['mean_ms']:.3f} "
-                     f"| {m['max_seconds'] * 1000:.1f} | {m['bytes']:,} | {extras or '—'} |")
+        excl = m.get('exclusive_seconds')
+        excl_text = '—' if excl is None else f'{excl:.3f}'
+        lines.append(f"| `{site}` | {m['calls']:,} | {m['exits']:,} | {m['inclusive_seconds']:.3f} | {excl_text} "
+                     f"| {m['mean_ms']:.3f} | {m['max_seconds'] * 1000:.1f} | {m['bytes']:,} | {extras or '—'} |")
     lines.append('')
+    return lines
+
+
+def render_writes(hooked, paths, start, end):
+    """Write-side file APIs inside one interval (§7 of the stall study).
+
+    The question the table answers is whether any file write can overlap a
+    catalogue read: if it cannot, a catalogue handle pool and a negative
+    name-probe cache need no invalidation inside a load.
+    """
+    ops = hooked['operations']
+    rows = [(op, ops[op]) for op in loading.WRITE_OPS if op in ops and ops[op]['count']]
+    reads = hooked.get('probes', {}).get('resource_read', {})
+    catalogue = reads.get('x1', 0)
+    if not rows:
+        return [f'No write-side call (`{"`, `".join(loading.WRITE_OPS)}`) completed in this interval, '
+                f'against {catalogue:,} catalogue reads: nothing can invalidate a catalogue handle '
+                'or a negative name probe here.', '']
+    lines = ['| Operation | Calls | Failures | Incl. s | Bytes | Paths logged |',
+             '| --- | ---: | ---: | ---: | ---: | --- |']
+    for op, m in rows:
+        seen = [item['path'] for item in paths
+                if item['op'] == op and (item['report_seconds'] is None
+                                         or start - 1.0 <= item['report_seconds'] <= end + 1.0)]
+        shown = '; '.join(f'`{path}`' for path in seen[:4]) or '—'
+        lines.append(f"| `{op}` | {m['count']:,} | {m['failures']:,} | {m['inclusive_seconds']:.3f} "
+                     f"| {m['bytes']:,} | {shown} |")
+    total = sum(m['count'] for _, m in rows)
+    failed = sum(m['failures'] for _, m in rows)
+    lines += ['', f'{total:,} write-side calls ({failed:,} failed) against {catalogue:,} catalogue reads '
+                  'in the same interval.', '']
+    return lines
+
+
+def render_instrumentation(hooked, length):
+    """What the instrumentation itself cost inside one interval."""
+    ops = hooked['operations']
+    tail = sum(m['wrapper_tail_seconds'] for m in ops.values())
+    hooked_calls = sum(m['count'] for m in ops.values())
+    inclusive = sum(m['inclusive_seconds'] for m in ops.values())
+    probes = hooked.get('probes', {})
+    timed = sum(m['calls'] for site, m in probes.items() if m['inclusive_seconds'] > 0 or m['exits'])
+    counted = sum(m['calls'] for site, m in probes.items() if not (m['inclusive_seconds'] > 0 or m['exits']))
+    probe_cost = (timed * TIMED_PROBE_NS + counted * COUNT_PROBE_NS) / 1e9
+    lines = ['| Item | Calls | Seconds | Share of interval |', '| --- | ---: | ---: | ---: |',
+             f'| import wrapper tails (measured) | {hooked_calls:,} | {tail:.3f} | '
+             f'{pct(tail / length if length else 0)} |',
+             f'| timed probe stubs (bound, {TIMED_PROBE_NS:.0f} ns/call) | {timed:,} | '
+             f'{timed * TIMED_PROBE_NS / 1e9:.3f} | {pct(timed * TIMED_PROBE_NS / 1e9 / length if length else 0)} |',
+             f'| count-only probe stubs (bound, {COUNT_PROBE_NS:.0f} ns/call) | {counted:,} | '
+             f'{counted * COUNT_PROBE_NS / 1e9:.3f} | {pct(counted * COUNT_PROBE_NS / 1e9 / length if length else 0)} |',
+             f'| **total instrumentation** | {hooked_calls + timed + counted:,} | '
+             f'**{tail + probe_cost:.3f}** | {pct((tail + probe_cost) / length if length else 0)} |',
+             '',
+             f'Hooked inclusive time in the interval is {inclusive:.3f} s; the wrapper tail is '
+             f'{pct(tail / inclusive if inclusive else 0)} of it. The span between the two clock reads '
+             'of a light row is inside the inclusive column, so that part of the envelope is already '
+             'attributed to the operation it wraps.', '']
     return lines
 
 
@@ -518,7 +598,7 @@ def candidates(item, length, table):
     return ' '.join(sentences)
 
 
-def render_interval(item, length, heading, evidence=None, sites=None):
+def render_interval(item, length, heading, evidence=None, sites=None, paths=None):
     table = item['sampled']
     lines = [heading, '']
     if evidence:
@@ -539,6 +619,9 @@ def render_interval(item, length, heading, evidence=None, sites=None):
     probes = render_probes(item['hooked'].get('probes', {}), sites or {})
     if probes:
         lines += ['**Engine probes (loading_probe deltas of the overlapping windows)**', ''] + probes
+    lines += ['**Write-side file APIs**', ''] + render_writes(
+        item['hooked'], paths or [], item['start_seconds'], item['end_seconds'])
+    lines += ['**Instrumentation cost**', ''] + render_instrumentation(item['hooked'], length)
     if table:
         lines += ['**Sampled attribution: per-thread module split**', ''] + render_threads(table)
         lines += ['**Top functions (leaf samples by containing function)**', ''] + render_functions(table)
@@ -588,11 +671,11 @@ def render(result):
     for gap in result['gaps']:
         lines += render_interval(gap, gap['gap_seconds'],
                                  f"## Gap {gap['index']}: {gap['label']} ({gap['gap_seconds']:.3f} s, ends at frame {gap['end_frame']})",
-                                 gap['evidence'], result.get('probe_sites'))
+                                 gap['evidence'], result.get('probe_sites'), result.get('probe_paths'))
         for stall in gap['stalls']:
             lines += render_interval(stall, stall['interval_seconds'],
                                      f"### Gap {gap['index']} stall {stall['index']}: report stall {stall['interval_seconds']:.3f} s",
-                                     None, result.get('probe_sites'))
+                                     None, result.get('probe_sites'), result.get('probe_paths'))
     lines += ['## Limits', ''] + [f'- {limit}' for limit in result['limits']] + ['']
     return '\n'.join(lines)
 

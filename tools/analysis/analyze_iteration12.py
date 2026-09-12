@@ -653,7 +653,7 @@ def analyze_presented_burst(records, captures, device, sharpen, options, log=Non
         item['source'] = 'rcas_model'
         present_codes = modelled_codes
         presented_values = modelled
-        if paths[n]['present'].exists():
+        if paths[n]['present'].exists() and not options.get('ignore_present'):
             # The DLL's own readback of the main target after the sharpen draw:
             # the presented image itself; the model becomes its reference.
             item['source'] = 'present_readback'
@@ -768,7 +768,8 @@ def build(args, log=None):
         options = {'width': args.width, 'height': args.height, 'margin': args.margin,
                    'depth_tolerance': args.depth_tolerance, 'variance_floor': args.variance_floor,
                    'tophat_min': args.thin_tophat, 'contrast_min': args.thin_contrast,
-                   'strong_edge_range': args.strong_edge_range, 'edges': not args.no_edges}
+                   'strong_edge_range': args.strong_edge_range, 'edges': not args.no_edges,
+                   'ignore_present': bool(getattr(args, 'ignore_present', False))}
         sharpen = args.sharpen if args.sharpen is not None else (features['taa_sharpen'] or 0.0)
         selected = select_model_bursts(bursts, args.model_burst)
         results = []
@@ -783,6 +784,7 @@ def build(args, log=None):
                        'present_<device>_<frame>.bgra8 readback beside it replaces the model as the image and '
                        'is compared against it'),
             ('sharpen', sharpen), ('gain', rcas_gain(sharpen)),
+            ('ignore_present', options['ignore_present']),
             ('selection', 'stationary and slow bursts' if not args.model_burst else f'bursts {sorted(args.model_burst)}'),
             ('captures', str(captures)),
             ('flicker_baseline', baseline_flicker(load_json(args.flicker_baseline))),
@@ -953,6 +955,9 @@ def main(argv=None):
     parser.add_argument('--sharpen', type=float, help='X3M_TAA_SHARPEN to model (default: the log\'s)')
     parser.add_argument('--model-burst', type=int, action='append', help='first frame of a burst to model (repeatable)')
     parser.add_argument('--no-model', action='store_true', help='skip section 2.4')
+    parser.add_argument('--ignore-present', action='store_true',
+                        help='model the sharpen even where a present_<device>_<frame>.bgra8 readback '
+                             'exists (the A/B of a sharpen value the run did not use)')
     parser.add_argument('--no-edges', action='store_true')
     parser.add_argument('--width', type=int, default=WIDTH)
     parser.add_argument('--height', type=int, default=HEIGHT)

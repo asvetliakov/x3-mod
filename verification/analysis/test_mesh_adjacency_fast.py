@@ -8,6 +8,7 @@ Byte-for-byte equality with d3dx9_37 is established separately by the Wine
 fixture (verification/probe/mesh_adjacency_fast_fixture.cpp); the expectations
 marked D3DX below are that fixture's native outputs.
 """
+import math
 import random
 import shutil
 import subprocess
@@ -283,10 +284,11 @@ class HostModule(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.directory, ignore_errors=True)
 
-    def run_driver(self, vertices, faces, epsilon, bits=16, stride=20, offset=0, heads=None, **policy):
+    def run_driver(self, vertices, faces, epsilon, bits=16, stride=20, offset=0, heads=None, normalize='sse2', **policy):
         flags = dict(DEFAULTS, **policy)
         heads = heads if heads is not None else vertices
-        text = f'{len(vertices)} {len(faces)} {bits} {epsilon!r} {stride} {offset} ' + ' '.join(str(int(flags[p])) for p in POLICIES) + '\n'
+        text = (f'{len(vertices)} {len(faces)} {bits} {epsilon!r} {stride} {offset} ' + ' '.join(str(int(flags[p])) for p in POLICIES)
+                + f' {int(normalize == "generic")}\n')
         text += ''.join(f'{x:08x} {y:08x} {z:08x} {hx:08x} {hy:08x} {hz:08x}\n' for (x, y, z), (hx, hy, hz) in zip(vertices, heads))
         text += ''.join(f'{a} {b} {c}\n' for a, b, c in faces)
         out = subprocess.run([str(self.exe)], input=text, capture_output=True, text=True, check=True).stdout.splitlines()
@@ -295,6 +297,7 @@ class HostModule(unittest.TestCase):
                       degenerate_faces=int(head_fields[4]), welded_degenerate_faces=int(head_fields[5]), refused_welds=int(head_fields[6]),
                       multi_candidates=int(head_fields[7]), normal_selected=int(head_fields[8]), repeated_neighbours=int(head_fields[9]), unmatched=int(head_fields[10]))
         self.assertEqual(head_fields[11], 'portable')  # the host build has no rsqrtss; the Python port uses the same 1/sqrt
+        self.assertEqual(head_fields[12], normalize)
         adjacency = [U if v == '-1' else int(v) for v in out[1].split()] if head_fields[0] == 'ok' else None
         return head_fields[0], report, adjacency
 
@@ -411,6 +414,60 @@ class HostModule(unittest.TestCase):
                     for neighbour in face_adjacency:
                         if neighbour != U:
                             self.assertIn(face_index, adjacency[neighbour * 3:neighbour * 3 + 3])
+
+    def test_normalize_paths_match_reference(self):
+        # The normalize-dispatch mesh: SSE2 pairs the query with face 1, the generic
+        # table (unnormalized copies, exact tie) with the chain head, face 2.
+        v, f = near_unit_normals()
+        self.assertEqual(self.check(v, f, 1e-6, normalize='sse2')[2][0], 1)
+        self.assertEqual(self.check(v, f, 1e-6, normalize='generic')[2][0], 2)
+        rng = random.Random(0x5eed)
+        for trial in range(60):
+            span = 8 if trial % 2 else 20000
+            vertices = [P(rng.randint(-span, span), rng.randint(-span, span), rng.randint(-span, span)) for _ in range(rng.randint(3, 9))]
+            faces = [tuple(rng.randrange(len(vertices)) for _ in range(3)) for _ in range(rng.randint(1, 16))]
+            expected = self.check(vertices, faces, 1e-6, normalize='generic')
+            self.assertEqual(expected[0], 'ok')
+
+
+def near_unit_normals():
+    """Query (A, B, C) and candidates (B, A, D1), (B, A, D2) whose cross products
+    have |n|^2 within 1e-5 of 1 (generic: copied unnormalized) and tilts of 9 and 29
+    grid units (SSE2: normalized, face 1 wins by 1.4e-6)."""
+    return [P(0, 0, 0), P(16384, 0, 0), P(-4, 16384, 0), P(-1, -16384, -9), P(-7, -16384, -29)], [(0, 1, 2), (1, 0, 3), (1, 0, 4)]
+
+
+class GenericNormalize(unittest.TestCase):
+    def test_table_generation(self):
+        table = ref.RSQRT_TABLE
+        self.assertEqual(len(table), 512)
+        # Segments 255 and 256 meet at m = 1 where 1/sqrt is exactly 1: a + b == 1.
+        for k in (255, 256):
+            self.assertEqual(table[k][0] + table[k][1], 1.0)
+        self.assertTrue(all(a < 0 for a, _ in table))
+        self.assertTrue(all(table[k][0] < table[k + 1][0] for k in range(511)))  # slopes flatten towards m = 2
+        for k in (0, 100, 300, 511):
+            s = 1.0 if k >> 8 else 0.5
+            for m in (s * (1 + (k & 255) / 256), s * (1 + ((k & 255) + 0.5) / 256)):
+                self.assertAlmostEqual((table[k][0] * m + table[k][1]) * math.sqrt(m), 1.0, delta=2e-6)
+
+    def test_samples(self):
+        g = ref._normalize_generic
+        self.assertEqual(g((0.0, 0.0, 0.0)), (0.0, 0.0, 0.0))
+        self.assertEqual(g((1.0, 0.0, 0.0)), (1.0, 0.0, 0.0))
+        near = (ref.f32(0.999996), ref.f32(0.002), 0.0)  # |v|^2 - 1 within 1e-5: copied unnormalized
+        self.assertEqual(g(near), near)
+        for v in ((3.0, 4.0, 0.0), (1.0, 1.0, 1.0), (-2.5e-4, 7.75e-3, -0.9991), (100.0, 200.0, 300.0), (1e-10, 1e-10, 1e-10)):
+            n = g(v)
+            length = math.sqrt(sum(c * c for c in n))
+            self.assertAlmostEqual(length, 1.0, delta=1e-5)
+            self.assertAlmostEqual(sum(a * b for a, b in zip(n, v)) / math.sqrt(sum(c * c for c in v)), length, delta=1e-6)
+        self.assertNotEqual(g((3.0, 4.0, 0.0)), ref._normalize_sse2((3.0, 4.0, 0.0)))
+
+    def test_dispatch_mesh(self):
+        v, f = near_unit_normals()
+        self.assertEqual(ref.generate(v, f, 1e-6, normalize='sse2')[2], [1, U, U, 0, U, U, U, U, U])
+        self.assertEqual(ref.generate(v, f, 1e-6, normalize='generic')[2], [2, U, U, U, U, U, 0, U, U])
 
 
 if __name__ == '__main__':

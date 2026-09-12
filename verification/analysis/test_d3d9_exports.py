@@ -41,7 +41,7 @@ class ExportTableTests(unittest.TestCase):
         for name in pe_exports.SYSTEM_D3D9_EXPORTS:
             self.assertTrue(f' {name}(' in source or f'X3M_FORWARDED_EXPORT({name},' in source or f'FORWARD_MARKER({name})' in source, name)
         # The signature-agnostic forwarders and their documented fallback argument bytes.
-        for name, ret in (('DebugSetLevel', '"ret"'), ('PSGPError', '"ret $12"'), ('PSGPSampleTexture', '"ret $20"'),
+        for name, ret in (('DebugSetLevel', '"ret $4"'), ('PSGPError', '"ret $12"'), ('PSGPSampleTexture', '"ret $20"'),
                           ('Direct3D9EnableMaximizedWindowedModeShim', '"ret $4"')):
             self.assertIn(f'X3M_FORWARDED_EXPORT({name}, {ret})', source)
 

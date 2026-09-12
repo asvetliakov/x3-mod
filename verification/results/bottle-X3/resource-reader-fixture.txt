@@ -1,5 +1,6 @@
 RR_ZLIB version=1.2.3
 RR_CASE name=fast loose_handled=10 record_handled=20 sources=11
+RR_CASE name=cursor sources=20 class_records=16 loose_and_record_handled=20 last_record_class=1
 RR_FALLBACK case=gz_handle reason=gz_handle
 RR_FALLBACK case=progress reason=progress
 RR_FALLBACK case=transparent reason=not_gzip
@@ -28,15 +29,20 @@ loading_probe_site index=9 name=fixture va=0x00000000 length=0 timed=1 kind=plai
 loading_probe_site index=10 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
 loading_probe_site index=11 name=fixture va=0x00000000 length=0 timed=1 kind=plain status=invalid_spec x0=- x1=- x2=- x3=- atomic_write=0
 RR_CASE name=probes installed=4
-RR_STATS mode=verify calls=22 handled=20 fallbacks=2 verify_files=20 verify_equal=20 verify_mismatched=0 bytes_in=4044806 bytes_out=6162400 our_us=58865.6 original_us=64381.1
-resource_reader verify equal=0 size=31000 original_size=31000 mismatches=1 first=0 original_null=0 globals_ok=1 counters_ok=1 cursor_ok=1 catalogue=1 scrambled=1 our_us=313.400 original_us=334.000
-RR_TIMING name=large bytes=3000000 rounds=5 fast_us=27481.0 reference_us=30932.0 ratio=1.13
-RR_TIMING name=medium bytes=31000 rounds=400 fast_us=308.3 reference_us=323.5 ratio=1.05
-resource_reader_metric cumulative=1 mode=fast calls=34 handled=31 fallbacks=3 bytes_in=6086863 bytes_out=9274600 fast_us=87685.200 fast_max_us=29105.500 original_us=64715.100 verify_files=21 verify_equal=20 verify_mismatched=1 verify_original_null=0 catalogue=11 scrambled=25 fallback_unopened=0 fallback_gz_handle=0 fallback_progress=0 fallback_tell=0 fallback_state=0 fallback_length=0 fallback_scratch=0 fallback_short_read=0 fallback_not_gzip=3 fallback_method=0 fallback_reserved=0 fallback_header=0 fallback_empty=0 fallback_alloc=0 fallback_init=0 fallback_inflate=0 fallback_size=0
+RR_STATS mode=verify calls=22 handled=20 fallbacks=2 verify_files=20 verify_equal=20 verify_mismatched=0 bytes_in=4044806 bytes_out=6162400 our_us=63246.9 original_us=68119.8
+resource_reader verify equal=0 size=31000 original_size=31000 mismatches=1 first=0 original_null=0 globals_ok=1 counters_ok=1 position_ok=1 cursor=1 expected_cursor=19654 position=19654 expected_position=20113 catalogue=20113 scrambled=1 our_us=-0.000 original_us=0.000
+RR_STATS_CURSOR verify_files=40 cursor_short=32 verify_equal=60 verify_mismatched=1
+RR_TIMING name=large bytes=3000000 rounds=5 fast_us=29013.4 reference_us=32233.1 ratio=1.11
+RR_PHASES name=large extent=1971063 read_us=462.8 scan_us=72.9 alloc_us=9.6 inflate_us=28328.8 total_us=29013.4
+RR_TIMING name=medium bytes=31000 rounds=400 fast_us=318.9 reference_us=355.3 ratio=1.11
+RR_PHASES name=medium extent=19654 read_us=6.7 scan_us=0.1 alloc_us=0.2 inflate_us=305.9 total_us=318.9
+RR_TIMING name=large_record bytes=3000000 rounds=5 fast_us=29240.6 reference_us=32341.1 ratio=1.11
+RR_PHASES name=large_record extent=1971063 read_us=527.5 scan_us=141.5 alloc_us=10.8 inflate_us=28391.1 total_us=29240.6
+resource_reader_metric cumulative=1 mode=fast calls=74 handled=71 fallbacks=3 bytes_in=6169495 bytes_out=9405958 fast_us=95714.800 fast_max_us=32008.100 original_us=70753.500 verify_files=61 verify_equal=60 verify_mismatched=1 verify_original_null=0 catalogue=31 scrambled=45 cursor_short=32 fast_read_us=2146.200 fast_scan_us=328.100 fast_alloc_us=68.200 fast_inflate_us=92451.600 fallback_unopened=0 fallback_gz_handle=0 fallback_progress=0 fallback_tell=0 fallback_state=0 fallback_length=0 fallback_scratch=0 fallback_short_read=0 fallback_not_gzip=3 fallback_method=0 fallback_reserved=0 fallback_header=0 fallback_empty=0 fallback_alloc=0 fallback_init=0 fallback_inflate=0 fallback_size=0
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored
 loading_probe_site name=fixture restored=1 status=restored
 loading_probes shutdown retained_shadow_blocks=2 retained_bytes=3088 reason=hijacked_frames_may_be_outstanding
 RR_CASE name=pool opens=7 reused=2 real_opens=5 kept=4 real_closes=2
-RESOURCE READER RESULT checks=405 failures=0
+RESOURCE READER RESULT checks=4707 failures=0

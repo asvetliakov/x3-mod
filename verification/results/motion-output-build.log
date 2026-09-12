@@ -1,9 +1,9 @@
 -- Configuring done (0.1s)
 -- Generating done (0.0s)
 -- Build files have been written to: /Users/asvetl/x3-mod/build
+[  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
+[  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj
-[  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
-[  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
 [ 12%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj
 [ 15%] Building CXX object CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj

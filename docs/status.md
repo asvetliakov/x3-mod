@@ -30,6 +30,21 @@ bottle **X3** (arm64 Wine + FEX); fixtures default to Steam
 [bottles.md](verification/bottles.md)). Every Wine-executing command now runs
 under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
 
+- **Resource reader run C → cursor parity fix (2026-09-13, uncommitted)**: run
+  C (`--resource-read verify --dat-handles`, X3) gave `verify_files=4084
+  verify_mismatched=20`, all `cursor_ok=0` with equal bytes: the original's
+  1 KiB chunk loop exits on `Z_STREAM_END` and leaves the record cursor
+  `rem` bytes short whenever `(length − first) mod 1024` is 1…8 (six records,
+  identified by an offline catalogue scan; 0.59 % of all gzip records). The
+  core now predicts the loop's end from the bytes `inflate` consumed, sets the
+  cursor and the stream there, verify also compares `_ftell`, and
+  `resource_reader_metric` gains `cursor_short=` and the phase split
+  `fast_read_us/scan/alloc/inflate`. Fixture: `RR_CASE name=cursor` (20
+  sources, remainders 0…9 at 1 and 3 chunks, last-record `.dat`, pooled
+  sequence). Docs: [resource-reader.md](reverse-engineering/resource-reader.md)
+  "Record cursor after the chunk loop", [verification](verification/resource-reader.md)
+  "Run C". Next: rerun verify (expect `verify_mismatched=0 cursor_short≈20`),
+  then `fast`.
 - **Fast exact-match GenerateAdjacency** (`X3M_MESH_ADJACENCY=native|verify|fast`,
   `--mesh-adjacency`; [mesh-adjacency-fast.md](verification/mesh-adjacency-fast.md)).
   Byte-identical to d3dx9_37 on 35/35 computable fixture meshes (welding with
@@ -796,6 +811,16 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    --telemetry --resource-read verify --dat-handles`
    ([resource-reader.md](verification/resource-reader.md)); `fast` only after
    verify reports no difference.
+
+* 2026-09-13 (adjacency parity, uncommitted, paused): run 11 (bottle X3, review-29
+  install) reported `verify_mismatched=37` of 7,636; the 37 dumps replay offline and
+  the cause is D3DX's `D3DXVec3Normalize` dispatch: FEX's Wine reports 3DNow through
+  `IsProcessorFeaturePresent(7)` without the CPUID bit, so d3dx9_37 keeps its generic
+  table-interpolation normalize on X3 while the module used `rsqrtss`. The module now
+  reproduces both (`Policy::normalize`, the service mirrors the dispatch): replay of the
+  37 dumps is 37/37 on X3; Steam keeps a 4/37 Rosetta-only residual under study. Suites
+  not rerun yet; fast mode stays blocked until the next in-game verify run shows
+  `verify_mismatched=0`. See [handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md).
 
 ## Concrete next work
 

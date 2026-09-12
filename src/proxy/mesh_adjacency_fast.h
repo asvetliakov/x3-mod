@@ -32,10 +32,20 @@ struct Input {
     uint32_t face_count=0;
     float epsilon=0.f;
 };
+// D3DXVec3Normalize of the candidate selection is dispatched by D3DX at load
+// (docs/reverse-engineering/d3dx-generate-adjacency.md, section 4): the SSE2
+// table's rsqrtss with one Newton step, or the generic table's 512-entry
+// linear interpolation (the table D3DX keeps when it believes 3DNow is present
+// but the CPUID bit is absent, as under FEX). The caller selects the one D3DX
+// installed in the process (loading_trace: d3dx_math_table); the two give
+// different candidates only on near-ties.
+enum class Normalize : unsigned { Sse2, Generic };
+const char* normalize_name(Normalize normalize) noexcept;
 // D3DX rules (decompiled; fixture evidence in the verification document). The
 // defaults reproduce d3dx9_37; the alternatives exist for the fixture to
 // demonstrate that they are distinguishable and wrong.
 struct Policy {
+    Normalize normalize=Normalize::Sse2; // The D3DXVec3Normalize D3DX dispatched in this process (see above).
     bool head_insertion=true;    // Later faces precede earlier ones in an edge chain.
     bool normal_selection=true;  // Among several reverse edges prefer the most parallel face normal (first found on ties).
     bool weld_refusal=true;      // A vertex is not welded to a representative when a face contains both.

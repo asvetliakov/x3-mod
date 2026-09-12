@@ -6,6 +6,9 @@
 #if defined(__SSE__)
 #include <xmmintrin.h>
 #endif
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 // The normal arithmetic below reproduces D3DX operation by operation (products
 // and differences rounded exactly where D3DX stores a float); a fused
 // multiply-add would change the rounding, so contraction must be off in this
@@ -73,7 +76,7 @@ inline float rsqrt(float x) noexcept {
     return float(1.0/std::sqrt(double(x)));
 #endif
 }
-inline Vec normalize_d3dx(const Vec& v) noexcept {
+inline Vec normalize_sse2(const Vec& v) noexcept {
     const float len2=(v.x*v.x+v.y*v.y)+v.z*v.z;
     const uint32_t threshold_bits=0x28800000u;float threshold;std::memcpy(&threshold,&threshold_bits,sizeof threshold);
     if(!(threshold<=len2))return {0.f,0.f,0.f};
@@ -81,17 +84,65 @@ inline Vec normalize_d3dx(const Vec& v) noexcept {
     r=((3.f-((r*len2)*r))*r)*0.5f;
     return {v.x*r,v.y*r,v.z*r};
 }
+// D3DXVec3Normalize of the generic table (d3dx9_37 FUN_005881fc, the table D3DX
+// keeps when it takes the 3DNow branch of its dispatch but the CPUID 3DNow bit is
+// absent, as under FEX): x87 at the game's 53-bit precision, so every operation
+// is a double operation on float inputs. len2 = (x*x + y*y) + z*z; a zero float
+// gives the zero vector; |float(len2 - 1)| <= 0x3727c5ac (1e-5) copies the vector
+// unnormalized; otherwise the float bits of len2 select one of 512 linear
+// segments (the exponent's low bit and the top eight mantissa bits), the mantissa
+// is re-exponented to [0.5, 2), and r = (m * a + b) * 2^(-e/2) with the scale
+// formed by the integer trick ((0xbeffffff - bits) >> 1) & 0xff800000.
+inline double sqrt_double(double x) noexcept {
+#if defined(__SSE2__)
+    return _mm_cvtsd_f64(_mm_sqrt_sd(_mm_set_sd(x),_mm_set_sd(x)));
+#else
+    return std::sqrt(x);
+#endif
+}
+struct RsqrtTable { float a[512],b[512]; };
+// The DLL's static table is reproduced from its generating rule (every entry
+// equal, docs section 4): a secant of 1/sqrt through the float-rounded values at
+// the segment ends, the intercept from the upper end.
+const RsqrtTable& rsqrt_table() noexcept {
+    static const RsqrtTable table=[]() noexcept {
+        RsqrtTable t;
+        for(unsigned k=0;k<512;++k){
+            const double s=(k>>8)?1.0:0.5,lo=s*(1.0+double(k&255u)/256.0),hi=s*(1.0+double((k&255u)+1u)/256.0);
+            const float r0=float(1.0/sqrt_double(lo)),r1=float(1.0/sqrt_double(hi));
+            const float a=float((double(r1)-double(r0))/(hi-lo));
+            t.a[k]=a;t.b[k]=float(double(r1)-double(a)*hi);
+        }
+        return t;
+    }();
+    return table;
+}
+inline Vec normalize_generic(const Vec& v) noexcept {
+    const double len2=(double(v.x)*double(v.x)+double(v.y)*double(v.y))+double(v.z)*double(v.z);
+    const float len2f=float(len2);uint32_t bits;std::memcpy(&bits,&len2f,sizeof bits);
+    if(bits==0)return {0.f,0.f,0.f};
+    const float d=float(len2-1.0);uint32_t dbits;std::memcpy(&dbits,&d,sizeof dbits);
+    if((dbits&0x7fffffffu)<=0x3727c5acu)return v;
+    const RsqrtTable& t=rsqrt_table();const unsigned k=(bits>>15)&0x1ffu;
+    const uint32_t mbits=(bits&0xffffffu)|0x3f000000u,sbits=((0xbeffffffu-bits)>>1)&0xff800000u;
+    float m,s;std::memcpy(&m,&mbits,sizeof m);std::memcpy(&s,&sbits,sizeof s);
+    const double r=(double(m)*double(t.a[k])+double(t.b[k]))*double(s);
+    return {float(double(v.x)*r),float(double(v.y)*r),float(double(v.z)*r)};
+}
+inline Vec normalize_d3dx(const Vec& v,Normalize normalize) noexcept {
+    return normalize==Normalize::Generic?normalize_generic(v):normalize_sse2(v);
+}
 // D3DX's face normal for the corner order (p1, p2, p3): the edge vectors p1-p2
 // and p1-p3 stored as floats, the cross product formed in extended precision
 // and stored as floats (exact in double for products of 24-bit values), normalized.
-inline Vec face_normal(const Vec* p,uint32_t v1,uint32_t v2,uint32_t v3) noexcept {
+inline Vec face_normal(const Vec* p,uint32_t v1,uint32_t v2,uint32_t v3,Normalize normalize) noexcept {
     const Vec& a=p[v1];const Vec& b=p[v2];const Vec& c=p[v3];
     const float e1x=float(double(a.x)-double(b.x)),e1y=float(double(a.y)-double(b.y)),e1z=float(double(a.z)-double(b.z));
     const float e2x=float(double(a.x)-double(c.x)),e2y=float(double(a.y)-double(c.y)),e2z=float(double(a.z)-double(c.z));
     const Vec n={float(double(e1y)*double(e2z)-double(e1z)*double(e2y)),
                  float(double(e1z)*double(e2x)-double(e1x)*double(e2z)),
                  float(double(e1x)*double(e2y)-double(e1y)*double(e2x))};
-    return normalize_d3dx(n);
+    return normalize_d3dx(n,normalize);
 }
 // The x87 dot product of two normals (z, x, y order) rounded to float for the comparison.
 inline float score(const Vec& n,const Vec& m) noexcept {
@@ -148,6 +199,7 @@ const char* rsqrt_implementation() noexcept {
     return "portable";
 #endif
 }
+const char* normalize_name(Normalize normalize) noexcept { return normalize==Normalize::Generic?"generic":"sse2"; }
 void release_scratch() noexcept { std::free(arena.base);arena.base=nullptr;arena.capacity=0; }
 Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexcept {
     Report report;
@@ -384,8 +436,8 @@ Report generate(const Input& in,uint32_t* adjacency,const Policy& policy) noexce
     // cache that cannot be allocated only costs the recomputation.
     NormalCache cache;
     auto normal_of=[&](uint32_t id) noexcept -> Vec {
-        if(!cache.normals)return face_normal(head,edge_v1(id),edge_v2(id),edge_other(id));
-        if(!cache.ready[id]){cache.normals[id]=face_normal(head,edge_v1(id),edge_v2(id),edge_other(id));cache.ready[id]=1;}
+        if(!cache.normals)return face_normal(head,edge_v1(id),edge_v2(id),edge_other(id),policy.normalize);
+        if(!cache.ready[id]){cache.normals[id]=face_normal(head,edge_v1(id),edge_v2(id),edge_other(id),policy.normalize);cache.ready[id]=1;}
         return cache.normals[id];
     };
     for(uint32_t f=0;f<F;++f){

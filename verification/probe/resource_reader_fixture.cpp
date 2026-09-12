@@ -184,12 +184,29 @@ static void* call_site(void (*site)(),rr::FileObject* o){ void* r=o; asm volatil
 struct Source { std::string name; std::vector<unsigned char> payload; std::vector<unsigned char> stored; bool gz; unsigned char key; bool scrambled; };
 static std::vector<Source> sources;
 static std::vector<unsigned char> catalogue_image;struct Record{size_t index;int32_t offset,length;};static std::vector<Record> records;
+static std::vector<Source> cursor_sources;static std::vector<unsigned char> cursor_image;static std::vector<Record> cursor_records;
 static rr::FileObject loose_object(const Source& s){ rr::FileObject o{}; o.file=fopen(s.name.c_str(),"rb"); o.flags=o.file?1:0; return o; }
 static rr::FileObject record_object(const Record& r){ rr::FileObject o{}; o.file=fopen("rr_catalogue.dat","rb"); o.flags=3; o.offset=r.offset; o.length=r.length; o.cursor=0; if(o.file)fseek(static_cast<FILE*>(o.file),r.offset,SEEK_SET); return o; }
+static rr::FileObject cursor_record_object(const Record& r){ rr::FileObject o{}; o.file=fopen("rr_cursor.dat","rb"); o.flags=3; o.offset=r.offset; o.length=r.length; o.cursor=0; if(o.file)fseek(static_cast<FILE*>(o.file),r.offset,SEEK_SET); return o; }
 static void close_object(rr::FileObject& o){ if(o.file)fclose(static_cast<FILE*>(o.file)); o.file=nullptr; }
 static bool same(const void* a,size_t n,const std::vector<unsigned char>& b){ return n==b.size()&&(n==0||!memcmp(a,b.data(),n)); }
 struct Outcome { bool handled; rr::Reason reason; };
-static Outcome run_fast(rr::FileObject& o,const std::vector<unsigned char>& expect,const char* label,bool catalogue,long end_position){
+// The original's chunk loop (0x004e8880): from the first deflate byte (start+header) it reads 1 KiB
+// chunks and stops on Z_STREAM_END, so cursor/position end at the chunk boundary after the last
+// deflate byte: length itself unless (length-first) mod 1024 is 1..8 (the trailer's tail alone in
+// a chunk). Computed from the stored image (unscrambled) independently of the core and the reference.
+static long original_final(const std::vector<unsigned char>& stored){
+    const unsigned start=stored[0]==0x1f&&stored[1]==0x8b?0:1;const unsigned char key=start?static_cast<unsigned char>(stored[0]^0xc8):0;
+    auto at=[&](size_t i){ return static_cast<unsigned char>(stored[start+i]^key); };
+    size_t p=10;const unsigned char flg=at(3);
+    if(flg&4){p+=2+at(10)+(at(11)<<8);}
+    if(flg&8){while(at(p))++p;++p;}
+    if(flg&0x10){while(at(p))++p;++p;}
+    if(flg&2)p+=2;
+    const long first=long(start+p),length=long(stored.size());const long deflate=length-first-8;
+    long final=first+((deflate-1)/1024+1)*1024;return final>length?length:final;
+}
+static Outcome run_fast(rr::FileObject& o,const std::vector<unsigned char>& expect,const char* label,bool catalogue,long expected_position,int32_t expected_cursor){
     const rr::Environment env=environment();
     counters[0]=counters[1]=counters[2]=100;counters[3]=7;size_globals[0]=size_globals[1]=0xdeadbeef;
     const rr::Result r=rr::decode(env,&o,true);
@@ -200,8 +217,9 @@ static Outcome run_fast(rr::FileObject& o,const std::vector<unsigned char>& expe
         check(size_globals[0]==r.size&&size_globals[1]==r.size,"fast_size_globals",label);
         check(counters[0]==100+r.size&&counters[1]==100+r.size&&counters[2]==100+r.size&&counters[3]==8,"fast_counters",label);
         check(r.catalogue==catalogue,"fast_catalogue_flag",label);
-        if(catalogue)check(o.cursor==o.length,"fast_cursor",label);
-        check(ftell(static_cast<FILE*>(o.file))==end_position,"fast_position",label);
+        if(catalogue)check(o.cursor==expected_cursor,"fast_cursor",label);
+        check(r.expected_cursor==(catalogue?expected_cursor:0)&&r.expected_position==expected_position,"fast_predicted_state",label);
+        check(ftell(static_cast<FILE*>(o.file))==expected_position,"fast_position",label);
         env_free(r.buffer);
     }
     return {r.outcome==rr::Outcome::Handled,r.reason};
@@ -282,7 +300,9 @@ int main(int argc,char** argv){
         void* expect=reference_read(&ref);const uint32_t expect_size=size_globals[0];
         std::vector<unsigned char> expected(expect?static_cast<unsigned char*>(expect):nullptr,expect?static_cast<unsigned char*>(expect)+expect_size:nullptr);
         check(expect!=nullptr&&same(expect,expect_size,s.payload),"reference_matches_payload",s.name.c_str());
-        const Outcome out=run_fast(o,expected,s.name.c_str(),false,long(s.stored.size()));
+        const long ref_position=ftell(static_cast<FILE*>(ref.file));
+        if(s.gz)check(ref_position==original_final(s.stored),"reference_loose_position_formula",s.name.c_str());
+        const Outcome out=run_fast(o,expected,s.name.c_str(),false,ref_position,0);
         check(out.handled==s.gz,"fast_handled_iff_gzip",s.name.c_str());
         if(!s.gz)check(out.reason==rr::Reason::NotGzip,"text_falls_back_not_gzip",s.name.c_str());
         handled_loose+=out.handled;
@@ -295,13 +315,83 @@ int main(int argc,char** argv){
         void* expect=reference_read(&ref);const uint32_t expect_size=size_globals[0];
         std::vector<unsigned char> expected(expect?static_cast<unsigned char*>(expect):nullptr,expect?static_cast<unsigned char*>(expect)+expect_size:nullptr);
         check(expect!=nullptr&&same(expect,expect_size,s.payload),"reference_record_matches_payload",s.name.c_str());
-        check(ref.cursor==ref.length,"reference_record_cursor",s.name.c_str());
-        const Outcome out=run_fast(o,expected,s.name.c_str(),true,long(rec.offset+rec.length));
+        if(s.gz)check(ref.cursor==original_final(s.stored),"reference_record_cursor_formula",s.name.c_str());
+        const Outcome out=run_fast(o,expected,s.name.c_str(),true,ftell(static_cast<FILE*>(ref.file)),ref.cursor);
         check(out.handled==s.gz,"fast_record_handled_iff_gzip",s.name.c_str());
         handled_records+=out.handled;
         if(expect)env_free(expect);close_object(o);close_object(ref);
     }
     printf("RR_CASE name=fast loose_handled=%u record_handled=%u sources=%zu\n",handled_loose,handled_records,sources.size());
+    // ---- case 2b: the record-cursor class (run C: 20 verify lines with cursor_ok=0, all records whose
+    // (length-first) mod 1024 is 1..8). One source per remainder 0..9 at one and at three-plus chunks,
+    // alternating scrambled/plain, one with an FNAME header; rr_cursor.dat holds them with a class
+    // record last (no padding after it). Checked: the formula, the reference, fast mode, then the verify
+    // stub (case 5) and a pooled handle sequence (case 6).
+    unsigned cursor_class=0,cursor_handled=0;
+    {
+        // Payload sizes are searched (text compresses to ~60 %): grow n by one character from a base
+        // below the target until (length-first)/1024 == q and the remainder == k; restart from the
+        // base when the target was skipped (the payload text differs per attempt, so a retry can land).
+        for(unsigned q=1;q<=3;q+=2){ size_t base=q==1?1400:4600;
+        for(unsigned k=0;k<10;++k){
+            const unsigned idx=unsigned(cursor_sources.size());
+            Source src;src.name="rr_cursor_"+std::to_string(q)+"_"+std::to_string(k)+".pck";src.gz=true;src.scrambled=(idx%2)==0;src.key=src.scrambled?static_cast<unsigned char>(0x40+idx):0;
+            HeaderOptions header;header.fname=(idx%5)==3;
+            bool found=false;size_t n=base;
+            for(unsigned attempt=0;attempt<8000&&!found;++attempt){
+                src.payload=text_payload(n);std::vector<unsigned char> gz=gzip(src.payload,header);src.stored=src.scrambled?scramble(gz,src.key):gz;
+                const long length=long(src.stored.size()),start=src.scrambled?1:0;
+                long p=10;if(header.fname){while(gz[size_t(p)])++p;++p;} // FNAME: name bytes to NUL
+                const long rem=(length-start-p)%1024,chunks=(length-start-p)/1024;
+                found=rem==long(k)&&chunks==long(q);
+                if(chunks>long(q)||(chunks==long(q)&&rem>long(k)))n=base;else ++n;
+            }
+            check(found,"cursor_source_built",src.name.c_str());
+            if(found)base=n>12?n-12:n;
+            if(!found)continue;
+            check(write_file(src.name.c_str(),src.stored),"write_cursor_source",src.name.c_str());
+            cursor_sources.push_back(src);
+        }}
+        // the .dat: the class record (rem 5, three chunks) last, nothing after it
+        std::vector<size_t> order;for(size_t i=0;i<cursor_sources.size();++i)if(i!=15)order.push_back(i);order.push_back(15);
+        for(size_t i:order){
+            Record r;r.index=i;r.offset=int32_t(cursor_image.size());r.length=int32_t(cursor_sources[i].stored.size());
+            for(unsigned char b:cursor_sources[i].stored)cursor_image.push_back(static_cast<unsigned char>(b^0x33));
+            if(i!=15){cursor_image.push_back(0x33);cursor_image.push_back(0x33);}
+            cursor_records.push_back(r);
+        }
+        check(write_file("rr_cursor.dat",cursor_image),"write_cursor_catalogue");
+        for(const auto& s:cursor_sources){
+            const long final=original_final(s.stored),length=long(s.stored.size());
+            const bool short_class=final<length;cursor_class+=short_class;
+            rr::FileObject o=loose_object(s),ref=loose_object(s);
+            void* expect=reference_read(&ref);const uint32_t expect_size=size_globals[0];
+            std::vector<unsigned char> expected(expect?static_cast<unsigned char*>(expect):nullptr,expect?static_cast<unsigned char*>(expect)+expect_size:nullptr);
+            check(expect!=nullptr&&same(expect,expect_size,s.payload),"cursor_reference_matches_payload",s.name.c_str());
+            const long ref_position=ftell(static_cast<FILE*>(ref.file));
+            check(ref_position==final,"cursor_reference_loose_position_formula",s.name.c_str());
+            const Outcome out=run_fast(o,expected,s.name.c_str(),false,ref_position,0);
+            check(out.handled,"cursor_loose_handled",s.name.c_str());
+            if(expect)env_free(expect);close_object(o);close_object(ref);
+        }
+        for(const auto& rec:cursor_records){
+            const Source& s=cursor_sources[rec.index];const long final=original_final(s.stored);
+            rr::FileObject o=cursor_record_object(rec),ref=cursor_record_object(rec);
+            void* expect=reference_read(&ref);const uint32_t expect_size=size_globals[0];
+            std::vector<unsigned char> expected(expect?static_cast<unsigned char*>(expect):nullptr,expect?static_cast<unsigned char*>(expect)+expect_size:nullptr);
+            check(expect!=nullptr&&same(expect,expect_size,s.payload),"cursor_reference_record_matches_payload",s.name.c_str());
+            check(ref.cursor==final&&ftell(static_cast<FILE*>(ref.file))==rec.offset+final,"cursor_reference_record_formula",s.name.c_str());
+            const Outcome out=run_fast(o,expected,s.name.c_str(),true,ftell(static_cast<FILE*>(ref.file)),ref.cursor);
+            check(out.handled,"cursor_record_handled",s.name.c_str());cursor_handled+=out.handled;
+            // from the state both leave, the dispatcher's next clamped read behaves the same (n = length - cursor bytes, XOR 0x33, same bytes)
+            { unsigned char a[16]{},b[16]{};const int na=ref_dispatch_read(&o,a,1,16),nb=ref_dispatch_read(&ref,b,1,16);
+              check(na==nb&&o.cursor==ref.cursor&&!memcmp(a,b,16)&&(final<rec.length?na>0:na==0),"cursor_next_dispatch_read_same",s.name.c_str()); }
+            if(expect)env_free(expect);close_object(o);close_object(ref);
+        }
+        const Record& last=cursor_records.back();
+        check(last.offset+last.length==int32_t(cursor_image.size())&&original_final(cursor_sources[last.index].stored)<last.length,"cursor_last_record_is_class");
+        printf("RR_CASE name=cursor sources=%zu class_records=%u loose_and_record_handled=%u last_record_class=1\n",cursor_sources.size(),cursor_class,unsigned(cursor_handled));
+    }
     // ---- case 3: fallbacks with restoration ----
     {
         const Source& s=sources[0];
@@ -406,6 +496,25 @@ int main(int argc,char** argv){
           check(buf&&size_globals[0]==sources[1].payload.size()&&static_cast<unsigned char*>(buf)[0]==(sources[1].payload[0]^1),"verify_mismatch_returns_original");
           if(buf)env_free(buf);close_object(o);reference_tamper=false;
           st=rr::statistics();check(st.verify_mismatched==1&&st.verify_equal==2*gz_sources,"verify_mismatch_counted"); }
+        // the cursor class through the production comparison: cursor_ok and position_ok for every source and record
+        unsigned cursor_verified=0;
+        for(const auto& s:cursor_sources){
+            rr::FileObject o=loose_object(s);if(!o.file)continue;
+            void* buf=call_site(reference_site,&o);
+            check(buf&&same(buf,size_globals[0],s.payload),"verify_cursor_result_is_original",s.name.c_str());
+            check(ftell(static_cast<FILE*>(o.file))==original_final(s.stored),"verify_cursor_loose_position",s.name.c_str());
+            if(buf)env_free(buf);close_object(o);++cursor_verified;
+        }
+        for(const auto& rec:cursor_records){
+            rr::FileObject o=cursor_record_object(rec);
+            void* buf=call_site(reference_site,&o);
+            check(buf&&same(buf,size_globals[0],cursor_sources[rec.index].payload),"verify_cursor_record_result_is_original",cursor_sources[rec.index].name.c_str());
+            check(o.cursor==original_final(cursor_sources[rec.index].stored),"verify_cursor_record_cursor",cursor_sources[rec.index].name.c_str());
+            if(buf)env_free(buf);close_object(o);++cursor_verified;
+        }
+        st=rr::statistics();
+        check(st.verify_mismatched==1&&st.verify_equal==2*gz_sources+cursor_verified&&st.cursor_short==cursor_class*2,"verify_cursor_class_equal");
+        printf("RR_STATS_CURSOR verify_files=%u cursor_short=%llu verify_equal=%llu verify_mismatched=%llu\n",cursor_verified,st.cursor_short,st.verify_equal,st.verify_mismatched);
         // ---- fast mode through the stub: the reference never runs for gzip sources ----
         rr::fixture_bind(environment(),rr::Mode::Fast);
         for(const auto& s:sources){
@@ -415,17 +524,24 @@ int main(int argc,char** argv){
             if(buf)env_free(buf);close_object(o);
         }
         st=rr::statistics();
-        check(st.handled==3*gz_sources+1&&st.fallbacks==3&&st.calls==verify_files+1+sources.size(),"fast_stub_statistics");
+        check(st.handled==3*gz_sources+1+cursor_verified&&st.fallbacks==3&&st.calls==verify_files+1+cursor_verified+sources.size(),"fast_stub_statistics");
         // timing: fast core vs the reference (hot cache), the 3 MB file (inflate-bound) and the
         // 31 KB one (a typical script .pck, where the per-file fixed costs matter). The reference
         // here runs on msvcrt, not the game's locked static CRT, so its per-call costs are a floor.
-        for(unsigned which=0;which<2;++which){
-          const Source& src=sources[which?1:7];uint64_t fast_ticks=0,ref_ticks=0;const unsigned rounds=which?(quick?50:400):(quick?2:5);
+        // Phases (from the core's own QPC stamps): fseek+fread, XOR+magic+header, malloc, inflate; the
+        // remainder is HeapAlloc/HeapFree of the scratch and bookkeeping. large_record reads the 3 MB
+        // file as a catalogue record (adds the XOR 0x33 pass over the extent).
+        for(unsigned which=0;which<3;++which){
+          const Source& src=sources[which==1?1:7];uint64_t fast_ticks=0,ref_ticks=0,read=0,scan=0,alloc=0,inflate=0;const unsigned rounds=which==1?(quick?50:400):(quick?2:5);
+          const Record& rec=records[7];
           for(unsigned i=0;i<rounds;++i){
-              rr::FileObject o=loose_object(src);const uint64_t t0=qpc();const rr::Result r=rr::decode(environment(),&o,true);const uint64_t t1=qpc();if(r.buffer)env_free(r.buffer);close_object(o);fast_ticks+=t1-t0;
-              rr::FileObject ref=loose_object(src);const uint64_t t2=qpc();void* buf=reference_read(&ref);const uint64_t t3=qpc();if(buf)env_free(buf);close_object(ref);ref_ticks+=t3-t2;
+              rr::FileObject o=which==2?record_object(rec):loose_object(src);const uint64_t t0=qpc();const rr::Result r=rr::decode(environment(),&o,true);const uint64_t t1=qpc();if(r.buffer)env_free(r.buffer);close_object(o);fast_ticks+=t1-t0;
+              read+=r.read_ticks;scan+=r.scan_ticks;alloc+=r.alloc_ticks;inflate+=r.inflate_ticks;
+              rr::FileObject ref=which==2?record_object(rec):loose_object(src);const uint64_t t2=qpc();void* buf=reference_read(&ref);const uint64_t t3=qpc();if(buf)env_free(buf);close_object(ref);ref_ticks+=t3-t2;
           }
-          printf("RR_TIMING name=%s bytes=%zu rounds=%u fast_us=%.1f reference_us=%.1f ratio=%.2f\n",which?"medium":"large",src.payload.size(),rounds,us(fast_ticks)/rounds,us(ref_ticks)/rounds,double(ref_ticks)/double(fast_ticks?fast_ticks:1)); }
+          const char* name=which==0?"large":which==1?"medium":"large_record";
+          printf("RR_TIMING name=%s bytes=%zu rounds=%u fast_us=%.1f reference_us=%.1f ratio=%.2f\n",name,src.payload.size(),rounds,us(fast_ticks)/rounds,us(ref_ticks)/rounds,double(ref_ticks)/double(fast_ticks?fast_ticks:1));
+          printf("RR_PHASES name=%s extent=%zu read_us=%.1f scan_us=%.1f alloc_us=%.1f inflate_us=%.1f total_us=%.1f\n",name,src.stored.size(),us(read)/rounds,us(scan)/rounds,us(alloc)/rounds,us(inflate)/rounds,us(fast_ticks)/rounds); }
         rr::fixture_shutdown();
         lp::fixture_shutdown();
         check(call_a(2)==3&&call_b(1)==2,"probe_sites_restored");
@@ -458,11 +574,34 @@ int main(int argc,char** argv){
         check(ps.held==2&&ps.reused==2&&ps.kept==4&&ps.errors==1,"pool_statistics");
         rr::pool_drain();
         check(rr::pool_statistics().held==0&&real_closes==4,"pool_drain_closes_all");
-        void* unknown=fopen("rr_small.pck","rb");check(rr::x3m_pool_fclose(unknown)==0&&real_closes==5,"pool_unknown_handle_real_close");
+        // the game's sequence on a pooled handle: open, read a class record (fast), close (kept), reopen (reused),
+        // fseek to the next record, read it -- against the reference on its own pooled handle
+        {
+            const Record& a=cursor_records[cursor_records.size()-2];const Record& b=cursor_records.back(); // b: the class record that ends the .dat
+            void* fast_handle=rr::x3m_pool_fopen("rr_cursor.dat","rb");void* ref_handle=rr::x3m_pool_fopen("rr_cursor.dat","rb");
+            check(fast_handle&&ref_handle&&fast_handle!=ref_handle&&real_opens==7,"pool_cursor_sequence_opens");
+            auto object=[](void* f,const Record& r){ rr::FileObject o{};o.file=f;o.flags=3;o.offset=r.offset;o.length=r.length;o.cursor=0;fseek(static_cast<FILE*>(f),r.offset,SEEK_SET);return o; };
+            for(const Record* rec:{&b,&a,&b}){
+                rr::FileObject fo=object(fast_handle,*rec),ro=object(ref_handle,*rec);
+                void* expect=reference_read(&ro);const uint32_t expect_size=size_globals[0];
+                std::vector<unsigned char> expected(expect?static_cast<unsigned char*>(expect):nullptr,expect?static_cast<unsigned char*>(expect)+expect_size:nullptr);
+                const Outcome out=run_fast(fo,expected,cursor_sources[rec->index].name.c_str(),true,ftell(static_cast<FILE*>(ref_handle)),ro.cursor);
+                check(out.handled&&same(expected.data(),expected.size(),cursor_sources[rec->index].payload),"pool_cursor_sequence_read",cursor_sources[rec->index].name.c_str());
+                if(expect)env_free(expect);
+                check(rr::x3m_pool_fclose(fast_handle)==0&&rr::x3m_pool_fclose(ref_handle)==0,"pool_cursor_sequence_close_kept");
+                void* f2=rr::x3m_pool_fopen("rr_cursor.dat","rb");void* r2=rr::x3m_pool_fopen("rr_cursor.dat","rb");
+                check((f2==fast_handle&&r2==ref_handle)||(f2==ref_handle&&r2==fast_handle),"pool_cursor_sequence_reused");
+                fast_handle=f2;ref_handle=r2;
+            }
+            rr::x3m_pool_fclose(fast_handle);rr::x3m_pool_fclose(ref_handle);
+            rr::pool_drain();check(rr::pool_statistics().held==0&&real_closes==6,"pool_cursor_sequence_drained");
+        }
+        void* unknown=fopen("rr_small.pck","rb");check(rr::x3m_pool_fclose(unknown)==0&&real_closes==7,"pool_unknown_handle_real_close");
         printf("RR_CASE name=pool opens=%llu reused=%llu real_opens=%llu kept=%llu real_closes=%llu\n",ps.opens,ps.reused,ps.real_opens,ps.kept,ps.real_closes);
     }
     for(const char* name:{"rr_tmp.gz","rr_catalogue.dat","rr_bad_cm.pck","rr_bad_flg.pck","rr_short.pck","rr_corrupt.pck","rr_isize.pck","rr_trunc.pck","rr_empty.pck","rr_noname.gz"})remove(name);
     for(const auto& s:sources)remove(s.name.c_str());
+    remove("rr_cursor.dat");for(const auto& s:cursor_sources)remove(s.name.c_str());
     printf("RESOURCE READER RESULT checks=%u failures=%u\n",checks,failures);
     return failures?1:0;
 }

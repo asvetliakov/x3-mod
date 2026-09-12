@@ -70,7 +70,9 @@ def rsqrt_portable(x):
     return f32(1.0 / math.sqrt(x))
 
 
-def _normalize(v, rsqrt=rsqrt_portable):
+def _normalize_sse2(v, rsqrt=rsqrt_portable):
+    """D3DXVec3Normalize of the SSE2 table (FUN_00756732): single precision, vectors
+    shorter than 2^-46 become zero, rsqrtss and one Newton step."""
     x, y, z = v
     length2 = f32(f32(f32(x * x) + f32(y * y)) + f32(z * z))
     if length2 < NORMALIZE_THRESHOLD:
@@ -80,14 +82,55 @@ def _normalize(v, rsqrt=rsqrt_portable):
     return (f32(x * r), f32(y * r), f32(z * r))
 
 
-def _face_normal(p, v1, v2, v3, rsqrt=rsqrt_portable):
+def rsqrt_table():
+    """The generic table's 512 linear segments of 1/sqrt over [0.5, 2) (d3dx9_37
+    DAT_0076c2a0, reproduced from its generating rule: a secant through the
+    float-rounded values at the segment ends, the intercept from the upper end)."""
+    table = []
+    for k in range(512):
+        s = 1.0 if k >> 8 else 0.5
+        lo, hi = s * (1.0 + (k & 255) / 256.0), s * (1.0 + ((k & 255) + 1) / 256.0)
+        r0, r1 = f32(1.0 / math.sqrt(lo)), f32(1.0 / math.sqrt(hi))
+        a = f32((r1 - r0) / (hi - lo))
+        table.append((a, f32(r1 - a * hi)))
+    return table
+
+
+RSQRT_TABLE = rsqrt_table()
+
+
+def _normalize_generic(v):
+    """D3DXVec3Normalize of the generic table (FUN_005881fc; installed under FEX,
+    where D3DX takes its 3DNow branch on IsProcessorFeaturePresent(7) but the
+    CPUID bit is absent): x87 at 53-bit precision, so double operations on float
+    inputs; a zero float length gives zero, |float(len2 - 1)| <= 1e-5 copies the
+    vector unnormalized, otherwise r = (m * a + b) * 2^(-e/2) from the table."""
+    x, y, z = v
+    length2 = (x * x + y * y) + z * z
+    b = float_to_bits(f32(length2))
+    if b == 0:
+        return (0.0, 0.0, 0.0)
+    if (float_to_bits(f32(length2 - 1.0)) & 0x7FFFFFFF) <= 0x3727C5AC:
+        return v
+    a, c = RSQRT_TABLE[(b >> 15) & 0x1FF]
+    m = bits_to_float((b & 0xFFFFFF) | 0x3F000000)
+    s = bits_to_float(((0xBEFFFFFF - b) >> 1) & 0xFF800000)
+    r = (m * a + c) * s
+    return (f32(x * r), f32(y * r), f32(z * r))
+
+
+def _normalize(v, rsqrt=rsqrt_portable, normalize='sse2'):
+    return _normalize_generic(v) if normalize == 'generic' else _normalize_sse2(v, rsqrt)
+
+
+def _face_normal(p, v1, v2, v3, rsqrt=rsqrt_portable, normalize='sse2'):
     """D3DX's face normal for the corner order (v1, v2, v3): cross(p1 - p2, p1 - p3),
     edge vectors rounded to float, the cross product formed in extended precision
     and rounded to float per component, then D3DXVec3Normalize."""
     e1 = tuple(f32(p[v1][i] - p[v2][i]) for i in range(3))
     e2 = tuple(f32(p[v1][i] - p[v3][i]) for i in range(3))
     n = (f32(e1[1] * e2[2] - e1[2] * e2[1]), f32(e1[2] * e2[0] - e1[0] * e2[2]), f32(e1[0] * e2[1] - e1[1] * e2[0]))
-    return _normalize(n, rsqrt)
+    return _normalize(n, rsqrt, normalize)
 
 
 def _score(n, m):
@@ -97,12 +140,13 @@ def _score(n, m):
 
 def generate(position_bits, faces, epsilon, head_bits=None, head_insertion=True, normal_selection=True,
              weld_refusal=True, heap_order=True, retire_own_entry=False, unlink_refused=True, later_slot_check=False,
-             rsqrt=rsqrt_portable):
+             rsqrt=rsqrt_portable, normalize='sse2'):
     """position_bits: list of (xbits, ybits, zbits); faces: list of (i0, i1, i2);
     head_bits: the three float bit patterns at byte 0 of every vertex, which D3DX
     reads for the sweep key (the first) and for the normals of the candidate
     selection (all three); the position itself when it is the first element,
-    which is the default.
+    which is the default. normalize: 'sse2' or 'generic', the D3DXVec3Normalize
+    D3DX dispatched in the process that produced the output being reproduced.
 
     Returns (status, report, adjacency); adjacency is None unless status == 'ok'.
     The keyword policies exist for the fixture and the tests: the defaults are
@@ -238,14 +282,14 @@ def generate(position_bits, faces, epsilon, head_bits=None, head_insertion=True,
                 if len(chain) > 1:
                     report['multi_candidates'] += 1
                     if normal_selection:
-                        query = _face_normal(heads, v2, v1, other, rsqrt)
+                        query = _face_normal(heads, v2, v1, other, rsqrt, normalize)
                         best_score = None
                         for i in range(1, len(chain)):
                             if best_score is None:
                                 g, k = chain[best]
-                                best_score = _score(_face_normal(heads, corners[g * 3 + k], corners[g * 3 + (k + 1) % 3], corners[g * 3 + (k + 2) % 3], rsqrt), query)
+                                best_score = _score(_face_normal(heads, corners[g * 3 + k], corners[g * 3 + (k + 1) % 3], corners[g * 3 + (k + 2) % 3], rsqrt, normalize), query)
                             g, k = chain[i]
-                            score = _score(_face_normal(heads, corners[g * 3 + k], corners[g * 3 + (k + 1) % 3], corners[g * 3 + (k + 2) % 3], rsqrt), query)
+                            score = _score(_face_normal(heads, corners[g * 3 + k], corners[g * 3 + (k + 1) % 3], corners[g * 3 + (k + 2) % 3], rsqrt, normalize), query)
                             if best_score < score:
                                 best, best_score = i, score
                                 report['normal_selected'] += 1

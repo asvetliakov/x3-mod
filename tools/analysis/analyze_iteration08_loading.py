@@ -35,12 +35,31 @@ KEEP = ('telemetry_start', 'telemetry_span', 'telemetry_summary', 'telemetry_met
         'loading_metric', 'loading_trace', 'loading_hook', 'mesh_hook',
         'telemetry_first_present', 'telemetry_cursor_poll', 'telemetry_presentation',
         'create_device', 'create_device_result', 'capture_event',
-        'loading_probe', 'loading_probe_site', 'loading_probe_caller', 'frame_end')
+        'loading_probe', 'loading_probe_site', 'loading_probe_caller', 'loading_probe_path',
+        'frame_end')
 METRIC_KEYS = ('count', 'failures', 'pending', 'ambiguous', 'bytes',
                'inclusive_ticks', 'exclusive_ticks', 'max_ticks', 'wrapper_tail_ticks')
 # Engine probe rows (loading_probe lines, docs/verification/loading-probes.md): deltas per
 # report window like loading_metric; x0..x3 are per-site extras named by loading_probe_site.
 PROBE_KEYS = ('calls', 'exits', 'inclusive_ticks', 'max_ticks', 'overflow', 'desync', 'bytes', 'x0', 'x1', 'x2', 'x3')
+# Documented probe nesting (docs/reverse-engineering/script-xml-load-stall.md §1): the
+# timed probe children each parent always contains, used for the exclusive column.
+# `resource_load` -> open + read (+ an unprobed close); `resource_open` -> name_resolve
+# and, on success, the CRT `__sopen_helper`; `name_resolve` -> the findfirst wrapper.
+PROBE_CHILDREN = {
+    'resource_load': ('resource_open', 'resource_read'),
+    'resource_open': ('name_resolve', 'sopen_helper'),
+    'name_resolve': ('find_wrapper',),
+}
+# Sites whose only timed probe child (`resource_load`) has eleven callers, so the
+# child's inclusive time cannot be split between them: no exclusive column.
+PROBE_SHARED_CHILD = ('texture_body', 'texture_loader')
+# Write-side file APIs of probe batch 2 (§7 of the stall study): the set whose
+# absence during a load makes the catalogue handle pool and the negative
+# name-probe cache safe.
+WRITE_OPS = ('CreateDirectoryA', 'DeleteFileA', 'MoveFileA', 'MoveFileExA',
+             'SetEndOfFile', 'WriteFile')
+
 # Fields compared when deciding whether two report windows repeat the same work.
 VECTOR_KEYS = ('count', 'failures', 'pending', 'ambiguous', 'bytes')
 
@@ -75,7 +94,8 @@ def parse(lines):
     """Build the clock, anchors, presentation windows and loading report windows."""
     clock = None
     anchors = dict(spans=[], first_presents=[], create_device=None, hooks=0,
-                   coverage_begin_qpc=None, mesh_tables=0, probe_sites={}, frame_ends=[])
+                   coverage_begin_qpc=None, mesh_tables=0, probe_sites={}, frame_ends=[],
+                   probe_paths=[])
     present, loading, cursor, captures = [], [], [], []
     current = None
     previous_report_qpc = None
@@ -194,6 +214,12 @@ def parse(lines):
             if current is not None:
                 key = (f['site'], f['caller'])
                 current['probe_callers'][key] = current['probe_callers'].get(key, 0) + int(f['calls'])
+        elif event == 'loading_probe_path':
+            # Write-side paths, logged once each (first 16) next to the report window
+            # that first observed the call; the seconds locate them in a phase.
+            anchors['probe_paths'].append(dict(
+                op=f.get('op'), path=f.get('path', ''),
+                report_seconds=current['report_seconds'] if current else None))
     if clock is None and not anchors['frame_ends']:
         raise ValueError('missing telemetry clock')
     return clock, anchors, present, loading, cursor, captures
@@ -218,7 +244,29 @@ def probe_totals(windows):
     for site, aggregate in result.items():
         aggregate['mean_ms'] = aggregate['inclusive_seconds'] / aggregate['calls'] * 1000.0 if aggregate['calls'] else 0.0
         aggregate['callers'] = callers.get(site, {})
+    probe_exclusive(result)
     return result
+
+
+def probe_exclusive(table):
+    """Add the exclusive column where the documented nesting makes it well defined.
+
+    `exclusive_seconds` is the site's inclusive time minus the inclusive time of
+    the timed probe children it always contains (PROBE_CHILDREN). It is None for
+    the two texture sites, whose only probed child (`resource_load`) is shared
+    with nine other callers, and the sum is clamped at zero: a report window that
+    straddles the interval boundary can carry a child's exit without the parent's.
+    """
+    for site, aggregate in table.items():
+        if site in PROBE_SHARED_CHILD:
+            aggregate['exclusive_seconds'] = None
+            aggregate['exclusive_children'] = []
+            continue
+        children = [name for name in PROBE_CHILDREN.get(site, ()) if name in table]
+        inside = sum(table[name]['inclusive_seconds'] for name in children)
+        aggregate['exclusive_children'] = children
+        aggregate['exclusive_seconds'] = max(aggregate['inclusive_seconds'] - inside, 0.0)
+    return table
 
 
 def frame_end_gaps(frame_ends, threshold, clock=None):

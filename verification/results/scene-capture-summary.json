@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-12T19:25:12.472440+00:00",
+  "started_utc": "2026-09-12T20:35:08.554574+00:00",
   "bottle": {
     "name": "Steam",
     "wine_arch": "win64",
@@ -31,7 +31,7 @@
     "src/proxy/scene_capture.h": "26f04fb5fe2de7636e547424d40b00e5edf95d395e32a468343dd65f00030183",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
-    "src/proxy/capture.h": "35a4350a1babdea3d61b7de88b6548669f9e7de19137e6cdebc2b018a591949b",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5"
   },
@@ -50,7 +50,7 @@
     "C:\\X3\\d3dx9_37.dll",
     "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl"
   ],
-  "executable_sha256": "33de2a4562613dc8639560f70cd85ceb9ebca96693fefc50854c3f24ef07df45",
+  "executable_sha256": "490a8372d20eddb93fb89ea99926c13c66ea4ae50adb942ccda153bcd67f531f",
   "exit_code": 0,
   "checks": 4908,
   "samples": 16,

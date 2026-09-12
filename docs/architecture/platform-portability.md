@@ -79,7 +79,7 @@ Recording runtime hashes in test reports remains useful provenance.
   are C++ forwarders that veto admission and log `unproxied=1` when an
   object escapes (`Direct3DCreate9Ex` too); `DebugSetLevel`, `PSGPError`,
   `PSGPSampleTexture` and the shim are signature-agnostic naked `jmp`
-  forwarders with `ret N` fallbacks (0/12/20/4 bytes) when the backend lacks
+  forwarders with `ret N` fallbacks (4/12/20/4 bytes) when the backend lacks
   the export, each logged once (`d3d9_export name= forwarded=`). Host test
   `test_d3d9_exports.py` parses the PE export directory; the Wine fixture
   `run_d3d9_exports.py` resolves all seventeen and calls the forwarded and

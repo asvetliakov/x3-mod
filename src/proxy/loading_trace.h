@@ -73,6 +73,18 @@ struct AdjacencyDumpHeader {
 };
 static_assert(sizeof(AdjacencyDumpHeader)==64);
 bool adjacency_write_dump(const wchar_t* path,ID3DXMesh* mesh,FLOAT epsilon,const DWORD* native,const DWORD* module,uint64_t mismatches,DWORD first,DWORD x87_control,DWORD mxcsr);
+// D3DX's math-table dispatch, mirrored (docs/reverse-engineering/
+// d3dx-generate-adjacency.md, section 4): the D3DXVec3Normalize the process's
+// d3dx9_37 installed at load decides the normals of the adjacency candidate
+// selection, so the module must use the same one. Evaluated once from the
+// documented inputs D3DX itself reads (HKLM\Software\Microsoft\Direct3D
+// DisablePSGP / DisableD3DXPSGP, IsProcessorFeaturePresent for 3DNow and SSE,
+// CPUID for MMX, SSE2 and the extended 3DNow bit); D3DX's memory is never read.
+// The module reproduces Generic and Sse2; the other two fall back to native.
+// The dump header's reserved[0] records 1 + this value.
+enum class D3dxMathTable : unsigned { Generic, ThreeDNow, Sse2, Sse };
+D3dxMathTable d3dx_math_table();
+const char* d3dx_math_table_name(D3dxMathTable table);
 #ifdef X3M_LOADING_TRACE_FIXTURE
 // Compile-only fixture seam: these symbols do not exist in the production DLL.
 bool fixture_initialize(HMODULE target);
@@ -95,7 +107,7 @@ struct AdjacencyStatistics {
     uint64_t calls=0,computed=0,fallbacks=0,faults=0,fast_ticks=0,native_ticks=0;
     uint64_t verify_meshes=0,verify_equal=0,verify_mismatched=0,verify_mismatch_entries=0;
     uint64_t quantized=0,unquantized=0,multi_candidate_meshes=0;
-    std::array<uint64_t,6> fallback_reasons{}; // input, gate, declaration, size, lock, module
+    std::array<uint64_t,7> fallback_reasons{}; // input, gate, declaration, size, lock, module, math_table
     std::array<uint64_t,7> module_status{};    // mesh_adjacency_fast::Status order
     bool faulted=false;
 };

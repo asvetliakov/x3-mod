@@ -81,8 +81,10 @@ Result decode(const Environment& env,FileObject* object,bool game_buffer) noexce
     if(length<18)return fail(r,Reason::Length);
     auto* scratch=static_cast<unsigned char*>(HeapAlloc(GetProcessHeap(),0,size_t(length)));
     if(!scratch)return fail(r,Reason::Scratch);
+    const uint64_t t_read=tick();
     if(env.fseek(file,begin_offset,seek_set)!=0)return fail(r,Reason::ShortRead,&guard,scratch);
     const size_t got=env.fread(scratch,1,size_t(length),file);
+    const uint64_t t_scan=tick();r.read_ticks=t_scan-t_read;
     if(got!=size_t(length))return fail(r,Reason::ShortRead,&guard,scratch);
     r.extent=uint32_t(length);
     if(catalogue)xor_bytes(scratch,size_t(length),catalogue_key);
@@ -108,7 +110,9 @@ Result decode(const Environment& env,FileObject* object,bool game_buffer) noexce
     if(flg&2)p+=2;
     if(p>limit)return fail(r,Reason::Header,&guard,scratch);
     if(isize==0)return fail(r,Reason::Empty,&guard,scratch);
+    const uint64_t t_alloc=tick();r.scan_ticks=t_alloc-t_scan;
     unsigned char* out=static_cast<unsigned char*>(game_buffer?env.malloc(isize):HeapAlloc(GetProcessHeap(),0,isize));
+    const uint64_t t_inflate=tick();r.alloc_ticks=t_inflate-t_alloc;
     if(!out)return fail(r,Reason::Alloc,&guard,scratch);
     auto release=[&]{ if(game_buffer)env.free(out); else HeapFree(GetProcessHeap(),0,out); };
     ZStream z{};
@@ -116,20 +120,35 @@ Result decode(const Environment& env,FileObject* object,bool game_buffer) noexce
     z.next_in=gz+p;z.avail_in=gzlen-p;z.next_out=out;z.avail_out=isize;
     const int status=env.inflate(&z,z_no_flush);
     const uint32_t produced=isize-z.avail_out;
+    const uint32_t consumed=gzlen-p-z.avail_in; // deflate bytes zlib needed (exact: inflate hands back whole unused bytes)
     env.inflateEnd(&z);
+    r.inflate_ticks=tick()-t_inflate;
     if(status!=z_stream_end){release();return fail(r,Reason::Inflate,&guard,scratch);}
     if(produced!=isize){release();return fail(r,Reason::Size,&guard,scratch);}
     HeapFree(GetProcessHeap(),0,scratch);
-    // Fast mode leaves the stream at the end of the extent, where the original
-    // leaves it; a scratch decode (verify) puts it back so the original can run.
+    // Where the original's loop stops: it reads 1 KiB chunks from the first
+    // deflate byte (cursor = start+p after the header walk) and exits on
+    // Z_STREAM_END, i.e. after the chunk holding the last byte inflate
+    // consumed. The cursor and the stream sit at the end of that chunk, which
+    // is the record end unless the trailer's tail spills into a chunk of its
+    // own ((length - start - p) mod 1024 in 1..8; the run-C mismatches).
+    const long first=long(start+p);
+    long final=first+long(((consumed-1)/1024+1)*1024);
+    if(final>length)final=length;
+    r.cursor_short=final<length;
+    r.expected_cursor=catalogue?int32_t(final):object->cursor;
+    r.expected_position=begin_offset+final;
+    // A scratch decode (verify) puts the stream back so the original can run;
+    // fast mode leaves it where the original would.
     guard.armed=!game_buffer;
-    r.outcome=Outcome::Handled;r.buffer=out;r.size=isize;r.expected_cursor=catalogue?object->length:object->cursor;
+    r.outcome=Outcome::Handled;r.buffer=out;r.size=isize;
     if(game_buffer){
         // Exactly the original's bookkeeping: three byte counters, the allocation count, the two size globals, the record cursor.
         for(unsigned i=0;i<3;++i)if(env.counters[i])*env.counters[i]+=isize;
         if(env.counters[3])*env.counters[3]+=1;
         for(unsigned i=0;i<2;++i)if(env.size_globals[i])*env.size_globals[i]=isize;
-        if(catalogue)object->cursor=object->length;
+        if(catalogue)object->cursor=int32_t(final);
+        if(final!=length)env.fseek(file,r.expected_position,seek_set); // the fread left us at the extent end
     }
     r.ticks=tick()-begin;
     return r;
@@ -142,6 +161,13 @@ Mode bound_mode=Mode::Native;
 void** continuation=nullptr;              // the stub's next word (the original entry)
 void (*verify_sink)(const VerifyEvent&)=nullptr;
 alignas(8) Statistics stats;
+inline void account(const Result& r) noexcept { // a handled file: counts, bytes, total and phase ticks
+    add64(&stats.handled,1);add64(&stats.bytes_in,r.extent);add64(&stats.bytes_out,r.size);add64(&stats.ticks,r.ticks);max64(&stats.max_ticks,r.ticks);
+    add64(&stats.read_ticks,r.read_ticks);add64(&stats.scan_ticks,r.scan_ticks);add64(&stats.alloc_ticks,r.alloc_ticks);add64(&stats.inflate_ticks,r.inflate_ticks);
+    if(r.catalogue)add64(&stats.catalogue,1);
+    if(r.scrambled)add64(&stats.scrambled,1);
+    if(r.cursor_short)add64(&stats.cursor_short,1);
+}
 inline void* call_original(void* fn,FileObject* object) noexcept {
     void* result=object; // EAX in: the file object; EAX out: the buffer. ECX/EDX are caller-saved.
     asm volatile("call *%1" : "+a"(result) : "r"(fn) : "ecx","edx","memory","cc");
@@ -159,7 +185,8 @@ Statistics statistics() {
     s.bytes_in=load64(&stats.bytes_in);s.bytes_out=load64(&stats.bytes_out);s.ticks=load64(&stats.ticks);s.max_ticks=load64(&stats.max_ticks);
     s.verify_files=load64(&stats.verify_files);s.verify_equal=load64(&stats.verify_equal);s.verify_mismatched=load64(&stats.verify_mismatched);
     s.verify_original_null=load64(&stats.verify_original_null);s.original_ticks=load64(&stats.original_ticks);
-    s.catalogue=load64(&stats.catalogue);s.scrambled=load64(&stats.scrambled);
+    s.catalogue=load64(&stats.catalogue);s.scrambled=load64(&stats.scrambled);s.cursor_short=load64(&stats.cursor_short);
+    s.read_ticks=load64(&stats.read_ticks);s.scan_ticks=load64(&stats.scan_ticks);s.alloc_ticks=load64(&stats.alloc_ticks);s.inflate_ticks=load64(&stats.inflate_ticks);
     for(unsigned i=0;i<static_cast<unsigned>(Reason::Count);++i)s.reasons[i]=load64(&stats.reasons[i]);
     return s;
 }
@@ -170,9 +197,7 @@ extern "C" uint32_t __cdecl x3m_resource_read_entry(uint32_t* regs) {
     if(bound_mode==Mode::Fast){
         const Result r=decode(bound_env,object,true);
         if(r.outcome==Outcome::Handled){
-            add64(&stats.handled,1);add64(&stats.bytes_in,r.extent);add64(&stats.bytes_out,r.size);add64(&stats.ticks,r.ticks);max64(&stats.max_ticks,r.ticks);
-            if(r.catalogue)add64(&stats.catalogue,1);
-            if(r.scrambled)add64(&stats.scrambled,1);
+            account(r);
             regs[7]=uint32_t(reinterpret_cast<uintptr_t>(r.buffer));
             SetLastError(error);return 1;
         }
@@ -182,9 +207,7 @@ extern "C" uint32_t __cdecl x3m_resource_read_entry(uint32_t* regs) {
     if(bound_mode==Mode::Verify&&continuation&&*continuation){
         Result r=decode(bound_env,object,false);
         if(r.outcome!=Outcome::Handled){add64(&stats.fallbacks,1);add64(&stats.reasons[static_cast<unsigned>(r.reason)],1);SetLastError(error);return 0;}
-        add64(&stats.handled,1);add64(&stats.bytes_in,r.extent);add64(&stats.bytes_out,r.size);add64(&stats.ticks,r.ticks);max64(&stats.max_ticks,r.ticks);
-        if(r.catalogue)add64(&stats.catalogue,1);
-        if(r.scrambled)add64(&stats.scrambled,1);
+        account(r);
         uint32_t counters_before[4]{},globals_before[2]{};
         for(unsigned i=0;i<4;++i)counters_before[i]=bound_env.counters[i]?*bound_env.counters[i]:0;
         for(unsigned i=0;i<2;++i)globals_before[i]=bound_env.size_globals[i]?*bound_env.size_globals[i]:0;
@@ -200,7 +223,8 @@ extern "C" uint32_t __cdecl x3m_resource_read_entry(uint32_t* regs) {
         e.counters_ok=true;
         for(unsigned i=0;i<3;++i)if(bound_env.counters[i]&&*bound_env.counters[i]-counters_before[i]!=r.size)e.counters_ok=false;
         if(bound_env.counters[3]&&*bound_env.counters[3]-counters_before[3]!=1)e.counters_ok=false;
-        e.cursor_ok=!r.catalogue||object->cursor==r.expected_cursor;
+        e.cursor=object->cursor;e.expected_cursor=r.expected_cursor;e.cursor_ok=!r.catalogue||object->cursor==r.expected_cursor;
+        e.position=bound_env.ftell(object->file);e.expected_position=r.expected_position;e.position_ok=e.position==r.expected_position;
         e.mismatches=0;e.first_mismatch=0;
         if(original){
             const auto* a=static_cast<const unsigned char*>(r.buffer);const auto* b=static_cast<const unsigned char*>(original);
@@ -208,7 +232,7 @@ extern "C" uint32_t __cdecl x3m_resource_read_entry(uint32_t* regs) {
             for(uint32_t i=0;i<n;++i)if(a[i]!=b[i]){if(!e.mismatches)e.first_mismatch=i;++e.mismatches;}
             if(e.original_size!=r.size){if(!e.mismatches)e.first_mismatch=n;e.mismatches+=e.original_size>r.size?e.original_size-r.size:r.size-e.original_size;}
         } else add64(&stats.verify_original_null,1);
-        e.equal=!e.original_null&&!e.mismatches&&e.globals_ok&&e.counters_ok&&e.cursor_ok;
+        e.equal=!e.original_null&&!e.mismatches&&e.globals_ok&&e.counters_ok&&e.cursor_ok&&e.position_ok;
         if(e.equal)add64(&stats.verify_equal,1);else add64(&stats.verify_mismatched,1);
         (void)globals_before;
         HeapFree(GetProcessHeap(),0,r.buffer);

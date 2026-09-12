@@ -23,7 +23,12 @@ default base `0x00400000`; decompiler text stays under `/tmp`.
 | `0x0058a8b2`, `0x00590630`, `0x0058a8ff` | directed-edge table: insert, lookup with normal selection and unlink, remove |
 | `0x005904bd` | normal score of a candidate against the querying edge |
 | `0x0056e9f5` | declaration parse (position element) |
-| `0x00587e6b`, `0x00756246`, `0x00756732` | CPU dispatch of the math table; SSE2 table; its `D3DXVec3Normalize` |
+| `0x00587e6b`, `0x00756246`, `0x00756732` | CPU dispatch of the math table; SSE2 table installer; its `D3DXVec3Normalize` |
+| `0x00587aa0`, `0x00587e06`, `0x00587d96`, `0x00587c94` | dispatch inputs: registry value read; feature check (7 = 3DNow, 10 = SSE2, 6 = SSE); NT 5+ test; CPUID SSE/SSE2 bits |
+| `0x0074a996`, `0x0074a892`, `0x0075131e` | 3DNow table installer, its own CPUID check (MMX and 3DNow bits), its `D3DXVec3Normalize` (`pfrsqrt`) |
+| `0x0075385d`, `0x00753eb7` | SSE table installer and its `D3DXVec3Normalize` (not reproduced) |
+| `0x0058844c`, `0x005881fc`, `0x0076c2a0` | generic table setup (slots 0-7, 0x23); its `D3DXVec3Normalize` (512-segment interpolation); the segment table (`.data`, static) |
+| `0x0076c048`, `0x0076c170`, `0x00572893` | active math table (74 slots), the generic template, the slot-7 (normalize) dispatch stub the score calls |
 
 ## 1. Entry checks
 
@@ -146,22 +151,103 @@ D3DXVec3Normalize(n); D3DXVec3Normalize(m)
 score = float(n.z*m.z + n.x*m.x + n.y*m.y)        (x87, rounded to float for the compare)
 ```
 
-`D3DXVec3Normalize` is dispatched at load (`0x00587e6b`): without the registry
-overrides `DisablePSGP`/`DisableD3DXPSGP` (absent in both bottles) the SSE2
-table (`0x00756246`, feature check 10) is installed when 3DNow (check 7) is
-absent, as under FEX and Rosetta. Its normalize (`0x00756732`) is scalar SSE:
-`len2 = (x*x + y*y) + z*z` in single precision; below `2^-46` (`0x28800000`)
-the result is the zero vector (score 0); otherwise `r = rsqrtss(len2)`,
-`r = ((3 - (r*len2)*r) * r) * 0.5` (one Newton step, all `mulss`/`subss`), and
-the components are `x*r`, `y*r`, `z*r`. The generic table's normalize
-(`_CIsqrt`) would only be used with PSGP disabled or without SSE.
+The score is stored as a float (`fstps`) by the lookup before the compare
+(`fcompp`; `0x005906a7`-`0x005906d4`), so two candidates whose scores differ
+by less than a float ulp tie and the first in the chain stays.
 
-Consequences: the score is CPU/emulator dependent to about one ulp of the
-normal (`rsqrtss` is an approximation whose bits differ between Intel, AMD,
-FEX and Rosetta), the intermediate precision of the cross product and dot
-product is 80-bit under Rosetta and 64-bit under FEX with
-`FEX_X87REDUCEDPRECISION=1`, and only near-ties (candidate scores within those
-errors) can differ between two conforming implementations.
+### The `D3DXVec3Normalize` dispatch (`0x00587e6b`)
+
+`D3DXVec3Normalize` (the export and the score's internal call, both through the
+slot-7 stub `0x00572893` into the active table `0x0076c048`) is chosen once per
+process. The dispatcher copies the generic template (`0x0076c170`, 74 slots),
+overwrites slots 0-7 and 0x23 with the generic implementations (`0x0058844c`),
+then reads `HKLM\Software\Microsoft\Direct3D` `DisablePSGP` (default 0) and
+`DisableD3DXPSGP` (overrides when present; `0x00587aa0`) and decides:
+
+```
+if value != 1:
+    if value == 2 or not feature(7):            # no 3DNow
+        if feature(10):   install SSE2 table (0x00756246)      mode 2
+        elif feature(6):  install SSE table  (0x0075385d)      mode 3
+    else:                 3DNow installer (0x0074a996)         mode 1
+```
+
+`feature(n)` (`0x00587e06`) is `IsProcessorFeaturePresent(n)` for 6 and 7 on
+Windows NT 5+ (`0x00587d96`: `GetVersionExA` platform id 2, major version >= 5;
+Wine reports NT) and, for 10, CPUID leaf 1 EDX bit 26 (`0x00587c94`; on Win9x
+all three come from CPUID). The 3DNow installer checks CPUID itself
+(`0x0074a892`: MMX = leaf 1 EDX bit 23 and 3DNow = leaf `0x80000001` EDX bit 31)
+and installs nothing when either is absent, leaving the generic table.
+
+Which table a process gets:
+
+| Platform | `IsProcessorFeaturePresent(7)` | CPUID 3DNow | Table | normalize |
+|---|---|---|---|---|
+| x86 Windows, Rosetta (bottle Steam), any CPU without 3DNow | 0 | 0 | SSE2 (`0x00756732`) | `rsqrtss` + Newton |
+| arm64 Wine + FEX (bottle X3) | **1** | 0 | **generic** (`0x005881fc`) | table interpolation |
+| AMD K7-K10 hardware | 1 | 1 | 3DNow (`0x0075131e`) | `pfrsqrt` (not reproduced) |
+
+FEX's Wine answers `IsProcessorFeaturePresent(7)` with 1 while its CPUID has
+no 3DNow bit (probe: X3 leaf `0x80000001` EDX `0x23d3fbff`, Steam
+`0x28100800`), so on the game's bottle D3DX takes the 3DNow branch, installs
+nothing, and every mesh is scored with the generic normalize. This was run 11's
+remaining source of mismatches (the module used `rsqrtss` everywhere): the game
+dumps replay equal with the generic normalize on the host and on X3, and the
+same DLL's `D3DXVec3Normalize` equals the generic model on 20,014 of 20,014
+sample vectors on X3 and the `rsqrtss` model on 2,012 of 2,012 on Steam
+(scratch probes, 2026-09-13).
+
+### SSE2 table (`0x00756732`)
+
+Scalar SSE: `len2 = (x*x + y*y) + z*z` in single precision; below `2^-46`
+(`0x28800000`) the result is the zero vector (score 0); otherwise
+`r = rsqrtss(len2)`, `r = ((3 - (r*len2)*r) * r) * 0.5` (one Newton step, all
+`mulss`/`subss`), and the components are `x*r`, `y*r`, `z*r`. `rsqrtss` is an
+approximation whose bits are the CPU's or emulator's (Rosetta and FEX both
+reproduce Intel's table on this machine).
+
+### Generic table (`0x005881fc`)
+
+x87 code; the game's control word (`0x023f`, and the fixtures' `0x027f`) sets
+53-bit precision, so every operation is a double operation on float inputs
+(FEX's `FEX_X87REDUCEDPRECISION=1` computes in double as well):
+
+```
+len2 = (x*x + y*y) + z*z                         (double; fsts keeps it on the stack)
+if float(len2) bits == 0:            out = (0, 0, 0)
+elif |float(len2 - 1.0)| bits <= 0x3727c5ac:  out = in   (|len2 - 1| <= 1e-5: copied unnormalized)
+else:
+    bits = float(len2) bits
+    k    = (bits >> 15) & 0x1ff                  (exponent low bit and the top 8 mantissa bits: 512 segments over m in [0.5, 2))
+    m    = float((bits & 0xffffff) | 0x3f000000) (the mantissa re-exponented into [0.5, 2))
+    s    = float(((0xbeffffff - bits) >> 1) & 0xff800000)   (2^(-e/2) by integer arithmetic on the exponent)
+    r    = (m * A[k] + B[k]) * s                 (double)
+    out  = (float(x*r), float(y*r), float(z*r))
+```
+
+The segment table `DAT_0076c2a0` (512 x `{A, B}` floats, static `.data`) is
+exactly reproduced by its generating rule, so the module computes it instead of
+copying it: for segment `k` with `s = 0.5` (`k < 256`) or `1.0`,
+`lo = s*(1 + (k & 255)/256)`, `hi = s*(1 + ((k & 255) + 1)/256)`,
+`r0 = float(1/sqrt(lo))`, `r1 = float(1/sqrt(hi))`, `A = float((r1 - r0)/(hi - lo))`,
+`B = float(r1 - A*hi)` (512/512 `A` and `B` bit-equal; the intercept is the
+same whether formed from either end or with a float or double product). The
+interpolation is accurate to about 1e-6 in the length, so a normal is off by up
+to a few float ulps and, for `|n|^2` within 1e-5 of 1, not normalized at all:
+scores that tie under one table need not under the other, and the copied
+vectors let a longer cross product win a tie the SSE2 path decides by angle.
+
+### 3DNow table (`0x0075131e`)
+
+`pfmul`/`pfadd`/`pfacc` for `len2 = (x*x + z*z) + y*y`, `pfrsqrt`, one
+`pfrsqit1`/`pfrcpit2` step, a `pfcmpgt` mask against `FLT_MIN` and `pfmul` per
+component. Only installed with a real 3DNow CPUID bit (pre-2011 AMD); the
+module does not reproduce it and the service leaves such a process to native.
+
+Consequences: the intermediate precision of the cross product and dot product
+is that of the x87 at 53 bits (the game's control word), and only near-ties
+(candidate scores within a float ulp) depend on the normalize's last bits; the
+module must use the table D3DX installed in the same process.
 
 ## 5. Cost
 
@@ -194,11 +280,18 @@ identical while avoiding D3DX's cost:
   `unlink_refused=false` variant. The relative order of the live entries is
   D3DX's.
 
-The score reads the byte-0 triple like D3DX and uses `rsqrtss` on x86
-(`_mm_rsqrt_ss`; the fixture runs the module and D3DX on the same CPU or
-emulator, so the approximation's bits match by construction) and `1/sqrt` on the
-host, double precision for the cross product (exact for the engine's 24-bit
-quantized coordinates) and the dot product. The attribute table is checked
+The score reads the byte-0 triple like D3DX and normalizes with the table D3DX
+installed in the process: the service mirrors the dispatch of section 4 from the
+same documented inputs (`loading_trace.cpp`, `d3dx_math_table`: the registry
+values, `IsProcessorFeaturePresent(7)`/`(6)` and CPUID) and selects
+`Policy::normalize` (`Sse2`: `rsqrtss` through `_mm_rsqrt_ss`, so the
+approximation's bits are the same CPU's or emulator's as D3DX's, `1/sqrt` on
+the host; `Generic`: the interpolation above from the regenerated table), or
+falls back to native for the 3DNow and SSE tables (`fallback_math_table`). The
+cross product and the dot product are double precision (exact for the engine's
+24-bit quantized coordinates, and the x87's own precision at 53 bits). The
+dump header's `reserved[0]` records the detected table (1 + the enum), and the
+replay tool selects the matching normalize. The attribute table is checked
 through the public interface: a mesh whose table does not cover the faces
 contiguously in order falls back to native. Fixture evidence: 53 named cases and
 a 2,000-mesh random differential sweep equal to d3dx9_37 on both bottles

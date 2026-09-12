@@ -1324,10 +1324,16 @@ void initialize_log(HMODULE module) {
         // the log then goes to %LOCALAPPDATA%\x3-modern-renderer\captures
         // (the variable, else %USERPROFILE%\AppData\Local) and the first line
         // records which directory was taken. capture_directory() follows.
-        std::wstring base; wchar_t value[32768]{};
-        DWORD length=GetEnvironmentVariableW(L"LOCALAPPDATA",value,32768);
-        if(length&&length<32768) base=value;
-        else { length=GetEnvironmentVariableW(L"USERPROFILE",value,32768); if(length&&length<32768) base=std::wstring(value)+L"\\AppData\\Local"; }
+        const auto environment=[](const wchar_t* name){
+            std::wstring value(GetEnvironmentVariableW(name,nullptr,0),L'\0');
+            if(value.size()<2) return std::wstring();
+            const DWORD length=GetEnvironmentVariableW(name,&value[0],static_cast<DWORD>(value.size()));
+            if(!length||length>=value.size()) return std::wstring(); // gone or grown in between
+            value.resize(length);
+            return value;
+        };
+        std::wstring base=environment(L"LOCALAPPDATA");
+        if(base.empty()){ base=environment(L"USERPROFILE"); if(!base.empty()) base+=L"\\AppData\\Local"; }
         if(!base.empty()){
             base+=L"\\x3-modern-renderer"; CreateDirectoryW(base.c_str(),nullptr);
             base+=L"\\captures"; CreateDirectoryW(base.c_str(),nullptr);
@@ -1336,7 +1342,16 @@ void initialize_log(HMODULE module) {
         }
     }
     if(logfile) setvbuf(logfile,nullptr,_IOFBF,1024*1024);
-    log("capture_dir=%ls source=%s",directory.c_str(),source);
+    {
+        // Logged as UTF-8 through WideCharToMultiByte: the CRT's %ls conversion
+        // runs in the "C" locale and drops the whole line on a character it
+        // cannot represent (a non-ASCII user name under %LOCALAPPDATA%, a
+        // non-ASCII game path).
+        std::string utf8(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8,0,directory.c_str(),-1,nullptr,0,nullptr,nullptr)),'\0');
+        if(utf8.size()>1) utf8.resize(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8,0,directory.c_str(),-1,&utf8[0],static_cast<int>(utf8.size()),nullptr,nullptr))-1);
+        else utf8.clear();
+        log("capture_dir=%s source=%s",utf8.c_str(),source);
+    }
     wchar_t setting[32]{};
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);

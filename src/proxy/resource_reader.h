@@ -15,7 +15,9 @@
 // whole extent with one fread, unscrambles it word-wide, walks the header in
 // memory and runs one inflate into the exact-size output allocated with the
 // game's own _malloc, then fills the four allocation counters and the two size
-// globals exactly as the original does. On any deviation from the cases it
+// globals exactly as the original does, and leaves the record cursor and the
+// stream where the original's 1 KiB chunk loop leaves them (short of the
+// record end when the trailer's tail falls into a chunk of its own). On any deviation from the cases it
 // understands (not open, gz handle, progress callback, transparent file, bad
 // header, inflate error, size mismatch, allocation failure) it restores the
 // stream position and the record cursor and reports Fallback so the original
@@ -65,8 +67,11 @@ struct Result {
     void* buffer=nullptr; uint32_t size=0;          // output (Handled)
     uint32_t extent=0;                              // compressed bytes read (Handled or later fallback)
     bool catalogue=false,scrambled=false;
-    int32_t expected_cursor=0;                      // catalogue: the cursor the original leaves (record length)
+    int32_t expected_cursor=0;                      // catalogue: the cursor the original's chunk loop leaves (see resource-reader.md "Record cursor")
+    long expected_position=0;                       // the stream position the original leaves (fast mode seeks there; verify compares)
+    bool cursor_short=false;                        // the original stops before the record end (trailer tail in its own chunk)
     uint64_t ticks=0;                               // QPC ticks inside decode
+    uint64_t read_ticks=0,scan_ticks=0,alloc_ticks=0,inflate_ticks=0; // phases: fseek+fread, XOR+magic+header, malloc, inflateInit2_/inflate/inflateEnd
 };
 // Decodes one resource. game_buffer=true allocates with env.malloc and fills the
 // counters and globals (fast mode); false decodes into a HeapAlloc scratch
@@ -87,13 +92,15 @@ void shutdown();
 struct Statistics {
     uint64_t calls=0,handled=0,fallbacks=0,bytes_in=0,bytes_out=0,ticks=0,max_ticks=0;
     uint64_t verify_files=0,verify_equal=0,verify_mismatched=0,verify_original_null=0,original_ticks=0;
-    uint64_t catalogue=0,scrambled=0,reasons[static_cast<unsigned>(Reason::Count)]{};
+    uint64_t catalogue=0,scrambled=0,cursor_short=0,reasons[static_cast<unsigned>(Reason::Count)]{};
+    uint64_t read_ticks=0,scan_ticks=0,alloc_ticks=0,inflate_ticks=0; // phase decomposition of `ticks` over handled files
 };
 Statistics statistics();
 // One verify-mode comparison (delivered to the hook's sink only when unequal).
 struct VerifyEvent {
     uint32_t size=0,original_size=0,first_mismatch=0,mismatches=0;
-    bool equal=false,original_null=false,globals_ok=false,counters_ok=false,cursor_ok=false,catalogue=false,scrambled=false;
+    bool equal=false,original_null=false,globals_ok=false,counters_ok=false,cursor_ok=false,position_ok=false,catalogue=false,scrambled=false;
+    int32_t cursor=0,expected_cursor=0; long position=0,expected_position=0; // after the original ran vs the chunk-loop prediction
     uint64_t our_ticks=0,original_ticks=0;
 };
 // Binds the core's environment, mode, the stub's continuation word (the original entry) and the sink.

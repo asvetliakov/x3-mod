@@ -96,8 +96,9 @@ volatile LONG logged_create9ex = 0, logged_on12 = 0, logged_on12ex = 0;
 // call on the export is one indirect jump: no prologue, no register or stack
 // assumption, so any caller convention and argument count pass through
 // unchanged. Fallbacks return 0 and pop the documented argument bytes
-// (DebugSetLevel 0, PSGPError 12, PSGPSampleTexture 20, the maximized-window
-// shim 4) so a backend lacking the export (Wine lacks the shim) still gets a
+// (DebugSetLevel 4, PSGPError 12, PSGPSampleTexture 20, the maximized-window
+// shim 4: the stdcall decorations of the D3D9 SDK import library,
+// _DebugSetLevel@4 / _PSGPError@12 / _PSGPSampleTexture@20 / ..Shim@4) so a backend lacking the export (Wine lacks the shim) still gets a
 // well-formed return. The resolver runs outside loader lock, like `entry`.
 extern "C" FARPROC __cdecl x3m_resolve_export(const char* name, FARPROC fallback, FARPROC* slot, FARPROC resolver) {
     FARPROC target = entry(name);
@@ -138,7 +139,7 @@ __asm__( \
     "    xorl %eax, %eax\n" \
     "    " ret_instruction "\n" \
     ".text\n");
-X3M_FORWARDED_EXPORT(DebugSetLevel, "ret")
+X3M_FORWARDED_EXPORT(DebugSetLevel, "ret $4")
 X3M_FORWARDED_EXPORT(PSGPError, "ret $12")
 X3M_FORWARDED_EXPORT(PSGPSampleTexture, "ret $20")
 X3M_FORWARDED_EXPORT(Direct3D9EnableMaximizedWindowedModeShim, "ret $4")

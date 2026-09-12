@@ -30,9 +30,11 @@ CASE = re.compile(r'^RR_CASE name=(\S+)(.*)$', re.M)
 FALLBACK = re.compile(r'^RR_FALLBACK case=(\S+) reason=(\S+)\r?$', re.M)
 STATS = re.compile(r'^RR_STATS (.*)$', re.M)
 TIMING = re.compile(r'^RR_TIMING name=(\w+) bytes=(\d+) rounds=(\d+) fast_us=([0-9.]+) reference_us=([0-9.]+) ratio=([0-9.]+)\r?$', re.M)
+PHASES = re.compile(r'^RR_PHASES name=(\w+) (.*)$', re.M)
+CURSOR_STATS = re.compile(r'^RR_STATS_CURSOR (.*)$', re.M)
 ZLIB = re.compile(r'^RR_ZLIB version=(\S+)\r?$', re.M)
 RESULT = re.compile(r'^RESOURCE READER RESULT checks=(\d+) failures=(\d+)\r?$', re.M)
-EXPECTED_CASES = ('fast', 'fallbacks', 'probes', 'pool')
+EXPECTED_CASES = ('fast', 'cursor', 'fallbacks', 'probes', 'pool')
 EXPECTED_FALLBACKS = {'gz_handle': 'gz_handle', 'progress': 'progress', 'transparent': 'not_gzip', 'state_position': 'state',
                       'state_cursor': 'state', 'method': 'method', 'reserved': 'reserved', 'length': 'length',
                       'inflate': 'inflate', 'size': 'size', 'truncated': 'inflate', 'empty': 'empty', 'header': 'header', 'alloc': 'alloc'}
@@ -53,14 +55,17 @@ def parse_report(text):
     fallbacks = {m.group(1): m.group(2) for m in FALLBACK.finditer(text)}
     timing = {m.group(1): {'bytes': int(m.group(2)), 'rounds': int(m.group(3)), 'fast_us': float(m.group(4)),
                            'reference_us': float(m.group(5)), 'ratio': float(m.group(6))} for m in TIMING.finditer(text)}
+    phases = {m.group(1): fields(m.group(2)) for m in PHASES.finditer(text)}
     zlib = ZLIB.search(text)
     stats = STATS.search(text)
+    cursor_stats = CURSOR_STATS.search(text)
     results = RESULT.findall(text)
     assert len(results) == 1, 'missing or repeated result line'
     checks, fails = (int(v) for v in results[0])
     report = {'zlib_version': zlib.group(1) if zlib else None, 'cases': cases, 'fallbacks': fallbacks,
               'statistics': fields(stats.group(1)) if stats else {},
-              'timing': timing,
+              'timing': timing, 'phases': phases,
+              'cursor_statistics': fields(cursor_stats.group(1)) if cursor_stats else {},
               'checks': checks, 'failures': fails, 'fail_lines': [l for l in text.splitlines() if l.startswith('FAIL')]}
     missing = [c for c in EXPECTED_CASES if c not in cases]
     assert not missing, 'missing cases: ' + ', '.join(missing)
@@ -68,8 +73,16 @@ def parse_report(text):
     assert fails == 0 and not report['fail_lines'], 'fixture failures: ' + '; '.join(report['fail_lines'][:5])
     for case, reason in EXPECTED_FALLBACKS.items():
         assert fallbacks.get(case) == reason, f'fallback {case}: expected {reason}, got {fallbacks.get(case)}'
-    assert {'large', 'medium'} <= set(timing), 'timing lines missing'
+    assert {'large', 'medium', 'large_record'} <= set(timing), 'timing lines missing'
+    assert {'large', 'medium', 'large_record'} <= set(phases), 'phase lines missing'
     assert report['statistics'].get('verify_mismatched') == 0, 'verify mismatches'
+    # the record-cursor class (run C): 16 short-cursor sources (remainders 1..8 at one and three chunks), the
+    # last record of rr_cursor.dat among them, every one equal through the production comparison
+    cursor = cases['cursor']
+    assert cursor.get('class_records') == 16 and cursor.get('last_record_class') == 1, f'cursor class inventory: {cursor}'
+    assert cursor.get('loose_and_record_handled') == cursor.get('sources'), f'cursor records not all handled: {cursor}'
+    assert report['cursor_statistics'].get('cursor_short') == 32 and report['cursor_statistics'].get('verify_mismatched') == 1, \
+        f'cursor class through the verify stub: {report["cursor_statistics"]}'
     return report
 
 

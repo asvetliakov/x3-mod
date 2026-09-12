@@ -12,7 +12,7 @@ patches, arena, call-site redirection).
 | Switch | Effect |
 | --- | --- |
 | `X3M_RESOURCE_READ=native` (`--resource-read native`, default) | nothing patched |
-| `verify` | our decode into a scratch buffer, stream restored, then the original through the chain; bytes, `DAT_00596988/c`, the four counter deltas and the record cursor compared; `resource_reader verify equal=0 …` per unequal file (≤ 64), `resource_reader_metric` summary; the caller always gets the original's buffer |
+| `verify` | our decode into a scratch buffer, stream restored, then the original through the chain; bytes, `DAT_00596988/c`, the four counter deltas, the record cursor and the stream position compared; `resource_reader verify equal=0 … cursor_ok= position_ok= cursor= expected_cursor= position= expected_position=` per unequal file (≤ 64), `resource_reader_metric` summary (`cursor_short=` counts the records whose chunk loop stops before the record end, `fast_read_us= fast_scan_us= fast_alloc_us= fast_inflate_us=` decompose `fast_us`); the caller always gets the original's buffer |
 | `fast` | our decode returns; any deviation falls back to the original (18 counted reasons) |
 | `X3M_DAT_HANDLES=1` (`--dat-handles`) | catalogue `.dat` handles kept between resources (independent of the mode) |
 
@@ -38,7 +38,22 @@ dispatcher clamp and cursor). Cases:
 
 1. **fast vs reference**, loose and catalogue records (two passes in a shuffled
    order): bytes, size globals, the four counters, the cursor and the stream
-   position; text sources fall back with `not_gzip`.
+   position (both against the reference object's state after its read, and
+   the reference itself against the chunk-loop formula `original_final()` of
+   the fixture); text sources fall back with `not_gzip`.
+   **1b. the record-cursor class** (`RR_CASE name=cursor`): twenty sources
+   `rr_cursor_<q>_<k>.pck` whose `(length − first) mod 1024` is `k` = 0…9 at
+   `q` = 1 and 3 chunks (payload sizes searched; alternating scrambled/plain,
+   every fifth with an FNAME header so `first ≠ 10`), each read loose and as a
+   record of `rr_cursor.dat`, whose last record (no padding after it) is a
+   class record. Per source: the reference stops at `length − k` for
+   `k` = 1…8 and at `length` otherwise (formula), fast mode leaves the same
+   cursor and position, the dispatcher's next clamped read from both states
+   returns the same bytes; through the verify stub (case 4) every one is
+   `equal` with `cursor_ok=1 position_ok=1` and `cursor_short` counts 32
+   (16 loose + 16 records); in the pool case a kept `.dat` handle runs the
+   game's sequence (open, class record, close, reopen, `fseek`, next record,
+   three times) against the reference on its own pooled handle.
 2. **fallbacks with restoration**: unopened, gz handle, progress flag,
    transparent file (and the reference still decodes it afterwards), position
    and cursor state, wrong CM, reserved FLG bits, short extent, invalid deflate
@@ -50,7 +65,9 @@ dispatcher clamp and cursor). Cases:
    (`verify_mismatched=0`); a tampered "original" (first byte flipped) is
    reported as a mismatch and still returned to the caller.
 5. **fast mode through the stub**: the reference never runs for gzip sources;
-   timing of the 3 MB file, fast core vs reference.
+   timing of the 3 MB file (loose and as a catalogue record) and the 31 KB
+   file, fast core vs reference, with the core's own phase stamps
+   (`RR_PHASES … read_us= scan_us= alloc_us= inflate_us= total_us=`).
 6. **`.dat` pool**: first open real, a concurrent open of the same path gets a
    distinct handle, close keeps, reopen reuses (and the reference reads the
    right record after the caller's `fseek`), write modes pass through, other
@@ -81,14 +98,39 @@ recorded summary.
   that dereferences the same object first thing; a probe-style guard would
   only protect a caller that the original would crash on as well.
 
-## Recorded numbers (bottle X3, 2026-09-12)
+## Recorded numbers (bottle X3, 2026-09-13, after the cursor fix)
 
 `run_resource_reader.py` (X3M_FIXTURE_BOTTLE=X3, arm64 Wine + FEX, zlib 1.2.3):
-**405 checks, 0 failures**.
+**4,707 checks, 0 failures** (the count grew from 405 because the payload
+search of the cursor case checks every `gzopen` it makes; the 20 sources
+took ~4,200 attempts).
+
+* cursor class: `RR_CASE name=cursor sources=20 class_records=16
+  loose_and_record_handled=20 last_record_class=1`; the reference stops at
+  `length − k` for `k` = 1…8 and at `length` for 0 and 9 (formula and
+  reference agree on all 20 loose and 20 record reads), fast mode leaves the
+  reference's cursor and position in every case and the dispatcher's next
+  read from both states returns the same bytes; through the verify stub
+  `RR_STATS_CURSOR verify_files=40 cursor_short=32 verify_equal=60
+  verify_mismatched=1` (the one mismatch is the deliberate tamper case); the
+  pooled sequence on `rr_cursor.dat` (class record, previous record, class
+  record; close/reopen between) reads equal to the reference on its own
+  pooled handle.
+* phases (the core's own stamps, msvcrt, warm cache, means over the rounds):
+  3 MB payload / 1.97 MB extent loose `read_us=462.8 scan_us=72.9
+  alloc_us=9.6 inflate_us=28328.8 total_us=29013.4`; the same as a catalogue
+  record `read_us=527.5 scan_us=141.5 alloc_us=10.8 inflate_us=28391.1
+  total_us=29240.6` (the XOR 0x33 pass costs ~70 µs per 2 MB); 31 KB payload
+  / 19.7 KB extent `read_us=6.7 scan_us=0.1 alloc_us=0.2 inflate_us=305.9
+  total_us=318.9`. **`inflate` is 96–98 % of our path**; ratios against the
+  reference 1.11× on all three. What the game run adds to this is the static
+  CRT's per-call cost (the reference's 10–40 `fgetc`, per-KiB `fread`) and
+  the cold read, both absent here.
 
 * fast vs reference: 10 loose sources handled (the text file falls back with
   `not_gzip`), 20 catalogue records handled over two shuffled passes; bytes,
-  size globals, counters, cursor and position equal in every case.
+  size globals, counters, cursor and position equal to the reference object's
+  state in every case (none of these sources is in the cursor class).
 * fallbacks (reason): gz_handle, progress, transparent → `not_gzip`, position
   and cursor → `state`, method, reserved, length, invalid block → `inflate`,
   wrong ISIZE → `size`, truncated → `inflate`, empty, header, alloc — each with
@@ -96,13 +138,13 @@ recorded summary.
   afterwards for the transparent and alloc cases).
 * verify mode through the chained stubs: `calls=22 handled=20 fallbacks=2
   verify_files=20 verify_equal=20 verify_mismatched=0`, 4,044,806 B in /
-  6,162,400 B out, ours 60.2 ms vs the reference 66.2 ms over the 20 files; the
+  6,162,400 B out, ours 63.2 ms vs the reference 68.1 ms over the 20 files; the
   tampered original is counted as one mismatch and still returned.
 * fast mode through the stubs: `handled=31 fallbacks=3` after the run, results
   equal to the payloads.
 * timing (hot cache, `decode` vs the reference on **msvcrt**, which has none of
-  the game CRT's per-call locking): 3 MB file 28.9 ms vs 32.1 ms (1.11×);
-  31 KB file 327.9 µs vs 345.2 µs (1.05×). In the fixture both sides are
+  the game CRT's per-call locking): 3 MB file 29.0 ms vs 32.2 ms (1.11×);
+  31 KB file 318.9 µs vs 355.3 µs (1.11×). In the fixture both sides are
   inflate-bound; the removed work per file (memset of the output, 10–40 locked
   `fgetc`, trailer seek/read pair, one `fread` + byte XOR + `inflate` per
   kilobyte) is what the game's static CRT under FEX makes expensive, so the
@@ -115,17 +157,62 @@ recorded summary.
 * pool: `opens=7 reused=2 real_opens=5 kept=4 real_closes=2`, one errored
   stream closed for real, drain closes the rest.
 
+## Run C (2026-09-12, bottle X3, review-29 build): the cursor class
+
+`--telemetry --resource-read verify --dat-handles`, log
+`/tmp/x3-bottleX3-run13/session-20260912-234442-216.log` (52 MB, grepped):
+`resource_reader_metric … calls=4210 handled=4084 fallbacks=126
+verify_files=4084 verify_equal=4064 verify_mismatched=20 verify_original_null=0
+catalogue=3384 scrambled=0 fallback_not_gzip=126` (every other reason 0),
+`bytes_in=789,471,900 bytes_out=2,101,058,340`, `fast_us=11,908,988.7
+fast_max_us=193,504.9 original_us=13,529,960.1`; `dat_handle_pool …
+installed=1 open_status=active close_status=active`, `dat_handle_pool_metric
+opens=594 reused=582 real_opens=12 … errors=0 full=0 held=12`.
+
+* **The 20 mismatches** are all `mismatches=0 globals_ok=1 counters_ok=1
+  cursor_ok=0` and carry six sizes (6170, 4948, 6226, 5959, 87536 ×9,
+  278325 ×3). Root cause and the record table:
+  [resource-reader.md "Record cursor after the chunk loop"](../reverse-engineering/resource-reader.md):
+  the original's 1 KiB loop (`0x004e8d50`–`0x004e8db7`) exits on
+  `Z_STREAM_END` and never requests the trailer, so for records whose
+  `(length − first) mod 1024` is 1…8 the cursor stops `rem` bytes short of
+  the record end; we set it to `length`. Confirmed offline against the 17
+  catalogues (42 of 7,180 gzip records are in the class; the six loaded ones
+  are exactly the logged sizes, each unique) and not related to the pool,
+  the record's position in the `.dat` or the comparison order (fresh handles
+  reproduce it in the fixture). Fix: the core predicts the loop's end from
+  the bytes `inflate` consumed, sets the cursor to it and seeks the stream
+  there in fast mode; verify compares cursor and `_ftell`.
+* **Speed, honestly**: 11.9 s ours vs 13.5 s the original over 4,084 files
+  is 2.9 ms/file, 66 MB/s in / 176 MB/s out, and biased against us: verify
+  runs our path first, so ours pays the cold page-cache read of every extent
+  and the original re-reads warm. The 193 ms maximum is one file's cold
+  read. The fixture's phase split (below) is on msvcrt with a warm cache; the
+  game-side split comes from the new `fast_read_us`/`fast_scan_us`/
+  `fast_alloc_us`/`fast_inflate_us` fields of the next run. The structural
+  gain that remains is bounded by what the original spends outside
+  `inflate` (memset, 10–40 locked `fgetc`, the trailer pair, one `fread` +
+  XOR + `inflate` call per KiB, `_fopen`/`_fclose` per resource); under FEX
+  `inflate` itself is the same zlib1.dll on both sides. The whole-extent
+  `fread` already bypasses the CRT's 4 KiB buffer for the multiple of the
+  buffer size (VC8 `_fread_nolock` reads `count − count % bufsize` straight
+  into the caller's buffer, one `_read`, plus one buffered `_read` for the
+  remainder), so a `setvbuf` or a direct `ReadFile` on `_get_osfhandle` would
+  save at most one syscall per file and was not done.
+
 ## What the next game run must show
 
-1. `tools/manage.py launch --direct --resource-read verify --dat-handles` (X3
-   bottle), one savegame load: `resource_reader mode=verify installed=1
-   status=active`, `dat_handle_pool … installed=1`, then at device destroy (or
-   every telemetry summary with `--telemetry`) `resource_reader_metric …
-   verify_files=N verify_equal=N verify_mismatched=0` with `fallback_*` counts
-   that add up to `calls − handled` (expected: `fallback_not_gzip` for plain
-   records, `fallback_gz_handle` for the savegame stream, everything else 0), and
-   `dat_handle_pool_metric reused ≈ opens − <number of distinct .dat files>`
-   with `errors=0 full=0`.
+1. `tools/manage.py launch --direct --telemetry --resource-read verify
+   --dat-handles` (X3 bottle), the run-C save and path: `resource_reader
+   mode=verify installed=1 status=active`, `dat_handle_pool … installed=1`,
+   then `resource_reader_metric … verify_files=N verify_equal=N
+   verify_mismatched=0` with **`cursor_short` ≈ 20** (the six class records,
+   each counted per read: run C read them 20 times) and no `resource_reader
+   verify equal=0` line at all; `fallback_*` counts adding up to `calls −
+   handled` (`fallback_not_gzip` for plain records, everything else 0);
+   `fast_read_us + fast_scan_us + fast_alloc_us + fast_inflate_us ≤ fast_us`
+   with the split reported in this file; `dat_handle_pool_metric reused ≈
+   opens − <number of distinct .dat files>` with `errors=0 full=0`.
 2. Then `--resource-read fast --dat-handles` with `--telemetry --loading-probes`:
    `resource_read` probe calls unchanged, its inclusive time and
    `crt_fgetc` calls collapsing, `CreateFileA`/`CloseHandle`/`GetFileType`

@@ -1798,8 +1798,9 @@ struct Fixture {
     }
     // ---- multisampled main target ("msaa" script; D3 of the native-Windows audit) ----
     // Three plain frames on a device whose back buffer carries
-    // X3M_FIXTURE_MSAA samples (default 2): the route latches the frame,
-    // refuses it once in the log (motion_output_msaa_refused), routes and
+    // X3M_FIXTURE_MSAA samples (default 2): the selector never latches it
+    // (latched=0, state Rejected); the route refuses it by name once in the
+    // log (motion_output_msaa_refused), routes and
     // jitters nothing, the resolve skips (taa_skip 11). No readback: a
     // multisampled surface cannot be read with GetRenderTargetData, and the
     // runner reads the DLL's per-frame lines instead.
