@@ -208,28 +208,43 @@ void cases(Fixture& f,unsigned generation){
     motion[8*W+8][3]=-1;f.upload(f.motion.p,motion);expect("object invalid sentinel",f.render(),8,8,.25f);
     motion[8*W+8][3]=.25f;f.upload(f.motion.p,motion);expect("reserved motion state rejected",f.render(),8,8,.25f);
     f.uploadDepth(f.oldDepth.p,.5f);motion[8*W+8][3]=0;f.upload(f.motion.p,motion);f.upload(f.old.p,image(.75f));expect("motion static fallback",f.render(),8,8,.5f);f.upload(f.old.p,old);
-    // The previous raster jitter is added AFTER the unjittered motion UV.
-    motion[8*W+8]={(9.25f)/W,(8.5f)/H,.5f,1};f.upload(f.motion.p,motion);f.prepare(.5f,0,0,.25f,0,true);
-    expect("motion previous jitter",f.render(),8,8,.5625f);
+    // The producer's RG is the previous UNJITTERED texture-center UV of the
+    // content at this jittered sample; history (unjittered grid) is read at RG
+    // plus the CURRENT raster jitter (+0.25 pixel: 9.25 -> 9.5). The previous
+    // jitter (-0.25, still packed in c5.xy) is not applied: adding it instead
+    // would sample 9.0 (0.40625), adding nothing 9.25 (0.484375).
+    motion[8*W+8]={(9.25f)/W,(8.5f)/H,.5f,1};f.upload(f.motion.p,motion);f.prepare(.5f,.25f,0,-.25f,0,true);
+    expect("motion adds current jitter, not previous",f.render(),8,8,.5625f);
     f.upload(f.old.p,image(8));f.prepare();expect("neighborhood clipping",f.render(),8,8,.625f);
     f.upload(f.current.p,checker(2,16));f.upload(f.old.p,image(8));expect("HDR preservation",f.render(),8,8,5,.01f);
     f.upload(f.current.p,checker(.25f,1));f.upload(f.old.p,image(std::numeric_limits<float>::quiet_NaN()));expect("invalid history color",f.render(),8,8,.25f);
     Image current=checker(.25f,1);current[8*W+8]={INFINITY,INFINITY,INFINITY,1};f.upload(f.current.p,current);expect("invalid current color",f.render(),8,8,0);
     f.upload(f.current.p,checker(.25f,1));f.upload(f.old.p,image(.75f));f.uploadDepth(f.depth.p,NAN);expect("invalid current depth",f.render(),8,8,.25f);
     f.uploadDepth(f.depth.p,.5f);f.uploadDepth(f.oldDepth.p,NAN);expect("invalid history depth",f.render(),8,8,.25f);f.uploadDepth(f.oldDepth.p,.5f);
-    // Jitter-aware camera reprojection selects previous x=9 only after subtracting
-    // current raster jitter and adding previous jitter (difference +1 pixel).
-    f.upload(f.old.p,old);f.prepare(.5f,-.5f,0,.5f,0);expect("camera jitter signs",f.render(),8,8,.5625f);
+    // Jitter-aware camera reprojection: the current raster jitter (-1 pixel) is
+    // subtracted before the inverse projection and restored after it, so the
+    // offset transforms through the camera matrix: under the x2 zoom pixel 8
+    // (content at 9) maps to 10 and lands on previous x=9 (0.875). The previous
+    // jitter (+0.5, packed in c5.xy) is NOT added (history is unjittered):
+    // the old convention (previous instead of current after the projection)
+    // would sample 10.5, a flipped current sign x=5 and no jitter handling x=8,
+    // all 0.25 against the single 0.875 history texel at x=9.
+    f.upload(f.old.p,old);f.prepare(.5f,-1,0,.5f,0,false,zoom);expect("camera jitter through zoom, previous ignored",f.render(),8,8,.5625f);
     // Alternating subpixel-jittered samples of a static, one-pixel stripe pattern.
     // Each raw sample is 0 or 1; its analytic pixel coverage is 0.5. GPU history
-    // ping-pongs for 16 frames; no CPU filtering or substitution supplies history.
+    // ping-pongs for 32 frames; no CPU filtering or substitution supplies history.
+    // History is sampled at the pixel's own (unjittered) center, so the result
+    // is the pure temporal average of the pixel's own samples (weight 0.9, ripple
+    // (1-w)/(1+w) around 0.5 plus the decaying start transient): 0.4536 on the
+    // even phase and 0.5083 on the odd phase, FP16-rounded per frame. The old
+    // convention blended the opposite-phase neighbors into every lookup.
     f.state.invalidate();float previousJitter=0;Image resolved;
-    for(unsigned frame=0;frame<16;++frame){float jitter=(frame&1)?.25f:-.25f;
+    for(unsigned frame=0;frame<32;++frame){float jitter=(frame&1)?.25f:-.25f;
         Image stripes=image(0);for(unsigned y=0;y<H;++y)for(unsigned x=0;x<W;++x){
             int cell=static_cast<int>(std::floor(float(x)-jitter));float value=(cell&1)?1.f:0.f;stripes[y*W+x]={value,value,value,1};}
-        f.upload(f.current.p,stripes);f.prepare(.875f,jitter,0,previousJitter,0);
+        f.upload(f.current.p,stripes);f.prepare(.9f,jitter,0,previousJitter,0);
         resolved=f.render(frame&1,frame?f.output[(frame-1)&1].p:nullptr);f.state.completed();previousJitter=jitter;
-        if(frame>=14)expect("static jitter accumulated coverage",resolved,8,8,.5f,.07f);
+        if(frame>=30)expect("static jitter accumulated coverage",resolved,8,8,(frame&1)?.5083f:.4536f,.02f);
     }
     f.state.begin(W,H,2);f.prepare();f.upload(f.current.p,image(.25f));expect("epoch reset",f.render(0,f.output[1].p),8,8,.25f);
     f.state.completed();f.state.begin(W*2,H,2);require(!f.state.valid,"resize invalidates");f.state.begin(W,H,2);

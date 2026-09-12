@@ -32,7 +32,11 @@ struct HistoryState {
     void completed() noexcept { valid=width!=0 && height!=0; }
 };
 // Populate constants from pixel displacement, whose positive Y points down.
-// Matrix must exclude jitter; equal-sized histories are required.
+// Matrix must exclude jitter; equal-sized histories are required. The current
+// jitter (c4.zw) is consumed by the camera path only. The previous jitter is
+// still packed into c5.xy for ABI stability but the shader does not read it:
+// history is the accumulated output on the unjittered grid and is sampled at
+// the previous unjittered position, so no previous-jitter term exists.
 inline bool prepare(ResolveConstants& out, const HistoryState& state,
                     const float* matrix_rows, float current_x, float current_y,
                     float previous_x, float previous_y, float weight,

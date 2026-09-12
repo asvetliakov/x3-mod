@@ -1,6 +1,6 @@
 ==== production-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-off-20260912-065508-181945\d3d9.dll
+MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-off-20260912-074138-154662\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -124,7 +124,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-on-20260912-065510-090351\d3d9.dll
+MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-on-20260912-074139-929301\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -248,7 +248,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-off-20260912-065511-780201\d3d9.dll
+MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-off-20260912-074141-670274\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -372,7 +372,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-on-20260912-065513-421477\d3d9.dll
+MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-on-20260912-074143-302204\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -568,7 +568,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=90 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08 depth_pixels=44284 depth_written=27170 max_current_depth_error=3.69455019e-06 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-ownership-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-off-20260912-065515-174748\d3d9.dll
+MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-off-20260912-074145-173919\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -692,7 +692,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-ownership-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-on-20260912-065516-858072\d3d9.dll
+MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-on-20260912-074146-846046\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -816,7 +816,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-ownership-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-off-20260912-065518-580700\d3d9.dll
+MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-off-20260912-074148-561079\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -940,7 +940,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-ownership-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-on-20260912-065520-234152\d3d9.dll
+MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-on-20260912-074150-196991\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1136,7 +1136,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=90 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08 depth_pixels=44284 depth_written=27170 max_current_depth_error=3.69455019e-06 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-depth-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-off-20260912-065521-931851\d3d9.dll
+MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-off-20260912-074151-922670\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1260,7 +1260,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-depth-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-on-20260912-065523-690100\d3d9.dll
+MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-depth-on-20260912-074153-917934\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1384,7 +1384,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-depth-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-off-20260912-065525-383765\d3d9.dll
+MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-off-20260912-074155-803904\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1508,7 +1508,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-depth-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-on-20260912-065527-032504\d3d9.dll
+MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-depth-on-20260912-074157-433097\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1704,7 +1704,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=90 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08 depth_pixels=44284 depth_written=27170 max_current_depth_error=3.69455019e-06 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-admission-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-off-20260912-065528-739581\d3d9.dll
+MODE seam=0 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-off-20260912-074159-358798\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1828,7 +1828,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-admission-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-on-20260912-065530-402040\d3d9.dll
+MODE seam=0 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-admission-on-20260912-074201-085255\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -1952,7 +1952,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-admission-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-off-20260912-065532-157665\d3d9.dll
+MODE seam=1 enabled=0 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-off-20260912-074202-884751\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -2076,7 +2076,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-admission-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-on-20260912-065534-128844\d3d9.dll
+MODE seam=1 enabled=1 jitter=0 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-admission-on-20260912-074204-592197\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -2272,7 +2272,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=90 restorations=39 frames=12 motion_pixels=44284 matched_pixels=10261 max_uv_pixels=0.00156247616 max_depth_error=3.69792081e-08 depth_pixels=44284 depth_written=27170 max_current_depth_error=3.69455019e-06 coverage_frames=12 coverage_pixels=48242 coverage_ambiguous=910 jitter=0 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-jitter-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-jitter-on-20260912-065536-014563\d3d9.dll
+MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-jitter-on-20260912-074206-522641\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -2396,7 +2396,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=30 restorations=39 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-jitter-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-jitter-on-20260912-065537-904417\d3d9.dll
+MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=0 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-jitter-on-20260912-074208-345577\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -2592,7 +2592,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=90 restorations=39 frames=12 motion_pixels=44279 matched_pixels=10348 max_uv_pixels=0.00191186365 max_depth_error=7.21407726e-08 depth_pixels=44279 depth_written=27293 max_current_depth_error=3.74090846e-06 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=0 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== production-taa-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-taa-on-20260912-065539-687086\d3d9.dll
+MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-taa-on-20260912-074210-460640\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -2791,7 +2791,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=69 restorations=51 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=1 taa_frames=12 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-taa-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-taa-on-20260912-065541-200880\d3d9.dll
+MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-taa-on-20260912-074212-697849\d3d9.dll
 CHECK local files are the reviewed pair PASS
 CHECK reference device uses the system d3d9, not the proxy PASS
 RESTORE frame=0 label=fill differences=0
@@ -2824,19 +2824,19 @@ RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=1 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=1 x=35 y=0 before=4d4c1e0b after=4d4c1f0b
 CHANGED frame=1 x=50 y=1 before=4d4c1f0b after=4d4d1f0b
-CHANGED frame=1 x=32 y=2 before=4d4c1e0b after=4d4b1e0b
-CHANGED frame=1 x=46 y=2 before=4d4d1f0b after=4d4c1f0b
-CHANGED frame=1 x=59 y=2 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=1 x=51 y=1 before=4d4c1f0b after=4d4d1f0b
+CHANGED frame=1 x=52 y=1 before=4d4c1f0b after=4d4d1f0b
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=1 history=1 cut=0 changed=93
+TAA frame=1 history=1 cut=0 changed=145
 COLOR_BEFORE frame=1 hash=9d598f52bb65c0a6
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=1 jitter=1 jx=-0.250000 jy=0.166667 background_color=ff203040 checked=4095 ambiguous=1 material=2659 background=1436 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=1 hash=007b667d5d74a6d1
+COLOR frame=1 hash=258888a0a65dcf96
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -2906,12 +2906,12 @@ CHANGED frame=4 x=55 y=1 before=ff8040bf after=ff51324d
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=4 history=1 cut=0 changed=104
+TAA frame=4 history=1 cut=0 changed=113
 COLOR_BEFORE frame=4 hash=c9c5e220baccde15
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=4 jitter=1 jx=0.125000 jy=0.277778 background_color=ff203040 checked=4095 ambiguous=1 material=190 background=1418 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=4 hash=b34d9ee0c6090f64
+COLOR frame=4 hash=965f4492be4b1710
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -2974,19 +2974,19 @@ RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=7 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=7 x=12 y=4 before=4d4c1f0b after=4d47260e
-CHANGED frame=7 x=13 y=4 before=6733431c after=6733431d
-CHANGED frame=7 x=20 y=4 before=6733431d after=6733441d
-CHANGED frame=7 x=12 y=5 before=4d4c1f0b after=4d47260e
+CHANGED frame=7 x=7 y=4 before=4d4c1f0b after=4d4b1e0b
+CHANGED frame=7 x=13 y=4 before=6733431c after=67403013
+CHANGED frame=7 x=6 y=5 before=4d4c1f0b after=4d4b1e0b
+CHANGED frame=7 x=13 y=5 before=6733431d after=67403013
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=7 history=1 cut=0 changed=25
+TAA frame=7 history=1 cut=0 changed=38
 COLOR_BEFORE frame=7 hash=ae0b3498446c57df
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=7 jitter=1 jx=-0.437500 jy=0.388889 background_color=ff203040 checked=4096 ambiguous=0 material=190 background=1386 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=7 hash=baf89f9f5b27292d
+COLOR frame=7 hash=711f8ca891ec756e
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3047,19 +3047,19 @@ RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=10 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=10 x=57 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=10 x=5 y=3 before=4d4b1e0b after=4d4b1f0b
 CHANGED frame=10 x=6 y=3 before=4d4c1e0b after=4d4c1f0b
-CHANGED frame=10 x=11 y=3 before=4d4c1f0b after=4d4a220d
-CHANGED frame=10 x=20 y=3 before=6733431d after=6733441d
-CHANGED frame=10 x=5 y=4 before=4d4c1e0b after=4d4c1f0b
+CHANGED frame=10 x=11 y=3 before=4d4c1f0b after=4d3e3214
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=10 history=1 cut=0 changed=28
+TAA frame=10 history=1 cut=0 changed=33
 COLOR_BEFORE frame=10 hash=750cdfe97753849e
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=10 jitter=1 jx=0.250000 jy=-0.388889 background_color=ff203040 checked=4096 ambiguous=0 material=2686 background=1410 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=10 hash=4ef4e69aa2c198eb
+COLOR frame=10 hash=9c7f2971a125b3d6
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3073,19 +3073,19 @@ RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=11 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=11 x=33 y=1 before=4d4c1e0b after=4d4b1e0b
 CHANGED frame=11 x=49 y=1 before=4d4c1f0b after=4d4d1f0b
-CHANGED frame=11 x=51 y=1 before=4d4d1f0b after=4d4c1f0b
-CHANGED frame=11 x=52 y=1 before=4d4d1f0b after=4d4c1f0b
-CHANGED frame=11 x=53 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=11 x=54 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=11 x=56 y=1 before=4d4c1f0b after=4d4d1f0b
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=11 history=1 cut=0 changed=124
+TAA frame=11 history=1 cut=0 changed=226
 COLOR_BEFORE frame=11 hash=245a6dd4042eff8d
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=11 jitter=1 jx=-0.375000 jy=-0.055556 background_color=ff203040 checked=4096 ambiguous=0 material=2680 background=1416 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=11 hash=71b542b46fc08aa6
+COLOR frame=11 hash=15dabe2a5332bb06
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3100,10 +3100,10 @@ CHECK reference device final Release reaches zero PASS
 CHECK reference factory final Release reaches zero PASS
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
-RESULT PASS checks=150 restorations=51 frames=12 motion_pixels=44279 matched_pixels=10348 max_uv_pixels=0.00191186365 max_depth_error=7.21407726e-08 depth_pixels=44279 depth_written=27293 max_current_depth_error=3.74090846e-06 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=1 taa_frames=12 taa_history_frames=6 taa_reference_frames=12 taa_changed_pixels=374
+RESULT PASS checks=150 restorations=51 frames=12 motion_pixels=44279 matched_pixels=10348 max_uv_pixels=0.00191186365 max_depth_error=7.21407726e-08 depth_pixels=44279 depth_written=27293 max_current_depth_error=3.74090846e-06 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=1 taa_frames=12 taa_history_frames=6 taa_reference_frames=12 taa_changed_pixels=555
 ==== production-ownership-taa-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-taa-on-20260912-065543-439676\d3d9.dll
+MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-production-ownership-taa-on-20260912-074214-696335\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
@@ -3302,7 +3302,7 @@ CHECK factory final Release reaches zero PASS
 RESULT PASS checks=69 restorations=51 frames=12 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=1 taa_frames=12 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== seam-ownership-taa-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-taa-on-20260912-065545-311218\d3d9.dll
+MODE seam=1 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=0 width=64 height=64 dll=Y:\x3-mod\verification\probe\build\motion-output-seam-ownership-taa-on-20260912-074216-510622\d3d9.dll
 CHECK local files are the reviewed pair PASS
 CHECK reference device uses the system d3d9, not the proxy PASS
 RESTORE frame=0 label=fill differences=0
@@ -3335,19 +3335,19 @@ RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=1 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=1 x=35 y=0 before=4d4c1e0b after=4d4c1f0b
 CHANGED frame=1 x=50 y=1 before=4d4c1f0b after=4d4d1f0b
-CHANGED frame=1 x=32 y=2 before=4d4c1e0b after=4d4b1e0b
-CHANGED frame=1 x=46 y=2 before=4d4d1f0b after=4d4c1f0b
-CHANGED frame=1 x=59 y=2 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=1 x=51 y=1 before=4d4c1f0b after=4d4d1f0b
+CHANGED frame=1 x=52 y=1 before=4d4c1f0b after=4d4d1f0b
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=1 history=1 cut=0 changed=93
+TAA frame=1 history=1 cut=0 changed=145
 COLOR_BEFORE frame=1 hash=9d598f52bb65c0a6
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=1 jitter=1 jx=-0.250000 jy=0.166667 background_color=ff203040 checked=4095 ambiguous=1 material=2659 background=1436 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=1 hash=007b667d5d74a6d1
+COLOR frame=1 hash=258888a0a65dcf96
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3417,12 +3417,12 @@ CHANGED frame=4 x=55 y=1 before=ff8040bf after=ff51324d
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=4 history=1 cut=0 changed=104
+TAA frame=4 history=1 cut=0 changed=113
 COLOR_BEFORE frame=4 hash=c9c5e220baccde15
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=4 jitter=1 jx=0.125000 jy=0.277778 background_color=ff203040 checked=4095 ambiguous=1 material=190 background=1418 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=4 hash=b34d9ee0c6090f64
+COLOR frame=4 hash=965f4492be4b1710
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3485,19 +3485,19 @@ RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=7 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
-CHANGED frame=7 x=12 y=4 before=4d4c1f0b after=4d47260e
-CHANGED frame=7 x=13 y=4 before=6733431c after=6733431d
-CHANGED frame=7 x=20 y=4 before=6733431d after=6733441d
-CHANGED frame=7 x=12 y=5 before=4d4c1f0b after=4d47260e
+CHANGED frame=7 x=7 y=4 before=4d4c1f0b after=4d4b1e0b
+CHANGED frame=7 x=13 y=4 before=6733431c after=67403013
+CHANGED frame=7 x=6 y=5 before=4d4c1f0b after=4d4b1e0b
+CHANGED frame=7 x=13 y=5 before=6733431d after=67403013
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=7 history=1 cut=0 changed=25
+TAA frame=7 history=1 cut=0 changed=38
 COLOR_BEFORE frame=7 hash=ae0b3498446c57df
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=7 jitter=1 jx=-0.437500 jy=0.388889 background_color=ff203040 checked=4096 ambiguous=0 material=190 background=1386 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=7 hash=baf89f9f5b27292d
+COLOR frame=7 hash=711f8ca891ec756e
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3558,19 +3558,19 @@ RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=10 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=10 x=57 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=10 x=5 y=3 before=4d4b1e0b after=4d4b1f0b
 CHANGED frame=10 x=6 y=3 before=4d4c1e0b after=4d4c1f0b
-CHANGED frame=10 x=11 y=3 before=4d4c1f0b after=4d4a220d
-CHANGED frame=10 x=20 y=3 before=6733431d after=6733441d
-CHANGED frame=10 x=5 y=4 before=4d4c1e0b after=4d4c1f0b
+CHANGED frame=10 x=11 y=3 before=4d4c1f0b after=4d3e3214
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=10 history=1 cut=0 changed=28
+TAA frame=10 history=1 cut=0 changed=33
 COLOR_BEFORE frame=10 hash=750cdfe97753849e
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=10 jitter=1 jx=0.250000 jy=-0.388889 background_color=ff203040 checked=4096 ambiguous=0 material=2686 background=1410 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=10 hash=4ef4e69aa2c198eb
+COLOR frame=10 hash=9c7f2971a125b3d6
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3584,19 +3584,19 @@ RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=3 object=B routed=1 matched=1 jittered=1
 RESTORE frame=11 label=boundary differences=0
 CHECK the application's bloom copy receives the main target as resolved PASS
+CHANGED frame=11 x=33 y=1 before=4d4c1e0b after=4d4b1e0b
 CHANGED frame=11 x=49 y=1 before=4d4c1f0b after=4d4d1f0b
-CHANGED frame=11 x=51 y=1 before=4d4d1f0b after=4d4c1f0b
-CHANGED frame=11 x=52 y=1 before=4d4d1f0b after=4d4c1f0b
-CHANGED frame=11 x=53 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=11 x=54 y=1 before=4d4d1f0b after=4d4c1f0b
+CHANGED frame=11 x=56 y=1 before=4d4c1f0b after=4d4d1f0b
 CHECK main target after the copy equals the reference resolve of the same inputs, byte for byte PASS
 CHECK reference FP16 output written PASS
 CHECK history use follows the script (first frame, Reset and cut frames run current-only) PASS
-TAA frame=11 history=1 cut=0 changed=124
+TAA frame=11 history=1 cut=0 changed=226
 COLOR_BEFORE frame=11 hash=245a6dd4042eff8d
 CHECK an uncovered pixel gives the frame's background colour PASS
 COVERAGE frame=11 jitter=1 jx=-0.375000 jy=-0.055556 background_color=ff203040 checked=4096 ambiguous=0 material=2680 background=1416 mismatches=0
 CHECK rasterized coverage matches the CPU reference at the jittered sample positions PASS
-COLOR frame=11 hash=71b542b46fc08aa6
+COLOR frame=11 hash=15dabe2a5332bb06
 CHECK motion target matches the main dimensions PASS
 CHECK depth target matches the main dimensions PASS
 CHECK routed draws upload inverse size and zero prior jitter in c216 PASS
@@ -3611,612 +3611,612 @@ CHECK reference device final Release reaches zero PASS
 CHECK reference factory final Release reaches zero PASS
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
-RESULT PASS checks=150 restorations=51 frames=12 motion_pixels=44279 matched_pixels=10348 max_uv_pixels=0.00191186365 max_depth_error=7.21407726e-08 depth_pixels=44279 depth_written=27293 max_current_depth_error=3.74090846e-06 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=1 taa_frames=12 taa_history_frames=6 taa_reference_frames=12 taa_changed_pixels=374
+RESULT PASS checks=150 restorations=51 frames=12 motion_pixels=44279 matched_pixels=10348 max_uv_pixels=0.00191186365 max_depth_error=7.21407726e-08 depth_pixels=44279 depth_written=27293 max_current_depth_error=3.74090846e-06 coverage_frames=12 coverage_pixels=48957 coverage_ambiguous=195 jitter=1 taa=1 taa_frames=12 taa_history_frames=6 taa_reference_frames=12 taa_changed_pixels=555
 ==== bench-1280x768-taa-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=1280 height=768 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-1280x768-taa-off-20260912-065547-516814\d3d9.dll
+MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=1280 height=768 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-1280x768-taa-off-20260912-074218-561626\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=0 width=1280 height=768 boundary_ms=1.4360
+BENCH frame=0 width=1280 height=768 boundary_ms=1.4115
 RESTORE frame=1 label=fill differences=0
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=1 width=1280 height=768 boundary_ms=0.3455
+BENCH frame=1 width=1280 height=768 boundary_ms=0.3445
 RESTORE frame=2 label=fill differences=0
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=2 width=1280 height=768 boundary_ms=0.6829
+BENCH frame=2 width=1280 height=768 boundary_ms=0.3338
 RESTORE frame=3 label=fill differences=0
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=3 width=1280 height=768 boundary_ms=0.3270
+BENCH frame=3 width=1280 height=768 boundary_ms=0.3244
 RESTORE frame=4 label=fill differences=0
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=4 width=1280 height=768 boundary_ms=0.6879
+BENCH frame=4 width=1280 height=768 boundary_ms=0.7125
 RESTORE frame=5 label=fill differences=0
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=5 width=1280 height=768 boundary_ms=0.3297
+BENCH frame=5 width=1280 height=768 boundary_ms=0.6008
 RESTORE frame=6 label=fill differences=0
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=6 width=1280 height=768 boundary_ms=0.3317
+BENCH frame=6 width=1280 height=768 boundary_ms=0.3741
 RESTORE frame=7 label=fill differences=0
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=7 width=1280 height=768 boundary_ms=0.2052
+BENCH frame=7 width=1280 height=768 boundary_ms=0.3619
 RESTORE frame=8 label=fill differences=0
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=8 width=1280 height=768 boundary_ms=0.3181
+BENCH frame=8 width=1280 height=768 boundary_ms=0.3361
 RESTORE frame=9 label=fill differences=0
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=9 width=1280 height=768 boundary_ms=0.3305
+BENCH frame=9 width=1280 height=768 boundary_ms=0.3294
 RESTORE frame=10 label=fill differences=0
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=10 width=1280 height=768 boundary_ms=0.3298
+BENCH frame=10 width=1280 height=768 boundary_ms=0.3347
 RESTORE frame=11 label=fill differences=0
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=11 width=1280 height=768 boundary_ms=0.3274
+BENCH frame=11 width=1280 height=768 boundary_ms=0.3519
 RESTORE frame=12 label=fill differences=0
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=12 width=1280 height=768 boundary_ms=0.3270
+BENCH frame=12 width=1280 height=768 boundary_ms=0.3257
 RESTORE frame=13 label=fill differences=0
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=13 width=1280 height=768 boundary_ms=0.3366
+BENCH frame=13 width=1280 height=768 boundary_ms=0.3303
 RESTORE frame=14 label=fill differences=0
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=14 width=1280 height=768 boundary_ms=0.3222
+BENCH frame=14 width=1280 height=768 boundary_ms=0.3290
 RESTORE frame=15 label=fill differences=0
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=15 width=1280 height=768 boundary_ms=0.3317
+BENCH frame=15 width=1280 height=768 boundary_ms=0.3378
 RESTORE frame=16 label=fill differences=0
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=16 width=1280 height=768 boundary_ms=0.3239
+BENCH frame=16 width=1280 height=768 boundary_ms=0.3393
 RESTORE frame=17 label=fill differences=0
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=17 width=1280 height=768 boundary_ms=0.3460
+BENCH frame=17 width=1280 height=768 boundary_ms=0.3315
 RESTORE frame=18 label=fill differences=0
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=18 width=1280 height=768 boundary_ms=0.3451
+BENCH frame=18 width=1280 height=768 boundary_ms=0.3419
 RESTORE frame=19 label=fill differences=0
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=19 width=1280 height=768 boundary_ms=0.3197
+BENCH frame=19 width=1280 height=768 boundary_ms=0.3178
 RESTORE frame=20 label=fill differences=0
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=20 width=1280 height=768 boundary_ms=0.3314
+BENCH frame=20 width=1280 height=768 boundary_ms=0.3330
 RESTORE frame=21 label=fill differences=0
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=21 width=1280 height=768 boundary_ms=0.3212
+BENCH frame=21 width=1280 height=768 boundary_ms=0.3268
 RESTORE frame=22 label=fill differences=0
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=22 width=1280 height=768 boundary_ms=0.3300
+BENCH frame=22 width=1280 height=768 boundary_ms=0.3469
 RESTORE frame=23 label=fill differences=0
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=23 width=1280 height=768 boundary_ms=0.3345
-BENCH_SUMMARY width=1280 height=768 frames=20 min_ms=0.2052 median_ms=0.3300 max_ms=0.6879 timing=cpu_inclusive_event_synchronized
+BENCH frame=23 width=1280 height=768 boundary_ms=0.3325
+BENCH_SUMMARY width=1280 height=768 frames=20 min_ms=0.3178 median_ms=0.3361 max_ms=0.7125 timing=cpu_inclusive_event_synchronized
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
 RESULT PASS checks=4 restorations=72 frames=24 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=0 coverage_pixels=0 coverage_ambiguous=0 jitter=1 taa=1 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== bench-1280x768-taa-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=1280 height=768 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-1280x768-taa-on-20260912-065549-248764\d3d9.dll
+MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=1280 height=768 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-1280x768-taa-on-20260912-074220-247819\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=0 width=1280 height=768 boundary_ms=13.2123
+BENCH frame=0 width=1280 height=768 boundary_ms=14.0748
 RESTORE frame=1 label=fill differences=0
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=1 width=1280 height=768 boundary_ms=1.7563
+BENCH frame=1 width=1280 height=768 boundary_ms=1.6523
 RESTORE frame=2 label=fill differences=0
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=2 width=1280 height=768 boundary_ms=1.3807
+BENCH frame=2 width=1280 height=768 boundary_ms=0.9875
 RESTORE frame=3 label=fill differences=0
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=3 width=1280 height=768 boundary_ms=1.2573
+BENCH frame=3 width=1280 height=768 boundary_ms=1.3464
 RESTORE frame=4 label=fill differences=0
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=4 width=1280 height=768 boundary_ms=1.0296
+BENCH frame=4 width=1280 height=768 boundary_ms=1.3171
 RESTORE frame=5 label=fill differences=0
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=5 width=1280 height=768 boundary_ms=1.2424
+BENCH frame=5 width=1280 height=768 boundary_ms=0.9946
 RESTORE frame=6 label=fill differences=0
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=6 width=1280 height=768 boundary_ms=1.0362
+BENCH frame=6 width=1280 height=768 boundary_ms=1.0501
 RESTORE frame=7 label=fill differences=0
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=7 width=1280 height=768 boundary_ms=0.9323
+BENCH frame=7 width=1280 height=768 boundary_ms=0.9798
 RESTORE frame=8 label=fill differences=0
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=8 width=1280 height=768 boundary_ms=1.0587
+BENCH frame=8 width=1280 height=768 boundary_ms=1.0395
 RESTORE frame=9 label=fill differences=0
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=9 width=1280 height=768 boundary_ms=0.9208
+BENCH frame=9 width=1280 height=768 boundary_ms=1.0648
 RESTORE frame=10 label=fill differences=0
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=10 width=1280 height=768 boundary_ms=0.9200
+BENCH frame=10 width=1280 height=768 boundary_ms=0.9955
 RESTORE frame=11 label=fill differences=0
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=11 width=1280 height=768 boundary_ms=1.0210
+BENCH frame=11 width=1280 height=768 boundary_ms=1.0249
 RESTORE frame=12 label=fill differences=0
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=12 width=1280 height=768 boundary_ms=0.9313
+BENCH frame=12 width=1280 height=768 boundary_ms=0.9970
 RESTORE frame=13 label=fill differences=0
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=13 width=1280 height=768 boundary_ms=1.0044
+BENCH frame=13 width=1280 height=768 boundary_ms=0.9311
 RESTORE frame=14 label=fill differences=0
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=14 width=1280 height=768 boundary_ms=0.9960
+BENCH frame=14 width=1280 height=768 boundary_ms=1.0403
 RESTORE frame=15 label=fill differences=0
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=15 width=1280 height=768 boundary_ms=1.0134
+BENCH frame=15 width=1280 height=768 boundary_ms=1.0188
 RESTORE frame=16 label=fill differences=0
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=16 width=1280 height=768 boundary_ms=1.0369
+BENCH frame=16 width=1280 height=768 boundary_ms=1.0488
 RESTORE frame=17 label=fill differences=0
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=17 width=1280 height=768 boundary_ms=0.9041
+BENCH frame=17 width=1280 height=768 boundary_ms=1.0296
 RESTORE frame=18 label=fill differences=0
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=18 width=1280 height=768 boundary_ms=1.0262
+BENCH frame=18 width=1280 height=768 boundary_ms=1.0081
 RESTORE frame=19 label=fill differences=0
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=19 width=1280 height=768 boundary_ms=1.0209
+BENCH frame=19 width=1280 height=768 boundary_ms=0.9963
 RESTORE frame=20 label=fill differences=0
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=20 width=1280 height=768 boundary_ms=1.0020
+BENCH frame=20 width=1280 height=768 boundary_ms=0.9116
 RESTORE frame=21 label=fill differences=0
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=21 width=1280 height=768 boundary_ms=0.9003
+BENCH frame=21 width=1280 height=768 boundary_ms=0.9592
 RESTORE frame=22 label=fill differences=0
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=22 width=1280 height=768 boundary_ms=0.9121
+BENCH frame=22 width=1280 height=768 boundary_ms=1.0014
 RESTORE frame=23 label=fill differences=0
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=23 width=1280 height=768 boundary_ms=0.9985
-BENCH_SUMMARY width=1280 height=768 frames=20 min_ms=0.9003 median_ms=1.0044 max_ms=1.2424 timing=cpu_inclusive_event_synchronized
+BENCH frame=23 width=1280 height=768 boundary_ms=0.9565
+BENCH_SUMMARY width=1280 height=768 frames=20 min_ms=0.9116 median_ms=1.0081 max_ms=1.3171 timing=cpu_inclusive_event_synchronized
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
 RESULT PASS checks=4 restorations=72 frames=24 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=0 coverage_pixels=0 coverage_ambiguous=0 jitter=1 taa=1 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== bench-5120x1440-taa-off exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=5120 height=1440 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-5120x1440-taa-off-20260912-065550-983647\d3d9.dll
+MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=5120 height=1440 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-5120x1440-taa-off-20260912-074221-959509\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=0 width=5120 height=1440 boundary_ms=6.0681
+BENCH frame=0 width=5120 height=1440 boundary_ms=6.6669
 RESTORE frame=1 label=fill differences=0
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=1 width=5120 height=1440 boundary_ms=1.0281
+BENCH frame=1 width=5120 height=1440 boundary_ms=1.0384
 RESTORE frame=2 label=fill differences=0
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=2 width=5120 height=1440 boundary_ms=1.0158
+BENCH frame=2 width=5120 height=1440 boundary_ms=1.0505
 RESTORE frame=3 label=fill differences=0
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=3 width=5120 height=1440 boundary_ms=1.1160
+BENCH frame=3 width=5120 height=1440 boundary_ms=1.0601
 RESTORE frame=4 label=fill differences=0
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=4 width=5120 height=1440 boundary_ms=0.6934
+BENCH frame=4 width=5120 height=1440 boundary_ms=0.9866
 RESTORE frame=5 label=fill differences=0
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=5 width=5120 height=1440 boundary_ms=1.0554
+BENCH frame=5 width=5120 height=1440 boundary_ms=0.6339
 RESTORE frame=6 label=fill differences=0
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=6 width=5120 height=1440 boundary_ms=0.7040
+BENCH frame=6 width=5120 height=1440 boundary_ms=0.6018
 RESTORE frame=7 label=fill differences=0
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=7 width=5120 height=1440 boundary_ms=0.6827
+BENCH frame=7 width=5120 height=1440 boundary_ms=0.6999
 RESTORE frame=8 label=fill differences=0
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=8 width=5120 height=1440 boundary_ms=0.6628
+BENCH frame=8 width=5120 height=1440 boundary_ms=0.6061
 RESTORE frame=9 label=fill differences=0
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=9 width=5120 height=1440 boundary_ms=0.7664
+BENCH frame=9 width=5120 height=1440 boundary_ms=0.5786
 RESTORE frame=10 label=fill differences=0
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=10 width=5120 height=1440 boundary_ms=0.7125
+BENCH frame=10 width=5120 height=1440 boundary_ms=0.6483
 RESTORE frame=11 label=fill differences=0
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=11 width=5120 height=1440 boundary_ms=0.7110
+BENCH frame=11 width=5120 height=1440 boundary_ms=0.7249
 RESTORE frame=12 label=fill differences=0
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=12 width=5120 height=1440 boundary_ms=0.7609
+BENCH frame=12 width=5120 height=1440 boundary_ms=0.6528
 RESTORE frame=13 label=fill differences=0
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=13 width=5120 height=1440 boundary_ms=0.8720
+BENCH frame=13 width=5120 height=1440 boundary_ms=0.6124
 RESTORE frame=14 label=fill differences=0
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=14 width=5120 height=1440 boundary_ms=0.6742
+BENCH frame=14 width=5120 height=1440 boundary_ms=0.6072
 RESTORE frame=15 label=fill differences=0
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=15 width=5120 height=1440 boundary_ms=0.6775
+BENCH frame=15 width=5120 height=1440 boundary_ms=0.7102
 RESTORE frame=16 label=fill differences=0
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=16 width=5120 height=1440 boundary_ms=0.6401
+BENCH frame=16 width=5120 height=1440 boundary_ms=0.5801
 RESTORE frame=17 label=fill differences=0
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=17 width=5120 height=1440 boundary_ms=0.8008
+BENCH frame=17 width=5120 height=1440 boundary_ms=0.6086
 RESTORE frame=18 label=fill differences=0
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=18 width=5120 height=1440 boundary_ms=0.6800
+BENCH frame=18 width=5120 height=1440 boundary_ms=0.6089
 RESTORE frame=19 label=fill differences=0
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=19 width=5120 height=1440 boundary_ms=0.8056
+BENCH frame=19 width=5120 height=1440 boundary_ms=0.5951
 RESTORE frame=20 label=fill differences=0
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=20 width=5120 height=1440 boundary_ms=0.7547
+BENCH frame=20 width=5120 height=1440 boundary_ms=0.5853
 RESTORE frame=21 label=fill differences=0
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=21 width=5120 height=1440 boundary_ms=0.6806
+BENCH frame=21 width=5120 height=1440 boundary_ms=0.7164
 RESTORE frame=22 label=fill differences=0
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=22 width=5120 height=1440 boundary_ms=0.7555
+BENCH frame=22 width=5120 height=1440 boundary_ms=0.5702
 RESTORE frame=23 label=fill differences=0
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=23 width=5120 height=1440 boundary_ms=0.7037
-BENCH_SUMMARY width=5120 height=1440 frames=20 min_ms=0.6401 median_ms=0.7110 max_ms=1.0554 timing=cpu_inclusive_event_synchronized
+BENCH frame=23 width=5120 height=1440 boundary_ms=0.5894
+BENCH_SUMMARY width=5120 height=1440 frames=20 min_ms=0.5702 median_ms=0.6089 max_ms=0.9866 timing=cpu_inclusive_event_synchronized
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
 RESULT PASS checks=4 restorations=72 frames=24 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=0 coverage_pixels=0 coverage_ambiguous=0 jitter=1 taa=1 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0
 ==== bench-5120x1440-taa-on exit=0
 CHECK DLL seam presence matches the requested mode PASS
-MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=5120 height=1440 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-5120x1440-taa-on-20260912-065552-808767\d3d9.dll
+MODE seam=0 enabled=1 jitter=1 jitter_samples=8 taa=1 bench=1 width=5120 height=1440 dll=Y:\x3-mod\verification\probe\build\motion-output-bench-5120x1440-taa-on-20260912-074224-076619\d3d9.dll
 CHECK local files are the reviewed pair PASS
 RESTORE frame=0 label=fill differences=0
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=0 label=draw differences=0
 EXPECT frame=0 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=0 width=5120 height=1440 boundary_ms=22.1300
+BENCH frame=0 width=5120 height=1440 boundary_ms=35.1237
 RESTORE frame=1 label=fill differences=0
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=1 label=draw differences=0
 EXPECT frame=1 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=1 width=5120 height=1440 boundary_ms=8.6367
+BENCH frame=1 width=5120 height=1440 boundary_ms=15.0237
 RESTORE frame=2 label=fill differences=0
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=2 label=draw differences=0
 EXPECT frame=2 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=2 width=5120 height=1440 boundary_ms=3.1891
+BENCH frame=2 width=5120 height=1440 boundary_ms=5.9796
 RESTORE frame=3 label=fill differences=0
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=3 label=draw differences=0
 EXPECT frame=3 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=3 width=5120 height=1440 boundary_ms=2.9052
+BENCH frame=3 width=5120 height=1440 boundary_ms=3.1084
 RESTORE frame=4 label=fill differences=0
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=4 label=draw differences=0
 EXPECT frame=4 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=4 width=5120 height=1440 boundary_ms=2.7248
+BENCH frame=4 width=5120 height=1440 boundary_ms=3.3512
 RESTORE frame=5 label=fill differences=0
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=5 label=draw differences=0
 EXPECT frame=5 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=5 width=5120 height=1440 boundary_ms=2.7561
+BENCH frame=5 width=5120 height=1440 boundary_ms=2.9718
 RESTORE frame=6 label=fill differences=0
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=6 label=draw differences=0
 EXPECT frame=6 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=6 width=5120 height=1440 boundary_ms=2.7559
+BENCH frame=6 width=5120 height=1440 boundary_ms=2.9447
 RESTORE frame=7 label=fill differences=0
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=7 label=draw differences=0
 EXPECT frame=7 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=7 width=5120 height=1440 boundary_ms=2.7041
+BENCH frame=7 width=5120 height=1440 boundary_ms=2.7723
 RESTORE frame=8 label=fill differences=0
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=8 label=draw differences=0
 EXPECT frame=8 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=8 width=5120 height=1440 boundary_ms=2.6603
+BENCH frame=8 width=5120 height=1440 boundary_ms=2.8453
 RESTORE frame=9 label=fill differences=0
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=9 label=draw differences=0
 EXPECT frame=9 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=9 width=5120 height=1440 boundary_ms=2.7719
+BENCH frame=9 width=5120 height=1440 boundary_ms=2.6798
 RESTORE frame=10 label=fill differences=0
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=10 label=draw differences=0
 EXPECT frame=10 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=10 width=5120 height=1440 boundary_ms=2.7540
+BENCH frame=10 width=5120 height=1440 boundary_ms=2.7667
 RESTORE frame=11 label=fill differences=0
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=11 label=draw differences=0
 EXPECT frame=11 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=11 width=5120 height=1440 boundary_ms=2.7817
+BENCH frame=11 width=5120 height=1440 boundary_ms=2.6643
 RESTORE frame=12 label=fill differences=0
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=12 label=draw differences=0
 EXPECT frame=12 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=12 width=5120 height=1440 boundary_ms=2.6314
+BENCH frame=12 width=5120 height=1440 boundary_ms=2.6330
 RESTORE frame=13 label=fill differences=0
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=13 label=draw differences=0
 EXPECT frame=13 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=13 width=5120 height=1440 boundary_ms=2.6251
+BENCH frame=13 width=5120 height=1440 boundary_ms=2.6514
 RESTORE frame=14 label=fill differences=0
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=14 label=draw differences=0
 EXPECT frame=14 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=14 width=5120 height=1440 boundary_ms=2.7584
+BENCH frame=14 width=5120 height=1440 boundary_ms=2.6752
 RESTORE frame=15 label=fill differences=0
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=15 label=draw differences=0
 EXPECT frame=15 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=15 width=5120 height=1440 boundary_ms=2.7578
+BENCH frame=15 width=5120 height=1440 boundary_ms=2.6588
 RESTORE frame=16 label=fill differences=0
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=16 label=draw differences=0
 EXPECT frame=16 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=16 width=5120 height=1440 boundary_ms=2.7356
+BENCH frame=16 width=5120 height=1440 boundary_ms=2.7683
 RESTORE frame=17 label=fill differences=0
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=17 label=draw differences=0
 EXPECT frame=17 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=17 width=5120 height=1440 boundary_ms=2.7035
+BENCH frame=17 width=5120 height=1440 boundary_ms=2.6550
 RESTORE frame=18 label=fill differences=0
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=18 label=draw differences=0
 EXPECT frame=18 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=18 width=5120 height=1440 boundary_ms=2.6822
+BENCH frame=18 width=5120 height=1440 boundary_ms=2.6452
 RESTORE frame=19 label=fill differences=0
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=19 label=draw differences=0
 EXPECT frame=19 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=19 width=5120 height=1440 boundary_ms=2.7591
+BENCH frame=19 width=5120 height=1440 boundary_ms=2.7545
 RESTORE frame=20 label=fill differences=0
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=20 label=draw differences=0
 EXPECT frame=20 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=20 width=5120 height=1440 boundary_ms=2.6377
+BENCH frame=20 width=5120 height=1440 boundary_ms=2.6794
 RESTORE frame=21 label=fill differences=0
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=21 label=draw differences=0
 EXPECT frame=21 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=21 width=5120 height=1440 boundary_ms=2.7821
+BENCH frame=21 width=5120 height=1440 boundary_ms=2.7235
 RESTORE frame=22 label=fill differences=0
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=22 label=draw differences=0
 EXPECT frame=22 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=22 width=5120 height=1440 boundary_ms=2.7202
+BENCH frame=22 width=5120 height=1440 boundary_ms=2.6753
 RESTORE frame=23 label=fill differences=0
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=2 object=A routed=0 matched=0 jittered=1
 RESTORE frame=23 label=draw differences=0
 EXPECT frame=23 index=3 object=B routed=0 matched=0 jittered=1
-BENCH frame=23 width=5120 height=1440 boundary_ms=2.7625
-BENCH_SUMMARY width=5120 height=1440 frames=20 min_ms=2.6251 median_ms=2.7540 max_ms=2.7821 timing=cpu_inclusive_event_synchronized
+BENCH frame=23 width=5120 height=1440 boundary_ms=2.6726
+BENCH_SUMMARY width=5120 height=1440 frames=20 min_ms=2.6330 median_ms=2.6798 max_ms=3.3512 timing=cpu_inclusive_event_synchronized
 CHECK device final Release reaches zero with the route's objects released PASS
 CHECK factory final Release reaches zero PASS
 RESULT PASS checks=4 restorations=72 frames=24 motion_pixels=0 matched_pixels=0 max_uv_pixels=0 max_depth_error=0 depth_pixels=0 depth_written=0 max_current_depth_error=0 coverage_frames=0 coverage_pixels=0 coverage_ambiguous=0 jitter=1 taa=1 taa_frames=0 taa_history_frames=0 taa_reference_frames=0 taa_changed_pixels=0

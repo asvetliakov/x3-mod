@@ -1,18 +1,18 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "5950d1899f302619148bd42c0a7629ad5250cdf9d0f3b0c84746665637eebd6a",
+    "src/renderer/temporal_pass.h": "963e8084109395ae872ce7d0c8f49bcdd9527d117b04b4c828bfceb3c7583268",
     "src/renderer/temporal_pass.cpp": "6b5ff9f19908d8d281ed124bb4ac769b333fee221d61b8b3b587cc76daac1073",
-    "src/temporal/resolve.h": "1b019f9a950b6ef2d103cfea5c1bc9a06697a8b4c2119c0b4762f73c5bc9527b",
-    "src/temporal/resolve.hlsl": "4bc9396c792adf4afd9556fc842bdcee0ae1e1ed99892bea0b09b8b42b100053",
+    "src/temporal/resolve.h": "2faf60401df1b852245d13f63ad4dba13b754b9ae5727579261988fad1cca846",
+    "src/temporal/resolve.hlsl": "ca4694d5fdee433e46d9d0d07cae4371d87f2c56d00a019aaffe9b6dff82fe01",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
-    "verification/probe/temporal_pass_fixture.cpp": "099b35f6033c8c7416be142c468bdf1cf7c5e2656da8c907205aa72de95c38cf",
+    "verification/probe/temporal_pass_fixture.cpp": "764ae4dd1f2d4986b9bcd694cf369a56de1a25dc37016c84994d92eb8fda00ef",
     "verification/probe/build_temporal_pass.sh": "87f5a149ca668fe8ff69806f53f3e84750cb0b3b9de0400c194fba5bbd22ba64",
-    "verification/probe/run_temporal_pass.py": "58fb200ce58d17be285fd5886fecb2c775d699a39f300fb2e771545508922306"
+    "verification/probe/run_temporal_pass.py": "36714ade4b23b3c8a88d5c91b45b1d3ea2402059d17c9cec65cbcec8663d50a8"
   },
   "game_launched": false,
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "e2c67b70c136a6722e0a6d73cafc5efa2dfc7ee511986c5c3e28bffe3c9fefe7",
+  "executable_sha256": "55efe4f92a0229500313e25ffd8331e54862a56ee192359291791be6b6278c83",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -31,8 +31,37 @@
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "1c2a2a6033e75e979d644b6d99a61a55242ad1bf84058b49814acb9c4021b043",
-  "samples": 142,
-  "state_restorations": 158,
-  "generations": 2
+  "report_sha256": "3f2f86d0c00685aeea4746a2f2cbf1ba00ccea657efe61bb346b7efa75e10496",
+  "samples": 162,
+  "state_restorations": 162,
+  "generations": 2,
+  "negative_controls": {
+    "previous-jitter": {
+      "motion_line": "previousUV = motion.xy + history.xy;",
+      "camera_line": "previousUV += 0.5 * sizeJitter.xy + history.xy;",
+      "exit_code": 1,
+      "oracle_error": 0.421387,
+      "drift_px": 0.463797,
+      "report": "temporal-stationary-negative-previous-jitter.txt",
+      "report_sha256": "e76420fadc414e98c8d48a3336dfd4c66e3b9401499c6200275ab2be7ea801db"
+    },
+    "flipped-sign": {
+      "motion_line": "previousUV = motion.xy - sizeJitter.zw;",
+      "camera_line": "previousUV += 0.5 * sizeJitter.xy - sizeJitter.zw;",
+      "exit_code": 1,
+      "oracle_error": 0.450195,
+      "drift_px": 0.747321,
+      "report": "temporal-stationary-negative-flipped-sign.txt",
+      "report_sha256": "ef281c0c93191aacb1684be9fd680ec8eadcc4f92411d40fe577c3a6e0c7c3f4"
+    },
+    "no-jitter": {
+      "motion_line": "previousUV = motion.xy;",
+      "camera_line": "previousUV += 0.5 * sizeJitter.xy;",
+      "exit_code": 1,
+      "oracle_error": 0.310547,
+      "drift_px": 0.404411,
+      "report": "temporal-stationary-negative-no-jitter.txt",
+      "report_sha256": "b9f2dca0c69a9d8a18f14781bddbe9f8e8aa30438ea6edda5191690f39badc6c"
+    }
+  }
 }

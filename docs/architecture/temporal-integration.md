@@ -71,12 +71,32 @@ rows, so the history stays jitter-free. **`c216.zw` is uploaded as zero**, not
 as the prior jitter: `rigid_motion_ps.hlsl` subtracts `c216.zw` from the
 interpolated previous projection, which is correct only when the previous rows
 it interpolates were jittered. With unjittered history rows the fragment
-already produces the previous *unjittered* UV the RGBA32F ABI specifies, and
-the resolve adds the previous raster jitter exactly once when it samples
-history (verified by the step-2 fixture; passing the actual prior jitter
-would make the motion path sample one jitter offset away from the camera
-path). The route keeps both the current and the previous jitter in its frame
-diagnostics for the resolve's `FrameInputs`.
+already produces the previous *unjittered* UV of the content at the jittered
+sample (a static object at pixel `p` reports `p - current jitter`), which is
+what the RGBA32F ABI specifies. The resolve reads history at that UV **plus
+the current jitter** ("pixel center minus velocity"), so a static scene reads
+its own texel centers; it never applies the previous jitter, which
+`FrameInputs::previous_jitter` still carries for ABI stability only. Passing
+the actual prior jitter in `c216.zw` would shift the motion path's lookup by
+that jitter and destabilize static geometry. The route keeps both the current
+and the previous jitter in its frame diagnostics.
+
+**Stationary-stability fix (2026-09-12).** Gameplay under `X3M_TAA=1` showed
+stationary objects trembling and blurring. The resolve added the *previous*
+raster jitter to the history lookup, which is right only for a raw
+one-frame-old jittered rendering (the detached fixture's original setup); the
+live history is the accumulated output on the unjittered grid, so every
+lookup was off by the jitter difference and alternated with the Halton
+sequence, and the fractional bilinear resampling blurred it. Both resolve
+paths now add the current jitter instead (camera: removed before the inverse
+projection, restored after; motion: added to the producer's RG). The
+convention, the re-derived fixture cases, the new stationary scene
+(zero interior change between phases, zero centroid drift, edges converging
+to the jitter-sampled coverage) and the negative proof against the previous
+shader are in [temporal-resolve.md](../verification/temporal-resolve.md),
+"Stationary stability". Remaining limitation: silhouette edges against a
+different depth reject history whenever their coverage flips (absolute
+tolerance 1e-4), so those edge pixels do not accumulate a coverage fraction.
 
 Jittered draws: every scene-phase draw whose vertex program is in the row-dot
 registry with a known matrix register (the c24 material family covers almost
@@ -199,7 +219,7 @@ against the ZFUNC EQUAL replay (7,755,681 pixels) and 2.6e-6 maximum
 analytic z/w error. Motion output: 18 runs (four environments plus jitter),
 seam-on 44,284 motion / 27,170 RT2 pixels per environment, jitter coverage
 48,957 pixels, colour identical off/on and across environments, differing in
-all 12 frames with jitter on. Temporal pass 154 numerical / 158 state
+all 12 frames with jitter on. Temporal pass 154 numerical / 158 state (174 / 162 since the 2026-09-12 stationary-stability cases)
 comparisons; ownership integration 26 cases and the fallback; scene capture
 36 scenarios / 4,908 checks; `check_no_x87` 125 reachable functions, 0
 violations; 441 analysis unit tests. Details in the verification documents
@@ -242,14 +262,16 @@ Findings that change the route wiring in step 3:
   `v/255`, never above). No sampler or target sRGB state is set by the pass
   and the copy-back restores the original bytes exactly. The route must not
   add sRGB conversions around the sequence.
-- **Previous jitter on the motion path.** The resolve adds the previous
-  jitter once to the producer's RG, which the ABI defines as the previous
-  *unjittered* UV. `rigid_motion_ps.hlsl` subtracts `c216.zw` from its
-  interpolated previous projection, which is only correct if the previous rows
-  were jittered. The shadow keeps unjittered rows, so the route must upload
-  **zero** for `c216.zw` (or shadow jittered rows); passing the actual prior
-  jitter would make the motion path sample one jitter offset away from the
-  camera path. This is a wiring rule for step 3, not a shader change.
+- **Jitter on the motion path.** The ABI defines the producer's RG as the
+  previous *unjittered* UV of the content at the jittered sample; the resolve
+  adds the **current** jitter to it (since 2026-09-12; it added the previous
+  jitter before, which destabilized static geometry once the history became
+  the accumulated output, see "Jitter" above). `rigid_motion_ps.hlsl`
+  subtracts `c216.zw` from its interpolated previous projection, which is
+  only correct if the previous rows were jittered. The shadow keeps
+  unjittered rows, so the route must upload **zero** for `c216.zw` (or shadow
+  jittered rows); passing the actual prior jitter would shift the motion
+  path's lookup by that jitter. This is a wiring rule for step 3.
 - **Sentinel semantics.** A sentinel history tap is dropped individually and
   the footprint renormalizes; it does not reject the footprint the way a
   reactive mask tap does. Blended effects over routed opaque geometry stay
@@ -367,7 +389,8 @@ values) and 0.0044 / 0.0229 / 0.0046 in the seam's captured history frames
 device and factory references in every run with the pass's objects counted;
 `taa_references=1` after Reset. Ownership integration and its fallback,
 scene capture (36 scenarios, 4,908 checks), the temporal pass suite (154
-numerical / 158 state comparisons, unchanged by the native-slot and
+numerical / 158 state comparisons at the time; 174 / 162 after the 2026-09-12
+jitter-convention fix and its stationary scene, unchanged by the native-slot and
 state-block changes), `check_no_x87` (6 light hooks, 125 reachable
 functions, 0 violations) and 442 analysis unit tests pass on the rebuilt
 `build/` and `build-ownership/`.

@@ -55,8 +55,10 @@ It maps current unjittered homogeneous clip coordinates to previous unjittered
 clip coordinates **in one consistent world coordinate regime**. At a pixel,
 subtract **half a texel** and current jitter UV, reconstruct
 `(2*u-1, 1-2*v, device_depth, 1)`, multiply, divide by positive previous W, convert
-XY to normalized viewport coordinates, then add **half a texel** and previous
-jitter UV. Texture center UV and raw camera viewport coordinates differ: at
+XY to normalized viewport coordinates, then add **half a texel** and the
+**current** jitter UV again. The resolve never applies the previous jitter:
+`c5.xy` is packed by `prepare` for ABI stability and is not read by the shader.
+Texture center UV and raw camera viewport coordinates differ: at
 16×16, pixel (8,8) has texture UV (8.5/16,8.5/16), but raw projection NDC (0,0).
 Omitting both half-texel conversions cancels for identity/translation yet causes
 errors for zoom and rotation. The unadjusted game camera matrix must not include
@@ -67,8 +69,18 @@ comparing old depth against current depth would fail camera translation.
 `prepare` accepts jitter in raster pixels: positive X right, positive Y down.
 They are actual raster displacements, not camera ray offsets of opposite sign.
 Both matrix projections exclude jitter. The input colors and depths must come
-from matching jittered rasterization. The resolve outputs on the current sample
-grid; previous resolved color retains its previous jitter convention.
+from matching jittered rasterization. The resolve outputs on the **unjittered**
+pixel grid: output pixel `p` represents unjittered position `p`, its
+current-frame sample is the jittered raster value at `p` (which shows content
+at `p - current jitter`; that sub-pixel offset is the supersampling), and the
+previous resolved color lives on the same unjittered grid. History is read at
+the content's previous unjittered position **plus the current jitter**, i.e.
+at "pixel center minus velocity". For a static scene that is `p` itself, every
+history tap lands on a texel center and the output is stable across jitter
+phases while converging to the jitter-averaged coverage of edges. Adding the
+previous jitter instead (the convention before 2026-09-12) moved the taps by
+the jitter difference every frame: stationary geometry oscillated and repeated
+fractional bilinear resampling blurred it.
 
 `prepare` validates dimensions, finite coefficients, weight and thresholds.
 On false the caller must skip dispatch and invalidate history; do not upload a
@@ -81,10 +93,13 @@ use current color.
 When enabled, s4 alpha carries three states:
 
 - `0`: camera reprojection is explicitly valid for this pixel (static geometry).
-- `1`: RG contains **previous unjittered absolute texture UV**, including the
-  half-texel that converts previous raw viewport coordinates to texture centers.
-  B contains expected previous device depth for this surface. The resolve adds
-  previous raster jitter only; it does not add another half texel on this path.
+- `1`: RG contains the **previous unjittered absolute texture UV of the content
+  at this jittered sample** (a static object under jitter `j` reports
+  `p - j`), including the half-texel that converts previous raw viewport
+  coordinates to texture centers. B contains expected previous device depth for
+  this surface. The resolve adds the **current** raster jitter only (so static
+  content lands on its own texel center); it adds neither the previous jitter
+  nor another half texel on this path.
 - `-1`: correspondence is unknown/invalid, so reject history. Use this for dynamic
   geometry without trustworthy previous transforms, deformation or identity.
 
@@ -300,22 +315,30 @@ No third draw and no snapshot mask are involved.
 
 **Jitter.** `FrameInputs::current_jitter` / `previous_jitter` are raster
 pixels, positive Y down; `prepare` divides them by the viewport size into
-`c4.zw` / `c5.xy`. The camera path subtracts the current jitter before the
-inverse projection and adds the previous jitter after it. The motion path uses
-the current jitter **nowhere** (the motion texture is rasterized on the
-current jittered grid) and adds the previous jitter **once** to the
-producer's RG. The producer contract is therefore: RG is the previous
-**unjittered** texture-center UV. `rigid_motion_ps.hlsl` subtracts `c0.zw`
-(the route's `c216.zw`) from the previous projection to satisfy that contract
-**only if the previous rows it interpolates were jittered**. The live route
-keeps unjittered rows in its shadow (see the integration design); with
-unjittered previous rows the route must pass **zero** in `c216.zw`, otherwise
-the subtraction and the resolve's addition cancel and the motion path samples
-the history one jitter offset away from the camera path. The fixture proves
-the resolve side: previous jitter +1 pixel with RG at the pixel's own center
-selects the neighbor once (not twice), current jitter leaves the motion path
-unchanged while it moves the camera path, and RG that already subtracted the
-previous jitter lands unjittered.
+`c4.zw` / `c5.xy`. Only the current jitter is used: the camera path subtracts
+it before the inverse projection and adds it back after the projection; the
+motion path adds it once to the producer's RG. The previous jitter (`c5.xy`)
+is uploaded for ABI stability and never read. History is the accumulated
+output on the unjittered grid, so it is read at the content's previous
+unjittered position plus the current jitter ("pixel center minus velocity"):
+a static scene reads its own texel centers. The producer contract is
+therefore: RG is the previous **unjittered** texture-center UV of the content
+at the jittered sample (a static object reports `p - current jitter`), which
+is what interpolating the previous unjittered rows across the current jittered
+raster yields. `rigid_motion_ps.hlsl` subtracts `c0.zw` (the route's
+`c216.zw`) from the previous projection **only for jittered previous rows**;
+the live route keeps unjittered rows in its shadow and uploads **zero** in
+`c216.zw`. Passing the actual prior jitter there would shift the motion path's
+lookup by that jitter and destabilize static geometry. The fixtures prove the
+resolve side: previous jitter +1 pixel with RG at the pixel's own center stays
+at the pixel (never applied); current jitter +1 moves the motion-path lookup
+by one pixel, and RG = own center minus the current jitter lands on the own
+texel center; the camera path with an identity matrix lands on the own texel
+center for any current jitter and transforms the jitter offset through a zoom;
+and a stationary 32x32 scene rasterized over four 16-phase Halton periods is
+resolved with zero interior change between phases, zero centroid drift and
+edge coverage converging to the jitter-sampled coverage (see
+`docs/verification/temporal-resolve.md`, "Stationary stability").
 
 **Cut.** `FrameInputs::cut` carries the route's displacement/missing-key
 verdict; it invalidates history for the frame exactly like `camera_cut`, and

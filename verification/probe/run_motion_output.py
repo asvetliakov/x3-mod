@@ -25,6 +25,17 @@ on a plain second device from the same read-back inputs byte for byte (the
 X3M_TAA_DEBUG FP16 files equal the reference FP16 output), and the device still
 reaches zero references. Four bench runs time the boundary with the resolve
 off and on at 1280x768 and 5120x1440 (EVENT-synchronized QPC, CPU-inclusive).
+The resolve's jitter convention (history read at the content's previous
+unjittered UV plus the CURRENT jitter, never the previous one) is covered by
+the reference comparison only indirectly, because the reference runs the same
+production TemporalPass bytecode; the stationary-stability evidence (zero
+change between jitter phases, zero centroid drift, edge coverage converging)
+lives in run_temporal_pass.py. The seam script cannot host that check: its
+objects alternate between two poses every frame (a moves between t=.75/p=0
+and t=.8/p=.125, b between the origin and t=-.05/zo=.1), so no frame is
+stationary with respect to the previous one, and the cut schedule leaves at
+most two consecutive history frames (1-2, 10-11), far short of the ~48 frames
+the weight-0.9 accumulation needs to converge.
 Reviewed shader bytes are read from local files and never enter the repository
 or the reports.
 """

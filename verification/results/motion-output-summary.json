@@ -66,10 +66,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-off-20260912-065508-181945",
-      "trace_sha256": "745ec136a56d41ba1ba6ca6e61e778167252110c38ce46278177123c67d4b03e",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-off-20260912-074138-154662",
+      "trace_sha256": "28969d832b46ecc2c300f059aa7dd788fe9f1156ba433d763d35c0fce477e27f",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-on": {
       "mode": "production",
@@ -164,10 +164,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-on-20260912-065510-090351",
-      "trace_sha256": "f17eea7b9193413c30cdf0877ea99899865d984b24d35a3f7a3e03236fe98aa6",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-on-20260912-074139-929301",
+      "trace_sha256": "53ec34b08704ffaec764e012f48d38e2f0650a3f59f3a42ba0ac5f52d35d5560",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-off": {
       "mode": "seam",
@@ -216,10 +216,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-off-20260912-065511-780201",
-      "trace_sha256": "a7c7c5029fccae4a25184070eb200c4a371a9c1962bdcc7fb2d61944127a3d00",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-off-20260912-074141-670274",
+      "trace_sha256": "a9e26c6257f31d22a306ebf395171829da6328bbcd4c6f2ff2dbf1f3fdea6f83",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-on": {
       "mode": "seam",
@@ -314,10 +314,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-on-20260912-065513-421477",
-      "trace_sha256": "3bf2a0f485825345f47ba82d640100dc336e3c14be14b599e83a515c5475ff43",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-on-20260912-074143-302204",
+      "trace_sha256": "b81e1e2e41025e77bc10320e24d48b0bd66f4af9de0b6095cae36292d91a60cc",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-ownership-off": {
       "mode": "production",
@@ -366,10 +366,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-off-20260912-065515-174748",
-      "trace_sha256": "c5116bf04bdde439934480b68adeb24359d091953be2fef4e42644ba9e9226cf",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-ownership-off-20260912-074145-173919",
+      "trace_sha256": "51683834aa3209bc2a8a4e2ae908273f5e318a7855425e3192ab387c9a127607",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-ownership-on": {
       "mode": "production",
@@ -474,10 +474,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-on-20260912-065516-858072",
-      "trace_sha256": "7447de08f266d68fc57568cde80af0a0c3edb9874b9167f501fd1f1e872d8b03",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-ownership-on-20260912-074146-846046",
+      "trace_sha256": "7208079cdd9e4106fb8b0bc50142668c7c4c7dbc4328f67586b7392b3f40ddaa",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-ownership-off": {
       "mode": "seam",
@@ -526,10 +526,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-off-20260912-065518-580700",
-      "trace_sha256": "4e120edebfe36da112c31b0d77398ede89284039f3d7035c9d7a75dab11d85c7",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-ownership-off-20260912-074148-561079",
+      "trace_sha256": "adc69bb796ee5576dcc24697192c3b284c401401186a5c48331ffdafa848022f",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-ownership-on": {
       "mode": "seam",
@@ -634,10 +634,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-on-20260912-065520-234152",
-      "trace_sha256": "132d7970ef7091c7eff5b0c027aa772930044299134e9a4e635eb821a0971753",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-ownership-on-20260912-074150-196991",
+      "trace_sha256": "d57fce5430291eacc954a31fde618ebcf1e3e8c0739a3e634f85424623365b57",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-depth-off": {
       "mode": "production",
@@ -690,10 +690,10 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-depth-off-20260912-065521-931851",
-      "trace_sha256": "ee5397df2ff76ced9de55f57b992bc48d41b968ce52f698bf7fd6d28e79b275d",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-depth-off-20260912-074151-922670",
+      "trace_sha256": "9cf1c8128a39135422df0dbb82fe3e166a8081ffd3b497291e201a067fa5f61d",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-depth-on": {
       "mode": "production",
@@ -802,10 +802,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-depth-on-20260912-065523-690100",
-      "trace_sha256": "572474cea0d4be9a2035af5ff647333ee77bea6698f4a94335e9145fbf037352",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-depth-on-20260912-074153-917934",
+      "trace_sha256": "a19f7ff9c553c1c4fd1a700785c9a0128e0a3d62b9a5ce8d05f59948e395f520",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-depth-off": {
       "mode": "seam",
@@ -858,10 +858,10 @@
         ]
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-depth-off-20260912-065525-383765",
-      "trace_sha256": "f017066b74f6003a83680fe5bf05931e8f103a15d965bee60ea0069d4e8f0849",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-depth-off-20260912-074155-803904",
+      "trace_sha256": "f359ce4fd660b6196b7b40c8c576f7a712d840eb6667f935533dbd6385275855",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-depth-on": {
       "mode": "seam",
@@ -970,10 +970,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-depth-on-20260912-065527-032504",
-      "trace_sha256": "a72fd99562a7a87eae35ebe3da29a39c08410b841148af28f2cf5abfa0af8576",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-depth-on-20260912-074157-433097",
+      "trace_sha256": "be1566d40dc51c33967d8f7b65b9a67e3c5767adaaada3e596064ad3e8d2beea",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-admission-off": {
       "mode": "production",
@@ -1022,10 +1022,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-admission-off-20260912-065528-739581",
-      "trace_sha256": "d876e89de8b7896613bbb81b20fd81c68a06ed8de0b3a5eb6caee0b5b16e68c8",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-admission-off-20260912-074159-358798",
+      "trace_sha256": "a25277b520f89a132ac0c172eaf234444310135a8d4b87fcd9a4e5b04e9b785a",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-admission-on": {
       "mode": "production",
@@ -1130,10 +1130,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-admission-on-20260912-065530-402040",
-      "trace_sha256": "77d613d8cb89df76b5ffd6137488cbb0d42b51d78014eae697aebe06fd8c536e",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-admission-on-20260912-074201-085255",
+      "trace_sha256": "540a08a9f89830e637d52acc959bab60f77854a26eb72dd10e1e931979de061b",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-admission-off": {
       "mode": "seam",
@@ -1182,10 +1182,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-admission-off-20260912-065532-157665",
-      "trace_sha256": "863f6d478e437044e3937b0b4a708b5aa2b17db9e2651f5469864d584b928ea6",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-admission-off-20260912-074202-884751",
+      "trace_sha256": "2eaa5e90c602981ee52afdb1721b8da48eb564b1bb99c8538b0fc7e954acd44e",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-admission-on": {
       "mode": "seam",
@@ -1290,10 +1290,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-admission-on-20260912-065534-128844",
-      "trace_sha256": "b0cb8536a2bad30b0e3c4e82e4a8bdf732d27f5ca791990d1c8f1c1b562d665a",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-seam-admission-on-20260912-074204-592197",
+      "trace_sha256": "172c812213b021ece6125c05c34be42f053ad9e481cc34f92a55a8fe6f8ac1f1",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "production-jitter-on": {
       "mode": "production",
@@ -1388,10 +1388,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-jitter-on-20260912-065536-014563",
-      "trace_sha256": "b15d3d71f1ec218c1eaed40ce106b73f7674c438f789260a4d7cc0071069d137",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca",
+      "directory": "verification/probe/build/motion-output-production-jitter-on-20260912-074206-522641",
+      "trace_sha256": "5632813d639da79653c30c352ed257109325ac2b8715d211931f68c5ebd4c9cb",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
       "frames_differing_from_unjittered": [
         0,
         1,
@@ -1500,10 +1500,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-jitter-on-20260912-065537-904417",
-      "trace_sha256": "9977326a97e60d50fb1a7487b54419130232797011b99d4115241f5d9b8767fe",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca",
+      "directory": "verification/probe/build/motion-output-seam-jitter-on-20260912-074208-345577",
+      "trace_sha256": "14cb50cc3ed1ea1ffea44baaec7eecfeed2ecd709a1d640da9f50df070362433",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
       "frames_differing_from_unjittered": [
         0,
         1,
@@ -1663,10 +1663,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-taa-on-20260912-065539-687086",
-      "trace_sha256": "16fbe734cac927876a09234ecdffb17db806b8a787322e5fe70d80c0bd1a6cbd",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-taa-on-20260912-074210-460640",
+      "trace_sha256": "343f847a38af09815f306add236964c523a7454ae25e83329101131fb5404bcf",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-taa-on": {
       "mode": "seam",
@@ -1678,17 +1678,17 @@
       "frames": 12,
       "color_hashes": {
         "0": "7780633dafe6b5fa",
-        "1": "007b667d5d74a6d1",
+        "1": "258888a0a65dcf96",
         "2": "47059dc8e751a751",
         "3": "35942d847a659ef3",
-        "4": "b34d9ee0c6090f64",
+        "4": "965f4492be4b1710",
         "5": "0554c1e31f1e7738",
         "6": "d8dbde26c9cf0b5d",
-        "7": "baf89f9f5b27292d",
+        "7": "711f8ca891ec756e",
         "8": "48e1c7ad26e4fdc1",
         "9": "4fccb6c7391e6b2d",
-        "10": "4ef4e69aa2c198eb",
-        "11": "71b542b46fc08aa6"
+        "10": "9c7f2971a125b3d6",
+        "11": "15dabe2a5332bb06"
       },
       "motion_pixels": 44279,
       "matched_pixels": 10348,
@@ -1710,17 +1710,17 @@
       ],
       "taa_changed_pixels": {
         "0": 0,
-        "1": 93,
+        "1": 145,
         "2": 0,
         "3": 0,
-        "4": 104,
+        "4": 113,
         "5": 0,
         "6": 0,
-        "7": 25,
+        "7": 38,
         "8": 0,
         "9": 0,
-        "10": 28,
-        "11": 124
+        "10": 33,
+        "11": 226
       },
       "color_hashes_before_boundary": {
         "0": "7780633dafe6b5fa",
@@ -1780,7 +1780,7 @@
       },
       "taa_image": {
         "differing_fraction": {
-          "1": 0.00439453125,
+          "1": 0.002197265625,
           "2": 0.0,
           "3": 0.0,
           "4": 0.02294921875,
@@ -1790,13 +1790,13 @@
           "8": 0.0
         },
         "max_difference": {
-          "1": 0.030780388327205893,
+          "1": 0.05218912760416666,
           "2": 0.00023360906862746056,
           "3": 0.00023360906862746056,
           "4": 0.44848249846813726,
           "5": 0.00023360906862746056,
           "6": 0.00023360906862746056,
-          "7": 0.06666379442401961,
+          "7": 0.09156613817401961,
           "8": 0.00023360906862746056
         }
       },
@@ -1819,10 +1819,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-taa-on-20260912-065541-200880",
-      "trace_sha256": "d54bd42acec196b1700111f38fedd63f5c75f790230f3dcd4d13bbd46b262f4f",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca",
+      "directory": "verification/probe/build/motion-output-seam-taa-on-20260912-074212-697849",
+      "trace_sha256": "d7d4dd270bf4c6ed539eb543cfcc4a98dc57ca3cc5c1f9a0b60c9f13c98fb1d3",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
       "frames_changed_by_history": [
         1,
         4,
@@ -1985,10 +1985,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-production-ownership-taa-on-20260912-065543-439676",
-      "trace_sha256": "aad8c293a4e2bac75ccc201a3396d68ee68f4b10f71ff54c3674e4ab2f0bb788",
-      "dll_sha256": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca"
+      "directory": "verification/probe/build/motion-output-production-ownership-taa-on-20260912-074214-696335",
+      "trace_sha256": "4f187accb4123167e13fd9fcfcaf18d8711a814437c2746674e6b21e7251d488",
+      "dll_sha256": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77"
     },
     "seam-ownership-taa-on": {
       "mode": "seam",
@@ -2000,17 +2000,17 @@
       "frames": 12,
       "color_hashes": {
         "0": "7780633dafe6b5fa",
-        "1": "007b667d5d74a6d1",
+        "1": "258888a0a65dcf96",
         "2": "47059dc8e751a751",
         "3": "35942d847a659ef3",
-        "4": "b34d9ee0c6090f64",
+        "4": "965f4492be4b1710",
         "5": "0554c1e31f1e7738",
         "6": "d8dbde26c9cf0b5d",
-        "7": "baf89f9f5b27292d",
+        "7": "711f8ca891ec756e",
         "8": "48e1c7ad26e4fdc1",
         "9": "4fccb6c7391e6b2d",
-        "10": "4ef4e69aa2c198eb",
-        "11": "71b542b46fc08aa6"
+        "10": "9c7f2971a125b3d6",
+        "11": "15dabe2a5332bb06"
       },
       "motion_pixels": 44279,
       "matched_pixels": 10348,
@@ -2032,17 +2032,17 @@
       ],
       "taa_changed_pixels": {
         "0": 0,
-        "1": 93,
+        "1": 145,
         "2": 0,
         "3": 0,
-        "4": 104,
+        "4": 113,
         "5": 0,
         "6": 0,
-        "7": 25,
+        "7": 38,
         "8": 0,
         "9": 0,
-        "10": 28,
-        "11": 124
+        "10": 33,
+        "11": 226
       },
       "color_hashes_before_boundary": {
         "0": "7780633dafe6b5fa",
@@ -2102,7 +2102,7 @@
       },
       "taa_image": {
         "differing_fraction": {
-          "1": 0.00439453125,
+          "1": 0.002197265625,
           "2": 0.0,
           "3": 0.0,
           "4": 0.02294921875,
@@ -2112,13 +2112,13 @@
           "8": 0.0
         },
         "max_difference": {
-          "1": 0.030780388327205893,
+          "1": 0.05218912760416666,
           "2": 0.00023360906862746056,
           "3": 0.00023360906862746056,
           "4": 0.44848249846813726,
           "5": 0.00023360906862746056,
           "6": 0.00023360906862746056,
-          "7": 0.06666379442401961,
+          "7": 0.09156613817401961,
           "8": 0.00023360906862746056
         }
       },
@@ -2151,10 +2151,10 @@
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-taa-on-20260912-065545-311218",
-      "trace_sha256": "68cc9c5fdd7e053d65a2c9e649f3912bf9d3b6d3cbd95ee4ca3abe8110df3422",
-      "dll_sha256": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-      "exe_sha256": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca",
+      "directory": "verification/probe/build/motion-output-seam-ownership-taa-on-20260912-074216-510622",
+      "trace_sha256": "88d62912c9578ffa0586c5932b8fbeb92a7aaea61ec8f6ecc2f2f9e2004f5fdf",
+      "dll_sha256": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+      "exe_sha256": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
       "frames_changed_by_history": [
         1,
         4,
@@ -2200,7 +2200,7 @@
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "e579c1c124b475ab85def325d4189f5dfd1cdff71cf45c5fcf24f471732147b1",
+    "src/proxy/motion_output.cpp": "b0e7ce9e68891a4cef6a00d1af824fb2c033d23454027c87d6ca17e5a92640b6",
     "src/proxy/motion_output.h": "c834222e048352328ed51acc39aac06b3444934fe8d7a8383a81ef427ebe279d",
     "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
@@ -2236,19 +2236,19 @@
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
     "src/renderer/temporal_pass.cpp": "6b5ff9f19908d8d281ed124bb4ac769b333fee221d61b8b3b587cc76daac1073",
-    "src/renderer/temporal_pass.h": "5950d1899f302619148bd42c0a7629ad5250cdf9d0f3b0c84746665637eebd6a",
+    "src/renderer/temporal_pass.h": "963e8084109395ae872ce7d0c8f49bcdd9527d117b04b4c828bfceb3c7583268",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
-    "src/renderer/temporal_resolve_program_inc.h": "3d1ef70fc07ffbab2f69d5af8355bdedda93d1dff4a85162e8a0ac94c8e17775",
+    "src/renderer/temporal_resolve_program_inc.h": "f3123c982fa261311e8e150ca7b9de183edb9eba46ef85b9ee32aa63e4738168",
     "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
-    "src/temporal/resolve.h": "1b019f9a950b6ef2d103cfea5c1bc9a06697a8b4c2119c0b4762f73c5bc9527b",
-    "src/temporal/resolve.hlsl": "4bc9396c792adf4afd9556fc842bdcee0ae1e1ed99892bea0b09b8b42b100053",
-    "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "src/temporal/resolve.h": "2faf60401df1b852245d13f63ad4dba13b754b9ae5727579261988fad1cca846",
+    "src/temporal/resolve.hlsl": "ca4694d5fdee433e46d9d0d07cae4371d87f2c56d00a019aaffe9b6dff82fe01",
+    "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "verification/probe/abi_check.cpp": "8b8602dbc7bcd1326ea51727f019dd689d767a20be62daace7a5e58714fb7df3",
     "verification/probe/build_motion_output.sh": "7006bdb6fa1e900f14e0e2d01061e07c3430f71851bfcd730091a5cc8892bbdb",
     "verification/probe/motion_output_fixture.cpp": "085a42fb01d4d750bd522096360376d40cc710a2c89e354c087c9f9eb9ae2a01",
-    "verification/probe/run_motion_output.py": "e7919ca6039154be1d8b20ceb0ac4d69619b84e07e975e74c5136be5b491298c"
+    "verification/probe/run_motion_output.py": "94ee8a2b6b98d72b77a34b699a42ab347b5ff6e8bf5143bd93c30ed31fe51fdc"
   },
   "build_commands": [
     [
@@ -2283,9 +2283,9 @@
     ]
   ],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "498c3c689d2bad2ade2aa4310124f1576123fe98626008b3502734aa24e799ca",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "e3d05590e00299f45e5ca18fb6545c1b505331a57fdb78ee48855971d594c5f7",
-    "build/d3d9.dll": "54ee429feac0e2a314ab39446f5291b33ce107696334997421a5e3f6256dfc70"
+    "verification/probe/build/motion_output_fixture.exe": "8af9508e79e224c51697d754f50aac9361c868f5394613694e3f302332cbfe77",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "d0945dcee6ca779f5f104ccf54be4937337ae71c138c70955d7b740925efcb6b",
+    "build/d3d9.dll": "200aefff27e2e36d528c5ce02e1ea5720155ed525b66840d4c75053045af1da9"
   },
   "bench": {
     "bench-1280x768-taa-off": {
@@ -2295,40 +2295,40 @@
       "height": 768,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.2052,
-        "median": 0.33,
-        "max": 0.6879
+        "min": 0.3178,
+        "median": 0.3361,
+        "max": 0.7125
       },
       "samples_ms": [
-        1.436,
-        0.3455,
-        0.6829,
-        0.327,
-        0.6879,
-        0.3297,
-        0.3317,
-        0.2052,
-        0.3181,
-        0.3305,
-        0.3298,
-        0.3274,
-        0.327,
-        0.3366,
-        0.3222,
-        0.3317,
-        0.3239,
-        0.346,
-        0.3451,
-        0.3197,
-        0.3314,
-        0.3212,
-        0.33,
-        0.3345
+        1.4115,
+        0.3445,
+        0.3338,
+        0.3244,
+        0.7125,
+        0.6008,
+        0.3741,
+        0.3619,
+        0.3361,
+        0.3294,
+        0.3347,
+        0.3519,
+        0.3257,
+        0.3303,
+        0.329,
+        0.3378,
+        0.3393,
+        0.3315,
+        0.3419,
+        0.3178,
+        0.333,
+        0.3268,
+        0.3469,
+        0.3325
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-off-20260912-065547-516814",
-      "trace_sha256": "3b294b5eb392b93ddcd28b2bbf2e70181921ecd4acf95741437b81dc001093ba"
+      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-off-20260912-074218-561626",
+      "trace_sha256": "d4db2b96a929b053358107413d539cb8f3dde3ed511d284ee865a66e001ef5f7"
     },
     "bench-1280x768-taa-on": {
       "mode": "bench",
@@ -2337,40 +2337,40 @@
       "height": 768,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.9003,
-        "median": 1.0044,
-        "max": 1.2424
+        "min": 0.9116,
+        "median": 1.0081,
+        "max": 1.3171
       },
       "samples_ms": [
-        13.2123,
-        1.7563,
-        1.3807,
-        1.2573,
+        14.0748,
+        1.6523,
+        0.9875,
+        1.3464,
+        1.3171,
+        0.9946,
+        1.0501,
+        0.9798,
+        1.0395,
+        1.0648,
+        0.9955,
+        1.0249,
+        0.997,
+        0.9311,
+        1.0403,
+        1.0188,
+        1.0488,
         1.0296,
-        1.2424,
-        1.0362,
-        0.9323,
-        1.0587,
-        0.9208,
-        0.92,
-        1.021,
-        0.9313,
-        1.0044,
-        0.996,
-        1.0134,
-        1.0369,
-        0.9041,
-        1.0262,
-        1.0209,
-        1.002,
-        0.9003,
-        0.9121,
-        0.9985
+        1.0081,
+        0.9963,
+        0.9116,
+        0.9592,
+        1.0014,
+        0.9565
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-on-20260912-065549-248764",
-      "trace_sha256": "3bd530b6bc8363d75a9ab2ad35340bfa2c2fcc54b2e3123ad6251aa9342c2af1"
+      "directory": "verification/probe/build/motion-output-bench-1280x768-taa-on-20260912-074220-247819",
+      "trace_sha256": "4db2b3214ff64cff386e017bb1da151f49cdd184ea30022bf12bedb34400773c"
     },
     "bench-5120x1440-taa-off": {
       "mode": "bench",
@@ -2379,40 +2379,40 @@
       "height": 1440,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 0.6401,
-        "median": 0.711,
-        "max": 1.0554
+        "min": 0.5702,
+        "median": 0.6089,
+        "max": 0.9866
       },
       "samples_ms": [
-        6.0681,
-        1.0281,
-        1.0158,
-        1.116,
-        0.6934,
-        1.0554,
-        0.704,
-        0.6827,
-        0.6628,
-        0.7664,
-        0.7125,
-        0.711,
-        0.7609,
-        0.872,
-        0.6742,
-        0.6775,
-        0.6401,
-        0.8008,
-        0.68,
-        0.8056,
-        0.7547,
-        0.6806,
-        0.7555,
-        0.7037
+        6.6669,
+        1.0384,
+        1.0505,
+        1.0601,
+        0.9866,
+        0.6339,
+        0.6018,
+        0.6999,
+        0.6061,
+        0.5786,
+        0.6483,
+        0.7249,
+        0.6528,
+        0.6124,
+        0.6072,
+        0.7102,
+        0.5801,
+        0.6086,
+        0.6089,
+        0.5951,
+        0.5853,
+        0.7164,
+        0.5702,
+        0.5894
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-off-20260912-065550-983647",
-      "trace_sha256": "ba19ed70a6958d1aa6e86b01912978b230ed307c125a2ff3dee12c8517d29a20"
+      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-off-20260912-074221-959509",
+      "trace_sha256": "e7be99272e91586eb8b514006600450c7a68931b91f75a9796fa7aef097447fe"
     },
     "bench-5120x1440-taa-on": {
       "mode": "bench",
@@ -2421,58 +2421,58 @@
       "height": 1440,
       "frames_timed": 20,
       "boundary_ms": {
-        "min": 2.6251,
-        "median": 2.754,
-        "max": 2.7821
+        "min": 2.633,
+        "median": 2.6798,
+        "max": 3.3512
       },
       "samples_ms": [
-        22.13,
-        8.6367,
-        3.1891,
-        2.9052,
-        2.7248,
-        2.7561,
-        2.7559,
-        2.7041,
-        2.6603,
-        2.7719,
-        2.754,
-        2.7817,
-        2.6314,
-        2.6251,
-        2.7584,
-        2.7578,
-        2.7356,
-        2.7035,
-        2.6822,
-        2.7591,
-        2.6377,
-        2.7821,
-        2.7202,
-        2.7625
+        35.1237,
+        15.0237,
+        5.9796,
+        3.1084,
+        3.3512,
+        2.9718,
+        2.9447,
+        2.7723,
+        2.8453,
+        2.6798,
+        2.7667,
+        2.6643,
+        2.633,
+        2.6514,
+        2.6752,
+        2.6588,
+        2.7683,
+        2.655,
+        2.6452,
+        2.7545,
+        2.6794,
+        2.7235,
+        2.6753,
+        2.6726
       ],
       "timing": "cpu_inclusive_event_synchronized",
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-on-20260912-065552-808767",
-      "trace_sha256": "4c484945fb22a833df55b318ab8ea8cfc97c1244aa8e2afbab7dbee223c0aa98"
+      "directory": "verification/probe/build/motion-output-bench-5120x1440-taa-on-20260912-074224-076619",
+      "trace_sha256": "99119dd0a5c0814be89ebdfaec5b861181c1d924bbf524488c2060eb00149208"
     },
     "resolve-1280x768": {
-      "median_ms": 0.6743999999999999,
-      "min_ms": 0.6951,
-      "boundary_off_median_ms": 0.33,
-      "boundary_on_median_ms": 1.0044
+      "median_ms": 0.6719999999999999,
+      "min_ms": 0.5937999999999999,
+      "boundary_off_median_ms": 0.3361,
+      "boundary_on_median_ms": 1.0081
     },
     "resolve-5120x1440": {
-      "median_ms": 2.043,
-      "min_ms": 1.9850000000000003,
-      "boundary_off_median_ms": 0.711,
-      "boundary_on_median_ms": 2.754
+      "median_ms": 2.0709,
+      "min_ms": 2.0628,
+      "boundary_off_median_ms": 0.6089,
+      "boundary_on_median_ms": 2.6798
     }
   },
   "color_identical_off_vs_on": true,
   "color_identical_across_variants": true,
   "jitter_changes_color": true,
-  "report_sha256": "f5a92a53f2fc88f797fc6588b4d80ba3d57ea07cad290331ac66992b7601e00c",
+  "report_sha256": "b16395e98d291c6e0161d4912e3f1167b2728e112f97ff206dd8a2b11577cec4",
   "sources_after_run": {
     "CMakeLists.txt": "1cda6357192e312f9d9d0a80a58f02b18b2cff1ef2522a2370f3e34e3a79933e",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
@@ -2505,7 +2505,7 @@
     "src/proxy/mesh_adjacency_cache.h": "0ebd0fa60cb35018edcfe81f3cfbadac34cbf89d7ff3c983f10e2f1a02ce15b9",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "e579c1c124b475ab85def325d4189f5dfd1cdff71cf45c5fcf24f471732147b1",
+    "src/proxy/motion_output.cpp": "b0e7ce9e68891a4cef6a00d1af824fb2c033d23454027c87d6ca17e5a92640b6",
     "src/proxy/motion_output.h": "c834222e048352328ed51acc39aac06b3444934fe8d7a8383a81ef427ebe279d",
     "src/proxy/object_lifetime.cpp": "40a4c674ab7aa182bcc8fe01a8430dfa75e00053369e12eb5ed35e519bf56e60",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
@@ -2541,19 +2541,19 @@
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
     "src/renderer/temporal_pass.cpp": "6b5ff9f19908d8d281ed124bb4ac769b333fee221d61b8b3b587cc76daac1073",
-    "src/renderer/temporal_pass.h": "5950d1899f302619148bd42c0a7629ad5250cdf9d0f3b0c84746665637eebd6a",
+    "src/renderer/temporal_pass.h": "963e8084109395ae872ce7d0c8f49bcdd9527d117b04b4c828bfceb3c7583268",
     "src/renderer/temporal_resolve_program.h": "1001b182ae52ad2b212ce567790224e4971146892952895c79807cbd4ebaa103",
-    "src/renderer/temporal_resolve_program_inc.h": "3d1ef70fc07ffbab2f69d5af8355bdedda93d1dff4a85162e8a0ac94c8e17775",
+    "src/renderer/temporal_resolve_program_inc.h": "f3123c982fa261311e8e150ca7b9de183edb9eba46ef85b9ee32aa63e4738168",
     "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
-    "src/temporal/resolve.h": "1b019f9a950b6ef2d103cfea5c1bc9a06697a8b4c2119c0b4762f73c5bc9527b",
-    "src/temporal/resolve.hlsl": "4bc9396c792adf4afd9556fc842bdcee0ae1e1ed99892bea0b09b8b42b100053",
-    "src/temporal/rigid_motion_ps.hlsl": "6838c04bf50f10429a12df45b6907c39c10ce5513b25b6d90e0c2bbb4177eb28",
+    "src/temporal/resolve.h": "2faf60401df1b852245d13f63ad4dba13b754b9ae5727579261988fad1cca846",
+    "src/temporal/resolve.hlsl": "ca4694d5fdee433e46d9d0d07cae4371d87f2c56d00a019aaffe9b6dff82fe01",
+    "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
     "src/temporal/rigid_motion_vs.hlsl": "d27d9a9986b6e6d1f95e1964bff58b3b448c39d420c292b33edfe211fc9efea8",
     "verification/probe/abi_check.cpp": "8b8602dbc7bcd1326ea51727f019dd689d767a20be62daace7a5e58714fb7df3",
     "verification/probe/build_motion_output.sh": "7006bdb6fa1e900f14e0e2d01061e07c3430f71851bfcd730091a5cc8892bbdb",
     "verification/probe/motion_output_fixture.cpp": "085a42fb01d4d750bd522096360376d40cc710a2c89e354c087c9f9eb9ae2a01",
-    "verification/probe/run_motion_output.py": "e7919ca6039154be1d8b20ceb0ac4d69619b84e07e975e74c5136be5b491298c"
+    "verification/probe/run_motion_output.py": "94ee8a2b6b98d72b77a34b699a42ab347b5ff6e8bf5143bd93c30ed31fe51fdc"
   },
   "limits": [
     "Synthetic device program; not gameplay validation or temporal image quality.",

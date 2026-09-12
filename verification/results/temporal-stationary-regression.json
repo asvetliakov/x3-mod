@@ -1,0 +1,11 @@
+{
+  "purpose": "Deliberately failing negative proof: the TemporalPass stationary-stability scene run against the previous resolve (history sampled at the previous position plus the PREVIOUS raster jitter, git b9a1094). The corrected resolve adds the current jitter; see temporal-pass.txt for the passing run.",
+  "shader_source": "src/temporal/resolve.hlsl at git b9a1094 (previous-jitter convention)",
+  "shader_sha256": "4bc9396c792adf4afd9556fc842bdcee0ae1e1ed99892bea0b09b8b42b100053",
+  "corrected_shader_sha256": "ca4694d5fdee433e46d9d0d07cae4371d87f2c56d00a019aaffe9b6dff82fe01",
+  "fixture_sha256": "e5c2210df417adb89f9b0f0b97e8170c50db9958d733c30a4a28447e8fa8a38d",
+  "executable_sha256": "07215794999725441289898c3a2e9b6e4b02057ebeb73bea8cffce1efed3832d",
+  "mode": "stationary-only",
+  "exit_code": 1,
+  "report_sha256": "3302c250f2c6229daaec6ba14850ff38b6c7aefe9a8d1842ea4c34698f04ce86"
+}

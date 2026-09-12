@@ -1210,10 +1210,12 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // their write masks. c216.zw ("previous jitter", subtracted by the motion
     // fragment from the interpolated previous projection) is uploaded as zero:
     // the history rows are the application's unjittered rows, so the fragment
-    // already produces the previous UNJITTERED UV the RGBA32F ABI specifies and
-    // the resolve adds the previous raster jitter exactly once when it samples
-    // history. The previous jitter itself stays in the frame diagnostics for
-    // the resolve's frame inputs (counters().jitter_previous).
+    // already produces the previous UNJITTERED UV of the content at the
+    // jittered sample (a static object reports p - current jitter), which the
+    // RGBA32F ABI specifies; the resolve reads history at that UV plus the
+    // CURRENT jitter and never applies the previous one (src/temporal/README.md).
+    // The previous jitter stays in the frame diagnostics only
+    // (counters().jitter_previous, FrameInputs::previous_jitter for ABI stability).
     static const float zeros[16]{};
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
                             matched ? 1.f : 0.f, 0.f, 0.f, 0.f};

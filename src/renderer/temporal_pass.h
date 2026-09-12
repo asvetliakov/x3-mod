@@ -27,10 +27,12 @@ struct FrameInputs {
     UINT width = 0, height = 0;
     std::uint64_t epoch = 0; // stable camera/scene/resource regime, not frame/clear count
     float clip_to_previous[16]{}; // unjittered, row-major, column-vector multiplication
-    // Raster pixels, positive Y down. The camera path adds previous jitter after
-    // reprojection; the motion path adds it to the producer's unjittered UV. The
-    // current jitter is used by the camera path only: the motion texture is
-    // rasterized on the current jittered grid already.
+    // Raster pixels, positive Y down. The camera path subtracts the current
+    // jitter before the inverse projection (the motion texture is rasterized on
+    // the current jittered grid already, so the motion path uses it nowhere).
+    // The previous jitter is uploaded for ABI stability only: the resolve never
+    // adds it (history is on the unjittered grid; the producer's RG is already
+    // the previous unjittered UV).
     float current_jitter[2]{}, previous_jitter[2]{};
     float weight = .9f;
     float rejection[4]{.0001f, 0.f, 65000.f, .000001f};

@@ -1,0 +1,11 @@
+MODULE C:\windows\system32\d3d9.dll
+MODULE C:\X3\d3dx9_37.dll
+STATIONARY_CASES
+EDGE left x=4 y=8 resolved_coverage=0.6224 sampled_coverage=0.7500 analytic_coverage=0.7200
+EDGE right x=12 y=8 resolved_coverage=0.5915 sampled_coverage=0.6875 analytic_coverage=0.7200
+EDGE top x=8 y=4 resolved_coverage=0.6079 sampled_coverage=0.6875 analytic_coverage=0.6300
+EDGE bottom x=8 y=12 resolved_coverage=0.5129 sampled_coverage=0.5625 analytic_coverage=0.5900
+EDGE corner x=4 y=4 resolved_coverage=0.3488 sampled_coverage=0.5000 analytic_coverage=0.4536
+STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.421387 interior_delta=0.307129 edge_delta=0.370361 ramp_delta=0.181396 edge_dc_error=0.1512 edge_analytic_error=0.1285 ramp_dc_error=0.2520 drift_px=0.463797
+SAMPLE stationary one-step oracle max error over 64 frames actual=0.421386719 expected=0.000000000 tolerance=0.002000000 FAIL
+RESULT FAIL stationary one-step oracle max error over 64 frames

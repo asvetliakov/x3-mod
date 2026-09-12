@@ -37,7 +37,7 @@ SAMPLE object invalid sentinel xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.
 SAMPLE reserved motion state rejected xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 SAMPLE motion static fallback xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
-SAMPLE motion previous jitter xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE motion adds current jitter, not previous xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE neighborhood clipping xy=8,8 actual=0.62500000,0.62500000,0.62500000,1.00000000 expected=0.62500000 tolerance=0.00200000 PASS
 SAMPLE HDR preservation xy=8,8 actual=5.00000000,5.00000000,5.00000000,1.00000000 expected=5.00000000 tolerance=0.01000000 PASS
@@ -46,7 +46,7 @@ SAMPLE invalid current color xy=8,8 actual=0.00000000,0.00000000,0.00000000,1.00
 SAMPLE invalid current depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 SAMPLE invalid history depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
-SAMPLE camera jitter signs xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE camera jitter through zoom, previous ignored xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
@@ -62,9 +62,25 @@ CHECK prepare constants PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
-SAMPLE static jitter accumulated coverage xy=8,8 actual=0.43750000,0.43750000,0.43750000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
 CHECK prepare constants PASS
-SAMPLE static jitter accumulated coverage xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.45263672,0.45263672,0.45263672,1.00000000 expected=0.45359999 tolerance=0.02000000 PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.50732422,0.50732422,0.50732422,1.00000000 expected=0.50830001 tolerance=0.02000000 PASS
 CHECK prepare constants PASS
 SAMPLE epoch reset xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK resize invalidates PASS
@@ -107,7 +123,7 @@ SAMPLE object invalid sentinel xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.
 SAMPLE reserved motion state rejected xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 SAMPLE motion static fallback xy=8,8 actual=0.50000000,0.50000000,0.50000000,1.00000000 expected=0.50000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
-SAMPLE motion previous jitter xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE motion adds current jitter, not previous xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 SAMPLE neighborhood clipping xy=8,8 actual=0.62500000,0.62500000,0.62500000,1.00000000 expected=0.62500000 tolerance=0.00200000 PASS
 SAMPLE HDR preservation xy=8,8 actual=5.00000000,5.00000000,5.00000000,1.00000000 expected=5.00000000 tolerance=0.01000000 PASS
@@ -116,7 +132,7 @@ SAMPLE invalid current color xy=8,8 actual=0.00000000,0.00000000,0.00000000,1.00
 SAMPLE invalid current depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 SAMPLE invalid history depth xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
-SAMPLE camera jitter signs xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
+SAMPLE camera jitter through zoom, previous ignored xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.56250000 tolerance=0.00200000 PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
@@ -132,9 +148,25 @@ CHECK prepare constants PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
 CHECK prepare constants PASS
-SAMPLE static jitter accumulated coverage xy=8,8 actual=0.43750000,0.43750000,0.43750000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
 CHECK prepare constants PASS
-SAMPLE static jitter accumulated coverage xy=8,8 actual=0.56250000,0.56250000,0.56250000,1.00000000 expected=0.50000000 tolerance=0.07000000 PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.45263672,0.45263672,0.45263672,1.00000000 expected=0.45359999 tolerance=0.02000000 PASS
+CHECK prepare constants PASS
+SAMPLE static jitter accumulated coverage xy=8,8 actual=0.50732422,0.50732422,0.50732422,1.00000000 expected=0.50830001 tolerance=0.02000000 PASS
 CHECK prepare constants PASS
 SAMPLE epoch reset xy=8,8 actual=0.25000000,0.25000000,0.25000000,1.00000000 expected=0.25000000 tolerance=0.00200000 PASS
 CHECK resize invalidates PASS

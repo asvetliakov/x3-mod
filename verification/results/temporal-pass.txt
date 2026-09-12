@@ -44,12 +44,12 @@ CHECK matrix translation PASS
 CHECK atomic outputs valid PASS
 SAMPLE matrix routing plane=color actual=0.625000000 expected=0.625000000 PASS
 SAMPLE matrix routing plane=depth actual=0.500000000 expected=0.500000000 PASS
-CHECK warmup checker for jitter PASS
+CHECK warmup for previous jitter PASS
 CHECK atomic outputs valid PASS
-CHECK jitter translation PASS
+CHECK previous jitter ignored PASS
 CHECK atomic outputs valid PASS
-SAMPLE jitter routing plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE jitter routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE camera path ignores previous jitter plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE camera path ignores previous jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK warmup checker for object motion PASS
 CHECK atomic outputs valid PASS
 CHECK object correspondence PASS
@@ -313,32 +313,117 @@ CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
 CHECK motion previous jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE motion path applies previous jitter once plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE motion path applies previous jitter once plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE motion path ignores previous jitter plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE motion path ignores previous jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
-CHECK motion both jitters PASS
+CHECK motion current jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE motion path ignores current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE motion path ignores current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE motion path adds the current jitter to the producer UV plane=color actual=0.500000000 expected=0.500000000 PASS
+SAMPLE motion path adds the current jitter to the producer UV plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
-CHECK motion current jitter only PASS
+CHECK stationary content under jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE motion path without previous jitter stays put plane=color actual=0.250000000 expected=0.250000000 PASS
-SAMPLE motion path without previous jitter stays put plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE static content (RG = own center minus current jitter) lands on its own texel center plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE static content (RG = own center minus current jitter) lands on its own texel center plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
-CHECK pre-subtracted producer PASS
+CHECK unjittered producer UV PASS
 CHECK atomic outputs valid PASS
-SAMPLE producer RG that already subtracted previous jitter cancels it plane=color actual=0.250000000 expected=0.250000000 PASS
-SAMPLE producer RG that already subtracted previous jitter cancels it plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE producer RG selects the neighbor, previous jitter not added plane=color actual=0.500000000 expected=0.500000000 PASS
+SAMPLE producer RG selects the neighbor, previous jitter not added plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
 CHECK camera current jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE camera path applies current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE camera path applies current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE camera path restores the current jitter after reprojection (static camera lands on its own texel center) plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE camera path restores the current jitter after reprojection (static camera lands on its own texel center) plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK camera previous jitter PASS
+CHECK atomic outputs valid PASS
+SAMPLE camera path ignores previous jitter plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE camera path ignores previous jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+STATIONARY_CASES
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+EDGE left x=4 y=8 resolved_coverage=0.7480 sampled_coverage=0.7500 analytic_coverage=0.7200
+EDGE right x=12 y=8 resolved_coverage=0.6864 sampled_coverage=0.6875 analytic_coverage=0.7200
+EDGE top x=8 y=4 resolved_coverage=0.6851 sampled_coverage=0.6875 analytic_coverage=0.6300
+EDGE bottom x=8 y=12 resolved_coverage=0.5585 sampled_coverage=0.5625 analytic_coverage=0.5900
+EDGE corner x=4 y=4 resolved_coverage=0.4979 sampled_coverage=0.5000 analytic_coverage=0.4536
+STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.000488 interior_delta=0.000000 edge_delta=0.059082 ramp_delta=0.004395 edge_dc_error=0.0040 edge_analytic_error=0.0551 ramp_dc_error=0.0064 drift_px=0.000000
+SAMPLE stationary one-step oracle max error over 64 frames actual=0.000488281 expected=0.000000000 tolerance=0.002000000 PASS
+SAMPLE stationary interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE stationary fractional-edge max delta between consecutive phases actual=0.059082031 expected=0.000000000 tolerance=0.102000024 PASS
+SAMPLE stationary bilinear ramp max delta between consecutive phases actual=0.004394531 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary edge coverage equals the jitter-sampled coverage over a period actual=0.004028320 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary edge coverage converges to the analytic coverage actual=0.055099284 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE stationary ramp period mean equals the supersampled texture mean actual=0.006439209 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary square centroid drift max over 64 frames (px) actual=0.000000000 expected=0.000000000 tolerance=0.050000000 PASS
 RESET_CONTINUITY
 CHECK before reset frame PASS
 CHECK atomic outputs valid PASS
@@ -404,12 +489,12 @@ CHECK matrix translation PASS
 CHECK atomic outputs valid PASS
 SAMPLE matrix routing plane=color actual=0.625000000 expected=0.625000000 PASS
 SAMPLE matrix routing plane=depth actual=0.500000000 expected=0.500000000 PASS
-CHECK warmup checker for jitter PASS
+CHECK warmup for previous jitter PASS
 CHECK atomic outputs valid PASS
-CHECK jitter translation PASS
+CHECK previous jitter ignored PASS
 CHECK atomic outputs valid PASS
-SAMPLE jitter routing plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE jitter routing plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE camera path ignores previous jitter plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE camera path ignores previous jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK warmup checker for object motion PASS
 CHECK atomic outputs valid PASS
 CHECK object correspondence PASS
@@ -673,30 +758,115 @@ CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
 CHECK motion previous jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE motion path applies previous jitter once plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE motion path applies previous jitter once plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE motion path ignores previous jitter plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE motion path ignores previous jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
-CHECK motion both jitters PASS
+CHECK motion current jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE motion path ignores current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE motion path ignores current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE motion path adds the current jitter to the producer UV plane=color actual=0.500000000 expected=0.500000000 PASS
+SAMPLE motion path adds the current jitter to the producer UV plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
-CHECK motion current jitter only PASS
+CHECK stationary content under jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE motion path without previous jitter stays put plane=color actual=0.250000000 expected=0.250000000 PASS
-SAMPLE motion path without previous jitter stays put plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE static content (RG = own center minus current jitter) lands on its own texel center plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE static content (RG = own center minus current jitter) lands on its own texel center plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
-CHECK pre-subtracted producer PASS
+CHECK unjittered producer UV PASS
 CHECK atomic outputs valid PASS
-SAMPLE producer RG that already subtracted previous jitter cancels it plane=color actual=0.250000000 expected=0.250000000 PASS
-SAMPLE producer RG that already subtracted previous jitter cancels it plane=depth actual=0.500000000 expected=0.500000000 PASS
+SAMPLE producer RG selects the neighbor, previous jitter not added plane=color actual=0.500000000 expected=0.500000000 PASS
+SAMPLE producer RG selects the neighbor, previous jitter not added plane=depth actual=0.500000000 expected=0.500000000 PASS
 CHECK jitter warmup PASS
 CHECK atomic outputs valid PASS
 CHECK camera current jitter PASS
 CHECK atomic outputs valid PASS
-SAMPLE camera path applies current jitter plane=color actual=0.625000000 expected=0.625000000 PASS
-SAMPLE camera path applies current jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
-RESULT PASS numerical=154 state_restorations=158 generations=2
+SAMPLE camera path restores the current jitter after reprojection (static camera lands on its own texel center) plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE camera path restores the current jitter after reprojection (static camera lands on its own texel center) plane=depth actual=0.500000000 expected=0.500000000 PASS
+CHECK jitter warmup PASS
+CHECK atomic outputs valid PASS
+CHECK camera previous jitter PASS
+CHECK atomic outputs valid PASS
+SAMPLE camera path ignores previous jitter plane=color actual=0.375000000 expected=0.375000000 PASS
+SAMPLE camera path ignores previous jitter plane=depth actual=0.500000000 expected=0.500000000 PASS
+STATIONARY_CASES
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+CHECK stationary history follows the sequence PASS
+EDGE left x=4 y=8 resolved_coverage=0.7480 sampled_coverage=0.7500 analytic_coverage=0.7200
+EDGE right x=12 y=8 resolved_coverage=0.6864 sampled_coverage=0.6875 analytic_coverage=0.7200
+EDGE top x=8 y=4 resolved_coverage=0.6851 sampled_coverage=0.6875 analytic_coverage=0.6300
+EDGE bottom x=8 y=12 resolved_coverage=0.5585 sampled_coverage=0.5625 analytic_coverage=0.5900
+EDGE corner x=4 y=4 resolved_coverage=0.4979 sampled_coverage=0.5000 analytic_coverage=0.4536
+STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.000488 interior_delta=0.000000 edge_delta=0.059082 ramp_delta=0.004395 edge_dc_error=0.0040 edge_analytic_error=0.0551 ramp_dc_error=0.0064 drift_px=0.000000
+SAMPLE stationary one-step oracle max error over 64 frames actual=0.000488281 expected=0.000000000 tolerance=0.002000000 PASS
+SAMPLE stationary interior max delta between consecutive phases actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
+SAMPLE stationary fractional-edge max delta between consecutive phases actual=0.059082031 expected=0.000000000 tolerance=0.102000024 PASS
+SAMPLE stationary bilinear ramp max delta between consecutive phases actual=0.004394531 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary edge coverage equals the jitter-sampled coverage over a period actual=0.004028320 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary edge coverage converges to the analytic coverage actual=0.055099284 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE stationary ramp period mean equals the supersampled texture mean actual=0.006439209 expected=0.000000000 tolerance=0.010000000 PASS
+SAMPLE stationary square centroid drift max over 64 frames (px) actual=0.000000000 expected=0.000000000 tolerance=0.050000000 PASS
+RESULT PASS numerical=174 state_restorations=162 generations=2

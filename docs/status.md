@@ -87,9 +87,17 @@ Evidence at this checkpoint:
   boundary cost (CPU-inclusive, Preview): 0.67 ms at 1280×768 and 2.04 ms at
   5120×1440. [Review 16](verification/review-16.md) fixed a fixed-function
   texture-stage leak into the resolve and added format-conversion gating;
-  verdict GO for a gameplay run. Known limitation: draws without a profile
-  row (background, particles, effects) resolve current-only and will show
-  sub-pixel crawl.
+  verdict GO for a gameplay run. The first TAA run showed stationary
+  objects trembling and blurring: the resolve read history at the previous
+  position plus the previous jitter, which is right only for a raw one-frame
+  history, not the accumulated one. It now reads history at the previous
+  unjittered position plus the current jitter; a stationary fixture shows
+  0.000 px drift and bit-stable interiors across jitter phases where the old
+  shader drifted 0.46 px, and three automated negative controls reproduce the
+  regression. See [review 17](verification/review-17.md). Known limitation:
+  draws without a profile row (background, particles, effects) resolve
+  current-only and show sub-pixel crawl; silhouette edges whose coverage flips
+  stay current-only.
 - The motion-output fixture now runs in 18 environments including the
   ownership wrapper, depth copy and admission, which the gameplay run needs.
   That coverage found and fixed a refcount defect that would have leaked the

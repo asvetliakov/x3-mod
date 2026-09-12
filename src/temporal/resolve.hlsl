@@ -11,7 +11,16 @@ float4 reprojection1 : register(c1);
 float4 reprojection2 : register(c2);
 float4 reprojection3 : register(c3);
 float4 sizeJitter : register(c4); // 1/W, 1/H, current jitter UV xy
-float4 history : register(c5); // previous jitter UV xy, weight, valid
+// c5.xy carries the previous raster jitter (UV) for ABI compatibility only; the
+// resolve never reads it. History is the accumulated output on the UNJITTERED
+// pixel grid and output pixel p represents unjittered position p. The jittered
+// raster sample at p shows content at p - current jitter (the sub-pixel offset
+// is the supersampling); its previous unjittered position q is what the motion
+// producer/camera path yields, and history is sampled at q + current jitter
+// ("pixel center minus velocity"). For a static scene that is p exactly (f = 0),
+// so the output is stable across phases. Adding the previous jitter instead
+// moved the taps by the jitter difference every frame: oscillation plus blur.
+float4 history : register(c5); // (previous jitter UV xy, unused), weight, valid
 float4 rejection : register(c6); // absolute device-depth tolerance, relative tolerance, HDR limit, minimum W
 float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, depth-sentinel reactive
 
@@ -65,6 +74,10 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Texture centers use (pixel + .5)/size, but the raw D3D9 viewport maps
     // unadjusted projection NDC zero to raster pixel size/2. Remove the texture
     // half-texel before inverting the camera; restore it after prior projection.
+    // The current color/depth/motion are the jittered rasterization read at
+    // this pixel. The camera reconstruction removes the current jitter to get
+    // the content's unjittered position, reprojects it, and restores the same
+    // jitter below so a static camera lands on this pixel's own texel center.
     float2 unjittered = uv - 0.5 * sizeJitter.xy - sizeJitter.zw;
     float4 currentClip = float4(unjittered.x * 2 - 1, 1 - unjittered.y * 2, depth, 1);
     float4 previousClip = float4(dot(reprojection0, currentClip), dot(reprojection1, currentClip),
@@ -74,12 +87,16 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     bool valid = all(previousClip == previousClip) && all(abs(previousClip) <= 1e20)
                  && previousClip.w > rejection.w;
     previousUV = float2(previousClip.x, -previousClip.y) / max(previousClip.w, rejection.w) * 0.5 + 0.5;
-    previousUV += 0.5 * sizeJitter.xy + history.xy;
+    // Previous unjittered texture-center UV of the content plus the CURRENT
+    // jitter (never the previous one): history lives on the unjittered grid.
+    previousUV += 0.5 * sizeJitter.xy + sizeJitter.zw;
     expectedDepth = previousClip.z / max(previousClip.w, rejection.w);
     if (options.x > 0.5) {
         float4 motion = tex2D(motionOverride, uv);
         if (motion.w == 1) {
-            previousUV = motion.xy + history.xy;
+            // RG is the producer's previous unjittered texture-center UV of the
+            // content at this jittered sample; add the current jitter only.
+            previousUV = motion.xy + sizeJitter.zw;
             expectedDepth = motion.z;
             valid = all(motion == motion) && all(abs(motion) <= 1e20);
         } else if (motion.w != 0) valid = false;
