@@ -748,6 +748,12 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     // previous view of the next resolve (invalid when unread).
                     camera_previous_ = camera_scene_; camera_previous_frame_ = frame_;
                 }
+                // --taa-debug: the main target after the sharpen draw or the
+                // copy-back, i.e. the image this resolve presents (the taa
+                // readback above is the unsharpened history input); the HDR
+                // route reads it after its write-back instead (hdr_writeback).
+                if (SUCCEEDED(hr) && !hdr_scene && capture_ && taa_debug_)
+                    readback_surface(main_surface, static_cast<D3DFORMAT>(main_.format), 4, L"present", L"bgra8", "motion_output_present_readback", "bgra8_row_major", target_width_, target_height_);
             }
         }
         release(depth); release(motion);
@@ -2112,6 +2118,11 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
             hdr_tonemap_disabled_logged_ = true;
             log("hdr_tonemap_disabled device=%llu frame=%llu reason=draw_failures draw=%08lx", id_, frame_, r.tonemap_draw);
         }
+        // --taa-debug: the 8-bit main target after the write-back of a resolved
+        // frame (tonemapped and/or sharpened as configured): the presented image
+        // of this resolve, the counterpart of the 8-bit route's readback in resolve().
+        if (capture_ && taa_debug_ && hdr_resolved_ && !r.unwind)
+            readback_surface(hdr_main_, static_cast<D3DFORMAT>(main_.format), 4, L"present", L"bgra8", "motion_output_present_readback", "bgra8_row_major", target_width_, target_height_);
     }
     if (r.ticks_bind) { h.bind_ticks += r.ticks_bind; record(unsigned(telemetry::Metric::HdrBind), r.ticks_bind, FAILED(r.bind)); }
     hdr_dirty_ = false;

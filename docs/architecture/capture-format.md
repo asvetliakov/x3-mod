@@ -151,3 +151,36 @@ fields. Older captures simply lack these keys. Original metadata-only parser
 fixtures cover valid/missing/unscoped/unknown contexts, mismatched coordinates,
 raw matrix bits, disabled/pending/ambiguous/failed buffer tracking and draw/frame
 isolation in `verification/analysis/test_capture_object_summary.py`.
+
+## Temporal-route readbacks in capture frames (build 0.4)
+
+With `--motion-output` the route reads its owned targets back in every
+capture frame through the documented path (`CreateOffscreenPlainSurface` in
+`D3DPOOL_SYSTEMMEM`, `GetRenderTargetData`, `LockRect`; nothing runs outside
+capture frames) into headerless row-major files beside the log, one log line
+per file with the HRESULT and the byte count
+(`MotionOutput::readback_surface`). `--taa-debug` adds the four image kinds of
+the resolve. Frames are the route's `(device, frame)` identity.
+
+| file | log line | contents | when |
+| --- | --- | --- | --- |
+| `motion_<d>_<f>.rgba32f` | `motion_output_readback` | RT1 per-pixel motion, RGBA float32 (alpha 1 valid, -1 sentinel) | every capture frame the route filled |
+| `depth_<d>_<f>.r32f` | `motion_output_depth_readback` | RT2 device depth, -1 where no routed depth row covered the pixel | with the depth target |
+| `color_<d>_<f>.bgra8` | `motion_output_color_readback` | the game's 8-bit main target **before** the resolve (the raw jittered frame; on the HDR path the unresolved scene written back first) | `--taa-debug` |
+| `taa_<d>_<f>.rgba16f` | `motion_output_taa_readback` | `Output::color_surface`, the resolved FP16 image the pass publishes as history, **before and independently of the sharpen draw** | `--taa-debug`, a successful resolve |
+| `present_<d>_<f>.bgra8` | `motion_output_present_readback` | the game's 8-bit main target **after** the resolve's output reached it: after the RCAS sharpen draw or the point-filtered copy-back on the 8-bit route (`resolve`), after the write-back (identity or AgX, sharpened or not) on the HDR route (`hdr_writeback`, only when that write-back consumed a resolved image) | `--taa-debug`, a successful resolve (review 27) |
+| `hdr_<d>_<f>.rgba16f` | `hdr_readback` | the FP16 scene target before the frame's first write-back | `--hdr` |
+
+`taa_<d>_<f>` and `present_<d>_<f>` are therefore different images whenever
+the sharpen is on: the first is the history input (unsharpened), the second
+the image the frame presents from the resolve. Before review 27 the presented
+image was never read back and the sharpen could not be measured in game
+([iteration-12.md](../verification/iteration-12.md) section 2). The present
+readback is taken in the route's hook path, before the game draws anything
+after its bloom copy (HUD, menus), so it is the resolve's display image, not
+the final back buffer. The motion-output fixture verifies it byte for byte
+against the image the fixture itself reads from the back buffer after
+`EndScene` (`present_<frame>.bgra8`; [taa-sharpen.md](../verification/taa-sharpen.md)).
+The `readbacks` counter on the `motion_output_frame` line counts these files;
+with `--taa-debug` a resolved 8-bit-route frame reports 5 (motion, depth,
+colour, taa, present), an HDR-route frame 6.

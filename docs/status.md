@@ -87,6 +87,27 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   context, also seen once on Rosetta), and the FEX CRT prints NaN/Inf as huge
   finite numbers (the exposure fixture must print bits). Loading attribution
   on X3 therefore relies on hook/trampoline counters.
+- **Review 27 (worktree, 2026-09-12 evening): the presented-image readback and
+  the iteration-12 tool.** `--taa-debug` capture frames now also write
+  `present_<device>_<frame>.bgra8`, the game's main target after the RCAS
+  sharpen draw / copy-back (8-bit route) or after the HDR write-back — the
+  `taa_*` readback is the unsharpened history input, so until now no run
+  could measure the sharpen in game
+  ([capture-format.md](architecture/capture-format.md), [taa-sharpen.md](verification/taa-sharpen.md)).
+  Fixture: byte-identical to the presented frame on 25 TAA cases, RCAS
+  reference within 0.50 code, 0 outside the 3x3 bound; motion-output 94
+  cases, temporal pass 386/228/2, scene capture, ownership 27, x87 PASS, 786
+  analysis tests OK. `tools/analysis/analyze_iteration12.py` re-emits
+  `iteration-12.json`/`.txt` (numbers unchanged from the hand-off) and adds
+  §2.4: RCAS model of run 10's stationary/slow bursts — 0 of 47.2 M channels
+  outside the 3x3 neighbourhood, interior gradient energy ×1.04–1.07, edge
+  rise −0.03 to −0.20 px, halo excursion +0.02–0.06 of edge contrast, flicker
+  energy +3–7 % evenly across classes ([iteration-12.md](verification/iteration-12.md),
+  complete). Fixed: `analyze_iteration09_run2.py` burst grouping (readback
+  frames only) and its `--text` crash without mesh-cache lines. The `b10d129`
+  checkpoint did not compile (`ID3DXMesh` undeclared in `loading_trace.h`);
+  a forward declaration fixes it. Not committed; branch
+  `worktree-agent-a59b38a89c58bc731`.
 - **Analyses**: [iteration-10.md](verification/iteration-10.md) (FEX health
   clean, TAA no regression, frame time 24.1 → 8.4 ms route off, 34.2 → 16.9 ms
   route on; hook agrees 214/214, `rs_resyncs` 24 on a latch-only screen);

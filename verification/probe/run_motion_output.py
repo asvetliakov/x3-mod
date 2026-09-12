@@ -750,11 +750,12 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert modes[0]['state_shadow'] == str(int(shadow)) and modes[0]['scene_hook'] == '0' and modes[0]['hdr'] == str(int(hdr)), (name, modes)
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
     color_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_color_readback ')}
+    present_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_present_readback ')}
     taa_lines_log = [fields(l) for l in tl if l.startswith('motion_output_taa ')]
     if not enabled:
         assert not devices and not variants and not targets and not frames and not readbacks and not depth_readbacks and not cuts and not routes, f'{name}: disabled route logged activity'
         assert not any(l.startswith('motion_output_release ') for l in tl)
-        assert not taa_readbacks and not color_readbacks and not taa_lines_log
+        assert not taa_readbacks and not color_readbacks and not present_readbacks and not taa_lines_log
         return result
     assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['reason'] == 'ok', (name, devices)
     assert devices[0]['rt_mode'] == rt_mode, (name, devices)
@@ -787,7 +788,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert [t['initialize'] for t in taa_lines_log] == ['00000000'] and taa_lines_log[0]['references'] == taa_references, (name, taa_lines_log)
         assert f'generation=2 taa_references={taa_references}' in trace, name
     else:
-        assert not taa_lines_log and not taa_readbacks and not color_readbacks
+        assert not taa_lines_log and not taa_readbacks and not color_readbacks and not present_readbacks
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, 'owned objects released before the final device Release'
     assert not any(l.startswith(('motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl)
     assert sorted(frames) == list(range(0, 9)), (name, sorted(frames))  # frame 0 via telemetry, 1..8 via capture
@@ -806,7 +807,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         assert int(summary['set_rt']) == 4 * int(summary['routed']), (name, frame, summary)
         assert int(summary['lazy_flushes']) == (int(summary['routed']) if lazy else 0), (name, frame, summary)
         assert int(summary['jitter_writes']) == 2 * int(summary['jittered']), (name, frame, summary)
-        assert int(summary['readbacks']) == (0 if frame == 0 else (4 if taa and not strict_skip else 2) + int(hdr and hdr_fault is None)), (name, frame, summary)  # the FP16 readback of the HDR path adds one
+        # Motion + depth; with X3M_TAA_DEBUG the pre-resolve colour, the resolved FP16 image and the presented main target; the FP16 readback of the HDR path adds one.
+        assert int(summary['readbacks']) == (0 if frame == 0 else (5 if taa and not strict_skip else 2) + int(hdr and hdr_fault is None)), (name, frame, summary)
         # Render-state shadow: every route query is a shadow hit except after a
         # resynchronization (at most one native read per shadowed state); the
         # native reads are those misses plus the fill's touched-state save. Off:
@@ -920,7 +922,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     if taa:
         result['camera_log'] = check_camera_log(name, trace, expects, camera, sentinel_switch, range(0, 9))
     if taa and strict_skip:
-        assert not taa_readbacks and not color_readbacks, (name, 'skipped frames wrote debug readbacks')
+        assert not taa_readbacks and not color_readbacks and not present_readbacks, (name, 'skipped frames wrote debug readbacks')
     elif taa:
         # X3M_TAA_DEBUG: the resolved FP16 image and the pre-resolve color of
         # frames 1-8. Seam: the FP16 bytes equal the reference pass's output.
@@ -943,6 +945,31 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         if not live and not agx:  # under AgX the 8-bit pre-resolve colour is tonemapped: not comparable to the resolved FP16 image
             assert all(fraction == 0 for fraction in taa_check['differing_fraction'].values()), (name, taa_check)
         result['taa_image'] = {'differing_fraction': taa_check['differing_fraction'], 'max_difference': taa_check['max_difference']}
+        # X3M_TAA_DEBUG: present_1_<frame>.bgra8 is the main target after the
+        # sharpen draw / copy-back (8-bit route) or after the write-back (HDR
+        # route) of a resolved frame: byte for byte the image the fixture
+        # presented. Unsharpened and untonemapped, it is the resolved FP16
+        # image through the 8-bit conversion (one code); sharpened, RCAS of it
+        # (validate_sharpen); tonemapped, AgX of it (validate_hdr_taa).
+        assert sorted(present_readbacks) == list(range(1, 9)), (name, sorted(present_readbacks))
+        present_stats = {}
+        for frame in range(1, 9):
+            r = present_readbacks[frame]
+            assert r['result'] == '00000000' and r['bytes'] == '16384' and r['file'] == f'present_1_{frame}.bgra8' and r['format'] == 'bgra8_row_major', (name, frame, r)
+            present = (directory / 'x3-modern-captures' / r['file']).read_bytes()
+            assert present == read_presented(directory, frame), f'{name}: frame {frame} present_1_{frame}.bgra8 differs from the presented image'
+            entry = {'equals_presented': True}
+            if not sharpen and not agx:
+                resolved = read_half_image(directory / 'x3-modern-captures' / taa_readbacks[frame]['file'], 64, 64)
+                errors, alpha = [], []
+                for i, (cr, cg, cb, ca) in enumerate(resolved):
+                    pr, pg, pb, pa = bgra8(present, i)
+                    errors.append(max(abs(p - 255.0 * min(max(c, 0.0), 1.0)) for p, c in zip((pr, pg, pb), (cr, cg, cb))))
+                    alpha.append(abs(pa - 255.0 * min(max(ca, 0.0), 1.0)))
+                entry.update(max_code_error_vs_resolved=max(errors), mean_code_error_vs_resolved=sum(errors) / len(errors), alpha_max_error_vs_resolved=max(alpha))
+                assert entry['max_code_error_vs_resolved'] <= 1.0, (name, frame, entry)  # the copy-back's 8-bit quantisation of the FP16 image
+            present_stats[frame] = entry
+        result['present_readbacks'] = present_stats
     # Per-draw decisions logged in capture frames must agree with the fixture's script.
     expects = [fields(l) for l in lines if l.startswith('EXPECT ') and 1 <= int(fields(l)['frame']) <= 8]
     assert len(routes) == len(expects) == sum(SEAM_FRAMES[f]['draws'] - 1 for f in SEAM_FRAMES), (name, len(routes), len(expects))
@@ -1602,6 +1629,7 @@ def validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen, width=
     tl = trace.splitlines()
     frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
     taa_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_taa_readback ')}
+    present_readbacks = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_present_readback ')}
     s2 = hdr_stage2_lines(trace) if hdr else None
     gain = sharpen_gain(sharpen)
     images, worst_alt = {}, 0
@@ -1620,6 +1648,11 @@ def validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen, width=
         unsharpened = [tuple(int(round(255.0 * c)) for c in px) for px in display]
         bounds = neighbourhood_bounds(unsharpened, width, height)
         presented = read_presented(directory, frame, width, height)
+        # The DLL's own readback of the main target after the sharpen draw
+        # (8-bit route) or the write-back (HDR route) is the presented image.
+        present_line = present_readbacks[frame]
+        assert present_line['result'] == '00000000' and present_line['file'] == f'present_1_{frame}.bgra8', (name, frame, present_line)
+        assert (directory / 'x3-modern-captures' / present_line['file']).read_bytes() == presented, f'{name}: frame {frame} present_1_{frame}.bgra8 differs from the presented image'
         errors, alpha, outside, changed = [], [], 0, 0
         for i, px in enumerate(expected):
             pr, pg, pb, pa = bgra8(presented, i)
@@ -1630,7 +1663,8 @@ def validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen, width=
                 outside += 1
             if (pr, pg, pb) != unsharpened[i]:
                 changed += 1
-        entry = {'max_code_error': max(errors), 'mean_code_error': sum(errors) / len(errors), 'alpha_max': max(alpha), 'outside_3x3': outside, 'changed': changed}
+        entry = {'max_code_error': max(errors), 'mean_code_error': sum(errors) / len(errors), 'alpha_max': max(alpha), 'outside_3x3': outside, 'changed': changed,
+                 'present_readback': present_line['file'], 'present_equals_presented': True}
         if params['agx']:
             # The other order: sharpen the engine-space image, then tonemap it.
             alternative = rcas_reference([tuple(min(max(c, 0.0), 1.0) for c in (r, g, b)) for r, g, b, a in resolved], width, height, gain)
@@ -1650,6 +1684,7 @@ def validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen, width=
     return {'sharpen': sharpen, 'gain': gain, 'frames': sorted(images), 'images': images,
             'max_code_error': max(v['max_code_error'] for v in images.values()), 'mean_code_error': max(v['mean_code_error'] for v in images.values()),
             'changed_fraction': sum(v['changed'] for v in images.values()) / (8.0 * width * height),
+            'present_readbacks_equal_presented': all(v['present_equals_presented'] for v in images.values()),
             'history_frames': [f for f in range(1, 9) if frames[f]['taa_history'] == '1']}
 
 

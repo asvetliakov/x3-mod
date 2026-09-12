@@ -894,7 +894,12 @@ target:
   `taa_sharpen=1` on the frame line). No second capture/apply, no extra
   copy: the draw replaces the copy. The pass refuses `sharpen > 0` without
   the program, on the FP16 input path (there is no 8-bit destination in the
-  pass on that path) and outside `[0, 1]`.
+  pass on that path) and outside `[0, 1]`. With `--taa-debug` a capture
+  frame reads the main target back **after** this draw (or after the
+  copy-back) as `present_<device>_<frame>.bgra8` — the `taa_*` readback
+  taken before it is the unsharpened history input, so until review 27 the
+  presented image was never captured and the sharpen could not be measured
+  in game ([capture-format.md](capture-format.md), "Temporal-route readbacks").
 * *HDR route* (`HdrPass::write_back`): the resolve publishes its FP16 history
   by ping-pong as in stage 3; the write-back that samples it selects the
   RCAS variant of its program when the source is a resolved TAA image
@@ -907,7 +912,9 @@ target:
   resolve) is written back unsharpened; a failed sharpened draw with a
   clean restoration is redrawn unsharpened and counted, three failures
   disable the sharpen for the device (`sharpen_fallback`), and the
-  programs gate themselves at attach (`caps.sharpen_reason`). On the 8-bit
+  programs gate themselves at attach (`caps.sharpen_reason`). The same
+  `present_*` readback is taken after the write-back of a resolved frame
+  (`MotionOutput::hdr_writeback`), i.e. after AgX and RCAS. On the 8-bit
   route (review 26) a failed sharpened draw that did not lose the device
   keeps the resolve and its published history and falls back to the
   `StretchRect` copy-back of that frame (`Output::sharpen_result`,
