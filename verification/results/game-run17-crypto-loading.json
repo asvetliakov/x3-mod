@@ -1,0 +1,271 @@
+{
+  "schema": 1,
+  "run": {
+    "number": 17,
+    "log_identifier": "session-20260913-024655-216",
+    "bottle": "X3",
+    "user_report": "loaded the save then exited",
+    "game_running_before_copy": [],
+    "game_running_after_copy": [],
+    "completed_log_has_teardown_marker": false
+  },
+  "build": {
+    "qualification_checkpoint": "c85c5b5",
+    "production_source": "ae03d9a",
+    "installed_dll_sha256": "ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193",
+    "runtime_log_version": "0.4",
+    "runtime_log_schema": 2,
+    "runtime_embeds_commit_or_dll_hash": false
+  },
+  "provenance": {
+    "source_log": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-captures/session-20260913-024655-216.log",
+    "canonical_final_log": "/tmp/x3-bottleX3-run17/session-20260913-024655-216.final.log",
+    "independent_final_copy": "/tmp/x3-bottleX3-run17/session-20260913-024655-216.log",
+    "in_progress_prefix": "/tmp/x3-bottleX3-run17/in-progress/session-20260913-024655-216.prefix.log",
+    "bytes": 10486233,
+    "lines": 210257,
+    "mtime_ns_before": 1789253287842404188,
+    "mtime_ns_after": 1789253287842404188,
+    "inode_before": 39184067,
+    "inode_after": 39184067,
+    "sha256": "b2c3e3dfde41d741b0adcf4f5facca11288900888bdc6c7c435d921528a05654",
+    "source_stable_during_copy": true,
+    "final_copy_matches_source": true,
+    "artifact_directory": "/tmp/x3-bottleX3-run17/artifacts",
+    "artifact_count": 50,
+    "artifact_kind": "logged shader binaries",
+    "artifact_tree_sha256": "479a5d671cc063877aaab4030a78f72600ef38f844c7b3c369310c4c7c452336",
+    "matching_readbacks": 0,
+    "provenance_plist": "/tmp/x3-bottleX3-run17/final-provenance.plist",
+    "root_completion_manifest": "/tmp/x3-bottleX3-run17/completed-snapshot.json"
+  },
+  "configuration": {
+    "crypt_cache": {
+      "requested": true,
+      "enabled": true,
+      "telemetry": true,
+      "imports_available": true,
+      "provider_slots": 4,
+      "key_slots": 4,
+      "blob_limit": 512
+    },
+    "telemetry": true,
+    "per_draw_telemetry": false,
+    "loading_probes": true,
+    "motion_output": false,
+    "taa": false,
+    "hdr": false,
+    "scene_hook": false,
+    "mesh_cache": false,
+    "gz_buffer_enabled_line_present": false
+  },
+  "hook_admission": {
+    "loading_hook_rows": 41,
+    "installed": 40,
+    "not_installed": [
+      "MoveFileExA"
+    ],
+    "crypto_hook_rows": 9,
+    "crypto_hooks_installed": 9,
+    "crypto_lifecycle_hooks_cache_active": 4,
+    "loading_probe_sites": 12,
+    "loading_probes_installed": 12,
+    "signature_probe_status": "active"
+  },
+  "crypto": {
+    "scope": "sum of two reported window deltas; no session or teardown total was emitted",
+    "observed_signature_checks": 846,
+    "observed_signature_exits": 846,
+    "signature_probe_overflow": 0,
+    "signature_probe_desync": 0,
+    "signature_probe_seconds": 0.1562213,
+    "cold_window": {
+      "signature_checks": 2,
+      "signature_probe_seconds": 0.0208937,
+      "logical_acquires": 6,
+      "provider_hits": 1,
+      "provider_misses": 1,
+      "failed_native_passthroughs": 1,
+      "imports": 2,
+      "import_hits": 1,
+      "deletes_emulated": 3,
+      "deletes_passthrough": 1
+    },
+    "bulk_window": {
+      "signature_checks": 844,
+      "signature_probe_seconds": 0.1353276,
+      "logical_acquires": 2532,
+      "provider_hits": 844,
+      "provider_misses": 0,
+      "failed_native_passthroughs": 0,
+      "imports": 844,
+      "import_hits": 844,
+      "deletes_emulated": 1688,
+      "deletes_passthrough": 0,
+      "busy_passthrough": 0,
+      "evictions": 0,
+      "import_passthrough": 0
+    },
+    "reported_window_sums": {
+      "logical_acquires": 2538,
+      "provider_hits": 845,
+      "provider_misses": 1,
+      "failed_native_passthroughs": 1,
+      "logical_imports": 846,
+      "import_hits": 845,
+      "deletes_emulated": 1691,
+      "deletes_passthrough": 1,
+      "busy_passthrough": 0,
+      "evictions": 0,
+      "logical_releases": 846,
+      "releases_suppressed": 846,
+      "import_passthrough": 0,
+      "logical_key_destroys": 846,
+      "key_destroys_suppressed": 846,
+      "providers_cached_at_last_report": 1,
+      "keys_cached_at_last_report": 1,
+      "probe_error": "0x80090016"
+    },
+    "physical_cryptoapi_calls": {
+      "CryptAcquireContextA": {
+        "count": 2,
+        "failures": 1,
+        "seconds": 0.0142899
+      },
+      "CryptImportKey": {
+        "count": 1,
+        "failures": 0,
+        "seconds": 0.0008432
+      },
+      "CryptCreateHash": {
+        "count": 846,
+        "failures": 0,
+        "seconds": 0.0015896
+      },
+      "CryptHashData": {
+        "count": 846,
+        "failures": 0,
+        "bytes": 27332655,
+        "seconds": 0.039613
+      },
+      "CryptVerifySignatureA": {
+        "count": 846,
+        "failures": 0,
+        "bytes": 216576,
+        "seconds": 0.0921625
+      },
+      "CryptGetHashParam": {
+        "count": 1692,
+        "failures": 0,
+        "seconds": 0.0004467
+      },
+      "CryptDestroyHash": {
+        "count": 846,
+        "failures": 0,
+        "seconds": 0.0011357
+      }
+    },
+    "expected_cold_probe_error": {
+      "code": "0x80090016",
+      "name": "NTE_BAD_KEYSET",
+      "unexpected_fault": false
+    },
+    "signature_continuity": {
+      "hash_create_count_matches_checks": true,
+      "hash_data_count_matches_checks": true,
+      "verify_count_matches_checks": true,
+      "two_hash_params_per_check": true,
+      "hash_destroy_count_matches_checks": true,
+      "all_verify_calls_succeeded": true
+    }
+  },
+  "loading": {
+    "analyzer": "tools/analysis/analyze_loading_profile.py",
+    "analysis_json": "/tmp/x3-bottleX3-run17/loading-analysis/loading-profile.json",
+    "profile_blocks": 0,
+    "gap_labels_are_heuristic": true,
+    "gaps": [
+      {
+        "index": 1,
+        "label": "unlabelled",
+        "start_seconds": 4.0056845,
+        "end_seconds": 6.7794921,
+        "seconds": 2.6103099,
+        "hooked_exclusive_seconds": 0.4327058
+      },
+      {
+        "index": 2,
+        "label": "menu load",
+        "start_seconds": 7.5043341,
+        "end_seconds": 15.876372,
+        "seconds": 8.1420176,
+        "hooked_exclusive_seconds": 4.8996096
+      },
+      {
+        "index": 3,
+        "label": "save load",
+        "start_seconds": 23.5170546,
+        "end_seconds": 51.1826431,
+        "seconds": 27.5742425,
+        "hooked_exclusive_seconds": 16.1281153
+      },
+      {
+        "index": 4,
+        "label": "menu load",
+        "start_seconds": 63.6251487,
+        "end_seconds": 70.8660168,
+        "seconds": 6.6416649,
+        "hooked_exclusive_seconds": 4.1995049
+      }
+    ],
+    "save_gap_work_vector": {
+      "gzread_calls": 14461803,
+      "gzopen_successes": 1,
+      "inflate_calls": 359874,
+      "mesh_create_calls": 3342,
+      "generate_adjacency_calls": 3342,
+      "signature_probe_calls": 846,
+      "resource_load_calls": 2358,
+      "resource_load_exits": 2358,
+      "probe_overflow_total": 0,
+      "probe_desync_total": 0
+    }
+  },
+  "comparisons": {
+    "bulk_signature_baseline": {
+      "source": "docs/reverse-engineering/script-signature-check.md",
+      "checks": 844,
+      "baseline_seconds": 12.835,
+      "run17_seconds": 0.1353276,
+      "seconds_reduced": 12.6996724,
+      "speed_ratio": 94.8439,
+      "interpretation": "same 844-check signature batch; validates the targeted crypto path in CrossOver Preview"
+    },
+    "save_gap_baseline": {
+      "source": "docs/verification/iteration-11.md",
+      "baseline_seconds": 35.707,
+      "run17_seconds": 27.5742425,
+      "delta_seconds": -8.1327575,
+      "delta_percent": -22.776,
+      "same_save_work_vector": true,
+      "controlled_ab": false,
+      "reason": "the baseline enabled route, TAA, scene hook and gz buffer on an older build; run 17 disabled those rendering paths and did not emit a gz-buffer-enabled line"
+    }
+  },
+  "verdict": {
+    "crypto_cache_activated": true,
+    "crypto_hooks_admitted": true,
+    "bulk_provider_and_key_reuse_observed": true,
+    "signature_verification_continued": true,
+    "unexpected_crypto_refusal_or_fault_observed": false,
+    "cross_over_gameplay_acceptance_for_crypto_path": true,
+    "native_windows_runtime_verified": false,
+    "overall_load_time_causal_claim": false
+  },
+  "next_step": {
+    "run_group": "2a reader verification",
+    "same_installed_build": true,
+    "code_or_dll_change_required": false,
+    "command_mode": "--direct --telemetry --resource-read verify --dat-handles"
+  }
+}

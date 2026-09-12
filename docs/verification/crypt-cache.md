@@ -1,7 +1,9 @@
 # Game signature provider cache (`X3M_CRYPT_CACHE`)
 
-**The corrected branch passes 572 checks on each of Steam and X3/FEX. No game
-loading speedup from this branch has been measured.** The opt-in switch `--crypt-cache` targets the provider/container
+**The corrected branch passes 572 checks on each of Steam and X3/FEX.
+[Game run 17](run17-crypto-loading.md) accepts the targeted cache path on X3:**
+the 844-check signature probe fell from 12.835 s to 0.1353276 s with native
+verification intact. The 27.574 s save gap is not a controlled whole-load A/B. The opt-in switch `--crypt-cache` targets the provider/container
 churn in the game's [signature verifier](../reverse-engineering/script-signature-check.md).
 Verification still uses the original CSP's hashing, RSA signature check and hash
 parameters. Invalid signatures are not accepted by the cache.

@@ -21,7 +21,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 11 | TAA | **Done and verified in game.** Same-draw motion, engine camera reprojection and scene-end resolve; stable history and removed tremble/shimmer. RCAS sharpen and mip bias were also verified. Candidate defaults 0.75 / −0.5 await an actual 0.75 capture before being enabled; that setting is currently modeled, not measured in game. |
 | 12 | Volumetric nebula/fog | Not started. |
 | 13 | Depth-aware lens effects | Not started. |
-| 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All are installed in the integrated build and still need game acceptance. Diagnostic timings are not uninstrumented game FPS. |
+| 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All are installed; run 17 accepts the crypto path on X3 (844-check probe 12.835 → 0.1353 s). Reader/adjacency acceptance remains. The 27.574 s save gap is not a controlled cache A/B. Diagnostic timings are not uninstrumented game FPS. |
 | 15 | macOS menu bar | Not started. Also track the separate game/macOS double cursor after alt-tab; first compare with vanilla. |
 | 16 | Clustered forward lighting | Not started. Material and light reconstruction precede implementation. |
 
@@ -44,7 +44,7 @@ they are not a measured final-image baseline.
    space-aware exposure branch `e897011` reviewed/fixed and merged
    (98 motion/HDR cases per bottle). Both changes are installed at qualification
    checkpoint `c85c5b5`;
-   game acceptance remains pending.
+   run 17 accepts the crypto path on X3; exposure game acceptance remains pending.
 3. Reader/adjacency review and affected fixtures are complete (review 31).
    Checkpoint `ae03d9a` is committed. Combined selected motion/HDR and
    CryptoAPI checks and independent artifact review passed. Qualification

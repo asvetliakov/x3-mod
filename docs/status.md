@@ -24,8 +24,10 @@ installed in bottle X3. **Current install:** qualification checkpoint `c85c5b5`
 (production source `ae03d9a`), SHA-256
 `ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193`.
 The next step is the user's [controlled run groups](verification/next-runs-2026-09-13.md),
-starting with crypto loading. The agent never launches the game. Gameplay
-acceptance of these new changes remains pending.
+continuing with reader verification after the accepted crypto run 17. The agent
+never launches the game. Reader, adjacency and exposure game acceptance remain
+pending. A reviewed chase-camera prototype is now queued for integration before
+the next installed build.
 
 Installation was verified against the build and app-local manifest; X3AP.exe
 and cxbottle.conf are unchanged. All eight command variants passed post-install
@@ -44,6 +46,18 @@ seven unresolved HDR inputs. Applying the candidate policy to them yields +2 EV
 in every case because of its cap, versus +5.66…+8 for the old rule. Actual
 post-TAA meter inputs and presented images are absent, so this is a scoped
 counterfactual, not game acceptance of the new meter or its appearance.
+
+## Run 17: crypto loading accepted on X3 (2026-09-13)
+
+[Run 17](verification/run17-crypto-loading.md) confirms provider/key reuse with
+native hashing and signature verification intact: the 844-check bulk recorded
+844 provider and import hits, no verification failures, and 0.1353276 s in the
+signature probe versus the earlier 12.835 s. The heuristic save gap was 27.574 s
+versus 35.707 s; different feature flags prevent assigning that whole-load
+change to the cache. Counters cover two reported windows, with no teardown
+total. Independent artifact review passed after correcting a ratio typo.
+The installed DLL is unchanged. Reader verify (group 2a) is the next loading
+test; chase-camera integration and full qualification are newly requested.
 
 ## Handoff (2026-09-13 early morning): read docs/handoff-2026-09-13.md first
 

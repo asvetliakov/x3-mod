@@ -26,7 +26,10 @@ User preferences recorded 2026-09-10:
 - Game EXE/DLL internals remain in scope (clarified 2026-09-11). Trampolines,
   instruction patches, vtable hooks and private game structures are allowed.
   Disassemble/decompile the relevant game code when needed and document the
-  findings. The ban on backend-private prerequisites does not restrict game
+  findings. This applies generally to bloom and all later features: use
+  targeted disassembly to resolve uncertain engine behavior, not only to
+  investigate observed bugs (user clarification, 2026-09-13).
+  The ban on backend-private prerequisites does not restrict game
   modification; retain appropriate hook-site, ABI and layout validation.
 - Work in testable iterations. TAA is required; spatial AA alone does not satisfy it.
 - Commit after each logical checkpoint, including relevant documentation and
