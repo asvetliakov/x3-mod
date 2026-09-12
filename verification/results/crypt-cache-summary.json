@@ -1,0 +1,116 @@
+{
+  "passed": true,
+  "phase": "complete",
+  "game_launched": false,
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
+  "iterations": 200,
+  "sources": {
+    "src/proxy/crypt_cache.h": "c4b05ed5385eeaee56673014e9fb9d47b0e2fe5e9ef039c6309d89573555420d",
+    "src/proxy/crypt_cache.cpp": "9eefbe585fdf1fb0468cdaf3217fa5004efa2a9f3d0b4cf57490198f9ad58ece",
+    "verification/probe/crypt_cache_fixture.cpp": "70ed0344f8be71f2d13973ccbf0bb060e4850169967b44f70a9d02b2665d54f5",
+    "verification/probe/build_crypt_cache.sh": "3b69e8a1d24e5abb6f6a2367c773117e6fe5ac29b8b08266a50f585dae6418bb",
+    "verification/probe/run_crypt_cache.py": "a4e3ab9add4d5b495e3b17008aa845b5435c8f7d7ed048653700eea1eaec4057"
+  },
+  "executable_sha256": "f99e9bf823b399368bee4b679942e53d14a5413bb3daac864e769bb41cdd5d69",
+  "exit_code": 0,
+  "report": {
+    "key": {
+      "bits": 2048,
+      "blob_bytes": 276,
+      "signature_bytes": 256,
+      "expected_verified": 150,
+      "provider": "Microsoft Base Cryptographic Provider v1.0",
+      "container": "X3mCryptCacheFixture"
+    },
+    "modes": {
+      "off": {
+        "iterations": 200,
+        "verified": 150,
+        "rejected": 50,
+        "real_acquires": 600,
+        "real_acquire_ok": 200,
+        "real_deletes": 400,
+        "real_delete_ok": 200,
+        "real_releases": 200,
+        "real_imports": 200,
+        "real_destroys": 200,
+        "total_ms": 104.576,
+        "mean_us": 522.878,
+        "median_us": 526.4,
+        "min_us": 376.9,
+        "max_us": 1196.5,
+        "context_mean_us": 374.754
+      },
+      "on": {
+        "iterations": 200,
+        "verified": 150,
+        "rejected": 50,
+        "real_acquires": 2,
+        "real_acquire_ok": 1,
+        "real_deletes": 1,
+        "real_delete_ok": 0,
+        "real_releases": 0,
+        "real_imports": 1,
+        "real_destroys": 0,
+        "total_ms": 25.627,
+        "mean_us": 128.133,
+        "median_us": 131.8,
+        "min_us": 4.0,
+        "max_us": 584.6,
+        "context_mean_us": 2.159
+      }
+    },
+    "statistics": {
+      "acquires": 600,
+      "hits": 199,
+      "misses": 1,
+      "failed_passthrough": 1,
+      "releases_suppressed": 200,
+      "imports": 200,
+      "import_hits": 199,
+      "deletes_emulated": 399,
+      "deletes_passthrough": 1,
+      "busy_passthrough": 0,
+      "evictions": 0,
+      "releases": 200,
+      "import_passthrough": 0,
+      "destroys": 200,
+      "destroys_suppressed": 200,
+      "providers_cached": 1,
+      "keys_cached": 1,
+      "probe_error": 2148073494
+    },
+    "compare": {
+      "iterations": 200,
+      "steps": 12,
+      "mismatches": 0,
+      "verified_off": 150,
+      "verified_on": 150,
+      "expected_verified": 150
+    },
+    "shutdown": {
+      "released": 1,
+      "real_acquires": 1,
+      "real_releases": 1,
+      "real_destroys": 1,
+      "container_absent": 1
+    },
+    "leak": {
+      "live_providers": 0,
+      "live_keys": 0
+    },
+    "checks": 237,
+    "failures": 0,
+    "fail_lines": [],
+    "speedup": 4.080744226701943,
+    "saved_us_per_check": 394.745,
+    "context_saved_us_per_check": 372.595
+  }
+}

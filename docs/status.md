@@ -818,6 +818,21 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    [design](architecture/hdr-scene-path.md); re-measure the 5120×1440 stage-2
    cost; continue the roadmap.
 6. Loading-time gap and alt-tab cursor remain tracked.
+7. **Crypt cache (2026-09-13, branch, not yet installed):** run B's stall-B
+   decomposition put 12.835 of 16.758 s in the script signature check
+   `0x004cabc0`, 10.346 s of it in the three `CryptAcquireContextA` container
+   delete/create/delete calls per script (4.086 ms each). Decompiled in
+   [script-signature-check.md](reverse-engineering/script-signature-check.md);
+   `X3M_CRYPT_CACHE=1` / `launch --crypt-cache` (`src/proxy/crypt_cache.cpp`,
+   no-SSE unit, no telemetry needed) caches the provider handle and the
+   imported RSA-2048 key, emulates the two ignored deletes with the recorded
+   `NTE_BAD_KEYSET`, leaves hash/verify to the CSP and releases at detach.
+   Fixture against the real ADVAPI32 on both bottles: call-by-call identical
+   results and errors over 200 checks, no leak, 4.1–4.7× per check
+   ([crypt-cache.md](verification/crypt-cache.md)). Next run:
+   `launch --direct --telemetry --loading-probes --crypt-cache`, expect the
+   `crypt_cache` window lines, `signature_check` ≈ 2 s instead of 12.8 s and
+   the `CryptAcquireContextA` row at 2 calls.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)
 

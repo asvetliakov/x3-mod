@@ -61,6 +61,13 @@ puts a read-ahead buffer in front of the savegame decoder's zlib imports without
 enabling telemetry; it keeps zlib 1.2.3 semantics and logs one `gz_buffer_file`
 line per file ([docs/verification/gz-buffer.md](docs/verification/gz-buffer.md)).
 
+`--crypt-cache` (env `X3M_CRYPT_CACHE=1`, no telemetry needed) caches the
+CryptoAPI provider handle and imported public key of the per-script signature
+check, replacing the three `CryptAcquireContextA` container delete/create/delete
+calls per script (4 ms each under Wine, 844 per save load) with one cached
+handle; hash and signature verification are untouched, and the handles are
+released at process detach ([docs/verification/crypt-cache.md](docs/verification/crypt-cache.md)).
+
 Loading-time switches ([docs/verification/loading-probes.md](docs/verification/loading-probes.md),
 [docs/verification/resource-reader.md](docs/verification/resource-reader.md)):
 `--telemetry --loading-probes` (env `X3M_LOADING_PROBES=1`) adds the CryptoAPI /

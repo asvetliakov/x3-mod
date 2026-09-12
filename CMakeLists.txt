@@ -8,7 +8,7 @@ add_library(d3d9 SHARED
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp
-  src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
+  src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/proxy/engine_patch.cpp src/proxy/loading_probes.cpp src/proxy/resource_reader.cpp src/proxy/resource_reader_core.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_cache.cpp src/proxy/mesh_adjacency_fast.cpp
@@ -26,10 +26,11 @@ set_source_files_properties(src/ownership/application_admission_abi.cpp
 # (it has no floating-point arithmetic; check_no_x87.py proves no x87 either).
 set_source_files_properties(src/proxy/engine_memory.cpp
   PROPERTIES COMPILE_OPTIONS "-mno-sse;-mno-mmx;-mfpmath=387")
-# The light loading-trace rows, the engine probe handlers and the resource
-# reader core run inside game threads with no CPU-state boundary: same rule
-# (docs/verification/loading-probes.md has the objdump proof).
-set_source_files_properties(src/proxy/loading_trace_light.cpp src/proxy/resource_reader_core.cpp
+# The light loading-trace rows, the engine probe handlers, the resource
+# reader core and the CryptoAPI context/key cache run inside game threads with
+# no CPU-state boundary: same rule (docs/verification/loading-probes.md has the
+# objdump proof; check_no_x87.py walks the crypt cache entry points too).
+set_source_files_properties(src/proxy/loading_trace_light.cpp src/proxy/resource_reader_core.cpp src/proxy/crypt_cache.cpp
   PROPERTIES COMPILE_OPTIONS "-mno-sse;-mno-mmx;-mfpmath=387")
 target_compile_definitions(d3d9 PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 # Our arithmetic uses SSE2 while preserving the game's i686 Windows ABI.

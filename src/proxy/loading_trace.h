@@ -20,6 +20,9 @@ struct ID3DXMesh; // adjacency_write_dump takes the mesh opaquely; the productio
 // the existing periodic telemetry summary. No engine code/prologues are patched.
 // X3M_GZ_BUFFER=1 initializes the same import machinery without X3M_TELEMETRY=1:
 // only the zlib gz rows the read-ahead buffer needs are patched then (gz_buffer.h).
+// X3M_CRYPT_CACHE=1 does the same for the four CryptoAPI rows of the context/key
+// cache (crypt_cache.h); with telemetry on those rows are patched even without
+// X3M_LOADING_PROBES=1, and the cache's real calls go through the traced wrappers.
 namespace x3m::loading_trace {
 enum class Operation : unsigned {
     FileOpen, FileRead, FileSeek, Effect, Texture, CubeTexture, Surface,
@@ -54,6 +57,11 @@ bool active();
 // Totals over the complete run are conserved, but a delta is not a transaction.
 Snapshot take_snapshot();
 void report();
+// crypt_cache line: scope "window" (deltas since the previous window line, part
+// of report) or "session" (cumulative; capture.cpp logs it when the last device
+// is destroyed). No-op unless the cache is active.
+void crypt_cache_report(const char* scope);
+bool crypt_cache_enabled();
 // Explicit quiescent teardown only, not safe during active callbacks or DllMain.
 // Restores a slot only if it still points at this module's interceptor. A cache
 // cleanup fault requires stopping application mesh work/restarting; teardown is
