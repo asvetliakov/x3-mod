@@ -13,6 +13,21 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
+## Exposure branch verification (2026-09-13, not installed)
+
+The space-aware mean/max tile meter is implemented in the isolated exposure
+branch; see [verification](verification/hdr-scene-path.md),
+[review 32](verification/review-32-exposure.md) and
+[handoff](verification/handoff-exposure-meter.md). Both Steam and X3 complete
+motion-output suites pass 98 validation cases plus 16 benchmark invocations;
+each bottle's three exposure cases pass 245 checks / 120 frames. Unlock
+failure holds adaptation, and failed attach self-test unlock disables metering
+while preserving AgX output. The six new meter controls reject malformed and
+truncated environment values. Supporting suites pass in both bottles, and independent review 32 is closed;
+performance and provenance are recorded in the handoff before merge. No game launch, installation or appearance
+acceptance is part of this branch verification; in particular the unresolved
+run-16 counterfactual is cap-limited and is not evidence of live meter tuning.
+
 ## Latest checkpoint: review 29 — loading branch, adjacency parity and present readback merged (2026-09-12 night)
 
 Reviews: [review-25.md](verification/review-25.md) (fast adjacency, engine

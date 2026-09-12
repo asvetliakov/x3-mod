@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cwchar>
 
 namespace x3m::renderer {
 namespace {
@@ -10,6 +11,16 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr float kDecodeGamma = 2.2f;
 float clampf(float x, float lo, float hi) noexcept { return x < lo ? lo : x > hi ? hi : x; }
 } // namespace
+
+bool parse_meter_parameter(const wchar_t* text, std::size_t length,
+                           float low, float high, float& output) noexcept {
+    if (!text || !length || length >= 32 || text[length] != L'\0') return false;
+    wchar_t* end = nullptr;
+    const float value = std::wcstof(text, &end);
+    if (end == text || end != text + length || !std::isfinite(value) || value < low || value > high) return false;
+    output = value;
+    return true;
+}
 
 float decode_channel(float engine, ExposureDecode mode) noexcept {
     if (mode == ExposureDecode::None) return engine;

@@ -57,6 +57,13 @@ inline constexpr float kTonemapWhite = 16.2917424f;
 // The chain reduces 4x per axis until neither tile-image axis exceeds this.
 inline constexpr unsigned kMeterTileMax = 128;
 
+// Configuration-only parser for the six meter controls. `length` is the
+// GetEnvironmentVariableW return value for a 32-wchar buffer, so >=32 means
+// missing/truncated storage and must be refused before reading it. A valid
+// complete finite value in [low, high] replaces output; refusal leaves it intact.
+bool parse_meter_parameter(const wchar_t* text, std::size_t length,
+                           float low, float high, float& output) noexcept;
+
 // --- Metering (host references of the GPU chain; not run per frame) --------
 // Engine-space value -> scene-linear (section 2), the decode agx.hlsl and the
 // meter shader apply.

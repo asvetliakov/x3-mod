@@ -1405,12 +1405,18 @@ void initialize_log(HMODULE module) {
     if(hdr_config.params.ev_min>hdr_config.params.ev_max)hdr_config.params.ev_min=hdr_config.params.ev_max;
     if(GetEnvironmentVariableW(L"X3M_HDR_ADAPT_UP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_up=v;}
     if(GetEnvironmentVariableW(L"X3M_HDR_ADAPT_DOWN",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=60.f)hdr_config.params.tau_down=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_METER_BG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=1e-4f&&v<=64.f)hdr_config.params.meter_bg=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_METER_MIN_LIT",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=0&&v<=1.f)hdr_config.params.meter_min_lit=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_WHITE_TARGET",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=0&&v<=4.f)hdr_config.params.white_target=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_KEY_PULL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=0&&v<=1.f)hdr_config.params.key_pull=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_EV_DEADBAND",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=0&&v<=8.f)hdr_config.params.ev_deadband=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_METER_EDGE_WEIGHT",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=0&&v<=1.f)hdr_config.params.meter_edge_weight=v;}
+    // Configuration only: reject truncation and malformed values before a
+    // zero-valued control can silently disable a meter safeguard.
+    const auto meter_parameter = [&](const wchar_t* name, float low, float high, float& output) {
+        const DWORD length = GetEnvironmentVariableW(name, setting, 32);
+        x3m::renderer::parse_meter_parameter(setting, length, low, high, output);
+    };
+    meter_parameter(L"X3M_HDR_METER_BG", 1e-4f, 64.f, hdr_config.params.meter_bg);
+    meter_parameter(L"X3M_HDR_METER_MIN_LIT", 0.f, 1.f, hdr_config.params.meter_min_lit);
+    meter_parameter(L"X3M_HDR_WHITE_TARGET", 0.f, 4.f, hdr_config.params.white_target);
+    meter_parameter(L"X3M_HDR_KEY_PULL", 0.f, 1.f, hdr_config.params.key_pull);
+    meter_parameter(L"X3M_HDR_EV_DEADBAND", 0.f, 8.f, hdr_config.params.ev_deadband);
+    meter_parameter(L"X3M_HDR_METER_EDGE_WEIGHT", 0.f, 1.f, hdr_config.params.meter_edge_weight);
     if(GetEnvironmentVariableW(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");

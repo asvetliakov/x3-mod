@@ -78,6 +78,7 @@ msync: up and running.
 ==== seam-hdr-exposure-offset
 ==== seam-ownership-hdr-exposure
 ==== seam-hdr-tonemap-fault
+==== seam-hdr-meter-selftest-unlock
 ==== seam-hdr-tonemap-shader-absent
 ==== bench-1280x768-hdr-tonemap-taa-off
 ==== bench-1280x768-hdr-tonemap-taa-on

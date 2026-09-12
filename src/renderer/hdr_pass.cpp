@@ -728,7 +728,8 @@ bool HdrPass::self_test(bool with_depth, bool scene_open, char* detail, std::siz
                 if (SUCCEEDED(meter) && SUCCEEDED(meter = one_copy->LockRect(&lock, nullptr, D3DLOCK_READONLY))) {
                     float channels[2] = {0.f, 0.f};
                     std::memcpy(channels, lock.pBits, 8);
-                    one_copy->UnlockRect();
+                    meter = one_copy->UnlockRect();
+                    if (SUCCEEDED(meter) && fault(HdrFault::MeterTestUnlock)) meter = E_FAIL;
                     meter_value = channels[0]; meter_max = channels[1];
                     const float sum[3] = {4.f, 16.f, 1.f};
                     const ExposureDecode decode = config_.decode == x3::temporal::AgxDecode::none ? ExposureDecode::None
@@ -918,7 +919,13 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
                     tile_mean_[std::size_t(y) * tile_width_ + x] = texel[0]; tile_max_[std::size_t(y) * tile_width_ + x] = texel[1];
                 }
             }
-            chain_readback_[chain_slot_]->UnlockRect();
+            // Publish the statistic only after the complete readback operation
+            // succeeds. A failed unlock must not advance adaptation using the
+            // copied candidate, even though the earlier copy/lock succeeded.
+            r.readback = chain_readback_[chain_slot_]->UnlockRect();
+            // Test-only returned-HRESULT injection after actual cleanup; never
+            // leave a synthetic mapping locked or overwrite a native failure.
+            if (SUCCEEDED(r.readback) && fault(HdrFault::ReadbackUnlock)) r.readback = E_FAIL;
         }
         chain_pending_[chain_slot_] = false;
         if (SUCCEEDED(r.readback)) {

@@ -8,7 +8,8 @@ suite. No game launch; no gameplay claim; the game's compositor, HUD and glow
 setting are not exercised here. Run 2026-09-12:
 
 ```sh
-python3 verification/probe/run_motion_output.py   # fresh build + 63 DLL runs, 16 of them with X3M_HDR=1
+python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py
+# Recorded stage-1 run: 63 DLL runs, 16 with X3M_HDR=1
 ```
 
 Binaries of the recorded run (after the review-22 fixes): `build/d3d9.dll`
@@ -17,6 +18,121 @@ Binaries of the recorded run (after the review-22 fixes): `build/d3d9.dll`
 `e46e4a4a6f7f815dfdbc0cfd0ff4a44655860be6657974230ecf0a3a95fb3017`; summary
 `verification/results/motion-output-summary.json` (`hdr` and `bench` keys),
 per-case capture logs `verification/results/motion-output-<case>-capture.log`.
+
+## Space-aware meter follow-up (2026-09-13)
+
+The stage-2 exposure figures below describe the historical 1×1 mean meter.
+The branch follow-up carries mean/max tile images, a weighted lit median,
+a p99 tile-maximum ceiling, EV −3…+2 and a held-target dead band. Complete
+Steam and X3 motion-output suites pass: each has 98 validation cases and
+16 benchmark invocations, with additional derived comparisons in the summary.
+Supporting suites also pass in both bottles; the final independent verdict
+is recorded in review 32. See the
+[handoff](handoff-exposure-meter.md) and [independent review](review-32-exposure.md).
+The current source uses `chain_target`/`chain_sampling` and `chain_format`
+for its G32R32F or RGBA32F meter capability, and the self-test verifies
+`meter_max` as well as `meter_value`. Historical `r32f_*` records below do
+not describe this new chain.
+
+The standalone `run_exposure_statistics.py --host` benchmark records the
+production statistic with original deterministic varied tile values. Data,
+allocation and cosine weights are prepared before timing; 20 warmup calls
+precede 41 batches of 40 calls. The time includes small result checks and
+excludes GPU reduction, copy, lock, adaptation and game rendering. On this
+native arm64 host, the current compact source/compiler-bound record is
+`verification/results/exposure-statistics-host.json`:
+
+| Tile image | 10% lit median / p95 | Dense median / p95 |
+| --- | ---: | ---: |
+| 80×48 | 5.99 / 11.66 µs | 36.35 / 44.93 µs |
+| 80×23 | 2.83 / 2.91 µs | 14.43 / 14.78 µs |
+| 128×128 | 29.34 / 31.74 µs | 483.84 / 534.53 µs |
+
+These are per-call statistics derived from batch timings, not single-frame
+tail latencies or game FPS. Full sorting dominates dense input; the maximum
+size is a supported worst case, rather than the tile size at either tested
+game resolution. The x86/SSE2 measurements also pass in both bottles. Their medians / p95
+values (microseconds per call, from batches) are:
+
+| Tile image / lit coverage | Steam / Rosetta | X3 / FEX |
+| --- | ---: | ---: |
+| 80×48 / 10% | 8.20 / 8.40 | 7.48 / 8.53 |
+| 80×48 / dense | 42.90 / 50.05 | 43.25 / 59.50 |
+| 80×23 / 10% | 4.55 / 4.75 | 3.95 / 4.15 |
+| 80×23 / dense | 19.18 / 21.23 | 16.48 / 19.65 |
+| 128×128 / 10% | 36.40 / 39.15 | 32.53 / 34.68 |
+| 128×128 / dense | 427.78 / 500.98 | 448.80 / 486.58 |
+
+Records are `verification/results/exposure-statistics.json` and
+`verification/results/bottle-X3/exposure-statistics.json`. Each retains its
+own executable, source/compiler/output hashes and bottle configuration;
+the workload allocates nothing inside timing. The dense worst case costs
+about 0.45 ms on FEX, while the tested game resolutions' tile images cost
+16–43 µs when dense. Keep the bounded sort: these diagnostics do not justify
+a more complex weighted-selection algorithm. The runner must be wrapped
+with `wine_lock.py`; this is portable x86 source executed under Preview,
+not a native-Windows performance measurement.
+
+The boundary benchmark still uses 24 frames with the first four omitted and
+EVENT-synchronized QPC. It measures the final scene write-back boundary,
+including the meter GPU draws, **not** the next frame's readback/statistic at
+the scene latch. Historical medians come from the committed pre-meter summaries
+at `ee7d2dc`; they are separate runs, not a paired causal measurement:
+
+| Scene / TAA | Steam old → tile median | X3 old → tile median | Tile-chain payload |
+| --- | ---: | ---: | ---: |
+| 1280×768 / off | 0.722 → 0.724 ms | 0.748 → 0.674 ms | 614,400 B |
+| 1280×768 / on | 1.256 → 1.202 ms | 1.194 → 1.429 ms | 614,400 B |
+| 5120×1440 / off | 1.902 → 1.331 ms | 1.404 → 1.527 ms | 3,975,680 B |
+| 5120×1440 / on | 2.426 → 2.361 ms | 4.206 → 2.897 ms | 3,975,680 B |
+
+The new X3 min/max ranges are respectively 0.542–1.039, 0.898–2.136,
+1.364–2.103 and 2.147–3.635 ms; this spread rules out reading small median
+differences as an isolated improvement/regression. The smaller draw count
+trades against a larger download and CPU statistic. At logged frame 20, X3
+readback/statistic brackets were 117.5/116.0 µs at 1280×768 and
+152.2/102.7 µs at 5120×1440 (TAA off/on). These are individual diagnostic
+samples, not a tail-latency measurement. No game FPS claim follows.
+
+Payload counts cover intermediate levels, two ring targets and two system-memory
+readbacks at eight bytes/texel, excluding driver padding/metadata. RGBA32F fallback
+doubles those counts. Cached host arrays consume 20 bytes/tile: 76,800 bytes at
+1280×768 and 36,800 at 5120×1440, bounded by 327,680 bytes at 128×128 tiles.
+
+## Final follow-up checks
+
+Both bottle-specific reports pass: TemporalPass 386 samples, 278 state
+restorations and two device generations; SceneCapture 4,908 checks / 16
+samples; ownership integration 26 environments. Full motion-output reports
+include the existing TAA/HDR, reset, restoration and fault cases, in addition
+to the new exposure controls. The analysis suite passed 814 tests; the
+configuration parser's 21 negative/valid controls run in both optimized and
+ASan/UBSan host builds. Later fixture-only corrections were verified by the
+complete runtime suites.
+
+`verification/results/exposure-final-checks.json` retains the final DLL/tool
+hashes and static SSE2 audit (195 reachable functions, no prohibited x87
+arithmetic), plus the completed `generate_rigid_motion_pixel.py --check`
+result for all ten embedded programs, including 1,996-word mean/max level
+zero and 462-word reduction shaders. The reference module's later wording
+correction changed only its docstring; old/new hashes and executable-AST
+equality are in `exposure-reference-doc-only.json`. No GPU rerun was used
+or needed to imply a numerical change from that wording correction.
+
+The branch motion runner's before/after source map omits imported numerical
+references and helper modules. The final-checks record lists their explicit
+**post-run** hashes; it does not retrofit a before/after snapshot. Root will
+include those imports in the main integration manifest. Production and fixture
+source maps and retained per-case binaries/traces were verified independently.
+
+Reproduction uses `wine_lock.py` around every Wine-executing runner, first
+with `X3M_FIXTURE_BOTTLE=Steam`, then `X3M_FIXTURE_BOTTLE=X3`:
+`run_motion_output.py`, `run_temporal_pass.py`, `run_scene_capture.py`,
+`run_ownership_integration.py`, and `run_exposure_statistics.py`. The shader
+generator's `--check` also runs under the lock (its compiler bottle is Steam).
+The game guard was clear throughout; no game was launched or bottle install
+performed by this branch. Native Windows behavior and the new exposure
+policy's game appearance remain unverified.
 
 ## Device gate and self test (every HDR run)
 
@@ -207,12 +323,14 @@ max one code, alpha exact), the value and fault scripts, the forced-absent
 runs and the identity bench are as recorded above, so stage 2 leaves the
 stage-1 behaviour bit-for-bit in place.
 
-### Gate (every AgX run)
+### Gate (every AgX run, updated for the tile meter)
 
 `hdr_tonemap … tonemap=1 tonemap_reason=ok` and, with auto exposure,
-`meter=1 meter_reason=ok r32f_target=00000000 r32f_sampling=00000000`;
+`meter=1 meter_reason=ok chain_target=00000000 chain_sampling=00000000`
+with `chain_format=G32R32F` in both tested bottles;
 the self test's stage-2 checks `tonemap=00000000 tonemap_errors=0
 meter=00000000 meter_errors=0 meter_value=6.00000 meter_expected=6.00000`
+and a matching maximum-channel result of 6 log2 units
 (the one-level chain on the 4×4 additive sum `(4, 16, 1)`: 322.8 clipped
 to 64, log2 = 6 exactly). `seam-hdr-tonemap-shader-absent` (fixture fault
 12 queued at attach): `tonemap=0 tonemap_reason=shader meter=0
@@ -253,60 +371,73 @@ all 780 cells of every configuration (the mean of a pure rounding error is
 residual). The production DLL run is identical to the seam run. Each ramp
 frame's per-channel statistics repeat exactly in the next frame.
 
-### Exposure (`hdrexposure`, 40 frames, fixed `dt`)
+### Space-aware exposure (`hdrexposure`, 120 frames, fixed `dt`)
 
-Four 32×32 blocks per frame: frames 0–9 mid-grey `0.18`, 10–19 bright
-`(1, .8, .9) / (.9, 1, .8) / (.8, .9, 1) / (1, 1, 1)`, 20–29 mid-grey with
-one block at `100` (25,000 after the decode; the meter clips it to 64),
-30–34 the hazard blocks `−1 / +Inf / −Inf / 0.18`, 35–39 a NaN block with
-three mid-grey ones (added by review 23). The finite negative block is
-deterministic and checked (the decode floors it: black, metered at the
-floor). The infinite and NaN blocks are **unspecified on this backend** and
-are recorded, not compared: measured, `+Inf`, `−Inf` and NaN all present
-white (`ffffffff`) and all meter at the floor, i.e. the backend treats an
-infinity like a NaN (the reference says `+Inf` → clip and white, `−Inf` →
-floor and black; `max(−Inf, 1e-10)` did not floor, so a shader-side clamp
-would rest on the same unspecified operations and was not attempted). What
-is required and proven: the host-side `isfinite` check on the 1×1 readback
-keeps the exposure state finite whether the value is swallowed or reaches
-the result, every step consumed an in-range meter, and the presented
-finite blocks of those frames match the reference. The stored FP16 values
-of the hazard pixels are in the summary (`hazard`). No gamma-space game
-content reaches 65504, so no infinity is expected from the scene.
-`seam-hdr-exposure`: `dt` 16 ms, defaults; `seam-hdr-exposure-offset`:
-`dt` 33 ms, `X3M_HDR_EV=1`, τ 0.2 / 0.6 s, look golden;
-`seam-ownership-hdr-exposure`: the first run through the ownership wrapper
-(the chain's two level surfaces (16×16, 4×4), two 1×1 ring targets and
-two readback surfaces are counted by `references()`; the device reaches
-zero at teardown).
+This replaces the historical 40-frame/1×1-meter exposure acceptance script.
+The three cases pass in both complete Steam and X3 suites after the fixture
+corrections below:
+`seam-hdr-exposure`, `seam-hdr-exposure-offset` and
+`seam-ownership-hdr-exposure`, each **245 checks / 120 frames**. The offset
+twin uses `dt` 33 ms, EV offset +1, adaptation τ 0.2/0.6 s and the golden
+look; the default and ownership twins use 16 ms and the default parameters.
+Each full suite records PASS with fresh source and binary provenance.
 
-- **Meter.** Measured `avg_log_l` of the mid-grey frames −5.4439 against
-  the reference −5.4417 (the reference rounds the FP16 inputs to nearest,
-  the backend truncated them: 2.2 × log2(0.17993/0.18) ≈ −0.0012), bright
-  −0.2464 vs −0.2464, sun frames −2.5829 vs −2.5813: max absolute error
-  0.00215 log2 units = **0.063 % relative** (gate 1 %). The chain at
-  64×64 is three draws into 16×16, 4×4 and 1×1 R32F levels (`chain_bytes`
-  1,096); it reduces exactly to the mean.
-- **Clip.** Without the clip the sun frames would meter −0.43; with it
-  −2.58: the clip bounds the block's influence by 2.15 stops (the fourth
-  block contributes 6.0 instead of 14.6).
-- **Adaptation.** The EV sequence against `exposure_reference.simulate`
-  replayed on the measured meters: max error **1.2e-6 EV** (offset run
-  9.4e-7; gate 1e-3). End to end on the reference meters: 7.2e-4 and
-  1.7e-3 EV, the FP16 truncation of the inputs integrated over the frames
-  (the faster time constants of the offset run integrate more of it).
-  Direction: 0 → 0.116 (frame 1) → 0.898 (frame 9) → 0.979 (frame 10, the
-  last dark meter) → 0.617 (frame 19, τ_down) → 0.579 → 0.526 (frame 29,
-  towards the clipped target 0.109); the offset run 0 → 0.604 → 3.071 →
-  3.208 → 1.476 → 1.331 → 1.245. `dt` on every step 0.016 / 0.033 s
-  exactly; `stepped=1 steps=n` on every frame after the first.
-- **Presented blocks** against the reference tonemap at the consumed EV:
-  max 0.53 code (the 8-bit rounding), alpha exact.
-- **Phase cost at 64×64 (median, CPU-inclusive):** meter chain 88–105 µs
-  inside the write-back bracket (three draws), the copy and lock of the
-  previous frame's 1×1 at the latch 42–46 µs (a Present after it was
-  written: never a wait on the current frame), write-back draw 123–147 µs
-  including the chain and the AgX draw.
+Frames 0–39 retain the dark/bright/sun-block and exceptional-value controls.
+Frames 40–119 add a small lit object against black sky, a full white image,
+bright sparks, grey requesting the +2 clamp, levels that exercise the held
+target dead band, and a central grey object overlapping a white edge emitter.
+The runner rebuilds each original image from the logged rectangles, including
+last-draw ownership where patches overlap. The independent Python chain and
+statistic reference checks lit count, median, weighted mean, p99 maximum,
+fresh target and adaptation, then compares presented RGB/alpha to AgX at
+the consumed EV. The exposure stimuli are original synthetic rectangles;
+local shader qualification inputs remain untracked.
+
+The 64×64 target reduces in one draw to 16×16 G32R32F tiles; two ring
+targets plus two readback surfaces account for **8,192 bytes**. Across all six
+exposure cases, maximum statistic disagreement is **0.002585 log2
+units**, reflecting the FP16 input conversion. Recomputed fresh-target
+error is at most **4.82e-6 EV**, adaptation replay error **2.94e-6 EV**,
+held-target replay error zero at log precision, and presented RGB error
+**0.568 code**; alpha stays within one code. Infinite/NaN input arithmetic
+remains a recorded backend observation, not a cross-platform shader guarantee.
+Finite host state and in-range consumed statistics are required in those frames.
+
+Representative default-case targets (fresh rule, before adaptation):
+
+| Scene | Measured result |
+| --- | --- |
+| Lit object against sky | 16/256 lit tiles; key +1.349 EV, limit +7.697 EV |
+| Full white image | Key −0.618 EV from quarter-strength darkening |
+| Sparks | P99 maximum 6 log2; limit −2.126 EV selects the target |
+| Grey | Key +2.970 EV, clamped to +2 EV |
+| Small level changes | Held +0.598 EV while fresh key moves +0.435 / +0.683 EV |
+| Larger change | Held target moves to −0.213 EV |
+| Central object plus emitter | Weighted key about −0.00057 EV; unweighted emitter would request −0.618 EV |
+
+The final emitter's held target remains −0.213 EV because the new key lies
+inside its dead band; the fixture proves the statistic, not instant convergence
+to zero EV. The clamp and adaptation likewise prevent treating the p99-derived
+limit as an absolute bound on every currently displayed highlight.
+
+Three fixture/validator corrections were needed before this pass. A patch
+centre covered by a later draw is not a valid color witness: each region now
+requires an actually visible sample and every pixel is checked against its
+final geometric owner. The large target-move equality compares distinct held
+and fresh values serialized at the same precision. Finally the level inputs
+are .38/.40/.37/.6, so the first level leaves the previous +2 clamp even in
+the +1-offset twin, two levels stay inside the band, and the last leaves it.
+Both independent reference margins and observed transitions are asserted.
+These corrections did not change production exposure behavior.
+
+The [offline run-16 counterfactual](run16-exposure-baseline.md) used seven unresolved
+`hdr_` images, not the actual post-TAA meter input. All seven new-policy
+targets hit the +2 cap: lit-key requests were +4.04…+5.22 EV and ceiling
+requests +4.16…+4.49 EV, versus +5.66…+8 for the old whole-image rule.
+That sample is therefore controlled by the cap; it cannot establish tuning
+or appearance of the live lit-key/ceiling policy. Keep the reviewed policy
+unchanged until actual resolved captures can be compared with the user's
+preferred fixed-EV-zero appearance.
 
 ### Tonemap ladder (`seam-hdr-tonemap-fault`, 59 checks, 9 frames)
 
@@ -314,11 +445,18 @@ zero at teardown).
 | ---: | --- | --- | --- |
 | 0 | none | `tonemapped=1 unwind=0 meter=00000000` | AgX |
 | 1 | 11: the tonemap draw fails | `tonemapped=0 unwind=1 unwind_reason=tonemap fallback=1 writeback_source=shader tonemap_draw=80004005` (`hdr_unwind=tonemap … draw=00000000 restore=00000000`) | identity, max 0.5 code |
-| 2 | none | `recheck=pass tonemapped=1` | AgX at the consumed EV, max 0.5 code |
+| 2 | 15: readback unlock reports failure after actual cleanup | `recheck=pass readback=80004005 stepped=0`; all exposure state held | AgX at held EV |
 | 3 | 13: the meter chain fails | `tonemapped=1 unwind=0 meter=80004005` | AgX |
 | 4 | none | `stepped=0`, EV equal to frame 3's (the exposure held) | AgX, max 0.5 code |
 | 5, 6 | 11 twice | two more `hdr_unwind=tonemap`; `hdr_tonemap_disabled … reason=draw_failures` at frame 6 (the third failure) | identity |
 | 7, 8 | none | `recheck=pass` at 7, then `tonemap=identity tonemapped=0 meter=00000001 stepped=0` | identity, max 0.5 code |
+
+The updated targeted ladder passes 59 checks / 9 frames. Frame 3 must
+resume adaptation after frame 2’s failed readback; its meter-chain failure
+then makes frame 4 hold. A separate attach-time fault-16 case passes
+23 checks / 3 frames: correct meter pixels with failed unlock produce
+`meter=0 meter_reason=self_test`, while AgX output continues with EV zero.
+No failed readback can publish a new exposure state.
 
 Exactly three `hdr_unwind=` lines, rechecks at frames 2, 6 and 7 (all
 passed), one disable line; the binding and every touched state are back

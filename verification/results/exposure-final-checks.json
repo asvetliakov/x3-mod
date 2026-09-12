@@ -1,0 +1,177 @@
+{
+  "scope": "Completed branch checks; Preview shader compilation and static x86 audit, not native Windows runtime proof",
+  "game_launched": false,
+  "no_x87": {
+    "command": "python3 verification/probe/check_no_x87.py build/d3d9.dll",
+    "exit_code": 0,
+    "dll_sha256": "80d11b3e733038347927a0ea5dd6594b4031b07107e0f5a60feb60f9cc8716f4",
+    "tool_sha256": "58fec931dfbc590701f491aa1bd89c3124574d09c90b7125219ae8a5b1cbb289",
+    "result": {
+      "result": "PASS",
+      "dll": "build/d3d9.dll",
+      "roots": {
+        "set_vs": "__ZN3x3m12_GLOBAL__N_1L6set_vsEP16IDirect3DDevice9P22IDirect3DVertexShader9@8",
+        "set_ps": "__ZN3x3m12_GLOBAL__N_1L6set_psEP16IDirect3DDevice9P21IDirect3DPixelShader9@8",
+        "set_vs_constant_f": "__ZN3x3m12_GLOBAL__N_1L17set_vs_constant_fEP16IDirect3DDevice9jPKfj@16",
+        "set_vs_constant_i": "__ZN3x3m12_GLOBAL__N_1L17set_vs_constant_iEP16IDirect3DDevice9jPKij@16",
+        "set_ps_constant_f": "__ZN3x3m12_GLOBAL__N_1L17set_ps_constant_fEP16IDirect3DDevice9jPKfj@16",
+        "set_viewport": "__ZN3x3m12_GLOBAL__N_1L12set_viewportEP16IDirect3DDevice9PK13_D3DVIEWPORT9@8",
+        "set_render_state": "__ZN3x3m12_GLOBAL__N_1L16set_render_stateEP16IDirect3DDevice919_D3DRENDERSTATETYPEm@12",
+        "set_texture": "__ZN3x3m12_GLOBAL__N_1L11set_textureEP16IDirect3DDevice9mP21IDirect3DBaseTexture9@12",
+        "set_sampler_state": "__ZN3x3m12_GLOBAL__N_1L17set_sampler_stateEP16IDirect3DDevice9m20_D3DSAMPLERSTATETYPEm@16",
+        "gz_read": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_readEPvS2_j",
+        "gz_getc": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_getcEPv",
+        "gz_tell": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_tellEPv",
+        "gz_seek": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_seekEPvli",
+        "light::file_open": "__ZN3x3m13loading_trace5light9file_openEPKcmmP20_SECURITY_ATTRIBUTESmmPv@28",
+        "light::file_read": "__ZN3x3m13loading_trace5light9file_readEPvS2_mPmP11_OVERLAPPED@20",
+        "light::file_seek": "__ZN3x3m13loading_trace5light9file_seekEPvlPlm@16",
+        "light::cursor_set": "__ZN3x3m13loading_trace5light10cursor_setEP7HICON__@4",
+        "light::cursor_position": "__ZN3x3m13loading_trace5light15cursor_positionEii@8",
+        "light::find_first": "__ZN3x3m13loading_trace5light10find_firstEPKcP17_WIN32_FIND_DATAA@8",
+        "light::find_next": "__ZN3x3m13loading_trace5light9find_nextEPvP17_WIN32_FIND_DATAA@8",
+        "light::find_close": "__ZN3x3m13loading_trace5light10find_closeEPv@4",
+        "light::gz_open_traced": "__ZN3x3m13loading_trace5light14gz_open_tracedEPKcS3_",
+        "light::gz_read_traced": "__ZN3x3m13loading_trace5light14gz_read_tracedEPvS2_j",
+        "light::gz_seek_traced": "__ZN3x3m13loading_trace5light14gz_seek_tracedEPvli",
+        "light::gz_getc_traced": "__ZN3x3m13loading_trace5light14gz_getc_tracedEPv",
+        "light::gz_tell_traced": "__ZN3x3m13loading_trace5light14gz_tell_tracedEPv",
+        "light::gz_close_traced": "__ZN3x3m13loading_trace5light15gz_close_tracedEPv",
+        "light::gz_write": "__ZN3x3m13loading_trace5light8gz_writeEPvPKvj",
+        "light::inflate_stream": "__ZN3x3m13loading_trace5light14inflate_streamEPvi",
+        "light::xml_read": "__ZN3x3m13loading_trace5light8xml_readEPKciS3_S3_i",
+        "light::inflate_init2": "__ZN3x3m13loading_trace5light13inflate_init2EPviPKci",
+        "light::inflate_end": "__ZN3x3m13loading_trace5light11inflate_endEPv",
+        "light::crypt_acquire_context": "__ZN3x3m13loading_trace5light21crypt_acquire_contextEPmPKcS4_mm@20",
+        "light::crypt_release_context": "__ZN3x3m13loading_trace5light21crypt_release_contextEmm@8",
+        "light::crypt_import_key": "__ZN3x3m13loading_trace5light16crypt_import_keyEmPKhmmmPm@24",
+        "light::crypt_create_hash": "__ZN3x3m13loading_trace5light17crypt_create_hashEmjmmPm@20",
+        "light::crypt_hash_data": "__ZN3x3m13loading_trace5light15crypt_hash_dataEmPKhmm@16",
+        "light::crypt_verify_signature": "__ZN3x3m13loading_trace5light22crypt_verify_signatureEmPKhmmPKcm@24",
+        "light::crypt_get_hash_param": "__ZN3x3m13loading_trace5light20crypt_get_hash_paramEmmPhPmm@20",
+        "light::crypt_destroy_hash": "__ZN3x3m13loading_trace5light18crypt_destroy_hashEm@4",
+        "light::crypt_destroy_key": "__ZN3x3m13loading_trace5light17crypt_destroy_keyEm@4",
+        "light::create_directory": "__ZN3x3m13loading_trace5light16create_directoryEPKcP20_SECURITY_ATTRIBUTES@8",
+        "light::delete_file": "__ZN3x3m13loading_trace5light11delete_fileEPKc@4",
+        "light::move_file": "__ZN3x3m13loading_trace5light9move_fileEPKcS3_@8",
+        "light::move_file_ex": "__ZN3x3m13loading_trace5light12move_file_exEPKcS3_m@12",
+        "light::write_file": "__ZN3x3m13loading_trace5light10write_fileEPvPKvmPmP11_OVERLAPPED@20",
+        "light::get_file_type": "__ZN3x3m13loading_trace5light13get_file_typeEPv@4",
+        "light::close_handle": "__ZN3x3m13loading_trace5light12close_handleEPv@4",
+        "_x3m_probe_enter": "_x3m_probe_enter",
+        "_x3m_probe_exit": "_x3m_probe_exit",
+        "_x3m_resource_read_entry": "_x3m_resource_read_entry",
+        "_x3m_pool_fopen": "_x3m_pool_fopen",
+        "_x3m_pool_fclose": "_x3m_pool_fclose"
+      },
+      "reachable_functions": 195,
+      "violations": {}
+    }
+  },
+  "generated_programs": {
+    "command": "python3 verification/probe/wine_lock.py --holder meter python3 tools/shaders/generate_rigid_motion_pixel.py --check",
+    "exit_code": 0,
+    "bottle": "Steam",
+    "result": {
+      "result": "PASS",
+      "check": true,
+      "shaders": [
+        {
+          "shader": "current_depth",
+          "word_count": 35,
+          "bytecode_sha256": "d097c156f9fc71faf2d554037092b86aefb399434575239c91d12ca46ce54c4c"
+        },
+        {
+          "shader": "hdr_meter_level0",
+          "word_count": 1996,
+          "bytecode_sha256": "994451bc7bd4d3c98e05c5c36708d99319ea37c966085f048c84a7172ace0246"
+        },
+        {
+          "shader": "hdr_meter_reduce",
+          "word_count": 462,
+          "bytecode_sha256": "941e89491c9a20e472dc85e896aa80205d78fd0a9c86c83b1339093d850e5614"
+        },
+        {
+          "shader": "hdr_tonemap",
+          "word_count": 414,
+          "bytecode_sha256": "f5e78954aff3d3ceb9535c67873b8695e4a0b3524cf39b3648c78c2a0a6572aa"
+        },
+        {
+          "shader": "hdr_tonemap_sharpen",
+          "word_count": 1691,
+          "bytecode_sha256": "4b36956c71cd3a75eed5280fd18735669de3d692ba1dedf6a31ec74d5b0177e0"
+        },
+        {
+          "shader": "hdr_writeback",
+          "word_count": 46,
+          "bytecode_sha256": "9cbb62f677f53401c91b61c026639f7bf25d85d6f581bf1952ba3ef4d640009a"
+        },
+        {
+          "shader": "quad_vertex",
+          "word_count": 43,
+          "bytecode_sha256": "09d4c72bab123c0d1127e0fcf0736011526941aca7efe43b055a443b296d32d0"
+        },
+        {
+          "shader": "rigid_motion",
+          "word_count": 176,
+          "bytecode_sha256": "a604ce8c772ac472dca8612c8cafcb353cb648f89aaffd7a089b7c9f0ae1e107"
+        },
+        {
+          "shader": "taa_sharpen",
+          "word_count": 418,
+          "bytecode_sha256": "af5cdb6f63d39989b4162f9d72563e242e4612f7e75a505858aa40781e1e8399"
+        },
+        {
+          "shader": "temporal_resolve",
+          "word_count": 4487,
+          "bytecode_sha256": "4cd8ad52d674c8abb9fde779e3c913d9dbba513fdadfec00f21b7d7c21959f48"
+        }
+      ]
+    },
+    "checked_current_artifact_sha256": {
+      "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
+      "src/renderer/hdr_meter_level0_program_inc.h": "60a09221eea6b08cfc87b1df270685580278a79a2d6e3a68a3e551ffb69f953c",
+      "src/renderer/hdr_meter_reduce_program_inc.h": "969a7037581117bf069cafcbbd244e5f852f6e5586ab3fdc7726cb67f90a671c",
+      "src/renderer/hdr_tonemap_program_inc.h": "9fa78b9155ce774d369cf9952f77a04fcc53743c1bd4797f731532bb984bc18e",
+      "src/renderer/hdr_tonemap_sharpen_program_inc.h": "ed43e66f9bf91bab53ba18a3fa78a062cfcb9c3ed51bbfd6a8f3e67140a1472f",
+      "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
+      "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
+      "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+      "src/renderer/taa_sharpen_program_inc.h": "93b6cb01499fc4a5cad7789730f6fd5f757235a1a3ed995b0ee80e4d7174db40",
+      "src/renderer/temporal_resolve_program_inc.h": "b8a2e7d7af306591e20b6d64bbdc4a5b61036c83ad97f3db1b11d40ec758c699",
+      "src/temporal/agx.hlsl": "b84c3295eb7095cd00c65518dcaf3dc1f456bfd4bf44e2d19b28547ccac5abce",
+      "src/temporal/agx_sharpen_ps.hlsl": "398233d7eb29bd99d8071697bfa7e0573c277511fe9c0fada3073facf284aca5",
+      "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
+      "src/temporal/hdr_meter_level0_ps.hlsl": "3f812353f91e6e40a3ec8e73e976e153812410a053629ba1231100a5df1b78fb",
+      "src/temporal/hdr_meter_reduce_ps.hlsl": "23570a77cf83256a25ab726a480dafb9bd011e879d03f2f976328cc82bc1c6ff",
+      "src/temporal/hdr_writeback_ps.hlsl": "94d43598184cdaa0a2bbf8a2d16e640fb7eb5d63d2c7cde0e9efd99c3c782022",
+      "src/temporal/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+      "src/temporal/resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16",
+      "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
+      "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
+      "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+      "tools/shaders/generate_rigid_motion_pixel.py": "7fac8448ea5cdf9f644a84ed8f2ea45dac78b4c3d6a25ee0a38a3df2cef77841",
+      "verification/results/current-depth-pixel-program.json": "8ebe438284110943bc8a35273660740cd1e61f96e3882e2aea826000dbc8b2b5",
+      "verification/results/hdr-meter-level0-program.json": "77eaabd6b6630e76f2a3e5af5e894b7138be67c2d6600159da782b8e5ea36694",
+      "verification/results/hdr-meter-reduce-program.json": "111c328689ceb604564e21f7805fa84aaa39b6376305bdbe16b41405cd601bd0",
+      "verification/results/hdr-tonemap-program.json": "3e68a9127d55811673fda9a7c88eb3b68b1ccd9ef4531e2521a250080a1914e8",
+      "verification/results/hdr-tonemap-sharpen-program.json": "c72b9376db2ac31c4e5f2d0e68a0ae24994c727f3615e157843a733ec372b05d",
+      "verification/results/hdr-writeback-program.json": "9425c2b0c9fd6f4c2d74beca463ed58bf335d03d7b25f94ca46ce4185e4c4891",
+      "verification/results/quad-vertex-program.json": "9864860567b9d17ebd33965dbc41f40ac535eaaa8fdcd175751eedb9e71fab90",
+      "verification/results/rigid-motion-pixel-program.json": "0d7d3038848b6ff1ca2111467918d9502f60961c93152954e4cdaccad8336ac3",
+      "verification/results/taa-sharpen-program.json": "bcd37fe8f39d6b3e48aa009bb575c691ee5619faacdf1a6c443a2244395e0a2e",
+      "verification/results/temporal-resolve-program.json": "dad5b900b8f0147ed805cdf6c8d0b603c0c129002ece33eb11897bc7721c943a"
+    },
+    "original_execution_log_sha256": "af0ef589e66b6ff297b1f260df983b6b632eee5aa8187a073b187196380eb714"
+  },
+  "source_note": "Production sources and generated artifacts remained frozen across final suites. The later exposure_reference.py module-docstring-only correction is recorded separately.",
+  "post_run_numerical_reference_and_helper_sha256": {
+    "tools/analysis/exposure_reference.py": "f683a1a4daa0455aaa546803382fb202f200ae4cb2c9b6633496bc659796af9d",
+    "tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
+    "tools/analysis/analyze_motion_readback.py": "a1ba2f33d8a81f5394cffcee9a2d2eb6012bbefdd04373296cc764ba24e3511a",
+    "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db"
+  },
+  "helper_provenance_limit": "These helper files were omitted by run_motion_output.py sources(); these are explicit post-run hashes, not a claimed before/after suite snapshot. Exposure reference changed only its module docstring after the suites, as recorded by the separate before/after executable-AST exception."
+}

@@ -803,7 +803,7 @@ after the write-back exactly as in stage 1.
 | `X3M_HDR_EXPOSURE` | `auto` \| `manual` | `auto` | manual without an EV is EV 0 |
 | `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (−3..+2 by default since the space-aware meter) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
 | `X3M_HDR_EV` (alias `X3M_HDR_EV_OFFSET`) | EV in [−16, 16] | 0 | the offset added to the auto target. **Deviation from the §3 text**, where `X3M_HDR_EV` forced the EV: the orchestrator's stage-2 brief names `X3M_HDR_EV` as the offset and `X3M_HDR_EV_MANUAL` as the override, and that is what is implemented; the design's `X3M_HDR_EV_OFFSET` remains accepted as the alias |
-| `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, **−3/+2**, 0.4 s/1.2 s | `exposure_reference.py` defaults; the EV range was ±8 until the space-aware meter (2026-09-13): the lit-content rule never needs more than a two-stop lift or a three-stop pull on this game's 8-bit-authored content |
+| `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, **−3/+2**, 0.4 s/1.2 s | `exposure_reference.py` defaults; the EV range was ±8 until the space-aware meter (2026-09-13): a conservative policy bounds the lift to two stops and the pull to three on the game's 8-bit-authored content |
 | `X3M_HDR_METER_BG` | scene-linear luminance in [1e-4, 64] | 1/512 | tiles whose geometric-mean luminance is below it are the black sky: excluded from the key rule (`--hdr-meter-bg`) |
 | `X3M_HDR_METER_MIN_LIT` | fraction in [0, 1] | 0.01 | fewer lit tiles than this fraction of the tile image: the target is neutral (EV 0 plus the offset) |
 | `X3M_HDR_WHITE_TARGET` | fraction in [0, 4] | 0.9 | the highlight limit: the brightest 1 % of tiles (the p99 tile maximum) may reach this fraction of the AgX white (`exp2(4.026069)` = 16.29 scene units); 0 disables the limit (`--hdr-white-target`) |
@@ -895,8 +895,8 @@ mostly black, its log mean sat at the meter floor (`luma_mean` median
 is the unmetered initial state), `ev_target` median +6.8 and `ev` +6.85
 with the +8 clamp reached, and the lit station, nebula and stars were blown
 out while the menu (never metered: it is not redirected) looked fine. The
-meter must meter the lit content, not the sky, and must never let bright
-content clip.
+meter must follow lit content and limit the lift when broad bright regions
+would approach the tonemapper's white.
 
 **Statistic** (`exposure.h`, mirrored by `exposure_reference.py`), on the
 tile image the chain leaves (each tile: the mean and the maximum of the
@@ -908,7 +908,7 @@ lit         tile.mean >= log2(meter_bg)                 // meter_bg 1/512: the b
 neutral     lit < meter_min_lit * tiles                  // 1 %: nothing to meter, the target is EV 0 (+ offset)
 d           = log2(key) - weighted median(lit tile means)
 ev_key      = (d >= 0 ? d : d * key_pull) + ev_offset    // the lift in full, the pull down at a quarter
-ev_limit    = log2(white_target * 16.29) - p99(tile max) // unweighted: protects whatever is brightest anywhere
+ev_limit    = log2(white_target * 16.29) - p99(tile max) // unweighted: limit broad highlights regardless of position
 ev_fresh    = clamp(min(ev_key, ev_limit), ev_min, ev_max)   // -3 .. +2
 ev_target   = |ev_fresh - ev_target| > ev_deadband ? ev_fresh : ev_target   // 0.25 EV; held otherwise
 ```
@@ -918,8 +918,9 @@ held target, and `exp2(EV)` to the tonemap. The weighted median is the
 first tile of the ascending order at which the cumulative weight reaches
 half the lit weight; the p99 is the element at index `tiles·99/100` of the
 ascending tile maxima; both are exact selections (a sort of the lit tiles,
-`nth_element` of the maxima), so the port and the reference agree bit for
-bit on the same tiles. `avg_log_l`/`luma_mean` (the old statistic, the
+`nth_element` of the maxima). The host port and reference use the same
+selection rule; their floating-point weights and arithmetic are compared
+within the fixture's tolerances. `avg_log_l`/`luma_mean` (the old statistic, the
 mean of every tile mean) stay on the log line for continuity.
 
 **Rationale, per term.** *Background exclusion:* the sky's floor tiles
@@ -943,11 +944,14 @@ units, where the sigmoid saturates); on this game's 8-bit-authored content
 (decoded white = 1.0) the limit sits at +3.87 EV and only engages for
 content above 3.7 (sun sprites through bloom, weapon flashes, the fixture's
 100-valued blocks: the meter clip 64 then gives −2.13 EV), so it is the
-guard, not the driver. *EV range −3..+2:* the lift a lit space scene needs
-is at most two stops (a hull at decoded 0.045 reaches the key at +2), and
-three stops of pull cover any bright frame under the quarter-strength
-rule; the old ±8 existed only because the whole-frame mean could sit at the
-floor. *Centre weighting* (orchestrator addition): a large emitter at the
+guard, not the driver. This is a percentile limit on the fresh target, not
+a hard bound on every pixel: the brightest tail may exceed it, a tile maximum
+is not a pixel percentile, the meter clips at 64, and adaptation/deadband can
+temporarily retain a higher exposure. *EV range −3..+2:* the chosen policy
+allows a two-stop lift (a hull at decoded 0.045 reaches the key at +2) and
+at most three stops of pull. Darker lit content can ask for more than two
+stops and is deliberately capped; the old ±8 allowed a whole-frame mean
+near the floor to drive a much larger lift. *Centre weighting* (orchestrator addition): a large emitter at the
 edge — a sun, a planet limb, a nebula — should not drive the exposure down
 and darken the ship the player looks at, so the lit tiles are weighted by a
 raised cosine of their distance from the frame centre, 1 at the centre,
@@ -955,8 +959,8 @@ raised cosine of their distance from the frame centre, 1 at the centre,
 centre object of a quarter of the frame (64 of 256 tiles, weight 56.3)
 outweighs a white emitter covering the whole left half (96 tiles, weight
 53.4) — a linear falloff would not (52.8 against 56.6). The lit count, the
-neutral test and the highlight limit stay unweighted: the limit protects
-whatever is brightest anywhere. *Dead band* (orchestrator addition): small
+neutral test and the highlight limit stay unweighted: percentile highlights
+at the edge have the same influence as those at the centre. *Dead band* (orchestrator addition): small
 scene changes while turning — a tile row of nebula entering, a star field
 — must not drift the exposure, so the held target moves only when the fresh
 one differs from it by more than 0.25 EV. The band is measured against the

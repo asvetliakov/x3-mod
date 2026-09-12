@@ -33,11 +33,13 @@ key rule then asks for +6..+8 EV and a lit station is blown out. The tile
 statistic meters the lit content only (the median of the lit tiles maps to
 the key, the lift in full), pulls a bright full frame down only gently
 (``key_pull``: a white menu at 1.0 lands at -0.62 EV, not at mid-grey), and
-never lets the brightest 1 % of tiles clip (``ev_limit``). The lit tiles
-are centre-weighted (a raised cosine, ``edge_weight`` at the corners) so a
-sun or planet limb at the edge does not drive the exposure down on the ship
-the player looks at; the highlight limit protects whatever is brightest
-anywhere and stays unweighted. The dead band holds the target while the
+uses the unweighted p99 of tile maxima to limit the fresh target
+(``ev_limit``). This is not a bound on every displayed pixel: metering clips
+input luminance, the brightest percentile can be excluded, and EV bounds,
+adaptation and the dead band can exceed the freshly computed limit. Lit
+tiles are centre-weighted (a raised cosine, ``edge_weight`` at the corners)
+to reduce edge influence on the key statistic; the highlight statistic stays
+unweighted. The dead band holds the target while the
 freshly metered one stays within ``ev_deadband`` of it (the held target
 equals the adapted EV once settled), so small changes while turning do not
 drift the exposure; adaptation still converges exactly to the held target.

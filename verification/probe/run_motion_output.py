@@ -258,6 +258,7 @@ CASES += [case(name, 'hdrexposure', hdr=True, hdr_env=env) for name, env in EXPO
 # The meter chain's level surfaces and readback surfaces through the ownership wrapper (reference accounting at teardown).
 CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=True, hdr_env=EXPOSURE_CASES['seam-hdr-exposure'])]
 CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
+          case('seam-hdr-meter-selftest-unlock', 'hdrtonemapfault', hdr=True, hdr_fault='16', hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
           case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX, X3M_HDR_DT_MS='16'))]
 CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True, hdr_env=dict(AGX, X3M_MOTION_FRAME_LOG='4')) for size in BENCH_SIZES for state in ('off', 'on')]  # frame lines every 4 frames: the adapted state of a timed frame
 # FP16 HDR scene path, stage 3 (TAA on HDR): the resolve consumes the FP16
@@ -1618,12 +1619,25 @@ def validate_hdrexposure(name, text, trace, directory, hdr_env, hdr_fault=None):
     assert float(sparks['ev_limit']) < float(sparks['ev_key']) and abs(float(s2['frames'][EXPOSURE_SCENES['sparks'][-1] + 1]['ev_fresh']) - float(sparks['ev_limit'])) < 1e-4, (name, sparks)
     grey = state_of('grey')
     assert float(grey['ev_key']) > params['ev_max'] and abs(float(s2['frames'][EXPOSURE_SCENES['grey'][-1] + 1]['ev_fresh']) - params['ev_max']) < 1e-4, (name, grey)
+    # Prove the synthetic stimulus itself has the intended margins for this
+    # case's offset/clamp, independently of the measured held-target history.
+    reference_level_targets = {label: exposure_ref.exposure_target(reference_stats[EXPOSURE_SCENES[label][0]], **kw_target)['ev_target']
+                               for label in ('grey', 'level_a', 'level_b', 'level_c', 'level_d')}
+    a_target = reference_level_targets['level_a']
+    assert abs(a_target - reference_level_targets['grey']) > params['ev_deadband'], (name, 'A must escape the preceding clamp', reference_level_targets)
+    assert all(0 < abs(reference_level_targets[label] - a_target) <= params['ev_deadband'] for label in ('level_b', 'level_c')), (name, 'B/C must lie within A band', reference_level_targets)
+    assert abs(reference_level_targets['level_d'] - a_target) > params['ev_deadband'], (name, 'D must leave A band', reference_level_targets)
+    first_a = EXPOSURE_SCENES['level_a'][0] + 1
+    assert abs(held_targets[first_a] - held_targets[first_a - 1]) > params['ev_deadband'] and s2['frames'][first_a]['ev_target'] == s2['frames'][first_a]['ev_fresh'], (name, 'initial A did not escape clamp', first_a)
     band = [held_targets[f + 1] for f in EXPOSURE_SCENES['level_a']] + [held_targets[f + 1] for f in EXPOSURE_SCENES['level_b']] + [held_targets[f + 1] for f in EXPOSURE_SCENES['level_c']]
     assert max(band) - min(band) < 1e-6, (name, 'the held target moved inside the dead band', band)
     band_fresh = [fresh_targets[f + 1] for f in list(EXPOSURE_SCENES['level_b']) + list(EXPOSURE_SCENES['level_c'])]
     assert all(0.0 < abs(v - band[0]) <= params['ev_deadband'] for v in band_fresh), (name, 'the small changes were not inside the band', band[0], band_fresh)
     moved = held_targets[EXPOSURE_SCENES['level_d'][0] + 1]
-    assert abs(moved - band[0]) > params['ev_deadband'] and abs(moved - fresh_targets[EXPOSURE_SCENES['level_d'][0] + 1]) < 1e-6, (name, 'the large change did not move the target', band[0], moved)
+    # Compare equally formatted fields: the seam state prints six decimals,
+    # whereas hdr_frame prints five (their rounding alone can differ by 5e-6).
+    moved_frame = s2['frames'][EXPOSURE_SCENES['level_d'][0] + 1]
+    assert abs(moved - band[0]) > params['ev_deadband'] and moved_frame['ev_target'] == moved_frame['ev_fresh'], (name, 'the large change did not move the target', band[0], moved, moved_frame)
     emitter = state_of('emitter'); object_log = exposure_ref.meter_level0(scenes[110]['patches'][1][4][:3], params['decode'])
     assert abs(float(emitter['lit_median_log']) - object_log) < 0.02 and abs(float(emitter['ev_key']) - exposure_ref.ev_key(object_log, params['key'], params['ev_offset'], params['key_pull'])) < 0.02, (name, emitter)
     unweighted = exposure_ref.exposure_target(exposure_ref.meter_image([p[:3] for p in exposure_frame_pixels(110, block_values, scenes)], 64, 64, **dict(kw_meter, edge_weight=1.0)), **kw_target)
@@ -1684,7 +1698,7 @@ def validate_hdrexposure(name, text, trace, directory, hdr_env, hdr_fault=None):
 
 TONEMAP_FAULT_SCRIPT = {0: dict(fault=0, tonemapped=1, unwind=0, reason='none', recheck='none', meter='00000000', stepped=0),
                         1: dict(fault=11, tonemapped=0, unwind=1, reason='tonemap', recheck='none', meter='00000000', stepped=1),
-                        2: dict(fault=0, tonemapped=1, unwind=0, reason='none', recheck='pass', meter='00000000', stepped=1),
+                        2: dict(fault=15, tonemapped=1, unwind=0, reason='none', recheck='pass', meter='00000000', stepped=0),
                         3: dict(fault=13, tonemapped=1, unwind=0, reason='none', recheck='none', meter='80004005', stepped=1),
                         4: dict(fault=0, tonemapped=1, unwind=0, reason='none', recheck='none', meter='00000000', stepped=0),
                         5: dict(fault=11, tonemapped=0, unwind=1, reason='tonemap', recheck='none', meter='00000000', stepped=1),
@@ -1976,6 +1990,20 @@ def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=No
     states = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('EXPOSURE_STATE ')}
     result = {'mode': 'hdrtonemapfault', 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
               'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}}
+    if hdr_fault == '16':
+        # The real self-test copy/lock/unlock completes, then the seam reports
+        # an unlock failure. Correct pixels alone must not enable the meter.
+        assert (tm['tonemap'], tm['tonemap_reason'], tm['meter'], tm['meter_reason']) == ('1', 'ok', '0', 'self_test'), (name, tm)
+        device_line = next(l for l in trace.splitlines() if l.startswith('hdr_device '))
+        assert 'meter=80004005 meter_errors=0' in device_line, (name, device_line)
+        assert sorted(s2['frames']) == [0, 1, 2] and not s2['unwinds'] and not s2['disabled'], (name, s2)
+        for frame, h in s2['frames'].items():
+            assert (h['tonemap'], h['tonemapped'], h['stepped'], h['steps']) == ('agx', '1', '0', '0'), (name, frame, h)
+            assert float(states[frame]['ev']) == 0.0, (name, frame, states[frame])
+        images = {frame: compare_image_to_reference(directory, frame, 0.0, params, identity=False) for frame in (1, 2)}
+        assert all(v['max'] <= 1 and v['alpha_max'] <= 1 for v in images.values()), (name, images)
+        result.update(frames=3, meter_selftest_unlock_refused=True, images=images)
+        return result
     if hdr_fault == '12':
         assert (tm['tonemap'], tm['tonemap_reason'], tm['meter'], tm['meter_reason'], tm['tonemap_shader']) == ('0', 'shader', '0', 'tonemap', '80004005'), (name, tm)
         assert sorted(s2['frames']) == [0, 1, 2] and not s2['unwinds'] and not s2['disabled'], (name, sorted(s2['frames']))
@@ -2001,6 +2029,14 @@ def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=No
     assert [u['reason'] for u in s2['unwinds']] == ['tonemap'] * 3 and all(u['source'] == 'shader' for u in s2['unwinds']), (name, s2['unwinds'])
     assert sorted(s2['rechecks']) == [2, 6, 7] and all(r['passed'] == '1' for r in s2['rechecks'].values()), (name, s2['rechecks'])
     assert len(s2['disabled']) == 1 and int(s2['disabled'][0]['frame']) == 6 and s2['disabled'][0]['reason'] == 'draw_failures', (name, s2['disabled'])
+    # Fault 15 overrides the unlock HRESULT only after the real UnlockRect.
+    # The available candidate must not publish any exposure state; the next
+    # successful readback must advance again (reject-all is not a passing fix).
+    assert s2['frames'][2]['readback'] == '80004005' and s2['frames'][3]['readback'] == '00000000', (name, s2['frames'][2], s2['frames'][3])
+    for key in states[1]:
+        if key != 'frame':
+            assert states[2][key] == states[1][key], (name, 'failed unlock published state', key, states[1], states[2])
+    assert int(s2['frames'][2]['steps']) == int(s2['frames'][1]['steps']) and int(s2['frames'][3]['steps']) == int(s2['frames'][2]['steps']) + 1, (name, s2['frames'])
     # The exposure held across the failed meter: frame 4 consumed no step, its EV equals frame 3's.
     assert abs(float(states[4]['ev']) - float(states[3]['ev'])) < 1e-9 and float(states[3]['ev']) != float(states[2]['ev']), (name, states[2], states[3], states[4])
     images = {1: compare_image_to_reference(directory, 1, float(states[1]['ev']), params, identity=True),
@@ -2009,7 +2045,7 @@ def validate_hdrtonemapfault(name, text, trace, directory, hdr_env, hdr_fault=No
               7: compare_image_to_reference(directory, 7, float(states[7]['ev']), params, identity=True)}
     assert all(v['max'] <= 1 and v['alpha_max'] <= 1 for v in images.values()), (name, images)
     result.update(frames=len(TONEMAP_FAULT_SCRIPT), unwinds=[{k: u[k] for k in ('reason', 'frame', 'source', 'draw', 'restore')} for u in s2['unwinds']],
-                  rechecks=sorted(s2['rechecks']), disabled_frame=6, images=images,
+                  rechecks=sorted(s2['rechecks']), disabled_frame=6, images=images, readback_unlock_failure_held=True,
                   hdr_frames={f: {k: h[k] for k in ('tonemap', 'tonemapped', 'unwind', 'unwind_reason', 'fallback', 'recheck', 'meter', 'stepped', 'ev')} for f, h in s2['frames'].items()})
     return result
 

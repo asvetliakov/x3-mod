@@ -1704,7 +1704,7 @@ struct Fixture {
     // hdrexposure, the space-aware scenes: a background value over the whole
     // target and up to eight rectangular patches of constant engine-space
     // values (pixel rectangles, [x0, x1) x [y0, y1)); the description, the
-    // state the tonemap consumed and the presented background/patch centres
+    // state the tonemap consumed and the presented background/patch witnesses
     // are printed like the block frames.
     struct Patch { unsigned x0, y0, x1, y1; float rgba[4]; };
     struct Scene { float bg[4]; unsigned count; Patch patches[8]; };
@@ -1735,23 +1735,26 @@ struct Fixture {
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
         write_presented(image);
-        // The background's code at the last pixel (no scene puts a patch there;
-        // the emitter covers (0, 0)) and each patch's centre; every pixel must
-        // carry the code of what covers it.
-        const DWORD bg_code = image[std::size_t(H) * W - 1];
-        DWORD centre[8]{};
-        for (unsigned i = 0; i < s.count; ++i) centre[i] = image[std::size_t((s.patches[i].y0 + s.patches[i].y1) / 2) * W + (s.patches[i].x0 + s.patches[i].x1) / 2];
-        unsigned nonuniform = 0;
+        // A later rectangle can cover an earlier rectangle's centre. Select
+        // a witness from the final visible footprint of every region instead;
+        // geometric ownership is independent of the observed colour value.
+        DWORD codes[9]{}; bool seen[9]{};
+        unsigned visible = 0, nonuniform = 0;
+        auto region = [&](unsigned x, unsigned y) {
+            unsigned owner = 0;
+            for (unsigned i = 0; i < s.count; ++i)
+                if (x >= s.patches[i].x0 && x < s.patches[i].x1 && y >= s.patches[i].y0 && y < s.patches[i].y1) owner = i + 1;
+            return owner;
+        };
         for (unsigned y = 0; y < H; ++y) for (unsigned x = 0; x < W; ++x) {
-            DWORD expected = bg_code;
-            for (unsigned i = 0; i < s.count; ++i)   // later patches draw over earlier ones
-                if (x >= s.patches[i].x0 && x < s.patches[i].x1 && y >= s.patches[i].y0 && y < s.patches[i].y1) expected = centre[i];
-            nonuniform += image[std::size_t(y) * W + x] != expected;
+            const unsigned owner = region(x, y);
+            if (!seen[owner]) { codes[owner] = image[std::size_t(y) * W + x]; seen[owner] = true; ++visible; }
+            nonuniform += image[std::size_t(y) * W + x] != codes[owner];
         }
-        std::printf("EXPOSURE_SCENE_PRESENTED frame=%llu bg=%08lx", frame, bg_code);
-        for (unsigned i = 0; i < s.count; ++i) std::printf(" p%u=%08lx", i, centre[i]);
+        std::printf("EXPOSURE_SCENE_PRESENTED frame=%llu bg=%08lx", frame, codes[0]);
+        for (unsigned i = 0; i < s.count; ++i) std::printf(" p%u=%08lx", i, codes[i + 1]);
         std::printf(" nonuniform=%u\n", nonuniform);
-        require(!nonuniform, "the background and every patch present one code");
+        require(!nonuniform && visible == s.count + 1, "the background and every visible patch present one code");
         api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
         ++frame; ++frames_since_reset;
     }
@@ -1793,13 +1796,16 @@ struct Fixture {
         for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(sparks);
         for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(grey);
         // The dead band (80-109): uniform frames whose key-rule targets sit
-        // inside the range, 0.35 (+0.86 EV), then 0.37 (+0.68) and 0.33 (+1.05),
+        // inside the range, 0.38 (+0.60 EV), then 0.40 (+0.43) and 0.37 (+0.68),
         // within 0.25 EV of the held target (it must not move), then 0.6
         // (-0.21: it must). The emitter (110-119): a white left half over
         // black with a mid-grey object (engine 0.459: decoded 0.18, the key)
         // in the centre; the centre weighting keeps the object at the key
         // (EV 0) where the unweighted median would sit on the emitter (-0.62).
-        const Scene level_a{{.35f, .35f, .35f, 1}, 0, {}}, level_b{{.37f, .37f, .37f, 1}, 0, {}}, level_c{{.33f, .33f, .33f, 1}, 0, {}}, level_d{{.6f, .6f, .6f, 1}, 0, {}};
+        // After the preceding +2 clamp, A must move by >0.25 even in the
+        // +1-offset twin. Its fresh target is ~0.597 (1.597 with offset),
+        // then B/C are within the band (~0.434/~0.682); D moves beyond it.
+        const Scene level_a{{.38f, .38f, .38f, 1}, 0, {}}, level_b{{.4f, .4f, .4f, 1}, 0, {}}, level_c{{.37f, .37f, .37f, 1}, 0, {}}, level_d{{.6f, .6f, .6f, 1}, 0, {}};
         for (unsigned i = 0; i < 10; ++i) hdrexposure_scene_frame(level_a);
         for (unsigned i = 0; i < 5; ++i) hdrexposure_scene_frame(level_b);
         for (unsigned i = 0; i < 5; ++i) hdrexposure_scene_frame(level_c);
@@ -1830,10 +1836,12 @@ struct Fixture {
         char setting[8]{};
         if (GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) { for (unsigned i = 0; i < 3; ++i) hdrtonemapfault_frame(0); return; }
         // f0 normal; f1 tonemap draw fails (identity fallback, recheck next);
-        // f2 normal; f3 meter fails (tonemap applied, no step next); f4 normal;
+        // f2 readback UnlockRect reports failure AFTER its real cleanup (fault
+        // 15): exposure must hold; f3 succeeds at readback but its meter draw
+        // fails (tonemap applied, no step next); f4 normal;
         // f5, f6 tonemap draw fails again (the third failure disables the
         // tonemap for the device); f7, f8 identity from then on.
-        const unsigned script[] = {0, 11, 0, 13, 0, 11, 11, 0, 0};
+        const unsigned script[] = {0, 11, 15, 13, 0, 11, 11, 0, 0};
         // With X3M_TAA=1 (stage 3): f1 and f7 the resolve on the FP16 scene
         // fails (fault 14: the unresolved scene is written back, the history
         // drops, f2/f8 resolve current-only); f3 the tonemap draw fails

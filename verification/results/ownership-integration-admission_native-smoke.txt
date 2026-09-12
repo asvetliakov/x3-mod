@@ -1,4 +1,4 @@
-D3D9 loaded: Y:\x3-mod\verification\probe\build\ownership-integration-admission_native-smoke-20260912-232510-564136\d3d9.dll
+D3D9 loaded: Y:\x3-mod\.claude\worktrees\agent-aea55d854948bd6a0\verification\probe\build\ownership-integration-admission_native-smoke-20260913-013655-114780\d3d9.dll
 D3D9 QueryInterface IUnknown: 0x00000000 PASS
 D3D9 COM identity: PASS
 DEVICE ITERATION 0

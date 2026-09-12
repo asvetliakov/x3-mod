@@ -1,9 +1,59 @@
-# Handoff: space-aware exposure meter (paused 2026-09-13, in progress)
+# Handoff: space-aware exposure meter (verified 2026-09-13)
 
-Branch `worktree-agent-aea55d854948bd6a0` (worktree of `main` at `a40909a`).
-Nothing here is committed to `main`; the branch compiles (CMake DLL and the
-seam/fixture build) and the analysis suite passes. Continue from
-"What remains" below.
+## Completed verification (2026-09-13)
+
+Resumed from committed branch state `ee7d2dc`, with no preexisting
+uncommitted changes. The space-aware meter and review corrections now pass
+both complete Steam and X3 motion-output suites: 98 validation cases plus
+16 benchmark invocations per bottle. The three exposure cases each pass
+245 checks / 120 frames; fault-15 readback failure holds the complete state
+and next-frame success resumes adaptation (59 checks / 9 frames), while
+fault-16 attach unlock failure refuses metering but retains AgX output
+(23 checks / 3 frames).
+
+Supporting verification passes in both bottles: TemporalPass 386 samples /
+278 state restorations / two device generations; SceneCapture 4,908 checks /
+16 samples; ownership integration 26 environments. Host analysis passes
+814 tests, including production-parser controls built optimized and with
+ASan/UBSan (21 controls each). Final static DLL audit passes 195 reachable
+functions / no forbidden x87 arithmetic; the shader generator's `--check`
+passes all ten programs. Durable audit:
+`verification/results/exposure-final-checks.json`.
+
+Independent [review 32](review-32-exposure.md) is closed. Its findings are
+fixed: failed frame/self-test unlocks no longer publish successful meter
+results, and malformed/truncated/non-finite meter settings cannot silently
+disable safeguards. Runtime exposed three fixture-only issues, now reviewed:
+visible-region color witnesses for overlaps, equal-precision target
+comparison, and dead-band stimuli that escape the preceding clamp in both
+offset variants. Production policy was unchanged by these fixture repairs.
+
+The original-data statistic benchmark passes on native host, Steam/Rosetta
+and X3/FEX, with construction/allocation/weights outside timing, 20 warmup
+calls and 41 batches of 40 calls. Dense FEX median/p95 costs are
+43.25/59.50 µs (80×48), 16.48/19.65 µs (80×23), and 448.80/486.58 µs
+(maximum 128×128). Keep the bounded sort. Source/compiler/executable/output
+provenance is retained in the three `exposure-statistics*.json` reports;
+each bottle has its own local executable. Boundary and readback costs are
+separated in [verification](hdr-scene-path.md); these are not game FPS.
+
+All Wine commands were serialized with `wine_lock.py` after the orchestrator
+released the slot, with no running game. No game launch or install occurred.
+The slot has been returned to the orchestrator for reader verification.
+The later `exposure_reference.py` wording correction changed only its module
+docstring, after both complete motion suites; executable AST equality and
+old/new hashes are recorded in `exposure-reference-doc-only.json`. No GPU
+rerun was used to imply a numerical change from documentation.
+
+The motion runner did not include imported numerical/helper modules in its
+before/after source map. `exposure-final-checks.json` therefore labels their
+hashes as post-run only; it does not claim those omitted files were frozen by
+the suite. Root will extend the main integration manifest to include them.
+
+Branch `worktree-agent-aea55d854948bd6a0` remains separate from main. The
+orchestrator authorized its reviewed checkpoint commit and owns merge,
+integration verification and installation. Recursive result attributes now
+preserve nested X3 report bytes; staged blobs must equal their disk files.
 
 ## Why
 
@@ -58,7 +108,7 @@ Full text: [hdr-scene-path.md](../architecture/hdr-scene-path.md), stage 2,
   gates, meter subsection with the rationale, the run-15 offline replay:
   menu −0.62 EV, space scene 0..+2 EV expected), README launch paragraph.
 
-## Fixtures and suites run so far
+## Historical paused-state verification
 
 - `python3 -m unittest discover -s verification/analysis` (PYTHONPATH=
   verification/probe): **813 tests OK** (36 of them `test_exposure_reference.py`
@@ -84,31 +134,12 @@ Full text: [hdr-scene-path.md](../architecture/hdr-scene-path.md), stage 2,
 
 ## What remains
 
-1. Rerun `python3 verification/probe/wine_lock.py --holder meter python3
-   verification/probe/run_motion_output.py seam-hdr-exposure
-   seam-hdr-exposure-offset seam-ownership-hdr-exposure`, fix whatever the
-   new validator trips on (it asserts the DLL statistic against
-   `exposure_ref.meter_image` per frame, the target terms on the DLL's own
-   statistic ≤ 1e-4 EV, the dead-band hold/move, the emitter's weighted
-   median at the object, presented codes ≤ 1 code, `chain_levels=1`,
-   `chain_bytes = 4·256·texel`), then the full suite (Steam, then
-   `X3M_FIXTURE_BOTTLE=X3`), `run_temporal_pass.py`, `run_scene_capture.py`,
-   `run_ownership_integration.py`, generator `--check`, `check_no_x87.py
-   build/d3d9.dll`. Check `seam-taa-hdr-tonemap-auto` and the
-   `hdrtonemapfault` cases still validate (they read `stepped`/`ev`).
-2. Bench at 1280×768 and 5120×1440 (`bench-*-hdr-tonemap-taa-*`): record
-   `meter_us`, `readback_us` and the boundary increment against the stage-2
-   table; the chain is now 2 / 3 draws instead of 6 / 7.
-3. Docs: `docs/verification/hdr-scene-path.md` — rewrite the "Exposure
-   (`hdrexposure`, 40 frames…)" section for the 120-frame script with the
-   measured numbers and the bench, update the gate paragraph (`r32f_*` →
-   `chain_*`, `meter_max`); `docs/status.md` bullet; then review and commit.
-4. Design points to keep in mind: the dead band is measured against the held
-   target (documented deviation from "against the adapted EV" — equal once
-   settled); the key pull 0.25 is a deviation from the plain key rule so a
-   white frame lands at −0.62 EV, not mid-grey; the lit count / neutral test
-   / highlight limit are unweighted, only the median and the lit mean are
-   centre-weighted.
-
-Production DLL of this state: `build/d3d9.dll`, SHA-256 in the commit
-message's report (not installed into any bottle).
+The orchestrator merges this reviewed branch checkpoint and verifies changes
+affected by integration before installing. The new policy still needs actual
+resolved game captures and user appearance acceptance against the preferred
+fixed-EV-zero look. The [run-16 counterfactual](run16-exposure-baseline.md)
+is derived from unresolved inputs, with all seven requests clipped to the
++2 cap; it does not validate the actual post-TAA meter or live tuning.
+Keep EV −3…+2, weighted lit key, p99 ceiling, quarter-strength key darkening
+and the held-target dead band unchanged pending that evidence. Native Windows
+remains a required target whose runtime behavior has not been tested here.

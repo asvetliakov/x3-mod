@@ -120,7 +120,9 @@ enum class HdrFault : unsigned {
     None = 0, CapsTarget = 1, CapsBlending = 2, SelfTest = 3, Draw = 4, Lost = 5,
     Stretch = 6, Restore = 7, TargetCreate = 8, Bind = 9, Clear = 10, // Clear: the latching Clear reports failure (consumed by MotionOutput)
     TonemapDraw = 11, TonemapShader = 12, Meter = 13, // stage 2: the tonemap draw fails, its creation fails at attach, the chain fails
-    Resolve = 14 // stage 3: the temporal resolve on the FP16 scene fails (consumed by MotionOutput::resolve; the pass is not run)
+    Resolve = 14, // stage 3: the temporal resolve on the FP16 scene fails (consumed by MotionOutput::resolve; the pass is not run)
+    ReadbackUnlock = 15, // seam only: report failure after the real unlock, without retaining a test mapping
+    MeterTestUnlock = 16 // same returned-HRESULT injection for the attach self-test readback
 };
 class HdrPass {
 public:

@@ -1,12 +1,12 @@
--- Configuring done (0.1s)
+-- The CXX compiler identification is GNU 16.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /opt/homebrew/bin/i686-w64-mingw32-g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (2.1s)
 -- Generating done (0.0s)
-CMake Warning (unused-cli):
-  Manually-specified variables were not used by the project:
-
-    CMAKE_TOOLCHAIN_FILE
-
-
--- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a0100a8066b313223/build-ownership
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/build-ownership
 [  2%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj

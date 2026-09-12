@@ -1,0 +1,144 @@
+{
+  "passed": true,
+  "scope": "CPU statistic diagnostic, no GPU/frame/FPS measurement",
+  "sources_before": {
+    "src/renderer/exposure.h": "e611d8b6acb0cfe88322f1c32369d6c82b7e1e91c9613505c6db349315fc6bf5",
+    "src/renderer/exposure.cpp": "e2454e1a44e588085c2e5c45f425b6c04d83d45e98238585d91e2d4b76ff23c9",
+    "verification/probe/exposure_statistics_benchmark.cpp": "fa0d5d636327f07216e0941305d258a9a645e36dc713e540216302ad285ebe4f",
+    "verification/probe/run_exposure_statistics.py": "1920dc1804c1ccf69467958342b60a92929ccdd6cb5ab81ce1342a8b7b5a371a",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "compiler": "/opt/homebrew/bin/i686-w64-mingw32-g++",
+  "compiler_sha256": "c8181d422f8a912b04fc6c87d770a169b7aa6a6fd37edbc59629b876c33dd947",
+  "command": [
+    "/opt/homebrew/bin/i686-w64-mingw32-g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-msse2",
+    "-mfpmath=sse",
+    "-mstackrealign",
+    "-mincoming-stack-boundary=2",
+    "-static",
+    "-static-libgcc",
+    "-static-libstdc++",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/src/renderer/exposure.cpp",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/exposure_statistics_benchmark.cpp",
+    "-o",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build/exposure-statistics/bottle-X3/exposure_statistics.exe"
+  ],
+  "compiler_version": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "executable": {
+    "path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build/exposure-statistics/bottle-X3/exposure_statistics.exe",
+    "sha256": "7dbe2c3b7704dcfe4017b7c918587fb86b00be7097b51a55394ef2c58bd070f9"
+  },
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "bottle_before": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "run_command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build/exposure-statistics/bottle-X3/exposure_statistics.exe"
+  ],
+  "stdout": {
+    "path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/results/bottle-X3/exposure-statistics.txt",
+    "sha256": "3a3a4d6ef39df19146b61b9e3a0b5fab85f829230c9c2bfc976f639a9cb956bf"
+  },
+  "stderr": "msync: bootstrapped mach port on wine-2505746-msync.\nmsync: up and running.\n",
+  "cases": [
+    {
+      "width": 80,
+      "height": 48,
+      "dense": false,
+      "tiles": 3840,
+      "lit": 384,
+      "median_us": 7.475,
+      "p95_us": 8.525,
+      "min_us": 7.15
+    },
+    {
+      "width": 80,
+      "height": 48,
+      "dense": true,
+      "tiles": 3840,
+      "lit": 3840,
+      "median_us": 43.25,
+      "p95_us": 59.5,
+      "min_us": 34.525
+    },
+    {
+      "width": 80,
+      "height": 23,
+      "dense": false,
+      "tiles": 1840,
+      "lit": 184,
+      "median_us": 3.95,
+      "p95_us": 4.15,
+      "min_us": 3.8
+    },
+    {
+      "width": 80,
+      "height": 23,
+      "dense": true,
+      "tiles": 1840,
+      "lit": 1840,
+      "median_us": 16.475,
+      "p95_us": 19.65,
+      "min_us": 15.5
+    },
+    {
+      "width": 128,
+      "height": 128,
+      "dense": false,
+      "tiles": 16384,
+      "lit": 1639,
+      "median_us": 32.525,
+      "p95_us": 34.675,
+      "min_us": 31.175
+    },
+    {
+      "width": 128,
+      "height": 128,
+      "dense": true,
+      "tiles": 16384,
+      "lit": 16384,
+      "median_us": 448.8,
+      "p95_us": 486.575,
+      "min_us": 430.9
+    }
+  ],
+  "batches_per_case": 41,
+  "calls_per_batch": 40,
+  "warmup_calls": 20,
+  "sources_after": {
+    "src/renderer/exposure.h": "e611d8b6acb0cfe88322f1c32369d6c82b7e1e91c9613505c6db349315fc6bf5",
+    "src/renderer/exposure.cpp": "e2454e1a44e588085c2e5c45f425b6c04d83d45e98238585d91e2d4b76ff23c9",
+    "verification/probe/exposure_statistics_benchmark.cpp": "fa0d5d636327f07216e0941305d258a9a645e36dc713e540216302ad285ebe4f",
+    "verification/probe/run_exposure_statistics.py": "1920dc1804c1ccf69467958342b60a92929ccdd6cb5ab81ce1342a8b7b5a371a",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "bottle_after": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  }
+}

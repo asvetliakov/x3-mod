@@ -1,0 +1,115 @@
+{
+  "passed": true,
+  "scope": "CPU statistic diagnostic, no GPU/frame/FPS measurement",
+  "sources_before": {
+    "src/renderer/exposure.h": "e611d8b6acb0cfe88322f1c32369d6c82b7e1e91c9613505c6db349315fc6bf5",
+    "src/renderer/exposure.cpp": "e2454e1a44e588085c2e5c45f425b6c04d83d45e98238585d91e2d4b76ff23c9",
+    "verification/probe/exposure_statistics_benchmark.cpp": "fa0d5d636327f07216e0941305d258a9a645e36dc713e540216302ad285ebe4f",
+    "verification/probe/run_exposure_statistics.py": "1920dc1804c1ccf69467958342b60a92929ccdd6cb5ab81ce1342a8b7b5a371a",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "compiler": "/usr/bin/c++",
+  "compiler_sha256": "b8763cf250e607a778bb4603cecb5b90338814d0a3dfcba0d57b1de242f610e9",
+  "command": [
+    "/usr/bin/c++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/src/renderer/exposure.cpp",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/exposure_statistics_benchmark.cpp",
+    "-o",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build/exposure-statistics/native-host/host"
+  ],
+  "compiler_version": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+  "executable": {
+    "path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build/exposure-statistics/native-host/host",
+    "sha256": "a027b7db6835456dc0ea2b2b1f895a332452e9115c11db860c9fca8d7a09683b"
+  },
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "run_command": [
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/probe/build/exposure-statistics/native-host/host"
+  ],
+  "stdout": {
+    "path": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aea55d854948bd6a0/verification/results/exposure-statistics-host.txt",
+    "sha256": "e52a22bc7c0e3b00163cd4fadbb816bc6a812bfdf40cdf8a9c149acbff5f8e27"
+  },
+  "stderr": "",
+  "cases": [
+    {
+      "width": 80,
+      "height": 48,
+      "dense": false,
+      "tiles": 3840,
+      "lit": 384,
+      "median_us": 5.9948,
+      "p95_us": 11.6646,
+      "min_us": 5.903125
+    },
+    {
+      "width": 80,
+      "height": 48,
+      "dense": true,
+      "tiles": 3840,
+      "lit": 3840,
+      "median_us": 36.354175,
+      "p95_us": 44.927075,
+      "min_us": 33.997925
+    },
+    {
+      "width": 80,
+      "height": 23,
+      "dense": false,
+      "tiles": 1840,
+      "lit": 184,
+      "median_us": 2.832275,
+      "p95_us": 2.91145,
+      "min_us": 2.814575
+    },
+    {
+      "width": 80,
+      "height": 23,
+      "dense": true,
+      "tiles": 1840,
+      "lit": 1840,
+      "median_us": 14.43335,
+      "p95_us": 14.777075,
+      "min_us": 14.3396
+    },
+    {
+      "width": 128,
+      "height": 128,
+      "dense": false,
+      "tiles": 16384,
+      "lit": 1639,
+      "median_us": 29.34375,
+      "p95_us": 31.7448,
+      "min_us": 28.946875
+    },
+    {
+      "width": 128,
+      "height": 128,
+      "dense": true,
+      "tiles": 16384,
+      "lit": 16384,
+      "median_us": 483.839575,
+      "p95_us": 534.53125,
+      "min_us": 445.48335
+    }
+  ],
+  "batches_per_case": 41,
+  "calls_per_batch": 40,
+  "warmup_calls": 20,
+  "sources_after": {
+    "src/renderer/exposure.h": "e611d8b6acb0cfe88322f1c32369d6c82b7e1e91c9613505c6db349315fc6bf5",
+    "src/renderer/exposure.cpp": "e2454e1a44e588085c2e5c45f425b6c04d83d45e98238585d91e2d4b76ff23c9",
+    "verification/probe/exposure_statistics_benchmark.cpp": "fa0d5d636327f07216e0941305d258a9a645e36dc713e540216302ad285ebe4f",
+    "verification/probe/run_exposure_statistics.py": "1920dc1804c1ccf69467958342b60a92929ccdd6cb5ab81ce1342a8b7b5a371a",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  }
+}
