@@ -14,6 +14,7 @@
 #include "draw_input.h"
 #include "motion_capture.h"
 #include "motion_output.h"
+#include "engine_memory.h"
 #include "cpu_state.h"
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
@@ -1239,6 +1240,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_scene_hook(scene_hook::active());
     hooked.motion_output.configure_hdr(hdr_requested,hdr_config);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
+    // The engine-memory reader's counters at device creation (integers only;
+    // telemetry::summary repeats the line with phase=summary).
+    engine_memory::configure();
+    engine_memory_line("create",hooked.id,hooked.frame);
     if(hooked.motion_output.enabled()){
         // The route needs the complete selector event stream plus setter
         // shadows. Installed only after the capability gate passed, so a device
@@ -1311,8 +1316,27 @@ void initialize_log(HMODULE module) {
     directory+=L"\\x3-modern-captures"; CreateDirectoryW(directory.c_str(),nullptr);
     SYSTEMTIME now{}; GetLocalTime(&now);
     wchar_t suffix[100]; swprintf(suffix,100,L"\\session-%04u%02u%02u-%02u%02u%02u-%lu.log",now.wYear,now.wMonth,now.wDay,now.wHour,now.wMinute,now.wSecond,GetCurrentProcessId());
+    const char* source="game";
     logfile=_wfopen((directory+suffix).c_str(),L"w");
+    if(!logfile){
+        // W3 of the native-Windows audit: the game directory may be read-only
+        // (Program Files without Steam's ACL grant, a virtualised install);
+        // the log then goes to %LOCALAPPDATA%\x3-modern-renderer\captures
+        // (the variable, else %USERPROFILE%\AppData\Local) and the first line
+        // records which directory was taken. capture_directory() follows.
+        std::wstring base; wchar_t value[32768]{};
+        DWORD length=GetEnvironmentVariableW(L"LOCALAPPDATA",value,32768);
+        if(length&&length<32768) base=value;
+        else { length=GetEnvironmentVariableW(L"USERPROFILE",value,32768); if(length&&length<32768) base=std::wstring(value)+L"\\AppData\\Local"; }
+        if(!base.empty()){
+            base+=L"\\x3-modern-renderer"; CreateDirectoryW(base.c_str(),nullptr);
+            base+=L"\\captures"; CreateDirectoryW(base.c_str(),nullptr);
+            logfile=_wfopen((base+suffix).c_str(),L"w");
+            if(logfile){ directory=base; source="localappdata"; }
+        }
+    }
     if(logfile) setvbuf(logfile,nullptr,_IOFBF,1024*1024);
+    log("capture_dir=%ls source=%s",directory.c_str(),source);
     wchar_t setting[32]{};
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
@@ -1397,6 +1421,19 @@ void initialize_log(HMODULE module) {
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }
 const wchar_t* capture_directory() { return directory.c_str(); }
+// engine_memory phase=create|summary: the reader's mode and counters from a
+// guarded copy of its statistics (hits = validated reads answered from the
+// region cache without a VirtualQuery; rpm_calls = ReadProcessMemory calls of
+// the A/B mode). No per-draw work: called at device creation and by the
+// telemetry summary.
+void engine_memory_line(const char* phase,unsigned long long device,unsigned long long frame) {
+    const auto s=engine_memory::stats();
+    const unsigned long long reads=s.reads,queries=s.queries;
+    log("engine_memory phase=%s device=%llu path=%s reads=%llu queries=%llu hits=%llu rejected=%llu rpm_calls=%llu frame=%llu",
+        phase,static_cast<unsigned long long>(device),engine_memory::mode()==engine_memory::Mode::Direct?"direct":"rpm",
+        reads,queries,reads>=queries?reads-queries:0ull,static_cast<unsigned long long>(s.rejected),static_cast<unsigned long long>(s.syscalls),
+        static_cast<unsigned long long>(frame?frame:s.frame));
+}
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Fixture-only exports (verification/probe/motion_output_fixture.cpp). Absent
 // from production builds; the seam DLL is linked by build_motion_output.sh.

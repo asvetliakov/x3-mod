@@ -69,6 +69,7 @@
 #include "../../src/proxy/motion_output.h"
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
+#include "../../src/renderer/hdr_writeback_program.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -263,8 +264,16 @@ struct Reference {
         api(d->CreateTexture(W, H, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED, &motion.p, nullptr), "reference motion");
         api(d->CreateTexture(W, H, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &depth.p, nullptr), "reference depth");
         api(d->CreateTexture(W, H, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &depth_staging.p, nullptr), "reference depth staging");
-        api(pass.initialize(d.p, nullptr, reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_program())), "reference initialize");
+        // The reference resolves with the copy mode the DLL was made to take:
+        // X3M_FIXTURE_STRETCH_FAULT=1 fails the DLL's round-trip self test
+        // (taa_copy=draw), so the reference copies by draw too (the identity
+        // program is the production write-back's).
+        char setting[8]{}; copy_by_draw = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1';
+        api(pass.initialize(d.p, nullptr, reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_program()), nullptr, nullptr,
+                            reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())), "reference initialize");
+        pass.configure_copy(copy_by_draw);
     }
+    bool copy_by_draw = false;
     void upload(const std::vector<DWORD>& image, const std::vector<float>& motion_data, const std::vector<float>& depth_data) {
         D3DLOCKED_RECT lock{};
         api(color->LockRect(&lock, nullptr, 0), "lock reference color");
@@ -303,8 +312,13 @@ struct Reference {
         in.history_allowed = true; in.cut = cut; in.caller_scene_open = false; in.caller_queries_idle = true;
         x3m::renderer::Output out{};
         api(pass.run(in, &out), "reference run");
-        api(d->StretchRect(out.color_surface, nullptr, output8.p, nullptr, D3DTEXF_POINT), "reference copy-back");
-        api(d->GetRenderTargetData(output8.p, sys8.p), "reference readback 8");
+        // Draw mode: the pass wrote the display into its 8-bit input (color);
+        // stretch mode: the route's copy-back StretchRect into output8.
+        if (out.display_written) api(d->GetRenderTargetData(color.p, sys8.p), "reference readback 8 (draw mode)");
+        else {
+            api(d->StretchRect(out.color_surface, nullptr, output8.p, nullptr, D3DTEXF_POINT), "reference copy-back");
+            api(d->GetRenderTargetData(output8.p, sys8.p), "reference readback 8");
+        }
         D3DLOCKED_RECT lock{};
         api(sys8->LockRect(&lock, nullptr, D3DLOCK_READONLY), "lock reference 8");
         image8.resize(std::size_t(W) * H);
@@ -349,6 +363,7 @@ struct Fixture {
     // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
     // the fixture read it (0: the DLL biases nothing, every stage must read 0).
     bool mipbias = false; float mip_bias = 0;
+    bool msaa = false; unsigned msaa_samples = 0; // "msaa" script: a multisampled main target the route must refuse (D3)
     unsigned capture_start = 1, capture_frames = 8; // X3M_CAPTURE_START/FRAMES: capture frames restore before every draw's diagnostics
     Com<IDirect3DTexture9> ramp;    // 1024x1024 full mip chain, level i a constant grey 16 + 20 i (a LOD ramp)
     bool history_dropped = false;   // the route skipped or failed a resolve: its history is gone until the next resolve
@@ -1651,9 +1666,20 @@ struct Fixture {
             const float x0 = float((i % 2) * (W / 2)), y0 = float((i / 2) * (H / 2));
             constant_quad(x0, y0, x0 + float(W / 2), y0 + float(H / 2), blocks[i][0], blocks[i][1], blocks[i][2], blocks[i][3]);
         }
-        std::printf("EXPOSURE_BLOCKS frame=%llu b0=%.9g,%.9g,%.9g,%.9g b1=%.9g,%.9g,%.9g,%.9g b2=%.9g,%.9g,%.9g,%.9g b3=%.9g,%.9g,%.9g,%.9g\n", frame,
-                    blocks[0][0], blocks[0][1], blocks[0][2], blocks[0][3], blocks[1][0], blocks[1][1], blocks[1][2], blocks[1][3],
-                    blocks[2][0], blocks[2][1], blocks[2][2], blocks[2][3], blocks[3][0], blocks[3][1], blocks[3][2], blocks[3][3]);
+        // Finite values print with %.9g; a non-finite value prints its IEEE
+        // bits (0x%08x): under FEX's reduced-precision x87 the CRT prints NaN
+        // and the infinities as finite numbers (docs/verification/bottles.md,
+        // limitation 2), and the runner's parse_float decodes the hex form.
+        char text[4][80];
+        for (unsigned i = 0; i < 4; ++i) {
+            char* p = text[i];
+            for (unsigned c = 0; c < 4; ++c) {
+                const float v = blocks[i][c];
+                if (std::isfinite(v)) p += std::snprintf(p, std::size_t(text[i] + sizeof text[i] - p), "%s%.9g", c ? "," : "", double(v));
+                else { unsigned bits; std::memcpy(&bits, &v, 4); p += std::snprintf(p, std::size_t(text[i] + sizeof text[i] - p), "%s0x%08x", c ? "," : "", bits); }
+            }
+        }
+        std::printf("EXPOSURE_BLOCKS frame=%llu b0=%s b1=%s b2=%s b3=%s\n", frame, text[0], text[1], text[2], text[3]);
         api(d->EndScene(), "EndScene");
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
@@ -1770,6 +1796,24 @@ struct Fixture {
         vs.reset(); ps.reset();
         create_shaders();
     }
+    // ---- multisampled main target ("msaa" script; D3 of the native-Windows audit) ----
+    // Three plain frames on a device whose back buffer carries
+    // X3M_FIXTURE_MSAA samples (default 2): the route latches the frame,
+    // refuses it once in the log (motion_output_msaa_refused), routes and
+    // jitters nothing, the resolve skips (taa_skip 11). No readback: a
+    // multisampled surface cannot be read with GetRenderTargetData, and the
+    // runner reads the DLL's per-frame lines instead.
+    void run_msaa() {
+        require(enabled && msaa, "msaa needs the route and the multisampled device");
+        for (unsigned i = 0; i < 3; ++i) {
+            frame_begin();
+            draw(a, .75f, 0, 0, true, false, false);
+            draw(b, 0, 0, 0, true, false, false);
+            api(d->EndScene(), "EndScene");
+            api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
+            ++frame; ++frames_since_reset;
+        }
+    }
     void run() {
         const bool live = enabled && seam;
         // f0: no previous frame; f1: matched with f0 rows; (e) reserved constants written before A.
@@ -1832,7 +1876,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault [WxH]");
+        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa [WxH]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -1844,6 +1888,8 @@ int main(int argc, char** argv) {
         f.hdrvalues = mode == "hdrvalues";
         f.hdrfault = mode == "hdrfault";
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
+        f.msaa = mode == "msaa";
+        if (f.msaa) { char samples[8]{}; f.msaa_samples = GetEnvironmentVariableA("X3M_FIXTURE_MSAA", samples, sizeof samples) > 0 ? unsigned(std::atoi(samples)) : 2u; if (f.msaa_samples < 2 || f.msaa_samples > 16) throw std::runtime_error("X3M_FIXTURE_MSAA must be 2..16"); }
         if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
         if (f.bench) {
             unsigned w = 0, h = 0;
@@ -1863,7 +1909,7 @@ int main(int argc, char** argv) {
         f.hdr_readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_hdr_fixture_readback", false);
         f.hdr_exposure = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_hdr_fixture_exposure", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
@@ -1888,7 +1934,7 @@ int main(int argc, char** argv) {
         if (GetEnvironmentVariableA("X3M_CAPTURE_START", window_text, sizeof window_text) > 0) f.capture_start = unsigned(std::atoi(window_text));
         if (GetEnvironmentVariableA("X3M_CAPTURE_FRAMES", window_text, sizeof window_text) > 0) f.capture_frames = unsigned(std::atoi(window_text));
         char path[MAX_PATH]{}; GetModuleFileNameA(runtime, path, MAX_PATH);
-        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u hdrramp=%u hdrexposure=%u hdrtonemapfault=%u mipbias=%u mip_bias=%g sharpen=%g\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault, f.hdrramp, f.hdrexposure, f.hdrtonemapfault, f.mipbias, f.mip_bias, double(f.sharpen));
+        std::printf("MODE seam=%u enabled=%u jitter=%u jitter_samples=%u taa=%u bench=%u width=%u height=%u dll=%s burst=%u rt_mode=%s camera=%u sentinel=%u envmap=%u hook=%u state_shadow=%u hdr=%u hdrvalues=%u hdrfault=%u hdrramp=%u hdrexposure=%u hdrtonemapfault=%u mipbias=%u mip_bias=%g sharpen=%g msaa=%u\n", f.seam, f.enabled, f.jitter, f.jitter_samples, f.taa, f.bench, Fixture::W, Fixture::H, path, f.burst, f.lazy ? "lazy" : "perdraw", f.camera, f.sentinel, f.envmap, f.hook, f.state_shadow, f.hdr, f.hdrvalues, f.hdrfault, f.hdrramp, f.hdrexposure, f.hdrtonemapfault, f.mipbias, f.mip_bias, double(f.sharpen), f.msaa ? f.msaa_samples : 0u);
         f.vs_words = load(argv[1]); f.ps_words = load(argv[2]);
         f.vs_hash = fnv(f.vs_words.data(), f.vs_words.size() * 4); f.ps_hash = fnv(f.ps_words.data(), f.ps_words.size() * 4);
         f.flat_hash = fnv(flat_program, sizeof flat_program);
@@ -1898,15 +1944,23 @@ int main(int argc, char** argv) {
         f.pp.Windowed = TRUE; f.pp.SwapEffect = D3DSWAPEFFECT_DISCARD; f.pp.hDeviceWindow = window;
         f.pp.BackBufferWidth = Fixture::W; f.pp.BackBufferHeight = Fixture::H; f.pp.BackBufferFormat = D3DFMT_A8R8G8B8;
         f.pp.EnableAutoDepthStencil = TRUE; f.pp.AutoDepthStencilFormat = D3DFMT_D24X8; f.pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+        if (f.msaa) {
+            // The multisampled back buffer and depth buffer the "msaa" script
+            // presents to the route; the adapter must support the type for both.
+            const auto type = D3DMULTISAMPLE_TYPE(f.msaa_samples);
+            api(f.factory->CheckDeviceMultiSampleType(0, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, TRUE, type, nullptr), "CheckDeviceMultiSampleType back buffer");
+            api(f.factory->CheckDeviceMultiSampleType(0, D3DDEVTYPE_HAL, D3DFMT_D24X8, TRUE, type, nullptr), "CheckDeviceMultiSampleType depth");
+            f.pp.MultiSampleType = type;
+        }
         // The seam's background signature must exist before the device attaches,
         // because the first frame's selector is seeded at attach time.
         f.scope(nullptr);
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
-        if (f.taa && f.enabled && f.seam && !f.bench) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
+        if (f.taa && f.enabled && f.seam && !f.bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
         if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
-        else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else f.run();
+        else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
         // Teardown: every fixture object released, then the device must reach zero.
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();

@@ -181,8 +181,9 @@ public:
     // unresolved scene: an image, never a black frame).
     HdrWriteback write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing,
                             IDirect3DTexture9* source = nullptr) noexcept;
-    // Device references held (target surface, the shaders, the meter chain's
-    // level surfaces, ring targets and readback surfaces).
+    // Device references held (target surface, the shaders, the quad vertex
+    // program and declaration, the meter chain's level surfaces, ring targets
+    // and readback surfaces).
     unsigned references() const noexcept;
     void before_reset() noexcept { release_target(); }
     void shutdown() noexcept;
@@ -221,6 +222,8 @@ private:
     void prepare_constants() noexcept;
     HRESULT mrt_draw(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2, IDirect3DPixelShader9* shader,
                      UINT width, UINT height, bool additive, HRESULT* restoration) noexcept;
+    HRESULT bind_quad_program() noexcept;
+    HRESULT quad(UINT width, UINT height) noexcept;
     std::uint64_t stamp(bool timing) const noexcept;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     bool fault(HdrFault kind) noexcept { if (fault_ != kind || !fault_count_) return false; --fault_count_; return true; }
@@ -235,6 +238,12 @@ private:
     HdrCaps caps_{};
     HdrConfig config_{};
     IDirect3DPixelShader9* shader_ = nullptr;   // embedded ps_3_0 identity copy
+    // The vs_3_0 pass-through and declaration of every quad this pass draws
+    // (quad_vertex_program.h); created at attach, surviving Reset, one device
+    // reference each. quad_fvf_: the fixture-only XYZRHW twin (never in production).
+    IDirect3DVertexShader9* quad_vs_ = nullptr;
+    IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
+    bool quad_fvf_ = false;
     IDirect3DSurface9* target_ = nullptr;       // level 0 of the owned FP16 texture (its container is obtained per use)
     UINT width_ = 0, height_ = 0;
     UINT last_width_ = 0, last_height_ = 0;     // dimensions of the last created target (exposure reset on change)

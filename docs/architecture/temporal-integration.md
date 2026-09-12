@@ -351,10 +351,23 @@ equals the reference pass byte for byte
 ([motion-output.md](../verification/motion-output.md#engine-scene-end-hook-x3m_scene_hook)).
 `X3M_TAA=1` requires `X3M_MOTION_OUTPUT=1`, implies
 `X3M_MOTION_JITTER=1`, and the device must pass the route's gate with RT2,
-FP16 render targets, sampled FP16/RGBA32F/R32F textures and `StretchRect`
-format conversion between A8R8G8B8/X8R8G8B8 and FP16
-(`CheckDeviceFormatConversion`, `taa_reason=format_conversion`; accepted
-unconditionally on Wine). The launcher's `--taa` also requires
+FP16 render targets and sampled FP16/RGBA32F/R32F textures. The 8-bit main
+target reaches the FP16 scratch and comes back in one of two ways decided at
+attach (`motion_output_device ... taa_copy=stretch|draw taa_stretch_test=`):
+the format-converting `StretchRect` both ways where the adapter grants the
+conversion (`CheckDeviceFormatConversion`) *and* a live 4×4 round trip per
+8-bit format reproduces the bytes exactly (FP16 within 1/1024 of v/255), else
+a same-format `StretchRect` into an owned staging texture plus identity draws
+(the HDR write-back's ps_3_0 program) in both directions
+(`TemporalPass::configure_copy(true)`, `Output::display_written`, no
+copy-back). Neither is a refusal any more (the former
+`taa_reason=format_conversion` is gone); Wine takes the stretch path bit for
+bit, and the fixture's `seam-taa-copy-draw` twin exercises the draw path
+(D1 of the native-Windows audit). Every quad the pass draws binds the
+embedded vs_3_0 pass-through and its declaration
+(`src/renderer/quad_vertex_program.h`; D2): D3D9 pairs ps_3_0 with vs_3_0,
+the XYZRHW fixed-function path is not a documented partner; the
+`seam-taa-quad-fvf` twin proves the two byte-identical on Wine. The launcher's `--taa` also requires
 `--object-trace --object-lifetime`: without object history every routed draw
 carries the sentinel, the resolve is current-only and only the jitter reaches
 the screen.

@@ -20,8 +20,14 @@ struct FrameInputs {
     // HDR write-back samples it; the 8-bit route copies it back).
     IDirect3DTexture9* color = nullptr;
     // A8R8G8B8/X8R8G8B8 default-pool render-target surface (need not be a texture
-    // level). Copied once by StretchRect into an owned FP16 scratch that becomes
-    // s0; no gamma conversion is applied anywhere (values are linear-encoded).
+    // level). Copied once into an owned FP16 scratch that becomes s0: by a
+    // format-converting StretchRect (configure_copy(false), the default) or,
+    // where the device does not grant that conversion (configure_copy(true)),
+    // by a same-format StretchRect into an owned staging texture and one
+    // identity draw; no gamma conversion is applied anywhere (values are
+    // linear-encoded). In draw mode the pass also draws the new history back
+    // into this surface after the resolve (Output::display_written), so the
+    // caller's copy-back StretchRect is not needed.
     IDirect3DSurface9* color_surface = nullptr;
     // Current depth: exactly one of the two.
     IDirect3DTexture9* depth_snapshot = nullptr; // verified native D24X8 comparison snapshot; runs the decoder draw
@@ -87,14 +93,21 @@ struct Output {
     // main target. The caller owns state save/restore around the whole
     // copy / run / copy-back sequence; run restores only what it touched.
     IDirect3DSurface9* color_surface = nullptr;
-    // FrameInputs::sharpen > 0: the pass drew the sharpened display image into
-    // FrameInputs::color_surface itself; the caller must not copy back.
+    // FrameInputs::sharpen > 0, or the copy-by-draw mode with an 8-bit input:
+    // the pass drew the display image (sharpened, or the identity copy of the
+    // new history) into FrameInputs::color_surface itself; the caller must
+    // not copy back.
     bool display_written = false;
     // The sharpened draw's result: S_FALSE when not requested, S_OK when it
     // drew (display_written), otherwise the failure that kept the resolve
     // (the history set is published regardless) and left the display to the
     // caller's copy-back; a lost device fails the run instead.
     HRESULT sharpen_result = S_FALSE;
+    // The copy-by-draw write-back's result: S_FALSE when not requested (stretch
+    // mode, an FP16 input, or the sharpen draw already wrote the display),
+    // S_OK when it drew (display_written), otherwise the failure that left the
+    // display to the caller's copy-back; a lost device fails the run instead.
+    HRESULT copy_result = S_FALSE;
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
@@ -107,7 +120,7 @@ struct Diagnostics {
     // execution time. The five phases nest inside run and do not overlap.
     bool timed = false;
     std::uint64_t ticks_capture = 0;    // state block Capture plus the binding getters
-    std::uint64_t ticks_copy_color = 0; // 8-bit color to FP16 scratch StretchRect (scratch allocation included)
+    std::uint64_t ticks_copy_color = 0; // 8-bit color to FP16 scratch StretchRect, or the same-format staging copy in draw mode (allocations included)
     std::uint64_t ticks_copy_depth = 0; // R32F depth to depth history StretchRect
     std::uint64_t ticks_draw = 0;       // normalize, scene bracket, decoder/resolve/mask quads
     std::uint64_t ticks_apply = 0;      // binding restoration plus state block Apply
@@ -128,9 +141,21 @@ public:
     // read at every call. `decoder` may be null; the D24X8 snapshot input is
     // then refused (the route supplies R32F depth and needs no decoder).
     // `sharpen` (ps_3_0 bytecode of src/temporal/taa_sharpen_ps.hlsl) may be
-    // null; FrameInputs::sharpen > 0 is then refused.
+    // null; FrameInputs::sharpen > 0 is then refused. `copy` (the ps_3_0
+    // identity program, src/temporal/hdr_writeback_ps.hlsl) may be null;
+    // configure_copy(true) is then refused at run. Every quad the pass draws
+    // binds the embedded vs_3_0 pass-through (quad_vertex_program.h) and its
+    // declaration, both created here and surviving Reset.
     HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* decoder, const DWORD* resolve,
-                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr) noexcept;
+                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr, const DWORD* copy = nullptr) noexcept;
+    // How an 8-bit color_surface input reaches the FP16 scratch and how the
+    // resolved history reaches it again: false (default) by format-converting
+    // StretchRect both ways (the caller copies back); true by a same-format
+    // StretchRect into an owned staging texture plus identity draws both ways
+    // (Output::display_written). The route decides per device from its
+    // attach-time round-trip self test (docs/architecture/platform-portability.md).
+    void configure_copy(bool by_draw) noexcept { copy_by_draw_ = by_draw; }
+    bool copy_by_draw() const noexcept { return copy_by_draw_; }
     HRESULT run(const FrameInputs&, Output*) noexcept;
     void invalidate() noexcept;
     // Reset protocol, mirroring MotionOutput: before_reset releases every
@@ -152,6 +177,7 @@ private:
     }
     HRESULT allocate(UINT width, UINT height, bool reactive) noexcept;
     HRESULT ensure_scratch() noexcept;
+    HRESULT ensure_staging(D3DFORMAT format) noexcept;
     HRESULT ensure_block() noexcept;
     HRESULT normalize(UINT w, UINT h) noexcept;
     HRESULT quad(UINT w, UINT h) noexcept;
@@ -162,11 +188,16 @@ private:
     // after every run instead of being created per frame. Default-pool-like:
     // released before Reset and re-created lazily afterwards.
     IDirect3DStateBlock9* block_ = nullptr;
-    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *sharpen_ = nullptr;
+    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
+    IDirect3DVertexShader9* quad_vs_ = nullptr;          // vs_3_0 pass-through of every quad (survives Reset)
+    IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
     IDirect3DTexture9* colors_[2]{};
     IDirect3DTexture9* depths_[2]{};
     IDirect3DTexture9* reactive_[2]{};
     IDirect3DTexture9* scratch_ = nullptr; // FP16 copy of an 8-bit color_surface input
+    IDirect3DTexture9* staging_ = nullptr; // draw mode: same-format copy of the 8-bit input the identity draw samples
+    IDirect3DSurface9* staging_surface_ = nullptr;
+    D3DFORMAT staging_format_ = D3DFMT_UNKNOWN;
     IDirect3DSurface9* color_surfaces_[2]{};
     IDirect3DSurface9* depth_surfaces_[2]{};
     IDirect3DSurface9* reactive_surfaces_[2]{};
@@ -177,5 +208,7 @@ private:
     ReactivePolicy reactive_policy_ = ReactivePolicy::Unavailable;
     Diagnostics diagnostics_{};
     bool timing_ = false;
+    bool copy_by_draw_ = false;
+    bool quad_fvf_ = false; // fixture-only XYZRHW twin (X3M_QUAD_FVF_SWITCH builds); always false in production
 };
 } // namespace x3m::renderer

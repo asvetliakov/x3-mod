@@ -33,27 +33,66 @@ Recording runtime hashes in test reports remains useful provenance.
 - macOS HDR/window presentation research is platform-specific by nature. A
   native-Windows presentation path must supply the corresponding HDR and window
   behavior through documented Windows graphics interfaces.
-- The temporal resolve at the bloom copy (`X3M_TAA=1`) converts the 8-bit
-  main target to FP16 and back with `StretchRect`. Native D3D9 grants that
-  conversion only where the driver reports it, so the route's attach gate asks
-  `CheckDeviceFormatConversion` for A8R8G8B8/X8R8G8B8 to and from
-  A16B16G16R16F (`taa_reason=format_conversion` otherwise); on Wine the query
-  accepts everything and the fixtures prove the conversion, so native
-  behavior remains unverified. The pass's cached `D3DSBT_ALL` state block also
-  holds references to the application objects bound at the copy until the
-  next frame's capture (released before Reset); on native D3D those keep the
-  device count above the final-release probe until the block is dropped, on
-  Wine the application-level references are independent of it.
+- The temporal resolve's 8-bit-to-FP16 copies (`X3M_TAA=1`) no longer
+  depend on a driver granting a format-converting `StretchRect`: the route
+  decides per device at attach (`motion_output_device ... taa_copy=stretch|draw
+  taa_stretch_test=`) from the adapter query *and* a live 4×4 round trip per
+  8-bit format, and otherwise copies by same-format `StretchRect` into a
+  staging texture plus identity draws both ways (D1; Wine keeps the stretch
+  path bit for bit, the fixture's `seam-taa-copy-draw` twin proves the draw
+  path equal in history and within one code in presented frames, and the
+  temporal fixture's `COPY_MODE` line reports `history_identical=1
+  display_max_code_difference=0`). The pass's cached `D3DSBT_ALL` state block
+  still holds references to the application objects bound at the copy until
+  the next frame's capture (released before Reset); on native D3D those keep
+  the device count above the final-release probe until the block is dropped,
+  on Wine the application-level references are independent of it.
+- Every full-screen quad the proxy draws (temporal resolve, sharpen, copy
+  draws, HDR write-back/tonemap/meter chain, the route's self tests and
+  sentinel fill) binds the embedded vs_3_0 pass-through and its declaration
+  ([`quad_vertex_program.h`](../../src/renderer/quad_vertex_program.h); D2):
+  D3D9 pairs ps_3_0 with vs_3_0, and the XYZRHW fixed-function path the
+  quads used before is not a documented partner. The sentinel and
+  self-test programs carry the ps_3_0 version token for the same reason. The
+  fixture-only XYZRHW twin (`X3M_QUAD_FVF_SWITCH`, `X3M_FIXTURE_QUAD_FVF=1`;
+  never compiled into production) is byte-identical to the new path on the
+  Preview backend (`seam-taa-quad-fvf`, six `QUAD_TWIN ... identical=1`
+  lines of the temporal fixture).
+- A multisampled main target is refused by name (D3): the selector never
+  latches one, and the route logs `motion_output_msaa_refused device= frame=
+  msaa=` once, routes and jitters nothing (gate 1), skips the resolve with
+  `taa_skip=11` and carries `msaa=` in every frame line (`seam-msaa`; the
+  HDR redirect already refused, `refused_msaa`). RT1/RT2 textures cannot
+  share a sample count and D3D9 requires every simultaneous target to match.
 - The FP16 HDR scene path (`X3M_HDR=1`, stage 1) needs an `A16B16G16R16F`
   render-target texture with post-pixel-shader blending and sampling, the
   three-format independent-bit-depth MRT (FP16 + RGBA32F + R32F) and, for the
   emergency unwind rung only, `CheckDeviceFormatConversion(A16B16G16R16F →
-  A8R8G8B8)`; all are queried at attach through the documented caps and a
-  live self test, and the feature disables itself otherwise. Native drivers
+  A8R8G8B8)` plus the self test's live 4×4 copy that demotes the rung; all are
+  queried at attach through the documented caps and a live self test, and the
+  feature disables itself otherwise. Native drivers
   are untested against this stack ([hdr-scene-path.md](hdr-scene-path.md) §5).
+- The app-local `d3d9.dll` exports the seventeen names of the system DLL
+  (W1: the fifteen CrossOver exports plus `Direct3D9EnableMaximizedWindowedModeShim`
+  and `Direct3DCreate9On12Ex`), so an in-process module resolving them
+  through `GetModuleHandle("d3d9")` gets an answer: `Direct3DCreate9On12[Ex]`
+  are C++ forwarders that veto admission and log `unproxied=1` when an
+  object escapes (`Direct3DCreate9Ex` too); `DebugSetLevel`, `PSGPError`,
+  `PSGPSampleTexture` and the shim are signature-agnostic naked `jmp`
+  forwarders with `ret N` fallbacks (0/12/20/4 bytes) when the backend lacks
+  the export, each logged once (`d3d9_export name= forwarded=`). Host test
+  `test_d3d9_exports.py` parses the PE export directory; the Wine fixture
+  `run_d3d9_exports.py` resolves all seventeen and calls the forwarded and
+  the fallback entry points.
+- Session logs fall back to `%LOCALAPPDATA%\x3-modern-renderer\captures`
+  when the game directory is not writable (W3; the first log line
+  `capture_dir=<path> source=game|localappdata` records the choice;
+  `run_d3d9_exports.py`'s read-only-directory case exercises it under Wine).
 - Current CrossOver fixtures do not establish native-Windows rendering, reset,
-  multithreading, presentation or performance. Native-Windows verification remains
-  outstanding; no successful Windows run is claimed.
+  multithreading, presentation or performance. Everything above is
+  Windows-compatible source verified on CrossOver Preview (Steam and X3
+  bottles); native-Windows verification remains outstanding and no
+  successful Windows run is claimed.
 
 Game EXE/DLL private structures and code hooks remain allowed. Use disassembly
 where needed and validate the targeted game ABI/layout; this permission is

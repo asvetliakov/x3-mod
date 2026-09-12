@@ -314,6 +314,27 @@ CASES += [case('seam-taa-sharpen-off', 'seam', jitter=True, taa=True, hdr_env=di
           case('seam-taa-hdr-sharpen-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(X3M_TAA_SHARPEN='1')),
           case('seam-taa-hdr-tonemap-sharpen-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_TAA_SHARPEN='1'))]
 CASES += [case(f'bench-{size}-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr_env=dict(X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
+# Native-Windows fixes (docs/architecture/native-windows-audit-2026-09-12.md
+# D1-D3): twins of seam-taa-on. seam-taa-quad-fvf draws every proxy quad
+# through the previous XYZRHW fixed-function path (X3M_FIXTURE_QUAD_FVF=1, a
+# fixture-only switch of the seam DLL and the fixture's reference pass) and
+# must be byte-identical to the vs_3_0 quads in presented frames, RT1/RT2
+# readbacks and FP16 history. seam-taa-copy-draw fails the attach-time
+# StretchRect round trip (X3M_FIXTURE_STRETCH_FAULT=1) so the route copies the
+# 8-bit target to FP16 and back by same-format StretchRect plus identity draws
+# (taa_copy=draw); the history must equal the stretch twin's byte for byte and
+# the presented frames within one code (exact expected). seam-msaa presents a
+# 2-sample back buffer: the route must refuse the frame (msaa=2, routed 0,
+# no jitter, taa_skip 11) with one motion_output_msaa_refused line.
+QUAD_TWINS = {'seam-taa-quad-fvf': 'seam-taa-on'}
+COPY_TWINS = {'seam-taa-copy-draw': 'seam-taa-on'}
+CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_QUAD_FVF='1')),
+          case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
+          case('seam-msaa', 'msaa', jitter=True, taa=True)]
+# Device references the pass holds after its lazy initialization: the resolve
+# program, the identity copy program, the quad vertex program and its
+# declaration; the sharpen program joins with the switch on.
+TAA_BASE_REFERENCES = 4
 CASES += [case(f'bench-{size}-hdr-tonemap-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr=True, hdr_env=dict(AGX, X3M_MOTION_FRAME_LOG='4', X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
 SHARPEN_MAX_CODE_ERROR = 1   # GPU rcp/mad against the double-precision reference, plus the 8-bit rounding
 HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
@@ -613,7 +634,7 @@ def mip_bias_text(mip_bias):
     return '%g' % float(mip_bias or 0)
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0):
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -628,7 +649,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
                          'jitter_samples': str(JITTER_SAMPLES), 'taa': str(int(taa)), 'bench': '0', 'width': '64', 'height': '64',
                          'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': str(int(camera)), 'sentinel': sentinel_mode,
                          'envmap': '0', 'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': str(int(hdr)), 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '0', 'mip_bias': mip_bias_text(mip_bias if enabled else None), 'sharpen': f'{sharpen:g}'}, (name, mode_line)
+                         'mipbias': '0', 'mip_bias': mip_bias_text(mip_bias if enabled else None), 'sharpen': f'{sharpen:g}', 'msaa': '0'}, (name, mode_line)
     # The camera script: the 31-degree jump at frame 7 is a cut unless the
     # switch is off; strict mode without a camera skips every frame.
     strict_skip = sentinel == '2' and not camera
@@ -770,6 +791,13 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     assert devices[0]['detail'] == 'stage=compare' and 'color_errors=0 motion_errors=0 depth_errors=0 targets=3' in trace
     assert devices[0]['jitter'] == str(int(jitter)) and devices[0]['jitter_samples'] == str(JITTER_SAMPLES)
     assert devices[0]['taa'] == str(int(taa)) and devices[0]['taa_reason'] == ('ok' if taa else 'off') and devices[0]['taa_debug'] == str(int(taa)), (name, devices)
+    # D1: the copy mode and its attach-time round trip (the adapter query is
+    # accepted unconditionally on Wine, so the stretch mode is the outcome
+    # unless the seam faulted the round trip); D2: the quad twin switch.
+    assert devices[0]['taa_copy'] == ('draw' if taa and copy_draw else 'stretch' if taa else 'off'), (name, devices)
+    assert devices[0]['taa_stretch_test'] == ('fault' if taa and copy_draw else 'pass' if taa else 'off') and devices[0]['taa_stretch_query'] == '00000000', (name, devices)
+    assert devices[0]['quad_fvf'] == str(int(quad_fvf)), (name, devices)
+    result['taa_copy'] = devices[0]['taa_copy']
     # The camera read is gated on the exact executable (never this synthetic
     # process) unless the seam installed the fixture's globals; the switch is parsed.
     assert devices[0]['camera'] == ('fixture' if camera else 'executable_mismatch' if taa else 'disabled'), (name, devices)
@@ -784,8 +812,9 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         # One lazy initialization holding one device reference (the resolve
         # shader); after Reset only that reference remains until the next run.
         # The pass holds one device reference per created program: the resolve, plus the sharpen program with the switch on.
-        taa_references = '2' if sharpen else '1'
+        taa_references = str(TAA_BASE_REFERENCES + (1 if sharpen else 0))
         assert [t['initialize'] for t in taa_lines_log] == ['00000000'] and taa_lines_log[0]['references'] == taa_references, (name, taa_lines_log)
+        assert taa_lines_log[0]['copy'] == ('draw' if copy_draw else 'stretch'), (name, taa_lines_log)
         assert f'generation=2 taa_references={taa_references}' in trace, name
     else:
         assert not taa_lines_log and not taa_readbacks and not color_readbacks and not present_readbacks
@@ -855,7 +884,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
                 # scene (taa_hdr=1) and no copy-back runs (taa_copy S_FALSE): the
                 # write-back samples the resolved image instead.
                 hdr_live = hdr and hdr_fault is None
-                assert summary['taa_hdr'] == str(int(hdr_live)) and summary['taa_copy'] == ('00000001' if hdr_live or sharpen else '00000000'), (name, frame, summary)
+                assert summary['taa_hdr'] == str(int(hdr_live)) and summary['taa_copy'] == ('00000001' if hdr_live or sharpen or copy_draw else '00000000'), (name, frame, summary)  # draw copy mode: the pass wrote the display, no copy-back
+                assert summary['msaa'] == '0', (name, frame, summary)
                 # Post-resolve sharpen: the display image of every resolved frame is the sharpened one (the pass's draw or the write-back's program).
                 assert summary['taa_sharpen'] == str(int(sharpen > 0)), (name, frame, summary)
             assert int(summary['taa_references']) >= 1, (name, frame, summary)
@@ -989,6 +1019,40 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     result.update(variants=len(variants), frames_logged=len(frames), readbacks=len(readbacks), routes=len(routes), render_state=render_state,
                   route_decisions=[(r['frame'], r['index'], r['gate'], r['routed'], r['matched']) for r in routes])
     return result
+
+
+def validate_msaa(name, text, trace, samples=2):
+    """The msaa script (D3 of the native-Windows audit): three frames on a 2-sample back buffer. The selector never
+    latches a multisampled RT0 and the route refuses the frame by name at its initial Clear: one
+    motion_output_msaa_refused line, every frame line msaa=2 with nothing routed, jittered or filled, no RT1/RT2
+    created, and the resolve skipped with reason 11 (Msaa) instead of 2 (NotReached)."""
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
+    assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert mode_line['msaa'] == str(samples) and mode_line['enabled'] == '1' and mode_line['taa'] == '1', (name, mode_line)
+    terminal = fields(lines[-1])
+    assert int(terminal['frames']) == 3 and terminal['taa_frames'] == '0', (name, terminal)
+    tl = trace.splitlines()
+    assert 'msaa=%u' % samples in [l for l in tl if l.startswith('create_device ')][0], (name, 'create_device')
+    devices = [fields(l) for l in tl if l.startswith('motion_output_device ')]
+    assert len(devices) == 1 and devices[0]['enabled'] == '1' and devices[0]['taa'] == '1' and devices[0]['taa_copy'] == 'stretch', (name, devices)
+    refused = [fields(l) for l in tl if l.startswith('motion_output_msaa_refused ')]
+    assert len(refused) == 1 and refused[0] == {'device': '1', 'frame': refused[0]['frame'], 'msaa': str(samples), 'width': '64', 'height': '64'}, (name, refused)
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    assert sorted(frames) == [0, 1, 2], (name, sorted(frames))
+    for frame, summary in frames.items():
+        # The selector never latches a multisampled RT0 (latched=0, selector_state 9 = Rejected); the route names the reason.
+        assert summary['latched'] == '0' and summary['msaa'] == str(samples) and summary['filled'] == '0' and summary['selector_state'] == '9', (name, frame, summary)
+        assert summary['routed'] == '0' and summary['jittered'] == '0' and summary['jitter'] == '0' and summary['depth_routed'] == '0', (name, frame, summary)
+        assert int(summary['draws']) >= 3 and summary['gate1'] == summary['draws'], (name, frame, summary)  # every draw stops at gate 1
+        assert (summary['taa_attempted'], summary['taa_resolved'], summary['taa_skip']) == ('0', '0', '11'), (name, frame, summary)
+        assert summary['apply_failures'] == summary['restore_failures'] == '0' and summary['present'] == '00000000', (name, frame, summary)
+    assert not any(l.startswith('motion_output_target ') for l in tl), f'{name}: RT1/RT2 were created for a multisampled main target'
+    assert not any(l.startswith(('motion_output_taa_failed', 'motion_output_fill_failed', 'motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl), name
+    assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
+    return {'mode': 'msaa', 'samples': samples, 'frames': 3, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'refused': refused[0], 'frame_lines': {f: {k: v[k] for k in ('msaa', 'routed', 'jittered', 'taa_skip', 'gate1', 'draws')} for f, v in frames.items()}}
 
 
 def validate_hdr(name, trace, directory, hdr, hdr_fault, frames, capture_frames, end, taa, ends=None, redirected=None, width=64, height=64):
@@ -1344,8 +1408,12 @@ def validate_hdrramp(name, text, trace, directory, hdr_env, hdr_fault=None):
 
 
 def parse_float(text):
-    """float() tolerant of the CRT spellings of the non-finite values the hazard blocks print (1.#INF, -1.#IND, nan, inf)."""
+    """float() tolerant of the CRT spellings of the non-finite values the hazard blocks print (1.#INF, -1.#IND, nan, inf)
+    and of the IEEE-bits form (0x%08x) the fixture prints for every non-finite value since the FEX bottle's CRT
+    prints NaN and the infinities as finite numbers (docs/verification/bottles.md, limitation 2)."""
     t = text.strip().lower()
+    if t.startswith('0x'):
+        return struct.unpack('<f', struct.pack('<I', int(t, 16)))[0]
     if '#inf' in t or t.lstrip('+-') == 'inf':
         return float('-inf') if t.startswith('-') else float('inf')
     if '#' in t or 'nan' in t:
@@ -1892,8 +1960,8 @@ def validate_envmap(name, text, trace, directory, hdr=False):
             'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}, 'hdr': hdr_summary}
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen, copy_draw, quad_fvf)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     if mip_bias is not None:
@@ -1943,7 +2011,7 @@ def validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory):
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '1', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '0', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
                          'hook': '0', 'state_shadow': '1', 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '1', 'mip_bias': mip_bias_text(mip_bias), 'sharpen': '0'}, (name, mode_line)
+                         'mipbias': '1', 'mip_bias': mip_bias_text(mip_bias), 'sharpen': '0', 'msaa': '0'}, (name, mode_line)
     assert int(terminal['frames']) == MIPBIAS_FRAMES and text.count('RESET PASS') == 1, (name, terminal)
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
     assert len(restores) == MIPBIAS_FRAMES and all(r['differences'] == '0' and r['label'] == 'fill' for r in restores), (name, restores)
@@ -2041,7 +2109,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     assert mode_line == {'seam': str(int(seam)), 'enabled': '1', 'jitter': '0', 'jitter_samples': str(JITTER_SAMPLES), 'taa': '0', 'bench': '0',
                          'width': '64', 'height': '64', 'dll': mode_line['dll'], 'burst': '1', 'rt_mode': rt_mode, 'camera': '0', 'sentinel': '0', 'envmap': '0',
                          'hook': '0', 'state_shadow': str(int(shadow)), 'hdr': '0', 'hdrvalues': '0', 'hdrfault': '0', 'hdrramp': '0', 'hdrexposure': '0', 'hdrtonemapfault': '0',
-                         'mipbias': '0', 'mip_bias': '0', 'sharpen': '0'}, (name, mode_line)
+                         'mipbias': '0', 'mip_bias': '0', 'sharpen': '0', 'msaa': '0'}, (name, mode_line)
     # Per frame: the fill and the burst restoration comparisons, the coverage
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
@@ -2235,7 +2303,7 @@ def main():
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(EXE, directory)
-            shutil.copy(SEAM if mode in ('seam',) + HDR_MODES and not name.startswith('production') else DLL, directory / 'd3d9.dll')
+            shutil.copy(SEAM if mode in ('seam', 'msaa') + HDR_MODES and not name.startswith('production') else DLL, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -2261,6 +2329,8 @@ def main():
                 env['X3M_MOTION_FRAME_LOG'] = '1'  # every frame's route and hdr lines
             command = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
                        str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'mipbias' if mipbias else 'envmap' if envmap else mode] + ([bench] if bench else [])
+            if mode == 'msaa':
+                env['X3M_MOTION_FRAME_LOG'] = '1'; env['X3M_FIXTURE_MSAA'] = '2'
             if mode in HDR_MODES:
                 # The regular capture window covers the first frames; the frame lines come every frame.
                 # hdrexposure needs no early readback and moves the window (the DLL caps it at eight frames)
@@ -2281,6 +2351,15 @@ def main():
                 result['bench'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} boundary_ms={case["boundary_ms"]}', flush=True)
+                continue
+            if mode == 'msaa':
+                case = validate_msaa(name, text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} refused_frame={case["refused"]["frame"]}', flush=True)
                 continue
             if mode in HDR_MODES:
                 case = {'hdrvalues': validate_hdrvalues, 'hdrfault': validate_hdrfault, 'hdrramp': validate_hdrramp,
@@ -2328,7 +2407,8 @@ def main():
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
-            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen)
+            case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen,
+                               copy_draw=hdr_env.get('X3M_FIXTURE_STRETCH_FAULT') == '1', quad_fvf=hdr_env.get('X3M_FIXTURE_QUAD_FVF') == '1')
             if sharpen > 0:
                 case['sharpen'] = validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen)
             elif hdr and taa and hdr_env and hdr_fault is None and mode == 'seam':
@@ -2406,6 +2486,36 @@ def main():
         def readback_files(case_name):
             directory = ROOT / result['cases'][case_name]['directory'] / 'x3-modern-captures'
             return {p.name: sha(p) for p in sorted(directory.glob('*.rgba32f')) + sorted(directory.glob('*.r32f'))}
+        # Native-Windows fixes: the XYZRHW quad twin is byte-identical to the
+        # vs_3_0 quads everywhere (presented frames, RT1/RT2 readbacks, FP16
+        # history, checks); the draw copy mode reproduces the stretch mode's
+        # history byte for byte and its presented frames within one code.
+        result['native_windows'] = {}
+        for twin_name, twin in QUAD_TWINS.items():
+            a, b = result['cases'][twin_name], result['cases'][twin]
+            assert a['color_hashes'] == b['color_hashes'], f'{twin_name}: colour differs from {twin}'
+            assert a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (twin_name, twin)
+            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (twin_name, twin)
+            assert history_files(twin_name) == history_files(twin), f'{twin_name}: resolved FP16 history differs from {twin}'
+            files_a, files_b = readback_files(twin_name), readback_files(twin)
+            assert files_a and files_a == files_b, f'{twin_name}: readback files differ from {twin}'
+            assert a['taa_copy'] == b['taa_copy'] == 'stretch', (twin_name, a['taa_copy'])
+            result['native_windows'][twin_name] = {'twin': twin, 'identical': True, 'readback_files': len(files_a), 'history_files': 8, 'quad': 'xyzrhw_fixed_function'}
+        for twin_name, twin in COPY_TWINS.items():
+            a, b = result['cases'][twin_name], result['cases'][twin]
+            assert a['taa_copy'] == 'draw' and b['taa_copy'] == 'stretch', (twin_name, a['taa_copy'], b['taa_copy'])
+            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (twin_name, twin)
+            assert a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (twin_name, twin)
+            history_identical = history_files(twin_name) == history_files(twin)
+            presented = compare_presented(twin_name, twin, ROOT / a['directory'], ROOT / b['directory'], range(12))
+            assert presented['max_code_difference'] <= 1 and presented['differing_channels_bgra'][3] == 0, f'{twin_name}: presented frames differ from {twin} by more than one code or in alpha: {presented}'
+            files_a, files_b = readback_files(twin_name), readback_files(twin)
+            assert files_a and files_a == files_b, f'{twin_name}: RT1/RT2 readback files differ from {twin}'
+            result['native_windows'][twin_name] = {'twin': twin, 'history_identical': history_identical, 'presented': presented,
+                                                   'presented_identical': presented['identical'], 'copy': 'staging_stretch_plus_identity_draws'}
+        result['native_windows']['seam-msaa'] = result['cases']['seam-msaa']['refused']
         equivalence = {'regular': {}, 'burst': {}}
         for lazy_name, twin in (('production-lazy-on', 'production-on'), ('seam-lazy-on', 'seam-on'),
                                 ('seam-ownership-lazy-on', 'seam-ownership-on'), ('seam-taa-lazy-on', 'seam-taa-on')):

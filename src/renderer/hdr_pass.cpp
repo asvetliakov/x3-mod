@@ -1,5 +1,6 @@
 #include "hdr_pass.h"
 #include "hdr_writeback_program.h"
+#include "quad_vertex_program.h"
 #include "hdr_tonemap_program.h"
 #include "taa_sharpen_program.h"
 #include "hdr_tonemap_sharpen_program.h"
@@ -19,8 +20,8 @@ enum Slot : unsigned {
     BeginScene = 41, EndScene = 42, SetViewport = 47, GetViewport = 48, SetRenderState = 57, GetRenderState = 58,
     GetTexture = 64, SetTexture = 65, GetTextureStageState = 66, SetTextureStageState = 67,
     GetSamplerState = 68, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76,
-    DrawPrimitiveUP = 83, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
-    SetVertexShader = 92, GetVertexShader = 93, SetStreamSource = 100, GetStreamSource = 101,
+    DrawPrimitiveUP = 83, CreateVertexDeclaration = 86, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
+    CreateVertexShader = 91, SetVertexShader = 92, GetVertexShader = 93, SetStreamSource = 100, GetStreamSource = 101,
     SetStreamSourceFreq = 102, GetStreamSourceFreq = 103, CreatePixelShader = 106, SetPixelShader = 107,
     GetPixelShader = 108, SetPixelShaderConstantF = 109, GetPixelShaderConstantF = 110
 };
@@ -52,10 +53,12 @@ using SetSamplerFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD);
 using SetScissorFn = HRESULT(WINAPI*)(D, const RECT*);
 using GetScissorFn = HRESULT(WINAPI*)(D, RECT*);
 using DrawUpFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, UINT, const void*, UINT);
+using CreateDeclarationFn = HRESULT(WINAPI*)(D, const D3DVERTEXELEMENT9*, IDirect3DVertexDeclaration9**);
 using SetDeclarationFn = HRESULT(WINAPI*)(D, IDirect3DVertexDeclaration9*);
 using GetDeclarationFn = HRESULT(WINAPI*)(D, IDirect3DVertexDeclaration9**);
 using SetFvfFn = HRESULT(WINAPI*)(D, DWORD);
 using GetFvfFn = HRESULT(WINAPI*)(D, DWORD*);
+using CreateVsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DVertexShader9**);
 using SetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9*);
 using GetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9**);
 using SetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9*, UINT, UINT);
@@ -143,12 +146,12 @@ constexpr D3DSAMPLERSTATETYPE touched_samplers[] = {
 constexpr DWORD sampler_values[] = {D3DTEXF_POINT, D3DTEXF_POINT, D3DTEXF_NONE, D3DTADDRESS_CLAMP, D3DTADDRESS_CLAMP, FALSE, 0, 0};
 constexpr unsigned sampler_count = sizeof(touched_samplers) / sizeof(touched_samplers[0]);
 static_assert(sampler_count == sizeof(sampler_values) / sizeof(sampler_values[0]));
-// The quad is pre-transformed with no vertex shader, so stage 0's
-// fixed-function coordinate index and texture transform shape the TEXCOORD0
-// the copy reads (found by the temporal pass fixture on this backend).
+// Stage 0's fixed-function coordinate index and texture transform shaped the
+// TEXCOORD0 of the pre-transformed quad on the Preview backend (found by the
+// temporal pass fixture); inert with the vertex program bound, still needed by
+// the fixture's XYZRHW twin, saved and restored either way.
 constexpr D3DTEXTURESTAGESTATETYPE touched_stages[] = {D3DTSS_TEXCOORDINDEX, D3DTSS_TEXTURETRANSFORMFLAGS};
 constexpr DWORD stage_values[] = {0, D3DTTFF_DISABLE};
-struct Vertex { float x, y, z, rhw, u, v; };
 // The meter chain's constant block, c0..c3 (hdr_meter_level0_ps.hlsl).
 struct MeterConstants { float source[4]; float decode[4]; float meter[4]; float output[4]; };
 } // namespace
@@ -198,7 +201,7 @@ std::uint64_t HdrPass::stamp(bool timing) const noexcept {
 void HdrPass::shutdown() noexcept {
     release_target();
     drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_);
-    drop(sharpen_shader_); drop(tonemap_sharpen_shader_);
+    drop(sharpen_shader_); drop(tonemap_sharpen_shader_); drop(quad_vs_); drop(quad_declaration_);
     device_ = nullptr; native_ = nullptr;
     caps_ = HdrCaps{};
     tonemap_failures_ = 0; sharpen_failures_ = 0; latch_ticks_ = 0;
@@ -227,7 +230,8 @@ std::uint64_t HdrPass::chain_bytes() const noexcept {
 unsigned HdrPass::references() const noexcept {
     unsigned n = (target_ ? 1u : 0u) + (shader_ ? 1u : 0u) + (tonemap_shader_ ? 1u : 0u)
         + (meter_level0_shader_ ? 1u : 0u) + (meter_reduce_shader_ ? 1u : 0u) + chain_count_
-        + (sharpen_shader_ ? 1u : 0u) + (tonemap_sharpen_shader_ ? 1u : 0u);
+        + (sharpen_shader_ ? 1u : 0u) + (tonemap_sharpen_shader_ ? 1u : 0u)
+        + (quad_vs_ ? 1u : 0u) + (quad_declaration_ ? 1u : 0u);
     for (unsigned i = 0; i < 2; ++i) n += (chain_ring_[i] ? 1u : 0u) + (chain_readback_[i] ? 1u : 0u);
     return n;
 }
@@ -395,8 +399,7 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     // to match RT0's dimensions, and the destination may differ from RT1's.
     for (unsigned i = 1; i < saved.target_count; ++i) step(call<SetRtFn>(SetRenderTarget)(device_, i, nullptr));
     step(call<SetDepthFn>(SetDepthStencilSurface)(device_, nullptr));
-    step(call<SetFvfFn>(SetFVF)(device_, D3DFVF_XYZRHW | D3DFVF_TEX1));
-    step(call<SetVsFn>(SetVertexShader)(device_, nullptr));
+    step(bind_quad_program());
     step(call<SetFreqFn>(SetStreamSourceFreq)(device_, 0, 1));
     for (unsigned i = 0; i < sampler_count; ++i) step(call<SetSamplerFn>(SetSamplerState)(device_, 0, touched_samplers[i], sampler_values[i]));
     for (unsigned i = 0; i < 2; ++i) step(call<SetStageFn>(SetTextureStageState)(device_, 0, touched_stages[i], stage_values[i]));
@@ -419,13 +422,10 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
         step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, x3::temporal::kSharpenRegister, program->sharpen, 1));
     step(call<SetTextureFn>(SetTexture)(device_, 0, source_texture));
     if (SUCCEEDED(op)) {
-        // Integer raster sample positions: shift by -0.5 so every texel centre is
-        // covered and TEXCOORD0 lands on texel centres under point sampling.
-        const float w = float(width) - .5f, h = float(height) - .5f;
-        const Vertex quad[4] = {{-.5f, -.5f, 0.f, 1.f, 0.f, 0.f}, {w, -.5f, 0.f, 1.f, 1.f, 0.f},
-                                {-.5f, h, 0.f, 1.f, 0.f, 1.f}, {w, h, 0.f, 1.f, 1.f, 1.f}};
+        // The -0.5 pixel shift of quad_vertices covers every texel centre and
+        // lands TEXCOORD0 on texel centres under point sampling.
         if (FAILED(injected_draw)) op = injected_draw;   // fixture seam: the draw "failed" and nothing was written
-        else step(call<DrawUpFn>(DrawPrimitiveUP)(device_, D3DPT_TRIANGLESTRIP, 2, quad, sizeof quad[0]));
+        else step(quad(width, height));
     }
     *restoration = restore(saved, final_rt0);
     if (injected_restore && SUCCEEDED(*restoration)) *restoration = E_FAIL;  // fixture seam: reported after the actual restoration
@@ -464,12 +464,7 @@ HRESULT HdrPass::meter_chain(IDirect3DTexture9* scene_texture, UINT width, UINT 
         c.output[0] = float(dw); c.output[1] = float(dh);
         step(call<SetPsConstFn>(SetPixelShaderConstantF)(device_, 0, &c.source[0], 4));
         step(call<SetTextureFn>(SetTexture)(device_, 0, source));
-        if (SUCCEEDED(op)) {
-            const float w = float(dw) - .5f, h = float(dh) - .5f;
-            const Vertex quad[4] = {{-.5f, -.5f, 0.f, 1.f, 0.f, 0.f}, {w, -.5f, 0.f, 1.f, 1.f, 0.f},
-                                    {-.5f, h, 0.f, 1.f, 0.f, 1.f}, {w, h, 0.f, 1.f, 1.f, 1.f}};
-            step(call<DrawUpFn>(DrawPrimitiveUP)(device_, D3DPT_TRIANGLESTRIP, 2, quad, sizeof quad[0]));
-        }
+        if (SUCCEEDED(op)) step(quad(dw, dh));
         drop(previous);
         if (!last) {
             HRESULT hr = dst->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&previous));
@@ -489,7 +484,26 @@ HRESULT HdrPass::meter_chain(IDirect3DTexture9* scene_texture, UINT width, UINT 
     return op;
 }
 
-// Fullscreen XYZRHW strip with `shader` bound into RT0/RT1/RT2 (null unbinds),
+// Binds the quad's vertex program and declaration (or, in fixture builds that
+// selected the twin, the pre-transformed fixed-function path). Saved and
+// restored by SavedState like every other binding.
+HRESULT HdrPass::bind_quad_program() noexcept {
+    if (quad_fvf_) {
+        const HRESULT hr = call<SetVsFn>(SetVertexShader)(device_, nullptr);
+        return FAILED(hr) ? hr : call<SetFvfFn>(SetFVF)(device_, quad_fvf);
+    }
+    const HRESULT hr = call<SetDeclarationFn>(SetVertexDeclaration)(device_, quad_declaration_);
+    return FAILED(hr) ? hr : call<SetVsFn>(SetVertexShader)(device_, quad_vs_);
+}
+// The full-target strip (quad_vertex_program.h: clip space with the -0.5
+// pixel shift, or the twin's raster coordinates) into the bound viewport.
+HRESULT HdrPass::quad(UINT width, UINT height) noexcept {
+    QuadVertex vertices[4];
+    if (quad_fvf_) quad_vertices_xyzrhw(width, height, vertices); else quad_vertices(width, height, vertices);
+    return call<DrawUpFn>(DrawPrimitiveUP)(device_, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof vertices[0]);
+}
+
+// Fullscreen strip with `shader` bound into RT0/RT1/RT2 (null unbinds),
 // no depth, full viewport; `additive` blends ONE/ONE. State saved and restored.
 HRESULT HdrPass::mrt_draw(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2, IDirect3DPixelShader9* shader,
                           UINT width, UINT height, bool additive, HRESULT* restoration) noexcept {
@@ -508,8 +522,7 @@ HRESULT HdrPass::mrt_draw(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirec
     step(call<SetDepthFn>(SetDepthStencilSurface)(device_, nullptr));
     const D3DVIEWPORT9 viewport{0, 0, width, height, 0.f, 1.f};
     step(call<SetViewportFn>(SetViewport)(device_, &viewport));
-    step(call<SetFvfFn>(SetFVF)(device_, D3DFVF_XYZRHW));
-    step(call<SetVsFn>(SetVertexShader)(device_, nullptr));
+    step(bind_quad_program());
     step(call<SetPsFn>(SetPixelShader)(device_, shader));
     step(call<SetFreqFn>(SetStreamSourceFreq)(device_, 0, 1));
     for (unsigned i = 0; i < touched_count; ++i) step(call<SetRsFn>(SetRenderState)(device_, touched_states[i], touched_values[i]));
@@ -519,11 +532,7 @@ HRESULT HdrPass::mrt_draw(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirec
         step(call<SetRsFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_ONE));
         step(call<SetRsFn>(SetRenderState)(device_, D3DRS_BLENDOP, D3DBLENDOP_ADD));
     }
-    if (SUCCEEDED(op)) {
-        const float w = float(width) - .5f, h = float(height) - .5f;
-        const float quad[4][4] = {{-.5f, -.5f, 0.f, 1.f}, {w, -.5f, 0.f, 1.f}, {-.5f, h, 0.f, 1.f}, {w, h, 0.f, 1.f}};
-        step(call<DrawUpFn>(DrawPrimitiveUP)(device_, D3DPT_TRIANGLESTRIP, 2, quad, sizeof quad[0]));
-    }
+    if (SUCCEEDED(op)) step(quad(width, height));
     *restoration = restore(saved, saved.targets[0]);
     return op;
 }
@@ -769,6 +778,15 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
         }
         drop(factory);
     }
+    if (!std::strcmp(reason, "ok") && D3DSHADER_VERSION_MAJOR(caps.VertexShaderVersion) < 3) reason = "vs_version";
+    if (!std::strcmp(reason, "ok")) {
+        // The quad's vs_3_0 pass-through and its declaration (every draw below
+        // and every write-back binds them; the fixture twin keeps the XYZRHW path).
+        quad_fvf_ = quad_fvf_requested();
+        HRESULT hr = call<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(quad_vertex_program()), &quad_vs_);
+        if (SUCCEEDED(hr)) hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(device_, quad_declaration, &quad_declaration_);
+        if (FAILED(hr) || !quad_vs_ || !quad_declaration_) { reason = "quad_shader"; std::snprintf(caps_.self_test_detail, sizeof caps_.self_test_detail, "create=%08lx", hr); drop(quad_vs_); drop(quad_declaration_); }
+    }
     if (!std::strcmp(reason, "ok")) {
         const HRESULT hr = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_writeback_program()), &shader_);
         if (FAILED(hr) || !shader_) { reason = "shader"; std::snprintf(caps_.self_test_detail, sizeof caps_.self_test_detail, "create=%08lx", hr); drop(shader_); }
@@ -825,7 +843,7 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
     prepare_constants();
     caps_.reason = reason;
     caps_.enabled = !std::strcmp(reason, "ok");
-    if (!caps_.enabled) { drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_); caps_.tonemap = caps_.meter = false; }
+    if (!caps_.enabled) { drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_); drop(sharpen_shader_); drop(tonemap_sharpen_shader_); drop(quad_vs_); drop(quad_declaration_); caps_.tonemap = caps_.meter = caps_.sharpen = false; }
 }
 
 // The tonemap's constant block for the coming write-back: exp2 of the EV the

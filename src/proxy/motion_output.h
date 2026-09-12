@@ -74,8 +74,10 @@ struct MotionRoute {
 // presented the AwaitCopy event (menu, rejected or unrecognized frame).
 // CameraState: X3M_TAA_SENTINEL=2 (strict) and no far-plane transform this frame.
 // Target: the engine scene-end hook fired while RT0 was not the latched main target.
+// Msaa: the latched main target is multisampled (the route refused the frame:
+// RT1/RT2 textures cannot share its sample count; motion_output_msaa_refused).
 enum class TaaSkip : unsigned { None = 0, Disabled = 1, NotReached = 2, NoJitter = 3, NotFilled = 4,
-                                Recording = 5, Queries = 6, Initialize = 7, Container = 8, CameraState = 9, Target = 10 };
+                                Recording = 5, Queries = 6, Initialize = 7, Container = 8, CameraState = 9, Target = 10, Msaa = 11 };
 // Where this frame's resolve ran: at the engine scene-end hook (X3M_SCENE_HOOK,
 // before the compositing call 0x004c4750) or at the bloom copy (the StretchRect
 // hook, the fallback when the engine hook is absent or did not fire in the
@@ -260,6 +262,12 @@ public:
     // 8-bit color in capture frames (X3M_TAA_DEBUG). Effective at attach.
     void configure_taa(bool requested, bool debug) noexcept;
     bool taa_enabled() const noexcept { return taa_enabled_; }
+    // How the resolve moves the 8-bit main target to FP16 and back: false, by
+    // format-converting StretchRect (the adapter granted the conversion and the
+    // attach-time 4x4 round trip reproduced the bytes); true, by same-format
+    // copies and identity draws (TemporalPass::configure_copy). Logged as
+    // taa_copy=stretch|draw in motion_output_device.
+    bool taa_copy_by_draw() const noexcept { return taa_copy_draw_; }
     // Depth-sentinel policy of the resolve (X3M_TAA_SENTINEL: auto | 1 | 2),
     // the camera rotation bound that declares a cut (X3M_CAMERA_CUT_DEG) and
     // the cadence of the camera_state line (X3M_CAMERA_LOG frames; capture
@@ -497,6 +505,16 @@ private:
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;
+    // The 4x4 StretchRect round trip of one 8-bit format through FP16 and
+    // back (D1 of the native-Windows audit): exact 8-bit bytes, FP16 within
+    // 1/1024 of v/255. Decides taa_copy at attach; never a TAA refusal.
+    bool stretch_round_trip(D3DFORMAT format, char* detail, std::size_t detail_size) noexcept;
+    HRESULT bind_quad_program() noexcept;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    bool fixture_stretch_fault() const noexcept { return fixture_stretch_fault_; }
+#else
+    static constexpr bool fixture_stretch_fault() noexcept { return false; }
+#endif
     HRESULT draw_quad(IDirect3DSurface9* rt0, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2,
                       IDirect3DPixelShader9* shader, UINT width, UINT height, HRESULT* restore) noexcept;
     HRESULT readback_surface(IDirect3DSurface9* surface, D3DFORMAT format, unsigned bytes_per_pixel,
@@ -591,6 +609,24 @@ private:
     bool target_failed_ = false;
     IDirect3DPixelShader9* sentinel_ps_ = nullptr;      // One output: motion target alone.
     IDirect3DPixelShader9* sentinel_mrt_ps_ = nullptr;  // Two outputs: motion and depth targets.
+    // The vs_3_0 pass-through and declaration of the route's own quads (self
+    // test, sentinel fill; renderer/quad_vertex_program.h), created at attach,
+    // surviving Reset, one device reference each; quad_fvf_ is the
+    // fixture-only XYZRHW twin (X3M_QUAD_FVF_SWITCH builds).
+    IDirect3DVertexShader9* quad_vs_ = nullptr;
+    IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;
+    bool quad_fvf_ = false;
+    // The frame's RT0 at the initial Clear is multisampled (the selector never
+    // latches one): no RT1/RT2 (textures cannot share its sample count, and
+    // D3D9 requires all simultaneous targets to match), so the frame routes
+    // and jitters nothing and the resolve skips (TaaSkip::Msaa). Logged once;
+    // cleared by a single-sampled latch or Reset.
+    bool main_msaa_ = false, msaa_logged_ = false;
+    std::uint32_t main_msaa_samples_ = 0;
+    // TAA copy mode decided at attach (taa_copy_by_draw); the round-trip
+    // self test's verdict text for the device line.
+    bool taa_copy_draw_ = false;
+    char taa_stretch_test_[96] = "off";
     // Jitter sequence state: requested switch, sample count, latches seen,
     // this frame's and the previous latched frame's jitter in raster pixels.
     bool jitter_requested_ = false, jitter_active_ = false;
@@ -700,6 +736,7 @@ private:
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;
+    bool fixture_stretch_fault_ = false; // X3M_FIXTURE_STRETCH_FAULT=1: the round-trip self test "fails" (taa_copy=draw)
     float fixture_last_pixel_abi_[8]{};
     unsigned fixture_hdr_fault_kind_ = 0, fixture_hdr_fault_count_ = 0; // queued until the pass exists
 #endif

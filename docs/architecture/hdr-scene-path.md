@@ -397,12 +397,20 @@ allocation succeeds ([platform.md](platform.md)). The three-format MRT self test
 (`A8R8G8B8` + `A32B32G32R32F` + `R32F`, `D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`)
 passes on this backend (`color_errors=0 motion_errors=0 depth_errors=0
 targets=3`, [motion-output.md](../verification/motion-output.md)). FP16 point
-copies of the 8-bit main target already run every frame —
-`TemporalPass::run` does `StretchRect(color_surface → scratch, D3DTEXF_POINT)`
-and the route copies back with `StretchRect(out.color_surface → main, POINT)`;
-all 768 RGB codes land within one FP16 ulp of `v/255` with no gamma curve
+copies of the 8-bit main target already run every frame on the non-HDR TAA
+route — `TemporalPass::run` does `StretchRect(color_surface → scratch,
+D3DTEXF_POINT)` and the route copies back with `StretchRect(out.color_surface
+→ main, POINT)` where the attach-time round trip proves the conversion
+(`taa_copy=stretch`; otherwise same-format staging copy plus identity draws,
+`taa_copy=draw`, D1 of the native-Windows audit); all 768 RGB codes land
+within one FP16 ulp of `v/255` with no gamma curve
 ([temporal-resolve.md](../verification/temporal-resolve.md)). The HDR path
-removes the first copy and turns the second into a draw. Backend quirk to carry
+removes the first copy and turns the second into a draw. Every quad of this
+pass (write-back, tonemap, meter chain, self tests) binds the embedded vs_3_0
+pass-through and its declaration (`quad_vertex_program.h`), so no ps_3_0
+program is drawn through the fixed-function vertex path (D2); the emergency
+`StretchRect` rung stays gated by `CheckDeviceFormatConversion` plus the
+self test's live 4×4 copy, which demotes the rung on failure. Backend quirk to carry
 forward: a full `Clear` is deferred and its colour is encoded with the
 sRGB-write state of the first following draw (found by the coverage oracle);
 with an FP16 target the encoding question disappears, but the deferral means a

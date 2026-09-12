@@ -31,7 +31,12 @@ or bottle configuration. For changing graphics settings, omit `--direct` to open
 after use. `--direct` passes X3's `-noabout -skipintro -runinbg` switches. Test in a
 modest window.
 
-Shader dumps and timestamped logs appear in `X3/x3-modern-captures/`. By default,
+Shader dumps and timestamped logs appear in `X3/x3-modern-captures/`; when that
+directory cannot be created or written (a read-only game directory, e.g. under
+`Program Files (x86)` on Windows without Steam's ACL grant), the proxy writes
+them to `%LOCALAPPDATA%\x3-modern-renderer\captures` instead, and the first
+line of every session log, `capture_dir=<path> source=game|localappdata`, names
+the directory taken. By default,
 one detailed frame is captured after 120 Present calls. **F8** requests another
 capture. Detailed capture deliberately trades frame time for forensic completeness;
 expect a hitch. `--capture-start 1000` delays the automatic capture;

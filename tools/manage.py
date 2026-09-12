@@ -152,9 +152,13 @@ def main():
         parser.error(f'X3AP.exe not found in {game}')
     owned = json.loads(manifest.read_text()) if manifest.exists() else None
     if args.action == 'status':
+        # Session logs: next to the DLL, or the proxy's fallback when that
+        # directory is not writable (the first log line says which was taken).
         print(json.dumps({'game': str(game), 'dll_present': dll.exists(),
                           'owned': bool(owned and dll.exists() and digest(dll) == owned['sha256']),
-                          'installation': owned}, indent=2))
+                          'installation': owned,
+                          'log_directories': {'game': str(game / 'x3-modern-captures'),
+                                              'fallback': r'%LOCALAPPDATA%\x3-modern-renderer\captures (read-only game directory)'}}, indent=2))
         return
     if args.action == 'install':
         source = args.dll_source.resolve()

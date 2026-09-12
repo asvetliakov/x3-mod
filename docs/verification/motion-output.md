@@ -432,6 +432,37 @@ mode (one fixture check per frame, hence the +12/+9/+5/+7 check counts since
 this record's earlier tables). Numbers and findings:
 [hdr-scene-path verification](hdr-scene-path.md).
 
+### Native-Windows fixes (pre-review 28: quad vertex program, copy mode, MSAA)
+
+Three seam runs cover D1–D3 of the
+[native-Windows audit](../architecture/native-windows-audit-2026-09-12.md).
+`seam-taa-quad-fvf` sets `X3M_FIXTURE_QUAD_FVF=1`, a switch compiled only into
+the seam DLL and the fixture's reference pass (`X3M_QUAD_FVF_SWITCH`), so
+every proxy quad draws through the previous XYZRHW fixed-function path instead
+of the vs_3_0 pass-through; it must equal `seam-taa-on` byte for byte in
+presented frames, pre-boundary colour, RT1/RT2 readbacks, FP16 history files
+and check counts. `seam-taa-copy-draw` sets `X3M_FIXTURE_STRETCH_FAULT=1`, which
+fails the attach-time StretchRect round trip (`taa_copy=draw
+taa_stretch_test=fault`) so the route copies the 8-bit target to FP16 and back
+by same-format StretchRect plus identity draws while the reference pass does
+the same; its FP16 history must equal the stretch twin's byte for byte and the
+presented frames stay within one code (identity expected). `seam-msaa` creates
+the device with a 2-sample back buffer (`X3M_FIXTURE_MSAA=2`) and presents three
+plain frames: the selector never latches the multisampled RT0, the route logs
+`motion_output_msaa_refused` once, every frame line carries `msaa=2` with
+nothing routed, jittered or filled, no RT1/RT2 is created and the resolve skip
+is 11 (Msaa). The device line now reports `taa_copy=`, `taa_stretch_query=`,
+`taa_stretch_test=` and `quad_fvf=`; the pass holds four device references
+after its lazy initialization (resolve, copy and quad vertex programs, the
+declaration; five with the sharpen). Record (Steam bottle, 97 cases + 26
+benches PASS; X3 bottle the same): `seam-taa-quad-fvf` identical to
+`seam-taa-on` (12 presented frames, 16 RT1/RT2 readback files, 8 FP16
+history files, 164 checks / 51 restorations each); `seam-taa-copy-draw`
+history identical and presented frames 49,152 of 49,152 pixels exact
+(`max_code_difference=0`); `seam-msaa` `motion_output_msaa_refused device=1
+frame=0 msaa=2 width=64 height=64`, three frame lines `msaa=2 routed=0
+jittered=0 taa_skip=11`, 5 checks. Summary key `native_windows`.
+
 ## Ownership wrapper interaction
 
 With `X3M_OWNERSHIP=1` the loader wraps the factory, `CreateDevice` returns

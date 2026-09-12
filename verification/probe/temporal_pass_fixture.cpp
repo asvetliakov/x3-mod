@@ -5,6 +5,7 @@
 #include <d3dx9shader.h>
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/camera_reprojection.h"
+#include "../../src/renderer/hdr_writeback_program.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -1183,6 +1184,64 @@ void sharpen_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,co
             out[(5*W+5)*4+2],out[(5*W+5)*4+1],out[(5*W+5)*4],out[(9*W+9)*4+2],out[(9*W+9)*4+1],out[(9*W+9)*4],out[(3*W+12)*4+2],out[(3*W+12)*4+1],out[(3*W+12)*4]);
         ++numeric_checks;require(v.outside==0&&v.alpha==0,"NaN, +inf and -inf taps stay inside the neighbourhood bound as their saturated values and poison nothing");}
 }
+// Quad vertex program and copy mode twins (D1/D2 of the native-Windows
+// audit). Every proxy quad now draws through the embedded vs_3_0
+// pass-through with a clip-space quad; this fixture is built with
+// X3M_QUAD_FVF_SWITCH, so a pass initialised while X3M_FIXTURE_QUAD_FVF=1 is
+// set draws the previous XYZRHW fixed-function quads instead. (1) The two
+// paths are byte-identical: history colour and depth, and the display image
+// (copy-back, sharpened, and the draw copy mode's own write-back). (2) The
+// draw copy mode (configure_copy(true): same-format staging copy plus
+// identity draws in place of the format-converting StretchRect) reproduces
+// the stretch mode's history byte for byte and its display image within one
+// 8-bit code (printed; exact on this backend is the expectation), leaves the
+// main target to the caller when the copy program is absent (refused), and
+// refuses nothing else.
+void quad_twin_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver,const DWORD* sharpener){
+    std::puts("QUAD_TWIN_CASES");Fixture f(d,compiler);RouteScene s(f,compiler);s.depth([](UINT,UINT){return .5f;});
+    const auto* copy=reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program());
+    auto init=[&](TemporalPass& p,bool fvf,bool draw,const char* label){if(fvf)SetEnvironmentVariableA("X3M_FIXTURE_QUAD_FVF","1");check(label,p.initialize(d,decoder,resolver,nullptr,sharpener,copy));if(fvf)SetEnvironmentVariableA("X3M_FIXTURE_QUAD_FVF",nullptr);p.configure_copy(draw);};
+    auto display=[&](){return readback(d,s.main8.p,D3DFMT_A8R8G8B8,4);};
+    // (1) vs_3_0 quad against the XYZRHW twin: stretch mode, then sharpened, then draw copy mode.
+    for(unsigned variant=0;variant<3;++variant){
+        const bool draw=variant==2;const float sharpness=variant==1?1.f:0.f;
+        TemporalPass vs_pass,fvf_pass;init(vs_pass,false,draw,"initialize vs_3_0 quad pass");init(fvf_pass,true,draw,"initialize XYZRHW twin pass");
+        for(unsigned frame=0;frame<3;++frame){
+            s.fill(21+frame*5+variant);auto in=s.inputs();in.sharpen=sharpness;
+            auto a=s.run(vs_pass,in,"vs_3_0 quad run");
+            if(!a.display_written)check("vs copy-back",d->StretchRect(a.color_surface,nullptr,s.main8.p,nullptr,D3DTEXF_POINT));
+            const auto display_a=display();const auto color_a=readback(d,a.color),depth_a=readback(d,a.depth);
+            s.fill(21+frame*5+variant);
+            auto b=s.run(fvf_pass,in,"XYZRHW twin run");
+            if(!b.display_written)check("twin copy-back",d->StretchRect(b.color_surface,nullptr,s.main8.p,nullptr,D3DTEXF_POINT));
+            require(a.display_written==b.display_written&&a.display_written==(draw||sharpness>0),"display ownership follows the mode on both paths");
+            ++numeric_checks;require(color_a==readback(d,b.color)&&depth_a==readback(d,b.depth),"vs_3_0 quad history equals the XYZRHW twin byte for byte");
+            ++numeric_checks;require(display_a==display(),"vs_3_0 quad display image equals the XYZRHW twin byte for byte");
+        }
+        std::printf("QUAD_TWIN variant=%s frames=3 identical=1\n",variant==0?"stretch":variant==1?"sharpen":"draw_copy");
+    }
+    // (2) Draw copy mode against stretch mode on the same frames.
+    {TemporalPass stretch,draw;init(stretch,false,false,"initialize stretch mode pass");init(draw,false,true,"initialize draw copy mode pass");
+        unsigned worst=0,differing=0,total=0;bool history_identical=true;
+        for(unsigned frame=0;frame<3;++frame){
+            s.fill(41+frame*3);auto a=s.run(stretch,s.inputs(),"stretch mode run");check("stretch copy-back",d->StretchRect(a.color_surface,nullptr,s.main8.p,nullptr,D3DTEXF_POINT));
+            const auto display_a=display();const auto color_a=readback(d,a.color),depth_a=readback(d,a.depth);
+            s.fill(41+frame*3);auto b=s.run(draw,s.inputs(),"draw copy mode run");
+            require(b.display_written&&b.copy_result==S_OK&&b.sharpen_result==S_FALSE,"draw copy mode wrote the display itself");
+            history_identical=history_identical&&color_a==readback(d,b.color)&&depth_a==readback(d,b.depth);
+            const auto display_b=display();
+            for(size_t i=0;i<display_a.size();++i){const unsigned diff=unsigned(std::abs(int(display_a[i])-int(display_b[i])));worst=std::max(worst,diff);differing+=diff!=0;++total;}
+        }
+        std::printf("COPY_MODE draw_vs_stretch history_identical=%u display_max_code_difference=%u display_differing_bytes=%u of %u\n",history_identical,worst,differing,total);
+        ++numeric_checks;require(history_identical,"draw copy mode history equals stretch mode history byte for byte");
+        ++numeric_checks;require(worst<=1,"draw copy mode display within one code of the stretch mode copy-back");
+        // Refusals: draw mode without the copy program, the staging surface as an input alias.
+        TemporalPass plain;check("initialize pass without the copy program",plain.initialize(d,decoder,resolver));plain.configure_copy(true);
+        Output failed;s.fill(50);require(plain.run(s.inputs(),&failed)==E_INVALIDARG&&!failed.color,"draw copy mode without the copy program refused");
+        require(display()==s.reference,"the refused run left the main target untouched");
+        auto fp16=f.inputs();fp16.depth_snapshot=nullptr;fp16.current_depth=s.depth32.p;auto c=s.run(draw,fp16,"draw copy mode with an FP16 input");
+        require(!c.display_written&&c.copy_result==S_FALSE,"an FP16 input takes no copy in draw mode");}
+}
 // "sharpen-measure": a 128x128 synthetic resolved-looking image (soft-edged
 // slanted shapes at the blur the run-2 analysis measured, plus a ramp) through
 // the pass at sharpness 0 (the copy-back), 0.25, 0.5 and 1.0; the 8-bit
@@ -1259,6 +1318,6 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
         auto* sharpener=static_cast<DWORD*>(sc->GetBufferPointer());
         if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}
-        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);sharpen_cases(d.p,compiler,decoder,resolver,sharpener);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
+        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);sharpen_cases(d.p,compiler,decoder,resolver,sharpener);quad_twin_cases(d.p,compiler,decoder,resolver,sharpener);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
         if(!stationaryOnly&&!measure){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}

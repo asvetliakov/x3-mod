@@ -173,6 +173,62 @@ the stage-2 build `db63e120…`).
     capture now logs `MIPMAPLODBIAS`/`MAXMIPLEVEL`. Fixture evidence in
     [taa-mip-bias.md](verification/taa-mip-bias.md); not yet seen in game.
 
+## Pending review 30: native-Windows fixes D1–D3, W1, W3 (branch merged 2026-09-12 night, not yet installed)
+
+Implements every item of the paused
+[handoff](verification/handoff-windows-fixes.md) against the
+[native-Windows audit](architecture/native-windows-audit-2026-09-12.md);
+status per item in that document's new table, gaps in
+[platform-portability.md](architecture/platform-portability.md). Nothing here
+is a native-Windows run: it is Windows-compatible source verified on
+CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
+
+- **D2 vs_3_0 quad program.** `src/temporal/quad_vs.hlsl` (compiled by the
+  generator's new per-shader `target`, 43 words) and
+  `src/renderer/quad_vertex_program.h`: every proxy quad (resolve, sharpen,
+  copy, HDR write-back/tonemap/meter, self tests, sentinel fill) now binds one
+  VS + declaration per pass instead of XYZRHW + null VS; the sentinel and
+  self-test programs became ps_3_0. Fixture twin `X3M_QUAD_FVF_SWITCH` /
+  `X3M_FIXTURE_QUAD_FVF=1`: byte-identical (temporal `QUAD_TWIN identical=1`
+  ×6, motion `seam-taa-quad-fvf` = `seam-taa-on`).
+- **D1 copy mode.** Attach runs a 4×4 StretchRect round trip per 8-bit format;
+  `taa_copy=stretch` only when the adapter query and the round trip both pass,
+  else `taa_copy=draw` (same-format staging copy + identity draws both ways,
+  `TemporalPass::configure_copy`); `taa_reason=format_conversion` is gone.
+  Temporal `COPY_MODE history_identical=1 display_max_code_difference=0`;
+  motion `seam-taa-copy-draw` (`X3M_FIXTURE_STRETCH_FAULT=1`).
+- **D3 MSAA refusal.** `motion_output_msaa_refused device= frame= msaa=`
+  once, gate 1 for every draw, no jitter, `taa_skip=11`, `msaa=` frame field;
+  fixture mode `msaa` (`seam-msaa`).
+- **W1 exports.** 17 names in `d3d9.def`; naked `jmp` forwarders with `ret N`
+  fallbacks, C++ `Direct3DCreate9On12[Ex]` with admission veto and
+  `unproxied=` log; `test_d3d9_exports.py` (host, PE parser
+  `tools/analysis/pe_exports.py`) and `run_d3d9_exports.py` (Wine).
+- **W3 log directory.** `%LOCALAPPDATA%\x3-modern-renderer\captures`
+  fallback, first log line `capture_dir= source=`; read-only-directory runner
+  case; README and `manage.py status` name both.
+- **Diagnostics.** `engine_memory phase=create|summary ...` line (integers);
+  the exposure fixture prints non-finite values as IEEE bits and the runner
+  decodes them, so the `hdrexposure` cases pass on the X3/FEX bottle
+  ([bottles.md](verification/bottles.md) limitation 2 closed for the fixtures).
+- Merge note: main's `b10d129` did not compile (`loading_trace.h` used
+  `ID3DXMesh` without a declaration); a forward declaration fixes it.
+- Suites (Steam bottle, clean RelWithDebInfo rebuild by the motion runner):
+  motion output PASS, 97 cases + 26 benches (`seam-taa-quad-fvf` and
+  `seam-taa-copy-draw` byte-identical to `seam-taa-on`: 49,152/49,152
+  presented pixels exact, 8 history and 16 readback files equal; `seam-msaa`
+  refusal at frame 0); temporal pass 508/278/2 with 386 samples;
+  temporal_run 78 samples / 2 generations; ownership integration 26 cases;
+  scene capture 4,908 checks / 36 scenarios; object lifetime 574; object
+  trace 166; export runner 8/8 + 8/8; generator `--check` PASS;
+  `check_no_x87.py` clean; 759 host unit tests OK. X3/FEX bottle: motion
+  output PASS, 97 cases + 26 benches, the three `hdrexposure` cases 85
+  checks each (previously blocked by limitation 2). **Not green:**
+  `run_loading_trace.py` fails on the `mesh-adjacency-cache-off` case
+  (`checks=33272 failures=0` against the runner's `MESH_ADJACENCY_CHECKS`
+  2179) — main's `b10d129` adjacency rewrite, untouched here; its
+  `loading-trace` 85/85 and `loading-mesh` 123/123 cases pass.
+
 ## Checkpoint: TAA tremble fixed, resolve quality pass, loading attribution (2026-09-12, superseded by the section above)
 
 Evidence at this checkpoint (details in the linked documents):
