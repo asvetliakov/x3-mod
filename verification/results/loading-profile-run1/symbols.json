@@ -1,0 +1,4640 @@
+{
+  "program": "X3AP.exe",
+  "image_base": "0x00400000",
+  "requested": 579,
+  "resolved": 579,
+  "symbols": {
+    "0x2741": {
+      "address": "0x00402741",
+      "function_start": "0x00402741",
+      "function_start_rva": "0x2741",
+      "function_name": "Catch@00402741",
+      "function_size": 9,
+      "offset_in_function": 0
+    },
+    "0x2f66": {
+      "address": "0x00402f66",
+      "function_start": "0x00402780",
+      "function_start_rva": "0x2780",
+      "function_name": "FUN_00402780",
+      "function_size": 3943,
+      "offset_in_function": 2022
+    },
+    "0x3af5": {
+      "address": "0x00403af5",
+      "function_start": "0x00403840",
+      "function_start_rva": "0x3840",
+      "function_name": "FUN_00403840",
+      "function_size": 2616,
+      "offset_in_function": 693
+    },
+    "0xb0bb": {
+      "address": "0x0040b0bb",
+      "function_start": "0x0040b050",
+      "function_start_rva": "0xb050",
+      "function_name": "FUN_0040b050",
+      "function_size": 115,
+      "offset_in_function": 107
+    },
+    "0xe1f0": {
+      "address": "0x0040e1f0",
+      "function_start": "0x0040e1a0",
+      "function_start_rva": "0xe1a0",
+      "function_name": "FUN_0040e1a0",
+      "function_size": 169,
+      "offset_in_function": 80
+    },
+    "0xe719": {
+      "address": "0x0040e719",
+      "function_start": "0x0040e710",
+      "function_start_rva": "0xe710",
+      "function_name": "FUN_0040e710",
+      "function_size": 15,
+      "offset_in_function": 9
+    },
+    "0xe71b": {
+      "address": "0x0040e71b",
+      "function_start": "0x0040e710",
+      "function_start_rva": "0xe710",
+      "function_name": "FUN_0040e710",
+      "function_size": 15,
+      "offset_in_function": 11
+    },
+    "0x1244b": {
+      "address": "0x0041244b",
+      "function_start": "0x00412440",
+      "function_start_rva": "0x12440",
+      "function_name": "FUN_00412440",
+      "function_size": 15,
+      "offset_in_function": 11
+    },
+    "0x18183": {
+      "address": "0x00418183",
+      "function_start": "0x00417d60",
+      "function_start_rva": "0x17d60",
+      "function_name": "FUN_00417d60",
+      "function_size": 1183,
+      "offset_in_function": 1059
+    },
+    "0x181a8": {
+      "address": "0x004181a8",
+      "function_start": "0x00417d60",
+      "function_start_rva": "0x17d60",
+      "function_name": "FUN_00417d60",
+      "function_size": 1183,
+      "offset_in_function": 1096
+    },
+    "0x1926c": {
+      "address": "0x0041926c",
+      "function_start": "0x00419220",
+      "function_start_rva": "0x19220",
+      "function_name": "FUN_00419220",
+      "function_size": 84,
+      "offset_in_function": 76
+    },
+    "0x19c57": {
+      "address": "0x00419c57",
+      "function_start": "0x00419430",
+      "function_start_rva": "0x19430",
+      "function_name": "FUN_00419430",
+      "function_size": 12975,
+      "offset_in_function": 2087
+    },
+    "0x21734": {
+      "address": "0x00421734",
+      "function_start": "0x004216e0",
+      "function_start_rva": "0x216e0",
+      "function_name": "FUN_004216e0",
+      "function_size": 446,
+      "offset_in_function": 84
+    },
+    "0x3002d": {
+      "address": "0x0043002d",
+      "function_start": "0x0042fe10",
+      "function_start_rva": "0x2fe10",
+      "function_name": "FUN_0042fe10",
+      "function_size": 1692,
+      "offset_in_function": 541
+    },
+    "0x3007b": {
+      "address": "0x0043007b",
+      "function_start": "0x0042fe10",
+      "function_start_rva": "0x2fe10",
+      "function_name": "FUN_0042fe10",
+      "function_size": 1692,
+      "offset_in_function": 619
+    },
+    "0x36ed6": {
+      "address": "0x00436ed6",
+      "function_start": "0x00434e40",
+      "function_start_rva": "0x34e40",
+      "function_name": "FUN_00434e40",
+      "function_size": 17843,
+      "offset_in_function": 8342
+    },
+    "0x4dfe6": {
+      "address": "0x0044dfe6",
+      "function_start": "0x0044dd90",
+      "function_start_rva": "0x4dd90",
+      "function_name": "FUN_0044dd90",
+      "function_size": 1717,
+      "offset_in_function": 598
+    },
+    "0x5d5df": {
+      "address": "0x0045d5df",
+      "function_start": "0x0045d250",
+      "function_start_rva": "0x5d250",
+      "function_name": "FUN_0045d250",
+      "function_size": 3681,
+      "offset_in_function": 911
+    },
+    "0x6a3f0": {
+      "address": "0x0046a3f0",
+      "function_start": "0x00469e80",
+      "function_start_rva": "0x69e80",
+      "function_name": "FUN_00469e80",
+      "function_size": 1682,
+      "offset_in_function": 1392
+    },
+    "0x6be25": {
+      "address": "0x0046be25",
+      "function_start": "0x0046ba20",
+      "function_start_rva": "0x6ba20",
+      "function_name": "FUN_0046ba20",
+      "function_size": 1053,
+      "offset_in_function": 1029
+    },
+    "0x6d017": {
+      "address": "0x0046d017",
+      "function_start": "0x0046cef0",
+      "function_start_rva": "0x6cef0",
+      "function_name": "FUN_0046cef0",
+      "function_size": 389,
+      "offset_in_function": 295
+    },
+    "0x6d460": {
+      "address": "0x0046d460",
+      "function_start": "0x0046d3a0",
+      "function_start_rva": "0x6d3a0",
+      "function_name": "FUN_0046d3a0",
+      "function_size": 579,
+      "offset_in_function": 192
+    },
+    "0x6e1a0": {
+      "address": "0x0046e1a0",
+      "function_start": "0x0046e1a0",
+      "function_start_rva": "0x6e1a0",
+      "function_name": "FUN_0046e1a0",
+      "function_size": 191,
+      "offset_in_function": 0
+    },
+    "0x6e4e3": {
+      "address": "0x0046e4e3",
+      "function_start": "0x0046e400",
+      "function_start_rva": "0x6e400",
+      "function_name": "FUN_0046e400",
+      "function_size": 644,
+      "offset_in_function": 227
+    },
+    "0x6e50a": {
+      "address": "0x0046e50a",
+      "function_start": "0x0046e400",
+      "function_start_rva": "0x6e400",
+      "function_name": "FUN_0046e400",
+      "function_size": 644,
+      "offset_in_function": 266
+    },
+    "0x6e515": {
+      "address": "0x0046e515",
+      "function_start": "0x0046e400",
+      "function_start_rva": "0x6e400",
+      "function_name": "FUN_0046e400",
+      "function_size": 644,
+      "offset_in_function": 277
+    },
+    "0x6ec4f": {
+      "address": "0x0046ec4f",
+      "function_start": "0x0046eb30",
+      "function_start_rva": "0x6eb30",
+      "function_name": "FUN_0046eb30",
+      "function_size": 441,
+      "offset_in_function": 287
+    },
+    "0x71f71": {
+      "address": "0x00471f71",
+      "function_start": "0x00471f50",
+      "function_start_rva": "0x71f50",
+      "function_name": "FUN_00471f50",
+      "function_size": 1721,
+      "offset_in_function": 33
+    },
+    "0x7b65b": {
+      "address": "0x0047b65b",
+      "function_start": "0x0047b540",
+      "function_start_rva": "0x7b540",
+      "function_name": "FUN_0047b540",
+      "function_size": 309,
+      "offset_in_function": 283
+    },
+    "0x7be69": {
+      "address": "0x0047be69",
+      "function_start": "0x0047bc20",
+      "function_start_rva": "0x7bc20",
+      "function_name": "FUN_0047bc20",
+      "function_size": 1951,
+      "offset_in_function": 585
+    },
+    "0x7be7d": {
+      "address": "0x0047be7d",
+      "function_start": "0x0047bc20",
+      "function_start_rva": "0x7bc20",
+      "function_name": "FUN_0047bc20",
+      "function_size": 1951,
+      "offset_in_function": 605
+    },
+    "0x7c02d": {
+      "address": "0x0047c02d",
+      "function_start": "0x0047bc20",
+      "function_start_rva": "0x7bc20",
+      "function_name": "FUN_0047bc20",
+      "function_size": 1951,
+      "offset_in_function": 1037
+    },
+    "0x7c80f": {
+      "address": "0x0047c80f",
+      "function_start": "0x0047c640",
+      "function_start_rva": "0x7c640",
+      "function_name": "FUN_0047c640",
+      "function_size": 500,
+      "offset_in_function": 463
+    },
+    "0x7ebb3": {
+      "address": "0x0047ebb3",
+      "function_start": "0x0047eb90",
+      "function_start_rva": "0x7eb90",
+      "function_name": "FUN_0047eb90",
+      "function_size": 849,
+      "offset_in_function": 35
+    },
+    "0x808f7": {
+      "address": "0x004808f7",
+      "function_start": "0x00480830",
+      "function_start_rva": "0x80830",
+      "function_name": "FUN_00480830",
+      "function_size": 2005,
+      "offset_in_function": 199
+    },
+    "0x80969": {
+      "address": "0x00480969",
+      "function_start": "0x00480830",
+      "function_start_rva": "0x80830",
+      "function_name": "FUN_00480830",
+      "function_size": 2005,
+      "offset_in_function": 313
+    },
+    "0x8206a": {
+      "address": "0x0048206a",
+      "function_start": "0x00481aa0",
+      "function_start_rva": "0x81aa0",
+      "function_name": "FUN_00481aa0",
+      "function_size": 5097,
+      "offset_in_function": 1482
+    },
+    "0x86d7d": {
+      "address": "0x00486d7d",
+      "function_start": "0x00486d10",
+      "function_start_rva": "0x86d10",
+      "function_name": "FUN_00486d10",
+      "function_size": 339,
+      "offset_in_function": 109
+    },
+    "0x86de1": {
+      "address": "0x00486de1",
+      "function_start": "0x00486d10",
+      "function_start_rva": "0x86d10",
+      "function_name": "FUN_00486d10",
+      "function_size": 339,
+      "offset_in_function": 209
+    },
+    "0x8d31f": {
+      "address": "0x0048d31f",
+      "function_start": "0x0048d2a0",
+      "function_start_rva": "0x8d2a0",
+      "function_name": "FUN_0048d2a0",
+      "function_size": 2425,
+      "offset_in_function": 127
+    },
+    "0x8ffc9": {
+      "address": "0x0048ffc9",
+      "function_start": "0x0048ffb0",
+      "function_start_rva": "0x8ffb0",
+      "function_name": "FUN_0048ffb0",
+      "function_size": 466,
+      "offset_in_function": 25
+    },
+    "0x9001e": {
+      "address": "0x0049001e",
+      "function_start": "0x0048ffb0",
+      "function_start_rva": "0x8ffb0",
+      "function_name": "FUN_0048ffb0",
+      "function_size": 466,
+      "offset_in_function": 110
+    },
+    "0x9006c": {
+      "address": "0x0049006c",
+      "function_start": "0x0048ffb0",
+      "function_start_rva": "0x8ffb0",
+      "function_name": "FUN_0048ffb0",
+      "function_size": 466,
+      "offset_in_function": 188
+    },
+    "0x900b9": {
+      "address": "0x004900b9",
+      "function_start": "0x0048ffb0",
+      "function_start_rva": "0x8ffb0",
+      "function_name": "FUN_0048ffb0",
+      "function_size": 466,
+      "offset_in_function": 265
+    },
+    "0x90155": {
+      "address": "0x00490155",
+      "function_start": "0x0048ffb0",
+      "function_start_rva": "0x8ffb0",
+      "function_name": "FUN_0048ffb0",
+      "function_size": 466,
+      "offset_in_function": 421
+    },
+    "0x90259": {
+      "address": "0x00490259",
+      "function_start": "0x004901a0",
+      "function_start_rva": "0x901a0",
+      "function_name": "FUN_004901a0",
+      "function_size": 1190,
+      "offset_in_function": 185
+    },
+    "0x9031b": {
+      "address": "0x0049031b",
+      "function_start": "0x004901a0",
+      "function_start_rva": "0x901a0",
+      "function_name": "FUN_004901a0",
+      "function_size": 1190,
+      "offset_in_function": 379
+    },
+    "0x903d8": {
+      "address": "0x004903d8",
+      "function_start": "0x004901a0",
+      "function_start_rva": "0x901a0",
+      "function_name": "FUN_004901a0",
+      "function_size": 1190,
+      "offset_in_function": 568
+    },
+    "0x90498": {
+      "address": "0x00490498",
+      "function_start": "0x004901a0",
+      "function_start_rva": "0x901a0",
+      "function_name": "FUN_004901a0",
+      "function_size": 1190,
+      "offset_in_function": 760
+    },
+    "0x90558": {
+      "address": "0x00490558",
+      "function_start": "0x004901a0",
+      "function_start_rva": "0x901a0",
+      "function_name": "FUN_004901a0",
+      "function_size": 1190,
+      "offset_in_function": 952
+    },
+    "0x90618": {
+      "address": "0x00490618",
+      "function_start": "0x004901a0",
+      "function_start_rva": "0x901a0",
+      "function_name": "FUN_004901a0",
+      "function_size": 1190,
+      "offset_in_function": 1144
+    },
+    "0x91570": {
+      "address": "0x00491570",
+      "function_start": "0x00490ec0",
+      "function_start_rva": "0x90ec0",
+      "function_name": "FUN_00490ec0",
+      "function_size": 3133,
+      "offset_in_function": 1712
+    },
+    "0x924aa": {
+      "address": "0x004924aa",
+      "function_start": "0x00491b10",
+      "function_start_rva": "0x91b10",
+      "function_name": "FUN_00491b10",
+      "function_size": 3545,
+      "offset_in_function": 2458
+    },
+    "0x981d8": {
+      "address": "0x004981d8",
+      "function_start": "0x00498140",
+      "function_start_rva": "0x98140",
+      "function_name": "FUN_00498140",
+      "function_size": 364,
+      "offset_in_function": 152
+    },
+    "0x99394": {
+      "address": "0x00499394",
+      "function_start": "0x004991a0",
+      "function_start_rva": "0x991a0",
+      "function_name": "FUN_004991a0",
+      "function_size": 529,
+      "offset_in_function": 500
+    },
+    "0x99469": {
+      "address": "0x00499469",
+      "function_start": "0x004993c0",
+      "function_start_rva": "0x993c0",
+      "function_name": "FUN_004993c0",
+      "function_size": 188,
+      "offset_in_function": 169
+    },
+    "0x9c8df": {
+      "address": "0x0049c8df",
+      "function_start": "0x0049c8b0",
+      "function_start_rva": "0x9c8b0",
+      "function_name": "FUN_0049c8b0",
+      "function_size": 96,
+      "offset_in_function": 47
+    },
+    "0xa065b": {
+      "address": "0x004a065b",
+      "function_start": "0x004a0640",
+      "function_start_rva": "0xa0640",
+      "function_name": "FUN_004a0640",
+      "function_size": 512,
+      "offset_in_function": 27
+    },
+    "0xa0669": {
+      "address": "0x004a0669",
+      "function_start": "0x004a0640",
+      "function_start_rva": "0xa0640",
+      "function_name": "FUN_004a0640",
+      "function_size": 512,
+      "offset_in_function": 41
+    },
+    "0xa06f1": {
+      "address": "0x004a06f1",
+      "function_start": "0x004a0640",
+      "function_start_rva": "0xa0640",
+      "function_name": "FUN_004a0640",
+      "function_size": 512,
+      "offset_in_function": 177
+    },
+    "0xa06f9": {
+      "address": "0x004a06f9",
+      "function_start": "0x004a0640",
+      "function_start_rva": "0xa0640",
+      "function_name": "FUN_004a0640",
+      "function_size": 512,
+      "offset_in_function": 185
+    },
+    "0xa06ff": {
+      "address": "0x004a06ff",
+      "function_start": "0x004a0640",
+      "function_start_rva": "0xa0640",
+      "function_name": "FUN_004a0640",
+      "function_size": 512,
+      "offset_in_function": 191
+    },
+    "0xa0a8e": {
+      "address": "0x004a0a8e",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 526
+    },
+    "0xa0b68": {
+      "address": "0x004a0b68",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 744
+    },
+    "0xa0c0d": {
+      "address": "0x004a0c0d",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 909
+    },
+    "0xa0cc3": {
+      "address": "0x004a0cc3",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 1091
+    },
+    "0xa0d6c": {
+      "address": "0x004a0d6c",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 1260
+    },
+    "0xa0de2": {
+      "address": "0x004a0de2",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 1378
+    },
+    "0xa0df0": {
+      "address": "0x004a0df0",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 1392
+    },
+    "0xa0df5": {
+      "address": "0x004a0df5",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 1397
+    },
+    "0xa0fdf": {
+      "address": "0x004a0fdf",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 1887
+    },
+    "0xa0ff8": {
+      "address": "0x004a0ff8",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 1912
+    },
+    "0xa15a1": {
+      "address": "0x004a15a1",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 3361
+    },
+    "0xa1862": {
+      "address": "0x004a1862",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 4066
+    },
+    "0xa1a90": {
+      "address": "0x004a1a90",
+      "function_start": "0x004a0880",
+      "function_start_rva": "0xa0880",
+      "function_name": "FUN_004a0880",
+      "function_size": 5664,
+      "offset_in_function": 4624
+    },
+    "0xa2563": {
+      "address": "0x004a2563",
+      "function_start": "0x004a2520",
+      "function_start_rva": "0xa2520",
+      "function_name": "FUN_004a2520",
+      "function_size": 99,
+      "offset_in_function": 67
+    },
+    "0xa2567": {
+      "address": "0x004a2567",
+      "function_start": "0x004a2520",
+      "function_start_rva": "0xa2520",
+      "function_name": "FUN_004a2520",
+      "function_size": 99,
+      "offset_in_function": 71
+    },
+    "0xa2579": {
+      "address": "0x004a2579",
+      "function_start": "0x004a2520",
+      "function_start_rva": "0xa2520",
+      "function_name": "FUN_004a2520",
+      "function_size": 99,
+      "offset_in_function": 89
+    },
+    "0xa2c36": {
+      "address": "0x004a2c36",
+      "function_start": "0x004a26a0",
+      "function_start_rva": "0xa26a0",
+      "function_name": "FUN_004a26a0",
+      "function_size": 7648,
+      "offset_in_function": 1430
+    },
+    "0xa300e": {
+      "address": "0x004a300e",
+      "function_start": "0x004a26a0",
+      "function_start_rva": "0xa26a0",
+      "function_name": "FUN_004a26a0",
+      "function_size": 7648,
+      "offset_in_function": 2414
+    },
+    "0xa3f2c": {
+      "address": "0x004a3f2c",
+      "function_start": "0x004a26a0",
+      "function_start_rva": "0xa26a0",
+      "function_name": "FUN_004a26a0",
+      "function_size": 7648,
+      "offset_in_function": 6284
+    },
+    "0xa42f7": {
+      "address": "0x004a42f7",
+      "function_start": "0x004a26a0",
+      "function_start_rva": "0xa26a0",
+      "function_name": "FUN_004a26a0",
+      "function_size": 7648,
+      "offset_in_function": 7255
+    },
+    "0xa42fb": {
+      "address": "0x004a42fb",
+      "function_start": "0x004a26a0",
+      "function_start_rva": "0xa26a0",
+      "function_name": "FUN_004a26a0",
+      "function_size": 7648,
+      "offset_in_function": 7259
+    },
+    "0xa4f19": {
+      "address": "0x004a4f19",
+      "function_start": "0x004a4e00",
+      "function_start_rva": "0xa4e00",
+      "function_name": "FUN_004a4e00",
+      "function_size": 503,
+      "offset_in_function": 281
+    },
+    "0xa5075": {
+      "address": "0x004a5075",
+      "function_start": "0x004a5010",
+      "function_start_rva": "0xa5010",
+      "function_name": "FUN_004a5010",
+      "function_size": 126,
+      "offset_in_function": 101
+    },
+    "0xa7646": {
+      "address": "0x004a7646",
+      "function_start": "0x004a7630",
+      "function_start_rva": "0xa7630",
+      "function_name": "FUN_004a7630",
+      "function_size": 424,
+      "offset_in_function": 22
+    },
+    "0xa765a": {
+      "address": "0x004a765a",
+      "function_start": "0x004a7630",
+      "function_start_rva": "0xa7630",
+      "function_name": "FUN_004a7630",
+      "function_size": 424,
+      "offset_in_function": 42
+    },
+    "0xa768c": {
+      "address": "0x004a768c",
+      "function_start": "0x004a7630",
+      "function_start_rva": "0xa7630",
+      "function_name": "FUN_004a7630",
+      "function_size": 424,
+      "offset_in_function": 92
+    },
+    "0xa7695": {
+      "address": "0x004a7695",
+      "function_start": "0x004a7630",
+      "function_start_rva": "0xa7630",
+      "function_name": "FUN_004a7630",
+      "function_size": 424,
+      "offset_in_function": 101
+    },
+    "0xa76f9": {
+      "address": "0x004a76f9",
+      "function_start": "0x004a7630",
+      "function_start_rva": "0xa7630",
+      "function_name": "FUN_004a7630",
+      "function_size": 424,
+      "offset_in_function": 201
+    },
+    "0xa77b7": {
+      "address": "0x004a77b7",
+      "function_start": "0x004a7630",
+      "function_start_rva": "0xa7630",
+      "function_name": "FUN_004a7630",
+      "function_size": 424,
+      "offset_in_function": 391
+    },
+    "0xa77c3": {
+      "address": "0x004a77c3",
+      "function_start": "0x004a7630",
+      "function_start_rva": "0xa7630",
+      "function_name": "FUN_004a7630",
+      "function_size": 424,
+      "offset_in_function": 403
+    },
+    "0xa794e": {
+      "address": "0x004a794e",
+      "function_start": "0x004a77e0",
+      "function_start_rva": "0xa77e0",
+      "function_name": "FUN_004a77e0",
+      "function_size": 376,
+      "offset_in_function": 366
+    },
+    "0xa803c": {
+      "address": "0x004a803c",
+      "function_start": "0x004a7f60",
+      "function_start_rva": "0xa7f60",
+      "function_name": "FUN_004a7f60",
+      "function_size": 686,
+      "offset_in_function": 220
+    },
+    "0xa81b6": {
+      "address": "0x004a81b6",
+      "function_start": "0x004a7f60",
+      "function_start_rva": "0xa7f60",
+      "function_name": "FUN_004a7f60",
+      "function_size": 686,
+      "offset_in_function": 598
+    },
+    "0xa8240": {
+      "address": "0x004a8240",
+      "function_start": "0x004a8240",
+      "function_start_rva": "0xa8240",
+      "function_name": "FUN_004a8240",
+      "function_size": 387,
+      "offset_in_function": 0
+    },
+    "0xa8287": {
+      "address": "0x004a8287",
+      "function_start": "0x004a8240",
+      "function_start_rva": "0xa8240",
+      "function_name": "FUN_004a8240",
+      "function_size": 387,
+      "offset_in_function": 71
+    },
+    "0xa8318": {
+      "address": "0x004a8318",
+      "function_start": "0x004a8240",
+      "function_start_rva": "0xa8240",
+      "function_name": "FUN_004a8240",
+      "function_size": 387,
+      "offset_in_function": 216
+    },
+    "0xa8388": {
+      "address": "0x004a8388",
+      "function_start": "0x004a8240",
+      "function_start_rva": "0xa8240",
+      "function_name": "FUN_004a8240",
+      "function_size": 387,
+      "offset_in_function": 328
+    },
+    "0xa8390": {
+      "address": "0x004a8390",
+      "function_start": "0x004a8240",
+      "function_start_rva": "0xa8240",
+      "function_name": "FUN_004a8240",
+      "function_size": 387,
+      "offset_in_function": 336
+    },
+    "0xa84f0": {
+      "address": "0x004a84f0",
+      "function_start": "0x004a84f0",
+      "function_start_rva": "0xa84f0",
+      "function_name": "FUN_004a84f0",
+      "function_size": 199,
+      "offset_in_function": 0
+    },
+    "0xa8520": {
+      "address": "0x004a8520",
+      "function_start": "0x004a84f0",
+      "function_start_rva": "0xa84f0",
+      "function_name": "FUN_004a84f0",
+      "function_size": 199,
+      "offset_in_function": 48
+    },
+    "0xa8530": {
+      "address": "0x004a8530",
+      "function_start": "0x004a84f0",
+      "function_start_rva": "0xa84f0",
+      "function_name": "FUN_004a84f0",
+      "function_size": 199,
+      "offset_in_function": 64
+    },
+    "0xa854c": {
+      "address": "0x004a854c",
+      "function_start": "0x004a84f0",
+      "function_start_rva": "0xa84f0",
+      "function_name": "FUN_004a84f0",
+      "function_size": 199,
+      "offset_in_function": 92
+    },
+    "0xa8600": {
+      "address": "0x004a8600",
+      "function_start": "0x004a8600",
+      "function_start_rva": "0xa8600",
+      "function_name": "FUN_004a8600",
+      "function_size": 27,
+      "offset_in_function": 0
+    },
+    "0xa8618": {
+      "address": "0x004a8618",
+      "function_start": "0x004a8600",
+      "function_start_rva": "0xa8600",
+      "function_name": "FUN_004a8600",
+      "function_size": 27,
+      "offset_in_function": 24
+    },
+    "0xa86ff": {
+      "address": "0x004a86ff",
+      "function_start": "0x004a8670",
+      "function_start_rva": "0xa8670",
+      "function_name": "FUN_004a8670",
+      "function_size": 177,
+      "offset_in_function": 143
+    },
+    "0xa8793": {
+      "address": "0x004a8793",
+      "function_start": "0x004a8730",
+      "function_start_rva": "0xa8730",
+      "function_name": "FUN_004a8730",
+      "function_size": 130,
+      "offset_in_function": 99
+    },
+    "0xa88ac": {
+      "address": "0x004a88ac",
+      "function_start": "0x004a8850",
+      "function_start_rva": "0xa8850",
+      "function_name": "FUN_004a8850",
+      "function_size": 120,
+      "offset_in_function": 92
+    },
+    "0xa9410": {
+      "address": "0x004a9410",
+      "function_start": "0x004a93d0",
+      "function_start_rva": "0xa93d0",
+      "function_name": "FUN_004a93d0",
+      "function_size": 79,
+      "offset_in_function": 64
+    },
+    "0xa9fa3": {
+      "address": "0x004a9fa3",
+      "function_start": "0x004a9f50",
+      "function_start_rva": "0xa9f50",
+      "function_name": "FUN_004a9f50",
+      "function_size": 119,
+      "offset_in_function": 83
+    },
+    "0xaa235": {
+      "address": "0x004aa235",
+      "function_start": "0x004aa1b0",
+      "function_start_rva": "0xaa1b0",
+      "function_name": "FUN_004aa1b0",
+      "function_size": 169,
+      "offset_in_function": 133
+    },
+    "0xaac2c": {
+      "address": "0x004aac2c",
+      "function_start": "0x004aabe0",
+      "function_start_rva": "0xaabe0",
+      "function_name": "FUN_004aabe0",
+      "function_size": 92,
+      "offset_in_function": 76
+    },
+    "0xaac3b": {
+      "address": "0x004aac3b",
+      "function_start": "0x004aabe0",
+      "function_start_rva": "0xaabe0",
+      "function_name": "FUN_004aabe0",
+      "function_size": 92,
+      "offset_in_function": 91
+    },
+    "0xaae20": {
+      "address": "0x004aae20",
+      "function_start": "0x004aae20",
+      "function_start_rva": "0xaae20",
+      "function_name": "FUN_004aae20",
+      "function_size": 242,
+      "offset_in_function": 0
+    },
+    "0xaae91": {
+      "address": "0x004aae91",
+      "function_start": "0x004aae20",
+      "function_start_rva": "0xaae20",
+      "function_name": "FUN_004aae20",
+      "function_size": 242,
+      "offset_in_function": 113
+    },
+    "0xac490": {
+      "address": "0x004ac490",
+      "function_start": "0x004ab880",
+      "function_start_rva": "0xab880",
+      "function_name": "FUN_004ab880",
+      "function_size": 15895,
+      "offset_in_function": 3088
+    },
+    "0xac5e3": {
+      "address": "0x004ac5e3",
+      "function_start": "0x004ab880",
+      "function_start_rva": "0xab880",
+      "function_name": "FUN_004ab880",
+      "function_size": 15895,
+      "offset_in_function": 3427
+    },
+    "0xaf499": {
+      "address": "0x004af499",
+      "function_start": "0x004ab880",
+      "function_start_rva": "0xab880",
+      "function_name": "FUN_004ab880",
+      "function_size": 15895,
+      "offset_in_function": 15385
+    },
+    "0xb0eef": {
+      "address": "0x004b0eef",
+      "function_start": "0x004b0e00",
+      "function_start_rva": "0xb0e00",
+      "function_name": "FUN_004b0e00",
+      "function_size": 645,
+      "offset_in_function": 239
+    },
+    "0xb38c7": {
+      "address": "0x004b38c7",
+      "function_start": "0x004b3860",
+      "function_start_rva": "0xb3860",
+      "function_name": "FUN_004b3860",
+      "function_size": 131,
+      "offset_in_function": 103
+    },
+    "0xb45ea": {
+      "address": "0x004b45ea",
+      "function_start": "0x004b45b0",
+      "function_start_rva": "0xb45b0",
+      "function_name": "FUN_004b45b0",
+      "function_size": 65,
+      "offset_in_function": 58
+    },
+    "0xb4639": {
+      "address": "0x004b4639",
+      "function_start": "0x004b4600",
+      "function_start_rva": "0xb4600",
+      "function_name": "FUN_004b4600",
+      "function_size": 107,
+      "offset_in_function": 57
+    },
+    "0xb4813": {
+      "address": "0x004b4813",
+      "function_start": "0x004b47f0",
+      "function_start_rva": "0xb47f0",
+      "function_name": "FUN_004b47f0",
+      "function_size": 112,
+      "offset_in_function": 35
+    },
+    "0xb482c": {
+      "address": "0x004b482c",
+      "function_start": "0x004b47f0",
+      "function_start_rva": "0xb47f0",
+      "function_name": "FUN_004b47f0",
+      "function_size": 112,
+      "offset_in_function": 60
+    },
+    "0xb4839": {
+      "address": "0x004b4839",
+      "function_start": "0x004b47f0",
+      "function_start_rva": "0xb47f0",
+      "function_name": "FUN_004b47f0",
+      "function_size": 112,
+      "offset_in_function": 73
+    },
+    "0xb4f99": {
+      "address": "0x004b4f99",
+      "function_start": "0x004b4f80",
+      "function_start_rva": "0xb4f80",
+      "function_name": "FUN_004b4f80",
+      "function_size": 61,
+      "offset_in_function": 25
+    },
+    "0xb4fad": {
+      "address": "0x004b4fad",
+      "function_start": "0x004b4f80",
+      "function_start_rva": "0xb4f80",
+      "function_name": "FUN_004b4f80",
+      "function_size": 61,
+      "offset_in_function": 45
+    },
+    "0xb50c1": {
+      "address": "0x004b50c1",
+      "function_start": "0x004b50a0",
+      "function_start_rva": "0xb50a0",
+      "function_name": "FUN_004b50a0",
+      "function_size": 58,
+      "offset_in_function": 33
+    },
+    "0xb5194": {
+      "address": "0x004b5194",
+      "function_start": "0x004b5160",
+      "function_start_rva": "0xb5160",
+      "function_name": "FUN_004b5160",
+      "function_size": 74,
+      "offset_in_function": 52
+    },
+    "0xb5207": {
+      "address": "0x004b5207",
+      "function_start": "0x004b51b0",
+      "function_start_rva": "0xb51b0",
+      "function_name": "FUN_004b51b0",
+      "function_size": 129,
+      "offset_in_function": 87
+    },
+    "0xb5398": {
+      "address": "0x004b5398",
+      "function_start": "0x004b5340",
+      "function_start_rva": "0xb5340",
+      "function_name": "FUN_004b5340",
+      "function_size": 151,
+      "offset_in_function": 88
+    },
+    "0xb6c15": {
+      "address": "0x004b6c15",
+      "function_start": "0x004b6be0",
+      "function_start_rva": "0xb6be0",
+      "function_name": "FUN_004b6be0",
+      "function_size": 416,
+      "offset_in_function": 53
+    },
+    "0xb895f": {
+      "address": "0x004b895f",
+      "function_start": "0x004b8920",
+      "function_start_rva": "0xb8920",
+      "function_name": "FUN_004b8920",
+      "function_size": 199,
+      "offset_in_function": 63
+    },
+    "0xb8a4d": {
+      "address": "0x004b8a4d",
+      "function_start": "0x004b89f0",
+      "function_start_rva": "0xb89f0",
+      "function_name": "FUN_004b89f0",
+      "function_size": 181,
+      "offset_in_function": 93
+    },
+    "0xb8a9c": {
+      "address": "0x004b8a9c",
+      "function_start": "0x004b89f0",
+      "function_start_rva": "0xb89f0",
+      "function_name": "FUN_004b89f0",
+      "function_size": 181,
+      "offset_in_function": 172
+    },
+    "0xb8ad9": {
+      "address": "0x004b8ad9",
+      "function_start": "0x004b8ab0",
+      "function_start_rva": "0xb8ab0",
+      "function_name": "FUN_004b8ab0",
+      "function_size": 96,
+      "offset_in_function": 41
+    },
+    "0xb8af1": {
+      "address": "0x004b8af1",
+      "function_start": "0x004b8ab0",
+      "function_start_rva": "0xb8ab0",
+      "function_name": "FUN_004b8ab0",
+      "function_size": 96,
+      "offset_in_function": 65
+    },
+    "0xb9f32": {
+      "address": "0x004b9f32",
+      "function_start": "0x004b9ed0",
+      "function_start_rva": "0xb9ed0",
+      "function_name": "FUN_004b9ed0",
+      "function_size": 150,
+      "offset_in_function": 98
+    },
+    "0xbb5da": {
+      "address": "0x004bb5da",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 362
+    },
+    "0xbb609": {
+      "address": "0x004bb609",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 409
+    },
+    "0xbb72f": {
+      "address": "0x004bb72f",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 703
+    },
+    "0xbb94b": {
+      "address": "0x004bb94b",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 1243
+    },
+    "0xbb95f": {
+      "address": "0x004bb95f",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 1263
+    },
+    "0xbb992": {
+      "address": "0x004bb992",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 1314
+    },
+    "0xbb9ac": {
+      "address": "0x004bb9ac",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 1340
+    },
+    "0xbbae8": {
+      "address": "0x004bbae8",
+      "function_start": "0x004bb470",
+      "function_start_rva": "0xbb470",
+      "function_name": "FUN_004bb470",
+      "function_size": 1684,
+      "offset_in_function": 1656
+    },
+    "0xbbc1e": {
+      "address": "0x004bbc1e",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 270
+    },
+    "0xbbc20": {
+      "address": "0x004bbc20",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 272
+    },
+    "0xbbc22": {
+      "address": "0x004bbc22",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 274
+    },
+    "0xbbc7c": {
+      "address": "0x004bbc7c",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 364
+    },
+    "0xbbc95": {
+      "address": "0x004bbc95",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 389
+    },
+    "0xbbca8": {
+      "address": "0x004bbca8",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 408
+    },
+    "0xbbcc2": {
+      "address": "0x004bbcc2",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 434
+    },
+    "0xbbcd6": {
+      "address": "0x004bbcd6",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 454
+    },
+    "0xbc023": {
+      "address": "0x004bc023",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 1299
+    },
+    "0xbc025": {
+      "address": "0x004bc025",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 1301
+    },
+    "0xbc027": {
+      "address": "0x004bc027",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 1303
+    },
+    "0xbc06f": {
+      "address": "0x004bc06f",
+      "function_start": "0x004bbb10",
+      "function_start_rva": "0xbbb10",
+      "function_name": "FUN_004bbb10",
+      "function_size": 1388,
+      "offset_in_function": 1375
+    },
+    "0xbc0bf": {
+      "address": "0x004bc0bf",
+      "function_start": "0x004bc080",
+      "function_start_rva": "0xbc080",
+      "function_name": "FUN_004bc080",
+      "function_size": 310,
+      "offset_in_function": 63
+    },
+    "0xbc1ae": {
+      "address": "0x004bc1ae",
+      "function_start": "0x004bc080",
+      "function_start_rva": "0xbc080",
+      "function_name": "FUN_004bc080",
+      "function_size": 310,
+      "offset_in_function": 302
+    },
+    "0xbc1f8": {
+      "address": "0x004bc1f8",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 56
+    },
+    "0xbc297": {
+      "address": "0x004bc297",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 215
+    },
+    "0xbc299": {
+      "address": "0x004bc299",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 217
+    },
+    "0xbc2ab": {
+      "address": "0x004bc2ab",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 235
+    },
+    "0xbc2ae": {
+      "address": "0x004bc2ae",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 238
+    },
+    "0xbc2b2": {
+      "address": "0x004bc2b2",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 242
+    },
+    "0xbc2c5": {
+      "address": "0x004bc2c5",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 261
+    },
+    "0xbc2c9": {
+      "address": "0x004bc2c9",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 265
+    },
+    "0xbc2cd": {
+      "address": "0x004bc2cd",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 269
+    },
+    "0xbc2d1": {
+      "address": "0x004bc2d1",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 273
+    },
+    "0xbc2d5": {
+      "address": "0x004bc2d5",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 277
+    },
+    "0xbc2d8": {
+      "address": "0x004bc2d8",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 280
+    },
+    "0xbc2e4": {
+      "address": "0x004bc2e4",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 292
+    },
+    "0xbc2e8": {
+      "address": "0x004bc2e8",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 296
+    },
+    "0xbc2ec": {
+      "address": "0x004bc2ec",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 300
+    },
+    "0xbc2f6": {
+      "address": "0x004bc2f6",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 310
+    },
+    "0xbc2fe": {
+      "address": "0x004bc2fe",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 318
+    },
+    "0xbc304": {
+      "address": "0x004bc304",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 324
+    },
+    "0xbc30e": {
+      "address": "0x004bc30e",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 334
+    },
+    "0xbc315": {
+      "address": "0x004bc315",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 341
+    },
+    "0xbc317": {
+      "address": "0x004bc317",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 343
+    },
+    "0xbc31e": {
+      "address": "0x004bc31e",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 350
+    },
+    "0xbc320": {
+      "address": "0x004bc320",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 352
+    },
+    "0xbc340": {
+      "address": "0x004bc340",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 384
+    },
+    "0xbc34a": {
+      "address": "0x004bc34a",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 394
+    },
+    "0xbc355": {
+      "address": "0x004bc355",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 405
+    },
+    "0xbc3a0": {
+      "address": "0x004bc3a0",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 480
+    },
+    "0xbc3a2": {
+      "address": "0x004bc3a2",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 482
+    },
+    "0xbc3b5": {
+      "address": "0x004bc3b5",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 501
+    },
+    "0xbc3b7": {
+      "address": "0x004bc3b7",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 503
+    },
+    "0xbc3c7": {
+      "address": "0x004bc3c7",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 519
+    },
+    "0xbc41b": {
+      "address": "0x004bc41b",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 603
+    },
+    "0xbc421": {
+      "address": "0x004bc421",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 609
+    },
+    "0xbc423": {
+      "address": "0x004bc423",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 611
+    },
+    "0xbc425": {
+      "address": "0x004bc425",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 613
+    },
+    "0xbc437": {
+      "address": "0x004bc437",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 631
+    },
+    "0xbc447": {
+      "address": "0x004bc447",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 647
+    },
+    "0xbc449": {
+      "address": "0x004bc449",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 649
+    },
+    "0xbc459": {
+      "address": "0x004bc459",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 665
+    },
+    "0xbc45b": {
+      "address": "0x004bc45b",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 667
+    },
+    "0xbc46b": {
+      "address": "0x004bc46b",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 683
+    },
+    "0xbc46d": {
+      "address": "0x004bc46d",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 685
+    },
+    "0xbc482": {
+      "address": "0x004bc482",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 706
+    },
+    "0xbc48e": {
+      "address": "0x004bc48e",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 718
+    },
+    "0xbc4ac": {
+      "address": "0x004bc4ac",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 748
+    },
+    "0xbc4c1": {
+      "address": "0x004bc4c1",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 769
+    },
+    "0xbc4dd": {
+      "address": "0x004bc4dd",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 797
+    },
+    "0xbc518": {
+      "address": "0x004bc518",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 856
+    },
+    "0xbc5b9": {
+      "address": "0x004bc5b9",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1017
+    },
+    "0xbc5bf": {
+      "address": "0x004bc5bf",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1023
+    },
+    "0xbc5c1": {
+      "address": "0x004bc5c1",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1025
+    },
+    "0xbc5c3": {
+      "address": "0x004bc5c3",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1027
+    },
+    "0xbc5d0": {
+      "address": "0x004bc5d0",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1040
+    },
+    "0xbc5ec": {
+      "address": "0x004bc5ec",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1068
+    },
+    "0xbc66b": {
+      "address": "0x004bc66b",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1195
+    },
+    "0xbc66d": {
+      "address": "0x004bc66d",
+      "function_start": "0x004bc1c0",
+      "function_start_rva": "0xbc1c0",
+      "function_name": "FUN_004bc1c0",
+      "function_size": 1202,
+      "offset_in_function": 1197
+    },
+    "0xbc76c": {
+      "address": "0x004bc76c",
+      "function_start": "0x004bc680",
+      "function_start_rva": "0xbc680",
+      "function_name": "FUN_004bc680",
+      "function_size": 826,
+      "offset_in_function": 236
+    },
+    "0xbc878": {
+      "address": "0x004bc878",
+      "function_start": "0x004bc680",
+      "function_start_rva": "0xbc680",
+      "function_name": "FUN_004bc680",
+      "function_size": 826,
+      "offset_in_function": 504
+    },
+    "0xbc90a": {
+      "address": "0x004bc90a",
+      "function_start": "0x004bc680",
+      "function_start_rva": "0xbc680",
+      "function_name": "FUN_004bc680",
+      "function_size": 826,
+      "offset_in_function": 650
+    },
+    "0xbca62": {
+      "address": "0x004bca62",
+      "function_start": "0x004bc9c0",
+      "function_start_rva": "0xbc9c0",
+      "function_name": "FUN_004bc9c0",
+      "function_size": 416,
+      "offset_in_function": 162
+    },
+    "0xbcc30": {
+      "address": "0x004bcc30",
+      "function_start": "0x004bcb60",
+      "function_start_rva": "0xbcb60",
+      "function_name": "FUN_004bcb60",
+      "function_size": 341,
+      "offset_in_function": 208
+    },
+    "0xbcdd4": {
+      "address": "0x004bcdd4",
+      "function_start": "0x004bccc0",
+      "function_start_rva": "0xbccc0",
+      "function_name": "FUN_004bccc0",
+      "function_size": 532,
+      "offset_in_function": 276
+    },
+    "0xbcfa9": {
+      "address": "0x004bcfa9",
+      "function_start": "0x004bcee0",
+      "function_start_rva": "0xbcee0",
+      "function_name": "FUN_004bcee0",
+      "function_size": 2353,
+      "offset_in_function": 201
+    },
+    "0xbd859": {
+      "address": "0x004bd859",
+      "function_start": "0x004bd830",
+      "function_start_rva": "0xbd830",
+      "function_name": "FUN_004bd830",
+      "function_size": 556,
+      "offset_in_function": 41
+    },
+    "0xbd9e0": {
+      "address": "0x004bd9e0",
+      "function_start": "0x004bd830",
+      "function_start_rva": "0xbd830",
+      "function_name": "FUN_004bd830",
+      "function_size": 556,
+      "offset_in_function": 432
+    },
+    "0xbdad6": {
+      "address": "0x004bdad6",
+      "function_start": "0x004bda60",
+      "function_start_rva": "0xbda60",
+      "function_name": "FUN_004bda60",
+      "function_size": 224,
+      "offset_in_function": 118
+    },
+    "0xbe4e2": {
+      "address": "0x004be4e2",
+      "function_start": "0x004be460",
+      "function_start_rva": "0xbe460",
+      "function_name": "FUN_004be460",
+      "function_size": 182,
+      "offset_in_function": 130
+    },
+    "0xbea36": {
+      "address": "0x004bea36",
+      "function_start": "0x004be7d0",
+      "function_start_rva": "0xbe7d0",
+      "function_name": "FUN_004be7d0",
+      "function_size": 3303,
+      "offset_in_function": 614
+    },
+    "0xbfc18": {
+      "address": "0x004bfc18",
+      "function_start": "0x004bf960",
+      "function_start_rva": "0xbf960",
+      "function_name": "FUN_004bf960",
+      "function_size": 989,
+      "offset_in_function": 696
+    },
+    "0xbfc29": {
+      "address": "0x004bfc29",
+      "function_start": "0x004bf960",
+      "function_start_rva": "0xbf960",
+      "function_name": "FUN_004bf960",
+      "function_size": 989,
+      "offset_in_function": 713
+    },
+    "0xbfc36": {
+      "address": "0x004bfc36",
+      "function_start": "0x004bf960",
+      "function_start_rva": "0xbf960",
+      "function_name": "FUN_004bf960",
+      "function_size": 989,
+      "offset_in_function": 726
+    },
+    "0xbfddb": {
+      "address": "0x004bfddb",
+      "function_start": "0x004bfd40",
+      "function_start_rva": "0xbfd40",
+      "function_name": "FUN_004bfd40",
+      "function_size": 897,
+      "offset_in_function": 155
+    },
+    "0xc1efe": {
+      "address": "0x004c1efe",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 7598
+    },
+    "0xc1ffc": {
+      "address": "0x004c1ffc",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 7852
+    },
+    "0xc20ce": {
+      "address": "0x004c20ce",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 8062
+    },
+    "0xc2136": {
+      "address": "0x004c2136",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 8166
+    },
+    "0xc213b": {
+      "address": "0x004c213b",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 8171
+    },
+    "0xc2143": {
+      "address": "0x004c2143",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 8179
+    },
+    "0xc226b": {
+      "address": "0x004c226b",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 8475
+    },
+    "0xc4000": {
+      "address": "0x004c4000",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 16048
+    },
+    "0xc403e": {
+      "address": "0x004c403e",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 16110
+    },
+    "0xc4068": {
+      "address": "0x004c4068",
+      "function_start": "0x004c0150",
+      "function_start_rva": "0xc0150",
+      "function_name": "FUN_004c0150",
+      "function_size": 16291,
+      "offset_in_function": 16152
+    },
+    "0xc4c8e": {
+      "address": "0x004c4c8e",
+      "function_start": "0x004c4750",
+      "function_start_rva": "0xc4750",
+      "function_name": "FUN_004c4750",
+      "function_size": 2065,
+      "offset_in_function": 1342
+    },
+    "0xc522d": {
+      "address": "0x004c522d",
+      "function_start": "0x004c4fc0",
+      "function_start_rva": "0xc4fc0",
+      "function_name": "FUN_004c4fc0",
+      "function_size": 647,
+      "offset_in_function": 621
+    },
+    "0xc55b6": {
+      "address": "0x004c55b6",
+      "function_start": "0x004c53d0",
+      "function_start_rva": "0xc53d0",
+      "function_name": "FUN_004c53d0",
+      "function_size": 502,
+      "offset_in_function": 486
+    },
+    "0xc6b70": {
+      "address": "0x004c6b70",
+      "function_start": "0x004c6aa0",
+      "function_start_rva": "0xc6aa0",
+      "function_name": "FUN_004c6aa0",
+      "function_size": 1026,
+      "offset_in_function": 208
+    },
+    "0xc6c23": {
+      "address": "0x004c6c23",
+      "function_start": "0x004c6aa0",
+      "function_start_rva": "0xc6aa0",
+      "function_name": "FUN_004c6aa0",
+      "function_size": 1026,
+      "offset_in_function": 387
+    },
+    "0xc6d4b": {
+      "address": "0x004c6d4b",
+      "function_start": "0x004c6aa0",
+      "function_start_rva": "0xc6aa0",
+      "function_name": "FUN_004c6aa0",
+      "function_size": 1026,
+      "offset_in_function": 683
+    },
+    "0xc6db5": {
+      "address": "0x004c6db5",
+      "function_start": "0x004c6aa0",
+      "function_start_rva": "0xc6aa0",
+      "function_name": "FUN_004c6aa0",
+      "function_size": 1026,
+      "offset_in_function": 789
+    },
+    "0xc6e61": {
+      "address": "0x004c6e61",
+      "function_start": "0x004c6aa0",
+      "function_start_rva": "0xc6aa0",
+      "function_name": "FUN_004c6aa0",
+      "function_size": 1026,
+      "offset_in_function": 961
+    },
+    "0xc7af5": {
+      "address": "0x004c7af5",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 37
+    },
+    "0xc7b08": {
+      "address": "0x004c7b08",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 56
+    },
+    "0xc7b1a": {
+      "address": "0x004c7b1a",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 74
+    },
+    "0xc7b2a": {
+      "address": "0x004c7b2a",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 90
+    },
+    "0xc7b2c": {
+      "address": "0x004c7b2c",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 92
+    },
+    "0xc7b3e": {
+      "address": "0x004c7b3e",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 110
+    },
+    "0xc7b5c": {
+      "address": "0x004c7b5c",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 140
+    },
+    "0xc7b72": {
+      "address": "0x004c7b72",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 162
+    },
+    "0xc7b78": {
+      "address": "0x004c7b78",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 168
+    },
+    "0xc7b7a": {
+      "address": "0x004c7b7a",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 170
+    },
+    "0xc7b94": {
+      "address": "0x004c7b94",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 196
+    },
+    "0xc7baa": {
+      "address": "0x004c7baa",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 218
+    },
+    "0xc7bd1": {
+      "address": "0x004c7bd1",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 257
+    },
+    "0xc7bd6": {
+      "address": "0x004c7bd6",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 262
+    },
+    "0xc7be7": {
+      "address": "0x004c7be7",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 279
+    },
+    "0xc7bf3": {
+      "address": "0x004c7bf3",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 291
+    },
+    "0xc7c00": {
+      "address": "0x004c7c00",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 304
+    },
+    "0xc7c28": {
+      "address": "0x004c7c28",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 344
+    },
+    "0xc7c5e": {
+      "address": "0x004c7c5e",
+      "function_start": "0x004c7ad0",
+      "function_start_rva": "0xc7ad0",
+      "function_name": "FUN_004c7ad0",
+      "function_size": 430,
+      "offset_in_function": 398
+    },
+    "0xc7ee3": {
+      "address": "0x004c7ee3",
+      "function_start": "0x004c7c80",
+      "function_start_rva": "0xc7c80",
+      "function_name": "FUN_004c7c80",
+      "function_size": 1516,
+      "offset_in_function": 611
+    },
+    "0xc7ee5": {
+      "address": "0x004c7ee5",
+      "function_start": "0x004c7c80",
+      "function_start_rva": "0xc7c80",
+      "function_name": "FUN_004c7c80",
+      "function_size": 1516,
+      "offset_in_function": 613
+    },
+    "0xc7ee7": {
+      "address": "0x004c7ee7",
+      "function_start": "0x004c7c80",
+      "function_start_rva": "0xc7c80",
+      "function_name": "FUN_004c7c80",
+      "function_size": 1516,
+      "offset_in_function": 615
+    },
+    "0xc8256": {
+      "address": "0x004c8256",
+      "function_start": "0x004c7c80",
+      "function_start_rva": "0xc7c80",
+      "function_name": "FUN_004c7c80",
+      "function_size": 1516,
+      "offset_in_function": 1494
+    },
+    "0xcac3e": {
+      "address": "0x004cac3e",
+      "function_start": "0x004cabc0",
+      "function_start_rva": "0xcabc0",
+      "function_name": "FUN_004cabc0",
+      "function_size": 713,
+      "offset_in_function": 126
+    },
+    "0xcac57": {
+      "address": "0x004cac57",
+      "function_start": "0x004cabc0",
+      "function_start_rva": "0xcabc0",
+      "function_name": "FUN_004cabc0",
+      "function_size": 713,
+      "offset_in_function": 151
+    },
+    "0xcac85": {
+      "address": "0x004cac85",
+      "function_start": "0x004cabc0",
+      "function_start_rva": "0xcabc0",
+      "function_name": "FUN_004cabc0",
+      "function_size": 713,
+      "offset_in_function": 197
+    },
+    "0xcacc1": {
+      "address": "0x004cacc1",
+      "function_start": "0x004cabc0",
+      "function_start_rva": "0xcabc0",
+      "function_name": "FUN_004cabc0",
+      "function_size": 713,
+      "offset_in_function": 257
+    },
+    "0xcad42": {
+      "address": "0x004cad42",
+      "function_start": "0x004cabc0",
+      "function_start_rva": "0xcabc0",
+      "function_name": "FUN_004cabc0",
+      "function_size": 713,
+      "offset_in_function": 386
+    },
+    "0xcae5a": {
+      "address": "0x004cae5a",
+      "function_start": "0x004cabc0",
+      "function_start_rva": "0xcabc0",
+      "function_name": "FUN_004cabc0",
+      "function_size": 713,
+      "offset_in_function": 666
+    },
+    "0xcae73": {
+      "address": "0x004cae73",
+      "function_start": "0x004cabc0",
+      "function_start_rva": "0xcabc0",
+      "function_name": "FUN_004cabc0",
+      "function_size": 713,
+      "offset_in_function": 691
+    },
+    "0xcf589": {
+      "address": "0x004cf589",
+      "function_start": "0x004cf460",
+      "function_start_rva": "0xcf460",
+      "function_name": "FUN_004cf460",
+      "function_size": 4033,
+      "offset_in_function": 297
+    },
+    "0xd0065": {
+      "address": "0x004d0065",
+      "function_start": "0x004cf460",
+      "function_start_rva": "0xcf460",
+      "function_name": "FUN_004cf460",
+      "function_size": 4033,
+      "offset_in_function": 3077
+    },
+    "0xd0145": {
+      "address": "0x004d0145",
+      "function_start": "0x004cf460",
+      "function_start_rva": "0xcf460",
+      "function_name": "FUN_004cf460",
+      "function_size": 4033,
+      "offset_in_function": 3301
+    },
+    "0xd0167": {
+      "address": "0x004d0167",
+      "function_start": "0x004cf460",
+      "function_start_rva": "0xcf460",
+      "function_name": "FUN_004cf460",
+      "function_size": 4033,
+      "offset_in_function": 3335
+    },
+    "0xd1dd0": {
+      "address": "0x004d1dd0",
+      "function_start": "0x004d1d40",
+      "function_start_rva": "0xd1d40",
+      "function_name": "FUN_004d1d40",
+      "function_size": 176,
+      "offset_in_function": 144
+    },
+    "0xd1e4e": {
+      "address": "0x004d1e4e",
+      "function_start": "0x004d1df0",
+      "function_start_rva": "0xd1df0",
+      "function_name": "FUN_004d1df0",
+      "function_size": 394,
+      "offset_in_function": 94
+    },
+    "0xd358f": {
+      "address": "0x004d358f",
+      "function_start": "0x004d34b0",
+      "function_start_rva": "0xd34b0",
+      "function_name": "FUN_004d34b0",
+      "function_size": 355,
+      "offset_in_function": 223
+    },
+    "0xd3a7f": {
+      "address": "0x004d3a7f",
+      "function_start": "0x004d3620",
+      "function_start_rva": "0xd3620",
+      "function_name": "FUN_004d3620",
+      "function_size": 1306,
+      "offset_in_function": 1119
+    },
+    "0xd5724": {
+      "address": "0x004d5724",
+      "function_start": "0x004d56d0",
+      "function_start_rva": "0xd56d0",
+      "function_name": "FUN_004d56d0",
+      "function_size": 743,
+      "offset_in_function": 84
+    },
+    "0xd58be": {
+      "address": "0x004d58be",
+      "function_start": "0x004d56d0",
+      "function_start_rva": "0xd56d0",
+      "function_name": "FUN_004d56d0",
+      "function_size": 743,
+      "offset_in_function": 494
+    },
+    "0xd590d": {
+      "address": "0x004d590d",
+      "function_start": "0x004d56d0",
+      "function_start_rva": "0xd56d0",
+      "function_name": "FUN_004d56d0",
+      "function_size": 743,
+      "offset_in_function": 573
+    },
+    "0xd597d": {
+      "address": "0x004d597d",
+      "function_start": "0x004d56d0",
+      "function_start_rva": "0xd56d0",
+      "function_name": "FUN_004d56d0",
+      "function_size": 743,
+      "offset_in_function": 685
+    },
+    "0xd598e": {
+      "address": "0x004d598e",
+      "function_start": "0x004d56d0",
+      "function_start_rva": "0xd56d0",
+      "function_name": "FUN_004d56d0",
+      "function_size": 743,
+      "offset_in_function": 702
+    },
+    "0xd5bc6": {
+      "address": "0x004d5bc6",
+      "function_start": "0x004d5a90",
+      "function_start_rva": "0xd5a90",
+      "function_name": "FUN_004d5a90",
+      "function_size": 3470,
+      "offset_in_function": 310
+    },
+    "0xd8494": {
+      "address": "0x004d8494",
+      "function_start": "0x004d8470",
+      "function_start_rva": "0xd8470",
+      "function_name": "FUN_004d8470",
+      "function_size": 250,
+      "offset_in_function": 36
+    },
+    "0xd9644": {
+      "address": "0x004d9644",
+      "function_start": "0x004d8f10",
+      "function_start_rva": "0xd8f10",
+      "function_name": "FUN_004d8f10",
+      "function_size": 6687,
+      "offset_in_function": 1844
+    },
+    "0xd96d6": {
+      "address": "0x004d96d6",
+      "function_start": "0x004d8f10",
+      "function_start_rva": "0xd8f10",
+      "function_name": "FUN_004d8f10",
+      "function_size": 6687,
+      "offset_in_function": 1990
+    },
+    "0xdac4a": {
+      "address": "0x004dac4a",
+      "function_start": "0x004dac30",
+      "function_start_rva": "0xdac30",
+      "function_name": "FUN_004dac30",
+      "function_size": 93,
+      "offset_in_function": 26
+    },
+    "0xdae13": {
+      "address": "0x004dae13",
+      "function_start": "0x004dac90",
+      "function_start_rva": "0xdac90",
+      "function_name": "FUN_004dac90",
+      "function_size": 1850,
+      "offset_in_function": 387
+    },
+    "0xdb046": {
+      "address": "0x004db046",
+      "function_start": "0x004dac90",
+      "function_start_rva": "0xdac90",
+      "function_name": "FUN_004dac90",
+      "function_size": 1850,
+      "offset_in_function": 950
+    },
+    "0xdb1fb": {
+      "address": "0x004db1fb",
+      "function_start": "0x004dac90",
+      "function_start_rva": "0xdac90",
+      "function_name": "FUN_004dac90",
+      "function_size": 1850,
+      "offset_in_function": 1387
+    },
+    "0xdb69b": {
+      "address": "0x004db69b",
+      "function_start": "0x004db520",
+      "function_start_rva": "0xdb520",
+      "function_name": "FUN_004db520",
+      "function_size": 587,
+      "offset_in_function": 379
+    },
+    "0xdb6d9": {
+      "address": "0x004db6d9",
+      "function_start": "0x004db520",
+      "function_start_rva": "0xdb520",
+      "function_name": "FUN_004db520",
+      "function_size": 587,
+      "offset_in_function": 441
+    },
+    "0xdc742": {
+      "address": "0x004dc742",
+      "function_start": "0x004dc540",
+      "function_start_rva": "0xdc540",
+      "function_name": "FUN_004dc540",
+      "function_size": 1096,
+      "offset_in_function": 514
+    },
+    "0xdc846": {
+      "address": "0x004dc846",
+      "function_start": "0x004dc540",
+      "function_start_rva": "0xdc540",
+      "function_name": "FUN_004dc540",
+      "function_size": 1096,
+      "offset_in_function": 774
+    },
+    "0xdc93d": {
+      "address": "0x004dc93d",
+      "function_start": "0x004dc540",
+      "function_start_rva": "0xdc540",
+      "function_name": "FUN_004dc540",
+      "function_size": 1096,
+      "offset_in_function": 1021
+    },
+    "0xdcffb": {
+      "address": "0x004dcffb",
+      "function_start": "0x004dced0",
+      "function_start_rva": "0xdced0",
+      "function_name": "FUN_004dced0",
+      "function_size": 773,
+      "offset_in_function": 299
+    },
+    "0xdd068": {
+      "address": "0x004dd068",
+      "function_start": "0x004dced0",
+      "function_start_rva": "0xdced0",
+      "function_name": "FUN_004dced0",
+      "function_size": 773,
+      "offset_in_function": 408
+    },
+    "0xdd59a": {
+      "address": "0x004dd59a",
+      "function_start": "0x004dd2c0",
+      "function_start_rva": "0xdd2c0",
+      "function_name": "FUN_004dd2c0",
+      "function_size": 1406,
+      "offset_in_function": 730
+    },
+    "0xdd6a2": {
+      "address": "0x004dd6a2",
+      "function_start": "0x004dd2c0",
+      "function_start_rva": "0xdd2c0",
+      "function_name": "FUN_004dd2c0",
+      "function_size": 1406,
+      "offset_in_function": 994
+    },
+    "0xde146": {
+      "address": "0x004de146",
+      "function_start": "0x004de060",
+      "function_start_rva": "0xde060",
+      "function_name": "FUN_004de060",
+      "function_size": 833,
+      "offset_in_function": 230
+    },
+    "0xdfdd0": {
+      "address": "0x004dfdd0",
+      "function_start": "0x004dfd80",
+      "function_start_rva": "0xdfd80",
+      "function_name": "FUN_004dfd80",
+      "function_size": 223,
+      "offset_in_function": 80
+    },
+    "0xdfdf0": {
+      "address": "0x004dfdf0",
+      "function_start": "0x004dfd80",
+      "function_start_rva": "0xdfd80",
+      "function_name": "FUN_004dfd80",
+      "function_size": 223,
+      "offset_in_function": 112
+    },
+    "0xdfe29": {
+      "address": "0x004dfe29",
+      "function_start": "0x004dfd80",
+      "function_start_rva": "0xdfd80",
+      "function_name": "FUN_004dfd80",
+      "function_size": 223,
+      "offset_in_function": 169
+    },
+    "0xdff7f": {
+      "address": "0x004dff7f",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 143
+    },
+    "0xdff86": {
+      "address": "0x004dff86",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 150
+    },
+    "0xdff92": {
+      "address": "0x004dff92",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 162
+    },
+    "0xe00ce": {
+      "address": "0x004e00ce",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 478
+    },
+    "0xe00ed": {
+      "address": "0x004e00ed",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 509
+    },
+    "0xe00ef": {
+      "address": "0x004e00ef",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 511
+    },
+    "0xe00f3": {
+      "address": "0x004e00f3",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 515
+    },
+    "0xe010c": {
+      "address": "0x004e010c",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 540
+    },
+    "0xe011b": {
+      "address": "0x004e011b",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 555
+    },
+    "0xe0124": {
+      "address": "0x004e0124",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 564
+    },
+    "0xe0132": {
+      "address": "0x004e0132",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 578
+    },
+    "0xe0175": {
+      "address": "0x004e0175",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 645
+    },
+    "0xe0179": {
+      "address": "0x004e0179",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 649
+    },
+    "0xe01a4": {
+      "address": "0x004e01a4",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 692
+    },
+    "0xe01bc": {
+      "address": "0x004e01bc",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 716
+    },
+    "0xe01ca": {
+      "address": "0x004e01ca",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 730
+    },
+    "0xe01ce": {
+      "address": "0x004e01ce",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 734
+    },
+    "0xe01f2": {
+      "address": "0x004e01f2",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 770
+    },
+    "0xe021a": {
+      "address": "0x004e021a",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 810
+    },
+    "0xe02b8": {
+      "address": "0x004e02b8",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 968
+    },
+    "0xe02e0": {
+      "address": "0x004e02e0",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1008
+    },
+    "0xe0323": {
+      "address": "0x004e0323",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1075
+    },
+    "0xe033e": {
+      "address": "0x004e033e",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1102
+    },
+    "0xe0344": {
+      "address": "0x004e0344",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1108
+    },
+    "0xe036a": {
+      "address": "0x004e036a",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1146
+    },
+    "0xe0373": {
+      "address": "0x004e0373",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1155
+    },
+    "0xe0381": {
+      "address": "0x004e0381",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1169
+    },
+    "0xe038c": {
+      "address": "0x004e038c",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1180
+    },
+    "0xe03a0": {
+      "address": "0x004e03a0",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1200
+    },
+    "0xe03b1": {
+      "address": "0x004e03b1",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1217
+    },
+    "0xe03c9": {
+      "address": "0x004e03c9",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1241
+    },
+    "0xe03d5": {
+      "address": "0x004e03d5",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1253
+    },
+    "0xe03db": {
+      "address": "0x004e03db",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1259
+    },
+    "0xe03e7": {
+      "address": "0x004e03e7",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1271
+    },
+    "0xe0405": {
+      "address": "0x004e0405",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1301
+    },
+    "0xe040f": {
+      "address": "0x004e040f",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1311
+    },
+    "0xe0411": {
+      "address": "0x004e0411",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1313
+    },
+    "0xe042d": {
+      "address": "0x004e042d",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1341
+    },
+    "0xe0570": {
+      "address": "0x004e0570",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1664
+    },
+    "0xe058b": {
+      "address": "0x004e058b",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1691
+    },
+    "0xe0591": {
+      "address": "0x004e0591",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1697
+    },
+    "0xe05b5": {
+      "address": "0x004e05b5",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1733
+    },
+    "0xe05be": {
+      "address": "0x004e05be",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1742
+    },
+    "0xe05c0": {
+      "address": "0x004e05c0",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1744
+    },
+    "0xe05cc": {
+      "address": "0x004e05cc",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1756
+    },
+    "0xe05ce": {
+      "address": "0x004e05ce",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1758
+    },
+    "0xe05d3": {
+      "address": "0x004e05d3",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1763
+    },
+    "0xe05d9": {
+      "address": "0x004e05d9",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1769
+    },
+    "0xe0672": {
+      "address": "0x004e0672",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1922
+    },
+    "0xe0678": {
+      "address": "0x004e0678",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1928
+    },
+    "0xe06a8": {
+      "address": "0x004e06a8",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1976
+    },
+    "0xe06bc": {
+      "address": "0x004e06bc",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 1996
+    },
+    "0xe074b": {
+      "address": "0x004e074b",
+      "function_start": "0x004dfef0",
+      "function_start_rva": "0xdfef0",
+      "function_name": "FUN_004dfef0",
+      "function_size": 2162,
+      "offset_in_function": 2139
+    },
+    "0xe0775": {
+      "address": "0x004e0775",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 5
+    },
+    "0xe0778": {
+      "address": "0x004e0778",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 8
+    },
+    "0xe0780": {
+      "address": "0x004e0780",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 16
+    },
+    "0xe0783": {
+      "address": "0x004e0783",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 19
+    },
+    "0xe078b": {
+      "address": "0x004e078b",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 27
+    },
+    "0xe078e": {
+      "address": "0x004e078e",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 30
+    },
+    "0xe0797": {
+      "address": "0x004e0797",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 39
+    },
+    "0xe07a0": {
+      "address": "0x004e07a0",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 48
+    },
+    "0xe07a6": {
+      "address": "0x004e07a6",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 54
+    },
+    "0xe07a9": {
+      "address": "0x004e07a9",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 57
+    },
+    "0xe07b2": {
+      "address": "0x004e07b2",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 66
+    },
+    "0xe07bb": {
+      "address": "0x004e07bb",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 75
+    },
+    "0xe07c1": {
+      "address": "0x004e07c1",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 81
+    },
+    "0xe07c4": {
+      "address": "0x004e07c4",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 84
+    },
+    "0xe07cd": {
+      "address": "0x004e07cd",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 93
+    },
+    "0xe07d6": {
+      "address": "0x004e07d6",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 102
+    },
+    "0xe07df": {
+      "address": "0x004e07df",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 111
+    },
+    "0xe07e6": {
+      "address": "0x004e07e6",
+      "function_start": "0x004e0770",
+      "function_start_rva": "0xe0770",
+      "function_name": "FUN_004e0770",
+      "function_size": 121,
+      "offset_in_function": 118
+    },
+    "0xe0819": {
+      "address": "0x004e0819",
+      "function_start": "0x004e07f0",
+      "function_start_rva": "0xe07f0",
+      "function_name": "FUN_004e07f0",
+      "function_size": 82,
+      "offset_in_function": 41
+    },
+    "0xe088e": {
+      "address": "0x004e088e",
+      "function_start": "0x004e0850",
+      "function_start_rva": "0xe0850",
+      "function_name": "FUN_004e0850",
+      "function_size": 644,
+      "offset_in_function": 62
+    },
+    "0xe0b1f": {
+      "address": "0x004e0b1f",
+      "function_start": "0x004e0ae0",
+      "function_start_rva": "0xe0ae0",
+      "function_name": "FUN_004e0ae0",
+      "function_size": 270,
+      "offset_in_function": 63
+    },
+    "0xe0e7d": {
+      "address": "0x004e0e7d",
+      "function_start": "0x004e0e70",
+      "function_start_rva": "0xe0e70",
+      "function_name": "FUN_004e0e70",
+      "function_size": 141,
+      "offset_in_function": 13
+    },
+    "0xe1145": {
+      "address": "0x004e1145",
+      "function_start": "0x004e0f00",
+      "function_start_rva": "0xe0f00",
+      "function_name": "FUN_004e0f00",
+      "function_size": 697,
+      "offset_in_function": 581
+    },
+    "0xe1511": {
+      "address": "0x004e1511",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 753
+    },
+    "0xe1538": {
+      "address": "0x004e1538",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 792
+    },
+    "0xe155c": {
+      "address": "0x004e155c",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 828
+    },
+    "0xe157d": {
+      "address": "0x004e157d",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 861
+    },
+    "0xe1583": {
+      "address": "0x004e1583",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 867
+    },
+    "0xe1585": {
+      "address": "0x004e1585",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 869
+    },
+    "0xe158a": {
+      "address": "0x004e158a",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 874
+    },
+    "0xe158c": {
+      "address": "0x004e158c",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 876
+    },
+    "0xe1592": {
+      "address": "0x004e1592",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 882
+    },
+    "0xe159a": {
+      "address": "0x004e159a",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 890
+    },
+    "0xe15a0": {
+      "address": "0x004e15a0",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 896
+    },
+    "0xe15a2": {
+      "address": "0x004e15a2",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 898
+    },
+    "0xe15a8": {
+      "address": "0x004e15a8",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 904
+    },
+    "0xe15ae": {
+      "address": "0x004e15ae",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 910
+    },
+    "0xe15b0": {
+      "address": "0x004e15b0",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 912
+    },
+    "0xe15b3": {
+      "address": "0x004e15b3",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 915
+    },
+    "0xe15b6": {
+      "address": "0x004e15b6",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 918
+    },
+    "0xe15b8": {
+      "address": "0x004e15b8",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 920
+    },
+    "0xe15ba": {
+      "address": "0x004e15ba",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 922
+    },
+    "0xe15e2": {
+      "address": "0x004e15e2",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 962
+    },
+    "0xe15e4": {
+      "address": "0x004e15e4",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 964
+    },
+    "0xe15fb": {
+      "address": "0x004e15fb",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 987
+    },
+    "0xe1614": {
+      "address": "0x004e1614",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1012
+    },
+    "0xe162d": {
+      "address": "0x004e162d",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1037
+    },
+    "0xe1645": {
+      "address": "0x004e1645",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1061
+    },
+    "0xe164b": {
+      "address": "0x004e164b",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1067
+    },
+    "0xe164d": {
+      "address": "0x004e164d",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1069
+    },
+    "0xe1653": {
+      "address": "0x004e1653",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1075
+    },
+    "0xe1655": {
+      "address": "0x004e1655",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1077
+    },
+    "0xe1658": {
+      "address": "0x004e1658",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1080
+    },
+    "0xe165b": {
+      "address": "0x004e165b",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1083
+    },
+    "0xe1661": {
+      "address": "0x004e1661",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1089
+    },
+    "0xe1663": {
+      "address": "0x004e1663",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1091
+    },
+    "0xe1666": {
+      "address": "0x004e1666",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1094
+    },
+    "0xe1669": {
+      "address": "0x004e1669",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1097
+    },
+    "0xe166b": {
+      "address": "0x004e166b",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1099
+    },
+    "0xe1671": {
+      "address": "0x004e1671",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1105
+    },
+    "0xe1677": {
+      "address": "0x004e1677",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1111
+    },
+    "0xe1679": {
+      "address": "0x004e1679",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1113
+    },
+    "0xe167f": {
+      "address": "0x004e167f",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1119
+    },
+    "0xe1681": {
+      "address": "0x004e1681",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1121
+    },
+    "0xe1683": {
+      "address": "0x004e1683",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1123
+    },
+    "0xe1696": {
+      "address": "0x004e1696",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1142
+    },
+    "0xe16ab": {
+      "address": "0x004e16ab",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1163
+    },
+    "0xe16ad": {
+      "address": "0x004e16ad",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1165
+    },
+    "0xe16c4": {
+      "address": "0x004e16c4",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1188
+    },
+    "0xe16dd": {
+      "address": "0x004e16dd",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1213
+    },
+    "0xe16f6": {
+      "address": "0x004e16f6",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1238
+    },
+    "0xe170c": {
+      "address": "0x004e170c",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1260
+    },
+    "0xe170f": {
+      "address": "0x004e170f",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1263
+    },
+    "0xe1714": {
+      "address": "0x004e1714",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1268
+    },
+    "0xe1716": {
+      "address": "0x004e1716",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1270
+    },
+    "0xe1719": {
+      "address": "0x004e1719",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1273
+    },
+    "0xe171c": {
+      "address": "0x004e171c",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1276
+    },
+    "0xe171e": {
+      "address": "0x004e171e",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1278
+    },
+    "0xe1724": {
+      "address": "0x004e1724",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1284
+    },
+    "0xe172a": {
+      "address": "0x004e172a",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1290
+    },
+    "0xe172c": {
+      "address": "0x004e172c",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1292
+    },
+    "0xe1732": {
+      "address": "0x004e1732",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1298
+    },
+    "0xe1734": {
+      "address": "0x004e1734",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1300
+    },
+    "0xe173a": {
+      "address": "0x004e173a",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1306
+    },
+    "0xe1740": {
+      "address": "0x004e1740",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1312
+    },
+    "0xe1742": {
+      "address": "0x004e1742",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1314
+    },
+    "0xe1748": {
+      "address": "0x004e1748",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1320
+    },
+    "0xe174a": {
+      "address": "0x004e174a",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1322
+    },
+    "0xe174c": {
+      "address": "0x004e174c",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1324
+    },
+    "0xe175f": {
+      "address": "0x004e175f",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1343
+    },
+    "0xe1770": {
+      "address": "0x004e1770",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1360
+    },
+    "0xe1772": {
+      "address": "0x004e1772",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1362
+    },
+    "0xe1787": {
+      "address": "0x004e1787",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1383
+    },
+    "0xe179e": {
+      "address": "0x004e179e",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1406
+    },
+    "0xe17b1": {
+      "address": "0x004e17b1",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1425
+    },
+    "0xe17db": {
+      "address": "0x004e17db",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1467
+    },
+    "0xe17e0": {
+      "address": "0x004e17e0",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1472
+    },
+    "0xe17e4": {
+      "address": "0x004e17e4",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1476
+    },
+    "0xe17e8": {
+      "address": "0x004e17e8",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1480
+    },
+    "0xe17ea": {
+      "address": "0x004e17ea",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1482
+    },
+    "0xe1818": {
+      "address": "0x004e1818",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1528
+    },
+    "0xe1836": {
+      "address": "0x004e1836",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1558
+    },
+    "0xe18d2": {
+      "address": "0x004e18d2",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1714
+    },
+    "0xe197d": {
+      "address": "0x004e197d",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 1885
+    },
+    "0xe1a18": {
+      "address": "0x004e1a18",
+      "function_start": "0x004e1220",
+      "function_start_rva": "0xe1220",
+      "function_name": "FUN_004e1220",
+      "function_size": 2267,
+      "offset_in_function": 2040
+    },
+    "0xe1bc5": {
+      "address": "0x004e1bc5",
+      "function_start": "0x004e1b00",
+      "function_start_rva": "0xe1b00",
+      "function_name": "FUN_004e1b00",
+      "function_size": 1256,
+      "offset_in_function": 197
+    },
+    "0xe1ca2": {
+      "address": "0x004e1ca2",
+      "function_start": "0x004e1b00",
+      "function_start_rva": "0xe1b00",
+      "function_name": "FUN_004e1b00",
+      "function_size": 1256,
+      "offset_in_function": 418
+    },
+    "0xe1d57": {
+      "address": "0x004e1d57",
+      "function_start": "0x004e1b00",
+      "function_start_rva": "0xe1b00",
+      "function_name": "FUN_004e1b00",
+      "function_size": 1256,
+      "offset_in_function": 599
+    },
+    "0xe25a8": {
+      "address": "0x004e25a8",
+      "function_start": "0x004e2530",
+      "function_start_rva": "0xe2530",
+      "function_name": "FUN_004e2530",
+      "function_size": 583,
+      "offset_in_function": 120
+    },
+    "0xe3331": {
+      "address": "0x004e3331",
+      "function_start": "0x004e3280",
+      "function_start_rva": "0xe3280",
+      "function_name": "FUN_004e3280",
+      "function_size": 1582,
+      "offset_in_function": 177
+    },
+    "0xe33a5": {
+      "address": "0x004e33a5",
+      "function_start": "0x004e3280",
+      "function_start_rva": "0xe3280",
+      "function_name": "FUN_004e3280",
+      "function_size": 1582,
+      "offset_in_function": 293
+    },
+    "0xe349f": {
+      "address": "0x004e349f",
+      "function_start": "0x004e3280",
+      "function_start_rva": "0xe3280",
+      "function_name": "FUN_004e3280",
+      "function_size": 1582,
+      "offset_in_function": 543
+    },
+    "0xe34cd": {
+      "address": "0x004e34cd",
+      "function_start": "0x004e3280",
+      "function_start_rva": "0xe3280",
+      "function_name": "FUN_004e3280",
+      "function_size": 1582,
+      "offset_in_function": 589
+    },
+    "0xe3694": {
+      "address": "0x004e3694",
+      "function_start": "0x004e3280",
+      "function_start_rva": "0xe3280",
+      "function_name": "FUN_004e3280",
+      "function_size": 1582,
+      "offset_in_function": 1044
+    },
+    "0xe574b": {
+      "address": "0x004e574b",
+      "function_start": "0x004e5540",
+      "function_start_rva": "0xe5540",
+      "function_name": "FUN_004e5540",
+      "function_size": 664,
+      "offset_in_function": 523
+    },
+    "0xe6a4c": {
+      "address": "0x004e6a4c",
+      "function_start": "0x004e6a40",
+      "function_start_rva": "0xe6a40",
+      "function_name": "FUN_004e6a40",
+      "function_size": 61,
+      "offset_in_function": 12
+    },
+    "0xe6a75": {
+      "address": "0x004e6a75",
+      "function_start": "0x004e6a40",
+      "function_start_rva": "0xe6a40",
+      "function_name": "FUN_004e6a40",
+      "function_size": 61,
+      "offset_in_function": 53
+    },
+    "0xe6bb1": {
+      "address": "0x004e6bb1",
+      "function_start": "0x004e6b70",
+      "function_start_rva": "0xe6b70",
+      "function_name": "FUN_004e6b70",
+      "function_size": 69,
+      "offset_in_function": 65
+    },
+    "0xe6dd0": {
+      "address": "0x004e6dd0",
+      "function_start": "0x004e6db0",
+      "function_start_rva": "0xe6db0",
+      "function_name": "FUN_004e6db0",
+      "function_size": 91,
+      "offset_in_function": 32
+    },
+    "0xe8d64": {
+      "address": "0x004e8d64",
+      "function_start": "0x004e8880",
+      "function_start_rva": "0xe8880",
+      "function_name": "FUN_004e8880",
+      "function_size": 1409,
+      "offset_in_function": 1252
+    },
+    "0xe8da9": {
+      "address": "0x004e8da9",
+      "function_start": "0x004e8880",
+      "function_start_rva": "0xe8880",
+      "function_name": "FUN_004e8880",
+      "function_size": 1409,
+      "offset_in_function": 1321
+    },
+    "0xe9260": {
+      "address": "0x004e9260",
+      "function_start": "0x004e9210",
+      "function_start_rva": "0xe9210",
+      "function_name": "FUN_004e9210",
+      "function_size": 204,
+      "offset_in_function": 80
+    },
+    "0xe9274": {
+      "address": "0x004e9274",
+      "function_start": "0x004e9210",
+      "function_start_rva": "0xe9210",
+      "function_name": "FUN_004e9210",
+      "function_size": 204,
+      "offset_in_function": 100
+    },
+    "0xe928b": {
+      "address": "0x004e928b",
+      "function_start": "0x004e9210",
+      "function_start_rva": "0xe9210",
+      "function_name": "FUN_004e9210",
+      "function_size": 204,
+      "offset_in_function": 123
+    },
+    "0xe943a": {
+      "address": "0x004e943a",
+      "function_start": "0x004e9420",
+      "function_start_rva": "0xe9420",
+      "function_name": "FUN_004e9420",
+      "function_size": 66,
+      "offset_in_function": 26
+    },
+    "0xe9461": {
+      "address": "0x004e9461",
+      "function_start": "0x004e9420",
+      "function_start_rva": "0xe9420",
+      "function_name": "FUN_004e9420",
+      "function_size": 66,
+      "offset_in_function": 65
+    },
+    "0xe9ea1": {
+      "address": "0x004e9ea1",
+      "function_start": "0x004e9e20",
+      "function_start_rva": "0xe9e20",
+      "function_name": "FUN_004e9e20",
+      "function_size": 333,
+      "offset_in_function": 129
+    },
+    "0xe9f1b": {
+      "address": "0x004e9f1b",
+      "function_start": "0x004e9e20",
+      "function_start_rva": "0xe9e20",
+      "function_name": "FUN_004e9e20",
+      "function_size": 333,
+      "offset_in_function": 251
+    },
+    "0xe9f26": {
+      "address": "0x004e9f26",
+      "function_start": "0x004e9e20",
+      "function_start_rva": "0xe9e20",
+      "function_name": "FUN_004e9e20",
+      "function_size": 333,
+      "offset_in_function": 262
+    },
+    "0xe9f3e": {
+      "address": "0x004e9f3e",
+      "function_start": "0x004e9e20",
+      "function_start_rva": "0xe9e20",
+      "function_name": "FUN_004e9e20",
+      "function_size": 333,
+      "offset_in_function": 286
+    },
+    "0xeb000": {
+      "address": "0x004eb000",
+      "function_start": "0x004eafc0",
+      "function_start_rva": "0xeafc0",
+      "function_name": "FUN_004eafc0",
+      "function_size": 79,
+      "offset_in_function": 64
+    },
+    "0xeb00d": {
+      "address": "0x004eb00d",
+      "function_start": "0x004eafc0",
+      "function_start_rva": "0xeafc0",
+      "function_name": "FUN_004eafc0",
+      "function_size": 79,
+      "offset_in_function": 77
+    },
+    "0xeb9fb": {
+      "address": "0x004eb9fb",
+      "function_start": "0x004eb930",
+      "function_start_rva": "0xeb930",
+      "function_name": "FUN_004eb930",
+      "function_size": 485,
+      "offset_in_function": 203
+    },
+    "0xec526": {
+      "address": "0x004ec526",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 150
+    },
+    "0xec529": {
+      "address": "0x004ec529",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 153
+    },
+    "0xec54c": {
+      "address": "0x004ec54c",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 188
+    },
+    "0xec54e": {
+      "address": "0x004ec54e",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 190
+    },
+    "0xec58f": {
+      "address": "0x004ec58f",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 255
+    },
+    "0xec5a4": {
+      "address": "0x004ec5a4",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 276
+    },
+    "0xec5a6": {
+      "address": "0x004ec5a6",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 278
+    },
+    "0xec5aa": {
+      "address": "0x004ec5aa",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 282
+    },
+    "0xec5d4": {
+      "address": "0x004ec5d4",
+      "function_start": "0x004ec490",
+      "function_start_rva": "0xec490",
+      "function_name": "FUN_004ec490",
+      "function_size": 401,
+      "offset_in_function": 324
+    },
+    "0xed327": {
+      "address": "0x004ed327",
+      "function_start": "0x004ec9e0",
+      "function_start_rva": "0xec9e0",
+      "function_name": "FUN_004ec9e0",
+      "function_size": 3412,
+      "offset_in_function": 2375
+    },
+    "0xed674": {
+      "address": "0x004ed674",
+      "function_start": "0x004ec9e0",
+      "function_start_rva": "0xec9e0",
+      "function_name": "FUN_004ec9e0",
+      "function_size": 3412,
+      "offset_in_function": 3220
+    },
+    "0xed894": {
+      "address": "0x004ed894",
+      "function_start": "0x004ed750",
+      "function_start_rva": "0xed750",
+      "function_name": "FUN_004ed750",
+      "function_size": 1687,
+      "offset_in_function": 324
+    },
+    "0xee315": {
+      "address": "0x004ee315",
+      "function_start": "0x004ee2d0",
+      "function_start_rva": "0xee2d0",
+      "function_name": "FUN_004ee2d0",
+      "function_size": 137,
+      "offset_in_function": 69
+    },
+    "0xee370": {
+      "address": "0x004ee370",
+      "function_start": "0x004ee360",
+      "function_start_rva": "0xee360",
+      "function_name": "FUN_004ee360",
+      "function_size": 60,
+      "offset_in_function": 16
+    },
+    "0xee379": {
+      "address": "0x004ee379",
+      "function_start": "0x004ee360",
+      "function_start_rva": "0xee360",
+      "function_name": "FUN_004ee360",
+      "function_size": 60,
+      "offset_in_function": 25
+    },
+    "0xeeaf9": {
+      "address": "0x004eeaf9",
+      "function_start": "0x004eeab0",
+      "function_start_rva": "0xeeab0",
+      "function_name": "FUN_004eeab0",
+      "function_size": 80,
+      "offset_in_function": 73
+    },
+    "0xefbf0": {
+      "address": "0x004efbf0",
+      "function_start": "0x004efbf0",
+      "function_start_rva": "0xefbf0",
+      "function_name": "FUN_004efbf0",
+      "function_size": 208,
+      "offset_in_function": 0
+    },
+    "0xefcbf": {
+      "address": "0x004efcbf",
+      "function_start": "0x004efbf0",
+      "function_start_rva": "0xefbf0",
+      "function_name": "FUN_004efbf0",
+      "function_size": 208,
+      "offset_in_function": 207
+    },
+    "0xefd0e": {
+      "address": "0x004efd0e",
+      "function_start": "0x004efcc0",
+      "function_start_rva": "0xefcc0",
+      "function_name": "FUN_004efcc0",
+      "function_size": 101,
+      "offset_in_function": 78
+    },
+    "0xefd99": {
+      "address": "0x004efd99",
+      "function_start": "0x004efd30",
+      "function_start_rva": "0xefd30",
+      "function_name": "FUN_004efd30",
+      "function_size": 106,
+      "offset_in_function": 105
+    },
+    "0xf018f": {
+      "address": "0x004f018f",
+      "function_start": "0x004f0110",
+      "function_start_rva": "0xf0110",
+      "function_name": "FUN_004f0110",
+      "function_size": 302,
+      "offset_in_function": 127
+    },
+    "0xf01d2": {
+      "address": "0x004f01d2",
+      "function_start": "0x004f0110",
+      "function_start_rva": "0xf0110",
+      "function_name": "FUN_004f0110",
+      "function_size": 302,
+      "offset_in_function": 194
+    },
+    "0xf01d6": {
+      "address": "0x004f01d6",
+      "function_start": "0x004f0110",
+      "function_start_rva": "0xf0110",
+      "function_name": "FUN_004f0110",
+      "function_size": 302,
+      "offset_in_function": 198
+    },
+    "0xf0207": {
+      "address": "0x004f0207",
+      "function_start": "0x004f0110",
+      "function_start_rva": "0xf0110",
+      "function_name": "FUN_004f0110",
+      "function_size": 302,
+      "offset_in_function": 247
+    },
+    "0xf0209": {
+      "address": "0x004f0209",
+      "function_start": "0x004f0110",
+      "function_start_rva": "0xf0110",
+      "function_name": "FUN_004f0110",
+      "function_size": 302,
+      "offset_in_function": 249
+    },
+    "0xf020b": {
+      "address": "0x004f020b",
+      "function_start": "0x004f0110",
+      "function_start_rva": "0xf0110",
+      "function_name": "FUN_004f0110",
+      "function_size": 302,
+      "offset_in_function": 251
+    },
+    "0xf02b0": {
+      "address": "0x004f02b0",
+      "function_start": "0x004f0270",
+      "function_start_rva": "0xf0270",
+      "function_name": "FUN_004f0270",
+      "function_size": 273,
+      "offset_in_function": 64
+    },
+    "0xf0b47": {
+      "address": "0x004f0b47",
+      "function_start": "0x004f0ad0",
+      "function_start_rva": "0xf0ad0",
+      "function_name": "FUN_004f0ad0",
+      "function_size": 292,
+      "offset_in_function": 119
+    },
+    "0xf0bbe": {
+      "address": "0x004f0bbe",
+      "function_start": "0x004f0ad0",
+      "function_start_rva": "0xf0ad0",
+      "function_name": "FUN_004f0ad0",
+      "function_size": 292,
+      "offset_in_function": 238
+    },
+    "0xf2a5d": {
+      "address": "0x004f2a5d",
+      "function_start": "0x004f2920",
+      "function_start_rva": "0xf2920",
+      "function_name": "FUN_004f2920",
+      "function_size": 545,
+      "offset_in_function": 317
+    },
+    "0xf2a65": {
+      "address": "0x004f2a65",
+      "function_start": "0x004f2920",
+      "function_start_rva": "0xf2920",
+      "function_name": "FUN_004f2920",
+      "function_size": 545,
+      "offset_in_function": 325
+    },
+    "0xf371d": {
+      "address": "0x004f371d",
+      "function_start": "0x004f3510",
+      "function_start_rva": "0xf3510",
+      "function_name": "FUN_004f3510",
+      "function_size": 944,
+      "offset_in_function": 525
+    },
+    "0xf5015": {
+      "address": "0x004f5015",
+      "function_start": "0x004f4fc0",
+      "function_start_rva": "0xf4fc0",
+      "function_name": "FUN_004f4fc0",
+      "function_size": 128,
+      "offset_in_function": 85
+    },
+    "0xf960f": {
+      "address": "0x004f960f",
+      "function_start": "0x004f95d0",
+      "function_start_rva": "0xf95d0",
+      "function_name": "FUN_004f95d0",
+      "function_size": 326,
+      "offset_in_function": 63
+    },
+    "0xfae40": {
+      "address": "0x004fae40",
+      "function_start": "0x004fae40",
+      "function_start_rva": "0xfae40",
+      "function_name": "gzread",
+      "function_size": 6,
+      "offset_in_function": 0
+    },
+    "0xfaef4": {
+      "address": "0x004faef4",
+      "function_start": "0x004faef4",
+      "function_start_rva": "0xfaef4",
+      "function_name": "D3DXVec3Normalize",
+      "function_size": 6,
+      "offset_in_function": 0
+    },
+    "0x10e21e": {
+      "address": "0x0050e21e",
+      "function_start": "0x0050e1b0",
+      "function_start_rva": "0x10e1b0",
+      "function_name": "_free",
+      "function_size": 133,
+      "offset_in_function": 110
+    },
+    "0x10e23d": {
+      "address": "0x0050e23d",
+      "function_start": "0x0050e1b0",
+      "function_start_rva": "0x10e1b0",
+      "function_name": "_free",
+      "function_size": 133,
+      "offset_in_function": 141
+    },
+    "0x10f7b8": {
+      "address": "0x0050f7b8",
+      "function_start": "0x0050f786",
+      "function_start_rva": "0x10f786",
+      "function_name": "_memcpy_s",
+      "function_size": 123,
+      "offset_in_function": 50
+    },
+    "0x1112c4": {
+      "address": "0x005112c4",
+      "function_start": "0x005112c4",
+      "function_start_rva": "0x1112c4",
+      "function_name": "_malloc",
+      "function_size": 195,
+      "offset_in_function": 0
+    },
+    "0x11133c": {
+      "address": "0x0051133c",
+      "function_start": "0x005112c4",
+      "function_start_rva": "0x1112c4",
+      "function_name": "_malloc",
+      "function_size": 195,
+      "offset_in_function": 120
+    },
+    "0x11133e": {
+      "address": "0x0051133e",
+      "function_start": "0x005112c4",
+      "function_start_rva": "0x1112c4",
+      "function_name": "_malloc",
+      "function_size": 195,
+      "offset_in_function": 122
+    },
+    "0x111987": {
+      "address": "0x00511987",
+      "function_start": "0x0051192a",
+      "function_start_rva": "0x11192a",
+      "function_name": "__findnext64i32",
+      "function_size": 300,
+      "offset_in_function": 93
+    },
+    "0x11204f": {
+      "address": "0x0051204f",
+      "function_start": "0x00511f77",
+      "function_start_rva": "0x111f77",
+      "function_name": "FUN_00511f77",
+      "function_size": 518,
+      "offset_in_function": 216
+    },
+    "0x1121d1": {
+      "address": "0x005121d1",
+      "function_start": "0x0051217d",
+      "function_start_rva": "0x11217d",
+      "function_name": "_fread_s",
+      "function_size": 140,
+      "offset_in_function": 84
+    },
+    "0x112ae3": {
+      "address": "0x00512ae3",
+      "function_start": "0x00512a5a",
+      "function_start_rva": "0x112a5a",
+      "function_name": "__vsnprintf_l",
+      "function_size": 177,
+      "offset_in_function": 137
+    },
+    "0x114f24": {
+      "address": "0x00514f24",
+      "function_start": "0x00514ea4",
+      "function_start_rva": "0x114ea4",
+      "function_name": "_setlocale",
+      "function_size": 329,
+      "offset_in_function": 128
+    },
+    "0x1159a8": {
+      "address": "0x005159a8",
+      "function_start": "0x00515810",
+      "function_start_rva": "0x115810",
+      "function_name": "_memcpy",
+      "function_size": 711,
+      "offset_in_function": 408
+    },
+    "0x117a80": {
+      "address": "0x00517a80",
+      "function_start": "0x00517a73",
+      "function_start_rva": "0x117a73",
+      "function_name": "___ascii_stricmp",
+      "function_size": 53,
+      "offset_in_function": 13
+    },
+    "0x117a8f": {
+      "address": "0x00517a8f",
+      "function_start": "0x00517a73",
+      "function_start_rva": "0x117a73",
+      "function_name": "___ascii_stricmp",
+      "function_size": 53,
+      "offset_in_function": 28
+    },
+    "0x117bdc": {
+      "address": "0x00517bdc",
+      "function_start": "0x00517bcb",
+      "function_start_rva": "0x117bcb",
+      "function_name": "__isleadbyte_l",
+      "function_size": 54,
+      "offset_in_function": 17
+    },
+    "0x117da2": {
+      "address": "0x00517da2",
+      "function_start": "0x00517d8f",
+      "function_start_rva": "0x117d8f",
+      "function_name": "FUN_00517d8f",
+      "function_size": 21,
+      "offset_in_function": 19
+    },
+    "0x1189e0": {
+      "address": "0x005189e0",
+      "function_start": "0x005189dd",
+      "function_start_rva": "0x1189dd",
+      "function_name": "__SEH_epilog4",
+      "function_size": 20,
+      "offset_in_function": 3
+    },
+    "0x118e27": {
+      "address": "0x00518e27",
+      "function_start": "0x00518de0",
+      "function_start_rva": "0x118de0",
+      "function_name": "_memset",
+      "function_size": 122,
+      "offset_in_function": 71
+    },
+    "0x118e3f": {
+      "address": "0x00518e3f",
+      "function_start": "0x00518de0",
+      "function_start_rva": "0x118de0",
+      "function_name": "_memset",
+      "function_size": 122,
+      "offset_in_function": 95
+    },
+    "0x119d21": {
+      "address": "0x00519d21",
+      "function_start": "0x00519434",
+      "function_start_rva": "0x119434",
+      "function_name": "FUN_00519434",
+      "function_size": 2420,
+      "offset_in_function": 2285
+    },
+    "0x119da0": {
+      "address": "0x00519da0",
+      "function_start": "0x00519434",
+      "function_start_rva": "0x119434",
+      "function_name": "FUN_00519434",
+      "function_size": 2420,
+      "offset_in_function": 2412
+    },
+    "0x11b70f": {
+      "address": "0x0051b70f",
+      "function_start": "0x0051b6bb",
+      "function_start_rva": "0x11b6bb",
+      "function_name": "FUN_0051b6bb",
+      "function_size": 151,
+      "offset_in_function": 84
+    },
+    "0x11b7eb": {
+      "address": "0x0051b7eb",
+      "function_start": "0x0051b752",
+      "function_start_rva": "0x11b752",
+      "function_name": "FUN_0051b752",
+      "function_size": 195,
+      "offset_in_function": 153
+    },
+    "0x11dab3": {
+      "address": "0x0051dab3",
+      "function_start": "0x0051da61",
+      "function_start_rva": "0x11da61",
+      "function_name": "__VEC_memcpy",
+      "function_size": 227,
+      "offset_in_function": 82
+    },
+    "0x11f665": {
+      "address": "0x0051f665",
+      "function_start": "0x0051f464",
+      "function_start_rva": "0x11f464",
+      "function_name": "FUN_0051f464",
+      "function_size": 1473,
+      "offset_in_function": 513
+    },
+    "0x11fcc3": {
+      "address": "0x0051fcc3",
+      "function_start": "0x0051fc2a",
+      "function_start_rva": "0x11fc2a",
+      "function_name": "___dtoxmode",
+      "function_size": 185,
+      "offset_in_function": 153
+    },
+    "0x11fd18": {
+      "address": "0x0051fd18",
+      "function_start": "0x0051fce3",
+      "function_start_rva": "0x11fce3",
+      "function_name": "__getdrive",
+      "function_size": 198,
+      "offset_in_function": 53
+    },
+    "0x11fd6f": {
+      "address": "0x0051fd6f",
+      "function_start": "0x0051fce3",
+      "function_start_rva": "0x11fce3",
+      "function_name": "__getdrive",
+      "function_size": 198,
+      "offset_in_function": 140
+    },
+    "0x124004": {
+      "address": "0x00524004",
+      "function_start": "0x00523fe4",
+      "function_start_rva": "0x123fe4",
+      "function_name": "fastzero_I",
+      "function_size": 79,
+      "offset_in_function": 32
+    },
+    "0x124012": {
+      "address": "0x00524012",
+      "function_start": "0x00523fe4",
+      "function_start_rva": "0x123fe4",
+      "function_name": "fastzero_I",
+      "function_size": 79,
+      "offset_in_function": 46
+    },
+    "0x124021": {
+      "address": "0x00524021",
+      "function_start": "0x00523fe4",
+      "function_start_rva": "0x123fe4",
+      "function_name": "fastzero_I",
+      "function_size": 79,
+      "offset_in_function": 61
+    },
+    "0x124071": {
+      "address": "0x00524071",
+      "function_start": "0x0052403b",
+      "function_start_rva": "0x12403b",
+      "function_name": "__VEC_memzero",
+      "function_size": 143,
+      "offset_in_function": 54
+    },
+    "0x1240bd": {
+      "address": "0x005240bd",
+      "function_start": "0x0052403b",
+      "function_start_rva": "0x12403b",
+      "function_name": "__VEC_memzero",
+      "function_size": 143,
+      "offset_in_function": 130
+    },
+    "0x124b30": {
+      "address": "0x00524b30",
+      "function_start": "0x00524aa7",
+      "function_start_rva": "0x124aa7",
+      "function_name": "___lock_fhandle",
+      "function_size": 146,
+      "offset_in_function": 137
+    },
+    "0x124b38": {
+      "address": "0x00524b38",
+      "function_start": "0x00524aa7",
+      "function_start_rva": "0x124aa7",
+      "function_name": "___lock_fhandle",
+      "function_size": 146,
+      "offset_in_function": 145
+    },
+    "0x124b68": {
+      "address": "0x00524b68",
+      "function_start": "0x00524b47",
+      "function_start_rva": "0x124b47",
+      "function_name": "FUN_00524b47",
+      "function_size": 34,
+      "offset_in_function": 33
+    },
+    "0x124d01": {
+      "address": "0x00524d01",
+      "function_start": "0x00524cfa",
+      "function_start_rva": "0x124cfa",
+      "function_name": "FUN_00524cfa",
+      "function_size": 9,
+      "offset_in_function": 7
+    },
+    "0x127b39": {
+      "address": "0x00527b39",
+      "function_start": "0x00527869",
+      "function_start_rva": "0x127869",
+      "function_name": "FUN_00527869",
+      "function_size": 1875,
+      "offset_in_function": 720
+    },
+    "0x128039": {
+      "address": "0x00528039",
+      "function_start": "0x00527fc2",
+      "function_start_rva": "0x127fc2",
+      "function_name": "FID_conflict:__sopen_helper",
+      "function_size": 153,
+      "offset_in_function": 119
+    },
+    "0x12b5e2": {
+      "address": "0x0052b5e2",
+      "function_start": "0x0052b5d0",
+      "function_start_rva": "0x12b5d0",
+      "function_name": "FUN_0052b5d0",
+      "function_size": 145,
+      "offset_in_function": 18
+    },
+    "0x12b81c": {
+      "address": "0x0052b81c",
+      "function_start": "0x0052b810",
+      "function_start_rva": "0x12b810",
+      "function_name": "FUN_0052b810",
+      "function_size": 79,
+      "offset_in_function": 12
+    },
+    "0x12c4ee": {
+      "address": "0x0052c4ee",
+      "function_start": "0x0052c4ee",
+      "function_start_rva": "0x12c4ee",
+      "function_name": "FUN_0052c4ee",
+      "function_size": 1378,
+      "offset_in_function": 0
+    }
+  }
+}

@@ -172,8 +172,21 @@ class LoadingProfileTest(unittest.TestCase):
         text = alp.render(self.run_pipeline(HEADER + LOADING + PROFILE))
         self.assertIn('`0x004bb470`', text)
         self.assertIn('| `ID3DXMesh::GenerateAdjacency` | 1,017 |', text)
-        self.assertIn('holds 42.9 % of all samples as leaf (60.0 % of slot 0', text)
+        self.assertIn("holds 60.0 % of the engine thread's samples as leaf (60.0 % of slot 0", text)
         self.assertIn('it is a known routine', text)
+
+    def test_function_shares_are_normalized_to_the_engine_thread(self):
+        """Idle Wine/audio/input threads are sampled too, so a share of all samples
+        divides by the thread count. The engine thread is the slot holding the
+        main-module samples (slot 0 here: 500 of the 700 samples)."""
+        table = self.run_pipeline(HEADER + LOADING + PROFILE)['gaps'][0]['sampled']
+        self.assertEqual(table['engine_slot'], 0)
+        self.assertEqual(table['engine_samples'], 500)
+        row = {r['start_va']: r for r in table['functions']}['0x004bb470']
+        self.assertEqual(row['self_samples'], 300)
+        self.assertAlmostEqual(row['self_share'], 300 / 700)
+        self.assertAlmostEqual(row['self_share_engine'], 300 / 500)
+        self.assertAlmostEqual(row['inclusive_share_engine'], 300 / 500)
 
     def test_report_crossing_the_gap_boundary_is_flagged_not_dropped(self):
         gap = self.run_pipeline(HEADER + LOADING + PROFILE)['gaps'][0]

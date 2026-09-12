@@ -4,92 +4,471 @@
     "docs/reverse-engineering/loading-orchestration.md",
     "docs/reverse-engineering/camera-state-and-frame-routine.md",
     "docs/reverse-engineering/executable.md",
-    "docs/reverse-engineering/object-identity.md"
+    "docs/reverse-engineering/object-identity.md",
+    "docs/reverse-engineering/loading-profile-run1.md"
   ],
   "labels": {
-    "0x00402710": {"label": "process init (command-line switches)", "source": "loading-orchestration.md"},
-    "0x00402780": {"label": "process init body", "source": "loading-orchestration.md"},
-    "0x004ec9e0": {"label": "file-system / catalogue mount (%02d.cat, __chdir)", "source": "loading-orchestration.md"},
-    "0x004ed750": {"label": "CAT directory parse (_atol, _toupper, _qsort)", "source": "loading-orchestration.md"},
-    "0x004ce080": {"label": "mod enumeration (addon\\mods, *.cat)", "source": "loading-orchestration.md", "hooked_apis": ["FindFirstFileA"]},
-    "0x0048af70": {"label": "graphics/body subsystem init", "source": "loading-orchestration.md"},
-    "0x004869e0": {"label": "dev-flag body dump (dev flag 0x800 only)", "source": "loading-orchestration.md", "hooked_apis": ["FindFirstFileA"]},
-    "0x00434e40": {"label": "type-table load (addon\\types\\*, TBullets..TShipsWrecks; O(n^2) scan at 0x004381c2)", "source": "loading-orchestration.md"},
-    "0x0046f450": {"label": "load one type file as text (pck txt)", "source": "loading-orchestration.md"},
-    "0x00403840": {"label": "main/menu loop", "source": "loading-orchestration.md"},
-    "0x00403a70": {"label": "main loop message pump site", "source": "loading-orchestration.md"},
-    "0x00404cc0": {"label": "save-game open/validate (XSA3 magic)", "source": "loading-orchestration.md", "hooked_apis": ["gzopen", "gzread"]},
-    "0x0043f420": {"label": "universe restore (re-runs type load; SECT/SOBJ chunks)", "source": "loading-orchestration.md", "hooked_apis": ["gzread"]},
-    "0x00412d00": {"label": "universe teardown/reset candidate (103 bytes)", "source": "loading-orchestration.md"},
-    "0x00439530": {"label": "universe teardown/reset candidate (1,100 bytes)", "source": "loading-orchestration.md"},
-    "0x004efbf0": {"label": "sector record registration", "source": "loading-orchestration.md"},
-    "0x004421a0": {"label": "universe construction callee of 0x0043f420", "source": "loading-orchestration.md"},
-    "0x00442c00": {"label": "universe construction callee of 0x0043f420", "source": "loading-orchestration.md"},
-    "0x0044aab0": {"label": "universe construction callee of 0x0043f420", "source": "loading-orchestration.md"},
-    "0x004ab880": {"label": "script VM / command dispatch (SE_XMLImport, ReadText)", "source": "loading-orchestration.md"},
-    "0x004863c0": {"label": "body (model) cache + loader (pbb bob pbd bod)", "source": "loading-orchestration.md"},
-    "0x00481aa0": {"label": "BOB binary body parse", "source": "loading-orchestration.md"},
-    "0x00483f20": {"label": "text body parse", "source": "loading-orchestration.md"},
-    "0x0046e0a0": {"label": "body name lookup", "source": "loading-orchestration.md"},
-    "0x0046df60": {"label": "body name lookup", "source": "loading-orchestration.md"},
-    "0x00492970": {"label": "cut-scene body loader (cut\\%05)", "source": "loading-orchestration.md"},
-    "0x004bd830": {"label": "per-body GPU mesh build (iterates parts)", "source": "loading-orchestration.md"},
-    "0x004bb470": {"label": "mesh build: D3DXCreateMesh + vertex/index fill", "source": "loading-orchestration.md", "hooked_apis": ["D3DXCreateMesh"]},
-    "0x004bc680": {"label": "mesh preparation: adjacency / clean / optimise", "source": "loading-orchestration.md", "hooked_apis": ["ID3DXMesh::GenerateAdjacency", "D3DXCleanMesh", "ID3DXMesh::OptimizeInplace"]},
-    "0x004bc9c0": {"label": "installs the cleaned mesh", "source": "loading-orchestration.md"},
-    "0x00489da0": {"label": "scene attach path (triggers 0x004bd830)", "source": "loading-orchestration.md"},
-    "0x00486b40": {"label": "scene attach path (triggers 0x004bd830)", "source": "loading-orchestration.md"},
-    "0x0048a1e0": {"label": "scene attach path (triggers 0x004bd830)", "source": "loading-orchestration.md"},
-    "0x00489bf0": {"label": "scene attach path (triggers 0x004bd830)", "source": "loading-orchestration.md"},
-    "0x004dc540": {"label": "texture loader (pck dds; image info, cube, 2D helpers)", "source": "loading-orchestration.md", "hooked_apis": ["D3DXCreateTextureFromFileInMemoryEx", "D3DXCreateCubeTextureFromFileInMemoryEx"]},
-    "0x004f3510": {"label": "texture-file wrapper (.jpg, .tga)", "source": "loading-orchestration.md", "hooked_apis": ["D3DXLoadSurfaceFromFileInMemory"]},
-    "0x004f7830": {"label": "font loader (tga bmp, abc siz)", "source": "loading-orchestration.md"},
-    "0x004e9840": {"label": "load named resource into a buffer", "source": "loading-orchestration.md"},
-    "0x004e8e10": {"label": "resource load = open + read + close", "source": "loading-orchestration.md"},
-    "0x004e8780": {"label": "resource resolve + open (_fopen / gzopen)", "source": "loading-orchestration.md", "hooked_apis": ["CreateFileA", "SetFilePointer"]},
-    "0x004e8880": {"label": "resource read", "source": "loading-orchestration.md", "hooked_apis": ["ReadFile"]},
-    "0x004e73f0": {"label": "resource close + free file object", "source": "loading-orchestration.md"},
-    "0x004e7590": {"label": "name resolver (loose scan + catalogue search)", "source": "loading-orchestration.md", "hooked_apis": ["FindFirstFileA"]},
-    "0x004d2950": {"label": "__findfirst64i32 wrapper", "source": "loading-orchestration.md", "hooked_apis": ["FindFirstFileA"]},
-    "0x004e7470": {"label": "extension ranking (__stricmp)", "source": "loading-orchestration.md"},
-    "0x004e6f20": {"label": "per-catalogue _bsearch", "source": "loading-orchestration.md"},
-    "0x004e6fa0": {"label": "top-down catalogue scan", "source": "loading-orchestration.md"},
-    "0x004e9210": {"label": "read dispatcher (fread / gzread / XOR-0x33 slice)", "source": "loading-orchestration.md", "hooked_apis": ["ReadFile", "gzread"]},
-    "0x004e9360": {"label": "close (fclose / gzclose)", "source": "loading-orchestration.md"},
-    "0x004e90f0": {"label": "gzopen wrapper", "source": "loading-orchestration.md", "hooked_apis": ["gzopen"]},
-    "0x004d34b0": {"label": "Win32 message pump (PeekMessageA / GetMessageA)", "source": "loading-orchestration.md"},
-    "0x00499480": {"label": "pck xml resource class (xmlReadMemory)", "source": "loading-orchestration.md", "hooked_apis": ["xmlReadMemory"]},
-    "0x004e6b70": {"label": "pck xml resource class (xmlReadMemory)", "source": "loading-orchestration.md", "hooked_apis": ["xmlReadMemory"]},
-    "0x00482fb0": {"label": "body writer (%05d.bob)", "source": "loading-orchestration.md"},
-    "0x004b9770": {"label": "matrix globals allocation (init block)", "source": "camera-state-and-frame-routine.md"},
-    "0x004bb140": {"label": "matrix globals release", "source": "camera-state-and-frame-routine.md"},
-    "0x004bb280": {"label": "per-view Clear", "source": "camera-state-and-frame-routine.md"},
-    "0x004bdee0": {"label": "world matrix setup for node + camera", "source": "camera-state-and-frame-routine.md"},
-    "0x004be3f0": {"label": "projection construction", "source": "camera-state-and-frame-routine.md"},
-    "0x004be460": {"label": "projection construction (__fastcall)", "source": "camera-state-and-frame-routine.md"},
-    "0x004be520": {"label": "view matrix construction + SetViewport", "source": "camera-state-and-frame-routine.md"},
-    "0x004bfd40": {"label": "local view-projection multiply", "source": "camera-state-and-frame-routine.md"},
-    "0x004c0150": {"label": "effect state manager: matrix uploads per draw", "source": "camera-state-and-frame-routine.md"},
-    "0x004c4fc0": {"label": "material submission wrapper", "source": "object-identity.md"},
-    "0x004c5ea0": {"label": "D3DXMatrixLookAtLH user", "source": "camera-state-and-frame-routine.md"},
-    "0x004c6300": {"label": "env-map SetViewport site", "source": "camera-state-and-frame-routine.md"},
-    "0x0047c640": {"label": "view activation callee", "source": "camera-state-and-frame-routine.md"},
-    "0x0047c840": {"label": "view activation (builds view + projection, Clear)", "source": "camera-state-and-frame-routine.md"},
-    "0x0047d9c0": {"label": "render-node visit (model lookup, LOD choice)", "source": "object-identity.md"},
-    "0x0047e6e0": {"label": "deferred draw list drain", "source": "object-identity.md"},
-    "0x0047e620": {"label": "deferred list sort", "source": "object-identity.md"},
-    "0x0047e920": {"label": "deferred list recycle", "source": "object-identity.md"},
-    "0x0047b2e0": {"label": "deferred entry pool reuse", "source": "object-identity.md"},
-    "0x00486d10": {"label": "render node allocator (0x270 bytes)", "source": "object-identity.md"},
-    "0x004885a0": {"label": "node allocator (handle map)", "source": "object-identity.md"},
-    "0x00488c70": {"label": "camera allocator (0x790 bytes)", "source": "object-identity.md"},
-    "0x004efcc0": {"label": "handle map insert", "source": "object-identity.md"},
-    "0x004efd30": {"label": "handle map remove", "source": "object-identity.md"},
-    "0x00487be0": {"label": "node release (recursive)", "source": "object-identity.md"},
-    "0x00479d10": {"label": "node deserialization (load path)", "source": "object-identity.md"},
-    "0x004faee2": {"label": "D3DXMatrixLookAtLH thunk", "source": "camera-state-and-frame-routine.md"},
-    "0x004faf00": {"label": "D3DXMatrixMultiply thunk", "source": "camera-state-and-frame-routine.md"},
-    "0x004faf0c": {"label": "D3DXMatrixInverse thunk", "source": "camera-state-and-frame-routine.md"},
-    "0x004faf1e": {"label": "D3DXMatrixTranspose thunk", "source": "camera-state-and-frame-routine.md"}
+    "0x00402710": {
+      "label": "process init (command-line switches)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00402780": {
+      "label": "process init body",
+      "source": "loading-orchestration.md"
+    },
+    "0x004ec9e0": {
+      "label": "file-system / catalogue mount (%02d.cat, __chdir)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004ed750": {
+      "label": "CAT directory parse (_atol, _toupper, _qsort)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004ce080": {
+      "label": "mod enumeration (addon\\mods, *.cat)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
+    },
+    "0x0048af70": {
+      "label": "graphics/body subsystem init",
+      "source": "loading-orchestration.md"
+    },
+    "0x004869e0": {
+      "label": "dev-flag body dump (dev flag 0x800 only)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
+    },
+    "0x00434e40": {
+      "label": "type-table load (addon\\types\\*, TBullets..TShipsWrecks; O(n^2) scan at 0x004381c2)",
+      "source": "loading-orchestration.md"
+    },
+    "0x0046f450": {
+      "label": "load one type file as text (pck txt)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00403840": {
+      "label": "main/menu loop",
+      "source": "loading-orchestration.md"
+    },
+    "0x00403a70": {
+      "label": "main loop message pump site",
+      "source": "loading-orchestration.md"
+    },
+    "0x00404cc0": {
+      "label": "save-game open/validate (XSA3 magic)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "gzopen",
+        "gzread"
+      ]
+    },
+    "0x0043f420": {
+      "label": "universe restore (re-runs type load; SECT/SOBJ chunks)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "gzread"
+      ]
+    },
+    "0x00412d00": {
+      "label": "universe teardown/reset candidate (103 bytes)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00439530": {
+      "label": "universe teardown/reset candidate (1,100 bytes)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004efbf0": {
+      "label": "sector record registration",
+      "source": "loading-orchestration.md"
+    },
+    "0x004421a0": {
+      "label": "universe construction callee of 0x0043f420",
+      "source": "loading-orchestration.md"
+    },
+    "0x00442c00": {
+      "label": "universe construction callee of 0x0043f420",
+      "source": "loading-orchestration.md"
+    },
+    "0x0044aab0": {
+      "label": "universe construction callee of 0x0043f420",
+      "source": "loading-orchestration.md"
+    },
+    "0x004ab880": {
+      "label": "script VM / command dispatch (SE_XMLImport, ReadText)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004863c0": {
+      "label": "body (model) cache + loader (pbb bob pbd bod)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00481aa0": {
+      "label": "BOB binary body parse",
+      "source": "loading-orchestration.md"
+    },
+    "0x00483f20": {
+      "label": "text body parse",
+      "source": "loading-orchestration.md"
+    },
+    "0x0046e0a0": {
+      "label": "body name lookup",
+      "source": "loading-orchestration.md"
+    },
+    "0x0046df60": {
+      "label": "body name lookup",
+      "source": "loading-orchestration.md"
+    },
+    "0x00492970": {
+      "label": "cut-scene body loader (cut\\%05)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004bd830": {
+      "label": "per-body GPU mesh build (iterates parts)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004bb470": {
+      "label": "mesh build: D3DXCreateMesh + vertex/index fill",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "D3DXCreateMesh"
+      ]
+    },
+    "0x004bc680": {
+      "label": "mesh preparation: adjacency / clean / optimise; calls ID3DXMesh::GenerateAdjacency(1e-6f from 0x00565600) at 0x004bc76a",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "ID3DXMesh::GenerateAdjacency",
+        "D3DXCleanMesh",
+        "ID3DXMesh::OptimizeInplace"
+      ]
+    },
+    "0x004bc9c0": {
+      "label": "installs the cleaned mesh",
+      "source": "loading-orchestration.md"
+    },
+    "0x00489da0": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00486b40": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x0048a1e0": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00489bf0": {
+      "label": "scene attach path (triggers 0x004bd830)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004dc540": {
+      "label": "texture loader (pck dds; image info, cube, 2D helpers)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "D3DXCreateTextureFromFileInMemoryEx",
+        "D3DXCreateCubeTextureFromFileInMemoryEx"
+      ]
+    },
+    "0x004f3510": {
+      "label": "texture-file wrapper (.jpg, .tga)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "D3DXLoadSurfaceFromFileInMemory"
+      ]
+    },
+    "0x004f7830": {
+      "label": "font loader (tga bmp, abc siz)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e9840": {
+      "label": "load named resource into a buffer",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e8e10": {
+      "label": "resource load = open + read + close",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e8780": {
+      "label": "resource resolve + open (_fopen / gzopen)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "CreateFileA",
+        "SetFilePointer"
+      ]
+    },
+    "0x004e8880": {
+      "label": "resource read",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "ReadFile"
+      ]
+    },
+    "0x004e73f0": {
+      "label": "resource close + free file object",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e7590": {
+      "label": "name resolver (loose scan + catalogue search)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
+    },
+    "0x004d2950": {
+      "label": "__findfirst64i32 wrapper",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "FindFirstFileA"
+      ]
+    },
+    "0x004e7470": {
+      "label": "extension ranking (__stricmp)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e6f20": {
+      "label": "per-catalogue _bsearch",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e6fa0": {
+      "label": "top-down catalogue scan",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e9210": {
+      "label": "read dispatcher (fread / gzread / XOR-0x33 slice)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "ReadFile",
+        "gzread"
+      ]
+    },
+    "0x004e9360": {
+      "label": "close (fclose / gzclose)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004e90f0": {
+      "label": "gzopen wrapper",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "gzopen"
+      ]
+    },
+    "0x004d34b0": {
+      "label": "Win32 message pump (PeekMessageA / GetMessageA)",
+      "source": "loading-orchestration.md"
+    },
+    "0x00499480": {
+      "label": "pck xml resource class (xmlReadMemory)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "xmlReadMemory"
+      ]
+    },
+    "0x004e6b70": {
+      "label": "pck xml resource class (xmlReadMemory)",
+      "source": "loading-orchestration.md",
+      "hooked_apis": [
+        "xmlReadMemory"
+      ]
+    },
+    "0x00482fb0": {
+      "label": "body writer (%05d.bob)",
+      "source": "loading-orchestration.md"
+    },
+    "0x004b9770": {
+      "label": "matrix globals allocation (init block)",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004bb140": {
+      "label": "matrix globals release",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004bb280": {
+      "label": "per-view Clear",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004bdee0": {
+      "label": "world matrix setup for node + camera",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004be3f0": {
+      "label": "projection construction",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004be460": {
+      "label": "projection construction (__fastcall)",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004be520": {
+      "label": "view matrix construction + SetViewport",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004bfd40": {
+      "label": "local view-projection multiply",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004c0150": {
+      "label": "effect state manager: matrix uploads per draw",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004c4fc0": {
+      "label": "material submission wrapper",
+      "source": "object-identity.md"
+    },
+    "0x004c5ea0": {
+      "label": "D3DXMatrixLookAtLH user",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004c6300": {
+      "label": "env-map SetViewport site",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0047c640": {
+      "label": "view activation callee",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0047c840": {
+      "label": "view activation (builds view + projection, Clear)",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0047d9c0": {
+      "label": "render-node visit (model lookup, LOD choice)",
+      "source": "object-identity.md"
+    },
+    "0x0047e6e0": {
+      "label": "deferred draw list drain",
+      "source": "object-identity.md"
+    },
+    "0x0047e620": {
+      "label": "deferred list sort",
+      "source": "object-identity.md"
+    },
+    "0x0047e920": {
+      "label": "deferred list recycle",
+      "source": "object-identity.md"
+    },
+    "0x0047b2e0": {
+      "label": "deferred entry pool reuse",
+      "source": "object-identity.md"
+    },
+    "0x00486d10": {
+      "label": "render node allocator (0x270 bytes)",
+      "source": "object-identity.md"
+    },
+    "0x004885a0": {
+      "label": "node allocator (handle map)",
+      "source": "object-identity.md"
+    },
+    "0x00488c70": {
+      "label": "camera allocator (0x790 bytes)",
+      "source": "object-identity.md"
+    },
+    "0x004efcc0": {
+      "label": "handle map insert",
+      "source": "object-identity.md"
+    },
+    "0x004efd30": {
+      "label": "handle map remove",
+      "source": "object-identity.md"
+    },
+    "0x00487be0": {
+      "label": "node release (recursive)",
+      "source": "object-identity.md"
+    },
+    "0x00479d10": {
+      "label": "node deserialization (load path)",
+      "source": "object-identity.md"
+    },
+    "0x004faee2": {
+      "label": "D3DXMatrixLookAtLH thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004faf00": {
+      "label": "D3DXMatrixMultiply thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004faf0c": {
+      "label": "D3DXMatrixInverse thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x004faf1e": {
+      "label": "D3DXMatrixTranspose thunk",
+      "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0047eb90": {
+      "label": "collision-tree build driver (body triangles int16x1/16384 -> 0x004e0ce0 per triangle, then build 0x004e0c80; sets obj flag 0x1000000)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e0c80": {
+      "label": "collision-tree build entry (guards, calls 0x004e0f00)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e0ce0": {
+      "label": "collision tree: add one triangle",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e0f00": {
+      "label": "collision tree: allocate 2N x 0x48 nodes + N x 0x34 records, seed root bounds, then split",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e1140": {
+      "label": "collision tree: recursive split entry",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e1220": {
+      "label": "collision tree: recursive split body (self-recursive, 2,267 B) - top loading hot spot",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e0770": {
+      "label": "collision tree: 13-float node summary accumulate (weighted vec3 + 9 sums)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004e0e70": {
+      "label": "collision tree: order the three split candidates (calls 0x004dfef0)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004dfef0": {
+      "label": "collision tree: split-candidate extents (sqrtf 0x00412440, fabsf 0x0040e710)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x00412440": {
+      "label": "sqrtf helper (15 bytes, x87 SQRT)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x0040e710": {
+      "label": "fabsf helper (x87 ABS)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004dd2c0": {
+      "label": "jpg/tga texture load body: resource load 0x004e8e10 + D3DXGetImageInfo + 2D helper + LoadSurface (callee of 0x004f3510)",
+      "source": "loading-profile-run1.md",
+      "hooked_apis": [
+        "D3DXCreateTextureFromFileInMemoryEx",
+        "D3DXLoadSurfaceFromFileInMemory"
+      ]
+    },
+    "0x004bbb10": {
+      "label": "mesh build: vertex writer (int16 x 1/16384 from 0x005655d4)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004bc1c0": {
+      "label": "mesh build: vertex positions (int16 x 1/16384) and normals (D3DXVec3Normalize x3)",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004bcb60": {
+      "label": "mesh build: CloneMesh into final options (D3DXMESH_32BIT above 64k vertices), two attempts, OOM callback, then install via 0x004bc9c0",
+      "source": "loading-profile-run1.md"
+    },
+    "0x004de060": {
+      "label": "audio/COM subsystem init (CoInitialize, mmdevapi); called from process init 0x004033e1",
+      "source": "loading-profile-run1.md"
+    },
+    "0x00511f77": {
+      "label": "CRT fread body (from _fread_s, uses __VEC_memcpy)",
+      "source": "loading-profile-run1.md"
+    }
   }
 }

@@ -1,0 +1,99 @@
+iteration 9: controlled route-on against route-off cost
+========================================================================
+CPU-side wall clock only; frame_normal is a Present-to-Present interval
+and contains application work, pacing and driver blocking.
+
+-- run run1  /tmp/x3-iteration09-run1/session-20260912-160404-1632.log
+   route=1 taa=1 taa_debug=0 jitter=1 rt_mode=perdraw scene_hook=0 hdr=0
+   profiler=1 object_trace=active mesh_cache_enabled=0  hdr metrics: none (expected)
+   windows total=256 loading=5 capture=10 scene_usable=186 menu_usable=52
+   phases: 0=scene[4..4] n=0 - ms, 1=menu[24..1111] n=50 43.28 ms, 2=scene[1163..5454] n=160 37.62 ms, 3=scene[5471..6381] n=26 34.09 ms, 4=menu[6410..6436] n=2 38.48 ms
+   phase check: checked
+   regime  windows  mean_ms   min_ms   draws/f  route_ms    taa_us
+   fast        124    33.08    30.67     270.4     4.697     339.5
+   slow         62    58.74    55.42     562.8    10.738     366.9
+   menu         52    43.09    40.28     677.5     0.177       0.0
+   profiler: 157.3 ticks/s, 19 threads -> 1.93% of wall = 0.705 ms/frame
+   telemetry stamps: 2074.2 spans/frame x 0.2639 us = 0.547 ms/frame
+   per-frame records (ordinary frames, n=88): draws 284 routed 200
+      route exclusive 4967.9 us/frame = 17.25 us/draw (24.65 us/routed draw)
+      gate 3410.4 (11.61 us/draw)  route_draw 1338.3 (6.58 us/routed)  set_rt 610.8 (0.773 us/call)
+      jitter 135.7 (0.273 us/write)  fill 59.5  taa_run 326.7  taa_resolve_draw 292.6
+      scene_end_source={'stretchrect': 88}
+   capture frames (n=20): 2 readbacks, readback 23294 us/frame (11647 us each); frame_capture interval median 328.4 ms
+
+-- run run2  /tmp/x3-iteration09-run2/session-20260912-162050-2040.log
+   route=1 taa=1 taa_debug=1 jitter=1 rt_mode=perdraw scene_hook=1 hdr=0
+   profiler=1 object_trace=active mesh_cache_enabled=0  hdr metrics: none (expected)
+   windows total=166 loading=4 capture=12 scene_usable=137 menu_usable=10
+   phases: 0=scene[2..4] n=0 - ms, 1=menu[26..207] n=9 39.99 ms, 2=scene[236..3460] n=119 41.32 ms, 3=scene[3480..4128] n=18 43.50 ms, 4=menu[4157..4157] n=1 38.24 ms
+   phase check: checked
+   regime  windows  mean_ms   min_ms   draws/f  route_ms    taa_us
+   fast         81    34.24    30.82     227.0     4.082     360.5
+   slow         56    64.43    57.37     470.8     9.050     391.0
+   menu         10    39.89    37.78     646.7     0.174       0.0
+   profiler: 192.3 ticks/s, 16 threads -> 2.37% of wall = 1.005 ms/frame
+   telemetry stamps: 1929.1 spans/frame x 0.2715 us = 0.524 ms/frame
+   per-frame records (ordinary frames, n=65): draws 248 routed 174
+      route exclusive 4604.2 us/frame = 17.37 us/draw (25.23 us/routed draw)
+      gate 2938.1 (11.61 us/draw)  route_draw 1306.2 (6.86 us/routed)  set_rt 589.9 (0.783 us/call)
+      jitter 125.7 (0.275 us/write)  fill 62.8  taa_run 354.3  taa_resolve_draw 313.4
+      scene_end_source={'hook': 65}
+   capture frames (n=24): 4 readbacks, readback 47732 us/frame (11933 us each); frame_capture interval median 377.1 ms
+
+-- run run3  /tmp/x3-iteration09-run3/session-20260912-164116-2548.log
+   route=0 taa=0 taa_debug=0 jitter=0 rt_mode=perdraw scene_hook=0 hdr=0
+   profiler=None object_trace=disabled mesh_cache_enabled=0  hdr metrics: none (expected)
+   windows total=125 loading=4 capture=2 scene_usable=107 menu_usable=10
+   phases: 0=scene[2..4] n=0 - ms, 1=menu[29..281] n=9 35.17 ms, 2=scene[321..3285] n=76 26.18 ms, 3=scene[3315..4958] n=31 20.96 ms, 4=menu[4993..4993] n=1 33.12 ms
+   phase check: unavailable
+   regime  windows  mean_ms   min_ms   draws/f  route_ms    taa_us
+   fast         90    24.05    21.69     229.2     0.000       0.0
+   slow         17    47.69    45.96     719.7     0.000       0.0
+   menu         10    34.97    32.85     653.3     0.000       0.0
+   profiler: absent
+   telemetry stamps: 0.0 spans/frame x 0.25 us = 0.000 ms/frame
+   capture frames: frame_capture interval median 328.6 ms
+
+-- run1 against run3  (route cost)
+   fast  33.08 ms (n=124, 270 draws/f) vs 24.05 ms (n=90, 229 draws/f) -> +9.03 ms (+37.5%)
+         route metrics 4.70 ms/frame = 0.52 of the difference
+   slow  58.74 ms (n=62, 563 draws/f) vs 47.69 ms (n=17, 720 draws/f) -> +11.05 ms (+23.2%)
+         route metrics 10.74 ms/frame = 0.97 of the difference
+   scene      13 bins over 73-767 draws: +30.11 us/draw (IQR +10.72..+40.62) -0.73 ms fixed | origin +25.58 us/draw | sign 13+/0- p=0.0002
+   menu        2 bins over 639-676 draws: +11.01 us/draw (IQR +11.01..+11.01) +0.97 ms fixed | origin +12.49 us/draw | sign 2+/0- p=0.5000
+   scene_min  13 bins over 73-767 draws: +33.13 us/draw (IQR +20.26..+39.09) -2.05 ms fixed | origin +26.48 us/draw | sign 13+/0- p=0.0002
+   attribution: sector 30.11 us/draw - menu overhead 12.49 us/draw = route 17.62 us/draw
+                route metrics say 17.22 us/draw; unexplained 0.40 us/draw; route 5.70 ms/frame at 324 draws
+                not charged to the route: profiler 0.705 ms/frame (1.93% of wall), telemetry stamps 0.547 ms/frame
+   route cost fast  4.76 ms of 33.08 ms = 14.4% (metrics 4.70 ms = 14.2%) at 270 draws/frame
+   route cost slow  9.91 ms of 58.74 ms = 16.9% (metrics 10.74 ms = 18.3%) at 563 draws/frame
+
+-- run2 against run3  (route cost)
+   fast  34.24 ms (n=81, 227 draws/f) vs 24.05 ms (n=90, 229 draws/f) -> +10.19 ms (+42.4%)
+         route metrics 4.08 ms/frame = 0.40 of the difference
+   slow  64.43 ms (n=56, 471 draws/f) vs 47.69 ms (n=17, 720 draws/f) -> +16.74 ms (+35.1%)
+         route metrics 9.05 ms/frame = 0.54 of the difference
+   scene      13 bins over 71-774 draws: +41.69 us/draw (IQR +32.39..+53.11) -1.27 ms fixed | origin +39.43 us/draw | sign 13+/0- p=0.0002
+   menu        2 bins over 640-669 draws: -2.25 us/draw (IQR -2.25..-2.25) +6.74 ms fixed | origin +8.04 us/draw | sign 2+/0- p=0.5000
+   scene_min  13 bins over 71-774 draws: +38.52 us/draw (IQR +28.72..+55.30) -0.12 ms fixed | origin +38.20 us/draw | sign 13+/0- p=0.0002
+   attribution: sector 41.69 us/draw - menu overhead 8.04 us/draw = route 33.65 us/draw
+                route metrics say 17.97 us/draw; unexplained 15.68 us/draw; route 10.19 ms/frame at 303 draws
+                not charged to the route: profiler 1.005 ms/frame (2.37% of wall), telemetry stamps 0.524 ms/frame
+   route cost fast  7.64 ms of 34.24 ms = 22.3% (metrics 4.08 ms = 11.9%) at 227 draws/frame
+   route cost slow  15.84 ms of 64.43 ms = 24.6% (metrics 9.05 ms = 14.1%) at 471 draws/frame
+
+-- run1 against run2  (path and configuration noise)
+   fast  33.08 ms (n=124, 270 draws/f) vs 34.24 ms (n=81, 227 draws/f) -> -1.16 ms (-3.4%)
+   slow  58.74 ms (n=62, 563 draws/f) vs 64.43 ms (n=56, 471 draws/f) -> -5.68 ms (-8.8%)
+   scene      14 bins over 69-774 draws: -9.20 us/draw (IQR -38.21..+5.83) -0.22 ms fixed | origin -9.89 us/draw | sign 3+/11- p=0.0574
+   menu        2 bins over 640-672 draws: +14.97 us/draw (IQR +14.97..+14.97) -6.87 ms fixed | origin +4.49 us/draw | sign 2+/0- p=0.5000
+   scene_min  14 bins over 69-774 draws: -2.98 us/draw (IQR -24.97..+11.63) -1.54 ms fixed | origin -9.25 us/draw | sign 2+/12- p=0.0129
+
+-- cost levers (run1, 284 draws/frame, route 4944 us/frame)
+   1. gate: per-draw selector/gate/history evaluation      now   3410.4 us  save   1705.2 us
+   2. telemetry stamps (one QPC pair + record per span)    now    547.0 us  save    547.0 us
+   3. lazy RT mode (X3M_MOTION_RT_MODE=lazy)               now    610.8 us  save    244.3 us
+   4. jitter constant writes (two per jittered draw)       now    135.7 us  save     67.8 us
+   5. sentinel fill (one fullscreen quad per frame)        now     59.5 us  save      0.0 us
+   6. temporal resolve (TemporalPass::run, inclusive)      now    326.7 us  save      0.0 us

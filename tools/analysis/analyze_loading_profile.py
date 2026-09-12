@@ -137,7 +137,7 @@ def main_base_of(parsed):
 
 
 def main_module_names(parsed):
-    names = {m['name'].lower() for m in parsed['modules'].values() if m.get('kind') == 'x3ap'}
+    names = {m['name'].lower() for m in parsed['modules'].values() if m.get('kind') == 'x3ap' and m.get('name')}
     return names or {'x3ap.exe'}
 
 
@@ -235,6 +235,17 @@ def aggregate_functions(table, symbols, labels, main_base, main_names, operation
         item['inclusive_by_slot'][row['slot']] += row['count']
     ranked = sorted(functions.values(),
                     key=lambda f: (-f['self_samples'], -f['inclusive_samples'], f['start_rva']))
+    # The engine thread: the slot holding the most main-module samples. Every other
+    # sampled thread is an idle Wine/audio/input waiter whose samples would otherwise
+    # dilute every share by the thread count, so shares are also given against it.
+    by_slot = defaultdict(int)
+    for item in functions.values():
+        for slot, n in item['self_by_slot'].items():
+            by_slot[slot] += n
+        for slot, n in item['inclusive_by_slot'].items():
+            by_slot[slot] += n
+    engine_slot = max(by_slot.items(), key=lambda kv: kv[1])[0] if by_slot else None
+    engine_total = thread_samples.get(engine_slot, 0) or 1
     rows = []
     for item in ranked[:top]:
         busiest = max(item['self_by_slot'].items(), key=lambda kv: kv[1], default=(None, 0))
@@ -243,13 +254,15 @@ def aggregate_functions(table, symbols, labels, main_base, main_names, operation
             start_rva=item['start_rva'], start_va=item['start_va'], name=item['name'],
             resolved=item['resolved'], label=item['label'],
             self_samples=item['self_samples'], self_share=item['self_samples'] / total,
+            self_share_engine=item['self_samples'] / engine_total,
             inclusive_samples=item['inclusive_samples'],
             inclusive_share=item['inclusive_samples'] / total,
+            inclusive_share_engine=item['inclusive_samples'] / engine_total,
             busiest_slot=busiest[0], busiest_slot_share=busiest[1] / slot_total if slot_total else 0.0,
             hooked=[dict(op=api, count=count(operations, api),
                          inclusive_seconds=operations.get(api, {}).get('inclusive_seconds', 0.0))
                     for api in item['hooked_apis'] if api in operations]))
-    return rows, no_frame
+    return rows, no_frame, engine_slot, thread_samples.get(engine_slot, 0)
 
 
 def symbolize_pairs(pairs, symbols, labels, main_base, top):
@@ -270,10 +283,12 @@ def attach_symbols(intervals, parsed, symbols, labels, top):
         table = item.get('sampled')
         if not table:
             continue
-        functions, no_frame = aggregate_functions(table, symbols, labels, main_base, names,
-                                                  item['hooked']['operations'], top)
+        functions, no_frame, engine_slot, engine_samples = aggregate_functions(
+            table, symbols, labels, main_base, names, item['hooked']['operations'], top)
         table['functions'] = functions
         table['frames_without_main_module'] = no_frame
+        table['engine_slot'] = engine_slot
+        table['engine_samples'] = engine_samples
         table['pairs'] = symbolize_pairs(table['pairs'], symbols, labels, main_base, top)
         for row in table['leaves'][:top]:
             if row['module'].lower() in names:
@@ -413,15 +428,19 @@ def render_functions(table):
     rows = table.get('functions', [])
     if not rows:
         return ['No main-executable leaf or frame samples in this interval.', '']
-    lines = ['| Function start | Ghidra name | Label | Self | Incl. (frame) | Busiest slot | Hooked APIs in interval |',
+    engine = table.get('engine_samples') or 0
+    head = (f"Shares are of the engine thread (slot {table.get('engine_slot')}, {engine:,} samples); "
+            'the other sampled threads are idle Wine/audio/input waiters.')
+    lines = [head, '',
+             '| Function start | Ghidra name | Label | Self (engine) | Incl. frame (engine) | Busiest slot | Hooked APIs in interval |',
              '| --- | --- | --- | ---: | ---: | ---: | --- |']
     for row in rows:
         hooked = '; '.join(f"`{h['op']}` {h['count']:,} calls / {h['inclusive_seconds']:.3f} s" for h in row['hooked']) or '—'
         name = row['name'] or ('(unresolved RVA)' if not row['resolved'] else '')
         busiest = (f"slot {row['busiest_slot']} {pct(row['busiest_slot_share'])}"
                    if row['busiest_slot'] is not None else '—')
-        lines.append(f"| `{row['start_va']}` | {name} | {row['label'] or '—'} | {pct(row['self_share'])} "
-                     f"({row['self_samples']:,}) | {pct(row['inclusive_share'])} ({row['inclusive_samples']:,}) "
+        lines.append(f"| `{row['start_va']}` | {name} | {row['label'] or '—'} | {pct(row['self_share_engine'])} "
+                     f"({row['self_samples']:,}) | {pct(row['inclusive_share_engine'])} ({row['inclusive_samples']:,}) "
                      f"| {busiest} | {hooked} |")
     if table.get('frames_without_main_module'):
         lines.append(f"| (no main-module frame) | | | | {pct(table['frames_without_main_module'] / (table['samples'] or 1))} "
@@ -466,8 +485,8 @@ def candidates(item, length, table):
         known = f"it is a known routine ({row['label']})" if row['label'] else 'it is not a known routine'
         slot = (f" ({pct(row['busiest_slot_share'])} of slot {row['busiest_slot']}'s samples)"
                 if row['busiest_slot'] is not None else '')
-        sentences.append(f"Function `{row['start_va']}` ({name}) holds {pct(row['self_share'])} of all samples as leaf{slot} "
-                         f"and {pct(row['inclusive_share'])} as first main-module frame; {known}.")
+        sentences.append(f"Function `{row['start_va']}` ({name}) holds {pct(row['self_share_engine'])} of the engine thread's "
+                         f"samples as leaf{slot} and {pct(row['inclusive_share_engine'])} as first main-module frame; {known}.")
     return ' '.join(sentences)
 
 

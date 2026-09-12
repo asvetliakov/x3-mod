@@ -1,0 +1,24 @@
+iteration-08 TAA analysis of session-20260912-160404-1632.log (154442312 bytes, sha256 ca149c414df62aab…)
+TAA: 128 motion_output_frame records, attempted 108, resolved 108, failed 0, history valid 105
+  skip histogram {'0': 108, '2': 20}; results {'00000001': 20, '00000000': 108}; every captured frame resolved with history: False
+route totals: draws 48949 routed 25669 matched 25520 gates {'gate1': 0, 'gate2': 15231, 'gate3': 1483, 'gate4': 6566, 'gate5': 0, 'gate6': 149}
+  per-draw gate histogram {'0': 6118, '3': 380, '4': 1475, '6': 56}; counter consistency True
+burst 0 frames 1722-1725: cut median [0.0, 0.0, 0.0, 0.0] px, verdicts [0, 0, 0, 0], stationary=True
+burst 1 frames 1964-1967: cut median [24.3612, 78.2489, 70.3182, 70.9941] px, verdicts [0, 1, 1, 1], stationary=False
+burst 2 frames 3090-3093: cut median [0.8626, 0.5205, 0.5246, 0.4882] px, verdicts [0, 0, 0, 0], stationary=False
+burst 3 frames 4801-4804: cut median [0.2308, 1.8605, 1.8839, 1.9081] px, verdicts [0, 0, 0, 0], stationary=False
+burst 4 frames 5752-5755: cut median [0.0132, 0.0758, 0.0761, 0.0763] px, verdicts [0, 0, 0, 0], stationary=False
+diagnostics: 0 failure records, 0 resets, 0 shutdown records, 0 nonzero readback results
+  window run/0:lock_wait/all: 332 windows, per-window mean median 0.2us, per-window min median 0.1us
+  window run/0:lock_wait/other: 100 windows, per-window mean median 0.2us, per-window min median 0.1us
+  window run/0:lock_wait/scene: 229 windows, per-window mean median 0.2us, per-window min median 0.1us
+  window run/1:draw_backend/all: 262 windows, per-window mean median 2.8us, per-window min median 0.7us
+  window run/1:draw_backend/other: 56 windows, per-window mean median 3.0us, per-window min median 0.8us
+  window run/1:draw_backend/scene: 206 windows, per-window mean median 2.7us, per-window min median 0.7us
+  window run/1:frame_normal/all: 256 windows, per-window mean median 40713.7us, per-window min median 37891.3us
+  window run/1:frame_normal/other: 56 windows, per-window mean median 43636.7us, per-window min median 40446.3us
+  window run/1:frame_normal/scene: 200 windows, per-window mean median 36639.7us, per-window min median 34710.4us
+  window run/1:present_normal/all: 257 windows, per-window mean median 33.5us, per-window min median 25.7us
+  window run/1:present_normal/other: 57 windows, per-window mean median 13.1us, per-window min median 9.6us
+  window run/1:present_normal/scene: 200 windows, per-window mean median 36.0us, per-window min median 28.2us
+  timing comparison: pending - no --run-b-log: this report has one session with TAA on throughout, so the timing is not a controlled comparison. Re-run with the TAA-off capture of the same scene to populate this section.

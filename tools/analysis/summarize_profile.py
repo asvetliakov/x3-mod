@@ -64,9 +64,17 @@ def parse(lines):
         elif head == 'profile_module':
             if 'unloaded' in f:
                 modules.setdefault(int(f['index']), {})['unloaded'] = True
+            elif 'size' not in f:
+                # A module that could not be pinned (already unloading) is logged with
+                # `pinned=0 error=<n>` and no kind/size/text range; it is never sampled.
+                modules[int(f['index'])] = dict(name=f.get('name'), kind=f.get('kind'),
+                                                base=int(f['base'], 16) if 'base' in f else None,
+                                                size=None, text_rva=None, text_size=None,
+                                                pinned=False, error=f.get('error'))
             else:
                 modules[int(f['index'])] = dict(name=f['name'], kind=f.get('kind'), base=int(f['base'], 16), size=int(f['size'], 16),
-                                                text_rva=int(f['text_rva'], 16), text_size=int(f['text_size'], 16))
+                                                text_rva=int(f['text_rva'], 16), text_size=int(f['text_size'], 16),
+                                                pinned=f.get('pinned') != '0')
         elif head == 'profile_report':
             current = dict(scope=f['scope'], qpc=int(f['qpc']), fields=f, threads=[], leaves=[], frames=[], pairs=[], report_us=None)
             blocks.append(current)

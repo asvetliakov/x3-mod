@@ -1,0 +1,3100 @@
+{
+  "source": "/tmp/x3-iteration09-run1/session-20260912-160404-1632.log",
+  "anchor_qpc": 9440849086276,
+  "qpc_frequency": 10000000,
+  "engine_thread": {
+    "slot": "0",
+    "tid": "1260"
+  },
+  "routed_span_s": [
+    212.13,
+    436.93
+  ],
+  "windows": [
+    {
+      "label": "burst1",
+      "from_s": 227.02,
+      "to_s": 238.07,
+      "covered_s": [
+        225.16,
+        240.17
+      ],
+      "elapsed_s": 15.01,
+      "samples": 2411,
+      "frames": 409.6,
+      "ms_per_sample": 6.225,
+      "engine_ms_per_frame": 36.648,
+      "module_split": {
+        "x3ap": {
+          "samples": 1284,
+          "share": 0.53256,
+          "ms_per_frame": 19.517
+        },
+        "ntdll": {
+          "samples": 634,
+          "share": 0.26296,
+          "ms_per_frame": 9.637
+        },
+        "d3dx": {
+          "samples": 191,
+          "share": 0.07922,
+          "ms_per_frame": 2.903
+        },
+        "proxy": {
+          "samples": 171,
+          "share": 0.07092,
+          "ms_per_frame": 2.599
+        },
+        "wine": {
+          "samples": 119,
+          "share": 0.04936,
+          "ms_per_frame": 1.809
+        },
+        "other": {
+          "samples": 12,
+          "share": 0.00498,
+          "ms_per_frame": 0.182
+        }
+      },
+      "ntdll": {
+        "exact": 634,
+        "listed": 591,
+        "coverage": 0.932,
+        "rows": [
+          {
+            "rva": "0x4cf1c",
+            "samples": 256,
+            "share": 0.10618,
+            "ms_per_frame": 3.891,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4cbac",
+            "samples": 139,
+            "share": 0.05765,
+            "ms_per_frame": 2.113,
+            "function": "ZwWriteFile+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 97,
+            "share": 0.04023,
+            "ms_per_frame": 1.474,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 52,
+            "share": 0.02157,
+            "ms_per_frame": 0.79,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 43,
+            "share": 0.01783,
+            "ms_per_frame": 0.654,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x23442",
+            "samples": 4,
+            "share": 0.00166,
+            "ms_per_frame": 0.061,
+            "function": "RtlAllocateHeap+0x9d2"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 171,
+        "listed": 17,
+        "coverage": 0.099,
+        "rows": [
+          {
+            "rva": "0x542b9",
+            "samples": 9,
+            "share": 0.00373,
+            "ms_per_frame": 0.137,
+            "function": "M_find_before_node_tr<IUnknown*>",
+            "location": "include/c++/16.2.0/bits/hashtable.h:2267"
+          },
+          {
+            "rva": "0x2b3c5",
+            "samples": 8,
+            "share": 0.00332,
+            "ms_per_frame": 0.122,
+            "function": "ZN3x3m9telemetry6recordERNS0_5StateENS0_6MetricEyby",
+            "location": "src/proxy/telemetry.cpp:41"
+          }
+        ]
+      },
+      "backend": {
+        "exact": 119,
+        "rows": [
+          {
+            "rva": "0xd3fa",
+            "samples": 4,
+            "share": 0.00166,
+            "ms_per_frame": 0.061
+          },
+          {
+            "rva": "0x10f2c",
+            "samples": 4,
+            "share": 0.00166,
+            "ms_per_frame": 0.061
+          },
+          {
+            "rva": "0x2ed1a",
+            "samples": 4,
+            "share": 0.00166,
+            "ms_per_frame": 0.061
+          },
+          {
+            "rva": "0x2a5cb",
+            "samples": 3,
+            "share": 0.00124,
+            "ms_per_frame": 0.046
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 427
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 140
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 128
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 80
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 27
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 25
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 20
+        },
+        {
+          "rva": "0xc2143",
+          "caller": "0xc522d",
+          "count": 18
+        },
+        {
+          "rva": "0xb5194",
+          "caller": "0xc4000",
+          "count": 18
+        },
+        {
+          "rva": "0xdac4a",
+          "caller": "0xdac4a",
+          "count": 16
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 15
+        },
+        {
+          "rva": "0xb4813",
+          "caller": "0xb5398",
+          "count": 10
+        }
+      ],
+      "telemetry": {
+        "records": 7,
+        "mean_draws": 327.3,
+        "mean_routed": 237.0,
+        "gate": {
+          "routed": 17.0609255771722,
+          "rejected": -0.8034891250411084
+        },
+        "route_draw_per_routed": 6.881,
+        "set_rt_per_call": 0.804,
+        "set_rt_per_routed": 3.217,
+        "exclusive_route_us": 5695.5,
+        "per_frame": {
+          "gate_us": 3973.6,
+          "route_draw_us": 1630.8,
+          "set_rt_us": 762.5,
+          "fill_us": 91.1,
+          "taa_run_us": 342.3,
+          "set_rt": 948.0,
+          "jitter_writes": 589.7,
+          "stamps": 5348.6
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 3.891,
+        "frame_constant_reads_ms": 1.769,
+        "telemetry_stamps_ms": 1.474,
+        "stamps_per_frame": 5348.6,
+        "us_per_qpc": 0.276,
+        "logging_ms": 2.113,
+        "set_rt_ms": 0.7625
+      }
+    },
+    {
+      "label": "burst2",
+      "from_s": 238.04,
+      "to_s": 250.05,
+      "covered_s": [
+        235.17,
+        250.18
+      ],
+      "elapsed_s": 15.01,
+      "samples": 2466,
+      "frames": 307.9,
+      "ms_per_sample": 6.089,
+      "engine_ms_per_frame": 48.758,
+      "module_split": {
+        "x3ap": {
+          "samples": 1201,
+          "share": 0.48702,
+          "ms_per_frame": 23.746
+        },
+        "ntdll": {
+          "samples": 793,
+          "share": 0.32157,
+          "ms_per_frame": 15.679
+        },
+        "d3dx": {
+          "samples": 181,
+          "share": 0.0734,
+          "ms_per_frame": 3.579
+        },
+        "proxy": {
+          "samples": 169,
+          "share": 0.06853,
+          "ms_per_frame": 3.341
+        },
+        "wine": {
+          "samples": 111,
+          "share": 0.04501,
+          "ms_per_frame": 2.195
+        },
+        "other": {
+          "samples": 11,
+          "share": 0.00446,
+          "ms_per_frame": 0.217
+        }
+      },
+      "ntdll": {
+        "exact": 793,
+        "listed": 750,
+        "coverage": 0.946,
+        "rows": [
+          {
+            "rva": "0x4cbac",
+            "samples": 320,
+            "share": 0.12976,
+            "ms_per_frame": 6.327,
+            "function": "ZwWriteFile+0xc"
+          },
+          {
+            "rva": "0x4cf1c",
+            "samples": 238,
+            "share": 0.09651,
+            "ms_per_frame": 4.706,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 100,
+            "share": 0.04055,
+            "ms_per_frame": 1.977,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 46,
+            "share": 0.01865,
+            "ms_per_frame": 0.91,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 35,
+            "share": 0.01419,
+            "ms_per_frame": 0.692,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x23442",
+            "samples": 4,
+            "share": 0.00162,
+            "ms_per_frame": 0.079,
+            "function": "RtlAllocateHeap+0x9d2"
+          },
+          {
+            "rva": "0x52a2b",
+            "samples": 4,
+            "share": 0.00162,
+            "ms_per_frame": 0.079,
+            "function": "RtlLeaveCriticalSection+0xab"
+          },
+          {
+            "rva": "0x52989",
+            "samples": 3,
+            "share": 0.00122,
+            "ms_per_frame": 0.059,
+            "function": "RtlLeaveCriticalSection+0x9"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 169,
+        "listed": 13,
+        "coverage": 0.077,
+        "rows": [
+          {
+            "rva": "0xa766",
+            "samples": 9,
+            "share": 0.00365,
+            "ms_per_frame": 0.178,
+            "function": "hash_bytes",
+            "location": "src/proxy/capture.cpp:171"
+          },
+          {
+            "rva": "0x542b9",
+            "samples": 4,
+            "share": 0.00162,
+            "ms_per_frame": 0.079,
+            "function": "M_find_before_node_tr<IUnknown*>",
+            "location": "include/c++/16.2.0/bits/hashtable.h:2267"
+          }
+        ]
+      },
+      "backend": {
+        "exact": 111,
+        "rows": [
+          {
+            "rva": "0x2ec62",
+            "samples": 4,
+            "share": 0.00162,
+            "ms_per_frame": 0.079
+          },
+          {
+            "rva": "0x2ed1a",
+            "samples": 3,
+            "share": 0.00122,
+            "ms_per_frame": 0.059
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 450
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 339
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 111
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 72
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 29
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 19
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 18
+        },
+        {
+          "rva": "0xb5194",
+          "caller": "0xc4000",
+          "count": 16
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 12
+        },
+        {
+          "rva": "0xc2143",
+          "caller": "0xc522d",
+          "count": 12
+        },
+        {
+          "rva": "0xc6c23",
+          "caller": "0xc6c23",
+          "count": 12
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 12
+        }
+      ],
+      "telemetry": {
+        "records": 5,
+        "mean_draws": 376.4,
+        "mean_routed": 283.2,
+        "gate": {
+          "routed": 17.54666533576755,
+          "rejected": -2.8592123719735363
+        },
+        "route_draw_per_routed": 6.928,
+        "set_rt_per_call": 0.813,
+        "set_rt_per_routed": 3.252,
+        "exclusive_route_us": 6762.9,
+        "per_frame": {
+          "gate_us": 4700.4,
+          "route_draw_us": 1962.1,
+          "set_rt_us": 921.0,
+          "fill_us": 100.5,
+          "taa_run_us": 351.9,
+          "set_rt": 1132.8,
+          "jitter_writes": 687.6,
+          "stamps": 6295.2
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 4.706,
+        "frame_constant_reads_ms": 2.139,
+        "telemetry_stamps_ms": 1.977,
+        "stamps_per_frame": 6295.2,
+        "us_per_qpc": 0.314,
+        "logging_ms": 6.327,
+        "set_rt_ms": 0.921
+      }
+    },
+    {
+      "label": "burst3",
+      "from_s": 295.26,
+      "to_s": 307.26,
+      "covered_s": [
+        295.21,
+        310.24
+      ],
+      "elapsed_s": 15.03,
+      "samples": 2483,
+      "frames": 204.7,
+      "ms_per_sample": 6.052,
+      "engine_ms_per_frame": 73.417,
+      "module_split": {
+        "x3ap": {
+          "samples": 1167,
+          "share": 0.47,
+          "ms_per_frame": 34.506
+        },
+        "ntdll": {
+          "samples": 796,
+          "share": 0.32058,
+          "ms_per_frame": 23.536
+        },
+        "d3dx": {
+          "samples": 225,
+          "share": 0.09062,
+          "ms_per_frame": 6.653
+        },
+        "proxy": {
+          "samples": 171,
+          "share": 0.06887,
+          "ms_per_frame": 5.056
+        },
+        "wine": {
+          "samples": 116,
+          "share": 0.04672,
+          "ms_per_frame": 3.43
+        },
+        "other": {
+          "samples": 8,
+          "share": 0.00322,
+          "ms_per_frame": 0.237
+        }
+      },
+      "ntdll": {
+        "exact": 796,
+        "listed": 756,
+        "coverage": 0.95,
+        "rows": [
+          {
+            "rva": "0x4cbac",
+            "samples": 299,
+            "share": 0.12042,
+            "ms_per_frame": 8.841,
+            "function": "ZwWriteFile+0xc"
+          },
+          {
+            "rva": "0x4cf1c",
+            "samples": 264,
+            "share": 0.10632,
+            "ms_per_frame": 7.806,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 116,
+            "share": 0.04672,
+            "ms_per_frame": 3.43,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 37,
+            "share": 0.0149,
+            "ms_per_frame": 1.094,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 25,
+            "share": 0.01007,
+            "ms_per_frame": 0.739,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x52989",
+            "samples": 5,
+            "share": 0.00201,
+            "ms_per_frame": 0.148,
+            "function": "RtlLeaveCriticalSection+0x9"
+          },
+          {
+            "rva": "0x5286f",
+            "samples": 5,
+            "share": 0.00201,
+            "ms_per_frame": 0.148,
+            "function": "RtlEnterCriticalSection+0x5f"
+          },
+          {
+            "rva": "0x528a5",
+            "samples": 5,
+            "share": 0.00201,
+            "ms_per_frame": 0.148,
+            "function": "RtlEnterCriticalSection+0x95"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 171,
+        "listed": 19,
+        "coverage": 0.111,
+        "rows": [
+          {
+            "rva": "0xadc1f",
+            "samples": 6,
+            "share": 0.00242,
+            "ms_per_frame": 0.177,
+            "function": "_mingw_pformat",
+            "location": "/private/tmp/mingw-w64-20260807-49703-dvakod/mingw-w64-v14.0.0/mingw-w64-crt/build-i686/../stdio/mingw_pformat.c:2442"
+          },
+          {
+            "rva": "0x844d2",
+            "samples": 5,
+            "share": 0.00201,
+            "ms_per_frame": 0.148,
+            "function": "fingerprint",
+            "location": "src/renderer/rigid_position.cpp:46"
+          },
+          {
+            "rva": "0xb4830",
+            "samples": 4,
+            "share": 0.00161,
+            "ms_per_frame": 0.118,
+            "function": "??",
+            "location": "fake:?"
+          },
+          {
+            "rva": "0xadc79",
+            "samples": 4,
+            "share": 0.00161,
+            "ms_per_frame": 0.118,
+            "function": "_mingw_pformat",
+            "location": "/private/tmp/mingw-w64-20260807-49703-dvakod/mingw-w64-v14.0.0/mingw-w64-crt/build-i686/../stdio/mingw_pformat.c:2446"
+          }
+        ]
+      },
+      "backend": {
+        "exact": 116,
+        "rows": [
+          {
+            "rva": "0xd3fa",
+            "samples": 8,
+            "share": 0.00322,
+            "ms_per_frame": 0.237
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 500
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 321
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 139
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 66
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 25
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 22
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 21
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 19
+        },
+        {
+          "rva": "0xdac4a",
+          "caller": "0xdac4a",
+          "count": 14
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 14
+        },
+        {
+          "rva": "0xa2707",
+          "caller": "0xd358f",
+          "count": 13
+        },
+        {
+          "rva": "0xc2143",
+          "caller": "0xc522d",
+          "count": 12
+        }
+      ],
+      "telemetry": {
+        "records": 3,
+        "mean_draws": 588.7,
+        "mean_routed": 464.3,
+        "gate": {
+          "routed": 11.391151158367538,
+          "rejected": 19.14251810412414
+        },
+        "route_draw_per_routed": 6.552,
+        "set_rt_per_call": 0.783,
+        "set_rt_per_routed": 3.133,
+        "exclusive_route_us": 10769.2,
+        "per_frame": {
+          "gate_us": 7659.6,
+          "route_draw_us": 3042.1,
+          "set_rt_us": 1455.0,
+          "fill_us": 67.5,
+          "taa_run_us": 403.3,
+          "set_rt": 1857.3,
+          "jitter_writes": 1099.3,
+          "stamps": 10141.3
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 7.806,
+        "frame_constant_reads_ms": 3.548,
+        "telemetry_stamps_ms": 3.43,
+        "stamps_per_frame": 10141.3,
+        "us_per_qpc": 0.338,
+        "logging_ms": 8.841,
+        "set_rt_ms": 1.455
+      }
+    },
+    {
+      "label": "burst4",
+      "from_s": 365.26,
+      "to_s": 375.46,
+      "covered_s": [
+        360.29,
+        380.31
+      ],
+      "elapsed_s": 20.02,
+      "samples": 3270,
+      "frames": 776.2,
+      "ms_per_sample": 6.121,
+      "engine_ms_per_frame": 25.787,
+      "module_split": {
+        "x3ap": {
+          "samples": 1921,
+          "share": 0.58746,
+          "ms_per_frame": 15.149
+        },
+        "ntdll": {
+          "samples": 725,
+          "share": 0.22171,
+          "ms_per_frame": 5.717
+        },
+        "d3dx": {
+          "samples": 233,
+          "share": 0.07125,
+          "ms_per_frame": 1.837
+        },
+        "wine": {
+          "samples": 201,
+          "share": 0.06147,
+          "ms_per_frame": 1.585
+        },
+        "proxy": {
+          "samples": 173,
+          "share": 0.05291,
+          "ms_per_frame": 1.364
+        },
+        "other": {
+          "samples": 17,
+          "share": 0.0052,
+          "ms_per_frame": 0.134
+        }
+      },
+      "ntdll": {
+        "exact": 725,
+        "listed": 676,
+        "coverage": 0.932,
+        "rows": [
+          {
+            "rva": "0x4cf1c",
+            "samples": 278,
+            "share": 0.08502,
+            "ms_per_frame": 2.192,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4cbac",
+            "samples": 143,
+            "share": 0.04373,
+            "ms_per_frame": 1.128,
+            "function": "ZwWriteFile+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 107,
+            "share": 0.03272,
+            "ms_per_frame": 0.844,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 98,
+            "share": 0.02997,
+            "ms_per_frame": 0.773,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 45,
+            "share": 0.01376,
+            "ms_per_frame": 0.355,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x4cb6c",
+            "samples": 5,
+            "share": 0.00153,
+            "ms_per_frame": 0.039,
+            "function": "ZwWaitForSingleObject+0xc"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 173,
+        "listed": 0,
+        "coverage": 0.0,
+        "rows": []
+      },
+      "backend": {
+        "exact": 201,
+        "rows": [
+          {
+            "rva": "0x26e9",
+            "samples": 7,
+            "share": 0.00214,
+            "ms_per_frame": 0.055
+          },
+          {
+            "rva": "0x10d9c",
+            "samples": 5,
+            "share": 0.00153,
+            "ms_per_frame": 0.039
+          },
+          {
+            "rva": "0xd3fa",
+            "samples": 5,
+            "share": 0.00153,
+            "ms_per_frame": 0.039
+          },
+          {
+            "rva": "0x11c4c",
+            "samples": 5,
+            "share": 0.00153,
+            "ms_per_frame": 0.039
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 461
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 145
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 145
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 112
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 46
+        },
+        {
+          "rva": "0xc2143",
+          "caller": "0xc522d",
+          "count": 40
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 38
+        },
+        {
+          "rva": "0x10e21e",
+          "caller": "0x10e23d",
+          "count": 25
+        },
+        {
+          "rva": "0xc213b",
+          "caller": "0xc522d",
+          "count": 24
+        },
+        {
+          "rva": "0xb5194",
+          "caller": "0xc4000",
+          "count": 23
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 23
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 22
+        }
+      ],
+      "telemetry": {
+        "records": 13,
+        "mean_draws": 203.9,
+        "mean_routed": 118.8,
+        "gate": {
+          "routed": 14.986129176042152,
+          "rejected": 2.7152632545479785
+        },
+        "route_draw_per_routed": 6.7,
+        "set_rt_per_call": 0.803,
+        "set_rt_per_routed": 3.211,
+        "exclusive_route_us": 2866.3,
+        "per_frame": {
+          "gate_us": 2010.4,
+          "route_draw_us": 796.2,
+          "set_rt_us": 381.6,
+          "fill_us": 59.7,
+          "taa_run_us": 326.5,
+          "set_rt": 475.4,
+          "jitter_writes": 342.5,
+          "stamps": 2942.8
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 2.192,
+        "frame_constant_reads_ms": 0.996,
+        "telemetry_stamps_ms": 0.844,
+        "stamps_per_frame": 2942.8,
+        "us_per_qpc": 0.287,
+        "logging_ms": 1.128,
+        "set_rt_ms": 0.38160000000000005
+      }
+    },
+    {
+      "label": "burst5",
+      "from_s": 416.91,
+      "to_s": 428.12,
+      "covered_s": [
+        415.34,
+        430.4
+      ],
+      "elapsed_s": 15.06,
+      "samples": 1723,
+      "frames": 518.2,
+      "ms_per_sample": 8.743,
+      "engine_ms_per_frame": 29.068,
+      "module_split": {
+        "x3ap": {
+          "samples": 952,
+          "share": 0.55252,
+          "ms_per_frame": 16.061
+        },
+        "ntdll": {
+          "samples": 450,
+          "share": 0.26117,
+          "ms_per_frame": 7.592
+        },
+        "d3dx": {
+          "samples": 116,
+          "share": 0.06732,
+          "ms_per_frame": 1.957
+        },
+        "wine": {
+          "samples": 100,
+          "share": 0.05804,
+          "ms_per_frame": 1.687
+        },
+        "proxy": {
+          "samples": 95,
+          "share": 0.05514,
+          "ms_per_frame": 1.603
+        },
+        "other": {
+          "samples": 10,
+          "share": 0.0058,
+          "ms_per_frame": 0.169
+        }
+      },
+      "ntdll": {
+        "exact": 450,
+        "listed": 426,
+        "coverage": 0.947,
+        "rows": [
+          {
+            "rva": "0x4cf1c",
+            "samples": 154,
+            "share": 0.08938,
+            "ms_per_frame": 2.598,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4cbac",
+            "samples": 139,
+            "share": 0.08067,
+            "ms_per_frame": 2.345,
+            "function": "ZwWriteFile+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 55,
+            "share": 0.03192,
+            "ms_per_frame": 0.928,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 47,
+            "share": 0.02728,
+            "ms_per_frame": 0.793,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 23,
+            "share": 0.01335,
+            "ms_per_frame": 0.388,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x52989",
+            "samples": 4,
+            "share": 0.00232,
+            "ms_per_frame": 0.067,
+            "function": "RtlLeaveCriticalSection+0x9"
+          },
+          {
+            "rva": "0x528a5",
+            "samples": 4,
+            "share": 0.00232,
+            "ms_per_frame": 0.067,
+            "function": "RtlEnterCriticalSection+0x95"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 95,
+        "listed": 0,
+        "coverage": 0.0,
+        "rows": []
+      },
+      "backend": {
+        "exact": 100,
+        "rows": [
+          {
+            "rva": "0xd3fa",
+            "samples": 4,
+            "share": 0.00232,
+            "ms_per_frame": 0.067
+          },
+          {
+            "rva": "0x10d9c",
+            "samples": 4,
+            "share": 0.00232,
+            "ms_per_frame": 0.067
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 257
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 145
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 62
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 59
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 27
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 23
+        },
+        {
+          "rva": "0xdac4a",
+          "caller": "0xdac4a",
+          "count": 16
+        },
+        {
+          "rva": "0xc7ee7",
+          "caller": "0xc6db5",
+          "count": 14
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 11
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 11
+        },
+        {
+          "rva": "0xc6e61",
+          "caller": "0xc6e61",
+          "count": 11
+        },
+        {
+          "rva": "0xb5194",
+          "caller": "0xc4000",
+          "count": 10
+        }
+      ],
+      "telemetry": {
+        "records": 8,
+        "mean_draws": 227.6,
+        "mean_routed": 120.2,
+        "gate": {
+          "routed": 15.693440622191801,
+          "rejected": 1.2744291334218785
+        },
+        "route_draw_per_routed": 6.33,
+        "set_rt_per_call": 0.721,
+        "set_rt_per_routed": 2.884,
+        "exclusive_route_us": 2842.9,
+        "per_frame": {
+          "gate_us": 2019.9,
+          "route_draw_us": 761.1,
+          "set_rt_us": 346.8,
+          "fill_us": 61.9,
+          "taa_run_us": 376.0,
+          "set_rt": 481.0,
+          "jitter_writes": 358.0,
+          "stamps": 3085.5
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 2.598,
+        "frame_constant_reads_ms": 1.181,
+        "telemetry_stamps_ms": 0.793,
+        "stamps_per_frame": 3085.5,
+        "us_per_qpc": 0.257,
+        "logging_ms": 2.345,
+        "set_rt_ms": 0.3468
+      }
+    },
+    {
+      "label": "menu-noroute",
+      "from_s": 76.0,
+      "to_s": 122.0,
+      "covered_s": [
+        75.05,
+        125.09
+      ],
+      "elapsed_s": 50.05,
+      "samples": 11081,
+      "frames": 1077.4,
+      "ms_per_sample": 4.516,
+      "engine_ms_per_frame": 46.45,
+      "module_split": {
+        "x3ap": {
+          "samples": 7871,
+          "share": 0.71031,
+          "ms_per_frame": 32.994
+        },
+        "d3dx": {
+          "samples": 1262,
+          "share": 0.11389,
+          "ms_per_frame": 5.29
+        },
+        "ntdll": {
+          "samples": 1006,
+          "share": 0.09079,
+          "ms_per_frame": 4.217
+        },
+        "wine": {
+          "samples": 492,
+          "share": 0.0444,
+          "ms_per_frame": 2.062
+        },
+        "proxy": {
+          "samples": 383,
+          "share": 0.03456,
+          "ms_per_frame": 1.605
+        },
+        "other": {
+          "samples": 57,
+          "share": 0.00514,
+          "ms_per_frame": 0.239
+        },
+        "zlib": {
+          "samples": 10,
+          "share": 0.0009,
+          "ms_per_frame": 0.042
+        }
+      },
+      "ntdll": {
+        "exact": 1006,
+        "listed": 929,
+        "coverage": 0.923,
+        "rows": [
+          {
+            "rva": "0x4ce3c",
+            "samples": 376,
+            "share": 0.03393,
+            "ms_per_frame": 1.576,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 225,
+            "share": 0.02031,
+            "ms_per_frame": 0.943,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 214,
+            "share": 0.01931,
+            "ms_per_frame": 0.897,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x4cf1c",
+            "samples": 114,
+            "share": 0.01029,
+            "ms_per_frame": 0.478,
+            "function": "ZwReadVirtualMemory+0xc"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 383,
+        "listed": 5,
+        "coverage": 0.013,
+        "rows": [
+          {
+            "rva": "0x2d510",
+            "samples": 5,
+            "share": 0.00045,
+            "ms_per_frame": 0.021,
+            "function": "ZN3x3m8CpuState7captureEv",
+            "location": "src/proxy/cpu_state.h:16"
+          }
+        ]
+      },
+      "backend": {
+        "exact": 492,
+        "rows": [
+          {
+            "rva": "0x10d9c",
+            "samples": 25,
+            "share": 0.00226,
+            "ms_per_frame": 0.105
+          },
+          {
+            "rva": "0xd3fa",
+            "samples": 10,
+            "share": 0.0009,
+            "ms_per_frame": 0.042
+          },
+          {
+            "rva": "0x11c4c",
+            "samples": 7,
+            "share": 0.00063,
+            "ms_per_frame": 0.029
+          },
+          {
+            "rva": "0x2a5cb",
+            "samples": 5,
+            "share": 0.00045,
+            "ms_per_frame": 0.021
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 691
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 609
+        },
+        {
+          "rva": "0xdb69b",
+          "caller": "0xeeaf9",
+          "count": 202
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 155
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 145
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 124
+        },
+        {
+          "rva": "0x1244b",
+          "caller": "0x5d5df",
+          "count": 99
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 93
+        },
+        {
+          "rva": "0xc1efe",
+          "caller": "0xc4068",
+          "count": 86
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 86
+        },
+        {
+          "rva": "0xc213b",
+          "caller": "0xc522d",
+          "count": 78
+        },
+        {
+          "rva": "0xa0a8e",
+          "caller": "0xe928b",
+          "count": 75
+        }
+      ],
+      "telemetry": null,
+      "savings": {
+        "read_process_memory_ms": 0.478,
+        "frame_constant_reads_ms": 0.217,
+        "telemetry_stamps_ms": 1.576,
+        "stamps_per_frame": 0,
+        "us_per_qpc": null,
+        "logging_ms": 0.0,
+        "set_rt_ms": 0.0
+      }
+    },
+    {
+      "label": "flight-early",
+      "from_s": 212.0,
+      "to_s": 232.0,
+      "covered_s": [
+        210.15,
+        235.17
+      ],
+      "elapsed_s": 25.02,
+      "samples": 4406,
+      "frames": 667.2,
+      "ms_per_sample": 5.679,
+      "engine_ms_per_frame": 37.501,
+      "module_split": {
+        "x3ap": {
+          "samples": 2429,
+          "share": 0.55129,
+          "ms_per_frame": 20.674
+        },
+        "ntdll": {
+          "samples": 1025,
+          "share": 0.23264,
+          "ms_per_frame": 8.724
+        },
+        "d3dx": {
+          "samples": 413,
+          "share": 0.09374,
+          "ms_per_frame": 3.515
+        },
+        "wine": {
+          "samples": 271,
+          "share": 0.06151,
+          "ms_per_frame": 2.307
+        },
+        "proxy": {
+          "samples": 233,
+          "share": 0.05288,
+          "ms_per_frame": 1.983
+        },
+        "other": {
+          "samples": 26,
+          "share": 0.0059,
+          "ms_per_frame": 0.221
+        },
+        "zlib": {
+          "samples": 9,
+          "share": 0.00204,
+          "ms_per_frame": 0.077
+        }
+      },
+      "ntdll": {
+        "exact": 1025,
+        "listed": 917,
+        "coverage": 0.895,
+        "rows": [
+          {
+            "rva": "0x4cf1c",
+            "samples": 387,
+            "share": 0.08783,
+            "ms_per_frame": 3.294,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4cbac",
+            "samples": 139,
+            "share": 0.03155,
+            "ms_per_frame": 1.183,
+            "function": "ZwWriteFile+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 136,
+            "share": 0.03087,
+            "ms_per_frame": 1.158,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 121,
+            "share": 0.02746,
+            "ms_per_frame": 1.03,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 58,
+            "share": 0.01316,
+            "ms_per_frame": 0.494,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x4cc1c",
+            "samples": 22,
+            "share": 0.00499,
+            "ms_per_frame": 0.187,
+            "function": "ZwClose+0xc"
+          },
+          {
+            "rva": "0x4d68c",
+            "samples": 20,
+            "share": 0.00454,
+            "ms_per_frame": 0.17,
+            "function": "ZwOpenKeyEx+0xc"
+          },
+          {
+            "rva": "0x4cc9c",
+            "samples": 18,
+            "share": 0.00409,
+            "ms_per_frame": 0.153,
+            "function": "ZwQueryValueKey+0xc"
+          },
+          {
+            "rva": "0x4d12c",
+            "samples": 6,
+            "share": 0.00136,
+            "ms_per_frame": 0.051,
+            "function": "ZwSetValueKey+0xc"
+          },
+          {
+            "rva": "0x4cb6c",
+            "samples": 6,
+            "share": 0.00136,
+            "ms_per_frame": 0.051,
+            "function": "ZwWaitForSingleObject+0xc"
+          },
+          {
+            "rva": "0x4cfbc",
+            "samples": 4,
+            "share": 0.00091,
+            "ms_per_frame": 0.034,
+            "function": "ZwQueryVolumeInformationFile+0xc"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 233,
+        "listed": 13,
+        "coverage": 0.056,
+        "rows": [
+          {
+            "rva": "0x2b3c5",
+            "samples": 8,
+            "share": 0.00182,
+            "ms_per_frame": 0.068,
+            "function": "ZN3x3m9telemetry6recordERNS0_5StateENS0_6MetricEyby",
+            "location": "src/proxy/telemetry.cpp:41"
+          },
+          {
+            "rva": "0x542b9",
+            "samples": 5,
+            "share": 0.00113,
+            "ms_per_frame": 0.043,
+            "function": "M_find_before_node_tr<IUnknown*>",
+            "location": "include/c++/16.2.0/bits/hashtable.h:2267"
+          }
+        ]
+      },
+      "backend": {
+        "exact": 271,
+        "rows": [
+          {
+            "rva": "0x26e9",
+            "samples": 20,
+            "share": 0.00454,
+            "ms_per_frame": 0.17
+          },
+          {
+            "rva": "0x11c4c",
+            "samples": 6,
+            "share": 0.00136,
+            "ms_per_frame": 0.051
+          },
+          {
+            "rva": "0x62eb3",
+            "samples": 5,
+            "share": 0.00113,
+            "ms_per_frame": 0.043
+          },
+          {
+            "rva": "0xd3fa",
+            "samples": 4,
+            "share": 0.00091,
+            "ms_per_frame": 0.034
+          },
+          {
+            "rva": "0x10f2c",
+            "samples": 4,
+            "share": 0.00091,
+            "ms_per_frame": 0.034
+          },
+          {
+            "rva": "0x2ed1a",
+            "samples": 4,
+            "share": 0.00091,
+            "ms_per_frame": 0.034
+          },
+          {
+            "rva": "0x2a5cb",
+            "samples": 3,
+            "share": 0.00068,
+            "ms_per_frame": 0.026
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 664
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 196
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 140
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 93
+        },
+        {
+          "rva": "0xdd6a2",
+          "caller": "0xdd6a2",
+          "count": 91
+        },
+        {
+          "rva": "0x10e21e",
+          "caller": "0x10e23d",
+          "count": 82
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 48
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 41
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 32
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 31
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 28
+        },
+        {
+          "rva": "0xdb69b",
+          "caller": "0xeeaf9",
+          "count": 26
+        }
+      ],
+      "telemetry": {
+        "records": 11,
+        "mean_draws": 260.4,
+        "mean_routed": 191.2,
+        "gate": {
+          "routed": 13.609592201328391,
+          "rejected": 8.711382755693435
+        },
+        "route_draw_per_routed": 6.617,
+        "set_rt_per_call": 0.767,
+        "set_rt_per_routed": 3.066,
+        "exclusive_route_us": 4529.7,
+        "per_frame": {
+          "gate_us": 3200.4,
+          "route_draw_us": 1265.1,
+          "set_rt_us": 586.2,
+          "fill_us": 64.1,
+          "taa_run_us": 312.9,
+          "set_rt": 764.7,
+          "jitter_writes": 468.4,
+          "stamps": 4288.4
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 3.294,
+        "frame_constant_reads_ms": 1.497,
+        "telemetry_stamps_ms": 1.158,
+        "stamps_per_frame": 4288.4,
+        "us_per_qpc": 0.27,
+        "logging_ms": 1.183,
+        "set_rt_ms": 0.5862
+      }
+    },
+    {
+      "label": "flightA",
+      "from_s": 250.0,
+      "to_s": 300.0,
+      "covered_s": [
+        245.18,
+        300.21
+      ],
+      "elapsed_s": 55.03,
+      "samples": 9007,
+      "frames": 1121.1,
+      "ms_per_sample": 6.11,
+      "engine_ms_per_frame": 49.087,
+      "module_split": {
+        "x3ap": {
+          "samples": 5199,
+          "share": 0.57722,
+          "ms_per_frame": 28.334
+        },
+        "ntdll": {
+          "samples": 1898,
+          "share": 0.21072,
+          "ms_per_frame": 10.344
+        },
+        "d3dx": {
+          "samples": 856,
+          "share": 0.09504,
+          "ms_per_frame": 4.665
+        },
+        "proxy": {
+          "samples": 516,
+          "share": 0.05729,
+          "ms_per_frame": 2.812
+        },
+        "wine": {
+          "samples": 497,
+          "share": 0.05518,
+          "ms_per_frame": 2.709
+        },
+        "other": {
+          "samples": 41,
+          "share": 0.00455,
+          "ms_per_frame": 0.223
+        }
+      },
+      "ntdll": {
+        "exact": 1898,
+        "listed": 1821,
+        "coverage": 0.959,
+        "rows": [
+          {
+            "rva": "0x4cf1c",
+            "samples": 1096,
+            "share": 0.12168,
+            "ms_per_frame": 5.973,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 393,
+            "share": 0.04363,
+            "ms_per_frame": 2.142,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 144,
+            "share": 0.01599,
+            "ms_per_frame": 0.785,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 135,
+            "share": 0.01499,
+            "ms_per_frame": 0.736,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x4cbac",
+            "samples": 53,
+            "share": 0.00588,
+            "ms_per_frame": 0.289,
+            "function": "ZwWriteFile+0xc"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 516,
+        "listed": 27,
+        "coverage": 0.052,
+        "rows": [
+          {
+            "rva": "0x542b9",
+            "samples": 9,
+            "share": 0.001,
+            "ms_per_frame": 0.049,
+            "function": "M_find_before_node_tr<IUnknown*>",
+            "location": "include/c++/16.2.0/bits/hashtable.h:2267"
+          },
+          {
+            "rva": "0xb7930",
+            "samples": 5,
+            "share": 0.00056,
+            "ms_per_frame": 0.027,
+            "function": "_pthread_self_lite",
+            "location": "src/thread.c:1023"
+          },
+          {
+            "rva": "0xb454f",
+            "samples": 5,
+            "share": 0.00056,
+            "ms_per_frame": 0.027,
+            "function": "sqrtf",
+            "location": "/private/tmp/mingw-w64-20260807-49703-dvakod/mingw-w64-v14.0.0/mingw-w64-crt/build-i686/../math/sqrt.def.h:92"
+          },
+          {
+            "rva": "0xaaf40",
+            "samples": 4,
+            "share": 0.00044,
+            "ms_per_frame": 0.022,
+            "function": "Unwind_SjLj_Register",
+            "location": "/private/tmp/mingw-w64-20260807-49703-dvakod/mingw-w64-v14.0.0/gcc/build-i686/i686-w64-mingw32/libgcc/../../../libgcc/unwind-sjlj.c:121"
+          },
+          {
+            "rva": "0xb83e6",
+            "samples": 4,
+            "share": 0.00044,
+            "ms_per_frame": 0.022,
+            "function": "pthread_setspecific",
+            "location": "src/thread.c:950"
+          }
+        ]
+      },
+      "backend": {
+        "exact": 497,
+        "rows": [
+          {
+            "rva": "0xd3fa",
+            "samples": 24,
+            "share": 0.00266,
+            "ms_per_frame": 0.131
+          },
+          {
+            "rva": "0xf5f6",
+            "samples": 10,
+            "share": 0.00111,
+            "ms_per_frame": 0.054
+          },
+          {
+            "rva": "0x90f6",
+            "samples": 4,
+            "share": 0.00044,
+            "ms_per_frame": 0.022
+          },
+          {
+            "rva": "0x10d9c",
+            "samples": 3,
+            "share": 0.00033,
+            "ms_per_frame": 0.016
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 1813
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 508
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 274
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 104
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 102
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 83
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 73
+        },
+        {
+          "rva": "0xb5194",
+          "caller": "0xc4000",
+          "count": 72
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 64
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 64
+        },
+        {
+          "rva": "0xc2143",
+          "caller": "0xc522d",
+          "count": 56
+        },
+        {
+          "rva": "0xc7ee7",
+          "caller": "0xc6db5",
+          "count": 53
+        }
+      ],
+      "telemetry": {
+        "records": 19,
+        "mean_draws": 462.5,
+        "mean_routed": 354.2,
+        "gate": {
+          "routed": 17.44442507503216,
+          "rejected": -2.4897497330045684
+        },
+        "route_draw_per_routed": 6.664,
+        "set_rt_per_call": 0.773,
+        "set_rt_per_routed": 3.092,
+        "exclusive_route_us": 8330.2,
+        "per_frame": {
+          "gate_us": 5905.6,
+          "route_draw_us": 2360.1,
+          "set_rt_us": 1095.2,
+          "fill_us": 64.5,
+          "taa_run_us": 336.3,
+          "set_rt": 1416.6,
+          "jitter_writes": 857.7,
+          "stamps": 7831.4
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 5.973,
+        "frame_constant_reads_ms": 2.715,
+        "telemetry_stamps_ms": 2.142,
+        "stamps_per_frame": 7831.4,
+        "us_per_qpc": 0.274,
+        "logging_ms": 0.289,
+        "set_rt_ms": 1.0952
+      }
+    },
+    {
+      "label": "flightB",
+      "from_s": 340.0,
+      "to_s": 370.0,
+      "covered_s": [
+        335.26,
+        370.3
+      ],
+      "elapsed_s": 35.04,
+      "samples": 5738,
+      "frames": 1004.8,
+      "ms_per_sample": 6.106,
+      "engine_ms_per_frame": 34.87,
+      "module_split": {
+        "x3ap": {
+          "samples": 3498,
+          "share": 0.60962,
+          "ms_per_frame": 21.257
+        },
+        "ntdll": {
+          "samples": 1152,
+          "share": 0.20077,
+          "ms_per_frame": 7.001
+        },
+        "d3dx": {
+          "samples": 485,
+          "share": 0.08452,
+          "ms_per_frame": 2.947
+        },
+        "wine": {
+          "samples": 289,
+          "share": 0.05037,
+          "ms_per_frame": 1.756
+        },
+        "proxy": {
+          "samples": 283,
+          "share": 0.04932,
+          "ms_per_frame": 1.72
+        },
+        "other": {
+          "samples": 31,
+          "share": 0.0054,
+          "ms_per_frame": 0.188
+        }
+      },
+      "ntdll": {
+        "exact": 1152,
+        "listed": 1098,
+        "coverage": 0.953,
+        "rows": [
+          {
+            "rva": "0x4cf1c",
+            "samples": 602,
+            "share": 0.10491,
+            "ms_per_frame": 3.658,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 241,
+            "share": 0.042,
+            "ms_per_frame": 1.465,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 111,
+            "share": 0.01934,
+            "ms_per_frame": 0.675,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 82,
+            "share": 0.01429,
+            "ms_per_frame": 0.498,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x4cbac",
+            "samples": 62,
+            "share": 0.01081,
+            "ms_per_frame": 0.377,
+            "function": "ZwWriteFile+0xc"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 283,
+        "listed": 0,
+        "coverage": 0.0,
+        "rows": []
+      },
+      "backend": {
+        "exact": 289,
+        "rows": [
+          {
+            "rva": "0xd3fa",
+            "samples": 5,
+            "share": 0.00087,
+            "ms_per_frame": 0.03
+          },
+          {
+            "rva": "0x62eb3",
+            "samples": 4,
+            "share": 0.0007,
+            "ms_per_frame": 0.024
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 955
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 276
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 178
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 67
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 67
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 65
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 55
+        },
+        {
+          "rva": "0xc7bd1",
+          "caller": "0xc8256",
+          "count": 53
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 49
+        },
+        {
+          "rva": "0xa2707",
+          "caller": "0xd358f",
+          "count": 42
+        },
+        {
+          "rva": "0xc2143",
+          "caller": "0xc522d",
+          "count": 36
+        },
+        {
+          "rva": "0xb5194",
+          "caller": "0xc4000",
+          "count": 31
+        }
+      ],
+      "telemetry": {
+        "records": 17,
+        "mean_draws": 275.2,
+        "mean_routed": 190.9,
+        "gate": {
+          "routed": 16.94790507033815,
+          "rejected": -0.12630593259924813
+        },
+        "route_draw_per_routed": 6.708,
+        "set_rt_per_call": 0.794,
+        "set_rt_per_routed": 3.178,
+        "exclusive_route_us": 4586.6,
+        "per_frame": {
+          "gate_us": 3225.9,
+          "route_draw_us": 1280.5,
+          "set_rt_us": 606.5,
+          "fill_us": 80.3,
+          "taa_run_us": 382.8,
+          "set_rt": 763.5,
+          "jitter_writes": 487.4,
+          "stamps": 4382.1
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 3.658,
+        "frame_constant_reads_ms": 1.663,
+        "telemetry_stamps_ms": 1.465,
+        "stamps_per_frame": 4382.1,
+        "us_per_qpc": 0.334,
+        "logging_ms": 0.377,
+        "set_rt_ms": 0.6065
+      }
+    },
+    {
+      "label": "flightC",
+      "from_s": 409.0,
+      "to_s": 428.0,
+      "covered_s": [
+        405.32,
+        430.4
+      ],
+      "elapsed_s": 25.08,
+      "samples": 3020,
+      "frames": 658.5,
+      "ms_per_sample": 8.304,
+      "engine_ms_per_frame": 38.083,
+      "module_split": {
+        "x3ap": {
+          "samples": 1472,
+          "share": 0.48742,
+          "ms_per_frame": 18.562
+        },
+        "ntdll": {
+          "samples": 637,
+          "share": 0.21093,
+          "ms_per_frame": 8.033
+        },
+        "d3dx": {
+          "samples": 572,
+          "share": 0.1894,
+          "ms_per_frame": 7.213
+        },
+        "wine": {
+          "samples": 166,
+          "share": 0.05497,
+          "ms_per_frame": 2.093
+        },
+        "proxy": {
+          "samples": 144,
+          "share": 0.04768,
+          "ms_per_frame": 1.816
+        },
+        "other": {
+          "samples": 16,
+          "share": 0.0053,
+          "ms_per_frame": 0.202
+        },
+        "zlib": {
+          "samples": 13,
+          "share": 0.0043,
+          "ms_per_frame": 0.164
+        }
+      },
+      "ntdll": {
+        "exact": 637,
+        "listed": 575,
+        "coverage": 0.903,
+        "rows": [
+          {
+            "rva": "0x4cf1c",
+            "samples": 229,
+            "share": 0.07583,
+            "ms_per_frame": 2.888,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4cbac",
+            "samples": 139,
+            "share": 0.04603,
+            "ms_per_frame": 1.753,
+            "function": "ZwWriteFile+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 90,
+            "share": 0.0298,
+            "ms_per_frame": 1.135,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4ce3c",
+            "samples": 77,
+            "share": 0.0255,
+            "ms_per_frame": 0.971,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 32,
+            "share": 0.0106,
+            "ms_per_frame": 0.404,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x52989",
+            "samples": 4,
+            "share": 0.00132,
+            "ms_per_frame": 0.05,
+            "function": "RtlLeaveCriticalSection+0x9"
+          },
+          {
+            "rva": "0x528a5",
+            "samples": 4,
+            "share": 0.00132,
+            "ms_per_frame": 0.05,
+            "function": "RtlEnterCriticalSection+0x95"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 144,
+        "listed": 0,
+        "coverage": 0.0,
+        "rows": []
+      },
+      "backend": {
+        "exact": 166,
+        "rows": [
+          {
+            "rva": "0xd3fa",
+            "samples": 4,
+            "share": 0.00132,
+            "ms_per_frame": 0.05
+          },
+          {
+            "rva": "0x10d9c",
+            "samples": 4,
+            "share": 0.00132,
+            "ms_per_frame": 0.05
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0xb4f99",
+          "caller": "0xc403e",
+          "count": 368
+        },
+        {
+          "rva": "0x124071",
+          "caller": "0xbc76c",
+          "count": 190
+        },
+        {
+          "rva": "0xc403e",
+          "caller": "0xc522d",
+          "count": 145
+        },
+        {
+          "rva": "0x1240bd",
+          "caller": "0xbc76c",
+          "count": 128
+        },
+        {
+          "rva": "0xb4fad",
+          "caller": "0xb4f99",
+          "count": 96
+        },
+        {
+          "rva": "0xc4000",
+          "caller": "0xc522d",
+          "count": 92
+        },
+        {
+          "rva": "0xbcc30",
+          "caller": "0xbb9ac",
+          "count": 53
+        },
+        {
+          "rva": "0x10e21e",
+          "caller": "0x10e23d",
+          "count": 40
+        },
+        {
+          "rva": "0xc4c8e",
+          "caller": "0xc4c8e",
+          "count": 34
+        },
+        {
+          "rva": "0xc7ee5",
+          "caller": "0xc6db5",
+          "count": 31
+        },
+        {
+          "rva": "0xb5207",
+          "caller": "0xb5207",
+          "count": 21
+        },
+        {
+          "rva": "0xb50c1",
+          "caller": "0xb50c1",
+          "count": 20
+        }
+      ],
+      "telemetry": {
+        "records": 11,
+        "mean_draws": 287.3,
+        "mean_routed": 160.4,
+        "gate": {
+          "routed": 16.01617674768345,
+          "rejected": 1.0346687468906242
+        },
+        "route_draw_per_routed": 6.434,
+        "set_rt_per_call": 0.739,
+        "set_rt_per_routed": 2.955,
+        "exclusive_route_us": 3785.0,
+        "per_frame": {
+          "gate_us": 2692.1,
+          "route_draw_us": 1031.8,
+          "set_rt_us": 473.8,
+          "fill_us": 61.1,
+          "taa_run_us": 388.0,
+          "set_rt": 641.5,
+          "jitter_writes": 458.9,
+          "stamps": 4007.3
+        }
+      },
+      "savings": {
+        "read_process_memory_ms": 2.888,
+        "frame_constant_reads_ms": 1.313,
+        "telemetry_stamps_ms": 0.971,
+        "stamps_per_frame": 4007.3,
+        "us_per_qpc": 0.242,
+        "logging_ms": 1.753,
+        "set_rt_ms": 0.4738
+      }
+    },
+    {
+      "label": "load-gap",
+      "from_s": 125.0,
+      "to_s": 210.0,
+      "covered_s": [
+        120.09,
+        210.15
+      ],
+      "elapsed_s": 90.06,
+      "samples": 21102,
+      "frames": 74.9,
+      "ms_per_sample": 4.268,
+      "engine_ms_per_frame": 1202.594,
+      "module_split": {
+        "x3ap": {
+          "samples": 8490,
+          "share": 0.40233,
+          "ms_per_frame": 483.842
+        },
+        "d3dx": {
+          "samples": 7065,
+          "share": 0.3348,
+          "ms_per_frame": 402.631
+        },
+        "ntdll": {
+          "samples": 3231,
+          "share": 0.15311,
+          "ms_per_frame": 184.133
+        },
+        "zlib": {
+          "samples": 1151,
+          "share": 0.05454,
+          "ms_per_frame": 65.595
+        },
+        "proxy": {
+          "samples": 778,
+          "share": 0.03687,
+          "ms_per_frame": 44.338
+        },
+        "wine": {
+          "samples": 270,
+          "share": 0.01279,
+          "ms_per_frame": 15.387
+        },
+        "other": {
+          "samples": 101,
+          "share": 0.00479,
+          "ms_per_frame": 5.756
+        },
+        "xml": {
+          "samples": 16,
+          "share": 0.00076,
+          "ms_per_frame": 0.912
+        }
+      },
+      "ntdll": {
+        "exact": 3231,
+        "listed": 2902,
+        "coverage": 0.898,
+        "rows": [
+          {
+            "rva": "0x4ce3c",
+            "samples": 1288,
+            "share": 0.06104,
+            "ms_per_frame": 73.403,
+            "function": "ZwQueryPerformanceCounter+0xc"
+          },
+          {
+            "rva": "0x4cf1c",
+            "samples": 627,
+            "share": 0.02971,
+            "ms_per_frame": 35.732,
+            "function": "ZwReadVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4d07c",
+            "samples": 193,
+            "share": 0.00915,
+            "ms_per_frame": 10.999,
+            "function": "ZwCreateFile+0xc"
+          },
+          {
+            "rva": "0x4ce6c",
+            "samples": 179,
+            "share": 0.00848,
+            "ms_per_frame": 10.201,
+            "function": "ZwDelayExecution+0xc"
+          },
+          {
+            "rva": "0x4cb8c",
+            "samples": 164,
+            "share": 0.00777,
+            "ms_per_frame": 9.346,
+            "function": "ZwReadFile+0xc"
+          },
+          {
+            "rva": "0x4cfbc",
+            "samples": 106,
+            "share": 0.00502,
+            "ms_per_frame": 6.041,
+            "function": "ZwQueryVolumeInformationFile+0xc"
+          },
+          {
+            "rva": "0x4d19c",
+            "samples": 43,
+            "share": 0.00204,
+            "ms_per_frame": 2.451,
+            "function": "ZwAlertThreadByThreadId+0xc"
+          },
+          {
+            "rva": "0x4ce7c",
+            "samples": 42,
+            "share": 0.00199,
+            "ms_per_frame": 2.394,
+            "function": "ZwQueryDirectoryFile+0xc"
+          },
+          {
+            "rva": "0x4cc1c",
+            "samples": 40,
+            "share": 0.0019,
+            "ms_per_frame": 2.28,
+            "function": "ZwClose+0xc"
+          },
+          {
+            "rva": "0x4cd5c",
+            "samples": 31,
+            "share": 0.00147,
+            "ms_per_frame": 1.767,
+            "function": "ZwQueryVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4cc9c",
+            "samples": 30,
+            "share": 0.00142,
+            "ms_per_frame": 1.71,
+            "function": "ZwQueryValueKey+0xc"
+          },
+          {
+            "rva": "0x4cd0c",
+            "samples": 26,
+            "share": 0.00123,
+            "ms_per_frame": 1.482,
+            "function": "ZwFreeVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4d68c",
+            "samples": 25,
+            "share": 0.00118,
+            "ms_per_frame": 1.425,
+            "function": "ZwOpenKeyEx+0xc"
+          },
+          {
+            "rva": "0x4ccac",
+            "samples": 19,
+            "share": 0.0009,
+            "ms_per_frame": 1.083,
+            "function": "ZwAllocateVirtualMemory+0xc"
+          },
+          {
+            "rva": "0x4cdac",
+            "samples": 19,
+            "share": 0.0009,
+            "ms_per_frame": 1.083,
+            "function": "ZwMapViewOfSection+0xc"
+          },
+          {
+            "rva": "0x1efe3",
+            "samples": 11,
+            "share": 0.00052,
+            "ms_per_frame": 0.627,
+            "function": "RtlSetLastWin32Error+0x13"
+          },
+          {
+            "rva": "0x4ce5c",
+            "samples": 11,
+            "share": 0.00052,
+            "ms_per_frame": 0.627,
+            "function": "ZwOpenFile+0xc"
+          },
+          {
+            "rva": "0x4cdcc",
+            "samples": 10,
+            "share": 0.00047,
+            "ms_per_frame": 0.57,
+            "function": "ZwUnmapViewOfSection+0xc"
+          },
+          {
+            "rva": "0x4ccfc",
+            "samples": 9,
+            "share": 0.00043,
+            "ms_per_frame": 0.513,
+            "function": "ZwCreateKey+0xc"
+          },
+          {
+            "rva": "0x4dc10",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "__wine_rpc_NtReadFile+0x10"
+          },
+          {
+            "rva": "0x5ab4f",
+            "samples": 4,
+            "share": 0.00019,
+            "ms_per_frame": 0.228,
+            "function": "RtlQueryPerformanceCounter+0xf"
+          },
+          {
+            "rva": "0x1efdf",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171,
+            "function": "RtlSetLastWin32Error+0xf"
+          },
+          {
+            "rva": "0x4cebc",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171,
+            "function": "ZwFsControlFile+0xc"
+          },
+          {
+            "rva": "0x235cd",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171,
+            "function": "RtlAllocateHeap+0xb5d"
+          },
+          {
+            "rva": "0x2343e",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171,
+            "function": "RtlAllocateHeap+0x9ce"
+          },
+          {
+            "rva": "0x5ab4a",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114,
+            "function": "RtlQueryPerformanceCounter+0xa"
+          },
+          {
+            "rva": "0x2344a",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114,
+            "function": "RtlAllocateHeap+0x9da"
+          },
+          {
+            "rva": "0x21fe8",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114,
+            "function": "RtlDestroyHeap+0x2c8"
+          },
+          {
+            "rva": "0x23433",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114,
+            "function": "RtlAllocateHeap+0x9c3"
+          }
+        ]
+      },
+      "proxy": {
+        "exact": 778,
+        "listed": 472,
+        "coverage": 0.607,
+        "rows": [
+          {
+            "rva": "0x2d510",
+            "samples": 70,
+            "share": 0.00332,
+            "ms_per_frame": 3.989,
+            "function": "ZN3x3m8CpuState7captureEv",
+            "location": "src/proxy/cpu_state.h:16"
+          },
+          {
+            "rva": "0x2d34b",
+            "samples": 64,
+            "share": 0.00303,
+            "ms_per_frame": 3.647,
+            "function": "ZN3x3m8CpuState7captureEv",
+            "location": "src/proxy/cpu_state.h:16"
+          },
+          {
+            "rva": "0x2d9ad",
+            "samples": 51,
+            "share": 0.00242,
+            "ms_per_frame": 2.906,
+            "function": "ZNK3x3m8CpuState7restoreEv",
+            "location": "src/proxy/cpu_state.h:21"
+          },
+          {
+            "rva": "0x2d496",
+            "samples": 44,
+            "share": 0.00209,
+            "ms_per_frame": 2.508,
+            "function": "ZNK3x3m8CpuState7restoreEv",
+            "location": "src/proxy/cpu_state.h:21"
+          },
+          {
+            "rva": "0x2d8cd",
+            "samples": 40,
+            "share": 0.0019,
+            "ms_per_frame": 2.28,
+            "function": "tick",
+            "location": "src/proxy/loading_trace.cpp:97"
+          },
+          {
+            "rva": "0x2d43a",
+            "samples": 35,
+            "share": 0.00166,
+            "ms_per_frame": 1.995,
+            "function": "Span",
+            "location": "src/proxy/loading_trace.cpp:106"
+          },
+          {
+            "rva": "0x2d54f",
+            "samples": 25,
+            "share": 0.00118,
+            "ms_per_frame": 1.425,
+            "function": "tick",
+            "location": "src/proxy/loading_trace.cpp:97"
+          },
+          {
+            "rva": "0x2d48f",
+            "samples": 19,
+            "share": 0.0009,
+            "ms_per_frame": 1.083,
+            "function": "ZNK3x3m8CpuState7restoreEv",
+            "location": "src/proxy/cpu_state.h:20"
+          },
+          {
+            "rva": "0x2d345",
+            "samples": 18,
+            "share": 0.00085,
+            "ms_per_frame": 1.026,
+            "function": "ZN3x3m8CpuState7captureEv",
+            "location": "src/proxy/cpu_state.h:16"
+          },
+          {
+            "rva": "0x2d9a9",
+            "samples": 13,
+            "share": 0.00062,
+            "ms_per_frame": 0.741,
+            "function": "ZNK3x3m8CpuState7restoreEv",
+            "location": "src/proxy/cpu_state.h:20"
+          },
+          {
+            "rva": "0x6e49d",
+            "samples": 9,
+            "share": 0.00043,
+            "ms_per_frame": 0.513,
+            "function": "find",
+            "location": "src/proxy/object_lifetime.cpp:87"
+          },
+          {
+            "rva": "0x2d5d4",
+            "samples": 6,
+            "share": 0.00028,
+            "ms_per_frame": 0.342,
+            "function": "ZNSt13__atomic_baseIyE9fetch_addEySt12memory_order",
+            "location": "include/c++/16.2.0/bits/atomic_base.h:648"
+          },
+          {
+            "rva": "0xb699e",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "pthread_spin_lock",
+            "location": "src/spinlock.c:64"
+          },
+          {
+            "rva": "0xb69dc",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "pthread_spin_unlock",
+            "location": "src/spinlock.c:84"
+          },
+          {
+            "rva": "0x2d832",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "ZNSt13__atomic_baseIyE9fetch_addEySt12memory_order",
+            "location": "include/c++/16.2.0/bits/atomic_base.h:648"
+          },
+          {
+            "rva": "0x2d732",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "ZNSt13__atomic_baseIyE9fetch_addEySt12memory_order",
+            "location": "include/c++/16.2.0/bits/atomic_base.h:648"
+          },
+          {
+            "rva": "0x6e4b0",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "find",
+            "location": "src/proxy/object_lifetime.cpp:88"
+          },
+          {
+            "rva": "0x6e48d",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "find",
+            "location": "src/proxy/object_lifetime.cpp:89"
+          },
+          {
+            "rva": "0x6e488",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "find",
+            "location": "src/proxy/object_lifetime.cpp:89"
+          },
+          {
+            "rva": "0x6e4b5",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285,
+            "function": "find",
+            "location": "src/proxy/object_lifetime.cpp:88"
+          },
+          {
+            "rva": "0xb794d",
+            "samples": 4,
+            "share": 0.00019,
+            "ms_per_frame": 0.228,
+            "function": "_pthread_self_lite",
+            "location": "src/thread.c:1029"
+          },
+          {
+            "rva": "0x2d68e",
+            "samples": 4,
+            "share": 0.00019,
+            "ms_per_frame": 0.228,
+            "function": "ZNSt13__atomic_baseIyE9fetch_addEySt12memory_order",
+            "location": "include/c++/16.2.0/bits/atomic_base.h:648"
+          },
+          {
+            "rva": "0xb8303",
+            "samples": 4,
+            "share": 0.00019,
+            "ms_per_frame": 0.228,
+            "function": "pthread_setspecific",
+            "location": "src/thread.c:913"
+          },
+          {
+            "rva": "0x6e4b8",
+            "samples": 4,
+            "share": 0.00019,
+            "ms_per_frame": 0.228,
+            "function": "find",
+            "location": "src/proxy/object_lifetime.cpp:88"
+          },
+          {
+            "rva": "0xb7953",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171,
+            "function": "_pthread_self_lite",
+            "location": "src/thread.c:1029"
+          },
+          {
+            "rva": "0x2d453",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171,
+            "function": "Span",
+            "location": "src/proxy/loading_trace.cpp:106"
+          },
+          {
+            "rva": "0x6fbf3",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171,
+            "function": "x3m_lifetime_dispatch",
+            "location": "src/proxy/object_lifetime.cpp:243"
+          },
+          {
+            "rva": "0xb82c4",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114,
+            "function": "pthread_getspecific",
+            "location": "src/thread.c:906"
+          },
+          {
+            "rva": "0xaaf40",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114,
+            "function": "Unwind_SjLj_Register",
+            "location": "/private/tmp/mingw-w64-20260807-49703-dvakod/mingw-w64-v14.0.0/gcc/build-i686/i686-w64-mingw32/libgcc/../../../libgcc/unwind-sjlj.c:121"
+          },
+          {
+            "rva": "0x2d7fc",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114,
+            "function": "ZNSt13__atomic_baseIyE9fetch_addEySt12memory_order",
+            "location": "include/c++/16.2.0/bits/atomic_base.h:648"
+          }
+        ]
+      },
+      "backend": {
+        "exact": 270,
+        "rows": [
+          {
+            "rva": "0x2a5cb",
+            "samples": 15,
+            "share": 0.00071,
+            "ms_per_frame": 0.855
+          },
+          {
+            "rva": "0x4b361",
+            "samples": 13,
+            "share": 0.00062,
+            "ms_per_frame": 0.741
+          },
+          {
+            "rva": "0xd3fa",
+            "samples": 12,
+            "share": 0.00057,
+            "ms_per_frame": 0.684
+          },
+          {
+            "rva": "0xf5f6",
+            "samples": 9,
+            "share": 0.00043,
+            "ms_per_frame": 0.513
+          },
+          {
+            "rva": "0x26e9",
+            "samples": 8,
+            "share": 0.00038,
+            "ms_per_frame": 0.456
+          },
+          {
+            "rva": "0x61ecf",
+            "samples": 6,
+            "share": 0.00028,
+            "ms_per_frame": 0.342
+          },
+          {
+            "rva": "0x62e9f",
+            "samples": 6,
+            "share": 0.00028,
+            "ms_per_frame": 0.342
+          },
+          {
+            "rva": "0x34636",
+            "samples": 5,
+            "share": 0.00024,
+            "ms_per_frame": 0.285
+          },
+          {
+            "rva": "0x62eb3",
+            "samples": 3,
+            "share": 0.00014,
+            "ms_per_frame": 0.171
+          },
+          {
+            "rva": "0x3458f",
+            "samples": 2,
+            "share": 9e-05,
+            "ms_per_frame": 0.114
+          },
+          {
+            "rva": "0x11988",
+            "samples": 1,
+            "share": 5e-05,
+            "ms_per_frame": 0.057
+          },
+          {
+            "rva": "0x34629",
+            "samples": 1,
+            "share": 5e-05,
+            "ms_per_frame": 0.057
+          }
+        ]
+      },
+      "x3ap_pairs": [
+        {
+          "rva": "0x1240bd",
+          "caller": "0xbc76c",
+          "count": 3194
+        },
+        {
+          "rva": "0xbc76c",
+          "caller": "0xbc76c",
+          "count": 1678
+        },
+        {
+          "rva": "0xe928b",
+          "caller": "0xe928b",
+          "count": 1344
+        },
+        {
+          "rva": "0xdd6a2",
+          "caller": "0xdd6a2",
+          "count": 1243
+        },
+        {
+          "rva": "0x11204f",
+          "caller": "0x1121d1",
+          "count": 596
+        },
+        {
+          "rva": "0xbcc30",
+          "caller": "0xbb9ac",
+          "count": 500
+        },
+        {
+          "rva": "0x124071",
+          "caller": "0xe928b",
+          "count": 358
+        },
+        {
+          "rva": "0x11dab3",
+          "caller": "0x11204f",
+          "count": 333
+        },
+        {
+          "rva": "0x10e21e",
+          "caller": "0xbc90a",
+          "count": 242
+        },
+        {
+          "rva": "0x11133e",
+          "caller": "0xe928b",
+          "count": 206
+        },
+        {
+          "rva": "0x117da2",
+          "caller": "0x124d01",
+          "count": 177
+        },
+        {
+          "rva": "0x11f665",
+          "caller": "0x11f665",
+          "count": 176
+        }
+      ],
+      "telemetry": null,
+      "savings": {
+        "read_process_memory_ms": 35.732,
+        "frame_constant_reads_ms": 16.242,
+        "telemetry_stamps_ms": 73.403,
+        "stamps_per_frame": 0,
+        "us_per_qpc": null,
+        "logging_ms": 0.0,
+        "set_rt_ms": 0.0
+      }
+    }
+  ],
+  "symbolization": {
+    "proxy": {
+      "dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3d9.dll",
+      "binary_text": [
+        4096,
+        880640
+      ],
+      "log_text": [
+        4096,
+        880640
+      ],
+      "layout_matches": true
+    },
+    "ntdll": {
+      "dll": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/wine/i386-windows/ntdll.dll",
+      "binary_text": [
+        4096,
+        438272
+      ],
+      "log_text": [
+        4096,
+        438272
+      ],
+      "layout_matches": true
+    }
+  },
+  "limits": [
+    "profile_thread leaf-kind counters are exact; leaf RVA tables are truncated per report (coverage states the listed fraction).",
+    "profile_frame/profile_pair RVAs are X3AP.exe addresses only, so no proxy-internal call-pair or inclusive-by-caller time exists in this log.",
+    "Leaf, frame and pair tables are separate aggregates and cannot be joined per sample.",
+    "ms_per_frame is engine-thread CPU, not GPU time, and boundary reports count in both neighbouring windows."
+  ],
+  "telemetry": {
+    "records": 87,
+    "mean_draws": 315.9,
+    "mean_routed": 223.1,
+    "gate": {
+      "routed": 16.651739643796397,
+      "rejected": 0.32753245541603343
+    },
+    "route_draw_per_routed": 6.684,
+    "set_rt_per_call": 0.781,
+    "set_rt_per_routed": 3.124,
+    "exclusive_route_us": 5305.9,
+    "per_frame": {
+      "gate_us": 3744.7,
+      "route_draw_us": 1491.1,
+      "set_rt_us": 696.9,
+      "fill_us": 70.1,
+      "taa_run_us": 351.9,
+      "set_rt": 892.3,
+      "jitter_writes": 562.3,
+      "stamps": 5081.3
+    }
+  }
+}

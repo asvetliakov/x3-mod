@@ -1,0 +1,153 @@
+
+== burst1 [227.02, 238.07] elapsed=15.01s frames=409.6 engine=36.648 ms/frame
+   x3ap=53.3%/19.517ms  ntdll=26.3%/9.637ms  d3dx=7.9%/2.903ms  proxy=7.1%/2.599ms  wine=4.9%/1.809ms  other=0.5%/0.182ms
+   ntdll ZwReadVirtualMemory+0xc                  10.62%   3.891 ms/frame
+   ntdll ZwWriteFile+0xc                           5.76%   2.113 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             4.02%   1.474 ms/frame
+   ntdll ZwDelayExecution+0xc                      2.16%   0.790 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.78%   0.654 ms/frame
+   ntdll RtlAllocateHeap+0x9d2                     0.17%   0.061 ms/frame
+   proxy leaf coverage 10% of 171 samples
+   proxy M_find_before_node_tr<IUnknown*>       include/c++/16.2.0/bits/hashtable.  0.137 ms/frame
+   proxy ZN3x3m9telemetry6recordERNS0_5StateENS src/proxy/telemetry.cpp:41          0.122 ms/frame
+   telemetry: 7 records, 327.3 draws (237.0 routed); gate 17.06 us/routed, -0.80 us/rejected; exclusive route 5.70 ms/frame
+   savings: read_process_memory_ms=3.891 frame_constant_reads_ms=1.769 telemetry_stamps_ms=1.474 stamps_per_frame=5348.6 us_per_qpc=0.276 logging_ms=2.113 set_rt_ms=0.7625
+
+== burst2 [238.04, 250.05] elapsed=15.01s frames=307.9 engine=48.758 ms/frame
+   x3ap=48.7%/23.746ms  ntdll=32.2%/15.679ms  d3dx=7.3%/3.579ms  proxy=6.9%/3.341ms  wine=4.5%/2.195ms  other=0.4%/0.217ms
+   ntdll ZwWriteFile+0xc                          12.98%   6.327 ms/frame
+   ntdll ZwReadVirtualMemory+0xc                   9.65%   4.706 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             4.06%   1.977 ms/frame
+   ntdll ZwDelayExecution+0xc                      1.86%   0.910 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.42%   0.692 ms/frame
+   ntdll RtlAllocateHeap+0x9d2                     0.16%   0.079 ms/frame
+   proxy leaf coverage 8% of 169 samples
+   proxy hash_bytes                             src/proxy/capture.cpp:171           0.178 ms/frame
+   proxy M_find_before_node_tr<IUnknown*>       include/c++/16.2.0/bits/hashtable.  0.079 ms/frame
+   telemetry: 5 records, 376.4 draws (283.2 routed); gate 17.55 us/routed, -2.86 us/rejected; exclusive route 6.76 ms/frame
+   savings: read_process_memory_ms=4.706 frame_constant_reads_ms=2.139 telemetry_stamps_ms=1.977 stamps_per_frame=6295.2 us_per_qpc=0.314 logging_ms=6.327 set_rt_ms=0.921
+
+== burst3 [295.26, 307.26] elapsed=15.03s frames=204.7 engine=73.417 ms/frame
+   x3ap=47.0%/34.506ms  ntdll=32.1%/23.536ms  d3dx=9.1%/6.653ms  proxy=6.9%/5.056ms  wine=4.7%/3.43ms  other=0.3%/0.237ms
+   ntdll ZwWriteFile+0xc                          12.04%   8.841 ms/frame
+   ntdll ZwReadVirtualMemory+0xc                  10.63%   7.806 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             4.67%   3.430 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.49%   1.094 ms/frame
+   ntdll ZwDelayExecution+0xc                      1.01%   0.739 ms/frame
+   ntdll RtlLeaveCriticalSection+0x9               0.20%   0.148 ms/frame
+   proxy leaf coverage 11% of 171 samples
+   proxy _mingw_pformat                         /private/tmp/mingw-w64-20260807-49  0.177 ms/frame
+   proxy fingerprint                            src/renderer/rigid_position.cpp:46  0.148 ms/frame
+   proxy ??                                     fake:?                              0.118 ms/frame
+   proxy _mingw_pformat                         /private/tmp/mingw-w64-20260807-49  0.118 ms/frame
+   telemetry: 3 records, 588.7 draws (464.3 routed); gate 11.39 us/routed, 19.14 us/rejected; exclusive route 10.77 ms/frame
+   savings: read_process_memory_ms=7.806 frame_constant_reads_ms=3.548 telemetry_stamps_ms=3.43 stamps_per_frame=10141.3 us_per_qpc=0.338 logging_ms=8.841 set_rt_ms=1.455
+
+== burst4 [365.26, 375.46] elapsed=20.02s frames=776.2 engine=25.787 ms/frame
+   x3ap=58.7%/15.149ms  ntdll=22.2%/5.717ms  d3dx=7.1%/1.837ms  wine=6.1%/1.585ms  proxy=5.3%/1.364ms  other=0.5%/0.134ms
+   ntdll ZwReadVirtualMemory+0xc                   8.50%   2.192 ms/frame
+   ntdll ZwWriteFile+0xc                           4.37%   1.128 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             3.27%   0.844 ms/frame
+   ntdll ZwDelayExecution+0xc                      3.00%   0.773 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.38%   0.355 ms/frame
+   ntdll ZwWaitForSingleObject+0xc                 0.15%   0.039 ms/frame
+   proxy leaf coverage 0% of 173 samples
+   telemetry: 13 records, 203.9 draws (118.8 routed); gate 14.99 us/routed, 2.72 us/rejected; exclusive route 2.87 ms/frame
+   savings: read_process_memory_ms=2.192 frame_constant_reads_ms=0.996 telemetry_stamps_ms=0.844 stamps_per_frame=2942.8 us_per_qpc=0.287 logging_ms=1.128 set_rt_ms=0.38160000000000005
+
+== burst5 [416.91, 428.12] elapsed=15.06s frames=518.2 engine=29.068 ms/frame
+   x3ap=55.3%/16.061ms  ntdll=26.1%/7.592ms  d3dx=6.7%/1.957ms  wine=5.8%/1.687ms  proxy=5.5%/1.603ms  other=0.6%/0.169ms
+   ntdll ZwReadVirtualMemory+0xc                   8.94%   2.598 ms/frame
+   ntdll ZwWriteFile+0xc                           8.07%   2.345 ms/frame
+   ntdll ZwDelayExecution+0xc                      3.19%   0.928 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             2.73%   0.793 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.33%   0.388 ms/frame
+   ntdll RtlLeaveCriticalSection+0x9               0.23%   0.067 ms/frame
+   proxy leaf coverage 0% of 95 samples
+   telemetry: 8 records, 227.6 draws (120.2 routed); gate 15.69 us/routed, 1.27 us/rejected; exclusive route 2.84 ms/frame
+   savings: read_process_memory_ms=2.598 frame_constant_reads_ms=1.181 telemetry_stamps_ms=0.793 stamps_per_frame=3085.5 us_per_qpc=0.257 logging_ms=2.345 set_rt_ms=0.3468
+
+== menu-noroute [76.0, 122.0] elapsed=50.05s frames=1077.4 engine=46.45 ms/frame
+   x3ap=71.0%/32.994ms  d3dx=11.4%/5.29ms  ntdll=9.1%/4.217ms  wine=4.4%/2.062ms  proxy=3.5%/1.605ms  other=0.5%/0.239ms  zlib=0.1%/0.042ms
+   ntdll ZwQueryPerformanceCounter+0xc             3.39%   1.576 ms/frame
+   ntdll ZwDelayExecution+0xc                      2.03%   0.943 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.93%   0.897 ms/frame
+   ntdll ZwReadVirtualMemory+0xc                   1.03%   0.478 ms/frame
+   proxy leaf coverage 1% of 383 samples
+   proxy ZN3x3m8CpuState7captureEv              src/proxy/cpu_state.h:16            0.021 ms/frame
+   savings: read_process_memory_ms=0.478 frame_constant_reads_ms=0.217 telemetry_stamps_ms=1.576 stamps_per_frame=0 us_per_qpc=None logging_ms=0.0 set_rt_ms=0.0
+
+== flight-early [212.0, 232.0] elapsed=25.02s frames=667.2 engine=37.501 ms/frame
+   x3ap=55.1%/20.674ms  ntdll=23.3%/8.724ms  d3dx=9.4%/3.515ms  wine=6.2%/2.307ms  proxy=5.3%/1.983ms  other=0.6%/0.221ms  zlib=0.2%/0.077ms
+   ntdll ZwReadVirtualMemory+0xc                   8.78%   3.294 ms/frame
+   ntdll ZwWriteFile+0xc                           3.16%   1.183 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             3.09%   1.158 ms/frame
+   ntdll ZwDelayExecution+0xc                      2.75%   1.030 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.32%   0.494 ms/frame
+   ntdll ZwClose+0xc                               0.50%   0.187 ms/frame
+   proxy leaf coverage 6% of 233 samples
+   proxy ZN3x3m9telemetry6recordERNS0_5StateENS src/proxy/telemetry.cpp:41          0.068 ms/frame
+   proxy M_find_before_node_tr<IUnknown*>       include/c++/16.2.0/bits/hashtable.  0.043 ms/frame
+   telemetry: 11 records, 260.4 draws (191.2 routed); gate 13.61 us/routed, 8.71 us/rejected; exclusive route 4.53 ms/frame
+   savings: read_process_memory_ms=3.294 frame_constant_reads_ms=1.497 telemetry_stamps_ms=1.158 stamps_per_frame=4288.4 us_per_qpc=0.27 logging_ms=1.183 set_rt_ms=0.5862
+
+== flightA [250.0, 300.0] elapsed=55.03s frames=1121.1 engine=49.087 ms/frame
+   x3ap=57.7%/28.334ms  ntdll=21.1%/10.344ms  d3dx=9.5%/4.665ms  proxy=5.7%/2.812ms  wine=5.5%/2.709ms  other=0.5%/0.223ms
+   ntdll ZwReadVirtualMemory+0xc                  12.17%   5.973 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             4.36%   2.142 ms/frame
+   ntdll ZwDelayExecution+0xc                      1.60%   0.785 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.50%   0.736 ms/frame
+   ntdll ZwWriteFile+0xc                           0.59%   0.289 ms/frame
+   proxy leaf coverage 5% of 516 samples
+   proxy M_find_before_node_tr<IUnknown*>       include/c++/16.2.0/bits/hashtable.  0.049 ms/frame
+   proxy _pthread_self_lite                     src/thread.c:1023                   0.027 ms/frame
+   proxy sqrtf                                  /private/tmp/mingw-w64-20260807-49  0.027 ms/frame
+   proxy Unwind_SjLj_Register                   /private/tmp/mingw-w64-20260807-49  0.022 ms/frame
+   proxy pthread_setspecific                    src/thread.c:950                    0.022 ms/frame
+   telemetry: 19 records, 462.5 draws (354.2 routed); gate 17.44 us/routed, -2.49 us/rejected; exclusive route 8.33 ms/frame
+   savings: read_process_memory_ms=5.973 frame_constant_reads_ms=2.715 telemetry_stamps_ms=2.142 stamps_per_frame=7831.4 us_per_qpc=0.274 logging_ms=0.289 set_rt_ms=1.0952
+
+== flightB [340.0, 370.0] elapsed=35.04s frames=1004.8 engine=34.87 ms/frame
+   x3ap=61.0%/21.257ms  ntdll=20.1%/7.001ms  d3dx=8.5%/2.947ms  wine=5.0%/1.756ms  proxy=4.9%/1.72ms  other=0.5%/0.188ms
+   ntdll ZwReadVirtualMemory+0xc                  10.49%   3.658 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             4.20%   1.465 ms/frame
+   ntdll ZwDelayExecution+0xc                      1.93%   0.675 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.43%   0.498 ms/frame
+   ntdll ZwWriteFile+0xc                           1.08%   0.377 ms/frame
+   proxy leaf coverage 0% of 283 samples
+   telemetry: 17 records, 275.2 draws (190.9 routed); gate 16.95 us/routed, -0.13 us/rejected; exclusive route 4.59 ms/frame
+   savings: read_process_memory_ms=3.658 frame_constant_reads_ms=1.663 telemetry_stamps_ms=1.465 stamps_per_frame=4382.1 us_per_qpc=0.334 logging_ms=0.377 set_rt_ms=0.6065
+
+== flightC [409.0, 428.0] elapsed=25.08s frames=658.5 engine=38.083 ms/frame
+   x3ap=48.7%/18.562ms  ntdll=21.1%/8.033ms  d3dx=18.9%/7.213ms  wine=5.5%/2.093ms  proxy=4.8%/1.816ms  other=0.5%/0.202ms  zlib=0.4%/0.164ms
+   ntdll ZwReadVirtualMemory+0xc                   7.58%   2.888 ms/frame
+   ntdll ZwWriteFile+0xc                           4.60%   1.753 ms/frame
+   ntdll ZwDelayExecution+0xc                      2.98%   1.135 ms/frame
+   ntdll ZwQueryPerformanceCounter+0xc             2.55%   0.971 ms/frame
+   ntdll ZwAlertThreadByThreadId+0xc               1.06%   0.404 ms/frame
+   ntdll RtlLeaveCriticalSection+0x9               0.13%   0.050 ms/frame
+   proxy leaf coverage 0% of 144 samples
+   telemetry: 11 records, 287.3 draws (160.4 routed); gate 16.02 us/routed, 1.03 us/rejected; exclusive route 3.79 ms/frame
+   savings: read_process_memory_ms=2.888 frame_constant_reads_ms=1.313 telemetry_stamps_ms=0.971 stamps_per_frame=4007.3 us_per_qpc=0.242 logging_ms=1.753 set_rt_ms=0.4738
+
+== load-gap [125.0, 210.0] elapsed=90.06s frames=74.9 engine=1202.594 ms/frame
+   x3ap=40.2%/483.842ms  d3dx=33.5%/402.631ms  ntdll=15.3%/184.133ms  zlib=5.5%/65.595ms  proxy=3.7%/44.338ms  wine=1.3%/15.387ms  other=0.5%/5.756ms  xml=0.1%/0.912ms
+   ntdll ZwQueryPerformanceCounter+0xc             6.10%  73.403 ms/frame
+   ntdll ZwReadVirtualMemory+0xc                   2.97%  35.732 ms/frame
+   ntdll ZwCreateFile+0xc                          0.92%  10.999 ms/frame
+   ntdll ZwDelayExecution+0xc                      0.85%  10.201 ms/frame
+   ntdll ZwReadFile+0xc                            0.78%   9.346 ms/frame
+   ntdll ZwQueryVolumeInformationFile+0xc          0.50%   6.041 ms/frame
+   proxy leaf coverage 61% of 778 samples
+   proxy ZN3x3m8CpuState7captureEv              src/proxy/cpu_state.h:16            3.989 ms/frame
+   proxy ZN3x3m8CpuState7captureEv              src/proxy/cpu_state.h:16            3.647 ms/frame
+   proxy ZNK3x3m8CpuState7restoreEv             src/proxy/cpu_state.h:21            2.906 ms/frame
+   proxy ZNK3x3m8CpuState7restoreEv             src/proxy/cpu_state.h:21            2.508 ms/frame
+   proxy tick                                   src/proxy/loading_trace.cpp:97      2.280 ms/frame
+   proxy Span                                   src/proxy/loading_trace.cpp:106     1.995 ms/frame
+   savings: read_process_memory_ms=35.732 frame_constant_reads_ms=16.242 telemetry_stamps_ms=73.403 stamps_per_frame=0 us_per_qpc=None logging_ms=0.0 set_rt_ms=0.0
+
+telemetry over the routed span (212.13, 436.93): 87 frame records, 315.9 draws (223.1 routed) per frame
+   gate: 16.65 us per routed draw, 0.33 us per rejected draw
+   route_draw 6.684 us/routed, set_rt 0.781 us/call (3.124 us/routed draw)
+   per frame: gate_us=3744.7 route_draw_us=1491.1 set_rt_us=696.9 fill_us=70.1 taa_run_us=351.9 set_rt=892.3 jitter_writes=562.3 stamps=5081.3

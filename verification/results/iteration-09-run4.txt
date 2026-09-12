@@ -1,0 +1,202 @@
+iteration 9 run 4: FP16 HDR scene path (stage 1) in gameplay
+========================================================================
+log /tmp/x3-iteration09-run4/session-20260912-165021-2204.log  device 1
+
+-- 1. HDR path
+   gate enabled=1 reason=ok main_format=21 targets=3 stretch_conversion=00000000
+   target frame=0 1280x768 bytes=7864320 create=00000000 meter=0
+   hdr_frame lines 92, latched 80
+   end                {'hook': 79, 'none': 12, 'present': 1}
+   writeback_source   {'shader': 80, 'none': 12}
+   writebacks         {'1': 79, '0': 12, '2': 1}
+   flushes            {'0': 91, '2': 1}
+   redirected         {'1': 80, '0': 12}
+   suspended          {'0': 92}
+   resumed            {'0': 92}
+   dirty_at_present   {'0': 92}
+   unwind             {'0': 92}
+   blocked            {'0': 92}
+   refused_msaa       {'0': 92}
+   unwind records 0, recheck records 0, reset count 0
+   frame 0: redirected=1 end=present writebacks=2 flushes=2 dirty_at_present=0 source=shader
+      draws=0 routed=0 selector=rejected scene_end=none hook_signals=0 bloom_copy_seen=0 taa_skip=not_reached
+   frame 60: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=638 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 120: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=638 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 180: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=670 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 240: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=673 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 300: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=677 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 360: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=676 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 420: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=692 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 480: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=698 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 540: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=703 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 600: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=693 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 3120: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=10 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+   frame 4500: redirected=0 end=none writebacks=0 flushes=0 dirty_at_present=0 source=none
+      draws=638 routed=0 selector=rejected scene_end=none hook_signals=1 bloom_copy_seen=0 taa_skip=not_reached
+
+-- 2. identity of the write-back (FP16 -> 8-bit, same frame)
+   frame         exact   fraction   maxd   ties
+   1092         983040   1.000000      0      0
+   1093         983040   1.000000      0      0
+   1094         983040   1.000000      0      0
+   1095         983040   1.000000      0      0
+   1284         983040   1.000000      0      0
+   1285         983040   1.000000      0      0
+   1286         983040   1.000000      0      0
+   1287         983040   1.000000      0      0
+   1645         983040   1.000000      0      0
+   1646         983040   1.000000      0      0
+   1647         983040   1.000000      0      0
+   1648         983040   1.000000      0      0
+   4215         983040   1.000000      0      0
+   4216         983040   1.000000      0      0
+   4217         983040   1.000000      0      0
+   4218         983040   1.000000      0      0
+   all frames exact: True  min exact fraction 1.0  max difference 0
+
+-- 3. FP16 headroom above 1.0
+   frame         over1   fraction      max  octaves
+   1092           1857   0.001889   1.6758  {'0': 1857}
+   1093           1848   0.001880   1.6533  {'0': 1848}
+   1094           1868   0.001900   1.6660  {'0': 1868}
+   1095           1846   0.001878   1.6582  {'0': 1846}
+   1284            235   0.000239   1.7080  {'0': 235}
+   1285            209   0.000213   3.2598  {'0': 207, '1': 2}
+   1286            189   0.000192   1.7598  {'0': 189}
+   1287            163   0.000166   1.7627  {'0': 163}
+   1645            200   0.000203   1.8135  {'0': 200}
+   1646            206   0.000210   1.7998  {'0': 206}
+   1647            198   0.000201   2.0781  {'0': 197, '1': 1}
+   1648            203   0.000207   1.8545  {'0': 203}
+   4215            978   0.000995   1.5088  {'0': 978}
+   4216            912   0.000928   1.5117  {'0': 912}
+   4217            895   0.000910   1.5039  {'0': 895}
+   4218            855   0.000870   1.5059  {'0': 855}
+   1092 classes: sentinel 1/836692 routed_interior 13/86866 routed_edge 1843/59482
+      component 1078 px x=[640, 674] y=[505, 556] max=1.6758 {'routed_edge': 1078}
+      component 318 px x=[646, 679] y=[752, 767] max=1.5381 {'routed_edge': 318}
+      component 272 px x=[649, 678] y=[714, 747] max=1.3486 {'routed_edge': 272}
+   1093 classes: sentinel 1/836692 routed_interior 12/86866 routed_edge 1835/59482
+      component 1075 px x=[641, 675] y=[505, 557] max=1.6533 {'routed_edge': 1075}
+      component 306 px x=[647, 679] y=[752, 767] max=1.5361 {'routed_edge': 306}
+      component 274 px x=[650, 678] y=[715, 747] max=1.3369 {'routed_edge': 274}
+   1094 classes: sentinel 1/836692 routed_interior 17/86866 routed_edge 1850/59482
+      component 1112 px x=[640, 675] y=[504, 559] max=1.666 {'routed_edge': 1112}
+      component 317 px x=[647, 679] y=[752, 767] max=1.542 {'routed_edge': 317}
+      component 265 px x=[649, 677] y=[714, 747] max=1.3857 {'routed_edge': 265}
+   1095 classes: sentinel 1/836692 routed_interior 11/86866 routed_edge 1834/59482
+      component 1080 px x=[640, 675] y=[504, 556] max=1.6582 {'routed_edge': 1080}
+      component 315 px x=[647, 680] y=[752, 767] max=1.5488 {'routed_edge': 315}
+      component 271 px x=[650, 677] y=[714, 746] max=1.3281 {'routed_edge': 271}
+   1284 classes: sentinel 1/721230 routed_interior 190/1590 routed_edge 44/260220
+      component 76 px x=[595, 606] y=[589, 608] max=1.4619 {'routed_edge': 23, 'routed_interior': 53}
+      component 22 px x=[637, 646] y=[581, 583] max=1.1924 {'routed_interior': 22}
+      component 15 px x=[624, 630] y=[581, 585] max=1.0801 {'routed_interior': 15}
+   1285 classes: sentinel 1/721230 routed_interior 170/1590 routed_edge 38/260220
+      component 44 px x=[676, 682] y=[592, 607] max=1.3193 {'routed_interior': 28, 'routed_edge': 16}
+      component 42 px x=[596, 601] y=[594, 607] max=1.4531 {'routed_interior': 30, 'routed_edge': 12}
+      component 15 px x=[631, 638] y=[581, 583] max=1.1592 {'routed_interior': 15}
+   1286 classes: sentinel 0/721230 routed_interior 132/1590 routed_edge 57/260220
+      component 70 px x=[672, 682] y=[588, 608] max=1.5859 {'routed_interior': 43, 'routed_edge': 27}
+      component 14 px x=[596, 599] y=[595, 601] max=1.2178 {'routed_edge': 7, 'routed_interior': 7}
+      component 13 px x=[631, 635] y=[581, 583] max=1.0664 {'routed_interior': 13}
+   1287 classes: sentinel 0/721230 routed_interior 110/1590 routed_edge 53/260220
+      component 76 px x=[674, 683] y=[589, 608] max=1.6416 {'routed_interior': 44, 'routed_edge': 32}
+      component 14 px x=[603, 611] y=[585, 590] max=1.7627 {'routed_interior': 14}
+      component 13 px x=[666, 673] y=[584, 588] max=1.4062 {'routed_interior': 8, 'routed_edge': 5}
+   1645 classes: sentinel 0/831690 routed_interior 130/62063 routed_edge 70/89287
+      component 88 px x=[673, 684] y=[588, 612] max=1.7021 {'routed_interior': 58, 'routed_edge': 30}
+      component 24 px x=[596, 600] y=[598, 608] max=1.1768 {'routed_interior': 19, 'routed_edge': 5}
+      component 23 px x=[616, 632] y=[578, 579] max=1.2344 {'routed_edge': 23}
+   1646 classes: sentinel 0/831690 routed_interior 120/62063 routed_edge 86/89287
+      component 88 px x=[675, 684] y=[589, 612] max=1.4922 {'routed_edge': 29, 'routed_interior': 59}
+      component 13 px x=[597, 600] y=[603, 606] max=1.1738 {'routed_interior': 10, 'routed_edge': 3}
+      component 12 px x=[615, 623] y=[577, 579] max=1.2061 {'routed_edge': 12}
+   1647 classes: sentinel 0/831690 routed_interior 117/62063 routed_edge 81/89287
+      component 80 px x=[677, 685] y=[592, 612] max=1.5381 {'routed_interior': 49, 'routed_edge': 31}
+      component 16 px x=[597, 600] y=[602, 608] max=1.1943 {'routed_interior': 12, 'routed_edge': 4}
+      component 13 px x=[616, 624] y=[578, 579] max=1.2549 {'routed_edge': 13}
+   1648 classes: sentinel 0/831690 routed_interior 132/62063 routed_edge 71/89287
+      component 83 px x=[676, 684] y=[592, 612] max=1.5352 {'routed_interior': 56, 'routed_edge': 27}
+      component 24 px x=[614, 629] y=[578, 580] max=1.2119 {'routed_edge': 24}
+      component 15 px x=[596, 600] y=[604, 609] max=1.1943 {'routed_edge': 4, 'routed_interior': 11}
+   4215 classes: sentinel 170/906237 routed_interior 768/23092 routed_edge 40/53711
+      component 808 px x=[604, 682] y=[580, 607] max=1.5088 {'routed_edge': 40, 'routed_interior': 768}
+      component 164 px x=[100, 114] y=[367, 380] max=1.3799 {'sentinel': 164}
+      component 2 px x=[111, 112] y=[389, 389] max=1.0908 {'sentinel': 2}
+   4216 classes: sentinel 109/906237 routed_interior 771/23092 routed_edge 32/53711
+      component 800 px x=[605, 682] y=[581, 607] max=1.5117 {'routed_interior': 768, 'routed_edge': 32}
+      component 105 px x=[76, 87] y=[365, 377] max=1.293 {'sentinel': 105}
+      component 2 px x=[640, 641] y=[592, 592] max=1.0127 {'routed_interior': 2}
+   4217 classes: sentinel 94/906237 routed_interior 781/23092 routed_edge 20/53711
+      component 797 px x=[604, 681] y=[581, 606] max=1.5039 {'routed_interior': 777, 'routed_edge': 20}
+      component 90 px x=[47, 57] y=[365, 376] max=1.249 {'sentinel': 90}
+      component 2 px x=[639, 640] y=[592, 592] max=1.0264 {'routed_interior': 2}
+   4218 classes: sentinel 56/906237 routed_interior 766/23092 routed_edge 33/53711
+      component 796 px x=[604, 682] y=[581, 607] max=1.5059 {'routed_edge': 33, 'routed_interior': 763}
+      component 51 px x=[19, 26] y=[364, 372] max=1.167 {'sentinel': 51}
+      component 3 px x=[641, 642] y=[590, 591] max=1.0791 {'routed_interior': 3}
+
+-- 4. TAA with the redirect on
+   logged 92 attempted 79 resolved 79 history 76
+   skip {'not_reached': 13, 'none': 79}  scene_end {'none': 13, 'hook': 79} check {'none': 13, 'agree': 79}
+   camera policy {'1': 13, '2': 79} reason {'switch_off': 13, 'camera_path': 79} cut {'0': 92}
+   baseline run2: logged 94 attempted 89 resolved 89 history 83 skip {'not_reached': 5, 'none': 89} camera policy {'1': 5, '2': 89}
+
+-- 5. cost (CPU-inclusive)
+   ordinary frames=64
+      redirect_us            median      6.1 mean      6.4 max     11.8
+      writeback_us           median     67.6 mean     73.9 max    279.0
+      writeback_draw_us      median     66.8 mean     71.6 max    189.0
+      writeback_stretch_us   median      0.0 mean      0.0 max      0.0
+      bind_us                median      0.0 mean      0.1 max      9.4
+      recheck_us             median      0.0 mean      0.0 max      0.0
+      total_us               median     74.2 mean     80.5 max    296.9
+   capture frames=16
+      redirect_us            median      7.7 mean      7.7 max     12.6
+      writeback_us           median    368.3 mean    385.3 max    626.9
+      writeback_draw_us      median    367.3 mean    384.3 max    625.8
+      writeback_stretch_us   median      0.0 mean      0.0 max      0.0
+      bind_us                median      0.0 mean      0.0 max      0.0
+      recheck_us             median      0.0 mean      0.0 max      0.0
+      total_us               median    379.1 mean    393.0 max    632.7
+   metric hdr_bind: count=2 failures=0 total_us=25.7 max_us=16.3
+   metric hdr_redirect: count=3888 failures=0 total_us=24903.5 max_us=252.2
+   metric hdr_writeback: count=3889 failures=0 total_us=329043.2 max_us=25047.4
+   metric hdr_writeback_draw: count=3889 failures=0 total_us=325481.8 max_us=25046.3
+   run4 {'taa': '1', 'taa_debug': '1', 'scene_hook': '1', 'hdr': '1'} profiler={'enabled': None, 'interval_us': None, 'report_s': None} fast 30.635 ms (85 windows, 230.6 draws/f) slow 67.108 ms (24 windows, 735.3 draws/f) menu 38.487 ms (26 windows, 674.7 draws/f)
+   run2 {'taa': '1', 'taa_debug': '1', 'scene_hook': '1', 'hdr': '0'} profiler={'enabled': '1', 'interval_us': '2000', 'report_s': '5'} fast 34.239 ms (81 windows, 227.0 draws/f) slow 64.427 ms (56 windows, 470.8 draws/f) menu 39.888 ms (10 windows, 646.7 draws/f)
+   run3 {'taa': '0', 'taa_debug': '0', 'scene_hook': '0', 'hdr': '0'} profiler={'enabled': None, 'interval_us': None, 'report_s': None} fast 24.046 ms (90 windows, 229.2 draws/f) slow 47.689 ms (17 windows, 719.7 draws/f) menu 34.966 ms (10 windows, 653.3 draws/f)
+   run4 vs run3 (route cost): fast +6.59 ms (+27.4%) slow +19.42 ms (+40.7%)
+   run2 vs run3 (route cost): fast +10.19 ms (+42.4%) slow +16.74 ms (+35.1%)
+   run4 vs run2 (path and configuration noise): fast -3.60 ms (-10.5%) slow +2.68 ms (+4.2%)
+
+-- 6. focus and cursor
+   device window 016f015e  records 6 cursor 232 iconic seen False
+   away frame 407 foreground=00030020 focus=00000000 clip=-1512,0,5120,1440 -> back frame 420
+      cursor frame 407 flags=1 handle=00010022 at ('2125', '1153')
+      cursor frame 414 flags=1 handle=00010022 at ('2125', '878')
+      cursor frame 420 flags=0 handle=00000000 at ('2125', '878')
+      redirect latched near the episode: []
+   away frame 528 foreground=00030020 focus=00000000 clip=-1512,0,5120,1440 -> back frame 534
+      cursor frame 528 flags=1 handle=00010022 at ('2125', '878')
+      cursor frame 534 flags=0 handle=00000000 at ('2125', '878')
+      redirect latched near the episode: []
+
+   limit: One session of one build (1d36c29) on CrossOver Preview; no Windows evidence.
+   limit: With --hdr the `color` readback is the post-write-back main target, so the identity section is a self-consistency check of one write-back and not a comparison against an independently rendered 8-bit frame.
+   limit: The FP16 readback is taken before the frame's first write-back and the 8-bit readback after it, both inside the same frame; a frame with more than one write-back would compare the first FP16 state against the last 8-bit state.
+   limit: hdr_frame is emitted in capture frames and every X3M_MOTION_FRAME_LOG frames, so the distributions describe the logged frames, not every frame of the run.
+   limit: All timings are CPU-inclusive QPC spans of the calling thread; never GPU time.
+   limit: The window/cursor records are change-only and at most 4 Hz: an unobserved transition between two records is not excluded.

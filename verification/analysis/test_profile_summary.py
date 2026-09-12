@@ -128,6 +128,18 @@ class ProfileSummaryTest(unittest.TestCase):
         parsed = parse(scan(self.log))
         self.assertEqual([hex(r) for r in main_module_rvas(parsed)], ['0xbb480', '0xe7600', '0xe8e20'])
 
+    def test_unpinnable_module_line_has_no_size(self):
+        """A module that could not be pinned is logged `pinned=0 error=<n>` with no
+        kind/size/text range (sampling-profiler.md); parsing must not fail on it."""
+        unpinned = 'profile_module index=3 name=winevulkan.dll base=0x77e60000 pinned=0 error=126\n'
+        self.log.write_text(HEADER + unpinned + BLOCK1)
+        parsed = parse(scan(self.log))
+        self.assertEqual(parsed['modules'][3]['pinned'], False)
+        self.assertIsNone(parsed['modules'][3]['size'])
+        self.assertTrue(parsed['modules'][0]['pinned'])
+        result = summarize(self.log, [('gap', 14.9, 15.1)])
+        self.assertEqual(result['windows'][0]['samples'], 300)
+
     def test_missing_telemetry_anchor_uses_profile_start(self):
         text = HEADER.replace(f'telemetry_start schema=1 qpc_frequency={FREQ} qpc=10000 anchor=proxy_initialize cpu_only=1\n', '')
         self.log.write_text(text + BLOCK1)

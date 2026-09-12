@@ -1,0 +1,245 @@
+== scene-end hook
+  install active=1 status=active
+  site 0x004721b1 bytes e8 9a 25 05 00 -> 0x004c4750
+  records 94  checks {'None': 5, 'Agree': 89}  sources {'none': 5, 'hook': 89}
+  resolves by source {'hook': 89}  draws_after_hook max 0  disagreement records 0
+  unlatched frame 60: draws=638 check=None source=none signals=1 outside_scene=1 state=CameraState taa_skip=2
+  unlatched frame 120: draws=638 check=None source=none signals=1 outside_scene=1 state=CameraState taa_skip=2
+  unlatched frame 180: draws=674 check=None source=none signals=1 outside_scene=1 state=CameraState taa_skip=2
+  unlatched frame 4140: draws=638 check=None source=none signals=1 outside_scene=1 state=CameraState taa_skip=2
+  shutdown records 0
+== mesh adjacency cache
+  final dispatch_enabled=1 buffer_contract=public_systemmem_readonly faulted=0 calls=8718 hits=0 misses=0 bypasses=8718 admissions=0 evictions=0 contention=0 native_calls=8718 native_failures=0 retained_entries=0 gate_rejections=0 rejected_fp=0
+  bypass reasons {'floating_point': 8718}  single_reason floating_point  effect none: every call took the original native path
+  native 33.22 s (3.81 ms/call), gate 0.047 s
+  incoming FPU control=0000027f status=00000000 tag=0000ffff mxcsr=00009fe0
+    x87 control word: observed 0x027f expected 0x007f - precision control 53-bit double (expected 24-bit single), rounding 0, exception mask 0x3f
+    MXCSR: observed 0x9fe0 expected 0x1f80 - FZ (flush-to-zero) set; DAZ (denormals-are-zero) set
+== adjacency phases
+     24.3 ..    41.4 s  calls=1017   adj=  4.214 s  mean=4.14 ms  max_call=0.660 s
+     85.8 ..   116.7 s  calls=3445   adj= 17.265 s  mean=5.01 ms  max_call=1.795 s
+    129.6 ..   129.6 s  calls=136    adj=  0.307 s  mean=2.26 ms  max_call=0.080 s
+    281.0 ..   295.7 s  calls=3013   adj=  7.784 s  mean=2.58 ms  max_call=0.610 s
+    334.0 ..   349.2 s  calls=1017   adj=  3.700 s  mean=3.64 ms  max_call=0.347 s
+  total 8718 calls / 33.28 s
+== ideal box prefilter: gradient energy ratio 0.6158 (white source)
+== history-weight sweep (white source, higher is sharper)
+  weight 0.95: no resampling 0.6653  catmull_rom 0.5547 (penalty 0.8337)  bilinear 0.3761 (penalty 0.5653)
+  weight 0.90: no resampling 0.6651  catmull_rom 0.5560 (penalty 0.8359)  bilinear 0.3840 (penalty 0.5774)
+  weight 0.85: no resampling 0.6658  catmull_rom 0.5581 (penalty 0.8383)  bilinear 0.3934 (penalty 0.5908)
+  weight 0.80: no resampling 0.6675  catmull_rom 0.5614 (penalty 0.8410)  bilinear 0.4044 (penalty 0.6058)
+  weight 0.70: no resampling 0.6745  catmull_rom 0.5722 (penalty 0.8483)  bilinear 0.4321 (penalty 0.6405)
+  weight 0.50: no resampling 0.7077  catmull_rom 0.6187 (penalty 0.8742)  bilinear 0.5166 (penalty 0.7299)
+== burst 629-632 stationary (cut median peak 0.224 px, rotation 0.51 deg) evaluated
+  classes {'sentinel': 892914, 'routed_interior': 34361, 'routed_edge': 55765}  interior eroded 22192
+  frame 629 routed_interior  gradient ratio 0.4986 (noise-corrected 0.4987)  laplacian 0.2670
+  frame 629 routed_edge      gradient ratio 0.7194 (noise-corrected 0.7195)  laplacian 0.3302
+  frame 629 sentinel         gradient ratio 0.7635 (noise-corrected 0.7650)  laplacian 0.6554
+  frame 629 iteration8-comparable mask (73936 px) gradient ratio 0.6994  half-Nyquist fraction ratio 0.4795
+  frame 629 high-band fraction ratio 0.4156 (raw 0.1444 -> resolved 0.0600)
+  frame 629 edge raw: 10-90 rise 0.8687 px, MTF50 0.6944 c/px, 2117 edges
+  frame 629 edge resolved: 10-90 rise 1.6597 px, MTF50 0.3498 c/px, 2036 edges
+  frame 630 routed_interior  gradient ratio 0.5127 (noise-corrected 0.5127)  laplacian 0.2747
+  frame 630 routed_edge      gradient ratio 0.7457 (noise-corrected 0.7458)  laplacian 0.3529
+  frame 630 sentinel         gradient ratio 0.7666 (noise-corrected 0.7682)  laplacian 0.6558
+  frame 630 iteration8-comparable mask (73725 px) gradient ratio 0.7250  half-Nyquist fraction ratio 0.5136
+  frame 630 high-band fraction ratio 0.4191 (raw 0.1444 -> resolved 0.0605)
+  frame 630 edge raw: 10-90 rise 0.8743 px, MTF50 0.6917 c/px, 2110 edges
+  frame 630 edge resolved: 10-90 rise 1.6565 px, MTF50 0.4374 c/px, 2022 edges
+  frame 631 routed_interior  gradient ratio 0.5210 (noise-corrected 0.5210)  laplacian 0.2696
+  frame 631 routed_edge      gradient ratio 0.7175 (noise-corrected 0.7176)  laplacian 0.3150
+  frame 631 sentinel         gradient ratio 0.7448 (noise-corrected 0.7463)  laplacian 0.6365
+  frame 631 iteration8-comparable mask (73746 px) gradient ratio 0.7097  half-Nyquist fraction ratio 0.4581
+  frame 631 high-band fraction ratio 0.4135 (raw 0.1405 -> resolved 0.0581)
+  frame 631 edge raw: 10-90 rise 0.8599 px, MTF50 0.6787 c/px, 2096 edges
+  frame 631 edge resolved: 10-90 rise 1.6717 px, MTF50 0.4587 c/px, 2003 edges
+  frame 632 routed_interior  gradient ratio 0.4878 (noise-corrected 0.4879)  laplacian 0.2530
+  frame 632 routed_edge      gradient ratio 0.7268 (noise-corrected 0.7269)  laplacian 0.3263
+  frame 632 sentinel         gradient ratio 0.7647 (noise-corrected 0.7662)  laplacian 0.6528
+  frame 632 iteration8-comparable mask (73801 px) gradient ratio 0.6997  half-Nyquist fraction ratio 0.4719
+  frame 632 high-band fraction ratio 0.3906 (raw 0.1497 -> resolved 0.0585)
+  frame 632 edge raw: 10-90 rise 0.9027 px, MTF50 0.6904 c/px, 2232 edges
+  frame 632 edge resolved: 10-90 rise 1.0663 px, MTF50 0.3463 c/px, 2033 edges
+  raw-vs-raw jitter phase spread: all 0.0175, routed interior 0.0703
+  captured 4-phase average (no resampling): interior 0.6497 edge 0.8011 all 0.8263 iteration8-mask 0.7884 laplacian interior 0.4825
+    analytic white: this kernel 0.7615, resolve kernel 0.6651, scale 0.8735
+  frame 629 ideal supersampling gradient ratio interior 0.7280 all 0.7630 iteration8-mask 0.7859 laplacian interior 0.4551 analytic-white 0.5560 (25 taps)
+== burst 903-906 turning (cut median peak 50.099 px, rotation 4.88 deg) evaluated
+  classes {'sentinel': 722035, 'routed_interior': 4428, 'routed_edge': 256577}  interior eroded 1551
+  frame 903 routed_interior  gradient ratio 0.4888 (noise-corrected 0.4888)  laplacian 0.1119
+  frame 903 routed_edge      gradient ratio 0.4559 (noise-corrected 0.4560)  laplacian 0.1566
+  frame 903 sentinel         gradient ratio 0.5633 (noise-corrected 0.5641)  laplacian 0.2931
+  frame 903 iteration8-comparable mask (108579 px) gradient ratio 0.4909  half-Nyquist fraction ratio 0.3786
+  frame 903 high-band fraction ratio 0.5807 (raw 0.0588 -> resolved 0.0341)
+  frame 903 edge raw: 10-90 rise 0.7482 px, MTF50 0.3526 c/px, 159 edges
+  frame 903 edge resolved: 10-90 rise 2.0010 px, MTF50 0.1814 c/px, 137 edges
+  frame 904 routed_interior  gradient ratio 0.5056 (noise-corrected 0.5056)  laplacian 0.1127
+  frame 904 routed_edge      gradient ratio 0.4571 (noise-corrected 0.4572)  laplacian 0.1615
+  frame 904 sentinel         gradient ratio 0.5955 (noise-corrected 0.5965)  laplacian 0.3340
+  frame 904 iteration8-comparable mask (105486 px) gradient ratio 0.4875  half-Nyquist fraction ratio 0.3379
+  frame 904 high-band fraction ratio 0.5713 (raw 0.0586 -> resolved 0.0335)
+  frame 904 edge raw: 10-90 rise 5.2947 px, MTF50 1.6646 c/px, 95 edges
+  frame 904 edge resolved: 10-90 rise 2.1959 px, MTF50 0.2840 c/px, 80 edges
+  frame 905 routed_interior  gradient ratio 0.4805 (noise-corrected 0.4805)  laplacian 0.1113
+  frame 905 routed_edge      gradient ratio 0.4697 (noise-corrected 0.4698)  laplacian 0.1769
+  frame 905 sentinel         gradient ratio 0.5860 (noise-corrected 0.5869)  laplacian 0.3481
+  frame 905 iteration8-comparable mask (105308 px) gradient ratio 0.4927  half-Nyquist fraction ratio 0.3302
+  frame 905 high-band fraction ratio 0.5477 (raw 0.0571 -> resolved 0.0313)
+  frame 905 edge raw: 10-90 rise 4.5659 px, MTF50 1.7941 c/px, 114 edges
+  frame 905 edge resolved: 10-90 rise 2.0479 px, MTF50 0.2607 c/px, 97 edges
+  frame 906 routed_interior  gradient ratio 0.9994 (noise-corrected 0.9994)  laplacian 0.9994
+  frame 906 routed_edge      gradient ratio 0.9993 (noise-corrected 0.9995)  laplacian 0.9993
+  frame 906 sentinel         gradient ratio 0.9994 (noise-corrected 1.0010)  laplacian 0.9994
+  frame 906 iteration8-comparable mask (110694 px) gradient ratio 0.9993  half-Nyquist fraction ratio 1.0003
+  frame 906 high-band fraction ratio 1.0003 (raw 0.0582 -> resolved 0.0582)
+  frame 906 edge raw: 10-90 rise 0.8619 px, MTF50 1.5002 c/px, 137 edges
+  frame 906 edge resolved: 10-90 rise 0.8619 px, MTF50 1.5025 c/px, 138 edges
+  raw-vs-raw jitter phase spread: all 0.0821, routed interior 0.3179
+  captured 4-phase average (no resampling): interior 0.3967 edge 0.3078 all 0.2985 iteration8-mask 0.2599 laplacian interior 0.2924
+    analytic white: this kernel 0.6942, resolve kernel 0.6636, scale 0.9558
+  frame 903 ideal supersampling gradient ratio interior 0.6587 all 0.6545 iteration8-mask 0.6586 laplacian interior 0.2749 analytic-white 0.4452 (20 taps)
+== burst 1427-1430 stationary (cut median peak 0.302 px, rotation 0.45 deg) evaluated
+  classes {'sentinel': 752736, 'routed_interior': 167472, 'routed_edge': 62832}  interior eroded 136672
+  frame 1427 routed_interior  gradient ratio 0.6422 (noise-corrected 0.6423)  laplacian 0.2486
+  frame 1427 routed_edge      gradient ratio 0.6804 (noise-corrected 0.6807)  laplacian 0.2456
+  frame 1427 sentinel         gradient ratio 0.7138 (noise-corrected 0.7150)  laplacian 0.5166
+  frame 1427 iteration8-comparable mask (214744 px) gradient ratio 0.6593  half-Nyquist fraction ratio 0.4349
+  frame 1427 high-band fraction ratio 0.5319 (raw 0.3189 -> resolved 0.1697)
+  frame 1427 edge raw: 10-90 rise 1.8294 px, MTF50 0.3611 c/px, 4000 edges
+  frame 1427 edge resolved: 10-90 rise 1.9323 px, MTF50 0.2887 c/px, 4000 edges
+  frame 1428 routed_interior  gradient ratio 0.6231 (noise-corrected 0.6232)  laplacian 0.2223
+  frame 1428 routed_edge      gradient ratio 0.6477 (noise-corrected 0.6479)  laplacian 0.2123
+  frame 1428 sentinel         gradient ratio 0.7150 (noise-corrected 0.7161)  laplacian 0.5152
+  frame 1428 iteration8-comparable mask (214829 px) gradient ratio 0.6385  half-Nyquist fraction ratio 0.4356
+  frame 1428 high-band fraction ratio 0.5275 (raw 0.3162 -> resolved 0.1668)
+  frame 1428 edge raw: 10-90 rise 1.8313 px, MTF50 0.3404 c/px, 4000 edges
+  frame 1428 edge resolved: 10-90 rise 2.0059 px, MTF50 0.2745 c/px, 4000 edges
+  frame 1429 routed_interior  gradient ratio 0.6214 (noise-corrected 0.6215)  laplacian 0.2196
+  frame 1429 routed_edge      gradient ratio 0.6511 (noise-corrected 0.6513)  laplacian 0.2293
+  frame 1429 sentinel         gradient ratio 0.7253 (noise-corrected 0.7265)  laplacian 0.5369
+  frame 1429 iteration8-comparable mask (214858 px) gradient ratio 0.6371  half-Nyquist fraction ratio 0.4379
+  frame 1429 high-band fraction ratio 0.5480 (raw 0.3116 -> resolved 0.1707)
+  frame 1429 edge raw: 10-90 rise 1.8339 px, MTF50 0.3521 c/px, 4000 edges
+  frame 1429 edge resolved: 10-90 rise 2.0295 px, MTF50 0.2755 c/px, 4000 edges
+  frame 1430 routed_interior  gradient ratio 0.6243 (noise-corrected 0.6244)  laplacian 0.2181
+  frame 1430 routed_edge      gradient ratio 0.6498 (noise-corrected 0.6500)  laplacian 0.2469
+  frame 1430 sentinel         gradient ratio 0.7215 (noise-corrected 0.7227)  laplacian 0.5257
+  frame 1430 iteration8-comparable mask (214878 px) gradient ratio 0.6399  half-Nyquist fraction ratio 0.4721
+  frame 1430 high-band fraction ratio 0.5591 (raw 0.3129 -> resolved 0.1749)
+  frame 1430 edge raw: 10-90 rise 1.8077 px, MTF50 0.7438 c/px, 4000 edges
+  frame 1430 edge resolved: 10-90 rise 2.0130 px, MTF50 0.2696 c/px, 4000 edges
+  raw-vs-raw jitter phase spread: all 0.0096, routed interior 0.0160
+  captured 4-phase average (no resampling): interior 0.6723 edge 0.7310 all 0.7465 iteration8-mask 0.6840 laplacian interior 0.3680
+    analytic white: this kernel 0.6869, resolve kernel 0.6698, scale 0.9751
+  frame 1427 ideal supersampling gradient ratio interior 0.7627 all 0.7633 iteration8-mask 0.7743 laplacian interior 0.3953 analytic-white 0.4950 (20 taps)
+== burst 1584-1587 turning (cut median peak 29.369 px, rotation 2.14 deg) evaluated
+  classes {'sentinel': 495550, 'routed_interior': 2180, 'routed_edge': 485310}  interior eroded 1082
+  frame 1584 routed_interior  gradient ratio 0.6474 (noise-corrected 0.6475)  laplacian 0.2553
+  frame 1584 routed_edge      gradient ratio 0.4860 (noise-corrected 0.4863)  laplacian 0.1502
+  frame 1584 sentinel         gradient ratio 0.6292 (noise-corrected 0.6304)  laplacian 0.3537
+  frame 1584 iteration8-comparable mask (378523 px) gradient ratio 0.4943  half-Nyquist fraction ratio 0.1613
+  frame 1584 high-band fraction ratio 0.5159 (raw 0.1542 -> resolved 0.0796)
+  frame 1585 routed_interior  gradient ratio 0.6816 (noise-corrected 0.6817)  laplacian 0.2300
+  frame 1585 routed_edge      gradient ratio 0.4925 (noise-corrected 0.4927)  laplacian 0.1710
+  frame 1585 sentinel         gradient ratio 0.6455 (noise-corrected 0.6469)  laplacian 0.3817
+  frame 1585 iteration8-comparable mask (382905 px) gradient ratio 0.4984  half-Nyquist fraction ratio 0.2808
+  frame 1585 high-band fraction ratio 0.5925 (raw 0.1536 -> resolved 0.0910)
+  frame 1586 routed_interior  gradient ratio 0.7765 (noise-corrected 0.7767)  laplacian 0.2843
+  frame 1586 routed_edge      gradient ratio 0.4965 (noise-corrected 0.4967)  laplacian 0.1809
+  frame 1586 sentinel         gradient ratio 0.6420 (noise-corrected 0.6434)  laplacian 0.3625
+  frame 1586 iteration8-comparable mask (384821 px) gradient ratio 0.4987  half-Nyquist fraction ratio 0.1733
+  frame 1586 high-band fraction ratio 0.6212 (raw 0.1331 -> resolved 0.0827)
+  frame 1587 routed_interior  gradient ratio 0.7482 (noise-corrected 0.7483)  laplacian 0.2399
+  frame 1587 routed_edge      gradient ratio 0.5049 (noise-corrected 0.5051)  laplacian 0.1935
+  frame 1587 sentinel         gradient ratio 0.6219 (noise-corrected 0.6231)  laplacian 0.3456
+  frame 1587 iteration8-comparable mask (381745 px) gradient ratio 0.4978  half-Nyquist fraction ratio 0.1825
+  frame 1587 high-band fraction ratio 0.5908 (raw 0.1194 -> resolved 0.0705)
+  raw-vs-raw jitter phase spread: all 0.1006, routed interior 0.3056
+  captured 4-phase average (no resampling): interior 0.7366 edge 0.3740 all 0.3568 iteration8-mask 0.4233 laplacian interior 0.4145
+    analytic white: this kernel 0.7045, resolve kernel 0.6697, scale 0.9505
+  frame 1584 ideal supersampling gradient ratio interior 0.7925 all 0.7446 iteration8-mask 0.7485 laplacian interior 0.4763 analytic-white 0.5248 (24 taps)
+== burst 1950-1953 turning (cut median peak 78.391 px, rotation 5.81 deg) evaluated
+  classes {'sentinel': 709179, 'routed_interior': 4591, 'routed_edge': 269270}  interior eroded 2262
+  frame 1950 routed_interior  gradient ratio 0.5423 (noise-corrected 0.5423)  laplacian 0.1336
+  frame 1950 routed_edge      gradient ratio 0.5983 (noise-corrected 0.5985)  laplacian 0.2865
+  frame 1950 sentinel         gradient ratio 0.5070 (noise-corrected 0.5080)  laplacian 0.2840
+  frame 1950 iteration8-comparable mask (99192 px) gradient ratio 0.6508  half-Nyquist fraction ratio 0.3292
+  frame 1950 high-band fraction ratio 0.4716 (raw 0.2604 -> resolved 0.1228)
+  frame 1950 edge raw: 10-90 rise 0.6514 px, MTF50 1.6172 c/px, 251 edges
+  frame 1950 edge resolved: 10-90 rise 1.1200 px, MTF50 0.3182 c/px, 168 edges
+  frame 1951 routed_interior  gradient ratio 0.9993 (noise-corrected 0.9994)  laplacian 0.9993
+  frame 1951 routed_edge      gradient ratio 0.9993 (noise-corrected 0.9996)  laplacian 0.9993
+  frame 1951 sentinel         gradient ratio 0.9994 (noise-corrected 1.0010)  laplacian 0.9994
+  frame 1951 iteration8-comparable mask (134083 px) gradient ratio 0.9994  half-Nyquist fraction ratio 1.0002
+  frame 1951 high-band fraction ratio 1.0000 (raw 0.2223 -> resolved 0.2223)
+  frame 1951 edge raw: 10-90 rise 0.7968 px, MTF50 0.6903 c/px, 157 edges
+  frame 1951 edge resolved: 10-90 rise 0.7968 px, MTF50 0.6903 c/px, 157 edges
+  frame 1952 routed_interior  gradient ratio 0.9994 (noise-corrected 0.9995)  laplacian 0.9994
+  frame 1952 routed_edge      gradient ratio 0.9993 (noise-corrected 0.9995)  laplacian 0.9993
+  frame 1952 sentinel         gradient ratio 0.9994 (noise-corrected 1.0010)  laplacian 0.9993
+  frame 1952 iteration8-comparable mask (158353 px) gradient ratio 0.9993  half-Nyquist fraction ratio 1.0000
+  frame 1952 high-band fraction ratio 1.0000 (raw 0.2233 -> resolved 0.2233)
+  frame 1952 edge raw: 10-90 rise 0.8589 px, MTF50 0.5166 c/px, 103 edges
+  frame 1952 edge resolved: 10-90 rise 0.8533 px, MTF50 0.5165 c/px, 104 edges
+  frame 1953 routed_interior  gradient ratio 0.9996 (noise-corrected 0.9996)  laplacian 0.9996
+  frame 1953 routed_edge      gradient ratio 0.9993 (noise-corrected 0.9995)  laplacian 0.9993
+  frame 1953 sentinel         gradient ratio 0.9993 (noise-corrected 1.0010)  laplacian 0.9993
+  frame 1953 iteration8-comparable mask (172479 px) gradient ratio 0.9993  half-Nyquist fraction ratio 1.0000
+  frame 1953 high-band fraction ratio 1.0000 (raw 0.2961 -> resolved 0.2961)
+  frame 1953 edge raw: 10-90 rise 1.5908 px, MTF50 0.6214 c/px, 176 edges
+  frame 1953 edge resolved: 10-90 rise 1.5910 px, MTF50 0.6213 c/px, 176 edges
+  raw-vs-raw jitter phase spread: all 0.4592, routed interior 0.6442
+  captured 4-phase average (no resampling): interior 0.3794 edge 0.3032 all 0.2946 iteration8-mask 0.3134 laplacian interior 0.3082
+    analytic white: this kernel 0.6838, resolve kernel 0.6813, scale 0.9962
+  frame 1950 ideal supersampling gradient ratio interior 0.7887 all 0.7639 iteration8-mask 0.7854 laplacian interior 0.4972 analytic-white 0.5523 (25 taps)
+== burst 3685-3688 slow (cut median peak 8.563 px, rotation 1.20 deg) evaluated
+  classes {'sentinel': 909903, 'routed_interior': 5815, 'routed_edge': 67322}  interior eroded 3123
+  frame 3685 routed_interior  gradient ratio 0.6305 (noise-corrected 0.6305)  laplacian 0.2475
+  frame 3685 routed_edge      gradient ratio 0.6770 (noise-corrected 0.6773)  laplacian 0.2407
+  frame 3685 sentinel         gradient ratio 0.5727 (noise-corrected 0.5736)  laplacian 0.2965
+  frame 3685 iteration8-comparable mask (55953 px) gradient ratio 0.7061  half-Nyquist fraction ratio 0.3285
+  frame 3685 high-band fraction ratio 0.5612 (raw 0.0834 -> resolved 0.0468)
+  frame 3685 edge raw: 10-90 rise 1.0652 px, MTF50 0.3212 c/px, 323 edges
+  frame 3685 edge resolved: 10-90 rise 1.4093 px, MTF50 0.2605 c/px, 316 edges
+  frame 3686 routed_interior  gradient ratio 0.7904 (noise-corrected 0.7905)  laplacian 0.3439
+  frame 3686 routed_edge      gradient ratio 0.6297 (noise-corrected 0.6300)  laplacian 0.2317
+  frame 3686 sentinel         gradient ratio 0.5677 (noise-corrected 0.5687)  laplacian 0.2806
+  frame 3686 iteration8-comparable mask (56169 px) gradient ratio 0.7143  half-Nyquist fraction ratio 0.3609
+  frame 3686 high-band fraction ratio 0.5697 (raw 0.0825 -> resolved 0.0470)
+  frame 3686 edge raw: 10-90 rise 1.6358 px, MTF50 0.3953 c/px, 303 edges
+  frame 3686 edge resolved: 10-90 rise 1.4497 px, MTF50 0.2530 c/px, 324 edges
+  frame 3687 routed_interior  gradient ratio 0.6987 (noise-corrected 0.6988)  laplacian 0.2943
+  frame 3687 routed_edge      gradient ratio 0.6639 (noise-corrected 0.6642)  laplacian 0.2433
+  frame 3687 sentinel         gradient ratio 0.5542 (noise-corrected 0.5551)  laplacian 0.2652
+  frame 3687 iteration8-comparable mask (55987 px) gradient ratio 0.7171  half-Nyquist fraction ratio 0.3598
+  frame 3687 high-band fraction ratio 0.5634 (raw 0.0848 -> resolved 0.0478)
+  frame 3687 edge raw: 10-90 rise 0.9888 px, MTF50 0.4191 c/px, 322 edges
+  frame 3687 edge resolved: 10-90 rise 1.3091 px, MTF50 0.2942 c/px, 302 edges
+  frame 3688 routed_interior  gradient ratio 0.8040 (noise-corrected 0.8041)  laplacian 0.3187
+  frame 3688 routed_edge      gradient ratio 0.6146 (noise-corrected 0.6149)  laplacian 0.2228
+  frame 3688 sentinel         gradient ratio 0.5529 (noise-corrected 0.5538)  laplacian 0.2680
+  frame 3688 iteration8-comparable mask (56211 px) gradient ratio 0.7037  half-Nyquist fraction ratio 0.3450
+  frame 3688 high-band fraction ratio 0.5450 (raw 0.0879 -> resolved 0.0479)
+  frame 3688 edge raw: 10-90 rise 1.1656 px, MTF50 0.3813 c/px, 297 edges
+  frame 3688 edge resolved: 10-90 rise 1.5253 px, MTF50 0.2444 c/px, 295 edges
+  raw-vs-raw jitter phase spread: all 0.0208, routed interior 0.2190
+  captured 4-phase average (no resampling): interior 0.7451 edge 0.6481 all 0.3626 iteration8-mask 0.7585 laplacian interior 0.5015
+    analytic white: this kernel 0.6765, resolve kernel 0.6418, scale 0.9487
+  frame 3685 ideal supersampling gradient ratio interior 0.7004 all 0.6948 iteration8-mask 0.7742 laplacian interior 0.3149 analytic-white 0.4144 (16 taps)
+== sampler states on captured draws
+  draws {'routed': 9152, 'unrouted': 3032}  recorded ['magfilter', 'maxanisotropy', 'minfilter', 'mipfilter', 'srgbtexture']  missing ['D3DSAMP_ADDRESSU', 'D3DSAMP_ADDRESSV', 'D3DSAMP_MAXMIPLEVEL', 'D3DSAMP_MIPMAPLODBIAS']
+  routed min=ANISOTROPIC mag=LINEAR mip=LINEAR aniso=16 srgb=0 n=51755
+  routed min=LINEAR mag=LINEAR mip=NONE aniso=16 srgb=0 n=12309
+  unrouted min=ANISOTROPIC mag=LINEAR mip=LINEAR aniso=16 srgb=0 n=16240
+  unrouted min=LINEAR mag=LINEAR mip=NONE aniso=16 srgb=0 n=4039
+  unrouted min=LINEAR mag=LINEAR mip=LINEAR aniso=16 srgb=0 n=513
+  unrouted min=POINT mag=POINT mip=NONE aniso=16 srgb=0 n=268
+== health
+  route totals {'draws': 30697, 'routed': 22134, 'matched': 21656, 'gate1': 0, 'gate2': 2028, 'gate3': 1025, 'gate4': 5510, 'gate5': 0, 'gate6': 478, 'apply_failures': 0, 'restore_failures': 0}
+  taa {'attempted': 89, 'resolved': 89, 'history': 83, 'skip_reasons': {'2': 5, '0': 89}}
+  camera {'policy': {'1': 5, '2': 89}, 'reason': {'1': 5, '0': 89}, 'cuts': 0, 'rotation_deg_max': 5.8145}  cut {'flagged': 6, 'median_px_max': 87.3511, 'missing_max': 0.171}
+  reset_count 0
+  0:lock_wait/scene: mean ratio 0.9904 min ratio 1.0000
+  1:draw_backend/scene: mean ratio 1.0339 min ratio 1.0000
+  1:frame_normal/scene: mean ratio 1.1739 min ratio 1.1103
+  1:present_normal/scene: mean ratio 1.0217 min ratio 1.0053
