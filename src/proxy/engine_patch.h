@@ -6,7 +6,8 @@
 // stubs (docs/reverse-engineering/loading-probes.md, "Patch mechanics").
 //
 // A site is claimed with the expected first bytes of the function (whole
-// instructions, >= 5 bytes, no relative branch inside): the bytes are compared
+// instructions, >= 5 bytes, no relative branch inside except one declared
+// through SiteSpec::rel32_offset, which the tail copy re-bases): the bytes are compared
 // (fail closed), the displaced instructions are copied into a "tail" block in
 // an executable arena followed by a jump back to the instruction after them,
 // a dispatcher block `jmp [entry]` is emitted, and the site's first five bytes
@@ -38,6 +39,13 @@ struct SiteSpec {
     unsigned char expected[max_prologue];
     unsigned length;                // bytes displaced (>= 5, whole instructions)
     unsigned ret_pop;               // bytes the function's `ret n` pops (0 for `ret`)
+    // Offset of the 4-byte rel32 field of the one relative branch the displaced
+    // span may contain (a `0F 8x rel32` Jcc or an `E8/E9 rel32`), 0 = none.
+    // The tail copy re-bases that rel32 so the branch keeps its absolute
+    // target; the expected bytes still carry the original rel32 (exact match).
+    // Mid-function sites use it (the chase camera's cockpit-update site is
+    // `cmp [ebx+0x54],0; jz rel32`); entry sites leave it 0.
+    unsigned rel32_offset;
 };
 struct Site {
     SiteSpec spec{};

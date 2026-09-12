@@ -424,7 +424,7 @@ int main(int argc,char** argv){
         fns[0]=probe_site_a;lens[0]=6;pops[0]=0;fns[1]=probe_site_b;lens[1]=5;pops[1]=4;fns[4]=probe_site_c;lens[4]=5;pops[4]=4;fns[3]=reference_site;lens[3]=6;pops[3]=0;
         const unsigned production_kinds[lp::site_count]={0,1,2,3,4,6,0,5,0,0,0,0};
         for(unsigned i=0;i<lp::site_count;++i){
-            specs[i]=ep::SiteSpec{"fixture",0,{},0,0};kinds[i]=production_kinds[i];
+            specs[i]=ep::SiteSpec{"fixture",0,{},0,0,0};kinds[i]=production_kinds[i];
             if(fns[i]){specs[i].address=reinterpret_cast<uintptr_t>(fns[i]);specs[i].length=lens[i];specs[i].ret_pop=pops[i];site_bytes(fns[i],specs[i].expected,lens[i]);}
         }
         // a wrong byte must fail closed for that site alone

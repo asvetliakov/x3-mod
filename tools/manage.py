@@ -72,6 +72,13 @@ def main():
     parser.add_argument('--hdr-clamp', type=float, default=0.0, help='Clamp of the decoded scene value before the tonemap, the blunt firefly guard (X3M_HDR_CLAMP; requires --hdr-tonemap; default 0 = off)')
     parser.add_argument('--state-shadow', choices=['on', 'off'], default='on', help='Render-state shadow of the route (X3M_STATE_SHADOW): on (default) hooks SetRenderState and answers the per-draw state queries from the shadow; off issues GetRenderState per query (A/B; requires --motion-output)')
     parser.add_argument('--motion-rt-mode', choices=['perdraw', 'lazy'], default='perdraw', help='RT1/RT2 binding policy of the route: perdraw (default) rebinds around every routed draw; lazy keeps the bindings across consecutive routed draws (A/B experiment, requires --motion-output)')
+    parser.add_argument('--camera', choices=['vanilla', 'chase'], default='vanilla', help='External back view camera (X3M_CAMERA): vanilla (default) patches nothing; chase installs the byte-verified cockpit-update trampoline (0x00420e06, exact executable only, fails closed to vanilla) and replaces the external back view with the critically damped chase camera; internal/front/side views stay vanilla, so the game\'s view keys remain the switch (docs/architecture/chase-camera.md)')
+    parser.add_argument('--camera-rot-tau', type=float, default=None, help='Chase camera orientation spring time constant in seconds (X3M_CAMERA_ROT_TAU; default 0.20; requires --camera chase)')
+    parser.add_argument('--camera-pos-tau', type=float, default=None, help='Chase camera boom spring time constant in seconds (X3M_CAMERA_POS_TAU; default 0.30)')
+    parser.add_argument('--camera-offset-y', type=float, default=None, help='Fraction of the half screen height the ship sits below centre (X3M_CAMERA_OFFSET_Y; default 0.12)')
+    parser.add_argument('--camera-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CAMERA_DISTANCE_SCALE; default 1.0)')
+    parser.add_argument('--camera-lag-clamp-deg', type=float, default=None, help='Maximum orientation lag in degrees, the ship-on-screen window (X3M_CAMERA_LAG_CLAMP_DEG; default 10)')
+    parser.add_argument('--camera-combat-tightness', type=float, default=None, help='Reserved 0..1 lag reduction while a target is locked (X3M_CAMERA_COMBAT_TIGHTNESS; parsed, inactive until a readable lock state exists)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -134,6 +141,14 @@ def main():
         parser.error('--hdr-ev and --hdr-ev-manual must be within [-16, 16], --hdr-clamp within [0, 65504].')
     if args.state_shadow != 'on' and not args.motion_output:
         parser.error('--state-shadow requires --motion-output.')
+    camera_tunables = {'X3M_CAMERA_ROT_TAU': args.camera_rot_tau, 'X3M_CAMERA_POS_TAU': args.camera_pos_tau, 'X3M_CAMERA_OFFSET_Y': args.camera_offset_y,
+                       'X3M_CAMERA_DISTANCE_SCALE': args.camera_distance_scale, 'X3M_CAMERA_LAG_CLAMP_DEG': args.camera_lag_clamp_deg,
+                       'X3M_CAMERA_COMBAT_TIGHTNESS': args.camera_combat_tightness}
+    if args.camera != 'chase' and any(v is not None for v in camera_tunables.values()):
+        parser.error('--camera-rot-tau, --camera-pos-tau, --camera-offset-y, --camera-distance-scale, --camera-lag-clamp-deg and --camera-combat-tightness require --camera chase.')
+    for name, value in camera_tunables.items():
+        if value is not None and not (0 < value <= 10 if name.endswith(('TAU', 'SCALE')) else 0 <= value <= (90 if name.endswith('DEG') else 1)):
+            parser.error(f'{name} out of range: {value}')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
@@ -232,6 +247,10 @@ def main():
         env['X3M_DAT_HANDLES'] = '1' if args.dat_handles else '0'
         env['X3M_PROFILE'] = '1' if args.profile else '0'
         env['X3M_PROFILE_INTERVAL_US'] = str(args.profile_interval_us)
+        env['X3M_CAMERA'] = args.camera  # chase installs the trampoline; vanilla (or unset) patches nothing
+        for name, value in camera_tunables.items():
+            if value is not None:
+                env[name] = repr(value)
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',

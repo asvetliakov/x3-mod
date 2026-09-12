@@ -7,7 +7,7 @@ add_library(d3d9 SHARED
   src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
-  src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp
+  src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/chase_camera.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp
   src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/proxy/engine_patch.cpp src/proxy/loading_probes.cpp src/proxy/resource_reader.cpp src/proxy/resource_reader_core.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp

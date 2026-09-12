@@ -917,6 +917,17 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    approximately 4.0× (Steam) / 4.14× (X3) per check, excluding the probe envelope
    ([crypt-cache.md](verification/crypt-cache.md)). The 11–13 s loading estimate
    remains a hypothesis for the user's reviewed `--crypt-cache` run.
+8. **Chase camera (2026-09-13, worktree branch, pre-review, not run):**
+   `X3M_CAMERA=chase` / `launch --camera chase` replaces the external back
+   view with a critically damped follow camera written into the engine's
+   sector camera at the byte-verified cockpit-update site `0x00420e06`
+   ([design](architecture/chase-camera.md), [study](reverse-engineering/external-camera.md)):
+   scene, HUD overlay and the mouse-aim ray (which uses cockpit `+0xf0`, also
+   rewritten) stay one camera. Host tests 21 + 8 pass, DLL builds clean,
+   `check_no_x87.py` PASS, default runs patch nothing. First user run: the
+   `chase_camera` install/frame lines, HUD brackets and aim consistency in the
+   back view, a snap (`snap_reason` 16/4) on a gate jump, vanilla behaviour in
+   the other views; then tune `rot_tau`/`pos_tau`/`lag_clamp_deg`/`offset_y`.
 
 ## Replay/admission line (reference only, superseded 2026-09-12)
 

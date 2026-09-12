@@ -10,6 +10,7 @@
 #include "scene_capture.h"
 #include "object_trace.h"
 #include "scene_hook.h"
+#include "chase_camera.h"
 #include "camera_state.h"
 #include "object_lifetime.h"
 #include "draw_input.h"
@@ -457,6 +458,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // The frame routine cannot run without a device: quiescent for the
         // callsite restore (the object-trace patch keeps its own lifetime).
         if(scene_hook::installed()){const bool restored=scene_hook::shutdown();log("scene_hook_shutdown restored=%u status=%s",restored,scene_hook::status());}
+        chase_camera::shutdown(); // the cockpit update needs the main loop; quiescent here too
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
     }
@@ -525,6 +527,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         const uint64_t dt_ms=ctx.frame_end_qpc?(now-ctx.frame_end_qpc)*1000ull/frequency:0;
         ctx.frame_end_qpc=now;
         log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr,elapsed_ms,dt_ms,now);
+        chase_camera::report(ctx.frame); // X3M_CAMERA=chase only (no line otherwise)
     }
     if(ctx.capture||ctx.frame%300==0)finite_upload_metrics(d,ctx,"present");
     // With the route requested, log the wrapper's copy-depth epochs per capture

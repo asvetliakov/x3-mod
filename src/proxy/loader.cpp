@@ -3,6 +3,7 @@
 #include "object_trace.h"
 #include "camera_state.h"
 #include "scene_hook.h"
+#include "chase_camera.h"
 #include "object_lifetime.h"
 #include "../ownership/d3d9_ownership.h"
 #include "../ownership/application_admission_abi.h"
@@ -62,6 +63,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         // boundary); restored when the last device goes.
         x3m::scene_hook::initialize(&x3m::scene_end_signal);
         x3m::log("scene_hook active=%u status=%s",x3m::scene_hook::active(),x3m::scene_hook::status());
+        // X3M_CAMERA=chase: the cockpit-update trampoline (exact executable and
+        // bytes, install window open here); unset or anything else leaves the
+        // vanilla camera and patches nothing. Restored with the last device.
+        if(x3m::chase_camera::wanted())x3m::chase_camera::initialize();
         const auto lifetime_stats=x3m::object_lifetime::stats();
         x3m::log("object_lifetime active=%u status=%s recovery_required=%u baseline_complete=%u baseline_entries=%lu",
             x3m::object_lifetime::active(),x3m::object_lifetime::status(),x3m::object_lifetime::recovery_required(),

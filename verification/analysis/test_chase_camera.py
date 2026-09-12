@@ -1,0 +1,323 @@
+"""Host tests of the chase camera's pose pipeline (src/proxy/chase_camera_math.h).
+
+The production header is compiled with the host compiler through
+verification/probe/chase_camera_host.cpp and driven frame by frame with
+synthetic ship/camera poses in the engine's own convention (basis rows =
+right/up/forward axes, row-vector products, int32 positions). Covered:
+first-frame snap, the critically damped closed form against its analytic
+solution, frame-rate (SETA) independence, lag clamps, the snap conditions
+(teleport, ship, sector, mode), pass-through verdicts (internal view, views
+that are not behind the ship, scripted connect modes), NaN/non-orthonormal
+input guards, distance scaling, the below-centre pitch, and the
+camera = view_rel * ship identity that keeps the mouse-aim ray consistent.
+"""
+import math
+import random
+import shutil
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+DEFAULT_TUNABLES = dict(rot_tau=0.20, pos_tau=0.30, offset_y=0.0, distance_scale=1.0, lag_clamp_deg=90.0, pos_lag_clamp=1.0, max_dt=0.1, snap_ratio=20.0)
+
+
+def yaw(theta):
+    """Basis rows (right, up, forward) of a ship yawed by theta about world Y (left-handed, det +1)."""
+    c, s = math.cos(theta), math.sin(theta)
+    return [c, 0, -s, 0, 1, 0, s, 0, c]
+
+
+def roll(phi):
+    c, s = math.cos(phi), math.sin(phi)
+    return [c, s, 0, -s, c, 0, 0, 0, 1]
+
+
+def mat_mul(a, b):
+    return [sum(a[3 * i + k] * b[3 * k + j] for k in range(3)) for i in range(3) for j in range(3)]
+
+
+def vec_mat(v, b):
+    return [sum(v[k] * b[3 * k + j] for k in range(3)) for j in range(3)]
+
+
+def transpose(a):
+    return [a[3 * j + i] for i in range(3) for j in range(3)]
+
+
+def rotation_angle_deg(a, b):
+    w = mat_mul(transpose(a), b)
+    c = max(-1.0, min(1.0, (w[0] + w[4] + w[8] - 1) / 2))
+    return math.degrees(math.acos(c))
+
+
+class Driver:
+    def __init__(self, exe):
+        self.proc = subprocess.Popen([str(exe)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+
+    def send(self, line):
+        self.proc.stdin.write(line + '\n')
+        self.proc.stdin.flush()
+        return self.proc.stdout.readline().split()
+
+    def tunables(self, **kw):
+        t = dict(DEFAULT_TUNABLES, **kw)
+        out = self.send('T {rot_tau} {pos_tau} {offset_y} {distance_scale} {lag_clamp_deg} {pos_lag_clamp} {max_dt} {snap_ratio}'.format(**t))
+        assert out[0] == 'T'
+        return int(out[1]) == 1
+
+    def reset(self):
+        self.send('R')
+
+    def frame(self, dt, ship_pos=(0, 0, 0), ship=IDENTITY, boom=(0, 40, -200), view_rel=IDENTITY, mode=2, connect=0, ref=1, sector=1, half_vfov_tan=0.75):
+        line = ' '.join(['F', repr(dt), str(mode), str(connect), str(ref), str(sector), *map(repr, ship_pos), *map(repr, ship), *map(repr, boom), *map(repr, view_rel), repr(half_vfov_tan)])
+        out = self.send(line)
+        assert out[0] == 'F', out
+        r = dict(verdict=int(out[1]), snapped=bool(int(out[2])), snap_reason=int(out[3]), lag_deg=float(out[4]), pos_lag=float(out[5]), distance=float(out[6]))
+        if r['verdict'] == 0:
+            r['pos'] = [float(x) for x in out[7:10]]
+            r['basis'] = [float(x) for x in out[10:19]]
+            r['view_rel'] = [float(x) for x in out[19:28]]
+            r['ortho_error'] = float(out[28])
+        return r
+
+    def close(self):
+        self.proc.stdin.close()
+        self.proc.wait(timeout=10)
+
+
+class ChaseCameraPipeline(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        compiler = shutil.which('c++') or shutil.which('clang++') or shutil.which('g++')
+        if compiler is None:
+            raise unittest.SkipTest('no host C++ compiler')
+        cls.directory = tempfile.mkdtemp(prefix='x3-chase-camera-')
+        cls.exe = Path(cls.directory) / 'driver'
+        subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-ffp-contract=off',
+                        str(ROOT / 'verification/probe/chase_camera_host.cpp'), '-o', str(cls.exe)], check=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.directory, ignore_errors=True)
+
+    def setUp(self):
+        self.d = Driver(self.exe)
+        self.assertTrue(self.d.tunables())
+
+    def tearDown(self):
+        self.d.close()
+
+    # --- basics -------------------------------------------------------------
+    def test_first_frame_snaps_to_the_vanilla_pose(self):
+        r = self.d.frame(1 / 60, ship_pos=(1000, -500, 250000), boom=(0, 40, -200))
+        self.assertEqual(r['verdict'], 0)
+        self.assertTrue(r['snapped'])
+        self.assertEqual(r['snap_reason'], 1)
+        self.assertEqual(r['pos'], [1000, -460, 249800])
+        self.assertEqual(r['basis'], IDENTITY)
+        self.assertEqual(r['view_rel'], IDENTITY)
+        self.assertAlmostEqual(r['distance'], math.hypot(40, 200), places=9)
+        self.assertEqual(r['lag_deg'], 0)
+
+    def test_tunables_are_validated(self):
+        self.assertFalse(self.d.tunables(rot_tau=0))
+        self.assertFalse(self.d.tunables(lag_clamp_deg=91))
+        self.assertFalse(self.d.tunables(distance_scale=-1))
+        self.assertTrue(self.d.tunables())
+
+    def test_output_basis_is_orthonormal_and_consistent_with_view_rel(self):
+        random.seed(7)
+        ship = IDENTITY
+        self.d.frame(1 / 60, ship=ship)
+        for i in range(120):
+            ship = mat_mul(roll(0.01 * i), yaw(0.02 * i))
+            r = self.d.frame(1 / 60, ship=ship, ship_pos=(10 * i, 0, 300 * i))
+            self.assertEqual(r['verdict'], 0)
+            self.assertLess(r['ortho_error'], 1e-9)
+            recomposed = mat_mul(r['view_rel'], ship)
+            self.assertTrue(all(abs(a - b) < 1e-9 for a, b in zip(recomposed, r['basis'])), 'camera != view_rel * ship')
+
+    # --- spring dynamics ----------------------------------------------------
+    def test_step_response_matches_the_closed_form(self):
+        tau, dt, step_deg = 0.2, 1 / 60, 20.0
+        self.d.tunables(rot_tau=tau)
+        self.d.frame(dt)
+        target = yaw(math.radians(step_deg))
+        for n in range(1, 61):
+            r = self.d.frame(dt, ship=target)
+            t = n * dt
+            expected = step_deg * (1 + t / tau) * math.exp(-t / tau)
+            self.assertAlmostEqual(r['lag_deg'], expected, places=6, msg=f'frame {n}')
+            self.assertAlmostEqual(rotation_angle_deg(r['basis'], target), expected, places=6)
+        self.assertLess(r['lag_deg'], 1.0)  # 20 * 6 e^-5 = 0.81 deg after 1 s
+        for _ in range(240):
+            r = self.d.frame(dt, ship=target)
+        self.assertLess(r['lag_deg'], 1e-6)
+
+    def test_spring_closed_form_direct(self):
+        out = self.d.send('S 1.0 0.0 0.25 0.05 10')
+        t, tau = 0.5, 0.25
+        self.assertAlmostEqual(float(out[1]), (1 + t / tau) * math.exp(-t / tau), places=10)
+        self.assertAlmostEqual(float(out[2]), -(t / tau ** 2) * math.exp(-t / tau), places=10)
+
+    def test_frame_rate_independence_of_the_step_response(self):
+        target = yaw(math.radians(15))
+        results = {}
+        for hz in (30, 120):
+            self.d.reset()
+            self.d.frame(1 / hz)
+            for _ in range(hz // 2):
+                r = self.d.frame(1 / hz, ship=target)
+            results[hz] = r['lag_deg']
+        self.assertAlmostEqual(results[30], results[120], places=9)
+
+    def test_seta_like_time_compression_does_not_enter(self):
+        # The same wall-clock history sampled at 30 and 120 Hz while the ship
+        # turns at a constant rate ends within a few percent of each other.
+        results = {}
+        for hz in (30, 120):
+            self.d.reset()
+            self.d.frame(1 / hz)
+            for n in range(hz):
+                r = self.d.frame(1 / hz, ship=yaw(math.radians(30) * (n + 1) / hz))
+            results[hz] = r['lag_deg']
+        self.assertGreater(results[120], 1.0)
+        self.assertLess(abs(results[30] - results[120]) / results[120], 0.05)
+
+    def test_zero_dt_keeps_the_state(self):
+        self.d.frame(1 / 60)
+        target = yaw(math.radians(10))
+        a = self.d.frame(1 / 60, ship=target)['lag_deg']
+        b = self.d.frame(0.0, ship=target)['lag_deg']
+        self.assertAlmostEqual(a, b, places=12)
+
+    def test_large_dt_is_clamped(self):
+        self.d.tunables(max_dt=0.1, rot_tau=0.2)
+        self.d.frame(1 / 60)
+        r = self.d.frame(5.0, ship=yaw(math.radians(20)))
+        expected = 20 * (1 + 0.5) * math.exp(-0.5)
+        self.assertAlmostEqual(r['lag_deg'], expected, places=6)
+
+    def test_orientation_lag_clamp_bounds_the_ship_window(self):
+        self.d.tunables(lag_clamp_deg=10)
+        self.d.frame(1 / 60)
+        r = self.d.frame(1 / 60, ship=yaw(math.radians(60)))
+        self.assertLessEqual(r['lag_deg'], 10 + 1e-9)
+        self.assertGreater(r['lag_deg'], 9.99)
+        for _ in range(300):
+            r = self.d.frame(1 / 60, ship=yaw(math.radians(60)))
+        self.assertLess(r['lag_deg'], 1e-6)
+
+    def test_roll_is_followed_with_lag(self):
+        self.d.frame(1 / 60)
+        r = self.d.frame(1 / 60, ship=roll(math.radians(30)))
+        self.assertGreater(r['lag_deg'], 29)  # one frame in: the camera has barely started rolling
+        self.assertGreater(rotation_angle_deg(r['basis'], IDENTITY), 0.05)
+        for _ in range(120):
+            r = self.d.frame(1 / 60, ship=roll(math.radians(30)))
+        self.assertLess(rotation_angle_deg(r['basis'], roll(math.radians(30))), 0.02)  # 30 * 11 e^-10 after 2 s
+
+    def test_boom_swings_and_settles_within_the_position_clamp(self):
+        self.d.tunables(pos_lag_clamp=0.2)
+        boom = (0, 0, -200)
+        self.d.frame(1 / 60, boom=boom)
+        r = self.d.frame(1 / 60, ship=yaw(math.radians(90)), boom=boom)
+        self.assertGreater(r['pos_lag'], 1.0)
+        self.assertLessEqual(r['pos_lag'], 40 + 1e-9)
+        for _ in range(600):
+            r = self.d.frame(1 / 60, ship=yaw(math.radians(90)), boom=boom)
+        self.assertLess(r['pos_lag'], 1e-6)
+        self.assertTrue(all(abs(a - b) < 1e-6 for a, b in zip(r['pos'], vec_mat(boom, yaw(math.radians(90))))))
+
+    def test_constant_velocity_produces_no_lag(self):
+        self.d.frame(1 / 60)
+        for n in range(1, 60):
+            r = self.d.frame(1 / 60, ship_pos=(0, 0, 500 * n))
+            self.assertEqual(r['pos_lag'], 0)
+            self.assertEqual(r['lag_deg'], 0)
+            self.assertEqual(r['pos'], [0, 40, 500 * n - 200])
+
+    # --- geometry -----------------------------------------------------------
+    def test_distance_scale_multiplies_the_vanilla_boom(self):
+        self.d.tunables(distance_scale=2.0)
+        r = self.d.frame(1 / 60, boom=(0, 40, -200))
+        self.assertEqual(r['pos'], [0, 80, -400])
+        self.assertAlmostEqual(r['distance'], 2 * math.hypot(40, 200), places=9)
+
+    def test_offset_y_puts_the_ship_below_centre(self):
+        self.d.tunables(offset_y=0.2)
+        r = self.d.frame(1 / 60, boom=(0, 0, -200), half_vfov_tan=0.75)
+        forward = r['basis'][6:9]
+        self.assertGreater(forward[1], 0)  # tilted toward up
+        self.assertAlmostEqual(math.degrees(math.atan2(forward[1], forward[2])), math.degrees(math.atan(0.2 * 0.75)), places=9)
+        relative = vec_mat([-p for p in r['pos']], transpose(r['basis']))  # ship in camera coordinates
+        self.assertGreater(relative[2], 0)
+        self.assertAlmostEqual(relative[1] / relative[2], -0.2 * 0.75, places=9)  # 20 % of the half height below centre
+
+    def test_external_views_not_behind_the_ship_pass_through(self):
+        self.assertEqual(self.d.frame(1 / 60, boom=(0, 40, 200))['verdict'], 2)      # front view
+        self.assertEqual(self.d.frame(1 / 60, boom=(300, 0, -100))['verdict'], 2)    # side view
+        self.assertEqual(self.d.frame(1 / 60, boom=(0, 40, -200), view_rel=yaw(math.pi))['verdict'], 2)  # looking away
+        r = self.d.frame(1 / 60, boom=(0, 40, -200))
+        self.assertEqual((r['verdict'], r['snapped'], r['snap_reason']), (0, True, 1))
+
+    def test_internal_view_and_scripted_connect_modes_pass_through(self):
+        self.assertEqual(self.d.frame(1 / 60, mode=1)['verdict'], 1)
+        for connect in (4, 5, 6, 8, 9):
+            self.assertEqual(self.d.frame(1 / 60, connect=connect)['verdict'], 3)
+        self.assertEqual(self.d.frame(1 / 60, connect=3)['verdict'], 0)
+
+    # --- snaps --------------------------------------------------------------
+    def test_snap_reasons(self):
+        self.d.frame(1 / 60)
+        self.assertEqual(self.d.frame(1 / 60, ref=2)['snap_reason'], 2)
+        self.assertEqual(self.d.frame(1 / 60, ref=2, sector=9)['snap_reason'], 4)
+        self.assertEqual(self.d.frame(1 / 60, ref=2, sector=9, mode=3)['snap_reason'], 8)
+        self.assertEqual(self.d.frame(1 / 60, ref=2, sector=9, mode=3, connect=1)['snap_reason'], 8)
+        r = self.d.frame(1 / 60, ref=2, sector=9, mode=3, connect=1, ship_pos=(0, 0, 10 ** 6))
+        self.assertEqual(r['snap_reason'], 16)
+        self.assertTrue(r['snapped'])
+        r = self.d.frame(1 / 60, ref=2, sector=9, mode=3, connect=1, ship_pos=(0, 0, 10 ** 6 + 100))
+        self.assertFalse(r['snapped'])
+
+    def test_snap_after_a_refused_frame(self):
+        self.d.frame(1 / 60)
+        self.d.frame(1 / 60, ship=yaw(0.3))
+        self.assertEqual(self.d.frame(1 / 60, mode=1)['verdict'], 1)
+        r = self.d.frame(1 / 60, ship=yaw(0.3))
+        self.assertTrue(r['snapped'])
+        self.assertEqual(r['lag_deg'], 0)
+
+    # --- guards -------------------------------------------------------------
+    def test_nan_and_non_orthonormal_input_is_refused(self):
+        self.d.frame(1 / 60)
+        self.assertEqual(self.d.frame(1 / 60, ship_pos=(float('nan'), 0, 0))['verdict'], 4)
+        self.assertEqual(self.d.frame(float('inf'))['verdict'], 4)
+        self.assertEqual(self.d.frame(1 / 60, ship=[1.1 * v for v in IDENTITY])['verdict'], 4)
+        self.assertEqual(self.d.frame(1 / 60, ship=[-1, 0, 0, 0, 1, 0, 0, 0, 1])['verdict'], 4)  # mirror (det -1)
+        self.assertEqual(self.d.frame(1 / 60, half_vfov_tan=0)['verdict'], 4)
+        self.assertEqual(self.d.frame(1 / 60, boom=(0, 0, 0))['verdict'], 5)
+        r = self.d.frame(1 / 60)
+        self.assertEqual((r['verdict'], r['snapped']), (0, True))
+
+    def test_rotation_exp_log_round_trip_and_fixed_point(self):
+        random.seed(3)
+        for _ in range(200):
+            v = [random.uniform(-1, 1) for _ in range(3)]
+            n = math.sqrt(sum(x * x for x in v))
+            scale = random.uniform(0, 3.0) / n
+            v = [x * scale for x in v]
+            out = self.d.send('X ' + ' '.join(map(repr, v)))
+            back = [float(x) for x in out[1:4]]
+            self.assertTrue(all(abs(a - b) < 1e-7 for a, b in zip(back, v)), (v, back))
+            self.assertLess(float(out[4]), 1e-12)
+            self.assertEqual(out[5], '1')
+            self.assertLessEqual(float(out[6]), 0.5 / 65536 + 1e-12)
+
+
+if __name__ == '__main__':
+    unittest.main()
