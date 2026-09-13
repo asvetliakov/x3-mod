@@ -6,7 +6,7 @@ import struct
 import unittest
 from unittest.mock import patch
 import linear_material_reference as ref
-from run_linear_material import PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, fixture_cases, binary_cases, expected, validate_report
+from run_linear_material import BOUNDARY, CUBE_PATTERN, cube_sample, cube_location, expected_alpha, PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, fixture_cases, binary_cases, expected, validate_report
 
 
 def report():
@@ -16,8 +16,9 @@ def report():
         for depth in (0, 1):
             lines.append(f'CREATE stage={stage} key={shader}_2_{depth}_1_1_1 instructions=100 words=600 completed_ms=1.25')
     for c in cases:
-        lines.append(f'INVARIANT id={c["id"]} pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0')
-        rgba = ','.join(format(v, '.17g') for v in expected(c).encoded_rgba)
+        lines.append(f'INVARIANT id={c["id"]} pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0 rgb_bad=0')
+        values=(.5,1.,.25,expected_alpha(c)) if c['flags'] & BOUNDARY else expected(c).encoded_rgba
+        rgba = ','.join(format(v, '.17g') for v in values)
         for y in (4, 8, 12):
             for x in (4, 8, 12):
                 lines.append(f'SAMPLE id={c["id"]} x={x} y={y} rgba={rgba}')
@@ -37,15 +38,15 @@ class ReportTests(unittest.TestCase):
 
     def test_complete_report(self):
         result = validate_report(self.text)
-        self.assertEqual(result['pairs'], 20)
-        self.assertEqual(result['unique_originals'], 15)
+        self.assertEqual(result['pairs'], 30)
+        self.assertEqual(result['unique_originals'], 24)
         self.assertGreater(result['hdr_channels'], 0)
         self.assertGreater(result['exact_black_channels'], 0)
 
     def test_inventory_and_binary_abi(self):
         cases = fixture_cases()
         data = binary_cases(cases)
-        self.assertEqual(len(data), 4 + 160*len(cases))
+        self.assertEqual(len(data), 4 + 224*len(cases))
         self.assertEqual(struct.unpack_from('<I', data)[0], len(cases))
         self.assertEqual(set((c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='pair_depth_face'),
                          {(p,d,r) for p in range(20) for d in (0,1) for r in (0,1)})
@@ -88,6 +89,62 @@ class ReportTests(unittest.TestCase):
         self.assertEqual({c['pair'] for c in cases if c['label']=='shared_finite_domain'},set(range(10,16)))
         self.assertEqual([c['pair'] for c in cases if c['label']=='shared_vertex_alternation'],
                          [0,10,1,11,0,2,12,4,14,2,6,16,8,18,6])
+
+    def test_cube_face_axes_and_independent_offcenter_orientation(self):
+        axes=((1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(0,0,1),(0,0,-1))
+        for face,direction in enumerate(axes):
+            self.assertEqual(cube_location(direction),(face,.5,.5))
+            self.assertEqual(cube_sample(direction),((face+1)/8.,.25,.375))
+        offcenter=(((1,.75,-.75),(.125,.5,.125)),((-1,-.75,.75),(.25,.5,.75)),
+                   ((.75,1,-.75),(.375,.5,.125)),((-.75,-1,.75),(.5,.125,.125)),
+                   ((.75,-.75,1),(.625,.5,.75)),((-.75,.75,-1),(.75,.5,.125)))
+        for direction,color in offcenter:self.assertEqual(cube_sample(direction),color)
+        for unsafe in ((1,1,0),(1,.5,0),(0,0,0)):
+            with self.assertRaises(ValueError):cube_sample(unsafe)
+
+    def test_bump_inventory_and_stable_cube_domain(self):
+        cases=fixture_cases()
+        self.assertEqual(len(cases),512)
+        self.assertTrue(all(c['pair']<20 for c in cases[:313]))
+        self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='bump_pair_depth_face'},
+                         {(p,d,r) for p in range(20,30) for d in (0,1) for r in (0,1)})
+        self.assertEqual(sum(bool(c['flags']&BOUNDARY) for c in cases),15)
+        for c in cases:
+            if c['flags']&BOUNDARY:continue
+            a,b=expected(c),expected(c,True)
+            self.assertEqual(a.encoded_rgba[3],expected_alpha(c))
+            if c['flags']&CUBE_PATTERN:
+                # Different endpoint precision must not select a different
+                # discrete cube color. Other _pp arithmetic gets RGB tolerance.
+                def geometry(half):
+                    profile=ref.PROFILES[PAIRS[c['pair']][1]]
+                    return ref.bump_geometry(c['normal_sample'],c['tangent'],c['binormal'],c['normal'],c['camera'],
+                                             two_sided=profile.two_sided,face=-1 if c['reverse'] else 1,half_source=half)
+                self.assertEqual(cube_sample(geometry(False).reflection),cube_sample(geometry(True).reflection))
+
+    def test_unused_channels_and_geometric_point_response(self):
+        cases=fixture_cases()
+        for pair in range(20,26):
+            a=next(c for c in cases if c['pair']==pair and c['label']=='bump_alpha_binormal')
+            b=next(c for c in cases if c['pair']==pair and c['label']=='bump_unused_red_blue')
+            self.assertEqual(expected(a),expected(b))
+            a,b=[c for c in cases if c['pair']==pair and c['label']=='bump_cube_perturbed']
+            self.assertNotEqual(expected(a),expected(b))
+        for pair in (20,22,26):
+            a,b=[c for c in cases if c['pair']==pair and c['label']=='bump_geometric_point']
+            self.assertEqual(expected(a),expected(b))
+
+    def test_boundary_explicitly_excludes_rgb_oracle_but_enforces_storage(self):
+        c=next(c for c in fixture_cases() if c['flags']&BOUNDARY)
+        with self.assertRaises(ValueError):expected(c)
+        for values in ((123.,0.,4.),(-.1,0.,0.),(155.,0.,0.)):
+            lines=self.text.splitlines()
+            for i,line in enumerate(lines):
+                if line.startswith(f'SAMPLE id={c["id"]} '):
+                    lines[i]=line.split('rgba=')[0]+'rgba='+','.join(map(str,(*values,expected_alpha(c))))
+            if values[0]==123.:self.assertEqual(validate_report('\n'.join(lines))['boundary_cases'],15)
+            else:
+                with self.assertRaises(AssertionError):validate_report('\n'.join(lines))
 
     def test_missing_sample(self):
         lines=self.text.splitlines()

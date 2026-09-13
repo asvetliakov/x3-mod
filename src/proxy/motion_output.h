@@ -206,7 +206,7 @@ struct MotionFrameCounters {
     bool hook_scene_end = false, bloom_copy_seen = false;
     std::uint32_t scene_end_check = 0;
     MotionHdrCounters hdr;
-    std::uint32_t material_routed = 0, material_refused = 0, material_bind_failures = 0;
+    std::uint32_t material_routed = 0, material_bump_routed = 0, material_refused = 0, material_bind_failures = 0;
     // Mip LOD bias of the routed draws (X3M_TAA_MIP_BIAS): SetSamplerState
     // calls the route issued to apply and to restore the bias this frame,
     // routed draws that had at least one biased stage, the stages biased at
@@ -524,6 +524,9 @@ private:
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
         std::uint64_t vs_hash = 0, ps_hash = 0;
+        // Exact pair contract, refreshed at actual shader setters and completed
+        // registration only. DEFAULT uses 0x0f, BUMPMAP 0x1f, unknown uses zero.
+        std::uint32_t material_sampler_mask = 0;
         IDirect3DVertexShader9* vs_variant = nullptr;
         IDirect3DPixelShader9* ps_variant = nullptr;
         IDirect3DVertexShader9* vs_material_variant = nullptr;
@@ -568,6 +571,7 @@ private:
     void apply_jitter(MotionRoute& route) noexcept;
     void restore_jitter(MotionRoute& route) noexcept;
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    void refresh_linear_material_contract() noexcept;
     // 0 eligible, 1 unreviewed pair, 2 missing combined object, 3 HDR/decode,
     // 4 unknown or enabled sampler sRGB decode. Does not reject motion.
     unsigned linear_material_refusal() const noexcept;

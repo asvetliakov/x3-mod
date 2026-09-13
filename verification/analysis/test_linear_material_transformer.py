@@ -1,4 +1,4 @@
-"""Compile the real pure transformer and inspect all fifteen local original programs.
+"""Compile the real pure transformer and inspect all twenty-four local original programs.
 
 No game bytes are bundled. Generated variants stay in TemporaryDirectory.
 These tests qualify instruction/ABI invariants, not GPU primitive behavior.
@@ -80,28 +80,42 @@ ARGON_ORIGINALS = {
 }
 
 
+DEFAULT_ORIGINALS = ARGON_ORIGINALS | {
+    'ps_3b94320087e81945', 'ps_e3b7acc16da9932d', 'ps_7a14d4dcb28f27e5',
+    'ps_8ab6188a40ca15ea', 'ps_8df6143d0e77d92e', 'ps_e16a9806ee3544c3',
+}
+BUMP_ORIGINALS = {
+    'vs_4944d81dfe531b37', 'vs_19a246a56e9d9700', 'vs_44c4a41ca92ae2e3',
+    'ps_ca6bfa4a6cca7e2a', 'ps_5e0a10fe752b6140', 'ps_63379470db8d2a86',
+    'ps_68915563dd0aac9a', 'ps_d086fde54698070c', 'ps_f17fffd88d134b04',
+}
+
+
+def family_resources(profile):
+    bump = 'argon_bump' in profile['families']
+    pixel = profile['id'].startswith('ps_')
+    temporal_base = (7 if len({source['name'] for source in profile['directional_rgb_sources']}) == 2
+                     else 6 if profile['diffuse_affine_completion'] else 5) if bump and pixel else 5
+    return {'vs_rgb': 9 if bump else 8, 'ps_rgb': 8 if bump else 7, 'rgb_texcoord': 7 if bump else 6,
+            'vs_temporal': (7, 8) if bump else (6, 7), 'ps_temporal': (6, 7) if bump else (5, 6),
+            'temporary_base': temporal_base, 'scratch': 10 if bump else 9}
+
+
 class LinearMaterialTransformerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.report = json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text())
         # Explicit implemented corpus; future offline families cannot silently
         # enlarge production qualification merely by entering the report.
-        implemented = ARGON_ORIGINALS | {
-            'ps_3b94320087e81945', 'ps_e3b7acc16da9932d', 'ps_7a14d4dcb28f27e5',
-            'ps_8ab6188a40ca15ea', 'ps_8df6143d0e77d92e', 'ps_e16a9806ee3544c3',
-        }
-        # Offline BUMPMAP certification must not imply production admission.
-        pending_bump = {row['id'] for row in cls.report['programs'] if 'argon_bump' in row['families']}
-        if pending_bump & implemented:
-            raise AssertionError('Offline BUMPMAP corpus entered runtime qualification')
+        implemented = DEFAULT_ORIGINALS | BUMP_ORIGINALS
         cls.report['programs'] = [row for row in cls.report['programs'] if row['id'] in implemented]
         if {row['id'] for row in cls.report['programs']} != implemented or not all(
-                ('argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families']
+                ('argon_bump' if row['id'] in BUMP_ORIGINALS else 'argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families']
                 for row in cls.report['programs']):
-            raise AssertionError('All fifteen implemented profiles must remain present')
+            raise AssertionError('All twenty-four implemented profiles must remain present')
         cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
         if not all((cls.originals / (p['id'] + '.bin')).is_file() for p in cls.report['programs']):
-            raise unittest.SkipTest('local fifteen-original archive corpus unavailable')
+            raise unittest.SkipTest('local twenty-four-original archive corpus unavailable')
         compiler = shutil.which('clang++') or shutil.which('c++')
         if compiler is None:
             raise RuntimeError('A host C++ compiler is required')
@@ -129,8 +143,22 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                     yield profile, depth, gain, words, items
 
     def test_all_variants_alias_and_failure_guards(self):
-        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (15, 20, 120))
-        self.assertGreaterEqual(self.driver['checks'], 1200)
+        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (24, 30, 192))
+        self.assertGreaterEqual(self.driver['checks'], 2800)
+
+    def test_all_previous_default_outputs_remain_byte_exact(self):
+        # Frozen before BUMPMAP core edits at 40ee4e1: all 120 DEFAULT
+        # variants, not only Argon; each basename and byte length is framed.
+        digest = hashlib.sha256()
+        outputs = sorted(path for path in self.output.glob('*.bin')
+                         if '-motion-' not in path.name and path.name.split('-')[0] in DEFAULT_ORIGINALS)
+        self.assertEqual(len(outputs), 120)
+        for path in outputs:
+            data = path.read_bytes()
+            digest.update(path.name.encode() + b'\0')
+            digest.update(struct.pack('<I', len(data)))
+            digest.update(data)
+        self.assertEqual(digest.hexdigest(), '797e97fd80ac54f7133249b4b3965ff9c438758b78169f784982d133a01aaff5')
 
     def test_previous_argon_outputs_remain_byte_exact(self):
         # Captured from the qualified pre-extension transformer at c558b00:
@@ -151,6 +179,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
     def test_original_instruction_alpha_position_and_comment_invariants(self):
         for profile, depth, gain, combined, changed_items in self.each():
             vertex = profile['id'].startswith('vs_')
+            abi = family_resources(profile)
             original, items = load(self.originals / (profile['id'] + '.bin'))
             self.assertEqual(comment_spans(original), comment_spans(combined))
             expected = []
@@ -171,14 +200,14 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                             del tokens[point['relative_operand_dword'] - at]
                             tokens[0] -= 1 << 24
                     if at == emissive['instruction_dword']:
-                        tokens[1] = (tokens[1] & ~0x7ff) | 8
+                        tokens[1] = (tokens[1] & ~0x7ff) | abi['vs_rgb']
                         tokens[emissive['operand_dword'] - at] = 0x80e40007
                 else:
                     if at in linear:
                         tokens[1] &= ~0x200000
                     if at == profile['color0_rgb_clamp']['instruction_dword']:
                         tokens[1] &= ~0x100000
-                        tokens[2] = 0x90e40007
+                        tokens[2] = 0x90e40000 | abi['ps_rgb']
                     for offset, target in sources.items():
                         if at < offset <= at + item['length']:
                             tokens[offset - at] = 0x80e40000 | target
@@ -202,8 +231,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                 if op in (motion.DCL, motion.DEF):
                     continue
                 destination_type, number = motion.register_of(tokens[1])
-                temporal = (destination_type == 0 and 5 <= number <= 7 and not vertex) or (
-                    destination_type == (6 if vertex else 8) and number in ((6, 7) if vertex else (1, 2)))
+                temporal = (destination_type == 0 and abi['temporary_base'] <= number <= abi['temporary_base']+2 and not vertex) or (
+                    destination_type == (6 if vertex else 8) and number in (abi['vs_temporal'] if vertex else (1, 2)))
                 if temporal:
                     continue
                 self.assertEqual((tokens[1] >> 20) & 15, 0)
@@ -214,34 +243,39 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             # the full original reconstruction above, including declarations.
 
     def test_temporal_insertions_are_identical_to_motion_only(self):
-        def temporal(words, items, vertex):
+        def temporal(words, items, vertex, abi):
             result = []
             for item in items:
                 op, operands = item['opcode'], item['words']
                 if op == motion.DCL:
                     kind, number = motion.register_of(operands[1])
-                    selected = kind == (6 if vertex else 1) and number in ((6, 7) if vertex else (5, 6))
+                    selected = kind == (6 if vertex else 1) and number in (abi['vs_temporal'] if vertex else abi['ps_temporal'])
                 elif op == motion.DEF:
                     kind, number = motion.register_of(operands[0])
                     selected = not vertex and kind == 2 and 216 <= number <= 220
                 else:
                     dest, _ = motion.split_operands(item, 3)
                     selected = bool(dest) and ((dest['register_type'] == (6 if vertex else 8) and
-                                               dest['register'] in ((6, 7) if vertex else (1, 2))) or
-                                              (not vertex and dest['register_type'] == 0 and 5 <= dest['register'] <= 7))
+                                               dest['register'] in (abi['vs_temporal'] if vertex else (1, 2))) or
+                                              (not vertex and dest['register_type'] == 0 and abi['temporary_base'] <= dest['register'] <= abi['temporary_base']+2))
                 if selected:
                     result.append(span(words, item))
             return result
         for profile, depth, _, words, items in self.each():
             vertex = profile['id'].startswith('vs_')
+            abi = family_resources(profile)
             old, old_items = load(self.output / f"{profile['id']}-motion-{depth}.bin")
-            self.assertEqual(temporal(words, items, vertex), temporal(old, old_items, vertex))
+            self.assertEqual(temporal(words, items, vertex, abi), temporal(old, old_items, vertex, abi))
 
     def test_full_precision_varying_defs_caps_and_exact_zero_polarity(self):
+        maxima = {'default': {'vs':[0,0], 'ps':[0,0]}, 'bump': {'vs':[0,0], 'ps':[0,0]}}
         for profile, depth, gain, words, items in self.each():
             vertex = profile['id'].startswith('vs_')
+            abi = family_resources(profile)
             base = 248 if vertex else 212
             definitions, varying, slots = {}, [], 0
+            samplers = {motion.name_of(*motion.register_of(i['words'][1])): (i['words'][0] >> 27) & 15
+                        for i in items if i['opcode'] == motion.DCL and motion.register_of(i['words'][1])[0] == 10}
             for item in items:
                 if item['opcode'] == motion.DEF:
                     register = motion.register_of(item['words'][0])[1]
@@ -249,11 +283,19 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                 elif item['opcode'] == motion.DCL:
                     usage, register_token = item['words']
                     kind, number = motion.register_of(register_token)
-                    if kind == (6 if vertex else 1) and number == (8 if vertex else 7):
+                    if kind == (6 if vertex else 1) and number == (abi['vs_rgb'] if vertex else abi['ps_rgb']):
                         varying.append((usage & 31, (usage >> 16) & 15, motion.mask_of(register_token), (register_token >> 20) & 15))
                 else:
                     name = motion.OPCODES[item['opcode']]
-                    slots += motion.SLOT_COSTS.get(name, 1)
+                    costs = dict.fromkeys(('mov','add','mad','mul','rcp','rsq','dp3','dp4','min','max','slt','abs','cmp','mova','else','endif'), 1)
+                    costs.update({'nrm':3,'pow':3,'rep':3,'if':3,'endrep':2,'lrp':2,'dp2add':2})
+                    if name == 'texld':
+                        sampled = motion.name_of(*motion.register_of(item['words'][-1]))
+                        self.assertIn(samplers[sampled], (2,3))
+                        slots += 4 if samplers[sampled] == 3 else 1
+                    else:
+                        self.assertIn(name, costs, 'Unreviewed opcode has no inferred unit cost')
+                        slots += costs[name]
                     destination, sources = motion.split_operands(item, 3)
                     for operand in ([destination] if destination else []) + sources:
                         kind, number = operand['register_type'], operand['register']
@@ -261,15 +303,18 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                             self.assertLess(number, 32)
                         if kind == 2:
                             self.assertLess(number, 256 if vertex else 224)
-                    if item['opcode'] == 88 and destination['name'] in ('r0', 'r1', 'r3', 'r11', 'r12', 'r13'):
+                    if item['opcode'] == 88 and destination['name'] in ('r0', 'r1', 'r3', 'r4', 'r11', 'r12', 'r13'):
                         # These are the newly authored decode/encode selections.
                         source_token = item['words'][1]
                         if (source_token >> 24) & 15 == 1 and sources[1]['name'] == 'c212':
                             self.assertEqual(sources[0]['name'], destination['name'])
                             self.assertEqual(sources[1]['swizzle'], 'yyyy')
-                            self.assertEqual(sources[2]['name'], 'r9')
-            self.assertEqual(varying, [(5, 6, 'xyz', 0)])
+                            self.assertEqual(sources[2]['name'], f"r{abi['scratch']}")
+            self.assertEqual(varying, [(5, abi['rgb_texcoord'], 'xyz', 0)])
             self.assertLessEqual(slots, 512)
+            family = 'bump' if profile['id'] in BUMP_ORIGINALS else 'default'
+            stage = 'vs' if vertex else 'ps'
+            maxima[family][stage][depth] = max(maxima[family][stage][depth], slots)
             self.assertEqual(definitions[base][1:3], (0.0, 65504.0))
             self.assertAlmostEqual(definitions[base][0], 2.2, places=6)
             self.assertAlmostEqual(definitions[base][3] / 1e-10, 1, places=6)
@@ -280,6 +325,56 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                 self.assertAlmostEqual(definitions[base + 1][1], 1 / 2.2, places=6)
                 self.assertEqual(definitions[base + 1][2], gain)
                 self.assertAlmostEqual(definitions[base + 1][3] / 1e-22, 1, places=6)
+
+        for family in ('default', 'bump'):
+            self.assertEqual([maxima[family]['vs'], maxima[family]['ps']],
+                             self.driver[f'weighted_slots_{family}_vs_ps_depth_off_on'])
+        self.assertEqual(maxima['default'], {'vs':[80,82], 'ps':[166,168]})
+        self.assertEqual(maxima['bump'], {'vs':[85,87], 'ps':[177,179]})
+
+    def test_sample_conversion_boundaries_preserve_data_and_use_proved_rgb_registers(self):
+        # Distinguish affine r4 from DEFAULT r3 and both BUMP data samplers;
+        # a correctly framed extra fragment in the wrong temporary must fail.
+        for profile, depth, gain, words, items in self.each():
+            if not profile['id'].startswith('ps_'):
+                continue
+            abi = family_resources(profile)
+            original, originals = load(self.originals / (profile['id'] + '.bin'))
+            by_offset = {i['dword']: i for i in originals}
+            for texture in profile['texture_sources']:
+                fetch = texture['fetch']['instruction_dword']
+                original_fetch = span(original, by_offset[fetch])
+                found = [n for n, item in enumerate(items) if span(words, item) == original_fetch]
+                self.assertEqual(len(found), 1)
+                if texture['conversion_after_dword'] is None:
+                    # Normal/specular data keep their original immediate
+                    # consumer; no transfer may be slipped after the sample.
+                    before = by_offset[fetch]
+                    after = next(i for i in originals if i['dword'] == fetch+before['length']+1)
+                    self.assertEqual(span(words, items[found[0]+1]), span(original, after))
+                    continue
+                end = texture['conversion_after_dword']
+                boundary = next(i for i in originals if i['dword']+i['length']+1 == end)
+                at = next(n for n,i in enumerate(items) if span(words,i) == span(original,boundary))
+                fragment = items[at+1:at+8]
+                self.assertEqual([i['opcode'] for i in fragment], [11,10,11,32,32,32,88])
+                decoded = [motion.split_operands(i,3) for i in fragment]
+                target = texture['conversion_rgb_register']
+                scratch = f"r{abi['scratch']}"
+                self.assertEqual([d['name'] for d,_ in decoded], [target,target,scratch,scratch,scratch,scratch,target])
+                self.assertEqual([d['mask'] for d,_ in decoded], ['xyz','xyz','xyz','x','y','z','xyz'])
+                for d,_ in decoded:
+                    self.assertEqual(d['modifiers'], [])
+                self.assertEqual([(src['name'],src['swizzle']) for src in decoded[0][1]], [(target,'xyzw'),('c212','yyyy')])
+                self.assertEqual([(src['name'],src['swizzle']) for src in decoded[1][1]], [(target,'xyzw'),('c212','zzzz')])
+                self.assertEqual([(src['name'],src['swizzle']) for src in decoded[2][1]], [(target,'xyzw'),('c212','wwww')])
+                for lane, (_, sources) in zip('xyz', decoded[3:6]):
+                    self.assertEqual([(src['name'],src['swizzle']) for src in sources], [(scratch,lane*4),('c212','xxxx')])
+                if texture['role'] == 'lightmap_emissive_rgb':
+                    d,sources = motion.split_operands(items[at+8],3)
+                    self.assertEqual((items[at+8]['opcode'],d['name'],d['mask']), (5,target,'xyz'))
+                    self.assertEqual([(src['name'],src['swizzle']) for src in sources], [(target,'xyzw'),('c213','zzzz')])
+
 
 
 if __name__ == '__main__':

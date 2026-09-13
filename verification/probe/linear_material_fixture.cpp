@@ -40,25 +40,33 @@ template <class T> struct Com {
   T *operator->() const { return p; }
 };
 struct Case {
-  unsigned id, pair, depth, lights, reverse, affine, valid, fp16;
-  float f[32];
+  unsigned id, pair, depth, lights, reverse, affine, valid, fp16, flags;
+  // Existing f[0..31] retain their meanings. Append normal RGBA, B, T,
+  // camera and fog clip; flags: asymmetric cube=1, fog=2, boundary=4.
+  float f[47];
 };
-static_assert(sizeof(Case) == 160, "binary case ABI");
+static_assert(sizeof(Case) == 224, "binary case ABI");
 const char *vertex_ids[] = {"53a0a641107ed76c", "719856ce0c213220",
-                            "badefd5143b3024f"};
+                            "badefd5143b3024f", "4944d81dfe531b37",
+                            "44c4a41ca92ae2e3", "19a246a56e9d9700"};
 const char *pixel_ids[] = {
     "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5",
     "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
     "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5",
-    "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3"};
+    "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3",
+    "ca6bfa4a6cca7e2a", "5e0a10fe752b6140", "63379470db8d2a86",
+    "68915563dd0aac9a", "d086fde54698070c", "f17fffd88d134b04"};
 // Derived register-layout facts; lobe arithmetic stays in each original shader.
-const bool pixel_affine[] = {true, true, false, true, true,  false,
-                             true, true, true,  true, false, false};
-const unsigned pixel_directions[] = {2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1};
-const unsigned pair_v[] = {0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-                           0, 0, 1, 1, 1, 1, 2, 2, 2, 2},
-               pair_p[] = {0, 1, 2, 3, 4,  5,  2, 3, 4,  5,
-                           6, 7, 8, 9, 10, 11, 8, 9, 10, 11};
+const bool pixel_affine[] = {true, true, false, true,  true,  false,
+                             true, true, true,  true,  false, false,
+                             true, true, true,  false, true,  false};
+const unsigned pixel_directions[] = {2, 2, 1, 1, 1, 1, 2, 2, 1,
+                                     1, 1, 1, 2, 2, 1, 1, 1, 1};
+const unsigned pair_v[] = {0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 0, 0, 1, 1, 1,
+                           1, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5},
+               pair_p[] = {0,  1,  2,  3,  4,  5,  2,  3,  4,  5,
+                           6,  7,  8,  9,  10, 11, 8,  9,  10, 11,
+                           12, 13, 14, 15, 16, 17, 14, 15, 16, 17};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -115,14 +123,14 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][12];
+  Words originals[2][18];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
     api(d->GetDeviceCaps(&caps));
-    for (unsigned i = 0; i < 3; ++i)
+    for (unsigned i = 0; i < 6; ++i)
       originals[0][i] = load(path + "\\vs_" + vertex_ids[i] + ".bin");
-    for (unsigned i = 0; i < 12; ++i)
+    for (unsigned i = 0; i < 18; ++i)
       originals[1][i] = load(path + "\\ps_" + pixel_ids[i] + ".bin");
   }
   ~Shaders() {
@@ -228,7 +236,7 @@ struct Gpu {
   Shaders &shaders;
   unsigned width;
   Com<IDirect3DSurface9> back, color[2], motion, current;
-  Com<IDirect3DTexture9> textures[3];
+  Com<IDirect3DTexture9> textures[4];
   Com<IDirect3DCubeTexture9> cube;
   Com<IDirect3DVertexDeclaration9> declaration;
   Gpu(IDirect3DDevice9 *device, Shaders &s, unsigned size)
@@ -246,7 +254,7 @@ struct Gpu {
     for (auto &t : textures)
       api(d->CreateTexture(1, 1, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
                            &t.p, nullptr));
-    api(d->CreateCubeTexture(1, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
+    api(d->CreateCubeTexture(4, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
                              &cube.p, nullptr));
     const D3DVERTEXELEMENT9 elements[] = {
         {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION,
@@ -255,11 +263,15 @@ struct Gpu {
          D3DDECLUSAGE_TEXCOORD, 0},
         {0, 20, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL,
          0},
+        {0, 32, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT,
+         D3DDECLUSAGE_BINORMAL, 0},
+        {0, 44, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TANGENT,
+         0},
         D3DDECL_END()};
     api(d->CreateVertexDeclaration(elements, &declaration.p));
   }
   ~Gpu() {
-    for (unsigned i = 0; i < 4; ++i)
+    for (unsigned i = 0; i < 5; ++i)
       d->SetTexture(i, nullptr);
     d->SetRenderTarget(2, nullptr);
     d->SetRenderTarget(1, nullptr);
@@ -289,32 +301,47 @@ struct Gpu {
     api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
     api(d->SetVertexDeclaration(declaration.p));
     shaders.bind(c, mode);
+    const bool bump = c.pair >= 20;
+    // Clear the union first: DEFAULT must never retain BUMP's stage-4 cube,
+    // and switching stage-3 2D/cube roles must not depend on the last family.
+    for (unsigned i = 0; i < 5; ++i)
+      api(d->SetTexture(i, nullptr));
     const float mask[4] = {c.f[15], 0, 0, 1};
-    const float *texels[] = {c.f + 3, mask, c.f + 7};
-    for (unsigned i = 0; i < 3; ++i) {
+    const float *texels[] = {c.f + 3, bump ? c.f + 32 : mask,
+                             bump ? mask : c.f + 7, c.f + 7};
+    for (unsigned i = 0; i < (bump ? 4u : 3u); ++i) {
       D3DLOCKED_RECT lock{};
       api(textures[i]->LockRect(0, &lock, nullptr, 0));
       std::memcpy(lock.pBits, texels[i], 16);
       api(textures[i]->UnlockRect(0));
       api(d->SetTexture(i, textures[i].p));
     }
+    // Face identity plus independent U/V bands, all exactly representable.
+    // The central 2x2 region is uniform so axis directions avoid a color edge.
+    const float band_u[4] = {.125f, .25f, .25f, .5f},
+                band_v[4] = {.125f, .375f, .375f, .75f};
     for (unsigned face = 0; face < 6; ++face) {
       D3DLOCKED_RECT lock{};
       api(cube->LockRect(D3DCUBEMAP_FACES(face), 0, &lock, nullptr, 0));
-      std::memcpy(lock.pBits, c.f + 11, 16);
+      for (unsigned y = 0; y < 4; ++y)
+        for (unsigned x = 0; x < 4; ++x) {
+          float value[4] = {(face + 1) / 8.f, band_u[x], band_v[y], 1};
+          std::memcpy(static_cast<char *>(lock.pBits) + y * lock.Pitch + x * 16,
+                      c.flags & 1 ? value : c.f + 11, 16);
+        }
       api(cube->UnlockRect(D3DCUBEMAP_FACES(face), 0));
     }
-    api(d->SetTexture(3, cube.p));
-    for (unsigned i = 0; i < 4; ++i) {
-      for (auto s : {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER})
-        api(d->SetSamplerState(i, s, D3DTEXF_POINT));
+    api(d->SetTexture(bump ? 4 : 3, cube.p));
+    for (unsigned i = 0; i < 5; ++i) {
+      for (auto state : {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER})
+        api(d->SetSamplerState(i, state, D3DTEXF_POINT));
       api(d->SetSamplerState(i, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
       api(d->SetSamplerState(i, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP));
       api(d->SetSamplerState(i, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP));
       api(d->SetSamplerState(i, D3DSAMP_SRGBTEXTURE, FALSE));
     }
     float v[256][4]{};
-    bool fixed = pair_v[c.pair] == 2;
+    bool fixed = pair_v[c.pair] == 2 || pair_v[c.pair] == 5;
     unsigned matrix = fixed ? 0 : 24, normal = fixed ? 10 : 31,
              camera = fixed ? 13 : 34, emissive = fixed ? 19 : 40,
              alpha = fixed ? 18 : 39, tex = fixed ? 16 : 37;
@@ -325,7 +352,10 @@ struct Gpu {
     v[252][3] = -.125f;
     for (unsigned k = 0; k < 3; ++k)
       v[normal + k][k] = 1;
-    v[camera + 2][3] = 4;
+    for (unsigned k = 0; k < 3; ++k)
+      v[camera + k][3] = c.f[42 + k];
+    v[fixed ? 20 : 41][0] = c.f[45];
+    v[fixed ? 20 : 41][1] = c.f[46];
     v[alpha][0] = .625f;
     v[tex][0] = v[tex + 1][1] = 1;
     std::memcpy(v[emissive], c.f + 16, 12);
@@ -340,7 +370,7 @@ struct Gpu {
     api(d->SetVertexShaderConstantF(0, v[0], 256));
     int lights[4] = {int(c.lights), 0, 1, 0};
     api(d->SetVertexShaderConstantI(0, lights, 1));
-    BOOL fog = FALSE;
+    BOOL fog = (c.flags & 2) != 0;
     api(d->SetVertexShaderConstantB(0, &fog, 1));
     float p[221][4]{};
     unsigned profile = pair_p[c.pair];
@@ -369,17 +399,20 @@ struct Gpu {
     api(d->SetPixelShaderConstantF(0, p[0], 221));
   }
   void draw(const Case &c, unsigned repeats = 1) {
-    float vertices[3][8] = {{-1, 1, .5f, 0, 0, 0, 0, 1},
-                            {3, 1, .5f, 1, 0, 0, 0, 1},
-                            {-1, -3, .5f, 0, 1, 0, 0, 1}};
-    for (auto &v : vertices)
+    float vertices[3][14] = {{-1, 1, .5f, 0, 0, 0, 0, 1},
+                             {3, 1, .5f, 1, 0, 0, 0, 1},
+                             {-1, -3, .5f, 0, 1, 0, 0, 1}};
+    for (auto &v : vertices) {
       std::memcpy(v + 5, c.f + 28, 12);
+      std::memcpy(v + 8, c.f + 36, 12);
+      std::memcpy(v + 11, c.f + 39, 12);
+    }
     if (c.reverse)
-      for (unsigned k = 0; k < 8; ++k)
+      for (unsigned k = 0; k < 14; ++k)
         std::swap(vertices[1][k], vertices[2][k]);
     api(d->BeginScene());
     for (unsigned i = 0; i < repeats; ++i)
-      api(d->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 1, vertices, 32));
+      api(d->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 1, vertices, 56));
     api(d->EndScene());
   }
   std::vector<Pixel> read(IDirect3DSurface9 *target, D3DFORMAT format) {
@@ -427,19 +460,23 @@ struct Gpu {
          motion_after = read(motion.p, D3DFMT_A32B32G32R32F);
     auto depth_after =
         c.depth ? read(current.p, D3DFMT_R32F) : std::vector<Pixel>{};
-    unsigned alpha_bad = 0, motion_bad = 0, depth_bad = 0;
+    unsigned alpha_bad = 0, motion_bad = 0, depth_bad = 0, rgb_bad = 0;
+    const float ceiling = c.fp16 ? 154.625f : 154.603f;
     for (unsigned i = 0; i < width * width; ++i) {
+      for (unsigned k = 0; k < 3; ++k)
+        rgb_bad += !std::isfinite(after[i].f[k]) || after[i].f[k] < 0 ||
+                   after[i].f[k] > ceiling;
       alpha_bad += std::memcmp(&before[i].f[3], &after[i].f[3], 4) != 0;
       motion_bad += std::memcmp(&motion_before[i], &motion_after[i], 16) != 0;
       if (c.depth)
         depth_bad +=
             std::memcmp(&depth_before[i].f[0], &depth_after[i].f[0], 4) != 0;
     }
-    std::printf(
-        "INVARIANT id=%u pixels=%u alpha_bad=%u motion_bad=%u depth_bad=%u\n",
-        c.id, width * width, alpha_bad, motion_bad, depth_bad);
-    require(!alpha_bad && !motion_bad && !depth_bad,
-            "alpha or temporal identity");
+    std::printf("INVARIANT id=%u pixels=%u alpha_bad=%u motion_bad=%u "
+                "depth_bad=%u rgb_bad=%u\n",
+                c.id, width * width, alpha_bad, motion_bad, depth_bad, rgb_bad);
+    require(!alpha_bad && !motion_bad && !depth_bad && !rgb_bad,
+            "alpha, temporal identity or finite RGB storage");
     for (unsigned y : {width / 4, width / 2, 3 * width / 4})
       for (unsigned x : {width / 4, width / 2, 3 * width / 4}) {
         const auto &p = after[y * width + x];
@@ -465,7 +502,7 @@ struct Gpu {
     // vertices per draw, with one normal and constant world lighting. Setup
     // allocation/upload is excluded from all timed windows.
     struct Vertex {
-      float x, y, z, u, v, nx, ny, nz;
+      float x, y, z, u, v, nx, ny, nz, bx, by, bz, tx, ty, tz;
     };
     std::vector<Vertex> grid;
     grid.reserve(64 * 64 * 6);
@@ -479,7 +516,8 @@ struct Gpu {
                         {right, top},
                         {right, bottom},
                         {left, bottom}})
-          grid.push_back({xy.first, xy.second, .5f, 0, 0, 0, 0, 1});
+          grid.push_back(
+              {xy.first, xy.second, .5f, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0});
       }
     Com<IDirect3DVertexBuffer9> buffer;
     api(d->CreateVertexBuffer(UINT(grid.size() * sizeof(Vertex)), 0, 0,
@@ -570,7 +608,7 @@ int main(int argc, char **argv) {
       {
         Gpu gpu(device.p, shaders, 16);
         for (const auto &c : cases) {
-          require(c.pair < 20 && c.fp16 < 2 && c.depth < 2, "case bounds");
+          require(c.pair < 30 && c.fp16 < 2 && c.depth < 2, "case bounds");
           gpu.test(c);
         }
       }
@@ -580,6 +618,10 @@ int main(int argc, char **argv) {
         Case shared = cases.front();
         shared.pair = 10;
         gpu.timing(shared);
+        Case bump = cases.front();
+        bump.pair = 20;
+        bump.flags = 1;
+        gpu.timing(bump);
       }
     } // Release every D3D object before destroying its device window.
     require(DestroyWindow(window) != 0, "destroy window");

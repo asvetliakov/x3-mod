@@ -521,7 +521,7 @@ struct Fixture {
             api(d->SetSamplerState(i, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP), "SetSamplerState v");
             // In the focused material script, initial attach and first Reset
             // admission must rely on resync getters, not setter repopulation.
-            if (!(linearmaterials && (frame == 0 || frame == 10)))
+            if (!(linearmaterials && (frame == 0 || frame == 10 || frame == 21)))
                 api(d->SetSamplerState(i, D3DSAMP_SRGBTEXTURE, FALSE), "SetSamplerState srgb");
         }
     }
@@ -676,9 +676,9 @@ struct Fixture {
     // `verify`: snapshot the state around the draw (every getter is a
     // restore point of the lazy RT mode, so the burst script passes false to
     // keep consecutive routed draws free of application getters).
-    void draw(Object& o, float t, float p, float zo, bool known, bool routed, bool matched, Alter alter = Alter::None, bool verify = true) {
+    void draw(Object& o, float t, float p, float zo, bool known, bool routed, bool matched, Alter alter = Alter::None, bool verify = true, UINT stride = 24) {
         scope(known ? &o : nullptr);
-        api(d->SetStreamSource(0, o.vb, 0, 24), "SetStreamSource object");
+        api(d->SetStreamSource(0, o.vb, 0, stride), "SetStreamSource object");
         IDirect3DPixelShader9* program = alter == Alter::FlatPixel ? flat.p : alter == Alter::Hdr2 ? hdr2.p : (alter == Alter::Hdr8 || alter == Alter::Hdr8Additive) ? hdr8.p : alter == Alter::HdrMid ? hdrmid.p : ps.p;
         api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(program), "SetPixelShader");
         if (alter == Alter::Blend) api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "blend on");
@@ -1406,7 +1406,8 @@ struct Fixture {
         api(d->SetPixelShaderConstantF(5,zero,1),"zero directional zero");
         api(d->SetPixelShaderConstantF(7,zero,1),"zero directional one");
     }
-    void run_linear_materials(const char* shared_path, const char* split_path) {
+    void run_linear_materials(const char* shared_path, const char* split_path,
+                              const char* bump_vs_path, const char* bump_ps_path, const char* bump_negative_path) {
         require(seam&&enabled&&hdr&&hdr_agx&&hdr_readback,"linear materials needs the HDR AgX seam");
         char setting[32]{};
         const bool material=GetEnvironmentVariableA("X3M_LINEAR_MATERIALS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -1451,15 +1452,105 @@ struct Fixture {
                 require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"actual material/ordinary FP16 color witness");
             if(i==0)std::memcpy(first,center,sizeof first);
             if(i==10||i==11)require(!std::memcmp(first,center,sizeof first),"Reset retains cached shader gains and alpha");
-            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
-                eligible?0u:i==9?1u:4u,i==1?0x3b94320087e81945ull:i==9?0x462342e3e5781384ull:ps_hash,double(center[0]),double(center[1]),double(center[2]),double(center[3]));
+            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
+                eligible?0u:i==9?1u:4u,vs_hash,i==1?0x3b94320087e81945ull:i==9?0x462342e3e5781384ull:ps_hash,double(center[0]),double(center[1]),double(center[2]),double(center[3]));
             frame_end();
             if(i==9) {
                 api(SetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN","16")?S_OK:E_FAIL,"change environment after attach");
                 reset();
             }
         }
-        // Both extra originals are released before final device Release;
+        // Extend the unchanged twelve-frame DEFAULT prefix with the class-B
+        // route. Separate managed geometry adds real tangent/binormal inputs;
+        // position/UV/normal remain exactly the original full-screen triangle.
+        const auto bump_vs_words=load(bump_vs_path), bump_ps_words=load(bump_ps_path), negative_words=load(bump_negative_path);
+        require(fnv(bump_vs_words.data(),bump_vs_words.size()*4)==0x4944d81dfe531b37ull,"reviewed BUMP VS");
+        require(fnv(bump_ps_words.data(),bump_ps_words.size()*4)==0xca6bfa4a6cca7e2aull,"reviewed BUMP PS");
+        require(fnv(negative_words.data(),negative_words.size()*4)==0x0c1f3f0f440e4a0cull,"shared BUMP VS negative PS");
+        Com<IDirect3DVertexShader9> bump_vs;
+        Com<IDirect3DPixelShader9> bump_ps, bump_negative;
+        api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(bump_vs_words.data()),&bump_vs.p),"Create BUMP VS");
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(bump_ps_words.data()),&bump_ps.p),"Create BUMP PS");
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(negative_words.data()),&bump_negative.p),"Create BUMP negative PS");
+        Com<IDirect3DVertexDeclaration9> bump_declaration;
+        const D3DVERTEXELEMENT9 elements[]={
+            {0,0,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},
+            {0,8,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},
+            {0,16,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0},
+            {0,24,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0},
+            {0,32,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT,0},D3DDECL_END()};
+        api(d->CreateVertexDeclaration(elements,&bump_declaration.p),"Create BUMP declaration");
+        Com<IDirect3DVertexBuffer9> bump_vb;
+        api(d->CreateVertexBuffer(40*3,0,0,D3DPOOL_MANAGED,&bump_vb.p,nullptr),"Create BUMP buffer");
+        void *original_data=nullptr,*bump_data=nullptr;
+        api(vb_a->Lock(0,0,&original_data,D3DLOCK_READONLY),"read original geometry");
+        api(bump_vb->Lock(0,0,&bump_data,0),"write BUMP geometry");
+        const unsigned short basis[]={0,half(1),0,0,half(1),0,0,0};
+        for(unsigned vertex=0;vertex<3;++vertex){
+            auto* target=static_cast<char*>(bump_data)+vertex*40;
+            std::memcpy(target,static_cast<char*>(original_data)+vertex*24,24);
+            std::memcpy(target+24,basis,sizeof basis);
+        }
+        api(bump_vb->Unlock(),"unlock BUMP geometry");api(vb_a->Unlock(),"unlock original geometry");
+        Com<IDirect3DTexture9> normal;
+        api(d->CreateTexture(2,2,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&normal.p,nullptr),"Create normal map");
+        D3DLOCKED_RECT normal_lock{};api(normal->LockRect(0,&normal_lock,nullptr,0),"normal map lock");
+        const DWORD normal_texel=0x80008000u;
+        for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)
+            std::memcpy(static_cast<char*>(normal_lock.pBits)+y*normal_lock.Pitch+x*4,&normal_texel,4);
+        api(normal->UnlockRect(0),"normal map unlock");
+        Object bump=a;bump.name="BUMP";bump.vb=bump_vb.p;bump.recorded=false;
+        float bump_first[4]{};
+        for(unsigned i=12;i<24;++i){
+            frame_begin();linear_material_inputs();write_reserved();
+            const bool use_bump=i!=17&&i!=23, negative=i==19;
+            const bool eligible=i!=13&&i!=15&&!negative;
+            // Fresh attach/Reset SRGB knowledge must come from getters. All
+            // other frames explicitly establish the actual state at s4.
+            if(i!=21)api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,FALSE),"s4 linear state");
+            if(use_bump){
+                api(d->SetTexture(1,normal.p),"BUMP normal sample");
+                api(d->SetTexture(2,textures[1].p),"BUMP scalar mask");
+                api(d->SetTexture(3,textures[2].p),"BUMP lightmap");
+                api(d->SetTexture(4,cube.p),"BUMP cube");
+                for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(d->SetSamplerState(4,filter,D3DTEXF_POINT),"BUMP cube filter");
+                api(d->SetSamplerState(4,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"BUMP cube mip");
+                api(d->SetVertexDeclaration(bump_declaration.p),"BUMP declaration");
+            }else api(d->SetTexture(4,nullptr),"DEFAULT ignores unused s4");
+            if(i==13||i==17||i==23)api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,TRUE),"s4 true witness");
+            if(i==14||i==15){
+                api(d->BeginStateBlock(),"BUMP BeginStateBlock");
+                api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,TRUE),"record s4 true");
+                Com<IDirect3DStateBlock9> block;api(d->EndStateBlock(&block.p),"BUMP EndStateBlock");
+                if(i==15)api(block->Apply(),"BUMP recorded Apply");
+            }
+            if(i==16){
+                Com<IDirect3DStateBlock9> block;api(d->CreateStateBlock(D3DSBT_ALL,&block.p),"BUMP capture stateblock");
+                api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,TRUE),"temporary s4 true");
+                api(block->Apply(),"restore s4 stateblock");
+            }
+            // Distinct VS/resource keys lose correspondence after an absent
+            // frame; a PS-only change keeps the same position program/key.
+            const bool matched=i==13||i==14||i==15||i==16||i==19||i==20||i==22;
+            if(use_bump){std::swap(vs.p,bump_vs.p);std::swap(ps.p,negative?bump_negative.p:bump_ps.p);}
+            draw(use_bump?bump:a,0,0,0,true,true,matched,Alter::None,true,use_bump?40:24);
+            if(use_bump){std::swap(vs.p,bump_vs.p);std::swap(ps.p,negative?bump_negative.p:bump_ps.p);}
+            unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
+            require(w==W&&h==H,"BUMP FP16 dimensions");
+            const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
+            const double expected=material&&eligible?std::pow(4.,1./2.2):1.;
+            if(!negative)for(unsigned lane=0;lane<3;++lane)
+                require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"BUMP/DEFAULT actual FP16 witness");
+            if(i==12)std::memcpy(bump_first,center,sizeof bump_first);
+            if(i==21||i==22)require(!std::memcmp(bump_first,center,sizeof bump_first),"BUMP Reset retains cached gains and alpha");
+            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
+                eligible?0u:negative?1u:4u,use_bump?0x4944d81dfe531b37ull:vs_hash,
+                negative?0x0c1f3f0f440e4a0cull:use_bump?0xca6bfa4a6cca7e2aull:ps_hash,
+                double(center[0]),double(center[1]),double(center[2]),double(center[3]));
+            frame_end();
+            if(i==20){reset();bump.recorded=false;}
+        }
+        // Extra originals/resources are released before final device Release;
         // their cached variants remain route-owned and must also retire.
         shared.reset();split.reset();
     }
@@ -2058,7 +2149,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials [WxH|shared-PS Split-PS]");
+        if ((argc != 4 && argc != 5 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -2072,8 +2163,8 @@ int main(int argc, char** argv) {
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
         f.msaa = mode == "msaa";
         f.linearmaterials = mode == "linearmaterials";
-        if(f.linearmaterials && argc!=6)throw std::runtime_error("linearmaterials needs shared DEFAULT and Split PS paths");
-        if(!f.linearmaterials && argc==6)throw std::runtime_error("unexpected additional program path");
+        if(f.linearmaterials && argc!=9)throw std::runtime_error("linearmaterials needs DEFAULT and BUMP positive/negative shader paths");
+        if(!f.linearmaterials && argc==9)throw std::runtime_error("unexpected additional program path");
         if (f.msaa) { char samples[8]{}; f.msaa_samples = GetEnvironmentVariableA("X3M_FIXTURE_MSAA", samples, sizeof samples) > 0 ? unsigned(std::atoi(samples)) : 2u; if (f.msaa_samples < 2 || f.msaa_samples > 16) throw std::runtime_error("X3M_FIXTURE_MSAA must be 2..16"); }
         if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
         if (f.bench) {
@@ -2143,7 +2234,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

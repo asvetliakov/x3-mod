@@ -1,7 +1,7 @@
 # Linear Argon BUMPMAP material slice
 
 Design study, 2026-09-13, after the installed twenty-pair DEFAULT slice.
-**Offline proof/reference reviewed; production and GPU qualification pending.** Extend the existing opaque
+**Implemented and detached-GPU qualified; live candidate qualification pending.** Extend the existing opaque
 material route to the complete Argon SM3 BUMPMAP contract. Evaluate color in
 linear light, then compatibility-encode into the current FP16 engine-space
 target. Retain alpha, geometric lighting response and same-draw motion/depth.
@@ -285,3 +285,55 @@ pass, retaining the installed 15-program/20-pair/120-variant corpus and previous
 Argon byte-exact baseline; the full focused set is 58 tests. This verdict certifies original-site structure
 and the analytical reference only; transformed budgets, GPU boundary behavior,
 production admission and native-Windows execution remain future qualification.
+
+## Runtime checkpoint
+
+The implementation now covers all **24 originals / 30 pairs**. The design above
+records its contracts; the offline verdict is the earlier checkpoint, not the
+current implementation status. Material color stays opt-in and uses the existing
+linear evaluation/compatibility encoding policy.
+
+The pure transformer preserves the immutable-original motion merge, exact alpha
+and normal operations, and class-B varying/scratch separation. All 120 previous
+DEFAULT outputs remain byte-exact. Seven focused structural tests cover 192
+variants and 2,888 checks, including the exact pair matrix, cross-family refusal,
+input/output aliasing, resource boundaries and temporal chunks. Corrected maximum
+weighted slots are VS 82 / PS 168 for DEFAULT and VS 87 / PS 179 for BUMPMAP,
+below the 512-slot gate. The diagnostic 192-transform host run took 4.827 ms;
+shader creation work adds no per-draw allocations.
+
+MotionOutput caches the exact pair's sampler mask with its shader state. It
+checks current combined objects/HDR readiness independently, resynchronizes s0–s4
+through public D3D getters, and preserves DEFAULT's independence from s4. Three
+focused host tests cover actual extracted registration, setter, state-block and
+Reset methods, including 18 registration failure/early-return scenarios. They
+also check that repeated draw admission performs no pair lookups or sampler
+queries. This does not claim an overall frame-time speedup: pair resolution
+still runs when shader bindings change. Bounded refusal logs report sampler
+masks, and `bump_routed` counts completed combined BUMPMAP draws per frame.
+
+The [detached X3 GPU result](../../verification/results/bottle-X3/linear-material-gpu.json)
+passes **512 cases**, retaining the previous 313-case prefix, with 137 successful
+shader creations. It checks 4,473 analytical RGB samples and 135 operational-only
+samples; all 131,072 pixels preserve alpha and RT1/RT2 as applicable and store
+finite, capped RGB. New-family error uses at most 15.952% of the stated tolerance.
+Fifteen q=0/near-zero/zero-normal/zero-view cases deliberately make no float64
+full-color equivalence claim. Preserved source operations plus these operational
+checks did not require extra instrumented diagnostic shaders. Fifteen focused
+GPU parser/oracle tests pass.
+
+For 98,304 vertices in four draws with six measured samples, BUMPMAP's
+original/motion/combined median submission-to-completion times were
+0.603/0.740/0.861 ms with zero point lights and 0.625/0.736/0.864 ms with eight.
+The roughly 0.12 ms combined-over-motion difference belongs to this synthetic
+workload; it is neither GPU-only timing nor game FPS. No avoidable per-draw
+allocation, repeated bytecode validation or new lock was introduced.
+
+Independent review found no source blocker in the core, detached fixture, live
+cache/lifetime changes or the authored live GPU script. The latter appends
+class-B positive/negative routing, s4 state-block/recovery, family transitions
+and another Reset to the existing prefix: 24 frames in each of eight ownership,
+TAA and feature twins. Its x86 syntax check and two parser tests pass. **That
+live GPU run, clean candidate build and installation are still pending at this
+checkpoint.** The installed twenty-pair DEFAULT build remains unchanged.
+Native Windows execution and gameplay appearance/performance remain unverified.

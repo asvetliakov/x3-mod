@@ -22,11 +22,22 @@ struct LinearMaterialAbi {
     static constexpr unsigned pixel_rgb_input = 7;
     static constexpr unsigned rgb_texcoord = 6;
 };
+// BUMPMAP keeps its original TEX0-4 basis; temporal TEX5/6 remain unchanged.
+struct LinearBumpMaterialAbi {
+    static constexpr unsigned vertex_definition_base = 248;
+    static constexpr unsigned pixel_definition_base = 212;
+    static constexpr unsigned vertex_rgb_output = 9;
+    static constexpr unsigned pixel_rgb_input = 8;
+    static constexpr unsigned rgb_texcoord = 7;
+};
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
-// Exact twenty Argon/shared-DEFAULT pairs, independent of the broader temporal registry. The
+// Exact thirty DEFAULT/BUMPMAP pairs, independent of the temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.
+// DEFAULT returns 0x0f, BUMPMAP 0x1f, unsupported pairs zero. The mask only
+// identifies required disabled-sRGB samplers; it establishes no dynamic gates.
+std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 
 // Pure create-time combined material + same-draw motion/depth transformations.

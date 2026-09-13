@@ -23,11 +23,12 @@ constexpr unsigned xyz = 7, xyzw = 15, identity = 0xe4;
 struct Pixel {
     std::uint64_t hash;
     unsigned words;
-    std::array<unsigned, 4> texture; // s0, s1(data), s2, s3
+    std::array<unsigned, 5> texture; // Physical samplers; DEFAULT uses s0-3, BUMP s0-4
     unsigned affine_end, clamp, final_rgb, clamp_temporary;
     unsigned light0, light1; // light1 == 0 means the one-directional contract.
     std::array<unsigned, 4> color_source; // ORIGINAL source operand DWORDs.
     std::array<unsigned, 13> rgb; // Full-precision radiance destinations only.
+    bool bump = false;
 };
 constexpr Pixel pixels[] = {
     {0x8759c7838bbc86c2ull,1260,{1197,1175,1242,1229},1217,1206,1251,1,5,7,
@@ -54,13 +55,27 @@ constexpr Pixel pixels[] = {
      {231,0,0,0},{217,224,228,233,241,245,259}},
     {0xe16a9806ee3544c3ull,300,{252,236,282,269},0,249,291,2,2,0,
      {263,0,0,0},{249,256,260,265,273,277,291}},
+    {0xca6bfa4a6cca7e2aull,1328,{1272,1095,1235,1310,1268},1289,1260,1319,6,5,7,
+     {1228,1233,1188,1220},{1185,1217,1225,1230,1243,1251,1260,1293,1297,1301,1305,1319},true},
+    {0x5e0a10fe752b6140ull,1354,{1298,1098,1261,1336,1294},1315,1286,1345,6,5,7,
+     {1254,1259,1214,1246},{1211,1243,1251,1256,1269,1277,1286,1319,1323,1327,1331,1345},true},
+    {0x63379470db8d2a86ull,1251,{1194,1077,1161,1233,1190},1211,1182,1242,5,5,0,
+     {1222},{1182,1215,1219,1224,1228,1242},true},
+    {0x68915563dd0aac9aull,332,{292,175,259,314,288},0,280,323,4,2,0,
+     {303},{280,296,300,305,309,323},true},
+    {0xd086fde54698070cull,1277,{1220,1080,1187,1259,1216},1237,1208,1268,5,5,0,
+     {1248},{1208,1241,1245,1250,1254,1268},true},
+    {0xf17fffd88d134b04ull,358,{318,178,285,340,314},0,306,349,4,2,0,
+     {329},{306,322,326,331,335,349},true},
 };
-struct Vertex { std::uint64_t hash; unsigned words; bool loop; };
+struct Vertex { std::uint64_t hash; unsigned words; bool loop; bool bump = false; };
 constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
-    {0x719856ce0c213220ull,526,true},{0xbadefd5143b3024full,481,false}};
+    {0x719856ce0c213220ull,526,true},{0xbadefd5143b3024full,481,false},
+    {0x4944d81dfe531b37ull,556,true,true},{0x19a246a56e9d9700ull,511,false,true},
+    {0x44c4a41ca92ae2e3ull,556,true,true}};
 // Explicit archive pair contract: base shaders never gain toggle-VS admission
-// from table position. This bounded per-draw lookup allocates no memory.
-struct Pair { std::uint64_t vertex, pixel; };
+// from table position. The live caller caches this allocation-free contract.
+struct Pair { std::uint64_t vertex, pixel; std::uint32_t sampler_mask = 0x0f; };
 constexpr Pair pairs[] = {
     {0x53a0a641107ed76cull,0x8759c7838bbc86c2ull},
     {0x53a0a641107ed76cull,0x63f96eba9eea7880ull},
@@ -82,7 +97,27 @@ constexpr Pair pairs[] = {
     {0xbadefd5143b3024full,0x8ab6188a40ca15eaull},
     {0xbadefd5143b3024full,0x8df6143d0e77d92eull},
     {0xbadefd5143b3024full,0xe16a9806ee3544c3ull},
+    {0x19a246a56e9d9700ull,0x63379470db8d2a86ull,0x1f},
+    {0x19a246a56e9d9700ull,0x68915563dd0aac9aull,0x1f},
+    {0x19a246a56e9d9700ull,0xd086fde54698070cull,0x1f},
+    {0x19a246a56e9d9700ull,0xf17fffd88d134b04ull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0x63379470db8d2a86ull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0x68915563dd0aac9aull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xd086fde54698070cull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xf17fffd88d134b04ull,0x1f},
+    {0x4944d81dfe531b37ull,0x5e0a10fe752b6140ull,0x1f},
+    {0x4944d81dfe531b37ull,0xca6bfa4a6cca7e2aull,0x1f},
 };
+// Two fixed family layouts, not a varying/temporary allocator. BUMP's original
+// basis occupies TEX0-4, so its existing class-B temporal ABI stays at TEX5/6.
+struct FamilyAbi { unsigned vertex_rgb, pixel_rgb, rgb_texcoord, pixel_scratch;
+    unsigned vertex_motion, pixel_motion, motion_texcoord; };
+constexpr FamilyAbi default_abi{8,7,6,9,6,5,4}, bump_abi{9,8,7,10,7,6,5};
+unsigned temporal_temporary_base(const Pixel& pixel) noexcept {
+    return pixel.bump ? (pixel.light1 ? 7u : pixel.affine_end ? 6u : 5u) : 5u;
+}
+unsigned point_site(const Vertex& vertex) noexcept { return (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
+unsigned emissive_site(const Vertex& vertex) noexcept { return (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
 unsigned kind(Word token) noexcept { return ((token >> 28) & 7) | ((token >> 8) & 24); }
 unsigned index(Word token) noexcept { return token & 0x7ff; }
 unsigned mask(Word token) noexcept { return (token >> 16) & 15; }
@@ -116,8 +151,8 @@ void sanitize(Words& out, bool vertex, unsigned target, Source source) {
     else emit(out,max_op,{dst(temp,target),source.value,lane(constant,base,1)});
     emit(out,min_op,{dst(temp,target),src(temp,target),lane(constant,base,2)});
 }
-void transfer(Words& out, bool vertex, unsigned target, Source source, bool encode = false) {
-    const unsigned base = vertex ? 248 : 212, scratch = vertex ? 8 : 9;
+void transfer(Words& out, bool vertex, unsigned target, Source source, bool encode = false, unsigned pixel_scratch = 9) {
+    const unsigned base = vertex ? 248 : 212, scratch = vertex ? 8 : pixel_scratch;
     sanitize(out,vertex,target,source);
     // VS3 has no CMP. A strict-positive SLT mask times a finite positive POW
     // yields exact +0 for either signed zero without evaluating POW(0,...).
@@ -139,36 +174,66 @@ struct Structure {
     std::vector<unsigned char> boundary;
     std::size_t first_declaration = 0;
 };
-// This narrow SM3 walk also excludes comments/DEF literal words from register
-// scans. The existing motion transformer performs its independent full proof.
-bool structure(const Word* code, std::size_t words, bool vertex, Structure& result, bool original) {
+// Only opcodes present in the reviewed originals or our authored fragments.
+// Microsoft SM3 instruction tables: REP/IF=3, ENDREP=2, DP2ADD/LRP=2,
+// NRM/POW=3; ordinary TEXLD is 4 for a cube declaration and 1 for 2D.
+// Unknown operations/forms fail instead of receiving an assumed unit cost.
+bool body_shape(unsigned op, unsigned& operands, unsigned& slots, bool& destination) noexcept {
+    destination=true; slots=1;
+    switch (op) {
+    case mov: case 6: case 7: case abs_op: case 46: operands=2; return true;
+    case add: case mul: case 8: case 9: case min_op: case max_op: case slt:
+        operands=3; return true;
+    case mad: case cmp: operands=4; return true;
+    case pow_op: operands=3; slots=3; return true;
+    case 36: operands=2; slots=3; return true;
+    case 18: case 90: operands=4; slots=2; return true;
+    case texld: operands=3; return true;
+    case 38: case 40: operands=1; slots=3; destination=false; return true;
+    case 39: operands=0; slots=2; destination=false; return true;
+    case 42: case 43: operands=0; destination=false; return true;
+    default: return false;
+    }
+}
+// This narrow SM3 walk excludes comments/DEF literal words from register scans.
+// The existing motion transformer still performs its independent full proof.
+bool structure(const Word* code, std::size_t words, bool vertex, Structure& result,
+               bool original, const FamilyAbi& abi, unsigned original_temp_count) {
     if (words < 2 || code[0] != (vertex ? 0xfffe0300u : 0xffff0300u)) return false;
     result.boundary.assign(words,0);
+    std::array<unsigned,16> samplers{};
     unsigned slots=0;
     for (std::size_t at=1; at<words;) {
         result.boundary[at]=1;
         const Word token=code[at]; const unsigned op=token&0xffff, n=length(token);
         if (token==end_token) return at==words-1 && slots<=512 && result.first_declaration!=0;
-        if (op==0xffff || n>words-at-1 || (op!=0xfffe && (token & 0x50000000u))) return false;
+        if (op==0xffff || n>words-at-1 || (op!=0xfffe && (token & 0xf0ff0000u))) return false;
         if (op==0xfffe) { at+=n+1; continue; }
         result.instructions.push_back({at,op,n});
         if (op==dcl) {
             if (n!=2) return false;
             if (!result.first_declaration) result.first_declaration=at;
             const auto type=kind(code[at+2]), number=index(code[at+2]);
-            if (original && ((type==(vertex ? output_reg : input) && number==(vertex ? 8u : 7u)) ||
-                ((code[at+1]&31)==5 && ((code[at+1]>>16)&15)==6 && type==(vertex ? output_reg : input)))) return false;
-            if ((type==output_reg && number>=12) || (type==input && !vertex && number>=10)) return false;
-        } else if (op==def || op==47 || op==48) {
-            if (n!=(op==47 ? 2u : 5u)) return false;
-            if (op==def) {
-                const auto number=index(code[at+1]);
-                if (kind(code[at+1])!=constant || number>=(vertex ? 256u : 224u)) return false;
-                if (original && number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) return false;
+            if (type==10) {
+                const auto dimension=(code[at+1]>>27)&15;
+                if (vertex || number>=samplers.size() || samplers[number] || (dimension!=2 && dimension!=3)) return false;
+                samplers[number]=dimension;
             }
+            if (original && ((type==(vertex ? output_reg : input) &&
+                 number>=(vertex ? abi.vertex_motion : abi.pixel_motion) && number<=(vertex ? abi.vertex_rgb : abi.pixel_rgb)) ||
+                ((code[at+1]&31)==5 && ((code[at+1]>>16)&15)>=abi.motion_texcoord &&
+                 ((code[at+1]>>16)&15)<=abi.rgb_texcoord && type==(vertex ? output_reg : input)))) return false;
+            if ((type==output_reg && number>=12) || (type==input && !vertex && number>=10)) return false;
+        } else if (op==def) {
+            if (n!=5) return false;
+            const auto number=index(code[at+1]);
+            if (kind(code[at+1])!=constant || number>=(vertex ? 256u : 224u)) return false;
+            if (original && number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) return false;
         } else {
-            const bool no_destination=op==38 || op==39 || op==40 || op==42 || op==43;
-            if (n==0 && !no_destination) return false;
+            unsigned expected=0, cost=0; bool destination=false;
+            if (!body_shape(op,expected,cost,destination) || (!vertex && !destination) ||
+                (vertex && (op==cmp || op==texld || op==90))) return false;
+            unsigned parameters=0;
             for (unsigned offset=1; offset<=n; ++offset) {
                 const Word parameter=code[at+offset];
                 if (!(parameter&0x80000000u)) return false;
@@ -176,17 +241,24 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
                 if ((type==temp && number>=32) || (type==constant && number>=(vertex ? 256u : 224u)) ||
                     (type==output_reg && number>=12) || (type==input && !vertex && number>=10) ||
                     (type==color_output && number>=4)) return false;
-                if (original && ((type==temp && number>=(vertex ? 7u : 8u)) ||
+                if (original && ((type==temp && number>=original_temp_count) ||
                     (type==constant && number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) ||
-                    (type==(vertex ? output_reg : input) && number==(vertex ? 8u : 7u)))) return false;
+                    (type==(vertex ? output_reg : input) && number>=(vertex ? abi.vertex_motion : abi.pixel_motion) &&
+                     number<=(vertex ? abi.vertex_rgb : abi.pixel_rgb)))) return false;
+                ++parameters;
                 if (parameter&relative) {
-                    if (++offset>n || !vertex || kind(parameter)!=constant || index(parameter)>2 ||
+                    if ((destination && offset==1) || ++offset>n || !vertex || kind(parameter)!=constant || index(parameter)>2 ||
                         code[at+offset]!=src(3,0,255)) return false;
                 }
             }
-            // Macro instruction costs in the documented SM3 profiles. These
-            // fifteen originals and our fragments do not use matrix macros.
-            slots += op==36 || op==pow_op ? 3 : op==18 || op==33 ? 2 : 1;
+            if (parameters!=expected) return false;
+            if (op==texld) {
+                if (n!=3 || kind(code[at+3])!=10 || index(code[at+3])>=samplers.size()) return false;
+                const auto dimension=samplers[index(code[at+3])];
+                if (!dimension) return false;
+                cost=dimension==3 ? 4 : 1;
+            }
+            slots+=cost;
         }
         at+=n+1;
     }
@@ -206,14 +278,16 @@ bool no_write(const Word* code, const Structure& s, unsigned number, unsigned la
             index(code[instruction.at+1])==number && (mask(code[instruction.at+1])&lanes)) return false;
     return true;
 }
-bool vertex_sites(const Word* code, const Structure& s, bool loop) noexcept {
-    const unsigned point=loop?428:389, emissive=loop?443:397, alpha=loop?500:455;
+bool vertex_sites(const Word* code, const Structure& s, const Vertex& vertex) noexcept {
+    const bool loop=vertex.loop;
+    const unsigned point=point_site(vertex), emissive=emissive_site(vertex), alpha=(loop?500:455)+(vertex.bump?27:0);
+    const unsigned point_temp=vertex.bump ? (loop?1:0) : (loop?5:1);
     if (loop) {
-        if (!exact(code,s,point,mul,dst(temp,5),{lane(temp,3,3),src(constant,1)|relative,src(3,0,255)}) ||
+        if (!exact(code,s,point,mul,dst(temp,point_temp),{lane(temp,3,3),src(constant,1)|relative,src(3,0,255)}) ||
             !exact(code,s,emissive,add,dst(output_reg,1),{src(temp,0),src(constant,40)})) return false;
-    } else if (!exact(code,s,point,mul,dst(temp,1),{lane(temp,1,2),src(constant,5)}) ||
-               !exact(code,s,emissive,mad,dst(output_reg,1),{src(temp,1),lane(temp,1,3),src(constant,19)})) return false;
-    if (!exact(code,s,alpha,mul,dst(output_reg,1,8),{lane(temp,0,3),lane(constant,loop?39:18,0)}) ||
+    } else if (!exact(code,s,point,mul,dst(temp,point_temp),{lane(temp,point_temp,2),src(constant,5)}) ||
+               !exact(code,s,emissive,mad,dst(output_reg,1),{src(temp,point_temp),lane(temp,point_temp,3),src(constant,19)})) return false;
+    if (!exact(code,s,alpha,mul,dst(output_reg,1,8),{lane(temp,vertex.bump?2:0,3),lane(constant,loop?39:18,0)}) ||
         !exact(code,s,alpha+5,mov,dst(output_reg,1,8),{lane(constant,loop?39:18,0)})) return false;
     unsigned writes=0;
     for (const auto& instruction:s.instructions)
@@ -224,21 +298,26 @@ bool vertex_sites(const Word* code, const Structure& s, bool loop) noexcept {
     return writes==3;
 }
 bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept {
-    for (unsigned sampler=0; sampler<4; ++sampler)
-        if (!exact(code,s,p.texture[sampler],texld,dst(temp,sampler?0:1,xyzw)|pp,
-                   {src(input,sampler==3?4:1),src(10,sampler)})) return false;
+    const unsigned lightmap=p.bump?3:2, cube=p.bump?4:3;
+    const unsigned albedo=p.bump?4:3, affine_source=p.bump?3:2;
+    for (unsigned sampler=0; sampler<(p.bump?5u:4u); ++sampler) {
+        const unsigned target=sampler==0?1:(p.bump && sampler==2?2:0);
+        const Word coordinate=p.bump && sampler==cube ? src(temp,0) : src(input,!p.bump && sampler==cube?4:1);
+        if (!exact(code,s,p.texture[sampler],texld,dst(temp,target,xyzw)|pp,
+                   {coordinate,src(10,sampler)})) return false;
+    }
     if (!exact(code,s,p.clamp,mov,dst(temp,p.clamp_temporary)|pp|sat,{src(input,0)}) ||
         !exact(code,s,p.final_rgb,add,dst(color_output,0)|pp,{src(temp,1),src(temp,0)}) ||
         !exact(code,s,p.final_rgb+4,mul,dst(color_output,0,8)|pp,{lane(temp,2,3),lane(input,0,3)}) ||
-        !exact(code,s,p.texture[2]+4,18,dst(temp,2,8)|pp,
+        !exact(code,s,p.texture[lightmap]+4,18,dst(temp,2,8)|pp,
                {lane(constant,p.affine_end?3:0,0),lane(temp,0,3),lane(temp,1,3)})) return false;
-    if (!no_write(code,s,1,8,p.texture[0],p.texture[2]+4) ||
-        !no_write(code,s,0,8,p.texture[2],p.texture[2]+4) ||
-        !no_write(code,s,2,8,p.texture[2]+4,p.final_rgb+4)) return false;
+    if (!no_write(code,s,1,8,p.texture[0],p.texture[lightmap]+4) ||
+        !no_write(code,s,0,8,p.texture[lightmap],p.texture[lightmap]+4) ||
+        !no_write(code,s,2,8,p.texture[lightmap]+4,p.final_rgb+4)) return false;
     if (p.affine_end)
         for (unsigned lane_index=0; lane_index<3; ++lane_index)
-            if (!exact(code,s,p.affine_end-8+lane_index*4,9,dst(temp,3,1u<<lane_index)|pp,
-                       {src(temp,2),src(constant,lane_index)})) return false;
+            if (!exact(code,s,p.affine_end-8+lane_index*4,9,dst(temp,albedo,1u<<lane_index)|pp,
+                       {src(temp,affine_source),src(constant,lane_index)})) return false;
     unsigned outputs=0, textures=0, directional=0;
     for (const auto& instruction:s.instructions) {
         const unsigned at=static_cast<unsigned>(instruction.at);
@@ -265,7 +344,7 @@ bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept 
         }
     }
     for (unsigned at:p.rgb) if (at && (at>=s.boundary.size() || !s.boundary[at])) return false;
-    return outputs==2 && textures==4 && directional==(p.light1?4u:1u);
+    return outputs==2 && textures==(p.bump?5u:4u) && directional==(p.light1?4u:1u);
 }
 
 struct Insertion { std::size_t at, begin, end; };
@@ -326,22 +405,30 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     Words& output, bool current_depth, bool vertex) noexcept {
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
-    // Bound the read before hashing; none of the fifteen original programs exceeds
-    // 1296 DWORDs, including opaque CTAB/preshader comments.
-    if (words>1296) return LinearMaterialResult::UnsupportedShader;
+    // Bound the read before hashing; none of the twenty-four original programs exceeds
+    // 1354 DWORDs, including opaque CTAB/preshader comments.
+    if (words>1354) return LinearMaterialResult::UnsupportedShader;
     const auto hash=material_motion_fingerprint(original,words);
     const auto* v=vertex?vertex_for(hash,words):nullptr;
     const auto* p=vertex?nullptr:pixel_for(hash,words);
     if ((!v && vertex) || (!p && !vertex)) return LinearMaterialResult::UnsupportedShader;
+    const bool bump=vertex ? v->bump : p->bump;
+    const auto& abi=bump ? bump_abi : default_abi;
     const auto* row=selected_row(vertex,hash);
-    if (!row || row->vertex_output_register!=6 || row->pixel_input_register!=5 ||
-        row->pixel_temporary_base!=5 || row->vertex_constant_base!=252 || row->pixel_constant_base!=216 ||
-        row->texcoord_index!=4 || row->vertex_depth_output_register!=7 || row->pixel_depth_input_register!=6 ||
-        row->depth_texcoord_index!=5 || !row->depth_output) return LinearMaterialResult::ProfileMismatch;
+    const auto* row_pixel=row ? pixel_for(row->pixel_fingerprint,row->pixel_dword_count) : nullptr;
+    if (!row || !row_pixel || row_pixel->bump!=bump ||
+        row->transformation_class!=(bump ? MotionOutputClass::RelocatedRegisters : MotionOutputClass::ReferenceRegisters) ||
+        row->vertex_output_register!=abi.vertex_motion || row->pixel_input_register!=abi.pixel_motion ||
+        row->pixel_temporary_base!=temporal_temporary_base(*row_pixel) ||
+        row->vertex_constant_base!=252 || row->pixel_constant_base!=216 || row->pixel_output_register!=1 ||
+        row->texcoord_index!=abi.motion_texcoord || row->vertex_depth_output_register!=abi.vertex_motion+1 ||
+        row->pixel_depth_input_register!=abi.pixel_motion+1 || row->depth_texcoord_index!=abi.motion_texcoord+1 ||
+        !row->depth_output) return LinearMaterialResult::ProfileMismatch;
+    const unsigned original_temp_count=vertex ? 7u : temporal_temporary_base(*p);
     try {
         Structure original_structure;
-        if (!structure(original,words,vertex,original_structure,true) ||
-            !(vertex?vertex_sites(original,original_structure,v->loop):pixel_sites(original,original_structure,*p)))
+        if (!structure(original,words,vertex,original_structure,true,abi,original_temp_count) ||
+            !(vertex?vertex_sites(original,original_structure,*v):pixel_sites(original,original_structure,*p)))
             return LinearMaterialResult::ProfileMismatch;
         Words motion;
         const auto motion_result=vertex ? material_motion_vertex_variant_for(*row,original,words,motion,current_depth) :
@@ -363,18 +450,18 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             if (at==original_structure.first_declaration) definitions(combined,vertex,config);
             const auto declaration_at=vertex?row->vertex_declaration_insert_dword:row->pixel_declaration_insert_dword;
             if (at==declaration_at) {
-                emit(combined,dcl,{0x80000005u|(6u<<16),dst(vertex?output_reg:input,vertex?8:7)});
+                emit(combined,dcl,{0x80000005u|(abi.rgb_texcoord<<16),dst(vertex?output_reg:input,vertex?abi.vertex_rgb:abi.pixel_rgb)});
                 if (!vertex) {
-                    transfer(combined,false,12,{src(constant,p->light0)}); gain(combined,false,12,0);
-                    if (p->light1) { transfer(combined,false,13,{src(constant,p->light1)}); gain(combined,false,13,0); }
+                    transfer(combined,false,12,{src(constant,p->light0)},false,abi.pixel_scratch); gain(combined,false,12,0);
+                    if (p->light1) { transfer(combined,false,13,{src(constant,p->light1)},false,abi.pixel_scratch); gain(combined,false,13,0); }
                 }
             }
             if (original[at]==end_token) { combined.push_back(end_token); ++at; continue; }
             const unsigned op=original[at]&0xffff, n=length(original[at]);
-            if (vertex && at==(v->loop?428u:389u)) {
+            if (vertex && at==point_site(*v)) {
                 transfer(combined,true,7,{original[at+3],v->loop?original[at+4]:0}); gain(combined,true,7,0);
             }
-            if (vertex && at==(v->loop?443u:397u)) {
+            if (vertex && at==emissive_site(*v)) {
                 sanitize(combined,true,7,{original[at+(v->loop?3:4)]});
                 // Material emissive already includes native strength: no POW.
                 // ABS canonicalizes a signed-zero sanitizer result explicitly.
@@ -383,30 +470,34 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             const auto copied=combined.size();
             combined.insert(combined.end(),original+at,original+at+n+1);
             if (vertex) {
-                if (at==(v->loop?428u:389u)) {
+                if (at==point_site(*v)) {
                     combined[copied+3]=src(temp,7);
                     if (v->loop) { combined.erase(combined.begin()+copied+4); combined[copied]=(3u<<24)|mul; }
                 }
-                if (at==(v->loop?443u:397u)) {
-                    combined[copied+1]=dst(output_reg,8);
+                if (at==emissive_site(*v)) {
+                    combined[copied+1]=dst(output_reg,abi.vertex_rgb);
                     combined[copied+(v->loop?3:4)]=src(temp,7);
                 }
             } else if (op!=0xfffe) {
                 if (std::find(p->rgb.begin(),p->rgb.end(),at)!=p->rgb.end()) combined[copied+1]&=~pp;
                 if (at==p->clamp) {
                     combined[copied+1]&=~sat;
-                    combined[copied+2]=src(input,7);
+                    combined[copied+2]=src(input,abi.pixel_rgb);
                 }
                 for (unsigned ordinal=0; ordinal<p->color_source.size(); ++ordinal)
                     if (p->color_source[ordinal]>at && p->color_source[ordinal]<=at+n)
                         combined[copied+p->color_source[ordinal]-at]=src(temp,ordinal<2?12:13);
-                if (at==(p->affine_end?p->affine_end:p->texture[0]))
-                    transfer(combined,false,p->affine_end?3:1,{src(temp,p->affine_end?3:1)});
-                if (at==p->texture[3]) transfer(combined,false,0,{src(temp,0)});
-                if (at==p->texture[2]) { transfer(combined,false,0,{src(temp,0)}); gain(combined,false,0,2); }
+                if (at==(p->affine_end?p->affine_end:p->texture[0])) {
+                    const unsigned albedo=p->affine_end?(p->bump?4:3):1;
+                    transfer(combined,false,albedo,{src(temp,albedo)},false,abi.pixel_scratch);
+                }
+                if (at==p->texture[p->bump?4:3]) transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);
+                if (at==p->texture[p->bump?3:2]) {
+                    transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch); gain(combined,false,0,2);
+                }
                 if (at==p->final_rgb) {
                     combined[copied+1]=dst(temp,11);
-                    transfer(combined,false,11,{src(temp,11)},true);
+                    transfer(combined,false,11,{src(temp,11)},true,abi.pixel_scratch);
                     emit(combined,mov,{dst(color_output,0),src(temp,11)});
                 }
             }
@@ -414,7 +505,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
         }
         if (insertion_index!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final_structure;
-        if (!structure(combined.data(),combined.size(),vertex,final_structure,false)) return LinearMaterialResult::ResourceLimit;
+        if (!structure(combined.data(),combined.size(),vertex,final_structure,false,abi,original_temp_count)) return LinearMaterialResult::ResourceLimit;
         output.swap(combined);
         return LinearMaterialResult::Applied;
     } catch (...) { return LinearMaterialResult::AllocationFailure; }
@@ -426,10 +517,13 @@ bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept {
         if (!std::isfinite(value) || value<0.0f || value>16.0f) return false;
     return true;
 }
-bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     for (const auto& pair:pairs)
-        if (pair.vertex==vertex && pair.pixel==pixel) return true;
-    return false;
+        if (pair.vertex==vertex && pair.pixel==pixel) return pair.sampler_mask;
+    return 0;
+}
+bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    return linear_material_sampler_mask(vertex,pixel)!=0;
 }
 LinearMaterialResult linear_material_vertex_variant(const Word* original, std::size_t words,
     const LinearMaterialConfig& config, Words& output, bool current_depth) noexcept {

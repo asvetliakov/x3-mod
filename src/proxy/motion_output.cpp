@@ -287,6 +287,7 @@ void MotionOutput::release_resources() noexcept {
     for (auto& entry : pixel_) { release(entry.second.variant); release(entry.second.material_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
+    shadow_.material_sampler_mask = 0;
     history_.invalidate();
     fill_pending_ = false;
     if (mip_bias_bits_ && !mip_bias_summary_logged_) {
@@ -561,12 +562,14 @@ void MotionOutput::apply_mip_bias() noexcept {
 // shadow re-reads the bindings natively and forgets the filter and saved values.
 // Material sampler decode is refreshed once here, independently of mip bias;
 // a failed read remains unknown until another resync or successful setter.
+// The union of DEFAULT/BUMPMAP requirements is s0-s4; DEFAULT admission still
+// ignores s4, including unknown or enabled decode there.
 void MotionOutput::resync_samplers() noexcept {
     sampler_bound_mask_ = sampler_biased_mask_ = 0;
     for (unsigned stage = 0; stage < sampler_stage_count; ++stage) {
         auto& s = samplers_[stage];
         s = SamplerShadow{};
-        if (linear_material_requested_ && stage < 4)
+        if (linear_material_requested_ && stage < 5)
             s.srgb_known = SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
         if (!mip_bias_bits_) continue;
         IDirect3DBaseTexture9* texture = nullptr;
@@ -1474,6 +1477,12 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
 
 void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const DWORD* code,
                                           std::size_t bytes, std::uint64_t hash) noexcept {
+    // Invalidate before map allocation, any early exit or owned-object
+    // Release: a reentrant observer must never see the replaced pair contract.
+    if (shader && shadow_.vs == shader) {
+        shadow_.material_sampler_mask = 0;
+        shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
+    }
     if (!requested_ || !shader) return;
     try {
         auto& entry = vertex_[shader];
@@ -1481,7 +1490,6 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         release(entry.material_variant);
         entry.hash = hash;
         entry.row = nullptr;
-        if (shadow_.vs == shader) { shadow_.vs_hash = hash; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; }
         if (!enabled_ || !code || bytes % 4) return;
         // One variant per original program: rows sharing this VS agree on its
         // side of the splice (static_assert in motion_output_profiles.h), so
@@ -1489,7 +1497,6 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         // eligibility is decided per draw in before_draw (gate 3). The row
         // lookup is a binary search over the table (no scan).
         entry.row = renderer::material_motion_vertex_row(hash, bytes / 4);
-        if (shadow_.vs == shader) shadow_.vs_row = entry.row;
         if (!entry.row) return;
         std::vector<std::uint32_t> words;
         const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
@@ -1520,13 +1527,19 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
 }
 void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DWORD* code,
                                          std::size_t bytes, std::uint64_t hash) noexcept {
+    // Invalidate before map allocation, any early exit or owned-object
+    // Release: a reentrant observer must never see the replaced pair contract.
+    if (shader && shadow_.ps == shader) {
+        shadow_.material_sampler_mask = 0;
+        shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
+    }
     if (!requested_ || !shader) return;
     try {
         auto& entry = pixel_[shader];
         release(entry.variant);
         release(entry.material_variant);
         entry.hash = hash;
-        if (shadow_.ps == shader) { shadow_.ps_hash = hash; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr; }
+        entry.row = nullptr;
         if (!enabled_ || !code || bytes % 4) return;
         entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
         if (!entry.row) return;
@@ -1562,6 +1575,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
+    shadow_.material_sampler_mask = 0;
     shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
@@ -1570,9 +1584,11 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
     shadow_.vs_row = it->second.row;
     shadow_.vs_material_variant = static_cast<IDirect3DVertexShader9*>(it->second.material_variant);
+    refresh_linear_material_contract();
 }
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
+    shadow_.material_sampler_mask = 0;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     if (!shader) return;
     const auto it = pixel_.find(shader);
@@ -1580,6 +1596,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_hash = it->second.hash;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
     shadow_.ps_material_variant = static_cast<IDirect3DPixelShader9*>(it->second.material_variant);
+    refresh_linear_material_contract();
 }
 void MotionOutput::set_vertex_constants_f(UINT start, const float* data, UINT count) noexcept {
     if (!enabled_ || shadow_.recording || !data || !count || start > 4096 || count > 4096) return;
@@ -2025,16 +2042,24 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     }
     return route;
 }
+void MotionOutput::refresh_linear_material_contract() noexcept {
+    // Ordinary variants establish completed shader registration. Combined
+    // object availability and effective HDR readiness remain live gates.
+    shadow_.material_sampler_mask = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
+        ? renderer::linear_material_sampler_mask(shadow_.vs_hash, shadow_.ps_hash) : 0;
+}
 // Called only after the ordinary opaque/no-MSAA motion gates. All fields are
 // cached; never query samplers or revalidate bytecode in this draw-time check.
 unsigned MotionOutput::linear_material_refusal() const noexcept {
-    if (!renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) return 1;
+    if (!shadow_.material_sampler_mask) return 1;
     if (!shadow_.vs_material_variant || !shadow_.ps_material_variant) return 2;
     if (!hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
         || hdr_config_.tonemap != renderer::HdrTonemap::Agx
         || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return 3;
-    for (unsigned stage = 0; stage < 4; ++stage)
+    for (std::uint32_t mask = shadow_.material_sampler_mask; mask; mask &= mask - 1) {
+        const unsigned stage = unsigned(__builtin_ctz(mask));
         if (!samplers_[stage].srgb_known || samplers_[stage].srgb != FALSE) return 4;
+    }
     return 0;
 }
 
@@ -2173,7 +2198,16 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
             const unsigned bit = 1u << refusal;
             if (!(material_refusals_logged_ & bit)) {
                 material_refusals_logged_ |= bit;
-                log("linear_material_refused device=%llu reason=%u vs=%016llx ps=%016llx", id_, refusal, shadow_.vs_hash, shadow_.ps_hash);
+                // Build masks only for this bounded first refusal log. The
+                // steady-state draw gate visits cached required samplers only.
+                std::uint32_t unknown = 0, srgb_enabled = 0;
+                for (unsigned stage = 0; stage < 5; ++stage) {
+                    if (!samplers_[stage].srgb_known) unknown |= 1u << stage;
+                    else if (samplers_[stage].srgb != FALSE) srgb_enabled |= 1u << stage;
+                }
+                log("linear_material_refused device=%llu reason=%u vs=%016llx ps=%016llx required=%02lx unknown=%02lx srgb_enabled=%02lx",
+                    id_, refusal, shadow_.vs_hash, shadow_.ps_hash, static_cast<unsigned long>(shadow_.material_sampler_mask),
+                    static_cast<unsigned long>(unknown), static_cast<unsigned long>(srgb_enabled));
             }
         }
     }
@@ -2205,7 +2239,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     route.routed = true; route.matched = matched;
-    if (route.linear_material) ++counters_.material_routed;
+    if (route.linear_material) {
+        ++counters_.material_routed;
+        if (shadow_.material_sampler_mask == 0x1fu) ++counters_.material_bump_routed;
+    }
     ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
     // The mip LOD bias of the routed material stages, while the jitter is on
     // (a failed sampler call is counted and logged; the draw still routes).
@@ -2671,8 +2708,8 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
         const auto& c = counters_;
         if (linear_material_requested_)
-            log("linear_material_frame device=%llu frame=%llu routed=%lu refused=%lu bind_failures=%lu",
-                id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_refused),
+            log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu",
+                id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
                 static_cast<unsigned long>(c.material_bind_failures));
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
