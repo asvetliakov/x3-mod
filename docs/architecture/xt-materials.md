@@ -5,8 +5,11 @@ study from `09be35b`. This owns the XT material slice; [the earlier linkage stud
 retains the original capture and archive evidence. Damage IFC motion is already
 implemented; its original arithmetic must remain intact under the material
 extension. The separate 148-pair palette qualification is outside this study.
-The full 14-pair source is implemented and host-qualified below. No game/Wine/GPU
-run, DLL build, installation or commit occurred for this source checkpoint.
+The full 14-pair source is implemented, independently reviewed, detached/live GPU
+qualified and installed. The [combined qualification](../verification/combined-glow-materials.md)
+records the later linked-audit fix and fixture history-key correction. Gameplay
+appearance and native-Windows runtime remain unverified; earlier source-only
+checkpoints below retain their original scope.
 
 ## Decision and complete scope
 

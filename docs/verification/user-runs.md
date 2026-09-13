@@ -4,13 +4,13 @@ Updated 2026-09-13. Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
 0.9 distance, softer 0.28/0.38 s follow, predictive lead marker, opt-in FP16 bloom
-116 reviewed linear material pairs, the central chase display correction, and
+162 reviewed linear material pairs, the central chase display correction, and
 fixed exposure plus same-run exposure/bloom controls;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
 function setup is needed. Runs 1, 3, 5, 6 and 7 are complete; reader/DAT/adjacency
-fast co-activation passed as run 19. No enhanced gameplay run is currently ready.
+fast co-activation passed as run 19. Run 8 is ready on the newly installed build.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
@@ -23,15 +23,44 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
-| 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; glow and selection-stutter follow-ups pending |
+| 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; follow-ups combined into run 8 |
+| 8 | Restored glow, milder exposure and native selection-stutter trace | 1 | Ready; start here |
 
-Wait for the corrected combined build before another enhanced run. Run 4 remains
-the optional vanilla cursor comparison. The next enhanced session will combine
-restored emitter glow, exposure comparison and broader selection-stutter timing;
-its command will be added after build qualification and installation. The shared TAA shader
-now fits the standard instruction budget and passes exact fixture comparisons;
-run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
-no gameplay request yet while its performance optimization is under investigation.
+Start with **run 8** below. Run 4 remains the optional vanilla cursor comparison.
+Emission stays off for this comparison; its twenty-pair live route is qualified,
+but gameplay appearance and cost will need separate acceptance.
+
+## 8. Restored glow, milder exposure and selection trace — Ready
+
+Installed source `541e380` includes the authored-glow correction, 162 material
+pairs and native phase diagnostics. Camera values stay as accepted. Keep the
+**game's Glow enabled**. The command was validated with `--dry-run`; the agent
+has not launched the game.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --taa-debug --game-phases \
+  --taa-sharpen 0 --taa-mip-bias 0 \
+  --hdr --hdr-tonemap --hdr-exposure auto --hdr-ev-max 1.5 --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --capture-start 999999 --capture-frames 4
+```
+
+1. Load the usual save and let it settle. Select several ships/objects, leaving
+   about five seconds between selections. Report whether the pause remains.
+   Keep this portion free of F8 captures so capture work does not obscure timing.
+2. Face an engine emitter or station lights and compare **Ctrl+Shift+F10** OFF/ON
+   at the same view. Take screenshots if the glow still appears missing or odd.
+3. Compare **Ctrl+Shift+F9** AUTO with fixed EV 0. Auto is now capped at +1.5 EV
+   for this run; give it roughly five seconds to settle. Compare a dark view,
+   a bright nebula and a nearby hull. Report which looks better and any pulsing.
+4. Take F8 captures in each exposure mode, then fly/turn briefly and exit normally.
+   Report obvious material/gloss or shimmer problems; no full camera retest is needed.
+
+This is one session. `x3run` saves its log/captures after exit. F8 images precede
+final bloom, so screenshots are the useful glow evidence. F10 OFF still executes
+the filter and is not a performance baseline. The general exposure default stays
+fixed 0; this run evaluates the milder Auto option before changing that policy.
 
 
 

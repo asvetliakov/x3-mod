@@ -5,20 +5,20 @@ Updated 2026-09-13. This is the current handoff. Earlier checkpoints are in
 [goal checklist](goals.md), [run queue](verification/user-runs.md), and [original objective](user-objective.md)
 retain the full scope.
 
-The installed gameplay build is still checkpoint `75dbbed`. The reviewed changes below
-are ahead of that build; source commits are not installation evidence.
+The installed gameplay build is checkpoint `541e380`. Its scoped integration
+checks pass; gameplay acceptance of the new glow and material coverage remains.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`3cbb350c3148e3e703677182cb9fb7b85e28af048f5b19c0dbe29b570ef9e42a` (13,030,325 bytes). The
+`f4094be54971cb48171175536aded8f31a49e6853167ce14be7584320ab4f36e` (13,325,135 bytes). The
 [install record](../verification/results/linear-material-install.json) binds its source, scoped verification,
 load check, and rollback DLL.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, fixed EV 0 by default,
 and Auto through Ctrl+Shift+F9. Ctrl+Shift+F10 switches bloom contribution. Bloom, linear materials, and linear
-emissions remain opt-in. Installed material coverage is **116 exact pairs / 83 originals**; installed default-off
-emission coverage is five exact SM2 DEFAULT pairs.
+emissions remain opt-in. Installed material coverage is **162 exact pairs / 130 originals**; installed default-off
+emission coverage is twenty exact SM2 DEFAULT/INSTANCE pairs.
 
 The installed chase defaults remain 13° pitch, distance 0.9, rotation/position response 0.28/0.38 s, offset 0.45,
 and lag limits 8°/0.10. Vanilla camera is the default. Loading acceleration, predictive lead marker, central chase
@@ -31,8 +31,9 @@ sampled prepare/commit records succeeded, closing the pure-device failure. Visua
 looked alike and native emitter halos disappeared because the replacement omitted X3's alpha-authored glow.
 
 The user prefers the brighter Auto screenshots. Auto's fresh and held targets are +2 EV in all 376 active reports;
-applied exposure reaches +2 after convergence rather than adapting usefully in this sample. Fixed **+1.5 EV** is the next artistic candidate,
-with fixed 0 retained as the reference. Do not change the installed default until restored glow can be judged.
+applied exposure reaches +2 after convergence rather than adapting usefully in this sample. The next same-run comparison caps Auto at **+1.5 EV**,
+with fixed 0 retained as the reference. This tests the requested milder option alongside restored glow;
+the general default remains fixed 0 pending that comparison.
 
 The central chase crosshair/distance is visible. Selection stutter still occurs, including with chase disabled.
 Run26 finds 286–454 ms frames after six of nine target changes; Present, TAA, HDR, metering, logging, loading
@@ -43,23 +44,24 @@ appears reduced. The distant asteroid shimmer disappears closer. Captured far/ne
 with Z writes off and background temporal treatment; near is opaque with valid object motion/depth.
 Those observations do not yet establish the cause of the visible shimmer.
 
-## Source ahead of the installed build
+## Newly installed and qualified
 
-- **Authored bloom glow:** main contains the reviewed retained-alpha correction. The standalone X3 GPU corpus
-  passes 36 image cases and 16 controls, Reset, exact destination alpha, and RGB within one display code. The
-  promoted shaders are qualified; candidate-DLL integration, gameplay appearance, and gameplay cost remain.
-- **162-pair materials:** main includes the 32 Boron/Paranid and 14 XT additions, reaching **162 pairs /
-  130 original programs**. All 52 inventoried additional SM3 opaque pairs have reviewed conversions.
-  The detached X3 GPU corpus passes 3,923 cases; the expanded live matrix is next. XT includes four
-  authored DEFAULT linkage repairs. Shared failed-state restoration now quarantines affected draws
-  until successful Reset/resynchronization; scoped host and independent review pass.
-- **20-pair SM2 emission source:** main adds all 15 remaining SM2 effects/engine pairs to the existing five,
-  covering 384 SM2 archive occurrences. Host review and 100 variants / 1,483 assertions pass. The added fifteen
-  now pass the 376-case coverage and 271-case fused-composition X3 GPU runs, including exact native-output
-  parity and scoped Reset checks. The expanded 52-frame live matrix remains. Nine SM1 pairs and
-  nonadditive blend contracts remain separate.
-- **Selection diagnostics:** 23 native sites and the owned Present bridge are implemented and independently
-  reviewed. The X3 CPU fixture passes 815 checks, with about 0.134 ms added per synthetic loop.
+The [combined qualification](verification/combined-glow-materials.md) records reviewed failures/fixes,
+retained binaries and scoped limits. Source `541e380` passed the linked x87 audit (218 reachable functions),
+the DLL load check and nine embedded bloom-program checks. EXE and bottle configuration are unchanged;
+the previous DLL and installation record are retained for rollback.
+
+- **Authored bloom:** the retained-alpha correction is installed. Component GPU evidence passes 36 image
+  cases and 16 controls, Reset, exact destination alpha, and RGB within one display code. Gameplay remains.
+- **162-pair materials:** all 52 inventoried additional SM3 opaque pairs have reviewed conversions.
+  Detached GPU: 3,923 cases. Live corpus: 2,576 frames / 32,516 checks; scalar WRAP: 144 / 3,208;
+  XT14 including four DEFAULT linkage repairs: 628 / 10,836,608. Exact temporal/state twins and Reset pass.
+- **20-pair SM2 emission:** all 384 SM2 archive occurrences are covered by the bounded route. Detached
+  coverage/fused runs and 208 live functional frames / 2,185,516 checks pass. It remains default-off;
+  gameplay and its measured cost remain open. [Nine SM1 pairs](architecture/linear-emission-sm1.md)
+  and nonadditive composition are planned, not implemented.
+- **Selection diagnostics:** 23 native sites and the owned Present bridge are installed, default-off.
+  The CPU fixture passes 815 checks at about 0.134 ms added per synthetic loop.
   `--game-phases --telemetry` enables the bounded trace; gameplay results remain pending.
 
 ## Current open issues
@@ -70,9 +72,9 @@ Those observations do not yet establish the cause of the visible shimmer.
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
 - **Material appearance and coverage:** exclude accidental loss of native gloss terms before artistic tuning. The
   [coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; older profiles,
-  XT, transparent, background, and other scene writers remain beyond installed coverage.
-- **Bloom/exposure:** authored glow needs integrated gameplay acceptance before selecting +1.5 EV. Auto's current
-  +2-cap behavior remains only an option.
+  transparent, background, and other scene writers remain beyond installed coverage.
+- **Bloom/exposure:** installed authored glow needs gameplay acceptance. Compare Auto capped at +1.5 EV
+  with fixed 0 before deciding the default; prior +2-cap behavior was essentially a constant boost.
 - **HDR scope:** FP16 and AgX work, but much of the scene is still compatibility-decoded gamma-space lighting.
   Scene-referred lighting, complete linear blending, and verified HDR display output remain incomplete.
 - **Native Windows:** Windows-compatible source cross-compiles, but no native-Windows runtime is verified. Depth
@@ -80,24 +82,12 @@ Those observations do not yet establish the cause of the visible shimmer.
 - **Window/cursor:** the macOS menu bar and double cursor after alt-tab remain open. Queue run 4 is the optional
   vanilla comparison.
 
-## Next candidate conditions
+## Next user action
 
-1. Keep the reviewed glow, 162-pair material and selection-diagnostic source together.
-2. Make one clean candidate build and matching fixture seam. Qualify the 162-pair live matrix, scalar WRAP,
-   expanded default-off emission route, and affected integration/load/CPU checks against those retained binaries.
-   The first combined candidate exposed formatted XT diagnostics in lightweight shader setters.
-   Reviewed fix `541e380` defers that logging; its clean rebuilt DLL passes the linked audit (218 reachable
-   functions). The matching live matrix is in progress; installation still awaits its results.
-3. Fix any concrete failures, then install reversibly with the previous DLL/record retained for rollback.
-   Update the single install record, verify installed bytes and validate the combined user command.
-
-No historical gameplay capture is required for every shader alias. Exact contracts may be implemented from the
-complete archive; runtime scene owner, target, sampler-sRGB, blend/depth, and capability gates decide whether a
-submission is enhanced. Unsupported or nonadditive submissions stay native.
-
-Only after that candidate is installed should the next enhanced user run compare restored emitter glow, fixed 0
-versus the +1.5 exposure candidate, broader selection timing, and expanded material images. No enhanced gameplay
-run is ready now; the agent never launches the game.
+[Run 8](verification/user-runs.md#8-restored-glow-milder-exposure-and-selection-trace--ready) is ready.
+One dry-run validated the combined command without launching the game. It combines restored emitter glow,
+Auto capped at +1.5 versus fixed 0, broader selection timing, and expanded material images. Emission remains
+explicitly off through launcher defaults to keep this visual comparison focused.
 
 ## Stable foundation and later scope
 
@@ -106,7 +96,7 @@ rejection, sharpen, and mip bias. Loading fell from about 87 s to roughly 34–3
 and crypto-cache paths have scoped accepted evidence. Chase aiming and placement are accepted; automatic view
 restoration, alignment across more scenes, docking, and gameplay frame cost remain.
 
-The installed five-pair emission route has isolated live qualification and native recovery, but run26 left it off;
+The installed twenty-pair emission route has isolated live qualification and native recovery, but run26 left emission off;
 gameplay appearance and cost were not evaluated there. GTAO, shadows, reflections, improved particles, volumetrics,
 lens effects, clustered lighting, and HDR display remain on the [roadmap](architecture/roadmap.md).
 

@@ -2,8 +2,9 @@
 
 2026-09-13. Source/host correction reviewed; staged native shader compilation and the
 standalone GPU corpus pass on X3. The nine GPU-matched shader artifacts have
-been promoted without recompilation; candidate DLL installation and gameplay
-qualification remain pending. This changes extraction inside the existing
+been promoted without recompilation and verified in the installed DLL;
+[combined qualification](../verification/combined-glow-materials.md) passes. Gameplay
+appearance and frame cost remain pending. This changes extraction inside the existing
 [BloomPass](bloom-pass-runtime.md), not the original-once lifetime/state boundary.
 The source-review candidate uses authored gain 0.10 and highlight gain 0.05;
 exposure defaults are unchanged.
