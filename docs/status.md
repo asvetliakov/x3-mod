@@ -100,6 +100,11 @@ The separate [CPU return-bridge prototype](verification/review-39-bloom-return-b
 passed independent review and 240 checks each on Steam and X3/FEX, including
 exception cleanup and CPU-state transport. It is not integrated into the game
 hook; production packaging, ownership/Reset and GPU recovery remain.
+The subsequent [production CPU/SEH bridge](verification/review-43-compositor-bridge.md)
+is reviewed and passes 393 checks on each bottle with identical frozen inputs.
+Its isolated packaging keeps CRT imports narrow and makes the current GNU
+no-SafeSEH policy explicit; final proxy linking and live callsite integration
+remain pending.
 The [bloom/AgX composition shader](verification/review-40-bloom-composition.md)
 is also reviewed and compiler-qualified (108 SM3 slots). All ten existing
 shader binaries remain unchanged after exposing the shared AgX tail. The

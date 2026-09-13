@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Isolated production CPU/SEH bridge: reviewed source and synthetic runtime fixtures",
+  "runs": [
+    {
+      "bottle": {
+        "name": "Steam",
+        "wine_arch": "win64",
+        "environment": {
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+      },
+      "record": "/Users/asvetl/x3-mod/verification/probe/build/compositor_bridge/compositor_bridge_Steam.json",
+      "record_sha256": "778ce27a9607bd767e5e2f5b4074580848ed8c21558f6ac0771321d128772de9",
+      "log": "/Users/asvetl/x3-mod/verification/probe/build/compositor_bridge/compositor_bridge_Steam.txt",
+      "log_sha256": "f814e836c7fb5facace1494f5f89c359e8e671146e20a1fc737948f2cf8fc038",
+      "terminal": "COMPOSITOR BRIDGE RESULT checks=393 failures=0 normal=8 exceptional=16 continued=4 declined=4 stack_alignments=4",
+      "checks": 393,
+      "passed": true,
+      "source_hashes": {
+        "verification/probe/compositor_bridge_build.py": "77ce3a2b01f088b4eca6749d7892129fd41c0840343b49c8c42d0e38694abab3",
+        "verification/probe/compositor_bridge_fixture.c": "2172a6d14cfd37d6404e5363ffd0ac8209e951004755a355a72fc1dbe61a4826",
+        "verification/probe/compositor_bridge_fixture_seh.c": "66c2a15393b33889f91ca12818f28196e6325d2cc574566efca3aa00f7686e73",
+        "verification/probe/compositor_bridge_run.py": "4e32cb2826fb6ec9f651d7ce992b7cd85088d9f4c2f3825e28fa54d0608f9dba",
+        "verification/probe/bloom_return_bridge.S": "b0a0f537ee889e27527d1a973a97d69e5d5f0bd401b4e2deb2b4467d90a395b6",
+        "verification/probe/bloom_return_bridge.h": "afeea83511ed92c5abc0fd4bd92ce64d3020a50a45e514f1d872fbe2a3ca331e",
+        "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
+        "src/proxy/compositor_bridge.S": "be6c70d3a26bf7b5b53756f64498f09b8fcefb010212613430c11ad8c82d1ee1",
+        "src/proxy/compositor_bridge_seh.c": "5b10c874906b9bc38c994898e6b70fa729636c3d846334f8b14bba5659eeaac4",
+        "tools/build/build_compositor_bridge.py": "f8435b3e167478090becb2e807e70eae90f0b778dc5edc88b58fbf2b7fe211a9",
+        "verification/analysis/test_compositor_bridge.py": "f6e8330980d198cc77f0a72a4eea20ecd5fbc40893e8be77362dbb5afec4f60c",
+        "verification/probe/build/compositor_bridge/compositor_bridge.exe": "217a6bfa06035fbb6ada468fb3a887575448036fa8a432e60caf3c2469ead1d9"
+      }
+    },
+    {
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "record": "/Users/asvetl/x3-mod/verification/probe/build/compositor_bridge/compositor_bridge_X3.json",
+      "record_sha256": "61cee66b40869c9ba759edee583f10c6fe03f03b60f8afa03a40a67c3eb35d21",
+      "log": "/Users/asvetl/x3-mod/verification/probe/build/compositor_bridge/compositor_bridge_X3.txt",
+      "log_sha256": "86d9eaf3e7d61eae6e502fa98c0fd24788845b0c8473e5be68fe930ddff7e17d",
+      "terminal": "COMPOSITOR BRIDGE RESULT checks=393 failures=0 normal=8 exceptional=16 continued=4 declined=4 stack_alignments=4",
+      "checks": 393,
+      "passed": true,
+      "source_hashes": {
+        "verification/probe/compositor_bridge_build.py": "77ce3a2b01f088b4eca6749d7892129fd41c0840343b49c8c42d0e38694abab3",
+        "verification/probe/compositor_bridge_fixture.c": "2172a6d14cfd37d6404e5363ffd0ac8209e951004755a355a72fc1dbe61a4826",
+        "verification/probe/compositor_bridge_fixture_seh.c": "66c2a15393b33889f91ca12818f28196e6325d2cc574566efca3aa00f7686e73",
+        "verification/probe/compositor_bridge_run.py": "4e32cb2826fb6ec9f651d7ce992b7cd85088d9f4c2f3825e28fa54d0608f9dba",
+        "verification/probe/bloom_return_bridge.S": "b0a0f537ee889e27527d1a973a97d69e5d5f0bd401b4e2deb2b4467d90a395b6",
+        "verification/probe/bloom_return_bridge.h": "afeea83511ed92c5abc0fd4bd92ce64d3020a50a45e514f1d872fbe2a3ca331e",
+        "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
+        "src/proxy/compositor_bridge.S": "be6c70d3a26bf7b5b53756f64498f09b8fcefb010212613430c11ad8c82d1ee1",
+        "src/proxy/compositor_bridge_seh.c": "5b10c874906b9bc38c994898e6b70fa729636c3d846334f8b14bba5659eeaac4",
+        "tools/build/build_compositor_bridge.py": "f8435b3e167478090becb2e807e70eae90f0b778dc5edc88b58fbf2b7fe211a9",
+        "verification/analysis/test_compositor_bridge.py": "f6e8330980d198cc77f0a72a4eea20ecd5fbc40893e8be77362dbb5afec4f60c",
+        "verification/probe/build/compositor_bridge/compositor_bridge.exe": "217a6bfa06035fbb6ada468fb3a887575448036fa8a432e60caf3c2469ead1d9"
+      }
+    }
+  ],
+  "packaging_record": "/Users/asvetl/x3-mod/verification/probe/build/compositor_bridge/compositor_bridge_fixture_build.json",
+  "packaging_record_sha256": "892a6658cdb45cf5db8869d4e68edcfbe6ca980ab7f2154870456cb802a6775c",
+  "packaging": {
+    "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+    "flags": [
+      "-target",
+      "i686-pc-windows-msvc",
+      "-fms-extensions",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mstack-alignment=4"
+    ],
+    "source_hashes": {
+      "src/proxy/compositor_bridge_seh.c": "5b10c874906b9bc38c994898e6b70fa729636c3d846334f8b14bba5659eeaac4",
+      "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
+      "tools/build/build_compositor_bridge.py": "f8435b3e167478090becb2e807e70eae90f0b778dc5edc88b58fbf2b7fe211a9"
+    },
+    "products": {
+      "compositor_bridge_seh.obj": "0beb55e7951a4facb484a370b31675422349ecf2b83f0f042c52027989763d15",
+      "compositor_bridge_seh.s": "fd1e0eb80c2047f0a7ac69339a06f23bf572e1bb070afb772e3c704c38c7cdc7",
+      "compositor_bridge_seh_gnu.obj": "15bace31425db644eac9577521a3f58d6648decee5979f111e17da0bacc6ef21",
+      "compositor_bridge_seh_runtime.def": "b42adde4c6e2100970833893c0d43b643d8d7f689e4fed6facd0a92740c75452",
+      "libx3m_compositor_seh_runtime.a": "92f6f5b997d2f8cfb2a0e198ea8b0bacc26c540431ebadb276df62baebc523fb"
+    },
+    "undefined_symbols": [
+      "__except_handler3",
+      "_x3m_compositor_bridge_invoke"
+    ],
+    "gnu_pe_no_safeseh": true,
+    "runtime_import": {
+      "module": "msvcrt.dll",
+      "symbol": "_except_handler3"
+    },
+    "native_windows_verified": false,
+    "production_dll_linked": false,
+    "packaging_smoke_dll_sha256": "bf84399e633164577ba3c2ebaba7e2225f70f1ad71b863da9cf44c5d21b1f784",
+    "packaging_smoke_imports": {
+      "modules": [
+        "KERNEL32.dll",
+        "msvcrt.dll"
+      ],
+      "functions": [
+        "GetLastError",
+        "SetLastError",
+        "_except_handler3"
+      ]
+    },
+    "fixture_exe_sha256": "217a6bfa06035fbb6ada468fb3a887575448036fa8a432e60caf3c2469ead1d9",
+    "fixture_msvcrt_imports": [
+      "_except_handler3"
+    ]
+  },
+  "native_windows_runtime_verified": false,
+  "game_call_verified": false,
+  "renderer_integrated": false,
+  "installed_dll_changed": false,
+  "game_launched": false
+}
