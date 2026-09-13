@@ -105,6 +105,10 @@ is also reviewed and compiler-qualified (108 SM3 slots). All ten existing
 shader binaries remain unchanged after exposing the shared AgX tail. The
 selected sharpen design uses display FP16 staging; its precision and cost
 still need combined GPU validation.
+The isolated [compositor owner helper and normal-call ABI study](verification/review-42-compositor-owner.md)
+passed review, 24 hostile host checks and x86 compilation. Exact device lookup
+is ready for integration; ResetEx, reference accounting, cross-thread retirement
+and exception-safe invocation cleanup remain implementation/qualification work.
 No integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)
