@@ -83,6 +83,8 @@ public:
   void before_reset() noexcept;
   void detach() noexcept;
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
+  // Pre-attach fixture twin: retain checkpoint's separate copy/Clear sequence.
+  void fixture_separate_copy(bool enabled) noexcept { if (!impl_) fixture_separate_copy_ = enabled; }
   void inject(LinearEmissionPassFault, unsigned count = 1) noexcept;
   LinearEmissionCompletion fixture_completion() const noexcept;
   IDirect3DSurface9 *fixture_native() const noexcept;
@@ -91,5 +93,8 @@ public:
 private:
   struct Impl;
   Impl *impl_ = nullptr;
+#ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
+  bool fixture_separate_copy_ = false;
+#endif
 };
 } // namespace x3m::renderer

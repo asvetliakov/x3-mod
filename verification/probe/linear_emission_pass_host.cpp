@@ -34,6 +34,9 @@ struct Device : IDirect3DDevice9 {
            texture_creates = 0;
   unsigned bad_state_calls = 0, bad_rt_calls = 0, rs3_calls = 0,
            bad_back_binds = 0;
+  IDirect3DSurface9* draw_rt[3]{};
+  DWORD draw_blend = 1;
+  bool fail_energy_bind = false;
   bool device_calls_forbidden = false;
   unsigned forbidden_device_accesses = 0;
   int fault_slot = -1;
@@ -139,6 +142,7 @@ struct Device : IDirect3DDevice9 {
         ++a.bad_rt_calls;
         return E_FAIL;
       }
+      if (i == 1 && v && a.fail_energy_bind) { a.fail_energy_bind = false; return E_FAIL; }
       // Reset cases provide a backbuffer with a deliberately incompatible
       // saved depth pairing; color MRTs and DS must be detached first.
       if (i == 0 && v == a.back &&
@@ -239,8 +243,11 @@ struct Device : IDirect3DDevice9 {
     slot(83,
          [](IDirect3DDevice9 *p, D3DPRIMITIVETYPE, UINT, const void *,
             UINT) -> HRESULT {
-           ++d(p).draws;
-           return S_OK;
+           auto& a = d(p);
+           ++a.draws;
+           for (unsigned i = 0; i < 3; ++i) a.draw_rt[i] = a.rt[i];
+           a.draw_blend = a.rs[D3DRS_ALPHABLENDENABLE];
+           return a.fault(83) ? E_FAIL : S_OK;
          });
     slot(86,
          [](IDirect3DDevice9 *p, const D3DVERTEXELEMENT9 *,
@@ -767,8 +774,49 @@ void recovery() {
   }
 }
 
+void fused_preparation() {
+  for (unsigned mode = 0; mode < 4; ++mode) {
+    ++scenarios;
+    Device d;
+    auto* a = d.scene(); a->AddRef();
+    LinearEmissionPass p;
+    const bool separate = mode == 0;
+    p.fixture_separate_copy(separate);
+    setup(p,d);
+    check(p.begin_frame(1).ready,"fused frame initialization");
+    const unsigned clears=d.clears,draws=d.draws;
+    if (mode == 2) { d.fault_slot=83; d.fault_at=1; d.fault_calls=0; }
+    if (mode == 3) d.fail_energy_bind=true;
+    auto* ps=d.make<IDirect3DPixelShader9>();
+    const auto ready=p.prepare({a,ps,1,true});
+    if (mode >= 2) {
+      check(d.draws==draws+(mode==2?1:0),"fused failure missed intended copy boundary");
+      if (mode==2)
+        check(d.draw_rt[0]==p.fixture_native() && d.draw_rt[1]==p.fixture_energy()
+              && !d.draw_rt[2] && !d.draw_blend,"failed copy attempted wrong MRT state");
+      check(!ready.ready && ready.state_preserved,"fused preparation failure was not clean");
+      check(d.rt[0]==a && !d.rt[1] && !d.rt[2],"fused failure did not restore application targets");
+      check(p.coverage_valid() && !p.reference_accounting_busy(),"fused refusal lost earlier M");
+      check(p.finish(S_OK).image==LinearEmissionImage::None,"refused source became submitted");
+    } else {
+      check(ready.ready,"fused/separate prepare");
+      check(d.draws==draws+1,"copy rasterizations changed");
+      check(d.clears==clears+(separate?1:0),"fused copy retained energy Clear");
+      check(d.draw_rt[0]==p.fixture_native(),"copy did not write native B");
+      check(d.draw_rt[1]==(separate?nullptr:p.fixture_energy()),"fused energy attachment");
+      check(!d.draw_rt[2] && !d.draw_blend,"copy wrote M or used source blending");
+      auto completed=p.finish(S_OK);
+      check(completed.image==LinearEmissionImage::Linear,"fused completion");
+      std::swap(a,*p.owning_candidate());
+      check(p.acknowledge_exchange(true)==S_OK && p.coverage_valid(),"fused ownership/coverage");
+    }
+    a->Release(); p.detach(); d.no_leaks();
+  }
+}
+
 } // namespace
 int main() {
+  fused_preparation();
   outputs();
   pool_identity();
   identity_faults();

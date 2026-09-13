@@ -52,7 +52,7 @@ struct PassHarness {
   std::uint64_t frame = 0;
   unsigned submissions = 0;
   PassHarness(MrtFixture &fixture, unsigned twin = 0,
-              EmissionPass *retained = nullptr)
+              EmissionPass *retained = nullptr, bool separate_copy = false)
       : f(fixture), pass(retained ? *retained : local_pass) {
     std::copy_n(*reinterpret_cast<void ***>(f.d), 119, native);
     D3DCAPS9 caps{};
@@ -71,9 +71,11 @@ struct PassHarness {
             ~(D3DPMISCCAPS_INDEPENDENTWRITEMASKS |
               D3DPMISCCAPS_SEPARATEALPHABLEND | D3DPMISCCAPS_COLORWRITEENABLE);
     }
-    if (!pass.references())
+    if (!pass.references()) {
+      pass.fixture_separate_copy(separate_copy);
       api(pass.attach(f.d, twin ? native : *reinterpret_cast<void ***>(f.d),
                       caps, display.Format, D3DFMT_D24S8));
+    }
     const unsigned prior_allocations = pass.allocations();
     api(pass.ensure_targets(f.width, f.height));
     need(pass.references() == 8 && pass.allocations() == prior_allocations + 4,
@@ -543,10 +545,56 @@ void pass_timings(IDirect3DDevice9 *device, const char *programs,
     api(device->SetRenderTarget(0, back));
   }
 }
+void pass_fused_timings(IDirect3DDevice9 *device, const char *programs,
+                  const char *variants, IDirect3DSurface9 *back) {
+  LARGE_INTEGER frequency;
+  need(QueryPerformanceFrequency(&frequency), "pass QPC frequency");
+  for (auto size : {std::pair<unsigned, unsigned>{1280, 768}, {1920, 1080}}) {
+    MrtFixture f(device, size.first, size.second, false, programs, variants,
+                 true);
+    PassHarness baseline(f, 0, nullptr, true), candidate(f);
+    Case cs = bench(1, 0, 1, 1);
+    cs.ops.resize(1);
+    cs.h.count = 1;
+    cs.h.flags = 32 | 2 | (2u << 16);
+    cs.ops[0].affine = 0;
+    for (unsigned pair = 0; pair < 10; ++pair)
+      for (unsigned order = 0; order < 2; ++order) {
+        unsigned variant = pair % 2 ? 1 - order : order;
+        auto& h = variant ? candidate : baseline;
+        h.seed(cs);
+        h.source(cs, 0);
+        f.fence();
+        unsigned allocated = h.pass.allocations();
+        LARGE_INTEGER begin, end;
+        QueryPerformanceCounter(&begin);
+        api(device->BeginScene());
+        {
+          auto done = h.execute(cs, 0, false);
+          need(done.image == PassImage::Linear && done.candidate_bound,
+               "timed component source");
+          h.adopt(false);
+        }
+        api(device->EndScene());
+        f.fence();
+        QueryPerformanceCounter(&end);
+        need(h.pass.allocations() == allocated, "timed steady allocation");
+        if (pair >= 2)
+          std::printf("FUSED_TIMING width=%u height=%u variant=%u pair=%u "
+                      "order=%u completed_ms=%.9f\n",
+                      size.first, size.second, variant, pair - 2, order,
+                      1000. * double(end.QuadPart - begin.QuadPart) /
+                          frequency.QuadPart);
+      }
+    baseline.pass.detach(); candidate.pass.detach();
+    f.single(f.scene);
+    api(device->SetRenderTarget(0, back));
+  }
+}
 void pass_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
                      const char *path, IDirect3DSurface9 *back,
                      const char *programs, const char *variants,
-                     EmissionPass &retained) {
+                     EmissionPass &retained, bool fused_comparison = false) {
   D3DCAPS9 caps{};
   api(device->GetDeviceCaps(&caps));
   std::printf("MRT_CAPS slots=%lu postblend=%u independent_masks=%u\n",
@@ -557,6 +605,8 @@ void pass_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
                             D3DPMISCCAPS_INDEPENDENTWRITEMASKS)));
   MrtFixture f(device, 16, 16, false, programs, variants, true);
   PassHarness h(f, 0, &retained);
+  std::unique_ptr<PassHarness> baseline;
+  if (fused_comparison) baseline=std::make_unique<PassHarness>(f, 0, nullptr, true);
   std::ofstream raw(path, std::ios::binary);
   need(bool(raw), "pass raw output");
   unsigned comparisons = 0;
@@ -595,6 +645,25 @@ void pass_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
            "pass differs from independent qualified fixture");
     comparisons += 4096;
     auto depth = f.depth_probe(true);
+    if (baseline) {
+      baseline->seed(cs);
+      api(device->BeginScene());
+      for (unsigned i=0; i<cs.ops.size(); ++i) {
+        baseline->source(cs,i);
+        const auto done=baseline->execute(cs,i);
+        need(done.image==PassImage::Linear,"separate-copy baseline completion");
+        baseline->adopt();
+      }
+      api(device->EndScene()); f.fence();
+      auto old_color=pass_read(f,baseline->owner.p), old_native=pass_read(f,baseline->pass.fixture_native()),
+           old_energy=pass_read(f,baseline->pass.fixture_energy()), old_mask=pass_read(f,baseline->pass.coverage_target()),
+           old_depth=f.depth_probe(true);
+      for (auto pair : {std::pair<const std::vector<float>*,const std::vector<float>*>{&color,&old_color},
+                        {&native,&old_native},{&energy,&old_energy},{&mask,&old_mask},{&depth,&old_depth}})
+        need(pair.first->size()==pair.second->size() && std::memcmp(pair.first->data(),pair.second->data(),pair.first->size()*sizeof(float))==0,
+             "fused/separate copy images differ");
+      std::printf("FUSED_CASE id=%u rgba_depth_mask_exact=1 sources=%u\n",cs.h.id,unsigned(cs.ops.size()));
+    }
     raw.write(reinterpret_cast<const char *>(&cs.h.id), 4);
     for (auto *v : {&color, &depth, &native, &energy, &mask})
       raw.write(reinterpret_cast<const char *>(v->data()), v->size() * 4);
@@ -634,7 +703,9 @@ void pass_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
     pass_cap_twin = 0;
   }
   std::printf("PASS_CAPS twins=2 forbidden_calls=0\n");
-  pass_timings(device, programs, variants, back);
+  if (baseline) { baseline->pass.detach(); baseline.reset(); }
+  if (fused_comparison) pass_fused_timings(device, programs, variants, back);
+  else pass_timings(device, programs, variants, back);
   f.single(f.scene);
   api(device->SetRenderTarget(0, back));
 }

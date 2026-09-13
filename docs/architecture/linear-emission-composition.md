@@ -1011,15 +1011,38 @@ a healthy Present-triggered resolve. Production owner binding, other exact sourc
 pairs in this combined path, gameplay appearance/FPS, native Windows, device loss
 and consecutive lazy-bias retention remain outside this result.
 
-### Next performance experiment
+### Fused copy component qualification
 
-The bounded performance pass selects fusing the exact A-to-B copy and E-zero
-initialization into one two-target draw as the next experiment. M stays detached,
-blending stays off, and A/native B/source-once recovery remains unchanged. This
-removes a clear/setup operation, not E bandwidth; native clear may already be
-efficient. Require paired measurements with exact B/E channels, untouched M,
-partial preparation faults, native fallback, state restoration and Reset before
-adopting it. Pool-generation descriptor/view reuse and fewer redundant local
-state sets are later candidates; arbitrary public exchanges retain full
-validation. Historical adjacency and partial source coverage do not establish
-safe batching or scissored composition.
+The independently reviewed component prototype combines exact A-to-B copying
+and E-zero initialization in one two-FP16-target draw. It retains the qualified
+copy program through oC0 and appends an oC1 write of local positive zero. M stays
+detached and blending stays off; native B, source-once ordering, preparation
+rollback and ownership recovery are unchanged. The 17 focused tests pass,
+including 67 whole-pass scenarios and 1,573 checks.
+
+The [paired X3 comparison](../../verification/results/bottle-X3/linear-emission-mrt-fused-gpu.json)
+exits successfully with 60 separate-copy/fused twins: all 261,120 C/B/E/M/depth
+channels match exactly. The retained independent component oracle also passes
+245,760 channels over 85 indexed sources, with 16 failure controls, two capability
+twins and an actual Reset followed by a same-instance transaction.
+
+Each resolution uses two warmup pairs and eight measured pairs, alternating
+baseline/fused order on the same device. Negative deltas favor fusion:
+
+| Resolution | Median paired delta | Paired delta range |
+| --- | ---: | ---: |
+| 1280×768 | −0.04930 ms | −0.6148 to +0.5850 ms |
+| 1920×1080 | −0.07885 ms | −0.5328 to +0.0418 ms |
+
+QPC through EVENT completion covers one 31.25%-coverage source, preparation,
+composition, local ownership acknowledgement and the scene bracket. Allocation,
+seeding, source setup, M frame-clear and readback are outside the window. Both
+medians improve, but the ranges cross zero. This component result does not
+measure live HDR exchange, supplemental TAA, gameplay FPS or native Windows;
+it cannot be subtracted from the different live timing above. Combined live
+qualification remains required before installing fusion.
+
+Pool-generation descriptor/view reuse and fewer redundant local state sets
+remain later candidates. Arbitrary public exchanges retain full validation;
+historical adjacency and partial source coverage still do not establish safe
+batching or scissored composition.

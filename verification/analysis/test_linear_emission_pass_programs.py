@@ -38,5 +38,13 @@ class EmissionPassProgramTests(unittest.TestCase):
             self.assertEqual(got,wanted,name)
             self.assertEqual(got[0],0xffff0300);self.assertEqual(got[-1],0xffff)
 
+    def test_fused_copy_preserves_program_and_appends_exact_zero_output(self):
+        text=(ROOT/'src/renderer/linear_emission_copy_clear_inc.h').read_text()
+        words=[int(x,16) for x in re.findall(r'0x([0-9a-fA-F]{8})u',text)]
+        self.assertEqual(words,self.qualified[0][:-1]+[0x02000001,0x800f0801,0xa0000014,0x0000ffff])
+        # Existing DEF c20.x is +0; no external constants, alpha math, or M output.
+        definition=self.qualified[0].index(0xa00f0014)
+        self.assertEqual(self.qualified[0][definition+1],0)
+
 
 if __name__=='__main__':unittest.main()

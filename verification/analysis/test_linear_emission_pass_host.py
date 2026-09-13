@@ -28,7 +28,7 @@ class LinearEmissionPassHostTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertEqual(run.stdout, 'linear_emission_pass_host scenarios=63 checks=1458 failures=0\n')
+            self.assertEqual(run.stdout, 'linear_emission_pass_host scenarios=67 checks=1573 failures=0\n')
             self.assertEqual(run.stderr, '')
 
 

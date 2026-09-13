@@ -1,6 +1,7 @@
 // Detached authored/original shader experiments. No live renderer integration.
 // run_linear_emission.py owns the independent per-store FP16 oracle.
 #define WIN32_LEAN_AND_MEAN
+#include <memory>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -1738,11 +1739,12 @@ int main(int argc, char **argv) {
     need(argc == 3 ||
              (argc == 4 && (std::strcmp(argv[3], "--mrt") == 0 ||
                             std::strcmp(argv[3], "--mrt-branch") == 0)) ||
-             (argc == 6 && (std::strcmp(argv[3], "--mrt-original") == 0 || std::strcmp(argv[3], "--mrt-coverage") == 0 || std::strcmp(argv[3], "--mrt-pass") == 0)),
+             (argc == 6 && (std::strcmp(argv[3], "--mrt-original") == 0 || std::strcmp(argv[3], "--mrt-coverage") == 0 || (std::strcmp(argv[3], "--mrt-pass") == 0 || std::strcmp(argv[3], "--mrt-fused") == 0))),
          "arguments: cases.bin pixels.bin [--mrt|--mrt-branch]");
     bool mrt = argc >= 4;
     bool actual_original = argc == 6;
-    bool component = actual_original && std::strcmp(argv[3], "--mrt-pass") == 0;
+    bool fused_comparison = actual_original && std::strcmp(argv[3], "--mrt-fused") == 0;
+    bool component = actual_original && (std::strcmp(argv[3], "--mrt-pass") == 0 || fused_comparison);
     bool coverage = actual_original && std::strcmp(argv[3], "--mrt-coverage") == 0;
     bool branch_experiment = mrt && std::strcmp(argv[3], "--mrt-branch") == 0;
     auto cases = load(argv[1]);
@@ -1819,7 +1821,7 @@ int main(int argc, char **argv) {
       api(device->GetRenderTarget(0, &back.p));
       if (component) {
         EmissionPass retained;
-        pass_experiment(device.p,cases,argv[2],back.p,argv[4],argv[5],retained);
+        pass_experiment(device.p,cases,argv[2],back.p,argv[4],argv[5],retained,fused_comparison);
         need(retained.references()==4,"retained pass programs before native Reset");
         back.p->Release();back.p=nullptr;
         api(device->SetIndices(nullptr));api(device->SetStreamSource(0,nullptr,0,0));api(device->SetStreamSource(1,nullptr,0,0));
@@ -1891,7 +1893,8 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf(component ? "PASS_RESULT pass cases=%u shaders=288\n"
+    std::printf(fused_comparison ? "FUSED_RESULT pass cases=%u\n"
+                : component ? "PASS_RESULT pass cases=%u shaders=288\n"
                 : coverage ? "COVERAGE_RESULT pass cases=%u shaders=201\n"
                 : actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=42\n"
                 : branch_experiment ? "BRANCH_RESULT pass cases=%u shaders=81\n"

@@ -145,8 +145,13 @@ static_assert(std::size(states) == std::size(fullscreen) &&
 // detached original fixture. Definitions are shader-local; no application
 // vertex/pixel constants are uploaded or changed by the transfer programs.
 constexpr DWORD copy_words[] = {
+#include "linear_emission_copy_clear_inc.h"
+};
+#ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
+constexpr DWORD separate_copy_words[] = {
 #include "linear_emission_copy_inc.h"
 };
+#endif
 constexpr DWORD composite_words[] = {
 #include "linear_emission_composite_inc.h"
 };
@@ -205,6 +210,7 @@ struct LinearEmissionPass::Impl {
       nullptr; // exact borrowed caller ownership slot value
   LinearEmissionCompletion completion{};
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
+  bool fused_copy = true;
   LinearEmissionPassFault fault_kind = LinearEmissionPassFault::None;
   unsigned fault_count = 0;
   bool fault(LinearEmissionPassFault f) noexcept {
@@ -214,6 +220,7 @@ struct LinearEmissionPass::Impl {
     return true;
   }
 #else
+  static constexpr bool fused_copy = true;
   static bool fault(LinearEmissionPassFault) noexcept { return false; }
 #endif
   template <class... A> HRESULT call(unsigned slot, A... args) const noexcept {
@@ -392,6 +399,11 @@ struct LinearEmissionPass::Impl {
     }
     if (SUCCEEDED(hr))
       hr = target(destination);
+    // A and M remain untouched. The copy writes exact B and initializes E in
+    // one rasterization; full_state disables blending and enables both masks.
+    // target() detached every extra attachment, including supplemental M.
+    if (SUCCEEDED(hr) && !combine && fused_copy)
+      hr = call(SetRt, DWORD(1), e);
     if (SUCCEEDED(hr))
       hr = full_state();
     for (unsigned i = 0; i < (combine ? 3u : 1u) && SUCCEEDED(hr); ++i)
@@ -550,7 +562,12 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
     p.caps.reason = "formats";
     return hr;
   }
+#ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
+  p.fused_copy = !fixture_separate_copy_;
+  hr = p.call(CreatePs, p.fused_copy ? copy_words : separate_copy_words, &p.copy);
+#else
   hr = p.call(CreatePs, copy_words, &p.copy);
+#endif
   if (SUCCEEDED(hr) && !p.copy)
     hr = E_FAIL;
   if (SUCCEEDED(hr)) {
@@ -683,9 +700,13 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
   out.operation = p.fault(LinearEmissionPassFault::Copy)
                       ? E_FAIL
                       : p.draw(p.b, boundary.scene, false);
-  if (SUCCEEDED(out.operation))
-    out.operation =
-        p.fault(LinearEmissionPassFault::EmissionClear) ? E_FAIL : p.clear(p.e);
+  if (SUCCEEDED(out.operation)) {
+    // Retain the preparation failure boundary after initialization, including
+    // partial-copy failures: neither B nor E is published before the source.
+    // A clean restore therefore preserves A and all earlier coverage in M.
+    if (p.fault(LinearEmissionPassFault::EmissionClear)) out.operation = E_FAIL;
+    else if (!p.fused_copy) out.operation = p.clear(p.e);
+  }
   if (SUCCEEDED(out.operation))
     out.operation = p.restore(p.b);
   if (SUCCEEDED(out.operation))
