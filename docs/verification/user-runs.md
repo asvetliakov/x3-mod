@@ -14,15 +14,16 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
 | 1 | Chase aiming/framing + reader/adjacency verification | 1 | Start here |
-| 2 | Sharpen/shimmer + camera cuts with TAA | 1 | Ready |
+| 2 | Sharpen/shimmer + camera cuts with TAA | 0 | Merged into run 6 |
 | 3 | Automatic exposure + bloom off/on | 2 | Ready |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 1 | Wait for run 1 log acceptance |
-| 6 | Linear hull materials off/on at fixed exposure | 2 | Ready |
+| 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 2 | Ready |
 
-These are separate comparisons, not one long required session. The shared TAA shader now fits the standard instruction budget and passes exact
-fixture comparisons; run 2 also covers that installed update. Emission integration
-is still agent work and adds no gameplay request yet.
+These are seven sessions, not one long required session. The shared TAA shader
+now fits the standard instruction budget and passes exact fixture comparisons;
+run 6 also covers that installed update. Emission integration is still agent
+work and adds no gameplay request yet.
 
 ```sh
 x3run() {
@@ -64,23 +65,11 @@ zero admitted mismatches and no hook/fault failures. Verify mode deliberately
 runs native and candidate work together, so this run provides **no loading-time
 or FPS attribution**.
 
-## 2. Sharpen 0.75, mip bias -0.5 and chase/TAA cuts — Ready
+## 2. Sharpen 0.75, mip bias -0.5 and chase/TAA cuts — Merged into run 6
 
-Use the new camera build so one session can also check temporal history across
-view changes:
-
-```sh
-x3run --direct --camera chase --ownership --object-trace --object-lifetime \
-  --motion-output --taa --telemetry --taa-debug --camera-log 1 \
-  --taa-sharpen 0.75 --taa-mip-bias -0.5 \
-  --capture-start 999999 --capture-frames 4
-```
-
-First preserve a focused sharpen sample: press F8 for separate settled,
-slow-turn and moving/steering bursts. Then switch internal/back views and cross
-a gate if convenient. Report sharpness, shimmer/flicker, halos, ghosting after
-view transitions, and whether each F8 burst was captured. This is the actual
-0.75 measurement; do not fold HDR exposure into it.
+Do not launch a separate run for this item. Run 6 applies the same sharpen and
+mip-bias settings to both sides of its fixed-exposure material comparison and
+includes the required motion and view-cut checks.
 
 ## 3. Space-aware exposure and bloom comparison — Ready
 
@@ -138,29 +127,50 @@ The combined run can establish fault-free co-activation. Any claim about which
 feature changed loading time still requires isolated, same-save comparisons.
 
 
-## 6. First linear materials — Ready; after camera acceptance is convenient
+## 6. First linear materials plus sharpen and TAA cuts — Ready; after camera acceptance is convenient
 
-This is a separate fixed-exposure comparison: keep bloom, sharpen and mip bias
-off, so changes in hull lighting cannot be hidden by automatic exposure or glow.
-Use the usual ship/save with a visible hull or station and emissive panels:
+This is a fixed-exposure comparison with bloom off. Both sides use sharpen 0.75
+and mip bias -0.5 so the material toggle remains the only A/B difference. Use
+the usual ship/save with a visible hull or station, emissive panels and, if
+available, an active light.
+
+First run with linear materials off:
 
 ```sh
-x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
-  --telemetry --taa-debug --taa-sharpen 0 --taa-mip-bias 0 \
+x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --taa-debug --camera-log 1 \
+  --taa-sharpen 0.75 --taa-mip-bias -0.5 \
   --hdr --hdr-tonemap --hdr-ev-manual 0 \
   --capture-start 999999 --capture-frames 4
 ```
 
-Take F8 samples at rest and while slowly turning, plus a screenshot. Exit, then
-repeat the same command **adding `--linear-materials`**, at the same save and
-camera positions. Leave the three material gains at their default 1. If
-convenient, fire or pass an active light during the second session and capture
-it. Report hull color/brightness, emissive detail, flicker/ghosting, and any
-obvious slowdown. Both logs are needed even if the image looks unchanged.
+Exit, then repeat the same save, camera positions and sequence with linear
+materials on. Leave the three material gains at their default 1:
+
+```sh
+x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --taa-debug --camera-log 1 \
+  --taa-sharpen 0.75 --taa-mip-bias -0.5 \
+  --hdr --hdr-tonemap --hdr-ev-manual 0 --linear-materials \
+  --capture-start 999999 --capture-frames 4
+```
+
+In each session, take separate F8 four-frame bursts and screenshots at settled
+rest, during a slow turn and while moving or steering. Complete the matched A/B
+scene captures before switching between internal and external back views; then
+record the view cuts and cross a gate if practical. Use the same active-light
+moment on both sides when available.
+
+Report sharpness, halos, shimmer or flicker, ghosting and recovery after view
+transitions. Separately compare hull color and brightness, emissive detail,
+active-light response and any obvious slowdown. Both logs are needed even if
+the image looks unchanged.
 
 This slice covers thirty reviewed pairs: twenty DEFAULT hull materials and
 ten Argon bump-mapped materials. It does not cover every ship/effect. Analysis
 must confirm nonzero material routes, inspect `bump_routed` to establish whether
 the new bump path was exercised, and inspect refusal reasons and captured
 constants before judging appearance or expanding coverage. This fixed-EV pair
-cannot replace run 3's automatic-exposure/bloom comparison.
+cannot replace run 3's automatic-exposure/bloom comparison. It establishes the
+0.75 sharpen and -0.5 mip-bias behavior on the HDR/AgX route; it does not count
+as a separate non-HDR gameplay test.
