@@ -15,7 +15,8 @@ The snapshot contains 156 files. No game was launched by the agent.
   the brightest nebula views warrant restraint. Screenshot overlays, where
   present, are stronger mode evidence than the attachment order.
 - Selection stutter still occurs (explicit follow-up confirmation). New native
-  solver/HUD timing analysis is in progress; no performance fix is claimed.
+  solver/HUD timing is too small to explain it; the unmeasured main-loop work
+  needs the consolidated diagnostic described below. No performance fix is claimed.
 - The central chase crosshair/distance is visible in the supplied screenshots.
   Other camera acceptance items and sector-view restoration remain separate.
 
@@ -91,3 +92,35 @@ Bounded local evidence is retained in
 `/tmp/x3-run26-exposure-candidates.json`. The study reuses the reviewed
 post-TAA decode contract and AgX oracle; it performs no game launch, Wine run,
 build, install or repository edit.
+
+## Selection-stall timing
+
+The bounded [selection summary](../../verification/results/bottle-X3/run26-selection.json)
+identifies nine nonzero target changes. Six have a wholly subsequent telemetry
+interval containing a 286–454 ms frame, with interval bounds 0.276–2.171 seconds
+after selection. The other three changes intersect slow intervals that straddle
+the change; their ordering cannot be inferred. Fourteen of the 24 recorded
+350–500 ms spike windows intersect selection through two seconds afterward.
+This is temporal association, not proof of cause.
+
+New native timing excludes the instrumented routines as an explanation for
+those long pauses: lead block max 2.219 ms, solver 0.424 ms, central HUD group
+2.245 ms. The distance producer's lone 16.844 ms outlier occurs with no target,
+about 65 seconds before the first target change. Handlers remain below 0.5 ms;
+there are no abandoned or overflowed native timing records.
+
+In selection-overlap intervals, Present peaks at 2.834 ms, TAA at 0.898 ms,
+HDR writeback at 0.830 ms, meter/readback at 0.546 ms, and log flush at 0.020 ms.
+Measured loading operations peak below 5.347 ms. Capture does not overlap these
+selection windows: its two periods are 256.117–264.473 s and 610.947–616.678 s;
+the final selection occurs at 621.064 s. Capture accounts for separate
+357–707 ms frames, not the retained selection witnesses.
+
+The unresolved time is elsewhere in game CPU work or an external wait between
+Present endpoints. Existing telemetry reports roughly one-second maxima and
+cannot locate the exact hitch within an interval. Targeted disassembly has
+identified a native 1,000 game-ms delayed `NotifyTargetLock` event before the
+existing lead timer, plus the main-loop phases needed to distinguish that path
+from unrelated work. The event is a concrete diagnostic candidate, not yet an
+identified cause. The next consolidated diagnostic will retain exact endpoints
+and coarse/nested phase timing; no selection-performance fix is claimed.

@@ -1,0 +1,1247 @@
+{
+  "actual_target_changes": [
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            6086,
+            6135
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.09559999999999999,
+            "present_normal": 0.1384,
+            "route_fill": 0.177,
+            "taa_resolve_draw": 0.2932,
+            "taa_run": 0.3342
+          },
+          "loading_max_ms": 5.3467,
+          "max_ms": 122.18539999999999,
+          "top_frame": 6135,
+          "window_relative_s": [
+            0.1230987,
+            1.1238712
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            6135,
+            6175
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.2008,
+            "present_normal": 0.1125,
+            "route_fill": 0.2174,
+            "taa_resolve_draw": 0.4254,
+            "taa_run": 0.4726
+          },
+          "loading_max_ms": 5.3467,
+          "max_ms": 286.051,
+          "top_frame": 6175,
+          "window_relative_s": [
+            1.1238712,
+            2.1297784
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            6175,
+            6214
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.2008,
+            "present_normal": 0.1125,
+            "route_fill": 0.2174,
+            "taa_resolve_draw": 0.4254,
+            "taa_run": 0.4726
+          },
+          "loading_max_ms": 0.30410000000000004,
+          "max_ms": 286.051,
+          "top_frame": 6175,
+          "window_relative_s": [
+            1.1238712,
+            2.1297784
+          ]
+        }
+      },
+      "event": 19,
+      "generation": 1,
+      "since_start_s": 136.4243409,
+      "target": "0x3dfc47b8",
+      "update": 5629
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            6214,
+            6258
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.08209999999999999,
+            "present_normal": 0.1386,
+            "route_fill": 0.0709,
+            "taa_resolve_draw": 0.5811000000000001,
+            "taa_run": 0.6219
+          },
+          "loading_max_ms": 0.30410000000000004,
+          "max_ms": 415.04040000000003,
+          "top_frame": 6258,
+          "window_relative_s": [
+            0.434896,
+            1.6243893
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            6258,
+            6298
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.07540000000000001,
+            "present_normal": 0.09659999999999999,
+            "route_fill": 0.0628,
+            "taa_resolve_draw": 0.434,
+            "taa_run": 0.4778
+          },
+          "loading_max_ms": 0.2875,
+          "max_ms": 452.6675,
+          "top_frame": 6298,
+          "window_relative_s": [
+            1.6243893,
+            2.7628391
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            6298,
+            6330
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.07540000000000001,
+            "present_normal": 0.09659999999999999,
+            "route_fill": 0.0628,
+            "taa_resolve_draw": 0.434,
+            "taa_run": 0.4778
+          },
+          "loading_max_ms": 0.2557,
+          "max_ms": 452.6675,
+          "top_frame": 6298,
+          "window_relative_s": [
+            1.6243893,
+            2.7628391
+          ]
+        }
+      },
+      "event": 20,
+      "generation": 1,
+      "since_start_s": 139.2112349,
+      "target": "0x3dfbc888",
+      "update": 5760
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            6355,
+            6387
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.1406,
+            "present_normal": 0.1497,
+            "route_fill": 0.1536,
+            "taa_resolve_draw": 0.364,
+            "taa_run": 0.4153
+          },
+          "loading_max_ms": 0.3473,
+          "max_ms": 453.64209999999997,
+          "top_frame": 6387,
+          "window_relative_s": [
+            0.478509,
+            1.7036118
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            6387,
+            6418
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.1155,
+            "present_normal": 0.1141,
+            "route_fill": 0.1673,
+            "taa_resolve_draw": 0.3466,
+            "taa_run": 0.391
+          },
+          "loading_max_ms": 0.2881,
+          "max_ms": 454.6735,
+          "top_frame": 6418,
+          "window_relative_s": [
+            1.7036118,
+            2.8709627
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            6418,
+            6475
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.1155,
+            "present_normal": 0.1141,
+            "route_fill": 0.1673,
+            "taa_resolve_draw": 0.3466,
+            "taa_run": 0.391
+          },
+          "loading_max_ms": 0.263,
+          "max_ms": 454.6735,
+          "top_frame": 6418,
+          "window_relative_s": [
+            1.7036118,
+            2.8709627
+          ]
+        }
+      },
+      "event": 21,
+      "generation": 1,
+      "since_start_s": 143.64051,
+      "target": "0x3dfc9498",
+      "update": 5901
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            12407,
+            12454
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.0756,
+            "present_normal": 0.1157,
+            "route_fill": 0.07709999999999999,
+            "taa_resolve_draw": 0.3605,
+            "taa_run": 0.3994
+          },
+          "loading_max_ms": 2.6284,
+          "max_ms": 447.1031,
+          "top_frame": 12407,
+          "window_relative_s": [
+            -0.6148546,
+            0.7384341
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            12454,
+            12502
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.173,
+            "present_normal": 0.16469999999999999,
+            "route_fill": 0.1672,
+            "taa_resolve_draw": 0.3029,
+            "taa_run": 0.3453
+          },
+          "loading_max_ms": 2.6284,
+          "max_ms": 441.409,
+          "top_frame": 12454,
+          "window_relative_s": [
+            0.7384341,
+            1.7477721
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            12502,
+            12549
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.2776,
+            "present_normal": 0.2531,
+            "route_fill": 0.19640000000000002,
+            "taa_resolve_draw": 1.7492,
+            "taa_run": 1.8006
+          },
+          "loading_max_ms": 0.6485,
+          "max_ms": 30.1832,
+          "top_frame": 12549,
+          "window_relative_s": [
+            2.7480968,
+            3.7547915
+          ]
+        }
+      },
+      "event": 22,
+      "generation": 1,
+      "since_start_s": 286.0614567,
+      "target": "0x192fa148",
+      "update": 11941
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            29843,
+            29916
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.1087,
+            "hdr_writeback": 0.16390000000000002,
+            "present_normal": 0.15830000000000002,
+            "route_fill": 0.0631,
+            "taa_resolve_draw": 0.2842,
+            "taa_run": 0.3257
+          },
+          "loading_max_ms": 0.35669999999999996,
+          "max_ms": 375.394,
+          "top_frame": 29843,
+          "window_relative_s": [
+            -0.9537855,
+            0.046655
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            29916,
+            29986
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.4203,
+            "hdr_writeback": 0.7181000000000001,
+            "present_normal": 1.2401,
+            "route_fill": 0.15719999999999998,
+            "taa_resolve_draw": 0.4156,
+            "taa_run": 0.4713
+          },
+          "loading_max_ms": 0.35669999999999996,
+          "max_ms": 26.638900000000003,
+          "top_frame": 29986,
+          "window_relative_s": [
+            1.0467878,
+            2.0469042
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            29986,
+            30057
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.4203,
+            "hdr_writeback": 0.7181000000000001,
+            "present_normal": 1.2401,
+            "route_fill": 0.15719999999999998,
+            "taa_resolve_draw": 0.4156,
+            "taa_run": 0.4713
+          },
+          "loading_max_ms": 0.0,
+          "max_ms": 26.638900000000003,
+          "top_frame": 29986,
+          "window_relative_s": [
+            1.0467878,
+            2.0469042
+          ]
+        }
+      },
+      "event": 46,
+      "generation": 2,
+      "since_start_s": 517.0132729,
+      "target": "0x1947c3a0",
+      "update": 29388
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            31451,
+            31502
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.2071,
+            "hdr_writeback": 0.2586,
+            "present_normal": 0.38830000000000003,
+            "route_fill": 0.0736,
+            "taa_resolve_draw": 0.3747,
+            "taa_run": 0.4121
+          },
+          "loading_max_ms": 0.32589999999999997,
+          "max_ms": 375.9815,
+          "top_frame": 31451,
+          "window_relative_s": [
+            -0.7241506,
+            0.276124
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            31502,
+            31582
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.1394,
+            "hdr_writeback": 0.283,
+            "present_normal": 0.12190000000000001,
+            "route_fill": 0.1338,
+            "taa_resolve_draw": 0.39380000000000004,
+            "taa_run": 0.4323
+          },
+          "loading_max_ms": 0.32589999999999997,
+          "max_ms": 375.48629999999997,
+          "top_frame": 31502,
+          "window_relative_s": [
+            0.276124,
+            1.280263
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            31582,
+            31663
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.1702,
+            "hdr_writeback": 0.32280000000000003,
+            "present_normal": 0.145,
+            "route_fill": 0.19119999999999998,
+            "taa_resolve_draw": 1.0172,
+            "taa_run": 1.0515999999999999
+          },
+          "loading_max_ms": 0.0,
+          "max_ms": 14.418899999999999,
+          "top_frame": 31663,
+          "window_relative_s": [
+            2.2804059,
+            3.2812534
+          ]
+        }
+      },
+      "event": 57,
+      "generation": 2,
+      "since_start_s": 537.8500014,
+      "target": "0x3dfb9c78",
+      "update": 30977
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            32123,
+            32203
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.2273,
+            "hdr_writeback": 0.3077,
+            "present_normal": 0.13069999999999998,
+            "route_fill": 0.12329999999999999,
+            "taa_resolve_draw": 0.4809,
+            "taa_run": 0.5171
+          },
+          "loading_max_ms": 0.3353,
+          "max_ms": 374.9474,
+          "top_frame": 32123,
+          "window_relative_s": [
+            -0.876063,
+            0.1276407
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            32203,
+            32281
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.4615,
+            "hdr_writeback": 0.83,
+            "log_flush": 0.0202,
+            "present_normal": 2.8341,
+            "route_fill": 0.1995,
+            "taa_resolve_draw": 0.7486,
+            "taa_run": 0.8983
+          },
+          "loading_max_ms": 0.0,
+          "max_ms": 24.3212,
+          "top_frame": 32281,
+          "window_relative_s": [
+            1.128033,
+            2.1284109
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            32281,
+            32362
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.4615,
+            "hdr_writeback": 0.83,
+            "log_flush": 0.0202,
+            "present_normal": 2.8341,
+            "route_fill": 0.1995,
+            "taa_resolve_draw": 0.7486,
+            "taa_run": 0.8983
+          },
+          "loading_max_ms": 0.0,
+          "max_ms": 24.3212,
+          "top_frame": 32281,
+          "window_relative_s": [
+            1.128033,
+            2.1284109
+          ]
+        }
+      },
+      "event": 69,
+      "generation": 2,
+      "since_start_s": 547.0151703,
+      "target": "0x1947c3a0",
+      "update": 31661
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            32557,
+            32611
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.1114,
+            "hdr_writeback": 0.1785,
+            "present_normal": 0.1424,
+            "route_fill": 0.13019999999999998,
+            "taa_resolve_draw": 0.4977,
+            "taa_run": 0.5353
+          },
+          "loading_max_ms": 0.30010000000000003,
+          "max_ms": 376.25079999999997,
+          "top_frame": 32557,
+          "window_relative_s": [
+            -0.9475148,
+            0.0583136
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            32611,
+            32684
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.2164,
+            "hdr_writeback": 0.2696,
+            "present_normal": 0.1356,
+            "route_fill": 0.1457,
+            "taa_resolve_draw": 0.4997,
+            "taa_run": 0.5492
+          },
+          "loading_max_ms": 0.30010000000000003,
+          "max_ms": 375.51059999999995,
+          "top_frame": 32684,
+          "window_relative_s": [
+            1.1680752,
+            2.1705148
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            32684,
+            32754
+          ],
+          "instrument_max_ms": {
+            "hdr_meter": 0.2164,
+            "hdr_writeback": 0.2696,
+            "present_normal": 0.1356,
+            "route_fill": 0.1457,
+            "taa_resolve_draw": 0.4997,
+            "taa_run": 0.5492
+          },
+          "loading_max_ms": 0.0,
+          "max_ms": 375.51059999999995,
+          "top_frame": 32684,
+          "window_relative_s": [
+            1.1680752,
+            2.1705148
+          ]
+        }
+      },
+      "event": 70,
+      "generation": 2,
+      "since_start_s": 553.1037818,
+      "target": "0x3dfb9c78",
+      "update": 32101
+    },
+    {
+      "bands": {
+        "0_1s": {
+          "capture_overlap": false,
+          "frames": [
+            37299,
+            37376
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.1997,
+            "present_normal": 0.18409999999999999,
+            "route_fill": 0.14959999999999998,
+            "taa_resolve_draw": 0.3593,
+            "taa_run": 0.4067
+          },
+          "loading_max_ms": 0.5777,
+          "max_ms": 387.593,
+          "top_frame": 37299,
+          "window_relative_s": [
+            -0.5997127,
+            0.4078589
+          ]
+        },
+        "1_2s": {
+          "capture_overlap": false,
+          "frames": [
+            37376,
+            37455
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 0.19090000000000001,
+            "present_normal": 0.1436,
+            "route_fill": 0.07790000000000001,
+            "taa_resolve_draw": 0.36069999999999997,
+            "taa_run": 0.4228
+          },
+          "loading_max_ms": 0.44580000000000003,
+          "max_ms": 18.5683,
+          "top_frame": 37376,
+          "window_relative_s": [
+            0.4078589,
+            1.4136593
+          ]
+        },
+        "2_3s": {
+          "capture_overlap": false,
+          "frames": [
+            37455,
+            37530
+          ],
+          "instrument_max_ms": {
+            "hdr_writeback": 2.4627,
+            "present_normal": 0.1753,
+            "route_fill": 0.174,
+            "taa_resolve_draw": 0.5334,
+            "taa_run": 0.5892000000000001
+          },
+          "loading_max_ms": 0.0,
+          "max_ms": 20.1013,
+          "top_frame": 37530,
+          "window_relative_s": [
+            2.4161457,
+            3.4176624
+          ]
+        }
+      },
+      "event": 73,
+      "generation": 2,
+      "since_start_s": 621.0639189,
+      "target": "0x3dfcb928",
+      "update": 36815
+    }
+  ],
+  "capture": {
+    "frames": [
+      10955,
+      10956,
+      10957,
+      10958,
+      11079,
+      11080,
+      11081,
+      11082,
+      36773,
+      36774,
+      36775,
+      36776,
+      36969,
+      36970,
+      36971,
+      36972
+    ],
+    "ranges": [
+      {
+        "duration_ms": 673.8224,
+        "end_s": 256.7908203,
+        "events": 525,
+        "frame": 10955,
+        "start_s": 256.1169979
+      },
+      {
+        "duration_ms": 654.1225,
+        "end_s": 257.4834067,
+        "events": 525,
+        "frame": 10956,
+        "start_s": 256.8292842
+      },
+      {
+        "duration_ms": 644.6118,
+        "end_s": 258.157359,
+        "events": 525,
+        "frame": 10957,
+        "start_s": 257.5127472
+      },
+      {
+        "duration_ms": 706.6837,
+        "end_s": 258.8925608,
+        "events": 525,
+        "frame": 10958,
+        "start_s": 258.1858771
+      },
+      {
+        "duration_ms": 656.0541,
+        "end_s": 262.3519696,
+        "events": 533,
+        "frame": 11079,
+        "start_s": 261.6959155
+      },
+      {
+        "duration_ms": 672.4943,
+        "end_s": 263.0600569,
+        "events": 533,
+        "frame": 11080,
+        "start_s": 262.3875626
+      },
+      {
+        "duration_ms": 671.3275,
+        "end_s": 263.7599914,
+        "events": 533,
+        "frame": 11081,
+        "start_s": 263.0886639
+      },
+      {
+        "duration_ms": 681.8111,
+        "end_s": 264.472843,
+        "events": 533,
+        "frame": 11082,
+        "start_s": 263.7910319
+      },
+      {
+        "duration_ms": 404.0491,
+        "end_s": 611.3507882,
+        "events": 283,
+        "frame": 36773,
+        "start_s": 610.9467391
+      },
+      {
+        "duration_ms": 408.3281,
+        "end_s": 611.7984464,
+        "events": 282,
+        "frame": 36774,
+        "start_s": 611.3901183
+      },
+      {
+        "duration_ms": 366.612,
+        "end_s": 612.1965324,
+        "events": 280,
+        "frame": 36775,
+        "start_s": 611.8299204
+      },
+      {
+        "duration_ms": 390.6907,
+        "end_s": 612.6211973,
+        "events": 280,
+        "frame": 36776,
+        "start_s": 612.2305066
+      },
+      {
+        "duration_ms": 367.2689,
+        "end_s": 615.4722517,
+        "events": 262,
+        "frame": 36969,
+        "start_s": 615.1049828
+      },
+      {
+        "duration_ms": 356.8741,
+        "end_s": 615.8600787,
+        "events": 262,
+        "frame": 36970,
+        "start_s": 615.5032046
+      },
+      {
+        "duration_ms": 356.8772,
+        "end_s": 616.2528584,
+        "events": 262,
+        "frame": 36971,
+        "start_s": 615.8959812
+      },
+      {
+        "duration_ms": 392.4285,
+        "end_s": 616.6782635,
+        "events": 262,
+        "frame": 36972,
+        "start_s": 616.285835
+      }
+    ]
+  },
+  "counts": {
+    "capture_event": 6405,
+    "chase_aim_event": 70,
+    "chase_central_hud_window": 170,
+    "chase_lead_sample": 287,
+    "chase_lead_window": 170,
+    "chase_native_timing_metric": 680,
+    "chase_native_timing_slow": 1,
+    "chase_native_timing_window": 170,
+    "chase_transition_event": 73,
+    "frame_begin": 16,
+    "loading_metric": 818,
+    "telemetry_metric": 12080,
+    "telemetry_start": 1,
+    "telemetry_summary": 1425
+  },
+  "delayed_frame_witnesses": [
+    {
+      "event": 19,
+      "since_start_s": 136.4243409,
+      "target": "0x3dfc47b8",
+      "witness": {
+        "band": "1_2s",
+        "capture_overlap": false,
+        "frames": [
+          6135,
+          6175
+        ],
+        "instrument_max_ms": {
+          "hdr_writeback": 0.2008,
+          "present_normal": 0.1125,
+          "route_fill": 0.2174,
+          "taa_resolve_draw": 0.4254,
+          "taa_run": 0.4726
+        },
+        "loading_max_ms": 5.3467,
+        "max_ms": 286.051,
+        "top_frame": 6175,
+        "window_relative_s": [
+          1.1238712,
+          2.1297784
+        ]
+      }
+    },
+    {
+      "event": 20,
+      "since_start_s": 139.2112349,
+      "target": "0x3dfbc888",
+      "witness": {
+        "band": "0_1s",
+        "capture_overlap": false,
+        "frames": [
+          6214,
+          6258
+        ],
+        "instrument_max_ms": {
+          "hdr_writeback": 0.08209999999999999,
+          "present_normal": 0.1386,
+          "route_fill": 0.0709,
+          "taa_resolve_draw": 0.5811000000000001,
+          "taa_run": 0.6219
+        },
+        "loading_max_ms": 0.30410000000000004,
+        "max_ms": 415.04040000000003,
+        "top_frame": 6258,
+        "window_relative_s": [
+          0.434896,
+          1.6243893
+        ]
+      }
+    },
+    {
+      "event": 21,
+      "since_start_s": 143.64051,
+      "target": "0x3dfc9498",
+      "witness": {
+        "band": "0_1s",
+        "capture_overlap": false,
+        "frames": [
+          6355,
+          6387
+        ],
+        "instrument_max_ms": {
+          "hdr_writeback": 0.1406,
+          "present_normal": 0.1497,
+          "route_fill": 0.1536,
+          "taa_resolve_draw": 0.364,
+          "taa_run": 0.4153
+        },
+        "loading_max_ms": 0.3473,
+        "max_ms": 453.64209999999997,
+        "top_frame": 6387,
+        "window_relative_s": [
+          0.478509,
+          1.7036118
+        ]
+      }
+    },
+    {
+      "event": 22,
+      "since_start_s": 286.0614567,
+      "target": "0x192fa148",
+      "witness": {
+        "band": "1_2s",
+        "capture_overlap": false,
+        "frames": [
+          12454,
+          12502
+        ],
+        "instrument_max_ms": {
+          "hdr_writeback": 0.173,
+          "present_normal": 0.16469999999999999,
+          "route_fill": 0.1672,
+          "taa_resolve_draw": 0.3029,
+          "taa_run": 0.3453
+        },
+        "loading_max_ms": 2.6284,
+        "max_ms": 441.409,
+        "top_frame": 12454,
+        "window_relative_s": [
+          0.7384341,
+          1.7477721
+        ]
+      }
+    },
+    {
+      "event": 57,
+      "since_start_s": 537.8500014,
+      "target": "0x3dfb9c78",
+      "witness": {
+        "band": "1_2s",
+        "capture_overlap": false,
+        "frames": [
+          31502,
+          31582
+        ],
+        "instrument_max_ms": {
+          "hdr_meter": 0.1394,
+          "hdr_writeback": 0.283,
+          "present_normal": 0.12190000000000001,
+          "route_fill": 0.1338,
+          "taa_resolve_draw": 0.39380000000000004,
+          "taa_run": 0.4323
+        },
+        "loading_max_ms": 0.32589999999999997,
+        "max_ms": 375.48629999999997,
+        "top_frame": 31502,
+        "window_relative_s": [
+          0.276124,
+          1.280263
+        ]
+      }
+    },
+    {
+      "event": 70,
+      "since_start_s": 553.1037818,
+      "target": "0x3dfb9c78",
+      "witness": {
+        "band": "1_2s",
+        "capture_overlap": false,
+        "frames": [
+          32611,
+          32684
+        ],
+        "instrument_max_ms": {
+          "hdr_meter": 0.2164,
+          "hdr_writeback": 0.2696,
+          "present_normal": 0.1356,
+          "route_fill": 0.1457,
+          "taa_resolve_draw": 0.4997,
+          "taa_run": 0.5492
+        },
+        "loading_max_ms": 0.30010000000000003,
+        "max_ms": 375.51059999999995,
+        "top_frame": 32684,
+        "window_relative_s": [
+          1.1680752,
+          2.1705148
+        ]
+      }
+    }
+  ],
+  "input": {
+    "bytes": 152354255,
+    "path": "/tmp/x3-bottleX3-run26/session-20260913-211839-212.log",
+    "qpc_frequency": 10000000,
+    "sha256": "566b1b8dd610e5c9f7489ac3a7f1cedb82d8806de6b0ebb74f03ed3caeb098df",
+    "telemetry_start_qpc": 10493594197143
+  },
+  "loading": {
+    "report_qpcs": 163,
+    "reports_ge_10ms_single_op": 20,
+    "reports_ge_50ms_total": 34
+  },
+  "method": {
+    "frame_spike": "device=1 max(frame_normal,frame_capture) per telemetry interval",
+    "overlap": "telemetry interval intersects exact target-change QPC through +2 seconds; association only, not causation",
+    "target_change": "successive distinct target fields on kind=3 cockpit-update transition records; zero-target generation starts excluded"
+  },
+  "native_timing": {
+    "abandoned": 0,
+    "central_handler": {
+      "admitted": 40382,
+      "calls": 43547,
+      "max_us": 182.0,
+      "total_us": 244737.00000000003
+    },
+    "lead_handler": {
+      "calls": 86324,
+      "committed": 12742,
+      "max_us": 491.0,
+      "ready": 28891,
+      "total_us": 272001.1999999999
+    },
+    "overflow": 0,
+    "phases": {
+      "central_hud": {
+        "calls": 43640,
+        "false_returns": 0,
+        "max_frame": 2400,
+        "max_us": 2245.2,
+        "total_us": 376565.7999999998,
+        "windows": 170
+      },
+      "distance_producer": {
+        "calls": 45447,
+        "false_returns": 0,
+        "max_frame": 2400,
+        "max_us": 16844.4,
+        "total_us": 3619711.3000000017,
+        "windows": 170
+      },
+      "lead_block": {
+        "calls": 30035,
+        "false_returns": 0,
+        "max_frame": 6300,
+        "max_us": 2219.1,
+        "total_us": 502629.3999999998,
+        "windows": 170
+      },
+      "solver": {
+        "calls": 15024,
+        "false_returns": 0,
+        "max_frame": 6300,
+        "max_us": 424.4,
+        "total_us": 117429.8,
+        "windows": 170
+      }
+    },
+    "slow_samples": [
+      {
+        "duration_us": 16844.4,
+        "frame": 2400,
+        "generation": 1,
+        "phase": "distance_producer",
+        "qpc_begin": 10494302097938,
+        "qpc_end": 10494302266382,
+        "result": 1,
+        "since_start_s": 70.7900795,
+        "target": 0,
+        "update": 1889
+      }
+    ],
+    "unmatched": 13605,
+    "window_count": 170
+  },
+  "selection_overlap_metric_max": {
+    "frame_normal": {
+      "count": 31,
+      "failures": 0,
+      "frame": 6418,
+      "max_us": 454673.5,
+      "total_us": 1167824.5
+    },
+    "hdr_meter": {
+      "count": 78,
+      "failures": 0,
+      "frame": 32281,
+      "max_us": 461.5,
+      "total_us": 6329.5
+    },
+    "hdr_meter_readback": {
+      "count": 71,
+      "failures": 0,
+      "frame": 29986,
+      "max_us": 546.4,
+      "total_us": 11847.7
+    },
+    "hdr_writeback": {
+      "count": 78,
+      "failures": 0,
+      "frame": 32281,
+      "max_us": 830.0,
+      "total_us": 10899.3
+    },
+    "index_buffer": {
+      "count": 2,
+      "failures": 0,
+      "frame": 37376,
+      "max_us": 43.3,
+      "total_us": 49.1
+    },
+    "log_flush": {
+      "count": 79,
+      "failures": 0,
+      "frame": 32281,
+      "max_us": 20.2,
+      "total_us": 58.1
+    },
+    "present_normal": {
+      "count": 78,
+      "failures": 0,
+      "frame": 32281,
+      "max_us": 2834.1,
+      "total_us": 9376.9
+    },
+    "route_fill": {
+      "count": 41,
+      "failures": 0,
+      "frame": 6175,
+      "max_us": 217.4,
+      "total_us": 2517.8
+    },
+    "taa_resolve_draw": {
+      "count": 78,
+      "failures": 0,
+      "frame": 32281,
+      "max_us": 748.6,
+      "total_us": 15118.2
+    },
+    "taa_run": {
+      "count": 78,
+      "failures": 0,
+      "frame": 32281,
+      "max_us": 898.3,
+      "total_us": 18182.6
+    },
+    "vertex_buffer": {
+      "count": 2,
+      "failures": 0,
+      "frame": 37376,
+      "max_us": 10.4,
+      "total_us": 14.5
+    }
+  },
+  "telemetry": {
+    "category_counts_nonexclusive": {
+      "100000": {
+        "capture": 11,
+        "loading": 10,
+        "none_of_these": 14,
+        "selection_window_0_2s": 16,
+        "total": 51
+      },
+      "250000": {
+        "capture": 11,
+        "loading": 6,
+        "none_of_these": 7,
+        "selection_window_0_2s": 15,
+        "total": 39
+      },
+      "50000": {
+        "capture": 11,
+        "loading": 10,
+        "none_of_these": 27,
+        "selection_window_0_2s": 17,
+        "total": 65
+      }
+    },
+    "device1_windows": 710,
+    "mid_spikes_350_500ms": {
+      "capture": 5,
+      "loading": 1,
+      "none_of_these": 4,
+      "selection_window_0_2s": 14,
+      "total": 24
+    },
+    "spike_windows_ge_100ms": 51,
+    "spike_windows_ge_1s": 4,
+    "spike_windows_ge_250ms": 39,
+    "spike_windows_ge_50ms": 65
+  },
+  "transition_handler_timing": {
+    "0": {
+      "calls": 2,
+      "invalid_qpc": 0,
+      "max_frame": 600,
+      "max_us": 272.5,
+      "total_us": 281.1
+    },
+    "1": {
+      "calls": 2,
+      "invalid_qpc": 0,
+      "max_frame": 600,
+      "max_us": 36.6,
+      "total_us": 47.900000000000006
+    },
+    "2": {
+      "calls": 1,
+      "invalid_qpc": 0,
+      "max_frame": 20100,
+      "max_us": 103.1,
+      "total_us": 103.1
+    },
+    "3": {
+      "calls": 45447,
+      "invalid_qpc": 0,
+      "max_frame": 43500,
+      "max_us": 1553.0,
+      "total_us": 397622.0000000002
+    },
+    "4": {
+      "calls": 5025,
+      "invalid_qpc": 0,
+      "max_frame": 600,
+      "max_us": 39.6,
+      "total_us": 2276.399999999999
+    },
+    "5": {
+      "calls": 40422,
+      "invalid_qpc": 0,
+      "max_frame": 41400,
+      "max_us": 8.4,
+      "total_us": 19655.100000000013
+    },
+    "6": {
+      "calls": 22,
+      "invalid_qpc": 0,
+      "max_frame": 600,
+      "max_us": 165.7,
+      "total_us": 343.9999999999999
+    },
+    "7": {
+      "calls": 1,
+      "invalid_qpc": 0,
+      "max_frame": 600,
+      "max_us": 9.2,
+      "total_us": 9.2
+    },
+    "8": {
+      "calls": 35,
+      "invalid_qpc": 0,
+      "max_frame": 600,
+      "max_us": 23.1,
+      "total_us": 174.7
+    }
+  }
+}
