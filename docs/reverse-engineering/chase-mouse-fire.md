@@ -33,7 +33,11 @@ of this as simply the mouse-input handler hid a script-controlled gate.
 The latest archive `addon/04.cat:L/x3story.obj` was extracted locally to check
 whether a script transition could be recovered directly. It has compiled CODE,
 SYMB and CLAS sections; no readable cursor/fire function names were found.
-No claim about a specific KC script/view-mode gate follows from that check.
+No claim about a particular KC instruction or named source function follows
+from that check. CODE and the numeric SYMB/CLAS records do not directly expose
+source names or the four argument expressions. Runtime evidence below locates
+the zero before native command dispatch without requiring a guessed bytecode
+patch.
 
 ## Cursor branch admission
 
@@ -53,8 +57,11 @@ There is no `cockpit+0x150 == 1` view-mode test in this branch. Other routines
 have internal-view tests for turret handling and UI; those tests do not prove
 that main-gun cursor fire is deliberately disabled externally. Likewise,
 aim-gun 0 in one camera sample does not prove every gate above remains open
-at each shot. The current evidence cannot yet distinguish a native external
-script restriction from a chase integration regression.
+at each shot. The [third gameplay run](../verification/chase-third-run.md) now distinguishes
+the failing gate: the engine command receives active=0 externally while its
+cursor coordinates continue to update. The read-only camera/trace hooks do
+not write that global. The precise compiled KC condition producing zero has
+not been decoded; native engine dispatch itself performs no view test here.
 
 `0x004257f0` checks whether the cursor lies within a roughly 35-pixel box around
 the cockpit's stored aim icon (`+0x6ec/+0x6f0`, nonnegative). If so, the routine
@@ -104,6 +111,64 @@ if cursor rays are to intersect the same visible point. That is a separate
 correction from admission. Any future correction should preserve native range,
 cone and gun-group constraints, and must validate the intermediate coordinate
 frames and world origin with observed data first.
+
+## Third-run finding and proposed scoped correction
+
+The third run has 229 first-person cursor admissions and 180 external gate-3
+rejections; every retained firing event has flags `0x2a`, a coherent player
+cockpit/camera, and valid main-gun mapping. The linked writer coordinates equal
+the firing coordinates even externally. All sampled external writer inputs
+have active=0. Thus absent mouse coordinates, boresight input, bad camera
+identity and the 30-degree cone are excluded as explanations for this run.
+The cone code is not reached by those 180 external calls.
+
+A fresh read of `0x4074cd..0x4074fa` confirms that the native command only
+copies four pre-evaluated KC values: steering, cursor-fire active, x and y.
+There is no native view-mode branch or host mouse-button query between the
+argument load and global store. The sole direct read of cursor-active is the
+fire admission comparison. This supports a deliberate chase extension to the
+fire consumer; it does not justify globally declaring cursor steering active.
+
+**Proposed implementation, not yet implemented:** claim the six-byte
+`JZ 0x445cab` at `0x445a41`, bytes `0f 84 64 02 00 00`, immediately after the
+original `CMP [0x607ce8],0`. The complete fire-function disassembly places
+both ends on instruction boundaries and has no direct branch into the span.
+Use the existing relocation field at offset 2 to retain the original JZ target.
+An ABI-preserving callback may clear only saved EFLAGS.ZF when all of the
+following hold; otherwise its saved flags remain byte-for-byte untouched:
+
+- Chase installation succeeded and a recent active-player camera update
+  actually applied the chase pose. This witness must exist without telemetry.
+- Live resolved cockpit, ship and sector camera exactly match that witness;
+  live mode is the observed external mode 258, connect mode is zero, and the
+  current view has not switched or failed its camera update. Use the existing
+  applied-context identity/age discipline, with a reported fail-closed refusal.
+- The fire call refers to that player ship and main-gun group 0, and its native
+  flags retain both fire bit `0x2` and cursor-fire bit `0x20`. Those checks already
+  dominate this JZ, but rechecking them makes the extension's contract explicit.
+- Native cursor-active is zero and the engine-provided cursor coordinates are
+  readable/in the current viewport. Retain those coordinates unchanged.
+
+This changes one admission decision for a genuine native cursor-fire command.
+It does not synthesize a mouse press, change the cursor writer/steering state,
+poll OS mouse input, change fire flags, or affect first-person/other external
+views, NPCs or turret groups. All downstream native cockpit resolution,
+aim-index/gun-group mapping, target picking, bullet range and cone checks still
+execute. The next native flag-writing instruction overwrites the comparison flags
+(`TEST EAX,EAX` after the registry load), so the intentional ZF change is local to this branch.
+
+The existing entry trace precedes this decision and should continue reporting
+native active=0/gate3 honestly; downstream ray callbacks plus a small extension
+admission counter identify the effective override. Relabeling the original
+input as active would erase the causal evidence. A focused branch fixture must
+exercise original taken/fallthrough and authorized override paths, unchanged
+non-ZF CPU state, failed identity/view checks, and relative-JZ relocation.
+
+This bounded admission change addresses the observed straight-fire symptom.
+It does not establish camera-to-muzzle finite convergence or impact accuracy.
+The native endpoint still starts at the gun-group origin; a later geometric
+correction needs its own coordinate-frame derivation. Do not silently combine
+an unvalidated camera-origin shift with this proven input-policy correction.
 
 ## Consolidated diagnostic implementation
 
