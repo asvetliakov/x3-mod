@@ -9,6 +9,11 @@ Work resumed on the user's instruction after the account switch. The
 [pause handoff](pause-handoff-2026-09-13.md) preserves the unfinished emission
 qualification, material expansion and camera implementation context.
 
+Run 7 is complete. No enhanced gameplay run is currently ready; the
+[run queue](verification/user-runs.md) now consistently records that state.
+The next combined candidate is being prepared for emitter-glow correction,
+broader selection-stutter diagnostics and qualified material expansion.
+
 ## Installed build and current camera work
 
 Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `75dbbed`:

@@ -9,8 +9,8 @@ fixed exposure plus same-run exposure/bloom controls;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
-function setup is needed. Runs 1, 5 and 6 are complete; reader/DAT/adjacency fast co-activation passed as run 19. Complete the remaining
-ready comparisons over several sessions as convenient.
+function setup is needed. Runs 1, 3, 5, 6 and 7 are complete; reader/DAT/adjacency
+fast co-activation passed as run 19. No enhanced gameplay run is currently ready.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
@@ -23,9 +23,12 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
-| 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 1 | Ready: installed candidate 75dbbed |
+| 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; glow and selection-stutter follow-ups pending |
 
-Run 7 is ready now; run 4 remains the optional vanilla cursor comparison. The shared TAA shader
+Wait for the corrected combined build before another enhanced run. Run 4 remains
+the optional vanilla cursor comparison. The next enhanced session will combine
+restored emitter glow, exposure comparison and broader selection-stutter timing;
+its command will be added after build qualification and installation. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
 no gameplay request yet while its performance optimization is under investigation.
