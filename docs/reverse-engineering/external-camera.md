@@ -1,6 +1,6 @@
 # External camera: the cockpit object, its cameras, the view pose and the aim ray
 
-Static analysis only (Ghidra 12.1.3, `-readOnly -noanalysis`, project
+Static engine analysis (Ghidra 12.1.3, `-readOnly -noanalysis`, project
 `/tmp/x3-ghidra-research`) of the installed `X3AP.exe`, SHA-256
 `fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`, preferred
 base `0x00400000`, 2026-09-13. Bytes were cross-checked against the file with
@@ -12,9 +12,10 @@ committed. Scripts: `tools/analysis/X3CameraState.java` (`dec:`, `ins:`,
 
 Builds on [camera-state-and-frame-routine.md](camera-state-and-frame-routine.md)
 (view/projection construction, the frame routine) and
-[object-identity.md](object-identity.md) (node layout). Everything below is a
-static claim; the first `X3M_CAMERA=chase` run is the first runtime check
-([chase-camera.md](../architecture/chase-camera.md), "First user run").
+[object-identity.md](object-identity.md) (node layout). The first user flight later confirmed the hook applies. The corrected
+anchor-domain and current-view findings are documented in
+[chase-camera-first-flight.md](chase-camera-first-flight.md); engine semantics
+below remain static claims except where explicitly paired with runtime evidence.
 
 ## 1. Two engine command tables name the camera code
 
@@ -51,10 +52,10 @@ cockpit is found by handle through `0x0041cd20` (registry `*0x00608504`).
 | `+0x5c`, `+0x60` | galaxy camera (case 6), dust camera (case 7); `+0x5c` receives a copy of `+0x58`'s pose at `0x00421533`.., `+0x60` follows through `0x0041efc0` | `0x004205e0` tail |
 | `+0x90/+0x94/+0x98` | view angles alpha/beta/gamma (`INS_CockpitGetViewAlpha/Beta/Gamma`, cases 0x3a–0x3c; binary angles) | `0x00422ca0` copies the targets `+0xa8/+0xac/+0xb0` into them |
 | `+0xa8/+0xac/+0xb0` | target view angles (`INS_CockpitChangeView`, case 0x2b) | |
-| **`+0xf0`** (12 ints) | **view-relative basis** `R_view`: the camera orientation relative to the ship, built from the view angles each frame (`0x00420a27`) and consumed by the aim ray (§5) | `camera(+0x58).basis = R_view × B_ship` at `0x00420c02` |
+| **`+0xf0`** (12 ints) | **view-relative basis** `R_view`: the camera orientation relative to the ship, built from current view angles at `0x00422c5c` inside `0x004218b0`, before camera construction and consumed by the aim ray (§5) | `camera(+0x58).basis = R_view × B_ship` at `0x00420c02` |
 | `+0x120` | lock-view target (`INS_CockpitLockView`, case 0x2e) | `0x00422f40` |
 | `+0x128` | no-decay flag (case 0x62) | |
-| `+0x130/+0x134/+0x138` | **view position** in the ship frame (`INS_CockpitSetViewPos`, case 0x2f): the boom offset of the external views | `0x00420b27`: `EDI = (+0x130) × node(+0xc0)` then `+ node(+0xb0)` |
+| `+0x130/+0x134/+0x138` | **view position** in the ship frame (`INS_CockpitSetViewPos`, case 0x2f): the boom offset of the external views | native base-domain path `0x00420ad3..0x00420afb` uses `node+0x30` and `0x00450520`; render-domain path `0x00420b27..0x00420b49` uses `node+0xb0/+0xc0` |
 | `+0x140..` | view point position (case 0x5b) | |
 | **`+0x150`** | **view mode** (`INS_CockpitSetViewMode`, case 0x30). `1` = internal cockpit view: `0x004205e0` sets flag `8` on the ship's render node `+0x134` (hidden) when `+0x150 == 1`, clears it otherwise (`0x004216c0..`); every other value is an external view whose geometry the scripts define through `+0x130`/`+0x90..` | `CMP [EBX+0x150],1` sites at `0x004207bf`, `0x00421169`, `0x004216b0` |
 | `+0x160/+0x164/+0x168` | view camera offset (case 0x36): an extra offset applied after the pose (`0x00420c3d..0x00420e03`), with a nearest-object search when the ship type has flag `0x8000` | |
@@ -90,31 +91,44 @@ function leaves in the sector camera.
 
 Order of business (`FUN_004205e0(cockpit)`; EBX = cockpit throughout):
 
-1. `0x004218b0(cockpit)`: view transitions — interpolates `+0x130` and `+0x90..`
-   toward their targets over `+0x1b8` ms of **game time** (`*0x00606f34+0x718`),
-   per connect mode (`switch(+0x1c0)`).
+1. `0x004218b0(cockpit)`: view/connect-mode updates. For ordinary mode 0,
+   target view angles `+0xa8/+0xac/+0xb0` feed current angles `+0x90/+0x94/+0x98`
+   through the native transition logic, and **every invocation** ends at
+   `0x00422c41..0x00422c5c`: ESI = cockpit `+0xf0`, call `0x004f0270` with
+   those current angles. It regenerates the vanilla view basis even when the
+   angles did not change. This precedes every pose/cockpit-camera consumer.
 2. `0x00426360`: cockpit-body model management (internal view only).
 3. Shake/angle matrices: `0x004f0270(alpha, beta, gamma)` builds a rotation
    from three binary angles (16.16 output, `ESI` = destination);
    `0x004f17f0(EAX=A, ECX=B, [ESP]=dest)` is `dest = A × B` (row-vector, 16.16);
    `0x004f0da0(ECX=M, ESI=v, EDI=out)` is `out = v × M` (vector by matrix).
-4. `0x00420767`: `[ESP+0x54] = R(view angles) × [ESP+0xcc]`; `0x00420787`:
-   cockpit-scene camera basis `= (+0xf0) × [ESP+0xc4]` (uses the previous
-   frame's `+0xf0`); `0x0042079e`: its position `= (+0x2ac) × basis`.
+4. The temporary shake matrices are composed at `0x00420767`;
+   `0x00420787` builds the cockpit-scene camera basis from **current vanilla**
+   `+0xf0` and that shake transform. `0x0042079e` builds its position from
+   `+0x2c0` through the resulting basis. The old previous-frame interpretation
+   was wrong: step 1 already regenerated `+0xf0`.
 5. `if (+0xc != 0)` — the follow branch, ordinary external view (no cockpit
    body, `+0x150 != 1`):
-   - `0x00420a27`: **`+0xf0 = [ESP+0x54] × [ESP+0x90]`** (the view-relative
-     basis `R_view`).
+   - External view jumps from `0x004207c6` to `0x00420aa0`. The
+     `0x00420a27` multiply belongs to the internal-view branch and **reads**
+     `+0xf0` (EAX) into a stack destination (`[ESP]`), not vice versa.
    - position: connect mode `5/6` or flag `+0x1a0 & 4` → `camera.pos = +0x130`
-     verbatim; otherwise `0x00420b27..0x00420b67`: `camera(+0x58).pos =
-     node(+0xb0) + (+0x130) × node(+0xc0)` where `node = (+0xc)->+0x70` is the
-     ref object's render node (`0x0044fe20(ref) != 0` = docked/carried:
-     `0x00450520` supplies the parent transform instead).
+     verbatim. Outside those modes, `0x0044fe20(ref)` selects the native
+     position domain, with `node = *(ref+0x70)`: the true branch
+     `0x00420ad3..0x00420b19` uses **node `+0x30`** as the anchor and
+     `0x00450520` as the boom basis; the false branch
+     `0x00420b1e..0x00420b67` uses node `+0xb0` and node `+0xc0`.
+     `0x00450520` selects `*(ref+0x50)+0x870` for ship type 7 and node `+0x40`
+     for other reference types. In both cases `camera.pos = anchor +
+     (+0x130) × native_basis`. The
+     predicate is exactly non-null `ref+0x54` whose short `+0x48` is 1;
+     it is **not established as a docking predicate**.
    - basis: connect mode `3` (unless the ref view object differs from the ref
      object), `5`, `6` or flag `+0x1a0 & 4` → `camera.basis = +0xf0` verbatim
-     (`0x00420c0c`); otherwise `0x00420bfc..0x00420c02`:
-     **`camera(+0x58).basis = (+0xf0) × node(+0xc0)`** (or `× parent basis` when
-     docked).
+     (`0x00420c0c`); otherwise the selected multiply at `0x00420be5` (true)
+     or `0x00420c02` (false) writes:
+     **`camera(+0x58).basis = (+0xf0) × native_basis`**, using the same
+     `0x0044fe20` branch and `0x00450520` basis selection as the position.
    - `0x00420c3d..0x00420e03`: the `+0x160` view camera offset (skipped for
      connect modes 4/5/6/8/9): rotated and added to `camera.pos`.
 6. **`0x00420e06`**: `cmp [ebx+0x54],0; jz 0x00421019` — the pose of the sector
@@ -166,12 +180,11 @@ the install window covers it — the site is claimed before the device exists).
   `0x004899f0(cockpit+0x58, object, out)` → `0x00489780` with the sector camera.
 - The galaxy/dust cameras (`+0x5c`, `+0x60`) copy the sector camera's pose in
   step 7, i.e. after the hook site.
-- The cockpit-scene camera (`+8`, layer 0) is built in step 4 from `+0xf0` of
-  the **previous** frame (the fresh `+0xf0` is written in step 5). With the
-  chase camera writing `+0xf0` at the hook site, that camera follows the
-  smoothed orientation one frame late — the same one-frame structure vanilla has
-  during view transitions; the first run must look for HUD elements that live
-  in that scene (cockpit body/displays are internal-view only).
+- The cockpit-scene camera (`+8`, layer 0) is built in step 4 from the
+  **current vanilla** `+0xf0` produced in step 1. It remains on the vanilla view
+  while the hook smooths the sector camera. Whether an external-view HUD element
+  uses it is a runtime question; the optional correction must compare the new
+  view with this current vanilla basis, not a previous-frame basis.
 
 ## 5. The mouse-aim ray is cast through the sector camera's FOV and `+0xf0`
 
@@ -283,9 +296,9 @@ functions are the sole references to the tables' first entries).
   read from the listing; the decompiler drops the register-passed matrix
   arguments, so the exact frame each intermediate vector is in is inferred from
   the operand order, not proven by execution.
-- The cockpit-scene camera's one-frame-old `+0xf0` (step 4) is a listing-order
-  observation; whether any external-view HUD element renders in that scene is a
-  runtime question.
-- `0x0044fe20`/`0x00450520` (docked/carried parent transform) were not
-  decompiled; the chase camera derives the effective ship basis from the
-  vanilla identity and passes scripted connect modes through.
+- The earlier previous-frame cockpit-scene interpretation and docked/carried
+  label for `0x0044fe20` were disproved by the targeted first-flight study.
+  The exact native branch is known; its owner-type label is not required by
+  the implementation. Quantifying the first flight's node-domain separation
+  and confirming the corrected view's appearance await the next instrumented
+  user run. See [the correction](chase-camera-first-flight.md).

@@ -1,5 +1,6 @@
 #include "chase_camera.h"
 #include "chase_camera_math.h"
+#include "chase_camera_native.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
 #include "object_trace.h"
@@ -25,10 +26,9 @@ constexpr uintptr_t site_va = 0x00420e06;
 constexpr engine_patch::SiteSpec site_spec = {"cockpit_update_pose", site_va, {0x83, 0x7b, 0x54, 0x00, 0x0f, 0x84, 0x09, 0x02, 0x00, 0x00}, 10, 0, 6};
 // Engine layout used by the handler (all from the study; offsets in bytes).
 constexpr uintptr_t default_view_plane_slot = 0x00606f38; // -> struct; +0x28/+0x2c view-plane W/H (16.16)
-constexpr unsigned cockpit_block = 0x200, camera_block = 0x310, node_block = 0x40, scene_camera_block = 0x70;
+constexpr unsigned cockpit_block = 0x200, camera_block = 0x310, scene_camera_block = 0x70;
 constexpr unsigned cockpit_scene_camera = 0x08, cockpit_ref_object = 0x0c, cockpit_view_object = 0x10, cockpit_camera = 0x58, cockpit_view_rel = 0xf0;
 constexpr unsigned cockpit_view_mode = 0x150, cockpit_flags = 0x1a0, cockpit_connect_mode = 0x1c0, cockpit_aim_gun = 0x1d8, cockpit_tracked = 0x1e0, cockpit_tracking_mode = 0x1e4, cockpit_sector = 0x1fc;
-constexpr unsigned object_node = 0x70, node_position = 0xb0, node_basis = 0xc0;
 constexpr unsigned camera_position = 0x30, camera_basis = 0x40, camera_fov = 0x298, camera_plane_w = 0x300, camera_plane_h = 0x304;
 constexpr unsigned max_cockpits_seen = 8;
 
@@ -43,11 +43,7 @@ PoseContinuity continuity;
 SRWLOCK stats_lock = SRWLOCK_INIT;
 Stats stats_;
 uintptr_t cockpits_seen[max_cockpits_seen]; // distinct EBX values since the last report (stats_lock)
-double basis_deviation_deg = 0; // node basis vs the derived ship basis (diagnostic)
-// What cockpit+0xf0 held when the previous invocation for the active cockpit
-// returned (our R_view' when applied, the vanilla R_view otherwise): the value
-// the engine's cockpit-scene camera build (0x00420787) consumed this frame (A5).
-chase::Mat3 prev_view_rel; bool prev_view_rel_known = false;
+double basis_deviation_deg = 0; // exact native basis vs the derived ship basis (diagnostic)
 uintptr_t last_cockpit = 0;
 
 bool writable(uintptr_t address, size_t size) {
@@ -81,17 +77,17 @@ void note_cockpit_seen(uintptr_t cockpit) { // caller holds stats_lock
     ++stats_.cockpits_seen; // counts past the table too, so an overflow is visible
 }
 // A5 (X3M_CHASE_SCENE_FIX=1): the layer-0 cockpit-scene camera (cockpit+8) was
-// built at 0x00420787 from the +0xf0 of the previous frame, i.e. from the value
-// this handler left there. Re-express it through this frame's R_view':
-// basis' = R_view' x R_view_prev^T x basis, and the (shake) position through
+// built at 0x00420787 from this frame's vanilla +0xf0 (recomputed earlier at
+// 0x00422c5c). Re-express it through this frame's R_view':
+// basis' = R_view' x R_view_vanilla^T x basis, and the (shake) position through
 // the same rotation. Returns the correction angle in degrees, or -1 when not applied.
-double fix_scene_camera(uintptr_t cockpit_scene, const chase::Mat3& view_rel_now) {
+double fix_scene_camera(uintptr_t cockpit_scene, const chase::Mat3& view_rel_now, const chase::Mat3& view_rel_vanilla) {
     unsigned char bytes[scene_camera_block];
     if (!cockpit_scene || (cockpit_scene & 3) || !engine_memory::read(cockpit_scene, bytes, scene_camera_block)) return -1.0;
     int32_t rows[12]; std::memcpy(rows, bytes + camera_basis, 48);
     const chase::Mat3 basis = chase::from_fixed(rows);
     if (chase::orthonormality_error(basis) > tunables.max_orthonormality_error) return -1.0;
-    const chase::Mat3 correction = chase::mul(view_rel_now, chase::transpose(prev_view_rel));
+    const chase::Mat3 correction = chase::relative_view_correction(view_rel_now, view_rel_vanilla);
     chase::Mat3 fixed = chase::mul(correction, basis);
     if (!chase::orthonormalize(fixed)) return -1.0;
     int32_t p[3]; std::memcpy(p, bytes + camera_position, 12);
@@ -110,14 +106,14 @@ void publish_pose(bool written, bool snapped = false) {
 void handle(uint32_t* regs) {
     const uintptr_t cockpit = regs[4]; // EBX after pushad: EDI ESI EBP ESP EBX EDX ECX EAX
     chase::Input in; chase::Pose pose; chase::Step result;
-    unsigned char cockpit_bytes[cockpit_block], camera_bytes[camera_block], node_bytes[node_block];
+    unsigned char cockpit_bytes[cockpit_block], camera_bytes[camera_block];
     auto u32 = [](const unsigned char* p, unsigned off) { uint32_t v; std::memcpy(&v, p + off, 4); return v; };
     auto i32 = [](const unsigned char* p, unsigned off) { int32_t v; std::memcpy(&v, p + off, 4); return v; };
     auto rows = [&](const unsigned char* p, unsigned off, int32_t* out) { std::memcpy(out, p + off, 48); };
     if ((cockpit & 3) || !engine_memory::read(cockpit, cockpit_bytes, cockpit_block)) {
         // Unreadable cockpit: which cockpit it was is unknown, so the pipeline
         // takes a gap (the next applied frame snaps) rather than trusting it.
-        chase::note_gap(pipeline); prev_view_rel_known = false;
+        chase::note_gap(pipeline);
         publish_pose(false);
         AcquireSRWLockExclusive(&stats_lock);
         ++stats_.frames; ++stats_.refused; stats_.last_verdict = 100; note_cockpit_seen(cockpit);
@@ -139,13 +135,12 @@ void handle(uint32_t* regs) {
     if (!active) return;
     // Defence in depth behind the predicate: if the active cockpit pointer
     // still changes, a gap keeps two objects' poses and dt out of one spring.
-    if (cockpit != last_cockpit) { last_cockpit = cockpit; chase::note_gap(pipeline); prev_view_rel_known = false; }
+    if (cockpit != last_cockpit) { last_cockpit = cockpit; chase::note_gap(pipeline); }
     const uintptr_t camera = u32(cockpit_bytes, cockpit_camera);
-    uintptr_t node = 0;
+    chase::NativeAnchor anchor;
     bool ok = camera && ref_object && ((camera | ref_object) & 3) == 0;
     if (ok) ok = engine_memory::read(camera, camera_bytes, camera_block);
-    if (ok) ok = engine_memory::read(ref_object + object_node, &node, 4) && node && (node & 3) == 0;
-    if (ok) ok = engine_memory::read(node + node_position, node_bytes, node_block);
+    if (ok) ok = chase::read_native_anchor(ref_object, &engine_memory::read, &anchor);
     uint32_t plane[2] = {0, 0};
     if (ok) {
         uintptr_t defaults = 0;
@@ -156,7 +151,7 @@ void handle(uint32_t* regs) {
     const double dt = qpc_last && now > qpc_last && qpc_frequency ? double(now - qpc_last) / double(qpc_frequency) : 0.0;
     qpc_last = now;
     if (!ok) {
-        chase::note_gap(pipeline); prev_view_rel_known = false;
+        chase::note_gap(pipeline);
         publish_pose(false);
         AcquireSRWLockExclusive(&stats_lock);
         ++stats_.frames; ++stats_.refused; stats_.last_verdict = 100; stats_.dt_ms = dt * 1000.0;
@@ -167,8 +162,10 @@ void handle(uint32_t* regs) {
     rows(camera_bytes, camera_basis, fixed); in.vanilla_cam = chase::from_fixed(fixed);
     rows(cockpit_bytes, cockpit_view_rel, fixed); in.view_rel = chase::from_fixed(fixed);
     in.vanilla_pos = {double(i32(camera_bytes, camera_position)), double(i32(camera_bytes, camera_position + 4)), double(i32(camera_bytes, camera_position + 8))};
-    in.ship_pos = {double(i32(node_bytes, 0)), double(i32(node_bytes, 4)), double(i32(node_bytes, 8))};
-    rows(node_bytes, node_basis - node_position, fixed); const chase::Mat3 node_basis_matrix = chase::from_fixed(fixed);
+    // The anchor must be the one the native camera just followed. On its
+    // base-domain branch node+0xb0 is refreshed later by scene traversal;
+    // treating it as this anchor makes the boom spring absorb that mismatch.
+    in.ship_pos = anchor.position;
     in.view_mode = u32(cockpit_bytes, cockpit_view_mode); in.connect_mode = u32(cockpit_bytes, cockpit_connect_mode);
     in.flags_1a0 = u32(cockpit_bytes, cockpit_flags);
     in.ref_object = ref_object; in.sector = u32(cockpit_bytes, cockpit_sector);
@@ -196,6 +193,7 @@ void handle(uint32_t* regs) {
     const bool derived_ok = chase::orthonormalize(derived);
     const chase::Vec3 boom_local = derived_ok ? chase::mul(in.vanilla_pos - in.ship_pos, chase::transpose(derived)) : chase::Vec3{};
 
+    const uint64_t rotation_clamps_before = pipeline.rotation_clamps, position_clamps_before = pipeline.position_clamps;
     result = chase::step(pipeline, in, dt, tunables, &pose);
     bool written = false, write_refused = false; double scene_fix_deg = -1.0;
     if (result.verdict == chase::Verdict::Applied) {
@@ -212,14 +210,13 @@ void handle(uint32_t* regs) {
                 std::memcpy(reinterpret_cast<void*>(cockpit + cockpit_view_rel + 16 * r), rel_rows + 4 * r, 12);
             }
             written = true;
-            if (scene_fix_enabled && prev_view_rel_known) scene_fix_deg = fix_scene_camera(u32(cockpit_bytes, cockpit_scene_camera), pose.view_rel);
+            if (scene_fix_enabled) scene_fix_deg = fix_scene_camera(u32(cockpit_bytes, cockpit_scene_camera), pose.view_rel, in.view_rel);
         } else {
             write_refused = true;
             chase::note_gap(pipeline);
         }
     }
     publish_pose(written, result.snapped);
-    prev_view_rel = written ? pose.view_rel : in.view_rel; prev_view_rel_known = true;
     AcquireSRWLockExclusive(&stats_lock);
     ++stats_.frames;
     if (written) ++stats_.applied; else ++stats_.refused;
@@ -227,12 +224,36 @@ void handle(uint32_t* regs) {
     if (result.target_locked) ++stats_.locked_frames;
     if (scene_fix_deg >= 0) { ++stats_.scene_fixed; stats_.scene_fix_deg = scene_fix_deg; }
     stats_.snaps = pipeline.snaps; stats_.coalesced = pipeline.coalesced; stats_.clamps = pipeline.clamps;
+    stats_.rotation_clamps += pipeline.rotation_clamps - rotation_clamps_before;
+    stats_.position_clamps += pipeline.position_clamps - position_clamps_before;
     stats_.last_verdict = unsigned(result.verdict); if (result.snapped || result.coalesced) stats_.last_snap_reason = result.snap_reason;
     stats_.view_mode = in.view_mode; stats_.connect_mode = in.connect_mode; stats_.flags_1a0 = in.flags_1a0; stats_.tracking_mode = tracking_mode; stats_.target_locked = in.target_locked;
     stats_.lag_deg = result.lag_deg; stats_.pos_lag = result.pos_lag; stats_.distance = result.distance; stats_.dt_ms = dt * 1000.0;
     stats_.half_vfov_tan = in.half_vfov_tan; stats_.boom_local[0] = boom_local.x; stats_.boom_local[1] = boom_local.y; stats_.boom_local[2] = boom_local.z;
     if (written) {
-        basis_deviation_deg = derived_ok && chase::orthonormality_error(node_basis_matrix) < 0.05 ? angle_between_deg(derived, node_basis_matrix) : -1.0;
+        basis_deviation_deg = anchor.basis_valid && derived_ok && chase::orthonormality_error(anchor.basis) < 0.05 ? angle_between_deg(derived, anchor.basis) : -1.0;
+        stats_.native_base_domain = anchor.base_domain;
+        stats_.domain_delta = anchor.render_position_valid ? chase::length(anchor.position - anchor.render_position) : -1.0;
+        stats_.render_basis_deviation = anchor.render_basis_valid && derived_ok && chase::orthonormality_error(anchor.render_basis) < 0.05 ? angle_between_deg(derived, anchor.render_basis) : -1.0;
+        if (anchor.render_position_valid) {
+            if (!stats_.window_domain_samples) stats_.domain_delta_min = stats_.domain_delta_max = stats_.domain_delta;
+            else {
+                stats_.domain_delta_min = std::fmin(stats_.domain_delta_min, stats_.domain_delta);
+                stats_.domain_delta_max = std::fmax(stats_.domain_delta_max, stats_.domain_delta);
+            }
+            ++stats_.window_domain_samples;
+        }
+        if (!stats_.window_applied) {
+            stats_.rotation_lag_min = stats_.rotation_lag_max = result.lag_deg;
+            stats_.position_lag_min = stats_.position_lag_max = result.pos_lag;
+        } else {
+            stats_.rotation_lag_min = std::fmin(stats_.rotation_lag_min, result.lag_deg);
+            stats_.rotation_lag_max = std::fmax(stats_.rotation_lag_max, result.lag_deg);
+            stats_.position_lag_min = std::fmin(stats_.position_lag_min, result.pos_lag);
+            stats_.position_lag_max = std::fmax(stats_.position_lag_max, result.pos_lag);
+        }
+        ++stats_.window_applied;
+        if (anchor.base_domain) ++stats_.window_base_domain;
         if (!stats_.first.captured) {
             FirstApplied& f = stats_.first;
             f.captured = true; f.handler_frame = stats_.frames; f.half_vfov_tan = in.half_vfov_tan;
@@ -240,6 +261,7 @@ void handle(uint32_t* regs) {
             f.fov298 = fov298; f.plane_w = uint32_t(w); f.plane_h = uint32_t(h); f.default_plane_h = plane[1];
             f.view_mode = in.view_mode; f.connect_mode = in.connect_mode; f.flags_1a0 = in.flags_1a0; f.tracking_mode = tracking_mode; f.aim_gun = u32(cockpit_bytes, cockpit_aim_gun);
             f.ref_object = ref_object; f.view_object = view_object; f.tracked_object = tracked; f.target_locked = in.target_locked;
+            f.native_base_domain = anchor.base_domain; f.domain_delta = stats_.domain_delta;
         }
     }
     ReleaseSRWLockExclusive(&stats_lock);
@@ -386,6 +408,8 @@ void report(std::uint64_t frame) {
     s = stats_; deviation = basis_deviation_deg;
     stats_.cockpits_seen = 0; // per report window
     stats_.timed_calls = stats_.handler_ticks = stats_.handler_max_ticks = 0;
+    stats_.window_applied = stats_.window_base_domain = stats_.window_domain_samples = 0;
+    stats_.rotation_clamps = stats_.position_clamps = 0;
     if (stats_.first.captured && !stats_.first.logged) stats_.first.logged = true;
     ReleaseSRWLockExclusive(&stats_lock);
     s.requested = requested_; s.installed = site.patched_in; s.status = state.load(); s.atomic_write = unsigned(site.atomic_write);
@@ -399,12 +423,20 @@ void report(std::uint64_t frame) {
     if (s.first.captured && !s.first.logged) {
         const FirstApplied& f = s.first;
         log("chase_camera first_applied frame=%llu handler_frame=%llu half_vfov_tan=%.4f fov298=0x%lx plane_w=0x%lx plane_h=0x%lx default_plane_h=0x%lx mode=%lu connect=%lu flags_1a0=0x%lx "
-            "tracking=%lu aim_gun=0x%lx tracked=0x%08lx locked=%u ref=0x%08lx view_obj=0x%08lx boom_local=%.1f,%.1f,%.1f cockpits_seen=%u",
+            "tracking=%lu aim_gun=0x%lx tracked=0x%08lx locked=%u ref=0x%08lx view_obj=0x%08lx boom_local=%.1f,%.1f,%.1f cockpits_seen=%u native_branch=%s domain_delta=%.1f",
             frame, f.handler_frame, f.half_vfov_tan, static_cast<unsigned long>(f.fov298), static_cast<unsigned long>(f.plane_w), static_cast<unsigned long>(f.plane_h),
             static_cast<unsigned long>(f.default_plane_h), static_cast<unsigned long>(f.view_mode), static_cast<unsigned long>(f.connect_mode), static_cast<unsigned long>(f.flags_1a0),
             static_cast<unsigned long>(f.tracking_mode), static_cast<unsigned long>(f.aim_gun), static_cast<unsigned long>(f.tracked_object), unsigned(f.target_locked),
-            static_cast<unsigned long>(f.ref_object), static_cast<unsigned long>(f.view_object), f.boom_local[0], f.boom_local[1], f.boom_local[2], s.cockpits_seen);
+            static_cast<unsigned long>(f.ref_object), static_cast<unsigned long>(f.view_object), f.boom_local[0], f.boom_local[1], f.boom_local[2], s.cockpits_seen,
+            f.native_base_domain ? "base" : "render", f.domain_delta);
     }
+    log("chase_camera_window frame=%llu applied=%llu native_base=%llu native_render=%llu native_branch=%s domain_delta=%.1f domain_samples=%llu domain_delta_min=%.1f domain_delta_max=%.1f "
+        "native_basis_dev_deg=%.4f render_basis_dev_deg=%.4f rotation_clamps=%llu position_clamps=%llu rotation_lag_min=%.3f rotation_lag_max=%.3f position_lag_min=%.1f position_lag_max=%.1f",
+        frame, s.window_applied, s.window_base_domain, s.window_applied - s.window_base_domain, s.native_base_domain ? "base" : "render",
+        s.domain_delta, s.window_domain_samples, s.window_domain_samples ? s.domain_delta_min : 0.0, s.window_domain_samples ? s.domain_delta_max : 0.0,
+        deviation, s.render_basis_deviation, s.rotation_clamps, s.position_clamps,
+        s.window_applied ? s.rotation_lag_min : 0.0, s.window_applied ? s.rotation_lag_max : 0.0,
+        s.window_applied ? s.position_lag_min : 0.0, s.window_applied ? s.position_lag_max : 0.0);
     log("chase_camera frame=%llu status=%s frames=%llu applied=%llu refused=%llu refused_inactive=%llu cockpits_seen=%u snaps=%llu coalesced=%llu clamps=%llu write_refused=%llu "
         "verdict=%lu snap_reason=%lu mode=%lu connect=%lu flags_1a0=0x%lx tracking=%lu locked=%u locked_frames=%llu lag_deg=%.3f pos_lag=%.1f distance=%.1f dt_ms=%.3f "
         "basis_dev_deg=%.3f half_vfov_tan=%.4f boom_local=%.1f,%.1f,%.1f scene_fixed=%llu scene_fix_deg=%.3f",

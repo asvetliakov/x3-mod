@@ -1,0 +1,259 @@
+{
+  "baseline": {
+    "dll": {
+      "bytes": 11587494,
+      "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-pre-chase-feedback-zqlxnisq/d3d9.dll",
+      "sha256": "47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad"
+    },
+    "installed_dll_at_prepare": {
+      "bytes": 11587494,
+      "sha256": "47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad"
+    },
+    "qualification_commit": "2e5f1af"
+  },
+  "binary_audits": {
+    "chase_entry": {
+      "fast_math": false,
+      "full_cpu_boundary": true,
+      "initial_assertion_note": {
+        "effect": "Local post-processing only; no production change and no build or runtime rerun.",
+        "initial_assertion": "The first audit script incorrectly required exactly two ldmxcsr instructions and exited nonzero.",
+        "reason_three_is_correct": "The retained object has three valid ldmxcsr sites: one loads the local 0x1f80 environment before the timed handler, and the normal and exception-cleanup exits each restore the saved MXCSR value.",
+        "retained_disassembly": {
+          "path": "/tmp/x3-chase-feedback-qualification/chase-camera-objdump.txt",
+          "sha256": "4fdd2242e2f4de1716b8ee15528bef42de665bdf194a69844b85a7bd0cad7c71"
+        },
+        "stderr_retained": false
+      },
+      "record": {
+        "bytes": 844,
+        "path": "/tmp/x3-chase-feedback-qualification/chase-entry-audit.json",
+        "sha256": "0d49d4547d649c6166000ad995b2e59d8dc489430ad05abeccd06abbdfd93b74"
+      },
+      "required_sse2_stack_flags": true,
+      "result": "PASS"
+    },
+    "light_no_x87": {
+      "reachable_functions": 211,
+      "record": {
+        "bytes": 5403,
+        "path": "/tmp/x3-chase-feedback-qualification/no-x87.json",
+        "sha256": "d341d11c78034934ba6fc2ae2c160cc9394e5f25b09fdfa0bad8738e253109bf"
+      },
+      "result": "PASS",
+      "violations": 0
+    },
+    "pe_objects_imports_exports": {
+      "chase_object_count": 1,
+      "exports": 17,
+      "exports_equal_baseline": true,
+      "forbidden_bloom_or_bridge_objects": 0,
+      "import_dlls": 14,
+      "imports": 192,
+      "imports_equal_baseline": true,
+      "machine": "0x014c",
+      "objects": 41,
+      "record": {
+        "bytes": 12455,
+        "path": "verification/results/chase-feedback-pe-audit.json",
+        "sha256": "cc7af7d536c69f5b5efeead5a55f21edc608952efe0367f09adfcc3763f563c7"
+      },
+      "result": "PASS"
+    }
+  },
+  "candidate": {
+    "build_dll_matches_retained": true,
+    "build_log": {
+      "bytes": 3532,
+      "path": "/tmp/x3-chase-feedback-qualification/clean-build.log",
+      "sha256": "18c77d624d6b2f6586c8b734bd7f8098925752ee005b09700607123a23468782"
+    },
+    "compiler_diagnostics": 0,
+    "dll": {
+      "bytes": 11606225,
+      "path": "/tmp/x3-chase-feedback-qualification/candidate/d3d9.dll",
+      "sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01"
+    }
+  },
+  "committed": false,
+  "game_launched": false,
+  "host": {
+    "camera_and_site": {
+      "camera_tests": 37,
+      "log": {
+        "bytes": 144,
+        "path": "/tmp/x3-chase-feedback-qualification/camera-site-tests.log",
+        "sha256": "66b106b08c27b1f657403be132f96f6b716d8d530f5182584be9b682e4e848ec"
+      },
+      "result": "PASS",
+      "site_tests": 8,
+      "tests": 45
+    },
+    "cli_dry_run": {
+      "chase_default": {
+        "bytes": 1998,
+        "path": "/tmp/x3-chase-feedback-qualification/cli-chase-default.json",
+        "sha256": "e4c58b6ca4d615cf4b4c352e685ef40799810147b501bff51db7a6b3dd27ca29"
+      },
+      "chase_offset_0_12": {
+        "bytes": 2032,
+        "path": "/tmp/x3-chase-feedback-qualification/cli-chase-offset.json",
+        "sha256": "14cfc633d867534cc7d9e555b61ac2d10c30edc7f7521c3ade4e840c0693b647"
+      },
+      "compiled_default_offset_y": 0.45,
+      "help": {
+        "bytes": 20837,
+        "path": "/tmp/x3-chase-feedback-qualification/cli-help.txt",
+        "sha256": "8302ee05c312fa4f9af2e7e80df6bd4c7be8af47cd196ec7eb1fda2ce8b8d003"
+      },
+      "launches_game": false,
+      "projected_vertical_position": 0.725,
+      "result": "PASS",
+      "vanilla": {
+        "bytes": 2000,
+        "path": "/tmp/x3-chase-feedback-qualification/cli-vanilla.json",
+        "sha256": "7e328c9b142fc486d9d2d5c6343a8ae655cf1724ecee8db841b2a732b163aa73"
+      }
+    },
+    "full_discovery": {
+      "log": {
+        "bytes": 9039,
+        "path": "/tmp/x3-chase-feedback-qualification/full-host-tests.log",
+        "sha256": "4af2508468005c459293d4799717ee8b28ef055cda0483b11975758c7df1bda0"
+      },
+      "result": "PASS",
+      "seconds": 47.571,
+      "tests": 972
+    },
+    "installed_executable_site": {
+      "checks": 9,
+      "passed": 9,
+      "record": {
+        "bytes": 1653,
+        "path": "/tmp/x3-chase-feedback-qualification/site-probe.json",
+        "sha256": "dc14432804e9e6ea57be1e47203bb33923e658fc88e63bc4fe8e11f9d1717d54"
+      },
+      "result": "PASS"
+    }
+  },
+  "installed": false,
+  "limitations": [
+    "The x86 control uses synthetic exact-header memory and the portable pipeline; it does not hold a live game object or execute production engine writes.",
+    "The DLL export fixture proves X3/FEX load and default-off integration, not live camera behavior.",
+    "Corrected camera placement, HUD/aim alignment, view transitions, device recreation, and native Windows behavior remain pending user/runtime acceptance."
+  ],
+  "local_evidence": {
+    "bytes": 8153,
+    "path": "/tmp/x3-chase-feedback-qualification/local-evidence-manifest.json",
+    "sha256": "003a33ab091c936f7671f5b08e4f4880b350fa46d9f16057ba28028d8a35731a"
+  },
+  "performance_review": {
+    "active_handler_change": "required native-anchor reads plus optional diagnostics; window-local counters",
+    "allocations_per_frame": 0,
+    "d3d_calls_added": 0,
+    "measurement_limit": "No gameplay FPS or live handler cost measured.",
+    "renderer_per_draw_work_added": 0
+  },
+  "preflight_note": {
+    "actual_competing_process_found": false,
+    "captured_pid": 29589,
+    "captured_ppid": null,
+    "corrected_export_preflight": {
+      "bytes": 320,
+      "path": "/tmp/x3-chase-feedback-qualification/exports-preflight.json",
+      "sha256": "f53d152195af0ade5d0bdaae67776964526ca1f79adb0f3357b24d791abf042c"
+    },
+    "record": {
+      "bytes": 635,
+      "path": "/tmp/x3-chase-feedback-qualification/preflight-anomaly.json",
+      "sha256": "4609c9f353894ad1fb28038cabf575594815114510355e14ca0f535181249736"
+    },
+    "summary": "shell lacked fail-fast and continued; authorized Wine control passed; no rerun"
+  },
+  "result": "PASS",
+  "schema": 1,
+  "scope": "X3-only bounded qualification of the chase first-flight correction",
+  "source_binding": {
+    "analysis_inputs": 75,
+    "before_after_equal": true,
+    "build_inputs": 158,
+    "documentation_note": "Reviewer prose edits were allowed during execution and are outside the executable-source equality gate.",
+    "frozen_manifest": {
+      "bytes": 40561,
+      "path": "verification/results/chase-feedback-inputs.json",
+      "sha256": "d811ab2566788ccb4b05070e0419091ef0ff0e48cc3d3510447713b70b3a77da"
+    },
+    "new_headers_present": [
+      "src/proxy/chase_camera_native.h",
+      "verification/probe/chase_camera_native_host.h"
+    ],
+    "scoped_extra_inputs": 11
+  },
+  "x3_runtime": {
+    "activities": 2,
+    "bottle": {
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      },
+      "name": "X3",
+      "wine_arch": "arm64"
+    },
+    "dll_export_load_smoke": {
+      "candidate_before_after_equal": true,
+      "cases": 2,
+      "checks": 16,
+      "copied_case_dlls_match_candidate": true,
+      "exports": 17,
+      "result": "PASS",
+      "retained_manifest": {
+        "bytes": 2091,
+        "path": "/tmp/x3-chase-feedback-qualification/retained-exports.json",
+        "sha256": "49c5c5270641017cbdd9da8773a963027c72e4747cfe361495733b0dc7f949f0"
+      },
+      "runner_summary": {
+        "bytes": 26373,
+        "path": "verification/results/bottle-X3/d3d9-exports-summary.json",
+        "sha256": "5dd1778bed4bb7f26ea7361aa515a81bc7fbac0e7bd097dfe028d0e4a8610098"
+      }
+    },
+    "final_game_guard": [],
+    "final_lock_released": true,
+    "host_control": {
+      "current_anchor_error": 0.0,
+      "default_offset_y": 0.45,
+      "executable": {
+        "bytes": 12036717,
+        "path": "/tmp/x3-chase-feedback-qualification/chase-camera-host.exe",
+        "sha256": "5e523f9872d57e6dbf5fd92d9294909826df3228e70967ad2e7da12717355f16"
+      },
+      "input": {
+        "bytes": 76,
+        "path": "/tmp/x3-chase-feedback-qualification/chase-camera-input.txt",
+        "sha256": "3124ffe0a67015d1f1f3011287dc96979a3362a238babac0e6e8da39703bd10a"
+      },
+      "long_run": {
+        "applied": 100000,
+        "final_lag_deg": 10.0,
+        "max_identity": 6.66e-16,
+        "max_lag_deg": 10.000000000000004,
+        "max_ortho": 1.11e-15,
+        "refused": 0,
+        "snaps": 1
+      },
+      "long_run_note": "The explicit T line used a 10-degree clamp; default 8-degree behavior is covered by focused host tests.",
+      "native_checks": 16,
+      "native_failures": 0,
+      "old_anchor_error": 199.3429565030201,
+      "record": {
+        "bytes": 1779,
+        "path": "/tmp/x3-chase-feedback-qualification/x3-host-control.json",
+        "sha256": "82b6657f1e876eed551a026d2ef73a26946f43fc0228812f83494948fa48dde8"
+      },
+      "result": "PASS",
+      "scene_current_error": 1.6653345369377348e-16,
+      "scene_previous_error": 0.2942332124660243
+    },
+    "wine_lock_holder": "chase-first-flight-fix"
+  }
+}

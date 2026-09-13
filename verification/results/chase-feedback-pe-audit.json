@@ -1,0 +1,383 @@
+{
+  "passed": true,
+  "candidate": {
+    "path": "/Users/asvetl/x3-mod/build/d3d9.dll",
+    "sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01",
+    "bytes": 11606225
+  },
+  "baseline": {
+    "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-pre-chase-feedback-zqlxnisq/d3d9.dll",
+    "sha256": "47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad"
+  },
+  "imports_identical": true,
+  "imports": {
+    "advapi32.dll": [
+      "CryptAcquireContextW",
+      "CryptCreateHash",
+      "CryptDestroyHash",
+      "CryptGetHashParam",
+      "CryptHashData",
+      "CryptReleaseContext",
+      "RegCloseKey",
+      "RegOpenKeyA",
+      "RegQueryValueExA"
+    ],
+    "kernel32.dll": [
+      "AcquireSRWLockExclusive",
+      "AcquireSRWLockShared",
+      "CloseHandle",
+      "CreateDirectoryW",
+      "CreateEventA",
+      "CreateEventW",
+      "CreateFileW",
+      "CreateSemaphoreA",
+      "CreateThread",
+      "CreateToolhelp32Snapshot",
+      "DeleteCriticalSection",
+      "DisableThreadLibraryCalls",
+      "DuplicateHandle",
+      "EnterCriticalSection",
+      "FlushInstructionCache",
+      "FormatMessageA",
+      "FreeLibrary",
+      "GetCurrentProcess",
+      "GetCurrentProcessId",
+      "GetCurrentThread",
+      "GetCurrentThreadId",
+      "GetEnvironmentVariableW",
+      "GetFileSizeEx",
+      "GetLastError",
+      "GetLocalTime",
+      "GetModuleFileNameW",
+      "GetModuleHandleA",
+      "GetModuleHandleExA",
+      "GetModuleHandleExW",
+      "GetModuleHandleW",
+      "GetProcAddress",
+      "GetProcessAffinityMask",
+      "GetProcessHeap",
+      "GetSystemDirectoryW",
+      "GetSystemInfo",
+      "GetSystemTimeAsFileTime",
+      "GetThreadContext",
+      "GetThreadPriority",
+      "GetThreadTimes",
+      "GetTickCount",
+      "GetWindowsDirectoryW",
+      "HeapAlloc",
+      "HeapFree",
+      "HeapSize",
+      "InitOnceExecuteOnce",
+      "InitializeCriticalSection",
+      "IsProcessorFeaturePresent",
+      "LeaveCriticalSection",
+      "LoadLibraryExW",
+      "LocalFree",
+      "Module32FirstW",
+      "Module32NextW",
+      "MultiByteToWideChar",
+      "OpenProcess",
+      "OpenThread",
+      "OutputDebugStringA",
+      "QueryPerformanceCounter",
+      "QueryPerformanceFrequency",
+      "RaiseException",
+      "ReadFile",
+      "ReadProcessMemory",
+      "ReleaseSRWLockExclusive",
+      "ReleaseSRWLockShared",
+      "ReleaseSemaphore",
+      "ResetEvent",
+      "ResumeThread",
+      "SetEvent",
+      "SetLastError",
+      "SetProcessAffinityMask",
+      "SetThreadContext",
+      "SetThreadPriority",
+      "Sleep",
+      "SuspendThread",
+      "Thread32First",
+      "Thread32Next",
+      "TlsAlloc",
+      "TlsGetValue",
+      "TlsSetValue",
+      "TryEnterCriticalSection",
+      "VirtualAlloc",
+      "VirtualFree",
+      "VirtualProtect",
+      "VirtualQuery",
+      "WaitForMultipleObjects",
+      "WaitForSingleObject",
+      "WideCharToMultiByte",
+      "WriteFile",
+      "lstrcmpiW"
+    ],
+    "api-ms-win-crt-convert-l1-1-0.dll": [
+      "mbrtowc",
+      "mbsrtowcs",
+      "strtof",
+      "strtoul",
+      "wcrtomb",
+      "wcstod",
+      "wcstoul"
+    ],
+    "api-ms-win-crt-environment-l1-1-0.dll": [
+      "getenv"
+    ],
+    "api-ms-win-crt-filesystem-l1-1-0.dll": [
+      "_lock_file",
+      "_unlock_file"
+    ],
+    "api-ms-win-crt-heap-l1-1-0.dll": [
+      "calloc",
+      "free",
+      "malloc",
+      "realloc"
+    ],
+    "api-ms-win-crt-locale-l1-1-0.dll": [
+      "___lc_codepage_func",
+      "___mb_cur_max_func",
+      "localeconv"
+    ],
+    "api-ms-win-crt-math-l1-1-0.dll": [
+      "__setusermatherr",
+      "acos",
+      "atan",
+      "cos",
+      "exp",
+      "exp2f",
+      "fmax",
+      "fmin",
+      "log2f",
+      "nearbyint",
+      "pow",
+      "sin",
+      "sqrt",
+      "tan"
+    ],
+    "api-ms-win-crt-private-l1-1-0.dll": [
+      "_setjmp3",
+      "longjmp",
+      "memchr",
+      "memcmp",
+      "memcpy",
+      "memmove",
+      "strchr"
+    ],
+    "api-ms-win-crt-runtime-l1-1-0.dll": [
+      "_assert",
+      "_beginthreadex",
+      "_endthreadex",
+      "_errno",
+      "_execute_onexit_table",
+      "_exit",
+      "_initialize_onexit_table",
+      "_initterm",
+      "_initterm_e",
+      "_register_onexit_function",
+      "abort",
+      "strerror"
+    ],
+    "api-ms-win-crt-stdio-l1-1-0.dll": [
+      "__acrt_iob_func",
+      "__stdio_common_vfprintf",
+      "__stdio_common_vfwprintf",
+      "__stdio_common_vsprintf",
+      "__stdio_common_vswprintf",
+      "_fileno",
+      "_read",
+      "_setmode",
+      "_wfopen",
+      "fclose",
+      "fflush",
+      "fputc",
+      "fputs",
+      "fputwc",
+      "fwrite",
+      "setvbuf"
+    ],
+    "api-ms-win-crt-string-l1-1-0.dll": [
+      "_strdup",
+      "_stricmp",
+      "_wcsicmp",
+      "_wcsnicmp",
+      "memset",
+      "strcmp",
+      "strlen",
+      "strncmp",
+      "strnlen",
+      "wcscmp",
+      "wcscpy",
+      "wcslen",
+      "wcsnlen"
+    ],
+    "api-ms-win-crt-utility-l1-1-0.dll": [
+      "rand_s"
+    ],
+    "user32.dll": [
+      "GetAncestor",
+      "GetAsyncKeyState",
+      "GetClientRect",
+      "GetClipCursor",
+      "GetCursorInfo",
+      "GetFocus",
+      "GetForegroundWindow",
+      "GetGUIThreadInfo",
+      "GetMonitorInfoW",
+      "GetWindowLongW",
+      "GetWindowRect",
+      "GetWindowThreadProcessId",
+      "IsIconic",
+      "IsWindowVisible",
+      "MonitorFromWindow"
+    ]
+  },
+  "exports_identical": true,
+  "exports": [
+    [
+      "D3DPERF_BeginEvent",
+      1,
+      null
+    ],
+    [
+      "D3DPERF_EndEvent",
+      2,
+      null
+    ],
+    [
+      "D3DPERF_GetStatus",
+      3,
+      null
+    ],
+    [
+      "D3DPERF_QueryRepeatFrame",
+      4,
+      null
+    ],
+    [
+      "D3DPERF_SetMarker",
+      5,
+      null
+    ],
+    [
+      "D3DPERF_SetOptions",
+      6,
+      null
+    ],
+    [
+      "D3DPERF_SetRegion",
+      7,
+      null
+    ],
+    [
+      "DebugSetLevel",
+      8,
+      null
+    ],
+    [
+      "DebugSetMute",
+      9,
+      null
+    ],
+    [
+      "Direct3D9EnableMaximizedWindowedModeShim",
+      10,
+      null
+    ],
+    [
+      "Direct3DCreate9",
+      11,
+      null
+    ],
+    [
+      "Direct3DCreate9Ex",
+      12,
+      null
+    ],
+    [
+      "Direct3DCreate9On12",
+      13,
+      null
+    ],
+    [
+      "Direct3DCreate9On12Ex",
+      14,
+      null
+    ],
+    [
+      "Direct3DShaderValidatorCreate9",
+      15,
+      null
+    ],
+    [
+      "PSGPError",
+      16,
+      null
+    ],
+    [
+      "PSGPSampleTexture",
+      17,
+      null
+    ]
+  ],
+  "machine": "0x014c",
+  "object_count": 41,
+  "objects": {
+    "CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj": "8d0ba664b6bef7be293b0235a1a6cd6fd38321e5663310c736efc1b4daf31c24",
+    "CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj": "ada6811b348a6be82b774b7ab813f510f0483a40c134c5abb44574f9e91bd131",
+    "CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj": "def2a81672b90f0359747ebbc93071e38e164254d7cf119b686f68d7d585f270",
+    "CMakeFiles/d3d9.dir/src/proxy/motion_capture.cpp.obj": "9bc51aa376d0a8d405e5b95ba0b6142f94de171312c2fffe9e6e4173ef2f2ac2",
+    "CMakeFiles/d3d9.dir/src/ownership/execution_state.cpp.obj": "e93692985d1ae889146d683bda937545c070d29b14ec56999465d97f5e4872ca",
+    "CMakeFiles/d3d9.dir/src/ownership/application_admission.cpp.obj": "5e143e08adf8476a93dd29583c8dfbbbedc43c285caf7aa818c728fd0366f43a",
+    "CMakeFiles/d3d9.dir/src/ownership/application_admission_abi.cpp.obj": "d71ebe7fb35bbe5f096e83d8b57aa8587fcf958d0fa5a3fcdaa8e7714fcb887c",
+    "CMakeFiles/d3d9.dir/src/proxy/scene_capture.cpp.obj": "10ca2ffe566e067cd2ed9e4c2a9f4ba426f8c7a4ac1ee201dafee135feffb361",
+    "CMakeFiles/d3d9.dir/src/proxy/object_trace.cpp.obj": "a7ac9a6867837069477f8b4de2dbc7fbf778aaf8162918a23f9ed34dfbe85a74",
+    "CMakeFiles/d3d9.dir/src/proxy/scene_hook.cpp.obj": "db7af04e790bdf1c73c5624ad63ff8fd4f7e76324e6d70d00bbad1d701cd408d",
+    "CMakeFiles/d3d9.dir/src/proxy/camera_state.cpp.obj": "72da284c92544533d9fe8147122d09a12b025bec3ca20358f433f353f224ae78",
+    "CMakeFiles/d3d9.dir/src/proxy/chase_camera.cpp.obj": "d506fe8b828b94498865653dac5e43879e0644d1d895b8abcb5b188de36a247f",
+    "CMakeFiles/d3d9.dir/src/proxy/telemetry.cpp.obj": "a806d634323117029c0497ffdb43b3073db7f289b784d6d719a31c797f09c8f2",
+    "CMakeFiles/d3d9.dir/src/proxy/engine_memory.cpp.obj": "a378ecb77c4498bb56115a22739497f1fa05afdd2a6ab217917455dcd5f60069",
+    "CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj": "bec925bd5fe8b94fe74928d4afcd656e1f565ff24114ea1c2b223ce668b469dc",
+    "CMakeFiles/d3d9.dir/src/proxy/loading_trace_light.cpp.obj": "1ccfdb2b22c307b5df7ac103df6e4aa303107236c85c60ca1f3e8dd37e34cc38",
+    "CMakeFiles/d3d9.dir/src/proxy/gz_buffer.cpp.obj": "6f08feb1c2b3a21963d6d518489058a619f469643945c17618c36e02dcd981e6",
+    "CMakeFiles/d3d9.dir/src/proxy/crypt_cache.cpp.obj": "50ec6609e4bdf42dff00a478f8e4827308a1cb8b4c3030d0d9c7dbedb81e5211",
+    "CMakeFiles/d3d9.dir/src/proxy/sampling_profiler.cpp.obj": "0be36613484dc48b5d1cb7e97ca78293912814a65c49ff50c41fca5208447c50",
+    "CMakeFiles/d3d9.dir/src/ownership/d3d9_ownership.cpp.obj": "f791b44ac0df1494cdab5e041e4e6878575ed568d9267c1fa682e397e9561703",
+    "CMakeFiles/d3d9.dir/src/proxy/engine_patch.cpp.obj": "8cb3b2b59b0a9938248f782fa5284cf3c54d25adb60428efa1f45efc0a63fd62",
+    "CMakeFiles/d3d9.dir/src/proxy/loading_probes.cpp.obj": "a2a857fa401c1b9f19cd6e0174067c2f2e150aae6210d1c9cf0ad64c6219ac69",
+    "CMakeFiles/d3d9.dir/src/proxy/resource_reader.cpp.obj": "e3883343f307d08291c022ecb2ddec31d95df6f0c72fdea0f65944b7ee88f5c3",
+    "CMakeFiles/d3d9.dir/src/proxy/resource_reader_core.cpp.obj": "456938b8f6454475ca0f516583a6bec4518c0a48411fc392e5b6dd62b15a1ba2",
+    "CMakeFiles/d3d9.dir/src/ownership/finite_buffer_evidence.cpp.obj": "828033f9b3d0bf76b7217380276e767a31ac75d202f2d0640eb6377cc83f1d33",
+    "CMakeFiles/d3d9.dir/src/ownership/portable_managed_upload.cpp.obj": "1e614df3985a3228d3c32cd24421f48cebbe629f87010e5ddc971e5d3cfbc357",
+    "CMakeFiles/d3d9.dir/src/proxy/draw_input.cpp.obj": "0267ad476b08dbda840478d10700da4f2b1b60dd7353a7c097b34d282f68ec0e",
+    "CMakeFiles/d3d9.dir/src/proxy/object_lifetime.cpp.obj": "4383d4f8b3957e77318424d3703b8cccb07b530c5cd0013fcd72ab2417ada4f6",
+    "CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_cache.cpp.obj": "50685d3dc4f71872d4cffc8d27aacf885fa85217adcd0462f7604c51d2801cbd",
+    "CMakeFiles/d3d9.dir/src/proxy/mesh_adjacency_fast.cpp.obj": "b7ca5b089e2d1fe33780c7e9805c9e0e1684415bc78d39d71afd4bce273f0dd8",
+    "CMakeFiles/d3d9.dir/src/renderer/temporal_pass.cpp.obj": "1566e26342d0de8f758b8359e20c46e773454a6032de4f123cf0faafc35b7288",
+    "CMakeFiles/d3d9.dir/src/renderer/hdr_pass.cpp.obj": "d9de4f3ea6ec31fe0b988bb2dceec2691e35e681e86b70081d7e7b36df41ae64",
+    "CMakeFiles/d3d9.dir/src/renderer/exposure.cpp.obj": "d4f582d1f6e093909441ea1642ad3d6521aa640dd880cebd4a3cc0464a00f37e",
+    "CMakeFiles/d3d9.dir/src/renderer/material_radiance.cpp.obj": "c4f2f351bea47ef4dd3a6a14e730fbd92ab4cb1113996fb91663713b201e92aa",
+    "CMakeFiles/d3d9.dir/src/renderer/motion_history.cpp.obj": "7920a0e0dbd87d773b54ffe3249c8bb5302aa4fa3a850ee6233e2a3309d33215",
+    "CMakeFiles/d3d9.dir/src/renderer/rigid_position.cpp.obj": "d0b8398e90b1e246155e9a4db6a3d32e5eabf44052a1d8957cc3a0a3101a1859",
+    "CMakeFiles/d3d9.dir/src/renderer/material_motion.cpp.obj": "3750dae3b9b5a009ba96879b0994e6b4a3dc33636cefc45d485cb5244a1c7ae3",
+    "CMakeFiles/d3d9.dir/src/renderer/motion_row_history.cpp.obj": "ee3485b58e50197a00171118b28084777b7d392146c5ed444c1f6274750686a6",
+    "CMakeFiles/d3d9.dir/src/proxy/motion_output.cpp.obj": "8cf62e629322813db44c2f90867b29fc05a8b3027edc0e8f8dc503ebbfdd0e7d",
+    "CMakeFiles/d3d9.dir/src/renderer/rigid_motion.cpp.obj": "7f46a90ad6c14a0e188051843d5b9f3ff4ef0decba38d173486afde236fbdf93",
+    "CMakeFiles/d3d9.dir/src/renderer/rigid_replay_program.cpp.obj": "dac1bf14890a6e26fa4c036acda6e5916a4704f4d177beadb7af80ea26b0478a"
+  },
+  "object_rsp_disk_archive_equal": true,
+  "archive_member_bytes_equal": true,
+  "chase_object_count": 1,
+  "bloom_bridge_linked": false,
+  "flags_sha256": "0d8578ee866175dcdc83652e92e7131d9d243deadae4e15b5fe59ef2bc1b8cf6",
+  "required_flags": [
+    "-msse2",
+    "-mfpmath=sse",
+    "-mstackrealign",
+    "-mincoming-stack-boundary=2"
+  ],
+  "audit_tools": {
+    "tools/analysis/inspect_x3.py": "5edef4524346b9ac0c80818b98a1ee6da03d3f86ceb0f453cc8d962928b93686",
+    "tools/analysis/pe_exports.py": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea"
+  }
+}

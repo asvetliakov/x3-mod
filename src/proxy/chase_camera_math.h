@@ -37,6 +37,11 @@ inline Mat3 mul(const Mat3& a, const Mat3& b) { // (a*b): rows of a re-expressed
     return r;
 }
 inline Vec3 mul(Vec3 v, const Mat3& b) { return {v.x * b.m[0][0] + v.y * b.m[1][0] + v.z * b.m[2][0], v.x * b.m[0][1] + v.y * b.m[1][1] + v.z * b.m[2][1], v.x * b.m[0][2] + v.y * b.m[1][2] + v.z * b.m[2][2]}; }
+// The cockpit-scene camera already contains this frame's vanilla view basis.
+// Re-express it through the replacement view, preserving its shake transform.
+inline Mat3 relative_view_correction(const Mat3& replacement, const Mat3& vanilla) {
+    return mul(replacement, transpose(vanilla));
+}
 inline bool finite(const Mat3& a) { for (auto& r : a.m) for (double v : r) if (!std::isfinite(v)) return false; return true; }
 inline double determinant(const Mat3& a) { return dot(row(a, 0), cross(row(a, 1), row(a, 2))); }
 // Gram-Schmidt on the forward/up rows (forward kept), right = up x forward for a
@@ -155,7 +160,7 @@ inline bool clamp_spring(Spring& s, double limit) {
 struct Tunables {
     double rot_tau = 0.15;          // s, orientation spring time constant (X3M_CHASE_ROT_TAU)
     double pos_tau = 0.20;          // s, boom-offset spring time constant (X3M_CHASE_POS_TAU)
-    double offset_y = 0.12;         // fraction of the half screen height the ship sits below centre (X3M_CHASE_OFFSET_Y)
+    double offset_y = 0.45;         // 72.5% screen height from a centred native anchor (X3M_CHASE_OFFSET_Y)
     double distance_scale = 1.0;    // multiplies the vanilla boom offset (X3M_CHASE_DISTANCE_SCALE)
     double lag_clamp_deg = 8.0;     // max orientation lag (X3M_CHASE_LAG_CLAMP_DEG)
     double pos_lag_clamp = 0.10;    // max |offset lag| as a fraction of the boom length (X3M_CHASE_POS_LAG_CLAMP)
@@ -174,7 +179,7 @@ inline bool valid(const Tunables& t) {
 
 // One frame of engine state, already converted from the engine's integers.
 struct Input {
-    Vec3 ship_pos;            // ship render node +0xb0 (int32 units)
+    Vec3 ship_pos;            // native follow anchor: node +0x30 or +0xb0 (chase_camera_native.h)
     Mat3 vanilla_cam;         // camera +0x40 rows as the cockpit update left them
     Vec3 vanilla_pos;         // camera +0x30
     Mat3 view_rel;            // cockpit +0xf0: camera basis relative to the ship (vanilla_cam = view_rel * ship_basis)
@@ -213,6 +218,7 @@ struct State {
     std::uint32_t last_mode = 0, last_connect = 0;
     std::uint32_t applied_since_snap = 0;
     std::uint64_t snaps = 0, coalesced = 0, applied = 0, refused = 0, clamps = 0;
+    std::uint64_t rotation_clamps = 0, position_clamps = 0;
 };
 
 // Geometric back-view test on the vanilla pose: the boom points behind the ship
@@ -250,8 +256,8 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
     if (in.connect_mode == 3 || (in.flags_1a0 & 4)) return refuse(Verdict::VerbatimBasis);
     if (in.connect_mode != 0) return refuse(Verdict::SpecialConnect);
     // Effective ship basis from the vanilla identity camera = view_rel * ship:
-    // ship = view_rel^T * camera. (Docked/carried ships use a derived parent
-    // basis in the engine; this keeps view_rel consistent whichever it was.)
+    // ship = view_rel^T * camera. This follows the engine's selected native
+    // basis on either position-domain branch (chase_camera_native.h).
     Mat3 ship = mul(transpose(in.view_rel), in.vanilla_cam);
     if (!orthonormalize(ship)) return refuse(Verdict::Degenerate);
     const Vec3 boom_world = in.vanilla_pos - in.ship_pos;
@@ -304,7 +310,7 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
         // clamp, so it is left as is.)
         s.rot.x = log_rotation(mul(transpose(target), s.basis));
         spring_step(s.rot, t.rot_tau * tight, step_dt);
-        if (clamp_spring(s.rot, t.lag_clamp_deg * pi / 180.0)) ++s.clamps;
+        if (clamp_spring(s.rot, t.lag_clamp_deg * pi / 180.0)) { ++s.clamps; ++s.rotation_clamps; }
         s.basis = mul(target, exp_rotation(s.rot.x));
         if (!orthonormalize(s.basis)) { r.snap_reason = 32; ++s.snaps; return refuse(Verdict::NumericFailure); }
         // Boom: x = previous boom - target boom (both ship-relative, so a
@@ -312,7 +318,7 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
         // relaxes toward zero.
         s.pos.x = s.offset - target_boom;
         spring_step(s.pos, t.pos_tau * tight, step_dt);
-        if (clamp_spring(s.pos, t.pos_lag_clamp * target_length)) ++s.clamps;
+        if (clamp_spring(s.pos, t.pos_lag_clamp * target_length)) { ++s.clamps; ++s.position_clamps; }
         s.offset = target_boom + s.pos.x;
     }
     if (!finite(s.basis) || !finite(s.offset) || !finite(s.rot.x) || !finite(s.rot.v) || !finite(s.pos.x) || !finite(s.pos.v)) { r.snap_reason = 32; ++s.snaps; return refuse(Verdict::NumericFailure); }

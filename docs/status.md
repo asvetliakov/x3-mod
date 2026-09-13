@@ -31,8 +31,12 @@ See [review 35](verification/review-35-chase-integration.md) and the
 The camera is vanilla by default; only `--camera chase` enables it. The
 [first user flight](verification/chase-first-run.md) confirms the hook applied
 5,871 frames, but the user reports subtle placement and trembling in flight.
-Telemetry and TAA were off. A disassembly-backed native position-selection fix
-and lower default framing are in progress; their gameplay acceptance remains
+Telemetry and TAA were off. The disassembly-backed native position-selection
+fix and lower default framing passed independent source review and 45 focused
+host/site tests. The clean candidate also passes all 972 host tests, X3 x86
+camera controls and X3 DLL load checks. Artifact review passes; installation
+of candidate `16d016d2…de01` is next.
+Their gameplay acceptance remains
 pending, alongside menu behavior, aim alignment, view-transition/TAA cuts,
 resolution changes and frame cost. Aggregate handler
 timing is now available with telemetry; it is not a measured FPS result.

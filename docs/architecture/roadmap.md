@@ -12,7 +12,7 @@ acceptance items. This integration precedes HDR bloom implementation.
 ## Scope and ordering
 
 Target **X3AP.exe**, 32-bit, on native Windows/Direct3D and **CrossOver Preview**
-(game bottle X3; fixtures default to Steam). Keep executable/assets intact on
+(game and new fixtures in bottle X3). Keep executable/assets intact on
 disk; validated process-local game hooks are allowed. The [current goal
 checklist](../goals.md) supersedes the original staging assumptions below.
 

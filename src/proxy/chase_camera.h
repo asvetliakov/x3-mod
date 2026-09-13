@@ -32,7 +32,8 @@
 // Present, and the handler needs no device).
 namespace x3m::chase_camera {
 struct FirstApplied {        // the static inferences of the first applied frame, logged once (review 31 O2/O3)
-    bool captured = false, logged = false;
+    bool captured = false, logged = false, native_base_domain = false;
+    double domain_delta = 0;
     std::uint64_t handler_frame = 0;
     double half_vfov_tan = 0, boom_local[3] = {0, 0, 0};
     std::uint32_t fov298 = 0, plane_w = 0, plane_h = 0, default_plane_h = 0, view_mode = 0, connect_mode = 0, flags_1a0 = 0, tracking_mode = 0, aim_gun = 0;
@@ -40,6 +41,11 @@ struct FirstApplied {        // the static inferences of the first applied frame
     bool target_locked = false;
 };
 struct Stats {
+    bool native_base_domain = false;
+    std::uint64_t rotation_clamps = 0, position_clamps = 0;
+    std::uint64_t window_applied = 0, window_base_domain = 0, window_domain_samples = 0;
+    double domain_delta = 0, domain_delta_min = 0, domain_delta_max = 0, render_basis_deviation = 0;
+    double rotation_lag_min = 0, rotation_lag_max = 0, position_lag_min = 0, position_lag_max = 0;
     // Report-window CPU timings, enabled by X3M_TELEMETRY (handler only;
     // includes inactive cockpits, excludes the assembly stub/CPU boundary).
     std::uint64_t timed_calls = 0, handler_ticks = 0, handler_max_ticks = 0;

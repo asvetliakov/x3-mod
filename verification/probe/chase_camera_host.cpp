@@ -17,6 +17,7 @@
 // Each F prints: verdict snapped coalesced locked snap_reason lag_deg pos_lag distance pos(3) basis(9) view_rel(9) ortho_error
 #include "../../src/proxy/chase_camera_math.h"
 #include "../../src/proxy/chase_camera.h"
+#include "chase_camera_native_host.h"
 #include <cstdio>
 #include <iostream>
 #include <sstream>
@@ -59,6 +60,20 @@ int main() {
             const bool leave=c.update(false,false), refused=c.update(false,false), reenter=c.update(true,true);
             const bool coalesced=c.update(true,false), failure=c.update(false,true), again=c.update(false,false);
             std::printf("C %d %d %d %d %d %d %d %d %d\n",idle,enter,follow,leave,refused,reenter,coalesced,failure,again);
+        } else if (op == 'N') {
+            chase_native_host::run();
+        } else if (op == 'J') {
+            const Mat3 current=exp_rotation({0.2,0.1,-0.1}),previous=exp_rotation({-0.1,0,0.2});
+            const Mat3 replacement=exp_rotation({0.5,0.1,-0.15}),shake=exp_rotation({0.02,-0.05,0.04});
+            const Mat3 native=mul(current,shake),expected=mul(replacement,shake);
+            const Mat3 actual=mul(relative_view_correction(replacement,current),native);
+            const Mat3 old=mul(relative_view_correction(replacement,previous),native);
+            double error=0,old_error=0;
+            for(int r=0;r<3;++r)for(int c=0;c<3;++c){
+                error=std::fmax(error,std::fabs(actual.m[r][c]-expected.m[r][c]));
+                old_error=std::fmax(old_error,std::fabs(old.m[r][c]-expected.m[r][c]));
+            }
+            std::printf("J %.17g %.17g\n",error,old_error);
         } else if (op == 'D') {
             const Tunables d;
             std::printf("D %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %u\n", d.rot_tau, d.pos_tau, d.offset_y, d.distance_scale, d.lag_clamp_deg, d.pos_lag_clamp, d.combat_tightness, d.max_dt, d.snap_ratio, d.snap_coalesce_frames);

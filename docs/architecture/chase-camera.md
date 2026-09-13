@@ -4,11 +4,15 @@ Integrated design and implementation (2026-09-13, reviewed:
 [review 31a](../verification/review-31-chase-camera-architecture.md) /
 [31b](../verification/review-31-chase-camera-implementation.md) and
 [review 35](../verification/review-35-chase-integration.md), their findings
-applied; **not yet run in the game**). Evidence: [external-camera.md](../reverse-engineering/external-camera.md).
+applied). The first user flight confirmed the hook applies, but reported
+trembling while flying and requested lower framing. The native-anchor
+correction and new framing default await another user run; see
+[first-flight investigation](../reverse-engineering/chase-camera-first-flight.md). Evidence: [external-camera.md](../reverse-engineering/external-camera.md).
 Code: `src/proxy/chase_camera.{h,cpp}` (hook, engine reads/writes, diagnostics),
-`src/proxy/chase_camera_math.h` (portable pipeline), `engine_patch.h`
+`src/proxy/chase_camera_math.h` (portable pipeline),
+`src/proxy/chase_camera_native.h` (native anchor selection), `engine_patch.h`
 (`SiteSpec::rel32_offset`). Tests: `verification/analysis/test_chase_camera.py`
-(host pipeline/integration, 34 cases), `test_chase_camera_site.py` (read-only site probe, 8
+(host pipeline/integration, 37 cases), `test_chase_camera_site.py` (read-only site probe, 8
 cases, including the installed executable).
 
 ## Decision recap
@@ -66,8 +70,10 @@ run's `cockpits_seen` (distinct EBX values per 300-frame window) and
 | tracked object `+0x1e0` `+8` | 4 | pointer validity for the lock predicate (A9): non-null, 4-aligned, readable |
 | cockpit-scene camera `+0x08` | `0x70` | only with `X3M_CHASE_SCENE_FIX=1` (A5): `+0x30` position, `+0x40/+0x50/+0x60` basis |
 | sector camera | `0x310` | `+0x30..+0x38` vanilla position, `+0x40/+0x50/+0x60` vanilla basis, `+0x298` FOV, `+0x300/+0x304` view plane |
-| ref object `+0x70` | 4 | render node |
-| node `+0xb0` | `0x40` | ship position (`+0xb0..+0xb8`) and basis (`+0xc0..`, diagnostic only) |
+| ref object | `0x74` | type `+0x48`, data `+0x50`, owner `+0x54`, render node `+0x70` |
+| owner `+0x48` | 2 | native position-domain predicate: non-null owner with type 1 selects the base domain |
+| node `+0x30` or `+0xb0` | 12 | required native anchor: base domain selects `+0x30`, otherwise `+0xb0` |
+| node `+0xb0`, basis `+0xc0`; native basis node `+0x40` or ship data `+0x870` | 12 / 48 each | optional domain/basis diagnostics; unavailable diagnostic reads do not reject the anchor |
 | `*0x00606f38` `+0x28/+0x2c` | 8 | default view plane (FOV fallback) |
 
 Writes, only after `Verdict::Applied` and only into the objects just read,
@@ -77,20 +83,16 @@ rows (three ints each; the fourth words untouched), cockpit `+0xf0/+0x100/+0x110
 rows (`R_view' = B_cam' × B_shipᵀ`). A range/NaN failure or an unwritable page
 counts `write_refused` and leaves the vanilla pose.
 
-**Cockpit-scene camera (review A5, `X3M_CHASE_SCENE_FIX=1`, default off).** The
-layer-0 camera at cockpit `+8` is built at `0x00420787`, before the site, from
-the `+0xf0` of the previous frame — the value this handler left there (our
-`R_view'` when the previous frame was applied, the vanilla `R_view` otherwise;
-the handler records it on every invocation of the active cockpit and forgets
-it on a read failure or a cockpit change). With the flag set, an applied frame
-re-expresses that camera through the current smoothed view: `basis(+8)' =
-R_view'_now × R_view_prevᵀ × basis(+8)` (re-orthonormalized) and its
-(shake) position through the same rotation, after checking that what is there
-is a rotation. The correction is the one-frame change of `R_view'`, tenths of
-a degree at most, logged as `scene_fix_deg`. Off by default because no
-external-view HUD element is known to live in that scene; the first run looks
-for one (an element that trails the view by a frame while turning) before the
-flag is used.
+**Cockpit-scene camera (`X3M_CHASE_SCENE_FIX=1`, default off).** The layer-0
+camera at cockpit `+8` is built at `0x00420787`, before the site, from the
+**current vanilla** `+0xf0`, regenerated earlier at `0x00422c5c`. The original
+review's previous-frame premise was incorrect. On an applied frame the optional
+correction is `basis(+8)' = R_view'_now × R_view_vanilla_nowᵀ × basis(+8)`,
+re-orthonormalized, with its shake position re-expressed through the same
+rotation. This retains the native shake transform while matching the smoothed
+view. `scene_fix_deg` is the full view correction, not a one-frame lag delta.
+The flag stays off until an external-view element is shown to use that scene;
+its runtime appearance remains unverified.
 
 ## Pose pipeline (`chase_camera_math.h`)
 
@@ -99,7 +101,7 @@ Conventions: basis rows = the camera's right/up/forward axes in world space
 units kept exact in doubles; `B_cam = R_view × B_ship` is the engine's identity.
 
 1. **Inputs**: vanilla camera pose `(p_v, B_v)`, `R_view`, ship position
-   `p_ship`, view mode, connect mode, ref object, sector, `tan(half vfov) =
+   `p_ship` selected with the native branch above, view mode, connect mode, ref object, sector, `tan(half vfov) =
    tan(π · fov298/65536) × H` (H = the camera's `+0x304`/65536 or the default).
 2. **Guards** → pass-through (`refused`, state reset): non-finite input; basis
    orthonormality error > 0.02 (`|B·Bᵀ−I|`, `|det−1|`, so mirrors are refused);
@@ -193,7 +195,7 @@ combined (was 10° + `atan(0.20)` ≈ 21° with the pre-review 0.20 s / 10° /
 | `X3M_CAMERA` | `--camera chase` | vanilla | `chase` | install the hook |
 | `X3M_CHASE_ROT_TAU` | `--chase-rot-tau` | 0.15 s | (0, 10] | orientation spring time constant (for the critically damped form 63 % of a step is done in ~2.15τ and 95 % in ~4.75τ) |
 | `X3M_CHASE_POS_TAU` | `--chase-pos-tau` | 0.20 s | (0, 10] | boom spring time constant |
-| `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.12 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); pitches the camera, so the aim ray stays on the crosshair |
+| `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.45 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); 0.45 puts a centred native anchor at 72.5% of screen height; native boom elevation can shift the actual silhouette |
 | `X3M_CHASE_DISTANCE_SCALE` | `--chase-distance-scale` | 1.0 | (0, 10] | multiplies the vanilla boom (the scripts already size it per ship class) |
 | `X3M_CHASE_LAG_CLAMP_DEG` | `--chase-lag-clamp-deg` | 8° | [0, 90] | orientation lag clamp = the screen window |
 | `X3M_CHASE_POS_LAG_CLAMP` | `--chase-pos-lag-clamp` | 0.10 | [0, 1] | boom lag clamp as a fraction of the boom |
@@ -228,8 +230,8 @@ unset. `snap_coalesce_frames` (3) is compiled in.
   uses the pose of the frame the player saw — as in vanilla.
 - **HUD**: the target overlay and the galaxy/dust camera copies derive from the
   sector camera after the site. The layer-0 cockpit-scene camera is built
-  before the site from the previous frame's `+0xf0` (one frame late during
-  motion, as in vanilla view transitions); the first run checks whether any
+  before the site from the current vanilla `+0xf0`, so its view remains vanilla
+  unless the optional correction is enabled; the next run checks whether any
   external-view HUD element lives there, and `X3M_CHASE_SCENE_FIX=1` corrects
   it in the same handler if one does (above).
 - **Native Windows**: the hook, reads, writes and timing use documented Win32
@@ -273,8 +275,16 @@ unset. `snap_coalesce_frames` (3) is compiled in.
   scene_fix_deg=…` (`frames`/`applied`/`refused` count the active cockpit
   only; `refused_inactive` the other cockpits' visits; `cockpits_seen` distinct
   cockpit pointers in the window; `basis_dev_deg` = angle between the derived
-  ship basis and the node's `+0xc0` basis, ~0 in free flight, larger when
-  docked/carried).
+  ship basis and the matching native basis (not unconditionally node `+0xc0`);
+  an unavailable basis diagnostic is −1).
+- `chase_camera_window` at the same bounded report cadence adds the applied
+  sample count, native base/render branch counts, latest branch and anchor-domain
+  separation, valid domain-sample count and minimum/maximum separation. It also
+  reports the matching native and render-ready basis deviations, separate
+  report-window `rotation_clamps` / `position_clamps`, and report-window minimum /
+  maximum rotation and position lag. Missing diagnostics are −1; extrema are
+  zero when the corresponding sample count is zero. No per-frame log or heap
+  allocation is added.
 - Last device released: `chase_camera_last_device kept=1 status=active
   lifetime=process` (no restore; A3).
 
@@ -286,7 +296,7 @@ unset. `snap_coalesce_frames` (3) is compiled in.
    reasons, pass-through verdicts, NaN/mirror guards, `camera = R_view × ship`
    identity, exp/log round trip and 16.16 conversion; the probe passes on the
    installed executable and fails closed on synthetic corruptions.
-2. Build (done): `cmake --build build`, `verification/probe/check_no_x87.py
+2. Prior integrated build (done; new native-anchor correction requires fresh qualification): `cmake --build build`, `verification/probe/check_no_x87.py
    build/d3d9.dll` PASS (the handler runs under the full boundary, so it is
    outside the light-hook rule: the object code is SSE2 arithmetic plus x87
    libm/CRT paths, review O10); the default `--direct` run patches nothing new
@@ -297,7 +307,7 @@ unset. `snap_coalesce_frames` (3) is compiled in.
    relocation, restores the original bytes and behavior, checks the
    cross-qword plain-copy path, rejects an overflowing `rel32_offset`, and
    rejects a claim after the install window closes.
-4. **First user run** (`launch --direct --camera chase`, then with the route):
+4. **Next user acceptance** (`launch --direct --camera chase --telemetry`, then with the route):
    the acceptance list in
    [review 31a](../verification/review-31-chase-camera-architecture.md)
    ("Acceptance criteria for the first user run") is the checklist: the
@@ -313,8 +323,8 @@ unset. `snap_coalesce_frames` (3) is compiled in.
 
 ## Open questions
 
-- The defaults are the review's recommendation, still untested in the game;
-  tune `rot_tau`/`lag_clamp_deg`/`offset_y` on the first run.
+- The spring defaults were active in the first flight; the new 0.45 framing
+  default and corrected native anchor still need the user's visual acceptance.
 - Boom lag semantics: ship-relative (constant velocity = no lag, implemented)
   versus world-frame (acceleration lag, big steady lag at X3 speeds relative to
   the boom); the former is the safer default. A small clamped world-frame

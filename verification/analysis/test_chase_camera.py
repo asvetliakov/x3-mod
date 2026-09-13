@@ -108,6 +108,7 @@ class Driver:
     def close(self):
         self.proc.stdin.close()
         self.proc.wait(timeout=10)
+        self.proc.stdout.close()
 
 
 class ChaseCameraPipeline(unittest.TestCase):
@@ -138,6 +139,26 @@ class ChaseCameraPipeline(unittest.TestCase):
 
     def test_leaving_applied_pose_cuts_once_then_reentry_cuts(self):
         self.assertEqual(self.d.send('C'), ['C', '0', '1', '0', '1', '0', '1', '0', '1', '0'])
+
+    def test_native_anchor_branches_pointer_guards_and_translation_invariance(self):
+        result = self.d.send('N')
+        self.assertEqual(result[:3], ['N', '16', '0'])
+        self.assertLess(float(result[3]), 1e-9)
+        self.assertGreater(float(result[4]), 50)  # old anchor visibly displaces the camera
+        self.assertLess(float(result[5]), 1e-9)
+        self.assertEqual(result[6], '0')
+
+    def test_scene_fix_uses_current_vanilla_view_and_preserves_shake(self):
+        result = self.d.send('J')
+        self.assertLess(float(result[1]), 1e-12)
+        self.assertGreater(float(result[2]), 0.1)  # previous-frame reference is demonstrably wrong
+
+    def test_new_default_frames_centred_anchor_at_72_point_5_percent(self):
+        self.d.tunables(offset_y=self.d.defaults()['offset_y'])
+        result = self.d.frame(1 / 60, ship_pos=(0, 0, 0), boom=(0, 0, -200), half_vfov_tan=0.75)
+        camera_space = vec_mat([-x for x in result['pos']], transpose(result['basis']))
+        screen_y = 0.5 - 0.5 * camera_space[1] / (camera_space[2] * 0.75)
+        self.assertAlmostEqual(screen_y, 0.725, places=12)
 
     def test_first_frame_snaps_to_the_vanilla_pose(self):
         r = self.d.frame(1 / 60, ship_pos=(1000, -500, 250000), boom=(0, 40, -200))
@@ -327,13 +348,13 @@ class ChaseCameraPipeline(unittest.TestCase):
         self.assertEqual(self.d.frame(1 / 60, view_rel=yaw(math.radians(65)))['verdict'], 2)  # cos 65 = 0.42: left
         self.assertEqual(self.d.frame(1 / 60, view_rel=fwd_enter)['verdict'], 2)  # not re-entered below 0.7
 
-    def test_compiled_defaults_match_the_review_31_recommendation(self):
+    def test_compiled_defaults_match_review_and_first_flight_framing(self):
         d = self.d.defaults()
         self.assertEqual(d['rot_tau'], 0.15)
         self.assertEqual(d['pos_tau'], 0.20)
         self.assertEqual(d['lag_clamp_deg'], 8.0)
         self.assertEqual(d['pos_lag_clamp'], 0.10)
-        self.assertEqual(d['offset_y'], 0.12)
+        self.assertEqual(d['offset_y'], 0.45)
         self.assertEqual(d['distance_scale'], 1.0)
         self.assertEqual(d['combat_tightness'], 0.0)
         self.assertEqual(d['max_dt'], 0.10)
