@@ -186,6 +186,13 @@ The decisive sun evidence is an offline link from a sun model/material resource
 to its actual view/draw and blend contract, including whether it precedes bloom.
 A `TSuns` entry or bright sprite name alone cannot authorize a global gain.
 
+The [sun resource follow-up](../reverse-engineering/sun-material-identity.md)
+now connects TSuns lens groups to 36 bodies and the shared `effects` family.
+Their dedicated lens scene is late, after any stock bloom invocation; explicit
+materials include ordinary alpha blending. This does not establish a pre-bloom
+sun emitter. The separate TPlanets sun-scene submesh/material and effective draw
+mapping remains unresolved.
+
 This brief uses the complete [archive pair inventory](../reverse-engineering/motion-output-profiles.md),
 local shader instruction inspection, existing targeted EXE findings and streamed
 queries of the trace pinned in [material color inputs](../reverse-engineering/material-color-inputs.md).

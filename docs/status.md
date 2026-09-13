@@ -94,6 +94,8 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   for enhanced emissions, rather than requiring a classifier for every native
   writer. Its consumer and same-draw mask producer still need qualification.
   No live emission route is selected.
+  The [sun resource study](reverse-engineering/sun-material-identity.md) identifies
+  the late TSuns lens-flare path; a pre-bloom sun material remains unproved.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.
