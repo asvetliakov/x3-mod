@@ -160,7 +160,9 @@ do not clear coverage based on unsupported effect-motion inference.
 
 This is **producer feasibility, not a complete live classifier**. Proven
 camera-only/far-plane writers must be distinguished from unsupported animated
-blends. Blindly replaying every unrouted background writer can mark nearly the
+blends. The [background coverage study](../reverse-engineering/background-temporal-coverage.md)
+finds camera-centered motion in the sampled nebula cohort, but changing stardust
+inputs and shared shader aliases prevent a blanket exemption. Blindly replaying every unrouted background writer can mark nearly the
 whole screen reactive and remove useful TAA; blindly omitting them does not
 prove safety either. The first detached fixture can use a closed synthetic
 world with explicitly known reactive/nonreactive writers. Live completeness

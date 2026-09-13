@@ -79,7 +79,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   unchanged. The next architecture must preserve encoded pixels and a current
   native result until publication. A same-draw native/emission MRT candidate
   now has shader-headroom and target-ownership findings; its detached parity
-  experiment is in progress. No live emission route is selected.
+  experiment is in progress. A [background study](reverse-engineering/background-temporal-coverage.md)
+  distinguishes sampled camera-centered nebula motion from changing stardust
+  inputs; runtime temporal admission remains unproved. No live emission route is selected.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.
