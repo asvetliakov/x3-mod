@@ -306,6 +306,7 @@ static State& process() noexcept { static State value; return value; }
 template<class... Args> static void record(Args&&...) noexcept {}
 template<class... Args> static void summary(Args&&...) noexcept {}
 } // namespace telemetry
+namespace game_phases { static void invalidate_device() noexcept {} }
 namespace sampling_profiler {
 static unsigned shutdown_under_lock=0;
 static void shutdown() noexcept {if(hook_guard_depth)++shutdown_under_lock;}

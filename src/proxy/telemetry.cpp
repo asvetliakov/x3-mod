@@ -1,6 +1,7 @@
 #include "telemetry.h"
 #include "capture.h"
 #include "loading_trace.h"
+#include "game_phases.h"
 #include <algorithm>
 #include <cstring>
 
@@ -63,6 +64,7 @@ void summary(State& state,const char* reason,uint64_t frame){
     }
     state.last_summary=stamp;state.position_suppressed=0;state.cursor_changes_suppressed=0;
     engine_memory_line("summary",state.device,frame);
+    if(state.device)game_phases::report(frame); // prior finalized records only
     if(state.device==0)loading_trace::report();
     if(flush_output){const auto begin=now();flush_output();record(state,Metric::LogFlush,now()-begin);}
     reporting=was_reporting;

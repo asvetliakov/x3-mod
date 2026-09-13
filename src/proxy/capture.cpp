@@ -1,6 +1,7 @@
 #include "capture.h"
 #include "capture_state.h"
 #include "telemetry.h"
+#include "game_phases.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
 #include "crypt_cache.h"
@@ -547,7 +548,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         }
         cpu.before_original();
         refs=fn(d);cpu.after_original();
-        if(!refs){telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);devices.erase(d);}
+        if(!refs){game_phases::invalidate_device();telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);devices.erase(d);}
         last_device_destroyed=!refs&&devices.empty();
     }
     // The profiler's quiescent stop: the last device is gone and the capture
@@ -922,6 +923,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         log("motion_frame device=%llu frame=%llu scene_confirmed=%u storage_history_committed=%u present=%08lx temporal_history_committed=0",
             ctx.id,ctx.frame,scene_confirmed,motion_committed,hr);
     const auto end=telemetry::now();
+    game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d),ctx.id,ctx.reset_generation,ctx.frame,ctx.capture,end,static_cast<std::uint32_t>(hr));
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){
         log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
@@ -984,6 +986,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);
+    game_phases::invalidate_device(); // includes a refused reentrant attempt
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
     if(ctx.bloom_busy || ctx.motion_output.emission_operation_active())return D3DERR_INVALIDCALL;
@@ -1999,6 +2002,7 @@ void initialize_log(HMODULE module) {
         taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
+    game_phases::initialize(); // all 23 claims here, before the first Present
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists

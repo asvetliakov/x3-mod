@@ -1,0 +1,238 @@
+#include "game_phases.h"
+#include "game_phases_core.h"
+#include "game_phase_sites.h"
+#include "cpu_state.h"
+#include "engine_memory.h"
+#include "object_trace.h"
+#include "telemetry.h"
+#include "capture.h"
+#include <atomic>
+
+static_assert(sizeof(void*)==4,"Reviewed x86 game ABI only");
+namespace x3m::game_phases {
+namespace {
+std::atomic<bool> active{false};
+std::atomic<DWORD> owner_thread{0},invalidation_epoch{0};
+std::atomic<unsigned> foreign_hits{0},suppressed{0};
+bool initialized=false,reporting=false;
+DWORD seen_epoch=0;
+detail::Core core;
+engine_patch::Site patches[sites::Count];
+detail::Metric handler_cost,query_cost,bridge_cost;
+std::uint64_t read_failures=0,cpu_failures=0;
+#ifdef X3M_GAME_PHASE_FIXTURE
+void (__cdecl* fixture_callback)(unsigned,const std::uint32_t*)=nullptr;
+std::uintptr_t pump_active_address=0,pump_flags_address=0;
+#else
+constexpr std::uintptr_t pump_active_address=0x608adc,pump_flags_address=0x606f3c;
+#endif
+struct ErrorGuard { DWORD value=GetLastError();~ErrorGuard(){SetLastError(value);} };
+std::uint64_t qpc() noexcept {LARGE_INTEGER v{};return QueryPerformanceCounter(&v)&&v.QuadPart>0?std::uint64_t(v.QuadPart):0;}
+std::uint64_t ticks(FILETIME v) noexcept {return (std::uint64_t(v.dwHighDateTime)<<32)|v.dwLowDateTime;}
+detail::Stamp stamp(bool cpu) noexcept {
+    detail::Stamp s{};s.qpc=qpc();
+    if(cpu&&s.qpc){
+        s.query_begin=s.qpc;
+        FILETIME creation{},exit{},kernel{},user{};
+        s.cpu=GetThreadTimes(GetCurrentThread(),&creation,&exit,&kernel,&user)!=FALSE;
+        s.query_end=qpc();
+        if(!s.query_end||s.query_end<s.qpc)s.cpu=false;
+        if(s.cpu){s.user=ticks(user);s.kernel=ticks(kernel);}else ++cpu_failures;
+        query_cost.add(detail::Stamp{s.qpc},detail::Stamp{s.query_end});
+    }
+    return s;
+}
+void synchronize() noexcept {
+    const DWORD epoch=invalidation_epoch.load(std::memory_order_acquire);
+    if(epoch!=seen_epoch){core.invalidate();seen_epoch=epoch;}
+}
+bool owner(unsigned index) noexcept {
+    const DWORD thread=GetCurrentThreadId();DWORD expected=0;
+    if(index==sites::LoopSetup)owner_thread.compare_exchange_strong(expected,thread,std::memory_order_acq_rel);
+    if(owner_thread.load(std::memory_order_acquire)!=thread){foreign_hits.fetch_add(1,std::memory_order_relaxed);return false;}
+    if(reporting){suppressed.fetch_add(1,std::memory_order_relaxed);invalidation_epoch.fetch_add(1,std::memory_order_release);return false;}
+    synchronize();return true;
+}
+bool read_word(std::uintptr_t at,std::uint32_t& value) noexcept {
+    if(at&&engine_memory::read(at,&value,sizeof value))return true;
+    ++read_failures;core.invalidate();return false;
+}
+void handle(unsigned index,const std::uint32_t* regs) noexcept {
+    if(!active.load(std::memory_order_acquire)||!owner(index))return;
+    const auto at=stamp(index<detail::phase_count);
+    // A lifecycle event between admission and the clock must revoke the old
+    // token before this timestamp is applied. Events after this acquire are
+    // later than the recorded boundary and revoke it at the next endpoint.
+    synchronize();
+    if(index<=sites::Exit){
+        core.boundary(index,at);
+        if(index==sites::Pump){
+            std::uint32_t flags=0;detail::Pump p;
+            p.valid=engine_memory::read(pump_active_address,&p.active,4)&&engine_memory::read(pump_flags_address,&flags,4)
+                &&flags&&engine_memory::read(flags,&p.flags,4);
+            if(!p.valid)++read_failures;
+            core.pump=p;
+        }
+    }
+    else {
+        // PUSHAD layout: EDI,ESI,EBP,saved ESP,EBX,EDX,ECX,EAX;
+        // saved ESP points at PUSHFD, so native ESP is four bytes higher.
+        const std::uintptr_t esp=std::uintptr_t(regs[3])+4;
+        std::uint32_t word=0;
+        switch(index){
+        case sites::DelayedBegin:
+            if(regs[7]!=3){++read_failures;core.invalidate();break;}
+            if(!read_word(esp,word))break;
+            core.begin(0,at,{regs[6],word,3});break;
+        case sites::DelayedEnd:core.end(0,at,regs[7]);break;
+        case sites::AcquisitionBegin:
+            if(regs[2]!=0){++read_failures;core.invalidate();break;}
+            core.begin(1,at,{regs[1],regs[4],2});break;
+        case sites::AcquisitionEnd:core.end(1,at,regs[7]);break;
+        case sites::ColdBegin:core.begin(2,at,core.request);break;
+        case sites::ColdEnd:core.end(2,at,regs[7]);break;
+        case sites::PresentBegin:
+            if(read_word(esp,word))core.begin(3,at,core.request,word);
+            break;
+        case sites::PresentEnd:core.end(3,at,regs[7]);break;
+        default:++read_failures;core.invalidate();break;
+        }
+    }
+    handler_cost.add(at,detail::Stamp{qpc()});
+}
+void* emit(unsigned index,void*** next_out);
+bool install_group(const char*& status) {
+    active.store(false,std::memory_order_release);
+    if(!engine_patch::install_window_open()){status="install_window_closed";return false;}
+    for(unsigned i=0;i<sites::Count;++i)
+        if(!engine_patch::verify_bytes(sites::kSites[i].address,sites::kSites[i].expected,sites::kSites[i].length)){
+            status="preflight_bytes";return false;
+        }
+    for(unsigned i=0;i<sites::Count;++i){
+        if(engine_patch::claim(patches[i],sites::kSites[i])){
+            void** next=nullptr;void* stub=emit(i,&next);
+            if(stub&&next&&engine_patch::store_pointer(next,*patches[i].entry)&&engine_patch::push_front(patches[i],stub))continue;
+            status="stub_chain_failed";
+        }else status="claim_failed";
+        bool restored=true;
+        for(unsigned j=sites::Count;j-->0;)if(patches[j].patched_in&&!engine_patch::restore(patches[j]))restored=false;
+        if(!restored)status="rollback_failed_inert";
+        return false;
+    }
+    status="ok";active.store(true,std::memory_order_release);return true;
+}
+}
+}
+
+extern "C" __attribute__((force_align_arg_pointer)) void __cdecl
+x3m_game_phase_enter(unsigned index,const std::uint32_t* regs) {
+    x3m::PreserveCpuState cpu;
+    asm volatile("fninit" ::: "memory");
+    const unsigned mxcsr=0x1f80;asm volatile("ldmxcsr %0" :: "m"(mxcsr):"memory");
+#ifdef X3M_GAME_PHASE_FIXTURE
+    if(x3m::game_phases::fixture_callback){x3m::game_phases::fixture_callback(index,regs);return;}
+#endif
+    x3m::game_phases::handle(index,regs);
+}
+namespace x3m::game_phases {
+namespace {
+void* emit(unsigned index,void*** next_out) {
+    engine_patch::Emitter e(192);if(!e.ok())return nullptr;void* start=e.here();
+    e.byte(0x9c);e.byte(0x60);e.byte(0xfc);
+    e.byte(0x81);e.byte(0xec);e.dword(0x80);
+    for(unsigned i=0;i<8;++i){e.byte(0x0f);e.byte(0x11);e.byte(static_cast<unsigned char>(0x44|(i<<3)));e.byte(0x24);e.byte(static_cast<unsigned char>(i*16));}
+    e.byte(0x8d);e.byte(0x84);e.byte(0x24);e.dword(0x80);e.byte(0x50);
+    e.byte(0x68);e.dword(index);e.byte(0xe8);e.rel32(reinterpret_cast<const void*>(&x3m_game_phase_enter));
+    e.byte(0x83);e.byte(0xc4);e.byte(8);
+    for(unsigned i=0;i<8;++i){e.byte(0x0f);e.byte(0x10);e.byte(static_cast<unsigned char>(0x44|(i<<3)));e.byte(0x24);e.byte(static_cast<unsigned char>(i*16));}
+    e.byte(0x81);e.byte(0xc4);e.dword(0x80);e.byte(0x61);e.byte(0x9d);
+    const auto next=(reinterpret_cast<std::uintptr_t>(e.here())+9)&~std::uintptr_t(3);
+    e.byte(0xff);e.byte(0x25);e.dword(std::uint32_t(next));
+    while(e.ok()&&reinterpret_cast<std::uintptr_t>(e.here())<next)e.byte(0xcc);
+    *next_out=reinterpret_cast<void**>(next);e.dword(0);return e.finish()?start:nullptr;
+}
+}
+bool initialize() {
+    ErrorGuard error;
+    if(initialized)return active.load(std::memory_order_acquire);
+    initialized=true;wchar_t value[4]{};
+    const bool wanted=GetEnvironmentVariableW(L"X3M_GAME_PHASES",value,4)==1&&value[0]==L'1';
+    if(!wanted)return false;
+    const char* status="telemetry_off";
+    if(telemetry::enabled()){
+        core.frequency=telemetry::frequency();
+        if(!core.frequency)status="clock_unavailable";
+        else if(!object_trace::executable_verified())status="executable_unverified";
+        else install_group(status);
+    }
+    log("game_phase_mode requested=1 enabled=%u status=%s sites=23 owner=main_loop frame_threshold_ms=50 call_threshold_ms=10 tape=96 nesting=8 first=4 recent=4 qpc_frequency=%llu cpu_clock=GetThreadTimes",
+        unsigned(active.load()),status,core.frequency);
+    for(unsigned i=0;i<sites::Count;++i)log("game_phase_site index=%u address=%08lx length=%u rel32=%u patched=%u status=%s",i,
+        static_cast<unsigned long>(sites::kSites[i].address),sites::kSites[i].length,sites::kSites[i].rel32_offset,unsigned(patches[i].patched_in),patches[i].status);
+    return active.load(std::memory_order_acquire);
+}
+void present_endpoint(std::uintptr_t raw,std::uint64_t device,std::uint64_t reset,std::uint64_t frame,bool captured,std::uint64_t endpoint,std::uint32_t result) noexcept {
+    if(!active.load(std::memory_order_acquire))return;
+    ErrorGuard error;if(!owner(sites::PresentEnd))return;
+    const auto sample=stamp(true);synchronize();
+    core.bridge(detail::Present{device,reset,frame,endpoint,raw,result,captured},sample);
+    bridge_cost.add(sample,detail::Stamp{qpc()});
+}
+void invalidate_device() noexcept {
+    if(!active.load(std::memory_order_acquire))return;
+    invalidation_epoch.fetch_add(1,std::memory_order_release);
+}
+void report(std::uint64_t reporting_frame) {
+    if(!active.load(std::memory_order_acquire)||GetCurrentThreadId()!=owner_thread.load(std::memory_order_acquire)||reporting)return;
+    ErrorGuard error;synchronize();reporting=true;
+    log("game_phase_window frame=%llu owner=%lu loops=%llu frames=%llu max_ticks=%llu max_begin=%llu max_end=%llu max_device=%llu max_frame=%llu invalidated=%llu unmatched=%llu overflow=%llu order_errors=%llu clock_errors=%llu foreign=%u suppressed=%u read_failures=%llu cpu_failures=%llu slow_frames=%llu retained_frames=%u slow_calls=%llu retained_calls=%u",
+        reporting_frame,owner_thread.load(),core.loop,core.frame_count,core.frame_max,core.frame_max_begin,core.frame_max_end,core.frame_max_device,core.frame_max_id,
+        core.invalidated,core.unmatched,core.overflow,core.order_errors,core.clock_errors,foreign_hits.exchange(0),suppressed.exchange(0),read_failures,cpu_failures,
+        core.slow_frames.count,core.slow_frames.first_used+core.slow_frames.recent_used,core.slow_calls.count,core.slow_calls.first_used+core.slow_calls.recent_used);
+    const auto metric=[](const char* category,unsigned index,const detail::Metric& m){
+        if(m.count)log("game_phase_metric category=%s index=%u count=%llu ticks=%llu max_ticks=%llu max_begin=%llu max_end=%llu cpu_valid=%llu user_100ns=%llu kernel_100ns=%llu",category,index,m.count,m.total,m.maximum,m.begin,m.end,m.cpu_valid,m.user,m.kernel);
+    };
+    for(unsigned i=0;i<detail::phase_count;++i)metric("phase",i,core.phases[i]);
+    for(unsigned i=0;i<4;++i)metric("native_call",i,core.calls[i]);
+    metric("handler",0,handler_cost);metric("cpu_query",0,query_cost);metric("present_bridge",0,bridge_cost);
+    const auto print_frame=[](const detail::Frame& f){
+        const auto elapsed=f.current.qpc-f.previous.qpc;
+        log("game_phase_slow_frame device=%llu reset=%llu previous_frame=%llu frame=%llu qpc_begin=%llu qpc_end=%llu previous_capture=%u capture=%u result=%08x dispatch_begin=%llu dispatch_end=%llu covered_ticks=%llu residual_ticks=%llu segments=%u overflow=%u",
+            f.current.device,f.current.reset,f.previous.frame,f.current.frame,f.previous.qpc,f.current.qpc,unsigned(f.previous.captured),unsigned(f.current.captured),f.current.result,
+            f.dispatch_begin,f.dispatch_end,f.covered,elapsed>=f.covered?elapsed-f.covered:0,f.used,unsigned(f.overflow));
+        for(unsigned i=0;i<f.used;++i){const auto& s=f.segments[i];
+            const bool cpu=s.begin.cpu&&s.end.cpu&&s.end.user>=s.begin.user&&s.end.kernel>=s.begin.kernel;
+            log("game_phase_segment device=%llu frame=%llu index=%u phase=%u loop=%llu qpc_begin=%llu qpc_end=%llu cpu_valid=%u user_100ns=%llu kernel_100ns=%llu begin_query_begin=%llu begin_query_end=%llu end_query_begin=%llu end_query_end=%llu requested_target_begin=%08x requested_target_end=%08x requested_mode_begin=%u requested_mode_end=%u pump_valid=%u pump_active=%u pump_flags=%08x",
+                f.current.device,f.current.frame,i,s.phase,s.loop,s.begin.qpc,s.end.qpc,unsigned(cpu),cpu?s.end.user-s.begin.user:0,cpu?s.end.kernel-s.begin.kernel:0,
+                s.begin.query_begin,s.begin.query_end,s.end.query_begin,s.end.query_end,s.request_begin.target,s.request_end.target,s.request_begin.mode,s.request_end.mode,unsigned(s.pump.valid),s.pump.active,s.pump.flags);
+        }
+    };
+    for(unsigned i=0;i<core.slow_frames.first_used;++i)print_frame(core.slow_frames.first[i]);
+    for(unsigned i=0;i<core.slow_frames.recent_used;++i)print_frame(core.slow_frames.recent[((core.slow_frames.recent_used==4?core.slow_frames.next:0)+i)&3]);
+    const auto print_call=[](const detail::Call& c){
+        log("game_phase_slow_call kind=%u qpc_begin=%llu qpc_end=%llu cockpit=%08x requested_target=%08x requested_mode=%u result=%08x device=%llu reset=%llu frame=%llu endpoint_qpc=%llu",
+            c.kind,c.begin.qpc,c.end.qpc,c.request.cockpit,c.request.target,c.request.mode,c.result,c.present.device,c.present.reset,c.present.frame,c.present.qpc);
+    };
+    for(unsigned i=0;i<core.slow_calls.first_used;++i)print_call(core.slow_calls.first[i]);
+    for(unsigned i=0;i<core.slow_calls.recent_used;++i)print_call(core.slow_calls.recent[((core.slow_calls.recent_used==4?core.slow_calls.next:0)+i)&3]);
+    core.clear_window();handler_cost={};query_cost={};bridge_cost={};read_failures=cpu_failures=0;reporting=false;
+}
+#ifdef X3M_GAME_PHASE_FIXTURE
+bool fixture_pump_region(std::uintptr_t base,std::uint32_t bytes) noexcept {
+    if(active.load(std::memory_order_acquire))return false;
+    if(!base&&!bytes){pump_active_address=pump_flags_address=0;return true;}
+    // Include all three DWORDs, including the pointed-to flags at +0x9000.
+    // Address arithmetic must remain representable in the actual x86 ABI.
+    if(!base||(base&3)||bytes<0x9004||base>UINT32_MAX-bytes)return false;
+    pump_active_address=base+0x8adc;pump_flags_address=base+0x6f3c;
+    return true;
+}
+void* fixture_emit(unsigned index,void*** next){return index<sites::Count?emit(index,next):nullptr;}
+void fixture_set_callback(void (__cdecl* callback)(unsigned,const std::uint32_t*)){fixture_callback=callback;}
+void fixture_enable(bool enabled){
+    active.store(false);core={};owner_thread.store(0);invalidation_epoch.store(0);seen_epoch=0;
+    LARGE_INTEGER f{};if(QueryPerformanceFrequency(&f)&&f.QuadPart>0)core.frequency=std::uint64_t(f.QuadPart);
+    active.store(enabled&&core.frequency);
+}
+#endif
+}

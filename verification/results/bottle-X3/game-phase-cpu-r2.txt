@@ -1,0 +1,21 @@
+GAME PHASE BENCH trials=3 batches=128 loops_per_batch=4 marker_calls_per_loop=16 owned_bridges_per_loop=1 cpu_queries_per_enabled_loop=15 baseline_loop_us=17.690299 disabled_loop_us=25.714453 enabled_loop_us=151.190430 disabled_added_loop_us=8.024154 enabled_added_loop_us=133.500130 enabled_added_per_marker_equivalent_us=8.343758 scope=actual_emit_callback_core_owned_bridge_GetThreadTimes harness=paired_same_snapshot normal_tape=yes pump_metadata=valid engine_read_epoch=per_loop warmup_loops_per_batch=1 runtime_report_includes_warmup=yes game_fps=unmeasured
+game_phase_window frame=0 owner=212 loops=5 frames=4 max_ticks=1641 max_begin=10556478954976 max_end=10556478956617 max_device=1 max_frame=3 invalidated=0 unmatched=0 overflow=0 order_errors=0 clock_errors=0 foreign=0 suppressed=0 read_failures=0 cpu_failures=0 slow_frames=0 retained_frames=0 slow_calls=0 retained_calls=0
+game_phase_metric category=phase index=0 count=5 ticks=552 max_ticks=168 max_begin=10556478951187 max_end=10556478951355 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=1 count=5 ticks=482 max_ticks=137 max_begin=10556478951355 max_end=10556478951492 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=2 count=5 ticks=475 max_ticks=113 max_begin=10556478951492 max_end=10556478951605 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=3 count=5 ticks=388 max_ticks=87 max_begin=10556478951605 max_end=10556478951692 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=4 count=5 ticks=457 max_ticks=156 max_begin=10556478955500 max_end=10556478955656 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=5 count=5 ticks=468 max_ticks=134 max_begin=10556478955656 max_end=10556478955790 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=6 count=5 ticks=426 max_ticks=134 max_begin=10556478955790 max_end=10556478955924 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=7 count=5 ticks=459 max_ticks=171 max_begin=10556478955924 max_end=10556478956095 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=8 count=5 ticks=383 max_ticks=100 max_begin=10556478956095 max_end=10556478956195 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=9 count=5 ticks=375 max_ticks=90 max_begin=10556478956195 max_end=10556478956285 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=10 count=5 ticks=396 max_ticks=110 max_begin=10556478956285 max_end=10556478956395 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=11 count=5 ticks=399 max_ticks=112 max_begin=10556478956395 max_end=10556478956507 cpu_valid=5 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=12 count=10 ticks=1064 max_ticks=164 max_begin=10556478952430 max_end=10556478952594 cpu_valid=10 user_100ns=0 kernel_100ns=0
+game_phase_metric category=phase index=13 count=4 ticks=402 max_ticks=143 max_begin=10556478952594 max_end=10556478952737 cpu_valid=4 user_100ns=0 kernel_100ns=0
+game_phase_metric category=native_call index=3 count=5 ticks=521 max_ticks=151 max_begin=10556478952413 max_end=10556478952564 cpu_valid=0 user_100ns=0 kernel_100ns=0
+game_phase_metric category=handler index=0 count=30720 ticks=2113876 max_ticks=12977 max_begin=10556476126238 max_end=10556476139215 cpu_valid=0 user_100ns=0 kernel_100ns=0
+game_phase_metric category=cpu_query index=0 count=28800 ticks=2168609 max_ticks=12158 max_begin=10556476126238 max_end=10556476138396 cpu_valid=0 user_100ns=0 kernel_100ns=0
+game_phase_metric category=present_bridge index=0 count=1920 ticks=150164 max_ticks=754 max_begin=10556476322319 max_end=10556476323073 cpu_valid=0 user_100ns=0 kernel_100ns=0
+GAME PHASE CPU stubs=23 replay_cases=6 checks=815 failures=0
