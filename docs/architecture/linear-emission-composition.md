@@ -1057,3 +1057,101 @@ retains the six cells and scope. Unpaired 1080p process medians are 1.6099 ms
 off and 2.3080 ms on (+0.6981 ms) for the tested sequence; this is diagnostic
 completion cost, not a GPU timestamp or game-FPS estimate. The feature remains
 opt-in and is not enabled in run 7.
+
+## Complete SM2 effects/engine extension
+
+Source candidate in `/tmp/x3-effects-engine-sm2`, based on `d627125`, adds the
+complete fifteen-pair group from the [remaining effects/engine inventory](../reverse-engineering/effects-engine-remaining-emission.md#actionable-next-group):
+five DEFAULT and ten INSTANCE pairs, representing 232 archive occurrences.
+Together with the prior five, this reaches **20 exact pairs, 10 PS and 8 native
+VS originals**, covering all 384 SM2/2.x archive occurrences in these families.
+The group adds five distinct PS and five VS identities because several new
+pairs share already supported programs. The nine SM1 pairs and nonadditive
+blend populations remain outside this additive producer.
+
+The pixel profiles and exact pair table are separate bounded tables. The three
+new PS identities `47e15e20d63b0e93`, `c6dacb8f74b65c97` and
+`f0c91793a75e1203` retain their original `0xffff0201` version token. Each exact
+profile selects its required version; substituting 2.0 for 2.1, substituting
+2.1 for 2.0, or supplying an unreviewed model fails validation. The 2.x path
+admits no additional opcode, swizzle, register or flow-control forms. The two
+other new PS identities, `39f3b4d5b6a5aaed` and `846c5c1a549f9491`, use the
+strict existing 2.0 path. Matching executable bodies never substitute for the
+complete original fingerprint/count guard or exact VS/PS pair membership.
+
+All ten PS fit the four existing affine/raw and fade/no-fade shapes. Native
+VS programs are unchanged: INSTANCE forwards direct UV while DEFAULT applies
+its native texture matrix; faded forms retain native fog and alpha-scalar
+calculation. There is no new varying, VS rewrite, per-instance transform,
+object-identity requirement or technique-name runtime decision. Every original
+PS word, opaque comment/preshader, native partial-precision operation, version
+and raw-alpha output remains intact. The inserted RGB copy and existing tail
+still implement decoded-result capping before native fade and immutable gain,
+final finite sanitation, exact +0 emission alpha and positive constant coverage
+independent of source RGB, fade, sampled alpha and gain.
+
+Resources remain r2/r3, c30/c31 and oC1/oC2, proven spare in every exact original.
+The maximum remains **29 arithmetic slots + one texture instruction** without
+coverage and **31 + one** with coverage. The conservative 64 arithmetic / 32
+texture and twelve-temporary checks remain in force for both selected models;
+no 2.x optional capability is needed by the added arithmetic. Microsoft's
+[PS2.x limits](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-2-x)
+provide at least twelve temporary registers and 96 instruction slots, while the
+[PS2 instruction table](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-instructions-ps-2-0)
+assigns three slots to each POW. Actual creation, native-output parity and MRT
+behavior for the added originals, particularly the 2.1 token profiles and
+retained native output PP modifier, remain GPU acceptance items. Native Windows
+execution remains unverified.
+
+The existing same-submission live boundary is unchanged. Registration creates
+only the augmented PS and caches exact pair eligibility, including VS programs
+without a motion row. Draws still require the positive scene/thread ticket,
+owned FP16 targets and compatible depth, actual indexed non-user-memory draw,
+complete additive ADD/ONE/ONE state and existing sampler/query/stateblock/reader
+restrictions. A submitted draw that fails those predicates stays native; no
+historical observation or stable object identity is added as a prerequisite.
+The same accepted source writes supplemental coverage for current/disappearing
+reactivity. No geometry replay or object-motion claim is introduced.
+
+### Focused host evidence
+
+`verification.analysis.test_linear_emission_transformer` passes **13 tests**.
+Its unchanged-tail numerical evaluator checks every PS at five gains and both
+coverage settings, finite/nonfinite inputs, cap-before-fade ordering and native
+alpha independence. The driver covers **100 variants / 20 exact pairs / 1,483
+assertions**, including every executable instruction/operand mutation outside
+the fingerprint gate, strict cross-model refusal, original-byte reconstruction,
+resource/output shapes, aliasing and failure rollback. The archive test checks
+all fifteen new pair counts, aliases, quality directories and toggles against
+the complete local inventory. All eight VS identities remain exact and no VS
+variant is emitted; direct INSTANCE UV and native fade output are checked.
+
+All **50 preceding two- and three-output variants remain byte-exact**. Their
+sorted-basename/NUL/complete-bytes SHA-256 is
+`0cf24c46942fb5f670c79cca390e583335e8c17f998e602a8d3b907b9f036479`.
+The older accepted 25-output golden remains a separate check.
+
+The single affected
+`verification.analysis.test_linear_material_live.LinearMaterialLiveTests.test_production_control_flow`
+test passes, retaining existing admission/publication/recovery witnesses. The
+added cache cases prove two native VS identities can share one augmented PS,
+unsupported cross-pairs refuse, absent motion variants do not remove emission
+eligibility, re-registration clears stale membership, and recorded setters,
+Apply and failed/successful Reset preserve the established lifecycle. Repeated
+cached draws add no transform, hash, pair lookup or shader creation. This test
+addition overlaps the separate XT fixture only in its shared file; integration
+must retain both additions rather than replace the file wholesale.
+
+Strict x86 SSE2/stack-realigned compilation of `linear_emission.cpp` passes.
+A local optimized host diagnostic measured 180,207 ns for 50 initial two-output
+creations and 185,039 ns for 50 three-output creations (about 0.365 ms total).
+These are creation-only CPU timings, not game FPS or driver/GPU cost. The result
+allocation and bounded identity/body scans remain at creation; the larger
+20-pair lookup is consumed only by the existing cache refresh boundary.
+No Wine, production DLL build, install, game launch or new capture was used for
+this source checkpoint. Independent Sol/high source review by
+`material_conversion_sites/emission_sm2_review` passes with no open finding.
+The reviewer separately compared all fifty baseline files with zero mismatches
+and checked the exact archive matrix, model-specific validation, preservation,
+resource/failure guards and cached lifecycle. Actual-original GPU/live
+qualification must exercise the complete fifteen-pair batch together.

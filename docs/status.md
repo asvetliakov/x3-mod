@@ -13,6 +13,11 @@ Run 7 is complete. No enhanced gameplay run is currently ready; the
 [run queue](verification/user-runs.md) now consistently records that state.
 The next combined candidate is being prepared for emitter-glow correction,
 broader selection-stutter diagnostics and qualified material expansion.
+The [complete SM2 effects/engine source batch](architecture/linear-emission-composition.md#complete-sm2-effectsengine-extension)
+adds all 15 remaining SM2 pairs, reaching 20 exact emission pairs. Source and
+host verification pass independent review; added-pair GPU/live qualification
+is pending. This does not enable emission integration by default or change the
+installed build.
 
 ## Installed build and current camera work
 

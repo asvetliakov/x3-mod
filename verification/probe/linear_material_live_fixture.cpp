@@ -41,7 +41,7 @@ struct LinearEmissionConfig {float gain=1;bool coverage=false;};
 enum class LinearEmissionResult {Applied,UnsupportedShader,AllocationFailure};
 bool linear_emission_config_valid(const LinearEmissionConfig& c){return std::isfinite(c.gain)&&c.gain>=0&&c.gain<=16;}
 unsigned emission_transforms=0,emission_lookups=0;float emission_gain=0;bool emission_reject=false,emission_throw=false;
-bool linear_emission_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++emission_lookups;return vs==50&&(ps==60||ps==61);}
+bool linear_emission_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++emission_lookups;return (vs==50&&(ps==60||ps==61))||(vs==52&&ps==60);}
 LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t*p,std::size_t,const LinearEmissionConfig& c,std::vector<std::uint32_t>& words){++emission_transforms;CHECK(c.coverage);emission_gain=c.gain;if(emission_throw)throw std::bad_alloc();if(emission_reject)return LinearEmissionResult::AllocationFailure;if(*p!=60&&*p!=61)return LinearEmissionResult::UnsupportedShader;words={*p+300};return LinearEmissionResult::Applied;}
 struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightmap_emissive_gain=1;};
 enum class LinearMaterialResult{Applied,UnsupportedShader};
@@ -453,6 +453,32 @@ void emission_cache_cases(){
  CHECK(releases==released+6&&m.device_references()==0&&!m.shadow_.emission_eligible_variant);m.release_resources();CHECK(releases==released+6);
  std::printf("linear_emission_cache checks=%u\n",checks-checks_before);
 }
+// INSTANCE and DEFAULT can share the same augmented PS. The native VS needs
+// no motion variant or object identity; exact pair and actual draw-state gates
+// remain separate. Synthetic IDs keep this cache test independent of bytes.
+void emission_instance_cache_cases(){
+ const unsigned before=checks;Device device;MotionOutput m;m.configure_linear_emissions(true,1);m.device_=&device;
+ IDirect3DVertexShader9 original,instance,unknown;IDirect3DPixelShader9 ps,cross;DWORD v=50,i=52,p=60,q=61;
+ m.register_vertex_shader(&original,&v,4,v);m.register_vertex_shader(&instance,&i,4,i);
+ m.register_pixel_shader(&ps,&p,4,p);m.register_pixel_shader(&cross,&q,4,q);
+ auto select=[&](IDirect3DVertexShader9* vertex,IDirect3DPixelShader9* pixel){device.bound_vs=vertex;device.bound_ps=pixel;m.set_vertex_shader(vertex);m.set_pixel_shader(pixel);};
+ select(&original,&ps);auto* shared=m.shadow_.emission_eligible_variant;CHECK(shared);
+ select(&instance,&ps);CHECK(m.shadow_.emission_eligible_variant==shared&&!m.shadow_.vs_row&&!m.shadow_.vs_variant&&device.vs_creates==0&&device.emission_creates==2);
+ const auto lookups=renderer::emission_lookups,transforms=renderer::emission_transforms;
+ for(unsigned n=0;n<1000;++n)CHECK(m.shadow_.emission_eligible_variant==shared);
+ CHECK(renderer::emission_lookups==lookups&&renderer::emission_transforms==transforms);
+ select(&instance,&cross);CHECK(!m.shadow_.emission_eligible_variant);select(&unknown,&ps);CHECK(!m.shadow_.emission_eligible_variant);select(&instance,&ps);
+ m.begin_stateblock();m.set_vertex_shader(&unknown);CHECK(m.shadow_.emission_eligible_variant==shared);m.end_stateblock();CHECK(m.shadow_.emission_eligible_variant==shared);
+ device.bound_vs=&unknown;m.stateblock_applied();CHECK(!m.shadow_.emission_eligible_variant);device.bound_vs=&instance;m.stateblock_applied();CHECK(m.shadow_.emission_eligible_variant==shared);
+ m.before_reset();CHECK(!m.shadow_.emission_eligible_variant);m.after_reset(E_FAIL);CHECK(!m.shadow_.emission_eligible_variant);m.after_reset(S_OK);CHECK(m.shadow_.emission_eligible_variant==shared);
+ // Reusing the same COM pointer under an unsupported whole-original identity
+ // clears the pair; registering it back recovers without touching the shared PS.
+ m.register_vertex_shader(&instance,&i,4,53);CHECK(!m.shadow_.emission_eligible_variant);
+ m.register_vertex_shader(&instance,&i,4,i);CHECK(m.shadow_.emission_eligible_variant==shared&&device.emission_creates==2);
+ device.fail_get_vs=true;m.stateblock_applied();CHECK(!m.shadow_.emission_eligible_variant);device.fail_get_vs=false;m.stateblock_applied();CHECK(m.shadow_.emission_eligible_variant==shared);
+ m.release_resources();CHECK(m.device_references()==0&&!m.shadow_.emission_eligible_variant);
+ std::printf("linear_emission_instance_cache checks=%u\n",checks-before);
+}
 // Execute the capture environment parser, including strict opt-in/decode and
 // finite gain validation, independently of the material feature request.
 void emission_environment_cases(){
@@ -679,6 +705,7 @@ int main(){
  contract_lifecycle();
  palette_contract_lifecycle();
  emission_cache_cases();
+ emission_instance_cache_cases();
  emission_route_cases();
  emission_environment_cases();
  std::printf("linear_material_live checks=%u failures=%u\n",checks,failures);return failures?1:0;

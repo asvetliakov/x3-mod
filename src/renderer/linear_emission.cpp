@@ -14,17 +14,49 @@ constexpr unsigned mov=1, mul=5, dp4=9, minimum=10, maximum=11, dcl=31, power=32
 
 // Derived whole-original identities and DWORD sites, never game shader words.
 // Affine/no-affine and fade/no-fade are independent native source contracts.
+enum class PixelModel : Word { Sm20 = 0xffff0200u, Sm2x = 0xffff0201u };
 struct Profile {
-    std::uint64_t pixel, vertex;
+    std::uint64_t pixel;
     unsigned words, declaration, copy_before, native_output;
     bool affine, fade;
+    PixelModel model = PixelModel::Sm20;
 };
 constexpr Profile profiles[] = {
-    {0x8360f422de08b5bdull,0xd5e1c75351ed3f04ull,1108,1069,1100,1104,true,true},
-    {0x9975b706e5a1c999ull,0x32e75459998d0388ull,1108,1069,1100,1104,true,true},
-    {0xff2473e73a6bdfa1ull,0x32e75459998d0388ull,62,41,54,58,false,true},
-    {0x8559522220507d5eull,0x089091aab2d5eb13ull,1101,1069,1097,1097,true,false},
-    {0x875e780adb131b16ull,0x089091aab2d5eb13ull,55,41,51,51,false,false},
+    {0x8360f422de08b5bdull,1108,1069,1100,1104,true,true},
+    {0x9975b706e5a1c999ull,1108,1069,1100,1104,true,true},
+    {0xff2473e73a6bdfa1ull,62,41,54,58,false,true},
+    {0x8559522220507d5eull,1101,1069,1097,1097,true,false},
+    {0x875e780adb131b16ull,55,41,51,51,false,false},
+    {0x39f3b4d5b6a5aaedull,62,41,54,58,false,true},
+    {0x47e15e20d63b0e93ull,62,41,54,58,false,true,PixelModel::Sm2x},
+    {0x846c5c1a549f9491ull,1108,1069,1100,1104,true,true},
+    {0xc6dacb8f74b65c97ull,1108,1069,1100,1104,true,true,PixelModel::Sm2x},
+    {0xf0c91793a75e1203ull,1108,1069,1100,1104,true,true,PixelModel::Sm2x},
+};
+// Whole VS/PS identities establish the archive pair, independent of shared
+// executable bodies or DEFAULT/INSTANCE names. Native VS is unchanged.
+struct Pair { std::uint64_t vertex, pixel; };
+constexpr Pair pairs[] = {
+    {0xd5e1c75351ed3f04ull,0x8360f422de08b5bdull},
+    {0x32e75459998d0388ull,0x9975b706e5a1c999ull},
+    {0x32e75459998d0388ull,0xff2473e73a6bdfa1ull},
+    {0x089091aab2d5eb13ull,0x8559522220507d5eull},
+    {0x089091aab2d5eb13ull,0x875e780adb131b16ull},
+    {0x5b7a3ccd9e7df00aull,0x9975b706e5a1c999ull},
+    {0x5b7a3ccd9e7df00aull,0xff2473e73a6bdfa1ull},
+    {0x6435a84d8ac5908eull,0x39f3b4d5b6a5aaedull},
+    {0x6435a84d8ac5908eull,0x47e15e20d63b0e93ull},
+    {0x6435a84d8ac5908eull,0x846c5c1a549f9491ull},
+    {0x6435a84d8ac5908eull,0xc6dacb8f74b65c97ull},
+    {0x89193868c61c3846ull,0x8360f422de08b5bdull},
+    {0x89193868c61c3846ull,0xf0c91793a75e1203ull},
+    {0xa520be365951c9dcull,0x8559522220507d5eull},
+    {0xa520be365951c9dcull,0x875e780adb131b16ull},
+    {0xcfb2c31707d545bcull,0x39f3b4d5b6a5aaedull},
+    {0xcfb2c31707d545bcull,0x47e15e20d63b0e93ull},
+    {0xcfb2c31707d545bcull,0x846c5c1a549f9491ull},
+    {0xcfb2c31707d545bcull,0xc6dacb8f74b65c97ull},
+    {0xd5e1c75351ed3f04ull,0xf0c91793a75e1203ull},
 };
 unsigned type(Word value) noexcept { return ((value>>28)&7)|((value>>8)&24); }
 unsigned index(Word value) noexcept { return value&0x7ff; }
@@ -50,8 +82,11 @@ struct Shape { unsigned arithmetic=0, texture=0, outputs=0; std::size_t first=0;
 // Only forms consumed or emitted here. Comments/preshaders and DEF payloads
 // are opaque to instruction/register scans. PS2's separate 64 arithmetic / 32
 // texture budgets apply; POW costs three slots, other admitted arithmetic one.
-bool structure(const Word* code,std::size_t count,Shape& result) noexcept {
-    if (count<2 || code[0]!=0xffff0200u) return false;
+bool structure(const Word* code,std::size_t count,Shape& result,PixelModel model) noexcept {
+    // Each exact profile selects its native version. PS2.x gets no extra
+    // opcodes, swizzles, registers or cap assumptions: the selected originals
+    // and authored tail fit the same conservative PS2.0 resource subset.
+    if (count<2 || (model!=PixelModel::Sm20 && model!=PixelModel::Sm2x) || code[0]!=static_cast<Word>(model)) return false;
     bool executable=false, sampler_declared=false;
     for (std::size_t at=1;at<count;) {
         const auto token=code[at], op=token&0xffffu;
@@ -177,7 +212,7 @@ bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept {
     return std::isfinite(config.gain) && config.gain>=0 && config.gain<=16;
 }
 bool linear_emission_pair_reviewed(std::uint64_t vertex,std::uint64_t pixel) noexcept {
-    for (const auto& profile:profiles) if (profile.vertex==vertex && profile.pixel==pixel) return true;
+    for (const auto& pair:pairs) if (pair.vertex==vertex && pair.pixel==pixel) return true;
     return false;
 }
 LinearEmissionResult linear_emission_pixel_variant(const Word* original,std::size_t count,
@@ -191,7 +226,7 @@ LinearEmissionResult linear_emission_pixel_variant(const Word* original,std::siz
     if (!selected) return LinearEmissionResult::UnsupportedShader;
     const auto& profile=*selected;
     Shape original_structure;
-    if (!structure(original,count,original_structure) || !original_shape(original,profile,original_structure)) return LinearEmissionResult::ProfileMismatch;
+    if (!structure(original,count,original_structure,profile.model) || !original_shape(original,profile,original_structure)) return LinearEmissionResult::ProfileMismatch;
     try {
         Words result;
         result.reserve(count+(config.coverage?88:82));
@@ -211,7 +246,7 @@ LinearEmissionResult linear_emission_pixel_variant(const Word* original,std::siz
         }
         result.push_back(end_token);
         Shape transformed;
-        if (!structure(result.data(),result.size(),transformed) || transformed.outputs!=(config.coverage?7u:3u) || transformed.texture!=1 ||
+        if (!structure(result.data(),result.size(),transformed,profile.model) || transformed.outputs!=(config.coverage?7u:3u) || transformed.texture!=1 ||
             transformed.arithmetic!=original_structure.arithmetic+(profile.fade?22u:21u)+(config.coverage?2u:0u)) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;

@@ -29,11 +29,49 @@ PROFILES = {
     '8559522220507d5e': ('2f80daf9e908678a0e36a49d0fbaaba446e687e71cb654e85a1756c9cdd8c34d',1101,1069,1097,1097,True,False),
     '875e780adb131b16': ('c31728d81b42e58a809b401a174186217c9549c24a0809807ba8b097ddd445a1',55,41,51,51,False,False),
 }
+PREVIOUS_PIXELS = set(PROFILES)
+PROFILES.update({
+    '39f3b4d5b6a5aaed': ('24bc4ff303d1a1d49a9d35de3b49ecddb2767a155c26ffe91e5f88b54a82eafc',62,41,54,58,False,True),
+    '47e15e20d63b0e93': ('2f5e160e96ceb661b1ec43424f1d9ebd3091b191b85395b7ab06d4651b55e561',62,41,54,58,False,True),
+    '846c5c1a549f9491': ('4e9a03b5af938ffe0a1c69fa88cfe0768a39a85247800aea1bb759a5ce7bf698',1108,1069,1100,1104,True,True),
+    'c6dacb8f74b65c97': ('59b16b900bd09f05aa464634cca5019c0bd7b2deaff729afadc50d20ec5fdc2d',1108,1069,1100,1104,True,True),
+    'f0c91793a75e1203': ('bf30c26d78fcf6f781edd5d6dfdfb0ecf973b924d3ae13bd8e4eea593fbef038',1108,1069,1100,1104,True,True),
+})
+PS2X = {'47e15e20d63b0e93','c6dacb8f74b65c97','f0c91793a75e1203'}
+# Complete additional group, including INSTANCE uses of already supported PS.
+NEW_PAIR_OCCURRENCES = {
+    ('5b7a3ccd9e7df00a','9975b706e5a1c999'):16,
+    ('5b7a3ccd9e7df00a','ff2473e73a6bdfa1'):16,
+    ('6435a84d8ac5908e','39f3b4d5b6a5aaed'):8,
+    ('6435a84d8ac5908e','47e15e20d63b0e93'):4,
+    ('6435a84d8ac5908e','846c5c1a549f9491'):8,
+    ('6435a84d8ac5908e','c6dacb8f74b65c97'):4,
+    ('89193868c61c3846','8360f422de08b5bd'):112,
+    ('89193868c61c3846','f0c91793a75e1203'):16,
+    ('a520be365951c9dc','8559522220507d5e'):4,
+    ('a520be365951c9dc','875e780adb131b16'):4,
+    ('cfb2c31707d545bc','39f3b4d5b6a5aaed'):8,
+    ('cfb2c31707d545bc','47e15e20d63b0e93'):4,
+    ('cfb2c31707d545bc','846c5c1a549f9491'):8,
+    ('cfb2c31707d545bc','c6dacb8f74b65c97'):4,
+    ('d5e1c75351ed3f04','f0c91793a75e1203'):16,
+}
+PREVIOUS_PAIRS = {('d5e1c75351ed3f04','8360f422de08b5bd'),
+                  ('32e75459998d0388','9975b706e5a1c999'),('32e75459998d0388','ff2473e73a6bdfa1'),
+                  ('089091aab2d5eb13','8559522220507d5e'),('089091aab2d5eb13','875e780adb131b16')}
+
 VERTICES = {
     'd5e1c75351ed3f04': (253,'a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114'),
     '32e75459998d0388': (253,'9ae32f514a79ca8675fe876731b72207f4449d4e34d89529114e9bacb62c3798'),
     '089091aab2d5eb13': (125,'2a3270292daf99a296801100e52c052967b4c80fee3b31216c8908dfb3233835'),
 }
+VERTICES.update({
+    '5b7a3ccd9e7df00a':(221,'ac01616c5abfc5db1a9d8631de9149d99d242ed7e066613f203cfd1b7798ecd9'),
+    '6435a84d8ac5908e':(221,'ad5209f409b152f1aa211e41d699ba53f439fcb1fa9bb1f98737bf9a69f1d6e9'),
+    '89193868c61c3846':(221,'83e106b5cef3e814d095909adb55816f9fdac98723ee11bea209f2772557c8eb'),
+    'a520be365951c9dc':(94,'39f272c33da47ec1fd75ce483949dfc7450d9fbd768669228fb429dfc5a38dac'),
+    'cfb2c31707d545bc':(253,'cd60b84218aadc678b5d6c0cd9b0d151f8727d3c84f93c23e1b69c0ca2c11a99'),
+})
 GAINS = (0, .25, 1, 4, 16)
 
 
@@ -99,7 +137,7 @@ class LinearEmissionTransformerTests(unittest.TestCase):
     def setUpClass(cls):
         cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY','/tmp/x3-shader-sweep/programs'))
         if not all((cls.originals / f'ps_{key}.bin').is_file() for key in PROFILES):
-            raise unittest.SkipTest('local five-original PS2 corpus unavailable')
+            raise unittest.SkipTest('local ten-original PS2/PS2.x corpus unavailable')
         compiler = shutil.which('clang++') or shutil.which('c++')
         if not compiler:
             raise RuntimeError('host C++ compiler required')
@@ -125,8 +163,8 @@ class LinearEmissionTransformerTests(unittest.TestCase):
                     words, items, _ = shader.instructions((self.directory/f'ps_{key}-{g}{suffix}.bin').read_bytes())
                     yield key, profile, gain, coverage, words, items
 
-    def test_all_five_originals_gains_aliases_and_failure_guards(self):
-        self.assertEqual((self.driver['programs'],self.driver['pairs'],self.driver['variants']), (5,5,50))
+    def test_all_ten_originals_gains_aliases_and_failure_guards(self):
+        self.assertEqual((self.driver['programs'],self.driver['pairs'],self.driver['variants']), (10,20,100))
         self.assertGreaterEqual(self.driver['checks'],500)
 
     def test_local_original_identities_and_untouched_vs2_contract(self):
@@ -139,6 +177,53 @@ class LinearEmissionTransformerTests(unittest.TestCase):
             self.assertEqual(struct.unpack_from('<I',data)[0],0xfffe0200)
             # The pure API produces pixel variants only; no new VS is emitted.
             self.assertFalse(list(self.directory.glob(f'vs_{key}*.bin')))
+
+    def test_complete_sm2_archive_pair_quality_toggle_and_alias_scope(self):
+        report=json.loads((ROOT/'verification/results/motion-output-profiles.json').read_text())
+        aliases={'effects','effects2s','effects_0000','effects_0001','engine','engine2s','engine_0000','engine_0001'}
+        rows={(r['vs'],r['ps']):r for r in report['sm2_pairs'] if aliases.intersection(r['effects']['basenames'])}
+        self.assertEqual(set(rows),PREVIOUS_PAIRS|set(NEW_PAIR_OCCURRENCES))
+        self.assertEqual(sum(rows[p]['effects']['pass_occurrences'] for p in NEW_PAIR_OCCURRENCES),232)
+        self.assertEqual(sum(rows[p]['ps_model']=='2_1' for p in NEW_PAIR_OCCURRENCES),6)
+        self.assertEqual(sum(rows[p]['effects']['techniques']==['INSTANCE'] for p in NEW_PAIR_OCCURRENCES),10)
+        for pair,occurrences in NEW_PAIR_OCCURRENCES.items():
+            row=rows[pair];v,p=pair;e=row['effects'];self.assertEqual(e['pass_occurrences'],occurrences)
+            self.assertEqual(row['vs_model'],'2_0');self.assertEqual(row['ps_model'],'2_1' if p in PS2X else '2_0')
+            self.assertEqual(e['pass_names'],['P0'])
+            expected_aliases=({'engine_0000','engine_0001'} if v=='5b7a3ccd9e7df00a' else
+                              {'effects','effects2s','engine','engine2s'} if p=='8360f422de08b5bd' else
+                              {'effects','effects2s'} if p=='f0c91793a75e1203' else {'effects_0000','effects_0001'})
+            self.assertEqual(set(e['basenames']),expected_aliases)
+            profiles=({'2_b'} if p in PS2X else {'3_0'} if v=='a520be365951c9dc' else
+                      {'2_0','2_a','2_b','3_0'} if v in {'5b7a3ccd9e7df00a','89193868c61c3846'} else {'2_0','2_a'})
+            self.assertEqual(set(e['profile_directories']),profiles)
+            toggles=({'(base)','hue_lights_off','hueshift_off','v_lights_off'} if p in {'8360f422de08b5bd','f0c91793a75e1203'} else
+                     {'(base)','v_lights_off'} if PROFILES[p][-2] else {'hue_lights_off','hueshift_off'})
+            self.assertEqual(set(e['toggle_directories']),toggles)
+
+    def test_native_models_and_untouched_instance_uv_and_fade_outputs(self):
+        for key,_,_,_,words,_ in self.each():
+            self.assertEqual(words[0],0xffff0201 if key in PS2X else 0xffff0200)
+        for key in ('5b7a3ccd9e7df00a','6435a84d8ac5908e','89193868c61c3846','a520be365951c9dc'):
+            _,items,_=shader.instructions((self.originals/f'vs_{key}.bin').read_bytes())
+            writes=[i for i in items if i['opcode'] not in (shader.DEF,shader.DCL,40,42,43)]
+            outputs=[]
+            for i in writes:
+                d,src=shader.split_operands(i,2)
+                if d and d['register_type'] in (4,5,6):outputs.append((i,d,src))
+            uv=[(i,d,src) for i,d,src in outputs if d['register_type']==6]
+            self.assertEqual(len(uv),1);i,d,src=uv[0]
+            self.assertEqual((i['opcode'],d['register'],d['mask'],src[0]['name'],src[0]['swizzle']),(1,0,'xy','v1','xyzw'))
+            color=[(i,d,src) for i,d,src in outputs if d['register_type']==5]
+            self.assertEqual(len(color),0 if key=='a520be365951c9dc' else 1)
+            if color:
+                i,d,src=color[0];self.assertEqual((d['register'],d['mask'],src[0]['swizzle']),(0,'xyz','xyyw'))
+
+    def test_all_50_prior_two_and_three_output_variants_remain_exact(self):
+        digest=hashlib.sha256();paths=sorted(p for p in self.directory.glob('ps_*.bin') if p.name[3:19] in PREVIOUS_PIXELS)
+        self.assertEqual(len(paths),50)
+        for path in paths:digest.update(path.name.encode()+b'\0');digest.update(path.read_bytes())
+        self.assertEqual(digest.hexdigest(),'0cf24c46942fb5f670c79cca390e583335e8c17f998e602a8d3b907b9f036479')
 
     def test_every_original_byte_comment_and_native_output_is_retained(self):
         for key, profile, _, _, words, items in self.each():
@@ -171,7 +256,9 @@ class LinearEmissionTransformerTests(unittest.TestCase):
 
     def test_full_precision_output_cap_order_resources_and_weighted_ps2_limits(self):
         expected_arithmetic = {'8360f422de08b5bd':29,'9975b706e5a1c999':29,'ff2473e73a6bdfa1':24,
-                               '8559522220507d5e':27,'875e780adb131b16':22}
+                               '8559522220507d5e':27,'875e780adb131b16':22,
+                               '39f3b4d5b6a5aaed':24,'47e15e20d63b0e93':24,'846c5c1a549f9491':29,
+                               'c6dacb8f74b65c97':29,'f0c91793a75e1203':29}
         for key, profile, gain, coverage, _, items in self.each():
             _, count, _, _, _, affine, fade = profile
             definitions, arithmetic, texture, outputs, temporaries = {}, 0, 0, [], set()
@@ -229,7 +316,7 @@ class LinearEmissionTransformerTests(unittest.TestCase):
         # Captured from accepted two-output source 3c72347 before coverage edits.
         # Canonical digest: sorted basename + NUL + complete shader bytes.
         digest = hashlib.sha256()
-        for path in sorted(p for p in self.directory.glob('ps_*.bin') if '-coverage' not in p.name):
+        for path in sorted(p for p in self.directory.glob('ps_*.bin') if '-coverage' not in p.name and p.name[3:19] in PREVIOUS_PIXELS):
             digest.update(path.name.encode() + b'\0')
             digest.update(path.read_bytes())
         self.assertEqual(digest.hexdigest(), '2b637e983bae9ef42a59c32851249f2b42f65449edc8911b4fe2ce26e38f481b')

@@ -18,9 +18,9 @@ struct LinearEmissionAbi {
     static constexpr unsigned coverage_output = 2;
 };
 bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept;
-// Only the five shared engine/effects DEFAULT VS2/PS2 pairs. This establishes
-// no ownership, blend, sampler, alpha, MRT, query or other live admission gate.
-// INSTANCE aliases remain excluded despite sharing these pixel programs.
+// Only the twenty exact engine/effects DEFAULT and INSTANCE VS2/PS2/PS2.x
+// pairs. This establishes no ownership, blend, sampler, alpha, MRT, query or
+// other live admission gate; technique names and shared bodies never admit a pair.
 bool linear_emission_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 
 // Pure creation-time PS2 augmentation; the original VS2 is never transformed.
