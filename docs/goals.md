@@ -43,10 +43,11 @@ they are not a measured final-image baseline.
    commands, prerequisites and acceptance; completed runs are not new requests.
    The agent never launches the game. Copy each session and readbacks to a new
    `/tmp/x3-bottleX3-run<N>/` before bounded analysis.
-2. While gameplay is pending, investigate ordered linear emission composition
-   and complete temporal reactivity. Use targeted disassembly and a standalone
-   correctness/cost prototype before selecting a live implementation. Opaque
-   material coverage alone does not justify changing blended effects.
+2. The [ordered-emission experiment](architecture/linear-emission-composition.md#detached-feasibility-qualification)
+   is reviewed and X3-qualified. Its measured untouched-pixel drift and unresolved
+   post-draw fallback require a revised architecture before live integration.
+   Preserve encoded pixels, a current native result and complete temporal
+   coverage; opaque material coverage alone does not justify changing blends.
 3. Analyse the user's captures and fix observed failures. Reader and adjacency
    fast modes require meaningful verification work with zero admitted mismatches;
    an all-fallback session does not qualify them. Keep exposure/bloom and

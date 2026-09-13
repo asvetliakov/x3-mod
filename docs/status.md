@@ -73,8 +73,11 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   varying ABI and cached sampler admission. The feature stays opt-in; gameplay
   acceptance remains run 6 in the brief queue, with no additional run required.
   Blended emissions now have an [ordered-composition study](architecture/linear-emission-composition.md)
-  backed by targeted engine disassembly and bounded trace analysis. A detached
-  color/coverage/cost prototype is in progress; live integration is not selected.
+  backed by targeted engine disassembly and bounded trace analysis. Its detached
+  color/coverage/cost experiment is reviewed and X3-qualified, but measured
+  untouched-pixel drift and unresolved post-draw fallback rule out promoting it
+  unchanged. The next architecture must preserve encoded pixels and a current
+  native result until publication; no live emission route is selected.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.

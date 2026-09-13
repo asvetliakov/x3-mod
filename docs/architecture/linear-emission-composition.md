@@ -290,3 +290,57 @@ ordinary draws and do not establish the game's values before a future capture.
 This review approves the documents and bounded diagnostic change. It does not
 approve a production emission route; native Windows execution, live recovery,
 coverage completeness, visual behavior and gameplay cost remain unverified.
+
+## Detached feasibility qualification
+
+Independent source and evidence review on 2026-09-13 found no open defect in
+the corrected detached fixture. Its authored SM3 path uses documented D3D9
+state blocks and capability checks, needs only one render-target slot, restores
+the captured viewport/input/texture/sampler/blend state after each target
+switch, and preserves raw sampled alpha while transforming RGB. The accepted
+[X3 result](../../verification/results/bottle-X3/linear-emission-gpu.json)
+passes 91 cases: 88 retain the analytical RGB oracle, three characterize
+repeated transfer drift, and 23,296 values pass in each exact alpha, mask and
+depth/stencil probe comparison. The largest analytical RGB
+error is 0.620 of tolerance; seven native-gamma or deferred-scene-end controls
+differ from the ordered result by 0.0486 to 0.3052 RGB.
+
+Zero-emission round trips changed all 256 sampled pixels. At 1, 16 and 64
+brackets, the largest non-cap-domain absolute drift is respectively 0.00390625,
+0.0625 and 0.25; the largest residual from the ideal cap-only reference is
+0.125, 2 and 8 encoded units. Zero inputs never gained energy, and a verified
+negative-zero input produced positive zero after every transfer. These are
+descriptive measurements of the complete shader arithmetic and FP16-storage
+path, not an isolated rounding-mode diagnosis or an acceptance threshold.
+
+For the historically observed one two-draw burst, 1920x1080 median completion
+times were 0.360 ms native, 0.728 ms for one two-source bracket and 1.063 ms for
+two single-source brackets; with immediate mask replay they were 0.649, 0.995
+and 1.206 ms. The 1280x768 medians were 0.365/0.727/0.946 ms without the mask
+and 0.793/1.017/1.214 ms with it. These CrossOver/FEX timings include state
+capture/restoration, target/depth queries and event completion; they are
+diagnostic and are not game FPS or native-Windows measurements.
+
+The first run usefully exposed a cumulative-drift oracle overreach and point
+sampling exactly on an implementation-dependent texel boundary. The reviewed
+correction made cumulative drift descriptive, retained finite/cap/alpha/zero
+requirements, and moved the sampled witnesses away from texture boundaries;
+the failed raw record remains separate from the accepted result. This fixture
+qualifies ordered synthetic color, inherited alpha equations, direct R32F mask
+production and the documented clean-refusal/incomplete-frame distinction on
+the X3 bottle. It does not qualify a production route, a live classifier,
+TemporalPass/sentinel integration, post-submission recovery, native-Windows
+execution, visual behavior or gameplay cost.
+
+
+## Orchestrator decision after the experiment
+
+Do not promote the full-scene decode/add/encode prototype unchanged. It proves
+ordered additive color and supplies measured cost, but also changes untouched
+pixels and has no valid native fallback after accepted source draws. The next
+architecture must preserve unchanged encoded pixels, retain a current native
+result until publication succeeds, and preserve draw order. Same-draw outputs
+and explicit internal target ownership are candidates to investigate before
+adding any live hook or route. Complete temporal coverage remains a separate
+requirement. The installed renderer and user run queue are unchanged by this
+experiment; no new gameplay run is requested.

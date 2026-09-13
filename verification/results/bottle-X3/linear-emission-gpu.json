@@ -1,0 +1,612 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "scope": "Detached authored D3D9 ordered RGB/actual alpha, closed-world R32F mask producer, drift/cost/fault experiment; no live renderer or native Windows runtime qualification",
+  "targets": {
+    "scene": "A16B16G16R16F",
+    "scratch": "A16B16G16R16F",
+    "mask": "R32F",
+    "depth": "D24S8",
+    "msaa": false,
+    "srgb": false
+  },
+  "tolerance": {
+    "rgb_relative": 0.003,
+    "rgb_absolute": 3e-05,
+    "alpha": "exact binary16",
+    "drift": "measured against original; no acceptance threshold"
+  },
+  "timing_scope": "QPC through EVENT completion, reusable targets/shaders/state blocks; Capture/Apply and actual per-source/per-replay RT/depth COM queries included; construction/setup/readback outside; mask clear inside; not GPU-only or game FPS",
+  "limitations": [
+    "Synthetic closed-world coverage only; live classifier and sentinel/TemporalPass integration unqualified",
+    "Two-source batching is a best-case prototype; application-setter batching unapproved",
+    "One burst is observed per sampled frame; 16 bursts are stress-only; synthetic tail is one screen draw per burst",
+    "Injected failures refuse selected calls; no device-loss/partial-API-execution or successful post-submission native-recovery guarantee",
+    "Fullscene decode/reencode can drift untouched pixels; cap effects and rounding are reported separately"
+  ],
+  "code_sha256": {
+    "verification/probe/linear_emission_fixture.cpp": "949c25c9f3ebb015c48a2fb5ce1196324bd84ea48965790414820812e918bbb4",
+    "verification/probe/build_linear_emission.sh": "d3f80a879364a398770fd2dbae2b0ae876eaa11ec5494514b1053902d0029534",
+    "verification/probe/run_linear_emission.py": "cdcc31aa926f696d9e1d9a9063e58fb31f4a441e367cdc8d35193ef00e627ecf",
+    "verification/analysis/test_linear_emission_report.py": "afca46caba3639fdae20d07582c839b8c4dcbf179bc0bdcdc52e7867123f7a0f"
+  },
+  "executable_sha256": "6ce87e7b1b9c75ccc2a0d454712169dff6759a4b38c5a7afc2dc59ac0944e4d5",
+  "raw_dir": "/tmp/x3-linear-emission-gpu-r2",
+  "exit_code": 0,
+  "cases": 91,
+  "analytic_rgb_cases": 88,
+  "descriptive_drift_cases": 3,
+  "shader_creations": 24,
+  "exact_alpha_pixels": 23296,
+  "exact_mask_pixels": 23296,
+  "depth_stencil_probe_pixels": 23296,
+  "max_rgb_tolerance_fraction": 0.6198782559105391,
+  "negative_controls": [
+    {
+      "scenario": "overlap",
+      "wrong": "gamma_control",
+      "max_rgb_difference": 0.2041015625
+    },
+    {
+      "scenario": "later_opaque",
+      "wrong": "gamma_control",
+      "max_rgb_difference": 0.1181640625
+    },
+    {
+      "scenario": "later_opaque",
+      "wrong": "scene_end_control",
+      "max_rgb_difference": 0.30517578125
+    },
+    {
+      "scenario": "intervening_screen",
+      "wrong": "gamma_control",
+      "max_rgb_difference": 0.2197265625
+    },
+    {
+      "scenario": "intervening_screen",
+      "wrong": "scene_end_control",
+      "max_rgb_difference": 0.048583984375
+    },
+    {
+      "scenario": "late_boundary",
+      "wrong": "gamma_control",
+      "max_rgb_difference": 0.212890625
+    },
+    {
+      "scenario": "late_boundary",
+      "wrong": "scene_end_control",
+      "max_rgb_difference": 0.073974609375
+    }
+  ],
+  "fault_results": [
+    {
+      "label": "preflight_refusal",
+      "accepted": 0,
+      "fallback": 1,
+      "incomplete": 0,
+      "restored": 1,
+      "brackets": 0,
+      "replays": 2
+    },
+    {
+      "label": "decode_refusal",
+      "accepted": 0,
+      "fallback": 1,
+      "incomplete": 0,
+      "restored": 1,
+      "brackets": 0,
+      "replays": 2
+    },
+    {
+      "label": "post_source_encode_failure",
+      "accepted": 2,
+      "fallback": 0,
+      "incomplete": 1,
+      "restored": 1,
+      "brackets": 1,
+      "replays": 2
+    },
+    {
+      "label": "post_encode_restore_failure",
+      "accepted": 2,
+      "fallback": 0,
+      "incomplete": 1,
+      "restored": 0,
+      "brackets": 1,
+      "replays": 2
+    },
+    {
+      "label": "post_source_mask_failure",
+      "accepted": 1,
+      "fallback": 0,
+      "incomplete": 1,
+      "restored": 1,
+      "brackets": 1,
+      "replays": 0
+    },
+    {
+      "label": "capture_refusal",
+      "accepted": 0,
+      "fallback": 1,
+      "incomplete": 0,
+      "restored": 1,
+      "brackets": 0,
+      "replays": 2
+    },
+    {
+      "label": "first_source_refusal",
+      "accepted": 0,
+      "fallback": 1,
+      "incomplete": 0,
+      "restored": 1,
+      "brackets": 0,
+      "replays": 2
+    },
+    {
+      "label": "second_source_refusal",
+      "accepted": 1,
+      "fallback": 0,
+      "incomplete": 1,
+      "restored": 1,
+      "brackets": 1,
+      "replays": 1
+    }
+  ],
+  "round_trip_drift": [
+    {
+      "brackets": 1,
+      "changed_pixels": 256,
+      "non_cap_domain": {
+        "channels": 759,
+        "max_absolute": 0.00390625,
+        "max_relative_nonzero_base": 1.0
+      },
+      "initial_cap_domain": {
+        "channels": 2,
+        "max_absolute": 45.5,
+        "max_relative_nonzero_base": 0.2275
+      },
+      "cap_only_reference": {
+        "channels": 1,
+        "max_absolute": 45.375,
+        "max_relative_nonzero_base": 0.226875
+      },
+      "residual_against_cap_only_reference": {
+        "channels": 761,
+        "max_absolute": 0.125,
+        "max_relative_nonzero_base": 1.0
+      },
+      "zero_to_nonzero_channels": 0,
+      "negative_zero_input_channels": 1,
+      "float64_power_with_alternative_store_rounding": {
+        "nearest_even": {
+          "exact_rgb_channels": 8,
+          "max_absolute_error": 0.125
+        },
+        "toward_zero": {
+          "exact_rgb_channels": 766,
+          "max_absolute_error": 0.0001201629638671875
+        }
+      }
+    },
+    {
+      "brackets": 16,
+      "changed_pixels": 256,
+      "non_cap_domain": {
+        "channels": 759,
+        "max_absolute": 0.0625,
+        "max_relative_nonzero_base": 1.0
+      },
+      "initial_cap_domain": {
+        "channels": 2,
+        "max_absolute": 47.375,
+        "max_relative_nonzero_base": 0.236875
+      },
+      "cap_only_reference": {
+        "channels": 1,
+        "max_absolute": 45.375,
+        "max_relative_nonzero_base": 0.226875
+      },
+      "residual_against_cap_only_reference": {
+        "channels": 761,
+        "max_absolute": 2.0,
+        "max_relative_nonzero_base": 1.0
+      },
+      "zero_to_nonzero_channels": 0,
+      "negative_zero_input_channels": 1,
+      "float64_power_with_alternative_store_rounding": {
+        "nearest_even": {
+          "exact_rgb_channels": 8,
+          "max_absolute_error": 2.0
+        },
+        "toward_zero": {
+          "exact_rgb_channels": 764,
+          "max_absolute_error": 0.0013427734375
+        }
+      }
+    },
+    {
+      "brackets": 64,
+      "changed_pixels": 256,
+      "non_cap_domain": {
+        "channels": 759,
+        "max_absolute": 0.25,
+        "max_relative_nonzero_base": 1.0
+      },
+      "initial_cap_domain": {
+        "channels": 2,
+        "max_absolute": 53.375,
+        "max_relative_nonzero_base": 0.266875
+      },
+      "cap_only_reference": {
+        "channels": 1,
+        "max_absolute": 45.375,
+        "max_relative_nonzero_base": 0.226875
+      },
+      "residual_against_cap_only_reference": {
+        "channels": 761,
+        "max_absolute": 8.0,
+        "max_relative_nonzero_base": 1.0
+      },
+      "zero_to_nonzero_channels": 0,
+      "negative_zero_input_channels": 1,
+      "float64_power_with_alternative_store_rounding": {
+        "nearest_even": {
+          "exact_rgb_channels": 8,
+          "max_absolute_error": 8.0
+        },
+        "toward_zero": {
+          "exact_rgb_channels": 760,
+          "max_absolute_error": 0.0072021484375
+        }
+      }
+    }
+  ],
+  "timings": [
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "native encoded",
+      "mask": false,
+      "sources": 2,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 0.36535,
+      "min_ms": 0.3553,
+      "max_ms": 0.4932
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "native encoded",
+      "mask": true,
+      "sources": 2,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 0.7930999999999999,
+      "min_ms": 0.6678,
+      "max_ms": 0.8175
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered two-source best-case batch",
+      "mask": false,
+      "sources": 2,
+      "transfers": 2,
+      "samples": 8,
+      "median_ms": 0.72685,
+      "min_ms": 0.5973,
+      "max_ms": 0.9335
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered two-source best-case batch",
+      "mask": true,
+      "sources": 2,
+      "transfers": 2,
+      "samples": 8,
+      "median_ms": 1.0173,
+      "min_ms": 0.9982,
+      "max_ms": 1.0741
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered single-source brackets",
+      "mask": false,
+      "sources": 2,
+      "transfers": 4,
+      "samples": 8,
+      "median_ms": 0.94625,
+      "min_ms": 0.926,
+      "max_ms": 0.9741
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered single-source brackets",
+      "mask": true,
+      "sources": 2,
+      "transfers": 4,
+      "samples": 8,
+      "median_ms": 1.21445,
+      "min_ms": 1.149,
+      "max_ms": 1.2533
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "native encoded",
+      "mask": false,
+      "sources": 32,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 1.0665499999999999,
+      "min_ms": 0.9353,
+      "max_ms": 1.1284
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "native encoded",
+      "mask": true,
+      "sources": 32,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 4.08595,
+      "min_ms": 3.9198,
+      "max_ms": 4.2283
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered two-source best-case batch",
+      "mask": false,
+      "sources": 32,
+      "transfers": 32,
+      "samples": 8,
+      "median_ms": 3.19475,
+      "min_ms": 3.0479,
+      "max_ms": 3.2768
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered two-source best-case batch",
+      "mask": true,
+      "sources": 32,
+      "transfers": 32,
+      "samples": 8,
+      "median_ms": 5.7681000000000004,
+      "min_ms": 5.656,
+      "max_ms": 5.9591
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered single-source brackets",
+      "mask": false,
+      "sources": 32,
+      "transfers": 64,
+      "samples": 8,
+      "median_ms": 4.7866,
+      "min_ms": 4.653,
+      "max_ms": 4.9136
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered single-source brackets",
+      "mask": true,
+      "sources": 32,
+      "transfers": 64,
+      "samples": 8,
+      "median_ms": 6.8528,
+      "min_ms": 6.7148,
+      "max_ms": 7.5077
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "native encoded",
+      "mask": false,
+      "sources": 2,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 0.3601,
+      "min_ms": 0.357,
+      "max_ms": 0.3802
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "native encoded",
+      "mask": true,
+      "sources": 2,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 0.64915,
+      "min_ms": 0.6444,
+      "max_ms": 0.6585
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered two-source best-case batch",
+      "mask": false,
+      "sources": 2,
+      "transfers": 2,
+      "samples": 8,
+      "median_ms": 0.7275,
+      "min_ms": 0.7136,
+      "max_ms": 0.8588
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered two-source best-case batch",
+      "mask": true,
+      "sources": 2,
+      "transfers": 2,
+      "samples": 8,
+      "median_ms": 0.9952000000000001,
+      "min_ms": 0.8559,
+      "max_ms": 1.0607
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered single-source brackets",
+      "mask": false,
+      "sources": 2,
+      "transfers": 4,
+      "samples": 8,
+      "median_ms": 1.0625,
+      "min_ms": 0.9323,
+      "max_ms": 1.1055
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 1,
+      "workload": "observed burst count; synthetic geometry/tail",
+      "color": "ordered single-source brackets",
+      "mask": true,
+      "sources": 2,
+      "transfers": 4,
+      "samples": 8,
+      "median_ms": 1.2059,
+      "min_ms": 1.187,
+      "max_ms": 1.3104
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "native encoded",
+      "mask": false,
+      "sources": 32,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 1.0744,
+      "min_ms": 1.0446,
+      "max_ms": 1.1096
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "native encoded",
+      "mask": true,
+      "sources": 32,
+      "transfers": 0,
+      "samples": 8,
+      "median_ms": 4.4872,
+      "min_ms": 4.3617,
+      "max_ms": 4.5457
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered two-source best-case batch",
+      "mask": false,
+      "sources": 32,
+      "transfers": 32,
+      "samples": 8,
+      "median_ms": 5.3675999999999995,
+      "min_ms": 5.3036,
+      "max_ms": 5.395
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered two-source best-case batch",
+      "mask": true,
+      "sources": 32,
+      "transfers": 32,
+      "samples": 8,
+      "median_ms": 7.2716,
+      "min_ms": 7.2307,
+      "max_ms": 7.3502
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered single-source brackets",
+      "mask": false,
+      "sources": 32,
+      "transfers": 64,
+      "samples": 8,
+      "median_ms": 8.707049999999999,
+      "min_ms": 8.6215,
+      "max_ms": 8.7569
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "bursts": 16,
+      "workload": "stress only",
+      "color": "ordered single-source brackets",
+      "mask": true,
+      "sources": 32,
+      "transfers": 64,
+      "samples": 8,
+      "median_ms": 10.56445,
+      "min_ms": 10.5174,
+      "max_ms": 10.591
+    }
+  ]
+}
