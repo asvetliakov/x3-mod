@@ -81,9 +81,9 @@ not an eligibility decision.
 
 Two clip-row families exist: 107 rows read the clip rows from **c24** under
 the relative point-light loop (`light_loop_bound_required`, bound 8) and 62
-light-free `_0000`/`_0001` variants read them from **c0** with no relative
+loop-free `_0000`/`_0001` variants read them from **c0** with no relative
 addressing at all (bound not required). The four position dots are issued in
-XYZW order and are adjacent in 163 rows; six light-free asteroid, moon and
+XYZW order and are adjacent in 163 rows; six loop-free asteroid, moon and
 planet_haze rows interleave other work between the Z and W dots, so the row
 carries each dot's own offset and the insert follows the last dot. Both share the same splice; only the
 row's `matrix_register` and bound differ, and the route generalizes its shadow
@@ -150,7 +150,7 @@ are then revalidated against the actual words, and any inconsistency yields
   makes the spaced quads safe; no original declaration, write or read of the
   chosen output register, TEXCOORD index or c252–255 (every parameter token of every instruction is walked, address
   tokens skipped); relative addressing accepted only when the row records the
-  draw-time light-loop bound (the light-free c0 rows have none; a relative
+  draw-time light-loop bound (the loop-free c0 rows have none; a relative
   operand under such a row refuses); block depth (`rep`/`loop`/`if`/`ifc`
   against `endrep`/`endloop`/`endif`; the c24 programs hold a `rep` light
   loop and an `if b#` block) zero at every position DP4, at the arithmetic
@@ -201,7 +201,7 @@ perturbations per row (26 with the five depth-register perturbations of a
 depth row: o0 or TEXCOORD0 as the depth export, the depth output equal to the
 motion output, v0 as the depth input, an output without an input) (including the class family swapped between B and C,
 which the pixel words contradict; the previous-row constants placed on a
-constant the VS actually reads; and, for light-free rows, a relative operand
+constant the VS actually reads; and, for loop-free rows, a relative operand
 injected under the row's denied bound) and 26 program perturbations per class
 A/B row (declared or written reserved registers, missing POSITION0,
 definitions after the header, refused opcodes, predication, relative
@@ -233,7 +233,7 @@ The initial route requires alpha testing, blending and sRGB writes disabled,
 SM3 support and at least 256 VS float constants.
 Every c24 row VS uses relative light constants, so the actual light count must
 be bounded to 0–8 before reserving high constants (`light_loop_bound_required`);
-the light-free c0 rows need known rows in their window but no bound. A shader
+the loop-free c0 rows need known rows in their window but no bound. A shader
 fingerprint does not validate the runtime count.
 
 Previous rows require object/geometry correspondence and history validity. The

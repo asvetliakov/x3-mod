@@ -8,12 +8,12 @@ Preview are both required targets; native Windows runtime behavior is untested.
 
 | # | Goal | Current state and remaining acceptance |
 |---|---|---|
-| 1 | True HDR | FP16 RT0 redirection and identity write-back work in game. Content is still gamma-space game lighting decoded into FP16, not scene-referred radiance. Material/lighting replacement and verified HDR display output remain. |
+| 1 | True HDR | FP16 RT0 redirection and identity write-back work in game. The FP16 scene still contains gamma-space game lighting; downstream decoding does not make that lighting scene-referred. Material/lighting replacement and verified HDR display output remain. |
 | 2 | Modern tonemapping | AgX is implemented and was seen in game at fixed EV 0. Keep AgX. A custom X3 look remains a later tuning task. |
-| 3 | FP16 lighting and HDR emissive | Not started. Requires the material pass; allocating an FP16 target does not complete this goal. |
+| 3 | FP16 lighting and HDR emissive | The [first material slice](architecture/scene-linear-materials.md) has reviewed design, disassembly and offline numerical proof. Combined shader implementation is underway; no live linear-lighting change yet; allocating an FP16 target does not complete this goal. |
 | 4 | HDR bloom | [Live integration](architecture/hdr-bloom-boundary.md) connects the qualified filter/executor and compositor bridge. Combined X3 lifetime checks pass 714/714 across both reference models, including Reset/ResetEx and original exceptions; independently reviewed and installed, with first gameplay acceptance pending. It runs the original compositor once then replaces RGB, preserving original state/resources/alpha. Component image/state/recovery evidence is linked from the design. Initial bloom uses the current decoded gamma-space scene; real radiance still requires materials. Gameplay quality and frame cost remain unverified. |
 | 5 | Automatic exposure | Existing whole-scene log-average meter overexposes black space (about +7 EV). Space-aware tile meter passed independent branch review and both-bottle fixtures; the reviewed build is integrated and installed; game validation remains. |
-| 6 | New material shaders | Not started. Prerequisite for scene-referred lighting and real HDR, with shader coverage beyond captured scenes. |
+| 6 | New material shaders | First Argon slice has reviewed offline proof: ten archive pairs, including uncaptured variants, and 33 focused checks. Combined shader implementation is underway; no live material change installed. Whole-scene linear lighting still needs a policy for every color writer. |
 | 7 | GTAO/SSAO | Not started. The motion route supplies R32F depth on RT2. |
 | 8 | Better directional/self shadows | Not started. |
 | 9 | Reflections/SSR | Not started. Needs a defined off-screen/environment fallback. |

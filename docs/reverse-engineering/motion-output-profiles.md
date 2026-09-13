@@ -121,18 +121,23 @@ spaced in six, see below), but the archive holds two families:
 | Family | Rows | Matrix register | Relative light loop | Effects |
 | --- | ---: | :-: | :-: | --- |
 | Point-light programs | 107 (A 33, B 62, C 12) | **c24** | yes: `rep i0` reading c0/c1/c2 at `a0.w`; the draw-time bound `i0.x` in [0, 8] keeps the reads in c0–23 | base and `2s` effects, all class C |
-| Light-free variants | 62 (A 23, B 39) | **c0** | none: no relative addressing at all | the `_0000` / `_0001` effects (argon, khaak, boron, glass, moon, paranid, ...) |
+| Loop-free variants | 62 (A 23, B 39) | **c0** | none: no relative addressing at all | the `_0000` / `_0001` effects (argon, khaak, boron, glass, moon, paranid, ...) |
+
+Here “loop-free” means no relative constant addressing; it does not mean
+unlit. Targeted material inspection found a fixed single point light in
+Argon VS `badefd5143b3024f`, using c4–6 before adding material emissive.
+See the [material slice findings](../architecture/scene-linear-materials.md#targeted-shader-findings).
 
 The consumer is generalized per row rather than pinned to c24: the route's
 shadow captures every distinct clip-row window the table names (derived from
 the rows at compile time; c24–27 and c0–3 today) and gate 4 applies
 `light_loop_bound_required` / `light_loop_max_count` of the bound VS row, so a
-light-free row needs known rows in its window but no `i0.x` bound. A
+loop-free row needs known rows in its window but no `i0.x` bound. A
 `static_assert` still requires that a bounded row's clip rows lie above the
 c0–23 light block the bound protects (see
 [material-motion-prototype.md](../architecture/material-motion-prototype.md)).
 `c252–255` is free in every row VS and `c216–220` / `oC1` in every row PS;
-`c40–43` is *not* read by every VS any more (the light-free variants keep
+`c40–43` is *not* read by every VS any more (the loop-free variants keep
 their material constants elsewhere), which only the structural fixture's
 perturbation choice depended on.
 
@@ -173,7 +178,7 @@ xt_terraformer with their `2s` variants. The transformer revalidates the
 shape from the words and refuses `ifc`, `rep`/`loop`, `break*`, `call`/`ret`
 and predication in every class.
 
-**Spaced position quads (six rows, classes A and B).** The light-free
+**Spaced position quads (six rows, classes A and B).** The loop-free
 asteroid_0000/0001 (four pairs, VS `0c223ad11bce02d5`, `12b8a13f13fe8cfe`,
 `233d17d26ce0c1fc`, `330ceb9dd874ede2`), moon_0000/0001 (`8198903322dd82fb`)
 and planet_haze_0000/0001 (`d706d31100be1be9`) vertex programs issue the
@@ -277,7 +282,7 @@ rows come first in their previous order with every previous field unchanged
 | `vertex_output_register`, `texcoord_index` | Free VS output and TEXCOORD index for previous clip, free in both programs. |
 | `pixel_input_register`, `pixel_temporary_base`, `pixel_output_register` | The matching PS input, the first of three consecutive free temporaries, and `oC1`. |
 | `vertex_constant_base`, `pixel_constant_base` | `252` (four previous rows) and `216` (five ABI constants). |
-| `light_loop_bound_required`, `light_loop_max_count` | True where the VS reads constants relatively: refuse the variant unless `i0.x` is checked in `[0, 8]` at draw time. False for the light-free rows. |
+| `light_loop_bound_required`, `light_loop_max_count` | True where the VS reads constants relatively: refuse the variant unless `i0.x` is checked in `[0, 8]` at draw time. False for the loop-free rows. |
 | `observed_scene_draws` | Metadata: Scene draws of the pair in the captured session, zero when never observed. Orders the rows and selects the fixtures' exhaustive sweep; no runtime meaning. |
 
 The offsets and registers are transformer *input*: the transformer must still

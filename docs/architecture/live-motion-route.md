@@ -143,7 +143,7 @@ installed compiled effects binds (6,752 passes, 817 distinct pairings): all
 **169 transformable SM3 pairs** are rows of the generated table (56 class A,
 101 class B, 12 class C; 32 vertex and 108 pixel programs, `DEFAULT`,
 `BUMPMAP` and `BUMPMAP_LOW` techniques of every material family, including
-the six light-free asteroid/moon/planet_haze variants whose DP4 quad is
+the six loop-free asteroid/moon/planet_haze variants whose DP4 quad is
 spaced), so a pair first drawn in a sector or race the user never tested is
 already covered. The 11 SM3 pairs without a row are explicit: nine bloom
 passes whose VS writes the position with `mov`, and the two
@@ -166,7 +166,7 @@ The [key validation](../reverse-engineering/motion-history-key.md) shows the
 full key above matches 99.97% of keyable scene draws across adjacent frames
 with no in-frame duplicates; dropping buffer identity produces ambiguous
 sub-mesh splits. Two clip-row families exist among the rows (c24 with the
-relative point-light loop, c0 for the light-free `_0000`/`_0001` variants);
+relative point-light loop, c0 for the loop-free `_0000`/`_0001` variants);
 the shadow captures both windows and gate 4 applies each row's own bound
 (see [material-motion-prototype.md](material-motion-prototype.md)). A pair
 refused at gate 3 now means a program outside the archives (a mod, a loose
@@ -539,7 +539,7 @@ pairs of one VS, the scheme to adopt is a per-pair VS variant keyed by
 
 The route derives two more table facts at compile time: the constant
 shadow captures every distinct clip-row window the rows name (today c24–27
-for the point-light programs and c0–3 for the light-free variants, at most
+for the point-light programs and c0–3 for the loop-free variants, at most
 `motion_matrix_windows_max` = 4 windows), each with its own `rows_known`
 flag, and gate 4 reads the window and the light-loop bound of the VS row
 actually bound (`shadow_.vs_row`, recorded at registration through
