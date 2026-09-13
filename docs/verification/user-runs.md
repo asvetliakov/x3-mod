@@ -18,12 +18,12 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | --- | --- | ---: | --- |
 | 1 | Chase aiming/framing + reader/adjacency verification | 0 | Accepted as run 18 |
 | 2 | Sharpen/shimmer + camera cuts with TAA | 0 | Merged into run 6 |
-| 3 | Automatic exposure + bloom off/on | 2 | Ready |
+| 3 | Automatic exposure + bloom off/on | 1 | A complete as run 24; B ready |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
 
-Three sessions remain; complete them at your convenience. The shared TAA shader
+Two sessions remain; complete them at your convenience. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
 no gameplay request yet while its performance optimization is under investigation.
@@ -66,6 +66,12 @@ mip-bias settings to both sides of its fixed-exposure material comparison and
 includes the required motion and view-cut checks.
 
 ## 3. Space-aware exposure and bloom comparison — Ready
+
+Part A is complete as run 24; do not repeat the baseline. Its log and all 155
+referenced artifacts are preserved. Automatic exposure is active, and the user
+reports selection stutter with chase disabled and bright backgrounds without
+the earlier severe overexposure. Analysis of the exposure changes is underway.
+Proceed with the second command below for B.
 
 Use the current installed build; no update is needed. Keep sharpen and mip bias
 at zero so this remains comparable to the earlier HDR baseline. Both commands
@@ -123,7 +129,7 @@ The read-ahead buffer is also enabled because telemetry is active; it reduces
 instrumentation overhead, not the engine's decompression or deserialization work.
 
 
-## 6. Linear materials, chase lead marker and TAA cuts — Ready on the new build
+## 6. Linear materials, chase lead marker and TAA cuts — Completed
 
 This is a fixed-exposure comparison with bloom off. Both sides use sharpen 0.75
 and mip bias -0.5 so the material toggle remains the only A/B difference. Use

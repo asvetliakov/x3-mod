@@ -181,16 +181,23 @@ constexpr DWORD touched_values[] = {FALSE, FALSE, FALSE, FALSE, D3DCULL_NONE, D3
 constexpr unsigned touched_count = sizeof(touched_states) / sizeof(touched_states[0]);
 static_assert(touched_count == sizeof(touched_values) / sizeof(touched_values[0]));
 constexpr unsigned failure_log_limit = 16;
-// Render states the route reads per draw (motion_shadow_state_count of them):
+// Render states the route may read (motion_shadow_state_count in the shadow):
 // the selector's z states (every draw while tracking), the gate-4 opaque-draw
 // checks and the COLORWRITEENABLE1/2 masks saved around RT1/RT2. With
 // X3M_STATE_SHADOW on, the SetRenderState hook keeps the application's values
 // here and the route issues no GetRenderState for them after the first read.
+// The last sixteen slots cache WRAP0–15; each routed draw queries only the
+// one or two generated TEXCOORD indices, never the original material semantics.
 constexpr D3DRENDERSTATETYPE shadow_states[motion_shadow_state_count] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE,
-    D3DRS_COLORWRITEENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_COLORWRITEENABLE2};
+    D3DRS_COLORWRITEENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_COLORWRITEENABLE2,
+    D3DRS_WRAP0, D3DRS_WRAP1, D3DRS_WRAP2, D3DRS_WRAP3, D3DRS_WRAP4, D3DRS_WRAP5, D3DRS_WRAP6, D3DRS_WRAP7,
+    D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15};
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept {
-    for (unsigned i = 0; i < motion_shadow_state_count; ++i) if (shadow_states[i] == state) return i;
+    // WRAP8 starts a second, non-contiguous D3DRENDERSTATETYPE range.
+    if (state >= D3DRS_WRAP0 && state <= D3DRS_WRAP7) return 8u + unsigned(state - D3DRS_WRAP0);
+    if (state >= D3DRS_WRAP8 && state <= D3DRS_WRAP15) return 16u + unsigned(state - D3DRS_WRAP8);
+    for (unsigned i = 0; i < 8; ++i) if (shadow_states[i] == state) return i;
     return unsigned(motion_shadow_state_count);
 }
 const char* scene_end_source_name(std::uint32_t source) noexcept {
@@ -675,6 +682,50 @@ void MotionOutput::invalidate_render_states() noexcept {
     ++counters_.rs_resyncs;
 }
 
+// Only the profile's generated, originally unused TEXCOORDs bypass texture
+// coordinate wrapping. All reads precede mutation; a failed setter is still
+// rolled back because its state cannot be assumed unchanged. These native
+// calls bypass the application shadow. Restore per draw, including lazy RT mode.
+HRESULT MotionOutput::apply_wrap_states(MotionRoute& route, const renderer::MotionOutputProfile& row) noexcept {
+    route.wrap_index[0] = row.texcoord_index;
+    route.wrap_count = route.depth ? 2 : 1;
+    if (route.depth) route.wrap_index[1] = row.depth_texcoord_index;
+    for (unsigned i = 0; i < route.wrap_count; ++i) {
+        if (route.wrap_index[i] >= 16) return D3DERR_INVALIDCALL;
+        const HRESULT hr = render_state(shadow_states[8u + route.wrap_index[i]], &route.saved_wrap[i]);
+        if (FAILED(hr)) return hr;
+    }
+    for (unsigned i = 0; i < route.wrap_count; ++i) {
+        if (!route.saved_wrap[i]) continue;
+        route.wrap_attempted |= std::uint8_t(1u << i);
+        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, shadow_states[8u + route.wrap_index[i]], 0);
+        if (FAILED(hr)) return hr;
+    }
+    return S_OK;
+}
+HRESULT MotionOutput::restore_wrap_states(MotionRoute& route) noexcept {
+    HRESULT first = S_OK;
+    for (unsigned i = route.wrap_count; i-- > 0;) {
+        if (!(route.wrap_attempted & (1u << i))) continue;
+        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, shadow_states[8u + route.wrap_index[i]], route.saved_wrap[i]);
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    }
+    route.wrap_attempted = route.wrap_count = 0;
+    return first;
+}
+void MotionOutput::recover_motion_state() noexcept {
+    if (!motion_state_lost_) return;
+    // A successful Reset restores the API state contract. A failed resync must
+    // not clear quarantine; a later successful Reset may retry all sixteen reads.
+    bool known = true;
+    for (unsigned i = 8; i < motion_shadow_state_count; ++i) {
+        const HRESULT hr = get_render_state_native(shadow_states[i], &shadow_.states[i]);
+        shadow_.states_known[i] = SUCCEEDED(hr);
+        known = known && SUCCEEDED(hr);
+    }
+    if (known) { motion_state_lost_ = false; motion_state_error_ = D3DERR_INVALIDCALL; }
+}
+
 // ---- temporal resolve ------------------------------------------------------
 
 // The device reference count through the native slots (no hook re-entry):
@@ -952,7 +1003,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
 // of a second attempt in one frame).
 bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
     auto& t = counters_.taa;
-    if (emission_state_lost_) { invalidate_taa(); return false; }
+    if (emission_state_lost_ || motion_state_lost_) { invalidate_taa(); return false; }
     if (t.attempted) return false;
     t.attempted = true; t.source = unsigned(source);
     auto skip = [&](TaaSkip why) { t.skip = unsigned(why); invalidate_taa(); return false; };
@@ -1554,7 +1605,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
     // The interrupted frame continues after a successful Reset; capture is off.
-    if (SUCCEEDED(result)) { resync_shadow(); begin_frame(frame_, false); }
+    if (SUCCEEDED(result)) { resync_shadow(); recover_motion_state(); begin_frame(frame_, false); }
     log("motion_output_reset device=%llu result=%08lx generation=%llu taa_references=%u", id_, result, generation_, taa_references_);
 }
 
@@ -2068,7 +2119,7 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
 
 // Undo whatever before_draw already applied, in reverse order.
 HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
-    HRESULT first = S_OK;
+    HRESULT first = restore_wrap_states(route);
     auto step = [&](HRESULT hr) { if (SUCCEEDED(first) && FAILED(hr)) first = hr; };
     if (route.write2_set) step(native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, route.saved_write2));
     if (route.rt2_set) step(bind_target(2, nullptr));
@@ -2087,6 +2138,8 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     route.write2_set = route.rt2_set = false;
     route.vs_constants_set = route.ps_constants_set = false;
     if (FAILED(first)) {
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
+        invalidate_taa();
         ++counters_.restore_failures; invalidate_render_states();
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
@@ -2094,6 +2147,21 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
         }
     }
     return first;
+}
+
+// Rollback follows chronological failure order: a material-bind undo may have
+// already latched its error, then lazy bindings restore, then remaining route
+// state. A later cleanup failure must never replace that first failure.
+void MotionOutput::rollback_route(MotionRoute& route) noexcept {
+    const HRESULT bindings_restored = restore_bindings_checked();
+    if (FAILED(bindings_restored) && !motion_state_lost_) {
+        motion_state_lost_ = true; motion_state_error_ = bindings_restored;
+    }
+    undo(route); // Latches only if no earlier restoration failed.
+    if (motion_state_lost_) {
+        route.submit = false; route.submission_error = motion_state_error_;
+        invalidate_taa();
+    }
 }
 
 // Jitter the submitted clip rows of the bound VS row by this frame's sub-pixel
@@ -2146,6 +2214,10 @@ void MotionOutput::restore_jitter(MotionRoute& route) noexcept {
 MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     MotionRoute route{};
     ++counters_.draws;
+    if (motion_state_lost_) {
+        route.submit = false; route.submission_error = motion_state_error_;
+        ++counters_.gates[1]; invalidate_taa(); return route;
+    }
     if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
     if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
     if (mip_bias_total_game_writes_ != mip_bias_logged_game_writes_) log_mip_bias_game_write();
@@ -2162,7 +2234,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         if (emission_effective_ && FAILED(restored)) {
             emission_state_lost_ = true; route.submit = false; route.submission_error = restored;
             ++emission_counts_.suppressed; invalidate_taa();
-        } else prepare_emission(call, route);
+        } else if (route.submit) prepare_emission(call, route);
     }
     if (telemetry::draw_enabled()) {
         const std::uint64_t total = draw_stamp() - begin,
@@ -2216,7 +2288,7 @@ void MotionOutput::emission_export() noexcept {
     ++emission_counts_.exports; invalidate_taa();
 }
 void MotionOutput::begin_emission_frame() noexcept {
-    if (!linear_emission_requested_ || emission_quarantined_ || emission_state_lost_ || !taa_enabled_
+    if (!linear_emission_requested_ || emission_quarantined_ || emission_state_lost_ || motion_state_lost_ || !taa_enabled_
         || !hdr_enabled_ || !hdr_ || !hdr_->tonemap_active() || emission_adapter_format_ == D3DFMT_UNKNOWN
         || hdr_config_.tonemap != renderer::HdrTonemap::Agx || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return;
     emission_busy_ = true;
@@ -2512,11 +2584,11 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 #endif
     }
     if (SUCCEEDED(hr)) hr = bind_targets(route);
+    if (SUCCEEDED(hr)) hr = apply_wrap_states(route, *shadow_.vs_row);
     route.ticks = draw_stamp() - apply_begin;
     if (FAILED(hr)) {
-        // Partial application: put back what was set and draw the original.
-        restore_bindings();
-        undo(route);
+        // A native fallback is safe only after the complete rollback succeeds.
+        rollback_route(route);
         ++counters_.apply_failures;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
@@ -2588,7 +2660,7 @@ bool MotionOutput::hdr_is_main(IDirect3DSurface9* surface) noexcept {
 
 IDirect3DSurface9* MotionOutput::before_set_render_target(DWORD index, IDirect3DSurface9* surface) noexcept {
     hdr_pending_state_ = 0;
-    if (emission_state_lost_) return surface;
+    if (emission_state_lost_ || motion_state_lost_) return surface;
     if (index != 0 || hdr_state_ == HdrState::Off || !hdr_ || !hdr_->target()) return surface;
     if (hdr_is_main(surface)) { hdr_pending_state_ = std::uint32_t(HdrState::Active); return hdr_->target(); }
     // Another surface (an environment-map face): forwarded verbatim; the scene
@@ -2617,7 +2689,7 @@ void MotionOutput::before_end_scene() noexcept { if (hdr_state_ == HdrState::Act
 // blocked after an unwind unless the recovery self test passes now.
 void MotionOutput::begin_redirect() noexcept {
     auto& h = counters_.hdr;
-    if (emission_state_lost_) return;
+    if (emission_state_lost_ || motion_state_lost_) return;
     if (selector_.state() != renderer::BoundaryState::AwaitInitialClear || !hdr_) return;
     renderer::SceneBoundarySelector probe = selector_;
     renderer::Event e = pending_;
@@ -2741,12 +2813,12 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
     return r;
 }
 void MotionOutput::flush_redirect() noexcept {
-    if (emission_state_lost_ || hdr_state_ != HdrState::Active || !hdr_dirty_ || !hdr_ || !hdr_main_) return;
+    if (emission_state_lost_ || motion_state_lost_ || hdr_state_ != HdrState::Active || !hdr_dirty_ || !hdr_ || !hdr_main_) return;
     ++counters_.hdr.flushes;
     hdr_writeback(hdr_->target(), true);
 }
 void MotionOutput::end_redirect(HdrEnd reason, MotionHdrSceneCallback callback, void* context) noexcept {
-    if (emission_state_lost_ || hdr_state_ == HdrState::Off) return;
+    if (emission_state_lost_ || motion_state_lost_ || hdr_state_ == HdrState::Off) return;
     emission_terminal_export_ = reason == HdrEnd::Hook || reason == HdrEnd::BloomCopy || reason == HdrEnd::Present;
     if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) {
         const bool write = hdr_dirty_ || hdr_resolved_ != nullptr;

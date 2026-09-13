@@ -170,6 +170,8 @@ public:
  D device_=nullptr;bool enabled_=true,requested_=true,depth_enabled_=true,linear_material_requested_=false;
  renderer::LinearMaterialConfig linear_material_config_{};
  std::unique_ptr<renderer::LinearEmissionPass>emission_;
+ bool motion_state_lost_=false;HRESULT motion_state_error_=D3DERR_INVALIDCALL;
+ void recover_motion_state(){} HRESULT restore_wrap_states(MotionRoute&){return S_OK;}
  bool emission_busy_=false,emission_state_lost_=false,emission_frame_stopped_=false,emission_enhanced_=false,emission_quarantined_=false,emission_readers_known_=false,emission_published_=false;
  IDirect3DTexture9*emission_main_texture_=nullptr;IUnknown*emission_main_identity_=nullptr;
  std::uint32_t emission_main_sampler_mask_=0,emission_reader_known_mask_=0;IDirect3DBaseTexture9*emission_textures_[21]{};
@@ -223,7 +225,7 @@ public:
  void register_pixel_shader(IDirect3DPixelShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void set_vertex_shader(IDirect3DVertexShader9*)noexcept;void set_pixel_shader(IDirect3DPixelShader9*)noexcept;
  void set_sampler_state(DWORD,D3DSAMPLERSTATETYPE,DWORD)noexcept;void resync_samplers()noexcept;
- void refresh_linear_material_contract()noexcept;unsigned linear_material_refusal()const noexcept;HRESULT bind_variant_pair(MotionRoute&,bool)noexcept;HRESULT undo(MotionRoute&)noexcept;
+ void refresh_linear_material_contract()noexcept;unsigned linear_material_refusal()const noexcept;HRESULT bind_variant_pair(MotionRoute&,bool)noexcept;HRESULT undo(MotionRoute&)noexcept;void rollback_route(MotionRoute&)noexcept;
 };
 // Win32 environment semantics needed by capture's unmodified parsing block.
 std::map<std::wstring,std::wstring> environment;
@@ -396,6 +398,12 @@ void emission_environment_cases(){
 // script external results. No source draw exists here, so geometry is never replayed.
 void emission_route_cases(){
  const unsigned before=checks;
+ // Motion rollback quarantine uses the same early native-submission boundary
+ // even when supplemental emission is disabled. No native draw is replayed.
+ for(bool emission:{false,true}){MotionOutput m;m.linear_emission_requested_=emission;m.motion_state_lost_=true;m.motion_state_error_=-91;
+  auto r=m.before_draw({});CHECK(!r.submit&&!r.evaluated&&!r.emission&&r.submission_error==-91);CHECK(m.counters_.gates[1]==1&&m.taa_invalidations==1);
+  m.after_reset(E_FAIL);CHECK(m.motion_state_lost_);auto again=m.before_draw({});CHECK(!again.submit&&again.submission_error==-91);
+ }
  Device device;IDirect3DPixelShader9 shader;
  auto ready=[&](MotionOutput&m){m.device_=&device;device.target_result=S_OK;m.linear_emission_requested_=true;m.emission_effective_=true;m.scene_open_=true;m.shadow_.emission_eligible_variant=&shader;m.emission_readers_known_=true;m.emission_=std::make_unique<renderer::LinearEmissionPass>();};
  for(unsigned refusal=0;refusal<23;++refusal){
@@ -574,7 +582,18 @@ int main(){
  // Each new-stage failure restores partial setup and retries motion once.
  for(unsigned failure:{1u,2u}){device.ordinal=0;device.calls.clear();device.failed_calls={failure};route={};CHECK(m.bind_variant_pair(route,true)==S_OK);CHECK(!route.linear_material&&route.jittered&&route.vs_set&&route.ps_set);CHECK(device.bound_vs==m.shadow_.vs_variant&&device.bound_ps==m.shadow_.ps_variant);CHECK(device.calls.size()==(failure==1?3:5));CHECK(m.undo(route)==S_OK);}
  // Failed partial restoration refuses retry, invalidates state and counts it.
- device.ordinal=0;device.calls.clear();device.failed_calls={2,3};route={};CHECK(m.bind_variant_pair(route,true)==E_FAIL);CHECK(device.calls.size()==3&&!route.linear_material&&m.states_invalidated&&m.counters_.restore_failures==1);
+ device.ordinal=0;device.calls.clear();device.failed_calls={2,3};route={};CHECK(m.bind_variant_pair(route,true)==E_FAIL);CHECK(device.calls.size()==3&&!route.linear_material&&m.states_invalidated&&m.counters_.restore_failures==1);CHECK(m.motion_state_lost_&&!m.before_draw({}).submit);
+ // A later deferred/lazy failure cannot replace the material undo's error.
+ m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.rollback_route(route);
+ CHECK(!route.submit&&route.submission_error==E_FAIL&&m.motion_state_error_==E_FAIL&&device.calls.size()==3);
+ // Conversely, when bindings cleanup fails first, a later shader undo must
+ // preserve that earlier HRESULT rather than preferring the later undo error.
+ {MotionOutput later;later.device_=&device;later.shadow_.vs=&original_vs;later.deferred_flush_result_=-72;later.deferred_flushes_=1;
+  MotionRoute failed;failed.vs_set=true;device.ordinal=0;device.calls.clear();device.failed_calls={1};later.rollback_route(failed);
+  CHECK(later.motion_state_lost_&&later.motion_state_error_==-72&&!failed.submit&&failed.submission_error==-72);
+  CHECK(device.calls.size()==1&&later.counters_.restore_failures==1);CHECK(later.undo(failed)==S_OK&&later.motion_state_error_==-72);
+ }
+
  // The single ordinary retry can itself fail; no recursive material attempt.
  device.ordinal=0;device.calls.clear();device.failed_calls={1,3};route={};CHECK(m.bind_variant_pair(route,true)==E_FAIL);CHECK(device.calls.size()==3&&route.vs_set&&!route.ps_set);device.failed_calls.clear();CHECK(m.undo(route)==S_OK);
  // Failed combined creation preserves ordinary motion, including the bound

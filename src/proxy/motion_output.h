@@ -44,7 +44,7 @@ inline constexpr std::size_t motion_matrix_windows_max = 4;
 // Render states the route reads per draw and shadows from the SetRenderState
 // hook (X3M_STATE_SHADOW): the selector's z states, the gate-4 opaque-draw
 // checks and the write masks saved around RT1/RT2 (motion_output.cpp lists them).
-inline constexpr std::size_t motion_shadow_state_count = 8;
+inline constexpr std::size_t motion_shadow_state_count = 24;
 }
 
 namespace x3m {
@@ -72,6 +72,9 @@ struct MotionRoute {
     bool jittered = false;                                     // Jittered rows written; restore after the draw.
     UINT jitter_register = 0;                                  // The VS row's clip-row window base.
     DWORD saved_write1 = 15, saved_write2 = 15;
+    // At most two new TEXCOORD semantics; native semantics are never changed.
+    DWORD saved_wrap[2]{};
+    std::uint8_t wrap_index[2]{}, wrap_count = 0, wrap_attempted = 0;
     renderer::RigidDrawKey key{};
     std::uint64_t rows_hash = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
@@ -281,7 +284,7 @@ public:
     // The redirect itself is Off after a successful handoff.
     bool bloom_boundary_available() const noexcept {
         return enabled_ && hdr_enabled_ && scene_open_ && !active_queries_ && !shadow_.recording
-            && !reference_accounting_busy() && !hdr_blocked_ && !counters_.hdr.unwind && !counters_.restore_failures;
+            && !reference_accounting_busy() && !motion_state_lost_ && !hdr_blocked_ && !counters_.hdr.unwind && !counters_.restore_failures;
     }
     // RT2 (R32F current depth) is produced on this device: three simultaneous
     // targets, R32F render-target support and the three-format self test.
@@ -389,7 +392,7 @@ public:
     void configure_linear_emissions(bool requested, float gain) noexcept;
     bool linear_emissions_requested() const noexcept { return linear_emission_requested_; }
     bool emission_operation_active() const noexcept { return emission_busy_; }
-    bool emission_submission_blocked() const noexcept { return emission_busy_ || emission_state_lost_; }
+    bool draw_submission_blocked() const noexcept { return emission_busy_ || emission_state_lost_ || motion_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
     float mip_bias() const noexcept { return mip_bias_; }
     bool mip_bias_active() const noexcept { return mip_bias_bits_ != 0 && jitter_requested_; }
@@ -670,6 +673,10 @@ private:
     bool sample_scope(MotionRoute& route) noexcept;
     void observe(renderer::Event& event, HRESULT result) noexcept;
     HRESULT undo(MotionRoute& route) noexcept;
+    void rollback_route(MotionRoute& route) noexcept;
+    HRESULT apply_wrap_states(MotionRoute& route, const renderer::MotionOutputProfile& row) noexcept;
+    HRESULT restore_wrap_states(MotionRoute& route) noexcept;
+    void recover_motion_state() noexcept; // Successful Reset + actual state reads only.
     renderer::SceneSignatures signatures() const noexcept;
     void readback() noexcept;
     // HDR redirect (hdr_pass.h performs the device work; the policy is here).
@@ -697,6 +704,8 @@ private:
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};
     std::unique_ptr<renderer::LinearEmissionPass> emission_;
     bool emission_busy_ = false, emission_state_lost_ = false;
+    bool motion_state_lost_ = false; // A failed restoration blocks native submissions until Reset.
+    HRESULT motion_state_error_ = D3DERR_INVALIDCALL;
     bool emission_frame_stopped_ = false, emission_enhanced_ = false;
     bool emission_quarantined_ = false; // Export uncertainty survives frames and Reset.
     bool emission_readers_known_ = false, emission_identity_known_ = true;

@@ -77,12 +77,21 @@ pixel coverage. Final gloss tuning may follow improved lighting/reflections;
 accidental term loss still needs exclusion. Run 3 (automatic exposure and bloom) is now requested on the unchanged
 installed build. Hold Wine fixtures and installs while the user performs that
 comparison; there is no new user run for the HUD/stutter fixes yet.
+Run 3 A is preserved as `/tmp/x3-bottleX3-run24/` with all 155 referenced
+artifacts. The user reports selection stutter with chase disabled, bright space
+backgrounds without the earlier severe overexposure, and no obvious exposure
+adaptation. The log confirms automatic exposure is active; quantitative
+analysis is in progress while the user proceeds with B.
 The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
 geometry genuinely composites with the background; temporal coverage must
 preserve that mixture rather than force opaque depth. The bloom lifetime host
 fixture's emission Reset model is repaired and independently reviewed
 (33 scenarios / 139 checks); this checkpoint changes no installed code.
+The [motion/depth WRAP correction](architecture/motion-varying-wrap.md) is
+source-integrated and independently reviewed, including its interaction with
+emission and Reset (11 affected host tests pass). GPU qualification and
+installation remain pending.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

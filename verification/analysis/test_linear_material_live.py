@@ -79,6 +79,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'unsigned MotionOutput::linear_material_refusal() const noexcept',
             'HRESULT MotionOutput::bind_variant_pair(',
             'HRESULT MotionOutput::undo(',
+            'void MotionOutput::rollback_route(',
         ]
         with tempfile.TemporaryDirectory(prefix='x3-linear-material-live-') as directory:
             path = Path(directory)

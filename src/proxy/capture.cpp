@@ -926,7 +926,7 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
-    if(ctx.motion_output.emission_submission_blocked())return ctx.motion_output.before_draw({false,false,t,c,s,0,0,0}).submission_error;
+    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,false,t,c,s,0,0,0}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Primitive,t,c,s});
     ctx.scene_depth.before_draw(d,t,c);
@@ -948,7 +948,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
-    if(ctx.motion_output.emission_submission_blocked())return ctx.motion_output.before_draw({true,false,t,c,s,b,m,n}).submission_error;
+    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,false,t,c,s,b,m,n}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::Indexed,t,c,s,b,m,n});
     ctx.scene_depth.before_draw(d,t,c);
@@ -981,7 +981,7 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void*
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
-    if(ctx.motion_output.emission_submission_blocked())return ctx.motion_output.before_draw({false,true,t,c,0,0,0,0}).submission_error;
+    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({false,true,t,c,0,0,0,0}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::UserMemory,t,c});
     ctx.scene_depth.before_draw(d,t,c);
@@ -1003,7 +1003,7 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UIN
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);CallTimer timer(ctx);
-    if(ctx.motion_output.emission_submission_blocked())return ctx.motion_output.before_draw({true,true,t,c,0,0,m,n}).submission_error;
+    if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,true,t,c,0,0,m,n}).submission_error;
     if(ctx.capture)ctx.motion_output.restore_bindings(); // Capture diagnostics below read the application's bindings.
     auto input=read_draw_input(ctx,d,{DrawMethod::IndexedUserMemory,t,c,0,0,m,n});
     ctx.scene_depth.before_draw(d,t,c);

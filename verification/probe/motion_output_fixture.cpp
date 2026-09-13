@@ -154,7 +154,9 @@ constexpr D3DRENDERSTATETYPE watched_states[] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE,
     D3DRS_COLORWRITEENABLE, D3DRS_SCISSORTESTENABLE, D3DRS_STENCILENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE,
     D3DRS_CLIPPLANEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_ZFUNC, D3DRS_LIGHTING, D3DRS_COLORWRITEENABLE2,
-    D3DRS_MULTISAMPLEMASK, D3DRS_VERTEXBLEND, D3DRS_WRAP0, D3DRS_CLIPPING};
+    D3DRS_MULTISAMPLEMASK, D3DRS_VERTEXBLEND, D3DRS_WRAP0, D3DRS_CLIPPING,
+    D3DRS_WRAP1, D3DRS_WRAP2, D3DRS_WRAP3, D3DRS_WRAP4, D3DRS_WRAP5, D3DRS_WRAP6, D3DRS_WRAP7,
+    D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15};
 constexpr unsigned watched_count = sizeof(watched_states) / sizeof(watched_states[0]);
 // Sampler states the resolve normalizes on s0-s6; compared on stages 0-7.
 // MIPMAPLODBIAS is watched too: with the mip bias on (X3M_TAA_MIP_BIAS) the
@@ -368,7 +370,7 @@ struct Fixture {
     HRESULT (*last_pixel_abi)(IDirect3DDevice9*, float*, unsigned) = nullptr;
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
-    bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
+    bool hook = false, wrap = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
     std::vector<float> emission_reference_color, emission_reference_mask;
@@ -550,6 +552,13 @@ struct Fixture {
         api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15), "write1"); api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 15), "write2"); api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE), "cull");
         api(d->SetRenderState(D3DRS_ZENABLE, TRUE), "z"); api(d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE), "zwrite");
         api(d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL), "zfunc");
+        if (wrap) {
+            // The reference Argon pair generates motion TEX4 and depth TEX5.
+            // Its original TEX0 keeps an independent application WRAP value.
+            api(d->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0), "native WRAP0");
+            api(d->SetRenderState(D3DRS_WRAP4, 15), "generated motion WRAP4 hostile");
+            api(d->SetRenderState(D3DRS_WRAP5, 15), "generated depth WRAP5 hostile");
+        }
     }
     // Deliberately awkward state before the initial Clear: the fill must put
     // every one of these back, including scissor, stream 0 and the declaration.
@@ -1049,10 +1058,16 @@ struct Fixture {
             // must see its own value; both modes must produce the same image.
             api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 7), "application COLORWRITEENABLE1 write between routed draws");
             burst_draw(a, .8f, .125f, 0, Alter::Blend, false);
+            if (wrap) api(d->SetRenderState(D3DRS_WRAP4, 6), "application WRAP4 between lazy draws");
             burst_draw(b, -.05f, 0, .1f);
             DWORD mask = 0; api(d->GetRenderState(D3DRS_COLORWRITEENABLE1, &mask), "application COLORWRITEENABLE1 read between routed draws");
             require(mask == 7, "the application reads back its own COLORWRITEENABLE1 between routed draws");
             api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 15), "application COLORWRITEENABLE1 restore");
+            if (wrap) {
+                DWORD value = 0; api(d->GetRenderState(D3DRS_WRAP4, &value), "application WRAP4 read");
+                require(value == 6, "application reads exact WRAP4 after routed draw");
+                api(d->SetRenderState(D3DRS_WRAP4, 15), "application WRAP4 restore");
+            }
             if (i % 2 == 0) {
                 // Same target rebound: the viewport and scissor rectangle reset with it.
                 api(d->SetRenderTarget(0, back.p), "SetRenderTarget 0 (application)");
@@ -2303,6 +2318,7 @@ struct Fixture {
         api(d->SetPixelShader(ps.p), "SetPixelShader reviewed for the second block");
         Com<IDirect3DStateBlock9> restore_block; api(d->CreateStateBlock(D3DSBT_ALL, &restore_block.p), "CreateStateBlock (blend off)");
         api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE), "blend on before Apply");
+        if (wrap) api(d->SetRenderState(D3DRS_WRAP4, 3), "WRAP4 before StateBlock Apply");
         api(restore_block->Apply(), "StateBlock Apply (blend off again)");
     }
     // Render-state shadow: a write recorded between BeginStateBlock and
@@ -2311,9 +2327,11 @@ struct Fixture {
     void recorded_write_case() {
         api(d->BeginStateBlock(), "BeginStateBlock");
         api(d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE), "recorded z-write off (not applied)");
+        if (wrap) api(d->SetRenderState(D3DRS_WRAP4, 0), "recorded WRAP4 (not applied)");
         Com<IDirect3DStateBlock9> recorded; api(d->EndStateBlock(&recorded.p), "EndStateBlock");
         DWORD value = 1; api(d->GetRenderState(D3DRS_ZWRITEENABLE, &value), "GetRenderState after recording");
         require(value == TRUE, "a recorded render-state write does not reach the device");
+        if (wrap) { api(d->GetRenderState(D3DRS_WRAP4, &value), "WRAP4 after recording"); require(value == 15, "recorded WRAP4 leaves application state intact"); }
     }
     void recreate_shaders() {
         api(d->SetVertexShader(nullptr), "unbind vs"); api(d->SetPixelShader(nullptr), "unbind ps");
@@ -2458,6 +2476,8 @@ int main(int argc, char** argv) {
         char camera_mode[8]{}; f.camera = f.seam && GetEnvironmentVariableA("X3M_FIXTURE_CAMERA", camera_mode, sizeof camera_mode) == 6 && !std::strcmp(camera_mode, "rotate");
         if (GetEnvironmentVariableA("X3M_TAA_SENTINEL", setting, sizeof setting) > 0) f.sentinel = !std::strcmp(setting, "1") ? 1 : !std::strcmp(setting, "2") ? 2 : 0;
         f.state_shadow = !(GetEnvironmentVariableA("X3M_STATE_SHADOW", setting, sizeof setting) == 1 && setting[0] == '0');
+        f.wrap = GetEnvironmentVariableA("X3M_FIXTURE_WRAP", setting, sizeof setting) == 1 && setting[0] == '1';
+        if (f.wrap) std::printf("WRAP mode=hostile motion_texcoord=4 depth_texcoord=5 native_texcoord=0\n");
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
         f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));
         if (f.taa && GetEnvironmentVariableA("X3M_TAA_SHARPEN", setting, sizeof setting) > 0) { const float v = float(std::atof(setting)); if (v > 0.f && v <= 1.f) f.sharpen = v; }
