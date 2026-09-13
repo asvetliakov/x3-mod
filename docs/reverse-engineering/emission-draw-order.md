@@ -101,6 +101,116 @@ a capture-only upper bound for that predicate, not complete live reactive
 classification or GPU cost. Full-screen background masks could erase useful
 far-plane TAA; excluding them without a camera-only proof is not completeness.
 
+## Historical two-draw burst internals
+
+A second streamed pass compared the two snapshots in each of the 16 historical
+eligible bursts. All pairs have consecutive `draw_begin` event ordinals. In 15,
+the first `draw_result` is immediately followed by the second `draw_begin`.
+Frame 1794 has only three intervening `resource identity` records, which tag
+the already-bound VB, IB and texture with capture-private IDs; they are
+instrumentation, not observed game resource creation or content writes.
+
+Within every pair, the captured scene owner, mesh, node, object, camera and
+lifetime/epoch tuple are equal. So are the VS/PS, primitive type, declaration,
+all 17 object matrices, position/basis, fixed transforms, render states, sampler
+states, RT0/depth identities and formats, viewport, and all captured constants
+except VS float rows c10–c11. Both draws succeed. In particular, both retain Z
+test on, Z writes off, alpha test off, RGB ADD/ONE/ONE, color mask 15, and
+separate-alpha enable 1.
+
+Each second draw nevertheless requires distinct geometry and texture input:
+32 primitives/33 vertices become 64/66; stream-0 VB size 792 becomes 1,584;
+the 16-bit IB size 192 becomes 384; and the stage-0 DXT5 texture changes from
+1024x1024 to 1024x512. The VB, IB and texture identities all differ, though
+both buffer snapshots report known revision 1 with no pending or ambiguous
+revision. VS c10–c11 also change in all 16 pairs; the second draw always has
+c10 `(1,0,0,0)` and c11 `(0,1,0,0)`, while the first varies. These are the only
+changing captured constant rows, so any geometry/UV setup they feed must remain
+per draw; the capture does not establish their semantic names.
+
+The ordered event vocabulary covers draws, Clear, target/depth changes,
+StretchRect and ColorFill. It records none of those operations between a pair.
+It is not a complete API call trace: stream/index/texture binds,
+shader-constant setters, state-block Apply, queries, locks and update calls can
+be absent, as can redundant state changes. Snapshot collection itself calls
+getters, descriptor queries and private-data queries. Those observations are
+capture instrumentation and do not prove the application made no unlogged
+calls. The snapshots also omit alpha blend
+factors/operation, blend factor, and scissor enable/rectangle, so equality of
+the complete blend and raster state is unproven.
+
+Both draws report scoped object context with equal values and scope depth one,
+but the log has no material-dispatch invocation serial or scope enter/leave
+event. One invocation and two consecutive invocations with identical arguments
+therefore remain indistinguishable. **Adjacent draw ordinals do not yet qualify
+batching.** Cross-call batching would require an independently established
+engine invocation boundary and preservation of the changing geometry, texture,
+c10–c11 and currently unobserved API/state transitions.
+
+Private derived results are `/tmp/x3-emission-between.json` and
+`/tmp/x3-emission-between.txt`, produced by `/tmp/x3-emission-between.py`.
+Representative raw trace locations are lines 1,031,386–1,031,391 (frame 1794)
+and 2,471,447–2,471,449 (frame 2435); no raw trace content is reproduced here.
+
+## Scoped invocation, subset loop and effect passes
+
+Targeted instruction inspection confirms that the existing
+[object scope](object-identity.md#implemented-diagnostic-seam-not-installed-or-game-validated)
+brackets **one synchronous invocation of `0x004c0150`**, through the patched
+call at `0x004c5228`. `x3m_object_dispatch` enters TLS before forwarding all six
+arguments and leaves after return; its SEH registration also removes the scope
+on foreign unwind. The captured `mesh` is the first argument, the enclosing
+material/geometry descriptor. It is not the current subset record. Equal scope
+arguments/depth are not an invocation serial: successive calls can reuse them.
+
+| Addresses | Confirmed structure |
+| --- | --- |
+| `0x004c0207–021d` | Test signed 16-bit subset count at descriptor `+8`; initialize outer index to zero |
+| `0x004c0223–023d` | Select record from descriptor `+0xc` plus index × `0x1a8` |
+| `0x004c0b85–0bc0`, one setup branch | Derive stride through record `+0x14` object; bind stream zero from record `+0xc` |
+| `0x004c0bca–0be5`, same branch | Bind declaration from record `+0x18` |
+| `0x004c1ebe` | Effect `Begin` obtains pass count |
+| `0x004c1f48–1f65` | Select supplied UV-matrix helper `0x004b92c0` or identity helper `0x004b9280` |
+| `0x004c3ffe`, `0x004c403c`, `0x004c4047` | Begin effect pass, dispatch geometry draw, end pass |
+| `0x004c405b`, `0x004c4066` | Repeat inner pass loop; then effect `End` |
+| `0x004c4068–4082` | Increment outer index, reread subset count, repeat record setup |
+
+Thus one invocation can submit several geometry/material records and several
+effect passes per record, while retaining identical object context. Texture and
+UV setup repeat inside the outer loop. Some branches substitute the selected
+material record. This establishes a mechanism compatible with the observed
+geometry/texture/UV changes, **not** that either captured draw took a particular
+branch or that the pair belongs to one invocation. Neither loop means exactly
+two draws or an additive-only region.
+
+The original VS `d5e1c75351ed3f04` supplies the missing UV semantics directly:
+CTAB names c10/c11 `g_TexMatrix`, and the instructions evaluate
+`u' = dot((u,v,1), c10.xyz)`, `v' = dot((u,v,1), c11.xyz)` for TEXCOORD0.
+Their w components are unused by these dot products. The second draw's captured
+rows are therefore an identity UV transform; the first draw's differing rows
+change this affine sampling transform. They do not alter WVP position or the
+separate fog/fade output. Per-draw UV constants must remain intact even if two
+draws later share an accumulation/publication interval. Local source:
+`/tmp/x3-shader-sweep/disassembly/vs_d5e1c75351ed3f04.bin.txt`.
+
+Normal returns are at `0x004c40a3`, `0x004c40ca`, `0x004c40e1` and
+`0x004c40fb`, including error/skip exits. The wrapper supplies a common normal
+leave point, but its return value is not a GPU-success certificate: the draw
+result at `0x004c403c` is not checked before effect `EndPass`. Foreign unwind
+also requires an explicit incomplete-operation policy, not publication of an
+assumed complete accumulated image.
+
+The invocation exit is a concrete possible **maximum lifetime boundary** for
+detached accumulation. It does not authorize delaying publication across every
+operation inside that invocation. This audit does not certify every indirect
+helper/effect callback as color-read-free; the historical event omissions above
+remain. A detached multi-subset proof must close before an incompatible draw or
+color reader and handle early return/unwind. Establishing the historical
+batching opportunity additionally needs invocation/subset/pass identity that
+these captures cannot recover. No cross-call batching is qualified or selected.
+Instruction evidence is local `/tmp/x3-object-context.txt`, supported by
+`/tmp/x3-render-functions.c`; no raw disassembly is tracked.
+
 ## Reproduction and limits
 
 Use the existing read-only headless workflow and `X3CameraState.java` from

@@ -80,8 +80,12 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   native result until publication. A same-draw native/emission MRT candidate
   now passes 38 detached X3 cases, preserving untouched channels and a native
   recovery image. A branch experiment preserved the image but showed no
-  consistent speedup; retain the baseline while qualifying actual game shaders
-  and investigating batching. Copy/composition cost remains a live-integration
+  consistent speedup; retain the baseline. The actual-original emission
+  transformer is independently reviewed and passes seven host tests over five
+  pairs / 25 gain variants; detached GPU qualification is next. It is not linked
+  into the installed renderer. Disassembly identifies the material subset/pass
+  loops, but the historical adjacent draws do not yet qualify batching.
+  Copy/composition cost remains a live-integration
   concern. A [background study](reverse-engineering/background-temporal-coverage.md)
   distinguishes sampled camera-centered nebula motion from changing stardust
   inputs; runtime temporal admission remains unproved. No live emission route is selected.

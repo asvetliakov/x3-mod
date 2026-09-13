@@ -613,6 +613,27 @@ benefit. It has the same scope limits as the detached MRT candidate: no original
 shader augmentation, live route, native-Windows execution, gameplay cost or
 additional nonfinite-input qualification.
 
+### Actual-original transformer source review
+
+Independent review of the pure transformer found no open source defect. Direct
+inspection of the five local originals confirms the exact hashes and copy
+boundaries, that the complete executable bodies use only r0/r1 and c0-c3, and
+that r2/r3, c30/c31 and oC1 are free. The transformer preserves every original
+word, comment, `_pp` instruction and raw-alpha path; its sole inserted pre-fade
+copy is RGB-only. Its full-precision tail implements ordered source sanitation,
+safe scalar POW decode, the decoded-result cap before preserved fade and gain,
+the final cap, and a full unmodified oC1 MOV with +0 alpha. The largest result is
+29 weighted arithmetic slots plus one texture slot, within PS2 limits.
+
+The focused host module passes seven tests over five exact VS/PS pairs and 25
+gain variants, including byte reconstruction, aliasing and failure rollback,
+register/output rules, weighted budgets and analytical finite/nonfinite
+witnesses. This is creation-time CPU work with bounded linear scans and one
+temporary result allocation; it adds no per-draw work. The host arithmetic
+model does not qualify GPU handling. Actual shader creation, native-oC0 parity,
+MRT output and native-Windows execution remain the next gates; no runtime route
+or feature support is added at this checkpoint.
+
 Orchestrator decision: keep the baseline compositor. The branch remains a
 separate reproducible experiment, not a selected optimization; do not repeat
 this benchmark merely to seek a favorable result. Proceed with bounded
