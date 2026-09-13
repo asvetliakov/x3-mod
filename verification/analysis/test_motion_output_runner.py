@@ -46,6 +46,45 @@ class MotionOutputRunnerTests(unittest.TestCase):
         self.assertNotIn('X3M_HDR_EXPOSURE', runner.AGX)
         self.assertFalse(any(c['hdr_env'].get('X3M_FIXTURE_WRAP') == '1' for c in runner.CASES))
 
+    def test_all_legacy_hdr_cases_own_their_intended_exposure(self):
+        hdr = {c['name']: c['hdr_env'] for c in runner.CASES if c['hdr']}
+        automatic = {'seam-hdr-exposure', 'seam-hdr-exposure-offset', 'seam-ownership-hdr-exposure',
+                     'seam-hdr-tonemap-fault', 'seam-hdr-meter-selftest-unlock', 'seam-hdr-tonemap-shader-absent',
+                     'seam-taa-hdr-tonemap-auto', 'seam-taa-hdr-tonemap-fault'}
+        automatic |= {f'bench-{size}-hdr-tonemap-taa-{suffix}' for size in ('1280x768', '5120x1440')
+                      for suffix in ('off', 'on', 'sharpen-on')}
+        manual = {f'seam-hdr-ramp-{suffix}': '0' for suffix in ('none', 'golden', 'punchy', 'decode-none', 'decode-srgb', 'clamp4', 'identity')}
+        manual.update({'seam-hdr-ramp-ev-minus2': '-2', 'seam-hdr-ramp-ev-plus1-punchy': '1', 'production-hdr-ramp-none': '0',
+                       'seam-taa-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-ev1': '1', 'seam-taa-hdr-tonemap-k0': '0',
+                       'seam-ownership-taa-hdr-tonemap-on': '0', 'production-taa-hdr-tonemap-on': '0',
+                       'seam-taa-hook-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-sharpen-on': '0'})
+        self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
+        self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (48, 14, 17))
+        for name, env in hdr.items():
+            with self.subTest(case=name):
+                if name in automatic:
+                    self.assertNotIn('X3M_HDR_EV_MANUAL', env)
+                elif name not in manual:
+                    self.assertNotIn('X3M_HDR_TONEMAP', env)  # identity, runtime baseline fixed zero
+                    self.assertNotIn('X3M_HDR_EXPOSURE', env)
+                    self.assertNotIn('X3M_HDR_EV_MANUAL', env)
+        self.assertEqual(hdr['seam-taa-hdr-tonemap-k0']['X3M_TAA_K'], '0')
+
+    def test_render_state_resync_bound_includes_wrap_slots(self):
+        self.assertEqual(runner.RS_SHADOW_STATES, 24)
+        summary = dict(state_shadow='1', draws='12', rs_queries='48', rs_hits='24',
+                       rs_gets=str(runner.RS_FILL_GETS + 24), rs_resyncs='1')
+        runner.check_render_state('host', 7, summary, True, 1)
+        for changed in ({'rs_hits': '23', 'rs_gets': str(runner.RS_FILL_GETS + 25)},
+                        {'rs_gets': str(runner.RS_FILL_GETS + 23)}, {'rs_resyncs': '0'}):
+            with self.subTest(changed=changed), self.assertRaises(AssertionError):
+                runner.check_render_state('host', 7, dict(summary, **changed), True, 1)
+        # No resync still permits no shadow misses; shadow-off still requires
+        # every query to be a native get, independent of the enlarged bound.
+        runner.check_render_state('host', 0, dict(summary, rs_hits='48', rs_gets=str(runner.RS_FILL_GETS), rs_resyncs='0'), True, 0)
+        runner.check_render_state('host', 0, dict(summary, state_shadow='0', rs_hits='0', rs_gets=str(runner.RS_FILL_GETS + 48)), False, 1)
+
     def run_selected(self, selectors, consume=True, mutate=False):
         build = self.root / 'build'
         build.mkdir(exist_ok=True)
@@ -62,6 +101,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
             expected_dll = b'dll' if 'production' in directory.name else b'seam'
             self.assertEqual((directory / 'd3d9.dll').read_bytes(), expected_dll)
             self.assertEqual(kwargs['env']['X3M_FIXTURE_WRAP'], '1' if directory.name.split('motion-output-')[1].startswith('seam-burst-lazy-wrap-') else '0')
+            self.assertEqual(kwargs['env']['X3M_HDR_EXPOSURE'], 'fixed')
+            self.assertEqual(kwargs['env']['X3M_HDR_EV_MANUAL'], '')
             captures = directory / 'x3-modern-captures'
             captures.mkdir()
             (captures / 'session-test.log').write_text('host dispatch test')
@@ -93,7 +134,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
 
     def test_consume_dispatches_only_selected_supplied_binaries_and_hashes(self):
         selected = ['production-burst-perdraw', 'seam-burst-lazy-wrap']
-        result, commands, validations = self.run_selected(selected)
+        with patch.dict(runner.os.environ, X3M_HDR_EXPOSURE='auto', X3M_HDR_EV_MANUAL='7'):
+            result, commands, validations = self.run_selected(selected)
         self.assertEqual(len(commands), 2)
         self.assertEqual(result['build_commands'], [])
         self.assertFalse((self.root / 'results/motion-output-build.log').exists())

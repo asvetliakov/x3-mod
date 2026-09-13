@@ -155,11 +155,30 @@ counter oracles and require exactly nine successful application WRAP4
 readbacks (95 checks per seam case). The usual partial report does not claim
 a full-suite pass or perform cross-case equivalence comparisons. This pair
 does not close the separate depth-mode, shadow-off, stateblock or Reset WRAP
-qualification. No GPU execution follows from the runner change. Seven focused
+qualification. No GPU execution follows from the runner change. Nine focused
 host tests cover retained-input dispatch and mutation, rejected selectors,
-the unchanged build path, strict WRAP evidence and exposure-case settings.
-The exposure-named HDR cases explicitly request `X3M_HDR_EXPOSURE=auto`;
-unrelated AgX cases do not acquire an automatic-exposure override.
+the unchanged build path, strict WRAP evidence, exposure-case settings and
+the render-state resync bound.
+
+The legacy HDR inventory now owns its exposure modes instead of relying on
+the old production Auto default: 14 cases explicitly request Auto (three
+exposure cases, four tonemap/meter fault cases, the TAA Auto case and six AgX
+benchmarks); 17 retain explicit manual EVs (ramps and TAA/sharpen twins,
+including the identity ramp); the other 17 use identity write-back with the
+runner's fixed-zero baseline. Manual EV environment inherited from the host
+is cleared before each case's overrides. The metadata witness checks all 48
+HDR cases and preserves the nonzero EV and `k=0` tests. The bench oracle still
+requires successful metering and adapted steps, and the fault scripts retain
+their original meter/unwind/adaptation expectations. No GPU validator was
+relaxed to accommodate the fixed-zero production default.
+
+The render-state resync bound is 24, matching the eight gate/mask states plus
+WRAP0–15 in `MotionOutput::Shadow`. `render_state()` counts WRAP misses in the
+same counters and `resync_shadow()` invalidates all 24 slots. A host witness
+accepts 24 misses after one resync and rejects 25; the exact native-get
+accounting, shadow-off accounting and zero-resync/no-miss requirement are
+unchanged. This counter correction does not alter the two selected WRAP
+cases' zero-resync gates.
 
 The separate baseline capture-bloom lifetime test-double mismatch was repaired
 on main in `a50809a`. Independent verification passed 33 scenarios / 139 checks.

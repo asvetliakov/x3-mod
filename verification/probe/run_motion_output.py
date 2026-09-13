@@ -245,26 +245,29 @@ CASES += [case(f'bench-{size}-hdr-on-taa-{state}', 'bench', jitter=True, taa=sta
 # script, the tonemap program forced absent at attach, and the bench with the
 # tonemap and the auto-exposure meter on.
 AGX = dict(X3M_HDR_TONEMAP='agx')
-RAMP_CASES = {'seam-hdr-ramp-none': dict(AGX, X3M_HDR_EV_MANUAL='0'),
-              'seam-hdr-ramp-golden': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_LOOK='golden'),
-              'seam-hdr-ramp-punchy': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_LOOK='punchy'),
-              'seam-hdr-ramp-decode-none': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_DECODE='none'),
-              'seam-hdr-ramp-decode-srgb': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_DECODE='srgb'),
-              'seam-hdr-ramp-clamp4': dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='4'),
-              'seam-hdr-ramp-ev-minus2': dict(AGX, X3M_HDR_EV_MANUAL='-2'),
-              'seam-hdr-ramp-ev-plus1-punchy': dict(AGX, X3M_HDR_EV_MANUAL='1', X3M_HDR_LOOK='punchy', X3M_HDR_CLAMP='16'),
-              'production-hdr-ramp-none': dict(AGX, X3M_HDR_EV_MANUAL='0'),
-              'seam-hdr-ramp-identity': dict(X3M_HDR_EV_MANUAL='0')}  # tonemap off: the stage-1 conversion on the same ramp
+# Legacy cases own their exposure mode; production defaults no longer imply Auto.
+AGX_AUTO = dict(AGX, X3M_HDR_EXPOSURE='auto')
+AGX_MANUAL = dict(AGX, X3M_HDR_EXPOSURE='manual')
+RAMP_CASES = {'seam-hdr-ramp-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0'),
+              'seam-hdr-ramp-golden': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_LOOK='golden'),
+              'seam-hdr-ramp-punchy': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_LOOK='punchy'),
+              'seam-hdr-ramp-decode-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_DECODE='none'),
+              'seam-hdr-ramp-decode-srgb': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_DECODE='srgb'),
+              'seam-hdr-ramp-clamp4': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='4'),
+              'seam-hdr-ramp-ev-minus2': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='-2'),
+              'seam-hdr-ramp-ev-plus1-punchy': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='1', X3M_HDR_LOOK='punchy', X3M_HDR_CLAMP='16'),
+              'production-hdr-ramp-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0'),
+              'seam-hdr-ramp-identity': dict(X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0')}  # tonemap off: the stage-1 conversion on the same ramp
 CASES += [case(name, 'hdrramp', hdr=True, hdr_env=env) for name, env in RAMP_CASES.items()]
-EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX, X3M_HDR_EXPOSURE='auto', X3M_HDR_DT_MS='16'),
-                  'seam-hdr-exposure-offset': dict(AGX, X3M_HDR_EXPOSURE='auto', X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
+EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX_AUTO, X3M_HDR_DT_MS='16'),
+                  'seam-hdr-exposure-offset': dict(AGX_AUTO, X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
 CASES += [case(name, 'hdrexposure', hdr=True, hdr_env=env) for name, env in EXPOSURE_CASES.items()]
 # The meter chain's level surfaces and readback surfaces through the ownership wrapper (reference accounting at teardown).
 CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=True, hdr_env=EXPOSURE_CASES['seam-hdr-exposure'])]
-CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
-          case('seam-hdr-meter-selftest-unlock', 'hdrtonemapfault', hdr=True, hdr_fault='16', hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
-          case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX, X3M_HDR_DT_MS='16'))]
-CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True, hdr_env=dict(AGX, X3M_MOTION_FRAME_LOG='4')) for size in BENCH_SIZES for state in ('off', 'on')]  # frame lines every 4 frames: the adapted state of a timed frame
+CASES += [case('seam-hdr-tonemap-fault', 'hdrtonemapfault', hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16')),
+          case('seam-hdr-meter-selftest-unlock', 'hdrtonemapfault', hdr=True, hdr_fault='16', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16')),
+          case('seam-hdr-tonemap-shader-absent', 'hdrtonemapfault', hdr=True, hdr_fault='12', hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16'))]
+CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, taa=state == 'on', bench=size, hdr=True, hdr_env=dict(AGX_AUTO, X3M_MOTION_FRAME_LOG='4')) for size in BENCH_SIZES for state in ('off', 'on')]  # frame lines every 4 frames: the adapted state of a timed frame
 # FP16 HDR scene path, stage 3 (TAA on HDR): the resolve consumes the FP16
 # scene target and the write-back presents tonemap(resolve(HDR)). The HDR
 # twins above already run the identity write-back with k = 0 on the FP16
@@ -274,15 +277,15 @@ CASES += [case(f'bench-{size}-hdr-tonemap-taa-{state}', 'bench', jitter=True, ta
 # manual EV 0 (k = 1) and 1 (k = 2), auto exposure (k follows the adapted
 # EV), the X3M_TAA_K=0 override, the engine hook, the ownership wrapper, the
 # production DLL, and the fault script with the resolve failing (fault 14).
-TAA_HDR = dict(AGX, X3M_HDR_EV_MANUAL='0', X3M_HDR_DT_MS='16')
+TAA_HDR = dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_DT_MS='16')
 CASES += [case('seam-taa-hdr-tonemap-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
           case('seam-taa-hdr-tonemap-ev1', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_HDR_EV_MANUAL='1')),
-          case('seam-taa-hdr-tonemap-auto', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16')),
+          case('seam-taa-hdr-tonemap-auto', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16')),
           case('seam-taa-hdr-tonemap-k0', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_TAA_K='0')),
           case('seam-ownership-taa-hdr-tonemap-on', 'seam', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
           case('production-taa-hdr-tonemap-on', 'production', jitter=True, taa=True, hdr=True, hdr_env=TAA_HDR),
           case('seam-taa-hook-hdr-tonemap-on', 'seam', jitter=True, taa=True, hook='1', hdr=True, hdr_env=TAA_HDR),
-          case('seam-taa-hdr-tonemap-fault', 'hdrtonemapfault', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX, X3M_HDR_DT_MS='16'))]
+          case('seam-taa-hdr-tonemap-fault', 'hdrtonemapfault', jitter=True, taa=True, hdr=True, hdr_env=dict(AGX_AUTO, X3M_HDR_DT_MS='16'))]
 # Mip LOD bias (X3M_TAA_MIP_BIAS): the "mipbias" script with the switch unset,
 # at 0 (must be byte-identical to unset), at the intended -0.5 (both DLLs,
 # lazy RT mode too) and at -1.0 (a second level step for the linearity of the
@@ -340,7 +343,7 @@ CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(
 # program, the identity copy program, the quad vertex program and its
 # declaration; the sharpen program joins with the switch on.
 TAA_BASE_REFERENCES = 4
-CASES += [case(f'bench-{size}-hdr-tonemap-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr=True, hdr_env=dict(AGX, X3M_MOTION_FRAME_LOG='4', X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
+CASES += [case(f'bench-{size}-hdr-tonemap-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr=True, hdr_env=dict(AGX_AUTO, X3M_MOTION_FRAME_LOG='4', X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
 SHARPEN_MAX_CODE_ERROR = 1   # GPU rcp/mad against the double-precision reference, plus the 8-bit rounding
 HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
 # Mip-bias script (motion_output_fixture.cpp run_mipbias): eight frames,
@@ -386,7 +389,7 @@ HDR_FAULT_SCRIPT = {0: dict(fault=0, redirected=1, unwind=0, source='shader', re
 # regular script's resynchronizations per frame (frame 7: two state block
 # Applies; frame 8: EndStateBlock).
 RS_FILL_GETS = 14
-RS_SHADOW_STATES = 8
+RS_SHADOW_STATES = 24  # eight gate/mask states plus WRAP0..15, all invalidated by resync
 SEAM_RESYNCS = {7: 2, 8: 1}
 # Hook script: seven frames (glow on, outside-Scene signal, glow off) and the
 # per-frame expectations with the patch installed / unpatched.
@@ -2507,6 +2510,9 @@ def main(argv=None):
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
                        X3M_STATE_SHADOW='1' if shadow else '0', X3M_SCENE_HOOK=hook or '0',  # 'default' leaves the switch unset below
                        X3M_HDR='1' if hdr else '0', X3M_FIXTURE_HDR_FAULT=hdr_fault or '',
+                       # Identity cases use fixed zero; case metadata opts into
+                       # manual EV or Auto. An inherited EV must not mask Auto.
+                       X3M_HDR_EXPOSURE='fixed', X3M_HDR_EV_MANUAL='',
                        X3M_OWNERSHIP='0', X3M_DEPTH_COPY='0', X3M_SCENE_DEPTH_CAPTURE='0', X3M_OBJECT_TRACE='0', X3M_OBJECT_LIFETIME='0',
                        X3M_MESH_CACHE='0', X3M_ADMISSION='0', X3M_FINITE_POSITIONS='0', X3M_MOTION_CAPTURE='0',
                        # Loading optimizations have dedicated fixtures. Keep
