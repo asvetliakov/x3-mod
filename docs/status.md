@@ -28,9 +28,13 @@ hashes, 17 exports and 211 no-x87 boundary functions with zero violations.
 See [review 35](verification/review-35-chase-integration.md) and the
 [qualification summary](../verification/results/chase-integration-summary.json).
 
-The camera is vanilla by default; only `--camera chase` enables it. First-game
-acceptance and tuning remain pending, including menu behavior, aim alignment,
-view-transition/TAA cuts, resolution changes and frame cost. Aggregate handler
+The camera is vanilla by default; only `--camera chase` enables it. The
+[first user flight](verification/chase-first-run.md) confirms the hook applied
+5,871 frames, but the user reports subtle placement and trembling in flight.
+Telemetry and TAA were off. A disassembly-backed native position-selection fix
+and lower default framing are in progress; their gameplay acceptance remains
+pending, alongside menu behavior, aim alignment, view-transition/TAA cuts,
+resolution changes and frame cost. Aggregate handler
 timing is now available with telemetry; it is not a measured FPS result.
 The user's [controlled run plan](verification/next-runs-2026-09-13.md) includes
 the thirteen camera checks. Reader 2a remains the next loading test after
