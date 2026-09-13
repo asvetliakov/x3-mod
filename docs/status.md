@@ -135,6 +135,10 @@ The isolated [compositor owner helper and normal-call ABI study](verification/re
 passed review, 24 hostile host checks and x86 compilation. Exact device lookup
 is ready for integration; ResetEx, reference accounting, cross-thread retirement
 and exception-safe invocation cleanup remain implementation/qualification work.
+The [embedded production shader bundle](verification/review-47-bloom-programs.md)
+is also reviewed and reproduced by a native nine-program `--check`: 28,188
+bytes, maximum 362 SM3 slots, with all 50 watched inputs unchanged. The rejected
+597-slot fused diagnostic is excluded. The bundle remains unlinked.
 No integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)

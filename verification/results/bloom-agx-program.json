@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "source": "src/temporal/bloom_agx_ps.hlsl",
+  "source_sha256": "1beefeedaf33c20a1f9faeb2dcb8b12ec034afc3ee9a40c30e5687c73bde6cb4",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": {
+    "src/temporal/agx.hlsl": "55417e71f3761bd52aca15c2318f0e27611f24490dc0957b68e0dd6fe4ca9531",
+    "src/temporal/bloom_common.hlsl": "ede4cad093ece1da226eeecaa3a4f236733b66f2e4c2657ba6f18e8f6e50bcc7"
+  },
+  "word_count": 603,
+  "bytecode_sha256": "7a5f651beee4a3a0dcfcfe4eb843022126789f04459b0cec8ca5f984402d94e6",
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false,
+  "header_sha256": "972f049e883fe2068771bd4b3791960f35844f08b5cc869e43e8b9ae2f2fe5e7",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+    "tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8",
+    "tools/shaders/generate_bloom_programs.py": "010f35e00529db0b6456bc222b2932e75d7a808342603ba532f4f966073bbe81"
+  },
+  "header_annotation_tool": "tools/shaders/generate_bloom_programs.py",
+  "promotion": {
+    "kind": "verified retained native compilation; no recompilation during promotion",
+    "summary": "verification/results/bloom-composition-compile.json",
+    "summary_sha256": "158534bc3aab944efa22bd08f638909bc864192108ed538d803bb43eaf0d83b4",
+    "native_manifest_sha256": "64f44b450a0f70d64360a0e53051d275c30bc28ab9f9f81d8b327e9161e40589",
+    "native_provenance": {
+      "schema": 1,
+      "source": "src/temporal/bloom_agx_ps.hlsl",
+      "source_sha256": "1beefeedaf33c20a1f9faeb2dcb8b12ec034afc3ee9a40c30e5687c73bde6cb4",
+      "compiler": "native d3dx9_37.dll D3DXCompileShader",
+      "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+      "entry": "main",
+      "target": "ps_3_0",
+      "flags": 32768,
+      "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+      "defines": null,
+      "includes": {
+        "src/temporal/agx.hlsl": "55417e71f3761bd52aca15c2318f0e27611f24490dc0957b68e0dd6fe4ca9531",
+        "src/temporal/bloom_common.hlsl": "ede4cad093ece1da226eeecaa3a4f236733b66f2e4c2657ba6f18e8f6e50bcc7"
+      },
+      "word_count": 603,
+      "bytecode_sha256": "7a5f651beee4a3a0dcfcfe4eb843022126789f04459b0cec8ca5f984402d94e6",
+      "header_sha256": "c19b47ecdf6b4c74f4ab21313dacd5efe7f2b1951a90c55ddf54ce55fbf73c35",
+      "tool_sources": {
+        "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+        "tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8",
+        "verification/probe/check_bloom_composition.py": "09fd32210ab9f3eb238fb6d4140b98f7d74fe4171d7ebc9d5b87139acfed7cc5"
+      },
+      "copyright_scope": "Original authored project shader; no game shader bytes",
+      "creates_d3d_device": false,
+      "header_annotation_tool": "verification/probe/check_bloom_composition.py"
+    }
+  }
+}
