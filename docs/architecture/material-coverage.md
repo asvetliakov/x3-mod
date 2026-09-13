@@ -163,10 +163,12 @@ Implementation should proceed in five bounded groups:
    DEFAULT, BUMPMAP and BUMPMAP_LOW contracts. The dynamic damage motion route
    is now installed; it does not itself convert damage material lighting.
 2. Validate gameplay for the installed ordered linear-composition and temporal
-   boundary of the five high-quality `effects`/`engine` profiles, then extend it to
-   the remaining 24 exact `effects`/`engine` identities and the 37 other
-   transparent/emissive identities only after their blend and alpha roles are
-   proved.
+   boundary of the five high-quality `effects`/`engine` profiles, then extend it using the [remaining effects/engine contracts](../reverse-engineering/effects-engine-remaining-emission.md):
+   one batch covers all 15 remaining SM2 pairs, followed by the nine SM1 pairs
+   and their separate output/blend work. The 37 other
+   transparent/emissive identities need their own blend and alpha contracts.
+   Historical capture of every alias is not required: qualified shaders still
+   need the actual per-submission scene, target and state gates.
 3. Add the separate older-profile opaque path for 405 SM2/2.x, 120 SM1 and one
    incomplete identity. This requires model-specific varying/output and TAA
    handling; absence from captures is not an exclusion.
