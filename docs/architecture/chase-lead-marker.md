@@ -103,7 +103,7 @@ binds the source, executable, static audit and runtime result. The game was not
 launched. Native-Windows execution and gameplay marker alignment remain
 unverified.
 
-Current focused checkpoint: **76 host tests pass**, including **26 lead scenarios /
+Initial lead/transition checkpoint: **76 host tests pass**, including **26 lead scenarios /
 104 assertions** and **114 lifetime/provenance assertions**. Both installed-EXE
 probes pass all twelve hook sites and the complete hide helper. Lead, transition,
 and the scoped camera/wiring translation units cross-compile with the project's
@@ -139,3 +139,7 @@ X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --holder chase-cpu
 The same independent review covered source and focused evidence; its concrete
 address-validation and diagnostic-count findings are fixed, with no open
 findings at this checkpoint.
+
+The later [central-instrument and native-timing change](chase-central-hud.md) has
+separate focused evidence. The twelve-stub runtime result above predates its
+additional sites and does not qualify them.

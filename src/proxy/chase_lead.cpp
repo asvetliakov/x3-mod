@@ -1,5 +1,6 @@
 #include "chase_lead.h"
 #include "chase_lead_core.h"
+#include "chase_native_timing_core.h"
 #include "chase_transition.h"
 #include "chase_camera.h"
 #include "engine_patch.h"
@@ -18,11 +19,23 @@ constexpr engine_patch::SiteSpec specs[] = {
     {"chase_lead_gate", 0x0042a6fe, {0x0f, 0x84, 0xb8, 0x03, 0x00, 0x00}, 6, 0, 2},
     {"chase_lead_publish", 0x0042aaae, {0x89, 0xb3, 0x40, 0x03, 0x00, 0x00}, 6, 0, 0},
     {"chase_lead_final_fov", 0x004213dd, {0x39, 0xb3, 0x30, 0x02, 0x00, 0x00}, 6, 0, 0}};
+constexpr engine_patch::SiteSpec hud_spec = {"chase_central_hud_gate", 0x0042aae0,
+    {0x0f, 0x84, 0x9c, 0x03, 0x00, 0x00}, 6, 0, 2};
+constexpr engine_patch::SiteSpec timing_specs[] = {
+    {"chase_native_solver_begin", 0x0042a792, {0xe8, 0x19, 0xca, 0x01, 0x00}, 5, 0, 1},
+    {"chase_native_solver_end", 0x0042a797, {0x85, 0xc0, 0x0f, 0x84, 0x1d, 0x03, 0x00, 0x00}, 8, 0, 4},
+    {"chase_native_distance_begin", 0x00423007, {0xe8, 0xf4, 0x1d, 0x00, 0x00}, 5, 0, 1},
+    {"chase_native_distance_end", 0x0042300c, {0x8b, 0x46, 0x04, 0x85, 0xc0}, 5, 0, 0},
+    {"chase_native_central_end", 0x0042aed6, {0x8b, 0x83, 0x24, 0x03, 0x00, 0x00}, 6, 0, 0}};
 // Whole helper, including its one fixed relative call to native node detach.
 constexpr unsigned char hide_bytes[] = {0x51, 0x83, 0x3e, 0x00, 0x74, 0x10, 0x8b, 0x4e, 0x04, 0x85,
                                         0xc9, 0x74, 0x09, 0x8b, 0x41, 0x1c, 0x50, 0xe8, 0xfa, 0x3b,
                                         0x06, 0x00, 0xc7, 0x06, 0,    0,    0,    0,    0x59, 0xc3};
 engine_patch::Site sites[3];
+engine_patch::Site hud_site;
+std::atomic<bool> hud_enabled{false}, native_timing_enabled{false};
+engine_patch::Site timing_sites[5];
+native_timing::State native_times;
 std::atomic<bool> enabled{false};
 bool initialized = false;
 SRWLOCK lock = SRWLOCK_INIT;
@@ -63,6 +76,9 @@ struct Counts {
     std::uint64_t reason[Count]{}, calls = 0, ticks = 0, max_ticks = 0, samples = 0, dropped = 0;
     Sample first[4]{}, last{};
 } counts;
+struct HudCounts {
+    std::uint64_t reason[Count]{}, calls = 0, ticks = 0, max_ticks = 0;
+} hud_counts;
 
 bool read(std::uintptr_t base, unsigned offset, void *out, unsigned size) {
     return base && !(base & 3) && offset <= UINT32_MAX - base && size <= UINT32_MAX - base - offset &&
@@ -369,9 +385,136 @@ void final_fov(std::uint32_t *regs) {
     s.reason = Finalized;
     note(Finalized, &s);
 }
+// Texture 15 is refreshed by the existing native distance/speed producer later
+// in this update. Do not invoke its lazy loader from the gate. A missing cached
+// texture leaves native hiding in place until a later update can admit it.
+bool hud_texture_available() {
+    std::int16_t first_count = 0, a = 0, b = 0, metadata = 0;
+    std::uint32_t rows = 0, textures = 0, surface = 0;
+    if (!field(0x608dac, 0, first_count) || !field(0x6069b0, 0, a) || !field(0x6069b4, 0, b))
+        return false;
+    if (15 < first_count && (!field(0x608db0, 0, rows) || !field(rows, 15 * 0x3c + 0xc, metadata) || !metadata))
+        return false;
+    return 15 < int(a) + int(b) && field(0x6069ac, 0, textures) &&
+           field(textures, 15 * 0x10 + 8, surface) && surface;
+}
+Reason hud_scope(const core::Identity &base, core::Identity &out) {
+    if (!base.serial || !base.generation || base.cockpit > UINT32_MAX - (0x3ac + 0x348))
+        return Lifetime;
+    const auto update = chase_transition::current_update(base.cockpit);
+    if (base.thread != GetCurrentThreadId() || update.generation != base.generation ||
+        update.serial != base.serial || update.thread != base.thread)
+        return Lifetime;
+    if (!active(base.cockpit))
+        return Identity;
+    std::uint32_t refs[2]{}, mode = 0, connect = 0, flags = 0, gun = 0, camera = 0, scene = 0,
+        draw2d = 0, display = 0, scene_flags = 0, owner = 0, bodies = 0, back = 0;
+    std::uint16_t ship_type = 0, owner_type = 0;
+    out = base;
+    out.overlay = base.cockpit + 0x3ac;
+    if (!field(base.cockpit, 0xc, refs) || !field(base.cockpit, 0x150, mode) ||
+        !field(base.cockpit, 0x1c0, connect) || !field(base.cockpit, 0x1a0, flags) ||
+        !field(base.cockpit, 0x1d8, gun) || !field(base.cockpit, 0x58, camera) ||
+        !field(base.cockpit, 4, scene) || !field(base.cockpit, 0x234, draw2d) ||
+        !field(base.cockpit, 0x2a0, display) || !field(base.ship, 8, out.ship_id) ||
+        !field(base.ship, 0x48, ship_type) || !field(base.ship, 0x54, owner) ||
+        !field(owner, 0x48, owner_type) || !field(scene, 0x18, scene_flags) ||
+        !field(out.overlay, 0x320, bodies) || !field(out.overlay, 0x324, back))
+        return Read;
+    if (refs[0] != base.ship || refs[1] != base.ship || camera != base.camera ||
+        out.ship_id != base.ship_id || back != base.cockpit)
+        return Identity;
+    if (mode != 258 || connect || (flags & 4) || gun || ship_type != 7 || owner_type != 1 ||
+        !draw2d || !display || !(scene_flags & 1) || !bodies)
+        return Scope;
+    out.scene = scene;
+    out.sector = owner;
+    // The original external-view branch hides eight entries. The admitted path
+    // updates only five. When any other entry is active, leave the native branch
+    // to perform all cleanup; admission can occur on the following update. This
+    // adds no calls to the callback-capable native scene detacher.
+    for (const unsigned offset : {0x118u, 0x140u, 0x12cu}) {
+        std::uint32_t entry_active = 0;
+        if (!field(out.overlay, offset, entry_active))
+            return Read;
+        if (entry_active)
+            return Marker;
+    }
+    return hud_texture_available() ? Ready : Projection;
+}
+void central_hud(std::uint32_t *regs) {
+    if (!hud_enabled.load(std::memory_order_acquire) || !(regs[8] & 0x40))
+        return;
+    core::Identity base;
+    AcquireSRWLockExclusive(&lock);
+    base = pose;
+    ReleaseSRWLockExclusive(&lock);
+    core::Identity owner;
+    Reason r = NoPose;
+    if (base.serial && regs[7] == base.cockpit && base.cockpit <= UINT32_MAX - (0x3ac + 0x348) &&
+        regs[4] == base.cockpit + 0x3ac)
+        r = hud_scope(base, owner);
+    if (r == Ready)
+        regs[8] &= ~0x40u;
+    AcquireSRWLockExclusive(&lock);
+    ++hud_counts.reason[r];
+    ReleaseSRWLockExclusive(&lock);
+}
+// Timing witnesses are independent of display admission: internal and chase
+// views can be compared, but only the live active cockpit's current update is
+// sampled. No owner pointer is retained beyond scalar identity checks.
+bool native_context(unsigned index, const std::uint32_t *regs, native_timing::Token &token) {
+    std::uint32_t cockpit = 0;
+    if (index == 0 || index == 6 || index == 7)
+        cockpit = regs[1];
+    else if (!field(regs[4], 0x324, cockpit))
+        return false;
+    if (!cockpit || cockpit > UINT32_MAX - (0x3ac + 0x348) ||
+        ((index != 6 && index != 7) && regs[4] != cockpit + 0x3ac))
+        return false;
+    const auto update = chase_transition::current_update(cockpit);
+    token.generation = update.generation;
+    token.update = update.serial;
+    token.thread = GetCurrentThreadId();
+    token.cockpit = cockpit;
+    return token.valid() && update.thread == token.thread && active(cockpit) &&
+           field(cockpit, 0x150, token.mode) && field(cockpit, 0x1e0, token.target);
+}
+void native_hook(unsigned index, std::uint32_t *regs) {
+    if (!native_timing_enabled.load(std::memory_order_acquire))
+        return;
+    native_timing::Token token;
+    if (!native_context(index, regs, token)) {
+        native_timing_invalidate(0, GetCurrentThreadId());
+        return;
+    }
+    LARGE_INTEGER q{};
+    if (!QueryPerformanceCounter(&q) || q.QuadPart <= 0) {
+        native_timing_invalidate(0, token.thread);
+        return;
+    }
+    const auto stamp = std::uint64_t(q.QuadPart);
+    const auto frame = regs[2];
+    AcquireSRWLockExclusive(&lock);
+    // Same timestamp at the common gate closes every normal lead outcome and
+    // begins the central instrument group, including its unchanged native hide.
+    if (index == 0) native_times.begin(token, 0, frame, stamp);
+    else if (index == 3) {
+        native_times.end(token, 0, frame, stamp, 1, (frequency + 99) / 100);
+        native_times.begin(token, 2, frame, stamp);
+    } else if (index == 4) native_times.begin(token, 1, frame, stamp);
+    else if (index == 5) native_times.end(token, 1, frame, stamp, regs[7], (frequency + 99) / 100);
+    else if (index == 6) native_times.begin(token, 3, frame, stamp);
+    else if (index == 7) native_times.end(token, 3, frame, stamp, 1, (frequency + 99) / 100);
+    else if (index == 8) native_times.end(token, 2, frame, stamp, 1, (frequency + 99) / 100);
+    ReleaseSRWLockExclusive(&lock);
+}
 void handle(unsigned index, std::uint32_t *regs) {
-    if (!enabled.load(std::memory_order_acquire) ||
-        owner_thread.load(std::memory_order_relaxed) != GetCurrentThreadId())
+    if (!enabled.load(std::memory_order_acquire))
+        return;
+    if (index == 0 || index >= 3)
+        native_hook(index, regs);
+    if (index >= 4 || owner_thread.load(std::memory_order_relaxed) != GetCurrentThreadId())
         return;
     LARGE_INTEGER start{}, end{};
     if (timing)
@@ -380,16 +523,25 @@ void handle(unsigned index, std::uint32_t *regs) {
         gate(regs);
     else if (index == 1)
         publish(regs);
-    else
+    else if (index == 2)
         final_fov(regs);
+    else
+        central_hud(regs);
     if (timing) {
         QueryPerformanceCounter(&end);
         const auto ticks = end.QuadPart > start.QuadPart ? std::uint64_t(end.QuadPart - start.QuadPart) : 0;
         AcquireSRWLockExclusive(&lock);
-        ++counts.calls;
-        counts.ticks += ticks;
-        if (ticks > counts.max_ticks)
-            counts.max_ticks = ticks;
+        if (index == 3) {
+            ++hud_counts.calls;
+            hud_counts.ticks += ticks;
+            if (ticks > hud_counts.max_ticks)
+                hud_counts.max_ticks = ticks;
+        } else {
+            ++counts.calls;
+            counts.ticks += ticks;
+            if (ticks > counts.max_ticks)
+                counts.max_ticks = ticks;
+        }
         ReleaseSRWLockExclusive(&lock);
     }
 }
@@ -457,6 +609,44 @@ void *emit(unsigned index, void ***next_out) {
     e.dword(0);
     return e.finish() ? start : nullptr;
 }
+bool install_central_hud(bool prerequisite, const char *&status) {
+    bool hud_ok = prerequisite && engine_patch::claim(hud_site, hud_spec);
+    status = prerequisite ? hud_site.status : "lead_unavailable";
+    if (hud_ok) {
+        void **next = nullptr;
+        auto stub = emit(3, &next);
+        hud_ok = stub && next && engine_patch::store_pointer(next, *hud_site.entry) &&
+                 engine_patch::push_front(hud_site, stub);
+        if (!hud_ok)
+            status = "stub_chain_failed";
+    }
+    if (!hud_ok && hud_site.patched_in && !engine_patch::restore(hud_site))
+        status = "rollback_failed_disabled";
+    hud_enabled.store(hud_ok, std::memory_order_release);
+    return hud_ok;
+}
+bool install_native_timing(bool prerequisite, const char *&status) {
+    bool native_ok = prerequisite && timing && frequency;
+    status = !timing ? "telemetry_off" : !prerequisite ? "central_gate_unavailable" :
+             !frequency ? "clock_unavailable" : "installing";
+    for (unsigned i = 0; native_ok && i < 5; ++i) {
+        native_ok = engine_patch::claim(timing_sites[i], timing_specs[i]);
+        status = timing_sites[i].status;
+        if (native_ok) {
+            void **next = nullptr;
+            auto stub = emit(i + 4, &next);
+            native_ok = stub && next && engine_patch::store_pointer(next, *timing_sites[i].entry) &&
+                        engine_patch::push_front(timing_sites[i], stub);
+            if (!native_ok) status = "stub_chain_failed";
+        }
+    }
+    if (!native_ok)
+        for (unsigned i = 5; i-- > 0;)
+            if (timing_sites[i].patched_in && !engine_patch::restore(timing_sites[i]))
+                status = "rollback_failed_disabled";
+    native_timing_enabled.store(native_ok, std::memory_order_release);
+    return native_ok;
+}
 } // namespace
 bool initialize() {
     const DWORD error = GetLastError();
@@ -493,11 +683,27 @@ bool initialize() {
             if (site.patched_in && !engine_patch::restore(site))
                 status = "rollback_failed_disabled";
     enabled.store(ok, std::memory_order_release);
+    // Optional independent transaction: central instruments must never disable
+    // the previously qualified predictive marker if their one site fails.
+    const char *hud_status = nullptr;
+    const bool hud_ok = install_central_hud(ok, hud_status);
+    const char *native_status = nullptr;
+    const bool native_ok = install_native_timing(hud_ok, native_status);
+    log("chase_native_timing installed=%u status=%s sites=5 threshold_us=10000 scope=native_span_with_hook_overhead",
+        unsigned(native_ok), native_ok ? "active" : native_status);
+    log("chase_central_hud installed=%u status=%s cleanup=native_when_extra_active", unsigned(hud_ok),
+        hud_ok ? "active" : hud_status);
     log("chase_lead installed=%u status=%s scope=applied_main_chase_same_sector native_solver=retained "
         "telemetry=%u",
         unsigned(ok), ok ? "active" : status, unsigned(timing));
     SetLastError(error);
     return ok;
+}
+void native_timing_invalidate(std::uintptr_t cockpit, std::uint32_t thread) noexcept {
+    if (!native_timing_enabled.load(std::memory_order_acquire)) return;
+    AcquireSRWLockExclusive(&lock);
+    native_times.revoke(std::uint32_t(cockpit), thread);
+    ReleaseSRWLockExclusive(&lock);
 }
 bool installed() {
     return enabled.load(std::memory_order_acquire);
@@ -536,11 +742,40 @@ void report(std::uint64_t frame) {
     if (!installed() || !timing)
         return;
     Counts c;
+    HudCounts h;
+    native_timing::Window native;
     AcquireSRWLockExclusive(&lock);
     c = counts;
+    h = hud_counts;
     counts = {};
+    hud_counts = {};
+    native = native_times.take();
     ReleaseSRWLockExclusive(&lock);
     const double us = frequency ? 1e6 / as_double(frequency) : 0;
+    if (native_timing_enabled.load(std::memory_order_relaxed)) {
+        const char *phases[] = {"lead_block", "solver", "central_hud", "distance_producer"};
+        log("chase_native_timing_window frame=%llu abandoned=%llu unmatched=%llu overflow=%llu slow=%llu omitted=%llu scope=native_span_with_hook_overhead",
+            frame, native.abandoned, native.unmatched, native.overflow, native.slow,
+            native.slow - native.first_used - native.last_used);
+        for (unsigned i = 0; i < native_timing::phase_count; ++i) {
+            const auto &m = native.metrics[i];
+            log("chase_native_timing_metric frame=%llu phase=%s count=%llu false_returns=%llu total_us=%.3f max_us=%.3f",
+                frame, phases[i], m.calls, m.failures, as_double(m.ticks) * us, as_double(m.maximum) * us);
+        }
+        const auto sample = [&](const native_timing::Sample &v) {
+            log("chase_native_timing_slow frame=%llu phase=%s qpc_begin=%llu qpc_end=%llu generation=%llu update=%llu thread=%u cockpit=0x%08x mode=%u target=0x%08x end_mode=%u end_target=0x%08x result=%u",
+                frame, phases[v.phase], v.begin, v.end, v.token.generation, v.token.update, v.token.thread,
+                v.token.cockpit, v.token.mode, v.token.target, v.end_mode, v.end_target, v.result);
+        };
+        for (unsigned i = 0; i < native.first_used; ++i) sample(native.first[i]);
+        const unsigned begin = native.last_used == 4 ? native.next : 0;
+        for (unsigned i = 0; i < native.last_used; ++i) sample(native.last[(begin + i) % 4]);
+    }
+    log("chase_central_hud_window frame=%llu active=%u admitted=%llu no_pose=%llu lifetime=%llu read=%llu "
+        "scope=%llu identity=%llu cleanup_pending=%llu texture_unavailable=%llu calls=%llu total_us=%.3f max_us=%.3f",
+        frame, unsigned(hud_enabled.load(std::memory_order_relaxed)), h.reason[Ready], h.reason[NoPose],
+        h.reason[Lifetime], h.reason[Read], h.reason[Scope], h.reason[Identity], h.reason[Marker], h.reason[Projection],
+        h.calls, as_double(h.ticks) * us, as_double(h.max_ticks) * us);
     log("chase_lead_window frame=%llu ready=%llu committed=%llu final_fov=%llu no_pose=%llu lifetime=%llu "
         "read=%llu scope=%llu identity=%llu projection=%llu marker=%llu unchanged=%llu calls=%llu total_us=%.3f "
         "max_us=%.3f samples=%llu omitted=%llu",
@@ -567,6 +802,12 @@ void report(std::uint64_t frame) {
     }
 }
 void shutdown() {
+    native_timing_enabled.store(false, std::memory_order_release);
+    for (unsigned i = 5; i-- > 0;)
+        if (timing_sites[i].patched_in) engine_patch::restore(timing_sites[i]);
+    hud_enabled.store(false, std::memory_order_release);
+    if (hud_site.patched_in)
+        engine_patch::restore(hud_site);
     enabled.store(false, std::memory_order_release);
     for (auto &site : sites)
         if (site.patched_in)

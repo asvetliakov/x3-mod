@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build/audit the transition CPU fixture only. Never invokes Wine or the game."""
+"""Build/audit the 18-stub chase CPU fixture and bounded benchmark. Never runs Wine."""
 import json
 import subprocess
 from pathlib import Path

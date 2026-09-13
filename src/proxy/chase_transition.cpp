@@ -1,6 +1,7 @@
 #include "chase_transition.h"
 #include "chase_transition_core.h"
 #include "chase_camera.h"
+#include "chase_lead.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
 #include "object_trace.h"
@@ -29,7 +30,9 @@ constexpr engine_patch::SiteSpec specs[] = {
 constexpr unsigned mandatory=6, site_count=9;
 engine_patch::Site sites[site_count];
 std::atomic<bool> enabled{false},diagnostic{false};
-bool initialized=false;
+bool initialized=false,timing=false;
+std::uint64_t frequency=0;
+detail::HandlerTiming handler_timing[site_count]{};
 SRWLOCK lock=SRWLOCK_INIT;
 detail::State state;
 struct Guard { Guard(){AcquireSRWLockExclusive(&lock);}~Guard(){ReleaseSRWLockExclusive(&lock);} };
@@ -120,27 +123,37 @@ void record(unsigned kind,std::uintptr_t cockpit,std::uint32_t thread,std::uint3
     e.sequence=++sequence;e.qpc=now();window.push(e);
 }
 void handle(unsigned kind,std::uint32_t* regs) {
-    if(!enabled.load(std::memory_order_acquire) ||
+    if(kind>=site_count || !enabled.load(std::memory_order_acquire) ||
        (kind>=mandatory && !diagnostic.load(std::memory_order_relaxed)))return;
+    const auto start=timing?now():0;
     const auto thread=GetCurrentThreadId();
     const auto esp=regs[3]+4; // PUSHFD precedes PUSHAD's saved ESP.
     std::uint32_t cockpit=0,caller=0;
+    {
     Guard guard;
     switch(kind){
     case 0:
-        if(field(esp,4,cockpit)){field(esp,0,caller);state.construct(cockpit,thread);record(0,cockpit,thread,caller);}break;
+        // Reentry retires this thread even if the constructor argument is unreadable.
+        chase_lead::native_timing_invalidate(0,thread);
+        if(field(esp,4,cockpit)){field(esp,0,caller);chase_lead::native_timing_invalidate(cockpit,thread);state.construct(cockpit,thread);record(0,cockpit,thread,caller);}break;
     case 1:
         cockpit=regs[7];if(state.complete(cockpit,thread))record(1,cockpit,thread);break;
     case 2:
-        if(field(esp,4,cockpit)){field(esp,0,caller);record(2,cockpit,thread,caller);state.destroy(cockpit);}break;
+        chase_lead::native_timing_invalidate(0,thread);
+        if(field(esp,4,cockpit)){field(esp,0,caller);record(2,cockpit,thread,caller);chase_lead::native_timing_invalidate(cockpit,thread);state.destroy(cockpit);}break;
     case 3:
         // Even a failed argument read must revoke this thread's previous update.
+        chase_lead::native_timing_invalidate(0,thread);
         field(esp,4,cockpit);state.begin(cockpit,esp,thread);record(3,cockpit,thread);break;
-    case 4:case 5:state.end(regs[2]+4,thread);break;
+    case 4:case 5:chase_lead::native_timing_invalidate(0,thread);state.end(regs[2]+4,thread);break;
     case 6:record(6,regs[7],thread,0x42e742,regs[6],regs[2]);break;
     case 7:record(7,regs[2],thread,0x419e06,regs[5]);break;
     case 8:field(esp,0,caller);record(8,regs[1],thread,caller,regs[7]);break;
     }
+    }
+    // Include the handler lock acquisition/release and checked reads. The
+    // second lock only aggregates this sample and lies outside its interval.
+    if(timing){const auto end=now();Guard guard;handler_timing[kind].add(start,end);}
 }
 }
 }
@@ -187,10 +200,13 @@ bool initialize() {
     if(initialized){SetLastError(error);return installed();}initialized=true;
     const bool wanted=chase_camera::wanted()&&chase_camera::installed();
     const bool okay=wanted&&object_trace::executable_verified()&&engine_patch::install_window_open()&&install_group(0,mandatory);
+    LARGE_INTEGER f{};
+    timing=okay&&telemetry::enabled()&&QueryPerformanceFrequency(&f)&&f.QuadPart>0;
+    frequency=timing?std::uint64_t(f.QuadPart):0;
     enabled.store(okay,std::memory_order_release);
     const bool diag=okay&&telemetry::enabled()&&install_group(mandatory,site_count);
     diagnostic.store(diag,std::memory_order_release);
-    log("chase_transition installed=%u diagnostics=%u mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8",unsigned(okay),unsigned(diag));
+    log("chase_transition installed=%u diagnostics=%u mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=%u qpc_frequency=%llu",unsigned(okay),unsigned(diag),unsigned(timing),frequency);
     for(unsigned i=0;i<site_count;++i)if(sites[i].patched_in||wanted)
         log("chase_transition_site index=%u site=0x%08lx patched=%u status=%s",i,static_cast<unsigned long>(specs[i].address),unsigned(sites[i].patched_in),sites[i].status);
     SetLastError(error);return okay;
@@ -210,7 +226,15 @@ Update current_update(std::uintptr_t cockpit) noexcept {
 void report(std::uint64_t frame) {
     if(!installed())return;
     detail::Window<Event> out;std::uint64_t over=0,threads=0,failed=0,skipped=0;
-    {Guard guard;out=window;window={};over=state.lifetime_overflow;threads=state.thread_overflow;failed=read_failures;skipped=suppressed;}
+    detail::HandlerTiming durations[site_count]{};
+    {Guard guard;out=window;window={};over=state.lifetime_overflow;threads=state.thread_overflow;failed=read_failures;skipped=suppressed;
+        for(unsigned i=0;i<site_count;++i){durations[i]=handler_timing[i];handler_timing[i]={};}}
+    // Split conversion avoids the i386 uint64 -> double x87 CRT sequence.
+    const auto as_double=[](std::uint64_t v){return double(std::uint32_t(v>>32))*4294967296.0+double(std::uint32_t(v));};
+    const double micros=frequency?1e6/as_double(frequency):0;
+    if(timing)for(unsigned i=0;i<site_count;++i){const auto& c=durations[i];
+        log("chase_transition_timing frame=%llu kind=%u calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=handler_after_admission_guards includes=thread_lookup_lock_wait_reads_lock_release excludes=stub_cpu_boundary_first_qpc_timing_aggregation native_work=excluded",
+            frame,i,c.calls,c.samples,c.invalid,as_double(c.ticks)*micros,as_double(c.max_ticks)*micros);}
     if(!diagnostics_active())return;
     log("chase_transition_window frame=%llu first=%u last=%u dropped=%llu lifetime_overflow=%llu thread_overflow=%llu origin_refusals_total=%llu suppressed_total=%llu",frame,out.first_used,out.last_used,out.dropped,over,threads,failed,skipped);
     auto print=[](const Event& e){

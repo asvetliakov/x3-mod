@@ -83,4 +83,14 @@ static void origins(){
  auto many=m.capture();check(many.count==4&&(many.flags&4),"ancestry caps four and reports excess");
  m.init();m.put(0x5000,0x10000u);check(!(m.capture().valid&4)&&(m.capture().flags&1),"method code offset range refuses");
 }
-int main(){lifetimes();windows();origins();std::printf("chase transition host: %u checks PASS\n",checks);}
+static void handler_timings(){
+ HandlerTiming t;
+ t.add(100,130);t.add(200,210);t.add(400,400);
+ check(t.calls==3&&t.samples==3&&t.ticks==40&&t.max_ticks==30&&!t.invalid,"handler aggregates total/max including genuine zero elapsed");
+ t.add(0,500);t.add(600,0);t.add(800,700);
+ check(t.calls==6&&t.samples==3&&t.invalid==3&&t.ticks==40&&t.max_ticks==30,"failed or backwards QPC cannot appear as zero-cost success");
+ t.add(0x100000000ull,0x300000001ull);
+ check(t.samples==4&&t.ticks==0x200000029ull&&t.max_ticks==0x200000001ull,"handler counters retain full 64-bit durations");
+ t={};check(!t.calls&&!t.samples&&!t.invalid&&!t.ticks&&!t.max_ticks,"report reset clears complete timing window");
+}
+int main(){lifetimes();windows();origins();handler_timings();std::printf("chase transition host: %u checks PASS\n",checks);}

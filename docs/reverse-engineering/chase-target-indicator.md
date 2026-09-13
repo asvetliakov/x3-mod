@@ -156,3 +156,66 @@ references to its five interior addresses. A production change still needs its
 own source/site-parity probe and existing CPU-state/rollback checks. Visual
 identity of the user's missing graphic and presentation with chase pitch remain
 gameplay acceptance items. No production or installed files changed here.
+
+## Follow-up: cleanup ABI and texture availability
+
+Additional read-only analysis for the isolated central-HUD implementation;
+raw output `/tmp/chase-central-safety.txt`, `chase-central-safety2.txt`, and
+`chase-central-safety3.txt`. These findings refine the cleanup proposal above.
+
+`0x00426280` takes the entry address in ESI, no stack arguments, and returns
+with a plain RET. It preserves ECX and the ordinary nonvolatile registers;
+EAX, EDX and arithmetic flags are volatile. If the entry active flag is zero,
+or its node pointer is null, the helper only writes active zero. It retains
+the node pointer and icon/resource fields. If active is nonzero and node is
+nonnull, it calls `0x00489e90` with ECX=node and one stack argument=node's
+scene at `node+0x1c`; the callee pops that argument. It then writes entry
+active zero. An active nonnull node with a null scene is invalid for this
+path: the detacher can dereference scene `+0x18`.
+
+The native eight-entry cleanup order is `0`, `0x208`, `0x21c`, `0x230`,
+`0x294`, `0x118`, `0x140`, `0x12c`, relative to O. Detacher `0x00489e90`
+recursively detaches children, releases render resources, updates list
+membership and writes node `+0x1c = 0`; it retains the node allocation.
+This is more than a visibility-bit change. Inactive entries deliberately
+skip detachment even if their retained node pointer is nonnull.
+
+**General detachment is callback-capable.** Resource cleanup `0x004c5330`
+can call an indirect resource Release. For an active scene, `0x00486ba0`
+also reaches `0x0049a530` when node flags/state permit: `+0x12c & 0x1000`,
+not `+0x12c & 4`, `+0x134 & 0x10`, nonzero `+0x144`, and nonnegative
+`+0x148`. That function can invoke a registered engine command destructor
+through the command registry at `*0x006085e4`. The targeted paths therefore
+do not justify an unconditional no-reentry/lifetime promise for arbitrary
+retained entries. Rechecking the context after each hide call is insufficient
+to protect the hide helper's own final entry write if a nested callback
+invalidates its owner before it returns.
+
+Recommended narrow policy: require all three extra active flags
+`O+0x118`, `O+0x140`, and `O+0x12c` to be zero before overriding the central
+branch. If any is nonzero, leave the native conditional branch untouched;
+its original hide sequence performs the cleanup at its established point in
+game flow. Re-evaluate admission on the next update. This avoids all new
+native detach calls and preserves cleanup order. It may defer central
+instruments for an additional update; it makes no claim that an indexed
+producer can never reactivate a legacy entry. Do not replace the native hide
+helper with direct active-flag writes for active entries.
+
+Texture availability has an exact non-loading read-only predicate. The
+producer calls `0x004f5110` with signed texture index 15 in CX. For this index:
+
+- Read signed 16-bit count at `0x00608dac`. If 15 is below it, require nonzero
+  signed 16-bit metadata at `*(0x00608db0) + 15*0x3c + 0x0c`.
+- Require 15 below the sum of the signed 16-bit counts at `0x006069b0` and
+  `0x006069b4`.
+- The available resource pointer is the dword at
+  `*(0x006069ac) + 15*0x10 + 8`. Require it nonzero and validate all reads.
+
+When that resource pointer is zero, native `0x004f5110` may lazily load it
+through `0x004f4160` and then reload the table pointer. The HUD admission
+callback should refuse the extension in that case rather than call the
+loader. The existing later texture producer can initialize it; a subsequent
+update can admit the instruments. Together with `cockpit+0x234`,
+`cockpit+0x2a0`, and active scene `+0x18 & 1`, these checks avoid deliberately
+revealing an unavailable/disabled display. They are current-update checks,
+not ownership of the texture across arbitrary callbacks or future frames.

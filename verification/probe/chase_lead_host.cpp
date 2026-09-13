@@ -14,6 +14,7 @@
 #include <set>
 
 #include "chase_lead_core.h"
+#include "chase_native_timing_core.h"
 
 namespace x3m::chase_lead {
 namespace {
@@ -61,11 +62,15 @@ core::Identity pose{};
 struct Slot { std::uint32_t frame = 0; core::Pending ticket{}; };
 Slot pending[8]{};
 std::atomic<bool> enabled{true};
+std::atomic<bool> hud_enabled{true};
+std::atomic<bool> native_timing_enabled{false};
+native_timing::State native_times{};
 std::atomic<std::uint32_t> owner_thread{0};
 thread_local std::uint32_t host_thread = 1;
 static std::uint32_t GetCurrentThreadId() { return host_thread; }
 struct LARGE_INTEGER { long long QuadPart = 0; };
-static bool QueryPerformanceCounter(LARGE_INTEGER* value) { ++value->QuadPart; return true; }
+std::uint64_t host_qpc = 0, frequency = 100;
+static bool QueryPerformanceCounter(LARGE_INTEGER* value) { value->QuadPart = static_cast<long long>(++host_qpc); return true; }
 bool timing = false;
 enum Reason { Ready,Committed,Finalized,NoPose,Lifetime,Read,Scope,Identity,Projection,Marker,Hidden,Skipped,Count };
 struct Sample {
@@ -79,8 +84,12 @@ struct Counts {
     std::uint64_t reason[Count]{}, calls = 0, ticks = 0, max_ticks = 0, samples = 0, dropped = 0;
     Sample first[4]{}, last{};
 } counts;
+struct HudCounts { std::uint64_t reason[Count]{}, calls = 0, ticks = 0, max_ticks = 0; } hud_counts;
 auto &reasons = counts.reason;
 static bool installed() { return enabled.load(); }
+static void native_timing_invalidate(std::uintptr_t cockpit, std::uint32_t thread) noexcept {
+    native_times.revoke(std::uint32_t(cockpit), thread);
+}
 
 std::set<std::uint32_t> writable_addresses;
 static bool writable(std::uintptr_t address, unsigned size) {
@@ -141,6 +150,7 @@ struct World {
     static constexpr std::uint32_t link = 0x1f000, defaults = 0x20000, screen = 0x21000;
     static constexpr std::uint32_t marker = 0x22000, stack = 0x23000;
     static constexpr std::uint32_t camera_rect = 0x24000, hud_rect = 0x25000;
+    static constexpr std::uint32_t texture_rows = 0x28000, textures = 0x29000;
     static constexpr std::uint32_t frame = 100;
     static constexpr std::uint32_t overlay = cockpit + 0x3ac;
     core::Identity identity{};
@@ -152,7 +162,8 @@ struct World {
         for (auto& slot : pending) slot = {};
         pose = {}; std::fill(std::begin(reasons), std::end(reasons), 0);
         hide_calls = 0; hidden_entry = 0; hide_native_wrong_node = false;
-        enabled = true; owner_thread = host_thread = 1; counts = {};
+        enabled = true; hud_enabled = true; native_timing_enabled = false;
+        owner_thread = host_thread = 1; counts = {}; hud_counts = {}; native_times = {}; host_qpc = 0;
         chase_transition::cockpit = cockpit;
         chase_transition::update = {7, 11, 3};
 
@@ -178,6 +189,8 @@ struct World {
         engine_memory::put(cockpit + 0x58, std::uint32_t(camera));
         engine_memory::put(cockpit + 4, std::uint32_t(0x31000));
         engine_memory::put(cockpit + 8, std::uint32_t(hud));
+        engine_memory::put(cockpit + 0x234, std::uint32_t(1));
+        engine_memory::put(cockpit + 0x2a0, std::uint32_t(1));
         engine_memory::put(camera + 0x278, std::uint32_t(camera_rect));
         engine_memory::put(hud + 0x278, std::uint32_t(hud_rect));
         engine_memory::put(ship + 8, std::uint32_t(101));
@@ -187,6 +200,18 @@ struct World {
         engine_memory::put(ship + 0x48, std::uint16_t(7));
         engine_memory::put(sector + 0x48, std::uint16_t(1));
         engine_memory::put(overlay + 0x320, std::uint32_t(1));
+        engine_memory::put(overlay + 0x324, std::uint32_t(cockpit));
+        for (const unsigned offset : {0x118u, 0x140u, 0x12cu})
+            engine_memory::put(overlay + offset, std::uint32_t(0));
+        engine_memory::put(0x31000 + 0x18, std::uint32_t(1));
+
+        engine_memory::put(0x608dac, std::int16_t(16));
+        engine_memory::put(0x6069b0, std::int16_t(16));
+        engine_memory::put(0x6069b4, std::int16_t(0));
+        engine_memory::put(0x608db0, std::uint32_t(texture_rows));
+        engine_memory::put(texture_rows + 15 * 0x3c + 0xc, std::int16_t(1));
+        engine_memory::put(0x6069ac, std::uint32_t(textures));
+        engine_memory::put(textures + 15 * 0x10 + 8, std::uint32_t(0x2a000));
 
         initial.position[0] = initial.position[1] = initial.position[2] = 0;
         const std::int32_t basis[12] = {65536,0,0,0, 0,65536,0,0, 0,0,65536,0};
@@ -243,6 +268,10 @@ struct World {
     }
     std::array<std::uint32_t, 9> final_regs() const {
         std::array<std::uint32_t, 9> regs{}; regs[4] = cockpit; return regs;
+    }
+    std::array<std::uint32_t, 9> central_regs(std::uint32_t flags = 0x40) const {
+        std::array<std::uint32_t, 9> regs{};
+        regs[4] = overlay; regs[7] = cockpit; regs[8] = flags; return regs;
     }
 };
 
@@ -553,6 +582,158 @@ static void sample_retention_counts() {
     timing = false;
 }
 
+static void central_without_target_or_solver() {
+    ++scenarios; World world; host_thread = 3;
+    engine_memory::put(World::cockpit + 0x1e0, std::uint32_t(0));
+    engine_memory::put(World::cockpit + 0x1e4, std::uint16_t(0));
+    auto regs = world.central_regs(0x840);
+    central_hud(regs.data());
+    check(regs[8] == 0x800 && hud_counts.reason[Ready] == 1,
+          "central HUD admits without target, tracking, or lead-solver success");
+    check(hide_calls == 0, "central HUD admission invokes no marker hide helper");
+}
+
+enum class HudGuard {
+    Disabled, NativePath, WrongCockpit, WrongOverlay, WrongThread, Generation, Serial,
+    InactiveCockpit, Refs, Mode, Connect, AppliedFlags, Gun, Camera, ShipId, ShipType, OwnerType, Scene,
+    Draw2d, Display, Bodies, Back, ReadFailure
+};
+static void central_guard(HudGuard guard) {
+    ++scenarios; World world; host_thread = 3;
+    auto regs = world.central_regs(0x840);
+    Reason expected = Scope;
+    switch (guard) {
+    case HudGuard::Disabled: hud_enabled = false; break;
+    case HudGuard::NativePath: regs[8] &= ~0x40u; break;
+    case HudGuard::WrongCockpit: ++regs[7]; expected = NoPose; break;
+    case HudGuard::WrongOverlay: ++regs[4]; expected = NoPose; break;
+    case HudGuard::WrongThread: host_thread = 2; expected = Lifetime; break;
+    case HudGuard::Generation: ++chase_transition::update.generation; expected = Lifetime; break;
+    case HudGuard::Serial: ++chase_transition::update.serial; expected = Lifetime; break;
+    case HudGuard::InactiveCockpit: engine_memory::put(World::link + 8, std::uint32_t(0)); expected = Identity; break;
+    case HudGuard::Refs: engine_memory::put(World::cockpit + 0xc, std::uint32_t(0)); expected = Identity; break;
+    case HudGuard::Mode: engine_memory::put(World::cockpit + 0x150, std::uint32_t(257)); break;
+    case HudGuard::Connect: engine_memory::put(World::cockpit + 0x1c0, std::uint32_t(1)); break;
+    case HudGuard::AppliedFlags: engine_memory::put(World::cockpit + 0x1a0, std::uint32_t(4)); break;
+    case HudGuard::Gun: engine_memory::put(World::cockpit + 0x1d8, std::uint32_t(1)); break;
+    case HudGuard::Camera: engine_memory::put(World::cockpit + 0x58, std::uint32_t(0)); expected = Identity; break;
+    case HudGuard::ShipId: engine_memory::put(World::ship + 8, std::uint32_t(999)); expected = Identity; break;
+    case HudGuard::ShipType: engine_memory::put(World::ship + 0x48, std::uint16_t(6)); break;
+    case HudGuard::OwnerType: engine_memory::put(World::sector + 0x48, std::uint16_t(2)); break;
+    case HudGuard::Scene: engine_memory::put(0x31000 + 0x18, std::uint32_t(0)); break;
+    case HudGuard::Draw2d: engine_memory::put(World::cockpit + 0x234, std::uint32_t(0)); break;
+    case HudGuard::Display: engine_memory::put(World::cockpit + 0x2a0, std::uint32_t(0)); break;
+    case HudGuard::Bodies: engine_memory::put(World::overlay + 0x320, std::uint32_t(0)); break;
+    case HudGuard::Back: engine_memory::put(World::overlay + 0x324, std::uint32_t(0)); expected = Identity; break;
+    case HudGuard::ReadFailure: engine_memory::unreadable.insert(World::cockpit + 0x234); expected = Read; break;
+    }
+    central_hud(regs.data());
+    check(regs[8] == (guard == HudGuard::NativePath ? 0x800u : 0x840u),
+          "central HUD leaves saved flags untouched outside admission");
+    if (guard == HudGuard::Disabled || guard == HudGuard::NativePath)
+        check(std::all_of(std::begin(hud_counts.reason), std::end(hud_counts.reason),
+                          [](auto value){ return value == 0; }),
+              "disabled/native central path bypasses admission accounting");
+    else
+        check(hud_counts.reason[expected] == 1, "central HUD records exact failed guard class");
+    check(hide_calls == 0, "central guard failure never invokes hide helper");
+}
+
+static void central_native_cleanup_flags() {
+    for (const unsigned offset : {0x118u, 0x140u, 0x12cu}) {
+        ++scenarios; World world; host_thread = 3;
+        engine_memory::put(World::overlay + offset, std::uint32_t(1));
+        auto first = world.central_regs(0x840); central_hud(first.data());
+        check(first[8] == 0x840 && hud_counts.reason[Marker] == 1 && hide_calls == 0,
+              "active extra entry preserves native cleanup branch without helper call");
+        engine_memory::put(World::overlay + offset, std::uint32_t(0)); // native branch cleanup
+        auto next = world.central_regs(0x840); central_hud(next.data());
+        check(next[8] == 0x800 && hud_counts.reason[Ready] == 1,
+              "next update admits after native cleanup clears extra entry");
+    }
+}
+
+enum class TextureGuard { CachedSurface, SignedTotal, RequiredMetadata, MissingRead };
+static void central_texture_guard(TextureGuard guard) {
+    ++scenarios; World world; host_thread = 3;
+    switch (guard) {
+    case TextureGuard::CachedSurface:
+        engine_memory::put(World::textures + 15 * 0x10 + 8, std::uint32_t(0)); break;
+    case TextureGuard::SignedTotal:
+        engine_memory::put(0x6069b0, std::int16_t(-1));
+        engine_memory::put(0x6069b4, std::int16_t(16)); break;
+    case TextureGuard::RequiredMetadata:
+        engine_memory::put(0x608dac, std::int16_t(16));
+        engine_memory::put(World::texture_rows + 15 * 0x3c + 0xc, std::int16_t(0)); break;
+    case TextureGuard::MissingRead: engine_memory::unreadable.insert(0x6069b0); break;
+    }
+    auto regs = world.central_regs(0x840); central_hud(regs.data());
+    check(regs[8] == 0x840 && hud_counts.reason[Projection] == 1,
+          "malformed or unavailable texture-15 state preserves native branch");
+}
+
+static void native_end_precedes_hud_refusal() {
+    ++scenarios; World world;
+    host_thread = owner_thread = 3; native_timing_enabled = true;
+    auto begin = world.gate_regs(); native_hook(0, begin.data());
+    engine_memory::put(World::overlay + 0x118, std::uint32_t(1));
+    auto central = world.central_regs(0x840); central[2] = World::frame;
+    handle(3, central.data());
+    check(native_times.window.metrics[0].calls == 1,
+          "common native lead span ends before central HUD policy");
+    check(central[8] == 0x840 && hud_counts.reason[Marker] == 1,
+          "central HUD refusal follows native timing end without changing flags");
+    bool central_started = false;
+    for (const auto& slot : native_times.slots)
+        central_started |= slot.starts[2].stamp != 0;
+    check(central_started, "same common hook begins native central span despite HUD refusal");
+}
+
+static unsigned native_open_starts() {
+    unsigned count = 0;
+    for (const auto& slot : native_times.slots)
+        for (const auto& start : slot.starts) count += start.stamp != 0;
+    return count;
+}
+
+static void native_hook_complete_sequence() {
+    ++scenarios; World world;
+    host_thread = owner_thread = 3; native_timing_enabled = true;
+    auto lead = world.gate_regs(); native_hook(0, lead.data());
+    auto central = world.central_regs(); central[2] = World::frame; native_hook(3, central.data());
+    auto solver = world.central_regs(); solver[2] = World::frame;
+    native_hook(4, solver.data()); solver[7] = 0; native_hook(5, solver.data());
+    auto distance = world.gate_regs(); native_hook(6, distance.data()); native_hook(7, distance.data());
+    native_hook(8, central.data());
+    bool one_each = true;
+    for (const auto& metric : native_times.window.metrics) one_each &= metric.calls == 1;
+    check(one_each, "native hook indices map one completed span to all four phases");
+    check(native_times.window.metrics[1].failures == 1
+              && native_times.window.metrics[0].failures == 0
+              && native_times.window.metrics[2].failures == 0
+              && native_times.window.metrics[3].failures == 0,
+          "saved false solver EAX is the only phase failure");
+    check(native_times.window.metrics[0].ticks == 1
+              && native_times.window.metrics[1].ticks == 1
+              && native_times.window.metrics[2].ticks == 5
+              && native_times.window.metrics[3].ticks == 1,
+          "hook boundaries record the exact scripted phase durations");
+    check(native_open_starts() == 0 && native_times.window.unmatched == 0,
+          "complete native hook sequence closes every start");
+}
+
+static void native_hook_context_failure_revokes() {
+    ++scenarios; World world;
+    host_thread = owner_thread = 3; native_timing_enabled = true;
+    auto solver = world.central_regs(); solver[2] = World::frame;
+    native_hook(4, solver.data());
+    check(native_open_starts() == 1, "solver begin creates one native timing span");
+    engine_memory::put(World::link + 8, std::uint32_t(0));
+    native_hook(5, solver.data());
+    check(native_open_starts() == 0 && native_times.window.abandoned == 1,
+          "invalid end context revokes the open thread span");
+}
+
 } // namespace
 } // namespace x3m::chase_lead
 
@@ -584,6 +765,21 @@ int main() {
     cockpit_overlay_overflow_refuses();
     marker_destination_overflow_refuses();
     sample_retention_counts();
+    central_without_target_or_solver();
+    for (auto guard : {HudGuard::Disabled, HudGuard::NativePath, HudGuard::WrongCockpit,
+                       HudGuard::WrongOverlay, HudGuard::WrongThread, HudGuard::Generation,
+                       HudGuard::Serial, HudGuard::InactiveCockpit, HudGuard::Refs, HudGuard::Mode,
+                       HudGuard::Connect, HudGuard::AppliedFlags, HudGuard::Gun, HudGuard::Camera,
+                       HudGuard::ShipId, HudGuard::ShipType,
+                       HudGuard::OwnerType, HudGuard::Scene, HudGuard::Draw2d, HudGuard::Display,
+                       HudGuard::Bodies, HudGuard::Back, HudGuard::ReadFailure}) central_guard(guard);
+    central_native_cleanup_flags();
+    for (auto guard : {TextureGuard::CachedSurface, TextureGuard::SignedTotal,
+                       TextureGuard::RequiredMetadata, TextureGuard::MissingRead})
+        central_texture_guard(guard);
+    native_end_precedes_hud_refusal();
+    native_hook_complete_sequence();
+    native_hook_context_failure_revokes();
     std::printf("chase_lead_host scenarios=%u checks=%u failures=%u\n", scenarios, checks, failures);
     return failures ? 1 : 0;
 }

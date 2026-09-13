@@ -62,7 +62,10 @@ The user reports a stutter at selection and again 1–2 seconds later, distant
 star-lit asteroid shimmer that disappears closer, and a separate first-person
 selected-object distance/crosshair missing in chase. The user confirms this
 last graphic stays near screen centre; the [central HUD study](reverse-engineering/chase-target-indicator.md)
-finds a separate native view gate, with a scoped correction in progress.
+finds a separate native view gate, with a scoped correction now independently reviewed and source-integrated.
+The [central HUD implementation](architecture/chase-central-hud.md) also adds
+consolidated selection solver/distance timing; 18 X3 CPU stubs pass 353 checks
+with zero failures. The installed build is unchanged; gameplay remains pending.
 [Run 20 analysis](verification/run20-material-baseline.md) records a 20.685 s
 save gap and fault-free loading paths. Selection windows contain 0.44–0.46 s
 frame maxima, unexplained by measured renderer calls; capture work and late

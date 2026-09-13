@@ -5,6 +5,17 @@
 
 namespace x3m::chase_transition::detail {
 constexpr unsigned lifetime_capacity=64, thread_capacity=8;
+// Timings are optional observations. Failed/backwards QPC samples never become
+// real zero-cost measurements; calls, accepted samples and failures are separate.
+struct HandlerTiming {
+    std::uint64_t calls=0, samples=0, ticks=0, max_ticks=0, invalid=0;
+    void add(std::uint64_t start,std::uint64_t end) noexcept {
+        ++calls;
+        if(!start || !end || end<start){++invalid;return;}
+        const auto elapsed=end-start;
+        ++samples;ticks+=elapsed;if(elapsed>max_ticks)max_ticks=elapsed;
+    }
+};
 // These structures contain no platform calls. Production holds one SRW lock
 // across each operation; host fixtures exercise this exact state machine.
 struct Lifetime {

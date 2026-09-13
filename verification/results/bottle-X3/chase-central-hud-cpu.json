@@ -1,0 +1,87 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "stubs": 18,
+  "checks": 353,
+  "failures": 0,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    }
+  },
+  "executable": {
+    "exe": "/tmp/x3-chase-central-hud/build/verification/chase-transition/chase_transition_cpu_fixture.exe",
+    "sha256": "ee1c2719902411631ae2f9e34d8df62302c7d8264727b97c863cf1b836e0ce19",
+    "bytes": 305587
+  },
+  "run": {
+    "cwd": "/tmp/x3-chase-central-hud-cpu-r1",
+    "environment": {
+      "X3M_FIXTURE_BOTTLE": "X3",
+      "WINEDEBUG": "-all"
+    },
+    "command": [
+      "python3",
+      "/Users/asvetl/x3-mod/verification/probe/wine_lock.py",
+      "--holder",
+      "chase-central-hud-cpu-r1",
+      "--timeout",
+      "60",
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "/tmp/x3-chase-central-hud/build/verification/chase-transition/chase_transition_cpu_fixture.exe"
+    ],
+    "rebuilt": false,
+    "game_launched": false
+  },
+  "raw": {
+    "input.json": {
+      "path": "/tmp/x3-chase-central-hud-cpu-r1/input.json",
+      "bytes": 209,
+      "sha256": "bf25d44b383903947efe350d6324e7b5e63c8cf4ab4162cfba5149ce456bf3c5"
+    },
+    "stdout.txt": {
+      "path": "/tmp/x3-chase-central-hud-cpu-r1/stdout.txt",
+      "bytes": 4782,
+      "sha256": "ed1baa35ef531112ac9817e6fb6967d55145bf8b6fc69dc0c53b506f88ed1073"
+    },
+    "stderr.txt": {
+      "path": "/tmp/x3-chase-central-hud-cpu-r1/stderr.txt",
+      "bytes": 76,
+      "sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31"
+    }
+  },
+  "cpu_scope": "18 actual emitted stubs; hostile GPR/flags/DF, live x87, XMM0-7, MXCSR, LastError and four-byte caller stack; transition handlers/timing enabled on guarded fixture inputs; lead/HUD/native-timing callbacks disabled; RET continuation.",
+  "benchmark": {
+    "rows": 18,
+    "trials_per_stub": 3,
+    "calls_per_trial": 4096,
+    "scope": "Paired full emitted stub versus RET using the same fixture_call harness, normal CPU state, all callbacks disabled.",
+    "increment_mean_us_across_stubs": {
+      "minimum": 0.521208,
+      "median": 0.5487305,
+      "maximum": 0.566707
+    },
+    "baseline_mean_us_range": [
+      1.018693,
+      1.092594
+    ],
+    "full_stub_mean_us_range": [
+      1.545923,
+      1.64882
+    ],
+    "native_work_included": false,
+    "game_fps_measured": false
+  },
+  "limitations": [
+    "Active lead/HUD admission and native-timer dispatch/lifetime policy are covered separately by host fixtures, not this CPU execution.",
+    "Displaced game tails, native hide/solver/HUD producers and active real cockpit reads are not executed; installed-EXE site/ABI checks are separate.",
+    "The benchmark is emitted-boundary/disabled-guard incremental wall time in this X3 fixture; it does not measure active callbacks, native work, selection stutter or gameplay FPS.",
+    "No new production DLL build or install; gameplay acceptance and native Windows execution remain unverified."
+  ]
+}
