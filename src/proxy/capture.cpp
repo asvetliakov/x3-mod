@@ -439,6 +439,10 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
                        D3DRS_ALPHAREF,D3DRS_ALPHAFUNC,D3DRS_ALPHABLENDENABLE,D3DRS_SRCBLEND,
                        D3DRS_DESTBLEND,D3DRS_BLENDOP,D3DRS_CULLMODE,D3DRS_COLORWRITEENABLE,
                        D3DRS_SRGBWRITEENABLE,D3DRS_SEPARATEALPHABLENDENABLE,
+                       // Alpha can inherit a different equation from RGB. Keep
+                       // its factors/op and constant in the same F8 snapshot.
+                       D3DRS_SRCBLENDALPHA,D3DRS_DESTBLENDALPHA,D3DRS_BLENDOPALPHA,
+                       D3DRS_BLENDFACTOR,
                        D3DRS_STENCILENABLE,D3DRS_STENCILFUNC,D3DRS_STENCILREF,
                        D3DRS_STENCILMASK,D3DRS_STENCILWRITEMASK,D3DRS_STENCILFAIL,
                        D3DRS_STENCILZFAIL,D3DRS_STENCILPASS,D3DRS_TWOSIDEDSTENCILMODE,

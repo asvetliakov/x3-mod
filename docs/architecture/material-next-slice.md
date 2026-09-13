@@ -144,7 +144,8 @@ then encode RGB/copy alpha back before any noneligible draw, target/clear change
 or other relevant boundary. This preserves order and gives real additive energy
 inside the bracket. It costs at least two full-scene transfers plus state,
 rollback and ownership machinery; it is not a cheap per-shader extension.
-The capture contains 16 such bursts of two adjacent draws. That does not prove
+The capture contains 16 such bursts of two adjacent draws across 16 frames,
+exactly one burst per affected frame. That does not prove
 an engine-wide emission phase. Deferring a separate emission layer until scene
 end can put earlier emission over later occluders or after intervening blends.
 

@@ -10,10 +10,10 @@ Preview are both required targets; native Windows runtime behavior is untested.
 |---|---|---|
 | 1 | True HDR | FP16 RT0 redirection and identity write-back work in game. The FP16 scene still contains gamma-space game lighting; downstream decoding does not make that lighting scene-referred. Material/lighting replacement and verified HDR display output remain. |
 | 2 | Modern tonemapping | AgX is implemented and was seen in game at fixed EV 0. Keep AgX. A custom X3 look remains a later tuning task. |
-| 3 | FP16 lighting and HDR emissive | The [first material slice](architecture/scene-linear-materials.md) has design/disassembly, combined shaders and detached/live D3D9 qualification. The opt-in candidate is reviewed and installed; game acceptance is pending; only covered opaque material evaluation becomes linear, not all scene blending or HDR output. |
+| 3 | FP16 lighting and HDR emissive | The [linear material path](architecture/scene-linear-materials.md) has design/disassembly, combined shaders and detached/live D3D9 qualification. The opt-in candidate is reviewed and installed; game acceptance is pending; only covered opaque material evaluation becomes linear, not all scene blending or HDR output. |
 | 4 | HDR bloom | [Live integration](architecture/hdr-bloom-boundary.md) connects the qualified filter/executor and compositor bridge. Combined X3 lifetime checks pass 714/714 across both reference models, including Reset/ResetEx and original exceptions; independently reviewed and installed, with first gameplay acceptance pending. It runs the original compositor once then replaces RGB, preserving original state/resources/alpha. Component image/state/recovery evidence is linked from the design. Initial bloom uses the current decoded gamma-space scene; real radiance still requires materials. Gameplay quality and frame cost remain unverified. |
 | 5 | Automatic exposure | Existing whole-scene log-average meter overexposes black space (about +7 EV). Space-aware tile meter passed independent branch review and both-bottle fixtures; the reviewed build is integrated and installed; game validation remains. |
-| 6 | New material shaders | Argon and shared DEFAULT materials implement twenty archive pairs / fifteen programs, including uncaptured variants. Offline proof, 313 GPU cases and 1,228 actual live-route checks pass; independent review and installation are complete; gameplay acceptance remains. Whole-scene linear lighting still needs a policy for every color writer. |
+| 6 | New material shaders | Bounded DEFAULT and [Argon BUMPMAP](architecture/linear-bump-materials.md) materials are implemented, independently reviewed and installed, including uncaptured archive variants. Offline, GPU and live-route qualification are linked from the owning design; gameplay acceptance remains. Whole-scene linear lighting still needs a policy for every color writer, including blended emission and temporal reactivity. |
 | 7 | GTAO/SSAO | Not started. The motion route supplies R32F depth on RT2. |
 | 8 | Better directional/self shadows | Not started. |
 | 9 | Reflections/SSR | Not started. Needs a defined off-screen/environment fallback. |
@@ -38,40 +38,23 @@ they are not a measured final-image baseline.
 
 ## Execution order
 
-1. **Completed:** review 30 passed on the frozen merged tree, was committed as
-   `3124e0b` and installed in bottle X3. Its scoped fixture/runtime evidence does
-   not close review 31 or establish native-Windows runtime behavior.
-2. Crypto cache reviewed/fixed and merged from `8794a5d` (572 checks per bottle);
-   space-aware exposure branch `e897011` reviewed/fixed and merged
-   (98 motion/HDR cases per bottle). Both changes were installed at qualification
-   checkpoint `c85c5b5` and retained in camera integration `2e5f1af`;
-   run 17 accepts the crypto path on X3; exposure game acceptance remains pending.
-3. Reader/adjacency review and affected fixtures are complete (review 31).
-   Checkpoint `ae03d9a` is committed. Combined selected motion/HDR and
-   CryptoAPI checks and independent artifact review passed. Qualification
-   checkpoint `c85c5b5` was installed and verified; `2e5f1af` now supersedes it.
-4. Ask the user for the handoff's six controlled run groups: crypto, reader verify
-   then fast, adjacency verify then fast, sharpen 0.75, new exposure, vanilla
-   cursor comparison. Reader fast requires zero verification mismatches;
-   adjacency fast requires meaningful admitted work with zero admitted-output
-   mismatches, with unsupported domains explicitly falling back to native.
-   Copy each session and readbacks to a new `/tmp/x3-bottleX3-run<N>/` before
-   bounded analysis; never read a large log whole or launch the game ourselves.
-5. Existing chase-camera prototype `7f4b251` is integrated, reviewed/fixed and
-   qualified by the full regression chain and camera host/site checks. Installed
-   at `2e5f1af`; the first flight confirmed activation and exposed placement and
-   trembling issues. The native position-selection fix and lower framing are now
-   reviewed, X3-qualified and installed at `0c642df`; the telemetry rerun reports
-   no trembling. The elevated 20-degree, distance-scale 0.6, softer-follow update and
-   consolidated mouse-fire trace are qualified and installed at `dac2994`.
-   The cursor-admission correction and revised framing are installed; use the brief user run queue for the next firing comparison. Complete the
-   architecture review’s thirteen acceptance checks separately.
-   Tune only from user impressions; combat tightness and optional scene fix
-   remain disabled pending evidence.
-6. Accept the installed FP16 bloom in game
-   with measured cost, HUD separation and comparison against the existing glow.
-7. Develop the material pass for scene-referred lighting/HDR emissives. Tune a
-   custom AgX look with controlled captures as lighting evolves.
+1. The reviewed camera, loading, bloom and DEFAULT/BUMPMAP material candidate is
+   installed. Use the [brief user run queue](verification/user-runs.md) for current
+   commands, prerequisites and acceptance; completed runs are not new requests.
+   The agent never launches the game. Copy each session and readbacks to a new
+   `/tmp/x3-bottleX3-run<N>/` before bounded analysis.
+2. While gameplay is pending, investigate ordered linear emission composition
+   and complete temporal reactivity. Use targeted disassembly and a standalone
+   correctness/cost prototype before selecting a live implementation. Opaque
+   material coverage alone does not justify changing blended effects.
+3. Analyse the user's captures and fix observed failures. Reader and adjacency
+   fast modes require meaningful verification work with zero admitted mismatches;
+   an all-fallback session does not qualify them. Keep exposure/bloom and
+   fixed-exposure materials comparisons distinct, as the run queue specifies.
+4. Continue material/light reconstruction toward whole-scene linear lighting and
+   HDR emissive composition, then the remaining rendering goals below. Tune the
+   custom AgX look from controlled captures as lighting evolves. Native Windows
+   runtime acceptance and HDR display output remain separate obligations.
 
 Additional candidates retained in the plan: temporal upscaling built on the
 working TAA inputs (no assumption of DLSS availability), menu-bar handling and

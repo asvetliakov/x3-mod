@@ -70,8 +70,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   All previous DEFAULT variants remain byte-exact; BUMPMAP uses a separate
   varying ABI and cached sampler admission. The feature stays opt-in; gameplay
   acceptance remains run 6 in the brief queue, with no additional run required.
-  Blended emissions need a separate linear-composition and temporal-reactivity
-  design, as the [next-slice study](architecture/material-next-slice.md) explains.
+  Blended emissions now have an [ordered-composition study](architecture/linear-emission-composition.md)
+  backed by targeted engine disassembly and bounded trace analysis. A detached
+  color/coverage/cost prototype is in progress; live integration is not selected.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.
