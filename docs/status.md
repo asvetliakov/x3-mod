@@ -115,15 +115,14 @@ fixture's emission Reset model is repaired and independently reviewed
 (33 scenarios / 139 checks); this checkpoint changes no installed code.
 The [motion/depth WRAP correction](architecture/motion-varying-wrap.md) and
 [116-pair Asteroid/COLOR1 source](architecture/linear-asteroid-materials.md) are
-reviewed, GPU/live-qualified and installed. The next material expansion remains
-isolated: 32 Boron/Paranid pairs and their independent reference are committed
-at `5e16c2f` in `/tmp/x3-material-boron-paranid`; the reviewed scalar WRAP
-integration is `110123b` in `/tmp/x3-palette-live-wrap`. The 3,541-case detached
-fixture in `/tmp/x3-palette-gpu` is under review and has not run on the GPU.
-Both reviewed source packages are now integrated in main with six focused
+reviewed, GPU/live-qualified and installed. The next material expansion adds 32 Boron/Paranid pairs. The reviewed pure
+conversion and scalar WRAP source packages are integrated in main with six focused
 integration tests passing (including 34,773 WRAP assertions and the exposure
 handoff). The two affected proxy translation units compile for x86/SSE2. The
 148-pair source is not installed; run 7 still uses candidate `75dbbed` and 116 pairs.
+Its reviewed detached fixture is now integrated and built: 3,549 cases include
+eight perspective-interpolation checks, with the previous 2,757 cases preserved
+exactly. Detached GPU execution and the expanded live-route fixture remain pending.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent
@@ -172,7 +171,7 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   x87 audit and an explicit-DLL load check. The feature stays opt-in; run 6
   supplied initial feedback and run 7 covers the installed extension. The
   [coverage ledger](architecture/material-coverage.md) retains all 817 archive
-  pass identities; [52 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md)
+  pass identities; [46 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md)
   and older-profile variants remain, alongside other scene writers. The six-pair
   Asteroid candidate and separate COLOR1 transport pass source review and
   2,757 detached GPU cases; the 64-case interpolation qualification preserves
@@ -181,7 +180,7 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   limitation is explicitly separated from candidate parity. Combined live
   qualification passes 8 cells / 2,064 frames / 25,988 checks; installation is complete. The [Boron/Paranid contract](reverse-engineering/boron-paranid-materials.md)
   covers all 32 remaining pairs. Their pure conversion and scalar WRAP
-  integration are separately reviewed on isolated branches; detached/live GPU
+  integration are reviewed and source-integrated; detached/live GPU
   qualification remains before any 148-pair install.
   [Blended emission work](architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color

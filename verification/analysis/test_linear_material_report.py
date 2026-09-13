@@ -3,12 +3,13 @@ from dataclasses import replace
 from pathlib import Path
 import hashlib
 import json
+import math
 import re
 import struct
 import unittest
 from unittest.mock import patch
 import linear_material_reference as ref
-from run_linear_material import BOUNDARY, CUBE_PATTERN, cube_sample, cube_location, expected_alpha, DETAIL_PATTERN, detail_sample, FIXED_VERTICES, PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, fixture_cases, binary_cases, expected, validate_report
+from run_linear_material import BOUNDARY, CUBE_PATTERN, cube_sample, cube_location, expected_alpha, PALETTE_GRADIENT, PALETTE_PERSPECTIVE, DIFFUSE_PATTERN, palette_varying, pattern_diffuse, DETAIL_PATTERN, detail_sample, FIXED_VERTICES, PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, fixture_cases, binary_cases, expected, validate_report
 
 
 def report():
@@ -23,6 +24,8 @@ def report():
         rgba = ','.join(format(v, '.17g') for v in values)
         for y in (4, 8, 12):
             for x in (4, 8, 12):
+                if c['flags']&PALETTE_GRADIENT:
+                    rgba=','.join(format(v,'.17g') for v in expected(c,sample=(x,y)).encoded_rgba)
                 lines.append(f'SAMPLE id={c["id"]} x={x} y={y} rgba={rgba}')
     for pair in TIMING_PAIRS:
         for lights in (0, 8):
@@ -40,8 +43,8 @@ class ReportTests(unittest.TestCase):
 
     def test_complete_report(self):
         result = validate_report(self.text)
-        self.assertEqual(result['pairs'], 116)
-        self.assertEqual(result['unique_originals'], 83)
+        self.assertEqual(result['pairs'], 148)
+        self.assertEqual(result['unique_originals'], 115)
         self.assertGreater(result['hdr_channels'], 0)
         self.assertGreater(result['exact_black_channels'], 0)
 
@@ -65,11 +68,11 @@ class ReportTests(unittest.TestCase):
         self.assertEqual([(vertices[v],pixels[p]) for v,p in zip(vi,pi)],PAIRS)
         affine=[v=='true' for v in re.findall(r'true|false',array('pixel_affine'))]
         directions=list(map(int,re.findall(r'\d+',array('pixel_directions'))))
-        self.assertEqual(affine,[ref.PROFILES[p].affine_color if p in ref.PROFILES else False for p in pixels])
-        self.assertEqual(directions,[(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES[p]).directions for p in pixels])
+        self.assertEqual(affine,[getattr(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p],'affine_color',False) for p in pixels])
+        self.assertEqual(directions,[(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p]).directions for p in pixels])
         bump=[v=='true' for v in re.findall(r'true|false',array('pixel_bump'))]
         app=[v=='true' for v in re.findall(r'true|false',array('pixel_application'))]
-        self.assertEqual(bump,[(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES[p]).bump_map for p in pixels])
+        self.assertEqual(bump,[(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p]).bump_map for p in pixels])
         self.assertEqual(app,[ref.PROFILES[p].application_coefficients if p in ref.PROFILES else False for p in pixels])
 
     def test_shared_lobe_cases_reject_each_argon_coefficient(self):
@@ -110,11 +113,11 @@ class ReportTests(unittest.TestCase):
 
     def test_bump_inventory_and_stable_cube_domain(self):
         cases=fixture_cases()
-        self.assertEqual(len(cases),2757)
+        self.assertEqual(len(cases),3549)
         self.assertTrue(all(c['pair']<20 for c in cases[:313]))
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='bump_pair_depth_face'},
                          {(p,d,r) for p in range(20,30) for d in (0,1) for r in (0,1)})
-        self.assertEqual(sum(bool(c['flags']&BOUNDARY) for c in cases),48)
+        self.assertEqual(sum(bool(c['flags']&BOUNDARY) for c in cases),58)
         for c in cases:
             if c['flags']&BOUNDARY:continue
             a,b=expected(c),expected(c,True)
@@ -123,6 +126,14 @@ class ReportTests(unittest.TestCase):
                 # Different endpoint precision must not select a different
                 # discrete cube color. Other _pp arithmetic gets RGB tolerance.
                 def geometry(half):
+                    if c['pair']>=116:
+                        profile=ref.PALETTE_PROFILES[PAIRS[c['pair']][1]]
+                        v=palette_varying(c)
+                        if not profile.bump_map:
+                            from types import SimpleNamespace
+                            return SimpleNamespace(reflection=tuple(ref.half(x) for x in v.reflection) if half else v.reflection)
+                        return ref.bump_geometry(c['normal_sample'],c['tangent'],c['binormal'],v.normal,v.view,
+                                                 two_sided=profile.two_sided,face=-1 if c['reverse'] else 1,half_source=half)
                     profile=ref.PROFILES[PAIRS[c['pair']][1]]
                     return ref.bump_geometry(c['normal_sample'],c['tangent'],c['binormal'],c['normal'],c['camera'],
                                              two_sided=profile.two_sided,face=-1 if c['reverse'] else 1,half_source=half,
@@ -149,7 +160,7 @@ class ReportTests(unittest.TestCase):
             for i,line in enumerate(lines):
                 if line.startswith(f'SAMPLE id={c["id"]} '):
                     lines[i]=line.split('rgba=')[0]+'rgba='+','.join(map(str,(*values,expected_alpha(c))))
-            if values[0]==123.:self.assertEqual(validate_report('\n'.join(lines))['boundary_cases'],48)
+            if values[0]==123.:self.assertEqual(validate_report('\n'.join(lines))['boundary_cases'],58)
             else:
                 with self.assertRaises(AssertionError):validate_report('\n'.join(lines))
 
@@ -205,7 +216,7 @@ class ReportTests(unittest.TestCase):
     def test_expanded_pair_and_required_case_coverage(self):
         proof=json.loads((Path(__file__).resolve().parents[2]/'docs/reverse-engineering/linear-material-profiles.json').read_text())
         self.assertEqual(set(PAIRS),{(p['vs'],p['ps']) for p in proof['pairs']})
-        self.assertEqual(len(PAIRS),116)
+        self.assertEqual(len(PAIRS),148)
         cases=fixture_cases()
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='extended_pair_depth_face'},
                          {(p,d,r) for p in range(30,70) for d in (0,1) for r in (0,1)})
@@ -376,6 +387,162 @@ class AsteroidFixtureTests(unittest.TestCase):
             self.assertEqual(expected_alpha(original),.46875)
             self.assertEqual(expected_alpha(original),expected_alpha(modified))
             self.assertEqual(expected(original).encoded_rgba[3],expected(modified).encoded_rgba[3])
+
+
+class PaletteFixtureTests(unittest.TestCase):
+    def test_previous_2757_payloads_and_all_new_pairs(self):
+        cases=fixture_cases()
+        self.assertEqual(hashlib.sha256(binary_cases(cases[:2757])).hexdigest(),
+                         '04413dc21403cffbfe6f6d0ef7c97cef27265d6319af1ceb3062e2831a28dd5e')
+        self.assertEqual(len(cases),3549)
+        self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='palette_pair_depth_face'},
+                         {(p,d,r) for p in range(116,148) for d in (0,1) for r in (0,1)})
+        for label in ('palette_missing_history','palette_fog_alpha'):
+            self.assertEqual({c['pair'] for c in cases if c['label']==label},set(range(116,148)))
+        for p in range(116,148):
+            self.assertEqual({tuple(c['gains']) for c in cases if c['pair']==p and c['label']=='palette_independent_gains'},
+                             {(0.,0.,0.),(4.,1.,1.),(1.,16.,1.),(1.,1.,16.)})
+        for v in ref.PALETTE_VERTEX_PROFILES:
+            rows=[c for c in cases if c['label']=='palette_lights_gains' and PAIRS[c['pair']][0]==v]
+            self.assertEqual({c['lights'] for c in rows},{1} if v in FIXED_VERTICES else {0,1,8})
+        for label in ('palette_unequal_weights','palette_specular_power','palette_grazing_lobe',
+                      'palette_affine_color','palette_diffuse_uv','palette_interpolated_geometry'):
+            self.assertEqual({PAIRS[c['pair']][1] for c in cases if c['label']==label},set(ref.PALETTE_PROFILES))
+        self.assertTrue(all(c['pair']>=116 for c in cases if c['flags']&(PALETTE_GRADIENT|DIFFUSE_PATTERN)))
+
+    def test_gradient_integer_centers_and_nonlinear_vertex_outputs(self):
+        cases=[c for c in fixture_cases() if c['label']=='palette_interpolated_geometry' and c['reverse']==0]
+        for c in cases:
+            v=palette_varying(c,(8,8))
+            self.assertEqual(v.normal,(.25,.125,.875))
+            self.assertEqual(palette_varying(c,(4,12)).normal,(.21875,.109375,.875))
+            self.assertLess(sum(x*x for x in v.view),.99)
+            # Re-evaluating the original VS at the interpolated world position
+            # loses nonlinear normalization, palette powers and point attenuation.
+            vs=PAIRS[c['pair']][0];lights=[ref.PointLight((0,0,2),c['point'],(2,.25,.125))]*(1 if vs in FIXED_VERTICES else c['lights'])
+            wrong=ref.palette_vertex(vs,(0,0,0),c['normal'],c['camera'],c['material'],lights,
+                                     material_alpha=.625,gains=ref.Gains(*c['gains']))
+            self.assertNotEqual(v.reflection_weight,wrong.reflection_weight)
+            right=expected(c).encoded_rgba[:3]
+            with patch('run_linear_material.palette_varying',return_value=wrong):bad=expected(c).encoded_rgba[:3]
+            self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(right,bad)),c['pair'])
+            self.assertNotEqual(expected(c,sample=(4,4)),expected(c,sample=(12,12)))
+
+    def test_perspective_gradient_uses_actual_vertices_and_reciprocal_clip_w(self):
+        cases=[c for c in fixture_cases() if c['flags']&PALETTE_PERSPECTIVE]
+        self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases},
+                         {(p,d,d) for p in (116,122,128,138) for d in (0,1)})
+        # At center: screen weights (1/2,1/4,1/4), divided by (1,2,4),
+        # then normalized give (8/11,2/11,1/11). Actual object XY are
+        # (-1,1),(6,2),(-4,-12); normal slopes use those original inputs.
+        for c in cases:
+            actual=palette_varying(c)
+            self.assertAlmostEqual(actual.normal[0],.25)
+            self.assertAlmostEqual(actual.normal[1],.125)
+            self.assertEqual(actual.normal[2],.875)
+            for y in (4,8,12):
+                for x in (4,8,12):
+                    screen=(1-x/32-y/32,x/32,y/32)
+                    q=[b/w for b,w in zip(screen,(1,2,4))]
+                    weights=[v/sum(q) for v in q]
+                    self.assertTrue(all(math.isfinite(v) and v>0 for v in weights))
+                    self.assertAlmostEqual(sum(weights),1.)
+                    got=palette_varying(c,(x,y))
+                    self.assertAlmostEqual(got.normal[0],sum(w*n for w,n in zip(weights,(.1875,.625,0.))))
+                    self.assertAlmostEqual(got.normal[1],sum(w*n for w,n in zip(weights,(.15625,.1875,-.25))))
+                    self.assertEqual(got,palette_varying(dict(c,depth=1-c['depth'],reverse=1-c['reverse']),(x,y)))
+            # Actual projected object triangle retains the affine screen triangle;
+            # current depth is .5 and previous projected X differs by -.125.
+            for (ox,oy,oz),(cx,cy) in zip(((-1,1,1),(6,2,2),(-4,-12,4)),((-1,1),(3,1),(-1,-3))):
+                self.assertEqual((ox/oz,oy/oz),(cx,cy))
+                self.assertEqual(.5*oz/oz,.5)
+                self.assertEqual((ox-.125*oz)/oz-ox/oz,-.125)
+            # Independent native VS evaluation and explicit rational weights.
+            vs=PAIRS[c['pair']][0]
+            lights=[ref.PointLight((0,0,2),c['point'],(2,.25,.125))]*c['lights']
+            native=[ref.palette_vertex(vs,(x*.25,y*.125,0),
+                      (.25+x*.0625,.125+y*.03125,.875),c['camera'],c['material'],lights,
+                      material_alpha=.625,gains=ref.Gains(*c['gains']))
+                    for x,y in ((-1,1),(6,2),(-4,-12))]
+            for key in ('view','reflection','linear_rgb','palette_weights'):
+                for i in range(3):
+                    want=sum(w*getattr(v,key)[i] for w,v in zip((8/11,2/11,1/11),native))
+                    self.assertAlmostEqual(getattr(actual,key)[i],want,places=7)
+            from dataclasses import replace
+            wrong=replace(actual,**{key:tuple(sum(w*getattr(v,key)[i]
+                        for w,v in zip((.5,.25,.25),native)) for i in range(3))
+                        for key in ('normal','view','reflection','linear_rgb','palette_weights')},
+                        reflection_weight=sum(w*v.reflection_weight for w,v in zip((.5,.25,.25),native)),
+                        view_weight=sum(w*v.view_weight for w,v in zip((.5,.25,.25),native)))
+            right=expected(c).encoded_rgba[:3]
+            with patch('run_linear_material.palette_varying',return_value=wrong):bad=expected(c).encoded_rgba[:3]
+            self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(right,bad)),c['pair'])
+            self.assertEqual(expected(c).encoded_rgba[3],expected_alpha(c))
+            self.assertNotEqual(expected(c,sample=(4,4)),expected(c,sample=(12,12)))
+
+    def test_J_and_view_power_have_separate_observable_contributions(self):
+        for c in fixture_cases():
+            if c['label']=='palette_isolated_cube':
+                v=palette_varying(c);correct=expected(c).encoded_rgba[:3]
+                self.assertTrue(any(correct))
+                with patch('run_linear_material.palette_varying',return_value=replace(v,reflection_weight=0)):
+                    self.assertEqual(expected(c).encoded_rgba[:3],(0,0,0))
+            if c['label']=='palette_isolated_material' and PAIRS[c['pair']][1] in ('39eb3c2258a516e1','57acf59d19c73791','a910daef935891ce','62c180abe017e239'):
+                v=palette_varying(c);correct=expected(c).encoded_rgba[:3]
+                with patch('run_linear_material.palette_varying',return_value=replace(v,view_weight=0)):
+                    wrong=expected(c).encoded_rgba[:3]
+                self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(correct,wrong)))
+
+    def test_palette_colors_decode_before_unequal_mix_and_not_at_sample(self):
+        seen=set()
+        for c in fixture_cases():
+            if c['label']!='palette_unequal_weights':continue
+            ps=PAIRS[c['pair']][1];p=ref.PALETTE_PROFILES[ps];v=palette_varying(c)
+            seen.add(ps)
+            if v.vertex_palette_rgb is None:continue
+            # Preserve every other source while replacing only the VS palette
+            # with the explicitly wrong gamma-sum decode.
+            weights=(*v.palette_weights,v.view_weight);roles=('x','y','z','view')
+            wrong=tuple(ref.decode(sum(w*ref.PALETTE_COLORS['boron'][role][i] for w,role in zip(weights,roles))) for i in range(3))
+            correct=expected(c).encoded_rgba[:3]
+            with patch('run_linear_material.palette_varying',return_value=replace(v,vertex_palette_rgb=wrong)):
+                bad=expected(c).encoded_rgba[:3]
+            self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(correct,bad)))
+        self.assertEqual(seen,set(ref.PALETTE_PROFILES))
+        self.assertTrue(any(max(palette_varying(c).palette_weights)>1 for c in fixture_cases() if c['label']=='palette_unequal_weights'))
+
+    def test_patterned_diffuse_and_cube_preserve_distinct_sampling_roles(self):
+        for c in fixture_cases():
+            if c['label']=='palette_diffuse_uv':
+                expected_sample=(.125,.25,.125,.75) if c['coefficients'][2]<.1 else (.25,.125,.125,.75)
+                self.assertEqual(pattern_diffuse(c),expected_sample)
+                self.assertNotEqual(expected(c),expected(dict(c,flags=0)))
+        for pair in {c['pair'] for c in fixture_cases() if c['label']=='palette_cube_direction'}:
+            a,b=[c for c in fixture_cases() if c['pair']==pair and c['label']=='palette_cube_direction']
+            # These directions select different U/V color bands on the +Z face.
+            va,vb=palette_varying(a),palette_varying(b)
+            self.assertNotEqual(va.reflection,vb.reflection)
+            self.assertEqual(cube_sample(va.reflection),(.625,.125,.375))
+            self.assertEqual(cube_sample(vb.reflection),(.625,.25,.75))
+            self.assertNotEqual(expected(a),expected(b))
+            profile=ref.PALETTE_PROFILES[PAIRS[pair][1]]
+            for c in (a,b):
+                v=palette_varying(c)
+                for half_source in (False,True):
+                    direction=(ref.bump_geometry(c['normal_sample'],c['tangent'],c['binormal'],v.normal,v.view,
+                               two_sided=profile.two_sided,face=-1 if c['reverse'] else 1,half_source=half_source).reflection
+                               if profile.bump_map else tuple(ref.half(x) if half_source else x for x in v.reflection))
+                    cube_sample(direction) # raises if any chosen face/texel margin is unsafe
+
+    def test_new_alpha_is_exact_and_gradient_fog_is_not_silently_idealized(self):
+        for c in fixture_cases()[2757:]:
+            if c['flags']&BOUNDARY:continue
+            self.assertEqual(expected(c).encoded_rgba[3],expected_alpha(c))
+        c=next(c for c in fixture_cases() if c['flags']&PALETTE_GRADIENT)
+        with self.assertRaises(ValueError):palette_varying(dict(c,flags=c['flags']|2))
+        text=(Path(__file__).resolve().parents[1]/'probe/linear_material_fixture.cpp').read_text()
+        self.assertIn('D3DSHADE_GOURAUD',text)
+        self.assertIn('D3DRS_WRAP8',text)
 
 
 if __name__ == '__main__':unittest.main()

@@ -197,3 +197,43 @@ cross-compile with x86 SSE2 and the four-byte incoming-stack contract.
 The installed candidate remains `75dbbed` with 116 pairs. The 148-pair source
 has not been built into or installed as a gameplay DLL; its expanded detached
 fixture and live qualification remain separate acceptance work.
+
+## Detached 148-pair fixture source gate
+
+The independent reviewer approved the detached fixture and oracle after the
+bounded perspective correction. The bank contains 3,549 cases for all 148
+pairs / 115 originals, retaining the prior 2,757 serialized cases exactly
+(SHA-256 `04413dc21403cffbfe6f6d0ef7c97cef27265d6319af1ceb3062e2831a28dd5e`)
+and the 240-byte case ABI. Its 58 operational boundary cases retain their
+existing finite-storage / exact-alpha / temporal invariants without a float64
+RGB-equivalence claim. RGB tolerances are unchanged.
+
+New cases distinguish native palette source decoding before mixing, independent
+J and u^11 contributions, unequal and out-of-simplex weights, directional and
+cube responses, texture sampling, geometric point lighting, normals, gain,
+fog alpha, pair/depth/winding and shader toggles. Forty affine-gradient cases
+evaluate the original VS independently at each vertex before interpolation.
+Eight additional perspective cases cover Boron/Paranid × DEFAULT/BUMP base
+transport with both depth/winding states: clip W is 1/2/4, projected geometry
+covers the same triangle, clip z is .5W, and previous projected X differs by
+-.125. The oracle uses reciprocal-W interpolation of the native VS outputs.
+Host witnesses distinguish this from affine interpolation beyond the unchanged
+RGB tolerance and check all nine sample positions. WRAP state is explicitly
+zero here; hostile WRAP relocation remains the separate live-fixture gate.
+
+All 38 focused report/case-generation tests are accounted for: 36 passed in
+the initial module run; two mock-report failures exposed float64 summation
+rounding of constant vertex alpha. Retaining that constant exactly fixed both,
+and the affected report checks plus expanded perspective/prefix/alpha checks
+passed. No unrelated suite was repeated. `git diff --check` passes.
+
+One approved standalone build completed in 2.649 seconds using MinGW GCC
+16.2.0 and `verification/probe/build_linear_material.sh` (SSE2, x86 incoming
+stack realignment, no fast-math). The retained EXE is 11,219,410 bytes with
+SHA-256 `8b114e50ec91ab4d4f77ad78e6943b33678a425585e54e69e3171bfa92460027`,
+locally at `/tmp/x3-palette-gpu/verification/probe/build/linear_material_fixture.exe`.
+Build metadata is local at `/tmp/x3-palette-gpu-build.json`. This is a source and
+standalone-build checkpoint only: no 148-pair detached GPU result, native
+Windows execution, or live-route approval is claimed. The runner requires an
+explicit prebuilt EXE and does not rebuild; X3 execution stays with the shared
+Wine queue owner. The installed 116-pair candidate is unaffected.

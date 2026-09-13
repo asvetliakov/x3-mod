@@ -1,8 +1,9 @@
 // Detached numerical qualification: local original game programs stay
 // untracked. Binary cases are authored by run_linear_material.py; it owns the
-// independent float64 oracle. World position is constant while clip geometry
-// covers the RT, making the lighting varyings uniform without redefining their
-// angular math.
+// independent float64 oracle. Ordinary cases keep world position constant
+// while clip geometry covers the RT, producing uniform lighting varyings.
+// Flag-16 gradient cases vary world position and normal per vertex; flag 64
+// additionally varies clip W. The oracle interpolates native VS outputs.
 #define WIN32_LEAN_AND_MEAN
 #include "../../src/renderer/linear_material.h"
 #include "../../src/renderer/material_motion.h"
@@ -43,14 +44,15 @@ struct Case {
   unsigned id, pair, depth, lights, reverse, affine, valid, fp16, flags;
   // Asteroid uses lightmap RGBA as detail; f47..50 = base/detail weights, base UV.
   // Existing f[0..31] retain their meanings. Append normal RGBA, B, T,
-  // camera, fog clip and scalar diffuse/specular/reflection/power; flags: asymmetric cube=1, fog=2, boundary=4, detail UV pattern=8.
+  // camera, fog clip and scalar diffuse/specular/reflection/power; flags: asymmetric cube=1, fog=2, boundary=4, detail UV pattern=8; palette gradient=16, diffuse UV pattern=32, perspective gradient=64.
   float f[51];
 };
 static_assert(sizeof(Case) == 240, "binary case ABI");
 const char * vertex_ids[] = {
     "53a0a641107ed76c", "719856ce0c213220", "badefd5143b3024f", "4944d81dfe531b37", "44c4a41ca92ae2e3", "19a246a56e9d9700",
     "494fe349b8bc12ec",
-    "b0602757fce6e870", "0c223ad11bce02d5", "233d17d26ce0c1fc", "167eb2d5629ab9d3", "330ceb9dd874ede2", "12b8a13f13fe8cfe"};
+    "b0602757fce6e870", "0c223ad11bce02d5", "233d17d26ce0c1fc", "167eb2d5629ab9d3", "330ceb9dd874ede2", "12b8a13f13fe8cfe",
+    "29d7c575396ed280", "a420a010b0271479", "ea3d15b287892410", "57392213f62fef19", "5c17a381b149b3b9", "a804f173f693944a", "37e6956afd8b8d76", "2e0254dd999841c2", "a7cddf2c98d61117", "33388c8897d428a5", "b4059ab6af8fc529", "2a560f246c90fa64"};
 const char * pixel_ids[] = {
     "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5", "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
     "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5", "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3",
@@ -63,7 +65,8 @@ const char * pixel_ids[] = {
     "3006f8030a467739", "d6e8bdde0e4c515f", "e5ea78b8b0b0fe07", "f42202faf57a3c89", "769c3814fc0efba8", "22cc5b05a55ef61e",
     "ef2bf556f207b8bd", "91b6c09eb47f8555", "cc09f17db377fd9e", "3755809bd40afc13", "61418505e5d8f998", "b5f1d4145171026b",
     "3602b05ce11ca6ff", "8e58ac79b59b02b1", "042c9ae16f41feff", "68f0dd6791fd7d3d", "5c823b8507fa1442", "a6e1328c0bb3f401",
-    "517540ae6d5e5410", "7a0c3388065bb08d", "d44db87778a43b61", "550c2a4d4d3ed70f"};
+    "517540ae6d5e5410", "7a0c3388065bb08d", "d44db87778a43b61", "550c2a4d4d3ed70f",
+    "39eb3c2258a516e1", "57acf59d19c73791", "f917d48ee826da1f", "77a5b2d62fb3be48", "a910daef935891ce", "62c180abe017e239", "ed44232013f67072", "f286856c3f400377", "9d27e7ba242f3831", "e1acf8a03850acaf", "f646f03be5a8708d", "ebf41e1ace7af45b", "c997a37560e266df", "675f9077d8fd21c4", "18d372968af4a480", "188c5ab9dbb98393", "7e5e41276b3d7514", "43c9405568d2226f", "5e056627e9ff3a8d", "fce465befff2f623"};
 // Derived register-layout facts; original instructions own the lobe and normal math.
 const bool pixel_affine[] = {
     true, true, false, true, true, false,
@@ -77,7 +80,8 @@ const bool pixel_affine[] = {
     true, true, true, true, false, false,
     true, true, true, true, false, false,
     true, true, true, true, false, false,
-    false, false, false, false};
+    false, false, false, false,
+    false, false, false, false, false, false, false, false, true, true, true, true, false, false, true, true, true, true, false, false};
 const bool pixel_bump[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -90,7 +94,8 @@ const bool pixel_bump[] = {
     true, true, true, true, true, true,
     false, false, false, false, false, false,
     true, true, true, true, true, true,
-    false, false, true, true};
+    false, false, true, true,
+    false, false, false, false, true, true, true, true, false, false, false, false, false, false, true, true, true, true, true, true};
 const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -103,7 +108,8 @@ const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
     false, false, false, false, false, false,
-    false, false, false, false};
+    false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false};
 const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
@@ -116,7 +122,8 @@ const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
-    2, 1, 2, 1};
+    2, 1, 2, 1,
+    2, 2, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 const unsigned pair_v[] = {
     0, 0, 1, 1, 1, 1,
     2, 2, 2, 2, 0, 0,
@@ -137,7 +144,8 @@ const unsigned pair_v[] = {
     2, 2, 2, 2, 3, 3,
     4, 4, 4, 4, 5, 5,
     5, 5,
-    7, 8, 9, 10, 11, 12};
+    7, 8, 9, 10, 11, 12,
+    13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 23, 23, 23, 23, 24, 24, 24, 24};
 const unsigned pair_p[] = {
     0, 1, 2, 3, 4, 5,
     2, 3, 4, 5, 6, 7,
@@ -158,7 +166,8 @@ const unsigned pair_p[] = {
     56, 57, 58, 59, 60, 61,
     62, 63, 64, 65, 62, 63,
     64, 65,
-    66, 67, 67, 68, 69, 69};
+    66, 67, 67, 68, 69, 69,
+    70, 71, 72, 73, 72, 73, 74, 75, 76, 77, 76, 77, 78, 79, 80, 81, 82, 83, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 86, 87, 88, 89};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -215,7 +224,7 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][70];
+  Words originals[2][90];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
@@ -393,10 +402,14 @@ struct Gpu {
                    D3DRS_COLORWRITEENABLE2})
       api(d->SetRenderState(s, 15));
     api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
+    api(d->SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD));
+    for (unsigned n=0;n<16;++n)
+      api(d->SetRenderState(D3DRENDERSTATETYPE((n<8 ? D3DRS_WRAP0 : D3DRS_WRAP8)+(n%8)),0));
     api(d->SetVertexDeclaration(declaration.p));
     shaders.bind(c, mode);
     const bool bump = pixel_bump[pair_p[c.pair]];
-    const bool asteroid = c.pair >= 110;
+    const bool asteroid = c.pair >= 110 && c.pair < 116;
+    const bool palette = c.pair >= 116;
     // Clear the union first: DEFAULT must never retain BUMP's stage-4 cube,
     // and switching stage-3 2D/cube roles must not depend on the last family.
     for (unsigned i = 0; i < 5; ++i)
@@ -428,16 +441,16 @@ struct Gpu {
     }
     if (!asteroid)
       api(d->SetTexture(bump ? 4 : 3, cube.p));
-    if (asteroid && (c.flags & 8)) {
+    if ((asteroid && (c.flags & 8)) || (palette && (c.flags & 32))) {
       D3DLOCKED_RECT lock{};
       api(detail->LockRect(0, &lock, nullptr, 0));
       for (unsigned y=0;y<4;++y)
         for (unsigned x=0;x<4;++x) {
-          const float value[4]={(x+1)/8.f,(y+1)/8.f,(x+y+1)/16.f,.875f};
+          const float value[4]={(x+1)/8.f,(y+1)/8.f,(x+y+1)/16.f,asteroid ? .875f : c.f[6]};
           std::memcpy(static_cast<char *>(lock.pBits)+y*lock.Pitch+x*16,value,16);
         }
       api(detail->UnlockRect(0));
-      api(d->SetTexture(bump ? 3 : 2, detail.p));
+      api(d->SetTexture(asteroid ? (bump ? 3 : 2) : 0, detail.p));
     }
     for (unsigned i = 0; i < 5; ++i) {
       for (auto state : {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER})
@@ -449,7 +462,9 @@ struct Gpu {
     }
     float v[256][4]{};
     bool fixed = pair_v[c.pair] == 2 || pair_v[c.pair] == 5 ||
-                 pair_v[c.pair] == 9 || pair_v[c.pair] == 12;
+                 pair_v[c.pair] == 9 || pair_v[c.pair] == 12 ||
+                 pair_v[c.pair] == 15 || pair_v[c.pair] == 18 ||
+                 pair_v[c.pair] == 21 || pair_v[c.pair] == 24;
     unsigned matrix = fixed ? 0 : 24, normal = fixed ? 10 : 31,
              camera = fixed ? 13 : 34, emissive = fixed ? 19 : 40,
              alpha = fixed ? 18 : 39, tex = fixed ? 16 : 37;
@@ -458,6 +473,18 @@ struct Gpu {
       v[252 + k][k] = 1;
     }
     v[252][3] = -.125f;
+    if (palette && (c.flags & 64)) {
+      // FLOAT3 object z supplies clip W; all vertices project to z=.5.
+      // Previous clip keeps the same W and a projected -.125 X shift.
+      v[matrix+2][2] = v[254][2] = .5f;
+      v[matrix+3][2] = v[255][2] = 1;
+      v[matrix+3][3] = v[255][3] = 0;
+      v[252][2] = -.125f; v[252][3] = 0;
+    }
+    if (palette && (c.flags & 16)) {
+      const unsigned world = fixed ? 7 : 28;
+      v[world][0]=c.f[47]; v[world+1][1]=c.f[48];
+    }
     for (unsigned k = 0; k < 3; ++k)
       v[normal + k][k] = 1;
     for (unsigned k = 0; k < 3; ++k)
@@ -466,7 +493,7 @@ struct Gpu {
     v[fixed ? 20 : 41][1] = c.f[46];
     v[alpha][0] = .625f;
     v[tex][0] = v[tex + 1][1] = 1;
-    if (asteroid) {
+    if (asteroid || (palette && (c.flags & 32))) {
       // Constant base UV; the actual original computes detail UV = 3*base UV.
       v[tex][0] = v[tex+1][1] = 0;
       v[tex][2] = c.f[49]; v[tex+1][2] = c.f[50];
@@ -530,8 +557,17 @@ struct Gpu {
     float vertices[3][14] = {{-1, 1, .5f, 0, 0, 0, 0, 1},
                              {3, 1, .5f, 1, 0, 0, 0, 1},
                              {-1, -3, .5f, 0, 1, 0, 0, 1}};
+    if (c.pair >= 116 && (c.flags & 64)) {
+      for (unsigned i=0;i<3;++i) {
+        const float w=float(1u<<i);
+        vertices[i][0]*=w; vertices[i][1]*=w; vertices[i][2]=w;
+      }
+    }
     for (auto &v : vertices) {
       std::memcpy(v + 5, c.f + 28, 12);
+      if (c.pair >= 116 && (c.flags & 16)) {
+        v[5] += c.f[49]*v[0]; v[6] += c.f[50]*v[1];
+      }
       std::memcpy(v + 8, c.f + 36, 12);
       std::memcpy(v + 11, c.f + 39, 12);
     }
@@ -742,14 +778,14 @@ int main(int argc, char **argv) {
       }
       {
         Gpu gpu(device.p, shaders, 256);
-        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u, 110u, 113u}) {
+        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u, 110u, 113u, 116u, 122u, 128u, 138u}) {
           Case timed = cases.front();
           timed.pair = pair;
           timed.flags = pixel_bump[pair_p[pair]] ? 1 : 0;
           // Neutral normal for both AG reconstruction and LOW signed XYZ.
           timed.f[32] = timed.f[33] = timed.f[35] = .5f;
           timed.f[34] = 1.f;
-          if (pair >= 110) {
+          if (pair >= 110 && pair < 116) {
             timed.flags = 0;
             timed.f[47]=1; timed.f[48]=.5f;
             timed.f[49]=.0625f; timed.f[50]=.1875f;

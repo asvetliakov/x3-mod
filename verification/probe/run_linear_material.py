@@ -76,17 +76,31 @@ ASTEROID_PAIRS = (
 PAIRS += list(ASTEROID_PAIRS)
 FIXED_VERTICES = {'badefd5143b3024f','19a246a56e9d9700',
                   '233d17d26ce0c1fc','12b8a13f13fe8cfe'}
-TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 113)
+PALETTE_PAIRS = [('29d7c575396ed280',p) for p in ('39eb3c2258a516e1','57acf59d19c73791')]
+PALETTE_PAIRS += [(v,p) for v in ('a420a010b0271479','ea3d15b287892410') for p in ('f917d48ee826da1f','77a5b2d62fb3be48')]
+PALETTE_PAIRS += [('57392213f62fef19',p) for p in ('a910daef935891ce','62c180abe017e239')]
+PALETTE_PAIRS += [(v,p) for v in ('5c17a381b149b3b9','a804f173f693944a') for p in ('ed44232013f67072','f286856c3f400377')]
+PALETTE_PAIRS += [('37e6956afd8b8d76',p) for p in ('9d27e7ba242f3831','e1acf8a03850acaf')]
+PALETTE_PAIRS += [(v,p) for v in ('2e0254dd999841c2','a7cddf2c98d61117') for p in ('f646f03be5a8708d','ebf41e1ace7af45b','c997a37560e266df','675f9077d8fd21c4')]
+PALETTE_PAIRS += [('33388c8897d428a5',p) for p in ('18d372968af4a480','188c5ab9dbb98393')]
+PALETTE_PAIRS += [(v,p) for v in ('b4059ab6af8fc529','2a560f246c90fa64') for p in ('7e5e41276b3d7514','43c9405568d2226f','5e056627e9ff3a8d','fce465befff2f623')]
+PAIRS += PALETTE_PAIRS
+FIXED_VERTICES |= {'ea3d15b287892410','a804f173f693944a','a7cddf2c98d61117','2a560f246c90fa64'}
+TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 113, 116, 122, 128, 138)
 FAMILIES = ('Argon', 'shared DEFAULT', 'Argon BUMP', 'Split DEFAULT',
             'standard DEFAULT', 'standard BUMP', 'standard LOW', 'shared BUMP',
-            'Split BUMP', 'Terran DEFAULT', 'Terran BUMP', 'Asteroid DEFAULT', 'Asteroid BUMP')
+            'Split BUMP', 'Terran DEFAULT', 'Terran BUMP', 'Asteroid DEFAULT', 'Asteroid BUMP',
+            'Boron DEFAULT', 'Boron BUMP', 'Paranid DEFAULT', 'Paranid BUMP')
 CUBE_PATTERN, FOG, BOUNDARY, DETAIL_PATTERN = 1, 2, 4, 8
+PALETTE_GRADIENT, DIFFUSE_PATTERN, PALETTE_PERSPECTIVE = 16, 32, 64
 CUBE_BANDS_U = (.125, .25, .25, .5)
 CUBE_BANDS_V = (.125, .375, .375, .75)
 
 
 def family_name(pair):
-    return FAMILIES[pair // 10] if pair < 110 else FAMILIES[11 + (pair >= 113)]
+    if pair < 110:return FAMILIES[pair // 10]
+    if pair < 116:return FAMILIES[11 + (pair >= 113)]
+    return FAMILIES[13 + (pair >= 122) + (pair >= 128) + (pair >= 138)]
 
 
 def cube_location(direction):
@@ -453,6 +467,65 @@ def fixture_cases():
             add('asteroid_boundary_q_zero',pair=pair,normal_sample=[.25,.5,.75,1.],flags=BOUNDARY,fp16=0)
     for pair in (110,0,113,20,111,112,114,115,100,110):
         add('asteroid_family_alternation',pair=pair)
+    # Keep all 2,757 prior records unchanged. Palette coefficients are unused by
+    # native PS: use them only for world XY scale + normal XY slopes (gradient),
+    # or constant UV in the last two slots (pattern). No authored interpolants.
+    base.update(coefficients=[0.,0.,.0625,.4375])
+    representatives={}
+    vertices={}
+    for pair in range(116,148):
+        representatives.setdefault(PAIRS[pair][1],pair)
+        vertices.setdefault(PAIRS[pair][0],pair)
+        for depth in (0,1):
+            for reverse in (0,1):
+                add('palette_pair_depth_face',pair=pair,depth=depth,reverse=reverse)
+        for gains in ([0.,0.,0.],[4.,1.,1.],[1.,16.,1.],[1.,1.,16.]):
+            add('palette_independent_gains',pair=pair,gains=gains)
+        add('palette_missing_history',pair=pair,valid=0)
+        add('palette_fog_alpha',pair=pair,flags=FOG)
+    for vs,pair in vertices.items():
+        for lights in ((1,) if vs in FIXED_VERTICES else (0,1,8)):
+            for gain in (1.,16.):
+                add('palette_lights_gains',pair=pair,lights=lights,gains=[gain]*3)
+    for ps,pair in representatives.items():
+        for normal,camera in (([.4,.3,.7],[3.,0.,4.]),([.25,.5,1.5],[0.,0.,4.])):
+            add('palette_unequal_weights',pair=pair,normal=normal,camera=camera,fp16=0)
+        isolated={key:[0.]*3 for key in ('point','material','dir0','dir1')}
+        isolated.update(lightmap=[0.,0.,0.,.25],cube=[0.,0.,0.,1.])
+        for source in ('point','material','dir0','dir1','lightmap','cube'):
+            args=copy.deepcopy(isolated);args[source]=base[source]
+            if source=='dir1':args.update(normal=[0.,0.,-1.],camera=[0.,0.,-4.])
+            add('palette_isolated_'+source,pair=pair,**args)
+        add('palette_diffuse_coefficient',pair=pair,mask=0.,**dict(isolated,dir0=[1.]*3))
+        add('palette_specular_power',pair=pair,mask=1.,camera=[.6,0.,.8],**dict(isolated,dir0=[1.]*3))
+        add('palette_grazing_lobe',pair=pair,mask=1.,normal=[.9797958971132712,0.,.2],
+            camera=[.3919183588453085,0.,-.92],**dict(isolated,dir0=[1.]*3))
+        add('palette_affine_color',pair=pair,affine=1,normal=[.4,.3,.7])
+        for camera in ([.8,0.,1.],[0.,.8,1.]):
+            add('palette_cube_direction',pair=pair,flags=CUBE_PATTERN,camera=camera,
+                **dict(isolated,cube=base['cube']),mask=1.)
+        for uv in ((.0625,.4375),(.4375,.0625)):
+            add('palette_diffuse_uv',pair=pair,flags=DIFFUSE_PATTERN,coefficients=[0.,0.,*uv])
+        # Separately interpolate normalized VS view, reflection, palette RGB,
+        # point RGB and native J/u^11; never reconstruct them at the sample.
+        for reverse in (0,1):
+            add('palette_interpolated_geometry',pair=pair,flags=PALETTE_GRADIENT,
+                coefficients=[.25,.125,.0625,.03125],normal=[.25,.125,.875],reverse=reverse,fp16=0)
+        if ref.PALETTE_PROFILES[ps].bump_map:
+            for label,changes in (
+                ('ag_axes',dict(normal_sample=[.25,.75,.75,.625],tangent=[1.,.25,.125],binormal=[.125,1.,.25])),
+                ('negative_q',dict(normal_sample=[.25,.9375,.75,.9375])),
+                ('mirrored',dict(binormal=[0.,-1.,0.],normal_sample=[.25,.5,.75,.75]))):
+                add('palette_normal_'+label,pair=pair,camera=[.6,0.,.8],**changes)
+            add('palette_boundary_q_zero',pair=pair,normal_sample=[.25,.5,.75,1.],flags=BOUNDARY,fp16=0)
+    # Four native transport forms, two depth/winding states; no Cartesian bank.
+    for pair in (116,122,128,138):
+        for depth,reverse in ((0,0),(1,1)):
+            add('palette_perspective_geometry',pair=pair,depth=depth,reverse=reverse,
+                flags=PALETTE_GRADIENT|PALETTE_PERSPECTIVE,fp16=0,
+                coefficients=[.25,.125,.0625,.03125],normal=[.25,.125,.875])
+    for pair in (116,110,122,113,128,40,138,116):
+        add('palette_family_alternation',pair=pair)
     return cases
 
 
@@ -469,7 +542,50 @@ def binary_cases(cases):
     return bytes(data)
 
 
-def expected(c, half_source=False):
+def pattern_diffuse(c):
+    u,v=c['coefficients'][2:]
+    ix,iy=(min(3,max(0,int(t*4))) for t in (u,v))
+    return ((ix+1)/8.,(iy+1)/8.,(ix+iy+1)/16.,c['diffuse'][3])
+
+
+def palette_varying(c, sample=(8,8)):
+    # D3D9 integer pixel centers give screen barycentrics
+    # (1-x/32-y/32,x/32,y/32). Perspective cases scale object XY by
+    # W=(1,2,4), supply W in object z, and project clip z=.5W. Thus their
+    # screen triangle is unchanged; native varyings need reciprocal-W weights.
+    # https://learn.microsoft.com/en-us/windows/win32/direct3d9/directly-mapping-texels-to-pixels
+    from dataclasses import replace
+    f32=lambda v:struct.unpack('<f',struct.pack('<f',v))[0]
+    vector=lambda key:tuple(f32(v) for v in c[key])
+    vs=PAIRS[c['pair']][0]
+    lights=[ref.PointLight((0,0,2),vector('point'),(2,.25,.125))]*(1 if vs in FIXED_VERTICES else c['lights'])
+    def at(x,y):
+        position=(0.,0.,0.);normal=vector('normal')
+        if c['flags']&PALETTE_GRADIENT:
+            sx,sy,nx,ny=vector('coefficients')
+            position=(f32(sx*x),f32(sy*y),0.)
+            normal=(f32(normal[0]+f32(nx*x)),f32(normal[1]+f32(ny*y)),normal[2])
+        return ref.palette_vertex(vs,position,normal,vector('camera'),vector('material'),lights,
+                                  material_alpha=.625,gains=ref.Gains(*vector('gains')),
+                                  fog_clip=vector('fog_clip') if c['flags']&FOG else None)
+    if not c['flags']&PALETTE_GRADIENT:return at(0,0)
+    if c['flags']&FOG:raise ValueError('gradient fog alpha requires separate native precision qualification')
+    # Non-fog native alpha is constant at all vertices: retain it exactly,
+    # rather than introducing float64 summation drift into the alpha oracle.
+    clip_w=(1.,2.,4.) if c['flags']&PALETTE_PERSPECTIVE else (1.,1.,1.)
+    a,b,d=(at(x*w,y*w) for (x,y),w in zip(((-1,1),(3,1),(-1,-3)),clip_w))
+    bx,by=sample[0]/32.,sample[1]/32.
+    weighted=tuple(bary/w for bary,w in zip((1-bx-by,bx,by),clip_w))
+    weights=tuple(w/sum(weighted) for w in weighted)
+    blend=lambda key:tuple(sum(w*getattr(v,key)[i] for w,v in zip(weights,(a,b,d))) for i in range(3))
+    scalar=lambda key:sum(w*getattr(v,key) for w,v in zip(weights,(a,b,d)))
+    return replace(a,normal=blend('normal'),view=blend('view'),reflection=blend('reflection'),
+                   linear_rgb=blend('linear_rgb'),alpha=a.alpha,palette_weights=blend('palette_weights'),
+                   reflection_weight=scalar('reflection_weight'),view_weight=scalar('view_weight'),
+                   vertex_palette_rgb=blend('vertex_palette_rgb') if a.vertex_palette_rgb is not None else None)
+
+
+def expected(c, half_source=False, sample=(8,8)):
     if c['flags'] & BOUNDARY:
         raise ValueError('operational BUMP boundary case excludes float64 RGB equivalence')
     # Inputs are uploaded as binary32, including .6/.8 angular control values.
@@ -483,13 +599,22 @@ def expected(c, half_source=False):
                          fog_clip=vector('fog_clip') if c['flags'] & FOG else None)
     profile = PAIRS[c['pair']][1]
     directions = [ref.DirectionalLight((0, 0, 1), vector('dir0'))]
-    contract = ref.ASTEROID_PROFILES[profile] if c['pair'] >= 110 else ref.PROFILES[profile]
+    contract = (ref.PALETTE_PROFILES[profile] if c['pair'] >= 116 else
+                ref.ASTEROID_PROFILES[profile] if c['pair'] >= 110 else ref.PROFILES[profile])
     if contract.directions == 2:
         directions.append(ref.DirectionalLight((0, 0, -1), vector('dir1')))
-    if c['pair'] >= 110:
+    if 110 <= c['pair'] < 116:
         return ref.asteroid_pixel(profile,varying,vector('diffuse'),tuple(f32(v) for v in detail_sample(c)),
             f32(c['mask']),directions,weights=ref.AsteroidWeights(*vector('coefficients')[:2]),
             gains=gains,half_source=half_source,half_target=bool(c['fp16']),
+            normal_sample=vector('normal_sample'),tangent=vector('tangent'),binormal=vector('binormal'))
+    if c['pair'] >= 116:
+        varying=palette_varying(c,sample)
+        diffuse=pattern_diffuse(c) if c['flags'] & DIFFUSE_PATTERN else vector('diffuse')
+        return ref.palette_pixel(profile,varying,diffuse,f32(c['mask']),vector('lightmap'),
+            cube_sample if c['flags']&CUBE_PATTERN else lambda _:vector('cube')[:3],directions,
+            affine=AFFINE if c['affine'] else ref.IDENTITY_AFFINE,face=-1 if c['reverse'] else 1,
+            glow=f32(c['glow']),gains=gains,half_source=half_source,half_target=bool(c['fp16']),
             normal_sample=vector('normal_sample'),tangent=vector('tangent'),binormal=vector('binormal'))
     return ref.pixel(profile, varying, vector('diffuse'), f32(c['mask']), vector('lightmap'),
                      (cube_sample if c['flags'] & CUBE_PATTERN else lambda _:vector('cube')[:3])
@@ -505,7 +630,7 @@ def expected_alpha(c):
     alpha=.625
     if c['flags'] & FOG:
         alpha*=min(1.,max(0.,c['fog_clip'][0]-c['fog_clip'][1]*math.hypot(*c['camera'])))
-    value=(c['diffuse'][3] if c['pair'] >= 110 else
+    value=(c['diffuse'][3] if 110 <= c['pair'] < 116 else
            c['glow']*c['lightmap'][3]+(1-c['glow'])*c['diffuse'][3])*alpha
     return ref.half(value) if c['fp16'] else value
 
@@ -553,7 +678,7 @@ def validate_report(text, cases=None):
             ceiling=ref.half(ref.encode(ref.CAP)) if c['fp16'] else ref.encode(ref.CAP)*(1+1e-5)
             assert all(0 <= v <= ceiling for v in actual[:3]), (cid, 'boundary storage outside finite encoded cap')
             continue
-        ideal, quantized = expected(c), expected(c, half_source=True)
+        ideal, quantized = expected(c,sample=(x,y)), expected(c, half_source=True,sample=(x,y))
         for k, value in enumerate(actual[:3]):
             # Retained _pp samples may keep binary32 or narrow to binary16;
             # use the envelope, plus bounded legacy lobe/FP32 transfer error.
@@ -577,7 +702,7 @@ def validate_report(text, cases=None):
         # whole-RT motion-only comparison also checks bit-for-bit alpha equality.
         assert actual[3] == ideal.encoded_rgba[3], (cid, 'authored alpha')
     assert not failures, ('RGB oracle mismatches', failures[:12], 'total', len(failures))
-    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100|110|113) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
+    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100|110|113|116|122|128|138) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
     assert len(timings) == 36 * len(TIMING_PAIRS)
     timing_summary = []
     for pair in TIMING_PAIRS:
@@ -594,7 +719,7 @@ def validate_report(text, cases=None):
     recognized = 1 + len(creates) + len(invariants) + len(samples) + len(timings) + 1
     assert len(lines) == recognized, 'unexpected output rows'
     return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=len({('vs',v) for v,p in PAIRS}|{('ps',p) for v,p in PAIRS}), shader_creations=len(creates),
-                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=2498,
+                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=2757,
                 boundary_cases=sum(bool(c["flags"] & BOUNDARY) for c in cases),
                 boundary_limit="Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence", invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
                 max_tolerance_fraction=maximum_scaled, exact_black_channels=black_samples,
@@ -627,7 +752,7 @@ def main():
     assert inputs == {p['id']+'.bin':p['sha256'] for p in profiles['programs']}, 'original input provenance'
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
-                  scope='116 reviewed pairs including six Asteroid DEFAULT/BUMPMAP pairs: Argon/shared/Split/Terran DEFAULT and BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
+                  scope='148 reviewed pairs including Boron/Paranid and Asteroid DEFAULT/BUMPMAP: Argon/shared/Split/Terran DEFAULT and BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
                   timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS',
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),
