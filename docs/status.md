@@ -36,13 +36,14 @@ is included. Gameplay frame cost is not established by diagnostic timings.
 Run 18 confirms the chase aiming correction works, the 13° angle is good, and
 no trembling or other visible camera problem was noticed. The user requested
 0.9 distance and a smoother response; revised defaults 0.28/0.38 s pass review
-and 56 focused checks and are now installed. Two follow-ups remain: the predictive aim
-indicator is absent in chase view, and sector travel switches away from chase.
+and 56 focused checks and are now installed. Run 20 confirms the predictive aim indicator is visible
+in chase; sector travel still needs the transition diagnostics assessed.
 Docking behavior is not yet tested. The [lead-marker study](reverse-engineering/chase-lead-reticle.md)
 establishes a separate view gate and gun-origin projection. The
 [lead-marker correction](architecture/chase-lead-marker.md) is implemented and
 independently reviewed, with 76 focused host/site tests and 216 X3 CPU-state
-checks passing. Installation is complete; gameplay alignment remains unverified.
+checks passing. Installation is complete; run 20 confirms visibility, with precise alignment
+still an acceptance item.
 The [transition study](reverse-engineering/chase-view-transition.md) identifies
 both script and save-deserialization mode writers. Consolidated diagnostics are
 implemented with the lead correction to distinguish the actual reset source;
@@ -59,8 +60,13 @@ The user reports much faster loading, a visible predictive aiming hint and
 accepted camera placement; retain 13° / distance 0.9 / response 0.28/0.38 s.
 The user reports a stutter at selection and again 1–2 seconds later, distant
 star-lit asteroid shimmer that disappears closer, and a separate first-person
-selected-object distance/crosshair missing in chase. These are under bounded
-log/disassembly investigation. A is not a material or automatic-exposure test.
+selected-object distance/crosshair missing in chase. The user confirms this
+last graphic stays near screen centre; the [central HUD study](reverse-engineering/chase-target-indicator.md)
+finds a separate native view gate, with a scoped correction in progress.
+[Run 20 analysis](verification/run20-material-baseline.md) records a 20.685 s
+save gap and fault-free loading paths. Selection windows contain 0.44–0.46 s
+frame maxima, unexplained by measured renderer calls; capture work and late
+shader creation do not overlap them. Native solver/HUD timing remains needed. A is not a material or automatic-exposure test.
 Comparison B is requested on the identical installed build; hold Wine fixtures
 and installation changes until the user finishes it.
 
