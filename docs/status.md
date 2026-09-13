@@ -54,6 +54,16 @@ accepts reader/adjacency verification and admits the fast-mode co-activation
 check. No adjacency mismatch dumps were written; verification/capture overhead
 is a plausible contributor to pauses, not a proven cause of individual stutters.
 
+Run 20 completed material comparison A (linear materials off, fixed EV 0).
+The user reports much faster loading, a visible predictive aiming hint and
+accepted camera placement; retain 13° / distance 0.9 / response 0.28/0.38 s.
+The user reports a stutter at selection and again 1–2 seconds later, distant
+star-lit asteroid shimmer that disappears closer, and a separate first-person
+selected-object distance/crosshair missing in chase. These are under bounded
+log/disassembly investigation. A is not a material or automatic-exposure test.
+Comparison B is requested on the identical installed build; hold Wine fixtures
+and installation changes until the user finishes it.
+
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent
 never launches the game. New Wine fixtures use X3 only and the shared lock.

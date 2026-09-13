@@ -21,9 +21,9 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 3 | Automatic exposure + bloom off/on | 2 | Ready |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
-| 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 2 | Ready |
+| 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 1 | A completed as run 20; B ready on the same build |
 
-Five sessions remain; complete them at your convenience. The shared TAA shader
+Four sessions remain; complete them at your convenience. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
 no gameplay request yet while its performance optimization is under investigation.
@@ -124,7 +124,8 @@ and mip bias -0.5 so the material toggle remains the only A/B difference. Use
 the usual ship/save with a visible hull or station, emissive panels and, if
 available, an active light.
 
-First run with linear materials off:
+Part A is complete as run 20 (linear materials off). Retain this command for
+comparison; do not repeat A:
 
 ```sh
 ./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
@@ -135,8 +136,8 @@ First run with linear materials off:
   --capture-start 999999 --capture-frames 4
 ```
 
-Exit, then repeat the same save, camera positions and sequence with linear
-materials on. Leave the three material gains at their default 1:
+Run B next on the unchanged installed build: repeat the same save, camera
+positions and sequence with linear materials on. Leave the three material gains at their default 1:
 
 ```sh
 ./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
@@ -173,3 +174,11 @@ constants before judging appearance or expanding coverage. This fixed-EV pair
 cannot replace run 3's automatic-exposure/bloom comparison. It establishes the
 0.75 sharpen and -0.5 mip-bias behavior on the HDR/AgX route; it does not count
 as a separate non-HDR gameplay test.
+
+Run 20 A feedback: loading is visibly faster, the predictive hint is visible,
+and camera placement is accepted; keep the current values. Check in B whether
+selection causes the same immediate and 1–2-second stutters, and whether the
+star-lit distant asteroid shimmers at the same distance. The other selected
+object distance/crosshair missing in chase is a separate HUD investigation.
+Both parts use fixed EV 0, so absence of overexposure here does not accept the
+automatic meter.
