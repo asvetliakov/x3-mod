@@ -7,13 +7,13 @@ full scope; the [original objective](user-objective.md) is unchanged.
 
 ## Installed build and current camera work
 
-Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `24930b5`:
-DLL SHA-256 `24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724`,
-12,347,043 bytes. The [install record](../verification/results/linear-material-install.json)
-binds the reviewed clean candidate, load check and previous Argon-material rollback
+Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `df4dc09`:
+DLL SHA-256 `6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0`,
+12,364,461 bytes. The [install record](../verification/results/linear-material-install.json)
+binds the reviewed clean candidate, load check and previous DEFAULT-material rollback
 pair; EXE/configuration are unchanged. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
 records the bloom integration's scoped verification. The material candidate retains the previous import inventory and passes the
-light-hook x87 audit. The [shared-material review](architecture/material-next-slice.md#5-shared-default-runtime-checkpoint-review)
+light-hook x87 audit. The [BUMPMAP runtime review](architecture/linear-bump-materials.md#runtime-review-verdict)
 approves the expanded implementation and its structural/GPU/live evidence. Native Windows
 remains untested. Bloom (`--hdr-bloom`) and materials (`--linear-materials`) are opt-in; existing
 commands leave each off unless requested.
@@ -62,17 +62,14 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
 - Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
   accepts crypto reuse; reader verification and adjacency gameplay acceptance
   remain. Fast modes require meaningful verification, not merely fixture success.
-- [Linear DEFAULT materials](architecture/scene-linear-materials.md) are
-  implemented, independently reviewed and installed: fifteen original shaders /
-  twenty Argon and shared Khaak/Teladi/Xenon pairs. Qualification passes 313 GPU
-  cases and 1,228 live-route checks across ownership/TAA, Reset, state blocks
-  and reference retirement. The feature stays opt-in; gameplay acceptance is
-  run 6 in the brief queue. The [Argon BUMPMAP design](architecture/linear-bump-materials.md)
-  now has reviewed production transformation and live-routing source for the
-  next ten pairs, five sampler roles and a separate varying ABI. Its detached
-  GPU qualification passes 512 cases; all previous DEFAULT variants remain
-  byte-exact. The clean candidate build and 24-frame live state/Reset twins are
-  next; these BUMPMAP shaders are not in the installed build yet.
+- [Linear materials](architecture/scene-linear-materials.md) are implemented,
+  independently reviewed and installed: **24 original shaders / 30 pairs**,
+  including DEFAULT Argon/shared hulls and [Argon BUMPMAP](architecture/linear-bump-materials.md).
+  Qualification passes 512 GPU cases and 2,416 live-route checks across 192
+  frames, ownership/TAA, five-sampler state, Reset and reference retirement.
+  All previous DEFAULT variants remain byte-exact; BUMPMAP uses a separate
+  varying ABI and cached sampler admission. The feature stays opt-in; gameplay
+  acceptance remains run 6 in the brief queue, with no additional run required.
   Blended emissions need a separate linear-composition and temporal-reactivity
   design, as the [next-slice study](architecture/material-next-slice.md) explains.
   Targeted disassembly established native color/emissive scaling. Covered

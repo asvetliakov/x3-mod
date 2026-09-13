@@ -161,7 +161,8 @@ def main():
         report['checks'] = sum(case['checks'] for case in report['cases'].values())
         report['limitations'] = ['Unknown sampler getter failure and combined creation/bind/restore failures are covered by scripted host control-flow checks, not injected into this GPU script.', 'Native Windows and gameplay appearance/performance remain unverified.']
     finally:
-        args.result.write_text(json.dumps(report, indent=2) + '\n')
+        destination = args.result if report['passed'] else raw / 'failed-result.json'
+        destination.write_text(json.dumps(report, indent=2) + '\n')
     print(f'PASS cases={len(report["cases"])} checks={report["checks"]} result={args.result}', flush=True)
 
 

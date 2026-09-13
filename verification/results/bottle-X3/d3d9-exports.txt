@@ -1,7 +1,7 @@
 ==== writable exit=0
 ENV LOCALAPPDATA=C:\users\crossover\AppData\Local
 ENV USERPROFILE=C:\users\crossover
-MODULE Y:\x3-mod\verification\probe\build\d3d9-exports-writable-20260913-111607-807793\d3d9.dll readonly=0
+MODULE Y:\x3-mod\verification\probe\build\d3d9-exports-writable-20260913-121801-044331\d3d9.dll readonly=0
 EXPORT name=D3DPERF_BeginEvent address=7ab09490
 EXPORT name=D3DPERF_EndEvent address=7ab097f0
 EXPORT name=D3DPERF_GetStatus address=7ab09b20
@@ -22,7 +22,7 @@ EXPORT name=PSGPSampleTexture address=7ab070e2
 CHECK all seventeen system d3d9 export names resolve on the proxy PASS
 CALL name=D3DPERF_GetStatus result=00000000
 CHECK D3DPERF_GetStatus callable PASS
-CALL name=Direct3DCreate9On12 result=00299968
+CALL name=Direct3DCreate9On12 result=002951e0
 CHECK Direct3DCreate9On12 callable PASS
 FACTORY adapters=2
 CHECK the 9On12 factory is a live IDirect3D9 PASS

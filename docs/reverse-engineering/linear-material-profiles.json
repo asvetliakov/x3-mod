@@ -30,7 +30,7 @@
       "BUMPMAP normal A feeds BINORMAL and G feeds TANGENT; s1/s2 remain data. Keep normal, view, per-pixel cube coordinates, fog and opacity chains unchanged. Only sampler 0/3/4 RGB is converted."
     ]
   },
-  "scope": "Bounded DEFAULT and Argon BUMPMAP original-site proof: 6 VS, 18 PS, 30 archive pairs. BUMPMAP nine programs/ten pairs remain offline-only; runtime remains fifteen DEFAULT programs/twenty pairs.",
+  "scope": "Bounded DEFAULT and Argon BUMPMAP original-site proof: 6 VS, 18 PS, 30 archive pairs. This report proves original sites; runtime qualification is recorded in docs/architecture/linear-bump-materials.md.",
   "families": {
     "argon": {
       "pixels": [
@@ -82,7 +82,7 @@
         "d086fde54698070c",
         "f17fffd88d134b04"
       ],
-      "production_status": "offline_proof_only",
+      "production_status": "qualified_df4dc09",
       "aliases": [
         "argon"
       ],
@@ -94,19 +94,19 @@
       }
     }
   },
-  "pending_production_requirements": [
-    "Only Argon BUMPMAP is pending: nine programs, ten pairs, 24 archive pass occurrences.",
-    "Future exact maximum input guard 1354 DWORDs; installed DEFAULT production guard remains 1296.",
+  "production_contract": [
+    "Argon BUMPMAP adds nine programs, ten pairs, 24 archive pass occurrences.",
+    "Exact maximum input guard is 1354 DWORDs, retaining every per-profile count.",
     "Use explicit class-B o9/v8/TEXCOORD7 RGB and PS r10 scratch; retain existing o7/v6/TEXCOORD5 motion and o8/v7/TEXCOORD6 depth.",
     "Five-sampler disabled-sRGB mask 0x1f requires lifecycle resynchronization of s4. DEFAULT remains 0x0f.",
-    "Recompute transformed weighted budgets and qualify geometry/partial precision/cube direction on GPU before production."
+    "Transformed budgets and GPU/live qualification are recorded separately in docs/architecture/linear-bump-materials.md."
   ],
   "future_negative_pair": {
     "vs": "53a0a641107ed76c",
     "ps": "462342e3e5781384",
     "family": "split",
     "motion_class": "A",
-    "note": "Still uncovered after the pending BUMPMAP slice; installed DEFAULT routing is unchanged."
+    "note": "Remains motion-only after the installed BUMPMAP slice."
   },
   "offset_units": "Zero-based DWORD positions in the ORIGINAL whole program, including opaque comments; end_dword/conversion_after_dword are exclusive.",
   "motion_inventory_sha256": "fa8b70e0fb897994bdb939a1810f6574eba59611b4391d92464fe0f86bf60f58",
@@ -217,7 +217,7 @@
     "Identity binds all definitions, comments/preshaders and END. Only actual instructions are decoded.",
     "Free resources exclude current motion, current-depth and selected material RGB/DEF reservations, including depth-off variants.",
     "Relative VS constant availability assumes the existing runtime i0 light-count guard [0,8].",
-    "This artifact proves original sites only. DEFAULT runtime evidence remains its installed checkpoint; BUMPMAP has no production/GPU/native-Windows qualification."
+    "This artifact proves original sites only. Production/GPU/live evidence belongs to the owning architecture notes and install record; native Windows remains unverified."
   ],
   "pairs": [
     {"vs":"19a246a56e9d9700","ps":"63379470db8d2a86","family":"argon_bump","archive_pass_occurrences":1,"archive_aliases":["argon_0000"],"motion_class":"B","current_depth_supported":true},

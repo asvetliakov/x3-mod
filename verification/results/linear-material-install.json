@@ -1,31 +1,32 @@
 {
-  "source_commit": "24930b563bf68c271a9406a2c68eafdf824e309d",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-shared-linear-material-candidate-oak4f4c1/d3d9.dll",
-  "dll_sha256": "24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724",
-  "dll_bytes": 12347043,
-  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
-  "build": "cmake --build build --clean-first -j8",
-  "build_seconds": 5.872,
+  "source_commit": "df4dc0968b9f2825172e04dd31b77ebc4b615c19",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bump-linear-material-candidate-rgod4g8e/d3d9.dll",
+  "dll_sha256": "6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0",
+  "dll_bytes": 12364461,
+  "build_seconds": 6.456,
   "imports_unchanged": true,
   "imports": 194,
   "import_dlls": 15,
   "light_call_no_x87": {
     "result": "PASS",
-    "reachable_functions": 211,
+    "reachable_functions": 212,
     "violations": 0
   },
-  "review": "docs/architecture/material-next-slice.md#5-shared-default-runtime-checkpoint-review",
+  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "build": "cmake --build build --clean-first -j8",
+  "review": "docs/architecture/linear-bump-materials.md#runtime-review-verdict",
   "coverage": {
-    "programs": 15,
-    "pairs": 20
+    "programs": 24,
+    "pairs": 30
   },
   "fixtures": {
     "detached_gpu": "verification/results/bottle-X3/linear-material-gpu.json",
     "live": "verification/results/bottle-X3/linear-material-live.json"
   },
   "affected_host_tests": {
-    "structure": 5,
-    "gpu_report": 11,
+    "structure": 7,
+    "live_control": 3,
+    "gpu_report": 15,
     "live_report": 2
   },
   "load": {
@@ -34,8 +35,8 @@
     "checks": 8,
     "exports": 17
   },
-  "previous_dll_sha256": "aeb40a3e5759b4e6b96d0840c8e8fffcf843985984faa5e85e14787cc27a755a",
-  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-shared-linear-material-candidate-oak4f4c1/rollback",
+  "previous_dll_sha256": "24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724",
+  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bump-linear-material-candidate-rgod4g8e/rollback",
   "installed": true,
   "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
   "preserved_files": {

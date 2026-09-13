@@ -356,12 +356,12 @@ class LocalOriginalTests(unittest.TestCase):
         # offsets, alpha/liveness predicates, resource exclusions and identities.
         self.assertEqual(digest, '4aa8aed58580ceef0a23659a5a67991fa33f58d602dec314a9854c722417a1d8')
 
-    def test_bump_inventory_is_separate_from_runtime_default(self):
+    def test_bump_inventory_has_distinct_qualified_contract(self):
         rows = [p for p in self.report['programs'] if 'argon_bump' in p['families']]
         pairs = [p for p in self.report['pairs'] if p['family'] == 'argon_bump']
         self.assertEqual((len(rows), len(pairs), sum(p['archive_pass_occurrences'] for p in pairs)), (9, 10, 24))
         self.assertEqual({p['motion_class'] for p in pairs}, {'B'})
-        self.assertEqual(self.report['families']['argon_bump']['production_status'], 'offline_proof_only')
+        self.assertEqual(self.report['families']['argon_bump']['production_status'], 'qualified_df4dc09')
         self.assertEqual({(p['vs'], p['ps']) for p in pairs},
                          {('4944d81dfe531b37', ps) for ps in ('ca6bfa4a6cca7e2a', '5e0a10fe752b6140')} |
                          {(vs, ps) for vs in ('19a246a56e9d9700', '44c4a41ca92ae2e3') for ps in

@@ -13,17 +13,17 @@
   },
   "scope": "Selected console-fixture cases under CrossOver Preview: 17 D3D9 exports, forwarded entry points and ret-N fallbacks; the readonly case additionally checks the %LOCALAPPDATA% session-log fallback. Not a native-Windows run.",
   "selected_case": "writable",
-  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-shared-linear-material-candidate-oak4f4c1/d3d9.dll",
+  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bump-linear-material-candidate-rgod4g8e/d3d9.dll",
   "cases": {
     "writable": {
       "exit": 0,
       "checks": 8,
       "failures": 0,
       "readonly": false,
-      "directory": "verification/probe/build/d3d9-exports-writable-20260913-111607-807793",
-      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260913-111607-807793/x3-modern-captures/session-20260913-111609-204.log",
-      "trace_sha256": "33b809a10c0a3b3414bfd855f9d353365c7a1d6b4b624018f1cbacbe19337cb1",
-      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260913-111607-807793\\x3-modern-captures",
+      "directory": "verification/probe/build/d3d9-exports-writable-20260913-121801-044331",
+      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260913-121801-044331/x3-modern-captures/session-20260913-121803-204.log",
+      "trace_sha256": "3cc87bbc94e05f7ccee5d2b69c8e5e94194f284d95b0ceb1b61409c9ba2183f5",
+      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260913-121801-044331\\x3-modern-captures",
       "source": "game",
       "localappdata": "C:\\users\\crossover\\AppData\\Local",
       "userprofile": "C:\\users\\crossover",
@@ -35,7 +35,7 @@
         },
         "Direct3DCreate9On12": {
           "name": "Direct3DCreate9On12",
-          "result": "00299968"
+          "result": "002951e0"
         },
         "Direct3D9EnableMaximizedWindowedModeShim": {
           "name": "Direct3D9EnableMaximizedWindowedModeShim",
@@ -66,17 +66,17 @@
       },
       "on12_forwarded": true,
       "on12ex_forwarded": false,
-      "dll_sha256": "24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724",
-      "exe_sha256": "bb94079b204d61dc9966808a2d792c70553c09079ae00fe7845cd31863a71072",
+      "dll_sha256": "6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0",
+      "exe_sha256": "ff405a5f24451cb67bf194085744e0dce6aeba04d389090548c9a4d0636bddda",
       "env_lines": [
         "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
         "ENV USERPROFILE=C:\\users\\crossover"
       ]
     }
   },
-  "dll_sha256": "24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724",
+  "dll_sha256": "6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0",
   "export_directory": {
-    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-shared-linear-material-candidate-oak4f4c1/d3d9.dll",
+    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bump-linear-material-candidate-rgod4g8e/d3d9.dll",
     "machine": "0x014c",
     "image_base": "0x6fb40000",
     "dll_name": "d3d9.dll",
@@ -231,13 +231,13 @@
     "tools/analysis/pe_exports.py": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea"
   },
   "binaries": {
-    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "bb94079b204d61dc9966808a2d792c70553c09079ae00fe7845cd31863a71072",
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-shared-linear-material-candidate-oak4f4c1/d3d9.dll": "24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724"
+    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "ff405a5f24451cb67bf194085744e0dce6aeba04d389090548c9a4d0636bddda",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bump-linear-material-candidate-rgod4g8e/d3d9.dll": "6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0"
   },
   "limits": [
     "Wine backend: three of the four naked forwarders reach Wine spec stubs and are resolved but not called; Direct3D9EnableMaximizedWindowedModeShim exercises the fallback path.",
     "The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.",
     "Windows is cross-compiled, not verified."
   ],
-  "report_sha256": "6ed484ce8251aaf8e03ceaecb9cc88688d4ccdfdb7604617dc4a5a869ffdd629"
+  "report_sha256": "de8ae42598652291ce7bfed370a799eddcb9f237c2243c6242db71d1ef55c064"
 }

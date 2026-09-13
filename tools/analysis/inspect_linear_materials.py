@@ -84,7 +84,7 @@ FAMILIES = {
                        'aliases': ['khaak', 'teladi', 'teladi_nodiff', 'xenon'],
                        'coefficients': {'diffuse': 0.5, 'specular_power': 6, 'cube': 0.5}},
 }
-FAMILIES['argon_bump'] = {'pixels': list(BUMP_PIXELS), 'production_status': 'offline_proof_only',
+FAMILIES['argon_bump'] = {'pixels': list(BUMP_PIXELS), 'production_status': 'qualified_df4dc09',
                           'aliases': ['argon'], 'technique': 'BUMPMAP',
                           'coefficients': {'diffuse': 0.4000000059604645, 'specular_power': 5, 'cube': 1.0}}
 PIXEL_FAMILY = {key: family for family, record in FAMILIES.items() for key in record['pixels']}
@@ -985,15 +985,15 @@ def inspect(directory, inventory_path):
         require(stage not in stage_constraints or stage_constraints[stage] == constraints, 'inconsistent stage constraints')
         stage_constraints[stage] = constraints
         program['constraints_ref'] = stage
-    return {'schema': 1, 'stage_constraints': stage_constraints, 'scope': 'Bounded DEFAULT and Argon BUMPMAP original-site proof: 6 VS, 18 PS, 30 archive pairs. BUMPMAP nine programs/ten pairs remain offline-only; runtime remains fifteen DEFAULT programs/twenty pairs.',
+    return {'schema': 1, 'stage_constraints': stage_constraints, 'scope': 'Bounded DEFAULT and Argon BUMPMAP original-site proof: 6 VS, 18 PS, 30 archive pairs. This report proves original sites; runtime qualification is recorded in docs/architecture/linear-bump-materials.md.',
             'families': FAMILIES,
-            'pending_production_requirements': ['Only Argon BUMPMAP is pending: nine programs, ten pairs, 24 archive pass occurrences.',
-                                                'Future exact maximum input guard 1354 DWORDs; installed DEFAULT production guard remains 1296.',
+            'production_contract': ['Argon BUMPMAP adds nine programs, ten pairs, 24 archive pass occurrences.',
+                                                'Exact maximum input guard is 1354 DWORDs, retaining every per-profile count.',
                                                 'Use explicit class-B o9/v8/TEXCOORD7 RGB and PS r10 scratch; retain existing o7/v6/TEXCOORD5 motion and o8/v7/TEXCOORD6 depth.',
                                                 'Five-sampler disabled-sRGB mask 0x1f requires lifecycle resynchronization of s4. DEFAULT remains 0x0f.',
-                                                'Recompute transformed weighted budgets and qualify geometry/partial precision/cube direction on GPU before production.'],
+                                                'Transformed budgets and GPU/live qualification are recorded separately in docs/architecture/linear-bump-materials.md.'],
             'future_negative_pair': {'vs': BASE_VS, 'ps': '462342e3e5781384', 'family': 'split', 'motion_class': 'A',
-                                     'note': 'Still uncovered after the pending BUMPMAP slice; installed DEFAULT routing is unchanged.'},
+                                     'note': 'Remains motion-only after the installed BUMPMAP slice.'},
             'offset_units': 'Zero-based DWORD positions in the ORIGINAL whole program, including opaque comments; end_dword/conversion_after_dword are exclusive.',
             'motion_inventory_sha256': hashlib.sha256(inventory_data).hexdigest(),
             'reserved_abi': {'vs_constants': [252, 255], 'vs_motion_output': 6, 'vs_depth_output': 7,
@@ -1020,7 +1020,7 @@ def inspect(directory, inventory_path):
             'limits': ['Identity binds all definitions, comments/preshaders and END. Only actual instructions are decoded.',
                        'Free resources exclude current motion, current-depth and selected material RGB/DEF reservations, including depth-off variants.',
                        'Relative VS constant availability assumes the existing runtime i0 light-count guard [0,8].',
-                       'This artifact proves original sites only. DEFAULT runtime evidence remains its installed checkpoint; BUMPMAP has no production/GPU/native-Windows qualification.'],
+                       'This artifact proves original sites only. Production/GPU/live evidence belongs to the owning architecture notes and install record; native Windows remains unverified.'],
             'pairs': compact_pairs, 'programs': programs}
 
 

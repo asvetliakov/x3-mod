@@ -1,7 +1,7 @@
 # Linear Argon BUMPMAP material slice
 
 Design study, 2026-09-13, after the installed twenty-pair DEFAULT slice.
-**Implemented and detached-GPU qualified; live candidate qualification pending.** Extend the existing opaque
+**Implemented, reviewed, GPU/live qualified and installed; gameplay pending.** Extend the existing opaque
 material route to the complete Argon SM3 BUMPMAP contract. Evaluate color in
 linear light, then compatibility-encode into the current FP16 engine-space
 target. Retain alpha, geometric lighting response and same-draw motion/depth.
@@ -333,7 +333,41 @@ Independent review found no source blocker in the core, detached fixture, live
 cache/lifetime changes or the authored live GPU script. The latter appends
 class-B positive/negative routing, s4 state-block/recovery, family transitions
 and another Reset to the existing prefix: 24 frames in each of eight ownership,
-TAA and feature twins. Its x86 syntax check and two parser tests pass. **That
-live GPU run, clean candidate build and installation are still pending at this
-checkpoint.** The installed twenty-pair DEFAULT build remains unchanged.
+TAA and feature twins. Its x86 syntax check and two parser tests pass. The
+[fresh live result](../../verification/results/bottle-X3/linear-material-live.json)
+passes all eight twins on the first run: **2,416 checks / 192 frames**. The
+schedule verifies actual BUMPMAP route counts, exact feature-on/off alpha and
+RT1/RT2, shared-VS negatives, s4 refusal/DEFAULT independence, state blocks,
+family history transitions, cached gains and two resets. Five additional
+combined objects retire: held-reference twins are 18/23 without TAA, 27/32 with
+plain TAA, and 31/36 with ownership plus TAA. Sampler-getter and injected
+create/bind/restore failures remain host evidence, not injected GPU failures.
+
+Source checkpoint `df4dc09` was built once, clean, in 6.456 s. The retained DLL
+keeps all 194 imports from 15 DLLs and passes the x87 audit (212 reachable
+functions, zero violations), one writable load smoke (8 checks / 17 exports),
+and one affected launch dry-run. It is now installed in X3; the compact
+[install record](../../verification/results/linear-material-install.json) binds
+its hash, scope, results and previous DEFAULT rollback pair. EXE and bottle
+configuration are unchanged. No game was launched. The existing user run 6
+covers the enlarged material slice; no additional launch was added to the queue.
 Native Windows execution and gameplay appearance/performance remain unverified.
+
+## Runtime review verdict
+
+Independent review of the completed production and verification checkpoint on
+2026-09-13 found no open defect. The transformer keeps all 120 prior DEFAULT
+outputs byte-exact, preserves the original BUMPMAP alpha/normal and temporal
+streams, and stays within the corrected VS 87 / PS 179 weighted-slot maxima.
+The cached `0x0f`/`0x1f` sampler contract is invalidated and rebuilt across
+shader registration, state blocks and Reset without draw-time table lookup or
+sampler queries; partial creation and getter failures remain ineligible.
+
+The detached X3 run passed 512 cases, 4,473 analytical samples and 15 explicitly
+limited boundary cases. The fresh retained candidate then passed eight live
+twins with 2,416 checks over 192 frames: BUMPMAP and DEFAULT admission/refusal,
+s4 recovery, exact alpha and RT1/RT2 equality, TAA on/off, both ownership modes,
+and retirement of all five added shader objects. Failed fixture runs now keep
+the accepted result and publish diagnostics only under their raw directories.
+This review qualifies the bounded CrossOver X3 route and evidence. Native
+Windows execution, gameplay appearance and gameplay performance remain open.
