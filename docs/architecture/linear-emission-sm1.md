@@ -1,8 +1,10 @@
 # Remaining SM1 effects/engine conversion plan
 
-2026-09-13. Offline plan; source promotion and screen composition are not
-implemented. The current twenty-pair SM2 route remains separate. Native precision
-parity and the screen attenuation policy must be resolved before integration.
+2026-09-14. Isolated pure source/probe implementation from `08e879b`; the
+all-nine detached X3 native-parity/MRT probe passes. Live integration, native
+Windows qualification and screen composition remain pending. The installed
+twenty-pair SM2 route and its runtime registry are unchanged. This checkpoint
+does not enable SM1 rendering enhancements.
 
 ## Complete scope and recommendation
 
@@ -153,14 +155,26 @@ alpha is the RGB attenuation: native q contains texture RGB times vertex fade.
 
 Even after that decision, shared D3D9 MRT blend factors must be accounted for:
 INVSRCCOLOR is evaluated against each RT's own source output. It cannot attenuate
-an accumulated E buffer by native q while E outputs decoded RGB. A bounded
-screen implementation should initially compose one submitted source at a time,
-with separate q/transmission and E payloads cleared for that source, plus
-persistent coverage. A four-RT B/E/q/M layout is one candidate, not a baseline
-requirement; a three-RT alternative needs explicit scratch/persistent-mask
-transport (for example a separately preserved alpha coverage lane), consumer
-support and failure proofs. None of this is achieved by just enabling the
-screen blend enum in current admission. Do not build a generic compositor graph.
+an accumulated E buffer by native q while E outputs decoded RGB. Clearing E/q once per submitted draw does not resolve multiple overlapping
+fragments within that same draw: native q accumulates `q2+(1-q2)*q1`, while E
+accumulates `E2+(1-E2)*E1`, not `E2+(1-q2)*E1`. Therefore the former four-RT
+B/E/q/M suggestion is only an unresolved candidate; separate targets alone do
+not provide the required coupling. The qualifier includes same-DIP overlapping
+triangles and reports actual RT1 blending separately from desired screen
+radiance. Do not exclude overlap and call the group complete. The orchestrator
+owns the complete screen law/producer decision; neither a fourth target nor a
+three-target scratch/alpha transport solves this accumulation dependency by
+itself. More generally, each independent screen-blended scratch channel
+accumulates `1-product(1-v_i)` in ideal arithmetic, losing fragment order. Desired
+colored attenuation is order-dependent: reachable `q1=.5`, `q2=.25`, `Ei=qi^2.2`
+gives `E2+(1-q2)*E1 != E1+(1-q1)*E2`. Incidental storage-rounding differences are
+not a portable order encoding. Fixed extra MRT channels alone therefore cannot
+recover the arbitrary desired ordered result. The documented [MRT rules](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multiple-render-targets)
+apply shared blend state to every RT and test alpha from oC0. The [9Ex dual-source
+factors](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dblend) are
+restricted to its first-target text path and do not provide a general D3D9
+MRT coupling solution. None of this is achieved by just enabling the screen
+blend enum in current admission. Do not build a generic compositor graph.
 Test source alpha-test with exactly the original sampled alpha in every output
 path, preserving surviving/depth-tested geometry and raw B alpha. Once these
 contracts are selected, qualify all nine pairs under every admitted blend class,
@@ -207,3 +221,135 @@ adds a second geometry submission if selected; neither cost may be hidden in
 this estimate. Measure creation separately, then paired source/composition/event
 costs and steady allocation/lookups for the chosen path. No FPS conclusion is
 available from this offline study.
+
+
+## Isolated pure promotion checkpoint
+
+`src/renderer/linear_emission_sm1.{h,cpp}` adds an independent exact nine-pair
+helper and six-profile PS1→PS2 emitter. It is not in production CMake or the
+current live registry. `LinearEmissionSm1Config` selects finite gain [0,16],
+native-only / native+E / native+E+coverage outputs, and an explicit native
+full-versus-partial-precision probe choice. That choice affects sampling and
+native RGB/alpha arithmetic; complete output MOVs and the new decode/coverage
+tail stay full precision. It is a measured alternative, not an SM1 rounding
+emulator or a selected runtime policy. All nine VS remain original objects.
+
+The original proof checks exact version/count/fingerprint, opaque comment
+boundaries, each native opcode/operand and the alpha co-issue relationship.
+The emitted validator checks its narrow opcode set, declarations/constants,
+initialized temporary lanes, output allocation, full output MOVs, PS2 framing,
+read ports, POW restrictions, no PP after native output and weighted resources.
+Failure preserves output, including input/output aliasing. Old/new registries
+refuse each other's unreviewed inputs. The source uses only r0–r3, c0/c30/c31,
+TEXCOORD0, COLOR0 and one sampler, with a maximum 153 DWORDs including retained
+comments. Actual host-counted maxima are native-only 4 ALU, E 26, coverage 28
+for scalar profiles; bullet profiles use one fewer slot. Every mode has one
+texture instruction, and all fit the baseline PS2 limits.
+
+Eight focused tests in `test_linear_emission_sm1_transformer` pass. Its pure-host
+driver emits 180 profile/gain/output/precision variants, proves all nine pair
+memberships and cross-pair refusals, and makes 7,637 checks including native
+mutations independently of the hash gate, framing/opaque comments, resource
+mutations, config/refusal, aliasing and truncation. Independent Python parsing
+and arithmetic check scalar-X versus bullet-W, raw native alpha, +0 E alpha,
+cap-before-quarter-gain/fade, finite sanitation and coverage independent of
+source/gain/alpha. These FP32 analytical checks do not claim original SM1
+precision parity. All hundred current SM2 variants reproduce the accepted GPU
+hashes byte-for-byte; current SM2 admission remains unchanged.
+
+Strict x86 SSE2/legacy-stack core compilation passes. Work is confined to shader
+creation: a bounded original scan, one reserved output vector and a bounded
+emitted-program validation; there is no per-draw allocation, hashing, D3D call
+or new runtime lock. The initial optimized host diagnostic measured about
+0.104 ms across 180 creations before the final extra input-mask/PP checks;
+this is a creation-only diagnostic, not driver time or game FPS. Actual device
+creation, precision/interpolation/sampling/MRT results and any runtime selection
+were pending at source freeze; the completed detached result follows below.
+
+The standalone fixture source is frozen with 31 conditions for every original
+pair and six promotion modes: 1,674 measurements, using 216 precreated variants
+at gains 1, 0, 2.5 and 0.25. Conditions cover textured point/linear sampling,
+compressed/FP16 inputs, mip bias, addressing, native fog and alpha tests,
+perspective/clipping/flat/WRAP interpolation, depth, zero-source/fade/alpha/gain,
+PS1 range and finite-HDR boundaries. A same-DIP four-triangle overlap records
+the actual shared-MRT recurrence and its difference from native-q attenuation;
+it does not implement the latter. The quarter-gain RGB256 case distinguishes
+decoded-result capping before fade and gain. PROJECTED state is read back and
+refused in the fixture because these original VS leave the source W undefined;
+this is not a production state gate.
+
+Ten focused tests in `test_linear_emission_sm1_report` pass, including rejected
+precision modes, incomplete inventories, native-alpha/energy/coverage failures,
+projected refusal, overlap diagnostics and compact report provenance. The alpha
+boundary report requires nonzero, strictly ordered GT128 / GE128 / untested
+survivor counts for each measured pair/mode; zero or equal counts refuse the
+report, closing a vacuous-boundary finding from independent review. The
+strict standalone x86/SSE2 fixture build passes. Its retained, untracked EXE
+SHA-256 is `794af62a36f5fa263044c398a9ef0debe805d01909556e195ba08f1026da08ef`.
+The runner consumes that explicit prebuilt artifact, records original/source
+bindings and aggregate mode outcomes, and retains detailed rows/readbacks only
+locally. Probe completion is distinct from qualification: unsupported creation
+or native parity failures remain measured rejection outcomes, not a pass.
+This describes the source-freeze gate; the completed device probe follows below.
+
+Affected host commands (from the isolated worktree):
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_linear_emission_sm1_transformer
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_linear_emission_sm1_report
+sh verification/probe/build_linear_emission_sm1.sh
+```
+
+Independent source/probe review by `emission_sm2_review` (Sol/high) is approved.
+The sole finding was the alpha-boundary report nonvacuity gap above; its
+parser/test correction passed all ten affected report tests without changing
+the frozen C++ fixture or EXE. The reviewer checked original identities/body
+proofs, native alpha/precision scopes, decode ordering, resource/failure guards,
+unchanged SM2 output hashes, the full fixture/oracle/Reset paths and compact
+negative evidence. This approves the coordinated actual probe, not device,
+live, native-Windows or screen-composition behavior.
+
+
+## Detached X3 qualification
+
+The root-owned run of the retained EXE completed successfully in **10.365 s**.
+The [compact result](../../verification/results/bottle-X3/linear-emission-sm1-probe.json)
+binds all fifteen original inputs, that EXE and six focused source files; these
+bindings still match. All **216 promoted shader creations** succeeded and all
+**1,674 measurements** completed. Every full/native-PP and one/two/three-output
+mode passed exact native B RGB **and alpha**, including the separately tagged
+finite-HDR boundary cases. There were zero unsupported creations, native-parity,
+E or coverage failures. Maximum E error consumed **0.361499 of the allowed
+tolerance**. All nine projected-state refusals, strict alpha-boundary survivor
+ordering, zero-source/fade/alpha/gain coverage, actual Reset and post-Reset
+continuation passed. This is the bounded 31-condition corpus above, not a proof
+for arbitrary untested textures/states or a live renderer route.
+
+Select **full precision** (`native_partial_precision=false`) for the future
+SM1 promotion path. Both alternatives preserve the measured native output on
+X3, and this probe demonstrates no benefit from requesting partial precision.
+Full precision avoids adding a relaxation that other drivers may honor
+differently; it does not establish historical native parity on those drivers.
+The PP alternative remains a diagnostic probe mode. Existing native VS, raw
+alpha, source math, coverage and the current twenty-pair runtime registry are
+unchanged. Native Windows execution and live admission/state/rollback/TAA
+qualification remain required before claiming those behaviors.
+
+The overlap diagnostic also confirms the unresolved composition gap. For
+pair 0, the two-layer same-DIP E readback is about **0.257324**, consistent with
+shared-E attenuation (**0.257450** before target rounding), while the desired
+native-q attenuation would be **0.232844**. The ideal-reference gap is
+**0.0246052**; all 36 overlap diagnostics retain `q_policy_implemented=0`.
+Successful native B preservation and finite E storage do not make this E target
+a correct screen-energy accumulator. The root-owned ordered screen-composition
+solution remains separate and no additive-only registry is enabled here.
+
+The 216 creation calls total **0.6991 ms** in the fixture's CPU-inclusive timer.
+That is diagnostic creation cost, not steady GPU throughput or game FPS. The
+probe ran only in the X3 arm64 bottle with the recorded FEX/Wine environment;
+no production DLL build, install, game launch or native-Windows run occurred.
+Independent evidence review by the same Sol/high source reviewer is approved
+with no findings. The reviewer matched every frozen input and compact aggregate
+to the streamed raw result without rerunning the probe. Actual alpha-boundary
+counts were GT128 279, GE128 558 and untested 841 for every pair/mode; all
+creation, projected-state, overlap, Reset and post-Reset records agree.

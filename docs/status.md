@@ -62,8 +62,10 @@ the previous DLL and installation record are retained for rollback.
   XT14 including four DEFAULT linkage repairs: 628 / 10,836,608. Exact temporal/state twins and Reset pass.
 - **20-pair SM2 emission:** all 384 SM2 archive occurrences are covered by the bounded route. Detached
   coverage/fused runs and 208 live functional frames / 2,185,516 checks pass. It remains default-off;
-  gameplay and its measured cost remain open. [Nine SM1 pairs](architecture/linear-emission-sm1.md)
-  and nonadditive composition are planned, not implemented.
+  gameplay and its measured cost remain open. The isolated [nine-pair SM1 promotion](architecture/linear-emission-sm1.md)
+  now passes 1,674 X3 measurements / 216 creations with exact native RGB/alpha in
+  all six modes. It is independently reviewed but not connected to the runtime;
+  overlapping screen composition remains a separate unresolved contract.
 - **Selection diagnostics:** 23 native sites and the owned Present bridge are installed, default-off.
   The CPU fixture passes 815 checks at about 0.134 ms added per synthetic loop.
   `--game-phases --telemetry` enables the bounded trace; run 27 isolates the delayed publisher and broad pre-simulation spans.

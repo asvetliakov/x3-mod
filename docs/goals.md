@@ -47,8 +47,8 @@ they are not a measured final-image baseline.
    including uncaptured and older-profile variants. Every pass identity needs a
    converted role or a justified non-material disposition. Installed opaque
    coverage is 162 pairs, including all 14 XT contracts and correction of four
-   malformed native DEFAULT linkages. Nine SM1 emission pairs are in isolated
-   qualification; glass, distance fading, older profiles and other scene writers
+   malformed native DEFAULT linkages. Nine SM1 emission pairs pass isolated
+   X3 promotion/parity qualification and await live integration; glass, distance fading, older profiles and other scene writers
    remain in scope.
 3. The [revised emission path](architecture/linear-emission-composition.md) passes
    detached and live X3 qualification and is installed behind a default-off flag.
