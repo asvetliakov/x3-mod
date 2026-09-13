@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "completed": true,
+  "exe_sha256": "272128dc501b37fc591021d82d8d3bb22124221a512cb8f3d36a9666bc459a40",
+  "media": [
+    {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00144.dat",
+      "bytes": 269633863,
+      "sha256": "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+    },
+    {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00244.dat",
+      "bytes": 20311023,
+      "sha256": "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7"
+    }
+  ],
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "constructed": 0,
+  "decoded": 0,
+  "process_wall_seconds": 23.683353708000002,
+  "result_sha256": "2d8463a2b5e1ca2b05f55aa42add4f46aca86d9e349f96abf1f381b9d427a3e5",
+  "case_count": 8,
+  "stage_count": 213,
+  "empty_source_enumerations": 8,
+  "probe_selection_hresult": "8000ffff",
+  "decoder_init_hresult": "d0000001",
+  "decoder_init_count": 4,
+  "load_s_ok_count": 8,
+  "measured_stage_wall_seconds": 1.8606951999999999,
+  "measured_stage_cpu_seconds": 0.2,
+  "review": "Same independent Sol/high source and actual-evidence review approved; local asf/review.md retained.",
+  "claim": "Complete bounded diagnostic; LoadS_OK does not prove parsed streams; no graph connection or PCM reached."
+}

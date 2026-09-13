@@ -5,20 +5,22 @@ documented-API probe; no game launch, production audio change or cache implement
 absent. Restoring speech is the acceptance condition; suppressing repeated
 attempts is not a fix.
 
-## Finding and remaining unknown
+## Finding and current boundary
 
 All **34 retained `498140` creation calls return null**: 33 open source ID **144**,
 one ID **244**. The ten measured target publishers all use 144. Native code
 already retains and reuses successfully created streams. Repeated construction
 is therefore explained by creation failure, not a missing successful-stream
-cache. The next task should isolate and repair that failure.
+cache. R1–R3 below isolate failed connection and a missing suitable WMA8 decoder in
+the tested X3 process. Repair must preserve the native cache and sample lifecycle.
 
-The current trace does **not** identify the first failed HRESULT or which COM
+The Run28 trace alone does **not** identify the first failed HRESULT or which COM
 method consumes the CPU. The eight slow target publications spend 3,753.767 ms
 inside the containing input segment, including 3,710 ms thread CPU; only
 11.996 ms wall is outside creation. This establishes CPU-active creation work,
 but cannot distinguish activation, graph building, decoding/cueing, or cleanup.
-Do not label `OpenFile`, a codec, or CrossOver as the proven cause.
+The later standalone results identify graph/decoder failures; they do not
+retroactively supply an in-game per-method CPU trace.
 
 | Retained create source | Calls | Total ms | Range ms | Return |
 | --- | ---: | ---: | ---: | --- |
@@ -128,7 +130,7 @@ on teardown. The voice constructor can do substantial graph work before its
 `4d01ea` null check. Run 28 does not record this pointer/state or the startup
 HRESULTs. No DirectSound failure is established yet.
 
-## Proposed next diagnostic and fix decision
+## Original diagnostic design and lifecycle acceptance
 
 Build one small **documented-API native-equivalent audio probe**, not another
 broad gameplay tracer. Root owns the serialized X3 fixture execution. It should use the two
@@ -201,11 +203,9 @@ stage in the standalone native-equivalent path, not a uniquely missing codec.
 It is not yet an in-game HRESULT trace or restored audible speech.
 
 The game already retains successfully created streams, so a permanent negative
-cache would hide missing speech rather than fix it. The next bounded comparison
-will explicitly activate WM ASF Reader, Load the unchanged `.dat` file, inspect
-offered audio types, and connect to the existing manual PCM sink—with an explicit
-Standard WMA decoder control. A `.dat` source-selection repair remains a candidate,
-not a proven fix. Microsoft documents the [cannot-connect code](https://learn.microsoft.com/en-us/windows/win32/directshow/error-and-success-codes)
+cache would hide missing speech rather than fix it. The subsequent R2/R3 comparisons below explicitly test the ASF reader and its
+underlying open. A `.dat` source-selection change alone is insufficient for the
+proved decoder-capability failure. Microsoft documents the [cannot-connect code](https://learn.microsoft.com/en-us/windows/win32/directshow/error-and-success-codes)
 and [WM ASF Reader source/decoder boundary](https://learn.microsoft.com/en-us/windows/win32/directshow/wm-asf-reader-filter).
 
 The two commands took 294.536 s overall, versus 43.176 s in measured method brackets.
@@ -230,3 +230,81 @@ when new source requires it; existing evidence consumes the frozen EXE.
 Every run requires `X3M_FIXTURE_BOTTLE=X3` and the shared `wine_lock.py` wrapper.
 The complete default batch has 12 configurations; repeated `--variant 244:2:1
 --variant 244:2:0` selects exactly the disjoint tail used here.
+
+
+## R2/R3: hidden reader failure and missing suitable WMA8 decoder
+
+Root-owned X3 R2 completes **eight graphs / 213 measured stages** in 23.683 s.
+All ASF activation/add/QI/Load calls return S_OK; every source EnumPins succeeds
+and its first Next immediately returns S_FALSE. No source pins/types are exposed.
+`loaded=1` means **Load returned S_OK**, not parsed-stream proof. The resulting
+`source_audio_selection/8000ffff` is the probe's zero-candidate refusal, not a
+native reader HRESULT. Four independent Standard-WMA wrapper Init calls fail
+with raw `d0000001`. No connection, sample, RUN or PCM is reached. Compact evidence:
+[ASF result](../../verification/results/bottle-X3/voice-stream-asf.json).
+
+Public Wine source explains a relevant hidden-error path: qasf's Load calls
+IWMReader::Open but returns S_OK even when that call fails; its reader delegates
+to IWMSyncReader::Open. The separate R3 diagnostic bypasses that masking through
+the documented synchronous-reader API. Both reader creations succeed; **both
+actual-file Open calls return E_FAIL `80004005`**. Targeted process diagnostics
+recognize ASF and select its demuxer, then report no suitable decoder for
+Windows Media Audio 8 (`audio/x-wma`, version 2, mono 44.1 kHz/48,024 bps). This is
+actual missing suitable decoder evidence for the tested X3 process, rather than
+an inference from filenames or COM registration alone. It does not establish
+a global plugin inventory or native-Windows failure. R3 completes two cases /
+11 stages in 3.535 s; [sync result](../../verification/results/bottle-X3/voice-stream-sync.json)
+binds source/EXE/record identities and X3 provenance. Raw logs and codec payloads
+remain local. Same independent Sol/high reviewer approved both source and actual
+evidence; 15 affected relocated parser tests pass.
+[Wine Load/reader path](https://github.com/wine-mirror/wine/blob/2550c238151a00e43908561f32b6e131603ec6f7/dlls/qasf/asfreader.c),
+[documented synchronous reader](https://learn.microsoft.com/en-us/windows/win32/wmformat/to-create-a-synchronous-reader-and-open-a-file).
+
+A separate synthetic 70 s PCM16 WAV control constructs both native manual-audio
+graphs and reaches RUN/Pause, but the original probe's event-based sample Update
+returns E_NOTIMPL. Targeted game disassembly establishes a probe mismatch:
+`4d0a61` calls **Update(SSUPDATE_ASYNC,NULL,NULL,0)** and `4d0767` polls
+**CompletionStatus(0,0)**. Wine explicitly rejects non-null sample events.
+Therefore R1 remains valid for its pre-sample graph failures, while the control
+cannot establish broken native PCM playback. The reviewed correction retains
+bounded owner-thread polling and pending-buffer ownership, using the game's
+null-event mode. It now passes two fresh constructions and eight nonzero 8,820-byte
+reads at 10/60-second cues with cleanup, using only the synthetic WAV. Nominal
+PCM duration is 100 ms per read, but GetSampleTimes reports 95.1304 ms; only
+monotonicity, not exact timeline/cue accuracy, is qualified. Native speech remains
+unrestored. [PCM control](../../verification/results/bottle-X3/voice-stream-pcm-control.json).
+
+The next repair study will first assess an **optional, process-local decoder
+adapter**: a private GStreamer plugin directory and registry for the affected
+CrossOver process, leaving the app bundle, bottle settings and original game
+files untouched. It must establish actual architecture/library compatibility,
+public plugin ABI, provenance and licensing before a bounded probe. Native
+Windows retains the game's documented COM decoding path; no GStreamer dependency
+is introduced into shared rendering or the Windows path. This is a feasibility
+study, not an installed repair.
+
+If that cannot be isolated reliably, an app-owned bounded ASF/WMA2 decoder is
+an alternative. A restricted LGPL FFmpeg Windows-x86 build could provide it;
+the installed GPL-enabled Apple build is not a distribution candidate. Connecting
+PCM to the native graph would still require seeking/flush/EOF, shutdown, threading,
+bounded-memory and cold/seek-cost qualification. Whole-file PCM would cost about
+4.202 GB across the two archives; a short-WAV substitution breaks later absolute
+seeks on the retained source-ID stream. No global codec installation, blind COM
+route or permanent negative cache is planned. Exact sample timestamps matter:
+the game uses their start/end values to trim cue data, so the observed 95.1304 ms
+interval cannot be dismissed as a cosmetic discrepancy.
+[FFmpeg Windows support](https://ffmpeg.org/platform.html#Windows),
+[licensing/build obligations](https://ffmpeg.org/legal.html).
+
+Reproducible follow-ups reuse the frozen authored R1 helper:
+[ASF source](../../verification/probe/voice_asf_probe.cpp),
+[ASF runner](../../verification/probe/run_voice_asf_probe.py),
+[sync source](../../verification/probe/voice_sync_probe.cpp),
+[sync runner](../../verification/probe/run_voice_sync_probe.py).
+Build-only scripts are `build_voice_asf.sh`/`build_voice_sync.sh`; matching
+`test_voice_asf_probe.py`/`test_voice_sync_probe.py` are under verification/analysis.
+All executions consume a hash-bound retained EXE through the root Wine lock.
+
+The null-event control has separate [authored source](../../verification/probe/voice_native_update_probe.cpp)
+and [runner](../../verification/probe/run_voice_native_update.py) (`--pcm` selects an
+external synthetic 70 s PCM16 WAV); immutable R1 remains unchanged.

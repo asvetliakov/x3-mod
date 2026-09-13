@@ -52,8 +52,8 @@ speech decoder does not repair it. The explicit ASF reader exposes no pins; dire
 reader diagnostics then identify an unavailable WMA8 decoder after successful ASF
 recognition for both files. The native-null-event synthetic PCM control reads
 nonzero audio in both graphs, narrowing the failure to compressed decoding.
-Derived evidence is being consolidated into the owning note; no production audio
-repair is installed.
+The owning note now records the independently reviewed source and evidence;
+no production audio repair is installed.
 Other unexplained slow-frame residuals remain. The earlier
 [Run 27 delayed publisher](verification/run27-glow-selection.md) is a separate witness.
 

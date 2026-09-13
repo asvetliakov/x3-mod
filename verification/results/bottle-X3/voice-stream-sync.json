@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "completed": true,
+  "restored_speech": false,
+  "exe_sha256": "ff24b8b30fccb3fced6858f7633258418c60411eada9155d9ca5eac51e40732b",
+  "media": [
+    {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00144.dat",
+      "bytes": 269633863,
+      "sha256": "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+    },
+    {
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00244.dat",
+      "bytes": 20311023,
+      "sha256": "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7"
+    }
+  ],
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "wine_debug": "-all,+quartz,+wmvcore,+wmadec,+winegstreamer,+winediag",
+  "gst_debug": "2,WINE:5,decodebin:4,typefind:4",
+  "exit_code": 0,
+  "process_wall_seconds": 3.5345268329999997,
+  "stderr_bytes": 16422,
+  "cases": [
+    {
+      "source": "144",
+      "wrapper": "0",
+      "route": "0",
+      "repeat": "0",
+      "created": "1",
+      "opened": "0",
+      "metadata": "0",
+      "outputs": "0",
+      "closed": "0",
+      "open_hr": "80004005",
+      "fatal": "sync_open",
+      "hr": "80004005",
+      "cleanup": "1",
+      "types": [],
+      "measured_wall_ms": 105.6767,
+      "measured_cpu_ms": 30.0
+    },
+    {
+      "source": "244",
+      "wrapper": "0",
+      "route": "0",
+      "repeat": "0",
+      "created": "1",
+      "opened": "0",
+      "metadata": "0",
+      "outputs": "0",
+      "closed": "0",
+      "open_hr": "80004005",
+      "fatal": "sync_open",
+      "hr": "80004005",
+      "cleanup": "1",
+      "types": [],
+      "measured_wall_ms": 2.932,
+      "measured_cpu_ms": 0.0
+    }
+  ],
+  "opened": 0,
+  "outside_measured_stages_seconds": 2.382905133,
+  "record_sha256": "5a0adcb525006a3134268077012d37d2a0d0ee0310a861ffd932890a84e75b30",
+  "record_path": "/tmp/x3-voice-sync-r3/result.json",
+  "probe_source_sha256": "911acf0bef765b53ce85c05d41a65e4f3f77867c362bed8ba24e0f79f43fef28",
+  "runner_source_sha256": "058151268ef72d6fd0007df6ba2a5dfe92c7e4ad343f54c0e461f266fbb03ca9",
+  "case_count": 2,
+  "stage_count": 11,
+  "backend_diagnostic": {
+    "asf_recognition_groups": 2,
+    "asf_demux_selected_groups": 2,
+    "missing_suitable_decoder_groups": 2,
+    "format": "Windows Media Audio8; audio/x-wma version2; mono44100Hz,48024bps,16-bit,blockalign2230",
+    "scope": "Tested X3/CrossOver process capability only; no global decoder inventory or Windows-native result"
+  },
+  "review": "Same independent Sol/high source and actual-evidence review approved; local sync/review.md retained."
+}
