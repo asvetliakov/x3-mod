@@ -1415,10 +1415,10 @@ struct Fixture {
         const auto shared_words=load(shared_path);
         require(fnv(shared_words.data(),shared_words.size()*4)==0x3b94320087e81945ull,"shared VS positive uses reviewed shared DEFAULT PS");
         const auto split_words=load(split_path);
-        require(fnv(split_words.data(),split_words.size()*4)==0x462342e3e5781384ull,"shared VS negative uses motion-reviewed Split PS");
+        require(fnv(split_words.data(),split_words.size()*4)==0xef2bf556f207b8bdull,"shared VS negative uses motion-reviewed Terran PS");
         Com<IDirect3DPixelShader9> shared, split;
         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(shared_words.data()),&shared.p),"CreatePixelShader shared DEFAULT");
-        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(split_words.data()),&split.p),"CreatePixelShader Split motion-only");
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(split_words.data()),&split.p),"CreatePixelShader Terran motion-only");
         float first[4]{};
         for(unsigned i=0;i<12;++i) {
             frame_begin();linear_material_inputs();write_reserved();
@@ -1436,7 +1436,7 @@ struct Fixture {
             }
             const bool eligible=i<2||i==6||i==8||i>=10;
             // Keep the exact same VS object while alternating covered Argon
-            // and shared DEFAULT PS programs; Split remains motion-only.
+            // and shared DEFAULT PS programs; Terran remains motion-only.
             if(i==1)std::swap(ps.p,shared.p);
             if(i==9)std::swap(ps.p,split.p);
             draw(a,0,0,0,true,true,i!=0&&i!=10);
@@ -1446,14 +1446,14 @@ struct Fixture {
             require(w==W&&h==H,"material FP16 dimensions");
             const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
             const double expected=material&&eligible?std::pow(4.,1./2.2):1.;
-            // Uncovered Split color is compared to the feature-off twin by the
+            // Uncovered Terran color is compared to the feature-off twin by the
             // runner; the analytic witness covers Argon and shared DEFAULT.
             if(i!=9)for(unsigned lane=0;lane<3;++lane)
                 require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"actual material/ordinary FP16 color witness");
             if(i==0)std::memcpy(first,center,sizeof first);
             if(i==10||i==11)require(!std::memcmp(first,center,sizeof first),"Reset retains cached shader gains and alpha");
             std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
-                eligible?0u:i==9?1u:4u,vs_hash,i==1?0x3b94320087e81945ull:i==9?0x462342e3e5781384ull:ps_hash,double(center[0]),double(center[1]),double(center[2]),double(center[3]));
+                eligible?0u:i==9?1u:4u,vs_hash,i==1?0x3b94320087e81945ull:i==9?0xef2bf556f207b8bdull:ps_hash,double(center[0]),double(center[1]),double(center[2]),double(center[3]));
             frame_end();
             if(i==9) {
                 api(SetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN","16")?S_OK:E_FAIL,"change environment after attach");
@@ -1466,7 +1466,7 @@ struct Fixture {
         const auto bump_vs_words=load(bump_vs_path), bump_ps_words=load(bump_ps_path), negative_words=load(bump_negative_path);
         require(fnv(bump_vs_words.data(),bump_vs_words.size()*4)==0x4944d81dfe531b37ull,"reviewed BUMP VS");
         require(fnv(bump_ps_words.data(),bump_ps_words.size()*4)==0xca6bfa4a6cca7e2aull,"reviewed BUMP PS");
-        require(fnv(negative_words.data(),negative_words.size()*4)==0x0c1f3f0f440e4a0cull,"shared BUMP VS negative PS");
+        require(fnv(negative_words.data(),negative_words.size()*4)==0x3602b05ce11ca6ffull,"shared BUMP VS negative PS");
         Com<IDirect3DVertexShader9> bump_vs;
         Com<IDirect3DPixelShader9> bump_ps, bump_negative;
         api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(bump_vs_words.data()),&bump_vs.p),"Create BUMP VS");
@@ -1545,10 +1545,170 @@ struct Fixture {
             if(i==21||i==22)require(!std::memcmp(bump_first,center,sizeof bump_first),"BUMP Reset retains cached gains and alpha");
             std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
                 eligible?0u:negative?1u:4u,use_bump?0x4944d81dfe531b37ull:vs_hash,
-                negative?0x0c1f3f0f440e4a0cull:use_bump?0xca6bfa4a6cca7e2aull:ps_hash,
+                negative?0x3602b05ce11ca6ffull:use_bump?0xca6bfa4a6cca7e2aull:ps_hash,
                 double(center[0]),double(center[1]),double(center[2]),double(center[3]));
             frame_end();
             if(i==20){reset();bump.recorded=false;}
+        }
+        // Complete pair publication is qualified in one corpus. Reuse the five
+        // already-created covered originals, so each identity owns one variant.
+        const char* corpus_vs[]={"53a0a641107ed76c","719856ce0c213220","badefd5143b3024f","4944d81dfe531b37","19a246a56e9d9700","44c4a41ca92ae2e3","494fe349b8bc12ec"};
+        const char* corpus_ps[]={"8759c7838bbc86c2","63f96eba9eea7880","593e5dea9b3457d5","7a0bb00a8070496a","8d5b2ba0fb4d13bf","dab93928f26906f7","3b94320087e81945","e3b7acc16da9932d","7a14d4dcb28f27e5","8ab6188a40ca15ea","8df6143d0e77d92e","e16a9806ee3544c3","ca6bfa4a6cca7e2a","5e0a10fe752b6140","63379470db8d2a86","68915563dd0aac9a","d086fde54698070c","f17fffd88d134b04","462342e3e5781384","827d8d2d617bedce","02606104fa59fb29","1d638938d93421b3","bd4d51c08486c6e0","de2dd381fa64193d","7c83ed50c9894e44","e70adc744a38ca59","db644b73b68c0547","ff32b602a271c327","f6a501717c3e5ca8","55826dc176afe464","0c1f3f0f440e4a0c","64bac8bb307eb896","789449ffd931d23e","4f052209611387f0","abf3c0fad53456d8","cf449bcb069aec4f","99153c144030c396","c1452981fd0bff64","b0f9313b77cc78ee","d514bf852d8a9c58","dff6a3d360603fa2","f1d14a7dbf7c6173"};
+        struct CorpusPair { unsigned vertex,pixel; bool bump,affine,standard,low; };
+        const CorpusPair corpus[]={
+            {0,0,false,true,false,false},
+            {0,1,false,true,false,false},
+            {1,2,false,false,false,false},
+            {1,3,false,true,false,false},
+            {1,4,false,true,false,false},
+            {1,5,false,false,false,false},
+            {2,2,false,false,false,false},
+            {2,3,false,true,false,false},
+            {2,4,false,true,false,false},
+            {2,5,false,false,false,false},
+            {0,6,false,true,false,false},
+            {0,7,false,true,false,false},
+            {1,8,false,true,false,false},
+            {1,9,false,true,false,false},
+            {1,10,false,false,false,false},
+            {1,11,false,false,false,false},
+            {2,8,false,true,false,false},
+            {2,9,false,true,false,false},
+            {2,10,false,false,false,false},
+            {2,11,false,false,false,false},
+            {3,12,true,true,false,false},
+            {3,13,true,true,false,false},
+            {4,14,true,true,false,false},
+            {4,15,true,false,false,false},
+            {4,16,true,true,false,false},
+            {4,17,true,false,false,false},
+            {5,14,true,true,false,false},
+            {5,15,true,false,false,false},
+            {5,16,true,true,false,false},
+            {5,17,true,false,false,false},
+            {0,18,false,true,false,false},
+            {0,19,false,true,false,false},
+            {1,20,false,true,false,false},
+            {1,21,false,true,false,false},
+            {1,22,false,false,false,false},
+            {1,23,false,false,false,false},
+            {2,20,false,true,false,false},
+            {2,21,false,true,false,false},
+            {2,22,false,false,false,false},
+            {2,23,false,false,false,false},
+            {1,26,false,true,true,false},
+            {1,27,false,true,true,false},
+            {1,28,false,false,true,false},
+            {1,29,false,false,true,false},
+            {2,26,false,true,true,false},
+            {2,27,false,true,true,false},
+            {2,28,false,false,true,false},
+            {2,29,false,false,true,false},
+            {6,24,false,true,true,false},
+            {6,25,false,true,true,false},
+            {3,30,true,true,true,false},
+            {3,31,true,true,true,false},
+            {4,32,true,true,true,false},
+            {4,33,true,true,true,false},
+            {4,34,true,false,true,false},
+            {4,35,true,false,true,false},
+            {5,32,true,true,true,false},
+            {5,33,true,true,true,false},
+            {5,34,true,false,true,false},
+            {5,35,true,false,true,false},
+            {3,36,true,true,true,true},
+            {3,37,true,true,true,true},
+            {4,38,true,true,true,true},
+            {4,39,true,true,true,true},
+            {4,40,true,false,true,true},
+            {4,41,true,false,true,true},
+            {5,38,true,true,true,true},
+            {5,39,true,true,true,true},
+            {5,40,true,false,true,true},
+            {5,41,true,false,true,true},
+        };
+        const std::string supplied(bump_negative_path);
+        const auto slash=supplied.find_last_of("/\\");
+        require(slash!=std::string::npos,"corpus program directory");
+        const auto directory=supplied.substr(0,slash+1);
+        Com<IDirect3DVertexShader9> vertex_bank[7];
+        Com<IDirect3DPixelShader9> pixel_bank[42];
+        for(unsigned i=0;i<7;++i) {
+            if(i==0)vertex_bank[i].p=vs.p;
+            else if(i==3)vertex_bank[i].p=bump_vs.p;
+            if(vertex_bank[i].p)vertex_bank[i]->AddRef();
+            else {
+                const auto code=load((directory+"vs_"+corpus_vs[i]+".bin").c_str());
+                require(fnv(code.data(),code.size()*4)==std::strtoull(corpus_vs[i],nullptr,16),"corpus original VS identity");
+                api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&vertex_bank[i].p),"create corpus VS");
+            }
+        }
+        for(unsigned i=0;i<42;++i) {
+            const std::string id(corpus_ps[i]);
+            if(id=="8759c7838bbc86c2")pixel_bank[i].p=ps.p;
+            else if(id=="3b94320087e81945")pixel_bank[i].p=shared.p;
+            else if(id=="ca6bfa4a6cca7e2a")pixel_bank[i].p=bump_ps.p;
+            if(pixel_bank[i].p)pixel_bank[i]->AddRef();
+            else {
+                const auto code=load((directory+"ps_"+id+".bin").c_str());
+                require(fnv(code.data(),code.size()*4)==std::strtoull(id.c_str(),nullptr,16),"corpus original PS identity");
+                api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(code.data()),&pixel_bank[i].p),"create corpus PS");
+            }
+        }
+        Object corpus_object=a;corpus_object.name="CORPUS";
+        for(unsigned pair=0;pair<70;++pair) {
+            const auto& contract=corpus[pair];
+            corpus_object.vb=contract.bump?bump_vb.p:vb_a.p;
+            corpus_object.scope.node_serial=1000+pair;
+            corpus_object.scope.node=0x100000+pair*0x100;
+            corpus_object.scope.mesh=0x200000+pair*0x100;
+            corpus_object.recorded=false;
+            for(unsigned repeat=0;repeat<2;++repeat) {
+                frame_begin();linear_material_inputs();write_reserved();
+                const bool fixed=contract.vertex==2||contract.vertex==4;
+                // Fixed-point originals use c0..3 for position and c7..20 for
+                // world/normal/view/UV/alpha. rows() still writes c24 harmlessly.
+                if(fixed) {
+                    float values[21][4]{};std::memcpy(values,identity,sizeof identity);
+                    for(unsigned base:{7u,10u,13u})for(unsigned lane=0;lane<3;++lane)values[base+lane][lane]=1;
+                    values[4][2]=4;values[6][0]=1;values[15][3]=4;
+                    values[16][0]=values[17][1]=1;values[18][0]=.625f;values[20][0]=1;
+                    api(d->SetVertexShaderConstantF(0,values[0],21),"fixed corpus VS constants");
+                }
+                float pixel[12][4]{};
+                if(contract.affine) {
+                    pixel[0][0]=pixel[1][1]=pixel[2][2]=1;pixel[3][0]=.25f;
+                    pixel[4][2]=pixel[6][2]=1;
+                } else { pixel[0][0]=.25f;pixel[1][2]=1; }
+                if(contract.standard) {
+                    const unsigned base=contract.pixel%6<2?8:contract.affine?6:3;
+                    for(unsigned n=0;n<4;++n)pixel[base+n][0]=n==1?10.f:1.f;
+                }
+                api(d->SetPixelShaderConstantF(0,pixel[0],12),"corpus PS constants");
+                api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,FALSE),"corpus s4 state");
+                if(contract.bump) {
+                    D3DLOCKED_RECT lock{};api(normal->LockRect(0,&lock,nullptr,0),"corpus normal lock");
+                    const DWORD sample=contract.low?0x808080ffu:0x80008000u;
+                    for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)
+                        std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&sample,4);
+                    api(normal->UnlockRect(0),"corpus normal unlock");
+                    api(d->SetTexture(1,normal.p),"corpus normal");
+                    api(d->SetTexture(2,textures[1].p),"corpus mask");
+                    api(d->SetTexture(3,textures[2].p),"corpus lightmap");
+                    api(d->SetTexture(4,cube.p),"corpus reflection");
+                    api(d->SetVertexDeclaration(bump_declaration.p),"corpus basis declaration");
+                } else api(d->SetTexture(4,nullptr),"corpus DEFAULT s4 unused");
+                std::swap(vs.p,vertex_bank[contract.vertex].p);std::swap(ps.p,pixel_bank[contract.pixel].p);
+                draw(corpus_object,0,0,0,true,true,repeat!=0,Alter::None,true,contract.bump?40:24);
+                std::swap(vs.p,vertex_bank[contract.vertex].p);std::swap(ps.p,pixel_bank[contract.pixel].p);
+                unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
+                require(w==W&&h==H,"corpus FP16 dimensions");
+                const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
+                const double expected=material?std::pow(4.,1./2.2):1.;
+                for(unsigned lane=0;lane<3;++lane)require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"corpus combined binding witness");
+                std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=0 vs=%s ps=%s rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material,corpus_vs[contract.vertex],corpus_ps[contract.pixel],double(center[0]),double(center[1]),double(center[2]),double(center[3]));
+                frame_end();
+            }
         }
         // Extra originals/resources are released before final device Release;
         // their cached variants remain route-owned and must also retire.

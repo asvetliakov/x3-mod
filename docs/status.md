@@ -90,8 +90,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   variants. [Forty additional Split/standard-lighting pairs](architecture/linear-standard-materials.md)
   now pass independent source review and detached GPU qualification: 1,527
   cases across all 70 supported pairs, with exact alpha/motion/depth preservation.
-  Their live-routing extension is reviewed but awaits its actual fixture run;
-  the installed build still contains 30 pairs.
+  Their live-routing extension also passes independent review and 16,496 checks
+  across 1,312 frames, including TAA, ownership, Reset and shader retirement.
+  Installation and gameplay acceptance remain; the installed build still
+  contains 30 pairs.
   [Blended emission work](architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color
   and supplemental coverage, and a temporal consumer. The latest producer run

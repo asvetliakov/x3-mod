@@ -21,8 +21,8 @@ from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
-PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin', 'ps_462342e3e5781384.bin',
-                 'vs_4944d81dfe531b37.bin', 'ps_ca6bfa4a6cca7e2a.bin', 'ps_0c1f3f0f440e4a0c.bin')
+PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin', 'ps_ef2bf556f207b8bd.bin',
+                 'vs_4944d81dfe531b37.bin', 'ps_ca6bfa4a6cca7e2a.bin', 'ps_3602b05ce11ca6ff.bin')
 FRAME_COUNT = 24
 ELIGIBLE = {0, 1, 6, 8, 10, 11, 12, 14, 16, 17, 18, 20, 21, 22, 23}
 BUMP_FRAMES = set(range(12, 24)) - {17, 23}
@@ -30,9 +30,96 @@ MATCHED = set(range(FRAME_COUNT)) - {0, 10, 12, 17, 18, 21, 23}
 PIXEL_PROGRAMS = ['8759c7838bbc86c2'] * FRAME_COUNT
 VERTEX_PROGRAMS = ['4944d81dfe531b37' if frame in BUMP_FRAMES else '53a0a641107ed76c' for frame in range(FRAME_COUNT)]
 for frame in BUMP_FRAMES: PIXEL_PROGRAMS[frame] = 'ca6bfa4a6cca7e2a'
-PIXEL_PROGRAMS[19] = '0c1f3f0f440e4a0c'
+PIXEL_PROGRAMS[19] = '3602b05ce11ca6ff'
 PIXEL_PROGRAMS[1] = '3b94320087e81945'
-PIXEL_PROGRAMS[9] = '462342e3e5781384'
+PIXEL_PROGRAMS[9] = 'ef2bf556f207b8bd'
+
+# Explicit source-qualified pair corpus; each pair appears twice, first unseen
+# and then with valid prior history. This is independent of runtime admission.
+CORPUS_PAIRS = (
+    ('53a0a641107ed76c', '8759c7838bbc86c2', False),
+    ('53a0a641107ed76c', '63f96eba9eea7880', False),
+    ('719856ce0c213220', '593e5dea9b3457d5', False),
+    ('719856ce0c213220', '7a0bb00a8070496a', False),
+    ('719856ce0c213220', '8d5b2ba0fb4d13bf', False),
+    ('719856ce0c213220', 'dab93928f26906f7', False),
+    ('badefd5143b3024f', '593e5dea9b3457d5', False),
+    ('badefd5143b3024f', '7a0bb00a8070496a', False),
+    ('badefd5143b3024f', '8d5b2ba0fb4d13bf', False),
+    ('badefd5143b3024f', 'dab93928f26906f7', False),
+    ('53a0a641107ed76c', '3b94320087e81945', False),
+    ('53a0a641107ed76c', 'e3b7acc16da9932d', False),
+    ('719856ce0c213220', '7a14d4dcb28f27e5', False),
+    ('719856ce0c213220', '8ab6188a40ca15ea', False),
+    ('719856ce0c213220', '8df6143d0e77d92e', False),
+    ('719856ce0c213220', 'e16a9806ee3544c3', False),
+    ('badefd5143b3024f', '7a14d4dcb28f27e5', False),
+    ('badefd5143b3024f', '8ab6188a40ca15ea', False),
+    ('badefd5143b3024f', '8df6143d0e77d92e', False),
+    ('badefd5143b3024f', 'e16a9806ee3544c3', False),
+    ('4944d81dfe531b37', 'ca6bfa4a6cca7e2a', True),
+    ('4944d81dfe531b37', '5e0a10fe752b6140', True),
+    ('19a246a56e9d9700', '63379470db8d2a86', True),
+    ('19a246a56e9d9700', '68915563dd0aac9a', True),
+    ('19a246a56e9d9700', 'd086fde54698070c', True),
+    ('19a246a56e9d9700', 'f17fffd88d134b04', True),
+    ('44c4a41ca92ae2e3', '63379470db8d2a86', True),
+    ('44c4a41ca92ae2e3', '68915563dd0aac9a', True),
+    ('44c4a41ca92ae2e3', 'd086fde54698070c', True),
+    ('44c4a41ca92ae2e3', 'f17fffd88d134b04', True),
+    ('53a0a641107ed76c', '462342e3e5781384', False),
+    ('53a0a641107ed76c', '827d8d2d617bedce', False),
+    ('719856ce0c213220', '02606104fa59fb29', False),
+    ('719856ce0c213220', '1d638938d93421b3', False),
+    ('719856ce0c213220', 'bd4d51c08486c6e0', False),
+    ('719856ce0c213220', 'de2dd381fa64193d', False),
+    ('badefd5143b3024f', '02606104fa59fb29', False),
+    ('badefd5143b3024f', '1d638938d93421b3', False),
+    ('badefd5143b3024f', 'bd4d51c08486c6e0', False),
+    ('badefd5143b3024f', 'de2dd381fa64193d', False),
+    ('719856ce0c213220', 'db644b73b68c0547', False),
+    ('719856ce0c213220', 'ff32b602a271c327', False),
+    ('719856ce0c213220', 'f6a501717c3e5ca8', False),
+    ('719856ce0c213220', '55826dc176afe464', False),
+    ('badefd5143b3024f', 'db644b73b68c0547', False),
+    ('badefd5143b3024f', 'ff32b602a271c327', False),
+    ('badefd5143b3024f', 'f6a501717c3e5ca8', False),
+    ('badefd5143b3024f', '55826dc176afe464', False),
+    ('494fe349b8bc12ec', '7c83ed50c9894e44', False),
+    ('494fe349b8bc12ec', 'e70adc744a38ca59', False),
+    ('4944d81dfe531b37', '0c1f3f0f440e4a0c', True),
+    ('4944d81dfe531b37', '64bac8bb307eb896', True),
+    ('19a246a56e9d9700', '789449ffd931d23e', True),
+    ('19a246a56e9d9700', '4f052209611387f0', True),
+    ('19a246a56e9d9700', 'abf3c0fad53456d8', True),
+    ('19a246a56e9d9700', 'cf449bcb069aec4f', True),
+    ('44c4a41ca92ae2e3', '789449ffd931d23e', True),
+    ('44c4a41ca92ae2e3', '4f052209611387f0', True),
+    ('44c4a41ca92ae2e3', 'abf3c0fad53456d8', True),
+    ('44c4a41ca92ae2e3', 'cf449bcb069aec4f', True),
+    ('4944d81dfe531b37', '99153c144030c396', True),
+    ('4944d81dfe531b37', 'c1452981fd0bff64', True),
+    ('19a246a56e9d9700', 'b0f9313b77cc78ee', True),
+    ('19a246a56e9d9700', 'd514bf852d8a9c58', True),
+    ('19a246a56e9d9700', 'dff6a3d360603fa2', True),
+    ('19a246a56e9d9700', 'f1d14a7dbf7c6173', True),
+    ('44c4a41ca92ae2e3', 'b0f9313b77cc78ee', True),
+    ('44c4a41ca92ae2e3', 'd514bf852d8a9c58', True),
+    ('44c4a41ca92ae2e3', 'dff6a3d360603fa2', True),
+    ('44c4a41ca92ae2e3', 'f1d14a7dbf7c6173', True),
+ )
+IMPLEMENTED_PROGRAMS = {('vs', v) for v, _, _ in CORPUS_PAIRS} | {('ps', p) for _, p, _ in CORPUS_PAIRS}
+PROGRAM_NAMES += tuple(sorted(f'{stage}_{identifier}.bin' for stage, identifier in IMPLEMENTED_PROGRAMS
+                              if f'{stage}_{identifier}.bin' not in PROGRAM_NAMES))
+for pair, (vertex, pixel, bump) in enumerate(CORPUS_PAIRS):
+    for repeat in range(2):
+        frame = 24 + pair * 2 + repeat
+        ELIGIBLE.add(frame)
+        if bump: BUMP_FRAMES.add(frame)
+        if repeat: MATCHED.add(frame)
+        PIXEL_PROGRAMS.append(pixel)
+        VERTEX_PROGRAMS.append(vertex)
+FRAME_COUNT = len(PIXEL_PROGRAMS)
 
 
 def sha(path):
@@ -69,9 +156,7 @@ def validate_case(output, trace_lines, material, taa):
         assert live[frame]['ps'] == PIXEL_PROGRAMS[frame] and live[frame]['vs'] == VERTEX_PROGRAMS[frame], (frame, 'wrong material program pair')
     if material:
         assert set(material_frames) == set(range(FRAME_COUNT))
-        assert len(variants) == 5 and {(row['kind'], row['original']) for row in variants} == {
-            ('vs', '53a0a641107ed76c'), ('ps', '8759c7838bbc86c2'), ('ps', '3b94320087e81945'),
-            ('vs', '4944d81dfe531b37'), ('ps', 'ca6bfa4a6cca7e2a')}, 'combined program inventory differs'
+        assert len(variants) == 49 and {(row['kind'], row['original']) for row in variants} == IMPLEMENTED_PROGRAMS, 'combined program inventory differs'
         assert all(int(row['transform']) == 0 and int(row['create'], 16) == 0 for row in variants)
         for frame, row in material_frames.items():
             assert int(row['routed']) == int(frame in ELIGIBLE), (frame, 'combined selection')
@@ -98,7 +183,7 @@ def compare_cases(cases):
             assert on['temporal_hashes'] == off['temporal_hashes'], 'material route changed RT1/RT2'
             assert on['pixel_programs'] == off['pixel_programs'] == PIXEL_PROGRAMS, 'material positive/negative schedule changed'
             assert on['vertex_programs'] == off['vertex_programs'] == VERTEX_PROGRAMS, 'material vertex schedule changed'
-            assert on['held_references'] == off['held_references'] + 5, 'five additional shader objects not reflected in actual device retirement'
+            assert on['held_references'] == off['held_references'] + 49, 'forty-nine additional shader objects not reflected in actual device retirement'
             for frame in range(FRAME_COUNT):
                 assert on['rgba'][frame][3] == off['rgba'][frame][3], 'alpha changed'
                 if frame not in ELIGIBLE: assert on['rgba'][frame] == off['rgba'][frame], 'refusal changed original material color'
@@ -122,7 +207,7 @@ def main():
     assert all(path.is_file() for path in [fixture, dll, *programs]), 'prebuilt inputs or local programs missing'
     raw = Path(tempfile.mkdtemp(prefix='x3-linear-material-live-'))
     report = dict(passed=False, game_launched=False, bottle=bottle.describe(), raw=str(raw),
-                  scope='Actual live evaluate_draw with DEFAULT/BUMPMAP alternation and shared-VS negatives, five-sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
+                  scope='Actual live evaluate_draw across all 70 exact pairs / 49 originals, DEFAULT/BUMPMAP/LOW alternation and shared-VS negatives, five-sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
                   binaries={str(path): sha(path) for path in (fixture, dll)}, local_programs={path.name: sha(path) for path in programs}, cases={})
     args.result.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -142,7 +227,7 @@ def main():
                                X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0',
                                X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1', WINEDLLOVERRIDES='d3d9=n,b')
                     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work / 'fixture.exe'),
-                               'Z:' + str(programs[0]), 'Z:' + str(programs[1]), 'linearmaterials', *['Z:' + str(path) for path in programs[2:]]]
+                               'Z:' + str(programs[0]), 'Z:' + str(programs[1]), 'linearmaterials', *['Z:' + str(path) for path in programs[2:7]]]
                     start = time.monotonic()
                     with (work / 'stdout.txt').open('w') as out, (work / 'wine.log').open('w') as error:
                         completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)

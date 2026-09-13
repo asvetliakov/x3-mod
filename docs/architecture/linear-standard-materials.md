@@ -1,11 +1,12 @@
 # Split and standard lighting materials
 
-Source and detached GPU qualification, 2026-09-13. This extension adds **40 exact SM3 pairs,
+Source, detached GPU and live-route qualification, 2026-09-13. This extension adds **40 exact SM3 pairs,
 25 original programs (one VS and 24 PS), and 96 archive pass occurrences** to
 [the installed DEFAULT](scene-linear-materials.md) and
 [Argon BUMPMAP](linear-bump-materials.md) contracts. The pure transformer now
-contains **70 pairs / 49 programs**. Detached GPU qualification passes. Live routing qualification and installation
-of this extension are pending; the installed 30-pair evidence remains historical.
+contains **70 pairs / 49 programs**. Detached GPU and live routing qualification
+pass. Installation of this extension remains pending; the installed route still
+contains 30 pairs, with its previous evidence preserved.
 This is an intermediate group in the [complete coverage ledger](material-coverage.md),
 not completion of all material families or shader models.
 
@@ -146,7 +147,7 @@ standard BUMP 0.7939/0.7901 → 0.7971/0.7993; standard LOW 0.7993/0.7911 →
 and EVENT completion. They are neither GPU timestamps nor game FPS, and the
 small BUMP/LOW differences do not establish a speedup.
 
-## Complete-group qualification contract; live result pending
+## Complete-group qualification contract and live result
 
 The existing `run_linear_material.py` detached fixture and independent oracle
 now cover all **70 pairs / 49 originals** in one batch. The required contract is
@@ -167,24 +168,32 @@ depth modes, to expose varying/cache collisions. Use the existing controlled
 original/motion/combined diagnostic timing windows for representative Split,
 standard DEFAULT, AG and XYZ paths; do not infer frame-rate benefit from them.
 
-Extend the existing `run_linear_material_live.py` qualification to the complete
-70-pair publication, all three source gains, cached sampler masks 0x0f/0x1f,
-shared-stage alternation, failed creation, unsupported combinations, Reset and
-reference retirement. Retain a motion-reviewed uncovered witness: Terran
-`53a0a641107ed76c` / `ef2bf556f207b8bd` currently supplies it. Replace the previous
-Split witness now that it is covered. No live gate broadening or new sampler
-API is needed. One owner builds and runs the complete group under the X3 Wine
-lease after source review; no subgroup GPU or installation cycles are required.
-The authored live script now contains **164 frames per configuration**: the
-24 lifecycle frames followed by all 70 pairs twice, establishing first
-appearance and valid prior history. It reuses existing objects to create exactly
-49 covered original identities; the two negative originals remain motion-only.
-The runner checks all 49 variant creations and their additional owned references,
-all pair identities, alpha and motion/depth twins, and the isolated unit-lightmap
-activation witness (startup gain four). The detached GPU oracle supplies the
-independent direct/material/lightmap gain and detailed normal/lobe arithmetic
-coverage. The live script's TAA reference remains its existing fixture comparison;
-it does not claim an additional exact TAA readback file comparison. Its three
-report tests and x86 translation-unit compilation pass; the actual run is pending.
+The [actual live X3 result](../../verification/results/bottle-X3/linear-material-live.json)
+passes **eight configurations × 164 frames = 1,312 frames**, with **16,496 checks**.
+The configurations cross ownership modes 0/1, TAA off/on and material off/on.
+Each retains 24 lifecycle frames, then draws all 70 exact pairs twice to establish
+first appearance and valid prior history. The two unsupported controls are
+Terran DEFAULT `53a0a641107ed76c` / `ef2bf556f207b8bd` and Terran BUMPMAP
+`4944d81dfe531b37` / `3602b05ce11ca6ff`; both remain motion-only.
+
+The runner verifies all 49 covered variant creations, exact pair selection,
+cached sampler masks 0x0f/0x1f, stateblock/Reset behavior and owned shader retirement.
+Material-on runs retain exactly 49 additional shader references relative to their
+material-off twins. Center-pixel alpha and full RT1/RT2 hashes remain identical
+between twins; the isolated unit-lightmap witness distinguishes combined binding
+with startup gain four from ordinary motion. The detached GPU oracle supplies
+the independent direct/material/lightmap gain and detailed normal/lobe arithmetic
+coverage. The live script's TAA reference is its existing fixture comparison;
+it does not claim an additional exact TAA readback-file comparison. Unknown
+sampler getter failure and combined creation/bind/restore failures retain the
+scripted host coverage rather than new real-device fault injection.
+
+The live fixture's three report tests and x86 translation-unit compilation pass.
+The independent reviewer approves the source and compact live evidence with no
+remaining finding, including the corpus, constants, ownership, negative controls,
+history schedule and report oracle. No live gate broadening or new sampler API was
+needed. The material-only checkpoint changes the existing `run_linear_materials`
+function and its runner/report tests; it does not require the concurrent emission
+fixture changes or a new shared helper.
 
 Native Windows execution and gameplay appearance/performance remain unverified.
