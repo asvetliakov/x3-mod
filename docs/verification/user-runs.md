@@ -3,7 +3,7 @@
 Updated 2026-09-13. Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
-0.85 distance; [build record](../../verification/results/chase-fire-install.json).
+0.85 distance, plus opt-in FP16 bloom; [build record](../../verification/results/bloom-install.json).
 From the repository root, define this terminal helper once, then paste a run
 command below. Close X3 between runs and report completed numbers when convenient.
 
@@ -57,7 +57,7 @@ a gate if convenient. Report sharpness, shimmer/flicker, halos, ghosting after
 view transitions, and whether each F8 burst was captured. This is the actual
 0.75 measurement; do not fold HDR exposure into it.
 
-## 3. Space-aware exposure baseline — Ready
+## 3. Space-aware exposure and bloom comparison — Ready
 
 Keep sharpen and mip bias at zero so this remains comparable to the earlier HDR
 baseline:
@@ -68,10 +68,24 @@ x3run --direct --ownership --object-trace --object-lifetime --motion-output --ta
   --hdr --hdr-tonemap --capture-start 999999 --capture-frames 4
 ```
 
-Capture settled dark space, a bright object/emitter, and a turn between them.
-Do not set manual EV. Report exposure pumping, adaptation feel, lost bright
-detail, crushed dark detail, and HUD/menu readability. Record which F8 bursts
-were captured.
+Keep the game's **Glow enabled**. In this baseline, capture settled dark space,
+a bright object/emitter, and a turn between them. Do not set manual EV. Exit,
+then repeat the same save and camera positions with bloom enabled:
+
+```sh
+x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
+  --telemetry --taa-debug --taa-sharpen 0 --taa-mip-bias 0 \
+  --hdr --hdr-tonemap --hdr-bloom --capture-start 999999 --capture-frames 4
+```
+
+Repeat the F8 samples. Report exposure pumping/adaptation, bright and dark
+detail, glow around emitters, HUD/menu readability and any obvious slowdown.
+After the comparison, change resolution once if practical. F8 records the
+scene/exposure inputs before bloom; a screenshot is useful for the final glow.
+Tell us which run was baseline/bloom and which bursts were captured. Log analysis
+must confirm `bloom_prepare ready=1` and `bloom_commit committed=1`; a silent
+fallback is not bloom acceptance. This combines the former separate bloom run
+with exposure acceptance. It does not yet establish game FPS or real radiance.
 
 ## 4. Vanilla window/cursor comparison — Ready after any enhanced run
 
@@ -97,10 +111,3 @@ x3run --direct --telemetry --resource-read fast --dat-handles \
 
 The combined run can establish fault-free co-activation. Any claim about which
 feature changed loading time still requires isolated, same-save comparisons.
-
-## 6. Bloom gameplay — Waiting for integration
-
-Bloom components are fixture-qualified but not linked into the installed
-renderer. Add bloom to a later graphics session only after integration produces
-a reviewed build and an explicit launch command. No bloom command or acceptance
-claim exists yet.

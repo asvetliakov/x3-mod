@@ -1,0 +1,55 @@
+{
+  "source_commit": "8a29fed55e9804bb24d9c3b71c24a77a0698d0a7",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-candidate-wpa_onf6/d3d9.dll",
+  "dll_sha256": "ab9d689654fb5a6b593707089c16da2670c82792df7f64bcae215828e3f50304",
+  "dll_bytes": 12088890,
+  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "seh_clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+  "build": "cmake --build build --clean-first -j4",
+  "imports_added": {
+    "msvcrt.dll": [
+      "_except_handler3"
+    ]
+  },
+  "imports_removed": {},
+  "dll_characteristics": "0x140",
+  "load_config": [
+    0,
+    0
+  ],
+  "scene_signal_no_sjlj": true,
+  "light_call_no_x87": {
+    "result": "PASS",
+    "reachable_functions": 211,
+    "violations": 0
+  },
+  "review": "docs/verification/review-50-hdr-bloom-live-integration.md",
+  "fixtures": {
+    "scene_hook": "verification/results/bottle-X3/scene-compositor-summary.json",
+    "lifetime": "verification/results/bottle-X3/capture-bloom-x3-summary.json"
+  },
+  "host_checks": {
+    "handoff_scenarios": 72,
+    "handoff_checks": 1526,
+    "lifetime_scenarios": 29,
+    "lifetime_checks": 111,
+    "parser_tests": 9
+  },
+  "game_launched": false,
+  "native_windows_verified": false,
+  "load": {
+    "passed": true,
+    "case": "writable",
+    "checks": 8,
+    "exports": 17
+  },
+  "previous_dll_sha256": "5a7e849f9873f3f491f0dc67710c1afc150d7fd40276c5b5903bb2e759a8610e",
+  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-candidate-wpa_onf6/rollback",
+  "installed": true,
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "preserved_files": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "planned_launch_dry_run": true
+}

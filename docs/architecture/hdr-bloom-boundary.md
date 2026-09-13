@@ -4,7 +4,7 @@
 The [GPU executor](../verification/bloom-pass-fixture.md),
 [CPU/SEH bridge](../verification/review-43-compositor-bridge.md), and
 [shader bundle](../verification/review-47-bloom-programs.md) now have scoped
-standalone qualification. They are not connected to the installed renderer;
+standalone qualification. They are connected to the installed renderer behind the opt-in bloom switch;
 see [current status](../status.md) for the installed build. This design uses the verified
 [compositor control flow](../reverse-engineering/compositor-and-glow.md) and
 [late-view inheritance findings](../reverse-engineering/bloom-late-view-state.md).
@@ -404,6 +404,8 @@ Four launcher dry-run controls pass: enabled bloom, default-off, missing AgX
 rejection and explicit scene-hook-off rejection. The combined lifetime fixture
 passes 714/714 checks in X3 with zero skips; the host lifetime/admission fixture
 passes 29 scenarios and 111 checks. [Review 50](../verification/review-50-hdr-bloom-live-integration.md)
-approves the code and scoped evidence with no open findings. The next step is
-the clean candidate build/install; the chase candidate remains installed until
-that completes. Gameplay quality, frame cost and native Windows remain unverified.
+approves the code and scoped evidence with no open findings. The clean candidate
+is installed in X3; [the compact install record](../../verification/results/bloom-install.json)
+binds its source, toolchain, byte identity, load check and rollback. Gameplay
+quality, frame cost and native Windows remain unverified. Use run 3 in the
+[brief queue](../verification/user-runs.md) for the exposure/bloom comparison.

@@ -7,13 +7,14 @@ full scope; the [original objective](user-objective.md) is unchanged.
 
 ## Installed build and current camera work
 
-Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `1b39130`:
-DLL SHA-256 `5a7e849f9873f3f491f0dc67710c1afc150d7fd40276c5b5903bb2e759a8610e`,
-11,763,091 bytes. The [install record](../verification/results/chase-fire-install.json)
-binds the reviewed candidate and rollback copy; EXE/configuration are unchanged.
-[The current review](reverse-engineering/chase-mouse-fire.md) records scoped
-x86 hook, CPU-state, runtime and performance evidence; the install record
-includes the candidate load and actual CMake object checks. Native Windows remains untested.
+Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `8a29fed`:
+DLL SHA-256 `ab9d689654fb5a6b593707089c16da2670c82792df7f64bcae215828e3f50304`,
+12,088,890 bytes. The [install record](../verification/results/bloom-install.json)
+binds the reviewed clean candidate, load check and previous chase-build rollback
+pair; EXE/configuration are unchanged. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
+records the bloom integration's scoped verification. The candidate has only the
+intended new SEH import and passes the light-hook x87 audit. Native Windows
+remains untested. Bloom is opt-in (`--hdr-bloom`); existing commands leave it off.
 
 The installed chase defaults are **13° pitch, distance 0.85, rotation/position
 response 0.22/0.30 s, offset 0.45, lag limits 8°/0.10**. Vanilla is the default
@@ -48,17 +49,14 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   content remains decoded gamma-space game lighting. Scene-referred HDR lighting
   and HDR display output are incomplete. The replacement space-aware exposure
   meter is installed and awaits gameplay acceptance.
-- **Bloom live integration is reviewed and fixture-qualified.** The
+- **Bloom live integration is installed and awaits gameplay acceptance.** The
   [compositor boundary](architecture/hdr-bloom-boundary.md) passes 714 combined
-  X3 checks, with device lifetime, Reset/ResetEx and original exception cleanup.
-  [Review 50](verification/review-50-hdr-bloom-live-integration.md) has no open
-  findings. Clean candidate build/install is next; it is not gameplay-ready yet. The production
-  bridge, owner helper, shader bundle and BloomPass evidence are linked from the
-  [history](status-history-2026-09-13.md#bloom-preparation-checkpoint-2026-09-13).
-  The exact AgX/writeback snapshot is implemented and reviewed. The synchronous
-  scene handoff and owner/frame/Reset-qualified invocation are now connected in
-  the working tree; focused scene-hook checks pass 43/43 in X3. The reviewed
-  chase candidate above remains installed while integration is completed.
+  X3 checks across both reference models, including Reset/ResetEx and original
+  exception cleanup. Review 50 has no open findings. The scene handoff retains
+  exact display parameters and adds no resolve or exposure-meter pass. Existing
+  component image/state/recovery evidence remains linked from the design.
+  Run 3 in the [brief queue](verification/user-runs.md) combines exposure and
+  bloom A/B acceptance; game image quality and frame cost remain unverified.
 - Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
   accepts crypto reuse; reader verification and adjacency gameplay acceptance
   remain. Fast modes require meaningful verification, not merely fixture success.
