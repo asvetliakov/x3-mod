@@ -3,11 +3,12 @@
 Updated 2026-09-13. Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
-0.85 distance, opt-in FP16 bloom and reviewed DEFAULT/BUMPMAP linear materials;
+0.9 distance, softer 0.28/0.38 s follow, predictive lead marker, opt-in FP16 bloom
+and 110 reviewed linear material pairs;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
-function setup is needed. Run 1 is complete and its loading verification passed; run 5 is now ready. Complete the remaining
+function setup is needed. Runs 1 and 5 are complete; reader/DAT/adjacency fast co-activation passed as run 19. Complete the remaining
 ready comparisons over several sessions as convenient.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
@@ -19,13 +20,13 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 2 | Sharpen/shimmer + camera cuts with TAA | 0 | Merged into run 6 |
 | 3 | Automatic exposure + bloom off/on | 2 | Ready |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
-| 5 | Reader/adjacency fast modes | 1 | Ready; run 18 verification accepted |
+| 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 2 | Ready |
 
-Six sessions remain; complete them at your convenience. The shared TAA shader
+Five sessions remain; complete them at your convenience. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
-run 6 also covers that installed update. Emission integration is still agent
-work and adds no gameplay request yet.
+run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
+no gameplay request yet while its performance optimization is under investigation.
 
 
 
@@ -105,21 +106,18 @@ appear, whether their positions differ, and whether the macOS menu bar overlaps
 the game. Compare the same screen as the enhanced run; load the save if the
 problem only appears during gameplay. No F8 capture is needed.
 
-## 5. Reader and adjacency fast modes — Ready
+## 5. Reader and adjacency fast modes — Completed as run 19
 
-Run 18 verified 6,958 reader outputs and 15,354 meshes exactly, with zero
-mismatches or faults. Both fast modes may now share one functional load:
-
-```sh
-./x3run --direct --telemetry --resource-read fast --dat-handles \
-  --mesh-adjacency fast
-```
-
-The combined run can establish fault-free co-activation. Any claim about which
-feature changed loading time still requires isolated, same-save comparisons.
+[Run 19](run19-fast-loading.md) confirms all intended fast routes with no faults:
+4,096 compressed resources, 3,516 reused DAT opens and 7,642 meshes. The user
+reported no stutters or issues. The 41.571 s save load is not a controlled speed
+comparison; the crypto cache was off. Do not repeat this standalone run.
+Run 6 includes the reviewed crypto cache and all three fast paths on both sides.
+The read-ahead buffer is also enabled because telemetry is active; it reduces
+instrumentation overhead, not the engine's decompression or deserialization work.
 
 
-## 6. First linear materials plus sharpen and TAA cuts — Ready; after camera acceptance is convenient
+## 6. Linear materials, chase lead marker and TAA cuts — Ready on the new build
 
 This is a fixed-exposure comparison with bloom off. Both sides use sharpen 0.75
 and mip bias -0.5 so the material toggle remains the only A/B difference. Use
@@ -133,6 +131,7 @@ First run with linear materials off:
   --motion-output --taa --telemetry --taa-debug --camera-log 1 \
   --taa-sharpen 0.75 --taa-mip-bias -0.5 \
   --hdr --hdr-tonemap --hdr-ev-manual 0 \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
   --capture-start 999999 --capture-frames 4
 ```
 
@@ -144,6 +143,7 @@ materials on. Leave the three material gains at their default 1:
   --motion-output --taa --telemetry --taa-debug --camera-log 1 \
   --taa-sharpen 0.75 --taa-mip-bias -0.5 \
   --hdr --hdr-tonemap --hdr-ev-manual 0 --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
   --capture-start 999999 --capture-frames 4
 ```
 
@@ -153,20 +153,20 @@ scene captures before switching between internal and external back views; then
 record the view cuts and cross a gate if practical. Use the same active-light
 moment on both sides when available.
 
-After the next build is installed, combine the chase follow-up here: check that
+The new camera build is installed. Combine its follow-up here: check that
 the predictive aiming hint appears on a selected target and follows it while
 turning. Report the new distance/softer follow. If crossing a gate resets the
 view, switch back to chase once; the combined diagnostics will record both
-events. Docking is optional. The installed build does not yet include this
-lead-marker correction.
+events. Docking is optional. The installed build includes the lead-marker correction
+and transition diagnostics; automatic chase-view restoration is not implemented.
 
 Report sharpness, halos, shimmer or flicker, ghosting and recovery after view
 transitions. Separately compare hull color and brightness, emissive detail,
 active-light response and any obvious slowdown. Both logs are needed even if
 the image looks unchanged.
 
-This slice covers thirty reviewed pairs: twenty DEFAULT hull materials and
-ten Argon bump-mapped materials. It does not cover every ship/effect. Analysis
+This slice covers 110 reviewed pairs across Argon, shared hulls, Split, Terran
+and standard-lighting DEFAULT/BUMPMAP/LOW techniques. It does not cover every ship/effect. Analysis
 must confirm nonzero material routes, inspect `bump_routed` to establish whether
 the new bump path was exercised, and inspect refusal reasons and captured
 constants before judging appearance or expanding coverage. This fixed-EV pair

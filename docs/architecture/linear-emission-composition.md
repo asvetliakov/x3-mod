@@ -4,7 +4,7 @@ Updated 2026-09-13. The initial ordered-bracket experiment is qualified but will
 not be promoted unchanged: it alters untouched pixels and lacks post-draw native
 fallback. The [revised same-draw candidate](#candidate-retain-native-output-and-publish-an-owned-target)
 has passed detached component and focused live-integration qualification. A
-default-off live route is now selected for the five exact source pairs; gameplay
+default-off live route is now installed for the five exact source pairs; gameplay
 and native-Windows behavior remain unverified. The earlier design and its results
 below explain the bounded route and its recovery policy.
 

@@ -3,7 +3,8 @@
 2026-09-13. The implementation follows the [native marker study](../reverse-engineering/chase-lead-reticle.md)
 and [view transition study](../reverse-engineering/chase-view-transition.md).
 It is a chase-camera component, enabled after the existing camera initializes.
-It has not been installed or verified visually in gameplay or native Windows.
+It is installed in the [combined build](../../verification/results/linear-material-install.json);
+visual gameplay alignment and native Windows remain unverified.
 Sector-travel view restoration is **not implemented**; the transition component
 observes both the script and save-deserialization mode writers to distinguish
 why the engine selects internal view.

@@ -5,8 +5,8 @@ Pure source qualification, 2026-09-13, following the 70-pair checkpoint
 pass occurrences**: shared Khaak/Teladi/Teladi_nodiff/Xenon BUMPMAP, Split BUMPMAP,
 and Terran DEFAULT/BUMPMAP. The bounded transformer contains **73 originals /
 110 exact pairs**. The pure source review and detached/live GPU qualification
-are approved. Installation of this group remains pending. Installed coverage
-is still 30 pairs; the preceding 70-pair
+are approved and the combined build is installed. Installed coverage
+is now 110 pairs; the preceding 70-pair
 source has separate [GPU/live qualification](linear-standard-materials.md).
 This remains an intermediate step in the [complete coverage ledger](material-coverage.md).
 
@@ -237,3 +237,11 @@ and 24,540 checks. Their compact records bind the reviewed source, fixtures and
 binaries, and no further finding remains for this bounded 110-pair source and
 evidence review. Installation and native-Windows/gameplay verification remain
 pending.
+
+## Installation
+
+The clean combined candidate from `10e447b` is installed in bottle X3; the
+[single install record](../../verification/results/linear-material-install.json)
+binds its DLL, unchanged imports, x87 audit, load check and previous rollback
+copy. EXE and bottle configuration remain unchanged. Run 6 combines material
+A/B acceptance with the camera follow-up; gameplay/native Windows remain unverified.
