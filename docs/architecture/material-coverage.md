@@ -25,8 +25,8 @@ DEFAULT/BUMPMAP/LOW pairs. Shared identities count once. This is the complete
 162-pair conventional SM3 opaque/material union in the ledger; the six mixed-state
 SM3 glass identities remain separate. Reviewed main source additionally contains
 those six [glass conversions](glass-materials.md), bringing the source candidate
-to **168 pairs / 137 originals**; GPU/live qualification and installation remain
-pending for the glass extension. The
+to **168 pairs / 137 originals**; detached GPU and live-route qualification pass,
+with installation and gameplay pending for the glass extension. The
 [Split/standard group](linear-standard-materials.md),
 [remaining conventional hull group](linear-hull-materials.md),
 [palette group](linear-palette-materials.md), [Asteroid group](linear-asteroid-materials.md)
@@ -120,7 +120,7 @@ is reused by more than one technique. They account for `DEFAULT` (D), `BUMPMAP`
 | `boron` | A | 45 / 40 | 12 / 36 / 24 / 0 | D 36, B 36 | **12 SM3 pairs converted and installed**; 60 older-profile identities remain. |
 | `effects` | A | 12 / 12 | 0 / 16 / 6 / 0 | D 10, I 10, IB 2 | Emissive/transparent. **All 16 SM2 family pairs are in the installed default-off producer**; actual draws require the qualified additive state gate. The six SM1 family incidences are in the qualified deduplicated nine-pair helper but remain outside production composition/admission. |
 | `engine` | A | 10 / 7 | 0 / 6 / 6 / 0 | D 5, I 5, IB 2 | Emissive/transparent. **All six SM2 family pairs are in the installed default-off producer**; actual draws require the qualified additive state gate. The six SM1 family incidences are in the qualified deduplicated nine-pair helper but remain outside production composition/admission. |
-| `glass` | A | 18 / 16 | 6 / 12 / 12 / 0 | D 30 | [Reflective lit scene material](glass-materials.md); six SM3 pairs are implemented and reviewed in main source, with GPU/live/install pending; 24 older pairs remain unimplemented. Run 27 proves an opaque population for one SM3 pair and all effect defaults are opaque, but actual draw state remains authoritative. The six SM3 pairs can use opaque admission when its gates pass; any blended use needs the matching ordered-composition contract. |
+| `glass` | A | 18 / 16 | 6 / 12 / 12 / 0 | D 30 | [Reflective lit scene material](glass-materials.md); six SM3 pairs are implemented, reviewed and GPU/live qualified in main source, with installation/gameplay pending; 24 older pairs remain unimplemented. Run 27 proves an opaque population for one SM3 pair and all effect defaults are opaque, but actual draw state remains authoritative. The six SM3 pairs can use opaque admission when its gates pass; any blended use needs the matching ordered-composition contract. |
 | `gui2d` | B | 4 / 4 | 0 / 0 / 4 / 0 | D 2, I 2 | UI instances require no scene-material conversion. Two exact pairs are also `nebula`; exclude only from proved UI ownership, never by hash alone. |
 | `khaak` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 converted and installed**: SM3 D/B, shared with the next three listed shared families. The other 84 family pairs remain. |
 | `moon` | B | 11 / 7 | 2 / 3 / 6 / 0 | D 11 | Background/surface material; all 11 remain. Its older COLOR varyings need their own HDR-preservation contract. |
