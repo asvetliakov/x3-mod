@@ -1,10 +1,12 @@
 # Next material and emissive color-writer slice
 
-Decision brief, 2026-09-13, after first Argon DEFAULT qualification (source
-`a56e77e`, install checkpoint `b93eb6c`). No additional feature was implemented,
-installed or tested in game for this brief.
+Initial decision brief, 2026-09-13, after first Argon DEFAULT qualification
+(source `a56e77e`, install checkpoint `b93eb6c`). Sections 4 and 5 record the
+subsequent offline and runtime checkpoints. The shared DEFAULT expansion is now
+reviewed and installed; see the [current install record](../../verification/results/linear-material-install.json).
+Gameplay acceptance remains pending.
 
-**Next production slice: shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT.** It
+**Selected and now implemented: shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT.** It
 extends real linear material/lightmap-emissive evaluation through the existing
 opaque route. Engine/effects additive emission is the next architectural target;
 it needs linear composition and temporal reactivity before production integration.

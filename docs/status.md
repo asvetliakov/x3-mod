@@ -67,7 +67,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   twenty Argon and shared Khaak/Teladi/Xenon pairs. Qualification passes 313 GPU
   cases and 1,228 live-route checks across ownership/TAA, Reset, state blocks
   and reference retirement. The feature stays opt-in; gameplay acceptance is
-  run 6 in the brief queue. Bump-mapped materials are the next bounded study.
+  run 6 in the brief queue. The [Argon BUMPMAP design](architecture/linear-bump-materials.md)
+  identifies the next ten pairs, five sampler roles and a separate varying ABI;
+  exact offline conversion proof is the next step.
   Blended emissions need a separate linear-composition and temporal-reactivity
   design, as the [next-slice study](architecture/material-next-slice.md) explains.
   Targeted disassembly established native color/emissive scaling. Covered
