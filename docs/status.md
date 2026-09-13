@@ -36,13 +36,16 @@ gain during material diagnosis. Auto still mostly reaches its accepted +1.5-EV c
 The user reproduces dark docking-port parts becoming bright on approach and recalls
 it elsewhere. The one F8 burst shows stable routing and no common-shader fog-on
 transition, so it cannot establish the cause. No material bind failures occur;
-explicit refusals are still the not-yet-installed glass pair. Capture-only target
-root/parent association and native fade fields are being prepared.
+explicit refusals are still the not-yet-installed glass pair. Reviewed
+[capture-only target/root/parent and fade diagnostics](reverse-engineering/station-material-distance.md)
+are ready in source, pending the next combined install.
 
 The [33-site trace](reverse-engineering/selection-native-vm.md) isolates ten
 input-side target publications to voice playback/stream creation. Eight take
 424–512 ms, with virtually all time in creation. The user hears no target-name
-speech; failed creation and its media lifecycle are the next native investigation.
+speech. [Disassembly](reverse-engineering/voice-stream-creation.md) confirms null
+creation returns, existing voice files and an existing successful-stream cache;
+a standalone audio-construction probe is being prepared to isolate the failure.
 Other unexplained slow-frame residuals remain. The earlier
 [Run 27 delayed publisher](verification/run27-glow-selection.md) is a separate witness.
 

@@ -65,11 +65,16 @@ def summarize(trace, index, include_floats=False):
             current['object_context_matches_draw'] = all(
                 key in f and current_coordinates.get(key) is not None and
                 f[key] == current_coordinates[key] for key in ('device', 'frame', 'index'))
-        elif event in ('motion_input', 'motion_lifetime', 'motion_geometry') and current is not None:
+        elif event in ('motion_input', 'motion_lifetime', 'motion_geometry', 'object_evidence') and current is not None:
             current[event] = f
             current[event + '_matches_draw'] = all(
                 key in f and current_coordinates.get(key) is not None and
                 f[key] == current_coordinates[key] for key in ('device', 'frame', 'index'))
+        elif event in ('object_target', 'object_ancestry', 'object_ancestor', 'object_fade'):
+            # Frame/reset-scoped raw capture evidence. A positive ancestry status
+            # is not inferred here; IDs may be absent after explicit capacity/read refusal.
+            if 'device' in f and 'frame' in f:
+                frames.setdefault(frame_key(f), {'draws': [], 'complete': False}).setdefault(event, []).append(f)
         elif event in ('object_matrix', 'object_position', 'object_basis', 'buffer_content') and current is not None:
             # Exact bit strings and explicit off/unknown/pending statuses survive
             # even without --include-floats. Missing records are never invented.

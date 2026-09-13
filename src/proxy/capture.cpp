@@ -10,6 +10,7 @@
 #include "sampling_profiler.h"
 #include "scene_capture.h"
 #include "object_trace.h"
+#include "object_capture.h"
 #include "scene_hook.h"
 #include "compositor_bridge.h"
 #include "compositor_owner.h"
@@ -175,6 +176,7 @@ struct Device : Hooks {
     std::uint64_t bloom_prepared = 0, bloom_committed = 0;
     unsigned remaining = 0;
     bool capture = false;
+    object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     bool key_down = false;
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
@@ -401,7 +403,10 @@ void ownership_depth_info(IDirect3DDevice9* d, uint64_t device, uint64_t frame, 
         view.generation,view.source_epoch,view.copy_epoch,desc.Width,desc.Height,desc.Format,desc.Type,
         desc.Usage,desc.Pool,desc.MultiSampleType,desc.MultiSampleQuality);
 }
-void object_context(const Device& ctx) {
+void object_context(Device& ctx) {
+    // Capture-only checked reads and logging must not leak a Windows error.
+    const DWORD saved_error=GetLastError();
+    struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
     if (!object_trace::active()) return;
     object_trace::Snapshot value{};
     const bool scoped=object_trace::current(&value);
@@ -414,6 +419,33 @@ void object_context(const Device& ctx) {
         static_cast<unsigned long>(value.model),static_cast<unsigned long>(value.lod),
         static_cast<unsigned long>(value.flags12c),static_cast<unsigned long>(value.flags130));
     if(!scoped)return;
+    auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
+    auto& evidence=ctx.object_evidence;
+    if(evidence.begin(ctx.frame,ctx.reset_generation,read,0x608504)) {
+        const auto& t=evidence.selected;
+        log("object_target device=%llu frame=%llu reset=%llu epoch=%llu index=%llu status=%s registry=%08x active_handle=%u cockpit=%08x camera=%08x target=%08x target_id=%u root=%08x root_handle=%u",
+            ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,object_capture::name(t.status),t.registry,t.handle,t.cockpit,t.camera,t.target,t.target_id,t.root,t.root_handle);
+    }
+    unsigned ancestry_id=0,camera_id=0;bool fresh=false;
+    if(value.valid&object_trace::Node) {
+        ancestry_id=evidence.node(std::uint32_t(value.node),value.node_handle,value.parent,fresh);
+        if(fresh) {
+            const auto a=object_capture::ancestry(read,std::uint32_t(value.node),value.node_handle,value.parent,evidence.selected);
+            log("object_ancestry device=%llu frame=%llu reset=%llu epoch=%llu index=%llu id=%u status=%s count=%u",ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,ancestry_id,object_capture::name(a.status),a.count);
+            for(unsigned i=0;i<a.count;++i)log("object_ancestor device=%llu frame=%llu reset=%llu epoch=%llu id=%u link=%u node=%08x handle=%u",ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ancestry_id,i,a.links[i].node,a.links[i].handle);
+        }
+    }
+    if(value.valid&object_trace::Camera) {
+        camera_id=evidence.camera(std::uint32_t(value.camera),value.camera_handle,fresh);
+        if(fresh) {
+            const auto f=object_capture::fade(read,std::uint32_t(value.camera),0x606f34);
+            log("object_fade device=%llu frame=%llu reset=%llu epoch=%llu index=%llu id=%u camera=%08x handle=%u valid=%u context=%08x flags270=%08x position=%08x,%08x,%08x near36c=%08x far370=%08x scale_bits=%08x config768=%08x",
+                ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,camera_id,std::uint32_t(value.camera),value.camera_handle,f.valid,f.context,f.flags,f.position[0],f.position[1],f.position[2],f.near_bits,f.far_bits,f.scale_bits,f.config);
+        }
+    }
+    log("object_evidence device=%llu frame=%llu reset=%llu epoch=%llu index=%llu node_valid=%u parent=%08x alpha13c=%08x ancestry_id=%u ancestry_capacity=%u camera_valid=%u fade_id=%u fade_capacity=%u",
+        ctx.id,ctx.frame,ctx.reset_generation,evidence.epoch,ctx.draws,bool(value.valid&object_trace::Node),value.parent,value.alpha13c,ancestry_id,
+        bool(value.valid&object_trace::Node)&&!ancestry_id,bool(value.valid&object_trace::Camera),camera_id,bool(value.valid&object_trace::Camera)&&!camera_id);
     const auto rows=[&](const char* role,const uint32_t* bits,unsigned count){
         for(unsigned row=0;row<count;++row)
             log("object_matrix role=%s row=%u bits=%08lx,%08lx,%08lx,%08lx",role,row,
@@ -455,7 +487,7 @@ void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT
         }
     }
     if (SUCCEEDED(d->GetDepthStencilSurface(&rt)) && rt) { surface_info("depth",rt); rt->Release(); }
-    for (auto state : {D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_ALPHATESTENABLE,
+    for (auto state : {D3DRS_FOGENABLE,D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_ALPHATESTENABLE,
                        D3DRS_ALPHAREF,D3DRS_ALPHAFUNC,D3DRS_ALPHABLENDENABLE,D3DRS_SRCBLEND,
                        D3DRS_DESTBLEND,D3DRS_BLENDOP,D3DRS_CULLMODE,D3DRS_COLORWRITEENABLE,
                        D3DRS_SRGBWRITEENABLE,D3DRS_SEPARATEALPHABLENDENABLE,
@@ -987,6 +1019,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     HookGuard lock;
     auto& ctx=*devices.at(d);
     game_phases::invalidate_device(); // includes a refused reentrant attempt
+    ctx.object_evidence.invalidate(); // diagnostic association also ends on refused Reset
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
     if(ctx.bloom_busy || ctx.motion_output.emission_operation_active())return D3DERR_INVALIDCALL;

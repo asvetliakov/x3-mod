@@ -13,6 +13,7 @@ struct Snapshot {
     uintptr_t mesh=0, node=0, camera=0, registry=0, engine=0;
     uint32_t node_handle=0, camera_handle=0, model=0, lod=0, flags12c=0, flags130=0;
     uint32_t position[3]{}, basis[9]{}, scale[4]{};
+    uint32_t parent=0, alpha13c=0; // capture-only copies from the existing node read
     uint32_t world[16]{}, world_basis[16]{}, view[16]{}, projection[16]{};
 };
 bool initialize(); // X3M_OBJECT_TRACE=1, exact executable SHA256 + code/site checks

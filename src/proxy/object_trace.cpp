@@ -182,6 +182,7 @@ bool current(Snapshot* out,bool matrices) {
     // Snapshot finite fixed-size regions only. No pointer walks or game strings.
     uint32_t node[0x150/4]{};
     if(read_memory(out->node,node,sizeof node)){
+        if(matrices){out->parent=node[0x18/4];out->alpha13c=node[0x13c/4];}
         out->valid|=Node;out->node_handle=node[0x28/4];out->model=node[0x140/4];out->lod=node[0x14c/4];out->flags12c=node[0x12c/4];out->flags130=node[0x130/4];
         std::memcpy(out->position,node+0xb0/4,sizeof out->position);out->scale[0]=node[0x70/4];
         std::memcpy(out->scale+1,node+0x80/4,12);

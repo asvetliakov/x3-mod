@@ -65,8 +65,8 @@ All 821 captured draws in the inspected common-fog shader families have VS b0
 false. One reviewed blended standard-BUMP draw per frame also has b0 false;
 blending alone does not prove distance fog. This burst therefore shows no
 same-node fade or material-admission transition explaining the screenshots.
-Capture-only target-root/parent association and native fade-field reporting
-are being prepared to resolve that missing evidence in one combined test.
+Reviewed [capture-only target/root/parent and native fade reporting](../reverse-engineering/station-material-distance.md)
+is ready in source to resolve that missing evidence in one combined test.
 
 The log ends on a complete newline without a fatal/device-lost record, and the
 game has exited. It has no explicit release/quit footer, so clean teardown is
@@ -116,6 +116,9 @@ stream creation and lifetime path, using the
 [existing native sites](../reverse-engineering/selection-native-vm.md), rather
 than another broad phase-tracing run.
 
-The user confirms that **no target-name speech played**. Targeted follow-up is
-checking the failed creation return path and media lifecycle; avoiding the pause
-by permanently suppressing speech would not resolve the underlying failure.
+The user confirms that **no target-name speech played**. Targeted
+[voice-path disassembly](../reverse-engineering/voice-stream-creation.md) confirms
+all 34 retained creations return null; both requested voice files exist, and
+native caching already retains successfully created streams. A standalone
+documented-API probe will isolate the first failing audio-construction stage.
+Permanently suppressing speech would not resolve the underlying failure.

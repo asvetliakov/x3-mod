@@ -22,6 +22,27 @@ def draw_summary(records, include_floats=False):
 
 
 class CaptureObjectSummaryTests(unittest.TestCase):
+    def test_capture_ancestry_is_raw_frame_scoped_and_never_inferred(self):
+        trace = '\n'.join([
+            'frame_begin device=1 frame=7', DRAW,
+            'object_target device=1 frame=7 reset=2 index=1 status=ready target=00100000 root=00200000 root_handle=9',
+            'object_ancestry device=1 frame=7 reset=2 index=1 id=1 status=read_failure count=1',
+            'object_ancestor device=1 frame=7 reset=2 id=1 link=0 node=00300000 handle=4',
+            'object_fade device=1 frame=7 reset=2 index=1 id=1 valid=0 near36c=00000000',
+            'object_evidence device=1 frame=7 reset=2 index=1 ancestry_id=1 parent=00200000 alpha13c=00000080',
+            'frame_end device=1 frame=7 draws=1 capture=1 present=00000000',
+            'frame_begin device=1 frame=8', DRAW.replace('frame=7', 'frame=8'),
+            'object_evidence device=1 frame=7 reset=2 index=1 ancestry_id=1',
+        ])
+        frames = summarize(trace, {}, False)['frames']
+        self.assertEqual(frames['1:7']['object_ancestry'][0]['status'], 'read_failure')
+        self.assertEqual(frames['1:7']['object_fade'][0]['valid'], '0')
+        self.assertEqual(frames['1:7']['object_ancestor'][0]['handle'], '4')
+        self.assertTrue(frames['1:7']['draws'][0]['object_evidence_matches_draw'])
+        self.assertFalse(frames['1:8']['draws'][0]['object_evidence_matches_draw'])
+        self.assertNotIn('object_target', frames['1:8'])
+        self.assertNotIn('object_ancestry', frames['1:8'])
+
     def test_motion_input_keeps_gates_and_requires_matching_scope(self):
         record = ('motion_input device=1 frame=7 index=1 blockers=00000200 proofs=30 '
                   'rows_hash=8000000000000001 lifetime_verified=0 vertex_finite_verified=0')
