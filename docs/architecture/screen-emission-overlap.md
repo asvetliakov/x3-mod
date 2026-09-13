@@ -119,6 +119,27 @@ lose successfully accepted source work; root explicitly has **not** accepted
 that as the production policy. Reporting native success or native fallback with
 only A/packed planes available would also be false.
 
+A conditional last-resort content recovery is possible with documented APIs:
+read each completed, non-MSAA FP16 plane into one reusable SYSTEMMEM surface,
+copy raw halfwords P_r.R/P_g.R/P_b.R/M.A into a CPU output buffer, refill that
+surface and upload it into already-bound B with UpdateSurface. Same dimensions
+and format, pitch-aware copies, successful locks/unlocks and a complete upload
+are mandatory. No float conversion or geometry replay is needed. This could
+overwrite a partial B assembly on a healthy device; it cannot repair a failed B
+bind, restore, ownership exchange or device loss. Existing after-EndScene
+readbacks do not qualify this in-scene round trip.
+
+This optional rung is **not selected for production**. Its four full readbacks
+and one upload move at least 37.5 MiB at 1280x768 or 79.1 MiB at 1920x1080,
+plus CPU combination and a GPU/CPU synchronization. Preallocated staging plus
+output storage would add 15/31.6 MiB respectively. Consider its actual in-scene
+qualification only if normal packed performance justifies this route; do not
+add it simply to claim unconditional failure recovery.
+[GetRenderTargetData](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-getrendertargetdata),
+[UpdateSurface](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-updatesurface)
+and [FP16 memory layout](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dformat)
+define the relevant portable API/bit-copy contracts.
+
 A future contract must prevent a later application call from observing private
 packed storage or falsely ready B, and must coordinate native restoration with
 logical target/owner publication. If the API itself refuses RT0 restoration,
