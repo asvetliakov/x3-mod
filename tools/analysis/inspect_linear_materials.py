@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Certify original Argon SM3 material conversion sites, without rewriting shaders.
+"""Certify bounded original SM3 DEFAULT material conversion sites, without rewriting shaders.
 
 Input: complete local archive programs and the existing derived motion inventory.
 Output: fingerprints, semantic operand locations and available resources only.
@@ -10,6 +10,7 @@ Transfer policy, new instructions and native/GPU equivalence remain future work.
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import sys
 
@@ -27,6 +28,12 @@ ORIGINALS = {
     'ps_7a0bb00a8070496a': ('5b1aa3fa94f127c6b36164cb164b114e97d279007ccd882416f2d6b9cd01c8fd', 1215),
     'ps_8d5b2ba0fb4d13bf': ('4f1a61cf0fb97d6328ede3e18d2b715727938062ae601e180382380a3279c4f0', 1183),
     'ps_dab93928f26906f7': ('b15be08d6adc08a50c9ac756300f091c9fb1a3ec756fb65a556cc523a5166221', 296),
+    'ps_3b94320087e81945': ('f4f228d05aef995c3a24a74ee4a494763103511f188a60cd695d8a1ec392a12c', 1264),
+    'ps_e3b7acc16da9932d': ('db4c2d86eddbb7a60ba69d55c10dc8f58bb1dadd123696ced0d093f5b4630c15', 1296),
+    'ps_7a14d4dcb28f27e5': ('ad5d2399d2f0dae0a8721eb2d33adee0fa1cc90d752d523aa18f63923886d2a3', 1187),
+    'ps_8ab6188a40ca15ea': ('0c6703bacf857148b3bf528e8d8814b05a2332ba1889f3274148c2283d73ce3e', 1219),
+    'ps_8df6143d0e77d92e': ('a2a2cc4d1b2f1ea0b6ff7b2382f41742c4b1b7bbe1706806ee2312ec0f88e821', 268),
+    'ps_e16a9806ee3544c3': ('85b9538879c97626c5181f24c07585810e99b13001c6e0c50d5b1b695a5bfee4', 300),
 }
 # Reviewed semantic sites: sampler instruction order s0/s1/s2/s3, affine RGB
 # completion (None when absent), COLOR0 clamp, directional register:consumers,
@@ -38,11 +45,26 @@ PIXELS = {
     '7a0bb00a8070496a': ((1151, 1138, 1197, 1184), 1171, 1160, {5: (1175,)}, 1206),
     '8d5b2ba0fb4d13bf': ((1119, 1106, 1165, 1152), 1139, 1128, {5: (1143,)}, 1174),
     'dab93928f26906f7': ((257, 236, 278, 265), None, 249, {2: (252,)}, 287),
+    '3b94320087e81945': ((1192, 1175, 1246, 1233), 1214, 1218, {5: (1170, 1183), 7: (1158, 1166)}, 1255),
+    'e3b7acc16da9932d': ((1224, 1207, 1278, 1265), 1246, 1250, {5: (1202, 1215), 7: (1190, 1198)}, 1287),
+    '7a14d4dcb28f27e5': ((1114, 1106, 1169, 1156), 1136, 1140, {5: (1147,)}, 1178),
+    '8ab6188a40ca15ea': ((1146, 1138, 1201, 1188), 1168, 1172, {5: (1179,)}, 1210),
+    '8df6143d0e77d92e': ((220, 204, 250, 237), None, 217, {2: (228,)}, 259),
+    'e16a9806ee3544c3': ((252, 236, 282, 269), None, 249, {2: (260,)}, 291),
 }
 BASE_VS = '53a0a641107ed76c'
 TOGGLE_VS = ('719856ce0c213220', 'badefd5143b3024f')
-PAIRS = {(BASE_VS, key) for key in tuple(PIXELS)[:2]} | {
-    (vs, key) for vs in TOGGLE_VS for key in tuple(PIXELS)[2:]}
+FAMILIES = {
+    'argon': {'pixels': list(PIXELS)[:6], 'production_status': 'qualified_a56e77e',
+              'aliases': ['argon'], 'coefficients': {'diffuse': 0.4000000059604645, 'specular_power': 5, 'cube': 1.0}},
+    'shared_default': {'pixels': list(PIXELS)[6:], 'production_status': 'offline_proof_only',
+                       'aliases': ['khaak', 'teladi', 'teladi_nodiff', 'xenon'],
+                       'coefficients': {'diffuse': 0.5, 'specular_power': 6, 'cube': 0.5}},
+}
+PIXEL_FAMILY = {key: family for family, record in FAMILIES.items() for key in record['pixels']}
+PAIRS = {(BASE_VS, key) for record in FAMILIES.values() for key in record['pixels'][:2]} | {
+    (vs, key) for vs in TOGGLE_VS for record in FAMILIES.values() for key in record['pixels'][2:]}
+
 
 
 def require(condition, reason):
@@ -256,10 +278,12 @@ def prove_vertex(decoded, loop):
 def prove_pixel(decoded, key):
     """Prove sampled alpha liveness and exact RGB/final output source shapes."""
     tex, affine, clamp, direct, final = PIXELS[key]
+    shared = PIXEL_FAMILY[key] == 'shared_default'
+    clamp_register = 'r2' if shared and (len(direct) == 2 or not affine) else 'r1'
     for sampler, at in enumerate(tex):
         expect(decoded, at, 'texld', ('r1' if sampler == 0 else 'r0', 'xyzw'),
                [('v4' if sampler == 3 else 'v1', 'xyzw'), (f's{sampler}', 'xyzw')], PP)
-    expect(decoded, clamp, 'mov', ('r1', 'xyz'), [('v0', 'xyzw')], PP + ('saturate',))
+    expect(decoded, clamp, 'mov', (clamp_register, 'xyz'), [('v0', 'xyzw')], PP + ('saturate',))
     affine_sites = []
     if affine:
         for lane, at, constant in zip('xyz', (affine - 8, affine - 4, affine), range(3)):
@@ -268,18 +292,18 @@ def prove_pixel(decoded, key):
         no_lane_writes(decoded, 'r3', 'y', affine - 4, affine + 4)
     # Both base directional branches independently consume each light RGB.
     if len(direct) == 2:
-        shift = final - 1251
+        shift = final - (1255 if shared else 1251)
         for at, op, dst, sources in [
             (1158, 'mul', ('r0', 'xyz'), [('r1', 'yyyy'), ('c7', 'xyzw')]),
-            (1166, 'mul', ('r1', 'xyz'), [('r2', 'wwww'), ('c7', 'xyzw')]),
-            (1170, 'mad', ('r2', 'xyz'), [('r0', 'wwww'), ('c5', 'xyzw'), ('r0', 'xyzw')]),
-            (1183, 'mad', ('r1', 'xyz'), [('r1', 'wwww'), ('c5', 'xyzw'), ('r1', 'xyzw')]),
+            (1166, 'mul', ('r2' if shared else 'r1', 'xyz'), [('r2', 'wwww'), ('c7', 'xyzw')]),
+            (1170, 'mad', ('r1' if shared else 'r2', 'xyz'), [('r0', 'wwww'), ('c5', 'xyzw'), ('r0', 'xyzw')]),
+            (1183, 'mad', ('r3' if shared else 'r1', 'xyz'), [('r1', 'wwww'), ('c5', 'xyzw'), ('r2' if shared else 'r1', 'xyzw')]),
         ]:
             expect(decoded, at + shift, op, dst, sources, PP)
     else:
         constant, offsets = next(iter(direct.items()))
         expect(decoded, offsets[0], 'mad', ('r1' if affine else 'r2', 'xyz'),
-               [('r0', 'wwww'), (f'c{constant}', 'xyzw'), ('r1', 'xyzw')], PP)
+               [('r0', 'wwww'), (f'c{constant}', 'xyzw'), (clamp_register, 'xyzw')], PP)
     lrp = tex[2] + 4
     expect(decoded, lrp, 'lrp', ('r2', 'w'),
            [('c3' if affine else 'c0', 'xxxx'), ('r0', 'wwww'), ('r1', 'wwww')], PP)
@@ -297,6 +321,164 @@ def prove_pixel(decoded, key):
             'interpolated_alpha_live_interval': [lrp, final + 4], 'affine_rgb_sites': affine_sites}
 
 
+def literal_component(decoded, register, component, expected):
+    """Read an actual DEF component, never CTAB/preshader or application data."""
+    import struct
+    definitions = [row['item'] for row in decoded.values() if row['item']['opcode'] == motion.DEF and
+                   motion.name_of(*motion.register_of(row['item']['words'][0])) == register]
+    require(len(definitions) == 1 and len(definitions[0]['words']) == 5, 'lobe definition missing')
+    definition = definitions[0]
+    value = struct.unpack('<f', struct.pack('<I', definition['words'][1 + 'xyzw'.index(component)]))[0]
+    require(value == expected, 'lobe coefficient literal changed')
+    return {'register': register, 'component': component, 'definition_dword': definition['dword'],
+            'literal_dword': definition['dword'] + 2 + 'xyzw'.index(component), 'value': value}
+
+
+def sixth_power(decoded, dot, multiplies, consume):
+    """Prove the reviewed scalar x²/x⁴/x⁶ chain and its last live consumer."""
+    dot_site = expect(decoded, dot, 'dp3', ('r0', 'w'), [('r1', 'xyzw'), ('r2', 'xyzw')], PP + ('saturate',))
+    live = {('r0', 'w'): (1, dot)}
+    sites = []
+    for at, expected_power in zip(multiplies, (2, 4, 6)):
+        row = site(decoded, at)
+        destination = row['destination']
+        require(row['opcode'] == 'mul' and destination and len(destination['mask']) == 1 and
+                destination['modifiers'] == list(PP) and len(row['sources']) == 2,
+                'specular power instruction changed')
+        exponents = []
+        for source in row['sources']:
+            swizzle = source['swizzle']
+            lane = (source['name'], swizzle[0])
+            require(len(set(swizzle)) == 1 and not source.get('relative') and
+                    source['source_modifier'] == 0 and lane in live, 'specular power source changed')
+            exponent, writer = live[lane]
+            no_lane_writes(decoded, lane[0], lane[1], writer, at)
+            exponents.append(exponent)
+        require(sum(exponents) == expected_power, 'specular power exponent changed')
+        result_lane = (destination['name'], destination['mask'])
+        live[result_lane] = (expected_power, at)
+        sites.append(row)
+    no_lane_writes(decoded, result_lane[0], result_lane[1], multiplies[-1], consume)
+    consumer = site(decoded, consume)
+    require(any(source['name'] == result_lane[0] and source['swizzle'] == result_lane[1] * 4
+                and source['source_modifier'] == 0 for source in consumer['sources']), 'sixth power result not consumed')
+    return {'power': 6, 'dot': dot_site, 'multiply_sites': sites,
+            'response_multiply': consumer, 'result_live_until_dword': consume}
+
+
+def prove_shared_lobe(decoded, key):
+    """Six individually bound shared-family shapes; no Argon offset reuse."""
+    require(PIXEL_FAMILY[key] == 'shared_default', 'not the shared DEFAULT family')
+    base = key in ('3b94320087e81945', 'e3b7acc16da9932d')
+    tex, affine, _, _, _ = PIXELS[key]
+    if base:
+        shift = 0 if key == '3b94320087e81945' else 32
+        half_reg, half_lane = ('c8', 'w') if shift == 0 else ('c9', 'x')
+        three_reg, three_lane = 'c8', 'z' if shift == 0 else 'w'
+        diffuse = expect(decoded, 1201 + shift, 'mad', ('r1', 'xyz'),
+                         [('r3', 'xyzw'), (half_reg, half_lane * 4), ('r4', 'xyzw')], PP)
+        cube = expect(decoded, 1229 + shift, 'mul', ('r2', 'xyz'),
+                      [('r0', 'xyzw'), (half_reg, half_lane * 4)], PP)
+        expect(decoded, 1126 + shift, 'mul', ('r3', 'w'), [('r2', 'wwww'), (three_reg, three_lane * 4)], PP + ('saturate',))
+        expect(decoded, 1154 + shift, 'mul', ('r1', 'z'), [('r1', 'wwww'), (three_reg, three_lane * 4)], PP + ('saturate',))
+        expect(decoded, 1179 + shift, 'mul', ('r0', 'w'), [('r0', 'xxxx'), (three_reg, three_lane * 4)], PP)
+        expect(decoded, 1134 + shift, 'mul', ('r1', 'y'), [('r1', 'wwww'), ('r3', 'wwww')], PP)
+        expect(decoded, 1162 + shift, 'mul', ('r0', 'w'), [('r0', 'wwww'), ('r1', 'zzzz')], PP)
+        powers = [sixth_power(decoded, 1093 + shift, [at + shift for at in (1097, 1101, 1109)], 1134 + shift),
+                  sixth_power(decoded, 1130 + shift, [at + shift for at in (1138, 1146, 1150)], 1162 + shift)]
+    else:
+        # dot, half DEF, packed swizzle, specular-strength DEF, lobe combine, cube scale
+        facts = {
+            '7a14d4dcb28f27e5': (1075, 'c6', 'w', 'zwzw', 'c6', 'z', 1123, 1152),
+            '8ab6188a40ca15ea': (1107, 'c6', 'y', 'xyzw', 'c7', 'w', 1155, 1184),
+            '8df6143d0e77d92e': (173, 'c3', 'y', 'xyzw', 'c3', 'x', 212, 233),
+            'e16a9806ee3544c3': (205, 'c4', 'y', 'xyzw', 'c3', 'w', 244, 265),
+        }
+        dot, half_reg, half_lane, packed_swizzle, three_reg, three_lane, lobe, cube_at = facts[key]
+        packed = 'r3' if affine else 'r1'
+        diffuse = expect(decoded, dot + 16, 'mul', (packed, 'xy'), [('r0', 'yyyy'), (half_reg, packed_swizzle)], PP)
+        # The packed X lane and the later mask multiply both use literal three.
+        packed_three = literal_component(decoded, half_reg, packed_swizzle[0], 3.0)
+        expect(decoded, dot + 24, 'mov', ('r0', 'w'), [(packed, 'xxxx')], PP + ('saturate',))
+        expect(decoded, dot + 27, 'mul', ('r1', 'w'), [('r0', 'zzzz'), ('r0', 'wwww')], PP)
+        expect(decoded, lobe, 'mad', ('r0', 'w'), [('r0', 'wwww'), (three_reg, three_lane * 4), (packed, 'yyyy')], PP)
+        cube = expect(decoded, cube_at, 'mul', ('r2' if affine else 'r3', 'xyz'),
+                      [('r0', 'xyzw'), (half_reg, half_lane * 4)], PP)
+        powers = [sixth_power(decoded, dot, [dot + 8, dot + 12, dot + 20], dot + 27)]
+    # The cube scalar modifies mask*albedo before the s3 sample multiply.
+    pre_cube = cube['instruction_dword'] - (8 if base else 9)
+    # Base: mask*albedo is eight DWORDs before cube scale. Single: the
+    # intervening directional MAD is five DWORDs, so the gap is nine.
+    expect(decoded, pre_cube, 'mul', ('r0', 'xyz'), [('r0', 'xxxx'), ('r3' if affine else 'r1', 'xyzw')], PP)
+    expect(decoded, tex[3] + 4, 'mul', ('r0', 'xyz'), [('r2' if affine else 'r3', 'xyzw'), ('r0', 'xyzw')], PP)
+    # Prove the links as well as isolated coefficients: sampled s1.x remains
+    # live until both specular weighting and mask*albedo, and every diffuse /
+    # specular producer survives until the exact consumer named below.
+    links = []
+
+    def live(register, lanes, producer, consumer, role):
+        for lane in lanes:
+            no_lane_writes(decoded, register, lane, producer, consumer)
+        links.append({'role': role, 'register': register, 'lanes': lanes,
+                      'producer_dword': producer, 'consumer_dword': consumer})
+
+    expect(decoded, tex[1], 'texld', ('r0', 'xyzw'), [('v1', 'xyzw'), ('s1', 'xyzw')], PP)
+    expect(decoded, tex[3], 'texld', ('r0', 'xyzw'), [('v4', 'xyzw'), ('s3', 'xyzw')], PP)
+    live('r0', 'x', tex[1], pre_cube, 'specular_mask_to_reflection')
+    live('r0', 'xyz', pre_cube, cube['instruction_dword'], 'masked_albedo_to_cube_scale')
+    live('r2' if affine else 'r3', 'xyz', cube['instruction_dword'], tex[3] + 4, 'scaled_albedo_to_cube_sample')
+    if base:
+        expect(decoded, 1117 + shift, 'dp3', ('r2', 'w'), [('r0', 'xyzw'), ('c6', 'xyzw')], PP + ('saturate',))
+        expect(decoded, 1142 + shift, 'dp3', ('r1', 'w'), [('r0', 'xyzw'), ('c4', 'xyzw')], PP + ('saturate',))
+        expect(decoded, 1158 + shift, 'mul', ('r0', 'xyz'), [('r1', 'yyyy'), ('c7', 'xyzw')], PP)
+        expect(decoded, 1166 + shift, 'mul', ('r2', 'xyz'), [('r2', 'wwww'), ('c7', 'xyzw')], PP)
+        expect(decoded, 1170 + shift, 'mad', ('r1', 'xyz'), [('r0', 'wwww'), ('c5', 'xyzw'), ('r0', 'xyzw')], PP)
+        expect(decoded, 1183 + shift, 'mad', ('r3', 'xyz'), [('r1', 'wwww'), ('c5', 'xyzw'), ('r2', 'xyzw')], PP)
+        expect(decoded, 1188 + shift, 'mul', ('r4', 'xyz'), [('r1', 'xyzw'), ('r0', 'wwww')], PP)
+        for register, lanes, producer, consumer, role in (
+            ('r2', 'w', 1117, 1126, 'light1_cosine_to_response'),
+            ('r3', 'w', 1126, 1134, 'light1_response_to_sixth_power'),
+            ('r2', 'w', 1117, 1166, 'light1_cosine_to_diffuse_rgb'),
+            ('r1', 'w', 1142, 1154, 'light0_cosine_to_response'),
+            ('r1', 'z', 1154, 1162, 'light0_response_to_sixth_power'),
+            ('r1', 'w', 1142, 1183, 'light0_cosine_to_diffuse_rgb'),
+            ('r1', 'y', 1134, 1158, 'light1_lobe_to_specular_rgb'),
+            ('r0', 'w', 1162, 1170, 'light0_lobe_to_specular_rgb'),
+            ('r0', 'xyz', 1158, 1170, 'light1_specular_to_rgb_sum'),
+            ('r2', 'xyz', 1166, 1183, 'light1_diffuse_to_rgb_sum'),
+            ('r1', 'xyz', 1170, 1188, 'specular_rgb_sum_to_mask'),
+            ('r0', 'x', 1175, 1179, 'specular_mask_to_strength'),
+            ('r0', 'w', 1179, 1188, 'scaled_mask_to_specular_rgb'),
+            ('r3', 'xyz', 1183, 1201, 'diffuse_rgb_sum_to_half_scale'),
+            ('r4', 'xyz', 1188, 1201, 'masked_specular_rgb_to_lobe_sum'),
+        ):
+            live(register, lanes, producer + shift, consumer + shift, role)
+    else:
+        direction = 'c4' if affine else 'c1'
+        expect(decoded, dot + 4, 'dp3', ('r0', 'y'), [('r0', 'xyzw'), (direction, 'xyzw')], PP + ('saturate',))
+        expect(decoded, tex[1] + 4, 'mul', ('r0', 'w'), [('r1', 'wwww'), ('r0', 'xxxx')], PP)
+        direct_register, direct_sites = next(iter(PIXELS[key][3].items()))
+        direct_at = direct_sites[0]
+        color_sum = 'r1' if affine else 'r2'
+        expect(decoded, direct_at, 'mad', (color_sum, 'xyz'),
+               [('r0', 'wwww'), (f'c{direct_register}', 'xyzw'), (color_sum, 'xyzw')], PP)
+        live('r0', 'y', dot + 4, dot + 16, 'cosine_to_packed_diffuse_response')
+        live(packed, 'x', dot + 16, dot + 24, 'packed_response_to_saturation')
+        live(packed, 'y', dot + 16, lobe, 'half_diffuse_to_lobe_sum')
+        live('r0', 'w', dot + 24, dot + 27, 'saturated_response_to_sixth_power')
+        live('r1', 'w', dot + 27, tex[1] + 4, 'specular_response_to_mask')
+        live('r0', 'x', tex[1], tex[1] + 4, 'specular_mask_to_response')
+        live('r0', 'w', tex[1] + 4, lobe, 'masked_specular_to_strength_and_diffuse_sum')
+        live('r0', 'w', lobe, direct_at, 'lobe_sum_to_light_rgb')
+    result = {'verified_producer_consumer_links': links,
+              'diffuse_and_cube_literal': literal_component(decoded, half_reg, half_lane, 0.5),
+              'specular_strength_literal': literal_component(decoded, three_reg, three_lane, 3.0),
+              'diffuse_coefficient_site': diffuse, 'cube_coefficient_site': cube, 'specular_power_chains': powers}
+    if not base:
+        result['packed_response_three_literal'] = packed_three
+    return result
+
+
 def inspect_program(code, identifier):
     require(identifier in ORIGINALS, 'unreviewed original')
     digest, count = ORIGINALS[identifier]
@@ -310,7 +492,7 @@ def inspect_program(code, identifier):
     profile = motion.profile(code, identifier, stage, '3_0')
     require(profile['parsed'] and profile['header_is_contiguous'] and profile['control_flow_balanced'], 'invalid original structure')
     loop = stage == 'vs' and key != 'badefd5143b3024f'
-    output = {'id': identifier, 'fnv1a64': key, 'sha256': digest, 'word_count': count,
+    output = {'id': identifier, 'families': list(FAMILIES) if stage == 'vs' else [PIXEL_FAMILY[key]], 'fnv1a64': key, 'sha256': digest, 'word_count': count,
               'header_end_dword': profile['header_end_dword'], 'end_dword': end,
               'opaque_comment_dword_count': count - 2 - sum(i['length'] + 1 for i in items),
               'budget': budget(profile, stage, loop),
@@ -361,6 +543,9 @@ def inspect_program(code, identifier):
         output['alpha_interpolation_site'] = site(decoded, tex[2] + 4)
         output['alpha_output_sites'] = [site(decoded, final + 4)]
         output['two_sided'] = 'vFace' in profile['declared_misc_registers']
+        output['lobe_coefficients'] = FAMILIES[PIXEL_FAMILY[key]]['coefficients']
+        if PIXEL_FAMILY[key] == 'shared_default':
+            output['lobe_proof'] = prove_shared_lobe(decoded, key)
         output['constraints'] = ['Keep diffuse affine transform in authored space; convert only after its final RGB lane.',
                                  'All texture fetches retain original partial precision. Diffuse r1.w and lightmap r0.w feed alpha interpolation; added color writes must be XYZ only.',
                                  'The specular texture red is data, not RGB color. Directional RGB is consumed before lighting multiplication at every listed source.',
@@ -372,11 +557,28 @@ def inspect_program(code, identifier):
     return output
 
 
+def prove_archive_coverage(inventory):
+    """Each named alias must independently cover its complete ten-pair family."""
+    for family in FAMILIES.values():
+        expected = {(vs, ps) for vs, ps in PAIRS if ps in family['pixels']}
+        require(len(expected) == 10, 'family pair contract changed')
+        for alias in family['aliases']:
+            basename = re.compile(re.escape(alias) + r'(?:2s|_000[01])?')
+            actual = {(row['vs'], row['ps']) for row in inventory['pairs']
+                      if 'DEFAULT' in row['effects']['techniques'] and '3_0' in row['effects']['profile_directories']
+                      and any(basename.fullmatch(name) for name in row['effects']['basenames'])}
+            require(actual == expected, f'{alias}: complete DEFAULT archive coverage changed')
+
+
 def inspect(directory, inventory_path):
     inventory_data = inventory_path.read_bytes()
     inventory = json.loads(inventory_data)
+    prove_archive_coverage(inventory)
     rows = [row for row in inventory['pairs'] if (row['vs'], row['ps']) in PAIRS]
-    require(len(rows) == 10 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
+    negative = [row for row in inventory['pairs'] if row['vs'] == BASE_VS and row['ps'] == '462342e3e5781384']
+    require(len(negative) == 1 and negative[0]['transformation_class'] == 'A_reference_registers' and
+            (BASE_VS, '462342e3e5781384') not in PAIRS, 'future negative witness changed')
+    require(len(rows) == 20 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
     require(all(row['transformation_class'] == 'A_reference_registers' for row in rows), 'motion class changed')
     depth = motion.depth_plan(inventory)
     codes = {key: (directory / f'{key}.bin').read_bytes() for key in ORIGINALS}
@@ -396,8 +598,9 @@ def inspect(directory, inventory_path):
             name = stage + '_' + row[stage]
             original = next(p for p in programs if p['id'] == name)
             require(inventory['programs'][name]['sha256'] == original['sha256'], 'stale motion program identity')
-        compact_pairs.append({'vs': row['vs'], 'ps': row['ps'],
+        compact_pairs.append({'vs': row['vs'], 'ps': row['ps'], 'family': PIXEL_FAMILY[row['ps']],
                               'archive_pass_occurrences': row['effects']['pass_occurrences'],
+                              'archive_aliases': row['effects']['basenames'],
                               'motion_class': 'A', 'current_depth_supported': True})
     stage_constraints = {}
     for program in programs:
@@ -406,7 +609,13 @@ def inspect(directory, inventory_path):
         require(stage not in stage_constraints or stage_constraints[stage] == constraints, 'inconsistent stage constraints')
         stage_constraints[stage] = constraints
         program['constraints_ref'] = stage
-    return {'schema': 1, 'stage_constraints': stage_constraints, 'scope': 'Argon SM3 DEFAULT original-site proof: 3 VS, 6 PS, 10 archive pairs. Offline preparation only.',
+    return {'schema': 1, 'stage_constraints': stage_constraints, 'scope': 'Bounded DEFAULT original-site proof: 3 shared VS, 12 PS, 20 archive pairs; six shared-default PS remain offline-only.',
+            'families': FAMILIES,
+            'pending_production_requirements': ['Extend only the six shared-default PS and ten explicit pairs after review; current production remains Argon-only.',
+                                                'New e3b7acc16da9932d is 1296 DWORDs, beyond current production 1292 guard. Requalify the bounded guard when extending.',
+                                                'Retain shared VS variant consistency and the existing o8/v7/TEXCOORD6 ABI; no varying allocator is introduced.'],
+            'future_negative_pair': {'vs': BASE_VS, 'ps': '462342e3e5781384', 'family': 'split', 'motion_class': 'A',
+                                     'note': 'Still uncovered after this pending slice; existing live fixture is unchanged.'},
             'offset_units': 'Zero-based DWORD positions in the ORIGINAL whole program, including opaque comments; end_dword/conversion_after_dword are exclusive.',
             'motion_inventory_sha256': hashlib.sha256(inventory_data).hexdigest(),
             'reserved_abi': {'vs_constants': [252, 255], 'vs_motion_output': 6, 'vs_depth_output': 7,
@@ -421,7 +630,7 @@ def inspect(directory, inventory_path):
             'limits': ['Identity binds all definitions, comments/preshaders and END. Only actual instructions are decoded.',
                        'Free resources exclude current motion, current-depth and selected material RGB/DEF reservations, including depth-off variants.',
                        'Relative VS constant availability assumes the existing runtime i0 light-count guard [0,8].',
-                       'The separate full-precision RGB varying and DEF reservations are a proved plan only. No production transformer, numeric HDR precision proof, runtime performance or GPU/native-Windows verification is provided.'],
+                       'This artifact proves original sites only. Argon runtime evidence remains its existing qualified checkpoint; the shared-default extension has no production/GPU/native-Windows qualification.'],
             'pairs': compact_pairs, 'programs': programs}
 
 

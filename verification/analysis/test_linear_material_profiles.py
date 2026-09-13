@@ -86,9 +86,9 @@ class LocalOriginalTests(unittest.TestCase):
         cls.report = linear.inspect(cls.directory, cls.inventory_path)
 
     def test_all_originals_pairs_and_checked_in_profile_reproduce(self):
-        self.assertEqual(len(self.report['programs']), 9)
-        self.assertEqual(len(self.report['pairs']), 10)
-        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 24)
+        self.assertEqual(len(self.report['programs']), 15)
+        self.assertEqual(len(self.report['pairs']), 20)
+        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 120)
         self.assertEqual(self.report, json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text()))
         serialized = json.dumps(self.report)
         for forbidden in ('"token"', '"words"', '"expected"', '"replacement"'):
@@ -251,6 +251,87 @@ class LocalOriginalTests(unittest.TestCase):
                     broken = dict(profile, **{key: value})
                     with self.subTest(id=original['id'], collision=key), self.assertRaisesRegex(ValueError, 'collision'):
                         linear.budget(broken, stage, original['id'] != 'vs_badefd5143b3024f')
+
+    def test_shared_family_coverage_and_future_negative_are_explicit(self):
+        pairs = [row for row in self.report['pairs'] if row['family'] == 'shared_default']
+        self.assertEqual(len(pairs), 10)
+        self.assertEqual(sum(row['archive_pass_occurrences'] for row in pairs), 96)
+        self.assertEqual(self.report['families']['shared_default']['production_status'], 'offline_proof_only')
+        self.assertEqual(self.report['future_negative_pair']['ps'], '462342e3e5781384')
+        self.assertNotIn((self.report['future_negative_pair']['vs'], '462342e3e5781384'), linear.PAIRS)
+        self.assertEqual(max(p['word_count'] for p in self.report['programs']), 1296)
+
+    def test_every_shared_lobe_rejects_mutations_without_a_hash_gate(self):
+        for key in linear.FAMILIES['shared_default']['pixels']:
+            original = self.decoded_original('ps_' + key)
+            proof = linear.prove_shared_lobe(original, key)
+            for mutation in ('half_literal', 'power_source', 'diffuse_opcode', 'cube_source',
+                             'response_source', 'specular_strength_literal', 'cosine_saturation',
+                             'mask_liveness', 'diffuse_liveness', 'mask_to_specular_source'):
+                broken = deepcopy(original)
+                if mutation in ('half_literal', 'specular_strength_literal'):
+                    literal = proof['diffuse_and_cube_literal' if mutation == 'half_literal' else 'specular_strength_literal']
+                    definition = broken[literal['definition_dword']]['item']
+                    words = list(definition['words'])
+                    words[literal['literal_dword'] - literal['definition_dword'] - 1] = struct.unpack(
+                        '<I', struct.pack('<f', 0.4 if mutation == 'half_literal' else 2.0))[0]
+                    definition['words'] = tuple(words)
+                elif mutation == 'power_source':
+                    at = proof['specular_power_chains'][0]['multiply_sites'][-1]['instruction_dword']
+                    broken[at]['sources'][0]['name'] = 'c0'
+                elif mutation == 'diffuse_opcode':
+                    at = proof['diffuse_coefficient_site']['instruction_dword']
+                    broken[at]['item']['opcode'] = 2
+                elif mutation == 'cube_source':
+                    at = proof['cube_coefficient_site']['instruction_dword']
+                    broken[at]['sources'][0]['name'] = 'r1'
+                elif mutation == 'cosine_saturation':
+                    link = next(link for link in proof['verified_producer_consumer_links']
+                                if link['role'] in ('light1_cosine_to_response', 'cosine_to_packed_diffuse_response'))
+                    broken[link['producer_dword']]['destination']['modifiers'].remove('saturate')
+                elif mutation == 'mask_liveness':
+                    sample_diffuse = linear.PIXELS[key][0][0]
+                    broken[sample_diffuse]['destination']['name'] = 'r0'
+                elif mutation == 'diffuse_liveness':
+                    link = next(link for link in proof['verified_producer_consumer_links']
+                                if link['role'] in ('diffuse_rgb_sum_to_half_scale', 'half_diffuse_to_lobe_sum'))
+                    at = next(at for at, row in broken.items()
+                              if link['producer_dword'] < at < link['consumer_dword'] and row['destination'])
+                    broken[at]['destination'].update(name=link['register'], mask=link['lanes'])
+                elif mutation == 'mask_to_specular_source':
+                    link = next(link for link in proof['verified_producer_consumer_links']
+                                if link['role'] in ('specular_rgb_sum_to_mask', 'specular_response_to_mask'))
+                    # Base: r4 producer must multiply the RGB sum by scaled
+                    # mask r0.w. Single: r0.w must multiply x6 response by s1.x.
+                    broken[link['consumer_dword']]['sources'][1]['swizzle'] = 'yyyy'
+                else:
+                    at = proof['specular_power_chains'][0]['response_multiply']['instruction_dword']
+                    broken[at]['sources'][0]['swizzle'] = 'xxxx'
+                with self.subTest(key=key, mutation=mutation), self.assertRaises(ValueError):
+                    linear.prove_shared_lobe(broken, key)
+            # Kill the still-live x^2 value before the third multiply. Checking
+            # the scalar proof directly makes this independent of other sites.
+            power = proof['specular_power_chains'][0]
+            broken = deepcopy(original)
+            third = power['multiply_sites'][-1]['instruction_dword']
+            second = power['multiply_sites'][1]['instruction_dword']
+            overwrite = next(at for at in broken if second < at < third)
+            source = broken[third]['sources'][0]
+            broken[overwrite]['destination'].update(name=source['name'], mask=source['swizzle'][0])
+            with self.subTest(key=key, mutation='power_liveness'), self.assertRaisesRegex(ValueError, 'intervening write'):
+                linear.sixth_power(broken, power['dot']['instruction_dword'],
+                                   [row['instruction_dword'] for row in power['multiply_sites']],
+                                   power['response_multiply']['instruction_dword'])
+
+    def test_each_alias_must_retain_every_shared_family_pair(self):
+        inventory = json.loads(self.inventory_path.read_text())
+        row = next(row for row in inventory['pairs'] if row['vs'] == linear.BASE_VS and row['ps'] == '3b94320087e81945')
+        self.assertEqual(set(row['effects']['basenames']), {'khaak', 'teladi', 'teladi_nodiff', 'xenon'})
+        row['effects']['basenames'].remove('teladi')
+        # Other aliases still retain this exact shader pair: a union-only
+        # coverage check would miss the broken Teladi contract.
+        with self.assertRaisesRegex(ValueError, 'teladi: complete DEFAULT archive coverage changed'):
+            linear.prove_archive_coverage(inventory)
 
     def test_stale_pair_splice_is_rejected(self):
         inventory = json.loads(self.inventory_path.read_text())

@@ -85,7 +85,8 @@ varyings and view-dependent mixing. Argon BUMPMAP offers more historical
 coverage (10 pairs, 1,896 draws) but adds alpha/green normal reconstruction,
 tangent/binormal mixing and per-pixel cube direction. Its reference pair
 `4944d81dfe531b37` / `ca6bfa4a6cca7e2a` already occupies o8/TEXCOORD6 and v7
-for depth, so it needs a generalized radiance-varying allocation first.
+for depth, so it needs a separately validated radiance-varying assignment. A bounded
+per-family ABI is sufficient; a general-purpose allocator is not a prerequisite.
 
 ## 2. Engine/effects: genuine additive emission needs a composition boundary
 
@@ -188,3 +189,24 @@ queries of the trace pinned in [material color inputs](../reverse-engineering/ma
 The private blend helper is `/tmp/x3-next-material-states.py`. Counts are historical
 only. No raw game payload, new manifest, Wine run, gameplay request or production
 change was produced.
+
+## 4. Offline proof checkpoint review
+
+Independent review approves the offline extension with no open finding. The
+derived profile now contains 15 programs and 20 pairs: the qualified nine-program,
+ten-pair Argon set remains unchanged apart from family/coefficient annotations,
+and the six new PS plus ten shared-family pairs are explicitly marked offline
+only. The proof follows saturated diffuse cosine, the x²/x⁴/x⁶ specular chain,
+sampled mask, exact 0.5 diffuse/cube coefficients and every final consumer for
+all six new programs. It separately proves original alpha, relative operands,
+resources and each Khaak/Teladi/Teladi_nodiff/Xenon alias's complete pair set.
+
+Review found and resolved two evidence gaps: the first lobe proof checked
+isolated coefficient sites without every intermediate producer/liveness link,
+and the first archive check proved only the aliases' union. Direct structural
+mutation tests now reject both classes. The two affected offline modules pass
+37 tests, including independent per-profile numerical discriminators. The
+production transformer fixture remains explicitly filtered to its exact nine
+Argon originals; the 1,296-DWORD maximum is a future production-bound change.
+No production source, prior GPU result, build, Wine run, game launch or install
+is part of this checkpoint.

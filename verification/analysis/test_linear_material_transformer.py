@@ -76,6 +76,17 @@ class LinearMaterialTransformerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.report = json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text())
+        # The report also contains a pending offline family. Production and this
+        # fixture remain bound to the exact nine qualified Argon originals.
+        implemented = {
+            'vs_53a0a641107ed76c', 'vs_719856ce0c213220', 'vs_badefd5143b3024f',
+            'ps_8759c7838bbc86c2', 'ps_63f96eba9eea7880', 'ps_593e5dea9b3457d5',
+            'ps_7a0bb00a8070496a', 'ps_8d5b2ba0fb4d13bf', 'ps_dab93928f26906f7',
+        }
+        cls.report['programs'] = [row for row in cls.report['programs'] if row['id'] in implemented]
+        if {row['id'] for row in cls.report['programs']} != implemented or not all(
+                'argon' in row['families'] for row in cls.report['programs']):
+            raise AssertionError('The exact nine implemented Argon profiles must remain present')
         cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
         if not all((cls.originals / (p['id'] + '.bin')).is_file() for p in cls.report['programs']):
             raise unittest.SkipTest('local nine-original archive corpus unavailable')

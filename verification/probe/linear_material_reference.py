@@ -1,4 +1,4 @@
-"""Float64 oracle for the first Argon linear material slice; never game code.
+"""Float64 oracle for the bounded DEFAULT linear material families; never game code.
 
 Equations are derived in docs/architecture/scene-linear-materials.md and
 material-color-inputs.md. This is a numerical reference, not a SM3 interpreter.
@@ -142,9 +142,12 @@ class PixelProfile:
     directions: int
     affine_color: bool
     two_sided: bool
+    diffuse_coefficient: float = DIFFUSE_COEFFICIENT
+    specular_power: int = 5
+    cube_coefficient: float = 1.0
 
 
-# Original game-program identities describe six derived contracts, not raw code.
+# Original game-program identities describe twelve derived contracts, not raw code.
 PROFILES = {
     "8759c7838bbc86c2": PixelProfile(2, True, False),
     "63f96eba9eea7880": PixelProfile(2, True, True),
@@ -152,6 +155,13 @@ PROFILES = {
     "7a0bb00a8070496a": PixelProfile(1, True, True),
     "8d5b2ba0fb4d13bf": PixelProfile(1, True, False),
     "dab93928f26906f7": PixelProfile(1, False, True),
+    # Shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT: offline proof only.
+    "3b94320087e81945": PixelProfile(2, True, False, 0.5, 6, 0.5),
+    "e3b7acc16da9932d": PixelProfile(2, True, True, 0.5, 6, 0.5),
+    "7a14d4dcb28f27e5": PixelProfile(1, True, False, 0.5, 6, 0.5),
+    "8ab6188a40ca15ea": PixelProfile(1, True, True, 0.5, 6, 0.5),
+    "8df6143d0e77d92e": PixelProfile(1, False, False, 0.5, 6, 0.5),
+    "e16a9806ee3544c3": PixelProfile(1, False, True, 0.5, 6, 0.5),
 }
 IDENTITY_AFFINE = ((1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0),
                    (0.0, 0.0, 1.0, 0.0))
@@ -274,13 +284,13 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
         cosine = _sat(_dot(normal, light.direction))
         reflected = tuple(2.0 * _dot(normal, light.direction) * n - l
                           for n, l in zip(normal, light.direction))
-        highlight = _sat(_dot(view, reflected)) ** 5
-        lobe = DIFFUSE_COEFFICIENT * cosine + 3.0 * mask * _sat(3.0 * cosine) * highlight
+        highlight = _sat(_dot(view, reflected)) ** contract.specular_power
+        lobe = contract.diffuse_coefficient * cosine + 3.0 * mask * _sat(3.0 * cosine) * highlight
         for i in range(3):
             directional[i] += lobe * decode(light.color[i]) * gains.direct
     vertex_rgb = _vector(varying.linear_rgb, 3, "linear vertex RGB")
     radiance = tuple(sanitize(albedo[i] * (vertex_rgb[i] + directional[i])
-                              + decode(cubemap[i]) * mask * albedo[i]
+                              + decode(cubemap[i]) * mask * albedo[i] * contract.cube_coefficient
                               + decode(lightmap[i]) * gains.lightmap_emissive)
                      for i in range(3))
     glow = _real(glow, "glow")

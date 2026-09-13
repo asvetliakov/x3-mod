@@ -1,4 +1,4 @@
-"""Analytical checks for the independently authored Argon color oracle."""
+"""Analytical checks for the independently authored bounded DEFAULT color oracle."""
 import math
 import json
 from pathlib import Path
@@ -61,9 +61,12 @@ class MaterialTests(unittest.TestCase):
                     len({source['name'] for source in row['directional_rgb_sources']}),
                     row['diffuse_affine_completion'] is not None,
                     row['two_sided'],
+                    row['lobe_coefficients']['diffuse'], row['lobe_coefficients']['specular_power'],
+                    row['lobe_coefficients']['cube'],
                 )
-        self.assertEqual(len(expected), 6)
-        self.assertEqual({key: (value.directions, value.affine_color, value.two_sided)
+        self.assertEqual(len(expected), 12)
+        self.assertEqual({key: (value.directions, value.affine_color, value.two_sided,
+                               value.diffuse_coefficient, value.specular_power, value.cube_coefficient)
                           for key, value in PROFILES.items()}, expected)
 
     def assertRGB(self, actual, expected, tolerance=1e-12):
@@ -86,7 +89,7 @@ class MaterialTests(unittest.TestCase):
         options.update(kwargs)
         return pixel(profile, varying, **options)
 
-    def test_all_six_contracts_retain_black_and_alpha(self):
+    def test_all_twelve_contracts_retain_black_and_alpha(self):
         for profile in PROFILES:
             with self.subTest(profile=profile):
                 result = self.sample(self.make_vertex(material_alpha=0.5), profile,
@@ -131,6 +134,37 @@ class MaterialTests(unittest.TestCase):
             self.assertRGB(actual, tuple(value * scale for value in base))
         doubled_native_strength = self.make_vertex((0.25, 1, 4))
         self.assertRGB(doubled_native_strength.linear_rgb, tuple(value * 2 for value in base))
+
+    def test_each_shared_profile_has_independent_half_diffuse_sixth_power_and_half_cube(self):
+        # Expectations here are analytical constants, independent of the
+        # profile JSON and oracle coefficient fields under test.
+        contracts = {
+            '3b94320087e81945': (2, True, False), 'e3b7acc16da9932d': (2, True, True),
+            '7a14d4dcb28f27e5': (1, True, False), '8ab6188a40ca15ea': (1, True, True),
+            '8df6143d0e77d92e': (1, False, False), 'e16a9806ee3544c3': (1, False, True),
+        }
+        colors = (0.5, 0.25, 1.0)
+        angled = vertex((0, 0, 0), (0, 0, 1), (math.sqrt(3), 0, 1), (0, 0, 0))
+        for profile, (count, affine, two_sided) in contracts.items():
+            with self.subTest(profile=profile):
+                lights = [DirectionalLight((0, 0, 1), colors)] + [DirectionalLight((0, 0, 1), (0, 0, 0))] * (count - 1)
+                diffuse = self.sample(self.make_vertex(), profile, directions=lights)
+                self.assertRGB(diffuse.linear_rgb, tuple(0.5 * color ** 2.2 for color in colors))
+                specular = self.sample(angled, profile, directions=lights, specular_mask=1)
+                self.assertRGB(specular.linear_rgb, tuple((0.5 + 3 * 0.5 ** 6) * color ** 2.2 for color in colors))
+                self.assertNotAlmostEqual(specular.linear_rgb[2], 0.5 + 3 * 0.5 ** 5)
+                cube = self.sample(self.make_vertex(), profile, diffuse=(0.25, 0.5, 0.75, 0.25),
+                                   specular_mask=0.5, cubemap=(0.5, 0.25, 1.0))
+                self.assertRGB(cube.linear_rgb, tuple(0.25 * a ** 2.2 * c ** 2.2
+                                                     for a, c in zip((0.25, 0.5, 0.75), (0.5, 0.25, 1))))
+                shifted = self.sample(self.make_vertex((1, 1, 1)), profile, diffuse=(0.2, 0.4, 0.6, 0.25),
+                                      affine=((0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 0.5)))
+                expected = (0.4, 0.2, 0.5) if affine else (0.2, 0.4, 0.6)
+                self.assertRGB(shifted.linear_rgb, tuple(x ** 2.2 for x in expected))
+                back = vertex((0, 0, 0), (0, 0, 1), (0, 0, -1), (0, 0, 0))
+                back_lights = [DirectionalLight((0, 0, -1), colors)] + [DirectionalLight((0, 0, -1), (0, 0, 0))] * (count - 1)
+                faced = self.sample(back, profile, face=-1, directions=back_lights, specular_mask=1)
+                self.assertRGB(faced.linear_rgb, tuple(3.5 * color ** 2.2 for color in colors) if two_sided else (0, 0, 0))
 
     def test_directional_lobe_has_fifth_power_and_independent_colors(self):
         varying = vertex((0, 0, 0), (0, 0, 1), (math.sqrt(3), 0, 1), (0, 0, 0))
