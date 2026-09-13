@@ -116,7 +116,9 @@ Proportional verification and evidence (user-requested workflow simplification,
 - Use one reviewer for the logical code change and its evidence when practical.
   Fix findings and rerun affected checks; do not create separate routine source,
   artifact and post-install review rounds. Escalate an actual mismatch or an
-  unresolved concern rather than adding checks to every checkpoint.
+  unresolved concern rather than adding checks to every checkpoint. If the
+  implementation agent has completed its turn, resume its task for review fixes;
+  sending it a message alone does not start another turn.
 - For an install candidate, one owner makes one clean build from reviewed
   production inputs and retains that DLL. Runners must not rebuild it implicitly.
   Select integration tests by changed dependencies; reserve full-project chains
