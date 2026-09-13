@@ -202,3 +202,77 @@ exact post-route WRAP4 reads in each case. The same retained seam also passes
 links the immutable full report and binary hashes. No rebuild occurred inside
 the runner. All three selected cases passed; the runner correctly reports
 PARTIAL rather than a whole-suite pass. Native Windows/gameplay remain untested.
+
+## Palette scalar transport extension
+
+The source candidate in `/tmp/x3-palette-live-wrap` combines the reviewed
+148-pair pure shader corpus with its required native scalar WRAP transport.
+This is a source/host checkpoint; GPU interpolation and retained-DLL live
+qualification remain pending. The [palette plan](linear-palette-materials.md)
+defines the exact original scalar carriers and their precision requirements.
+
+`Shadow` now caches the complete `LinearMaterialPairContract` at the existing
+shader setter/registration boundary. Mask, technique, transport count and both
+transport records clear together on invalidation or failed resynchronization.
+There is no new draw-time shader lookup. The selected transports are:
+
+| BUMPMAP shape | Original component | Relocated component |
+| --- | --- | --- |
+| Boron base/single | TEX6.X | TEX1.W |
+| Boron base only | TEX6.Y | TEX2.W |
+| Paranid | TEX7.X | TEX1.W |
+
+The existing stack transaction has room for six unique state snapshots:
+motion/depth, two scalar destinations and two sources. Actual Boron base uses
+five with depth enabled because its sources share TEX6. Each unique state is
+read once, and all reads finish before the first setter. Destination W takes
+only the source's original selected bit; destination XYZ and any other bits
+remain exact. The native source state is read-only. Multiple source references
+share a snapshot, so mutation order cannot affect their values. Invalid count,
+component, semantic, duplicate destination component or collision with a
+currently generated temporal semantic refuses before any setter.
+
+`route.linear_material`, established by the actual combined bind, selects the
+transport. A failed combined bind restores its partial changes and retries
+ordinary motion with that flag false; the later WRAP transaction then clears
+only the ordinary motion/depth states. A later transaction failure uses the
+existing complete rollback and native-submission guard. Attempted setters,
+including a mutation-before-failure backend, restore in reverse order. Failed
+restoration keeps the first HRESULT and quarantines submission until the
+existing successful Reset plus full-state resynchronization succeeds.
+
+All writes bypass the application shadow and restore per draw, including lazy
+target binding. Recorded setters, stateblock Apply and Reset retain their
+existing logical-state rules. The source adds no heap allocation or lock;
+bounds are two transport records and six snapshot slots. Setter calls occur
+only where the desired state differs, with one restoration per attempted write.
+The unchanged zero-temporal/no-transport path still uses only its original one
+or two snapshots.
+
+Focused host results: the four-test `verification.analysis.test_motion_wrap_states`
+module passes, with its affected transaction test rerun after tightening the
+real-family temporal-index witnesses. The final transaction run executes
+**34,773 assertions**. It covers exact Boron TEX7/TEX8 and Paranid TEX5/TEX8
+motion/depth combinations in both depth modes, all native source-bit cases,
+destination preservation, shared sources and cross-source aliases, every read
+and attempted-write failure position, reverse restoration and first-error
+retention. It composes the actual `bind_variant_pair` with the actual WRAP
+transaction to prove both combined-stage failures cancel the scalar remap.
+The independent malformed-contract checks execute before any API mutation.
+
+The single affected
+`verification.analysis.test_linear_material_live.LinearMaterialLiveTests.test_production_control_flow`
+test also passes. It retains the existing source-suppression and rollback
+witnesses and adds complete scalar-contract lifecycle checks: zero/one/two
+records, same-pointer re-registration, early-exit/exception invalidation before
+Release callbacks, recorded setters, Apply, failed shader resync, failed Reset
+and successful recovery. Unrelated CLI and numerical suites were not repeated.
+
+A cached Boron-base transaction (two scalar transports and depth) ran 200,000
+iterations at **41.37 ns/transaction**, with zero native getters/setters,
+allocations or shader lookups after initial cache fill. This is an optimized
+native-host synthetic diagnostic, not x86 game cost, GPU time or FPS. The two
+affected production translation units, `motion_output.cpp` and its `MotionRoute`
+consumer `capture.cpp`, cross-compile with x86 SSE2, four-byte incoming-stack
+realignment and warnings as errors. Objects are local `/tmp` outputs; no DLL
+was built, installed or executed for this source checkpoint.

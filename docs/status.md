@@ -120,7 +120,10 @@ isolated: 32 Boron/Paranid pairs and their independent reference are committed
 at `5e16c2f` in `/tmp/x3-material-boron-paranid`; the reviewed scalar WRAP
 integration is `110123b` in `/tmp/x3-palette-live-wrap`. The 3,541-case detached
 fixture in `/tmp/x3-palette-gpu` is under review and has not run on the GPU.
-Those 148-pair candidates are not installed.
+Both reviewed source packages are now integrated in main with six focused
+integration tests passing (including 34,773 WRAP assertions and the exposure
+handoff). The two affected proxy translation units compile for x86/SSE2. The
+148-pair source is not installed; run 7 still uses candidate `75dbbed` and 116 pairs.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

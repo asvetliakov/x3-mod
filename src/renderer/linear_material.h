@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -33,14 +34,23 @@ struct LinearBumpMaterialAbi {
     static constexpr unsigned rgb_usage_index = 1;
 };
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
+// A native scalar changes only its semantic/component carrier. The live
+// transaction must copy the original wrap bit to the destination component,
+// preserving other bits and restoring application state after the draw.
+struct LinearMaterialScalarTransport {
+    std::uint8_t source_texcoord = 0, source_component = 0;
+    std::uint8_t destination_texcoord = 0, destination_component = 0;
+};
 struct LinearMaterialPairContract {
     std::uint32_t sampler_mask = 0;
     bool bump = false; // Includes BUMPMAP_LOW; independent of sampler count.
+    std::array<LinearMaterialScalarTransport,2> scalar_transport{};
+    std::uint8_t scalar_transport_count = 0;
 };
 // One exact-pair lookup supplies both cached sampler admission and technique
 // telemetry. A zero mask is unsupported; technique alone never admits a draw.
 LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, std::uint64_t pixel) noexcept;
-// Exact 116 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
+// Exact 148 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.

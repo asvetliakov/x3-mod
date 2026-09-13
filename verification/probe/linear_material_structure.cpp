@@ -28,7 +28,7 @@ void write(const std::string& path,const Words& words) {
     require(bool(stream),"write local variant");
 }
 bool bump_program(const std::string& name) {
-    constexpr std::uint64_t ids[]={0x4944d81dfe531b37ull,0x19a246a56e9d9700ull,0x44c4a41ca92ae2e3ull,0xca6bfa4a6cca7e2aull,0x5e0a10fe752b6140ull,0x63379470db8d2a86ull,0x68915563dd0aac9aull,0xd086fde54698070cull,0xf17fffd88d134b04ull,0x0c1f3f0f440e4a0cull,0x4f052209611387f0ull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x99153c144030c396ull,0xabf3c0fad53456d8ull,0xb0f9313b77cc78eeull,0xc1452981fd0bff64ull,0xcf449bcb069aec4full,0xd514bf852d8a9c58ull,0xdff6a3d360603fa2ull,0xf1d14a7dbf7c6173ull,0x1ed1bf0fdec00e1aull,0x1f26d41bcb7dac1eull,0x2b04461d0dae038bull,0x78963cdc7c710e04ull,0xacc83ed2509d84a1ull,0xbdcdb3ab996ae4e0ull,0x22cc5b05a55ef61eull,0x3006f8030a467739ull,0x769c3814fc0efba8ull,0xd6e8bdde0e4c515full,0xe5ea78b8b0b0fe07ull,0xf42202faf57a3c89ull,0x042c9ae16f41feffull,0x3602b05ce11ca6ffull,0x5c823b8507fa1442ull,0x68f0dd6791fd7d3dull,0x8e58ac79b59b02b1ull,0xa6e1328c0bb3f401ull,0x167eb2d5629ab9d3ull,0x12b8a13f13fe8cfeull,0x330ceb9dd874ede2ull,0xd44db87778a43b61ull,0x550c2a4d4d3ed70full};
+    constexpr std::uint64_t ids[]={0x4944d81dfe531b37ull,0x19a246a56e9d9700ull,0x44c4a41ca92ae2e3ull,0xca6bfa4a6cca7e2aull,0x5e0a10fe752b6140ull,0x63379470db8d2a86ull,0x68915563dd0aac9aull,0xd086fde54698070cull,0xf17fffd88d134b04ull,0x0c1f3f0f440e4a0cull,0x4f052209611387f0ull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x99153c144030c396ull,0xabf3c0fad53456d8ull,0xb0f9313b77cc78eeull,0xc1452981fd0bff64ull,0xcf449bcb069aec4full,0xd514bf852d8a9c58ull,0xdff6a3d360603fa2ull,0xf1d14a7dbf7c6173ull,0x1ed1bf0fdec00e1aull,0x1f26d41bcb7dac1eull,0x2b04461d0dae038bull,0x78963cdc7c710e04ull,0xacc83ed2509d84a1ull,0xbdcdb3ab996ae4e0ull,0x22cc5b05a55ef61eull,0x3006f8030a467739ull,0x769c3814fc0efba8ull,0xd6e8bdde0e4c515full,0xe5ea78b8b0b0fe07ull,0xf42202faf57a3c89ull,0x042c9ae16f41feffull,0x3602b05ce11ca6ffull,0x5c823b8507fa1442ull,0x68f0dd6791fd7d3dull,0x8e58ac79b59b02b1ull,0xa6e1328c0bb3f401ull,0x167eb2d5629ab9d3ull,0x12b8a13f13fe8cfeull,0x330ceb9dd874ede2ull,0xd44db87778a43b61ull,0x550c2a4d4d3ed70full,0x57392213f62fef19ull,0x5c17a381b149b3b9ull,0xa804f173f693944aull,0x33388c8897d428a5ull,0xb4059ab6af8fc529ull,0x2a560f246c90fa64ull,0xa910daef935891ceull,0x62c180abe017e239ull,0xed44232013f67072ull,0xf286856c3f400377ull,0x18d372968af4a480ull,0x188c5ab9dbb98393ull,0x7e5e41276b3d7514ull,0x43c9405568d2226full,0x5e056627e9ff3a8dull,0xfce465befff2f623ull};
     const auto id=std::stoull(name.substr(3),nullptr,16);
     return std::find(std::begin(ids),std::end(ids),id)!=std::end(ids);
 }
@@ -101,9 +101,41 @@ int main(int argc,char** argv) {
             "ps_517540ae6d5e5410",
             "ps_7a0c3388065bb08d",
             "ps_d44db87778a43b61",
-            "ps_550c2a4d4d3ed70f"};
+            "ps_550c2a4d4d3ed70f",
+            "vs_29d7c575396ed280",
+            "vs_a420a010b0271479",
+            "vs_ea3d15b287892410",
+            "vs_57392213f62fef19",
+            "vs_5c17a381b149b3b9",
+            "vs_a804f173f693944a",
+            "vs_37e6956afd8b8d76",
+            "vs_2e0254dd999841c2",
+            "vs_a7cddf2c98d61117",
+            "vs_33388c8897d428a5",
+            "vs_b4059ab6af8fc529",
+            "vs_2a560f246c90fa64",
+            "ps_39eb3c2258a516e1",
+            "ps_57acf59d19c73791",
+            "ps_f917d48ee826da1f",
+            "ps_77a5b2d62fb3be48",
+            "ps_a910daef935891ce",
+            "ps_62c180abe017e239",
+            "ps_ed44232013f67072",
+            "ps_f286856c3f400377",
+            "ps_9d27e7ba242f3831",
+            "ps_e1acf8a03850acaf",
+            "ps_f646f03be5a8708d",
+            "ps_ebf41e1ace7af45b",
+            "ps_c997a37560e266df",
+            "ps_675f9077d8fd21c4",
+            "ps_18d372968af4a480",
+            "ps_188c5ab9dbb98393",
+            "ps_7e5e41276b3d7514",
+            "ps_43c9405568d2226f",
+            "ps_5e056627e9ff3a8d",
+            "ps_fce465befff2f623"};
         unsigned variants=0, instructions[2][2]{}, slots[2][2]{}, family_slots[2][2][2]{};
-        long long create_ns=0, family_create_ns[2]{};
+        long long create_ns=0, palette_create_ns=0, family_create_ns[2]{};
         unsigned family_creates[2]{};
         auto begin=std::chrono::steady_clock::now();
         for (unsigned program_index=0;program_index<std::size(names);++program_index) {
@@ -123,7 +155,7 @@ int main(int argc,char** argv) {
                     const auto create_begin=std::chrono::steady_clock::now();
                     const auto outcome=transform(original.data(),original.size(),config,result,depth);
                     const auto duration=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-create_begin).count();
-                    create_ns+=duration; family_create_ns[family]+=duration; ++family_creates[family];
+                    create_ns+=duration; if(program_index>=83) palette_create_ns+=duration; family_create_ns[family]+=duration; ++family_creates[family];
                     if (outcome!=LinearMaterialResult::Applied) std::cerr<<name<<" result="<<int(outcome)<<'\n';
                     require(outcome==LinearMaterialResult::Applied,"combined original admission");
                     unsigned executable=0, weighted=0;
@@ -139,7 +171,7 @@ int main(int argc,char** argv) {
                             // not silently inherit the common unit cost.
                             switch(op) {
                             case 1: case 2: case 4: case 5: case 6: case 7: case 8: case 9:
-                            case 10: case 11: case 12: case 35: case 42: case 43: case 46: case 88:
+                            case 10: case 11: case 12: case 14: case 15: case 35: case 42: case 43: case 46: case 88:
                                 weighted+=1; break;
                             case 18: case 39: case 90: weighted+=2; break;
                             case 32: case 36: case 38: case 40: weighted+=3; break;
@@ -186,7 +218,7 @@ int main(int argc,char** argv) {
                     transform(original.data(),original.size(),{-0.0f,-0.0f,-0.0f},negative,depth)==LinearMaterialResult::Applied && positive==negative,"gain signed-zero canonicalization");
             }
         }
-        const std::uint64_t vs[]={0x53a0a641107ed76cull,0x719856ce0c213220ull,0xbadefd5143b3024full,0x4944d81dfe531b37ull,0x19a246a56e9d9700ull,0x44c4a41ca92ae2e3ull,0x494fe349b8bc12ecull,0xb0602757fce6e870ull,0x0c223ad11bce02d5ull,0x233d17d26ce0c1fcull,0x167eb2d5629ab9d3ull,0x12b8a13f13fe8cfeull,0x330ceb9dd874ede2ull};
+        const std::uint64_t vs[]={0x53a0a641107ed76cull,0x719856ce0c213220ull,0xbadefd5143b3024full,0x4944d81dfe531b37ull,0x19a246a56e9d9700ull,0x44c4a41ca92ae2e3ull,0x494fe349b8bc12ecull,0xb0602757fce6e870ull,0x0c223ad11bce02d5ull,0x233d17d26ce0c1fcull,0x167eb2d5629ab9d3ull,0x12b8a13f13fe8cfeull,0x330ceb9dd874ede2ull,0x29d7c575396ed280ull,0xa420a010b0271479ull,0xea3d15b287892410ull,0x57392213f62fef19ull,0x5c17a381b149b3b9ull,0xa804f173f693944aull,0x37e6956afd8b8d76ull,0x2e0254dd999841c2ull,0xa7cddf2c98d61117ull,0x33388c8897d428a5ull,0xb4059ab6af8fc529ull,0x2a560f246c90fa64ull};
         const std::uint64_t ps[]={0x8759c7838bbc86c2ull,0x63f96eba9eea7880ull,0x593e5dea9b3457d5ull,
             0x7a0bb00a8070496aull,0x8d5b2ba0fb4d13bfull,0xdab93928f26906f7ull,
             0x3b94320087e81945ull,0xe3b7acc16da9932dull,0x7a14d4dcb28f27e5ull,
@@ -194,9 +226,9 @@ int main(int argc,char** argv) {
             0xca6bfa4a6cca7e2aull,0x5e0a10fe752b6140ull,0x63379470db8d2a86ull,
             0x68915563dd0aac9aull,0xd086fde54698070cull,0xf17fffd88d134b04ull,
             0x02606104fa59fb29ull,0x0c1f3f0f440e4a0cull,0x1d638938d93421b3ull,0x462342e3e5781384ull,0x4f052209611387f0ull,0x55826dc176afe464ull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x7c83ed50c9894e44ull,0x827d8d2d617bedceull,0x99153c144030c396ull,0xabf3c0fad53456d8ull,0xb0f9313b77cc78eeull,0xbd4d51c08486c6e0ull,0xc1452981fd0bff64ull,0xcf449bcb069aec4full,0xd514bf852d8a9c58ull,0xdb644b73b68c0547ull,0xde2dd381fa64193dull,0xdff6a3d360603fa2ull,0xe70adc744a38ca59ull,0xf1d14a7dbf7c6173ull,0xf6a501717c3e5ca8ull,0xff32b602a271c327ull,
-            0x1ed1bf0fdec00e1aull,0x1f26d41bcb7dac1eull,0x2b04461d0dae038bull,0x78963cdc7c710e04ull,0xacc83ed2509d84a1ull,0xbdcdb3ab996ae4e0ull,0x22cc5b05a55ef61eull,0x3006f8030a467739ull,0x769c3814fc0efba8ull,0xd6e8bdde0e4c515full,0xe5ea78b8b0b0fe07ull,0xf42202faf57a3c89ull,0x3755809bd40afc13ull,0x61418505e5d8f998ull,0x91b6c09eb47f8555ull,0xb5f1d4145171026bull,0xcc09f17db377fd9eull,0xef2bf556f207b8bdull,0x042c9ae16f41feffull,0x3602b05ce11ca6ffull,0x5c823b8507fa1442ull,0x68f0dd6791fd7d3dull,0x8e58ac79b59b02b1ull,0xa6e1328c0bb3f401ull,0x517540ae6d5e5410ull,0x7a0c3388065bb08dull,0xd44db87778a43b61ull,0x550c2a4d4d3ed70full};
+            0x1ed1bf0fdec00e1aull,0x1f26d41bcb7dac1eull,0x2b04461d0dae038bull,0x78963cdc7c710e04ull,0xacc83ed2509d84a1ull,0xbdcdb3ab996ae4e0ull,0x22cc5b05a55ef61eull,0x3006f8030a467739ull,0x769c3814fc0efba8ull,0xd6e8bdde0e4c515full,0xe5ea78b8b0b0fe07ull,0xf42202faf57a3c89ull,0x3755809bd40afc13ull,0x61418505e5d8f998ull,0x91b6c09eb47f8555ull,0xb5f1d4145171026bull,0xcc09f17db377fd9eull,0xef2bf556f207b8bdull,0x042c9ae16f41feffull,0x3602b05ce11ca6ffull,0x5c823b8507fa1442ull,0x68f0dd6791fd7d3dull,0x8e58ac79b59b02b1ull,0xa6e1328c0bb3f401ull,0x517540ae6d5e5410ull,0x7a0c3388065bb08dull,0xd44db87778a43b61ull,0x550c2a4d4d3ed70full,0x39eb3c2258a516e1ull,0x57acf59d19c73791ull,0xf917d48ee826da1full,0x77a5b2d62fb3be48ull,0xa910daef935891ceull,0x62c180abe017e239ull,0xed44232013f67072ull,0xf286856c3f400377ull,0x9d27e7ba242f3831ull,0xe1acf8a03850acafull,0xf646f03be5a8708dull,0xebf41e1ace7af45bull,0xc997a37560e266dfull,0x675f9077d8fd21c4ull,0x18d372968af4a480ull,0x188c5ab9dbb98393ull,0x7e5e41276b3d7514ull,0x43c9405568d2226full,0x5e056627e9ff3a8dull,0xfce465befff2f623ull};
         // Independent family/shape matrix, not derived from the production table.
-        struct Group { std::array<std::uint64_t,6> pixels; unsigned base_vs, toggle_vs, samplers; bool bump=false; };
+        struct Group { std::array<std::uint64_t,6> pixels; unsigned base_vs, toggle_vs, samplers; bool bump=false; unsigned palette_style=0; };
         const Group groups[]={
             {{0x8759c7838bbc86c2ull,0x63f96eba9eea7880ull,0x593e5dea9b3457d5ull,0x7a0bb00a8070496aull,0x8d5b2ba0fb4d13bfull,0xdab93928f26906f7ull},1,6,15}, // Argon DEFAULT
             {{0x3b94320087e81945ull,0xe3b7acc16da9932dull,0x7a14d4dcb28f27e5ull,0x8ab6188a40ca15eaull,0x8df6143d0e77d92eull,0xe16a9806ee3544c3ull},1,6,15}, // Shared DEFAULT
@@ -211,19 +243,34 @@ int main(int argc,char** argv) {
             {{0x3602b05ce11ca6ffull,0x8e58ac79b59b02b1ull,0x042c9ae16f41feffull,0x68f0dd6791fd7d3dull,0x5c823b8507fa1442ull,0xa6e1328c0bb3f401ull},8,48,31,true}, // Terran BUMP
             {{0x517540ae6d5e5410ull,0,0x7a0c3388065bb08dull,0,0,0},128,768,7}, // Asteroid DEFAULT
             {{0xd44db87778a43b61ull,0,0x550c2a4d4d3ed70full,0,0,0},1024,6144,15,true}, // Asteroid BUMP
+            {{0x39eb3c2258a516e1ull,0x57acf59d19c73791ull,0xf917d48ee826da1full,0x77a5b2d62fb3be48ull},8192,49152,15,false,1},
+            {{0xa910daef935891ceull,0x62c180abe017e239ull,0xed44232013f67072ull,0xf286856c3f400377ull},65536,393216,31,true,1},
+            {{0x9d27e7ba242f3831ull,0xe1acf8a03850acafull,0xf646f03be5a8708dull,0xebf41e1ace7af45bull,0xc997a37560e266dfull,0x675f9077d8fd21c4ull},524288,3145728,15,false,3},
+            {{0x18d372968af4a480ull,0x188c5ab9dbb98393ull,0x7e5e41276b3d7514ull,0x43c9405568d2226full,0x5e056627e9ff3a8dull,0xfce465befff2f623ull},4194304,25165824,31,true,3},
+
         };
         unsigned pair_count=0;
         for(unsigned v=0;v<std::size(vs);++v) for(unsigned p=0;p<std::size(ps);++p) {
-            unsigned expected_mask=0, memberships=0; bool expected_bump=false;
+            unsigned expected_mask=0, memberships=0; bool expected_bump=false; unsigned transport_count=0, transport_source=0;
             for(const auto& group:groups) for(unsigned shape=0;shape<6;++shape) if(group.pixels[shape]==ps[p]) {
                 ++memberships;
-                if((shape<2?group.base_vs:group.toggle_vs)&(1u<<v)) { expected_mask=group.samplers; expected_bump=group.bump; }
+                if((shape<2?group.base_vs:group.toggle_vs)&(1u<<v)) { expected_mask=group.samplers; expected_bump=group.bump;
+                    if(group.bump && group.palette_style) { transport_source=group.palette_style==3?7:6; transport_count=group.palette_style==1 && shape<2?2:1; }
+                }
             }
             require(memberships==1,"unique independently reviewed pixel shape");
             require(linear_material_pair_reviewed(vs[v],ps[p])==(expected_mask!=0),"exact pair and cross-family matrix");
             require(linear_material_sampler_mask(vs[v],ps[p])==expected_mask,"exact sampler contract");
             const auto contract=linear_material_pair_contract(vs[v],ps[p]);
             require(contract.sampler_mask==expected_mask && contract.bump==expected_bump,"technique independent of sampler mask");
+            require(contract.scalar_transport_count==transport_count,"exact scalar transport count");
+            for(unsigned scalar=0;scalar<2;++scalar) {
+                const auto& move=contract.scalar_transport[scalar];
+                if(scalar<transport_count)
+                    require(move.source_texcoord==transport_source && move.source_component==scalar &&
+                        move.destination_texcoord==scalar+1 && move.destination_component==3,"native wrap component remap contract");
+                else require(!move.source_texcoord&&!move.source_component&&!move.destination_texcoord&&!move.destination_component,"no inactive scalar transport");
+            }
             if(expected_mask) ++pair_count;
         }
         require(!linear_material_sampler_mask(0,ps[0]) && !linear_material_sampler_mask(vs[0],0),"unknown pair");
@@ -244,9 +291,10 @@ int main(int argc,char** argv) {
             require(linear_material_pixel_variant(negative_ps.data(),negative_ps.size(),{},material_ps,depth)==LinearMaterialResult::UnsupportedShader && material_ps==saved,"uncovered PS material refusal and rollback");
         }
         const auto elapsed=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-begin).count();
-        std::cout<<"{\"programs\":83,\"pairs\":"<<pair_count<<",\"variants\":"<<variants<<",\"checks\":"<<checks
+        std::cout<<"{\"programs\":115,\"pairs\":"<<pair_count<<",\"variants\":"<<variants<<",\"checks\":"<<checks
                  <<",\"elapsed_us_including_io_and_negative_checks\":"<<elapsed
                  <<",\"initial_creates_ns\":"<<create_ns
+                 <<",\"palette_initial_creates_ns\":"<<palette_create_ns
                  <<",\"create_counts_default_bump\":["<<family_creates[0]<<','<<family_creates[1]<<']'
                  <<",\"create_ns_default_bump\":["<<family_create_ns[0]<<','<<family_create_ns[1]<<']'
                  <<",\"weighted_slots_default_vs_ps_depth_off_on\":[["<<family_slots[0][0][0]<<','<<family_slots[0][0][1]<<"],["<<family_slots[0][1][0]<<','<<family_slots[0][1][1]<<"]]"

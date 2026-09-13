@@ -20,6 +20,61 @@ constexpr unsigned xyz = 7, xyzw = 15, identity = 0xe4;
 // Derived original-program contracts, including comments and END. The complete
 // original-site proof is docs/reverse-engineering/linear-material-profiles.json.
 // Only identities/offsets/resource facts are recorded here, never game bytes.
+// Palette operands name only proved RGB uses. Original mixed scalar DEF
+// lanes remain unmodified; these color literals are derived data, not bytecode.
+struct PaletteUse { unsigned operand, source_constant, swizzle; };
+struct PaletteProgram {
+    std::uint64_t hash;
+    std::array<PaletteUse,6> sources; // Px,Py,Pz,Pu,Pf,Pc; zero means absent.
+    std::array<unsigned,2> scalar_operand; // J/u11 original destination or source.
+};
+constexpr PaletteProgram palette_programs[] = {
+    {0x29d7c575396ed280ull,{{{},{},{},{},{},{}}},{0,0}},
+    {0xa420a010b0271479ull,{{{573,43,249},{569,44,228},{582,45,228},{591,46,228},{},{}}},{0,0}},
+    {0xea3d15b287892410ull,{{{528,21,228},{524,22,228},{537,23,228},{546,25,228},{},{}}},{0,0}},
+    {0x57392213f62fef19ull,{{{},{},{},{},{},{}}},{597,594}},
+    {0x5c17a381b149b3b9ull,{{{579,43,249},{571,44,228},{584,45,228},{594,46,228},{},{}}},{628,0}},
+    {0xa804f173f693944aull,{{{531,21,228},{523,22,228},{536,23,228},{546,25,228},{},{}}},{580,0}},
+    {0x37e6956afd8b8d76ull,{{{},{},{},{},{},{}}},{0,0}},
+    {0x2e0254dd999841c2ull,{{{},{},{},{},{},{}}},{0,0}},
+    {0xa7cddf2c98d61117ull,{{{},{},{},{},{},{}}},{0,0}},
+    {0x33388c8897d428a5ull,{{{},{},{},{},{},{}}},{583,0}},
+    {0xb4059ab6af8fc529ull,{{{},{},{},{},{},{}}},{583,0}},
+    {0x2a560f246c90fa64ull,{{{},{},{},{},{},{}}},{532,0}},
+    {0x39eb3c2258a516e1ull,{{{343,6,228},{335,7,228},{352,8,228},{361,10,228},{370,11,228},{400,9,228}}},{0,0}},
+    {0x57acf59d19c73791ull,{{{375,7,228},{367,8,228},{384,9,228},{393,11,228},{402,12,228},{432,10,228}}},{0,0}},
+    {0xf917d48ee826da1full,{{{},{},{},{},{258,5,228},{288,4,228}}},{0,0}},
+    {0x77a5b2d62fb3be48ull,{{{},{},{},{},{290,6,228},{320,5,228}}},{0,0}},
+    {0xa910daef935891ceull,{{{419,7,228},{411,8,228},{428,9,228},{437,11,228},{442,12,228},{467,10,228}}},{451,436}},
+    {0x62c180abe017e239ull,{{{445,7,228},{437,8,228},{454,9,228},{463,11,228},{468,12,228},{493,10,228}}},{477,462}},
+    {0xed44232013f67072ull,{{{},{},{},{},{330,6,228},{355,5,228}}},{339,0}},
+    {0xf286856c3f400377ull,{{{},{},{},{},{356,6,228},{381,5,228}}},{365,0}},
+    {0x9d27e7ba242f3831ull,{{{1165,6,228},{1157,7,228},{1174,8,228},{},{1188,10,228},{}}},{0,0}},
+    {0xe1acf8a03850acafull,{{{1191,6,228},{1183,7,228},{1200,8,228},{},{1214,10,228},{}}},{0,0}},
+    {0xf646f03be5a8708dull,{{{1165,6,228},{1157,7,228},{1174,8,228},{},{1188,10,228},{}}},{0,0}},
+    {0xebf41e1ace7af45bull,{{{1191,6,228},{1183,7,228},{1200,8,228},{},{1214,10,228},{}}},{0,0}},
+    {0xc997a37560e266dfull,{{{263,4,228},{255,5,228},{272,6,228},{},{282,8,228},{}}},{0,0}},
+    {0x675f9077d8fd21c4ull,{{{289,4,228},{281,5,228},{298,6,228},{},{308,8,228},{}}},{0,0}},
+    {0x18d372968af4a480ull,{{{1236,6,228},{1228,7,249},{1245,8,228},{},{1259,10,228},{}}},{1280,0}},
+    {0x188c5ab9dbb98393ull,{{{1262,6,228},{1254,7,249},{1271,8,228},{},{1285,10,228},{}}},{1306,0}},
+    {0x7e5e41276b3d7514ull,{{{1236,6,228},{1228,7,249},{1245,8,228},{},{1259,10,228},{}}},{1280,0}},
+    {0x43c9405568d2226full,{{{1262,6,228},{1254,7,249},{1271,8,228},{},{1285,10,228},{}}},{1306,0}},
+    {0x5e056627e9ff3a8dull,{{{334,4,228},{326,5,228},{343,6,228},{},{348,8,228},{}}},{361,0}},
+    {0xfce465befff2f623ull,{{{360,3,228},{352,4,249},{369,5,228},{},{374,8,228},{}}},{387,0}},
+};
+constexpr Word palette_color_bits[2][6][3] = {
+    {{0x3e189899u,0x3edededfu,0x3eeaeaebu},{0x3f3ebebfu,0x3ecececfu,0x3dc8c8c9u},{0x3f088889u,0x3f0d8d8eu,0x3eeaeaebu},{0x3ea2a2a3u,0x3f7dfdfeu,0x3f70f0f1u},{0x3f179798u,0x3f3bbbbcu,0x3e949495u},{0x3ee0e0e1u,0x3f24a4a5u,0x3f37b7b8u}},
+    {{0x3f09898au,0x3f179798u,0x3f31b1b2u},{0x3e929293u,0x3ec2c2c3u,0x3ecececfu},{0x3edcdcddu,0x3e6cecedu,0x3dc8c8c9u},{0x00000000u,0x00000000u,0x00000000u},{0x3ed0d0d1u,0x3f008081u,0x3f24a4a5u},{0x00000000u,0x00000000u,0x00000000u}},
+};
+constexpr Word palette_linear_bits[2][6][3] = {
+    {{0x3c78a190u,0x3e244b4eu,0x3e3877beu},{0x3f06005fu,0x3e0b5d6bu,0x3bc5f02bu},{0x3e806e22u,0x3e8b0c33u,0x3e3877beu},{0x3da449ffu,0x3f7b9a80u,0x3f600904u},{0x3ea1aba8u,0x3f016406u,0x3d86a9f9u},{0x3e27916bu,0x3ec1e1dbu,0x3ef6c272u}},
+    {{0x3e828455u,0x3ea1aba8u,0x3ee54f54u},{0x3d82b15fu,0x3df440b1u,0x3e0b5d6bu},{0x3e210e33u,0x3d239fa4u,0x3bc5f02bu},{0x00000000u,0x00000000u,0x00000000u},{0x3e0e5be7u,0x3e60c9c8u,0x3ec1e1dbu},{0x00000000u,0x00000000u,0x00000000u}},
+};
+const PaletteProgram* palette_program(std::uint64_t hash) noexcept {
+    for (const auto& p:palette_programs) if (p.hash==hash) return &p;
+    return nullptr;
+}
+
 struct Pixel {
     std::uint64_t hash;
     unsigned words;
@@ -29,7 +84,7 @@ struct Pixel {
     unsigned affine_end, clamp, final_rgb, clamp_temporary;
     unsigned light0, light1; // light1 == 0 means the one-directional contract.
     std::array<unsigned, 4> color_source; // ORIGINAL source operand DWORDs.
-    std::array<unsigned, 13> rgb; // Full-precision radiance destinations only.
+    std::array<unsigned, 24> rgb; // Full-precision radiance destinations only.
     bool bump = false;
     // Two standard DEFAULT base pairs retain the temporal registry's TEX7
     // depth semantic. Zero uses ordinary class A/B TEX5/6; RGB uses COLOR1.
@@ -37,6 +92,7 @@ struct Pixel {
     // Asteroid base/toggle DEFAULT/BUMP use four proved layouts and a
     // base/detail texture product instead of the hull cube/lightmap tail.
     unsigned asteroid_layout = 0;
+    unsigned palette_style = 0; // Boron base=1, Boron single=2, Paranid=3.
 };
 constexpr Pixel pixels[] = {
     {0x8759c7838bbc86c2ull,1260,{1197,1175,1242,1229},1217,1206,1251,1,5,7,
@@ -179,11 +235,53 @@ constexpr Pixel pixels[] = {
      {399,404,358,391},{355,388,396,401,410,415,418,426,434,443},true,0,3},
     {0x550c2a4d4d3ed70full,374,{356,254,331,348},0,340,369,0,1,0,
      {346},{340,343,352,360,369},true,0,4},
+
+    {0x39eb3c2258a516e1ull,432,{372,303,414,401,0},0,325,423,3,2,4,
+     {301,314,256,289},{253,286,298,311,316,320,325,332,340,349,358,363,367,376,380,384,388,392,397,405,409,423},false,0,0,1},
+    {0x57acf59d19c73791ull,464,{404,335,446,433,0},0,357,455,3,2,4,
+     {333,346,288,321},{285,318,330,343,348,352,357,364,372,381,390,395,399,408,412,416,420,424,429,437,441,455},false,0,0,1},
+    {0xf917d48ee826da1full,320,{260,218,302,289,0},0,243,311,1,2,0,
+     {253},{243,250,255,264,268,272,276,280,285,293,297,311},false,0,0,2},
+    {0x77a5b2d62fb3be48ull,352,{292,250,334,321,0},0,275,343,1,2,0,
+     {285},{275,282,287,296,300,304,308,312,317,325,329,343},false,0,0,2},
+    {0xa910daef935891ceull,500,{444,235,359,482,400},0,384,491,4,2,4,
+     {352,357,311,344},{308,341,349,354,367,375,384,392,408,416,425,434,439,448,452,456,460,464,468,473,477,491},true,0,0,1},
+    {0x62c180abe017e239ull,526,{470,243,385,508,426},0,410,517,4,2,4,
+     {378,383,337,370},{334,367,375,380,393,401,410,418,434,442,451,460,465,474,478,482,486,490,494,499,503,517},true,0,0,1},
+    {0xed44232013f67072ull,388,{332,193,269,370,307},0,290,379,3,2,0,
+     {301},{290,298,327,336,340,344,348,352,356,361,365,379},true,0,0,2},
+    {0xf286856c3f400377ull,414,{358,201,295,396,333},0,316,405,3,2,0,
+     {327},{316,324,353,362,366,370,374,378,382,387,391,405},true,0,0,2},
+    {0x9d27e7ba242f3831ull,1259,{1176,1134,1241,1228,0},1198,1151,1250,5,5,0,
+     {1205},{1151,1154,1162,1171,1185,1202,1207,1211,1215,1219,1224,1232,1236,1250},false,0,0,3},
+    {0xe1acf8a03850acafull,1285,{1202,1160,1267,1254,0},1224,1177,1276,5,5,0,
+     {1231},{1177,1180,1188,1197,1211,1228,1233,1237,1241,1245,1250,1258,1262,1276},false,0,0,3},
+    {0xf646f03be5a8708dull,1259,{1176,1134,1241,1228,0},1198,1151,1250,5,5,0,
+     {1205},{1151,1154,1162,1171,1185,1202,1207,1211,1215,1219,1224,1232,1236,1250},false,0,0,3},
+    {0xebf41e1ace7af45bull,1285,{1202,1160,1267,1254,0},1224,1177,1276,5,5,0,
+     {1231},{1177,1180,1188,1197,1211,1228,1233,1237,1241,1245,1250,1258,1262,1276},false,0,0,3},
+    {0xc997a37560e266dfull,340,{284,232,322,309,0},0,249,331,2,2,0,
+     {277},{249,252,260,269,274,279,288,292,296,300,305,313,317,331},false,0,0,3},
+    {0x675f9077d8fd21c4ull,366,{310,258,348,335,0},0,275,357,2,2,0,
+     {303},{275,278,286,295,300,305,314,318,322,326,331,339,343,357},false,0,0,3},
+    {0x18d372968af4a480ull,1321,{1247,1107,1183,1303,1221},1269,1204,1312,3,5,0,
+     {1215},{1204,1212,1225,1233,1242,1256,1273,1277,1281,1285,1289,1294,1298,1312},true,0,0,3},
+    {0x188c5ab9dbb98393ull,1347,{1273,1115,1209,1329,1247},1295,1230,1338,3,5,0,
+     {1241},{1230,1238,1251,1259,1268,1282,1299,1303,1307,1311,1315,1320,1324,1338},true,0,0,3},
+    {0x7e5e41276b3d7514ull,1321,{1247,1107,1183,1303,1221},1269,1204,1312,3,5,0,
+     {1215},{1204,1212,1225,1233,1242,1256,1273,1277,1281,1285,1289,1294,1298,1312},true,0,0,3},
+    {0x43c9405568d2226full,1347,{1273,1115,1209,1329,1247},1295,1230,1338,3,5,0,
+     {1241},{1230,1238,1251,1259,1268,1282,1299,1303,1307,1311,1315,1320,1324,1338},true,0,0,3},
+    {0x5e056627e9ff3a8dull,402,{350,205,281,384,319},0,302,393,3,2,0,
+     {313},{302,310,323,331,340,345,354,358,362,366,370,375,379,393},true,0,0,3},
+    {0xfce465befff2f623ull,428,{376,213,307,410,345},0,328,419,3,2,0,
+     {339},{328,336,349,357,366,371,380,384,388,392,396,401,405,419},true,0,0,3},
 };
 struct Vertex {
     std::uint64_t hash; unsigned words; bool loop; bool bump = false;
     unsigned asteroid_layout = 0;
     unsigned point = 0, emissive = 0, alpha = 0, point_temporary = 0;
+    unsigned palette_style = 0, point_response = 0, point_accumulator = 0, alpha_temporary = 0;
 };
 constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
     {0x719856ce0c213220ull,526,true},{0xbadefd5143b3024full,481,false},
@@ -195,18 +293,40 @@ constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
     {0x233d17d26ce0c1fcull,472,false,false,2,397,401,455,1},
     {0x167eb2d5629ab9d3ull,566,true,true,3,431,446,537,1},
     {0x12b8a13f13fe8cfeull,518,false,true,4,409,413,485,0},
-    {0x330ceb9dd874ede2ull,563,true,true,4,428,443,530,1}};
+    {0x330ceb9dd874ede2ull,563,true,true,4,428,443,530,1},
+    {0x29d7c575396ed280ull,577,true,false,0,440,455,512,5,1,3,0,0},
+    {0xa420a010b0271479ull,605,true,false,0,458,473,530,5,2,3,0,0},
+    {0xea3d15b287892410ull,560,false,false,0,419,427,485,1,2,1,1,0},
+    {0x57392213f62fef19ull,617,true,true,0,449,464,539,1,1,3,0,2},
+    {0x5c17a381b149b3b9ull,648,true,true,0,487,514,539,1,2,2,1,0},
+    {0xa804f173f693944aull,600,false,true,0,452,465,491,3,2,0,3,0},
+    {0x37e6956afd8b8d76ull,563,true,false,0,440,455,512,5,3,3,0,0},
+    {0x2e0254dd999841c2ull,563,true,false,0,440,455,512,5,3,3,0,0},
+    {0xa7cddf2c98d61117ull,512,false,false,0,395,403,461,1,3,1,1,0},
+    {0x33388c8897d428a5ull,603,true,true,0,449,464,539,1,3,3,0,2},
+    {0xb4059ab6af8fc529ull,603,true,true,0,449,464,539,1,3,3,0,2},
+    {0x2a560f246c90fa64ull,552,false,true,0,404,412,488,0,3,0,0,2},
+};
 // Explicit archive pair contract: base shaders never gain toggle-VS admission
 // from table position. The live caller caches this allocation-free contract.
 constexpr bool bump_pixel(std::uint64_t hash) noexcept {
     for (const auto& pixel:pixels) if (pixel.hash==hash) return pixel.bump;
     return false;
 }
+constexpr LinearMaterialPairContract pair_contract(std::uint64_t hash, std::uint32_t mask) noexcept {
+    LinearMaterialPairContract result{mask,bump_pixel(hash)};
+    for (const auto& p:pixels) if (p.hash==hash && p.bump && p.palette_style) {
+        const auto source=static_cast<std::uint8_t>(p.palette_style==3 ? 7 : 6);
+        result.scalar_transport[0]={source,0,1,3}; result.scalar_transport_count=1;
+        if (p.palette_style==1) { result.scalar_transport[1]={source,1,2,3}; result.scalar_transport_count=2; }
+    }
+    return result;
+}
 struct Pair {
     std::uint64_t vertex, pixel;
     LinearMaterialPairContract contract;
     constexpr Pair(std::uint64_t v, std::uint64_t p, std::uint32_t mask=0x0f) noexcept
-        : vertex(v), pixel(p), contract{mask,bump_pixel(p)} {}
+        : vertex(v), pixel(p), contract(pair_contract(p,mask)) {}
 };
 constexpr Pair pairs[] = {
     {0x53a0a641107ed76cull,0x8759c7838bbc86c2ull},
@@ -325,6 +445,38 @@ constexpr Pair pairs[] = {
     {0x167eb2d5629ab9d3ull,0xd44db87778a43b61ull,0x0f},
     {0x12b8a13f13fe8cfeull,0x550c2a4d4d3ed70full,0x0f},
     {0x330ceb9dd874ede2ull,0x550c2a4d4d3ed70full,0x0f},
+    {0x29d7c575396ed280ull,0x39eb3c2258a516e1ull,0x0f},
+    {0x29d7c575396ed280ull,0x57acf59d19c73791ull,0x0f},
+    {0x2a560f246c90fa64ull,0x43c9405568d2226full,0x1f},
+    {0x2a560f246c90fa64ull,0x5e056627e9ff3a8dull,0x1f},
+    {0x2a560f246c90fa64ull,0x7e5e41276b3d7514ull,0x1f},
+    {0x2a560f246c90fa64ull,0xfce465befff2f623ull,0x1f},
+    {0x2e0254dd999841c2ull,0x675f9077d8fd21c4ull,0x0f},
+    {0x2e0254dd999841c2ull,0xc997a37560e266dfull,0x0f},
+    {0x2e0254dd999841c2ull,0xebf41e1ace7af45bull,0x0f},
+    {0x2e0254dd999841c2ull,0xf646f03be5a8708dull,0x0f},
+    {0x33388c8897d428a5ull,0x188c5ab9dbb98393ull,0x1f},
+    {0x33388c8897d428a5ull,0x18d372968af4a480ull,0x1f},
+    {0x37e6956afd8b8d76ull,0x9d27e7ba242f3831ull,0x0f},
+    {0x37e6956afd8b8d76ull,0xe1acf8a03850acafull,0x0f},
+    {0x57392213f62fef19ull,0x62c180abe017e239ull,0x1f},
+    {0x57392213f62fef19ull,0xa910daef935891ceull,0x1f},
+    {0x5c17a381b149b3b9ull,0xed44232013f67072ull,0x1f},
+    {0x5c17a381b149b3b9ull,0xf286856c3f400377ull,0x1f},
+    {0xa420a010b0271479ull,0x77a5b2d62fb3be48ull,0x0f},
+    {0xa420a010b0271479ull,0xf917d48ee826da1full,0x0f},
+    {0xa7cddf2c98d61117ull,0x675f9077d8fd21c4ull,0x0f},
+    {0xa7cddf2c98d61117ull,0xc997a37560e266dfull,0x0f},
+    {0xa7cddf2c98d61117ull,0xebf41e1ace7af45bull,0x0f},
+    {0xa7cddf2c98d61117ull,0xf646f03be5a8708dull,0x0f},
+    {0xa804f173f693944aull,0xed44232013f67072ull,0x1f},
+    {0xa804f173f693944aull,0xf286856c3f400377ull,0x1f},
+    {0xb4059ab6af8fc529ull,0x43c9405568d2226full,0x1f},
+    {0xb4059ab6af8fc529ull,0x5e056627e9ff3a8dull,0x1f},
+    {0xb4059ab6af8fc529ull,0x7e5e41276b3d7514ull,0x1f},
+    {0xb4059ab6af8fc529ull,0xfce465befff2f623ull,0x1f},
+    {0xea3d15b287892410ull,0x77a5b2d62fb3be48ull,0x0f},
+    {0xea3d15b287892410ull,0xf917d48ee826da1full,0x0f},
 };
 // Fixed family layouts, not a varying/temporary allocator. Asteroid's native
 // UV packing changes the existing motion/depth locations independently of
@@ -334,6 +486,9 @@ struct FamilyAbi { unsigned vertex_rgb, pixel_rgb, pixel_scratch;
     unsigned vertex_depth, pixel_depth, depth_texcoord; };
 constexpr FamilyAbi default_abi{8,7,9,6,5,4,7,6,5}, bump_abi{9,8,10,7,6,5,8,7,6};
 FamilyAbi family_abi(const Pixel& pixel) noexcept {
+    if (pixel.palette_style) return pixel.bump
+        ? FamilyAbi{8,7,10,9,8,pixel.palette_style==3?5u:7u,10,9,8}
+        : FamilyAbi{10,9,10,8,7,6,9,8,7};
     if (pixel.asteroid_layout==2) return {8,7,9,6,5,4,5,4,3};
     if (pixel.asteroid_layout==3) return {10,9,9,8,7,6,9,8,7};
     auto result=pixel.bump ? bump_abi : default_abi;
@@ -341,11 +496,12 @@ FamilyAbi family_abi(const Pixel& pixel) noexcept {
     return result;
 }
 unsigned temporal_temporary_base(const Pixel& pixel) noexcept {
+    if (pixel.palette_style) return pixel.bump || pixel.affine_end ? 6 : 5;
     if (pixel.asteroid_layout) return 5;
     return pixel.bump ? (pixel.light1 ? 7u : pixel.affine_end ? 6u : 5u) : 5u;
 }
-unsigned point_site(const Vertex& vertex) noexcept { return vertex.asteroid_layout ? vertex.point : (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
-unsigned emissive_site(const Vertex& vertex) noexcept { return vertex.asteroid_layout ? vertex.emissive : (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
+unsigned point_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style) ? vertex.point : (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
+unsigned emissive_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style) ? vertex.emissive : (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
 unsigned kind(Word token) noexcept { return ((token >> 28) & 7) | ((token >> 8) & 24); }
 unsigned index(Word token) noexcept { return token & 0x7ff; }
 unsigned mask(Word token) noexcept { return (token >> 16) & 15; }
@@ -409,7 +565,7 @@ struct Structure {
 bool body_shape(unsigned op, unsigned& operands, unsigned& slots, bool& destination) noexcept {
     destination=true; slots=1;
     switch (op) {
-    case mov: case 6: case 7: case abs_op: case 46: operands=2; return true;
+    case mov: case 6: case 7: case 14: case 15: case abs_op: case 46: operands=2; return true;
     case add: case mul: case 8: case 9: case min_op: case max_op: case slt:
         operands=3; return true;
     case mad: case cmp: operands=4; return true;
@@ -423,15 +579,15 @@ bool body_shape(unsigned op, unsigned& operands, unsigned& slots, bool& destinat
     default: return false;
     }
 }
-bool reserved_varying(unsigned number, bool vertex, const FamilyAbi& abi) noexcept {
+bool reserved_varying(unsigned number, bool vertex, const FamilyAbi& abi, bool relocated_rgb=false) noexcept {
     return number==(vertex?abi.vertex_motion:abi.pixel_motion) ||
         number==(vertex?abi.vertex_depth:abi.pixel_depth) ||
-        number==(vertex?abi.vertex_rgb:abi.pixel_rgb);
+        (!relocated_rgb && number==(vertex?abi.vertex_rgb:abi.pixel_rgb));
 }
 // This narrow SM3 walk excludes comments/DEF literal words from register scans.
 // The existing motion transformer still performs its independent full proof.
 bool structure(const Word* code, std::size_t words, bool vertex, Structure& result,
-               bool original, const FamilyAbi& abi, unsigned original_temp_count) {
+               bool original, const FamilyAbi& abi, unsigned original_temp_count, bool palette=false, bool relocated_rgb=false) {
     if (words < 2 || code[0] != (vertex ? 0xfffe0300u : 0xffff0300u)) return false;
     result.boundary.assign(words,0);
     std::array<unsigned,16> samplers{};
@@ -455,7 +611,7 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
             const auto semantic=(code[at+1]>>16)&15;
             const auto usage=code[at+1]&31;
             if (original && type==(vertex ? output_reg : input) &&
-                (reserved_varying(number,vertex,abi) || (usage==5 &&
+                (reserved_varying(number,vertex,abi,relocated_rgb) || (usage==5 &&
                  (semantic==abi.motion_texcoord || semantic==abi.depth_texcoord)) ||
                  (usage==LinearMaterialAbi::rgb_usage && semantic==LinearMaterialAbi::rgb_usage_index))) return false;
             if ((type==output_reg && number>=12) || (type==input && !vertex && number>=10)) return false;
@@ -463,7 +619,8 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
             if (n!=5) return false;
             const auto number=index(code[at+1]);
             if (kind(code[at+1])!=constant || number>=(vertex ? 256u : 224u)) return false;
-            if (original && number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) return false;
+            if (original && ((number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) ||
+                (palette && number>=(vertex?240u:204u) && number<=(vertex?245u:209u)))) return false;
         } else {
             unsigned expected=0, cost=0; bool destination=false;
             if (!body_shape(op,expected,cost,destination) || (!vertex && !destination) ||
@@ -477,8 +634,9 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
                     (type==output_reg && number>=12) || (type==input && !vertex && number>=10) ||
                     (type==color_output && number>=4)) return false;
                 if (original && ((type==temp && number>=original_temp_count) ||
-                    (type==constant && number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) ||
-                    (type==(vertex ? output_reg : input) && reserved_varying(number,vertex,abi)))) return false;
+                    (type==constant && ((number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) ||
+                     (palette && number>=(vertex?240u:204u) && number<=(vertex?245u:209u)))) ||
+                    (type==(vertex ? output_reg : input) && reserved_varying(number,vertex,abi,relocated_rgb)))) return false;
                 ++parameters;
                 if (parameter&relative) {
                     if ((destination && offset==1) || ++offset>n || !vertex || kind(parameter)!=constant || index(parameter)>2 ||
@@ -515,14 +673,17 @@ bool no_write(const Word* code, const Structure& s, unsigned number, unsigned la
 bool vertex_sites(const Word* code, const Structure& s, const Vertex& vertex) noexcept {
     const bool loop=vertex.loop;
     const unsigned point=point_site(vertex), emissive=emissive_site(vertex);
-    const unsigned alpha=vertex.asteroid_layout ? vertex.alpha : (loop?500:455)+(vertex.bump?27:0);
-    const unsigned point_temp=vertex.asteroid_layout ? vertex.point_temporary : vertex.bump ? (loop?1:0) : (loop?5:1);
+    const unsigned alpha=(vertex.asteroid_layout || vertex.palette_style) ? vertex.alpha : (loop?500:455)+(vertex.bump?27:0);
+    const unsigned point_temp=(vertex.asteroid_layout || vertex.palette_style) ? vertex.point_temporary : vertex.bump ? (loop?1:0) : (loop?5:1);
+    const unsigned response=vertex.palette_style?vertex.point_response:loop?3u:point_temp;
+    const unsigned accumulator=vertex.palette_style?vertex.point_accumulator:0u;
+    const unsigned alpha_temp=vertex.palette_style?vertex.alpha_temporary:vertex.bump?2u:0u;
     if (loop) {
-        if (!exact(code,s,point,mul,dst(temp,point_temp),{lane(temp,3,3),src(constant,1)|relative,src(3,0,255)}) ||
-            !exact(code,s,emissive,add,dst(output_reg,1),{src(temp,0),src(constant,40)})) return false;
-    } else if (!exact(code,s,point,mul,dst(temp,point_temp),{lane(temp,point_temp,2),src(constant,5)}) ||
-               !exact(code,s,emissive,mad,dst(output_reg,1),{src(temp,point_temp),lane(temp,point_temp,3),src(constant,19)})) return false;
-    if (!exact(code,s,alpha,mul,dst(output_reg,1,8),{lane(temp,vertex.bump?2:0,3),lane(constant,loop?39:18,0)}) ||
+        if (!exact(code,s,point,mul,dst(temp,point_temp),{lane(temp,response,3),src(constant,1)|relative,src(3,0,255)}) ||
+            !exact(code,s,emissive,add,dst(output_reg,1),{src(temp,accumulator),src(constant,40)})) return false;
+    } else if (!exact(code,s,point,mul,dst(temp,point_temp),{lane(temp,response,2),src(constant,5)}) ||
+               !exact(code,s,emissive,mad,dst(output_reg,1),{src(temp,point_temp),lane(temp,response,3),src(constant,19)})) return false;
+    if (!exact(code,s,alpha,mul,dst(output_reg,1,8),{lane(temp,alpha_temp,3),lane(constant,loop?39:18,0)}) ||
         !exact(code,s,alpha+5,mov,dst(output_reg,1,8),{lane(constant,loop?39:18,0)})) return false;
     unsigned writes=0;
     for (const auto& instruction:s.instructions)
@@ -573,7 +734,7 @@ bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept 
         return p.texture[specular]!=0 && outputs==2 && textures==detail+1 && directional==(p.light1?4u:1u);
     }
     const unsigned lightmap=p.bump?3:2, cube=p.bump?4:3;
-    const unsigned albedo=p.bump?4:3, affine_source=p.bump?3:2;
+    const unsigned albedo=p.palette_style?(p.bump?1:4):p.bump?4:3, affine_source=p.bump?3:2;
     for (unsigned sampler=0; sampler<(p.bump?5u:4u); ++sampler) {
         const unsigned target=sampler==0?1:(p.bump && sampler==2?2:0);
         const Word coordinate=p.bump && sampler==cube ? src(temp,0) : src(input,!p.bump && sampler==cube?4:1);
@@ -619,6 +780,78 @@ bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept 
     }
     for (unsigned at:p.rgb) if (at && (at>=s.boundary.size() || !s.boundary[at])) return false;
     return outputs==2 && textures==(p.bump?5u:4u) && directional==(p.light1?4u:1u);
+}
+
+// Immutable palette colors were decoded from the exact source float32
+// lanes with a float32 2.2 exponent and rounded once to float32. The host
+// proof recomputes every component independently. Creation validates sources
+// and emits DEFs without a libm call or changes to native mixed scalar lanes.
+void palette_definitions(Words& out, const PaletteProgram& p, bool vertex, unsigned style) {
+    const auto& colors=palette_linear_bits[style==3?1:0];
+    for (unsigned role=0; role<p.sources.size(); ++role) if (p.sources[role].operand)
+        emit(out,def,{dst(constant,(vertex?240u:204u)+role,xyzw),colors[role][0],colors[role][1],colors[role][2],0});
+}
+bool palette_sites(const Word* code, const Structure& s, const PaletteProgram& p,
+                   bool vertex, bool bump, unsigned style) noexcept {
+    const auto& colors=palette_color_bits[style==3?1:0];
+    for (unsigned role=0; role<p.sources.size(); ++role) {
+        const auto& use=p.sources[role]; if (!use.operand) continue;
+        bool source=false, literal=false;
+        for (const auto& ins:s.instructions) {
+            if (ins.opcode==def && index(code[ins.at+1])==use.source_constant) {
+                literal=true;
+                for (unsigned c=0;c<3;++c)
+                    if (code[ins.at+2+((use.swizzle>>(2*c))&3)]!=colors[role][c]) return false;
+            }
+            if ((ins.opcode==mul || ins.opcode==mad) && use.operand>=ins.at+2 && use.operand<=ins.at+ins.count) {
+                if (mask(code[ins.at+1])!=xyz || code[use.operand]!=src(constant,use.source_constant,use.swizzle)) return false;
+                source=true;
+            }
+        }
+        if (!source || !literal || (vertex && role>3)) return false;
+    }
+    unsigned scalar_declarations=0, view_declarations=0, normal_declarations=0, palette_declarations=0, scalar_uses=0;
+    for (const auto& ins:s.instructions) {
+        if (ins.opcode==dcl && kind(code[ins.at+2])==(vertex?output_reg:input)) {
+            const auto number=index(code[ins.at+2]);
+            if (bump && number==(vertex?8u:7u)) {
+                if (code[ins.at+1]!=(0x80000005u|((style==3?7u:6u)<<16)) ||
+                    code[ins.at+2]!=(dst(vertex?output_reg:input,number,style==1?3u:1u)|(vertex?0:pp))) return false;
+                ++scalar_declarations;
+            }
+            if (bump && (number==(vertex?3u:2u) || (style==1 && number==(vertex?4u:3u)))) {
+                const unsigned semantic=number-(vertex?2u:1u);
+                if (code[ins.at+1]!=(0x80000005u|(semantic<<16)) ||
+                    code[ins.at+2]!=(dst(vertex?output_reg:input,number)|(vertex?0:pp))) return false;
+                if (semantic==1) ++view_declarations; else ++normal_declarations;
+            }
+            if (!vertex && style==2 && number==(bump?6u:5u)) {
+                if (code[ins.at+1]!=(0x80000005u|((bump?5u:4u)<<16)) || code[ins.at+2]!=(dst(input,number)|pp)) return false;
+                ++palette_declarations;
+            }
+        } else if (bump && ins.opcode!=def) {
+            const unsigned start=vertex?1u:2u, stop=vertex?1u:ins.count;
+            for (unsigned operand=start; operand<=stop; ++operand) {
+                const auto at=static_cast<unsigned>(ins.at)+operand;
+                if (kind(code[at])==(vertex?output_reg:input) && index(code[at])==(vertex?8u:7u)) {
+                    const auto found=std::find(p.scalar_operand.begin(),p.scalar_operand.end(),at);
+                    if (found==p.scalar_operand.end()) return false;
+                    const unsigned scalar=static_cast<unsigned>(found-p.scalar_operand.begin());
+                    if (vertex) {
+                        if (scalar==1) {
+                            if (!exact(code,s,static_cast<unsigned>(ins.at),14,dst(output_reg,8,2),{lane(temp,2,2)})) return false;
+                        } else if (style!=3) {
+                            if (!exact(code,s,static_cast<unsigned>(ins.at),add,dst(output_reg,8,1),{lane(temp,2,3),lane(temp,2,3)})) return false;
+                        } else if (!exact(code,s,static_cast<unsigned>(ins.at),add,dst(output_reg,8,1),{lane(temp,2,3),lane(constant,43,0)}) &&
+                                   !exact(code,s,static_cast<unsigned>(ins.at),add,dst(output_reg,8,1),{lane(temp,2,3),lane(constant,21,3)})) return false;
+                    } else if (code[at]!=lane(input,7,scalar) || mask(code[ins.at+1])!=xyz || (ins.opcode!=mul && ins.opcode!=mad)) return false;
+                    ++scalar_uses;
+                }
+            }
+        }
+    }
+    return (!bump || (scalar_declarations==1 && view_declarations==1 && normal_declarations==(style==1?1u:0u) && scalar_uses==(style==1?2u:1u))) &&
+           (vertex || style!=2 || palette_declarations==1);
 }
 
 struct Insertion { std::size_t at, begin, end; };
@@ -690,9 +923,11 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     const auto* row=selected_row(vertex,hash);
     const auto* row_pixel=row ? pixel_for(row->pixel_fingerprint,row->pixel_dword_count) : nullptr;
     if (!row || !row_pixel || row_pixel->bump!=bump ||
-        (vertex && row_pixel->asteroid_layout!=v->asteroid_layout)) return LinearMaterialResult::ProfileMismatch;
+        (vertex && (row_pixel->asteroid_layout!=v->asteroid_layout || row_pixel->palette_style!=v->palette_style))) return LinearMaterialResult::ProfileMismatch;
     const auto abi=family_abi(*row_pixel);
-    if (row->transformation_class!=(bump ? MotionOutputClass::RelocatedRegisters : MotionOutputClass::ReferenceRegisters) ||
+    const auto* palette=row_pixel->palette_style ? palette_program(hash) : nullptr;
+    if (row_pixel->palette_style && !palette) return LinearMaterialResult::ProfileMismatch;
+    if (row->transformation_class!=((bump || row_pixel->palette_style) ? MotionOutputClass::RelocatedRegisters : MotionOutputClass::ReferenceRegisters) ||
         row->vertex_output_register!=abi.vertex_motion || row->pixel_input_register!=abi.pixel_motion ||
         row->pixel_temporary_base!=temporal_temporary_base(*row_pixel) ||
         row->vertex_constant_base!=252 || row->pixel_constant_base!=216 || row->pixel_output_register!=1 ||
@@ -702,8 +937,9 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     const unsigned original_temp_count=vertex ? 7u : temporal_temporary_base(*p);
     try {
         Structure original_structure;
-        if (!structure(original,words,vertex,original_structure,true,abi,original_temp_count) ||
-            !(vertex?vertex_sites(original,original_structure,*v):pixel_sites(original,original_structure,*p)))
+        if (!structure(original,words,vertex,original_structure,true,abi,original_temp_count,row_pixel->palette_style!=0,bump && row_pixel->palette_style!=0) ||
+            !(vertex?vertex_sites(original,original_structure,*v):pixel_sites(original,original_structure,*p)) ||
+            (row_pixel->palette_style && !palette_sites(original,original_structure,*palette,vertex,bump,row_pixel->palette_style)))
             return LinearMaterialResult::ProfileMismatch;
         Words motion;
         const auto motion_result=vertex ? material_motion_vertex_variant_for(*row,original,words,motion,current_depth) :
@@ -722,7 +958,10 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 const auto& insertion=insertions[insertion_index++];
                 combined.insert(combined.end(),motion.begin()+insertion.begin,motion.begin()+insertion.end);
             }
-            if (at==original_structure.first_declaration) definitions(combined,vertex,config);
+            if (at==original_structure.first_declaration) {
+                definitions(combined,vertex,config);
+                if (palette) palette_definitions(combined,*palette,vertex,row_pixel->palette_style);
+            }
             const auto declaration_at=vertex?row->vertex_declaration_insert_dword:row->pixel_declaration_insert_dword;
             if (at==declaration_at) {
                 // COLOR1 retains native color interpolation behavior, including
@@ -747,8 +986,31 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 // ABS canonicalizes a signed-zero sanitizer result explicitly.
                 emit(combined,abs_op,{dst(temp,7),src(temp,7)}); gain(combined,true,7,1);
             }
+            // The scalar carrier is fully vacated, so its old declaration is
+            // replaced by the separately declared whole COLOR1 register.
+            if (palette && bump && op==dcl && kind(original[at+2])==(vertex?output_reg:input) &&
+                index(original[at+2])==(vertex?8u:7u)) { at+=n+1; continue; }
             const auto copied=combined.size();
             combined.insert(combined.end(),original+at,original+at+n+1);
+            if (palette && op!=0xfffe) {
+                if (op==dcl && kind(original[at+2])==(vertex?output_reg:input)) {
+                    const unsigned number=index(original[at+2]);
+                    if (bump && (number==(vertex?3u:2u) || (row_pixel->palette_style==1 && number==(vertex?4u:3u))))
+                        combined[copied+2]|=8u<<16;
+                    // Boron single palette RGB is already decoded in VS; the
+                    // existing XYZ-only palette varying must transfer fully.
+                    if (!vertex && row_pixel->palette_style==2 && number==(bump?6u:5u)) combined[copied+2]&=~pp;
+                }
+                for (unsigned role=0; role<palette->sources.size(); ++role) {
+                    const auto operand=palette->sources[role].operand;
+                    if (operand>at && operand<=at+n) combined[copied+operand-at]=src(constant,(vertex?240u:204u)+role);
+                }
+                for (unsigned scalar=0; scalar<2; ++scalar) {
+                    const auto operand=palette->scalar_operand[scalar];
+                    if (operand>at && operand<=at+n)
+                        combined[copied+operand-at]=vertex ? dst(output_reg,3+scalar,8) : lane(input,2+scalar,3);
+                }
+            }
             if (vertex) {
                 if (at==point_site(*v)) {
                     combined[copied+3]=src(temp,7);
@@ -772,7 +1034,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                         transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);
                 } else {
                     if (at==(p->affine_end?p->affine_end:p->texture[0])) {
-                        const unsigned albedo=p->affine_end?(p->bump?4:3):1;
+                        const unsigned albedo=p->palette_style?(p->affine_end?(p->bump?1:4):1):p->affine_end?(p->bump?4:3):1;
                         transfer(combined,false,albedo,{src(temp,albedo)},false,abi.pixel_scratch);
                     }
                     if (at==p->texture[p->bump?4:3]) transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);

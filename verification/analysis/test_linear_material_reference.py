@@ -9,6 +9,8 @@ from linear_material_reference import (
     CAP, DIFFUSE_COEFFICIENT, PROFILES, DirectionalLight, Gains, LightingCoefficients, PointLight, decode, encode, half,
     bump_geometry, pixel, sanitize, vertex,
     ASTEROID_PROFILES, AsteroidWeights, asteroid_pixel,
+    PALETTE_PROFILES, PALETTE_VERTEX_PROFILES, PALETTE_COLORS, PALETTE_LINEAR_COLORS,
+    PALETTE_DECODE_EXPONENT, PALETTE_VIEW_POWER, PALETTE_VIEW_OFFSET, palette_vertex, palette_pixel,
 )
 
 
@@ -887,6 +889,277 @@ class AsteroidTests(unittest.TestCase):
         with self.assertRaises(TypeError):self.sample(weights=(1,0))
         with self.assertRaises(TypeError):self.sample(cubemap=(1,1,1))
         with self.assertRaises(TypeError):self.sample(half_source=1)
+
+
+
+
+class PaletteTests(unittest.TestCase):
+    """Analytical witnesses authored from native schedules, not patch metadata."""
+    def assertRGB(self, actual, expected, tolerance=1e-12):
+        for a,b in zip(actual,expected):self.assertAlmostEqual(a,b,delta=tolerance)
+
+    def varying(self, name='39eb3c2258a516e1', **changes):
+        from dataclasses import replace
+        p=PALETTE_PROFILES[name]
+        vs=('a420a010b0271479' if p.vertex_palette else '29d7c575396ed280') if p.family=='boron' else '37e6956afd8b8d76'
+        v=palette_vertex(vs,(0,0,0),(0,0,1),(0,0,4),(0,0,0),material_alpha=.5)
+        return replace(v,**changes)
+
+    def sample(self, name='39eb3c2258a516e1', **changes):
+        p=PALETTE_PROFILES[name]
+        args=dict(varying=self.varying(name),diffuse=(1,1,1,.25),specular_mask=0,
+                  lightmap=(0,0,0,.75),cubemap=lambda d:(0,0,0),
+                  directions=[DirectionalLight((0,0,1),(0,0,0))]*p.directions)
+        if p.bump_map:args.update(normal_sample=(.25,.5,.75,.5),tangent=(1,0,0),binormal=(0,1,0))
+        args.update(changes)
+        return palette_pixel(name,**args)
+
+    def test_exact_palette_def_storage_and_scalar_constants(self):
+        expected={
+            'boron':{'x':('90a1783c','4e4b243e','be77383e'),'y':('5f00063f','6b5d0b3e','2bf0c53b'),
+                     'z':('226e803e','330c8b3e','be77383e'),'view':('ff49a43d','809a7b3f','0409603f'),
+                     'grazing':('a8aba13e','0664013f','f9a9863d'),'reflection':('6b91273e','dbe1c13e','72c2f63e')},
+            'paranid':{'x':('5584823e','a8aba13e','544fe53e'),'y':('5fb1823d','b140f43d','6b5d0b3e'),
+                       'z':('330e213e','a49f233d','2bf0c53b'),'grazing':('e75b0e3e','c8c9603e','dbe1c13e')}}
+        self.assertEqual({f:{k:tuple(struct.pack('<f',v).hex() for v in rgb) for k,rgb in colors.items()}
+                          for f,colors in PALETTE_LINEAR_COLORS.items()},expected)
+        self.assertEqual(struct.pack('<f',PALETTE_DECODE_EXPONENT).hex(),'cdcc0c40')
+        self.assertEqual(struct.pack('<f',PALETTE_VIEW_POWER).hex(),'9a99993f')
+        self.assertEqual(struct.pack('<f',PALETTE_VIEW_OFFSET).hex(),'cdcccc3d')
+        # Float64 ideal gamma on the source is not the authored binary32 DEF.
+        self.assertNotEqual(PALETTE_LINEAR_COLORS['boron']['x'][0],decode(PALETTE_COLORS['boron']['x'][0]))
+
+    def test_all_vertex_schedules_normalize_view_not_geometric_normal(self):
+        light=PointLight((1,2,3),(.25,.5,.75),(2,.25,.125))
+        normal=(.4,.3,.7); camera=(3,0,4); direction=(.6,0,.8)
+        cosine=.6*.4+.8*.7
+        reflection=tuple(2*cosine*n-v for n,v in zip(normal,direction))
+        for name,p in PALETTE_VERTEX_PROFILES.items():
+            v=palette_vertex(name,(0,0,0),normal,camera,(.25,.5,.75),(light,),material_alpha=.5,fog_clip=(1,.125))
+            self.assertRGB(v.normal,normal);self.assertRGB(v.view,direction);self.assertRGB(v.reflection,reflection)
+            self.assertRGB(v.palette_weights,tuple(abs(x) for x in reflection))
+            self.assertAlmostEqual(v.reflection_weight,(2 if p.family=='boron' else 1)*((1-cosine)**1.2000000476837158+.10000000149011612))
+            self.assertAlmostEqual(v.view_weight,cosine**11 if p.family=='boron' else 0)
+            self.assertEqual(v.alpha,.1875) # fog uses distance five, not normalized view length one.
+            old=vertex((0,0,0),normal,camera,(.25,.5,.75),(light,),fixed_single=p.fixed_single)
+            self.assertRGB(v.linear_rgb,old.linear_rgb)
+            self.assertNotEqual(v.reflection,old.reflection)
+
+    def test_loop_zero_one_eight_fixed_and_independent_point_colors(self):
+        red=PointLight((0,0,2),(.5,0,0),(1,0,0));green=PointLight((0,0,2),(0,.25,0),(1,0,0))
+        args=((0,0,0),(0,0,1),(0,0,4),(.25,.5,.75))
+        for name,p in PALETTE_VERTEX_PROFILES.items():
+            for n in ((1,) if p.fixed_single else (0,1,8)):
+                v=palette_vertex(name,*args,[red]*n,gains=Gains(4,2,1))
+                self.assertRGB(v.linear_rgb,(.5+4*n*.5**2.2,1,1.5))
+            if not p.fixed_single:
+                v=palette_vertex(name,*args,[red,green])
+                self.assertRGB(v.linear_rgb,(.25+.5**2.2,.5+.25**2.2,.75))
+            else:
+                with self.assertRaises(ValueError):palette_vertex(name,*args,[])
+        with self.assertRaises(ValueError):palette_vertex('29d7c575396ed280',*args,[red]*9)
+
+    def test_boron_vertex_palette_decodes_each_color_before_unequal_weights(self):
+        v=palette_vertex('a420a010b0271479',(0,0,0),(.4,.3,.7),(3,0,4),(0,0,0))
+        colors=PALETTE_LINEAR_COLORS['boron'];w=v.palette_weights
+        expected=tuple(sum(weight*colors[role][i] for role,weight in
+                           [('x',w[0]),('y',w[1]),('z',w[2]),('view',v.view_weight)]) for i in range(3))
+        self.assertRGB(v.vertex_palette_rgb,expected)
+        wrong=tuple(decode(sum(weight*PALETTE_COLORS['boron'][role][i] for role,weight in
+                              [('x',w[0]),('y',w[1]),('z',w[2]),('view',v.view_weight)])) for i in range(3))
+        self.assertTrue(any(abs(a-b)>.01 for a,b in zip(expected,wrong)))
+        # Explicitly supplied interpolated RGB is consumed directly, not decoded again.
+        given=(.3333,2.5,.125)
+        sample=self.sample('f917d48ee826da1f',varying=self.varying('f917d48ee826da1f',
+                           vertex_palette_rgb=given,linear_rgb=(1,1,1)),half_source=True)
+        self.assertRGB(sample.linear_rgb,tuple(.5+.5*x for x in given))
+
+    def test_all_twenty_directional_coefficients_power_and_grazing(self):
+        for name,p in PALETTE_PROFILES.items():
+            v=self.varying(name,normal=(0,0,1),view=(.6,0,.8),reflection=(.6,0,.8),
+                           palette_weights=(0,0,0),view_weight=0,reflection_weight=0,
+                           vertex_palette_rgb=(0,0,0) if p.vertex_palette else None)
+            dirs=[DirectionalLight((0,0,1),(1,1,1))]+[DirectionalLight((0,0,-1),(0,0,0))]*(p.directions-1)
+            kwargs=dict(varying=v,directions=dirs,specular_mask=.25)
+            # BUMP reflection differs from chosen DEFAULT R; cancel its palette
+            # term by subtracting the independent grazing-color contribution below.
+            result=self.sample(name,**kwargs)
+            d,k=(.4000000059604645,3) if p.family=='boron' else (.5,6)
+            f=(1-abs(.8*.8-.6*.6))**(5 if p.family=='boron' else 9) if p.bump_map else 0
+            effective=[.5+.5*f*x for x in PALETTE_LINEAR_COLORS[p.family]['grazing']]
+            self.assertRGB(result.linear_rgb,[a*(d+k*.25*.8**10) for a in effective])
+            self.assertTrue(any(abs(a-b*(d+k*.25*.8**5))>1e-3 for a,b in zip(result.linear_rgb,effective)))
+
+    def test_signed_boron_and_absolute_paranid_grazing_with_nonunit_reflection(self):
+        for name,family,power in [('39eb3c2258a516e1','boron',5),('c997a37560e266df','paranid',9)]:
+            v=self.varying(name,linear_rgb=(1,1,1),reflection=(0,0,1.5),palette_weights=(0,0,0),view_weight=0,reflection_weight=0)
+            result=self.sample(name,varying=v)
+            factor=(-.5)**5 if family=='boron' else .5**9
+            self.assertRGB(result.linear_rgb,[.5+.5*factor*x for x in PALETTE_LINEAR_COLORS[family]['grazing']])
+            self.assertNotEqual(result.linear_rgb,(.5,.5,.5)) # SAT would erase native effect.
+            wrong=.5**5 if family=='boron' else (-.5)**9
+            self.assertNotEqual(result.linear_rgb,tuple(.5+.5*wrong*x for x in PALETTE_LINEAR_COLORS[family]['grazing']))
+
+    def test_default_cube_reads_actual_interpolated_reflection_and_native_scale(self):
+        for name in ('39eb3c2258a516e1','f917d48ee826da1f','c997a37560e266df'):
+            seen=[]
+            def cube(direction):
+                seen.append(direction)
+                return tuple(.5+.125*x for x in direction)
+            v=self.varying(name,reflection=(.25,-.5,1.25),reflection_weight=2)
+            result=self.sample(name,varying=v,cubemap=cube,specular_mask=.5,diffuse=(.25,.5,.75,.25))
+            self.assertEqual(seen,[(.25,-.5,1.25)])
+            expected=[a**2.2*b**2.2 for a,b in zip((.53125,.4375,.65625),(.25,.5,.75))]
+            if name!='c997a37560e266df':expected=[v*p for v,p in zip(expected,PALETTE_LINEAR_COLORS['boron']['reflection'])]
+            self.assertRGB(result.linear_rgb,expected)
+
+    def test_bump_negative_q_asymmetric_basis_face_and_geometric_point_separation(self):
+        for name in ('a910daef935891ce','62c180abe017e239','ed44232013f67072','f286856c3f400377',
+                     '18d372968af4a480','188c5ab9dbb98393','5e056627e9ff3a8d','fce465befff2f623'):
+            seen=[]
+            def cube(direction):seen.append(direction);return tuple(.5+.125*x for x in direction)
+            v=self.varying(name,normal=(0,0,4),view=(0,0,1),reflection=(9,8,7),reflection_weight=.75)
+            args=dict(varying=v,normal_sample=(.25,1,.75,1),tangent=(2,0,0),binormal=(0,3,0),cubemap=cube,specular_mask=.5)
+            front=self.sample(name,**args);back=self.sample(name,**args,face=-1)
+            self.assertRGB(seen[0],(16/29,24/29,3/29));self.assertRGB(seen[0],seen[1])
+            self.assertEqual(front,back) # no directional source, reflection invariant to native face flip.
+            from dataclasses import replace
+            self.assertEqual(front,self.sample(name,**dict(args,varying=replace(v,reflection=(-7,-8,-9)))))
+            pointv=replace(v,linear_rgb=(1,2,3),reflection_weight=0)
+            # Normal alters palette's PS grazing; use black albedo so independent
+            # emissive lightmap remains exact and geometric varying itself intact.
+            result=self.sample(name,**dict(args,varying=pointv,diffuse=(0,0,0,.25),lightmap=(.25,.5,.75,.75)))
+            self.assertRGB(result.linear_rgb,[x**2.2 for x in (.25,.5,.75)])
+            self.assertEqual(pointv.linear_rgb,(1,2,3))
+
+    def test_affine_completes_before_decode_and_never_changes_alpha(self):
+        affine=((.5,0,0,.125),(0,.25,0,.25),(0,0,.75,-.125))
+        for name in ('c997a37560e266df','9d27e7ba242f3831','f646f03be5a8708d'):
+            v=self.varying(name,linear_rgb=(1,1,1),palette_weights=(0,0,0),reflection_weight=0)
+            result=self.sample(name,varying=v,diffuse=(.25,.5,.75,.25),affine=affine,glow=.25)
+            code=(.25,.375,.4375) if PALETTE_PROFILES[name].affine_color else (.25,.5,.75)
+            self.assertRGB(result.linear_rgb,[.5*x**2.2 for x in code]);self.assertEqual(result.encoded_rgba[3],.1875)
+
+    def test_interpolated_scalar_weights_not_reconstructed_from_interpolated_geometry(self):
+        from dataclasses import replace
+        a=palette_vertex('29d7c575396ed280',(0,0,0),(0,0,1),(0,0,4),(1,1,1))
+        b=palette_vertex('29d7c575396ed280',(0,0,0),(0,0,1),(3,0,4),(1,1,1))
+        mix=lambda x,y:tuple(.25*u+.75*v for u,v in zip(x,y))
+        v=replace(a,view=mix(a.view,b.view),reflection=mix(a.reflection,b.reflection),
+                  palette_weights=mix(a.palette_weights,b.palette_weights),
+                  reflection_weight=.25*a.reflection_weight+.75*b.reflection_weight,
+                  view_weight=.25*a.view_weight+.75*b.view_weight)
+        result=self.sample(varying=v)
+        wrong=palette_vertex('29d7c575396ed280',(0,0,0),v.normal,v.view,(1,1,1))
+        self.assertNotEqual(v.view_weight,wrong.view_weight)
+        self.assertNotEqual(result,self.sample(varying=wrong))
+        self.assertNotEqual(v.reflection_weight,wrong.reflection_weight)
+
+    def test_alpha_half_storage_and_full_precision_radiance_varying(self):
+        for name,p in PALETTE_PROFILES.items():
+            v=self.varying(name,linear_rgb=(.3333,4,2))
+            a=self.sample(name,varying=v,glow=.25,half_target=True)
+            b=self.sample(name,varying=v,glow=.25,half_target=True,gains=Gains(16,0,16))
+            self.assertEqual(a.encoded_rgba[3],.1875);self.assertEqual(a.encoded_rgba[3],b.encoded_rgba[3])
+            self.assertEqual(a.encoded_rgba[:3],tuple(half(encode(x)) for x in a.linear_rgb))
+        # No inferred normalization/clamp of independently interpolated scalar weights.
+        v=self.varying(palette_weights=(2,.5,3),view_weight=.25,linear_rgb=(1,1,1))
+        result=self.sample(varying=v,half_source=True)
+        colors=PALETTE_LINEAR_COLORS['boron']
+        self.assertRGB(result.linear_rgb,[.5+.5*(2*colors['x'][i]+.5*colors['y'][i]+3*colors['z'][i]+.25*colors['view'][i]) for i in range(3)])
+
+    def test_domain_and_wrong_input_contracts(self):
+        for name,p in PALETTE_PROFILES.items():
+            if p.two_sided:
+                for face in (0,math.inf,math.nan):
+                    with self.assertRaises(ValueError):self.sample(name,face=face)
+            else:self.assertEqual(self.sample(name),self.sample(name,face=math.nan))
+            if p.bump_map:
+                with self.assertRaises(ValueError):self.sample(name,normal_sample=(0,.5,0,1))
+            with self.assertRaises(TypeError):self.sample(name,cubemap=(0,0,0))
+            with self.assertRaises(ValueError):self.sample(name,specular_mask=1.1)
+            with self.assertRaises(TypeError):self.sample(name,half_source=1)
+        with self.assertRaises(ValueError):self.sample(varying=self.varying(view=(0,0,0)))
+        with self.assertRaises(ValueError):self.sample(varying=self.varying(reflection=(0,0,0)))
+        with self.assertRaises(ValueError):self.sample('f917d48ee826da1f',varying=self.varying())
+        with self.assertRaises(ValueError):palette_vertex('unknown',(0,0,0),(0,0,1),(0,0,1),(0,0,0))
+
+    def test_geometric_point_light_is_not_recomputed_from_the_bump_normal(self):
+        light=PointLight((0,0,2),(1,1,1),(1,0,0))
+        v=palette_vertex('57392213f62fef19',(0,0,0),(0,0,1),(0,0,4),(0,0,0),(light,))
+        result=self.sample('a910daef935891ce',varying=v,normal_sample=(.25,.5,.75,.75))
+        colors=PALETTE_LINEAR_COLORS['boron']
+        # A=.75 => bumped N=(0,.5,sqrt(.75)), R.z=.5. Geometric point response=1.
+        effective=[.5+.5*(colors['z'][i]+colors['view'][i]+.5**5*colors['grazing'][i]) for i in range(3)]
+        self.assertRGB(result.linear_rgb,effective)
+        self.assertTrue(all(abs(a-a*math.sqrt(.75))>.05 for a in result.linear_rgb))
+        self.assertRGB(v.linear_rgb,(1,1,1))
+
+    def test_every_face_contract_and_material_strength_linearity(self):
+        for name,p in PALETTE_PROFILES.items():
+            dirs=[DirectionalLight((0,0,1),(.25,.5,.75))]+[DirectionalLight((0,0,-1),(0,0,0))]*(p.directions-1)
+            front=self.sample(name,directions=dirs)
+            back=self.sample(name,directions=dirs,face=-1)
+            if p.two_sided:self.assertRGB(back.linear_rgb,(0,0,0))
+            else:self.assertEqual(front,back)
+            self.assertTrue(all(v>0 for v in front.linear_rgb))
+            v=self.varying(name,linear_rgb=(.125,.25,.5))
+            from dataclasses import replace
+            a=self.sample(name,varying=v)
+            b=self.sample(name,varying=replace(v,linear_rgb=(.25,.5,1)))
+            self.assertRGB(b.linear_rgb,[2*x for x in a.linear_rgb])
+            self.assertEqual(a.encoded_rgba[3],b.encoded_rgba[3])
+
+
+class PaletteEvidenceTests(unittest.TestCase):
+    def test_all_palette_contracts_and_color_constants_match_independent_evidence(self):
+        path=Path(__file__).resolve().parents[2]/'docs/reverse-engineering/linear-material-profiles.json'
+        evidence=json.loads(path.read_text())
+        families={'boron_default','boron_bump','paranid_default','paranid_bump'}
+        rows=[r for r in evidence['programs'] if families & set(r['families'])]
+        self.assertEqual(len(rows),32)
+        self.assertEqual({r['fnv1a64'] for r in rows if r['id'].startswith('ps_')},set(PALETTE_PROFILES))
+        self.assertEqual({r['fnv1a64'] for r in rows if r['id'].startswith('vs_')},set(PALETTE_VERTEX_PROFILES))
+        role_names={'Px':'x','Py':'y','Pz':'z','Pu':'view','Pf':'grazing','Pc':'reflection'}
+        for row in rows:
+            self.assertEqual(len(row['families']),1)
+            family,technique=row['families'][0].split('_')
+            vertex_stage=row['id'].startswith('vs_')
+            has_vertex_palette=(row['palette_varying'] or {}).get('role')=='already_linear_palette_rgb'
+            if vertex_stage:
+                p=PALETTE_VERTEX_PROFILES[row['fnv1a64']]
+                self.assertIn(row['point_model'],('fixed_single_point','loop_count_i0_x_0_to_8_stride_3_a0_w'))
+                self.assertEqual((p.family,p.fixed_single,p.vertex_palette),
+                                 (family,row['point_model']=='fixed_single_point',has_vertex_palette))
+                roles={'Px','Py','Pz','Pu'} if has_vertex_palette else set()
+            else:
+                p=PALETTE_PROFILES[row['fnv1a64']]
+                self.assertEqual((p.family,p.directions,p.affine_color,p.two_sided,p.bump_map,p.vertex_palette),
+                                 (family,len({s['name'] for s in row['directional_rgb_sources']}),
+                                  row['diffuse_affine_completion'] is not None,row['two_sided'],
+                                  technique=='bump',has_vertex_palette))
+                self.assertEqual(row['lobe_coefficients'],{
+                    'diffuse':.4000000059604645 if family=='boron' else .5,
+                    'specular_power':10,'specular_outer_scale':3 if family=='boron' else 6,
+                    'grazing_scale':3,'palette_albedo_mix':.5,'grazing_power':5 if family=='boron' else 9,
+                    'reflection_outer_scale':1.0})
+                self.assertEqual(row['alpha_and_affine_proof']['grazing_power_model'],
+                                 'signed_multiply_fifth' if family=='boron' else 'native_pow_absolute_base_ninth')
+                self.assertEqual(row['alpha_and_affine_proof']['normal_encoding'],'ag' if p.bump_map else 'geometric')
+                roles=({'Pf','Pc'} if has_vertex_palette else {'Px','Py','Pz','Pu','Pf','Pc'}) if family=='boron' else {'Px','Py','Pz','Pf'}
+            self.assertEqual({s['role'] for s in row['palette_sources']},roles)
+            self.assertEqual(len(row['palette_sources']),len(roles))
+            for source in row['palette_sources']:
+                role=role_names[source['role']]
+                native=PALETTE_COLORS[family][role]
+                self.assertEqual(tuple(source['literal_values']),native)
+                self.assertEqual(source['literal_bits_hex'],[format(struct.unpack('<I',struct.pack('<f',v))[0],'08x') for v in native])
+                self.assertEqual(tuple(source['decoded_values']),PALETTE_LINEAR_COLORS[family][role])
+                self.assertEqual(len(source['source_lanes']),3)
+                self.assertTrue(source['uses'])
+                for use in source['uses']:
+                    self.assertEqual(use['source_operand']['name'],'c'+str(source['source_constant']))
+                    self.assertEqual(use['source_operand']['swizzle'][:3],source['source_lanes'])
 
 
 if __name__ == "__main__":

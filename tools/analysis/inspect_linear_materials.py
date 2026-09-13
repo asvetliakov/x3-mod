@@ -5,7 +5,8 @@ Input: complete local archive programs and the existing derived motion inventory
 Output: fingerprints, semantic operand locations and available resources only.
 Comments (including preshaders) are opaque. Exact whole-program hashes bind the
 manual semantic review; there is no motif-only admission or hash override.
-Transfer policy, new instructions and native/GPU equivalence remain future work.
+Transfer policy and transformed/native-GPU qualification belong to the owning
+architecture notes; this tool does not certify transformed shader behavior.
 """
 import argparse
 import hashlib
@@ -686,6 +687,639 @@ def inspect_asteroid_program(code, identifier, decoded, profile, items, end):
     output['budget']['original_static_weighted_slots'] = weighted_slots(decoded,profile,stage)
     output['certification'] = 'original_identity_and_reviewed_sites_verified; no transformed shader or numeric equivalence claim'
     return output
+
+
+
+PALETTE_VERTICES={
+'29d7c575396ed280':('boron',False,True,True), 'a420a010b0271479':('boron',False,False,True),'ea3d15b287892410':('boron',False,False,False),
+'57392213f62fef19':('boron',True,True,True),'5c17a381b149b3b9':('boron',True,False,True),'a804f173f693944a':('boron',True,False,False),
+'37e6956afd8b8d76':('paranid',False,True,True),'2e0254dd999841c2':('paranid',False,False,True),'a7cddf2c98d61117':('paranid',False,False,False),
+'33388c8897d428a5':('paranid',True,True,True),'b4059ab6af8fc529':('paranid',True,False,True),'2a560f246c90fa64':('paranid',True,False,False)}
+PALETTE_PIXELS={
+'39eb3c2258a516e1':('boron',False,True,False,False), '57acf59d19c73791':('boron',False,True,False,True),
+'f917d48ee826da1f':('boron',False,False,False,False),'77a5b2d62fb3be48':('boron',False,False,False,True),
+'a910daef935891ce':('boron',True,True,False,False),'62c180abe017e239':('boron',True,True,False,True),
+'ed44232013f67072':('boron',True,False,False,False),'f286856c3f400377':('boron',True,False,False,True),
+'9d27e7ba242f3831':('paranid',False,True,True,False),'e1acf8a03850acaf':('paranid',False,True,True,True),
+'f646f03be5a8708d':('paranid',False,False,True,False),'ebf41e1ace7af45b':('paranid',False,False,True,True),
+'c997a37560e266df':('paranid',False,False,False,False),'675f9077d8fd21c4':('paranid',False,False,False,True),
+'18d372968af4a480':('paranid',True,True,True,False),'188c5ab9dbb98393':('paranid',True,True,True,True),
+'7e5e41276b3d7514':('paranid',True,False,True,False),'43c9405568d2226f':('paranid',True,False,True,True),
+'5e056627e9ff3a8d':('paranid',True,False,False,False),'fce465befff2f623':('paranid',True,False,False,True)}
+def palette_bindings(stage,key):
+ if stage=='vs':
+  family,bump,base,loop=PALETTE_VERTICES[key]
+  if family!='boron' or base:return {}
+  return dict(zip(('Px','Py','Pz','Pu'),[(43,'yzw'),(44,'xyz'),(45,'xyz'),(46,'xyz')] if loop else [(21,'xyz'),(22,'xyz'),(23,'xyz'),(25,'xyz')]))
+ family,bump,base,affine,face=PALETTE_PIXELS[key]
+ if family=='boron':
+  shift=1 if bump or face else 0
+  if base:return dict(zip(('Px','Py','Pz','Pu','Pf','Pc'),[(6+shift,'xyz'),(7+shift,'xyz'),(8+shift,'xyz'),(10+shift,'xyz'),(11+shift,'xyz'),(9+shift,'xyz')]))
+  return {'Pf':(5+shift,'xyz'),'Pc':(4+shift,'xyz')}
+ if affine:return dict(zip(('Px','Py','Pz','Pf'),[(6,'xyz'),(7,'yzw' if bump else 'xyz'),(8,'xyz'),(10,'xyz')]))
+ if bump and face:return dict(zip(('Px','Py','Pz','Pf'),[(3,'xyz'),(4,'yzw'),(5,'xyz'),(8,'xyz')]))
+ return dict(zip(('Px','Py','Pz','Pf'),[(4,'xyz'),(5,'xyz'),(6,'xyz'),(8,'xyz')]))
+
+PALETTE_PAIRS={(v,p) for v,vs in PALETTE_VERTICES.items() for p,ps in PALETTE_PIXELS.items() if vs[:3]==ps[:3]}
+ORIGINALS.update({
+    'vs_29d7c575396ed280': ('79897ccd08fd8852f80ff1c166c7faaba9609d27b7905bb71e0c3a26b37060bf', 577),
+    'vs_a420a010b0271479': ('7b934b1981d4517149635024dee7a90e13aa7219691b798d68da458dee4122e3', 605),
+    'vs_ea3d15b287892410': ('87b331b3e948290e70e5851a07dd6abb9a72d50d174eb80166fcae64ab7e62c8', 560),
+    'vs_57392213f62fef19': ('5675ce318c575240ecc18ed296fecb6418208adbf6b157119dee438aeb9a7070', 617),
+    'vs_5c17a381b149b3b9': ('c04e1a3d4bf26947f651b54fe59fe26dc74b90a6e46d81a1a8f4742e040c8fb8', 648),
+    'vs_a804f173f693944a': ('2021d821872faaba43e2c61df3e22276734a6eca1e017ef5376e2bf0aff3ed48', 600),
+    'vs_37e6956afd8b8d76': ('51dd4270e79cf88df29b436139b4b95a224b7b627da489f9b578bdea8dd547fb', 563),
+    'vs_2e0254dd999841c2': ('9adf881597a1867f730bb04e2c1c182da09877ed7166f330e6e86b3ac3843eb5', 563),
+    'vs_a7cddf2c98d61117': ('21c8c0397aed33e05176208658bebc0b7078f22df82700471ba9b0848a229549', 512),
+    'vs_33388c8897d428a5': ('bfa98def42db1b4c096bd76ad8b329c2f5dfe3f0ce74e9e0141df1b80c40592d', 603),
+    'vs_b4059ab6af8fc529': ('c606c4640fb14eb4de557775ed10b02e5a16c5a8d2d6e59d02a9b624b4ccb5ad', 603),
+    'vs_2a560f246c90fa64': ('b0a63b2df4caa9cfe3f6afba2b06006f12bf5342137d7d8a708083eddfb9b452', 552),
+    'ps_39eb3c2258a516e1': ('59c045239f724005744fe7bb9e58fad17356a28cb75bbec8e04e0e4bde926019', 432),
+    'ps_57acf59d19c73791': ('bfa8fb6c3f473758768dc72a7dc00da3ab89d08418298aa1d5130ab614bce30d', 464),
+    'ps_f917d48ee826da1f': ('7a02eda58b8432b207978affd796053cc88bcf21ae652d6d7faf3f8146370cf7', 320),
+    'ps_77a5b2d62fb3be48': ('5e48ae73d2ac9672c78ac062da5a7e09ea1926e411005b675dfb4804d2981797', 352),
+    'ps_a910daef935891ce': ('c21626382bc32fbc4a0c626fd6c7e8a121e2cb4990e3a0de2960b35e57f34a94', 500),
+    'ps_62c180abe017e239': ('c6b804e892a61581cb2158368255f26d1de2002326bcdf827a76c600dde0fe61', 526),
+    'ps_ed44232013f67072': ('afcfd2e5d45298a9ed59a8c2d85e14abcf63fb0e8d1a4a31745d23cbb9472a47', 388),
+    'ps_f286856c3f400377': ('bdfff141908bf861e872b4c1c2e392acefc83130c89a1ca584cfed8a38fa7e20', 414),
+    'ps_9d27e7ba242f3831': ('5f543e547530b2b3c8cfee1426446b78defa5c4c37b0b7788e282c38ab1e6a46', 1259),
+    'ps_e1acf8a03850acaf': ('5923e9e9298bf80ec03c43dbc03371fcbec8bef359f95f7c76bb81f54d3b37af', 1285),
+    'ps_f646f03be5a8708d': ('f31bccbaba809d448681623904e8cda84ae6507c6fad5d10e7f87bed4f916713', 1259),
+    'ps_ebf41e1ace7af45b': ('b60daecd8b1092af871089538b721924ec7d588cc17108ee32e2a882ecd19b03', 1285),
+    'ps_c997a37560e266df': ('bd78ae47fb1a10ce98cb8545104a3142baf3a125a56f1e3b2fff84cd8ffbe90e', 340),
+    'ps_675f9077d8fd21c4': ('fbc4ce907789a1f3e89c3527f124dc179c800bc0d64f29280558c1ce7f3c43ea', 366),
+    'ps_18d372968af4a480': ('65cc7dcd07af778cc72f39d1bfdec92089d32873528f41fc4933d553b3ae340b', 1321),
+    'ps_188c5ab9dbb98393': ('c60ab74a97d0f956737aee8b9420aacf84af0e7c1dc934723889e8db5e2f856e', 1347),
+    'ps_7e5e41276b3d7514': ('d37239e21553e3681b507b0dc3e1a249c3ea6fda762372dda4160d131bba6a20', 1321),
+    'ps_43c9405568d2226f': ('d2544a28896c0cb60b9741a7cbd788ef11600e5d15016b287942de9a45717df1', 1347),
+    'ps_5e056627e9ff3a8d': ('a87d5b7a2f902531821c4127085bc28765f79ce8f1f8e18f88aa4b1668b039d9', 402),
+    'ps_fce465befff2f623': ('3790c9f432dd55ad750334b9f81d0beedf982c73f53c2917c1a1810149f4b8bb', 428),
+})
+PAIRS |= PALETTE_PAIRS
+for _family in ('boron','paranid'):
+    for _bump in (False,True):
+        _name=_family+('_bump' if _bump else '_default')
+        FAMILIES[_name]={'pixels':[k for k,v in PALETTE_PIXELS.items() if v[:2]==(_family,_bump)],'production_status':'implemented_pending_GPU','aliases':[_family],'technique':'BUMPMAP' if _bump else 'DEFAULT','coefficients':{'diffuse':0.4000000059604645 if _family=='boron' else .5,'specular_power':10,'specular_outer_scale':3 if _family=='boron' else 6,'grazing_scale':3,'palette_albedo_mix':.5,'grazing_power':5 if _family=='boron' else 9,'reflection_outer_scale':1.}}
+        PIXEL_FAMILY.update({k:_name for k in FAMILIES[_name]['pixels']})
+
+
+# Exact binary32 palette lanes are authored-color provenance, not shader tokens.
+PALETTE_BITS = {
+    'boron':{'Px':('3e189899','3edededf','3eeaeaeb'),'Py':('3f3ebebf','3ecececf','3dc8c8c9'),
+             'Pz':('3f088889','3f0d8d8e','3eeaeaeb'),'Pu':('3ea2a2a3','3f7dfdfe','3f70f0f1'),
+             'Pf':('3f179798','3f3bbbbc','3e949495'),'Pc':('3ee0e0e1','3f24a4a5','3f37b7b8')},
+    'paranid':{'Px':('3f09898a','3f179798','3f31b1b2'),'Py':('3e929293','3ec2c2c3','3ecececf'),
+               'Pz':('3edcdcdd','3e6ceced','3dc8c8c9'),'Pf':('3ed0d0d1','3f008081','3f24a4a5')},
+}
+
+
+def palette_complete_chain(decoded,rows):
+    executable=[at for at,r in decoded.items() if r['item']['opcode'] not in (31,81)]
+    require(executable==[r['instruction_dword'] for r in rows], 'palette complete executable inventory changed')
+    require(all(not r['item']['predicated'] and not r['item']['coissued'] for r in decoded.values()), 'palette predication/coissue changed')
+
+
+def palette_constant_proof(decoded,stage,key):
+    """Bind all DEF lanes bit-for-bit, including scalar lanes sharing RGB DEFs."""
+    import struct,math
+    f32=lambda x:struct.unpack('<f',struct.pack('<f',x))[0]
+    bits=lambda x:struct.unpack('<I',struct.pack('<f',x))[0]
+    value=lambda x:struct.unpack('<f',struct.pack('<I',x))[0]
+    shape=(PALETTE_VERTICES if stage=='vs' else PALETTE_PIXELS)[key];family,bump,base=shape[:3]
+    definitions={}
+    def assign(reg,lane,word):definitions.setdefault(reg,[0,0,0,0])['xyzw'.index(lane)]=word
+    if stage=='vs':
+        loop=shape[3];c=42 if loop else 24 if family=='boron' else 21
+        for lane,x in zip('xyzw',(1.,0.,3.,f32(1.2)) if loop else (1.,0.,f32(1.2),f32(.1))):assign(c,lane,bits(x))
+        if loop:
+            assign(43,'x',bits(11. if family=='boron' and not base else f32(.1)))
+            if family=='boron' and base:assign(43,'y',bits(11.))
+            if family=='boron' and not base:assign(44,'w',bits(f32(.1)))
+        elif family=='boron':assign(22,'w',bits(11.))
+    else:
+        face=shape[4]
+        values={'one':1.,'minus_one':-1.,'two':2.,'zero':0. if shape[3] else -0.,'power':10.,'three':3.,
+                'diffuse':f32(.4) if family=='boron' else .5,'half':.5,'outer':3. if family=='boron' else 6.,'grazing':9.}
+        for role,(reg,lane) in palette_scalar_bindings(key).items():assign(reg,lane,bits(values[role]))
+    binding=palette_bindings(stage,key)
+    for role,(reg,lanes) in binding.items():
+        for lane,word in zip(lanes,PALETTE_BITS[family][role]):assign(reg,lane,int(word,16))
+    actual={motion.register_of(r['item']['words'][0])[1]:r['item'] for r in decoded.values() if r['item']['opcode']==81}
+    require(len(actual)==sum(r['item']['opcode']==81 for r in decoded.values()) and set(actual)==set(definitions), 'palette DEF register inventory changed')
+    for reg,words in definitions.items():
+        require(len(actual[reg]['words'])==5 and list(actual[reg]['words'][1:])==words, 'palette DEF lane bits changed')
+    literals=[{'register':f'c{reg}','component':lane,'literal_dword':actual[reg]['dword']+2+n,
+               'value':value(words[n]),'bits_hex':f'{words[n]:08x}'} for reg,words in definitions.items() for n,lane in enumerate('xyzw')]
+    sources=[]
+    for role,(reg,lanes) in binding.items():
+        values=[value(definitions[reg]['xyzw'.index(lane)]) for lane in lanes]
+        refs=[dict(compact_operand(s),instruction_dword=at) for at,r in decoded.items() if r['destination'] and r['destination']['mask']=='xyz' for s in r['sources'] if s['name']==f'c{reg}' and s['swizzle'][:3]==lanes]
+        require(len(refs)==1 and refs[0]['source_modifier']==0 and not refs[0].get('relative'), 'palette RGB source use inventory changed')
+        sources.append({'role':role,'source_constant':reg,'source_lanes':lanes,'literal_values':values,
+                        'literal_bits_hex':list(PALETTE_BITS[family][role]),
+                        'decoded_values':[f32(math.pow(v,f32(2.2))) for v in values],
+                        'decoded_constant_register':(240 if stage=='vs' else 204)+('Px','Py','Pz','Pu','Pf','Pc').index(role),
+                        'uses':[dict(r,source_operand={k:v for k,v in r.items() if k!='instruction_dword'}) for r in refs],'transfer':'offline-derived pow(binary32_source,double(binary32(2.2))) rounded to binary32, emitted as immutable DEF lanes at creation; positive palette source lanes only'})
+    return literals,sources
+
+
+def palette_declarations(profile,stage,key):
+    shape=(PALETTE_VERTICES if stage=='vs' else PALETTE_PIXELS)[key];family,bump,base=shape[:3]
+    boron=family=='boron';decl=profile['declarations'];expected=[]
+    if stage=='vs':
+        expected=[(f'v{n}','xyzw',usage,0,[]) for n,usage in enumerate(['position','texcoord','normal']+(['binormal','tangent'] if bump else []))]
+        expected += [('o0','xyzw','position',0,[]),('o1','xyzw','color',0,[])]
+        prefix='o';first=2;pp=[]
+    else:expected=[('v0','xyzw','color',0,list(PP))];prefix='v';first=1;pp=list(PP)
+    expected += [(f'{prefix}{first}','xy','texcoord',0,(['centroid'] if bump and base else [])+pp)]
+    if bump:
+        expected += [(f'{prefix}{n}','xyz','texcoord',n-first,pp) for n in range(first+1,first+5)]
+        expected += [(f'{prefix}{first+5}','xyz','texcoord',5 if boron else 6,(['centroid'] if base else [])+pp)]
+        expected += [(f'{prefix}{first+6}','xy' if boron and base else 'x','texcoord',6 if boron else 7,pp)]
+    else:
+        expected += [(f'{prefix}{n}','xyz','texcoord',n-first,(['centroid'] if base else [])+pp) for n in range(first+1,first+5)]
+        expected += [(f'{prefix}{first+5}','xy' if boron and base else 'x','texcoord',5,(['centroid'] if base else [])+pp)]
+    if stage=='ps' and shape[4]:expected += [('vFace','xyzw','position',0,[])]
+    actual=[(d['name'],d['mask'],d['usage_name'],d['usage_index'],d['modifiers']) for d in decl if d['role']!='sampler']
+    require(actual==expected,'palette original varying declarations changed')
+    if stage=='ps':require([(d['name'],d['mask'],d['modifiers'],d['texture_type']) for d in decl if d['role']=='sampler']==[(f's{n}','xyzw',[],3 if n==(4 if bump else 3) else 2) for n in range(5 if bump else 4)],'palette sampler declaration changed')
+
+
+def palette_scalar_relocations(decoded,profile,stage,key):
+    shape=(PALETTE_VERTICES if stage=='vs' else PALETTE_PIXELS)[key];family,bump,base=shape[:3]
+    if not bump:return []
+    source='o8' if stage=='vs' else 'v7';prefix='o' if stage=='vs' else 'v'
+    declarations={d['name']:d for d in profile['declarations']};old=declarations[source]
+    require(old['mask']==('xy' if family=='boron' and base else 'x') and old['usage_index']==(6 if family=='boron' else 7) and old['modifiers']==([] if stage=='vs' else list(PP)), 'palette scalar declaration changed')
+    output=[]
+    for role,lane,index in [('J','x',1)]+([('u11','y',2)] if family=='boron' and base else []):
+        dest=f'{prefix}{index+(2 if stage=="vs" else 1)}';carrier=declarations[dest]
+        require((carrier['mask'],carrier['usage_name'],carrier['usage_index'],carrier['modifiers'])==('xyz','texcoord',index,old['modifiers']), 'palette scalar carrier precision/centroid changed')
+        record={'role':role,'source_register':source,'source_lane':lane,'destination_register':dest,'destination_lane':'w',
+                'source_declaration':old,'destination_declaration':carrier,'source_texcoord_index':old['usage_index'],
+                'destination_texcoord_index':index,'source_wrap_component':lane,'destination_wrap_component':'w',
+                'extended_carrier_mask':'xyzw','retained_carrier_modifiers':carrier['modifiers']}
+        if stage=='vs':
+            require(not lane_writes(decoded,dest,'w'), 'palette scalar destination lane is written')
+            writes=lane_writes(decoded,source,lane);require(len(writes)==1,'palette scalar producer count changed')
+            row=site(decoded,writes[0]);require(row['destination']['mask']==lane and row['destination']['modifiers']==[], 'palette scalar producer is not isolated')
+            record['producer_sites']=[row]
+        else:
+            # Relevant native operations consume XYZ vectors or scalar lanes;
+            # full xyzw source spelling alone is not a W read in DP3/RGB math.
+            reads=[]
+            for at,row in decoded.items():
+                op=motion.OPCODES[row['item']['opcode']]
+                if op in ('dcl','def'):continue
+                for s in row['sources']:
+                    if s['name']==source and lane in s['swizzle']:
+                        require(s['swizzle']==lane*4 and s['source_modifier']==0 and not s['relative'], 'palette scalar source is not isolated')
+                        reads.append(dict(compact_operand(s),instruction_dword=at))
+                    if s['name']==dest:
+                        lanes='xyz' if op in ('nrm','dp3') else row['destination']['mask'] if row['destination'] else ''
+                        require(lanes and all(s['swizzle']['xyzw'.index(x)]!='w' for x in lanes), 'palette scalar carrier W is consumed')
+            require(len(reads)==1,'palette scalar consumer count changed');record['consumer_sources']=reads
+        output.append(record)
+    require(all(s['name']!=source or s['swizzle'] in ('xxxx','yyyy') for row in decoded.values() for s in row['sources']), 'palette scalar source inventory changed')
+    return output
+
+
+def palette_abi(family,bump):
+    return {'vs_motion_output':9 if bump else 8,'ps_motion_input':8 if bump else 7,
+            'motion_texcoord':(7 if family=='boron' else 5) if bump else 6,
+            'vs_depth_output':10 if bump else 9,'ps_depth_input':9 if bump else 8,'depth_texcoord':8 if bump else 7,
+            'material_vs_rgb_output':8 if bump else 10,'material_ps_rgb_input':7 if bump else 9,
+            'material_rgb_usage':'color','material_rgb_usage_index':1,'material_rgb_mask':'xyz','material_rgb_precision':'full',
+            'material_vs_def_constants':[248,249],'material_ps_def_constants':[212,213],
+            'material_vs_palette_constants':[240,241,242,243],'material_ps_palette_constants':[204,205,206,207,208,209],
+            'material_vs_temporaries':[7,8,9],'material_ps_temporaries':[10,11,12,13],
+            'required_disabled_srgb_sampler_mask':31 if bump else 15,'current_depth_modes':[False,True]}
+
+
+def palette_budget(profile,stage,loop,abi,relocations):
+    material_color1_proof(profile,stage)
+    used_constants=set(profile['constant_registers_direct'])|set(profile['defined_constant_registers'])
+    if loop:used_constants.update(range(24))
+    reserved_constants=set(range(252,256) if stage=='vs' else range(216,221))|set(abi[f'material_{stage}_def_constants'])|set(abi[f'material_{stage}_palette_constants'])
+    original_temps=set(profile['temporary_registers']);material_temps=set(abi[f'material_{stage}_temporaries'])
+    temporary_base=max(5,max(original_temps)+1) if stage=='ps' else None
+    temporal_temps=set(range(temporary_base,temporary_base+4)) if stage=='ps' else set()
+    require(not reserved_constants&used_constants,'palette constant ABI collision')
+    require(not original_temps&(material_temps|temporal_temps) and not material_temps&temporal_temps,'palette temporary ABI collision')
+    io_role='output' if stage=='vs' else 'input';free_io=set(profile[f'free_{io_role}_registers'])
+    rgb=abi[f'material_{stage}_rgb_{io_role}'];motion_io=abi[f'{stage}_motion_{io_role}'];depth_io=abi[f'{stage}_depth_{io_role}']
+    if relocations:
+        require({r['source_register'] for r in relocations}=={('o' if stage=='vs' else 'v')+str(rgb)},'palette freed RGB register disagrees')
+        require(all(r['source_lane']in r['source_declaration']['mask'] for r in relocations) and
+                {r['source_lane'] for r in relocations}==set(relocations[0]['source_declaration']['mask']), 'palette scalar register not fully evacuated')
+        free_io.add(rgb)
+    reserved_io={rgb,motion_io,depth_io};require(len(reserved_io)==3 and reserved_io<=free_io and max(reserved_io)<(12 if stage=='vs' else 10),'palette interpolator ABI collision')
+    semantics=set(profile[f'declared_texcoord_{io_role}_indices'])
+    if relocations:semantics.remove(relocations[0]['source_texcoord_index'])
+    temporal_semantics={abi['motion_texcoord'],abi['depth_texcoord']}
+    require(len(temporal_semantics)==2 and not temporal_semantics&semantics,'palette temporal semantic ABI collision')
+    return {'original_temporaries':sorted(original_temps),'free_temporary_ranges':ranges(set(range(32))-original_temps-temporal_temps-material_temps),
+            'free_constant_ranges':ranges(set(range(256 if stage=='vs' else 224))-used_constants-reserved_constants),
+            'free_interpolator_registers':sorted(free_io-reserved_io),'free_texcoord_semantic_indices':sorted(set(range(16))-semantics-temporal_semantics),
+            'original_executable_instruction_count':profile['executable_instruction_count'],'relative_constant_bound_required':loop,
+            'material_resources_proven_free_before_reservation':{'rgb_interpolator_register':rgb,'rgb_usage':'color','rgb_usage_index':1,'def_constants':abi[f'material_{stage}_def_constants']},
+            'material_palette_constant_registers':abi[f'material_{stage}_palette_constants'],'explicit_reserved_interpolator_registers':sorted(reserved_io),
+            'explicit_reserved_texcoord_indices':sorted(temporal_semantics),'temporal_temporary_registers_including_depth':sorted(temporal_temps),
+            'reservations_apply_to_current_depth_modes':[False,True],'rgb_register_availability':'complete proved scalar evacuation' if relocations else 'unused whole physical register',
+            'instruction_budget_note':'Original weighted slots only; final transformed bytecode and scalar transport require separate qualification.'}
+
+
+def palette_rgb_sites(decoded,program,stage):
+    """Bounded componentwise color propagation; scalar/geometry lanes never seed."""
+    live=set();palette_uses={(u['instruction_dword'],u['operand_dword']) for p in program['palette_sources'] for u in p['uses']}
+    if stage=='ps':
+        live.update((s,lane) for s in ['v0']+[r['name'] for r in program['directional_rgb_sources']] for lane in 'xyz')
+        if program['palette_varying']:live.update((program['palette_varying']['declaration']['name'],lane) for lane in 'xyz')
+    else:
+        live.update((r['name'],lane) for r in program['point_rgb_sources']+program['material_emissive_scaled_sources'] for lane in 'xyz')
+    conversions={r['conversion_after_dword']:r['conversion_rgb_register'] for r in program.get('texture_sources',[]) if r['conversion_after_dword']}
+    result=[]
+    for at,row in decoded.items():
+        dest=row['destination'];op=motion.OPCODES[row['item']['opcode']]
+        if dest and op not in ('dcl','def'):
+            depends=any((at,s['operand_dword']) in palette_uses or (s['name'],s['swizzle']['xyzw'.index(lane)]) in live for s in row['sources'] for lane in dest['mask'])
+            for lane in dest['mask']:live.discard((dest['name'],lane))
+            if depends and op!='texld':
+                require(op in ('mov','mul','add','mad') and dest['mask']=='xyz','palette mixed RGB/data precision dependency')
+                result.append(site(decoded,at));live.update((dest['name'],lane) for lane in 'xyz')
+        register=conversions.get(at+row['item']['length']+1)
+        if register:live.update((register,lane) for lane in 'xyz')
+    return result
+
+
+def palette_scalar_bindings(key):
+    family,bump,base,affine,face=PALETTE_PIXELS[key]
+    def b(**fields):return {role:(int(value[1:-1]),value[-1]) for role,value in fields.items()}
+    if family=='boron':
+        a=5 if base else 3
+        if bump and face:return b(one=f'c{a}x',minus_one=f'c{a}y',two=f'c{a}z',zero=f'c{a}w',power=f'c{a+1}x',three=f'c{a+1}y',diffuse=f'c{a+1}z',half=f'c{a+1}w',outer=f'c{a+1}y')
+        if bump:
+            n=6 if base else 3;m=5 if base else 4
+            return b(two=f'c{n}x',minus_one=f'c{n}y',one=f'c{n}z',power=f'c{n}w',three=f'c{m}x',diffuse=f'c{m}y',half=f'c{m}z',outer=f'c{m}x')
+        if face:return b(one=f'c{a}x',minus_one=f'c{a}y',zero=f'c{a}z',power=f'c{a}w',three=f'c{a+1}x',diffuse=f'c{a+1}y',half=f'c{a+1}z',outer=f'c{a+1}x')
+        return b(power=f'c{a}x',three=f'c{a}y',diffuse=f'c{a}z',one=f'c{a}w',half=f'c{7 if base else 5}w',outer=f'c{a}y')
+    if affine:
+        if bump:return b(one='c11x',minus_one='c11y' if face else 'c11w',zero='c11z' if face else 'c11y',two='c11w' if face else 'c11z',power='c9x',three='c9y',diffuse='c9z',half='c9z',outer='c9w',grazing='c7x')
+        return b(one='c11x',minus_one='c11y',zero='c11z' if face else 'c11y',power='c11w' if face else 'c11z',three='c9x',diffuse='c9y',half='c9y',outer='c9z' if face else 'c11w',grazing='c9w' if face else 'c9z')
+    if bump and face:return b(one='c6x',minus_one='c6y',two='c6z',zero='c6w',power='c7x',three='c7y',diffuse='c7z',half='c7z',outer='c7w',grazing='c4x')
+    if bump:return b(two='c3x',minus_one='c3y',one='c3z',power='c3w',three='c7x',diffuse='c7y',half='c7y',outer='c7z',grazing='c7w')
+    if face:return b(one='c3x',minus_one='c3y',zero='c3z',power='c3w',three='c7x',diffuse='c7y',half='c7y',outer='c7z',grazing='c7w')
+    return b(one='c3x',power='c7x',three='c7y',diffuse='c7z',half='c7z',outer='c7w',grazing='c3y')
+
+
+def prove_palette_vertex(decoded, key):
+    """Exact native geometric reflection/J and point-light schedules; no interpreter."""
+    family,bump,base,loop = PALETTE_VERTICES[key]
+    boron = family=='boron'; special = boron and bump and not base
+    starts={'29d7c575396ed280':347,'a420a010b0271479':365,'ea3d15b287892410':347,
+            '57392213f62fef19':356,'5c17a381b149b3b9':374,'a804f173f693944a':356,
+            '37e6956afd8b8d76':347,'2e0254dd999841c2':347,'a7cddf2c98d61117':323,
+            '33388c8897d428a5':356,'b4059ab6af8fc529':356,'2a560f246c90fa64':332}
+    rows,emit=asteroid_chain(decoded,starts[key])
+    c='c42' if loop else 'c24' if boron else 'c21'
+    power=(c,'wwww' if loop else 'zzzz'); bias=('c44','wwww') if loop and boron and not base else ('c43','xxxx') if loop else (c,'wwww')
+    point=None
+    # Uniform helpers are limited to these two native families and their exact
+    # position/normal matrix ABI. They preserve the original scheduled order.
+    def prep(dst,src,mask='xyzw'):
+        return emit('mad',(dst,mask),[(src,'xyzx' if mask=='xyzw' else 'xyxw'),(c,'xxxy' if mask=='xyzw' else 'xxyw'),(c,'yyyx' if mask=='xyzw' else 'yyxw')])
+    def xyz(dst,src,start,order='zxy'):
+        for lane in order:emit('dp4',(dst,lane),[(src,'xyzw'),(f'c{start+"xyz".index(lane)}','xyzw')])
+    def clip(src):
+        return [emit('dp4',('o0',lane),[(src,'xyzw'),(f'c{(24 if loop else 0)+n}','xyzw')]) for n,lane in enumerate('xyzw')]
+    def camera(dst):
+        for lane in ('yxz' if loop else 'xyz'):emit('mov',(dst,lane),[(f'c{(34 if loop else 13)+"xyz".index(lane)}','wwww')])
+    def point_loop(world,normal,light,atten,scalar,cosine):
+        emit('mov',('r0','xyz'),[(c,'yyyy')]);counter=emit('mov',('r0','w'),[(c,'yyyy')])
+        rep=emit('rep',None,[('i0','xyzw')]);emit('mul',(scalar,'w'),[('r0','wwww'),(c,'zzzz')]);address=emit('mova',('a0','w'),[(scalar,'wwww')])
+        pos=emit('add',(light,'xyz'),[(world,'xyzw',1),('c0','xyzw',0,'a0','w')])
+        emit('dp3',(atten,'z'),[(light,'xyzw'),(light,'xyzw')]);emit('rsq',(scalar,'w'),[(atten,'zzzz')])
+        emit('mul',(light,'xyz'),[(light,'xyzw'),(scalar,'wwww')]);emit('mul',(atten,'y'),[(atten,'zzzz'),(scalar,'wwww')]);emit('mov',(atten,'x'),[(c,'xxxx')])
+        emit('dp3',(cosine,'w'),[(normal,'xyzw'),(light,'xyzw')],('saturate',));att=emit('dp3',(scalar,'w'),[('c2','xyzw',0,'a0','w'),(atten,'xyzw')])
+        emit('rcp',(scalar,'w'),[(scalar,'wwww')],('saturate',));pt=emit('mul',(atten,'xyz'),[(cosine,'wwww'),('c1','xyzw',0,'a0','w')])
+        emit('mad',('r0','xyz'),[(atten,'xyzw'),(scalar,'wwww'),('r0','xyzw')]);inc=emit('add',('r0','w'),[('r0','wwww'),(c,'xxxx')]);end=emit('endrep',None,[])
+        require(lane_writes(decoded,'a0')==[address],'palette point address overwritten')
+        require(lane_writes(decoded,'r0','w',counter-1,end+1)==[counter,inc],'palette point counter overwritten')
+        relative=[(at,s['name']) for at,r in decoded.items() for s in r['sources'] if s['relative']]
+        require(relative==[(pos,'c0'),(att,'c2'),(pt,'c1')],'palette relative point inventory changed')
+        return pt,{'rep_dword':rep,'endrep_dword':end,'address_write_dword':address,'counter_initialization_dword':counter,'counter_increment_dword':inc,'verified_stride':3,'runtime_count_range_required':[0,8]}
+    if special:
+        pos='r1' if loop else 'r0';world='r3' if loop else 'r1';normal='r2';view='r0'
+        position_prep=prep(pos,'v0');emit('dp4',(world,'z'),[(pos,'xyzw'),('c30' if loop else 'c9','xyzw')]);position_sites=clip(pos)
+        if loop:
+            prep('r0','v1','xyz');emit('dp3',('o2','y'),[('r0','xyzw'),('c38','xyzw')]);emit('dp3',('o2','x'),[('r0','xyzw'),('c37','xyzw')])
+            emit('dp4',(world,'x'),[(pos,'xyzw'),('c28','xyzw')]);prep('r0','v2');emit('dp4',(world,'y'),[(pos,'xyzw'),('c29','xyzw')]);xyz(normal,'r0',31)
+            point,point_proof=point_loop(world,normal,'r4','r1','r1','r2')
+            emit('mov',('r1','xyz'),[('r0','xyzw')]);camera('r0');material=emit('add',('o1','xyz'),[('r1','xyzw'),('c40','xyzw')])
+        else:
+            for lane,n in [('x',7),('y',8)]:emit('dp4',(world,lane),[(pos,'xyzw'),(f'c{n}','xyzw')])
+            prep('r3','v1','xyz');emit('add',('r2','xyz'),[(world,'xyzw',1),('c4','xyzw')]);emit('dp3',('o2','y'),[('r3','xyzw'),('c17','xyzw')])
+            emit('dp3',('r0','z'),[('r2','xyzw'),('r2','xyzw')]);emit('dp3',('o2','x'),[('r3','xyzw'),('c16','xyzw')]);emit('rsq',('r2','w'),[('r0','zzzz')])
+            emit('mul',('r0','y'),[('r0','zzzz'),('r2','wwww')]);emit('mov',('r0','x'),[(c,'xxxx')]);emit('dp3',('r1','w'),[('c6','xyzw'),('r0','xyzw')])
+            prep('r0','v2');emit('mul',('r3','xyz'),[('r2','xyzw'),('r2','wwww')]);xyz(normal,'r0',10)
+            emit('rcp',('r0','w'),[('r1','wwww')],('saturate',));emit('dp3',('r0','z'),[(normal,'xyzw'),('r3','xyzw')],('saturate',))
+            point=emit('mul',('r3','xyz'),[('r0','zzzz'),('c5','xyzw')]);camera('r0');material=emit('mad',('o1','xyz'),[('r3','xyzw'),('r0','wwww'),('c19','xyzw')])
+            point_proof={'model':'fixed_single_point','relative_sources':0}
+        emit('add',('r0','xyz'),[(world,'xyzw',1),('r0','xyzw')]);fogtemp='r0'
+    else:
+        pos='r2' if bump else 'r1' if loop else 'r0';uv='r5' if bump else 'r4'
+        world='r3' if boron else 'r4' if bump else 'r3';normal='r4' if boron and bump else 'r3' if bump else 'r2'
+        if loop:
+            position_prep=prep(pos,'v0');prep(uv,'v1','xyz');emit('dp4',(world,'z'),[(pos,'xyzw'),('c30','xyzw')]);emit('dp3',('o2','y'),[(uv,'xyzw'),('c38','xyzw')])
+            emit('dp4',(world,'x'),[(pos,'xyzw'),('c28','xyzw')]);prep('r0','v2');emit('dp4',(world,'y'),[(pos,'xyzw'),('c29','xyzw')]);xyz(normal,'r0',31)
+            point,point_proof=point_loop(world,normal,'r6','r1' if bump else 'r5','r1' if bump else 'r2','r3')
+            material=emit('add',('o1','xyz'),[('r0','xyzw'),('c40','xyzw')])
+        else:
+            world='r4' if bump else 'r3';normal='r3' if bump else 'r2';light='r1' if bump else 'r2';scalar='r0' if bump else 'r1'
+            position_prep=prep(pos,'v0');xyz(world,pos,7);emit('add',(light,'xyz'),[(world,'xyzw',1),('c4','xyzw')]);emit('dp3',('r6','z'),[(light,'xyzw'),(light,'xyzw')])
+            emit('rsq',(light,'w'),[('r6','zzzz')]);prep(uv,'v1','xyz');emit('mul',('r6','y'),[('r6','zzzz'),(light,'wwww')]);emit('mov',('r6','x'),[(c,'xxxx')]);prep(scalar,'v2')
+            emit('mul',('r1' if bump else 'r5','xyz'),[(light,'xyzw'),(light,'wwww')]);xyz(normal,scalar,10)
+            emit('dp3',(scalar,'w'),[('c6','xyzw'),('r6','xyzw')]);emit('dp3',(scalar,'z'),[(normal,'xyzw'),('r1' if bump else 'r5','xyzw')],('saturate',))
+            emit('rcp',(scalar,'w'),[(scalar,'wwww')],('saturate',));point=emit('mul',(scalar,'xyz'),[(scalar,'zzzz'),('c5','xyzw')]);emit('dp3',('o2','y'),[(uv,'xyzw'),('c17','xyzw')])
+            material=emit('mad',('o1','xyz'),[(scalar,'xyzw'),(scalar,'wwww'),('c19','xyzw')]);point_proof={'model':'fixed_single_point','relative_sources':0}
+        if bump:
+            prep('r1','v4');prep('r0','v3')
+            emit('dp4',('o5','z'),[('r1','xyzw'),('c33' if loop else 'c12','xyzw')]);emit('dp4',('o6','z'),[('r0','xyzw'),('c33' if loop else 'c12','xyzw')])
+        emit('mov',('o4','xyz'),[(normal,'xyzw')]);position_sites=clip(pos)
+        fogtemp='r2' if bump else 'r0';camera(fogtemp);emit('dp3',('o2','x'),[(uv,'xyzw'),('c37' if loop else 'c16','xyzw')])
+        view=fogtemp if boron and base else 'r4' if bump else 'r1'
+        emit('add',(view,'xyz'),[(world,'xyzw',1),(fogtemp,'xyzw')])
+    point_end=len(rows)
+    fog='c41' if loop else 'c20';alpha='c39' if loop else 'c18'
+    emit('if',None,[('b0','xyzw')]);emit('dp3',(fogtemp,'w'),[(view,'xyzw'),(view,'xyzw')]);emit('rsq',(fogtemp,'w'),[(fogtemp,'wwww')]);emit('rcp',(fogtemp,'w'),[(fogtemp,'wwww')])
+    emit('mad',(fogtemp,'w'),[(fog,'yyyy'),(fogtemp,'wwww',1),(fog,'xxxx')],('saturate',));alphas=[emit('mul',('o1','w'),[(fogtemp,'wwww'),(alpha,'xxxx')])]
+    emit('else',None,[]);alphas.append(emit('mov',('o1','w'),[(alpha,'xxxx')]));emit('endif',None,[])
+    if special:
+        emit('nrm',('r3','xyz'),[(view,'xyzw')]);emit('dp3',('r0','w'),[('r3','xyzw',1),('r2','xyzw')]);emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')])
+        reflect=emit('mad',('r0','xyz'),[('r2','xyzw'),('r0','wwww',1),('r3','xyzw',1)]);emit('dp3',('r2','w'),[('r3','xyzw'),('r2','xyzw')],('saturate',))
+        emit('mul',('r1','xyz'),[('r0','yyyy',11),('c44' if loop else 'c22','xyzw')]);emit('pow',('r0','w'),[('r2','wwww'),('c43','xxxx') if loop else ('c22','wwww')])
+        emit('mad',('r1','xyz'),[('r0','xxxx',11),('c43','yzww') if loop else ('c21','xyzw'),('r1','xyzw')]);emit('mad',('r0','xyz'),[('r0','zzzz',11),('c45' if loop else 'c23','xyzw'),('r1','xyzw')])
+        prep('r1','v4');palette_export=emit('mad',('o7','xyz'),[('r0','wwww'),('c46' if loop else 'c25','xyzw'),('r0','xyzw')])
+        emit('dp4',('o5','z'),[('r1','xyzw'),('c33' if loop else 'c12','xyzw')]);prep('r0','v3');emit('add',('r3','w'),[('r2','wwww',1),(c,'xxxx')])
+        emit('dp4',('o6','z'),[('r0','xyzw'),('c33' if loop else 'c12','xyzw')]);emit('pow',('r2','w'),[('r3','wwww'),power]);emit('mov',('o3','xyz'),[('r3','xyzw')])
+        emit('add',('r2','w'),[('r2','wwww'),bias]);emit('mov',('o4','xyz'),[('r2','xyzw')]);scalar=emit('add',('o8','x'),[('r2','wwww'),('r2','wwww')])
+    elif boron and base:
+        normal_view='r3' if bump else 'r1';vtemp='r2' if bump else 'r0';weight='r3' if bump else 'r1'
+        emit('nrm',(normal_view,'xyz'),[(view,'xyzw')]);emit('dp3',(vtemp,'w'),[(normal_view,'xyzw',1),(normal,'xyzw')])
+        if bump:emit('mov',('o3','xyz'),[(normal_view,'xyzw')])
+        emit('add',(vtemp,'w'),[(vtemp,'wwww'),(vtemp,'wwww')])
+        if not bump:emit('mov',('o3','xyz'),[(normal_view,'xyzw')])
+        reflect=emit('mad',(vtemp,'xyz'),[(normal,'xyzw'),(vtemp,'wwww',1),(normal_view,'xyzw',1)])
+        if not bump:emit('mov',('o5','xyz'),[(vtemp,'xyzw')])
+        emit('dp3',(vtemp,'w'),[(normal_view,'xyzw'),(normal,'xyzw')],('saturate',));emit('abs',('o7' if bump else 'o6','xyz'),[(vtemp,'xyzw')])
+        emit('add',(weight,'w'),[(vtemp,'wwww',1),(c,'xxxx')]);emit('log',(vtemp,'z'),[(vtemp,'wwww')]);emit('pow',(vtemp,'w'),[(weight,'wwww'),power])
+        emit('mul',(vtemp,'z'),[(vtemp,'zzzz'),('c43','yyyy')]);emit('add',(vtemp,'w'),[(vtemp,'wwww'),bias]);emit('exp',('o8' if bump else 'o7','y'),[(vtemp,'zzzz')]);scalar=emit('add',('o8' if bump else 'o7','x'),[(vtemp,'wwww'),(vtemp,'wwww')])
+    elif boron:
+        emit('nrm',('r0','xyz'),[(view,'xyzw')]);emit('dp3',('r0','w'),[('r0','xyzw',1),(normal,'xyzw')]);emit('mov',('o3','xyz'),[('r0','xyzw')]);emit('add',('r1','w'),[('r0','wwww'),('r0','wwww')])
+        emit('dp3',('r0','w'),[('r0','xyzw'),(normal,'xyzw')],('saturate',));reflect=emit('mad',('r0','xyz'),[(normal,'xyzw'),('r1','wwww',1),('r0','xyzw',1)])
+        emit('pow',('r1','w'),[('r0','wwww'),('c43','xxxx') if loop else ('c22','wwww')]);emit('mul',('r1','xyz'),[('r0','yyyy',11),('c44' if loop else 'c22','xyzw')])
+        emit('mad',('r1','xyz'),[('r0','xxxx',11),('c43','yzww') if loop else ('c21','xyzw'),('r1','xyzw')]);emit('add',('r2','w'),[('r0','wwww',1),(c,'xxxx')])
+        emit('mad',('r1','xyz'),[('r0','zzzz',11),('c45' if loop else 'c23','xyzw'),('r1','xyzw')]);emit('pow',('r0','w'),[('r2','wwww'),power])
+        palette_export=emit('mad',('o6','xyz'),[('r1','wwww'),('c46' if loop else 'c25','xyzw'),('r1','xyzw')]);emit('add',('r0','w'),[('r0','wwww'),bias]);emit('mov',('o5','xyz'),[('r0','xyzw')]);scalar=emit('add',('o7','x'),[('r0','wwww'),('r0','wwww')])
+    else:
+        vtemp='r2' if bump else 'r0';weight='r3' if bump else 'r1'
+        emit('nrm',(vtemp,'xyz'),[(view,'xyzw')]);emit('mov',('o3','xyz'),[(vtemp,'xyzw')]);emit('dp3',(vtemp,'w'),[(vtemp,'xyzw',1),(normal,'xyzw')])
+        if bump:
+            emit('dp3',(weight,'w'),[(vtemp,'xyzw'),(normal,'xyzw')],('saturate',));emit('add',(vtemp,'w'),[(vtemp,'wwww'),(vtemp,'wwww')]);emit('add',(weight,'w'),[(weight,'wwww',1),(c,'xxxx')])
+            reflect=emit('mad',(vtemp,'xyz'),[(normal,'xyzw'),(vtemp,'wwww',1),(vtemp,'xyzw',1)])
+        else:
+            emit('add',(weight,'w'),[(vtemp,'wwww'),(vtemp,'wwww')]);emit('dp3',(vtemp,'w'),[(vtemp,'xyzw'),(normal,'xyzw')],('saturate',))
+            reflect=emit('mad',(vtemp,'xyz'),[(normal,'xyzw'),(weight,'wwww',1),(vtemp,'xyzw',1)]);emit('add',(weight,'w'),[(vtemp,'wwww',1),(c,'xxxx')]);emit('mov',('o5','xyz'),[(vtemp,'xyzw')])
+        emit('pow',(vtemp,'w'),[(weight,'wwww'),power]);emit('abs',('o7' if bump else 'o6','xyz'),[(vtemp,'xyzw')]);scalar=emit('add',('o8' if bump else 'o7','x'),[(vtemp,'wwww'),bias])
+    if bump:
+        for out,reg in [('o5','r1'),('o6','r0')]:xyz(out,reg,31 if loop else 10,'xy')
+    palette_complete_chain(decoded,rows)
+    require(lane_writes(decoded,'o1')==[material]+alphas,'palette native alpha/RGB output inventory changed')
+    if not loop:require(not any(s['relative'] for r in decoded.values() for s in r['sources']),'palette fixed point became relative')
+    # Exact complete scheduling plus explicit position live interval prevents
+    # late palette/basis temporaries from entering the existing motion quad.
+    for lane in 'xyzw':no_lane_writes(decoded,pos,lane,position_prep,max(position_sites))
+    return {'point_rgb_dword':point,'material_emissive_dword':material,'alpha_dwords':alphas,
+            'point_model':'loop_count_i0_x_0_to_8_stride_3_a0_w' if loop else 'fixed_single_point','point_loop':point_proof,
+            'position_dp4_dwords':position_sites,'position_source_temporary':int(pos[1:]),'position_matrix_register':24 if loop else 0,
+            'geometry_and_point_sites':rows[:point_end],'fog_reflection_and_palette_sites':rows[point_end:],
+            'geometric_reflection_dword':reflect,'J_export_dword':scalar,
+            'palette_rgb_export_dword':palette_export if boron and not base else None,
+            'normalized_view_before_interpolation':True,'native_geometric_normal_normalized_in_vs':False,
+            'complete_executable_chain_checked':len(rows)}
+
+
+def prove_palette_pixel(decoded,key):
+    """Scheduled proofs for the four palette material shapes and native faces."""
+    family,bump,base,affine,face=PALETTE_PIXELS[key];boron=family=='boron'
+    # Exact header ends are separate from opaque metadata and preshaders.
+    starts={'39eb3c2258a516e1':214,'57acf59d19c73791':223,'f917d48ee826da1f':172,'77a5b2d62fb3be48':181,
+            'a910daef935891ce':235,'62c180abe017e239':238,'ed44232013f67072':193,'f286856c3f400377':196,
+            '9d27e7ba242f3831':1092,'e1acf8a03850acaf':1095,'f646f03be5a8708d':1092,'ebf41e1ace7af45b':1095,
+            'c997a37560e266df':190,'675f9077d8fd21c4':193,'18d372968af4a480':1107,'188c5ab9dbb98393':1110,
+            '7e5e41276b3d7514':1107,'43c9405568d2226f':1110,'5e056627e9ff3a8d':205,'fce465befff2f623':208}
+    rows,emit=asteroid_chain(decoded,starts[key],PP);sat=PP+('saturate',)
+    constants=palette_scalar_bindings(key)
+    def S(role):
+        reg,lane=constants[role];return (f'c{reg}',lane*4)
+    def C(role):
+        reg,lanes=palette_bindings('ps',key)[role];return (f'c{reg}',lanes+lanes[-1] if lanes!='xyz' else 'xyzw')
+    def packed():
+        reg,a=constants['three'];other,b=constants['diffuse'];require(reg==other and (a,b)in(('x','y'),('y','z')),'palette lobe packed constants changed')
+        return (f'c{reg}','xyzw' if a=='x' else 'yzzw')
+    normal='r0' if bump or boron and not base else 'r3' if boron else 'r1'
+    if bump:
+        if face:emit('cmp',('r1','w'),[('vFace','xyzw'),S('one'),S('minus_one')],())
+        emit('texld',('r0','xyzw'),[('v1','xyzw'),('s1','xyzw')]);emit('mad',('r1','xy'),[S('two'),('r0','wyzw'),S('minus_one')])
+        if face:emit('cmp',('r0','w'),[('r1','wwww',1),S('zero'),S('one')])
+        emit('dp2add',('r1' if face else 'r0','w'),[('r1','xyzw'),('r1','xyzw',1),S('one')]);emit('mul',('r0','xyz'),[('r1','yyyy'),('v4','xyzw')])
+        emit('rsq',('r1' if face else 'r0','w'),[('r1' if face else 'r0','wwww')]);emit('mad',('r0','xyz'),[('r1','xxxx'),('v5','xyzw'),('r0','xyzw')])
+        emit('rcp',('r1','z') if face else ('r0','w'),[('r1' if face else 'r0','wwww')])
+        if face:emit('cmp',('r1','w'),[('vFace','xyzw'),S('zero'),S('one')])
+        emit('mad',('r1','xyz'),[('r1','zzzz') if face else ('r0','wwww'),('v3','xyzw'),('r0','xyzw')])
+        if face:emit('add',('r0','w'),[('r0','wwww'),('r1','wwww',1)])
+        normal_at=emit('nrm',('r0','xyz'),[('r1','xyzw')])
+        if face:
+            normal='r4' if boron and base else 'r1'
+            emit('mul',(normal,'xyz'),[('r0','wwww'),('r0','xyzw')])
+    else:
+        if face:
+            emit('cmp',('r0','w'),[('vFace','xyzw'),S('one'),S('minus_one')],())
+            emit('cmp',('r0','w'),[('r0','wwww',1),S('zero'),S('one')]);emit('cmp',('r0','z'),[('vFace','xyzw'),S('zero'),S('one')]);emit('add',('r0','w'),[('r0','wwww'),('r0','zzzz',1)])
+        normal_at=emit('nrm',('r0' if face else normal,'xyz'),[('v3','xyzw')])
+        if face:emit('mul',(normal,'xyz'),[('r0','wwww'),('r0','xyzw')])
+    normal_count=len(rows);direction='c3' if boron and base else 'c4' if affine else 'c1';color='c5' if affine else 'c2'
+    emit('dp3',('r0','w'),[(direction,'xyzw',1),(normal,'xyzw')]);emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')])
+    reflected='r2' if bump else 'r0' if not boron or base else 'r1'
+    emit('mad',(reflected,'xyz'),[(normal,'xyzw'),('r0','wwww',1),(direction,'xyzw',1)])
+    if boron and base:
+        view='r1' if bump else 'r2';emit('nrm',(view,'xyz'),[('v2','xyzw')])
+        emit('dp3',('r0' if bump else 'r1','w'),[(reflected,'xyzw'),(view,'xyzw')],sat)
+        emit('pow',('r1','w') if bump else ('r0','z'),[('r0' if bump else 'r1','wwww'),S('power')])
+        emit('dp3',('r2','z') if bump else ('r0','x'),[(normal,'xyzw'),('c3','xyzw')],sat)
+        emit('mul',('r2','w') if bump else ('r0','y'),[('r2','zzzz') if bump else ('r0','xxxx'),S('three')],sat)
+        emit('dp3',('r0','w'),[('c1','xyzw',1),(normal,'xyzw')]);emit('mul',('r3' if bump else 'r1','xyz'),[('r2','zzzz') if bump else ('r0','xxxx'),('c4','xyzw')]);emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')])
+        emit('mul',('r3','w'),[('r1','wwww') if bump else ('r0','zzzz'),('r2','wwww') if bump else ('r0','yyyy')]);emit('mad',(reflected,'xyz'),[(normal,'xyzw'),('r0','wwww',1),('c1','xyzw',1)])
+        if not bump or face:emit('dp3',('r1' if bump else 'r2','w'),[(normal,'xyzw'),('c1','xyzw')],sat)
+        emit('dp3',('r2' if bump else 'r1','w'),[(reflected,'xyzw'),(view,'xyzw')],sat)
+        if bump and not face:emit('dp3',('r1','w'),[(normal,'xyzw'),('c1','xyzw')],sat)
+        emit('pow',('r0','w'),[('r2' if bump else 'r1','wwww'),S('power')]);emit('mul',('r2' if bump else 'r1','w'),[('r1' if bump else 'r2','wwww'),S('three')],sat)
+        emit('mul',('r2' if bump else 'r0','xyz'),[('r3','wwww'),('c4','xyzw')]);emit('mul',('r0','w'),[('r0','wwww'),('r2' if bump else 'r1','wwww')])
+        if bump:
+            emit('mad',('r3','xyz'),[('r1','wwww'),('c2','xyzw'),('r3','xyzw')]);emit('mad',('r4','xyz'),[('r0','wwww'),('c2','xyzw'),('r2','xyzw')])
+            emit('texld',('r2','xyzw'),[('v1','xyzw'),('s2','xyzw')]);emit('mul',('r0','w'),[('r2','xxxx'),S('three')]);emit('mul',('r4','xyz'),[('r4','xyzw'),('r0','wwww')])
+            emit('dp3',('r0','w'),[('r1','xyzw',1),('r0','xyzw')]);emit('mad',('r3','xyz'),[('r3','xyzw'),S('diffuse'),('r4','xyzw')]);emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')]);emit('mov',('r4','xyz'),[('v0','xyzw')],sat)
+            reflection=emit('mad',('r0','xyz'),[('r0','xyzw'),('r0','wwww',1),('r1','xyzw',1)]);emit('add',('r3','xyz'),[('r3','xyzw'),('r4','xyzw')]);emit('dp3',('r1','w'),[('r1','xyzw'),('r0','xyzw')]);emit('texld',('r0','xyzw'),[('r0','xyzw'),('s4','xyzw')])
+        else:
+            reflection=None;emit('dp3',('r1','w'),[('r2','xyzw'),('v4','xyzw')]);emit('mad',('r2','xyz'),[('r0','wwww'),('c2','xyzw'),('r0','xyzw')]);emit('texld',('r0','xyzw'),[('v1','xyzw'),('s1','xyzw')])
+            emit('mul',('r0','w'),[('r0','xxxx'),S('three')]);emit('mad',('r1','xyz'),[('r2','wwww'),('c2','xyzw'),('r1','xyzw')]);emit('mul',('r2','xyz'),[('r2','xyzw'),('r0','wwww')]);emit('mad',('r2','xyz'),[('r1','xyzw'),S('diffuse'),('r2','xyzw')]);emit('mov',('r3','xyz'),[('v0','xyzw')],sat)
+        emit('add',('r0','w'),[('r1','wwww',12),S('one')]);emit('mul',('r1','xyz'),[('v6' if bump else 'v5','yyyy'),C('Py')])
+        square='r1' if bump else 'r0';lane='w' if bump else 'z'
+        emit('mul',(square,lane),[('r0','wwww'),('r0','wwww')]);emit('mad',('r1','xyz'),[('v6' if bump else 'v5','xxxx'),C('Px'),('r1','xyzw')]);emit('mul',(square,lane),[(square,lane*4),(square,lane*4)])
+        emit('mad',('r1','xyz'),[('v6' if bump else 'v5','zzzz'),C('Pz'),('r1','xyzw')]);emit('mul',('r0','w'),[('r0','wwww'),(square,lane*4)]);emit('mad',('r1','xyz'),[('v7' if bump else 'v6','yyyy'),C('Pu'),('r1','xyzw')])
+        if not bump:emit('add',('r2','xyz'),[('r2','xyzw'),('r3','xyzw')])
+        emit('mad',('r4' if bump else 'r3','xyz'),[('r0','wwww'),C('Pf'),('r1','xyzw')])
+    elif bump:
+        if face:emit('dp3',('r1','w'),[(normal,'xyzw'),(direction,'xyzw')],sat)
+        emit('nrm',('r1','xyz'),[('v2','xyzw')])
+        if not face:emit('dp3',('r1','w'),[(normal,'xyzw'),(direction,'xyzw')],sat)
+        emit('dp3',('r0','w'),[('r2','xyzw'),('r1','xyzw')],sat);emit('mul',('r3','xy'),[('r1','wwww'),packed()]);emit('pow',('r1','w'),[('r0','wwww'),S('power')]);emit('mov',('r0','w'),[('r3','xxxx')],sat)
+        emit('mul',('r0','w'),[('r1','wwww'),('r0','wwww')]);emit('texld',('r2','xyzw'),[('v1','xyzw'),('s2','xyzw')]);emit('mul',('r0','w'),[('r0','wwww'),('r2','xxxx')]);emit('dp3',('r1','w'),[('r1','xyzw',1),('r0','xyzw')])
+        emit('mad',('r0','w'),[('r0','wwww'),S('outer'),('r3','yyyy')]);emit('add',('r1','w'),[('r1','wwww'),('r1','wwww')]);emit('mov',('r3','xyz'),[('v0','xyzw')],sat)
+        reflection=emit('mad',('r0','xyz'),[('r0','xyzw'),('r1','wwww',1),('r1','xyzw',1)]);emit('mad',('r4' if affine else 'r3','xyz'),[('r0','wwww'),(color,'xyzw'),('r3','xyzw')]);emit('dp3',('r1','w'),[('r1','xyzw'),('r0','xyzw')]);emit('texld',('r0','xyzw'),[('r0','xyzw'),('s4','xyzw')])
+        if boron:
+            emit('add',('r0','w'),[('r1','wwww',12),S('one')]);emit('mul',('r1','w'),[('r0','wwww'),('r0','wwww')]);emit('mul',('r1','w'),[('r1','wwww'),('r1','wwww')]);emit('mul',('r0','w'),[('r0','wwww'),('r1','wwww')]);emit('mad',('r4','xyz'),[('r0','wwww'),C('Pf'),('v6','xyzw')])
+    else:
+        reflection=None
+        emit('dp3',('r1' if boron else 'r0','w'),[(normal,'xyzw'),(direction,'xyzw')],sat);emit('nrm',('r0' if boron else 'r1','xyz'),[('v2','xyzw')])
+        emit('dp3',('r0' if boron else 'r1','w'),[(reflected,'xyzw'),('r0' if boron else 'r1','xyzw')],sat)
+        emit('mul',('r1' if boron else 'r2','xy'),[('r1' if boron else 'r0','wwww'),packed()]);emit('pow',('r1','w') if boron else ('r0','z'),[('r0' if boron else 'r1','wwww'),S('power')]);emit('mov',('r0','w'),[('r1' if boron else 'r2','xxxx')],sat)
+        if boron:
+            emit('dp3',('r1','z'),[('r0','xyzw'),('v4','xyzw')]);emit('mul',('r1','w'),[('r1','wwww'),('r0','wwww')]);emit('texld',('r0','xyzw'),[('v1','xyzw'),('s1','xyzw')])
+            emit('add',('r0','w'),[('r1','zzzz',12),S('one')]);emit('mul',('r0','z'),[('r1','wwww'),('r0','xxxx')]);emit('mul',('r0','y'),[('r0','wwww'),('r0','wwww')]);emit('mad',('r0','z'),[('r0','zzzz'),S('outer'),('r1','yyyy')]);emit('mul',('r0','y'),[('r0','yyyy'),('r0','yyyy')]);emit('mov',('r1','xyz'),[('v0','xyzw')],sat)
+            emit('mul',('r0','w'),[('r0','wwww'),('r0','yyyy')]);emit('mad',('r2','xyz'),[('r0','zzzz'),(color,'xyzw'),('r1','xyzw')]);emit('mad',('r3','xyz'),[('r0','wwww'),C('Pf'),('v5','xyzw')])
+        else:
+            emit('mul',('r1','w'),[('r0','zzzz'),('r0','wwww')]);emit('texld',('r0','xyzw'),[('v1','xyzw'),('s1','xyzw')]);emit('mul',('r0','w' if affine else 'z'),[('r1','wwww'),('r0','xxxx')])
+            emit('dp3',('r0','z' if affine else 'w'),[('r1','xyzw'),('v4','xyzw')]);emit('mad',('r0','w' if affine else 'z'),[('r0','wwww' if affine else 'zzzz'),S('outer'),('r2','yyyy')]);emit('mov',('r5' if affine else 'r2','xyz'),[('v0','xyzw')],sat)
+    # Palette-angle responses preserve raw geometric weights, including native
+    # ABS source modifiers and POW's absolute-base rule for Paranid power nine.
+    if not boron:
+        w='v6' if bump else 'v5';g='w' if bump else 'z' if affine else 'w';f='w' if bump or not affine else 'z'
+        emit('mul',('r1','xyz'),[(w,'yyyy'),C('Py')]);emit('add',('r1','w'),[('r1','wwww',12) if bump else ('r0',g*4,12),S('one')]);emit('mad',('r1','xyz'),[(w,'xxxx'),C('Px'),('r1','xyzw')]);emit('pow',('r0',f),[('r1','wwww'),S('grazing')]);emit('mad',('r5' if bump and affine else 'r3' if affine else 'r1','xyz'),[(w,'zzzz'),C('Pz'),('r1','xyzw')])
+        if not affine:
+            if not bump:emit('mad',('r2','xyz'),[('r0','zzzz'),(color,'xyzw'),('r2','xyzw')])
+            emit('mad',('r4' if bump else 'r3','xyz'),[('r0',f*4),C('Pf'),('r1','xyzw')])
+    diffuse=emit('texld',('r1','xyzw'),[('v1','xyzw'),('s0','xyzw')]);affine_sites=[]
+    if affine:
+        homogeneous='r3' if bump else 'r2';albedo='r1' if bump else 'r4';pal='r5' if bump else 'r3'
+        reg,_=constants['one'];zero=constants['zero'][1]
+        emit('mad',(homogeneous,'xyzw'),[('r1','xyzx'),(f'c{reg}','xxx'+zero),(f'c{reg}',zero*3+'x')],())
+        emit('mad',(pal,'xyz'),[('r0','wwww' if bump else 'zzzz'),C('Pf'),(pal,'xyzw')])
+        for n,lane in enumerate('xyz'):affine_sites.append(emit('dp4',(albedo,lane),[(homogeneous,'xyzw'),(f'c{n}','xyzw')]))
+        if not bump:emit('mad',('r1','xyz'),[('r0','wwww'),(color,'xyzw'),('r5','xyzw')])
+    if boron:
+        if bump:
+            emit('mul',('r5','xyz'),[('r1','xyzw'),('v7','xxxx')]);emit('mul',('r4','xyz'),[('r4','xyzw'),('r1','xyzw')]);emit('mul',('r2','xyz'),[('r2','xxxx'),('r5','xyzw')]);emit('mul',('r4','xyz'),[('r4','xyzw'),S('half')]);emit('mul',('r2','xyz'),[('r2','xyzw'),C('Pc')]);emit('mad',('r1','xyz'),[('r1','xyzw'),S('half'),('r4','xyzw')]);emit('mul',('r0','xyz'),[('r0','xyzw'),('r2','xyzw')]);emit('mad',('r1','xyz'),[('r3','xyzw'),('r1','xyzw'),('r0','xyzw')])
+        else:
+            emit('mul',('r3','xyz'),[('r3','xyzw'),('r1','xyzw')]);emit('mul',('r4','xyz'),[('r1','xyzw'),('v6','xxxx')]);emit('mul',('r3','xyz'),[('r3','xyzw'),S('half')]);emit('mul',('r0','xyz'),[('r0','xxxx'),('r4','xyzw')]);emit('mad',('r1','xyz'),[('r1','xyzw'),S('half'),('r3','xyzw')]);emit('mul',('r3','xyz'),[('r0','xyzw'),C('Pc')])
+    elif bump:
+        pal='r3' if affine else 'r4';emit('mul',(pal,'xyz'),[('r5' if affine else 'r4','xyzw'),('r1','xyzw')]);emit('mul',('r5','xyz'),[('r1','xyzw'),('v7','xxxx')]);emit('mul',(pal,'xyz'),[(pal,'xyzw'),S('half')]);emit('mul',('r2','xyz'),[('r2','xxxx'),('r5','xyzw')]);emit('mad',('r1','xyz'),[('r1','xyzw'),S('half'),(pal,'xyzw')]);emit('mul',('r0','xyz'),[('r0','xyzw'),('r2','xyzw')]);emit('mad',('r1','xyz'),[('r4' if affine else 'r3','xyzw'),('r1','xyzw'),('r0','xyzw')])
+    else:
+        albedo='r4' if affine else 'r1';pal='r2' if affine else 'r3';mix='r2' if affine else 'r4'
+        emit('mul',(pal,'xyz'),[('r3','xyzw'),(albedo,'xyzw')]);emit('mul',(mix,'xyz'),[(pal,'xyzw'),S('half')]);emit('mul',('r3','xyz'),[(albedo,'xyzw'),('v6','xxxx')]);emit('mad',('r2' if affine else 'r1','xyz'),[(albedo,'xyzw'),S('half'),(mix,'xyzw')]);emit('mul',('r3','xyz'),[('r0','xxxx'),('r3','xyzw')])
+    if not bump:
+        emit('texld',('r0','xyzw'),[('v4','xyzw'),('s3','xyzw')]);emit('mul',('r0','xyz'),[('r3','xyzw'),('r0','xyzw')]);emit('mad',('r1','xyz'),[('r1','xyzw'),('r2','xyzw'),('r0','xyzw')] if affine else [('r2','xyzw'),('r1','xyzw'),('r0','xyzw')])
+    lightmap=emit('texld',('r0','xyzw'),[('v1','xyzw'),('s3' if bump else 's2','xyzw')]);alpha_mix=emit('lrp',('r2','w'),[('c3' if affine else 'c0','xxxx'),('r0','wwww'),('r1','wwww')]);final=emit('add',('oC0','xyz'),[('r1','xyzw'),('r0','xyzw')]);alpha=emit('mul',('oC0','w'),[('r2','wwww'),('v0','wwww')])
+    palette_complete_chain(decoded,rows)
+    for reg,start,end in [('r1',diffuse,alpha_mix),('r0',lightmap,alpha_mix),('r2',alpha_mix,alpha)]:no_lane_writes(decoded,reg,'w',start,end)
+    require(lane_writes(decoded,'oC0')==[final,alpha],'palette PS output inventory changed')
+    return {'normal_reconstruction_sites':rows[:normal_count],'angular_palette_and_color_sites':rows[normal_count:],
+            'normal_encoding':'ag' if bump else 'geometric','normal_channels':{'alpha':'binormal_v5','green':'tangent_v4','red_blue':'unused'} if bump else {},
+            'native_pow_sites':[r for r in rows if r['opcode']=='pow'],'affine_rgb_sites':[site(decoded,a) for a in affine_sites],
+            'specular_power':10,'specular_outer_scale':3 if boron else 6,'grazing_power':5 if boron else 9,
+            'grazing_power_model':'signed_multiply_fifth' if boron else 'native_pow_absolute_base_ninth',
+            'diffuse_alpha_live_interval':[diffuse,alpha_mix],'lightmap_alpha_live_interval':[lightmap,alpha_mix],'interpolated_alpha_live_interval':[alpha_mix,alpha],
+            'reflection_coordinate_dword':reflection,'final_rgb_dword':final,'alpha_dword':alpha,'alpha_interpolation_dword':alpha_mix,
+            'complete_executable_chain_checked':len(rows)}
+
+
+def inspect_palette_program(code,identifier,decoded,profile,items,end):
+    stage,key=identifier.split('_');shape=(PALETTE_VERTICES if stage=='vs' else PALETTE_PIXELS)[key]
+    family,bump,base=shape[:3];loop=shape[3] if stage=='vs' else False
+    require(profile['parsed'] and profile['header_is_contiguous'] and profile['control_flow_balanced'],'invalid palette original structure')
+    proof=prove_palette_vertex(decoded,key) if stage=='vs' else prove_palette_pixel(decoded,key)
+    literal,palettes=palette_constant_proof(decoded,stage,key);palette_declarations(profile,stage,key)
+    relocations=palette_scalar_relocations(decoded,profile,stage,key);abi=palette_abi(family,bump)
+    full_family=family+('_bump' if bump else '_default')
+    output={'id':identifier,'families':[full_family],'fnv1a64':key,'sha256':hashlib.sha256(code).hexdigest(),'word_count':len(code)//4,
+            'header_end_dword':profile['header_end_dword'],'end_dword':end,
+            'opaque_comment_dword_count':len(code)//4-2-sum(i['length']+1 for i in items),
+            'budget':palette_budget(profile,stage,loop,abi,relocations),'material_abi':abi,
+            'material_rgb_semantic_proof':material_color1_proof(profile,stage),'scalar_relocations':relocations,
+            'literal_sites':literal,'palette_sources':palettes,'palette_varying':None,
+            'motion_splice':({'declaration_insert_dword':profile['header_end_dword'],'arithmetic_insert_dword':profile['position_output']['insertion_dword'],
+                              'position_source_temporary':profile['position_output']['source_temporary'],'position_dp4_dwords':profile['position_output']['dwords_xyzw']} if stage=='vs' else
+                             {'definition_insert_dword':profile['definition_end_dword'],'declaration_insert_dword':profile['header_end_dword'],'append_dword':end})}
+    if family=='boron' and not base:
+        varying=('o7' if bump else 'o6') if stage=='vs' else ('v6' if bump else 'v5')
+        declaration=next(d for d in profile['declarations'] if d['name']==varying)
+        require(declaration['mask']=='xyz' and declaration['modifiers']==([] if stage=='vs' else list(PP)), 'palette RGB varying contains scalar/centroid data')
+        if stage=='vs':require(lane_writes(decoded,varying)==[proof['palette_rgb_export_dword']],'palette VS varying write inventory changed')
+        else:require(len(uses(decoded,varying))==1 and all(s['swizzle']=='xyzw' and s['source_modifier']==0 and not s['relative'] for _,s in uses(decoded,varying)), 'palette PS varying read inventory changed')
+        output['palette_varying']={'declaration':declaration,'authored_mask':'xyz','authored_modifiers':[],
+                                   'role':'already_linear_palette_rgb','preserve_semantic_and_register':True,'native_alpha_or_scalar_lanes':[]}
+    if stage=='vs':
+        point=proof['point_rgb_dword'];material=proof['material_emissive_dword']
+        require(profile['position_output']['dwords_xyzw']==proof['position_dp4_dwords'] and profile['position_output']['source_temporary']==proof['position_source_temporary'],'palette original motion position disagrees')
+        output.update(point_and_alpha_proof=proof,point_rgb_sources=source_role(decoded,'c1' if loop else 'c5',[point],loop),
+                      material_emissive_scaled_sources=source_role(decoded,'c40' if loop else 'c19',[material]),point_model=proof['point_model'],
+                      final_rgb_sites=[site(decoded,material)],alpha_output_sites=[site(decoded,at) for at in proof['alpha_dwords']],
+                      rgb_output_declaration=next(d for d in profile['declarations'] if d['name']=='o1'))
+        output['point_rgb_sources'][0]['color_constant_indices']=list(range(1,24,3)) if loop else [5]
+        output['constraints']=['Decode each native point RGB before its scalar/angular multiplication; preserve relative stride 3 and runtime i0 count [0,8]. Material emissive retains its already-scaled amplitude and separate gain.',
+                               'Boron single palette colors are decoded separately in VS before their native geometric-weight accumulation, then retain full precision through the existing palette RGB varying.',
+                               'Preserve native world/normal/view/reflection, UV, fog and independent alpha math. BUMP moves only the individually proved native scalars into matching-precision W lanes and preserves their component wrap behavior.']
+    else:
+        affine=shape[3];roles=('diffuse_rgb','normal_data_alpha_green','specular_data_red','lightmap_emissive_rgb','reflection_cube_rgb') if bump else ('diffuse_rgb','specular_data_red','lightmap_emissive_rgb','reflection_cube_rgb')
+        textures=[]
+        for sampler,role in enumerate(roles):
+            fetches=[at for at,row in decoded.items() if row['item']['opcode']==66 and row['sources'][1]['name']==f's{sampler}']
+            require(len(fetches)==1,'palette sampler fetch inventory changed');fetch=site(decoded,fetches[0])
+            boundary=proof['affine_rgb_sites'][-1] if sampler==0 and affine else fetch
+            color=role.endswith('_rgb');textures.append({'role':role,'sampler':sampler,'fetch':fetch,'conversion_after_dword':boundary['end_dword'] if color else None,
+                                                        'conversion_rgb_register':boundary['destination']['name'] if color else None,'conversion_write_mask':'xyz' if color else None})
+        direct=['c2','c4'] if family=='boron' and base else ['c5'] if affine else ['c2']
+        clamps=[at for at,row in decoded.items() if row['item']['opcode']==1 and row['destination'] and row['destination']['mask']=='xyz' and any(s['name']=='v0' for s in row['sources'])]
+        require(len(clamps)==1,'palette COLOR0 clamp inventory changed')
+        output.update(alpha_and_affine_proof=proof,texture_sources=textures,diffuse_affine_completion=proof['affine_rgb_sites'][-1] if affine else None,
+                      directional_rgb_sources=[s for c in direct for s in source_role(decoded,c,[at for at,_ in uses(decoded,c)])],
+                      color0_rgb_clamp=site(decoded,clamps[0]),color0_declaration=next(d for d in profile['declarations'] if d['name']=='v0'),
+                      final_rgb_sites=[site(decoded,proof['final_rgb_dword'])],alpha_interpolation_site=site(decoded,proof['alpha_interpolation_dword']),
+                      alpha_output_sites=[site(decoded,proof['alpha_dword'])],two_sided=shape[4],lobe_coefficients=FAMILIES[full_family]['coefficients'],
+                      retained_geometry_precision_sites=proof['normal_reconstruction_sites'])
+        output['constraints']=['Decode each fixed palette RGB before weighted accumulation, leaving shared scalar DEF lanes untouched. Boron single palette arrives already linear from VS; do not decode its sum.',
+                               'Keep native sampled mask, normal AG, geometric palette weights, J, u11, face, reflection coordinates and alpha unchanged; transform only certified RGB source/dependency sites.',
+                               'Paranid retains native affine RGB completion before diffuse decode and native absolute-base POW for its ninth-power grazing response; Boron retains the signed multiply fifth power.',
+                               'BUMP scalar relocation preserves existing carrier XYZ and precision/centroid flags; the live transport must map and restore native component WRAP state. Driver interpolation parity remains a separate qualification.']
+    output['rgb_precision_sites']=palette_rgb_sites(decoded,output,stage)
+    output['budget']['original_static_weighted_slots']=weighted_slots(decoded,profile,stage)
+    output['certification']='original_identity_and_reviewed_sites_verified; no transformed shader or numeric equivalence claim'
+    return output
+
+
+def prove_palette_archive(inventory):
+    rows=[r for r in inventory['pairs'] if (r['vs'],r['ps']) in PALETTE_PAIRS]
+    require(len(rows)==32,'palette archive pair inventory changed')
+    for row in rows:
+        family,bump,base,loop=PALETTE_VERTICES[row['vs']];_,_,_,affine,face=PALETTE_PIXELS[row['ps']]
+        if base:toggles=['(base)','hue_lights_off','hueshift_off','v_lights_off']
+        elif family=='boron':toggles=['(base)','hueshift_off'] if loop else ['hue_lights_off','v_lights_off']
+        else:toggles=[('(base)' if affine else 'hueshift_off') if loop else ('v_lights_off' if affine else 'hue_lights_off')]
+        count=8 if base else 2 if family=='boron' else 1
+        expected={'pass_occurrences':count,'effect_entries':count,'catalogues':['01.cat','addon/01.cat'] if base else ['01.cat'],
+                  'basenames':[family+('2s' if face else '') if base else family+('_0001' if face else '_0000')],
+                  'profile_directories':['3_0'],'toggle_directories':toggles,'techniques':['BUMPMAP' if bump else 'DEFAULT'],'pass_names':['P0']}
+        require(row['effects']==expected,'palette archive alias/toggle inventory changed')
 
 
 
@@ -1864,7 +2498,7 @@ def prove_hull_pixel(decoded, key):
 
 def weighted_slots(decoded, profile, stage):
     # Documented SM3 costs, bounded to opcodes actually present in this corpus.
-    costs = dict.fromkeys(('mov', 'add', 'mad', 'mul', 'dp3', 'dp4', 'rsq', 'rcp', 'mova', 'cmp', 'else', 'endif'), 1)
+    costs = dict.fromkeys(('mov', 'add', 'mad', 'mul', 'dp3', 'dp4', 'rsq', 'rcp', 'mova', 'cmp', 'else', 'endif', 'abs', 'log', 'exp'), 1)
     costs.update({'dcl':0, 'def':0, 'nrm':3, 'pow':3, 'lrp':2, 'dp2add':2, 'rep':3, 'endrep':2, 'if':3})
     samplers = {d['name']: d['texture_type'] for d in profile['declarations'] if d['role'] == 'sampler'}
     slots = 0
@@ -1915,6 +2549,8 @@ def inspect_program(code, identifier):
     require(all(not i['predicated'] and not i['coissued'] for i in items), 'unsupported predication/coissue')
     decoded = decode_sites(items)
     profile = motion.profile(code, identifier, stage, '3_0')
+    if key in PALETTE_VERTICES or key in PALETTE_PIXELS:
+        return inspect_palette_program(code, identifier, decoded, profile, items, end)
     if key in ASTEROID_VERTICES or key in ASTEROID_PIXELS:
         return inspect_asteroid_program(code, identifier, decoded, profile, items, end)
     require(profile['parsed'] and profile['header_is_contiguous'] and profile['control_flow_balanced'], 'invalid original structure')
@@ -2021,9 +2657,10 @@ def prove_asteroid_archive(inventory):
 def prove_archive_coverage(inventory):
     """Each named alias must independently cover its complete reviewed family."""
     prove_asteroid_archive(inventory)
+    prove_palette_archive(inventory)
     for family in FAMILIES.values():
         expected = {(vs, ps) for vs, ps in PAIRS if ps in family['pixels']}
-        require(len(expected) == (3 if family['aliases'] == ['asteroid'] else 10), 'family pair contract changed')
+        require(len(expected) == (3 if family['aliases'] == ['asteroid'] else 6 if family['aliases'] == ['boron'] else 10), 'family pair contract changed')
         for alias in family['aliases']:
             basename = re.compile(re.escape(alias) + r'(?:2s|_000[01])?')
             actual = {(row['vs'], row['ps']) for row in inventory['pairs']
@@ -2040,8 +2677,8 @@ def inspect(directory, inventory_path):
     negative = [row for row in inventory['pairs'] if row['vs'] == '494fe349b8bc12ec' and row['ps'] == 'fffdabd910793aba']
     require(len(negative) == 1 and negative[0]['transformation_class'] == 'C_relocated_registers_with_static_branches' and
             ('494fe349b8bc12ec', 'fffdabd910793aba') not in PAIRS, 'future negative witness changed')
-    require(len(rows) == 116 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
-    require(all(row['transformation_class'] == ('B_relocated_registers' if (row['ps'] in ALL_BUMP_PIXELS or row['ps'] in ASTEROID_PIXELS and ASTEROID_PIXELS[row['ps']][0]) else 'A_reference_registers') for row in rows), 'motion class changed')
+    require(len(rows) == 148 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
+    require(all(row['transformation_class'] == ('B_relocated_registers' if (row['ps'] in PALETTE_PIXELS or row['ps'] in ALL_BUMP_PIXELS or row['ps'] in ASTEROID_PIXELS and ASTEROID_PIXELS[row['ps']][0]) else 'A_reference_registers') for row in rows), 'motion class changed')
     for family, record in FAMILIES.items():
         scoped = [row for row in rows if PIXEL_FAMILY[row['ps']] == family]
         require(sum(row['effects']['pass_occurrences'] for row in scoped) == (16 if family.startswith('asteroid_') else 96 if family in ('shared_default', 'shared_bump') else 24), 'family occurrence count changed')
@@ -2056,9 +2693,27 @@ def inspect(directory, inventory_path):
         plan, d = row['insertion_plan'], depth[row['vs'], row['ps']]
         actual = motion.classify(original_motion['vs_' + row['vs']], original_motion['ps_' + row['ps']])
         asteroid = row['ps'] in ASTEROID_PIXELS
-        bump = ASTEROID_PIXELS[row['ps']][0] if asteroid else row['ps'] in ALL_BUMP_PIXELS
-        require(actual[0] == ('B_relocated_registers' if bump else 'A_reference_registers') and not actual[1] and actual[3] == plan, 'motion source/splice plan changed')
-        if asteroid:
+        palette = row['ps'] in PALETTE_PIXELS
+        bump = PALETTE_PIXELS[row['ps']][1] if palette else ASTEROID_PIXELS[row['ps']][0] if asteroid else row['ps'] in ALL_BUMP_PIXELS
+        require(actual[0] == ('B_relocated_registers' if bump or palette else 'A_reference_registers') and not actual[1] and actual[3] == plan, 'motion source/splice plan changed')
+        if palette:
+            family = PALETTE_PIXELS[row['ps']][0]
+            abi = palette_abi(family,bump)
+            temporary_base = max(5,max(original_motion['ps_'+row['ps']]['temporary_registers'])+1)
+            require((plan['vs_output_register'],plan['ps_input_register'],plan['ps_temporaries'],
+                     plan['texcoord_index'],plan['vs_constant_base'],plan['ps_constant_base']) ==
+                    (abi['vs_motion_output'],abi['ps_motion_input'],list(range(temporary_base,temporary_base+3)),
+                     abi['motion_texcoord'],252,216), 'palette motion ABI changed')
+            require(d == {'vertex_depth_output_register':abi['vs_depth_output'],'depth_texcoord_index':abi['depth_texcoord'],
+                          'pixel_depth_input_register':abi['ps_depth_input'],'depth_output':True},'palette depth ABI changed')
+            vp = next(p for p in programs if p['id']=='vs_'+row['vs'])
+            pp = next(p for p in programs if p['id']=='ps_'+row['ps'])
+            require(vp['material_abi']==pp['material_abi']==abi,'palette pair-local material ABI disagrees')
+            for vs_scalar,ps_scalar in zip(vp['scalar_relocations'],pp['scalar_relocations']):
+                for field in ('role','source_lane','destination_lane','source_texcoord_index','destination_texcoord_index','extended_carrier_mask'):
+                    require(vs_scalar[field]==ps_scalar[field], 'palette pair-local scalar ABI disagrees')
+            require(len(vp['scalar_relocations'])==len(pp['scalar_relocations']), 'palette pair-local scalar count changed')
+        elif asteroid:
             abi = asteroid_abi(*ASTEROID_PIXELS[row['ps']][:2])
             require((plan['vs_output_register'],plan['ps_input_register'],plan['ps_temporaries'],
                      plan['texcoord_index'],plan['vs_constant_base'],plan['ps_constant_base']) ==
@@ -2086,24 +2741,26 @@ def inspect(directory, inventory_path):
                               'archive_pass_occurrences': row['effects']['pass_occurrences'],
                               'archive_aliases': row['effects']['basenames'],
                               'depth_texcoord_index': d['depth_texcoord_index'],
-                              'motion_class': 'B' if bump else 'A', 'current_depth_supported': True})
-        if asteroid:
+                              'motion_class': 'B' if bump or palette else 'A', 'current_depth_supported': True})
+        if asteroid or palette:
             compact_pairs[-1]['material_abi'] = abi
             compact_pairs[-1]['motion_plan'] = plan
             compact_pairs[-1]['depth_plan'] = d
     stage_constraints = {}
     for program in programs:
         stage = ('bump_' if any('bump' in family for family in program['families']) else '') + program['id'][:2]
-        if program['families'][0].startswith('asteroid_'):
+        if program['families'][0].startswith(('asteroid_','boron_','paranid_')):
             stage = program['families'][0] + '_' + program['id'][:2]
         constraints = program.pop('constraints')
         require(stage not in stage_constraints or stage_constraints[stage] == constraints, 'inconsistent stage constraints')
         stage_constraints[stage] = constraints
         program['constraints_ref'] = stage
     return {'schema': 1, 'stage_constraints': stage_constraints,
-            'scope': 'Bounded SM3 DEFAULT/BUMPMAP/BUMPMAP_LOW original-site proof: 13 VS, 70 PS, 116 archive pairs. Asteroid DEFAULT/BUMPMAP adds 6 VS, 4 PS and all 6 pairs to the 110-pair source baseline 10e447b. This artifact proves original sites only; transformed implementation and qualification are recorded in docs/architecture/linear-asteroid-materials.md. The conventional hull group is documented in docs/architecture/linear-hull-materials.md; the earlier 70-pair group was qualified at 73f5c51.',
+            'scope': 'Bounded SM3 DEFAULT/BUMPMAP/BUMPMAP_LOW original-site proof: 25 VS, 90 PS, 148 archive pairs. Boron/Paranid adds 12 VS, 20 PS and all 32 pairs to the 83-original/116-pair COLOR1 baseline bf62f6e. This artifact proves original sites only; current implementation, budgets and qualification belong to docs/architecture/linear-palette-materials.md. Earlier Asteroid and conventional hull evidence remains in their owning architecture notes.',
             'families': FAMILIES,
-            'production_contract': ['All 116 material pairs use a separate full-precision, unsaturated XYZ COLOR1 declaration at their existing physical RGB registers. All 83 originals prove this semantic free in their actual VS output or PS input DCLs; motion/depth keep their original TEXCOORD contracts. COLOR1 transformed/GPU qualification is pending.',
+            'production_contract': ['All 148 material pairs use a separate full-precision, unsaturated XYZ COLOR1 declaration. All 115 originals prove COLOR1 free in actual VS output or PS input DCLs. New BUMP pairs evacuate individually proved native J/u11 scalar lanes before reusing whole o8/v7 for RGB; native motion/depth TEXCOORD contracts remain explicit. Current production budgets and pending Boron/Paranid GPU qualification belong to docs/architecture/linear-palette-materials.md.',
+                                    'Boron/Paranid palette RGB is decoded offline from exact native DEF binary32 lanes with binary32 exponent 2.2, rounded to binary32 and emitted as immutable creation-time DEF lanes: VS c240..243 and PS c204..209. Co-resident scalar lanes remain native. Sampler masks are DEFAULT 0x0f and BUMPMAP 0x1f.',
+                                    'New DEFAULT uses RGB o10/v9 COLOR1; BUMP uses RGB o8/v7 COLOR1 after J moves to TEXCOORD1.w and Boron base u11 moves to TEXCOORD2.w. Existing carrier XYZ and flags are retained; portable live binding must map and restore the corresponding component WRAP state.',
                                     'Asteroid DEFAULT/BUMPMAP adds 6 VS, 4 PS and 6 complete alias/toggle pairs; lower shader models remain outside this slice.',
                                     'Exact maximum input guard remains 1392 DWORDs, retaining every per-profile count; Asteroid maxima are VS 566 and PS 448 DWORDs.',
                                     'Asteroid sampler masks are DEFAULT 0x07 and BUMPMAP 0x0f. Conventional DEFAULT retains 0x0f and conventional BUMPMAP 0x1f.',

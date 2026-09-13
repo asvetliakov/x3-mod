@@ -51,8 +51,14 @@ struct MotionOutputProfile{}; MotionOutputProfile row;
 struct HdrConfig{HdrTonemap tonemap=HdrTonemap::Agx;x3::temporal::AgxDecode decode=x3::temporal::AgxDecode::gamma22;};
 bool linear_material_config_valid(const LinearMaterialConfig&c){return std::isfinite(c.direct_gain)&&c.direct_gain>=0&&c.direct_gain<=16;}
 unsigned contract_lookups=0;
-struct LinearMaterialPairContract {std::uint32_t sampler_mask=0;bool bump=false;};
-LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vs,std::uint64_t ps){++contract_lookups;return vs==10&&ps==20?LinearMaterialPairContract{15,false}:vs==30&&ps==40?LinearMaterialPairContract{31,true}:vs==30&&ps==41?LinearMaterialPairContract{15,true}:LinearMaterialPairContract{};}
+struct LinearMaterialScalarTransport {std::uint8_t source_texcoord=0,source_component=0,destination_texcoord=0,destination_component=0;};
+struct LinearMaterialPairContract {std::uint32_t sampler_mask=0;bool bump=false;std::array<LinearMaterialScalarTransport,2> scalar_transport{};std::uint8_t scalar_transport_count=0;};
+LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vs,std::uint64_t ps){
+ ++contract_lookups;
+ if(vs==30&&ps==42)return {31,true,{{{6,0,1,3},{6,1,2,3}}},2};
+ if(vs==30&&ps==43)return {31,true,{{{7,0,1,3},{}}},1};
+ return vs==10&&ps==20?LinearMaterialPairContract{15,false}:vs==30&&ps==40?LinearMaterialPairContract{31,true}:vs==30&&ps==41?LinearMaterialPairContract{15,true}:LinearMaterialPairContract{};
+}
 bool reject_row=false,throw_transform=false,reject_transform=false;
 const MotionOutputProfile* material_motion_vertex_row(std::uint64_t hash,std::size_t){return reject_row||hash>=50?nullptr:&row;}
 const MotionOutputProfile* material_motion_pixel_row(std::uint64_t hash,std::size_t){return reject_row||hash>=50?nullptr:&row;}
@@ -61,7 +67,7 @@ bool material_motion_pixel_writes_depth(const MotionOutputProfile&,bool x){retur
 unsigned motion_transforms=0, material_transforms=0;
 MaterialMotionResult material_motion_vertex_variant(const std::uint32_t*p,std::size_t,std::vector<std::uint32_t>&o,bool){++motion_transforms;if(throw_transform)throw std::bad_alloc();if(reject_transform)return MaterialMotionResult::UnsupportedShader;o={p[0]+100};return MaterialMotionResult::Applied;}
 MaterialMotionResult material_motion_pixel_variant(const std::uint32_t*p,std::size_t n,std::vector<std::uint32_t>&o,bool d){return material_motion_vertex_variant(p,n,o,d);}
-LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==21);o={p[0]+200};return LinearMaterialResult::Applied;}
+LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==42||p[0]==43||p[0]==21);o={p[0]+200};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
 }
 namespace renderer {
@@ -161,7 +167,7 @@ public:
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr;
- std::uint32_t material_sampler_mask=0;bool material_bump=false;float rows[1][16]{};bool rows_known[1]{};int integer0[4]{};bool integer0_known=false;
+ renderer::LinearMaterialPairContract material_contract{};float rows[1][16]{};bool rows_known[1]{};int integer0[4]{};bool integer0_known=false;
  Surface rt0,depth;Viewport viewport;bool extra_rt[4]{};
  bool recording=false,vs_reserved_written=false,ps_reserved_written=false;float vs_reserved[16]{},ps_reserved[8]{};
  }shadow_;
@@ -245,10 +251,49 @@ bool linear_material_requested=false,motion_output_requested=true,hdr_requested=
 renderer::LinearMaterialConfig linear_material_config;
 renderer::HdrConfig hdr_config;
 #include "linear_material_live_under_test_inc.h"
+// The transport metadata shares the real sampler/technique cache lifecycle.
+// Short synthetic IDs select contracts; actual 148-pair identities are checked
+// by the independent pure-transformer fixture, not invented by this seam.
+const renderer::LinearMaterialPairContract* released_contract=nullptr;
+void check_empty_contract(){
+ CHECK(released_contract && released_contract->sampler_mask==0 && !released_contract->bump && released_contract->scalar_transport_count==0);
+ for(const auto& map:released_contract->scalar_transport)
+  CHECK(!map.source_texcoord&&!map.source_component&&!map.destination_texcoord&&!map.destination_component);
+}
+void palette_contract_lifecycle(){
+ Device device;MotionOutput m;m.configure_linear_materials(true,{});m.device_=&device;
+ IDirect3DVertexShader9 vs,unknown;IDirect3DPixelShader9 boron,paranid,native;DWORD v=30,b=42,p=43,n=40;
+ m.register_vertex_shader(&vs,&v,4,v);m.register_pixel_shader(&boron,&b,4,b);m.register_pixel_shader(&paranid,&p,4,p);m.register_pixel_shader(&native,&n,4,n);
+ auto select=[&](IDirect3DPixelShader9* ps){device.bound_vs=&vs;device.bound_ps=ps;m.set_vertex_shader(&vs);m.set_pixel_shader(ps);};
+ auto check=[&](unsigned count,unsigned source){const auto& c=m.shadow_.material_contract;CHECK(c.sampler_mask==31&&c.bump&&c.scalar_transport_count==count);
+  for(unsigned i=0;i<count;++i){const auto& t=c.scalar_transport[i];CHECK(t.source_texcoord==source&&t.source_component==i&&t.destination_texcoord==1+i&&t.destination_component==3);}
+  for(unsigned i=count;i<2;++i){const auto& t=c.scalar_transport[i];CHECK(!t.source_texcoord&&!t.source_component&&!t.destination_texcoord&&!t.destination_component);}};
+ released_contract=&m.shadow_.material_contract;
+ select(&boron);check(2,6);select(&paranid);check(1,7);select(&native);check(0,0);
+ // Same pointers re-registered under another original identity replace every
+ // field; a recorded setter must not disturb the active transported contract.
+ select(&boron);m.register_pixel_shader(&boron,&p,4,p);check(1,7);m.register_pixel_shader(&boron,&b,4,b);check(2,6);
+ m.begin_stateblock();const auto lookups=renderer::contract_lookups;m.set_pixel_shader(&paranid);check(2,6);CHECK(renderer::contract_lookups==lookups);m.end_stateblock();check(2,6);
+ device.bound_ps=&paranid;m.stateblock_applied();check(1,7);device.fail_get_ps=true;m.stateblock_applied();check_empty_contract();device.fail_get_ps=false;m.after_reset(S_OK);check(1,7);
+ select(&boron);m.set_vertex_shader(&unknown);check_empty_contract();m.set_vertex_shader(&vs);check(2,6);m.set_pixel_shader(nullptr);check_empty_contract();m.set_pixel_shader(&boron);check(2,6);
+ // Early bound-registration exits clear scalar count and inactive bytes before
+ // native Release callbacks, including both stage aliases and thrown transforms.
+ for(bool vertex:{false,true})for(bool throws:{false,true}){
+  select(&boron);release_check=check_empty_contract;renderer::throw_transform=throws;
+  if(vertex)m.register_vertex_shader(&vs,throws?&v:nullptr,4,v);else m.register_pixel_shader(&boron,throws?&b:nullptr,4,b);
+  release_check=nullptr;renderer::throw_transform=false;check_empty_contract();
+  if(vertex)m.register_vertex_shader(&vs,&v,4,v);else m.register_pixel_shader(&boron,&b,4,b);check(2,6);
+ }
+ // Failed Reset cannot manufacture a new logical contract. Successful Reset
+ // resynchronizes it from actual shaders, with failed getters clearing all bits.
+ device.bound_ps=&paranid;m.after_reset(E_FAIL);check(2,6);m.after_reset(S_OK);check(1,7);
+ device.fail_get_vs=true;m.after_reset(S_OK);check_empty_contract();device.fail_get_vs=false;m.after_reset(S_OK);check(1,7);
+ m.release_resources();check_empty_contract();released_contract=nullptr;
+}
 // Cache lifecycle coverage uses real registration/setter/resync methods above.
 void contract_lifecycle() {
  Device device;MotionOutput m;m.configure_linear_materials(true,{});m.device_=&device;
- release_bump=&m.shadow_.material_bump;
+ release_bump=&m.shadow_.material_contract.bump;
  IDirect3DVertexShader9 base_vs,bump_vs,unknown_vs;
  IDirect3DPixelShader9 base_ps,bump_ps,asteroid_ps,negative_ps,unknown_ps;
  DWORD base_v=10,base_p=20,bump_v=30,bump_p=40,asteroid_p=41,negative_p=21;
@@ -264,27 +309,27 @@ void contract_lifecycle() {
  // Both four- and five-sampler BUMP techniques count, while the four-sampler
  // conventional DEFAULT does not. Failed/fallback draws do not count either.
  MotionRoute counted;counted.linear_material=true;
- select_default();CHECK(m.shadow_.material_sampler_mask==15&&!m.shadow_.material_bump);m.count_material_route(counted);
- select_asteroid();CHECK(m.shadow_.material_sampler_mask==15&&m.shadow_.material_bump);m.count_material_route(counted);
- select_bump();CHECK(m.shadow_.material_sampler_mask==31&&m.shadow_.material_bump);m.count_material_route(counted);
+ select_default();CHECK(m.shadow_.material_contract.sampler_mask==15&&!m.shadow_.material_contract.bump);m.count_material_route(counted);
+ select_asteroid();CHECK(m.shadow_.material_contract.sampler_mask==15&&m.shadow_.material_contract.bump);m.count_material_route(counted);
+ select_bump();CHECK(m.shadow_.material_contract.sampler_mask==31&&m.shadow_.material_contract.bump);m.count_material_route(counted);
  counted.linear_material=false;m.count_material_route(counted);
  CHECK(m.counters_.material_routed==3&&m.counters_.material_bump_routed==2);
  // State-block application and failed resync change the cached technique
  // together with its mask, including equal-mask DEFAULT/BUMP transitions.
  select_default();device.bound_vs=&bump_vs;device.bound_ps=&asteroid_ps;m.stateblock_applied();
- CHECK(m.shadow_.material_sampler_mask==15&&m.shadow_.material_bump);
- device.fail_get_ps=true;m.stateblock_applied();CHECK(!m.shadow_.material_sampler_mask&&!m.shadow_.material_bump);
- device.fail_get_ps=false;m.after_reset(S_OK);CHECK(m.shadow_.material_sampler_mask==15&&m.shadow_.material_bump);
+ CHECK(m.shadow_.material_contract.sampler_mask==15&&m.shadow_.material_contract.bump);
+ device.fail_get_ps=true;m.stateblock_applied();CHECK(!m.shadow_.material_contract.sampler_mask&&!m.shadow_.material_contract.bump);
+ device.fail_get_ps=false;m.after_reset(S_OK);CHECK(m.shadow_.material_contract.sampler_mask==15&&m.shadow_.material_contract.bump);
  for(bool vertex:{true,false}) {
-  select_asteroid();release_mask=&m.shadow_.material_sampler_mask;
+  select_asteroid();release_mask=&m.shadow_.material_contract.sampler_mask;
   if(vertex)m.register_vertex_shader(&bump_vs,nullptr,4,30);else m.register_pixel_shader(&asteroid_ps,nullptr,4,41);
-  release_mask=nullptr;CHECK(!m.shadow_.material_sampler_mask&&!m.shadow_.material_bump);
+  release_mask=nullptr;CHECK(!m.shadow_.material_contract.sampler_mask&&!m.shadow_.material_contract.bump);
   if(vertex)m.register_vertex_shader(&bump_vs,&bump_v,4,30);else m.register_pixel_shader(&asteroid_ps,&asteroid_p,4,41);
-  CHECK(m.shadow_.material_sampler_mask==15&&m.shadow_.material_bump);
+  CHECK(m.shadow_.material_contract.sampler_mask==15&&m.shadow_.material_contract.bump);
  }
- select_default();CHECK(m.shadow_.material_sampler_mask==15);
+ select_default();CHECK(m.shadow_.material_contract.sampler_mask==15);
  device.fail_sampler=4;m.resync_samplers();CHECK(!m.samplers_[4].srgb_known&&m.linear_material_refusal()==0);
- select_bump();CHECK(m.shadow_.material_sampler_mask==31&&m.linear_material_refusal()==4);
+ select_bump();CHECK(m.shadow_.material_contract.sampler_mask==31&&m.linear_material_refusal()==4);
  m.set_sampler_state(4,D3DSAMP_SRGBTEXTURE,TRUE);CHECK(m.linear_material_refusal()==4);
  select_default();CHECK(m.linear_material_refusal()==0); // S4 TRUE is irrelevant to DEFAULT.
  select_bump();m.set_sampler_state(4,D3DSAMP_SRGBTEXTURE,FALSE);CHECK(m.linear_material_refusal()==0);
@@ -292,65 +337,65 @@ void contract_lifecycle() {
  for(unsigned n=0;n<1000;++n)CHECK(m.linear_material_refusal()==0);
  CHECK(device.sampler_reads==reads&&renderer::contract_lookups==lookups);
  // Null, unknown and same-VS unreviewed PS setters all revoke admission.
- m.set_pixel_shader(&negative_ps);CHECK(m.shadow_.vs==&bump_vs&&m.shadow_.material_sampler_mask==0);
- m.set_pixel_shader(&bump_ps);CHECK(m.shadow_.material_sampler_mask==31);
- m.set_vertex_shader(nullptr);CHECK(m.shadow_.material_sampler_mask==0);
- m.set_vertex_shader(&unknown_vs);CHECK(m.shadow_.material_sampler_mask==0);
- m.set_vertex_shader(&bump_vs);CHECK(m.shadow_.material_sampler_mask==31);
- m.set_pixel_shader(&unknown_ps);CHECK(m.shadow_.material_sampler_mask==0);
- m.set_pixel_shader(nullptr);CHECK(m.shadow_.material_sampler_mask==0);
+ m.set_pixel_shader(&negative_ps);CHECK(m.shadow_.vs==&bump_vs&&m.shadow_.material_contract.sampler_mask==0);
+ m.set_pixel_shader(&bump_ps);CHECK(m.shadow_.material_contract.sampler_mask==31);
+ m.set_vertex_shader(nullptr);CHECK(m.shadow_.material_contract.sampler_mask==0);
+ m.set_vertex_shader(&unknown_vs);CHECK(m.shadow_.material_contract.sampler_mask==0);
+ m.set_vertex_shader(&bump_vs);CHECK(m.shadow_.material_contract.sampler_mask==31);
+ m.set_pixel_shader(&unknown_ps);CHECK(m.shadow_.material_contract.sampler_mask==0);
+ m.set_pixel_shader(nullptr);CHECK(m.shadow_.material_contract.sampler_mask==0);
  select_default();device.fail_sampler=-1;m.resync_samplers();
  // Recorded writes do not change active pair or S4. End/Apply pull actual
  // native state, including the current pair and five sampler decode values.
  m.begin_stateblock();lookups=renderer::contract_lookups;
  m.set_vertex_shader(&bump_vs);m.set_pixel_shader(&bump_ps);m.set_sampler_state(4,D3DSAMP_SRGBTEXTURE,TRUE);
- CHECK(m.shadow_.material_sampler_mask==15&&!m.samplers_[4].srgb&&renderer::contract_lookups==lookups);
- m.end_stateblock();CHECK(m.shadow_.material_sampler_mask==15&&m.linear_material_refusal()==0);
+ CHECK(m.shadow_.material_contract.sampler_mask==15&&!m.samplers_[4].srgb&&renderer::contract_lookups==lookups);
+ m.end_stateblock();CHECK(m.shadow_.material_contract.sampler_mask==15&&m.linear_material_refusal()==0);
  device.bound_vs=&bump_vs;device.bound_ps=&bump_ps;device.srgb[4]=TRUE;m.stateblock_applied();
- CHECK(m.shadow_.material_sampler_mask==31&&m.linear_material_refusal()==4);
- device.srgb[4]=FALSE;m.stateblock_applied();CHECK(m.shadow_.material_sampler_mask==31&&m.linear_material_refusal()==0);
+ CHECK(m.shadow_.material_contract.sampler_mask==31&&m.linear_material_refusal()==4);
+ device.srgb[4]=FALSE;m.stateblock_applied();CHECK(m.shadow_.material_contract.sampler_mask==31&&m.linear_material_refusal()==0);
  // A failed shader getter during full resync cannot leave a stale contract.
  for(bool fail_vertex:{true,false}) {
-  device.fail_get_vs=fail_vertex;device.fail_get_ps=!fail_vertex;m.stateblock_applied();CHECK(m.shadow_.material_sampler_mask==0&&m.linear_material_refusal()==1);
-  device.fail_get_vs=device.fail_get_ps=false;m.stateblock_applied();CHECK(m.shadow_.material_sampler_mask==31);
+  device.fail_get_vs=fail_vertex;device.fail_get_ps=!fail_vertex;m.stateblock_applied();CHECK(m.shadow_.material_contract.sampler_mask==0&&m.linear_material_refusal()==1);
+  device.fail_get_vs=device.fail_get_ps=false;m.stateblock_applied();CHECK(m.shadow_.material_contract.sampler_mask==31);
  }
  // Successful Reset refreshes S4 and the pair without application setters.
- device.srgb[4]=TRUE;m.after_reset(S_OK);CHECK(m.shadow_.material_sampler_mask==31&&m.linear_material_refusal()==4);
- device.srgb[4]=FALSE;m.after_reset(S_OK);CHECK(m.shadow_.material_sampler_mask==31&&m.linear_material_refusal()==0);
- device.fail_get_vs=true;m.after_reset(S_OK);CHECK(m.shadow_.material_sampler_mask==0);device.fail_get_vs=false;
- m.after_reset(S_OK);CHECK(m.shadow_.material_sampler_mask==31);
+ device.srgb[4]=TRUE;m.after_reset(S_OK);CHECK(m.shadow_.material_contract.sampler_mask==31&&m.linear_material_refusal()==4);
+ device.srgb[4]=FALSE;m.after_reset(S_OK);CHECK(m.shadow_.material_contract.sampler_mask==31&&m.linear_material_refusal()==0);
+ device.fail_get_vs=true;m.after_reset(S_OK);CHECK(m.shadow_.material_contract.sampler_mask==0);device.fail_get_vs=false;
+ m.after_reset(S_OK);CHECK(m.shadow_.material_contract.sampler_mask==31);
  // Every bound-registration early exit/exception invalidates before releasing
  // old objects, and another stage's setter cannot resurrect that old mask.
  for(bool vertex:{true,false})for(unsigned failure=0;failure<9;++failure) {
-  select_default();CHECK(m.shadow_.material_sampler_mask==15);
+  select_default();CHECK(m.shadow_.material_contract.sampler_mask==15);
   renderer::reject_row=failure==2;renderer::throw_transform=failure==4;renderer::reject_transform=failure==5;
   device.fail_motion_create=failure==6;m.enabled_=failure!=7;m.requested_=failure!=8;
   if(failure==3){if(vertex)m.vertex_.fail_next=true;else m.pixel_.fail_next=true;}
-  release_mask=&m.shadow_.material_sampler_mask;
+  release_mask=&m.shadow_.material_contract.sampler_mask;
   if(vertex)m.register_vertex_shader(&base_vs,failure==0?nullptr:&base_v,failure==1?3:4,10);
   else m.register_pixel_shader(&base_ps,failure==0?nullptr:&base_p,failure==1?3:4,20);
-  CHECK(m.shadow_.material_sampler_mask==0);
+  CHECK(m.shadow_.material_contract.sampler_mask==0);
   release_mask=nullptr;m.enabled_=m.requested_=true;
   if(vertex)m.set_pixel_shader(&base_ps);else m.set_vertex_shader(&base_vs);
-  CHECK(m.shadow_.material_sampler_mask==0);
+  CHECK(m.shadow_.material_contract.sampler_mask==0);
   renderer::reject_row=renderer::throw_transform=renderer::reject_transform=false;device.fail_motion_create=false;
   if(vertex)m.register_vertex_shader(&base_vs,&base_v,4,10);else m.register_pixel_shader(&base_ps,&base_p,4,20);
-  CHECK(m.shadow_.material_sampler_mask==15&&m.linear_material_refusal()==0);
+  CHECK(m.shadow_.material_contract.sampler_mask==15&&m.linear_material_refusal()==0);
  }
  // Material Create failure keeps the ordinary registered pair; combined
  // readiness stays live, separate from the exact cached sampler contract.
- device.fail_combined_create=true;release_mask=&m.shadow_.material_sampler_mask;
+ device.fail_combined_create=true;release_mask=&m.shadow_.material_contract.sampler_mask;
  m.register_pixel_shader(&base_ps,&base_p,4,20);release_mask=nullptr;
- CHECK(m.shadow_.material_sampler_mask==15&&m.linear_material_refusal()==2);
+ CHECK(m.shadow_.material_contract.sampler_mask==15&&m.linear_material_refusal()==2);
  device.fail_combined_create=false;m.register_pixel_shader(&base_ps,&base_p,4,20);
  CHECK(m.linear_material_refusal()==0);
- m.release_resources();CHECK(m.device_references()==0&&m.shadow_.material_sampler_mask==0&&!m.shadow_.material_bump);
+ m.release_resources();CHECK(m.device_references()==0&&m.shadow_.material_contract.sampler_mask==0&&!m.shadow_.material_contract.bump);
  release_bump=nullptr;
  // Even actual setters and resync issue no contract lookup when disabled.
  MotionOutput off;off.device_=&device;lookups=renderer::contract_lookups;reads=device.sampler_reads;
  off.register_vertex_shader(&base_vs,&base_v,4,10);off.register_pixel_shader(&base_ps,&base_p,4,20);
  off.set_vertex_shader(&base_vs);off.set_pixel_shader(&base_ps);off.resync_shadow();
- CHECK(renderer::contract_lookups==lookups&&device.sampler_reads==reads&&off.shadow_.material_sampler_mask==0);
+ CHECK(renderer::contract_lookups==lookups&&device.sampler_reads==reads&&off.shadow_.material_contract.sampler_mask==0);
  off.release_resources();
 }
 
@@ -632,6 +677,7 @@ int main(){
  // Default off creates only motion and never performs material sampler reads.
  MotionOutput off;Device quiet;off.device_=&quiet;off.register_vertex_shader(&original_vs,&vs,4,10);CHECK(!off.vertex_[&original_vs].material_variant);off.resync_samplers();CHECK(quiet.sampler_reads==0);off.release_resources();
  contract_lifecycle();
+ palette_contract_lifecycle();
  emission_cache_cases();
  emission_route_cases();
  emission_environment_cases();

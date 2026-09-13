@@ -72,9 +72,10 @@ struct MotionRoute {
     bool jittered = false;                                     // Jittered rows written; restore after the draw.
     UINT jitter_register = 0;                                  // The VS row's clip-row window base.
     DWORD saved_write1 = 15, saved_write2 = 15;
-    // At most two new TEXCOORD semantics; native semantics are never changed.
-    DWORD saved_wrap[2]{};
-    std::uint8_t wrap_index[2]{}, wrap_count = 0, wrap_attempted = 0;
+    // Temporal/depth plus at most two scalar destinations and their sources.
+    // Read-only snapshots have no attempted bit; all snapshots precede writes.
+    DWORD saved_wrap[6]{};
+    std::uint8_t wrap_index[6]{}, wrap_count = 0, wrap_attempted = 0;
     renderer::RigidDrawKey key{};
     std::uint64_t rows_hash = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
@@ -569,9 +570,9 @@ private:
         IDirect3DPixelShader9* emission_eligible_variant = nullptr;
         // Exact pair contract, refreshed at actual shader setters and completed
         // registration only. Technique is explicit: Asteroid BUMP and hull
-        // DEFAULT both use mask 0x0f. Unknown uses zero and bump=false.
-        std::uint32_t material_sampler_mask = 0;
-        bool material_bump = false;
+        // DEFAULT both use mask 0x0f. The complete cached contract also
+        // carries scalar WRAP relocations; unknown clears every field.
+        renderer::LinearMaterialPairContract material_contract{};
         IDirect3DVertexShader9* vs_variant = nullptr;
         IDirect3DPixelShader9* ps_variant = nullptr;
         IDirect3DVertexShader9* vs_material_variant = nullptr;

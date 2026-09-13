@@ -1,10 +1,11 @@
-"""Compile the real pure transformer and inspect all eighty-three local original programs.
+"""Compile the real pure transformer and inspect all 115 local original programs.
 
 No game bytes are bundled. Generated variants stay in TemporaryDirectory.
 These tests qualify instruction/ABI invariants, not GPU primitive behavior.
 """
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -51,8 +52,15 @@ def rgb_dependencies(profile, items):
     tainted.update((source['name'], lane) for source in profile['directional_rgb_sources'] for lane in 'xyz')
     conversions = {row['conversion_after_dword']: row['conversion_rgb_register']
                    for row in profile['texture_sources'] if row['conversion_after_dword']}
+    for color in profile.get('palette_sources', []):
+        tainted.update((f"c{color['source_constant']}", lane) for lane in color['source_lanes'])
+    if profile['id'] in BORON_SINGLE_ORIGINALS:
+        carrier = 'v6' if profile['id'] in PALETTE_BUMP_ORIGINALS else 'v5'
+        tainted.update((carrier, lane) for lane in 'xyz')
     rgb = set()
     for item in items:
+        if item['opcode'] in motion.HEADER_OPCODES:
+            continue
         destination, sources = motion.split_operands(item, 3)
         if destination:
             lanes = destination['mask']
@@ -194,7 +202,81 @@ ASTEROID_BUMP_ORIGINALS = {
 }
 
 
+PALETTE_ORIGINALS = {
+    'vs_29d7c575396ed280',
+    'vs_a420a010b0271479',
+    'vs_ea3d15b287892410',
+    'vs_57392213f62fef19',
+    'vs_5c17a381b149b3b9',
+    'vs_a804f173f693944a',
+    'vs_37e6956afd8b8d76',
+    'vs_2e0254dd999841c2',
+    'vs_a7cddf2c98d61117',
+    'vs_33388c8897d428a5',
+    'vs_b4059ab6af8fc529',
+    'vs_2a560f246c90fa64',
+    'ps_39eb3c2258a516e1',
+    'ps_57acf59d19c73791',
+    'ps_f917d48ee826da1f',
+    'ps_77a5b2d62fb3be48',
+    'ps_a910daef935891ce',
+    'ps_62c180abe017e239',
+    'ps_ed44232013f67072',
+    'ps_f286856c3f400377',
+    'ps_9d27e7ba242f3831',
+    'ps_e1acf8a03850acaf',
+    'ps_f646f03be5a8708d',
+    'ps_ebf41e1ace7af45b',
+    'ps_c997a37560e266df',
+    'ps_675f9077d8fd21c4',
+    'ps_18d372968af4a480',
+    'ps_188c5ab9dbb98393',
+    'ps_7e5e41276b3d7514',
+    'ps_43c9405568d2226f',
+    'ps_5e056627e9ff3a8d',
+    'ps_fce465befff2f623',
+}
+PALETTE_BUMP_ORIGINALS = {
+    'vs_57392213f62fef19',
+    'vs_5c17a381b149b3b9',
+    'vs_a804f173f693944a',
+    'vs_33388c8897d428a5',
+    'vs_b4059ab6af8fc529',
+    'vs_2a560f246c90fa64',
+    'ps_a910daef935891ce',
+    'ps_62c180abe017e239',
+    'ps_ed44232013f67072',
+    'ps_f286856c3f400377',
+    'ps_18d372968af4a480',
+    'ps_188c5ab9dbb98393',
+    'ps_7e5e41276b3d7514',
+    'ps_43c9405568d2226f',
+    'ps_5e056627e9ff3a8d',
+    'ps_fce465befff2f623',
+}
+BORON_SINGLE_ORIGINALS = {
+    'vs_a420a010b0271479',
+    'vs_ea3d15b287892410',
+    'vs_5c17a381b149b3b9',
+    'vs_a804f173f693944a',
+    'ps_f917d48ee826da1f',
+    'ps_77a5b2d62fb3be48',
+    'ps_ed44232013f67072',
+    'ps_f286856c3f400377',
+}
+
+
 def family_resources(profile):
+    if profile['id'] in PALETTE_ORIGINALS:
+        bump = profile['id'] in PALETTE_BUMP_ORIGINALS
+        paranid = any(f.startswith('paranid_') for f in profile['families'])
+        pixel = profile['id'].startswith('ps_')
+        base = 6 if bump or (pixel and profile['diffuse_affine_completion']) else 5
+        return dict(depth_texcoord=8 if bump else 7, vs_rgb=8 if bump else 10,
+                    ps_rgb=7 if bump else 9, motion_texcoord=(5 if paranid else 7) if bump else 6,
+                    vs_temporal=(9,10) if bump else (8,9), ps_temporal=(8,9) if bump else (7,8),
+                    temporary_base=base, scratch=10)
+
     # Independently recorded pair-local registers, including the lower
     # DEFAULT-toggle depth varying and the last legal BUMP-base PS input v9.
     if profile['id'] in ASTEROID_ORIGINALS:
@@ -226,15 +308,15 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         cls.report = json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text())
         # Explicit implemented corpus; future offline families cannot silently
         # enlarge production qualification merely by entering the report.
-        implemented = DEFAULT_ORIGINALS | BUMP_ORIGINALS | EXTENSION_ORIGINALS | HULL_ORIGINALS | ASTEROID_ORIGINALS
+        implemented = DEFAULT_ORIGINALS | BUMP_ORIGINALS | EXTENSION_ORIGINALS | HULL_ORIGINALS | ASTEROID_ORIGINALS | PALETTE_ORIGINALS
         cls.report['programs'] = [row for row in cls.report['programs'] if row['id'] in implemented]
         if {row['id'] for row in cls.report['programs']} != implemented or not all(
-                (row['id'] in EXTENSION_ORIGINALS | HULL_ORIGINALS | ASTEROID_ORIGINALS or ('argon_bump' if row['id'] in BUMP_ORIGINALS else 'argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families'])
+                (row['id'] in EXTENSION_ORIGINALS | HULL_ORIGINALS | ASTEROID_ORIGINALS | PALETTE_ORIGINALS or ('argon_bump' if row['id'] in BUMP_ORIGINALS else 'argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families'])
                 for row in cls.report['programs']):
-            raise AssertionError('All eighty-three implemented profiles must remain present')
+            raise AssertionError('All 115 implemented profiles must remain present')
         cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
         if not all((cls.originals / (p['id'] + '.bin')).is_file() for p in cls.report['programs']):
-            raise unittest.SkipTest('local eighty-three-original archive corpus unavailable')
+            raise unittest.SkipTest('local 115-original archive corpus unavailable')
         compiler = shutil.which('clang++') or shutil.which('c++')
         if compiler is None:
             raise RuntimeError('A host C++ compiler is required')
@@ -262,7 +344,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                     yield profile, depth, gain, words, items
 
     def test_all_variants_alias_and_failure_guards(self):
-        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (83, 116, 664))
+        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (115, 148, 920))
         self.assertGreaterEqual(self.driver['checks'], 2800)
 
     def legacy_material_bytes(self, path):
@@ -291,12 +373,22 @@ class LinearMaterialTransformerTests(unittest.TestCase):
 
     def test_all_664_outputs_change_only_the_material_declaration_semantic(self):
         digest = hashlib.sha256()
-        outputs = sorted(path for path in self.output.glob('*.bin') if '-motion-' not in path.name)
+        outputs = sorted(path for path in self.output.glob('*.bin') if '-motion-' not in path.name and path.name.split('-')[0] not in PALETTE_ORIGINALS)
         self.assertEqual(len(outputs), 664)
         for path in outputs:
             data = self.legacy_material_bytes(path)
             digest.update(path.name.encode() + b'\0' + struct.pack('<I', len(data)) + data)
         self.assertEqual(digest.hexdigest(), 'f38849e8c5dedde5674aacd881f8eaae87e8d2eb3d67342e19a111c7582df40b')
+
+    def test_all_664_preceding_color1_outputs_are_byte_exact(self):
+        digest = hashlib.sha256()
+        paths = sorted(p for p in self.output.glob('*.bin')
+                       if '-motion-' not in p.name and p.name.split('-')[0] not in PALETTE_ORIGINALS)
+        self.assertEqual(len(paths),664)
+        for path in paths:
+            data=path.read_bytes()
+            digest.update(path.name.encode()+b'\0'+struct.pack('<I',len(data))+data)
+        self.assertEqual(digest.hexdigest(),'de4f0b34bb486b5d036dbd36c0d364a70f40eb7f611f4a8d9a6fc2db869c1c13')
 
     def test_all_392_preceding_outputs_have_only_semantic_change(self):
         # Captured from qualified checkpoint 73f5c51 before the next hull rows:
@@ -406,6 +498,37 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                             tokens[offset - at] = 0x80e40000 | target
                     if at == profile['final_rgb_sites'][0]['instruction_dword']:
                         tokens[1] = 0x8007000b
+                if profile['id'] in PALETTE_ORIGINALS:
+                    bump = profile['id'] in PALETTE_BUMP_ORIGINALS
+                    roles = ('Px','Py','Pz','Pu','Pf','Pc')
+                    for color in profile['palette_sources']:
+                        for use in color['uses']:
+                            offset = use['source_operand']['operand_dword']
+                            if at < offset <= at+item['length']:
+                                tokens[offset-at] = 0xa0e40000 | ((240 if vertex else 204)+roles.index(color['role']))
+                    if item['opcode'] == motion.DCL:
+                        kind, number = motion.register_of(item['words'][1])
+                        if kind == (6 if vertex else 1):
+                            if bump and number == (8 if vertex else 7):
+                                continue
+                            base_boron = (profile['id'] == 'vs_57392213f62fef19' or profile['id'] in {'ps_a910daef935891ce','ps_62c180abe017e239'})
+                            if bump and (number == (3 if vertex else 2) or (base_boron and number == (4 if vertex else 3))):
+                                tokens[2] |= 8 << 16
+                            if not vertex and profile['id'] in BORON_SINGLE_ORIGINALS and number == (6 if bump else 5):
+                                tokens[2] &= ~0x200000
+                    elif bump and item['opcode'] != motion.DEF:
+                        destination, operands = motion.split_operands(item,3)
+                        if vertex and destination and destination['name']=='o8':
+                            scalar = 'xy'.index(destination['mask'])
+                            tokens[1] = 0xe0080000 | (3+scalar)
+                        if not vertex:
+                            offset = 2
+                            for operand in operands:
+                                if operand['name']=='v7':
+                                    scalar = 'xy'.index(operand['swizzle'][0])
+                                    self.assertEqual(operand['swizzle'], 'xy'[scalar]*4)
+                                    tokens[offset] = 0x90ff0000 | (2+scalar)
+                                offset += 1+int(operand['relative'])
                 expected.append(tuple(tokens))
             actual = [span(combined, item) for item in changed_items]
             position, inserted = 0, []
@@ -434,6 +557,84 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                     self.assertNotEqual(op, 88, 'CMP is unsupported in VS3')
             # Alpha and position instruction streams are preserved exactly by
             # the full original reconstruction above, including declarations.
+
+    def test_palette_definitions_are_decoded_before_weighted_uses(self):
+        roles = ('Px','Py','Pz','Pu','Pf','Pc')
+        programs, bindings = set(), set()
+        f32 = lambda value: struct.unpack('<f',struct.pack('<f',value))[0]
+        for profile, depth, gain, words, items in self.each():
+            if profile['id'] not in PALETTE_ORIGINALS:
+                continue
+            programs.add(profile['id'])
+            vertex = profile['id'].startswith('vs_')
+            base = 240 if vertex else 204
+            defs = {motion.register_of(i['words'][0])[1]: i for i in items if i['opcode']==motion.DEF}
+            original, originals = load(self.originals / (profile['id']+'.bin'))
+            original_defs = {motion.register_of(i['words'][0])[1]: i for i in originals if i['opcode']==motion.DEF}
+            expected_defs = set()
+            for color in profile['palette_sources']:
+                role = roles.index(color['role']); target = base+role; expected_defs.add(target)
+                bindings.add((profile['id'],role))
+                # Native DEF words (including co-resident exponents/factors)
+                # remain exact; new constants decode each selected RGB lane.
+                register=color['source_constant']
+                self.assertEqual(span(words,defs[register]),span(original,original_defs[register]))
+                native = [struct.unpack('<f',struct.pack('<I',original_defs[register]['words'][1+'xyzw'.index(c)]))[0]
+                          for c in color['source_lanes']]
+                expected = [struct.unpack('<I',struct.pack('<f',math.pow(x,f32(2.2))))[0] for x in native]
+                self.assertEqual(list(defs[target]['words'][1:]),expected+[0])
+                if vertex:
+                    self.assertLess(role,4)
+                # Each source reaches its original weighted MUL/MAD, with
+                # unchanged scalar inputs. Whole-body reconstruction below
+                # checks that no later sum-decode substitutes for this use.
+                for use in color['uses']:
+                    opcode = next(i['opcode'] for i in originals if i['dword']==use['instruction_dword'])
+                    self.assertIn(opcode,(4,5))
+                    expected_source = 0xa0e40000 | target
+                    self.assertEqual(sum(i['opcode']==opcode and expected_source in i['words'][1:]
+                                         for i in items),1)
+            self.assertEqual(set(defs)&set(range(base,base+6)),expected_defs)
+        self.assertEqual(len(programs),32)
+        self.assertEqual(len(bindings),96)
+
+    def test_scalar_relocation_preserves_native_carrier_precision_and_color0(self):
+        checked=set()
+        for profile, depth, gain, words, items in self.each():
+            if profile['id'] not in PALETTE_ORIGINALS:
+                continue
+            vertex=profile['id'].startswith('vs_')
+            original, originals=load(self.originals/(profile['id']+'.bin'))
+            def declarations(stream):
+                return {motion.register_of(i['words'][1]):i for i in stream if i['opcode']==motion.DCL}
+            old,new=declarations(originals),declarations(items)
+            color_key=(6,1) if vertex else (1,0)
+            self.assertEqual(span(words,new[color_key]),span(original,old[color_key]))
+            if profile['id'] in BORON_SINGLE_ORIGINALS and not vertex:
+                key=(1,6 if profile['id'] in PALETTE_BUMP_ORIGINALS else 5)
+                expected=list(span(original,old[key]));expected[2]&=~0x200000
+                self.assertEqual(motion.mask_of(expected[2]),'xyz')
+                self.assertEqual(span(words,new[key]),tuple(expected))
+            if profile['id'] not in PALETTE_BUMP_ORIGINALS:
+                continue
+            checked.add(profile['id'])
+            base_boron=profile['id'] in {'vs_57392213f62fef19','ps_a910daef935891ce','ps_62c180abe017e239'}
+            old_scalar=(6,8) if vertex else (1,7)
+            scalar=old[old_scalar]
+            self.assertEqual(motion.mask_of(scalar['words'][1]),'xy' if base_boron else 'x')
+            self.assertEqual((scalar['words'][1]>>20)&15,0 if vertex else 2)
+            self.assertEqual(new[old_scalar]['words'][0],0x8001000a)
+            self.assertEqual(motion.mask_of(new[old_scalar]['words'][1]),'xyz')
+            self.assertEqual((new[old_scalar]['words'][1]>>20)&15,0)
+            for index in range(2 if base_boron else 1):
+                key=(6,3+index) if vertex else (1,2+index)
+                expected=list(span(original,old[key]))
+                self.assertEqual(expected[1],0x80000005|((1+index)<<16))
+                self.assertEqual(motion.mask_of(expected[2]),'xyz')
+                self.assertEqual((expected[2]>>20)&15,0 if vertex else 2)
+                expected[2]|=8<<16
+                self.assertEqual(span(words,new[key]),tuple(expected))
+        self.assertEqual(len(checked),16)
 
     def test_temporal_insertions_are_identical_to_motion_only(self):
         def temporal(words, items, vertex, abi):
@@ -482,7 +683,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                 semantics[semantic] = (register, lanes)
             return semantics
 
-        self.assertEqual(len(self.report['pairs']), 116)
+        self.assertEqual(len(self.report['pairs']), 148)
         cache, counts = {}, [0, 0]
         for pair in self.report['pairs']:
             for depth in (None, 0, 1):
@@ -507,7 +708,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                         self.assertEqual(vs_to_ps.setdefault(vs_register, ps_register), ps_register,
                                          ('VS register split across different PS registers', semantic))
                     counts[0 if depth is None else 1] += 1
-        self.assertEqual(counts, [116, 232])
+        self.assertEqual(counts, [148, 296])
 
     def test_full_precision_varying_defs_caps_and_exact_zero_polarity(self):
         maxima = {'default': {'vs':[0,0], 'ps':[0,0]}, 'bump': {'vs':[0,0], 'ps':[0,0]}}
@@ -531,7 +732,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                         temporal_varyings.append((number, (usage >> 16) & 15))
                 else:
                     name = motion.OPCODES[item['opcode']]
-                    costs = dict.fromkeys(('mov','add','mad','mul','rcp','rsq','dp3','dp4','min','max','slt','abs','cmp','mova','else','endif'), 1)
+                    costs = dict.fromkeys(('mov','add','mad','mul','rcp','rsq','dp3','dp4','min','max','slt','abs','cmp','mova','else','endif','exp','log'), 1)
                     costs.update({'nrm':3,'pow':3,'rep':3,'if':3,'endrep':2,'lrp':2,'dp2add':2})
                     if name == 'texld':
                         sampled = motion.name_of(*motion.register_of(item['words'][-1]))
@@ -560,11 +761,11 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                             self.assertEqual(sources[2]['name'], f"r{abi['scratch']}")
             self.assertEqual(varying, [(10, 1, 'xyz', 0)])
             registers = abi['vs_temporal'] if vertex else abi['ps_temporal']
-            self.assertEqual(temporal_varyings, [(registers[0], abi['legacy_rgb_texcoord']-2)] +
+            self.assertEqual(temporal_varyings, [(registers[0], abi['motion_texcoord'] if 'motion_texcoord' in abi else abi['legacy_rgb_texcoord']-2)] +
                              ([(registers[1], abi['depth_texcoord'])] if depth else []))
             # COLOR1 is a different semantic from every TEXCOORD depth export.
             self.assertLessEqual(slots, 512)
-            family = 'bump' if profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS | HULL_BUMP_ORIGINALS | ASTEROID_BUMP_ORIGINALS else 'default'
+            family = 'bump' if profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS | HULL_BUMP_ORIGINALS | ASTEROID_BUMP_ORIGINALS | PALETTE_BUMP_ORIGINALS else 'default'
             stage = 'vs' if vertex else 'ps'
             maxima[family][stage][depth] = max(maxima[family][stage][depth], slots)
             self.assertEqual(definitions[base][1:3], (0.0, 65504.0))
@@ -581,8 +782,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         for family in ('default', 'bump'):
             self.assertEqual([maxima[family]['vs'], maxima[family]['ps']],
                              self.driver[f'weighted_slots_{family}_vs_ps_depth_off_on'])
-        self.assertEqual(maxima['default'], {'vs':[80,82], 'ps':[166,168]})
-        self.assertEqual(maxima['bump'], {'vs':[87,89], 'ps':[178,180]})
+        self.assertEqual(maxima['default'], {'vs':[98,100], 'ps':[176,178]})
+        self.assertEqual(maxima['bump'], {'vs':[106,108], 'ps':[188,190]})
 
     def test_sample_conversion_boundaries_preserve_data_and_use_proved_rgb_registers(self):
         # Distinguish affine r4 from DEFAULT r3 and both BUMP data samplers;

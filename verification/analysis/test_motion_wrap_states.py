@@ -26,6 +26,7 @@ class MotionWrapStatesTests(unittest.TestCase):
             'HRESULT MotionOutput::restore_wrap_states(',
             'void MotionOutput::recover_motion_state(',
             'HRESULT MotionOutput::undo(',
+            'HRESULT MotionOutput::bind_variant_pair(',
             'void MotionOutput::after_reset(',
             'void MotionOutput::begin_stateblock(',
             'void MotionOutput::end_stateblock(',
@@ -61,6 +62,12 @@ class MotionWrapStatesTests(unittest.TestCase):
         self.assertIn('else if (route.submit) prepare_emission(call, route)', before)
         after = extract_function(source, 'void MotionOutput::after_draw(')
         self.assertIn('undo(route);', after)
+        apply_wrap = extract_function(source, 'HRESULT MotionOutput::apply_wrap_states(')
+        self.assertIn('shadow_.material_contract', apply_wrap)
+        self.assertNotIn('linear_material_pair_contract(', apply_wrap)
+        bind = extract_function(source, 'HRESULT MotionOutput::bind_variant_pair(')
+        self.assertIn('return bind_variant_pair(route, false);', bind)
+        self.assertIn('route.linear_material = material && SUCCEEDED(hr);', bind)
         resync = extract_function(source, 'void MotionOutput::resync_shadow(')
         self.assertIn('shadow_ = Shadow{};', resync)
         reset = extract_function(source, 'void MotionOutput::before_reset(')
@@ -82,6 +89,9 @@ class MotionWrapStatesTests(unittest.TestCase):
         header = (ROOT / 'src/proxy/motion_output.h').read_text()
         self.assertIn('motion_shadow_state_count = 24;', header)
         self.assertIn('emission_state_lost_ || motion_state_lost_', header)
+        self.assertIn('DWORD saved_wrap[6]{};', header)
+        self.assertIn('renderer::LinearMaterialPairContract material_contract{};', header)
+        self.assertNotIn('material_sampler_mask', header)
 
 
 if __name__ == '__main__':

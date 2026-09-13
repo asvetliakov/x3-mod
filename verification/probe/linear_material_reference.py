@@ -552,3 +552,237 @@ def asteroid_pixel(profile, varying, base, detail, specular_mask, directions, *,
     alpha = base[3] * quantize(_real(varying.alpha, "vertex alpha"))
     rgba = tuple(encode(x) for x in radiance) + (alpha,)
     return PixelResult(radiance, tuple(half(x) for x in rgba) if half_target else rgba)
+
+
+@dataclass(frozen=True)
+class PaletteProfile:
+    family: str
+    directions: int
+    affine_color: bool
+    two_sided: bool
+    bump_map: bool = False
+    vertex_palette: bool = False
+
+
+@dataclass(frozen=True)
+class PaletteVertexProfile:
+    family: str
+    fixed_single: bool = False
+    vertex_palette: bool = False
+
+
+# Independently classified original program schedules; not transformer metadata.
+PALETTE_PROFILES = {
+    '39eb3c2258a516e1': PaletteProfile('boron',2,False,False),
+    '57acf59d19c73791': PaletteProfile('boron',2,False,True),
+    'f917d48ee826da1f': PaletteProfile('boron',1,False,False,False,True),
+    '77a5b2d62fb3be48': PaletteProfile('boron',1,False,True,False,True),
+    'a910daef935891ce': PaletteProfile('boron',2,False,False,True),
+    '62c180abe017e239': PaletteProfile('boron',2,False,True,True),
+    'ed44232013f67072': PaletteProfile('boron',1,False,False,True,True),
+    'f286856c3f400377': PaletteProfile('boron',1,False,True,True,True),
+    '9d27e7ba242f3831': PaletteProfile('paranid',1,True,False),
+    'e1acf8a03850acaf': PaletteProfile('paranid',1,True,True),
+    'f646f03be5a8708d': PaletteProfile('paranid',1,True,False),
+    'ebf41e1ace7af45b': PaletteProfile('paranid',1,True,True),
+    'c997a37560e266df': PaletteProfile('paranid',1,False,False),
+    '675f9077d8fd21c4': PaletteProfile('paranid',1,False,True),
+    '18d372968af4a480': PaletteProfile('paranid',1,True,False,True),
+    '188c5ab9dbb98393': PaletteProfile('paranid',1,True,True,True),
+    '7e5e41276b3d7514': PaletteProfile('paranid',1,True,False,True),
+    '43c9405568d2226f': PaletteProfile('paranid',1,True,True,True),
+    '5e056627e9ff3a8d': PaletteProfile('paranid',1,False,False,True),
+    'fce465befff2f623': PaletteProfile('paranid',1,False,True,True),
+}
+PALETTE_VERTEX_PROFILES = {
+    '29d7c575396ed280': PaletteVertexProfile('boron'),
+    'a420a010b0271479': PaletteVertexProfile('boron',False,True),
+    'ea3d15b287892410': PaletteVertexProfile('boron',True,True),
+    '57392213f62fef19': PaletteVertexProfile('boron'),
+    '5c17a381b149b3b9': PaletteVertexProfile('boron',False,True),
+    'a804f173f693944a': PaletteVertexProfile('boron',True,True),
+    '37e6956afd8b8d76': PaletteVertexProfile('paranid'),
+    '2e0254dd999841c2': PaletteVertexProfile('paranid'),
+    'a7cddf2c98d61117': PaletteVertexProfile('paranid',True),
+    '33388c8897d428a5': PaletteVertexProfile('paranid'),
+    'b4059ab6af8fc529': PaletteVertexProfile('paranid'),
+    '2a560f246c90fa64': PaletteVertexProfile('paranid',True),
+}
+
+
+def _palette_code(values):
+    # Actual DEF binary32 values, conveniently identified by byte-color numerators.
+    return tuple(struct.unpack('<f',struct.pack('<f',n/255.0))[0] for n in values)
+
+
+PALETTE_COLORS = {
+    'boron': {name:_palette_code(rgb) for name,rgb in (
+        ('x',(38,111,117)),('y',(190,103,25)),('z',(136,141,117)),
+        ('view',(81,253,240)),('grazing',(151,187,74)),('reflection',(112,164,183)))},
+    'paranid': {name:_palette_code(rgb) for name,rgb in (
+        ('x',(137,151,177)),('y',(73,97,103)),('z',(110,59,25)),('grazing',(104,128,164)))},
+}
+# Authored immutable DEF policy: exact binary32 code and gamma exponent, then
+# correctly rounded binary32 storage. Ordinary texture/light decode stays unchanged.
+PALETTE_DECODE_EXPONENT = 2.200000047683716
+PALETTE_LINEAR_COLORS = {
+    family:{role:tuple(struct.unpack('<f',struct.pack('<f',v**PALETTE_DECODE_EXPONENT))[0]
+                       for v in rgb) for role,rgb in colors.items()}
+    for family,colors in PALETTE_COLORS.items()
+}
+PALETTE_VIEW_POWER = 1.2000000476837158
+PALETTE_VIEW_OFFSET = 0.10000000149011612
+
+
+@dataclass(frozen=True)
+class PaletteVertexResult(VertexResult):
+    """Native interpolants; callers may supply separately interpolated fields.
+
+    normal remains geometric; view was normalized at each vertex. reflection is
+    the DEFAULT geometric reflection, NOT recomputed from interpolated N/V.
+    J, u^11 and palette weights are independently interpolated native scalars.
+    vertex_palette_rgb is already decoded/weighted Boron single-VS color.
+    """
+    palette_weights: Vec3
+    reflection_weight: float
+    view_weight: float
+    vertex_palette_rgb: Optional[Vec3]
+
+
+def palette_vertex(profile, world_position, world_normal, camera_position, material_emissive,
+                   lights: Sequence[PointLight] = (), *, material_alpha=1.0,
+                   fog_clip=None, gains=Gains()) -> PaletteVertexResult:
+    """Boron/Paranid vertex math, from world inputs; no rasterizer emulation.
+
+    Reuse point/fog math but normalize V before native reflection/palette terms.
+    Float64 evaluates the ideal u^11 result for native POW or LOG/EXP schedules;
+    intermediate precision/zero LOG behavior requires the retained GPU originals.
+    Fixed-single contracts still require exactly one supplied point light.
+    """
+    if not isinstance(profile,str) or profile not in PALETTE_VERTEX_PROFILES:
+        raise ValueError('unknown palette vertex profile')
+    contract=PALETTE_VERTEX_PROFILES[profile]
+    native=vertex(world_position,world_normal,camera_position,material_emissive,lights,
+                  fixed_single=contract.fixed_single,material_alpha=material_alpha,
+                  fog_clip=fog_clip,gains=gains)
+    view=_unit(native.view,'view')
+    reflection=tuple(2*_dot(view,native.normal)*n-v for n,v in zip(native.normal,view))
+    reflection=_vector(reflection,3,'geometric reflection',True)
+    weights=tuple(abs(v) for v in reflection)
+    u=_sat(_dot(view,native.normal))
+    j=(1-u)**PALETTE_VIEW_POWER+PALETTE_VIEW_OFFSET
+    view_weight=u**11 if contract.family=='boron' else 0.0
+    if contract.family=='boron': j+=j
+    palette=None
+    if contract.vertex_palette:
+        colors=PALETTE_LINEAR_COLORS['boron']
+        palette=tuple(weights[1]*colors['y'][i]+weights[0]*colors['x'][i]+
+                      weights[2]*colors['z'][i]+view_weight*colors['view'][i]
+                      for i in range(3))
+    return PaletteVertexResult(native.normal,view,reflection,native.linear_rgb,native.alpha,
+                               weights,j,view_weight,palette)
+
+
+def palette_pixel(profile, varying, diffuse, specular_mask, lightmap, cubemap,
+                  directions: Sequence[DirectionalLight], *, affine=IDENTITY_AFFINE,
+                  face=1.0, glow=0.0, gains=Gains(), half_source=False, half_target=False,
+                  normal_sample=None, tangent=None, binormal=None) -> PixelResult:
+    """Full native palette terms with independent color conversion boundaries.
+
+    Both techniques require cubemap(direction)->RGB. DEFAULT consumes the
+    actual interpolated reflection; BUMP derives it from the bumped PS normal.
+    Neither recomputes the geometric VS weights/J from the PS normal or view.
+    Half-source covers native sampled/data endpoints; new linear color varyings
+    and converted DEF colors retain full precision. It is not an intermediate
+    _pp/centroid/flat/wrap simulator. Nonfinite geometry or overflowing palette
+    angular intermediates lie outside the float64 analytical domain.
+    """
+    if not isinstance(profile,str) or profile not in PALETTE_PROFILES:
+        raise ValueError('unknown palette pixel profile')
+    if not isinstance(varying,PaletteVertexResult) or not isinstance(gains,Gains):
+        raise TypeError('expected PaletteVertexResult and Gains')
+    if not isinstance(half_source,bool) or not isinstance(half_target,bool):
+        raise TypeError('quantization switches must be boolean')
+    if not callable(cubemap):
+        raise TypeError('palette cubemap must sample RGB from its direction argument')
+    contract=PALETTE_PROFILES[profile]
+    if contract.vertex_palette != (varying.vertex_palette_rgb is not None):
+        raise ValueError('palette producer does not match the PS contract')
+    directions=tuple(directions)
+    if len(directions)!=contract.directions:
+        raise ValueError('directional-light count does not match palette profile')
+    if not all(isinstance(light,DirectionalLight) for light in directions):
+        raise TypeError('directions must contain DirectionalLight values')
+    quantize=half if half_source else float
+    source=lambda values,size,name:tuple(quantize(v) for v in _vector(values,size,name))
+    diffuse=source(diffuse,4,'diffuse'); lightmap=source(lightmap,4,'lightmap')
+    mask=quantize(_real(specular_mask,'specular_mask'))
+    if not math.isfinite(mask) or not 0<=mask<=1:
+        raise ValueError('specular_mask must be normalized finite data')
+    if contract.bump_map:
+        geometry=bump_geometry(normal_sample,tangent,binormal,varying.normal,varying.view,
+                               two_sided=contract.two_sided,face=face,half_source=half_source)
+        normal,view,reflection=geometry.normal,geometry.view,geometry.reflection
+    else:
+        normal=_unit(source(varying.normal,3,'normal'),'normal')
+        view=_unit(source(varying.view,3,'view'),'view')
+        reflection=_vector(source(varying.reflection,3,'reflection'),3,'reflection',True)
+        if contract.two_sided:
+            face=_real(face,'face')
+            if not math.isfinite(face) or face==0:
+                raise ValueError('face must be finite and nonzero')
+            if face<0:normal=tuple(-n for n in normal)
+    _unit(reflection,'cube direction')
+    cube=source(cubemap(reflection),3,'cube sample')
+    albedo_code=diffuse[:3]
+    if contract.affine_color:
+        rows=tuple(_vector(row,4,'affine row',True) for row in affine)
+        if len(rows)!=3:raise ValueError('affine must contain three rows')
+        albedo_code=tuple(_dot(row,(*albedo_code,1.0)) for row in rows)
+    albedo=tuple(decode(v) for v in albedo_code)
+    colors=PALETTE_LINEAR_COLORS[contract.family]
+    if contract.vertex_palette:
+        palette=_vector(varying.vertex_palette_rgb,3,'linear vertex palette',True)
+    else:
+        w=_vector(source(varying.palette_weights,3,'palette weights'),3,'palette weights',True)
+        palette=tuple(w[1]*colors['y'][i]+w[0]*colors['x'][i]+
+                      w[2]*colors['z'][i] for i in range(3))
+        if contract.family=='boron':
+            v=quantize(_real(varying.view_weight,'view weight'))
+            if not math.isfinite(v):raise ValueError('view weight must be finite')
+            palette=tuple(p+v*colors['view'][i] for i,p in enumerate(palette))
+    grazing=1-abs(_dot(view,reflection))
+    # Native Boron multiplication keeps the odd-power sign. Native Paranid POW
+    # takes abs(src0), per https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/pow---ps.
+    try:
+        if contract.family=='boron':
+            squared=grazing*grazing
+            grazing=grazing*(squared*squared)
+        else:grazing=abs(grazing)**9
+    except OverflowError as exc:
+        raise ValueError('palette angular term exceeds float64 domain') from exc
+    if not math.isfinite(grazing):raise ValueError('palette angular term must be finite')
+    palette=tuple(p+grazing*colors['grazing'][i] for i,p in enumerate(palette))
+    effective=tuple(.5*d+.5*(d*p) for d,p in zip(albedo,palette))
+    diffuse_coefficient=DIFFUSE_COEFFICIENT if contract.family=='boron' else .5
+    specular_scale=3.0 if contract.family=='boron' else 6.0
+    directional=[0.0,0.0,0.0]
+    for light in directions:
+        cosine=_sat(_dot(normal,light.direction))
+        reflected=tuple(2*_dot(normal,light.direction)*n-l for n,l in zip(normal,light.direction))
+        highlight=_sat(_dot(view,reflected))**10
+        lobe=diffuse_coefficient*cosine+specular_scale*mask*_sat(3*cosine)*highlight
+        for i in range(3):directional[i]+=lobe*decode(light.color[i])*gains.direct
+    j=quantize(_real(varying.reflection_weight,'reflection weight'))
+    if not math.isfinite(j):raise ValueError('reflection weight must be finite')
+    reflection_rgb=tuple(decode(c)*mask*d*j for c,d in zip(cube,albedo))
+    if contract.family=='boron':
+        reflection_rgb=tuple(r*colors['reflection'][i] for i,r in enumerate(reflection_rgb))
+    vertex_rgb=_vector(varying.linear_rgb,3,'linear vertex RGB')
+    radiance=tuple(sanitize(a*(p+l)+r+decode(m)*gains.lightmap_emissive)
+                   for a,p,l,r,m in zip(effective,vertex_rgb,directional,reflection_rgb,lightmap))
+    glow=_real(glow,'glow')
+    if not math.isfinite(glow):raise ValueError('glow must be finite')
+    alpha=(glow*lightmap[3]+(1-glow)*diffuse[3])*quantize(_real(varying.alpha,'vertex alpha'))
+    rgba=tuple(encode(v) for v in radiance)+(alpha,)
+    return PixelResult(radiance,tuple(half(v) for v in rgba) if half_target else rgba)

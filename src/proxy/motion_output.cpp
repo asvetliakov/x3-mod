@@ -299,7 +299,7 @@ void MotionOutput::release_resources() noexcept {
     for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.emission_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
-    shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
+    shadow_.material_contract = {};
     history_.invalidate();
     fill_pending_ = false;
     if (mip_bias_bits_ && !mip_bias_summary_logged_) {
@@ -682,23 +682,59 @@ void MotionOutput::invalidate_render_states() noexcept {
     ++counters_.rs_resyncs;
 }
 
-// Only the profile's generated, originally unused TEXCOORDs bypass texture
-// coordinate wrapping. All reads precede mutation; a failed setter is still
-// rolled back because its state cannot be assumed unchanged. These native
-// calls bypass the application shadow. Restore per draw, including lazy RT mode.
+// Snapshot every consumed application state before mutation. Temporal varyings
+// disable wrapping; relocated native scalars keep their original component bit
+// at the new carrier, without changing the carrier's other components. Native
+// setters bypass the logical shadow, and attempted writes restore per draw.
 HRESULT MotionOutput::apply_wrap_states(MotionRoute& route, const renderer::MotionOutputProfile& row) noexcept {
-    route.wrap_index[0] = row.texcoord_index;
-    route.wrap_count = route.depth ? 2 : 1;
-    if (route.depth) route.wrap_index[1] = row.depth_texcoord_index;
+    if (route.wrap_count || route.wrap_attempted) return D3DERR_INVALIDCALL;
+    constexpr unsigned capacity = 6;
+    auto slot = [&](unsigned index) noexcept -> unsigned {
+        if (index >= 16) return capacity;
+        for (unsigned i = 0; i < route.wrap_count; ++i)
+            if (route.wrap_index[i] == index) return i;
+        if (route.wrap_count == capacity) return capacity;
+        route.wrap_index[route.wrap_count] = static_cast<std::uint8_t>(index);
+        return route.wrap_count++;
+    };
+    const unsigned motion = slot(row.texcoord_index);
+    const unsigned depth = route.depth ? slot(row.depth_texcoord_index) : capacity;
+    if (motion == capacity || (route.depth && (depth == capacity || depth == motion))) return D3DERR_INVALIDCALL;
+    const auto& contract = shadow_.material_contract;
+    const unsigned transports = route.linear_material ? contract.scalar_transport_count : 0;
+    if (transports > contract.scalar_transport.size() || (transports && !contract.sampler_mask)) return D3DERR_INVALIDCALL;
+    unsigned sources[2]{}, destinations[2]{};
+    DWORD destination_bits[capacity]{};
+    for (unsigned i = 0; i < transports; ++i) {
+        const auto& map = contract.scalar_transport[i];
+        if (map.source_component >= 4 || map.destination_component >= 4) return D3DERR_INVALIDCALL;
+        destinations[i] = slot(map.destination_texcoord);
+        sources[i] = slot(map.source_texcoord);
+        if (sources[i] == capacity || destinations[i] == capacity ||
+            sources[i] == motion || sources[i] == depth || destinations[i] == motion || destinations[i] == depth)
+            return D3DERR_INVALIDCALL;
+        const DWORD bit = DWORD(1) << map.destination_component;
+        if (destination_bits[destinations[i]] & bit) return D3DERR_INVALIDCALL;
+        destination_bits[destinations[i]] |= bit;
+    }
+    DWORD desired[capacity]{};
     for (unsigned i = 0; i < route.wrap_count; ++i) {
-        if (route.wrap_index[i] >= 16) return D3DERR_INVALIDCALL;
         const HRESULT hr = render_state(shadow_states[8u + route.wrap_index[i]], &route.saved_wrap[i]);
         if (FAILED(hr)) return hr;
+        desired[i] = route.saved_wrap[i];
+    }
+    desired[motion] = 0;
+    if (route.depth) desired[depth] = 0;
+    for (unsigned i = 0; i < transports; ++i) {
+        const auto& map = contract.scalar_transport[i];
+        const DWORD bit = DWORD(1) << map.destination_component;
+        const bool wrapped = (route.saved_wrap[sources[i]] & (DWORD(1) << map.source_component)) != 0;
+        desired[destinations[i]] = (desired[destinations[i]] & ~bit) | (wrapped ? bit : 0);
     }
     for (unsigned i = 0; i < route.wrap_count; ++i) {
-        if (!route.saved_wrap[i]) continue;
+        if (desired[i] == route.saved_wrap[i]) continue;
         route.wrap_attempted |= std::uint8_t(1u << i);
-        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, shadow_states[8u + route.wrap_index[i]], 0);
+        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, shadow_states[8u + route.wrap_index[i]], desired[i]);
         if (FAILED(hr)) return hr;
     }
     return S_OK;
@@ -1647,7 +1683,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.vs == shader) {
         shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
-        shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
+        shadow_.material_contract = {};
         shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     }
     if (!requested_ || !shader) return;
@@ -1701,7 +1737,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.ps == shader) {
         shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
-        shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
+        shadow_.material_contract = {};
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     }
     if (!requested_ || !shader) return;
@@ -1767,7 +1803,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
-    shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
+    shadow_.material_contract = {};
     shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
@@ -1783,7 +1819,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
-    shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
+    shadow_.material_contract = {};
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     if (!shader) return;
     const auto it = pixel_.find(shader);
@@ -2428,8 +2464,7 @@ void MotionOutput::refresh_linear_material_contract() noexcept {
     // object availability and effective HDR readiness remain live gates.
     const auto contract = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
         ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
-    shadow_.material_sampler_mask = contract.sampler_mask;
-    shadow_.material_bump = contract.bump;
+    shadow_.material_contract = contract;
 }
 void MotionOutput::refresh_linear_emission_contract() noexcept {
     // Creation/bind/resync only. Future draws consume this pointer without a
@@ -2441,12 +2476,12 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
 // Called only after the ordinary opaque/no-MSAA motion gates. All fields are
 // cached; never query samplers or revalidate bytecode in this draw-time check.
 unsigned MotionOutput::linear_material_refusal() const noexcept {
-    if (!shadow_.material_sampler_mask) return 1;
+    if (!shadow_.material_contract.sampler_mask) return 1;
     if (!shadow_.vs_material_variant || !shadow_.ps_material_variant) return 2;
     if (!hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
         || hdr_config_.tonemap != renderer::HdrTonemap::Agx
         || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return 3;
-    for (std::uint32_t mask = shadow_.material_sampler_mask; mask; mask &= mask - 1) {
+    for (std::uint32_t mask = shadow_.material_contract.sampler_mask; mask; mask &= mask - 1) {
         const unsigned stage = unsigned(__builtin_ctz(mask));
         if (!samplers_[stage].srgb_known || samplers_[stage].srgb != FALSE) return 4;
     }
@@ -2596,7 +2631,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
                     else if (samplers_[stage].srgb != FALSE) srgb_enabled |= 1u << stage;
                 }
                 log("linear_material_refused device=%llu reason=%u vs=%016llx ps=%016llx required=%02lx unknown=%02lx srgb_enabled=%02lx",
-                    id_, refusal, shadow_.vs_hash, shadow_.ps_hash, static_cast<unsigned long>(shadow_.material_sampler_mask),
+                    id_, refusal, shadow_.vs_hash, shadow_.ps_hash, static_cast<unsigned long>(shadow_.material_contract.sampler_mask),
                     static_cast<unsigned long>(unknown), static_cast<unsigned long>(srgb_enabled));
             }
         }
@@ -2631,7 +2666,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     route.routed = true; route.matched = matched;
     if (route.linear_material) {
         ++counters_.material_routed;
-        if (shadow_.material_bump) ++counters_.material_bump_routed;
+        if (shadow_.material_contract.bump) ++counters_.material_bump_routed;
     }
     ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
     // The mip LOD bias of the routed material stages, while the jitter is on
