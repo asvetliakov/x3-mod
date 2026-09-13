@@ -57,7 +57,7 @@ struct Memory {
   put(0x2004,0x4a3909u);put(0x200c,0x3000u);put(0x2010,0x30u);
   put(0x4008,0x10000u);put(0x4048,0x42d340u); // group1 ->(1+2)*24
   put(0x301c,0x105u);put(0x303c,0x5000u);put(0x5000,0x200u);
-  data[0x10100]=0x83;data[0x10101]=1;data[0x10103]=0x30;
+  data[0x10100]=0x82;data[0x10101]=1;data[0x10103]=0x30;
   put(0x3014,0x8000u);put(0x3010,128u);put(0x3018,std::int32_t(-4));
   data[0x8000-20]=10;put(0x8000-19,0x5000u);data[0x8000-15]=3;put(0x8000-14,0x300u);
  }
@@ -71,7 +71,7 @@ static void origins(){
  Memory m;m.init();auto o=m.capture();check(o.valid==15&&!o.flags&&o.count==1&&o.methods[0]==0x200&&o.returns[0]==0x300,"exact VM origin and candidate ancestry");
  m.put(0x2004,0x1234u);check(!m.capture().valid,"non VM native caller refuses");m.init();
  m.put(0x301c,4u);check(m.capture().valid==1&&m.capture().flags==1,"PC underflow refuses");m.init();
- m.data[0x10100]=0x82;check(m.capture().valid==1,"wrong opcode refuses");m.init();
+ m.data[0x10100]=0x83;check(m.capture().valid==1,"VM return opcode refuses native provenance");m.init();
  m.data[0x10103]=0x31;check(m.capture().valid==1,"wrong command refuses");m.init();
  m.put(0x4048,0x1234u);check(m.capture().valid==1,"wrong native group handler refuses");m.init();
  m.put(0x3018,std::int32_t(1));check(!(m.capture().valid&8),"positive stack index refuses");m.init();

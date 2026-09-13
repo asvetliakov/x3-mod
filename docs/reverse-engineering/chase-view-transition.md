@@ -47,7 +47,10 @@ correlate them with the load/cockpit lifetime, before choosing a transition gate
 ## Proven command provenance without a global VM trace
 
 The native KC interpreter is `0x004a26a0`. Its native-call operation is opcode
-`0x83` (decompiler switch index `0x82`, because dispatch subtracts one).
+`0x82`. The interpreter decrements the opcode, reads a byte from
+`0x004a4688 + opcode - 1`, then dispatches through `0x004a4490 + index*4`.
+For `0x82` the table index is 88 and target is `0x004a3880`; `0x83` instead
+maps through index 89 to the return handler at `0x004a3986`.
 At `0x004a3880` it reads a 16-bit native group and a 16-bit command ID from the
 runtime CODE stream. Before the indirect call at `0x004a3907`, it stores the
 next CODE-relative instruction offset into the task at `0x004a38e1`.
@@ -83,7 +86,7 @@ and operand bytes have not been equated to this runtime CODE representation.
 
 Script return records are also statically identifiable. `0x004a8620` writes a
 tag-3 return offset; `0x004a8640` writes the adjacent tag-10 method reference.
-The return operation (opcode `0x84`) itself scans for tag 10 followed by tag 3
+The return operation (opcode `0x83`) itself scans for tag 10 followed by tag 3
 when unwinding an invalid method. A bounded diagnostic may retain up to four
 such pairs from at most 64 validated cells, recording method-entry and return
 CODE offsets, with explicit truncation/invalid-read flags. This is useful if
@@ -181,3 +184,21 @@ Private output is `/tmp/x3-camera-study/chase-vm-origin{1,2,3,4,5}.txt` and
 `dec:0041f720`, `dec:00425e20`, and constructor/destructor/connect references.
 No engine bytes, decompiler output, production changes, game/Wine execution,
 build, installation or commit belong to this study.
+
+## 2026-09-14 provenance opcode correction
+
+The original note and diagnostic guard incorrectly added one to a decompiler
+switch label, overlooking the second dispatch table. Direct installed-EXE
+instruction and table verification establishes the mapping above. The local
+stdlib-only reproduction is `/tmp/x3-selection-vm/verify_opcode_dispatch.py`;
+it checks the fetch/increment/decrement bytes at `0x004a26d6`, both dispatch
+loads at `0x004a2700`, and native call/return bytes at `0x004a3907`. The examined
+EXE SHA-256 remains `fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`.
+
+The source guard now accepts `0x82`; the host positive witness uses it and the
+negative witness rejects VM return `0x83`. Both focused transition tests pass,
+and an independent reviewer reproduced the actual PE mapping. Command, native
+group/handler, method, memory bounds and ancestry gates remain unchanged. There
+is no added runtime work. This repairs kind-6 diagnostic origin/ancestry only;
+it changes neither camera behavior nor target-lock callbacks and is not a
+selection-stutter fix. Installation awaits the next combined candidate.

@@ -125,7 +125,9 @@ void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address)
     std::uint32_t dispatch=0;
     // The native dispatch table precedes VM+1454. A verified table entry and
     // exact opcode/command are stronger provenance than the generic return PC.
-    if(op[0]!=0x83||cmd!=0x30||group>(0x1454/24)-3||
+    // The interpreter subtracts one before its two-level dispatch: byte 0x82
+    // reaches the native-call handler; 0x83 is the VM return instruction.
+    if(op[0]!=0x82||cmd!=0x30||group>(0x1454/24)-3||
        !field(vm,(group+2)*24,dispatch)||dispatch!=0x42d340){o.flags|=1;return;}
     o.valid|=2;
     if(o.method && !(o.method&3) && field(o.method,0,o.entry)&&code_offset(code,o.entry))o.valid|=4;

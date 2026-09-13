@@ -70,6 +70,10 @@ the previous DLL and installation record are retained for rollback.
   The CPU fixture passes 815 checks at about 0.134 ms added per synthetic loop.
   `--game-phases --telemetry` enables the bounded trace; run 27 isolates the delayed publisher and broad pre-simulation spans.
 
+A reviewed source-only correction fixes native VM opcode validation in chase
+transition diagnostics (`0x82`, not VM return `0x83`); this is not a camera or
+stutter behavior fix. See [provenance](reverse-engineering/chase-view-transition.md).
+
 ## Current open issues
 
 - **Selection stalls:** measured renderer and installed HUD/solver paths are excluded. The new trace catches an expensive delayed native
