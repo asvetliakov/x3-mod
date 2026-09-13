@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Preserve one completed X3 session and its referenced local capture files.
+
+No launcher, source deletion, directory-wide copy or manifest. --since-ns is a
+pre-launch time.time_ns() boundary; no newly created log is a harmless no-op.
+Explicit logs are allowed, but readbacks outside that log's write interval are
+reported as stale. Shader dumps are reusable only when their FNV identity and
+bounded size match the logged record. Invoke after the game exits.
+"""
+import argparse
+import os
+from pathlib import Path
+import re
+import stat
+import sys
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'verification/probe'))
+from game_guard import game_running
+
+CAPTURES = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-captures'
+SESSION = re.compile(r'session-\d{8}-\d{6}-\d+\.log\Z')
+# Current MotionOutput writers (including the earlier color/TAA readbacks).
+READBACKS = {
+    'motion_output_color_readback': ('color', 'bgra8'),
+    'motion_output_taa_readback': ('taa', 'rgba16f'),
+    'motion_output_present_readback': ('present', 'bgra8'),
+    'motion_output_readback': ('motion', 'rgba32f'),
+    'motion_output_depth_readback': ('depth', 'r32f'),
+    'hdr_readback': ('hdr', 'rgba16f'),
+}
+FIELDS = re.compile(r'(?:^|\s)(\w+)=([^\s]+)')
+
+
+def created_ns(info):
+    # macOS birth time rejects even an old log whose mtime was touched later.
+    # Linux has no portable birth time; ctime is the conservative fallback.
+    if hasattr(info, 'st_birthtime_ns'):
+        return info.st_birthtime_ns
+    if hasattr(info, 'st_birthtime'):
+        return round(info.st_birthtime * 1_000_000_000)
+    return info.st_ctime_ns
+
+
+def require_idle():
+    if game_running():
+        raise RuntimeError('X3 is still running; exit it before preserving this session')
+
+
+def select_log(directory_fd, since_ns):
+    found = []
+    for name in os.listdir(directory_fd):
+        if not SESSION.fullmatch(name):
+            continue
+        info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if not stat.S_ISREG(info.st_mode):
+            continue
+        if created_ns(info) >= since_ns and info.st_mtime_ns >= since_ns:
+            found.append((created_ns(info), info.st_mtime_ns, name))
+    return max(found)[2] if found else None
+
+
+def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=None, since_ns=None):
+    """Pinned directories + no-follow leaf opens prevent path/symlink escapes."""
+    read_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=source_fd)
+    with os.fdopen(read_fd, 'rb') as source:
+        before = os.fstat(source.fileno())
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError('not a regular file')
+        if since_ns is not None and (created_ns(before) < since_ns or before.st_mtime_ns < since_ns):
+            raise ValueError('selected log predates this launch')
+        if size is not None and before.st_size != size:
+            raise ValueError(f'size differs: expected {size}, found {before.st_size}')
+        if window and not window[0] <= before.st_mtime_ns <= window[1]:
+            raise ValueError('stale or overwritten outside this session')
+        if shader_id is not None and not 0 < before.st_size <= 4 * 1024 * 1024:
+            raise ValueError('shader size exceeds the logged writer contract')
+        write_fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=target_fd)
+        try:
+            fingerprint = 14695981039346656037
+            with os.fdopen(write_fd, 'wb') as target:
+                while chunk := source.read(1024 * 1024):
+                    target.write(chunk)
+                    if shader_id is not None:
+                        for byte in chunk:
+                            fingerprint = ((fingerprint ^ byte) * 1099511628211) & 0xffffffffffffffff
+            after = os.fstat(source.fileno())
+            keys = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
+            if any(getattr(before, key) != getattr(after, key) for key in keys):
+                raise ValueError('source changed while copying')
+            if shader_id is not None and fingerprint != shader_id:
+                raise ValueError('shader content does not match its logged identity')
+            return before
+        except BaseException:
+            # Only this newly created destination is removed, never a source.
+            os.unlink(name, dir_fd=target_fd)
+            raise
+
+
+def references(log):
+    """Only recognized writer records authorize copying; last write wins."""
+    wanted, issues = {}, []
+    for line in log:
+        tag = line.split(' ', 1)[0]
+        if tag not in READBACKS and tag not in ('shader', 'mesh_adjacency_dump'):
+            continue
+        row = dict(FIELDS.findall(line))
+        try:
+            if tag in READBACKS:
+                prefix, extension = READBACKS[tag]
+                name = f'{prefix}_{int(row["device"])}_{int(row["frame"])}.{extension}'
+                if row['file'] != name:
+                    raise ValueError('unsafe or unexpected readback basename')
+                if int(row['result'], 16) != 0 or int(row['bytes']) <= 0:
+                    wanted.pop(name, None)
+                    issues.append(f'{name}: writer did not report a successful readback')
+                    continue
+                wanted[name] = {'size': int(row['bytes']), 'timed': True}
+            elif tag == 'shader':
+                if row['kind'] not in ('vs', 'ps') or not re.fullmatch(r'[0-9a-f]{16}', row['id']):
+                    raise ValueError('unsafe shader identity')
+                name = f'{row["kind"]}_{row["id"]}.bin'
+                if row['dumped'] != '1':
+                    issues.append(f'{name}: shader dump was not successful')
+                    continue
+                size = int(row['bytes'])
+                if not 0 < size <= 4 * 1024 * 1024:
+                    raise ValueError('shader size exceeds the logged writer contract')
+                wanted[name] = {'size': size, 'shader_id': int(row['id'], 16)}
+            else:
+                name = f'mesh-adjacency-{int(row["index"])}.bin'
+                if row['path'] != name:
+                    raise ValueError('unsafe or unexpected adjacency basename')
+                if row['written'] != '1':
+                    wanted.pop(name, None)
+                    issues.append(f'{name}: adjacency dump was not successful')
+                    continue
+                wanted[name] = {'timed': True}
+        except (KeyError, ValueError) as error:
+            issues.append(f'{tag}: ignored invalid record ({error})')
+    return wanted, issues
+
+
+def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=Path('/tmp')):
+    if log is None and (since_ns is None or since_ns <= 0):
+        raise ValueError('provide an explicit log or positive pre-launch --since-ns boundary')
+    require_idle()  # An unavailable process inventory also raises and refuses.
+    capture_dir = Path(log).absolute().parent if log is not None else Path(capture_dir)
+    if not capture_dir.exists():
+        if log is not None:
+            raise FileNotFoundError(capture_dir)
+        return None, 0, []
+    source_fd = os.open(capture_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    with closing_fd(source_fd):
+        name = Path(log).name if log is not None else select_log(source_fd, since_ns)
+        if name is None:
+            return None, 0, []
+        if not SESSION.fullmatch(name):
+            raise ValueError('explicit log must have a session timestamp/PID basename')
+        existing = (re.fullmatch(r'x3-bottleX3-run(\d+)', path.name) for path in Path(destination_root).iterdir())
+        number = 1 + max((int(match[1]) for match in existing if match), default=0)
+        while True:
+            destination = Path(destination_root) / f'x3-bottleX3-run{number}'
+            try:
+                destination.mkdir(mode=0o700)
+                break
+            except FileExistsError:
+                number += 1
+        target_fd = os.open(destination, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        with closing_fd(target_fd):
+            # Log first. All authorization is parsed from this immutable copy.
+            info = copy_file(source_fd, target_fd, name, since_ns=since_ns if log is None else None)
+            log_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=target_fd)
+            with os.fdopen(log_fd, 'r', errors='replace') as copied_log:
+                wanted, issues = references(copied_log)
+            count = 0
+            for filename, options in wanted.items():
+                options = dict(options)
+                if options.pop('timed', False):
+                    options['window'] = (created_ns(info), info.st_mtime_ns)
+                try:
+                    copy_file(source_fd, target_fd, filename, **options)
+                    count += 1
+                except (OSError, ValueError) as error:
+                    issues.append(f'{filename}: not preserved ({error})')
+            require_idle()
+            return destination, count, issues
+
+
+class closing_fd:
+    def __init__(self, fd): self.fd = fd
+    def __enter__(self): return self.fd
+    def __exit__(self, *_): os.close(self.fd)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument('--since-ns', type=int)
+    selection.add_argument('--log', type=Path)
+    parser.add_argument('--capture-dir', type=Path, default=CAPTURES)
+    args = parser.parse_args()
+    try:
+        destination, count, issues = snapshot(capture_dir=args.capture_dir, since_ns=args.since_ns, log=args.log)
+        if destination is None:
+            print('No new X3 proxy session; no snapshot created (vanilla/dry-run is expected).')
+            return 0
+        print(f'X3 session preserved in {destination} ({count} referenced files).')
+        for issue in issues:
+            print(f'Snapshot incomplete: {issue}', file=sys.stderr)
+        return 2 if issues else 0
+    except (OSError, ValueError, RuntimeError) as error:
+        print(f'X3 snapshot refused/failed: {error}', file=sys.stderr)
+        return 2
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

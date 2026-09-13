@@ -93,3 +93,10 @@ preflight and optional timings; the export runner consumes an explicit DLL
 without rebuilding production. Both review findings were fixed and affected
 host checks pass; see the audit's adoption record. Review, relevant failure/performance checks, Wine serialization
 and reversible installation remain; no historical results or commits were deleted.
+
+The [user run helper](verification/user-runs.md) now preserves each new session
+and only its referenced captures after exit, before the next comparison launch.
+The [streaming snapshot helper](../tools/analysis/snapshot_x3_run.py) uses a fresh
+numbered `/tmp` directory, reports stale/missing files and preserves the game
+exit status. Independent review found no blocker; 13 focused host tests pass.
+No additional manifest, gameplay step or production DLL change is involved.

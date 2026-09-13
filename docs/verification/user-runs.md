@@ -6,12 +6,23 @@ never launches the game. Installed build: chase firing fix with 13° pitch and
 0.85 distance, opt-in FP16 bloom and reviewed DEFAULT/BUMPMAP linear materials;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, define this terminal helper once, then paste a run
-command below. Close X3 between runs and report completed numbers when convenient.
+command below. Start with run 1; complete the rest over several sessions as convenient.
+Close X3 between runs and report completed numbers. After exit, the helper prints
+a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
+captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
 
 ```sh
 x3run() {
-  X3M_BOTTLE=X3 python3 verification/probe/wine_lock.py --holder user-game \
-    python3 tools/manage.py launch --bottle X3 "$@"
+  local x3run_since_ns x3run_status
+  x3run_since_ns=$(python3 -c 'import time; print(time.time_ns())') || return
+  if X3M_BOTTLE=X3 python3 verification/probe/wine_lock.py --holder user-game \
+      python3 tools/manage.py launch --bottle X3 "$@"; then
+    x3run_status=0
+  else
+    x3run_status=$?
+  fi
+  python3 tools/analysis/snapshot_x3_run.py --since-ns "$x3run_since_ns" || true
+  return "$x3run_status"
 }
 ```
 

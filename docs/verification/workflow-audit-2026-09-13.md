@@ -351,3 +351,24 @@ Explicit user direction is needed for destructive or history-rewriting cleanup:
 No such historical cleanup is required to get most of the time saving. The
 project can stop producing redundant artifacts and adopt the risk-based workflow
 for the next checkpoint without changing any user-required invariant.
+
+
+## Completed-session preservation
+
+The brief [user run queue](user-runs.md) now snapshots after its launch command
+returns, using a pre-launch time boundary. Timestamped session logs were already
+unique, but image readback names reuse device/frame numbers across launches.
+The new [snapshot helper](../../tools/analysis/snapshot_x3_run.py) copies the log
+first, streams only recognized file references, and saves them in a fresh
+`/tmp/x3-bottleX3-run<N>/` directory. It reports missing/overwritten files, refuses
+unsafe paths or an active/unknown game state, and never deletes source data.
+Content-addressed shader dumps are checked against their logged identity. There
+is no directory-wide copy, persistent counter or new manifest. The shell helper
+preserves the original launch exit status; vanilla/no-new-log is a no-op.
+
+Independent review approved the source and final max-existing-number-plus-one
+allocation fix. Thirteen [focused host tests](../../verification/analysis/test_snapshot_x3_run.py)
+pass, covering actual writer records, copied-log authorization, selection/source
+replacement, path safety, stale/missing data, inventory failure, numbering races
+and launch exit preservation. No game/Wine execution, DLL build or install was
+needed for this workflow-only checkpoint.
