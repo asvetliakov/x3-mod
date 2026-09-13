@@ -379,6 +379,10 @@ struct Fixture {
     bool hook = false, wrap = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
+    // New fade mode reuses the supplemental scene/reference transport; its
+    // effective producer set is latched from the runtime status each frame.
+    bool distancefade = false, distancefade_bench = false;
+    bool distancefade_enabled = false, distancefade_emissions_enabled = false;
     std::vector<float> emission_reference_color, emission_reference_mask;
     unsigned (*emission_status)(IDirect3DDevice9*, unsigned) = nullptr;
     void (*emission_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
@@ -696,6 +700,14 @@ struct Fixture {
     void set_camera(unsigned long long f) {
         if (!camera) { camera_current = {}; return; }
         camera_current = fake_camera_pose(double(f) + (f >= 7 ? 30. : 0.));
+        if(distancefade) {
+            // New composition witness exercises camera rotation + translation;
+            // every older fixture retains its exact camera sequence.
+            fake_view[12] += .125f*float(f%5);
+            fake_view[13] -= .0625f*float(f%3);
+            x3m::renderer::camera_state_from_matrices(fake_projection,fake_view,camera_current);
+            if(!distancefade_bench)std::printf("FADE_CAMERA frame=%llu view_translation=%.9g,%.9g,%.9g\n",f,double(fake_view[12]),double(fake_view[13]),double(fake_view[14]));
+        }
         require(camera_current.valid, "fake camera pose validates");
     }
     // The route's policy decision for this frame's resolve, from the same builder.
@@ -2731,6 +2743,7 @@ struct Fixture {
     }
 };
 #include "motion_output_emission_inc.h"
+#include "motion_output_distance_fade_inc.h"
 } // namespace
 // The glow pass stand-in: records the signal count at entry (the trampoline's
 // signal must precede it), then with glow the depth unbind and the bloom copy
@@ -2756,7 +2769,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench|distancefade|distancefadebench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -2771,16 +2784,19 @@ int main(int argc, char** argv) {
         f.msaa = mode == "msaa";
         f.materialwrap = mode == "materialwrap"; f.materialxt = mode == "materialxt"; f.materialglass = mode == "materialglass";
         f.linearmaterials = mode == "linearmaterials" || f.materialwrap;
-        f.emission_bench = mode == "emissionsbench";
-        f.emissions = mode == "emissions" || f.emission_bench;
-        if(f.emission_bench){Fixture::W=1920;Fixture::H=1080;}
-        if(f.emissions && argc!=6)throw std::runtime_error("emissions needs original emission VS/PS paths");
+        f.distancefade_bench = mode == "distancefadebench";
+        f.distancefade = mode == "distancefade" || f.distancefade_bench;
+        f.emission_bench = mode == "emissionsbench" || f.distancefade_bench;
+        f.emissions = mode == "emissions" || f.emission_bench || f.distancefade;
+        if(f.emission_bench&&!f.distancefade){Fixture::W=1920;Fixture::H=1080;}
+        if(f.emissions && !f.distancefade && argc!=6)throw std::runtime_error("emissions needs original emission VS/PS paths");
+        if(f.distancefade && argc!=(f.distancefade_bench?5:4))throw std::runtime_error("distancefade uses bootstrap originals and optional benchmark WxH");
         if(f.linearmaterials && argc!=9)throw std::runtime_error("linearmaterials needs DEFAULT and BUMP positive/negative shader paths");
         if(!f.emissions && argc==6)throw std::runtime_error("unexpected emission program paths");
         if(!f.linearmaterials && argc==9)throw std::runtime_error("unexpected additional program path");
         if (f.msaa) { char samples[8]{}; f.msaa_samples = GetEnvironmentVariableA("X3M_FIXTURE_MSAA", samples, sizeof samples) > 0 ? unsigned(std::atoi(samples)) : 2u; if (f.msaa_samples < 2 || f.msaa_samples > 16) throw std::runtime_error("X3M_FIXTURE_MSAA must be 2..16"); }
         if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
-        if (f.bench) {
+        if (f.bench || f.distancefade_bench) {
             unsigned w = 0, h = 0;
             if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
             Fixture::W = w; Fixture::H = h;
@@ -2806,6 +2822,8 @@ int main(int argc, char** argv) {
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
+        f.distancefade_emissions_enabled = f.emissions_enabled;
+        f.distancefade_enabled = GetEnvironmentVariableA("X3M_LINEAR_DISTANCE_FADE",setting,sizeof setting)==1&&setting[0]=='1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
         f.jitter = f.enabled && (f.taa || (GetEnvironmentVariableA("X3M_MOTION_JITTER", setting, sizeof setting) == 1 && setting[0] == '1'));
@@ -2855,7 +2873,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
