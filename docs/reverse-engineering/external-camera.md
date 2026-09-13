@@ -192,7 +192,7 @@ the install window covers it — the site is claimed before the device exists).
 unprojection: from the camera's `+0x298` FOV (sine/cosine tables at
 `0x005c6998`/`0x005b6998`…), the view plane `+0x300/+0x304` (or the defaults
 `(*0x00606f38)[0x28/0x2c]`), the viewport rectangle `+0x288..+0x294` and the
-screen size `*(short*)(*0x00606f38+4/+6)`, it returns `(x_cam, y_cam, z, 0)`
+screen size `*(short*)(**0x00606f38+4/+6)`, it returns `(x_cam, y_cam, z, 0)`
 at depth `z` (16.16).
 
 The player ship's fire control `0x00445170` is called from four sites in the

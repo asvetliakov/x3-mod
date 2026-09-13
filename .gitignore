@@ -25,3 +25,7 @@ verification/results/bottle-*/*-capture.log
 # Verbose per-image bloom reports remain local; compact reviewed records are tracked.
 verification/results/bloom-filter-summary.json
 verification/results/bottle-*/bloom-filter-summary.json
+
+# Chase-fire qualification keeps one compact summary; verbose case logs stay local.
+verification/results/bottle-*/chase-fire-*.txt
+verification/results/bottle-*/chase-fire-*-wine.log

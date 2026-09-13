@@ -129,12 +129,12 @@ argument load and global store. The sole direct read of cursor-active is the
 fire admission comparison. This supports a deliberate chase extension to the
 fire consumer; it does not justify globally declaring cursor steering active.
 
-**Proposed implementation, not yet implemented:** claim the six-byte
+**Implemented source, gameplay pending:** `chase_fire.cpp` claims the six-byte
 `JZ 0x445cab` at `0x445a41`, bytes `0f 84 64 02 00 00`, immediately after the
 original `CMP [0x607ce8],0`. The complete fire-function disassembly places
 both ends on instruction boundaries and has no direct branch into the span.
-Use the existing relocation field at offset 2 to retain the original JZ target.
-An ABI-preserving callback may clear only saved EFLAGS.ZF when all of the
+It uses the existing relocation field at offset 2 to retain the original JZ target.
+An ABI-preserving callback clears only saved EFLAGS.ZF when all of the
 following hold; otherwise its saved flags remain byte-for-byte untouched:
 
 - Chase installation succeeded and a recent active-player camera update
@@ -160,8 +160,7 @@ execute. The next native flag-writing instruction overwrites the comparison flag
 The existing entry trace precedes this decision and should continue reporting
 native active=0/gate3 honestly; downstream ray callbacks plus a small extension
 admission counter identify the effective override. Relabeling the original
-input as active would erase the causal evidence. A focused branch fixture must
-exercise original taken/fallthrough and authorized override paths, unchanged
+input as active would erase the causal evidence. The focused branch fixture exercises original taken/fallthrough and authorized override paths, unchanged
 non-ZF CPU state, failed identity/view checks, and relative-JZ relocation.
 
 This bounded admission change addresses the observed straight-fire symptom.
@@ -169,6 +168,73 @@ It does not establish camera-to-muzzle finite convergence or impact accuracy.
 The native endpoint still starts at the gun-group origin; a later geometric
 correction needs its own coordinate-frame derivation. Do not silently combine
 an unvalidated camera-origin shift with this proven input-policy correction.
+
+The module installs after the successful camera hook even with telemetry off.
+Active-camera publications retain only cockpit/ship/camera identity, ship ID,
+thread and QPC; mode/refusal updates clear them, and unknown/inactive cockpit
+visits invalidate only a previously accepted same address. Fire checks the live
+resolved identities, mode 258, connect 0, non-verbatim flags and a same-thread
+pose age of at most two seconds. This permits using the last displayed pose
+while refusing stale/other-view context. A separate report counter records
+`native_inactive_override`; it is an effective branch decision, not proof that
+later native gun checks admit the ray. Initialization failure leaves the
+original branch in place and logs refusal.
+
+Viewport checks follow `0x489780`: camera `+0x288/+0x28c` are normalized
+16.16 y bounds and `+0x290/+0x294` are x bounds. Pixel dimensions are signed
+16-bit fields at `(**0x606f38)+4/+6`. The extra dereference was missing in the
+original diagnostic screen reader: the third run's reported `screen` values
+therefore are not dimensions. That reader is corrected here; the cursor,
+viewport, default-plane, camera and admission evidence is unchanged. The guard
+requires positive dimensions, ordered normalized bounds and an on-screen
+cursor inside that viewport, then uses the existing coordinates unchanged.
+The signed-16 dimension cap bounds each pixel-coordinate times 65536 product
+below INT32_MAX, allowing native-style 32-bit division without a wide helper.
+
+Performance inspection: no per-draw work, heap allocation, matrix snapshot or
+per-call log is added. Native-active calls return before player/context reads;
+nonplayer/noncursor/nonmain-group calls return after one bounded argument read.
+Eligible inactive player calls use one module lock for the small witness,
+bounded live field/registry reads and counters. Camera updates add one ship-ID
+read, thread lookup and small publication. Timing, when telemetry is on,
+starts after the first QPC and excludes the early filter and full stub/CPU
+boundary. The fixture exercises that aggregate path; it is not game FPS.
+
+Focused verification is `test_chase_fire_site.py` (six hostile site/source
+controls), `verify_chase_fire_site.py` against the installed file, and
+`run_chase_fire.py` for the four modes complete/off/bad/late. Its synthetic PE
+section owns the actual production CMP/JZ addresses; the real relocated JZ
+executes both original destinations. It compares live GPR/non-ZF flags,
+XMM0–7, x87 and MXCSR/LastError, and tests view/identity/age/viewport refusal,
+telemetry independence, input immutability, witness invalidation, the corrected
+diagnostic screen reader and quiescent restoration. Source-specific
+`-fno-exceptions` and the existing callback object audit keep SJLJ bookends out
+of the CPU boundary. Native Windows and gameplay remain unverified.
+
+### Independent review (2026-09-13)
+
+The focused source and fixture review accepts the correction with no remaining
+findings.
+
+The final X3 fixture run passes all four modes, 307 checks total (250 complete,
+22 disabled, 13 bad-site and 22 late-install), with source and binary unchanged
+across execution; see `verification/results/bottle-X3/chase-fire-summary.json`.
+A single 10,000-call aggregate comparison includes the actual native CMP/JZ,
+full generated stub/CPU boundary and fixture transport: unpatched 1.122 µs,
+hooked without a witness 1.730 µs, eligible override 2.141 µs per invocation.
+The observed increments are 0.608 and 1.018 µs, respectively. This is fixture
+cost on X3/FEX, not a gameplay or native-Windows performance result.
+
+Two rejected fixture runs corrected cross-call oracles, not production code.
+Nested refusal callers legitimately changed ESP by 20 bytes; every invocation
+now checks its own entry/exit balance and saved PUSHAD ESP. The floating-point
+benchmark also changed an empty x87 register's payload between calls (first
+observed difference byte 90; tag words remained `0x0fff`). The fixture captures
+all 108 incoming x87 bytes immediately before each span and compares all 108
+afterward, without masking empty registers. GPR/non-ZF flags, XMM, MXCSR and
+LastError checks remain exact. The final output retains both explanatory
+witnesses; minimal rejected logs/source remain local under
+`/tmp/x3-camera-study/chase-fire-rejected-1/` and `chase-fire-rejected-2/`.
 
 ## Consolidated diagnostic implementation
 

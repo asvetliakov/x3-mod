@@ -1,5 +1,6 @@
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
+#include "chase_fire.h"
 #include "chase_camera_math.h"
 #include "chase_camera_native.h"
 #include "engine_patch.h"
@@ -117,6 +118,7 @@ void handle(uint32_t* regs) {
         chase::note_gap(pipeline);
         publish_pose(false);
         chase_aim_trace::invalidate_camera(cockpit);
+        chase_fire::invalidate_camera(cockpit);
         AcquireSRWLockExclusive(&stats_lock);
         ++stats_.frames; ++stats_.refused; stats_.last_verdict = 100; note_cockpit_seen(cockpit);
         ReleaseSRWLockExclusive(&stats_lock);
@@ -134,7 +136,7 @@ void handle(uint32_t* regs) {
     note_cockpit_seen(cockpit);
     if (!active) ++stats_.inactive;
     ReleaseSRWLockExclusive(&stats_lock);
-    if (!active) return;
+    if (!active) { chase_fire::invalidate_camera(cockpit); return; }
     // Defence in depth behind the predicate: if the active cockpit pointer
     // still changes, a gap keeps two objects' poses and dt out of one spring.
     if (cockpit != last_cockpit) { last_cockpit = cockpit; chase::note_gap(pipeline); }
@@ -159,6 +161,7 @@ void handle(uint32_t* regs) {
         ++stats_.frames; ++stats_.refused; stats_.last_verdict = 100; stats_.dt_ms = dt * 1000.0;
         ReleaseSRWLockExclusive(&stats_lock);
         chase_aim_trace::camera_context(0, 0, 0, 0, false);
+        chase_fire::camera_context(0, 0, 0, 0, 0, 0, false, 0);
         return;
     }
     int32_t fixed[12];
@@ -269,6 +272,7 @@ void handle(uint32_t* regs) {
     }
     const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
+    chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, written, now);
     chase_aim_trace::camera_context(cockpit, ref_object, camera, in.view_mode, written, handler_frame);
 }
 // Unlike telemetry::State, this state is protected by the camera's own lock:
@@ -393,6 +397,7 @@ bool initialize() {
         unsigned(okay), state.load(), static_cast<unsigned long>(site_va), site_spec.length, site_spec.rel32_offset, unsigned(site.atomic_write), engine_patch::arena_used(),
         tunables.rot_tau, tunables.pos_tau, tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, tunables.lag_clamp_deg, tunables.pos_lag_clamp, tunables.combat_tightness,
         tunables.combat_tightness > 0 ? "tracking_1e4_unverified" : "off", tunables.max_dt, tunables.snap_coalesce_frames, unsigned(scene_fix_enabled), unsigned(timing_enabled));
+    if (okay) chase_fire::initialize();
     SetLastError(error);
     return okay;
 }
@@ -408,6 +413,7 @@ Stats stats() {
 std::uint32_t snap_generation() { return snap_epoch.load(std::memory_order_relaxed); }
 void report(std::uint64_t frame) {
     if (!site.patched_in) return;
+    chase_fire::report(frame);
     Stats s;
     double deviation = 0;
     AcquireSRWLockExclusive(&stats_lock);
@@ -459,6 +465,7 @@ void note_last_device() {
     log("chase_camera_last_device kept=1 status=%s lifetime=process", state.load());
 }
 void shutdown() {
+    chase_fire::shutdown();
     if (!site.patched_in) return;
     const bool okay = engine_patch::restore(site);
     state = site.status;

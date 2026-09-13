@@ -24,14 +24,15 @@ The user completed the first-person left/centre/right firing sweep and repeated
 it in third person. The [third-run analysis](verification/chase-third-run.md)
 isolates the fault: first person admitted 229 cursor rays; external view rejected
 all 180 attempts because the native cursor writer set cursor-active to zero.
-A chase-only firing correction is being implemented from the
+A chase-only firing correction is implemented and independently reviewed from the
 [verified admission branch](reverse-engineering/chase-mouse-fire.md#third-run-finding-and-proposed-scoped-correction).
+All four X3 fixture modes passed 307 checks; candidate build/install is next.
 Earlier anchor correction removed the reported
 trembling in the second flight. The user now requests **13° pitch and distance
 0.85**; those source defaults pass 56 focused checks but are not installed.
 Batch any justified firing correction with the next camera build.
 
-Use the [run plan](verification/next-runs-2026-09-13.md) for remaining acceptance,
+Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent
 never launches the game. New Wine fixtures use X3 only and the shared lock.
 

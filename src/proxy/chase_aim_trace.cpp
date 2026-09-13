@@ -109,10 +109,13 @@ void pose(std::uint32_t cockpit, std::uint32_t ship, std::uint32_t camera, Pose&
     if (field(camera,0x298,p.fov)) p.valid |= 64;
     if (field(camera,0x288,p.viewport)) p.valid |= 128;
     if (field(camera,0x300,p.plane)) p.valid |= 256;
-    std::uint32_t defaults=0, dimensions=0;
+    std::uint32_t defaults=0, screen=0;
+    std::int16_t dimensions[2]{};
     if(field(0x00606f38,0,defaults)) {
         if(field(defaults,0x28,p.default_plane))p.valid|=512;
-        if(field(defaults,4,dimensions)) {p.screen[0]=dimensions&0xffff;p.screen[1]=dimensions>>16;p.valid|=1024;}
+        if(field(defaults,0,screen) && field(screen,4,dimensions) && dimensions[0]>0 && dimensions[1]>0) {
+            p.screen[0]=std::uint32_t(dimensions[0]);p.screen[1]=std::uint32_t(dimensions[1]);p.valid|=1024;
+        }
     }
 }
 // Exact registry layout from 0x41cd20. Diagnostic caps reject corruption or
