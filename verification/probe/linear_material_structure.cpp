@@ -31,7 +31,9 @@ int main(int argc,char** argv) {
         require(argc==3,"usage: linear_material_structure <original directory> <local output directory>");
         const char* names[]={"vs_53a0a641107ed76c","vs_719856ce0c213220","vs_badefd5143b3024f",
             "ps_8759c7838bbc86c2","ps_63f96eba9eea7880","ps_593e5dea9b3457d5",
-            "ps_7a0bb00a8070496a","ps_8d5b2ba0fb4d13bf","ps_dab93928f26906f7"};
+            "ps_7a0bb00a8070496a","ps_8d5b2ba0fb4d13bf","ps_dab93928f26906f7",
+            "ps_3b94320087e81945","ps_e3b7acc16da9932d","ps_7a14d4dcb28f27e5",
+            "ps_8ab6188a40ca15ea","ps_8df6143d0e77d92e","ps_e16a9806ee3544c3"};
         unsigned variants=0, instructions[2][2]{}, slots[2][2]{};
         long long create_ns=0;
         auto begin=std::chrono::steady_clock::now();
@@ -82,7 +84,8 @@ int main(int argc,char** argv) {
                 Words output{91,92}; const auto saved=output;
                 require(transform(nullptr,original.size(),{},output,depth)==LinearMaterialResult::InvalidInput && output==saved,"null rollback");
                 require(transform(original.data(),original.size()-1,{},output,depth)==LinearMaterialResult::UnsupportedShader && output==saved,"truncated rollback");
-                for (unsigned at:{0u,2u,static_cast<unsigned>(original.size()-1)}) {
+                require(transform(original.data(),1297,{},output,depth)==LinearMaterialResult::UnsupportedShader && output==saved,"bounded read guard rollback");
+                for (unsigned at:{0u,2u,static_cast<unsigned>(original.size()-4),static_cast<unsigned>(original.size()-1)}) {
                     auto broken=original; broken[at]^=1;
                     require(transform(broken.data(),broken.size(),{},output,depth)==LinearMaterialResult::UnsupportedShader && output==saved,"whole-original mutation rollback");
                 }
@@ -94,18 +97,22 @@ int main(int argc,char** argv) {
         }
         const std::uint64_t vs[]={0x53a0a641107ed76cull,0x719856ce0c213220ull,0xbadefd5143b3024full};
         const std::uint64_t ps[]={0x8759c7838bbc86c2ull,0x63f96eba9eea7880ull,0x593e5dea9b3457d5ull,
-            0x7a0bb00a8070496aull,0x8d5b2ba0fb4d13bfull,0xdab93928f26906f7ull};
+            0x7a0bb00a8070496aull,0x8d5b2ba0fb4d13bfull,0xdab93928f26906f7ull,
+            0x3b94320087e81945ull,0xe3b7acc16da9932dull,0x7a14d4dcb28f27e5ull,
+            0x8ab6188a40ca15eaull,0x8df6143d0e77d92eull,0xe16a9806ee3544c3ull};
         unsigned pair_count=0;
-        for(unsigned v=0;v<3;++v) for(unsigned p=0;p<6;++p) {
-            const bool expected=v==0?p<2:p>=2;
+        for(unsigned v=0;v<3;++v) for(unsigned p=0;p<12;++p) {
+            const bool base=ps[p]==0x8759c7838bbc86c2ull || ps[p]==0x63f96eba9eea7880ull ||
+                            ps[p]==0x3b94320087e81945ull || ps[p]==0xe3b7acc16da9932dull;
+            const bool expected=v==0?base:!base;
             require(linear_material_pair_reviewed(vs[v],ps[p])==expected,"exact pair matrix");
             if(expected) ++pair_count;
         }
         require(!linear_material_pair_reviewed(0,ps[0]) && !linear_material_pair_reviewed(vs[0],0),"unknown pair");
         const auto elapsed=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-begin).count();
-        std::cout<<"{\"programs\":9,\"pairs\":"<<pair_count<<",\"variants\":"<<variants<<",\"checks\":"<<checks
+        std::cout<<"{\"programs\":15,\"pairs\":"<<pair_count<<",\"variants\":"<<variants<<",\"checks\":"<<checks
                  <<",\"elapsed_us_including_io_and_negative_checks\":"<<elapsed
-                 <<",\"initial_72_creates_ns\":"<<create_ns
+                 <<",\"initial_creates_ns\":"<<create_ns
                  <<",\"max_executable_instructions_depth_off_on\":{\"vs\":["<<instructions[0][0]<<','<<instructions[0][1]
                  <<"],\"ps\":["<<instructions[1][0]<<','<<instructions[1][1]<<"]}"
                  <<",\"max_static_weighted_slots_depth_off_on\":{\"vs\":["<<slots[0][0]<<','<<slots[0][1]

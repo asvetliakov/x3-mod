@@ -21,8 +21,11 @@ from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
-PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin')
+PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin', 'ps_462342e3e5781384.bin')
 ELIGIBLE = {0, 1, 6, 8, 10, 11}
+PIXEL_PROGRAMS = ['8759c7838bbc86c2'] * 12
+PIXEL_PROGRAMS[1] = '3b94320087e81945'
+PIXEL_PROGRAMS[9] = '462342e3e5781384'
 
 
 def sha(path):
@@ -56,9 +59,11 @@ def validate_case(output, trace_lines, material, taa):
         assert int(row['apply_failures']) == int(row['restore_failures']) == 0, (frame, 'state failed')
         assert int(row['taa_resolved']) == int(taa), (frame, 'TAA changed')
         assert int(live[frame]['combined']) == int(material and frame in ELIGIBLE)
+        assert live[frame]['ps'] == PIXEL_PROGRAMS[frame], (frame, 'wrong shared program')
     if material:
         assert set(material_frames) == set(range(12))
-        assert len(variants) == 2 and {row['kind'] for row in variants} == {'vs', 'ps'}
+        assert len(variants) == 3 and {(row['kind'], row['original']) for row in variants} == {
+            ('vs', '53a0a641107ed76c'), ('ps', '8759c7838bbc86c2'), ('ps', '3b94320087e81945')}, 'combined program inventory differs'
         assert all(int(row['transform']) == 0 and int(row['create'], 16) == 0 for row in variants)
         for frame, row in material_frames.items():
             assert int(row['routed']) == int(frame in ELIGIBLE), (frame, 'combined selection')
@@ -70,7 +75,7 @@ def validate_case(output, trace_lines, material, taa):
     return dict(checks=int(summary['checks']), restorations=int(summary['restorations']), frames=12,
                 motion_pixels=int(summary['motion_pixels']), matched_pixels=int(summary['matched_pixels']),
                 depth_written=int(summary['depth_written']), taa_reference_frames=int(summary['taa_reference_frames']),
-                held_references=int(release[0]['held']),
+                held_references=int(release[0]['held']), pixel_programs=[live[i]['ps'] for i in range(12)],
                 rgba=[list(map(float, live[i]['rgba'].split(','))) for i in range(12)],
                 temporal_hashes=[[motion[i]['motion'], motion[i]['depth']] for i in range(12)],
                 combined_frames=sorted(ELIGIBLE) if material else [], refused_frames=sorted(set(range(12))-ELIGIBLE) if material else [])
@@ -81,7 +86,8 @@ def compare_cases(cases):
         for taa in (0, 1):
             off, on = (cases[f'ownership{ownership}-taa{taa}-material{material}'] for material in (0, 1))
             assert on['temporal_hashes'] == off['temporal_hashes'], 'material route changed RT1/RT2'
-            assert on['held_references'] == off['held_references'] + 2, 'two additional shader objects not reflected in actual device retirement'
+            assert on['pixel_programs'] == off['pixel_programs'] == PIXEL_PROGRAMS, 'shared positive/negative schedule changed'
+            assert on['held_references'] == off['held_references'] + 3, 'three additional shader objects not reflected in actual device retirement'
             for frame in range(12):
                 assert on['rgba'][frame][3] == off['rgba'][frame][3], 'alpha changed'
                 if frame not in ELIGIBLE: assert on['rgba'][frame] == off['rgba'][frame], 'refusal changed original material color'
@@ -105,7 +111,7 @@ def main():
     assert all(path.is_file() for path in [fixture, dll, *programs]), 'prebuilt inputs or local programs missing'
     raw = Path(tempfile.mkdtemp(prefix='x3-linear-material-live-'))
     report = dict(passed=False, game_launched=False, bottle=bottle.describe(), raw=str(raw),
-                  scope='Actual live evaluate_draw, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
+                  scope='Actual live evaluate_draw with Argon/shared DEFAULT positives and Split negative on one VS, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
                   binaries={str(path): sha(path) for path in (fixture, dll)}, local_programs={path.name: sha(path) for path in programs}, cases={})
     args.result.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -125,7 +131,7 @@ def main():
                                X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0',
                                X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1', WINEDLLOVERRIDES='d3d9=n,b')
                     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work / 'fixture.exe'),
-                               'Z:' + str(programs[0]), 'Z:' + str(programs[1]), 'linearmaterials', 'Z:' + str(programs[2])]
+                               'Z:' + str(programs[0]), 'Z:' + str(programs[1]), 'linearmaterials', 'Z:' + str(programs[2]), 'Z:' + str(programs[3])]
                     start = time.monotonic()
                     with (work / 'stdout.txt').open('w') as out, (work / 'wine.log').open('w') as error:
                         completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)

@@ -24,28 +24,65 @@ struct Pixel {
     std::uint64_t hash;
     unsigned words;
     std::array<unsigned, 4> texture; // s0, s1(data), s2, s3
-    unsigned affine_end, clamp, final_rgb;
+    unsigned affine_end, clamp, final_rgb, clamp_temporary;
     unsigned light0, light1; // light1 == 0 means the one-directional contract.
     std::array<unsigned, 4> color_source; // ORIGINAL source operand DWORDs.
-    std::array<unsigned, 12> rgb; // Full-precision radiance destinations only.
+    std::array<unsigned, 13> rgb; // Full-precision radiance destinations only.
 };
 constexpr Pixel pixels[] = {
-    {0x8759c7838bbc86c2ull,1260,{1197,1175,1242,1229},1217,1206,1251,5,7,
+    {0x8759c7838bbc86c2ull,1260,{1197,1175,1242,1229},1217,1206,1251,1,5,7,
      {1173,1186,1161,1169},{1158,1166,1170,1183,1188,1192,1206,1221,1225,1233,1237,1251}},
-    {0x63f96eba9eea7880ull,1292,{1229,1207,1274,1261},1249,1238,1283,5,7,
+    {0x63f96eba9eea7880ull,1292,{1229,1207,1274,1261},1249,1238,1283,1,5,7,
      {1205,1218,1193,1201},{1190,1198,1202,1215,1220,1224,1238,1253,1257,1265,1269,1283}},
-    {0x593e5dea9b3457d5ull,264,{225,204,246,233},0,217,255,2,0,
+    {0x593e5dea9b3457d5ull,264,{225,204,246,233},0,217,255,1,2,0,
      {223,0,0,0},{217,220,229,237,241,255,0,0,0,0,0,0}},
-    {0x7a0bb00a8070496aull,1215,{1151,1138,1197,1184},1171,1160,1206,5,0,
+    {0x7a0bb00a8070496aull,1215,{1151,1138,1197,1184},1171,1160,1206,1,5,0,
      {1178,0,0,0},{1160,1175,1180,1188,1192,1206,0,0,0,0,0,0}},
-    {0x8d5b2ba0fb4d13bfull,1183,{1119,1106,1165,1152},1139,1128,1174,5,0,
+    {0x8d5b2ba0fb4d13bfull,1183,{1119,1106,1165,1152},1139,1128,1174,1,5,0,
      {1146,0,0,0},{1128,1143,1148,1156,1160,1174,0,0,0,0,0,0}},
-    {0xdab93928f26906f7ull,296,{257,236,278,265},0,249,287,2,0,
+    {0xdab93928f26906f7ull,296,{257,236,278,265},0,249,287,1,2,0,
      {255,0,0,0},{249,252,261,269,273,287,0,0,0,0,0,0}},
+    {0x3b94320087e81945ull,1264,{1192,1175,1246,1233},1214,1218,1255,2,5,7,
+     {1173,1186,1161,1169},{1158,1166,1170,1183,1188,1201,1218,1221,1225,1229,1237,1241,1255}},
+    {0xe3b7acc16da9932dull,1296,{1224,1207,1278,1265},1246,1250,1287,2,5,7,
+     {1205,1218,1193,1201},{1190,1198,1202,1215,1220,1233,1250,1253,1257,1261,1269,1273,1287}},
+    {0x7a14d4dcb28f27e5ull,1187,{1114,1106,1169,1156},1136,1140,1178,1,5,0,
+     {1150,0,0,0},{1140,1143,1147,1152,1160,1164,1178}},
+    {0x8ab6188a40ca15eaull,1219,{1146,1138,1201,1188},1168,1172,1210,1,5,0,
+     {1182,0,0,0},{1172,1175,1179,1184,1192,1196,1210}},
+    {0x8df6143d0e77d92eull,268,{220,204,250,237},0,217,259,2,2,0,
+     {231,0,0,0},{217,224,228,233,241,245,259}},
+    {0xe16a9806ee3544c3ull,300,{252,236,282,269},0,249,291,2,2,0,
+     {263,0,0,0},{249,256,260,265,273,277,291}},
 };
 struct Vertex { std::uint64_t hash; unsigned words; bool loop; };
 constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
     {0x719856ce0c213220ull,526,true},{0xbadefd5143b3024full,481,false}};
+// Explicit archive pair contract: base shaders never gain toggle-VS admission
+// from table position. This bounded per-draw lookup allocates no memory.
+struct Pair { std::uint64_t vertex, pixel; };
+constexpr Pair pairs[] = {
+    {0x53a0a641107ed76cull,0x8759c7838bbc86c2ull},
+    {0x53a0a641107ed76cull,0x63f96eba9eea7880ull},
+    {0x53a0a641107ed76cull,0x3b94320087e81945ull},
+    {0x53a0a641107ed76cull,0xe3b7acc16da9932dull},
+    {0x719856ce0c213220ull,0x593e5dea9b3457d5ull},
+    {0x719856ce0c213220ull,0x7a0bb00a8070496aull},
+    {0x719856ce0c213220ull,0x8d5b2ba0fb4d13bfull},
+    {0x719856ce0c213220ull,0xdab93928f26906f7ull},
+    {0x719856ce0c213220ull,0x7a14d4dcb28f27e5ull},
+    {0x719856ce0c213220ull,0x8ab6188a40ca15eaull},
+    {0x719856ce0c213220ull,0x8df6143d0e77d92eull},
+    {0x719856ce0c213220ull,0xe16a9806ee3544c3ull},
+    {0xbadefd5143b3024full,0x593e5dea9b3457d5ull},
+    {0xbadefd5143b3024full,0x7a0bb00a8070496aull},
+    {0xbadefd5143b3024full,0x8d5b2ba0fb4d13bfull},
+    {0xbadefd5143b3024full,0xdab93928f26906f7ull},
+    {0xbadefd5143b3024full,0x7a14d4dcb28f27e5ull},
+    {0xbadefd5143b3024full,0x8ab6188a40ca15eaull},
+    {0xbadefd5143b3024full,0x8df6143d0e77d92eull},
+    {0xbadefd5143b3024full,0xe16a9806ee3544c3ull},
+};
 unsigned kind(Word token) noexcept { return ((token >> 28) & 7) | ((token >> 8) & 24); }
 unsigned index(Word token) noexcept { return token & 0x7ff; }
 unsigned mask(Word token) noexcept { return (token >> 16) & 15; }
@@ -148,7 +185,7 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
                 }
             }
             // Macro instruction costs in the documented SM3 profiles. These
-            // nine originals and our fragments do not use matrix macros.
+            // fifteen originals and our fragments do not use matrix macros.
             slots += op==36 || op==pow_op ? 3 : op==18 || op==33 ? 2 : 1;
         }
         at+=n+1;
@@ -190,7 +227,7 @@ bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept 
     for (unsigned sampler=0; sampler<4; ++sampler)
         if (!exact(code,s,p.texture[sampler],texld,dst(temp,sampler?0:1,xyzw)|pp,
                    {src(input,sampler==3?4:1),src(10,sampler)})) return false;
-    if (!exact(code,s,p.clamp,mov,dst(temp,1)|pp|sat,{src(input,0)}) ||
+    if (!exact(code,s,p.clamp,mov,dst(temp,p.clamp_temporary)|pp|sat,{src(input,0)}) ||
         !exact(code,s,p.final_rgb,add,dst(color_output,0)|pp,{src(temp,1),src(temp,0)}) ||
         !exact(code,s,p.final_rgb+4,mul,dst(color_output,0,8)|pp,{lane(temp,2,3),lane(input,0,3)}) ||
         !exact(code,s,p.texture[2]+4,18,dst(temp,2,8)|pp,
@@ -289,9 +326,9 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     Words& output, bool current_depth, bool vertex) noexcept {
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
-    // Bound the read before hashing; none of the nine original programs exceeds
-    // 1292 DWORDs, including opaque CTAB/preshader comments.
-    if (words>1292) return LinearMaterialResult::UnsupportedShader;
+    // Bound the read before hashing; none of the fifteen original programs exceeds
+    // 1296 DWORDs, including opaque CTAB/preshader comments.
+    if (words>1296) return LinearMaterialResult::UnsupportedShader;
     const auto hash=material_motion_fingerprint(original,words);
     const auto* v=vertex?vertex_for(hash,words):nullptr;
     const auto* p=vertex?nullptr:pixel_for(hash,words);
@@ -390,9 +427,8 @@ bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept {
     return true;
 }
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
-    if (vertex==vertices[0].hash) return pixel==pixels[0].hash || pixel==pixels[1].hash;
-    if (vertex!=vertices[1].hash && vertex!=vertices[2].hash) return false;
-    for (unsigned i=2; i<std::size(pixels); ++i) if (pixel==pixels[i].hash) return true;
+    for (const auto& pair:pairs)
+        if (pair.vertex==vertex && pair.pixel==pixel) return true;
     return false;
 }
 LinearMaterialResult linear_material_vertex_variant(const Word* original, std::size_t words,

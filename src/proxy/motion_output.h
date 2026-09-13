@@ -373,7 +373,7 @@ public:
     // no GetSamplerState runs per draw; an application write of the bias
     // itself is counted and logged and its value becomes the restore value.
     // docs/architecture/temporal-integration.md, "Mip LOD bias".
-    // Opt-in combined Argon material+motion variants, configured before attach.
+    // Opt-in combined reviewed DEFAULT material+motion variants, configured before attach.
     // Gains are shader-local DEFs; no application constants are modified.
     void configure_linear_materials(bool requested, const renderer::LinearMaterialConfig& config) noexcept;
     bool linear_materials_requested() const noexcept { return linear_material_requested_; }

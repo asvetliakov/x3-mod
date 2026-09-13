@@ -1,13 +1,15 @@
-# First scene-linear material slice
+# Scene-linear DEFAULT materials
 
 Implementation qualification, 2026-09-13; **reviewed opt-in material slice installed; game acceptance pending**. This work
 follows the installed bloom checkpoint. The current FP16 target contains the
 game's gamma-space lighting; `material_radiance` only removes selected upper
 clamps. Neither operation evaluates lighting in linear space.
 
-The smallest useful first slice is the complete **Argon SM3 DEFAULT material
-contract**, including two-sided and toggle variants: 10 archive pass pairings,
-3 VS programs and 6 PS programs. Evaluate this material's diffuse, existing
+The initial slice is the complete **Argon SM3 DEFAULT material contract**,
+including two-sided and toggle variants: 10 archive pass pairings, 3 VS programs
+and 6 PS programs. The reviewed [shared hull expansion](material-next-slice.md)
+adds ten Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT pairs with the same three VS
+and six additional PS. Its runtime candidate is qualified and reviewed; installation is next. Evaluate this material's diffuse, existing
 specular lobe, reflection and emissive contributions in an explicitly defined
 linear working space, then compatibility-encode its RGB into the existing
 engine-space FP16 scene. Keep the original alpha and live motion/depth outputs.
@@ -15,7 +17,7 @@ This achieves linear evaluation and HDR emissive range for that material slice;
 it does **not** make the whole scene or its transparency blending linear, and
 it does not claim PBR, clustered lighting or HDR display output.
 
-## Evidence and coverage
+## Initial Argon evidence and coverage
 
 Inputs are the complete local archive programs/disassembly and the derived
 [motion pair inventory](../../verification/results/motion-output-profiles.json),
@@ -100,7 +102,11 @@ scalar specular, alpha, fog, positions and attenuation data unconverted. Use
 separate linear gains for direct light and emissive; never use exposure as the
 emissive source or exponentiate a new linear HDR gain.
 
-Conceptually, retain the existing lobe for the first slice:
+Conceptually, retain the existing lobe for Argon. The shared hull family
+retains its own diffuse coefficient 0.5, sixth-power specular lobe and cube
+coefficient 0.5; it does not inherit Argon's exact float32 0.4 / fifth power /
+cube coefficient 1. The [offline reference](../../verification/probe/linear_material_reference.py)
+records these per-program differences. For Argon:
 
 ```
 A = decode(legacy_color_transform(diffuse.rgb))
@@ -365,13 +371,13 @@ shader hashing or bytecode validation. Combined-stage bind failure restores the
 original pair before one ordinary temporal retry; a later shared constants/MRT
 failure retains the existing original-draw fallback.
 
-The independent structural fixture checks 72 depth/gain variants with 749 C++
+The initial Argon structural fixture checked 72 depth/gain variants with 749 C++
 assertions and four host tests, including byte-exact reconstruction of original
 alpha/position and temporal edits. Maximum weighted instruction slots are VS 77
 and PS 164 (SM3 limit 512). One host diagnostic created all 72 variants in
 1.56 ms total; this is creation work, not a per-frame or gameplay measurement.
 
-The detached [D3D9 GPU fixture](../../verification/results/bottle-X3/linear-material-gpu.json)
+The initial Argon detached [D3D9 GPU fixture](../../verification/results/bottle-X3/linear-material-gpu.json)
 passes 167 cases and 1,503 RGB samples across all ten pairings, both face signs,
 zero/one/eight loop lights, the fixed point-light form, source isolation, gains,
 HDR range and exceptional transfer inputs. Alpha and motion match unchanged
@@ -394,3 +400,38 @@ references in every corresponding case and are retired correctly. Unknown
 sampler getter failure and shader creation/bind/restore failures are qualified
 by scripted host control-flow tests, not fault-injected into this GPU script.
 Native Windows execution and gameplay appearance remain unverified.
+
+
+## Shared hull runtime extension
+
+The expansion uses the same shader conversion and live policy, with exact
+per-program sites and clamp destinations. The larger source bound is 1,296
+DWORDs and the pair table explicitly lists all twenty valid combinations;
+sharing a VS does not admit an unlisted PS. No new rendering pass or application
+constant range is introduced. All 72 previous Argon generated variants remain
+byte-identical to the pre-extension baseline.
+
+The expanded structural fixture covers 120 variants with 1,313 checks and five
+host tests. Maximum weighted instruction slots are VS 77 / PS 165. A host
+creation diagnostic transformed all 120 in 1.857 ms; this is startup generation
+work, not a per-frame or game measurement. Per-draw selection remains a bounded,
+allocation-free twenty-pair check on cached shader identities.
+
+The current detached GPU result extends the original 167-case prefix to 313
+cases over all twenty pairs/fifteen originals: 2,817 RGB samples and 80,128
+exact alpha/motion pixels, with current depth unchanged where enabled. All 89
+shader creations succeed. Every new PS is independently discriminated from the
+old diffuse/specular/cube coefficients. Maximum normalized tolerance use is
+15.97%; the run exits cleanly. Representative shared-family fenced medians for
+original / motion / combined are 0.607 / 0.738 / 0.738 ms with zero lights and
+0.609 / 0.734 / 0.744 ms with eight lights (same diagnostic grid/sample method).
+These are not game FPS or native-Windows runtime results.
+
+The live fixture keeps the same twelve-frame lifecycle, alternates Argon and
+shared DEFAULT on one VS, and uses the uncovered Split PS as its negative.
+The fresh-candidate live result passes 1,228 checks across eight
+feature/ownership/TAA twins and 96 frames. Both families activate on their
+intended frames, Split retains ordinary motion, alpha/RT1/RT2 remain exact,
+attach/Reset and state blocks recover, and the three extra combined shader
+references retire to zero. Final review is complete; installation is next. The existing brief material run will cover the expanded candidate;
+no separate gameplay session is being requested for each family.

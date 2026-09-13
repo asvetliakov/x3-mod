@@ -36,6 +36,10 @@ CODE_INPUTS = ('src/renderer/linear_material.cpp', 'src/renderer/linear_material
 PAIRS = [('53a0a641107ed76c', ps) for ps in ('63f96eba9eea7880', '8759c7838bbc86c2')]
 PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
           ('593e5dea9b3457d5', '7a0bb00a8070496a', '8d5b2ba0fb4d13bf', 'dab93928f26906f7')]
+PAIRS += [('53a0a641107ed76c', ps) for ps in ('3b94320087e81945', 'e3b7acc16da9932d')]
+PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
+          ('7a14d4dcb28f27e5', '8ab6188a40ca15ea', '8df6143d0e77d92e', 'e16a9806ee3544c3')]
+TIMING_PAIRS = (0, 10)
 AFFINE = ((.75, .125, 0, .0625), (0, .5, .25, .03125), (.125, 0, .875, -.03125))
 # Retained _pp angular arithmetic may round intermediate lobes. This tolerance
 # is independent of half-target storage and is not permission to clamp HDR.
@@ -92,6 +96,43 @@ def fixture_cases():
             if source == 'diffuse': isolated['material'] = [1.] * 3
             add('safety_' + source + '_' + name, pair=2, fp16=0, **isolated)
     add('missing_history', valid=0)
+    # Keep the first slice's 167 cases/IDs unchanged. The transfer implementation
+    # is shared, so its 54 exceptional-source cases above run once, not per family.
+    for pair in range(10, 20):
+        for depth in (0, 1):
+            for reverse in (0, 1):
+                add('pair_depth_face', pair=pair, depth=depth, reverse=reverse)
+    for pair in (10, 12, 16):
+        for lights in ((1,) if pair == 16 else (0, 1, 8)):
+            for gain in (1., 4., 16.):
+                add('lights_gains', pair=pair, lights=lights, gains=[gain] * 3)
+    for pair in range(10, 16):
+        add('affine_angular', pair=pair, affine=1, normal=[.6, 0., .8])
+        for source in ('point', 'material', 'dir0', 'dir1', 'lightmap', 'cube'):
+            isolated = {name: ([0.] * 3 if name not in ('lightmap', 'cube') else [0., 0., 0., 1.])
+                        for name in ('point', 'material', 'dir0', 'dir1', 'lightmap', 'cube')}
+            isolated[source] = base[source]
+            add('isolated_' + source, pair=pair, **isolated)
+        dark = dict(point=[0.] * 3, material=[0.] * 3, dir1=[0.] * 3,
+                    lightmap=[0., 0., 0., .25], cube=[0., 0., 0., 1.])
+        add('shared_diffuse_coefficient', pair=pair, mask=0., **dark)
+        # Reflected view cosine is about .8 here. This sixth-power witness has
+        # enough specular energy to reject a retained fifth-power chain despite
+        # the allowed legacy _pp lobe precision.
+        add('shared_specular_power', pair=pair, mask=1.,
+            normal=[math.sqrt(.1), 0., math.sqrt(.9)], **dark)
+        dark['dir0'] = [0.] * 3
+        dark['cube'] = base['cube']
+        add('shared_cube_coefficient', pair=pair, mask=1., **dark)
+        # New per-profile conversion sites independently carry finite HDR,
+        # exact black and negative-source sanitation through the complete PS.
+        dark.update(cube=[0., 0., 0., 1.], material=[1.] * 3)
+        add('shared_finite_domain', pair=pair, fp16=0,
+            diffuse=[ref.CAP, 0., -1., .75], **dark)
+    for gains in ([16., 1., 1.], [1., 16., 1.], [1., 1., 16.], [0., 0., 0.]):
+        add('independent_gains', pair=10, gains=gains)
+    for pair in (0, 10, 1, 11, 0, 2, 12, 4, 14, 2, 6, 16, 8, 18, 6):
+        add('shared_vertex_alternation', pair=pair)
     return cases
 
 
@@ -112,7 +153,7 @@ def expected(c, half_source=False):
     f32 = lambda x: struct.unpack('<f', struct.pack('<f', x))[0]
     vector = lambda key: tuple(f32(x) for x in c[key])
     gains = ref.Gains(*vector('gains'))
-    fixed = c['pair'] >= 6
+    fixed = PAIRS[c['pair']][0] == 'badefd5143b3024f'
     lights = [ref.PointLight((0, 0, 2), vector('point'), (2, .25, .125))] * (1 if fixed else c['lights'])
     varying = ref.vertex((0, 0, 0), vector('normal'), (0, 0, 4), vector('material'), lights,
                          fixed_single=fixed, material_alpha=.625, gains=gains)
@@ -152,12 +193,16 @@ def validate_report(text, cases=None):
     assert len(samples) == len(cases) * 9, 'missing numerical sample'
     seen, maximum_abs, maximum_scaled, black_samples, hdr_samples = set(), 0., 0., 0, 0
     failures = []
+    family_results = {name:dict(cases=sum((c['pair'] >= 10) == shared for c in cases),
+                               max_rgb_envelope_error=0., max_tolerance_fraction=0.)
+                      for name, shared in (('Argon', False), ('shared DEFAULT', True))}
     for cid, x, y, rgba in samples:
         cid, x, y = int(cid), int(x), int(y)
         assert 0 <= cid < len(cases) and x in (4, 8, 12) and y in (4, 8, 12)
         assert (cid, x, y) not in seen, 'duplicate sample'
         seen.add((cid, x, y))
         c = cases[cid]
+        family = family_results['shared DEFAULT' if c['pair'] >= 10 else 'Argon']
         actual = tuple(map(float, rgba.split(',')))
         assert len(actual) == 4 and all(map(math.isfinite, actual)), (cid, 'nonfinite GPU output')
         ideal, quantized = expected(c), expected(c, half_source=True)
@@ -171,6 +216,8 @@ def validate_report(text, cases=None):
             tolerance = absolute + RGB_REL_TOL * max(abs(lo), abs(hi))
             maximum_abs = max(maximum_abs, error)
             maximum_scaled = max(maximum_scaled, error / tolerance)
+            family['max_rgb_envelope_error'] = max(family['max_rgb_envelope_error'], error)
+            family['max_tolerance_fraction'] = max(family['max_tolerance_fraction'], error / tolerance)
             if error > tolerance: failures.append((cid, c['label'], k, value, lo, hi, tolerance))
             if not c['fp16'] and lo > 0:
                 assert value > 0, (cid, 'positive full-range path collapsed to zero')
@@ -182,22 +229,24 @@ def validate_report(text, cases=None):
         # whole-RT motion-only comparison also checks bit-for-bit alpha equality.
         assert actual[3] == ideal.encoded_rgba[3], (cid, 'authored alpha')
     assert not failures, ('RGB oracle mismatches', failures[:12], 'total', len(failures))
-    timings = re.findall(r'^TIMING lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
-    assert len(timings) == 36
+    timings = re.findall(r'^TIMING pair=(0|10) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
+    assert len(timings) == 36 * len(TIMING_PAIRS)
     timing_summary = []
-    for lights in (0, 8):
-        rows = [r for r in timings if int(r[0]) == lights]
-        assert [int(r[2]) for r in rows] == list(range(18))
-        assert [int(r[1]) for r in rows] == [2-i%3 if (i//3)%2 else i%3 for i in range(18)]
-        for mode in range(3):
-            values = [float(r[3]) for r in rows if int(r[1]) == mode]
-            assert len(values) == 6 and all(math.isfinite(v) and v >= 0 for v in values)
-            timing_summary.append(dict(lights=lights, mode=('original', 'motion', 'combined')[mode],
-                                       samples=6, median_ms=statistics.median(values), min_ms=min(values), max_ms=max(values)))
+    for pair in TIMING_PAIRS:
+        for lights in (0, 8):
+            rows = [r for r in timings if int(r[0]) == pair and int(r[1]) == lights]
+            assert [int(r[3]) for r in rows] == list(range(18))
+            assert [int(r[2]) for r in rows] == [2-i%3 if (i//3)%2 else i%3 for i in range(18)]
+            for mode in range(3):
+                values = [float(r[4]) for r in rows if int(r[2]) == mode]
+                assert len(values) == 6 and all(math.isfinite(v) and v >= 0 for v in values)
+                timing_summary.append(dict(pair=pair, family='Argon' if pair == 0 else 'shared DEFAULT',
+                                           lights=lights, mode=('original', 'motion', 'combined')[mode],
+                                           samples=6, median_ms=statistics.median(values), min_ms=min(values), max_ms=max(values)))
     recognized = 1 + len(creates) + len(invariants) + len(samples) + len(timings) + 1
     assert len(lines) == recognized, 'unexpected output rows'
-    return dict(cases=len(cases), pairs=10, unique_originals=9, shader_creations=len(creates),
-                samples=len(samples), invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
+    return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=15, shader_creations=len(creates),
+                samples=len(samples), families=family_results, original_case_prefix=167, invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
                 max_tolerance_fraction=maximum_scaled, exact_black_channels=black_samples,
                 hdr_channels=hdr_samples, caps=cap, timings=timing_summary,
                 max_executable_instructions={stage:max(int(r[2]) for r in creates if r[0]==stage) for stage in ('vs','ps')},
@@ -228,7 +277,7 @@ def main():
     assert inputs == {p['id']+'.bin':p['sha256'] for p in profiles['programs']}, 'original input provenance'
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
-                  scope='Detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
+                  scope='Argon plus shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
                   timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS',
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),

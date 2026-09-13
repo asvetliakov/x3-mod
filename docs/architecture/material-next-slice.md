@@ -206,7 +206,48 @@ isolated coefficient sites without every intermediate producer/liveness link,
 and the first archive check proved only the aliases' union. Direct structural
 mutation tests now reject both classes. The two affected offline modules pass
 37 tests, including independent per-profile numerical discriminators. The
-production transformer fixture remains explicitly filtered to its exact nine
-Argon originals; the 1,296-DWORD maximum is a future production-bound change.
+production transformer fixture was explicitly filtered to its exact nine Argon
+originals at this checkpoint; the 1,296-DWORD maximum was left for the future
+production-bound change.
 No production source, prior GPU result, build, Wine run, game launch or install
 is part of this checkpoint.
+
+## 5. Shared DEFAULT runtime checkpoint review
+
+Independent review approves the runtime extension with no open finding. The
+production transformer now accepts the proved 15 programs and only the 20
+explicit pairs. It handles the 1,296-DWORD maximum while refusing 1,297 before
+hashing, uses each program's proved clamp register and RGB sites, and leaves all
+72 prior Argon combined outputs byte-identical. The full-precision material ABI,
+alpha and temporal merge, sampler policy, failure fallback, cached gains and
+live draw gate are unchanged. Per-draw selection is a bounded, allocation-free
+scan of 20 cached identity pairs.
+
+The structural fixture passes five tests over 120 variants and 1,313 checks;
+maximum weighted slots are VS 77 and PS 165. The expanded
+[GPU result](../../verification/results/bottle-X3/linear-material-gpu.json)
+passes 313 cases, 2,817 samples and 80,128 exact alpha/motion pixels across all
+20 pairs and 15 originals, including an unchanged 167-case Argon prefix. All 89
+shader creations succeed, every new PS rejects the old Argon lobe coefficients,
+and maximum normalized tolerance use is 15.97%. The clean run exits zero.
+
+The [live result](../../verification/results/bottle-X3/linear-material-live.json)
+passes 1,228 checks over 96 frames and eight feature/ownership/TAA twins. On one
+shared VS, frame 1 admits the new `3b94320087e81945` PS and produces 1.87695312
+RGB at lightmap gain 4, while frame 9 refuses Split `462342e3e5781384` and stays
+exactly 1. Alpha and every RT1/RT2 hash match the feature-off twins. Combined
+creation adds exactly three held shader references in each ownership/TAA case;
+all device and factory references retire to zero. Attach/Reset sampler refresh
+and the existing state-block cases also pass.
+
+The retained clean candidate is 12,347,043 bytes with SHA-256
+`24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724`.
+Its build completed in 5.872 seconds, its import inventory remains 194 symbols
+from 15 DLLs, the x87 audit found no violation in 211 reachable functions, and
+the focused load check passes eight checks over 17 exports. I independently ran
+the 11 GPU-result and two live-result parser tests; all 13 passed.
+
+The evidence uses synthetic detached and live-route fixtures. Native Windows,
+gameplay appearance, installed behavior and game FPS remain unverified; the
+existing brief user material run covers the expanded candidate. This review
+performed no build, Wine run, game launch, installation or commit.

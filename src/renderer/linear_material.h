@@ -23,7 +23,7 @@ struct LinearMaterialAbi {
     static constexpr unsigned rgb_texcoord = 6;
 };
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
-// Exact ten Argon pairs, independent of the broader temporal registry. The
+// Exact twenty Argon/shared-DEFAULT pairs, independent of the broader temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.

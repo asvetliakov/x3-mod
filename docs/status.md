@@ -72,7 +72,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   Khaak/Teladi/Xenon DEFAULT materials. Its offline extension is reviewed with
   37 passing tests: 15 programs / 20 pairs in the proof inventory, while
   runtime support remains the installed nine programs / ten Argon pairs.
-  Production extension is next; no additional material change is installed. Blended emissions need a separate
+  The runtime expansion is implemented and qualified: 313 GPU cases and 1,228
+  live-route checks pass and independent review has no open finding.
+  Installation of the expanded candidate is next. The installed Argon candidate is unchanged. Blended emissions need a separate
   linear-composition and temporal-reactivity design.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing

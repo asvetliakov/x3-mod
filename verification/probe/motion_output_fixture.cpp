@@ -1406,15 +1406,18 @@ struct Fixture {
         api(d->SetPixelShaderConstantF(5,zero,1),"zero directional zero");
         api(d->SetPixelShaderConstantF(7,zero,1),"zero directional one");
     }
-    void run_linear_materials(const char* shared_path) {
+    void run_linear_materials(const char* shared_path, const char* split_path) {
         require(seam&&enabled&&hdr&&hdr_agx&&hdr_readback,"linear materials needs the HDR AgX seam");
         char setting[32]{};
         const bool material=GetEnvironmentVariableA("X3M_LINEAR_MATERIALS",setting,sizeof setting)==1&&setting[0]=='1';
         require(!material || (GetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN",setting,sizeof setting)>0&&std::atof(setting)==4.),"linear material witness uses startup lightmap gain four");
         const auto shared_words=load(shared_path);
-        require(fnv(shared_words.data(),shared_words.size()*4)==0x3b94320087e81945ull,"shared VS test uses reviewed non-material PS");
-        Com<IDirect3DPixelShader9> shared;
-        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(shared_words.data()),&shared.p),"CreatePixelShader shared motion-only");
+        require(fnv(shared_words.data(),shared_words.size()*4)==0x3b94320087e81945ull,"shared VS positive uses reviewed shared DEFAULT PS");
+        const auto split_words=load(split_path);
+        require(fnv(split_words.data(),split_words.size()*4)==0x462342e3e5781384ull,"shared VS negative uses motion-reviewed Split PS");
+        Com<IDirect3DPixelShader9> shared, split;
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(shared_words.data()),&shared.p),"CreatePixelShader shared DEFAULT");
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(split_words.data()),&split.p),"CreatePixelShader Split motion-only");
         float first[4]{};
         for(unsigned i=0;i<12;++i) {
             frame_begin();linear_material_inputs();write_reserved();
@@ -1431,30 +1434,34 @@ struct Fixture {
                 api(block->Apply(),"material restore sampler Apply");
             }
             const bool eligible=i<2||i==6||i==8||i>=10;
-            if(i==9)std::swap(ps.p,shared.p);
+            // Keep the exact same VS object while alternating covered Argon
+            // and shared DEFAULT PS programs; Split remains motion-only.
+            if(i==1)std::swap(ps.p,shared.p);
+            if(i==9)std::swap(ps.p,split.p);
             draw(a,0,0,0,true,true,i!=0&&i!=10);
-            if(i==9)std::swap(ps.p,shared.p);
+            if(i==9)std::swap(ps.p,split.p);
+            if(i==1)std::swap(ps.p,shared.p);
             unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
             require(w==W&&h==H,"material FP16 dimensions");
             const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
             const double expected=material&&eligible?std::pow(4.,1./2.2):1.;
-            // Shared non-Argon color is compared to the feature-off twin by
-            // the runner; this assertion only uses the qualified Argon slice.
+            // Uncovered Split color is compared to the feature-off twin by the
+            // runner; the analytic witness covers Argon and shared DEFAULT.
             if(i!=9)for(unsigned lane=0;lane<3;++lane)
                 require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"actual material/ordinary FP16 color witness");
             if(i==0)std::memcpy(first,center,sizeof first);
             if(i==10||i==11)require(!std::memcmp(first,center,sizeof first),"Reset retains cached shader gains and alpha");
-            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
-                eligible?0u:i==9?1u:4u,double(center[0]),double(center[1]),double(center[2]),double(center[3]));
+            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
+                eligible?0u:i==9?1u:4u,i==1?0x3b94320087e81945ull:i==9?0x462342e3e5781384ull:ps_hash,double(center[0]),double(center[1]),double(center[2]),double(center[3]));
             frame_end();
             if(i==9) {
                 api(SetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN","16")?S_OK:E_FAIL,"change environment after attach");
                 reset();
             }
         }
-        // The shared original must be released before the caller's final
-        // device Release. Its cached ordinary variant remains route-owned.
-        shared.reset();
+        // Both extra originals are released before final device Release;
+        // their cached variants remain route-owned and must also retire.
+        shared.reset();split.reset();
     }
 
     // ---- FP16 HDR scene path, stage 3 (X3M_HDR=1 with X3M_TAA=1) ----
@@ -2051,7 +2058,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials [WxH|shared-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials [WxH|shared-PS Split-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -2065,7 +2072,8 @@ int main(int argc, char** argv) {
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
         f.msaa = mode == "msaa";
         f.linearmaterials = mode == "linearmaterials";
-        if(f.linearmaterials && argc!=5)throw std::runtime_error("linearmaterials needs a shared-PS path");
+        if(f.linearmaterials && argc!=6)throw std::runtime_error("linearmaterials needs shared DEFAULT and Split PS paths");
+        if(!f.linearmaterials && argc==6)throw std::runtime_error("unexpected additional program path");
         if (f.msaa) { char samples[8]{}; f.msaa_samples = GetEnvironmentVariableA("X3M_FIXTURE_MSAA", samples, sizeof samples) > 0 ? unsigned(std::atoi(samples)) : 2u; if (f.msaa_samples < 2 || f.msaa_samples > 16) throw std::runtime_error("X3M_FIXTURE_MSAA must be 2..16"); }
         if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
         if (f.bench) {
@@ -2135,7 +2143,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.linearmaterials) f.run_linear_materials(argv[4]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

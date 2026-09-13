@@ -46,11 +46,19 @@ struct Case {
 static_assert(sizeof(Case) == 160, "binary case ABI");
 const char *vertex_ids[] = {"53a0a641107ed76c", "719856ce0c213220",
                             "badefd5143b3024f"};
-const char *pixel_ids[] = {"63f96eba9eea7880", "8759c7838bbc86c2",
-                           "593e5dea9b3457d5", "7a0bb00a8070496a",
-                           "8d5b2ba0fb4d13bf", "dab93928f26906f7"};
-const unsigned pair_v[] = {0, 0, 1, 1, 1, 1, 2, 2, 2, 2},
-               pair_p[] = {0, 1, 2, 3, 4, 5, 2, 3, 4, 5};
+const char *pixel_ids[] = {
+    "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5",
+    "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
+    "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5",
+    "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3"};
+// Derived register-layout facts; lobe arithmetic stays in each original shader.
+const bool pixel_affine[] = {true, true, false, true, true,  false,
+                             true, true, true,  true, false, false};
+const unsigned pixel_directions[] = {2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1};
+const unsigned pair_v[] = {0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+                           0, 0, 1, 1, 1, 1, 2, 2, 2, 2},
+               pair_p[] = {0, 1, 2, 3, 4,  5,  2, 3, 4,  5,
+                           6, 7, 8, 9, 10, 11, 8, 9, 10, 11};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -107,14 +115,14 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][6];
+  Words originals[2][12];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
     api(d->GetDeviceCaps(&caps));
     for (unsigned i = 0; i < 3; ++i)
       originals[0][i] = load(path + "\\vs_" + vertex_ids[i] + ".bin");
-    for (unsigned i = 0; i < 6; ++i)
+    for (unsigned i = 0; i < 12; ++i)
       originals[1][i] = load(path + "\\ps_" + pixel_ids[i] + ".bin");
   }
   ~Shaders() {
@@ -336,7 +344,7 @@ struct Gpu {
     api(d->SetVertexShaderConstantB(0, &fog, 1));
     float p[221][4]{};
     unsigned profile = pair_p[c.pair];
-    bool affine = profile != 2 && profile != 5;
+    bool affine = pixel_affine[profile];
     unsigned glow = affine ? 3 : 0, dir = glow + 1;
     if (affine) {
       if (c.affine) {
@@ -350,7 +358,7 @@ struct Gpu {
     p[glow][0] = c.f[31];
     p[dir][2] = 1;
     std::memcpy(p[dir + 1], c.f + 22, 12);
-    if (profile < 2) {
+    if (pixel_directions[profile] == 2) {
       p[dir + 2][2] = -1;
       std::memcpy(p[dir + 3], c.f + 25, 12);
     }
@@ -502,9 +510,9 @@ struct Gpu {
         wait(event.p);
         QueryPerformanceCounter(&end);
         if (i >= 6)
-          std::printf("TIMING lights=%u mode=%u iteration=%u draws=4 "
+          std::printf("TIMING pair=%u lights=%u mode=%u iteration=%u draws=4 "
                       "vertices=98304 width=%u completed_ms=%.6f\n",
-                      lights, mode, i - 6, width,
+                      c.pair, lights, mode, i - 6, width,
                       1000. * (end.QuadPart - begin.QuadPart) /
                           frequency.QuadPart);
       }
@@ -562,13 +570,16 @@ int main(int argc, char **argv) {
       {
         Gpu gpu(device.p, shaders, 16);
         for (const auto &c : cases) {
-          require(c.pair < 10 && c.fp16 < 2 && c.depth < 2, "case bounds");
+          require(c.pair < 20 && c.fp16 < 2 && c.depth < 2, "case bounds");
           gpu.test(c);
         }
       }
       {
         Gpu gpu(device.p, shaders, 256);
         gpu.timing(cases.front());
+        Case shared = cases.front();
+        shared.pair = 10;
+        gpu.timing(shared);
       }
     } // Release every D3D object before destroying its device window.
     require(DestroyWindow(window) != 0, "destroy window");

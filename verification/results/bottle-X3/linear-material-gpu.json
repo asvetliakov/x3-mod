@@ -20,7 +20,7 @@
       "R32F"
     ]
   },
-  "scope": "Detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof",
+  "scope": "Argon plus shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof",
   "timing_scope": "QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS",
   "tolerance": {
     "rgb_relative": 0.006,
@@ -38,33 +38,52 @@
     "ps_7a0bb00a8070496a.bin": "5b1aa3fa94f127c6b36164cb164b114e97d279007ccd882416f2d6b9cd01c8fd",
     "ps_8d5b2ba0fb4d13bf.bin": "4f1a61cf0fb97d6328ede3e18d2b715727938062ae601e180382380a3279c4f0",
     "ps_dab93928f26906f7.bin": "b15be08d6adc08a50c9ac756300f091c9fb1a3ec756fb65a556cc523a5166221",
-    "vs_badefd5143b3024f.bin": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448"
+    "vs_badefd5143b3024f.bin": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448",
+    "ps_3b94320087e81945.bin": "f4f228d05aef995c3a24a74ee4a494763103511f188a60cd695d8a1ec392a12c",
+    "ps_e3b7acc16da9932d.bin": "db4c2d86eddbb7a60ba69d55c10dc8f58bb1dadd123696ced0d093f5b4630c15",
+    "ps_7a14d4dcb28f27e5.bin": "ad5d2399d2f0dae0a8721eb2d33adee0fa1cc90d752d523aa18f63923886d2a3",
+    "ps_8ab6188a40ca15ea.bin": "0c6703bacf857148b3bf528e8d8814b05a2332ba1889f3274148c2283d73ce3e",
+    "ps_8df6143d0e77d92e.bin": "a2a2cc4d1b2f1ea0b6ff7b2382f41742c4b1b7bbe1706806ee2312ec0f88e821",
+    "ps_e16a9806ee3544c3.bin": "85b9538879c97626c5181f24c07585810e99b13001c6e0c50d5b1b695a5bfee4"
   },
-  "executable_sha256": "6c3bfe04e2bb33cbb63be05815af8f4a087b67406b615f185088d9852dc176f6",
-  "raw_report": "/tmp/x3-linear-material-gpu-cleanup/report.txt",
+  "executable_sha256": "d674379cd54c76b7bc5b521e9497d15f0a996a050f1f89158aa9d1073c9b9a11",
+  "raw_report": "/tmp/x3-shared-linear-material-gpu/report.txt",
   "code_sha256": {
-    "src/renderer/linear_material.cpp": "68427aa221d544650bba93bf15afb9759ad9bfc8bca5181232880877c01bf10c",
-    "src/renderer/linear_material.h": "c2edcd3babd192388dada2bc03bf472ab7bfdf7f4143d50bc4da3f7ddd16a091",
+    "src/renderer/linear_material.cpp": "c721ccaa28562b4ad65d3b5abbfd647485a35195c1501bc1b96665562e7bc064",
+    "src/renderer/linear_material.h": "fb4634e77326f273f68f1ee6b16a1c23538ba4e77aea946642e66f569799d38f",
     "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
     "src/renderer/material_motion.h": "93f0123a6a691ac2f7539f19d86b8a4c95b2db35b004643c2469b4d657370e41",
     "src/renderer/motion_output_profiles.h": "2edaf43b60c052fd247ed15cc7dbc846e25c09c1f462d4acbb749f3a16d0c66e",
     "src/renderer/motion_output_profiles_inc.h": "f5e3f000f363836b18e396b2360a040be78c36f87b22dae99d9ff4c8351a402e",
-    "docs/reverse-engineering/linear-material-profiles.json": "6b38f2f84846b630a8a7d6c54484b6d8d16ee41c61ed22a8402f001f0a3835aa",
-    "verification/probe/linear_material_fixture.cpp": "c90ec648bd29c73e58c48779bf8df2daf593651bf22f8c7ce935b0b76e9d838c",
-    "verification/probe/linear_material_reference.py": "49a1225f8b2d34b303ea272eb41a87592b03e25bdd46824fa1dee00134773c2c",
-    "verification/probe/run_linear_material.py": "e44097bb08d9d0fcecd338fe8e628635bab23d17ab8ed251dedc803be04a639f"
+    "docs/reverse-engineering/linear-material-profiles.json": "8f2b3aea45408c8fe77dbff93121a8a9533dbc4370fbd161779b564337d28ced",
+    "verification/probe/linear_material_fixture.cpp": "692c33d86362b3c7e8167cc89e28f6c162049db89a5eef15cd44b436a9da06be",
+    "verification/probe/linear_material_reference.py": "edaa7c0e00a4eb44b92ca794e9fcfca4aaf958f36f2f46c2160c14c7e973bbc9",
+    "verification/probe/run_linear_material.py": "1b2e7b7e2318dd4191988902993af5eba194375d1f3cd1384d032934d6cf5cdb"
   },
   "exit_code": 0,
-  "cases": 167,
-  "pairs": 10,
-  "unique_originals": 9,
-  "shader_creations": 56,
-  "samples": 1503,
-  "invariant_pixels": 42752,
+  "cases": 313,
+  "pairs": 20,
+  "unique_originals": 15,
+  "shader_creations": 89,
+  "samples": 2817,
+  "families": {
+    "Argon": {
+      "cases": 176,
+      "max_rgb_envelope_error": 0.00390625,
+      "max_tolerance_fraction": 0.1589078131753646
+    },
+    "shared DEFAULT": {
+      "cases": 137,
+      "max_rgb_envelope_error": 0.0009765649999999848,
+      "max_tolerance_fraction": 0.15966891054708954
+    }
+  },
+  "original_case_prefix": 167,
+  "invariant_pixels": 80128,
   "max_rgb_envelope_error": 0.00390625,
-  "max_tolerance_fraction": 0.1589078131753646,
-  "exact_black_channels": 999,
-  "hdr_channels": 666,
+  "max_tolerance_fraction": 0.15966891054708954,
+  "exact_black_channels": 1269,
+  "hdr_channels": 855,
   "caps": {
     "mrt": 4,
     "vs_slots": 512,
@@ -72,57 +91,129 @@
   },
   "timings": [
     {
+      "pair": 0,
+      "family": "Argon",
       "lights": 0,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.6108,
-      "min_ms": 0.6087,
-      "max_ms": 0.6384
+      "median_ms": 0.61605,
+      "min_ms": 0.5971,
+      "max_ms": 0.6656
     },
     {
+      "pair": 0,
+      "family": "Argon",
       "lights": 0,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.74,
-      "min_ms": 0.7363,
-      "max_ms": 0.7755
+      "median_ms": 0.7421,
+      "min_ms": 0.7302,
+      "max_ms": 0.7516
     },
     {
+      "pair": 0,
+      "family": "Argon",
       "lights": 0,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.7616499999999999,
-      "min_ms": 0.7344,
-      "max_ms": 0.8085
+      "median_ms": 0.7315,
+      "min_ms": 0.7249,
+      "max_ms": 0.7583
     },
     {
+      "pair": 0,
+      "family": "Argon",
       "lights": 8,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.60815,
-      "min_ms": 0.6018,
-      "max_ms": 0.6213
+      "median_ms": 0.6072,
+      "min_ms": 0.5923,
+      "max_ms": 0.6274
     },
     {
+      "pair": 0,
+      "family": "Argon",
       "lights": 8,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.73515,
-      "min_ms": 0.729,
-      "max_ms": 0.7527
+      "median_ms": 0.73125,
+      "min_ms": 0.7239,
+      "max_ms": 0.7584
     },
     {
+      "pair": 0,
+      "family": "Argon",
       "lights": 8,
       "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.73735,
+      "min_ms": 0.7246,
+      "max_ms": 0.7622
+    },
+    {
+      "pair": 10,
+      "family": "shared DEFAULT",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.60695,
+      "min_ms": 0.5982,
+      "max_ms": 0.6101
+    },
+    {
+      "pair": 10,
+      "family": "shared DEFAULT",
+      "lights": 0,
+      "mode": "motion",
       "samples": 6,
       "median_ms": 0.7383500000000001,
-      "min_ms": 0.7281,
-      "max_ms": 0.7605
+      "min_ms": 0.7271,
+      "max_ms": 0.752
+    },
+    {
+      "pair": 10,
+      "family": "shared DEFAULT",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7381500000000001,
+      "min_ms": 0.7234,
+      "max_ms": 0.8616
+    },
+    {
+      "pair": 10,
+      "family": "shared DEFAULT",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.60875,
+      "min_ms": 0.6051,
+      "max_ms": 0.8318
+    },
+    {
+      "pair": 10,
+      "family": "shared DEFAULT",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7335,
+      "min_ms": 0.6797,
+      "max_ms": 0.75
+    },
+    {
+      "pair": 10,
+      "family": "shared DEFAULT",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7443,
+      "min_ms": 0.7306,
+      "max_ms": 0.7548
     }
   ],
   "max_executable_instructions": {
     "vs": 71,
-    "ps": 123
+    "ps": 124
   },
-  "create_total_ms": 6.329800000000005
+  "create_total_ms": 8.739900000000002
 }
