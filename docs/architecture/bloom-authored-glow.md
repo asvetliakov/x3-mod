@@ -4,7 +4,8 @@
 standalone GPU corpus pass on X3. The nine GPU-matched shader artifacts have
 been promoted without recompilation and verified in the installed DLL;
 [combined qualification](../verification/combined-glow-materials.md) passes. Gameplay
-appearance is now confirmed in run 27, but the user finds the glow too subtle;
+appearance is confirmed: run 27 motivated more strength, and run 28 shows
+substantial colored halos at the increased gain;
 gameplay frame cost remains unqualified. This changes extraction inside the existing
 [BloomPass](bloom-pass-runtime.md), not the original-once lifetime/state boundary.
 The installed build uses authored gain 0.35 and highlight gain 0.05. The separate
@@ -25,8 +26,11 @@ This gives a stronger local halo without changing the unmarked highlight policy.
 The sweep cannot qualify halo shape because radius was held fixed. If strength
 is sufficient but spread remains too tight, evaluate radius separately. No shader
 recompile, extra draw, resource, texture fetch or CPU work is introduced: the
-existing constant carries the new gain. Gain 0.35 is installed; visual acceptance
-is queued as [Run 9](../verification/user-runs.md#9-stronger-glow-and-selectionvoice-timing--ready).
+existing constant carries the new gain. Gain 0.35 is installed; the completed
+[Run 9 / Run 28 comparison](../verification/run28-glow-materials.md) shows clear
+ON/OFF halos on a ship emitter and station ring. The user asks about a slight
+core increase. The broad halo already looks sufficient; retain the current
+gain while considering local-core emphasis separately from total strength.
 
 ## Observed failure and native meaning
 

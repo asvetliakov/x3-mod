@@ -9,8 +9,8 @@ Auto exposure capped at +1.5 EV, stronger authored glow (0.35), and same-run exp
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
-function setup is needed. Runs 1, 3, 5, 6, 7 and 8 are complete; reader/DAT/adjacency
-fast co-activation passed as run 19. Run 8 is saved as run 27; its reported issues are being investigated.
+function setup is needed. Runs 1, 3, 5, 6, 7, 8 and 9 are complete; reader/DAT/adjacency
+fast co-activation passed as run 19. Run 9 is saved as run 28; its reported issues are being investigated.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
@@ -25,13 +25,19 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
 | 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; follow-ups combined into run 8 |
 | 8 | Restored glow, milder exposure and native selection-stutter trace | 0 | Completed as run 27 |
-| 9 | Stronger glow and selection/voice timing | 1 | Ready on installed source `d9413fc` |
+| 9 | Stronger glow and selection/voice timing | 0 | Completed as run 28 on source `d9413fc` |
 
-**Run 9 is ready.** Run 4 remains the optional vanilla cursor comparison.
+**No new enhanced run is needed yet.** Run 28 analysis and the next combined
+changes are underway. Run 4 remains the optional vanilla cursor comparison.
 Emission stays off for this comparison; its twenty-pair live route is qualified,
 but gameplay appearance and cost will need separate acceptance.
 
-## 9. Stronger glow and selection/voice timing — Ready
+## 9. Stronger glow and selection/voice timing — Completed
+
+[Run 28 observations and analysis](run28-glow-materials.md) preserve the user's
+bloom ON/OFF screenshots and docking-port dark-to-bright reproduction. The user
+also recalls this material symptom elsewhere. The command and steps below are
+provenance, not a rerun request.
 
 Installed source `d9413fc` raises authored glow from 0.10 to 0.35, defaults to
 Auto capped at +1.5 EV, and adds timings inside target notification and voice

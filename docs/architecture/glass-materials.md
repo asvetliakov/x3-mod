@@ -1,8 +1,9 @@
 # Glass material conversion contracts
 
 Derived archive review and source implementation, 2026-09-14. **Six SM3 glass
-pairs now have a reviewed opaque material conversion in main source; GPU qualification and
-installation remain pending. The other 24 pairs remain unimplemented.** Actual
+pairs now have a reviewed opaque material conversion in main source and pass
+detached X3 GPU qualification. Live routing and installation remain pending.
+The other 24 pairs remain unimplemented.** Actual
 blend state decides whether a draw instead needs ordered composition. The family
 name does not establish transparency. The archive study covers uncaptured
 profiles as well as the Run 27 pair; source evidence is recorded below.
@@ -12,7 +13,7 @@ profiles as well as the Run 27 pair; source evidence is recorded below.
 Inputs are the existing local `/tmp/x3-shader-sweep/manifest.json`, `programs/`
 and `disassembly/`, the tracked [motion inventory](../../verification/results/motion-output-profiles.json),
 and a targeted reread of glass entries in the installed X3 CAT/DAT archives
-using `tools/analysis/effect_passes.py`. No game or Wine command was run. Raw
+using `tools/analysis/effect_passes.py`. The archive study ran no game or Wine command. Raw
 shader bytes and listings remain local and untracked.
 
 The reread confirms **144 DEFAULT pass occurrences, 128 distinct effect byte strings,
@@ -306,18 +307,30 @@ window. Native/motion/combined comparisons cover all six pairs, full-precision
 over-one P, Fresnel, diffuse-tinted gloss, cube direction/scale, masks, faces,
 fog/alpha, FLAT/Gouraud and perspective interpolation. Earlier 3,923 case
 payloads remain byte-identical. Missing-record controls and full/scoped report
-checks pass. GPU execution, actual runtime admission and native-Windows behavior
-remain unqualified at this source checkpoint; no game run is requested here.
+checks pass. The root-owned detached GPU qualification below is complete;
+actual runtime admission and native-Windows behavior remain unqualified.
 
 Independent Sol/high review found no unresolved production or evidence issue.
 The review's scoped-dependency finding was fixed: glass-only now loads and
 records exactly seven originals, validated with an isolated seven-file witness;
 it neither requires nor hashes unrelated prior/XT programs. Stale architecture
-wording was also corrected. GPU qualification remains the next step.
+wording was also corrected. Focused live routing is the next step.
 
 Root integration passes 58 focused transformer/reference/report tests in 62.493 s.
 The retained fixture for 254 glass cases is `/tmp/x3-glass-frozen/linear_material_fixture.exe`,
 SHA-256 `7e71e01d72bfaa95553118dcdf4f8550f2f7302fbd0f856a8dc895da580eb2f7`.
 Its first root-owned Wine attempt waited for the user's active Run 9 and timed
-out before fixture execution. That is a queued qualification, not a GPU failure
-or pass. Installed source remains `d9413fc`; no gameplay change was installed.
+out before fixture execution. After the user exited, the same frozen EXE ran
+successfully under the X3 Wine lease: **254 cases, 2,286 analytic/native samples,
+63 shader creations and 65,024 invariant pixels pass**. Exact alpha and temporal
+twins pass; maximum RGB tolerance fraction is 0.150877. The
+[compact result](../../verification/results/bottle-X3/linear-glass-gpu.json)
+binds the inputs and raw `/tmp/x3-linear-glass-gpu/report.txt`.
+
+The backend's programmable COLOR interpolation remains effectively Gouraud
+despite requested FLAT, as recorded by the native classifier; this is not proof
+of native-Windows FLAT behavior. Representative completion-wall medians for
+combined material are 0.736/0.787 ms with zero/eight point lights, versus
+ordinary motion 0.795/0.796 ms over 98,304 vertices. These small event-fenced
+samples do not establish gameplay speed or a speedup. Installed source remains
+`d9413fc`; no gameplay change was installed.

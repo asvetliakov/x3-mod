@@ -6,8 +6,9 @@ Updated 2026-09-14. This is the current handoff. Earlier checkpoints are in
 retain the full scope.
 
 The installed gameplay build is checkpoint `d9413fc`. Its scoped integration
-checks pass. Run 27 confirms working glow, requests more strength, and accepts
-+1.5 EV appearance; material/temporal and selection issues remain.
+checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
+dark material on a docking port. Selection pauses are isolated to voice-stream
+creation; the user confirms missing target-name speech.
 
 ## Installed build
 
@@ -27,31 +28,27 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Latest gameplay evidence
 
-User run 8 is saved as [run 27](verification/run27-glow-selection.md) in `/tmp/x3-bottleX3-run27/`, on installed source
-`541e380`. The user sees bloom but wants it stronger, accepts +1.5 EV, and still
-reports selection pauses, distant asteroid/station shimmer and occasional
-objects changing from dark to bright as the viewpoint moves. Bounded log/capture
-analysis and targeted native disassembly identify the next bounded measurements.
-[Run 9](verification/user-runs.md#9-stronger-glow-and-selectionvoice-timing--ready) is ready for stronger-glow and selection/voice checks.
+[Run 28](verification/run28-glow-materials.md), user run 9, is saved in
+`/tmp/x3-bottleX3-run28/` on installed source `d9413fc`. Screenshots show substantial
+colored halos at gain 0.35; the user asks about slightly stronger cores. Keep this
+gain during material diagnosis. Auto still mostly reaches its accepted +1.5-EV ceiling.
 
-The first phase witness isolates a 458.85 ms delayed native target-lock publication
-inside a 485.01 ms noncapture frame. A broad pre-simulation region also contains selection-time
-stalls; the synchronous internal callback/VM cause is not yet isolated. The
-[33-site trace](reverse-engineering/selection-native-vm.md) separates input work,
-target notification, voice playback, stream creation and seeking. Its reviewed
-X3 fixture passes 7,606 checks, with about 0.1645 ms diagnostic overhead per
-synthetic loop; the expanded trace is installed.
-Auto reaches its +1.5 ceiling in 329/331 active reports, so the accepted appearance
-mostly reflects a steady boost in this run rather than demonstrated useful adaptation.
-The installed build adopts the accepted Auto/+1.5 profile as its default.
-Material summaries show no shader-bind failures or sampler refusals; the only
-explicit refused pair is glass. Far alpha-blended asteroids bypass the opaque
-material/motion route. The captured near and far nodes differ, so a same-object
-brightness transition or LOD cause is not established.
+The user reproduces dark docking-port parts becoming bright on approach and recalls
+it elsewhere. The one F8 burst shows stable routing and no common-shader fog-on
+transition, so it cannot establish the cause. No material bind failures occur;
+explicit refusals are still the not-yet-installed glass pair. Capture-only target
+root/parent association and native fade fields are being prepared.
 
-[Run 26](verification/run26-comparison.md) and [run 23](verification/run23-material-comparison.md)
-retain the previous exposure, material and shimmer comparisons. The central chase
-crosshair/distance is visible; selection stutter also occurs with chase disabled.
+The [33-site trace](reverse-engineering/selection-native-vm.md) isolates ten
+input-side target publications to voice playback/stream creation. Eight take
+424–512 ms, with virtually all time in creation. The user hears no target-name
+speech; failed creation and its media lifecycle are the next native investigation.
+Other unexplained slow-frame residuals remain. The earlier
+[Run 27 delayed publisher](verification/run27-glow-selection.md) is a separate witness.
+
+[Run 26](verification/run26-comparison.md) and [Run 23](verification/run23-material-comparison.md)
+retain previous appearance comparisons. The central chase crosshair/distance is
+visible; selection stutter also occurs with chase disabled.
 
 ## Newly installed and qualified
 
@@ -80,8 +77,9 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
 
 ## Current open issues
 
-- **Selection stalls:** measured renderer and installed HUD/solver paths are excluded. The new trace catches an expensive delayed native
-  target-lock publication and pre-simulation stalls; targeted disassembly of their internal work is underway.
+- **Selection stalls:** Run 28 isolates synchronous voice-stream creation inside target
+  publication; target speech is absent. Investigate creation failure and lifecycle,
+  retaining other unexplained slow-frame residuals rather than assigning all pauses to audio.
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
   The [normal/specular study](reverse-engineering/asteroid-specular-minification.md) identifies an independent
@@ -91,8 +89,10 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   transparent, background, and other scene writers remain beyond installed coverage. The
   [glass extension](architecture/glass-materials.md) adds six reviewed SM3 opaque-capable
   pairs in main source (168 pairs / 137 originals total), preserving native gloss/Fresnel.
-  Host checks pass; GPU/live qualification and installation remain pending.
-- **Bloom/exposure:** authored glow works but is too subtle. Gain 0.35 is installed for the next comparison;
+  Host and detached GPU checks pass (254 cases / 2,286 samples); live qualification
+  and installation remain pending.
+- **Bloom/exposure:** Run 28 shows substantial colored halos at gain 0.35;
+  the user asks about slightly stronger cores. Keep current gain during material diagnosis;
   +1.5 EV appearance is accepted and selected as the installed Auto default. The meter
   still mostly reaches its ceiling; physically informed adaptation remains unproved.
 - **HDR scope:** FP16 and AgX work, but much of the scene is still compatibility-decoded gamma-space lighting.
@@ -105,9 +105,10 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
 ## Prepared designs
 
 The reviewed [distance-fade proposal](architecture/linear-distance-fade.md) uses
-one native submission, a linear blended layer, and shared reactive coverage; its
-prototype must preserve native recovery and does not yet solve layered temporal
-accumulation. The reviewed [screen-emission proposal](architecture/screen-emission-overlap.md)
+one native submission, a linear blended layer, and shared reactive coverage. Its
+detached prototype passes 71 X3 cases / 257 source calls with native recovery;
+runtime admission and combined temporal-mask integration remain pending. It does
+not yet solve layered temporal accumulation. The reviewed [screen-emission proposal](architecture/screen-emission-overlap.md)
 uses four packed MRTs to preserve fragment order without replay. Its mathematical
 prototype passes 540 in-domain X3 measurements with exact native RGB/alpha;
 108 boundary rows expose range/overflow limits. Separate synchronized phase
@@ -117,7 +118,9 @@ capabilities; neither has native-Windows runtime qualification.
 
 ## Next user action
 
-[Run 9](verification/user-runs.md#9-stronger-glow-and-selectionvoice-timing--ready) is ready: compare stronger glow and select several targets while the new trace distinguishes notification, playback, stream creation and seeking. No F8 captures are needed. Run 8 is complete; the optional vanilla cursor comparison remains available.
+No new enhanced run is requested. Run 9 is complete as run 28; analyze its
+evidence and combine the next changes before another session. The optional
+vanilla cursor comparison remains available in the [run queue](verification/user-runs.md).
 
 ## Stable foundation and later scope
 

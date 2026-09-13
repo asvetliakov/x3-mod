@@ -1,0 +1,288 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "render_contract": {
+    "sampler_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "sampler_srgb": false,
+    "srgb_write": false,
+    "msaa": false,
+    "targets": [
+      "RGBA16F/RGBA32F",
+      "RGBA32F",
+      "R32F"
+    ]
+  },
+  "scope": "Six SM3 glass pairs: 254 new cases; earlier cases excluded; representative pair162 timing included. Detached ordinary/combined numerics, alpha/motion/depth and interpolation. No live route or native Windows runtime proof.",
+  "timing_scope": "QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS. Glass-only selects pair162 with 0/8 point lights and native/motion/combined variants.",
+  "tolerance": {
+    "rgb_relative": 0.006,
+    "rgb_absolute": 2e-05,
+    "tiny_rgb_absolute": 1e-12,
+    "retained_sample_precision": "float32/binary16 reference envelope",
+    "alpha": "exact"
+  },
+  "original_sha256": {
+    "ps_9d49f288800f898d.bin": "ecad4b7350117126ef87a5b8339247d86ffd74ff405f7df93b484cd399fedf1b",
+    "ps_a66fb1981ba755b2.bin": "b50da3d3ad2e8e73b716c6c96d65e00b8aa06d156549d931c753962de2a84256",
+    "ps_ebc9b2b3f1564e9a.bin": "dadcbb9397698780bf86e29d3872aa35843b5e605bf541f800d386278fdb9f66",
+    "ps_f31c9e2701c8eee4.bin": "3970b213b81e46b686349925d50be2d7011cbfd36fa97ea6cce9cc0ec741671c",
+    "vs_74fdc00d802b4027.bin": "5e2529bea7afcab8de4b2db15cb39d545bb3f5de84fd2a76471467d2a87e2068",
+    "vs_c30104cb0efb6675.bin": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
+    "vs_e2ad860d5fbb3e59.bin": "c0aa7effc40cfcfc4c3b936c3809446f3be1048576b6a5138f6de3155f778d5d"
+  },
+  "executable_sha256": "7e71e01d72bfaa95553118dcdf4f8550f2f7302fbd0f856a8dc895da580eb2f7",
+  "raw_report": "/tmp/x3-linear-glass-gpu/report.txt",
+  "code_sha256": {
+    "src/renderer/linear_material.cpp": "339a276e38ff537dde6bf12f8f35cb4803cbe4ec234b380b655bb9a1e9097f89",
+    "src/renderer/linear_material.h": "b6db62b2f45cc306964876320a22033218378a41723f7cde6cdde8338710895b",
+    "src/renderer/linear_xt_material_inc.h": "ac003397997468cd59ca306f8f74a5667e7f3859ee0672ebff499411e2a1268c",
+    "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
+    "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
+    "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0",
+    "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+    "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
+    "docs/reverse-engineering/linear-material-profiles.json": "fca3a26846413632b314810a1093f228607f7044c7c3dd73ca9d321a59a56ba8",
+    "docs/reverse-engineering/xt-material-profiles.json": "3c8715479e0fe53c1336d891c09ccb6a2fd88e92873e6ac9e4f16a5167c6c80f",
+    "verification/probe/linear_material_fixture.cpp": "0f331a801e43f04bd9b84cc86e4614fa844e64e4a136d6bf5384efd632ab9de2",
+    "verification/probe/linear_material_reference.py": "43b3a8fbf5cb15c90600047f19fe8a9dd6b4455a69dd70d288bd9eaadaab7bb2",
+    "verification/probe/linear_xt_fixture_reference.py": "19e2ada0cd4e7d79086c364fa4b5ccae5c8931aa7fabddc2a4f8cf10740307e9",
+    "verification/probe/linear_glass_fixture_reference.py": "6e364915c820a21854dcada9ac563fdd0fe20d34f4aadc3909729d57fc600c1f",
+    "verification/analysis/xt_material_reference.py": "e7d1ada3e47bb0463a1fa48f062aceee0d54bd8d655a4c4688ec4c9135728344",
+    "verification/probe/run_linear_material.py": "5c3d018b9d6f0799f399d7522462cc0228e702238dd198eeecf9cc627aebf417"
+  },
+  "exit_code": 0,
+  "cases": 254,
+  "pairs": 6,
+  "unique_originals": 7,
+  "shader_creations": 63,
+  "samples": 2286,
+  "analytic_samples": 2286,
+  "families": {
+    "Argon": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "shared DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Argon BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Split DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "standard DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "standard BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "standard LOW": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "shared BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Split BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Terran DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Terran BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Asteroid DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Asteroid BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Boron DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Boron BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Paranid DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Paranid BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "XT standard DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "XT standard BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "XT standard LOW": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "XT damage BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "XT terraformer DEFAULT": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "XT terraformer BUMP": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "XT terraformer LOW": {
+      "cases": 0,
+      "max_rgb_envelope_error": 0.0,
+      "max_tolerance_fraction": 0.0
+    },
+    "Glass": {
+      "cases": 254,
+      "max_rgb_envelope_error": 0.0004882815000000207,
+      "max_tolerance_fraction": 0.1508770510205441
+    }
+  },
+  "original_case_prefix": 0,
+  "xt_ordinary_samples": 0,
+  "glass_ordinary_samples": 2286,
+  "ordinary_max_tolerance_fraction": 0.15380080222458017,
+  "effective_programmable_color_flat": false,
+  "boundary_cases": 0,
+  "boundary_limit": "Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence",
+  "invariant_pixels": 65024,
+  "max_rgb_envelope_error": 0.0004882815000000207,
+  "max_tolerance_fraction": 0.1508770510205441,
+  "exact_black_channels": 648,
+  "hdr_channels": 108,
+  "caps": {
+    "mrt": 4,
+    "vs_slots": 512,
+    "ps_slots": 512
+  },
+  "timings": [
+    {
+      "pair": 162,
+      "family": "Glass",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.67535,
+      "min_ms": 0.663,
+      "max_ms": 0.6775
+    },
+    {
+      "pair": 162,
+      "family": "Glass",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7954,
+      "min_ms": 0.7804,
+      "max_ms": 1.1547
+    },
+    {
+      "pair": 162,
+      "family": "Glass",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7363999999999999,
+      "min_ms": 0.6742,
+      "max_ms": 0.7994
+    },
+    {
+      "pair": 162,
+      "family": "Glass",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6818500000000001,
+      "min_ms": 0.6603,
+      "max_ms": 1.2971
+    },
+    {
+      "pair": 162,
+      "family": "Glass",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7955000000000001,
+      "min_ms": 0.6953,
+      "max_ms": 0.8011
+    },
+    {
+      "pair": 162,
+      "family": "Glass",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.78745,
+      "min_ms": 0.7848,
+      "max_ms": 1.2468
+    }
+  ],
+  "max_executable_instructions": {
+    "vs": 77,
+    "ps": 109
+  },
+  "create_total_ms": 7.557300000000002
+}
