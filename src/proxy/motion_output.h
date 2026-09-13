@@ -553,8 +553,10 @@ private:
         // This is shader eligibility, not scene/blend/reader/pass admission.
         IDirect3DPixelShader9* emission_eligible_variant = nullptr;
         // Exact pair contract, refreshed at actual shader setters and completed
-        // registration only. DEFAULT uses 0x0f, BUMPMAP 0x1f, unknown uses zero.
+        // registration only. Technique is explicit: Asteroid BUMP and hull
+        // DEFAULT both use mask 0x0f. Unknown uses zero and bump=false.
         std::uint32_t material_sampler_mask = 0;
+        bool material_bump = false;
         IDirect3DVertexShader9* vs_variant = nullptr;
         IDirect3DPixelShader9* ps_variant = nullptr;
         IDirect3DVertexShader9* vs_material_variant = nullptr;

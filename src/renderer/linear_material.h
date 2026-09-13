@@ -20,7 +20,8 @@ struct LinearMaterialAbi {
     static constexpr unsigned pixel_definition_base = 212;
     static constexpr unsigned vertex_rgb_output = 8;
     static constexpr unsigned pixel_rgb_input = 7;
-    static constexpr unsigned rgb_texcoord = 6;
+    static constexpr unsigned rgb_usage = 10; // D3DDECLUSAGE_COLOR
+    static constexpr unsigned rgb_usage_index = 1;
 };
 // BUMPMAP keeps its original TEX0-4 basis; temporal TEX5/6 remain unchanged.
 struct LinearBumpMaterialAbi {
@@ -28,14 +29,23 @@ struct LinearBumpMaterialAbi {
     static constexpr unsigned pixel_definition_base = 212;
     static constexpr unsigned vertex_rgb_output = 9;
     static constexpr unsigned pixel_rgb_input = 8;
-    static constexpr unsigned rgb_texcoord = 7;
+    static constexpr unsigned rgb_usage = 10; // D3DDECLUSAGE_COLOR
+    static constexpr unsigned rgb_usage_index = 1;
 };
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
-// Exact 110 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
+struct LinearMaterialPairContract {
+    std::uint32_t sampler_mask = 0;
+    bool bump = false; // Includes BUMPMAP_LOW; independent of sampler count.
+};
+// One exact-pair lookup supplies both cached sampler admission and technique
+// telemetry. A zero mask is unsupported; technique alone never admits a draw.
+LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, std::uint64_t pixel) noexcept;
+// Exact 116 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.
-// DEFAULT returns 0x0f, BUMPMAP/LOW 0x1f, unsupported pairs zero. The mask only
+// Hull DEFAULT returns 0x0f, hull BUMPMAP/LOW 0x1f; Asteroid DEFAULT/BUMP
+// return 0x07/0x0f, and unsupported pairs zero. The mask only
 // identifies required disabled-sRGB samplers; it establishes no dynamic gates.
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;

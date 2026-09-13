@@ -299,7 +299,7 @@ void MotionOutput::release_resources() noexcept {
     for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.emission_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
-    shadow_.material_sampler_mask = 0;
+    shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
     history_.invalidate();
     fill_pending_ = false;
     if (mip_bias_bits_ && !mip_bias_summary_logged_) {
@@ -1617,7 +1617,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.vs == shader) {
         shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
-        shadow_.material_sampler_mask = 0;
+        shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
         shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     }
     if (!requested_ || !shader) return;
@@ -1671,7 +1671,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.ps == shader) {
         shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
-        shadow_.material_sampler_mask = 0;
+        shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     }
     if (!requested_ || !shader) return;
@@ -1737,7 +1737,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
-    shadow_.material_sampler_mask = 0;
+    shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
     shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
@@ -1753,7 +1753,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
-    shadow_.material_sampler_mask = 0;
+    shadow_.material_sampler_mask = 0; shadow_.material_bump = false;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     if (!shader) return;
     const auto it = pixel_.find(shader);
@@ -2396,8 +2396,10 @@ void MotionOutput::finish_emission(HRESULT source) noexcept {
 void MotionOutput::refresh_linear_material_contract() noexcept {
     // Ordinary variants establish completed shader registration. Combined
     // object availability and effective HDR readiness remain live gates.
-    shadow_.material_sampler_mask = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
-        ? renderer::linear_material_sampler_mask(shadow_.vs_hash, shadow_.ps_hash) : 0;
+    const auto contract = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
+        ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
+    shadow_.material_sampler_mask = contract.sampler_mask;
+    shadow_.material_bump = contract.bump;
 }
 void MotionOutput::refresh_linear_emission_contract() noexcept {
     // Creation/bind/resync only. Future draws consume this pointer without a
@@ -2599,7 +2601,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     route.routed = true; route.matched = matched;
     if (route.linear_material) {
         ++counters_.material_routed;
-        if (shadow_.material_sampler_mask == 0x1fu) ++counters_.material_bump_routed;
+        if (shadow_.material_bump) ++counters_.material_bump_routed;
     }
     ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
     // The mip LOD bias of the routed material stages, while the jitter is on

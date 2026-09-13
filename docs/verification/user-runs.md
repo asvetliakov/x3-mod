@@ -18,12 +18,12 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | --- | --- | ---: | --- |
 | 1 | Chase aiming/framing + reader/adjacency verification | 0 | Accepted as run 18 |
 | 2 | Sharpen/shimmer + camera cuts with TAA | 0 | Merged into run 6 |
-| 3 | Automatic exposure + bloom off/on | 1 | A complete as run 24; B ready |
+| 3 | Automatic exposure + bloom off/on | 0 | Completed: A run 24, B run 25; analysis pending |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
 
-Two sessions remain; complete them at your convenience. The shared TAA shader
+One session remains; complete it at your convenience. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
 no gameplay request yet while its performance optimization is under investigation.
@@ -65,13 +65,17 @@ Do not launch a separate run for this item. Run 6 applies the same sharpen and
 mip-bias settings to both sides of its fixed-exposure material comparison and
 includes the required motion and view-cut checks.
 
-## 3. Space-aware exposure and bloom comparison — Ready
+## 3. Space-aware exposure and bloom comparison — Completed
 
 Part A is complete as run 24; do not repeat the baseline. Its log and all 155
 referenced artifacts are preserved. Automatic exposure is active, and the user
 reports selection stutter with chase disabled and bright backgrounds without
 the earlier severe overexposure. Analysis of the exposure changes is underway.
-Proceed with the second command below for B.
+B is complete as run 25, with all 174 referenced artifacts preserved. The user
+noticed no visual bloom difference; actual activation and output are under
+analysis. Do not repeat either command for this item. Separate runtime exposure
+and bloom toggles are requested for future same-run comparisons and are not
+installed yet. Commands below remain as provenance.
 
 Use the current installed build; no update is needed. Keep sharpen and mip bias
 at zero so this remains comparable to the earlier HDR baseline. Both commands

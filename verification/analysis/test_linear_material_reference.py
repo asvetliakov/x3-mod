@@ -8,6 +8,7 @@ import unittest
 from linear_material_reference import (
     CAP, DIFFUSE_COEFFICIENT, PROFILES, DirectionalLight, Gains, LightingCoefficients, PointLight, decode, encode, half,
     bump_geometry, pixel, sanitize, vertex,
+    ASTEROID_PROFILES, AsteroidWeights, asteroid_pixel,
 )
 
 
@@ -56,7 +57,7 @@ class MaterialTests(unittest.TestCase):
         evidence = json.loads(path.read_text())
         expected = {}
         for row in evidence['programs']:
-            if row['id'].startswith('ps_'):
+            if row['id'].startswith('ps_') and not {'asteroid_default','asteroid_bump'} & set(row['families']):
                 app = row['lobe_coefficients'].get('source') == 'application'
                 if app:
                     self.assertEqual(row['lobe_coefficients'], {
@@ -740,6 +741,152 @@ class RemainingHullTests(unittest.TestCase):
                 result=self.sample(name,i,bump,half_source=True,half_target=True)
                 self.assertEqual(result.encoded_rgba,(0,0,0,.125))
                 for x in result.encoded_rgba[:3]:self.assertEqual(math.copysign(1,x),1)
+
+
+class AsteroidEvidenceTests(unittest.TestCase):
+    def test_four_asteroid_profiles_match_independent_derived_evidence(self):
+        path=Path(__file__).resolve().parents[2]/'docs/reverse-engineering/linear-material-profiles.json'
+        evidence=json.loads(path.read_text())
+        rows=[r for r in evidence['programs'] if r['id'].startswith('ps_')
+              and {'asteroid_default','asteroid_bump'} & set(r['families'])]
+        self.assertEqual(len(rows),4)
+        expected={}
+        for row in rows:
+            count=len({s['name'] for s in row['directional_rgb_sources']})
+            bump='asteroid_bump' in row['families']
+            expected[row['fnv1a64']]=(count,bump)
+            self.assertEqual(row['lobe_coefficients'],{'diffuse':1.0,'specular_power':3,
+                             'specular_outer_scale':1.0,'grazing_scale':3.0,'cube':0.0})
+            self.assertEqual(row['alpha_and_affine_proof']['alpha_model'],'base_alpha_times_vertex_alpha')
+            self.assertEqual(row['alpha_and_affine_proof']['normal_encoding'],'ag' if bump else 'geometric')
+            self.assertIsNone(row['diffuse_affine_completion'])
+            self.assertFalse(row['two_sided'])
+            weights=row['detail_weighting']
+            self.assertEqual((weights['base']['register'],weights['detail']['register']),
+                             ('c5','c4') if count==2 else ('c3','c2'))
+            self.assertEqual((weights['base']['component'],weights['detail']['component']),('x','x'))
+        self.assertEqual({name:(p.directions,p.bump_map) for name,p in ASTEROID_PROFILES.items()},expected)
+
+
+class AsteroidTests(unittest.TestCase):
+    CONTRACTS = {'517540ae6d5e5410': (2,False), '7a0c3388065bb08d': (1,False),
+                 'd44db87778a43b61': (2,True), '550c2a4d4d3ed70f': (1,True)}
+
+    def assertRGB(self, actual, expected):
+        for a,b in zip(actual,expected): self.assertAlmostEqual(a,b,delta=1e-12)
+
+    def sample(self, profile='7a0c3388065bb08d', **kwargs):
+        varying=kwargs.pop('varying',vertex((0,0,0),(0,0,1),(.6,0,.8),(0,0,0),material_alpha=.5))
+        count,bump=self.CONTRACTS[profile]
+        args=dict(base=(.25,.5,.75,.25),detail=(.75,.25,.5,.75),specular_mask=0,
+                  directions=[DirectionalLight((0,0,1),(0,0,0))]*count)
+        args.update(kwargs)
+        if bump:
+            args.setdefault('normal_sample',(.25,.5,.75,.5))
+            args.setdefault('tangent',(1,0,0));args.setdefault('binormal',(0,1,0))
+        return asteroid_pixel(profile,varying,**args)
+
+    def test_exact_four_contracts_and_native_default_weights(self):
+        self.assertEqual({name:(p.directions,p.bump_map) for name,p in ASTEROID_PROFILES.items()},self.CONTRACTS)
+        self.assertFalse(set(ASTEROID_PROFILES)&set(PROFILES))
+        weights=AsteroidWeights()
+        self.assertEqual((weights.base,weights.detail),(1,0))
+        with self.assertRaises(AttributeError): weights.detail=1
+        for name in self.CONTRACTS:
+            a=self.sample(name,detail=(100,200,300,math.nan))
+            self.assertEqual(a,self.sample(name,detail=(0,0,0,0)))
+            self.assertEqual(a.encoded_rgba,(0,0,0,.125))
+
+    def test_each_sample_decodes_before_independent_scalar_weights(self):
+        v=vertex((0,0,0),(0,0,1),(0,0,1),(1,1,1))
+        for name in self.CONTRACTS:
+            for weights in (AsteroidWeights(1,0),AsteroidWeights(0,1),AsteroidWeights(.75,.25),AsteroidWeights(2,.5)):
+                result=self.sample(name,varying=v,weights=weights)
+                expected=[weights.base*b**2.2+weights.detail*d**2.2 for b,d in zip((.25,.5,.75),(.75,.25,.5))]
+                self.assertRGB(result.linear_rgb,expected)
+                if weights==AsteroidWeights(.75,.25):
+                    wrong=[(.75*b+.25*d)**2.2 for b,d in zip((.25,.5,.75),(.75,.25,.5))]
+                    self.assertTrue(all(abs(a-b)>.01 for a,b in zip(expected,wrong)))
+            one=self.sample(name,varying=v,weights=AsteroidWeights(1,1))
+            four=self.sample(name,varying=v,weights=AsteroidWeights(4,4))
+            self.assertRGB(four.linear_rgb,[4*x for x in one.linear_rgb])
+
+    def test_unit_diffuse_cubic_specular_inner_three_without_outer_three(self):
+        for name,(count,_) in self.CONTRACTS.items():
+            colors=((.25,.5,.75),(.75,.25,.5))[:count]
+            light_rgb=[sum(c[k]**2.2 for c in colors) for k in range(3)]
+            for cosine in (1.,.2):
+                lights=[DirectionalLight((0,0,cosine),c) for c in colors]
+                args=dict(base=(1,1,1,.25),directions=lights)
+                d=self.sample(name,**args)
+                s=self.sample(name,**args,specular_mask=.75)
+                self.assertRGB(d.linear_rgb,[cosine*c for c in light_rgb])
+                highlight=(.8*cosine)**3
+                expected=[.75*min(1,3*cosine)*highlight*c for c in light_rgb]
+                actual=[a-b for a,b in zip(s.linear_rgb,d.linear_rgb)]
+                self.assertRGB(actual,expected)
+                self.assertTrue(all(abs(a-3*b)>1e-5 for a,b in zip(actual,expected)))
+
+    def test_base_alpha_only_independent_of_detail_weights_mask_and_gains(self):
+        for name in self.CONTRACTS:
+            for detail_alpha in (0.,1.,math.nan,math.inf):
+                result=self.sample(name,detail=(.75,.25,.5,detail_alpha),weights=AsteroidWeights(0,4),
+                                   gains=Gains(0,16,16),specular_mask=1)
+                self.assertEqual(result.encoded_rgba[3],.125)
+            v=vertex((0,0,0),(0,0,1),(0,0,2),(1,1,1),material_alpha=.5,fog_clip=(.75,.125))
+            self.assertEqual(self.sample(name,varying=v).encoded_rgba[3],.0625)
+
+    def test_geometric_point_and_scaled_emissive_multiply_detail_albedo(self):
+        for name in self.CONTRACTS:
+            for fixed,lights in ((False,0),(False,1),(False,8),(True,1)):
+                gains=Gains(2,4,16)
+                v=vertex((0,0,0),(0,0,1),(0,0,1),(.25,.5,.75),
+                         [PointLight((0,0,1),(.5,.25,.75),(1,0,0))]*lights,
+                         fixed_single=fixed,gains=gains)
+                result=self.sample(name,varying=v,weights=AsteroidWeights(0,.5),gains=gains)
+                self.assertRGB(result.linear_rgb,[.5*d**2.2*(4*m+2*lights*p**2.2)
+                                                 for d,m,p in zip((.75,.25,.5),(.25,.5,.75),(.5,.25,.75))])
+
+    def test_bump_ag_shifted_inputs_no_face_or_reflection_contribution(self):
+        for name in ('d44db87778a43b61','550c2a4d4d3ed70f'):
+            count=self.CONTRACTS[name][0]
+            args=dict(base=(1,1,1,.25),normal_sample=(.25,.5,.75,.75),
+                      directions=[DirectionalLight((0,1,0),(1,1,1))]*count)
+            # Alpha .75 -> +binormal .5; tangent is X, binormal Y.
+            self.assertRGB(self.sample(name,**args).linear_rgb,[.5*count]*3)
+            self.assertEqual(self.sample(name,**args),self.sample(name,**dict(args,normal_sample=(math.nan,.5,-math.inf,.75))))
+            swapped=self.sample(name,**dict(args,normal_sample=(.25,.75,.75,.5)))
+            self.assertEqual(swapped.linear_rgb,(0,0,0))
+            mirrored=self.sample(name,**args,binormal=(0,-1,0))
+            self.assertEqual(mirrored.linear_rgb,(0,0,0))
+            # Negative q retains sqrt(abs(q)); no new clamp or fallback normal.
+            negative=self.sample(name,**dict(args,normal_sample=(.25,1,.75,1)))
+            self.assertRGB(negative.linear_rgb,[count/math.sqrt(3)]*3)
+            with self.assertRaises(ValueError):self.sample(name,normal_sample=(.25,.5,.75,1))
+            point=vertex((0,0,0),(0,0,1),(0,0,1),(0,0,0),[PointLight((0,0,1),(.25,.5,.75),(1,0,0))])
+            a=self.sample(name,varying=point)
+            b=self.sample(name,varying=point,normal_sample=(.25,1,.75,1))
+            self.assertEqual(a,b)
+
+    def test_transfer_domain_endpoint_precision_and_unused_parameters(self):
+        v=vertex((0,0,0),(0,0,1),(0,0,1),(1,1,1))
+        for name in self.CONTRACTS:
+            result=self.sample(name,varying=v,base=(.3333,0,math.inf,.25),half_source=True,half_target=True)
+            self.assertEqual(result.encoded_rgba,(.333251953125,0,154.625,.25))
+            black=self.sample(name,varying=v,base=(math.nan,-math.inf,-0.,.25))
+            self.assertEqual(black.linear_rgb,(0,0,0))
+            for x in black.encoded_rgba[:3]:self.assertEqual(math.copysign(1,x),1)
+        for field in ('base','detail'):
+            for value in (-1,math.nan,math.inf):
+                with self.assertRaises(ValueError):AsteroidWeights(**{field:value})
+            for value in ('1',True,None):
+                with self.assertRaises(TypeError):AsteroidWeights(**{field:value})
+        self.assertEqual(AsteroidWeights(1e6,2).base,1e6)
+        with self.assertRaises(ValueError):asteroid_pixel('8759c7838bbc86c2',v,(1,1,1,1),(1,1,1,1),0,[])
+        with self.assertRaises(ValueError):self.sample(directions=[])
+        with self.assertRaises(TypeError):self.sample(weights=(1,0))
+        with self.assertRaises(TypeError):self.sample(cubemap=(1,1,1))
+        with self.assertRaises(TypeError):self.sample(half_source=1)
 
 
 if __name__ == "__main__":

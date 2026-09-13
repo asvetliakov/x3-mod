@@ -461,3 +461,94 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
     alpha = (glow * lightmap[3] + (1.0 - glow) * diffuse[3]) * alpha_source
     rgba = tuple(encode(x) for x in radiance) + (alpha,)
     return PixelResult(radiance, tuple(half(x) for x in rgba) if half_target else rgba)
+
+
+@dataclass(frozen=True)
+class AsteroidProfile:
+    directions: int
+    bump_map: bool
+
+
+ASTEROID_PROFILES = {
+    "517540ae6d5e5410": AsteroidProfile(2, False),
+    "7a0c3388065bb08d": AsteroidProfile(1, False),
+    "d44db87778a43b61": AsteroidProfile(2, True),
+    "550c2a4d4d3ed70f": AsteroidProfile(1, True),
+}
+
+
+@dataclass(frozen=True)
+class AsteroidWeights:
+    """Actual PS base/detail scalar inputs, with the native default values.
+
+    The original preshader normally supplies base=1-detail. Accept both inputs
+    independently to model the uploaded constants, without forcing that relation
+    or decoding/clamping strengths. Finite nonnegative weights are this oracle's
+    analytical domain, not a new production admission or material-value policy.
+    """
+    base: float = 1.0
+    detail: float = 0.0
+
+    def __post_init__(self):
+        for name in ("base", "detail"):
+            value = _real(getattr(self, name), name)
+            if not math.isfinite(value) or value < 0.0:
+                raise ValueError(name + " weight must be finite and nonnegative")
+            object.__setattr__(self, name, value)
+
+
+def asteroid_pixel(profile, varying, base, detail, specular_mask, directions, *,
+                   weights=AsteroidWeights(), gains=Gains(), half_source=False,
+                   half_target=False, normal_sample=None, tangent=None, binormal=None) -> PixelResult:
+    """Asteroid DEFAULT/BUMPMAP, from independently sampled base/detail RGBA.
+
+    Sample UV packing/rasterization remains the fixture's responsibility. Decode
+    each RGB sample before its native scalar multiply and add; the combined
+    albedo multiplies geometric point/emissive plus directional radiance. There
+    is no cube, lightmap, affine hue or VFACE operation. The lobe has unit diffuse
+    and a cubic masked highlight with sat(3*NdotL), but no outer factor three.
+    Detail alpha is unused; base alpha multiplies unchanged native vertex alpha.
+    Shared AG normal helper preserves sqrt(abs(q)); q=0, zero normal/view and
+    nonfinite geometry keep the same separate GPU qualification domain.
+    A caller using vertex() supplies the same Gains to both stages.
+    """
+    if not isinstance(profile, str) or profile not in ASTEROID_PROFILES:
+        raise ValueError("unknown asteroid pixel profile")
+    if not isinstance(varying, VertexResult) or not isinstance(weights, AsteroidWeights) or not isinstance(gains, Gains):
+        raise TypeError("expected VertexResult, AsteroidWeights and Gains")
+    if not isinstance(half_source, bool) or not isinstance(half_target, bool):
+        raise TypeError("quantization switches must be boolean")
+    contract = ASTEROID_PROFILES[profile]
+    directions = tuple(directions)
+    if len(directions) != contract.directions:
+        raise ValueError("directional-light count does not match asteroid profile")
+    if not all(isinstance(light, DirectionalLight) for light in directions):
+        raise TypeError("directions must contain DirectionalLight values")
+    quantize = half if half_source else float
+    source = lambda values, size, name: tuple(quantize(x) for x in _vector(values, size, name))
+    base, detail = source(base, 4, "base"), source(detail, 4, "detail")
+    mask = quantize(_real(specular_mask, "specular_mask"))
+    if not math.isfinite(mask) or not 0.0 <= mask <= 1.0:
+        raise ValueError("specular_mask must be a normalized finite data sample")
+    if contract.bump_map:
+        geometry = bump_geometry(normal_sample, tangent, binormal, varying.normal, varying.view,
+                                 half_source=half_source)
+        normal, view = geometry.normal, geometry.view
+    else:
+        normal = _unit(source(varying.normal, 3, "normal"), "normal")
+        view = _unit(source(varying.view, 3, "view"), "view")
+    directional = [0.0, 0.0, 0.0]
+    for light in directions:
+        cosine = _sat(_dot(normal, light.direction))
+        reflected = tuple(2.0 * _dot(normal, light.direction) * n - l
+                          for n, l in zip(normal, light.direction))
+        highlight = _sat(_dot(view, reflected)) ** 3
+        lobe = cosine + mask * _sat(3.0 * cosine) * highlight
+        for i in range(3):
+            directional[i] += lobe * decode(light.color[i]) * gains.direct
+    vertex_rgb = _vector(varying.linear_rgb, 3, "linear vertex RGB")
+    albedo = tuple(weights.base * decode(base[i]) + weights.detail * decode(detail[i]) for i in range(3))
+    radiance = tuple(sanitize(albedo[i] * (vertex_rgb[i] + directional[i])) for i in range(3))
+    alpha = base[3] * quantize(_real(varying.alpha, "vertex alpha"))
+    rgba = tuple(encode(x) for x in radiance) + (alpha,)
+    return PixelResult(radiance, tuple(half(x) for x in rgba) if half_target else rgba)

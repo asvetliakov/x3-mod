@@ -74,14 +74,16 @@ stutters, brighter converted surfaces, partial material coverage and less gloss.
 The captured eligible motion draws use linear materials on 4,420 of 5,800 draws
 (76.21%); most refusals are uncovered XT variants. This is draw coverage, not
 pixel coverage. Final gloss tuning may follow improved lighting/reflections;
-accidental term loss still needs exclusion. Run 3 (automatic exposure and bloom) is now requested on the unchanged
-installed build. Hold Wine fixtures and installs while the user performs that
-comparison; there is no new user run for the HUD/stutter fixes yet.
-Run 3 A is preserved as `/tmp/x3-bottleX3-run24/` with all 155 referenced
-artifacts. The user reports selection stutter with chase disabled, bright space
-backgrounds without the earlier severe overexposure, and no obvious exposure
-adaptation. The log confirms automatic exposure is active; quantitative
-analysis is in progress while the user proceeds with B.
+accidental term loss still needs exclusion. Run 3 is complete on the unchanged
+installed build: A is preserved as `/tmp/x3-bottleX3-run24/` (155 artifacts),
+B as `/tmp/x3-bottleX3-run25/` (174 artifacts), with no snapshot issues. Selection
+stutter also occurs with chase disabled. The user reports bright backgrounds
+without the earlier severe overexposure and no obvious exposure adaptation or
+bloom difference. A's log proves adaptation active but nearly always capped at
++2 EV; every F8 burst is at that cap. B's actual bloom path is under analysis.
+The user requested separate runtime exposure and bloom toggles for same-run
+comparisons; implement with visible state and logging before another such
+gameplay request. There is no new run for the HUD/stutter fixes yet.
 The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
 geometry genuinely composites with the background; temporal coverage must
@@ -92,6 +94,13 @@ The [motion/depth WRAP correction](architecture/motion-varying-wrap.md) is
 source-integrated and independently reviewed, including its interaction with
 emission and Reset (11 affected host tests pass). GPU qualification and
 installation remain pending.
+The [116-pair Asteroid/COLOR1 source](architecture/linear-asteroid-materials.md)
+is now integrated and independently reviewed with WRAP coexistence. The
+detached/live GPU updates pass pre-run review; execution and installation are
+pending. The complete 32-pair Boron/Paranid transformer and independent numeric
+reference are being implemented in `/tmp/x3-material-boron-paranid`, using
+whole-register RGB and native scalar relocation with a required live WRAP
+component mapping. The installed material count remains 110.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

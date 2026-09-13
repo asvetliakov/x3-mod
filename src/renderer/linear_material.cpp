@@ -23,15 +23,20 @@ constexpr unsigned xyz = 7, xyzw = 15, identity = 0xe4;
 struct Pixel {
     std::uint64_t hash;
     unsigned words;
-    std::array<unsigned, 5> texture; // Physical samplers; DEFAULT uses s0-3, BUMP s0-4
+    // Physical samplers: conventional hull DEFAULT/BUMP use s0-3/s0-4;
+    // Asteroid DEFAULT/BUMP use s0-2/s0-3.
+    std::array<unsigned, 5> texture;
     unsigned affine_end, clamp, final_rgb, clamp_temporary;
     unsigned light0, light1; // light1 == 0 means the one-directional contract.
     std::array<unsigned, 4> color_source; // ORIGINAL source operand DWORDs.
     std::array<unsigned, 13> rgb; // Full-precision radiance destinations only.
     bool bump = false;
     // Two standard DEFAULT base pairs retain the temporal registry's TEX7
-    // depth semantic. Zero uses ordinary class A/B TEX5/6; RGB remains TEX6.
+    // depth semantic. Zero uses ordinary class A/B TEX5/6; RGB uses COLOR1.
     unsigned depth_texcoord_override = 0;
+    // Asteroid base/toggle DEFAULT/BUMP use four proved layouts and a
+    // base/detail texture product instead of the hull cube/lightmap tail.
+    unsigned asteroid_layout = 0;
 };
 constexpr Pixel pixels[] = {
     {0x8759c7838bbc86c2ull,1260,{1197,1175,1242,1229},1217,1206,1251,1,5,7,
@@ -166,16 +171,43 @@ constexpr Pixel pixels[] = {
      {1254,1259,1214,1246},{1211,1243,1251,1256,1273,1282,1315,1319,1323,1327,1341},true},
     {0xa6e1328c0bb3f401ull,355,{315,178,282,337,311},0,303,346,4,2,0,
      {326},{303,319,323,328,332,346},true},
+    {0x517540ae6d5e5410ull,397,{379,355,371},0,364,392,1,1,3,
+     {348,353,307,340},{304,337,345,350,359,364,367,375,383,392},false,0,1},
+    {0x7a0c3388065bb08dull,323,{305,280,297},0,289,318,0,1,0,
+     {295},{289,292,301,309,318},false,0,2},
+    {0xd44db87778a43b61ull,448,{430,274,406,422},0,415,443,1,1,3,
+     {399,404,358,391},{355,388,396,401,410,415,418,426,434,443},true,0,3},
+    {0x550c2a4d4d3ed70full,374,{356,254,331,348},0,340,369,0,1,0,
+     {346},{340,343,352,360,369},true,0,4},
 };
-struct Vertex { std::uint64_t hash; unsigned words; bool loop; bool bump = false; };
+struct Vertex {
+    std::uint64_t hash; unsigned words; bool loop; bool bump = false;
+    unsigned asteroid_layout = 0;
+    unsigned point = 0, emissive = 0, alpha = 0, point_temporary = 0;
+};
 constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
     {0x719856ce0c213220ull,526,true},{0xbadefd5143b3024full,481,false},
     {0x4944d81dfe531b37ull,556,true,true},{0x19a246a56e9d9700ull,511,false,true},
     {0x44c4a41ca92ae2e3ull,556,true,true},
-    {0x494fe349b8bc12ecull,526,true}};
+    {0x494fe349b8bc12ecull,526,true},
+    {0xb0602757fce6e870ull,520,true,false,1,419,434,507,4},
+    {0x0c223ad11bce02d5ull,517,true,false,2,416,431,500,4},
+    {0x233d17d26ce0c1fcull,472,false,false,2,397,401,455,1},
+    {0x167eb2d5629ab9d3ull,566,true,true,3,431,446,537,1},
+    {0x12b8a13f13fe8cfeull,518,false,true,4,409,413,485,0},
+    {0x330ceb9dd874ede2ull,563,true,true,4,428,443,530,1}};
 // Explicit archive pair contract: base shaders never gain toggle-VS admission
 // from table position. The live caller caches this allocation-free contract.
-struct Pair { std::uint64_t vertex, pixel; std::uint32_t sampler_mask = 0x0f; };
+constexpr bool bump_pixel(std::uint64_t hash) noexcept {
+    for (const auto& pixel:pixels) if (pixel.hash==hash) return pixel.bump;
+    return false;
+}
+struct Pair {
+    std::uint64_t vertex, pixel;
+    LinearMaterialPairContract contract;
+    constexpr Pair(std::uint64_t v, std::uint64_t p, std::uint32_t mask=0x0f) noexcept
+        : vertex(v), pixel(p), contract{mask,bump_pixel(p)} {}
+};
 constexpr Pair pairs[] = {
     {0x53a0a641107ed76cull,0x8759c7838bbc86c2ull},
     {0x53a0a641107ed76cull,0x63f96eba9eea7880ull},
@@ -287,17 +319,33 @@ constexpr Pair pairs[] = {
     {0xbadefd5143b3024full,0x61418505e5d8f998ull},
     {0xbadefd5143b3024full,0xb5f1d4145171026bull},
     {0xbadefd5143b3024full,0xcc09f17db377fd9eull},
+    {0xb0602757fce6e870ull,0x517540ae6d5e5410ull,0x07},
+    {0x0c223ad11bce02d5ull,0x7a0c3388065bb08dull,0x07},
+    {0x233d17d26ce0c1fcull,0x7a0c3388065bb08dull,0x07},
+    {0x167eb2d5629ab9d3ull,0xd44db87778a43b61ull,0x0f},
+    {0x12b8a13f13fe8cfeull,0x550c2a4d4d3ed70full,0x0f},
+    {0x330ceb9dd874ede2ull,0x550c2a4d4d3ed70full,0x0f},
 };
-// Two fixed family layouts, not a varying/temporary allocator. BUMP's original
-// basis occupies TEX0-4, so its existing class-B temporal ABI stays at TEX5/6.
-struct FamilyAbi { unsigned vertex_rgb, pixel_rgb, rgb_texcoord, pixel_scratch;
-    unsigned vertex_motion, pixel_motion, motion_texcoord; };
-constexpr FamilyAbi default_abi{8,7,6,9,6,5,4}, bump_abi{9,8,7,10,7,6,5};
+// Fixed family layouts, not a varying/temporary allocator. Asteroid's native
+// UV packing changes the existing motion/depth locations independently of
+// whether it samples a normal map. Preserve those complete row contracts.
+struct FamilyAbi { unsigned vertex_rgb, pixel_rgb, pixel_scratch;
+    unsigned vertex_motion, pixel_motion, motion_texcoord;
+    unsigned vertex_depth, pixel_depth, depth_texcoord; };
+constexpr FamilyAbi default_abi{8,7,9,6,5,4,7,6,5}, bump_abi{9,8,10,7,6,5,8,7,6};
+FamilyAbi family_abi(const Pixel& pixel) noexcept {
+    if (pixel.asteroid_layout==2) return {8,7,9,6,5,4,5,4,3};
+    if (pixel.asteroid_layout==3) return {10,9,9,8,7,6,9,8,7};
+    auto result=pixel.bump ? bump_abi : default_abi;
+    if (pixel.depth_texcoord_override) result.depth_texcoord=pixel.depth_texcoord_override;
+    return result;
+}
 unsigned temporal_temporary_base(const Pixel& pixel) noexcept {
+    if (pixel.asteroid_layout) return 5;
     return pixel.bump ? (pixel.light1 ? 7u : pixel.affine_end ? 6u : 5u) : 5u;
 }
-unsigned point_site(const Vertex& vertex) noexcept { return (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
-unsigned emissive_site(const Vertex& vertex) noexcept { return (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
+unsigned point_site(const Vertex& vertex) noexcept { return vertex.asteroid_layout ? vertex.point : (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
+unsigned emissive_site(const Vertex& vertex) noexcept { return vertex.asteroid_layout ? vertex.emissive : (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
 unsigned kind(Word token) noexcept { return ((token >> 28) & 7) | ((token >> 8) & 24); }
 unsigned index(Word token) noexcept { return token & 0x7ff; }
 unsigned mask(Word token) noexcept { return (token >> 16) & 15; }
@@ -375,6 +423,11 @@ bool body_shape(unsigned op, unsigned& operands, unsigned& slots, bool& destinat
     default: return false;
     }
 }
+bool reserved_varying(unsigned number, bool vertex, const FamilyAbi& abi) noexcept {
+    return number==(vertex?abi.vertex_motion:abi.pixel_motion) ||
+        number==(vertex?abi.vertex_depth:abi.pixel_depth) ||
+        number==(vertex?abi.vertex_rgb:abi.pixel_rgb);
+}
 // This narrow SM3 walk excludes comments/DEF literal words from register scans.
 // The existing motion transformer still performs its independent full proof.
 bool structure(const Word* code, std::size_t words, bool vertex, Structure& result,
@@ -399,10 +452,12 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
                 if (vertex || number>=samplers.size() || samplers[number] || (dimension!=2 && dimension!=3)) return false;
                 samplers[number]=dimension;
             }
-            if (original && ((type==(vertex ? output_reg : input) &&
-                 number>=(vertex ? abi.vertex_motion : abi.pixel_motion) && number<=(vertex ? abi.vertex_rgb : abi.pixel_rgb)) ||
-                ((code[at+1]&31)==5 && ((code[at+1]>>16)&15)>=abi.motion_texcoord &&
-                 ((code[at+1]>>16)&15)<=abi.rgb_texcoord && type==(vertex ? output_reg : input)))) return false;
+            const auto semantic=(code[at+1]>>16)&15;
+            const auto usage=code[at+1]&31;
+            if (original && type==(vertex ? output_reg : input) &&
+                (reserved_varying(number,vertex,abi) || (usage==5 &&
+                 (semantic==abi.motion_texcoord || semantic==abi.depth_texcoord)) ||
+                 (usage==LinearMaterialAbi::rgb_usage && semantic==LinearMaterialAbi::rgb_usage_index))) return false;
             if ((type==output_reg && number>=12) || (type==input && !vertex && number>=10)) return false;
         } else if (op==def) {
             if (n!=5) return false;
@@ -423,8 +478,7 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
                     (type==color_output && number>=4)) return false;
                 if (original && ((type==temp && number>=original_temp_count) ||
                     (type==constant && number>=(vertex ? 248u : 212u) && number<=(vertex ? 249u : 213u)) ||
-                    (type==(vertex ? output_reg : input) && number>=(vertex ? abi.vertex_motion : abi.pixel_motion) &&
-                     number<=(vertex ? abi.vertex_rgb : abi.pixel_rgb)))) return false;
+                    (type==(vertex ? output_reg : input) && reserved_varying(number,vertex,abi)))) return false;
                 ++parameters;
                 if (parameter&relative) {
                     if ((destination && offset==1) || ++offset>n || !vertex || kind(parameter)!=constant || index(parameter)>2 ||
@@ -460,8 +514,9 @@ bool no_write(const Word* code, const Structure& s, unsigned number, unsigned la
 }
 bool vertex_sites(const Word* code, const Structure& s, const Vertex& vertex) noexcept {
     const bool loop=vertex.loop;
-    const unsigned point=point_site(vertex), emissive=emissive_site(vertex), alpha=(loop?500:455)+(vertex.bump?27:0);
-    const unsigned point_temp=vertex.bump ? (loop?1:0) : (loop?5:1);
+    const unsigned point=point_site(vertex), emissive=emissive_site(vertex);
+    const unsigned alpha=vertex.asteroid_layout ? vertex.alpha : (loop?500:455)+(vertex.bump?27:0);
+    const unsigned point_temp=vertex.asteroid_layout ? vertex.point_temporary : vertex.bump ? (loop?1:0) : (loop?5:1);
     if (loop) {
         if (!exact(code,s,point,mul,dst(temp,point_temp),{lane(temp,3,3),src(constant,1)|relative,src(3,0,255)}) ||
             !exact(code,s,emissive,add,dst(output_reg,1),{src(temp,0),src(constant,40)})) return false;
@@ -478,6 +533,45 @@ bool vertex_sites(const Word* code, const Structure& s, const Vertex& vertex) no
     return writes==3;
 }
 bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept {
+    if (p.asteroid_layout) {
+        const unsigned detail=p.bump?3:2, specular=p.bump?2:1;
+        const Word detail_coordinate=p.light1 ? src(input,2) : src(input,1,0xee);
+        for (unsigned sampler=0; sampler<=detail; ++sampler)
+            if (!exact(code,s,p.texture[sampler],texld,dst(temp,0,xyzw)|pp,
+                       {sampler==detail?detail_coordinate:src(input,1),src(10,sampler)})) return false;
+        if (!exact(code,s,p.clamp,mov,dst(temp,p.clamp_temporary)|pp|sat,{src(input,0)}) ||
+            !exact(code,s,p.final_rgb,mul,dst(color_output,0)|pp,{src(temp,1),src(temp,0)}) ||
+            !exact(code,s,p.final_rgb-4,mul,dst(color_output,0,8)|pp,{lane(temp,0,3),lane(input,0,3)}) ||
+            !exact(code,s,p.texture[detail]+4,mul,dst(temp,2)|pp,{src(temp,0),lane(constant,p.light1?4:2,0)}) ||
+            !exact(code,s,p.texture[0]+4,mad,dst(temp,0)|pp,{lane(constant,p.light1?5:3,0),src(temp,0),src(temp,2)}) ||
+            !no_write(code,s,0,8,p.texture[0],p.final_rgb-4) ||
+            !no_write(code,s,2,xyz,p.texture[detail]+4,p.texture[0]+4)) return false;
+        unsigned outputs=0, textures=0, directional=0;
+        for (const auto& instruction:s.instructions) {
+            const auto at=static_cast<unsigned>(instruction.at);
+            if (instruction.opcode==texld) ++textures;
+            if (instruction.count && instruction.opcode!=dcl && kind(code[at+1])==color_output) {
+                if (at!=p.final_rgb && at!=p.final_rgb-4) return false;
+                ++outputs;
+            }
+            if (std::find(p.rgb.begin(),p.rgb.end(),at)!=p.rgb.end() &&
+                (mask(code[at+1])!=xyz || !(code[at+1]&pp) ||
+                 (instruction.opcode!=mov && instruction.opcode!=mul && instruction.opcode!=add && instruction.opcode!=mad))) return false;
+            if (instruction.opcode==dcl || instruction.opcode==def) continue;
+            for (unsigned operand=2; operand<=instruction.count; ++operand) {
+                const auto value=code[at+operand];
+                if (kind(value)!=constant || (index(value)!=p.light0 && (!p.light1 || index(value)!=p.light1))) continue;
+                const auto found=std::find(p.color_source.begin(),p.color_source.end(),at+operand);
+                if (found==p.color_source.end() || value!=src(constant,index(value)) ||
+                    index(value)!=(found-p.color_source.begin()<2?p.light0:p.light1)) return false;
+                ++directional;
+            }
+        }
+        for (unsigned at:p.rgb) if (at && (at>=s.boundary.size() || !s.boundary[at])) return false;
+        // The exact physical specular fetch is data; the source proof retains
+        // its scalar red chain and the optional AG normal reconstruction.
+        return p.texture[specular]!=0 && outputs==2 && textures==detail+1 && directional==(p.light1?4u:1u);
+    }
     const unsigned lightmap=p.bump?3:2, cube=p.bump?4:3;
     const unsigned albedo=p.bump?4:3, affine_source=p.bump?3:2;
     for (unsigned sampler=0; sampler<(p.bump?5u:4u); ++sampler) {
@@ -585,7 +679,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     Words& output, bool current_depth, bool vertex) noexcept {
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
-    // Bound the read before hashing; none of the seventy-three original programs exceeds
+    // Bound the read before hashing; none of the reviewed original programs exceeds
     // 1392 DWORDs, including opaque CTAB/preshader comments.
     if (words>1392) return LinearMaterialResult::UnsupportedShader;
     const auto hash=material_motion_fingerprint(original,words);
@@ -593,17 +687,17 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     const auto* p=vertex?nullptr:pixel_for(hash,words);
     if ((!v && vertex) || (!p && !vertex)) return LinearMaterialResult::UnsupportedShader;
     const bool bump=vertex ? v->bump : p->bump;
-    const auto& abi=bump ? bump_abi : default_abi;
     const auto* row=selected_row(vertex,hash);
     const auto* row_pixel=row ? pixel_for(row->pixel_fingerprint,row->pixel_dword_count) : nullptr;
     if (!row || !row_pixel || row_pixel->bump!=bump ||
-        row->transformation_class!=(bump ? MotionOutputClass::RelocatedRegisters : MotionOutputClass::ReferenceRegisters) ||
+        (vertex && row_pixel->asteroid_layout!=v->asteroid_layout)) return LinearMaterialResult::ProfileMismatch;
+    const auto abi=family_abi(*row_pixel);
+    if (row->transformation_class!=(bump ? MotionOutputClass::RelocatedRegisters : MotionOutputClass::ReferenceRegisters) ||
         row->vertex_output_register!=abi.vertex_motion || row->pixel_input_register!=abi.pixel_motion ||
         row->pixel_temporary_base!=temporal_temporary_base(*row_pixel) ||
         row->vertex_constant_base!=252 || row->pixel_constant_base!=216 || row->pixel_output_register!=1 ||
-        row->texcoord_index!=abi.motion_texcoord || row->vertex_depth_output_register!=abi.vertex_motion+1 ||
-        row->pixel_depth_input_register!=abi.pixel_motion+1 || row->depth_texcoord_index!=(row_pixel->depth_texcoord_override ? row_pixel->depth_texcoord_override : abi.motion_texcoord+1) ||
-        row->depth_texcoord_index==abi.rgb_texcoord ||
+        row->texcoord_index!=abi.motion_texcoord || row->vertex_depth_output_register!=abi.vertex_depth ||
+        row->pixel_depth_input_register!=abi.pixel_depth || row->depth_texcoord_index!=abi.depth_texcoord ||
         !row->depth_output) return LinearMaterialResult::ProfileMismatch;
     const unsigned original_temp_count=vertex ? 7u : temporal_temporary_base(*p);
     try {
@@ -631,7 +725,12 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             if (at==original_structure.first_declaration) definitions(combined,vertex,config);
             const auto declaration_at=vertex?row->vertex_declaration_insert_dword:row->pixel_declaration_insert_dword;
             if (at==declaration_at) {
-                emit(combined,dcl,{0x80000005u|(abi.rgb_texcoord<<16),dst(vertex?output_reg:input,vertex?abi.vertex_rgb:abi.pixel_rgb)});
+                // COLOR1 retains native color interpolation behavior, including
+                // FLAT shading, without inheriting D3DRS_WRAPn texture state.
+                // Its distinct physical register leaves the original COLOR0
+                // declaration and alpha precision unchanged.
+                emit(combined,dcl,{0x80000000u|LinearMaterialAbi::rgb_usage|(LinearMaterialAbi::rgb_usage_index<<16),
+                                  dst(vertex?output_reg:input,vertex?abi.vertex_rgb:abi.pixel_rgb)});
                 if (!vertex) {
                     transfer(combined,false,12,{src(constant,p->light0)},false,abi.pixel_scratch); gain(combined,false,12,0);
                     if (p->light1) { transfer(combined,false,13,{src(constant,p->light1)},false,abi.pixel_scratch); gain(combined,false,13,0); }
@@ -668,13 +767,18 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 for (unsigned ordinal=0; ordinal<p->color_source.size(); ++ordinal)
                     if (p->color_source[ordinal]>at && p->color_source[ordinal]<=at+n)
                         combined[copied+p->color_source[ordinal]-at]=src(temp,ordinal<2?12:13);
-                if (at==(p->affine_end?p->affine_end:p->texture[0])) {
-                    const unsigned albedo=p->affine_end?(p->bump?4:3):1;
-                    transfer(combined,false,albedo,{src(temp,albedo)},false,abi.pixel_scratch);
-                }
-                if (at==p->texture[p->bump?4:3]) transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);
-                if (at==p->texture[p->bump?3:2]) {
-                    transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch); gain(combined,false,0,2);
+                if (p->asteroid_layout) {
+                    if (at==p->texture[0] || at==p->texture[p->bump?3:2])
+                        transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);
+                } else {
+                    if (at==(p->affine_end?p->affine_end:p->texture[0])) {
+                        const unsigned albedo=p->affine_end?(p->bump?4:3):1;
+                        transfer(combined,false,albedo,{src(temp,albedo)},false,abi.pixel_scratch);
+                    }
+                    if (at==p->texture[p->bump?4:3]) transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);
+                    if (at==p->texture[p->bump?3:2]) {
+                        transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch); gain(combined,false,0,2);
+                    }
                 }
                 if (at==p->final_rgb) {
                     combined[copied+1]=dst(temp,11);
@@ -699,9 +803,12 @@ bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept {
     return true;
 }
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    return linear_material_pair_contract(vertex,pixel).sampler_mask;
+}
+LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     for (const auto& pair:pairs)
-        if (pair.vertex==vertex && pair.pixel==pixel) return pair.sampler_mask;
-    return 0;
+        if (pair.vertex==vertex && pair.pixel==pixel) return pair.contract;
+    return {};
 }
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     return linear_material_sampler_mask(vertex,pixel)!=0;

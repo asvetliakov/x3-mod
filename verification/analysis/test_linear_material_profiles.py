@@ -22,6 +22,31 @@ def pack(words):
     return struct.pack(f'<{len(words)}I', *words)
 
 
+def legacy_rgb_semantic_annotations(record):
+    """Restore only pre-COLOR1 resource annotations for historical digest checks.
+
+    The shader/source/alpha proofs, registers, instruction costs and all other
+    fields remain covered by their original checkpoint digests.
+    """
+    record = deepcopy(record)
+    record.pop('material_rgb_semantic_proof')
+    bump = any('bump' in family for family in record['families'])
+    legacy = (8 if record['id'][3:] in ('167eb2d5629ab9d3','d44db87778a43b61') else 7) if bump else 6
+    budget = record['budget']
+    if legacy in budget['free_texcoord_semantic_indices']:
+        budget['free_texcoord_semantic_indices'].remove(legacy)
+    resources = budget['material_resources_proven_free_before_reservation']
+    resources.pop('rgb_usage'); resources.pop('rgb_usage_index')
+    resources['rgb_texcoord_index'] = legacy
+    if 'explicit_reserved_texcoord_indices' in budget:
+        budget['explicit_reserved_texcoord_indices'] = sorted(budget['explicit_reserved_texcoord_indices'] + [legacy])
+    if 'material_abi' in record:
+        abi = record['material_abi']
+        abi.pop('material_rgb_usage'); abi.pop('material_rgb_usage_index')
+        abi['material_rgb_texcoord'] = legacy
+    return record
+
+
 class FramingTests(unittest.TestCase):
     def test_comment_payload_is_opaque_and_relative_offsets_are_exact(self):
         # Authored MOV r0.xyz, c1[a0.w]; preceding fake instruction/END words
@@ -53,7 +78,7 @@ class FramingTests(unittest.TestCase):
     def test_budget_excludes_both_temporal_paths_and_rejects_collisions(self):
         profile = {'constant_registers_direct': [0, 1, 2], 'defined_constant_registers': [3],
                    'temporary_registers': [0, 1, 2, 3], 'free_input_registers': list(range(5, 10)),
-                   'declared_texcoord_input_indices': [0, 1, 2, 3], 'opcode_counts': {'mul': 1}}
+                   'declared_texcoord_input_indices': [0, 1, 2, 3], 'opcode_counts': {'mul': 1}, 'declarations': []}
         result = linear.budget(profile, 'ps', False)
         self.assertEqual(result['free_interpolator_registers'], [8, 9])
         self.assertEqual(result['free_temporary_ranges'], [[4, 4], [8, 31]])
@@ -63,7 +88,7 @@ class FramingTests(unittest.TestCase):
                            ('free_input_registers', [5, 6, 8, 9]),
                            ('constant_registers_direct', [212]),
                            ('defined_constant_registers', [213]),
-                           ('declared_texcoord_input_indices', [0, 1, 2, 3, 6])]:
+                           ('declared_texcoord_input_indices', [0, 1, 2, 3, 4])]:
             broken = dict(profile, **{key: value})
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'collision'):
                 linear.budget(broken, 'ps', False)
@@ -87,9 +112,9 @@ class LocalOriginalTests(unittest.TestCase):
         cls.report = linear.inspect(cls.directory, cls.inventory_path)
 
     def test_all_originals_pairs_and_checked_in_profile_reproduce(self):
-        self.assertEqual(len(self.report['programs']), 73)
-        self.assertEqual(len(self.report['pairs']), 110)
-        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 408)
+        self.assertEqual(len(self.report['programs']), 83)
+        self.assertEqual(len(self.report['pairs']), 116)
+        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 440)
         self.assertEqual(self.report, json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text()))
         serialized = json.dumps(self.report)
         for forbidden in ('"token"', '"words"', '"expected"', '"replacement"'):
@@ -114,6 +139,7 @@ class LocalOriginalTests(unittest.TestCase):
     def test_point_relative_bound_and_fixed_point_are_distinct(self):
         vertices = {p['id']: p for p in self.report['programs'] if p['id'].startswith('vs_')}
         for name, profile in vertices.items():
+            if name[3:] in linear.ASTEROID_VERTICES: continue
             point = profile['point_rgb_sources'][0]
             bump = 'argon_bump' in profile['families']
             fixed = name.endswith(('badefd5143b3024f', '19a246a56e9d9700'))
@@ -238,11 +264,12 @@ class LocalOriginalTests(unittest.TestCase):
 
     def test_selected_material_resources_are_reserved_in_both_depth_modes(self):
         for original in self.report['programs']:
+            if original['families'][0].startswith('asteroid_'): continue
             stage = original['id'][:2]
             bump = any('bump' in family for family in original['families'])
             b = original['budget']
             self.assertEqual(b['reservations_apply_to_current_depth_modes'], [False, True])
-            self.assertNotIn(6, b['free_texcoord_semantic_indices'])
+            self.assertEqual(6 in b['free_texcoord_semantic_indices'], not bump)
             chosen = b['material_resources_proven_free_before_reservation']
             self.assertEqual(chosen['rgb_interpolator_register'], (8 if stage == 'ps' else 9) if bump else (7 if stage == 'ps' else 8))
             self.assertEqual(chosen['def_constants'], [212, 213] if stage == 'ps' else [248, 249])
@@ -250,7 +277,7 @@ class LocalOriginalTests(unittest.TestCase):
                 profile = linear.motion.profile(self.codes[original['id']], original['id'], stage, '3_0')
                 for key, value in [('constant_registers_direct', [248]), ('defined_constant_registers', [249]),
                                    ('free_output_registers', [6, 7, 9, 10, 11]),
-                                   ('declared_texcoord_output_indices', [0, 1, 2, 3, 6])]:
+                                   ('declared_texcoord_output_indices', [0, 1, 2, 3, 4])]:
                     broken = dict(profile, **{key: value})
                     with self.subTest(id=original['id'], collision=key), self.assertRaisesRegex(ValueError, 'collision'):
                         linear.budget(broken, stage, original['id'] != 'vs_badefd5143b3024f')
@@ -349,7 +376,7 @@ class LocalOriginalTests(unittest.TestCase):
                 linear.inspect(self.directory, path)
 
     def test_prior_fifteen_profile_records_remain_exact_except_budget_annotation(self):
-        records = deepcopy([p for p in self.report['programs'] if any(family in ('argon', 'shared_default') for family in p['families'])])
+        records = [legacy_rgb_semantic_annotations(p) for p in self.report['programs'] if any(family in ('argon', 'shared_default') for family in p['families'])]
         self.assertEqual(len(records), 15)
         for record in records:
             record['families'] = [family for family in record['families'] if family in ('argon','shared_default')]
@@ -495,7 +522,8 @@ class LocalOriginalTests(unittest.TestCase):
             profile = linear.motion.profile(self.codes[identifier], identifier, stage, '3_0')
             loop = stage == 'vs' and key != '19a246a56e9d9700'
             result = linear.budget(profile, stage, loop, True)
-            self.assertEqual(result['material_resources_proven_free_before_reservation']['rgb_texcoord_index'], 7)
+            self.assertEqual(result['material_resources_proven_free_before_reservation']['rgb_usage'], 'color')
+            self.assertEqual(result['material_resources_proven_free_before_reservation']['rgb_usage_index'], 1)
             for field, value in [('constant_registers_direct', [212 if stage == 'ps' else 248]),
                                  ('defined_constant_registers', [216 if stage == 'ps' else 252]),
                                  ('temporary_registers', list(range(11)) if stage == 'ps' else list(range(8))),
@@ -628,13 +656,15 @@ class LocalOriginalTests(unittest.TestCase):
         for name in ('o3','o4','o5'):
             self.assertNotIn('centroid',declarations[name]['modifiers'])
         for pair in self.report['pairs']:
+            if pair['family'].startswith('asteroid_'): continue
             self.assertEqual(pair['depth_texcoord_index'],7 if pair['vs'] == new[3:] else 6 if pair['motion_class'] == 'B' else 5)
         resources = linear.budget(original,'vs',True,False,7)
         self.assertNotIn(7,resources['free_texcoord_semantic_indices'])
-        self.assertNotIn(6,resources['free_texcoord_semantic_indices'])
+        self.assertIn(6,resources['free_texcoord_semantic_indices'])
         self.assertIn(5,resources['free_texcoord_semantic_indices'])
+        self.assertIn(7,linear.budget(original,'vs',True,False,6)['free_texcoord_semantic_indices'])
         with self.assertRaisesRegex(ValueError,'collision'):
-            linear.budget(original,'vs',True,False,6)
+            linear.budget(original,'vs',True,False,4)
 
 
     def test_remaining_hull_contracts_cover_complete_aliases_and_fixed_coefficients(self):
@@ -661,7 +691,7 @@ class LocalOriginalTests(unittest.TestCase):
         self.assertEqual(max(len(p['rgb_precision_sites']) for p in new_rows),13)
 
     def test_previous_49_program_records_remain_exact_except_family_annotations(self):
-        records = deepcopy([p for p in self.report['programs'] if p['id'][3:] not in linear.HULL_PIXELS])
+        records = [legacy_rgb_semantic_annotations(p) for p in self.report['programs'] if p['id'][3:] not in linear.HULL_PIXELS and not p['families'][0].startswith('asteroid_')]
         self.assertEqual(len(records),49)
         for record in records:
             record['families'] = [f for f in record['families'] if f not in ('shared_bump','split_bump','terran_default','terran_bump')]
@@ -705,6 +735,215 @@ class LocalOriginalTests(unittest.TestCase):
                 next(s for s in broken[cube[0]]['sources'] if s['name']==register)['swizzle']='xxxx'
                 with self.subTest(key=key,cube_half=True), self.assertRaises(ValueError):
                     linear.prove_hull_pixel(broken,key)
+
+    def test_previous_73_program_records_remain_exact(self):
+        records = {p['id']:legacy_rgb_semantic_annotations(p) for p in self.report['programs'] if not p['families'][0].startswith('asteroid_')}
+        self.assertEqual(len(records),73)
+        digest = hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.assertEqual(digest,'3782907d2037efb7ef3c05dad34480bdb175ba07471304745744b00bc36fedfc')
+
+    def test_asteroid_complete_alias_toggle_groups(self):
+        inventory = json.loads(self.inventory_path.read_text())
+        for family in ('asteroid_default','asteroid_bump'):
+            pairs = [p for p in self.report['pairs'] if p['family']==family]
+            self.assertEqual(len(pairs),3)
+            self.assertEqual(sum(p['archive_pass_occurrences'] for p in pairs),16)
+        for target in linear.ASTEROID_PAIRS:
+            for field in ('basenames','toggle_directories','catalogues','pass_occurrences','effect_entries'):
+                broken = deepcopy(inventory)
+                row = next(r for r in broken['pairs'] if (r['vs'],r['ps'])==target)
+                value = row['effects'][field]
+                if isinstance(value,list): value.pop()
+                else: row['effects'][field] -= 1
+                with self.subTest(pair=target,field=field),self.assertRaisesRegex(ValueError,'asteroid archive'):
+                    linear.prove_archive_coverage(broken)
+        broken = deepcopy(inventory)
+        row = next(r for r in broken['pairs'] if r['ps']=='517540ae6d5e5410')
+        row['ps']='7a0c3388065bb08d'
+        with self.assertRaisesRegex(ValueError,'asteroid archive'):
+            linear.prove_archive_coverage(broken)
+
+    def test_asteroid_every_executable_operand_is_proven_without_hash_gate(self):
+        # Mutate decoded operands directly, including interleaved geometry,
+        # point attenuation, cubic lobe, scalar weights and early output alpha.
+        # This tests the actual proof predicates; no fingerprint is consulted.
+        for stage,keys,prove in [('vs',linear.ASTEROID_VERTICES,linear.prove_asteroid_vertex),
+                                 ('ps',linear.ASTEROID_PIXELS,linear.prove_asteroid_pixel)]:
+            for key in keys:
+                original = self.decoded_original(stage+'_'+key)
+                for at,row in original.items():
+                    if row['item']['opcode'] in (31,81): continue
+                    mutations = ['opcode','predication','coissue']
+                    if row['destination']: mutations += ['destination','precision','write_mask']
+                    mutations += [('source',n) for n in range(len(row['sources']))]
+                    for mutation in mutations:
+                        broken = deepcopy(original)
+                        r = broken[at]
+                        if mutation=='opcode': r['item']['opcode']=1 if r['item']['opcode']!=1 else 5
+                        elif mutation=='predication': r['item']['predicated']=True
+                        elif mutation=='coissue': r['item']['coissued']=True
+                        elif mutation=='destination': r['destination']['name']='r31'
+                        elif mutation=='precision': r['destination']['modifiers']=['saturate','partial_precision','centroid']
+                        elif mutation=='write_mask': r['destination']['mask']='w' if r['destination']['mask']!='w' else 'xyz'
+                        else:
+                            source=r['sources'][mutation[1]]
+                            source['swizzle']='xxxx' if source['swizzle']!='xxxx' else 'yyyy'
+                        with self.subTest(stage=stage,key=key,at=at,mutation=mutation),self.assertRaises(ValueError):
+                            prove(broken,key)
+                # Deletion and extra temporary writes fail the complete-chain
+                # inventory, rather than relying solely on selected motifs.
+                at = next(at for at,r in original.items() if r['item']['opcode'] not in (31,81))
+                for kind in ('delete','extra'):
+                    broken=deepcopy(original)
+                    if kind=='delete': del broken[at]
+                    else: broken[10000]=deepcopy(broken[at])
+                    with self.subTest(stage=stage,key=key,kind=kind),self.assertRaises(ValueError):
+                        prove(broken,key)
+
+    def test_asteroid_literals_and_relative_address_liveness_without_hash_gate(self):
+        for stage,keys,prove in [('vs',linear.ASTEROID_VERTICES,linear.prove_asteroid_vertex),
+                                 ('ps',linear.ASTEROID_PIXELS,linear.prove_asteroid_pixel)]:
+            for key in keys:
+                original=self.decoded_original(stage+'_'+key)
+                definition=next(at for at,r in original.items() if r['item']['opcode']==81)
+                for lane in range(4):
+                    broken=deepcopy(original)
+                    words=list(broken[definition]['item']['words'])
+                    words[lane+1]=struct.unpack('<I',struct.pack('<f',7.25))[0]
+                    broken[definition]['item']['words']=tuple(words)
+                    with self.subTest(key=key,lane=lane),self.assertRaises(ValueError): prove(broken,key)
+                for at,row in original.items():
+                    for n,source in enumerate(row['sources']):
+                        if not source['relative']: continue
+                        for field,value in [('name','c7'),('address_register','a1'),('address_component','x'),
+                                            ('relative_operand_dword',source['relative_operand_dword']+1)]:
+                            broken=deepcopy(original); broken[at]['sources'][n][field]=value
+                            with self.subTest(key=key,at=at,field=field),self.assertRaises(ValueError): prove(broken,key)
+
+    def test_asteroid_four_explicit_abis_and_collisions(self):
+        layouts=set()
+        for p in self.report['programs']:
+            if not p['families'][0].startswith('asteroid_'): continue
+            stage,key=p['id'].split('_')
+            bump,base,*_= (linear.ASTEROID_VERTICES if stage=='vs' else linear.ASTEROID_PIXELS)[key]
+            loop=linear.ASTEROID_VERTICES[key][2] if stage=='vs' else False
+            abi=p['material_abi']; layouts.add((abi['material_vs_rgb_output'],abi['material_rgb_usage_index'],abi['depth_texcoord']))
+            profile=linear.motion.profile(self.codes[p['id']],p['id'],stage,'3_0')
+            self.assertEqual(p['budget']['reservations_apply_to_current_depth_modes'],[False,True])
+            for index in p['budget']['explicit_reserved_interpolator_registers']:
+                broken=deepcopy(profile)
+                broken['free_input_registers' if stage=='ps' else 'free_output_registers'].remove(index)
+                with self.subTest(key=key,register=index),self.assertRaisesRegex(ValueError,'collision'):
+                    linear.asteroid_budget(broken,stage,loop,abi)
+            for index in p['budget']['explicit_reserved_texcoord_indices']:
+                broken=deepcopy(profile)
+                broken['declared_texcoord_input_indices' if stage=='ps' else 'declared_texcoord_output_indices'].append(index)
+                with self.subTest(key=key,semantic=index),self.assertRaisesRegex(ValueError,'collision'):
+                    linear.asteroid_budget(broken,stage,loop,abi)
+            for name,indices in [('temporary_registers',abi[f'material_{stage}_temporaries']),
+                                 ('constant_registers_direct',abi[f'material_{stage}_def_constants'])]:
+                broken=deepcopy(profile);broken[name]+=indices
+                with self.subTest(key=key,resource=name),self.assertRaisesRegex(ValueError,'collision'):
+                    linear.asteroid_budget(broken,stage,loop,abi)
+            for n,d in enumerate(profile['declarations']):
+                for field,value in [('mask','w'),('modifiers',['saturate'])]:
+                    broken=deepcopy(profile);broken['declarations'][n][field]=value
+                    with self.subTest(key=key,decl=d['name'],field=field),self.assertRaises(ValueError):
+                        linear.asteroid_declarations(broken,stage,bump,base)
+        self.assertEqual(layouts,{(8,1,5),(8,1,3),(10,1,7),(9,1,6)})
+        for pair in self.report['pairs']:
+            if not pair['family'].startswith('asteroid_'):continue
+            abi=pair['material_abi']
+            self.assertEqual(pair['depth_plan']['depth_texcoord_index'],abi['depth_texcoord'])
+            self.assertEqual(pair['motion_plan']['ps_temporaries'],[5,6,7])
+
+    def test_asteroid_detail_alpha_lobe_and_interleaved_position_contracts(self):
+        slots={'517540ae6d5e5410':38,'7a0c3388065bb08d':25,'d44db87778a43b61':47,'550c2a4d4d3ed70f':34}
+        for p in self.report['programs']:
+            key=p['id'][3:]
+            if key in linear.ASTEROID_PIXELS:
+                bump,base,_=linear.ASTEROID_PIXELS[key]
+                proof=p['alpha_and_affine_proof']
+                self.assertEqual(p['budget']['original_static_weighted_slots'],slots[key])
+                self.assertEqual(proof['alpha_model'],'base_alpha_times_vertex_alpha')
+                self.assertEqual((proof['specular_power'],proof['specular_outer_scale'],proof['grazing_scale']),(3,1.,3.))
+                self.assertIsNone(p['alpha_interpolation_site'])
+                self.assertLess(p['alpha_output_sites'][0]['instruction_dword'],p['final_rgb_sites'][0]['instruction_dword'])
+                self.assertEqual([x['role'] for x in p['texture_sources']],
+                                 ['diffuse_rgb','normal_data_alpha_green','specular_data_red','detail_rgb'] if bump else
+                                 ['diffuse_rgb','specular_data_red','detail_rgb'])
+                for texture in (p['texture_sources'][0],p['texture_sources'][-1]):
+                    self.assertEqual(texture['conversion_after_dword'],texture['fetch']['end_dword'])
+                    self.assertEqual(texture['conversion_rgb_register'],'r0')
+                self.assertEqual(p['texture_sources'][-1]['fetch']['sources'][0]['swizzle'],'xyzw' if base else 'zwzw')
+                self.assertEqual(p['detail_weighting']['base']['register'],'c5' if base else 'c3')
+                self.assertEqual(p['detail_weighting']['detail']['register'],'c4' if base else 'c2')
+                self.assertNotIn(p['alpha_output_sites'][0]['instruction_dword'],[r['instruction_dword'] for r in p['rgb_precision_sites']])
+            elif key in linear.ASTEROID_VERTICES:
+                _,base,loop,_=linear.ASTEROID_VERTICES[key]
+                q=p['point_and_alpha_proof']; sites=q['position_dp4_dwords']
+                self.assertEqual(q['position_matrix_register'],24 if loop else 0)
+                self.assertEqual(sites[-1]-sites[0],12 if base else 17 if loop else 21)
+                self.assertEqual(q['point_loop'].get('runtime_count_range_required'),[0,8] if loop else None)
+
+
+    def test_all_83_original_color1_semantics_are_free_and_unsaturated(self):
+        for p in self.report['programs']:
+            semantic=p['material_rgb_semantic_proof']
+            self.assertEqual(semantic['authored_declaration_contract'],
+                             {'usage':'color','usage_index':1,'mask':'xyz','modifiers':[]})
+            self.assertFalse(semantic['authored_rgb_saturate_modifier'])
+            self.assertFalse(semantic['authored_rgb_partial_precision_modifier'])
+            self.assertTrue(semantic['native_color0_preserved'])
+            self.assertTrue(semantic['separate_physical_register_required'])
+            self.assertEqual([d['usage_index'] for d in semantic['original_stage_color_declarations']],[0])
+            chosen=p['budget']['material_resources_proven_free_before_reservation']
+            self.assertEqual((chosen['rgb_usage'],chosen['rgb_usage_index']),('color',1))
+            self.assertNotIn('rgb_texcoord_index',chosen)
+        for abi in [self.report['reserved_abi'],self.report['bump_reserved_abi']] + [p['material_abi'] for p in self.report['pairs'] if 'material_abi' in p]:
+            self.assertEqual((abi['material_rgb_usage'],abi['material_rgb_usage_index']),('color',1))
+            self.assertNotIn('material_rgb_texcoord',abi)
+
+    def test_actual_color1_dcl_collision_rejected_without_fingerprint_gate(self):
+        for p in self.report['programs']:
+            identifier=p['id']; stage,key=identifier.split('_')
+            code=self.codes[identifier]
+            profile=linear.motion.profile(code,identifier,stage,'3_0')
+            role='output' if stage=='vs' else 'input'
+            declaration=next(d for d in profile['declarations'] if d['role']==role and d.get('usage')==5)
+            # Change an ORIGINAL stage TEXCOORD declaration to COLOR1, keeping
+            # its register/mask/precision intact. Decode real DCL words again;
+            # bypass inspect_program so rejection cannot come from its hash.
+            words=list(struct.unpack(f'<{len(code)//4}I',code))
+            at=declaration['dword']+1
+            words[at]=(words[at] & ~0x000f001f) | (1<<16) | 10
+            broken=linear.motion.profile(pack(words),identifier,stage,'3_0')
+            self.assertTrue(any(d.get('usage')==10 and d['usage_index']==1 for d in broken['declarations'] if d['role']==role))
+            with self.subTest(id=identifier),self.assertRaisesRegex(ValueError,'COLOR1'):
+                if key in linear.ASTEROID_VERTICES or key in linear.ASTEROID_PIXELS:
+                    loop=linear.ASTEROID_VERTICES[key][2] if stage=='vs' else False
+                    linear.asteroid_budget(broken,stage,loop,p['material_abi'])
+                else:
+                    bump=any('bump' in family for family in p['families'])
+                    linear.budget(broken,stage,p['budget']['relative_constant_bound_required'],bump)
+
+    def test_color1_reservation_releases_only_the_previous_rgb_texcoord(self):
+        # Restore only the explicitly changed semantic/precision annotations.
+        # The exact pre-phase digest still binds every original site, operand,
+        # alpha/math proof, register, resource range and instruction cost.
+        records=[legacy_rgb_semantic_annotations(p) for p in self.report['programs']]
+        self.assertEqual(len(records),83)
+        digest=hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.assertEqual(digest,'ec2244eaac288eba5facdfb65b4f4af415cc2d63e5ef2a43e246eb0969c15e5a')
+        for current,old in zip(self.report['programs'],records):
+            legacy=old['budget']['material_resources_proven_free_before_reservation']['rgb_texcoord_index']
+            self.assertEqual(set(current['budget']['free_texcoord_semantic_indices']),
+                             set(old['budget']['free_texcoord_semantic_indices'])|{legacy})
+            if 'material_abi' in current:
+                abi=current['material_abi']
+                self.assertEqual(current['budget']['explicit_reserved_texcoord_indices'],
+                                 sorted([abi['motion_texcoord'],abi['depth_texcoord']]))
+
 
 
 if __name__ == '__main__':

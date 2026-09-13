@@ -229,6 +229,466 @@ ALL_PIXELS.update(HULL_PIXELS)
 ALL_BUMP_PIXELS.update({key: value for key, value in HULL_PIXELS.items() if PIXEL_FAMILY[key] != 'terran_default'})
 
 
+# Asteroid has its own UV, light and resource contracts. These descriptive
+# operand proofs intentionally do not broaden the conventional hull matcher.
+ASTEROID_VERTICES = {
+    # bump, base (separate detail UV), point loop, first executable DWORD
+    'b0602757fce6e870': (False, True, True, 335),
+    '0c223ad11bce02d5': (False, False, True, 332),
+    '233d17d26ce0c1fc': (False, False, False, 314),
+    '167eb2d5629ab9d3': (True, True, True, 347),
+    '12b8a13f13fe8cfe': (True, False, False, 326),
+    '330ceb9dd874ede2': (True, False, True, 344),
+}
+ASTEROID_PIXELS = {
+    '517540ae6d5e5410': (False, True, 257),
+    '7a0c3388065bb08d': (False, False, 237),
+    'd44db87778a43b61': (True, True, 274),
+    '550c2a4d4d3ed70f': (True, False, 254),
+}
+ASTEROID_PAIRS = {
+    ('b0602757fce6e870', '517540ae6d5e5410'),
+    ('0c223ad11bce02d5', '7a0c3388065bb08d'),
+    ('233d17d26ce0c1fc', '7a0c3388065bb08d'),
+    ('167eb2d5629ab9d3', 'd44db87778a43b61'),
+    ('12b8a13f13fe8cfe', '550c2a4d4d3ed70f'),
+    ('330ceb9dd874ede2', '550c2a4d4d3ed70f'),
+}
+
+ORIGINALS.update({
+    'vs_b0602757fce6e870': ('33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785', 520),
+    'vs_0c223ad11bce02d5': ('573d688222bcdee8234d60123199d5fc7b65158e8201b3e99a37bd254a697dd3', 517),
+    'vs_233d17d26ce0c1fc': ('0101713ccc59fd34de25637bdfe903d8806e8f22fcd13e0810460a518ada2111', 472),
+    'vs_167eb2d5629ab9d3': ('fe2bc3e8b3a76315a4225d409fcf0a25b3d2eb456745dd3dd3bcf0da81e222c6', 566),
+    'vs_12b8a13f13fe8cfe': ('2bbd1f6d8d88dc72663e3b4408d0c3d12fa89127dbaa8cd95c682ee2b6198bac', 518),
+    'vs_330ceb9dd874ede2': ('77280b11612c3c8c30d02e75385b292d5dd0d580c3663ba527224c6daed148c5', 563),
+    'ps_517540ae6d5e5410': ('e863f6196bad66465442a9a27923953ab11b71be6ab60d325237e2f5e2f85329', 397),
+    'ps_7a0c3388065bb08d': ('ac32e61edcf09cd6e3d5a2d05524131754e128b2fd2530103bdcb6bb0cfca8e7', 323),
+    'ps_d44db87778a43b61': ('481ff206a4d729023fb44f930d6a30f9972318e9d1c24cab72b11869eb856dc8', 448),
+    'ps_550c2a4d4d3ed70f': ('4cabe57e615dae67307a2c875fdef49c1211b2235c80b16c6b938e358128c900', 374),
+})
+for _family, _bump in (('asteroid_default', False), ('asteroid_bump', True)):
+    FAMILIES[_family] = {'pixels':[key for key,value in ASTEROID_PIXELS.items() if value[0] == _bump],
+                         'production_status':'implemented_pending_GPU', 'aliases':['asteroid'],
+                         'technique':'BUMPMAP' if _bump else 'DEFAULT',
+                         'coefficients':{'diffuse':1.0,'specular_power':3,'specular_outer_scale':1.0,'grazing_scale':3.0,'cube':0.0}}
+    PIXEL_FAMILY.update({key:_family for key in FAMILIES[_family]['pixels']})
+PAIRS |= ASTEROID_PAIRS
+
+
+def asteroid_chain(decoded, start, precision=()):
+    """Collect a bounded, manually specified family chain with exact lengths."""
+    rows = []
+    cursor = start
+    def emit(op, dest, sources, modifiers=None):
+        nonlocal cursor
+        row = expect(decoded, cursor, op, dest, sources,
+                     precision if modifiers is None else modifiers)
+        rows.append(row)
+        cursor = row['end_dword']
+        return row['instruction_dword']
+    return rows, emit
+
+
+def asteroid_complete_chain(decoded, rows):
+    executable = [at for at, row in decoded.items() if row['item']['opcode'] not in (31, 81)]
+    require(executable == [row['instruction_dword'] for row in rows],
+            'asteroid complete executable inventory changed')
+    require(all(not row['item']['predicated'] and not row['item']['coissued'] for row in decoded.values()),
+            'asteroid predication/coissue changed')
+
+
+def prove_asteroid_vertex(decoded, key):
+    """Prove complete geometry, point-light, UV/basis, fog and alpha producers."""
+    bump, base, loop, start = ASTEROID_VERTICES[key]
+    rows, emit = asteroid_chain(decoded, start)
+    c = 'c42' if loop else 'c21'
+    literals = [literal_component(decoded, c, lane, value) for lane, value in zip('xyzw', (1., 0., 3., 0.))]
+    position = 'r2' if bump else 'r1' if loop else 'r0'
+    world = 'r3' if bump and loop else 'r4' if bump else 'r2'
+    normal = 'r4' if bump and loop else 'r3'
+    normal_out = 'o5' if bump and base else 'o4' if bump or not base else 'o5'
+    view_out = 'o4' if base else 'o3'
+    # All geometry preparation keeps its native homogeneous W (including
+    # normal/basis preparations); material work cannot borrow these live temps.
+    if loop:
+        emit('mad',(position,'xyzw'),[('v0','xyzx'),(c,'xxxy'),(c,'yyyx')])
+        emit('dp4',(world,'z'),[(position,'xyzw'),('c30','xyzw')])
+        emit('dp4',(world,'x'),[(position,'xyzw'),('c28','xyzw')])
+        emit('mad',('r0','xyzw'),[('v2','xyzx'),(c,'xxxy'),(c,'yyyx')])
+        emit('dp4',(world,'y'),[(position,'xyzw'),('c29','xyzw')])
+        for lane, matrix in [('z',33),('x',31),('y',32)]:
+            emit('dp4',(normal,lane),[('r0','xyzw'),(f'c{matrix}','xyzw')])
+        emit('mov',('r0','xyz'),[(c,'yyyy')])
+        counter = emit('mov',('r0','w'),[(c,'yyyy')])
+        rep = emit('rep',None,[('i0','xyzw')])
+        atten, scalar, cosine = ('r1','r1','r3') if bump else ('r4','r2','r3')
+        emit('mul',(scalar,'w'),[('r0','wwww'),(c,'zzzz')])
+        address = emit('mova',('a0','w'),[(scalar,'wwww')])
+        relative_position = emit('add',('r5','xyz'),[(world,'xyzw',1),('c0','xyzw',0,'a0','w')])
+        emit('dp3',(atten,'z'),[('r5','xyzw'),('r5','xyzw')])
+        emit('rsq',(scalar,'w'),[(atten,'zzzz')])
+        emit('mul',('r5','xyz'),[('r5','xyzw'),(scalar,'wwww')])
+        emit('mul',(atten,'y'),[(atten,'zzzz'),(scalar,'wwww')])
+        emit('mov',(atten,'x'),[(c,'xxxx')])
+        emit('dp3',(cosine,'w'),[(normal,'xyzw'),('r5','xyzw')],('saturate',))
+        relative_atten = emit('dp3',(scalar,'w'),[('c2','xyzw',0,'a0','w'),(atten,'xyzw')])
+        emit('rcp',(scalar,'w'),[(scalar,'wwww')],('saturate',))
+        point = emit('mul',(atten,'xyz'),[(cosine,'wwww'),('c1','xyzw',0,'a0','w')])
+        emit('mad',('r0','xyz'),[(atten,'xyzw'),(scalar,'wwww'),('r0','xyzw')])
+        increment = emit('add',('r0','w'),[('r0','wwww'),(c,'xxxx')])
+        endrep = emit('endrep',None,[])
+        material = emit('add',('o1','xyz'),[('r0','xyzw'),('c40','xyzw')])
+        require(lane_writes(decoded,'a0') == [address], 'asteroid point address overwritten')
+        require(lane_writes(decoded,'r0','w',counter-1,endrep+1) == [counter,increment], 'asteroid loop counter overwritten')
+        relative = [(at,s['name']) for at,row in decoded.items() for s in row['sources'] if s['relative']]
+        require(relative == [(relative_position,'c0'),(relative_atten,'c2'),(point,'c1')], 'asteroid relative point inventory changed')
+        point_proof = {'rep_dword':rep, 'endrep_dword':endrep, 'counter_initialization_dword':counter,
+                       'counter_increment_dword':increment, 'address_write_dword':address,
+                       'verified_stride':3, 'runtime_count_range_required':[0,8]}
+    else:
+        uvprep = 'r0' if bump else 'r1'
+        light = 'r1' if bump else 'r3'
+        scalar = 'r0' if bump else 'r1'
+        emit('mov',('r5','x'),[(c,'xxxx')])
+        emit('mad',(position,'xyzw'),[('v0','xyzx'),(c,'xxxy'),(c,'yyyx')])
+        emit('mad',(uvprep,'xyz'),[('v1','xyxw'),(c,'xxyw'),(c,'yyxw')])
+        for lane,matrix in [('z',9),('x',7),('y',8)]:
+            emit('dp4',(world,lane),[(position,'xyzw'),(f'c{matrix}','xyzw')])
+        emit('dp3',('r6','y'),[(uvprep,'xyzw'),('c17','xyzw')])
+        emit('add',(light,'xyz'),[(world,'xyzw',1),('c4','xyzw')])
+        emit('dp3',('r6','x'),[(uvprep,'xyzw'),('c16','xyzw')])
+        emit('dp3',('r5','z'),[(light,'xyzw'),(light,'xyzw')])
+        emit('mov',('o2','xy'),[('r6','xyzw')])
+        emit('rsq',('r1' if bump else 'r2','w'),[('r5','zzzz')])
+        emit('mul',('r5','y'),[('r5','zzzz'),('r1' if bump else 'r2','wwww')])
+        emit('mad',(uvprep,'xyzw'),[('v2','xyzx'),(c,'xxxy'),(c,'yyyx')])
+        emit('mul',('r1' if bump else 'r4','xyz'),[(light,'xyzw'),('r1' if bump else 'r2','wwww')])
+        for lane,matrix in [('z',12),('x',10),('y',11)]:
+            emit('dp4',(normal,lane),[(uvprep,'xyzw'),(f'c{matrix}','xyzw')])
+        emit('dp3',(scalar,'w'),[('c6','xyzw'),('r5','xyzw')])
+        emit('dp3',(scalar,'z'),[(normal,'xyzw'),('r1' if bump else 'r4','xyzw')],('saturate',))
+        emit('rcp',(scalar,'w'),[(scalar,'wwww')],('saturate',))
+        point = emit('mul',(scalar,'xyz'),[(scalar,'zzzz'),('c5','xyzw')])
+        material = emit('mad',('o1','xyz'),[(scalar,'xyzw'),(scalar,'wwww'),('c19','xyzw')])
+        require(not any(s['relative'] for row in decoded.values() for s in row['sources']), 'asteroid fixed point became relative')
+        point_proof = {'model':'fixed_single_point','relative_sources':0}
+    point_end = len(rows)
+    tangent_out, binormal_out = ('o6','o7') if base else ('o5','o6')
+    it = 31 if loop else 10
+    basis_start = None
+    if bump:
+        basis_start = emit('mad',('r1','xyzw'),[('v4','xyzx'),(c,'xxxy'),(c,'yyyx')])
+        if not base: emit('dp4',(tangent_out,'z'),[('r1','xyzw'),(f'c{it+2}','xyzw')])
+        emit('mad',('r0','xyzw'),[('v3','xyzx'),(c,'xxxy'),(c,'yyyx')])
+        if base: emit('dp4',(tangent_out,'z'),[('r1','xyzw'),(f'c{it+2}','xyzw')])
+        emit('dp4',(binormal_out,'z'),[('r0','xyzw'),(f'c{it+2}','xyzw')])
+    emit('mov',(normal_out,'xyz'),[(normal,'xyzw')])
+    matrix = 24 if loop else 0
+    position_sites = [emit('dp4',('o0',lane),[(position,'xyzw'),(f'c{matrix+i}','xyzw')]) for i,lane in enumerate('xyz')]
+    uvprep = 'r2' if bump and base else 'r4' if bump else 'r0'
+    uv = 'r4' if bump and base else 'r5' if bump else 'r1'
+    view = 'r2' if bump else 'r0'
+    if loop:
+        if base: position_sites.append(emit('dp4',('o0','w'),[(position,'xyzw'),('c27','xyzw')]))
+        emit('mad',(uvprep,'xyz'),[('v1','xyxw'),(c,'xxyw'),(c,'yyxw')])
+        if not base: position_sites.append(emit('dp4',('o0','w'),[(position,'xyzw'),('c27','xyzw')]))
+        emit('dp3',(uv,'y'),[(uvprep,'xyzw'),('c38','xyzw')])
+        emit('dp3',(uv,'x'),[(uvprep,'xyzw'),('c37','xyzw')])
+        if base: emit('mov',('o2','xy'),[(uv,'xyzw')])
+        for lane,index in [('y',35),('x',34),('z',36)]: emit('mov',(view,lane),[(f'c{index}','wwww')])
+        if base: emit('mul',('o3','xy'),[(uv,'xyzw'),(c,'zzzz')])
+        else: emit('mov',('o2','xy'),[(uv,'xyzw')])
+        view_start = emit('add',(view,'xyz'),[(world,'xyzw',1),(view,'xyzw')])
+    else:
+        for lane,index in [('x',13),('y',14),('z',15)]: emit('mov',('r3' if bump else 'r1',lane),[(f'c{index}','wwww')])
+        position_sites.append(emit('dp4',('o0','w'),[(position,'xyzw'),('c3','xyzw')]))
+        view_start = emit('add',(view,'xyz'),[(world,'xyzw',1),('r3' if bump else 'r1','xyzw')])
+        uv = 'r6'
+    fog = 'c41' if loop else 'c20'
+    alpha = 'c39' if loop else 'c18'
+    emit('if',None,[('b0','xyzw')])
+    emit('dp3',(view,'w'),[(view,'xyzw'),(view,'xyzw')])
+    emit('rsq',(view,'w'),[(view,'wwww')])
+    emit('rcp',(view,'w'),[(view,'wwww')])
+    emit('mad',(view,'w'),[(fog,'yyyy'),(view,'wwww',1),(fog,'xxxx')],('saturate',))
+    alpha_sites = [emit('mul',('o1','w'),[(view,'wwww'),(alpha,'xxxx')])]
+    emit('else',None,[])
+    alpha_sites.append(emit('mov',('o1','w'),[(alpha,'xxxx')]))
+    emit('endif',None,[])
+    view_export = emit('mov',(view_out,'xyz'),[(view,'xyzw')])
+    if bump:
+        for out,reg in [(tangent_out,'r1'),(binormal_out,'r0')]:
+            for i,lane in enumerate('xy'): emit('dp4',(out,lane),[(reg,'xyzw'),(f'c{it+i}','xyzw')])
+    if not base: emit('mul',('o2','zw'),[(uv,'xyxy'),(c,'zzzz')])
+    asteroid_complete_chain(decoded, rows)
+    require(lane_writes(decoded,'o1') == [material]+alpha_sites, 'asteroid COLOR0 output inventory changed')
+    for lane in 'xyz': no_lane_writes(decoded,view,lane,view_start,view_export)
+    position_prep = next(r['instruction_dword'] for r in rows if r['opcode']=='mad' and r['sources'][0]['name']=='v0')
+    for lane in 'xyzw': no_lane_writes(decoded,position,lane,position_prep,max(position_sites))
+    if bump:
+        for reg in ('r0','r1'):
+            prep = next(r['instruction_dword'] for r in rows if r['instruction_dword'] >= basis_start and r['destination'] and r['destination']['name']==reg and r['opcode']=='mad')
+            last = max(r['instruction_dword'] for r in rows if r['opcode']=='dp4' and r['sources'][0]['name']==reg)
+            for lane in 'xyzw': no_lane_writes(decoded,reg,lane,prep,last)
+    return {'point_model': 'loop_count_i0_x_0_to_8_stride_3_a0_w' if loop else 'fixed_single_point',
+            'point_rgb_dword':point, 'material_emissive_dword':material, 'alpha_dwords':alpha_sites,
+            'point_loop':point_proof, 'literal_sites':literals,
+            'position_dp4_dwords':position_sites, 'position_source_temporary':int(position[1:]),
+            'position_matrix_register':matrix, 'position_producer_dword':position_prep,
+            'geometry_and_point_sites':rows[:point_end], 'geometry_uv_and_alpha_sites':rows[point_end:],
+            'complete_executable_chain_checked':len(rows), 'view_live_interval':[view_start,view_export],
+            'basis_model':'native_v4_tangent_v3_binormal_world_it' if bump else 'geometric_normal',
+            'detail_uv_model':'separate_texcoord1' if base else 'texcoord0_zw'}
+
+
+def prove_asteroid_pixel(decoded, key):
+    """Exact native cubic lobe, independent scalar weights and base-only alpha."""
+    bump, base, start = ASTEROID_PIXELS[key]
+    rows, emit = asteroid_chain(decoded,start,PP)
+    c = 'c6' if base else 'c4'
+    values = (2.,-1.,1.,3.) if bump else (3.,0.,0.,0.)
+    literals = [literal_component(decoded,c,lane,value) for lane,value in zip('xyzw',values)]
+    three = (c,'wwww' if bump else 'xxxx')
+    v = 3 if base else 2
+    if bump:
+        emit('texld',('r0','xyzw'),[('v1','xyzw'),('s1','xyzw')])
+        emit('mad',('r1','xy'),[(c,'xxxx'),('r0','wyzw'),(c,'yyyy')])
+        emit('dp2add',('r0','w'),[('r1','xyzw'),('r1','xyzw',1),(c,'zzzz')])
+        emit('mul',('r0','xyz'),[('r1','yyyy'),(f'v{v+2}','xyzw')])
+        emit('rsq',('r0','w'),[('r0','wwww')])
+        emit('mad',('r0','xyz'),[('r1','xxxx'),(f'v{v+3}','xyzw'),('r0','xyzw')])
+        emit('rcp',('r0','w'),[('r0','wwww')])
+        emit('mad',('r1','xyz'),[('r0','wwww'),(f'v{v+1}','xyzw'),('r0','xyzw')])
+    normal = emit('nrm',('r0','xyz'),[('r1' if bump else f'v{v+1}','xyzw')])
+    normal_count = len(rows)
+    direction = 'c2' if base else 'c0'
+    emit('dp3',('r0','w'),[(direction,'xyzw',1),('r0','xyzw')])
+    emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')])
+    if base and not bump: emit('nrm',('r3','xyz'),[(f'v{v}','xyzw')])
+    emit('mad',('r1','xyz'),[('r0','xyzw'),('r0','wwww',1),(direction,'xyzw',1)])
+    if bump or not base: emit('nrm',('r3' if base else 'r2','xyz'),[(f'v{v}','xyzw')])
+    emit('dp3',('r0','w'),[('r1','xyzw'),('r3' if base else 'r2','xyzw')],PP+('saturate',))
+    if base:
+        emit('mul',('r1','w'),[('r0','wwww'),('r0','wwww')])
+        emit('mul',('r0','w'),[('r0','wwww'),('r1','wwww')])
+        emit('dp3',('r1','z'),[('r0','xyzw'),('c2','xyzw')],PP+('saturate',))
+        emit('dp3',('r1','y'),[('c0','xyzw',1),('r0','xyzw')])
+        emit('mul',('r1','w'),[('r1','zzzz'),three],PP+('saturate',))
+        emit('add',('r2','w'),[('r1','yyyy'),('r1','yyyy')])
+        emit('mul',('r1','xyz'),[('r1','zzzz'),('c3','xyzw')])
+        emit('mad',('r2','xyz'),[('r0','xyzw'),('r2','wwww',1),('c0','xyzw',1)])
+        emit('mul',('r3','w'),[('r0','wwww'),('r1','wwww')])
+        emit('dp3',('r0','w'),[('r2','xyzw'),('r3','xyzw')],PP+('saturate',))
+        last_normal = emit('dp3',('r1','w'),[('r0','xyzw'),('c0','xyzw')],PP+('saturate',))
+        emit('mul',('r0','z'),[('r0','wwww'),('r0','wwww')])
+        emit('mul',('r0','w'),[('r0','wwww'),('r0','zzzz')])
+        emit('mul',('r2','w'),[('r1','wwww'),three],PP+('saturate',))
+        emit('mul',('r0','xyz'),[('r3','wwww'),('c3','xyzw')])
+        emit('mul',('r0','w'),[('r0','wwww'),('r2','wwww')])
+        emit('mad',('r2','xyz'),[('r1','wwww'),('c1','xyzw'),('r1','xyzw')])
+        emit('mad',('r1','xyz'),[('r0','wwww'),('c1','xyzw'),('r0','xyzw')])
+    else:
+        last_normal = emit('dp3',('r1','z'),[('r0','xyzw'),('c0','xyzw')],PP+('saturate',))
+        emit('mul',('r0','z'),[('r0','wwww'),('r0','wwww')])
+        emit('mul',('r0','w'),[('r0','wwww'),('r0','zzzz')])
+        emit('mul',('r0','z'),[('r1','zzzz'),three],PP+('saturate',))
+        emit('mul',('r1','w'),[('r0','wwww'),('r0','zzzz')])
+    spec = emit('texld',('r0','xyzw'),[('v1','xyzw'),('s2' if bump else 's1','xyzw')])
+    emit('mad',('r0','xyz') if base else ('r0','w'),
+         [('r1','xyzw'),('r0','xxxx'),('r2','xyzw')] if base else [('r1','wwww'),('r0','xxxx'),('r1','zzzz')])
+    clamp = emit('mov',('r1' if base else 'r0','xyz'),[('v0','xyzw')],PP+('saturate',))
+    if base: emit('add',('r1','xyz'),[('r0','xyzw'),('r1','xyzw')])
+    else: emit('mad',('r1','xyz'),[('r0','wwww'),('c1','xyzw'),('r0','xyzw')])
+    detail = emit('texld',('r0','xyzw'),[('v2','xyzw') if base else ('v1','zwzw'),('s3' if bump else 's2','xyzw')])
+    detail_weight = emit('mul',('r2','xyz'),[('r0','xyzw'),('c4' if base else 'c2','xxxx')])
+    diffuse = emit('texld',('r0','xyzw'),[('v1','xyzw'),('s0','xyzw')])
+    base_weight = emit('mad',('r0','xyz'),[('c5' if base else 'c3','xxxx'),('r0','xyzw'),('r2','xyzw')])
+    alpha = emit('mul',('oC0','w'),[('r0','wwww'),('v0','wwww')])
+    final = emit('mul',('oC0','xyz'),[('r1','xyzw'),('r0','xyzw')])
+    asteroid_complete_chain(decoded,rows)
+    links = [('r0','xyz',normal,last_normal),('r0','w',diffuse,alpha),('r2','xyz',detail_weight,base_weight)]
+    for reg,lanes,a,b in links:
+        for lane in lanes: no_lane_writes(decoded,reg,lane,a,b)
+    return {'normal_reconstruction_sites':rows[:normal_count], 'normal_encoding':'ag' if bump else 'geometric',
+            'normal_channels':{'alpha':f'binormal_v{v+3}','green':f'tangent_v{v+2}','red_blue':'unused'} if bump else {},
+            'literal_sites':literals, 'specular_power':3, 'specular_outer_scale':1.0, 'grazing_scale':3.0,
+            'alpha_model':'base_alpha_times_vertex_alpha', 'diffuse_alpha_live_interval':[diffuse,alpha],
+            'affine_rgb_sites':[], 'complete_executable_chain_checked':len(rows),
+            'angular_and_color_sites':rows[normal_count:],
+            'verified_live_ranges':[{'register':r,'mask':m,'producer_dword':a,'consumer_dword':b} for r,m,a,b in links],
+            'texture_dwords':([diffuse,start,spec,detail] if bump else [diffuse,spec,detail]),
+            'clamp_dword':clamp, 'alpha_dword':alpha, 'final_dword':final,
+            'detail_weighting':{'base':{'register':'c5' if base else 'c3','component':'x','instruction_dword':base_weight},
+                                'detail':{'register':'c4' if base else 'c2','component':'x','instruction_dword':detail_weight},
+                                'native_relation':'base=1-detail supplied by opaque preshader; no reinterpretation of scalar strength'}}
+
+
+def material_color1_proof(profile, stage):
+    """Check actual stage DCLs before reserving a separate full-precision COLOR1.
+
+    This certifies semantic availability and the authored declaration contract,
+    not backend interpolation behavior or GPU equivalence. Native COLOR0 and
+    its partial-precision alpha remain untouched in their original register.
+    """
+    require(stage in ('vs', 'ps'), 'unknown material semantic stage')
+    role = 'output' if stage == 'vs' else 'input'
+    declarations = [d for d in profile['declarations'] if d['role'] == role]
+    colors = [d for d in declarations if d.get('usage') == 10]
+    require(not any(d['usage_index'] == 1 for d in colors), 'material COLOR1 semantic ABI collision')
+    return {'original_stage_color_declarations': colors,
+            'authored_declaration_contract': {'usage': 'color', 'usage_index': 1,
+                                             'mask': 'xyz', 'modifiers': []},
+            'authored_rgb_saturate_modifier': False,
+            'authored_rgb_partial_precision_modifier': False,
+            'native_color0_preserved': True, 'separate_physical_register_required': True,
+            'qualification': 'Original DCL availability and authored contract only; COLOR1 GPU behavior remains unqualified.'}
+
+
+def asteroid_abi(bump, base):
+    """Four fixed contracts, checked against the independently derived motion plan."""
+    vm, pm, mt, vd, pd, dt, vr, pr, scratch = (
+        (8,7,6,9,8,7,10,9,9) if bump and base else
+        (7,6,5,8,7,6,9,8,10) if bump else
+        (6,5,4,7,6,5,8,7,9) if base else
+        (6,5,4,5,4,3,8,7,9))
+    return {'vs_motion_output':vm, 'ps_motion_input':pm, 'motion_texcoord':mt,
+            'vs_depth_output':vd, 'ps_depth_input':pd, 'depth_texcoord':dt,
+            'material_vs_rgb_output':vr, 'material_ps_rgb_input':pr, 'material_rgb_usage':'color', 'material_rgb_usage_index':1,
+            'vs_constants':[252,255], 'ps_constants':[216,220], 'ps_motion_temporaries':[5,6,7],
+            'material_vs_def_constants':[248,249], 'material_ps_def_constants':[212,213],
+            'material_vs_temporaries':[7,8,9], 'material_ps_temporaries':list(range(scratch,scratch+4)),
+            'material_rgb_mask':'xyz', 'material_rgb_precision':'full',
+            'required_disabled_srgb_sampler_mask':15 if bump else 7, 'current_depth_modes':[False,True]}
+
+
+def asteroid_declarations(profile, stage, bump, base):
+    """Check physical inputs and original centroid/PP masks, not TEXCOORD alone."""
+    declarations = profile['declarations']
+    if stage == 'vs':
+        inputs = [('v0','position'),('v1','texcoord'),('v2','normal')]
+        if bump: inputs += [('v3','binormal'),('v4','tangent')]
+        expected = [(name,'xyzw',usage,0,[]) for name,usage in inputs]
+        expected += [('o0','xyzw','position',0,[]),('o1','xyzw','color',0,[])]
+        expected += [('o2','xy' if base else 'xyzw','texcoord',0,['centroid'] if bump and base else [])]
+        if base: expected += [('o3','xy','texcoord',1,[])]
+        first = 4 if base else 3
+        expected += [(f'o{n}','xyz','texcoord',n-2,['centroid'] if base and not bump else [])
+                     for n in range(first,first+(4 if bump else 2))]
+    else:
+        expected = [('v0','xyzw','color',0,list(PP)),
+                    ('v1','xy' if base else 'xyzw','texcoord',0,['centroid','partial_precision'] if base and bump else list(PP))]
+        if base: expected += [('v2','xy','texcoord',1,list(PP))]
+        first = 3 if base else 2
+        expected += [(f'v{n}','xyz','texcoord',n-1,['centroid','partial_precision'] if base and not bump else list(PP))
+                     for n in range(first,first+(4 if bump else 2))]
+        samplers = [(d['name'],d['mask'],d['modifiers'],d['texture_type']) for d in declarations if d['role']=='sampler']
+        require(samplers == [(f's{n}','xyzw',[],2) for n in range(4 if bump else 3)], 'asteroid sampler declarations changed')
+    actual = [(d['name'],d['mask'],d['usage_name'],d['usage_index'],d['modifiers']) for d in declarations if d['role']!='sampler']
+    require(actual == expected, 'asteroid varying declaration changed')
+
+
+def asteroid_budget(profile, stage, loop, abi):
+    material_color1_proof(profile, stage)
+    require((abi['material_rgb_usage'], abi['material_rgb_usage_index']) == ('color', 1), 'material COLOR1 ABI changed')
+    original_temps = set(profile['temporary_registers'])
+    material_temps = set(abi[f'material_{stage}_temporaries'])
+    temporal_temps = set(abi['ps_motion_temporaries']) if stage=='ps' else set()
+    constants = set(profile['constant_registers_direct']) | set(profile['defined_constant_registers'])
+    if loop: constants.update(range(24))
+    reserved_constants = set(range(216,221) if stage=='ps' else range(252,256)) | set(abi[f'material_{stage}_def_constants'])
+    require(not original_temps & (material_temps|temporal_temps) and not material_temps & temporal_temps,
+            'asteroid temporary ABI collision')
+    require(not constants & reserved_constants, 'asteroid constant ABI collision')
+    free_io = set(profile['free_input_registers' if stage=='ps' else 'free_output_registers'])
+    io_role = 'input' if stage=='ps' else 'output'
+    io = {abi[f'{stage}_motion_{io_role}'],abi[f'{stage}_depth_{io_role}'],abi[f'material_{stage}_rgb_{io_role}']}
+    semantics = set(profile[f'declared_texcoord_{io_role}_indices'])
+    reserved_semantics = {abi['motion_texcoord'],abi['depth_texcoord']}
+    require(len(io)==3 and io<=free_io and max(io)<(10 if stage=='ps' else 12), 'asteroid interpolator ABI collision')
+    require(len(reserved_semantics)==2 and not semantics & reserved_semantics and max(reserved_semantics)<16,
+            'asteroid semantic ABI collision')
+    executable = {k:v for k,v in profile['opcode_counts'].items() if k not in ('dcl','def','defi','defb')}
+    return {'original_temporaries':sorted(original_temps),
+            'free_temporary_ranges':ranges(set(range(32))-original_temps-material_temps-temporal_temps),
+            'free_constant_ranges':ranges(set(range(224 if stage=='ps' else 256))-constants-reserved_constants),
+            'free_interpolator_registers':sorted(free_io-io),
+            'free_texcoord_semantic_indices':sorted(set(range(16))-semantics-reserved_semantics),
+            'original_executable_instruction_count':sum(executable.values()),
+            'relative_constant_bound_required':loop,
+            'material_resources_proven_free_before_reservation':{
+                'rgb_interpolator_register':abi[f'material_{stage}_rgb_{io_role}'],
+                'rgb_usage':'color', 'rgb_usage_index':1,
+                'def_constants':abi[f'material_{stage}_def_constants']},
+            'reservations_apply_to_current_depth_modes':[False,True],
+            'explicit_reserved_interpolator_registers':sorted(io),
+            'explicit_reserved_texcoord_indices':sorted(reserved_semantics),
+            'instruction_budget_note':'Original weighted slots only; final transformed bytecode requires its separate cap check.'}
+
+
+def inspect_asteroid_program(code, identifier, decoded, profile, items, end):
+    stage,key = identifier.split('_')
+    bump,base,*_ = (ASTEROID_VERTICES if stage=='vs' else ASTEROID_PIXELS)[key]
+    loop = ASTEROID_VERTICES[key][2] if stage=='vs' else False
+    family = 'asteroid_bump' if bump else 'asteroid_default'
+    abi = asteroid_abi(bump,base)
+    asteroid_declarations(profile,stage,bump,base)
+    proof = prove_asteroid_vertex(decoded,key) if stage=='vs' else prove_asteroid_pixel(decoded,key)
+    output = {'id':identifier,'families':[family],'fnv1a64':key,'sha256':hashlib.sha256(code).hexdigest(),
+              'word_count':len(code)//4,'header_end_dword':profile['header_end_dword'],'end_dword':end,
+              'opaque_comment_dword_count':len(code)//4-2-sum(i['length']+1 for i in items),
+              'budget':asteroid_budget(profile,stage,loop,abi), 'material_abi':abi,
+              'motion_splice':({'declaration_insert_dword':profile['header_end_dword'],
+                                'arithmetic_insert_dword':profile['position_output']['insertion_dword'],
+                                'position_source_temporary':profile['position_output']['source_temporary'],
+                                'position_dp4_dwords':profile['position_output']['dwords_xyzw']} if stage=='vs' else
+                               {'definition_insert_dword':profile['definition_end_dword'],
+                                'declaration_insert_dword':profile['header_end_dword'],'append_dword':end})}
+    if stage=='vs':
+        require(profile['position_output']['dwords_xyzw']==proof['position_dp4_dwords'] and
+                profile['position_output']['source_temporary']==proof['position_source_temporary'],
+                'asteroid motion position proof disagrees')
+        point,material = proof['point_rgb_dword'],proof['material_emissive_dword']
+        output.update(point_and_alpha_proof=proof,
+                      point_rgb_sources=source_role(decoded,'c1' if loop else 'c5',[point],loop),
+                      material_emissive_scaled_sources=source_role(decoded,'c40' if loop else 'c19',[material]),
+                      point_model=proof['point_model'],final_rgb_sites=[site(decoded,material)],
+                      alpha_output_sites=[site(decoded,a) for a in proof['alpha_dwords']],
+                      rgb_output_declaration=next(d for d in profile['declarations'] if d['name']=='o1'))
+        output['point_rgb_sources'][0]['color_constant_indices'] = list(range(1,24,3)) if loop else [5]
+        output['constraints'] = ['Convert each point RGB at its source before native cosine/attenuation; preserve stride-3 i0 [0,8] draw gate for loops.',
+                                 'Preserve strength-scaled material emissive RGB amplitude/tint; do not decode the accumulated point sum.',
+                                 'Keep original position, world, normal/basis, UV, fog and independent o1.w writes unchanged. Added full-precision XYZ uses the explicit pair-local ABI.']
+    else:
+        texture_roles = ('diffuse_rgb','normal_data_alpha_green','specular_data_red','detail_rgb') if bump else ('diffuse_rgb','specular_data_red','detail_rgb')
+        textures = []
+        for n,(at,role) in enumerate(zip(proof['texture_dwords'],texture_roles)):
+            fetch = site(decoded,at)
+            color = role in ('diffuse_rgb','detail_rgb')
+            textures.append({'role':role,'sampler':n,'fetch':fetch,
+                             'conversion_after_dword':fetch['end_dword'] if color else None,
+                             'conversion_rgb_register':'r0' if color else None,'conversion_write_mask':'xyz' if color else None})
+        direct = {c:[at for at,_ in uses(decoded,c)] for c in (('c1','c3') if base else ('c1',))}
+        output.update(alpha_and_affine_proof=proof,texture_sources=textures,diffuse_affine_completion=None,
+                      directional_rgb_sources=[s for c,ats in direct.items() for s in source_role(decoded,c,ats)],
+                      color0_rgb_clamp=site(decoded,proof['clamp_dword']),
+                      color0_declaration=next(d for d in profile['declarations'] if d['name']=='v0'),
+                      final_rgb_sites=[site(decoded,proof['final_dword'])],alpha_interpolation_site=None,
+                      alpha_output_sites=[site(decoded,proof['alpha_dword'])],two_sided=False,
+                      lobe_coefficients=FAMILIES[family]['coefficients'],detail_weighting=proof['detail_weighting'])
+        output['rgb_precision_sites'] = bump_rgb_sites(decoded,output)
+        output['retained_geometry_precision_sites'] = proof['normal_reconstruction_sites']
+        output['constraints'] = ['Decode separate base/detail RGB immediately after each native PP fetch and before independent raw scalar weighting; no reflection cube or lightmap is present.',
+                                 'Keep specular red and AG normal data raw. Native lighting uses unit diffuse, cubic specular, inner sat(3*NdotL), and no outer factor three.',
+                                 'Keep v0.w partial precision and native base alpha multiplication before final RGB. Added RGB writes are XYZ only; full-precision material RGB uses the explicit pair-local ABI.',
+                                 'Comments/preshaders remain opaque; do not infer new runtime scalar constraints or evaluate the preshader in the transformer.']
+    output['material_rgb_semantic_proof'] = material_color1_proof(profile, stage)
+    output['budget']['original_static_weighted_slots'] = weighted_slots(decoded,profile,stage)
+    output['certification'] = 'original_identity_and_reviewed_sites_verified; no transformed shader or numeric equivalence claim'
+    return output
+
+
+
 def require(condition, reason):
     if not condition:
         raise ValueError(reason)
@@ -296,6 +756,7 @@ def ranges(numbers):
 
 
 def budget(profile, stage, loop, bump=False, depth_semantic=None):
+    material_color1_proof(profile, stage)
     temporary_base = max(profile['temporary_registers'], default=-1) + 1 if bump else 5
     reserved_temps = set(range(temporary_base, temporary_base + 3)) if stage == 'ps' else set()
     temporal_constants = set(range(216, 221) if stage == 'ps' else range(252, 256))
@@ -314,10 +775,11 @@ def budget(profile, stage, loop, bump=False, depth_semantic=None):
     require(reserved_io <= free_io, 'motion/depth/material interpolator ABI collision')
     original_semantics = set(profile['declared_texcoord_input_indices' if stage == 'ps'
                                      else 'declared_texcoord_output_indices'])
-    require((7 if bump else 6) not in original_semantics, 'material TEXCOORD ABI collision')
     depth_semantic = (6 if bump else 5) if depth_semantic is None else depth_semantic
-    require(depth_semantic not in original_semantics and depth_semantic != (7 if bump else 6), 'depth semantic ABI collision')
-    used_semantics = original_semantics | ({5, depth_semantic, 7} if bump else {4, depth_semantic, 6})
+    motion_semantic = 5 if bump else 4
+    require(depth_semantic not in original_semantics and motion_semantic not in original_semantics and
+            depth_semantic != motion_semantic, 'motion/depth semantic ABI collision')
+    used_semantics = original_semantics | {motion_semantic, depth_semantic}
     if bump:
         material_temps = {10, 11, 12, 13} if stage == 'ps' else {7, 8, 9}
         require(material_temps <= free_temps, 'material temporary ABI collision')
@@ -333,7 +795,7 @@ def budget(profile, stage, loop, bump=False, depth_semantic=None):
             'instruction_budget_note': 'Static original estimate only; repeated VS loop work and future transfer/motion/depth instructions are not included. Check final bytecode against device caps.',
             'relative_constant_bound_required': loop,
             'material_resources_proven_free_before_reservation': {'rgb_interpolator_register': (8 if stage == 'ps' else 9) if bump else (7 if stage == 'ps' else 8),
-                                                                 'rgb_texcoord_index': 7 if bump else 6,
+                                                                 'rgb_usage': 'color', 'rgb_usage_index': 1,
                                                                  'def_constants': sorted(material_constants)},
             'reservations_apply_to_current_depth_modes': [False, True]}
 
@@ -1453,6 +1915,8 @@ def inspect_program(code, identifier):
     require(all(not i['predicated'] and not i['coissued'] for i in items), 'unsupported predication/coissue')
     decoded = decode_sites(items)
     profile = motion.profile(code, identifier, stage, '3_0')
+    if key in ASTEROID_VERTICES or key in ASTEROID_PIXELS:
+        return inspect_asteroid_program(code, identifier, decoded, profile, items, end)
     require(profile['parsed'] and profile['header_is_contiguous'] and profile['control_flow_balanced'], 'invalid original structure')
     bump = key in (BUMP_VERTICES if stage == 'vs' else ALL_BUMP_PIXELS)
     loop = stage == 'vs' and key not in ('badefd5143b3024f', '19a246a56e9d9700')
@@ -1515,10 +1979,10 @@ def inspect_program(code, identifier):
                                  'All texture fetches retain original partial precision. Diffuse r1.w and lightmap r0.w feed alpha interpolation; added color writes must be XYZ only.',
                                  'The specular texture red is data, not RGB color. Directional RGB is consumed before lighting multiplication at every listed source.',
                                  'COLOR0 v0 is declared partial precision for XYZW, and final alpha uses v0.w. Removing declaration partial precision wholesale does not prove original alpha precision invariance.',
-                                 'The selected plan routes full-precision RGB through VS o8/TEXCOORD6 to PS v7.xyz, preserving original partial-precision v0.w for alpha. These unused resources are proved here; no declaration or shader rewrite is emitted.',
+                                 'The selected plan routes full-precision RGB through VS o8/COLOR1 to PS v7.xyz, preserving original partial-precision v0.w for alpha. These unused resources are proved here; no declaration or shader rewrite is emitted.',
                                  'Final output adds lighting and lightmap into oC0.xyz with partial precision. Compatibility encoding requires the complete linear sum; oC0.w must keep its independent original write.']
     if bump:
-        output['constraints'] = [constraint.replace('VS o8/TEXCOORD6 to PS v7.xyz', 'VS o9/TEXCOORD7 to PS v8.xyz') for constraint in output['constraints']]
+        output['constraints'] = [constraint.replace('VS o8/COLOR1 to PS v7.xyz', 'VS o9/COLOR1 to PS v8.xyz') for constraint in output['constraints']]
         output['constraints'].append('BUMPMAP normal data feeds the reviewed BINORMAL/TANGENT/geometric-normal basis; s1/s2 remain data. Keep normal, view, per-pixel cube coordinates, fog and opacity chains unchanged. Only sampler 0/3/4 RGB is converted.')
         if stage == 'ps':
             require([(d['register'], d['texture_type']) for d in profile['declarations'] if d['role'] == 'sampler'] == [(0,2),(1,2),(2,2),(3,2),(4,3)], 'bump sampler declaration changed')
@@ -1529,17 +1993,37 @@ def inspect_program(code, identifier):
             output['retained_geometry_precision_sites'] = output['alpha_and_affine_proof']['normal_reconstruction_sites']
     if stage == 'ps' and (key in EXTENDED_PIXELS or key in HULL_PIXELS):
         output['rgb_precision_sites'] = bump_rgb_sites(decoded, output)
+    output['material_rgb_semantic_proof'] = material_color1_proof(profile, stage)
     output['budget']['original_static_weighted_slots'] = weighted_slots(decoded, profile, stage)
     require(all(row['destination']['mask'] == 'xyz' for row in output['final_rgb_sites']), 'final RGB touches alpha')
     output['certification'] = 'original_identity_and_reviewed_sites_verified; no transformed shader or numeric equivalence claim'
     return output
 
 
+
+def prove_asteroid_archive(inventory):
+    """Bind every base/toggle alias and its independent catalog occurrence count."""
+    rows = [r for r in inventory['pairs'] if (r['vs'],r['ps']) in ASTEROID_PAIRS]
+    require(len(rows)==6, 'asteroid archive pair inventory changed')
+    for row in rows:
+        bump,base,loop,_ = ASTEROID_VERTICES[row['vs']]
+        effects = row['effects']
+        expected = {'pass_occurrences':8 if base else 4, 'effect_entries':8 if base else 4,
+                    'catalogues':['01.cat','addon/01.cat'] if base else ['01.cat'],
+                    'basenames':['asteroid'] if base else ['asteroid_0000','asteroid_0001'],
+                    'profile_directories':['3_0'], 'techniques':['BUMPMAP' if bump else 'DEFAULT'],
+                    'pass_names':['P0'],
+                    'toggle_directories':['(base)','hue_lights_off','hueshift_off','v_lights_off'] if base else
+                                         ['(base)','hueshift_off'] if loop else ['hue_lights_off','v_lights_off']}
+        require(effects==expected, 'asteroid archive alias/toggle inventory changed')
+
+
 def prove_archive_coverage(inventory):
-    """Each named alias must independently cover its complete ten-pair family."""
+    """Each named alias must independently cover its complete reviewed family."""
+    prove_asteroid_archive(inventory)
     for family in FAMILIES.values():
         expected = {(vs, ps) for vs, ps in PAIRS if ps in family['pixels']}
-        require(len(expected) == 10, 'family pair contract changed')
+        require(len(expected) == (3 if family['aliases'] == ['asteroid'] else 10), 'family pair contract changed')
         for alias in family['aliases']:
             basename = re.compile(re.escape(alias) + r'(?:2s|_000[01])?')
             actual = {(row['vs'], row['ps']) for row in inventory['pairs']
@@ -1556,11 +2040,11 @@ def inspect(directory, inventory_path):
     negative = [row for row in inventory['pairs'] if row['vs'] == '494fe349b8bc12ec' and row['ps'] == 'fffdabd910793aba']
     require(len(negative) == 1 and negative[0]['transformation_class'] == 'C_relocated_registers_with_static_branches' and
             ('494fe349b8bc12ec', 'fffdabd910793aba') not in PAIRS, 'future negative witness changed')
-    require(len(rows) == 110 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
-    require(all(row['transformation_class'] == ('B_relocated_registers' if row['ps'] in ALL_BUMP_PIXELS else 'A_reference_registers') for row in rows), 'motion class changed')
+    require(len(rows) == 116 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
+    require(all(row['transformation_class'] == ('B_relocated_registers' if (row['ps'] in ALL_BUMP_PIXELS or row['ps'] in ASTEROID_PIXELS and ASTEROID_PIXELS[row['ps']][0]) else 'A_reference_registers') for row in rows), 'motion class changed')
     for family, record in FAMILIES.items():
         scoped = [row for row in rows if PIXEL_FAMILY[row['ps']] == family]
-        require(sum(row['effects']['pass_occurrences'] for row in scoped) == (96 if family in ('shared_default', 'shared_bump') else 24), 'family occurrence count changed')
+        require(sum(row['effects']['pass_occurrences'] for row in scoped) == (16 if family.startswith('asteroid_') else 96 if family in ('shared_default', 'shared_bump') else 24), 'family occurrence count changed')
         require(all(row['effects']['techniques'] == [record.get('technique', 'DEFAULT')] and
                     row['effects']['profile_directories'] == ['3_0'] and row['effects']['pass_names'] == ['P0'] for row in scoped), 'family technique/pass scope changed')
     depth = motion.depth_plan(inventory)
@@ -1571,14 +2055,29 @@ def inspect(directory, inventory_path):
     for row in sorted(rows, key=lambda row: (row['vs'], row['ps'])):
         plan, d = row['insertion_plan'], depth[row['vs'], row['ps']]
         actual = motion.classify(original_motion['vs_' + row['vs']], original_motion['ps_' + row['ps']])
-        bump = row['ps'] in ALL_BUMP_PIXELS
+        asteroid = row['ps'] in ASTEROID_PIXELS
+        bump = ASTEROID_PIXELS[row['ps']][0] if asteroid else row['ps'] in ALL_BUMP_PIXELS
         require(actual[0] == ('B_relocated_registers' if bump else 'A_reference_registers') and not actual[1] and actual[3] == plan, 'motion source/splice plan changed')
-        require((plan['vs_output_register'], plan['ps_input_register'], plan['ps_temporaries'],
-                 plan['texcoord_index'], plan['vs_constant_base'], plan['ps_constant_base']) ==
-                ((7, 6, list(range(max(original_motion['ps_' + row['ps']]['temporary_registers'])+1, max(original_motion['ps_' + row['ps']]['temporary_registers'])+4)), 5, 252, 216) if bump else
-                 (6, 5, [5, 6, 7], 4, 252, 216)), 'motion ABI changed')
-        require(d == {'vertex_depth_output_register': 8 if bump else 7, 'depth_texcoord_index': 6 if bump else 7 if row['vs'] == '494fe349b8bc12ec' else 5,
-                      'pixel_depth_input_register': 7 if bump else 6, 'depth_output': True}, 'depth ABI changed')
+        if asteroid:
+            abi = asteroid_abi(*ASTEROID_PIXELS[row['ps']][:2])
+            require((plan['vs_output_register'],plan['ps_input_register'],plan['ps_temporaries'],
+                     plan['texcoord_index'],plan['vs_constant_base'],plan['ps_constant_base']) ==
+                    (abi['vs_motion_output'],abi['ps_motion_input'],abi['ps_motion_temporaries'],
+                     abi['motion_texcoord'],252,216), 'asteroid motion ABI changed')
+            require(d == {'vertex_depth_output_register':abi['vs_depth_output'],
+                          'depth_texcoord_index':abi['depth_texcoord'],
+                          'pixel_depth_input_register':abi['ps_depth_input'], 'depth_output':True},
+                    'asteroid depth ABI changed')
+            vp = next(p for p in programs if p['id']=='vs_'+row['vs'])
+            pp = next(p for p in programs if p['id']=='ps_'+row['ps'])
+            require(vp['material_abi']==pp['material_abi']==abi, 'asteroid pair-local material ABI disagrees')
+        else:
+            require((plan['vs_output_register'], plan['ps_input_register'], plan['ps_temporaries'],
+                     plan['texcoord_index'], plan['vs_constant_base'], plan['ps_constant_base']) ==
+                    ((7, 6, list(range(max(original_motion['ps_' + row['ps']]['temporary_registers'])+1, max(original_motion['ps_' + row['ps']]['temporary_registers'])+4)), 5, 252, 216) if bump else
+                     (6, 5, [5, 6, 7], 4, 252, 216)), 'motion ABI changed')
+            require(d == {'vertex_depth_output_register': 8 if bump else 7, 'depth_texcoord_index': 6 if bump else 7 if row['vs'] == '494fe349b8bc12ec' else 5,
+                          'pixel_depth_input_register': 7 if bump else 6, 'depth_output': True}, 'depth ABI changed')
         for stage in ('vs', 'ps'):
             name = stage + '_' + row[stage]
             original = next(p for p in programs if p['id'] == name)
@@ -1588,23 +2087,32 @@ def inspect(directory, inventory_path):
                               'archive_aliases': row['effects']['basenames'],
                               'depth_texcoord_index': d['depth_texcoord_index'],
                               'motion_class': 'B' if bump else 'A', 'current_depth_supported': True})
+        if asteroid:
+            compact_pairs[-1]['material_abi'] = abi
+            compact_pairs[-1]['motion_plan'] = plan
+            compact_pairs[-1]['depth_plan'] = d
     stage_constraints = {}
     for program in programs:
         stage = ('bump_' if any('bump' in family for family in program['families']) else '') + program['id'][:2]
+        if program['families'][0].startswith('asteroid_'):
+            stage = program['families'][0] + '_' + program['id'][:2]
         constraints = program.pop('constraints')
         require(stage not in stage_constraints or stage_constraints[stage] == constraints, 'inconsistent stage constraints')
         stage_constraints[stage] = constraints
         program['constraints_ref'] = stage
-    return {'schema': 1, 'stage_constraints': stage_constraints, 'scope': 'Bounded SM3 DEFAULT/BUMPMAP/BUMPMAP_LOW original-site proof: 7 VS, 66 PS, 110 archive pairs. This report proves original sites; the current conventional hull group and pending GPU/live qualification are documented in docs/architecture/linear-hull-materials.md. The preceding 70-pair group was qualified at 73f5c51.',
+    return {'schema': 1, 'stage_constraints': stage_constraints,
+            'scope': 'Bounded SM3 DEFAULT/BUMPMAP/BUMPMAP_LOW original-site proof: 13 VS, 70 PS, 116 archive pairs. Asteroid DEFAULT/BUMPMAP adds 6 VS, 4 PS and all 6 pairs to the 110-pair source baseline 10e447b. This artifact proves original sites only; transformed implementation and qualification are recorded in docs/architecture/linear-asteroid-materials.md. The conventional hull group is documented in docs/architecture/linear-hull-materials.md; the earlier 70-pair group was qualified at 73f5c51.',
             'families': FAMILIES,
-            'production_contract': ['Shared/Split BUMPMAP and Terran DEFAULT/BUMPMAP add 24 PS, no VS and 40 SM3 pairs; lower shader models remain outside this slice.',
-                                                'Exact maximum input guard is 1392 DWORDs, retaining every per-profile count.',
-                                                'Standard DEFAULT base VS 494fe349b8bc12ec uses depth TEXCOORD7 and RGB TEXCOORD6; the other DEFAULT pairs retain depth TEXCOORD5.',
-                                                'Use explicit class-B o9/v8/TEXCOORD7 RGB and PS r10 scratch; retain existing o7/v6/TEXCOORD5 motion and o8/v7/TEXCOORD6 depth.',
-                                                'Five-sampler disabled-sRGB mask 0x1f requires lifecycle resynchronization of s4. DEFAULT remains 0x0f.',
-                                                'Transformed budgets and pending GPU/live qualification are recorded in docs/architecture/linear-hull-materials.md; linear-standard-materials.md retains the qualified 70-pair checkpoint and linear-bump-materials.md the historical 30-pair qualification.'],
+            'production_contract': ['All 116 material pairs use a separate full-precision, unsaturated XYZ COLOR1 declaration at their existing physical RGB registers. All 83 originals prove this semantic free in their actual VS output or PS input DCLs; motion/depth keep their original TEXCOORD contracts. COLOR1 transformed/GPU qualification is pending.',
+                                    'Asteroid DEFAULT/BUMPMAP adds 6 VS, 4 PS and 6 complete alias/toggle pairs; lower shader models remain outside this slice.',
+                                    'Exact maximum input guard remains 1392 DWORDs, retaining every per-profile count; Asteroid maxima are VS 566 and PS 448 DWORDs.',
+                                    'Asteroid sampler masks are DEFAULT 0x07 and BUMPMAP 0x0f. Conventional DEFAULT retains 0x0f and conventional BUMPMAP 0x1f.',
+                                    'Asteroid uses four explicit pair-local ABI records: DEFAULT base RGB o8/v7/COLOR1 with depth o7/v6/TEXCOORD5; DEFAULT toggles keep that RGB and motion o6/v5/TEXCOORD4 but depth uses o5/v4/TEXCOORD3.',
+                                    'Asteroid BUMPMAP base RGB uses o10/v9/COLOR1 with motion o8/v7/TEXCOORD6 and depth o9/v8/TEXCOORD7. BUMPMAP toggles use RGB o9/v8/COLOR1, motion o7/v6/TEXCOORD5 and depth o8/v7/TEXCOORD6.',
+                                    'Conventional standard DEFAULT base VS 494fe349b8bc12ec retains depth TEXCOORD7 and RGB COLOR1; other conventional DEFAULT pairs retain depth TEXCOORD5.',
+                                    'Asteroid implementation, transformed budgets and pending GPU qualification belong to docs/architecture/linear-asteroid-materials.md. The 110-pair source baseline 10e447b and subsequent conventional-hull qualification are documented in linear-hull-materials.md.'],
             'future_negative_pair': {'vs': '494fe349b8bc12ec', 'ps': 'fffdabd910793aba', 'family': 'xt_standard_lighting', 'motion_class': 'C',
-                                     'note': 'Existing class-C motion transforms apply in both depth modes; the 1648-DWORD PS stays outside the 1392-DWORD material guard and has no material sampler mask.'},
+                                     'note': 'Each original stage independently accepts its class-C motion transformation in both depth modes, and the 1648-DWORD PS refuses material conversion with output rollback and no material sampler mask. The original VS/PS pair is native-linkage-invalid; these stage-local host checks do not establish portable or live fallback. Live qualification requires separately linkage-valid controls.'},
             'offset_units': 'Zero-based DWORD positions in the ORIGINAL whole program, including opaque comments; end_dword/conversion_after_dword are exclusive.',
             'motion_inventory_sha256': hashlib.sha256(inventory_data).hexdigest(),
             'reserved_abi': {'vs_constants': [252, 255], 'vs_motion_output': 6, 'vs_depth_output': 7,
@@ -1613,7 +2121,7 @@ def inspect(directory, inventory_path):
                              'motion_texcoord': 4, 'depth_texcoord': 5,
                              'material_vs_def_constants': [248, 249], 'material_ps_def_constants': [212, 213],
                              'material_vs_rgb_output': 8, 'material_ps_rgb_input': 7,
-                             'material_rgb_mask': 'xyz', 'material_rgb_texcoord': 6,
+                             'material_rgb_mask': 'xyz', 'material_rgb_usage': 'color', 'material_rgb_usage_index': 1,
                              'material_rgb_precision': 'full'},
             'bump_reserved_abi': {'vs_constants': [252,255], 'ps_constants': [216,220],
                                   'vs_motion_output': 7, 'ps_motion_input': 6, 'motion_texcoord': 5,
@@ -1621,7 +2129,7 @@ def inspect(directory, inventory_path):
                                   'ps_motion_temporaries_by_shape': {'base':[7,8,9], 'affine_single':[6,7,8], 'nonaffine_single':[5,6,7]},
                                   'material_vs_def_constants': [248,249], 'material_ps_def_constants': [212,213],
                                   'material_vs_temporaries': [7,8,9], 'material_ps_temporaries': [10,11,12,13],
-                                  'material_vs_rgb_output':9, 'material_ps_rgb_input':8, 'material_rgb_texcoord':7,
+                                  'material_vs_rgb_output':9, 'material_ps_rgb_input':8, 'material_rgb_usage':'color', 'material_rgb_usage_index':1,
                                   'material_rgb_mask':'xyz', 'material_rgb_precision':'full',
                                   'required_disabled_srgb_sampler_mask':31, 'current_depth_modes':[False,True]},
             'weighted_budget_sources': ['https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-instructions-ps-3-0',

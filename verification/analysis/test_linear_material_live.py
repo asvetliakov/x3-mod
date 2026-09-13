@@ -87,7 +87,11 @@ class LinearMaterialLiveTests(unittest.TestCase):
             start = capture.index('    const bool material_requested=GetEnvironmentVariableW')
             end = capture.index('    bloom_requested=GetEnvironmentVariableW', start)
             environment = 'void configure_environment() { wchar_t setting[32]{};\n' + capture[start:end] + '}\n'
-            (path / 'linear_material_live_under_test_inc.h').write_text('\n\n'.join(extract_function(source, sig) for sig in signatures) + '\n' + environment)
+            # Execute the exact completed-route counter block with cached
+            # contracts, without duplicating the rest of evaluate_draw.
+            count = extract_function(source, 'if (route.linear_material)')
+            count = 'void MotionOutput::count_material_route(const MotionRoute& route) noexcept {\n' + count + '\n}\n'
+            (path / 'linear_material_live_under_test_inc.h').write_text('\n\n'.join(extract_function(source, sig) for sig in signatures) + '\n' + environment + count)
             executable = path / 'fixture'
             build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-I', directory,
                                     str(ROOT / 'verification/probe/linear_material_live_fixture.cpp'), '-o', str(executable)], capture_output=True, text=True)
