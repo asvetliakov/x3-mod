@@ -30,6 +30,11 @@ struct LinearEmissionBoundary {
   // no recording/reentrancy/Reset/handoff pins, and flushed lazy MRT state.
   // Source shader has no oDepth; internal targets have no application aliases.
   bool admitted = false;
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  // Detached source-over experiment. Saved original VS must be restored even
+  // when this setter fails after changing the physical binding.
+  IDirect3DVertexShader9 *augmented_vertex = nullptr;
+#endif
 };
 enum class LinearEmissionPassFault {
   None,
@@ -85,6 +90,11 @@ public:
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
   // Pre-attach fixture twin: retain checkpoint's separate copy/Clear sequence.
   void fixture_separate_copy(bool enabled) noexcept { if (!impl_) fixture_separate_copy_ = enabled; }
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  // Borrowed bytes need only survive attach; CreatePixelShader owns the result.
+  // A null program retains the unchanged additive component behavior.
+  void fixture_source_over(const DWORD *words) noexcept { if (!impl_) fixture_source_over_ = words; }
+#endif
   void inject(LinearEmissionPassFault, unsigned count = 1) noexcept;
   LinearEmissionCompletion fixture_completion() const noexcept;
   IDirect3DSurface9 *fixture_native() const noexcept;
@@ -95,6 +105,9 @@ private:
   Impl *impl_ = nullptr;
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
   bool fixture_separate_copy_ = false;
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  const DWORD *fixture_source_over_ = nullptr;
+#endif
 #endif
 };
 } // namespace x3m::renderer

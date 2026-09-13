@@ -1,6 +1,7 @@
 # Linear distance-fade composition: Run 27 investigation
 
-Status: proposed architecture, 2026-09-14. No production change or GPU run.
+Status: reviewed detached prototype with X3 GPU qualification, 2026-09-14.
+Runtime admission, shared temporal-mask integration and installation are pending.
 This note owns the fade-route proposal; the [coverage ledger](material-coverage.md)
 owns the captured material population. The [native fade analysis](../reverse-engineering/asteroid-fog-temporal.md)
 already establishes the engine mechanism, so another broad trace or disassembly
@@ -236,9 +237,73 @@ without evidence. Paired completion timings should isolate this bracket at
 representative resolutions and counts; do not infer batching safety from old
 adjacency or equate component timing with game FPS.
 
-The recommended next action is this bounded prototype, not a gate-only installed
-patch. Eventual integrated telemetry should count recognized fade state bypasses
+The qualified prototype below precedes runtime integration; a gate-only installed
+patch is insufficient. Eventual integrated telemetry should count recognized fade state bypasses
 before material-availability counters, using cached state and integer increments.
 Existing native RE and this capture already justify the prototype; no additional
 broad game load is needed to choose its initial contract. Same-node transition
 and station-pass identification remain necessary for later user-visible claims.
+
+## Detached producer and composition prototype
+
+The isolated prototype from `2cf65ae` retains each original native executable
+body, then evaluates the reviewed linear body into only COLOR1 / oC1 RGB. The
+original direct `MUL_pp oC0.w` is immediately duplicated with only the output
+index changed to oC1; there is no alpha reconstruction through a temporary.
+The six VS / four PS programs fit at maxima of 131 / 152 weighted slots,
+10 / 14 temporaries and four samplers. Host checks preserve all 130 accepted
+ordinary originals byte-for-byte over three configurations. They establish
+construction and linkage, not driver `_pp` lowering or actual native-B parity.
+Stage APIs remain independent; only the six exact pairings are fixture-admitted.
+
+The detached fixture reuses `LinearEmissionPass` under
+`X3M_LINEAR_DISTANCE_FADE_FIXTURE` for source-over state, an augmented VS and a
+supplied composition program. Production-macro-off pass tokens and embedded
+emission programs remain unchanged. The authored, host-exported composite is
+150 DWORDs; it performs scalar q endpoint branches with all texture reads before
+branching. Its exact input is pinned by the focused runner, which consumes a
+prebuilt EXE and CSO without rebuilding or installing anything.
+
+The focused X3 GPU invocation passed 65 cases plus six after actual Reset:
+257 designated source calls and 255 prepared brackets. It compares separately
+created original raw RGBA with dual native RGBA and direct native/E alpha
+in unblended RGBA32F targets (before FP16 storage can hide a difference), and
+native B under MRT blending. An independent Asteroid float64 reference plus
+FP16 stores checks L, Q, q and C. Cases include fog/zero/full alpha, overlapping
+primitives in one DIP, two ordered DIPs, a depth occluder, nonneutral AG normals,
+zero gain with positive coverage, eight looped lights, repeated q=0,
+HDR caps and nonfinite backgrounds at q=0/1. Five failure seams cover a real VS
+setter mutation followed by failure, clean copy refusal, missing-IB native
+failure, native-B composition recovery and post-source restoration failure.
+Four capability removals and three incompatible source states must refuse
+before transfer. Caller state, same-frame M re-clear refusal and resource
+retirement are checked.
+Diagnostic original/alpha reference draws are outside the designated source-call
+count. Combined fade/emission current-and-previous-mask integration is future
+work; this pass-only fixture does not qualify transparent TAA or game performance.
+
+The [compact result](../../verification/results/bottle-X3/linear-distance-fade-gpu.json)
+retains the original execution and both failure witnesses. R1 stopped at attach:
+the fixture supplied an assumed color format as the adapter format; querying the
+actual display format corrected setup. R2 completed all GPU cases in 8.588 s
+(execution wall time, not a performance benchmark), then the initial CPU oracle
+rejected 384 q values because it assumed nearest-even FP16 render-target storage.
+Original/dual native RGBA and native/E alpha were already exact in RGBA32F, and
+native B, caller state, five failure boundaries and Reset/resource retirement
+passed. No shader or executable changed after R2.
+
+An independent reduction identified one fixed **observed X3 render-target
+round-toward-zero** rule: all 193,536 Q channels and 64,512 q values match it
+exactly. All 10,272 covered C RGB channels also match; 4,718 distinguish it from
+nearest-even and all select toward-zero. This is an observed CrossOver X3 store
+model, not a D3D9 or native-Windows guarantee. The corrected fixture-local oracle
+uses it uniformly for recurrence and C stores; shared reference/upload
+nearest-even conversion is unchanged. Seven affected tests cover boundaries,
+ties, subnormal/overflow edges and rejection of the wrong q rounding.
+
+After the same independent reviewer approved that correction, a retained-data
+reparse passed 580,608 numerical channel checks, 129,024 alpha values, 258,048 mask
+values and 183,264 exact raw-A channels. The maximum normalized RGB tolerance
+fraction is 0.000071875. R1/R2 raw failures remain local and linked from the
+compact record. Native-Windows execution, combined fade/emission temporal-mask
+integration and live cost remain open.

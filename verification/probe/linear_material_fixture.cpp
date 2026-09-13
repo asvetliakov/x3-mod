@@ -6,6 +6,9 @@
 // additionally varies clip W. The oracle interpolates native VS outputs.
 #define WIN32_LEAN_AND_MEAN
 #include "../../src/renderer/linear_material.h"
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+#include "../../src/renderer/linear_distance_fade.h"
+#endif
 #include "../../src/renderer/material_motion.h"
 #include <array>
 #include <cmath>
@@ -281,8 +284,8 @@ struct Shaders {
         pixel ? pixel_ids[pair_p[c.pair]] : vertex_ids[pair_v[c.pair]];
     char buffer[128];
     std::snprintf(buffer, sizeof buffer, "%s_%u_%u_%.9g_%.9g_%.9g", id, mode,
-                  (mode || xt_default(c)) ? c.depth : 0, mode == 2 ? c.f[0] : 0,
-                  mode == 2 ? c.f[1] : 0, mode == 2 ? c.f[2] : 0);
+                  (mode || xt_default(c)) ? c.depth : 0, mode >= 2 ? c.f[0] : 0,
+                  mode >= 2 ? c.f[1] : 0, mode >= 2 ? c.f[2] : 0);
     return std::string(buffer) + (xt_default(c) ? "_xt_repaired" : "");
   }
   Words transform(const Case &c, unsigned mode, bool pixel) {
@@ -291,6 +294,14 @@ struct Shaders {
     const auto before = original;
     Words output = {0xdeadbeef};
     LinearMaterialConfig config{c.f[0], c.f[1], c.f[2]};
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+    if (mode == 3) {
+      require(c.pair>=110 && c.pair<116,"six exact fade pairs only");
+      require((pixel ? linear_distance_fade_pixel_variant(original.data(),original.size(),config,output)
+                     : linear_distance_fade_vertex_variant(original.data(),original.size(),config,output)) ==
+                  LinearMaterialResult::Applied,"distance fade transform");
+    } else
+#endif
     if (xt_default(c)) {
       // No mode ever submits the incomplete original DEFAULT linkage. Mode 0
       // is the repaired ordinary pair with MRTs disabled, mode 1 enables MRTs.
@@ -954,10 +965,18 @@ struct Gpu {
     api(d->SetStreamSource(0, nullptr, 0, 0));
   }
 };
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+#include "linear_distance_fade_fixture_inc.h"
+#endif
 int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   try {
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+    const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
+    require(argc==3 || fade_mode,"args: programs cases [--distance-fade composite.bin]");
+#else
     require(argc == 3, "args: local programs directory, binary cases");
+#endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
     file.read(reinterpret_cast<char *>(&count), 4);
@@ -1001,6 +1020,10 @@ int main(int argc, char **argv) {
                   shaders.caps.MaxVertexShader30InstructionSlots,
                   shaders.caps.MaxPixelShader30InstructionSlots);
       require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+      if (fade_mode) distance_fade_fixture(device.p,shaders,cases,argv[4]);
+      else {
+#endif
       {
         Gpu gpu(device.p, shaders, 16);
         bool has_color_fixture=false;
@@ -1045,6 +1068,9 @@ int main(int argc, char **argv) {
           }
         }
       }
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+      }
+#endif
     } // Release every D3D object before destroying its device window.
     require(DestroyWindow(window) != 0, "destroy window");
     require(FreeLibrary(runtime) != 0, "unload D3D9 runtime");

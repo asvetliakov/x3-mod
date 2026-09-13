@@ -1,4 +1,5 @@
 #include "linear_material.h"
+#include "linear_distance_fade.h"
 #include "material_motion.h"
 #include <algorithm>
 #include <array>
@@ -1007,7 +1008,7 @@ const MotionOutputProfile* selected_row(bool vertex, std::uint64_t hash) noexcep
 #include "linear_xt_material_inc.h"
 
 LinearMaterialResult transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
-    Words& output, bool current_depth, bool vertex) noexcept {
+    Words& output, bool current_depth, bool vertex, bool fade = false) noexcept {
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
     // Bound the read before hashing; none of the reviewed original programs exceeds
@@ -1017,6 +1018,8 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     const auto* v=vertex?vertex_for(hash,words):nullptr;
     const auto* p=vertex?nullptr:pixel_for(hash,words);
     if ((!v && vertex) || (!p && !vertex)) return LinearMaterialResult::UnsupportedShader;
+    if (fade && !(vertex ? v->asteroid_layout : p->asteroid_layout))
+        return LinearMaterialResult::UnsupportedShader;
     const bool bump=vertex ? v->bump : p->bump;
     const auto* row=selected_row(vertex,hash);
     const auto* row_pixel=row ? pixel_for(row->pixel_fingerprint,row->pixel_dword_count) : nullptr;
@@ -1048,6 +1051,9 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
         const bool depth=vertex?material_motion_vertex_exports_depth(*row,current_depth):material_motion_pixel_writes_depth(*row,current_depth);
         std::vector<Insertion> insertions;
         if (!motion_insertions(original,words,motion,*row,vertex,depth,original_structure,insertions)) return LinearMaterialResult::ProfileMismatch;
+        // The detached fade producer exports no temporal MRTs or varyings.
+        // Keep the original motion proof above, but omit its inserted bytes.
+        if (fade) insertions.clear();
         Words combined;
         combined.reserve(motion.size()+400);
         combined.push_back(original[0]);
@@ -1155,8 +1161,13 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 }
                 if (at==p->final_rgb) {
                     combined[copied+1]=dst(temp,11);
-                    transfer(combined,false,11,{src(temp,11)},true,abi.pixel_scratch);
-                    emit(combined,mov,{dst(color_output,0),src(temp,11)});
+                    if (fade) {
+                        sanitize(combined,false,11,{src(temp,11)});
+                        emit(combined,mov,{dst(color_output,1),src(temp,11)});
+                    } else {
+                        transfer(combined,false,11,{src(temp,11)},true,abi.pixel_scratch);
+                        emit(combined,mov,{dst(color_output,0),src(temp,11)});
+                    }
                 }
             }
             at+=n+1;
@@ -1164,6 +1175,55 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
         if (insertion_index!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final_structure;
         if (!structure(combined.data(),combined.size(),vertex,final_structure,false,abi,original_temp_count)) return LinearMaterialResult::ResourceLimit;
+        if (fade) {
+            // Execute the untouched native body first, then the linear body.
+            // Sequential reuse of temporaries cannot alter already-written B
+            // outputs. Only the added COLOR1 / oC1 RGB may escape the replay.
+            Words dual{original[0]};
+            for (std::size_t at=1; at<combined.size()-1;) {
+                const auto op=combined[at]&0xffff, n=length(combined[at]);
+                if (op==dcl || op==def || op==0xfffe)
+                    dual.insert(dual.end(),combined.begin()+at,combined.begin()+at+n+1);
+                at+=n+1;
+            }
+            if (!vertex) emit(dual,def,{dst(constant,214,xyzw),bits(1.0f),0,0,0});
+            unsigned duplicated_alpha=0;
+            for (const auto& instruction:original_structure.instructions) {
+                const auto at=instruction.at;
+                const auto n=instruction.count, op=instruction.opcode;
+                if (op==dcl || op==def) continue;
+                dual.insert(dual.end(),original+at,original+at+n+1);
+                if (!vertex && kind(original[at+1])==color_output &&
+                    (mask(original[at+1])&8)) {
+                    // Both actual output writes retain the original MUL_pp,
+                    // operand words and output register class. No temporary
+                    // alpha reconstruction or precision-changing MOV intervenes.
+                    if (op!=mul || mask(original[at+1])!=8 ||
+                        index(original[at+1])!=0 || !(original[at+1]&pp))
+                        return LinearMaterialResult::ProfileMismatch;
+                    const auto begin=dual.size();
+                    dual.insert(dual.end(),original+at,original+at+n+1);
+                    dual[begin+1]=(dual[begin+1]&~0x7ffu)|1u;
+                    ++duplicated_alpha;
+                }
+            }
+            if (!vertex && duplicated_alpha!=1) return LinearMaterialResult::ProfileMismatch;
+            for (const auto& instruction:final_structure.instructions) {
+                const auto at=instruction.at;
+                const auto n=instruction.count, op=instruction.opcode;
+                if (op==dcl || op==def) continue;
+                const auto destination=combined[at+1];
+                if (vertex && kind(destination)==output_reg && index(destination)!=abi.vertex_rgb) continue;
+                if (!vertex && kind(destination)==color_output && index(destination)!=1) continue;
+                dual.insert(dual.end(),combined.begin()+at,combined.begin()+at+n+1);
+            }
+            if (!vertex) emit(dual,mov,{dst(color_output,2,xyzw),lane(constant,214,0)});
+            dual.push_back(end_token);
+            Structure dual_structure;
+            if (!structure(dual.data(),dual.size(),vertex,dual_structure,false,abi,original_temp_count))
+                return LinearMaterialResult::ResourceLimit;
+            combined.swap(dual);
+        }
         output.swap(combined);
         return LinearMaterialResult::Applied;
     } catch (...) { return LinearMaterialResult::AllocationFailure; }
@@ -1217,5 +1277,19 @@ LinearMaterialResult linear_material_xt_default_pixel_variant(const Word* origin
     if (words>1791) return LinearMaterialResult::UnsupportedShader;
     const auto* p=xt_pixel(material_motion_fingerprint(original,words));
     return !p || p->bump ? LinearMaterialResult::UnsupportedShader : xt_transform(original,words,config,output,current_depth,false,*p,linear);
+}
+} // namespace x3m::renderer
+
+namespace x3m::renderer {
+// Detached experimental producer only: no MotionOutput registration or route.
+LinearMaterialResult linear_distance_fade_vertex_variant(const std::uint32_t* original,
+    std::size_t words, const LinearMaterialConfig& config,
+    std::vector<std::uint32_t>& output) noexcept {
+    return transform(original,words,config,output,false,true,true);
+}
+LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t* original,
+    std::size_t words, const LinearMaterialConfig& config,
+    std::vector<std::uint32_t>& output) noexcept {
+    return transform(original,words,config,output,false,false,true);
 }
 } // namespace x3m::renderer

@@ -102,7 +102,13 @@ constexpr D3DRENDERSTATETYPE states[] = {D3DRS_ZENABLE,
                                          D3DRS_BLENDOP,
                                          D3DRS_COLORWRITEENABLE1,
                                          D3DRS_COLORWRITEENABLE2,
-                                         D3DRS_COLORWRITEENABLE3};
+                                         D3DRS_COLORWRITEENABLE3
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+                                         , D3DRS_BLENDOPALPHA,
+                                         D3DRS_SRCBLENDALPHA,
+                                         D3DRS_DESTBLENDALPHA
+#endif
+};
 constexpr DWORD fullscreen[] = {FALSE,
                                 FALSE,
                                 FALSE,
@@ -126,7 +132,13 @@ constexpr DWORD fullscreen[] = {FALSE,
                                 D3DBLENDOP_ADD,
                                 15,
                                 15,
-                                15};
+                                15
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+                                , D3DBLENDOP_ADD,
+                                D3DBLEND_ONE,
+                                D3DBLEND_ZERO
+#endif
+};
 constexpr D3DSAMPLERSTATETYPE samplers[] = {
     D3DSAMP_MINFILTER,   D3DSAMP_MAGFILTER,    D3DSAMP_MIPFILTER,
     D3DSAMP_ADDRESSU,    D3DSAMP_ADDRESSV,     D3DSAMP_SRGBTEXTURE,
@@ -211,6 +223,9 @@ struct LinearEmissionPass::Impl {
   LinearEmissionCompletion completion{};
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
   bool fused_copy = true;
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  bool source_over = false;
+#endif
   LinearEmissionPassFault fault_kind = LinearEmissionPassFault::None;
   unsigned fault_count = 0;
   bool fault(LinearEmissionPassFault f) noexcept {
@@ -441,6 +456,23 @@ struct LinearEmissionPass::Impl {
         depth.Height < height || depth.MultiSampleType != D3DMULTISAMPLE_NONE ||
         depth.MultiSampleQuality)
       return false;
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+    if (source_over) {
+      return boundary.augmented_vertex &&
+             saved.state(D3DRS_ALPHABLENDENABLE) &&
+             saved.state(D3DRS_BLENDOP) == D3DBLENDOP_ADD &&
+             saved.state(D3DRS_SRCBLEND) == D3DBLEND_SRCALPHA &&
+             saved.state(D3DRS_DESTBLEND) == D3DBLEND_INVSRCALPHA &&
+             saved.state(D3DRS_COLORWRITEENABLE) == 7 &&
+             !saved.state(D3DRS_SEPARATEALPHABLENDENABLE) &&
+             saved.state(D3DRS_ZENABLE) == D3DZB_TRUE &&
+             !saved.state(D3DRS_ALPHATESTENABLE) &&
+             !saved.state(D3DRS_ZWRITEENABLE) &&
+             !saved.state(D3DRS_STENCILENABLE) && !saved.state(D3DRS_FOGENABLE) &&
+             !saved.state(D3DRS_DITHERENABLE) &&
+             !saved.state(D3DRS_SRGBWRITEENABLE) && !saved.ss[0][5];
+    }
+#endif
     return saved.state(D3DRS_ALPHABLENDENABLE) &&
            saved.state(D3DRS_BLENDOP) == D3DBLENDOP_ADD &&
            saved.state(D3DRS_SRCBLEND) == D3DBLEND_ONE &&
@@ -530,6 +562,18 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   p.caps9 = caps9;
   p.depth_format = depth;
   p.rt_count = std::min(4u, unsigned(caps9.NumSimultaneousRTs));
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  p.source_over = fixture_source_over_ != nullptr;
+  if (p.source_over &&
+      ((caps9.PrimitiveMiscCaps & (D3DPMISCCAPS_SEPARATEALPHABLEND |
+                                  D3DPMISCCAPS_INDEPENDENTWRITEMASKS |
+                                  D3DPMISCCAPS_COLORWRITEENABLE)) !=
+       (D3DPMISCCAPS_SEPARATEALPHABLEND | D3DPMISCCAPS_INDEPENDENTWRITEMASKS |
+        D3DPMISCCAPS_COLORWRITEENABLE))) {
+    p.caps.reason = "source-over caps";
+    return D3DERR_NOTAVAILABLE;
+  }
+#endif
   p.caps.reason = "caps";
   if (caps9.NumSimultaneousRTs < 3 ||
       caps9.PixelShaderVersion < D3DPS_VERSION(3, 0) ||
@@ -571,7 +615,11 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   if (SUCCEEDED(hr) && !p.copy)
     hr = E_FAIL;
   if (SUCCEEDED(hr)) {
-    hr = p.call(CreatePs, composite_words, &p.composite);
+    hr = p.call(CreatePs,
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+                p.source_over ? fixture_source_over_ :
+#endif
+                composite_words, &p.composite);
     if (SUCCEEDED(hr) && !p.composite)
       hr = E_FAIL;
   }
@@ -717,14 +765,31 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
     out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE1, DWORD(15));
   if (SUCCEEDED(out.operation) && p.supported_state(D3DRS_COLORWRITEENABLE2))
     out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE2, DWORD(15));
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  if (SUCCEEDED(out.operation) && p.source_over) {
+    out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE2, DWORD(7));
+    if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_SEPARATEALPHABLENDENABLE, DWORD(TRUE));
+    if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_BLENDOPALPHA, DWORD(D3DBLENDOP_ADD));
+    if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_SRCBLENDALPHA, DWORD(D3DBLEND_ONE));
+    if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_DESTBLENDALPHA, DWORD(D3DBLEND_INVSRCALPHA));
+  }
+#endif
   if (SUCCEEDED(out.operation))
     out.operation = p.call(SetViewport, &p.saved.viewport);
   if (SUCCEEDED(out.operation))
     out.operation = p.call(SetScissor, &p.saved.scissor);
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  if (SUCCEEDED(out.operation)) {
+    if (p.fault(LinearEmissionPassFault::SourceBind)) out.operation = E_FAIL;
+    else if (p.source_over) out.operation = p.call(SetVs, boundary.augmented_vertex);
+    if (SUCCEEDED(out.operation)) out.operation = p.call(SetPs, boundary.augmented);
+  }
+#else
   if (SUCCEEDED(out.operation))
     out.operation = p.fault(LinearEmissionPassFault::SourceBind)
                         ? E_FAIL
                         : p.call(SetPs, boundary.augmented);
+#endif
   if (FAILED(out.operation)) {
     out.restore = p.restore(boundary.scene);
     if (p.fault(LinearEmissionPassFault::Restore))
