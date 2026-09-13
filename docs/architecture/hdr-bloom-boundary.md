@@ -105,7 +105,9 @@ ticket exactly once on every other exit.
 The verified original takes no stack arguments and ends with plain `RET`.
 The implementation must use an **SEH-aware wrapper frame spanning the original
 call**, with a toolchain-supported Windows SEH cleanup/finally path that revokes
-the ticket and releases invocation references during abnormal unwind. Merely
+the ticket and releases invocation references during abnormal unwind. The [isolated compiler-SEH prototype](bloom-return-bridge.md) now passes
+synthetic checks on both CrossOver bottles; production packaging and game
+integration remain unqualified. Merely
 replacing the return address does not install such cleanup, and C++ RAII alone
 must not be assumed to run for Windows SEH. The wrapper forwards the original
 exception without swallowing it and never executes post GPU work on unwind.

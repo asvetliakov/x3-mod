@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Synthetic CPU/SEH wrapper only; no production integration",
+  "native_windows_verified": false,
+  "installed_dll_changed": false,
+  "records": [
+    {
+      "bottle": "Steam",
+      "record": "/Users/asvetl/x3-mod/verification/probe/build/bloom_return_bridge_Steam.json",
+      "record_sha256": "40b3d60b6440ae040a1be14d6d7f762e6acce0aebcd1559cf3d0731514a979a3",
+      "evidence": {
+        "utc": "2026-09-13T00:50:06.294155+00:00",
+        "bottle": {
+          "name": "Steam",
+          "wine_arch": "win64",
+          "environment": {
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+        },
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "Steam",
+          "--no-update",
+          "/Users/asvetl/x3-mod/verification/probe/build/bloom_return_bridge.exe"
+        ],
+        "source_hashes": {
+          "verification/probe/bloom_return_bridge.S": "b0a0f537ee889e27527d1a973a97d69e5d5f0bd401b4e2deb2b4467d90a395b6",
+          "verification/probe/bloom_return_bridge.h": "afeea83511ed92c5abc0fd4bd92ce64d3020a50a45e514f1d872fbe2a3ca331e",
+          "verification/probe/bloom_return_bridge_build.py": "a059af28d37c037cb7ae5accddd96974c383d9cde6a7837141e0778a4b7f9d8a",
+          "verification/probe/bloom_return_bridge_fixture.c": "0a7efe91ce12142dd1f6c6b74be3c93837cdd49cb9bbcb14c08befe40961bfe3",
+          "verification/probe/bloom_return_bridge_run.py": "6f7ccfbb46604bc9b325c47070f2019c28dffece85703ce937040ca7cd1ec8df",
+          "verification/probe/bloom_return_bridge_seh.c": "e05137b8946f59e1ccbf629d5bd48b98bffaa74d6752ac3845b0b68ed573bec7",
+          "verification/analysis/test_bloom_return_bridge.py": "e11d725bd6ec312fda04b1038202639c4f239cc88c60b9caed34f49d9c802357",
+          "verification/probe/build/bloom_return_bridge.exe": "b35fdeef55e873a72c8d480b6905ac96c524aa2d0474d3760b8ca1eabd6e7d07"
+        },
+        "source_hashes_after": {
+          "verification/probe/bloom_return_bridge.S": "b0a0f537ee889e27527d1a973a97d69e5d5f0bd401b4e2deb2b4467d90a395b6",
+          "verification/probe/bloom_return_bridge.h": "afeea83511ed92c5abc0fd4bd92ce64d3020a50a45e514f1d872fbe2a3ca331e",
+          "verification/probe/bloom_return_bridge_build.py": "a059af28d37c037cb7ae5accddd96974c383d9cde6a7837141e0778a4b7f9d8a",
+          "verification/probe/bloom_return_bridge_fixture.c": "0a7efe91ce12142dd1f6c6b74be3c93837cdd49cb9bbcb14c08befe40961bfe3",
+          "verification/probe/bloom_return_bridge_run.py": "6f7ccfbb46604bc9b325c47070f2019c28dffece85703ce937040ca7cd1ec8df",
+          "verification/probe/bloom_return_bridge_seh.c": "e05137b8946f59e1ccbf629d5bd48b98bffaa74d6752ac3845b0b68ed573bec7",
+          "verification/analysis/test_bloom_return_bridge.py": "e11d725bd6ec312fda04b1038202639c4f239cc88c60b9caed34f49d9c802357",
+          "verification/probe/build/bloom_return_bridge.exe": "b35fdeef55e873a72c8d480b6905ac96c524aa2d0474d3760b8ca1eabd6e7d07"
+        },
+        "sources_stable": true,
+        "returncode": 0,
+        "passed": true,
+        "checks": 240,
+        "expected_checks": 240,
+        "log": "/Users/asvetl/x3-mod/verification/probe/build/bloom_return_bridge_Steam.txt",
+        "native_windows_verified": false
+      },
+      "log_sha256": "539b42d2b7df044c86e63344eedb29dd9fa8aecfbed303f6d1f21636c6e4af8b"
+    },
+    {
+      "bottle": "X3",
+      "record": "/Users/asvetl/x3-mod/verification/probe/build/bloom_return_bridge_X3.json",
+      "record_sha256": "6d5beb6a6add0fa203d249e563f8f15a4f8e598d4e9941c7519d3af80eb5adb8",
+      "evidence": {
+        "utc": "2026-09-13T00:50:24.941966+00:00",
+        "bottle": {
+          "name": "X3",
+          "wine_arch": "arm64",
+          "environment": {
+            "FEX_X87REDUCEDPRECISION": "1",
+            "WINEMSYNC": "1"
+          },
+          "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+        },
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "/Users/asvetl/x3-mod/verification/probe/build/bloom_return_bridge.exe"
+        ],
+        "source_hashes": {
+          "verification/probe/bloom_return_bridge.S": "b0a0f537ee889e27527d1a973a97d69e5d5f0bd401b4e2deb2b4467d90a395b6",
+          "verification/probe/bloom_return_bridge.h": "afeea83511ed92c5abc0fd4bd92ce64d3020a50a45e514f1d872fbe2a3ca331e",
+          "verification/probe/bloom_return_bridge_build.py": "a059af28d37c037cb7ae5accddd96974c383d9cde6a7837141e0778a4b7f9d8a",
+          "verification/probe/bloom_return_bridge_fixture.c": "0a7efe91ce12142dd1f6c6b74be3c93837cdd49cb9bbcb14c08befe40961bfe3",
+          "verification/probe/bloom_return_bridge_run.py": "6f7ccfbb46604bc9b325c47070f2019c28dffece85703ce937040ca7cd1ec8df",
+          "verification/probe/bloom_return_bridge_seh.c": "e05137b8946f59e1ccbf629d5bd48b98bffaa74d6752ac3845b0b68ed573bec7",
+          "verification/analysis/test_bloom_return_bridge.py": "e11d725bd6ec312fda04b1038202639c4f239cc88c60b9caed34f49d9c802357",
+          "verification/probe/build/bloom_return_bridge.exe": "b35fdeef55e873a72c8d480b6905ac96c524aa2d0474d3760b8ca1eabd6e7d07"
+        },
+        "source_hashes_after": {
+          "verification/probe/bloom_return_bridge.S": "b0a0f537ee889e27527d1a973a97d69e5d5f0bd401b4e2deb2b4467d90a395b6",
+          "verification/probe/bloom_return_bridge.h": "afeea83511ed92c5abc0fd4bd92ce64d3020a50a45e514f1d872fbe2a3ca331e",
+          "verification/probe/bloom_return_bridge_build.py": "a059af28d37c037cb7ae5accddd96974c383d9cde6a7837141e0778a4b7f9d8a",
+          "verification/probe/bloom_return_bridge_fixture.c": "0a7efe91ce12142dd1f6c6b74be3c93837cdd49cb9bbcb14c08befe40961bfe3",
+          "verification/probe/bloom_return_bridge_run.py": "6f7ccfbb46604bc9b325c47070f2019c28dffece85703ce937040ca7cd1ec8df",
+          "verification/probe/bloom_return_bridge_seh.c": "e05137b8946f59e1ccbf629d5bd48b98bffaa74d6752ac3845b0b68ed573bec7",
+          "verification/analysis/test_bloom_return_bridge.py": "e11d725bd6ec312fda04b1038202639c4f239cc88c60b9caed34f49d9c802357",
+          "verification/probe/build/bloom_return_bridge.exe": "b35fdeef55e873a72c8d480b6905ac96c524aa2d0474d3760b8ca1eabd6e7d07"
+        },
+        "sources_stable": true,
+        "returncode": 0,
+        "passed": true,
+        "checks": 240,
+        "expected_checks": 240,
+        "log": "/Users/asvetl/x3-mod/verification/probe/build/bloom_return_bridge_X3.txt",
+        "native_windows_verified": false
+      },
+      "log_sha256": "ba7cc8f5c6cbb40d0cae1da09cfcbebdc9f51800ecb10bbd8822ad4c172ef33e"
+    }
+  ]
+}

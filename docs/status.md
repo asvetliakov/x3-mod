@@ -92,6 +92,10 @@ readbacks), but 38 reconstruction readbacks failed the fixed numerical
 tolerance. Downsample stages and sampling controls passed. The retained
 failure is being diagnosed; GPU acceptance, renderer integration and game
 acceptance remain pending.
+The separate [CPU return-bridge prototype](verification/review-39-bloom-return-bridge.md)
+passed independent review and 240 checks each on Steam and X3/FEX, including
+exception cleanup and CPU-state transport. It is not integrated into the game
+hook; production packaging, ownership/Reset and GPU recovery remain.
 No integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)
