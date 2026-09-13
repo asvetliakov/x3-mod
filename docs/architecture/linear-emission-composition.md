@@ -1,10 +1,11 @@
 # Ordered linear emission composition
 
-Decision brief, 2026-09-13, after installed BUMPMAP source `df4dc09` /
-checkpoint `974f2be`. **Recommendation: build a detached ordered-composition
-and reactive-producer feasibility fixture next. Do not integrate a live route
-until coverage, failure recovery and cost are justified.** This advances actual
-linear additive composition rather than more opaque family aliases.
+Updated 2026-09-13. The initial ordered-bracket experiment is qualified but will
+not be promoted unchanged: it alters untouched pixels and lacks post-draw native
+fallback. The [revised same-draw candidate](#candidate-retain-native-output-and-publish-an-owned-target)
+has passed its first detached qualification. **No live emission route is selected.** Coverage,
+recovery and measured cost remain integration gates; the earlier design and its
+results below explain this decision.
 
 ## Boundary decision
 
@@ -532,4 +533,45 @@ and inherited alpha state. Neither alpha lane is gamma-converted.
 Candidate architecture review: Sol/high approved with no open findings after
 clarifying original `_pp` output portability, full oC1 alpha, source/accumulation
 sanitation (including signed-zero limits), and checked lazy-attachment flushing.
-This is a source/design verdict; the new detached MRT experiment is in progress.
+The corrected detached implementation removes an unnecessary independent-write-
+mask requirement, uses FP16 rather than an unrelated R32F capability for its
+depth witness, and performs one A-to-B target bind per measured copy.
+
+### Detached MRT candidate qualification
+
+Independent source and evidence review on 2026-09-13 found no open defect in the
+bounded authored experiment. The accepted
+[X3 result](../../verification/results/bottle-X3/linear-emission-mrt-gpu.json)
+passes 38 cases over eight VS2/PS2 source variants and 78 shader creations. It
+compares 118,784 A-to-B channels and 118,784 original-versus-augmented native
+channels exactly,
+preserves 74,577 zero-E channels bit-for-bit (including 86 negative-zero and 172
+above-decode-cap witnesses), copies B alpha exactly, and passes 9,728 final alpha
+and D24S8 probe pixels. All 256 explicitly seeded positive-infinity E channels
+produce finite capped C, and the largest analytical RGB error is 0.5634 of the
+specified tolerance. Three post-source composition refusals adopt the current
+native B; two pre-source cases decline MRT and execute the native path.
+
+At 1280x768, median completion was 0.541 ms native, 1.013 ms for the best-case
+two-source MRT burst and 1.471 ms for two single-source brackets; copy, clear and
+composite medians were 0.424/0.340/0.495 ms. At 1920x1080 the corresponding
+medians were 0.605/1.524/2.401 ms and 0.484/0.431/0.717 ms. Component timings are
+separate completion measurements, not an additive decomposition. These are
+CrossOver/FEX diagnostics and do not measure game FPS or native Windows.
+
+This qualifies authored same-draw native B/linear E behavior, per-channel C
+selection and native-B content fallback on the tested X3 backend. It does not
+qualify augmentation of the five original shaders, live HdrPass ownership or
+TemporalPass coverage, partial/failed MRT submissions, failed bind/restoration,
+negative or NaN E, nonfinite A/source input, native-Windows execution, visual
+behavior or gameplay cost. No production route is approved by this result.
+
+Orchestrator decision: retain this as the viable color/recovery prototype, not a
+live route. Untouched-channel preservation fixes the first experiment's measured
+no-op drift, and native B supplies a bounded recovery image after successful
+source draws. Cost remains material: the two single-source brackets add about
+1.80 ms over the native diagnostic at 1080p. Investigate the compositor's
+full-screen gamma arithmetic for zero-emission pixels before adding live
+ownership or original-shader augmentation; any optimization must retain the
+same image, alpha, zero-channel and recovery checks. Complete reactive coverage
+and actual-original/native-Windows qualification remain independent gates.

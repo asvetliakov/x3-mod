@@ -78,8 +78,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   untouched-pixel drift and unresolved post-draw fallback rule out promoting it
   unchanged. The next architecture must preserve encoded pixels and a current
   native result until publication. A same-draw native/emission MRT candidate
-  now has shader-headroom and target-ownership findings; its detached parity
-  experiment is in progress. A [background study](reverse-engineering/background-temporal-coverage.md)
+  now passes 38 detached X3 cases, preserving untouched channels and a native
+  recovery image. Its measured copy/composition cost still warrants optimization
+  before live integration. A [background study](reverse-engineering/background-temporal-coverage.md)
   distinguishes sampled camera-centered nebula motion from changing stardust
   inputs; runtime temporal admission remains unproved. No live emission route is selected.
   Targeted disassembly established native color/emissive scaling. Covered

@@ -1,0 +1,215 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "scope": "Detached authored PS2 same-draw native B/linear E and per-channel untouched A/composite C experiment; no live HdrPass, temporal producer or native Windows runtime proof",
+  "targets": {
+    "A": "FP16 immutable encoded candidate",
+    "B": "FP16 current native result",
+    "E": "FP16 linear emission",
+    "C": "FP16 publication candidate",
+    "depth": "D24S8",
+    "msaa": false,
+    "srgb": false
+  },
+  "tolerance": {
+    "rgb_relative": 0.003,
+    "rgb_absolute": 3e-05,
+    "native_RT0": "exact original/augmented GPU bytes",
+    "zero_E": "exact per-channel A bits",
+    "alpha": "exact B alpha"
+  },
+  "timing_scope": "QPC through EVENT completion with reused resources/shaders/state blocks and actual capture/restore; setup/readback/reference draws excluded. Separate copy/clear/composite timings are not an additive GPU-time decomposition",
+  "limitations": [
+    "Authored PS2 PP/native-output parity is qualified only on the tested domain/backend; it is not a universal driver theorem",
+    "Finite A (including signed zero and values above the decode cap); finite authored sources. Positive E overflow and explicitly seeded positive infinity are separate sanitizer witnesses; NaN/negative E and nonfinite A remain unqualified",
+    "Only shared ADD/ONE/ONE with full RGBA mask15 admitted; RGB-only mode is a native refusal witness; fog/dither off",
+    "Alpha-test witnesses are boundary feasibility only; initial live admission remains alpha-test off",
+    "Composition refusal adopts B after successful source calls; failed/partial MRT source draws and failed bind/restore are not rollback-qualified",
+    "One synthetic two-source burst; batching across application setters and live ownership/consumer integration are unapproved"
+  ],
+  "code_sha256": {
+    "verification/probe/linear_emission_fixture.cpp": "9dd3cc32dcdca8dde4be54cdeb35c628b1e65e4a09c88c3b45b1d46486459271",
+    "verification/probe/build_linear_emission.sh": "d3f80a879364a398770fd2dbae2b0ae876eaa11ec5494514b1053902d0029534",
+    "verification/probe/run_linear_emission.py": "182fd898eb9c2b094b8ca28d6c02fe32a9bb1cef02c807f98354eaa7d3ccd70a",
+    "verification/analysis/test_linear_emission_report.py": "afca46caba3639fdae20d07582c839b8c4dcbf179bc0bdcdc52e7867123f7a0f",
+    "verification/analysis/test_linear_emission_mrt_report.py": "4e7bc53e6efcd318a97f8a40de36c7838fc079611e2e0ddbe01323432d40e10f"
+  },
+  "executable_sha256": "2d343a174dce6744b7cbc1898be6ae44b0dd079ae1a2254488fc4989306caa1f",
+  "raw_dir": "/tmp/x3-linear-emission-gpu-mrt",
+  "exit_code": 0,
+  "cases": 38,
+  "shader_creations": 78,
+  "source_variants": 8,
+  "mrt_caps": {
+    "slots": 4,
+    "postpixel_blending": true,
+    "independent_write_masks": true
+  },
+  "source_shader_model": "vs_2_0/ps_2_0; native full/partial precision variants",
+  "invariants": {
+    "sources": 227,
+    "bursts": 116,
+    "copy": 118784,
+    "native": 118784,
+    "zero": 74577,
+    "alpha": 28928,
+    "minuszero": 86,
+    "capzero": 172,
+    "infinite": 256,
+    "fallback": 3,
+    "incomplete": 0,
+    "refused": 2
+  },
+  "max_rgb_tolerance_fraction": 0.5633104629285385,
+  "exact_alpha_pixels": 9728,
+  "depth_stencil_pixels": 9728,
+  "faults": [
+    {
+      "label": "composition_refusal_native_adoption",
+      "sources": 2,
+      "native_adoptions": 1,
+      "refused": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "repeated_native_adoption",
+      "sources": 4,
+      "native_adoptions": 2,
+      "refused": 0,
+      "incomplete": 0
+    },
+    {
+      "label": "rgb_write_mask_refusal",
+      "sources": 2,
+      "native_adoptions": 0,
+      "refused": 1,
+      "incomplete": 0
+    },
+    {
+      "label": "preparation_refusal",
+      "sources": 2,
+      "native_adoptions": 0,
+      "refused": 1,
+      "incomplete": 0
+    }
+  ],
+  "timings": [
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": "native",
+      "samples": 8,
+      "median_ms": 0.541,
+      "min_ms": 0.4487,
+      "max_ms": 0.5924
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": "best-case two-source MRT burst",
+      "samples": 8,
+      "median_ms": 1.01335,
+      "min_ms": 0.9182,
+      "max_ms": 1.4608
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": "two single-source MRT brackets",
+      "samples": 8,
+      "median_ms": 1.4706000000000001,
+      "min_ms": 1.1747,
+      "max_ms": 1.8373
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": "copy only",
+      "samples": 8,
+      "median_ms": 0.42364999999999997,
+      "min_ms": 0.3476,
+      "max_ms": 0.4533
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": "clear only",
+      "samples": 8,
+      "median_ms": 0.34009999999999996,
+      "min_ms": 0.3167,
+      "max_ms": 0.3867
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "mode": "composite only",
+      "samples": 8,
+      "median_ms": 0.49534999999999996,
+      "min_ms": 0.3804,
+      "max_ms": 0.642
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "mode": "native",
+      "samples": 8,
+      "median_ms": 0.6051,
+      "min_ms": 0.4684,
+      "max_ms": 0.7485
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "mode": "best-case two-source MRT burst",
+      "samples": 8,
+      "median_ms": 1.5241,
+      "min_ms": 1.3819,
+      "max_ms": 2.3819
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "mode": "two single-source MRT brackets",
+      "samples": 8,
+      "median_ms": 2.40125,
+      "min_ms": 1.9015,
+      "max_ms": 3.0511
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "mode": "copy only",
+      "samples": 8,
+      "median_ms": 0.4835,
+      "min_ms": 0.438,
+      "max_ms": 0.6836
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "mode": "clear only",
+      "samples": 8,
+      "median_ms": 0.43065,
+      "min_ms": 0.3475,
+      "max_ms": 0.5942
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "mode": "composite only",
+      "samples": 8,
+      "median_ms": 0.7170000000000001,
+      "min_ms": 0.5379,
+      "max_ms": 0.8908
+    }
+  ]
+}

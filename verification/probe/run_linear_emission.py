@@ -28,7 +28,8 @@ EXE = ROOT/'verification/probe/build/linear-emission/linear_emission_fixture.exe
 INPUTS = ('verification/probe/linear_emission_fixture.cpp',
           'verification/probe/build_linear_emission.sh',
           'verification/probe/run_linear_emission.py',
-          'verification/analysis/test_linear_emission_report.py')
+          'verification/analysis/test_linear_emission_report.py',
+          'verification/analysis/test_linear_emission_mrt_report.py')
 CAP = 65504.
 WIDTH = HEIGHT = 16
 RGB_REL = .003  # full-precision POW plus binary16 store, no retained _pp lobe
@@ -373,6 +374,184 @@ def validate_report(text,data,cases):
                 max_rgb_tolerance_fraction=maximum,negative_controls=witnesses,
                 fault_results=faults,round_trip_drift=drift,timings=timing_summary)
 
+# Same runner/session infrastructure, separate experiment and accepted record.
+MRT_OPS = ('sources','bursts','copy','native','zero','alpha','minuszero','capzero','infinite','fallback','incomplete','refused')
+
+
+def mrt_cases():
+    cases=[]
+    def add(label,operations,**kw):
+        c=dict(id=len(cases),label=label,mode=1,mask=0,alpha=0,write=15,fault=0,pattern=0,flags=32,ops=copy.deepcopy(operations))
+        c.update(kw);cases.append(c)
+    a=op(rect=(0,0,.75,.75),color=(.5,.25,.125,.125),fade=.75,affine=1)
+    b=op(rect=(.25,.25,1,1),color=(.125,.375,.5,.5),fade=.5,gain=4.)
+    for pp in (0,32):
+        for affine in (0,1):
+            for nofade in (0,64):
+                aa,bb=copy.deepcopy(a),copy.deepcopy(b)
+                aa['affine']=bb['affine']=affine
+                add('source_contract_variants',[aa,bb],flags=pp|nofade)
+    for alpha in range(3):
+        for alpha_test in range(3):
+            add('sampled_alpha_test_raster',[a,b],flags=32|4|8|16|1,alpha=alpha,mask=alpha_test)
+    for axis in range(3):
+        color=[0.,0.,0.,.125];color[axis]=.5
+        add('asymmetric_channel_identity', [op(rect=(0,0,1,1),color=color,fade=.75,gain=4.)],pattern=1)
+    zero=op(rect=(0,0,1,1),gain=0.,color=(.5,.25,.125,.125),fade=1.)
+    for rotations in (1,16,64):
+        add('zero_energy_rotations_'+str(rotations),[x for _ in range(rotations) for x in (zero,zero,op(4))],pattern=1)
+    add('zero_fade',[op(rect=(0,0,1,1),fade=0.)],pattern=1)
+    add('fade_absent_zero_varying',[op(fade=0.)],flags=32|64)
+    add('negative_affine_component',[op(rect=(0,0,1,1),color=(0,0,0,.125),fade=1.,affine=1)],pattern=1)
+    add('finite_source_storage_cap',[op(rect=(0,0,1,1),color=(.5,256.,0.,.125),fade=1.,gain=16.)],pattern=1)
+    capped=op(rect=(0,0,1,1),color=(0.,256.,0.,.125),fade=1.,gain=16.)
+    add('positive_accumulation_overflow',[capped,capped],flags=32|128,pattern=1)
+    add('positive_infinite_E_seed',[zero],flags=32|256,pattern=1)
+    add('single_source_brackets',[a,b],flags=32|2)
+    screen=op(2,rect=(.25,.125,.875,.875),color=(.25,.125,.5,.25),fade=1.)
+    opaque=op(0,rect=(.25,.25,.75,.75),z=.2,color=(.0625,.5,.25,.5),fade=1.)
+    add('intervening_screen',[a,screen,b])
+    add('later_opaque',[a,b,opaque])
+    add('depth_occluded',[op(z=.9),a,b])
+    add('composition_refusal_native_adoption',[a,b],fault=3)
+    add('repeated_native_adoption',[a,b,op(4),a,b],fault=3)
+    add('rgb_write_mask_refusal',[a,b],write=7)
+    add('preparation_refusal',[a,b],fault=1)
+    add('native_encoded_control',[a,b],mode=0)
+    return cases
+
+
+def mrt_sample(o,c,uv):
+    rgba=[half(x) for x in o['color']]
+    if c['flags']&4:
+        sample=((1.,1.,1.,.125),(.5,1.,.75,.5),(1.,.5,.5,0.),(.75,.25,1.,1.))[min(1,int(uv[1]*2))*2+min(1,int(uv[0]*2))]
+        rgba=[half(x*t) for x,t in zip(o['color'][:3],sample[:3])]+[sample[3]]
+    rgb=rgba[:3]
+    if o['affine']:
+        rgb=[.75*rgb[0]+.125*rgb[1]+.03125,
+             .5*rgb[1]+.25*rgb[2]+.0625,
+             .125*rgb[0]+.875*rgb[2]-.03125]
+    fade=1. if c['flags']&64 else o['fade']*(1-.5*uv[0] if c['flags']&8 else 1.)
+    native=[x*fade for x in rgb]+rgba[3:]
+    energy=[sanitize(decode(x)*fade*o['gain']) for x in rgb]+[0.]
+    return native,energy
+
+
+def mrt_expected(c):
+    a=[initial_pixel(x,y,c['pattern']) for y in range(16) for x in range(16)]
+    depth=[.75]*256;count={key:0 for key in MRT_OPS};start=0
+    eligible=c['write']==15 and c['fault']!=1
+    def draw(target,index,energy=None):
+        o=c['ops'][index]
+        for i in pixels_in(o,c):
+            if o['z']>=depth[i]:continue
+            if o['kind']!=1:
+                target[i]=blend(target[i],o['color'],c,o['kind'],15 if o['kind']==0 else None)
+                if o['kind']==0:depth[i]=o['z']
+                continue
+            ox=oy=4 if c['flags']&16 else 0;vw=vh=8 if c['flags']&16 else 16
+            l,t,rr,bb=o['rect'];x,y=i%16,i//16
+            uv=((x+.5-ox-l*vw)/((rr-l)*vw),(y+.5-oy-t*vh)/((bb-t)*vh))
+            native,e=mrt_sample(o,c,uv)
+            if c['mask']==1 and native[3]<=64/255:continue
+            if c['mask']==2 and native[3]>=128/255:continue
+            target[i]=blend(target[i],native,c,1)
+            if energy is not None:
+                energy[i]=[half(x+y) for x,y in zip(energy[i][:3],e[:3])]+[0.]
+    while start<len(c['ops']):
+        if c['ops'][start]['kind']!=1:
+            if c['ops'][start]['kind']!=4:draw(a,start)
+            start+=1;continue
+        end=start+1
+        if not c['flags']&2:
+            while end<len(c['ops']) and c['ops'][end]['kind']==1:end+=1
+        count['sources']+=end-start
+        if not eligible or c['mode']==0:
+            for index in range(start,end):draw(a,index)
+            count['refused']+=not eligible;start=end;continue
+        b=copy.deepcopy(a);e=[[0.]*4 for _ in range(256)]
+        count['bursts']+=1;count['copy']+=1024;count['native']+=1024
+        for index in range(start,end):draw(b,index,e)
+        if c['flags']&256:e=[[0.,math.inf,0.,0.] for _ in range(256)]
+        if c['fault']==3:
+            a=b;count['fallback']+=1;start=end;continue
+        result=[]
+        for old,energy,native in zip(a,e,b):
+            rgb=[]
+            for x,y in zip(old[:3],energy[:3]):
+                count['infinite']+=math.isinf(y) and y>0
+                y=sanitize(y)
+                if y==0:
+                    rgb.append(x);count['zero']+=1
+                    count['minuszero']+=x==0 and math.copysign(1.,x)<0
+                    count['capzero']+=x>154.6012
+                else:rgb.append(half(encode(sanitize(decode(x)+y))))
+            result.append(rgb+native[3:]);count['alpha']+=1
+        a=result;start=end
+    return a,[1. if z>.5 else 2. for z in depth],count
+
+
+def parse_mrt_pixels(data,cases):
+    stride=4+256*5*4
+    assert len(data)==stride*len(cases),'MRT readback bytes'
+    result=[]
+    for c,offset in zip(cases,range(0,len(data),stride)):
+        assert struct.unpack_from('<I',data,offset)[0]==c['id'],'MRT readback order'
+        values=struct.unpack_from('<1280f',data,offset+4)
+        result.append(([list(values[i:i+4]) for i in range(0,1024,4)],list(values[1024:])))
+    return result
+
+
+def validate_mrt_report(text,data,cases):
+    lines=text.strip().splitlines()
+    assert re.fullmatch(r'CAPS vs=fffe0300 ps=ffff0300 rt=[2-9]',lines[0]),'MRT shader caps'
+    assert re.findall(r'^FORMAT name=(\w+) hr=00000000$',text,re.M)==['fp16_rt','fp16_blend','d24s8'],'MRT format caps'
+    assert re.findall(r'^DEPTH_MATCH format=(\d+) hr=00000000$',text,re.M)==['113'],'MRT depth matches'
+    caps=re.search(r'^MRT_CAPS slots=([2-9]) postblend=1 independent_masks=([01])$',text,re.M)
+    assert caps,'MRT blend/mask caps'
+    assert lines[-1]==f'MRT_RESULT pass cases={len(cases)} shaders=78','MRT clean completion'
+    pattern=r'^MRT_CASE id=(\d+) sources=(\d+) bursts=(\d+) copy=(\d+) native=(\d+) zero=(\d+) alpha=(\d+) minuszero=(\d+) capzero=(\d+) infinite=(\d+) fallback=(\d+) incomplete=(\d+) refused=(\d+)$'
+    rows=re.findall(pattern,text,re.M);assert len(rows)==len(cases),'MRT case rows'
+    actual=parse_mrt_pixels(data,cases);maximum=0.;totals={k:0 for k in MRT_OPS};faults=[]
+    for c,row,(color,depth) in zip(cases,rows,actual):
+        assert int(row[0])==c['id'],'MRT case order'
+        ideal,idepth,count=mrt_expected(c)
+        if c['label']=='positive_accumulation_overflow':
+            observed=int(row[1+MRT_OPS.index('infinite')])
+            assert observed in (0,256),'uniform overflow may store finite maximum or positive infinity'
+            count['infinite']=observed
+        assert list(map(int,row[1:]))==list(count.values()),(c['label'],'MRT GPU invariant counts',row,count)
+        for k,v in count.items():totals[k]+=v
+        if c['fault'] or c['write']!=15:faults.append(dict(label=c['label'],sources=count['sources'],native_adoptions=count['fallback'],refused=count['refused'],incomplete=count['incomplete']))
+        assert depth==idepth,(c['label'],'original depth/stencil')
+        for i,(a,b) in enumerate(zip(color,ideal)):
+            assert a[3]==b[3],(c['label'],i,'raw native alpha',a[3],b[3])
+            for k,(v,w) in enumerate(zip(a[:3],b[:3])):
+                assert math.isfinite(v),(c['label'],i,'nonfinite C')
+                scale=abs(v-w)/(RGB_ABS+RGB_REL*abs(w));maximum=max(maximum,scale)
+                assert scale<=1,(c['label'],i,k,'MRT C oracle',v,w,scale)
+        if c['label'].startswith('zero_energy_rotations_'):
+            for i,p in enumerate(color):
+                wanted=initial_pixel(i%16,i//16,True)
+                assert struct.pack('<3f',*p[:3])==struct.pack('<3f',*wanted[:3]),'repeated zero-E channel bits'
+    assert totals['minuszero'] and totals['capzero'],'signed-zero/high encoded identity witnesses missing'
+    control=next(c['id'] for c in cases if c['label']=='native_encoded_control')
+    qualified=next(c['id'] for c in cases if c['label']=='composition_refusal_native_adoption')
+    assert actual[control]==actual[qualified],'composition refusal did not adopt current native result'
+    timings=re.findall(r'^MRT_TIMING width=(\d+) height=(\d+) variant=(\d+) sample=(\d+) completed_ms=(\S+)$',text,re.M)
+    assert len(timings)==96,'MRT timing rows';summary=[]
+    for width,height in ((1280,768),(1920,1080)):
+        block=[x for x in timings if tuple(map(int,x[:2]))==(width,height)]
+        assert [int(x[3]) for x in block]==list(range(48)),'MRT timing order'
+        assert [int(x[2]) for x in block]==[5-i%6 if (i//6)%2 else i%6 for i in range(48)],'MRT variant order'
+        for variant in range(6):
+            values=[float(x[4]) for x in block if int(x[2])==variant]
+            assert len(values)==8 and all(math.isfinite(v) and v>=0 for v in values)
+            summary.append(dict(width=width,height=height,mode=('native','best-case two-source MRT burst','two single-source MRT brackets','copy only','clear only','composite only')[variant],samples=8,median_ms=statistics.median(values),min_ms=min(values),max_ms=max(values)))
+    assert len(lines)==7+len(rows)+len(timings),'unexpected MRT output'
+    return dict(cases=len(cases),shader_creations=78,source_variants=8,mrt_caps=dict(slots=int(caps[1]),postpixel_blending=True,independent_write_masks=bool(int(caps[2]))),source_shader_model='vs_2_0/ps_2_0; native full/partial precision variants',invariants=totals,
+                max_rgb_tolerance_fraction=maximum,exact_alpha_pixels=256*len(cases),depth_stencil_pixels=256*len(cases),faults=faults,timings=summary)
+
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -380,13 +559,15 @@ def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--exe',type=Path,default=EXE)
-    p.add_argument('--raw-dir',type=Path,default=Path('/tmp/x3-linear-emission-gpu'))
+    p.add_argument('--raw-dir',type=Path)
+    p.add_argument('--mode',choices=('ordered','mrt'),default='ordered')
     args=p.parse_args()
+    if args.raw_dir is None:args.raw_dir=Path('/tmp/x3-linear-emission-gpu'+('-mrt' if args.mode=='mrt' else ''))
     assert bottle.BOTTLE=='X3','set X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(),'game running; refused'
     assert args.exe.is_file(),'build the detached EXE explicitly first'
     args.raw_dir.mkdir(parents=True,exist_ok=True)
-    cases=fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
+    cases=mrt_cases() if args.mode=='mrt' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
     report=args.raw_dir/'report.txt';pixels=args.raw_dir/'pixels.bin'
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,
                 scope='Detached authored D3D9 ordered RGB/actual alpha, closed-world R32F mask producer, drift/cost/fault experiment; no live renderer or native Windows runtime qualification',
@@ -399,13 +580,25 @@ def main():
                              'Injected failures refuse selected calls; no device-loss/partial-API-execution or successful post-submission native-recovery guarantee',
                              'Fullscene decode/reencode can drift untouched pixels; cap effects and rounding are reported separately'],
                 code_sha256={name:sha(ROOT/name) for name in INPUTS},executable_sha256=sha(args.exe),raw_dir=str(args.raw_dir))
+    if args.mode=='mrt':
+        result.update(scope='Detached authored PS2 same-draw native B/linear E and per-channel untouched A/composite C experiment; no live HdrPass, temporal producer or native Windows runtime proof',
+            targets=dict(A='FP16 immutable encoded candidate',B='FP16 current native result',E='FP16 linear emission',C='FP16 publication candidate',depth='D24S8',msaa=False,srgb=False),
+            tolerance=dict(rgb_relative=RGB_REL,rgb_absolute=RGB_ABS,native_RT0='exact original/augmented GPU bytes',zero_E='exact per-channel A bits',alpha='exact B alpha'),
+            timing_scope='QPC through EVENT completion with reused resources/shaders/state blocks and actual capture/restore; setup/readback/reference draws excluded. Separate copy/clear/composite timings are not an additive GPU-time decomposition',
+            limitations=['Authored PS2 PP/native-output parity is qualified only on the tested domain/backend; it is not a universal driver theorem',
+                          'Finite A (including signed zero and values above the decode cap); finite authored sources. Positive E overflow and explicitly seeded positive infinity are separate sanitizer witnesses; NaN/negative E and nonfinite A remain unqualified',
+                          'Only shared ADD/ONE/ONE with full RGBA mask15 admitted; RGB-only mode is a native refusal witness; fog/dither off',
+                          'Alpha-test witnesses are boundary feasibility only; initial live admission remains alpha-test off',
+                          'Composition refusal adopts B after successful source calls; failed/partial MRT source draws and failed bind/restore are not rollback-qualified',
+                          'One synthetic two-source burst; batching across application setters and live ownership/consumer integration are unapproved'])
     command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=b',str(args.exe),'Z:'+str(case_path),'Z:'+str(pixels)]
+    if args.mode=='mrt':command.append('--mrt')
     try:
         with report.open('w') as out,(args.raw_dir/'wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=900)
         result['exit_code']=process.returncode
         assert process.returncode==0,'fixture failed; '+str(report)
-        result.update(validate_report(report.read_text(),pixels.read_bytes(),cases))
+        result.update((validate_mrt_report if args.mode=='mrt' else validate_report)(report.read_text(),pixels.read_bytes(),cases))
         assert result['code_sha256']=={name:sha(ROOT/name) for name in INPUTS},'source changed during run'
         assert result['executable_sha256']==sha(args.exe),'EXE changed during run'
         result['passed']=True
@@ -413,7 +606,7 @@ def main():
         result['error']=repr(error)
         raise
     finally:
-        path=bottle.results_dir(ROOT)/'linear-emission-gpu.json' if result['passed'] else args.raw_dir/'failed-result.json'
+        path=bottle.results_dir(ROOT)/('linear-emission-mrt-gpu.json' if args.mode=='mrt' else 'linear-emission-gpu.json') if result['passed'] else args.raw_dir/'failed-result.json'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(result,indent=2)+'\n')
         print(json.dumps({k:result[k] for k in ('passed','cases','error','max_rgb_tolerance_fraction') if k in result}))
 

@@ -215,7 +215,7 @@ struct Fixture {
   Com<IDirect3DTexture9> source_texture[2];
   Com<IDirect3DQuery9> event;
   Saved source, replay;
-  Fixture(IDirect3DDevice9 *device, unsigned w, unsigned h)
+  Fixture(IDirect3DDevice9 *device, unsigned w, unsigned h, bool legacy = true)
       : d(device), width(w), height(h), source(d), replay(d) {
     D3DCAPS9 caps{};
     api(d->GetDeviceCaps(&caps));
@@ -249,8 +249,10 @@ struct Fixture {
     }
     for (auto *t : {&scene, &scratch, &layer})
       target(*t, D3DFMT_A16B16G16R16F);
-    for (auto *t : {&mask, &probe})
-      target(*t, D3DFMT_R32F);
+    if (legacy)
+      target(mask, D3DFMT_R32F);
+    if (legacy || w == 16)
+      target(probe, legacy ? D3DFMT_R32F : D3DFMT_A16B16G16R16F);
     api(d->CreateDepthStencilSurface(w, h, D3DFMT_D24S8, D3DMULTISAMPLE_NONE, 0,
                                      TRUE, &depth.p, nullptr));
     for (unsigned i = 0; i < 7; ++i) {
@@ -324,10 +326,13 @@ struct Fixture {
   Op full() {
     return Op{0, 0, 0, 1, 1, .75f, {.125f, .25f, .375f, .25f}, 1, 1, 0};
   }
-  void transfer(Target &from, Target &to, unsigned program) {
+  void transfer(Target &from, Target &to, unsigned program,
+                bool disable_dither = false) {
     bind(to);
     api(d->SetDepthStencilSurface(nullptr));
     base();
+    if (disable_dither)
+      rs(D3DRS_DITHERENABLE, FALSE);
     // This detached device owns sole RT0; additional attachments never exist.
     for (unsigned i = 1; i < rt_slots; ++i)
       api(d->SetRenderTarget(i, nullptr));
@@ -461,8 +466,10 @@ struct Fixture {
     api(d->EndScene());
     bind(layer);
     api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
-    bind(mask);
-    api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+    if (mask.surface.p) {
+      bind(mask);
+      api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+    }
     bind(scene);
     fence();
   }
@@ -721,7 +728,7 @@ struct Fixture {
     api(sys->UnlockRect());
     return v;
   }
-  std::vector<float> depth_probe() {
+  std::vector<float> depth_probe(bool fp16 = false) {
     bind(probe);
     api(d->SetDepthStencilSurface(depth.p));
     base();
@@ -748,7 +755,13 @@ struct Fixture {
     quad(o);
     api(d->EndScene());
     fence();
-    return read(probe, false);
+    if (!fp16)
+      return read(probe, false);
+    auto rgba = read(probe, true);
+    std::vector<float> red(width * height);
+    for (unsigned i = 0; i < width * height; ++i)
+      red[i] = rgba[i * 4];
+    return red;
   }
 };
 std::vector<Case> load(const char *path) {
@@ -801,12 +814,632 @@ Case bench(unsigned mode, unsigned mask, unsigned bursts, unsigned isolated) {
   }
   return c;
 }
+// Candidate A / native B / linear E / composite C experiment. The first
+// experiment remains a separate mode and accepted result. This is not HdrPass.
+Words source_vs2() {
+  Words w{0xfffe0200};
+  ins(w, 31, {0x80000000, dst(1, 0)});
+  ins(w, 31, {0x80000005, dst(1, 1, 3)});
+  ins(w, 31, {0x8000000a, dst(1, 2, 1)});
+  ins(w, 1, {dst(4, 0), src(1, 0)});
+  ins(w, 1, {dst(6, 0, 3), src(1, 1)});
+  ins(w, 1, {dst(5, 0), src(1, 2, 0)});
+  w.push_back(0xffff);
+  return w;
+}
+Words source_ps2(unsigned variant, bool augmented) {
+  bool affine = variant & 1, fade = variant & 2, pp = variant & 4;
+  DWORD partial = pp ? 0x00200000 : 0;
+  Words w{0xffff0200};
+  ins(w, 31, {0x80000000, dst(3, 0, 3) | partial});
+  if (fade)
+    ins(w, 31, {0x80000000, dst(1, 0)});
+  ins(w, 31, {0x90000000, dst(10, 0)});
+  def(w, 3, 0, 0, 0, 1);
+  if (augmented) {
+    def(w, 20, 0, 65504, 1e-10f, 1e-22f);
+    def(w, 21, 2.2f, 1.f / 2.2f, 0, 0);
+  }
+  ins(w, 66, {dst(0, 0) | partial, src(3, 0), src(10, 0)});
+  if (affine) {
+    ins(w, 1, {dst(0, 1, 7) | partial, src(0, 0)});
+    ins(w, 1, {dst(0, 1, 8), src(2, 3, 0xff)});
+    for (unsigned k = 0; k < 3; ++k)
+      ins(w, 9, {dst(0, 0, 1u << k) | partial, src(0, 1), src(2, k)});
+  }
+  // The native TEXLD/DP4/MUL/MOV instructions are identical in both versions.
+  // Only a copy of pre-fade artistic RGB is inserted; no alpha operation
+  // changes.
+  if (augmented)
+    ins(w, 1, {dst(0, 2, 7), src(0, 0)});
+  if (fade)
+    ins(w, 5, {dst(0, 0, 7) | partial, src(0, 0), src(1, 0, 0)});
+  ins(w, 1, {dst(8, 0) | partial, src(0, 0)});
+  if (augmented) {
+    ins(w, 1, {dst(0, 0, 7), src(0, 2)});
+    gamma(w, false);
+    if (fade)
+      ins(w, 5, {dst(0, 0, 7), src(0, 0), src(1, 0, 0)});
+    ins(w, 5, {dst(0, 0, 7), src(0, 0), src(2, 4, 0)});
+    ins(w, 11, {dst(0, 0, 7), src(0, 0), src(2, 20, 0)});
+    ins(w, 10, {dst(0, 0, 7), src(0, 0), src(2, 20, 0x55)});
+    ins(w, 1, {dst(0, 0, 8), src(2, 20, 0)});
+    ins(w, 1,
+        {dst(8, 1),
+         src(0, 0)}); // full, non-_pp MOV required for new MRT output
+  }
+  w.push_back(0xffff);
+  return w;
+}
+Words selective_composite() {
+  Words w{0xffff0300};
+  ins(w, 31, {0x80000005, dst(1, 0, 3)});
+  for (unsigned s = 0; s < 3; ++s)
+    ins(w, 31, {0x90000000, dst(10, s)});
+  def(w, 20, 0, 65504, 1e-10f, 1e-22f);
+  def(w, 21, 2.2f, 1.f / 2.2f, 0, 0);
+  ins(w, 66, {dst(0, 4), src(1, 0), src(10, 0)}); // immutable encoded A
+  ins(w, 66, {dst(0, 5), src(1, 0), src(10, 1)}); // nonnegative bounded E
+  ins(w, 66, {dst(0, 6), src(1, 0), src(10, 2)}); // native B alpha
+  ins(w, 11, {dst(0, 5, 7), src(0, 5), src(2, 20, 0)});
+  ins(w, 10, {dst(0, 5, 7), src(0, 5), src(2, 20, 0x55)});
+  ins(w, 1, {dst(0, 0), src(0, 4)});
+  gamma(w, false);
+  ins(w, 2, {dst(0, 0, 7), src(0, 0), src(0, 5)});
+  gamma(w, true);
+  ins(w, 88, {dst(0, 0, 7), src(0, 5, 0xe4, true), src(0, 4), src(0, 0)});
+  ins(w, 1, {dst(0, 0, 8), src(0, 6, 0xff)});
+  ins(w, 1, {dst(8, 0), src(0, 0)});
+  w.push_back(0xffff);
+  return w;
+}
+unsigned short store_half(float f) {
+  // Inputs here are finite dyadic authored source samples, exactly
+  // representable in binary16. A round-to-nearest conversion keeps their upload
+  // independent.
+  DWORD b = bits(f), sign = (b >> 16) & 0x8000;
+  int exponent = int((b >> 23) & 255) - 127 + 15;
+  DWORD mantissa = b & 0x7fffff;
+  if (exponent <= 0) {
+    if (exponent < -10)
+      return static_cast<unsigned short>(sign);
+    mantissa |= 0x800000;
+    unsigned shift = 14 - exponent;
+    DWORD q = mantissa >> shift, rem = mantissa & ((1u << shift) - 1);
+    if (rem > (1u << (shift - 1)) || (rem == (1u << (shift - 1)) && (q & 1)))
+      ++q;
+    return static_cast<unsigned short>(sign | q);
+  }
+  DWORD q = mantissa >> 13, rem = mantissa & 8191;
+  if (rem > 4096 || (rem == 4096 && (q & 1)))
+    ++q;
+  if (q == 1024) {
+    q = 0;
+    ++exponent;
+  }
+  need(exponent < 31, "authored sample outside FP16");
+  return static_cast<unsigned short>(sign | (unsigned(exponent) << 10) | q);
+}
+struct MrtStats {
+  unsigned sources = 0, bursts = 0, copies = 0, native_channels = 0,
+           zero_channels = 0, alpha_channels = 0, negative_zero_channels = 0,
+           cap_zero_channels = 0, infinite_channels = 0, fallbacks = 0,
+           incomplete = 0, refused = 0;
+};
+struct MrtFixture : Fixture {
+  Target composite, reference;
+  Target *a = &scene, *b = &scratch, *e = &layer, *c = &composite;
+  Com<IDirect3DVertexShader9> vs2;
+  Com<IDirect3DPixelShader9> originals[8], augmented[8], composition;
+  std::vector<IDirect3DTexture9 *> textures;
+  Saved application;
+  MrtFixture(IDirect3DDevice9 *device, unsigned w, unsigned h)
+      : Fixture(device, w, h, false), application(device) {
+    target(composite, D3DFMT_A16B16G16R16F);
+    if (w == 16)
+      target(reference, D3DFMT_A16B16G16R16F);
+    auto words = source_vs2();
+    api(d->CreateVertexShader(words.data(), &vs2.p));
+    for (unsigned v = 0; v < 8; ++v) {
+      words = source_ps2(v, false);
+      api(d->CreatePixelShader(words.data(), &originals[v].p));
+      words = source_ps2(v, true);
+      api(d->CreatePixelShader(words.data(), &augmented[v].p));
+    }
+    words = selective_composite();
+    api(d->CreatePixelShader(words.data(), &composition.p));
+  }
+  ~MrtFixture() {
+    d->SetRenderTarget(1, nullptr);
+    d->SetTexture(2, nullptr);
+    for (auto *t : textures)
+      t->Release();
+  }
+  void single(Target &target) {
+    api(d->SetTexture(2, nullptr));
+    for (unsigned i = 1; i < rt_slots; ++i)
+      api(d->SetRenderTarget(i, nullptr));
+    bind(target);
+  }
+  void make_textures(const Case &cs) {
+    api(d->SetTexture(0, nullptr));
+    for (auto *t : textures)
+      t->Release();
+    textures.clear();
+    textures.reserve(cs.ops.size());
+    const float pattern[4][4] = {{1, 1, 1, .125f},
+                                 {.5f, 1, .75f, .5f},
+                                 {1, .5f, .5f, 0},
+                                 {.75f, .25f, 1, 1}};
+    for (const auto &o : cs.ops) {
+      unsigned side = cs.h.flags & 4 ? 2 : 1;
+      IDirect3DTexture9 *tex = nullptr;
+      api(d->CreateTexture(side, side, 1, 0, D3DFMT_A16B16G16R16F,
+                           D3DPOOL_MANAGED, &tex, nullptr));
+      textures.push_back(tex);
+      D3DLOCKED_RECT l;
+      api(tex->LockRect(0, &l, nullptr, 0));
+      for (unsigned y = 0; y < side; ++y)
+        for (unsigned x = 0; x < side; ++x) {
+          auto *p = reinterpret_cast<unsigned short *>(
+                        static_cast<char *>(l.pBits) + y * l.Pitch) +
+                    x * 4;
+          for (unsigned k = 0; k < 4; ++k) {
+            float value = side == 1 ? o.color[k]
+                          : k == 3  ? pattern[y * side + x][k]
+                                    : o.color[k] * pattern[y * side + x][k];
+            p[k] = store_half(value);
+          }
+        }
+      api(tex->UnlockRect(0));
+    }
+  }
+  void initialize_mrt(const Case &cs) {
+    single(scene);
+    a = &scene;
+    b = &scratch;
+    e = &layer;
+    c = &composite;
+    Fixture::initialize(cs);
+    make_textures(cs);
+    single(*a);
+    fence();
+  }
+  void source_state(const Case &cs, unsigned index, Target &target,
+                    bool extra) {
+    const auto &o = cs.ops[index];
+    single(target);
+    if (extra)
+      api(d->SetRenderTarget(1, e->surface.p));
+    api(d->SetDepthStencilSurface(depth.p));
+    base();
+    rs(D3DRS_DITHERENABLE, FALSE);
+    api(d->SetVertexShader(vs2.p));
+    unsigned variant =
+        o.affine | ((cs.h.flags & 64) ? 0 : 2) | ((cs.h.flags & 32) ? 4 : 0);
+    api(d->SetPixelShader(extra ? augmented[variant].p : originals[variant].p));
+    api(d->SetTexture(0, textures[index]));
+    api(d->SetSamplerState(2, D3DSAMP_SRGBTEXTURE, TRUE));
+    api(d->SetSamplerState(2, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP));
+    api(d->SetSamplerState(2, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR));
+    float matrix[12] = {.75f, .125f,  0,     .03125f, 0,     .5f,
+                        .25f, .0625f, .125f, 0,       .875f, -.03125f};
+    api(d->SetPixelShaderConstantF(0, matrix, 3));
+    float gain[4] = {o.gain, 0, 0, 0};
+    api(d->SetPixelShaderConstantF(4, gain, 1));
+    rs(D3DRS_ZENABLE, TRUE);
+    rs(D3DRS_ZFUNC, D3DCMP_LESS);
+    rs(D3DRS_ZWRITEENABLE, FALSE);
+    rs(D3DRS_ALPHABLENDENABLE, TRUE);
+    rs(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+    rs(D3DRS_SRCBLEND, D3DBLEND_ONE);
+    rs(D3DRS_DESTBLEND, D3DBLEND_ONE);
+    rs(D3DRS_COLORWRITEENABLE, cs.h.write);
+    rs(D3DRS_COLORWRITEENABLE1, 15);
+    rs(D3DRS_SEPARATEALPHABLENDENABLE, cs.h.alpha != 0);
+    rs(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+    rs(D3DRS_SRCBLENDALPHA, cs.h.alpha == 1   ? D3DBLEND_ZERO
+                            : cs.h.alpha == 2 ? D3DBLEND_SRCALPHA
+                                              : D3DBLEND_ONE);
+    rs(D3DRS_DESTBLENDALPHA,
+       cs.h.alpha == 2 ? D3DBLEND_INVSRCALPHA : D3DBLEND_ONE);
+    if (cs.h.mask) {
+      rs(D3DRS_ALPHATESTENABLE, TRUE);
+      rs(D3DRS_ALPHAFUNC, cs.h.mask == 1 ? D3DCMP_GREATER : D3DCMP_LESS);
+      rs(D3DRS_ALPHAREF, cs.h.mask == 1 ? 64 : 128);
+    }
+    if (cs.h.flags & 1) {
+      RECT r{LONG(width / 4), LONG(height / 4), LONG(3 * width / 4),
+             LONG(3 * height / 4)};
+      api(d->SetScissorRect(&r));
+      rs(D3DRS_SCISSORTESTENABLE, TRUE);
+    }
+    if (cs.h.flags & 16) {
+      D3DVIEWPORT9 v{width / 4, height / 4, width / 2, height / 2, 0, 1};
+      api(d->SetViewport(&v));
+    }
+  }
+  void copy(Target &from, Target &to) {
+    // transfer owns the sole RT bind and complete copy state. Its ordinary
+    // path touches samplers0/1; the MRT compositor also aliases stage2.
+    api(d->SetTexture(2, nullptr));
+    transfer(from, to, 5, true);
+  }
+  void clear_emission() {
+    single(*e);
+    api(d->SetDepthStencilSurface(nullptr));
+    base();
+    rs(D3DRS_DITHERENABLE, FALSE);
+    api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+  }
+  void compose() {
+    single(*c);
+    api(d->SetDepthStencilSurface(nullptr));
+    base();
+    rs(D3DRS_DITHERENABLE, FALSE);
+    for (unsigned s = 0; s < 3; ++s) {
+      api(d->SetSamplerState(s, D3DSAMP_MINFILTER, D3DTEXF_POINT));
+      api(d->SetSamplerState(s, D3DSAMP_MAGFILTER, D3DTEXF_POINT));
+      api(d->SetSamplerState(s, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
+      api(d->SetSamplerState(s, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP));
+      api(d->SetSamplerState(s, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP));
+      api(d->SetSamplerState(s, D3DSAMP_SRGBTEXTURE, FALSE));
+    }
+    api(d->SetTexture(0, a->texture.p));
+    api(d->SetTexture(1, e->texture.p));
+    api(d->SetTexture(2, b->texture.p));
+    api(d->SetPixelShader(composition.p));
+    quad(full());
+    for (unsigned s = 0; s < 3; ++s)
+      api(d->SetTexture(s, nullptr));
+  }
+  void publish(Target &target) {
+    single(target);
+    api(d->SetDepthStencilSurface(application.depth.p));
+    api(application.block->Apply());
+  }
+  void verify_published(const Case &cs, unsigned index, Target &target) {
+    Com<IDirect3DSurface9> rt, ds, extra;
+    Com<IDirect3DPixelShader9> pixel;
+    Com<IDirect3DVertexShader9> vertex;
+    Com<IDirect3DVertexDeclaration9> decl;
+    Com<IDirect3DBaseTexture9> tex;
+    api(d->GetRenderTarget(0, &rt.p));
+    api(d->GetDepthStencilSurface(&ds.p));
+    HRESULT h = d->GetRenderTarget(1, &extra.p);
+    need(h == D3DERR_NOTFOUND && extra.p == nullptr,
+         "stale emission MRT after adoption");
+    api(d->GetPixelShader(&pixel.p));
+    api(d->GetVertexShader(&vertex.p));
+    api(d->GetVertexDeclaration(&decl.p));
+    api(d->GetTexture(0, &tex.p));
+    unsigned variant = cs.ops[index].affine | ((cs.h.flags & 64) ? 0 : 2) |
+                       ((cs.h.flags & 32) ? 4 : 0);
+    need(rt.p == target.surface.p && ds.p == depth.p &&
+             pixel.p == originals[variant].p && vertex.p == vs2.p &&
+             decl.p == declaration.p && tex.p == textures[index],
+         "published native binding state");
+    D3DVIEWPORT9 view{}, wanted{cs.h.flags & 16 ? width / 4 : 0,
+                                cs.h.flags & 16 ? height / 4 : 0,
+                                cs.h.flags & 16 ? width / 2 : width,
+                                cs.h.flags & 16 ? height / 2 : height,
+                                0,
+                                1};
+    api(d->GetViewport(&view));
+    need(std::memcmp(&view, &wanted, sizeof(view)) == 0, "published viewport");
+    RECT rect{},
+        wanted_rect{cs.h.flags & 1 ? LONG(width / 4) : 0,
+                    cs.h.flags & 1 ? LONG(height / 4) : 0,
+                    cs.h.flags & 1 ? LONG(3 * width / 4) : LONG(width),
+                    cs.h.flags & 1 ? LONG(3 * height / 4) : LONG(height)};
+    api(d->GetScissorRect(&rect));
+    need(std::memcmp(&rect, &wanted_rect, sizeof(rect)) == 0,
+         "published scissor");
+    const std::pair<D3DRENDERSTATETYPE, DWORD> states[] = {
+        {D3DRS_ZENABLE, TRUE},
+        {D3DRS_ZWRITEENABLE, FALSE},
+        {D3DRS_STENCILENABLE, FALSE},
+        {D3DRS_STENCILWRITEMASK, 0},
+        {D3DRS_FOGENABLE, FALSE},
+        {D3DRS_DITHERENABLE, FALSE},
+        {D3DRS_ALPHABLENDENABLE, TRUE},
+        {D3DRS_BLENDOP, D3DBLENDOP_ADD},
+        {D3DRS_SRCBLEND, D3DBLEND_ONE},
+        {D3DRS_DESTBLEND, D3DBLEND_ONE},
+        {D3DRS_COLORWRITEENABLE, cs.h.write},
+        {D3DRS_SEPARATEALPHABLENDENABLE, cs.h.alpha != 0},
+        {D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD},
+        {D3DRS_SRCBLENDALPHA, cs.h.alpha == 1   ? D3DBLEND_ZERO
+                              : cs.h.alpha == 2 ? D3DBLEND_SRCALPHA
+                                                : D3DBLEND_ONE},
+        {D3DRS_DESTBLENDALPHA,
+         cs.h.alpha == 2 ? D3DBLEND_INVSRCALPHA : D3DBLEND_ONE},
+        {D3DRS_ALPHATESTENABLE, cs.h.mask != 0},
+        {D3DRS_SCISSORTESTENABLE, bool(cs.h.flags & 1)}};
+    for (auto state : states) {
+      DWORD value;
+      api(d->GetRenderState(state.first, &value));
+      need(value == state.second, "published render state");
+    }
+    if (cs.h.mask) {
+      DWORD func, ref;
+      api(d->GetRenderState(D3DRS_ALPHAFUNC, &func));
+      api(d->GetRenderState(D3DRS_ALPHAREF, &ref));
+      need(func == DWORD(cs.h.mask == 1 ? D3DCMP_GREATER : D3DCMP_LESS) &&
+               ref == (cs.h.mask == 1 ? 64u : 128u),
+           "published alpha rejection");
+    }
+    for (unsigned s = 0; s < 3; ++s) {
+      DWORD srgb;
+      api(d->GetSamplerState(s, D3DSAMP_SRGBTEXTURE, &srgb));
+      need(srgb == (s == 2 ? TRUE : FALSE), "published sampler sRGB state");
+      if (s) {
+        Com<IDirect3DBaseTexture9> unused;
+        api(d->GetTexture(s, &unused.p));
+        need(!unused.p, "stale compositor sample binding");
+      }
+    }
+    DWORD address, filter;
+    api(d->GetSamplerState(2, D3DSAMP_ADDRESSU, &address));
+    api(d->GetSamplerState(2, D3DSAMP_MAGFILTER, &filter));
+    need(address == D3DTADDRESS_WRAP && filter == D3DTEXF_LINEAR,
+         "published unused sampler state");
+  }
+  void native_draw(const Case &cs, unsigned index, Target &target) {
+    source_state(cs, index, target, false);
+    quad(cs.ops[index], cs.h.flags);
+  }
+  void other_draw(const Case &cs, unsigned index) {
+    const auto &o = cs.ops[index];
+    single(*a);
+    prepare(cs, o, 0); // prepare sets legacy scene first; rebind without losing
+                       // raster state
+    application.capture(d);
+    single(*a);
+    api(d->SetDepthStencilSurface(application.depth.p));
+    api(application.block->Apply());
+    rs(D3DRS_DITHERENABLE, FALSE);
+    quad(o, cs.h.flags);
+  }
+  MrtStats run_mrt(const Case &cs, bool checks = true) {
+    MrtStats out;
+    bool eligible = cs.h.write == 15 && cs.h.fault != 1;
+    api(d->BeginScene());
+    for (unsigned start = 0; start < cs.ops.size();) {
+      if (cs.ops[start].kind != 1) {
+        if (cs.ops[start].kind != 4)
+          other_draw(cs, start);
+        ++start;
+        continue;
+      }
+      unsigned end = start + 1;
+      if (!(cs.h.flags & 2))
+        while (end < cs.ops.size() && cs.ops[end].kind == 1)
+          ++end;
+      need(a != b && a != c && b != c && a != e && b != e && c != e,
+           "target alias");
+      if (!eligible || cs.h.mode == 0) {
+        for (unsigned i = start; i < end; ++i) {
+          native_draw(cs, i, *a);
+          ++out.sources;
+        }
+        if (!eligible)
+          ++out.refused;
+        start = end;
+        continue;
+      }
+      // Capture actual incoming native state before injected preparation. RT/DS
+      // are explicit; the state block includes all three texture stages
+      // touched.
+      source_state(cs, start, *a, false);
+      application.capture(d);
+      copy(*a, *b);
+      clear_emission();
+      ++out.bursts;
+      std::vector<float> before;
+      if (checks) {
+        copy(*a, reference);
+        api(d->EndScene());
+        fence();
+        before = read(*a, true);
+        auto copied = read(*b, true);
+        need(before == copied && std::memcmp(before.data(), copied.data(),
+                                             before.size() * 4) == 0,
+             "A-to-B copy bits");
+        out.copies += width * height * 4;
+        api(d->BeginScene());
+      }
+      for (unsigned i = start; i < end; ++i) {
+        source_state(cs, i, *b, true);
+        quad(cs.ops[i], cs.h.flags);
+        ++out.sources;
+      }
+      source_state(cs, end - 1, *b, false);
+      application.capture(d);
+      if (checks) {
+        // Qualification only: original PS2 writes a separate reference from the
+        // same A/depth. This extra draw is absent from every timing window.
+        for (unsigned i = start; i < end; ++i)
+          native_draw(cs, i, reference);
+        api(d->EndScene());
+        fence();
+        auto native = read(*b, true), original = read(reference, true);
+        need(std::memcmp(native.data(), original.data(), native.size() * 4) ==
+                 0,
+             "augmented PS2 changed native RT0");
+        out.native_channels += width * height * 4;
+        api(d->BeginScene());
+      }
+      if (cs.h.flags & 256) {
+        single(*e);
+        api(d->SetDepthStencilSurface(nullptr));
+        base();
+        rs(D3DRS_DITHERENABLE, FALSE);
+        api(d->SetPixelShader(ps[0].p));
+        float injected[] = {0, INFINITY, 0, 0};
+        api(d->SetPixelShaderConstantF(0, injected, 1));
+        quad(full());
+      }
+      if (cs.h.fault == 3) {
+        // The source calls succeeded. Native B is intact and can be adopted;
+        // this is not a claim about partial/failed MRT source execution.
+        publish(*b);
+        if (checks)
+          verify_published(cs, end - 1, *b);
+        std::swap(a, b);
+        ++out.fallbacks;
+        start = end;
+        continue;
+      }
+      compose();
+      if (checks) {
+        api(d->EndScene());
+        fence();
+        auto energy = read(*e, true), native = read(*b, true),
+             result = read(*c, true);
+        for (unsigned p = 0; p < width * height; ++p) {
+          need(energy[p * 4 + 3] == 0 && !std::signbit(energy[p * 4 + 3]),
+               "E alpha is not deterministic positive zero");
+          need(std::memcmp(&native[p * 4 + 3], &result[p * 4 + 3], 4) == 0,
+               "B alpha not copied exactly");
+          ++out.alpha_channels;
+          for (unsigned k = 0; k < 3; ++k) {
+            unsigned j = p * 4 + k;
+            bool positive_infinity =
+                std::isinf(energy[j]) && !std::signbit(energy[j]);
+            need((std::isfinite(energy[j]) && energy[j] >= 0) ||
+                     ((cs.h.flags & (128 | 256)) && positive_infinity),
+                 "E outside qualified domain");
+            if (positive_infinity)
+              ++out.infinite_channels;
+            if ((cs.h.flags & 256) && k == 1)
+              need(positive_infinity, "positive-infinity E ingress missing");
+            need(std::isfinite(result[j]), "C nonfinite");
+            if (energy[j] == 0) {
+              need(std::memcmp(&before[j], &result[j], 4) == 0,
+                   "zero E changed A channel bits");
+              ++out.zero_channels;
+              if (before[j] == 0 && std::signbit(before[j]))
+                ++out.negative_zero_channels;
+              if (before[j] > 154.6012f)
+                ++out.cap_zero_channels;
+            }
+          }
+        }
+        api(d->BeginScene());
+      }
+      publish(*c);
+      if (checks)
+        verify_published(cs, end - 1, *c);
+      std::swap(a, c);
+      start = end;
+    }
+    api(d->EndScene());
+    fence();
+    return out;
+  }
+  void components(unsigned mode) {
+    api(d->BeginScene());
+    if (mode == 3)
+      copy(*a, *b);
+    else if (mode == 4)
+      clear_emission();
+    else
+      compose();
+    api(d->EndScene());
+    fence();
+  }
+};
+void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
+                    const char *path, IDirect3DSurface9 *back) {
+  D3DCAPS9 caps{};
+  api(device->GetDeviceCaps(&caps));
+  const DWORD required = D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
+  std::printf("MRT_CAPS slots=%lu postblend=%u independent_masks=%u\n",
+              caps.NumSimultaneousRTs,
+              unsigned(bool(caps.PrimitiveMiscCaps &
+                            D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING)),
+              unsigned(bool(caps.PrimitiveMiscCaps &
+                            D3DPMISCCAPS_INDEPENDENTWRITEMASKS)));
+  need(caps.NumSimultaneousRTs >= 2 &&
+           (caps.PrimitiveMiscCaps & required) == required,
+       "same-format MRT shared blending caps");
+  {
+    MrtFixture f(device, 16, 16);
+    std::ofstream raw(path, std::ios::binary);
+    need(bool(raw), "MRT raw output");
+    for (const auto &cs : cases) {
+      f.initialize_mrt(cs);
+      auto result = f.run_mrt(cs);
+      auto color = f.read(*f.a, true);
+      f.single(*f.a);
+      auto depth = f.depth_probe(true);
+      raw.write(reinterpret_cast<const char *>(&cs.h.id), 4);
+      raw.write(reinterpret_cast<const char *>(color.data()), color.size() * 4);
+      raw.write(reinterpret_cast<const char *>(depth.data()), depth.size() * 4);
+      std::printf(
+          "MRT_CASE id=%u sources=%u bursts=%u copy=%u native=%u "
+          "zero=%u alpha=%u minuszero=%u capzero=%u infinite=%u fallback=%u "
+          "incomplete=%u refused=%u\n",
+          cs.h.id, result.sources, result.bursts, result.copies,
+          result.native_channels, result.zero_channels, result.alpha_channels,
+          result.negative_zero_channels, result.cap_zero_channels,
+          result.infinite_channels, result.fallbacks, result.incomplete,
+          result.refused);
+    }
+    need(bool(raw), "MRT raw write");
+    f.single(f.scene);
+    api(device->SetRenderTarget(0, back));
+  }
+  LARGE_INTEGER frequency;
+  need(QueryPerformanceFrequency(&frequency), "QPC frequency");
+  for (auto size : {std::pair<unsigned, unsigned>{1280, 768}, {1920, 1080}}) {
+    MrtFixture f(device, size.first, size.second);
+    // One observed-count two-source burst: native, best-case batch, per-source.
+    // Copy/clear/composite groups are separate completion costs, not GPU times
+    // and not an additive decomposition of the bracket's overlapped execution.
+    for (unsigned iteration = 0; iteration < 60; ++iteration) {
+      unsigned variant =
+          (iteration / 6) % 2 ? 5 - iteration % 6 : iteration % 6;
+      Case cs = bench(variant ? 1 : 0, 0, 1, variant == 2);
+      cs.h.flags |= 32;
+      cs.ops.resize(2);
+      cs.h.count = 2;
+      f.initialize_mrt(cs);
+      if (variant >= 3) {
+        api(device->BeginScene());
+        f.copy(*f.a, *f.b);
+        f.clear_emission();
+        api(device->EndScene());
+        f.fence();
+      }
+      LARGE_INTEGER begin, end;
+      QueryPerformanceCounter(&begin);
+      if (variant < 3)
+        f.run_mrt(cs, false);
+      else
+        f.components(variant);
+      QueryPerformanceCounter(&end);
+      if (iteration >= 12)
+        std::printf("MRT_TIMING width=%u height=%u variant=%u sample=%u "
+                    "completed_ms=%.9f\n",
+                    size.first, size.second, variant, iteration - 12,
+                    1000. * double(end.QuadPart - begin.QuadPart) /
+                        frequency.QuadPart);
+    }
+    f.single(f.scene);
+    api(device->SetRenderTarget(0, back));
+  }
+}
+
 int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   HWND window = nullptr;
   HMODULE runtime = nullptr;
   try {
-    need(argc == 3, "arguments: cases.bin pixels.bin");
+    need(argc == 3 || (argc == 4 && std::strcmp(argv[3], "--mrt") == 0),
+         "arguments: cases.bin pixels.bin [--mrt]");
+    bool mrt = argc == 4;
     auto cases = load(argv[1]);
     WNDCLASSA wc{};
     wc.lpfnWndProc = DefWindowProcA;
@@ -863,9 +1496,12 @@ int main(int argc, char **argv) {
       format(D3DFMT_A16B16G16R16F,
              D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,
              D3DRTYPE_TEXTURE, "fp16_blend");
-      format(D3DFMT_R32F, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, "r32f_rt");
+      if (!mrt)
+        format(D3DFMT_R32F, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, "r32f_rt");
       format(D3DFMT_D24S8, D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_SURFACE, "d24s8");
       for (auto f : {D3DFMT_A16B16G16R16F, D3DFMT_R32F}) {
+        if (mrt && f == D3DFMT_R32F)
+          continue;
         HRESULT h =
             factory->CheckDepthStencilMatch(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL,
                                             display.Format, f, D3DFMT_D24S8);
@@ -876,54 +1512,59 @@ int main(int argc, char **argv) {
            "separate-alpha blend cap");
       Com<IDirect3DSurface9> back;
       api(device->GetRenderTarget(0, &back.p));
-      {
-        Fixture f(device.p, 16, 16);
-        std::ofstream raw(argv[2], std::ios::binary);
-        need(bool(raw), "raw output");
-        for (const auto &c : cases) {
-          f.initialize(c);
-          auto out = f.run(c);
-          auto rgb = f.read(f.scene, true), mask = f.read(f.mask, false),
-               depth = f.depth_probe();
-          raw.write(reinterpret_cast<const char *>(&c.h.id), 4);
-          for (auto *v : {&rgb, &mask, &depth})
-            raw.write(reinterpret_cast<const char *>(v->data()), v->size() * 4);
-          std::printf("CASE id=%u accepted=%u fallback=%u incomplete=%u "
-                      "restored=%u brackets=%u replays=%u\n",
-                      c.h.id, out.accepted, out.fallback, out.incomplete,
-                      out.restored, out.brackets, out.replays);
-        }
-        need(bool(raw), "raw write");
-        api(device->SetRenderTarget(0, back.p));
-      }
-      LARGE_INTEGER frequency;
-      need(QueryPerformanceFrequency(&frequency), "QPC frequency");
-      for (auto size :
-           {std::pair<unsigned, unsigned>{1280, 768}, {1920, 1080}}) {
-        Fixture f(device.p, size.first, size.second);
-        for (unsigned bursts : {1u, 16u}) {
-          for (unsigned iteration = 0; iteration < 60; ++iteration) {
-            unsigned variant =
-                (iteration / 6) % 2 ? 5 - iteration % 6 : iteration % 6;
-            unsigned mode = variant / 2 ? 1 : 0, mask = variant % 2,
-                     isolated = variant / 2 == 2;
-            Case c = bench(mode, mask, bursts, isolated);
+      if (mrt) {
+        mrt_experiment(device.p, cases, argv[2], back.p);
+      } else {
+        {
+          Fixture f(device.p, 16, 16);
+          std::ofstream raw(argv[2], std::ios::binary);
+          need(bool(raw), "raw output");
+          for (const auto &c : cases) {
             f.initialize(c);
-            LARGE_INTEGER begin, end;
-            QueryPerformanceCounter(&begin);
-            auto out = f.run(c, false);
-            QueryPerformanceCounter(&end);
-            need(!out.incomplete, "benchmark incomplete");
-            if (iteration >= 12)
-              std::printf("TIMING width=%u height=%u bursts=%u variant=%u "
-                          "sample=%u completed_ms=%.9f\n",
-                          size.first, size.second, bursts, variant,
-                          iteration - 12,
-                          1000. * double(end.QuadPart - begin.QuadPart) /
-                              frequency.QuadPart);
+            auto out = f.run(c);
+            auto rgb = f.read(f.scene, true), mask = f.read(f.mask, false),
+                 depth = f.depth_probe();
+            raw.write(reinterpret_cast<const char *>(&c.h.id), 4);
+            for (auto *v : {&rgb, &mask, &depth})
+              raw.write(reinterpret_cast<const char *>(v->data()),
+                        v->size() * 4);
+            std::printf("CASE id=%u accepted=%u fallback=%u incomplete=%u "
+                        "restored=%u brackets=%u replays=%u\n",
+                        c.h.id, out.accepted, out.fallback, out.incomplete,
+                        out.restored, out.brackets, out.replays);
           }
+          need(bool(raw), "raw write");
+          api(device->SetRenderTarget(0, back.p));
         }
-        api(device->SetRenderTarget(0, back.p));
+        LARGE_INTEGER frequency;
+        need(QueryPerformanceFrequency(&frequency), "QPC frequency");
+        for (auto size :
+             {std::pair<unsigned, unsigned>{1280, 768}, {1920, 1080}}) {
+          Fixture f(device.p, size.first, size.second);
+          for (unsigned bursts : {1u, 16u}) {
+            for (unsigned iteration = 0; iteration < 60; ++iteration) {
+              unsigned variant =
+                  (iteration / 6) % 2 ? 5 - iteration % 6 : iteration % 6;
+              unsigned mode = variant / 2 ? 1 : 0, mask = variant % 2,
+                       isolated = variant / 2 == 2;
+              Case c = bench(mode, mask, bursts, isolated);
+              f.initialize(c);
+              LARGE_INTEGER begin, end;
+              QueryPerformanceCounter(&begin);
+              auto out = f.run(c, false);
+              QueryPerformanceCounter(&end);
+              need(!out.incomplete, "benchmark incomplete");
+              if (iteration >= 12)
+                std::printf("TIMING width=%u height=%u bursts=%u variant=%u "
+                            "sample=%u completed_ms=%.9f\n",
+                            size.first, size.second, bursts, variant,
+                            iteration - 12,
+                            1000. * double(end.QuadPart - begin.QuadPart) /
+                                frequency.QuadPart);
+            }
+          }
+          api(device->SetRenderTarget(0, back.p));
+        }
       }
       api(device->SetTexture(0, nullptr));
       api(device->SetTexture(1, nullptr));
@@ -936,7 +1577,9 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf("RESULT pass cases=%u shaders=24\n", unsigned(cases.size()));
+    std::printf(mrt ? "MRT_RESULT pass cases=%u shaders=78\n"
+                    : "RESULT pass cases=%u shaders=24\n",
+                unsigned(cases.size()));
     return 0;
   } catch (const std::exception &e) {
     std::printf("FAIL %s\n", e.what());
