@@ -1,6 +1,6 @@
 # Outstanding user gameplay runs
 
-Updated 2026-09-13. Run 17 crypto acceptance and the first-person/chase
+Updated 2026-09-14. Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
 0.9 distance, softer 0.28/0.38 s follow, predictive lead marker, opt-in FP16 bloom
@@ -9,8 +9,8 @@ fixed exposure plus same-run exposure/bloom controls;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
-function setup is needed. Runs 1, 3, 5, 6 and 7 are complete; reader/DAT/adjacency
-fast co-activation passed as run 19. Run 8 is ready on the newly installed build.
+function setup is needed. Runs 1, 3, 5, 6, 7 and 8 are complete; reader/DAT/adjacency
+fast co-activation passed as run 19. Run 8 is saved as run 27; its reported issues are being investigated.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
@@ -24,13 +24,18 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
 | 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; follow-ups combined into run 8 |
-| 8 | Restored glow, milder exposure and native selection-stutter trace | 1 | Ready; start here |
+| 8 | Restored glow, milder exposure and native selection-stutter trace | 0 | Completed as run 27; stronger glow and issue fixes pending |
 
-Start with **run 8** below. Run 4 remains the optional vanilla cursor comparison.
+**No new enhanced run is needed yet.** Run 4 remains the optional vanilla cursor comparison.
 Emission stays off for this comparison; its twenty-pair live route is qualified,
 but gameplay appearance and cost will need separate acceptance.
 
-## 8. Restored glow, milder exposure and selection trace — Ready
+## 8. Restored glow, milder exposure and selection trace — Completed
+
+[Completed run 27 analysis](run27-glow-selection.md); snapshot `/tmp/x3-bottleX3-run27/`. Bloom is visible but too subtle; +1.5 EV
+looks good. Selection pauses, distant asteroid/station shimmer, and occasional
+dark-to-bright object changes remain. The agent is analyzing these together
+before requesting another session. The command below is provenance, not a rerun request.
 
 Installed source `541e380` includes the authored-glow correction, 162 material
 pairs and native phase diagnostics. Camera values stay as accepted. Keep the

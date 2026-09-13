@@ -609,7 +609,7 @@ void retain_compositor_scene(void* storage,const MotionHdrScene& scene) noexcept
     // Restore the native scene alpha's authored colored-glow intent before
     // AgX, with a complementary HDR-highlight contribution. These are linear
     // art weights, not a reproduction of the native display-space screen blend.
-    call.input.filter.authored_glow_gain=0.1f;
+    call.input.filter.authored_glow_gain=0.35f;
     call.input.filter.highlight_gain=0.05f;
     // OFF retains the same filtering/RGB replacement, with zero final gain.
     // Skipping replacement would restore the original compositor's glow.

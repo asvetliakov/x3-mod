@@ -6,7 +6,8 @@ Updated 2026-09-14. This is the current handoff. Earlier checkpoints are in
 retain the full scope.
 
 The installed gameplay build is checkpoint `541e380`. Its scoped integration
-checks pass; gameplay acceptance of the new glow and material coverage remains.
+checks pass. Run 27 confirms working glow, requests more strength, and accepts
++1.5 EV appearance; material/temporal and selection issues remain.
 
 ## Installed build
 
@@ -26,23 +27,26 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Latest gameplay evidence
 
-[Run 26](verification/run26-comparison.md), user run 7, is complete on `75dbbed`. Bloom attached and all 153
-sampled prepare/commit records succeeded, closing the pure-device failure. Visual acceptance failed: OFF/ON
-looked alike and native emitter halos disappeared because the replacement omitted X3's alpha-authored glow.
+User run 8 is saved as [run 27](verification/run27-glow-selection.md) in `/tmp/x3-bottleX3-run27/`, on installed source
+`541e380`. The user sees bloom but wants it stronger, accepts +1.5 EV, and still
+reports selection pauses, distant asteroid/station shimmer and occasional
+objects changing from dark to bright as the viewpoint moves. Bounded log/capture
+analysis and targeted native disassembly are underway. Do not request a repeat
+run until the next combined candidate is ready.
 
-The user prefers the brighter Auto screenshots. Auto's fresh and held targets are +2 EV in all 376 active reports;
-applied exposure reaches +2 after convergence rather than adapting usefully in this sample. The next same-run comparison caps Auto at **+1.5 EV**,
-with fixed 0 retained as the reference. This tests the requested milder option alongside restored glow;
-the general default remains fixed 0 pending that comparison.
+The first phase witness isolates a 458.85 ms delayed native target-lock publication
+inside a 485.01 ms noncapture frame. A broad pre-simulation region also contains selection-time
+stalls; the synchronous internal callback/VM cause is not yet isolated.
+Auto reaches its +1.5 ceiling in 329/331 active reports, so the accepted appearance
+mostly reflects a steady boost in this run rather than demonstrated useful adaptation.
+Material summaries show no shader-bind failures or sampler refusals; the only
+explicit refused pair is glass. Far alpha-blended asteroids bypass the opaque
+material/motion route. The captured near and far nodes differ, so a same-object
+brightness transition or LOD cause is not established.
 
-The central chase crosshair/distance is visible. Selection stutter still occurs, including with chase disabled.
-Run26 finds 286–454 ms frames after six of nine target changes; Present, TAA, HDR, metering, logging, loading
-probes, and the native lead/HUD routines are too small to explain those witnesses.
-
-Runs 20–23 remain the material evidence: converted surfaces are brighter, coverage is visibly partial, and gloss
-appears reduced. The distant asteroid shimmer disappears closer. Captured far/near draws use different native distance-fade states: far alpha-blends
-with Z writes off and background temporal treatment; near is opaque with valid object motion/depth.
-Those observations do not yet establish the cause of the visible shimmer.
+[Run 26](verification/run26-comparison.md) and [run 23](verification/run23-material-comparison.md)
+retain the previous exposure, material and shimmer comparisons. The central chase
+crosshair/distance is visible; selection stutter also occurs with chase disabled.
 
 ## Newly installed and qualified
 
@@ -52,7 +56,7 @@ the DLL load check and nine embedded bloom-program checks. EXE and bottle config
 the previous DLL and installation record are retained for rollback.
 
 - **Authored bloom:** the retained-alpha correction is installed. Component GPU evidence passes 36 image
-  cases and 16 controls, Reset, exact destination alpha, and RGB within one display code. Gameplay remains.
+  cases and 16 controls, Reset, exact destination alpha, and RGB within one display code. Run 27 confirms visible glow; stronger authored gain 0.35 is prepared in source, not installed.
 - **162-pair materials:** all 52 inventoried additional SM3 opaque pairs have reviewed conversions.
   Detached GPU: 3,923 cases. Live corpus: 2,576 frames / 32,516 checks; scalar WRAP: 144 / 3,208;
   XT14 including four DEFAULT linkage repairs: 628 / 10,836,608. Exact temporal/state twins and Reset pass.
@@ -62,19 +66,19 @@ the previous DLL and installation record are retained for rollback.
   and nonadditive composition are planned, not implemented.
 - **Selection diagnostics:** 23 native sites and the owned Present bridge are installed, default-off.
   The CPU fixture passes 815 checks at about 0.134 ms added per synthetic loop.
-  `--game-phases --telemetry` enables the bounded trace; gameplay results remain pending.
+  `--game-phases --telemetry` enables the bounded trace; run 27 isolates the delayed publisher and broad pre-simulation spans.
 
 ## Current open issues
 
-- **Selection stalls:** measured renderer and installed HUD/solver paths are excluded. A delayed native
-  `NotifyTargetLock` event and the rest of the main loop are covered by the new diagnostics; cause and fix remain unknown.
+- **Selection stalls:** measured renderer and installed HUD/solver paths are excluded. The new trace catches an expensive delayed native
+  target-lock publication and pre-simulation stalls; targeted disassembly of their internal work is underway.
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
 - **Material appearance and coverage:** exclude accidental loss of native gloss terms before artistic tuning. The
   [coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; older profiles,
   transparent, background, and other scene writers remain beyond installed coverage.
-- **Bloom/exposure:** installed authored glow needs gameplay acceptance. Compare Auto capped at +1.5 EV
-  with fixed 0 before deciding the default; prior +2-cap behavior was essentially a constant boost.
+- **Bloom/exposure:** authored glow works but is too subtle. Gain 0.35 is prepared for the next build;
+  +1.5 EV appearance is accepted. Auto still mostly reaches its ceiling; default-policy work remains explicit.
 - **HDR scope:** FP16 and AgX work, but much of the scene is still compatibility-decoded gamma-space lighting.
   Scene-referred lighting, complete linear blending, and verified HDR display output remain incomplete.
 - **Native Windows:** Windows-compatible source cross-compiles, but no native-Windows runtime is verified. Depth
@@ -84,10 +88,9 @@ the previous DLL and installation record are retained for rollback.
 
 ## Next user action
 
-[Run 8](verification/user-runs.md#8-restored-glow-milder-exposure-and-selection-trace--ready) is ready.
-One dry-run validated the combined command without launching the game. It combines restored emitter glow,
-Auto capped at +1.5 versus fixed 0, broader selection timing, and expanded material images. Emission remains
-explicitly off through launcher defaults to keep this visual comparison focused.
+No new enhanced run yet. [Run 8](verification/user-runs.md#8-restored-glow-milder-exposure-and-selection-trace--completed)
+is complete. Batch stronger glow and the next supported fixes before updating the
+run queue. The optional vanilla cursor comparison remains available.
 
 ## Stable foundation and later scope
 
