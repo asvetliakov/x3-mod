@@ -74,8 +74,9 @@ rejected. Supplying it without `--camera chase` is refused before launch. A dry
 run forwards explicit values without launching an executable.
 
 The compiled defaults are 20 degrees of downward pitch, 0.22 seconds rotation
-tau and 0.30 seconds position tau. The existing 0.45 screen offset, 1.0 distance
-scale and both lag clamps remain unchanged. The larger tau values slow an
+tau and 0.30 seconds position tau. The existing 0.45 screen offset and both lag
+clamps remain unchanged. A later user request selected a 0.6 distance scale;
+the bounded follow-up review is recorded below. The larger tau values slow an
 unclamped step response without enlarging either bounded lag window.
 
 ## Finding resolved during review
@@ -122,13 +123,16 @@ retains SSE2 and four-byte incoming-stack realignment flags.
 The host performance JSON is internally consistent: three one-million-step
 samples for each geometry branch, six million applied frames, no refusals, and
 recomputed medians of 0.17052825 us/step for zero pitch and 0.169637834 us/step
-for an explicit ten-degree positive-pitch sample. The difference is measurement
-noise. The later user-selected 20-degree default takes the same positive branch,
-so the constant-only update did not justify repeating this coarse host timing.
+for an explicit ten-degree, distance-scale-1 positive-pitch sample. The
+difference is measurement noise. The later user-selected 20-degree / 0.6-distance
+defaults take the same positive branch, so the constant-only updates did not
+justify repeating this coarse host timing.
 The record includes synthetic input generation and does not measure the assembly
 stub, CrossOver, native Windows, load time or game FPS.
 
-Reviewed frozen identities:
+Reviewed identities at the initial 20-degree / distance-scale-1 freeze follow.
+The distance-scale addendum below supersedes the identities of files changed by
+that bounded update. Concurrent aim-trace edits are outside this review.
 
 | File | SHA-256 |
 | --- | --- |
@@ -141,6 +145,60 @@ Reviewed frozen identities:
 | `docs/architecture/chase-camera.md` | `1363d14a87b053c0f7e49fc123cad0955b159b99ef727ff423d901cf8456d380` |
 | `docs/architecture/elevated-chase-camera.md` | `11a34218dab8a077cedb2e7d75544d2260122891ed119e39577b231aeb4e945e` |
 | `verification/results/chase-elevated-host-performance.json` | `24c60d0b6fe60d9bc25977d8295e4df71f52ddc6580a262e4eab7dffb57b1e42` |
+
+## Distance-scale 0.6 follow-up
+
+The user subsequently requested a closer default camera. The compiled
+`distance_scale`, launcher help and architecture tables now consistently use
+**0.6**. This is a target-length change only: the elevated branch normalizes the
+same camera-frame ray to `0.6 * native_boom_length`, so pitch, horizontal slope
+and the requested 72.5% settled-anchor projection are unchanged. The absolute
+position-lag clamp becomes 0.10 of that shorter target length, as required by
+the existing fractional clamp contract. Admission, guards, springs, snaps and
+TAA-cut behavior are unchanged.
+
+The default geometry control independently requires the 72.5% projection at
+four FOVs and distance `0.6 * hypot(40,200)`. The compiled-default control
+requires 0.6. The native-anchor fixture explicitly sets distance scale 1 because
+its oracle compares an unscaled native camera position; this keeps that older
+selector test independent of the new presentation default. Existing arbitrary
+distance coverage still checks a 2.0 multiplier, and zero-pitch rollback still
+uses an explicit distance scale rather than relying on the compiled default.
+
+The documentation correctly avoids a whole-hull guarantee. Moving closer makes
+the ship larger and may crop its hull depending on ship dimensions and FOV;
+only the selected anchor projection and scaled anchor distance are guaranteed.
+The retained performance artifact is explicitly labeled as an earlier
+ten-degree / distance-scale-1 sample of the same positive-pitch algorithm.
+
+The current status, goals and next-run plan are consistent with this boundary.
+They distinguish the installed `0c642df` anchor-correction DLL from the pending
+20-degree / 0.6-distance / 0.22/0.30-second candidate, state that the 0.6 update
+still awaits final candidate compilation and installation, and require waiting
+for that installation before the next flight. The run plan asks separately
+whether the top is visible and whether the whole hull fits; it does not promise
+either from anchor projection alone. It also describes the consolidated
+cursor/fire work as read-only diagnostics and makes no aim-fix claim.
+
+I reran the same focused command after the 0.6 freeze: all **56** camera/site
+cases passed, including the installed-executable read-only checks, and
+`git diff --check` passed. Per the bounded scope, I did not compile a production
+object or run Wine, the game, a full build, installation or commit. No finding
+was opened by this follow-up.
+
+Distance-follow-up identities:
+
+| File | SHA-256 |
+| --- | --- |
+| `src/proxy/chase_camera_math.h` | `e49147dffcebdf763c636587fe6fcec655bbae0bb0db0eedd0c5712f8e1e01f8` |
+| `tools/manage.py` | `abcdb92a9793df4da46c73df5fefe4c623e3d97fe36201f6e6f488617d457503` |
+| `verification/analysis/test_chase_camera.py` | `f2340b92bd209d52df7d3a32d02c53072930c580110e3d2b6e504b4057f5e54b` |
+| `verification/probe/chase_camera_native_host.h` | `72523ef74f9593f515f8678052a934b64e6ed5fa1564e77d290796385034c8ef` |
+| `docs/architecture/elevated-chase-camera.md` | `f3fa9a26e66e00a1846f00d38a6f2253b513891213dce5a29f8d5a1035f5053b` |
+
+`docs/architecture/chase-camera.md` also carries the 0.6 table entry, but its
+current file identity includes concurrent aim-trace documentation outside this
+review, so it is deliberately omitted from the scoped identity table.
 
 ## Remaining acceptance
 

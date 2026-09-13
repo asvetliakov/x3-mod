@@ -181,7 +181,7 @@ class ChaseCameraPipeline(unittest.TestCase):
             self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(20)), places=12)
             self.assertGreater(r['pos'][1], 0)
             self.assertLess(r['pos'][2], 0)
-            self.assertAlmostEqual(r['distance'], math.hypot(40, 200), places=10)
+            self.assertAlmostEqual(r['distance'], 0.6 * math.hypot(40, 200), places=10)
             alpha = math.radians(20) + math.atan(0.45 * vfov)
             self.assertAlmostEqual(math.atan2(r['pos'][1], -r['pos'][2]), alpha, places=12)
 
@@ -465,7 +465,7 @@ class ChaseCameraPipeline(unittest.TestCase):
         self.assertEqual(d['lag_clamp_deg'], 8.0)
         self.assertEqual(d['pos_lag_clamp'], 0.10)
         self.assertEqual(d['offset_y'], 0.45)
-        self.assertEqual(d['distance_scale'], 1.0)
+        self.assertEqual(d['distance_scale'], 0.6)
         self.assertEqual(d['combat_tightness'], 0.0)
         self.assertEqual(d['max_dt'], 0.10)
         self.assertEqual(d['snap_coalesce_frames'], 3)

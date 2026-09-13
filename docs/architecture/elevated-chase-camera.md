@@ -13,9 +13,11 @@ new framing and timing is pending.
 of the ship’s top. `--chase-pitch-down-deg 25` is also within the supported range.
 The accepted configuration range is `[0,30]`; zero explicitly selects the old
 geometry, rather than an elevated camera with zero depression. Combined with
-`--chase-rot-tau 0.15 --chase-pos-tau 0.20`, zero restores the previous framing
-and following behavior. The existing `offset_y=0.45`, distance scale 1, rotation
-lag limit 8 degrees and position lag limit 0.10 are retained.
+`--chase-rot-tau 0.15 --chase-pos-tau 0.20 --chase-distance-scale 1`, zero
+restores the previous framing and following behavior. The user requested a
+closer default: distance scale is now **0.6**, placing the settled camera at
+60% of the native boom length. The existing `offset_y=0.45`, rotation lag limit
+8 degrees and position lag limit 0.10 are retained.
 
 For positive pitch, the target frame uses the ship's up axis and the native
 view forward axis projected onto the ship's horizontal XZ plane. This preserves
@@ -47,6 +49,8 @@ pitch are accounted for by reconstructing the boom, not added twice.
 These guarantees describe the settled anchor. The ship silhouette and bounded
 spring lag can move its visible center. Pitch alone cannot guarantee the entire
 ship silhouette fits; that also depends on ship dimensions, FOV and distance.
+The closer 0.6 distance makes the ship appear larger and can crop its hull;
+it preserves the anchor placement, not a full-hull visibility guarantee.
 
 Invalid tunables prevent installation. Per-frame geometry separately refuses
 nonfinite FOV/slope, a combined signed vertical-plane elevation with absolute
@@ -87,8 +91,8 @@ math and a few scalar transcendentals. There is no added per-draw work,
 allocation, lock, memory probe or per-frame logging. Three alternating
 one-million-step host samples per mode, including synthetic input generation,
 measured median 0.17053 us/step for legacy geometry and 0.16964 us/step for
-elevated geometry at the earlier explicit 10-degree setting (the algorithm is
-unchanged by the new 20-degree default); the small difference is noise, not a claimed speedup. All
+elevated geometry at the earlier explicit 10-degree / distance-scale-1 setting (the algorithm is
+unchanged by the new 20-degree / distance-scale-0.6 defaults); the small difference is noise, not a claimed speedup. All
 six million frames applied without refusal. Local evidence:
 `verification/results/chase-elevated-host-performance.json`. These host timings
 do not measure CrossOver, the complete hook boundary, game FPS or load time.

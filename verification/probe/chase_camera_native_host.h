@@ -56,7 +56,7 @@ inline void run() {
     double fixed_error=0,old_error=0,render_error=0;unsigned fixed_clamps=0;
     for(unsigned base=0;base<2;++base){
         m=Memory{};m.word(0x2048,base?1:2);m.basis(0x4870,Mat3{});m.basis(0x30c0,Mat3{});
-        Tunables t;t.offset_y=0;t.pitch_down_deg=0;
+        Tunables t;t.offset_y=0;t.pitch_down_deg=0;t.distance_scale=1;
         State fixed,old; // compare native anchor without elevated framing
         for(unsigned frame=0;frame<120;++frame){
             const Vec3 current{0,0,double(frame)*50},render=current-Vec3{0,0,frame%2?250.0:50.0};
