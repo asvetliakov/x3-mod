@@ -262,7 +262,7 @@ unsigned MotionOutput::device_references() const noexcept {
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
     for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; }
-    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; }
+    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.emission_variant) ++count; }
     return count;
 }
 
@@ -274,6 +274,8 @@ unsigned MotionOutput::device_references() const noexcept {
 void MotionOutput::release_resources() noexcept {
     if (releasing_) return;
     releasing_ = true;
+    shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
+    shadow_.vs_registered = false; shadow_.ps_registered = false;
     drop_redirect();
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
@@ -283,8 +285,8 @@ void MotionOutput::release_resources() noexcept {
     release(sentinel_ps_);
     release(sentinel_mrt_ps_);
     release(quad_vs_); release(quad_declaration_);
-    for (auto& entry : vertex_) { release(entry.second.variant); release(entry.second.material_variant); }
-    for (auto& entry : pixel_) { release(entry.second.variant); release(entry.second.material_variant); }
+    for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); }
+    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.emission_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_sampler_mask = 0;
@@ -454,6 +456,11 @@ void MotionOutput::configure_linear_materials(bool requested, const renderer::Li
     if (device_) return; // Creation-time configuration is immutable after attach.
     linear_material_requested_ = requested && renderer::linear_material_config_valid(config);
     linear_material_config_ = config;
+}
+void MotionOutput::configure_linear_emissions(bool requested, float gain) noexcept {
+    if (device_) return; // Shader-local gain/coverage cannot change after attach.
+    linear_emission_config_ = {gain, true};
+    linear_emission_requested_ = requested && renderer::linear_emission_config_valid(linear_emission_config_);
 }
 void MotionOutput::configure_mip_bias(float bias) noexcept {
     mip_bias_ = bias;
@@ -1442,6 +1449,8 @@ void MotionOutput::fill_sentinel() noexcept {
 }
 
 void MotionOutput::before_reset() noexcept {
+    shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
+    shadow_.vs_registered = false; shadow_.ps_registered = false;
     // D3DPOOL_DEFAULT objects must not exist across Reset; shaders survive it.
     // The pass releases its histories, scratch and state block after RT1/RT2
     // and keeps its resolve shader. A lazily bound RT1/RT2 is unbound first.
@@ -1480,48 +1489,52 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.vs == shader) {
+        shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
         shadow_.material_sampler_mask = 0;
         shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     }
     if (!requested_ || !shader) return;
     try {
         auto& entry = vertex_[shader];
+        entry.registered = false;
         release(entry.variant);
         release(entry.material_variant);
         entry.hash = hash;
         entry.row = nullptr;
-        if (!enabled_ || !code || bytes % 4) return;
+        if (!enabled_ || !code || !bytes || bytes % 4) return;
         // One variant per original program: rows sharing this VS agree on its
         // side of the splice (static_assert in motion_output_profiles.h), so
         // the same variant serves every reviewed pair it belongs to. Pair
         // eligibility is decided per draw in before_draw (gate 3). The row
         // lookup is a binary search over the table (no scan).
         entry.row = renderer::material_motion_vertex_row(hash, bytes / 4);
-        if (!entry.row) return;
-        std::vector<std::uint32_t> words;
-        const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
-        IDirect3DVertexShader9* variant = nullptr;
-        HRESULT hr = E_FAIL;
-        if (result == renderer::MaterialMotionResult::Applied)
-            hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-        if (SUCCEEDED(hr) && variant) entry.variant = variant;
-        else release(variant);
-        log("motion_output_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
-            id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_vertex_exports_depth(*entry.row, depth_enabled_));
-        if (linear_material_requested_ && entry.variant) {
-            words.clear();
-            const auto material = renderer::linear_material_vertex_variant(
-                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_);
-            IDirect3DVertexShader9* combined = nullptr;
-            HRESULT material_hr = E_FAIL;
-            if (material == renderer::LinearMaterialResult::Applied)
-                material_hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
-            if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
-            else release(combined);
-            if (material != renderer::LinearMaterialResult::UnsupportedShader)
-                log("linear_material_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
-                    id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
+        if (entry.row) {
+            std::vector<std::uint32_t> words;
+            const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
+            IDirect3DVertexShader9* variant = nullptr;
+            HRESULT hr = E_FAIL;
+            if (result == renderer::MaterialMotionResult::Applied)
+                hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+            if (SUCCEEDED(hr) && variant) entry.variant = variant;
+            else release(variant);
+            log("motion_output_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
+                id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_vertex_exports_depth(*entry.row, depth_enabled_));
+            if (linear_material_requested_ && entry.variant) {
+                words.clear();
+                const auto material = renderer::linear_material_vertex_variant(
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_);
+                IDirect3DVertexShader9* combined = nullptr;
+                HRESULT material_hr = E_FAIL;
+                if (material == renderer::LinearMaterialResult::Applied)
+                    material_hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
+                if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
+                else release(combined);
+                if (material != renderer::LinearMaterialResult::UnsupportedShader)
+                    log("linear_material_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
+                        id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
+            }
         }
+        entry.registered = true;
         if (shadow_.vs == shader) set_vertex_shader(shader);
     } catch (...) {}
 }
@@ -1530,43 +1543,64 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.ps == shader) {
+        shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
         shadow_.material_sampler_mask = 0;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     }
     if (!requested_ || !shader) return;
     try {
         auto& entry = pixel_[shader];
+        entry.registered = false;
         release(entry.variant);
         release(entry.material_variant);
+        release(entry.emission_variant);
         entry.hash = hash;
         entry.row = nullptr;
-        if (!enabled_ || !code || bytes % 4) return;
-        entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
-        if (!entry.row) return;
-        std::vector<std::uint32_t> words;
-        const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
-        IDirect3DPixelShader9* variant = nullptr;
-        HRESULT hr = E_FAIL;
-        if (result == renderer::MaterialMotionResult::Applied)
-            hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
-        if (SUCCEEDED(hr) && variant) entry.variant = variant;
-        else release(variant);
-        log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
-            id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
-        if (linear_material_requested_ && entry.variant) {
-            words.clear();
-            const auto material = renderer::linear_material_pixel_variant(
-                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_);
-            IDirect3DPixelShader9* combined = nullptr;
-            HRESULT material_hr = E_FAIL;
-            if (material == renderer::LinearMaterialResult::Applied)
-                material_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
-            if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
-            else release(combined);
-            if (material != renderer::LinearMaterialResult::UnsupportedShader)
-                log("linear_material_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
-                    id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
+        if (!enabled_ || !code || !bytes || bytes % 4) return;
+        // PS2 emission sources have no motion-profile row. Their augmentation
+        // must complete independently, retaining the original VS and native oC0.
+        if (linear_emission_requested_) {
+            std::vector<std::uint32_t> words;
+            const auto result = renderer::linear_emission_pixel_variant(
+                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_emission_config_, words);
+            IDirect3DPixelShader9* variant = nullptr;
+            HRESULT hr = E_FAIL;
+            if (result == renderer::LinearEmissionResult::Applied)
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+            if (SUCCEEDED(hr) && variant) entry.emission_variant = variant;
+            else release(variant);
+            if (result != renderer::LinearEmissionResult::UnsupportedShader)
+                log("linear_emission_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g coverage=1",
+                    id_, hash, unsigned(result), hr, unsigned(words.size()), double(linear_emission_config_.gain));
         }
+        entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
+        if (entry.row) {
+            std::vector<std::uint32_t> words;
+            const auto result = renderer::material_motion_pixel_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
+            IDirect3DPixelShader9* variant = nullptr;
+            HRESULT hr = E_FAIL;
+            if (result == renderer::MaterialMotionResult::Applied)
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+            if (SUCCEEDED(hr) && variant) entry.variant = variant;
+            else release(variant);
+            log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
+                id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
+            if (linear_material_requested_ && entry.variant) {
+                words.clear();
+                const auto material = renderer::linear_material_pixel_variant(
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_);
+                IDirect3DPixelShader9* combined = nullptr;
+                HRESULT material_hr = E_FAIL;
+                if (material == renderer::LinearMaterialResult::Applied)
+                    material_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
+                if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
+                else release(combined);
+                if (material != renderer::LinearMaterialResult::UnsupportedShader)
+                    log("linear_material_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
+                        id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
+            }
+        }
+        entry.registered = true;
         if (shadow_.ps == shader) set_pixel_shader(shader);
     } catch (...) {}
 }
@@ -1575,28 +1609,35 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
+    shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
     shadow_.material_sampler_mask = 0;
     shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
     shadow_.vs_hash = it->second.hash;
+    shadow_.vs_registered = it->second.registered;
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
     shadow_.vs_row = it->second.row;
     shadow_.vs_material_variant = static_cast<IDirect3DVertexShader9*>(it->second.material_variant);
     refresh_linear_material_contract();
+    refresh_linear_emission_contract();
 }
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
+    shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
     shadow_.material_sampler_mask = 0;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     if (!shader) return;
     const auto it = pixel_.find(shader);
     if (it == pixel_.end()) return;
     shadow_.ps_hash = it->second.hash;
+    shadow_.ps_registered = it->second.registered;
+    shadow_.ps_emission_variant = it->second.emission_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
     shadow_.ps_material_variant = static_cast<IDirect3DPixelShader9*>(it->second.material_variant);
     refresh_linear_material_contract();
+    refresh_linear_emission_contract();
 }
 void MotionOutput::set_vertex_constants_f(UINT start, const float* data, UINT count) noexcept {
     if (!enabled_ || shadow_.recording || !data || !count || start > 4096 || count > 4096) return;
@@ -2047,6 +2088,13 @@ void MotionOutput::refresh_linear_material_contract() noexcept {
     // object availability and effective HDR readiness remain live gates.
     shadow_.material_sampler_mask = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
         ? renderer::linear_material_sampler_mask(shadow_.vs_hash, shadow_.ps_hash) : 0;
+}
+void MotionOutput::refresh_linear_emission_contract() noexcept {
+    // Creation/bind/resync only. Future draws consume this pointer without a
+    // lookup or bytecode work; non-shader admission is deliberately separate.
+    shadow_.emission_eligible_variant = linear_emission_requested_ && shadow_.vs_registered && shadow_.ps_registered
+        && shadow_.ps_emission_variant && renderer::linear_emission_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)
+        ? shadow_.ps_emission_variant : nullptr;
 }
 // Called only after the ordinary opaque/no-MSAA motion gates. All fields are
 // cached; never query samplers or revalidate bytecode in this draw-time check.

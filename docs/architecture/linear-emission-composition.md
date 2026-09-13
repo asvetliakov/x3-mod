@@ -829,6 +829,25 @@ model does not qualify GPU handling. The following detached run qualifies actual
 shader creation, native-oC0 parity and MRT output on X3. Native Windows remains
 untested; no runtime route or feature support is added at this checkpoint.
 
+### Runtime shader-cache preparation
+
+`MotionOutput` now has a reviewed, default-off, pre-attach emission configuration
+and owns cached three-output variants independently of motion-row support.
+Original PS2 emission shaders therefore do not disappear at the old no-motion-row
+return. Exact VS/PS pair eligibility is refreshed at registration, shader setters
+and state resynchronization; no transformation, hashing or pair search is added
+to draws. Gain is immutable and finite in [0,16], and coverage is always enabled
+for these cached variants. No CLI, pass invocation or live enhancement is wired.
+
+The existing extracted-production-method host fixture passes 3,540 assertions,
+including 1,191 emission-cache assertions for default-off behavior, invalid input,
+creation/partial-output failures, re-registration, pair aliases, state blocks,
+Reset and reference retirement. Strict x86 compilation and a relocatable link
+against the unchanged transformer pass. Independent review has no open finding.
+This qualifies cache control and lifetime with scripted COM calls; it is not a
+new GPU/runtime result. Actual shader bytes retain the original GPU evidence
+below. CMake and the existing motion fixture seam link the core as required.
+
 ### Actual-original GPU qualification
 
 The first and only focused X3 run of the reviewed transformer passed and exited

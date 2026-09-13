@@ -21,13 +21,21 @@ constexpr unsigned D3DRS_COLORWRITEENABLE1=190,D3DRS_COLORWRITEENABLE2=191;
 unsigned releases=0, checks=0, failures=0;
 #define CHECK(x) do {++checks;if(!(x)){++failures;std::fprintf(stderr,"line=%d %s\n",__LINE__,#x);}} while(0)
 const std::uint32_t* release_mask=nullptr;
-struct IUnknown {unsigned refs=1; void AddRef(){++refs;} void Release(){if(release_mask)CHECK(*release_mask==0);++releases;if(!--refs)delete this;} virtual ~IUnknown()=default;};
+void (*release_check)()=nullptr;
+struct IUnknown {unsigned refs=1; void AddRef(){++refs;} void Release(){if(release_check)release_check();if(release_mask)CHECK(*release_mask==0);++releases;if(!--refs)delete this;} virtual ~IUnknown()=default;};
 struct IDirect3DVertexShader9:IUnknown{}; struct IDirect3DPixelShader9:IUnknown{};
 struct IDirect3DBaseTexture9:IUnknown{unsigned GetLevelCount(){return 3;}};
 template<class T>void release(T*&p){auto* saved=p;p=nullptr;if(saved)saved->Release();}
 template<class...T>void log(const char*,T...){}
 namespace x3::temporal {enum class AgxDecode{gamma22,srgb,none};}
 namespace renderer {
+struct CameraState{};
+struct LinearEmissionConfig {float gain=1;bool coverage=false;};
+enum class LinearEmissionResult {Applied,UnsupportedShader,AllocationFailure};
+bool linear_emission_config_valid(const LinearEmissionConfig& c){return std::isfinite(c.gain)&&c.gain>=0&&c.gain<=16;}
+unsigned emission_transforms=0,emission_lookups=0;float emission_gain=0;bool emission_reject=false,emission_throw=false;
+bool linear_emission_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++emission_lookups;return vs==50&&(ps==60||ps==61);}
+LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t*p,std::size_t,const LinearEmissionConfig& c,std::vector<std::uint32_t>& words){++emission_transforms;CHECK(c.coverage);emission_gain=c.gain;if(emission_throw)throw std::bad_alloc();if(emission_reject)return LinearEmissionResult::AllocationFailure;if(*p!=60&&*p!=61)return LinearEmissionResult::UnsupportedShader;words={*p+300};return LinearEmissionResult::Applied;}
 struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightmap_emissive_gain=1;};
 enum class LinearMaterialResult{Applied,UnsupportedShader};
 enum class MaterialMotionResult{Applied,UnsupportedShader};
@@ -38,8 +46,8 @@ bool linear_material_config_valid(const LinearMaterialConfig&c){return std::isfi
 unsigned contract_lookups=0;
 std::uint32_t linear_material_sampler_mask(std::uint64_t vs,std::uint64_t ps){++contract_lookups;return vs==10&&ps==20?15u:vs==30&&ps==40?31u:0u;}
 bool reject_row=false,throw_transform=false,reject_transform=false;
-const MotionOutputProfile* material_motion_vertex_row(std::uint64_t,std::size_t){return reject_row?nullptr:&row;}
-const MotionOutputProfile* material_motion_pixel_row(std::uint64_t,std::size_t){return reject_row?nullptr:&row;}
+const MotionOutputProfile* material_motion_vertex_row(std::uint64_t hash,std::size_t){return reject_row||hash>=50?nullptr:&row;}
+const MotionOutputProfile* material_motion_pixel_row(std::uint64_t hash,std::size_t){return reject_row||hash>=50?nullptr:&row;}
 bool material_motion_vertex_exports_depth(const MotionOutputProfile&,bool x){return x;}
 bool material_motion_pixel_writes_depth(const MotionOutputProfile&,bool x){return x;}
 unsigned motion_transforms=0, material_transforms=0;
@@ -48,8 +56,9 @@ MaterialMotionResult material_motion_pixel_variant(const std::uint32_t*p,std::si
 LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==21);o={p[0]+200};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
 }
-struct Pass {bool active=true;unsigned references(){return 0;} bool tonemap_active()const{return active;}void shutdown(){}void after_reset(HRESULT){}};
+struct Pass {bool active=true;unsigned references(){return 0;} bool tonemap_active()const{return active;}void shutdown(){}void after_reset(HRESULT){}void before_reset(){}void bind(void*,void*){}};
 struct History{void invalidate(){}};
+namespace camera_state {void reset(){}}
 struct MotionRoute {
  bool linear_material=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
  bool vs_constants_set=false,ps_constants_set=false,jittered=true;
@@ -60,6 +69,7 @@ struct Device {
  std::vector<int> calls; std::vector<unsigned> failed_calls; unsigned ordinal=0;
  IDirect3DVertexShader9* bound_vs=nullptr;IDirect3DPixelShader9* bound_ps=nullptr;
  std::array<DWORD,5> srgb{};unsigned sampler_reads=0;int fail_sampler=-1;bool fail_combined_create=false,fail_motion_create=false,fail_get_vs=false,fail_get_ps=false;
+ unsigned emission_creates=0,vs_creates=0;bool fail_emission_create=false,partial_emission_create=false,null_emission_create=false;
  bool fails(){++ordinal;for(auto index:failed_calls)if(ordinal==index)return true;return false;}
 };
 struct IDirect3DVertexBuffer9:IUnknown{};struct IDirect3DIndexBuffer9:IUnknown{};struct IDirect3DVertexDeclaration9:IUnknown{};struct IDirect3DSurface9:IUnknown{};
@@ -84,8 +94,8 @@ using GetDepthFn=HRESULT(*)(D,IDirect3DSurface9**);using GetViewportFn=HRESULT(*
 enum Slots{SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport};
 HRESULT set_vs(D d,IDirect3DVertexShader9*p){d->calls.push_back(1);if(d->fails())return E_FAIL;d->bound_vs=p;return S_OK;}
 HRESULT set_ps(D d,IDirect3DPixelShader9*p){d->calls.push_back(2);if(d->fails())return E_FAIL;d->bound_ps=p;return S_OK;}
-HRESULT create_vs(D d,const DWORD*p,IDirect3DVertexShader9**out){if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DVertexShader9;return S_OK;}
-HRESULT create_ps(D d,const DWORD*p,IDirect3DPixelShader9**out){if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DPixelShader9;return S_OK;}
+HRESULT create_vs(D d,const DWORD*p,IDirect3DVertexShader9**out){++d->vs_creates;if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DVertexShader9;return S_OK;}
+HRESULT create_ps(D d,const DWORD*p,IDirect3DPixelShader9**out){if(*p>=300){++d->emission_creates;if(d->partial_emission_create){*out=new IDirect3DPixelShader9;return E_FAIL;}if(d->fail_emission_create)return E_FAIL;if(!d->null_emission_create)*out=new IDirect3DPixelShader9;return S_OK;}if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DPixelShader9;return S_OK;}
 HRESULT get_sampler(D d,DWORD stage,D3DSAMPLERSTATETYPE type,DWORD*out){CHECK(type==D3DSAMP_SRGBTEXTURE);++d->sampler_reads;if(int(stage)==d->fail_sampler)return E_FAIL;*out=d->srgb[stage];return S_OK;}
 HRESULT get_texture(D,DWORD,IDirect3DBaseTexture9**out){*out=nullptr;return S_OK;}
 HRESULT set_state(D,DWORD,DWORD){return S_OK;}
@@ -101,10 +111,11 @@ HRESULT get_depth(D,IDirect3DSurface9**p){*p=nullptr;return D3DERR_NOTFOUND;}
 HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr;const renderer::MotionOutputProfile*row=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
+ bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr;
  std::uint32_t material_sampler_mask=0;float rows[1][16]{};bool rows_known[1]{};int integer0[4]{};bool integer0_known=false;
  Surface rt0,depth;Viewport viewport;bool extra_rt[4]{};
@@ -116,7 +127,9 @@ public:
  ThrowingMap<ShaderEntry>vertex_,pixel_;
  D device_=nullptr;bool enabled_=true,requested_=true,depth_enabled_=true,linear_material_requested_=false;
  renderer::LinearMaterialConfig linear_material_config_{};
+ bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
+ bool hdr_target_failed_=false,hdr_blocked_=false,target_failed_=false,pending_valid_=false,main_msaa_=false,msaa_logged_=false;unsigned hdr_blocked_latches_=0,main_msaa_samples_=0;Surface main_,main_depth_;History selector_;renderer::CameraState camera_previous_;
  unsigned taa_references_=0;std::unique_ptr<Pass>hdr_=std::make_unique<Pass>(),taa_;History history_;
  IUnknown*target_surface_=nullptr,*depth_surface_=nullptr,*sentinel_ps_=nullptr,*sentinel_mrt_ps_=nullptr,*quad_vs_=nullptr,*quad_declaration_=nullptr;
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;renderer::HdrConfig hdr_config_;
@@ -141,11 +154,13 @@ public:
  void set_stream_source(UINT,IDirect3DVertexBuffer9*,UINT,UINT){}void set_indices(IDirect3DIndexBuffer9*){}void set_vertex_declaration(IDirect3DVertexDeclaration9*){}
  void begin_frame(std::uint64_t,bool){}void resync_shadow()noexcept;void after_reset(HRESULT)noexcept;
  void begin_stateblock()noexcept;void end_stateblock()noexcept;void stateblock_applied()noexcept;
+ void restore_bindings(){}void before_reset()noexcept;
  void drop_redirect(){} void release_target(){release(target_surface_);release(depth_surface_);}
  template<class F>void taa_call(F&&f){f();}void invalidate_render_states(){states_invalidated=true;}
  HRESULT bind_target(unsigned,IUnknown*){return S_OK;}
  unsigned device_references()const noexcept;void release_resources()noexcept;
  void configure_linear_materials(bool,const renderer::LinearMaterialConfig&)noexcept;
+ void configure_linear_emissions(bool,float)noexcept;void refresh_linear_emission_contract()noexcept;
  void register_vertex_shader(IDirect3DVertexShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void register_pixel_shader(IDirect3DPixelShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void set_vertex_shader(IDirect3DVertexShader9*)noexcept;void set_pixel_shader(IDirect3DPixelShader9*)noexcept;
@@ -251,6 +266,58 @@ void contract_lifecycle() {
  off.release_resources();
 }
 
+MotionOutput* retiring_emission=nullptr;
+void emission_retirement_check(){CHECK(retiring_emission&&!retiring_emission->shadow_.emission_eligible_variant&&!retiring_emission->shadow_.ps_emission_variant);}
+void emission_cache_cases(){
+ const unsigned checks_before=checks;
+ unsigned transforms=renderer::emission_transforms,lookups=renderer::emission_lookups;
+ IDirect3DVertexShader9 vs,alias,unknown_vs;IDirect3DPixelShader9 ps,other,unknown_ps;DWORD v=50,p=60,q=61,negative=62;
+ Device quiet;MotionOutput off;off.device_=&quiet;
+ off.register_vertex_shader(&vs,&v,4,50);off.register_pixel_shader(&ps,&p,4,60);off.set_vertex_shader(&vs);off.set_pixel_shader(&ps);off.resync_shadow();
+ CHECK(renderer::emission_transforms==transforms&&renderer::emission_lookups==lookups&&quiet.emission_creates==0&&!off.shadow_.emission_eligible_variant);off.release_resources();
+ for(float gain:{-1.f,16.01f,NAN,INFINITY,-INFINITY}){MotionOutput bad;bad.configure_linear_emissions(true,gain);CHECK(!bad.linear_emission_requested_);}
+ for(float gain:{0.f,1.f,4.f,16.f}){Device device;MotionOutput m;m.configure_linear_emissions(true,gain);m.device_=&device;
+  m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);m.register_vertex_shader(&vs,&v,4,50);m.register_pixel_shader(&ps,&p,4,60);
+  CHECK(m.shadow_.emission_eligible_variant&&renderer::emission_gain==gain&&m.linear_emission_config_.coverage);
+  CHECK(!m.shadow_.vs_row&&!m.shadow_.vs_variant&&!m.shadow_.ps_variant&&device.vs_creates==0&&device.emission_creates==1&&m.device_references()==1);
+  m.configure_linear_emissions(false,gain==0?16:0);CHECK(m.linear_emission_requested_&&m.linear_emission_config_.gain==gain);
+  m.release_resources();CHECK(m.device_references()==0);
+ }
+ Device device;MotionOutput m;m.configure_linear_emissions(true,2);m.configure_linear_materials(true,{});m.device_=&device;
+ m.register_vertex_shader(&vs,&v,4,50);m.register_vertex_shader(&alias,&v,4,51);m.register_pixel_shader(&ps,&p,4,60);m.register_pixel_shader(&other,&q,4,61);
+ auto select=[&]{device.bound_vs=&vs;device.bound_ps=&ps;m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);};select();CHECK(m.shadow_.emission_eligible_variant&&m.device_references()==2);
+ auto* first=m.shadow_.emission_eligible_variant;m.set_pixel_shader(&other);CHECK(m.shadow_.emission_eligible_variant&&m.shadow_.emission_eligible_variant!=first&&m.shadow_.vs==&vs);
+ m.set_vertex_shader(&alias);CHECK(!m.shadow_.emission_eligible_variant);m.set_vertex_shader(&vs);CHECK(m.shadow_.emission_eligible_variant);
+ m.register_pixel_shader(&unknown_ps,&negative,4,62);m.set_pixel_shader(&unknown_ps);CHECK(!m.shadow_.emission_eligible_variant);select();
+ m.set_vertex_shader(nullptr);CHECK(!m.shadow_.emission_eligible_variant);m.set_vertex_shader(&unknown_vs);CHECK(!m.shadow_.emission_eligible_variant);select();m.set_pixel_shader(nullptr);CHECK(!m.shadow_.emission_eligible_variant);select();
+ lookups=renderer::emission_lookups;transforms=renderer::emission_transforms;const unsigned creates=device.emission_creates,reads=device.sampler_reads;
+ for(unsigned n=0;n<1000;++n)CHECK(m.shadow_.emission_eligible_variant==first);
+ CHECK(renderer::emission_lookups==lookups&&renderer::emission_transforms==transforms&&device.emission_creates==creates&&device.sampler_reads==reads);
+ m.begin_stateblock();m.set_vertex_shader(&alias);m.set_pixel_shader(&other);CHECK(m.shadow_.emission_eligible_variant==first&&renderer::emission_lookups==lookups);m.end_stateblock();CHECK(m.shadow_.emission_eligible_variant==first);
+ device.bound_vs=&alias;m.stateblock_applied();CHECK(!m.shadow_.emission_eligible_variant);device.bound_vs=&vs;device.bound_ps=&other;m.stateblock_applied();CHECK(m.shadow_.emission_eligible_variant&&m.shadow_.emission_eligible_variant!=first);select();
+ for(bool vertex:{true,false}){device.fail_get_vs=vertex;device.fail_get_ps=!vertex;m.stateblock_applied();CHECK(!m.shadow_.emission_eligible_variant);device.fail_get_vs=device.fail_get_ps=false;m.stateblock_applied();CHECK(m.shadow_.emission_eligible_variant);}
+ const auto refs=m.device_references();auto* retained=m.pixel_[&ps].emission_variant;m.before_reset();CHECK(!m.shadow_.emission_eligible_variant&&m.device_references()==refs);m.after_reset(E_FAIL);CHECK(!m.shadow_.emission_eligible_variant);m.after_reset(S_OK);CHECK(m.shadow_.emission_eligible_variant==retained&&m.linear_emission_config_.gain==2);
+ // Failed bound registration cannot survive another stage's successful setter.
+ for(bool vertex:{true,false})for(unsigned failure=0;failure<6;++failure){select();CHECK(m.shadow_.emission_eligible_variant);
+  m.enabled_=failure!=3;m.requested_=failure!=4;if(failure==5){if(vertex)m.vertex_.fail_next=true;else m.pixel_.fail_next=true;}
+  if(vertex)m.register_vertex_shader(&vs,failure==0?nullptr:&v,failure==1?3:failure==2?0:4,50);
+  else m.register_pixel_shader(&ps,failure==0?nullptr:&p,failure==1?3:failure==2?0:4,60);
+  CHECK(!m.shadow_.emission_eligible_variant);m.enabled_=m.requested_=true;
+  if(vertex)m.set_pixel_shader(&ps);else m.set_vertex_shader(&vs);CHECK(!m.shadow_.emission_eligible_variant);
+  if(vertex)m.register_vertex_shader(&vs,&v,4,50);else m.register_pixel_shader(&ps,&p,4,60);CHECK(m.shadow_.emission_eligible_variant);
+ }
+ for(unsigned failure=0;failure<5;++failure){renderer::emission_reject=failure==0;renderer::emission_throw=failure==1;device.fail_emission_create=failure==2;device.partial_emission_create=failure==3;device.null_emission_create=failure==4;
+  retiring_emission=&m;release_check=emission_retirement_check;const auto released=releases;m.register_pixel_shader(&ps,&p,4,60);release_check=nullptr;
+  CHECK(!m.shadow_.emission_eligible_variant&&!m.pixel_[&ps].emission_variant&&m.device_references()==1);CHECK(releases==released+(failure==3?2:1));m.set_vertex_shader(&vs);CHECK(!m.shadow_.emission_eligible_variant);
+  renderer::emission_reject=renderer::emission_throw=false;device.fail_emission_create=device.partial_emission_create=device.null_emission_create=false;m.register_pixel_shader(&ps,&p,4,60);CHECK(m.shadow_.emission_eligible_variant&&m.device_references()==2);
+ }
+ // Independent motion/material originals keep both established variants.
+ IDirect3DVertexShader9 material_vs;IDirect3DPixelShader9 material_ps;DWORD mv=10,mp=20;m.register_vertex_shader(&material_vs,&mv,4,10);m.register_pixel_shader(&material_ps,&mp,4,20);
+ CHECK(m.vertex_[&material_vs].variant&&m.vertex_[&material_vs].material_variant&&m.pixel_[&material_ps].variant&&m.pixel_[&material_ps].material_variant&&!m.pixel_[&material_ps].emission_variant&&m.device_references()==6);
+ const auto released=releases;retiring_emission=&m;release_check=emission_retirement_check;m.release_resources();release_check=nullptr;retiring_emission=nullptr;
+ CHECK(releases==released+6&&m.device_references()==0&&!m.shadow_.emission_eligible_variant);m.release_resources();CHECK(releases==released+6);
+ std::printf("linear_emission_cache checks=%u\n",checks-checks_before);
+}
 int main(){
  environment[L"X3M_HDR_TONEMAP"]=L"agx";environment[L"X3M_LINEAR_MATERIALS"]=L"1";configure_environment();CHECK(linear_material_requested&&linear_material_config.direct_gain==1);
  for(const wchar_t*key:{L"X3M_MATERIAL_DIRECT_GAIN",L"X3M_MATERIAL_EMISSIVE_GAIN",L"X3M_LIGHTMAP_EMISSIVE_GAIN"}){
@@ -306,5 +373,6 @@ int main(){
  // Default off creates only motion and never performs material sampler reads.
  MotionOutput off;Device quiet;off.device_=&quiet;off.register_vertex_shader(&original_vs,&vs,4,10);CHECK(!off.vertex_[&original_vs].material_variant);off.resync_samplers();CHECK(quiet.sampler_reads==0);off.release_resources();
  contract_lifecycle();
+ emission_cache_cases();
  std::printf("linear_material_live checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

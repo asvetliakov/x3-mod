@@ -17,9 +17,10 @@ i686-w64-mingw32-g++ $FLAGS -DX3M_QUAD_FVF_SWITCH -static -static-libgcc -static
 
 OBJECTS=../../build/CMakeFiles/d3d9.dir/src
 test -f "$OBJECTS/proxy/capture.cpp.obj" || { echo "build/ objects missing; run the CMake build first" >&2; exit 1; }
-# MotionOutput now references the combined material transformer. It is shared
+# MotionOutput references the material and emission transformers. They are shared
 # unchanged from the candidate build, never rebuilt implicitly by this runner.
 test -f "$OBJECTS/renderer/linear_material.cpp.obj" || { echo "build/ linear material object missing; run the CMake build first" >&2; exit 1; }
+test -f "$OBJECTS/renderer/linear_emission.cpp.obj" || { echo "build/ linear emission object missing; run the CMake build first" >&2; exit 1; }
 BRIDGE=../../build/compositor_bridge
 # These external objects sit outside CMakeFiles/d3d9.dir/src. Reuse the exact
 # qualified production SEH package, including its narrow compiler-runtime import.

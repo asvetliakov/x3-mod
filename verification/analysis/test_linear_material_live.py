@@ -28,6 +28,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'unsigned MotionOutput::device_references() const noexcept',
             'void MotionOutput::release_resources() noexcept',
             'void MotionOutput::configure_linear_materials(bool requested, const renderer::LinearMaterialConfig& config) noexcept',
+            'void MotionOutput::configure_linear_emissions(bool requested, float gain) noexcept',
             'void MotionOutput::register_vertex_shader(',
             'void MotionOutput::register_pixel_shader(',
             'void MotionOutput::set_vertex_shader(',
@@ -35,10 +36,12 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'void MotionOutput::set_sampler_state(',
             'void MotionOutput::resync_samplers() noexcept',
             'void MotionOutput::refresh_linear_material_contract() noexcept',
+            'void MotionOutput::refresh_linear_emission_contract() noexcept',
             'void MotionOutput::resync_shadow() noexcept',
             'void MotionOutput::begin_stateblock() noexcept',
             'void MotionOutput::end_stateblock() noexcept',
             'void MotionOutput::stateblock_applied() noexcept',
+            'void MotionOutput::before_reset() noexcept',
             'void MotionOutput::after_reset(HRESULT result) noexcept',
             'unsigned MotionOutput::linear_material_refusal() const noexcept',
             'HRESULT MotionOutput::bind_variant_pair(',
@@ -58,6 +61,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('failures=0', run.stdout)
+            self.assertIn('linear_emission_cache checks=', run.stdout)
             self.assertEqual(run.stderr, '')
 
     def launch(self, *args, environment=None):

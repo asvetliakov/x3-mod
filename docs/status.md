@@ -83,7 +83,8 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   cost. Review is closed and the regenerated embedded bytes match the qualified
   program, now installed. The existing TAA gameplay run also covers this update.
   The target ownership exchange is reviewed and passes 1,343 host checks;
-  single-draw pass integration is in progress; no live emission route is enabled.
+  default-off shader-cache preparation passes 3,540 host assertions.
+  Single-draw pass integration is in progress; no live emission route is enabled.
   Copy/composition cost remains a
   concern, and historical adjacent draws do not yet qualify batching. The
   [background study](reverse-engineering/background-temporal-coverage.md) retains

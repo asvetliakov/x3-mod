@@ -31,6 +31,7 @@
 #include "../renderer/camera_reprojection.h"
 #include "../renderer/hdr_pass.h"
 #include "../renderer/linear_material.h"
+#include "../renderer/linear_emission.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
@@ -377,6 +378,9 @@ public:
     // Gains are shader-local DEFs; no application constants are modified.
     void configure_linear_materials(bool requested, const renderer::LinearMaterialConfig& config) noexcept;
     bool linear_materials_requested() const noexcept { return linear_material_requested_; }
+    // Internal preparation only: no CLI or live route yet. Configure before
+    // attach; gain is immutable thereafter. Variants always include coverage.
+    void configure_linear_emissions(bool requested, float gain) noexcept;
     void configure_mip_bias(float bias) noexcept;
     float mip_bias() const noexcept { return mip_bias_; }
     bool mip_bias_active() const noexcept { return mip_bias_bits_ != 0 && jitter_requested_; }
@@ -519,11 +523,18 @@ private:
     // object never replaces the ordinary motion fallback for shared stages.
     struct ShaderEntry { std::uint64_t hash = 0; IUnknown* variant = nullptr;
                          IUnknown* material_variant = nullptr;
+                         IDirect3DPixelShader9* emission_variant = nullptr;
+                         bool registered = false; // Valid original, independent of motion support.
                          const renderer::MotionOutputProfile* row = nullptr; };
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
         std::uint64_t vs_hash = 0, ps_hash = 0;
+        bool vs_registered = false, ps_registered = false;
+        IDirect3DPixelShader9* ps_emission_variant = nullptr;
+        // Only the original exact pair and created three-output PS qualify.
+        // This is shader eligibility, not scene/blend/reader/pass admission.
+        IDirect3DPixelShader9* emission_eligible_variant = nullptr;
         // Exact pair contract, refreshed at actual shader setters and completed
         // registration only. DEFAULT uses 0x0f, BUMPMAP 0x1f, unknown uses zero.
         std::uint32_t material_sampler_mask = 0;
@@ -572,6 +583,7 @@ private:
     void restore_jitter(MotionRoute& route) noexcept;
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void refresh_linear_material_contract() noexcept;
+    void refresh_linear_emission_contract() noexcept;
     // 0 eligible, 1 unreviewed pair, 2 missing combined object, 3 HDR/decode,
     // 4 unknown or enabled sampler sRGB decode. Does not reject motion.
     unsigned linear_material_refusal() const noexcept;
@@ -659,6 +671,8 @@ private:
     Shadow shadow_{};
     bool linear_material_requested_ = false;
     renderer::LinearMaterialConfig linear_material_config_{};
+    bool linear_emission_requested_ = false;
+    renderer::LinearEmissionConfig linear_emission_config_{1.f, true};
     unsigned material_refusals_logged_ = 0;
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
