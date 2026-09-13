@@ -20,8 +20,9 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 5 | Reader/adjacency fast modes | 1 | Wait for run 1 log acceptance |
 | 6 | Linear hull materials off/on at fixed exposure | 2 | Ready |
 
-These are separate comparisons, not one long required session. Detached emission
-and temporal experiments are still agent work and add no gameplay request yet.
+These are separate comparisons, not one long required session. The shared TAA shader now fits the standard instruction budget and passes exact
+fixture comparisons; run 2 also covers that installed update. Emission integration
+is still agent work and adds no gameplay request yet.
 
 ```sh
 x3run() {

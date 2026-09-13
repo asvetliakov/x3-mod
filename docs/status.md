@@ -7,16 +7,18 @@ full scope; the [original objective](user-objective.md) is unchanged.
 
 ## Installed build and current camera work
 
-Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `6a2495d`:
-DLL SHA-256 `759d1a6d38e42bc1ffb23a068ce580c1e445b7f22a056dc397bdff9e2328471e`,
-12,364,461 bytes. The [install record](../verification/results/linear-material-install.json)
-binds the reviewed clean candidate, load check and previous BUMPMAP-material rollback
+Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `c663b03`:
+DLL SHA-256 `b11bff61b2a2f798b565969d8684923781d2b1bec0e3b22cf0cbe2f024d45702`,
+12,368,396 bytes. The [install record](../verification/results/linear-material-install.json)
+binds the reviewed clean candidate, load check and previous build rollback
 pair; EXE/configuration are unchanged. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
 records the bloom integration's scoped verification. The material candidate retains the previous import inventory and passes the
 light-hook x87 audit. The [BUMPMAP runtime review](architecture/linear-bump-materials.md#runtime-review-verdict)
 approves the expanded implementation and its structural/GPU/live evidence. The
-[current diagnostic review](architecture/linear-emission-composition.md#source-and-design-review-verdict)
-adds complete alpha-blend state to capture frames only; the fresh load check passes. Native Windows
+[temporal qualification](architecture/linear-emission-composition.md#supplemental-consumer-qualification)
+closes the shared shader's static-budget issue: 507 slots, exact paired images
+and Reset coverage. The embedded bytes match the qualified program; the fresh
+build and explicit-DLL load check pass. Native Windows
 remains untested. Bloom (`--hdr-bloom`) and materials (`--linear-materials`) are opt-in; existing
 commands leave each off unless requested.
 
@@ -79,9 +81,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   the shared shader from 1,261 to 507 instruction slots. The smaller program
   meets the standard static limit but has a modest measured completion-time
   cost. Review is closed and the regenerated embedded bytes match the qualified
-  program. Production build/installation is next; the installed shader remains
-  unchanged. The target ownership exchange is reviewed and passes 1,343
-  host checks; single-draw pass integration is in progress; no live emission route is enabled. Copy/composition cost remains a
+  program, now installed. The existing TAA gameplay run also covers this update.
+  The target ownership exchange is reviewed and passes 1,343 host checks;
+  single-draw pass integration is in progress; no live emission route is enabled.
+  Copy/composition cost remains a
   concern, and historical adjacent draws do not yet qualify batching. The
   [background study](reverse-engineering/background-temporal-coverage.md) retains
   the existing native temporal limitations; global writer classification is not

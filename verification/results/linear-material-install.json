@@ -1,48 +1,47 @@
 {
-  "source_commit": "6a2495d03e9914c241b6106411b1829b5674c682",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-emission-capture-candidate-naf5ob2a/d3d9.dll",
-  "dll_sha256": "759d1a6d38e42bc1ffb23a068ce580c1e445b7f22a056dc397bdff9e2328471e",
-  "dll_bytes": 12364461,
-  "build_seconds": 7.52,
+  "source_commit": "c663b031ce95bf40d686d65be57658c6496878fe",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-temporal-loop-candidate.nA1PhGxXzk/d3d9.dll",
+  "dll_sha256": "b11bff61b2a2f798b565969d8684923781d2b1bec0e3b22cf0cbe2f024d45702",
+  "dll_bytes": 12368396,
+  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "seh_clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+  "configure": "cmake -S <detached-c663b03> -B <fresh-build> -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo",
+  "build": "cmake --build <fresh-build> -j4",
+  "build_seconds": 9.17,
+  "source_worktree_clean_after_build": true,
   "imports_unchanged": true,
   "imports": 194,
   "import_dlls": 15,
   "light_call_no_x87": {
     "result": "PASS",
     "reachable_functions": 212,
-    "violations": {}
-  },
-  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
-  "build": "cmake --build build --clean-first -j8",
-  "review": "docs/architecture/linear-emission-composition.md#source-and-design-review-verdict",
-  "change": "Four render-state queries during capture only; no renderer/shader behavior change.",
-  "renderer_qualification_reused": {
-    "source_commit": "df4dc0968b9f2825172e04dd31b77ebc4b615c19",
-    "review": "docs/architecture/linear-bump-materials.md#runtime-review-verdict",
-    "fixtures": {
-      "detached_gpu": "verification/results/bottle-X3/linear-material-gpu.json",
-      "live": "verification/results/bottle-X3/linear-material-live.json"
-    }
-  },
-  "coverage": {
-    "programs": 24,
-    "pairs": 30
+    "violations": 0
   },
   "load": {
     "passed": true,
     "case": "writable",
     "checks": 8,
-    "exports": 17
+    "exports": 17,
+    "dll_sha256": "b11bff61b2a2f798b565969d8684923781d2b1bec0e3b22cf0cbe2f024d45702"
   },
-  "previous_dll_sha256": "6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0",
-  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-emission-capture-candidate-naf5ob2a/rollback",
+  "rollback": {
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-temporal-loop-candidate.nA1PhGxXzk/rollback-d3d9.dll",
+    "dll_sha256": "759d1a6d38e42bc1ffb23a068ce580c1e445b7f22a056dc397bdff9e2328471e",
+    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-temporal-loop-candidate.nA1PhGxXzk/rollback-x3-modern-install.json",
+    "install_record_sha256": "82d8d1a5c6484677018c423ae86d4e00ca3a014174b9d246da0a9ba006f8ff1b"
+  },
+  "game_launched": false,
+  "native_windows_verified": false,
   "installed": true,
   "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "planned_launch_dry_run": true,
+  "change": "Reviewed 507-slot shared temporal resolve with qualified supplemental-mask consumer; unused validated HDR target exchange.",
+  "review": "docs/architecture/linear-emission-composition.md",
+  "temporal_qualification": "verification/results/bottle-X3/temporal-loop-qualification.json",
+  "reused_material_qualification": "verification/results/bottle-X3/linear-material-live.json",
+  "reused_bloom_qualification": "docs/verification/review-50-hdr-bloom-live-integration.md",
   "preserved_files": {
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
-  },
-  "planned_launch_dry_run": true,
-  "game_launched": false,
-  "native_windows_verified": false
+  }
 }

@@ -26,9 +26,10 @@ Recording runtime hashes in test reports remains useful provenance.
   ps_3_0 minimum and the X3 advertised limit. Its focused X3 qualification
   matches the 1,261-slot source exactly over 30 paired frames and passes the full
   temporal and Reset coverage; measured full-pass completion-wall cost is small
-  but noisy and is not a GPU-busy or game-FPS claim. The regenerated embedded artifact matches the qualified bytecode; production
-  build/installation and gameplay acceptance remain, and native-Windows execution
-  remains unverified. See the [emission temporal work](linear-emission-composition.md#consumer-contract).
+  but noisy and is not a GPU-busy or game-FPS claim. The regenerated embedded
+  artifact matches the qualified bytecode and is installed after a clean
+  build/load check. Gameplay acceptance and native-Windows execution remain
+  unverified. See the [emission temporal work](linear-emission-composition.md#consumer-contract).
 
 - Opt-in bloom now uses documented D3D9 calls and a compiler-supported x86
   SEH bridge; native Windows execution and live gameplay integration remain
