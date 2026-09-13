@@ -8,7 +8,7 @@ and 110 reviewed linear material pairs;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
-function setup is needed. Runs 1 and 5 are complete; reader/DAT/adjacency fast co-activation passed as run 19. Complete the remaining
+function setup is needed. Runs 1, 5 and 6 are complete; reader/DAT/adjacency fast co-activation passed as run 19. Complete the remaining
 ready comparisons over several sessions as convenient.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
@@ -21,9 +21,9 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 3 | Automatic exposure + bloom off/on | 2 | Ready |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
-| 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 1 | A completed as run 20; B ready on the same build |
+| 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
 
-Four sessions remain; complete them at your convenience. The shared TAA shader
+Three sessions remain; complete them at your convenience. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
 no gameplay request yet while its performance optimization is under investigation.
@@ -136,8 +136,8 @@ comparison; do not repeat A:
   --capture-start 999999 --capture-frames 4
 ```
 
-Run B next on the unchanged installed build: repeat the same save, camera
-positions and sequence with linear materials on. Leave the three material gains at their default 1:
+Completed B command (runs 21–23; do not repeat for this item):
+the same save/sequence with linear materials on. Leave the three material gains at their default 1:
 
 ```sh
 ./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
@@ -182,3 +182,14 @@ star-lit distant asteroid shimmers at the same distance. The other selected
 object distance/crosshair missing in chase is a separate HUD investigation.
 Both parts use fixed EV 0, so absence of overexposure here does not accept the
 automatic meter.
+
+Run 6 B is complete. Run 21 froze while docked after alt-tab/back; cause is
+unknown and no repeat is requested. Run 22 completed without F8; run 23 completed
+with two bursts: distant selected asteroid while shimmering (10752–10755), then
+closer after shimmering disappeared (11607–11610). Selection stutters remain.
+Paired screenshots show brighter converted hull/station surfaces, partial
+coverage, and less apparent gloss. Final gloss/lighting/reflection tuning may
+follow later at the user's preference; accidental loss of native terms still
+needs exclusion. Keep accepted camera values. The central HUD correction and
+selection timings are being combined into a future build; no new run is ready
+for them yet. The current run-6 commands remain above as provenance.

@@ -67,8 +67,15 @@ finds a separate native view gate, with a scoped correction in progress.
 save gap and fault-free loading paths. Selection windows contain 0.44–0.46 s
 frame maxima, unexplained by measured renderer calls; capture work and late
 shader creation do not overlap them. Native solver/HUD timing remains needed. A is not a material or automatic-exposure test.
-Comparison B is requested on the identical installed build; hold Wine fixtures
-and installation changes until the user finishes it.
+Comparison B is complete: run 21 froze docked after alt-tab/back (unknown cause),
+run 22 completed without captures, and run 23 captured the selected asteroid
+before/after approaching until shimmer disappeared. The user still sees selection
+stutters, brighter converted surfaces, partial material coverage and less gloss.
+The captured eligible motion draws use linear materials on 4,420 of 5,800 draws
+(76.21%); most refusals are uncovered XT variants. This is draw coverage, not
+pixel coverage. Final gloss tuning may follow improved lighting/reflections;
+accidental term loss still needs exclusion. The fixture queue is unblocked;
+there is no new user run for these fixes yet.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent
