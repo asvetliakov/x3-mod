@@ -1,33 +1,32 @@
 {
-  "source_commit": "df4dc0968b9f2825172e04dd31b77ebc4b615c19",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bump-linear-material-candidate-rgod4g8e/d3d9.dll",
-  "dll_sha256": "6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0",
+  "source_commit": "6a2495d03e9914c241b6106411b1829b5674c682",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-emission-capture-candidate-naf5ob2a/d3d9.dll",
+  "dll_sha256": "759d1a6d38e42bc1ffb23a068ce580c1e445b7f22a056dc397bdff9e2328471e",
   "dll_bytes": 12364461,
-  "build_seconds": 6.456,
+  "build_seconds": 7.52,
   "imports_unchanged": true,
   "imports": 194,
   "import_dlls": 15,
   "light_call_no_x87": {
     "result": "PASS",
     "reachable_functions": 212,
-    "violations": 0
+    "violations": {}
   },
   "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
   "build": "cmake --build build --clean-first -j8",
-  "review": "docs/architecture/linear-bump-materials.md#runtime-review-verdict",
+  "review": "docs/architecture/linear-emission-composition.md#source-and-design-review-verdict",
+  "change": "Four render-state queries during capture only; no renderer/shader behavior change.",
+  "renderer_qualification_reused": {
+    "source_commit": "df4dc0968b9f2825172e04dd31b77ebc4b615c19",
+    "review": "docs/architecture/linear-bump-materials.md#runtime-review-verdict",
+    "fixtures": {
+      "detached_gpu": "verification/results/bottle-X3/linear-material-gpu.json",
+      "live": "verification/results/bottle-X3/linear-material-live.json"
+    }
+  },
   "coverage": {
     "programs": 24,
     "pairs": 30
-  },
-  "fixtures": {
-    "detached_gpu": "verification/results/bottle-X3/linear-material-gpu.json",
-    "live": "verification/results/bottle-X3/linear-material-live.json"
-  },
-  "affected_host_tests": {
-    "structure": 7,
-    "live_control": 3,
-    "gpu_report": 15,
-    "live_report": 2
   },
   "load": {
     "passed": true,
@@ -35,8 +34,8 @@
     "checks": 8,
     "exports": 17
   },
-  "previous_dll_sha256": "24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724",
-  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bump-linear-material-candidate-rgod4g8e/rollback",
+  "previous_dll_sha256": "6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0",
+  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-emission-capture-candidate-naf5ob2a/rollback",
   "installed": true,
   "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
   "preserved_files": {

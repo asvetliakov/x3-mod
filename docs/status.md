@@ -7,14 +7,16 @@ full scope; the [original objective](user-objective.md) is unchanged.
 
 ## Installed build and current camera work
 
-Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `df4dc09`:
-DLL SHA-256 `6872f1681325610266243eeccb778d6721b43119f9e6ee8742a359f2536ff5a0`,
+Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `6a2495d`:
+DLL SHA-256 `759d1a6d38e42bc1ffb23a068ce580c1e445b7f22a056dc397bdff9e2328471e`,
 12,364,461 bytes. The [install record](../verification/results/linear-material-install.json)
-binds the reviewed clean candidate, load check and previous DEFAULT-material rollback
+binds the reviewed clean candidate, load check and previous BUMPMAP-material rollback
 pair; EXE/configuration are unchanged. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
 records the bloom integration's scoped verification. The material candidate retains the previous import inventory and passes the
 light-hook x87 audit. The [BUMPMAP runtime review](architecture/linear-bump-materials.md#runtime-review-verdict)
-approves the expanded implementation and its structural/GPU/live evidence. Native Windows
+approves the expanded implementation and its structural/GPU/live evidence. The
+[current diagnostic review](architecture/linear-emission-composition.md#source-and-design-review-verdict)
+adds complete alpha-blend state to capture frames only; the fresh load check passes. Native Windows
 remains untested. Bloom (`--hdr-bloom`) and materials (`--linear-materials`) are opt-in; existing
 commands leave each off unless requested.
 
