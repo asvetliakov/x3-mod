@@ -85,8 +85,9 @@ Those observations do not yet establish the cause of the visible shimmer.
 1. Keep the reviewed glow, 162-pair material and selection-diagnostic source together.
 2. Make one clean candidate build and matching fixture seam. Qualify the 162-pair live matrix, scalar WRAP,
    expanded default-off emission route, and affected integration/load/CPU checks against those retained binaries.
-   The first combined candidate was rejected before installation: its linked CPU audit found formatted
-   XT diagnostics reachable from lightweight shader setters. Defer that logging, review the fix, and rebuild.
+   The first combined candidate exposed formatted XT diagnostics in lightweight shader setters.
+   Reviewed fix `541e380` defers that logging; its clean rebuilt DLL passes the linked audit (218 reachable
+   functions). The matching live matrix is in progress; installation still awaits its results.
 3. Fix any concrete failures, then install reversibly with the previous DLL/record retained for rollback.
    Update the single install record, verify installed bytes and validate the combined user command.
 

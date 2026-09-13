@@ -1823,10 +1823,12 @@ struct Fixture {
         }
         if(materialwrap){
             require(wrap_snapshot&&!taa,"native WRAP short mode requires observer and TAA off");
+            // Two equal triangles at distinct start indices give each source
+            // its own history key; duplicate keys are intentionally poisoned.
             Com<IDirect3DIndexBuffer9> indices;
-            api(d->CreateIndexBuffer(6,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"WRAP indices");
+            api(d->CreateIndexBuffer(12,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"WRAP indices");
             void* data=nullptr;api(indices->Lock(0,0,&data,0),"WRAP indices lock");
-            const unsigned short triangle[]={0,1,2};std::memcpy(data,triangle,sizeof triangle);api(indices->Unlock(),"WRAP indices unlock");
+            const unsigned short triangle[]={0,1,2,0,1,2};std::memcpy(data,triangle,sizeof triangle);api(indices->Unlock(),"WRAP indices unlock");
             // Metadata-independent source semantic witnesses read from the
             // three original VS declarations: Boron TEX6, Paranid TEX7.
             struct WrapPair { const char *vs,*ps; unsigned source,motion,scalars; };
@@ -1885,7 +1887,7 @@ struct Fixture {
                     api(d->SetVertexShader(vertex_bank[vi].p),"WRAP original VS");api(d->SetPixelShader(pixel_bank[pi].p),"WRAP original PS");rows(0,0,0);
                     const Snapshot before=snapshot();
                     for(unsigned draw_number=0;draw_number<2;++draw_number){
-                        api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,0,1),"WRAP original indexed source");++draw_index;
+                        api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,3*draw_number,1),"WRAP original indexed source");++draw_index;
                         records.push_back({&object,0,0,0,true,matched,object.rt,object.rp,object.rzo,false,jitter,true});
                         x3m::MotionOutputFixtureWrapSnapshot observed{};api(wrap_snapshot(d.p,&observed),"WRAP snapshot export");
                         ++sequence;
@@ -2038,8 +2040,10 @@ struct Fixture {
         const unsigned short basis[]={0,half(1),0,0,half(1),0,0,0};
         for(unsigned i=0;i<3;++i){auto*out=static_cast<char*>(target)+40*i;std::memcpy(out,static_cast<char*>(source)+24*i,24);std::memcpy(out+24,basis,sizeof basis);auto*uv=reinterpret_cast<unsigned short*>(out+8);uv[2]=half(.125f+.25f*i);uv[3]=half(.875f-.125f*i);}
         api(geometry->Unlock(),"XT geometry unlock");api(vb_a->Unlock(),"XT source geometry unlock");
-        Com<IDirect3DIndexBuffer9> indices;api(d->CreateIndexBuffer(6,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"XT indices");
-        api(indices->Lock(0,0,&target,0),"XT index lock");const unsigned short triangle[]={0,1,2};std::memcpy(target,triangle,sizeof triangle);api(indices->Unlock(),"XT index unlock");
+        // Preserve consecutive identical geometry without duplicating the
+        // history key: startIndex 0 and3 each address their own index triple.
+        Com<IDirect3DIndexBuffer9> indices;api(d->CreateIndexBuffer(12,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"XT indices");
+        api(indices->Lock(0,0,&target,0),"XT index lock");const unsigned short triangle[]={0,1,2,0,1,2};std::memcpy(target,triangle,sizeof triangle);api(indices->Unlock(),"XT index unlock");
         Com<IDirect3DTexture9> maps[5];const DWORD texels[]={0x80804020u,0x80808080u,0xff000000u,0xffffffffu,0xff000000u};
         for(unsigned i=0;i<5;++i){api(d->CreateTexture(2,2,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&maps[i].p,nullptr),"XT texture");D3DLOCKED_RECT lock{};api(maps[i]->LockRect(0,&lock,nullptr,0),"XT texture lock");for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+4*x,&texels[i],4);api(maps[i]->UnlockRect(0),"XT texture unlock");}
         const auto wrap_state=[](unsigned i){return D3DRENDERSTATETYPE(i<8?D3DRS_WRAP0+i:D3DRS_WRAP8+i-8);};
@@ -2104,7 +2108,7 @@ struct Fixture {
             api(d->SetIndices(indices.p),"XT bind indices");api(d->SetVertexDeclaration(basis_declaration.p),"XT bind basis");scope(&object);api(d->SetStreamSource(0,object.vb,0,40),"XT bind stream");api(d->SetVertexShader(vertex[bump?0:1].p),"XT original VS bind");api(d->SetPixelShader(native_unknown?unknown.p:pixel[pair].p),"XT original PS bind");rows(0,perspective,0);
             float before_ps[11][4];api(d->GetPixelShaderConstantF(210,before_ps[0],11),"XT reserved snapshot");const Snapshot before=snapshot();
             std::array<std::uint64_t,3> transport_baseline{};std::vector<float> transport_rgb;
-            for(unsigned draw_number=0;draw_number<2;++draw_number){if(transport)api(d->SetSamplerState(refusal_stage,D3DSAMP_SRGBTEXTURE,draw_number==0),"XT paired ordinary then linear admission");api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,0,1),"XT original source draw");++draw_index;records.push_back({&object,0,perspective,0,!native_unknown,matched,object.rt,object.rp,object.rzo,false,jitter,true});x3m::MotionOutputFixtureWrapSnapshot observed{};api(wrap_snapshot(d.p,&observed),"XT native WRAP snapshot");++sequence;
+            for(unsigned draw_number=0;draw_number<2;++draw_number){if(transport)api(d->SetSamplerState(refusal_stage,D3DSAMP_SRGBTEXTURE,draw_number==0),"XT paired ordinary then linear admission");api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,3*draw_number,1),"XT original source draw");++draw_index;records.push_back({&object,0,perspective,0,!native_unknown,matched,object.rt,object.rp,object.rzo,false,jitter,true});x3m::MotionOutputFixtureWrapSnapshot observed{};api(wrap_snapshot(d.p,&observed),"XT native WRAP snapshot");++sequence;
                 DWORD expected[16];std::memcpy(expected,caller,sizeof expected);if(!native_unknown){expected[bump?7:4]=0;if(materialwrap_depth)expected[bump?8:7]=0;if(combined&&bump&&(!transport||draw_number)){expected[1]=(caller[1]&7)|((caller[6]&1)?8:0);expected[2]=(caller[2]&7)|((caller[6]&2)?8:0);}}
                 std::printf("XT_WRAP plan=%u frame=%llu draw=%u sequence=%llu valid=%u result=%08lx values=",plan,frame,draw_number,static_cast<unsigned long long>(observed.sequence),observed.valid,observed.result);for(unsigned i=0;i<16;++i)std::printf("%s%lu",i?",":"",static_cast<unsigned long>(observed.values[i]));std::puts("");require(observed.valid&&observed.result==S_OK&&observed.sequence==sequence&&!std::memcmp(expected,observed.values,sizeof expected),"XT native-once and pair WRAP transport");require(emission_status(d.p,12)==draw_number+1,"XT original source submitted once");
                 if(transport){

@@ -95,6 +95,20 @@ def wrap_report(material=True,depth=True,rt_mode="perdraw"):
 
 
 class LiveMaterialReportTests(unittest.TestCase):
+    def test_consecutive_indexed_sources_have_distinct_keys_and_equal_geometry(self):
+        source=(Path(__file__).resolve().parents[2]/'verification/probe/motion_output_fixture.cpp').read_text()
+        wrap=source[source.index('        if(materialwrap){'):source.index('        auto unknown_controls=')]
+        xt=source[source.index('    void run_xt_materials('):source.index('    // ---- FP16 HDR scene path')]
+        for label,method in (('WRAP',wrap),('XT',xt)):
+            with self.subTest(mode=label):
+                self.assertRegex(method,r'CreateIndexBuffer\(12,0,D3DFMT_INDEX16')
+                indices=[int(value) for value in re.search(r'const unsigned short triangle\[\]=\{([^}]+)\}',method).group(1).split(',')]
+                self.assertEqual(indices,[0,1,2,0,1,2])
+                self.assertEqual(indices[0:3],indices[3:6])
+                self.assertEqual(method.count('for(unsigned draw_number=0;draw_number<2;++draw_number)'),1)
+                self.assertEqual(method.count('DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,3*draw_number,1)'),1)
+                self.assertNotIn('DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,0,1)',method)
+
     def test_xt_full_schedule_and_twins(self):
         cases={}
         for depth in (False,True):
