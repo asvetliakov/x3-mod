@@ -88,7 +88,11 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   Copy/composition cost remains a live-integration
   concern. A [background study](reverse-engineering/background-temporal-coverage.md)
   distinguishes sampled camera-centered nebula motion from changing stardust
-  inputs; runtime temporal admission remains unproved. No live emission route is selected.
+  inputs; broad runtime temporal admission remains unproved. The selected next
+  temporal step preserves baseline motion and adds complete supplemental masks
+  for enhanced emissions, rather than requiring a classifier for every native
+  writer. Its consumer and same-draw mask producer still need qualification.
+  No live emission route is selected.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.

@@ -47,8 +47,11 @@ they are not a measured final-image baseline.
    passes detached X3 qualification for untouched-channel preservation and a
    current native recovery image. A measured branch optimization showed no
    consistent benefit; retain the baseline and qualify actual game shaders,
-   live target ownership and complete temporal coverage, with batching/cost
-   still under investigation. Opaque coverage alone does not justify changing blends.
+   live target ownership and source-set-complete supplemental temporal coverage
+   for enhanced emissions, preserving baseline sentinel/camera motion. Complete
+   classification of unrelated native writers is not this slice's prerequisite;
+   their existing limitations remain. Batching/cost are still under investigation.
+   No live emission route is selected; opaque coverage alone does not justify changing blends.
 3. Analyse the user's captures and fix observed failures. Reader and adjacency
    fast modes require meaningful verification work with zero admitted mismatches;
    an all-fallback session does not qualify them. Keep exposure/bloom and

@@ -118,85 +118,124 @@ further draws/storage. Device loss, partial commit and failed restore must be
 distinguished from clean pre-mutation refusal. This remains unresolved before
 any live implementation.
 
-## Reactive coverage: producer now, integration later
+## Reactive coverage: selected supplemental scope, pending qualification
 
-The existing [resolve shader](../../src/temporal/resolve.hlsl) already samples
-current reactive coverage at s5, rejects any nonzero-weight reactive previous
-history tap at s6, and preserves current alpha. [TemporalPass](../../src/renderer/temporal_pass.h)
-requires R32F masks, snapshots/canonicalizes them with the accepted history,
-and invalidates on policy/lifetime transitions. Reuse that ownership and
-current/previous logic. Disappearing emission needs previous coverage even when
-the current frame contains no emitter; underlying opaque velocity or RT2 depth
-does not describe effect motion.
+Root selects **source-set-complete supplemental coverage** for enhanced emission,
+with a same-draw three-FP16-MRT producer candidate. This is not complete scene
+reactivity and does not select a live emission route. A classifier or replay
+producer for every unrelated native writer is not a prerequisite for this slice.
+The installed renderer's existing native background/stardust limitations remain;
+see the [background coverage study](../reverse-engineering/background-temporal-coverage.md).
+Do not turn that bounded decision into a static shader-wide exemption or mask
+nearly the entire background merely to call coverage complete.
 
-The current live `DerivedFromDepthSentinel` policy and `RequiredMask` policy
-are mutually exclusive. Do not switch to an emission-only RequiredMask and
-call it complete. A narrowly combined producer policy should drive the existing
-independent mask and sentinel shader controls together, retaining actual
-far-plane camera reprojection and opaque motion. It must retain the complete
-conservative coverage obligation for unsupported blended writers. Existing
-camera/background admission must be explicit; unknown background motion is
-not made safe by the presence of a view matrix.
+### Consumer contract
 
-**Portable producer candidate for the fixture: immediate single-RT coverage
-replay**, entirely inside the draw boundary. It needs no retained geometry,
-previous-particle identity or private backend ABI. A standalone mask target
-avoids requiring FP16 MRT blending. For admitted sources, use the same original
-VS/geometry, viewport, scissor, cull and Z test; disable depth/stencil writes and
-write one to coverage. Preserve original alpha rejection where admitted; the
-first slice has alpha test off. Conservatively marking black/zero-alpha
-fragments is allowed: alpha is not RGB coverage for additive effects.
+The existing [resolve shader](../../src/temporal/resolve.hlsl) has independent
+mask and depth-sentinel controls: current coverage rejects history at the current
+pixel, and any nonzero-weight reactive previous-color tap rejects that history
+lookup. Keep opaque motion and the actual far-plane camera transform. Existing
+`RequiredMask` retains its complete conservative visible-RGB coverage contract;
+existing `DerivedFromDepthSentinel` remains unchanged.
 
-Completeness extends beyond enhanced sources. For other untracked scene RGB
-writers, a separate constant-mask PS can conservatively cover their rasterized
-geometry with alpha/discard, depth and stencil rejection relaxed. Retain the
-original vertex/primitive path, disable **all** depth/stencil side effects and
-do not reproduce a foreign oDepth. This is a superset rather than a claim of
-exact visible effect coverage. Shader-model linkage, draw APIs, original
-fixed-function paths and query/state interactions need explicit qualification.
-No universal arbitrary-draw replay support is assumed. If a draw cannot be
-covered safely, coverage is incomplete and history must be withheld for that
-frame. Later opaque occlusion can leave conservative mask false positives;
-do not clear coverage based on unsupported effect-motion inference.
+A new explicit `SupplementalMaskWithDepthSentinel` policy will require a
+frame-complete **FP16 raw coverage texture for the enhanced source set**. Zero
+means no recorded source coverage; every other value, including nonfinite, is
+conservatively reactive. The proposed consumer will:
 
-This is **producer feasibility, not a complete live classifier**. Proven
-camera-only/far-plane writers must be distinguished from unsupported animated
-blends. The [background coverage study](../reverse-engineering/background-temporal-coverage.md)
-finds camera-centered motion in the sampled nebula cohort, but changing stardust
-inputs and shared shader aliases prevent a blanket exemption. Blindly replaying every unrouted background writer can mark nearly the
-whole screen reactive and remove useful TAA; blindly omitting them does not
-prove safety either. The first detached fixture can use a closed synthetic
-world with explicitly known reactive/nonreactive writers. Live completeness
-and useful far-plane history remain open blockers, not work to solve in this
-checkpoint.
+1. Validate that raw input, ownership, dimensions and frame regime.
+2. Before resolve, canonicalize and dilate its coverage by one pixel over a 3x3
+   neighborhood into the existing next-frame R32F mask surface. Extend the
+   existing snapshot shader mode only for this dilation. This moves the existing
+   mask snapshot pass before resolve; it does not add another full-screen pass.
+3. Resolve using this canonical current mask and the previously owned canonical
+   mask, with sentinel/camera controls also enabled. Do not dilate previous
+   coverage again. Retain existing rejection of all nonzero-weight Catmull-Rom
+   history taps, including disappearing sources.
+4. Publish color, depth and the mask together only after successful processing
+   and state restoration, under the existing history ownership/generation rules.
 
-Use a directly rendered **R32F single-RT mask**, cleared to zero, with writes
-of one and no blending. Geometry outside the mask remains unchanged;
-overlapping writes stay one. R32F renderability is already needed by the route;
-no R32F blending or intermediate-format conversion is required. Add another
-mask format/conversion only if a documented capability issue or measurement
-justifies it.
-Idle-query admission is mandatory before extra full-screen or geometry draws;
-an active occlusion query would observe them. Failed coverage production or
-restore cannot establish history. Color and reactive snapshot publication must
-refer to the same successful frame/generation.
+The one-pixel expansion covers enhanced RGB's participation in current 3x3
+neighborhood-clipping statistics, not just direct raster coverage. It does not
+promise universal image equivalence outside a source or solve unrelated native
+history artifacts. Current alpha remains the application's alpha. Coverage is
+not radiance: no gamma decode, gain, luminance weighting or exposure applies to
+it. Existing `RequiredMask` snapshot behavior is unchanged by this new mode.
 
-**Later, outside the first fixture:** a combined sentinel/mask policy, live
-writer classification and temporal integration need their own decision. The
-existing consumer remains unchanged and its tests are not rerun in this first
-feasibility checkpoint. An optional same-draw MRT producer can reduce replay only when the source
-contract and device support it. D3D9 applies shared blend state to all targets;
-ADD/ONE/ONE mask output one can accumulate conservative coverage, but it is not
-an independent MAX blend. Require simultaneous-target count, per-format
-`QUERY_POSTPIXELSHADER_BLENDING`, `MRTPOSTPIXELSHADERBLENDING`, independent
-write masks and, for different bit depths, `MRTINDEPENDENTBITDEPTHS`. No MSAA;
-fixed-function fog on extra MRTs is undefined. A shader-model-compatible
-additional output and exact RT0 alpha behavior also need proof.
-[Microsoft MRT contract](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multiple-render-targets),
-[capability definitions](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dpmisccaps).
-This is optional acceleration, not a backend-private renderer prerequisite.
+Coverage includes every enhanced submission whose result can reach the published
+scene, conservatively including native-B fallback submissions. It is independent
+of source RGB, fade, alpha and gain. In particular, gain zero can publish A where
+native B contains the original emission; zero E is not proof of zero feature
+change. A complete frame with no enhanced draws supplies a valid zero mask,
+while previous coverage still rejects disappearing effects. Feature/policy and
+lifetime transitions invalidate history using the existing mechanisms.
+
+If required supplemental coverage is incomplete, use existing `Unavailable`
+with a null mask: output current-only and never complete usable history from
+that frame. `history_allowed = false` alone is insufficient because a successful
+run can subsequently complete the newly written, inadequately masked history.
+A missing producer, snapshot failure or unsuccessful restoration cannot silently
+become an empty mask. Color/native-image recovery and usable-history publication
+remain separate success decisions.
+
+### Spatial consumers and source ownership
+
+For the established HDR compositor boundary, `MotionOutput::scene_end_hook`
+resolves TAA before ending scene redirection; `capture.cpp` calls it before the
+original compositor and replacement bloom preparation. Consequently that bloom's
+spatial spread is after history, not an extra pre-TAA mask footprint. See the
+[verified ordering](hdr-bloom-boundary.md#decision-and-ordering). Sharpen likewise
+acts on the display image, not the stored history.
+
+This ordering does not certify arbitrary earlier scene-color readers, copies or
+blur passes. An unqualified reader that can spread enhanced RGB before TAA makes
+supplemental completeness invalid unless its affected footprint is explicitly
+propagated. Color-order barriers alone do not establish mask completeness.
+Current source coverage can conservatively survive later opaque occlusion;
+never erase it merely from an unsupported inference about effect motion.
+
+### Next producer qualification: third same-draw output
+
+After the existing two-output actual-original fixture, qualify an additional
+constant positive RGB output at oC2 in the augmented PS2 program. Bind a separate
+frame-persistent FP16 coverage target beside native B and linear E, clear it to
+zero once per admitted frame, and use the original geometry submission. Shared
+RGB ADD/ONE/ONE accumulates a conservative nonzero union; it is not independent
+MAX blending. Alpha is irrelevant to that RGB union. Original VS, source oC0,
+alpha and depth/stencil behavior must remain qualified and unchanged; the initial
+source contract has alpha test off and full RGBA writes on all three targets.
+No geometry replay is required by this candidate.
+
+Require `NumSimultaneousRTs >= 3`, equal dimensions, no MSAA,
+`MRTPOSTPIXELSHADERBLENDING` and FP16 `QUERY_POSTPIXELSHADER_BLENDING` support;
+fixed-function fog and dithering are off. All three targets share FP16 bit depth,
+so this combination does not add a mixed-bit-depth requirement. Full RGBA writes
+on all avoid an independent-write-mask prerequisite. An R32F MRT alternative
+would additionally need mixed-bit-depth capability and R32F blending support.
+These are [documented MRT contracts](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multiple-render-targets)
+and [format queries](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dusage-query),
+not evidence that the three-output PS2 producer has passed on a GPU. Existing
+three-target TAA does not establish its blending or original-oC0 parity.
+
+The producer must preserve its mask across B/C publication choices, avoid
+aliasing motion/depth targets, prevent stale-frame reuse, and retire references
+correctly at Reset/shutdown while reusing allocations during steady rendering.
+Canonicalization uses shader sampling into R32F; no cross-format copy equivalence
+is assumed. Active queries and state-block recording remain refusal cases.
+Measure the added mask writes, snapshot/dilation and lifetime work. Qualify the
+pure consumer separately from the three-output producer, then qualify their
+integration; neither authorizes live routing. Do not alter the in-flight
+actual-original two-output fixture to add this work.
+
+The earlier detached experiment used immediate single-RT R32F coverage replay
+in a synthetic closed world. Its historical results and replay-cost estimates
+below remain evidence for that experiment. General native-writer replay and a
+complete scene classifier are no longer prerequisites for this supplemental slice.
 
 ## Detached fixture and decision gate
+
+This section records the initial experiment, before the supplemental-scope
+decision above; its general replay study is not the selected production prerequisite.
 
 Use original synthetic shaders/textures and small deterministic readbacks.
 Do not copy game bytecode into tracked fixtures. The smallest useful checkpoint
