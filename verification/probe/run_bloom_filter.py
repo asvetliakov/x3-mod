@@ -24,6 +24,7 @@ import sys
 import tempfile
 
 import bottle
+import bloom_characterization as characterization
 from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -227,6 +228,8 @@ def host_module_path(windows_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-only', action='store_true')
+    parser.add_argument('--characterize-only', action='store_true',
+                        help='Run independent sampler/store/UV controls; do not evaluate bloom')
     parser.add_argument('--output-dir', type=Path)
     args = parser.parse_args()
     retained = args.output_dir.resolve() if args.output_dir else Path(tempfile.mkdtemp(prefix='x3-bloom-gpu-'))
@@ -238,6 +241,7 @@ def main():
         ROOT / 'tools/analysis/bloom_reference.py', ROOT / 'tools/analysis/agx_reference.py',
         ROOT / 'verification/probe/bottle.py', ROOT / 'verification/probe/game_guard.py',
         ROOT / 'verification/probe/wine_lock.py', GENERATOR}
+    sources.add(ROOT / 'verification/probe/bloom_characterization.py')
     expanded = []
     shader_names = ('quad_vs', *(f'bloom_{name}_ps' for name in KERNELS))
     for name in shader_names:
@@ -258,12 +262,16 @@ def main():
     cases = make_cases()
     bundle = retained / 'cases.bin'
     write_bundle(cases, bundle)
+    characterization_bundle = retained / 'characterization.bin'
+    characterization.write_inputs(characterization_bundle)
     report = dict(schema=1, passed=False, phase='built', scope='standalone bloom GPU numerics only',
         native_windows_runtime_verified=False, game_launched=False, installed_dll_changed=False,
         renderer_integration_verified=False, caller_state_restoration_verified=False,
         gpu_execution_verified=False, retained=str(retained), bottle=bottle.describe(),
         sources_before=before, build_command=build, executable_sha256=digest(exe),
         case_bundle_sha256=digest(bundle), cases=[case_metadata(c) for c in cases],
+        characterization_bundle_sha256=digest(characterization_bundle),
+        characterization_only=args.characterize_only,
         expanded_sources={str(p): digest(p) for p in expanded},
         precision=dict(input='FP16', stores='FP16 each pass', cpu_arithmetic='double',
                        absolute_tolerance=ABS_TOLERANCE, relative_tolerance=REL_TOLERANCE,
@@ -294,9 +302,12 @@ def main():
     windows = lambda p: 'Z:' + str(p)
     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(retained),
                str(exe), windows(compiler), *map(windows, expanded), windows(bundle), windows(retained)]
+    if args.characterize_only:
+        command.append('characterize-only')
     report.update(command=command, phase='running')
     write_report()
-    summary = bottle.results_dir(ROOT) / 'bloom-filter-summary.json'
+    summary = bottle.results_dir(ROOT) / ('bloom-filter-characterization-summary.json' if args.characterize_only
+                                          else 'bloom-filter-summary.json')
     if summary.exists():
         (retained / 'prior-summary.json').write_bytes(summary.read_bytes())
     try:
@@ -319,6 +330,21 @@ def main():
         if not caps_match:
             raise RuntimeError('Missing device dimensions')
         max_width, max_height = int(caps_match[3]), int(caps_match[4])
+        if args.characterize_only:
+            match = re.search(r'^RESULT CHARACTERIZATION PASS controls=(\d+)$', text, re.MULTILINE)
+            if result.returncode or not match or 'FAIL' in text:
+                raise RuntimeError('Independent characterization GPU pass did not complete')
+            report['characterization'] = characterization.analyze(retained, cases, max_width, max_height)
+            report['characterization']['controls_executed'] = int(match[1])
+            report['characterization_artifacts'] = {p.name: digest(p) for p in retained.glob('characterization_*.rgba*')}
+            report['characterization_programs'] = {p.name: digest(p) for p in retained.glob('char_*.cso')}
+            report['characterization_shader_sources'] = {p.name: digest(p) for p in retained.glob('char_*.hlsl')}
+            report['compiled_shaders'] = {name: digest(retained / (name + '.cso')) for name in ('quad', *KERNELS)}
+            if not report['characterization']['passed']:
+                raise RuntimeError(report['characterization'].get('error', 'Characterization failed'))
+            report.update(passed=True, phase='characterized', characterization_verified=True,
+                          gpu_execution_verified=False)
+            return
         skipped = set()
         report['skipped_cases'] = []
         for entry in re.finditer(r'^SKIP case=(\d+) reason=dimension_caps width=(\d+) height=(\d+)$', text, re.MULTILINE):
@@ -399,12 +425,14 @@ def main():
         report['executable_sha256_after'] = digest(exe)
         report['compiler_sha256_after'] = digest(compiler)
         report['case_bundle_sha256_after'] = digest(bundle)
+        report['characterization_bundle_sha256_after'] = digest(characterization_bundle)
         report['runtime_files_after'] = {p: digest(p) for p in report['runtime_files_before']}
         report['expanded_sources_after'] = {p: digest(p) for p in report['expanded_sources']}
         report['inputs_unchanged'] = (report['sources_after'] == before
             and report['executable_sha256_after'] == report['executable_sha256']
             and report['compiler_sha256_after'] == report['compiler_sha256_before']
             and report['case_bundle_sha256_after'] == report['case_bundle_sha256']
+            and report['characterization_bundle_sha256_after'] == report['characterization_bundle_sha256']
             and report['runtime_files_after'] == report['runtime_files_before']
             and report['expanded_sources_after'] == report['expanded_sources'])
         if not report['inputs_unchanged']:
@@ -413,6 +441,8 @@ def main():
         summary.write_bytes(local_summary.read_bytes())
         print(json.dumps(dict(passed=report['passed'], phase=report['phase'], images=len(report['images']),
                               summary=str(summary), retained=str(retained))))
+        if not report['inputs_unchanged']:
+            raise RuntimeError('Inputs changed during the GPU run')
     if not report['passed']:
         raise RuntimeError(report.get('error', 'GPU verification failed'))
 

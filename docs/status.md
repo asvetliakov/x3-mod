@@ -89,9 +89,13 @@ seventeen numerical host tests, three static-budget controls and eight native
 shader compilations pass. Compile-time extraction variants reduce the largest
 program to 362 of the 512-slot SM3 minimum. The first standalone GPU run completed 40 cases and Reset (540 stage
 readbacks), but 38 reconstruction readbacks failed the fixed numerical
-tolerance. Downsample stages and sampling controls passed. The retained
-failure is being diagnosed; GPU acceptance, renderer integration and game
-acceptance remain pending.
+tolerance. That rejection remains recorded. Independent sampler/store controls
+now qualify the retained 40 cases on the tested Steam backend: all 421,446
+modeled one-dimensional channels match exactly, and every unmodeled/2D image
+passes the recomputed original oracle. See [review 41](verification/review-41-bloom-precision.md).
+This is scoped numerical qualification, not a new GPU run or native-Windows
+validation. Production executor review, combined composition/state/recovery
+tests, renderer integration and game acceptance remain pending.
 The separate [CPU return-bridge prototype](verification/review-39-bloom-return-bridge.md)
 passed independent review and 240 checks each on Steam and X3/FEX, including
 exception cleanup and CPU-state transport. It is not integrated into the game

@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -121,10 +122,12 @@ struct Texture {
     Com<IDirect3DTexture9> texture;
     Com<IDirect3DSurface9> surface;
     x3::temporal::BloomSize size;
+    D3DFORMAT format;
     Texture(IDirect3DDevice9* device, x3::temporal::BloomSize dimensions, bool target,
-            const std::vector<unsigned short>* pixels = nullptr): size(dimensions) {
+            const std::vector<unsigned short>* pixels = nullptr,
+            D3DFORMAT pixel_format = D3DFMT_A16B16G16R16F): size(dimensions), format(pixel_format) {
         check("CreateTexture", device->CreateTexture(size.width, size.height, 1,
-              target ? D3DUSAGE_RENDERTARGET : 0, D3DFMT_A16B16G16R16F,
+              target ? D3DUSAGE_RENDERTARGET : 0, format,
               target ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED, &texture.p, nullptr));
         check("GetSurfaceLevel", texture->GetSurfaceLevel(0, &surface.p));
         if (!target) {
@@ -133,7 +136,7 @@ struct Texture {
             for (unsigned y = 0; y < size.height; ++y) {
                 auto* row = static_cast<unsigned char*>(lock.pBits) + y * lock.Pitch;
                 if (pixels) std::memcpy(row, pixels->data() + y * size.width * 4, size.width * 8);
-                else std::memset(row, 0, size.width * 8);
+                else std::memset(row, 0, size.width * (format == D3DFMT_A32B32G32R32F ? 16 : 8));
             }
             check("Unlock input", texture->UnlockRect(0));
         }
@@ -164,7 +167,7 @@ struct Programs {
 };
 void draw(IDirect3DDevice9* device, const Programs& programs, IDirect3DPixelShader9* shader,
           const Texture& input, const Texture* coarse, const Texture& output,
-          const x3::temporal::BloomConstants& constants) {
+          const x3::temporal::BloomConstants& constants, bool characterization_linear = false) {
     check("Unbind s0", device->SetTexture(0, nullptr));
     check("Unbind s1", device->SetTexture(1, nullptr));
     check("SetRenderTarget", device->SetRenderTarget(0, output.surface.p));
@@ -179,7 +182,8 @@ void draw(IDirect3DDevice9* device, const Programs& programs, IDirect3DPixelShad
     check("SetTexture s0", device->SetTexture(0, input.texture.p));
     check("SetTexture s1", device->SetTexture(1, coarse ? coarse->texture.p : nullptr));
     for (unsigned stage = 0; stage < 2; ++stage) {
-        const DWORD filter = stage ? D3DTEXF_LINEAR : D3DTEXF_POINT;
+        const DWORD filter = characterization_linear ? (stage ? D3DTEXF_POINT : D3DTEXF_LINEAR)
+                                                     : (stage ? D3DTEXF_LINEAR : D3DTEXF_POINT);
         check("MINFILTER", device->SetSamplerState(stage, D3DSAMP_MINFILTER, filter));
         check("MAGFILTER", device->SetSamplerState(stage, D3DSAMP_MAGFILTER, filter));
         check("MIPFILTER", device->SetSamplerState(stage, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
@@ -204,16 +208,141 @@ void draw(IDirect3DDevice9* device, const Programs& programs, IDirect3DPixelShad
 void readback(IDirect3DDevice9* device, const Texture& texture, const std::string& path) {
     Com<IDirect3DSurface9> staging;
     check("Create readback", device->CreateOffscreenPlainSurface(texture.size.width, texture.size.height,
-          D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &staging.p, nullptr));
+          texture.format, D3DPOOL_SYSTEMMEM, &staging.p, nullptr));
     check("GetRenderTargetData", device->GetRenderTargetData(texture.surface.p, staging.p));
     D3DLOCKED_RECT lock{};
     check("Lock readback", staging->LockRect(&lock, nullptr, D3DLOCK_READONLY));
-    std::vector<unsigned char> bytes(texture.size.width * texture.size.height * 8);
+    const unsigned pixel_bytes = texture.format == D3DFMT_A32B32G32R32F ? 16 : 8;
+    std::vector<unsigned char> bytes(texture.size.width * texture.size.height * pixel_bytes);
     for (unsigned y = 0; y < texture.size.height; ++y)
-        std::memcpy(bytes.data() + y * texture.size.width * 8,
-                    static_cast<unsigned char*>(lock.pBits) + y * lock.Pitch, texture.size.width * 8);
+        std::memcpy(bytes.data() + y * texture.size.width * pixel_bytes,
+                    static_cast<unsigned char*>(lock.pBits) + y * lock.Pitch, texture.size.width * pixel_bytes);
     check("Unlock readback", staging->UnlockRect());
     write_bytes(path, bytes.data(), bytes.size());
+}
+void upload_float32(Texture& texture, const std::vector<float>& values) {
+    if (texture.format != D3DFMT_A32B32G32R32F || values.size() != texture.size.width * texture.size.height * 4)
+        throw std::runtime_error("characterization FP32 upload shape");
+    D3DLOCKED_RECT lock{};
+    check("Lock FP32 input", texture.texture->LockRect(0, &lock, nullptr, 0));
+    for (unsigned y = 0; y < texture.size.height; ++y)
+        std::memcpy(static_cast<unsigned char*>(lock.pBits) + y * lock.Pitch,
+                    values.data() + y * texture.size.width * 4, texture.size.width * 16);
+    check("Unlock FP32 input", texture.texture->UnlockRect(0));
+}
+unsigned characterize(IDirect3D9* api, IDirect3DDevice9* device, Compiler compiler,
+                      const Programs& programs, const std::vector<Case>& cases,
+                      const D3DCAPS9& caps, const std::string& directory) {
+    // Fixture-only prerequisites: isolate sampler output in an FP32 RT and
+    // input exact FP32 halfway values without passing through an FP16 upload.
+    for (DWORD usage : {DWORD(0), DWORD(D3DUSAGE_RENDERTARGET)}) {
+        HRESULT hr = api->CheckDeviceFormat(0, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, usage,
+                                           D3DRTYPE_TEXTURE, D3DFMT_A32B32G32R32F);
+        std::printf("CHAR_FORMAT fp32_usage=%lu hr=%08lx\n", static_cast<unsigned long>(usage), static_cast<unsigned long>(hr));
+        check("characterization FP32 support", hr);
+    }
+    std::ifstream file(directory + "/characterization.bin", std::ios::binary);
+    char magic[8]{};
+    if (!file.read(magic, 8) || std::memcmp(magic, "X3BCH002", 8)) throw std::runtime_error("characterization magic");
+    const unsigned store_count = read_value<unsigned>(file);
+    const unsigned phase_width = read_value<unsigned>(file), phase_height = read_value<unsigned>(file);
+    const unsigned endpoint_count = read_value<unsigned>(file);
+    if (!store_count || store_count > 1024 || !phase_width || phase_width > 1024
+        || !phase_height || phase_height > 16 || !endpoint_count || endpoint_count > 16
+        || phase_width > caps.MaxTextureWidth || phase_height > caps.MaxTextureHeight)
+        throw std::runtime_error("characterization dimensions/count");
+    std::vector<float> stores(store_count * 4), phases(phase_width * phase_height * 4);
+    if (!file.read(reinterpret_cast<char*>(stores.data()), stores.size() * sizeof(float))
+        || !file.read(reinterpret_cast<char*>(phases.data()), phases.size() * sizeof(float)))
+        throw std::runtime_error("characterization inputs truncated");
+    std::vector<std::vector<unsigned short>> endpoints(endpoint_count, std::vector<unsigned short>(8));
+    for (auto& endpoint : endpoints)
+        if (!file.read(reinterpret_cast<char*>(endpoint.data()), 16)) throw std::runtime_error("endpoint truncated");
+    std::vector<float> phases2d(phases.size());
+    if (!file.read(reinterpret_cast<char*>(phases2d.data()), phases2d.size()*sizeof(float)))
+        throw std::runtime_error("2D phases truncated");
+    std::vector<std::vector<unsigned short>> endpoints2d(endpoint_count,std::vector<unsigned short>(16));
+    for (auto& endpoint : endpoints2d)
+        if (!file.read(reinterpret_cast<char*>(endpoint.data()),32)) throw std::runtime_error("2D endpoint truncated");
+    if (file.peek() != std::char_traits<char>::eof()) throw std::runtime_error("characterization trailing bytes");
+    const char* names[] = {"char_copy", "char_sample", "char_uv"};
+    const char* sources[] = {
+        "sampler2D input:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2Dlod(input,float4(uv,0,0));}",
+        "sampler2D source:register(s0);sampler2D coords:register(s1);float4 main(float2 uv:TEXCOORD0):COLOR0{float2 p=tex2Dlod(coords,float4(uv,0,0)).xy;return tex2Dlod(source,float4(p,0,0));}",
+        "float4 main(float2 uv:TEXCOORD0):COLOR0{return float4(uv,0,1);}"};
+    Com<IDirect3DPixelShader9> shaders[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        const std::string path = directory + "/" + names[i] + ".hlsl";
+        write_bytes(path, sources[i], std::strlen(sources[i]));
+        Com<ID3DXBuffer> code;
+        compile(compiler, path.c_str(), "ps_3_0", directory + "/" + names[i] + ".cso", &code.p);
+        check("Create characterization shader", device->CreatePixelShader(static_cast<DWORD*>(code->GetBufferPointer()), &shaders[i].p));
+    }
+    Texture store_input(device, {store_count, 1}, false, nullptr, D3DFMT_A32B32G32R32F);
+    Texture store_output(device, {store_count, 1}, true);
+    upload_float32(store_input, stores);
+    x3::temporal::BloomConstants constants{}; // helpers do not consume bloom registers
+    draw(device, programs, shaders[0].p, store_input, nullptr, store_output, constants);
+    readback(device, store_output, directory + "/characterization_store.rgba16f");
+    std::printf("CHAR_IMAGE kind=store width=%u height=1 file=characterization_store.rgba16f\n", store_count);
+    Texture coordinates(device, {phase_width, phase_height}, false, nullptr, D3DFMT_A32B32G32R32F);
+    upload_float32(coordinates, phases);
+    unsigned controls = 1;
+    for (unsigned i = 0; i < endpoint_count; ++i) {
+        Texture endpoint(device, {2, 1}, false, &endpoints[i]);
+        Texture sampled(device, {phase_width, phase_height}, true, nullptr, D3DFMT_A32B32G32R32F);
+        draw(device, programs, shaders[1].p, endpoint, &coordinates, sampled, constants, true);
+        const std::string filename = "characterization_sample_" + std::to_string(i) + ".rgba32f";
+        readback(device, sampled, directory + "/" + filename);
+        std::printf("CHAR_IMAGE kind=sample%u width=%u height=%u file=%s\n", i, phase_width, phase_height, filename.c_str());
+        // Point twin exposes the exact uploaded FP16 endpoint values in FP32,
+        // independently of filtering and of the FP16 render-target conversion.
+        Texture point(device, {2, 1}, true, nullptr, D3DFMT_A32B32G32R32F);
+        draw(device, programs, shaders[0].p, endpoint, nullptr, point, constants);
+        const std::string point_name = "characterization_point_" + std::to_string(i) + ".rgba32f";
+        readback(device, point, directory + "/" + point_name);
+        std::printf("CHAR_IMAGE kind=point%u width=2 height=1 file=%s\n", i, point_name.c_str());
+        controls += 2;
+    }
+    upload_float32(coordinates,phases2d);
+    for (unsigned i=0;i<endpoint_count;++i) {
+        Texture endpoint(device,{2,2},false,&endpoints2d[i]);
+        Texture sampled(device,{phase_width,phase_height},true,nullptr,D3DFMT_A32B32G32R32F);
+        draw(device,programs,shaders[1].p,endpoint,&coordinates,sampled,constants,true);
+        const std::string filename="characterization_sample2d_"+std::to_string(i)+".rgba32f";
+        readback(device,sampled,directory+"/"+filename);
+        std::printf("CHAR_IMAGE kind=sample2d%u width=%u height=%u file=%s\n",i,phase_width,phase_height,filename.c_str());
+        Texture point(device,{2,2},true,nullptr,D3DFMT_A32B32G32R32F);
+        draw(device,programs,shaders[0].p,endpoint,nullptr,point,constants);
+        const std::string point_name="characterization_point2d_"+std::to_string(i)+".rgba32f";
+        readback(device,point,directory+"/"+point_name);
+        std::printf("CHAR_IMAGE kind=point2d%u width=2 height=2 file=%s\n",i,point_name.c_str());
+        controls+=2;
+    }
+    Texture zero(device, {1,1}, false);
+    std::set<std::pair<unsigned,unsigned>> dimensions;
+    for (const auto& c : cases) {
+        if (c.size.width > caps.MaxTextureWidth || c.size.height > caps.MaxTextureHeight) continue;
+        dimensions.emplace(c.size.width, c.size.height);
+        x3::temporal::BloomLayout layout;
+        if (!x3::temporal::prepare_bloom_layout(layout, c.size, c.params.levels)) throw std::runtime_error("UV dimensions");
+        for (unsigned i = 0; i < layout.count; ++i) dimensions.emplace(layout.level[i].width, layout.level[i].height);
+    }
+    for (const auto& dimension : dimensions) {
+        Texture uv(device, {dimension.first, dimension.second}, true, nullptr, D3DFMT_A32B32G32R32F);
+        draw(device, programs, shaders[2].p, zero, nullptr, uv, constants);
+        const std::string filename = "characterization_uv_" + std::to_string(dimension.first) + "x"
+                                   + std::to_string(dimension.second) + ".rgba32f";
+        readback(device, uv, directory + "/" + filename);
+        std::printf("CHAR_IMAGE kind=uv width=%u height=%u file=%s\n", dimension.first, dimension.second, filename.c_str());
+        ++controls;
+    }
+    Com<IDirect3DSurface9> backbuffer;
+    check("GetBackBuffer", device->GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,&backbuffer.p));
+    check("Unbind characterization s0", device->SetTexture(0,nullptr));
+    check("Unbind characterization s1", device->SetTexture(1,nullptr));
+    check("Restore characterization backbuffer", device->SetRenderTarget(0,backbuffer.p));
+    return controls;
 }
 unsigned run_case(IDirect3DDevice9* device, const Programs& programs, const Case& c,
                   unsigned generation, unsigned index, const std::string& directory) {
@@ -280,7 +409,9 @@ int main(int argc, char** argv) {
         80, 80, 128, 128, nullptr, nullptr, wc.hInstance, nullptr);
     int result = 1;
     try {
-        if (argc != 13 || !window) throw std::runtime_error("expected d3dx quad six-extraction-shaders down up cases output-directory");
+        if ((argc != 13 && argc != 14) || !window) throw std::runtime_error("expected d3dx quad six-extraction-shaders down up cases output-directory [characterize-only]");
+        const bool characterization_only = argc == 14 && std::strcmp(argv[13], "characterize-only") == 0;
+        if (argc == 14 && !characterization_only) throw std::runtime_error("unknown fixture mode");
         const auto cases = read_cases(argv[11]);
         Module d3dx("d3dx", argv[1]), runtime("d3d9", "d3d9.dll");
         auto compiler = symbol<Compiler>(d3dx.h, "D3DXCompileShader");
@@ -316,6 +447,11 @@ int main(int argc, char** argv) {
         check("CreateDevice", api->CreateDevice(0, D3DDEVTYPE_HAL, window,
              D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &device.p));
         Programs programs(device.p, compiler, argv + 2, argv[12]);
+        if (characterization_only) {
+            const unsigned controls = characterize(api.p, device.p, compiler, programs, cases, caps, argv[12]);
+            std::printf("RESULT CHARACTERIZATION PASS controls=%u\n", controls);
+            result = 0;
+        } else {
         unsigned passes = 0;
         for (unsigned generation = 0; generation < 2; ++generation) {
             for (unsigned i = 0; i < cases.size(); ++i)
@@ -326,6 +462,7 @@ int main(int argc, char** argv) {
         if (auto backend = GetModuleHandleA("wined3d.dll")) module_path("wined3d", backend);
         std::printf("RESULT PASS cases=%u generations=2 passes=%u\n", admitted_cases, passes);
         result = 0;
+        }
     } catch (const std::exception& error) { std::printf("RESULT FAIL reason=%s\n", error.what()); }
     if (window) DestroyWindow(window);
     UnregisterClassA(wc.lpszClassName, wc.hInstance);

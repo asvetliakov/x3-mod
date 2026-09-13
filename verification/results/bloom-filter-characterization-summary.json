@@ -1,0 +1,967 @@
+{
+  "schema": 1,
+  "passed": false,
+  "phase": "failed",
+  "scope": "standalone bloom GPU numerics only",
+  "native_windows_runtime_verified": false,
+  "game_launched": false,
+  "installed_dll_changed": false,
+  "renderer_integration_verified": false,
+  "caller_state_restoration_verified": false,
+  "gpu_execution_verified": false,
+  "retained": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky",
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
+  "sources_before": {
+    "/Users/asvetl/x3-mod/src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
+    "/Users/asvetl/x3-mod/src/temporal/bloom.h": "96b47ed015ca0d92049f0e7ce348715caf07d98388f96fb7cc786b75f350f268",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_common.hlsl": "ede4cad093ece1da226eeecaa3a4f236733b66f2e4c2657ba6f18e8f6e50bcc7",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_down_ps.hlsl": "b7cd43de0d51674a9dce1657fa9e0a90d475fe4749148e6808aa1b040ac6f0a5",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_gamma_ps.hlsl": "4e1e83c1ae348bb6d46c4a931c832b87c9eb69006e112d0fe4a25a19fdf1eb45",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_none_ps.hlsl": "ef60613250c44f59d4cf21ab09f92749553de6741c237d1093ad1f3699355697",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_srgb_ps.hlsl": "14cf21de3dc95bc461040323f18a45345a8b87718851787b4a5efbf37db3ea84",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_gamma_ps.hlsl": "ecb7e8d876264971cc566e22b8510a05aba660bcd58ee076163b0faa14c9f276",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_none_ps.hlsl": "e09422f2fe4727627892d448b1e5fc2f51100bc160988a9dd98ee2f11ed957bc",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_srgb_ps.hlsl": "e6b79aac42aa32e079c540b2cb7b1bc20cb02d47a9bda81d481008f20ddd5e4f",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_up_ps.hlsl": "c668fa10466468f70a4e8b1cb6e313a115c70e740f71c03f972d997fe830c8e6",
+    "/Users/asvetl/x3-mod/src/temporal/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+    "/Users/asvetl/x3-mod/tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
+    "/Users/asvetl/x3-mod/tools/analysis/bloom_reference.py": "b7953640512cbf2caa292990d56ec1d7929ccfbe0722e2b9b1bc00efbe4f8521",
+    "/Users/asvetl/x3-mod/tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_characterization.py": "5c4bfef12dfd1d8602cb91914170c75446c82bc6e18861469efc2c578159b9d7",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_filter_fixture.cpp": "e551712b94a605e3382a90922c1c9f4c4f6b45edd9c89d7f2775ffc73bd7e83e",
+    "/Users/asvetl/x3-mod/verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "/Users/asvetl/x3-mod/verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "/Users/asvetl/x3-mod/verification/probe/run_bloom_filter.py": "02fbe95ecf9b44d1575bd54eb8fae224b7631b424dd900806992e0daecc5d797",
+    "/Users/asvetl/x3-mod/verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "build_command": [
+    "i686-w64-mingw32-g++",
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-msse2",
+    "-mfpmath=sse",
+    "-mstackrealign",
+    "-mincoming-stack-boundary=2",
+    "-static",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_filter_fixture.cpp",
+    "-o",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_filter_fixture.exe",
+    "-luser32"
+  ],
+  "executable_sha256": "6ffcd8d3a7902ebcff453139d03be2e60cc24ac028c81e0d80f6e0c76ca255a9",
+  "case_bundle_sha256": "09791032de54911e54c6a29b69e5ad01b928af355da1062c621712c12764daa9",
+  "cases": [
+    {
+      "name": "sampling_1px_hdr",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "sampling",
+      "width": 1,
+      "height": 1
+    },
+    {
+      "name": "sampling_odd_ramp",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "sampling",
+      "width": 7,
+      "height": 5
+    },
+    {
+      "name": "black_gamma2.2",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "gamma2.2",
+      "group": "numerical",
+      "width": 7,
+      "height": 3
+    },
+    {
+      "name": "dc_gamma2.2",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "gamma2.2",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_even_gamma2.2",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "gamma2.2",
+      "group": "numerical",
+      "width": 8,
+      "height": 6
+    },
+    {
+      "name": "maximum_gamma2.2",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 65504.0,
+      "clamp": 0.0,
+      "mode": "gamma2.2",
+      "group": "finite_limit",
+      "width": 5,
+      "height": 3
+    },
+    {
+      "name": "black_srgb",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "srgb",
+      "group": "numerical",
+      "width": 7,
+      "height": 3
+    },
+    {
+      "name": "dc_srgb",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "srgb",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_even_srgb",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "srgb",
+      "group": "numerical",
+      "width": 8,
+      "height": 6
+    },
+    {
+      "name": "maximum_srgb",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 65504.0,
+      "clamp": 0.0,
+      "mode": "srgb",
+      "group": "finite_limit",
+      "width": 5,
+      "height": 3
+    },
+    {
+      "name": "black_none",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 7,
+      "height": 3
+    },
+    {
+      "name": "dc_none",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_even_none",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 8,
+      "height": 6
+    },
+    {
+      "name": "maximum_none",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 65504.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "finite_limit",
+      "width": 5,
+      "height": 3
+    },
+    {
+      "name": "dc_levels1_scatter0.0",
+      "params": {
+        "levels": 1,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.0
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_levels1_scatter1.0",
+      "params": {
+        "levels": 1,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 1.0
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_levels2_scatter0.0",
+      "params": {
+        "levels": 2,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.0
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_levels2_scatter1.0",
+      "params": {
+        "levels": 2,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 1.0
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_levels6_scatter0.0",
+      "params": {
+        "levels": 6,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.0
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "dc_levels6_scatter1.0",
+      "params": {
+        "levels": 6,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 1.0
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 9
+    },
+    {
+      "name": "impulse_17x13",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 13
+    },
+    {
+      "name": "impulse_1x17",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 1,
+      "height": 17
+    },
+    {
+      "name": "impulse_17x1",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 17,
+      "height": 1
+    },
+    {
+      "name": "impulse_1x1",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 1,
+      "height": 1
+    },
+    {
+      "name": "impulse_8x6",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 8,
+      "height": 6
+    },
+    {
+      "name": "geometry_82",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "integer_geometry",
+      "width": 82,
+      "height": 1
+    },
+    {
+      "name": "geometry_8462",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "integer_geometry",
+      "width": 8462,
+      "height": 1
+    },
+    {
+      "name": "geometry_15611",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "integer_geometry",
+      "width": 15611,
+      "height": 1
+    },
+    {
+      "name": "threshold_knee0.0",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 2.0,
+        "knee": 0.0,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 9,
+      "height": 1
+    },
+    {
+      "name": "threshold_knee0.5",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 2.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 9,
+      "height": 1
+    },
+    {
+      "name": "threshold_knee1.0",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 2.0,
+        "knee": 1.0,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 9,
+      "height": 1
+    },
+    {
+      "name": "decode_before_average",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.0,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "gamma2.2",
+      "group": "numerical",
+      "width": 2,
+      "height": 1
+    },
+    {
+      "name": "exposure_threshold",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 2.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 2.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 9,
+      "height": 1
+    },
+    {
+      "name": "clamp_before_exposure",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 4.0,
+      "clamp": 2.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 9,
+      "height": 1
+    },
+    {
+      "name": "gamma_clamp_before_exposure",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 0.5,
+      "clamp": 2.0,
+      "mode": "gamma2.2",
+      "group": "numerical",
+      "width": 9,
+      "height": 1
+    },
+    {
+      "name": "srgb_breakpoint",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "srgb",
+      "group": "numerical",
+      "width": 9,
+      "height": 1
+    },
+    {
+      "name": "random_odd_chroma",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 1.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "numerical",
+      "width": 13,
+      "height": 7
+    },
+    {
+      "name": "nonfinite_extract_gamma2.2",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "gamma2.2",
+      "group": "nonfinite_extraction",
+      "width": 3,
+      "height": 1
+    },
+    {
+      "name": "nonfinite_extract_srgb",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "srgb",
+      "group": "nonfinite_extraction",
+      "width": 3,
+      "height": 1
+    },
+    {
+      "name": "nonfinite_extract_none",
+      "params": {
+        "levels": 5,
+        "strength": 0.05000000074505806,
+        "threshold": 0.0,
+        "knee": 0.5,
+        "scatter": 0.699999988079071
+      },
+      "exposure": 1.0,
+      "clamp": 0.0,
+      "mode": "none",
+      "group": "nonfinite_extraction",
+      "width": 3,
+      "height": 1
+    }
+  ],
+  "characterization_bundle_sha256": "007c42ba60fdc2e82dd036eecf35a5c945cee2e92da4391c1183a07f8b18e910",
+  "characterization_only": true,
+  "expanded_sources": {
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_gamma_ps.hlsl": "f1759c19d015cb6c29d7d176c901cb465b2a389989db7b7d68dddb22fb4ea62e",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_srgb_ps.hlsl": "5d29f2991366aed8251ebe1a9b6400203df87188caa564e57ce87317f3f9ebe7",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_none_ps.hlsl": "600f0acbd60b2b7197a849a59f5e79a844a0466bfa26a38e47e714dbe788c980",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_gamma_ps.hlsl": "e206a757d92bdd8f5bac77012c95a4aa96101e44076e4589782b90dc0a941084",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_srgb_ps.hlsl": "c46f5899d4d8f70a65ce11d3ec58e4004e2637c61d8a3ad51e6c0ff4722cf96c",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_none_ps.hlsl": "b7c52449eed3dc4a3152e0791c6445766b6a857a858083461a50e72fa7c64a0c",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_down_ps.hlsl": "9edaa8fc434aa15b3749c15de536b100a4ca329734c7166b8f8df7dc0b0fb061",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_up_ps.hlsl": "7319ab4ea6fd33ecef4c6f7925b762525fa08e774db447ac3f2e9f55fd418e2e"
+  },
+  "precision": {
+    "input": "FP16",
+    "stores": "FP16 each pass",
+    "cpu_arithmetic": "double",
+    "absolute_tolerance": 0.002,
+    "relative_tolerance": 0.003,
+    "formula": "absolute + relative * abs(expected)"
+  },
+  "images": [],
+  "sources_after_build": {
+    "/Users/asvetl/x3-mod/src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
+    "/Users/asvetl/x3-mod/src/temporal/bloom.h": "96b47ed015ca0d92049f0e7ce348715caf07d98388f96fb7cc786b75f350f268",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_common.hlsl": "ede4cad093ece1da226eeecaa3a4f236733b66f2e4c2657ba6f18e8f6e50bcc7",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_down_ps.hlsl": "b7cd43de0d51674a9dce1657fa9e0a90d475fe4749148e6808aa1b040ac6f0a5",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_gamma_ps.hlsl": "4e1e83c1ae348bb6d46c4a931c832b87c9eb69006e112d0fe4a25a19fdf1eb45",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_none_ps.hlsl": "ef60613250c44f59d4cf21ab09f92749553de6741c237d1093ad1f3699355697",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_srgb_ps.hlsl": "14cf21de3dc95bc461040323f18a45345a8b87718851787b4a5efbf37db3ea84",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_gamma_ps.hlsl": "ecb7e8d876264971cc566e22b8510a05aba660bcd58ee076163b0faa14c9f276",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_none_ps.hlsl": "e09422f2fe4727627892d448b1e5fc2f51100bc160988a9dd98ee2f11ed957bc",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_srgb_ps.hlsl": "e6b79aac42aa32e079c540b2cb7b1bc20cb02d47a9bda81d481008f20ddd5e4f",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_up_ps.hlsl": "c668fa10466468f70a4e8b1cb6e313a115c70e740f71c03f972d997fe830c8e6",
+    "/Users/asvetl/x3-mod/src/temporal/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+    "/Users/asvetl/x3-mod/tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
+    "/Users/asvetl/x3-mod/tools/analysis/bloom_reference.py": "b7953640512cbf2caa292990d56ec1d7929ccfbe0722e2b9b1bc00efbe4f8521",
+    "/Users/asvetl/x3-mod/tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_characterization.py": "5c4bfef12dfd1d8602cb91914170c75446c82bc6e18861469efc2c578159b9d7",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_filter_fixture.cpp": "e551712b94a605e3382a90922c1c9f4c4f6b45edd9c89d7f2775ffc73bd7e83e",
+    "/Users/asvetl/x3-mod/verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "/Users/asvetl/x3-mod/verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "/Users/asvetl/x3-mod/verification/probe/run_bloom_filter.py": "02fbe95ecf9b44d1575bd54eb8fae224b7631b424dd900806992e0daecc5d797",
+    "/Users/asvetl/x3-mod/verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "compiler_sha256_before": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "runtime_files_before": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/system32/d3d9.dll": "bb52e5c246005bd5405fe4330c77bdc1e4c9ab3163ea7cd4400e849540b3ad02",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/system32/wined3d.dll": "ae4e3537d0ab95b9d485c51094137ac5f284a203c8bbf11a9dc181b45f083ac8"
+  },
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "Steam",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "--workdir",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_filter_fixture.exe",
+    "Z:/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/quad_vs.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_gamma_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_srgb_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_none_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_gamma_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_srgb_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_none_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_down_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_up_ps.hlsl",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/cases.bin",
+    "Z:/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky",
+    "characterize-only"
+  ],
+  "exit_code": 0,
+  "stdout_sha256": "59be077f89a80e9b174588b8fe426390694bff987716c51099fcdbf348304618",
+  "stderr_sha256": "b6ca4f0e0d28c5ab7129fe2b5e16e4b7f5896943efebc0dc72418fac2e3e1adf",
+  "loaded_modules": {
+    "d3dx": {
+      "native_path": "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\Steam\\drive_c\\X3\\d3dx9_37.dll",
+      "host_path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll",
+      "sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+    },
+    "d3d9": {
+      "native_path": "C:\\windows\\system32\\d3d9.dll",
+      "host_path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/system32/d3d9.dll",
+      "sha256": "bb52e5c246005bd5405fe4330c77bdc1e4c9ab3163ea7cd4400e849540b3ad02"
+    }
+  },
+  "caps": [
+    "CAPS ps=ffff0300 vs=fffe0300 max_width=16384 max_height=16384"
+  ],
+  "format_checks": [
+    "FORMAT usage=0 hr=00000000",
+    "FORMAT usage=1 hr=00000000",
+    "FORMAT usage=131072 hr=00000000"
+  ],
+  "characterization": {
+    "passed": false,
+    "calibration_uses_bloom_outputs": false,
+    "store_candidates": [
+      {
+        "rounding": "toward_zero",
+        "flush_subnormal": false
+      }
+    ],
+    "sampler_candidates": [
+      {
+        "fraction_bits": 8,
+        "fraction_rounding": "nearest_up",
+        "result_precision": "nearest_up",
+        "flush_subnormal": false
+      }
+    ],
+    "train_phases": 2048,
+    "train_stores": 192,
+    "train_endpoints": 2,
+    "store_model": {
+      "rounding": "toward_zero",
+      "flush_subnormal": false
+    },
+    "store_heldout_passed": true,
+    "sampler_model": {
+      "fraction_bits": 8,
+      "fraction_rounding": "nearest_up",
+      "result_precision": "nearest_up",
+      "flush_subnormal": false
+    },
+    "sampler_heldout_count": 12288,
+    "sampler_heldout_failure_count": 0,
+    "sampler_heldout_failures": [],
+    "sampler2d_candidates": [],
+    "error": "2D sampler calibration did not identify exactly one model",
+    "controls_executed": 60
+  },
+  "characterization_artifacts": {
+    "characterization_uv_5x3.rgba32f": "560f015cf79cf2db24a074057ff958dcac9a1556a35a3b841442fb7ffedef17a",
+    "characterization_uv_2x1.rgba32f": "9b9ab812b87f2689580b282fc957365f8bbb59a262608cfc24e178961b631022",
+    "characterization_sample2d_3.rgba32f": "97b02cb05b90e5f15d9ae347e4543d79e88f2caadd6b286af70a1c2f8dd560d9",
+    "characterization_uv_529x1.rgba32f": "80adf0147481c52d95466a138076df55d98dd2c751655b593c7b697eda411d0f",
+    "characterization_uv_1x5.rgba32f": "10d12e4cf2059999d0a022252ad6c84f93c640c774132c028b3bb28c9e50e21a",
+    "characterization_uv_8462x1.rgba32f": "06908ff08f476075c4f319e239467da482b5464e4cd9353218f61f40028e201f",
+    "characterization_uv_7x4.rgba32f": "e9588727f90b399e3f17c5a9da9eeba99395bc3060fe8790430c8fce8040516f",
+    "characterization_point_0.rgba32f": "46af03fed0a062502e06606e6979e1328a8ac8c54a19ee0514c14781534387ff",
+    "characterization_uv_3x2.rgba32f": "fe307138f304d24881cd04d080cb004d1592d31b2206cd137722defd2047d7a7",
+    "characterization_uv_7x5.rgba32f": "b5569fc52044559da147bb45f240de33830cc5c47b0c01be26bba5323ab87ede",
+    "characterization_point_1.rgba32f": "89e212f25ae32c3dcd4a6a8de9f27e93e163a2dc41875faf982b8664f3148979",
+    "characterization_uv_9x1.rgba32f": "4e228a2a15e200e9af7c8bc39d4a812020fbef3fdd38e4a0be2765a458c9d543",
+    "characterization_sample2d_2.rgba32f": "bc80606f94e13df18691bf28a8b0c40d3fe08249d4ab1dcee17fbca9a81a53fd",
+    "characterization_uv_265x1.rgba32f": "e7f922851260f9be845e5da3db99b5258f7d6e8d067254ac8c3fb085818f65ed",
+    "characterization_uv_3903x1.rgba32f": "2bf324a8d590fb33d63a571b285a64b5d7cc746d52ead156d089abd8f93e4360",
+    "characterization_uv_4x3.rgba32f": "e43582f49c7ad1a0d82f6776c3875a88e5527ebb9086405b4d38a0a6e88e23bd",
+    "characterization_uv_3x1.rgba32f": "d08ff1476e345f4b342a434dd817ea799d8f2ee150d461708d76358167bb93a5",
+    "characterization_point_3.rgba32f": "4bd175432e7d633740cf0a1d48c1f9a611717add9cba92aec71f85e5fc7b332c",
+    "characterization_uv_15611x1.rgba32f": "6bfd98c31df3fdb8d93c20fd23ae31badb7f7f5620209ebf37a04c86e7fc3e0f",
+    "characterization_uv_2x2.rgba32f": "8f6fbf68842eb2b3b66b70f935f3f3ba487e0ed61901e6835feb095bd6a70d25",
+    "characterization_sample2d_0.rgba32f": "08a4aaf74a51aaf8dba04a7524c1ba0dc7ca6f280e25716b495d6883b932ad8a",
+    "characterization_uv_5x1.rgba32f": "b8effcfb690d9db0f1df25ce9debc3489cf21d65792b3618f9c8eb0b2a60f6ec",
+    "characterization_sample2d_1.rgba32f": "41c1b9957c229545755d48f662bbb2a505b0f6a7847d49370ff9adbe2dfbfe9d",
+    "characterization_store.rgba16f": "731a9e9662d35cb8c14ad5fb2b0955bc926d9ababbf207ccb41bd3b9e4a9b8af",
+    "characterization_uv_4x2.rgba32f": "8d0c8b9b0be04b951b896e7c4fa2e386bceaa38a84b1d77b7fd92e8623412dc3",
+    "characterization_point_2.rgba32f": "8a6384a4ae56ff851be5a046c60c0f9004efb0261c3bc32eba9e59878d3b08b0",
+    "characterization_uv_21x1.rgba32f": "c16ea3c2d736e11bd2e11926dabdfc3531f3c7c93583d8af68366b1ab066ea30",
+    "characterization_uv_976x1.rgba32f": "de49290f84919ea0bb84ad7bf9917e7b54b5f326941656c9de3b4f6bf56bae9d",
+    "characterization_uv_2116x1.rgba32f": "c7103b36d3d9768b2bcc01307eb56b8640167925d35a1bb7fecdf44940f1a46a",
+    "characterization_uv_7x3.rgba32f": "9bf6dae4812cb92ae17ce883e50eeed6545e864822f9dbc13dcc4bfabf98baa5",
+    "characterization_point2d_2.rgba32f": "b3c8e4eaa1c7e148e7ff693f7c9b081e8769712a846dc0496d1556541244e053",
+    "characterization_uv_11x1.rgba32f": "feed1a744d404bf6342d4a85bf9f999205a3fc9c81384c5b098b327b7e21818a",
+    "characterization_uv_1x2.rgba32f": "539f4b51876c720510a92051640c779fe86a733b5aa48498d416ed4d44948fa1",
+    "characterization_sample_2.rgba32f": "77a28f39d125f2c7458b50399f8411aae4c06ee44de9b34120d06623f1fbd7c9",
+    "characterization_uv_488x1.rgba32f": "1ce0e99df7b16a99cf50420c5a2a68054b745d9f30295d1622d771e753bd5b3e",
+    "characterization_uv_9x7.rgba32f": "b8998230c8a7250cd0390c89283dd78181fbd99822a76e806f832f0046e6b487",
+    "characterization_uv_17x9.rgba32f": "fd0d98dead95715d4746f7eab5be130326f4d88fc7e207a4dd3f1dc01b53f561",
+    "characterization_uv_5x4.rgba32f": "0bd50517fe73331e8c25f5f83a47f6842c088a141a57a5ed501768982dd5b8a2",
+    "characterization_uv_1x3.rgba32f": "ee4560edcb387fbad07d56831110ae78250c09a3182e4c4ae8717828ebd888a8",
+    "characterization_point2d_3.rgba32f": "ba5942065387331f2fd844fb1a1d3b4f588c8cf94cdd4c8945ef2fe72727639f",
+    "characterization_uv_17x13.rgba32f": "2cdc7daab443c5e5fcbe0fd6a7aa78e810dd7752602e153e6f297f79a834abfb",
+    "characterization_uv_41x1.rgba32f": "86d74e2af31dd2388bf46127985e734ed543802b4897bf5c74428c4efac1b1ef",
+    "characterization_sample_3.rgba32f": "519c74189253991d41e6b62692f21135c0cdc59bea95662bb84adc50d4c7e030",
+    "characterization_uv_6x1.rgba32f": "6e9951bf6d2e6df3c9db0afba058df7e1aa871753a4984291f471838e79d2662",
+    "characterization_uv_13x7.rgba32f": "97e08ec1d65e9034c882890a1cf8eee553a6c307a080d1c455b3084eda13beff",
+    "characterization_uv_17x1.rgba32f": "6265c3e956f8a284d0515a070781c91fba9488959760eb97d34fe47eb593e83c",
+    "characterization_uv_1x17.rgba32f": "0d38eb87152b0069c2cdd45b28f4f3736e281e24d2c342dc309d87d97e18371b",
+    "characterization_uv_1058x1.rgba32f": "dfcbc2ddc3cd8abf0552cf688d38ea5989195270e1499a8899f25489047cb071",
+    "characterization_uv_1x1.rgba32f": "60a05dcaa6e4a15dd4afbcde8334cff6ad71d367b2bf3c321e2d1f11da926bd8",
+    "characterization_point2d_1.rgba32f": "b3b8bae50564b041b93acf9939017cb0eac6c81c39ed8d9c5cf988fcfc855081",
+    "characterization_sample_1.rgba32f": "5054df1681cbb527f0f8c79dcdd69e76cffb836e425f42f27367aeaa5746a6fd",
+    "characterization_uv_7806x1.rgba32f": "e7bbe9949e1360647a16bd4a6500feba8c17d77e5c7f67d34a5be224eec0cac4",
+    "characterization_uv_1952x1.rgba32f": "dba9034d80f958c53052ecabe51fdd330dd3278e4afb964503142dede8b0977b",
+    "characterization_uv_82x1.rgba32f": "ae024efed0f2e90efd3daac3a21ee359ce3d2249e866c59b8ae4bf6225667cd3",
+    "characterization_uv_1x9.rgba32f": "54516876e2f97c8a5b6c7b9fcaded6e980b2aef4b239a47d5d5f4aee63cc998f",
+    "characterization_uv_8x6.rgba32f": "11f3cca12e9807bd92fc1f9a41180f54cfc3345a9a555c01098773865b0751ee",
+    "characterization_uv_4231x1.rgba32f": "bd117dc6b68a931d9da7b69875aaf3d999295d3021621ff3b3334692961a95ba",
+    "characterization_point2d_0.rgba32f": "df6db407a13d5abe2aea13f37bef835c52450b884b66f41ed09aeeeeeb32ec6c",
+    "characterization_uv_9x5.rgba32f": "3c77ee1978f388957db528d8d63175ea11847d79e025d140ee70478fa3ea6303",
+    "characterization_sample_0.rgba32f": "c73c48bd85c338a79201a65128301179b275b039a1186caae84927757c7688e5"
+  },
+  "characterization_programs": {
+    "char_uv.cso": "6ad5bb28cf851571a5d91400ea91e429a92534344b155365251549d91bd10a76",
+    "char_sample.cso": "a96dcbd3be6f40abf9f3cecea5a4807de1c21c449a6130278449b9936d930c44",
+    "char_copy.cso": "16ab063dd074dda5e366036b74b8d91828b192ec44d97151bbdd9fe06ef747f9"
+  },
+  "characterization_shader_sources": {
+    "char_copy.hlsl": "b135b98324dd35b7d52bacadd12ab18d565327c628f1532f5d4f6227af38b413",
+    "char_sample.hlsl": "165f0e4747114dbd632420eea6429678ac0b279ce20ca2cc9d7e14069695b82a",
+    "char_uv.hlsl": "6326045c1ff89d5d156afa2bc7ce88e2d5d72ce233014cda6d47ee3fa85e8cbf"
+  },
+  "compiled_shaders": {
+    "quad": "09d4c72bab123c0d1127e0fcf0736011526941aca7efe43b055a443b296d32d0",
+    "extract_gamma": "83f5b924aff3e1ac9da302b30899f2b100dbda6610bde0ec99df4f84b91b03ec",
+    "extract_srgb": "58e8c43037816050ffeeec40f419a1d5b58015ca13fd5a937d626d0a0c719a7e",
+    "extract_none": "6b1920d4945362eab0d1e5316bf3db516187c985dace99bfa4392ee6285c4d1a",
+    "extract_even_gamma": "d934b9eb6ba030e451794f1303557219c5b0a96d49ea70f64ca831860d184f60",
+    "extract_even_srgb": "0d1e22e2735ffd8a6f53b810712d8800d85048e913943335b2ba45f53a3c4fc0",
+    "extract_even_none": "86d029e8ffcdf931b3b54eb9a022aa67616796fd3fec386df11e6113c6ba0b83",
+    "down": "9ea94135dd015f57feb39be5310a19e7ccad6d55a35f64bcb69fb242372adf42",
+    "up": "b79660f12279e31f8730048eafa052cd7bb89121ace426795cd1ae68c1ed5c34"
+  },
+  "error": "2D sampler calibration did not identify exactly one model",
+  "sources_after": {
+    "/Users/asvetl/x3-mod/src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
+    "/Users/asvetl/x3-mod/src/temporal/bloom.h": "96b47ed015ca0d92049f0e7ce348715caf07d98388f96fb7cc786b75f350f268",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_common.hlsl": "ede4cad093ece1da226eeecaa3a4f236733b66f2e4c2657ba6f18e8f6e50bcc7",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_down_ps.hlsl": "b7cd43de0d51674a9dce1657fa9e0a90d475fe4749148e6808aa1b040ac6f0a5",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_gamma_ps.hlsl": "4e1e83c1ae348bb6d46c4a931c832b87c9eb69006e112d0fe4a25a19fdf1eb45",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_none_ps.hlsl": "ef60613250c44f59d4cf21ab09f92749553de6741c237d1093ad1f3699355697",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_srgb_ps.hlsl": "14cf21de3dc95bc461040323f18a45345a8b87718851787b4a5efbf37db3ea84",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_gamma_ps.hlsl": "ecb7e8d876264971cc566e22b8510a05aba660bcd58ee076163b0faa14c9f276",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_none_ps.hlsl": "e09422f2fe4727627892d448b1e5fc2f51100bc160988a9dd98ee2f11ed957bc",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_srgb_ps.hlsl": "e6b79aac42aa32e079c540b2cb7b1bc20cb02d47a9bda81d481008f20ddd5e4f",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_up_ps.hlsl": "c668fa10466468f70a4e8b1cb6e313a115c70e740f71c03f972d997fe830c8e6",
+    "/Users/asvetl/x3-mod/src/temporal/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+    "/Users/asvetl/x3-mod/tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
+    "/Users/asvetl/x3-mod/tools/analysis/bloom_reference.py": "b7953640512cbf2caa292990d56ec1d7929ccfbe0722e2b9b1bc00efbe4f8521",
+    "/Users/asvetl/x3-mod/tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_characterization.py": "5c4bfef12dfd1d8602cb91914170c75446c82bc6e18861469efc2c578159b9d7",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_filter_fixture.cpp": "e551712b94a605e3382a90922c1c9f4c4f6b45edd9c89d7f2775ffc73bd7e83e",
+    "/Users/asvetl/x3-mod/verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "/Users/asvetl/x3-mod/verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "/Users/asvetl/x3-mod/verification/probe/run_bloom_filter.py": "02fbe95ecf9b44d1575bd54eb8fae224b7631b424dd900806992e0daecc5d797",
+    "/Users/asvetl/x3-mod/verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "executable_sha256_after": "6ffcd8d3a7902ebcff453139d03be2e60cc24ac028c81e0d80f6e0c76ca255a9",
+  "compiler_sha256_after": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "case_bundle_sha256_after": "09791032de54911e54c6a29b69e5ad01b928af355da1062c621712c12764daa9",
+  "characterization_bundle_sha256_after": "007c42ba60fdc2e82dd036eecf35a5c945cee2e92da4391c1183a07f8b18e910",
+  "runtime_files_after": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/system32/d3d9.dll": "bb52e5c246005bd5405fe4330c77bdc1e4c9ab3163ea7cd4400e849540b3ad02",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/drive_c/windows/system32/wined3d.dll": "ae4e3537d0ab95b9d485c51094137ac5f284a203c8bbf11a9dc181b45f083ac8"
+  },
+  "expanded_sources_after": {
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_gamma_ps.hlsl": "f1759c19d015cb6c29d7d176c901cb465b2a389989db7b7d68dddb22fb4ea62e",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_srgb_ps.hlsl": "5d29f2991366aed8251ebe1a9b6400203df87188caa564e57ce87317f3f9ebe7",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_none_ps.hlsl": "600f0acbd60b2b7197a849a59f5e79a844a0466bfa26a38e47e714dbe788c980",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_gamma_ps.hlsl": "e206a757d92bdd8f5bac77012c95a4aa96101e44076e4589782b90dc0a941084",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_srgb_ps.hlsl": "c46f5899d4d8f70a65ce11d3ec58e4004e2637c61d8a3ad51e6c0ff4722cf96c",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_extract_even_none_ps.hlsl": "b7c52449eed3dc4a3152e0791c6445766b6a857a858083461a50e72fa7c64a0c",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_down_ps.hlsl": "9edaa8fc434aa15b3749c15de536b100a4ca329734c7166b8f8df7dc0b0fb061",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-909i05ky/bloom_up_ps.hlsl": "7319ab4ea6fd33ecef4c6f7925b762525fa08e774db447ac3f2e9f55fd418e2e"
+  },
+  "inputs_unchanged": true
+}

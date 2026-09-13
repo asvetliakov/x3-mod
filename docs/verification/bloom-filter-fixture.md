@@ -4,7 +4,8 @@
 `run_bloom_filter.py` are a numerical fixture for the authored bloom kernels.
 They do not use the proxy DLL, game assets, engine hooks or the installed DLL.
 The first GPU execution completed all cases but was rejected by the numerical
-oracle. It does not establish GPU qualification.
+oracle. That first run alone does not establish GPU qualification; the later
+independent precision qualification below applies to its retained readbacks.
 
 The runner expands the production shader includes with the existing generator,
 then cross-compiles an isolated x86 EXE using SSE2, SSE floating-point math,
@@ -88,7 +89,7 @@ compiler, runtime-module and output hashes. Source/input/runtime identities
 are checked again after execution, including failed runs. Hashes record
 provenance; they never gate normal feature support on exact system-DLL bytes.
 
-`verification/analysis/test_bloom_filter_fixture.py` has four host controls:
+The initial `verification/analysis/test_bloom_filter_fixture.py` had four host controls:
 case serialization/float widths and nonfinite payloads, explicit oracle
 quantization/stage completeness, numerical verdict negative controls (shifted
 pixels, bright error, NaN/Inf, negative RGB, wrong alpha and truncated data),
@@ -102,7 +103,7 @@ python3 -m unittest discover -s verification/analysis -p test_bloom_filter_fixtu
 python3 verification/probe/run_bloom_filter.py --build-only
 ```
 
-The four host controls and isolated cross-compilation pass. The first Steam
+The initial four host controls and isolated cross-compilation passed. The first Steam
 GPU run completed all 40 cases in both generations, including Reset, all six
 extraction variants and 540 stage readbacks. No dimension case skipped; the
 reported device texture limit was 16384 and the largest tested width 15611.
@@ -113,7 +114,78 @@ geometry cases and the sRGB-breakpoint case. Inputs stayed unchanged.
 The [compact rejected-run record](../../verification/results/bloom-filter-first-gpu-failure.json)
 binds the full locally retained report and lists rejected stages. It records a
 failed run; shader creation and successful API calls do not establish numeric
-acceptance. Store rounding and hardware interpolation precision are being
-characterized independently before changing the oracle or filter. The fixed
+acceptance by itself. Store rounding and hardware interpolation precision were
+subsequently characterized independently, as described below. The fixed
 tolerance has not been widened. Renderer integration and game appearance
 remain untested.
+
+## Independent precision characterization and retained qualification
+
+The rejected images belonged to the one-pixel-high `geometry_82`,
+`geometry_8462`, `geometry_15611` and `srgb_breakpoint` cases. Two assumptions
+in the initial fixture oracle were too strong for this measured backend:
+FP16 stores did not round to nearest, and linear texture samples did not use
+ideal real-valued interpolation fractions. Production bloom code was not
+changed for this diagnosis.
+
+`--characterize-only` runs separate authored fixture shaders: FP32 halfway and
+quarter values copied to FP16, independent FP16 endpoint textures sampled into
+FP32, and quad UV interpolants captured into FP32 for each admitted dimension.
+FP32 resource support is a fixture-only prerequisite, not a renderer
+prerequisite. The first characterization run executed 52 controls; the 2D
+extension executed 60. Both GPU records remain rejected under their initial
+exact-model gates; later offline analysis records what changed and why.
+
+Calibration and held-out partitions were fixed in the source. The observed
+store model is round toward zero with FP16 subnormals retained. Sampler
+fractions are multiples of 1/256 with nearest-up ties; the one-dimensional
+sampled result rounds to FP16 with nearest-up ties. The initial candidate
+list omitted nearest-up for the sampled FP16 result and correctly found no
+fitting model. That conventional mode was added **after inspecting training
+residuals**; all 12,288 unchanged held-out phase/endpoint controls then passed.
+This is measured backend behavior, not a claimed D3D9 guarantee.
+
+The 2×2 controls did not identify an exact internal interpolation rounding
+path. Training differences from single-final-round quantized bilinear sampling
+were at most one FP16 code. A one-FP16-ULP envelope was introduced after
+training inspection, with that chronology explicit. The unchanged 12,288
+held-out 2D controls also fit it, with maximum error exactly one ULP. This is
+an empirical precision contract for the tested controls, not a universal
+hardware error theorem. Point-sampling twins separately preserve exact
+uploaded values. All 43 content-independent UV maps pass; maximum pixel-center
+error is 0.001506 pixels.
+
+The reusable offline command is:
+
+```
+python3 verification/probe/analyze_bloom_precision.py
+```
+
+It verifies retained input/runtime/shader/readback identities and rechecks the
+independent controls. It recomputes all 540 ideal verdicts with the current
+nine-tap oracle; every unmodeled image and every 2D image must pass. Historical
+pass flags cannot satisfy this gate, and new failures cannot expand the
+restricted modeled scope.
+For the four affected one-dimensional cases it produces two comparisons:
+whole-chain modeling from the original uploaded input, and local-stage
+modeling from the actual preceding GPU input. Both use the characterized
+sampler/store behavior and measured quad UVs. The original
+`.002 + .003*abs(expected)` tolerance is unchanged. Every modeled channel
+happens to match exactly: **421,446 / 421,446** in each comparison across both
+generations and all stages of the affected cases.
+
+The [precision summary](../../verification/results/bloom-filter-precision-summary.json)
+qualifies the retained 40 cases/540 images under those scoped checks and keeps
+the original ideal deviations visible. Original maximum absolute errors were
+16 for geometry 82, 20 for geometry 8462/15611 and 0.0234375 for the sRGB ramp;
+the largest original tolerance ratio was 3.831. These deviations are not
+relabeled as exact ideal filtering. The original rejected GPU record and both
+rejected characterization runs remain retained and hashed. Offline analysis
+does not imply a new full bloom GPU run.
+
+The host suite now has eight tests, including unique calibration and unchanged
+held-out rejection, an out-of-envelope 2D negative control, a deliberately
+unquantized intermediate pipeline, and separation of local-stage from
+whole-chain propagation, and rejection when the current ideal oracle fails
+despite historical pass flags. Native Windows runtime behavior, production state
+restoration/integration and game appearance/performance remain pending.
