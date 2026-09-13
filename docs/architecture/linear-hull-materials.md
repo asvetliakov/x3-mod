@@ -4,8 +4,9 @@ Pure source qualification, 2026-09-13, following the 70-pair checkpoint
 `73f5c51`. The next complete group adds **24 PS, no VS, 40 pairs and 168 archive
 pass occurrences**: shared Khaak/Teladi/Teladi_nodiff/Xenon BUMPMAP, Split BUMPMAP,
 and Terran DEFAULT/BUMPMAP. The bounded transformer contains **73 originals /
-110 exact pairs**. The pure source review is approved. GPU/live qualification and installation of
-this group remain pending. Installed coverage is still 30 pairs; the preceding 70-pair
+110 exact pairs**. The pure source review and detached/live GPU qualification
+are approved. Installation of this group remains pending. Installed coverage
+is still 30 pairs; the preceding 70-pair
 source has separate [GPU/live qualification](linear-standard-materials.md).
 This remains an intermediate step in the [complete coverage ledger](material-coverage.md).
 
@@ -115,7 +116,33 @@ owned variant retirement. Independent review and one coordinated X3 run precede
 installation. Native Windows behavior and gameplay appearance/performance remain
 unverified.
 
-## Authored live extension; execution pending
+## Detached GPU qualification
+
+The reviewed standalone fixture passed under the X3 bottle with exit zero:
+**2,498 cases, 22,482 samples and 639,488 invariant pixels** across all 110
+pairs. Of those cases, 2,453 use the analytical float64 reference and 45 are
+bounded operational cases. The latter assert finite capped RGB storage plus
+exact authored alpha and temporal outputs without claiming float64 color
+equivalence. The original 1,527 binary case payloads remain byte-identical.
+
+All 593 unique original, motion and combined shader creations succeeded. The
+largest observed executable counts were VS 76 and PS 135. All ordinary samples
+stayed within the retained 0.006 relative plus 0.00002 absolute RGB envelope;
+the worst case consumed **0.161434051** of that tolerance. The accepted result
+also records 4,023 exact positive-zero black channels and 3,357 HDR channels.
+Its ten source/reference/fixture hashes match the reviewed files, all 73 original
+SHA-256 values match the site proof, and the fixture EXE SHA-256 is
+`2ec0e33b050ebe6b12d3074bce5617d07d1f0443445efd789aeebcc9e2932358`.
+The compact result is [linear-material-gpu.json](../../verification/results/bottle-X3/linear-material-gpu.json).
+
+The new-family diagnostic windows used four draws and 98,304 vertices with
+QPC plus EVENT completion. Relative to each original shader, combined medians
+added about 0.108–0.121 ms for shared/Split/Terran BUMPMAP and 0.217–0.237 ms
+for Terran DEFAULT across zero/eight-light inputs. These measurements include
+fixture transport and are neither GPU timestamps nor game FPS. Native Windows
+and gameplay appearance/performance remain unverified.
+
+## Live GPU qualification
 
 The live fixture extends its corpus from 70 to 110 pairs, each drawn twice:
 **244 frames per configuration**, with 73 distinct covered variant objects.
@@ -138,8 +165,31 @@ the finite unit-lightmap activation witness.
 Five host report tests pass, including C++/Python/proof corpus agreement and
 negative raw-bit/history witnesses. The actual fixture translation unit
 cross-compiles for x86. The function-only change is independent of the concurrent
-emission fixture and adds no shared helper or CLI requirement. The independent
-pre-run review below approves this extension; actual execution remains pending.
+emission fixture and adds no shared helper or CLI requirement.
+
+The reviewed fixture passed under the X3 bottle in all eight ownership, TAA and
+material-feature configurations: **244 frames per configuration, 1,952 frames
+and 24,540 checks total**. Each material-enabled configuration exercised 235
+eligible combined frames and refused exactly the nine lifecycle controls. All
+110 pairs ran once without history and once with valid history. The 73 covered
+objects each acquired exactly one additional owned variant reference, then
+returned to their expected release counts. Held references were 85/158 with TAA
+off, 94/167 for TAA on under external ownership and 98/171 for TAA on under
+owned textures.
+
+Feature-off/on twins preserved alpha, RT1 motion, RT2 depth and restored state.
+All 244 TAA-enabled frames retained their existing reference behavior. The two
+class-C frames also matched their corresponding feature and ownership twins by
+full-surface raw FP16 hash, while remaining outside the analytical RGB claim.
+The compact result is
+[linear-material-live.json](../../verification/results/bottle-X3/linear-material-live.json).
+It binds the reviewed fixture and linear-material source hashes to EXE SHA-256
+`84b9f1fba7897b67891530950d973b50b0e80773689d3492b7a295bddb3ccc88`
+and isolated test-DLL SHA-256
+`cfe1792a4b132551d03fedaf2cfc4b7c235d38cfc9bd74c233805115fdb480b5`.
+This qualifies the source in the isolated live seam; installed coverage remains
+30 pairs until the reviewed production candidate is installed. Native Windows
+and gameplay appearance/performance remain unverified.
 
 ## Independent source review
 
@@ -162,8 +212,8 @@ reference crosscheck, clean x86 compilation, and transformed maxima of VS 85/87
 and PS 178/180 weighted slots. The approximately 13-microsecond transformation
 measurement is create-time host cost; it is not a GPU or frame-rate result.
 
-The detached and live fixture extensions are also approved for the coordinated
-X3 run. The detached fixture preserves its 240-byte case ABI and the first 1,527
+The detached and live fixture extensions were approved for the coordinated X3
+runs. The detached fixture preserves its 240-byte case ABI and the first 1,527
 binary case payloads exactly, then expands to 2,498 cases and 22,482 samples over
 all 110 pairs. Its C++ tables are cross-checked against the Python corpus and
 source proof; the new analytical cases distinguish all fixed coefficients and
@@ -181,5 +231,9 @@ feature and ownership twins while retaining motion/depth and alpha checks. Revie
 found that sampler 4 initially inherited filter and address state from preceding
 BUMP frames; the fixture now sets point filtering, no mip filter, clamped address
 and disabled sRGB explicitly. The affected five report tests and x86 fixture
-compile pass after that fix. These approvals establish that the planned runs test
-the intended contracts; actual GPU results are still required.
+compile pass after that fix. The accepted detached result covers 2,498 cases and
+22,482 samples; the accepted live result covers eight 244-frame configurations
+and 24,540 checks. Their compact records bind the reviewed source, fixtures and
+binaries, and no further finding remains for this bounded 110-pair source and
+evidence review. Installation and native-Windows/gameplay verification remain
+pending.

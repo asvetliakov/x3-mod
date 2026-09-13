@@ -47,8 +47,8 @@ they are not a measured final-image baseline.
    including uncaptured and older-profile variants. Every pass identity needs a
    converted role or a justified non-material disposition. The preceding 40 Split/standard-lighting pairs are GPU/live qualified. The
    next group adds shared/Split BUMPMAP and Terran DEFAULT/BUMPMAP: 40 pairs,
-   bringing the source to 110. Pure review is approved; GPU/live execution
-   awaits the user finishing the requested loading run.
+   bringing the source to 110. Source review and whole-group GPU/live qualification now pass;
+   the combined build awaits installation and gameplay acceptance.
 3. The [revised emission candidate](architecture/linear-emission-composition.md#detached-mrt-candidate-qualification)
    passes detached X3 qualification for untouched-channel preservation and a
    current native recovery image. A measured branch optimization showed no
