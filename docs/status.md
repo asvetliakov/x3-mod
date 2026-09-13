@@ -21,8 +21,10 @@ and three selected WRAP/automatic-exposure cases / 435 checks. The 215-function
 x87 audit and retained-DLL load check pass. Two new imports are ordinary
 `GetTickCount64` and `strncpy`. Fixed EV 0 is now the production default;
 Ctrl+Shift+F9 compares AUTO/fixed and Ctrl+Shift+F10 compares bloom contribution.
-[Run 7](verification/user-runs.md#7-same-run-exposurebloom-and-chase-hud--ready)
-is the next combined visual check; no game was launched during installation. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
+[Run 7](verification/user-runs.md#7-same-run-exposurebloom-and-chase-hud--complete)
+is complete as [run 26](verification/run26-comparison.md): bloom executes but
+loses native emitter glow, selection stutter remains, and the user prefers
+a brighter exposure baseline. Corrected bloom extraction is the immediate priority; no game was launched during installation. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
 records the bloom integration's scoped verification. The material candidate passes the light-hook x87 audit. The [BUMPMAP runtime review](architecture/linear-bump-materials.md#runtime-review-verdict)
 approves the expanded implementation and its structural/GPU/live evidence. The
 [temporal qualification](architecture/linear-emission-composition.md#supplemental-consumer-qualification)

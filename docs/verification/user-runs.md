@@ -215,9 +215,14 @@ follow later at the user's preference; accidental loss of native terms still
 needs exclusion. Keep accepted camera values. The central HUD correction and
 selection timings are now installed and combined into run 7. The current run-6 commands remain above as provenance.
 
-## 7. Same-run exposure/bloom and chase HUD — Ready
+## 7. Same-run exposure/bloom and chase HUD — Complete
 
-Candidate `75dbbed` is installed and the command is validated without launching.
+Completed as [run 26](run26-comparison.md). Bloom executes but fails visual
+acceptance: native emitter glow is missing. Selection stutter remains; the
+central chase display is visible in screenshots. A brighter exposure baseline
+is being evaluated. **Do not repeat this run yet; wait for the corrected build.**
+
+Candidate `75dbbed` was used with the following command, retained as provenance.
 This combines the exposure and bloom follow-up with the missing central chase
 display and selection-stutter diagnostics. Camera settings remain the accepted
 values. Keep the game's **Glow enabled**.
