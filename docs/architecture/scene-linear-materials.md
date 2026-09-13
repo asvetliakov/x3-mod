@@ -1,6 +1,6 @@
 # First scene-linear material slice
 
-Implementation qualification, 2026-09-13; **no live material change installed yet**. This work
+Implementation qualification, 2026-09-13; **reviewed opt-in material slice installed; game acceptance pending**. This work
 follows the installed bloom checkpoint. The current FP16 target contains the
 game's gamma-space lighting; `material_radiance` only removes selected upper
 clamps. Neither operation evaluates lighting in linear space.
@@ -323,8 +323,8 @@ resolve the routing, precision and constant-lifetime design points. The
 bind the nine source programs and available resources; by themselves they do
 not prove a replacement shader. The bounded numerical policy has also been reviewed.
 The emitted bytecode, alpha/temporal invariants, numerical behavior and GPU
-cost are qualified separately below. No material-enabled user run is ready
-until the live integration gate and installation are complete.
+cost are qualified separately below. The integration gate and installation are complete; the fixed-EV material
+comparison is run 6 in the [brief queue](../verification/user-runs.md).
 
 The offline checkpoint passed independent Sol/high review with no open
 findings: 15 original-site proof tests and 18 analytical-reference tests,

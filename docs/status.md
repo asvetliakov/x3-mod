@@ -7,14 +7,16 @@ full scope; the [original objective](user-objective.md) is unchanged.
 
 ## Installed build and current camera work
 
-Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `8a29fed`:
-DLL SHA-256 `ab9d689654fb5a6b593707089c16da2670c82792df7f64bcae215828e3f50304`,
-12,088,890 bytes. The [install record](../verification/results/bloom-install.json)
-binds the reviewed clean candidate, load check and previous chase-build rollback
+Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `a56e77e`:
+DLL SHA-256 `aeb40a3e5759b4e6b96d0840c8e8fffcf843985984faa5e85e14787cc27a755a`,
+12,345,449 bytes. The [install record](../verification/results/linear-material-install.json)
+binds the reviewed clean candidate, load check and previous bloom-build rollback
 pair; EXE/configuration are unchanged. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
-records the bloom integration's scoped verification. The candidate has only the
-intended new SEH import and passes the light-hook x87 audit. Native Windows
-remains untested. Bloom is opt-in (`--hdr-bloom`); existing commands leave it off.
+records the bloom integration's scoped verification. The material candidate retains the previous import inventory and passes the
+light-hook x87 audit. [Review 51](verification/review-51-linear-materials.md)
+approves the material implementation and its structural/GPU/live evidence. Native Windows
+remains untested. Bloom (`--hdr-bloom`) and materials (`--linear-materials`) are opt-in; existing
+commands leave each off unless requested.
 
 The installed chase defaults are **13° pitch, distance 0.85, rotation/position
 response 0.22/0.30 s, offset 0.45, lag limits 8°/0.10**. Vanilla is the default
@@ -64,7 +66,8 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   implemented and qualified: nine original shaders / ten Argon SM3 DEFAULT
   pairs; 167 detached GPU cases plus 1,220 actual live-route checks across
   ownership/TAA, Reset, state blocks and reference retirement. It remains opt-in
-  and is not installed yet; the clean candidate is approved by [review 51](verification/review-51-linear-materials.md).
+  and is installed after [review 51](verification/review-51-linear-materials.md).
+  Gameplay material acceptance is run 6 in the brief queue.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.

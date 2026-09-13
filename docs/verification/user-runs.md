@@ -3,7 +3,8 @@
 Updated 2026-09-13. Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
-0.85 distance, plus opt-in FP16 bloom; [build record](../../verification/results/bloom-install.json).
+0.85 distance, opt-in FP16 bloom and the first Argon linear materials;
+[build record](../../verification/results/linear-material-install.json).
 From the repository root, define this terminal helper once, then paste a run
 command below. Close X3 between runs and report completed numbers when convenient.
 
@@ -111,3 +112,29 @@ x3run --direct --telemetry --resource-read fast --dat-handles \
 
 The combined run can establish fault-free co-activation. Any claim about which
 feature changed loading time still requires isolated, same-save comparisons.
+
+
+## 6. First linear materials — Ready; after camera acceptance is convenient
+
+This is a separate fixed-exposure comparison: keep bloom, sharpen and mip bias
+off, so changes in hull lighting cannot be hidden by automatic exposure or glow.
+Use the usual ship/save with a visible hull or station and emissive panels:
+
+```sh
+x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
+  --telemetry --taa-debug --taa-sharpen 0 --taa-mip-bias 0 \
+  --hdr --hdr-tonemap --hdr-ev-manual 0 \
+  --capture-start 999999 --capture-frames 4
+```
+
+Take F8 samples at rest and while slowly turning, plus a screenshot. Exit, then
+repeat the same command **adding `--linear-materials`**, at the same save and
+camera positions. Leave the three material gains at their default 1. If
+convenient, fire or pass an active light during the second session and capture
+it. Report hull color/brightness, emissive detail, flicker/ghosting, and any
+obvious slowdown. Both logs are needed even if the image looks unchanged.
+
+This first slice covers ten Argon material pairs, not every ship/effect. Analysis
+must confirm nonzero material routes and inspect refusal reasons and captured
+constants before judging appearance or expanding coverage. This fixed-EV pair
+cannot replace run 3's automatic-exposure/bloom comparison.
