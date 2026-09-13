@@ -87,8 +87,11 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   acceptance remains run 6 in the brief queue, with no additional run required.
   The [complete coverage ledger](architecture/material-coverage.md) accounts for
   all 817 archive pass identities across families, techniques and quality/toggle
-  variants. Forty additional Split/standard-lighting pairs are being implemented
-  in parallel; they are not yet installed or counted as converted.
+  variants. [Forty additional Split/standard-lighting pairs](architecture/linear-standard-materials.md)
+  now pass independent source review and detached GPU qualification: 1,527
+  cases across all 70 supported pairs, with exact alpha/motion/depth preservation.
+  Their live-routing extension is reviewed but awaits its actual fixture run;
+  the installed build still contains 30 pairs.
   [Blended emission work](architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color
   and supplemental coverage, and a temporal consumer. The latest producer run

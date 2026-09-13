@@ -87,9 +87,9 @@ class LocalOriginalTests(unittest.TestCase):
         cls.report = linear.inspect(cls.directory, cls.inventory_path)
 
     def test_all_originals_pairs_and_checked_in_profile_reproduce(self):
-        self.assertEqual(len(self.report['programs']), 24)
-        self.assertEqual(len(self.report['pairs']), 30)
-        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 144)
+        self.assertEqual(len(self.report['programs']), 49)
+        self.assertEqual(len(self.report['pairs']), 70)
+        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 240)
         self.assertEqual(self.report, json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text()))
         serialized = json.dumps(self.report)
         for forbidden in ('"token"', '"words"', '"expected"', '"replacement"'):
@@ -136,7 +136,7 @@ class LocalOriginalTests(unittest.TestCase):
                 self.assertEqual(profile['alpha_output_sites'][0]['sources'][1]['swizzle'], 'wwww')
                 for texture in profile['texture_sources']:
                     self.assertIn('partial_precision', texture['fetch']['destination']['modifiers'])
-                    self.assertEqual(texture['conversion_write_mask'], None if texture['role'] in ('specular_data_red', 'normal_data_alpha_green') else 'xyz')
+                    self.assertEqual(texture['conversion_write_mask'], None if texture['role'] in ('specular_data_red', 'normal_data_alpha_green', 'normal_data_xyz') else 'xyz')
 
     def test_missing_site_rejected_even_for_the_original(self):
         decoded = linear.decode_sites(linear.motion.instructions(self.codes['vs_53a0a641107ed76c'])[1])
@@ -239,7 +239,7 @@ class LocalOriginalTests(unittest.TestCase):
     def test_selected_material_resources_are_reserved_in_both_depth_modes(self):
         for original in self.report['programs']:
             stage = original['id'][:2]
-            bump = 'argon_bump' in original['families']
+            bump = any('bump' in family for family in original['families'])
             b = original['budget']
             self.assertEqual(b['reservations_apply_to_current_depth_modes'], [False, True])
             self.assertNotIn(6, b['free_texcoord_semantic_indices'])
@@ -260,9 +260,9 @@ class LocalOriginalTests(unittest.TestCase):
         self.assertEqual(len(pairs), 10)
         self.assertEqual(sum(row['archive_pass_occurrences'] for row in pairs), 96)
         self.assertEqual(self.report['families']['shared_default']['production_status'], 'qualified_24930b5')
-        self.assertEqual(self.report['future_negative_pair']['ps'], '462342e3e5781384')
-        self.assertNotIn((self.report['future_negative_pair']['vs'], '462342e3e5781384'), linear.PAIRS)
-        self.assertEqual(max(p['word_count'] for p in self.report['programs']), 1354)
+        self.assertEqual(self.report['future_negative_pair']['ps'], 'ef2bf556f207b8bd')
+        self.assertNotIn((self.report['future_negative_pair']['vs'], 'ef2bf556f207b8bd'), linear.PAIRS)
+        self.assertEqual(max(p['word_count'] for p in self.report['programs']), 1392)
 
     def test_every_shared_lobe_rejects_mutations_without_a_hash_gate(self):
         for key in linear.FAMILIES['shared_default']['pixels']:
@@ -347,9 +347,10 @@ class LocalOriginalTests(unittest.TestCase):
                 linear.inspect(self.directory, path)
 
     def test_prior_fifteen_profile_records_remain_exact_except_budget_annotation(self):
-        records = deepcopy([p for p in self.report['programs'] if 'argon_bump' not in p['families']])
+        records = deepcopy([p for p in self.report['programs'] if any(family in ('argon', 'shared_default') for family in p['families'])])
         self.assertEqual(len(records), 15)
         for record in records:
+            record['families'] = [family for family in record['families'] if family in ('argon','shared_default')]
             record['budget'].pop('original_static_weighted_slots')
         digest = hashlib.sha256(json.dumps(records, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
         # Original proof records at approved 03e0b62, including all source
@@ -512,7 +513,9 @@ class LocalOriginalTests(unittest.TestCase):
         changed = deepcopy(decoded)
         changed[184]['item']['opcode'] = 8  # DP3: one slot instead of DP2ADD's two.
         self.assertEqual(linear.weighted_slots(changed, profile, 'ps'), baseline-1)
-        changed[184]['item']['opcode'] = 32  # POW is absent from originals.
+        changed[184]['item']['opcode'] = 32  # POW costs three slots in the extension.
+        self.assertEqual(linear.weighted_slots(changed, profile, 'ps'), baseline+1)
+        changed[184]['item']['opcode'] = 37  # SINCOS is outside the reviewed corpus.
         with self.assertRaisesRegex(ValueError, 'unreviewed static slot opcode'):
             linear.weighted_slots(changed, profile, 'ps')
         name = 'vs_4944d81dfe531b37'
@@ -522,6 +525,112 @@ class LocalOriginalTests(unittest.TestCase):
         del decoded[393]
         del decoded[451]
         self.assertEqual(linear.weighted_slots(decoded, profile, 'vs'), 57)
+
+    def test_extended_families_cover_all_sm3_alias_and_toggle_pairs(self):
+        inventory = json.loads(self.inventory_path.read_text())
+        for family in ('split_default', 'standard_default', 'standard_bump', 'standard_bump_low'):
+            pairs = [p for p in self.report['pairs'] if p['family'] == family]
+            self.assertEqual((len(pairs), sum(p['archive_pass_occurrences'] for p in pairs)), (10,24))
+            self.assertEqual(len({p['ps'] for p in pairs}), 6)
+            self.assertEqual(len({p['vs'] for p in pairs}), 3)
+            self.assertTrue(any(name.endswith('2s') for p in pairs for name in p['archive_aliases']))
+            for technique in (linear.FAMILIES[family]['technique'],):
+                broken = deepcopy(inventory)
+                row = next(r for r in broken['pairs'] if r['ps'] == pairs[-1]['ps'] and r['vs'] == pairs[-1]['vs'])
+                row['effects']['techniques'].remove(technique)
+                with self.subTest(family=family), self.assertRaisesRegex(ValueError, 'archive coverage changed'):
+                    linear.prove_archive_coverage(broken)
+
+    def test_extended_coefficients_normal_encoding_and_pow_are_distinct(self):
+        profiles = {p['id'][3:]:p for p in self.report['programs'] if p['id'][3:] in linear.EXTENDED_PIXELS}
+        self.assertEqual(len(profiles),24)
+        for key,profile in profiles.items():
+            family = profile['families'][0]
+            tex, affine, _, direct, _ = linear.EXTENDED_PIXELS[key]
+            proof = profile['alpha_and_affine_proof']
+            self.assertEqual(len(proof['native_pow_sites']), 2 if len(direct) == 2 else 1)
+            if family == 'split_default':
+                self.assertEqual(profile['lobe_coefficients'], {'diffuse':.5,'specular_power':10,'cube':1.})
+                self.assertEqual(proof['application_coefficient_sites'], {})
+                self.assertIn(10., [r['value'] for r in proof['literal_sites']])
+            else:
+                first = 8 if len(direct) == 2 else 6 if affine else 3
+                for index,role in enumerate(('specular','power','reflection','diffuse')):
+                    rows = proof['application_coefficient_sites'][role]
+                    self.assertTrue(all(any(s['name'] == f'c{first+index}' and s['swizzle'] == 'xxxx' for s in r['sources']) for r in rows))
+                self.assertEqual(profile['lobe_coefficients']['source'], 'application')
+                self.assertEqual(proof['normal_encoding'], 'xyz' if family == 'standard_bump_low' else 'ag' if family == 'standard_bump' else 'geometric')
+            if 'bump' in family:
+                role = profile['texture_sources'][1]
+                self.assertIsNone(role['conversion_after_dword'])
+                self.assertEqual(role['role'], 'normal_data_xyz' if family.endswith('_low') else 'normal_data_alpha_green')
+                self.assertEqual(proof['normal_channels']['green'], 'tangent_v4')
+                if family.endswith('_low'):
+                    self.assertEqual(proof['normal_channels']['red'], 'binormal_v5')
+                    self.assertEqual(proof['normal_channels']['blue'], 'normal_v3')
+                    self.assertNotIn('dp2add', [s['opcode'] for s in proof['normal_reconstruction_sites']])
+                else:
+                    self.assertEqual(proof['normal_channels']['alpha'], 'binormal_v5')
+                    self.assertIn('dp2add', [s['opcode'] for s in proof['normal_reconstruction_sites']])
+
+    def test_extended_producer_chains_reject_each_instruction_clobber_without_hash_gate(self):
+        # Deleting or changing any executable producer must fail the complete
+        # schedule predicate, including scalar-only and packed lane operations.
+        for key in linear.EXTENDED_PIXELS:
+            original = self.decoded_original('ps_'+key)
+            for at,row in original.items():
+                if row['item']['opcode'] in (31,81):
+                    continue
+                for mutation in ('source','destination','delete'):
+                    broken = deepcopy(original)
+                    if mutation == 'source':
+                        broken[at]['sources'][0]['source_modifier'] ^= 1
+                    elif mutation == 'destination':
+                        broken[at]['destination']['mask'] = 'xyzw' if row['destination']['mask'] != 'xyzw' else 'xyz'
+                    else:
+                        del broken[at]
+                    with self.subTest(key=key,dword=at,mutation=mutation), self.assertRaises(ValueError):
+                        linear.prove_extended_pixel(broken,key)
+
+    def test_extended_literals_and_application_roles_reject_mutations_without_hash_gate(self):
+        for key in linear.EXTENDED_PIXELS:
+            original = self.decoded_original('ps_'+key)
+            proof = linear.prove_extended_pixel(original,key)
+            for literal in proof['literal_sites']:
+                broken = deepcopy(original)
+                definition = broken[literal['definition_dword']]['item']
+                words = list(definition['words'])
+                words[literal['literal_dword']-literal['definition_dword']-1] = struct.unpack('<I',struct.pack('<f',literal['value']+1.))[0]
+                definition['words'] = tuple(words)
+                with self.subTest(key=key,literal=literal['literal_dword']), self.assertRaises(ValueError):
+                    linear.prove_extended_pixel(broken,key)
+            for role,sites in proof['application_coefficient_sites'].items():
+                for site in sites:
+                    broken = deepcopy(original)
+                    source = next(s for s in broken[site['instruction_dword']]['sources'] if s['name'].startswith('c'))
+                    source['swizzle'] = 'yyyy'
+                    with self.subTest(key=key,role=role), self.assertRaises(ValueError):
+                        linear.prove_extended_pixel(broken,key)
+
+    def test_standard_base_vertex_body_and_depth_semantic_exception_are_explicit(self):
+        old,new = 'vs_53a0a641107ed76c','vs_494fe349b8bc12ec'
+        old_items = linear.motion.instructions(self.codes[old])[1]
+        new_items = linear.motion.instructions(self.codes[new])[1]
+        self.assertEqual([(r['dword'],r['words']) for r in old_items if r['opcode'] != 31],
+                         [(r['dword'],r['words']) for r in new_items if r['opcode'] != 31])
+        original = linear.motion.profile(self.codes[new],new,'vs','3_0')
+        declarations = {d['name']:d for d in original['declarations']}
+        self.assertIn('centroid',declarations['o2']['modifiers'])
+        for name in ('o3','o4','o5'):
+            self.assertNotIn('centroid',declarations[name]['modifiers'])
+        for pair in self.report['pairs']:
+            self.assertEqual(pair['depth_texcoord_index'],7 if pair['vs'] == new[3:] else 6 if pair['motion_class'] == 'B' else 5)
+        resources = linear.budget(original,'vs',True,False,7)
+        self.assertNotIn(7,resources['free_texcoord_semantic_indices'])
+        self.assertNotIn(6,resources['free_texcoord_semantic_indices'])
+        self.assertIn(5,resources['free_texcoord_semantic_indices'])
+        with self.assertRaisesRegex(ValueError,'collision'):
+            linear.budget(original,'vs',True,False,6)
 
 
 if __name__ == '__main__':

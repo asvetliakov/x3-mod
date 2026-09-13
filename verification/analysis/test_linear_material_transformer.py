@@ -1,4 +1,4 @@
-"""Compile the real pure transformer and inspect all twenty-four local original programs.
+"""Compile the real pure transformer and inspect all forty-nine local original programs.
 
 No game bytes are bundled. Generated variants stay in TemporaryDirectory.
 These tests qualify instruction/ABI invariants, not GPU primitive behavior.
@@ -91,12 +91,56 @@ BUMP_ORIGINALS = {
 }
 
 
+EXTENSION_ORIGINALS = {
+    'vs_494fe349b8bc12ec',
+    'ps_02606104fa59fb29',
+    'ps_0c1f3f0f440e4a0c',
+    'ps_1d638938d93421b3',
+    'ps_462342e3e5781384',
+    'ps_4f052209611387f0',
+    'ps_55826dc176afe464',
+    'ps_64bac8bb307eb896',
+    'ps_789449ffd931d23e',
+    'ps_7c83ed50c9894e44',
+    'ps_827d8d2d617bedce',
+    'ps_99153c144030c396',
+    'ps_abf3c0fad53456d8',
+    'ps_b0f9313b77cc78ee',
+    'ps_bd4d51c08486c6e0',
+    'ps_c1452981fd0bff64',
+    'ps_cf449bcb069aec4f',
+    'ps_d514bf852d8a9c58',
+    'ps_db644b73b68c0547',
+    'ps_de2dd381fa64193d',
+    'ps_dff6a3d360603fa2',
+    'ps_e70adc744a38ca59',
+    'ps_f1d14a7dbf7c6173',
+    'ps_f6a501717c3e5ca8',
+    'ps_ff32b602a271c327',
+}
+EXTENSION_BUMP_ORIGINALS = {
+    'ps_0c1f3f0f440e4a0c',
+    'ps_4f052209611387f0',
+    'ps_64bac8bb307eb896',
+    'ps_789449ffd931d23e',
+    'ps_99153c144030c396',
+    'ps_abf3c0fad53456d8',
+    'ps_b0f9313b77cc78ee',
+    'ps_c1452981fd0bff64',
+    'ps_cf449bcb069aec4f',
+    'ps_d514bf852d8a9c58',
+    'ps_dff6a3d360603fa2',
+    'ps_f1d14a7dbf7c6173',
+}
+
+
 def family_resources(profile):
-    bump = 'argon_bump' in profile['families']
+    bump = profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS
     pixel = profile['id'].startswith('ps_')
     temporal_base = (7 if len({source['name'] for source in profile['directional_rgb_sources']}) == 2
                      else 6 if profile['diffuse_affine_completion'] else 5) if bump and pixel else 5
-    return {'vs_rgb': 9 if bump else 8, 'ps_rgb': 8 if bump else 7, 'rgb_texcoord': 7 if bump else 6,
+    depth_texcoord = 7 if profile['id'] in {'vs_494fe349b8bc12ec', 'ps_7c83ed50c9894e44', 'ps_e70adc744a38ca59'} else 6 if bump else 5
+    return {'depth_texcoord': depth_texcoord, 'vs_rgb': 9 if bump else 8, 'ps_rgb': 8 if bump else 7, 'rgb_texcoord': 7 if bump else 6,
             'vs_temporal': (7, 8) if bump else (6, 7), 'ps_temporal': (6, 7) if bump else (5, 6),
             'temporary_base': temporal_base, 'scratch': 10 if bump else 9}
 
@@ -107,15 +151,15 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         cls.report = json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text())
         # Explicit implemented corpus; future offline families cannot silently
         # enlarge production qualification merely by entering the report.
-        implemented = DEFAULT_ORIGINALS | BUMP_ORIGINALS
+        implemented = DEFAULT_ORIGINALS | BUMP_ORIGINALS | EXTENSION_ORIGINALS
         cls.report['programs'] = [row for row in cls.report['programs'] if row['id'] in implemented]
         if {row['id'] for row in cls.report['programs']} != implemented or not all(
-                ('argon_bump' if row['id'] in BUMP_ORIGINALS else 'argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families']
+                (row['id'] in EXTENSION_ORIGINALS or ('argon_bump' if row['id'] in BUMP_ORIGINALS else 'argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families'])
                 for row in cls.report['programs']):
-            raise AssertionError('All twenty-four implemented profiles must remain present')
+            raise AssertionError('All forty-nine implemented profiles must remain present')
         cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
         if not all((cls.originals / (p['id'] + '.bin')).is_file() for p in cls.report['programs']):
-            raise unittest.SkipTest('local twenty-four-original archive corpus unavailable')
+            raise unittest.SkipTest('local forty-nine-original archive corpus unavailable')
         compiler = shutil.which('clang++') or shutil.which('c++')
         if compiler is None:
             raise RuntimeError('A host C++ compiler is required')
@@ -143,8 +187,22 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                     yield profile, depth, gain, words, items
 
     def test_all_variants_alias_and_failure_guards(self):
-        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (24, 30, 192))
+        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (49, 70, 392))
         self.assertGreaterEqual(self.driver['checks'], 2800)
+
+    def test_all_192_installed_outputs_remain_byte_exact(self):
+        # Captured before this 40-pair extension from the accepted 24-program
+        # implementation: DEFAULT + Argon BUMP, both depth modes and four gains.
+        digest = hashlib.sha256()
+        outputs = sorted(path for path in self.output.glob('*.bin')
+                         if '-motion-' not in path.name and path.name.split('-')[0] in DEFAULT_ORIGINALS | BUMP_ORIGINALS)
+        self.assertEqual(len(outputs), 192)
+        for path in outputs:
+            data = path.read_bytes()
+            digest.update(path.name.encode() + b'\0')
+            digest.update(struct.pack('<I', len(data)))
+            digest.update(data)
+        self.assertEqual(digest.hexdigest(), '8c27bf32d6e0f006ab51f937b4321aecefa30073040dcbdac140b9e25dd4ea84')
 
     def test_all_previous_default_outputs_remain_byte_exact(self):
         # Frozen before BUMPMAP core edits at 40ee4e1: all 120 DEFAULT
@@ -273,7 +331,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             vertex = profile['id'].startswith('vs_')
             abi = family_resources(profile)
             base = 248 if vertex else 212
-            definitions, varying, slots = {}, [], 0
+            definitions, varying, temporal_varyings, slots = {}, [], [], 0
             samplers = {motion.name_of(*motion.register_of(i['words'][1])): (i['words'][0] >> 27) & 15
                         for i in items if i['opcode'] == motion.DCL and motion.register_of(i['words'][1])[0] == 10}
             for item in items:
@@ -285,6 +343,8 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                     kind, number = motion.register_of(register_token)
                     if kind == (6 if vertex else 1) and number == (abi['vs_rgb'] if vertex else abi['ps_rgb']):
                         varying.append((usage & 31, (usage >> 16) & 15, motion.mask_of(register_token), (register_token >> 20) & 15))
+                    if kind == (6 if vertex else 1) and number in (abi['vs_temporal'] if vertex else abi['ps_temporal']):
+                        temporal_varyings.append((number, (usage >> 16) & 15))
                 else:
                     name = motion.OPCODES[item['opcode']]
                     costs = dict.fromkeys(('mov','add','mad','mul','rcp','rsq','dp3','dp4','min','max','slt','abs','cmp','mova','else','endif'), 1)
@@ -311,8 +371,12 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                             self.assertEqual(sources[1]['swizzle'], 'yyyy')
                             self.assertEqual(sources[2]['name'], f"r{abi['scratch']}")
             self.assertEqual(varying, [(5, abi['rgb_texcoord'], 'xyz', 0)])
+            registers = abi['vs_temporal'] if vertex else abi['ps_temporal']
+            self.assertEqual(temporal_varyings, [(registers[0], abi['rgb_texcoord']-2)] +
+                             ([(registers[1], abi['depth_texcoord'])] if depth else []))
+            self.assertNotEqual(abi['depth_texcoord'], abi['rgb_texcoord'])
             self.assertLessEqual(slots, 512)
-            family = 'bump' if profile['id'] in BUMP_ORIGINALS else 'default'
+            family = 'bump' if profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS else 'default'
             stage = 'vs' if vertex else 'ps'
             maxima[family][stage][depth] = max(maxima[family][stage][depth], slots)
             self.assertEqual(definitions[base][1:3], (0.0, 65504.0))
@@ -330,7 +394,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             self.assertEqual([maxima[family]['vs'], maxima[family]['ps']],
                              self.driver[f'weighted_slots_{family}_vs_ps_depth_off_on'])
         self.assertEqual(maxima['default'], {'vs':[80,82], 'ps':[166,168]})
-        self.assertEqual(maxima['bump'], {'vs':[85,87], 'ps':[177,179]})
+        self.assertEqual(maxima['bump'], {'vs':[85,87], 'ps':[178,180]})
 
     def test_sample_conversion_boundaries_preserve_data_and_use_proved_rgb_registers(self):
         # Distinguish affine r4 from DEFAULT r3 and both BUMP data samplers;

@@ -42,31 +42,80 @@ template <class T> struct Com {
 struct Case {
   unsigned id, pair, depth, lights, reverse, affine, valid, fp16, flags;
   // Existing f[0..31] retain their meanings. Append normal RGBA, B, T,
-  // camera and fog clip; flags: asymmetric cube=1, fog=2, boundary=4.
-  float f[47];
+  // camera, fog clip and scalar diffuse/specular/reflection/power; flags: asymmetric cube=1, fog=2, boundary=4.
+  float f[51];
 };
-static_assert(sizeof(Case) == 224, "binary case ABI");
-const char *vertex_ids[] = {"53a0a641107ed76c", "719856ce0c213220",
-                            "badefd5143b3024f", "4944d81dfe531b37",
-                            "44c4a41ca92ae2e3", "19a246a56e9d9700"};
-const char *pixel_ids[] = {
-    "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5",
-    "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
-    "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5",
-    "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3",
-    "ca6bfa4a6cca7e2a", "5e0a10fe752b6140", "63379470db8d2a86",
-    "68915563dd0aac9a", "d086fde54698070c", "f17fffd88d134b04"};
-// Derived register-layout facts; lobe arithmetic stays in each original shader.
-const bool pixel_affine[] = {true, true, false, true,  true,  false,
-                             true, true, true,  true,  false, false,
-                             true, true, true,  false, true,  false};
-const unsigned pixel_directions[] = {2, 2, 1, 1, 1, 1, 2, 2, 1,
-                                     1, 1, 1, 2, 2, 1, 1, 1, 1};
-const unsigned pair_v[] = {0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 0, 0, 1, 1, 1,
-                           1, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5},
-               pair_p[] = {0,  1,  2,  3,  4,  5,  2,  3,  4,  5,
-                           6,  7,  8,  9,  10, 11, 8,  9,  10, 11,
-                           12, 13, 14, 15, 16, 17, 14, 15, 16, 17};
+static_assert(sizeof(Case) == 240, "binary case ABI");
+const char * vertex_ids[] = {
+    "53a0a641107ed76c", "719856ce0c213220", "badefd5143b3024f", "4944d81dfe531b37", "44c4a41ca92ae2e3", "19a246a56e9d9700",
+    "494fe349b8bc12ec"};
+const char * pixel_ids[] = {
+    "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5", "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
+    "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5", "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3",
+    "ca6bfa4a6cca7e2a", "5e0a10fe752b6140", "63379470db8d2a86", "68915563dd0aac9a", "d086fde54698070c", "f17fffd88d134b04",
+    "462342e3e5781384", "827d8d2d617bedce", "02606104fa59fb29", "1d638938d93421b3", "bd4d51c08486c6e0", "de2dd381fa64193d",
+    "7c83ed50c9894e44", "e70adc744a38ca59", "db644b73b68c0547", "ff32b602a271c327", "f6a501717c3e5ca8", "55826dc176afe464",
+    "0c1f3f0f440e4a0c", "64bac8bb307eb896", "789449ffd931d23e", "4f052209611387f0", "abf3c0fad53456d8", "cf449bcb069aec4f",
+    "99153c144030c396", "c1452981fd0bff64", "b0f9313b77cc78ee", "d514bf852d8a9c58", "dff6a3d360603fa2", "f1d14a7dbf7c6173"};
+// Derived register-layout facts; original instructions own the lobe and normal math.
+const bool pixel_affine[] = {
+    true, true, false, true, true, false,
+    true, true, true, true, false, false,
+    true, true, true, false, true, false,
+    true, true, true, true, false, false,
+    true, true, true, true, false, false,
+    true, true, true, true, false, false,
+    true, true, true, true, false, false};
+const unsigned pixel_directions[] = {
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1};
+const bool pixel_bump[] = {
+    false, false, false, false, false, false,
+    false, false, false, false, false, false,
+    true, true, true, true, true, true,
+    false, false, false, false, false, false,
+    false, false, false, false, false, false,
+    true, true, true, true, true, true,
+    true, true, true, true, true, true};
+const bool pixel_application[] = {
+    false, false, false, false, false, false,
+    false, false, false, false, false, false,
+    false, false, false, false, false, false,
+    false, false, false, false, false, false,
+    true, true, true, true, true, true,
+    true, true, true, true, true, true,
+    true, true, true, true, true, true};
+const unsigned pair_v[] = {
+    0, 0, 1, 1, 1, 1,
+    2, 2, 2, 2, 0, 0,
+    1, 1, 1, 1, 2, 2,
+    2, 2, 3, 3, 4, 4,
+    4, 4, 5, 5, 5, 5,
+    0, 0, 1, 1, 1, 1,
+    2, 2, 2, 2, 6, 6,
+    1, 1, 1, 1, 2, 2,
+    2, 2, 3, 3, 4, 4,
+    4, 4, 5, 5, 5, 5,
+    3, 3, 4, 4, 4, 4,
+    5, 5, 5, 5};
+const unsigned pair_p[] = {
+    0, 1, 2, 3, 4, 5,
+    2, 3, 4, 5, 6, 7,
+    8, 9, 10, 11, 8, 9,
+    10, 11, 12, 13, 14, 15,
+    16, 17, 14, 15, 16, 17,
+    18, 19, 20, 21, 22, 23,
+    20, 21, 22, 23, 24, 25,
+    26, 27, 28, 29, 26, 27,
+    28, 29, 30, 31, 32, 33,
+    34, 35, 32, 33, 34, 35,
+    36, 37, 38, 39, 40, 41,
+    38, 39, 40, 41};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -123,14 +172,14 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][18];
+  Words originals[2][42];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
     api(d->GetDeviceCaps(&caps));
-    for (unsigned i = 0; i < 6; ++i)
+    for (unsigned i = 0; i < std::size(vertex_ids); ++i)
       originals[0][i] = load(path + "\\vs_" + vertex_ids[i] + ".bin");
-    for (unsigned i = 0; i < 18; ++i)
+    for (unsigned i = 0; i < std::size(pixel_ids); ++i)
       originals[1][i] = load(path + "\\ps_" + pixel_ids[i] + ".bin");
   }
   ~Shaders() {
@@ -301,7 +350,7 @@ struct Gpu {
     api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
     api(d->SetVertexDeclaration(declaration.p));
     shaders.bind(c, mode);
-    const bool bump = c.pair >= 20;
+    const bool bump = pixel_bump[pair_p[c.pair]];
     // Clear the union first: DEFAULT must never retain BUMP's stage-4 cube,
     // and switching stage-3 2D/cube roles must not depend on the last family.
     for (unsigned i = 0; i < 5; ++i)
@@ -391,6 +440,14 @@ struct Gpu {
     if (pixel_directions[profile] == 2) {
       p[dir + 2][2] = -1;
       std::memcpy(p[dir + 3], c.f + 25, 12);
+    }
+    if (pixel_application[profile]) {
+      // Original CTAB layout: specular,power,reflection,diffuse follow lights.
+      const unsigned coefficient = dir + 2 * pixel_directions[profile];
+      p[coefficient][0] = c.f[48];
+      p[coefficient + 1][0] = c.f[50];
+      p[coefficient + 2][0] = c.f[49];
+      p[coefficient + 3][0] = c.f[47];
     }
     p[216][0] = p[216][1] = 1.f / width;
     p[216][2] = .25f / width;
@@ -608,20 +665,21 @@ int main(int argc, char **argv) {
       {
         Gpu gpu(device.p, shaders, 16);
         for (const auto &c : cases) {
-          require(c.pair < 30 && c.fp16 < 2 && c.depth < 2, "case bounds");
+          require(c.pair < std::size(pair_v) && c.fp16 < 2 && c.depth < 2, "case bounds");
           gpu.test(c);
         }
       }
       {
         Gpu gpu(device.p, shaders, 256);
-        gpu.timing(cases.front());
-        Case shared = cases.front();
-        shared.pair = 10;
-        gpu.timing(shared);
-        Case bump = cases.front();
-        bump.pair = 20;
-        bump.flags = 1;
-        gpu.timing(bump);
+        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u}) {
+          Case timed = cases.front();
+          timed.pair = pair;
+          timed.flags = pixel_bump[pair_p[pair]] ? 1 : 0;
+          // Neutral normal for both AG reconstruction and LOW signed XYZ.
+          timed.f[32] = timed.f[33] = timed.f[35] = .5f;
+          timed.f[34] = 1.f;
+          gpu.timing(timed);
+        }
       }
     } // Release every D3D object before destroying its device window.
     require(DestroyWindow(window) != 0, "destroy window");

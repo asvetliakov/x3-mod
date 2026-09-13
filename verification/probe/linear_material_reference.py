@@ -1,4 +1,4 @@
-"""Float64 oracle for bounded DEFAULT and Argon BUMPMAP materials; never game code.
+"""Float64 oracle for bounded DEFAULT/BUMPMAP/BUMPMAP_LOW materials; never game code.
 
 Equations are derived in docs/architecture/scene-linear-materials.md and
 material-color-inputs.md. This is a numerical reference, not a SM3 interpreter.
@@ -20,6 +20,11 @@ The q=0 RSQ/RCP boundary, zero mixed normal/view and nonfinite geometry are
 outside its analytical domain; GPU fixtures separately qualify these original
 instructions. Nonzero near-zero q has no invented epsilon or fallback normal,
 but float64 results do not establish legacy partial-precision boundary behavior.
+BUMPMAP_LOW instead uses sampled XYZ signed data, without reconstructing Z.
+Application lighting strengths are finite nonnegative scalar inputs, and their
+power is finite positive. This analytical domain is not a runtime clamp or a
+claim about undefined/nonfinite original POW behavior; zero/negative powers
+require separate GPU qualification. Coefficients are never color-decoded.
 """
 from dataclasses import dataclass
 import math
@@ -151,9 +156,31 @@ class PixelProfile:
     specular_power: int = 5
     cube_coefficient: float = 1.0
     bump_map: bool = False
+    application_coefficients: bool = False
+    normal_encoding: str = "ag"
 
 
-# Original game-program identities describe eighteen derived contracts, not raw code.
+@dataclass(frozen=True)
+class LightingCoefficients:
+    """Original standard-lighting PS scalar inputs and authored CTAB defaults.
+
+    These are application material values, independent of our bounded Gains.
+    No upper clamp is applied; float64 arithmetic/finite geometry scope remains.
+    """
+    diffuse: float = 1.0
+    specular: float = 1.0
+    reflection: float = 1.0
+    power: float = 10.0
+
+    def __post_init__(self):
+        for name in ("diffuse", "specular", "reflection", "power"):
+            value = _real(getattr(self, name), name)
+            if not math.isfinite(value) or value < 0.0 or (name == "power" and value == 0.0):
+                raise ValueError(name + " must be finite and " + ("positive" if name == "power" else "nonnegative"))
+            object.__setattr__(self, name, value)
+
+
+# Original game-program identities describe derived contracts, not raw code.
 PROFILES = {
     "8759c7838bbc86c2": PixelProfile(2, True, False),
     "63f96eba9eea7880": PixelProfile(2, True, True),
@@ -174,6 +201,30 @@ PROFILES = {
     "68915563dd0aac9a": PixelProfile(1, False, False, bump_map=True),
     "d086fde54698070c": PixelProfile(1, True, True, bump_map=True),
     "f17fffd88d134b04": PixelProfile(1, False, True, bump_map=True),
+    "462342e3e5781384": PixelProfile(2, True, False, 0.5, 10, 1.0),
+    "827d8d2d617bedce": PixelProfile(2, True, True, 0.5, 10, 1.0),
+    "02606104fa59fb29": PixelProfile(1, True, False, 0.5, 10, 1.0),
+    "1d638938d93421b3": PixelProfile(1, True, True, 0.5, 10, 1.0),
+    "bd4d51c08486c6e0": PixelProfile(1, False, False, 0.5, 10, 1.0),
+    "de2dd381fa64193d": PixelProfile(1, False, True, 0.5, 10, 1.0),
+    "7c83ed50c9894e44": PixelProfile(2, True, False, application_coefficients=True),
+    "e70adc744a38ca59": PixelProfile(2, True, True, application_coefficients=True),
+    "db644b73b68c0547": PixelProfile(1, True, False, application_coefficients=True),
+    "ff32b602a271c327": PixelProfile(1, True, True, application_coefficients=True),
+    "f6a501717c3e5ca8": PixelProfile(1, False, False, application_coefficients=True),
+    "55826dc176afe464": PixelProfile(1, False, True, application_coefficients=True),
+    "0c1f3f0f440e4a0c": PixelProfile(2, True, False, bump_map=True, application_coefficients=True),
+    "64bac8bb307eb896": PixelProfile(2, True, True, bump_map=True, application_coefficients=True),
+    "789449ffd931d23e": PixelProfile(1, True, False, bump_map=True, application_coefficients=True),
+    "4f052209611387f0": PixelProfile(1, True, True, bump_map=True, application_coefficients=True),
+    "abf3c0fad53456d8": PixelProfile(1, False, False, bump_map=True, application_coefficients=True),
+    "cf449bcb069aec4f": PixelProfile(1, False, True, bump_map=True, application_coefficients=True),
+    "99153c144030c396": PixelProfile(2, True, False, bump_map=True, application_coefficients=True, normal_encoding="xyz"),
+    "c1452981fd0bff64": PixelProfile(2, True, True, bump_map=True, application_coefficients=True, normal_encoding="xyz"),
+    "b0f9313b77cc78ee": PixelProfile(1, True, False, bump_map=True, application_coefficients=True, normal_encoding="xyz"),
+    "d514bf852d8a9c58": PixelProfile(1, True, True, bump_map=True, application_coefficients=True, normal_encoding="xyz"),
+    "dff6a3d360603fa2": PixelProfile(1, False, False, bump_map=True, application_coefficients=True, normal_encoding="xyz"),
+    "f1d14a7dbf7c6173": PixelProfile(1, False, True, bump_map=True, application_coefficients=True, normal_encoding="xyz"),
 }
 IDENTITY_AFFINE = ((1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0),
                    (0.0, 0.0, 1.0, 0.0))
@@ -250,31 +301,38 @@ class BumpGeometry:
 
 
 def bump_geometry(normal_sample, tangent, binormal, geometric_normal, view, *,
-                  two_sided=False, face=1.0, half_source=False) -> BumpGeometry:
+                  two_sided=False, face=1.0, half_source=False, normal_encoding="ag") -> BumpGeometry:
     """Derive the BUMPMAP PS geometry from sampled RGBA and interpolated vectors.
 
     Inputs are already transformed/interpolated; do not normalize the basis.
     Quantization covers input endpoints only, not intermediate _pp arithmetic.
     The result has already been normalized and, where required, face-flipped.
-    q=0 is reserved for independent GPU RSQ/RCP qualification, not redefined.
+    AG q=0 is reserved for independent GPU RSQ/RCP qualification, not redefined.
+    XYZ uses X->binormal, G->tangent, Z->geometric normal; alpha is unused.
     """
     if not isinstance(two_sided, bool) or not isinstance(half_source, bool):
         raise TypeError("geometry switches must be boolean")
     quantize = half if half_source else float
     sample = tuple(quantize(x) for x in _vector(normal_sample, 4, "normal_sample"))
-    if not all(math.isfinite(x) and 0.0 <= x <= 1.0 for x in (sample[1], sample[3])):
-        raise ValueError("normal alpha/green must be normalized finite data samples")
+    if normal_encoding not in ("ag", "xyz"):
+        raise ValueError("normal_encoding must be ag or xyz")
+    used = (sample[1], sample[3]) if normal_encoding == "ag" else sample[:3]
+    if not all(math.isfinite(x) and 0.0 <= x <= 1.0 for x in used):
+        raise ValueError("used normal channels must be normalized finite data samples")
     def basis(values, name):
         return _vector(tuple(quantize(x) for x in _vector(values, 3, name)), 3, name, True)
     tangent = basis(tangent, "tangent")
     binormal = basis(binormal, "binormal")
     geometric_normal = basis(geometric_normal, "geometric_normal")
     view = _unit(basis(view, "view"), "view")
-    x, y = 2.0 * sample[3] - 1.0, 2.0 * sample[1] - 1.0
-    q = 1.0 - x*x - y*y
-    if q == 0.0:
-        raise ValueError("q=0 requires separate GPU reciprocal-chain qualification")
-    z = math.sqrt(abs(q))
+    if normal_encoding == "ag":
+        x, y = 2.0 * sample[3] - 1.0, 2.0 * sample[1] - 1.0
+        q = 1.0 - x*x - y*y
+        if q == 0.0:
+            raise ValueError("q=0 requires separate GPU reciprocal-chain qualification")
+        z = math.sqrt(abs(q))
+    else:
+        x, y, z = (2.0 * s - 1.0 for s in sample[:3])
     normal = _unit(tuple(y*t + x*b + z*n
                          for t, b, n in zip(tangent, binormal, geometric_normal)), "mixed normal")
     if two_sided:
@@ -291,7 +349,7 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
           lightmap, cubemap, directions: Sequence[DirectionalLight], *,
           affine=IDENTITY_AFFINE, face=1.0, glow=0.0, gains=Gains(),
           half_source=False, half_target=False, normal_sample=None,
-          tangent=None, binormal=None) -> PixelResult:
+          tangent=None, binormal=None, coefficients=None) -> PixelResult:
     """Evaluate one PS sample using explicit sampled inputs and VS varyings.
 
     DEFAULT takes already sampled cube RGB; vertex().reflection exposes its
@@ -311,6 +369,15 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
     if not isinstance(half_source, bool) or not isinstance(half_target, bool):
         raise TypeError("quantization switches must be boolean")
     contract = PROFILES[profile]
+    if coefficients is not None and not isinstance(coefficients, LightingCoefficients):
+        raise TypeError("coefficients must be LightingCoefficients")
+    if not contract.application_coefficients and coefficients is not None:
+        raise ValueError("fixed lighting profile does not consume application coefficients")
+    coefficients = coefficients or LightingCoefficients()
+    diffuse_strength = coefficients.diffuse if contract.application_coefficients else contract.diffuse_coefficient
+    specular_strength = coefficients.specular if contract.application_coefficients else 3.0
+    reflection_strength = coefficients.reflection if contract.application_coefficients else contract.cube_coefficient
+    power = coefficients.power if contract.application_coefficients else contract.specular_power
     directions = tuple(directions)
     if len(directions) != contract.directions:
         raise ValueError("directional-light count does not match profile")
@@ -327,7 +394,8 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
         if not callable(cubemap):
             raise TypeError("BUMPMAP cubemap must sample RGB from its direction argument")
         geometry = bump_geometry(normal_sample, tangent, binormal, varying.normal, varying.view,
-                                 two_sided=contract.two_sided, face=face, half_source=half_source)
+                                 two_sided=contract.two_sided, face=face, half_source=half_source,
+                                 normal_encoding=contract.normal_encoding)
         normal, view = geometry.normal, geometry.view
         cubemap = source(cubemap(geometry.reflection), 3, "cubemap sample")
     else:
@@ -355,13 +423,13 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
         cosine = _sat(_dot(normal, light.direction))
         reflected = tuple(2.0 * _dot(normal, light.direction) * n - l
                           for n, l in zip(normal, light.direction))
-        highlight = _sat(_dot(view, reflected)) ** contract.specular_power
-        lobe = contract.diffuse_coefficient * cosine + 3.0 * mask * _sat(3.0 * cosine) * highlight
+        highlight = _sat(_dot(view, reflected)) ** power
+        lobe = diffuse_strength * cosine + specular_strength * mask * _sat(3.0 * cosine) * highlight
         for i in range(3):
             directional[i] += lobe * decode(light.color[i]) * gains.direct
     vertex_rgb = _vector(varying.linear_rgb, 3, "linear vertex RGB")
     radiance = tuple(sanitize(albedo[i] * (vertex_rgb[i] + directional[i])
-                              + decode(cubemap[i]) * mask * albedo[i] * contract.cube_coefficient
+                              + decode(cubemap[i]) * mask * albedo[i] * reflection_strength
                               + decode(lightmap[i]) * gains.lightmap_emissive)
                      for i in range(3))
     glow = _real(glow, "glow")

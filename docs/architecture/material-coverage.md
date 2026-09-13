@@ -16,13 +16,19 @@ counterpart. The complete pairs divide into 180 SM3, 466 SM2/2.x and 168 SM1
 pairs. These are exact full-program identities; the 642 comment-stripped GPU
 token variants are useful similarity evidence but are not replacement keys.
 
-The current linear-material implementation admits exactly **30 pairs / 24
+The installed linear-material implementation admits exactly **30 pairs / 24
 programs**: ten Argon SM3 `DEFAULT`, ten Argon SM3 `BUMPMAP`, and ten shared
 Khaak/Teladi/Teladi_nodiff/Xenon SM3 `DEFAULT` pairs. The last ten identities
 occur under all four family names and count once in the global total. The five
 highest-quality PS2 `effects`/`engine` `DEFAULT` emission pairs have qualified
 producer/composition work, but live integration remains pending; they are not
 counted as converted.
+
+The [Split/standard extension](linear-standard-materials.md) adds 40 exact SM3
+pairs, bringing the source transformer to 70 pairs / 49 programs. Independent
+review and detached GPU qualification pass; live verification and installation
+remain. The installed-coverage counts below therefore still use 30, with these
+40 additional pairs identified as pending live qualification.
 
 A fixed-width 16-hex join of the five production profiles against the complete
 pair inventory finds all five in `sm2_pairs`; none is outside the archive. The
@@ -111,8 +117,8 @@ is reused by more than one technique. They account for `DEFAULT` (D), `BUMPMAP`
 | `particles` | A | 2 / 2 | 0 / 0 / 2 / 0 | D 2 | Transparent SM1 billboards; both remain. Define radiance/coverage, composition and stable temporal identity together. |
 | `planet_haze` | B | 3 / 3 | 1 / 0 / 2 / 0 | D 3 | Background/transparent lookup material; all 3 remain. Fixed 0.05 alpha is coverage, not emissive strength. |
 | `planet_v` | A | 6 / 4 | 0 / 3 / 3 / 0 | D 6 | Background/surface material; all 6 remain. Over-one lighting is limited in older COLOR varyings, not by an SM3 PS clamp. |
-| `split` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Opaque/material candidate; all 104 remain. The SM3 D ten-pair algebra is the first bounded expansion group. |
-| `standard_lighting` | A | 45 / 81 | 30 / 89 / 24 / 1 | D 52, B 52, BL 52 | General opaque/material candidate; 143 complete pairs plus the anomalous incomplete pass remain. Technique memberships overlap and must stay exact-pair keyed. |
+| `split` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Ten SM3 D pairs are implemented, reviewed and detached-GPU qualified; live qualification remains. The other 94 identities still require conversion. None are installed. |
+| `standard_lighting` | A | 45 / 81 | 30 / 89 / 24 / 1 | D 52, B 52, BL 52 | All 30 SM3 D/B/BL pairs are implemented, reviewed and detached-GPU qualified; live qualification remains. Another 113 complete pairs plus the incomplete pass still require conversion. None are installed. |
 | `stardust` | B | 4 / 2 | 0 / 0 / 4 / 0 | D 2, I 2 | Background/transparent; all 4 remain. A shared GUI pixel program prevents PS-hash ownership decisions. |
 | `teladi` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete 104-pair identity set as `khaak`; **10 shared SM3 D pairs converted**, 94 remain. |
 | `teladi_nodiff` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete set and coverage as `teladi`; the name does not prove diffuse is absent. |

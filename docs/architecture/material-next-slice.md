@@ -6,6 +6,10 @@ subsequent offline and runtime checkpoints. The shared DEFAULT expansion is now
 reviewed and installed; see the [current install record](../../verification/results/linear-material-install.json).
 Gameplay acceptance remains pending.
 
+The subsequent [Split and standard lighting extension](linear-standard-materials.md)
+records the complete 40-pair SM3 group, including all standard BUMP/LOW toggles,
+its retained temporal ABI and pending GPU/live qualification.
+
 **Selected and now implemented: shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT.** It
 extends real linear material/lightmap-emissive evaluation through the existing
 opaque route. Engine/effects additive emission is the next architectural target;

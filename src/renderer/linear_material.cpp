@@ -29,6 +29,9 @@ struct Pixel {
     std::array<unsigned, 4> color_source; // ORIGINAL source operand DWORDs.
     std::array<unsigned, 13> rgb; // Full-precision radiance destinations only.
     bool bump = false;
+    // Two standard DEFAULT base pairs retain the temporal registry's TEX7
+    // depth semantic. Zero uses ordinary class A/B TEX5/6; RGB remains TEX6.
+    unsigned depth_texcoord_override = 0;
 };
 constexpr Pixel pixels[] = {
     {0x8759c7838bbc86c2ull,1260,{1197,1175,1242,1229},1217,1206,1251,1,5,7,
@@ -67,12 +70,61 @@ constexpr Pixel pixels[] = {
      {1248},{1208,1241,1245,1250,1254,1268},true},
     {0xf17fffd88d134b04ull,358,{318,178,285,340,314},0,306,349,4,2,0,
      {329},{306,322,326,331,335,349},true},
+    {0x02606104fa59fb29ull,1181,{1117,1104,1163,1150,0},1137,1126,1172,1,5,0,
+     {1144},{1126,1141,1146,1154,1158,1172}},
+    {0x0c1f3f0f440e4a0cull,1366,{1306,1145,1269,1348,1302},1323,1294,1357,6,5,7,
+     {1262,1267,1221,1254},{1218,1251,1259,1264,1277,1285,1294,1327,1331,1335,1339,1343,1357},true},
+    {0x1d638938d93421b3ull,1207,{1143,1130,1189,1176,0},1163,1152,1198,1,5,0,
+     {1170},{1152,1167,1172,1180,1184,1198}},
+    {0x462342e3e5781384ull,1250,{1187,1165,1232,1219,0},1207,1196,1241,1,5,7,
+     {1163,1176,1151,1159},{1148,1156,1160,1173,1178,1182,1196,1211,1215,1223,1227,1241}},
+    {0x4f052209611387f0ull,1326,{1265,1130,1236,1308,1261},1282,1253,1317,5,5,0,
+     {1297},{1253,1286,1290,1294,1299,1303,1317},true},
+    {0x55826dc176afe464ull,339,{291,279,321,308,0},0,288,330,2,2,0,
+     {302},{288,295,299,304,312,316,330}},
+    {0x64bac8bb307eb896ull,1392,{1332,1148,1295,1374,1328},1349,1320,1383,6,5,7,
+     {1288,1293,1247,1280},{1244,1277,1285,1290,1303,1311,1320,1353,1357,1361,1365,1369,1383},true},
+    {0x789449ffd931d23eull,1300,{1239,1127,1210,1282,1235},1256,1227,1291,5,5,0,
+     {1271},{1227,1260,1264,1268,1273,1277,1291},true},
+    {0x7c83ed50c9894e44ull,1298,{1226,1209,1280,1267,0},1248,1252,1289,4,5,7,
+     {1207,1220,1195,1203},{1192,1200,1204,1217,1222,1235,1252,1255,1259,1263,1271,1275,1289},false,7},
+    {0x827d8d2d617bedceull,1276,{1213,1191,1258,1245,0},1233,1222,1267,1,5,7,
+     {1189,1202,1177,1185},{1174,1182,1186,1199,1204,1208,1222,1237,1241,1249,1253,1267}},
+    {0x99153c144030c396ull,1355,{1295,1145,1258,1337,1291},1312,1283,1346,6,5,7,
+     {1251,1256,1210,1243},{1207,1240,1248,1253,1266,1274,1283,1316,1320,1324,1328,1332,1346},true},
+    {0xabf3c0fad53456d8ull,375,{331,219,302,357,327},0,319,366,4,2,0,
+     {346},{319,335,339,343,348,352,366},true},
+    {0xb0f9313b77cc78eeull,1289,{1228,1127,1199,1271,1224},1245,1216,1280,5,5,0,
+     {1260},{1216,1249,1253,1257,1262,1266,1280},true},
+    {0xbd4d51c08486c6e0ull,256,{217,196,238,225,0},0,209,247,1,2,0,
+     {215},{209,212,221,229,233,247}},
+    {0xc1452981fd0bff64ull,1381,{1321,1148,1284,1363,1317},1338,1309,1372,6,5,7,
+     {1277,1282,1236,1269},{1233,1266,1274,1279,1292,1300,1309,1342,1346,1350,1354,1358,1372},true},
+    {0xcf449bcb069aec4full,407,{363,228,334,389,359},0,351,398,4,2,0,
+     {378},{351,367,371,375,380,384,398},true},
+    {0xd514bf852d8a9c58ull,1315,{1254,1130,1225,1297,1250},1271,1242,1306,5,5,0,
+     {1286},{1242,1275,1279,1283,1288,1292,1306},true},
+    {0xdb644b73b68c0547ull,1232,{1159,1155,1214,1201,0},1181,1185,1223,1,5,0,
+     {1195},{1185,1188,1192,1197,1205,1209,1223}},
+    {0xde2dd381fa64193dull,288,{249,228,270,257,0},0,241,279,1,2,0,
+     {247},{241,244,253,261,265,279}},
+    {0xdff6a3d360603fa2ull,364,{320,219,291,346,316},0,308,355,4,2,0,
+     {335},{308,324,328,332,337,341,355},true},
+    {0xe70adc744a38ca59ull,1324,{1252,1235,1306,1293,0},1274,1278,1315,4,5,7,
+     {1233,1246,1221,1229},{1218,1226,1230,1243,1248,1261,1278,1281,1285,1289,1297,1301,1315},false,7},
+    {0xf1d14a7dbf7c6173ull,396,{352,228,323,378,348},0,340,387,4,2,0,
+     {367},{340,356,360,364,369,373,387},true},
+    {0xf6a501717c3e5ca8ull,313,{265,253,295,282,0},0,262,304,2,2,0,
+     {276},{262,269,273,278,286,290,304}},
+    {0xff32b602a271c327ull,1258,{1185,1181,1240,1227,0},1207,1211,1249,1,5,0,
+     {1221},{1211,1214,1218,1223,1231,1235,1249}},
 };
 struct Vertex { std::uint64_t hash; unsigned words; bool loop; bool bump = false; };
 constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
     {0x719856ce0c213220ull,526,true},{0xbadefd5143b3024full,481,false},
     {0x4944d81dfe531b37ull,556,true,true},{0x19a246a56e9d9700ull,511,false,true},
-    {0x44c4a41ca92ae2e3ull,556,true,true}};
+    {0x44c4a41ca92ae2e3ull,556,true,true},
+    {0x494fe349b8bc12ecull,526,true}};
 // Explicit archive pair contract: base shaders never gain toggle-VS admission
 // from table position. The live caller caches this allocation-free contract.
 struct Pair { std::uint64_t vertex, pixel; std::uint32_t sampler_mask = 0x0f; };
@@ -107,6 +159,46 @@ constexpr Pair pairs[] = {
     {0x44c4a41ca92ae2e3ull,0xf17fffd88d134b04ull,0x1f},
     {0x4944d81dfe531b37ull,0x5e0a10fe752b6140ull,0x1f},
     {0x4944d81dfe531b37ull,0xca6bfa4a6cca7e2aull,0x1f},
+    {0x19a246a56e9d9700ull,0x4f052209611387f0ull,0x1f},
+    {0x19a246a56e9d9700ull,0x789449ffd931d23eull,0x1f},
+    {0x19a246a56e9d9700ull,0xabf3c0fad53456d8ull,0x1f},
+    {0x19a246a56e9d9700ull,0xb0f9313b77cc78eeull,0x1f},
+    {0x19a246a56e9d9700ull,0xcf449bcb069aec4full,0x1f},
+    {0x19a246a56e9d9700ull,0xd514bf852d8a9c58ull,0x1f},
+    {0x19a246a56e9d9700ull,0xdff6a3d360603fa2ull,0x1f},
+    {0x19a246a56e9d9700ull,0xf1d14a7dbf7c6173ull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0x4f052209611387f0ull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0x789449ffd931d23eull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xabf3c0fad53456d8ull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xb0f9313b77cc78eeull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xcf449bcb069aec4full,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xd514bf852d8a9c58ull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xdff6a3d360603fa2ull,0x1f},
+    {0x44c4a41ca92ae2e3ull,0xf1d14a7dbf7c6173ull,0x1f},
+    {0x4944d81dfe531b37ull,0x0c1f3f0f440e4a0cull,0x1f},
+    {0x4944d81dfe531b37ull,0x64bac8bb307eb896ull,0x1f},
+    {0x4944d81dfe531b37ull,0x99153c144030c396ull,0x1f},
+    {0x4944d81dfe531b37ull,0xc1452981fd0bff64ull,0x1f},
+    {0x494fe349b8bc12ecull,0x7c83ed50c9894e44ull},
+    {0x494fe349b8bc12ecull,0xe70adc744a38ca59ull},
+    {0x53a0a641107ed76cull,0x462342e3e5781384ull},
+    {0x53a0a641107ed76cull,0x827d8d2d617bedceull},
+    {0x719856ce0c213220ull,0x02606104fa59fb29ull},
+    {0x719856ce0c213220ull,0x1d638938d93421b3ull},
+    {0x719856ce0c213220ull,0x55826dc176afe464ull},
+    {0x719856ce0c213220ull,0xbd4d51c08486c6e0ull},
+    {0x719856ce0c213220ull,0xdb644b73b68c0547ull},
+    {0x719856ce0c213220ull,0xde2dd381fa64193dull},
+    {0x719856ce0c213220ull,0xf6a501717c3e5ca8ull},
+    {0x719856ce0c213220ull,0xff32b602a271c327ull},
+    {0xbadefd5143b3024full,0x02606104fa59fb29ull},
+    {0xbadefd5143b3024full,0x1d638938d93421b3ull},
+    {0xbadefd5143b3024full,0x55826dc176afe464ull},
+    {0xbadefd5143b3024full,0xbd4d51c08486c6e0ull},
+    {0xbadefd5143b3024full,0xdb644b73b68c0547ull},
+    {0xbadefd5143b3024full,0xde2dd381fa64193dull},
+    {0xbadefd5143b3024full,0xf6a501717c3e5ca8ull},
+    {0xbadefd5143b3024full,0xff32b602a271c327ull},
 };
 // Two fixed family layouts, not a varying/temporary allocator. BUMP's original
 // basis occupies TEX0-4, so its existing class-B temporal ABI stays at TEX5/6.
@@ -405,9 +497,9 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     Words& output, bool current_depth, bool vertex) noexcept {
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
-    // Bound the read before hashing; none of the twenty-four original programs exceeds
-    // 1354 DWORDs, including opaque CTAB/preshader comments.
-    if (words>1354) return LinearMaterialResult::UnsupportedShader;
+    // Bound the read before hashing; none of the forty-nine original programs exceeds
+    // 1392 DWORDs, including opaque CTAB/preshader comments.
+    if (words>1392) return LinearMaterialResult::UnsupportedShader;
     const auto hash=material_motion_fingerprint(original,words);
     const auto* v=vertex?vertex_for(hash,words):nullptr;
     const auto* p=vertex?nullptr:pixel_for(hash,words);
@@ -422,7 +514,8 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
         row->pixel_temporary_base!=temporal_temporary_base(*row_pixel) ||
         row->vertex_constant_base!=252 || row->pixel_constant_base!=216 || row->pixel_output_register!=1 ||
         row->texcoord_index!=abi.motion_texcoord || row->vertex_depth_output_register!=abi.vertex_motion+1 ||
-        row->pixel_depth_input_register!=abi.pixel_motion+1 || row->depth_texcoord_index!=abi.motion_texcoord+1 ||
+        row->pixel_depth_input_register!=abi.pixel_motion+1 || row->depth_texcoord_index!=(row_pixel->depth_texcoord_override ? row_pixel->depth_texcoord_override : abi.motion_texcoord+1) ||
+        row->depth_texcoord_index==abi.rgb_texcoord ||
         !row->depth_output) return LinearMaterialResult::ProfileMismatch;
     const unsigned original_temp_count=vertex ? 7u : temporal_temporary_base(*p);
     try {

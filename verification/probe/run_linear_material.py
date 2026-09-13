@@ -42,14 +42,28 @@ PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
 PAIRS += [('4944d81dfe531b37', ps) for ps in ('ca6bfa4a6cca7e2a', '5e0a10fe752b6140')]
 PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
           ('63379470db8d2a86', '68915563dd0aac9a', 'd086fde54698070c', 'f17fffd88d134b04')]
-TIMING_PAIRS = (0, 10, 20)
+PAIRS += [('53a0a641107ed76c', ps) for ps in ('462342e3e5781384', '827d8d2d617bedce')]
+PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
+          ('02606104fa59fb29', '1d638938d93421b3', 'bd4d51c08486c6e0', 'de2dd381fa64193d')]
+PAIRS += [('494fe349b8bc12ec', ps) for ps in ('7c83ed50c9894e44', 'e70adc744a38ca59')]
+PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
+          ('db644b73b68c0547', 'ff32b602a271c327', 'f6a501717c3e5ca8', '55826dc176afe464')]
+PAIRS += [('4944d81dfe531b37', ps) for ps in ('0c1f3f0f440e4a0c', '64bac8bb307eb896')]
+PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
+          ('789449ffd931d23e', '4f052209611387f0', 'abf3c0fad53456d8', 'cf449bcb069aec4f')]
+PAIRS += [('4944d81dfe531b37', ps) for ps in ('99153c144030c396', 'c1452981fd0bff64')]
+PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
+          ('b0f9313b77cc78ee', 'd514bf852d8a9c58', 'dff6a3d360603fa2', 'f1d14a7dbf7c6173')]
+TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60)
+FAMILIES = ('Argon', 'shared DEFAULT', 'Argon BUMP', 'Split DEFAULT',
+            'standard DEFAULT', 'standard BUMP', 'standard LOW')
 CUBE_PATTERN, FOG, BOUNDARY = 1, 2, 4
 CUBE_BANDS_U = (.125, .25, .25, .5)
 CUBE_BANDS_V = (.125, .375, .375, .75)
 
 
 def family_name(pair):
-    return 'Argon BUMP' if pair >= 20 else 'shared DEFAULT' if pair >= 10 else 'Argon'
+    return FAMILIES[pair // 10]
 
 
 def cube_location(direction):
@@ -233,19 +247,95 @@ def fixture_cases():
             add('bump_boundary_'+label,pair=pair,flags=BOUNDARY,fp16=0,**changes)
     for pair in (0,20,10,21,0,2,22,12,23,2,6,26,16,29,6):
         add('default_bump_alternation',pair=pair,flags=CUBE_PATTERN if pair>=20 else 0)
+    # The original 512 cases retain all fields/order. Scalar tail is ignored by
+    # fixed-coefficient shaders; only standard lighting consumes these values.
+    for c in cases:
+        c['coefficients'] = [1., 1., 1., 10.]  # diffuse, specular, reflection, power
+    base.update(flags=0, coefficients=[1.,1.,1.,10.], normal_sample=[.5,.5,1.,.5])
+    dark = dict(material=[0.]*3,point=[0.]*3,dir0=[0.]*3,dir1=[0.]*3,
+                lightmap=[0.,0.,0.,.25],cube=[0.,0.,0.,1.])
+    for pair in range(30,70):
+        for depth in (0,1):
+            for reverse in (0,1):
+                add('extended_pair_depth_face',pair=pair,depth=depth,reverse=reverse)
+        for gains in ([0.,0.,0.],[4.,1.,1.],[1.,16.,1.],[1.,1.,16.]):
+            add('extended_independent_gains',pair=pair,gains=gains)
+        add('extended_missing_history',pair=pair,valid=0)
+    # Every distinct new PS conversion layout, not just captured program pairs.
+    for start in (30,40,50,60):
+        for pair in range(start,start+6):
+            add('extended_affine_angular',pair=pair,affine=1,normal=[.6,0.,.8])
+            for source in ('point','material','dir0','dir1','lightmap','cube'):
+                isolated=copy.deepcopy(dark)
+                isolated[source]=base[source]
+                add('extended_isolated_'+source,pair=pair,**isolated)
+            add('extended_finite_domain',pair=pair,fp16=0,diffuse=[ref.CAP,0.,-1.,.75],
+                **dict(dark,material=[1.]*3))
+            if start==30:
+                add('split_diffuse_coefficient',pair=pair,mask=0.,**dict(dark,dir0=[1.]*3))
+                add('split_specular_power',pair=pair,mask=1.,camera=[.6,0.,.8],**dict(dark,dir0=[1.]*3))
+                add('split_cube_coefficient',pair=pair,mask=1.,**dict(dark,cube=[.5,.25,.75,1.]))
+            else:
+                # Independent controls detect swapped uploads, retained fixed
+                # coefficients, and accidental exponentiation of scalar inputs.
+                for label, coefficients in (
+                    ('zero',[0.,0.,0.,10.]), ('diffuse',[2.5,0.,0.,10.]),
+                    ('specular',[0.,2.5,0.,10.]), ('reflection',[0.,0.,2.5,10.]),
+                    ('fractional_power',[0.,2.5,0.,2.5]),
+                    ('mixed',[2.5,.75,1.25,2.5]), ('power_one',[0.,2.5,0.,1.])):
+                    add('standard_coeff_'+label,pair=pair,coefficients=coefficients,
+                        camera=[.6,0.,.8],mask=1.,material=[0.]*3,point=[0.]*3,
+                        lightmap=[0.,0.,0.,.25],dir0=[1.,.5,.25],dir1=[0.]*3)
+                add('standard_coeff_hdr',pair=pair,coefficients=[64.,0.,0.,10.],
+                    mask=0.,**dict(dark,dir0=[1.]*3))
+        for pair in (start,start+2,start+6):
+            for lights in ((1,) if pair==start+6 else (0,1,8)):
+                for gain in (1.,4.,16.):
+                    add('extended_lights_gains',pair=pair,lights=lights,gains=[gain]*3)
+            for reverse in (0,1):
+                add('extended_fog_alpha',pair=pair,reverse=reverse,flags=FOG)
+    for pair in range(50,66):
+        if 56 <= pair < 60: continue  # distinct PS layouts already covered
+        low=pair>=60
+        for label,sample in (
+            ('binormal',[.875,.5,.75,.5] if low else [.25,.5,.75,.875]),
+            ('tangent',[.5,.875,.75,.5] if low else [.25,.875,.75,.5]),
+            ('negative_z',[.625,.75,.125,.5] if low else [.25,.9375,.75,.9375]),
+            ('unused',[.875,.5,.75,1.] if low else [1.,.5,0.,.875])):
+            add('extended_normal_'+label,pair=pair,normal_sample=sample)
+        for label,changes in (
+            ('nonunit',dict(normal=[0.,0.,.5],tangent=[2.,0.,0.],binormal=[0.,.5,0.])),
+            ('nonorthogonal',dict(tangent=[1.,.25,.125],binormal=[.125,1.,.25])),
+            ('mirrored',dict(binormal=[0.,-1.,0.]))):
+            add('extended_basis_'+label,pair=pair,normal_sample=[.75,.625,.75,.75],**changes)
+        for sample in ([.875,.5,.875,.875],[.5,.875,.875,.5]):
+            add('extended_cube_direction',pair=pair,flags=CUBE_PATTERN,normal_sample=sample,
+                **dict(dark,cube=base['cube']),mask=1.)
+        for sample in ([.5,.5,1.,.5],[.75,.625,.75,.75]):
+            add('extended_geometric_point',pair=pair,normal_sample=sample,**dict(dark,point=base['point']))
+    # Signed XYZ has valid endpoint normals with no AG reciprocal chain. Zero
+    # mixed XYZ remains operational-only; no fallback normal is invented.
+    for pair in range(60,66):
+        for sample in ([1.,.5,.5,1.],[.5,1.,.5,0.],[.5,.5,0.,1.],[.5,.5,1.,0.]):
+            add('low_signed_endpoint',pair=pair,normal_sample=sample)
+        add('low_half_endpoint',pair=pair,normal_sample=[.3333,.75,1.,.5])
+        add('low_boundary_zero_normal',pair=pair,normal_sample=[.5,.5,.5,.5],flags=BOUNDARY,fp16=0)
+        add('low_boundary_zero_view',pair=pair,camera=[0.]*3,flags=BOUNDARY,fp16=0)
+    for pair in (30,40,0,50,20,60,10,41,51,61,32,42,52,62,36,46,56,66,0):
+        add('extended_family_alternation',pair=pair)
     return cases
 
 
 def fields(c):
     return (c['gains'] + c['diffuse'] + c['lightmap'] + c['cube'] + [c['mask']] +
             c['material'] + c['point'] + c['dir0'] + c['dir1'] + c['normal'] + [c['glow']] + c['normal_sample'] + c['binormal'] +
-            c['tangent'] + c['camera'] + c['fog_clip'])
+            c['tangent'] + c['camera'] + c['fog_clip'] + c['coefficients'])
 
 
 def binary_cases(cases):
     data = bytearray(struct.pack('<I', len(cases)))
     for c in cases:
-        data.extend(struct.pack('<9I47f', *(c[k] for k in ('id', 'pair', 'depth', 'lights', 'reverse', 'affine', 'valid', 'fp16', 'flags')), *fields(c)))
+        data.extend(struct.pack('<9I51f', *(c[k] for k in ('id', 'pair', 'depth', 'lights', 'reverse', 'affine', 'valid', 'fp16', 'flags')), *fields(c)))
     return bytes(data)
 
 
@@ -270,7 +360,9 @@ def expected(c, half_source=False):
                      if ref.PROFILES[profile].bump_map else vector('cube')[:3], directions, affine=AFFINE if c['affine'] else ref.IDENTITY_AFFINE,
                      face=-1 if c['reverse'] else 1, glow=f32(c['glow']), gains=gains,
                      half_source=half_source, half_target=bool(c['fp16']), normal_sample=vector('normal_sample'),
-                     tangent=vector('tangent'), binormal=vector('binormal'))
+                     tangent=vector('tangent'), binormal=vector('binormal'),
+                     coefficients=ref.LightingCoefficients(*vector('coefficients'))
+                     if ref.PROFILES[profile].application_coefficients else None)
 
 
 def expected_alpha(c):
@@ -309,7 +401,7 @@ def validate_report(text, cases=None):
     failures = []
     family_results = {name:dict(cases=sum(family_name(c['pair']) == name for c in cases),
                                max_rgb_envelope_error=0., max_tolerance_fraction=0.)
-                      for name in ('Argon', 'shared DEFAULT', 'Argon BUMP')}
+                      for name in FAMILIES}
     for cid, x, y, rgba in samples:
         cid, x, y = int(cid), int(x), int(y)
         assert 0 <= cid < len(cases) and x in (4, 8, 12) and y in (4, 8, 12)
@@ -348,7 +440,7 @@ def validate_report(text, cases=None):
         # whole-RT motion-only comparison also checks bit-for-bit alpha equality.
         assert actual[3] == ideal.encoded_rgba[3], (cid, 'authored alpha')
     assert not failures, ('RGB oracle mismatches', failures[:12], 'total', len(failures))
-    timings = re.findall(r'^TIMING pair=(0|10|20) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
+    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
     assert len(timings) == 36 * len(TIMING_PAIRS)
     timing_summary = []
     for pair in TIMING_PAIRS:
@@ -364,8 +456,8 @@ def validate_report(text, cases=None):
                                            samples=6, median_ms=statistics.median(values), min_ms=min(values), max_ms=max(values)))
     recognized = 1 + len(creates) + len(invariants) + len(samples) + len(timings) + 1
     assert len(lines) == recognized, 'unexpected output rows'
-    return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=24, shader_creations=len(creates),
-                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=313,
+    return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=len({('vs',v) for v,p in PAIRS}|{('ps',p) for v,p in PAIRS}), shader_creations=len(creates),
+                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=512,
                 boundary_cases=sum(bool(c["flags"] & BOUNDARY) for c in cases),
                 boundary_limit="Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence", invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
                 max_tolerance_fraction=maximum_scaled, exact_black_channels=black_samples,
@@ -380,7 +472,7 @@ def sha(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--exe', type=Path, default=EXE)
+    parser.add_argument('--exe', type=Path, required=True, help='Previously built fixture EXE; this runner never builds')
     parser.add_argument('--programs', type=Path, default=PROGRAMS)
     parser.add_argument('--raw-dir', type=Path, default=Path('/tmp/x3-linear-material-gpu'))
     args = parser.parse_args()
@@ -398,7 +490,7 @@ def main():
     assert inputs == {p['id']+'.bin':p['sha256'] for p in profiles['programs']}, 'original input provenance'
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
-                  scope='Argon plus shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT plus Argon BUMPMAP; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
+                  scope='70 reviewed pairs: Argon/shared/Split DEFAULT, Argon BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
                   timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS',
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),

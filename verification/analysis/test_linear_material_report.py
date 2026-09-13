@@ -1,6 +1,8 @@
 """Reject missing/duplicate/nonfinite GPU evidence and independently serialize cases."""
 from dataclasses import replace
 from pathlib import Path
+import hashlib
+import json
 import re
 import struct
 import unittest
@@ -38,15 +40,15 @@ class ReportTests(unittest.TestCase):
 
     def test_complete_report(self):
         result = validate_report(self.text)
-        self.assertEqual(result['pairs'], 30)
-        self.assertEqual(result['unique_originals'], 24)
+        self.assertEqual(result['pairs'], 70)
+        self.assertEqual(result['unique_originals'], 49)
         self.assertGreater(result['hdr_channels'], 0)
         self.assertGreater(result['exact_black_channels'], 0)
 
     def test_inventory_and_binary_abi(self):
         cases = fixture_cases()
         data = binary_cases(cases)
-        self.assertEqual(len(data), 4 + 224*len(cases))
+        self.assertEqual(len(data), 4 + 240*len(cases))
         self.assertEqual(struct.unpack_from('<I', data)[0], len(cases))
         self.assertEqual(set((c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='pair_depth_face'),
                          {(p,d,r) for p in range(20) for d in (0,1) for r in (0,1)})
@@ -65,6 +67,10 @@ class ReportTests(unittest.TestCase):
         directions=list(map(int,re.findall(r'\d+',array('pixel_directions'))))
         self.assertEqual(affine,[ref.PROFILES[p].affine_color for p in pixels])
         self.assertEqual(directions,[ref.PROFILES[p].directions for p in pixels])
+        bump=[v=='true' for v in re.findall(r'true|false',array('pixel_bump'))]
+        app=[v=='true' for v in re.findall(r'true|false',array('pixel_application'))]
+        self.assertEqual(bump,[ref.PROFILES[p].bump_map for p in pixels])
+        self.assertEqual(app,[ref.PROFILES[p].application_coefficients for p in pixels])
 
     def test_shared_lobe_cases_reject_each_argon_coefficient(self):
         witnesses={'shared_diffuse_coefficient':('diffuse_coefficient',ref.DIFFUSE_COEFFICIENT),
@@ -104,11 +110,11 @@ class ReportTests(unittest.TestCase):
 
     def test_bump_inventory_and_stable_cube_domain(self):
         cases=fixture_cases()
-        self.assertEqual(len(cases),512)
+        self.assertEqual(len(cases),1527)
         self.assertTrue(all(c['pair']<20 for c in cases[:313]))
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='bump_pair_depth_face'},
                          {(p,d,r) for p in range(20,30) for d in (0,1) for r in (0,1)})
-        self.assertEqual(sum(bool(c['flags']&BOUNDARY) for c in cases),15)
+        self.assertEqual(sum(bool(c['flags']&BOUNDARY) for c in cases),27)
         for c in cases:
             if c['flags']&BOUNDARY:continue
             a,b=expected(c),expected(c,True)
@@ -119,7 +125,8 @@ class ReportTests(unittest.TestCase):
                 def geometry(half):
                     profile=ref.PROFILES[PAIRS[c['pair']][1]]
                     return ref.bump_geometry(c['normal_sample'],c['tangent'],c['binormal'],c['normal'],c['camera'],
-                                             two_sided=profile.two_sided,face=-1 if c['reverse'] else 1,half_source=half)
+                                             two_sided=profile.two_sided,face=-1 if c['reverse'] else 1,half_source=half,
+                                             normal_encoding=profile.normal_encoding)
                 self.assertEqual(cube_sample(geometry(False).reflection),cube_sample(geometry(True).reflection))
 
     def test_unused_channels_and_geometric_point_response(self):
@@ -142,7 +149,7 @@ class ReportTests(unittest.TestCase):
             for i,line in enumerate(lines):
                 if line.startswith(f'SAMPLE id={c["id"]} '):
                     lines[i]=line.split('rgba=')[0]+'rgba='+','.join(map(str,(*values,expected_alpha(c))))
-            if values[0]==123.:self.assertEqual(validate_report('\n'.join(lines))['boundary_cases'],15)
+            if values[0]==123.:self.assertEqual(validate_report('\n'.join(lines))['boundary_cases'],27)
             else:
                 with self.assertRaises(AssertionError):validate_report('\n'.join(lines))
 
@@ -183,6 +190,69 @@ class ReportTests(unittest.TestCase):
         head,rgba=lines[i].split('rgba=')
         lines[i]=head+'rgba='+','.join(str(min(float(v),1)) for v in rgba.split(','))
         with self.assertRaises(AssertionError):validate_report('\n'.join(lines))
+
+    def test_old_binary_payload_prefix_exact_and_new_scalar_tail(self):
+        cases=fixture_cases()
+        data=binary_cases(cases[:512])
+        legacy=bytearray(data[:4])
+        for i in range(512):legacy.extend(data[4+240*i:4+240*i+224])
+        self.assertEqual(hashlib.sha256(legacy).hexdigest(),
+                         'edb4bfc95b39fa04c365abae102471c7b623cb64da36108cde63374b6632d7f5')
+        c=next(c for c in cases if c['label']=='standard_coeff_mixed')
+        tail=struct.unpack_from('<4f',binary_cases([c]),4+224)
+        self.assertEqual(tail,(2.5,.75,1.25,2.5))
+
+    def test_expanded_pair_and_required_case_coverage(self):
+        proof=json.loads((Path(__file__).resolve().parents[2]/'docs/reverse-engineering/linear-material-profiles.json').read_text())
+        self.assertEqual(set(PAIRS),{(p['vs'],p['ps']) for p in proof['pairs']})
+        self.assertEqual(len(PAIRS),70)
+        cases=fixture_cases()
+        self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='extended_pair_depth_face'},
+                         {(p,d,r) for p in range(30,70) for d in (0,1) for r in (0,1)})
+        self.assertEqual({c['pair'] for c in cases if c['label']=='extended_missing_history'},set(range(30,70)))
+        for p in range(30,70):
+            self.assertEqual({tuple(c['gains']) for c in cases if c['pair']==p and c['label']=='extended_independent_gains'},
+                             {(0.,0.,0.),(4.,1.,1.),(1.,16.,1.),(1.,1.,16.)})
+        for start in (30,40,50,60):
+            for p in (start,start+2,start+6):
+                self.assertEqual({c['lights'] for c in cases if c['pair']==p and c['label']=='extended_lights_gains'},
+                                 {1} if p==start+6 else {0,1,8})
+        self.assertEqual(len({PAIRS[c['pair']][1] for c in cases if c['label']=='standard_coeff_mixed'}),18)
+
+    def test_new_coefficient_cases_reject_swapped_fixed_and_decoded_controls(self):
+        cases=fixture_cases()
+        for c in (c for c in cases if c['label']=='standard_coeff_mixed'):
+            correct=expected(c).encoded_rgba[:3]
+            alternatives=([1.,1.,1.,10.], [.75,2.5,1.25,2.5],
+                          [2.5**2.2,.75**2.2,1.25**2.2,2.5])
+            for coeff in alternatives:
+                wrong=expected(dict(c,coefficients=coeff)).encoded_rgba[:3]
+                self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(correct,wrong)),(c['pair'],coeff))
+        for c in (c for c in cases if c['label']=='split_specular_power'):
+            p=PAIRS[c['pair']][1]
+            correct=expected(c).encoded_rgba[:3]
+            with patch.dict(ref.PROFILES,{p:replace(ref.PROFILES[p],specular_power=6)}):wrong=expected(c).encoded_rgba[:3]
+            self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(correct,wrong)))
+
+    def test_low_witnesses_reject_ag_reconstruction_and_ignore_alpha(self):
+        cases=fixture_cases()
+        for p in range(60,66):
+            c=next(c for c in cases if c['pair']==p and c['label']=='extended_normal_negative_z')
+            correct=expected(c).encoded_rgba[:3]
+            profile=PAIRS[p][1]
+            with patch.dict(ref.PROFILES,{profile:replace(ref.PROFILES[profile],normal_encoding='ag')}):
+                wrong=expected(c).encoded_rgba[:3]
+            self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(correct,wrong)))
+            a=next(c for c in cases if c['pair']==p and c['label']=='extended_normal_binormal')
+            b=next(c for c in cases if c['pair']==p and c['label']=='extended_normal_unused')
+            self.assertEqual(expected(a),expected(b))
+            a,b=[c for c in cases if c['pair']==p and c['label']=='extended_geometric_point']
+            self.assertEqual(expected(a),expected(b))
+
+    def test_runner_requires_explicit_executable_and_never_builds(self):
+        text=(Path(__file__).resolve().parents[1]/'probe/run_linear_material.py').read_text()
+        self.assertIn("parser.add_argument('--exe', type=Path, required=True",text)
+        self.assertNotIn('build_linear_material.sh',text)
 
 
 if __name__ == '__main__':unittest.main()

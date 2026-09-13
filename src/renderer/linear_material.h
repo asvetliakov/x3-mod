@@ -31,11 +31,11 @@ struct LinearBumpMaterialAbi {
     static constexpr unsigned rgb_texcoord = 7;
 };
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
-// Exact thirty DEFAULT/BUMPMAP pairs, independent of the temporal registry. The
+// Exact seventy DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.
-// DEFAULT returns 0x0f, BUMPMAP 0x1f, unsupported pairs zero. The mask only
+// DEFAULT returns 0x0f, BUMPMAP/LOW 0x1f, unsupported pairs zero. The mask only
 // identifies required disabled-sRGB samplers; it establishes no dynamic gates.
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;

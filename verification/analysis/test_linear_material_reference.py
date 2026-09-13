@@ -6,7 +6,7 @@ import struct
 import unittest
 
 from linear_material_reference import (
-    CAP, DIFFUSE_COEFFICIENT, PROFILES, DirectionalLight, Gains, PointLight, decode, encode, half,
+    CAP, DIFFUSE_COEFFICIENT, PROFILES, DirectionalLight, Gains, LightingCoefficients, PointLight, decode, encode, half,
     bump_geometry, pixel, sanitize, vertex,
 )
 
@@ -57,18 +57,29 @@ class MaterialTests(unittest.TestCase):
         expected = {}
         for row in evidence['programs']:
             if row['id'].startswith('ps_'):
+                app = row['lobe_coefficients'].get('source') == 'application'
+                if app:
+                    self.assertEqual(row['lobe_coefficients'], {
+                        'source': 'application', 'diffuse': 'g_MatDiffuseStrength',
+                        'specular': 'g_MatSpecularStrength', 'specular_power': 'g_MatSpecularPower',
+                        'cube': 'g_MatReflectionStrength',
+                        'defaults': {'diffuse': 1.0, 'specular': 1.0, 'specular_power': 10.0, 'cube': 1.0}})
                 expected[row['fnv1a64']] = (
                     len({source['name'] for source in row['directional_rgb_sources']}),
                     row['diffuse_affine_completion'] is not None,
                     row['two_sided'],
-                    row['lobe_coefficients']['diffuse'], row['lobe_coefficients']['specular_power'],
-                    row['lobe_coefficients']['cube'],
-                    'argon_bump' in row['families'],
+                    None if app else row['lobe_coefficients']['diffuse'],
+                    None if app else row['lobe_coefficients']['specular_power'],
+                    None if app else row['lobe_coefficients']['cube'],
+                    bool({'argon_bump', 'standard_bump', 'standard_bump_low'} & set(row['families'])),
+                    app, 'xyz' if 'standard_bump_low' in row['families'] else 'ag',
                 )
-        self.assertEqual(len(expected), 18)
+        self.assertEqual(len(expected), 42)
         self.assertEqual({key: (value.directions, value.affine_color, value.two_sided,
-                               value.diffuse_coefficient, value.specular_power, value.cube_coefficient,
-                               value.bump_map)
+                               None if value.application_coefficients else value.diffuse_coefficient,
+                               None if value.application_coefficients else value.specular_power,
+                               None if value.application_coefficients else value.cube_coefficient,
+                               value.bump_map, value.application_coefficients, value.normal_encoding)
                           for key, value in PROFILES.items()}, expected)
 
     def assertRGB(self, actual, expected, tolerance=1e-12):
@@ -90,7 +101,8 @@ class MaterialTests(unittest.TestCase):
                        directions=self.dark_directions(profile))
         options.update(kwargs)
         if PROFILES[profile].bump_map:
-            options.setdefault('normal_sample', (0, 0.5, 0, 0.5))
+            options.setdefault('normal_sample', (0.5, 0.5, 1, 0) if PROFILES[profile].normal_encoding == 'xyz'
+                               else (0, 0.5, 0, 0.5))
             options.setdefault('tangent', (1, 0, 0))
             options.setdefault('binormal', (0, 1, 0))
             if not callable(options['cubemap']):
@@ -98,7 +110,7 @@ class MaterialTests(unittest.TestCase):
                 options['cubemap'] = lambda direction: sample
         return pixel(profile, varying, **options)
 
-    def test_all_eighteen_contracts_retain_black_and_alpha(self):
+    def test_all_contracts_retain_black_and_alpha(self):
         for profile in PROFILES:
             with self.subTest(profile=profile):
                 result = self.sample(self.make_vertex(material_alpha=0.5), profile,
@@ -432,6 +444,181 @@ class BumpTests(unittest.TestCase):
             self.geometry(tangent='abc')
         with self.assertRaises(TypeError):
             self.geometry(half_source=1)
+
+
+class ExtendedFamilyTests(unittest.TestCase):
+    # Order is independently pinned: 2-light affine front/back, then 1-light
+    # affine front/back, then 1-light nonaffine front/back.
+    SPLIT = ('462342e3e5781384', '827d8d2d617bedce', '02606104fa59fb29',
+             '1d638938d93421b3', 'bd4d51c08486c6e0', 'de2dd381fa64193d')
+    STANDARD = (
+        ('7c83ed50c9894e44', 'e70adc744a38ca59', 'db644b73b68c0547',
+         'ff32b602a271c327', 'f6a501717c3e5ca8', '55826dc176afe464'),
+        ('0c1f3f0f440e4a0c', '64bac8bb307eb896', '789449ffd931d23e',
+         '4f052209611387f0', 'abf3c0fad53456d8', 'cf449bcb069aec4f'),
+        ('99153c144030c396', 'c1452981fd0bff64', 'b0f9313b77cc78ee',
+         'd514bf852d8a9c58', 'dff6a3d360603fa2', 'f1d14a7dbf7c6173'))
+
+    def assertRGB(self, actual, expected):
+        for a, b in zip(actual, expected):
+            self.assertAlmostEqual(a, b, delta=1e-12)
+
+    def sample(self, profile, count=1, **kwargs):
+        args = dict(diffuse=(1, 1, 1, .25), specular_mask=0,
+                    lightmap=(0, 0, 0, .75), cubemap=(0, 0, 0),
+                    directions=[DirectionalLight((0, 0, 1), (0, 0, 0))]*count)
+        varying = kwargs.pop('varying', vertex((0, 0, 0), (0, 0, 1), (.6, 0, .8), (0, 0, 0)))
+        args.update(kwargs)
+        # Use the independent family lists, not PROFILES, to form valid inputs.
+        if profile in self.STANDARD[1] + self.STANDARD[2]:
+            args.setdefault('normal_sample', (.5, .5, 1, .5))
+            args.setdefault('tangent', (1, 0, 0))
+            args.setdefault('binormal', (0, 1, 0))
+            if not callable(args['cubemap']):
+                value = args['cubemap']
+                args['cubemap'] = lambda direction: value
+        return pixel(profile, varying, **args)
+
+    def test_all_new_shapes_and_split_coefficients_independently(self):
+        shapes = ((2, True, False), (2, True, True), (1, True, False),
+                  (1, True, True), (1, False, False), (1, False, True))
+        for family, ids in enumerate((self.SPLIT,) + self.STANDARD):
+            for name, shape in zip(ids, shapes):
+                p = PROFILES[name]
+                self.assertEqual((p.directions, p.affine_color, p.two_sided), shape)
+                self.assertEqual(p.application_coefficients, family != 0)
+                self.assertEqual(p.bump_map, family >= 2)
+                self.assertEqual(p.normal_encoding, 'xyz' if family == 3 else 'ag')
+        for i, name in enumerate(self.SPLIT):
+            count = 2 if i < 2 else 1
+            with self.subTest(profile=name):
+                lights = [DirectionalLight((0, 0, .2), (1, 1, 1))]*count
+                result = self.sample(name, count, directions=lights, specular_mask=.7,
+                                     cubemap=(.5, .25, .75))
+                expected_lobe = .5*.2 + 3*.7*.6*(.16**10)
+                self.assertRGB(result.linear_rgb,
+                               [count*expected_lobe + .7*c**2.2 for c in (.5, .25, .75)])
+
+    def test_all_standard_profiles_use_independent_application_scalars(self):
+        for ids in self.STANDARD:
+            for i, name in enumerate(ids):
+                count = 2 if i < 2 else 1
+                with self.subTest(profile=name):
+                    lights = [DirectionalLight((0, 0, .2), (.2, .4, .8))]*count
+                    args = dict(directions=lights, specular_mask=.7, diffuse=(.25, .5, .75, .25),
+                                cubemap=(.5, .25, .75), lightmap=(.1, .2, .3, .75), glow=.25)
+                    coeff = LightingCoefficients(2.5, .75, 1.25, 2.5)
+                    result = self.sample(name, count, coefficients=coeff, **args)
+                    lobe = 2.5*.2 + .75*.7*.6*(.16**2.5)
+                    expected = [a**2.2*(count*lobe*c**2.2 + .7*1.25*r**2.2) + lm**2.2
+                                for a, c, r, lm in zip((.25, .5, .75), (.2, .4, .8), (.5, .25, .75), (.1, .2, .3))]
+                    self.assertRGB(result.linear_rgb, expected)
+                    default = self.sample(name, count, **args)
+                    self.assertEqual(default, self.sample(name, count, coefficients=LightingCoefficients(), **args))
+                    self.assertEqual(result.encoded_rgba[3], default.encoded_rgba[3])
+                    self.assertEqual(result.encoded_rgba[3], .375)
+
+    def test_scalar_controls_are_separate_from_point_emissive_lightmap_and_our_gains(self):
+        name = self.STANDARD[0][4]
+        varying = vertex((0, 0, 0), (0, 0, 1), (0, 0, 1), (.25, .5, .75),
+                         [PointLight((0, 0, 1), (.5, .25, .75), (1, 0, 0))])
+        lights = [DirectionalLight((0, 0, 1), (1, 1, 1))]
+        args = dict(varying=varying, directions=lights, specular_mask=.5,
+                    cubemap=(1, 1, 1), lightmap=(.25, .5, .75, 0))
+        dark = self.sample(name, coefficients=LightingCoefficients(0, 0, 0, 10), **args)
+        self.assertRGB(dark.linear_rgb, [m+c**2.2+lm**2.2 for m,c,lm in
+                                       zip((.25,.5,.75),(.5,.25,.75),(.25,.5,.75))])
+        for coeff, addition in ((LightingCoefficients(2,0,0,10), 2),
+                                (LightingCoefficients(0,2,0,10), 1),
+                                (LightingCoefficients(0,0,2,10), 1)):
+            got = self.sample(name, coefficients=coeff, **args)
+            self.assertRGB(got.linear_rgb, [x+addition for x in dark.linear_rgb])
+        got = self.sample(name, coefficients=LightingCoefficients(2,2,2,10), gains=Gains(direct=0), **args)
+        self.assertRGB(got.linear_rgb, [x+1 for x in dark.linear_rgb])
+
+    def test_new_affine_and_face_roles_preserve_original_alpha(self):
+        varying = vertex((0,0,0), (0,0,1), (0,0,-1), (1,1,1), material_alpha=.5)
+        affine = ((1,0,0,.1), (0,1,0,.2), (0,0,1,.3))
+        for family, ids in enumerate((self.SPLIT,) + self.STANDARD):
+            for i, name in enumerate(ids):
+                count = 2 if i < 2 else 1
+                two_sided, has_affine = i % 2 == 1, i < 4
+                args = dict(varying=varying, directions=[DirectionalLight((0,0,-1),(1,1,1))]*count,
+                            diffuse=(.2,.4,.6,.25), affine=affine, face=-1, glow=.25)
+                if family: args['coefficients'] = LightingCoefficients(2,0,0,10)
+                result = self.sample(name, count, **args)
+                factor = 1 + ((2 if family else .5)*count if two_sided else 0)
+                self.assertRGB(result.linear_rgb, [x**2.2*factor for x in
+                                                  ((.3,.6,.9) if has_affine else (.2,.4,.6))])
+                self.assertEqual(result.encoded_rgba[3], .1875)
+
+    def test_low_normal_does_not_replace_geometric_point_light_response(self):
+        varying = vertex((0,0,0), (0,0,1), (0,0,1), (0,0,0),
+                         [PointLight((0,0,1), (.25,.5,.75), (1,0,0))])
+        name = self.STANDARD[2][4]
+        a = self.sample(name, varying=varying, normal_sample=(.5,.5,1,0))
+        b = self.sample(name, varying=varying, normal_sample=(.5,1,.5,1))
+        self.assertEqual(a, b)
+        self.assertRGB(a.linear_rgb, [x**2.2 for x in (.25,.5,.75)])
+
+    def test_coefficient_defaults_domain_and_wrong_types(self):
+        c = LightingCoefficients()
+        self.assertEqual((c.diffuse, c.specular, c.reflection, c.power), (1,1,1,10))
+        self.assertEqual(LightingCoefficients(diffuse=1e6).diffuse, 1e6)  # No color cap or decode.
+        for field in ('diffuse', 'specular', 'reflection', 'power'):
+            for value in (math.nan, math.inf, -1):
+                with self.assertRaises(ValueError): LightingCoefficients(**{field:value})
+            for value in (True, '1', None):
+                with self.assertRaises(TypeError): LightingCoefficients(**{field:value})
+        with self.assertRaises(ValueError): LightingCoefficients(power=0)
+        with self.assertRaises(AttributeError): c.power = 4
+        with self.assertRaises(TypeError): self.sample(self.STANDARD[0][4], coefficients={})
+        for name in ('593e5dea9b3457d5', self.SPLIT[4]):
+            with self.assertRaises(ValueError): self.sample(name, coefficients=c)
+
+    def test_low_xyz_asymmetric_basis_negative_z_and_unused_alpha(self):
+        args = dict(normal_sample=(.7,.25,.4,math.nan), tangent=(2,1,0),
+                    binormal=(0,3,1), geometric_normal=(1,0,4), view=(.3,.4,.5), normal_encoding='xyz')
+        g = bump_geometry(**args)
+        expected = tuple(x/math.sqrt(2.09) for x in (-1.2,.7,-.4))
+        self.assertRGB(g.normal, expected)
+        for a in (0, 1, -math.inf):
+            self.assertEqual(g, bump_geometry(**dict(args, normal_sample=(.7,.25,.4,a))))
+        back = bump_geometry(**args, two_sided=True, face=-1)
+        self.assertRGB(back.normal, [-x for x in expected])
+        self.assertRGB(back.reflection, g.reflection)
+        mirrored = bump_geometry(**dict(args, tangent=(-2,-1,0)))
+        self.assertRGB(mirrored.normal, [x/math.sqrt(.8*.8+1.7*1.7+.4*.4) for x in (.8,1.7,-.4)])
+
+    def test_low_channel_endpoints_and_no_ag_reciprocal_boundary(self):
+        args = dict(tangent=(1,0,0), binormal=(0,1,0), geometric_normal=(0,0,1), view=(0,0,1), normal_encoding='xyz')
+        for sample, normal in (((1,.5,.5,1),(0,1,0)), ((.5,1,.5,1),(1,0,0)),
+                               ((.5,.5,0,1),(0,0,-1)), ((.5,.5,1,1),(0,0,1))):
+            self.assertEqual(bump_geometry(sample, **args).normal, normal)
+        with self.assertRaises(ValueError): bump_geometry((.5,.5,.5,0), **args)
+        # AG with this alpha/green has q=0; XYZ is valid and must not reconstruct Z.
+        self.assertEqual(bump_geometry((1,.5,.5,1), **args).normal, (0,1,0))
+        with self.assertRaises(ValueError): bump_geometry((1,.5,.5,1), **dict(args,normal_encoding='ag'))
+        for sample in ((math.nan,.5,1,0), (.5,math.inf,1,0), (.5,.5,1.1,0)):
+            with self.assertRaises(ValueError): bump_geometry(sample, **args)
+        with self.assertRaises(ValueError): bump_geometry((.5,.5,1,0), **dict(args,normal_encoding='rgbx'))
+
+    def test_low_quantized_endpoint_and_direction_dependent_cube(self):
+        g = bump_geometry((.3333,.75,1,math.nan), (1,0,0), (0,1,0), (0,0,1), (0,0,1),
+                          normal_encoding='xyz', half_source=True)
+        mixed = (.5, 2*.333251953125-1, 1)
+        length = math.sqrt(sum(x*x for x in mixed))
+        self.assertRGB(g.normal, [x/length for x in mixed])
+        seen = []
+        def cube(direction):
+            seen.append(direction)
+            return tuple(.5+.25*x for x in direction)
+        name = self.STANDARD[2][4]
+        result = self.sample(name, normal_sample=(.5,.5,0,math.nan), cubemap=cube, specular_mask=1,
+                             coefficients=LightingCoefficients(0,0,2,10))
+        # N=-Z, V=(.6,0,.8): reflection=(-.6,0,.8), despite negative sampled Z.
+        self.assertRGB(seen[0], (-.6,0,.8))
+        self.assertRGB(result.linear_rgb, [2*x**2.2 for x in (.35,.5,.7)])
 
 
 if __name__ == "__main__":
