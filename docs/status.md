@@ -68,7 +68,7 @@ save gap and fault-free loading paths. Selection windows contain 0.44–0.46 s
 frame maxima, unexplained by measured renderer calls; capture work and late
 shader creation do not overlap them. Native solver/HUD timing remains needed. A is not a material or automatic-exposure test.
 Comparison B is complete: run 21 froze docked after alt-tab/back (unknown cause),
-run 22 completed without captures, and run 23 captured the selected asteroid
+run 22 completed without captures, and [run 23](verification/run23-material-comparison.md) captured the selected asteroid
 before/after approaching until shimmer disappeared. The user still sees selection
 stutters, brighter converted surfaces, partial material coverage and less gloss.
 The captured eligible motion draws use linear materials on 4,420 of 5,800 draws
@@ -118,7 +118,11 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   the installed lead marker and new camera defaults. The
   [coverage ledger](architecture/material-coverage.md) retains all 817 archive
   pass identities; [52 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md)
-  and older-profile variants remain, alongside other scene writers.
+  and older-profile variants remain, alongside other scene writers. The six-pair
+  Asteroid candidate and separate COLOR1 transport pass source review; full
+  GPU/live qualification is in progress. The [Boron/Paranid contract](reverse-engineering/boron-paranid-materials.md)
+  covers all 32 remaining pairs and identifies a whole-register transport
+  candidate after the mixed-declaration X3 alpha failure.
   [Blended emission work](architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color
   and supplemental coverage, and a temporal consumer. The latest producer run
@@ -138,8 +142,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   review is closed and the route is installed; gameplay remains pending. Its unpaired
   1080p completion windows measured an additional 1.71 ms for the tested
   emitter/composition sequence, not game FPS or GPU-only time.
-  Copy/composition cost remains a
-  concern, and historical adjacent draws do not yet qualify batching. The
+  The reviewed copy/clear fusion is committed with 60 exact GPU twins and
+  a small, noisy component timing benefit; combined live qualification and
+  installation remain pending. Copy/composition cost remains a concern,
+  and historical adjacent draws do not yet qualify batching. The
   [background study](reverse-engineering/background-temporal-coverage.md) retains
   the existing native temporal limitations; global writer classification is not
   a prerequisite for supplemental coverage of enhanced emissions.
