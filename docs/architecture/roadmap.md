@@ -3,8 +3,9 @@
 The user-added [modern chase camera](chase-camera.md) is goal 17. The
 existing prototype `7f4b251` is integrated, reviewed/fixed, fixture-qualified
 and installed at `2e5f1af`; the first user flight confirms activation but
-reports subtle framing and trembling. A native position-selection correction
-and lower default framing are in progress. It replaces only
+reports subtle framing and trembling. The native position-selection correction
+and lower default framing are reviewed, X3-qualified and installed at `0c642df`;
+corrected-flight acceptance remains pending. It replaces only
 the engine's external back view and remains
 off by default; gameplay feel, menu behavior, aiming, TAA cuts and cost remain
 acceptance items. This integration precedes HDR bloom implementation.

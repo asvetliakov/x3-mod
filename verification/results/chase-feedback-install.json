@@ -1,0 +1,222 @@
+{
+  "installed": true,
+  "game_launched": false,
+  "bottle": "X3",
+  "qualified_source_commit": "0c642dfc44998be1382c72bdfdb1df40db7bb8e7",
+  "qualified_summary": {
+    "path": "verification/results/chase-feedback-summary.json",
+    "sha256": "2da2d97c3f1816663e1afc2a9c66b89da30d6a220c07c13429e01b9131a77161"
+  },
+  "candidate": {
+    "path": "/Users/asvetl/x3-mod/build/d3d9.dll",
+    "sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01",
+    "bytes": 11606225
+  },
+  "installed_dll": {
+    "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+    "sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01",
+    "bytes": 11606225
+  },
+  "manifest": {
+    "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-install.json",
+    "sha256": "e22d7f9ca94d70dd2e3cf5e7693e02bdd84395f9bdd7aea5cc2cfe890585635f",
+    "contents": {
+      "project": "x3-modern-renderer",
+      "sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01",
+      "source": "/Users/asvetl/x3-mod/build/d3d9.dll"
+    }
+  },
+  "preserved": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": {
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "bytes": 2153984
+    },
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": {
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "bytes": 14280
+    }
+  },
+  "rollback_directory": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-pre-chase-feedback-zqlxnisq",
+  "rollback_provenance_sha256": "2385856fa9e0eed931054b23da451cf94772a41d52558f460758fae13f61bb3b",
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "tools/manage.py",
+    "install",
+    "--bottle",
+    "X3",
+    "--dll-source",
+    "/Users/asvetl/x3-mod/build/d3d9.dll"
+  ],
+  "install_stdout": "Installed /Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll; bottle configuration unchanged.\n",
+  "post_install_dry_runs": [
+    {
+      "mode": "chase",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "tools/manage.py",
+        "launch",
+        "--bottle",
+        "X3",
+        "--direct",
+        "--camera",
+        "chase",
+        "--telemetry",
+        "--dry-run"
+      ],
+      "output": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "--dll",
+          "d3d9=n,b",
+          "--workdir",
+          "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+          "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+          "-noabout",
+          "-skipintro",
+          "-runinbg"
+        ],
+        "cwd": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+        "env": {
+          "X3M_BOTTLE": "X3",
+          "X3M_CAMERA": "chase",
+          "X3M_CAMERA_CUT_DEG": "20.0",
+          "X3M_CAMERA_LOG": "300",
+          "X3M_CAPTURE_FRAMES": "1",
+          "X3M_CAPTURE_START": "120",
+          "X3M_CHASE_COMBAT_TIGHTNESS": "0.0",
+          "X3M_CHASE_SCENE_FIX": "0",
+          "X3M_CRYPT_CACHE": "0",
+          "X3M_DAT_HANDLES": "0",
+          "X3M_DEPTH_COPY": "0",
+          "X3M_FINITE_POSITIONS": "0",
+          "X3M_FIXTURE_BOTTLE": "X3",
+          "X3M_GZ_BUFFER": "0",
+          "X3M_GZ_BUFFER_KB": "256",
+          "X3M_HDR": "0",
+          "X3M_HDR_CLAMP": "0.0",
+          "X3M_HDR_DECODE": "gamma2.2",
+          "X3M_HDR_EV": "0.0",
+          "X3M_HDR_EV_DEADBAND": "0.25",
+          "X3M_HDR_EV_MANUAL": "",
+          "X3M_HDR_EV_MAX": "2.0",
+          "X3M_HDR_EV_MIN": "-3.0",
+          "X3M_HDR_KEY_PULL": "0.25",
+          "X3M_HDR_LOOK": "none",
+          "X3M_HDR_METER_BG": "0.001953125",
+          "X3M_HDR_METER_EDGE_WEIGHT": "0.35",
+          "X3M_HDR_TONEMAP": "identity",
+          "X3M_HDR_WHITE_TARGET": "0.9",
+          "X3M_LOADING_PROBES": "0",
+          "X3M_MESH_ADJACENCY": "native",
+          "X3M_MESH_ADJACENCY_DUMP": "0",
+          "X3M_MESH_CACHE": "0",
+          "X3M_MOTION_CAPTURE": "0",
+          "X3M_MOTION_JITTER": "0",
+          "X3M_MOTION_OUTPUT": "0",
+          "X3M_MOTION_RT_MODE": "perdraw",
+          "X3M_OBJECT_LIFETIME": "0",
+          "X3M_OBJECT_TRACE": "0",
+          "X3M_OWNERSHIP": "0",
+          "X3M_PROFILE": "0",
+          "X3M_PROFILE_INTERVAL_US": "2000",
+          "X3M_RESOURCE_READ": "native",
+          "X3M_SCENE_DEPTH_CAPTURE": "0",
+          "X3M_SCENE_HOOK": "0",
+          "X3M_STATE_SHADOW": "1",
+          "X3M_TAA": "0",
+          "X3M_TAA_DEBUG": "0",
+          "X3M_TAA_SENTINEL": "auto",
+          "X3M_TELEMETRY": "1"
+        }
+      }
+    },
+    {
+      "mode": "vanilla",
+      "command": [
+        "/Library/Developer/CommandLineTools/usr/bin/python3",
+        "tools/manage.py",
+        "launch",
+        "--bottle",
+        "X3",
+        "--direct",
+        "--camera",
+        "vanilla",
+        "--telemetry",
+        "--dry-run"
+      ],
+      "output": {
+        "command": [
+          "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+          "--bottle",
+          "X3",
+          "--no-update",
+          "--dll",
+          "d3d9=n,b",
+          "--workdir",
+          "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+          "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+          "-noabout",
+          "-skipintro",
+          "-runinbg"
+        ],
+        "cwd": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+        "env": {
+          "X3M_BOTTLE": "X3",
+          "X3M_CAMERA": "vanilla",
+          "X3M_CAMERA_CUT_DEG": "20.0",
+          "X3M_CAMERA_LOG": "300",
+          "X3M_CAPTURE_FRAMES": "1",
+          "X3M_CAPTURE_START": "120",
+          "X3M_CHASE_COMBAT_TIGHTNESS": "0.0",
+          "X3M_CHASE_SCENE_FIX": "0",
+          "X3M_CRYPT_CACHE": "0",
+          "X3M_DAT_HANDLES": "0",
+          "X3M_DEPTH_COPY": "0",
+          "X3M_FINITE_POSITIONS": "0",
+          "X3M_FIXTURE_BOTTLE": "X3",
+          "X3M_GZ_BUFFER": "0",
+          "X3M_GZ_BUFFER_KB": "256",
+          "X3M_HDR": "0",
+          "X3M_HDR_CLAMP": "0.0",
+          "X3M_HDR_DECODE": "gamma2.2",
+          "X3M_HDR_EV": "0.0",
+          "X3M_HDR_EV_DEADBAND": "0.25",
+          "X3M_HDR_EV_MANUAL": "",
+          "X3M_HDR_EV_MAX": "2.0",
+          "X3M_HDR_EV_MIN": "-3.0",
+          "X3M_HDR_KEY_PULL": "0.25",
+          "X3M_HDR_LOOK": "none",
+          "X3M_HDR_METER_BG": "0.001953125",
+          "X3M_HDR_METER_EDGE_WEIGHT": "0.35",
+          "X3M_HDR_TONEMAP": "identity",
+          "X3M_HDR_WHITE_TARGET": "0.9",
+          "X3M_LOADING_PROBES": "0",
+          "X3M_MESH_ADJACENCY": "native",
+          "X3M_MESH_ADJACENCY_DUMP": "0",
+          "X3M_MESH_CACHE": "0",
+          "X3M_MOTION_CAPTURE": "0",
+          "X3M_MOTION_JITTER": "0",
+          "X3M_MOTION_OUTPUT": "0",
+          "X3M_MOTION_RT_MODE": "perdraw",
+          "X3M_OBJECT_LIFETIME": "0",
+          "X3M_OBJECT_TRACE": "0",
+          "X3M_OWNERSHIP": "0",
+          "X3M_PROFILE": "0",
+          "X3M_PROFILE_INTERVAL_US": "2000",
+          "X3M_RESOURCE_READ": "native",
+          "X3M_SCENE_DEPTH_CAPTURE": "0",
+          "X3M_SCENE_HOOK": "0",
+          "X3M_STATE_SHADOW": "1",
+          "X3M_TAA": "0",
+          "X3M_TAA_DEBUG": "0",
+          "X3M_TAA_SENTINEL": "auto",
+          "X3M_TELEMETRY": "1"
+        }
+      }
+    }
+  ],
+  "game_guard": []
+}

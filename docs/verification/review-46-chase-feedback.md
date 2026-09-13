@@ -2,8 +2,8 @@
 
 Independent source review of the correction prompted by the first user flight.
 The reviewed source is based on `09f835c`; the camera remains opt-in and the
-installed DLL is unchanged while qualification runs. No high or medium finding
-remains open.
+installed DLL remained unchanged while qualification ran. No high or medium
+finding remains open.
 
 ## Reviewed result
 
@@ -133,20 +133,38 @@ load and the normal and exception restores. The terminal audit records the
 correct invariant. Neither bookkeeping correction caused a production change,
 build rerun or runtime rerun.
 
-**Verdict:** the reviewed source and exact candidate are ready for the source
-checkpoint and guarded installation. This qualifies synthetic and proxy-load
-behavior; it does not establish live handler writes, camera appearance or game
-performance.
+**Qualification verdict:** the reviewed source and exact candidate were ready
+for the source checkpoint and guarded installation. This qualifies synthetic
+and proxy-load behavior; it does not establish live handler writes, camera
+appearance or game performance.
 
 ## Remaining acceptance
 
-X3 binary/runtime qualification is complete; the candidate is not yet committed
-or installed. The host suite does not execute the live production handler
+X3 binary/runtime qualification and guarded installation are complete at source
+checkpoint `0c642df`. The host suite does not execute the live production handler
 against game cockpit memory. It establishes the corrected selection and
 numerical mechanism on synthetic inputs, not the domain separation present in
 the user's first flight.
-Native Windows runtime behavior is also untested. The corrected DLL still needs
-the source/evidence checkpoint and installation audit, followed by
+Native Windows runtime behavior is also untested. The corrected DLL now needs
 the user-managed straight-flight, gentle-turn and settle check with telemetry.
 That run must decide whether trembling is fixed, whether 0.45 gives the intended
 bottom-centre framing, and what the handler costs in the game.
+
+## Installation checkpoint
+
+Source/evidence checkpoint `0c642df` installed the exact qualified DLL in bottle
+X3. The [installation record](../../verification/results/chase-feedback-install.json)
+has SHA-256
+`c7d0651ab0860d074b32b15f323f6ac343d9e38c1e4d26bcbdfc02f42f10ab9a`
+and binds the qualified summary above to installed/build DLL SHA-256
+`16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01`
+(11,606,225 bytes). The app-local manifest matches those bytes. `X3AP.exe`
+remains `fdbf3418…f8ab` and `cxbottle.conf` remains `cc5d6c00…e0c`.
+
+Independent post-install review also checked rollback provenance
+`2385856f…bb3b`: the prior `47f1452e…27ad` DLL, prior manifest, executable and
+configuration copies all match their recorded hashes and sizes. Replaying the
+recorded chase and vanilla telemetry commands with `--dry-run` reproduced both
+command/environment objects exactly, including X3 for the game and fixture
+bottle; chase uses the compiled 0.45 framing default without an environment
+override. `game_guard` remained clear and no game was launched.

@@ -18,41 +18,36 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-Current work: reviews 30–35 are complete. The existing chase-camera prototype
-`7f4b251` was merged, reviewed and fixed, then qualified with all 18 runtime
-suites, 907 host tests, 42 camera/site tests and 21 refreshed-result controls.
-**Current install:** qualification merge `2e5f1af`, DLL SHA-256
-`47f1452e09351bb306d0c5225134665aa9bf7c8cc5c46609fa67604db82027ad`
-(11,587,494 bytes). The final audit matched 41 objects, 144 motion-source
-hashes, 17 exports and 211 no-x87 boundary functions with zero violations.
-See [review 35](verification/review-35-chase-integration.md) and the
-[qualification summary](../verification/results/chase-integration-summary.json).
+Current work: the initial chase integration `2e5f1af` passed the full eighteen-suite
+chain. The first-flight correction is now reviewed, qualified on X3 and installed.
+**Current install:** source checkpoint `0c642df`, DLL SHA-256
+`16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01`
+(11,606,225 bytes). Qualification passed 972 host tests, the focused 45
+camera/site tests, nine installed-EXE checks, the x86 camera controls and two X3
+DLL-load cases. The final audit matched 41 objects, 17 exports, all 192 existing
+imports, and 211 no-x87 boundary functions with zero violations. See
+[review 46](verification/review-46-chase-feedback.md) and the
+[qualification summary](../verification/results/chase-feedback-summary.json).
 
 The camera is vanilla by default; only `--camera chase` enables it. The
 [first user flight](verification/chase-first-run.md) confirms the hook applied
 5,871 frames, but the user reports subtle placement and trembling in flight.
-Telemetry and TAA were off. The disassembly-backed native position-selection
-fix and lower default framing passed independent source review and 45 focused
-host/site tests. The clean candidate also passes all 972 host tests, X3 x86
-camera controls and X3 DLL load checks. Artifact review passes; installation
-of candidate `16d016d2…de01` is next.
-Their gameplay acceptance remains
-pending, alongside menu behavior, aim alignment, view-transition/TAA cuts,
-resolution changes and frame cost. Aggregate handler
-timing is now available with telemetry; it is not a measured FPS result.
+Telemetry and TAA were off. The installed correction follows the game's native
+position selection, lowers default framing to `offset_y=0.45`, corrects the
+optional scene adjustment and adds bounded domain/clamp diagnostics. Visual
+acceptance remains pending, alongside menu behavior, aim alignment,
+view-transition/TAA cuts, resolution changes and frame cost. Aggregate handler
+timing is available with telemetry; it is not a measured FPS result.
 The user's [controlled run plan](verification/next-runs-2026-09-13.md) includes
 the thirteen camera checks. Reader 2a remains the next loading test after
 accepted crypto run 17; reader, adjacency and exposure game acceptance remain
 pending. The agent never launches the game. Native Windows remains untested.
 
 Installation matches the qualified DLL and app-local manifest. X3AP.exe and
-cxbottle.conf are unchanged; eleven launch variants passed post-install
-`--dry-run`, including the chase/TAA diagnostic with `--camera-log 1`.
-Independent post-install review reproduced all eleven command/environment records
-and verified the installed and preserved files. The previous DLL `ae2482fd…b193`
-and manifest are retained for rollback in the
-local directory recorded by
-[chase-install-20260913.json](../verification/results/chase-install-20260913.json).
+cxbottle.conf are unchanged; the chase and vanilla telemetry launch variants
+passed post-install `--dry-run`. The previous DLL `47f1452e…27ad` and manifest
+are retained for rollback in the local directory recorded by
+[chase-feedback-install.json](../verification/results/chase-feedback-install.json).
 Older entries below are historical and do not override this installed state.
 
 The [run-16 offline comparison](verification/run16-exposure-baseline.md) recovers
@@ -143,7 +138,8 @@ The [embedded production shader bundle](verification/review-47-bloom-programs.md
 is also reviewed and reproduced by a native nine-program `--check`: 28,188
 bytes, maximum 362 SM3 slots, with all 50 watched inputs unchanged. The rejected
 597-slot fused diagnostic is excluded. The bundle remains unlinked.
-No integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
+No integrated bloom or new bloom game evidence is claimed; the camera build
+above contains no integrated bloom.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)
 

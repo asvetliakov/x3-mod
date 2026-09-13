@@ -115,8 +115,10 @@ nonzero-motion control. A projection test checks the 72.5% anchor framing.
 
 The trampoline, four-byte incoming-stack contract and CPU-state boundary are
 unchanged. Host tests do not execute the live game handler or establish native
-Windows runtime behavior. The corrected DLL requires fresh cross-compilation,
-independent review and qualification before installation and user acceptance.
+Windows runtime behavior. The corrected DLL passed fresh cross-compilation, independent review and
+X3 qualification and is installed at `0c642df`; see
+[review 46](../verification/review-46-chase-feedback.md). Visual acceptance
+remains for the user-managed corrected flight.
 
 ## Local evidence and reproduction
 

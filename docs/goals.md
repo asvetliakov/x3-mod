@@ -24,7 +24,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All are installed; run 17 accepts the crypto path on X3 (844-check probe 12.835 → 0.1353 s). Reader/adjacency acceptance remains. The 27.574 s save gap is not a controlled cache A/B. Diagnostic timings are not uninstrumented game FPS. |
 | 15 | macOS menu bar | Not started. Also track the separate game/macOS double cursor after alt-tab; first compare with vanilla. |
 | 16 | Clustered forward lighting | Not started. Material and light reconstruction precede implementation. |
-| 17 | Modern third-person chase camera | **In progress:** existing prototype `7f4b251` integrated and reviewed/fixed; full 18-suite chain, 907 host tests and camera/site checks passed. Installed at `2e5f1af`; [first flight](verification/chase-first-run.md) confirms activation but reports subtle placement and trembling. Native position-selection correction and lower framing passed source review and 45 host/site tests; X3 camera/load checks and 972 host tests pass; artifact review passes; installation and fixed-build game acceptance remain pending. Engine external-back-view replacement, default vanilla; menu behavior, aiming, cuts, reset survival and frame cost require acceptance. |
+| 17 | Modern third-person chase camera | **In progress:** existing prototype `7f4b251` integrated and reviewed/fixed; full 18-suite chain, 907 host tests and camera/site checks passed. Initially installed at `2e5f1af`; [first flight](verification/chase-first-run.md) confirms activation but reports subtle placement and trembling. Native position-selection correction and lower framing are reviewed, qualified by 972 host tests and X3 camera/load checks, and installed at `0c642df`. Fixed-build game acceptance remains pending. Engine external-back-view replacement, default vanilla; menu behavior, aiming, cuts, reset survival and frame cost require acceptance. |
 
 Evidence: [iteration 13](verification/iteration-13.md),
 [HDR scene path](verification/hdr-scene-path.md),
@@ -60,8 +60,8 @@ they are not a measured final-image baseline.
 5. Existing chase-camera prototype `7f4b251` is integrated, reviewed/fixed and
    qualified by the full regression chain and camera host/site checks. Installed
    at `2e5f1af`; the first flight confirmed activation and exposed placement and
-   trembling issues. Finish X3 qualification and install the native position-selection
-   fix and lower framing before requesting the telemetry rerun. Complete the
+   trembling issues. The native position-selection fix and lower framing are now
+   reviewed, X3-qualified and installed at `0c642df`; obtain the telemetry rerun. Complete the
    architecture review’s thirteen acceptance checks separately.
    Tune only from user impressions; combat tightness and optional scene fix
    remain disabled pending evidence.
