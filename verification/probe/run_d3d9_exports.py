@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Export-table and log-directory runner (W1 and W3 of the native-Windows audit).
 
-Builds the proxy (cmake, incremental) and verification/probe/d3d9_exports_fixture.cpp,
-then runs the fixture twice under CrossOver Preview with the proxy next to it
+Consumes an explicitly selected, already qualified proxy (`--dll PATH`), builds
+only verification/probe/d3d9_exports_fixture.cpp, and runs the fixture under
+CrossOver Preview with that proxy next to it
 (`--dll d3d9=n,b`): once in a writable directory, where the fixture must
 resolve all seventeen system d3d9 export names on the proxy, call the
 forwarded and the fallback entry points with the documented results and the
@@ -13,7 +14,10 @@ read-only, where the proxy must fall back to
 nothing in the read-only directory. Host-side: verification/analysis/
 test_d3d9_exports.py parses the export directory from the file.
 Run through verification/probe/wine_lock.py; the game must be down.
+`--case writable` selects one load smoke; `--case both` (the default) retains
+the writable/read-only log-path checks. This runner never builds production.
 """
+import argparse
 import datetime
 import hashlib
 import json
@@ -37,15 +41,10 @@ import pe_exports  # noqa: E402
 BUILD = ROOT / 'verification/probe/build'
 RESULTS = bottle.results_dir(ROOT)
 EXE = BUILD / 'd3d9_exports_fixture.exe'
-DLL = ROOT / 'build/d3d9.dll'
 WINE = Path(bottle.WINE)
-SOURCES = ['src/proxy/loader.cpp', 'src/proxy/d3d9.def', 'src/proxy/capture.cpp', 'verification/probe/d3d9_exports_fixture.cpp',
-           'verification/probe/build_d3d9_exports.sh', 'verification/probe/run_d3d9_exports.py', 'tools/analysis/pe_exports.py',
-           'CMakeLists.txt', 'cmake/mingw-i686.cmake']
-# The real DLL links every production module, including the opt-in chase camera.
-SOURCES = sorted(set(SOURCES) | {str(p.relative_to(ROOT))
-    for folder in ('src/proxy', 'src/renderer', 'src/ownership', 'src/temporal')
-    for p in (ROOT / folder).glob('*') if p.suffix in ('.cpp', '.h', '.hlsl', '.def')})
+SOURCES = ['verification/probe/d3d9_exports_fixture.cpp',
+           'verification/probe/build_d3d9_exports.sh', 'verification/probe/run_d3d9_exports.py',
+           'verification/probe/bottle.py', 'verification/probe/game_guard.py', 'tools/analysis/pe_exports.py']
 
 
 def sha(path):
@@ -69,11 +68,12 @@ def windows_to_bottle(path):
     return link.resolve() / rest
 
 
-def run_case(name, readonly, report):
+def run_case(name, readonly, report, dll, dll_sha256):
     directory = BUILD / f'd3d9-exports-{name}-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")}'
     directory.mkdir(parents=True)
     shutil.copy(EXE, directory)
-    shutil.copy(DLL, directory / 'd3d9.dll')
+    shutil.copy(dll, directory / 'd3d9.dll')
+    assert sha(directory / 'd3d9.dll') == dll_sha256, 'Selected DLL changed before fixture execution'
     started = time.time()
     if readonly:
         directory.chmod(stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
@@ -144,30 +144,45 @@ def run_case(name, readonly, report):
     return result
 
 
-def main():
-    RESULTS.mkdir(exist_ok=True)
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--dll', required=True, type=Path, help='already qualified proxy DLL; never rebuilt here')
+    parser.add_argument('--case', choices=('writable', 'readonly', 'both'), default='both',
+                        help='one load smoke or both log-path cases (default: both)')
+    args = parser.parse_args(argv)
+    args.dll = args.dll.expanduser().resolve()
+    if not args.dll.is_file():
+        parser.error(f'DLL does not exist: {args.dll}')
+    return args
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    RESULTS.mkdir(parents=True, exist_ok=True)
     summary_path = RESULTS / 'd3d9-exports-summary.json'
     report_path = RESULTS / 'd3d9-exports.txt'
     result = {'passed': False, 'status': 'RUNNING', 'game_launched': False, 'bottle': bottle.describe(),
-              'scope': 'The proxy DLL export table (17 system d3d9 names) resolved and called from a console fixture under CrossOver Preview: forwarded entry points, the naked forwarders\' ret-N fallbacks where the backend lacks the export, and the session-log directory fallback to %LOCALAPPDATA% from a read-only game directory. Not a native-Windows run.',
-              'cases': {}}
+              'scope': 'Selected console-fixture cases under CrossOver Preview: 17 D3D9 exports, forwarded entry points and ret-N fallbacks; the readonly case additionally checks the %LOCALAPPDATA% session-log fallback. Not a native-Windows run.',
+              'selected_case': args.case, 'dll_path': str(args.dll), 'cases': {}}
     save = lambda: summary_path.write_text(json.dumps(result, indent=2) + '\n')
     save()
     report = []
     try:
         assert game_running() == [], 'X3AP running or process inventory failed; postpone'
         assert WINE.is_file(), 'CrossOver Preview Wine missing'
-        result['sources_before_build'] = {s: sha(ROOT / s) for s in SOURCES}
-        with (RESULTS / 'd3d9-exports-build.log').open('w') as out:
-            subprocess.run(['cmake', '--build', 'build', '-j4'], cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT)
-            subprocess.run(['sh', 'verification/probe/build_d3d9_exports.sh'], cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT)
-        result['binaries'] = {str(p.relative_to(ROOT)): sha(p) for p in (EXE, DLL)}
-        table = pe_exports.parse(DLL)
+        result['dll_sha256'] = sha(args.dll)
+        table = pe_exports.parse(args.dll)
         assert table['names'] == sorted(pe_exports.SYSTEM_D3D9_EXPORTS), table['names']
         result['export_directory'] = table
-        result['cases']['writable'] = run_case('writable', False, report)
-        save()
-        result['cases']['readonly'] = run_case('readonly', True, report)
+        result['sources_before_build'] = {s: sha(ROOT / s) for s in SOURCES}
+        with (RESULTS / 'd3d9-exports-build.log').open('w') as out:
+            subprocess.run(['sh', 'verification/probe/build_d3d9_exports.sh'], cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT)
+        result['binaries'] = {str(p): sha(p) for p in (EXE, args.dll)}
+        assert result['binaries'][str(args.dll)] == result['dll_sha256'], 'Selected DLL changed during fixture build'
+        for name in (('writable', 'readonly') if args.case == 'both' else (args.case,)):
+            result['cases'][name] = run_case(name, name == 'readonly', report, args.dll, result['dll_sha256'])
+            save()
+        assert sha(args.dll) == result['dll_sha256'], 'Selected DLL changed during the run'
         assert {s: sha(ROOT / s) for s in SOURCES} == result['sources_before_build'], 'Sources changed during the run'
         result['limits'] = ['Wine backend: three of the four naked forwarders reach Wine spec stubs and are resolved but not called; Direct3D9EnableMaximizedWindowedModeShim exercises the fallback path.',
                             'The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.',

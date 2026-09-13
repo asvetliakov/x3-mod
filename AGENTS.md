@@ -1,7 +1,12 @@
 # Project instructions and session continuity
 
-Read `docs/status.md`, `docs/user-objective.md`, and the architecture/reverse-engineering
-notes before continuing. This is X3: Albion Prelude, x86, in the X3 bottle of
+The orchestrator reads `docs/status.md`, `docs/user-objective.md`, and the relevant
+architecture/reverse-engineering notes when resuming the project. Secondary
+agents read these binding instructions, the short current status, and the files
+needed for their assigned task; their brief supplies the relevant objective.
+Do not load historical status/review archives or the entire conversation for a
+bounded subtask unless a specific unresolved question requires them.
+This is X3: Albion Prelude, x86, in the X3 bottle of
 **CrossOver Preview.app**, not CrossOver.app. The game executable is
 `~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe`.
 Use X3 for new fixture runs as well as gameplay. Legacy runners still default
@@ -97,6 +102,54 @@ Context discipline for agents (added 2026-09-12):
   file contents. The main session keeps architecture decisions; subagents keep
   the bulk reading.
 
+Proportional verification and evidence (user-requested workflow simplification,
+2026-09-13; rationale in `docs/verification/workflow-audit-2026-09-13.md`):
+
+- Small changes: review the delta and run only affected tests/compilation. A
+  default, CLI or prose edit does not require a full suite, Wine run, whole-tree
+  manifest or new artifact review. Documentation-only changes need ordinary
+  factual/link review, not a separate code reviewer.
+- Hooks/ABI/lifetime/GPU changes: retain checks for the actual failure modes—
+  instruction boundaries, CPU/LastError preservation, rollback, native parity,
+  state/Reset/recovery and relevant performance. Reuse unchanged evidence; do
+  not rerun unrelated fixtures or an included focused suite after full discovery.
+- Use one reviewer for the logical code change and its evidence when practical.
+  Fix findings and rerun affected checks; do not create separate routine source,
+  artifact and post-install review rounds. Escalate an actual mismatch or an
+  unresolved concern rather than adding checks to every checkpoint.
+- For an install candidate, one owner makes one clean build from reviewed
+  production inputs and retains that DLL. Runners must not rebuild it implicitly.
+  Select integration tests by changed dependencies; reserve full-project chains
+  for shared infrastructure changes or deliberate release checkpoints. No
+  benchmark or broad regression rerun without a relevant change or open concern.
+- Bind the candidate to its Git commit (and dirty diff if unavoidable), toolchain,
+  DLL hash and scoped test results in one compact record. Do not generate nested
+  evidence manifests, duplicate whole-tree hash maps or repeated successful
+  artifact copies. Before/after input hashes are useful for genuinely concurrent
+  uncommitted runs, not a requirement for every short command.
+- Keep one previous DLL/manifest for rollback; check installed bytes and preserve
+  EXE/bottle configuration. One affected launch `--dry-run` suffices; add vanilla
+  only when launcher/config behavior changed. Never launch the game ourselves.
+- Track compact results and useful small failure witnesses. Keep verbose logs,
+  readbacks and temporary successful/rejected copies local. Preserve existing
+  historical evidence; do not rewrite Git history as routine cleanup.
+- `docs/status.md` stays a short current handoff; history lives in linked archives.
+  Update `docs/goals.md` when goal/acceptance state changes, not for each test.
+  Update the owning architecture/verification note instead of mirroring the same
+  hash and prose across status, goals, roadmap, handoff and several new reviews.
+- Keep one Wine queue/lease owner. A focused agent returns findings and paths;
+  it must not create a parallel global qualification or rebuild shared artifacts
+  owned by another task. Record simple command/lock timings when available; do
+  not infer agent effort from overlapping timestamp spans.
+
+Canonical full host-test command, only when that scope is justified:
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'
+```
+
+For focused checks, use the same `PYTHONPATH` with the selected unittest modules.
+
 Test coordination (added 2026-09-12):
 
 - The game now lives in the CrossOver bottle `X3` (`WineArch = arm64`: CrossOver
@@ -112,8 +165,10 @@ Test coordination (added 2026-09-12):
   `verification/results/bottle-<name>/`, and every summary records the bottle
   name, WineArch and the two emulation environment lines. See
   `docs/verification/bottles.md` for the X3 validation record.
-- One Wine runner at a time, across all agents and the user's game: before a
-  suite, confirm `game_guard.game_running()` prints `[]` and no other
-  `verification/probe/run_*.py`, fixture `.exe` or `wine ... fixture` process
-  exists; use bounded waits of at most 60 seconds and keep the user informed
-  while waiting rather than ending the turn.
+- One Wine runner at a time, across all agents and the user's game.
+  `wine_lock.py` now checks for the game and competing project runners/fixtures
+  from one process snapshot after acquiring the lease; a failed inventory
+  refuses execution. This replaces the separate manual preflight scans.
+  Existing runner-local game guards remain as close-to-execution protection.
+  Use bounded waits of at most 60 seconds and keep the user informed while
+  waiting rather than ending the turn.

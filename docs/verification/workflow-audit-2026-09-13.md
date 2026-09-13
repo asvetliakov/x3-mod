@@ -9,6 +9,34 @@ qualification artifact was changed. The sampled camera work subsequently
 completed at source checkpoint `dac2994` with install-document checkpoint
 `02a9c2e`; completion does not change the process findings below.
 
+## Adopted changes
+
+The user authorized simplification after this audit. `AGENTS.md` now makes
+verification proportional to the changed behavior, combines routine review
+rounds, assigns one candidate owner, and removes duplicate manifests and status
+mirrors as defaults. Agent briefs carry only the relevant objective and files.
+The 103,929-byte status page was preserved verbatim in a linked history archive
+and replaced with a roughly 4 KB current handoff. No historical results or Git
+history were removed.
+
+`wine_lock.py` performs the shared process preflight under its lease and offers
+optional lock/child timing output. `run_d3d9_exports.py` requires `--dll PATH`,
+builds only its fixture, and accepts `--case writable|readonly|both`.
+Use `writable` for a selected load smoke and `both` for log-fallback verification:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll build/d3d9.dll --case writable
+```
+
+The Astra author ran 19 focused host tests. Independent orchestrator review found
+overbroad Python runner detection and optional timing-write errors overriding
+child status; both were fixed, then all 9 affected lock tests passed. A real
+host process snapshot also passed without executing Wine. Classification cost
+was about 10 ms for 647 process rows, once per lease; there is no production
+frame-path change. No full-suite, Wine or DLL rebuild was needed for these
+host orchestration changes. Other legacy runners should adopt the retained-DLL
+contract when touched; this checkpoint does not claim all runners were migrated.
+
 ## Executive finding
 
 The project is over-qualified at the workflow level. The strongest parts of the
@@ -221,11 +249,12 @@ multiple status mirrors. A setting-only camera change is this class.
 1. Start from a committed reviewed checkpoint and a clean working tree for
    production inputs. Run one clean MinGW full build. Record commit/tree,
    toolchain, candidate SHA-256 and size.
-2. Run full host discovery once. Add only dependency-selected X3 fixtures: one
-   proxy-load/default-off smoke; affected hook/ABI/GPU fixtures; a compact seam
-   integration test when a shared device/camera/lifetime path changed. Run the
-   full project fixture chain only for shared infrastructure or an intentional
-   release checkpoint.
+2. Run affected host checks; use full discovery for shared infrastructure or
+   a deliberate release checkpoint, once rather than followed by duplicate
+   focused runs. Add dependency-selected X3 fixtures: proxy-load/default-off
+   smoke for relevant loader/import/export changes; affected hook/ABI/GPU
+   fixtures; a compact integration test when a shared device/camera/lifetime
+   path changed. Reserve the full fixture chain for that broader scope.
 3. Produce one candidate summary containing commands, measured runtimes, checks,
    bottle facts, target object audits, relevant import/export delta, candidate
    hash and explicit limitations. A reviewer validates the summary and source
@@ -272,7 +301,9 @@ runtime slot. Neither wait is timed. Agent review/context cost is also
 unavailable. It would be misleading to infer either from commit gaps because
 implementation, reviews, documentation and fixtures overlapped.
 
-Every generated qualification summary should record these separately:
+Record command and lock timings when available. For an investigated delay,
+these optional fields can distinguish its causes; do not build a new accounting
+framework or require manual wait tracking for every checkpoint:
 
 - `lock_wait_seconds`: time waiting to own the Wine lease;
 - `command_seconds`: child process runtime;
