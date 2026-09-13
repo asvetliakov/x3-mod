@@ -112,7 +112,9 @@ The reviewed [distance-fade proposal](architecture/linear-distance-fade.md) uses
 one native submission, a linear blended layer, and shared reactive coverage. Its
 detached prototype passes 71 X3 cases / 257 source calls with native recovery;
 runtime admission and combined temporal-mask integration remain pending. It does
-not yet solve layered temporal accumulation. The reviewed [screen-emission proposal](architecture/screen-emission-overlap.md)
+not yet solve layered temporal accumulation. The [alpha-tested material route](architecture/alpha-tested-materials.md)
+passes the X3 advertised-capability check for FP16 color and motion/depth MRTs;
+actual cutout coverage qualification is in progress, with no production gate change. The reviewed [screen-emission proposal](architecture/screen-emission-overlap.md)
 uses four packed MRTs to preserve fragment order without replay. Its mathematical
 prototype passes 540 in-domain X3 measurements with exact native RGB/alpha;
 108 boundary rows expose range/overflow limits. Separate synchronized phase

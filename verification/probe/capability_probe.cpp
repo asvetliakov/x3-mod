@@ -20,6 +20,54 @@ static void module(const char* name) {
     if (mod) GetModuleFileNameA(mod, path, MAX_PATH);
     std::printf("module %s: %s\n", name, mod ? path : "not loaded");
 }
+// Public D3D9 feasibility only: no device/window, shaders, draws or private APIs.
+// A completed probe can report eligible=0; that is a measured refusal, not a
+// failed probe or evidence that the cutout route has been GPU-qualified.
+static bool alpha_test_caps(IDirect3D9* api) {
+    D3DADAPTER_IDENTIFIER9 id{};D3DCAPS9 caps{};D3DDISPLAYMODE mode{};
+    const HRESULT identity=api->GetAdapterIdentifier(D3DADAPTER_DEFAULT,0,&id);
+    const HRESULT capability=api->GetDeviceCaps(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,&caps);
+    const HRESULT display=api->GetAdapterDisplayMode(D3DADAPTER_DEFAULT,&mode);
+    std::printf("ALPHA_TEST_ADAPTER adapter=%u type=%u identity=%08lx caps=%08lx display=%08lx vendor=%08lx device=%08lx adapter_format=%u\n",
+        unsigned(D3DADAPTER_DEFAULT),unsigned(D3DDEVTYPE_HAL),static_cast<unsigned long>(identity),static_cast<unsigned long>(capability),
+        static_cast<unsigned long>(display),static_cast<unsigned long>(id.VendorId),static_cast<unsigned long>(id.DeviceId),unsigned(mode.Format));
+    if(FAILED(identity)||FAILED(capability)||FAILED(display)) {
+        std::puts("ALPHA_TEST_RESULT complete=0 eligible=0 formats=0 queries=0");return false;
+    }
+    constexpr DWORD required_misc=D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING |
+        D3DPMISCCAPS_INDEPENDENTWRITEMASKS | D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS;
+    const bool caps_ok=caps.NumSimultaneousRTs>=3 &&
+        (caps.PrimitiveMiscCaps&required_misc)==required_misc &&
+        (caps.AlphaCmpCaps&D3DPCMPCAPS_GREATEREQUAL) && caps.MaxVertexShaderConst>=256 &&
+        D3DSHADER_VERSION_MAJOR(caps.VertexShaderVersion)>=3 && D3DSHADER_VERSION_MAJOR(caps.PixelShaderVersion)>=3;
+    std::printf("ALPHA_TEST_CAPS mrt=%lu misc=%08lx required_misc=%08lx alpha_compare=%08lx required_compare=%08lx vs=%08lx ps=%08lx vertex_constants=%lu caps_ok=%u\n",
+        static_cast<unsigned long>(caps.NumSimultaneousRTs),static_cast<unsigned long>(caps.PrimitiveMiscCaps),static_cast<unsigned long>(required_misc),
+        static_cast<unsigned long>(caps.AlphaCmpCaps),static_cast<unsigned long>(D3DPCMPCAPS_GREATEREQUAL),static_cast<unsigned long>(caps.VertexShaderVersion),
+        static_cast<unsigned long>(caps.PixelShaderVersion),static_cast<unsigned long>(caps.MaxVertexShaderConst),unsigned(caps_ok));
+    bool formats_ok=true;
+    for(const auto format:{D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F,D3DFMT_R32F}) {
+        const HRESULT rt=api->CheckDeviceFormat(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,mode.Format,D3DUSAGE_RENDERTARGET,D3DRTYPE_TEXTURE,format);
+        const HRESULT post=api->CheckDeviceFormat(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,mode.Format,
+            D3DUSAGE_RENDERTARGET|D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,D3DRTYPE_TEXTURE,format);
+        const bool supported=SUCCEEDED(rt)&&SUCCEEDED(post);formats_ok=formats_ok&&supported;
+        std::printf("ALPHA_TEST_FORMAT format=%u rt_usage=%08lx post_usage=%08lx rt=%08lx post=%08lx supported=%u\n",unsigned(format),
+            static_cast<unsigned long>(D3DUSAGE_RENDERTARGET),static_cast<unsigned long>(D3DUSAGE_RENDERTARGET|D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING),
+            static_cast<unsigned long>(rt),static_cast<unsigned long>(post),unsigned(supported));
+    }
+    std::printf("ALPHA_TEST_RESULT complete=1 eligible=%u formats=3 queries=6\n",unsigned(caps_ok&&formats_ok));
+    return true;
+}
+static int alpha_test_caps_mode() {
+    HMODULE lib=LoadLibraryA("d3d9.dll");
+    if(!lib){std::puts("ALPHA_TEST_RESULT complete=0 eligible=0 reason=runtime");return 1;}
+    auto create=symbol<IDirect3D9* (WINAPI*)(UINT)>(lib,"Direct3DCreate9");
+    IDirect3D9* api=create?create(D3D_SDK_VERSION):nullptr;
+    if(!api){std::puts("ALPHA_TEST_RESULT complete=0 eligible=0 reason=factory");FreeLibrary(lib);return 1;}
+    module("d3d9.dll");
+    const bool complete=alpha_test_caps(api);
+    api->Release();FreeLibrary(lib);
+    return complete?0:1;
+}
 static void d3d9(HWND window) {
     HMODULE lib = LoadLibraryA("d3d9.dll");
     auto create = symbol<IDirect3D9* (WINAPI*)(UINT)>(lib,"Direct3DCreate9");
@@ -92,8 +140,10 @@ static void dx11(HWND window) {
     if(dxgi) dxgi->Release();
     context->Release();device->Release();
 }
-int main() {
+int main(int argc,char** argv) {
     std::setvbuf(stdout,nullptr,_IONBF,0);
+    if(argc==2 && !std::strcmp(argv[1],"--alpha-test-caps"))return alpha_test_caps_mode();
+    if(argc!=1){std::fputs("usage: capability_probe.exe [--alpha-test-caps]\n",stderr);return 2;}
     std::puts("X3 modern renderer capability probe (32-bit); physical HDR not validated");
     WNDCLASSA cls={};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3CapabilityProbe";RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"X3 disposable graphics capability probe",WS_OVERLAPPEDWINDOW,80,80,340,240,nullptr,nullptr,cls.hInstance,nullptr);

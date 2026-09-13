@@ -2,8 +2,14 @@
 # Independent 32-bit Windows capability probe; deliberately outside production src.
 set -eu
 cd "$(dirname "$0")"
+case "${1:-}" in
+    ""|--capability-only) ;;
+    *) echo "usage: build.sh [--capability-only]" >&2; exit 2 ;;
+esac
+[ "$#" -le 1 ] || exit 2
 mkdir -p build
-i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -static-libgcc -static-libstdc++ capability_probe.cpp -o build/capability_probe.exe -ldxguid -luser32 -lole32
+i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -static-libgcc -static-libstdc++ capability_probe.cpp -o build/capability_probe.exe -ldxguid -luser32 -lole32
+[ "${1:-}" != --capability-only ] || exit 0
 i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -static-libgcc -static-libstdc++ d3d9_smoke.cpp -o build/d3d9_smoke.exe -ldxguid -luser32
 
 # Compile-only SDK ABI assertions for production vtable interception.
