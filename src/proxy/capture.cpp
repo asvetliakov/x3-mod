@@ -26,6 +26,7 @@
 #include "../ownership/application_admission_abi.h"
 #include <array>
 #include <cstdarg>
+#include <cmath>
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -75,6 +76,8 @@ float taa_sharpen = 0.f;
 // at the frame corners for the lit statistic), X3M_HDR_DT_MS (fixed
 // adaptation step; fixtures).
 bool hdr_requested = false;
+bool linear_material_requested = false;
+x3m::renderer::LinearMaterialConfig linear_material_config{};
 bool bloom_requested = false; // X3M_HDR_BLOOM=1; opt-in AgX compositor replacement
 x3m::renderer::HdrConfig hdr_config{};
 // X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
@@ -1382,9 +1385,10 @@ HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWO
     if(SUCCEEDED(hr))ctx.motion_output.set_render_state(state,value);
     return hr;
 }
-// Mip LOD bias (X3M_TAA_MIP_BIAS, installed only with a non-zero bias): the
-// application's texture bindings and MIPFILTER/MIPMAPLODBIAS writes feed the
-// route's sampler shadow. Light boundary like the other hot setters: integer
+// Texture tracking is installed for mip bias (X3M_TAA_MIP_BIAS). Sampler
+// state tracking serves mip bias and linear materials (X3M_LINEAR_MATERIALS):
+// successful SRGBTEXTURE writes establish material admission without changing
+// sampler decoding. Light boundary like the other hot setters: integer
 // stores on both sides of the native call. The texture's level count is read
 // once per pointer change, inside the native section, from the object the
 // application just passed (valid by the call's own contract); GetLevelCount
@@ -1559,6 +1563,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // Production scene patch and immutable binding persist across devices.
     hooked.motion_output.configure_scene_hook(scene_hook::active());
     hooked.motion_output.configure_hdr(hdr_requested,hdr_config);
+    hooked.motion_output.configure_linear_materials(linear_material_requested,linear_material_config);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
@@ -1582,8 +1587,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         // mode needs the same hook with the shadow off (X3M_STATE_SHADOW=0):
         // an application write to a held write mask must flush the binding first.
         if(hooked.motion_output.state_shadow()||hooked.motion_output.lazy_rt_mode())hooked.set(57,set_render_state);
-        // Mip LOD bias: the sampler shadow's two light setter hooks (only with a non-zero bias).
-        if(hooked.motion_output.mip_bias_active()){hooked.set(65,set_texture);hooked.set(69,set_sampler_state);}
+        // Texture levels are needed only for mip bias. Material admission also
+        // needs successful sampler-state writes when mip bias is disabled.
+        if(hooked.motion_output.mip_bias_active())hooked.set(65,set_texture);
+        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested())hooked.set(69,set_sampler_state);
         // Lazy binding: the application's target and write-mask getters restore first.
         if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
         // HDR redirect: the application's GetRenderTarget(0) and its reads of
@@ -1746,6 +1753,34 @@ void initialize_log(HMODULE module) {
     meter_parameter(L"X3M_HDR_EV_DEADBAND", 0.f, 8.f, hdr_config.params.ev_deadband);
     meter_parameter(L"X3M_HDR_METER_EDGE_WEIGHT", 0.f, 1.f, hdr_config.params.meter_edge_weight);
     if(GetEnvironmentVariableW(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
+    const bool material_requested=GetEnvironmentVariableW(L"X3M_LINEAR_MATERIALS",setting,32)==1 && setting[0]==L'1';
+    linear_material_config=x3m::renderer::LinearMaterialConfig{};
+    bool material_config_valid=true;
+    const auto material_gain = [&](const wchar_t* name,float& output) {
+        SetLastError(ERROR_SUCCESS);
+        const DWORD length=GetEnvironmentVariableW(name,setting,32);
+        if(!length && GetLastError()==ERROR_ENVVAR_NOT_FOUND)return;
+        if(!length || length>=32){material_config_valid=false;return;}
+        wchar_t* end=nullptr;
+        const float value=wcstof(setting,&end);
+        if(end==setting || *end || !std::isfinite(value) || value<0.f || value>16.f){material_config_valid=false;return;}
+        output=value;
+    };
+    material_gain(L"X3M_MATERIAL_DIRECT_GAIN",linear_material_config.direct_gain);
+    material_gain(L"X3M_MATERIAL_EMISSIVE_GAIN",linear_material_config.material_emissive_gain);
+    material_gain(L"X3M_LIGHTMAP_EMISSIVE_GAIN",linear_material_config.lightmap_emissive_gain);
+    // Unlike the legacy decoder's permissive aliases, an explicit unknown or
+    // truncated decode setting cannot authorize the material color contract.
+    const DWORD material_decode_length=GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32);
+    const bool material_decode_valid=material_decode_length<32 && (!material_decode_length || !wcscmp(setting,L"gamma2.2") || !wcscmp(setting,L"pow22") || !wcscmp(setting,L"gamma"));
+    const DWORD material_tonemap_length=GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32);
+    const bool material_tonemap_valid=material_tonemap_length>0 && material_tonemap_length<32 && (!wcscmp(setting,L"agx") || !wcscmp(setting,L"1"));
+    linear_material_requested=material_requested && material_config_valid && material_decode_valid && material_tonemap_valid && motion_output_requested && hdr_requested
+        && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
+    if(material_requested)
+        log("linear_material_mode requested=1 enabled=%u config_valid=%u decode_valid=%u tonemap_valid=%u direct_gain=%g material_emissive_gain=%g lightmap_emissive_gain=%g",
+            linear_material_requested,material_config_valid,material_decode_valid,material_tonemap_valid,double(linear_material_config.direct_gain),
+            double(linear_material_config.material_emissive_gain),double(linear_material_config.lightmap_emissive_gain));
     bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");

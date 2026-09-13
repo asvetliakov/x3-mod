@@ -1,6 +1,6 @@
 # First scene-linear material slice
 
-Design and offline-proof checkpoint, 2026-09-13; **no live material change installed**. This plan
+Implementation qualification, 2026-09-13; **no live material change installed yet**. This work
 follows the installed bloom checkpoint. The current FP16 target contains the
 game's gamma-space lighting; `material_radiance` only removes selected upper
 clamps. Neither operation evaluates lighting in linear space.
@@ -90,7 +90,7 @@ inferred C types; only the observed float-field copies are used here. Local
 output is `/tmp/x3-scene-linear-material-parameters.txt`, with its headless log
 alongside it. No game code, shader bytes or decompiler output belongs in Git.
 
-## Proposed color and material contract
+## Color and material contract
 
 Start with an explicit gamma-2.2 legacy input convention matching the current
 HDR decoder. It is a declared conversion of legacy assets, not evidence that
@@ -305,23 +305,26 @@ fixture timings are diagnostic; they do not establish game FPS.
 After a reviewed candidate exists, one user-launched capture can resolve actual
 material usage and value ranges, whether the scene visibly exercises the
 emissive inputs, image balance, covered/uncovered boundaries, temporal stability
-and game frame cost. Batch per-profile route/fallback counts, light counts,
-sampled constant-range summaries and existing exposure/bloom timings into that
-build. Use a hull with visible emissive panels, near/far views and a firing or
+and game frame cost. Use the consolidated diagnostics already available: creation results identify
+original programs, per-frame material counters report routes/refusals/bind
+failures, first refusals identify the original pair and reason, and F8 captures
+provide per-draw shader identities and original constants for light-count and
+range analysis. Existing exposure/bloom timings remain available. Use a hull with visible emissive panels, near/far views and a firing or
 active-light event, with a fixed-EV A/B before automatic exposure/bloom tuning.
 No claim that all 10 pairings were exercised should follow from visiting one
 scene. Existing menu/window behavior is not changed by this slice.
 
-## Design review and next implementation gate
+## Offline design review
 
 Independent Sol/high review identified shared-stage fallback, sampler decode,
 COLOR0 partial precision, alpha-lane and domain hazards. The decisions above
 resolve the routing, precision and constant-lifetime design points. The
 [derived original-site profiles](../reverse-engineering/linear-material-profiles.json)
-bind the nine source programs and available resources; they do not yet prove
-a replacement shader. The bounded numerical policy has also been reviewed.
-Before enabling a variant, qualify its emitted bytecode, alpha/temporal
-invariants, numerical behavior and GPU cost. No material-enabled user run is ready at this checkpoint.
+bind the nine source programs and available resources; by themselves they do
+not prove a replacement shader. The bounded numerical policy has also been reviewed.
+The emitted bytecode, alpha/temporal invariants, numerical behavior and GPU
+cost are qualified separately below. No material-enabled user run is ready
+until the live integration gate and installation are complete.
 
 The offline checkpoint passed independent Sol/high review with no open
 findings: 15 original-site proof tests and 18 analytical-reference tests,
@@ -331,4 +334,63 @@ all six pixel contracts and both point-light forms; its optional half-source
 mode covers sampled/varying endpoints, not every legacy partial-precision
 intermediate. Geometry singularities are outside its analytic domain. These
 checks qualify offline preparation, not emitted shader execution or game
-appearance. Combined shader implementation is the next checkpoint.
+appearance. The implementation qualification below extends this evidence.
+
+
+## Implementation and qualification
+
+`linear_material.cpp` creates combined variants from immutable original game
+programs. It first invokes the unchanged motion transformer, checks the copied
+original spans, then inserts only the reviewed material edits while preserving
+the temporal insertions. Failed validation leaves the output untouched. The
+live route caches combined shaders alongside the existing motion-only objects;
+it does not replace a shared vertex shader's ordinary temporal fallback.
+
+The feature is opt-in with `--linear-materials`, requiring `--motion-output
+--hdr --hdr-tonemap` and gamma-2.2 decode. Three independent process-start gains
+are finite values in [0, 16], default 1:
+
+| CLI setting | Environment | Meaning |
+| --- | --- | --- |
+| `--material-direct-gain` | `X3M_MATERIAL_DIRECT_GAIN` | Strength of decoded directional and point lights |
+| `--material-emissive-gain` | `X3M_MATERIAL_EMISSIVE_GAIN` | Multiplier on the game's already-scaled material emissive |
+| `--lightmap-emissive-gain` | `X3M_LIGHTMAP_EMISSIVE_GAIN` | Strength of the separate decoded s2 RGB contribution |
+
+Malformed gains or incompatible configuration disable the material feature.
+The gains are shader-local definitions, fixed for the device's lifetime; Reset
+retains them. No extra application constant uploads are needed. Sampler decode
+state is cached at attach, Reset and state-block boundaries and updated by
+successful setters. Admission performs no new per-draw COM reads, allocation,
+shader hashing or bytecode validation. Combined-stage bind failure restores the
+original pair before one ordinary temporal retry; a later shared constants/MRT
+failure retains the existing original-draw fallback.
+
+The independent structural fixture checks 72 depth/gain variants with 749 C++
+assertions and four host tests, including byte-exact reconstruction of original
+alpha/position and temporal edits. Maximum weighted instruction slots are VS 77
+and PS 164 (SM3 limit 512). One host diagnostic created all 72 variants in
+1.56 ms total; this is creation work, not a per-frame or gameplay measurement.
+
+The detached [D3D9 GPU fixture](../../verification/results/bottle-X3/linear-material-gpu.json)
+passes 167 cases and 1,503 RGB samples across all ten pairings, both face signs,
+zero/one/eight loop lights, the fixed point-light form, source isolation, gains,
+HDR range and exceptional transfer inputs. Alpha and motion match unchanged
+shaders exactly across 42,752 pixels; current depth also matches when enabled.
+All 56 shader creations succeeded. Maximum RGB error consumes 15.9% of the
+specified float/half-source envelope tolerance. The first attempt exposed a
+fixture teardown hang; releasing D3D resources before its window/runtime and
+printing the result only after cleanup produced a clean complete rerun.
+
+Fenced X3/FEX diagnostics on a 98,304-vertex grid, four draws per sample, compare
+original / motion-only / combined medians: 0 lights 0.611 / 0.740 / 0.762 ms;
+8 lights 0.608 / 0.735 / 0.738 ms. These include submission and completion and
+are neither isolated GPU timings nor a claim about game FPS. The [live integration fixture](../../verification/results/bottle-X3/linear-material-live.json)
+then passes 1,220 checks in 96 frames across eight feature/ownership/TAA twins.
+It executes the actual draw route with six admitted and six refused frames per
+enabled case. Attach/Reset sampler refresh, recorded/applied state blocks,
+shared-stage fallback, immutable gains, exact alpha and RT1/RT2 twins, and final
+zero device/factory references pass. Combined shaders add exactly two owned
+references in every corresponding case and are retired correctly. Unknown
+sampler getter failure and shader creation/bind/restore failures are qualified
+by scripted host control-flow tests, not fault-injected into this GPU script.
+Native Windows execution and gameplay appearance remain unverified.

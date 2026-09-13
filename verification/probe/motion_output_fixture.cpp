@@ -359,6 +359,7 @@ struct Fixture {
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
+    bool linearmaterials = false; // Focused live combined-route/Reset/refcount script.
     bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
     // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
     // the fixture read it (0: the DLL biases nothing, every stage must read 0).
@@ -518,7 +519,10 @@ struct Fixture {
             api(d->SetSamplerState(i, D3DSAMP_MIPFILTER, D3DTEXF_NONE), "SetSamplerState mip");
             api(d->SetSamplerState(i, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP), "SetSamplerState u");
             api(d->SetSamplerState(i, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP), "SetSamplerState v");
-            api(d->SetSamplerState(i, D3DSAMP_SRGBTEXTURE, FALSE), "SetSamplerState srgb");
+            // In the focused material script, initial attach and first Reset
+            // admission must rely on resync getters, not setter repopulation.
+            if (!(linearmaterials && (frame == 0 || frame == 10)))
+                api(d->SetSamplerState(i, D3DSAMP_SRGBTEXTURE, FALSE), "SetSamplerState srgb");
         }
     }
     void scene_states() {
@@ -1383,6 +1387,76 @@ struct Fixture {
         }
         VirtualFree(hook_code, 0, MEM_RELEASE); hook_code = nullptr; hook_fixture = nullptr;
     }
+    // ---- actual live linear-material route, sharing the original Argon VS ----
+    // All lighting is zero except a unit lightmap. Startup lightmap gain four
+    // produces encode_gamma22(4)>1 in FP16; ordinary motion produces one.
+    // This deliberately simple witness distinguishes actual combined binding
+    // from ordinary motion while the existing RT1/RT2 oracle verifies both.
+    void linear_material_inputs() {
+        const DWORD texels[] = {0xbf804020u, 0u, 0x40ffffffu};
+        for (UINT stage=0; stage<3; ++stage) {
+            D3DLOCKED_RECT lock{};api(textures[stage]->LockRect(0,&lock,nullptr,0),"material texture lock");
+            for(UINT y=0;y<2;++y)for(UINT x=0;x<2;++x)
+                std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&texels[stage],4);
+            api(textures[stage]->UnlockRect(0),"material texture unlock");
+        }
+        float zero[4]{};
+        api(d->SetVertexShaderConstantF(40,zero,1),"zero material emissive");
+        int count[4]={0,0,1,0};api(d->SetVertexShaderConstantI(0,count,1),"zero point count");
+        api(d->SetPixelShaderConstantF(5,zero,1),"zero directional zero");
+        api(d->SetPixelShaderConstantF(7,zero,1),"zero directional one");
+    }
+    void run_linear_materials(const char* shared_path) {
+        require(seam&&enabled&&hdr&&hdr_agx&&hdr_readback,"linear materials needs the HDR AgX seam");
+        char setting[32]{};
+        const bool material=GetEnvironmentVariableA("X3M_LINEAR_MATERIALS",setting,sizeof setting)==1&&setting[0]=='1';
+        require(!material || (GetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN",setting,sizeof setting)>0&&std::atof(setting)==4.),"linear material witness uses startup lightmap gain four");
+        const auto shared_words=load(shared_path);
+        require(fnv(shared_words.data(),shared_words.size()*4)==0x3b94320087e81945ull,"shared VS test uses reviewed non-material PS");
+        Com<IDirect3DPixelShader9> shared;
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(shared_words.data()),&shared.p),"CreatePixelShader shared motion-only");
+        float first[4]{};
+        for(unsigned i=0;i<12;++i) {
+            frame_begin();linear_material_inputs();write_reserved();
+            if(i>=2&&i<=5)api(d->SetSamplerState(i-2,D3DSAMP_SRGBTEXTURE,TRUE),"refuse sampler decode");
+            if(i==6||i==7) {
+                api(d->BeginStateBlock(),"material BeginStateBlock");
+                api(d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,TRUE),"record sampler decode");
+                Com<IDirect3DStateBlock9> block;api(d->EndStateBlock(&block.p),"material EndStateBlock");
+                if(i==7)api(block->Apply(),"material recorded Apply");
+            }
+            if(i==8) {
+                Com<IDirect3DStateBlock9> block;api(d->CreateStateBlock(D3DSBT_ALL,&block.p),"material capture stateblock");
+                api(d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,TRUE),"temporary sampler decode");
+                api(block->Apply(),"material restore sampler Apply");
+            }
+            const bool eligible=i<2||i==6||i==8||i>=10;
+            if(i==9)std::swap(ps.p,shared.p);
+            draw(a,0,0,0,true,true,i!=0&&i!=10);
+            if(i==9)std::swap(ps.p,shared.p);
+            unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
+            require(w==W&&h==H,"material FP16 dimensions");
+            const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
+            const double expected=material&&eligible?std::pow(4.,1./2.2):1.;
+            // Shared non-Argon color is compared to the feature-off twin by
+            // the runner; this assertion only uses the qualified Argon slice.
+            if(i!=9)for(unsigned lane=0;lane<3;++lane)
+                require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"actual material/ordinary FP16 color witness");
+            if(i==0)std::memcpy(first,center,sizeof first);
+            if(i==10||i==11)require(!std::memcmp(first,center,sizeof first),"Reset retains cached shader gains and alpha");
+            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u rgba=%.9g,%.9g,%.9g,%.9g\n",frame,material&&eligible,
+                eligible?0u:i==9?1u:4u,double(center[0]),double(center[1]),double(center[2]),double(center[3]));
+            frame_end();
+            if(i==9) {
+                api(SetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN","16")?S_OK:E_FAIL,"change environment after attach");
+                reset();
+            }
+        }
+        // The shared original must be released before the caller's final
+        // device Release. Its cached ordinary variant remains route-owned.
+        shared.reset();
+    }
+
     // ---- FP16 HDR scene path, stage 3 (X3M_HDR=1 with X3M_TAA=1) ----
     // The reference resolves the same FP16 scene the DLL resolves (the target
     // read through the seam before the boundary; the flush of the fixture's
@@ -1977,7 +2051,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa [WxH]");
+        if ((argc != 4 && argc != 5) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials [WxH|shared-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -1990,6 +2064,8 @@ int main(int argc, char** argv) {
         f.hdrfault = mode == "hdrfault";
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
         f.msaa = mode == "msaa";
+        f.linearmaterials = mode == "linearmaterials";
+        if(f.linearmaterials && argc!=5)throw std::runtime_error("linearmaterials needs a shared-PS path");
         if (f.msaa) { char samples[8]{}; f.msaa_samples = GetEnvironmentVariableA("X3M_FIXTURE_MSAA", samples, sizeof samples) > 0 ? unsigned(std::atoi(samples)) : 2u; if (f.msaa_samples < 2 || f.msaa_samples > 16) throw std::runtime_error("X3M_FIXTURE_MSAA must be 2..16"); }
         if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
         if (f.bench) {
@@ -2010,7 +2086,7 @@ int main(int argc, char** argv) {
         f.hdr_readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_hdr_fixture_readback", false);
         f.hdr_exposure = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_hdr_fixture_exposure", false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
@@ -2059,7 +2135,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.linearmaterials) f.run_linear_materials(argv[4]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

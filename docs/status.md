@@ -60,11 +60,15 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
 - Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
   accepts crypto reuse; reader verification and adjacency gameplay acceptance
   remain. Fast modes require meaningful verification, not merely fixture success.
-- [Material design and offline proof](architecture/scene-linear-materials.md)
-  passed independent review and 33 focused tests across nine original shaders
-  and ten Argon SM3 DEFAULT pairs. Targeted disassembly established native
-  color/emissive scaling. Combined shader implementation is underway; no
-  material rendering change is installed. Materials and lighting replacement precede real HDR/clustered lighting. AO,
+- [First linear material slice](architecture/scene-linear-materials.md) is
+  implemented and qualified: nine original shaders / ten Argon SM3 DEFAULT
+  pairs; 167 detached GPU cases plus 1,220 actual live-route checks across
+  ownership/TAA, Reset, state blocks and reference retirement. It remains opt-in
+  and is not installed yet; the clean candidate is approved by [review 51](verification/review-51-linear-materials.md).
+  Targeted disassembly established native color/emissive scaling. Covered
+  materials evaluate in linear light and compatibility-encode into the existing
+  FP16 target; this is not whole-scene linear blending or HDR display support.
+  Materials and lighting replacement precede real HDR/clustered lighting. AO,
   shadows, reflections, particles, volumetrics and lens effects remain on the
   [roadmap](architecture/roadmap.md). The macOS menu bar and double cursor remain
   open. Native Windows/D3D feature support is required; see

@@ -30,6 +30,7 @@
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
 #include "../renderer/hdr_pass.h"
+#include "../renderer/linear_material.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
@@ -59,6 +60,7 @@ enum class MotionGate : unsigned { None = 0, Feature = 1, Scene = 2, Pair = 3, D
 struct MotionRoute {
     MotionGate gate = MotionGate::Feature;
     bool routed = false, matched = false, scene = false;
+    bool linear_material = false; // Combined color+motion pair actually bound.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
@@ -204,6 +206,7 @@ struct MotionFrameCounters {
     bool hook_scene_end = false, bloom_copy_seen = false;
     std::uint32_t scene_end_check = 0;
     MotionHdrCounters hdr;
+    std::uint32_t material_routed = 0, material_refused = 0, material_bind_failures = 0;
     // Mip LOD bias of the routed draws (X3M_TAA_MIP_BIAS): SetSamplerState
     // calls the route issued to apply and to restore the bias this frame,
     // routed draws that had at least one biased stage, the stages biased at
@@ -365,11 +368,15 @@ public:
     // Present, before Reset and before every application call that could
     // observe the device's sampler state (the restore points of
     // restore_bindings). The application's SetTexture and SetSamplerState
-    // reach set_texture / set_sampler_state (light hooks, installed only
-    // with a non-zero bias: mip_bias_active) and feed the sampler shadow, so
+    // reach set_texture / set_sampler_state (light hooks; the sampler-state
+    // hook also serves linear material admission) and feed the sampler shadow, so
     // no GetSamplerState runs per draw; an application write of the bias
     // itself is counted and logged and its value becomes the restore value.
     // docs/architecture/temporal-integration.md, "Mip LOD bias".
+    // Opt-in combined Argon material+motion variants, configured before attach.
+    // Gains are shader-local DEFs; no application constants are modified.
+    void configure_linear_materials(bool requested, const renderer::LinearMaterialConfig& config) noexcept;
+    bool linear_materials_requested() const noexcept { return linear_material_requested_; }
     void configure_mip_bias(float bias) noexcept;
     float mip_bias() const noexcept { return mip_bias_; }
     bool mip_bias_active() const noexcept { return mip_bias_bits_ != 0 && jitter_requested_; }
@@ -507,9 +514,11 @@ public:
 
 private:
     // A program's profile row (first row of a supported class hosting it) is
-    // recorded once at registration, so per-draw work is two map lookups at
-    // SetShader time and one binary-search pair check at draw time.
+    // recorded once at registration. SetShader caches both owned variants;
+    // per-draw checks use the original pair and cached state only. The material
+    // object never replaces the ordinary motion fallback for shared stages.
     struct ShaderEntry { std::uint64_t hash = 0; IUnknown* variant = nullptr;
+                         IUnknown* material_variant = nullptr;
                          const renderer::MotionOutputProfile* row = nullptr; };
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
@@ -517,6 +526,8 @@ private:
         std::uint64_t vs_hash = 0, ps_hash = 0;
         IDirect3DVertexShader9* vs_variant = nullptr;
         IDirect3DPixelShader9* ps_variant = nullptr;
+        IDirect3DVertexShader9* vs_material_variant = nullptr;
+        IDirect3DPixelShader9* ps_material_variant = nullptr;
         const renderer::MotionOutputProfile* vs_row = nullptr;
         float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
         bool rows_known[motion_matrix_windows_max]{};
@@ -557,6 +568,10 @@ private:
     void apply_jitter(MotionRoute& route) noexcept;
     void restore_jitter(MotionRoute& route) noexcept;
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
+    // 0 eligible, 1 unreviewed pair, 2 missing combined object, 3 HDR/decode,
+    // 4 unknown or enabled sampler sRGB decode. Does not reject motion.
+    unsigned linear_material_refusal() const noexcept;
+    HRESULT bind_variant_pair(MotionRoute& route, bool material) noexcept;
     // Timed wrappers over the native SetRenderTarget/COLORWRITEENABLE calls of
     // the per-draw path and the lazy flush; each counts into counters_.set_rt.
     HRESULT bind_target(DWORD index, IDirect3DSurface9* surface) noexcept;
@@ -616,7 +631,7 @@ private:
     bool scene_bound() const noexcept;
     bool sample_scope(MotionRoute& route) noexcept;
     void observe(renderer::Event& event, HRESULT result) noexcept;
-    void undo(MotionRoute& route) noexcept;
+    HRESULT undo(MotionRoute& route) noexcept;
     renderer::SceneSignatures signatures() const noexcept;
     void readback() noexcept;
     // HDR redirect (hdr_pass.h performs the device work; the policy is here).
@@ -638,6 +653,9 @@ private:
     bool history_available_ = false, releasing_ = false;
     std::map<void*, ShaderEntry> vertex_, pixel_;
     Shadow shadow_{};
+    bool linear_material_requested_ = false;
+    renderer::LinearMaterialConfig linear_material_config_{};
+    unsigned material_refusals_logged_ = 0;
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
     UINT target_width_ = 0, target_height_ = 0;
@@ -722,6 +740,8 @@ private:
     struct SamplerShadow {
         IDirect3DBaseTexture9* texture = nullptr;
         DWORD levels = 0, mipfilter = 0, saved_bias = 0;
+        DWORD srgb = 0;
+        bool srgb_known = false;
         bool mipfilter_known = false, saved_known = false, biased = false;
     };
     static constexpr unsigned sampler_stage_count = 16;

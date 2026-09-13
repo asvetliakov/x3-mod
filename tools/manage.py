@@ -65,6 +65,10 @@ def main():
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
     parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test. Without --hdr-tonemap the write-back is the stage-1 identity copy and presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
     parser.add_argument('--hdr-tonemap', action='store_true', help='Stage 2 (X3M_HDR_TONEMAP=agx; requires --hdr): the write-back is the AgX tonemap of the FP16 scene (decode, clamp, exposure, look; alpha carried), auto exposure metered by the space-aware statistic of a log-luminance tile image reduced over the FP16 target (the black sky excluded, the lit tiles\' median mapped to the key, the brightest 1 %% of tiles held under white, EV -3..+2) and adapted on the host (tau 0.4 s up / 1.2 s down); the presented image is still LDR to the game\'s bloom and GUI, and the decode of a gamma-space scene is a documented approximation ("Stage 2 implementation"); default off: identity write-back')
+    parser.add_argument('--linear-materials', action='store_true', help='Evaluate the ten reviewed Argon material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
+    parser.add_argument('--material-direct-gain', type=float, default=None, help='Linear direct-light gain, finite 0..16, default 1 (requires --linear-materials)')
+    parser.add_argument('--material-emissive-gain', type=float, default=None, help='Linear scaled material-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
+    parser.add_argument('--lightmap-emissive-gain', type=float, default=None, help='Linear lightmap-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', help='Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; default off)')
     parser.add_argument('--hdr-decode', choices=['gamma2.2', 'pow22', 'srgb', 'none'], default='gamma2.2', help='Engine-space decode before the tonemap and the meter (X3M_HDR_DECODE; requires --hdr-tonemap): gamma2.2 (default; pow22 is the same curve), srgb, or none for the A/B against the decoded transform')
@@ -147,6 +151,14 @@ def main():
         parser.error('--hdr requires --motion-output.')
     if args.hdr_tonemap and not args.hdr:
         parser.error('--hdr-tonemap requires --hdr.')
+    if args.linear_materials and (not args.motion_output or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
+        parser.error('--linear-materials requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode.')
+    material_gains = {'X3M_MATERIAL_DIRECT_GAIN': args.material_direct_gain, 'X3M_MATERIAL_EMISSIVE_GAIN': args.material_emissive_gain,
+                      'X3M_LIGHTMAP_EMISSIVE_GAIN': args.lightmap_emissive_gain}
+    if any(value is not None for value in material_gains.values()) and not args.linear_materials:
+        parser.error('Material gains require --linear-materials.')
+    if any(value is not None and not 0.0 <= value <= 16.0 for value in material_gains.values()):
+        parser.error('Material gains must be finite and within [0, 16].')
     if args.hdr_bloom and (not args.hdr_tonemap or args.scene_hook == 'off'):
         parser.error('--hdr-bloom requires --hdr-tonemap and the scene hook.')
     if not args.hdr_tonemap and (args.hdr_look != 'none' or args.hdr_decode != 'gamma2.2' or args.hdr_ev != 0.0 or args.hdr_ev_manual is not None or args.hdr_clamp != 0.0
@@ -259,6 +271,9 @@ def main():
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
         env['X3M_SCENE_HOOK'] = '0' if args.scene_hook == 'off' or not args.motion_output else '1'
         env['X3M_HDR'] = '1' if args.hdr else '0'
+        env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
+        for name, value in material_gains.items():
+            env[name] = str(value if value is not None else 1.0)
         env['X3M_HDR_TONEMAP'] = 'agx' if args.hdr_tonemap else 'identity'
         env['X3M_HDR_BLOOM'] = '1' if args.hdr_bloom else '0'
         env['X3M_HDR_LOOK'] = args.hdr_look

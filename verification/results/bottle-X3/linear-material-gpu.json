@@ -1,0 +1,128 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "render_contract": {
+    "sampler_srgb": false,
+    "srgb_write": false,
+    "msaa": false,
+    "targets": [
+      "RGBA16F/RGBA32F",
+      "RGBA32F",
+      "R32F"
+    ]
+  },
+  "scope": "Detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof",
+  "timing_scope": "QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS",
+  "tolerance": {
+    "rgb_relative": 0.006,
+    "rgb_absolute": 2e-05,
+    "tiny_rgb_absolute": 1e-12,
+    "retained_sample_precision": "float32/binary16 reference envelope",
+    "alpha": "exact"
+  },
+  "original_sha256": {
+    "vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "ps_63f96eba9eea7880.bin": "2046f15c8d3c761508a5abf8e4b540c7d6aa8902d131f02533377e68a9bfa75b",
+    "ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+    "vs_719856ce0c213220.bin": "1aa39cbd8137cfcf9fb664451cf8c21060e0093c574889749afd8e69b17c19b9",
+    "ps_593e5dea9b3457d5.bin": "4e52664af108eddc19c13a98c8da62f539c79a1d085fbc55676e6130220907b2",
+    "ps_7a0bb00a8070496a.bin": "5b1aa3fa94f127c6b36164cb164b114e97d279007ccd882416f2d6b9cd01c8fd",
+    "ps_8d5b2ba0fb4d13bf.bin": "4f1a61cf0fb97d6328ede3e18d2b715727938062ae601e180382380a3279c4f0",
+    "ps_dab93928f26906f7.bin": "b15be08d6adc08a50c9ac756300f091c9fb1a3ec756fb65a556cc523a5166221",
+    "vs_badefd5143b3024f.bin": "bd820507d47cfc99b3c182d7a86ac91ea2812811f5f5d53be603b023bfb43448"
+  },
+  "executable_sha256": "6c3bfe04e2bb33cbb63be05815af8f4a087b67406b615f185088d9852dc176f6",
+  "raw_report": "/tmp/x3-linear-material-gpu-cleanup/report.txt",
+  "code_sha256": {
+    "src/renderer/linear_material.cpp": "68427aa221d544650bba93bf15afb9759ad9bfc8bca5181232880877c01bf10c",
+    "src/renderer/linear_material.h": "c2edcd3babd192388dada2bc03bf472ab7bfdf7f4143d50bc4da3f7ddd16a091",
+    "src/renderer/material_motion.cpp": "1a0f10a2aa6857b81475eaf2047960283c65c92c8a52b5ba196a8eeb5208dddb",
+    "src/renderer/material_motion.h": "93f0123a6a691ac2f7539f19d86b8a4c95b2db35b004643c2469b4d657370e41",
+    "src/renderer/motion_output_profiles.h": "2edaf43b60c052fd247ed15cc7dbc846e25c09c1f462d4acbb749f3a16d0c66e",
+    "src/renderer/motion_output_profiles_inc.h": "f5e3f000f363836b18e396b2360a040be78c36f87b22dae99d9ff4c8351a402e",
+    "docs/reverse-engineering/linear-material-profiles.json": "6b38f2f84846b630a8a7d6c54484b6d8d16ee41c61ed22a8402f001f0a3835aa",
+    "verification/probe/linear_material_fixture.cpp": "c90ec648bd29c73e58c48779bf8df2daf593651bf22f8c7ce935b0b76e9d838c",
+    "verification/probe/linear_material_reference.py": "49a1225f8b2d34b303ea272eb41a87592b03e25bdd46824fa1dee00134773c2c",
+    "verification/probe/run_linear_material.py": "e44097bb08d9d0fcecd338fe8e628635bab23d17ab8ed251dedc803be04a639f"
+  },
+  "exit_code": 0,
+  "cases": 167,
+  "pairs": 10,
+  "unique_originals": 9,
+  "shader_creations": 56,
+  "samples": 1503,
+  "invariant_pixels": 42752,
+  "max_rgb_envelope_error": 0.00390625,
+  "max_tolerance_fraction": 0.1589078131753646,
+  "exact_black_channels": 999,
+  "hdr_channels": 666,
+  "caps": {
+    "mrt": 4,
+    "vs_slots": 512,
+    "ps_slots": 512
+  },
+  "timings": [
+    {
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6108,
+      "min_ms": 0.6087,
+      "max_ms": 0.6384
+    },
+    {
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.74,
+      "min_ms": 0.7363,
+      "max_ms": 0.7755
+    },
+    {
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7616499999999999,
+      "min_ms": 0.7344,
+      "max_ms": 0.8085
+    },
+    {
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.60815,
+      "min_ms": 0.6018,
+      "max_ms": 0.6213
+    },
+    {
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.73515,
+      "min_ms": 0.729,
+      "max_ms": 0.7527
+    },
+    {
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7383500000000001,
+      "min_ms": 0.7281,
+      "max_ms": 0.7605
+    }
+  ],
+  "max_executable_instructions": {
+    "vs": 71,
+    "ps": 123
+  },
+  "create_total_ms": 6.329800000000005
+}

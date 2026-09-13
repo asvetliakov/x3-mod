@@ -23,20 +23,15 @@ implemented, but the source lighting is still gamma-space; neither
 scene-referred lighting nor HDR display presentation is complete. Native
 Windows source compatibility remains distinct from native runtime verification.
 
-Reviews 30–34 are complete; the crypto cache and space-aware exposure meter
-are merged, and adjacency/reader fixes are qualified. The combined DLL is
-installed with the camera integration at `2e5f1af`; obtain the controlled user runs next.
-Sharpen 0.75 / mip bias −0.5 remain
-candidate defaults until 0.75 is measured in game. HDR bloom on the FP16 target
-is the next visual feature; use the [existing glow/compositor
-map](../reverse-engineering/compositor-and-glow.md) and the reviewed
-[replacement contract](../reverse-engineering/bloom-compositor-skip.md) to avoid
-double bloom or HUD contamination. The latter supersedes the earlier one-line
-skip proposal. The [chosen initial boundary](hdr-bloom-boundary.md) runs the
-original fully before RGB replacement, avoiding the bypass residue gap while
-retaining its GPU cost. Numerical filter work is in progress; integration and
-game acceptance remain. A material pass is the prerequisite for real HDR lighting and
-emissives. Custom AgX look tuning and temporal upscaling remain candidates.
+Installed build and pending gameplay acceptance are maintained in the
+[current status](../status.md) and [brief run queue](../verification/user-runs.md).
+Bloom uses the reviewed [compositor boundary](hdr-bloom-boundary.md): the
+original runs fully before RGB replacement, preserving its state/resource
+behavior and its GPU cost. The [first material slice](scene-linear-materials.md)
+evaluates reviewed opaque materials in linear light, then compatibility-encodes
+into the existing FP16 scene. Extending that coverage and defining every other
+color writer remain prerequisites for whole-scene linear lighting. Custom AgX
+look tuning and temporal upscaling remain candidates.
 
 | Iteration | Deliverable | Acceptance gate |
 |---|---|---|
