@@ -71,6 +71,14 @@ in every case because of its cap, versus +5.66…+8 for the old rule. Actual
 post-TAA meter inputs and presented images are absent, so this is a scoped
 counterfactual, not game acceptance of the new meter or its appearance.
 
+## Workflow audit (2026-09-13)
+
+A [cross-workstream audit](verification/workflow-audit-2026-09-13.md) covers
+camera, loading, bloom and motion/TAA. It recommends focused checks and one
+candidate record, reducing repeated manifests, copies, unrelated fixture chains
+and mirrored prose. User-required review, performance, portability, Wine locking
+and reversible installation remain. No historical results were deleted.
+
 ## Fixture bottle preference (2026-09-13)
 
 New CrossOver verification uses only **X3**, per the user’s latest preference.
