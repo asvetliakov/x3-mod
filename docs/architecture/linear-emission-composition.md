@@ -241,6 +241,44 @@ propagated. Color-order barriers alone do not establish mask completeness.
 Current source coverage can conservatively survive later opaque occlusion;
 never erase it merely from an unsupported inference about effect motion.
 
+### Selected minimal reader and failure policy
+
+The source audit narrows reader observation to the logical application scene
+resource. Under the existing serialized scene-draw/state-restoration contract,
+application GetRenderTarget returns `hdr_main_`, GetBackBuffer returns the
+application surface, and GetContainer does not reveal private A/B/C. Cache the
+logical main texture identity if it has one, observe its sampler bindings even
+when mip bias is off, and refresh prebound/state-block bindings at the existing
+resynchronization points. A new global texture-descendant graph is not required.
+Existing read/copy/writeback/RT-switch/EndScene barriers must distinguish the
+qualified post-TAA compositor handoff from an unexpected earlier color export.
+
+An unexpected export after enhancement may persist in an application texture or
+CPU buffer and return later. Frame-clear alone cannot restore supplemental
+completeness. The initial exceptional policy is to stop enhancement and keep
+history unavailable until process restart, rather than silently reset this
+uncertainty next frame; a narrower recovery boundary needs evidence that exported
+data was discarded. This is an unsupported-path recovery policy, not normal
+per-frame classification. No observed engine export is newly declared safe by
+this source audit.
+
+A failed original source draw returns its exact HRESULT and is never replayed.
+B/E/coverage may be partial: do not compose C or call B a certified native
+fallback. Attempt B ownership/binding and application-state restoration only as
+best-effort continuation of possible original RT0 side effects, invalidate
+history and stop enhancement for that frame. Failed recovery blocks further
+renderer work until recovery/Reset. Successful source plus failed composition
+is different: B is then a completed native result, provided publication and
+restoration succeed.
+
+The existing capture guard serializes its hooked draw/setter paths, but ordinary
+application admission alone does not serialize all independent roots. Arbitrary
+concurrent/reentrant unguarded GetTexture calls could already observe temporary
+HDR/TAA inputs. There is no evidence X3 uses this path; this slice retains the
+existing serialized scene-thread contract and does not introduce a global lock
+framework. Such concurrent observation remains outside qualification and would
+require a bounded guarded-getter policy if supported.
+
 ### Third same-draw output: detached qualification
 
 The detached fixture now qualifies an additional constant positive RGB output
