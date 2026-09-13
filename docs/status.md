@@ -77,7 +77,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   color/coverage/cost experiment is reviewed and X3-qualified, but measured
   untouched-pixel drift and unresolved post-draw fallback rule out promoting it
   unchanged. The next architecture must preserve encoded pixels and a current
-  native result until publication; no live emission route is selected.
+  native result until publication. A same-draw native/emission MRT candidate
+  now has shader-headroom and target-ownership findings; its detached parity
+  experiment is in progress. No live emission route is selected.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.

@@ -344,3 +344,190 @@ and explicit internal target ownership are candidates to investigate before
 adding any live hook or route. Complete temporal coverage remains a separate
 requirement. The installed renderer and user run queue are unchanged by this
 experiment; no new gameplay run is requested.
+
+## Candidate: retain native output and publish an owned target
+
+This is a **detached proof candidate**, not a selected live route. Source review
+finds the internal HDR ownership compatible with a same-size target swap; GPU
+native-output parity, publication recovery, cost and complete reactive coverage
+remain gates. Shader augmentation and its exact source/fade contract require
+their own proof.
+
+Keep the current encoded scene **A** immutable during an eligible contiguous
+burst. Prepare **B** as an exact encoded copy of A and clear the linear emission
+target **E** to zero. Each original geometry submission writes its original
+encoded result and alpha into B and a separate linear emission result into E,
+using the qualified shared additive blend state. Composite into a fourth
+surface **C** from A and E, with native B supplying alpha. Where E is zero,
+preserve A's encoded RGB exactly rather than performing a decode/encode round
+trip. Selection is per RGB channel: red-only emission must also preserve the
+untouched green and blue values, qualified with asymmetric witnesses. Only a completed
+C is published; B stays available as the native result until publication
+succeeds. Finish the operation before the next original draw or other boundary;
+there is no scene-end deferral or retained-geometry replay.
+
+### Ownership and consumer evidence
+
+[HdrPass](../../src/renderer/hdr_pass.h) owns the level-zero `target_` surface.
+Resolve, writeback/readback and scene handoff obtain the current target's texture
+container when needed. Application `GetRenderTarget(0)` is virtualized to the
+logical `hdr_main_`, and application binds of that logical surface map to the
+current internal target. The relevant paths are `resolve_hdr`,
+`before_set_render_target`, `hdr_logical_render_target`, `hdr_writeback` and
+`end_redirect` in [motion_output.cpp](../../src/proxy/motion_output.cpp).
+No inspected application-visible alias requires the internal surface identity
+to remain fixed.
+
+A narrow same-size adoption operation must coordinate `HdrPass::target_`, the
+cached `MotionOutput::hdr_target_` descriptor, physical RT0, `hdr_dirty_ = true`
+and clearing borrowed `hdr_resolved_`. Logical main identity, dimensions,
+exposure/meter resources and device generation remain valid. The descriptor
+currently changes only at latch; a stale descriptor breaks logical state
+resynchronization. Resolve additionally checks physical RT0 pointer equality
+with `hdr_->target()`. Do not use `release_target()/ensure_target()` to publish:
+`release_target()` also destroys the exposure-meter chain.
+
+Publication is restricted to the active scene before TAA resolve and compositor
+handoff. `retain_compositor_scene` in [capture.cpp](../../src/proxy/capture.cpp)
+deliberately pins the handed-off texture; a pool must not recycle a pinned
+surface. Every added resource belongs in device-reference accounting and
+Reset/release cleanup, including unbinding it before release. Existing readback,
+logical-surface read/write and scene-end paths must observe whichever B or C was
+adopted, never stale A.
+
+### State and failure contract
+
+Before source submission, positively flush/unbind injected lazy motion RT1/RT2
+and restore their application write masks, then verify the saved application
+attachments and state before borrowing RT1 for E. Calling `restore_bindings()`
+alone is not a success check: it returns void and clears lazy flags even if an
+unbind or write-mask restore fails. The HDR save/restore helper
+currently saves texture/sampler stage zero only; an A/E/B composite must cover
+every additional stage it touches and unbind all source textures before
+rebinding a surface that aliases one. Transfer passes retain the explicit
+full-screen state contract above. Restore the exact original source state for
+the MRT draw and the application state after publication, including viewport,
+scissor, alpha, depth/stencil and all changed bindings. Keep injected operations
+inside the guarded original draw scope and outside application draw accounting.
+Queries, state-block recording and unresolved bindings remain refusal cases.
+
+- **Before the source draw:** allocation, copy, clear or preparation failure can
+  refuse the feature and execute the original draw against A, provided original
+  state is successfully restored. A failed restoration is not clean refusal.
+- **After successful source submission:** B contains the accepted native result
+  only once exact-copy and augmented-oC0 parity are qualified. A composition
+  failure can discard C and adopt B without replaying geometry. Existing HDR
+  fallback then reads the accepted image through the current owner.
+- **Publication or restoration failure:** retaining B is content preservation,
+  not proof that the device is using it correctly. A successful B bind and full
+  application-state restoration are required to report native recovery.
+  `HdrPass::bind()` can change RT0 and then fail viewport/scissor restoration;
+  a failed HRESULT does not imply unchanged binding. Retain B and invalidate
+  renderer state/history on unsuccessful recovery; report an incomplete frame.
+- **Failed source MRT draw:** no transaction has been established that leaves
+  both B and E unchanged. In a burst, a failing later draw can also invalidate
+  the claim that B is an exact successful-prefix image. Do not silently restore
+  A after accepted emissions or replay stale geometry. This remains an explicit
+  failure-policy gate distinct from post-draw composition failure.
+
+### Detached proof and cost gate
+
+Qualify exact A-to-B initialization; original versus augmented native B RGB and
+alpha; zero-E preservation across repeated operations; asymmetric emission and
+order witnesses; C adoption; B adoption after composition failure; failed
+binding/restoration; and repeated pool rotation and resource retirement. A
+successful source draw followed by failed composition must retain the accepted
+native content. Existing temporal-consumer evidence is reused; this candidate
+does not resolve live reactive coverage or change sentinel policy.
+
+B/E/C require three additional full-size FP16 surfaces beyond A: **24 bytes per
+pixel**, approximately **22.5 MiB at 1280x768** or **47.5 MiB at 1920x1080**, before
+mask and other resources. Pool rotation can reuse allocations but does not
+remove copy, clear or composite bandwidth. Measure the new operation against
+native draws and the existing prototype, including state handling and GPU
+completion. One two-draw burst is the observed historical per-frame case;
+16 bursts are stress-only. No geometry replay is needed for these two color
+outputs, but any separate reactive producer has its own cost and completeness
+gate. Native Windows execution and live behavior remain unverified.
+
+### Original SM2 shader headroom and parity limit
+
+Targeted inspection of all five local original PS disassemblies confirms the
+small executable bodies below. Raw programs and disassembly remain untracked
+under `/tmp/x3-shader-sweep/`; the table contains derived facts only.
+
+| Original PS | GPU arithmetic / texture slots | Source path |
+| --- | --- | --- |
+| `8360f422de08b5bd`, `9975b706e5a1c999` | 7 / 1 | Affine RGB, then interpolated fade |
+| `ff2473e73a6bdfa1` | 2 / 1 | Sampled RGB, then interpolated fade |
+| `8559522220507d5e` | 6 / 1 | Affine RGB, no fade |
+| `875e780adb131b16` | 1 / 1 | Sampled RGB, no fade |
+
+The affine variants use r0/r1 and c0–c3; all use s0 and t0, and faded variants
+read v0.x. Their 63-instruction CPU preshader computes affine coefficients in
+metadata; it is not part of the GPU instruction budget. No source has flow
+control, depth output or another color output. There is ample apparent space
+for bounded decode/gain arithmetic, but a final transformed program still needs
+its weighted instruction and register limits checked.
+
+Keep the original VS2 and its COLOR0 interpolation. In the PS, preserve native
+sampling, affine arithmetic, RGB fade and raw sampled alpha for oC0. Copy RGB
+**before** its native fade into a spare register for linear conversion, then
+apply the original fade and new gain to that linear result. Decoding the already
+faded oC0 value would change the fade curve; oC0 is also write-only.
+
+SM2 supports additional color outputs with a single full `MOV` per output,
+without source modifiers/swizzles or partial output masks. The existing programs
+use partial-precision operations, including their final `mov_pp oC0`; preserve
+those original tokens for the prototype, and use a plain full `MOV` for new oC1,
+with a deterministic +0 alpha lane. This existing `_pp` output conflicts with the
+literal linked SM2 output rule: accepting that original output plus new oC1 must
+be an explicit shader-creation/runtime gate, not a claimed portable guarantee.
+Actual augmentation remains a native-Windows qualification gap. Extra uses can
+change driver compilation, so unchanged original instructions alone do not
+prove bit-exact native output. The detached authored PS2 experiment must compare
+native RT0 with and without the second output across its tested source/state
+domain. [Output-register rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-registers-output-color)
+and [weighted PS2 instructions](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-instructions-ps-2-0)
+supply the documented constraints; actual original-program augmentation remains
+unqualified by an authored fixture, even if authored partial-precision variants
+are accepted on X3.
+
+B and E use the same FP16 format and dimensions, shared ADD/ONE/ONE RGB blend,
+and no MSAA. Require MRT count, post-pixel blending/format and needed write-mask
+capabilities. Hardware fog and dithering must be off because the extra MRT
+results are not defined generally; alpha testing, when tested in the fixture,
+uses oC0 to reject all outputs. First live admission remains alpha-test-off and
+full RGBA writes. These are documented [D3D9 MRT restrictions](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multiple-render-targets),
+not backend-specific assumptions. No production shader or route is added here.
+
+The candidate's exact RGB formula uses the ordered sanitizer S and safe decode /
+encode already specified above. Each full-precision source output is
+`E_source = S(decode(affine_RGB) * preserved_fade * gain)` before FP16 storage
+(where `affine_RGB` means sampled RGB after the optional affine step);
+new oC1 arithmetic is full precision, while original native operations retain
+their modifiers. Shared additive blending can overflow accumulated E, so form
+`e = S(E_sample)` again during composition. For each RGB channel independently:
+
+```
+C[i] = (e[i] == +0) ? A[i] : encode(S(decode(A[i]) + e[i]))
+C.a  = B.a
+```
+
+S maps negative values, NaN and negative infinity to +0, and positive infinity
+to 65504 with the specified operand order. S alone can retain negative zero;
+the equality branch accepts either signed zero. Any additional zero-sign
+canonicalization is separately qualified, not implied by MIN/MAX. Source and
+accumulation sanitation need explicit witnesses; a finite-only experiment must
+say so if it does not cover them. Exact preservation refers to the qualified
+finite encoded A domain (including signed-zero and asymmetric channels when
+actually tested), not arbitrary NaN payload transport. A's untouched channels
+are selected directly, even outside the decode cap; E alpha is never used for
+composition and starts at zero with every new source writing +0 before the
+shared alpha equation. Native B alpha remains governed by the original shader
+and inherited alpha state. Neither alpha lane is gamma-converted.
+
+Candidate architecture review: Sol/high approved with no open findings after
+clarifying original `_pp` output portability, full oC1 alpha, source/accumulation
+sanitation (including signed-zero limits), and checked lazy-attachment flushing.
+This is a source/design verdict; the new detached MRT experiment is in progress.
