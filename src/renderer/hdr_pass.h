@@ -189,6 +189,20 @@ public:
     // the creation HRESULT; a failure leaves no target. Level-0 surface only is
     // retained (one device reference in both reference models).
     HRESULT ensure_target(UINT width, UINT height) noexcept;
+    // Exchange one caller-owned surface reference with our current target.
+    // Both must be distinct same-size DEFAULT FP16 render-target texture levels
+    // (one level, no MSAA) on this device. Distinctness, device ownership and
+    // level identity use canonical IID_IUnknown, accepting interface aliases.
+    // Success transfers ownership in
+    // both directions without AddRef/Release of either owning reference; failure
+    // changes neither pointer. Temporary public COM query references are balanced.
+    // No GPU bind, content validation, meter/exposure reset or publication occurs.
+    // Caller serializes owner/Reset lifetime and suppresses internal reference
+    // retirement during queries; it must separately coordinate physical RT0,
+    // MotionOutput's cached descriptor/dirty state and borrowed resolved source.
+    // In particular, a returned old target remains the caller's owning reference
+    // and must be released before native Reset. Do not pass a borrowed pointer.
+    HRESULT exchange_target(IDirect3DSurface9*& candidate) noexcept;
     void release_target() noexcept;
     IDirect3DSurface9* target() const noexcept { return target_; }
     UINT width() const noexcept { return width_; }

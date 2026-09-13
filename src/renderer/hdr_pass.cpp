@@ -73,6 +73,24 @@ using SetPsConstFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
 using GetPsConstFn = HRESULT(WINAPI*)(D, UINT, float*, UINT);
 
 template<class T> void drop(T*& value) noexcept { if (T* held = value) { value = nullptr; held->Release(); } }
+// COM guarantees stable pointer equality for canonical IUnknown, not arbitrary
+// interface aliases. Keep failed/null queries distinct from valid inequality,
+// and balance even hostile non-null outputs accompanying a failed HRESULT.
+HRESULT same_com_object(IUnknown* left, IUnknown* right, bool& equal) noexcept {
+    equal = false;
+    if (!left || !right) return E_INVALIDARG;
+    IUnknown* left_identity = nullptr;
+    IUnknown* right_identity = nullptr;
+    HRESULT hr = left->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&left_identity));
+    if (SUCCEEDED(hr) && !left_identity) hr = E_NOINTERFACE;
+    if (SUCCEEDED(hr)) {
+        hr = right->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&right_identity));
+        if (SUCCEEDED(hr) && !right_identity) hr = E_NOINTERFACE;
+    }
+    if (SUCCEEDED(hr)) equal = left_identity == right_identity;
+    drop(right_identity); drop(left_identity);
+    return hr;
+}
 bool lost(HRESULT hr) noexcept { return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET; }
 
 // Self test, ps_2_0, three outputs: oC0 = (2, 8, 0.5, 0.25) into the FP16
@@ -322,6 +340,57 @@ HRESULT HdrPass::ensure_target(UINT width, UINT height) noexcept {
     if (last_width_ && (last_width_ != width || last_height_ != height)) exposure_.reset();
     width_ = last_width_ = width; height_ = last_height_ = height;
     if (caps_.meter) ensure_chain(width, height); // a failure disables the meter, not the feature
+    return S_OK;
+}
+
+// Surface-only ownership matches ensure_target. Validate everything before the
+// pointer exchange; unlike release_target/ensure_target this must not discard a
+// pending meter sample, its chain, the exposure state or any shader resources.
+HRESULT HdrPass::exchange_target(IDirect3DSurface9*& candidate) noexcept {
+    if (!device_ || !native_ || !enabled() || !target_ || !width_ || !height_
+            || !candidate) return E_INVALIDARG;
+    bool equal = false;
+    HRESULT hr = same_com_object(candidate, target_, equal);
+    if (FAILED(hr)) return hr;
+    if (equal) return E_INVALIDARG;
+    const auto compatible = [&](const D3DSURFACE_DESC& d) noexcept {
+        return d.Type == D3DRTYPE_SURFACE && d.Format == D3DFMT_A16B16G16R16F
+            && d.Usage == D3DUSAGE_RENDERTARGET && d.Pool == D3DPOOL_DEFAULT
+            && d.MultiSampleType == D3DMULTISAMPLE_NONE && !d.MultiSampleQuality
+            && d.Width == width_ && d.Height == height_;
+    };
+    D3DSURFACE_DESC surface_desc{};
+    hr = candidate->GetDesc(&surface_desc);
+    if (FAILED(hr)) return hr;
+    if (!compatible(surface_desc)) return E_INVALIDARG;
+    IDirect3DDevice9* owner = nullptr;
+    hr = candidate->GetDevice(&owner);
+    if (SUCCEEDED(hr)) hr = same_com_object(owner, device_, equal);
+    drop(owner);
+    if (FAILED(hr)) return hr;
+    if (!equal) return E_INVALIDARG;
+    IDirect3DTexture9* texture = nullptr;
+    hr = candidate->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&texture));
+    if (SUCCEEDED(hr) && !texture) hr = E_NOINTERFACE;
+    D3DSURFACE_DESC texture_desc{};
+    IDirect3DSurface9* level = nullptr;
+    if (SUCCEEDED(hr) && texture->GetLevelCount() != 1) hr = E_INVALIDARG;
+    if (SUCCEEDED(hr)) hr = texture->GetLevelDesc(0, &texture_desc);
+    if (SUCCEEDED(hr) && !compatible(texture_desc)) hr = E_INVALIDARG;
+    if (SUCCEEDED(hr)) {
+        hr = texture->GetDevice(&owner);
+        if (SUCCEEDED(hr)) hr = same_com_object(owner, device_, equal);
+        if (SUCCEEDED(hr) && !equal) hr = E_INVALIDARG;
+    }
+    if (SUCCEEDED(hr)) {
+        hr = texture->GetSurfaceLevel(0, &level);
+        if (SUCCEEDED(hr)) hr = same_com_object(level, candidate, equal);
+        if (SUCCEEDED(hr) && !equal) hr = E_INVALIDARG;
+    }
+    drop(level); drop(owner); drop(texture);
+    if (FAILED(hr)) return hr;
+    IDirect3DSurface9* previous = target_;
+    target_ = candidate; candidate = previous;
     return S_OK;
 }
 

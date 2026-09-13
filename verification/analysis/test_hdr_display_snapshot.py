@@ -22,7 +22,17 @@ class HdrDisplaySnapshotTests(unittest.TestCase):
         end = source.index('\n#ifdef X3M_MOTION_OUTPUT_FIXTURE\nHRESULT HdrPass::fixture_readback', start)
         with tempfile.TemporaryDirectory(prefix='x3-hdr-display-') as temporary:
             directory = Path(temporary)
-            (directory / 'hdr_writeback_under_test_inc.h').write_text(source[start:end])
+            helper_start = source.index('HRESULT same_com_object(')
+            helper_end = source.index('\nbool lost(', helper_start)
+            selected = [source[helper_start:helper_end], source[start:end]]
+            for first, last in [
+                ('void HdrPass::shutdown()', '\n// Levels, the two ring targets'),
+                ('unsigned HdrPass::references()', '\n// The meter chain for a'),
+                ('HRESULT HdrPass::exchange_target(', '\n// SetRenderTarget(0) resets'),
+            ]:
+                begin = source.index(first)
+                selected.append(source[begin:source.index(last, begin)])
+            (directory / 'hdr_writeback_under_test_inc.h').write_text('\n'.join(selected))
             executable = directory / 'display'
             command = [compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
                        '-I', str(ROOT / 'verification/probe/hdr_display_snapshot_stubs'),
@@ -31,7 +41,7 @@ class HdrDisplaySnapshotTests(unittest.TestCase):
                        str(ROOT / 'src/renderer/exposure.cpp'), '-o', str(executable)]
             subprocess.run(command, check=True, capture_output=True, text=True)
             run = subprocess.run([str(executable)], check=True, capture_output=True, text=True)
-            self.assertRegex(run.stdout, r'^hdr_display_snapshot scenarios=52 checks=\d+ failures=0\n$')
+            self.assertRegex(run.stdout, r'^hdr_display_snapshot scenarios=52 exchange_scenarios=63 checks=1343 failures=0\n$')
             self.assertEqual(run.stderr, '')
 
 

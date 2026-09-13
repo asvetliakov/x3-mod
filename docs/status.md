@@ -80,8 +80,8 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   meets the standard static limit but has a modest measured completion-time
   cost. Review is closed and the regenerated embedded bytes match the qualified
   program. Production build/installation is next; the installed shader remains
-  unchanged. Target ownership and single-draw pass integration are in
-  progress; no live emission route is enabled. Copy/composition cost remains a
+  unchanged. The target ownership exchange is reviewed and passes 1,343
+  host checks; single-draw pass integration is in progress; no live emission route is enabled. Copy/composition cost remains a
   concern, and historical adjacent draws do not yet qualify batching. The
   [background study](reverse-engineering/background-temporal-coverage.md) retains
   the existing native temporal limitations; global writer classification is not

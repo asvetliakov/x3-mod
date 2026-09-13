@@ -519,6 +519,32 @@ resynchronization. Resolve additionally checks physical RT0 pointer equality
 with `hdr_->target()`. Do not use `release_target()/ensure_target()` to publish:
 `release_target()` also destroys the exposure-meter chain.
 
+The unused `HdrPass::exchange_target` component now implements only this narrow
+surface-reference transfer. It validates a distinct, same-size, single-level
+DEFAULT FP16 render-target texture on the attached device through public D3D9
+descriptors, container and level queries, then swaps the caller's owned surface
+reference with `target_`. It does not bind a target, validate image content,
+reset exposure or meter state, or release either transferred owner reference.
+An independent review found that the first version compared raw interface
+pointers; the corrected implementation uses the documented
+[canonical `IUnknown` identity](https://learn.microsoft.com/en-us/windows/win32/com/rules-for-implementing-queryinterface)
+for target distinctness, both device checks and the returned level-zero surface.
+Temporary query references, including hostile non-null outputs returned with a
+failed HRESULT, are balanced before every refusal.
+
+The extracted production source passes 52 existing display-snapshot scenarios
+and 63 exchange scenarios with 1,343 total host checks. These cover descriptor,
+container, device and level failures, canonical interface aliases, repeated
+ownership rotation, exact non-target HDR/meter/exposure preservation, and the
+existing Reset/shutdown cleanup policy. The complete HdrPass translation unit
+also cross-compiles for x86. The method performs a bounded sequence of COM
+queries per exchange and has zero runtime cost while unused. A future live route
+may exchange after each enhanced draw, so its publication cost still needs the
+integrated measurement. This host-only checkpoint does not qualify real D3D
+surface adoption, physical RT0 and MotionOutput descriptor coordination,
+fallback publication, native Windows or live lifetime; the combined ownership
+fixture remains the next gate.
+
 Publication is restricted to the active scene before TAA resolve and compositor
 handoff. `retain_compositor_scene` in [capture.cpp](../../src/proxy/capture.cpp)
 deliberately pins the handed-off texture; a pool must not recycle a pinned
