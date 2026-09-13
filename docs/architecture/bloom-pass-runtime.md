@@ -5,8 +5,10 @@ for [the original-then-RGB-replacement boundary](hdr-bloom-boundary.md) and
 [candidate composition](hdr-bloom-composition.md). It is not yet connected to
 capture, the scene hook, CMake or an installed DLL. Isolated production and
 fixture-enabled x86 compilation passed with the project's SSE2/four-byte
-incoming-stack flags. GPU execution, failure-fixture qualification, integrated
-ownership and game acceptance remain pending. Native Windows execution is
+incoming-stack flags. The subsequent
+[standalone GPU/state/recovery fixture](../verification/bloom-pass-fixture.md)
+passed on X3, including Reset and final-image checks. Integrated ownership and
+game acceptance remain pending. Native Windows execution is
 unverified; runtime feature availability does not depend on platform proof
 flags, backend-private behavior, DLL identities or hashes.
 
@@ -201,6 +203,7 @@ fixture seams enabled using `-O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse
 x87 stores required to receive the C-library float-return ABI for
 `exp2f` and public `GetNPatchMode`; no x87 arithmetic was introduced.
 Independent source review passed after fixing inherited tessellation state and
-preventing an unnecessary rollback write when no native draw was issued. Full production linking/audits,
-state/failure/reset/ownership GPU fixtures,
-numerical candidate comparisons and GPU/CPU timing remain integration work.
+preventing an unnecessary rollback write when no native draw was issued.
+Standalone state/failure/Reset and numerical candidate checks subsequently
+passed as linked above. Full production linking, combined owner lifetime and
+GPU/CPU timing remain integration work.

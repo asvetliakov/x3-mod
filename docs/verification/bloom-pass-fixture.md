@@ -68,11 +68,12 @@ Once the orchestrator has confirmed the game and other fixture runners are
 absent, run serially through the required lock:
 
 ```
-python3 verification/probe/wine_lock.py python3 verification/probe/run_bloom_pass.py
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_bloom_pass.py
 ```
 
-The runner uses CrossOver **Preview**, default fixture bottle **Steam**;
-`X3M_FIXTURE_BOTTLE=X3` selects the arm64/FEX bottle. The summary records bottle
+The runner uses CrossOver **Preview**. Its historical internal default remains
+Steam, so new runs explicitly select **X3** as shown above; a Steam counterpart
+is not required. The summary records bottle
 architecture and emulation environment. Neither command launches the game.
 Runtime results go to the bottle-specific `bloom-pass-summary.json`, with raw
 binary inputs, expanded sources, compiled bytecodes, images and stdout/stderr

@@ -1,8 +1,11 @@
 # HDR bloom boundary: original execution followed by RGB replacement
 
-2026-09-13. **Chosen initial design, not implemented or runtime-qualified.**
-The installed chase DLL remains `47f1452e…2027ad`. This note changes no source,
-build, installation or game state. It uses the verified
+2026-09-13. **Chosen initial design; live integration remains incomplete.**
+The [GPU executor](../verification/bloom-pass-fixture.md),
+[CPU/SEH bridge](../verification/review-43-compositor-bridge.md), and
+[shader bundle](../verification/review-47-bloom-programs.md) now have scoped
+standalone qualification. They are not connected to the installed renderer;
+see [current status](../status.md) for the installed build. This design uses the verified
 [compositor control flow](../reverse-engineering/compositor-and-glow.md) and
 [late-view inheritance findings](../reverse-engineering/bloom-late-view-state.md).
 The earlier [full-bypass contract](../reverse-engineering/bloom-compositor-skip.md)
