@@ -1,0 +1,442 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "scope": "Detached reusable single-DIP LinearEmissionPass qualification, exact independent original-reference B/E/C/M and explicit ownership/failure/Reset controls; no live wiring or native Windows runtime proof",
+  "targets": {
+    "A": "FP16 immutable encoded candidate",
+    "B": "FP16 current native result",
+    "E": "FP16 linear emission",
+    "C": "FP16 publication candidate",
+    "depth": "D24S8",
+    "msaa": false,
+    "srgb": false,
+    "M": "persistent FP16 RGB enhanced-source union; alpha ignored"
+  },
+  "tolerance": {
+    "rgb_relative": 0.003,
+    "rgb_absolute": 3e-05,
+    "native_RT0": "exact original/augmented GPU bytes",
+    "zero_E": "exact per-channel A bits",
+    "alpha": "exact B alpha"
+  },
+  "timing_scope": "Paired native DIP versus one component bracket through QPC/EVENT completion; source setup, allocations, readback and per-frame M clear outside; clear cost retained from coverage result; local owning-slot exchange/ack included, real HdrPass exchange excluded",
+  "limitations": [
+    "Actual original native _pp oC0 plus new plain full oC1 requires runtime acceptance; this run cannot qualify native Windows",
+    "Finite original texture/affine/fade inputs only; source NaN/Inf and adverse emission intermediates remain GPU-unqualified",
+    "Affine preshader comments stay opaque; fixture supplies known c0..2 directly, not CPU preshader execution",
+    "Original VS identity WVP, transformed UVs, c12 fade and b0 fog paths are exercised; no live material/global constant ownership proof",
+    "Shared ADD/ONE/ONE, full effective RGBA writes, alpha-test off and Z-buffer test on; unsupported source states refuse cleanly before source submission",
+    "Injected failures test explicit classification/restoration and partial-B ownership recovery; real failed draw atomicity and device-loss recovery are not guaranteed",
+    "Same pass retains four programs across actual Reset, recreates four targets and completes one independently compared post-Reset source transaction; live HdrPass handoff/reference retirement remains unintegrated"
+  ],
+  "code_sha256": {
+    "verification/probe/linear_emission_fixture.cpp": "7ee5ffb51d15431f92daacfd76ed3410f3cc09fd4f5049c6fca286d11a51eceb",
+    "verification/probe/build_linear_emission.sh": "a009637c105925829ee02e9bbe143545cddf7884471d4e1a8524a1624eee484e",
+    "verification/probe/run_linear_emission.py": "9bd8d7ca5f475535595abb113c5e781d958f432314e3f0fe706712dd22310985",
+    "verification/analysis/test_linear_emission_report.py": "afca46caba3639fdae20d07582c839b8c4dcbf179bc0bdcdc52e7867123f7a0f",
+    "verification/analysis/test_linear_emission_mrt_report.py": "03930edeace530259c304640e7267e809d79c6bebfaf398523a84b035ffb8a7b",
+    "verification/analysis/test_linear_emission_original_report.py": "ea6a85747f6c779101948dc3a7693714c89bd3b38d443c8f7110d51528307056",
+    "verification/analysis/test_linear_emission_coverage_report.py": "34ade890fc19eda97fc7e9e9ae0b68af8d38b7115a173c2a6d6c9fa67e3850ce",
+    "verification/analysis/test_linear_emission_pass_report.py": "fbec0aa7cbe769b2fcfc6da5469d45674df5cd2d0c0cbf83587c5a497a7c0619",
+    "verification/analysis/test_linear_emission_pass_programs.py": "78b0ba70c32462ccf757f8eaf46e417b6a4c65bfab739e640e9da66235d045a6",
+    "verification/analysis/test_linear_emission_pass_host.py": "5b0ba19c0d4223fbc6b05228d5cd1b668430210f453ea650fc00375f7352a429",
+    "verification/probe/linear_emission_pass_cases_inc.h": "d6b913ce92ad0b47795a2b0c62ae51933255b5713b61e8a66a4b9c2c24a831a4",
+    "verification/probe/linear_emission_pass_host.cpp": "1853b31c2f1ad119f3d19625a363f3f340ff0b40d6bb6c89e3e964f43293b68f",
+    "verification/probe/linear_emission_pass_stubs/d3d9.h": "44b5fa2f92817f7b99ef221ae6d9d2e837c1477293f60e6a284ae6d05fd3312c",
+    "src/renderer/linear_emission_pass.h": "0b277c3591d453362f06f41d068a17a227ad4fe8e6e36aae5aedd4f72393e0f8",
+    "src/renderer/linear_emission_pass.cpp": "aaf4f9046172fc6820bb162e62f4646a93c6aac6dcd085cd3a68d168bdc107e2",
+    "src/renderer/linear_emission_copy_inc.h": "73c2b18ec6bfc35f6f6c9eff72a95b189ee03b680f51464f5d2edb03f3dd5df2",
+    "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
+    "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
+    "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
+    "src/renderer/linear_emission.h": "5948c6cb839c2d28a1f34c3479481dd53136e87d7bb44986b2b39618008dd25c",
+    "src/renderer/linear_emission.cpp": "be8c2cf34f540cc19e85616b65471e4c35ea6e98b80f9476880ad742807cd320"
+  },
+  "executable_sha256": "d22fe6752a49f591f8d2c75b52614631ed2631a58a31daa7014de4eeead5a454",
+  "raw_dir": "/tmp/x3-linear-emission-gpu-mrt-pass-r1",
+  "original_sha256": {
+    "vs_d5e1c75351ed3f04.bin": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
+    "vs_32e75459998d0388.bin": "9ae32f514a79ca8675fe876731b72207f4449d4e34d89529114e9bacb62c3798",
+    "vs_089091aab2d5eb13.bin": "2a3270292daf99a296801100e52c052967b4c80fee3b31216c8908dfb3233835",
+    "ps_8360f422de08b5bd.bin": "ce26e0a8fca24b311324ca1c6d210cf6a7757af44c07525e51435dbaf4a36c7d",
+    "ps_9975b706e5a1c999.bin": "4330e9cb7260e6bea28962d8e8a1670d825b584c9d6ae51d10d22ea1c7418d2a",
+    "ps_ff2473e73a6bdfa1.bin": "70f619052110e03e9ce2e8b053b10e99f7d2102844f750535b7796c5206b8100",
+    "ps_8559522220507d5e.bin": "2f80daf9e908678a0e36a49d0fbaaba446e687e71cb654e85a1756c9cdd8c34d",
+    "ps_875e780adb131b16.bin": "c31728d81b42e58a809b401a174186217c9549c24a0809807ba8b097ddd445a1"
+  },
+  "original_dir": "/tmp/x3-shader-sweep/programs",
+  "source_shader_model": "Three unchanged original VS2; five original PS2;25 two-output and25 three-output transformer variants",
+  "coverage": "Persistent same-format FP16 M; clean native refusals preserve prior actual-enhanced coverage; failed augmented source/restoration invalidates coverage and blocks enhancement",
+  "exit_code": 0,
+  "cases": 60,
+  "shader_creations": 288,
+  "source_variants": 25,
+  "mrt_caps": {
+    "slots": 4,
+    "postpixel_blending": true,
+    "independent_write_masks": true
+  },
+  "invariants": {
+    "sources": 85,
+    "bursts": 85,
+    "copy": 87040,
+    "native": 87040,
+    "zero": 36928,
+    "alpha": 21760,
+    "minuszero": 33,
+    "capzero": 70,
+    "infinite": 0,
+    "fallback": 0,
+    "incomplete": 0,
+    "refused": 0
+  },
+  "branch_experiment": false,
+  "exact_compositor_channels": null,
+  "max_rgb_tolerance_fraction": 0.6452945124154664,
+  "exact_alpha_pixels": 15360,
+  "depth_stencil_pixels": 15360,
+  "faults": [],
+  "timings": [
+    {
+      "width": 1280,
+      "height": 768,
+      "samples": 8,
+      "warmups": 2,
+      "source_draws": 1,
+      "authored_coverage_fraction": 0.3125,
+      "native_median_ms": 0.26755,
+      "component_median_ms": 0.7518499999999999,
+      "paired_extra_median_ms": 0.49065000000000003,
+      "pairs": [
+        {
+          "pair": 0,
+          "native_first": true,
+          "native_ms": 0.2661,
+          "component_ms": 0.7684,
+          "extra_ms": 0.5023
+        },
+        {
+          "pair": 1,
+          "native_first": false,
+          "native_ms": 0.2493,
+          "component_ms": 0.7758,
+          "extra_ms": 0.5265000000000001
+        },
+        {
+          "pair": 2,
+          "native_first": true,
+          "native_ms": 0.2819,
+          "component_ms": 0.7782,
+          "extra_ms": 0.4963
+        },
+        {
+          "pair": 3,
+          "native_first": false,
+          "native_ms": 0.3733,
+          "component_ms": 0.726,
+          "extra_ms": 0.35269999999999996
+        },
+        {
+          "pair": 4,
+          "native_first": true,
+          "native_ms": 0.25,
+          "component_ms": 0.7512,
+          "extra_ms": 0.5012
+        },
+        {
+          "pair": 5,
+          "native_first": false,
+          "native_ms": 0.3742,
+          "component_ms": 0.7525,
+          "extra_ms": 0.37829999999999997
+        },
+        {
+          "pair": 6,
+          "native_first": true,
+          "native_ms": 0.269,
+          "component_ms": 0.7184,
+          "extra_ms": 0.4494
+        },
+        {
+          "pair": 7,
+          "native_first": false,
+          "native_ms": 0.241,
+          "component_ms": 0.726,
+          "extra_ms": 0.485
+        }
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "samples": 8,
+      "warmups": 2,
+      "source_draws": 1,
+      "authored_coverage_fraction": 0.3125,
+      "native_median_ms": 0.4097,
+      "component_median_ms": 1.1713,
+      "paired_extra_median_ms": 0.7649000000000001,
+      "pairs": [
+        {
+          "pair": 0,
+          "native_first": true,
+          "native_ms": 0.4341,
+          "component_ms": 1.2391,
+          "extra_ms": 0.8050000000000002
+        },
+        {
+          "pair": 1,
+          "native_first": false,
+          "native_ms": 0.4215,
+          "component_ms": 1.1823,
+          "extra_ms": 0.7607999999999999
+        },
+        {
+          "pair": 2,
+          "native_first": true,
+          "native_ms": 0.3934,
+          "component_ms": 1.1077,
+          "extra_ms": 0.7142999999999999
+        },
+        {
+          "pair": 3,
+          "native_first": false,
+          "native_ms": 0.4153,
+          "component_ms": 1.0755,
+          "extra_ms": 0.6601999999999999
+        },
+        {
+          "pair": 4,
+          "native_first": true,
+          "native_ms": 0.4073,
+          "component_ms": 1.1687,
+          "extra_ms": 0.7614000000000001
+        },
+        {
+          "pair": 5,
+          "native_first": false,
+          "native_ms": 0.4001,
+          "component_ms": 1.1706,
+          "extra_ms": 0.7705000000000001
+        },
+        {
+          "pair": 6,
+          "native_first": true,
+          "native_ms": 0.4121,
+          "component_ms": 1.1805,
+          "extra_ms": 0.7684000000000001
+        },
+        {
+          "pair": 7,
+          "native_first": false,
+          "native_ms": 0.3948,
+          "component_ms": 1.172,
+          "extra_ms": 0.7771999999999999
+        }
+      ]
+    }
+  ],
+  "high_code_identity": {
+    "stable_seed_channels": 70,
+    "feedback_categories": [
+      {
+        "id": 1,
+        "capzero": 0
+      },
+      {
+        "id": 2,
+        "capzero": 0
+      },
+      {
+        "id": 3,
+        "capzero": 0
+      },
+      {
+        "id": 4,
+        "capzero": 0
+      },
+      {
+        "id": 15,
+        "capzero": 0
+      },
+      {
+        "id": 16,
+        "capzero": 0
+      },
+      {
+        "id": 17,
+        "capzero": 0
+      },
+      {
+        "id": 18,
+        "capzero": 0
+      },
+      {
+        "id": 29,
+        "capzero": 0
+      },
+      {
+        "id": 30,
+        "capzero": 0
+      },
+      {
+        "id": 31,
+        "capzero": 0
+      },
+      {
+        "id": 32,
+        "capzero": 0
+      },
+      {
+        "id": 42,
+        "capzero": 0
+      },
+      {
+        "id": 43,
+        "capzero": 0
+      },
+      {
+        "id": 44,
+        "capzero": 0
+      },
+      {
+        "id": 45,
+        "capzero": 0
+      },
+      {
+        "id": 52,
+        "capzero": 0
+      },
+      {
+        "id": 53,
+        "capzero": 0
+      },
+      {
+        "id": 54,
+        "capzero": 0
+      },
+      {
+        "id": 55,
+        "capzero": 0
+      }
+    ],
+    "policy": "GPU-composed feedback category is descriptive and bounded by exact zero-E retention count; static seed counts remain exact; every actual-A zero-E lane is compared bitwise inside the EXE"
+  },
+  "original_vertex_programs": 3,
+  "original_pixel_programs": 5,
+  "reviewed_pairs": 5,
+  "gains": [
+    0.0,
+    0.25,
+    1.0,
+    4.0,
+    16.0
+  ],
+  "max_energy_tolerance_fraction": 0.31270716849913066,
+  "max_native_oracle_tolerance_fraction": 0.3251905616691381,
+  "exact_source_alpha_pixels": 30720,
+  "coverage_variants": 25,
+  "exact_two_three_output_channels": 174080,
+  "coverage_pixels": 15360,
+  "covered_pixels": 11680,
+  "uncovered_pixels": 3680,
+  "mask_contract": "FP16 RGB positive iff at least one surviving source sample; additive count tested through16 draws; mask alpha ignored",
+  "component": true,
+  "component_comparison_channels": 245760,
+  "indexed_source_draws": 85,
+  "steady_allocations": 0,
+  "fault_controls": 16,
+  "capability_twins": 2,
+  "native_reset_passed": true,
+  "post_reset_same_instance_transaction": true,
+  "ownership": "Owning-slot exchange acknowledgement preserves Incomplete source outcomes; blocked history/coverage stays unavailable after partial-B recovery",
+  "transformed_sha256": {
+    "ps_8360f422de08b5bd-0.bin": "d181ff936913172aba9fd4ac5f3c45cbeabf92c975a1091ef6dfb3c7d808678e",
+    "ps_8360f422de08b5bd-1.bin": "bcffa23679bb083654e2c57b37e091569f9be638a6591132a5a6dd3523ae5f5c",
+    "ps_8360f422de08b5bd-2.bin": "880ce8fb07a59ce2e6d9d7aaa417eb88f0ac8d81726b4de020e4ec4d2f74c24a",
+    "ps_8360f422de08b5bd-3.bin": "0db9ef66ccbb4553484819bd3fd27aa32f6399014aaad3d16929b22efe850d28",
+    "ps_8360f422de08b5bd-4.bin": "7adbfd9a97c20ee1994f7637b94a41dc29e10a79c1be4eae7e77fe2ffbc1c19f",
+    "ps_9975b706e5a1c999-0.bin": "54497909a11c0933a796b2ecfda92370f47301bb0f539b699cb72edc742c205f",
+    "ps_9975b706e5a1c999-1.bin": "825e5656df6ac2e46cf283520d74b15f4b84e6b77c651b30608e801ab8c34c9c",
+    "ps_9975b706e5a1c999-2.bin": "ea9f5b939d6a85a8c820390c8cb195d00fbdb784393c5d93876793e15df45a34",
+    "ps_9975b706e5a1c999-3.bin": "65c76d52ed6acb585f62c4425c7f5f30024709ca67cbd38c76ad8820991cf8ec",
+    "ps_9975b706e5a1c999-4.bin": "d0767dab7c7c69814213f9a5d86bb1339aef21ecebb62aa73f1464dfaa041f8d",
+    "ps_ff2473e73a6bdfa1-0.bin": "eb3da33200167d22f65507dca2afd7a91537c1b431c2c58a13461cc405c374fe",
+    "ps_ff2473e73a6bdfa1-1.bin": "61e847cee55bd068927cff006401bb556fe4e6ec8ec5b22e28514fcdae5442ce",
+    "ps_ff2473e73a6bdfa1-2.bin": "b695e11fc401d7fa096787a19501d0dc68406bd05c6de6a2df584e1f994322a5",
+    "ps_ff2473e73a6bdfa1-3.bin": "0bfd237c64f88779773a2299f762a74e257d35a8a2d3f48b9b4304bb5d83e4e4",
+    "ps_ff2473e73a6bdfa1-4.bin": "8771732c403ccd96705e3583a2b8eae03d1ad27ab3f4d519a7007c53a30f7f26",
+    "ps_8559522220507d5e-0.bin": "66f2bfca619f7edc1fc2315956ce4501f4d0857d31dcb09c20fa3e2b601115b7",
+    "ps_8559522220507d5e-1.bin": "4f261e7eedbe62221c21c34dc7492e8548e89fa02365c5cf1036f9d157fbf067",
+    "ps_8559522220507d5e-2.bin": "b373405207fe7354f0e4964d9fa11b68a57e4d9feb80cbd4556ec2ecdf025e27",
+    "ps_8559522220507d5e-3.bin": "1288adf28e11d5be196c5e2ae08b0dd58d4d5f3203227d743343c58889ba0a60",
+    "ps_8559522220507d5e-4.bin": "f063f1bb87032855edaa4c57f1e44e02a5f797f188506e224ff27c06431acfd7",
+    "ps_875e780adb131b16-0.bin": "0cd24d5e88f52ec43d90259c15a561ae8ce8b1f8430a54e938bbacff1d2e117f",
+    "ps_875e780adb131b16-1.bin": "24ce50dc722727ed46c7190bdfec032483180ab05544b1e4d434468d09006314",
+    "ps_875e780adb131b16-2.bin": "9ab8014e670ccc6c64e6f0cef248277b77e4c0df51071aa8957d598ba93fcddf",
+    "ps_875e780adb131b16-3.bin": "4c8df1287c1042f03ae72d6445bd20b1413626c5629b25c0935905d777a385b2",
+    "ps_875e780adb131b16-4.bin": "b6865b15a60b376a3b230952b574f97c212e090fecb347300c8ab865fe815ba8"
+  },
+  "coverage_transformed_sha256": {
+    "ps_8360f422de08b5bd-0-coverage.bin": "3d802b30c25c3a84d2b7a38ab5c92717d41021d028c5f21f437bf4c3e7ce39b7",
+    "ps_8360f422de08b5bd-1-coverage.bin": "3830aaa10228e0110a2f3a7b8c1ab09f86efa709946b3791abbdf315f7767766",
+    "ps_8360f422de08b5bd-2-coverage.bin": "bddf2f4373bcd34dfb94bb5419c2d8ba64ae69d15b42bff5e4157fd33a4355ee",
+    "ps_8360f422de08b5bd-3-coverage.bin": "960699d5ad7c90471f85f842dc136e0d56093634177c33cfad77d032b4482a30",
+    "ps_8360f422de08b5bd-4-coverage.bin": "e7e9cc509c65c0ae4f0e8cfabc5f0908c29968d9f0648bd152c4c628af8ceeb8",
+    "ps_9975b706e5a1c999-0-coverage.bin": "d3dec3f64ea18f65e2ac3da966d6ecd8c8bd895d882ae0db9eb34d7f63f382f6",
+    "ps_9975b706e5a1c999-1-coverage.bin": "eb928c4294778ec04a9851c767c9ac9157443284048730ad9234ef72ce420d23",
+    "ps_9975b706e5a1c999-2-coverage.bin": "f74cded86160ba0af0f901059fff1c7768a99789bc54dd90dc0071188310f6d0",
+    "ps_9975b706e5a1c999-3-coverage.bin": "35e58dc859573afa51e63c65cc7a570590221cff574eeb2e96093dc339901f12",
+    "ps_9975b706e5a1c999-4-coverage.bin": "1f4053ff5b1a6f1f946fc87f369e7b49289296a2ff323b638bda5580c85abee5",
+    "ps_ff2473e73a6bdfa1-0-coverage.bin": "e072c37ee5fe2d4af18942db5b8ab6886a6e34f30e3afe5473c2b8a3c37ba1ea",
+    "ps_ff2473e73a6bdfa1-1-coverage.bin": "2ac76e9774ff9e3045d7a64b0d51cbc5f5fcfb0a15f601b855dfff8ddcbf3b22",
+    "ps_ff2473e73a6bdfa1-2-coverage.bin": "839827e5959325316b9f6b5f83cb79b92f8e38a86768ac1e935d23b2c66e97c9",
+    "ps_ff2473e73a6bdfa1-3-coverage.bin": "686e84b1b43b879c008148aaae8cc96ad3738d8484f02f246d5a5951d30bc753",
+    "ps_ff2473e73a6bdfa1-4-coverage.bin": "cd674aef26fc6bae283dfde970be842f5bb9eb26cdecf44b6270bf5cea1557e2",
+    "ps_8559522220507d5e-0-coverage.bin": "53a13ef87d5165bca5554b2b52ce1d4e9d35e87ab4c336c7db0fc9039d7e9294",
+    "ps_8559522220507d5e-1-coverage.bin": "213b13b107e6149e66b2e5e1b8ecb50fba4df3e4b320f4cef0ee0a4cd4d97089",
+    "ps_8559522220507d5e-2-coverage.bin": "9a2c8d29dd087316a174721c7f7574b004986daf4f1ea7b33e3c00e3c7584d18",
+    "ps_8559522220507d5e-3-coverage.bin": "0215a68175bdc6be6737aefe75e8230de4802ef773aca0bd7ddbdf583c83d9a3",
+    "ps_8559522220507d5e-4-coverage.bin": "c713de9c79b7fd3d97d762db7aa2f94c74542dfbfc079ed00a723ab893111ad8",
+    "ps_875e780adb131b16-0-coverage.bin": "7c658c901375ae4777cb6ffd3a2da5a02f09b03e86e532a93c83f524fbf526d8",
+    "ps_875e780adb131b16-1-coverage.bin": "1708f3e85e309e6095bf8b834950ddbccb63c79de99a1643afece5eff6738676",
+    "ps_875e780adb131b16-2-coverage.bin": "cd10f16544ed50f9329965130b176b52e47dd17c46b9fe29776797642a7eb472",
+    "ps_875e780adb131b16-3-coverage.bin": "39e673fbbb1bf9c61fbc08e2cc15f59f9b9f60720b4776b97fddc652150f8d8e",
+    "ps_875e780adb131b16-4-coverage.bin": "09c0159236d6d396f0384f329c4714e11f623ad962919399b26c5a4335f53eab"
+  },
+  "validation_correction": {
+    "initial_failed_record": "/tmp/x3-linear-emission-gpu-mrt-pass-r1/failed-result.json",
+    "initial_error": "AssertionError(('original_pair_gain', 'MRT GPU invariant counts', ('1', '2', '2', '2048', '2048', '672', '512', '0', '0', '0', '0', '0', '0'), {'sources': 2, 'bursts': 2, 'copy': 2048, 'native': 2048, 'zero': 672, 'alpha': 512, 'minuszero': 0, 'capzero': 2, 'infinite': 0, 'fallback': 0, 'incomplete': 0, 'refused': 0}))",
+    "gpu_rerun": false,
+    "explanation": "Only capzero categorization on GPU-composed feedback became descriptive: actual154.5 versus CPU154.625 straddles154.6012. All actual-A/C bit checks, static-seed counts, numerical/state/draw/Reset gates unchanged.",
+    "validator_changes": {
+      "verification/probe/run_linear_emission.py": {
+        "executed_run_sha256": "9bd8d7ca5f475535595abb113c5e781d958f432314e3f0fe706712dd22310985",
+        "revalidation_sha256": "c05029c836bbc0f1581e2f718fa326b0816b04f98465b04676aa0b8eab09de34"
+      },
+      "verification/analysis/test_linear_emission_pass_report.py": {
+        "executed_run_sha256": "fbec0aa7cbe769b2fcfc6da5469d45674df5cd2d0c0cbf83587c5a497a7c0619",
+        "revalidation_sha256": "54c1fbd9b9c1c30e3ef44f687d82138f6a881a4155cbdaf56c21d61659d67e8d"
+      }
+    },
+    "retained_raw_sha256": {
+      "report.txt": "fde6a45f170bd5041325bbfd74bb478448f46dc00894785bb4988a5e4d9aa89e",
+      "pixels.bin": "84ba2dfde321d3edc3237df687972bc5c775890d90dcaf2e31c6107329cf5258"
+    }
+  },
+  "host_verification": {
+    "component_scenarios": 63,
+    "component_assertions": 1458,
+    "shader_packaging": "byte-exact unchanged qualified fixture constructors",
+    "component_compile": "MinGW macro-on detached and macro-off object pass"
+  }
+}

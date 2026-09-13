@@ -648,6 +648,59 @@ completion. One two-draw burst is the observed historical per-frame case;
 outputs, but any separate reactive producer has its own cost and completeness
 gate. Native Windows execution and live behavior remain unverified.
 
+### LinearEmissionPass component qualification
+
+The unused [LinearEmissionPass](../../src/renderer/linear_emission_pass.h)
+implements the candidate as a serialized single-draw transaction. `attach`
+borrows the documented device interface and native-call table, while
+`ensure_targets` creates the persistent B/E/C/M pool outside a draw bracket.
+`begin_frame` clears M once for a new frame. After a successful `prepare`, the
+caller issues the original indexed draw exactly once and passes its HRESULT to
+`finish`. The selected, bound C or B is then exposed through the exact owning
+slot returned by `owning_candidate`; the caller may pass only that slot to
+`HdrPass::exchange_target` and must complete the transaction with
+`acknowledge_exchange`. A failed source remains `Incomplete` and keeps coverage
+unavailable even when best-effort B ownership recovery succeeds. A failed
+exchange permits one `recover_native` attempt. Coverage is visible only while
+the pass is idle, and `reference_accounting_busy` prevents reference probes
+while saved getter references are held. `before_reset` unbinds owned MRT and
+depth state before releasing targets; `detach` also releases the retained
+programs and declaration. The borrowed device must outlive the pass. The caller remains responsible for owner/thread,
+reentrancy, Reset and external handoff-pin serialization stated by
+`LinearEmissionBoundary`.
+
+Independent source review closed the initial capability, canonical COM identity,
+hostile output-reference, atomic pool-commit, coverage-phase and Reset-order
+findings. The production component then passed 63 host scenarios with 1,458
+checks; these exercise reference balance and aliases, conditional state caps,
+clean refusal, incomplete B exchange, recovery, Prepared/Pending Reset cleanup,
+failed native Reset and generation recreation. An earlier sanitizer run was
+clean. The focused X3 GPU result
+[qualifies the detached component](../../verification/results/bottle-X3/linear-emission-mrt-pass-gpu.json)
+over 60 cases and 85 original indexed draws: 245,760 C/B/E/M comparison
+channels match the independent qualified path exactly, with 16 fault controls,
+two capability twins and a same-instance actual Reset followed by a complete
+generation-two transaction.
+
+The first parser pass rejected one descriptive `capzero` count: the CPU ideal
+stored 154.625 while actual GPU feedback stored 154.5, on opposite sides of a
+154.6012 diagnostic threshold. No GPU work was repeated. The accepted record
+preserves that failure and the original raw hashes, then revalidates the same
+readback with a reviewed rule: GPU-composed feedback counts are descriptive and
+bounded by exact zero-E lanes, while static, single-step and zero-energy seed
+counts remain exact and positive high-code witnesses remain mandatory. All
+bitwise image, numerical, state, draw, ownership and Reset gates are unchanged.
+
+Paired EVENT-completed timings measured a component cost over the native draw of
+0.49065 ms median at 1280x768 and 0.76490 ms at 1920x1080. They include the
+component's local owning-slot exchange/acknowledgement model, but exclude the
+per-frame M clear, a real `HdrPass::exchange_target`, live hook/classifier work,
+allocations and readback. These are focused diagnostic timings, not gameplay
+FPS. The component remains detached: it does not qualify a live HdrPass or
+TemporalPass route, live material/global constant ownership, real failed-draw
+atomicity or device-loss recovery. The fixture covers a finite synthetic shader
+and state domain, and native-Windows execution remains unverified.
+
 ### Original SM2 shader headroom and parity limit
 
 Targeted inspection of all five local original PS disassemblies confirms the

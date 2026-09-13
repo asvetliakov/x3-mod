@@ -1,0 +1,7 @@
+// Exact authored fixture program; see linear-emission-mrt-original-gpu.json.
+// Equality is checked by test_linear_emission_pass_programs.py; no game bytes.
+    0xffff0300u, 0x0200001fu, 0x80000005u, 0x90030000u, 0x0200001fu, 0x90000000u,
+    0xa00f0800u, 0x05000051u, 0xa00f0014u, 0x00000000u, 0x477fe000u, 0x2edbe6ffu,
+    0x1af1c901u, 0x05000051u, 0xa00f0015u, 0x400ccccdu, 0x3ee8ba2eu, 0x00000000u,
+    0x00000000u, 0x03000042u, 0x800f0000u, 0x90e40000u, 0xa0e40800u, 0x02000001u,
+    0x800f0800u, 0x80e40000u, 0x0000ffffu,

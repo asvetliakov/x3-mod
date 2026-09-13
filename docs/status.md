@@ -84,7 +84,11 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   program, now installed. The existing TAA gameplay run also covers this update.
   The target ownership exchange is reviewed and passes 1,343 host checks;
   default-off shader-cache preparation passes 3,540 host assertions.
-  Single-draw pass integration is in progress; no live emission route is enabled.
+  The single-draw pass now passes independent review and 60 X3 cases, including
+  state recovery and same-instance Reset. Its measured added completion cost is
+  about 0.49 ms at 1280×768 and 0.76 ms at 1080p per source draw, excluding the
+  frame mask clear and live target exchange. Live integration is in progress
+  behind a separate default-off flag; no live emission route is enabled.
   Copy/composition cost remains a
   concern, and historical adjacent draws do not yet qualify batching. The
   [background study](reverse-engineering/background-temporal-coverage.md) retains

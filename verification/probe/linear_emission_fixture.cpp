@@ -14,6 +14,7 @@
 #include <vector>
 #include <windows.h>
 #include "../../src/renderer/linear_emission.h"
+#include "../../src/renderer/linear_emission_pass.h"
 void need(bool b, const char *s) {
   if (!b)
     throw std::runtime_error(s);
@@ -1728,6 +1729,7 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
   }
 }
 
+#include "linear_emission_pass_cases_inc.h"
 int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   HWND window = nullptr;
@@ -1736,10 +1738,11 @@ int main(int argc, char **argv) {
     need(argc == 3 ||
              (argc == 4 && (std::strcmp(argv[3], "--mrt") == 0 ||
                             std::strcmp(argv[3], "--mrt-branch") == 0)) ||
-             (argc == 6 && (std::strcmp(argv[3], "--mrt-original") == 0 || std::strcmp(argv[3], "--mrt-coverage") == 0)),
+             (argc == 6 && (std::strcmp(argv[3], "--mrt-original") == 0 || std::strcmp(argv[3], "--mrt-coverage") == 0 || std::strcmp(argv[3], "--mrt-pass") == 0)),
          "arguments: cases.bin pixels.bin [--mrt|--mrt-branch]");
     bool mrt = argc >= 4;
     bool actual_original = argc == 6;
+    bool component = actual_original && std::strcmp(argv[3], "--mrt-pass") == 0;
     bool coverage = actual_original && std::strcmp(argv[3], "--mrt-coverage") == 0;
     bool branch_experiment = mrt && std::strcmp(argv[3], "--mrt-branch") == 0;
     auto cases = load(argv[1]);
@@ -1814,7 +1817,15 @@ int main(int argc, char **argv) {
            "separate-alpha blend cap");
       Com<IDirect3DSurface9> back;
       api(device->GetRenderTarget(0, &back.p));
-      if (mrt) {
+      if (component) {
+        EmissionPass retained;
+        pass_experiment(device.p,cases,argv[2],back.p,argv[4],argv[5],retained);
+        need(retained.references()==4,"retained pass programs before native Reset");
+        back.p->Release();back.p=nullptr;
+        api(device->SetIndices(nullptr));api(device->SetStreamSource(0,nullptr,0,0));api(device->SetStreamSource(1,nullptr,0,0));
+        api(device->Reset(&p));api(device->GetRenderTarget(0,&back.p));
+        pass_after_reset(device.p,retained,cases.at(2),back.p,argv[4],argv[5]);
+      } else if (mrt) {
         mrt_experiment(device.p, cases, argv[2], back.p, branch_experiment,
                        actual_original ? argv[4] : nullptr, actual_original ? argv[5] : nullptr, coverage);
       } else {
@@ -1880,7 +1891,8 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf(coverage ? "COVERAGE_RESULT pass cases=%u shaders=201\n"
+    std::printf(component ? "PASS_RESULT pass cases=%u shaders=288\n"
+                : coverage ? "COVERAGE_RESULT pass cases=%u shaders=201\n"
                 : actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=42\n"
                 : branch_experiment ? "BRANCH_RESULT pass cases=%u shaders=81\n"
                 : mrt             ? "MRT_RESULT pass cases=%u shaders=78\n"
