@@ -100,9 +100,14 @@ passes the recomputed original oracle. See [review 41](verification/review-41-bl
 This is scoped numerical qualification, not a new GPU run or native-Windows
 validation. The [production executor and standalone fixture](verification/review-44-bloom-pass.md)
 are now reviewed and cross-compiled, with inherited tessellation and unnecessary
-rollback-write findings fixed. Five fixture host controls pass. The first
-combined GPU/state/recovery run is queued behind the user's active game;
-renderer integration and game acceptance remain pending.
+rollback-write findings fixed. Five fixture host controls pass. The combined
+GPU/state/recovery fixture now passes on Steam and X3: 16 controls, 40
+iterations, real Reset, and 25 images with maximum RGB error one code. All
+206 retained readbacks match between bottles. The first rejected attempt
+remains preserved; the corrected fixture compares recovery with the actual
+original image and retains an independent neutral-fill check. See
+[review 45](verification/review-45-bloom-pass-runtime.md). Renderer integration,
+game acceptance and native-Windows execution remain pending.
 The separate [CPU return-bridge prototype](verification/review-39-bloom-return-bridge.md)
 passed independent review and 240 checks each on Steam and X3/FEX, including
 exception cleanup and CPU-state transport. It is not integrated into the game
@@ -115,8 +120,9 @@ remain pending.
 The [bloom/AgX composition shader](verification/review-40-bloom-composition.md)
 is also reviewed and compiler-qualified (108 SM3 slots). All ten existing
 shader binaries remain unchanged after exposing the shared AgX tail. The
-selected sharpen design uses display FP16 staging; its precision and cost
-still need combined GPU validation.
+selected sharpen design uses display FP16 staging; the combined fixture now
+checks its precision and state restoration on both bottles. Runtime cost and
+game integration remain unverified.
 The isolated [compositor owner helper and normal-call ABI study](verification/review-42-compositor-owner.md)
 passed review, 24 hostile host checks and x86 compilation. Exact device lookup
 is ready for integration; ResetEx, reference accounting, cross-thread retirement

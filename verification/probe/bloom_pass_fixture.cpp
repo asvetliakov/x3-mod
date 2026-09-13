@@ -192,6 +192,33 @@ void seed(IDirect3DDevice9* d,Texture& main,Texture& sentinel,IDirect3DTexture9*
 }
 void assert_state(IDirect3DDevice9* d,const State& before,unsigned mrt,const char* label) { State after(d,mrt);require(before.same(after),label); }
 const DWORD original=0x6b193957; // distinct real original RGB and alpha
+void fill_report(const std::string& label,DWORD requested,const std::vector<DWORD>& pixels) {
+    unsigned mismatches=0,first=0xffffffffu;DWORD observed=requested;
+    for(unsigned i=0;i<pixels.size();++i) if(pixels[i]!=requested) {
+        if(!mismatches) {first=i;observed=pixels[i];}++mismatches;
+    }
+    std::printf("FILL label=%s requested=%08lx mismatches=%u first=%u observed=%08lx\n",
+        label.c_str(),(unsigned long)requested,mismatches,first,(unsigned long)observed);
+}
+void exact_image(const std::vector<DWORD>& actual,const std::vector<DWORD>& baseline,const char* label) {
+    require(actual.size()==baseline.size(),"Baseline dimensions");
+    for(unsigned i=0;i<actual.size();++i) if(actual[i]!=baseline[i]) {
+        std::printf("IMAGE_MISMATCH label=%s pixel=%u expected=%08lx actual=%08lx\n",label,i,
+                    (unsigned long)baseline[i],(unsigned long)actual[i]);
+        require(false,label);
+    }
+}
+void neutral_fill_control(IDirect3DDevice9* d,const std::string& dir) {
+    Texture target(d,8,6,D3DFMT_A8R8G8B8,true);
+    check(d->SetRenderState(D3DRS_SRGBWRITEENABLE,FALSE),"Neutral sRGB");
+    check(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"Neutral mask");
+    check(d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE),"Neutral blend");
+    check(d->SetRenderState(D3DRS_SCISSORTESTENABLE,FALSE),"Neutral scissor");
+    check(d->ColorFill(target.surface.p,nullptr,original),"Neutral fill");
+    auto pixels=image(d,target.surface.p);bytes(dir+"/neutral_fill.bgra8",pixels.data(),pixels.size()*4);
+    fill_report("neutral",original,pixels);
+    exact_image(pixels,std::vector<DWORD>(pixels.size(),original),"Neutral ColorFill identity");
+}
 unsigned run_case(IDirect3DDevice9* d,const D3DCAPS9& caps,void* const* native,const BloomPrograms& programs,
                   const Case& c,unsigned index,const std::string& dir,bool faults,
                   BloomPass& pass,BloomCandidate* reset_token=nullptr,bool post_reset=false) {
@@ -252,13 +279,30 @@ unsigned run_case(IDirect3DDevice9* d,const D3DCAPS9& caps,void* const* native,c
             auto other=pass.prepare(input);require(other.ready&&!pass.valid(saved_token),"Reprepare revoke");
             seed(d,main,sentinel,scene.texture.p,mrt.surface.p,vb.p,host,c,true);
         }
-        BloomCommit result;
+        const std::string prefix=(post_reset?"reset_":"")+std::string("c")+std::to_string(index)+"_t"+std::to_string(test);
+        // These are the genuine observed original images, captured after all
+        // simulated-original and token-control work and before the first post
+        // call. Never substitute the requested ColorFill DWORD as the backup
+        // oracle. Retain both sides even when a later assertion fails.
+        const auto baseline=image(d,main.surface.p),mrt_baseline=image(d,mrt.surface.p);
+        bytes(dir+"/"+prefix+"_original.bgra8",baseline.data(),baseline.size()*4);
+        bytes(dir+"/"+prefix+"_mrt_original.bgra8",mrt_baseline.data(),mrt_baseline.size()*4);
+        fill_report(prefix+"_original",original,baseline);
+        fill_report(prefix+"_mrt",0x87563412,mrt_baseline);
+        BloomCommit result;std::vector<DWORD> pixels,mrt_pixels;
         { State outgoing(d,caps.NumSimultaneousRTs);result=pass.commit(saved_token,boundary);
+          pixels=image(d,main.surface.p);mrt_pixels=image(d,mrt.surface.p);
+          bytes(dir+"/"+prefix+"_post.bgra8",pixels.data(),pixels.size()*4);
+          bytes(dir+"/"+prefix+"_mrt_post.bgra8",mrt_pixels.data(),mrt_pixels.size()*4);
           if(test!=5) assert_state(d,outgoing,caps.NumSimultaneousRTs,"Outgoing state restore");
           else {State actual(d,caps.NumSimultaneousRTs);require(!outgoing.same(actual),"Partial restoration fault did not alter state");}
         }
         require(!pass.valid(saved_token)&&pass.transient_views()==0,"Commit token/transient leak");
-        auto repeated=pass.commit(saved_token,boundary);require(!repeated.committed&&!repeated.write_attempted,"Repeated token wrote");
+        auto repeated=pass.commit(saved_token,boundary);
+        const auto repeated_pixels=image(d,main.surface.p);
+        bytes(dir+"/"+prefix+"_repeated.bgra8",repeated_pixels.data(),repeated_pixels.size()*4);
+        require(!repeated.committed&&!repeated.write_attempted,"Repeated token wrote");
+        exact_image(repeated_pixels,pixels,"Repeated token changed image");
         if(test==15) require(failed_pixel_setters==setters_before+1&&!fail_next_pixel_shader
             &&npatch_draw_checks==draws_before,"Draw setter failure issued a native draw");
         if(test==14||test==15) require(!result.write_attempted&&result.original_preserved&&result.state_preserved
@@ -270,11 +314,11 @@ unsigned run_case(IDirect3DDevice9* d,const D3DCAPS9& caps,void* const* native,c
         if(test==4) require(!result.original_preserved&&result.state_preserved&&!pass.enabled(),"Recovery failure flags");
         if(test==5) require(result.original_preserved&&!result.state_preserved&&!pass.enabled(),"Recovery state flags");
         if(test==1||test>=6) require(!result.write_attempted&&result.original_preserved,"Rejected boundary wrote");
-        check(d->EndScene(),"EndScene");auto pixels=image(d,main.surface.p);
-        for(auto pixel:pixels) require((pixel>>24)==(original>>24),"Original alpha changed");
-        if(test==0||test==4) {bool changed=false;for(auto pixel:pixels) changed|=pixel!=original;require(changed,"Candidate did not write real RGB");}
-        else for(auto pixel:pixels) require(pixel==original,"Original backup not recovered exactly");
-        for(auto pixel:image(d,mrt.surface.p)) require(pixel==0x87563412,"Secondary MRT was written");
+        check(d->EndScene(),"EndScene");
+        for(unsigned i=0;i<pixels.size();++i) require((pixels[i]>>24)==(baseline[i]>>24),"Original alpha changed");
+        if(test==0||test==4) require(pixels!=baseline,"Candidate did not write real RGB");
+        else exact_image(pixels,baseline,"Original backup not recovered exactly");
+        exact_image(mrt_pixels,mrt_baseline,"Secondary MRT was written");
         if(test==0) bytes(dir+(post_reset?"/reset_case.bgra8":"/case_"+std::to_string(index)+".bgra8"),pixels.data(),pixels.size()*4);
         ++checks;if(faults) std::printf("CONTROL test=%u pass=1\n",test);
         boundary.frame=7;boundary.reset=2;
@@ -309,6 +353,7 @@ int main(int argc,char** argv) {
         D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.BackBufferWidth=64;pp.BackBufferHeight=64;
         pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.hDeviceWindow=window;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;
         Com<IDirect3DDevice9> device;check(api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_MIXED_VERTEXPROCESSING,&pp,&device.p),"Create mixed device");
+        neutral_fill_control(device.p,dir);
         D3DCAPS9 caps{};check(device->GetDeviceCaps(&caps),"Caps");require(caps.NumSimultaneousRTs>=2&&caps.NumSimultaneousRTs<=4,"MRT control requires 2..4");
         void** actual=*reinterpret_cast<void***>(device.p);void* native[119];std::memcpy(native,actual,sizeof(native));
         original_draw=reinterpret_cast<NativeDraw>(native[83]);native[83]=reinterpret_cast<void*>(&checked_draw);

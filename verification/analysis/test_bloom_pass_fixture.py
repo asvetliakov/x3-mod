@@ -15,7 +15,8 @@ import run_bloom_pass as fixture
 class FixtureAcceptance(unittest.TestCase):
     def setUp(self):
         self.cases=fixture.make_cases()
-        self.lines=[f'CONTROL test={i} pass=1' for i in range(16)]
+        self.lines=['FILL label=neutral requested=6b193957 mismatches=0 first=4294967295 observed=6b193957']
+        self.lines += [f'CONTROL test={i} pass=1' for i in range(16)]
         self.lines += [f"CASE index={i} width={c['width']} height={c['height']} checks={16 if i==0 else 1} pass=1"
                        for i,c in enumerate(self.cases)]
         self.lines += ['NPATCH accepted=1 hr=00000000','ADAPTIVE accepted=1 hr=00000000','NPATCH_DRAWS checked=10 pass=1',
@@ -59,13 +60,17 @@ class FixtureAcceptance(unittest.TestCase):
                     for v in (*reversed([fixture.oracle.code8(x) for x in p]),0x6b))
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'image.bgra8';path.write_bytes(ideal)
-            self.assertTrue(fixture.compare(c,path)['passed'])
+            baseline=Path(directory)/'baseline.bgra8';baseline.write_bytes(ideal)
+            self.assertTrue(fixture.compare(c,path,baseline)['passed'])
             path.write_bytes(struct.pack('<I',0x6b193957)*(c['width']*c['height']))
-            self.assertFalse(fixture.compare(c,path)['passed'])
+            self.assertFalse(fixture.compare(c,path,baseline)['passed'])
             bad=bytearray(ideal);bad[3]=0;path.write_bytes(bad)
-            self.assertFalse(fixture.compare(c,path)['passed'])
+            baseline.write_bytes(bad)
+            self.assertTrue(fixture.compare(c,path,baseline)['passed'])
+            baseline.write_bytes(ideal)
+            self.assertFalse(fixture.compare(c,path,baseline)['passed'])
             path.write_bytes(ideal[:-1])
-            with self.assertRaises(ValueError):fixture.compare(c,path)
+            with self.assertRaises(ValueError):fixture.compare(c,path,baseline)
 
     def test_input_bundle_is_deterministic(self):
         with tempfile.TemporaryDirectory() as directory:

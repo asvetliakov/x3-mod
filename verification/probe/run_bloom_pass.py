@@ -68,18 +68,19 @@ def expected(c):
                                2**(-2*(1-c['sharp']))) for x in range(w)] for y in range(h)]
 
 
-def compare(c,path):
-    data=path.read_bytes()
-    if len(data)!=c['width']*c['height']*4:
+def compare(c,path,baseline_path):
+    data=path.read_bytes(); baseline=baseline_path.read_bytes()
+    if len(data)!=c['width']*c['height']*4 or len(baseline)!=len(data):
         raise ValueError('Readback length mismatch')
     errors=[]; alpha_errors=0
     for i,p in enumerate(p for row in expected(c) for p in row):
         b,g,r,a=data[i*4:i*4+4]
-        alpha_errors+=a!=0x6b
+        alpha_errors+=a!=baseline[i*4+3]
         errors.extend(abs(actual-oracle.code8(wanted)) for actual,wanted in zip((r,g,b),p))
     return dict(passed=max(errors)<=MAX_CODE_ERROR and alpha_errors==0,
                 max_code_error=max(errors), mean_code_error=sum(errors)/len(errors),
-                channels=len(errors), alpha_errors=alpha_errors, sha256=filtering.digest(path))
+                channels=len(errors), alpha_errors=alpha_errors, sha256=filtering.digest(path),
+                original_sha256=filtering.digest(baseline_path))
 
 
 def validate_log(text,cases,returncode):
@@ -88,6 +89,9 @@ def validate_log(text,cases,returncode):
     if returncode or terminal!=['RESULT PASS cases=24 controls=16 checks=40 reset=1 reset_cases=1'] \
             or not lines or lines[-1]!=terminal[0] or any('FAIL' in line for line in lines):
         raise ValueError('Missing, duplicate, failed or nonterminal fixture result')
+    neutral=re.findall(r'^FILL label=neutral requested=6b193957 mismatches=(\d+) first=(\d+) observed=([0-9a-f]{8})$',text,re.MULTILINE)
+    if neutral!=[('0','4294967295','6b193957')]:
+        raise ValueError('Missing/duplicate/failed neutral ColorFill identity control')
     controls=[int(m.group(1)) for line in lines if (m:=re.fullmatch(r'CONTROL test=(\d+) pass=1',line))]
     if controls!=list(range(16)):
         raise ValueError('Missing/duplicate/unordered fault controls')
@@ -181,8 +185,8 @@ def main():
         if not report['hostile_npatch_verified']: report['untested'].append('hostile nonzero NPatch state rejected by backend')
         report['hostile_adaptive_verified']='ADAPTIVE accepted=1 ' in log
         if not report['hostile_adaptive_verified']: report['untested'].append('hostile adaptive tessellation state rejected by backend')
-        for i,c in enumerate(corpus): report['images'].append(dict(index=i,**compare(c,directory/f'case_{i}.bgra8')))
-        report['reset_image']=compare(corpus[-1],directory/'reset_case.bgra8')
+        for i,c in enumerate(corpus): report['images'].append(dict(index=i,**compare(c,directory/f'case_{i}.bgra8',directory/f'c{i}_t0_original.bgra8')))
+        report['reset_image']=compare(corpus[-1],directory/'reset_case.bgra8',directory/'reset_c23_t0_original.bgra8')
         if not report['reset_image']['passed']: raise RuntimeError('Post-Reset independent image mismatch')
         report['compiled_shaders']={name:filtering.digest(directory/(name+'.cso')) for name in NAMES}
         if not all(x['passed'] for x in report['images']): raise RuntimeError('Independent image oracle mismatch')
@@ -191,6 +195,11 @@ def main():
         report.update(passed=False,phase='failed',error=str(error))
         raise
     finally:
+        log=(directory/'fixture.txt').read_text(errors='replace')
+        report['fill_diagnostics']=[dict(label=label,requested=requested,mismatches=int(count),first=int(first),observed=observed)
+            for label,requested,count,first,observed in re.findall(
+                r'^FILL label=(\S+) requested=([0-9a-f]{8}) mismatches=(\d+) first=(\d+) observed=([0-9a-f]{8})$',log,re.MULTILINE)]
+        report['readbacks']={p.name:filtering.digest(p) for p in sorted(directory.glob('*.bgra8'))}
         report['stdout_sha256']=filtering.digest(directory/'fixture.txt')
         report['stderr_sha256']=filtering.digest(directory/'wine.log')
         report['inputs_after']={p:filtering.digest(p) for p in tracked}

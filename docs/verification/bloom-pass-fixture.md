@@ -12,7 +12,48 @@ integration. Native Windows runtime remains unverified.
 Build-only x86 cross-compilation passed using `-O2 -Wall -Wextra -Werror`, SSE2
 floating point and the four-byte incoming-stack contract. Five host tests pass:
 strict completion parsing, corpus coverage, skipped-sharpen sensitivity,
-independent image acceptance and deterministic inputs. **No GPU execution has been performed for this fixture.**
+independent image acceptance and deterministic inputs. The first Steam GPU attempt completed control0 and then failed control1
+(backup fault) at the requested-`ColorFill`-DWORD equality check. That version
+assumed those requested bytes were the genuine original. Inputs stayed unchanged; the actual differing
+pixel was not retained by that version. This is a failed runtime attempt, not
+GPU acceptance. Its raw artifacts remain in the temporary directory
+`x3-bloom-pass-ta8yv8qb` recorded by the first summary. No production correction
+is justified by this evidence alone.
+
+The fixture now captures and retains genuine post-original main/MRT images and
+immediate postcommit images **before assertions**, compares rollback/fallback
+and alpha to those actual baselines, and records requested-fill mismatch counts
+and first differing pixels. A separate neutral-state `ColorFill` identity
+control still requires exact requested bytes. All raw readbacks are hashed in
+the summary, including failed runs; a neutral-fill failure cannot be hidden by
+the baseline change. The diagnostic rerun passes on both Steam and X3 fixture bottles:
+
+- 24 image cases plus a post-Reset image, 4,185 RGB channel comparisons, maximum
+  error **one 8-bit code** against the unchanged three-code limit.
+- All 16 controls / 40 transaction iterations, native Reset and 277 forwarded
+  draw tessellation-state assertions pass; 206 raw readbacks are retained.
+- Source/runtime inputs remain unchanged; terminal exit code is zero.
+- Neutral fill exactly reproduces `0x6b193957`. Under hostile outgoing state,
+  the observed original is `0x6b58829e` (35 of 73 fill records differ from their
+  requests), consistent with the enabled sRGB write state. Exact comparison to
+  those genuine original bytes passes for backup refusal and recovery. This
+  explains the rejected requested-byte oracle without widening any tolerance.
+- Adaptive tessellation TRUE is observed and restored. Nonzero NPatch is not
+  retained by this backend; hostile NPatch restoration remains explicitly
+  unverified while every injected draw is still checked at mode zero.
+
+The passing Steam summary is `verification/results/bloom-pass-summary.json`
+(retained `x3-bloom-pass-74fh27u7`); X3 is
+`verification/results/bottle-X3/bloom-pass-summary.json`
+(retained `x3-bloom-pass-gcvrwt92`). X3 records arm64 Wine with
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. The same 33 repository input
+hashes and all 12 compiled bytecodes match between runs, and all 206 raw
+readback hashes are byte-identical across bottles. Both retain the same
+NPatch limitation and adaptive-tessellation witness. The first rejected
+summary/logs remain unchanged in `x3-bloom-pass-ta8yv8qb`.
+
+This is standalone executor acceptance on CrossOver Preview only. Native
+Windows and renderer/game integration remain unverified.
 The build-only summary deliberately records `passed=false` and
 `gpu_execution_verified=false`; successful compilation is not runtime acceptance.
 
@@ -51,7 +92,7 @@ The final RGB oracle is the independently authored double-precision AgX,
 nine-tap bloom and scalar RCAS reference. It compares against the ideal fused
 result, excluding intermediate FP16 stores. The predeclared acceptance limit is
 three 8-bit codes per RGB channel for this bounded moderate-radiance corpus;
-alpha must match the simulated original exactly. The limit combines storage,
+alpha must match the observed simulated original at each pixel exactly. The limit combines storage,
 sampler, shader arithmetic and UNORM conversion and is not a universal error
 bound or a replacement for the existing bloom sampler precision fixture.
 Host corruption controls reject an unchanged original image, alpha corruption,
@@ -103,7 +144,8 @@ exact render state is also checked after restoration.
 This proves disabling independently of whether tessellation changes pixels. Exact state and reference identities are
 compared before/after preparation and outgoing commit. The partial restoration
 fault deliberately leaves a changed color mask so retry-from-the-original-state
-is observable. The RT1 pixels must remain byte-exact. Required mixed VP and MRT
+is observable. The RT1 pixels must remain byte-exact relative to their observed precommit
+baseline. Repeated-token probes also retain and compare actual pixels. Required mixed VP and MRT
 capability failures fail this gate rather than silently skipping controls.
 
 ## Limits and performance
