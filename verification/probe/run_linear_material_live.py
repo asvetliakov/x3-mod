@@ -21,18 +21,20 @@ from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
-PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin', 'ps_ef2bf556f207b8bd.bin',
-                 'vs_4944d81dfe531b37.bin', 'ps_ca6bfa4a6cca7e2a.bin', 'ps_3602b05ce11ca6ff.bin')
+PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin', 'ps_fffdabd910793aba.bin',
+                 'vs_4944d81dfe531b37.bin', 'ps_ca6bfa4a6cca7e2a.bin', 'ps_fffdabd910793aba.bin')
 FRAME_COUNT = 24
 ELIGIBLE = {0, 1, 6, 8, 10, 11, 12, 14, 16, 17, 18, 20, 21, 22, 23}
 BUMP_FRAMES = set(range(12, 24)) - {17, 23}
-MATCHED = set(range(FRAME_COUNT)) - {0, 10, 12, 17, 18, 21, 23}
+MATCHED = set(range(FRAME_COUNT)) - {0, 9, 10, 12, 17, 18, 19, 20, 21, 23}
 PIXEL_PROGRAMS = ['8759c7838bbc86c2'] * FRAME_COUNT
 VERTEX_PROGRAMS = ['4944d81dfe531b37' if frame in BUMP_FRAMES else '53a0a641107ed76c' for frame in range(FRAME_COUNT)]
 for frame in BUMP_FRAMES: PIXEL_PROGRAMS[frame] = 'ca6bfa4a6cca7e2a'
-PIXEL_PROGRAMS[19] = '3602b05ce11ca6ff'
+PIXEL_PROGRAMS[19] = 'fffdabd910793aba'
 PIXEL_PROGRAMS[1] = '3b94320087e81945'
-PIXEL_PROGRAMS[9] = 'ef2bf556f207b8bd'
+PIXEL_PROGRAMS[9] = 'fffdabd910793aba'
+VERTEX_PROGRAMS[9] = VERTEX_PROGRAMS[19] = '494fe349b8bc12ec'
+BUMP_FRAMES.discard(19)
 
 # Explicit source-qualified pair corpus; each pair appears twice, first unseen
 # and then with valid prior history. This is independent of runtime admission.
@@ -107,7 +109,47 @@ CORPUS_PAIRS = (
     ('44c4a41ca92ae2e3', 'd514bf852d8a9c58', True),
     ('44c4a41ca92ae2e3', 'dff6a3d360603fa2', True),
     ('44c4a41ca92ae2e3', 'f1d14a7dbf7c6173', True),
- )
+    ('4944d81dfe531b37', '1f26d41bcb7dac1e', True),
+    ('4944d81dfe531b37', 'bdcdb3ab996ae4e0', True),
+    ('19a246a56e9d9700', '78963cdc7c710e04', True),
+    ('19a246a56e9d9700', '1ed1bf0fdec00e1a', True),
+    ('19a246a56e9d9700', '2b04461d0dae038b', True),
+    ('19a246a56e9d9700', 'acc83ed2509d84a1', True),
+    ('44c4a41ca92ae2e3', '78963cdc7c710e04', True),
+    ('44c4a41ca92ae2e3', '1ed1bf0fdec00e1a', True),
+    ('44c4a41ca92ae2e3', '2b04461d0dae038b', True),
+    ('44c4a41ca92ae2e3', 'acc83ed2509d84a1', True),
+    ('4944d81dfe531b37', '3006f8030a467739', True),
+    ('4944d81dfe531b37', 'd6e8bdde0e4c515f', True),
+    ('19a246a56e9d9700', 'e5ea78b8b0b0fe07', True),
+    ('19a246a56e9d9700', 'f42202faf57a3c89', True),
+    ('19a246a56e9d9700', '769c3814fc0efba8', True),
+    ('19a246a56e9d9700', '22cc5b05a55ef61e', True),
+    ('44c4a41ca92ae2e3', 'e5ea78b8b0b0fe07', True),
+    ('44c4a41ca92ae2e3', 'f42202faf57a3c89', True),
+    ('44c4a41ca92ae2e3', '769c3814fc0efba8', True),
+    ('44c4a41ca92ae2e3', '22cc5b05a55ef61e', True),
+    ('53a0a641107ed76c', 'ef2bf556f207b8bd', False),
+    ('53a0a641107ed76c', '91b6c09eb47f8555', False),
+    ('719856ce0c213220', 'cc09f17db377fd9e', False),
+    ('719856ce0c213220', '3755809bd40afc13', False),
+    ('719856ce0c213220', '61418505e5d8f998', False),
+    ('719856ce0c213220', 'b5f1d4145171026b', False),
+    ('badefd5143b3024f', 'cc09f17db377fd9e', False),
+    ('badefd5143b3024f', '3755809bd40afc13', False),
+    ('badefd5143b3024f', '61418505e5d8f998', False),
+    ('badefd5143b3024f', 'b5f1d4145171026b', False),
+    ('4944d81dfe531b37', '3602b05ce11ca6ff', True),
+    ('4944d81dfe531b37', '8e58ac79b59b02b1', True),
+    ('19a246a56e9d9700', '042c9ae16f41feff', True),
+    ('19a246a56e9d9700', '68f0dd6791fd7d3d', True),
+    ('19a246a56e9d9700', '5c823b8507fa1442', True),
+    ('19a246a56e9d9700', 'a6e1328c0bb3f401', True),
+    ('44c4a41ca92ae2e3', '042c9ae16f41feff', True),
+    ('44c4a41ca92ae2e3', '68f0dd6791fd7d3d', True),
+    ('44c4a41ca92ae2e3', '5c823b8507fa1442', True),
+    ('44c4a41ca92ae2e3', 'a6e1328c0bb3f401', True),
+)
 IMPLEMENTED_PROGRAMS = {('vs', v) for v, _, _ in CORPUS_PAIRS} | {('ps', p) for _, p, _ in CORPUS_PAIRS}
 PROGRAM_NAMES += tuple(sorted(f'{stage}_{identifier}.bin' for stage, identifier in IMPLEMENTED_PROGRAMS
                               if f'{stage}_{identifier}.bin' not in PROGRAM_NAMES))
@@ -156,7 +198,7 @@ def validate_case(output, trace_lines, material, taa):
         assert live[frame]['ps'] == PIXEL_PROGRAMS[frame] and live[frame]['vs'] == VERTEX_PROGRAMS[frame], (frame, 'wrong material program pair')
     if material:
         assert set(material_frames) == set(range(FRAME_COUNT))
-        assert len(variants) == 49 and {(row['kind'], row['original']) for row in variants} == IMPLEMENTED_PROGRAMS, 'combined program inventory differs'
+        assert len(variants) == 73 and {(row['kind'], row['original']) for row in variants} == IMPLEMENTED_PROGRAMS, 'combined program inventory differs'
         assert all(int(row['transform']) == 0 and int(row['create'], 16) == 0 for row in variants)
         for frame, row in material_frames.items():
             assert int(row['routed']) == int(frame in ELIGIBLE), (frame, 'combined selection')
@@ -172,6 +214,7 @@ def validate_case(output, trace_lines, material, taa):
                 held_references=int(release[0]['held']), pixel_programs=[live[i]['ps'] for i in range(FRAME_COUNT)],
                 vertex_programs=[live[i]['vs'] for i in range(FRAME_COUNT)],
                 rgba=[list(map(float, live[i]['rgba'].split(','))) for i in range(FRAME_COUNT)],
+                native_hashes=[live[i]['native_hash'] for i in range(FRAME_COUNT)],
                 temporal_hashes=[[motion[i]['motion'], motion[i]['depth']] for i in range(FRAME_COUNT)],
                 combined_frames=sorted(ELIGIBLE) if material else [], refused_frames=sorted(set(range(FRAME_COUNT))-ELIGIBLE) if material else [])
 
@@ -183,15 +226,19 @@ def compare_cases(cases):
             assert on['temporal_hashes'] == off['temporal_hashes'], 'material route changed RT1/RT2'
             assert on['pixel_programs'] == off['pixel_programs'] == PIXEL_PROGRAMS, 'material positive/negative schedule changed'
             assert on['vertex_programs'] == off['vertex_programs'] == VERTEX_PROGRAMS, 'material vertex schedule changed'
-            assert on['held_references'] == off['held_references'] + 49, 'forty-nine additional shader objects not reflected in actual device retirement'
+            assert on['held_references'] == off['held_references'] + 73, 'seventy-three additional shader objects not reflected in actual device retirement'
             for frame in range(FRAME_COUNT):
                 assert on['rgba'][frame][3] == off['rgba'][frame][3], 'alpha changed'
-                if frame not in ELIGIBLE: assert on['rgba'][frame] == off['rgba'][frame], 'refusal changed original material color'
+                if frame not in ELIGIBLE:
+                    assert on['native_hashes'][frame] == off['native_hashes'][frame], 'refusal changed raw native FP16 output'
+                    # The class-C original reads an unprovided varying. Preserve
+                    # its bits without inventing finite/analytical RGB semantics.
+                    if frame not in (9, 19): assert on['rgba'][frame] == off['rgba'][frame], 'refusal changed original material color'
                 else: assert min(on['rgba'][frame][:3]) > 1.8 and max(off['rgba'][frame][:3]) == 1., 'combined FP16 witness absent'
     for taa in (0, 1):
         for material in (0, 1):
             a, b = (cases[f'ownership{o}-taa{taa}-material{material}'] for o in (0, 1))
-            assert a['rgba'] == b['rgba'] and a['temporal_hashes'] == b['temporal_hashes'], 'ownership model changed outputs'
+            assert a['native_hashes'] == b['native_hashes'] and a['temporal_hashes'] == b['temporal_hashes'], 'ownership model changed outputs'
 
 
 def main():
@@ -207,7 +254,7 @@ def main():
     assert all(path.is_file() for path in [fixture, dll, *programs]), 'prebuilt inputs or local programs missing'
     raw = Path(tempfile.mkdtemp(prefix='x3-linear-material-live-'))
     report = dict(passed=False, game_launched=False, bottle=bottle.describe(), raw=str(raw),
-                  scope='Actual live evaluate_draw across all 70 exact pairs / 49 originals, DEFAULT/BUMPMAP/LOW alternation and shared-VS negatives, five-sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
+                  scope='Actual live evaluate_draw across all 110 exact pairs / 73 originals, DEFAULT/BUMPMAP/LOW alternation and shared-VS class-C ordinary-motion fallback, five-sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
                   binaries={str(path): sha(path) for path in (fixture, dll)}, local_programs={path.name: sha(path) for path in programs}, cases={})
     args.result.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -244,7 +291,7 @@ def main():
         assert report['local_programs'] == {path.name: sha(path) for path in programs}, 'local programs changed during qualification'
         report['passed'] = True
         report['checks'] = sum(case['checks'] for case in report['cases'].values())
-        report['limitations'] = ['Unknown sampler getter failure and combined creation/bind/restore failures are covered by scripted host control-flow checks, not injected into this GPU script.', 'Native Windows and gameplay appearance/performance remain unverified.']
+        report['limitations'] = ['Unknown sampler getter failure and combined creation/bind/restore failures are covered by scripted host control-flow checks, not injected into this GPU script.', 'Class-C fallback uses its own original constants/booleans/samplers and compares raw FP16 bits; an unprovided original varying prevents analytical color claims.', 'Native Windows and gameplay appearance/performance remain unverified.']
     finally:
         destination = args.result if report['passed'] else raw / 'failed-result.json'
         destination.write_text(json.dumps(report, indent=2) + '\n')

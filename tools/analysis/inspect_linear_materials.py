@@ -163,6 +163,72 @@ ALL_PIXELS = dict(PIXELS, **BUMP_PIXELS, **EXTENDED_PIXELS)
 ALL_BUMP_PIXELS = dict(BUMP_PIXELS, **EXTENDED_BUMP_PIXELS)
 
 
+# Complete remaining conventional SM3 hull contracts; no new vertex identities.
+HULL_PIXELS = {
+    '1ed1bf0fdec00e1a': ((1220, 1080, 1187, 1263, 1216), 1237, 1208, {5: (1249,)}, 1272),
+    '1f26d41bcb7dac1e': ((1272, 1095, 1235, 1314, 1268), 1289, 1260, {5: (1225, 1230), 7: (1185, 1217)}, 1323),
+    '2b04461d0dae038b': ((292, 175, 259, 318, 288), None, 280, {2: (304,)}, 327),
+    '78963cdc7c710e04': ((1194, 1077, 1161, 1237, 1190), 1211, 1182, {5: (1223,)}, 1246),
+    'acc83ed2509d84a1': ((318, 178, 285, 344, 314), None, 306, {2: (330,)}, 353),
+    'bdcdb3ab996ae4e0': ((1298, 1098, 1261, 1340, 1294), 1315, 1286, {5: (1251, 1256), 7: (1211, 1243)}, 1349),
+    '22cc5b05a55ef61e': ((310, 178, 277, 332, 306), None, 298, {2: (318,)}, 341),
+    '3006f8030a467739': ((1256, 1095, 1219, 1294, 1252), 1273, 1244, {5: (1209, 1214), 7: (1168, 1201)}, 1303),
+    '769c3814fc0efba8': ((284, 175, 251, 306, 280), None, 272, {2: (292,)}, 315),
+    'd6e8bdde0e4c515f': ((1282, 1098, 1245, 1320, 1278), 1299, 1270, {5: (1235, 1240), 7: (1194, 1227)}, 1329),
+    'e5ea78b8b0b0fe07': ((1186, 1077, 1153, 1225, 1182), 1203, 1174, {5: (1211,)}, 1234),
+    'f42202faf57a3c89': ((1212, 1080, 1179, 1251, 1208), 1229, 1200, {5: (1237,)}, 1260),
+    '3755809bd40afc13': ((1142, 1129, 1188, 1175), 1162, 1151, {5: (1166,)}, 1197),
+    '61418505e5d8f998': ((222, 201, 243, 230), None, 214, {2: (217,)}, 252),
+    '91b6c09eb47f8555': ((1219, 1206, 1264, 1251), 1239, 1228, {5: (1196, 1201), 7: (1156, 1188)}, 1273),
+    'b5f1d4145171026b': ((248, 227, 269, 256), None, 240, {2: (243,)}, 278),
+    'cc09f17db377fd9e': ((1116, 1103, 1162, 1149), 1136, 1125, {5: (1140,)}, 1171),
+    'ef2bf556f207b8bd': ((1193, 1180, 1238, 1225), 1213, 1202, {5: (1170, 1175), 7: (1130, 1162)}, 1247),
+    '042c9ae16f41feff': ((1191, 1077, 1158, 1230, 1187), 1208, 1179, {5: (1216,)}, 1239),
+    '3602b05ce11ca6ff': ((1268, 1095, 1235, 1306, 1264), 1285, 1256, {5: (1225, 1230), 7: (1185, 1217)}, 1315),
+    '5c823b8507fa1442': ((283, 169, 250, 305, 279), None, 271, {2: (291,)}, 314),
+    '68f0dd6791fd7d3d': ((1217, 1080, 1184, 1256, 1213), 1234, 1205, {5: (1242,)}, 1265),
+    '8e58ac79b59b02b1': ((1294, 1098, 1261, 1332, 1290), 1311, 1282, {5: (1251, 1256), 7: (1211, 1243)}, 1341),
+    'a6e1328c0bb3f401': ((315, 178, 282, 337, 311), None, 303, {2: (323,)}, 346),
+}
+ORIGINALS.update({
+    'ps_1ed1bf0fdec00e1a': ('b144ea7b37fa3da24e8eacf4577beedf8608f1ee833e79e050ceb78c33432ecc', 1281),
+    'ps_1f26d41bcb7dac1e': ('6b1d36a1d68a67c0c123dee76810f93cb9e59452ff2bf6afa0ac7ade0d78060b', 1332),
+    'ps_2b04461d0dae038b': ('b711af0319a875d9ce8e37fd1be97730205fc84ced93afecdc26fb524c541a69', 336),
+    'ps_78963cdc7c710e04': ('1bd7cb2ad8a48f55fa521caf72f700dbe0416cd4515736290568e9e3a699f678', 1255),
+    'ps_acc83ed2509d84a1': ('743d1f2f3437a83a0ce88f265776e5b4438ff9ad2149835711a70ea7b3dad963', 362),
+    'ps_bdcdb3ab996ae4e0': ('878640333bd196c9a213715e046cdf2840412deb43c8d265ff8d1828cc466236', 1358),
+    'ps_22cc5b05a55ef61e': ('fc02f5734a8b555e34eb08bcfe04c379a4531e0c3b44a726ae9a10d145a8b7f5', 350),
+    'ps_3006f8030a467739': ('a6138aae0b3035b28e5b394f9812e4dbc60127338101764cd6b2abd064bf63c6', 1312),
+    'ps_769c3814fc0efba8': ('36e8bd790bac0395981beeaec7da54801a0baff7a8dee1480f7840a5b2445c5b', 324),
+    'ps_d6e8bdde0e4c515f': ('bfc647a9dc27604f79047ca5c3158ce544f342ea7fd7b89223fece7dd81df3e9', 1338),
+    'ps_e5ea78b8b0b0fe07': ('dbd52a8f2f85955006e3058cb3aeae754519845e2aa4466b27d5c80c49ba4d2b', 1243),
+    'ps_f42202faf57a3c89': ('6650ca483e51e1ae9e752e1d4d1a7c19f68d3980bbaede429ade5452ae7b0ef3', 1269),
+    'ps_3755809bd40afc13': ('361697166d13575c9c84609cfded80967c07cde985807ba3a63755d3fa61f376', 1206),
+    'ps_61418505e5d8f998': ('420fa086c1fc623e1d70e55cea24bac4391129e50080fbd11c01cfe06d57514e', 261),
+    'ps_91b6c09eb47f8555': ('c32e7ac4e383027babe5e819dbb1ce643234c1721e5a4ab522bbcbc709731f9f', 1282),
+    'ps_b5f1d4145171026b': ('b52a137ea6415c75dd7d84e6f9fa8e1dde9456c80802865aa0a035b836611cc0', 287),
+    'ps_cc09f17db377fd9e': ('38edca2c0f17dd2a3ef0b9e01e590fa7760cf76bc34b9445d5448d0159d10c47', 1180),
+    'ps_ef2bf556f207b8bd': ('37ab024dcc9f252e7558c359a02ff4cfc45a82c8e4322821b2956773c00e354b', 1256),
+    'ps_042c9ae16f41feff': ('38813e508bcbc00d21cd7e3a54a851933a03ff629d2cc1906a8752023e024a48', 1248),
+    'ps_3602b05ce11ca6ff': ('b075ec5f87410f8ae7f1d7e0045528506d725eb5c89283c8579b6619e431982e', 1324),
+    'ps_5c823b8507fa1442': ('8ce6dc84ed02a20ce2c44033d45ec2fb6860f979a5f70bbd915f0f3feb888383', 323),
+    'ps_68f0dd6791fd7d3d': ('888d2654a8fa543b73f561bc77596aeca0d7721a790d95eab3caf43ca776937d', 1274),
+    'ps_8e58ac79b59b02b1': ('93c10b47b4cae8aecf7b6ee242bee50f4c19987d2ef6838327503c56b8f8d5fd', 1350),
+    'ps_a6e1328c0bb3f401': ('e060a279d7a8afe1226f252eadc61dcefb380ef561ce0ae7c01592454e545ebe', 355),
+})
+FAMILIES['shared_bump'] = {'pixels': ['1f26d41bcb7dac1e', 'bdcdb3ab996ae4e0', '78963cdc7c710e04', '1ed1bf0fdec00e1a', '2b04461d0dae038b', 'acc83ed2509d84a1'], 'production_status': 'offline_sites_verified', 'aliases': ['khaak', 'teladi', 'teladi_nodiff', 'xenon'], 'technique': 'BUMPMAP', 'coefficients': {'diffuse': 0.5, 'specular_power': 6, 'cube': 0.5}}
+PAIRS |= {('4944d81dfe531b37', key) for key in FAMILIES['shared_bump']['pixels'][:2]} | {(vs, key) for vs in BUMP_VERTICES[1:] for key in FAMILIES['shared_bump']['pixels'][2:]}
+FAMILIES['split_bump'] = {'pixels': ['3006f8030a467739', 'd6e8bdde0e4c515f', 'e5ea78b8b0b0fe07', 'f42202faf57a3c89', '769c3814fc0efba8', '22cc5b05a55ef61e'], 'production_status': 'offline_sites_verified', 'aliases': ['split'], 'technique': 'BUMPMAP', 'coefficients': {'diffuse': 0.5, 'specular_power': 10, 'cube': 1.0}}
+PAIRS |= {('4944d81dfe531b37', key) for key in FAMILIES['split_bump']['pixels'][:2]} | {(vs, key) for vs in BUMP_VERTICES[1:] for key in FAMILIES['split_bump']['pixels'][2:]}
+FAMILIES['terran_default'] = {'pixels': ['ef2bf556f207b8bd', '91b6c09eb47f8555', 'cc09f17db377fd9e', '3755809bd40afc13', '61418505e5d8f998', 'b5f1d4145171026b'], 'production_status': 'offline_sites_verified', 'aliases': ['terran'], 'technique': 'DEFAULT', 'coefficients': {'diffuse': 1.0, 'specular_power': 5, 'cube': 1.0}}
+PAIRS |= {('53a0a641107ed76c', key) for key in FAMILIES['terran_default']['pixels'][:2]} | {(vs, key) for vs in TOGGLE_VS for key in FAMILIES['terran_default']['pixels'][2:]}
+FAMILIES['terran_bump'] = {'pixels': ['3602b05ce11ca6ff', '8e58ac79b59b02b1', '042c9ae16f41feff', '68f0dd6791fd7d3d', '5c823b8507fa1442', 'a6e1328c0bb3f401'], 'production_status': 'offline_sites_verified', 'aliases': ['terran'], 'technique': 'BUMPMAP', 'coefficients': {'diffuse': 1.0, 'specular_power': 5, 'cube': 1.0}}
+PAIRS |= {('4944d81dfe531b37', key) for key in FAMILIES['terran_bump']['pixels'][:2]} | {(vs, key) for vs in BUMP_VERTICES[1:] for key in FAMILIES['terran_bump']['pixels'][2:]}
+PIXEL_FAMILY.update({key: family for family, record in FAMILIES.items() for key in record['pixels']})
+ALL_PIXELS.update(HULL_PIXELS)
+ALL_BUMP_PIXELS.update({key: value for key, value in HULL_PIXELS.items() if PIXEL_FAMILY[key] != 'terran_default'})
+
+
 def require(condition, reason):
     if not condition:
         raise ValueError(reason)
@@ -1100,6 +1166,240 @@ def prove_extended_pixel(decoded, key):
             'affine_rgb_sites':[site(decoded,affine-8+4*i) for i in range(3)] if affine else []}
 
 
+def prove_hull_pixel(decoded, key):
+    """Exact conventional-hull schedules with fixed coefficients and AG data.
+
+    Full original executable occupancy binds every producer through its final
+    consumer. This separately reviewed predicate preserves the earlier 49
+    program proofs; it does not evaluate or generate shader bytecode.
+    """
+    tex, affine, clamp, direct, final = HULL_PIXELS[key]
+    family = PIXEL_FAMILY[key]
+    bump, shared, split = family != 'terran_default', family == 'shared_bump', family == 'split_bump'
+    base, face = len(direct) == 2, bool(uses(decoded, 'vFace'))
+    local = ('c8' if shared else 'c9') if bump and base else 'c6' if affine else 'c3'
+    if not bump and base: local = 'c8'
+    one, zero, two, minus = ('x','z','w','y') if face and affine else ('x','y','z','w') if affine else ('x','w','z','y') if face else ('z',None,'x','y')
+    if not bump: one,zero,minus = 'x','z' if face else 'y','y'
+    literals = []
+    def literal(reg,lane,value):
+        literals.append(literal_component(decoded,reg,lane,value))
+        return (reg,lane*4)
+    if bump:
+        for lane,value in ((one,1.),(two,2.),(minus,-1.)): literal(local,lane,value)
+        if zero: literal(local,zero,0.)
+    elif affine or face:
+        literal(local,one,1.);literal(local,zero,0.)
+        if face: literal(local,minus,-1.)
+    if split:
+        coefficient = 'c8' if base else 'c7' if affine else 'c4'
+        three = literal(coefficient,'y' if base or affine or face else 'x',3.)
+        half = literal(coefficient,'z' if base or affine or face else 'y',.5)
+        power = literal('c3' if not affine and not face else coefficient,'w' if not affine and not face else 'x',10.)
+        packed = (coefficient,'yzzw' if affine or face else 'xyzw')
+    elif shared:
+        coefficient = 'c9' if base else 'c7' if affine else 'c4'
+        three = literal(coefficient,'x',3.)
+        half = literal(coefficient,'y',.5)
+        outer_three = literal('c3','w',3.) if not affine and not face else three
+        packed = (coefficient,'xyzw')
+    else:
+        coefficient = ('c8' if base else 'c7' if affine else 'c4' if face else 'c3') if bump else local
+        three = literal(coefficient,'w' if not affine and (not bump and face or bump and not face) else 'z' if not bump and affine and not face else 'w' if not bump and face else 'x',3.)
+    executable = [at for at,row in decoded.items() if row['item']['opcode'] not in (31,81)]
+    cursor, specs = min(executable), []
+    def emit(op,dst,sources,mods=PP):
+        nonlocal cursor
+        specs.append((cursor,op,dst,sources,mods));cursor += 1+bool(dst)+len(sources)
+    def nrm(dst,source): emit('nrm',(dst,'xyz'),[(source,'xyzw')])
+    if bump:
+        emit('texld',('r0','xyzw'),[('v1','xyzw'),('s1','xyzw')])
+        emit('mad',('r1','xy'),[(local,two*4),('r0','wyzw'),(local,minus*4)])
+        emit('dp2add',('r0','w'),[('r1','xyzw'),('r1','xyzw',1),(local,one*4)])
+        emit('mul',('r0','xyz'),[('r1','yyyy'),('v4','xyzw')])
+        emit('rsq',('r0','w'),[('r0','wwww')])
+        emit('mad',('r0','xyz'),[('r1','xxxx'),('v5','xyzw'),('r0','xyzw')])
+        emit('rcp',('r0','w'),[('r0','wwww')])
+        emit('mad',('r1','xyz'),[('r0','wwww'),('v3','xyzw'),('r0','xyzw')])
+    if face:
+        emit('cmp',('r0','w'),[('vFace','xyzw'),(local,one*4),(local,minus*4)],())
+        emit('cmp',('r0','w'),[('r0','wwww',1),(local,zero*4),(local,one*4)])
+        emit('cmp',('r1','w') if bump else ('r0','z'),[('vFace','xyzw'),(local,zero*4),(local,one*4)])
+        if bump: nrm('r0','r1')
+        emit('add',('r0','w'),[('r0','wwww'),('r1','wwww',1) if bump else ('r0','zzzz',1)])
+        if not bump: nrm('r0','v3')
+        emit('mul',('r0','xyz'),[('r0','xyzw'),('r0','wwww')] if bump else [('r0','wwww'),('r0','xyzw')])
+    else: nrm('r0','r1' if bump else 'v3')
+    normal_count = len(specs)
+    direction = 'c6' if base else 'c4' if affine else 'c1'
+    emit('dp3',('r0','w'),[(direction,'xyzw',1),('r0','xyzw')])
+    emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')])
+    if not bump:
+        if base and not face: nrm('r3','v2')
+        emit('mad',('r1','xyz'),[('r0','xyzw'),('r0','wwww',1),(direction,'xyzw',1)])
+        if not base or face: nrm('r3' if base else 'r2','v2')
+        emit('dp3',('r0','w'),[('r1','xyzw'),('r3' if base else 'r2','xyzw')],PP+('saturate',))
+        if base:
+            emit('mul',('r1','w'),[('r0','wwww'),('r0','wwww')])
+            emit('mul',('r1','w'),[('r1','wwww'),('r1','wwww')])
+            emit('mul',('r1','w'),[('r0','wwww'),('r1','wwww')])
+            emit('dp3',('r1','z'),[('c4','xyzw',1),('r0','xyzw')])
+            emit('dp3',('r0','w'),[('r0','xyzw'),('c6','xyzw')],PP+('saturate',))
+            emit('add',('r1','z'),[('r1','zzzz'),('r1','zzzz')])
+            emit('mul',('r2','w'),[('r0','wwww'),three],PP+('saturate',))
+            emit('mad',('r2','xyz'),[('r0','xyzw'),('r1','zzzz',1),('c4','xyzw',1)])
+            emit('mul',('r1','xyz'),[('r0','wwww'),('c7','xyzw')])
+            emit('dp3',('r0','w'),[('r2','xyzw'),('r3','xyzw')],PP+('saturate',))
+            emit('mul',('r2','z'),[('r1','wwww'),('r2','wwww')])
+            emit('mul',('r2','w'),[('r0','wwww'),('r0','wwww')])
+            emit('dp3',('r1','w'),[('r0','xyzw'),('c4','xyzw')],PP+('saturate',))
+            emit('mul',('r0','z'),[('r2','wwww'),('r2','wwww')])
+            emit('mul',('r0','w'),[('r0','wwww'),('r0','zzzz')])
+            emit('mul',('r2','w'),[('r1','wwww'),three],PP+('saturate',))
+            emit('mul',('r0','xyz'),[('r2','zzzz'),('c7','xyzw')])
+            emit('mul',('r0','w'),[('r0','wwww'),('r2','wwww')])
+            emit('mad',('r2','xyz'),[('r1','wwww'),('c5','xyzw'),('r1','xyzw')])
+            emit('mad',('r1','xyz'),[('r0','wwww'),('c5','xyzw'),('r0','xyzw')])
+        else:
+            emit('mul',('r1','z'),[('r0','wwww'),('r0','wwww')])
+            emit('dp3',('r1','w'),[('r0','xyzw'),(direction,'xyzw')],PP+('saturate',))
+            emit('mul',('r0','z'),[('r1','zzzz'),('r1','zzzz')])
+            emit('mul',('r0','w'),[('r0','wwww'),('r0','zzzz')])
+            emit('mul',('r0','z'),[('r1','wwww'),three],PP+('saturate',))
+            emit('mul',('r1','z'),[('r0','wwww'),('r0','zzzz')])
+        emit('texld',('r0','xyzw'),[('v1','xyzw'),('s1','xyzw')])
+        emit('mul',('r0','w'),[('r0','xxxx'),three] if base else [('r1','zzzz'),('r0','xxxx')])
+        if base: emit('mad',('r4','xyz'),[('r1','xyzw'),('r0','wwww'),('r2','xyzw')])
+        else: emit('mad',('r0','w'),[('r0','wwww'),three,('r1','wwww')])
+    else:
+        emit('mad',('r2','xyz'),[('r0','xyzw'),('r0','wwww',1),(direction,'xyzw',1)])
+        nrm('r1','v2')
+        if split and not base: emit('dp3',('r1','w'),[('r0','xyzw'),(direction,'xyzw')],PP+('saturate',))
+        emit('dp3',('r0','w'),[('r2','xyzw'),('r1','xyzw')],PP+('saturate',))
+        if base and split:
+            emit('pow',('r1','w'),[('r0','wwww'),power])
+            emit('dp3',('r2','z'),[('r0','xyzw'),('c6','xyzw')],PP+('saturate',))
+            emit('mul',('r2','w'),[('r2','zzzz'),three],PP+('saturate',))
+            emit('dp3',('r0','w'),[('c4','xyzw',1),('r0','xyzw')])
+            emit('mul',('r3','xyz'),[('r2','zzzz'),('c7','xyzw')])
+            emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')])
+            emit('mul',('r3','w'),[('r1','wwww'),('r2','wwww')])
+            emit('mad',('r2','xyz'),[('r0','xyzw'),('r0','wwww',1),('c4','xyzw',1)])
+            emit('dp3',('r2','w'),[('r2','xyzw'),('r1','xyzw')],PP+('saturate',))
+            emit('dp3',('r1','w'),[('r0','xyzw'),('c4','xyzw')],PP+('saturate',))
+            emit('pow',('r0','w'),[('r2','wwww'),power])
+            emit('mul',('r2','w'),[('r1','wwww'),three],PP+('saturate',))
+            emit('mul',('r2','xyz'),[('r3','wwww'),('c7','xyzw')])
+            emit('mul',('r0','w'),[('r0','wwww'),('r2','wwww')])
+        elif base:
+            emit('mul',('r0' if shared else 'r1','w'),[('r0','wwww'),('r0','wwww')])
+            emit('mul',('r1','w'),[('r0' if shared else 'r1','wwww'),('r0' if shared else 'r1','wwww')])
+            emit('mul',('r1','w'),[('r0','wwww'),('r1','wwww')])
+            emit('dp3',('r2','w'),[('c4','xyzw',1),('r0','xyzw')])
+            emit('dp3',('r0','w'),[('r0','xyzw'),('c6','xyzw')],PP+('saturate',))
+            emit('add',('r2','z'),[('r2','wwww'),('r2','wwww')])
+            emit('mul',('r2','w'),[('r0','wwww'),three],PP+('saturate',))
+            emit('mad',('r2','xyz'),[('r0','xyzw'),('r2','zzzz',1),('c4','xyzw',1)])
+            emit('mul',('r3','xyz'),[('r0','wwww'),('c7','xyzw')])
+            emit('dp3',('r0','w'),[('r2','xyzw'),('r1','xyzw')],PP+('saturate',))
+            emit('mul',('r2','z'),[('r1','wwww'),('r2','wwww')])
+            emit('mul',('r0' if shared else 'r1','w'),[('r0','wwww'),('r0','wwww')])
+            emit('mul',('r2','w'),[('r0' if shared else 'r1','wwww'),('r0' if shared else 'r1','wwww')])
+            emit('dp3',('r1','w'),[('r0','xyzw'),('c4','xyzw')],PP+('saturate',))
+            emit('mul',('r0','w'),[('r0','wwww'),('r2','wwww')])
+            emit('mul',('r2','w'),[('r1','wwww'),three],PP+('saturate',))
+            emit('mul',('r2','xyz'),[('r2','zzzz'),('c7','xyzw')])
+            emit('mul',('r0','w'),[('r0','wwww'),('r2','wwww')])
+        elif split:
+            emit('mul',('r3','xy'),[('r1','wwww'),packed])
+            emit('pow',('r1','w'),[('r0','wwww'),power])
+        elif shared:
+            emit('mul',('r0','w'),[('r0','wwww'),('r0','wwww')])
+            emit('dp3',('r2','w'),[('r0','xyzw'),(direction,'xyzw')],PP+('saturate',))
+            emit('mul',('r1','w'),[('r0','wwww'),('r0','wwww')])
+            emit('mul',('r3','xy'),[('r2','wwww'),packed])
+            emit('mul',('r1','w'),[('r0','wwww'),('r1','wwww')])
+        else:
+            emit('mul',('r1','w'),[('r0','wwww'),('r0','wwww')])
+            emit('mul',('r1','w'),[('r1','wwww'),('r1','wwww')])
+            emit('dp3',('r3','w'),[('r0','xyzw'),(direction,'xyzw')],PP+('saturate',))
+            emit('mul',('r0','w'),[('r0','wwww'),('r1','wwww')])
+            emit('mul',('r1','w'),[('r3','wwww'),three],PP+('saturate',))
+        if base:
+            emit('mad',('r3' if shared or split else 'r4','xyz'),[('r1','wwww'),('c5','xyzw'),('r3','xyzw')])
+            emit('mad',('r4' if shared or split else 'r3','xyz'),[('r0','wwww'),('c5','xyzw'),('r2','xyzw')])
+        elif shared or split:
+            emit('mov',('r0','w'),[('r3','xxxx')],PP+('saturate',))
+            emit('mul',('r0','w'),[('r1','wwww'),('r0','wwww')])
+        else: emit('mul',('r0','w'),[('r0','wwww'),('r1','wwww')])
+        emit('texld',('r2','xyzw'),[('v1','xyzw'),('s2','xyzw')])
+        if base:
+            emit('mul',('r0' if shared or split else 'r1','w'),[('r2','xxxx'),three])
+            if shared or split: emit('mul',('r4','xyz'),[('r4','xyzw'),('r0','wwww')])
+        else: emit('mul',('r1','w'),[('r0','wwww'),('r2','xxxx')])
+    angular_count = len(specs)
+    # Reflection shares the live reconstructed normal and normalized view;
+    # a scalar/direct-lobe combination is scheduled inside its dot/double chain.
+    reflect_at = None
+    if bump:
+        emit('dp3',('r0','w'),[('r1','xyzw',1),('r0','xyzw')])
+        if base:
+            emit('mad',('r5','xyz'),[('r3','xyzw'),half,('r4','xyzw')] if shared or split else [('r3','xyzw'),('r1','wwww'),('r4','xyzw')])
+        else:
+            emit('mad',('r2','w'),[('r1','wwww'),outer_three if shared else three,('r3','yyyy') if shared or split else ('r3','wwww')])
+        emit('add',('r0','w'),[('r0','wwww'),('r0','wwww')])
+        emit('mov',('r6' if base else 'r5' if affine else 'r4','xyz'),[('v0','xyzw')],PP+('saturate',))
+        reflect_at = cursor
+        emit('mad',('r0','xyz'),[('r0','xyzw'),('r0','wwww',1),('r1','xyzw',1)])
+        emit('texld',('r0','xyzw'),[('r0','xyzw'),('s4','xyzw')])
+    elif not affine:
+        emit('mov',('r1','xyz'),[('v0','xyzw')],PP+('saturate',))
+        emit('mad',('r2','xyz'),[('r0','wwww'),('c2','xyzw'),('r1','xyzw')])
+    emit('texld',('r1','xyzw'),[('v1','xyzw'),('s0','xyzw')])
+    if affine:
+        # The two Terran BUMP affine singles retain PP on this authored
+        # homogeneous preparation; the other hull affine preparations do not.
+        emit('mad',('r3' if bump else 'r2','xyzw'),[('r1','xyzx'),(local,one*3+zero),(local,zero*3+one)],PP if family == 'terran_bump' and not base else ())
+        if not bump: emit('mov',('r1','xyz'),[('v0','xyzw')],PP+('saturate',))
+        for i,lane in enumerate('xyz'):emit('dp4',('r4' if bump else 'r3',lane),[('r3' if bump else 'r2','xyzw'),(f'c{i}','xyzw')])
+        if not bump:
+            if base: emit('add',('r1','xyz'),[('r4','xyzw'),('r1','xyzw')])
+            else: emit('mad',('r1','xyz'),[('r0','wwww'),('c5','xyzw'),('r1','xyzw')])
+    albedo, tint, lit = 'r4' if bump and affine else 'r3' if affine else 'r1','r2' if affine else 'r3','r1' if affine else 'r2'
+    emit('mul',('r1' if affine else 'r2','xyz') if shared else (tint,'xyz'),[('r2' if bump else 'r0','xxxx'),(albedo,'xyzw')])
+    if shared: emit('mul',(tint,'xyz'),[('r1' if affine else 'r2','xyzw'),half])
+    if bump:
+        if base:emit('add',('r1','xyz'),[('r5','xyzw'),('r6','xyzw')])
+        else:emit('mad',(lit,'xyz'),[('r2','wwww'),('c5' if affine else 'c2','xyzw'),('r5' if affine else 'r4','xyzw')])
+    else:emit('texld',('r0','xyzw'),[('v4','xyzw'),('s3','xyzw')])
+    emit('mul',('r0','xyz'),[('r0','xyzw'),(tint,'xyzw')] if bump else [(tint,'xyzw'),('r0','xyzw')])
+    emit('mad',('r1','xyz'),[(lit,'xyzw'),(albedo,'xyzw'),('r0','xyzw')])
+    lm = 3 if bump else 2
+    emit('texld',('r0','xyzw'),[('v1','xyzw'),(f's{lm}','xyzw')])
+    emit('lrp',('r2','w'),[('c3' if affine else 'c0','xxxx'),('r0','wwww'),('r1','wwww')])
+    emit('add',('oC0','xyz'),[('r1','xyzw'),('r0','xyzw')])
+    emit('mul',('oC0','w'),[('r2','wwww'),('v0','wwww')])
+    proof = prove_chain(decoded,specs)
+    require([r['instruction_dword'] for r in proof] == executable and cursor == final+8,'hull executable inventory changed')
+    lrp = tex[lm]+4
+    links = [('r1','w',tex[0],lrp),('r0','w',tex[lm],lrp),('r2','w',lrp,final+4)]
+    if bump:
+        view = next(r['instruction_dword'] for r in proof if r['opcode'] == 'nrm' and r['sources'][0]['name'] == 'v2')
+        links += [('r0','xyz',proof[normal_count-1]['instruction_dword'],reflect_at),('r1','xyz',view,reflect_at)]
+    for reg,lanes,begin,end in links:
+        for lane in lanes:no_lane_writes(decoded,reg,lane,begin,end)
+    return {'normal_reconstruction_sites':proof[:normal_count], 'normal_encoding':'ag' if bump else 'geometric',
+            'normal_channels':{'alpha':'binormal_v5','green':'tangent_v4','red_blue':'unused'} if bump else {},
+            'literal_sites':literals, 'native_pow_sites':[r for r in proof if r['opcode'] == 'pow'],
+            'specular_power':6 if shared else 10 if split else 5,
+            'angular_and_mask_sites':proof[normal_count:angular_count], 'reflection_and_color_sites':proof[angular_count:],
+            'complete_executable_chain_checked':len(proof), 'reflection_coordinate_dword':reflect_at,
+            'verified_live_ranges':[{'register':r,'mask':lanes,'producer_dword':begin,'consumer_dword':end} for r,lanes,begin,end in links],
+            'diffuse_alpha_live_interval':[tex[0],lrp], 'lightmap_alpha_live_interval':[tex[lm],lrp],
+            'interpolated_alpha_live_interval':[lrp,final+4],
+            'affine_rgb_sites':[site(decoded,affine-8+4*i) for i in range(3)] if affine else []}
+
+
 def weighted_slots(decoded, profile, stage):
     # Documented SM3 costs, bounded to opcodes actually present in this corpus.
     costs = dict.fromkeys(('mov', 'add', 'mad', 'mul', 'dp3', 'dp4', 'rsq', 'rcp', 'mova', 'cmp', 'else', 'endif'), 1)
@@ -1182,7 +1482,7 @@ def inspect_program(code, identifier):
                                  'Material emissive is already strength-scaled RGB: preserve its amplitude/tint and apply any new linear gain at this source; do not exponentiate its combined strength. Final VS RGB stays linear.',
                                  'Point and emissive consumers write XYZ only. Keep o1.w alpha/fog writes and all position/geometry instructions unchanged.']
     else:
-        output['alpha_and_affine_proof'] = prove_extended_pixel(decoded, key) if key in EXTENDED_PIXELS else (prove_bump_pixel(decoded, key) if bump else prove_pixel(decoded, key))
+        output['alpha_and_affine_proof'] = prove_hull_pixel(decoded, key) if key in HULL_PIXELS else prove_extended_pixel(decoded, key) if key in EXTENDED_PIXELS else (prove_bump_pixel(decoded, key) if bump else prove_pixel(decoded, key))
         tex, affine_end, clamp, direct, final = ALL_PIXELS[key]
         fetches = [(at, row) for at, row in decoded.items() if row['item']['opcode'] == 66]
         require(sorted(at for at, _ in fetches) == sorted(tex), 'texture source inventory changed')
@@ -1227,7 +1527,7 @@ def inspect_program(code, identifier):
                 require((d['usage_name'], d['usage_index'], d['mask'], d['modifiers']) == ('texcoord', index-1, 'xy' if index == 1 else 'xyz', (['centroid','partial_precision'] if index == 1 and len(direct) == 2 else ['partial_precision'])), 'bump varying declaration changed')
             output['rgb_precision_sites'] = bump_rgb_sites(decoded, output)
             output['retained_geometry_precision_sites'] = output['alpha_and_affine_proof']['normal_reconstruction_sites']
-    if stage == 'ps' and key in EXTENDED_PIXELS:
+    if stage == 'ps' and (key in EXTENDED_PIXELS or key in HULL_PIXELS):
         output['rgb_precision_sites'] = bump_rgb_sites(decoded, output)
     output['budget']['original_static_weighted_slots'] = weighted_slots(decoded, profile, stage)
     require(all(row['destination']['mask'] == 'xyz' for row in output['final_rgb_sites']), 'final RGB touches alpha')
@@ -1253,14 +1553,14 @@ def inspect(directory, inventory_path):
     inventory = json.loads(inventory_data)
     prove_archive_coverage(inventory)
     rows = [row for row in inventory['pairs'] if (row['vs'], row['ps']) in PAIRS]
-    negative = [row for row in inventory['pairs'] if row['vs'] == BASE_VS and row['ps'] == 'ef2bf556f207b8bd']
-    require(len(negative) == 1 and negative[0]['transformation_class'] == 'A_reference_registers' and
-            (BASE_VS, 'ef2bf556f207b8bd') not in PAIRS, 'future negative witness changed')
-    require(len(rows) == 70 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
+    negative = [row for row in inventory['pairs'] if row['vs'] == '494fe349b8bc12ec' and row['ps'] == 'fffdabd910793aba']
+    require(len(negative) == 1 and negative[0]['transformation_class'] == 'C_relocated_registers_with_static_branches' and
+            ('494fe349b8bc12ec', 'fffdabd910793aba') not in PAIRS, 'future negative witness changed')
+    require(len(rows) == 110 and {(row['vs'], row['ps']) for row in rows} == PAIRS, 'missing/duplicate reviewed pair')
     require(all(row['transformation_class'] == ('B_relocated_registers' if row['ps'] in ALL_BUMP_PIXELS else 'A_reference_registers') for row in rows), 'motion class changed')
     for family, record in FAMILIES.items():
         scoped = [row for row in rows if PIXEL_FAMILY[row['ps']] == family]
-        require(sum(row['effects']['pass_occurrences'] for row in scoped) == (96 if family == 'shared_default' else 24), 'family occurrence count changed')
+        require(sum(row['effects']['pass_occurrences'] for row in scoped) == (96 if family in ('shared_default', 'shared_bump') else 24), 'family occurrence count changed')
         require(all(row['effects']['techniques'] == [record.get('technique', 'DEFAULT')] and
                     row['effects']['profile_directories'] == ['3_0'] and row['effects']['pass_names'] == ['P0'] for row in scoped), 'family technique/pass scope changed')
     depth = motion.depth_plan(inventory)
@@ -1295,16 +1595,16 @@ def inspect(directory, inventory_path):
         require(stage not in stage_constraints or stage_constraints[stage] == constraints, 'inconsistent stage constraints')
         stage_constraints[stage] = constraints
         program['constraints_ref'] = stage
-    return {'schema': 1, 'stage_constraints': stage_constraints, 'scope': 'Bounded SM3 DEFAULT/BUMPMAP/BUMPMAP_LOW original-site proof: 7 VS, 42 PS, 70 archive pairs. This report proves original sites; transformed budgets and pending GPU/live qualification for the 40-pair extension are recorded in docs/architecture/linear-standard-materials.md.',
+    return {'schema': 1, 'stage_constraints': stage_constraints, 'scope': 'Bounded SM3 DEFAULT/BUMPMAP/BUMPMAP_LOW original-site proof: 7 VS, 66 PS, 110 archive pairs. This report proves original sites; the current conventional hull group and pending GPU/live qualification are documented in docs/architecture/linear-hull-materials.md. The preceding 70-pair group was qualified at 73f5c51.',
             'families': FAMILIES,
-            'production_contract': ['Split DEFAULT and standard lighting DEFAULT/BUMPMAP/BUMPMAP_LOW add 25 originals and 40 SM3 pairs; lower shader models remain outside this slice.',
+            'production_contract': ['Shared/Split BUMPMAP and Terran DEFAULT/BUMPMAP add 24 PS, no VS and 40 SM3 pairs; lower shader models remain outside this slice.',
                                                 'Exact maximum input guard is 1392 DWORDs, retaining every per-profile count.',
                                                 'Standard DEFAULT base VS 494fe349b8bc12ec uses depth TEXCOORD7 and RGB TEXCOORD6; the other DEFAULT pairs retain depth TEXCOORD5.',
                                                 'Use explicit class-B o9/v8/TEXCOORD7 RGB and PS r10 scratch; retain existing o7/v6/TEXCOORD5 motion and o8/v7/TEXCOORD6 depth.',
                                                 'Five-sampler disabled-sRGB mask 0x1f requires lifecycle resynchronization of s4. DEFAULT remains 0x0f.',
-                                                'Transformed budgets and pending GPU/live qualification are recorded in docs/architecture/linear-standard-materials.md; linear-bump-materials.md retains the historical 30-pair qualification.'],
-            'future_negative_pair': {'vs': BASE_VS, 'ps': 'ef2bf556f207b8bd', 'family': 'terran', 'motion_class': 'A',
-                                     'note': 'Remains motion-only after this bounded SM3 extension.'},
+                                                'Transformed budgets and pending GPU/live qualification are recorded in docs/architecture/linear-hull-materials.md; linear-standard-materials.md retains the qualified 70-pair checkpoint and linear-bump-materials.md the historical 30-pair qualification.'],
+            'future_negative_pair': {'vs': '494fe349b8bc12ec', 'ps': 'fffdabd910793aba', 'family': 'xt_standard_lighting', 'motion_class': 'C',
+                                     'note': 'Existing class-C motion transforms apply in both depth modes; the 1648-DWORD PS stays outside the 1392-DWORD material guard and has no material sampler mask.'},
             'offset_units': 'Zero-based DWORD positions in the ORIGINAL whole program, including opaque comments; end_dword/conversion_after_dword are exclusive.',
             'motion_inventory_sha256': hashlib.sha256(inventory_data).hexdigest(),
             'reserved_abi': {'vs_constants': [252, 255], 'vs_motion_output': 6, 'vs_depth_output': 7,

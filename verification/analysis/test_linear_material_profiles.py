@@ -87,9 +87,9 @@ class LocalOriginalTests(unittest.TestCase):
         cls.report = linear.inspect(cls.directory, cls.inventory_path)
 
     def test_all_originals_pairs_and_checked_in_profile_reproduce(self):
-        self.assertEqual(len(self.report['programs']), 49)
-        self.assertEqual(len(self.report['pairs']), 70)
-        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 240)
+        self.assertEqual(len(self.report['programs']), 73)
+        self.assertEqual(len(self.report['pairs']), 110)
+        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 408)
         self.assertEqual(self.report, json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text()))
         serialized = json.dumps(self.report)
         for forbidden in ('"token"', '"words"', '"expected"', '"replacement"'):
@@ -260,8 +260,10 @@ class LocalOriginalTests(unittest.TestCase):
         self.assertEqual(len(pairs), 10)
         self.assertEqual(sum(row['archive_pass_occurrences'] for row in pairs), 96)
         self.assertEqual(self.report['families']['shared_default']['production_status'], 'qualified_24930b5')
-        self.assertEqual(self.report['future_negative_pair']['ps'], 'ef2bf556f207b8bd')
-        self.assertNotIn((self.report['future_negative_pair']['vs'], 'ef2bf556f207b8bd'), linear.PAIRS)
+        self.assertEqual(self.report['future_negative_pair']['ps'], 'fffdabd910793aba')
+        self.assertEqual(self.report['future_negative_pair']['vs'], '494fe349b8bc12ec')
+        self.assertEqual(self.report['future_negative_pair']['motion_class'], 'C')
+        self.assertNotIn((self.report['future_negative_pair']['vs'], 'fffdabd910793aba'), linear.PAIRS)
         self.assertEqual(max(p['word_count'] for p in self.report['programs']), 1392)
 
     def test_every_shared_lobe_rejects_mutations_without_a_hash_gate(self):
@@ -576,7 +578,8 @@ class LocalOriginalTests(unittest.TestCase):
     def test_extended_producer_chains_reject_each_instruction_clobber_without_hash_gate(self):
         # Deleting or changing any executable producer must fail the complete
         # schedule predicate, including scalar-only and packed lane operations.
-        for key in linear.EXTENDED_PIXELS:
+        for key in dict(linear.EXTENDED_PIXELS, **linear.HULL_PIXELS):
+            prove = linear.prove_hull_pixel if key in linear.HULL_PIXELS else linear.prove_extended_pixel
             original = self.decoded_original('ps_'+key)
             for at,row in original.items():
                 if row['item']['opcode'] in (31,81):
@@ -590,12 +593,13 @@ class LocalOriginalTests(unittest.TestCase):
                     else:
                         del broken[at]
                     with self.subTest(key=key,dword=at,mutation=mutation), self.assertRaises(ValueError):
-                        linear.prove_extended_pixel(broken,key)
+                        prove(broken,key)
 
     def test_extended_literals_and_application_roles_reject_mutations_without_hash_gate(self):
-        for key in linear.EXTENDED_PIXELS:
+        for key in dict(linear.EXTENDED_PIXELS, **linear.HULL_PIXELS):
+            prove = linear.prove_hull_pixel if key in linear.HULL_PIXELS else linear.prove_extended_pixel
             original = self.decoded_original('ps_'+key)
-            proof = linear.prove_extended_pixel(original,key)
+            proof = prove(original,key)
             for literal in proof['literal_sites']:
                 broken = deepcopy(original)
                 definition = broken[literal['definition_dword']]['item']
@@ -603,14 +607,14 @@ class LocalOriginalTests(unittest.TestCase):
                 words[literal['literal_dword']-literal['definition_dword']-1] = struct.unpack('<I',struct.pack('<f',literal['value']+1.))[0]
                 definition['words'] = tuple(words)
                 with self.subTest(key=key,literal=literal['literal_dword']), self.assertRaises(ValueError):
-                    linear.prove_extended_pixel(broken,key)
-            for role,sites in proof['application_coefficient_sites'].items():
+                    prove(broken,key)
+            for role,sites in proof.get('application_coefficient_sites', {}).items():
                 for site in sites:
                     broken = deepcopy(original)
                     source = next(s for s in broken[site['instruction_dword']]['sources'] if s['name'].startswith('c'))
                     source['swizzle'] = 'yyyy'
                     with self.subTest(key=key,role=role), self.assertRaises(ValueError):
-                        linear.prove_extended_pixel(broken,key)
+                        prove(broken,key)
 
     def test_standard_base_vertex_body_and_depth_semantic_exception_are_explicit(self):
         old,new = 'vs_53a0a641107ed76c','vs_494fe349b8bc12ec'
@@ -631,6 +635,76 @@ class LocalOriginalTests(unittest.TestCase):
         self.assertIn(5,resources['free_texcoord_semantic_indices'])
         with self.assertRaisesRegex(ValueError,'collision'):
             linear.budget(original,'vs',True,False,6)
+
+
+    def test_remaining_hull_contracts_cover_complete_aliases_and_fixed_coefficients(self):
+        inventory = json.loads(self.inventory_path.read_text())
+        coefficients = {'shared_bump':(.5,6,.5), 'split_bump':(.5,10,1.),
+                        'terran_default':(1.,5,1.), 'terran_bump':(1.,5,1.)}
+        for family,expected in coefficients.items():
+            pairs = [p for p in self.report['pairs'] if p['family'] == family]
+            self.assertEqual((len(pairs),len({p['ps'] for p in pairs}),len({p['vs'] for p in pairs})),(10,6,3))
+            self.assertEqual(sum(p['archive_pass_occurrences'] for p in pairs),96 if family == 'shared_bump' else 24)
+            self.assertEqual({p['motion_class'] for p in pairs},{'A' if family == 'terran_default' else 'B'})
+            c = self.report['families'][family]['coefficients']
+            self.assertEqual((c['diffuse'],c['specular_power'],c['cube']),expected)
+            for alias in linear.FAMILIES[family]['aliases']:
+                broken = deepcopy(inventory)
+                row = next(r for r in broken['pairs'] if r['ps'] == linear.FAMILIES[family]['pixels'][0] and alias in r['effects']['basenames'])
+                row['effects']['basenames'].remove(alias)
+                with self.subTest(family=family,alias=alias), self.assertRaisesRegex(ValueError,'archive coverage changed'):
+                    linear.prove_archive_coverage(broken)
+        self.assertEqual(len(linear.HULL_PIXELS),24)
+        new_rows = [p for p in self.report['programs'] if p['id'][3:] in linear.HULL_PIXELS]
+        self.assertEqual(max(p['word_count'] for p in new_rows),1358)
+        self.assertEqual(max(p['budget']['original_static_weighted_slots'] for p in new_rows),71)
+        self.assertEqual(max(len(p['rgb_precision_sites']) for p in new_rows),13)
+
+    def test_previous_49_program_records_remain_exact_except_family_annotations(self):
+        records = deepcopy([p for p in self.report['programs'] if p['id'][3:] not in linear.HULL_PIXELS])
+        self.assertEqual(len(records),49)
+        for record in records:
+            record['families'] = [f for f in record['families'] if f not in ('shared_bump','split_bump','terran_default','terran_bump')]
+        digest = hashlib.sha256(json.dumps(records,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        self.assertEqual(digest,'dee14417f9295670142ce62810433fdb8503e3e370f1d00b09c10cbaf20054e2')
+
+    def test_hull_power_normal_cube_and_authored_precision_exceptions(self):
+        for p in self.report['programs']:
+            key = p['id'][3:]
+            if key not in linear.HULL_PIXELS: continue
+            proof = p['alpha_and_affine_proof']
+            family = p['families'][0]
+            tex,affine,_,direct,_ = linear.HULL_PIXELS[key]
+            self.assertEqual(proof['specular_power'],6 if family == 'shared_bump' else 10 if family == 'split_bump' else 5)
+            self.assertEqual(len(proof['native_pow_sites']),(2 if len(direct) == 2 else 1) if family == 'split_bump' else 0)
+            self.assertEqual(proof['normal_encoding'],'geometric' if family == 'terran_default' else 'ag')
+            if family != 'terran_default':
+                self.assertEqual(proof['normal_channels'],{'alpha':'binormal_v5','green':'tangent_v4','red_blue':'unused'})
+                self.assertEqual(p['texture_sources'][1]['role'],'normal_data_alpha_green')
+                self.assertIsNone(p['texture_sources'][1]['conversion_after_dword'])
+                self.assertEqual(proof['reflection_coordinate_dword'],tex[4]-5)
+            if affine:
+                decoded = self.decoded_original(p['id'])
+                prep = linear.site(decoded,tex[0]+4)
+                expected_pp = ['partial_precision'] if key in ('042c9ae16f41feff','68f0dd6791fd7d3d') else []
+                self.assertEqual(prep['destination']['modifiers'],expected_pp)
+                broken = deepcopy(decoded)
+                broken[tex[0]+4]['destination']['modifiers'] = [] if expected_pp else ['partial_precision']
+                with self.subTest(key=key,precision=True), self.assertRaises(ValueError):
+                    linear.prove_hull_pixel(broken,key)
+            if family == 'shared_bump':
+                # Both distinct half-scale uses must survive: diffuse response
+                # and RGB cube tint. An isolated literal check would miss this.
+                literal = next(r for r in proof['literal_sites'] if r['value'] == .5)
+                register,lane = literal['register'],literal['component']
+                decoded = self.decoded_original(p['id'])
+                uses = [(at,r) for at,r in decoded.items() if any(s['name']==register and lane in s['swizzle'] for s in r['sources'])]
+                cube = next((at,r) for at,r in uses if r['destination']['mask']=='xyz' and at > tex[0])
+                self.assertIn(cube[0],[r['instruction_dword'] for r in p['rgb_precision_sites']])
+                broken = deepcopy(decoded)
+                next(s for s in broken[cube[0]]['sources'] if s['name']==register)['swizzle']='xxxx'
+                with self.subTest(key=key,cube_half=True), self.assertRaises(ValueError):
+                    linear.prove_hull_pixel(broken,key)
 
 
 if __name__ == '__main__':

@@ -54,9 +54,22 @@ PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
 PAIRS += [('4944d81dfe531b37', ps) for ps in ('99153c144030c396', 'c1452981fd0bff64')]
 PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
           ('b0f9313b77cc78ee', 'd514bf852d8a9c58', 'dff6a3d360603fa2', 'f1d14a7dbf7c6173')]
-TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60)
+PAIRS += [('4944d81dfe531b37', ps) for ps in ('1f26d41bcb7dac1e', 'bdcdb3ab996ae4e0')]
+PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
+          ('78963cdc7c710e04', '1ed1bf0fdec00e1a', '2b04461d0dae038b', 'acc83ed2509d84a1')]
+PAIRS += [('4944d81dfe531b37', ps) for ps in ('3006f8030a467739', 'd6e8bdde0e4c515f')]
+PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
+          ('e5ea78b8b0b0fe07', 'f42202faf57a3c89', '769c3814fc0efba8', '22cc5b05a55ef61e')]
+PAIRS += [('53a0a641107ed76c', ps) for ps in ('ef2bf556f207b8bd', '91b6c09eb47f8555')]
+PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
+          ('cc09f17db377fd9e', '3755809bd40afc13', '61418505e5d8f998', 'b5f1d4145171026b')]
+PAIRS += [('4944d81dfe531b37', ps) for ps in ('3602b05ce11ca6ff', '8e58ac79b59b02b1')]
+PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
+          ('042c9ae16f41feff', '68f0dd6791fd7d3d', '5c823b8507fa1442', 'a6e1328c0bb3f401')]
+TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
 FAMILIES = ('Argon', 'shared DEFAULT', 'Argon BUMP', 'Split DEFAULT',
-            'standard DEFAULT', 'standard BUMP', 'standard LOW')
+            'standard DEFAULT', 'standard BUMP', 'standard LOW', 'shared BUMP',
+            'Split BUMP', 'Terran DEFAULT', 'Terran BUMP')
 CUBE_PATTERN, FOG, BOUNDARY = 1, 2, 4
 CUBE_BANDS_U = (.125, .25, .25, .5)
 CUBE_BANDS_V = (.125, .375, .375, .75)
@@ -323,6 +336,55 @@ def fixture_cases():
         add('low_boundary_zero_view',pair=pair,camera=[0.]*3,flags=BOUNDARY,fp16=0)
     for pair in (30,40,0,50,20,60,10,41,51,61,32,42,52,62,36,46,56,66,0):
         add('extended_family_alternation',pair=pair)
+    # Preserve the accepted 1,527-case binary prefix verbatim. These families
+    # reuse the existing scalar-free PS and AG geometry reference contracts.
+    for pair in range(70,110):
+        for depth in (0,1):
+            for reverse in (0,1):
+                add('hull_pair_depth_face',pair=pair,depth=depth,reverse=reverse)
+        for gains in ([0.,0.,0.],[4.,1.,1.],[1.,16.,1.],[1.,1.,16.]):
+            add('hull_independent_gains',pair=pair,gains=gains)
+        add('hull_missing_history',pair=pair,valid=0)
+    for start in (70,80,90,100):
+        for pair in range(start,start+6):
+            add('hull_affine_angular',pair=pair,affine=1,normal=[.6,0.,.8])
+            for source in ('point','material','dir0','dir1','lightmap','cube'):
+                isolated=copy.deepcopy(dark)
+                isolated[source]=base[source]
+                add('hull_isolated_'+source,pair=pair,**isolated)
+            add('hull_diffuse_coefficient',pair=pair,mask=0.,**dict(dark,dir0=[1.]*3))
+            add('hull_specular_power',pair=pair,mask=1.,camera=[.6,0.,.8],**dict(dark,dir0=[1.]*3))
+            add('hull_cube_coefficient',pair=pair,mask=1.,**dict(dark,cube=[.5,.25,.75,1.]))
+            add('hull_finite_domain',pair=pair,fp16=0,diffuse=[ref.CAP,0.,-1.,.75],
+                **dict(dark,material=[1.]*3))
+            # Normal cosine .2 makes sat(3*d)=.6, while 0.5*d is .1.
+            # The non-unit basis is intentional and isolates the packed lanes.
+            add('hull_packed_angular',pair=pair,normal=[math.sqrt(.96),0.,.2],mask=1.,
+                camera=[.4,0.,-.916515138991168],**dict(dark,dir0=[1.]*3))
+            if start!=90:
+                for label,changes in (
+                    ('alpha_binormal',dict(normal_sample=[.25,.5,.75,.75])),
+                    ('green_tangent',dict(normal_sample=[.25,.75,.75,.5])),
+                    ('unused_red_blue',dict(normal_sample=[1.,.5,0.,.75])),
+                    ('negative_q',dict(normal_sample=[.25,.9375,.75,.9375])),
+                    ('nonorthogonal',dict(tangent=[1.,.25,.125],binormal=[.125,1.,.25],normal_sample=[.25,.75,.75,.625])),
+                    ('mirrored',dict(binormal=[0.,-1.,0.],normal_sample=[.25,.5,.75,.75]))):
+                    add('hull_normal_'+label,pair=pair,**changes)
+                for sample in ([.25,.5,.75,.875],[.25,.875,.75,.5]):
+                    add('hull_cube_direction',pair=pair,flags=CUBE_PATTERN,normal_sample=sample,
+                        **dict(dark,cube=base['cube']),mask=1.)
+                for sample in ([.25,.5,.75,.5],[.25,.9375,.75,.9375]):
+                    add('hull_geometric_point',pair=pair,normal_sample=sample,**dict(dark,point=base['point']))
+        for pair in (start,start+2,start+6):
+            for lights in ((1,) if pair==start+6 else (0,1,8)):
+                for gain in (1.,4.,16.):
+                    add('hull_lights_gains',pair=pair,lights=lights,gains=[gain]*3)
+            for reverse in (0,1):
+                add('hull_fog_alpha',pair=pair,reverse=reverse,flags=FOG)
+    for pair in (70,71,72,73,74,75,80,81,82,83,84,85,100,101,102,103,104,105):
+        add('hull_boundary_q_zero',pair=pair,normal_sample=[.25,.5,.75,1.],flags=BOUNDARY,fp16=0)
+    for pair in (70,20,80,50,90,0,100,60,72,82,92,102,76,86,96,106,40):
+        add('hull_family_alternation',pair=pair)
     return cases
 
 
@@ -440,7 +502,7 @@ def validate_report(text, cases=None):
         # whole-RT motion-only comparison also checks bit-for-bit alpha equality.
         assert actual[3] == ideal.encoded_rgba[3], (cid, 'authored alpha')
     assert not failures, ('RGB oracle mismatches', failures[:12], 'total', len(failures))
-    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
+    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
     assert len(timings) == 36 * len(TIMING_PAIRS)
     timing_summary = []
     for pair in TIMING_PAIRS:
@@ -457,7 +519,7 @@ def validate_report(text, cases=None):
     recognized = 1 + len(creates) + len(invariants) + len(samples) + len(timings) + 1
     assert len(lines) == recognized, 'unexpected output rows'
     return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=len({('vs',v) for v,p in PAIRS}|{('ps',p) for v,p in PAIRS}), shader_creations=len(creates),
-                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=512,
+                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=1527,
                 boundary_cases=sum(bool(c["flags"] & BOUNDARY) for c in cases),
                 boundary_limit="Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence", invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
                 max_tolerance_fraction=maximum_scaled, exact_black_channels=black_samples,
@@ -490,7 +552,7 @@ def main():
     assert inputs == {p['id']+'.bin':p['sha256'] for p in profiles['programs']}, 'original input provenance'
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
-                  scope='70 reviewed pairs: Argon/shared/Split DEFAULT, Argon BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
+                  scope='110 reviewed pairs: Argon/shared/Split/Terran DEFAULT and BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
                   timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS',
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),

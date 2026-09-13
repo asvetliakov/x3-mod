@@ -71,10 +71,11 @@ class MaterialTests(unittest.TestCase):
                     None if app else row['lobe_coefficients']['diffuse'],
                     None if app else row['lobe_coefficients']['specular_power'],
                     None if app else row['lobe_coefficients']['cube'],
-                    bool({'argon_bump', 'standard_bump', 'standard_bump_low'} & set(row['families'])),
+                    bool({'argon_bump', 'standard_bump', 'standard_bump_low', 'shared_bump',
+                          'split_bump', 'terran_bump'} & set(row['families'])),
                     app, 'xyz' if 'standard_bump_low' in row['families'] else 'ag',
                 )
-        self.assertEqual(len(expected), 42)
+        self.assertEqual(len(expected), 66)
         self.assertEqual({key: (value.directions, value.affine_color, value.two_sided,
                                None if value.application_coefficients else value.diffuse_coefficient,
                                None if value.application_coefficients else value.specular_power,
@@ -619,6 +620,126 @@ class ExtendedFamilyTests(unittest.TestCase):
         # N=-Z, V=(.6,0,.8): reflection=(-.6,0,.8), despite negative sampled Z.
         self.assertRGB(seen[0], (-.6,0,.8))
         self.assertRGB(result.linear_rgb, [2*x**2.2 for x in (.35,.5,.7)])
+
+
+class RemainingHullTests(unittest.TestCase):
+    # Independent original-ID expectations, ordered base front/back, single
+    # affine front/back, single nonaffine front/back. No oracle profile lookup
+    # supplies expected coefficients, shapes, or sample geometry below.
+    GROUPS = (
+        (('1f26d41bcb7dac1e','bdcdb3ab996ae4e0','78963cdc7c710e04',
+          '1ed1bf0fdec00e1a','2b04461d0dae038b','acc83ed2509d84a1'), .5, 6, .5, True),
+        (('3006f8030a467739','d6e8bdde0e4c515f','e5ea78b8b0b0fe07',
+          'f42202faf57a3c89','769c3814fc0efba8','22cc5b05a55ef61e'), .5, 10, 1., True),
+        (('ef2bf556f207b8bd','91b6c09eb47f8555','cc09f17db377fd9e',
+          '3755809bd40afc13','61418505e5d8f998','b5f1d4145171026b'), 1., 5, 1., False),
+        (('3602b05ce11ca6ff','8e58ac79b59b02b1','042c9ae16f41feff',
+          '68f0dd6791fd7d3d','5c823b8507fa1442','a6e1328c0bb3f401'), 1., 5, 1., True))
+
+    def assertRGB(self, actual, expected):
+        for a, b in zip(actual, expected):
+            self.assertAlmostEqual(a, b, delta=1e-12)
+
+    def sample(self, name, index, bump, **kwargs):
+        varying = kwargs.pop('varying', vertex((0,0,0),(0,0,1),(.6,0,.8),(0,0,0),material_alpha=.5))
+        args = dict(diffuse=(1,1,1,.25), specular_mask=0,
+                    lightmap=(0,0,0,.75), cubemap=(0,0,0),
+                    directions=[DirectionalLight((0,0,1),(0,0,0))]*(2 if index<2 else 1))
+        args.update(kwargs)
+        if bump:
+            args.setdefault('normal_sample',(.25,.5,.75,.5))
+            args.setdefault('tangent',(1,0,0))
+            args.setdefault('binormal',(0,1,0))
+            if not callable(args['cubemap']):
+                cube = args['cubemap']
+                args['cubemap'] = lambda direction: cube
+        return pixel(name, varying, **args)
+
+    def test_all_twenty_four_shapes_and_fixed_coefficient_contracts(self):
+        for names, diffuse, power, cube, bump in self.GROUPS:
+            for i,name in enumerate(names):
+                p=PROFILES[name]
+                self.assertEqual((p.directions,p.affine_color,p.two_sided),
+                                 (2 if i<2 else 1,i<4,i%2==1))
+                self.assertEqual((p.diffuse_coefficient,p.specular_power,p.cube_coefficient),
+                                 (diffuse,power,cube))
+                self.assertEqual((p.bump_map,p.normal_encoding,p.application_coefficients),(bump,'ag',False))
+                with self.assertRaises(ValueError):
+                    self.sample(name,i,bump,coefficients=LightingCoefficients())
+
+    def test_every_shape_independently_discriminates_diffuse_power_and_cube(self):
+        for names,diffuse,power,cube,bump in self.GROUPS:
+            for i,name in enumerate(names):
+                with self.subTest(profile=name):
+                    count=2 if i<2 else 1
+                    colors=((.25,.5,.75),(.75,.25,.5))[:count]
+                    lights=[DirectionalLight((0,0,1),c) for c in colors]
+                    light_rgb=[sum(c[k]**2.2 for c in colors) for k in range(3)]
+                    d=self.sample(name,i,bump,directions=lights)
+                    s=self.sample(name,i,bump,directions=lights,specular_mask=.75)
+                    self.assertRGB(d.linear_rgb,[diffuse*c for c in light_rgb])
+                    self.assertRGB([a-b for a,b in zip(s.linear_rgb,d.linear_rgb)],
+                                   [3*.75*(.8**power)*c for c in light_rgb])
+                    reflection=self.sample(name,i,bump,specular_mask=.75,cubemap=(.25,.5,.75))
+                    self.assertRGB(reflection.linear_rgb,[.75*cube*c**2.2 for c in (.25,.5,.75)])
+                    # Packed single-light lanes must keep unsaturated diffuse
+                    # d=.2 separate from the saturated inner specular factor .6.
+                    angular=self.sample(name,i,bump,specular_mask=.75,
+                                        directions=[DirectionalLight((0,0,.2),c) for c in colors])
+                    self.assertRGB(angular.linear_rgb,
+                                   [(diffuse*.2+3*.75*.6*(.16**power))*c for c in light_rgb])
+
+    def test_every_shape_affine_face_and_alpha_remain_independent_of_gains(self):
+        varying=vertex((0,0,0),(0,0,1),(0,0,-1),(.25,.5,.75),material_alpha=.5)
+        affine=((1,0,0,.1),(0,1,0,.2),(0,0,1,.3))
+        for names,diffuse,_,_,bump in self.GROUPS:
+            for i,name in enumerate(names):
+                count=2 if i<2 else 1
+                args=dict(varying=varying,diffuse=(.2,.4,.6,.25),affine=affine,face=-1,glow=.25,
+                          directions=[DirectionalLight((0,0,-1),(1,1,1))]*count)
+                result=self.sample(name,i,bump,**args)
+                albedo=(.3,.6,.9) if i<4 else (.2,.4,.6)
+                self.assertRGB(result.linear_rgb,[a**2.2*(v+(count*diffuse if i%2 else 0))
+                                                  for a,v in zip(albedo,(.25,.5,.75))])
+                scaled=self.sample(name,i,bump,**args,gains=Gains(16,0,0))
+                self.assertEqual(result.encoded_rgba[3],.1875)
+                self.assertEqual(result.encoded_rgba[3],scaled.encoded_rgba[3])
+
+    def test_new_ag_shapes_use_alpha_binormal_green_tangent_and_ignore_red_blue(self):
+        for names,_,_,cube,bump in self.GROUPS:
+            if not bump: continue
+            for i,name in enumerate(names):
+                # A=.75/G=.5 => N=(0,.5,sqrt(.75)); V=+Z therefore
+                # reflection=(0,sqrt(.75),.5). An A/G swap changes cube green.
+                seen=[]
+                def lookup(direction):
+                    seen.append(direction)
+                    return tuple(.5+.25*x for x in direction)
+                args=dict(varying=vertex((0,0,0),(0,0,1),(0,0,1),(0,0,0)),
+                          normal_sample=(.25,.5,.75,.75),cubemap=lookup,specular_mask=1)
+                result=self.sample(name,i,bump,**args)
+                self.assertRGB(seen[-1],(0,math.sqrt(.75),.5))
+                self.assertRGB(result.linear_rgb,[cube*c**2.2 for c in (.5,.5+.25*math.sqrt(.75),.625)])
+                changed=self.sample(name,i,bump,**dict(args,normal_sample=(math.nan,.5,-math.inf,.75)))
+                self.assertEqual(result,changed)
+
+    def test_new_ag_normal_perturbation_keeps_geometric_point_response(self):
+        varying=vertex((0,0,0),(0,0,1),(0,0,1),(0,0,0),
+                       [PointLight((0,0,1),(.25,.5,.75),(1,0,0))])
+        for names,_,_,_,bump in self.GROUPS:
+            if not bump:continue
+            for i,name in enumerate(names):
+                a=self.sample(name,i,bump,varying=varying)
+                b=self.sample(name,i,bump,varying=varying,normal_sample=(.25,.9375,.75,.9375))
+                self.assertEqual(a,b)
+                self.assertRGB(a.linear_rgb,[c**2.2 for c in (.25,.5,.75)])
+
+    def test_new_shapes_retain_black_and_target_quantization(self):
+        for names,_,_,_,bump in self.GROUPS:
+            for i,name in enumerate(names):
+                result=self.sample(name,i,bump,half_source=True,half_target=True)
+                self.assertEqual(result.encoded_rgba,(0,0,0,.125))
+                for x in result.encoded_rgba[:3]:self.assertEqual(math.copysign(1,x),1)
 
 
 if __name__ == "__main__":

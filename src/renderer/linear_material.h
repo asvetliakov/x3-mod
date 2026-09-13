@@ -31,7 +31,7 @@ struct LinearBumpMaterialAbi {
     static constexpr unsigned rgb_texcoord = 7;
 };
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
-// Exact seventy DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
+// Exact 110 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.

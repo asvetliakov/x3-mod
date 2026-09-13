@@ -28,7 +28,7 @@ void write(const std::string& path,const Words& words) {
     require(bool(stream),"write local variant");
 }
 bool bump_program(const std::string& name) {
-    constexpr std::uint64_t ids[]={0x4944d81dfe531b37ull,0x19a246a56e9d9700ull,0x44c4a41ca92ae2e3ull,0xca6bfa4a6cca7e2aull,0x5e0a10fe752b6140ull,0x63379470db8d2a86ull,0x68915563dd0aac9aull,0xd086fde54698070cull,0xf17fffd88d134b04ull,0x0c1f3f0f440e4a0cull,0x4f052209611387f0ull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x99153c144030c396ull,0xabf3c0fad53456d8ull,0xb0f9313b77cc78eeull,0xc1452981fd0bff64ull,0xcf449bcb069aec4full,0xd514bf852d8a9c58ull,0xdff6a3d360603fa2ull,0xf1d14a7dbf7c6173ull};
+    constexpr std::uint64_t ids[]={0x4944d81dfe531b37ull,0x19a246a56e9d9700ull,0x44c4a41ca92ae2e3ull,0xca6bfa4a6cca7e2aull,0x5e0a10fe752b6140ull,0x63379470db8d2a86ull,0x68915563dd0aac9aull,0xd086fde54698070cull,0xf17fffd88d134b04ull,0x0c1f3f0f440e4a0cull,0x4f052209611387f0ull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x99153c144030c396ull,0xabf3c0fad53456d8ull,0xb0f9313b77cc78eeull,0xc1452981fd0bff64ull,0xcf449bcb069aec4full,0xd514bf852d8a9c58ull,0xdff6a3d360603fa2ull,0xf1d14a7dbf7c6173ull,0x1ed1bf0fdec00e1aull,0x1f26d41bcb7dac1eull,0x2b04461d0dae038bull,0x78963cdc7c710e04ull,0xacc83ed2509d84a1ull,0xbdcdb3ab996ae4e0ull,0x22cc5b05a55ef61eull,0x3006f8030a467739ull,0x769c3814fc0efba8ull,0xd6e8bdde0e4c515full,0xe5ea78b8b0b0fe07ull,0xf42202faf57a3c89ull,0x042c9ae16f41feffull,0x3602b05ce11ca6ffull,0x5c823b8507fa1442ull,0x68f0dd6791fd7d3dull,0x8e58ac79b59b02b1ull,0xa6e1328c0bb3f401ull};
     const auto id=std::stoull(name.substr(3),nullptr,16);
     return std::find(std::begin(ids),std::end(ids),id)!=std::end(ids);
 }
@@ -67,7 +67,31 @@ int main(int argc,char** argv) {
             "ps_e70adc744a38ca59",
             "ps_f1d14a7dbf7c6173",
             "ps_f6a501717c3e5ca8",
-            "ps_ff32b602a271c327"};
+            "ps_ff32b602a271c327",
+            "ps_1ed1bf0fdec00e1a",
+            "ps_1f26d41bcb7dac1e",
+            "ps_2b04461d0dae038b",
+            "ps_78963cdc7c710e04",
+            "ps_acc83ed2509d84a1",
+            "ps_bdcdb3ab996ae4e0",
+            "ps_22cc5b05a55ef61e",
+            "ps_3006f8030a467739",
+            "ps_769c3814fc0efba8",
+            "ps_d6e8bdde0e4c515f",
+            "ps_e5ea78b8b0b0fe07",
+            "ps_f42202faf57a3c89",
+            "ps_3755809bd40afc13",
+            "ps_61418505e5d8f998",
+            "ps_91b6c09eb47f8555",
+            "ps_b5f1d4145171026b",
+            "ps_cc09f17db377fd9e",
+            "ps_ef2bf556f207b8bd",
+            "ps_042c9ae16f41feff",
+            "ps_3602b05ce11ca6ff",
+            "ps_5c823b8507fa1442",
+            "ps_68f0dd6791fd7d3d",
+            "ps_8e58ac79b59b02b1",
+            "ps_a6e1328c0bb3f401"};
         unsigned variants=0, instructions[2][2]{}, slots[2][2]{}, family_slots[2][2][2]{};
         long long create_ns=0, family_create_ns[2]{};
         unsigned family_creates[2]{};
@@ -159,7 +183,8 @@ int main(int argc,char** argv) {
             0x8ab6188a40ca15eaull,0x8df6143d0e77d92eull,0xe16a9806ee3544c3ull,
             0xca6bfa4a6cca7e2aull,0x5e0a10fe752b6140ull,0x63379470db8d2a86ull,
             0x68915563dd0aac9aull,0xd086fde54698070cull,0xf17fffd88d134b04ull,
-            0x02606104fa59fb29ull,0x0c1f3f0f440e4a0cull,0x1d638938d93421b3ull,0x462342e3e5781384ull,0x4f052209611387f0ull,0x55826dc176afe464ull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x7c83ed50c9894e44ull,0x827d8d2d617bedceull,0x99153c144030c396ull,0xabf3c0fad53456d8ull,0xb0f9313b77cc78eeull,0xbd4d51c08486c6e0ull,0xc1452981fd0bff64ull,0xcf449bcb069aec4full,0xd514bf852d8a9c58ull,0xdb644b73b68c0547ull,0xde2dd381fa64193dull,0xdff6a3d360603fa2ull,0xe70adc744a38ca59ull,0xf1d14a7dbf7c6173ull,0xf6a501717c3e5ca8ull,0xff32b602a271c327ull};
+            0x02606104fa59fb29ull,0x0c1f3f0f440e4a0cull,0x1d638938d93421b3ull,0x462342e3e5781384ull,0x4f052209611387f0ull,0x55826dc176afe464ull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x7c83ed50c9894e44ull,0x827d8d2d617bedceull,0x99153c144030c396ull,0xabf3c0fad53456d8ull,0xb0f9313b77cc78eeull,0xbd4d51c08486c6e0ull,0xc1452981fd0bff64ull,0xcf449bcb069aec4full,0xd514bf852d8a9c58ull,0xdb644b73b68c0547ull,0xde2dd381fa64193dull,0xdff6a3d360603fa2ull,0xe70adc744a38ca59ull,0xf1d14a7dbf7c6173ull,0xf6a501717c3e5ca8ull,0xff32b602a271c327ull,
+            0x1ed1bf0fdec00e1aull,0x1f26d41bcb7dac1eull,0x2b04461d0dae038bull,0x78963cdc7c710e04ull,0xacc83ed2509d84a1ull,0xbdcdb3ab996ae4e0ull,0x22cc5b05a55ef61eull,0x3006f8030a467739ull,0x769c3814fc0efba8ull,0xd6e8bdde0e4c515full,0xe5ea78b8b0b0fe07ull,0xf42202faf57a3c89ull,0x3755809bd40afc13ull,0x61418505e5d8f998ull,0x91b6c09eb47f8555ull,0xb5f1d4145171026bull,0xcc09f17db377fd9eull,0xef2bf556f207b8bdull,0x042c9ae16f41feffull,0x3602b05ce11ca6ffull,0x5c823b8507fa1442ull,0x68f0dd6791fd7d3dull,0x8e58ac79b59b02b1ull,0xa6e1328c0bb3f401ull};
         // Independent family/shape matrix, not derived from the production table.
         struct Group { std::array<std::uint64_t,6> pixels; unsigned base_vs, toggle_vs, samplers; };
         const Group groups[]={
@@ -170,6 +195,10 @@ int main(int argc,char** argv) {
             {{0x7c83ed50c9894e44ull,0xe70adc744a38ca59ull,0xdb644b73b68c0547ull,0xff32b602a271c327ull,0xf6a501717c3e5ca8ull,0x55826dc176afe464ull},64,6,15}, // Standard DEFAULT
             {{0x0c1f3f0f440e4a0cull,0x64bac8bb307eb896ull,0x789449ffd931d23eull,0x4f052209611387f0ull,0xabf3c0fad53456d8ull,0xcf449bcb069aec4full},8,48,31}, // Standard BUMP
             {{0x99153c144030c396ull,0xc1452981fd0bff64ull,0xb0f9313b77cc78eeull,0xd514bf852d8a9c58ull,0xdff6a3d360603fa2ull,0xf1d14a7dbf7c6173ull},8,48,31}, // Standard LOW
+            {{0x1f26d41bcb7dac1eull,0xbdcdb3ab996ae4e0ull,0x78963cdc7c710e04ull,0x1ed1bf0fdec00e1aull,0x2b04461d0dae038bull,0xacc83ed2509d84a1ull},8,48,31}, // Shared BUMP
+            {{0x3006f8030a467739ull,0xd6e8bdde0e4c515full,0xe5ea78b8b0b0fe07ull,0xf42202faf57a3c89ull,0x769c3814fc0efba8ull,0x22cc5b05a55ef61eull},8,48,31}, // Split BUMP
+            {{0xef2bf556f207b8bdull,0x91b6c09eb47f8555ull,0xcc09f17db377fd9eull,0x3755809bd40afc13ull,0x61418505e5d8f998ull,0xb5f1d4145171026bull},1,6,15}, // Terran DEFAULT
+            {{0x3602b05ce11ca6ffull,0x8e58ac79b59b02b1ull,0x042c9ae16f41feffull,0x68f0dd6791fd7d3dull,0x5c823b8507fa1442ull,0xa6e1328c0bb3f401ull},8,48,31}, // Terran BUMP
         };
         unsigned pair_count=0;
         for(unsigned v=0;v<std::size(vs);++v) for(unsigned p=0;p<std::size(ps);++p) {
@@ -184,16 +213,23 @@ int main(int argc,char** argv) {
             if(expected_mask) ++pair_count;
         }
         require(!linear_material_sampler_mask(0,ps[0]) && !linear_material_sampler_mask(vs[0],0),"unknown pair");
-        for (const auto& negative:std::array<std::array<std::uint64_t,2>,3>{{
-            {{0x53a0a641107ed76cull,0xef2bf556f207b8bdull}},
-            {{0x4944d81dfe531b37ull,0x3006f8030a467739ull}},
-            {{0x19a246a56e9d9700ull,0x042c9ae16f41feffull}}}}) {
-            require(material_motion_profile(negative[0],negative[1])!=nullptr,"motion-reviewed negative witness");
-            require(!linear_material_sampler_mask(negative[0],negative[1]) &&
-                    !linear_material_pair_reviewed(negative[0],negative[1]),"uncovered material pair");
+        // All conventional hull negatives are now covered. This exact shared
+        // VS + class-C PS still succeeds through its own ordinary motion row;
+        // it must not be passed through the class A/B material ABI.
+        const auto* negative=material_motion_profile(0x494fe349b8bc12ecull,0xfffdabd910793abaull);
+        require(negative && negative->transformation_class==MotionOutputClass::RelocatedRegistersWithBranches,"motion-reviewed class C negative");
+        require(!linear_material_sampler_mask(negative->vertex_fingerprint,negative->pixel_fingerprint) &&
+                !linear_material_pair_reviewed(negative->vertex_fingerprint,negative->pixel_fingerprint),"uncovered material pair");
+        const auto negative_vs=read(std::string(argv[1])+"/vs_494fe349b8bc12ec.bin");
+        const auto negative_ps=read(std::string(argv[1])+"/ps_fffdabd910793aba.bin");
+        for(bool depth:{false,true}) {
+            Words ordinary_vs,ordinary_ps,material_ps{91,92};const auto saved=material_ps;
+            require(material_motion_vertex_variant_for(*negative,negative_vs.data(),negative_vs.size(),ordinary_vs,depth)==MaterialMotionResult::Applied,"negative original VS ordinary motion succeeds");
+            require(material_motion_pixel_variant_for(*negative,negative_ps.data(),negative_ps.size(),ordinary_ps,depth)==MaterialMotionResult::Applied,"negative original PS ordinary motion succeeds");
+            require(linear_material_pixel_variant(negative_ps.data(),negative_ps.size(),{},material_ps,depth)==LinearMaterialResult::UnsupportedShader && material_ps==saved,"uncovered PS original fallback preserved");
         }
         const auto elapsed=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-begin).count();
-        std::cout<<"{\"programs\":49,\"pairs\":"<<pair_count<<",\"variants\":"<<variants<<",\"checks\":"<<checks
+        std::cout<<"{\"programs\":73,\"pairs\":"<<pair_count<<",\"variants\":"<<variants<<",\"checks\":"<<checks
                  <<",\"elapsed_us_including_io_and_negative_checks\":"<<elapsed
                  <<",\"initial_creates_ns\":"<<create_ns
                  <<",\"create_counts_default_bump\":["<<family_creates[0]<<','<<family_creates[1]<<']'

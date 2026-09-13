@@ -141,7 +141,7 @@ family rows:
 
 | Group | Families | Unique programs VS/PS | Exact pass identities 3/2/1/+I | Status and boundary |
 | --- | ---: | ---: | ---: | --- |
-| Opaque/material | 14 | 169 / 405 | 162 / 405 / 120 / 1 | 688 identities total; 30 are converted and **658 remain**. Of those, 132 are SM3 and 526 are SM2/SM1/incomplete. |
+| Opaque/material | 14 | 169 / 405 | 162 / 405 / 120 / 1 | 688 identities total; 30 are installed and another 40 are qualified. **618 await conversion**: 92 SM3 and 526 SM2/SM1/incomplete. Installation and gameplay acceptance remain separate. |
 | Emissive/transparent | 5 | 41 / 39 | 6 / 35 / 25 / 0 | 66 identities total. The five-pair `effects`/`engine` high-quality D subset has qualified work but no live route; glass, particles and `adeffects` need distinct blend/coverage policies. |
 | Background | 6 | 26 / 20 | 3 / 6 / 19 / 0 | 28 identities total. Convert surface/light math or compose transparency by role; two `nebula` identities are also UI identities. |
 | Post/UI/depth | 3 | 26 / 35 | 9 / 20 / 6 / 2 | 37 identities total. Keep stock bloom under its post boundary, UI unconverted under proved ownership, and z-only conditional on state. |
@@ -155,7 +155,7 @@ authoritative denominator.
 
 Implementation should proceed in five bounded groups:
 
-1. Finish the 132 remaining SM3 opaque identities through exact per-program
+1. Finish the 92 remaining SM3 opaque identities through exact per-program
    profiles, grouped by common algebra and ABI. Preserve separate DEFAULT,
    BUMPMAP and BUMPMAP_LOW contracts, and add a temporal answer for the two
    dynamic-branch damage pairs before calling them complete.

@@ -40,8 +40,8 @@ class ReportTests(unittest.TestCase):
 
     def test_complete_report(self):
         result = validate_report(self.text)
-        self.assertEqual(result['pairs'], 70)
-        self.assertEqual(result['unique_originals'], 49)
+        self.assertEqual(result['pairs'], 110)
+        self.assertEqual(result['unique_originals'], 73)
         self.assertGreater(result['hdr_channels'], 0)
         self.assertGreater(result['exact_black_channels'], 0)
 
@@ -110,11 +110,11 @@ class ReportTests(unittest.TestCase):
 
     def test_bump_inventory_and_stable_cube_domain(self):
         cases=fixture_cases()
-        self.assertEqual(len(cases),1527)
+        self.assertEqual(len(cases),2498)
         self.assertTrue(all(c['pair']<20 for c in cases[:313]))
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='bump_pair_depth_face'},
                          {(p,d,r) for p in range(20,30) for d in (0,1) for r in (0,1)})
-        self.assertEqual(sum(bool(c['flags']&BOUNDARY) for c in cases),27)
+        self.assertEqual(sum(bool(c['flags']&BOUNDARY) for c in cases),45)
         for c in cases:
             if c['flags']&BOUNDARY:continue
             a,b=expected(c),expected(c,True)
@@ -149,7 +149,7 @@ class ReportTests(unittest.TestCase):
             for i,line in enumerate(lines):
                 if line.startswith(f'SAMPLE id={c["id"]} '):
                     lines[i]=line.split('rgba=')[0]+'rgba='+','.join(map(str,(*values,expected_alpha(c))))
-            if values[0]==123.:self.assertEqual(validate_report('\n'.join(lines))['boundary_cases'],27)
+            if values[0]==123.:self.assertEqual(validate_report('\n'.join(lines))['boundary_cases'],45)
             else:
                 with self.assertRaises(AssertionError):validate_report('\n'.join(lines))
 
@@ -205,7 +205,7 @@ class ReportTests(unittest.TestCase):
     def test_expanded_pair_and_required_case_coverage(self):
         proof=json.loads((Path(__file__).resolve().parents[2]/'docs/reverse-engineering/linear-material-profiles.json').read_text())
         self.assertEqual(set(PAIRS),{(p['vs'],p['ps']) for p in proof['pairs']})
-        self.assertEqual(len(PAIRS),70)
+        self.assertEqual(len(PAIRS),110)
         cases=fixture_cases()
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='extended_pair_depth_face'},
                          {(p,d,r) for p in range(30,70) for d in (0,1) for r in (0,1)})
@@ -253,6 +253,51 @@ class ReportTests(unittest.TestCase):
         text=(Path(__file__).resolve().parents[1]/'probe/run_linear_material.py').read_text()
         self.assertIn("parser.add_argument('--exe', type=Path, required=True",text)
         self.assertNotIn('build_linear_material.sh',text)
+
+    def test_previous_1527_binary_payloads_are_exact(self):
+        self.assertEqual(hashlib.sha256(binary_cases(fixture_cases()[:1527])).hexdigest(),
+                         'cd0e072d83bee387977252e8cbe990e515ba01332e0582f4afd36335c4da66cd')
+
+    def test_remaining_hull_complete_pairs_controls_and_programs(self):
+        cases=fixture_cases()
+        self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='hull_pair_depth_face'},
+                         {(p,d,r) for p in range(70,110) for d in (0,1) for r in (0,1)})
+        self.assertEqual({c['pair'] for c in cases if c['label']=='hull_missing_history'},set(range(70,110)))
+        for p in range(70,110):
+            self.assertEqual({tuple(c['gains']) for c in cases if c['pair']==p and c['label']=='hull_independent_gains'},
+                             {(0.,0.,0.),(4.,1.,1.),(1.,16.,1.),(1.,1.,16.)})
+        for start in (70,80,90,100):
+            for p in (start,start+2,start+6):
+                self.assertEqual({c['lights'] for c in cases if c['pair']==p and c['label']=='hull_lights_gains'},
+                                 {1} if p==start+6 else {0,1,8})
+        for label in ('hull_diffuse_coefficient','hull_specular_power','hull_cube_coefficient','hull_affine_angular',
+                      'hull_packed_angular','hull_finite_domain'):
+            self.assertEqual(len({PAIRS[c['pair']][1] for c in cases if c['label']==label}),24)
+
+    def test_hull_coefficient_witnesses_reject_neighbor_family_constants(self):
+        for c in fixture_cases():
+            if c['label'] not in ('hull_diffuse_coefficient','hull_specular_power','hull_cube_coefficient'):continue
+            p=PAIRS[c['pair']][1]
+            field={'hull_diffuse_coefficient':'diffuse_coefficient','hull_specular_power':'specular_power',
+                   'hull_cube_coefficient':'cube_coefficient'}[c['label']]
+            actual=getattr(ref.PROFILES[p],field)
+            wrong_value=(6 if actual!=6 else 5) if field=='specular_power' else (.5 if actual==1 else 1.)
+            correct=expected(c).encoded_rgba[:3]
+            with patch.dict(ref.PROFILES,{p:replace(ref.PROFILES[p],**{field:wrong_value})}):
+                wrong=expected(c).encoded_rgba[:3]
+            self.assertTrue(any(abs(a-b)>RGB_ABS_TOL+RGB_REL_TOL*abs(a) for a,b in zip(correct,wrong)),
+                            (c['pair'],c['label']))
+
+    def test_hull_ag_normal_cube_and_point_witnesses(self):
+        cases=fixture_cases()
+        for p in (*range(70,76),*range(80,86),*range(100,106)):
+            alpha=next(c for c in cases if c['pair']==p and c['label']=='hull_normal_alpha_binormal')
+            unused=next(c for c in cases if c['pair']==p and c['label']=='hull_normal_unused_red_blue')
+            self.assertEqual(expected(alpha),expected(unused))
+            a,b=[c for c in cases if c['pair']==p and c['label']=='hull_cube_direction']
+            self.assertNotEqual(expected(a),expected(b))
+            a,b=[c for c in cases if c['pair']==p and c['label']=='hull_geometric_point']
+            self.assertEqual(expected(a),expected(b))
 
 
 if __name__ == '__main__':unittest.main()

@@ -1,4 +1,4 @@
-"""Compile the real pure transformer and inspect all forty-nine local original programs.
+"""Compile the real pure transformer and inspect all seventy-three local original programs.
 
 No game bytes are bundled. Generated variants stay in TemporaryDirectory.
 These tests qualify instruction/ABI invariants, not GPU primitive behavior.
@@ -134,8 +134,56 @@ EXTENSION_BUMP_ORIGINALS = {
 }
 
 
+HULL_ORIGINALS = {
+    'ps_1ed1bf0fdec00e1a',
+    'ps_1f26d41bcb7dac1e',
+    'ps_2b04461d0dae038b',
+    'ps_78963cdc7c710e04',
+    'ps_acc83ed2509d84a1',
+    'ps_bdcdb3ab996ae4e0',
+    'ps_22cc5b05a55ef61e',
+    'ps_3006f8030a467739',
+    'ps_769c3814fc0efba8',
+    'ps_d6e8bdde0e4c515f',
+    'ps_e5ea78b8b0b0fe07',
+    'ps_f42202faf57a3c89',
+    'ps_3755809bd40afc13',
+    'ps_61418505e5d8f998',
+    'ps_91b6c09eb47f8555',
+    'ps_b5f1d4145171026b',
+    'ps_cc09f17db377fd9e',
+    'ps_ef2bf556f207b8bd',
+    'ps_042c9ae16f41feff',
+    'ps_3602b05ce11ca6ff',
+    'ps_5c823b8507fa1442',
+    'ps_68f0dd6791fd7d3d',
+    'ps_8e58ac79b59b02b1',
+    'ps_a6e1328c0bb3f401',
+}
+HULL_BUMP_ORIGINALS = {
+    'ps_1ed1bf0fdec00e1a',
+    'ps_1f26d41bcb7dac1e',
+    'ps_2b04461d0dae038b',
+    'ps_78963cdc7c710e04',
+    'ps_acc83ed2509d84a1',
+    'ps_bdcdb3ab996ae4e0',
+    'ps_22cc5b05a55ef61e',
+    'ps_3006f8030a467739',
+    'ps_769c3814fc0efba8',
+    'ps_d6e8bdde0e4c515f',
+    'ps_e5ea78b8b0b0fe07',
+    'ps_f42202faf57a3c89',
+    'ps_042c9ae16f41feff',
+    'ps_3602b05ce11ca6ff',
+    'ps_5c823b8507fa1442',
+    'ps_68f0dd6791fd7d3d',
+    'ps_8e58ac79b59b02b1',
+    'ps_a6e1328c0bb3f401',
+}
+
+
 def family_resources(profile):
-    bump = profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS
+    bump = profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS | HULL_BUMP_ORIGINALS
     pixel = profile['id'].startswith('ps_')
     temporal_base = (7 if len({source['name'] for source in profile['directional_rgb_sources']}) == 2
                      else 6 if profile['diffuse_affine_completion'] else 5) if bump and pixel else 5
@@ -151,15 +199,15 @@ class LinearMaterialTransformerTests(unittest.TestCase):
         cls.report = json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text())
         # Explicit implemented corpus; future offline families cannot silently
         # enlarge production qualification merely by entering the report.
-        implemented = DEFAULT_ORIGINALS | BUMP_ORIGINALS | EXTENSION_ORIGINALS
+        implemented = DEFAULT_ORIGINALS | BUMP_ORIGINALS | EXTENSION_ORIGINALS | HULL_ORIGINALS
         cls.report['programs'] = [row for row in cls.report['programs'] if row['id'] in implemented]
         if {row['id'] for row in cls.report['programs']} != implemented or not all(
-                (row['id'] in EXTENSION_ORIGINALS or ('argon_bump' if row['id'] in BUMP_ORIGINALS else 'argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families'])
+                (row['id'] in EXTENSION_ORIGINALS | HULL_ORIGINALS or ('argon_bump' if row['id'] in BUMP_ORIGINALS else 'argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families'])
                 for row in cls.report['programs']):
-            raise AssertionError('All forty-nine implemented profiles must remain present')
+            raise AssertionError('All seventy-three implemented profiles must remain present')
         cls.originals = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
         if not all((cls.originals / (p['id'] + '.bin')).is_file() for p in cls.report['programs']):
-            raise unittest.SkipTest('local forty-nine-original archive corpus unavailable')
+            raise unittest.SkipTest('local seventy-three-original archive corpus unavailable')
         compiler = shutil.which('clang++') or shutil.which('c++')
         if compiler is None:
             raise RuntimeError('A host C++ compiler is required')
@@ -187,8 +235,22 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                     yield profile, depth, gain, words, items
 
     def test_all_variants_alias_and_failure_guards(self):
-        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (49, 70, 392))
+        self.assertEqual((self.driver['programs'], self.driver['pairs'], self.driver['variants']), (73, 110, 584))
         self.assertGreaterEqual(self.driver['checks'], 2800)
+
+    def test_all_392_preceding_outputs_remain_byte_exact(self):
+        # Captured from qualified checkpoint 73f5c51 before the next hull rows:
+        # 49 originals, both depth modes, gains0/1/4/16. No game bytes embedded.
+        digest = hashlib.sha256()
+        outputs = sorted(path for path in self.output.glob('*.bin')
+                         if '-motion-' not in path.name and path.name.split('-')[0] in DEFAULT_ORIGINALS | BUMP_ORIGINALS | EXTENSION_ORIGINALS)
+        self.assertEqual(len(outputs), 392)
+        for path in outputs:
+            data = path.read_bytes()
+            digest.update(path.name.encode() + b'\0')
+            digest.update(struct.pack('<I', len(data)))
+            digest.update(data)
+        self.assertEqual(digest.hexdigest(), 'b9753e6337fd36cbb8bf15851e5821361bd003ed428b9ec859d80289321f6e02')
 
     def test_all_192_installed_outputs_remain_byte_exact(self):
         # Captured before this 40-pair extension from the accepted 24-program
@@ -376,7 +438,7 @@ class LinearMaterialTransformerTests(unittest.TestCase):
                              ([(registers[1], abi['depth_texcoord'])] if depth else []))
             self.assertNotEqual(abi['depth_texcoord'], abi['rgb_texcoord'])
             self.assertLessEqual(slots, 512)
-            family = 'bump' if profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS else 'default'
+            family = 'bump' if profile['id'] in BUMP_ORIGINALS | EXTENSION_BUMP_ORIGINALS | HULL_BUMP_ORIGINALS else 'default'
             stage = 'vs' if vertex else 'ps'
             maxima[family][stage][depth] = max(maxima[family][stage][depth], slots)
             self.assertEqual(definitions[base][1:3], (0.0, 65504.0))

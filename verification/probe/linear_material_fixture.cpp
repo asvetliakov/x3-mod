@@ -56,7 +56,11 @@ const char * pixel_ids[] = {
     "462342e3e5781384", "827d8d2d617bedce", "02606104fa59fb29", "1d638938d93421b3", "bd4d51c08486c6e0", "de2dd381fa64193d",
     "7c83ed50c9894e44", "e70adc744a38ca59", "db644b73b68c0547", "ff32b602a271c327", "f6a501717c3e5ca8", "55826dc176afe464",
     "0c1f3f0f440e4a0c", "64bac8bb307eb896", "789449ffd931d23e", "4f052209611387f0", "abf3c0fad53456d8", "cf449bcb069aec4f",
-    "99153c144030c396", "c1452981fd0bff64", "b0f9313b77cc78ee", "d514bf852d8a9c58", "dff6a3d360603fa2", "f1d14a7dbf7c6173"};
+    "99153c144030c396", "c1452981fd0bff64", "b0f9313b77cc78ee", "d514bf852d8a9c58", "dff6a3d360603fa2", "f1d14a7dbf7c6173",
+    "1f26d41bcb7dac1e", "bdcdb3ab996ae4e0", "78963cdc7c710e04", "1ed1bf0fdec00e1a", "2b04461d0dae038b", "acc83ed2509d84a1",
+    "3006f8030a467739", "d6e8bdde0e4c515f", "e5ea78b8b0b0fe07", "f42202faf57a3c89", "769c3814fc0efba8", "22cc5b05a55ef61e",
+    "ef2bf556f207b8bd", "91b6c09eb47f8555", "cc09f17db377fd9e", "3755809bd40afc13", "61418505e5d8f998", "b5f1d4145171026b",
+    "3602b05ce11ca6ff", "8e58ac79b59b02b1", "042c9ae16f41feff", "68f0dd6791fd7d3d", "5c823b8507fa1442", "a6e1328c0bb3f401"};
 // Derived register-layout facts; original instructions own the lobe and normal math.
 const bool pixel_affine[] = {
     true, true, false, true, true, false,
@@ -65,15 +69,11 @@ const bool pixel_affine[] = {
     true, true, true, true, false, false,
     true, true, true, true, false, false,
     true, true, true, true, false, false,
+    true, true, true, true, false, false,
+    true, true, true, true, false, false,
+    true, true, true, true, false, false,
+    true, true, true, true, false, false,
     true, true, true, true, false, false};
-const unsigned pixel_directions[] = {
-    2, 2, 1, 1, 1, 1,
-    2, 2, 1, 1, 1, 1,
-    2, 2, 1, 1, 1, 1,
-    2, 2, 1, 1, 1, 1,
-    2, 2, 1, 1, 1, 1,
-    2, 2, 1, 1, 1, 1,
-    2, 2, 1, 1, 1, 1};
 const bool pixel_bump[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -81,6 +81,10 @@ const bool pixel_bump[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
     true, true, true, true, true, true,
+    true, true, true, true, true, true,
+    true, true, true, true, true, true,
+    true, true, true, true, true, true,
+    false, false, false, false, false, false,
     true, true, true, true, true, true};
 const bool pixel_application[] = {
     false, false, false, false, false, false,
@@ -89,7 +93,23 @@ const bool pixel_application[] = {
     false, false, false, false, false, false,
     true, true, true, true, true, true,
     true, true, true, true, true, true,
-    true, true, true, true, true, true};
+    true, true, true, true, true, true,
+    false, false, false, false, false, false,
+    false, false, false, false, false, false,
+    false, false, false, false, false, false,
+    false, false, false, false, false, false};
+const unsigned pixel_directions[] = {
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1,
+    2, 2, 1, 1, 1, 1};
 const unsigned pair_v[] = {
     0, 0, 1, 1, 1, 1,
     2, 2, 2, 2, 0, 0,
@@ -102,7 +122,14 @@ const unsigned pair_v[] = {
     2, 2, 3, 3, 4, 4,
     4, 4, 5, 5, 5, 5,
     3, 3, 4, 4, 4, 4,
-    5, 5, 5, 5};
+    5, 5, 5, 5, 3, 3,
+    4, 4, 4, 4, 5, 5,
+    5, 5, 3, 3, 4, 4,
+    4, 4, 5, 5, 5, 5,
+    0, 0, 1, 1, 1, 1,
+    2, 2, 2, 2, 3, 3,
+    4, 4, 4, 4, 5, 5,
+    5, 5};
 const unsigned pair_p[] = {
     0, 1, 2, 3, 4, 5,
     2, 3, 4, 5, 6, 7,
@@ -115,7 +142,14 @@ const unsigned pair_p[] = {
     28, 29, 30, 31, 32, 33,
     34, 35, 32, 33, 34, 35,
     36, 37, 38, 39, 40, 41,
-    38, 39, 40, 41};
+    38, 39, 40, 41, 42, 43,
+    44, 45, 46, 47, 44, 45,
+    46, 47, 48, 49, 50, 51,
+    52, 53, 50, 51, 52, 53,
+    54, 55, 56, 57, 58, 59,
+    56, 57, 58, 59, 60, 61,
+    62, 63, 64, 65, 62, 63,
+    64, 65};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -172,7 +206,7 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][42];
+  Words originals[2][66];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
@@ -622,7 +656,7 @@ int main(int argc, char **argv) {
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
     file.read(reinterpret_cast<char *>(&count), 4);
-    require(count > 0 && count < 2000, "case count");
+    require(count > 0 && count < 4000, "case count");
     std::vector<Case> cases(count);
     file.read(reinterpret_cast<char *>(cases.data()),
               cases.size() * sizeof(Case));
@@ -671,7 +705,7 @@ int main(int argc, char **argv) {
       }
       {
         Gpu gpu(device.p, shaders, 256);
-        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u}) {
+        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u}) {
           Case timed = cases.front();
           timed.pair = pair;
           timed.flags = pixel_bump[pair_p[pair]] ? 1 : 0;
