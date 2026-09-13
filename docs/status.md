@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-13. This is the current handoff. Earlier checkpoints are in
+Updated 2026-09-14. This is the current handoff. Earlier checkpoints are in
 [status history](status-history-2026-09-13.md); read them only for a relevant unresolved question. The
 [goal checklist](goals.md), [run queue](verification/user-runs.md), and [original objective](user-objective.md)
 retain the full scope.
@@ -101,4 +101,6 @@ gameplay appearance and cost were not evaluated there. GTAO, shadows, reflection
 lens effects, clustered lighting, and HDR display remain on the [roadmap](architecture/roadmap.md).
 
 Use the brief [run queue](verification/user-runs.md) for user actions. New Wine fixtures use X3 and the shared lock.
+The reviewed XT fixture logging change preserves every assertion and failure witness while omitting bulk
+success lines; see the [workflow follow-up](verification/workflow-audit-2026-09-13.md#2026-09-14-bounded-xt-fixture-output).
 Keep raw captures/builds local, use focused verification, and update owning notes instead of expanding this handoff.

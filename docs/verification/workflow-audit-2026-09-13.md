@@ -372,3 +372,22 @@ pass, covering actual writer records, copied-log authorization, selection/source
 replacement, path safety, stale/missing data, inventory failure, numbering races
 and launch exit preservation. No game/Wine execution, DLL build or install was
 needed for this workflow-only checkpoint.
+
+## 2026-09-14: bounded XT fixture output
+
+The retained XT depth-off/per-draw/material-off case wrote 42,285,312 stdout
+bytes and 1,110,793 successful `CHECK` rows. Three pixel-loop labels account for
+1,109,719 rows / 42,178,937 bytes. The fixture now uses a quiet assertion helper
+only at those three sites: every numerical check still runs and increments the
+same terminal count; failure delegates to the unchanged verbose assertion,
+prints the same label and throws immediately. All other fixture output remains.
+The report parser consumes `RESULT` totals and structured XT/motion/state rows,
+not the number of successful `CHECK` lines.
+
+An executed host test proves 100,000 silent successes and identical counted
+first-failure text/exceptions. Strict i686/SSE2 fixture compilation and independent
+review pass. Removing those success lines from the retained sample predicts
+106,375 bytes of stdout (99.75% less); this is an output-volume calculation,
+not a measured runtime improvement. No GPU assertions or acceptance bounds were
+removed, no Wine matrix was repeated for this logging-only change, and the
+installed renderer and retained qualification binaries are unchanged.

@@ -115,6 +115,12 @@ void require(bool ok, const char* label) {
     ++checks; std::printf("CHECK %s %s\n", label, ok ? "PASS" : "FAIL");
     if (!ok) throw std::runtime_error(label);
 }
+// Pixel loops retain every assertion and the same first-failure witness, but
+// avoid millions of successful printf calls. RESULT still reports the count.
+void require_quiet(bool ok, const char* label) {
+    if (!ok) require(false, label);
+    else ++checks;
+}
 template<class T> struct Com {
     T* p = nullptr;
     Com() = default; Com(const Com&) = delete; Com& operator=(const Com&) = delete;
@@ -2118,7 +2124,7 @@ struct Fixture {
                     unsigned w=0,h=0;const auto image=hdr_image(&w,&h);require(w==W&&h==H,"XT paired image dimensions");
                     std::vector<float>alpha_image(std::size_t(W)*H),motion_image(std::size_t(W)*H*4),depth_image(std::size_t(W)*H);
                     for(std::size_t i=0;i<alpha_image.size();++i)alpha_image[i]=image[4*i+3];
-                    for(float value:image)require(std::isfinite(value),"XT paired finite image");
+                    for(float value:image)require_quiet(std::isfinite(value),"XT paired finite image");
                     api(readback(d.p,motion_image.data(),unsigned(motion_image.size()),&w,&h),"XT paired motion readback");if(materialwrap_depth)api(readback_depth(d.p,depth_image.data(),unsigned(depth_image.size()),&w,&h),"XT paired depth readback");
                     const std::array<std::uint64_t,3> hashes={fnv(alpha_image.data(),alpha_image.size()*4),fnv(motion_image.data(),motion_image.size()*4),materialwrap_depth?fnv(depth_image.data(),depth_image.size()*4):0};
                     unsigned pixels=0;double max_error=0,low=1e30,high=-1e30;
@@ -2129,7 +2135,7 @@ struct Fixture {
                         for(std::size_t i=0;i<alpha_image.size();++i){
                             if(std::fabs(transport_rgb[4*i+3]-alpha)>.001)continue;
                             ++pixels;
-                            for(unsigned lane=0;lane<3;++lane){const double ordinary=transport_rgb[4*i+lane];require(ordinary>=0,"XT calibrated positive working RGB");low=std::min(low,ordinary);high=std::max(high,ordinary);const double wanted=material?std::pow(ordinary,1./2.2):ordinary;const double error=std::fabs(image[4*i+lane]-wanted)/(.006*std::fabs(wanted)+.00002);max_error=std::max(max_error,error);}
+                            for(unsigned lane=0;lane<3;++lane){const double ordinary=transport_rgb[4*i+lane];require_quiet(ordinary>=0,"XT calibrated positive working RGB");low=std::min(low,ordinary);high=std::max(high,ordinary);const double wanted=material?std::pow(ordinary,1./2.2):ordinary;const double error=std::fabs(image[4*i+lane]-wanted)/(.006*std::fabs(wanted)+.00002);max_error=std::max(max_error,error);}
                         }
                         require(pixels>W*H/4&&high-low>.001&&max_error<=1,"XT physical scalar WRAP calibrated RGB relation");
                     }
@@ -2142,7 +2148,7 @@ struct Fixture {
             object.recorded=true;object.rt=object.rzo=0;object.rp=perspective;
             unsigned width=0,height=0;const auto image=hdr_image(&width,&height);require(width==W&&height==H,"XT FP16 dimensions");const float*center=&image[(std::size_t(H/2)*W+W/2)*4];
             const double alpha=.625*(.25+.75*128./255.);if(!transport)for(unsigned lane=0;lane<3;++lane){const double expected=native_unknown?(lane==0?.5:lane==1?.25:.75):combined?std::pow(4.,1./2.2):1.;require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"XT actual ordinary/linear RGB witness");}require(std::fabs(center[3]-(native_unknown?.625:alpha))<.001,"XT preserved native alpha");
-            for(float value:image)require(std::isfinite(value),"XT finite full FP16 image");
+            for(float value:image)require_quiet(std::isfinite(value),"XT finite full FP16 image");
             std::vector<float>alpha_pixels(std::size_t(W)*H);for(std::size_t i=0;i<alpha_pixels.size();++i)alpha_pixels[i]=image[i*4+3];
             std::printf("XT_LIVE plan=%u frame=%llu pair=%u step=%u vs=%s ps=%s combined=%u refusal=%u matched=%u rgba=%.9g,%.9g,%.9g,%.9g alpha_hash=%016llx image_hash=%016llx\n",plan,frame,pair,step,xt_vs[bump?0:1],native_unknown?"fed278e46915d6da":xt_ps[pair],combined,native_unknown?1u:fallback?4u:0u,matched,double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(alpha_pixels.data(),alpha_pixels.size()*4)),static_cast<unsigned long long>(fnv(image.data(),image.size()*4)));
             frame_end();if(reset_after){reset();object.recorded=false;}
