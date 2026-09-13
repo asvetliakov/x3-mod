@@ -92,6 +92,17 @@ stutter behavior fix. See [provenance](reverse-engineering/chase-view-transition
 - **Window/cursor:** the macOS menu bar and double cursor after alt-tab remain open. Queue run 4 is the optional
   vanilla comparison.
 
+## Prepared designs
+
+The reviewed [distance-fade proposal](architecture/linear-distance-fade.md) uses
+one native submission, a linear blended layer, and shared reactive coverage; its
+prototype must preserve native recovery and does not yet solve layered temporal
+accumulation. The reviewed [screen-emission proposal](architecture/screen-emission-overlap.md)
+uses four packed MRTs to preserve fragment order without replay. Its mathematical
+prototype may proceed, but persistent native-image assembly failure remains an
+open publication contract before runtime integration. Both use documented D3D9
+capabilities; neither has native-Windows runtime qualification.
+
 ## Next user action
 
 No new enhanced run yet. [Run 8](verification/user-runs.md#8-restored-glow-milder-exposure-and-selection-trace--completed)

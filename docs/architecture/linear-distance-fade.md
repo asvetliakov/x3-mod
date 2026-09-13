@@ -1,0 +1,244 @@
+# Linear distance-fade composition: Run 27 investigation
+
+Status: proposed architecture, 2026-09-14. No production change or GPU run.
+This note owns the fade-route proposal; the [coverage ledger](material-coverage.md)
+owns the captured material population. The [native fade analysis](../reverse-engineering/asteroid-fog-temporal.md)
+already establishes the engine mechanism, so another broad trace or disassembly
+sweep is unnecessary before a bounded prototype.
+
+## What the capture proves
+
+Run 27 is `/tmp/x3-bottleX3-run27/session-20260914-000122-216.log`.
+The compact local reductions are `/tmp/x3-run27-draw-analysis.json` and
+`/tmp/x3-run27-asteroid-constants.json`. In frame 20744:
+
+| Draw | Node / model | Native state | Proxy outcome |
+| --- | --- | --- | --- |
+| 42 | `1af313b0` / `4fef` | Z-write on, blending off, RGBA writes; VS b0 false | Opaque motion/depth and linear material route |
+| 43 | `1af31630` / `4fee` | Z-write off, SRCALPHA / INVSRCALPHA ADD, RGB writes; VS b0 true | Motion gate 4; no material attempt; jitter remains active |
+
+Both use reviewed pair `167eb2d5629ab9d3/d44db87778a43b61`, LOD 0,
+1,712 triangles, 1,002 vertices and the same four texture bindings. They are
+**different nodes and models**, coexist in the same frame, and have different
+transforms and detail/base weights. This is not a captured same-object LOD or
+brightness transition, and association with the selected target is unproved.
+The 1,700 explicit material refusals elsewhere in this capture are the glass
+pair `c30104cb0efb6675/a66fb1981ba755b2`, reason 1. They do not count this earlier
+state-gate bypass; there is no missing-variant, sampler or combined-bind failure
+explaining this asteroid draw.
+
+For the far draw, c39.x is 1 and c41 is approximately
+`(1.0526316166, 2.10526366e-7, 0, 0)`. Together with b0=true these establish the
+reviewed vertex fade `saturate(c41.x - c41.y * vertexDistance) * c39.x`.
+They encode approximately N=250,000 and F=5,000,000 shader-world units, not the
+measured distance of this object. The original PS multiplies this interpolated
+alpha by the base diffuse texture alpha. Native submission enables the fog path
+from **node-origin distance**, while the VS computes alpha per vertex. The
+engine can therefore switch states while mesh vertices already have different
+fade values. Base texture alpha must not be replaced with 1.
+
+The four textures have 11 mips; minification is anisotropic, magnification and
+mip filtering are linear, max anisotropy is 16, sRGB sampling is false and mip
+bias is zero. Run 27 also has proxy mip bias disabled. This excludes a proxy
+negative-bias transition here, but does not establish that normal/specular or
+texture minification is temporally stable. Fixed-function `FOGENABLE` was not
+captured; VS b0 is not proof of that separate D3D state.
+
+## Why the present policies can disagree
+
+`MotionOutput::evaluate_draw` applies reviewed VS jitter before its opaque
+admission. Gate 4 then requires depth writes, no alpha blend/test and RGBA
+writes, among other conditions. The far draw returns there, before combined
+material availability is considered. Its original native RGB lighting remains,
+whereas eligible opaque draws use linear lighting encoded back into the
+engine-compatible gamma-2.2 FP16 target. An object entering these state regimes
+can consequently change its **source-lighting domain** as well as following the
+engine's intentional alpha fade. The captured different objects establish the
+two policies, not the magnitude or identity of a visible transition.
+
+The translucent writer also leaves RT1/RT2 unchanged. Over an opaque surface,
+its color mixture inherits that underlying surface's correspondence/depth;
+where no opaque writer populated those targets, it inherits the sentinel and
+camera far-plane path. Frame 20744 resolves TAA with valid camera policy 2 and
+history enabled. It is incorrect to describe every fade pixel as far-plane.
+Neither inherited correspondence represents both moving layers in general.
+This is a plausible shimmer/history contributor, not a demonstrated pixel-level
+cause. The Asteroid shader's per-vertex fade, normal-map specular response and
+mip aliasing remain separate possibilities. No station-specific fade contract
+or target identity has yet been established by this asteroid evidence.
+
+## Proposed bounded repair
+
+Start with the six reviewed [Asteroid contracts](linear-asteroid-materials.md)
+and their exact ordinary source-over fade state. Keep native depth test, disabled
+depth writes, primitive order, original alpha and caller state. Do not relax the
+opaque motion gate or force a depth-writing replacement. Other reviewed material
+families can enter this route after their actual native fade contract is checked;
+a blanket translucent/glass admission is not supported by these observations.
+
+Use three simultaneous source MRT bindings, B/E/M, with a four-surface full-size
+FP16 B/E/C/M pool. A is the separately owned current compatibility-encoded HDR
+scene. C is a distinct composition destination: sampling A while rendering to A
+is invalid, and overwriting B would destroy native recovery. Prepare B as an
+exact copy of A, clear E to zero, and leave M detached during preparation.
+
+Prefer the current emission pass's single pool owner, serialized across fade and
+emission brackets, with an explicit composition-policy selector. Do not allocate
+a second pool or permit nested users. If both routes are active, this shares the
+existing B/E/C/M storage; if only fade is active, it still needs all four surfaces
+(32 bytes/pixel, approximately 63.3 MiB at 1920x1080), in addition to A. C transfers
+through the existing HDR owning-slot exchange and acknowledgement; the previous
+A returns to that slot for reuse. B stays separate until successful publication
+and restoration or certified native recovery. All four resources participate in
+reference accounting, resizing and Reset. Each bracket still pays full-size
+A-to-B copying/E clearing and A/E-to-C composition traffic, plus source MRT
+writes; storage reuse does not remove that bandwidth cost.
+A dedicated paired shader variant must retain the full original native RGB and
+alpha path for B while additionally producing unencoded linear source RGB L and
+the same source alpha a for E. Prove oC1.a equals the actual native oC0 source
+blend factor, including the original direct `_pp` alpha output's precision;
+recomputing an algebraically equal full-precision alpha is not enough. The
+existing opaque combined variant is not that
+producer: it rewrites native lighting and vertex RGB. Its native path cannot be
+recovered merely by rebinding the original PS. Cache the new exact variants at
+creation/bind boundaries, with no per-draw transform or shader lookup.
+
+For each fragment, output native source to B, `(L, a)` to E, and positive RGB
+with alpha 1 to M. Keep native RGB source-over blending. Enable separate alpha
+blending ONE / INVSRCALPHA for E's accumulated coverage, with independent write
+masks B=RGB, E=RGBA and M=RGB. B's native alpha remains unwritten. Starting at
+E=(Q,q)=0, overlapping primitives within the **same** original draw then give:
+
+```
+Q' = a * L + (1 - a) * Q
+q' = a     + (1 - a) * q
+C.rgb = encode(Q + (1 - q) * decode(A.rgb))
+C.a   = B.a
+```
+
+This preserves ordered source-over transmittance, including self-overlap; using
+ordinary alpha blending on E.a would accumulate a squared alpha instead. The
+formula is the interior-coverage rule, not permission for an unconditional
+full-screen decode/encode. For scalar q equal to exact +0, select raw A.rgb
+without conversion, preserving its FP16 bits outside raster coverage and for
+zero-alpha draws. For q equal to 1, compose from Q alone; do not evaluate an
+arithmetic `0 * decode(A)` that can import a nonfinite background. This establishes
+background independence at full coverage, not bit-exact equality to the opaque
+shader: native/linear alpha precision, intermediate rounding and caps must pass
+the shader oracle before any stronger continuity claim.
+
+Use the existing ordered RGB sanitizer S(x)=MIN(MAX(x,+0),65504), including its
+qualified NaN/infinity ordering, on L at the linear FP16 source boundary and on
+accumulated Q before conversion. Apply the same safe gamma transfer and finite
+RGB policy to the background and composed result for interior coverage. Keep
+native B RGB/alpha untouched by this sanitizer. The valid alpha domain and the
+duplicated `_pp` result must make the q recurrence finite in [0,1]. Define hostile
+scratch q deterministically with an ordered [0,1] clamp (NaN/negative infinity
+to +0, positive infinity to 1), then use the same endpoint branches; this is a
+malformed-input fallback, not proof that a native nonfinite blend factor has
+meaningful parity. Keep conservative M coverage regardless of zero alpha/gain.
+
+Compose immediately at the original draw position. Decoding already blended B,
+or blending encoded linear source RGB with the native fixed-function blend,
+does not implement these equations. This repairs composition in the current
+compatibility scene; it does not make unconverted native writers physically
+linear.
+
+D3D9 applies blend states to all MRTs and allows independent write masks only
+with the corresponding capability. Require NumSimultaneousRTs >= 3,
+MRTPOSTPIXELSHADERBLENDING, FP16 post-pixel-shader blend format support,
+SEPARATEALPHABLEND and INDEPENDENTWRITEMASKS explicitly.
+Require fixed-function fog/dither off, no MSAA and the exact admitted blend,
+write-mask and alpha-test state. Shader fog remains untouched. Validate native B
+under these states on actual D3D; the independent alpha update is safe only
+because the admitted original RT0 alpha mask is off. These are documented D3D9
+contracts, not backend-private assumptions. [Microsoft MRT documentation](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multiple-render-targets),
+[render-target alpha](https://learn.microsoft.com/en-us/windows/win32/direct3d9/render-target-alpha),
+[capabilities](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dpmisccaps).
+
+Reuse the reviewed [emission bracket's](linear-emission-composition.md) owning
+slot exchange/acknowledgement, source-once and recovery rules, with an explicit
+source-over composition policy rather than silently changing additive emission
+semantics. Preserve the first failed HRESULT in chronological order: a failed
+source dominates later cleanup errors; an earlier failed preparation/restore is
+not overwritten by a subsequent recovery result. Invoke a source at most once,
+including after successful source submission followed by composition failure.
+Failed pre-source restoration suppresses source submission. After source,
+adopting B requires successful target binding and state restoration; merely
+possessing B does not certify recovery. A failed source remains Incomplete even
+if best-effort B continuation succeeds, and cannot certify a complete mask.
+Clean refusal before submission with restored A preserves earlier mask contents;
+missing required source coverage still prevents enhanced temporal history. Keep
+the existing reader/export quarantine, Reset and ownership rules. An immutable unsupported capability may
+retain the baseline route before activation; it is not support for enhanced fade
+on that device.
+
+## Temporal safety and the remaining shimmer objective
+
+Use the single shared pool owner for M and one combined frame-completeness
+status. Determine the effective fade/emission producer set at frame start; its
+owner clears M exactly once before either producer can submit. A later fade or
+emission bracket must not clear earlier coverage. Fade alone owns this lifecycle
+when emission is disabled or immutably unsupported before activation. An active
+producer's transient refusal/failure cannot silently remove it from the required
+source set. Clean pre-source refusal preserves existing M bytes, but if a
+required draw goes uncovered the combined frame is incomplete. Failed source,
+unrecovered state, or an uncertified fallback-B/post-source failure likewise
+cannot be erased by another producer's later success. A certified native-B
+fallback after a successful source may retain completeness only when its full
+same-draw M coverage and restored/published state are established.
+
+Union coverage under the existing source-set-complete
+`SupplementalMaskWithDepthSentinel` contract, independently of the emission
+enable flag. Preserve RT1/RT2 and native Z-write semantics.
+Current and previous canonical masks, including the existing one-pixel expansion,
+reject the mixture's invalid history and protect disappearance or return to
+opaque rendering. Complete empty coverage is valid. Incomplete coverage uses
+`Unavailable` with a null mask, current-only output and no completed history;
+`history_allowed=false` alone is insufficient.
+
+This is a safe first composition/temporal stage, not a promise to eliminate
+shimmer: rejection can reveal current-frame spatial aliasing. Stable accumulation
+of a moving transparent surface over a differently moving background needs
+separate layer color/transmittance and appropriate correspondences, or another
+explicitly qualified layered temporal method. A fabricated single blended motion
+vector is not a proof. Keep that visual acceptance open; do not present reactive
+rejection or spatial filtering alone as completed translucent TAA.
+
+Nor can source-domain consistency remove every native threshold discontinuity:
+node-origin admission, per-vertex fade and partial diffuse alpha can themselves
+change coverage at the state switch. Changing those engine semantics would be a
+separate decision requiring same-object evidence, not an implicit lighting fix.
+
+## Qualification and next decision
+
+Before integration, extend the existing detached shader/pass fixture with actual
+original b0 off/on, captured c39/c41, alpha 0/partial/1, unequal backgrounds,
+multiple overlapping primitives in one DIP and two ordered DIPs. Require exact
+native B/alpha (including the duplicated `_pp` blend factor), analytic linear
+source-over output, measured opaque-limit precision, and exact raw-A preservation
+after repeated zero-alpha and outside-raster operations. Include nonfinite/HDR
+backgrounds at q=0/1, finite/cap boundaries, caller-state restoration and
+source-once behavior. Include alpha-mask/separate-
+alpha refusal, capability refusal, native failure, recovery, exchange and Reset.
+Preserve original program budgets; dual native/linear varying and instruction
+capacity is a feasibility gate, not grounds to discard native recovery.
+
+Then exercise current/previous fade coverage, changing alpha, disappearance and
+opaque return with separate object/background motion and camera rotation and
+translation. Cover fade-only, emission-only and interleaved producers, one M
+clear, certified native-B fallback, either producer failing after earlier valid
+coverage, and Reset/effective-set transitions. Reuse existing supplemental-mask
+failure/no-seed tests. Actual
+Asteroid normal/detail/specular inputs must be nonzero; diagnose minification
+separately from route continuity rather than changing roughness or specular gain
+without evidence. Paired completion timings should isolate this bracket at
+representative resolutions and counts; do not infer batching safety from old
+adjacency or equate component timing with game FPS.
+
+The recommended next action is this bounded prototype, not a gate-only installed
+patch. Eventual integrated telemetry should count recognized fade state bypasses
+before material-availability counters, using cached state and integer increments.
+Existing native RE and this capture already justify the prototype; no additional
+broad game load is needed to choose its initial contract. Same-node transition
+and station-pass identification remain necessary for later user-visible claims.

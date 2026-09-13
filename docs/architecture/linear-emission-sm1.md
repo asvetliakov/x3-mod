@@ -353,3 +353,8 @@ with no findings. The reviewer matched every frozen input and compact aggregate
 to the streamed raw result without rerunning the probe. Actual alpha-boundary
 counts were GT128 279, GE128 558 and untested 841 for every pair/mode; all
 creation, projected-state, overlap, Reset and post-Reset records agree.
+
+The next isolated mathematical prototype follows the reviewed
+[packed screen composition](screen-emission-overlap.md) proposal. The successful
+source probe above does not qualify that four-MRT path or its unresolved
+post-source native-image publication failure contract.
