@@ -3,7 +3,10 @@
 
 namespace x3m::renderer {
 // Probe-only promotion contract; not linked to or admitted by the live SM2 route.
-enum class LinearEmissionSm1Outputs { Native = 1, Emission = 2, Coverage = 3 };
+enum class LinearEmissionSm1Outputs { Native = 1, Emission = 2, Coverage = 3,
+    // Separate mathematical prototype: M and three packed channel planes,
+    // not native B/E/coverage outputs. Full precision only; no live admission.
+    PackedScreen = 4 };
 struct LinearEmissionSm1Config {
     float gain = 1.0f;
     LinearEmissionSm1Outputs outputs = LinearEmissionSm1Outputs::Coverage;
@@ -19,6 +22,9 @@ bool linear_emission_sm1_pair_reviewed(std::uint64_t vertex,
 // opaque comments. This cannot promise historical SM1 precision equivalence:
 // native B/alpha/interpolation/MRT qualification is mandatory before integration.
 // Screen composition and projected-TSS handling are separate runtime contracts.
+// PackedScreen writes M=(1,0,0,a), Pc=(q_c,E_c,modified_c,q_c). It
+// requires four targets, independent masks and ONE/INVSRCALPHA in the detached
+// prototype; native-B assembly/publication failure remains unresolved.
 // Failure preserves output; original may alias output. No D3D/per-draw work.
 LinearEmissionResult linear_emission_sm1_pixel_variant(
     const std::uint32_t* original, std::size_t count,

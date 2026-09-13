@@ -21,7 +21,7 @@ std::string hex(std::uint64_t h) { char b[17];std::snprintf(b,sizeof b,"%016llx"
 int main(int argc,char** argv) {
     try {
         require(argc==3,"originals/output directories");
-        const float gains[]={0,.25f,1,4,16};unsigned variants=0,max_words=0,max_slots[3]={};long long ns=0;
+        const float gains[]={0,.25f,1,4,16};unsigned variants=0,max_words=0,max_slots[4]={};long long ns=0;
         for(const auto& p:profiles) {
             auto original=read(std::string(argv[1])+"/ps_"+hex(p.hash)+".bin");const auto saved=original;
             require(original.size()==p.count && fingerprint(original.data(),original.size())==p.hash,"original identity");
@@ -37,7 +37,8 @@ int main(int argc,char** argv) {
             require(original_shape(broken.data(),broken.size(),p.scalar),"opaque comment interpreted");
             Words output={1,2,3};const Words sentinel=output;
             require(linear_emission_sm1_pixel_variant(broken.data(),broken.size(),{},output)==LinearEmissionResult::UnsupportedShader && output==sentinel,"opaque fingerprint bypass");
-            for(unsigned g=0;g<5;++g) for(unsigned outputs=1;outputs<=3;++outputs) for(unsigned precision=0;precision<2;++precision) {
+            for(unsigned g=0;g<5;++g) for(unsigned outputs=1;outputs<=4;++outputs) for(unsigned precision=0;precision<2;++precision) {
+                if(outputs==4 && precision) continue;
                 LinearEmissionSm1Config config{gains[g],static_cast<LinearEmissionSm1Outputs>(outputs),bool(precision)};
                 const auto start=std::chrono::steady_clock::now();
                 require(linear_emission_sm1_pixel_variant(original.data(),original.size(),config,output)==LinearEmissionResult::Applied,"promotion");
@@ -59,6 +60,10 @@ int main(int argc,char** argv) {
                         require(!generated_shape(bad,b,outputs),"resource mutation accepted");
                         bad=output;bad[at]|=coissue;b={};
                         require(!generated_shape(bad,b,outputs),"SM1 coissue leaked into PS2");
+                        if(outputs==4) {
+                            bad=output;bad[at+1]|=pp;b={};
+                            require(!generated_shape(bad,b,outputs),"packed precision relaxation");
+                        }
                     }
                     at+=n+1;
                 }
@@ -67,7 +72,9 @@ int main(int argc,char** argv) {
             for(float invalid:{-1.f,17.f,std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
                 output=sentinel;require(linear_emission_sm1_pixel_variant(original.data(),original.size(),{invalid},output)==LinearEmissionResult::InvalidConfig && output==sentinel,"invalid gain");
             }
-            for(int invalid:{0,4,-1}) {
+            output=sentinel;
+            require(linear_emission_sm1_pixel_variant(original.data(),original.size(),{1,LinearEmissionSm1Outputs::PackedScreen,true},output)==LinearEmissionResult::InvalidConfig && output==sentinel,"packed PP refused");
+            for(int invalid:{0,5,-1}) {
                 output=sentinel;require(linear_emission_sm1_pixel_variant(original.data(),original.size(),{1,static_cast<LinearEmissionSm1Outputs>(invalid)},output)==LinearEmissionResult::InvalidConfig && output==sentinel,"invalid mode");
             }
             output=sentinel;require(linear_emission_sm1_pixel_variant(original.data(),60,{},output)==LinearEmissionResult::UnsupportedShader && output==sentinel,"bound");
@@ -96,6 +103,6 @@ int main(int argc,char** argv) {
                 write(std::string(argv[2])+"/ps_"+name+"-"+std::to_string(g)+(c?"-coverage.bin":".bin"),result);
             }
         }
-        std::cout<<"{\"variants\":"<<variants<<",\"pairs\":"<<accepted<<",\"checks\":"<<checks<<",\"max_words\":"<<max_words<<",\"max_slots\":["<<max_slots[0]<<','<<max_slots[1]<<','<<max_slots[2]<<"],\"create_ns\":"<<ns<<"}\n";
+        std::cout<<"{\"variants\":"<<variants<<",\"pairs\":"<<accepted<<",\"checks\":"<<checks<<",\"max_words\":"<<max_words<<",\"max_slots\":["<<max_slots[0]<<','<<max_slots[1]<<','<<max_slots[2]<<','<<max_slots[3]<<"],\"create_ns\":"<<ns<<"}\n";
     }catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}
 }

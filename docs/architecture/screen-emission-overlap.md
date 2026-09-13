@@ -1,7 +1,8 @@
 # Screen emission with overlapping primitives
 
-Architecture investigation, 2026-09-14, against `c3732c8`. No runtime change or
-new GPU qualification. Root reports the separate SM1 source probe passed 1,674
+Architecture investigation and isolated prototype, 2026-09-14. The design began
+against `c3732c8`; the packed prototype starts from `29da5a7`. No runtime change
+or live integration. The completed bounded X3 packed probe is recorded below. Root reports the separate SM1 source probe passed 1,674
 rows across six modes and confirmed the shared-MRT screen gap; that result does
 not qualify the packed route below. This supplements the [SM1 source study](linear-emission-sm1.md)
 and [emission ownership contract](linear-emission-composition.md). The installed
@@ -257,7 +258,7 @@ A full renderer migration is a separate project, not an SM1 conversion step.
 Keep SM1 promotion separate and do not integrate the incorrect B/E/q/M screen
 law. If the project chooses to pursue ordinary D3D9 first, the packed-channel
 single-DIP candidate is the favored prototype, pending explicit review of its
-fallback/publication contract. It needs a detached proof before live wiring: it avoids
+fallback/publication contract. The detached proof below is only a component gate before live wiring: it avoids
 the known replay exclusion blocker while retaining reconstructible native color.
 Its assembly-dependent fallback and bandwidth cost must be accepted explicitly.
 
@@ -269,5 +270,186 @@ the same device; compare C against the ordered linear oracle; verify mask and
 exact alpha. Then inject source/assembly/restore/publication failures and Reset,
 and measure source versus initialization/assembly at representative sizes and
 overdraw. Those tests need no gameplay load. They establish component behavior,
-not a native-Windows runtime result until actually run there. No such packed
-fixture or new route has been implemented or executed for this note.
+not a native-Windows runtime result until actually run there. The isolated prototype below implements and qualifies the bounded mathematical
+component on X3; no production route is qualified.
+
+
+## Isolated packed producer checkpoint
+
+`LinearEmissionSm1Outputs::PackedScreen` is a separate four-output probe mode in
+`src/renderer/linear_emission_sm1.{h,cpp}`. It reuses the six exact original PS
+proofs and nine unchanged VS/pair contracts. It writes M and the three channel
+planes above; it does not output a ready native B surface. Partial precision is
+rejected for this mode. Native q and sampled alpha remain unmodified. The
+established full-precision E path retains source sanitation, decoded-result cap
+before fade/gain, final sanitation and finite gain [0,16]. A three-CMP predicate
+marks signed nonzero q or positive E; ordered zero alone is unchanged, so the
+prototype does not hide negative q by clamping it into a supported domain.
+
+The producer uses only r0–r3 and c0/c30/c31, one sampler and the existing
+COLOR0/TEXCOORD0 interface. Its maximum is **201 DWORDs**, **42 arithmetic slots
+plus one texture instruction** for scalar profiles, or **41 plus one** for
+bullets. POW is counted as three slots. Exact output MOVs, initialized lanes,
+one constant read port, full precision, instruction framing and baseline PS2
+limits are checked before returning the generated vector. Output failure and
+input/output aliasing retain the prior contract. No per-DIP state, D3D calls,
+logging, allocation or runtime admission is added by the pure transformer.
+
+Twelve focused transformer tests pass. The host driver covers 210 variants,
+all nine exact pair memberships and more than ten thousand structural checks,
+including direct resource/precision mutations. Independent arithmetic checks
+plane source-alpha/q equality, M native alpha, signed/zero modification flags,
+cap-before-quarter-gain, ordered linear recurrence and unchanged channels. All
+**180 existing SM1 variants** match the pre-edit canonical SHA-256
+`21d26569494ffc58ece3d2de069093746feabb76cbafc678b8058fe3b486adf7`
+(sorted filename, NUL, then output bytes); all **100 existing SM2 variants**
+still match their accepted GPU hashes. Strict x86/SSE2 core compilation passes.
+An initial optimized host diagnostic measured about **0.170 ms for 210
+creations** before the final extra packed-precision refusal checks. This is
+creation-only diagnostic time, not driver cost, steady GPU time or game FPS.
+
+The finite producer does not by itself bound native q. For example T=256 and
+h=.125 produce q=32, despite finite/capped E; negative floating samples also
+produce signed native q. The raw algebra then has a negative or greater-than-one
+retention factor, so it is not a convex recurrence. Two raw-algebra q=2
+fragments would also cancel a previously set flag: `1+(1-2)*1=0`, invalidating
+unchanged-channel selection. Device clamping of blend
+factors cannot be assumed equivalent between source color and source alpha
+without measurement. The prototype therefore separates the [0,1] q/a contract
+from signed, greater-than-one and overflow observations. As a useful sufficient
+safe color domain, nonnegative T<=1, h<=1 and gain<=16 imply E<=16q; from
+linear background L<=16 the ideal recurrence stays <=16 at arbitrary overlap.
+This does not certify all native game textures or render states. Mask/modified
+flags have a different real-number bound: repeated accepted a=0 fragments grow
+M.red with fragment count, and tiny nonzero q can grow the modified flag. FP16
+rounding may instead lose small increments; neither a normalized-opacity bound
+nor an ideal unbounded-growth claim describes every device readback. They are
+reactive predicates, not color or normalized alpha, and range/overflow
+observations must remain explicit. No broad clamp or admission policy is introduced by this prototype.
+
+The separate packed fixture source is frozen for all nine original pairs:
+**24 conditions × nine pairs × three schedules = 648 measurements**, with
+36 variants at gains 1, 0, .25 and 2.5. Schedules submit the two overlapping
+primitives in one DIP, two ordered DIPs, and reverse order. Native B RGBA and
+unchanged channels are exact comparisons; C and the linear planes use an
+independent CPU ordered oracle with measured half-ULP input intervals, transfer
+arithmetic tolerance and a target ULP per store. It checks masked plane-alpha
+retention while those source alpha values drive blending, M.red preservation
+while initialization seeds M.alpha, native alpha tests and depth rejection,
+one-DIP/two-DIP equality, a distinct reversed-order result, and Reset. Four
+signed/>1/HDR/overflow conditions remain separate boundary diagnostics. No
+successful boundary row broadens the admitted mathematical domain.
+
+Authored helper budgets are initialization **22 ALU + one TEX** (two temps,
+one sampler, one constant, four outputs); native B assembly **5 ALU + four TEX**
+(five temps, four samplers, no constants, one output); C assembly **26 ALU +
+five TEX** (seven temps, five samplers, one constant, one output). The fullscreen
+VS2 uses two MOVs. B assembly consumes only the three planes and M; C also reads
+immutable A for ordered-zero channel preservation. Its comparison uses ABS of
+the blue flag so negative flags are not silently classified as unchanged.
+
+Eight focused tests in `test_linear_emission_sm1_packed_report` pass. The
+canonical report aggregates 27 pair/schedule rows and useful first failures;
+detailed case results and readbacks stay local. It does not log individual
+source DIPs. A dedicated 1920×1080 diagnostic separates native DIP,
+initialization, packed DIP, B assembly and C assembly, each with four warmups
+and eight timed samples. Its eight FP16 fixture targets occupy **132,710,400
+bytes**, including the independent native baseline; the proposed algorithm's
+seven-target A/planes/M/B/C footprint is **116,121,600 bytes** at that size.
+These are target-storage counts, not total driver allocations or measured cost.
+
+The same independent Sol/high reviewer approved the pure core and all four
+fixture files with no findings. The subsequent strict x86/SSE2 standalone build
+passed on its first attempt, without source corrections. The retained untracked
+EXE is `verification/probe/build/linear_emission_sm1_packed_fixture.exe`,
+11,143,288 bytes, SHA-256
+`6e50d7e097a4c7b9f56dbe5eb5caa7687efd1d56b2363331616f7d53349cb9a2`.
+The bounded X3 result follows below. The current twenty-pair runtime registry and
+all native-B assembly/publication failure questions remain unchanged.
+
+Focused host/build commands from `/tmp/x3-emission-sm1-packed`:
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_linear_emission_sm1_transformer
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_linear_emission_sm1_packed_report
+sh verification/probe/build_linear_emission_sm1_packed.sh
+```
+
+The root-owned runner consumes that explicit prebuilt artifact and executes
+functional and benchmark processes sequentially under one Wine lease. It has no
+build path. Each process has a 900-second timeout; completed timings follow
+below.
+Probe completion is distinct from in-domain qualification, and neither grants
+live publication or an out-of-range color contract.
+
+
+## Bounded X3 packed result
+
+The root-owned run of the frozen EXE completed both functional and benchmark
+processes without rebuild: **7.819 s** and **1.516 s**, respectively. The
+[compact result](../../verification/results/bottle-X3/linear-emission-sm1-packed.json)
+binds that EXE, all fifteen originals and six focused source inputs; all
+bindings still match. All **36 creations** succeeded. Of the **648 measurements**,
+the **540 in-domain rows pass every gate**, with zero native-B RGB/alpha, C,
+plane, mask, initialization, unchanged-channel or one-DIP/two-DIP failures.
+The largest reported normalized comparison fraction among those rows is
+**0.248828**. Independent masks, native hardware alpha tests, accepted zero
+RGB/alpha/gain coverage, native depth rejection, primitive-order sensitivity,
+actual Reset and post-Reset continuation pass. This qualifies the bounded
+single-DIP packed algebra and its component assemblies on the tested X3 backend;
+it does not grant live publication or native-Windows behavior.
+
+There are **36 failed boundary rows among 108 boundary measurements**. These
+must not be hidden by `qualified_in_domain=true`:
+
+| Boundary | Rows | Recorded implication |
+| --- | ---: | --- |
+| Signed q | 27 | No diagnostic comparison failure in these selected values; no signed-q domain is admitted. |
+| q greater than one | 27 | Nine reversed-order rows each have 350 plane-comparison failures (largest normalized fraction 1.793109). In the other eighteen rows, 1,050 channel/pixel positions per row have a zero blue flag despite a changed green lane. |
+| T=256, reduced fade/gain | 27 | Selected finite-HDR comparisons pass; this does not establish an arbitrary HDR blend domain. |
+| T=65504 overflow | 27 | Every row records 3,150 plane disagreements and 3,150 nonfinite-comparison events against the overflowing raw-equation FP16 reference. |
+
+The q>1 forward/two-DIP flag cancellation is a correctness limit even though it
+is deliberately a separate diagnostic rather than an in-domain failure: the
+assembly copies A for those zero flags, so it cannot represent the changed
+linear channel. A zero C-comparison count in that boundary is **not** proof of
+the desired out-of-range composition law. Native assembled B RGB and alpha are
+bit-exact against the original in all 648 rows, including boundaries, but that
+alone cannot qualify C or the modification flags.
+
+The overflow counter means **actual or reference** was nonfinite; it is not an
+independent count of nonfinite GPU storage. The reference recurrence exceeds
+FP16 representability and disagrees with the measured planes. Only the first
+boundary failure and unconditional q>1 witness retain raw surfaces, so these
+aggregates do not establish the overflow case's actual storage bit pattern or
+a portable saturation policy. No clamp, expanded q domain or overflow policy
+is adopted from this result. The source remains unchanged.
+
+At **1920×1080**, the eight separately synchronized EVENT/QPC samples per phase
+have these CPU-inclusive medians:
+
+| Phase | Median ms |
+| --- | ---: |
+| Native one-DIP baseline | 0.43290 |
+| Plane/M initialization | 0.93210 |
+| Packed one-DIP source | 0.68705 |
+| Native B assembly | 0.69665 |
+| Enhanced C assembly | 0.69710 |
+
+The four enhanced-phase medians sum to **3.01290 ms**, compared with 0.43290 ms
+for the native draw. This is a strong cost warning for three additional
+fullscreen passes per admitted DIP. It is **not a measured contiguous pipeline
+cost or slowdown**: each phase was synchronized separately, includes its stated
+CPU/binding work and excludes source setters, seeds, resource creation and
+oracle readbacks. No game-FPS claim follows. Target storage remains 126.5625 MiB
+for eight fixture targets, or 110.7422 MiB for the proposed seven algorithm
+targets at this size. No further benchmark was run.
+
+The mathematical prototype is complete for this checkpoint. The twenty-pair
+runtime registry remains unchanged. B-assembly failure handling, physical
+restoration/publication, live ownership/history behavior, and native Windows
+qualification remain open; `live_publication=false` is retained in the result.
+The same Sol/high reviewer approved the scoped actual evidence and owning note.
+Frozen inputs, compact aggregates, retained range/failure witnesses and the
+functional/benchmark raw records agree. No source changes, rebuild, rerun or
+additional benchmark were needed for that review.

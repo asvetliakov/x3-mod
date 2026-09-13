@@ -71,7 +71,7 @@ void sanitize(Words& words) {
     emit(words,maximum,{dst(temporary,2),src(temporary,2),lane(constant,30,1)});
     emit(words,minimum,{dst(temporary,2),src(temporary,2),lane(constant,30,2)});
 }
-void energy(Words& words,bool scalar) {
+void energy(Words& words,bool scalar,bool write_output=true) {
     // Same established safe source decode, decoded cap BEFORE h/gain, then S.
     emit(words,mov,{dst(temporary,2),src(temporary,1)});
     sanitize(words);
@@ -84,13 +84,30 @@ void energy(Words& words,bool scalar) {
     emit(words,mul,{dst(temporary,2),src(temporary,2),lane(constant,31,0)});
     sanitize(words);
     emit(words,mov,{dst(temporary,2,8),lane(constant,30,1)});
-    emit(words,mov,{dst(output,1,15),src(temporary,2)});
+    if(write_output) emit(words,mov,{dst(output,1,15),src(temporary,2)});
+}
+// Whole channel planes retain both native and linear ordered recurrences.
+// r0=q/a and r2=E survive until the final plane. r1's native sample is dead.
+// Treat signed nonzero q as modified too: never clamp native q to fit a domain.
+void packed_screen(Words& words) {
+    emit(words,cmp,{dst(temporary,3),src(temporary,0,0xe4,1),lane(constant,31,2),lane(constant,31,1)});
+    emit(words,cmp,{dst(temporary,3),src(temporary,0),src(temporary,3),lane(constant,31,1)});
+    emit(words,cmp,{dst(temporary,3),src(temporary,2,0xe4,1),src(temporary,3),lane(constant,31,1)});
+    emit(words,mov,{dst(temporary,1),src(constant,31,0xe9)}); // (1,0,0)
+    emit(words,mov,{dst(temporary,1,8),lane(temporary,0,3)});
+    emit(words,mov,{dst(output,0,15),src(temporary,1)});
+    for(unsigned c=0;c<3;++c) {
+        emit(words,mov,{dst(temporary,1,9),lane(temporary,0,c)});
+        emit(words,mov,{dst(temporary,1,2),lane(temporary,2,c)});
+        emit(words,mov,{dst(temporary,1,4),lane(temporary,3,c)});
+        emit(words,mov,{dst(output,c+1,15),src(temporary,1)});
+    }
 }
 struct Budget { unsigned arithmetic=0,textures=0,outputs=0; };
 // Bounded authored-PS2 validator: rejects unknown forms/resources, tracks
 // initialized temporary lanes and exactly one full MOV per requested output.
 bool generated_shape(const Words& words,Budget& budget,unsigned outputs) noexcept {
-    if(words.size()<2 || words[0]!=0xffff0200u) return false;
+    if(words.size()<2 || words[0]!=0xffff0200u || outputs<1 || outputs>4) return false;
     unsigned live[4]={},defs=0,decls=0,color_mask=0;bool executable=false;
     for(std::size_t at=1;at<words.size();) {
         const Word token=words[at];const unsigned op=token&0xffff;
@@ -119,7 +136,7 @@ bool generated_shape(const Words& words,Budget& budget,unsigned outputs) noexcep
             if(decls!=7 || size!=(op==mov?2u:op==cmp?4u:3u) ||
                 (op!=mov && op!=mul && op!=dp3 && op!=minimum && op!=maximum && op!=power && op!=tex && op!=cmp)) return false;
             const Word d=words[at+1];const unsigned k=kind(d),n=number(d),mask=(d>>16)&15;
-            if(!mask || (d!=dst(k,n,mask) && d!=(dst(k,n,mask)|pp)) || ((budget.outputs&1) && (d&pp))) return false;
+            if(!mask || (d!=dst(k,n,mask) && d!=(dst(k,n,mask)|pp)) || (((budget.outputs&1) || outputs==4) && (d&pp))) return false;
             if(k==temporary) { if(n>=4) return false; }
             else if(k!=output || n>=outputs || op!=mov || d!=dst(output,n,15) || (budget.outputs&(1u<<n))) return false;
             unsigned constant_port=32;
@@ -169,14 +186,14 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
     const LinearEmissionSm1Config& config,Words& output_words) noexcept {
     if(!original || count<2) return LinearEmissionResult::InvalidInput;
     const unsigned outputs=static_cast<unsigned>(config.outputs);
-    if(!std::isfinite(config.gain) || config.gain<0 || config.gain>16 || outputs<1 || outputs>3) return LinearEmissionResult::InvalidConfig;
+    if(!std::isfinite(config.gain) || config.gain<0 || config.gain>16 || outputs<1 || outputs>4 || (outputs==4 && config.native_partial_precision)) return LinearEmissionResult::InvalidConfig;
     if(count>59) return LinearEmissionResult::UnsupportedShader;
     const auto hash=fingerprint(original,count);const Profile* profile=nullptr;
     for(const auto& p:profiles) if(p.hash==hash && p.count==count) { profile=&p;break; }
     if(!profile) return LinearEmissionResult::UnsupportedShader;
     if(!original_shape(original,count,profile->scalar)) return LinearEmissionResult::ProfileMismatch;
     try {
-        Words result;result.reserve(192);
+        Words result;result.reserve(outputs==4?256:192);
         result.push_back(0xffff0200u);
         result.insert(result.end(),original+1,original+39); // opaque CTAB/comments
         if(profile->scalar) emit(result,def,{dst(constant,0,15),bits(1),bits(0),bits(0),bits(0)});
@@ -192,15 +209,17 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
         if(profile->scalar) emit(result,dp3,{dst(temporary,0)|precision,src(constant,0),src(color,0)});
         emit(result,mul,{dst(temporary,0)|precision,src(temporary,1),profile->scalar?src(temporary,0):lane(color,0,3)});
         emit(result,mov,{dst(temporary,0,8)|precision,lane(temporary,1,3)});
-        emit(result,mov,{dst(output,0,15),src(temporary,0)});
-        if(outputs>1) energy(result,profile->scalar);
-        if(outputs>2) {
+        if(outputs!=4) emit(result,mov,{dst(output,0,15),src(temporary,0)});
+        if(outputs>1) energy(result,profile->scalar,outputs!=4);
+        if(outputs==4) packed_screen(result);
+        if(outputs==3) {
             emit(result,mov,{dst(temporary,3,15),lane(constant,31,1)});
             emit(result,mov,{dst(output,2,15),src(temporary,3)});
         }
         result.push_back(end);
         Budget budget;
-        const unsigned expected=(profile->scalar?4u:3u)+(outputs>1?22u:0u)+(outputs>2?2u:0u);
+        const unsigned expected=outputs==4?(profile->scalar?42u:41u):
+            (profile->scalar?4u:3u)+(outputs>1?22u:0u)+(outputs==3?2u:0u);
         if(!generated_shape(result,budget,outputs) || budget.arithmetic!=expected) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);return LinearEmissionResult::Applied;
     } catch(...) { return LinearEmissionResult::AllocationFailure; }

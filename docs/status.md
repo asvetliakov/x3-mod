@@ -106,8 +106,10 @@ one native submission, a linear blended layer, and shared reactive coverage; its
 prototype must preserve native recovery and does not yet solve layered temporal
 accumulation. The reviewed [screen-emission proposal](architecture/screen-emission-overlap.md)
 uses four packed MRTs to preserve fragment order without replay. Its mathematical
-prototype may proceed, but persistent native-image assembly failure remains an
-open publication contract before runtime integration. Both use documented D3D9
+prototype passes 540 in-domain X3 measurements with exact native RGB/alpha;
+108 boundary rows expose range/overflow limits. Separate synchronized phase
+timings also warn of substantial per-draw cost. Persistent native-image assembly
+failure and runtime range admission remain open before integration. Both use documented D3D9
 capabilities; neither has native-Windows runtime qualification.
 
 ## Next user action

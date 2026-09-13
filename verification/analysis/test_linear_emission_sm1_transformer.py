@@ -65,17 +65,19 @@ class Sm1TransformerTests(unittest.TestCase):
         result=subprocess.run([str(exe),str(cls.originals),str(cls.directory)],check=True,capture_output=True,text=True)
         cls.report=json.loads(result.stdout)
         cls.variants={}
+        cls.packed={}
         for h in SCALAR+BULLET:
             for g in range(5):
+                cls.packed[h,g]=shader.instructions((cls.directory/f'sm1_{h}-{g}-4-0.bin').read_bytes())[:2]
                 for mode in (1,2,3):
                     for pp in (0,1):
                         cls.variants[h,g,mode,pp]=shader.instructions((cls.directory/f'sm1_{h}-{g}-{mode}-{pp}.bin').read_bytes())[:2]
 
     def test_driver_all_profiles_pairs_mutations_alias_and_resources(self):
-        self.assertEqual((self.report['variants'],self.report['pairs']),(180,9))
+        self.assertEqual((self.report['variants'],self.report['pairs']),(210,9))
         self.assertGreater(self.report['checks'],7000)
-        self.assertEqual(self.report['max_slots'],[4,26,28])
-        self.assertEqual(self.report['max_words'],153)
+        self.assertEqual(self.report['max_slots'],[4,26,28,42])
+        self.assertEqual(self.report['max_words'],201)
 
     def test_all_current_sm2_outputs_and_registry_are_retained(self):
         record=json.loads((ROOT/'verification/results/bottle-X3/linear-emission-mrt-coverage-gpu.json').read_text())
@@ -155,5 +157,72 @@ class Sm1TransformerTests(unittest.TestCase):
                 self.assertTrue(all(math.isfinite(x) for x in r[8,1]))
                 self.assertTrue(all(struct.pack('<f',x)==b'\0'*4 for x in r[8,1]))
                 self.assertEqual(r[8,2],[1.]*4)
+
+
+    def test_all_180_prior_sm1_outputs_are_byte_exact(self):
+        digest=hashlib.sha256()
+        for name in sorted(f'sm1_{h}-{g}-{mode}-{pp}.bin' for h in SCALAR+BULLET
+                           for g in range(5) for mode in (1,2,3) for pp in (0,1)):
+            digest.update(name.encode()+b'\0'+(self.directory/name).read_bytes())
+        self.assertEqual(digest.hexdigest(),'21d26569494ffc58ece3d2de069093746feabb76cbafc678b8058fe3b486adf7')
+
+    def test_packed_full_precision_resources_and_channel_roles(self):
+        for (h,g),(words,items) in self.packed.items():
+            self.assertEqual(words[0],0xffff0200)
+            actual=[i for i in items if i['opcode'] not in (31,81)]
+            self.assertTrue(all(not i['words'][0]&0x200000 for i in actual))
+            self.assertEqual(sum(3 if i['opcode']==32 else 1 for i in actual if i['opcode']!=66),42 if h in SCALAR else 41)
+            self.assertEqual(sum(i['opcode']==66 for i in actual),1)
+            outs=[i for i in actual if shader.register_of(i['words'][0])[0]==8]
+            self.assertEqual([shader.register_of(i['words'][0])[1] for i in outs],[0,1,2,3])
+            for i in outs:
+                self.assertEqual((i['opcode'],shader.mask_of(i['words'][0]),shader.register_of(i['words'][1]),shader.swizzle_of(i['words'][1])),(1,'xyzw',(0,1),'xyzw'))
+            texture=(.125,.5,.875,.317);color=(.25,.9,.8,.75)
+            r,_=simulate(items,texture,color);weight=color[0] if h in SCALAR else color[3]
+            self.assertEqual(r[8,0],[1.,0.,0.,f32(texture[3])])
+            for c in range(3):
+                q=f32(texture[c]*weight);plane=r[8,c+1]
+                self.assertEqual((plane[0],plane[2],plane[3]),(q,1.,q))
+                self.assertAlmostEqual(plane[1],sanitize(decode(texture[c])*weight*GAINS[g]),delta=2e-6)
+
+    def test_packed_zero_signed_and_cap_order_are_explicit(self):
+        for h in SCALAR+BULLET:
+            for tex,g in (((0.,-0.,0.,0.),2),((-.5,0.,.5,0.),0),((256.,0.,1.,.3),1)):
+                _,items=self.packed[h,g];r,_=simulate(items,tex,(.125,0.,0.,.125))
+                self.assertEqual(r[8,0][:3],[1.,0.,0.])
+                for c in range(3):
+                    q=r[8,c+1][0];e=r[8,c+1][1]
+                    self.assertEqual(r[8,c+1][2],float(q!=0 or e!=0))
+                    self.assertEqual(r[8,c+1][3],q)
+                if tex[0]==256:self.assertEqual(r[8,1][1],65504*.125*.25)
+                if tex[0]<0:self.assertLess(r[8,1][0],0) # no invented clamp of native q
+
+    def test_packed_ordered_law_and_unchanged_channel(self):
+        half=lambda x:struct.unpack('<e',struct.pack('<e',x))[0]
+        _,items=self.packed[SCALAR[0],2]
+        fragments=[simulate(items,(*q,a),(1.,0.,0.,1.))[0]
+                   for q,a in (((.5,.25,0.),.25),((.25,.75,0.),.75))]
+        A=(.2,.35,.8);a0=half(.4)
+        def accumulate(order):
+            planes=[[half(x),half(decode(x)),0.] for x in A]
+            alpha=a0;mask=half(.5)
+            native=list(map(half,A))
+            for fragment in order:
+                a=fragment[8,0][3]
+                alpha=half(a+(1-a)*alpha);mask=half(1+(1-a)*mask)
+                for c in range(3):
+                    q,e,flag,srcalpha=fragment[8,c+1]
+                    native[c]=half(q+(1-q)*native[c])
+                    planes[c]=[half(v+(1-srcalpha)*old) for v,old in zip((q,e,flag),planes[c])]
+            self.assertEqual([p[0] for p in planes],native)
+            self.assertEqual(planes[2][2],0.)
+            self.assertGreater(mask,.5)
+            return planes,alpha
+        forward,af=accumulate(fragments);reverse,ar=accumulate(fragments[::-1])
+        self.assertNotEqual(forward[0][1],reverse[0][1])
+        self.assertEqual(af,ar) # these selected binary alpha values compose exactly
+        # Assembly must copy immutable A when the channel flag is ordered zero.
+        self.assertEqual(forward[2][0],half(A[2]))
+        self.assertEqual(forward[2][2],0.)
 
 if __name__=='__main__':unittest.main()
