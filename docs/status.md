@@ -120,9 +120,9 @@ conversion and scalar WRAP source packages are integrated in main with six focus
 integration tests passing (including 34,773 WRAP assertions and the exposure
 handoff). The two affected proxy translation units compile for x86/SSE2. The
 148-pair source is not installed; run 7 still uses candidate `75dbbed` and 116 pairs.
-Its reviewed detached fixture is now integrated and built: 3,549 cases include
-eight perspective-interpolation checks, with the previous 2,757 cases preserved
-exactly. Detached GPU execution and the expanded live-route fixture remain pending.
+Its reviewed detached fixture now passes 3,549 X3 GPU cases, including eight
+perspective-interpolation checks, with the previous 2,757 cases preserved exactly.
+The expanded live-route fixture is in source review; 148-pair installation remains pending.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

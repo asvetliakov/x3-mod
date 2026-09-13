@@ -4,9 +4,9 @@ Pure implementation candidate, 2026-09-13, based on `bf62f6e`. The transformer
 adds all 32 Boron/Paranid SM3 DEFAULT and BUMPMAP pairs described in the
 [native material contract](../reverse-engineering/boron-paranid-materials.md).
 The complete group adds 12 VS and 20 PS, reaching **115 originals / 148 exact
-pairs**. This work is not installed. Independent source review, GPU qualification
-and live state integration remain
-required; a successful pure transformation alone does not admit a game draw.
+pairs**. This work is not installed. Pure conversion and live state integration are
+source-reviewed; detached GPU qualification passes, while live-route GPU
+qualification remains required; a successful pure transformation alone does not admit a game draw.
 
 Preserve the native palette, geometry, reflection, alpha and light schedules,
 converting each actual color source before its weighted accumulation. In
@@ -232,8 +232,30 @@ One approved standalone build completed in 2.649 seconds using MinGW GCC
 stack realignment, no fast-math). The retained EXE is 11,219,410 bytes with
 SHA-256 `8b114e50ec91ab4d4f77ad78e6943b33678a425585e54e69e3171bfa92460027`,
 locally at `/tmp/x3-palette-gpu/verification/probe/build/linear_material_fixture.exe`.
-Build metadata is local at `/tmp/x3-palette-gpu-build.json`. This is a source and
-standalone-build checkpoint only: no 148-pair detached GPU result, native
-Windows execution, or live-route approval is claimed. The runner requires an
-explicit prebuilt EXE and does not rebuild; X3 execution stays with the shared
-Wine queue owner. The installed 116-pair candidate is unaffected.
+Build metadata is local at `/tmp/x3-palette-gpu-build.json`. The runner requires
+an explicit prebuilt EXE and does not rebuild.
+
+The reviewed fixture then passed on the X3 bottle: **3,549 cases, 31,941 sample
+rows (31,419 analytical), 908,544 invariant pixels, 981 shader creations and
+58 operational boundary cases**. The maximum RGB tolerance fraction was
+`0.1614340509615012`. All eight perspective cases produced their 72 expected
+sample rows; their maximum tolerance fraction was `0.00012664530141242414`,
+and every case retained exact native alpha and motion over all 256 pixels; the
+four depth-enabled cases also retained exact current-depth output. The
+serialized first 2,757 cases still hash to
+`04413dc21403cffbfe6f6d0ef7c97cef27265d6319af1ceb3062e2831a28dd5e`.
+
+The independent source-and-evidence review found no remaining fixture issue.
+The compact result is
+`verification/results/bottle-X3/linear-material-gpu.json`; retained raw output
+is `/tmp/x3-palette-detached-r1/report.txt`, SHA-256
+`bccb932337a28259ca7349d250aa16de2b649282ddc160784854135f45505381`.
+The compact record binds the reviewed source commit
+`a5a098fc725b775c808c8c6dda7ca753775a6021` and its identical three-file main
+integration at `7c138253238ffef39fe98ca9472725d8495b996f`. The ten recorded
+source/dependency hashes and retained EXE hash matched the reviewed inputs, and
+the raw report ended in `RESULT PASS cases=3549` with exactly 3,549 successful
+invariant rows. This qualifies detached X3 shader creation, numerics and
+temporal preservation for all 148 pairs. Live route behavior, gameplay and
+native Windows execution remain separate requirements; the installed 116-pair
+candidate is unaffected.
