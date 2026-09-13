@@ -1,7 +1,7 @@
 # Same-run exposure and bloom comparisons
 
-2026-09-13. Source implementation; **GPU, CrossOver and native Windows behavior
-are not yet qualified**, and this change is not installed. The separate
+2026-09-13. Installed in candidate `75dbbed`. **In-game control/notice appearance
+and native Windows behavior remain unverified**. The separate
 [space-exposure evaluation](space-exposure-policy.md) selects fixed EV 0 as the
 production default. No automatic-meter parameters change here.
 
@@ -174,3 +174,15 @@ driver work, so visible-notice frame cost still needs measurement. Cross-
 compilation and host fakes establish source/transaction evidence, not native
 Windows or CrossOver pixels/performance. No Wine, gameplay or installation was
 performed for this checkpoint.
+
+## Combined candidate
+
+The reviewed implementation is installed with the pure-device creation fix.
+The actual combined route passes eight material cells and the emission live
+fixture, exercising fixed-mode HDR alongside ownership, TAA and Reset. The
+selected automatic-exposure fixture passes 120 frames / 245 checks; two hostile
+WRAP cases add 190 checks. These are selected-case passes, not a full-project
+suite result. The retained production DLL passes its load check and x87 audit;
+[the single install record](../../verification/results/linear-material-install.json)
+binds source, binaries, rollback and scoped evidence. Run 7 still needs to
+verify visible controls, notice cost and actual game compositor execution.

@@ -1046,3 +1046,14 @@ Pool-generation descriptor/view reuse and fewer redundant local state sets
 remain later candidates. Arbitrary public exchanges retain full validation;
 historical adjacency and partial source coverage still do not establish safe
 batching or scissored composition.
+
+## Installed copy/clear fusion checkpoint
+
+Combined candidate `75dbbed` includes the reviewed copy/clear fusion and passes
+the actual live route: 48 functional frames, 545,448 checks, four same-instance
+Resets and 44 exact temporal outputs, including failed-source rejection. The
+[updated live result](../../verification/results/bottle-X3/linear-emission-live-gpu.json)
+retains the six cells and scope. Unpaired 1080p process medians are 1.6099 ms
+off and 2.3080 ms on (+0.6981 ms) for the tested sequence; this is diagnostic
+completion cost, not a GPU timestamp or game-FPS estimate. The feature remains
+opt-in and is not enabled in run 7.

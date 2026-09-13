@@ -173,3 +173,13 @@ finds no conflict in emission preparation, source suppression or Reset recovery.
 The combined affected host scope passes 11 tests, including 34,611 WRAP
 assertions and the repaired 33-scenario / 139-check lifetime fixture. No Wine
 execution or installed-code change follows from this source integration.
+
+## Retained combined candidate execution
+
+Installed candidate `75dbbed` passes both selected hostile WRAP burst cases:
+per-draw and lazy restoration, nine frames and 95 checks each, including nine
+exact post-route WRAP4 reads in each case. The same retained seam also passes
+120 automatic-exposure frames / 245 checks. [The compact selected result](../../verification/results/bottle-X3/combined-wrap-exposure.json)
+links the immutable full report and binary hashes. No rebuild occurred inside
+the runner. All three selected cases passed; the runner correctly reports
+PARTIAL rather than a whole-suite pass. Native Windows/gameplay remain untested.

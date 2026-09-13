@@ -1,0 +1,87 @@
+{
+  "selected_cases_passed": true,
+  "full_suite_passed": false,
+  "source_commit": "75dbbed4a8bdaea4ede04707c3831786551e4da1",
+  "runner_commit": "eb56410",
+  "game_launched": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "build_commands": [],
+  "binaries": {
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/verification/probe/build/motion_output_fixture.exe": "584f468cc7231756b124c59f71ff6fcaae5259f6403b6353e48d4a24635bf046",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/verification/probe/build/motion-output-seam/d3d9.dll": "f14a919120bdbf802406a34158f640238d1a80a6a9fb66df75a4be11fa67e6c9",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/build/d3d9.dll": "3cbb350c3148e3e703677182cb9fb7b85e28af048f5b19c0dbe29b570ef9e42a"
+  },
+  "full_report": {
+    "path": "/tmp/x3-combined-wrap-exposure-r1/motion-output-partial.json",
+    "sha256": "e05d210f999a5a44a35b4fe012b5c6ca2a6e0e24ec6995c84ba7bc0eec4553a9"
+  },
+  "cases": {
+    "seam-ownership-hdr-exposure": {
+      "mode": "hdrexposure",
+      "frames": 120,
+      "checks": 245,
+      "dt_s": 0.016,
+      "ev_offset": 0.0,
+      "tau_up": 0.4,
+      "tau_down": 1.2,
+      "look": "none",
+      "chain_format": "G32R32F",
+      "meter_max_abs_error_log2": 0.00258424081985531,
+      "meter_max_relative_error": 0.0015944153803671944,
+      "ev_max_error_replayed": 2.9330010059558376e-06,
+      "ev_max_error_end_to_end": 9.78985920829789e-07,
+      "deadband_max_error_ev": 0.0,
+      "emitter_unweighted_target": -0.618482797083103,
+      "sun_clip_effect_log2": 2.1541209043761,
+      "presented_max_code_error": 0.5677505401184533,
+      "chain_bytes": 8192,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-hdr-exposure-20260913-210732-501506",
+      "trace_sha256": "f3d3f0b797661c2e76ab56a8d74068a38160174f9361b20390dc184479d134d6",
+      "dll_sha256": "f14a919120bdbf802406a34158f640238d1a80a6a9fb66df75a4be11fa67e6c9",
+      "exe_sha256": "584f468cc7231756b124c59f71ff6fcaae5259f6403b6353e48d4a24635bf046"
+    },
+    "seam-burst-perdraw-wrap": {
+      "mode": "seam",
+      "burst": true,
+      "lazy": false,
+      "wrap": true,
+      "wrap_readback_checks": 9,
+      "checks": 95,
+      "restorations": 18,
+      "frames": 9,
+      "coverage_pixels": 35505,
+      "depth_written_pixels": 21447,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-burst-perdraw-wrap-20260913-210738-192031",
+      "trace_sha256": "44cc8a4fe527bdc114f76a88cfad95d2b6baa904a083583faf4d2c531f7e13df",
+      "dll_sha256": "f14a919120bdbf802406a34158f640238d1a80a6a9fb66df75a4be11fa67e6c9",
+      "exe_sha256": "584f468cc7231756b124c59f71ff6fcaae5259f6403b6353e48d4a24635bf046"
+    },
+    "seam-burst-lazy-wrap": {
+      "mode": "seam",
+      "burst": true,
+      "lazy": true,
+      "wrap": true,
+      "wrap_readback_checks": 9,
+      "checks": 95,
+      "restorations": 18,
+      "frames": 9,
+      "coverage_pixels": 35505,
+      "depth_written_pixels": 21447,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-burst-lazy-wrap-20260913-210739-716552",
+      "trace_sha256": "47e19790c76ef6a1a613cab33d07e352622937ebb2d8246c6f0d2a7fa49c1a97",
+      "dll_sha256": "f14a919120bdbf802406a34158f640238d1a80a6a9fb66df75a4be11fa67e6c9",
+      "exe_sha256": "584f468cc7231756b124c59f71ff6fcaae5259f6403b6353e48d4a24635bf046"
+    }
+  }
+}

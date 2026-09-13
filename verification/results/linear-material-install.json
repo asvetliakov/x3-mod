@@ -1,46 +1,67 @@
 {
-  "source_commit": "10e447b3ced8b3750f5efd8cd83747824e33a400",
-  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-combined-candidate-038d_o0x/source",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-combined-candidate-038d_o0x/source/build/d3d9.dll",
-  "build_seconds": 11.94,
-  "dll_sha256": "d8f67c33e0139606f4624600ddc0b9ef95faa1abf14914329016e51f01dd6ee3",
-  "dll_bytes": 12884608,
-  "no_x87": {
-    "result": "PASS",
-    "reachable_functions": 215,
-    "violations": 0
+  "source_commit": "75dbbed4a8bdaea4ede04707c3831786551e4da1",
+  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/build/d3d9.dll",
+  "game_launched": false,
+  "installed": true,
+  "build_seconds": 13.115,
+  "dll_sha256": "3cbb350c3148e3e703677182cb9fb7b85e28af048f5b19c0dbe29b570ef9e42a",
+  "dll_bytes": 13030325,
+  "seam_build_seconds": 12.859,
+  "verification_artifacts": {
+    "seam": {
+      "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/verification/probe/build/motion-output-seam/d3d9.dll",
+      "sha256": "f14a919120bdbf802406a34158f640238d1a80a6a9fb66df75a4be11fa67e6c9"
+    },
+    "fixture": {
+      "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/verification/probe/build/motion_output_fixture.exe",
+      "sha256": "584f468cc7231756b124c59f71ff6fcaae5259f6403b6353e48d4a24635bf046"
+    }
   },
-  "clean_build_source": true,
-  "imports_unchanged": true,
-  "imports": 194,
-  "import_dlls": 15,
-  "rollback": {
-    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-combined-candidate-038d_o0x/rollback-d3d9.dll",
-    "dll_sha256": "b11bff61b2a2f798b565969d8684923781d2b1bec0e3b22cf0cbe2f024d45702",
-    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-combined-candidate-038d_o0x/rollback-x3-modern-install.json",
-    "install_record_sha256": "7b323b0b8e900aa8447b4d7c10f81eba9362e880a34acb2159655fb298506639"
-  },
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
   "preserved_files": {
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "rollback": {
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/rollback-d3d9.dll",
+    "dll_sha256": "d8f67c33e0139606f4624600ddc0b9ef95faa1abf14914329016e51f01dd6ee3",
+    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/rollback-x3-modern-install.json"
+  },
+  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "native_windows_verified": false,
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 215,
+    "violations": {}
+  },
+  "imports_delta": {
+    "before": 194,
+    "after": 196,
+    "added": [
+      "GetTickCount64",
+      "strncpy"
+    ],
+    "removed": []
   },
   "load": {
     "passed": true,
     "case": "writable",
     "checks": 8,
-    "exports": 17,
-    "dll_sha256": "d8f67c33e0139606f4624600ddc0b9ef95faa1abf14914329016e51f01dd6ee3"
+    "exports": 17
   },
-  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
-  "game_launched": false,
-  "native_windows_verified": false,
-  "installed": true,
-  "change": "Reviewed chase lead marker and transition diagnostics; camera distance0.9 and response0.28/0.38;110 linear material pairs; default-off linear emission composition.",
+  "change": "Fixed EV0 default and same-run exposure/bloom controls; pure-device state-read correction;116 linear material pairs with COLOR1 transport and temporal WRAP restoration; native damage motion branches; fused emission copy; central chase HUD and selection timing.",
   "qualification": {
-    "camera": "docs/architecture/chase-lead-marker.md",
-    "materials": "docs/architecture/linear-hull-materials.md",
-    "emission": "docs/architecture/linear-emission-composition.md"
+    "comparison": "docs/architecture/comparison-hotkeys.md",
+    "camera": "docs/architecture/chase-central-hud.md",
+    "materials": "docs/architecture/linear-asteroid-materials.md",
+    "material_live": "verification/results/bottle-X3/linear-material-live.json",
+    "emission": "verification/results/bottle-X3/linear-emission-live-gpu.json",
+    "wrap_exposure": "verification/results/bottle-X3/combined-wrap-exposure.json"
   },
-  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
-  "planned_launch_dry_run": true
+  "launch_dry_run": {
+    "run7": true,
+    "vanilla": true,
+    "game_launched": false
+  }
 }

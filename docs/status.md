@@ -11,13 +11,19 @@ qualification, material expansion and camera implementation context.
 
 ## Installed build and current camera work
 
-Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `10e447b`:
-DLL SHA-256 `d8f67c33e0139606f4624600ddc0b9ef95faa1abf14914329016e51f01dd6ee3`,
-12,884,608 bytes. The [install record](../verification/results/linear-material-install.json)
+Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `75dbbed`:
+DLL SHA-256 `3cbb350c3148e3e703677182cb9fb7b85e28af048f5b19c0dbe29b570ef9e42a`,
+13,030,325 bytes. The [install record](../verification/results/linear-material-install.json)
 binds the reviewed clean candidate, load check and previous build rollback
-pair; EXE/configuration are unchanged. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
-records the bloom integration's scoped verification. The material candidate retains the previous import inventory and passes the
-light-hook x87 audit. The [BUMPMAP runtime review](architecture/linear-bump-materials.md#runtime-review-verdict)
+pair; EXE/configuration are unchanged. The new candidate passes 2,064 live material
+frames / 25,988 checks, 48 fused-emission functional frames / 545,448 checks,
+and three selected WRAP/automatic-exposure cases / 435 checks. The 215-function
+x87 audit and retained-DLL load check pass. Two new imports are ordinary
+`GetTickCount64` and `strncpy`. Fixed EV 0 is now the production default;
+Ctrl+Shift+F9 compares AUTO/fixed and Ctrl+Shift+F10 compares bloom contribution.
+[Run 7](verification/user-runs.md#7-same-run-exposurebloom-and-chase-hud--ready)
+is the next combined visual check; no game was launched during installation. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
+records the bloom integration's scoped verification. The material candidate passes the light-hook x87 audit. The [BUMPMAP runtime review](architecture/linear-bump-materials.md#runtime-review-verdict)
 approves the expanded implementation and its structural/GPU/live evidence. The
 [temporal qualification](architecture/linear-emission-composition.md#supplemental-consumer-qualification)
 closes the shared shader's static-budget issue: 507 slots, exact paired images
@@ -65,7 +71,7 @@ last graphic stays near screen centre; the [central HUD study](reverse-engineeri
 finds a separate native view gate, with a scoped correction now independently reviewed and source-integrated.
 The [central HUD implementation](architecture/chase-central-hud.md) also adds
 consolidated selection solver/distance timing; 18 X3 CPU stubs pass 353 checks
-with zero failures. The installed build is unchanged; gameplay remains pending.
+with zero failures. The correction is installed; gameplay remains pending.
 [Run 20 analysis](verification/run20-material-baseline.md) records a 20.685 s
 save gap and fault-free loading paths. Selection windows contain 0.44–0.46 s
 frame maxima, unexplained by measured renderer calls; capture work and late
@@ -90,18 +96,17 @@ fail. The reviewed [device-creation correction](architecture/renderer-device-cre
 now removes that optional flag when the enhanced renderer needs state reads,
 preserving hardware vertex processing and every other flag. Creation tests
 pass 18 scenarios / 218 assertions and strict x86 compilation passes; a new
-DLL and live bloom qualification remain pending.
+DLL is now installed; actual game bloom execution remains pending.
 The user requested separate runtime exposure and bloom toggles for same-run
 comparisons; the [reviewed controls](architecture/comparison-hotkeys.md) are now
 source-integrated with visible state and logging. Ctrl+Shift+F9 switches exposure
-and Ctrl+Shift+F10 switches enhanced bloom contribution. The combined build and
-qualification precede another such gameplay request. The user additionally requested an outdoor-space
+and Ctrl+Shift+F10 switches enhanced bloom contribution. The combined build is installed; run 7 combines their visual acceptance. The user additionally requested an outdoor-space
 exposure evaluation against other modern space games, then adjustment. The independently reviewed [comparison and capture study](architecture/space-exposure-policy.md)
 favors fixed EV 0: all nine sampled frames request the old +2 EV ceiling,
 and sparse sky can trigger discontinuous targets. Fixed 0 is selected as the
 next production default, preserving AgX/bloom and optional Auto comparison.
-The default/control source is reviewed and integrated; build and visual
-acceptance remain pending. The installed default is unchanged. There is no new run for the HUD/stutter
+The default/control source is reviewed, qualified and installed; visual
+acceptance remains pending. There is no new run for the HUD/stutter
 fixes yet.
 The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
@@ -136,7 +141,7 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   and HDR display output are incomplete. The space-aware exposure
   meter is installed, but runs 24/25 show near-permanent +2 EV. The reviewed
   policy decision selects fixed EV 0 by default; reviewed source is integrated
-  with same-run comparison controls, and installation remains pending.
+  with same-run comparison controls, now installed; visual acceptance remains.
 - **Bloom live integration is installed and awaits gameplay acceptance.** The
   [compositor boundary](architecture/hdr-bloom-boundary.md) passes 714 combined
   X3 checks across both reference models, including Reset/ResetEx and original
@@ -158,7 +163,7 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   and profile tests pass after integration. Combined build/install and gameplay
   remain pending; detached completion timings are not game FPS.
 - [Linear materials](architecture/scene-linear-materials.md) are installed with
-  **73 original shaders / 110 pairs**, including Argon/shared/Split/Terran hulls
+  **83 original shaders / 116 pairs**, including Argon/shared/Split/Terran hulls
   and standard-lighting DEFAULT/BUMPMAP/LOW. The
   [whole-group qualification](architecture/linear-hull-materials.md) passes
   independent review, 2,498 detached GPU cases and 24,540 live-route checks across
@@ -175,9 +180,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   native alpha/temporal outputs and independently matches RGB. X3 treats
   programmable COLOR as Gouraud even when FLAT is requested; that backend
   limitation is explicitly separated from candidate parity. Combined live
-  qualification and installation remain pending. The [Boron/Paranid contract](reverse-engineering/boron-paranid-materials.md)
-  covers all 32 remaining pairs and identifies a whole-register transport
-  candidate after the mixed-declaration X3 alpha failure.
+  qualification passes 8 cells / 2,064 frames / 25,988 checks; installation is complete. The [Boron/Paranid contract](reverse-engineering/boron-paranid-materials.md)
+  covers all 32 remaining pairs. Their pure conversion and scalar WRAP
+  integration are separately reviewed on isolated branches; detached/live GPU
+  qualification remains before any 148-pair install.
   [Blended emission work](architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color
   and supplemental coverage, and a temporal consumer. The latest producer run
@@ -198,8 +204,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   1080p completion windows measured an additional 1.71 ms for the tested
   emitter/composition sequence, not game FPS or GPU-only time.
   The reviewed copy/clear fusion is committed with 60 exact GPU twins and
-  a small, noisy component timing benefit; combined live qualification and
-  installation remain pending. Copy/composition cost remains a concern,
+  a small, noisy component timing benefit; combined live qualification passes
+  48 functional frames and is installed. Its current unpaired 1080p
+  completion difference is +0.6981 ms for the tested sequence, not game FPS. Copy/composition cost remains a concern,
   and historical adjacent draws do not yet qualify batching. The
   [background study](reverse-engineering/background-temporal-coverage.md) retains
   the existing native temporal limitations; global writer classification is not

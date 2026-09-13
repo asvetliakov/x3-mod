@@ -1,7 +1,7 @@
 # Exposure for X3's outdoor space scenes
 
-2026-09-13. Offline evaluation; **no production policy change or gameplay
-acceptance**. The scene model is black cosmos, small stars, large colored
+2026-09-13. Offline evaluation and selected policy; **fixed EV 0 is now
+installed, with visual acceptance pending**. The scene model is black cosmos, small stars, large colored
 nebulae, planets/suns, ships and transient effects. Indoor/hangar adaptation
 is not a design premise. The current implementation is described in
 [HDR scene path](hdr-scene-path.md); the actual baseline is
@@ -15,7 +15,7 @@ Published practice in other space games is collected separately in
 The orchestrator selected **fixed EV 0 as the default policy** for this legacy-content
 stage, with Auto retained as an explicit option and same-run comparison.
 The [default and comparison controls](comparison-hotkeys.md) are implemented
-and independently reviewed; the installed build still uses the old Auto default. The user
+and independently reviewed, and installed in candidate `75dbbed`. The user
 explicitly accepts no exposure adjustment as a complete option. Here that
 means multiplier 1 and no automatic adaptation; AgX and independently enabled
 bloom remain. It preserves relative authored brightness as the camera turns and has

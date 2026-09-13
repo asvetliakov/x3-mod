@@ -141,3 +141,8 @@ absolute lock-script path and separate `stdout.txt`/`stderr.txt` redirects;
 the compact result records that exact command. This reproduction line assumes
 a repository working directory. All new Wine execution still requires the
 shared runner lease and the game to be closed.
+
+The correction and timing hooks are now installed in combined candidate
+`75dbbed`; [run 7](../verification/user-runs.md) covers the missing central
+display and selection pauses. No additional gameplay or native-tail timing
+claim follows from the CPU fixture.

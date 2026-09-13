@@ -4,7 +4,8 @@ Updated 2026-09-13. Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
 0.9 distance, softer 0.28/0.38 s follow, predictive lead marker, opt-in FP16 bloom
-and 110 reviewed linear material pairs;
+116 reviewed linear material pairs, the central chase display correction, and
+fixed exposure plus same-run exposure/bloom controls;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
@@ -22,9 +23,9 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
-| 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 1 planned | Waiting for reviewed combined build; do not run yet |
+| 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 1 | Ready: installed candidate 75dbbed |
 
-Only run 4 is ready now; run 7 is planned for the next installed build. The shared TAA shader
+Run 7 is ready now; run 4 remains the optional vanilla cursor comparison. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is installed but stays off in these comparisons; it adds
 no gameplay request yet while its performance optimization is under investigation.
@@ -77,10 +78,10 @@ selects fixed EV 0 for the next default, with Auto retained for comparison.
 B is complete as run 25, with all 174 referenced artifacts preserved. The user
 noticed no visual bloom difference; [analysis](run25-bloom-comparison.md) shows
 that bloom never attached because the game requested a pure D3D9 device.
-The source fix is reviewed but not installed. Do not repeat either command for
+The source fix is reviewed and installed; actual bloom execution needs run 7. Do not repeat either command for
 this item. Separate runtime exposure
-and bloom toggles are requested for future same-run comparisons and are not
-installed yet. Commands below remain as provenance.
+and bloom toggles are now installed for run 7. Commands below remain as provenance
+for the old Auto-default build.
 
 Use the current installed build; no update is needed. Keep sharpen and mip bias
 at zero so this remains comparable to the earlier HDR baseline. Both commands
@@ -215,15 +216,27 @@ needs exclusion. Keep accepted camera values. The central HUD correction and
 selection timings are being combined into a future build; no new run is ready
 for them yet. The current run-6 commands remain above as provenance.
 
-## 7. Same-run exposure/bloom and chase HUD — Waiting for build
+## 7. Same-run exposure/bloom and chase HUD — Ready
 
-Do not launch this item until the agent confirms installation and supplies the
-validated command. It combines the exposure and bloom follow-up with the missing
-central chase display and selection-stutter diagnostics. Camera settings remain
-the accepted values. The initial candidate keeps fixed EV 0, AgX and TAA, with
-bloom and the qualified material set enabled; automatic exposure remains optional.
+Candidate `75dbbed` is installed and the command is validated without launching.
+This combines the exposure and bloom follow-up with the missing central chase
+display and selection-stutter diagnostics. Camera settings remain the accepted
+values. Keep the game's **Glow enabled**.
 
-Planned checks in one session:
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --taa-debug --camera-log 1 \
+  --taa-sharpen 0 --taa-mip-bias 0 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --capture-start 999999 --capture-frames 4
+```
+
+Fixed exposure is the new default (the explicit flag makes this comparison clear).
+Automatic exposure is optional. Use the Control key, not Command, for the
+comparison shortcuts.
+
+Checks in one session:
 
 1. Load the usual save, switch to chase, and select a ship or station. Check
    whether the central crosshair/distance display is now visible and report

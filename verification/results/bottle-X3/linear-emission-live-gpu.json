@@ -9,10 +9,10 @@
     },
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
-  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-linear-emission-live-1yg261pf",
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-linear-emission-live-2g__djk7",
   "inputs": {
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-emission-live-build-flyzvee_/source/verification/probe/build/motion_output_fixture-r5.exe": "251054f07340148a640a10b642baa51fbc8f5ca5fd2463ef6c1ea4a97cfc27cf",
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-emission-live-build-flyzvee_/source/verification/probe/build/motion-output-seam/d3d9.dll": "a400a84179b6f7d2fe9fbac457aba8e6ed0733f72d46d89f322ac45b26bed1d9",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/verification/probe/build/motion_output_fixture.exe": "584f468cc7231756b124c59f71ff6fcaae5259f6403b6353e48d4a24635bf046",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-space-fixed-candidate-xd9jz_qu/source/verification/probe/build/motion-output-seam/d3d9.dll": "f14a919120bdbf802406a34158f640238d1a80a6a9fb66df75a4be11fa67e6c9",
     "/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
     "/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
     "/private/tmp/x3-shader-sweep/programs/vs_d5e1c75351ed3f04.bin": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
@@ -43,7 +43,7 @@
       "rejected_source_hresult": "8876086c",
       "reset": 1,
       "device_final_release": true,
-      "held_references": 26,
+      "held_references": 32,
       "frames_detail": [
         {
           "frame": "0",
@@ -267,7 +267,7 @@
         0
       ],
       "rejected_display_max_code_error": 0.48486328125,
-      "seconds": 6.775690292
+      "seconds": 4.480797875
     },
     "lazy0-emission1": {
       "frames": 12,
@@ -293,7 +293,7 @@
       "rejected_source_hresult": "8876086c",
       "reset": 1,
       "device_final_release": true,
-      "held_references": 39,
+      "held_references": 45,
       "frames_detail": [
         {
           "frame": "0",
@@ -517,7 +517,7 @@
         0
       ],
       "rejected_display_max_code_error": 0.48486328125,
-      "seconds": 1.7416737920000003
+      "seconds": 1.8154894170000002
     },
     "lazy1-emission0": {
       "frames": 12,
@@ -543,7 +543,7 @@
       "rejected_source_hresult": "8876086c",
       "reset": 1,
       "device_final_release": true,
-      "held_references": 26,
+      "held_references": 32,
       "frames_detail": [
         {
           "frame": "0",
@@ -767,7 +767,7 @@
         0
       ],
       "rejected_display_max_code_error": 0.48486328125,
-      "seconds": 1.703413083000001
+      "seconds": 2.019898167
     },
     "lazy1-emission1": {
       "frames": 12,
@@ -793,7 +793,7 @@
       "rejected_source_hresult": "8876086c",
       "reset": 1,
       "device_final_release": true,
-      "held_references": 39,
+      "held_references": 45,
       "frames_detail": [
         {
           "frame": "0",
@@ -1017,43 +1017,43 @@
         0
       ],
       "rejected_display_max_code_error": 0.48486328125,
-      "seconds": 1.7511222499999999
+      "seconds": 1.7596192080000002
     },
     "benchmark-emission0": {
       "samples": [
-        3.0322,
-        1.9756,
-        1.9778,
-        2.0107,
-        1.9199,
-        2.518,
-        2.169,
-        1.706
+        1.7485,
+        1.5702,
+        1.5959,
+        1.6225,
+        1.5973,
+        1.7118,
+        2.1302,
+        1.344
       ],
-      "median_ms": 1.99425,
-      "min_ms": 1.706,
-      "max_ms": 3.0322,
+      "median_ms": 1.6099,
+      "min_ms": 1.344,
+      "max_ms": 2.1302,
       "warmups": 4,
       "scope": "QPC/EVENT completion: one25%-coverage original DIP, component transfers/real Hdr owner exchange and terminal supplemental TAA+AgX. Source setup, ordinary motion, frame M clear, Present and readback excluded. Off/on are separate processes, not paired GPU-only measurements or game FPS",
-      "seconds": 1.4275395
+      "seconds": 1.6838859590000013
     },
     "benchmark-emission1": {
       "samples": [
-        3.8892,
-        4.7072,
-        3.6411,
-        3.0564,
-        4.8726,
-        3.7738,
-        3.3953,
-        2.8705
+        3.7879,
+        3.7369,
+        2.3068,
+        2.3092,
+        2.2062,
+        2.2798,
+        2.332,
+        2.2097
       ],
-      "median_ms": 3.7074499999999997,
-      "min_ms": 2.8705,
-      "max_ms": 4.8726,
+      "median_ms": 2.308,
+      "min_ms": 2.2062,
+      "max_ms": 3.7879,
       "warmups": 4,
       "scope": "QPC/EVENT completion: one25%-coverage original DIP, component transfers/real Hdr owner exchange and terminal supplemental TAA+AgX. Source setup, ordinary motion, frame M clear, Present and readback excluded. Off/on are separate processes, not paired GPU-only measurements or game FPS",
-      "seconds": 1.446383375
+      "seconds": 1.453615082999999
     }
   },
   "game_launched": false,
@@ -1067,39 +1067,9 @@
     "Functional TAA readback uses a seam-only resolve-output flag independent of capture admission and persists across Reset. It is disabled for timing. Source snapshots and functional HDR readbacks explicitly get the logical RT before sampling, restoring borrowed MRT/mip state. R3 observed bias restoration during diagnostic readback; explicit getters now avoid relying on backend child-release callback timing. Immediate physical bias after each A/B draw and exact restores (two healthy, A-only one on the failed frame) are checked; consecutive lazy bias retention is not claimed here and retains its dedicated prior evidence."
   ],
   "completion_cost": {
-    "native_median_ms": 1.99425,
-    "enabled_median_ms": 3.7074499999999997,
-    "median_difference_ms": 1.7131999999999996,
+    "native_median_ms": 1.6099,
+    "enabled_median_ms": 2.308,
+    "median_difference_ms": 0.6980999999999997,
     "paired": false
-  },
-  "build_context": {
-    "base_commit": "177013f1d0e9e3add1a0701ae57536e88a407ee6",
-    "reviewed_patch_sha256": "13d2be0e87cd23af2ae345ad18c2f54580600df88e9637c018af5a98e6b5d80f",
-    "readback_seam_patch_sha256": "2bb782d66288c78ff96780d948d0ad31cf540ed91fbc63dfddaf438b8ef75198",
-    "source_snapshot": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-emission-live-build-flyzvee_/source",
-    "production_dll_sha256": "fce9bfe882ec1aa497eedc1c2ad703bbb128e6e8a43a979339118856a5907a2e",
-    "fixture_fragment_sha256": "f4d2a7bc923835bf01de2f12fab34498a7074987595fa03e5f5a82df74b188c8",
-    "fixture_translation_unit_sha256": "d7a4e1527b5d68986e1e69ba9e157aa85b59cf0319f2350d73ff867ecc106673",
-    "runner_sha256": "1cbffcc5213c0d195a61293b3bd68b2a3e47973c7d307a9b7fcf5f913ad5e533",
-    "toolchain": "MinGW GCC 16.2, x86 SSE2, four-byte incoming stack, no fast-math",
-    "scope": "Isolated reviewed emission source plus readback-only seam delta; not the later material70/110 or chase lead changes, and not an installed candidate. Production no-x87 audit: 215 reachable functions, 63 roots, zero violations."
-  },
-  "prior_failed_attempts": [
-    {
-      "raw_suffix": "x3-linear-emission-live-bvpbmmvf",
-      "cause": "R1: fixture left emitter declaration on the later ordinary draw."
-    },
-    {
-      "raw_suffix": "x3-linear-emission-live-t7nnq1kw",
-      "cause": "R2: fixture demanded exact equality with an unrepresentable half-float alpha sum; second source alpha now .25, with equality unchanged."
-    },
-    {
-      "raw_suffix": "x3-linear-emission-live-010674wf",
-      "cause": "R3: diagnostic readback restored borrowed mip bias. Explicit logical getters now establish the boundary; backend callback timing is not asserted."
-    },
-    {
-      "raw_suffix": "x3-linear-emission-live-gq85b31k",
-      "cause": "R4: failed native source intentionally rejects the scene. R5 requires A-only routing and no TAA at that frame, then current-only recovery; production policy unchanged."
-    }
-  ]
+  }
 }

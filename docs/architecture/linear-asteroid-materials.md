@@ -296,3 +296,16 @@ interpolation state, or prove live route/state/Reset/fallback integration.
 Those live checks remain separate, as do native Windows execution, installation
 and gameplay image/performance acceptance. The original experiment history and
 unchanged ordinary-motion/reference evidence remain intact.
+
+## Combined live qualification and installation
+
+Candidate `75dbbed` is installed with all 116 pairs / 83 originals. Eight actual
+D3D cells (ownership, TAA and materials off/on) pass 2,064 frames / 25,988 checks
+and 5,160 state restorations. Each enabled cell uses the combined route on 247
+frames, refuses exactly frames 2/3/4/5/7/9/13/15/19, and retires all 83 additional
+shader references. The [compact result](../../verification/results/bottle-X3/linear-material-live.json)
+keeps counts and links the retained full report instead of duplicating per-frame
+shader/color/hash arrays. The actual execution uses the fixture seam; game
+owner-memory binding, native Windows and visual acceptance remain separate.
+The production DLL itself passed a load check. Source/build/rollback are bound
+by the [install record](../../verification/results/linear-material-install.json).
