@@ -141,6 +141,7 @@ Reviewed shader bytes are read from local files and never enter the repository
 or the reports.
 """
 from pathlib import Path
+import argparse
 import datetime
 import hashlib
 import json
@@ -205,6 +206,9 @@ CASES += [case(f'bench-{size}-taa-{state}', 'bench', jitter=True, taa=state == '
 CASES += [case(f'{dll}-lazy-on', dll, lazy=True) for dll in ('production', 'seam')]
 CASES += [case('seam-ownership-lazy-on', 'seam', 'ownership', lazy=True), case('seam-taa-lazy-on', 'seam', jitter=True, taa=True, lazy=True)]
 CASES += [case(f'{dll}-burst-{rt}', dll, lazy=rt == 'lazy', burst=True) for dll in ('production', 'seam') for rt in ('perdraw', 'lazy')]
+# Selected-only additions: preserve the existing default suite inventory.
+WRAP_CASES = [case(f'seam-burst-{rt}-wrap', 'seam', lazy=rt == 'lazy', burst=True,
+                   hdr_env={'X3M_FIXTURE_WRAP': '1'}) for rt in ('perdraw', 'lazy')]
 # Camera reprojection of sentinel pixels (seam): the switch in its three
 # positions with the fixture's rotating camera, the strict mode without a
 # camera, and the environment-map exclusion script.
@@ -252,8 +256,8 @@ RAMP_CASES = {'seam-hdr-ramp-none': dict(AGX, X3M_HDR_EV_MANUAL='0'),
               'production-hdr-ramp-none': dict(AGX, X3M_HDR_EV_MANUAL='0'),
               'seam-hdr-ramp-identity': dict(X3M_HDR_EV_MANUAL='0')}  # tonemap off: the stage-1 conversion on the same ramp
 CASES += [case(name, 'hdrramp', hdr=True, hdr_env=env) for name, env in RAMP_CASES.items()]
-EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX, X3M_HDR_DT_MS='16'),
-                  'seam-hdr-exposure-offset': dict(AGX, X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
+EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX, X3M_HDR_EXPOSURE='auto', X3M_HDR_DT_MS='16'),
+                  'seam-hdr-exposure-offset': dict(AGX, X3M_HDR_EXPOSURE='auto', X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
 CASES += [case(name, 'hdrexposure', hdr=True, hdr_env=env) for name, env in EXPOSURE_CASES.items()]
 # The meter chain's level surfaces and readback surfaces through the ownership wrapper (reference accounting at teardown).
 CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=True, hdr_env=EXPOSURE_CASES['seam-hdr-exposure'])]
@@ -2253,7 +2257,7 @@ def validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory):
             'coverage_pixels': int(terminal['coverage_pixels'])}
 
 
-def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
+def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=False):
     """Burst script (see the module docstring): per-frame counters of the DLL,
     the fixture's own restoration and oracle verdicts, and the signatures the
     cross-mode comparison in main() uses."""
@@ -2272,7 +2276,11 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
     # oracle (both DLLs), the COLORWRITEENABLE1 read-back between routed draws
     # and, seam, the motion/depth oracle.
     assert int(terminal['frames']) == BURST_FRAMES and int(terminal['restorations']) == 2 * BURST_FRAMES, (name, terminal)
-    assert int(terminal['checks']) == (86 if seam else 41), (name, terminal)  # one presented-image check per frame
+    wrap_modes = [l for l in lines if l.startswith('WRAP ')]
+    wrap_checks = [l for l in lines if l.startswith('CHECK ') and 'WRAP' in l]
+    assert wrap_modes == (['WRAP mode=hostile motion_texcoord=4 depth_texcoord=5 native_texcoord=0'] if wrap else []), (name, wrap_modes)
+    assert wrap_checks == (['CHECK application reads exact WRAP4 after routed draw PASS'] * BURST_FRAMES if wrap else []), (name, wrap_checks)
+    assert int(terminal['checks']) == (86 if seam else 41) + (BURST_FRAMES if wrap else 0), (name, terminal)  # one presented-image check per frame
     restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
     assert len(restores) == 2 * BURST_FRAMES and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
     assert [r['label'] for r in restores] == ['fill', 'burst'] * BURST_FRAMES, (name, [r['label'] for r in restores])
@@ -2333,7 +2341,7 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True):
         assert readbacks[frame]['result'] == depth_readbacks[frame]['result'] == '00000000', (name, frame)
         files[frame] = {kind: sha(directory / 'x3-modern-captures' / r[frame]['file']) for kind, r in (('motion', readbacks), ('depth', depth_readbacks))}
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
-    return {'mode': mode, 'burst': True, 'lazy': lazy, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+    return {'mode': mode, 'burst': True, 'lazy': lazy, 'wrap': wrap, 'wrap_readback_checks': len(wrap_checks), 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
             'frames': BURST_FRAMES, 'color_hashes': colors, 'state_hashes': states, 'motion_hashes': motion_hashes,
             'readback_sha256': files, 'set_rt_per_frame': set_rt, 'lazy_flushes_per_frame': flushes, 'costs_us_per_frame': costs,
             'coverage_pixels': int(terminal['coverage_pixels']), 'depth_written_pixels': int(terminal['depth_written']), 'render_state': render_state,
@@ -2420,16 +2428,43 @@ def validate_hook(name, installed, text, trace, directory, hdr=False):
             'matched_pixels': int(terminal['matched_pixels']), 'motion_pixels': int(terminal['motion_pixels'])}
 
 
-def main():
+def arguments(argv=None):
+    parser = argparse.ArgumentParser(description='Run motion-output cases; explicit retained binaries skip all builds.')
+    parser.add_argument('--dll', type=Path, help='Retained production DLL (requires --seam, --fixture and selected cases)')
+    parser.add_argument('--seam', type=Path, help='Retained fixture-seam DLL')
+    parser.add_argument('--fixture', type=Path, help='Retained motion-output fixture executable')
+    parser.add_argument('cases', nargs='*', help='Known case names; omit for the normal fresh-build suite')
+    args = parser.parse_args(argv)
+    supplied = (args.dll, args.seam, args.fixture)
+    if any(p is not None for p in supplied):
+        if not all(p is not None for p in supplied):
+            parser.error('--dll, --seam and --fixture must be supplied together')
+        if not args.cases:
+            parser.error('retained binaries require nonempty explicit case selectors')
+        for path in supplied:
+            if not path.is_file() or path.stat().st_size == 0:
+                parser.error(f'retained binary is not a nonempty file: {path}')
+        args.dll, args.seam, args.fixture = (p.resolve() for p in supplied)
+    unknown = set(args.cases) - {entry['name'] for entry in CASES + WRAP_CASES}
+    if unknown:
+        parser.error('unknown case selector(s): ' + ', '.join(sorted(unknown)))
+    return args
+
+
+def main(argv=None):
+    args = arguments(argv)
+    consume_only = args.dll is not None
+    candidate_exe, candidate_seam, candidate_dll = (args.fixture, args.seam, args.dll) if consume_only else (EXE, SEAM, DLL)
+    binary_hashes = lambda: {str(p) if consume_only else str(p.relative_to(ROOT)): sha(p) for p in (candidate_exe, candidate_seam, candidate_dll)}
     RESULTS.mkdir(exist_ok=True)
     # Development aid: case names on the command line run only those cases and
     # write a partial summary (no cross-case comparisons); never a pass of the suite.
-    only = set(sys.argv[1:])
+    only = set(args.cases)
     summary_path = RESULTS / ('motion-output-partial.json' if only else 'motion-output-summary.json')
     report_path = RESULTS / ('motion-output-partial.txt' if only else 'motion-output.txt')
     result = {'passed': False, 'status': 'RUNNING', 'game_launched': False, 'bottle': bottle.describe(),
               'scope': 'Live same-draw route (checkpoint B1 + temporal steps 1 and 3: RT2 current depth, per-draw jitter, cut detector, the temporal resolve at the bloom copy with copy-back) and the FP16 HDR scene path stage 1 (X3M_HDR: redirect, identity write-back, unwind ladder) through the actual proxy DLL with one original synthetic device program, plain and under the ownership wrapper (plus copy-depth and admission); seam DLL adds fixture scope injection, target readback and the reference resolve comparison. Bench runs time the boundary. Not gameplay validation.',
-              'variants': VARIANTS,
+              'variants': VARIANTS, 'consume_only': consume_only, 'selected_cases': sorted(only),
               'cases': {}}
     save = lambda: summary_path.write_text(json.dumps(result, indent=2) + '\n')
     save()
@@ -2443,31 +2478,32 @@ def main():
         commands = [['cmake', '-S', '.', '-B', 'build', '-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake', '-DCMAKE_BUILD_TYPE=RelWithDebInfo'],
                     ['cmake', '--build', 'build', '--clean-first', '-j4'],
                     ['i686-w64-mingw32-g++', '-std=c++17', '-Wall', '-Wextra', '-c', 'verification/probe/abi_check.cpp', '-o', 'verification/probe/build/abi_check.o'],
-                    ['sh', 'verification/probe/build_motion_output.sh']]
+                    ['sh', 'verification/probe/build_motion_output.sh']] if not consume_only else []
         result['build_commands'] = commands
-        with (RESULTS / 'motion-output-build.log').open('w') as out:
-            for command in commands:
-                subprocess.run(command, cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT)
+        if commands:
+            with (RESULTS / 'motion-output-build.log').open('w') as out:
+                for command in commands:
+                    subprocess.run(command, cwd=ROOT, check=True, stdout=out, stderr=subprocess.STDOUT)
         assert sources() == result['sources_before_build'], 'Sources changed during build'
-        result['binaries'] = {str(p.relative_to(ROOT)): sha(p) for p in (EXE, SEAM, DLL)}
+        result['binaries'] = binary_hashes()
         save()
         report = []
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
-        for entry in CASES:
+        for entry in CASES + (WRAP_CASES if only else []):
             name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env, mip_bias, mipbias = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env', 'mip_bias', 'mipbias'))
             if only and name not in only:
                 continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
-            shutil.copy(EXE, directory)
-            shutil.copy(SEAM if mode in ('seam', 'msaa') + HDR_MODES and not name.startswith('production') else DLL, directory / 'd3d9.dll')
+            shutil.copy(candidate_exe, directory)
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
                        X3M_CAPTURE_FRAMES='1' if bench else str(len(BURST_CAPTURE)) if burst else str(len(ENVMAP_CAPTURE)) if envmap else '8', X3M_TELEMETRY='1',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
-                       X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto',
+                       X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
                        X3M_STATE_SHADOW='1' if shadow else '0', X3M_SCENE_HOOK=hook or '0',  # 'default' leaves the switch unset below
                        X3M_HDR='1' if hdr else '0', X3M_FIXTURE_HDR_FAULT=hdr_fault or '',
@@ -2491,7 +2527,7 @@ def main():
             if mode in HDR_MODES:
                 env['X3M_MOTION_FRAME_LOG'] = '1'  # every frame's route and hdr lines
             command = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
-                       str(directory / EXE.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'mipbias' if mipbias else 'envmap' if envmap else mode] + ([bench] if bench else [])
+                       str(directory / candidate_exe.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'mipbias' if mipbias else 'envmap' if envmap else mode] + ([bench] if bench else [])
             if mode == 'msaa':
                 env['X3M_MOTION_FRAME_LOG'] = '1'; env['X3M_FIXTURE_MSAA'] = '2'
             if mode in HDR_MODES:
@@ -2518,7 +2554,7 @@ def main():
             if mode == 'msaa':
                 case = validate_msaa(name, text, trace)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 save()
@@ -2528,7 +2564,7 @@ def main():
                 case = {'hdrvalues': validate_hdrvalues, 'hdrfault': validate_hdrfault, 'hdrramp': validate_hdrramp,
                         'hdrexposure': validate_hdrexposure, 'hdrtonemapfault': validate_hdrtonemapfault}[mode](name, text, trace, directory, hdr_env, hdr_fault)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 save()
@@ -2537,7 +2573,7 @@ def main():
             if envmap:
                 case = validate_envmap(name, text, trace, directory, hdr)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 save()
@@ -2546,7 +2582,7 @@ def main():
             if hook is not None:
                 case = validate_hook(name, hook != '0', text, trace, directory, hdr)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 save()
@@ -2555,16 +2591,16 @@ def main():
             if mipbias:
                 case = validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} sets={case["sets_per_frame"]} evidence={case["evidence"]}', flush=True)
                 continue
             if burst:
-                case = validate_burst(name, mode, lazy, text, trace, directory, shadow)
+                case = validate_burst(name, mode, lazy, text, trace, directory, shadow, wrap=hdr_env.get('X3M_FIXTURE_WRAP') == '1')
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
                 result['cases'][name] = case
                 save()
@@ -2579,7 +2615,7 @@ def main():
             elif hdr and taa and hdr_fault is None and (hdr_env or {}).get('X3M_HDR_TONEMAP', 'identity') == 'identity':
                 case['hdr_identity_k'] = validate_identity_k(name, trace, hdr_env)
             case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
-                        dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / EXE.name))
+                        dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
             if enabled == '1':
                 shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
             result['cases'][name] = case
@@ -2587,6 +2623,8 @@ def main():
             print(f'{name}: exit={completed.returncode} checks={case["checks"]} motion_pixels={case["motion_pixels"]}', flush=True)
         wine_log.close()
         if only:
+            assert set(result['cases']) | set(result['bench']) == only, 'Selected case inventory differs from requested cases'
+            assert binary_hashes() == result['binaries'], 'Binaries changed during selected run'
             result['sources_after_run'] = sources()
             assert result['sources_after_run'] == result['sources_before_build'], 'Sources changed during selected run'
             result['status'] = 'PARTIAL'
@@ -2864,7 +2902,7 @@ def main():
         mipbias['counts'] = {'sets_per_frame': on['sets_per_frame'], 'restores_per_frame': on['restores_per_frame'], 'reads_per_frame': on['reads_per_frame'],
                              'anchors': MIPBIAS_ANCHORS, 'capture_frames': list(MIPBIAS_CAPTURE), 'session': on['summary']}
         result['mip_bias'] = mipbias
-        assert {str(p.relative_to(ROOT)): sha(p) for p in (EXE, SEAM, DLL)} == result['binaries'], 'Binaries changed during run'
+        assert binary_hashes() == result['binaries'], 'Binaries changed during run'
         result['sources_after_run'] = sources()
         result['limits'] = ['Synthetic device program; not gameplay validation or temporal image quality.',
                             'Jitter is proven by coverage against a CPU reference at the Halton offsets on a 64x64 target.',

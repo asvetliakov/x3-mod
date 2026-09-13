@@ -131,9 +131,35 @@ stateblock Apply, Reset and lazy-burst scenarios exercise the new condition.
 The lazy burst changes and reads back WRAP4 between existing draws, without
 adding source submissions. This fixture was **compiled only**. Scoped retained-
 DLL runs in X3, both depth modes and state-shadow modes, plus per-draw/lazy
-state equivalence remain pending GPU qualification. Never
-invoke the legacy runner's implicit production rebuild against an install
-candidate; the candidate owner must arrange an explicit retained DLL/seam.
+state equivalence remain pending GPU qualification.
+
+The motion-output runner accepts a retained production DLL, seam DLL and
+fixture executable together. All three paths are required, as are explicit
+known case selectors; this mode skips every build command and records the
+supplied binary hashes, checking them again after execution. The existing
+positional selectors and normal fresh-build path remain available. For the
+candidate owner, the bounded hostile-WRAP burst command is:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py \
+  python3 verification/probe/run_motion_output.py \
+  --dll /path/to/retained/d3d9.dll \
+  --seam /path/to/retained/seam/d3d9.dll \
+  --fixture /path/to/retained/motion_output_fixture.exe \
+  seam-burst-perdraw-wrap seam-burst-lazy-wrap
+```
+
+These two selected-only cases enable the fixture's existing hostile WRAP4/5
+setup. They retain the burst image, depth, restoration, routing and binding
+counter oracles and require exactly nine successful application WRAP4
+readbacks (95 checks per seam case). The usual partial report does not claim
+a full-suite pass or perform cross-case equivalence comparisons. This pair
+does not close the separate depth-mode, shadow-off, stateblock or Reset WRAP
+qualification. No GPU execution follows from the runner change. Seven focused
+host tests cover retained-input dispatch and mutation, rejected selectors,
+the unchanged build path, strict WRAP evidence and exposure-case settings.
+The exposure-named HDR cases explicitly request `X3M_HDR_EXPOSURE=auto`;
+unrelated AgX cases do not acquire an automatic-exposure override.
 
 The separate baseline capture-bloom lifetime test-double mismatch was repaired
 on main in `a50809a`. Independent verification passed 33 scenarios / 139 checks.
