@@ -94,8 +94,11 @@ now qualify the retained 40 cases on the tested Steam backend: all 421,446
 modeled one-dimensional channels match exactly, and every unmodeled/2D image
 passes the recomputed original oracle. See [review 41](verification/review-41-bloom-precision.md).
 This is scoped numerical qualification, not a new GPU run or native-Windows
-validation. Production executor review, combined composition/state/recovery
-tests, renderer integration and game acceptance remain pending.
+validation. The [production executor and standalone fixture](verification/review-44-bloom-pass.md)
+are now reviewed and cross-compiled, with inherited tessellation and unnecessary
+rollback-write findings fixed. Five fixture host controls pass. The first
+combined GPU/state/recovery run is queued behind the user's active game;
+renderer integration and game acceptance remain pending.
 The separate [CPU return-bridge prototype](verification/review-39-bloom-return-bridge.md)
 passed independent review and 240 checks each on Steam and X3/FEX, including
 exception cleanup and CPU-state transport. It is not integrated into the game

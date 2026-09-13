@@ -1,0 +1,310 @@
+{
+  "schema": 1,
+  "scope": "Reviewed production BloomPass and standalone fixture cross-compilation; no GPU run",
+  "source_review_passed": true,
+  "host_tests": 5,
+  "build_only": true,
+  "gpu_execution_verified": false,
+  "native_windows_runtime_verified": false,
+  "renderer_integration_verified": false,
+  "installed_dll_changed": false,
+  "game_launched": false,
+  "retained_summary": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/summary.json",
+  "retained_summary_sha256": "0eaaeaeb120d53bb24f8d7c4337f92f0e096f36366917bca5edb3db91cfe5d9f",
+  "build_record": {
+    "schema": 1,
+    "passed": false,
+    "phase": "built",
+    "bottle": {
+      "name": "Steam",
+      "wine_arch": "win64",
+      "environment": {
+        "WINEMSYNC": "1"
+      },
+      "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+    },
+    "build_command": [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2",
+      "-static",
+      "-DX3M_BLOOM_PASS_FIXTURE",
+      "/Users/asvetl/x3-mod/verification/probe/bloom_pass_fixture.cpp",
+      "/Users/asvetl/x3-mod/src/renderer/bloom_pass.cpp",
+      "-o",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_pass_fixture.exe",
+      "-luser32",
+      "-ldxguid"
+    ],
+    "gpu_execution_verified": false,
+    "native_windows_runtime_verified": false,
+    "game_launched": false,
+    "renderer_integration_verified": false,
+    "installed_dll_changed": false,
+    "scope": "actual standalone BloomPass state/failure/reset and bounded final-image differential",
+    "untested": [
+      "game bridge and CPU/cache ownership",
+      "lost device",
+      "non-null depth",
+      "two devices and wrong thread",
+      "per-setter driver failures and partial StretchRect writes",
+      "game FPS and capture mutex timing",
+      "native Windows runtime",
+      "game acceptance"
+    ],
+    "max_code_error": 3,
+    "cases": [
+      {
+        "mode": "gamma2.2",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.0,
+        "sharp": 0.0
+      },
+      {
+        "mode": "gamma2.2",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.0,
+        "sharp": 0.75
+      },
+      {
+        "mode": "gamma2.2",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.5,
+        "sharp": 0.0
+      },
+      {
+        "mode": "gamma2.2",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.5,
+        "sharp": 0.75
+      },
+      {
+        "mode": "gamma2.2",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.0,
+        "sharp": 0.0
+      },
+      {
+        "mode": "gamma2.2",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.0,
+        "sharp": 0.75
+      },
+      {
+        "mode": "gamma2.2",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.5,
+        "sharp": 0.0
+      },
+      {
+        "mode": "gamma2.2",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.5,
+        "sharp": 0.75
+      },
+      {
+        "mode": "srgb",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.0,
+        "sharp": 0.0
+      },
+      {
+        "mode": "srgb",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.0,
+        "sharp": 0.75
+      },
+      {
+        "mode": "srgb",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.5,
+        "sharp": 0.0
+      },
+      {
+        "mode": "srgb",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.5,
+        "sharp": 0.75
+      },
+      {
+        "mode": "srgb",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.0,
+        "sharp": 0.0
+      },
+      {
+        "mode": "srgb",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.0,
+        "sharp": 0.75
+      },
+      {
+        "mode": "srgb",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.5,
+        "sharp": 0.0
+      },
+      {
+        "mode": "srgb",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.5,
+        "sharp": 0.75
+      },
+      {
+        "mode": "none",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.0,
+        "sharp": 0.0
+      },
+      {
+        "mode": "none",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.0,
+        "sharp": 0.75
+      },
+      {
+        "mode": "none",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.5,
+        "sharp": 0.0
+      },
+      {
+        "mode": "none",
+        "kind": "constant",
+        "width": 8,
+        "height": 6,
+        "strength": 0.5,
+        "sharp": 0.75
+      },
+      {
+        "mode": "none",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.0,
+        "sharp": 0.0
+      },
+      {
+        "mode": "none",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.0,
+        "sharp": 0.75
+      },
+      {
+        "mode": "none",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.5,
+        "sharp": 0.0
+      },
+      {
+        "mode": "none",
+        "kind": "structured",
+        "width": 9,
+        "height": 7,
+        "strength": 0.5,
+        "sharp": 0.75
+      }
+    ],
+    "retained": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76",
+    "inputs_before": {
+      "/Users/asvetl/x3-mod/src/renderer/bloom_pass.cpp": "cba18f2b31291a6b9d1cb3aae5fc5fbeefecd9670442c00adc9fb4bbee255a87",
+      "/Users/asvetl/x3-mod/src/renderer/bloom_pass.h": "e915e032726dd4b268d023524b1987b528a14001d4f83591dd8a35d14344f366",
+      "/Users/asvetl/x3-mod/src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
+      "/Users/asvetl/x3-mod/src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
+      "/Users/asvetl/x3-mod/src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
+      "/Users/asvetl/x3-mod/src/temporal/agx.hlsl": "55417e71f3761bd52aca15c2318f0e27611f24490dc0957b68e0dd6fe4ca9531",
+      "/Users/asvetl/x3-mod/src/temporal/bloom.h": "96b47ed015ca0d92049f0e7ce348715caf07d98388f96fb7cc786b75f350f268",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_agx_ps.hlsl": "1beefeedaf33c20a1f9faeb2dcb8b12ec034afc3ee9a40c30e5687c73bde6cb4",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_common.hlsl": "ede4cad093ece1da226eeecaa3a4f236733b66f2e4c2657ba6f18e8f6e50bcc7",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_down_ps.hlsl": "b7cd43de0d51674a9dce1657fa9e0a90d475fe4749148e6808aa1b040ac6f0a5",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_gamma_ps.hlsl": "4e1e83c1ae348bb6d46c4a931c832b87c9eb69006e112d0fe4a25a19fdf1eb45",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_none_ps.hlsl": "ef60613250c44f59d4cf21ab09f92749553de6741c237d1093ad1f3699355697",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_srgb_ps.hlsl": "14cf21de3dc95bc461040323f18a45345a8b87718851787b4a5efbf37db3ea84",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_extract_gamma_ps.hlsl": "ecb7e8d876264971cc566e22b8510a05aba660bcd58ee076163b0faa14c9f276",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_extract_none_ps.hlsl": "e09422f2fe4727627892d448b1e5fc2f51100bc160988a9dd98ee2f11ed957bc",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_extract_srgb_ps.hlsl": "e6b79aac42aa32e079c540b2cb7b1bc20cb02d47a9bda81d481008f20ddd5e4f",
+      "/Users/asvetl/x3-mod/src/temporal/bloom_up_ps.hlsl": "c668fa10466468f70a4e8b1cb6e313a115c70e740f71c03f972d997fe830c8e6",
+      "/Users/asvetl/x3-mod/src/temporal/hdr_writeback_ps.hlsl": "94d43598184cdaa0a2bbf8a2d16e640fb7eb5d63d2c7cde0e9efd99c3c782022",
+      "/Users/asvetl/x3-mod/src/temporal/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+      "/Users/asvetl/x3-mod/src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
+      "/Users/asvetl/x3-mod/src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
+      "/Users/asvetl/x3-mod/src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
+      "/Users/asvetl/x3-mod/tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
+      "/Users/asvetl/x3-mod/tools/analysis/bloom_reference.py": "b7953640512cbf2caa292990d56ec1d7929ccfbe0722e2b9b1bc00efbe4f8521",
+      "/Users/asvetl/x3-mod/tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8",
+      "/Users/asvetl/x3-mod/verification/analysis/test_bloom_composition.py": "f48916711cc2a3b25eb7a3e3598b852736f81bc349cf0a3d24a34d29256e0c72",
+      "/Users/asvetl/x3-mod/verification/probe/bloom_pass_fixture.cpp": "c79e81d7d2dc1b14af53dbde3b3dad0aee01fc6d7369216642b6eca2c01535b8",
+      "/Users/asvetl/x3-mod/verification/probe/bloom_pass_fixture_build.py": "f365c1ac8d79feea9a2c3c7f76b52f9b2989e7d3e8b2083db00ae7c1fc28b402",
+      "/Users/asvetl/x3-mod/verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+      "/Users/asvetl/x3-mod/verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+      "/Users/asvetl/x3-mod/verification/probe/run_bloom_filter.py": "02fbe95ecf9b44d1575bd54eb8fae224b7631b424dd900806992e0daecc5d797",
+      "/Users/asvetl/x3-mod/verification/probe/run_bloom_pass.py": "38cbc61a534e3f411394ef14dd396eb3933bc6d3b93ca54f4e23e4792eb6cc25",
+      "/Users/asvetl/x3-mod/verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_extract_gamma_ps.hlsl": "f1759c19d015cb6c29d7d176c901cb465b2a389989db7b7d68dddb22fb4ea62e",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_extract_srgb_ps.hlsl": "5d29f2991366aed8251ebe1a9b6400203df87188caa564e57ce87317f3f9ebe7",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_extract_none_ps.hlsl": "600f0acbd60b2b7197a849a59f5e79a844a0466bfa26a38e47e714dbe788c980",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_extract_even_gamma_ps.hlsl": "e206a757d92bdd8f5bac77012c95a4aa96101e44076e4589782b90dc0a941084",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_extract_even_srgb_ps.hlsl": "c46f5899d4d8f70a65ce11d3ec58e4004e2637c61d8a3ad51e6c0ff4722cf96c",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_extract_even_none_ps.hlsl": "b7c52449eed3dc4a3152e0791c6445766b6a857a858083461a50e72fa7c64a0c",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_down_ps.hlsl": "9edaa8fc434aa15b3749c15de536b100a4ca329734c7166b8f8df7dc0b0fb061",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_up_ps.hlsl": "7319ab4ea6fd33ecef4c6f7925b762525fa08e774db447ac3f2e9f55fd418e2e",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_agx_ps.hlsl": "dd2e08b8ed399a422ac367774fbca443638daf79086b498afa4051f6596736a5",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/taa_sharpen_ps.hlsl": "00f458a8690a5a9a0e02261454da25e82b1158f38c265cf6dcd68211e81d2362",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/hdr_writeback_ps.hlsl": "94d43598184cdaa0a2bbf8a2d16e640fb7eb5d63d2c7cde0e9efd99c3c782022",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/bloom_pass_fixture.exe": "7f16acd6910dcc53e12572930bbe6fa3298a19476f442448e2e3a98a1a031ffe",
+      "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-pass-wq0j5r76/cases.bin": "7e15c1a99c3202b3ae7e49c65cf1139cd690e6e84e2a2fec4a9119a5fce40136"
+    },
+    "images": [],
+    "inputs_unchanged": true
+  }
+}
