@@ -135,6 +135,7 @@ Targeted Ghidra disassembly of the same documented X3AP.exe image identifies:
 | Site | Native operation | Consequence |
 | --- | --- | --- |
 | `0x0041fbe8` in constructor `0x0041f8d0` | Initialize cockpit `+0x150` view mode to zero | Cockpit recreation can discard native view state; address reuse alone cannot prove continuity. |
+| `0x00419e06` in serializer `0x00419430` | Load saved cockpit view mode directly into `+0x150` | Proven alternate writer, bypassing script requests; see the later VM/load study below. |
 | `0x0042e742`, dispatcher `0x0042d340` case `0x30` (`INS_CockpitSetViewMode`) | Write requested mode ECX into cockpit EAX `+0x150`; argument block ESI supplies the mode at `+6` | This is the native script-controlled assignment. It contains no sector predicate or user-intent distinction. |
 | `0x0042e05d..0x0042e069`, case `0x2f` | Set native view boom `+0x130/+0x134/+0x138` | Restoring only mode 258 need not restore an ordinary rear chase pose. |
 | `0x00422cd0`, case `0x2c` destination | Set connect mode `+0x1c0`; mode zero can rewrite view angles while internal | Mode/connect/angle ordering matters when returning from a transition. |
@@ -144,7 +145,7 @@ Targeted Ghidra disassembly of the same documented X3AP.exe image identifies:
 | `0x00421024` / `0x004210d6` in camera update | Clear / publish current sector `+0x1fc` after the pose hook | The current chase hook at `0x00420e06` can still see the previous sector for one frame. |
 
 The targeted direct-displacement scan found no view-mode store in the per-frame
-camera update `0x004205e0`. Constructor initialization and the script dispatcher
+camera update `0x004205e0`. Constructor initialization, save deserialization and the script dispatcher
 are proven writers; this is not a whole-program proof against indirect writes.
 It has not yet been established whether run18 recreates the cockpit or invokes
 the mode command, or which script operation is responsible. The locally
@@ -178,3 +179,9 @@ Private raw study output: `/tmp/x3-camera-study/chase-sector-reset{,2,3}.txt`;
 reproduce with the existing `X3CameraState.java` read-only workflow, selecting
 `load:0x150`, `ins:0041f8d0`, `ins:0042d340`, `dec:00420360`, and
 `dec:00422cd0`. No extracted engine bytes or decompiler output are tracked.
+
+The subsequent [VM command-origin study](../reverse-engineering/chase-view-transition.md)
+identifies task-relative instruction and method provenance at the actual mode
+writer, a separate save-deserialization mode writer, native input dispatch
+paths, and a consolidated bounded diagnostic proposal. Which writer caused the
+run18 reset remains unproven.

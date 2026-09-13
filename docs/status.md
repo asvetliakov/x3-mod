@@ -34,7 +34,12 @@ no trembling or other visible camera problem was noticed. The user requested
 0.9 distance and a smoother response; revised defaults 0.28/0.38 s pass review
 and 56 focused checks, but are not yet installed. Two follow-ups remain: the predictive aim
 indicator is absent in chase view, and sector travel switches away from chase.
-Docking behavior is not yet tested. Targeted game-code analysis is in progress.
+Docking behavior is not yet tested. The [lead-marker study](reverse-engineering/chase-lead-reticle.md)
+establishes a separate view gate and gun-origin projection; a scoped correction
+will preserve the native prediction and project through the chase camera.
+The [transition study](reverse-engineering/chase-view-transition.md) identifies
+both script and save-deserialization mode writers. Consolidated diagnostics
+will distinguish the actual reset source before implementing view restoration.
 The [earlier diagnostic](verification/chase-third-run.md) and
 [admission-branch study](reverse-engineering/chase-mouse-fire.md)
 retain the firing correction's evidence. [Run 18](verification/run18-camera-loading.md)
