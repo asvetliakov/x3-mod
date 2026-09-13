@@ -276,3 +276,30 @@ affected production translation units, `motion_output.cpp` and its `MotionRoute`
 consumer `capture.cpp`, cross-compile with x86 SSE2, four-byte incoming-stack
 realignment and warnings as errors. Objects are local `/tmp` outputs; no DLL
 was built, installed or executed for this source checkpoint.
+
+## Expanded 148-pair live fixture source
+
+The independently reviewed live fixture preserves frame IDs 0–257 and appends
+all 32 palette pairs twice, reaching 322 frames and 115 combined shader owners.
+A separate short WRAP mode covers Boron base/two scalars, Boron single/one
+scalar, and Paranid's distinct source semantic. Eight feature-off/on ×
+depth-off/on × per-draw/lazy configurations exercise 144 frames and 288 actual
+native indexed submissions, including material refusal, state-block application
+and Reset with omitted setters.
+
+A fixture-only observer reads physical WRAP state through the saved native
+getter immediately before each original indexed draw. It does not call the
+application getter, flush a lazy transaction, or affect submission on failure.
+The caller's post-pair snapshot independently checks restoration. A fixture-only
+attach override selects the existing motion-only capability subset before
+shader creation; neither override nor observer is compiled into production.
+The detached 3,549-case corpus owns numerical material-color qualification;
+this live mode checks native state, exact alpha/motion/depth twins and lifecycle.
+
+Review corrected the report validator to bind every configuration to its actual
+logged per-draw/lazy mode and to require all 36 restoration witnesses (18
+existing fill checks plus 18 caller checks). Hostile mode/count mutations are
+rejected; all 11 focused tests pass. The two changed proxy translation units
+compile under the fixture macros with x86 SSE2, four-byte incoming-stack
+realignment and warnings as errors. GPU execution of this expanded live fixture
+remains pending; no new gameplay DLL is installed by this source checkpoint.

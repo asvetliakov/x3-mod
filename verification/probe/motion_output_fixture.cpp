@@ -377,6 +377,8 @@ struct Fixture {
     unsigned (*emission_status)(IDirect3DDevice9*, unsigned) = nullptr;
     void (*emission_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
     HRESULT (*emission_readback)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*) = nullptr;
+    HRESULT (*wrap_snapshot)(IDirect3DDevice9*, x3m::MotionOutputFixtureWrapSnapshot*) = nullptr;
+    bool materialwrap = false, materialwrap_depth = true;
     bool linearmaterials = false; // Focused live combined-route/Reset/refcount script.
     bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
     // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
@@ -515,6 +517,7 @@ struct Fixture {
         config.background_vs[0] = vs_hash; config.background_ps[0] = flat_hash;
         config.emission_scene_owner = emissions;
         config.force_taa_readback = emissions && !emission_bench;
+        config.observe_native_wrap = materialwrap;
         if (object) config.scope = object->scope;
         configure(&config);
     }
@@ -824,10 +827,12 @@ struct Fixture {
         std::vector<float> data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
         api(readback(d.p, data.data(), unsigned(data.size()), &w, &h), "fixture readback");
         require(w == W && h == H, "motion target matches the main dimensions");
-        api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "fixture depth readback");
-        require(w == W && h == H, "depth target matches the main dimensions");
+        if(!materialwrap || materialwrap_depth){
+            api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "fixture depth readback");
+            require(w == W && h == H, "depth target matches the main dimensions");
+        }else require(readback_depth(d.p,depth_data.data(),unsigned(depth_data.size()),&w,&h)==D3DERR_NOTFOUND,"motion-only has no depth target");
         std::printf("MOTION_HASH frame=%llu motion=%016llx depth=%016llx\n", frame,
-                    static_cast<unsigned long long>(fnv(data.data(), data.size() * 4)), static_cast<unsigned long long>(fnv(depth_data.data(), depth_data.size() * 4)));
+                    static_cast<unsigned long long>(fnv(data.data(), data.size() * 4)), static_cast<unsigned long long>(materialwrap&&!materialwrap_depth?0:fnv(depth_data.data(), depth_data.size() * 4)));
         // The route must upload zero prior jitter in c216.zw: history rows are
         // unjittered, so the fragment's UV is already the previous unjittered UV.
         if (records.size() && std::any_of(records.begin(), records.end(), [](const DrawRecord& r) { return r.routed; })) {
@@ -879,6 +884,7 @@ struct Fixture {
             }
             if (!ok) { if (++mismatches <= 8) std::printf("MOTION_DIFF frame=%llu x=%u y=%u actual=%.9g,%.9g,%.9g,%.9g expected=%.9g,%.9g,%.9g,%.9g\n", frame, x, y, actual[0], actual[1], actual[2], actual[3], expected[0], expected[1], expected[2], expected[3]); }
             // RT2: device depth z/w of the front-most routed draw, sentinel elsewhere.
+            if(materialwrap && !materialwrap_depth)continue;
             const float current = depth_data[std::size_t(y) * W + x];
             ++depth_checked;
             bool depth_ok;
@@ -1527,7 +1533,7 @@ struct Fixture {
         };
         require(!material || (GetEnvironmentVariableA("X3M_MATERIAL_EMISSIVE_GAIN",setting,sizeof setting)>0&&std::atof(setting)==4.),"Asteroid witness uses startup material gain four");
         float first[4]{};
-        for(unsigned i=0;i<12;++i) {
+        for(unsigned i=0;i<12&&!materialwrap;++i) {
             frame_begin();linear_material_inputs();write_reserved();
             if(i>=2&&i<=5)api(d->SetSamplerState(i-2,D3DSAMP_SRGBTEXTURE,TRUE),"refuse sampler decode");
             if(i==6||i==7) {
@@ -1582,7 +1588,7 @@ struct Fixture {
             std::memcpy(static_cast<char*>(normal_lock.pBits)+y*normal_lock.Pitch+x*4,&normal_texel,4);
         api(normal->UnlockRect(0),"restore BUMP normal unlock");
         float bump_first[4]{};
-        for(unsigned i=12;i<24;++i){
+        for(unsigned i=12;i<24&&!materialwrap;++i){
             frame_begin();linear_material_inputs();write_reserved();
             const bool negative=i==19, use_bump=i!=17&&i!=23&&!negative;
             const bool eligible=i!=13&&i!=15&&!negative;
@@ -1638,8 +1644,8 @@ struct Fixture {
         }
         // Complete pair publication is qualified in one corpus. Reuse the six
         // already-created covered originals, so each identity owns one variant.
-        const char* corpus_vs[]={"53a0a641107ed76c","719856ce0c213220","badefd5143b3024f","4944d81dfe531b37","19a246a56e9d9700","44c4a41ca92ae2e3","494fe349b8bc12ec","b0602757fce6e870","0c223ad11bce02d5","233d17d26ce0c1fc","167eb2d5629ab9d3","330ceb9dd874ede2","12b8a13f13fe8cfe"};
-        const char* corpus_ps[]={"8759c7838bbc86c2","63f96eba9eea7880","593e5dea9b3457d5","7a0bb00a8070496a","8d5b2ba0fb4d13bf","dab93928f26906f7","3b94320087e81945","e3b7acc16da9932d","7a14d4dcb28f27e5","8ab6188a40ca15ea","8df6143d0e77d92e","e16a9806ee3544c3","ca6bfa4a6cca7e2a","5e0a10fe752b6140","63379470db8d2a86","68915563dd0aac9a","d086fde54698070c","f17fffd88d134b04","462342e3e5781384","827d8d2d617bedce","02606104fa59fb29","1d638938d93421b3","bd4d51c08486c6e0","de2dd381fa64193d","7c83ed50c9894e44","e70adc744a38ca59","db644b73b68c0547","ff32b602a271c327","f6a501717c3e5ca8","55826dc176afe464","0c1f3f0f440e4a0c","64bac8bb307eb896","789449ffd931d23e","4f052209611387f0","abf3c0fad53456d8","cf449bcb069aec4f","99153c144030c396","c1452981fd0bff64","b0f9313b77cc78ee","d514bf852d8a9c58","dff6a3d360603fa2","f1d14a7dbf7c6173","1f26d41bcb7dac1e","bdcdb3ab996ae4e0","78963cdc7c710e04","1ed1bf0fdec00e1a","2b04461d0dae038b","acc83ed2509d84a1","3006f8030a467739","d6e8bdde0e4c515f","e5ea78b8b0b0fe07","f42202faf57a3c89","769c3814fc0efba8","22cc5b05a55ef61e","ef2bf556f207b8bd","91b6c09eb47f8555","cc09f17db377fd9e","3755809bd40afc13","61418505e5d8f998","b5f1d4145171026b","3602b05ce11ca6ff","8e58ac79b59b02b1","042c9ae16f41feff","68f0dd6791fd7d3d","5c823b8507fa1442","a6e1328c0bb3f401","517540ae6d5e5410","7a0c3388065bb08d","d44db87778a43b61","550c2a4d4d3ed70f"};
+        const char* corpus_vs[]={"53a0a641107ed76c","719856ce0c213220","badefd5143b3024f","4944d81dfe531b37","19a246a56e9d9700","44c4a41ca92ae2e3","494fe349b8bc12ec","b0602757fce6e870","0c223ad11bce02d5","233d17d26ce0c1fc","167eb2d5629ab9d3","330ceb9dd874ede2","12b8a13f13fe8cfe","29d7c575396ed280","2a560f246c90fa64","2e0254dd999841c2","33388c8897d428a5","37e6956afd8b8d76","57392213f62fef19","5c17a381b149b3b9","a420a010b0271479","a7cddf2c98d61117","a804f173f693944a","b4059ab6af8fc529","ea3d15b287892410"};
+        const char* corpus_ps[]={"8759c7838bbc86c2","63f96eba9eea7880","593e5dea9b3457d5","7a0bb00a8070496a","8d5b2ba0fb4d13bf","dab93928f26906f7","3b94320087e81945","e3b7acc16da9932d","7a14d4dcb28f27e5","8ab6188a40ca15ea","8df6143d0e77d92e","e16a9806ee3544c3","ca6bfa4a6cca7e2a","5e0a10fe752b6140","63379470db8d2a86","68915563dd0aac9a","d086fde54698070c","f17fffd88d134b04","462342e3e5781384","827d8d2d617bedce","02606104fa59fb29","1d638938d93421b3","bd4d51c08486c6e0","de2dd381fa64193d","7c83ed50c9894e44","e70adc744a38ca59","db644b73b68c0547","ff32b602a271c327","f6a501717c3e5ca8","55826dc176afe464","0c1f3f0f440e4a0c","64bac8bb307eb896","789449ffd931d23e","4f052209611387f0","abf3c0fad53456d8","cf449bcb069aec4f","99153c144030c396","c1452981fd0bff64","b0f9313b77cc78ee","d514bf852d8a9c58","dff6a3d360603fa2","f1d14a7dbf7c6173","1f26d41bcb7dac1e","bdcdb3ab996ae4e0","78963cdc7c710e04","1ed1bf0fdec00e1a","2b04461d0dae038b","acc83ed2509d84a1","3006f8030a467739","d6e8bdde0e4c515f","e5ea78b8b0b0fe07","f42202faf57a3c89","769c3814fc0efba8","22cc5b05a55ef61e","ef2bf556f207b8bd","91b6c09eb47f8555","cc09f17db377fd9e","3755809bd40afc13","61418505e5d8f998","b5f1d4145171026b","3602b05ce11ca6ff","8e58ac79b59b02b1","042c9ae16f41feff","68f0dd6791fd7d3d","5c823b8507fa1442","a6e1328c0bb3f401","517540ae6d5e5410","7a0c3388065bb08d","d44db87778a43b61","550c2a4d4d3ed70f","188c5ab9dbb98393","18d372968af4a480","39eb3c2258a516e1","43c9405568d2226f","57acf59d19c73791","5e056627e9ff3a8d","62c180abe017e239","675f9077d8fd21c4","77a5b2d62fb3be48","7e5e41276b3d7514","9d27e7ba242f3831","a910daef935891ce","c997a37560e266df","e1acf8a03850acaf","ebf41e1ace7af45b","ed44232013f67072","f286856c3f400377","f646f03be5a8708d","f917d48ee826da1f","fce465befff2f623"};
         struct CorpusPair { unsigned vertex,pixel; bool bump,affine,standard,low; };
         const CorpusPair corpus[]={
             {0,0,false,true,false,false},
@@ -1758,10 +1764,42 @@ struct Fixture {
             {10,68,true,false,false,false},
             {11,69,true,false,false,false},
             {12,69,true,false,false,false},
+            {13,72,false,false,false,false},
+            {13,74,false,false,false,false},
+            {14,73,true,true,false,false},
+            {14,75,true,false,false,false},
+            {14,79,true,true,false,false},
+            {14,89,true,false,false,false},
+            {15,77,false,false,false,false},
+            {15,82,false,false,false,false},
+            {15,84,false,true,false,false},
+            {15,87,false,true,false,false},
+            {16,70,true,true,false,false},
+            {16,71,true,true,false,false},
+            {17,80,false,true,false,false},
+            {17,83,false,true,false,false},
+            {18,76,true,false,false,false},
+            {18,81,true,false,false,false},
+            {19,85,true,false,false,false},
+            {19,86,true,false,false,false},
+            {20,78,false,false,false,false},
+            {20,88,false,false,false,false},
+            {21,77,false,false,false,false},
+            {21,82,false,false,false,false},
+            {21,84,false,true,false,false},
+            {21,87,false,true,false,false},
+            {22,85,true,false,false,false},
+            {22,86,true,false,false,false},
+            {23,73,true,true,false,false},
+            {23,75,true,false,false,false},
+            {23,79,true,true,false,false},
+            {23,89,true,false,false,false},
+            {24,78,false,false,false,false},
+            {24,88,false,false,false,false},
         };
-        Com<IDirect3DVertexShader9> vertex_bank[13];
-        Com<IDirect3DPixelShader9> pixel_bank[70];
-        for(unsigned i=0;i<13;++i) {
+        Com<IDirect3DVertexShader9> vertex_bank[25];
+        Com<IDirect3DPixelShader9> pixel_bank[90];
+        for(unsigned i=0;i<25;++i) {
             if(i==0)vertex_bank[i].p=vs.p;
             else if(i==3)vertex_bank[i].p=bump_vs.p;
             if(vertex_bank[i].p)vertex_bank[i]->AddRef();
@@ -1771,7 +1809,7 @@ struct Fixture {
                 api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&vertex_bank[i].p),"create corpus VS");
             }
         }
-        for(unsigned i=0;i<70;++i) {
+        for(unsigned i=0;i<90;++i) {
             const std::string id(corpus_ps[i]);
             if(id=="8759c7838bbc86c2")pixel_bank[i].p=ps.p;
             else if(id=="3b94320087e81945")pixel_bank[i].p=shared.p;
@@ -1783,8 +1821,119 @@ struct Fixture {
                 api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(code.data()),&pixel_bank[i].p),"create corpus PS");
             }
         }
+        if(materialwrap){
+            require(wrap_snapshot&&!taa,"native WRAP short mode requires observer and TAA off");
+            Com<IDirect3DIndexBuffer9> indices;
+            api(d->CreateIndexBuffer(6,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"WRAP indices");
+            void* data=nullptr;api(indices->Lock(0,0,&data,0),"WRAP indices lock");
+            const unsigned short triangle[]={0,1,2};std::memcpy(data,triangle,sizeof triangle);api(indices->Unlock(),"WRAP indices unlock");
+            // Metadata-independent source semantic witnesses read from the
+            // three original VS declarations: Boron TEX6, Paranid TEX7.
+            struct WrapPair { const char *vs,*ps; unsigned source,motion,scalars; };
+            const WrapPair representatives[]={
+                {"57392213f62fef19","a910daef935891ce",6,7,2},
+                {"5c17a381b149b3b9","ed44232013f67072",6,7,1},
+                {"33388c8897d428a5","18d372968af4a480",7,5,1}};
+            std::uint64_t sequence=0;
+            const auto wrap_state=[](unsigned index){return D3DRENDERSTATETYPE(index<8?D3DRS_WRAP0+index:D3DRS_WRAP8+index-8);};
+            for(unsigned representative=0;representative<3;++representative){
+                const auto& contract=representatives[representative];
+                unsigned vi=25,pi=90;
+                for(unsigned i=0;i<25;++i)if(!std::strcmp(corpus_vs[i],contract.vs))vi=i;
+                for(unsigned i=0;i<90;++i)if(!std::strcmp(corpus_ps[i],contract.ps))pi=i;
+                require(vi<25&&pi<90,"WRAP representative original inventory");
+                Object object=bump;object.scope.node_serial=4000+representative;object.recorded=false;
+                for(unsigned step=0;step<6;++step){
+                    frame_begin();linear_material_inputs();write_reserved();
+                    const bool fallback=step==2,combined=material&&!fallback,matched=step!=0&&step!=4;
+                    const float emissive[4]={.2f,.4f,.6f,0};
+                    api(d->SetVertexShaderConstantF(40,emissive,1),"WRAP nonzero palette lighting");
+                    float pixel[8][4]{};
+                    if(representative==2){pixel[0][0]=pixel[1][1]=pixel[2][2]=1;pixel[3][0]=.25f;pixel[4][2]=1;}
+                    else {pixel[0][0]=.25f;pixel[1][2]=pixel[3][2]=1;}
+                    api(d->SetPixelShaderConstantF(0,pixel[0],8),"WRAP native palette constants");
+                    // Nonzero mask exposes the original J reflection term;
+                    // geometric normal+camera give nonzero J and u^11 across
+                    // this finite triangle. Palette DEFs are never overwritten.
+                    D3DLOCKED_RECT mask{};api(textures[1]->LockRect(0,&mask,nullptr,0),"WRAP mask lock");
+                    const DWORD mask_texel=0xff404040u;
+                    for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)std::memcpy(static_cast<char*>(mask.pBits)+y*mask.Pitch+x*4,&mask_texel,4);
+                    api(textures[1]->UnlockRect(0),"WRAP mask unlock");
+                    api(d->SetTexture(1,normal.p),"WRAP normal");api(d->SetTexture(2,textures[1].p),"WRAP nonzero mask");
+                    api(d->SetTexture(3,textures[2].p),"WRAP lightmap");api(d->SetTexture(4,cube.p),"WRAP native reflection");
+                    api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,FALSE),"WRAP s4 linear");
+                    for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(d->SetSamplerState(4,filter,D3DTEXF_POINT),"WRAP cube filter");
+                    api(d->SetSamplerState(4,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"WRAP cube mip");
+                    api(d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,fallback),"WRAP clean material refusal");
+                    DWORD caller[16]{};
+                    if(step!=4){
+                        const bool reverse=step==1||step==3;
+                        caller[1]=reverse?11:5;caller[2]=reverse?6:10;
+                        caller[contract.source]=reverse?2:1;caller[contract.motion]=15;caller[8]=15;
+                        for(unsigned index=0;index<16;++index)api(d->SetRenderState(wrap_state(index),caller[index]),"WRAP caller pattern");
+                    } // First post-Reset draw deliberately omits all WRAP setters.
+                    if(step==3){
+                        api(d->BeginStateBlock(),"WRAP begin recorded state");api(d->SetRenderState(D3DRS_WRAP1,0),"WRAP recorded setter");
+                        Com<IDirect3DStateBlock9> recorded;api(d->EndStateBlock(&recorded.p),"WRAP end recorded state");
+                        DWORD untouched=0;api(d->GetRenderState(D3DRS_WRAP1,&untouched),"WRAP recording did not apply");require(untouched==caller[1],"recorded setter leaves native state");
+                        Com<IDirect3DStateBlock9> block;api(d->CreateStateBlock(D3DSBT_ALL,&block.p),"WRAP stateblock capture");
+                        for(unsigned index=0;index<16;++index)api(d->SetRenderState(wrap_state(index),0),"WRAP before Apply");
+                        api(block->Apply(),"WRAP restore from stateblock");
+                    }
+                    api(d->SetIndices(indices.p),"WRAP native indices");api(d->SetVertexDeclaration(bump_declaration.p),"WRAP basis declaration");
+                    scope(&object);api(d->SetStreamSource(0,object.vb,0,40),"WRAP native stream");
+                    api(d->SetVertexShader(vertex_bank[vi].p),"WRAP original VS");api(d->SetPixelShader(pixel_bank[pi].p),"WRAP original PS");rows(0,0,0);
+                    const Snapshot before=snapshot();
+                    for(unsigned draw_number=0;draw_number<2;++draw_number){
+                        api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,0,1),"WRAP original indexed source");++draw_index;
+                        records.push_back({&object,0,0,0,true,matched,object.rt,object.rp,object.rzo,false,jitter,true});
+                        x3m::MotionOutputFixtureWrapSnapshot observed{};api(wrap_snapshot(d.p,&observed),"WRAP snapshot export");
+                        ++sequence;
+                        DWORD expected[16];std::memcpy(expected,caller,sizeof expected);
+                        expected[contract.motion]=0;if(materialwrap_depth)expected[8]=0;
+                        if(combined){expected[1]=(caller[1]&7)|((caller[contract.source]&1)?8:0);if(contract.scalars==2)expected[2]=(caller[2]&7)|((caller[contract.source]&2)?8:0);}
+                        std::printf("MATERIAL_WRAP frame=%llu representative=%u step=%u draw=%u sequence=%llu valid=%u result=%08lx combined=%u source=%u motion=%u scalars=%u values=",frame,representative,step,draw_number,static_cast<unsigned long long>(observed.sequence),observed.valid,observed.result,combined,contract.source,contract.motion,contract.scalars);
+                        for(unsigned index=0;index<16;++index)std::printf("%s%lu",index?",":"",observed.values[index]);
+                        std::puts("");
+                        require(observed.valid&&observed.result==S_OK&&observed.sequence==sequence,"WRAP native observer success and source-once sequence");
+                        require(!std::memcmp(observed.values,expected,sizeof expected),"actual native WRAP transport and fallback cancellation");
+                    }
+                    compare(before,snapshot(),"WRAP caller state after consecutive draws");
+                    object.recorded=true;object.rt=object.rp=object.rzo=0;
+                    unsigned width=0,height=0;const auto image=hdr_image(&width,&height);
+                    require(width==W&&height==H,"WRAP FP16 image size");
+                    const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
+                    for(float value:std::array<float,4>{center[0],center[1],center[2],center[3]})require(std::isfinite(value),"WRAP finite native palette witness");
+                    std::vector<float> alpha(std::size_t(W)*H);
+                    for(std::size_t pixel=0;pixel<alpha.size();++pixel)alpha[pixel]=image[pixel*4+3];
+                    std::printf("MATERIAL_WRAP_IMAGE frame=%llu rgba=%.9g,%.9g,%.9g,%.9g alpha_hash=%016llx native_hash=%016llx\n",frame,double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(alpha.data(),alpha.size()*sizeof(float))),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
+                    frame_end();
+                    if(step==3){reset();object.recorded=false;}
+                }
+            }
+            return;
+        }
+        auto unknown_controls=[&](){
+            // Valid shader linkage: the synthetic PS consumes the original COLOR0. The
+            // same covered VS cannot make this unknown PS a material/motion pair.
+            const DWORD unknown_program[]={0xffff0300u,0x5000051u,0xa00f0000u,0x3f000000u,0x3e800000u,0x3f400000u,0x3f800000u,0x200001fu,0x8000000au,0x900f0000u,0x2000001u,0x800f0800u,0xa0e40000u,0x3000005u,0x80080800u,0xa0ff0000u,0x90ff0000u,0xffffu};
+            Com<IDirect3DPixelShader9> unknown;
+            api(d->CreatePixelShader(unknown_program,&unknown.p),"create valid unknown PS");
+            for(unsigned repeat=0;repeat<2;++repeat){
+                frame_begin();linear_material_inputs();write_reserved();
+                std::swap(ps.p,unknown.p);
+                draw(a,0,0,0,true,false,false);
+                std::swap(ps.p,unknown.p);
+                unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
+                const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
+                require(center[0]==.5f&&center[1]==.25f&&center[2]==.75f&&center[3]==.625f,"valid unknown PS native output");
+                std::printf("LINEAR_LIVE frame=%llu combined=0 refusal=0 vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,vs_hash,static_cast<unsigned long long>(fnv(unknown_program,sizeof unknown_program)),double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
+                frame_end();
+            }
+        };
         Object corpus_object=a;corpus_object.name="CORPUS";
-        for(unsigned pair=0;pair<116;++pair) {
+        for(unsigned pair=0;pair<148;++pair) {
+            if(pair==116)unknown_controls();
             const auto& contract=corpus[pair];
             corpus_object.vb=contract.bump?bump_vb.p:vb_a.p;
             corpus_object.scope.node_serial=1000+pair;
@@ -1793,8 +1942,8 @@ struct Fixture {
             corpus_object.recorded=false;
             for(unsigned repeat=0;repeat<2;++repeat) {
                 frame_begin();linear_material_inputs();write_reserved();
-                const bool asteroid=pair>=110;
-                const bool fixed=contract.vertex==2||contract.vertex==4||contract.vertex==9||contract.vertex==12;
+                const bool asteroid=pair>=110&&pair<116;
+                const bool fixed=contract.vertex==2||contract.vertex==4||contract.vertex==9||contract.vertex==12||contract.vertex==24||contract.vertex==22||contract.vertex==21||contract.vertex==14;
                 // Fixed-point originals use c0..3 for position and c7..20 for
                 // world/normal/view/UV/alpha. rows() still writes c24 harmlessly.
                 if(fixed) {
@@ -1855,22 +2004,6 @@ struct Fixture {
                 std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=0 vs=%s ps=%s rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,material,corpus_vs[contract.vertex],corpus_ps[contract.pixel],double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
                 frame_end();
             }
-        }
-        // Valid shader linkage: the synthetic PS consumes the original COLOR0. The
-        // same covered VS cannot make this unknown PS a material/motion pair.
-        const DWORD unknown_program[]={0xffff0300u,0x5000051u,0xa00f0000u,0x3f000000u,0x3e800000u,0x3f400000u,0x3f800000u,0x200001fu,0x8000000au,0x900f0000u,0x2000001u,0x800f0800u,0xa0e40000u,0x3000005u,0x80080800u,0xa0ff0000u,0x90ff0000u,0xffffu};
-        Com<IDirect3DPixelShader9> unknown;
-        api(d->CreatePixelShader(unknown_program,&unknown.p),"create valid unknown PS");
-        for(unsigned repeat=0;repeat<2;++repeat){
-            frame_begin();linear_material_inputs();write_reserved();
-            std::swap(ps.p,unknown.p);
-            draw(a,0,0,0,true,false,false);
-            std::swap(ps.p,unknown.p);
-            unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
-            const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
-            require(center[0]==.5f&&center[1]==.25f&&center[2]==.75f&&center[3]==.625f,"valid unknown PS native output");
-            std::printf("LINEAR_LIVE frame=%llu combined=0 refusal=0 vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,vs_hash,static_cast<unsigned long long>(fnv(unknown_program,sizeof unknown_program)),double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
-            frame_end();
         }
         // Extra originals/resources are released before final device Release;
         // their cached variants remain route-owned and must also retire.
@@ -2488,7 +2621,8 @@ int main(int argc, char** argv) {
         f.hdrfault = mode == "hdrfault";
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
         f.msaa = mode == "msaa";
-        f.linearmaterials = mode == "linearmaterials";
+        f.materialwrap = mode == "materialwrap";
+        f.linearmaterials = mode == "linearmaterials" || f.materialwrap;
         f.emission_bench = mode == "emissionsbench";
         f.emissions = mode == "emissions" || f.emission_bench;
         if(f.emission_bench){Fixture::W=1920;Fixture::H=1080;}
@@ -2506,6 +2640,7 @@ int main(int argc, char** argv) {
         f.configure = symbol<void (*)(const x3m::MotionOutputFixtureConfig*)>(runtime, "x3m_motion_output_fixture_configure", false);
         f.readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback", false);
         f.readback_depth = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_motion_output_fixture_readback_depth", false);
+        f.wrap_snapshot = symbol<HRESULT (*)(IDirect3DDevice9*,x3m::MotionOutputFixtureWrapSnapshot*)>(runtime,"x3m_motion_output_fixture_wrap_snapshot",false);
         f.last_pixel_abi = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_motion_output_fixture_last_pixel_abi", false);
         f.camera_install = symbol<void (*)(const float* const*, const float* const*)>(runtime, "x3m_camera_state_fixture_install", false);
         f.hook_install = symbol<int (*)(void*, void*)>(runtime, "x3m_scene_hook_fixture_install", false);
@@ -2521,6 +2656,7 @@ int main(int argc, char** argv) {
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
         require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
+        f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.

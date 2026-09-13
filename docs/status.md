@@ -124,7 +124,8 @@ handoff). The two affected proxy translation units compile for x86/SSE2. The
 148-pair source is not installed; run 7 still uses candidate `75dbbed` and 116 pairs.
 Its reviewed detached fixture now passes 3,549 X3 GPU cases, including eight
 perspective-interpolation checks, with the previous 2,757 cases preserved exactly.
-The expanded live-route fixture is in source review; 148-pair installation remains pending.
+The expanded live-route fixture is reviewed and source-integrated; its GPU run
+and 148-pair installation remain pending.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

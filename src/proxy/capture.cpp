@@ -165,6 +165,8 @@ struct Device : Hooks {
     unsigned emission_draw_depth = 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     unsigned fixture_emission_source_calls = 0;
+    bool fixture_observe_native_wrap = false;
+    MotionOutputFixtureWrapSnapshot fixture_wrap{};
 #endif
     unsigned bloom_busy = 0; // suppress all final-reference inference during injected operations
     bool reset_active = false, bloom_attempted = false;
@@ -1026,6 +1028,23 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
 HRESULT WINAPI reset_ex(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode) {
     return reset_common(d,p,mode,true);
 }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+void fixture_observe_wrap(Device& ctx, IDirect3DDevice9* device) {
+    if (!ctx.fixture_observe_native_wrap) return;
+    auto& result = ctx.fixture_wrap;
+    ++result.sequence; result.valid = 0; result.result = S_OK;
+    using GetState = HRESULT (WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD*);
+    // Slot58 is the saved native GetRenderState entry, not the application
+    // getter hook: observation cannot flush a lazy MRT/WRAP transaction.
+    for (unsigned index = 0; index < 16; ++index) {
+        result.values[index] = 0;
+        const auto state = D3DRENDERSTATETYPE(index < 8 ? D3DRS_WRAP0+index : D3DRS_WRAP8+index-8);
+        const HRESULT hr = ctx.get<GetState>(58)(device,state,&result.values[index]);
+        if (FAILED(hr) && SUCCEEDED(result.result)) result.result = hr;
+    }
+    result.valid = SUCCEEDED(result.result);
+}
+#endif
 HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT c) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
@@ -1069,7 +1088,7 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     } emission_scope(ctx.emission_draw_depth,ctx.motion_output.linear_emissions_requested());
     auto route=ctx.motion_output.before_draw({true,false,t,c,s,b,m,n,emission_permission});
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(route.submit)++ctx.fixture_emission_source_calls;
+    if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}
 #endif
     timer.begin();
     cpu.before_original();
@@ -1998,7 +2017,10 @@ void engine_memory_line(const char* phase,unsigned long long device,unsigned lon
 // from production builds; the seam DLL is linked by build_motion_output.sh.
 namespace { MotionOutputFixtureConfig fixture_config{}; bool fixture_configured=false; unsigned fixture_hdr_fault_kind=0, fixture_hdr_fault_count=0; }
 void fixture_apply(Device& ctx) {
-    if(fixture_configured) ctx.motion_output.fixture_configure(fixture_config);
+    if(fixture_configured) {
+        ctx.motion_output.fixture_configure(fixture_config);
+        ctx.fixture_observe_native_wrap = fixture_config.observe_native_wrap != 0;
+    }
     if(fixture_hdr_fault_count){ctx.motion_output.fixture_hdr_fault(fixture_hdr_fault_kind,fixture_hdr_fault_count);fixture_hdr_fault_count=0;}
 }
 #endif
@@ -2040,6 +2062,13 @@ extern "C" __declspec(dllexport) void x3m_motion_output_fixture_configure(const 
     if(!config||config->size!=sizeof(x3m::MotionOutputFixtureConfig)) return;
     x3m::fixture_config=*config; x3m::fixture_configured=true;
     for(auto& entry:x3m::devices) x3m::fixture_apply(*entry.second);
+}
+extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_wrap_snapshot(IDirect3DDevice9* device,x3m::MotionOutputFixtureWrapSnapshot* out) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end() || !out)return D3DERR_INVALIDCALL;
+    *out=it->second->fixture_wrap;
+    return S_OK;
 }
 extern "C" __declspec(dllexport) void x3m_linear_emission_fixture_fault(IDirect3DDevice9* device,unsigned kind,unsigned count) {
     std::lock_guard<std::recursive_mutex> lock(x3m::mutex);

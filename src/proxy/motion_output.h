@@ -246,6 +246,15 @@ struct MotionOutputFixtureConfig {
     MotionOutputFixtureScope scope{};
     std::uint32_t emission_scene_owner = 0;
     std::uint32_t force_taa_readback = 0; // Successful resolve output only; no per-draw capture.
+    std::uint32_t observe_native_wrap = 0; // Native indexed-draw observation only.
+};
+// Device-owned last native indexed submission. Failure is diagnostic only and
+// never changes source submission, route state, or the caller's WRAP values.
+struct MotionOutputFixtureWrapSnapshot {
+    std::uint64_t sequence = 0;
+    HRESULT result = D3DERR_NOTFOUND;
+    std::uint32_t valid = 0;
+    DWORD values[16]{};
 };
 #endif
 

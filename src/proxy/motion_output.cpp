@@ -1268,6 +1268,14 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         }
         release(factory);
     }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Attach-only capability-subset witness: exercise the existing motion-only
+    // variant/target path without changing the device's advertised caps.
+    { char setting[8]{};
+      if(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0')
+          depth_reason="fixture_motion_only";
+    }
+#endif
     depth_enabled_ = !std::strcmp(reason, "ok") && !std::strcmp(depth_reason, "ok");
     if (!std::strcmp(reason, "ok")) {
         // The quad's vs_3_0 pass-through and declaration (every route quad binds them).

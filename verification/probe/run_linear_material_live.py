@@ -157,11 +157,43 @@ CORPUS_PAIRS = (
     ('167eb2d5629ab9d3', 'd44db87778a43b61', True),
     ('330ceb9dd874ede2', '550c2a4d4d3ed70f', True),
     ('12b8a13f13fe8cfe', '550c2a4d4d3ed70f', True),
+    ('29d7c575396ed280', '39eb3c2258a516e1', False),
+    ('29d7c575396ed280', '57acf59d19c73791', False),
+    ('2a560f246c90fa64', '43c9405568d2226f', True),
+    ('2a560f246c90fa64', '5e056627e9ff3a8d', True),
+    ('2a560f246c90fa64', '7e5e41276b3d7514', True),
+    ('2a560f246c90fa64', 'fce465befff2f623', True),
+    ('2e0254dd999841c2', '675f9077d8fd21c4', False),
+    ('2e0254dd999841c2', 'c997a37560e266df', False),
+    ('2e0254dd999841c2', 'ebf41e1ace7af45b', False),
+    ('2e0254dd999841c2', 'f646f03be5a8708d', False),
+    ('33388c8897d428a5', '188c5ab9dbb98393', True),
+    ('33388c8897d428a5', '18d372968af4a480', True),
+    ('37e6956afd8b8d76', '9d27e7ba242f3831', False),
+    ('37e6956afd8b8d76', 'e1acf8a03850acaf', False),
+    ('57392213f62fef19', '62c180abe017e239', True),
+    ('57392213f62fef19', 'a910daef935891ce', True),
+    ('5c17a381b149b3b9', 'ed44232013f67072', True),
+    ('5c17a381b149b3b9', 'f286856c3f400377', True),
+    ('a420a010b0271479', '77a5b2d62fb3be48', False),
+    ('a420a010b0271479', 'f917d48ee826da1f', False),
+    ('a7cddf2c98d61117', '675f9077d8fd21c4', False),
+    ('a7cddf2c98d61117', 'c997a37560e266df', False),
+    ('a7cddf2c98d61117', 'ebf41e1ace7af45b', False),
+    ('a7cddf2c98d61117', 'f646f03be5a8708d', False),
+    ('a804f173f693944a', 'ed44232013f67072', True),
+    ('a804f173f693944a', 'f286856c3f400377', True),
+    ('b4059ab6af8fc529', '43c9405568d2226f', True),
+    ('b4059ab6af8fc529', '5e056627e9ff3a8d', True),
+    ('b4059ab6af8fc529', '7e5e41276b3d7514', True),
+    ('b4059ab6af8fc529', 'fce465befff2f623', True),
+    ('ea3d15b287892410', '77a5b2d62fb3be48', False),
+    ('ea3d15b287892410', 'f917d48ee826da1f', False),
 )
 IMPLEMENTED_PROGRAMS = {('vs', v) for v, _, _ in CORPUS_PAIRS} | {('ps', p) for _, p, _ in CORPUS_PAIRS}
 PROGRAM_NAMES += tuple(sorted(f'{stage}_{identifier}.bin' for stage, identifier in IMPLEMENTED_PROGRAMS
                               if f'{stage}_{identifier}.bin' not in PROGRAM_NAMES))
-for pair, (vertex, pixel, bump) in enumerate(CORPUS_PAIRS):
+for pair, (vertex, pixel, bump) in enumerate(CORPUS_PAIRS[:116]):
     for repeat in range(2):
         frame = 24 + pair * 2 + repeat
         ELIGIBLE.add(frame)
@@ -176,6 +208,15 @@ UNKNOWN_PIXEL = 'fed278e46915d6da'
 # are last, so no later corpus correspondence depends on their missing history.
 PIXEL_PROGRAMS.extend([UNKNOWN_PIXEL] * 2)
 VERTEX_PROGRAMS.extend(['53a0a641107ed76c'] * 2)
+# Append the new corpus after both prior unknown controls: old frame IDs stay stable.
+for pair, (vertex, pixel, bump) in enumerate(CORPUS_PAIRS[116:]):
+    for repeat in range(2):
+        frame = 258 + pair * 2 + repeat
+        ELIGIBLE.add(frame)
+        if bump: BUMP_FRAMES.add(frame)
+        if repeat: MATCHED.add(frame)
+        PIXEL_PROGRAMS.append(pixel)
+        VERTEX_PROGRAMS.append(vertex)
 FRAME_COUNT = len(PIXEL_PROGRAMS)
 MOTION_FRAMES = set(range(FRAME_COUNT)) - UNKNOWN_FRAMES
 
@@ -225,7 +266,7 @@ def validate_case(output, trace_lines, material, taa):
         assert live[frame]['ps'] == PIXEL_PROGRAMS[frame] and live[frame]['vs'] == VERTEX_PROGRAMS[frame], (frame, 'wrong material program pair')
     if material:
         assert set(material_frames) == set(range(FRAME_COUNT))
-        assert len(variants) == 83 and {(row['kind'], row['original']) for row in variants} == IMPLEMENTED_PROGRAMS, 'combined program inventory differs'
+        assert len(variants) == 115 and {(row['kind'], row['original']) for row in variants} == IMPLEMENTED_PROGRAMS, 'combined program inventory differs'
         assert all(int(row['transform']) == 0 and int(row['create'], 16) == 0 for row in variants)
         for frame, row in material_frames.items():
             assert int(row['routed']) == int(frame in ELIGIBLE), (frame, 'combined selection')
@@ -253,7 +294,7 @@ def compare_cases(cases):
             assert on['temporal_hashes'] == off['temporal_hashes'], 'material route changed RT1/RT2'
             assert on['pixel_programs'] == off['pixel_programs'] == PIXEL_PROGRAMS, 'material positive/negative schedule changed'
             assert on['vertex_programs'] == off['vertex_programs'] == VERTEX_PROGRAMS, 'material vertex schedule changed'
-            assert on['held_references'] == off['held_references'] + 83, 'eighty-three additional shader objects not reflected in actual device retirement'
+            assert on['held_references'] == off['held_references'] + 115, '115 additional shader objects not reflected in actual device retirement'
             for frame in range(FRAME_COUNT):
                 assert on['rgba'][frame][3] == off['rgba'][frame][3], 'alpha changed'
                 if frame not in ELIGIBLE:
@@ -269,57 +310,149 @@ def compare_cases(cases):
             assert a['native_hashes'] == b['native_hashes'] and a['temporal_hashes'] == b['temporal_hashes'], 'ownership model changed outputs'
 
 
+WRAP_REPRESENTATIVES = (
+    ('57392213f62fef19', 'a910daef935891ce', 6, 7, 2),
+    ('5c17a381b149b3b9', 'ed44232013f67072', 6, 7, 1),
+    ('33388c8897d428a5', '18d372968af4a480', 7, 5, 1),
+)
+
+
+def validate_wrap_case(output, trace_lines, material, depth, rt_mode):
+    lines=output.splitlines()
+    summary=next((fields(line) for line in lines if line.startswith('RESULT PASS ')),None)
+    assert summary and int(summary['frames'])==18 and int(summary['taa_reference_frames'])==0
+    # Each frame has the existing sentinel-fill comparison and the added
+    # post-DIP caller-state comparison: neither may disappear unnoticed.
+    assert int(summary['restorations'])==36
+    assert rt_mode in ('perdraw','lazy')
+    assert not any(line.startswith('RESULT FAIL') for line in lines)
+    assert (int(summary['depth_written'])>0)==depth
+    observations=[fields(line) for line in lines if line.startswith('MATERIAL_WRAP ')]
+    images={int(fields(line)['frame']):fields(line) for line in lines if line.startswith('MATERIAL_WRAP_IMAGE ')}
+    motion={int(fields(line)['frame']):fields(line) for line in lines if line.startswith('MOTION_HASH ')}
+    assert len(observations)==36 and set(images)==set(motion)==set(range(18))
+    for index,row in enumerate(observations):
+        frame,draw=divmod(index,2);representative,step=divmod(frame,6)
+        _,_,source,temporal,scalars=WRAP_REPRESENTATIVES[representative]
+        combined=material and step!=2
+        assert int(row['valid'])==1 and int(row['result'],16)==0,'native observation failed'
+        assert [int(row[key]) for key in ('frame','draw','sequence','representative','step','source','motion','scalars','combined')]==[frame,draw,index+1,representative,step,source,temporal,scalars,int(combined)]
+        caller=[0]*16
+        if step!=4:
+            reverse=step in (1,3)
+            caller[1],caller[2]=((11,6) if reverse else (5,10))
+            caller[source]=2 if reverse else 1
+            caller[temporal]=caller[8]=15
+        expected=list(caller);expected[temporal]=0
+        if depth:expected[8]=0
+        if combined:
+            expected[1]=(caller[1]&7)|(8 if caller[source]&1 else 0)
+            if scalars==2:expected[2]=(caller[2]&7)|(8 if caller[source]&2 else 0)
+        assert list(map(int,row['values'].split(',')))==expected,(frame,draw,'physical native WRAP')
+    rows=[(line,fields(line)) for line in trace_lines]
+    frames={int(row['frame']):row for line,row in rows if line.startswith('motion_output_frame ')}
+    materials={int(row['frame']):row for line,row in rows if line.startswith('linear_material_frame ')}
+    devices=[row for line,row in rows if line.startswith('motion_output_device ')]
+    assert devices and all(int(row['depth'])==depth and row['rt_mode']==rt_mode for row in devices)
+    if not depth:assert all(row['depth_reason']=='fixture_motion_only' for row in devices)
+    assert set(frames)==set(range(18))
+    for frame,row in frames.items():
+        step=frame%6
+        assert int(row['routed'])==2 and int(row['depth_routed'])==2*depth
+        assert int(row['matched'])==(0 if step in (0,4) else 2)
+        assert all(int(row[key])==0 for key in ('gate3','apply_failures','restore_failures','taa_resolved'))
+        assert row['rt_mode']==rt_mode
+    variants=[row for line,row in rows if line.startswith('linear_material_variant ')]
+    if material:
+        assert set(materials)==set(range(18))
+        assert len(variants)==115 and {(row['kind'],row['original']) for row in variants}==IMPLEMENTED_PROGRAMS
+        assert all(int(row['transform'])==0 and int(row['create'],16)==0 for row in variants)
+        for frame,row in materials.items():
+            assert int(row['routed'])==int(row['bump_routed'])==(0 if frame%6==2 else 2)
+            assert int(row['refused'])==(2 if frame%6==2 else 0) and int(row['bind_failures'])==0
+    else:assert not variants and not materials
+    release=[row for line,row in rows if line.startswith('motion_output_release ')]
+    assert len(release)==1 and int(release[0]['released'])==1
+    assert all(all(math.isfinite(float(value)) for value in row['rgba'].split(',')) for row in images.values())
+    if not depth:assert all(int(row['depth'],16)==0 for row in motion.values())
+    return dict(checks=int(summary['checks']),restorations=int(summary['restorations']),frames=18,native_draw_observations=36,
+                held_references=int(release[0]['held']),depth_enabled=bool(depth),fixture_motion_only_override=not depth,rt_mode=rt_mode,
+                native_hashes=[images[i]['native_hash'] for i in range(18)],alpha_hashes=[images[i]['alpha_hash'] for i in range(18)],
+                temporal_hashes=[[motion[i]['motion'],motion[i]['depth']] for i in range(18)])
+
+
+def compare_wrap_cases(cases):
+    for depth in (0,1):
+        for mode in ('perdraw','lazy'):
+            off,on=(cases[f'depth{depth}-{mode}-material{material}'] for material in (0,1))
+            assert on['held_references']==off['held_references']+115
+            assert on['alpha_hashes']==off['alpha_hashes'] and on['temporal_hashes']==off['temporal_hashes'],'WRAP changed native alpha/motion/depth'
+            for frame in (2,8,14):assert on['native_hashes'][frame]==off['native_hashes'][frame],'refusal changed native palette output'
+        for material in (0,1):
+            a,b=(cases[f'depth{depth}-{mode}-material{material}'] for mode in ('perdraw','lazy'))
+            assert all(a[key]==b[key] for key in ('native_hashes','alpha_hashes','temporal_hashes')),'lazy WRAP changed output'
+    for mode in ('perdraw','lazy'):
+        for material in (0,1):
+            a,b=(cases[f'depth{depth}-{mode}-material{material}'] for depth in (0,1))
+            assert a['alpha_hashes']==b['alpha_hashes'] and [v[0] for v in a['temporal_hashes']]==[v[0] for v in b['temporal_hashes']],'depth mode changed alpha/motion'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--mode',choices=('corpus','wrap'),default='corpus')
     parser.add_argument('--fixture', type=Path, required=True)
     parser.add_argument('--dll', type=Path, required=True)
     parser.add_argument('--programs', type=Path, default=PROGRAMS)
-    parser.add_argument('--result', type=Path, default=bottle.results_dir(ROOT, create=False) / 'linear-material-live.json')
+    parser.add_argument('--result', type=Path)
     args = parser.parse_args()
+    if args.result is None: args.result=bottle.results_dir(ROOT,create=False)/('linear-material-live-wrap.json' if args.mode=='wrap' else 'linear-material-live.json')
     fixture, dll = args.fixture.resolve(), args.dll.resolve()
     programs = [args.programs.resolve() / name for name in PROGRAM_NAMES]
     assert bottle.BOTTLE == 'X3', 'new verification requires X3 bottle'
     assert all(path.is_file() for path in [fixture, dll, *programs]), 'prebuilt inputs or local programs missing'
     raw = Path(tempfile.mkdtemp(prefix='x3-linear-material-live-'))
     report = dict(passed=False, game_launched=False, bottle=bottle.describe(), raw=str(raw),
-                  scope='Actual live evaluate_draw across all 116 exact pairs / 83 originals, DEFAULT/BUMPMAP/LOW/Asteroid alternation, valid native XT BUMP ordinary-motion fallback and valid covered-VS unknown-PS refusal, exact family sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
+                  scope='Actual live evaluate_draw across all 148 exact pairs / 115 originals, DEFAULT/BUMPMAP/LOW/Asteroid alternation, valid native XT BUMP ordinary-motion fallback and valid covered-VS unknown-PS refusal, exact family sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
+                  mode=args.mode,
                   binaries={str(path): sha(path) for path in (fixture, dll)}, local_programs={path.name: sha(path) for path in programs}, cases={})
+    if args.mode=='wrap': report['scope']='Three actual native scalar WRAP carriers, two consecutive indexed submissions, native GetRenderState observation, full caller-state restoration, sampler refusal, StateBlock/Reset, depth on/motion-only fixture override, perdraw/lazy and material off/on; native alpha and RT1/RT2 twins. Detached qualification owns palette color math; no gameplay or native-Windows claim.'
     args.result.parent.mkdir(parents=True, exist_ok=True)
     try:
-        for ownership in (0, 1):
-            for taa in (0, 1):
-                for material in (0, 1):
-                    assert not game_running(), 'game is running'
-                    name = f'ownership{ownership}-taa{taa}-material{material}'
-                    work = raw / name; work.mkdir()
-                    shutil.copy2(fixture, work / 'fixture.exe'); shutil.copy2(dll, work / 'd3d9.dll')
-                    env = {key: value for key, value in os.environ.items() if not key.startswith('X3M_')}
-                    env.update(X3M_MOTION_OUTPUT='1', X3M_HDR='1', X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2',
-                               X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
-                               X3M_LINEAR_MATERIALS=str(material), X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='4',
-                               X3M_LIGHTMAP_EMISSIVE_GAIN='4', X3M_OWNERSHIP=str(ownership), X3M_TAA=str(taa),
-                               X3M_TAA_SENTINEL='1', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0', X3M_SCENE_HOOK='0',
-                               X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0',
-                               X3M_MOTION_RT_MODE='perdraw', X3M_STATE_SHADOW='1', WINEDLLOVERRIDES='d3d9=n,b')
-                    command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work / 'fixture.exe'),
-                               'Z:' + str(programs[0]), 'Z:' + str(programs[1]), 'linearmaterials', *['Z:' + str(path) for path in programs[2:7]]]
-                    start = time.monotonic()
-                    with (work / 'stdout.txt').open('w') as out, (work / 'wine.log').open('w') as error:
-                        completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
-                    assert completed.returncode == 0, f'{name}: exit {completed.returncode}; see {work}'
-                    logs = list((work / 'x3-modern-captures').glob('session-*.log'))
-                    assert len(logs) == 1, f'{name}: missing session log'
-                    with logs[0].open() as trace:
-                        result = validate_case((work / 'stdout.txt').read_text(), trace, bool(material), bool(taa))
-                    result['seconds'] = round(time.monotonic() - start, 3)
-                    report['cases'][name] = result
-                    print(f'{name}: {result["checks"]} checks, {result["frames"]} frames, held={result["held_references"]}', flush=True)
-        compare_cases(report['cases'])
+        specifications=([(owner,taa,material,1,'perdraw') for owner in (0,1) for taa in (0,1) for material in (0,1)] if args.mode=='corpus' else [(1,0,material,depth,mode) for depth in (0,1) for mode in ('perdraw','lazy') for material in (0,1)])
+        for ownership,taa,material,depth,rt_mode in specifications:
+            assert not game_running(), 'game is running'
+            name = f'ownership{ownership}-taa{taa}-material{material}' if args.mode=='corpus' else f'depth{depth}-{rt_mode}-material{material}'
+            work = raw / name; work.mkdir()
+            shutil.copy2(fixture, work / 'fixture.exe'); shutil.copy2(dll, work / 'd3d9.dll')
+            env = {key: value for key, value in os.environ.items() if not key.startswith('X3M_')}
+            env.update(X3M_MOTION_OUTPUT='1', X3M_HDR='1', X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2',
+                       X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
+                       X3M_LINEAR_MATERIALS=str(material), X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='4',
+                       X3M_LIGHTMAP_EMISSIVE_GAIN='4', X3M_OWNERSHIP=str(ownership), X3M_TAA=str(taa),
+                       X3M_TAA_SENTINEL='1', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0', X3M_SCENE_HOOK='0',
+                       X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0',
+                       X3M_MOTION_RT_MODE=rt_mode, X3M_STATE_SHADOW='1', WINEDLLOVERRIDES='d3d9=n,b')
+            if args.mode=='wrap': env['X3M_FIXTURE_MOTION_DEPTH']=str(depth)
+            command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work / 'fixture.exe'),
+                       'Z:' + str(programs[0]), 'Z:' + str(programs[1]), ('materialwrap' if args.mode=='wrap' else 'linearmaterials'), *['Z:' + str(path) for path in programs[2:7]]]
+            start = time.monotonic()
+            with (work / 'stdout.txt').open('w') as out, (work / 'wine.log').open('w') as error:
+                completed = subprocess.run(command, env=env, stdout=out, stderr=error, timeout=180)
+            assert completed.returncode == 0, f'{name}: exit {completed.returncode}; see {work}'
+            logs = list((work / 'x3-modern-captures').glob('session-*.log'))
+            assert len(logs) == 1, f'{name}: missing session log'
+            with logs[0].open() as trace:
+                result = (validate_wrap_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(depth),rt_mode) if args.mode=='wrap' else validate_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(taa)))
+            result['seconds'] = round(time.monotonic() - start, 3)
+            report['cases'][name] = result
+            print(f'{name}: {result["checks"]} checks, {result["frames"]} frames, held={result["held_references"]}', flush=True)
+        (compare_wrap_cases if args.mode=='wrap' else compare_cases)(report['cases'])
         assert report['binaries'] == {str(path): sha(path) for path in (fixture, dll)}, 'prebuilt inputs changed during qualification'
         assert report['local_programs'] == {path.name: sha(path) for path in programs}, 'local programs changed during qualification'
         report['passed'] = True
         report['checks'] = sum(case['checks'] for case in report['cases'].values())
         report['limitations'] = ['Unknown sampler getter failure and combined creation/bind/restore failures are covered by scripted host control-flow checks, not injected into this GPU script.', 'XT BUMP fallback uses its own valid linkage, constants, false native booleans and seven samplers; unknown-PS control has valid COLOR0 linkage and expects no motion route. Both preserve finite native output and exact FP16 twins.', 'Native Windows and gameplay appearance/performance remain unverified.']
+        if args.mode=='wrap': report['limitations']=['Fixture-only attach override selects motion-only variants; device caps are unchanged.', 'Native WRAP states, alpha and temporal outputs are exact witnesses; independent detached qualification owns palette RGB mathematics.', 'Native Windows and gameplay appearance/performance remain unverified.']
     finally:
         destination = args.result if report['passed'] else raw / 'failed-result.json'
         destination.write_text(json.dumps(report, indent=2) + '\n')
