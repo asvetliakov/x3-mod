@@ -7,7 +7,7 @@ add_library(d3d9 SHARED
   src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
-  src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/chase_camera.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp
+  src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp
   src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/proxy/engine_patch.cpp src/proxy/loading_probes.cpp src/proxy/resource_reader.cpp src/proxy/resource_reader_core.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
@@ -17,9 +17,11 @@ add_library(d3d9 SHARED
   src/renderer/material_motion.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
-# Keep compiler EH bookends out of the admission adapter's CPU-state boundary.
-# The core and every other source retain their normal exception policy.
+# Keep compiler EH bookends out of injected CPU-state boundaries: MinGW SJLJ
+# registration otherwise runs before capture and unregistration after restore.
+# These adapters do not throw; the remaining sources retain their EH policy.
 set_source_files_properties(src/ownership/application_admission_abi.cpp
+  src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The engine-memory reader runs inside the lifetime observer's mutation scopes
 # and the light hooks, which do not preserve XMM state: build it without SSE/MMX

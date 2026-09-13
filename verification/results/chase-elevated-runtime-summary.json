@@ -1,0 +1,226 @@
+{
+  "aim_trace": {
+    "callback_object_audit": {
+      "boundary_instruction_inventory": {
+        "fninit": 1,
+        "fnsave": 1,
+        "frstor": 2,
+        "ldmxcsr": 2,
+        "ret": 1,
+        "stmxcsr": 1
+      },
+      "callback": "x3m_chase_aim_enter",
+      "first_call": "GetLastError",
+      "last_epilogue_call": "SetLastError",
+      "no_exception_runtime_symbols": true,
+      "sha256": "74ca93b425acb25204d79a32e9f44c2b59cfda25a46f4877d79a660ffc63a210"
+    },
+    "checks": 124,
+    "execution": "completed by collaborating aim author before this Wine lease",
+    "failures": 0,
+    "fixture_binary_sha256": "84d2dfbb8fac825206f3d581c0034b02b6bdb774d682bbaacd777b68265d78e9",
+    "mode_results": [
+      {
+        "checks": 68,
+        "failures": 0,
+        "mode": "complete"
+      },
+      {
+        "checks": 10,
+        "failures": 0,
+        "mode": "bad0"
+      },
+      {
+        "checks": 11,
+        "failures": 0,
+        "mode": "bad1"
+      },
+      {
+        "checks": 12,
+        "failures": 0,
+        "mode": "bad2"
+      },
+      {
+        "checks": 13,
+        "failures": 0,
+        "mode": "bad3"
+      },
+      {
+        "checks": 10,
+        "failures": 0,
+        "mode": "late"
+      }
+    ],
+    "modes": 6,
+    "preserved_directory": "/tmp/x3-chase-elevated-qualification-UwDzq7/final-aim",
+    "status": "PASS",
+    "summary": {
+      "bytes": 9597,
+      "path": "/Users/asvetl/x3-mod/verification/results/bottle-X3/chase-aim-trace-summary.json",
+      "sha256": "a8ca59a5020ef29abda3bafa6f86ed99864e1ff9c8ffef9a75aafaf9fd7a82e8"
+    }
+  },
+  "base_head": "d4c69a5486d39809a50612b2b4397be90404f8b2",
+  "bottle": {
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "name": "X3",
+    "wine_arch": "arm64"
+  },
+  "camera_host": {
+    "binary": {
+      "bytes": 12307324,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/camera-host/chase_camera_host.exe",
+      "sha256": "b222f7d4d16540b258d301a852d379242eda46171f8b74a9273c78af7ee4ac6c"
+    },
+    "checks": {
+      "correction": {
+        "error": 1.6653345369377348e-16,
+        "stale_previous_error": 0.2942332124660243
+      },
+      "defaults": {
+        "combat_tightness": 0.0,
+        "distance_scale": 0.6,
+        "lag_clamp_deg": 8.0,
+        "max_dt": 0.1,
+        "offset_y": 0.45,
+        "pitch_down_deg": 20.0,
+        "pos_lag_clamp": 0.1,
+        "pos_tau": 0.3,
+        "rot_tau": 0.22,
+        "snap_coalesce_frames": 3.0,
+        "snap_ratio": 20.0
+      },
+      "native": {
+        "fixed_clamps": 0,
+        "fixed_error": 0.0,
+        "old_error": 199.70255454698417,
+        "render_error": 0.0
+      },
+      "positive_pitch_frame": {
+        "basis_forward_y": -0.3420201433256687,
+        "distance": 122.37646832622684,
+        "expected_basis_forward_y": -0.3420201433256687,
+        "expected_distance": 122.37646832622683,
+        "expected_projection_y": 0.725,
+        "ortho_error": 0.0,
+        "position": [
+          0.0,
+          76.4308446302351,
+          -95.57366786468364
+        ],
+        "projection_y": 0.7250000000000001
+      }
+    },
+    "public_ucrt_hypot_exercised": true,
+    "status": "PASS",
+    "stdout": {
+      "bytes": 454,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/camera-host/stdout.txt",
+      "sha256": "b8d52211819c6a534786a63ff8754f3a260992fe415a5872b2b97309d1711426"
+    },
+    "summary": {
+      "bytes": 2692,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/camera-host/summary.json",
+      "sha256": "6d825febdbd5a122502c75326d8e0114c754cfdc2733a698e572aa1c000cd831"
+    },
+    "wine_log": {
+      "bytes": 76,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/camera-host/wine.log",
+      "sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31"
+    }
+  },
+  "candidate": {
+    "bytes": 11709039,
+    "path": "build/d3d9.dll",
+    "sha256_after": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+    "sha256_before": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+    "unchanged": true
+  },
+  "exports": {
+    "candidate_sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+    "cases": {
+      "readonly": {
+        "checks": 8,
+        "dll_sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+        "exit": 0,
+        "exports_resolved": 17,
+        "failures": 0,
+        "on12_forwarded": true,
+        "source": "localappdata",
+        "trace_sha256": "0de08573aaa0c67d3c7bb6f86ffadec3af49ec05fe9663a5f01be4e9ac762e67"
+      },
+      "writable": {
+        "checks": 8,
+        "dll_sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+        "exit": 0,
+        "exports_resolved": 17,
+        "failures": 0,
+        "on12_forwarded": true,
+        "source": "game",
+        "trace_sha256": "03dde8618e316ade40bb6dea9189a894da94d8645557d0d2e2f6c73f617a36d5"
+      }
+    },
+    "export_count": 17,
+    "fixture_binary_sha256": "8aed0e9eea6b2e17d63a3f2a9dd67b6e0e82e60f5ea271ce22d9336eaab5b283",
+    "preserved_directory": "/tmp/x3-chase-elevated-qualification-UwDzq7/final-exports",
+    "report_sha256": "34970b987c9091ff4bacc05637fd5b42b596539dc3ee4339170eebe038a619af",
+    "status": "PASS",
+    "summary": {
+      "bytes": 26581,
+      "path": "/Users/asvetl/x3-mod/verification/results/bottle-X3/d3d9-exports-summary.json",
+      "sha256": "35b16703e626314dad672b0dcec66f812d8defdd9d3a49461edbf80deed155b0"
+    }
+  },
+  "game_launched": false,
+  "host_build_summary": {
+    "bytes": 5943,
+    "path": "/Users/asvetl/x3-mod/verification/results/chase-elevated-host-build-summary.json",
+    "sha256": "e46026ec7c42edac2ae12090e5cc19bddf76385e3a3be8c363dc75c5722d6969"
+  },
+  "installed": false,
+  "limitations": [
+    "CrossOver Preview X3/FEX runtime qualification is not native-Windows runtime verification.",
+    "The production candidate was not installed and the game was not launched.",
+    "Camera-host geometry is synthetic; gameplay framing and mouse-fire behavior still require user acceptance after installation."
+  ],
+  "local_evidence_directory": "/tmp/x3-chase-elevated-qualification-UwDzq7",
+  "phase": "x3_runtime_qualification",
+  "preflights": {
+    "aim": {
+      "competing_processes": [],
+      "game_guard": [],
+      "source": "collaborator-recorded preflight before successful six-mode run",
+      "wine_lock_free": true
+    },
+    "camera_host": {
+      "competing_processes": [],
+      "game_running": [],
+      "wine_lock_free": true
+    },
+    "exports": {
+      "competing_processes": [],
+      "game_running": [],
+      "wine_lock_free": true
+    },
+    "terminal": {
+      "competing_processes": [],
+      "game_running": [],
+      "wine_lock_free": true
+    }
+  },
+  "schema": 1,
+  "serialization": "Each Wine invocation used verification/probe/wine_lock.py with X3M_FIXTURE_BOTTLE=X3; phases did not overlap.",
+  "source_binding": {
+    "all_equal": true,
+    "all_source_manifest_after_sha256": "aaef24912daee3ade6408999d046ab0bbee1085da2fbfe8dca6fa9b8df0e888f",
+    "all_source_manifest_before_sha256": "aaef24912daee3ade6408999d046ab0bbee1085da2fbfe8dca6fa9b8df0e888f",
+    "production_equal": true,
+    "production_manifest_after_sha256": "a1dceddd38389dde3d5ef96f0769751f21af472d048a8353a7a0e3d41e44c225",
+    "production_manifest_before_sha256": "a1dceddd38389dde3d5ef96f0769751f21af472d048a8353a7a0e3d41e44c225"
+  },
+  "status": "PASS"
+}

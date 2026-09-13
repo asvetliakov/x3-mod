@@ -18,10 +18,10 @@
       "checks": 8,
       "failures": 0,
       "readonly": false,
-      "directory": "verification/probe/build/d3d9-exports-writable-20260913-062248-616914",
-      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260913-062248-616914/x3-modern-captures/session-20260913-062250-204.log",
-      "trace_sha256": "21d267ea9b6d126c7312108b7ff2485450d8ba6e3b2d8217ef2c3cc4c908d912",
-      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260913-062248-616914\\x3-modern-captures",
+      "directory": "verification/probe/build/d3d9-exports-writable-20260913-074124-099433",
+      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260913-074124-099433/x3-modern-captures/session-20260913-074125-208.log",
+      "trace_sha256": "03dde8618e316ade40bb6dea9189a894da94d8645557d0d2e2f6c73f617a36d5",
+      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260913-074124-099433\\x3-modern-captures",
       "source": "game",
       "localappdata": "C:\\users\\crossover\\AppData\\Local",
       "userprofile": "C:\\users\\crossover",
@@ -33,7 +33,7 @@
         },
         "Direct3DCreate9On12": {
           "name": "Direct3DCreate9On12",
-          "result": "00c92158"
+          "result": "00299968"
         },
         "Direct3D9EnableMaximizedWindowedModeShim": {
           "name": "Direct3D9EnableMaximizedWindowedModeShim",
@@ -64,8 +64,8 @@
       },
       "on12_forwarded": true,
       "on12ex_forwarded": false,
-      "dll_sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01",
-      "exe_sha256": "d7cbbe4932a4ffd7a952f4e1f9bb96ec98cbb60fa1f336e32568f8b3f5e0e6dd",
+      "dll_sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+      "exe_sha256": "8aed0e9eea6b2e17d63a3f2a9dd67b6e0e82e60f5ea271ce22d9336eaab5b283",
       "env_lines": [
         "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
         "ENV USERPROFILE=C:\\users\\crossover"
@@ -76,8 +76,8 @@
       "checks": 8,
       "failures": 0,
       "readonly": true,
-      "directory": "verification/probe/build/d3d9-exports-readonly-20260913-062257-076186",
-      "trace": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/users/crossover/AppData/Local/x3-modern-renderer/captures/session-20260913-062258-204.log",
+      "directory": "verification/probe/build/d3d9-exports-readonly-20260913-074132-376111",
+      "trace": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/users/crossover/AppData/Local/x3-modern-renderer/captures/session-20260913-074134-208.log",
       "trace_sha256": "0de08573aaa0c67d3c7bb6f86ffadec3af49ec05fe9663a5f01be4e9ac762e67",
       "capture_dir": "C:\\users\\crossover\\AppData\\Local\\x3-modern-renderer\\captures",
       "source": "localappdata",
@@ -91,7 +91,7 @@
         },
         "Direct3DCreate9On12": {
           "name": "Direct3DCreate9On12",
-          "result": "00c92158"
+          "result": "002999c8"
         },
         "Direct3D9EnableMaximizedWindowedModeShim": {
           "name": "Direct3D9EnableMaximizedWindowedModeShim",
@@ -122,8 +122,8 @@
       },
       "on12_forwarded": true,
       "on12ex_forwarded": false,
-      "dll_sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01",
-      "exe_sha256": "d7cbbe4932a4ffd7a952f4e1f9bb96ec98cbb60fa1f336e32568f8b3f5e0e6dd",
+      "dll_sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+      "exe_sha256": "8aed0e9eea6b2e17d63a3f2a9dd67b6e0e82e60f5ea271ce22d9336eaab5b283",
       "env_lines": [
         "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
         "ENV USERPROFILE=C:\\users\\crossover"
@@ -131,7 +131,7 @@
     }
   },
   "sources_before_build": {
-    "CMakeLists.txt": "33ad3c41d01a93d2a448fc5e069eb0cb74309e3f97a68e46296d71bd91fd365f",
+    "CMakeLists.txt": "13b2710340d9ef8f1d57b0e2e2475f878a99ba16f9a3b8f3de4d3ece8371ddbb",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -149,13 +149,15 @@
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
     "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
     "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
-    "src/proxy/capture.cpp": "8037bb10f620782d82eefb36209f628fdaa2eb54feb2a204363306060ff4fe7a",
+    "src/proxy/capture.cpp": "91d4634eed8395b94a019ebfb3b07e21b1757f13861751ce46dd89b8e11a8d51",
     "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
-    "src/proxy/chase_camera.cpp": "029b0236d9482f087f57b1a2772e33c816f7dc9ed2bb5f4191f2b076ebeec763",
-    "src/proxy/chase_camera.h": "4f102784d23b59f1df89dca50c82176849f8a1e9e10231f91378576685a1979e",
-    "src/proxy/chase_camera_math.h": "7e3b10b597174b698d9ffd838e479c8a4979e6f4f114c38f61c5653d036c99ad",
+    "src/proxy/chase_aim_trace.cpp": "9f6e1f7af8802da5d68eebf0bcdc8699de97c79f58f20814fba93be8e3f90c2d",
+    "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
+    "src/proxy/chase_camera.cpp": "05ca2767086ecff5759e580a8dba2b4b4c829cd44c6d87978bc6d20dfc53a1f0",
+    "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
+    "src/proxy/chase_camera_math.h": "e49147dffcebdf763c636587fe6fcec655bbae0bb0db0eedd0c5712f8e1e01f8",
     "src/proxy/chase_camera_native.h": "0f348abc94d1d44a57cf096a3fb095508f18daa86ce30d87f94951ddf3085c3d",
     "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
     "src/proxy/compositor_owner.cpp": "2b3a2e21e513fa1c2fd4310844d0fe2fb539ac90a91140abb9ead79d2731e9ff",
@@ -172,7 +174,7 @@
     "src/proxy/engine_patch.h": "aa010cbe864ddae916e0cf9b840bc0da84c1177c87247fc0dd4100e2d914e707",
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
-    "src/proxy/loader.cpp": "3fd9ffe19aea94dc2451b35ca6f05dece71beb240a965621ee4ccad89370845a",
+    "src/proxy/loader.cpp": "d9ae9cd07dd994b8535af13b76b165b9007a69d3c3041c744bc745e9d2edebe6",
     "src/proxy/loading_probes.cpp": "5ab9a604d03ebb82e80c67a0b98cce55cf6544252b07bf64db806b92a8969b77",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
     "src/proxy/loading_trace.cpp": "8ca495e5b2a7905f085e1276fefc643191ff9b61f6c7efc9e0c4b736b00a928f",
@@ -294,8 +296,8 @@
     "verification/probe/run_d3d9_exports.py": "0e02f046d3cd15eebd1bb78bdb9e68f37442325c17a6193d09c889e48f2c3222"
   },
   "binaries": {
-    "verification/probe/build/d3d9_exports_fixture.exe": "d7cbbe4932a4ffd7a952f4e1f9bb96ec98cbb60fa1f336e32568f8b3f5e0e6dd",
-    "build/d3d9.dll": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01"
+    "verification/probe/build/d3d9_exports_fixture.exe": "8aed0e9eea6b2e17d63a3f2a9dd67b6e0e82e60f5ea271ce22d9336eaab5b283",
+    "build/d3d9.dll": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c"
   },
   "export_directory": {
     "path": "/Users/asvetl/x3-mod/build/d3d9.dll",
@@ -308,49 +310,49 @@
         "name": "D3DPERF_BeginEvent",
         "ordinal": 1,
         "hint": 0,
-        "rva": "0x37d0",
+        "rva": "0x37e0",
         "forwarder": null
       },
       {
         "name": "D3DPERF_EndEvent",
         "ordinal": 2,
         "hint": 1,
-        "rva": "0x3b30",
+        "rva": "0x3b40",
         "forwarder": null
       },
       {
         "name": "D3DPERF_GetStatus",
         "ordinal": 3,
         "hint": 2,
-        "rva": "0x3e60",
+        "rva": "0x3e70",
         "forwarder": null
       },
       {
         "name": "D3DPERF_QueryRepeatFrame",
         "ordinal": 4,
         "hint": 3,
-        "rva": "0x4190",
+        "rva": "0x41a0",
         "forwarder": null
       },
       {
         "name": "D3DPERF_SetMarker",
         "ordinal": 5,
         "hint": 4,
-        "rva": "0x44c0",
+        "rva": "0x44d0",
         "forwarder": null
       },
       {
         "name": "D3DPERF_SetOptions",
         "ordinal": 6,
         "hint": 5,
-        "rva": "0x4b40",
+        "rva": "0x4b50",
         "forwarder": null
       },
       {
         "name": "D3DPERF_SetRegion",
         "ordinal": 7,
         "hint": 6,
-        "rva": "0x4800",
+        "rva": "0x4810",
         "forwarder": null
       },
       {
@@ -364,7 +366,7 @@
         "name": "DebugSetMute",
         "ordinal": 9,
         "hint": 8,
-        "rva": "0x4e70",
+        "rva": "0x4e80",
         "forwarder": null
       },
       {
@@ -378,35 +380,35 @@
         "name": "Direct3DCreate9",
         "ordinal": 11,
         "hint": 10,
-        "rva": "0x2540",
+        "rva": "0x2550",
         "forwarder": null
       },
       {
         "name": "Direct3DCreate9Ex",
         "ordinal": 12,
         "hint": 11,
-        "rva": "0x2ad0",
+        "rva": "0x2ae0",
         "forwarder": null
       },
       {
         "name": "Direct3DCreate9On12",
         "ordinal": 13,
         "hint": 12,
-        "rva": "0x2f40",
+        "rva": "0x2f50",
         "forwarder": null
       },
       {
         "name": "Direct3DCreate9On12Ex",
         "ordinal": 14,
         "hint": 13,
-        "rva": "0x3340",
+        "rva": "0x3350",
         "forwarder": null
       },
       {
         "name": "Direct3DShaderValidatorCreate9",
         "ordinal": 15,
         "hint": 14,
-        "rva": "0x5190",
+        "rva": "0x51a0",
         "forwarder": null
       },
       {
@@ -449,5 +451,5 @@
     "The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.",
     "Windows is cross-compiled, not verified."
   ],
-  "report_sha256": "77b6b98deac89cc8f191030a79c21031a08471ae3b858a9477f5d1ecb2372e5f"
+  "report_sha256": "34970b987c9091ff4bacc05637fd5b42b596539dc3ee4339170eebe038a619af"
 }

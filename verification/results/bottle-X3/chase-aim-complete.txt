@@ -1,0 +1,71 @@
+CHASE AIM MAP module=00400000 stack=0022f110 page=4096 granularity=65536 synthetic=00401000 bytes=2224128 real_code=006304b0
+CHASE AIM MAP strategy=owned_pe_section actual_site_addresses=1 section_begin=0x00401000 section_end=0x00620000
+CHECK synthetic fixed image map PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK complete group or failure refusal PASS
+CHECK injected span preserves LastError PASS
+CHECK real stub preserves native GPR and flags outcome PASS
+CHECK real stub preserves live XMM0-7 PASS
+CHECK real stub preserves live x87 stack control status PASS
+CHECK real stub preserves directed MXCSR PASS
+CHECK injected span preserves LastError PASS
+CHECK real stub preserves native GPR and flags outcome PASS
+CHECK real stub preserves live XMM0-7 PASS
+CHECK real stub preserves live x87 stack control status PASS
+CHECK real stub preserves directed MXCSR PASS
+CHECK injected span preserves LastError PASS
+CHECK real stub preserves native GPR and flags outcome PASS
+CHECK real stub preserves live XMM0-7 PASS
+CHECK real stub preserves live x87 stack control status PASS
+CHECK real stub preserves directed MXCSR PASS
+CHECK injected span preserves LastError PASS
+CHECK real stub preserves native GPR and flags outcome PASS
+CHECK real stub preserves live XMM0-7 PASS
+CHECK real stub preserves live x87 stack control status PASS
+CHECK real stub preserves directed MXCSR PASS
+CHECK phase counts from actual installed stubs PASS
+CHECK entry ray final correlation PASS
+CHECK native admission observation PASS
+CHECK writer register inputs observed PASS
+CHECK injected span preserves LastError PASS
+CHECK multiple barrels retain call correlation PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK cursor flag off has separate event PASS
+CHECK injected span preserves LastError PASS
+CHECK inactive cursor gate captured PASS
+CHECK injected span preserves LastError PASS
+CHECK stale pose age is explicitly unknown diagnostic context PASS
+CHECK injected span preserves LastError PASS
+CHECK resolved camera mismatch cannot claim coherent pose PASS
+CHECK injected span preserves LastError PASS
+CHECK resolved cockpit mismatch cannot claim coherent pose PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK full sample window counts omitted phases PASS
+CHECK unsampled reused frame cannot append to old event PASS
+CHECK unreadable unrelated cockpit leaves active context PASS
+CHECK current unreadable context invalidates filter PASS
+CHECK internal pass through retained for A B PASS
+CHECK report drains bounded samples and counters PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK sampled reused EBP belongs only to new serial PASS
+CHECK injected span preserves LastError PASS
+CHECK out of order frame produces orphan without stale append PASS
+CHECK report reset test starts with valid pending sample PASS
+CHECK injected span preserves LastError PASS
+CHECK report invalidates previously valid pending sample PASS
+CHECK unaligned and wrapping diagnostic reads refused PASS
+CHECK fixture quiescent site restore PASS
+CHECK fixture quiescent site restore PASS
+CHECK fixture quiescent site restore PASS
+CHECK fixture quiescent site restore PASS
+CHASE AIM RESULT mode=complete checks=68 failures=0

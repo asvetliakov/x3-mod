@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "phase": "host_and_clean_candidate",
+  "status": "PASS",
+  "base_head": "d4c69a5486d39809a50612b2b4397be90404f8b2",
+  "committed": false,
+  "game_launched": false,
+  "wine_executed_by_phase": false,
+  "preflight": {
+    "game_guard": [],
+    "competing_wine_fixture_build_processes": [],
+    "process_filter": "ps parent graph excluded the checking process and all ancestors before matching Wine, fixture, run_*.py and build commands"
+  },
+  "installed_baseline": {
+    "dll": {
+      "bytes": 11606225,
+      "sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01"
+    },
+    "manifest": {
+      "bytes": 169,
+      "sha256": "e22d7f9ca94d70dd2e3cf5e7693e02bdd84395f9bdd7aea5cc2cfe890585635f"
+    },
+    "game_exe": {
+      "bytes": 2153984,
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+    },
+    "bottle_config": {
+      "bytes": 14280,
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+      "wine_arch": "arm64",
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      }
+    },
+    "imports": {
+      "dlls": 14,
+      "symbols": 192
+    },
+    "exports": 17
+  },
+  "source_binding": {
+    "scope": "CMakeLists.txt, cmake/, and src/; tracked plus untracked non-ignored files",
+    "files": 164,
+    "before_manifest_sha256": "a1dceddd38389dde3d5ef96f0769751f21af472d048a8353a7a0e3d41e44c225",
+    "after_manifest_sha256": "a1dceddd38389dde3d5ef96f0769751f21af472d048a8353a7a0e3d41e44c225",
+    "equal": true,
+    "pre_freeze_delta": {
+      "files_changed": 1,
+      "path": "src/proxy/chase_aim_trace.cpp",
+      "before_sha256": "4e6e9f7973c55de310621a6f76573c4b3e7b8203dacb853830d4492cedde7355",
+      "after_sha256": "9f6e1f7af8802da5d68eebf0bcdc8699de97c79f58f20814fba93be8e3f90c2",
+      "reason": "reviewed timing-scope log-label correction before final production freeze"
+    }
+  },
+  "toolchain": {
+    "cmake": "4.4.3",
+    "generator": "Unix Makefiles",
+    "build_type": "RelWithDebInfo",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "compiler": "i686-w64-mingw32-g++ 16.2.0",
+    "target": "PE32 Intel 80386 Windows DLL",
+    "common_flags": [
+      "-O2",
+      "-g",
+      "-DNDEBUG",
+      "-msse2",
+      "-mfpmath=sse",
+      "-mstackrealign",
+      "-mincoming-stack-boundary=2"
+    ],
+    "callback_flags": {
+      "src/proxy/chase_camera.cpp": "-fno-exceptions",
+      "src/proxy/chase_aim_trace.cpp": "-fno-exceptions"
+    }
+  },
+  "host_tests": {
+    "discovery": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+      "tests": 994,
+      "seconds": 47.425,
+      "status": "PASS"
+    },
+    "focused_camera_site_aim": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_chase_camera verification.analysis.test_chase_camera_site verification.analysis.test_chase_aim_sites",
+      "tests": 67,
+      "seconds": 3.427,
+      "status": "PASS"
+    },
+    "installed_exe_camera_site": "PASS",
+    "installed_exe_aim_sites": "PASS",
+    "initial_discovery_attempt": {
+      "tests": 985,
+      "errors": 1,
+      "reason": "verification/probe was absent from PYTHONPATH, so a dynamically loaded verifier could not resolve its sibling bottle module",
+      "classification": "invocation environment; corrected discovery passed"
+    }
+  },
+  "build": {
+    "command": "cmake --build build --clean-first -j4",
+    "status": "PASS",
+    "objects": 42,
+    "build_log_sha256": "7b1f96a3722e9cbd02121ea701dd599684071d1d062268d545f0ea0ec8d7f4fd",
+    "candidate": {
+      "bytes": 11709039,
+      "sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c"
+    }
+  },
+  "artifact_audit": {
+    "object_count": 42,
+    "project_dependency_edges": 292,
+    "objects_fresh": true,
+    "objects_newer_than_dll": 0,
+    "archive_member_bytes_equal": true,
+    "objects_archive_sha256": "8c68bd1a60f9a776a9358bc0b5b594aec1f0dc8358e9bd43d3e09859c4168268",
+    "chase_camera_object": {
+      "count": 1,
+      "sha256": "99750242d6f50a48fcdb971eee9cc239a42eb4250085a311007b8e06043aced7"
+    },
+    "chase_aim_object": {
+      "count": 1,
+      "sha256": "bc7a192dd72db7d7961ba0bcfef83f6348c4fba41c810598524b7f3ce9bef1a1"
+    },
+    "callback_audits": {
+      "status": "PASS",
+      "no_exception_runtime_symbols": true,
+      "each_boundary_instructions": {
+        "fnsave": 1,
+        "frstor": 2,
+        "stmxcsr": 1,
+        "fninit": 1,
+        "ldmxcsr": 2,
+        "ret": 1
+      }
+    },
+    "no_x87": {
+      "status": "PASS",
+      "reachable_functions": 211,
+      "violations": 0
+    },
+    "exports": {
+      "count": 17,
+      "matches_installed_names": true
+    },
+    "imports": {
+      "dlls": 14,
+      "symbols": 193,
+      "added": [
+        "api-ms-win-crt-math-l1-1-0.dll!hypot"
+      ],
+      "removed": [],
+      "assessment": "Expected public UCRT import from std::hypot in elevated camera geometry; the UCRT math DLL was already imported. No backend-private dependency was added."
+    }
+  },
+  "local_evidence": {
+    "directory": "/tmp/x3-chase-elevated-qualification-UwDzq7",
+    "clean_candidate": "/tmp/x3-chase-elevated-qualification-UwDzq7/clean-candidate/d3d9.dll",
+    "baseline_files": 16,
+    "rejected_aim_attempt_1": "/tmp/x3-chase-elevated-qualification-UwDzq7/rejected-attempt-1"
+  },
+  "limitations": [
+    "The clean candidate is not installed; the X3 bottle still contains the preceding 16d016d2...de01 DLL.",
+    "This phase contains host checks and cross-compilation only. X3/FEX aim-fixture results are recorded separately after the fixture-only mapping correction.",
+    "No native-Windows runtime was available. Public Windows APIs and UCRT imports in PE32 output establish source/build portability, not native-Windows behavior.",
+    "No gameplay run or visual acceptance was performed."
+  ]
+}

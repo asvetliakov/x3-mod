@@ -11,9 +11,10 @@
 // vanilla pose, the ship node and the view-relative basis (cockpit+0xf0),
 // runs the portable spring pipeline (chase_camera_math.h) with a wall-clock
 // dt (QueryPerformanceCounter) and writes the smoothed pose back into the
-// camera (+0x30 position, +0x40 basis) and cockpit+0xf0, so scene, HUD
-// overlay, mouse-aim ray and the proxy's TAA reprojection all see one camera
-// (docs/architecture/chase-camera.md). Internal, front, side and scripted
+// camera (+0x30 position, +0x40 basis) and cockpit+0xf0. Scene, HUD overlay
+// and TAA use that camera; +0xf0 preserves cursor-ray angular orientation.
+// Cursor-fire admission and finite muzzle convergence are separate contracts
+// (docs/reverse-engineering/chase-mouse-fire.md). Internal, front, side and scripted
 // views pass through untouched: the game's own view keys stay the switch.
 //
 // The cockpit update runs once per registered cockpit per frame (the registry

@@ -1,4 +1,5 @@
 #include "chase_camera.h"
+#include "chase_aim_trace.h"
 #include "chase_camera_math.h"
 #include "chase_camera_native.h"
 #include "engine_patch.h"
@@ -115,6 +116,7 @@ void handle(uint32_t* regs) {
         // takes a gap (the next applied frame snaps) rather than trusting it.
         chase::note_gap(pipeline);
         publish_pose(false);
+        chase_aim_trace::invalidate_camera(cockpit);
         AcquireSRWLockExclusive(&stats_lock);
         ++stats_.frames; ++stats_.refused; stats_.last_verdict = 100; note_cockpit_seen(cockpit);
         ReleaseSRWLockExclusive(&stats_lock);
@@ -156,6 +158,7 @@ void handle(uint32_t* regs) {
         AcquireSRWLockExclusive(&stats_lock);
         ++stats_.frames; ++stats_.refused; stats_.last_verdict = 100; stats_.dt_ms = dt * 1000.0;
         ReleaseSRWLockExclusive(&stats_lock);
+        chase_aim_trace::camera_context(0, 0, 0, 0, false);
         return;
     }
     int32_t fixed[12];
@@ -264,7 +267,9 @@ void handle(uint32_t* regs) {
             f.native_base_domain = anchor.base_domain; f.domain_delta = stats_.domain_delta;
         }
     }
+    const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
+    chase_aim_trace::camera_context(cockpit, ref_object, camera, in.view_mode, written, handler_frame);
 }
 // Unlike telemetry::State, this state is protected by the camera's own lock:
 // the engine update runs outside capture.cpp's mutex. Only aggregate handler

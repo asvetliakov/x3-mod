@@ -1,0 +1,310 @@
+{
+  "binary_sha256": "84d2dfbb8fac825206f3d581c0034b02b6bdb774d682bbaacd777b68265d78e9",
+  "bottle": {
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "name": "X3",
+    "wine_arch": "arm64"
+  },
+  "built": true,
+  "compile_flags": [
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fno-exceptions",
+    "-msse2",
+    "-mfpmath=sse",
+    "-mstackrealign",
+    "-mincoming-stack-boundary=2",
+    "-DWIN32_LEAN_AND_MEAN",
+    "-DNOMINMAX"
+  ],
+  "fixture_image_audit": {
+    "actual_production_addresses": true,
+    "dynamic_base": false,
+    "entry": 6489184,
+    "image_base": 4194304,
+    "real_sections_isolated": true,
+    "required_ranges": [
+      [
+        4479509,
+        6
+      ],
+      [
+        4479856,
+        7
+      ],
+      [
+        4481114,
+        7
+      ],
+      [
+        4224222,
+        7
+      ],
+      [
+        6319928,
+        4
+      ],
+      [
+        6320084,
+        4
+      ],
+      [
+        6325508,
+        4
+      ],
+      [
+        6323432,
+        12
+      ],
+      [
+        5798792,
+        12
+      ]
+    ],
+    "sections": [
+      {
+        "characteristics": 3221225536,
+        "name": ".x3map",
+        "raw": 1536,
+        "raw_size": 2224128,
+        "size": 2224128,
+        "va": 4198400
+      },
+      {
+        "characteristics": 1610612768,
+        "name": ".text",
+        "raw": 2225664,
+        "raw_size": 52224,
+        "size": 51936,
+        "va": 6488064
+      },
+      {
+        "characteristics": 3221225536,
+        "name": ".data",
+        "raw": 2277888,
+        "raw_size": 7168,
+        "size": 6736,
+        "va": 6541312
+      },
+      {
+        "characteristics": 1073741888,
+        "name": ".rdata",
+        "raw": 2285056,
+        "raw_size": 5120,
+        "size": 4900,
+        "va": 6549504
+      },
+      {
+        "characteristics": 3221225600,
+        "name": ".bss",
+        "raw": 0,
+        "raw_size": 0,
+        "size": 4356,
+        "va": 6557696
+      },
+      {
+        "characteristics": 1073741888,
+        "name": ".idata",
+        "raw": 2290176,
+        "raw_size": 3072,
+        "size": 2624,
+        "va": 6565888
+      },
+      {
+        "characteristics": 3221225536,
+        "name": ".tls",
+        "raw": 2293248,
+        "raw_size": 512,
+        "size": 8,
+        "va": 6569984
+      },
+      {
+        "characteristics": 1107296320,
+        "name": ".reloc",
+        "raw": 2293760,
+        "raw_size": 2560,
+        "size": 2288,
+        "va": 6574080
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/4",
+        "raw": 2296320,
+        "raw_size": 1536,
+        "size": 1080,
+        "va": 6578176
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/19",
+        "raw": 2297856,
+        "raw_size": 70656,
+        "size": 70644,
+        "va": 6582272
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/31",
+        "raw": 2368512,
+        "raw_size": 12800,
+        "size": 12296,
+        "va": 6656000
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/45",
+        "raw": 2381312,
+        "raw_size": 31232,
+        "size": 30899,
+        "va": 6672384
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/57",
+        "raw": 2412544,
+        "raw_size": 4096,
+        "size": 3888,
+        "va": 6705152
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/70",
+        "raw": 2416640,
+        "raw_size": 1536,
+        "size": 1047,
+        "va": 6709248
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/81",
+        "raw": 2418176,
+        "raw_size": 11776,
+        "size": 11650,
+        "va": 6713344
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/97",
+        "raw": 2429952,
+        "raw_size": 28160,
+        "size": 28040,
+        "va": 6725632
+      },
+      {
+        "characteristics": 1107296320,
+        "name": "/113",
+        "raw": 2458112,
+        "raw_size": 1536,
+        "size": 1426,
+        "va": 6754304
+      }
+    ],
+    "sections_pairwise_nonoverlapping": true,
+    "size_of_image": 2564096,
+    "synthetic_initialized_bytes_zero": true,
+    "synthetic_initially_nonexecutable": true,
+    "synthetic_size": 2224128,
+    "synthetic_va": 4198400
+  },
+  "game_launched": false,
+  "modes": [
+    {
+      "checks": 68,
+      "failures": 0,
+      "mode": "complete"
+    },
+    {
+      "checks": 10,
+      "failures": 0,
+      "mode": "bad0"
+    },
+    {
+      "checks": 11,
+      "failures": 0,
+      "mode": "bad1"
+    },
+    {
+      "checks": 12,
+      "failures": 0,
+      "mode": "bad2"
+    },
+    {
+      "checks": 13,
+      "failures": 0,
+      "mode": "bad3"
+    },
+    {
+      "checks": 10,
+      "failures": 0,
+      "mode": "late"
+    }
+  ],
+  "object_audit": {
+    "boundary_instruction_inventory": {
+      "fninit": 1,
+      "fnsave": 1,
+      "frstor": 2,
+      "ldmxcsr": 2,
+      "ret": 1,
+      "stmxcsr": 1
+    },
+    "callback": "x3m_chase_aim_enter",
+    "first_call": "GetLastError",
+    "last_epilogue_call": "SetLastError",
+    "no_exception_runtime_symbols": true,
+    "sha256": "74ca93b425acb25204d79a32e9f44c2b59cfda25a46f4877d79a660ffc63a210"
+  },
+  "passed": true,
+  "post_runtime_binary_sha256": "84d2dfbb8fac825206f3d581c0034b02b6bdb774d682bbaacd777b68265d78e9",
+  "post_runtime_sources": {
+    "CMakeLists.txt": "13b2710340d9ef8f1d57b0e2e2475f878a99ba16f9a3b8f3de4d3ece8371ddbb",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
+    "src/proxy/chase_aim_trace.cpp": "9f6e1f7af8802da5d68eebf0bcdc8699de97c79f58f20814fba93be8e3f90c2d",
+    "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
+    "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
+    "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
+    "src/proxy/engine_patch.cpp": "a0d5e26079fbe831059921f92b4cdf8c9ab5c9006403407d257157615b6eefc7",
+    "src/proxy/engine_patch.h": "aa010cbe864ddae916e0cf9b840bc0da84c1177c87247fc0dd4100e2d914e707",
+    "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
+    "src/proxy/telemetry.h": "d21acfa9e5a6faae2bab57a3d49689dad450a8907177de41c8770709c4c04ddc",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/chase_aim_trace_fixture.cpp": "f525a94c54bf3cd1aa10bf23f332ec0da3f78e933a8d23b750fe80457b453078",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/run_chase_aim_trace.py": "220039abf6ec6cff60b6c2ff0ad54f034b6cacd4d585e8a98d2a6d4ee69f086f",
+    "verification/probe/verify_chase_aim_sites.py": "03753f999ec53d8c23c5a109c9e374c234ce8206abd44c6f349efb5ea3e93619",
+    "verification/probe/verify_chase_camera_site.py": "c7cf25e81df82400614cb71201463c63ba2c2376404ea655a7d33a34144eb50b",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "runtime_verified": true,
+  "source_and_binary_stable_during_runtime": true,
+  "sources": {
+    "CMakeLists.txt": "13b2710340d9ef8f1d57b0e2e2475f878a99ba16f9a3b8f3de4d3ece8371ddbb",
+    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
+    "src/proxy/chase_aim_trace.cpp": "9f6e1f7af8802da5d68eebf0bcdc8699de97c79f58f20814fba93be8e3f90c2d",
+    "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
+    "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
+    "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
+    "src/proxy/engine_patch.cpp": "a0d5e26079fbe831059921f92b4cdf8c9ab5c9006403407d257157615b6eefc7",
+    "src/proxy/engine_patch.h": "aa010cbe864ddae916e0cf9b840bc0da84c1177c87247fc0dd4100e2d914e707",
+    "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
+    "src/proxy/telemetry.h": "d21acfa9e5a6faae2bab57a3d49689dad450a8907177de41c8770709c4c04ddc",
+    "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "verification/probe/chase_aim_trace_fixture.cpp": "f525a94c54bf3cd1aa10bf23f332ec0da3f78e933a8d23b750fe80457b453078",
+    "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "verification/probe/run_chase_aim_trace.py": "220039abf6ec6cff60b6c2ff0ad54f034b6cacd4d585e8a98d2a6d4ee69f086f",
+    "verification/probe/verify_chase_aim_sites.py": "03753f999ec53d8c23c5a109c9e374c234ce8206abd44c6f349efb5ea3e93619",
+    "verification/probe/verify_chase_camera_site.py": "c7cf25e81df82400614cb71201463c63ba2c2376404ea655a7d33a34144eb50b",
+    "verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  }
+}

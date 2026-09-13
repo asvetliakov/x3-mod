@@ -9,7 +9,8 @@ solution, frame-rate (SETA) independence, lag clamps, the snap conditions
 (teleport, ship, sector, mode), pass-through verdicts (internal view, views
 that are not behind the ship, scripted connect modes), NaN/non-orthonormal
 input guards, distance scaling, the below-centre pitch, and the
-camera = view_rel * ship identity that keeps the mouse-aim ray consistent.
+camera = view_rel * ship angular identity. These math controls do not establish
+cursor-fire admission or finite camera-to-muzzle convergence in the game.
 Review 31 additions: the verbatim-basis pass-through (connect mode 3,
 +0x1a0 & 4), snap coalescing, back-view hysteresis, the compiled defaults and
 the combat-tightness scaling of the time constants.

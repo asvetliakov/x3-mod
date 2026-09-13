@@ -227,13 +227,14 @@ unset. `snap_coalesce_frames` (3) is compiled in.
   point invalidates that device's history. Without the route the generation is
   simply unobserved. Between transitions the ordinary rotation bound continues
   to operate on the view `camera_state` reads at the per-view Clear.
-- **Mouse aim**: the fire control unprojects the cursor through the sector
-  camera's FOV/viewport and rotates by cockpit `+0xf0`, never by the camera
-  basis; writing `+0xf0 = B_c × B_shipᵀ` beside the basis keeps the engine's
-  identity `B_cam = R_view × B_ship` exact for the smoothed camera, so the aim
-  ray, the overlay projection (`0x0042a2d0` after the site) and the render
-  agree. The fire control runs before the cockpit update in the loop, so it
-  uses the pose of the frame the player saw — as in vanilla.
+- **Mouse aim**: the cursor-fire branch unprojects through the sector camera's
+  FOV/viewport and rotates main-gun input by cockpit `+0xf0`. Updating the
+  camera basis and `+0xf0` together preserves that angular identity. Admission
+  still depends on script-supplied fire/cursor state, the native cone remains,
+  and the finite endpoint originates at the gun group rather than the camera.
+  Fire control is called by the script dispatcher; its exact ordering relative
+  to the displayed camera pose has not been measured. Cursor-fire alignment
+  remains unresolved; see [the targeted study](../reverse-engineering/chase-mouse-fire.md).
 - **HUD**: the target overlay and the galaxy/dust camera copies derive from the
   sector camera after the site. The layer-0 cockpit-scene camera is built
   before the site from the current vanilla `+0xf0`, so its view remains vanilla

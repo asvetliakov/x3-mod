@@ -195,9 +195,10 @@ unprojection: from the camera's `+0x298` FOV (sine/cosine tables at
 screen size `*(short*)(*0x00606f38+4/+6)`, it returns `(x_cam, y_cam, z, 0)`
 at depth `z` (16.16).
 
-The player ship's fire control `0x00445170` (called from the object update
-`0x00416750`, i.e. before the cockpit update of the same loop iteration) has a
-mouse-aim branch gated on `param_4 & 2 && param_4 & 0x20 && *0x00607ce8 != 0`
+The player ship's fire control `0x00445170` is called from four sites in the
+engine script dispatcher `0x00460630`. The earlier attribution to a direct
+`0x00416750` call was incorrect; its exact ordering relative to a displayed
+camera pose requires a runtime event sequence. It has a mouse-aim branch gated on `param_4 & 2 && param_4 & 0x20 && *0x00607ce8 != 0`
 (cursor active) and the cockpit's ref view object being this ship:
 
 ```
@@ -213,20 +214,30 @@ mouse-aim branch gated on `param_4 & 2 && param_4 & 0x20 && *0x00607ce8 != 0`
 00445c72  call 0x0040e720             ; + position
 ```
 
-`*0x00607cec/*0x00607cf0` are the cursor coordinates written by the input
-handler `0x00406de0`. So the aim direction is `unproject(cursor; camera FOV,
+`*0x00607cec/*0x00607cf0` are cursor coordinates supplied by the engine command
+`X2_UpdateCursorSteering` (`0x00406de0`, case `0x1f`), which also writes cursor
+active `*0x00607ce8`. This is script-supplied state, not a direct host mouse
+callback. Provided the cursor branch is admitted, the angular input is `unproject(cursor; camera FOV,
 viewport) × R_view(+0xf0) × … × B_ship`, and **the camera basis itself is not
 read** — `+0xf0` stands in for it through the identity
 `camera.basis = R_view × B_ship` that the cockpit update maintains (§3 step 5).
 Consequence for an in-engine camera change: writing only `camera+0x40` would
-leave the aim ray on the vanilla orientation; writing **both** the camera basis
-and `+0xf0 = B_cam_new × B_shipᵀ` keeps `camera.basis = +0xf0 × B_ship` true and
-the aim ray, the overlay projection and the rendered view identical. The
-`INS_CockpitGetCursorAim` object pick (§4) uses the overlay icons, which are
-projected through the camera after the hook — consistent as well. The mouse
-steering dead zone (`0x0040e8c0`, from `0x0040fec0`) uses only the
-cockpit-scene camera's FOV and the cursor offset from the screen centre; it does
-not depend on the orientation.
+leave the angular input on the vanilla orientation. Writing the camera basis
+and `+0xf0 = B_cam_new × B_shipᵀ` together preserves that angular identity,
+but does **not** establish cursor-fire admission or finite aim convergence.
+The native routine applies a configured cone after this multiply (installed
+`SG_CURSORSTEERING_MAXFIREANGLE = 30` degrees), transforms into world space,
+and adds the gun-group origin, not the sector camera position. The final
+barrel direction converges from its muzzle to that endpoint. Moving the camera
+therefore introduces parallax that `+0xf0` alone cannot correct.
+
+`INS_CockpitGetCursorAim` object picking (§4) uses the overlay icons, projected
+through the sector camera. Object picking and the finite muzzle ray are
+separate operations. The mouse-steering dead zone (`0x0040e8c0`, from
+`0x0040fec0`) uses the cockpit-scene camera's FOV and cursor offset from screen
+centre; it does not depend on orientation. See
+[chase-mouse-fire.md](chase-mouse-fire.md) for the corrected fire call chain,
+range/cone analysis, user evidence and the bounded diagnostic proposal.
 
 ## 6. Clocks
 

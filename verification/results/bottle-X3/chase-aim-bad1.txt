@@ -1,0 +1,14 @@
+CHASE AIM MAP module=00400000 stack=0022f110 page=4096 granularity=65536 synthetic=00401000 bytes=2224128 real_code=006304b0
+CHASE AIM MAP strategy=owned_pe_section actual_site_addresses=1 section_begin=0x00401000 section_end=0x00620000
+CHECK synthetic fixed image map PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK injected span preserves LastError PASS
+CHECK complete group or failure refusal PASS
+CHECK partial group rollback PASS
+CHECK partial group rollback PASS
+CHECK partial group rollback PASS
+CHECK partial group rollback PASS
+CHECK previously patched site bytes restored PASS
+CHASE AIM RESULT mode=bad1 checks=11 failures=0

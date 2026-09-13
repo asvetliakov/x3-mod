@@ -36,16 +36,17 @@ windows (excludes stub/state preservation, not FPS). The user requests an
 above-and-behind viewpoint and softer follow, and reports right-mouse aiming
 works in first person but fires straight in chase view. The next camera source
 uses a 20-degree downward look, distance scale 0.6 (user-requested closer view)
-and slower 0.22/0.30-second response; its
-[reviewed elevated geometry](verification/review-48-elevated-camera.md) passes
-56 focused tests; the earlier geometry revision also passed x86 compilation.
-The updated 0.6 default awaits final candidate compilation and is **not installed
-yet**. Consolidated
-read-only firing diagnostics are being implemented before the next user run;
-no mouse-fire behavior fix is claimed. Review also found compiler SJLJ work
-outside the camera callback's state-preservation boundary. A source-specific
-no-exceptions build correction is under verification; no observed game symptom
-is attributed to it, and native Windows remains untested.
+and slower 0.22/0.30-second response. The consolidated camera/aim candidate is
+now [reviewed and qualified](verification/review-49-chase-aim-trace.md): 994 host
+tests, 67 focused tests, six X3 aim-fixture cases / 124 checks, X3 camera math,
+and two DLL-load cases / 16 checks pass. The clean 42-object DLL is
+`2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c`
+(11,709,039 bytes), **not installed yet**. Both callbacks pass the compiler
+CPU-state boundary audit; the earlier SJLJ gap is corrected with source-specific
+no-exceptions flags. See the [host/build](../verification/results/chase-elevated-host-build-summary.json)
+and [runtime](../verification/results/chase-elevated-runtime-summary.json) records.
+The four read-only cursor/fire observation sites are enabled only with chase
+plus telemetry. No mouse-fire behavior fix or native-Windows execution is claimed.
 
 The camera is vanilla by default; only `--camera chase` enables it. The
 [first user flight](verification/chase-first-run.md) confirms the hook applied
