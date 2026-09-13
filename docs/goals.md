@@ -13,7 +13,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 3 | FP16 lighting and HDR emissive | The [linear material path](architecture/scene-linear-materials.md) has design/disassembly, combined shaders and detached/live D3D9 qualification. The opt-in candidate is reviewed and installed; game acceptance is pending; only covered opaque material evaluation becomes linear, not all scene blending or HDR output. |
 | 4 | HDR bloom | [Live integration](architecture/hdr-bloom-boundary.md) connects the qualified filter/executor and compositor bridge. Combined X3 lifetime checks pass 714/714 across both reference models, including Reset/ResetEx and original exceptions; independently reviewed and installed, with first gameplay acceptance pending. It runs the original compositor once then replaces RGB, preserving original state/resources/alpha. Component image/state/recovery evidence is linked from the design. Initial bloom uses the current decoded gamma-space scene; real radiance still requires materials. Gameplay quality and frame cost remain unverified. |
 | 5 | Automatic exposure | Existing whole-scene log-average meter overexposes black space (about +7 EV). Space-aware tile meter passed independent branch review and both-bottle fixtures; the reviewed build is integrated and installed; game validation remains. |
-| 6 | New material shaders | **Partial coverage, not complete.** Installed: 30 reviewed pairs covering Argon DEFAULT/BUMPMAP and shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT variants, including uncaptured archive variants. Gameplay acceptance remains. Other families (including Split, Boron, Paranid, Terran, standard lighting, asteroids/planets and glass) still need conversion; particles and other blended writers need their own composition/coverage semantics. Existing native shaders remain in use for uncovered materials. The full goal includes those remaining families and whole-scene linear lighting; the current slice does not satisfy it. |
+| 6 | New material shaders | **Partial coverage, not complete.** Installed: 30 reviewed pairs covering Argon DEFAULT/BUMPMAP and shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT variants, including uncaptured archive variants. Gameplay acceptance remains. Other families (including Split, Boron, Paranid, Terran, standard lighting, asteroids/planets and glass) still need conversion; particles and other blended writers need their own composition/coverage semantics. Existing native shaders remain in use for uncovered materials. The [complete coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities, including older profiles, toggles and non-material exclusions. The full goal includes the remaining families and whole-scene linear lighting; the current slice does not satisfy it. |
 | 7 | GTAO/SSAO | Not started. The motion route supplies R32F depth on RT2. |
 | 8 | Better directional/self shadows | Not started. |
 | 9 | Reflections/SSR | Not started. Needs a defined off-screen/environment fallback. |
@@ -43,7 +43,12 @@ they are not a measured final-image baseline.
    commands, prerequisites and acceptance; completed runs are not new requests.
    The agent never launches the game. Copy each session and readbacks to a new
    `/tmp/x3-bottleX3-run<N>/` before bounded analysis.
-2. The [revised emission candidate](architecture/linear-emission-composition.md#detached-mrt-candidate-qualification)
+2. Convert all necessary scene families using the [complete coverage ledger](architecture/material-coverage.md),
+   including uncaptured and older-profile variants. Every pass identity needs a
+   converted role or a justified non-material disposition. The next related
+   opaque group is all 40 Split DEFAULT and standard-lighting DEFAULT/BUMPMAP/LOW
+   pairs, including toggles; this proceeds alongside emission integration.
+3. The [revised emission candidate](architecture/linear-emission-composition.md#detached-mrt-candidate-qualification)
    passes detached X3 qualification for untouched-channel preservation and a
    current native recovery image. A measured branch optimization showed no
    consistent benefit; retain the baseline and qualify actual game shaders,
@@ -52,11 +57,11 @@ they are not a measured final-image baseline.
    classification of unrelated native writers is not this slice's prerequisite;
    their existing limitations remain. Batching/cost are still under investigation.
    No live emission route is selected; opaque coverage alone does not justify changing blends.
-3. Analyse the user's captures and fix observed failures. Reader and adjacency
+4. Analyse the user's captures and fix observed failures. Reader and adjacency
    fast modes require meaningful verification work with zero admitted mismatches;
    an all-fallback session does not qualify them. Keep exposure/bloom and
    fixed-exposure materials comparisons distinct, as the run queue specifies.
-4. Continue material/light reconstruction toward whole-scene linear lighting and
+5. Continue material/light reconstruction toward whole-scene linear lighting and
    HDR emissive composition, then the remaining rendering goals below. Tune the
    custom AgX look from controlled captures as lighting evolves. Native Windows
    runtime acceptance and HDR display output remain separate obligations.

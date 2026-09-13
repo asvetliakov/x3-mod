@@ -76,6 +76,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   All previous DEFAULT variants remain byte-exact; BUMPMAP uses a separate
   varying ABI and cached sampler admission. The feature stays opt-in; gameplay
   acceptance remains run 6 in the brief queue, with no additional run required.
+  The [complete coverage ledger](architecture/material-coverage.md) accounts for
+  all 817 archive pass identities across families, techniques and quality/toggle
+  variants. Forty additional Split/standard-lighting pairs are being implemented
+  in parallel; they are not yet installed or counted as converted.
   [Blended emission work](architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color
   and supplemental coverage, and a temporal consumer. The latest producer run
