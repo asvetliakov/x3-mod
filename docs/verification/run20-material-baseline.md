@@ -150,3 +150,24 @@ selection cluster. Thus the preserved-capture work does not overlap the
 reported selection stutters. A finer cause needs a targeted timer or sampler
 around the native selection/lead/UI path; this log only establishes the frame
 stall and rules out capture work and late transformed-shader creation.
+
+## Bounded asteroid routing check
+
+Visual inspection of the first presented readback in each burst shows a nearby
+asteroid, but does not establish that it is the distant shimmering object the
+user described. The captured SM3 Asteroid BUMPMAP base pair is VS
+`167eb2d5629ab9d3` / PS `d44db87778a43b61`. It has 15 route rows across the
+12 captured frames: all submit motion and depth with jitter; 14 have matched
+history, and one additional draw at frame 3789/index 7 has the ordinary
+first-appearance history miss. All use model `0x4fef`, LOD 0 and 1,712 primitives.
+Thus this captured material is not categorically missing from temporal routing,
+although its linear-lighting replacement is not in the installed 110-pair build.
+
+A 20-by-20 interior sample centred on each visually identified asteroid at
+frame/pixel `3788/(488,544)`, `4818/(600,390)`, and `5042/(514,602)` has valid
+depth and motion alpha 1 in all 400 samples. This is only an interior coverage
+check, not a silhouette, history-acceptance or temporal-stability measurement.
+The views move substantially between bursts; do not compare fixed screen-space
+pixel variance as though this were a stationary sequence. The contact sheet
+is local at `/tmp/run20-capture-contact.png`. The distant-shimmer cause remains
+open for the matched B captures and, if needed, a specifically identified ROI.

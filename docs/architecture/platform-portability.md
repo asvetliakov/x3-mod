@@ -18,6 +18,18 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
+- Generated shader interpolators still inherit application shading/wrap state.
+  The installed material RGB uses TEXCOORD6/7; the isolated Asteroid extension
+  also uses TEXCOORD8. Unlike native COLOR0, these do not retain flat-color
+  interpolation, and their corresponding D3DRS_WRAP states can alter values.
+  Injected motion/depth TEXCOORDs likewise need an explicit zero-wrap contract.
+  These effects follow the documented [SM3 interpolation rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3);
+  current normal-state X3 fixtures do not qualify nondefault states. No observed
+  gameplay defect has been attributed to this gap. The next material install
+  is held for qualification of COLOR1 RGB transport and scoped motion/depth
+  wrap save/restore, including failure, state-block and Reset behavior. The
+  existing gameplay A/B keeps the installed build fixed.
+
 - The 110-pair material live fixture's class-C negative uses an original XT
   pair (`494fe349b8bc12ec` / `fffdabd910793aba`) whose VS does not provide all
   PS-declared semantic components. Microsoft's [SM3 matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)
