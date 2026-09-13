@@ -948,7 +948,8 @@ HdrFrameBegin HdrPass::begin_frame(std::uint64_t now_ticks, std::uint64_t freque
 // restoration or StretchRect ends with an explicit rebind of final_rt0 so the
 // device never keeps the FP16 surface as RT0 past this call.
 HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing,
-                                 IDirect3DTexture9* source) noexcept {
+                                 IDirect3DTexture9* source, HdrDisplaySnapshot* display) noexcept {
+    if (display) *display = {};
     HdrWriteback result{};
     if (!main || !final_rt0) { result.unwind = true; result.unwind_reason = "arguments"; return result; }
     // Fixture seam: one injected failure per write, consumed only when a copy
@@ -980,8 +981,9 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
         // Post-resolve sharpen: only a resolved TAA image is sharpened (the
         // unresolved scene of a failed or absent resolve is written back as
         // it is), with the RCAS variant of the program in use and c23.
+        const float sharpen_strength = config_.sharpen;
         const bool sharpen = source != nullptr && sharpen_active() && (!use_tonemap || tonemap_sharpen_shader_)
-            && x3::temporal::prepare_sharpen(sharpen_, config_.sharpen, width_, height_);
+            && x3::temporal::prepare_sharpen(sharpen_, sharpen_strength, width_, height_);
         if (SUCCEEDED(hr)) {
             Program program;
             if (use_tonemap || sharpen) {
@@ -1020,6 +1022,20 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
             result.source = HdrWritebackSource::Shader;
             // The fallback image is complete and RT0 is final_rt0 already: no rebind.
             if (result.fallback) { result.unwind = true; result.unwind_reason = "tonemap"; }
+            if (display && result.tonemap) {
+                display->agx = agx_;
+                // Derive the specialization from the consumed c9, not config
+                // that might have changed since prepare_constants at the latch.
+                display->decode = agx_.decode[2] == 1.f ? x3::temporal::AgxDecode::none
+                    : agx_.decode[1] == 1.f ? x3::temporal::AgxDecode::srgb : x3::temporal::AgxDecode::gamma22;
+                if (result.sharpened) {
+                    display->sharpen = sharpen_strength;
+                    display->sharpen_constants = sharpen_;
+                }
+                display->resolved = source != nullptr;
+                display->width = width_; display->height = height_;
+                display->valid = true;
+            }
             return result;
         }
         result.unwind = true;

@@ -68,6 +68,33 @@ That cost is deliberate for the first implementation and must be measured.
 Removing obsolete original work is a later optimization, not a correctness
 requirement for the visible bloom replacement.
 
+### Exact display parameters from writeback
+
+`HdrPass::write_back` now accepts an optional `HdrDisplaySnapshot*`, cleared
+on entry. Only a successful AgX draw with successful state/RT restoration
+and any owned EndScene publishes it. It contains the exact c8–c21 block,
+decode selection, effective sharpening strength and c23, dimensions and whether
+the source was the caller's resolved texture. A clean unsharpened retry reports
+zero sharpening. Identity fallback, failed/unwound writes and rebind-only calls
+leave it invalid. Meter failure alone does not invalidate a successful image.
+
+The snapshot neither submits a meter nor computes exposure. The default null
+output skips snapshot copies and validation. It owns no COM references: upcoming
+MotionOutput integration must retain the corresponding pre-original scene
+before `end_redirect` clears its resolved-source/main pointers, then associate
+it with the owner/frame/Reset-qualified invocation. This API alone does not
+enable bloom or authorize a post-compositor write.
+
+The author ran 52 paired host scenarios (104 invocations of the extracted,
+unchanged production `write_back` function), plus 26 AgX/exposure checks and a
+real MinGW x86 translation-unit compile with the project SSE2/stack flags.
+The orchestrator independently reviewed source and fixture with no findings.
+The fixture checks exact uploaded blocks, invalidation, both fallback ladders,
+at-most-once meter requests and equal device-call sequences/results with null
+output. Scripted D3D outcomes qualify this metadata/control flow; existing GPU
+state/image evidence remains separate. No GPU calls, allocations, locks or
+exposure work were added, and no Wine rerun was needed for this change.
+
 ## Ownership, lifetime and return bridge
 
 The current `capture.cpp::scene_end_signal` broadcasts a void notification,

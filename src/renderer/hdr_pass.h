@@ -105,6 +105,22 @@ struct HdrWriteback {
     // and the unsharpened program of the same kind was drawn instead.
     bool sharpened = false, sharpen_fallback = false;
 };
+// Value-only record of a completed AgX write-back. `valid` is published only
+// after the draw, an owned EndScene and state/RT0 restoration all succeed.
+// The copied registers are the actual draw input, not a fresh EV calculation.
+// No device/texture reference is retained: the caller must separately retain
+// the corresponding scene and qualify its frame, owner and Reset lifetime.
+struct HdrDisplaySnapshot {
+    bool valid = false;
+    x3::temporal::AgxConstants agx{};
+    x3::temporal::AgxDecode decode = x3::temporal::AgxDecode::gamma22;
+    // Effective X3M_TAA_SHARPEN strength and exact c23; strength is zero and
+    // c23 is unused/default for an unsharpened draw, including its fallback.
+    float sharpen = 0.f;
+    x3::temporal::SharpenConstants sharpen_constants{};
+    bool resolved = false;              // the caller's non-null `source` was sampled
+    UINT width = 0, height = 0;          // dimensions used for the write-back quad
+};
 // The meter readback and adaptation step taken at a latch (begin_frame).
 struct HdrFrameBegin {
     bool stepped = false;                // a meter of the previous frame was consumed
@@ -192,8 +208,12 @@ public:
     // presented image and the meter see the resolved scene; null samples the
     // target. The emergency StretchRect rung always copies the target (the
     // unresolved scene: an image, never a black frame).
+    // Optional `display` is reset to invalid/defaults on every call. It is
+    // populated only for a clean AgX shader write; identity, rebind-only and
+    // every failed/unwound write leave it invalid. Snapshotting neither meters
+    // nor adapts exposure, and a null output adds no copies or validation.
     HdrWriteback write_back(IDirect3DSurface9* main, IDirect3DSurface9* final_rt0, bool scene_open, bool write, bool timing,
-                            IDirect3DTexture9* source = nullptr) noexcept;
+                            IDirect3DTexture9* source = nullptr, HdrDisplaySnapshot* display = nullptr) noexcept;
     // Device references held (target surface, the shaders, the quad vertex
     // program and declaration, the meter chain's level surfaces, ring targets
     // and readback surfaces).

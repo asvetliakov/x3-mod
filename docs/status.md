@@ -50,8 +50,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   device ownership/lifetime, Reset, state restoration and recovery. The production
   bridge, owner helper, shader bundle and BloomPass evidence are linked from the
   [history](status-history-2026-09-13.md#bloom-preparation-checkpoint-2026-09-13).
-  The first integration prerequisite is an optional snapshot of the exact AgX
-  parameters consumed by ordinary writeback, avoiding a second exposure update.
+  The optional snapshot of exact AgX/writeback parameters is implemented,
+  reviewed and host-tested. Next connect the retained scene and that snapshot
+  to the owner/frame/Reset-qualified compositor invocation.
 - Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
   accepts crypto reuse; reader verification and adjacency gameplay acceptance
   remain. Fast modes require meaningful verification, not merely fixture success.
