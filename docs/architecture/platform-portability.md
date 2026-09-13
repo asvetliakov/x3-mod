@@ -18,6 +18,17 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
+- The 110-pair material live fixture's class-C negative uses an original XT
+  pair (`494fe349b8bc12ec` / `fffdabd910793aba`) whose VS does not provide all
+  PS-declared semantic components. Microsoft's [SM3 matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)
+  classify missing semantics/masks as invalid linkage. Its successful X3 draw
+  and off/on raw-image equality are backend observations, not portable fallback
+  evidence. All 110 converted material pairs retain their separate qualification;
+  this limits the negative control. The next live fixture must add a valid
+  unconverted motion pair and a separately valid same-VS refusal control.
+  Targeted XT research is resolving the actual native binding and intended
+  missing inputs before material conversion; do not invent backend defaults.
+
 - The previously embedded TAA resolve reported 1,179 instruction slots, while the
   X3 fixture device advertises `MaxPixelShader30InstructionSlots=512`; the first
   unrolled supplemental source reported 1,261. Historical X3 execution of those
@@ -42,8 +53,9 @@ Recording runtime hashes in test reports remains useful provenance.
 - The opt-in [chase camera](chase-camera.md) modifies validated game structures
   through an x86 trampoline and uses public Win32 memory, protection and timing
   APIs. No Wine-private interface is required. It cross-compiles with the
-  production SSE2/stack contract; native-Windows behavior and the first
-  CrossOver gameplay acceptance remain unverified during integration.
+  production SSE2/stack contract. Run 18 accepts CrossOver chase aiming and
+  stability; the installed lead-marker revision still needs gameplay alignment.
+  Native-Windows runtime behavior remains unverified.
 
 - The finite-position observer now uses public descriptors, readable managed
   backing and observed wrapper Lock/Unlock transactions. The former exact-Wine

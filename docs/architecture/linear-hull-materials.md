@@ -245,3 +245,14 @@ The clean combined candidate from `10e447b` is installed in bottle X3; the
 binds its DLL, unchanged imports, x87 audit, load check and previous rollback
 copy. EXE and bottle configuration remain unchanged. Run 6 combines material
 A/B acceptance with the camera follow-up; gameplay/native Windows remain unverified.
+
+### Native-linkage limit of the class-C negative
+
+Subsequent exact-token research establishes that the original XT pair used by
+negative frames 9/19 has invalid VS/PS semantic linkage under the documented
+SM3 matching rules. X3 accepted it, and the recorded raw-image parity remains a
+valid observation of that run; it does not prove portable successful fallback
+for a legal original pair. The converted 110-pair corpus and its positive
+qualification are unchanged. The next fixture revision will separate a valid
+ordinary-motion fallback from a valid same-VS material-refusal witness; see the
+[portability gap](platform-portability.md#current-gaps).
