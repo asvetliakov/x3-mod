@@ -153,6 +153,13 @@ scene captures before switching between internal and external back views; then
 record the view cuts and cross a gate if practical. Use the same active-light
 moment on both sides when available.
 
+After the next build is installed, combine the chase follow-up here: check that
+the predictive aiming hint appears on a selected target and follows it while
+turning. Report the new distance/softer follow. If crossing a gate resets the
+view, switch back to chase once; the combined diagnostics will record both
+events. Docking is optional. The installed build does not yet include this
+lead-marker correction.
+
 Report sharpness, halos, shimmer or flicker, ghosting and recovery after view
 transitions. Separately compare hull color and brightness, emissive detail,
 active-light response and any obvious slowdown. Both logs are needed even if

@@ -1,6 +1,7 @@
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
 #include "chase_fire.h"
+#include "chase_lead.h"
 #include "chase_camera_math.h"
 #include "chase_camera_native.h"
 #include "engine_patch.h"
@@ -106,6 +107,7 @@ void publish_pose(bool written, bool snapped = false) {
     if (continuity.update(written, snapped)) snap_epoch.fetch_add(1, std::memory_order_relaxed);
 }
 void handle(uint32_t* regs) {
+    chase_lead::invalidate_pose();
     const uintptr_t cockpit = regs[4]; // EBX after pushad: EDI ESI EBP ESP EBX EDX ECX EAX
     chase::Input in; chase::Pose pose; chase::Step result;
     unsigned char cockpit_bytes[cockpit_block], camera_bytes[camera_block];
@@ -272,6 +274,7 @@ void handle(uint32_t* regs) {
     }
     const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
+    chase_lead::camera_context(cockpit, ref_object, camera, written);
     chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, written, now);
     chase_aim_trace::camera_context(cockpit, ref_object, camera, in.view_mode, written, handler_frame);
 }

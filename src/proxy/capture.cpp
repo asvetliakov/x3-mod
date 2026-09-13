@@ -15,6 +15,8 @@
 #include "../renderer/bloom_programs.h"
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
+#include "chase_transition.h"
+#include "chase_lead.h"
 #include "camera_state.h"
 #include "object_lifetime.h"
 #include "draw_input.h"
@@ -825,6 +827,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         log("frame_end device=%llu frame=%llu draws=%llu capture=%u present=%08lx elapsed_ms=%llu dt_ms=%llu qpc=%llu",ctx.id,ctx.frame,ctx.draws,ctx.capture,hr,elapsed_ms,dt_ms,now);
         chase_camera::report(ctx.frame); // X3M_CAMERA=chase only (no line otherwise)
         chase_aim_trace::report(ctx.frame); // bounded cursor-fire diagnostics with telemetry
+        chase_transition::report(ctx.frame); // bounded native view/lifetime observations
+        chase_lead::report(ctx.frame); // predictive marker results, no per-draw reporting
     }
     if(ctx.capture||ctx.frame%300==0)finite_upload_metrics(d,ctx,"present");
     // With the route requested, log the wrapper's copy-depth epochs per capture

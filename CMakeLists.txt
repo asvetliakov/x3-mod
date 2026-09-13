@@ -48,6 +48,7 @@ add_library(d3d9 SHARED
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp
+  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp
   src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/proxy/engine_patch.cpp src/proxy/loading_probes.cpp src/proxy/resource_reader.cpp src/proxy/resource_reader_core.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
@@ -62,6 +63,7 @@ target_compile_features(d3d9 PRIVATE cxx_std_17)
 # These adapters do not throw; the remaining sources retain their EH policy.
 set_source_files_properties(src/ownership/application_admission_abi.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/scene_hook.cpp
+  src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The engine-memory reader runs inside the lifetime observer's mutation scopes
 # and the light hooks, which do not preserve XMM state: build it without SSE/MMX

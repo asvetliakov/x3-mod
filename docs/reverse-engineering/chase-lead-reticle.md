@@ -233,10 +233,40 @@ its three fixed-point basis rows divided by 65536:
 ```text
 v = (P - C) × transpose(B)
 t = tan(pi * sectorCamera.fov298 / 65536)
-W,H = positive camera plane300,304 / 65536, else the native global fallback
-x_relative_pixels = round((viewport_width  / 2) * v.x / (v.z * t * W))
-y_relative_pixels = round((viewport_height / 2) * -v.y / (v.z * t * H))
+W,H = camera plane300,304 / 65536 when BOTH are positive; otherwise fallback BOTH
+width  = floor((screen_width  * (viewport_x1 - viewport_x0) + 32768) / 65536)
+height = floor((screen_height * (viewport_y1 - viewport_y0) + 32768) / 65536)
+half_width,half_height = floor(width / 2),floor(height / 2)
+x_relative_pixels = trunc(half_width  * v.x / (v.z * t * W))
+y_relative_pixels = trunc(half_height * -v.y / (v.z * t * H))
 ```
+
+Here `trunc` means **toward zero**, including negative pixel coordinates.
+The native viewport extents first round positive fixed-point products to the
+nearest integer with ties upward, then halve using integer division. The
+native pixel helpers use signed `IDIV`: `0x00469a30(a,b,c)` computes
+`trunc(a*b/c)`, and `0x00412450(a,b)` computes `trunc(a*65536/b)`, each returning
+zero for a zero denominator. The actual native pixel path therefore uses
+nested truncation: `trunc(trunc(half_extent*component/scaled_depth)*65536/plane)`.
+Its camera transform and scaled depth have additional native fixed-point
+quantization. The new double-precision camera-space projection above preserves
+integer half-extents and final signed truncation but deliberately avoids those
+intermediate quantization losses; it is not a claim of byte-exact native pixel
+parity. `round`/`std::round` would be the wrong final conversion convention.
+
+The actual `D3DVIEWPORT9` builder `0x004bb3a0` rounds X, Y, width and height
+using the same `+32768` fixed-point rule. However its screen-dimension source
+is the pointer at `R+4`, where `R = *0x00606f38`; the HUD pixel calculations
+use the pointer at `R+0`. Both read signed screen width/height at their selected
+pointer's `+4/+6`. Do not assume those two dimension structures coincide.
+The implementation requires identical sector/HUD normalized viewports,
+matching actual D3D X/Y/width/height, actual width/height equal to the extents
+computed from the HUD dimensions, and an actual rectangle contained within
+those dimensions. If any check fails it refuses the projection. This validates
+the effective rendering rectangles rather than inferring alignment from the
+normalized bounds alone. Local static follow-up is
+`/tmp/chase-lead-viewport2.txt`; the integer-division instructions were checked
+with objdump at the two helper entries.
 
 Use doubles/SSE2 for differences and projection; reject invalid or nonfinite
 camera data, nonpositive depth, invalid projection denominators and integer
@@ -255,7 +285,7 @@ directly**, replaces view with identity, and derives an alternate orthographic
 projection from the HUD viewport. There is no render-ready position or dirty
 transform buffer to update. Its established anchor convention includes
 `x-0.25` and `-y-0.25` before clip conversion; retain this native quarter-pixel
-behavior and ordinary integer pixel rounding rather than treating the glyph
+behavior and the signed final truncation above rather than treating the glyph
 origin as an independently calibrated geometric centre.
 
 If a point admitted by the extension later fails revalidation/projection,

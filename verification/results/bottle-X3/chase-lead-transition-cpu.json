@@ -1,0 +1,69 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "stubs": 12,
+  "checks": 216,
+  "failures": 0,
+  "exit_code": 0,
+  "executable": "/Users/asvetl/x3-mod/build/verification/chase-transition/chase_transition_cpu_fixture.exe",
+  "executable_sha256": "dcfe0117343a265e9c40863f0594f934e17ca745dfc591c463e5bcfc979d442f",
+  "raw": "/tmp/x3-chase-lead-transition-cpu-r1.txt",
+  "source_sha256": {
+    "src/proxy/chase_lead.cpp": "ea95fa6fa7fd81784fb6f2d79017dd794a7f23d722c1c1feea246e3f4d3d4792",
+    "src/proxy/chase_lead_core.h": "4d8f0170b96f7a64fcecd4107e1a7fe11fd6888ad8ec7f33a82ea13bed57ea59",
+    "src/proxy/chase_transition.cpp": "1890af03691f1abc0fe5c29ae271234963dcbfc4d55cae77b81122abc6a8ab41",
+    "src/proxy/chase_transition_core.h": "c079009d05c41a1fe460fba942af901a1980d22702a60f96b99797714f7595a9",
+    "src/proxy/engine_patch.cpp": "a0d5e26079fbe831059921f92b4cdf8c9ab5c9006403407d257157615b6eefc7",
+    "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
+    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
+    "verification/probe/chase_transition_cpu_fixture.cpp": "615440541410a0eec7de12a23b2d9a22e539e5e047087b35e1108b7e52897bde",
+    "verification/probe/build_chase_transition_cpu.py": "5637f91c5950ee0605650a2a8b0e212b98ce30a75513f7d12a22e5ac0136af42"
+  },
+  "cpu_audit": {
+    "transition": {
+      "no_exception_runtime_symbols": true,
+      "callback": "x3m_chase_transition_enter",
+      "boundary_instruction_inventory": {
+        "fnsave": 1,
+        "frstor": 2,
+        "stmxcsr": 1,
+        "fninit": 1,
+        "ldmxcsr": 2,
+        "ret": 1
+      },
+      "first_call": "GetLastError",
+      "last_epilogue_call": "SetLastError",
+      "sha256": "9f7da682c6aeed6ed1e994f5371435391f03f14927ee1b2d25ce1b49bb79ea4a"
+    },
+    "lead": {
+      "no_exception_runtime_symbols": true,
+      "callback": "x3m_chase_lead_enter",
+      "boundary_instruction_inventory": {
+        "fnsave": 1,
+        "frstor": 2,
+        "stmxcsr": 1,
+        "fninit": 1,
+        "ldmxcsr": 2,
+        "ret": 1
+      },
+      "first_call": "GetLastError",
+      "last_epilogue_call": "SetLastError",
+      "sha256": "ed0bae8a62b99c1b79140ee900f4e204a8d947a86c0f2197c8612d1a6a1d7a20"
+    }
+  },
+  "scope": "Actual generated stubs with hostile GPR/flags/DF, live x87, XMM0-7, MXCSR, LastError and four-byte caller stack. Transition handlers enabled on guarded fixture inputs; lead disabled; RET continuation.",
+  "limitations": [
+    "Active lead policy and register mutation are covered by host fixtures, not this CPU execution.",
+    "Displaced game tails and native hide helper are not executed here; their installed-EXE site/ABI probes are separate.",
+    "Native Windows and gameplay remain unverified."
+  ]
+}
