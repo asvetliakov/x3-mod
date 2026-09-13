@@ -182,7 +182,7 @@ class ChaseCameraPipeline(unittest.TestCase):
             self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(13)), places=12)
             self.assertGreater(r['pos'][1], 0)
             self.assertLess(r['pos'][2], 0)
-            self.assertAlmostEqual(r['distance'], 0.85 * math.hypot(40, 200), places=10)
+            self.assertAlmostEqual(r['distance'], 0.90 * math.hypot(40, 200), places=10)
             alpha = math.radians(13) + math.atan(0.45 * vfov)
             self.assertAlmostEqual(math.atan2(r['pos'][1], -r['pos'][2]), alpha, places=12)
 
@@ -260,7 +260,7 @@ class ChaseCameraPipeline(unittest.TestCase):
 
     def test_softer_default_settles_more_slowly_without_increasing_bounds(self):
         lags = []
-        for rot_tau, pos_tau in ((0.15, 0.20), (0.22, 0.30)):
+        for rot_tau, pos_tau in ((0.22, 0.30), (0.28, 0.38)):
             self.d.reset()
             self.d.tunables(**{**self.d.defaults(), 'rot_tau':rot_tau, 'pos_tau':pos_tau})
             self.d.frame(1/60)
@@ -460,13 +460,13 @@ class ChaseCameraPipeline(unittest.TestCase):
 
     def test_compiled_defaults_match_review_and_first_flight_framing(self):
         d = self.d.defaults()
-        self.assertEqual(d['rot_tau'], 0.22)
-        self.assertEqual(d['pos_tau'], 0.30)
+        self.assertEqual(d['rot_tau'], 0.28)
+        self.assertEqual(d['pos_tau'], 0.38)
         self.assertEqual(d['pitch_down_deg'], 13.0)
         self.assertEqual(d['lag_clamp_deg'], 8.0)
         self.assertEqual(d['pos_lag_clamp'], 0.10)
         self.assertEqual(d['offset_y'], 0.45)
-        self.assertEqual(d['distance_scale'], 0.85)
+        self.assertEqual(d['distance_scale'], 0.90)
         self.assertEqual(d['combat_tightness'], 0.0)
         self.assertEqual(d['max_dt'], 0.10)
         self.assertEqual(d['snap_coalesce_frames'], 3)

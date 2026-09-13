@@ -29,17 +29,18 @@ sites. The separate chase-fire branch hook works without telemetry and
 changes cursor-fire admission only for the active chase view. The compiler CPU-state boundary fix
 is included. Gameplay frame cost is not established by diagnostic timings.
 
-The user completed the first-person left/centre/right firing sweep and repeated
-it in third person. The [third-run analysis](verification/chase-third-run.md)
-isolates the fault: first person admitted 229 cursor rays; external view rejected
-all 180 attempts because the native cursor writer set cursor-active to zero.
-A chase-only firing correction is implemented and independently reviewed from the
-[verified admission branch](reverse-engineering/chase-mouse-fire.md#third-run-finding-and-proposed-scoped-correction).
-All four X3 fixture modes passed 307 checks. The candidate is built and
-installed; gameplay acceptance remains pending.
-Earlier anchor correction removed the reported
-trembling in the second flight. The requested **13° pitch and distance
-0.85** pass 56 focused checks and are included in this install.
+Run 18 confirms the chase aiming correction works, the 13° angle is good, and
+no trembling or other visible camera problem was noticed. The user requested
+0.9 distance and a smoother response; revised defaults 0.28/0.38 s pass review
+and 56 focused checks, but are not yet installed. Two follow-ups remain: the predictive aim
+indicator is absent in chase view, and sector travel switches away from chase.
+Docking behavior is not yet tested. Targeted game-code analysis is in progress.
+The [earlier diagnostic](verification/chase-third-run.md) and
+[admission-branch study](reverse-engineering/chase-mouse-fire.md)
+retain the firing correction's evidence. [Run 18](verification/run18-camera-loading.md)
+accepts reader/adjacency verification and admits the fast-mode co-activation
+check. No adjacency mismatch dumps were written; verification/capture overhead
+is a plausible contributor to pauses, not a proven cause of individual stutters.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent
@@ -64,8 +65,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   Run 3 in the [brief queue](verification/user-runs.md) combines exposure and
   bloom A/B acceptance; game image quality and frame cost remain unverified.
 - Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
-  accepts crypto reuse; reader verification and adjacency gameplay acceptance
-  remain. Fast modes require meaningful verification, not merely fixture success.
+  accepts crypto reuse; [run 18](verification/run18-camera-loading.md) verifies
+  6,958 reader outputs and 15,354 meshes exactly with zero mismatches or faults.
+  Fast-mode co-activation is now ready as run 5; its gameplay acceptance remains.
 - [Linear materials](architecture/scene-linear-materials.md) are implemented,
   independently reviewed and installed: **24 original shaders / 30 pairs**,
   including DEFAULT Argon/shared hulls and [Argon BUMPMAP](architecture/linear-bump-materials.md).

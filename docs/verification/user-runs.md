@@ -7,31 +7,36 @@ never launches the game. Installed build: chase firing fix with 13° pitch and
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
-function setup is needed. Start with run 1; complete the rest over several sessions as convenient.
+function setup is needed. Run 1 is complete and its loading verification passed; run 5 is now ready. Complete the remaining
+ready comparisons over several sessions as convenient.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
-| 1 | Chase aiming/framing + reader/adjacency verification | 1 | Start here |
+| 1 | Chase aiming/framing + reader/adjacency verification | 0 | Accepted as run 18 |
 | 2 | Sharpen/shimmer + camera cuts with TAA | 0 | Merged into run 6 |
 | 3 | Automatic exposure + bloom off/on | 2 | Ready |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
-| 5 | Reader/adjacency fast modes | 1 | Wait for run 1 log acceptance |
+| 5 | Reader/adjacency fast modes | 1 | Ready; run 18 verification accepted |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 2 | Ready |
 
-These are seven sessions, not one long required session. The shared TAA shader
+Six sessions remain; complete them at your convenience. The shared TAA shader
 now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is still agent
 work and adds no gameplay request yet.
 
 
 
-## 1. Camera correction plus loading verification — Ready, start here
+## 1. Camera correction plus loading verification — Completed as run 18
 
-The **13° / 0.85-distance camera and chase firing correction** are installed.
-Combine reader and adjacency verification with the first normal save load:
+Completed: aiming works, the 13° angle is approved, and no trembling was noticed.
+The [saved loading verification](run18-camera-loading.md) passed; do not repeat this run.
+Distance/response tuning, the missing predictive aim indicator and sector-change
+view persistence will be combined into a later camera check when ready.
+
+Command used:
 
 ```sh
 ./x3run --direct --camera chase --telemetry \
@@ -100,11 +105,10 @@ appear, whether their positions differ, and whether the macOS menu bar overlaps
 the game. Compare the same screen as the enhanced run; load the save if the
 problem only appears during gameplay. No F8 capture is needed.
 
-## 5. Reader and adjacency fast modes — Waiting for log acceptance
+## 5. Reader and adjacency fast modes — Ready
 
-Do not run until run 1 analysis accepts meaningful verify coverage with zero
-admitted mismatches. An all-fallback run does not qualify either fast path.
-After acceptance, both fast modes may share one functional load:
+Run 18 verified 6,958 reader outputs and 15,354 meshes exactly, with zero
+mismatches or faults. Both fast modes may now share one functional load:
 
 ```sh
 ./x3run --direct --telemetry --resource-read fast --dat-handles \
