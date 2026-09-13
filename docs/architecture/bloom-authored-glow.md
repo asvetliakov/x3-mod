@@ -11,6 +11,45 @@ gameplay frame cost remains unqualified. This changes extraction inside the exis
 The installed build uses authored gain 0.35 and highlight gain 0.05. The separate
 [exposure policy](space-exposure-policy.md) now defaults to Auto capped at +1.5 EV.
 
+## Run 28 core adjustment
+
+The user requests a slightly tighter, stronger core. The next source candidate
+uses **authored gain 0.375 and scatter 0.65**, retaining highlight gain 0.05,
+five levels, threshold 1 and knee 0.5. This is a constant-only change in the
+retained-scene handoff; no shader compilation, texture fetch, pass, allocation,
+readback or per-draw work is added. The standalone filter's defaults are unchanged.
+
+The [compact calibration](../../verification/results/bloom-core-calibration.json)
+compares three candidates against installed gain 0.35/scatter 0.70 using Run 26
+resolved-TAA frames 11079 and 36969 at +1.5 EV. Run 28's pre-TAA HDR captures
+were excluded because they are not the stage consumed by bloom. CPU-reference
+predictions for the selected candidate are:
+
+| Source region | Change in mean bloom effect relative to current |
+| --- | ---: |
+| Alpha exactly 1, emitter cores | +9.47% to +16.94% |
+| Strong partial alpha, 0.5–1 | +6.03% to +13.36% |
+| Unmarked surroundings within 8 pixels | −0.24% to +1.52% |
+| Unmarked surroundings 9–32 pixels away | −12.33% to −11.82% |
+| Unmarked surroundings beyond 32 pixels | −18.15% to −16.91% |
+
+The core changes average about 0.61/0.96 display codes between candidates in
+the two frames; this is a modest adjustment. Lower scatter transfers weight
+from coarse to fine levels without changing their normalized sum. Combined
+with the 7.14% authored-gain increase, the finest-level contribution rises 25%
+and the coarsest falls 20.34%. Keeping gain 0.35 with scatter 0.65 gave inconsistent
+strong-partial-alpha brightening; scatter 0.60 changed the broad halo more than
+the requested slight adjustment.
+
+These estimates use continuous AgX display values and omit intermediate FP16
+rounding. They are aesthetic evidence, not post-bloom gameplay pixels or native
+compositor parity. Existing GPU/state/lifetime evidence applies to unchanged
+programs and control flow; the next gameplay comparison owns visual acceptance.
+Independent Sol/high review approves the parameter semantics and calibration
+with no findings. All 27 affected host tests pass, including the 45-assertion
+production retain callback in release and sanitizer builds. The source candidate
+is not yet installed.
+
 ## Run 27 strength adjustment
 
 The user confirms working bloom and accepts Auto capped at +1.5 EV. Increase

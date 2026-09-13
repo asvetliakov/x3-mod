@@ -1,0 +1,453 @@
+{
+  "schema": "x3-bloom-core-calibration-v1",
+  "scope": "offline aesthetic calibration; not runtime/GPU/native parity proof",
+  "algorithm": {
+    "decode": "gamma2.2",
+    "ev": 1.5,
+    "threshold": 1.0,
+    "knee": 0.5,
+    "highlight_gain": 0.05,
+    "levels": 5,
+    "extraction": "gain*clamp(alpha,0,1)*E + 0.05*(1-alpha)*threshold_weight(E)*E",
+    "filter": "existing exact-even Run26 five-level CPU reference; normalized tent reconstruction and convex scatter combines",
+    "display": "AgX look=none; max absolute continuous RGB delta in 8-bit-code units; signed comparisons use display-luma weights",
+    "group_masks": {
+      "core_alpha_1": "source alpha == 1",
+      "strong_alpha_gt_0_5_lt_1": "0.5 < source alpha < 1",
+      "soft_alpha_gt_0_le_0_5": "0 < source alpha <= 0.5",
+      "unmarked_0_to_8px": "alpha == 0 and Chebyshev distance <=8 from alpha>0.5",
+      "unmarked_9_to_32px": "alpha == 0 and Chebyshev distance 9..32 from alpha>0.5",
+      "unmarked_gt_32px": "alpha == 0 and Chebyshev distance >32 from alpha>0.5"
+    }
+  },
+  "current": {
+    "gain": 0.35,
+    "scatter": 0.7
+  },
+  "candidates": [
+    {
+      "gain": 0.35,
+      "scatter": 0.7,
+      "level_weights_fine_to_coarse": [
+        0.30000000000000004,
+        0.21000000000000002,
+        0.147,
+        0.10289999999999999,
+        0.24009999999999995
+      ]
+    },
+    {
+      "gain": 0.35,
+      "scatter": 0.65,
+      "level_weights_fine_to_coarse": [
+        0.35,
+        0.22749999999999998,
+        0.147875,
+        0.09611875,
+        0.17850625000000003
+      ]
+    },
+    {
+      "gain": 0.375,
+      "scatter": 0.65,
+      "level_weights_fine_to_coarse": [
+        0.35,
+        0.22749999999999998,
+        0.147875,
+        0.09611875,
+        0.17850625000000003
+      ]
+    },
+    {
+      "gain": 0.35,
+      "scatter": 0.6,
+      "level_weights_fine_to_coarse": [
+        0.4,
+        0.24,
+        0.144,
+        0.08639999999999999,
+        0.1296
+      ]
+    }
+  ],
+  "normalized_pyramid_interpretation": "Weights sum to one. Scatter changes spatial-scale allocation, not DC gain: constant prefiltered fields remain constant for every candidate.",
+  "inputs_excluded": [
+    {
+      "path": "/tmp/x3-bottleX3-run28/hdr_1_4052.rgba16f",
+      "reason": "Run28 saved pre-TAA HDR, while bloom consumes resolved TAA; it is not an exact source and would mix domains with the retained Run26 TAA inputs."
+    }
+  ],
+  "provenance": {
+    "script": "/tmp/x3-bloom-core-calibration.py",
+    "base_gain_sweep_script": "/tmp/x3-bloom-run26-gain-sweep.py",
+    "cpu_reference": "/tmp/x3-bloom-run26-reference.py",
+    "prior_calibration": "/Users/asvetl/x3-mod/verification/results/run26-bloom-authored-calibration.json",
+    "hashes": {
+      "script_before_report_annotation": "764190aef22c05d53c734c7106a9cfde42bae689c3cb2e72be91704c1548ca61",
+      "base_gain_sweep_script": "3ac18e0e65e5ef269c9aacc05aed71813d9abed364420ba0a02d20aac796e0d1",
+      "cpu_reference": "925267595f6c95577042eadf52805681b10a41d098160944c6b201756d2d227e"
+    }
+  },
+  "limitations": [
+    "Double-precision CPU filtering omits intermediate FP16 rounding.",
+    "Run26 sources are retained resolved-TAA inputs; there is no post-bloom game readback.",
+    "Metrics predict AgX output and do not emulate the native gamma-space compositor or establish native parity.",
+    "Chebyshev bins are diagnostic square distances, not optical radii."
+  ],
+  "seconds": 108.352411333,
+  "summary_relative_to_current": [
+    {
+      "gain": 0.35,
+      "scatter": 0.65,
+      "frames": {
+        "11079": {
+          "core_alpha_1": {
+            "current_mean_codes": 3.595475388271231,
+            "candidate_mean_codes": 3.9446583187238105,
+            "change_codes": 0.3491829304525793,
+            "change_percent": 9.711731905929488,
+            "direct_vs_current_mean_codes": 0.3495485441209928,
+            "direct_vs_current_p95_codes_approx": 0.578125
+          },
+          "strong_alpha_gt_0_5_lt_1": {
+            "current_mean_codes": 6.317760662452345,
+            "candidate_mean_codes": 6.750211084589578,
+            "change_codes": 0.43245042213723295,
+            "change_percent": 6.844995327337555,
+            "direct_vs_current_mean_codes": 0.4506795124550707,
+            "direct_vs_current_p95_codes_approx": 0.90625
+          },
+          "unmarked_0_to_8px": {
+            "current_mean_codes": 15.890333027484099,
+            "candidate_mean_codes": 15.420838829081235,
+            "change_codes": -0.4694941984028631,
+            "change_percent": -2.954590049124961,
+            "direct_vs_current_mean_codes": 0.7752880190954152,
+            "direct_vs_current_p95_codes_approx": 3.625
+          },
+          "unmarked_9_to_32px": {
+            "current_mean_codes": 3.067578396294071,
+            "candidate_mean_codes": 2.542288914864391,
+            "change_codes": -0.52528948142968,
+            "change_percent": -17.123913835886974,
+            "direct_vs_current_mean_codes": 0.5281379950971471,
+            "direct_vs_current_p95_codes_approx": 4.375
+          },
+          "unmarked_gt_32px": {
+            "current_mean_codes": 0.17576362353668293,
+            "candidate_mean_codes": 0.13756447310506173,
+            "change_codes": -0.0381991504316212,
+            "change_percent": -21.73325154715464,
+            "direct_vs_current_mean_codes": 0.0392418255285904,
+            "direct_vs_current_p95_codes_approx": 0.046875
+          },
+          "linear_added_luminance_mean_change_percent": 0.015809554114021296
+        },
+        "36969": {
+          "core_alpha_1": {
+            "current_mean_codes": 10.057786045320313,
+            "candidate_mean_codes": 10.390013047246063,
+            "change_codes": 0.33222700192574983,
+            "change_percent": 3.3031822354217644,
+            "direct_vs_current_mean_codes": 0.3675299546150617,
+            "direct_vs_current_p95_codes_approx": 0.53125
+          },
+          "strong_alpha_gt_0_5_lt_1": {
+            "current_mean_codes": 8.964295950592758,
+            "candidate_mean_codes": 8.947983010006071,
+            "change_codes": -0.016312940586686864,
+            "change_percent": -0.18197681866591875,
+            "direct_vs_current_mean_codes": 0.4207700715975701,
+            "direct_vs_current_p95_codes_approx": 1.1875
+          },
+          "unmarked_0_to_8px": {
+            "current_mean_codes": 9.448013840484755,
+            "candidate_mean_codes": 8.993586282687179,
+            "change_codes": -0.45442755779757604,
+            "change_percent": -4.809768121320412,
+            "direct_vs_current_mean_codes": 0.6127376756536839,
+            "direct_vs_current_p95_codes_approx": 3.875
+          },
+          "unmarked_9_to_32px": {
+            "current_mean_codes": 2.372175590158088,
+            "candidate_mean_codes": 1.9788919019555036,
+            "change_codes": -0.3932836882025845,
+            "change_percent": -16.5790293869593,
+            "direct_vs_current_mean_codes": 0.40049594423475493,
+            "direct_vs_current_p95_codes_approx": 1.875
+          },
+          "unmarked_gt_32px": {
+            "current_mean_codes": 0.22648671629275796,
+            "candidate_mean_codes": 0.17395566885551364,
+            "change_codes": -0.05253104743724432,
+            "change_percent": -23.193875692622257,
+            "direct_vs_current_mean_codes": 0.054304736028060324,
+            "direct_vs_current_p95_codes_approx": 0.1875
+          },
+          "linear_added_luminance_mean_change_percent": 0.02807761190595226
+        }
+      }
+    },
+    {
+      "gain": 0.375,
+      "scatter": 0.65,
+      "frames": {
+        "11079": {
+          "core_alpha_1": {
+            "current_mean_codes": 3.595475388271231,
+            "candidate_mean_codes": 4.20457367920007,
+            "change_codes": 0.6090982909288392,
+            "change_percent": 16.940688647620107,
+            "direct_vs_current_mean_codes": 0.6093735919624742,
+            "direct_vs_current_p95_codes_approx": 1.03125
+          },
+          "strong_alpha_gt_0_5_lt_1": {
+            "current_mean_codes": 6.317760662452345,
+            "candidate_mean_codes": 7.161564992819858,
+            "change_codes": 0.8438043303675125,
+            "change_percent": 13.35606673710199,
+            "direct_vs_current_mean_codes": 0.8510804693763545,
+            "direct_vs_current_p95_codes_approx": 1.640625
+          },
+          "unmarked_0_to_8px": {
+            "current_mean_codes": 15.890333027484099,
+            "candidate_mean_codes": 16.131360260385907,
+            "change_codes": 0.24102723290180883,
+            "change_percent": 1.5168167494345575,
+            "direct_vs_current_mean_codes": 0.7292015936882656,
+            "direct_vs_current_p95_codes_approx": 3.296875
+          },
+          "unmarked_9_to_32px": {
+            "current_mean_codes": 3.067578396294071,
+            "candidate_mean_codes": 2.689449023015485,
+            "change_codes": -0.3781293732785862,
+            "change_percent": -12.326640901350805,
+            "direct_vs_current_mean_codes": 0.3819064509476099,
+            "direct_vs_current_p95_codes_approx": 3.203125
+          },
+          "unmarked_gt_32px": {
+            "current_mean_codes": 0.17576362353668293,
+            "candidate_mean_codes": 0.14603766647673894,
+            "change_codes": -0.02972595705994399,
+            "change_percent": -16.912462580028688,
+            "direct_vs_current_mean_codes": 0.03132940655954548,
+            "direct_vs_current_p95_codes_approx": 0.03125
+          },
+          "linear_added_luminance_mean_change_percent": 7.043387520532618
+        },
+        "36969": {
+          "core_alpha_1": {
+            "current_mean_codes": 10.057786045320313,
+            "candidate_mean_codes": 11.01025908406448,
+            "change_codes": 0.9524730387441664,
+            "change_percent": 9.470006962291011,
+            "direct_vs_current_mean_codes": 0.9572743080954567,
+            "direct_vs_current_p95_codes_approx": 1.28125
+          },
+          "strong_alpha_gt_0_5_lt_1": {
+            "current_mean_codes": 8.964295950592758,
+            "candidate_mean_codes": 9.504470464675936,
+            "change_codes": 0.5401745140831782,
+            "change_percent": 6.02584427221482,
+            "direct_vs_current_mean_codes": 0.6878340786693552,
+            "direct_vs_current_p95_codes_approx": 1.5625
+          },
+          "unmarked_0_to_8px": {
+            "current_mean_codes": 9.448013840484755,
+            "candidate_mean_codes": 9.425172486466593,
+            "change_codes": -0.022841354018162008,
+            "change_percent": -0.24175826161776381,
+            "direct_vs_current_mean_codes": 0.5316796334831774,
+            "direct_vs_current_p95_codes_approx": 3.0625
+          },
+          "unmarked_9_to_32px": {
+            "current_mean_codes": 2.372175590158088,
+            "candidate_mean_codes": 2.0917747175235575,
+            "change_codes": -0.2804008726345306,
+            "change_percent": -11.820409660983145,
+            "direct_vs_current_mean_codes": 0.2871103571938779,
+            "direct_vs_current_p95_codes_approx": 1.25
+          },
+          "unmarked_gt_32px": {
+            "current_mean_codes": 0.22648671629275796,
+            "candidate_mean_codes": 0.18537554801291414,
+            "change_codes": -0.04111116827984382,
+            "change_percent": -18.151690727284553,
+            "direct_vs_current_mean_codes": 0.04270135716151383,
+            "direct_vs_current_p95_codes_approx": 0.140625
+          },
+          "linear_added_luminance_mean_change_percent": 7.166709110816849
+        }
+      }
+    },
+    {
+      "gain": 0.35,
+      "scatter": 0.6,
+      "frames": {
+        "11079": {
+          "core_alpha_1": {
+            "current_mean_codes": 3.595475388271231,
+            "candidate_mean_codes": 4.266420491602779,
+            "change_codes": 0.6709451033315479,
+            "change_percent": 18.660817579790212,
+            "direct_vs_current_mean_codes": 0.6716987313933086,
+            "direct_vs_current_p95_codes_approx": 1.109375
+          },
+          "strong_alpha_gt_0_5_lt_1": {
+            "current_mean_codes": 6.317760662452345,
+            "candidate_mean_codes": 7.1276963520627925,
+            "change_codes": 0.8099356896104473,
+            "change_percent": 12.819980573560642,
+            "direct_vs_current_mean_codes": 0.8466971889466344,
+            "direct_vs_current_p95_codes_approx": 1.71875
+          },
+          "unmarked_0_to_8px": {
+            "current_mean_codes": 15.890333027484099,
+            "candidate_mean_codes": 14.858670151759286,
+            "change_codes": -1.0316628757248125,
+            "change_percent": -6.4923930413568804,
+            "direct_vs_current_mean_codes": 1.5572343602636491,
+            "direct_vs_current_p95_codes_approx": 7.25
+          },
+          "unmarked_9_to_32px": {
+            "current_mean_codes": 3.067578396294071,
+            "candidate_mean_codes": 2.0682042132347465,
+            "change_codes": -0.9993741830593246,
+            "change_percent": -32.57860285711571,
+            "direct_vs_current_mean_codes": 1.00341484279488,
+            "direct_vs_current_p95_codes_approx": 8.3125
+          },
+          "unmarked_gt_32px": {
+            "current_mean_codes": 0.17576362353668293,
+            "candidate_mean_codes": 0.10591222541970588,
+            "change_codes": -0.06985139811697705,
+            "change_percent": -39.74166935765218,
+            "direct_vs_current_mean_codes": 0.07145228532352632,
+            "direct_vs_current_p95_codes_approx": 0.078125
+          },
+          "linear_added_luminance_mean_change_percent": 0.027980044066477916
+        },
+        "36969": {
+          "core_alpha_1": {
+            "current_mean_codes": 10.057786045320313,
+            "candidate_mean_codes": 10.668905560092542,
+            "change_codes": 0.6111195147722288,
+            "change_percent": 6.076083861980441,
+            "direct_vs_current_mean_codes": 0.6781303554631832,
+            "direct_vs_current_p95_codes_approx": 0.96875
+          },
+          "strong_alpha_gt_0_5_lt_1": {
+            "current_mean_codes": 8.964295950592758,
+            "candidate_mean_codes": 8.94202361160741,
+            "change_codes": -0.022272338985347417,
+            "change_percent": -0.2484560874395747,
+            "direct_vs_current_mean_codes": 0.7953214698412568,
+            "direct_vs_current_p95_codes_approx": 2.25
+          },
+          "unmarked_0_to_8px": {
+            "current_mean_codes": 9.448013840484755,
+            "candidate_mean_codes": 8.514924497988803,
+            "change_codes": -0.9330893424959523,
+            "change_percent": -9.876036998354753,
+            "direct_vs_current_mean_codes": 1.204992720000045,
+            "direct_vs_current_p95_codes_approx": 7.53125
+          },
+          "unmarked_9_to_32px": {
+            "current_mean_codes": 2.372175590158088,
+            "candidate_mean_codes": 1.622879079348718,
+            "change_codes": -0.7492965108093701,
+            "change_percent": -31.58689069722006,
+            "direct_vs_current_mean_codes": 0.7615571133256761,
+            "direct_vs_current_p95_codes_approx": 3.5625
+          },
+          "unmarked_gt_32px": {
+            "current_mean_codes": 0.22648671629275796,
+            "candidate_mean_codes": 0.13001408907487239,
+            "change_codes": -0.09647262721788558,
+            "change_percent": -42.595269513813136,
+            "direct_vs_current_mean_codes": 0.09938236790016812,
+            "direct_vs_current_p95_codes_approx": 0.3125
+          },
+          "linear_added_luminance_mean_change_percent": 0.050506432884378505
+        }
+      }
+    }
+  ],
+  "recommendation": {
+    "candidate": {
+      "gain": 0.375,
+      "scatter": 0.65
+    },
+    "status": "aesthetic recommendation from the offline CPU reference, not runtime proof",
+    "reason": "Across both retained sources it raises alpha==1 core mean effect by 9.5\u201316.9% and strong partial-alpha mean effect by 6.0\u201313.4%; the 0\u20138 px unmarked mean stays within -0.24% to +1.52%, while 9\u201332 px falls 11.8\u201312.3% and >32 px falls 16.9\u201318.2%. This best matches a modest core increase without additional broad spill.",
+    "alternatives": [
+      {
+        "gain": 0.35,
+        "scatter": 0.65,
+        "finding": "Pure redistribution: core +3.3\u20139.7%, but 0\u20138 px mean -3.0\u20134.8% and >32 px -21.7\u201323.2%; likely slightly tighter without enough consistent strong-alpha increase."
+      },
+      {
+        "gain": 0.35,
+        "scatter": 0.6,
+        "finding": "More aggressive redistribution: core +6.1\u201318.7%, but 0\u20138 px mean -6.5\u20139.9%, 9\u201332 px -31.6\u201332.6%, and >32 px -39.7\u201342.6%; likely removes too much of the already accepted broad halo."
+      }
+    ],
+    "authored_level_contributions": {
+      "current_gain_0_35_scatter_0_70": [
+        0.10500000000000001,
+        0.0735,
+        0.051449999999999996,
+        0.03601499999999999,
+        0.08403499999999998
+      ],
+      "candidate_gain_0_375_scatter_0_65": [
+        0.13124999999999998,
+        0.08531249999999999,
+        0.055453125000000006,
+        0.03604453125,
+        0.06693984375
+      ],
+      "relative_change_percent": [
+        24.99999999999998,
+        16.07142857142856,
+        7.780612244897989,
+        0.08199708454812438,
+        -20.34290027964536
+      ],
+      "sum_current": 0.35,
+      "sum_candidate": 0.375,
+      "sum_change_percent": 7.14285714285714
+    }
+  },
+  "inputs": [
+    {
+      "frame": 11079,
+      "input": "/tmp/x3-bottleX3-run26/taa_1_11079.rgba16f",
+      "bytes": 7864320,
+      "sha256": "d4a143a9f77a0521c606866d8094486a0231adea5533ce2084b1c226d0cc6c7b",
+      "group_counts": {
+        "core_alpha_1": 215,
+        "strong_alpha_gt_0_5_lt_1": 2356,
+        "soft_alpha_gt_0_le_0_5": 18856,
+        "unmarked_0_to_8px": 13537,
+        "unmarked_9_to_32px": 95633,
+        "unmarked_gt_32px": 852443
+      }
+    },
+    {
+      "frame": 36969,
+      "input": "/tmp/x3-bottleX3-run26/taa_1_36969.rgba16f",
+      "bytes": 7864320,
+      "sha256": "811cbbd44d5eb2ea345e845ea2e99b23cd72e690b78779fefc01a1b71376cac9",
+      "group_counts": {
+        "core_alpha_1": 3226,
+        "strong_alpha_gt_0_5_lt_1": 5632,
+        "soft_alpha_gt_0_le_0_5": 46216,
+        "unmarked_0_to_8px": 45672,
+        "unmarked_9_to_32px": 250174,
+        "unmarked_gt_32px": 632120
+      }
+    }
+  ],
+  "full_local_calibration": "/tmp/x3-bloom-core-calibration.json"
+}

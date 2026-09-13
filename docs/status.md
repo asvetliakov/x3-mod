@@ -30,8 +30,9 @@ HUD, and the selected WRAP/motion fixes are included.
 
 [Run 28](verification/run28-glow-materials.md), user run 9, is saved in
 `/tmp/x3-bottleX3-run28/` on installed source `d9413fc`. Screenshots show substantial
-colored halos at gain 0.35; the user asks about slightly stronger cores. Keep this
-gain during material diagnosis. Auto still mostly reaches its accepted +1.5-EV ceiling.
+colored halos at gain 0.35. The user approved a slightly tighter, stronger core;
+the reviewed next candidate uses gain 0.375/scatter 0.65, calibrated against saved
+resolved-TAA inputs. Auto still mostly reaches its accepted +1.5-EV ceiling.
 
 The user reproduces dark docking-port parts becoming bright on approach and recalls
 it elsewhere. The one F8 burst shows stable routing and no common-shader fog-on
@@ -94,8 +95,8 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   pairs in main source (168 pairs / 137 originals total), preserving native gloss/Fresnel.
   Host, detached GPU (254 cases / 2,286 samples) and focused live routing
   (216 frames / 4,258,208 checks) pass. Installation and gameplay remain pending.
-- **Bloom/exposure:** Run 28 shows substantial colored halos at gain 0.35;
-  the user asks about slightly stronger cores. Keep current gain during material diagnosis;
+- **Bloom/exposure:** the approved tighter-core candidate uses gain 0.375/scatter 0.65;
+  source/reference review and 27 affected host tests pass, installation is pending.
   +1.5 EV appearance is accepted and selected as the installed Auto default. The meter
   still mostly reaches its ceiling; physically informed adaptation remains unproved.
 - **HDR scope:** FP16 and AgX work, but much of the scene is still compatibility-decoded gamma-space lighting.
