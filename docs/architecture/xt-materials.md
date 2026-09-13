@@ -1,11 +1,12 @@
 # XT material contracts and linear extension design
 
-Bounded source study, 2026-09-13, based on `09be35b`. This owns the next XT
-material slice; [the earlier linkage study](../reverse-engineering/xt-material-linkage.md)
+Source implementation, 2026-09-13, based on `608e0c0`, following the bounded
+study from `09be35b`. This owns the XT material slice; [the earlier linkage study](../reverse-engineering/xt-material-linkage.md)
 retains the original capture and archive evidence. Damage IFC motion is already
 implemented; its original arithmetic must remain intact under the material
 extension. The separate 148-pair palette qualification is outside this study.
-No implementation, game/Wine/GPU run, DLL build, installation or commit occurred.
+The full 14-pair source is implemented and host-qualified below. No game/Wine/GPU
+run, DLL build, installation or commit occurred for this source checkpoint.
 
 ## Decision and complete scope
 
@@ -152,7 +153,8 @@ MAD and v7.x in the reflection MUL. Relocate X to TEX1.w (o3.w/v2.w), Y to
 TEX2.w (o4.w/v3.w), and use the vacated whole o8/v7 for COLOR1.xyz without PP.
 Original TEX1/TEX2 are XYZ-only; all ten PS declarations share the scalar
 carrier's PP permission and noncentroid TEXCOORD mode. Extend those declarations
-to XYZW while retaining original XYZ math. Keep whole native COLOR0 including A.
+to XYZW while retaining original XYZ math. Keep the whole native COLOR0
+declaration and its alpha path; the consumed-RGB distinction is recorded below.
 COLOR1 introduces the same centroid/flat policy already addressed by the reviewed
 palette design; do not reuse an RGB/alpha split COLOR declaration in one register.
 
@@ -183,9 +185,13 @@ make this part of the transport ABI, not an optional visual adjustment.
 
 The material VS can reuse r7–r9 and transfer constants c248–249. Decode each
 relative point-light RGB c1[a0.w] before the point product at DWORD 593, and
-emissive c41 before the final RGB addition at 608; retain attenuation, loop,
-geometry, native COLOR0 and alpha at 683/688. Generate separate full-precision
-COLOR1 RGB and replace only the PS native saturated COLOR0 RGB contribution.
+sanitize the already strength-scaled emissive c41 before the RGB addition at
+608, with gain but no POW; retain attenuation, loop,
+geometry, native COLOR0 declaration and alpha at 683/688. Reuse the original
+point accumulator with decoded source colors, redirect its final RGB export to
+full-precision COLOR1, and replace both PS saturated COLOR0 RGB reads. The only
+remaining COLOR0 read is alpha; do not duplicate point math to preserve unused
+COLOR0 RGB values. Repaired ordinary DEFAULT retains its original COLOR0 RGB.
 B's geometric palette weights and Fresnel/highlight remain scalar data unchanged.
 The native double ReflectionStrength factor (VS scalar and PS multiply) remains.
 
@@ -438,3 +444,212 @@ is `/tmp/x3-xt-contracts/query_default_uv.py`. Native string-xref enumeration is
 Ghidra decompilation of `004c0150`, `004b93a0`, `004f52e0` are under that same
 local directory. Decompiled text/raw shader bytes are not copied into this note.
 The owning report contains derived contracts and addresses only.
+
+## Implemented source checkpoint
+
+The material registry now covers **162 exact pairs**: the previous 148 plus all
+14 XT rows. XT contributes 14 new PS and one new VS; DEFAULT's original VS was
+already shared, so there are 130 unique original stages overall. The source
+uses a bounded XT include and derived profile table inside the existing pure
+transformer. Its independent source proof is
+[inspect_xt_materials.py](../../tools/analysis/inspect_xt_materials.py), with
+[derived profiles](../reverse-engineering/xt-material-profiles.json). Neither
+contains original shader bytes. The existing 148 source tables and generated
+outputs remain unchanged.
+
+Two corrections to the initial design are deliberate. Material emissive follows
+the established [native amplitude/tint policy](../reverse-engineering/material-color-inputs.md#material-emissive-is-sometimes-color--strength):
+`004c1399–004c13fd` and `004c1533–004c159b` multiply color by strength before
+uploading the named effect value. Both XT VS bind that same parameter (D c40,
+B c41). Sanitize it and apply emissive gain without POW; only point/directional
+RGB and texture/palette colors get the explicit gamma22 transfer. Also, native
+COLOR0 RGB is unused after replacing both PS clamp reads; the linear VS reuses
+the original accumulator and redirects its RGB export, preserving the whole
+COLOR0 declaration and its independently computed alpha. This avoids a second
+point loop solely for an unconsumed RGB invariant.
+
+The live source owns additional DEFAULT repaired ordinary/linear VS objects
+and an ordinary PS object, while retaining the generic shared-D variants.
+Binding/registration refreshes exact-pair four-object readiness; draws consume
+cached pointers. Object inventory and retirement include the extras, and
+registration invalidates eligibility before reentrant Release callbacks.
+Sampler s5 now participates in cached material sRGB tracking. Availability and
+ordinary fallback follow the atomic contract above.
+
+The same transaction work fixes attempted-write rollback for shader setters,
+RT1/RT2, color-write masks and reserved VS/PS constants, including setters that
+mutate before returning failure. Failed quiet/nonquiet lazy flushes and checked
+restorations latch motion state loss immediately, including deferred/mip errors;
+consuming a deferred error cannot make an unknown device state usable. Successful
+Reset clears the latch only after the existing resynchronization readiness proof.
+These are bounded shared state-correctness fixes, not XT shader optimizations.
+
+Current host evidence:
+
+- The XT driver covers 16 XT original stages, 14 exact pairs and 168
+  ordinary/linear/depth/gain variants: **823 checks**, including aliasing,
+  invalid gains, corruption and unchanged-output refusal. Release and
+  ASan/UBSan runs pass. Seven source tests independently check every original
+  instruction against the allowed edits, exact alpha/sample/control flow,
+  complete repaired linkage, scalar PP/carrier masks, runtime palette decode
+  placement, resource bounds and the authored DEFAULT geometry equations.
+- The independent analytical reference passes **21 tests** for all 14 material
+  contracts and the authored repair, with finite float64 limits explicit.
+  It does not simulate GPU PP, texture filtering, rasterization or exceptional
+  native RSQ/POW behavior. A separate finite float64 instruction executor also
+  passes **3 tests / 188 PS executions**: 82 original, 82 linear transformed,
+  and 24 repaired ordinary DEFAULT cases. It independently checks all 14
+  contracts, static/damage branches, threshold values, faces, sampled
+  coordinates, runtime palettes, data channels, cube direction and authored
+  Fresnel endpoints against those equations. No source/oracle mismatch was
+  found; temporal output and GPU PP/interpolation remain separate gates.
+- All **920 previous material outputs** and **230 ordinary-motion controls**
+  are byte-identical to exact `608e0c0` sources. Both previous-corpus drivers
+  pass 28,774 checks; zero files are missing, extra or changed. Material framed
+  SHA-256 is `f5038b0f7d05c73cd79a85c625de78df55f5714e0ed94c3661e78136664692e7`
+  using sorted filename, big-endian u64 name length, UTF-8 name, big-endian u64
+  content length and bytes. The still-uncovered structural negative moved from
+  now-supported XT DEFAULT to `c30104cb0efb6675/a66fb1981ba755b2`.
+- The focused live seam passes **13,053 checks**, including 8,809 XT checks
+  and 76 attempted-state checks; the existing WRAP seam passes **34,773**.
+  This includes four-object readiness, either-stage failures, mutation before
+  failure, native-once behavior, lazy/void restore quarantine, reentrant
+  retirement and actual successful/failed Reset recovery. These are host
+  seams, not live GPU draws.
+- Strict x86/SSE2 cross-compilation passes for the renderer and motion proxy
+  translation units. No DLL or game artifact was built or installed.
+
+XT maximum static weighted slots with depth off/on are: repaired ordinary VS
+79/81 and PS 136/138; linear VS 104/106 and PS 296/298. All stay below 512, with
+at most r15 in the PS and the planned nine/ten input registers. These are static
+budgets, not GPU timing; per-vertex cost must still include the zero/one/eight
+point-light loop cases. Host transformation timings include I/O and diagnostics
+and do not establish draw speed.
+
+Independent source and evidence review passed with no open findings for the
+complete 19-file checkpoint, including the separately reviewed cache/lifetime
+slice. The reviewer independently reproduced the prior-corpus byte comparison.
+Production source is frozen; fixture preparation and qualification are separate.
+
+GPU/native-Windows creation, interpolation/WRAP readbacks, live alpha/branch and
+Reset behavior, and the matched DEFAULT-ordinary/enabled-palette GPU performance
+measurements described above remain pending. Host success does not turn the
+authored DEFAULT policy into recovered native behavior.
+
+### XT fixture extension and detached X3 qualification
+
+The separate fixture worktree retains the reviewed production source unchanged.
+The existing detached material fixture now contains **3,923 cases / 162 pairs**:
+the prior 3,549 records remain byte-identical, followed by 374 XT cases. Their
+240-byte payload prefix SHA-256 (excluding the count header) is
+`f762b2ec933ad969315be0d6cfbdee4cccd866c5b13c08e682695539d87feac3`.
+The original eight C++ table prefixes also remain unchanged. Both facts have
+host checks; they do not replace the earlier generated-program byte comparison.
+
+The added cases upload actual seven-sampler BUMP/LOW or five-sampler DEFAULT
+layouts, distinct spatial occlusion/detail channels, runtime palette colors,
+both branch controls and the original B vertex constant layout. They cover
+all 14 depth/face pairs, gains, zero/one/eight point lights, fog alpha, history
+refusal, damage threshold sides, affine color, independent primary/secondary
+UVs and the authored FLOAT2 expansion. Affine, perspective and near-clipped
+geometry vary the native producers before interpolation. A separate native
+COLOR0 ramp classifies effective FLAT/GOURAUD behavior; requested-FLAT XT cases
+use that measured classification for their COLOR transport oracle.
+
+The four DEFAULT cases always use complete repaired ordinary or repaired linear
+pairs. The detached fixture never submits the invalid original DEFAULT pair.
+Ordinary readbacks are required as independent numerical baselines, alongside
+whole-target alpha/motion/depth identity. The ten valid BUMP/LOW pairs also
+require native-to-ordinary identity. The report parser rejects missing repaired
+stage creation, ordinary samples, interpolation classification or XT timing
+windows. Matched timing rows separately label DEFAULT repaired ordinary and
+BUMP palette enabled/disabled at zero/one/eight lights; QPC through EVENT
+completion is neither GPU timestamp timing nor game FPS.
+
+The affected detached/report/reference host checks pass: 65 tests in the
+selected unittest modules, with one legacy palette-only selection narrowed to
+its original pair range and that affected test rerun successfully. Review found
+a timing flag serialization mismatch (Boolean 0/1 versus flag 0/128); the C++
+producer now preserves the flag value, with a focused protocol check and strict
+translation-unit recompilation passing. A further
+host token-execution test passes **1,384 actual PS executions** using the newly
+authored case inputs at two sample positions, ordinary and linear programs,
+and uniform zero/one/sixteen gains. Nonuniform gains remain covered by the
+detached equations and preceding pure source tests. This finite float64 test
+does not simulate rasterization, interpolation precision or shader creation.
+Strict i686/SSE2 fixture translation-unit compilation passes. No Windows GPU
+fixture executable, production DLL, Wine run or install was produced for this
+extension; the host token checks build and run their native structural driver.
+
+The live `materialxt` mode adds **92 planned samples**: six steps for every
+pair, four shared-D alternations, two valid unknown-PS controls and two
+perspective transport diagnostics. Material on executes all 92; material off
+executes 65 and explicitly skips 27 invalid original DEFAULT submissions.
+Those skipped rows supply no portability or visual evidence. DEFAULT ordinary
+comparisons instead use the complete repaired fallback after a required-color
+sampler refusal. Existing corpus inputs and frame IDs remain unchanged; its
+formerly uncovered XT frames 9/19 now expect covered admission.
+
+The live matrix is depth off/on, per-draw/lazy target restoration and material
+off/on. It observes all 16 WRAP states, reserved constant restoration, two native
+submissions, StateBlock/Reset, readiness and retirement. The two added
+perspective pairs separately compare ordinary then linear readbacks, with
+diagnostic getters between those two draws; the other rows retain consecutive
+lazy submissions. Calibrated 0/1 source colors, zero emissive/lightmap RGB and
+direct gain one make the linear result `pow(ordinary, 1/2.2)` within the existing
+numerical envelope. B highlight endpoints are `(1, 17^-6, 17^-6)` with WRAP6.Y
+enabled, forcing a real interpolation seam carried to TEX2.W. Both diagnostics
+require nonconstant RGB, exact alpha/motion/depth twins and matched state
+observations. The report parser rejects missing or corrupted paired evidence
+and requires more than 1,024 calibrated pixels, matching the executable's
+64×64 quarter-target bound. Review caught and corrected the parser's weaker
+initial coverage bound; zero and exactly 1,024 now have rejection witnesses.
+All **15 focused live report tests** and strict i686/SSE2 live fixture
+translation-unit compilation pass. Runtime shader creation, readbacks, Reset,
+state restoration and completion timings for this live mode still require its
+authorized X3 GPU run; native Windows remains separately untested.
+
+Independent review of the complete ten-file fixture delta passed after those
+two verification-only fixes, with no open finding. The separate reviewed
+19-file production/source-proof checkpoint remains unchanged. Fixture approval
+authorizes preparation for qualification; it is not a GPU, gameplay or native
+Windows result.
+
+The retained detached fixture subsequently passed on **X3 / CrossOver Preview**:
+**3,923 cases, 162 pairs, 130 original stages and 35,307 samples**, including
+3,366 independent XT ordinary samples. Every alpha/motion/depth identity check
+passed. Maximum RGB error used **0.1614340509615012** of the allowed tolerance
+(unchanged from the prior corpus); the XT ordinary maximum was
+**0.1591217475431564**. The measured
+programmable COLOR path remained Gouraud when FLAT was requested, matching the
+previous X3 limitation rather than establishing native Windows behavior. The
+[canonical detached result](../../verification/results/bottle-X3/linear-material-gpu.json)
+records the exact retained executable, source and local-original hashes; raw
+output remains in `/tmp/x3-xt162-detached/`.
+
+The same independent reviewer approved this detached evidence: the consume-side
+validator reproduced all 17 compact derived fields, and the 15 recorded source
+hashes, 130 original hashes, retained fixture hash and unchanged 3,549-record
+payload prefix match. The retained raw report SHA-256 is
+`5e31b2fc2a66c74a4958da4c5e61019ce56d404b066a791e65beb5d4d3d393b6`.
+There are no open detached findings; this closure does not include the pending
+live route.
+
+The eight-light timing medians below cover four managed-buffer draws, 98,304
+vertices at 256×256, measured by QPC through EVENT completion with six retained
+samples per mode. Zero/one-light rows remain in the same canonical result.
+
+| Pair / palette branch | Original or repaired ordinary | Motion | Combined |
+| --- | ---: | ---: | ---: |
+| DEFAULT / disabled | 0.678550 ms (repaired) | 0.790750 ms | 0.793500 ms |
+| DEFAULT / enabled | 0.681800 ms (repaired) | 0.793750 ms | 0.897700 ms |
+| BUMP / disabled | 0.790100 ms | 0.910250 ms | 0.919450 ms |
+| BUMP / enabled | 0.791900 ms | 0.921900 ms | 0.914500 ms |
+
+These small completion-window differences include CPU/driver work and noise;
+they are not GPU timestamps, per-game-frame cost or evidence of improved FPS.
+DEFAULT never uses its invalid original pair as a performance control. The
+detached gate now covers shader creation and the recorded numerical,
+interpolation, clipping and alpha/temporal behavior on X3. The separate 162-pair
+live route, physical hostile-WRAP diagnostics, actual live Reset/retirement,
+native Windows and gameplay qualification remain pending.

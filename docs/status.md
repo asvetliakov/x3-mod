@@ -48,17 +48,16 @@ Those observations do not yet establish the cause of the visible shimmer.
 - **Authored bloom glow:** main contains the reviewed retained-alpha correction. The standalone X3 GPU corpus
   passes 36 image cases and 16 controls, Reset, exact destination alpha, and RGB within one display code. The
   promoted shaders are qualified; candidate-DLL integration, gameplay appearance, and gameplay cost remain.
-- **148-pair materials:** main adds all 32 Boron/Paranid pairs, reaching **148 pairs / 115 originals in source**.
-  Pure conversion, scalar-WRAP transport, review, and the 3,549-case detached X3 GPU corpus pass. The reviewed
-  expanded live fixture has not run on the GPU; no 148-pair DLL is installed.
+- **162-pair materials:** main includes the 32 Boron/Paranid and 14 XT additions, reaching **162 pairs /
+  130 original programs**. All 52 inventoried additional SM3 opaque pairs have reviewed conversions.
+  The detached X3 GPU corpus passes 3,923 cases; the expanded live matrix is next. XT includes four
+  authored DEFAULT linkage repairs. Shared failed-state restoration now quarantines affected draws
+  until successful Reset/resynchronization; scoped host and independent review pass.
 - **20-pair SM2 emission source:** main adds all 15 remaining SM2 effects/engine pairs to the existing five,
   covering 384 SM2 archive occurrences. Host review and 100 variants / 1,483 assertions pass. The added fifteen
   now pass the 376-case coverage and 271-case fused-composition X3 GPU runs, including exact native-output
   parity and scoped Reset checks. The expanded 52-frame live matrix remains. Nine SM1 pairs and
   nonadditive blend contracts remain separate.
-- **XT materials:** all 14 pairs are implemented and source-reviewed in an isolated worktree, including four
-  authored DEFAULT linkage repairs. Detached/live fixture preparation is being reviewed; GPU qualification
-  remains. Main stays at 148 pairs so this expansion does not delay the immediate glow/diagnostic build.
 - **Selection diagnostics:** 23 native sites and the owned Present bridge are implemented and independently
   reviewed. The X3 CPU fixture passes 815 checks, with about 0.134 ms added per synthetic loop.
   `--game-phases --telemetry` enables the bounded trace; gameplay results remain pending.
@@ -83,9 +82,8 @@ Those observations do not yet establish the cause of the visible shimmer.
 
 ## Next candidate conditions
 
-1. Keep the reviewed glow, 148-pair material and selection-diagnostic source together; retain the separate
-   source-reviewed XT work until its GPU qualification is ready.
-2. Make one clean candidate build and matching fixture seam. Qualify the 148-pair live matrix, scalar WRAP,
+1. Keep the reviewed glow, 162-pair material and selection-diagnostic source together.
+2. Make one clean candidate build and matching fixture seam. Qualify the 162-pair live matrix, scalar WRAP,
    expanded default-off emission route, and affected integration/load/CPU checks against those retained binaries.
 3. Fix any concrete failures, then install reversibly with the previous DLL/record retained for rollback.
    Update the single install record, verify installed bytes and validate the combined user command.

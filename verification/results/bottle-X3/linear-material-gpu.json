@@ -1,8 +1,5 @@
 {
   "passed": true,
-  "source_commit": "a5a098fc725b775c808c8c6dda7ca753775a6021",
-  "integrated_source_commit": "7c138253238ffef39fe98ca9472725d8495b996f",
-  "raw_report_sha256": "bccb932337a28259ca7349d250aa16de2b649282ddc160784854135f45505381",
   "bottle": {
     "name": "X3",
     "wine_arch": "arm64",
@@ -19,7 +16,9 @@
       1,
       2,
       3,
-      4
+      4,
+      5,
+      6
     ],
     "sampler_srgb": false,
     "srgb_write": false,
@@ -30,7 +29,7 @@
       "R32F"
     ]
   },
-  "scope": "148 reviewed pairs including Boron/Paranid and Asteroid DEFAULT/BUMPMAP: Argon/shared/Split/Terran DEFAULT and BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof",
+  "scope": "162 pairs: prior148 plus all14XT; ten native BUMP/LOW conversions and four authored DEFAULT producer repairs. Detached ordinary/combined numerics, alpha/motion/depth, interpolation and diagnostic completion cost; original invalid DEFAULT is never submitted. No live route or native Windows runtime proof.",
   "timing_scope": "QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS",
   "tolerance": {
     "rgb_relative": 0.006,
@@ -154,29 +153,49 @@
     "ps_43c9405568d2226f.bin": "d2544a28896c0cb60b9741a7cbd788ef11600e5d15016b287942de9a45717df1",
     "ps_5e056627e9ff3a8d.bin": "a87d5b7a2f902531821c4127085bc28765f79ce8f1f8e18f88aa4b1668b039d9",
     "ps_fce465befff2f623.bin": "3790c9f432dd55ad750334b9f81d0beedf982c73f53c2917c1a1810149f4b8bb",
-    "vs_2a560f246c90fa64.bin": "b0a63b2df4caa9cfe3f6afba2b06006f12bf5342137d7d8a708083eddfb9b452"
+    "vs_2a560f246c90fa64.bin": "b0a63b2df4caa9cfe3f6afba2b06006f12bf5342137d7d8a708083eddfb9b452",
+    "ps_fffdabd910793aba.bin": "8fc110cf9cf4631ac0f7052b8f61ec6c5908bcaa7be830853570404ddfa95b72",
+    "ps_e6794b6ec37ff71a.bin": "e60e8b14d88e4bd7cd4a76be49ba3000e73a907f477f09d2229231ec3d04dd71",
+    "vs_37c34a7478544c14.bin": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+    "ps_5f82ecacd39529cd.bin": "e62d0f041430e54fdea5800ef6576d812a2486f12a980f921553e7292349d8c2",
+    "ps_f1b0e820c7b488c3.bin": "8f6517d6730a53d52712a335253d272663e34d05e3cdcdccc93c05249014515e",
+    "ps_6733b119142c8d42.bin": "054e5a62f0e2776e23e976a4712b12a17b733b74d8044414aab2848319e8316b",
+    "ps_496049cec2066ed3.bin": "20fe53ef998ebd1b4d00805c5d6b994b17ad8b5a084c2eb02330123812947ba3",
+    "ps_d51cf763125cb85a.bin": "2d839121941ee9d9c368a6ab465ed11340c50fe9c728e3c28a10d053b0e90198",
+    "ps_31445adb0a62d134.bin": "750a6472c3f6662afa39afff148d9f0aeffec97b8a24854fe3f9499678cb9b76",
+    "ps_fd58e6b7e8cf969c.bin": "54924dd1740c8c9f519fd124536aa021e33f2edd6470ca5b74fee94b4d42dec1",
+    "ps_dd87737d697c6764.bin": "9d0797927d1976263b665f227bb55cd168d54ade2711661af2b65381af4cb9c8",
+    "ps_d22f2ce2c740e6a7.bin": "e0ddf6118ccb38dc663a416b4edcb934490456a993484d3025e186965cf3d6bd",
+    "ps_1de3d2dde345a7e3.bin": "99c488578f504ff40f7fa706ccb03b208cb9bc94220006574d62c9f982a9adee",
+    "ps_75fb9c6b05e28ea2.bin": "00db65e838df26d31803d09bba8cfa9acbdc286d5c5b9a5b9b382f760840afb6",
+    "ps_edaef099780fcafe.bin": "ae68ffcaa603442ef0b5ebd11e6667004b3efdc9a52b37c882cc13b4ff485bd1"
   },
-  "executable_sha256": "8b114e50ec91ab4d4f77ad78e6943b33678a425585e54e69e3171bfa92460027",
-  "raw_report": "/tmp/x3-palette-detached-r1/report.txt",
+  "executable_sha256": "21baf7028b59f82ad971b5c0883b6ea823fbe561bed51b3930498215a113f786",
+  "raw_report": "/tmp/x3-xt162-detached/report.txt",
   "code_sha256": {
-    "src/renderer/linear_material.cpp": "0fc167cd02d4880c16ba3fc34d0e98c2eb53b5e21b421d70f92d5e1967a1bcb0",
-    "src/renderer/linear_material.h": "46f1a391996c2790a95f9f79a37e593ee6155c0e071bed36b309403e7ab40515",
+    "src/renderer/linear_material.cpp": "75c8d6de26c70a7805106d1b60e70fdfa67278fa9c4730cc7a444efc284d1fe5",
+    "src/renderer/linear_material.h": "eecbeeec360924defd2080ae780e4c55f34f1263fd6f7721645114675e868a2e",
+    "src/renderer/linear_xt_material_inc.h": "ac003397997468cd59ca306f8f74a5667e7f3859ee0672ebff499411e2a1268c",
+    "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
     "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
     "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0",
     "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
     "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
     "docs/reverse-engineering/linear-material-profiles.json": "fca3a26846413632b314810a1093f228607f7044c7c3dd73ca9d321a59a56ba8",
-    "verification/probe/linear_material_fixture.cpp": "f4905e3f4f2bbda15c748af0b7777e2e18c6b8f36f8ccfc7071d88cc0adc315d",
+    "docs/reverse-engineering/xt-material-profiles.json": "3c8715479e0fe53c1336d891c09ccb6a2fd88e92873e6ac9e4f16a5167c6c80f",
+    "verification/probe/linear_material_fixture.cpp": "3cfa04484bfecf1b9e643aa90c5439d9d67cb871729772bc1f22bc7710af187c",
     "verification/probe/linear_material_reference.py": "a75c6d3e72cb0c1e3a49dc9d94b3e86ef07ee66f6596395b11c22a74a6d99094",
-    "verification/probe/run_linear_material.py": "fc40b54338e807b0d69b149153440a36491b597cdf13a9db27d1e577bb1a2e26"
+    "verification/probe/linear_xt_fixture_reference.py": "19e2ada0cd4e7d79086c364fa4b5ccae5c8931aa7fabddc2a4f8cf10740307e9",
+    "verification/analysis/xt_material_reference.py": "e7d1ada3e47bb0463a1fa48f062aceee0d54bd8d655a4c4688ec4c9135728344",
+    "verification/probe/run_linear_material.py": "7ca111f90ae74a67799c5c8a109e580dcdc2b82eaaf4e94b373a8c9dcc85c633"
   },
   "exit_code": 0,
-  "cases": 3549,
-  "pairs": 148,
-  "unique_originals": 115,
-  "shader_creations": 981,
-  "samples": 31941,
-  "analytic_samples": 31419,
+  "cases": 3923,
+  "pairs": 162,
+  "unique_originals": 130,
+  "shader_creations": 1130,
+  "samples": 35307,
+  "analytic_samples": 34785,
   "families": {
     "Argon": {
       "cases": 186,
@@ -262,16 +281,54 @@
       "cases": 249,
       "max_rgb_envelope_error": 0.0009765674999999696,
       "max_tolerance_fraction": 0.15863112983668223
+    },
+    "XT standard DEFAULT": {
+      "cases": 57,
+      "max_rgb_envelope_error": 0.0004882809999999793,
+      "max_tolerance_fraction": 0.15832989904873956
+    },
+    "XT standard BUMP": {
+      "cases": 55,
+      "max_rgb_envelope_error": 0.0009765674999999696,
+      "max_tolerance_fraction": 0.15818003644460854
+    },
+    "XT standard LOW": {
+      "cases": 52,
+      "max_rgb_envelope_error": 0.0009765649999999848,
+      "max_tolerance_fraction": 0.16030960063612554
+    },
+    "XT damage BUMP": {
+      "cases": 61,
+      "max_rgb_envelope_error": 0.00048828125,
+      "max_tolerance_fraction": 0.16000196610515935
+    },
+    "XT terraformer DEFAULT": {
+      "cases": 53,
+      "max_rgb_envelope_error": 0.0004882815000000207,
+      "max_tolerance_fraction": 0.1604373344285793
+    },
+    "XT terraformer BUMP": {
+      "cases": 48,
+      "max_rgb_envelope_error": 0.0009765625,
+      "max_tolerance_fraction": 0.1578541932387892
+    },
+    "XT terraformer LOW": {
+      "cases": 48,
+      "max_rgb_envelope_error": 0.0009765625,
+      "max_tolerance_fraction": 0.1604373344285793
     }
   },
-  "original_case_prefix": 2757,
+  "original_case_prefix": 3549,
+  "xt_ordinary_samples": 3366,
+  "xt_ordinary_max_tolerance_fraction": 0.1591217475431564,
+  "effective_programmable_color_flat": false,
   "boundary_cases": 58,
   "boundary_limit": "Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence",
-  "invariant_pixels": 908544,
+  "invariant_pixels": 1004288,
   "max_rgb_envelope_error": 0.00390625,
   "max_tolerance_fraction": 0.1614340509615012,
   "exact_black_channels": 5211,
-  "hdr_channels": 4311,
+  "hdr_channels": 4419,
   "caps": {
     "mrt": 4,
     "vs_slots": 512,
@@ -284,9 +341,9 @@
       "lights": 0,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.5784499999999999,
-      "min_ms": 0.5743,
-      "max_ms": 0.8018
+      "median_ms": 0.5709,
+      "min_ms": 0.5536,
+      "max_ms": 0.9237
     },
     {
       "pair": 0,
@@ -294,9 +351,9 @@
       "lights": 0,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.70155,
-      "min_ms": 0.6816,
-      "max_ms": 1.0383
+      "median_ms": 0.7051000000000001,
+      "min_ms": 0.6675,
+      "max_ms": 1.0212
     },
     {
       "pair": 0,
@@ -304,9 +361,9 @@
       "lights": 0,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.8010999999999999,
-      "min_ms": 0.7912,
-      "max_ms": 0.837
+      "median_ms": 0.7880499999999999,
+      "min_ms": 0.7765,
+      "max_ms": 1.2553
     },
     {
       "pair": 0,
@@ -314,9 +371,9 @@
       "lights": 8,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.55515,
-      "min_ms": 0.5492,
-      "max_ms": 0.5575
+      "median_ms": 0.6270500000000001,
+      "min_ms": 0.5559,
+      "max_ms": 1.2576
     },
     {
       "pair": 0,
@@ -324,9 +381,9 @@
       "lights": 8,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.6775500000000001,
-      "min_ms": 0.665,
-      "max_ms": 0.7874
+      "median_ms": 0.6776,
+      "min_ms": 0.6722,
+      "max_ms": 1.2527
     },
     {
       "pair": 0,
@@ -334,9 +391,9 @@
       "lights": 8,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.79405,
-      "min_ms": 0.7778,
-      "max_ms": 0.8221
+      "median_ms": 0.7876000000000001,
+      "min_ms": 0.7825,
+      "max_ms": 0.7993
     },
     {
       "pair": 10,
@@ -344,9 +401,9 @@
       "lights": 0,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.6709499999999999,
-      "min_ms": 0.5653,
-      "max_ms": 0.6821
+      "median_ms": 0.5588,
+      "min_ms": 0.5504,
+      "max_ms": 0.6713
     },
     {
       "pair": 10,
@@ -354,9 +411,9 @@
       "lights": 0,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.6857500000000001,
-      "min_ms": 0.6686,
-      "max_ms": 1.2572
+      "median_ms": 0.68865,
+      "min_ms": 0.6761,
+      "max_ms": 0.7935
     },
     {
       "pair": 10,
@@ -364,9 +421,9 @@
       "lights": 0,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.7832,
-      "min_ms": 0.7749,
-      "max_ms": 0.7889
+      "median_ms": 0.7855000000000001,
+      "min_ms": 0.775,
+      "max_ms": 0.8005
     },
     {
       "pair": 10,
@@ -374,9 +431,9 @@
       "lights": 8,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.5638000000000001,
-      "min_ms": 0.553,
-      "max_ms": 0.6694
+      "median_ms": 0.5549,
+      "min_ms": 0.5404,
+      "max_ms": 0.5856
     },
     {
       "pair": 10,
@@ -384,9 +441,9 @@
       "lights": 8,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.6800999999999999,
-      "min_ms": 0.6686,
-      "max_ms": 1.1314
+      "median_ms": 0.7302,
+      "min_ms": 0.6639,
+      "max_ms": 1.1371
     },
     {
       "pair": 10,
@@ -394,9 +451,9 @@
       "lights": 8,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.78635,
-      "min_ms": 0.778,
-      "max_ms": 1.3667
+      "median_ms": 0.7888,
+      "min_ms": 0.7784,
+      "max_ms": 0.7954
     },
     {
       "pair": 20,
@@ -404,9 +461,9 @@
       "lights": 0,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.6823,
-      "min_ms": 0.5848,
-      "max_ms": 0.7172
+      "median_ms": 0.66935,
+      "min_ms": 0.6649,
+      "max_ms": 0.6787
     },
     {
       "pair": 20,
@@ -414,9 +471,9 @@
       "lights": 0,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.8064,
-      "min_ms": 0.7968,
-      "max_ms": 0.8134
+      "median_ms": 0.79245,
+      "min_ms": 0.7783,
+      "max_ms": 1.2618
     },
     {
       "pair": 20,
@@ -424,9 +481,9 @@
       "lights": 0,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.8061499999999999,
-      "min_ms": 0.7895,
-      "max_ms": 0.8248
+      "median_ms": 0.8068500000000001,
+      "min_ms": 0.7823,
+      "max_ms": 0.8978
     },
     {
       "pair": 20,
@@ -434,9 +491,9 @@
       "lights": 8,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.67855,
-      "min_ms": 0.6666,
-      "max_ms": 1.1381
+      "median_ms": 0.6769000000000001,
+      "min_ms": 0.6688,
+      "max_ms": 1.2622
     },
     {
       "pair": 20,
@@ -444,9 +501,9 @@
       "lights": 8,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.78815,
-      "min_ms": 0.6975,
-      "max_ms": 1.1455
+      "median_ms": 0.7877000000000001,
+      "min_ms": 0.6979,
+      "max_ms": 0.8102
     },
     {
       "pair": 20,
@@ -454,9 +511,9 @@
       "lights": 8,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.7844,
-      "min_ms": 0.7738,
-      "max_ms": 0.9072
+      "median_ms": 0.784,
+      "min_ms": 0.7767,
+      "max_ms": 1.2495
     },
     {
       "pair": 30,
@@ -464,9 +521,9 @@
       "lights": 0,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.58525,
-      "min_ms": 0.5624,
-      "max_ms": 0.603
+      "median_ms": 0.56,
+      "min_ms": 0.5478,
+      "max_ms": 0.6713
     },
     {
       "pair": 30,
@@ -474,319 +531,319 @@
       "lights": 0,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.7110000000000001,
-      "min_ms": 0.6823,
-      "max_ms": 0.9955
+      "median_ms": 0.67325,
+      "min_ms": 0.6672,
+      "max_ms": 0.6893
     },
     {
       "pair": 30,
       "family": "Split DEFAULT",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.8155,
-      "min_ms": 0.792,
-      "max_ms": 1.39
-    },
-    {
-      "pair": 30,
-      "family": "Split DEFAULT",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.5841,
-      "min_ms": 0.5592,
-      "max_ms": 0.705
-    },
-    {
-      "pair": 30,
-      "family": "Split DEFAULT",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.6837500000000001,
-      "min_ms": 0.6754,
-      "max_ms": 1.0333
-    },
-    {
-      "pair": 30,
-      "family": "Split DEFAULT",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.79105,
-      "min_ms": 0.6942,
-      "max_ms": 1.1565
-    },
-    {
-      "pair": 40,
-      "family": "standard DEFAULT",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.5849,
-      "min_ms": 0.564,
-      "max_ms": 0.6722
-    },
-    {
-      "pair": 40,
-      "family": "standard DEFAULT",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.71345,
-      "min_ms": 0.6849,
-      "max_ms": 1.143
-    },
-    {
-      "pair": 40,
-      "family": "standard DEFAULT",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.8142,
-      "min_ms": 0.7918,
-      "max_ms": 0.8349
-    },
-    {
-      "pair": 40,
-      "family": "standard DEFAULT",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.55555,
-      "min_ms": 0.5454,
-      "max_ms": 0.6861
-    },
-    {
-      "pair": 40,
-      "family": "standard DEFAULT",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.7031499999999999,
-      "min_ms": 0.6712,
-      "max_ms": 0.7231
-    },
-    {
-      "pair": 40,
-      "family": "standard DEFAULT",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.7932,
-      "min_ms": 0.6938,
-      "max_ms": 0.8237
-    },
-    {
-      "pair": 50,
-      "family": "standard BUMP",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.68335,
-      "min_ms": 0.6629,
-      "max_ms": 1.016
-    },
-    {
-      "pair": 50,
-      "family": "standard BUMP",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.79305,
-      "min_ms": 0.7875,
-      "max_ms": 0.8288
-    },
-    {
-      "pair": 50,
-      "family": "standard BUMP",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.78975,
-      "min_ms": 0.7853,
-      "max_ms": 0.8185
-    },
-    {
-      "pair": 50,
-      "family": "standard BUMP",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.8008500000000001,
-      "min_ms": 0.6741,
-      "max_ms": 2.6151
-    },
-    {
-      "pair": 50,
-      "family": "standard BUMP",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.8954,
-      "min_ms": 0.8095,
-      "max_ms": 0.9707
-    },
-    {
-      "pair": 50,
-      "family": "standard BUMP",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.99125,
-      "min_ms": 0.7909,
-      "max_ms": 1.2353
-    },
-    {
-      "pair": 60,
-      "family": "standard LOW",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.67865,
-      "min_ms": 0.6738,
-      "max_ms": 0.6904
-    },
-    {
-      "pair": 60,
-      "family": "standard LOW",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.8141,
-      "min_ms": 0.7813,
-      "max_ms": 1.3879
-    },
-    {
-      "pair": 60,
-      "family": "standard LOW",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.8022,
-      "min_ms": 0.7797,
-      "max_ms": 1.459
-    },
-    {
-      "pair": 60,
-      "family": "standard LOW",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.6729,
-      "min_ms": 0.6698,
-      "max_ms": 0.7958
-    },
-    {
-      "pair": 60,
-      "family": "standard LOW",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.79645,
-      "min_ms": 0.7888,
-      "max_ms": 1.1353
-    },
-    {
-      "pair": 60,
-      "family": "standard LOW",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.79135,
-      "min_ms": 0.7859,
-      "max_ms": 1.019
-    },
-    {
-      "pair": 70,
-      "family": "shared BUMP",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.67275,
-      "min_ms": 0.6648,
-      "max_ms": 0.6958
-    },
-    {
-      "pair": 70,
-      "family": "shared BUMP",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.78765,
-      "min_ms": 0.6913,
-      "max_ms": 0.8158
-    },
-    {
-      "pair": 70,
-      "family": "shared BUMP",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.788,
-      "min_ms": 0.7703,
-      "max_ms": 0.7907
-    },
-    {
-      "pair": 70,
-      "family": "shared BUMP",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.67425,
-      "min_ms": 0.6697,
-      "max_ms": 0.6926
-    },
-    {
-      "pair": 70,
-      "family": "shared BUMP",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.7912,
-      "min_ms": 0.784,
-      "max_ms": 0.7976
-    },
-    {
-      "pair": 70,
-      "family": "shared BUMP",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.7898499999999999,
-      "min_ms": 0.7853,
-      "max_ms": 0.8185
-    },
-    {
-      "pair": 80,
-      "family": "Split BUMP",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.6759999999999999,
-      "min_ms": 0.6705,
-      "max_ms": 0.9048
-    },
-    {
-      "pair": 80,
-      "family": "Split BUMP",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.78745,
-      "min_ms": 0.6897,
-      "max_ms": 0.7927
-    },
-    {
-      "pair": 80,
-      "family": "Split BUMP",
       "lights": 0,
       "mode": "combined",
       "samples": 6,
       "median_ms": 0.78895,
-      "min_ms": 0.7826,
-      "max_ms": 1.0111
+      "min_ms": 0.6948,
+      "max_ms": 1.0149
+    },
+    {
+      "pair": 30,
+      "family": "Split DEFAULT",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6131500000000001,
+      "min_ms": 0.5525,
+      "max_ms": 0.6725
+    },
+    {
+      "pair": 30,
+      "family": "Split DEFAULT",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.6746000000000001,
+      "min_ms": 0.6638,
+      "max_ms": 0.6853
+    },
+    {
+      "pair": 30,
+      "family": "Split DEFAULT",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7869,
+      "min_ms": 0.7759,
+      "max_ms": 1.2402
+    },
+    {
+      "pair": 40,
+      "family": "standard DEFAULT",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.56255,
+      "min_ms": 0.5553,
+      "max_ms": 0.5773
+    },
+    {
+      "pair": 40,
+      "family": "standard DEFAULT",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.6724,
+      "min_ms": 0.6685,
+      "max_ms": 1.2482
+    },
+    {
+      "pair": 40,
+      "family": "standard DEFAULT",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7918499999999999,
+      "min_ms": 0.7835,
+      "max_ms": 1.3821
+    },
+    {
+      "pair": 40,
+      "family": "standard DEFAULT",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.62195,
+      "min_ms": 0.5508,
+      "max_ms": 0.7387
+    },
+    {
+      "pair": 40,
+      "family": "standard DEFAULT",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.6696,
+      "min_ms": 0.663,
+      "max_ms": 0.688
+    },
+    {
+      "pair": 40,
+      "family": "standard DEFAULT",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.79635,
+      "min_ms": 0.6659,
+      "max_ms": 1.135
+    },
+    {
+      "pair": 50,
+      "family": "standard BUMP",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.69175,
+      "min_ms": 0.6666,
+      "max_ms": 1.1363
+    },
+    {
+      "pair": 50,
+      "family": "standard BUMP",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7886500000000001,
+      "min_ms": 0.688,
+      "max_ms": 0.8022
+    },
+    {
+      "pair": 50,
+      "family": "standard BUMP",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7947,
+      "min_ms": 0.7803,
+      "max_ms": 1.3811
+    },
+    {
+      "pair": 50,
+      "family": "standard BUMP",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.684,
+      "min_ms": 0.6642,
+      "max_ms": 0.7246
+    },
+    {
+      "pair": 50,
+      "family": "standard BUMP",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7941,
+      "min_ms": 0.7874,
+      "max_ms": 0.819
+    },
+    {
+      "pair": 50,
+      "family": "standard BUMP",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.8006500000000001,
+      "min_ms": 0.7862,
+      "max_ms": 1.2513
+    },
+    {
+      "pair": 60,
+      "family": "standard LOW",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6961999999999999,
+      "min_ms": 0.6808,
+      "max_ms": 0.783
+    },
+    {
+      "pair": 60,
+      "family": "standard LOW",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7917,
+      "min_ms": 0.7859,
+      "max_ms": 1.3822
+    },
+    {
+      "pair": 60,
+      "family": "standard LOW",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.8023,
+      "min_ms": 0.7887,
+      "max_ms": 1.1351
+    },
+    {
+      "pair": 60,
+      "family": "standard LOW",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.67775,
+      "min_ms": 0.6674,
+      "max_ms": 1.133
+    },
+    {
+      "pair": 60,
+      "family": "standard LOW",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7966,
+      "min_ms": 0.7104,
+      "max_ms": 1.3955
+    },
+    {
+      "pair": 60,
+      "family": "standard LOW",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7926,
+      "min_ms": 0.788,
+      "max_ms": 0.913
+    },
+    {
+      "pair": 70,
+      "family": "shared BUMP",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6734,
+      "min_ms": 0.6667,
+      "max_ms": 1.2594
+    },
+    {
+      "pair": 70,
+      "family": "shared BUMP",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.79055,
+      "min_ms": 0.6871,
+      "max_ms": 0.8128
+    },
+    {
+      "pair": 70,
+      "family": "shared BUMP",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7999,
+      "min_ms": 0.7847,
+      "max_ms": 1.2689
+    },
+    {
+      "pair": 70,
+      "family": "shared BUMP",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6811,
+      "min_ms": 0.6647,
+      "max_ms": 0.7081
+    },
+    {
+      "pair": 70,
+      "family": "shared BUMP",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.79525,
+      "min_ms": 0.7778,
+      "max_ms": 1.2818
+    },
+    {
+      "pair": 70,
+      "family": "shared BUMP",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.8007,
+      "min_ms": 0.7918,
+      "max_ms": 0.9062
+    },
+    {
+      "pair": 80,
+      "family": "Split BUMP",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6711,
+      "min_ms": 0.6623,
+      "max_ms": 0.6926
+    },
+    {
+      "pair": 80,
+      "family": "Split BUMP",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.79235,
+      "min_ms": 0.7037,
+      "max_ms": 0.8015
+    },
+    {
+      "pair": 80,
+      "family": "Split BUMP",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.80155,
+      "min_ms": 0.7804,
+      "max_ms": 1.0656
     },
     {
       "pair": 80,
@@ -794,514 +851,910 @@
       "lights": 8,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.6698999999999999,
-      "min_ms": 0.6658,
-      "max_ms": 1.0137
+      "median_ms": 0.67675,
+      "min_ms": 0.6665,
+      "max_ms": 0.6923
     },
     {
       "pair": 80,
       "family": "Split BUMP",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.79905,
+      "min_ms": 0.7019,
+      "max_ms": 1.1362
+    },
+    {
+      "pair": 80,
+      "family": "Split BUMP",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7946,
+      "min_ms": 0.7846,
+      "max_ms": 1.3686
+    },
+    {
+      "pair": 90,
+      "family": "Terran DEFAULT",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.55705,
+      "min_ms": 0.5478,
+      "max_ms": 1.2529
+    },
+    {
+      "pair": 90,
+      "family": "Terran DEFAULT",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.67055,
+      "min_ms": 0.6599,
+      "max_ms": 0.7898
+    },
+    {
+      "pair": 90,
+      "family": "Terran DEFAULT",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7826,
+      "min_ms": 0.6779,
+      "max_ms": 1.3677
+    },
+    {
+      "pair": 90,
+      "family": "Terran DEFAULT",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.5720000000000001,
+      "min_ms": 0.5546,
+      "max_ms": 0.673
+    },
+    {
+      "pair": 90,
+      "family": "Terran DEFAULT",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.6715,
+      "min_ms": 0.667,
+      "max_ms": 0.7964
+    },
+    {
+      "pair": 90,
+      "family": "Terran DEFAULT",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7887500000000001,
+      "min_ms": 0.6818,
+      "max_ms": 1.0122
+    },
+    {
+      "pair": 100,
+      "family": "Terran BUMP",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6756500000000001,
+      "min_ms": 0.6655,
+      "max_ms": 0.6942
+    },
+    {
+      "pair": 100,
+      "family": "Terran BUMP",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7905,
+      "min_ms": 0.691,
+      "max_ms": 0.7952
+    },
+    {
+      "pair": 100,
+      "family": "Terran BUMP",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.79095,
+      "min_ms": 0.7878,
+      "max_ms": 1.0227
+    },
+    {
+      "pair": 100,
+      "family": "Terran BUMP",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.67265,
+      "min_ms": 0.5428,
+      "max_ms": 1.1348
+    },
+    {
+      "pair": 100,
+      "family": "Terran BUMP",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.78855,
+      "min_ms": 0.7798,
+      "max_ms": 0.7923
+    },
+    {
+      "pair": 100,
+      "family": "Terran BUMP",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7986,
+      "min_ms": 0.7835,
+      "max_ms": 0.8945
+    },
+    {
+      "pair": 110,
+      "family": "Asteroid DEFAULT",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.5497000000000001,
+      "min_ms": 0.543,
+      "max_ms": 0.7826
+    },
+    {
+      "pair": 110,
+      "family": "Asteroid DEFAULT",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.6689,
+      "min_ms": 0.6582,
+      "max_ms": 0.6799
+    },
+    {
+      "pair": 110,
+      "family": "Asteroid DEFAULT",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7795,
+      "min_ms": 0.6948,
+      "max_ms": 1.2476
+    },
+    {
+      "pair": 110,
+      "family": "Asteroid DEFAULT",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.5570999999999999,
+      "min_ms": 0.5372,
+      "max_ms": 1.2398
+    },
+    {
+      "pair": 110,
+      "family": "Asteroid DEFAULT",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.6668000000000001,
+      "min_ms": 0.6591,
+      "max_ms": 0.6865
+    },
+    {
+      "pair": 110,
+      "family": "Asteroid DEFAULT",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.78165,
+      "min_ms": 0.6713,
+      "max_ms": 1.2434
+    },
+    {
+      "pair": 113,
+      "family": "Asteroid BUMP",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6845,
+      "min_ms": 0.6605,
+      "max_ms": 1.0129
+    },
+    {
+      "pair": 113,
+      "family": "Asteroid BUMP",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7824,
+      "min_ms": 0.7748,
+      "max_ms": 0.7976
+    },
+    {
+      "pair": 113,
+      "family": "Asteroid BUMP",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.78755,
+      "min_ms": 0.7799,
+      "max_ms": 1.262
+    },
+    {
+      "pair": 113,
+      "family": "Asteroid BUMP",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.67455,
+      "min_ms": 0.6522,
+      "max_ms": 0.7964
+    },
+    {
+      "pair": 113,
+      "family": "Asteroid BUMP",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.79545,
+      "min_ms": 0.7881,
+      "max_ms": 1.1454
+    },
+    {
+      "pair": 113,
+      "family": "Asteroid BUMP",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7908999999999999,
+      "min_ms": 0.781,
+      "max_ms": 0.909
+    },
+    {
+      "pair": 116,
+      "family": "Boron DEFAULT",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.68085,
+      "min_ms": 0.667,
+      "max_ms": 0.9098
+    },
+    {
+      "pair": 116,
+      "family": "Boron DEFAULT",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.79605,
+      "min_ms": 0.7871,
+      "max_ms": 0.9187
+    },
+    {
+      "pair": 116,
+      "family": "Boron DEFAULT",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.81035,
+      "min_ms": 0.7842,
+      "max_ms": 1.0294
+    },
+    {
+      "pair": 116,
+      "family": "Boron DEFAULT",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.7339,
+      "min_ms": 0.6678,
+      "max_ms": 0.7883
+    },
+    {
+      "pair": 116,
+      "family": "Boron DEFAULT",
       "lights": 8,
       "mode": "motion",
       "samples": 6,
       "median_ms": 0.79555,
-      "min_ms": 0.7834,
-      "max_ms": 1.1333
+      "min_ms": 0.786,
+      "max_ms": 0.7996
     },
     {
-      "pair": 80,
-      "family": "Split BUMP",
+      "pair": 116,
+      "family": "Boron DEFAULT",
       "lights": 8,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.8028,
+      "median_ms": 0.8552,
+      "min_ms": 0.7845,
+      "max_ms": 0.9147
+    },
+    {
+      "pair": 122,
+      "family": "Boron BUMP",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.7919,
+      "min_ms": 0.7841,
+      "max_ms": 1.3073
+    },
+    {
+      "pair": 122,
+      "family": "Boron BUMP",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.8123,
+      "min_ms": 0.7969,
+      "max_ms": 0.9111
+    },
+    {
+      "pair": 122,
+      "family": "Boron BUMP",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.90425,
+      "min_ms": 0.8012,
+      "max_ms": 0.9264
+    },
+    {
+      "pair": 122,
+      "family": "Boron BUMP",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.78455,
+      "min_ms": 0.7789,
+      "max_ms": 0.8154
+    },
+    {
+      "pair": 122,
+      "family": "Boron BUMP",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.9049,
+      "min_ms": 0.7912,
+      "max_ms": 0.9137
+    },
+    {
+      "pair": 122,
+      "family": "Boron BUMP",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.91455,
+      "min_ms": 0.9001,
+      "max_ms": 0.9325
+    },
+    {
+      "pair": 128,
+      "family": "Paranid DEFAULT",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.6765,
+      "min_ms": 0.6667,
+      "max_ms": 0.8983
+    },
+    {
+      "pair": 128,
+      "family": "Paranid DEFAULT",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7873,
+      "min_ms": 0.7791,
+      "max_ms": 1.1336
+    },
+    {
+      "pair": 128,
+      "family": "Paranid DEFAULT",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.90055,
+      "min_ms": 0.7789,
+      "max_ms": 0.9159
+    },
+    {
+      "pair": 128,
+      "family": "Paranid DEFAULT",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.67325,
+      "min_ms": 0.6599,
+      "max_ms": 0.686
+    },
+    {
+      "pair": 128,
+      "family": "Paranid DEFAULT",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.8087,
+      "min_ms": 0.7917,
+      "max_ms": 0.9072
+    },
+    {
+      "pair": 128,
+      "family": "Paranid DEFAULT",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.84675,
+      "min_ms": 0.7838,
+      "max_ms": 1.3767
+    },
+    {
+      "pair": 138,
+      "family": "Paranid BUMP",
+      "lights": 0,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.7885,
+      "min_ms": 0.6907,
+      "max_ms": 1.3831
+    },
+    {
+      "pair": 138,
+      "family": "Paranid BUMP",
+      "lights": 0,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.7925,
+      "min_ms": 0.7862,
+      "max_ms": 0.9035
+    },
+    {
+      "pair": 138,
+      "family": "Paranid BUMP",
+      "lights": 0,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.9071,
+      "min_ms": 0.8064,
+      "max_ms": 0.9257
+    },
+    {
+      "pair": 138,
+      "family": "Paranid BUMP",
+      "lights": 8,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.7849999999999999,
+      "min_ms": 0.69,
+      "max_ms": 0.7915
+    },
+    {
+      "pair": 138,
+      "family": "Paranid BUMP",
+      "lights": 8,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.8095,
+      "min_ms": 0.7899,
+      "max_ms": 0.9048
+    },
+    {
+      "pair": 138,
+      "family": "Paranid BUMP",
+      "lights": 8,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.91045,
+      "min_ms": 0.8961,
+      "max_ms": 1.38
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 0,
+      "palette_enabled": false,
+      "mode": "repaired ordinary",
+      "samples": 6,
+      "median_ms": 0.67295,
+      "min_ms": 0.6604,
+      "max_ms": 0.6838
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 0,
+      "palette_enabled": false,
+      "mode": "repaired motion",
+      "samples": 6,
+      "median_ms": 0.782,
+      "min_ms": 0.6934,
+      "max_ms": 0.789
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 0,
+      "palette_enabled": false,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.8470500000000001,
+      "min_ms": 0.7841,
+      "max_ms": 0.9257
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 0,
+      "palette_enabled": true,
+      "mode": "repaired ordinary",
+      "samples": 6,
+      "median_ms": 0.6724,
+      "min_ms": 0.6639,
+      "max_ms": 0.6783
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 0,
+      "palette_enabled": true,
+      "mode": "repaired motion",
+      "samples": 6,
+      "median_ms": 0.7950999999999999,
+      "min_ms": 0.7866,
+      "max_ms": 0.8097
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 0,
+      "palette_enabled": true,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.8029999999999999,
+      "min_ms": 0.7895,
+      "max_ms": 0.9004
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 1,
+      "palette_enabled": false,
+      "mode": "repaired ordinary",
+      "samples": 6,
+      "median_ms": 0.68025,
+      "min_ms": 0.6631,
+      "max_ms": 0.7833
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 1,
+      "palette_enabled": false,
+      "mode": "repaired motion",
+      "samples": 6,
+      "median_ms": 0.7904,
       "min_ms": 0.7843,
-      "max_ms": 0.913
+      "max_ms": 0.9142
     },
     {
-      "pair": 90,
-      "family": "Terran DEFAULT",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.66,
-      "min_ms": 0.543,
-      "max_ms": 0.6992
-    },
-    {
-      "pair": 90,
-      "family": "Terran DEFAULT",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.68125,
-      "min_ms": 0.6549,
-      "max_ms": 0.7681
-    },
-    {
-      "pair": 90,
-      "family": "Terran DEFAULT",
-      "lights": 0,
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 1,
+      "palette_enabled": false,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.79575,
-      "min_ms": 0.7754,
-      "max_ms": 1.2577
+      "median_ms": 0.80625,
+      "min_ms": 0.783,
+      "max_ms": 0.8171
     },
     {
-      "pair": 90,
-      "family": "Terran DEFAULT",
-      "lights": 8,
-      "mode": "original",
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 1,
+      "palette_enabled": true,
+      "mode": "repaired ordinary",
       "samples": 6,
-      "median_ms": 0.5560499999999999,
-      "min_ms": 0.5418,
-      "max_ms": 0.6732
+      "median_ms": 0.669,
+      "min_ms": 0.6605,
+      "max_ms": 1.1421
     },
     {
-      "pair": 90,
-      "family": "Terran DEFAULT",
-      "lights": 8,
-      "mode": "motion",
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 1,
+      "palette_enabled": true,
+      "mode": "repaired motion",
       "samples": 6,
-      "median_ms": 0.6784,
-      "min_ms": 0.6673,
-      "max_ms": 0.6975
+      "median_ms": 0.7880499999999999,
+      "min_ms": 0.7855,
+      "max_ms": 1.2597
     },
     {
-      "pair": 90,
-      "family": "Terran DEFAULT",
-      "lights": 8,
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 1,
+      "palette_enabled": true,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.7960499999999999,
-      "min_ms": 0.7736,
-      "max_ms": 1.0145
+      "median_ms": 0.904,
+      "min_ms": 0.8005,
+      "max_ms": 0.9161
     },
     {
-      "pair": 100,
-      "family": "Terran BUMP",
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 8,
+      "palette_enabled": false,
+      "mode": "repaired ordinary",
+      "samples": 6,
+      "median_ms": 0.67855,
+      "min_ms": 0.6609,
+      "max_ms": 0.7879
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 8,
+      "palette_enabled": false,
+      "mode": "repaired motion",
+      "samples": 6,
+      "median_ms": 0.7907500000000001,
+      "min_ms": 0.7832,
+      "max_ms": 1.3825
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 8,
+      "palette_enabled": false,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.7935000000000001,
+      "min_ms": 0.7877,
+      "max_ms": 0.8035
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 8,
+      "palette_enabled": true,
+      "mode": "repaired ordinary",
+      "samples": 6,
+      "median_ms": 0.6818,
+      "min_ms": 0.6671,
+      "max_ms": 1.128
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 8,
+      "palette_enabled": true,
+      "mode": "repaired motion",
+      "samples": 6,
+      "median_ms": 0.79375,
+      "min_ms": 0.7855,
+      "max_ms": 1.1306
+    },
+    {
+      "pair": 148,
+      "family": "XT standard DEFAULT",
+      "lights": 8,
+      "palette_enabled": true,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.8976999999999999,
+      "min_ms": 0.795,
+      "max_ms": 0.9177
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
       "lights": 0,
+      "palette_enabled": false,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.6797500000000001,
-      "min_ms": 0.6723,
-      "max_ms": 0.7004
+      "median_ms": 0.7987,
+      "min_ms": 0.787,
+      "max_ms": 0.8041
     },
     {
-      "pair": 100,
-      "family": "Terran BUMP",
+      "pair": 150,
+      "family": "XT standard BUMP",
       "lights": 0,
+      "palette_enabled": false,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.79115,
-      "min_ms": 0.6867,
-      "max_ms": 0.907
+      "median_ms": 0.8116,
+      "min_ms": 0.7907,
+      "max_ms": 1.4982
     },
     {
-      "pair": 100,
-      "family": "Terran BUMP",
+      "pair": 150,
+      "family": "XT standard BUMP",
       "lights": 0,
+      "palette_enabled": false,
       "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.91395,
+      "min_ms": 0.9005,
+      "max_ms": 1.2567
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 0,
+      "palette_enabled": true,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.8062499999999999,
+      "min_ms": 0.7821,
+      "max_ms": 1.018
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 0,
+      "palette_enabled": true,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.9106000000000001,
+      "min_ms": 0.9054,
+      "max_ms": 0.9138
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 0,
+      "palette_enabled": true,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.90625,
+      "min_ms": 0.903,
+      "max_ms": 0.912
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 1,
+      "palette_enabled": false,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.7867,
+      "min_ms": 0.7842,
+      "max_ms": 0.7893
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 1,
+      "palette_enabled": false,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.9057,
+      "min_ms": 0.7857,
+      "max_ms": 1.2698
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 1,
+      "palette_enabled": false,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.9216500000000001,
+      "min_ms": 0.9053,
+      "max_ms": 1.2654
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 1,
+      "palette_enabled": true,
+      "mode": "original",
+      "samples": 6,
+      "median_ms": 0.79775,
+      "min_ms": 0.7878,
+      "max_ms": 0.9057
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 1,
+      "palette_enabled": true,
+      "mode": "motion",
+      "samples": 6,
+      "median_ms": 0.9217500000000001,
+      "min_ms": 0.9037,
+      "max_ms": 0.9476
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 1,
+      "palette_enabled": true,
+      "mode": "combined",
+      "samples": 6,
+      "median_ms": 0.91835,
+      "min_ms": 0.8982,
+      "max_ms": 1.0237
+    },
+    {
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 8,
+      "palette_enabled": false,
+      "mode": "original",
       "samples": 6,
       "median_ms": 0.7901,
-      "min_ms": 0.7818,
-      "max_ms": 1.1444
-    },
-    {
-      "pair": 100,
-      "family": "Terran BUMP",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.6839999999999999,
-      "min_ms": 0.6634,
-      "max_ms": 0.9011
-    },
-    {
-      "pair": 100,
-      "family": "Terran BUMP",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.7936,
-      "min_ms": 0.7842,
-      "max_ms": 0.8005
-    },
-    {
-      "pair": 100,
-      "family": "Terran BUMP",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.79725,
-      "min_ms": 0.7772,
-      "max_ms": 1.479
-    },
-    {
-      "pair": 110,
-      "family": "Asteroid DEFAULT",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.5442499999999999,
-      "min_ms": 0.5296,
-      "max_ms": 1.245
-    },
-    {
-      "pair": 110,
-      "family": "Asteroid DEFAULT",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.66585,
-      "min_ms": 0.6576,
-      "max_ms": 0.6899
-    },
-    {
-      "pair": 110,
-      "family": "Asteroid DEFAULT",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.7215,
-      "min_ms": 0.6517,
-      "max_ms": 1.2324
-    },
-    {
-      "pair": 110,
-      "family": "Asteroid DEFAULT",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.5443,
-      "min_ms": 0.5397,
-      "max_ms": 0.6636
-    },
-    {
-      "pair": 110,
-      "family": "Asteroid DEFAULT",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.66335,
-      "min_ms": 0.66,
-      "max_ms": 0.6784
-    },
-    {
-      "pair": 110,
-      "family": "Asteroid DEFAULT",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.7716000000000001,
-      "min_ms": 0.682,
-      "max_ms": 0.7775
-    },
-    {
-      "pair": 113,
-      "family": "Asteroid BUMP",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.67055,
-      "min_ms": 0.6539,
-      "max_ms": 0.6776
-    },
-    {
-      "pair": 113,
-      "family": "Asteroid BUMP",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.7866,
-      "min_ms": 0.779,
-      "max_ms": 0.8019
-    },
-    {
-      "pair": 113,
-      "family": "Asteroid BUMP",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.7874,
-      "min_ms": 0.7764,
-      "max_ms": 1.3786
-    },
-    {
-      "pair": 113,
-      "family": "Asteroid BUMP",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.6679999999999999,
-      "min_ms": 0.6539,
-      "max_ms": 1.2607
-    },
-    {
-      "pair": 113,
-      "family": "Asteroid BUMP",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.78945,
-      "min_ms": 0.7836,
-      "max_ms": 1.0327
-    },
-    {
-      "pair": 113,
-      "family": "Asteroid BUMP",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.78835,
-      "min_ms": 0.7794,
-      "max_ms": 0.8973
-    },
-    {
-      "pair": 116,
-      "family": "Boron DEFAULT",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.8105,
-      "min_ms": 0.6971,
-      "max_ms": 1.3919
-    },
-    {
-      "pair": 116,
-      "family": "Boron DEFAULT",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.8563000000000001,
-      "min_ms": 0.8109,
-      "max_ms": 1.3913
-    },
-    {
-      "pair": 116,
-      "family": "Boron DEFAULT",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.86595,
-      "min_ms": 0.7943,
-      "max_ms": 1.0018
-    },
-    {
-      "pair": 116,
-      "family": "Boron DEFAULT",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.7012,
-      "min_ms": 0.6652,
-      "max_ms": 0.8015
-    },
-    {
-      "pair": 116,
-      "family": "Boron DEFAULT",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.8039499999999999,
       "min_ms": 0.7814,
-      "max_ms": 0.816
+      "max_ms": 1.3744
     },
     {
-      "pair": 116,
-      "family": "Boron DEFAULT",
+      "pair": 150,
+      "family": "XT standard BUMP",
       "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.9138,
-      "min_ms": 0.8014,
-      "max_ms": 0.9338
-    },
-    {
-      "pair": 122,
-      "family": "Boron BUMP",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.94775,
-      "min_ms": 0.7046,
-      "max_ms": 1.2385
-    },
-    {
-      "pair": 122,
-      "family": "Boron BUMP",
-      "lights": 0,
+      "palette_enabled": false,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.8706499999999999,
-      "min_ms": 0.7978,
-      "max_ms": 1.2442
+      "median_ms": 0.91025,
+      "min_ms": 0.7886,
+      "max_ms": 1.3899
     },
     {
-      "pair": 122,
-      "family": "Boron BUMP",
-      "lights": 0,
+      "pair": 150,
+      "family": "XT standard BUMP",
+      "lights": 8,
+      "palette_enabled": false,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 0.948,
-      "min_ms": 0.9178,
-      "max_ms": 1.1008
+      "median_ms": 0.91945,
+      "min_ms": 0.9012,
+      "max_ms": 1.3737
     },
     {
-      "pair": 122,
-      "family": "Boron BUMP",
+      "pair": 150,
+      "family": "XT standard BUMP",
       "lights": 8,
+      "palette_enabled": true,
       "mode": "original",
       "samples": 6,
-      "median_ms": 0.8841000000000001,
-      "min_ms": 0.7854,
-      "max_ms": 0.9283
+      "median_ms": 0.7919,
+      "min_ms": 0.7776,
+      "max_ms": 0.8001
     },
     {
-      "pair": 122,
-      "family": "Boron BUMP",
+      "pair": 150,
+      "family": "XT standard BUMP",
       "lights": 8,
+      "palette_enabled": true,
       "mode": "motion",
       "samples": 6,
-      "median_ms": 0.9769000000000001,
-      "min_ms": 0.9157,
-      "max_ms": 1.2087
+      "median_ms": 0.9218999999999999,
+      "min_ms": 0.8967,
+      "max_ms": 1.371
     },
     {
-      "pair": 122,
-      "family": "Boron BUMP",
+      "pair": 150,
+      "family": "XT standard BUMP",
       "lights": 8,
+      "palette_enabled": true,
       "mode": "combined",
       "samples": 6,
-      "median_ms": 1.00205,
-      "min_ms": 0.9563,
-      "max_ms": 1.0699
-    },
-    {
-      "pair": 128,
-      "family": "Paranid DEFAULT",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.7030000000000001,
-      "min_ms": 0.6703,
-      "max_ms": 1.0653
-    },
-    {
-      "pair": 128,
-      "family": "Paranid DEFAULT",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.8188,
-      "min_ms": 0.791,
-      "max_ms": 0.9333
-    },
-    {
-      "pair": 128,
-      "family": "Paranid DEFAULT",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.83175,
-      "min_ms": 0.7876,
-      "max_ms": 0.9619
-    },
-    {
-      "pair": 128,
-      "family": "Paranid DEFAULT",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.6981999999999999,
-      "min_ms": 0.6665,
-      "max_ms": 0.9246
-    },
-    {
-      "pair": 128,
-      "family": "Paranid DEFAULT",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.7994,
-      "min_ms": 0.7923,
-      "max_ms": 0.8206
-    },
-    {
-      "pair": 128,
-      "family": "Paranid DEFAULT",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.80875,
-      "min_ms": 0.7969,
-      "max_ms": 1.054
-    },
-    {
-      "pair": 138,
-      "family": "Paranid BUMP",
-      "lights": 0,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.8076,
-      "min_ms": 0.6798,
-      "max_ms": 0.8406
-    },
-    {
-      "pair": 138,
-      "family": "Paranid BUMP",
-      "lights": 0,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.8726,
-      "min_ms": 0.7925,
-      "max_ms": 1.058
-    },
-    {
-      "pair": 138,
-      "family": "Paranid BUMP",
-      "lights": 0,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.9176500000000001,
-      "min_ms": 0.9098,
-      "max_ms": 1.1802
-    },
-    {
-      "pair": 138,
-      "family": "Paranid BUMP",
-      "lights": 8,
-      "mode": "original",
-      "samples": 6,
-      "median_ms": 0.82385,
-      "min_ms": 0.7994,
-      "max_ms": 1.0414
-    },
-    {
-      "pair": 138,
-      "family": "Paranid BUMP",
-      "lights": 8,
-      "mode": "motion",
-      "samples": 6,
-      "median_ms": 0.8453999999999999,
-      "min_ms": 0.802,
-      "max_ms": 1.1122
-    },
-    {
-      "pair": 138,
-      "family": "Paranid BUMP",
-      "lights": 8,
-      "mode": "combined",
-      "samples": 6,
-      "median_ms": 0.93435,
-      "min_ms": 0.9199,
-      "max_ms": 1.0491
+      "median_ms": 0.9145,
+      "min_ms": 0.9044,
+      "max_ms": 1.2706
     }
   ],
   "max_executable_instructions": {
     "vs": 91,
-    "ps": 141
+    "ps": 211
   },
-  "create_total_ms": 60.10379999999995
+  "create_total_ms": 72.98019999999981
 }

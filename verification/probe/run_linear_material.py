@@ -21,17 +21,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bottle
 from game_guard import game_running
 import linear_material_reference as ref
+import linear_xt_fixture_reference as xt_fixture
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
 EXE = ROOT / 'verification/probe/build/linear_material_fixture.exe'
 CODE_INPUTS = ('src/renderer/linear_material.cpp', 'src/renderer/linear_material.h',
+               'src/renderer/linear_xt_material_inc.h', 'src/renderer/linear_xt_profiles_inc.h',
                'src/renderer/material_motion.cpp', 'src/renderer/material_motion.h',
                'src/renderer/motion_output_profiles.h',
                'src/renderer/motion_output_profiles_inc.h',
                'docs/reverse-engineering/linear-material-profiles.json',
+               'docs/reverse-engineering/xt-material-profiles.json',
                'verification/probe/linear_material_fixture.cpp',
                'verification/probe/linear_material_reference.py',
+               'verification/probe/linear_xt_fixture_reference.py',
+               'verification/analysis/xt_material_reference.py',
                'verification/probe/run_linear_material.py')
 PAIRS = [('53a0a641107ed76c', ps) for ps in ('63f96eba9eea7880', '8759c7838bbc86c2')]
 PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
@@ -85,12 +90,14 @@ PALETTE_PAIRS += [(v,p) for v in ('2e0254dd999841c2','a7cddf2c98d61117') for p i
 PALETTE_PAIRS += [('33388c8897d428a5',p) for p in ('18d372968af4a480','188c5ab9dbb98393')]
 PALETTE_PAIRS += [(v,p) for v in ('b4059ab6af8fc529','2a560f246c90fa64') for p in ('7e5e41276b3d7514','43c9405568d2226f','5e056627e9ff3a8d','fce465befff2f623')]
 PAIRS += PALETTE_PAIRS
+PAIRS += xt_fixture.PAIRS
 FIXED_VERTICES |= {'ea3d15b287892410','a804f173f693944a','a7cddf2c98d61117','2a560f246c90fa64'}
 TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 113, 116, 122, 128, 138)
 FAMILIES = ('Argon', 'shared DEFAULT', 'Argon BUMP', 'Split DEFAULT',
             'standard DEFAULT', 'standard BUMP', 'standard LOW', 'shared BUMP',
             'Split BUMP', 'Terran DEFAULT', 'Terran BUMP', 'Asteroid DEFAULT', 'Asteroid BUMP',
             'Boron DEFAULT', 'Boron BUMP', 'Paranid DEFAULT', 'Paranid BUMP')
+FAMILIES += xt_fixture.FAMILIES
 CUBE_PATTERN, FOG, BOUNDARY, DETAIL_PATTERN = 1, 2, 4, 8
 PALETTE_GRADIENT, DIFFUSE_PATTERN, PALETTE_PERSPECTIVE = 16, 32, 64
 CUBE_BANDS_U = (.125, .25, .25, .5)
@@ -98,6 +105,7 @@ CUBE_BANDS_V = (.125, .375, .375, .75)
 
 
 def family_name(pair):
+    if pair >= 148:return xt_fixture.family(pair)
     if pair < 110:return FAMILIES[pair // 10]
     if pair < 116:return FAMILIES[11 + (pair >= 113)]
     return FAMILIES[13 + (pair >= 122) + (pair >= 128) + (pair >= 138)]
@@ -526,7 +534,7 @@ def fixture_cases():
                 coefficients=[.25,.125,.0625,.03125],normal=[.25,.125,.875])
     for pair in (116,110,122,113,128,40,138,116):
         add('palette_family_alternation',pair=pair)
-    return cases
+    return xt_fixture.append_cases(cases)
 
 
 def fields(c):
@@ -585,7 +593,10 @@ def palette_varying(c, sample=(8,8)):
                    vertex_palette_rgb=blend('vertex_palette_rgb') if a.vertex_palette_rgb is not None else None)
 
 
-def expected(c, half_source=False, sample=(8,8)):
+def expected(c, half_source=False, sample=(8,8), flat_effective=False):
+    if c['pair'] >= 148:
+        return xt_fixture.expected(c,half_source,sample,cube_sampler=cube_sample,
+                                   flat_color=flat_effective and bool(c['flags'] & xt_fixture.FLAT))
     if c['flags'] & BOUNDARY:
         raise ValueError('operational BUMP boundary case excludes float64 RGB equivalence')
     # Inputs are uploaded as binary32, including .6/.8 angular control values.
@@ -644,17 +655,29 @@ def validate_report(text, cases=None):
     assert len(caps) == 1 and re.fullmatch(r'CAPS mrt=\d+ vs_slots=\d+ ps_slots=\d+', caps[0])
     cap = dict((k, int(v)) for k, v in re.findall(r'(\w+)=(\d+)', caps[0]))
     assert cap['mrt'] >= 3
+    flat_rows = re.findall(r'^FLAT effective=([01]) gouraud=(\S+) requested_flat=(\S+)$', text, re.M)
+    assert len(flat_rows) == 1, 'missing effective programmable COLOR interpolation witness'
+    flat_effective = bool(int(flat_rows[0][0]))
+    smooth, flat = map(float,flat_rows[0][1:])
+    assert all(map(math.isfinite,(smooth,flat))) and abs(smooth-.25)<1e-6
+    assert abs(flat-(.125 if flat_effective else .25))<1e-6, 'invalid FLAT classification'
     creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
     assert len(creates) == len([l for l in lines if l.startswith('CREATE ')]) and creates
     assert len({(r[0], r[1]) for r in creates}) == len(creates), 'duplicate shader creation'
     required = {(stage, shader, str(depth)) for vs, ps in PAIRS for stage, shader in [('vs', vs), ('ps', ps)] for depth in (0, 1)}
     observed = set()
+    repaired_observed = set()
     for stage, key, count, words, ms in creates:
         shader, mode, depth, *_ = key.split('_')
         assert 0 < int(count) <= cap[stage + '_slots'] and int(words) > int(count)
         assert math.isfinite(float(ms)) and float(ms) >= 0
         if mode == '2': observed.add((stage, shader, depth))
+        if key.endswith('_xt_repaired'):repaired_observed.add((stage,shader,depth,mode))
     assert required <= observed, 'missing combined program/depth creation'
+    repaired_required={(stage,shader,str(depth),str(mode)) for vs,ps in xt_fixture.PAIRS
+                       if vs=='494fe349b8bc12ec' for stage,shader in (('vs',vs),('ps',ps))
+                       for depth in (0,1) for mode in (1,2)}
+    assert repaired_required<=repaired_observed, 'missing pair-local repaired ordinary/linear program'
     invariants = re.findall(r'^INVARIANT id=(\d+) pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0 rgb_bad=0$', text, re.M)
     assert list(map(int, invariants)) == list(range(len(cases))), 'missing or failed invariant'
     samples = re.findall(r'^SAMPLE id=(\d+) x=(\d+) y=(\d+) rgba=(\S+)$', text, re.M)
@@ -678,7 +701,7 @@ def validate_report(text, cases=None):
             ceiling=ref.half(ref.encode(ref.CAP)) if c['fp16'] else ref.encode(ref.CAP)*(1+1e-5)
             assert all(0 <= v <= ceiling for v in actual[:3]), (cid, 'boundary storage outside finite encoded cap')
             continue
-        ideal, quantized = expected(c,sample=(x,y)), expected(c, half_source=True,sample=(x,y))
+        ideal, quantized = expected(c,sample=(x,y),flat_effective=flat_effective), expected(c, half_source=True,sample=(x,y),flat_effective=flat_effective)
         for k, value in enumerate(actual[:3]):
             # Retained _pp samples may keep binary32 or narrow to binary16;
             # use the envelope, plus bounded legacy lobe/FP32 transfer error.
@@ -702,6 +725,26 @@ def validate_report(text, cases=None):
         # whole-RT motion-only comparison also checks bit-for-bit alpha equality.
         assert actual[3] == ideal.encoded_rgba[3], (cid, 'authored alpha')
     assert not failures, ('RGB oracle mismatches', failures[:12], 'total', len(failures))
+    baselines = re.findall(r'^BASELINE id=(\d+) x=(\d+) y=(\d+) rgba=(\S+)$',text,re.M)
+    expected_baselines = {(c['id'],x,y) for c in cases if c['pair']>=148 for x in (4,8,12) for y in (4,8,12)}
+    seen_baselines = set()
+    baseline_max = 0.
+    for cid,x,y,rgba in baselines:
+        cid,x,y = int(cid),int(x),int(y)
+        assert (cid,x,y) in expected_baselines and (cid,x,y) not in seen_baselines
+        seen_baselines.add((cid,x,y))
+        c=cases[cid]
+        actual=tuple(map(float,rgba.split(',')))
+        assert len(actual)==4 and all(map(math.isfinite,actual))
+        wanted=[xt_fixture.expected(c,half,(x,y),linear=False,cube_sampler=cube_sample,
+                  flat_color=flat_effective and bool(c['flags']&xt_fixture.FLAT)).encoded_rgba for half in (False,True)]
+        assert actual[3]==expected_alpha(c), 'XT ordinary alpha'
+        for k,value in enumerate(actual[:3]):
+            lo,hi=sorted(row[k] for row in wanted)
+            fraction=max(lo-value,value-hi,0.)/(RGB_ABS_TOL+RGB_REL_TOL*max(abs(lo),abs(hi)))
+            baseline_max=max(baseline_max,fraction)
+            assert fraction<=1., ('XT ordinary/reference mismatch',cid,x,y,k,value,lo,hi)
+    assert seen_baselines==expected_baselines, 'missing XT ordinary reference samples'
     timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100|110|113|116|122|128|138) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
     assert len(timings) == 36 * len(TIMING_PAIRS)
     timing_summary = []
@@ -716,10 +759,27 @@ def validate_report(text, cases=None):
                 timing_summary.append(dict(pair=pair, family=family_name(pair),
                                            lights=lights, mode=('original', 'motion', 'combined')[mode],
                                            samples=6, median_ms=statistics.median(values), min_ms=min(values), max_ms=max(values)))
-    recognized = 1 + len(creates) + len(invariants) + len(samples) + len(timings) + 1
+    xt_timings = re.findall(r'^TIMING pair=(148|150) lights=([018]) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+) palette=(0|128) repaired=([01])$',text,re.M)
+    assert len(xt_timings)==2*3*2*18, 'missing XT matched timing windows'
+    for pair in (148,150):
+        for lights in (0,1,8):
+            for palette in (0,128):
+                rows=[r for r in xt_timings if (int(r[0]),int(r[1]),int(r[5]))==(pair,lights,palette)]
+                assert [int(r[3]) for r in rows]==list(range(18))
+                assert [int(r[2]) for r in rows]==[2-i%3 if (i//3)%2 else i%3 for i in range(18)]
+                assert all(int(r[6])==(pair==148) for r in rows)
+                for mode in range(3):
+                    values=[float(r[4]) for r in rows if int(r[2])==mode]
+                    assert len(values)==6 and all(math.isfinite(v) and v>=0 for v in values)
+                    timing_summary.append(dict(pair=pair,family=family_name(pair),lights=lights,
+                        palette_enabled=bool(palette),mode=(('repaired ordinary','repaired motion','combined') if pair==148 else ('original','motion','combined'))[mode],
+                        samples=6,median_ms=statistics.median(values),min_ms=min(values),max_ms=max(values)))
+    recognized = 1 + len(flat_rows) + len(creates) + len(invariants) + len(samples) + len(baselines) + len(timings) + len(xt_timings) + 1
     assert len(lines) == recognized, 'unexpected output rows'
     return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=len({('vs',v) for v,p in PAIRS}|{('ps',p) for v,p in PAIRS}), shader_creations=len(creates),
-                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=2757,
+                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=3549,
+                xt_ordinary_samples=len(baselines),xt_ordinary_max_tolerance_fraction=baseline_max,
+                effective_programmable_color_flat=flat_effective,
                 boundary_cases=sum(bool(c["flags"] & BOUNDARY) for c in cases),
                 boundary_limit="Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence", invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
                 max_tolerance_fraction=maximum_scaled, exact_black_channels=black_samples,
@@ -749,10 +809,19 @@ def main():
     inputs = {f'{stage}_{shader}.bin': sha(args.programs/f'{stage}_{shader}.bin')
               for vs, ps in PAIRS for stage, shader in [('vs', vs), ('ps', ps)]}
     profiles = json.loads((ROOT/'docs/reverse-engineering/linear-material-profiles.json').read_text())
-    assert inputs == {p['id']+'.bin':p['sha256'] for p in profiles['programs']}, 'original input provenance'
+    prior_inputs={p['id']+'.bin':p['sha256'] for p in profiles['programs']}
+    assert all(inputs.get(name)==value for name,value in prior_inputs.items()), 'prior original input provenance'
+    xt_profiles=json.loads((ROOT/'docs/reverse-engineering/xt-material-profiles.json').read_text())['programs']
+    expected_words={('ps',p['ps']):p['words'] for p in xt_profiles}
+    expected_words.update({('vs','494fe349b8bc12ec'):526,('vs','37c34a7478544c14'):768})
+    for (stage,identity),words in expected_words.items():
+        code=(args.programs/f'{stage}_{identity}.bin').read_bytes()
+        fingerprint=14695981039346656037
+        for byte in code:fingerprint=((fingerprint^byte)*1099511628211)&0xffffffffffffffff
+        assert len(code)==4*words and f'{fingerprint:016x}'==identity, 'XT original identity/size'
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
-                  render_contract=dict(sampler_indices=[0,1,2,3,4],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
-                  scope='148 reviewed pairs including Boron/Paranid and Asteroid DEFAULT/BUMPMAP: Argon/shared/Split/Terran DEFAULT and BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
+                  render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
+                  scope='162 pairs: prior148 plus all14XT; ten native BUMP/LOW conversions and four authored DEFAULT producer repairs. Detached ordinary/combined numerics, alpha/motion/depth, interpolation and diagnostic completion cost; original invalid DEFAULT is never submitted. No live route or native Windows runtime proof.',
                   timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS',
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),

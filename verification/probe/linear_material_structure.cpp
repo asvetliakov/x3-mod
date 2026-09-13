@@ -275,15 +275,14 @@ int main(int argc,char** argv) {
         }
         require(!linear_material_sampler_mask(0,ps[0]) && !linear_material_sampler_mask(vs[0],0),"unknown pair");
         require(!linear_material_pair_contract(0,ps[0]).bump && !linear_material_pair_contract(vs[0],0).bump,"unknown technique");
-        // This class-C row checks stage-local motion transformation and
-        // material rollback only. Its original VS/PS linkage is invalid;
-        // it cannot establish a portable or live fallback draw.
-        const auto* negative=material_motion_profile(0x494fe349b8bc12ecull,0xfffdabd910793abaull);
-        require(negative && negative->transformation_class==MotionOutputClass::RelocatedRegistersWithBranches,"motion-reviewed class C negative");
+        // Still-uncovered ordinary-motion pair. XT DEFAULT now has its own
+        // authored repair qualification in the XT structural/live fixtures.
+        const auto* negative=material_motion_profile(0xc30104cb0efb6675ull,0xa66fb1981ba755b2ull);
+        require(negative && negative->transformation_class==MotionOutputClass::RelocatedRegisters,"motion-reviewed uncovered negative");
         require(!linear_material_sampler_mask(negative->vertex_fingerprint,negative->pixel_fingerprint) &&
                 !linear_material_pair_reviewed(negative->vertex_fingerprint,negative->pixel_fingerprint),"uncovered material pair");
-        const auto negative_vs=read(std::string(argv[1])+"/vs_494fe349b8bc12ec.bin");
-        const auto negative_ps=read(std::string(argv[1])+"/ps_fffdabd910793aba.bin");
+        const auto negative_vs=read(std::string(argv[1])+"/vs_c30104cb0efb6675.bin");
+        const auto negative_ps=read(std::string(argv[1])+"/ps_a66fb1981ba755b2.bin");
         for(bool depth:{false,true}) {
             Words ordinary_vs,ordinary_ps,material_ps{91,92};const auto saved=material_ps;
             require(material_motion_vertex_variant_for(*negative,negative_vs.data(),negative_vs.size(),ordinary_vs,depth)==MaterialMotionResult::Applied,"stage-local negative VS transformation succeeds");

@@ -27,6 +27,7 @@ struct LinearMaterialPairContract{
 };
 }
 struct MotionRoute {
+ HRESULT preparation_error=S_OK;
  bool depth=false,linear_material=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false,ps_set=false,vs_set=false,vs_constants_set=false,ps_constants_set=false;
  DWORD saved_write1=15,saved_write2=15,saved_wrap[6]{};std::uint8_t wrap_index[6]{},wrap_count=0,wrap_attempted=0;
 };
@@ -66,6 +67,7 @@ public:
  struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
   bool vs_reserved_written=false,ps_reserved_written=false;void*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
+  bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
  explicit MotionOutput(Device&d):device_(&d){}

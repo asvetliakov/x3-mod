@@ -270,8 +270,8 @@ unsigned MotionOutput::device_references() const noexcept {
     if (sentinel_mrt_ps_) ++count;
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
-    for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; }
-    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.emission_variant) ++count; }
+    for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; }
+    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.emission_variant) ++count; }
     return count;
 }
 
@@ -283,6 +283,11 @@ unsigned MotionOutput::device_references() const noexcept {
 void MotionOutput::release_resources() noexcept {
     if (releasing_) return;
     releasing_ = true;
+    // Invalidate borrowed pair pointers before any reentrant owned Release.
+    shadow_.xt_default_pair = shadow_.xt_default_ready = false;
+    shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
+    shadow_.ps_xt_default_ordinary = nullptr;
+    shadow_.material_contract = {};
     shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.vs_registered = false; shadow_.ps_registered = false;
     drop_redirect();
@@ -295,8 +300,8 @@ void MotionOutput::release_resources() noexcept {
     release(sentinel_ps_);
     release(sentinel_mrt_ps_);
     release(quad_vs_); release(quad_declaration_);
-    for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); }
-    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.emission_variant); }
+    for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); }
+    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.emission_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
@@ -365,25 +370,27 @@ HRESULT MotionOutput::bind_target(DWORD index, IDirect3DSurface9* surface) noexc
 // differs from the current binding, and releases them in restore_bindings.
 HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
     HRESULT hr = S_OK;
+    // A valid saved mask precedes each attempted write. Failed setters may
+    // mutate, so retain the attempt until rollback restores the slot.
     if (!lazy_mode_) {
         hr = render_state(D3DRS_COLORWRITEENABLE1, &route.saved_write1);
-        if (SUCCEEDED(hr)) { hr = bind_target(1, target_surface_); route.rt_set = SUCCEEDED(hr); }
-        if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15); route.write_set = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr)) { route.rt_set = true; hr = bind_target(1, target_surface_); }
+        if (SUCCEEDED(hr)) { route.write_set = true; hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15); }
         if (SUCCEEDED(hr) && route.depth) {
             hr = render_state(D3DRS_COLORWRITEENABLE2, &route.saved_write2);
-            if (SUCCEEDED(hr)) { hr = bind_target(2, depth_surface_); route.rt2_set = SUCCEEDED(hr); }
-            if (SUCCEEDED(hr)) { hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15); route.write2_set = SUCCEEDED(hr); }
+            if (SUCCEEDED(hr)) { route.rt2_set = true; hr = bind_target(2, depth_surface_); }
+            if (SUCCEEDED(hr)) { route.write2_set = true; hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15); }
         }
         return hr;
     }
     if (!lazy_rt1_) {
         hr = render_state(D3DRS_COLORWRITEENABLE1, &lazy_write1_);
-        if (SUCCEEDED(hr)) { hr = bind_target(1, target_surface_); lazy_rt1_ = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr)) { lazy_rt1_ = true; hr = bind_target(1, target_surface_); }
         if (SUCCEEDED(hr)) hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE1, 15);
     }
     if (SUCCEEDED(hr) && route.depth && !lazy_rt2_) {
         hr = render_state(D3DRS_COLORWRITEENABLE2, &lazy_write2_);
-        if (SUCCEEDED(hr)) { hr = bind_target(2, depth_surface_); lazy_rt2_ = SUCCEEDED(hr); }
+        if (SUCCEEDED(hr)) { lazy_rt2_ = true; hr = bind_target(2, depth_surface_); }
         if (SUCCEEDED(hr)) hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE2, 15);
     } else if (SUCCEEDED(hr) && !route.depth && lazy_rt2_) {
         // A motion-only row after a depth row: its variant writes no oC2, so
@@ -397,10 +404,7 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
 // (reverse order of the bind). No-op in per-draw mode or when nothing is
 // bound, so every hook may call it unconditionally before a native call.
 void MotionOutput::restore_bindings() noexcept {
-    const HRESULT hr = restore_bindings_checked();
-    if (emission_effective_ && FAILED(hr)) {
-        emission_state_lost_ = true; emission_frame_stopped_ = true; invalidate_taa();
-    }
+    restore_bindings_checked(); // The checked path owns sticky quarantine.
 }
 HRESULT MotionOutput::restore_bindings_checked() noexcept {
     HRESULT first = deferred_flush_result_;
@@ -409,13 +413,24 @@ HRESULT MotionOutput::restore_bindings_checked() noexcept {
         const HRESULT mip = restore_mip_bias();
         if (SUCCEEDED(first)) first = mip;
     }
-    if (!lazy_rt1_ && !lazy_rt2_) return first;
-    const HRESULT lazy = flush_bindings<false>();
-    if (SUCCEEDED(first)) first = lazy;
-    if (FAILED(first) && logged_failures_ < failure_log_limit) {
-        ++logged_failures_;
-        log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lazy_flush", id_, frame_, counters_.draws, first);
+    // Preserve an earlier deferred/mip restoration failure before a later
+    // lazy flush can latch its own error. Every caller, including a void
+    // restore point before draw admission, leaves unknown state quarantined.
+    auto quarantine = [&](HRESULT hr) {
+        if (SUCCEEDED(hr)) return;
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = hr; invalidate_taa(); }
+        if (emission_effective_) { emission_state_lost_ = true; emission_frame_stopped_ = true; }
+    };
+    quarantine(first);
+    if (lazy_rt1_ || lazy_rt2_) {
+        const HRESULT lazy = flush_bindings<false>();
+        if (SUCCEEDED(first)) first = lazy;
+        if (FAILED(first) && logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lazy_flush", id_, frame_, counters_.draws, first);
+        }
     }
+    quarantine(first);
     return first;
 }
 // The flush itself. The quiet instantiation is reached from the light
@@ -444,6 +459,7 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
         ++counters_.restore_failures; invalidate_render_states();
         // Integer-only even through the light SetRenderState path. A later
         // wrapper cannot erase state loss by consuming the deferred HRESULT.
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; invalidate_taa(); }
         if (emission_effective_) { emission_state_lost_ = true; emission_frame_stopped_ = true; }
     }
     if constexpr (quiet) {
@@ -610,8 +626,8 @@ void MotionOutput::apply_mip_bias() noexcept {
 // shadow re-reads the bindings natively and forgets the filter and saved values.
 // Material sampler decode is refreshed once here, independently of mip bias;
 // a failed read remains unknown until another resync or successful setter.
-// The union of DEFAULT/BUMPMAP requirements is s0-s4; DEFAULT admission still
-// ignores s4, including unknown or enabled decode there.
+// The union of reviewed material requirements is s0-s5. Each exact pair
+// admits only its own cached mask; unrelated stages do not affect admission.
 void MotionOutput::resync_samplers() noexcept {
     sampler_bound_mask_ = sampler_biased_mask_ = 0;
     emission_main_sampler_mask_ = emission_reader_known_mask_ = 0; emission_readers_known_ = true;
@@ -619,7 +635,7 @@ void MotionOutput::resync_samplers() noexcept {
     for (unsigned stage = 0; stage < sampler_stage_count; ++stage) {
         auto& s = samplers_[stage];
         s = SamplerShadow{};
-        if (linear_material_requested_ && stage < 5)
+        if (linear_material_requested_ && stage < 6)
             s.srgb_known = SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
         if (!mip_bias_bits_ && !linear_emission_requested_) continue;
         IDirect3DBaseTexture9* texture = nullptr;
@@ -1648,6 +1664,8 @@ void MotionOutput::fill_sentinel() noexcept {
 }
 
 void MotionOutput::before_reset() noexcept {
+    shadow_.xt_default_pair = shadow_.xt_default_ready = false;
+    shadow_.material_contract = {};
     shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.vs_registered = false; shadow_.ps_registered = false;
     // D3DPOOL_DEFAULT objects must not exist across Reset; shaders survive it.
@@ -1692,6 +1710,8 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     if (shader && shadow_.vs == shader) {
         shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
         shadow_.material_contract = {};
+        shadow_.xt_default_pair = shadow_.xt_default_ready = false;
+        shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
         shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     }
     if (!requested_ || !shader) return;
@@ -1700,6 +1720,8 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         entry.registered = false;
         release(entry.variant);
         release(entry.material_variant);
+        release(entry.xt_default_ordinary_variant);
+        release(entry.xt_default_linear_variant);
         entry.hash = hash;
         entry.row = nullptr;
         if (!enabled_ || !code || !bytes || bytes % 4) return;
@@ -1734,6 +1756,26 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
                     log("linear_material_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
                         id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
             }
+            if (linear_material_requested_) {
+                // These extra programs repair only the four XT DEFAULT pairs.
+                // Retain the generic shared-VS programs for all other mates.
+                for (bool linear : {false, true}) {
+                    words.clear();
+                    const auto result = renderer::linear_material_xt_default_vertex_variant(
+                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_, linear);
+                    IDirect3DVertexShader9* repaired = nullptr;
+                    HRESULT hr = E_FAIL;
+                    if (result == renderer::LinearMaterialResult::Applied)
+                        hr = native<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &repaired);
+                    if (SUCCEEDED(hr) && repaired) {
+                        if (linear) entry.xt_default_linear_variant = repaired;
+                        else entry.xt_default_ordinary_variant = repaired;
+                    } else release(repaired);
+                    if (result != renderer::LinearMaterialResult::UnsupportedShader)
+                        log("linear_material_xt_default_variant device=%llu kind=vs original=%016llx linear=%u transform=%u create=%08lx words=%u depth=%u",
+                            id_, hash, linear, unsigned(result), hr, unsigned(words.size()), depth_enabled_);
+                }
+            }
         }
         entry.registered = true;
         if (shadow_.vs == shader) set_vertex_shader(shader);
@@ -1746,6 +1788,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     if (shader && shadow_.ps == shader) {
         shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
         shadow_.material_contract = {};
+        shadow_.xt_default_pair = shadow_.xt_default_ready = false;
+        shadow_.ps_xt_default_ordinary = nullptr;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     }
     if (!requested_ || !shader) return;
@@ -1754,6 +1798,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         entry.registered = false;
         release(entry.variant);
         release(entry.material_variant);
+        release(entry.xt_default_ordinary_variant);
+        release(entry.xt_default_linear_variant);
         release(entry.emission_variant);
         entry.hash = hash;
         entry.row = nullptr;
@@ -1800,6 +1846,20 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     log("linear_material_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
                         id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
             }
+            if (linear_material_requested_) {
+                words.clear();
+                const auto result = renderer::linear_material_xt_default_pixel_variant(
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_, false);
+                IDirect3DPixelShader9* repaired = nullptr;
+                HRESULT hr = E_FAIL;
+                if (result == renderer::LinearMaterialResult::Applied)
+                    hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &repaired);
+                if (SUCCEEDED(hr) && repaired) entry.xt_default_ordinary_variant = repaired;
+                else release(repaired);
+                if (result != renderer::LinearMaterialResult::UnsupportedShader)
+                    log("linear_material_xt_default_variant device=%llu kind=ps original=%016llx linear=0 transform=%u create=%08lx words=%u depth=%u",
+                        id_, hash, unsigned(result), hr, unsigned(words.size()), depth_enabled_);
+            }
         }
         entry.registered = true;
         if (shadow_.ps == shader) set_pixel_shader(shader);
@@ -1812,6 +1872,8 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false;
     shadow_.material_contract = {};
+    shadow_.xt_default_pair = shadow_.xt_default_ready = false;
+    shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
@@ -1821,6 +1883,8 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
     shadow_.vs_row = it->second.row;
     shadow_.vs_material_variant = static_cast<IDirect3DVertexShader9*>(it->second.material_variant);
+    shadow_.vs_xt_default_ordinary = static_cast<IDirect3DVertexShader9*>(it->second.xt_default_ordinary_variant);
+    shadow_.vs_xt_default_linear = it->second.xt_default_linear_variant;
     refresh_linear_material_contract();
     refresh_linear_emission_contract();
 }
@@ -1828,6 +1892,8 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_emission_variant = nullptr;
     shadow_.material_contract = {};
+    shadow_.xt_default_pair = shadow_.xt_default_ready = false;
+    shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
     if (!shader) return;
     const auto it = pixel_.find(shader);
@@ -1837,6 +1903,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_emission_variant = it->second.emission_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
     shadow_.ps_material_variant = static_cast<IDirect3DPixelShader9*>(it->second.material_variant);
+    shadow_.ps_xt_default_ordinary = static_cast<IDirect3DPixelShader9*>(it->second.xt_default_ordinary_variant);
     refresh_linear_material_contract();
     refresh_linear_emission_contract();
 }
@@ -2305,9 +2372,13 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     evaluate_draw(call, route);
     if (!route.routed) {
         const HRESULT restored = restore_bindings_checked();
-        if (emission_effective_ && FAILED(restored)) {
-            emission_state_lost_ = true; route.submit = false; route.submission_error = restored;
-            ++emission_counts_.suppressed; invalidate_taa();
+        if (FAILED(restored)) {
+            // An unavailable pair still forwards only after known restoration,
+            // independently of the optional emission route.
+            if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; }
+            route.submit = false; route.submission_error = motion_state_error_;
+            if (emission_effective_) { emission_state_lost_ = true; ++emission_counts_.suppressed; }
+            invalidate_taa();
         } else if (route.submit) prepare_emission(call, route);
     }
     if (telemetry::draw_enabled()) {
@@ -2468,11 +2539,23 @@ void MotionOutput::finish_emission(HRESULT source) noexcept {
     } else ++emission_counts_.native;
 }
 void MotionOutput::refresh_linear_material_contract() noexcept {
-    // Ordinary variants establish completed shader registration. Combined
-    // object availability and effective HDR readiness remain live gates.
+    // Pair identity and complete corrected availability are computed only
+    // at binding/registration. No stage-wide DEFAULT substitution is safe.
+    shadow_.xt_default_pair = linear_material_requested_
+        && renderer::linear_material_xt_default_pair(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.xt_default_ready = shadow_.xt_default_pair && shadow_.vs_registered && shadow_.ps_registered
+        && shadow_.vs_xt_default_ordinary
+        && shadow_.vs_xt_default_linear && shadow_.ps_xt_default_ordinary && shadow_.ps_material_variant;
     const auto contract = linear_material_requested_ && shadow_.vs_variant && shadow_.ps_variant
+        && (!shadow_.xt_default_pair || shadow_.xt_default_ready)
         ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
     shadow_.material_contract = contract;
+    if (shadow_.xt_default_pair && !shadow_.xt_default_ready && !xt_default_unavailable_logged_) {
+        xt_default_unavailable_logged_ = true;
+        log("linear_material_xt_default_unavailable device=%llu vs=%016llx ps=%016llx ordinary_vs=%u linear_vs=%u ordinary_ps=%u linear_ps=%u native_forward=1",
+            id_, shadow_.vs_hash, shadow_.ps_hash, bool(shadow_.vs_xt_default_ordinary), bool(shadow_.vs_xt_default_linear),
+            bool(shadow_.ps_xt_default_ordinary), bool(shadow_.ps_material_variant));
+    }
 }
 void MotionOutput::refresh_linear_emission_contract() noexcept {
     // Creation/bind/resync only. Future draws consume this pointer without a
@@ -2485,7 +2568,7 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
 // cached; never query samplers or revalidate bytecode in this draw-time check.
 unsigned MotionOutput::linear_material_refusal() const noexcept {
     if (!shadow_.material_contract.sampler_mask) return 1;
-    if (!shadow_.vs_material_variant || !shadow_.ps_material_variant) return 2;
+    if (shadow_.xt_default_pair ? !shadow_.xt_default_ready : (!shadow_.vs_material_variant || !shadow_.ps_material_variant)) return 2;
     if (!hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
         || hdr_config_.tonemap != renderer::HdrTonemap::Agx
         || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return 3;
@@ -2500,15 +2583,29 @@ unsigned MotionOutput::linear_material_refusal() const noexcept {
 // restored before exactly one ordinary motion attempt; jitter rows, history
 // mode and RT1/RT2 setup live outside this function and are retained.
 HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexcept {
-    HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, material ? shadow_.vs_material_variant : shadow_.vs_variant);
-    route.vs_set = SUCCEEDED(hr);
+    if (shadow_.xt_default_pair && !shadow_.xt_default_ready) return E_FAIL;
+    // Attempted setters may mutate before reporting failure. Every attempted
+    // stage must therefore be restored, including the setter that failed.
+    const auto vs = shadow_.xt_default_ready
+        ? (material ? shadow_.vs_xt_default_linear : shadow_.vs_xt_default_ordinary)
+        : (material ? shadow_.vs_material_variant : shadow_.vs_variant);
+    const auto ps = !material && shadow_.xt_default_ready ? shadow_.ps_xt_default_ordinary
+        : (material ? shadow_.ps_material_variant : shadow_.ps_variant);
+    route.vs_set = true;
+    HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
     if (SUCCEEDED(hr)) {
-        hr = native<SetPsFn>(SetPixelShader)(device_, material ? shadow_.ps_material_variant : shadow_.ps_variant);
-        route.ps_set = SUCCEEDED(hr);
+        route.ps_set = true;
+        hr = native<SetPsFn>(SetPixelShader)(device_, ps);
     }
+    if (FAILED(hr) && SUCCEEDED(route.preparation_error)) route.preparation_error = hr;
     if (material && FAILED(hr)) {
         ++counters_.material_bind_failures;
         const HRESULT restored = undo(route);
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("linear_material_bind_failed device=%llu frame=%llu result=%08lx first_prepare=%08lx restore=%08lx xt_default=%u",
+                id_, frame_, hr, route.preparation_error, restored, shadow_.xt_default_pair);
+        }
         if (FAILED(restored)) return restored;
         return bind_variant_pair(route, false);
     }
@@ -2545,6 +2642,11 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // Gate 2: scene phase with the latched main color/depth bound.
     if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; return; }
     route.scene = true;
+    // Unavailable repair is feature refusal, not an enhanced fallback through
+    // the malformed original linkage. Preserve the original bindings and rows.
+    if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {
+        route.gate = MotionGate::Pair; ++counters_.gates[3]; return;
+    }
     // Every scene draw whose VS has a table row is jittered, routed or not,
     // so the rasterized coverage of the whole scene moves together.
     if (jitter_active_ && shadow_.vs_row) apply_jitter(route);
@@ -2634,7 +2736,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
                 // Build masks only for this bounded first refusal log. The
                 // steady-state draw gate visits cached required samplers only.
                 std::uint32_t unknown = 0, srgb_enabled = 0;
-                for (unsigned stage = 0; stage < 5; ++stage) {
+                for (unsigned stage = 0; stage < 6; ++stage) {
                     if (!samplers_[stage].srgb_known) unknown |= 1u << stage;
                     else if (samplers_[stage].srgb != FALSE) srgb_enabled |= 1u << stage;
                 }
@@ -2646,14 +2748,14 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     }
     HRESULT hr = bind_variant_pair(route, material);
     if (SUCCEEDED(hr)) {
+        route.vs_constants_set = true;
         hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_,
             renderer::MaterialMotionAbi::previous_vertex_constant, matched ? previous.data() : zeros, 4);
-        route.vs_constants_set = SUCCEEDED(hr);
     }
     if (SUCCEEDED(hr)) {
+        route.ps_constants_set = true;
         hr = native<SetConstantsFFn>(SetPixelShaderConstantF)(device_,
             renderer::MaterialMotionAbi::pixel_coordinates_constant, pixel, 2);
-        route.ps_constants_set = SUCCEEDED(hr);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         if (SUCCEEDED(hr)) { std::memcpy(fixture_last_pixel_abi_, pixel, sizeof pixel); fixture_abi_known_ = true; }
 #endif
@@ -2662,12 +2764,13 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     if (SUCCEEDED(hr)) hr = apply_wrap_states(route, *shadow_.vs_row);
     route.ticks = draw_stamp() - apply_begin;
     if (FAILED(hr)) {
+        if (SUCCEEDED(route.preparation_error)) route.preparation_error = hr;
         // A native fallback is safe only after the complete rollback succeeds.
         rollback_route(route);
         ++counters_.apply_failures;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx", id_, frame_, counters_.draws, hr);
+            log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx first_prepare=%08lx", id_, frame_, counters_.draws, hr, route.preparation_error);
         }
         return;
     }

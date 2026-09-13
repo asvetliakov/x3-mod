@@ -378,7 +378,7 @@ struct Fixture {
     void (*emission_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
     HRESULT (*emission_readback)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*wrap_snapshot)(IDirect3DDevice9*, x3m::MotionOutputFixtureWrapSnapshot*) = nullptr;
-    bool materialwrap = false, materialwrap_depth = true;
+    bool materialwrap = false, materialwrap_depth = true, materialxt = false;
     bool linearmaterials = false; // Focused live combined-route/Reset/refcount script.
     bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
     // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
@@ -517,7 +517,7 @@ struct Fixture {
         config.background_vs[0] = vs_hash; config.background_ps[0] = flat_hash;
         config.emission_scene_owner = emissions;
         config.force_taa_readback = emissions && !emission_bench;
-        config.observe_native_wrap = materialwrap;
+        config.observe_native_wrap = materialwrap || materialxt;
         if (object) config.scope = object->scope;
         configure(&config);
     }
@@ -827,12 +827,12 @@ struct Fixture {
         std::vector<float> data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
         api(readback(d.p, data.data(), unsigned(data.size()), &w, &h), "fixture readback");
         require(w == W && h == H, "motion target matches the main dimensions");
-        if(!materialwrap || materialwrap_depth){
+        if(!(materialwrap||materialxt) || materialwrap_depth){
             api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "fixture depth readback");
             require(w == W && h == H, "depth target matches the main dimensions");
         }else require(readback_depth(d.p,depth_data.data(),unsigned(depth_data.size()),&w,&h)==D3DERR_NOTFOUND,"motion-only has no depth target");
         std::printf("MOTION_HASH frame=%llu motion=%016llx depth=%016llx\n", frame,
-                    static_cast<unsigned long long>(fnv(data.data(), data.size() * 4)), static_cast<unsigned long long>(materialwrap&&!materialwrap_depth?0:fnv(depth_data.data(), depth_data.size() * 4)));
+                    static_cast<unsigned long long>(fnv(data.data(), data.size() * 4)), static_cast<unsigned long long>((materialwrap||materialxt)&&!materialwrap_depth?0:fnv(depth_data.data(), depth_data.size() * 4)));
         // The route must upload zero prior jitter in c216.zw: history rows are
         // unjittered, so the fragment's UV is already the previous unjittered UV.
         if (records.size() && std::any_of(records.begin(), records.end(), [](const DrawRecord& r) { return r.routed; })) {
@@ -884,7 +884,7 @@ struct Fixture {
             }
             if (!ok) { if (++mismatches <= 8) std::printf("MOTION_DIFF frame=%llu x=%u y=%u actual=%.9g,%.9g,%.9g,%.9g expected=%.9g,%.9g,%.9g,%.9g\n", frame, x, y, actual[0], actual[1], actual[2], actual[3], expected[0], expected[1], expected[2], expected[3]); }
             // RT2: device depth z/w of the front-most routed draw, sentinel elsewhere.
-            if(materialwrap && !materialwrap_depth)continue;
+            if((materialwrap||materialxt) && !materialwrap_depth)continue;
             const float current = depth_data[std::size_t(y) * W + x];
             ++depth_checked;
             bool depth_ok;
@@ -1458,11 +1458,11 @@ struct Fixture {
         const auto shared_words=load(shared_path);
         require(fnv(shared_words.data(),shared_words.size()*4)==0x3b94320087e81945ull,"shared VS positive uses reviewed shared DEFAULT PS");
         const auto split_words=load(split_path);
-        require(fnv(split_words.data(),split_words.size()*4)==0x5f82ecacd39529cdull,"valid XT BUMP negative uses motion-reviewed class-C PS");
+        require(fnv(split_words.data(),split_words.size()*4)==0x5f82ecacd39529cdull,"retained XT BUMP control uses reviewed class-C PS");
         Com<IDirect3DPixelShader9> shared, split;
         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(shared_words.data()),&shared.p),"CreatePixelShader shared DEFAULT");
-        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(split_words.data()),&split.p),"CreatePixelShader class-C motion-only");
-        // This real class-C pair remains motion-capable but material-uncovered.
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(split_words.data()),&split.p),"CreatePixelShader class-C XT control");
+        // This real class-C pair is now XT material-covered; retain its original inputs.
         // Preserve its complete XT BUMP input ABI, including detail and occlusion.
         const std::string supplied(bump_negative_path);
         const auto slash=supplied.find_last_of("/\\");
@@ -1502,7 +1502,7 @@ struct Fixture {
         Object bump=a;bump.name="BUMP";bump.vb=bump_vb.p;bump.recorded=false;
         auto negative_inputs=[&]() {
             // Valid native XT BUMP linkage, seven samplers, and the original
-            // false decal/color-mixing branches. This is ordinary motion only.
+            // false decal/color-mixing branches. Both ordinary and linear paths are valid.
             const BOOL branches[2]={FALSE,FALSE};
             api(d->SetPixelShaderConstantB(0,branches,2),"XT original static branches");
             float vertex[8][4]{};
@@ -1547,9 +1547,9 @@ struct Fixture {
                 api(d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,TRUE),"temporary sampler decode");
                 api(block->Apply(),"material restore sampler Apply");
             }
-            const bool eligible=i<2||i==6||i==8||i>=10;
+            const bool eligible=i<2||i==6||i==8||i>=9;
             // Keep the exact same VS object while alternating covered Argon
-            // and shared DEFAULT PS programs; class-C remains motion-only.
+            // and shared DEFAULT PS programs; class-C now exercises XT material coverage.
             if(i==1)std::swap(ps.p,shared.p);
             if(i==9){negative_inputs();std::swap(vs.p,negative_vs.p);std::swap(ps.p,split.p);}
             draw(i==9?bump:a,0,0,0,true,true,i!=0&&i!=9&&i!=10,Alter::None,true,i==9?40:24);
@@ -1578,7 +1578,7 @@ struct Fixture {
         const auto bump_vs_words=load(bump_vs_path), bump_ps_words=load(bump_ps_path), negative_words=load(bump_negative_path);
         require(fnv(bump_vs_words.data(),bump_vs_words.size()*4)==0x4944d81dfe531b37ull,"reviewed BUMP VS");
         require(fnv(bump_ps_words.data(),bump_ps_words.size()*4)==0xca6bfa4a6cca7e2aull,"reviewed BUMP PS");
-        require(fnv(negative_words.data(),negative_words.size()*4)==0x5f82ecacd39529cdull,"class-C motion-only negative PS");
+        require(fnv(negative_words.data(),negative_words.size()*4)==0x5f82ecacd39529cdull,"retained class-C XT control PS");
         Com<IDirect3DVertexShader9> bump_vs;
         Com<IDirect3DPixelShader9> bump_ps;
         api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(bump_vs_words.data()),&bump_vs.p),"Create BUMP VS");
@@ -1591,7 +1591,7 @@ struct Fixture {
         for(unsigned i=12;i<24&&!materialwrap;++i){
             frame_begin();linear_material_inputs();write_reserved();
             const bool negative=i==19, use_bump=i!=17&&i!=23&&!negative;
-            const bool eligible=i!=13&&i!=15&&!negative;
+            const bool eligible=i!=13&&i!=15;
             // Fresh attach/Reset SRGB knowledge must come from getters. All
             // other frames explicitly establish the actual state at s4.
             if(i!=21)api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,FALSE),"s4 linear state");
@@ -2008,6 +2008,141 @@ struct Fixture {
         // Extra originals/resources are released before final device Release;
         // their cached variants remain route-owned and must also retire.
         shared.reset();split.reset();
+    }
+
+    // XT live admission/transport witness. Full shader mathematics and authored
+    // DEFAULT UV/weight policy are qualified by the detached reference fixture.
+    // Disabled DEFAULT is never submitted: its original linkage is malformed.
+    void run_xt_materials(const char* original_path) {
+        require(seam&&enabled&&hdr&&hdr_agx&&hdr_readback&&wrap_snapshot&&emission_status&&!taa,"XT live needs HDR/readback/WRAP seam and TAA off");
+        char setting[32]{};
+        const bool material=GetEnvironmentVariableA("X3M_LINEAR_MATERIALS",setting,sizeof setting)==1&&setting[0]=='1';
+        const std::string supplied(original_path);const auto slash=supplied.find_last_of("/\\");require(slash!=std::string::npos,"XT program directory");
+        const auto directory=supplied.substr(0,slash+1);
+        const char* xt_vs[]={"37c34a7478544c14","494fe349b8bc12ec"};
+        const char* xt_ps[]={"5f82ecacd39529cd","f1b0e820c7b488c3","6733b119142c8d42","496049cec2066ed3",
+            "d51cf763125cb85a","31445adb0a62d134","d22f2ce2c740e6a7","1de3d2dde345a7e3","75fb9c6b05e28ea2","edaef099780fcafe",
+            "fffdabd910793aba","e6794b6ec37ff71a","fd58e6b7e8cf969c","dd87737d697c6764","7c83ed50c9894e44"};
+        Com<IDirect3DVertexShader9> vertex[2];Com<IDirect3DPixelShader9> pixel[15],unknown;
+        for(unsigned i=0;i<2;++i){const auto code=load((directory+"vs_"+xt_vs[i]+".bin").c_str());require(fnv(code.data(),code.size()*4)==std::strtoull(xt_vs[i],nullptr,16),"XT VS identity");api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&vertex[i].p),"create XT VS");}
+        for(unsigned i=0;i<15;++i){const auto code=load((directory+"ps_"+xt_ps[i]+".bin").c_str());require(fnv(code.data(),code.size()*4)==std::strtoull(xt_ps[i],nullptr,16),"XT PS identity");api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(code.data()),&pixel[i].p),"create XT PS");}
+        // Whole COLOR0 is exported by D. This original synthetic PS requests
+        // only COLOR0 and therefore remains a valid, uncovered native mate.
+        const DWORD unknown_program[]={0xffff0300u,0x5000051u,0xa00f0000u,0x3f000000u,0x3e800000u,0x3f400000u,0x3f800000u,0x200001fu,0x8000000au,0x900f0000u,0x2000001u,0x800f0800u,0xa0e40000u,0x3000005u,0x80080800u,0xa0ff0000u,0x90ff0000u,0xffffu};
+        api(d->CreatePixelShader(unknown_program,&unknown.p),"create valid XT unknown mate");
+        Com<IDirect3DVertexDeclaration9> basis_declaration;
+        const D3DVERTEXELEMENT9 elements[]={{0,0,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},{0,8,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},{0,16,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0},{0,24,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0},{0,32,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT,0},D3DDECL_END()};
+        api(d->CreateVertexDeclaration(elements,&basis_declaration.p),"XT basis declaration");
+        Com<IDirect3DVertexBuffer9> geometry;api(d->CreateVertexBuffer(120,0,0,D3DPOOL_MANAGED,&geometry.p,nullptr),"XT geometry");
+        void *source=nullptr,*target=nullptr;api(vb_a->Lock(0,0,&source,D3DLOCK_READONLY),"XT source geometry lock");api(geometry->Lock(0,0,&target,0),"XT geometry lock");
+        const unsigned short basis[]={0,half(1),0,0,half(1),0,0,0};
+        for(unsigned i=0;i<3;++i){auto*out=static_cast<char*>(target)+40*i;std::memcpy(out,static_cast<char*>(source)+24*i,24);std::memcpy(out+24,basis,sizeof basis);auto*uv=reinterpret_cast<unsigned short*>(out+8);uv[2]=half(.125f+.25f*i);uv[3]=half(.875f-.125f*i);}
+        api(geometry->Unlock(),"XT geometry unlock");api(vb_a->Unlock(),"XT source geometry unlock");
+        Com<IDirect3DIndexBuffer9> indices;api(d->CreateIndexBuffer(6,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"XT indices");
+        api(indices->Lock(0,0,&target,0),"XT index lock");const unsigned short triangle[]={0,1,2};std::memcpy(target,triangle,sizeof triangle);api(indices->Unlock(),"XT index unlock");
+        Com<IDirect3DTexture9> maps[5];const DWORD texels[]={0x80804020u,0x80808080u,0xff000000u,0xffffffffu,0xff000000u};
+        for(unsigned i=0;i<5;++i){api(d->CreateTexture(2,2,1,0,D3DFMT_A8R8G8B8,D3DPOOL_MANAGED,&maps[i].p,nullptr),"XT texture");D3DLOCKED_RECT lock{};api(maps[i]->LockRect(0,&lock,nullptr,0),"XT texture lock");for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+4*x,&texels[i],4);api(maps[i]->UnlockRect(0),"XT texture unlock");}
+        const auto wrap_state=[](unsigned i){return D3DRENDERSTATETYPE(i<8?D3DRS_WRAP0+i:D3DRS_WRAP8+i-8);};
+        std::uint64_t sequence=0;Object object=a;object.vb=geometry.p;object.name="XT";
+        // 84 complete-pair samples, four shared-D alternations and two native
+        // unknown controls, then two separate perspective transport diagnostics.
+        // Planned IDs stay stable when DEFAULT off is skipped.
+        for(unsigned plan=0;plan<92;++plan){
+            const bool transport=plan>=90;const float perspective=transport?.125f:0.f;
+            const unsigned pair=plan<84?plan/6:plan<88?(plan%2?10u:14u):plan<90?15u:plan==90?0u:10u;
+            const unsigned step=plan<84?plan%6:plan<88?plan-84:plan<90?plan-88:6u;
+            const bool bump=pair<10,corrected=pair>=10&&pair<14,legacy=pair==14,native_unknown=pair==15;
+            const bool reset_after=plan==3||plan==63;
+            if(corrected&&!material){std::printf("XT_SKIP plan=%u pair=%u step=%u reason=native_invalid_linkage\n",plan,pair,step);if(reset_after)reset();continue;}
+            frame_begin();write_reserved();
+            const bool fallback=plan<84&&step==2,combined=material&&!fallback&&!native_unknown;
+            const bool post_reset=plan==4||plan==64;
+            const bool new_object=(plan<84&&step==0)||plan==84||plan==88||transport;
+            if(new_object){object.scope.node_serial=8000+(plan<84?pair:plan);object.scope.node=0x800000+unsigned(object.scope.node_serial)*0x100;object.scope.mesh=0x900000+unsigned(object.scope.node_serial)*0x100;object.recorded=false;}
+            if(post_reset)object.recorded=false;
+            const bool matched=object.recorded&&!native_unknown;
+            // Finite witness: zero lighting/specular/palette/O RGB and a unit
+            // lightmap. Ordinary RGB=1; linear RGB=encode_gamma22(4). These
+            // values make hardware sampler decode refusal an RGB identity.
+            float vc[8][4]{};if(bump){vc[0][0]=1;vc[1][0]=.625f;vc[3][0]=2;vc[4][0]=.1f;vc[5][0]=1;vc[6][0]=12;vc[7][0]=.9f;}else{vc[0][0]=.625f;vc[2][0]=1;for(unsigned i=3;i<8;++i)vc[i][0]=777.f+float(i);}
+            if(transport&&bump)vc[0][0]=.125f;
+            if(transport){
+                // Exact half inputs: V endpoints (0,0,1),(-4,0,1),(0,4,1).
+                // q^12=(1,17^-6,17^-6): WRAP6.Y crosses a physical seam.
+                const float camera[3][4]={{1,0,0,-1},{0,1,0,1},{0,0,1,1.5f}};
+                api(d->SetVertexShaderConstantF(34,camera[0],3),"XT calibrated camera");
+                const float point[3][4]={{0,0,4,0},{1,1,1,0},{16,16,16,0}};
+                api(d->SetVertexShaderConstantF(0,point[0],3),"XT calibrated point");
+            }
+            api(d->SetVertexShaderConstantF(39,vc[0],8),"XT VS owned constants");int lights[4]={transport?1:0,0,1,0};api(d->SetVertexShaderConstantI(0,lights,1),"XT point count");
+            float pc[24][4]{};pc[0][0]=pc[1][1]=pc[2][2]=1;pc[3][0]=.5f;pc[4][0]=.25f;pc[5][2]=pc[7][2]=1;pc[9][0]=1;pc[10][0]=10;pc[11][0]=1;pc[12][0]=1;pc[13][0]=bump?1.f:0.f;
+            if(bump){pc[14][0]=0;pc[15][0]=1;pc[16][0]=0;pc[22][0]=9;pc[23][0]=.5f;}else{pc[19][0]=9;pc[20][0]=.5f;}
+            if(legacy){std::memset(pc,0,sizeof pc);pc[0][0]=pc[1][1]=pc[2][2]=1;pc[3][0]=.25f;pc[4][2]=pc[6][2]=1;for(unsigned i=8;i<12;++i)pc[i][0]=i==9?10.f:1.f;}
+            if(transport){const unsigned palette=bump?17:14;const float colors[5][3]={{1,0,0},{0,1,0},{0,0,1},{1,1,0},{0,1,1}};pc[9][0]=pc[11][0]=.125f;for(unsigned i=0;i<5;++i)for(unsigned lane=0;lane<3;++lane)pc[palette+i][lane]=colors[i][lane];}
+            api(d->SetPixelShaderConstantF(0,pc[0],24),"XT pixel constants");
+            BOOL branches[2]={step==1||transport,step==1||transport};api(d->SetPixelShaderConstantB(0,branches,2),"XT original branch choices");
+            if(transport){
+                // All decoded RGB inputs are endpoints. LM/emissive are zero,
+                // so ordinary working RGB equals linear working RGB even with
+                // gain four. One attenuated white point stays below COLOR0's
+                // native clamp: 1/(16+16/d+16/d^2) is at most 1/16.
+                const DWORD calibrated[]={0x80ffffffu,0x80808080u,0xffffffffu,0xff000000u,0xff000000u};
+                for(unsigned i=0;i<5;++i){D3DLOCKED_RECT lock{};api(maps[i]->LockRect(0,&lock,nullptr,0),"XT calibrated map lock");for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+4*x,&calibrated[i],4);api(maps[i]->UnlockRect(0),"XT calibrated map unlock");}
+                const DWORD faces[]={0xffff0000u,0xff00ff00u,0xff0000ffu,0xffffff00u,0xff00ffffu,0xffff00ffu};
+                for(unsigned face=0;face<6;++face){D3DLOCKED_RECT lock{};api(cube->LockRect(D3DCUBEMAP_FACES(face),0,&lock,nullptr,0),"XT calibrated cube lock");for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+4*x,&faces[face],4);api(cube->UnlockRect(D3DCUBEMAP_FACES(face),0),"XT calibrated cube unlock");}
+            }
+            IDirect3DBaseTexture9* samplers[7]={maps[0].p,bump?maps[1].p:maps[2].p,bump?maps[2].p:maps[3].p,bump?static_cast<IDirect3DBaseTexture9*>(maps[3].p):cube.p,bump?static_cast<IDirect3DBaseTexture9*>(cube.p):maps[4].p,bump?maps[4].p:nullptr,bump?maps[1].p:nullptr};
+            if(legacy){samplers[1]=maps[2].p;samplers[2]=maps[3].p;samplers[3]=cube.p;samplers[4]=nullptr;}
+            for(unsigned i=0;i<7;++i){api(d->SetTexture(i,samplers[i]),"XT sampler role");for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(d->SetSamplerState(i,filter,D3DTEXF_POINT),"XT point sampling");api(d->SetSamplerState(i,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"XT no mip");api(d->SetSamplerState(i,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP),"XT clamp u");api(d->SetSamplerState(i,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP),"XT clamp v");if(!post_reset)api(d->SetSamplerState(i,D3DSAMP_SRGBTEXTURE,FALSE),"XT decode false");}
+            const unsigned refusal_stage=bump?5:4;if(fallback)api(d->SetSamplerState(refusal_stage,D3DSAMP_SRGBTEXTURE,TRUE),"XT color sampler refusal");
+            DWORD caller[16]{};if(!post_reset){caller[0]=13;caller[1]=step%2?11:5;caller[2]=step%2?6:10;caller[5]=7;caller[6]=transport?2:step%2?2:1;caller[bump?7:4]=15;caller[bump?8:7]=15;for(unsigned i=0;i<16;++i)api(d->SetRenderState(wrap_state(i),caller[i]),"XT hostile WRAP");}
+            if(plan<84&&step==3){api(d->BeginStateBlock(),"XT begin recorded");api(d->SetSamplerState(refusal_stage,D3DSAMP_SRGBTEXTURE,TRUE),"XT record decode");Com<IDirect3DStateBlock9>recorded;api(d->EndStateBlock(&recorded.p),"XT end recorded");DWORD value=1;api(d->GetSamplerState(refusal_stage,D3DSAMP_SRGBTEXTURE,&value),"XT record remains unapplied");require(value==FALSE,"XT recorded decode no mutation");Com<IDirect3DStateBlock9>all;api(d->CreateStateBlock(D3DSBT_ALL,&all.p),"XT capture all");api(d->SetSamplerState(refusal_stage,D3DSAMP_SRGBTEXTURE,TRUE),"XT transient decode");api(d->SetRenderState(wrap_state(0),0),"XT transient WRAP");api(all->Apply(),"XT Apply restore");}
+            // Hostile shader-reserved device constants must survive even though
+            // local DEFs inside the transformed programs override their reads.
+            float vr[8][4],pr[11][4];for(unsigned i=0;i<32;++i)vr[i/4][i%4]=100.f+i;for(unsigned i=0;i<44;++i)pr[i/4][i%4]=200.f+i;
+            api(d->SetVertexShaderConstantF(244,vr[0],8),"XT poison VS reserved");api(d->SetPixelShaderConstantF(210,pr[0],11),"XT poison PS reserved");write_reserved();
+            api(d->SetIndices(indices.p),"XT bind indices");api(d->SetVertexDeclaration(basis_declaration.p),"XT bind basis");scope(&object);api(d->SetStreamSource(0,object.vb,0,40),"XT bind stream");api(d->SetVertexShader(vertex[bump?0:1].p),"XT original VS bind");api(d->SetPixelShader(native_unknown?unknown.p:pixel[pair].p),"XT original PS bind");rows(0,perspective,0);
+            float before_ps[11][4];api(d->GetPixelShaderConstantF(210,before_ps[0],11),"XT reserved snapshot");const Snapshot before=snapshot();
+            std::array<std::uint64_t,3> transport_baseline{};std::vector<float> transport_rgb;
+            for(unsigned draw_number=0;draw_number<2;++draw_number){if(transport)api(d->SetSamplerState(refusal_stage,D3DSAMP_SRGBTEXTURE,draw_number==0),"XT paired ordinary then linear admission");api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,3,0,1),"XT original source draw");++draw_index;records.push_back({&object,0,perspective,0,!native_unknown,matched,object.rt,object.rp,object.rzo,false,jitter,true});x3m::MotionOutputFixtureWrapSnapshot observed{};api(wrap_snapshot(d.p,&observed),"XT native WRAP snapshot");++sequence;
+                DWORD expected[16];std::memcpy(expected,caller,sizeof expected);if(!native_unknown){expected[bump?7:4]=0;if(materialwrap_depth)expected[bump?8:7]=0;if(combined&&bump&&(!transport||draw_number)){expected[1]=(caller[1]&7)|((caller[6]&1)?8:0);expected[2]=(caller[2]&7)|((caller[6]&2)?8:0);}}
+                std::printf("XT_WRAP plan=%u frame=%llu draw=%u sequence=%llu valid=%u result=%08lx values=",plan,frame,draw_number,static_cast<unsigned long long>(observed.sequence),observed.valid,observed.result);for(unsigned i=0;i<16;++i)std::printf("%s%lu",i?",":"",static_cast<unsigned long>(observed.values[i]));std::puts("");require(observed.valid&&observed.result==S_OK&&observed.sequence==sequence&&!std::memcmp(expected,observed.values,sizeof expected),"XT native-once and pair WRAP transport");require(emission_status(d.p,12)==draw_number+1,"XT original source submitted once");
+                if(transport){
+                    // Deliberate getters separate only these final diagnostics.
+                    // Both source draws have the same unmatched history and
+                    // projective matrix; alpha/depth/motion must be exact twins.
+                    unsigned w=0,h=0;const auto image=hdr_image(&w,&h);require(w==W&&h==H,"XT paired image dimensions");
+                    std::vector<float>alpha_image(std::size_t(W)*H),motion_image(std::size_t(W)*H*4),depth_image(std::size_t(W)*H);
+                    for(std::size_t i=0;i<alpha_image.size();++i)alpha_image[i]=image[4*i+3];
+                    for(float value:image)require(std::isfinite(value),"XT paired finite image");
+                    api(readback(d.p,motion_image.data(),unsigned(motion_image.size()),&w,&h),"XT paired motion readback");if(materialwrap_depth)api(readback_depth(d.p,depth_image.data(),unsigned(depth_image.size()),&w,&h),"XT paired depth readback");
+                    const std::array<std::uint64_t,3> hashes={fnv(alpha_image.data(),alpha_image.size()*4),fnv(motion_image.data(),motion_image.size()*4),materialwrap_depth?fnv(depth_image.data(),depth_image.size()*4):0};
+                    unsigned pixels=0;double max_error=0,low=1e30,high=-1e30;
+                    if(!draw_number){transport_baseline=hashes;transport_rgb=image;}
+                    else {
+                        require(hashes==transport_baseline,"XT perspective ordinary/linear alpha and temporal twins");
+                        const double alpha=.625*(.25+.75*128./255.);
+                        for(std::size_t i=0;i<alpha_image.size();++i){
+                            if(std::fabs(transport_rgb[4*i+3]-alpha)>.001)continue;
+                            ++pixels;
+                            for(unsigned lane=0;lane<3;++lane){const double ordinary=transport_rgb[4*i+lane];require(ordinary>=0,"XT calibrated positive working RGB");low=std::min(low,ordinary);high=std::max(high,ordinary);const double wanted=material?std::pow(ordinary,1./2.2):ordinary;const double error=std::fabs(image[4*i+lane]-wanted)/(.006*std::fabs(wanted)+.00002);max_error=std::max(max_error,error);}
+                        }
+                        require(pixels>W*H/4&&high-low>.001&&max_error<=1,"XT physical scalar WRAP calibrated RGB relation");
+                    }
+                    const double highlight_low=std::pow(17.,-6.);
+                    require(1-highlight_low>.5,"XT authored highlight crosses WRAP seam");
+                    std::printf("XT_TRANSPORT plan=%u frame=%llu draw=%u combined=%u alpha=%016llx motion=%016llx depth=%016llx perspective=0.125 pixels=%u max_error=%.9g rgb_range=%.9g highlight_low=%.9g highlight_high=1\n",plan,frame,draw_number,material&&draw_number,static_cast<unsigned long long>(hashes[0]),static_cast<unsigned long long>(hashes[1]),static_cast<unsigned long long>(hashes[2]),pixels,max_error,draw_number?high-low:0,highlight_low);
+                }
+            }
+            compare(before,snapshot(),"XT state after consecutive pair draws");float after_vs[8][4],after_ps[11][4];api(d->GetVertexShaderConstantF(244,after_vs[0],8),"XT VS reserved readback");api(d->GetPixelShaderConstantF(210,after_ps[0],11),"XT PS reserved readback");require(!std::memcmp(vr,after_vs,sizeof vr)&&!std::memcmp(before_ps,after_ps,sizeof before_ps),"XT all reserved constants restored");
+            object.recorded=true;object.rt=object.rzo=0;object.rp=perspective;
+            unsigned width=0,height=0;const auto image=hdr_image(&width,&height);require(width==W&&height==H,"XT FP16 dimensions");const float*center=&image[(std::size_t(H/2)*W+W/2)*4];
+            const double alpha=.625*(.25+.75*128./255.);if(!transport)for(unsigned lane=0;lane<3;++lane){const double expected=native_unknown?(lane==0?.5:lane==1?.25:.75):combined?std::pow(4.,1./2.2):1.;require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"XT actual ordinary/linear RGB witness");}require(std::fabs(center[3]-(native_unknown?.625:alpha))<.001,"XT preserved native alpha");
+            for(float value:image)require(std::isfinite(value),"XT finite full FP16 image");
+            std::vector<float>alpha_pixels(std::size_t(W)*H);for(std::size_t i=0;i<alpha_pixels.size();++i)alpha_pixels[i]=image[i*4+3];
+            std::printf("XT_LIVE plan=%u frame=%llu pair=%u step=%u vs=%s ps=%s combined=%u refusal=%u matched=%u rgba=%.9g,%.9g,%.9g,%.9g alpha_hash=%016llx image_hash=%016llx\n",plan,frame,pair,step,xt_vs[bump?0:1],native_unknown?"fed278e46915d6da":xt_ps[pair],combined,native_unknown?1u:fallback?4u:0u,matched,double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(alpha_pixels.data(),alpha_pixels.size()*4)),static_cast<unsigned long long>(fnv(image.data(),image.size()*4)));
+            frame_end();if(reset_after){reset();object.recorded=false;}
+        }
     }
 
     // ---- FP16 HDR scene path, stage 3 (X3M_HDR=1 with X3M_TAA=1) ----
@@ -2608,7 +2743,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|emissions|emissionsbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|emissions|emissionsbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -2621,7 +2756,7 @@ int main(int argc, char** argv) {
         f.hdrfault = mode == "hdrfault";
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
         f.msaa = mode == "msaa";
-        f.materialwrap = mode == "materialwrap";
+        f.materialwrap = mode == "materialwrap"; f.materialxt = mode == "materialxt";
         f.linearmaterials = mode == "linearmaterials" || f.materialwrap;
         f.emission_bench = mode == "emissionsbench";
         f.emissions = mode == "emissions" || f.emission_bench;
@@ -2654,7 +2789,7 @@ int main(int argc, char** argv) {
         f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
         f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -2707,7 +2842,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

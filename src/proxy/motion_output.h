@@ -65,6 +65,7 @@ struct MotionRoute {
     bool routed = false, matched = false, scene = false;
     bool emission = false, submit = true, evaluated = false;
     HRESULT submission_error = D3DERR_INVALIDCALL;
+    HRESULT preparation_error = S_OK; // First internal failure; never replaces the native draw result.
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
@@ -565,6 +566,10 @@ private:
     // object never replaces the ordinary motion fallback for shared stages.
     struct ShaderEntry { std::uint64_t hash = 0; IUnknown* variant = nullptr;
                          IUnknown* material_variant = nullptr;
+                         // XT DEFAULT is pair-specific: the shared VS retains
+                         // its generic objects for every earlier exact pair.
+                         IUnknown* xt_default_ordinary_variant = nullptr;
+                         IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
                          bool registered = false; // Valid original, independent of motion support.
                          const renderer::MotionOutputProfile* row = nullptr; };
@@ -586,6 +591,12 @@ private:
         IDirect3DPixelShader9* ps_variant = nullptr;
         IDirect3DVertexShader9* vs_material_variant = nullptr;
         IDirect3DPixelShader9* ps_material_variant = nullptr;
+        IDirect3DVertexShader9* vs_xt_default_ordinary = nullptr;
+        IDirect3DVertexShader9* vs_xt_default_linear = nullptr;
+        IDirect3DPixelShader9* ps_xt_default_ordinary = nullptr;
+        // Published only at registration/SetShader; draws neither look up nor
+        // validate the four objects. An incomplete pair stays native-forward.
+        bool xt_default_pair = false, xt_default_ready = false;
         const renderer::MotionOutputProfile* vs_row = nullptr;
         float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
         bool rows_known[motion_matrix_windows_max]{};
@@ -750,6 +761,7 @@ private:
         unsigned prepare_failures = 0, composition_failures = 0, restore_failures = 0, exchange_failures = 0, ack_failures = 0;
     } emission_counts_;
     unsigned material_refusals_logged_ = 0;
+    bool xt_default_unavailable_logged_ = false;
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
     UINT target_width_ = 0, target_height_ = 0;

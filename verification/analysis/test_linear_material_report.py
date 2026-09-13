@@ -9,29 +9,44 @@ import struct
 import unittest
 from unittest.mock import patch
 import linear_material_reference as ref
+import linear_xt_fixture_reference as xt_fixture
 from run_linear_material import BOUNDARY, CUBE_PATTERN, cube_sample, cube_location, expected_alpha, PALETTE_GRADIENT, PALETTE_PERSPECTIVE, DIFFUSE_PATTERN, palette_varying, pattern_diffuse, DETAIL_PATTERN, detail_sample, FIXED_VERTICES, PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, fixture_cases, binary_cases, expected, validate_report
 
 
 def report():
     cases = fixture_cases()
-    lines = ['CAPS mrt=4 vs_slots=512 ps_slots=512']
+    lines = ['CAPS mrt=4 vs_slots=512 ps_slots=512', 'FLAT effective=0 gouraud=.25 requested_flat=.25']
     for stage, shader in sorted({(stage, shader) for vs, ps in PAIRS for stage, shader in [('vs', vs), ('ps', ps)]}):
         for depth in (0, 1):
             lines.append(f'CREATE stage={stage} key={shader}_2_{depth}_1_1_1 instructions=100 words=600 completed_ms=1.25')
+    for stage,shader in sorted({(stage,shader) for vs,ps in xt_fixture.PAIRS if vs=='494fe349b8bc12ec'
+                               for stage,shader in (('vs',vs),('ps',ps))}):
+        for depth in (0,1):
+            for mode in (1,2):
+                lines.append(f'CREATE stage={stage} key={shader}_{mode}_{depth}_1_1_1_xt_repaired instructions=100 words=600 completed_ms=1.25')
     for c in cases:
         lines.append(f'INVARIANT id={c["id"]} pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0 rgb_bad=0')
         values=(.5,1.,.25,expected_alpha(c)) if c['flags'] & BOUNDARY else expected(c).encoded_rgba
         rgba = ','.join(format(v, '.17g') for v in values)
         for y in (4, 8, 12):
             for x in (4, 8, 12):
-                if c['flags']&PALETTE_GRADIENT:
+                if c['flags']&PALETTE_GRADIENT or c['pair']>=148:
                     rgba=','.join(format(v,'.17g') for v in expected(c,sample=(x,y)).encoded_rgba)
                 lines.append(f'SAMPLE id={c["id"]} x={x} y={y} rgba={rgba}')
+                if c['pair']>=148:
+                    native=xt_fixture.expected(c,sample=(x,y),linear=False,cube_sampler=cube_sample).encoded_rgba
+                    lines.append(f'BASELINE id={c["id"]} x={x} y={y} rgba='+','.join(format(v,'.17g') for v in native))
     for pair in TIMING_PAIRS:
         for lights in (0, 8):
             for i in range(18):
                 mode = 2-i%3 if (i//3)%2 else i%3
                 lines.append(f'TIMING pair={pair} lights={lights} mode={mode} iteration={i} draws=4 vertices=98304 width=256 completed_ms=1.5')
+    for pair in (148,150):
+        for lights in (0,1,8):
+            for palette in (0,128):
+                for i in range(18):
+                    mode=2-i%3 if (i//3)%2 else i%3
+                    lines.append(f'TIMING pair={pair} lights={lights} mode={mode} iteration={i} draws=4 vertices=98304 width=256 completed_ms=1.5 palette={palette} repaired={int(pair==148)}')
     lines.append(f'RESULT PASS cases={len(cases)}')
     return '\n'.join(lines)
 
@@ -43,8 +58,8 @@ class ReportTests(unittest.TestCase):
 
     def test_complete_report(self):
         result = validate_report(self.text)
-        self.assertEqual(result['pairs'], 148)
-        self.assertEqual(result['unique_originals'], 115)
+        self.assertEqual(result['pairs'], 162)
+        self.assertEqual(result['unique_originals'], 130)
         self.assertGreater(result['hdr_channels'], 0)
         self.assertGreater(result['exact_black_channels'], 0)
 
@@ -68,11 +83,16 @@ class ReportTests(unittest.TestCase):
         self.assertEqual([(vertices[v],pixels[p]) for v,p in zip(vi,pi)],PAIRS)
         affine=[v=='true' for v in re.findall(r'true|false',array('pixel_affine'))]
         directions=list(map(int,re.findall(r'\d+',array('pixel_directions'))))
-        self.assertEqual(affine,[getattr(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p],'affine_color',False) for p in pixels])
-        self.assertEqual(directions,[(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p]).directions for p in pixels])
+        def profile(p):
+            if p in xt_fixture.xt.CONTRACTS:
+                from types import SimpleNamespace
+                return SimpleNamespace(affine_color=True,directions=2,bump_map=xt_fixture.xt.CONTRACTS[p].bump)
+            return ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p]
+        self.assertEqual(affine,[getattr(profile(p),'affine_color',False) for p in pixels])
+        self.assertEqual(directions,[profile(p).directions for p in pixels])
         bump=[v=='true' for v in re.findall(r'true|false',array('pixel_bump'))]
         app=[v=='true' for v in re.findall(r'true|false',array('pixel_application'))]
-        self.assertEqual(bump,[(ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p]).bump_map for p in pixels])
+        self.assertEqual(bump,[profile(p).bump_map for p in pixels])
         self.assertEqual(app,[ref.PROFILES[p].application_coefficients if p in ref.PROFILES else False for p in pixels])
 
     def test_shared_lobe_cases_reject_each_argon_coefficient(self):
@@ -113,7 +133,7 @@ class ReportTests(unittest.TestCase):
 
     def test_bump_inventory_and_stable_cube_domain(self):
         cases=fixture_cases()
-        self.assertEqual(len(cases),3549)
+        self.assertEqual(len(cases),3923)
         self.assertTrue(all(c['pair']<20 for c in cases[:313]))
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='bump_pair_depth_face'},
                          {(p,d,r) for p in range(20,30) for d in (0,1) for r in (0,1)})
@@ -123,6 +143,7 @@ class ReportTests(unittest.TestCase):
             a,b=expected(c),expected(c,True)
             self.assertEqual(a.encoded_rgba[3],expected_alpha(c))
             if c['flags']&CUBE_PATTERN:
+                if c['pair']>=148:continue  # XT has a separate actual-sampler reference witness.
                 # Different endpoint precision must not select a different
                 # discrete cube color. Other _pp arithmetic gets RGB tolerance.
                 def geometry(half):
@@ -215,8 +236,8 @@ class ReportTests(unittest.TestCase):
 
     def test_expanded_pair_and_required_case_coverage(self):
         proof=json.loads((Path(__file__).resolve().parents[2]/'docs/reverse-engineering/linear-material-profiles.json').read_text())
-        self.assertEqual(set(PAIRS),{(p['vs'],p['ps']) for p in proof['pairs']})
-        self.assertEqual(len(PAIRS),148)
+        self.assertEqual(set(PAIRS),{(p['vs'],p['ps']) for p in proof['pairs']} | set(xt_fixture.PAIRS))
+        self.assertEqual(len(PAIRS),162)
         cases=fixture_cases()
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='extended_pair_depth_face'},
                          {(p,d,r) for p in range(30,70) for d in (0,1) for r in (0,1)})
@@ -394,7 +415,7 @@ class PaletteFixtureTests(unittest.TestCase):
         cases=fixture_cases()
         self.assertEqual(hashlib.sha256(binary_cases(cases[:2757])).hexdigest(),
                          '04413dc21403cffbfe6f6d0ef7c97cef27265d6319af1ceb3062e2831a28dd5e')
-        self.assertEqual(len(cases),3549)
+        self.assertEqual(len(cases),3923)
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='palette_pair_depth_face'},
                          {(p,d,r) for p in range(116,148) for d in (0,1) for r in (0,1)})
         for label in ('palette_missing_history','palette_fog_alpha'):
@@ -429,7 +450,7 @@ class PaletteFixtureTests(unittest.TestCase):
             self.assertNotEqual(expected(c,sample=(4,4)),expected(c,sample=(12,12)))
 
     def test_perspective_gradient_uses_actual_vertices_and_reciprocal_clip_w(self):
-        cases=[c for c in fixture_cases() if c['flags']&PALETTE_PERSPECTIVE]
+        cases=[c for c in fixture_cases() if c['pair']<148 and c['flags']&PALETTE_PERSPECTIVE]
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases},
                          {(p,d,d) for p in (116,122,128,138) for d in (0,1)})
         # At center: screen weights (1/2,1/4,1/4), divided by (1,2,4),
@@ -543,6 +564,62 @@ class PaletteFixtureTests(unittest.TestCase):
         text=(Path(__file__).resolve().parents[1]/'probe/linear_material_fixture.cpp').read_text()
         self.assertIn('D3DSHADE_GOURAUD',text)
         self.assertIn('D3DRS_WRAP8',text)
+
+
+class XtFixtureTests(unittest.TestCase):
+    def test_cpp_timing_flag_serialization_matches_parser(self):
+        text=(Path(__file__).resolve().parents[1]/'probe/linear_material_fixture.cpp').read_text()
+        line=next(line for line in text.splitlines() if ' palette=%u repaired=%u' in line)
+        self.assertIn('unsigned(c.flags & 128)',line)
+        self.assertNotIn('!= 0',line)  # Flag identity is 0/128, not a Boolean 0/1.
+
+    def test_prior_148_payload_and_complete_xt_contracts(self):
+        cases=fixture_cases()
+        self.assertEqual(hashlib.sha256(binary_cases(cases)[4:4+3549*240]).hexdigest(),
+                         'f762b2ec933ad969315be0d6cfbdee4cccd866c5b13c08e682695539d87feac3')
+        self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='xt_pair_depth_face'},
+                         {(p,d,r) for p in range(148,162) for d in (0,1) for r in (0,1)})
+        for label in ('runtime_palette','independent_gains','point_count','missing_history','fog_alpha','affine','sample_data','distinct_uv','interpolation'):
+            self.assertEqual({c['pair'] for c in cases if c['label']=='xt_'+label},set(range(148,162)))
+        self.assertEqual({c['pair'] for c in cases if c['label']=='xt_expanded_float2'},{148,149,156,157})
+
+    def test_actual_sampler_uv_and_data_channels(self):
+        cases=fixture_cases()
+        c=next(c for c in cases if c['pair']==148 and c['label']=='xt_distinct_uv')
+        ordinary=xt_fixture.inputs(c)
+        moved=xt_fixture.inputs(dict(c,flags=c['flags']|xt_fixture.SECONDARY_ALT))
+        expanded=xt_fixture.inputs(dict(c,flags=c['flags']|xt_fixture.FLOAT2))
+        self.assertEqual(ordinary.diffuse,moved.diffuse)
+        self.assertNotEqual(ordinary.occlusion,moved.occlusion)
+        self.assertNotEqual(ordinary.occlusion,expanded.occlusion)
+        damage=next(c for c in cases if c['pair']==154 and c['label']=='xt_damage_threshold')
+        a=xt_fixture.inputs(damage)
+        b=xt_fixture.inputs(dict(damage,flags=damage['flags']|xt_fixture.THRESHOLD_MID))
+        self.assertNotEqual(a.occlusion[2],a.bump_sample[2])
+        contract=xt_fixture.xt.CONTRACTS[PAIRS[154][1]]
+        self.assertNotEqual(xt_fixture.xt.native_pixel(contract,a).normal,xt_fixture.xt.native_pixel(contract,b).normal)
+
+    def test_interpolated_weights_are_not_recomputed_at_pixel(self):
+        c=next(c for c in fixture_cases() if c['pair']==148 and c['label']=='xt_interpolation' and c['flags']&xt_fixture.PERSPECTIVE)
+        v=xt_fixture.varyings(c,(12,4))
+        recomputed=xt_fixture.xt.default_authored_varyings(v['view'],v['normal'],c['coefficients'][2])
+        self.assertGreater(max(abs(a-b) for a,b in zip(v['weights'],recomputed.palette_weights)),1e-5)
+        self.assertNotEqual(xt_fixture.varyings(c,(12,4))['rgb'],xt_fixture.varyings(c,(12,4),flat_color=True)['rgb'])
+
+    def test_native_and_repaired_baseline_gains_remain_ordinary(self):
+        for pair in (148,150,154,156):
+            c=next(c for c in fixture_cases() if c['pair']==pair)
+            changed=dict(c,gains=[16.,16.,16.])
+            self.assertEqual(xt_fixture.expected(c,linear=False),xt_fixture.expected(changed,linear=False))
+            self.assertNotEqual(expected(c),expected(changed))
+
+    def test_report_rejects_missing_ordinary_flat_and_timing_proof(self):
+        text=report()
+        for prefix in ('BASELINE ','FLAT ','TIMING pair=148 '):
+            lines=text.splitlines()
+            del lines[next(i for i,line in enumerate(lines) if line.startswith(prefix))]
+            with self.subTest(prefix=prefix),self.assertRaises(AssertionError):
+                validate_report('\n'.join(lines))
 
 
 if __name__ == '__main__':unittest.main()

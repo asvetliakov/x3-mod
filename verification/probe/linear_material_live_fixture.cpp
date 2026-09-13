@@ -11,6 +11,7 @@
 #include <string>
 #include <cwchar>
 #include <stdexcept>
+#include <cstring>
 using D3DFORMAT=unsigned;constexpr unsigned D3DFMT_UNKNOWN=0;
 using DWORD=std::uint32_t; using UINT=unsigned; using HRESULT=int;
 constexpr HRESULT S_OK=0,E_FAIL=-1,D3DERR_NOTFOUND=-2,D3DERR_INVALIDCALL=-3,E_NOINTERFACE=-4; constexpr DWORD FALSE=0,TRUE=1;
@@ -22,6 +23,7 @@ constexpr unsigned D3DDEVCAPS2_DMAPNPATCH=1;
 constexpr unsigned D3DDMAPSAMPLER=256,D3DVERTEXTEXTURESAMPLER0=257,D3DVERTEXTEXTURESAMPLER3=260;
 constexpr unsigned IID_IUnknown=1,IID_IDirect3DTexture9=2;
 constexpr unsigned D3DRS_COLORWRITEENABLE1=190,D3DRS_COLORWRITEENABLE2=191;
+constexpr unsigned motion_shadow_state_count=24;constexpr std::array<unsigned,24>shadow_states{};
 unsigned releases=0, checks=0, failures=0;
 #define CHECK(x) do {++checks;if(!(x)){++failures;std::fprintf(stderr,"line=%d %s\n",__LINE__,#x);}} while(0)
 const std::uint32_t* release_mask=nullptr;
@@ -47,6 +49,7 @@ struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightm
 enum class LinearMaterialResult{Applied,UnsupportedShader};
 enum class MaterialMotionResult{Applied,UnsupportedShader};
 enum class HdrTonemap{Agx,Identity};
+struct MaterialMotionAbi{static constexpr UINT previous_vertex_constant=252,pixel_coordinates_constant=216;};
 struct MotionOutputProfile{}; MotionOutputProfile row;
 struct HdrConfig{HdrTonemap tonemap=HdrTonemap::Agx;x3::temporal::AgxDecode decode=x3::temporal::AgxDecode::gamma22;};
 bool linear_material_config_valid(const LinearMaterialConfig&c){return std::isfinite(c.direct_gain)&&c.direct_gain>=0&&c.direct_gain<=16;}
@@ -55,9 +58,19 @@ struct LinearMaterialScalarTransport {std::uint8_t source_texcoord=0,source_comp
 struct LinearMaterialPairContract {std::uint32_t sampler_mask=0;bool bump=false;std::array<LinearMaterialScalarTransport,2> scalar_transport{};std::uint8_t scalar_transport_count=0;};
 LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vs,std::uint64_t ps){
  ++contract_lookups;
+ if(vs==10&&ps>=22&&ps<=25)return {29,false};
+ if(vs==30&&ps==44)return {57,true};
  if(vs==30&&ps==42)return {31,true,{{{6,0,1,3},{6,1,2,3}}},2};
  if(vs==30&&ps==43)return {31,true,{{{7,0,1,3},{}}},1};
  return vs==10&&ps==20?LinearMaterialPairContract{15,false}:vs==30&&ps==40?LinearMaterialPairContract{31,true}:vs==30&&ps==41?LinearMaterialPairContract{15,true}:LinearMaterialPairContract{};
+}
+unsigned xt_transforms=0,xt_lookups=0;
+bool linear_material_xt_default_pair(std::uint64_t vs,std::uint64_t ps){++xt_lookups;return vs==10&&ps>=22&&ps<=25;}
+LinearMaterialResult linear_material_xt_default_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool,bool linear){
+ ++xt_transforms;if(*p!=10)return LinearMaterialResult::UnsupportedShader;o={*p+(linear?500u:400u)};return LinearMaterialResult::Applied;
+}
+LinearMaterialResult linear_material_xt_default_pixel_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool,bool linear){
+ ++xt_transforms;if(*p<22||*p>25)return LinearMaterialResult::UnsupportedShader;o={*p+(linear?500u:400u)};return LinearMaterialResult::Applied;
 }
 bool reject_row=false,throw_transform=false,reject_transform=false;
 const MotionOutputProfile* material_motion_vertex_row(std::uint64_t hash,std::size_t){return reject_row||hash>=50?nullptr:&row;}
@@ -67,7 +80,7 @@ bool material_motion_pixel_writes_depth(const MotionOutputProfile&,bool x){retur
 unsigned motion_transforms=0, material_transforms=0;
 MaterialMotionResult material_motion_vertex_variant(const std::uint32_t*p,std::size_t,std::vector<std::uint32_t>&o,bool){++motion_transforms;if(throw_transform)throw std::bad_alloc();if(reject_transform)return MaterialMotionResult::UnsupportedShader;o={p[0]+100};return MaterialMotionResult::Applied;}
 MaterialMotionResult material_motion_pixel_variant(const std::uint32_t*p,std::size_t n,std::vector<std::uint32_t>&o,bool d){return material_motion_vertex_variant(p,n,o,d);}
-LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==42||p[0]==43||p[0]==21);o={p[0]+200};return LinearMaterialResult::Applied;}
+LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==42||p[0]==43||p[0]==21||(p[0]>=22&&p[0]<=25)||p[0]==44);o={p[0]+200};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
 }
 namespace renderer {
@@ -104,8 +117,8 @@ struct MotionDrawCall{bool indexed=true,user_memory=false;unsigned primitives=3;
 namespace telemetry{enum class Metric{RouteGate,RouteSetRenderTarget,RouteLazyFlush};bool draw_enabled(){return false;}}
 std::uint64_t draw_stamp(){return 0;}
 struct MotionRoute {
- MotionGate gate=MotionGate::Feature;bool routed=false,emission=false,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL;std::uint64_t ticks=0;
- bool linear_material=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
+ MotionGate gate=MotionGate::Feature;bool routed=false,emission=false,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL,preparation_error=S_OK;std::uint64_t ticks=0;
+ bool depth=false,linear_material=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
  bool vs_constants_set=false,ps_constants_set=false,jittered=true;
  DWORD saved_write1=15,saved_write2=15;
 };
@@ -113,9 +126,13 @@ struct Counters{unsigned material_routed=0,material_bump_routed=0;unsigned set_r
 struct Device {
  HRESULT target_result=S_OK;std::vector<int> calls; std::vector<unsigned> failed_calls; unsigned ordinal=0;
  IDirect3DVertexShader9* bound_vs=nullptr;IDirect3DPixelShader9* bound_ps=nullptr;
- std::array<DWORD,5> srgb{};unsigned sampler_reads=0;int fail_sampler=-1;bool fail_combined_create=false,fail_motion_create=false,fail_get_vs=false,fail_get_ps=false;
+ std::array<DWORD,6> srgb{};unsigned sampler_reads=0;int fail_sampler=-1;bool fail_combined_create=false,fail_motion_create=false,fail_get_vs=false,fail_get_ps=false;
  std::map<DWORD,IDirect3DBaseTexture9*>textures;std::map<DWORD,HRESULT>texture_failures;unsigned texture_reads=0;
  unsigned emission_creates=0,vs_creates=0;bool fail_emission_create=false,partial_emission_create=false,null_emission_create=false;
+ bool mutation_faults=false;unsigned state_ordinal=0;std::vector<unsigned>state_failures;
+ std::array<IDirect3DSurface9*,3>targets{};std::array<DWORD,3>write_masks{15,5,6};std::array<float,16>vs_constants{};std::array<float,8>ps_constants{};
+ HRESULT state_result(){if(!mutation_faults)return S_OK;++state_ordinal;for(auto n:state_failures)if(n==state_ordinal)return E_FAIL;return S_OK;}
+ DWORD fail_program=0;bool partial_program=false;
  bool fails(){++ordinal;for(auto index:failed_calls)if(ordinal==index)return true;return false;}
 };
 struct IDirect3DVertexBuffer9:IUnknown{};struct IDirect3DIndexBuffer9:IUnknown{};struct IDirect3DVertexDeclaration9:IUnknown{};
@@ -140,16 +157,16 @@ using GetStreamFn=HRESULT(*)(D,UINT,IDirect3DVertexBuffer9**,UINT*,UINT*);using 
 using GetDeclarationFn=HRESULT(*)(D,IDirect3DVertexDeclaration9**);using GetRenderTargetFn=HRESULT(*)(D,DWORD,IDirect3DSurface9**);
 using GetDepthFn=HRESULT(*)(D,IDirect3DSurface9**);using GetViewportFn=HRESULT(*)(D,D3DVIEWPORT9*);
 enum Slots{SetRenderTarget,SetSamplerState,SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport};
-HRESULT set_vs(D d,IDirect3DVertexShader9*p){d->calls.push_back(1);if(d->fails())return E_FAIL;d->bound_vs=p;return S_OK;}
-HRESULT set_ps(D d,IDirect3DPixelShader9*p){d->calls.push_back(2);if(d->fails())return E_FAIL;d->bound_ps=p;return S_OK;}
-HRESULT create_vs(D d,const DWORD*p,IDirect3DVertexShader9**out){++d->vs_creates;if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DVertexShader9;return S_OK;}
-HRESULT create_ps(D d,const DWORD*p,IDirect3DPixelShader9**out){if(*p>=300){++d->emission_creates;if(d->partial_emission_create){*out=new IDirect3DPixelShader9;return E_FAIL;}if(d->fail_emission_create)return E_FAIL;if(!d->null_emission_create)*out=new IDirect3DPixelShader9;return S_OK;}if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DPixelShader9;return S_OK;}
+HRESULT set_vs(D d,IDirect3DVertexShader9*p){d->calls.push_back(1);d->bound_vs=p;if(d->fails())return E_FAIL;return S_OK;}
+HRESULT set_ps(D d,IDirect3DPixelShader9*p){d->calls.push_back(2);d->bound_ps=p;if(d->fails())return E_FAIL;return S_OK;}
+HRESULT create_vs(D d,const DWORD*p,IDirect3DVertexShader9**out){++d->vs_creates;if(*p==d->fail_program){if(d->partial_program)*out=new IDirect3DVertexShader9;return E_FAIL;}if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DVertexShader9;return S_OK;}
+HRESULT create_ps(D d,const DWORD*p,IDirect3DPixelShader9**out){if(*p==d->fail_program){if(d->partial_program)*out=new IDirect3DPixelShader9;return E_FAIL;}if(*p>=300&&*p<400){++d->emission_creates;if(d->partial_emission_create){*out=new IDirect3DPixelShader9;return E_FAIL;}if(d->fail_emission_create)return E_FAIL;if(!d->null_emission_create)*out=new IDirect3DPixelShader9;return S_OK;}if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DPixelShader9;return S_OK;}
 HRESULT get_sampler(D d,DWORD stage,D3DSAMPLERSTATETYPE type,DWORD*out){CHECK(type==D3DSAMP_SRGBTEXTURE);++d->sampler_reads;if(int(stage)==d->fail_sampler)return E_FAIL;*out=d->srgb[stage];return S_OK;}
 HRESULT get_texture(D d,DWORD stage,IDirect3DBaseTexture9**out){++d->texture_reads;*out=d->textures[stage];if(*out)(*out)->AddRef();auto it=d->texture_failures.find(stage);return it==d->texture_failures.end()?S_OK:it->second;}
-HRESULT set_target(D d,DWORD,IDirect3DSurface9*){return d->target_result;}
-HRESULT set_state(D,DWORD,DWORD){return S_OK;}
+HRESULT set_target(D d,DWORD index,IDirect3DSurface9*p){d->targets[index]=p;const auto hr=d->state_result();return FAILED(hr)?hr:d->target_result;}
+HRESULT set_state(D d,DWORD index,DWORD value){d->write_masks[index==D3DRS_COLORWRITEENABLE1?1:2]=value;return d->state_result();}
 HRESULT set_sampler(D d,DWORD,D3DSAMPLERSTATETYPE,DWORD){return d->fails()?E_FAIL:S_OK;}
-HRESULT set_constants(D,UINT,const float*,UINT){return S_OK;}
+HRESULT set_constants(D d,UINT start,const float*p,UINT count){if(start==252)std::memcpy(d->vs_constants.data(),p,count*4*sizeof(float));else std::memcpy(d->ps_constants.data(),p,count*4*sizeof(float));return d->state_result();}
 HRESULT get_vs(D d,IDirect3DVertexShader9**p){if(d->fail_get_vs)return E_FAIL;*p=d->bound_vs;if(*p)(*p)->AddRef();return S_OK;}
 HRESULT get_ps(D d,IDirect3DPixelShader9**p){if(d->fail_get_ps)return E_FAIL;*p=d->bound_ps;if(*p)(*p)->AddRef();return S_OK;}
 HRESULT get_f(D,UINT,float*,UINT){return S_OK;}HRESULT get_i(D,UINT,int*,UINT){return S_OK;}
@@ -161,12 +178,15 @@ HRESULT get_depth(D,IDirect3DSurface9**p){*p=nullptr;return D3DERR_NOTFOUND;}
 HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr;
+ bool xt_default_pair=false,xt_default_ready=false;
+ IDirect3DVertexShader9*vs_xt_default_ordinary=nullptr,*vs_xt_default_linear=nullptr;IDirect3DPixelShader9*ps_xt_default_ordinary=nullptr;
+ DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};
  renderer::LinearMaterialPairContract material_contract{};float rows[1][16]{};bool rows_known[1]{};int integer0[4]{};bool integer0_known=false;
  Surface rt0,depth;Viewport viewport;bool extra_rt[4]{};
  bool recording=false,vs_reserved_written=false,ps_reserved_written=false;float vs_reserved[16]{},ps_reserved[8]{};
@@ -176,17 +196,17 @@ public:
  SamplerShadow samplers_[16];
  ThrowingMap<ShaderEntry>vertex_,pixel_;
  D device_=nullptr;bool enabled_=true,requested_=true,depth_enabled_=true,linear_material_requested_=false;
- renderer::LinearMaterialConfig linear_material_config_{};
+ renderer::LinearMaterialConfig linear_material_config_{};bool xt_default_unavailable_logged_=false;
  std::unique_ptr<renderer::LinearEmissionPass>emission_;
  bool motion_state_lost_=false;HRESULT motion_state_error_=D3DERR_INVALIDCALL;
- void recover_motion_state(){} HRESULT restore_wrap_states(MotionRoute&){return S_OK;}
+ void recover_motion_state()noexcept; HRESULT restore_wrap_states(MotionRoute&){return S_OK;}
  bool emission_busy_=false,emission_state_lost_=false,emission_frame_stopped_=false,emission_enhanced_=false,emission_quarantined_=false,emission_readers_known_=false,emission_published_=false;
  IDirect3DTexture9*emission_main_texture_=nullptr;IUnknown*emission_main_identity_=nullptr;
  std::uint32_t emission_main_sampler_mask_=0,emission_reader_known_mask_=0;IDirect3DBaseTexture9*emission_textures_[21]{};
  struct{unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;}emission_counts_;
  unsigned emission_adapter_format_=1,emission_depth_format_=2;bool emission_attach_attempted_=true,emission_effective_=false,emission_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
  bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;
- unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false;
+ unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
  bool hdr_target_failed_=false,hdr_blocked_=false,target_failed_=false,pending_valid_=false,main_msaa_=false,msaa_logged_=false;unsigned hdr_blocked_latches_=0,main_msaa_samples_=0;Surface main_,main_depth_;History selector_;renderer::CameraState camera_previous_;
@@ -220,12 +240,16 @@ public:
  void set_texture(DWORD,IDirect3DBaseTexture9*,DWORD,bool,int=2)noexcept;int emission_texture_reader(DWORD,IDirect3DBaseTexture9*)noexcept;
  void prepare_emission(const MotionDrawCall&,MotionRoute&)noexcept;void finish_emission(HRESULT)noexcept;bool publish_emission()noexcept;void begin_emission_frame()noexcept;void emission_export()noexcept;void release_emission_identity()noexcept;void before_texture_write(IDirect3DBaseTexture9*)noexcept;
  unsigned content_writes=0;IDirect3DSurface9*write_target=nullptr;void before_render_target_write(IDirect3DSurface9*surface){++content_writes;write_target=surface;hdr_state_=HdrState::Off;}
- MotionRoute before_draw(const MotionDrawCall&)noexcept;void evaluate_draw(const MotionDrawCall&,MotionRoute&){}void log_mip_bias_game_write(){}void record(unsigned,std::uint64_t,bool=false){}
+ unsigned evaluations=0;bool route_on_evaluation=false,recovery_reads_fail=false;
+ HRESULT get_render_state_native(unsigned,DWORD*out){*out=0;return recovery_reads_fail?E_FAIL:S_OK;}
+ MotionRoute before_draw(const MotionDrawCall&)noexcept;void evaluate_draw(const MotionDrawCall&,MotionRoute&r){++evaluations;if(route_on_evaluation)r.routed=true;}void log_mip_bias_game_write(){}void record(unsigned,std::uint64_t,bool=false){}
  bool scene_bound()const{return bound_scene;}void invalidate_taa(){++taa_invalidations;}
  bool reference_accounting_busy()const{return releasing_||taa_busy_||emission_busy_||(emission_&&emission_->reference_accounting_busy());}void before_reset()noexcept;
  void drop_redirect(){release_emission_identity();} void release_target(){release(target_surface_);release(depth_surface_);}
  template<class F>void taa_call(F&&f){f();}void invalidate_render_states(){states_invalidated=true;}
- HRESULT bind_target(unsigned,IUnknown*){return S_OK;}
+ HRESULT bind_target(unsigned index,IUnknown*p){return set_target(device_,index,static_cast<IDirect3DSurface9*>(p));}
+ HRESULT render_state(unsigned index,DWORD*out){*out=device_->write_masks[index==D3DRS_COLORWRITEENABLE1?1:2];return S_OK;}
+ HRESULT bind_targets(MotionRoute&)noexcept;HRESULT prepare_constants(MotionRoute&)noexcept;
  unsigned device_references()const noexcept;void release_resources()noexcept;
  void configure_linear_materials(bool,const renderer::LinearMaterialConfig&)noexcept;
  void configure_linear_emissions(bool,float)noexcept;void refresh_linear_emission_contract()noexcept;
@@ -448,9 +472,9 @@ void emission_cache_cases(){
  }
  // Independent motion/material originals keep both established variants.
  IDirect3DVertexShader9 material_vs;IDirect3DPixelShader9 material_ps;DWORD mv=10,mp=20;m.register_vertex_shader(&material_vs,&mv,4,10);m.register_pixel_shader(&material_ps,&mp,4,20);
- CHECK(m.vertex_[&material_vs].variant&&m.vertex_[&material_vs].material_variant&&m.pixel_[&material_ps].variant&&m.pixel_[&material_ps].material_variant&&!m.pixel_[&material_ps].emission_variant&&m.device_references()==6);
+ CHECK(m.vertex_[&material_vs].variant&&m.vertex_[&material_vs].material_variant&&m.pixel_[&material_ps].variant&&m.pixel_[&material_ps].material_variant&&!m.pixel_[&material_ps].emission_variant&&m.device_references()==8);
  const auto released=releases;retiring_emission=&m;release_check=emission_retirement_check;m.release_resources();release_check=nullptr;retiring_emission=nullptr;
- CHECK(releases==released+6&&m.device_references()==0&&!m.shadow_.emission_eligible_variant);m.release_resources();CHECK(releases==released+6);
+ CHECK(releases==released+8&&m.device_references()==0&&!m.shadow_.emission_eligible_variant);m.release_resources();CHECK(releases==released+8);
  std::printf("linear_emission_cache checks=%u\n",checks-checks_before);
 }
 // INSTANCE and DEFAULT can share the same augmented PS. The native VS needs
@@ -601,15 +625,15 @@ void emission_route_cases(){
  }
  {MotionOutput m;ready(m);m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.lazy_rt1_=true;device.target_result=-72;m.sampler_biased_mask_=1;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_bindings_checked()==-71);CHECK(!m.lazy_rt1_&&!m.sampler_biased_mask_);device.failed_calls.clear();}
  // Capture can call the void restoration wrapper before before_draw. Even
- // after another wrapper consumes the deferred result, effective emission
- // state loss must remain sticky until Reset. Default-off behavior is retained.
+ // after another wrapper consumes the deferred result, motion state loss
+ // remains sticky until Reset, independently of optional emission.
  for(bool effective:{false,true})for(unsigned fault=0;fault<3;++fault){MotionOutput m;ready(m);m.emission_effective_=effective;m.linear_emission_requested_=effective;
   if(fault==0){m.deferred_flush_result_=-81;m.deferred_flushes_=1;}
   if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;device.ordinal=0;device.failed_calls={1};}
   if(fault==2){m.lazy_rt1_=true;device.target_result=-82;}
-  m.restore_bindings();CHECK(m.emission_state_lost_==effective&&m.emission_frame_stopped_==effective);CHECK(m.taa_invalidations==(effective?1u:0u));
+  m.restore_bindings();CHECK(m.emission_state_lost_==effective&&m.emission_frame_stopped_==effective);CHECK(m.motion_state_lost_&&m.taa_invalidations==1);
   device.failed_calls.clear();device.target_result=S_OK;m.restore_bindings();CHECK(m.restore_bindings_checked()==S_OK);
-  auto route=m.before_draw({});CHECK(route.submit==!effective&&!route.emission);CHECK(m.emission_state_lost_==effective&&m.emission_->prepares==0);
+  auto route=m.before_draw({});CHECK(!route.submit&&!route.emission);CHECK(m.emission_state_lost_==effective&&m.emission_->prepares==0);
  }
  // A quiet light-hook flush marks uncertainty immediately, using the actual
  // production template; consuming its diagnostic error cannot erase that flag.
@@ -637,6 +661,134 @@ void emission_route_cases(){
  std::printf("linear_emission_route checks=%u\n",checks-before);
 }
 
+// Atomic corrected-pair cache: exercise all four aliases and both compiled
+// depth modes. These scripted shader tokens qualify control flow only.
+MotionOutput* retiring_xt=nullptr;
+void xt_retirement_check(){CHECK(retiring_xt&&!retiring_xt->shadow_.xt_default_ready&&!retiring_xt->shadow_.xt_default_pair);CHECK(retiring_xt->shadow_.material_contract.sampler_mask==0);}
+void xt_default_cases(){
+ const unsigned begin=checks;
+ for(bool depth:{false,true})for(DWORD pixel:{22u,23u,24u,25u}){
+  Device d;MotionOutput m;m.depth_enabled_=depth;m.configure_linear_materials(true,{});m.device_=&d;
+  IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps,other;DWORD vertex=10,negative=20;
+  d.bound_vs=&vs;d.bound_ps=&ps;m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);
+  m.register_vertex_shader(&vs,&vertex,4,vertex);CHECK(!m.shadow_.xt_default_ready);
+  m.register_pixel_shader(&ps,&pixel,4,pixel);CHECK(m.shadow_.xt_default_pair&&m.shadow_.xt_default_ready);
+  CHECK(m.device_references()==7&&m.shadow_.material_contract.sampler_mask==29);m.resync_samplers();CHECK(m.linear_material_refusal()==0);
+  for(bool material:{false,true}){MotionRoute r;CHECK(m.bind_variant_pair(r,material)==S_OK&&r.linear_material==material);
+   CHECK(d.bound_vs==(material?m.shadow_.vs_xt_default_linear:m.shadow_.vs_xt_default_ordinary));
+   CHECK(d.bound_ps==(material?m.shadow_.ps_material_variant:m.shadow_.ps_xt_default_ordinary));CHECK(m.undo(r)==S_OK&&d.bound_vs==&vs&&d.bound_ps==&ps);
+  }
+  // Sampler refusal selects the complete repaired ordinary pair.
+  m.set_sampler_state(4,D3DSAMP_SRGBTEXTURE,TRUE);CHECK(m.linear_material_refusal()==4);MotionRoute refused;
+  CHECK(m.bind_variant_pair(refused,false)==S_OK&&d.bound_vs==m.shadow_.vs_xt_default_ordinary&&d.bound_ps==m.shadow_.ps_xt_default_ordinary);CHECK(m.undo(refused)==S_OK);
+  m.set_sampler_state(4,D3DSAMP_SRGBTEXTURE,FALSE);
+  // Shared VS retains its previous generic ordinary and material selection.
+  auto*ordinary=m.shadow_.vs_variant;auto*linear=m.shadow_.vs_material_variant;
+  m.register_pixel_shader(&other,&negative,4,negative);m.set_pixel_shader(&other);CHECK(!m.shadow_.xt_default_pair&&!m.shadow_.xt_default_ready);
+  for(bool material:{false,true}){MotionRoute r;CHECK(m.bind_variant_pair(r,material)==S_OK&&d.bound_vs==(material?linear:ordinary));CHECK(m.undo(r)==S_OK);}
+  m.set_pixel_shader(&ps);
+  // An unfinished registration remains an exact XT identity but cannot
+  // degrade to generic shared-VS selection on a subsequent shader setter.
+  for(bool vertex_stage:{false,true}){auto&entry=vertex_stage?m.vertex_[&vs]:m.pixel_[&ps];entry.registered=false;
+   if(vertex_stage)m.set_vertex_shader(&vs);else m.set_pixel_shader(&ps);
+   CHECK(m.shadow_.xt_default_pair&&!m.shadow_.xt_default_ready&&m.shadow_.material_contract.sampler_mask==0);
+   entry.registered=true;if(vertex_stage)m.set_vertex_shader(&vs);else m.set_pixel_shader(&ps);CHECK(m.shadow_.xt_default_ready);
+  }
+  const unsigned lookups=renderer::xt_lookups,contracts=renderer::contract_lookups,transforms=renderer::xt_transforms,creates=d.vs_creates,reads=d.sampler_reads;
+  for(unsigned i=0;i<1000;++i)CHECK(m.linear_material_refusal()==0);
+  CHECK(renderer::xt_lookups==lookups&&renderer::contract_lookups==contracts&&renderer::xt_transforms==transforms&&d.vs_creates==creates&&d.sampler_reads==reads);
+  // Both attempted shader setters mutate before failure. Full rollback then
+  // one ordinary repaired attempt retains the first diagnostic failure.
+  for(unsigned fail:{1u,2u}){d.ordinal=0;d.calls.clear();d.failed_calls={fail};MotionRoute r;
+   CHECK(m.bind_variant_pair(r,true)==S_OK&&!r.linear_material&&r.preparation_error==E_FAIL);
+   CHECK(d.bound_vs==m.shadow_.vs_xt_default_ordinary&&d.bound_ps==m.shadow_.ps_xt_default_ordinary);CHECK(d.calls.size()==(fail==1?4u:6u));CHECK(m.undo(r)==S_OK&&d.bound_vs==&vs&&d.bound_ps==&ps);
+  }
+  // Failure in either rollback slot suppresses any ordinary retry. Restore
+  // still attempts the other shader; Reset resync rebuilds cached readiness.
+  for(unsigned fail_restore:{3u,4u}){d.ordinal=0;d.calls.clear();d.failed_calls={2,fail_restore};MotionRoute r;
+   CHECK(m.bind_variant_pair(r,true)==E_FAIL&&m.motion_state_lost_&&d.calls.size()==4);m.rollback_route(r);CHECK(!r.submit&&r.submission_error==E_FAIL);
+   d.failed_calls.clear();d.bound_vs=&vs;d.bound_ps=&ps;m.before_reset();CHECK(!m.shadow_.xt_default_ready);m.after_reset(S_OK);CHECK(m.shadow_.xt_default_ready);
+   CHECK(!m.motion_state_lost_);
+  }
+  // Reentrant release must observe invalidated pair readiness on replacement.
+  retiring_xt=&m;release_check=xt_retirement_check;m.register_vertex_shader(&vs,&vertex,4,vertex);release_check=nullptr;CHECK(m.shadow_.xt_default_ready);
+  const unsigned held=m.device_references(),released=releases;release_check=xt_retirement_check;m.release_resources();release_check=nullptr;CHECK(releases==released+held&&m.device_references()==0);
+ }
+ // Failure/partial-object failure in each of the four prerequisites never
+ // exposes a half pair. A registration retry is the only creation retry.
+ for(DWORD failed:{410u,510u,422u,222u})for(bool partial:{false,true}){
+  Device d;MotionOutput m;m.configure_linear_materials(true,{});m.device_=&d;d.fail_program=failed;d.partial_program=partial;
+  IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;DWORD v=10,p=22;d.bound_vs=&vs;d.bound_ps=&ps;m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);
+  m.register_vertex_shader(&vs,&v,4,v);m.register_pixel_shader(&ps,&p,4,p);
+  CHECK(m.shadow_.xt_default_pair&&!m.shadow_.xt_default_ready&&m.shadow_.material_contract.sampler_mask==0&&m.xt_default_unavailable_logged_);
+  MotionRoute r;const auto calls=d.calls.size();CHECK(m.bind_variant_pair(r,true)==E_FAIL&&!r.vs_set&&!r.ps_set&&d.calls.size()==calls&&d.bound_vs==&vs&&d.bound_ps==&ps);
+  d.fail_program=0;d.partial_program=false;
+  if(failed==410||failed==510)m.register_vertex_shader(&vs,&v,4,v);else m.register_pixel_shader(&ps,&p,4,p);
+  CHECK(m.shadow_.xt_default_ready&&m.device_references()==7);m.release_resources();
+ }
+ // XT BUMP's s5 color sample participates in the cached decode gate.
+ {Device d;MotionOutput m;m.configure_linear_materials(true,{});m.device_=&d;IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;DWORD v=30,p=44;
+  m.register_vertex_shader(&vs,&v,4,v);m.register_pixel_shader(&ps,&p,4,p);m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);m.resync_samplers();CHECK(m.linear_material_refusal()==0);
+  m.set_sampler_state(5,D3DSAMP_SRGBTEXTURE,TRUE);CHECK(m.linear_material_refusal()==4);d.fail_sampler=5;m.resync_samplers();CHECK(m.linear_material_refusal()==4);m.release_resources();
+ }
+ std::printf("linear_material_xt_cache checks=%u\n",checks-begin);
+}
+// Shared state-write regression: every scripted failure mutates its slot.
+// Production target preparation, constant preparation and rollback are reused.
+void attempted_state_cases(){
+ const unsigned begin=checks;
+ for(bool lazy:{false,true})for(unsigned failure:{1u,2u,3u,4u}){
+  Device d;MotionOutput m;m.device_=&d;m.lazy_mode_=lazy;m.target_surface_=new IDirect3DSurface9;m.depth_surface_=new IDirect3DSurface9;
+  d.mutation_faults=true;d.state_failures={failure};MotionRoute r;r.depth=true;
+  CHECK(m.bind_targets(r)==E_FAIL);m.rollback_route(r);
+  CHECK(r.submit&&!m.motion_state_lost_&&!d.targets[1]&&!d.targets[2]&&d.write_masks[1]==5&&d.write_masks[2]==6);
+  m.release_resources();
+ }
+ // A failed rollback must suppress the draw; every other attempted slot is
+ // still restored, and the first restoration error survives later cleanup.
+ for(bool lazy:{false,true}){Device d;MotionOutput m;m.device_=&d;m.lazy_mode_=lazy;m.target_surface_=new IDirect3DSurface9;m.depth_surface_=new IDirect3DSurface9;
+  d.mutation_faults=true;d.state_failures={4,5,6};MotionRoute r;r.depth=true;CHECK(m.bind_targets(r)==E_FAIL);m.rollback_route(r);
+  CHECK(!r.submit&&m.motion_state_lost_&&r.submission_error==E_FAIL&&d.state_ordinal==8);m.release_resources();
+ }
+ for(unsigned failure:{1u,2u}){Device d;MotionOutput m;m.device_=&d;d.mutation_faults=true;d.state_failures={failure};
+  for(unsigned i=0;i<16;++i)m.shadow_.vs_reserved[i]=d.vs_constants[i]=float(i+1);
+  for(unsigned i=0;i<8;++i)m.shadow_.ps_reserved[i]=d.ps_constants[i]=float(i+31);
+  m.shadow_.vs_reserved_written=m.shadow_.ps_reserved_written=true;const auto vs=d.vs_constants;const auto ps=d.ps_constants;
+  MotionRoute r;CHECK(m.prepare_constants(r)==E_FAIL&&r.vs_constants_set);CHECK(r.ps_constants_set==(failure==2));m.rollback_route(r);
+  CHECK(r.submit&&!m.motion_state_lost_&&d.vs_constants==vs&&d.ps_constants==ps&&d.state_ordinal==2*failure);
+ }
+ // Once a lazy depth target is already held, mutation-failure while dropping
+ // it keeps its pending flag until the complete normal flush restores it.
+ for(unsigned failure:{1u,2u}){Device d;MotionOutput m;m.device_=&d;m.lazy_mode_=true;m.target_surface_=new IDirect3DSurface9;m.depth_surface_=new IDirect3DSurface9;
+  MotionRoute depth;depth.depth=true;CHECK(m.bind_targets(depth)==S_OK);d.mutation_faults=true;d.state_failures={failure};MotionRoute ordinary;
+  CHECK(m.bind_targets(ordinary)==E_FAIL);m.rollback_route(ordinary);CHECK(ordinary.submit&&!d.targets[1]&&!d.targets[2]&&d.write_masks[1]==5&&d.write_masks[2]==6);m.release_resources();
+ }
+ // Unavailable/nonrouted pairs must not native-submit if the preceding lazy
+ // route cannot restore, including when optional emission is disabled.
+ for(bool emission:{false,true}){Device d;MotionOutput m;m.device_=&d;m.emission_effective_=emission;m.lazy_rt1_=true;m.shadow_.xt_default_pair=true;m.shadow_.xt_default_ready=false;
+  d.target_result=-91;auto r=m.before_draw({});CHECK(!r.submit&&m.motion_state_lost_&&r.submission_error==-91&&!m.lazy_rt1_);
+  CHECK(m.emission_counts_.suppressed==(emission?1u:0u));d.target_result=S_OK;auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&next.submission_error==-91);
+ }
+ // A void restore point may consume the HRESULT before draw admission;
+ // a quiet flush may precede an otherwise routed draw. Both quarantine at
+ // the failure itself, before evaluation or any shader/native submission.
+ for(bool quiet:{false,true})for(bool emission:{false,true}){Device d;MotionOutput m;m.device_=&d;m.emission_effective_=emission;m.lazy_rt1_=true;m.route_on_evaluation=quiet;
+  d.target_result=-92;if(quiet)CHECK(m.flush_bindings<true>()==-92);else m.restore_bindings();
+  CHECK(m.motion_state_lost_&&m.motion_state_error_==-92&&m.taa_invalidations>0);CHECK(m.emission_state_lost_==emission);
+  const auto shader_calls=d.calls.size();auto r=m.before_draw({});CHECK(!r.submit&&!r.evaluated&&!r.routed&&m.evaluations==0&&d.calls.size()==shader_calls&&r.submission_error==-92);
+  // Later cleanup cannot erase or replace the first restoration error.
+  d.target_result=-93;m.lazy_rt1_=true;m.restore_bindings();CHECK(m.motion_state_error_==-92);
+  d.target_result=S_OK;m.before_reset();m.after_reset(E_FAIL);CHECK(m.motion_state_lost_&&!m.before_draw({}).submit);
+  m.recovery_reads_fail=true;m.after_reset(S_OK);CHECK(m.motion_state_lost_&&!m.before_draw({}).submit);
+  m.recovery_reads_fail=false;m.after_reset(S_OK);CHECK(!m.motion_state_lost_);auto recovered=m.before_draw({});CHECK(recovered.submit&&recovered.evaluated&&recovered.routed==quiet&&m.evaluations==1);
+ }
+ // No lazy objects are needed: a consumed deferred/mip failure also sticks.
+ for(bool deferred:{false,true}){Device d;MotionOutput m;m.device_=&d;
+  if(deferred){m.deferred_flush_result_=-94;m.deferred_flushes_=1;}else{m.sampler_biased_mask_=1;m.samplers_[0].biased=true;d.failed_calls={1};}
+  m.restore_bindings();CHECK(m.motion_state_lost_&&m.motion_state_error_==(deferred?-94:E_FAIL));CHECK(!m.before_draw({}).submit);
+ }
+ std::printf("motion_attempted_state checks=%u\n",checks-begin);
+}
 int main(){
  environment[L"X3M_HDR_TONEMAP"]=L"agx";environment[L"X3M_LINEAR_MATERIALS"]=L"1";configure_environment();CHECK(linear_material_requested&&linear_material_config.direct_gain==1);
  for(const wchar_t*key:{L"X3M_MATERIAL_DIRECT_GAIN",L"X3M_MATERIAL_EMISSIVE_GAIN",L"X3M_LIGHTMAP_EMISSIVE_GAIN"}){
@@ -660,11 +812,11 @@ int main(){
  m.register_vertex_shader(&original_vs,&vs,4,10);m.register_pixel_shader(&original_ps,&ps,4,20);
  CHECK(renderer::motion_transforms==2&&renderer::material_transforms==2);
  CHECK(m.shadow_.vs_variant&&m.shadow_.vs_material_variant&&m.shadow_.ps_variant&&m.shadow_.ps_material_variant);
- CHECK(m.device_references()==4);
+ CHECK(m.device_references()==6);
  auto original_gain=m.linear_material_config_.direct_gain;m.configure_linear_materials(false,{4,1,1});
  CHECK(m.linear_material_requested_&&m.linear_material_config_.direct_gain==original_gain);
- // Mip bias is zero: five native sampler reads still establish the contract.
- m.resync_samplers();CHECK(device.sampler_reads==5&&m.linear_material_refusal()==0);
+ // Mip bias is zero: six native sampler reads still establish the contract.
+ m.resync_samplers();CHECK(device.sampler_reads==6&&m.linear_material_refusal()==0);
  for(unsigned stage=0;stage<4;++stage){m.set_sampler_state(stage,D3DSAMP_SRGBTEXTURE,1);CHECK(m.linear_material_refusal()==4);m.set_sampler_state(stage,D3DSAMP_SRGBTEXTURE,0);}
  m.shadow_.recording=true;m.set_sampler_state(0,D3DSAMP_SRGBTEXTURE,1);m.shadow_.recording=false;CHECK(m.linear_material_refusal()==0);
  device.srgb[2]=1;m.resync_samplers();CHECK(m.linear_material_refusal()==4);device.srgb[2]=0;device.fail_sampler=1;m.resync_samplers();CHECK(!m.samplers_[1].srgb_known&&m.linear_material_refusal()==4);
@@ -679,12 +831,12 @@ int main(){
  CHECK(device.bound_vs==m.shadow_.vs_material_variant&&device.bound_ps==m.shadow_.ps_material_variant);
  CHECK(m.undo(route)==S_OK&&device.bound_vs==&original_vs&&device.bound_ps==&original_ps);
  // Each new-stage failure restores partial setup and retries motion once.
- for(unsigned failure:{1u,2u}){device.ordinal=0;device.calls.clear();device.failed_calls={failure};route={};CHECK(m.bind_variant_pair(route,true)==S_OK);CHECK(!route.linear_material&&route.jittered&&route.vs_set&&route.ps_set);CHECK(device.bound_vs==m.shadow_.vs_variant&&device.bound_ps==m.shadow_.ps_variant);CHECK(device.calls.size()==(failure==1?3:5));CHECK(m.undo(route)==S_OK);}
+ for(unsigned failure:{1u,2u}){device.ordinal=0;device.calls.clear();device.failed_calls={failure};route={};CHECK(m.bind_variant_pair(route,true)==S_OK);CHECK(!route.linear_material&&route.jittered&&route.vs_set&&route.ps_set);CHECK(device.bound_vs==m.shadow_.vs_variant&&device.bound_ps==m.shadow_.ps_variant);CHECK(device.calls.size()==(failure==1?4:6));CHECK(m.undo(route)==S_OK);}
  // Failed partial restoration refuses retry, invalidates state and counts it.
- device.ordinal=0;device.calls.clear();device.failed_calls={2,3};route={};CHECK(m.bind_variant_pair(route,true)==E_FAIL);CHECK(device.calls.size()==3&&!route.linear_material&&m.states_invalidated&&m.counters_.restore_failures==1);CHECK(m.motion_state_lost_&&!m.before_draw({}).submit);
+ device.ordinal=0;device.calls.clear();device.failed_calls={2,3};route={};CHECK(m.bind_variant_pair(route,true)==E_FAIL);CHECK(device.calls.size()==4&&!route.linear_material&&m.states_invalidated&&m.counters_.restore_failures==1);CHECK(m.motion_state_lost_&&!m.before_draw({}).submit);
  // A later deferred/lazy failure cannot replace the material undo's error.
  m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.rollback_route(route);
- CHECK(!route.submit&&route.submission_error==E_FAIL&&m.motion_state_error_==E_FAIL&&device.calls.size()==3);
+ CHECK(!route.submit&&route.submission_error==E_FAIL&&m.motion_state_error_==E_FAIL&&device.calls.size()==4);
  // Conversely, when bindings cleanup fails first, a later shader undo must
  // preserve that earlier HRESULT rather than preferring the later undo error.
  {MotionOutput later;later.device_=&device;later.shadow_.vs=&original_vs;later.deferred_flush_result_=-72;later.deferred_flushes_=1;
@@ -697,11 +849,13 @@ int main(){
  device.ordinal=0;device.calls.clear();device.failed_calls={1,3};route={};CHECK(m.bind_variant_pair(route,true)==E_FAIL);CHECK(device.calls.size()==3&&route.vs_set&&!route.ps_set);device.failed_calls.clear();CHECK(m.undo(route)==S_OK);
  // Failed combined creation preserves ordinary motion, including the bound
  // registry shadow; re-registration releases both old objects exactly once.
- unsigned before=releases;device.fail_combined_create=true;m.register_vertex_shader(&original_vs,&vs,4,10);CHECK(releases==before+2);CHECK(m.shadow_.vs_variant&&!m.shadow_.vs_material_variant&&m.device_references()==3&&m.linear_material_refusal()==2);
+ unsigned before=releases;device.fail_combined_create=true;m.register_vertex_shader(&original_vs,&vs,4,10);CHECK(releases==before+4);CHECK(m.shadow_.vs_variant&&!m.shadow_.vs_material_variant&&m.device_references()==3&&m.linear_material_refusal()==2);
  before=releases;m.release_resources();CHECK(releases==before+3&&m.device_references()==0);CHECK(!m.shadow_.vs_variant&&!m.shadow_.vs_material_variant&&!m.shadow_.ps_variant&&!m.shadow_.ps_material_variant);
  before=releases;m.release_resources();CHECK(releases==before);
  // Default off creates only motion and never performs material sampler reads.
  MotionOutput off;Device quiet;off.device_=&quiet;off.register_vertex_shader(&original_vs,&vs,4,10);CHECK(!off.vertex_[&original_vs].material_variant);off.resync_samplers();CHECK(quiet.sampler_reads==0);off.release_resources();
+ attempted_state_cases();
+ xt_default_cases();
  contract_lifecycle();
  palette_contract_lifecycle();
  emission_cache_cases();

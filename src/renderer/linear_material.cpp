@@ -574,6 +574,7 @@ bool body_shape(unsigned op, unsigned& operands, unsigned& slots, bool& destinat
     case 18: case 90: operands=4; slots=2; return true;
     case texld: operands=3; return true;
     case 38: case 40: operands=1; slots=3; destination=false; return true;
+    case 41: operands=2; slots=3; destination=false; return true;
     case 39: operands=0; slots=2; destination=false; return true;
     case 42: case 43: operands=0; destination=false; return true;
     default: return false;
@@ -587,7 +588,7 @@ bool reserved_varying(unsigned number, bool vertex, const FamilyAbi& abi, bool r
 // This narrow SM3 walk excludes comments/DEF literal words from register scans.
 // The existing motion transformer still performs its independent full proof.
 bool structure(const Word* code, std::size_t words, bool vertex, Structure& result,
-               bool original, const FamilyAbi& abi, unsigned original_temp_count, bool palette=false, bool relocated_rgb=false) {
+               bool original, const FamilyAbi& abi, unsigned original_temp_count, bool palette=false, bool relocated_rgb=false, bool xt=false) {
     if (words < 2 || code[0] != (vertex ? 0xfffe0300u : 0xffff0300u)) return false;
     result.boundary.assign(words,0);
     std::array<unsigned,16> samplers{};
@@ -596,7 +597,8 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
         result.boundary[at]=1;
         const Word token=code[at]; const unsigned op=token&0xffff, n=length(token);
         if (token==end_token) return at==words-1 && slots<=512 && result.first_declaration!=0;
-        if (op==0xffff || n>words-at-1 || (op!=0xfffe && (token & 0xf0ff0000u))) return false;
+        if (op==0xffff || n>words-at-1 || (op!=0xfffe && (token & 0xf0ff0000u & ~(xt && op==41 ? 0x00050000u : 0u))) ||
+            (op==41 && (!xt || ((token>>16)&255)!=5))) return false;
         if (op==0xfffe) { at+=n+1; continue; }
         result.instructions.push_back({at,op,n});
         if (op==dcl) {
@@ -623,7 +625,7 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
                 (palette && number>=(vertex?240u:204u) && number<=(vertex?245u:209u)))) return false;
         } else {
             unsigned expected=0, cost=0; bool destination=false;
-            if (!body_shape(op,expected,cost,destination) || (!vertex && !destination) ||
+            if (!body_shape(op,expected,cost,destination) || (!vertex && !destination && !(xt && (op==40 || op==41 || op==42 || op==43))) ||
                 (vertex && (op==cmp || op==texld || op==90))) return false;
             unsigned parameters=0;
             for (unsigned offset=1; offset<=n; ++offset) {
@@ -908,6 +910,8 @@ const MotionOutputProfile* selected_row(bool vertex, std::uint64_t hash) noexcep
     }
     return nullptr;
 }
+#include "linear_xt_material_inc.h"
+
 LinearMaterialResult transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
     Words& output, bool current_depth, bool vertex) noexcept {
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
@@ -1068,6 +1072,11 @@ std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t p
     return linear_material_pair_contract(vertex,pixel).sampler_mask;
 }
 LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    if (const auto* p=xt_pixel(pixel); p && vertex==(p->bump?xt_bump_vs:xt_default_vs)) {
+        LinearMaterialPairContract result{p->bump?0x39u:0x1du,p->bump};
+        if (p->bump) {result.scalar_transport[0]={6,0,1,3};result.scalar_transport[1]={6,1,2,3};result.scalar_transport_count=2;}
+        return result;
+    }
     for (const auto& pair:pairs)
         if (pair.vertex==vertex && pair.pixel==pixel) return pair.contract;
     return {};
@@ -1077,10 +1086,29 @@ bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) no
 }
 LinearMaterialResult linear_material_vertex_variant(const Word* original, std::size_t words,
     const LinearMaterialConfig& config, Words& output, bool current_depth) noexcept {
+    if (original && words==768 && material_motion_fingerprint(original,words)==xt_bump_vs)
+        return xt_transform(original,words,config,output,current_depth,true,*xt_pixel(0x5f82ecacd39529cdull),true);
     return transform(original,words,config,output,current_depth,true);
 }
 LinearMaterialResult linear_material_pixel_variant(const Word* original, std::size_t words,
     const LinearMaterialConfig& config, Words& output, bool current_depth) noexcept {
+    if (original && words>=1561 && words<=1791 && std::any_of(std::begin(xt_pixels),std::end(xt_pixels),[&](const XtPixel& p){return p.words==words;})) if (const auto* p=xt_pixel(material_motion_fingerprint(original,words)))
+        return xt_transform(original,words,config,output,current_depth,false,*p,true);
     return transform(original,words,config,output,current_depth,false);
+}
+bool linear_material_xt_default_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    const auto* p=xt_pixel(pixel);return vertex==xt_default_vs && p && !p->bump;
+}
+LinearMaterialResult linear_material_xt_default_vertex_variant(const Word* original, std::size_t words,
+    const LinearMaterialConfig& config, Words& output, bool current_depth, bool linear) noexcept {
+    return xt_transform(original,words,config,output,current_depth,true,*xt_pixel(0xfffdabd910793abaull),linear);
+}
+LinearMaterialResult linear_material_xt_default_pixel_variant(const Word* original, std::size_t words,
+    const LinearMaterialConfig& config, Words& output, bool current_depth, bool linear) noexcept {
+    if (!original || words<2) return LinearMaterialResult::InvalidInput;
+    if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
+    if (words>1791) return LinearMaterialResult::UnsupportedShader;
+    const auto* p=xt_pixel(material_motion_fingerprint(original,words));
+    return !p || p->bump ? LinearMaterialResult::UnsupportedShader : xt_transform(original,words,config,output,current_depth,false,*p,linear);
 }
 } // namespace x3m::renderer

@@ -76,8 +76,10 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'void MotionOutput::stateblock_applied() noexcept',
             'void MotionOutput::before_reset() noexcept',
             'void MotionOutput::after_reset(HRESULT result) noexcept',
+            'void MotionOutput::recover_motion_state() noexcept',
             'unsigned MotionOutput::linear_material_refusal() const noexcept',
             'HRESULT MotionOutput::bind_variant_pair(',
+            'HRESULT MotionOutput::bind_targets(',
             'HRESULT MotionOutput::undo(',
             'void MotionOutput::rollback_route(',
         ]
@@ -91,7 +93,14 @@ class LinearMaterialLiveTests(unittest.TestCase):
             # contracts, without duplicating the rest of evaluate_draw.
             count = extract_function(source, 'if (route.linear_material)')
             count = 'void MotionOutput::count_material_route(const MotionRoute& route) noexcept {\n' + count + '\n}\n'
-            (path / 'linear_material_live_under_test_inc.h').write_text('\n\n'.join(extract_function(source, sig) for sig in signatures) + '\n' + environment + count)
+            evaluate = extract_function(source, 'void MotionOutput::evaluate_draw(')
+            begin = evaluate.index('    if (SUCCEEDED(hr)) {', evaluate.index('HRESULT hr = bind_variant_pair(route, material);'))
+            end = evaluate.index('    if (SUCCEEDED(hr)) hr = bind_targets(route);', begin)
+            constants = ('HRESULT MotionOutput::prepare_constants(MotionRoute& route) noexcept {\n'
+                         'HRESULT hr=S_OK; bool matched=true; std::array<float,16> previous{};\n'
+                         'const float zeros[16]{}, pixel[8]{}; previous.fill(99.f);\n' +
+                         evaluate[begin:end] + 'return hr;\n}\n')
+            (path / 'linear_material_live_under_test_inc.h').write_text('\n\n'.join(extract_function(source, sig) for sig in signatures) + '\n' + environment + count + constants)
             executable = path / 'fixture'
             build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-I', directory,
                                     str(ROOT / 'verification/probe/linear_material_live_fixture.cpp'), '-o', str(executable)], capture_output=True, text=True)
@@ -100,8 +109,26 @@ class LinearMaterialLiveTests(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('failures=0', run.stdout)
             self.assertIn('linear_emission_cache checks=', run.stdout)
+            self.assertIn('linear_material_xt_cache checks=', run.stdout)
             self.assertIn('linear_emission_route checks=', run.stdout)
             self.assertEqual(run.stderr, '')
+            print(run.stdout.strip())
+
+    def test_xt_default_gate_precedes_jitter_and_native_submission(self):
+        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        evaluate = extract_function(source, 'void MotionOutput::evaluate_draw(')
+        gate = 'if (shadow_.xt_default_pair && !shadow_.xt_default_ready)'
+        self.assertLess(evaluate.index(gate), evaluate.index('apply_jitter(route)'))
+        self.assertLess(evaluate.index(gate), evaluate.index('bind_variant_pair(route, material)'))
+        refusal = extract_function(evaluate, gate)
+        self.assertIn('return;', refusal)
+        self.assertNotIn('submit = false', refusal)
+        # The existing hook invokes the native source only once and preserves
+        # its result. XT availability does not add a draw call or API override.
+        bind = extract_function(source, 'HRESULT MotionOutput::bind_variant_pair(')
+        self.assertNotIn('Draw', bind)
+        self.assertLess(bind.index('route.vs_set = true;'), bind.index('native<SetVsFn>'))
+        self.assertLess(bind.index('route.ps_set = true;'), bind.index('native<SetPsFn>'))
 
     def launch(self, *args, environment=None):
         spec = importlib.util.spec_from_file_location('linear_material_manage', ROOT / 'tools/manage.py')

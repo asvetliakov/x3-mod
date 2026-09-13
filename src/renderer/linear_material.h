@@ -50,12 +50,12 @@ struct LinearMaterialPairContract {
 // One exact-pair lookup supplies both cached sampler admission and technique
 // telemetry. A zero mask is unsupported; technique alone never admits a draw.
 LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, std::uint64_t pixel) noexcept;
-// Exact 148 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
+// Exact 162 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.
 // Hull DEFAULT returns 0x0f, hull BUMPMAP/LOW 0x1f; Asteroid DEFAULT/BUMP
-// return 0x07/0x0f, and unsupported pairs zero. The mask only
+// return 0x07/0x0f; XT DEFAULT/BUMP return 0x1d/0x39, and unsupported pairs zero. The mask only
 // identifies required disabled-sRGB samplers; it establishes no dynamic gates.
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
@@ -76,4 +76,14 @@ LinearMaterialResult linear_material_vertex_variant(const std::uint32_t* origina
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t* original,
     std::size_t words, const LinearMaterialConfig& config,
     std::vector<std::uint32_t>& output, bool current_depth = true) noexcept;
+// Four XT DEFAULT programs require an explicitly authored producer repair.
+// Ordinary and linear repaired pairs must be published together by the caller;
+// these APIs never make the shared original VS a stage-global replacement.
+bool linear_material_xt_default_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept;
+LinearMaterialResult linear_material_xt_default_vertex_variant(const std::uint32_t* original,
+    std::size_t words, const LinearMaterialConfig& config,
+    std::vector<std::uint32_t>& output, bool current_depth = true, bool linear = true) noexcept;
+LinearMaterialResult linear_material_xt_default_pixel_variant(const std::uint32_t* original,
+    std::size_t words, const LinearMaterialConfig& config,
+    std::vector<std::uint32_t>& output, bool current_depth = true, bool linear = true) noexcept;
 } // namespace x3m::renderer

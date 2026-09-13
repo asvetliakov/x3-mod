@@ -4,7 +4,39 @@ import json
 from pathlib import Path
 import re
 import unittest
-from run_linear_material_live import compare_cases, validate_case, ELIGIBLE, PIXEL_PROGRAMS, VERTEX_PROGRAMS, BUMP_FRAMES, MATCHED, FRAME_COUNT, CORPUS_PAIRS, IMPLEMENTED_PROGRAMS, MOTION_FRAMES, UNKNOWN_FRAMES, UNKNOWN_PIXEL, ASTEROID_FRAMES, expected_rgb, WRAP_REPRESENTATIVES, validate_wrap_case, compare_wrap_cases
+from run_linear_material_live import compare_cases, validate_case, ELIGIBLE, PIXEL_PROGRAMS, VERTEX_PROGRAMS, BUMP_FRAMES, MATCHED, FRAME_COUNT, CORPUS_PAIRS, IMPLEMENTED_PROGRAMS, MOTION_FRAMES, UNKNOWN_FRAMES, UNKNOWN_PIXEL, ASTEROID_FRAMES, expected_rgb, LIVE_MATERIAL_PROGRAMS, LIVE_MATERIAL_OBJECTS, WRAP_REPRESENTATIVES, validate_wrap_case, compare_wrap_cases
+
+
+from run_linear_material_live import (XT_PAIRS, XT_PIXELS, XT_MATERIAL_PROGRAMS, XT_REPAIRED_PROGRAMS,
+    XT_MATERIAL_OBJECTS, XT_DEFAULT_VS, XT_BUMP_VS, XT_ALPHA, xt_schedule, xt_expected_wrap,
+    validate_xt_case, compare_xt_cases)
+
+
+def xt_report(material=True,depth=True,mode='perdraw'):
+    active=[s for s in xt_schedule(material) if s['frame'] is not None]
+    output=[f'RESULT PASS checks=123 restorations={2*len(active)} frames={len(active)} depth_written={len(active) if depth else 0} taa_reference_frames=0','RESET PASS','RESET PASS']
+    trace=[f'motion_output_device depth={int(depth)} depth_reason={"ok" if depth else "fixture_motion_only"} rt_mode={mode}',f'motion_output_release held={20+XT_MATERIAL_OBJECTS*material} released=1']
+    if material:
+        trace += [f'linear_material_variant kind={stage} original={program} transform=0 create=00000000' for stage,program in sorted(XT_MATERIAL_PROGRAMS)]
+        trace += [f'linear_material_xt_default_variant kind={stage} original={program} linear={linear} transform=0 create=00000000' for stage,program,linear in sorted(XT_REPAIRED_PROGRAMS)]
+    sequence=0
+    for s in xt_schedule(material):
+        plan,pair,step,frame=s['plan'],s['pair'],s['step'],s['frame']
+        if frame is None:output += [f'XT_SKIP plan={plan} pair={pair} step={step} reason=native_invalid_linkage'];continue
+        unknown=pair==15;vs,ps=XT_PAIRS[pair] if not unknown else (XT_DEFAULT_VS,UNKNOWN_PIXEL)
+        rgb=[.5,.25,.75] if unknown else [4**(1/2.2) if s['combined'] else 1]*3
+        alpha=.625 if unknown else XT_ALPHA
+        for draw in range(2):
+            sequence+=1;values=','.join(map(str,xt_expected_wrap(s,depth,draw)))
+            output += [f'XT_WRAP plan={plan} frame={frame} draw={draw} sequence={sequence} valid=1 result=00000000 values={values}']
+            if s['transport']:
+                output += [f'XT_TRANSPORT plan={plan} frame={frame} draw={draw} combined={int(material and draw==1)} alpha=alpha motion=motion depth={"depth" if depth else "0000000000000000"} perspective=0.125 pixels={2048 if draw else 0} max_error=0 rgb_range={.25 if draw else 0} highlight_low={17**-6:.9g} highlight_high=1']
+        rgba=','.join(map(str,rgb+[alpha]));image='linear' if s['combined'] else 'ordinary'
+        output += [f'XT_LIVE plan={plan} frame={frame} pair={pair} step={step} vs={vs} ps={ps} combined={int(s["combined"])} refusal={1 if unknown else 4 if plan<84 and step==2 else 0} matched={int(s["matched"])} rgba={rgba} alpha_hash=alpha image_hash={image}',f'MOTION_HASH frame={frame} motion=motion depth={"depth" if depth else "0000000000000000"}']
+        routed=0 if unknown else 2
+        trace += [f'motion_output_frame frame={frame} routed={routed} depth_routed={routed*depth} matched={2*s["matched"]} gate3={2 if unknown else 0} apply_failures=0 restore_failures=0 taa_resolved=0 rt_mode={mode}']
+        if material:trace += [f'linear_material_frame frame={frame} routed={(1 if s["transport"] else 2)*s["combined"]} bump_routed={(1 if s["transport"] else 2)*(s["combined"] and pair<10)} refused={1 if s["transport"] else 2 if not unknown and not s["combined"] else 0} bind_failures=0']
+    return '\n'.join(output),trace
 
 
 def cases():
@@ -15,7 +47,7 @@ def cases():
                 result[f'ownership{owner}-taa{taa}-material{material}'] = {
                     'temporal_hashes': [['motion', 'depth']] * FRAME_COUNT,
                     'native_hashes': ['native'] * FRAME_COUNT,
-                    'held_references': 20 + material * 115,
+                    'held_references': 20 + material * LIVE_MATERIAL_OBJECTS,
                     'pixel_programs': list(PIXEL_PROGRAMS),
                     'vertex_programs': list(VERTEX_PROGRAMS),
                     'rgba': [expected_rgb(frame,material) + [.75] for frame in range(FRAME_COUNT)],
@@ -26,11 +58,12 @@ def cases():
 def sample_report():
     output = [f'RESULT PASS checks=1 restorations=1 frames={FRAME_COUNT} depth_written={FRAME_COUNT} taa_reference_frames={FRAME_COUNT} motion_pixels={FRAME_COUNT} matched_pixels={len(MATCHED)}']
     trace = [f'linear_material_variant kind={stage} original={identifier} transform=0 create=00000000'
-             for stage, identifier in sorted(IMPLEMENTED_PROGRAMS)]
+             for stage, identifier in sorted(LIVE_MATERIAL_PROGRAMS)]
+    trace += [f'linear_material_xt_default_variant kind=vs original=494fe349b8bc12ec linear={linear} transform=0 create=00000000' for linear in (0,1)]
     trace += ['motion_output_release held=69 released=1']
     for frame in range(FRAME_COUNT):
         eligible = int(frame in ELIGIBLE)
-        output += [f'LINEAR_LIVE frame={frame} combined={eligible} refusal={1 if frame in (9,19) else 4 if frame in MOTION_FRAMES-ELIGIBLE else 0} vs={VERTEX_PROGRAMS[frame]} ps={PIXEL_PROGRAMS[frame]} rgba=1,1,1,0.75 native_hash=abcdef',
+        output += [f'LINEAR_LIVE frame={frame} combined={eligible} refusal={4 if frame in MOTION_FRAMES-ELIGIBLE else 0} vs={VERTEX_PROGRAMS[frame]} ps={PIXEL_PROGRAMS[frame]} rgba=1,1,1,0.75 native_hash=abcdef',
                    f'MOTION_HASH frame={frame} motion=1234 depth=5678']
         trace += [f'motion_output_frame frame={frame} routed={int(frame in MOTION_FRAMES)} depth_routed={int(frame in MOTION_FRAMES)} matched={int(frame in MATCHED)} gate3={int(frame in UNKNOWN_FRAMES)} apply_failures=0 restore_failures=0 taa_resolved=1',
                   f'linear_material_frame frame={frame} routed={eligible} refused={int(frame in MOTION_FRAMES and not eligible)} bind_failures=0 bump_routed={int(eligible and frame in BUMP_FRAMES)}']
@@ -39,8 +72,10 @@ def sample_report():
 
 def wrap_report(material=True,depth=True,rt_mode="perdraw"):
     output=[f'RESULT PASS checks=36 restorations=36 frames=18 depth_written={18 if depth else 0} taa_reference_frames=0']
-    trace=[f'motion_output_device depth={int(depth)} depth_reason={"ok" if depth else "fixture_motion_only"} rt_mode={rt_mode}',f'motion_output_release held={20+115*material} released=1']
-    if material:trace += [f'linear_material_variant kind={kind} original={identifier} transform=0 create=00000000' for kind,identifier in sorted(IMPLEMENTED_PROGRAMS)]
+    trace=[f'motion_output_device depth={int(depth)} depth_reason={"ok" if depth else "fixture_motion_only"} rt_mode={rt_mode}',f'motion_output_release held={20+LIVE_MATERIAL_OBJECTS*material} released=1']
+    if material:
+        trace += [f'linear_material_variant kind={kind} original={identifier} transform=0 create=00000000' for kind,identifier in sorted(LIVE_MATERIAL_PROGRAMS)]
+        trace += [f'linear_material_xt_default_variant kind=vs original=494fe349b8bc12ec linear={linear} transform=0 create=00000000' for linear in (0,1)]
     for frame in range(18):
         representative,step=divmod(frame,6);_,_,source,temporal,scalars=WRAP_REPRESENTATIVES[representative]
         values=[0]*16
@@ -60,6 +95,68 @@ def wrap_report(material=True,depth=True,rt_mode="perdraw"):
 
 
 class LiveMaterialReportTests(unittest.TestCase):
+    def test_xt_full_schedule_and_twins(self):
+        cases={}
+        for depth in (False,True):
+            for mode in ('perdraw','lazy'):
+                for material in (False,True):
+                    output,trace=xt_report(material,depth,mode)
+                    result=validate_xt_case(output,trace,material,depth,mode)
+                    self.assertEqual(result['frames'],92 if material else 65)
+                    self.assertEqual(len(result['skipped_plans']),0 if material else 27)
+                    cases[f'depth{int(depth)}-{mode}-material{int(material)}']=result
+        compare_xt_cases(cases)
+        for key in ('alpha_hash','image_hash','temporal_hashes'):
+            changed=copy.deepcopy(cases);changed['depth1-lazy-material1']['samples']['62'][key]='changed'
+            with self.assertRaises(AssertionError):compare_xt_cases(changed)
+
+    def test_xt_missing_or_corrupt_evidence_rejected(self):
+        output,trace=xt_report()
+        for prefix in ('XT_LIVE plan=0 ','XT_WRAP plan=0 ','MOTION_HASH frame=0 ','XT_TRANSPORT plan=90 ','RESET PASS'):
+            changed='\n'.join(line for line in output.splitlines() if not line.startswith(prefix))
+            with self.assertRaises(AssertionError):validate_xt_case(changed,trace,True,True,'perdraw')
+        for source,replacement in [('combined=1','combined=0'),('sequence=1 ','sequence=2 '),('valid=1','valid=0'),('result=00000000','result=80004005'),('rgba=2.0','rgba=9.0'),('matched=1','matched=0')]:
+            if source not in output:continue
+            with self.assertRaises(AssertionError):validate_xt_case(output.replace(source,replacement,1),trace,True,True,'perdraw')
+        for prefix in ('linear_material_variant ','linear_material_xt_default_variant ','motion_output_release '):
+            changed=[line for line in trace if not line.startswith(prefix)]
+            with self.assertRaises(AssertionError):validate_xt_case(output,changed,True,True,'perdraw')
+        changed=re.sub(r'rgba=[^,]+,','rgba=99,',output,count=1)
+        with self.assertRaises(AssertionError):validate_xt_case(changed,trace,True,True,'perdraw')
+        off,offtrace=xt_report(False)
+        with self.assertRaises(AssertionError):validate_xt_case(off.replace('native_invalid_linkage','qualified_native'),offtrace,False,True,'perdraw')
+        with self.assertRaises(AssertionError):validate_xt_case(off+'\nXT_LIVE plan=60 frame=90',offtrace,False,True,'perdraw')
+
+    def test_xt_transport_corruption_rejected(self):
+        output,trace=xt_report()
+        for old,new in [('pixels=2048','pixels=0'),('pixels=2048','pixels=1024'),('max_error=0','max_error=1.1'),('rgb_range=0.25','rgb_range=0'),('highlight_high=1','highlight_high=0.1')]:
+            with self.subTest(field=old),self.assertRaises(AssertionError):
+                validate_xt_case(output.replace(old,new,1),trace,True,True,'perdraw')
+        for key in ('alpha','motion','depth'):
+            lines=output.splitlines()
+            index=next(i for i,line in enumerate(lines) if line.startswith('XT_TRANSPORT plan=90 ') and 'draw=1 ' in line)
+            lines[index]=re.sub(rf'{key}=[^ ]+',f'{key}=mismatch',lines[index])
+            with self.subTest(key=key),self.assertRaises(AssertionError):
+                validate_xt_case('\n'.join(lines),trace,True,True,'perdraw')
+
+    def test_xt_live_cpp_inventory_and_skip_policy(self):
+        root=Path(__file__).resolve().parents[2]
+        source=(root/'verification/probe/motion_output_fixture.cpp').read_text()
+        method=source[source.index('    void run_xt_materials('):source.index('    // ---- FP16 HDR scene path')]
+        pixels=re.findall(r'"([0-9a-f]{16})"',re.search(r'xt_ps\[\]=\{([^}]+)\}',method).group(1))
+        self.assertEqual(pixels,list(XT_PIXELS))
+        self.assertIn('if(corrected&&!material)',method)
+        self.assertLess(method.index('if(corrected&&!material)'),method.index('frame_begin();'))
+        self.assertIn('config.observe_native_wrap = materialwrap || materialxt;',source)
+        self.assertIn('const unsigned refusal_stage=bump?5:4;',method)
+        self.assertIn('compare(before,snapshot()',method)
+        self.assertIn('before_ps,after_ps',method)
+        self.assertIn('observed.sequence==sequence',method)
+        self.assertIn('const float camera[3][4]={{1,0,0,-1},{0,1,0,1},{0,0,1,1.5f}};',method)
+        self.assertIn('caller[6]=transport?2:',method)
+        self.assertIn('std::pow(17.,-6.)',method)
+        self.assertIn('pixels>W*H/4&&high-low>.001&&max_error<=1',method)
+
     def test_prior_258_frame_ids_are_preserved(self):
         self.assertEqual(FRAME_COUNT,322)
         self.assertEqual(PIXEL_PROGRAMS[256:258],[UNKNOWN_PIXEL]*2)
@@ -166,7 +263,8 @@ class LiveMaterialReportTests(unittest.TestCase):
         for frame in (9,19):
             self.assertEqual((VERTEX_PROGRAMS[frame],PIXEL_PROGRAMS[frame]), ('37c34a7478544c14','5f82ecacd39529cd'))
             self.assertIn(frame,MOTION_FRAMES)
-            self.assertNotIn(frame,ELIGIBLE)
+            self.assertIn(frame,ELIGIBLE)
+            self.assertIn(frame,BUMP_FRAMES)
         for frame in UNKNOWN_FRAMES:
             self.assertEqual((VERTEX_PROGRAMS[frame],PIXEL_PROGRAMS[frame]),('53a0a641107ed76c',UNKNOWN_PIXEL))
             self.assertNotIn(frame,MOTION_FRAMES|ELIGIBLE|MATCHED)
@@ -175,7 +273,7 @@ class LiveMaterialReportTests(unittest.TestCase):
         with self.assertRaises(AssertionError): compare_cases(controls)
         output,trace=sample_report()
         report=validate_case(output,trace,True,True)
-        self.assertEqual(report['refused_frames'],[2,3,4,5,7,9,13,15,19])
+        self.assertEqual(report['refused_frames'],[2,3,4,5,7,13,15])
         self.assertTrue(UNKNOWN_FRAMES.isdisjoint(report['refused_frames']))
         for old,new in [('routed=0 depth_routed=0','routed=1 depth_routed=1'),('matched=0','matched=1')]:
             changed=[line.replace(old,new) if line.startswith('motion_output_frame frame=256 ') else line for line in trace]
@@ -185,7 +283,7 @@ class LiveMaterialReportTests(unittest.TestCase):
 
     def test_stdout_refusal_reason_schedule_is_checked(self):
         output,trace=sample_report()
-        for frame,wrong in ((256,1),(257,1),(9,0),(19,4),(2,1),(7,0),(13,0),(15,1),(0,4),(244,1)):
+        for frame,wrong in ((256,1),(257,1),(9,1),(19,4),(2,1),(7,0),(13,0),(15,1),(0,4),(244,1)):
             changed='\n'.join(re.sub(r'refusal=\d+',f'refusal={wrong}',line) if line.startswith(f'LINEAR_LIVE frame={frame} ') else line for line in output.splitlines())
             with self.subTest(frame=frame),self.assertRaises(AssertionError):
                 validate_case(changed,trace,True,True)
@@ -219,7 +317,7 @@ class LiveMaterialReportTests(unittest.TestCase):
             item = changed['ownership0-taa1-material1']
             if failure == 'temporal': item['temporal_hashes'][3] = ['wrong', 'depth']
             elif failure == 'refcount': item['held_references'] -= 1
-            elif failure == 'fallback': item['native_hashes'][9] = 'changed'
+            elif failure == 'fallback': item['native_hashes'][2] = 'changed'
             elif failure == 'alpha': item['rgba'][0][3] += .1
             elif failure == 'activation': item['rgba'][0][0] = 1.
             elif failure == 'shared_activation': item['rgba'][1][0] = 1.
@@ -236,9 +334,9 @@ class LiveMaterialReportTests(unittest.TestCase):
             changed = list(trace)
             if failure == 'missing_shared_variant': del changed[2]
             elif failure == 'split_variant': changed[2] = 'linear_material_variant kind=ps original=ef2bf556f207b8bd transform=0 create=00000000'
-            elif failure == 'split_admitted': changed = [line.replace('routed=0 refused=1', 'routed=1 refused=0') if line.startswith('linear_material_frame frame=9 ') else line for line in changed]
+            elif failure == 'split_admitted': changed = [line.replace('routed=1 refused=0', 'routed=0 refused=1') if line.startswith('linear_material_frame frame=9 ') else line for line in changed]
             elif failure == 'bump_counter': changed = [line.replace('bump_routed=1', 'bump_routed=0') if line.startswith('linear_material_frame frame=12 ') else line for line in changed]
-            elif failure == 'bump_negative_admitted': changed = [line.replace('routed=0 refused=1', 'routed=1 refused=0') if line.startswith('linear_material_frame frame=19 ') else line for line in changed]
+            elif failure == 'bump_negative_admitted': changed = [line.replace('routed=1 refused=0', 'routed=0 refused=1') if line.startswith('linear_material_frame frame=19 ') else line for line in changed]
             else: del changed[4]
             with self.subTest(failure=failure), self.assertRaises(AssertionError):
                 validate_case(output, changed, True, True)

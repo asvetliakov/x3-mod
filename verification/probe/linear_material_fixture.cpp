@@ -48,11 +48,23 @@ struct Case {
   float f[51];
 };
 static_assert(sizeof(Case) == 240, "binary case ABI");
+// Appended XT rows alone use the following flags and fields. All old 148 rows
+// retain their exact geometry, declarations, constants and binary meanings.
+// f47..50: diffuse, specular, reflection strengths and specular power.
+// Flags: 128 palette, 256 decal, 512 alternate RGB palette, 1024 alternate
+// O/detail data, 2048 requested FLAT, 4096/8192 O.r=.50/.51 (default .49),
+// 16384 alternate secondary UV, 32768 FLOAT2 UV, 65536 near-plane clipping.
+constexpr unsigned xt_first_pair = 148;
+bool is_xt(const Case& c) { return c.pair >= xt_first_pair; }
+bool xt_default(const Case& c) {
+  return is_xt(c) && (c.pair == 148 || c.pair == 149 || c.pair == 156 || c.pair == 157);
+}
 const char * vertex_ids[] = {
     "53a0a641107ed76c", "719856ce0c213220", "badefd5143b3024f", "4944d81dfe531b37", "44c4a41ca92ae2e3", "19a246a56e9d9700",
     "494fe349b8bc12ec",
     "b0602757fce6e870", "0c223ad11bce02d5", "233d17d26ce0c1fc", "167eb2d5629ab9d3", "330ceb9dd874ede2", "12b8a13f13fe8cfe",
-    "29d7c575396ed280", "a420a010b0271479", "ea3d15b287892410", "57392213f62fef19", "5c17a381b149b3b9", "a804f173f693944a", "37e6956afd8b8d76", "2e0254dd999841c2", "a7cddf2c98d61117", "33388c8897d428a5", "b4059ab6af8fc529", "2a560f246c90fa64"};
+    "29d7c575396ed280", "a420a010b0271479", "ea3d15b287892410", "57392213f62fef19", "5c17a381b149b3b9", "a804f173f693944a", "37e6956afd8b8d76", "2e0254dd999841c2", "a7cddf2c98d61117", "33388c8897d428a5", "b4059ab6af8fc529", "2a560f246c90fa64",
+    "37c34a7478544c14"};
 const char * pixel_ids[] = {
     "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5", "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
     "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5", "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3",
@@ -66,7 +78,8 @@ const char * pixel_ids[] = {
     "ef2bf556f207b8bd", "91b6c09eb47f8555", "cc09f17db377fd9e", "3755809bd40afc13", "61418505e5d8f998", "b5f1d4145171026b",
     "3602b05ce11ca6ff", "8e58ac79b59b02b1", "042c9ae16f41feff", "68f0dd6791fd7d3d", "5c823b8507fa1442", "a6e1328c0bb3f401",
     "517540ae6d5e5410", "7a0c3388065bb08d", "d44db87778a43b61", "550c2a4d4d3ed70f",
-    "39eb3c2258a516e1", "57acf59d19c73791", "f917d48ee826da1f", "77a5b2d62fb3be48", "a910daef935891ce", "62c180abe017e239", "ed44232013f67072", "f286856c3f400377", "9d27e7ba242f3831", "e1acf8a03850acaf", "f646f03be5a8708d", "ebf41e1ace7af45b", "c997a37560e266df", "675f9077d8fd21c4", "18d372968af4a480", "188c5ab9dbb98393", "7e5e41276b3d7514", "43c9405568d2226f", "5e056627e9ff3a8d", "fce465befff2f623"};
+    "39eb3c2258a516e1", "57acf59d19c73791", "f917d48ee826da1f", "77a5b2d62fb3be48", "a910daef935891ce", "62c180abe017e239", "ed44232013f67072", "f286856c3f400377", "9d27e7ba242f3831", "e1acf8a03850acaf", "f646f03be5a8708d", "ebf41e1ace7af45b", "c997a37560e266df", "675f9077d8fd21c4", "18d372968af4a480", "188c5ab9dbb98393", "7e5e41276b3d7514", "43c9405568d2226f", "5e056627e9ff3a8d", "fce465befff2f623",
+    "fffdabd910793aba", "e6794b6ec37ff71a", "5f82ecacd39529cd", "f1b0e820c7b488c3", "6733b119142c8d42", "496049cec2066ed3", "d51cf763125cb85a", "31445adb0a62d134", "fd58e6b7e8cf969c", "dd87737d697c6764", "d22f2ce2c740e6a7", "1de3d2dde345a7e3", "75fb9c6b05e28ea2", "edaef099780fcafe"};
 // Derived register-layout facts; original instructions own the lobe and normal math.
 const bool pixel_affine[] = {
     true, true, false, true, true, false,
@@ -81,7 +94,8 @@ const bool pixel_affine[] = {
     true, true, true, true, false, false,
     true, true, true, true, false, false,
     false, false, false, false,
-    false, false, false, false, false, false, false, false, true, true, true, true, false, false, true, true, true, true, false, false};
+    false, false, false, false, false, false, false, false, true, true, true, true, false, false, true, true, true, true, false, false,
+    true, true, true, true, true, true, true, true, true, true, true, true, true, true};
 const bool pixel_bump[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -95,7 +109,8 @@ const bool pixel_bump[] = {
     false, false, false, false, false, false,
     true, true, true, true, true, true,
     false, false, true, true,
-    false, false, false, false, true, true, true, true, false, false, false, false, false, false, true, true, true, true, true, true};
+    false, false, false, false, true, true, true, true, false, false, false, false, false, false, true, true, true, true, true, true,
+    false, false, true, true, true, true, true, true, false, false, true, true, true, true};
 const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -109,7 +124,8 @@ const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
     false, false, false, false,
-    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false};
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false};
 const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
@@ -123,7 +139,8 @@ const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
     2, 1, 2, 1,
-    2, 2, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    2, 2, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
 const unsigned pair_v[] = {
     0, 0, 1, 1, 1, 1,
     2, 2, 2, 2, 0, 0,
@@ -145,7 +162,8 @@ const unsigned pair_v[] = {
     4, 4, 4, 4, 5, 5,
     5, 5,
     7, 8, 9, 10, 11, 12,
-    13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 23, 23, 23, 23, 24, 24, 24, 24};
+    13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 23, 23, 23, 23, 24, 24, 24, 24,
+    6, 6, 25, 25, 25, 25, 25, 25, 6, 6, 25, 25, 25, 25};
 const unsigned pair_p[] = {
     0, 1, 2, 3, 4, 5,
     2, 3, 4, 5, 6, 7,
@@ -167,7 +185,8 @@ const unsigned pair_p[] = {
     62, 63, 64, 65, 62, 63,
     64, 65,
     66, 67, 67, 68, 69, 69,
-    70, 71, 72, 73, 72, 73, 74, 75, 76, 77, 76, 77, 78, 79, 80, 81, 82, 83, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 86, 87, 88, 89};
+    70, 71, 72, 73, 72, 73, 74, 75, 76, 77, 76, 77, 78, 79, 80, 81, 82, 83, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 86, 87, 88, 89,
+    90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -224,7 +243,7 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][90];
+  Words originals[2][104];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
@@ -245,9 +264,9 @@ struct Shaders {
         pixel ? pixel_ids[pair_p[c.pair]] : vertex_ids[pair_v[c.pair]];
     char buffer[128];
     std::snprintf(buffer, sizeof buffer, "%s_%u_%u_%.9g_%.9g_%.9g", id, mode,
-                  mode ? c.depth : 0, mode == 2 ? c.f[0] : 0,
+                  (mode || xt_default(c)) ? c.depth : 0, mode == 2 ? c.f[0] : 0,
                   mode == 2 ? c.f[1] : 0, mode == 2 ? c.f[2] : 0);
-    return buffer;
+    return std::string(buffer) + (xt_default(c) ? "_xt_repaired" : "");
   }
   Words transform(const Case &c, unsigned mode, bool pixel) {
     const auto &original =
@@ -255,7 +274,15 @@ struct Shaders {
     const auto before = original;
     Words output = {0xdeadbeef};
     LinearMaterialConfig config{c.f[0], c.f[1], c.f[2]};
-    if (mode == 0)
+    if (xt_default(c)) {
+      // No mode ever submits the incomplete original DEFAULT linkage. Mode 0
+      // is the repaired ordinary pair with MRTs disabled, mode 1 enables MRTs.
+      require((pixel ? linear_material_xt_default_pixel_variant(
+                           original.data(), original.size(), config, output, c.depth, mode == 2)
+                     : linear_material_xt_default_vertex_variant(
+                           original.data(), original.size(), config, output, c.depth, mode == 2)) ==
+                  LinearMaterialResult::Applied, "XT repaired transform");
+    } else if (mode == 0)
       output = original;
     else if (mode == 1)
       require((pixel ? material_motion_pixel_variant(
@@ -337,9 +364,9 @@ struct Gpu {
   Shaders &shaders;
   unsigned width;
   Com<IDirect3DSurface9> back, color[2], motion, current;
-  Com<IDirect3DTexture9> textures[4], detail;
+  Com<IDirect3DTexture9> textures[4], detail, xt_occlusion, xt_detail;
   Com<IDirect3DCubeTexture9> cube;
-  Com<IDirect3DVertexDeclaration9> declaration;
+  Com<IDirect3DVertexDeclaration9> declaration, xt_declaration, xt_uv2_declaration;
   Gpu(IDirect3DDevice9 *device, Shaders &s, unsigned size)
       : d(device), shaders(s), width(size) {
     api(d->GetRenderTarget(0, &back.p));
@@ -359,6 +386,9 @@ struct Gpu {
                          &detail.p, nullptr));
     api(d->CreateCubeTexture(4, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
                              &cube.p, nullptr));
+    for (auto* t : {&xt_occlusion, &xt_detail})
+      api(d->CreateTexture(4, 4, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
+                           &t->p, nullptr));
     const D3DVERTEXELEMENT9 elements[] = {
         {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION,
          0},
@@ -372,9 +402,21 @@ struct Gpu {
          0},
         D3DDECL_END()};
     api(d->CreateVertexDeclaration(elements, &declaration.p));
+    // FLOAT4 carries genuine independent secondary UV; FLOAT2 witnesses the
+    // documented missing-component defaults z=0,w=1 in the repaired producer.
+    D3DVERTEXELEMENT9 xt_elements[] = {
+        {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+        {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+        {0, 28, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0},
+        {0, 40, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BINORMAL, 0},
+        {0, 52, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TANGENT, 0},
+        D3DDECL_END()};
+    api(d->CreateVertexDeclaration(xt_elements, &xt_declaration.p));
+    xt_elements[1].Type = D3DDECLTYPE_FLOAT2;
+    api(d->CreateVertexDeclaration(xt_elements, &xt_uv2_declaration.p));
   }
   ~Gpu() {
-    for (unsigned i = 0; i < 5; ++i)
+    for (unsigned i = 0; i < 7; ++i)
       d->SetTexture(i, nullptr);
     d->SetRenderTarget(2, nullptr);
     d->SetRenderTarget(1, nullptr);
@@ -402,25 +444,26 @@ struct Gpu {
                    D3DRS_COLORWRITEENABLE2})
       api(d->SetRenderState(s, 15));
     api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
-    api(d->SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD));
+    api(d->SetRenderState(D3DRS_SHADEMODE, is_xt(c) && (c.flags & 2048) ? D3DSHADE_FLAT : D3DSHADE_GOURAUD));
     for (unsigned n=0;n<16;++n)
       api(d->SetRenderState(D3DRENDERSTATETYPE((n<8 ? D3DRS_WRAP0 : D3DRS_WRAP8)+(n%8)),0));
-    api(d->SetVertexDeclaration(declaration.p));
+    api(d->SetVertexDeclaration(is_xt(c) ? (c.flags & 32768 ? xt_uv2_declaration.p : xt_declaration.p) : declaration.p));
     shaders.bind(c, mode);
     const bool bump = pixel_bump[pair_p[c.pair]];
     const bool asteroid = c.pair >= 110 && c.pair < 116;
-    const bool palette = c.pair >= 116;
+    const bool palette = c.pair >= 116 && !is_xt(c);
     // Clear the union first: DEFAULT must never retain BUMP's stage-4 cube,
     // and switching stage-3 2D/cube roles must not depend on the last family.
-    for (unsigned i = 0; i < 5; ++i)
+    for (unsigned i = 0; i < 7; ++i)
       api(d->SetTexture(i, nullptr));
+    const float xt_specular[4] = {c.f[15], .08f, .91f, .64f};
     const float mask[4] = {c.f[15], 0, 0, 1};
     const float *texels[] = {c.f + 3, bump ? c.f + 32 : mask,
                              bump ? mask : c.f + 7, c.f + 7};
     for (unsigned i = 0; i < (bump ? 4u : 3u); ++i) {
       D3DLOCKED_RECT lock{};
       api(textures[i]->LockRect(0, &lock, nullptr, 0));
-      std::memcpy(lock.pBits, texels[i], 16);
+      std::memcpy(lock.pBits, is_xt(c) && i == (bump ? 2u : 1u) ? xt_specular : texels[i], 16);
       api(textures[i]->UnlockRect(0));
       api(d->SetTexture(i, textures[i].p));
     }
@@ -452,7 +495,44 @@ struct Gpu {
       api(detail->UnlockRect(0));
       api(d->SetTexture(asteroid ? (bump ? 3 : 2) : 0, detail.p));
     }
-    for (unsigned i = 0; i < 5; ++i) {
+    if (is_xt(c)) {
+      // BUMP uses all seven native samplers: D,N,S,L,cube,O,detail.
+      // DEFAULT uses D,S,L,cube,O. O/detail vary spatially for genuine UV proof.
+      const float threshold = c.flags & 8192 ? .51f : c.flags & 4096 ? .50f : .49f;
+      for (unsigned which = 0; which < 2; ++which) {
+        auto* t = which ? xt_detail.p : xt_occlusion.p;
+        D3DLOCKED_RECT lock{};
+        api(t->LockRect(0, &lock, nullptr, 0));
+        for (unsigned y=0; y<4; ++y)
+          for (unsigned x=0; x<4; ++x) {
+            float value[4];
+            if (!which) {
+              value[0]=threshold; value[1]=.35f;
+              value[2]=(c.flags & 1024 ? .2f : .6f) + float(x)/32.f;
+              value[3]=(c.flags & 1024 ? .4f : .8f) - float(y)/32.f;
+            } else {
+              value[0]=(c.flags & 1024 ? .65f : .55f) + float(x)/64.f;
+              value[1]=(c.flags & 1024 ? .35f : .45f) + float(y)/64.f;
+              value[2]=c.flags & 1024 ? .8f : .2f;
+              value[3]=c.flags & 1024 ? .6f : .3f;
+            }
+            std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*16,value,16);
+          }
+        api(t->UnlockRect(0));
+        if (!which || bump) api(d->SetTexture(which ? 6 : bump ? 5 : 4,t));
+      }
+      if (c.flags & 32) {
+        D3DLOCKED_RECT lock{};
+        api(detail->LockRect(0,&lock,nullptr,0));
+        for (unsigned y=0;y<4;++y) for (unsigned x=0;x<4;++x) {
+          const float value[4]={(x+1)/8.f,(y+1)/8.f,(x+y+1)/16.f,c.f[6]};
+          std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*16,value,16);
+        }
+        api(detail->UnlockRect(0));
+        api(d->SetTexture(0,detail.p));
+      }
+    }
+    for (unsigned i = 0; i < 7; ++i) {
       for (auto state : {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER})
         api(d->SetSamplerState(i, state, D3DTEXF_POINT));
       api(d->SetSamplerState(i, D3DSAMP_MIPFILTER, D3DTEXF_NONE));
@@ -473,13 +553,21 @@ struct Gpu {
       v[252 + k][k] = 1;
     }
     v[252][3] = -.125f;
-    if (palette && (c.flags & 64)) {
+    if ((palette || is_xt(c)) && (c.flags & 64)) {
       // FLOAT3 object z supplies clip W; all vertices project to z=.5.
       // Previous clip keeps the same W and a projected -.125 X shift.
       v[matrix+2][2] = v[254][2] = .5f;
       v[matrix+3][2] = v[255][2] = 1;
       v[matrix+3][3] = v[255][3] = 0;
       v[252][2] = -.125f; v[252][3] = 0;
+    }
+    if (is_xt(c) && (c.flags & 65536)) {
+      v[matrix+2][0] = v[254][0] = .25f;
+      v[matrix+2][2] = v[254][2] = c.flags & 64 ? .1875f : 0;
+      v[matrix+2][3] = v[254][3] = c.flags & 64 ? 0 : .1875f;
+    }
+    if (is_xt(c) && (c.flags & 16)) {
+      v[28][0]=.125f; v[29][1]=.0625f;
     }
     if (palette && (c.flags & 16)) {
       const unsigned world = fixed ? 7 : 28;
@@ -506,6 +594,20 @@ struct Gpu {
       v[base + 2][0] = 2;
       v[base + 2][1] = .25f;
       v[base + 2][2] = .125f;
+    }
+    if (is_xt(c)) {
+      if (bump) {
+        // Native B layout and its c46 preshader result, not D's old registers.
+        v[39][0]=c.f[49]; v[40][0]=.625f;
+        std::memcpy(v[41],c.f+16,12);
+        v[42][0]=2; v[43][0]=.1f;
+        v[44][0]=c.f[45]; v[44][1]=c.f[46];
+        v[45][0]=12; v[46][0]=.9f;
+      }
+      if (c.flags & 32) {
+        v[37][0]=v[38][1]=0;
+        v[37][2]=.125f; v[38][2]=.625f;
+      }
     }
     api(d->SetVertexShaderConstantF(0, v[0], 256));
     int lights[4] = {int(c.lights), 0, 1, 0};
@@ -547,6 +649,29 @@ struct Gpu {
       p[coefficient + 2][0] = c.f[49];
       p[coefficient + 3][0] = c.f[47];
     }
+    if (is_xt(c)) {
+      // c3 is the effect preshader's (1-ColorWeighting), c4 is EnableGlow.
+      p[3][0]=.35f; p[4][0]=c.f[31];
+      p[5][0]=p[5][1]=0; p[5][2]=1;
+      std::memcpy(p[6],c.f+22,12);
+      p[7][0]=p[7][1]=0; p[7][2]=-1;
+      std::memcpy(p[8],c.f+25,12);
+      p[9][0]=c.f[48]; p[10][0]=c.f[50];
+      p[11][0]=c.f[49]; p[12][0]=c.f[47];
+      unsigned first=14;
+      if (bump) {
+        p[13][0]=.55f; p[14][0]=1.4f; p[15][0]=1.7f; p[16][0]=.18f;
+        first=17;
+      } else p[13][0]=1.4f;
+      const float colors[5][3]={{.18f,.75f,.33f},{.83f,.24f,.58f},
+        {.41f,.62f,.16f},{.90f,.12f,.47f},{.27f,.55f,.88f}};
+      for (unsigned row=0;row<5;++row) for (unsigned lane=0;lane<3;++lane)
+        p[first+row][lane]=colors[row][c.flags & 512 ? (lane+1)%3 : lane];
+      p[first+5][0]=2.3f; p[first+6][0]=.65f;
+      const bool terra=c.pair>=156;
+      const BOOL native_flags[2]={BOOL((c.flags & (terra ? 128 : 256)) != 0),BOOL((c.flags & 128) != 0)};
+      api(d->SetPixelShaderConstantB(0,native_flags,2));
+    }
     p[216][0] = p[216][1] = 1.f / width;
     p[216][2] = .25f / width;
     p[216][3] = -.375f / width;
@@ -554,6 +679,23 @@ struct Gpu {
     api(d->SetPixelShaderConstantF(0, p[0], 221));
   }
   void draw(const Case &c, unsigned repeats = 1) {
+    if (is_xt(c)) {
+      float vertices[3][16]={{-1,1,.5f,0,0,0,0}, {3,1,.5f,1,0,0,0}, {-1,-3,.5f,0,1,0,0}};
+      for (unsigned i=0;i<3;++i) {
+        auto& v=vertices[i];
+        if (c.flags & 64) { const float w=float(1u<<i); v[0]*=w;v[1]*=w;v[2]=w; }
+        v[5]=c.flags & 16384 ? .625f : .375f;
+        v[6]=c.flags & 16384 ? .375f : .625f;
+        std::memcpy(v+7,c.f+28,12);
+        if (c.flags & 16) { v[7]+=.0625f*v[0];v[8]+=.03125f*v[1]; }
+        std::memcpy(v+10,c.f+36,12); std::memcpy(v+13,c.f+39,12);
+      }
+      if (c.reverse) for (unsigned k=0;k<16;++k) std::swap(vertices[1][k],vertices[2][k]);
+      api(d->BeginScene());
+      for (unsigned i=0;i<repeats;++i) api(d->DrawPrimitiveUP(D3DPT_TRIANGLELIST,1,vertices,64));
+      api(d->EndScene());
+      return;
+    }
     float vertices[3][14] = {{-1, 1, .5f, 0, 0, 0, 0, 1},
                              {3, 1, .5f, 1, 0, 0, 0, 1},
                              {-1, -3, .5f, 0, 1, 0, 0, 1}};
@@ -608,6 +750,13 @@ struct Gpu {
     return result;
   }
   void test(const Case &c) {
+    std::vector<Pixel> native;
+    if (is_xt(c)) {
+      state(c,0);
+      api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));
+      draw(c);
+      native=read(color[c.fp16].p,c.fp16 ? D3DFMT_A16B16G16R16F : D3DFMT_A32B32G32R32F);
+    }
     state(c, 1);
     api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
     draw(c);
@@ -616,6 +765,17 @@ struct Gpu {
          motion_before = read(motion.p, D3DFMT_A32B32G32R32F);
     auto depth_before =
         c.depth ? read(current.p, D3DFMT_R32F) : std::vector<Pixel>{};
+    if (is_xt(c)) {
+      require(native.size()==before.size() &&
+              std::memcmp(native.data(),before.data(),before.size()*sizeof(Pixel))==0,
+              "XT native/repaired ordinary MRT baseline identity");
+      for (unsigned y : {width/4,width/2,3*width/4})
+        for (unsigned x : {width/4,width/2,3*width/4}) {
+          const auto& p=before[y*width+x];
+          std::printf("BASELINE id=%u x=%u y=%u rgba=%.9g,%.9g,%.9g,%.9g\n",
+                      c.id,x,y,p.f[0],p.f[1],p.f[2],p.f[3]);
+        }
+    }
     state(c, 2);
     api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
     draw(c);
@@ -648,6 +808,47 @@ struct Gpu {
                     x, y, p.f[0], p.f[1], p.f[2], p.f[3]);
       }
   }
+  void classify_flat() {
+    // Independent color-ramp sentinel: distinguish effective flat COLOR
+    // interpolation from a backend that accepts FLAT but interpolates smoothly.
+    // TEXCOORDs remain perspective interpolated in either case.
+    const DWORD vs[]={0xfffe0300,
+      0x0200001f,0x80000000,0x900f0000,
+      0x0200001f,0x80000000,0xe00f0000,
+      0x0200001f,0x8000000a,0xe00f0001,
+      0x02000001,0xe00f0000,0x90e40000,
+      0x04000004,0xe00f0001,0x90000000,0xa0e40000,0xa0e40001,0x0000ffff};
+    const DWORD ps[]={0xffff0300,
+      0x0200001f,0x8000000a,0x900f0000,
+      0x02000001,0x800f0800,0x90e40000,0x0000ffff};
+    Com<IDirect3DVertexShader9> vertex;
+    Com<IDirect3DPixelShader9> pixel;
+    api(d->CreateVertexShader(vs,&vertex.p)); api(d->CreatePixelShader(ps,&pixel.p));
+    api(d->SetRenderTarget(2,nullptr)); api(d->SetRenderTarget(1,nullptr));
+    api(d->SetRenderTarget(0,color[0].p)); api(d->SetDepthStencilSurface(nullptr));
+    D3DVIEWPORT9 viewport{0,0,width,width,0,1}; api(d->SetViewport(&viewport));
+    api(d->SetVertexDeclaration(declaration.p));
+    api(d->SetVertexShader(vertex.p)); api(d->SetPixelShader(pixel.p));
+    const float constants[8]={.125f,0,0,0,.25f,0,0,1};
+    api(d->SetVertexShaderConstantF(0,constants,2));
+    for (auto state : {D3DRS_ZENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_ALPHATESTENABLE,
+                      D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_FOGENABLE})
+      api(d->SetRenderState(state,FALSE));
+    api(d->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE));
+    api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15));
+    const float vertices[3][14]={{-1,1,.5f},{3,1,.5f},{-1,-3,.5f}};
+    float centers[2]{};
+    for (unsigned flat=0;flat<2;++flat) {
+      api(d->SetRenderState(D3DRS_SHADEMODE,flat ? D3DSHADE_FLAT : D3DSHADE_GOURAUD));
+      api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));
+      api(d->BeginScene()); api(d->DrawPrimitiveUP(D3DPT_TRIANGLELIST,1,vertices,56)); api(d->EndScene());
+      centers[flat]=read(color[0].p,D3DFMT_A32B32G32R32F)[(width/2)*width+width/2].f[0];
+    }
+    require(std::fabs(centers[0]-.25f)<.0001f,"GOURAUD color sentinel");
+    const bool effective=std::fabs(centers[1]-.125f)<.0001f;
+    require(effective || std::fabs(centers[1]-centers[0])<.0001f,"unknown FLAT color interpolation");
+    std::printf("FLAT effective=%u gouraud=%.9g requested_flat=%.9g\n",unsigned(effective),centers[0],centers[1]);
+  }
   void wait(IDirect3DQuery9 *event) {
     BOOL done = FALSE;
     const auto start = GetTickCount();
@@ -668,7 +869,9 @@ struct Gpu {
     struct Vertex {
       float x, y, z, u, v, nx, ny, nz, bx, by, bz, tx, ty, tz;
     };
+    struct XtVertex { float x,y,z,u,v,s,t,nx,ny,nz,bx,by,bz,tx,ty,tz; };
     std::vector<Vertex> grid;
+    std::vector<XtVertex> xt_grid;
     grid.reserve(64 * 64 * 6);
     for (unsigned y = 0; y < 64; ++y)
       for (unsigned x = 0; x < 64; ++x) {
@@ -683,23 +886,30 @@ struct Gpu {
           grid.push_back(
               {xy.first, xy.second, .5f, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0});
       }
+    if (is_xt(c)) {
+      xt_grid.reserve(grid.size());
+      for (const auto& v:grid) xt_grid.push_back({v.x,v.y,v.z,v.u,v.v,.375f,.625f,
+        c.f[28],c.f[29],c.f[30],c.f[36],c.f[37],c.f[38],c.f[39],c.f[40],c.f[41]});
+    }
+    const unsigned stride=is_xt(c) ? sizeof(XtVertex) : sizeof(Vertex);
     Com<IDirect3DVertexBuffer9> buffer;
-    api(d->CreateVertexBuffer(UINT(grid.size() * sizeof(Vertex)), 0, 0,
+    api(d->CreateVertexBuffer(UINT(grid.size() * stride), 0, 0,
                               D3DPOOL_MANAGED, &buffer.p, nullptr));
     void *data = nullptr;
     api(buffer->Lock(0, 0, &data, 0));
-    std::memcpy(data, grid.data(), grid.size() * sizeof(Vertex));
+    std::memcpy(data,is_xt(c) ? static_cast<const void*>(xt_grid.data()) : grid.data(),grid.size()*stride);
     api(buffer->Unlock());
     Com<IDirect3DQuery9> event;
     api(d->CreateQuery(D3DQUERYTYPE_EVENT, &event.p));
     LARGE_INTEGER frequency;
     QueryPerformanceFrequency(&frequency);
-    for (unsigned lights : {0u, 8u}) {
+    for (unsigned lights : {0u, 1u, 8u}) {
+      if (lights==1 && !is_xt(c)) continue;
       c.lights = lights;
       for (unsigned i = 0; i < 24; ++i) {
         unsigned mode = (i / 3) % 2 ? 2 - i % 3 : i % 3;
         state(c, mode);
-        api(d->SetStreamSource(0, buffer.p, 0, sizeof(Vertex)));
+        api(d->SetStreamSource(0, buffer.p, 0, stride));
         api(event->Issue(D3DISSUE_END));
         wait(event.p);
         LARGE_INTEGER begin, end;
@@ -711,12 +921,16 @@ struct Gpu {
         api(event->Issue(D3DISSUE_END));
         wait(event.p);
         QueryPerformanceCounter(&end);
-        if (i >= 6)
+        if (i >= 6) {
           std::printf("TIMING pair=%u lights=%u mode=%u iteration=%u draws=4 "
-                      "vertices=98304 width=%u completed_ms=%.6f\n",
+                      "vertices=98304 width=%u completed_ms=%.6f",
                       c.pair, lights, mode, i - 6, width,
                       1000. * (end.QuadPart - begin.QuadPart) /
                           frequency.QuadPart);
+          if (is_xt(c))
+            std::printf(" palette=%u repaired=%u", unsigned(c.flags & 128), unsigned(xt_default(c)));
+          std::printf("\n");
+        }
       }
     }
     api(d->SetStreamSource(0, nullptr, 0, 0));
@@ -771,6 +985,9 @@ int main(int argc, char **argv) {
       require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");
       {
         Gpu gpu(device.p, shaders, 16);
+        bool has_xt=false;
+        for (const auto& c:cases) has_xt=has_xt || is_xt(c);
+        if (has_xt) gpu.classify_flat();
         for (const auto &c : cases) {
           require(c.pair < std::size(pair_v) && c.fp16 < 2 && c.depth < 2, "case bounds");
           gpu.test(c);
@@ -791,6 +1008,17 @@ int main(int argc, char **argv) {
             timed.f[49]=.0625f; timed.f[50]=.1875f;
           }
           gpu.timing(timed);
+        }
+        // Matched extra VS repair cost, and B's five runtime palette decodes.
+        // Do not derive timing material coefficients from an unrelated old row.
+        for (unsigned pair : {148u,150u}) {
+          const Case* source=nullptr;
+          for (const auto& c:cases) if (c.pair==pair) {source=&c;break;}
+          if (!source) continue;
+          for (unsigned enabled : {0u,128u}) {
+            Case timed=*source; timed.flags=enabled;
+            gpu.timing(timed);
+          }
         }
       }
     } // Release every D3D object before destroying its device window.
