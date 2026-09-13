@@ -84,8 +84,12 @@ run the original fully, then replace RGB from retained pre-original inputs while
 preserving original alpha/state/resources. It includes recovery from a GPU copy
 of the finished original image. Independent review closed preparation, Reset,
 SEH, ownership and restoration gaps; the retained old passes and added memory
-must be measured. The filter numerical core is in progress separately. No
-integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
+must be measured. The [filter numerical core](verification/hdr-bloom-filter.md) is now reviewed:
+seventeen numerical host tests, three static-budget controls and eight native
+shader compilations pass. Compile-time extraction variants reduce the largest
+program to 362 of the 512-slot SM3 minimum. A standalone GPU fixture is under
+review; GPU output, renderer integration and game acceptance remain pending.
+No integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)
 
