@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cwchar>
+#include <limits>
 
 namespace x3m {
 namespace {
@@ -253,9 +254,10 @@ MotionOutput::MotionOutput() noexcept = default;
 MotionOutput::~MotionOutput() { release_resources(); }
 
 unsigned MotionOutput::device_references() const noexcept {
-    if (releasing_ || taa_busy_) return 0;
+    if (reference_accounting_busy()) return 0;
     unsigned count = (target_surface_ ? 1 : 0) + taa_references_;
     if (hdr_) count += hdr_->references();
+    if (emission_) count += emission_->references();
     if (depth_surface_) ++count;
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
@@ -277,6 +279,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.vs_registered = false; shadow_.ps_registered = false;
     drop_redirect();
+    if (emission_) { emission_->detach(); emission_.reset(); }
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
     // of this function must not probe a device that no longer exists.
@@ -387,14 +390,26 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
 // (reverse order of the bind). No-op in per-draw mode or when nothing is
 // bound, so every hook may call it unconditionally before a native call.
 void MotionOutput::restore_bindings() noexcept {
+    const HRESULT hr = restore_bindings_checked();
+    if (emission_effective_ && FAILED(hr)) {
+        emission_state_lost_ = true; emission_frame_stopped_ = true; invalidate_taa();
+    }
+}
+HRESULT MotionOutput::restore_bindings_checked() noexcept {
+    HRESULT first = deferred_flush_result_;
     record_deferred();
-    if (sampler_biased_mask_) restore_mip_bias(); // The mip LOD bias shares every restore point.
-    if (!lazy_rt1_ && !lazy_rt2_) return;
-    const HRESULT first = flush_bindings<false>();
+    if (sampler_biased_mask_) {
+        const HRESULT mip = restore_mip_bias();
+        if (SUCCEEDED(first)) first = mip;
+    }
+    if (!lazy_rt1_ && !lazy_rt2_) return first;
+    const HRESULT lazy = flush_bindings<false>();
+    if (SUCCEEDED(first)) first = lazy;
     if (FAILED(first) && logged_failures_ < failure_log_limit) {
         ++logged_failures_;
         log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=lazy_flush", id_, frame_, counters_.draws, first);
     }
+    return first;
 }
 // The flush itself. The quiet instantiation is reached from the light
 // SetRenderState hook (LightCallBoundary: no x87 code on its path, so no
@@ -418,7 +433,12 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
     lazy_rt1_ = lazy_rt2_ = false;
     const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.lazy_flushes; counters_.lazy_flush_ticks += ticks;
-    if (FAILED(first)) { ++counters_.restore_failures; invalidate_render_states(); }
+    if (FAILED(first)) {
+        ++counters_.restore_failures; invalidate_render_states();
+        // Integer-only even through the light SetRenderState path. A later
+        // wrapper cannot erase state loss by consuming the deferred HRESULT.
+        if (emission_effective_) { emission_state_lost_ = true; emission_frame_stopped_ = true; }
+    }
     if constexpr (quiet) {
         ++deferred_flushes_; deferred_flush_ticks_ += ticks;
         if (SUCCEEDED(deferred_flush_result_) && FAILED(first)) deferred_flush_result_ = first;
@@ -468,9 +488,21 @@ void MotionOutput::configure_mip_bias(float bias) noexcept {
     std::memcpy(&mip_bias_bits_, &mip_bias_, sizeof mip_bias_bits_);
 }
 bool MotionOutput::texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept {
-    return texture && stage < sampler_stage_count && samplers_[stage].texture != texture;
+    return mip_bias_bits_ && texture && stage < sampler_stage_count && samplers_[stage].texture != texture;
 }
-void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried) noexcept {
+void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader) noexcept {
+    if (linear_emission_requested_ && !shadow_.recording) {
+        const unsigned i = stage < 16 ? unsigned(stage) : stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3 ? 16u + stage - D3DVERTEXTEXTURESAMPLER0 : stage == D3DDMAPSAMPLER ? 20u : 21u;
+        if (i < 21) {
+            emission_textures_[i] = texture;
+            const unsigned bit = 1u << i;
+            if (reader != 2) {
+                emission_reader_known_mask_ = reader < 0 ? emission_reader_known_mask_ & ~bit : emission_reader_known_mask_ | bit;
+                emission_main_sampler_mask_ = reader == 1 ? emission_main_sampler_mask_ | bit : emission_main_sampler_mask_ & ~bit;
+                emission_readers_known_ = emission_reader_known_mask_ == 0x1fffffu;
+            }
+        }
+    }
     if (stage >= sampler_stage_count || shadow_.recording) return;
     auto& s = samplers_[stage];
     if (queried) s.levels = levels;      // a new pointer: the count the hook read from it
@@ -514,16 +546,18 @@ void MotionOutput::restore_mip_bias_stage(unsigned stage, HRESULT* first) noexce
     ++counters_.mip_bias_restores; ++mip_bias_total_restores_;
     if (FAILED(hr)) { s.saved_known = false; if (SUCCEEDED(*first)) *first = hr; }
 }
-void MotionOutput::restore_mip_bias() noexcept {
+HRESULT MotionOutput::restore_mip_bias() noexcept {
     HRESULT first = S_OK;
     for (std::uint32_t mask = sampler_biased_mask_; mask; mask &= mask - 1) restore_mip_bias_stage(unsigned(__builtin_ctz(mask)), &first);
     if (FAILED(first)) {
+        if (emission_effective_) { emission_state_lost_ = true; emission_frame_stopped_ = true; }
         ++counters_.mip_bias_failures; ++mip_bias_total_failures_; ++counters_.restore_failures;
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
             log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias", id_, frame_, counters_.draws, first);
         }
     }
+    return first;
 }
 // A routed draw: every bound stage that samples a mip chain gets the bias
 // (once; consecutive routed draws find it set), a biased stage whose texture
@@ -573,18 +607,33 @@ void MotionOutput::apply_mip_bias() noexcept {
 // ignores s4, including unknown or enabled decode there.
 void MotionOutput::resync_samplers() noexcept {
     sampler_bound_mask_ = sampler_biased_mask_ = 0;
+    emission_main_sampler_mask_ = emission_reader_known_mask_ = 0; emission_readers_known_ = true;
+    for (auto& texture : emission_textures_) texture = nullptr;
     for (unsigned stage = 0; stage < sampler_stage_count; ++stage) {
         auto& s = samplers_[stage];
         s = SamplerShadow{};
         if (linear_material_requested_ && stage < 5)
             s.srgb_known = SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
-        if (!mip_bias_bits_) continue;
+        if (!mip_bias_bits_ && !linear_emission_requested_) continue;
         IDirect3DBaseTexture9* texture = nullptr;
-        if (SUCCEEDED(native<GetTextureFn>(GetTexture)(device_, stage, &texture)) && texture) {
-            s.texture = texture; s.levels = texture->GetLevelCount();
-            sampler_bound_mask_ |= 1u << stage;
-            release(texture);
+        const HRESULT get = native<GetTextureFn>(GetTexture)(device_, stage, &texture);
+        if (linear_emission_requested_) {
+            const int reader = FAILED(get) ? -1 : emission_texture_reader(stage, texture);
+            set_texture(stage, texture, 0, false, reader);
         }
+        if (SUCCEEDED(get) && texture) {
+            s.texture = texture; s.levels = mip_bias_bits_ ? texture->GetLevelCount() : 0;
+            sampler_bound_mask_ |= 1u << stage;
+        }
+        release(texture);
+    }
+    if (linear_emission_requested_) for (unsigned i = 16; i < 21; ++i) {
+        const DWORD stage = i < 20 ? D3DVERTEXTEXTURESAMPLER0 + i - 16 : D3DDMAPSAMPLER;
+        const bool supported = i < 20 ? caps_.VertexTextureFilterCaps != 0 : (caps_.DevCaps2 & D3DDEVCAPS2_DMAPNPATCH) != 0;
+        IDirect3DBaseTexture9* texture = nullptr;
+        const HRESULT hr = supported ? native<GetTextureFn>(GetTexture)(device_, stage, &texture) : S_OK;
+        set_texture(stage, texture, 0, false, FAILED(hr) ? -1 : emission_texture_reader(stage, texture));
+        release(texture);
     }
 }
 
@@ -682,7 +731,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
     // Debug readback of the pre-resolve colour on the HDR path: the 8-bit
     // main target holds the previous write-back, so the unresolved scene is
     // written back first (a flush; the redirect continues) and read.
-    if (hdr_scene && capture_ && taa_debug_) flush_redirect();
+    if (hdr_scene && capture_ && taa_debug_) {
+        emission_diagnostic_export_ = true; flush_redirect(); emission_diagnostic_export_ = false;
+    }
     taa_call([&] {
         hr = target_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&motion));
         if (SUCCEEDED(hr)) hr = depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth));
@@ -717,6 +768,17 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.previous_jitter[0] = jitter_previous_[0]; in.previous_jitter[1] = jitter_previous_[1];
             in.motion_policy = renderer::MotionPolicy::PerPixel;
             in.reactive_policy = renderer::ReactivePolicy::DerivedFromDepthSentinel;
+            IDirect3DTexture9* emission_mask = nullptr;
+            if (emission_effective_) {
+                in.reactive_policy = renderer::ReactivePolicy::Unavailable;
+                if (!emission_quarantined_ && !emission_state_lost_ && !emission_frame_stopped_
+                    && emission_ && emission_->coverage_valid() && emission_->coverage_target()
+                    && SUCCEEDED(emission_->coverage_target()->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&emission_mask)))
+                    && emission_mask) {
+                    in.reactive = emission_mask;
+                    in.reactive_policy = renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel;
+                }
+            }
             // A chase-camera snap (X3M_CAMERA=chase) is a cut too: the smoothed
             // view is discontinuous there even when the rotation stays under
             // the bound (a gate jump keeps the orientation and moves the world).
@@ -740,6 +802,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             constexpr bool injected = false;
 #endif
             if (injected) { hr = E_FAIL; taa_->invalidate(); } else hr = taa_->run(in, &out);
+            release(emission_mask);
             const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
             t.result = injected ? hr : diagnostics.operation; t.restore = diagnostics.restoration;
@@ -756,7 +819,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (FAILED(diagnostics.restoration)) invalidate_render_states();
             if (SUCCEEDED(hr) && !out.color_surface) hr = E_FAIL;
             if (SUCCEEDED(hr)) {
-                if (capture_ && taa_debug_)
+                if ((capture_ && taa_debug_)
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+                    || (fixture_configured_ && fixture_.force_taa_readback)
+#endif
+                    )
                     readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major", target_width_, target_height_);
                 if (hdr_scene) {
                     // Stage 3: no copy. The write-back that ends the redirect
@@ -885,6 +952,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
 // of a second attempt in one frame).
 bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
     auto& t = counters_.taa;
+    if (emission_state_lost_) { invalidate_taa(); return false; }
     if (t.attempted) return false;
     t.attempted = true; t.source = unsigned(source);
     auto skip = [&](TaaSkip why) { t.skip = unsigned(why); invalidate_taa(); return false; };
@@ -1175,6 +1243,12 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
             double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.chain_format_name, hdr_caps.chain_target, hdr_caps.chain_sampling);
         hdr_tonemap_disabled_logged_ = false; hdr_taa_k_ = 0.f;
     }
+    if (linear_emission_requested_ && taa_enabled_ && hdr_enabled_) {
+        D3DDISPLAYMODE display{};
+        emission_busy_ = true;
+        if (SUCCEEDED(native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display))) emission_adapter_format_ = display.Format;
+        emission_busy_ = false;
+    }
     log("motion_output_device device=%llu enabled=%u reason=%s detail=%s mrt=%lu vs_constants=%lu misc=%08lx vs=%08lx ps=%08lx rgba32f=%08lx history_available=%u history_capacity=%u depth=%u depth_reason=%s depth_detail=%s r32f=%08lx jitter=%u jitter_samples=%u taa=%u taa_reason=%s taa_format=%08lx taa_copy=%s taa_stretch_query=%08lx taa_stretch_test=%s taa_debug=%u rt_mode=%s camera=%s sentinel=%u camera_cut_deg=%.2f camera_log=%u state_shadow=%u scene_hook=%u hdr=%u mip_bias=%g quad_fvf=%u",
         id_, enabled_, reason, detail[0] ? detail : "-", caps.NumSimultaneousRTs, caps.MaxVertexShaderConst,
         caps.PrimitiveMiscCaps, caps.VertexShaderVersion, caps.PixelShaderVersion, format_result,
@@ -1462,6 +1536,8 @@ void MotionOutput::before_reset() noexcept {
     if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) hdr_->bind(hdr_main_, nullptr);
     drop_redirect(); // The FP16 target goes with RT1/RT2.
     release_target();
+    if (emission_) { emission_busy_ = true; emission_->before_reset(); emission_busy_ = false; }
+    emission_state_lost_ = false; emission_frame_stopped_ = false; emission_attach_attempted_ = false;
     if (hdr_) hdr_->before_reset();
     hdr_target_failed_ = false; hdr_blocked_ = false; hdr_blocked_latches_ = 0; // a Reset clears the cause of an unwind
     if (taa_) taa_call([&] { taa_->before_reset(); });
@@ -1819,6 +1895,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
+    emission_counts_ = {}; emission_enhanced_ = false; emission_frame_stopped_ = false; emission_published_ = false;
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
     displacements_.clear();
@@ -1861,6 +1938,7 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
         if (hdr_ && hdr_->take_fault(renderer::HdrFault::Clear)) failed = true; // seam: the Clear "failed"
 #endif
         if (failed) { hdr_dirty_ = false; end_redirect(HdrEnd::ClearFailed); }
+        else begin_emission_frame();
     }
     // The scene view's camera is final at the depth-only Clear that starts the
     // scene phase (the view activation issues that Clear right after building
@@ -2072,8 +2150,20 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
     if (mip_bias_total_game_writes_ != mip_bias_logged_game_writes_) log_mip_bias_game_write();
     const std::uint64_t begin = draw_stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
+    if (emission_state_lost_ || emission_busy_) { route.submit = false; ++emission_counts_.suppressed; if (emission_state_lost_) invalidate_taa(); return route; }
+    if (emission_effective_ && hdr_state_ != HdrState::Off && emission_enhanced_ && !emission_readers_known_) {
+        emission_frame_stopped_ = true; invalidate_taa();
+    }
+    if (emission_published_ && hdr_state_ != HdrState::Off && (emission_main_sampler_mask_ || !emission_readers_known_)) emission_export();
+    route.evaluated = true;
     evaluate_draw(call, route);
-    if (!route.routed) restore_bindings();
+    if (!route.routed) {
+        const HRESULT restored = restore_bindings_checked();
+        if (emission_effective_ && FAILED(restored)) {
+            emission_state_lost_ = true; route.submit = false; route.submission_error = restored;
+            ++emission_counts_.suppressed; invalidate_taa();
+        } else prepare_emission(call, route);
+    }
     if (telemetry::draw_enabled()) {
         const std::uint64_t total = draw_stamp() - begin,
             excluded = route.ticks + (counters_.fill_ticks - fill_before) + (counters_.lazy_flush_ticks - flush_before);
@@ -2082,6 +2172,154 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
         record(unsigned(telemetry::Metric::RouteGate), gate);
     }
     return route;
+}
+// Canonical COM identity is queried only at changed setters and resync/latch,
+// within the caller's native CPU section, never while evaluating a draw.
+int MotionOutput::emission_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept {
+    if (!linear_emission_requested_) return 2;
+    const unsigned i = stage < 16 ? unsigned(stage) : stage >= D3DVERTEXTEXTURESAMPLER0 && stage <= D3DVERTEXTEXTURESAMPLER3 ? 16u + stage - D3DVERTEXTEXTURESAMPLER0 : stage == D3DDMAPSAMPLER ? 20u : 21u;
+    if (i >= 21) return 2;
+    if (texture == emission_textures_[i] && (emission_reader_known_mask_ & (1u << i))) return 2;
+    if (!texture) return 0;
+    if (!emission_identity_known_) return -1;
+    if (!emission_main_identity_) return 0;
+    IUnknown* identity = nullptr;
+    const HRESULT hr = texture->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity));
+    const int result = FAILED(hr) || !identity ? -1 : identity == emission_main_identity_ ? 1 : 0;
+    release(identity);
+    return result;
+}
+void MotionOutput::before_texture_write(IDirect3DBaseTexture9* texture) noexcept {
+    if (!linear_emission_requested_ || !texture || !hdr_main_ || hdr_state_ == HdrState::Off) return;
+    if (texture == emission_main_texture_) { before_render_target_write(hdr_main_); return; }
+    // A back-buffer-only main has no texture destination. Unknown container
+    // identity is different: finish the redirect before the incoming write.
+    if (emission_identity_known_ && !emission_main_identity_) return;
+    const bool busy = emission_busy_; emission_busy_ = true;
+    IUnknown* identity = nullptr;
+    const HRESULT hr = texture->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity));
+    const bool unknown = FAILED(hr) || !identity || !emission_identity_known_;
+    const bool main = !unknown && identity == emission_main_identity_;
+    release(identity); emission_busy_ = busy;
+    if (main || unknown) before_render_target_write(hdr_main_);
+}
+
+void MotionOutput::release_emission_identity() noexcept {
+    const bool busy = emission_busy_; emission_busy_ = true;
+    emission_main_identity_ = nullptr; emission_main_sampler_mask_ = 0;
+    release(emission_main_texture_); // App-owned alias: excluded from device-object inventory.
+    emission_busy_ = busy;
+}
+void MotionOutput::emission_export() noexcept {
+    if (!linear_emission_requested_ || !emission_enhanced_ || emission_quarantined_) return;
+    emission_quarantined_ = true; emission_frame_stopped_ = true;
+    ++emission_counts_.exports; invalidate_taa();
+}
+void MotionOutput::begin_emission_frame() noexcept {
+    if (!linear_emission_requested_ || emission_quarantined_ || emission_state_lost_ || !taa_enabled_
+        || !hdr_enabled_ || !hdr_ || !hdr_->tonemap_active() || emission_adapter_format_ == D3DFMT_UNKNOWN
+        || hdr_config_.tonemap != renderer::HdrTonemap::Agx || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return;
+    emission_busy_ = true;
+    const auto depth_format = static_cast<D3DFORMAT>(pending_.depth.format);
+    if (!emission_attach_attempted_ || depth_format != emission_depth_format_) {
+        emission_depth_format_ = depth_format; emission_attach_attempted_ = true;
+        try { if (!emission_) emission_ = std::make_unique<renderer::LinearEmissionPass>(); } catch (...) {}
+        if (emission_) {
+            const HRESULT hr = emission_->attach(device_, native_, caps_, emission_adapter_format_, depth_format);
+            emission_effective_ = emission_effective_ || emission_->caps().enabled;
+            log("linear_emission_device device=%llu result=%08lx enabled=%u reason=%s gain=%g depth_format=%u", id_, hr,
+                emission_->caps().enabled, emission_->caps().reason, double(linear_emission_config_.gain), unsigned(depth_format));
+        }
+    }
+    if (!emission_ || !emission_->caps().enabled) { emission_frame_stopped_ = true; emission_busy_ = false; return; }
+    release(emission_main_texture_); emission_main_identity_ = nullptr; emission_identity_known_ = true;
+    const HRESULT container = hdr_main_ ? hdr_main_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&emission_main_texture_)) : E_FAIL;
+    if (SUCCEEDED(container) && emission_main_texture_) {
+        IUnknown* identity = nullptr;
+        emission_identity_known_ = SUCCEEDED(emission_main_texture_->QueryInterface(IID_IUnknown, reinterpret_cast<void**>(&identity))) && identity;
+        if (emission_identity_known_) emission_main_identity_ = identity;
+        release(identity);
+    } else {
+        emission_identity_known_ = container == E_NOINTERFACE;
+        release(emission_main_texture_);
+    }
+    const HRESULT restored = restore_bindings_checked();
+    if (SUCCEEDED(restored)) resync_samplers(); // Includes prebound pixel/vertex readers, once at latch.
+    if (FAILED(restored)) { emission_state_lost_ = true; emission_frame_stopped_ = true; }
+    else if (FAILED(emission_->ensure_targets(hdr_->width(), hdr_->height()))) emission_frame_stopped_ = true;
+    else {
+        const auto begin = emission_->begin_frame(frame_);
+        emission_frame_stopped_ = !begin.ready;
+        emission_state_lost_ = !begin.state_preserved;
+    }
+    emission_busy_ = false;
+    if (emission_frame_stopped_) invalidate_taa();
+}
+void MotionOutput::prepare_emission(const MotionDrawCall& call, MotionRoute& route) noexcept {
+    if (!linear_emission_requested_) return;
+    unsigned refusal = 6;
+    if (!shadow_.emission_eligible_variant) refusal = 0;
+    else if (!call.emission_permission || !call.indexed || call.user_memory || !call.primitives
+        || !scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_) refusal = 1;
+    else if (!taa_enabled_ || !hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
+        || hdr_config_.decode != x3::temporal::AgxDecode::gamma22 || hdr_config_.tonemap != renderer::HdrTonemap::Agx
+        || !emission_ || !emission_->caps().enabled || emission_busy_) refusal = 2;
+    else if (!emission_readers_known_ || emission_main_sampler_mask_) refusal = 3;
+    else if (emission_frame_stopped_ || emission_quarantined_) refusal = 4;
+    if (refusal != 6) { ++emission_counts_.refused; ++emission_counts_.refusal[refusal]; return; }
+    emission_busy_ = true;
+    const auto prepared = emission_->prepare({hdr_->target(), shadow_.emission_eligible_variant, frame_, true});
+    emission_counts_.prepare = FAILED(prepared.saved) ? prepared.saved : prepared.operation;
+    emission_counts_.prepare_restore = prepared.restore;
+    if (prepared.ready) { route.emission = true; ++emission_counts_.prepared; return; }
+    emission_busy_ = false; ++emission_counts_.refused; ++emission_counts_.refusal[5]; ++emission_counts_.prepare_failures;
+    if (!prepared.state_preserved) {
+        emission_state_lost_ = true; emission_frame_stopped_ = true; route.submit = false;
+        route.submission_error = FAILED(prepared.restore) ? prepared.restore : D3DERR_INVALIDCALL;
+        ++emission_counts_.suppressed; invalidate_taa();
+    }
+}
+bool MotionOutput::publish_emission() noexcept {
+    auto** slot = emission_->owning_candidate();
+    if (!slot) return false;
+    HRESULT exchange;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (fixture_emission_exchange_fault_) { --fixture_emission_exchange_fault_; exchange = E_FAIL; }
+    else
+#endif
+    exchange = hdr_->exchange_target(*slot);
+    const HRESULT ack = emission_->acknowledge_exchange(SUCCEEDED(exchange));
+    emission_counts_.exchange = exchange; emission_counts_.ack = ack;
+    if (FAILED(exchange)) ++emission_counts_.exchange_failures;
+    if (FAILED(ack)) ++emission_counts_.ack_failures;
+    if (FAILED(exchange)) return false;
+    if (FAILED(ack)) { emission_state_lost_ = true; return false; }
+    // The pass has already restored bindings around this exact owning target.
+    hdr_target_ = describe_surface(hdr_->target()); hdr_dirty_ = true; hdr_resolved_ = nullptr;
+    ++emission_counts_.exchanged;
+    if (!hdr_target_.known) { emission_state_lost_ = true; return false; }
+    return true;
+}
+void MotionOutput::finish_emission(HRESULT source) noexcept {
+    emission_counts_.source = source;
+    auto completed = emission_->finish(source);
+    emission_counts_.composition = completed.composition; emission_counts_.restore = completed.restore;
+    if (FAILED(completed.composition)) ++emission_counts_.composition_failures;
+    if (FAILED(completed.restore)) ++emission_counts_.restore_failures;
+    bool published = publish_emission();
+    if (!published && !emission_state_lost_) {
+        completed = emission_->recover_native();
+        emission_counts_.restore = completed.restore;
+        if (FAILED(completed.restore)) ++emission_counts_.restore_failures;
+        published = publish_emission();
+    }
+    emission_busy_ = false;
+    if (!published) emission_state_lost_ = true;
+    if (FAILED(source) || completed.image == renderer::LinearEmissionImage::Incomplete || !published) {
+        ++emission_counts_.incomplete; emission_frame_stopped_ = true; invalidate_taa();
+    } else if (completed.image == renderer::LinearEmissionImage::Linear) {
+        ++emission_counts_.linear; emission_enhanced_ = true;
+    } else ++emission_counts_.native;
 }
 void MotionOutput::refresh_linear_material_contract() noexcept {
     // Ordinary variants establish completed shader registration. Combined
@@ -2298,8 +2536,9 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
-    if (!enabled_) return;
+    if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
+    if (route.emission) finish_emission(result);
     if (route.routed) {
         // route_draw: the apply (before_draw) plus this undo, without the
         // native draw between them and without the jitter writes.
@@ -2309,7 +2548,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         counters_.route_draw_ticks += route.ticks;
         record(unsigned(telemetry::Metric::RouteDraw), route.ticks);
     }
-    if (route.jittered) restore_jitter(route);
+    if (route.jittered && !emission_state_lost_) restore_jitter(route);
     if (pending_valid_) { pending_valid_ = false; observe(pending_, result); }
     if (capture_ && route.scene) {
         const auto& k = route.key;
@@ -2349,6 +2588,7 @@ bool MotionOutput::hdr_is_main(IDirect3DSurface9* surface) noexcept {
 
 IDirect3DSurface9* MotionOutput::before_set_render_target(DWORD index, IDirect3DSurface9* surface) noexcept {
     hdr_pending_state_ = 0;
+    if (emission_state_lost_) return surface;
     if (index != 0 || hdr_state_ == HdrState::Off || !hdr_ || !hdr_->target()) return surface;
     if (hdr_is_main(surface)) { hdr_pending_state_ = std::uint32_t(HdrState::Active); return hdr_->target(); }
     // Another surface (an environment-map face): forwarded verbatim; the scene
@@ -2377,6 +2617,7 @@ void MotionOutput::before_end_scene() noexcept { if (hdr_state_ == HdrState::Act
 // blocked after an unwind unless the recovery self test passes now.
 void MotionOutput::begin_redirect() noexcept {
     auto& h = counters_.hdr;
+    if (emission_state_lost_) return;
     if (selector_.state() != renderer::BoundaryState::AwaitInitialClear || !hdr_) return;
     renderer::SceneBoundarySelector probe = selector_;
     renderer::Event e = pending_;
@@ -2451,6 +2692,8 @@ void MotionOutput::begin_redirect() noexcept {
 renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0, bool write,
                                                 renderer::HdrDisplaySnapshot* display) noexcept {
     auto& h = counters_.hdr;
+    if (write && emission_enhanced_ && !emission_terminal_export_ && !emission_diagnostic_export_) emission_export();
+    if (write && emission_enhanced_) emission_published_ = true;
     if (write && capture_ && !h.writebacks && hdr_->target())
         readback_surface(hdr_->target(), D3DFMT_A16B16G16R16F, 8, L"hdr", L"rgba16f", "hdr_readback", "rgba16f_row_major", hdr_->width(), hdr_->height());
     const std::uint64_t begin = stamp();
@@ -2498,12 +2741,13 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
     return r;
 }
 void MotionOutput::flush_redirect() noexcept {
-    if (hdr_state_ != HdrState::Active || !hdr_dirty_ || !hdr_ || !hdr_main_) return;
+    if (emission_state_lost_ || hdr_state_ != HdrState::Active || !hdr_dirty_ || !hdr_ || !hdr_main_) return;
     ++counters_.hdr.flushes;
     hdr_writeback(hdr_->target(), true);
 }
 void MotionOutput::end_redirect(HdrEnd reason, MotionHdrSceneCallback callback, void* context) noexcept {
-    if (hdr_state_ == HdrState::Off) return;
+    if (emission_state_lost_ || hdr_state_ == HdrState::Off) return;
+    emission_terminal_export_ = reason == HdrEnd::Hook || reason == HdrEnd::BloomCopy || reason == HdrEnd::Present;
     if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) {
         const bool write = hdr_dirty_ || hdr_resolved_ != nullptr;
         const auto& t = counters_.taa;
@@ -2542,13 +2786,16 @@ void MotionOutput::end_redirect(HdrEnd reason, MotionHdrSceneCallback callback, 
     }
     // Suspended: the application bound another surface itself and the main
     // target already holds the write-back of the switch; nothing to rebind.
+    release_emission_identity();
     release(hdr_main_);
     hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0; hdr_resolved_ = nullptr;
     counters_.hdr.end = std::uint32_t(reason);
+    emission_terminal_export_ = false;
 }
 void MotionOutput::drop_redirect() noexcept {
     hdr_resolved_ = nullptr;
-    if (hdr_state_ == HdrState::Off) { release(hdr_main_); return; }
+    if (hdr_state_ == HdrState::Off) { release_emission_identity(); release(hdr_main_); return; }
+    release_emission_identity();
     release(hdr_main_);
     hdr_state_ = HdrState::Off; hdr_dirty_ = false; hdr_latch_pending_ = false; hdr_pending_state_ = 0;
     counters_.hdr.end = std::uint32_t(HdrEnd::Dropped);
@@ -2755,6 +3002,16 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // counts are exact, the *_us totals are CPU-side QPC wall clock with
         // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
         const auto& c = counters_;
+        if (linear_emission_requested_)
+            log("linear_emission_frame device=%llu frame=%llu prepared=%u linear=%u native=%u incomplete=%u refused=%u suppressed=%u exports=%u quarantine=%u state_lost=%u mask_valid=%u",
+                id_, frame_, emission_counts_.prepared, emission_counts_.linear, emission_counts_.native, emission_counts_.incomplete,
+                emission_counts_.refused, emission_counts_.suppressed, emission_counts_.exports, emission_quarantined_, emission_state_lost_,
+                emission_ && emission_->coverage_valid() && !emission_frame_stopped_ && !emission_quarantined_);
+        if (linear_emission_requested_)
+            log("linear_emission_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx",
+                id_, frame_, emission_counts_.refusal[0], emission_counts_.refusal[1], emission_counts_.refusal[2], emission_counts_.refusal[3], emission_counts_.refusal[4], emission_counts_.refusal[5],
+                emission_counts_.prepare_failures, emission_counts_.composition_failures, emission_counts_.restore_failures, emission_counts_.exchange_failures, emission_counts_.ack_failures,
+                emission_counts_.prepare, emission_counts_.prepare_restore, emission_counts_.source, emission_counts_.composition, emission_counts_.restore, emission_counts_.exchange, emission_counts_.ack);
         if (linear_material_requested_)
             log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu",
                 id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
@@ -2802,6 +3059,31 @@ void MotionOutput::after_present(HRESULT result) noexcept {
 void MotionOutput::fixture_configure(const MotionOutputFixtureConfig& config) noexcept {
     fixture_ = config; fixture_configured_ = true;
 }
+void MotionOutput::fixture_emission_fault(unsigned kind, unsigned count) noexcept {
+    if (kind == 101) { fixture_emission_exchange_fault_ = count; return; }
+#ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
+    if (emission_ && kind <= unsigned(renderer::LinearEmissionPassFault::FrameClear)) emission_->inject(static_cast<renderer::LinearEmissionPassFault>(kind), count);
+#else
+    (void)kind; (void)count;
+#endif
+}
+unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
+    switch (key) {
+    case 0: return emission_effective_;
+    case 1: return emission_ && emission_->coverage_valid() && !emission_frame_stopped_ && !emission_quarantined_ && !emission_state_lost_;
+    case 2: return emission_state_lost_;
+    case 3: return emission_quarantined_;
+    case 4: return emission_counts_.prepared;
+    case 5: return emission_counts_.linear;
+    case 6: return emission_counts_.native;
+    case 7: return emission_counts_.incomplete;
+    case 8: return emission_counts_.refused;
+    case 9: return emission_counts_.suppressed;
+    case 10: return emission_counts_.exchanged;
+    case 11: return unsigned(emission_counts_.source);
+    default: return 0;
+    }
+}
 void MotionOutput::fixture_hdr_fault(unsigned kind, unsigned count) noexcept {
     if (hdr_) hdr_->set_fault(static_cast<renderer::HdrFault>(kind), count);
     else { fixture_hdr_fault_kind_ = kind; fixture_hdr_fault_count_ = count; }
@@ -2833,20 +3115,29 @@ HRESULT MotionOutput::fixture_last_pixel_abi(float* out, std::size_t floats) con
 HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
     if (width) *width = target_width_;
     if (height) *height = target_height_;
-    if (target != 1 && target != 2) return D3DERR_INVALIDCALL;
-    IDirect3DSurface9* surface = target == 1 ? target_surface_ : depth_surface_;
-    const unsigned components = target == 1 ? 4u : 1u;
+    if (target != 1 && target != 2 && target != 3) return D3DERR_INVALIDCALL;
+    IDirect3DSurface9* surface = target == 1 ? target_surface_ : target == 2 ? depth_surface_ : emission_ ? emission_->coverage_target() : nullptr;
+    const unsigned components = target == 2 ? 1u : 4u;
     if (!surface) return D3DERR_NOTFOUND;
     if (!out || floats < std::size_t(target_width_) * target_height_ * components) return D3DERR_MOREDATA;
     IDirect3DSurface9* copy = nullptr;
     HRESULT hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, target_width_, target_height_,
-        target == 1 ? D3DFMT_A32B32G32R32F : D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
+        target == 1 ? D3DFMT_A32B32G32R32F : target == 2 ? D3DFMT_R32F : D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &copy, nullptr);
     if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     D3DLOCKED_RECT lock{};
     if (SUCCEEDED(hr)) hr = copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
     if (SUCCEEDED(hr)) {
-        for (UINT y = 0; y < target_height_; ++y)
-            std::memcpy(out + std::size_t(y) * target_width_ * components, static_cast<const char*>(lock.pBits) + y * lock.Pitch, std::size_t(target_width_) * components * 4);
+        for (UINT y = 0; y < target_height_; ++y) {
+            const auto* row = static_cast<const char*>(lock.pBits) + y * lock.Pitch;
+            if (target != 3) std::memcpy(out + std::size_t(y) * target_width_ * components, row, std::size_t(target_width_) * components * 4);
+            else for (UINT x = 0; x < target_width_ * 4; ++x) {
+                const auto h = reinterpret_cast<const std::uint16_t*>(row)[x];
+                const unsigned exponent = (h >> 10) & 31u, mantissa = h & 1023u;
+                float value = exponent == 31 ? (mantissa ? std::numeric_limits<float>::quiet_NaN() : std::numeric_limits<float>::infinity())
+                    : std::ldexp(float(exponent ? 1024u + mantissa : mantissa), int(exponent ? exponent : 1) - 25);
+                out[std::size_t(y) * target_width_ * 4 + x] = h & 0x8000u ? -value : value;
+            }
+        }
         copy->UnlockRect();
     }
     release(copy);

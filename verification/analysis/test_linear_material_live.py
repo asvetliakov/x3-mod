@@ -20,6 +20,23 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class LinearMaterialLiveTests(unittest.TestCase):
+    def test_emission_terminal_export_source_contract(self):
+        # Policy wiring witness only: transaction and Reset behavior are exercised
+        # by the extracted C++ seam; this does not claim GPU publication coverage.
+        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        end = extract_function(source, 'void MotionOutput::end_redirect(')
+        assignments = [line.strip() for line in end.splitlines()
+                       if 'emission_terminal_export_ =' in line]
+        self.assertEqual(assignments, [
+            'emission_terminal_export_ = reason == HdrEnd::Hook || reason == HdrEnd::BloomCopy || reason == HdrEnd::Present;',
+            'emission_terminal_export_ = false;',
+        ])
+        end_scene = extract_function(source, 'void MotionOutput::before_end_scene() noexcept')
+        self.assertEqual(' '.join(end_scene.split()),
+                         'void MotionOutput::before_end_scene() noexcept { if (hdr_state_ == HdrState::Active) flush_redirect(); }')
+        writeback = extract_function(source, 'renderer::HdrWriteback MotionOutput::hdr_writeback(')
+        self.assertIn('if (write && emission_enhanced_ && !emission_terminal_export_ && !emission_diagnostic_export_) emission_export();', writeback)
+
     def test_production_control_flow(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
@@ -34,6 +51,22 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'void MotionOutput::set_vertex_shader(',
             'void MotionOutput::set_pixel_shader(',
             'void MotionOutput::set_sampler_state(',
+            'void MotionOutput::set_texture(',
+            'int MotionOutput::emission_texture_reader(',
+            'void MotionOutput::emission_export() noexcept',
+            'void MotionOutput::release_emission_identity() noexcept',
+            'void MotionOutput::before_texture_write(',
+            'void MotionOutput::begin_emission_frame() noexcept',
+            'void MotionOutput::prepare_emission(',
+            'bool MotionOutput::publish_emission() noexcept',
+            'void MotionOutput::finish_emission(',
+            'MotionRoute MotionOutput::before_draw(',
+            'void MotionOutput::restore_bindings() noexcept',
+            'HRESULT MotionOutput::restore_bindings_checked() noexcept',
+            'HRESULT MotionOutput::restore_mip_bias() noexcept',
+            'void MotionOutput::restore_mip_bias_stage(',
+            'template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept',
+            'void MotionOutput::record_deferred() noexcept',
             'void MotionOutput::resync_samplers() noexcept',
             'void MotionOutput::refresh_linear_material_contract() noexcept',
             'void MotionOutput::refresh_linear_emission_contract() noexcept',
@@ -62,6 +95,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('failures=0', run.stdout)
             self.assertIn('linear_emission_cache checks=', run.stdout)
+            self.assertIn('linear_emission_route checks=', run.stdout)
             self.assertEqual(run.stderr, '')
 
     def launch(self, *args, environment=None):
@@ -99,6 +133,35 @@ class LinearMaterialLiveTests(unittest.TestCase):
             self.assertIn(f'"X3M_MATERIAL_DIRECT_GAIN": "{float(value)}"', output)
         code, _, error = self.launch(*valid, '--hdr-decode', 'pow22')
         self.assertEqual(code, 0, error)
+
+    def test_emission_cli_dependencies_and_gain_bounds(self):
+        valid = ('--motion-output', '--taa', '--object-trace', '--object-lifetime', '--ownership', '--hdr', '--hdr-tonemap', '--linear-emissions')
+        rejected = [tuple(item for item in valid if item != missing)
+                    for missing in ('--motion-output', '--taa', '--hdr', '--hdr-tonemap')]
+        rejected += [('--emission-gain', '1'), (*valid, '--hdr-decode', 'none'),
+                     (*valid, '--hdr-decode', 'srgb')]
+        rejected += [(*valid, f'--emission-gain={value}')
+                     for value in ('-1', '16.01', 'nan', 'inf', '-inf')]
+        for args in rejected:
+            with self.subTest(args=args):
+                status, _, _ = self.launch(*args)
+                self.assertEqual(status, 2)
+        for value in ('0', '1', '4', '16'):
+            with self.subTest(gain=value):
+                status, output, error = self.launch(*valid, '--emission-gain', value)
+                self.assertEqual(status, 0, error)
+                self.assertIn('"X3M_LINEAR_EMISSIONS": "1"', output)
+                self.assertIn(f'"X3M_EMISSION_GAIN": "{float(value)}"', output)
+                self.assertIn('"X3M_LINEAR_MATERIALS": "0"', output)
+        status, output, error = self.launch(*valid, '--hdr-decode', 'pow22')
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_EMISSION_GAIN": "1.0"', output)
+
+    def test_emission_cli_default_off_clears_inherited_values(self):
+        status, output, error = self.launch(environment={'X3M_LINEAR_EMISSIONS': '1', 'X3M_EMISSION_GAIN': '16'})
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_EMISSIONS": "0"', output)
+        self.assertIn('"X3M_EMISSION_GAIN": "1.0"', output)
 
     def test_cli_clears_inherited_feature_and_gains(self):
         code, output, error = self.launch(environment={'X3M_LINEAR_MATERIALS': '1', 'X3M_MATERIAL_DIRECT_GAIN': '16'})

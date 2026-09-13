@@ -242,6 +242,7 @@ struct Reference {
     Com<IDirect3D9> factory; Com<IDirect3DDevice9> d;
     x3m::renderer::TemporalPass pass;
     Com<IDirect3DSurface9> color, output8, sys8, sys16;   // lockable A8R8G8B8 RT inputs/outputs and readback surfaces
+    Com<IDirect3DTexture9> reactive16;                     // Optional supplemental-emission reference input.
     Com<IDirect3DTexture9> color16;                        // MANAGED A16B16G16R16F: the HDR route's FP16 scene, sampled directly (stage 3)
     Com<IDirect3DTexture9> motion, depth, depth_staging;   // MANAGED RGBA32F (sampled only); DEFAULT R32F (StretchRect source) filled through a SYSTEMMEM copy
     UINT W = 0, H = 0; std::uint64_t epoch = 1;
@@ -296,11 +297,20 @@ struct Reference {
         }
         api(color16->UnlockRect(0), "unlock reference color16");
     }
+    void upload_reactive(const std::vector<float>& rgba) {
+        require(rgba.size()==std::size_t(W)*H*4,"reference supplemental input dimensions");
+        if(!reactive16.p)api(d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&reactive16.p,nullptr),"reference supplemental texture");
+        D3DLOCKED_RECT lock{};api(reactive16->LockRect(0,&lock,nullptr,0),"reference supplemental lock");
+        for(UINT y=0;y<H;++y){auto* row=reinterpret_cast<unsigned short*>(static_cast<char*>(lock.pBits)+y*lock.Pitch);
+            for(UINT x=0;x<W*4;++x)row[x]=float_to_half(rgba[std::size_t(y)*W*4+x]);}
+        api(reactive16->UnlockRect(0),"reference supplemental unlock");
+    }
     // Runs one frame exactly as the route does and returns the copied-back
     // 8-bit image; `half` receives the FP16 output bytes. `hdr`: the FP16
     // scene (upload16) is the colour input with the weighting constant `k`.
     x3m::renderer::Output run(double jx, double jy, double pjx, double pjy, bool cut, const float* clip_to_previous, bool sentinel_camera,
-                              bool hdr, float k, std::vector<DWORD>& image8, std::vector<unsigned char>& half) {
+                              bool hdr, float k, std::vector<DWORD>& image8, std::vector<unsigned char>& half,
+                              x3m::renderer::ReactivePolicy reactive_policy=x3m::renderer::ReactivePolicy::DerivedFromDepthSentinel) {
         x3m::renderer::FrameInputs in{};
         if (hdr) { in.color = color16.p; in.luminance_k = k; } else in.color_surface = color.p;
         in.current_depth = depth.p; in.motion = motion.p;
@@ -308,7 +318,8 @@ struct Reference {
         std::memcpy(in.clip_to_previous, clip_to_previous, 16 * sizeof(float));
         in.sentinel_camera = sentinel_camera;
         in.current_jitter[0] = float(jx); in.current_jitter[1] = float(jy); in.previous_jitter[0] = float(pjx); in.previous_jitter[1] = float(pjy);
-        in.motion_policy = x3m::renderer::MotionPolicy::PerPixel; in.reactive_policy = x3m::renderer::ReactivePolicy::DerivedFromDepthSentinel;
+        in.motion_policy = x3m::renderer::MotionPolicy::PerPixel; in.reactive_policy = reactive_policy;
+        if(reactive_policy==x3m::renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel)in.reactive=reactive16.p;
         in.history_allowed = true; in.cut = cut; in.caller_scene_open = false; in.caller_queries_idle = true;
         x3m::renderer::Output out{};
         api(pass.run(in, &out), "reference run");
@@ -334,7 +345,7 @@ struct Reference {
     void reset() { pass.invalidate(); ++epoch; }
     void destroy() {
         pass.shutdown();
-        color.reset(); color16.reset(); output8.reset(); sys8.reset(); sys16.reset(); motion.reset(); depth.reset(); depth_staging.reset();
+        color.reset(); color16.reset(); reactive16.reset(); output8.reset(); sys8.reset(); sys16.reset(); motion.reset(); depth.reset(); depth_staging.reset();
         if (d.p) { const ULONG refs = d.p->Release(); d.p = nullptr; require(refs == 0, "reference device final Release reaches zero"); }
         if (factory.p) { const ULONG refs = factory.p->Release(); factory.p = nullptr; require(refs == 0, "reference factory final Release reaches zero"); }
         if (module) { FreeLibrary(module); module = nullptr; }
@@ -359,6 +370,11 @@ struct Fixture {
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hook = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
+    bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
+    std::vector<float> emission_reference_color, emission_reference_mask;
+    unsigned (*emission_status)(IDirect3DDevice9*, unsigned) = nullptr;
+    void (*emission_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
+    HRESULT (*emission_readback)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*) = nullptr;
     bool linearmaterials = false; // Focused live combined-route/Reset/refcount script.
     bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
     // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
@@ -495,6 +511,8 @@ struct Fixture {
         if (!seam) return;
         x3m::MotionOutputFixtureConfig config{};
         config.background_vs[0] = vs_hash; config.background_ps[0] = flat_hash;
+        config.emission_scene_owner = emissions;
+        config.force_taa_readback = emissions && !emission_bench;
         if (object) config.scope = object->scope;
         configure(&config);
     }
@@ -879,7 +897,9 @@ struct Fixture {
     void boundary() {
         decide();
         api(d->SetDepthStencilSurface(nullptr), "SetDepthStencilSurface null");
-        const auto before_image = color_image();
+        // Reading logical main before terminal publication is a real export;
+        // emission mode snapshots its owned FP16 input through the native seam.
+        const auto before_image = emissions ? std::vector<DWORD>(std::size_t(W)*H) : color_image();
         const Snapshot before = snapshot();
         api(d->StretchRect(back.p, nullptr, bloom_surface.p, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
         compare(before, snapshot(), "boundary");
@@ -904,7 +924,9 @@ struct Fixture {
             reference.upload(before_image, motion_data, depth_data);
             const float k = hdr_reference_input();
             std::vector<DWORD> expected; std::vector<unsigned char> half;
-            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, hdr, k, expected, half);
+            const auto reactive = emissions&&emissions_enabled ? (emission_mask_valid?x3m::renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel:x3m::renderer::ReactivePolicy::Unavailable) : x3m::renderer::ReactivePolicy::DerivedFromDepthSentinel;
+            if(emissions&&emissions_enabled&&emission_mask_valid)reference.upload_reactive(emission_reference_mask);
+            const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, hdr, k, expected, half,reactive);
             history = out.used_history;
             const unsigned mismatches = presented_mismatches(after_image, expected, k);
             require(!mismatches, "main target after the copy equals the reference resolve of the same inputs (byte for byte; HDR: within one code of the reference conversion)");
@@ -917,10 +939,10 @@ struct Fixture {
             // correspondence), so the resolve is current-only everywhere.
             history = false;
         }
-        const bool expect_history = live && resolve_expected && frames_since_reset > 0 && !expected_cut() && !history_dropped;
+        const bool expect_history = live && resolve_expected && frames_since_reset > 0 && !expected_cut() && !history_dropped && !(emissions&&emissions_enabled&&!emission_mask_valid);
         require(history == expect_history, "history use follows the script (first frame, Reset, cut and post-skip frames run current-only)");
-        history_dropped = !resolve_expected;
-        if (!history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        history_dropped = !resolve_expected || (emissions&&emissions_enabled&&!emission_mask_valid);
+        if (!emissions && !history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
         std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolve_expected);
         ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
         // The history now holds this frame's scene view (the route records it
@@ -1333,7 +1355,7 @@ struct Fixture {
         }
         const bool expect_history = resolves && history_valid && !expected_cut();
         require(history == expect_history, "history use follows the script (the route drops history on a frame it cannot resolve)");
-        if (!history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
+        if (!emissions && !history && sharpen <= 0.f) require(!changed, "a frame without history leaves the 8-bit main target bit-identical through the FP16 round trip");
         history_valid = resolves;
         camera_history = resolves ? camera_current : x3m::renderer::CameraState{};
         std::printf("TAA frame=%llu history=%u cut=%u changed=%u policy=%u skipped=%u source=%s glow=%u outside=%u\n", frame, history, expected_cut(), changed, decision.policy, !resolves,
@@ -1725,7 +1747,7 @@ struct Fixture {
         if (!hdr) return 0.f;
         // Preconditions, not counted checks: the twins compare check counts.
         if (!hdr_readback || !hdr_exposure) throw std::runtime_error("the HDR TAA reference needs the readback and exposure exports");
-        unsigned w = 0, h = 0; const auto image = hdr_image(&w, &h);
+        unsigned w = W, h = H; const auto image = emissions ? emission_reference_color : hdr_image(&w, &h);
         if (w != W || h != H) throw std::runtime_error("the FP16 target does not have the frame size");
         reference.upload16(image);
         float e[8]{}; api(hdr_exposure(d.p, e, 8), "hdr exposure readback (k)");
@@ -2284,6 +2306,7 @@ struct Fixture {
         }
     }
 };
+#include "motion_output_emission_inc.h"
 } // namespace
 // The glow pass stand-in: records the signal count at entry (the trampoline's
 // signal must precede it), then with glow the depth unbind and the bloom copy
@@ -2309,7 +2332,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|emissions|emissionsbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -2323,7 +2346,12 @@ int main(int argc, char** argv) {
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
         f.msaa = mode == "msaa";
         f.linearmaterials = mode == "linearmaterials";
+        f.emission_bench = mode == "emissionsbench";
+        f.emissions = mode == "emissions" || f.emission_bench;
+        if(f.emission_bench){Fixture::W=1920;Fixture::H=1080;}
+        if(f.emissions && argc!=6)throw std::runtime_error("emissions needs original emission VS/PS paths");
         if(f.linearmaterials && argc!=9)throw std::runtime_error("linearmaterials needs DEFAULT and BUMP positive/negative shader paths");
+        if(!f.emissions && argc==6)throw std::runtime_error("unexpected emission program paths");
         if(!f.linearmaterials && argc==9)throw std::runtime_error("unexpected additional program path");
         if (f.msaa) { char samples[8]{}; f.msaa_samples = GetEnvironmentVariableA("X3M_FIXTURE_MSAA", samples, sizeof samples) > 0 ? unsigned(std::atoi(samples)) : 2u; if (f.msaa_samples < 2 || f.msaa_samples > 16) throw std::runtime_error("X3M_FIXTURE_MSAA must be 2..16"); }
         if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
@@ -2344,9 +2372,13 @@ int main(int argc, char** argv) {
         f.hdr_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime, "x3m_hdr_fixture_fault", false);
         f.hdr_readback = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned, unsigned*, unsigned*)>(runtime, "x3m_hdr_fixture_readback", false);
         f.hdr_exposure = symbol<HRESULT (*)(IDirect3DDevice9*, float*, unsigned)>(runtime, "x3m_hdr_fixture_exposure", false);
+        f.emission_status = symbol<unsigned (*)(IDirect3DDevice9*, unsigned)>(runtime,"x3m_linear_emission_fixture_status",false);
+        f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
+        f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
+        f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
         f.taa = f.enabled && GetEnvironmentVariableA("X3M_TAA", setting, sizeof setting) == 1 && setting[0] == '1';
         // The DLL implies the jitter with the resolve on.
         f.jitter = f.enabled && (f.taa || (GetEnvironmentVariableA("X3M_MOTION_JITTER", setting, sizeof setting) == 1 && setting[0] == '1'));
@@ -2393,8 +2425,8 @@ int main(int argc, char** argv) {
         f.scope(nullptr);
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
-        if (f.taa && f.enabled && f.seam && !f.bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.taa && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
+        if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

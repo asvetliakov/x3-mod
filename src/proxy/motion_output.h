@@ -32,6 +32,7 @@
 #include "../renderer/hdr_pass.h"
 #include "../renderer/linear_material.h"
 #include "../renderer/linear_emission.h"
+#include "../renderer/linear_emission_pass.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
@@ -53,6 +54,7 @@ struct MotionDrawCall {
     UINT primitives = 0, first = 0;
     INT base_vertex = 0;
     UINT min_vertex = 0, vertex_count = 0;
+    bool emission_permission = false; // Capture-owned scene/thread ticket; DIP only.
 };
 // The first gate that refused a draw; None means every gate passed. Numbers
 // match the design document's gate list.
@@ -61,6 +63,8 @@ enum class MotionGate : unsigned { None = 0, Feature = 1, Scene = 2, Pair = 3, D
 struct MotionRoute {
     MotionGate gate = MotionGate::Feature;
     bool routed = false, matched = false, scene = false;
+    bool emission = false, submit = true, evaluated = false;
+    HRESULT submission_error = D3DERR_INVALIDCALL;
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
@@ -236,6 +240,8 @@ struct MotionOutputFixtureConfig {
     std::uint32_t size = sizeof(MotionOutputFixtureConfig);
     std::uint64_t background_vs[3]{}, background_ps[3]{};
     MotionOutputFixtureScope scope{};
+    std::uint32_t emission_scene_owner = 0;
+    std::uint32_t force_taa_readback = 0; // Successful resolve output only; no per-draw capture.
 };
 #endif
 
@@ -269,7 +275,7 @@ public:
     bool enabled() const noexcept { return enabled_; }
     // The capture owner must not apply a combined resource-reference heuristic
     // during child destruction or the temporal pass's reference-count probe.
-    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_; }
+    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_ || emission_busy_ || (emission_ && emission_->reference_accounting_busy()); }
     // Current CPU-side admission only: the capture caller also qualifies the
     // owner/thread/frame/Reset ticket and actual post-compositor device state.
     // The redirect itself is Off after a successful handoff.
@@ -378,16 +384,21 @@ public:
     // Gains are shader-local DEFs; no application constants are modified.
     void configure_linear_materials(bool requested, const renderer::LinearMaterialConfig& config) noexcept;
     bool linear_materials_requested() const noexcept { return linear_material_requested_; }
-    // Internal preparation only: no CLI or live route yet. Configure before
+    // Opt-in original-draw emission composition. Configure before
     // attach; gain is immutable thereafter. Variants always include coverage.
     void configure_linear_emissions(bool requested, float gain) noexcept;
+    bool linear_emissions_requested() const noexcept { return linear_emission_requested_; }
+    bool emission_operation_active() const noexcept { return emission_busy_; }
+    bool emission_submission_blocked() const noexcept { return emission_busy_ || emission_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
     float mip_bias() const noexcept { return mip_bias_; }
     bool mip_bias_active() const noexcept { return mip_bias_bits_ != 0 && jitter_requested_; }
     // After a successful application SetTexture / SetSamplerState (light
     // hooks). `levels` is the texture's level count when `queried` (the hook
     // asks the texture once per pointer change, inside its native section).
-    void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried) noexcept;
+    void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader = 2) noexcept;
+    int emission_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept; // native CPU section
+    void before_texture_write(IDirect3DBaseTexture9* texture) noexcept;
     bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept;
     void set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept;
     // X3M_TAA_SHARPEN in [0, 1]: post-resolve RCAS of the display image
@@ -506,6 +517,9 @@ public:
     HRESULT fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept;
     // HDR fault injection (renderer::HdrFault kinds; before attach the fault
     // is queued for the pass) and the FP16 target as floats (4 per pixel).
+    bool fixture_emission_owner() const noexcept { return fixture_configured_ && fixture_.emission_scene_owner; }
+    void fixture_emission_fault(unsigned kind, unsigned count) noexcept;
+    unsigned fixture_emission_status(unsigned key) const noexcept;
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
     // Stage 2 exposure state: ev (consumed), ev_adapted, ev_target,
@@ -584,6 +598,13 @@ private:
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void refresh_linear_material_contract() noexcept;
     void refresh_linear_emission_contract() noexcept;
+    void prepare_emission(const MotionDrawCall&, MotionRoute&) noexcept;
+    void finish_emission(HRESULT) noexcept;
+    bool publish_emission() noexcept;
+    void begin_emission_frame() noexcept;
+    void emission_export() noexcept;
+    void release_emission_identity() noexcept;
+
     // 0 eligible, 1 unreviewed pair, 2 missing combined object, 3 HDR/decode,
     // 4 unknown or enabled sampler sRGB decode. Does not reject motion.
     unsigned linear_material_refusal() const noexcept;
@@ -601,7 +622,8 @@ private:
     // biased stage back (a restore point), drop the sampler shadow and re-read
     // the bindings natively (state block Apply, Reset), one stage's restore.
     void apply_mip_bias() noexcept;
-    void restore_mip_bias() noexcept;
+    HRESULT restore_mip_bias() noexcept;
+    HRESULT restore_bindings_checked() noexcept;
     void restore_mip_bias_stage(unsigned stage, HRESULT* first) noexcept;
     void resync_samplers() noexcept;
     void log_mip_bias_game_write() noexcept;
@@ -673,6 +695,24 @@ private:
     renderer::LinearMaterialConfig linear_material_config_{};
     bool linear_emission_requested_ = false;
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};
+    std::unique_ptr<renderer::LinearEmissionPass> emission_;
+    bool emission_busy_ = false, emission_state_lost_ = false;
+    bool emission_frame_stopped_ = false, emission_enhanced_ = false;
+    bool emission_quarantined_ = false; // Export uncertainty survives frames and Reset.
+    bool emission_readers_known_ = false, emission_identity_known_ = true;
+    bool emission_effective_ = false, emission_attach_attempted_ = false;
+    D3DFORMAT emission_adapter_format_ = D3DFMT_UNKNOWN, emission_depth_format_ = D3DFMT_UNKNOWN;
+    IDirect3DTexture9* emission_main_texture_ = nullptr; // owning logical identity
+    std::uint32_t emission_main_sampler_mask_ = 0, emission_reader_known_mask_ = 0;
+    IDirect3DBaseTexture9* emission_textures_[21]{}; // borrowed; setters/resync only
+    IUnknown* emission_main_identity_ = nullptr; // borrowed canonical identity, held by main texture
+    bool emission_terminal_export_ = false, emission_diagnostic_export_ = false, emission_published_ = false;
+    struct EmissionCounters {
+        unsigned prepared = 0, linear = 0, native = 0, incomplete = 0, refused = 0, suppressed = 0, exports = 0, exchanged = 0;
+        HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE, restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
+        unsigned refusal[6]{}; // pair, permission/scene, readiness, readers, frame stop, prepare failure
+        unsigned prepare_failures = 0, composition_failures = 0, restore_failures = 0, exchange_failures = 0, ack_failures = 0;
+    } emission_counts_;
     unsigned material_refusals_logged_ = 0;
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
@@ -812,6 +852,7 @@ private:
     bool fixture_configured_ = false, fixture_abi_known_ = false;
     bool fixture_stretch_fault_ = false; // X3M_FIXTURE_STRETCH_FAULT=1: the round-trip self test "fails" (taa_copy=draw)
     float fixture_last_pixel_abi_[8]{};
+    unsigned fixture_emission_exchange_fault_ = 0;
     unsigned fixture_hdr_fault_kind_ = 0, fixture_hdr_fault_count_ = 0; // queued until the pass exists
 #endif
 };

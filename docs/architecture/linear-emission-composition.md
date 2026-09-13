@@ -3,9 +3,10 @@
 Updated 2026-09-13. The initial ordered-bracket experiment is qualified but will
 not be promoted unchanged: it alters untouched pixels and lacks post-draw native
 fallback. The [revised same-draw candidate](#candidate-retain-native-output-and-publish-an-owned-target)
-has passed its first detached qualification. **No live emission route is selected.** Coverage,
-recovery and measured cost remain integration gates; the earlier design and its
-results below explain this decision.
+has passed detached component and focused live-integration qualification. A
+default-off live route is now selected for the five exact source pairs; gameplay
+and native-Windows behavior remain unverified. The earlier design and its results
+below explain the bounded route and its recovery policy.
 
 ## Boundary decision
 
@@ -115,15 +116,16 @@ must report an incomplete frame in the detached fixture, never claim successful
 publication or replay retained game geometry. A live design must independently
 prove completion/recovery or maintain a current native image; doing so may add
 further draws/storage. Device loss, partial commit and failed restore must be
-distinguished from clean pre-mutation refusal. This remains unresolved before
-any live implementation.
+distinguished from clean pre-mutation refusal. This was unresolved before the
+live implementation and is addressed by the bounded policy qualified below.
 
-## Reactive coverage: selected supplemental scope, pending qualification
+## Reactive coverage: selected supplemental scope
 
 Root selects **source-set-complete supplemental coverage** for enhanced emission,
-with a same-draw three-FP16-MRT producer candidate. This is not complete scene
-reactivity and does not select a live emission route. A classifier or replay
-producer for every unrelated native writer is not a prerequisite for this slice.
+with a same-draw three-FP16-MRT producer. This is not complete scene reactivity;
+the later live qualification below applies it only to successfully enhanced
+draws. A classifier or replay producer for every unrelated native writer is not
+a prerequisite for this slice.
 The installed renderer's existing native background/stardust limitations remain;
 see the [background coverage study](../reverse-engineering/background-temporal-coverage.md).
 Do not turn that bounded decision into a static shader-wide exemption or mask
@@ -890,7 +892,8 @@ Original PS2 emission shaders therefore do not disappear at the old no-motion-ro
 return. Exact VS/PS pair eligibility is refreshed at registration, shader setters
 and state resynchronization; no transformation, hashing or pair search is added
 to draws. Gain is immutable and finite in [0,16], and coverage is always enabled
-for these cached variants. No CLI, pass invocation or live enhancement is wired.
+for these cached variants. At this cache-only checkpoint no CLI, pass invocation
+or live enhancement was wired; the later integration below consumes the cache.
 
 The existing extracted-production-method host fixture passes 3,540 assertions,
 including 1,191 emission-cache assertions for default-off behavior, invalid input,
@@ -931,8 +934,92 @@ fixture result.
 Orchestrator decision: keep the baseline compositor. The branch remains a
 separate reproducible experiment, not a selected optimization; do not repeat
 this benchmark merely to seek a favorable result. Actual-original qualification
-has passed. The supplemental temporal consumer and third same-draw coverage
-output are now separately qualified; next prove the single-draw live target
-ownership and their integration. Historical draw adjacency does not yet justify
-batching. The fixture cost remains a live-integration concern, not proof of game
-FPS or a GPU-only bottleneck.
+has passed. The supplemental temporal consumer, third same-draw coverage output
+and single-draw live ownership integration are now qualified within the limits
+below. Historical draw adjacency does not yet justify batching. The fixture cost
+is not proof of game FPS or a GPU-only bottleneck.
+
+### Default-off live route and focused X3 qualification
+
+The selected live route is opt-in through `--linear-emissions`; the immutable
+gain remains finite in [0,16], and admission additionally requires active HDR,
+AgX with gamma-2.2 decode, TAA, the qualified scene owner and thread, and one of
+the five exact VS/PS pairs. `Capture` grants a draw-local permission to
+`MotionOutput`, which prepares `LinearEmissionPass`, calls the application's
+indexed draw exactly once, and finishes the transaction with the original
+HRESULT. A successful C or native-recovery B is transferred through the real
+`HdrPass::exchange_target` owning slot and acknowledged before its physical
+descriptor is published. Logical application RT identity stays fixed. The
+pass's M target becomes the supplemental `TemporalPass` input only after a
+complete idle transaction.
+
+The route restores lazy MRT and mip state before borrowing source state. Clean
+preparation refusal leaves the native draw on A and retains valid frame M. A
+failed source returns its exact HRESULT, publishes no C, marks the result
+Incomplete and may retain best-effort B ownership without claiming usable
+history. Failed restoration or an unknown descriptor stops the frame and drops
+TAA. Reset releases the emission pool and cached main-container identity in the
+established order; COM reference accounting remains busy across every transient
+ownership span. Frame M is cleared once even when emission disappears. Export
+of a successfully enhanced image through an unqualified reader quarantines the
+feature until process restart; the qualified Hook, BloomCopy and Present
+terminal paths and bounded diagnostic flush are exempt. Present remains a
+writeback terminal and does not itself initiate TAA.
+
+Independent source review closed with no open finding after the restoration,
+descriptor, texture-identity, reference-span and terminal-export corrections.
+Five focused extracted-production tests pass 3,872 assertions, including 308
+route and 1,191 cache assertions. Strict x86 production and fixture translation
+units compile with the required SSE2, incoming-stack and warning flags;
+production preprocessing contains none of the fixture-only forced TAA-readback
+seam.
+
+The accepted [focused X3 result](../../verification/results/bottle-X3/linear-emission-live-gpu.json)
+passes all six configurations: feature off/on in per-draw and lazy RT modes,
+plus two 1080p timing processes. Each functional configuration executes 12
+frames and ten original emission draws, with exactly one Reset and final device
+release. Feature-off cases pass 74,917 checks each; enabled cases pass 197,807
+checks each; all four functional cases report 34 state restorations. The two
+enabled modes produce the same per-frame mask coverage and the same
+resolved-output hashes as each other.
+Eleven frames, indices 0-7 and 9-11, match the independent supplemental temporal
+reference byte for byte. Frame 8 deliberately submits an invalid-index-buffer
+draw, preserves `0x8876086c`, reports Incomplete, routes only the earlier ordinary
+draw, resolves no TAA and presents the unresolved HDR image through one clean AgX
+writeback. Its independently computed display differs by at most 0.485 of one
+8-bit code. Frame 9 observes the retained A-only motion history, reports one of
+two keyed draws missing and a 0.5 missing fraction, takes a cut, and runs
+current-only; Reset and history resumption are then exercised on frames 10-11.
+No functional frame reports emission suppression, export quarantine, lost state,
+HDR fallback or leaked mip bias.
+
+The diagnostic timing uses separate, unpaired processes. For one source covering
+25% of a 1920x1080 target, the native median is 1.99425 ms and the enabled median
+is 3.70745 ms, a 1.71320 ms difference. The completion window includes the
+original draw, component copies/composition, real HDR ownership exchange,
+supplemental TAA and AgX publication. It excludes source setup, ordinary motion,
+the per-frame M clear, readback and Present. These numbers are not additive GPU
+pass costs or gameplay FPS.
+
+This qualifies the default-off route, one actual original pair, real component
+and HDR ownership, supplemental temporal consumption, Reset/recovery and the
+stated failure path on the X3 CrossOver/FEX backend. The fixture uses
+`X3M_SCENE_HOOK=0` and a fixture-only owner override, so production game-memory
+owner binding reuses the earlier bloom evidence. The failed draw does not prove
+partial GPU-submission atomicity, and its Present is an unresolved fallback, not
+a healthy Present-triggered resolve. Production owner binding, other exact source
+pairs in this combined path, gameplay appearance/FPS, native Windows, device loss
+and consecutive lazy-bias retention remain outside this result.
+
+### Next performance experiment
+
+The bounded performance pass selects fusing the exact A-to-B copy and E-zero
+initialization into one two-target draw as the next experiment. M stays detached,
+blending stays off, and A/native B/source-once recovery remains unchanged. This
+removes a clear/setup operation, not E bandwidth; native clear may already be
+efficient. Require paired measurements with exact B/E channels, untouched M,
+partial preparation faults, native fallback, state restoration and Reset before
+adopting it. Pool-generation descriptor/view reuse and fewer redundant local
+state sets are later candidates; arbitrary public exchanges retain full
+validation. Historical adjacency and partial source coverage do not establish
+safe batching or scissored composition.

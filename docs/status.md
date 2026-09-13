@@ -110,8 +110,12 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   The single-draw pass now passes independent review and 60 X3 cases, including
   state recovery and same-instance Reset. Its measured added completion cost is
   about 0.49 ms at 1280×768 and 0.76 ms at 1080p per source draw, excluding the
-  frame mask clear and live target exchange. Live integration is in progress
-  behind a separate default-off flag; no live emission route is enabled.
+  frame mask clear and live target exchange. The default-off live integration now passes the isolated X3 route fixture:
+  48 functional frames, 545,448 checks and 44 exact temporal outputs, including
+  native source rejection, restoration faults and Reset. Independent source/evidence
+  review is closed; installation and gameplay remain pending. Its unpaired
+  1080p completion windows measured an additional 1.71 ms for the tested
+  emitter/composition sequence, not game FPS or GPU-only time.
   Copy/composition cost remains a
   concern, and historical adjacent draws do not yet qualify batching. The
   [background study](reverse-engineering/background-temporal-coverage.md) retains

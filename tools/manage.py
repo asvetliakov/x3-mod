@@ -7,6 +7,7 @@ unowned d3d9.dll or remove a file whose contents changed after installation.
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -65,7 +66,9 @@ def main():
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
     parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test. Without --hdr-tonemap the write-back is the stage-1 identity copy and presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
     parser.add_argument('--hdr-tonemap', action='store_true', help='Stage 2 (X3M_HDR_TONEMAP=agx; requires --hdr): the write-back is the AgX tonemap of the FP16 scene (decode, clamp, exposure, look; alpha carried), auto exposure metered by the space-aware statistic of a log-luminance tile image reduced over the FP16 target (the black sky excluded, the lit tiles\' median mapped to the key, the brightest 1 %% of tiles held under white, EV -3..+2) and adapted on the host (tau 0.4 s up / 1.2 s down); the presented image is still LDR to the game\'s bloom and GUI, and the decode of a gamma-space scene is a documented approximation ("Stage 2 implementation"); default off: identity write-back')
-    parser.add_argument('--linear-materials', action='store_true', help='Evaluate the thirty reviewed DEFAULT and Argon bump-mapped material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
+    parser.add_argument('--linear-emissions', action='store_true', help='Compose reviewed additive scene emissions in linear light (requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode; default off)')
+    parser.add_argument('--emission-gain', type=float, default=None, help='Linear emission gain, finite 0..16, default 1 (requires --linear-emissions)')
+    parser.add_argument('--linear-materials', action='store_true', help='Evaluate the reviewed hull-material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--material-direct-gain', type=float, default=None, help='Linear direct-light gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--material-emissive-gain', type=float, default=None, help='Linear scaled material-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--lightmap-emissive-gain', type=float, default=None, help='Linear lightmap-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
@@ -90,7 +93,7 @@ def main():
     parser.add_argument('--chase-pos-tau', type=float, default=None, help='Chase camera boom spring time constant in seconds (X3M_CHASE_POS_TAU; default 0.38)')
     parser.add_argument('--chase-offset-y', type=float, default=None, help='Fraction of the half screen height the ship sits below centre, -1..1 (X3M_CHASE_OFFSET_Y; default 0.45, about 72.5%% screen height from a centred native anchor; negative puts the ship above centre)')
     parser.add_argument('--chase-pitch-down-deg', type=float, default=None, help='Downward look in degrees relative to ship forward, 0..30 (X3M_CHASE_PITCH_DOWN_DEG; default 13; 0 restores legacy framing geometry)')
-    parser.add_argument('--chase-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CHASE_DISTANCE_SCALE; default 0.90)')
+    parser.add_argument('--chase-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CHASE_DISTANCE_SCALE; default 0.9)')
     parser.add_argument('--chase-lag-clamp-deg', type=float, default=None, help='Maximum orientation lag in degrees, the ship-on-screen window (X3M_CHASE_LAG_CLAMP_DEG; default 8)')
     parser.add_argument('--chase-pos-lag-clamp', type=float, default=None, help='Maximum boom lag as a fraction of the boom length, 0..1 (X3M_CHASE_POS_LAG_CLAMP; default 0.10)')
     parser.add_argument('--chase-combat-tightness', type=float, default=None, help='0..1: while the cockpit reports a target lock (+0x1e4 tracking mode 1/4 with a tracked object; unverified in game) both spring time constants are scaled by (1 - tightness) (X3M_CHASE_COMBAT_TIGHTNESS; default 0 = off)')
@@ -151,6 +154,12 @@ def main():
         parser.error('--hdr requires --motion-output.')
     if args.hdr_tonemap and not args.hdr:
         parser.error('--hdr-tonemap requires --hdr.')
+    if args.linear_emissions and (not args.motion_output or not args.taa or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
+        parser.error('--linear-emissions requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode.')
+    if args.emission_gain is not None and not args.linear_emissions:
+        parser.error('--emission-gain requires --linear-emissions.')
+    if args.emission_gain is not None and (not math.isfinite(args.emission_gain) or not 0 <= args.emission_gain <= 16):
+        parser.error('--emission-gain must be finite and within [0,16].')
     if args.linear_materials and (not args.motion_output or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
         parser.error('--linear-materials requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode.')
     material_gains = {'X3M_MATERIAL_DIRECT_GAIN': args.material_direct_gain, 'X3M_MATERIAL_EMISSIVE_GAIN': args.material_emissive_gain,
@@ -271,6 +280,8 @@ def main():
         env['X3M_MOTION_RT_MODE'] = args.motion_rt_mode
         env['X3M_SCENE_HOOK'] = '0' if args.scene_hook == 'off' or not args.motion_output else '1'
         env['X3M_HDR'] = '1' if args.hdr else '0'
+        env['X3M_LINEAR_EMISSIONS'] = '1' if args.linear_emissions else '0'
+        env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
         env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
         for name, value in material_gains.items():
             env[name] = str(value if value is not None else 1.0)
