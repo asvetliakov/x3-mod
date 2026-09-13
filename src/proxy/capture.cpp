@@ -83,6 +83,7 @@ float taa_sharpen = 0.f;
 // adaptation step; fixtures).
 bool hdr_requested = false;
 bool linear_emission_requested = false;
+bool linear_distance_fade_requested = false;
 float emission_gain = 1.f;
 bool linear_material_requested = false;
 x3m::renderer::LinearMaterialConfig linear_material_config{};
@@ -162,9 +163,9 @@ struct Device : Hooks {
     CompositorInvocation* compositor = nullptr; // capture mutex; invocation owns its CPU/native pins
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
-    bool emission_scene_owner = false;
-    std::uint64_t emission_scene_frame = 0;
-    unsigned emission_draw_depth = 0;
+    bool composition_scene_owner = false;
+    std::uint64_t composition_scene_frame = 0;
+    unsigned composition_draw_depth = 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     unsigned fixture_emission_source_calls = 0;
     bool fixture_observe_native_wrap = false;
@@ -999,7 +1000,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         }
     }
     if (ctx.capture && ctx.remaining) --ctx.remaining;
-    ++ctx.frame; ctx.draws=0; ctx.emission_scene_owner=false;
+    ++ctx.frame; ctx.draws=0; ctx.composition_scene_owner=false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     ctx.fixture_emission_source_calls=0;
 #endif
@@ -1025,8 +1026,8 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     ctx.object_evidence.invalidate(); // diagnostic association also ends on refused Reset
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
-    if(ctx.bloom_busy || ctx.motion_output.emission_operation_active())return D3DERR_INVALIDCALL;
-    ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.emission_scene_owner=false;
+    if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
+    ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.composition_scene_owner=false;
     ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;
     ctx.bloom_effective_frame=UINT64_MAX;
     revoke_compositor(ctx);
@@ -1122,15 +1123,15 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"indexed",t,c);
     if (devices.at(d)->capture) log("draw_args base_vertex=%d min_vertex=%u num_vertices=%u start_index=%u",b,m,n,s);
-    const bool emission_permission=ctx.emission_scene_owner && ctx.emission_scene_frame==ctx.frame && ctx.scene_thread==GetCurrentThreadId()
-        && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy && !ctx.emission_draw_depth
+    const bool composition_permission=ctx.composition_scene_owner && ctx.composition_scene_frame==ctx.frame && ctx.scene_thread==GetCurrentThreadId()
+        && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy && !ctx.composition_draw_depth
         && !ctx.motion_output.reference_accounting_busy();
-    struct EmissionDrawScope {
+    struct CompositionDrawScope {
         unsigned& depth; bool enabled;
-        EmissionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
-        ~EmissionDrawScope(){if(enabled)--depth;}
-    } emission_scope(ctx.emission_draw_depth,ctx.motion_output.linear_emissions_requested());
-    auto route=ctx.motion_output.before_draw({true,false,t,c,s,b,m,n,emission_permission});
+        CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
+        ~CompositionDrawScope(){if(enabled)--depth;}
+    } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
+    auto route=ctx.motion_output.before_draw({true,false,t,c,s,b,m,n,composition_permission});
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}
 #endif
@@ -1288,14 +1289,14 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
     ctx.motion_output.after_begin_scene(hr);
     if(SUCCEEDED(hr)) {
-        ctx.scene_thread=GetCurrentThreadId(); ctx.emission_scene_owner=false; ctx.emission_scene_frame=ctx.frame;
-        if(ctx.motion_output.linear_emissions_requested() && scene_hook::active()) {
+        ctx.scene_thread=GetCurrentThreadId(); ctx.composition_scene_owner=false; ctx.composition_scene_frame=ctx.frame;
+        if(ctx.motion_output.composition_requested() && scene_hook::active()) {
             compositor_owner::Snapshot identity{};
-            ctx.emission_scene_owner=compositor_owner::read(reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr)),identity)==compositor_owner::Result::Ok
+            ctx.composition_scene_owner=compositor_owner::read(reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr)),identity)==compositor_owner::Result::Ok
                 && reinterpret_cast<IDirect3DDevice9*>(identity.device)==d;
         }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if(ctx.motion_output.fixture_emission_owner())ctx.emission_scene_owner=true;
+        if(ctx.motion_output.fixture_emission_owner())ctx.composition_scene_owner=true;
 #endif
     }
     return hr;
@@ -1309,7 +1310,7 @@ HRESULT WINAPI end_scene(IDirect3DDevice9* d){
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(42)(d);cpu.after_original();
     ctx.motion_output.after_end_scene(hr);
-    ctx.emission_scene_owner=false;
+    ctx.composition_scene_owner=false;
     return hr;
 }
 ULONG WINAPI query_release(IDirect3DQuery9* query){
@@ -1617,7 +1618,7 @@ HRESULT WINAPI set_texture(IDirect3DDevice9* d,DWORD stage,IDirect3DBaseTexture9
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DBaseTexture9*)>(65)(d,stage,texture);
     const DWORD levels=SUCCEEDED(hr)&&query?texture->GetLevelCount():0;
-    const int reader=SUCCEEDED(hr)?ctx.motion_output.emission_texture_reader(stage,texture):2;
+    const int reader=SUCCEEDED(hr)?ctx.motion_output.composition_texture_reader(stage,texture):2;
     cpu.after_original();
     if(SUCCEEDED(hr))ctx.motion_output.set_texture(stage,texture,levels,query,reader);
     return hr;
@@ -1781,6 +1782,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_hdr(hdr_requested,hdr_config);
     hooked.motion_output.configure_linear_materials(linear_material_requested,linear_material_config);
     hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
+    hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
@@ -1803,10 +1805,11 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         // Render-state shadow: the application's render-state writes. Lazy
         // mode needs the same hook with the shadow off (X3M_STATE_SHADOW=0):
         // an application write to a held write mask must flush the binding first.
-        if(hooked.motion_output.state_shadow()||hooked.motion_output.lazy_rt_mode())hooked.set(57,set_render_state);
+        // Composition also needs current source blend state with that cache off.
+        if(hooked.motion_output.state_shadow()||hooked.motion_output.lazy_rt_mode()||hooked.motion_output.composition_requested())hooked.set(57,set_render_state);
         // Texture levels are needed only for mip bias. Material admission also
         // needs successful sampler-state writes when mip bias is disabled.
-        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_emissions_requested())hooked.set(65,set_texture);
+        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.composition_requested())hooked.set(65,set_texture);
         if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested())hooked.set(69,set_sampler_state);
         // Lazy binding: the application's target and write-mask getters restore first.
         if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
@@ -2022,6 +2025,9 @@ void initialize_log(HMODULE module) {
         && motion_output_requested && taa_requested && hdr_requested
         && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
     if(emission_requested) log("linear_emission_mode requested=1 enabled=%u config_valid=%u gain=%g",linear_emission_requested,emission_config_valid,double(emission_gain));
+    const bool fade_requested=GetEnvironmentVariableW(L"X3M_LINEAR_DISTANCE_FADE",setting,32)==1 && setting[0]==L'1';
+    linear_distance_fade_requested=fade_requested && linear_material_requested && taa_requested;
+    if(fade_requested)log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u",linear_distance_fade_requested,linear_material_requested,taa_requested);
     bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");

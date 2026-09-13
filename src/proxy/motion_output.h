@@ -33,6 +33,7 @@
 #include "../renderer/linear_material.h"
 #include "../renderer/linear_emission.h"
 #include "../renderer/linear_emission_pass.h"
+#include "../renderer/linear_distance_fade.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
@@ -54,7 +55,7 @@ struct MotionDrawCall {
     UINT primitives = 0, first = 0;
     INT base_vertex = 0;
     UINT min_vertex = 0, vertex_count = 0;
-    bool emission_permission = false; // Capture-owned scene/thread ticket; DIP only.
+    bool composition_permission = false; // Capture-owned scene/thread ticket; DIP only.
 };
 // The first gate that refused a draw; None means every gate passed. Numbers
 // match the design document's gate list.
@@ -63,9 +64,10 @@ enum class MotionGate : unsigned { None = 0, Feature = 1, Scene = 2, Pair = 3, D
 struct MotionRoute {
     MotionGate gate = MotionGate::Feature;
     bool routed = false, matched = false, scene = false;
-    bool emission = false, submit = true, evaluated = false;
+    bool composition = false, submit = true, evaluated = false;
     HRESULT submission_error = D3DERR_INVALIDCALL;
     HRESULT preparation_error = S_OK; // First internal failure; never replaces the native draw result.
+    renderer::LinearCompositionPolicy composition_policy = renderer::LinearCompositionPolicy::AdditiveEmission;
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
@@ -289,7 +291,7 @@ public:
     bool enabled() const noexcept { return enabled_; }
     // The capture owner must not apply a combined resource-reference heuristic
     // during child destruction or the temporal pass's reference-count probe.
-    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_ || emission_busy_ || (emission_ && emission_->reference_accounting_busy()); }
+    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_ || composition_busy_ || (composition_ && composition_->reference_accounting_busy()); }
     // Current CPU-side admission only: the capture caller also qualifies the
     // owner/thread/frame/Reset ticket and actual post-compositor device state.
     // The redirect itself is Off after a successful handoff.
@@ -402,8 +404,10 @@ public:
     // attach; gain is immutable thereafter. Variants always include coverage.
     void configure_linear_emissions(bool requested, float gain) noexcept;
     bool linear_emissions_requested() const noexcept { return linear_emission_requested_; }
-    bool emission_operation_active() const noexcept { return emission_busy_; }
-    bool draw_submission_blocked() const noexcept { return emission_busy_ || emission_state_lost_ || motion_state_lost_; }
+    void configure_linear_distance_fade(bool requested) noexcept;
+    bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_; }
+    bool composition_operation_active() const noexcept { return composition_busy_; }
+    bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
     float mip_bias() const noexcept { return mip_bias_; }
     bool mip_bias_active() const noexcept { return mip_bias_bits_ != 0 && jitter_requested_; }
@@ -411,7 +415,7 @@ public:
     // hooks). `levels` is the texture's level count when `queried` (the hook
     // asks the texture once per pointer change, inside its native section).
     void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader = 2) noexcept;
-    int emission_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept; // native CPU section
+    int composition_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept; // native CPU section
     void before_texture_write(IDirect3DBaseTexture9* texture) noexcept;
     bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept;
     void set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept;
@@ -571,6 +575,7 @@ private:
                          IUnknown* xt_default_ordinary_variant = nullptr;
                          IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
+                         IUnknown* distance_fade_variant = nullptr;
                          bool registered = false; // Valid original, independent of motion support.
                          const renderer::MotionOutputProfile* row = nullptr; };
     struct Shadow {
@@ -579,6 +584,10 @@ private:
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
+        IDirect3DVertexShader9* vs_fade_variant = nullptr;
+        IDirect3DPixelShader9* ps_fade_variant = nullptr;
+        std::uint32_t fade_sampler_mask = 0; // exact six-pair contract, independent of creation readiness
+        bool emission_pair = false;
         // Only the original exact pair and created three-output PS qualify.
         // This is shader eligibility, not scene/blend/reader/pass admission.
         IDirect3DPixelShader9* emission_eligible_variant = nullptr;
@@ -615,6 +624,8 @@ private:
         bool recording = false;
         DWORD states[motion_shadow_state_count]{};      // application render states (shadow_states order)
         bool states_known[motion_shadow_state_count]{};
+        DWORD composition_blend[3]{}; // SRCBLEND, DESTBLEND, BLENDOP
+        bool composition_blend_known[3]{};
     };
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
@@ -640,12 +651,12 @@ private:
     void refresh_linear_material_contract() noexcept;
     void report_xt_default_unavailable() noexcept;
     void refresh_linear_emission_contract() noexcept;
-    void prepare_emission(const MotionDrawCall&, MotionRoute&) noexcept;
-    void finish_emission(HRESULT) noexcept;
-    bool publish_emission() noexcept;
-    void begin_emission_frame() noexcept;
-    void emission_export() noexcept;
-    void release_emission_identity() noexcept;
+    void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
+    void finish_composition(HRESULT, renderer::LinearCompositionPolicy) noexcept;
+    bool publish_composition() noexcept;
+    void begin_composition_frame() noexcept;
+    void composition_export() noexcept;
+    void release_composition_identity() noexcept;
 
     // 0 eligible, 1 unreviewed pair, 2 missing combined object, 3 HDR/decode,
     // 4 unknown or enabled sampler sRGB decode. Does not reject motion.
@@ -739,28 +750,32 @@ private:
     Shadow shadow_{};
     bool linear_material_requested_ = false;
     renderer::LinearMaterialConfig linear_material_config_{};
-    bool linear_emission_requested_ = false;
+    bool linear_emission_requested_ = false, distance_fade_requested_ = false;
+    unsigned composition_required_producers_ = 0;
+    HRESULT composition_attach_result_ = S_FALSE;
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};
-    std::unique_ptr<renderer::LinearEmissionPass> emission_;
-    bool emission_busy_ = false, emission_state_lost_ = false;
+    std::unique_ptr<renderer::LinearEmissionPass> composition_;
+    bool composition_busy_ = false, composition_state_lost_ = false;
     bool motion_state_lost_ = false; // A failed restoration blocks native submissions until Reset.
     HRESULT motion_state_error_ = D3DERR_INVALIDCALL;
-    bool emission_frame_stopped_ = false, emission_enhanced_ = false;
-    bool emission_quarantined_ = false; // Export uncertainty survives frames and Reset.
-    bool emission_readers_known_ = false, emission_identity_known_ = true;
-    bool emission_effective_ = false, emission_attach_attempted_ = false;
-    D3DFORMAT emission_adapter_format_ = D3DFMT_UNKNOWN, emission_depth_format_ = D3DFMT_UNKNOWN;
-    IDirect3DTexture9* emission_main_texture_ = nullptr; // owning logical identity
-    std::uint32_t emission_main_sampler_mask_ = 0, emission_reader_known_mask_ = 0;
-    IDirect3DBaseTexture9* emission_textures_[21]{}; // borrowed; setters/resync only
-    IUnknown* emission_main_identity_ = nullptr; // borrowed canonical identity, held by main texture
-    bool emission_terminal_export_ = false, emission_diagnostic_export_ = false, emission_published_ = false;
-    struct EmissionCounters {
+    bool composition_frame_stopped_ = false, composition_enhanced_ = false;
+    bool composition_quarantined_ = false; // Export uncertainty survives frames and Reset.
+    bool composition_readers_known_ = false, composition_identity_known_ = true;
+    bool composition_effective_ = false, composition_attach_attempted_ = false;
+    D3DFORMAT composition_adapter_format_ = D3DFMT_UNKNOWN, composition_depth_format_ = D3DFMT_UNKNOWN;
+    IDirect3DTexture9* composition_main_texture_ = nullptr; // owning logical identity
+    std::uint32_t composition_main_sampler_mask_ = 0, composition_reader_known_mask_ = 0;
+    IDirect3DBaseTexture9* composition_textures_[21]{}; // borrowed; setters/resync only
+    IUnknown* composition_main_identity_ = nullptr; // borrowed canonical identity, held by main texture
+    bool composition_terminal_export_ = false, composition_diagnostic_export_ = false, composition_published_ = false;
+    struct CompositionCounters {
+        unsigned eligible_fade = 0, prepared_fade = 0, linear_fade = 0;
+        std::uint64_t pool_traffic_bytes = 0; // logical full-size copy/compose traffic; excludes source raster
         unsigned prepared = 0, linear = 0, native = 0, incomplete = 0, refused = 0, suppressed = 0, exports = 0, exchanged = 0;
         HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE, restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
         unsigned refusal[6]{}; // pair, permission/scene, readiness, readers, frame stop, prepare failure
         unsigned prepare_failures = 0, composition_failures = 0, restore_failures = 0, exchange_failures = 0, ack_failures = 0;
-    } emission_counts_;
+    } composition_counts_;
     unsigned material_refusals_logged_ = 0;
     // Lightweight shader setters capture integers only. Formatting is deferred
     // to the existing full CPU-state boundary around Present, once per lifetime.

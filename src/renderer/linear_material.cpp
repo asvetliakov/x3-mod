@@ -1281,7 +1281,7 @@ LinearMaterialResult linear_material_xt_default_pixel_variant(const Word* origin
 } // namespace x3m::renderer
 
 namespace x3m::renderer {
-// Detached experimental producer only: no MotionOutput registration or route.
+// Exact six-pair source-over producer; opaque material transforms stay unchanged.
 LinearMaterialResult linear_distance_fade_vertex_variant(const std::uint32_t* original,
     std::size_t words, const LinearMaterialConfig& config,
     std::vector<std::uint32_t>& output) noexcept {
@@ -1291,5 +1291,19 @@ LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t* ori
     std::size_t words, const LinearMaterialConfig& config,
     std::vector<std::uint32_t>& output) noexcept {
     return transform(original,words,config,output,false,false,true);
+}
+} // namespace x3m::renderer
+
+namespace x3m::renderer {
+std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs, std::uint64_t ps) noexcept {
+    switch (vs) {
+    case 0xb0602757fce6e870ull: return ps == 0x517540ae6d5e5410ull ? 7u : 0u;
+    case 0x0c223ad11bce02d5ull:
+    case 0x233d17d26ce0c1fcull: return ps == 0x7a0c3388065bb08dull ? 7u : 0u;
+    case 0x167eb2d5629ab9d3ull: return ps == 0xd44db87778a43b61ull ? 15u : 0u;
+    case 0x330ceb9dd874ede2ull:
+    case 0x12b8a13f13fe8cfeull: return ps == 0x550c2a4d4d3ed70full ? 15u : 0u;
+    default: return 0;
+    }
 }
 } // namespace x3m::renderer

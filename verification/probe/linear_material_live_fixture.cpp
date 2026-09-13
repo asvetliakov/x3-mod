@@ -14,16 +14,20 @@
 #include <cstring>
 using D3DFORMAT=unsigned;constexpr unsigned D3DFMT_UNKNOWN=0;
 using DWORD=std::uint32_t; using UINT=unsigned; using HRESULT=int;
-constexpr HRESULT S_OK=0,E_FAIL=-1,D3DERR_NOTFOUND=-2,D3DERR_INVALIDCALL=-3,E_NOINTERFACE=-4; constexpr DWORD FALSE=0,TRUE=1;
+constexpr HRESULT S_OK=0,S_FALSE=1,E_FAIL=-1,D3DERR_NOTFOUND=-2,D3DERR_INVALIDCALL=-3,E_NOINTERFACE=-4,E_OUTOFMEMORY=-5; constexpr DWORD FALSE=0,TRUE=1;
 #define SUCCEEDED(x) ((x)>=0)
 #define FAILED(x) ((x)<0)
-using D3DSAMPLERSTATETYPE=unsigned;
+using D3DSAMPLERSTATETYPE=unsigned;using D3DRENDERSTATETYPE=unsigned;
+constexpr unsigned D3DZB_TRUE=1,D3DBLEND_SRCALPHA=5,D3DBLEND_INVSRCALPHA=6,D3DBLENDOP_ADD=1,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171;
 constexpr unsigned D3DSAMP_SRGBTEXTURE=11,D3DSAMP_MIPFILTER=7,D3DSAMP_MIPMAPLODBIAS=8;
 constexpr unsigned D3DDEVCAPS2_DMAPNPATCH=1;
 constexpr unsigned D3DDMAPSAMPLER=256,D3DVERTEXTEXTURESAMPLER0=257,D3DVERTEXTEXTURESAMPLER3=260;
 constexpr unsigned IID_IUnknown=1,IID_IDirect3DTexture9=2;
 constexpr unsigned D3DRS_COLORWRITEENABLE1=190,D3DRS_COLORWRITEENABLE2=191;
-constexpr unsigned motion_shadow_state_count=24;constexpr std::array<unsigned,24>shadow_states{};
+constexpr unsigned D3DRS_ZENABLE=7,D3DRS_ZWRITEENABLE=14,D3DRS_ALPHATESTENABLE=15,D3DRS_ALPHABLENDENABLE=27,D3DRS_COLORWRITEENABLE=168,D3DRS_SRGBWRITEENABLE=194;
+constexpr unsigned D3DRS_WRAP0=128,D3DRS_WRAP7=135,D3DRS_WRAP8=198,D3DRS_WRAP15=205;
+constexpr unsigned motion_shadow_state_count=24;
+constexpr std::array<unsigned,24>shadow_states{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_COLORWRITEENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,128,129,130,131,132,133,134,135,198,199,200,201,202,203,204,205};
 unsigned releases=0, checks=0, failures=0;
 #define CHECK(x) do {++checks;if(!(x)){++failures;std::fprintf(stderr,"line=%d %s\n",__LINE__,#x);}} while(0)
 const std::uint32_t* release_mask=nullptr;
@@ -54,10 +58,15 @@ bool linear_emission_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++emission
 LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t*p,std::size_t,const LinearEmissionConfig& c,std::vector<std::uint32_t>& words){++emission_transforms;CHECK(c.coverage);emission_gain=c.gain;if(emission_throw)throw std::bad_alloc();if(emission_reject)return LinearEmissionResult::AllocationFailure;if(*p!=60&&*p!=61)return LinearEmissionResult::UnsupportedShader;words={*p+300};return LinearEmissionResult::Applied;}
 struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightmap_emissive_gain=1;};
 enum class LinearMaterialResult{Applied,UnsupportedShader};
+unsigned fade_transforms=0,fade_lookups=0;bool fade_reject=false,fade_throw=false;
+std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs,std::uint64_t ps){++fade_lookups;return vs>=70&&vs<76&&ps==80+(vs-70)%4?15:0;}
+LinearMaterialResult fade_variant(const std::uint32_t*p,std::vector<std::uint32_t>&o,bool vertex){++fade_transforms;if(fade_throw)throw std::bad_alloc();if(fade_reject||*p<(vertex?70u:80u)||*p>=(vertex?76u:84u))return LinearMaterialResult::UnsupportedShader;o={*p+600};return LinearMaterialResult::Applied;}
+LinearMaterialResult linear_distance_fade_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o){return fade_variant(p,o,true);}
+LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o){return fade_variant(p,o,false);}
 enum class MaterialMotionResult{Applied,UnsupportedShader};
 enum class HdrTonemap{Agx,Identity};
 struct MaterialMotionAbi{static constexpr UINT previous_vertex_constant=252,pixel_coordinates_constant=216;};
-struct MotionOutputProfile{}; MotionOutputProfile row;
+struct MotionOutputProfile{bool light_loop_bound_required=false;unsigned light_loop_max_count=8;}; MotionOutputProfile row;
 struct HdrConfig{HdrTonemap tonemap=HdrTonemap::Agx;x3::temporal::AgxDecode decode=x3::temporal::AgxDecode::gamma22;};
 bool linear_material_config_valid(const LinearMaterialConfig&c){return std::isfinite(c.direct_gain)&&c.direct_gain>=0&&c.direct_gain<=16;}
 unsigned contract_lookups=0;
@@ -80,36 +89,38 @@ LinearMaterialResult linear_material_xt_default_pixel_variant(const std::uint32_
  ++xt_transforms;if(*p<22||*p>25)return LinearMaterialResult::UnsupportedShader;o={*p+(linear?500u:400u)};return LinearMaterialResult::Applied;
 }
 bool reject_row=false,throw_transform=false,reject_transform=false;
-const MotionOutputProfile* material_motion_vertex_row(std::uint64_t hash,std::size_t){return reject_row||hash>=50?nullptr:&row;}
-const MotionOutputProfile* material_motion_pixel_row(std::uint64_t hash,std::size_t){return reject_row||hash>=50?nullptr:&row;}
+const MotionOutputProfile* material_motion_vertex_row(std::uint64_t hash,std::size_t){return reject_row||(hash>=50&&!(hash>=70&&hash<76))?nullptr:&row;}
+const MotionOutputProfile* material_motion_pixel_row(std::uint64_t hash,std::size_t){return reject_row||(hash>=50&&!(hash>=70&&hash<76))?nullptr:&row;}
 bool material_motion_vertex_exports_depth(const MotionOutputProfile&,bool x){return x;}
 bool material_motion_pixel_writes_depth(const MotionOutputProfile&,bool x){return x;}
 unsigned motion_transforms=0, material_transforms=0;
 MaterialMotionResult material_motion_vertex_variant(const std::uint32_t*p,std::size_t,std::vector<std::uint32_t>&o,bool){++motion_transforms;if(throw_transform)throw std::bad_alloc();if(reject_transform)return MaterialMotionResult::UnsupportedShader;o={p[0]+100};return MaterialMotionResult::Applied;}
 MaterialMotionResult material_motion_pixel_variant(const std::uint32_t*p,std::size_t n,std::vector<std::uint32_t>&o,bool d){return material_motion_vertex_variant(p,n,o,d);}
-LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==42||p[0]==43||p[0]==21||(p[0]>=22&&p[0]<=25)||p[0]==44);o={p[0]+200};return LinearMaterialResult::Applied;}
+LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool){++material_transforms;if(p[0]>=70)return LinearMaterialResult::UnsupportedShader;CHECK(p[0]==10||p[0]==20||p[0]==30||p[0]==40||p[0]==41||p[0]==42||p[0]==43||p[0]==21||(p[0]>=22&&p[0]<=25)||p[0]==44);o={p[0]+200};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
 }
 namespace renderer {
+enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2};
+constexpr unsigned composition_policy_bit(LinearCompositionPolicy p){return unsigned(p);}
 enum class LinearEmissionImage {None,Linear,Native,Incomplete};
 struct LinearEmissionPreparation{bool ready=true,state_preserved=true;HRESULT saved=S_OK,operation=S_OK,restore=S_OK;};
 struct LinearEmissionCompletion{LinearEmissionImage image=LinearEmissionImage::Linear;HRESULT source=S_OK,composition=S_OK,restore=S_OK;bool candidate_bound=true;};
-struct LinearEmissionBoundary{IDirect3DSurface9*scene;IDirect3DPixelShader9*augmented;std::uint64_t frame;bool admitted;};
+struct LinearEmissionBoundary{IDirect3DSurface9*scene;IDirect3DPixelShader9*augmented;std::uint64_t frame;bool admitted;IDirect3DVertexShader9*augmented_vertex=nullptr;LinearCompositionPolicy policy=LinearCompositionPolicy::AdditiveEmission;};
 // This double exposes transaction outcomes only; it never draws or simulates shader math.
 struct LinearEmissionPass {
- struct Caps{bool enabled=true;const char*reason="scripted";}cap;unsigned attaches=0,prepares=0,finishes=0,recoveries=0,acks=0,begins=0,ensures=0,held=7;
- bool busy=false,coverage=true,candidate_available=true;HRESULT ensure_result=S_OK,ack_result=S_OK,last_source=S_OK;
+ struct Caps{bool enabled=true;unsigned supported_policies=1,available_policies=1;bool supports(LinearCompositionPolicy p)const{return (available_policies&unsigned(p))!=0;}const char*reason="scripted";}cap;D3DFORMAT attached_adapter_format=D3DFMT_UNKNOWN;unsigned requested_policies=0,clears=0;std::uint64_t last_frame=0;std::array<unsigned char,4>mask_bytes{0,0,0,0};unsigned attaches=0,prepares=0,finishes=0,recoveries=0,acks=0,begins=0,ensures=0,held=7;
+ bool busy=false,coverage=true,candidate_available=true;HRESULT attach_result=S_OK,ensure_result=S_OK,ack_result=S_OK,last_source=S_OK;
  LinearEmissionPreparation preparation{},begin{};LinearEmissionCompletion completion{},recovery{LinearEmissionImage::Native,S_OK,S_OK,S_OK,true};
  IDirect3DSurface9 candidate_storage,*candidate=&candidate_storage;LinearEmissionBoundary boundary{};std::vector<bool> exchanges;
- template<class...T>HRESULT attach(T...){++attaches;return S_OK;}
+ template<class A,class B,class C>HRESULT attach(A,B,C,D3DFORMAT adapter,D3DFORMAT,unsigned policies){++attaches;attached_adapter_format=adapter;requested_policies=policies;return attach_result;}
  const Caps&caps()const{return cap;}unsigned references()const{return held;}bool reference_accounting_busy()const{return busy;}
  HRESULT ensure_targets(UINT,UINT){++ensures;return ensure_result;}
- LinearEmissionPreparation begin_frame(std::uint64_t){++begins;coverage=begin.ready;return begin;}
+ LinearEmissionPreparation begin_frame(std::uint64_t frame){++begins;if(frame!=last_frame){++clears;mask_bytes.fill(0);last_frame=frame;}coverage=begin.ready;return begin;}
  LinearEmissionPreparation prepare(const LinearEmissionBoundary&b){++prepares;boundary=b;return preparation;}
- LinearEmissionCompletion finish(HRESULT source){++finishes;last_source=source;if(FAILED(source))coverage=false;return completion;}
+ LinearEmissionCompletion finish(HRESULT source){++finishes;last_source=source;completion.source=source;if(FAILED(source)||FAILED(completion.restore)||!completion.candidate_bound)coverage=false;candidate_available=candidate_available&&completion.candidate_bound&&SUCCEEDED(completion.restore);return completion;}
  IDirect3DSurface9**owning_candidate(){return candidate_available?&candidate:nullptr;}
  HRESULT acknowledge_exchange(bool exchanged){++acks;exchanges.push_back(exchanged);return ack_result;}
- LinearEmissionCompletion recover_native(){++recoveries;coverage=false;candidate_available=recovery.candidate_bound;return recovery;}
+ LinearEmissionCompletion recover_native(){++recoveries;candidate_available=recovery.candidate_bound&&SUCCEEDED(recovery.restore);if(!candidate_available)coverage=false;recovery.source=last_source;return recovery;}
  bool coverage_valid()const{return coverage;}void before_reset(){held=0;coverage=false;}void detach(){held=0;}
 };
 }
@@ -120,17 +131,20 @@ struct Pass {IDirect3DSurface9 initial,*current=&initial;unsigned exchange_calls
 struct History{void invalidate(){}};
 namespace camera_state {void reset(){}}
 enum class MotionGate{Feature=1};
-struct MotionDrawCall{bool indexed=true,user_memory=false;unsigned primitives=3;bool emission_permission=true;};
+struct MotionDrawCall{bool indexed=true,user_memory=false;unsigned primitives=3;bool composition_permission=true;};
 namespace telemetry{enum class Metric{RouteGate,RouteSetRenderTarget,RouteLazyFlush};bool draw_enabled(){return false;}}
 std::uint64_t draw_stamp(){return 0;}
 struct MotionRoute {
- MotionGate gate=MotionGate::Feature;bool routed=false,emission=false,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL,preparation_error=S_OK;std::uint64_t ticks=0;
+ renderer::LinearCompositionPolicy composition_policy=renderer::LinearCompositionPolicy::AdditiveEmission;
+ MotionGate gate=MotionGate::Feature;bool routed=false,composition=false,scene=true,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL,preparation_error=S_OK;std::uint64_t ticks=0;
  bool depth=false,linear_material=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
  bool vs_constants_set=false,ps_constants_set=false,jittered=true;
  DWORD saved_write1=15,saved_write2=15;
 };
 struct Counters{unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
+struct D3DDISPLAYMODE{D3DFORMAT Format=D3DFMT_UNKNOWN;};
 struct Device {
+ unsigned display_mode_reads=0;HRESULT display_mode_result=S_OK;D3DFORMAT display_mode_format=1;
  HRESULT target_result=S_OK;std::vector<int> calls; std::vector<unsigned> failed_calls; unsigned ordinal=0;
  IDirect3DVertexShader9* bound_vs=nullptr;IDirect3DPixelShader9* bound_ps=nullptr;
  std::array<DWORD,6> srgb{};unsigned sampler_reads=0;int fail_sampler=-1;bool fail_combined_create=false,fail_motion_create=false,fail_get_vs=false,fail_get_ps=false;
@@ -151,10 +165,12 @@ bool same(const Surface&,const Surface&){return false;}
 constexpr struct {unsigned count=1;unsigned base[1]={24};}matrix_windows;
 template<class T>struct ThrowingMap:std::map<void*,T>{bool fail_next=false;T&operator[](void*key){if(fail_next){fail_next=false;throw std::bad_alloc();}return std::map<void*,T>::operator[](key);}};
 using D=Device*;
+using GetDisplayModeFn=HRESULT(*)(D,UINT,D3DDISPLAYMODE*);
 using SetRenderTargetFn=HRESULT(*)(D,DWORD,IDirect3DSurface9*);
 using SetVsFn=HRESULT(*)(D,IDirect3DVertexShader9*);using SetPsFn=HRESULT(*)(D,IDirect3DPixelShader9*);
 using CreateVsFn=HRESULT(*)(D,const DWORD*,IDirect3DVertexShader9**);using CreatePsFn=HRESULT(*)(D,const DWORD*,IDirect3DPixelShader9**);
 using SetSamplerStateFn=HRESULT(*)(D,DWORD,D3DSAMPLERSTATETYPE,DWORD);
+using GetRenderStateFn=HRESULT(*)(D,DWORD,DWORD*);
 using GetSamplerStateFn=HRESULT(*)(D,DWORD,D3DSAMPLERSTATETYPE,DWORD*);
 using GetTextureFn=HRESULT(*)(D,DWORD,IDirect3DBaseTexture9**);
 using SetRenderStateFn=HRESULT(*)(D,DWORD,DWORD);using SetConstantsFFn=HRESULT(*)(D,UINT,const float*,UINT);
@@ -163,7 +179,7 @@ using GetConstantsFFn=HRESULT(*)(D,UINT,float*,UINT);using GetConstantsIFn=HRESU
 using GetStreamFn=HRESULT(*)(D,UINT,IDirect3DVertexBuffer9**,UINT*,UINT*);using GetIndicesFn=HRESULT(*)(D,IDirect3DIndexBuffer9**);
 using GetDeclarationFn=HRESULT(*)(D,IDirect3DVertexDeclaration9**);using GetRenderTargetFn=HRESULT(*)(D,DWORD,IDirect3DSurface9**);
 using GetDepthFn=HRESULT(*)(D,IDirect3DSurface9**);using GetViewportFn=HRESULT(*)(D,D3DVIEWPORT9*);
-enum Slots{SetRenderTarget,SetSamplerState,SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport};
+enum Slots{SetRenderTarget,SetSamplerState,SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport,GetRenderState,GetDisplayMode};
 HRESULT set_vs(D d,IDirect3DVertexShader9*p){d->calls.push_back(1);d->bound_vs=p;if(d->fails())return E_FAIL;return S_OK;}
 HRESULT set_ps(D d,IDirect3DPixelShader9*p){d->calls.push_back(2);d->bound_ps=p;if(d->fails())return E_FAIL;return S_OK;}
 HRESULT create_vs(D d,const DWORD*p,IDirect3DVertexShader9**out){++d->vs_creates;if(*p==d->fail_program){if(d->partial_program)*out=new IDirect3DVertexShader9;return E_FAIL;}if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DVertexShader9;return S_OK;}
@@ -182,17 +198,21 @@ HRESULT get_indices(D,IDirect3DIndexBuffer9**p){*p=nullptr;return S_OK;}
 HRESULT get_declaration(D,IDirect3DVertexDeclaration9**p){*p=nullptr;return S_OK;}
 HRESULT get_target(D,DWORD,IDirect3DSurface9**p){*p=nullptr;return D3DERR_NOTFOUND;}
 HRESULT get_depth(D,IDirect3DSurface9**p){*p=nullptr;return D3DERR_NOTFOUND;}
+HRESULT get_display_mode(D d,UINT index,D3DDISPLAYMODE*out){CHECK(index==0);++d->display_mode_reads;out->Format=d->display_mode_format;return d->display_mode_result;}
+HRESULT get_state(D,DWORD,DWORD*out){*out=0;return S_OK;}
 HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
+ bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr;
  bool xt_default_pair=false,xt_default_ready=false;
  IDirect3DVertexShader9*vs_xt_default_ordinary=nullptr,*vs_xt_default_linear=nullptr;IDirect3DPixelShader9*ps_xt_default_ordinary=nullptr;
+ DWORD composition_blend[3]{};bool composition_blend_known[3]{};
  DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};
  renderer::LinearMaterialPairContract material_contract{};float rows[1][16]{};bool rows_known[1]{};int integer0[4]{};bool integer0_known=false;
  Surface rt0,depth;Viewport viewport;bool extra_rt[4]{};
@@ -202,19 +222,21 @@ public:
  static constexpr unsigned sampler_stage_count=16,failure_log_limit=8;
  SamplerShadow samplers_[16];
  ThrowingMap<ShaderEntry>vertex_,pixel_;
+ bool state_shadow_=false;
  D device_=nullptr;bool enabled_=true,requested_=true,depth_enabled_=true,linear_material_requested_=false;
  renderer::LinearMaterialConfig linear_material_config_{};
  struct XtDefaultUnavailable {std::uint64_t device=0,vs=0,ps=0;unsigned ready_mask=0;bool seen=false,pending=false;} xt_default_unavailable_;
- std::unique_ptr<renderer::LinearEmissionPass>emission_;
+ std::unique_ptr<renderer::LinearEmissionPass>composition_;
  bool motion_state_lost_=false;HRESULT motion_state_error_=D3DERR_INVALIDCALL;
  void recover_motion_state()noexcept; HRESULT restore_wrap_states(MotionRoute&){return S_OK;}
- bool emission_busy_=false,emission_state_lost_=false,emission_frame_stopped_=false,emission_enhanced_=false,emission_quarantined_=false,emission_readers_known_=false,emission_published_=false;
- IDirect3DTexture9*emission_main_texture_=nullptr;IUnknown*emission_main_identity_=nullptr;
- std::uint32_t emission_main_sampler_mask_=0,emission_reader_known_mask_=0;IDirect3DBaseTexture9*emission_textures_[21]{};
- struct{unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;}emission_counts_;
- unsigned emission_adapter_format_=1,emission_depth_format_=2;bool emission_attach_attempted_=true,emission_effective_=false,emission_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
+ bool composition_busy_=false,composition_state_lost_=false,composition_frame_stopped_=false,composition_enhanced_=false,composition_quarantined_=false,composition_readers_known_=false,composition_published_=false;
+ IDirect3DTexture9*composition_main_texture_=nullptr;IUnknown*composition_main_identity_=nullptr;
+ std::uint32_t composition_main_sampler_mask_=0,composition_reader_known_mask_=0;IDirect3DBaseTexture9*composition_textures_[21]{};
+ struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;}composition_counts_;
+ unsigned composition_adapter_format_=1,composition_depth_format_=2;bool composition_attach_attempted_=true,composition_effective_=false,composition_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
  bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;
  unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
+ bool distance_fade_requested_=false;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
  bool hdr_target_failed_=false,hdr_blocked_=false,target_failed_=false,pending_valid_=false,main_msaa_=false,msaa_logged_=false;unsigned hdr_blocked_latches_=0,main_msaa_samples_=0;Surface main_,main_depth_;History selector_;renderer::CameraState camera_previous_;
@@ -237,6 +259,8 @@ public:
   case GetStreamSource:return reinterpret_cast<F>(reinterpret_cast<void*>(get_stream));case GetIndices:return reinterpret_cast<F>(reinterpret_cast<void*>(get_indices));
   case GetVertexDeclaration:return reinterpret_cast<F>(reinterpret_cast<void*>(get_declaration));case GetRenderTarget:return reinterpret_cast<F>(reinterpret_cast<void*>(get_target));
   case GetDepthStencilSurface:return reinterpret_cast<F>(reinterpret_cast<void*>(get_depth));case GetViewport:return reinterpret_cast<F>(reinterpret_cast<void*>(get_viewport));
+  case GetDisplayMode:return reinterpret_cast<F>(reinterpret_cast<void*>(get_display_mode));
+  case GetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_state));
   case SetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_state));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}
  }
  void set_stream_source(UINT,IDirect3DVertexBuffer9*,UINT,UINT){}void set_indices(IDirect3DIndexBuffer9*){}void set_vertex_declaration(IDirect3DVertexDeclaration9*){}
@@ -245,25 +269,27 @@ public:
  void restore_bindings()noexcept;
  HRESULT restore_bindings_checked()noexcept;HRESULT restore_mip_bias()noexcept;void restore_mip_bias_stage(unsigned,HRESULT*)noexcept;
  void record_deferred()noexcept;template<bool>HRESULT flush_bindings()noexcept;
- void set_texture(DWORD,IDirect3DBaseTexture9*,DWORD,bool,int=2)noexcept;int emission_texture_reader(DWORD,IDirect3DBaseTexture9*)noexcept;
- void prepare_emission(const MotionDrawCall&,MotionRoute&)noexcept;void finish_emission(HRESULT)noexcept;bool publish_emission()noexcept;void begin_emission_frame()noexcept;void emission_export()noexcept;void release_emission_identity()noexcept;void before_texture_write(IDirect3DBaseTexture9*)noexcept;
+ void set_texture(DWORD,IDirect3DBaseTexture9*,DWORD,bool,int=2)noexcept;int composition_texture_reader(DWORD,IDirect3DBaseTexture9*)noexcept;
+ void prepare_composition(const MotionDrawCall&,MotionRoute&)noexcept;void finish_composition(HRESULT,renderer::LinearCompositionPolicy=renderer::LinearCompositionPolicy::AdditiveEmission)noexcept;bool publish_composition()noexcept;void begin_composition_frame()noexcept;void composition_export()noexcept;void release_composition_identity()noexcept;void before_texture_write(IDirect3DBaseTexture9*)noexcept;
  unsigned content_writes=0;IDirect3DSurface9*write_target=nullptr;void before_render_target_write(IDirect3DSurface9*surface){++content_writes;write_target=surface;hdr_state_=HdrState::Off;}
  unsigned evaluations=0;bool route_on_evaluation=false,recovery_reads_fail=false;
  HRESULT get_render_state_native(unsigned,DWORD*out){*out=0;return recovery_reads_fail?E_FAIL:S_OK;}
  MotionRoute before_draw(const MotionDrawCall&)noexcept;void evaluate_draw(const MotionDrawCall&,MotionRoute&r){++evaluations;if(route_on_evaluation)r.routed=true;}void log_mip_bias_game_write(){}void record(unsigned,std::uint64_t,bool=false){}
  bool scene_bound()const{return bound_scene;}void invalidate_taa(){++taa_invalidations;}
- bool reference_accounting_busy()const{return releasing_||taa_busy_||emission_busy_||(emission_&&emission_->reference_accounting_busy());}void before_reset()noexcept;
- void drop_redirect(){release_emission_identity();} void release_target(){release(target_surface_);release(depth_surface_);}
+ bool reference_accounting_busy()const{return releasing_||taa_busy_||composition_busy_||(composition_&&composition_->reference_accounting_busy());}void before_reset()noexcept;
+ void drop_redirect(){release_composition_identity();} void release_target(){release(target_surface_);release(depth_surface_);}
  template<class F>void taa_call(F&&f){f();}void invalidate_render_states(){states_invalidated=true;}
  HRESULT bind_target(unsigned index,IUnknown*p){return set_target(device_,index,static_cast<IDirect3DSurface9*>(p));}
  HRESULT render_state(unsigned index,DWORD*out){*out=device_->write_masks[index==D3DRS_COLORWRITEENABLE1?1:2];return S_OK;}
  HRESULT bind_targets(MotionRoute&)noexcept;HRESULT prepare_constants(MotionRoute&)noexcept;
  unsigned device_references()const noexcept;void release_resources()noexcept;
  void configure_linear_materials(bool,const renderer::LinearMaterialConfig&)noexcept;
- void configure_linear_emissions(bool,float)noexcept;void refresh_linear_emission_contract()noexcept;void report_xt_default_unavailable()noexcept;
+ bool composition_requested()const noexcept{return linear_emission_requested_||distance_fade_requested_;}
+ void configure_linear_distance_fade(bool)noexcept;void configure_linear_emissions(bool,float)noexcept;void refresh_linear_emission_contract()noexcept;void report_xt_default_unavailable()noexcept;
  void register_vertex_shader(IDirect3DVertexShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void register_pixel_shader(IDirect3DPixelShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void set_vertex_shader(IDirect3DVertexShader9*)noexcept;void set_pixel_shader(IDirect3DPixelShader9*)noexcept;
+ void set_render_state(D3DRENDERSTATETYPE,DWORD)noexcept;
  void set_sampler_state(DWORD,D3DSAMPLERSTATETYPE,DWORD)noexcept;void resync_samplers()noexcept;
  void refresh_linear_material_contract()noexcept;unsigned linear_material_refusal()const noexcept;HRESULT bind_variant_pair(MotionRoute&,bool)noexcept;HRESULT undo(MotionRoute&)noexcept;void rollback_route(MotionRoute&)noexcept;
  void count_material_route(const MotionRoute&)noexcept;
@@ -279,7 +305,7 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
  std::wmemcpy(out,it->second.c_str(),it->second.size()+1);return DWORD(it->second.size());
 }
 namespace x3m {namespace renderer=::renderer;}
-bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_emission_requested=false;float emission_gain=1;
+bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false;float emission_gain=1;
 renderer::LinearMaterialConfig linear_material_config;
 renderer::HdrConfig hdr_config;
 #include "linear_material_live_under_test_inc.h"
@@ -432,8 +458,8 @@ void contract_lifecycle() {
 }
 
 MotionOutput* retiring_emission=nullptr;
-void writer_retirement_check(){CHECK(retiring_emission&&retiring_emission->emission_busy_&&retiring_emission->device_references()==0);}
-void alias_retirement_check(){CHECK(retiring_emission&&retiring_emission->reference_accounting_busy()&&retiring_emission->device_references()==0&&!retiring_emission->emission_main_identity_&&!retiring_emission->emission_main_texture_&&!retiring_emission->emission_main_sampler_mask_);}
+void writer_retirement_check(){CHECK(retiring_emission&&retiring_emission->composition_busy_&&retiring_emission->device_references()==0);}
+void alias_retirement_check(){CHECK(retiring_emission&&retiring_emission->reference_accounting_busy()&&retiring_emission->device_references()==0&&!retiring_emission->composition_main_identity_&&!retiring_emission->composition_main_texture_&&!retiring_emission->composition_main_sampler_mask_);}
 void emission_retirement_check(){CHECK(retiring_emission&&!retiring_emission->shadow_.emission_eligible_variant&&!retiring_emission->shadow_.ps_emission_variant);}
 void emission_cache_cases(){
  const unsigned checks_before=checks;
@@ -513,6 +539,150 @@ void emission_instance_cache_cases(){
 }
 // Execute the capture environment parser, including strict opt-in/decode and
 // finite gain validation, independently of the material feature request.
+// Synthetic IDs exercise cache control flow. The separate transformer fixture
+// owns real bytecode identity and six-pair shader correctness.
+void distance_fade_cache_cases(){
+ const unsigned before=checks;Device device;DWORD v=70,p=80;IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;
+ const auto transforms=renderer::fade_transforms,lookups=renderer::fade_lookups;
+ {MotionOutput m;m.device_=&device;m.register_vertex_shader(&vs,&v,4,v);m.register_pixel_shader(&ps,&p,4,p);m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);
+  CHECK(renderer::fade_transforms==transforms&&renderer::fade_lookups==lookups&&!m.shadow_.fade_sampler_mask);m.release_resources();}
+ {MotionOutput m;m.configure_linear_distance_fade(true);CHECK(!m.distance_fade_requested_);m.configure_linear_materials(true,{});m.configure_linear_distance_fade(true);CHECK(m.composition_requested()&&!m.linear_emission_requested_);m.device_=&device;m.configure_linear_distance_fade(false);CHECK(m.distance_fade_requested_);}
+ for(unsigned pair=0;pair<6;++pair){MotionOutput m;m.configure_linear_materials(true,{});m.configure_linear_distance_fade(true);m.device_=&device;v=70+pair;p=80+pair%4;
+  m.register_vertex_shader(&vs,&v,4,v);m.register_pixel_shader(&ps,&p,4,p);m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);
+  CHECK(m.shadow_.fade_sampler_mask==15&&m.shadow_.vs_fade_variant&&m.shadow_.ps_fade_variant&&!m.shadow_.emission_eligible_variant);
+  auto* cached=m.shadow_.vs_fade_variant;const auto reads=device.sampler_reads,cache_lookups=renderer::fade_lookups,cache_transforms=renderer::fade_transforms,creates=device.vs_creates;
+  for(unsigned n=0;n<1000;++n){m.before_draw({});CHECK(m.shadow_.fade_sampler_mask==15&&m.shadow_.vs_fade_variant==cached);}
+  CHECK(device.sampler_reads==reads&&renderer::fade_lookups==cache_lookups&&renderer::fade_transforms==cache_transforms&&device.vs_creates==creates);
+  m.set_vertex_shader(nullptr);CHECK(!m.shadow_.fade_sampler_mask&&!m.shadow_.vs_fade_variant);m.set_vertex_shader(&vs);
+  // Pair recognition survives variant creation failure; required coverage must
+  // not quietly disappear with a transient missing shader object.
+  for(bool vertex:{true,false}){device.fail_program=(vertex?v:p)+600;device.partial_program=true;const auto released=releases;
+   if(vertex)m.register_vertex_shader(&vs,&v,4,v);else m.register_pixel_shader(&ps,&p,4,p);
+   CHECK(m.shadow_.fade_sampler_mask==15&&(vertex?!m.shadow_.vs_fade_variant:!m.shadow_.ps_fade_variant)&&releases>released);
+   device.fail_program=0;device.partial_program=false;if(vertex)m.register_vertex_shader(&vs,&v,4,v);else m.register_pixel_shader(&ps,&p,4,p);
+   CHECK(m.shadow_.vs_fade_variant&&m.shadow_.ps_fade_variant);}
+  DWORD cross=80+(pair+1)%4;m.register_pixel_shader(&ps,&cross,4,cross);CHECK(!m.shadow_.fade_sampler_mask);m.register_pixel_shader(&ps,&p,4,p);CHECK(m.shadow_.fade_sampler_mask==15);
+  device.bound_vs=&vs;device.bound_ps=&ps;cached=m.shadow_.vs_fade_variant;m.begin_stateblock();m.set_vertex_shader(nullptr);m.end_stateblock();CHECK(m.shadow_.vs_fade_variant==cached);
+  const auto refs=m.device_references();m.before_reset();CHECK(!m.shadow_.fade_sampler_mask&&m.device_references()==refs);m.after_reset(E_FAIL);CHECK(!m.shadow_.fade_sampler_mask);m.after_reset(S_OK);CHECK(m.shadow_.fade_sampler_mask==15&&m.shadow_.vs_fade_variant==cached);
+  m.release_resources();CHECK(!m.shadow_.fade_sampler_mask&&!m.shadow_.vs_fade_variant&&!m.shadow_.ps_fade_variant&&m.device_references()==0);
+ }
+ std::printf("linear_distance_fade_cache checks=%u\n",checks-before);
+}
+void distance_fade_route_cases(){
+ const unsigned before=checks;Device device;IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;IDirect3DTexture9 main;IDirect3DSurface9 surface;surface.texture=&main;
+ auto states=[&](MotionOutput&m){for(unsigned i=0;i<6;++i)m.shadow_.states_known[i]=true;
+  const DWORD values[]={D3DZB_TRUE,FALSE,FALSE,TRUE,7,FALSE};for(unsigned i=0;i<6;++i)m.shadow_.states[i]=values[i];
+  const DWORD blend[]={D3DBLEND_SRCALPHA,D3DBLEND_INVSRCALPHA,D3DBLENDOP_ADD};for(unsigned i=0;i<3;++i){m.shadow_.composition_blend_known[i]=true;m.shadow_.composition_blend[i]=blend[i];}
+  for(auto&sampler:m.samplers_){sampler.srgb_known=true;sampler.srgb=FALSE;}
+ };
+ auto ready=[&](MotionOutput&m){m.device_=&device;m.distance_fade_requested_=m.linear_material_requested_=true;m.scene_open_=true;m.composition_effective_=true;m.composition_required_producers_=2;m.composition_readers_known_=true;m.hdr_main_=&surface;
+  m.shadow_.fade_sampler_mask=15;m.shadow_.vs_fade_variant=&vs;m.shadow_.ps_fade_variant=&ps;m.shadow_.vs_row=&renderer::row;m.composition_=std::make_unique<renderer::LinearEmissionPass>();m.composition_->cap.supported_policies=m.composition_->cap.available_policies=2;states(m);
+ };
+ // Both producers share one frame clear, pool owner, identity and mask.
+ for(bool emissions:{false,true}){MotionOutput m;ready(m);m.linear_emission_requested_=emissions;auto&pass=*m.composition_;pass.cap.supported_policies=pass.cap.available_policies=emissions?3:2;m.composition_attach_attempted_=false;
+  m.begin_composition_frame();CHECK(pass.attaches==1&&pass.requested_policies==(emissions?3u:2u)&&pass.clears==1&&m.composition_required_producers_==(emissions?3u:2u)&&!m.composition_frame_stopped_);states(m);
+  auto route=m.before_draw({});CHECK(route.composition&&route.composition_policy==renderer::LinearCompositionPolicy::DistanceFade&&pass.boundary.augmented_vertex==&vs&&pass.boundary.augmented==&ps);
+  m.finish_composition(S_OK,route.composition_policy);CHECK(m.composition_counts_.linear_fade==1&&m.composition_counts_.pool_traffic_bytes==64u*32u*56u);
+  if(emissions){m.shadow_.fade_sampler_mask=0;m.shadow_.emission_pair=true;m.shadow_.emission_eligible_variant=&ps;route=m.before_draw({});CHECK(route.composition&&route.composition_policy==renderer::LinearCompositionPolicy::AdditiveEmission&&pass.boundary.augmented_vertex==nullptr);m.finish_composition(S_OK,route.composition_policy);}
+  CHECK(pass.clears==1&&pass.finishes==(emissions?2u:1u)&&pass.prepares==pass.finishes&&m.composition_.get()==&pass&&m.composition_counts_.linear==(emissions?2u:1u));m.release_resources();CHECK(main.refs==1);
+ }
+ // Composition consumes successful setters even when the optional ordinary
+ // motion state-shadow optimization is disabled. Recording cannot mutate it.
+ {MotionOutput m;ready(m);m.state_shadow_=false;auto&pass=*m.composition_;
+  auto draw=[&](bool expected){auto route=m.before_draw({});CHECK(route.submit&&route.composition==expected&&!m.composition_frame_stopped_);if(route.composition)m.finish_composition(S_OK,route.composition_policy);};
+  draw(true);m.set_render_state(D3DRS_ZWRITEENABLE,TRUE);m.set_render_state(D3DRS_ALPHABLENDENABLE,FALSE);draw(false);
+  m.set_render_state(D3DRS_ZWRITEENABLE,FALSE);m.set_render_state(D3DRS_ALPHABLENDENABLE,TRUE);draw(true);
+  m.set_render_state(D3DRS_SRCBLEND,TRUE);draw(false);m.set_render_state(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA);draw(true);
+  m.begin_stateblock();m.set_render_state(D3DRS_ZWRITEENABLE,TRUE);m.set_render_state(D3DRS_SRCBLEND,TRUE);
+  CHECK(m.shadow_.states[1]==FALSE&&m.shadow_.composition_blend[0]==D3DBLEND_SRCALPHA);m.end_stateblock();
+  CHECK(!m.state_shadow_&&!m.shadow_.recording&&pass.prepares==3);
+ }
+ // Adapter-query failures keep the requested producer required and stop the
+ // frame. Only a new frame retries; successful format discovery is cached.
+ for(bool zero_format:{false,true}){MotionOutput m;ready(m);auto&pass=*m.composition_;m.composition_adapter_format_=D3DFMT_UNKNOWN;m.composition_attach_attempted_=false;m.composition_effective_=false;m.composition_required_producers_=0;
+  device.display_mode_result=zero_format?S_OK:E_FAIL;device.display_mode_format=zero_format?D3DFMT_UNKNOWN:1;const auto reads=device.display_mode_reads;
+  m.begin_composition_frame();CHECK(device.display_mode_reads==reads+1&&pass.attaches==0&&m.composition_required_producers_==2&&!m.composition_effective_&&m.composition_frame_stopped_&&m.taa_invalidations==1&&!m.composition_busy_);
+  for(unsigned n=0;n<3;++n)CHECK(!m.before_draw({}).composition);CHECK(device.display_mode_reads==reads+1&&pass.attaches==0);
+  device.display_mode_result=S_OK;device.display_mode_format=1;++m.frame_;m.begin_composition_frame();states(m);
+  CHECK(device.display_mode_reads==reads+2&&m.composition_adapter_format_==1&&pass.attaches==1&&!m.composition_frame_stopped_);
+  auto route=m.before_draw({});CHECK(route.composition);m.finish_composition(S_OK,route.composition_policy);++m.frame_;m.begin_composition_frame();
+  CHECK(device.display_mode_reads==reads+2&&pass.attaches==1);
+  m.before_reset();CHECK(m.composition_adapter_format_==D3DFMT_UNKNOWN&&main.refs==1);device.display_mode_format=3;m.after_reset(S_OK);CHECK(device.display_mode_reads==reads+2);
+  ++m.frame_;m.begin_composition_frame();CHECK(device.display_mode_reads==reads+3&&m.composition_adapter_format_==3&&pass.attaches==2&&pass.attached_adapter_format==3);
+  const auto reset_reads=device.display_mode_reads;m.before_draw({});CHECK(device.display_mode_reads==reset_reads);m.release_resources();CHECK(main.refs==1);
+ }
+ {MotionOutput m;ready(m);auto&pass=*m.composition_;m.composition_adapter_format_=D3DFMT_UNKNOWN;m.composition_attach_attempted_=false;m.composition_effective_=false;m.composition_required_producers_=0;
+  device.display_mode_result=E_FAIL;const auto reads=device.display_mode_reads;m.begin_composition_frame();CHECK(m.composition_required_producers_==2&&!m.composition_effective_&&m.taa_invalidations==1&&pass.attaches==0);
+  device.display_mode_result=S_OK;pass.cap.enabled=false;pass.cap.supported_policies=pass.cap.available_policies=0;++m.frame_;m.begin_composition_frame();
+  CHECK(device.display_mode_reads==reads+2&&pass.attaches==1&&m.composition_required_producers_==0&&!m.composition_effective_&&m.taa_invalidations==1);
+  auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&m.taa_invalidations==1&&device.display_mode_reads==reads+2);m.release_resources();
+ }
+ // Impl allocation can fail before a capability snapshot exists. Required
+ // producers stay unresolved until a later frame successfully attaches.
+ {MotionOutput m;ready(m);auto&pass=*m.composition_;m.composition_attach_attempted_=false;m.composition_effective_=false;m.composition_required_producers_=0;
+  pass.attach_result=E_OUTOFMEMORY;pass.cap.enabled=false;pass.cap.supported_policies=pass.cap.available_policies=0;
+  m.begin_composition_frame();CHECK(pass.attaches==1&&m.composition_attach_result_==E_OUTOFMEMORY&&m.composition_required_producers_==2&&!m.composition_effective_&&m.composition_frame_stopped_&&m.taa_invalidations==1&&pass.begins==0);
+  for(unsigned n=0;n<3;++n){auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&m.composition_frame_stopped_);}
+  CHECK(pass.attaches==1&&pass.prepares==0&&m.composition_counts_.linear==0&&m.composition_counts_.native==0);
+  pass.attach_result=S_OK;pass.cap.enabled=true;pass.cap.supported_policies=pass.cap.available_policies=2;++m.frame_;m.begin_composition_frame();states(m);
+  CHECK(pass.attaches==2&&m.composition_attach_result_==S_OK&&m.composition_required_producers_==2&&m.composition_effective_&&!m.composition_frame_stopped_&&pass.begins==1);
+  auto route=m.before_draw({});CHECK(route.composition);m.finish_composition(S_OK,route.composition_policy);CHECK(pass.attaches==2&&m.composition_counts_.linear_fade==1);m.release_resources();CHECK(main.refs==1);
+ }
+ {MotionOutput m;ready(m);auto&pass=*m.composition_;m.composition_attach_attempted_=false;m.composition_effective_=false;m.composition_required_producers_=0;
+  pass.attach_result=E_OUTOFMEMORY;pass.cap.enabled=false;pass.cap.supported_policies=pass.cap.available_policies=0;
+  m.begin_composition_frame();CHECK(pass.attaches==1&&m.composition_required_producers_==2&&!m.composition_effective_&&m.composition_frame_stopped_&&m.taa_invalidations==1);
+  pass.attach_result=S_OK;++m.frame_;m.begin_composition_frame();CHECK(pass.attaches==2&&m.composition_attach_result_==S_OK&&m.composition_required_producers_==0&&!m.composition_effective_&&m.taa_invalidations==1);
+  auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&pass.attaches==2&&pass.prepares==0&&m.taa_invalidations==1);m.release_resources();
+ }
+ // Every exact state term is consumed; other blend/depth/write states remain
+ // ordinary without an otherwise irrelevant producer poisoning the frame.
+ for(unsigned changed=0;changed<9;++changed){MotionOutput m;ready(m);if(changed<6)m.shadow_.states[changed]^=1;else m.shadow_.composition_blend[changed-6]^=1;
+  auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&!m.composition_frame_stopped_&&m.composition_->prepares==0);}
+ {MotionOutput m;ready(m);m.shadow_.fade_sampler_mask=0;auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&!m.composition_frame_stopped_);}
+ // Required producer refusals cannot be healed by a later eligible draw.
+ for(unsigned failure=0;failure<12;++failure){MotionOutput m;ready(m);MotionDrawCall call;
+  switch(failure){case 0:m.shadow_.vs_fade_variant=nullptr;break;case 1:m.shadow_.ps_fade_variant=nullptr;break;case 2:m.samplers_[0].srgb_known=false;break;case 3:m.samplers_[1].srgb=TRUE;break;
+   case 4:m.shadow_.states_known[0]=false;break;case 5:m.shadow_.composition_blend_known[0]=false;break;case 6:call.composition_permission=false;break;case 7:m.composition_readers_known_=false;break;
+   case 8:m.composition_main_sampler_mask_=1;break;case 9:m.composition_->cap.available_policies=0;break;case 10:m.shadow_.vs_row=nullptr;break;case 11:renderer::row.light_loop_bound_required=true;m.shadow_.integer0_known=true;m.shadow_.integer0[0]=9;break;}
+  auto route=m.before_draw(call);CHECK(route.submit&&!route.composition&&m.composition_frame_stopped_&&m.taa_invalidations>0&&m.composition_->prepares==0);
+  states(m);m.shadow_.vs_fade_variant=&vs;m.shadow_.ps_fade_variant=&ps;m.shadow_.vs_row=&renderer::row;renderer::row.light_loop_bound_required=false;m.composition_readers_known_=true;m.composition_main_sampler_mask_=0;m.composition_->cap.available_policies=2;
+  route=m.before_draw({});CHECK(route.submit&&!route.composition&&m.composition_->prepares==0&&m.composition_frame_stopped_);
+ }
+ for(unsigned failure=0;failure<3;++failure){MotionOutput m;ready(m);auto&pass=*m.composition_;
+  if(failure==0){pass.cap.enabled=false;pass.cap.available_policies=0;}else if(failure==1)pass.ensure_result=E_FAIL;else pass.begin={false,true,S_OK,E_FAIL,S_OK};
+  m.begin_composition_frame();CHECK(m.composition_effective_&&m.composition_required_producers_==2&&m.composition_frame_stopped_&&m.taa_invalidations>0);states(m);pass.cap.enabled=true;pass.cap.available_policies=2;pass.ensure_result=S_OK;pass.begin={};
+  CHECK(!m.before_draw({}).composition&&pass.prepares==0);m.release_resources();CHECK(main.refs==1);
+ }
+ {MotionOutput m;ready(m);m.composition_effective_=false;auto&pass=*m.composition_;pass.cap.enabled=false;pass.cap.supported_policies=pass.cap.available_policies=0;m.begin_composition_frame();CHECK(!m.composition_effective_&&m.composition_required_producers_==0&&m.taa_invalidations==0&&pass.begins==0);CHECK(!m.before_draw({}).composition&&m.taa_invalidations==0);}
+ // Clean internal failure preserves accumulated mask bytes, while the caller
+ // marks the required coverage incomplete and never prepares again this frame.
+ {MotionOutput m;ready(m);auto&pass=*m.composition_;pass.mask_bytes={3,7,11,19};const auto bytes=pass.mask_bytes;pass.preparation={false,true,S_OK,E_FAIL,S_OK};
+  auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&pass.mask_bytes==bytes&&m.composition_frame_stopped_&&m.taa_invalidations==1);pass.preparation={};CHECK(!m.before_draw({}).composition&&pass.prepares==1&&pass.mask_bytes==bytes);}
+ // Preserve the first preparation failure even if restoration fails too.
+ for(unsigned first=0;first<3;++first){MotionOutput m;ready(m);auto&pass=*m.composition_;pass.preparation={false,false,first==0?-71:S_OK,first<=1?-72:S_OK,-73};
+  auto route=m.before_draw({});CHECK(!route.submit&&!route.composition&&route.submission_error==(first==0?-71:first==1?-72:-73)&&m.composition_state_lost_&&pass.prepares==1);CHECK(!m.before_draw({}).submit&&pass.prepares==1);}
+ // Fade uses the same source-result/publication transaction and quarantine.
+ for(unsigned failure=0;failure<4;++failure){MotionOutput m;ready(m);auto&pass=*m.composition_;auto route=m.before_draw({});CHECK(route.composition);HRESULT source=S_OK;
+  if(failure==0){source=-117;pass.completion.image=renderer::LinearEmissionImage::Incomplete;}if(failure==1)m.hdr_->exchange_results={E_FAIL,S_OK};if(failure==2)pass.ack_result=E_FAIL;if(failure==3){pass.completion.restore=-119;pass.completion.image=renderer::LinearEmissionImage::Incomplete;}
+  m.finish_composition(source,route.composition_policy);CHECK(pass.finishes==1&&pass.last_source==source&&m.composition_counts_.source==source&&!m.composition_busy_);
+  if(failure==1)CHECK(pass.recoveries==1&&m.composition_counts_.native==1&&m.composition_counts_.linear_fade==0);else CHECK(m.composition_frame_stopped_&&m.composition_counts_.incomplete==1&&m.taa_invalidations>0);
+  if(failure==2)CHECK(m.composition_state_lost_&&!m.before_draw({}).submit);
+ }
+ // A failed first restore invalidates M. Publishing recovered B restores
+ // the source image and state, but cannot certify coverage for either policy.
+ for(bool emission:{false,true}){MotionOutput m;ready(m);auto&pass=*m.composition_;auto*old=m.hdr_->target();auto*candidate=pass.candidate;
+  if(emission){m.linear_emission_requested_=true;m.shadow_.fade_sampler_mask=0;m.shadow_.emission_pair=true;m.shadow_.emission_eligible_variant=&ps;m.composition_required_producers_=3;pass.cap.available_policies=pass.cap.supported_policies=3;}
+  auto route=m.before_draw({});CHECK(route.composition&&route.composition_policy==(emission?renderer::LinearCompositionPolicy::AdditiveEmission:renderer::LinearCompositionPolicy::DistanceFade));
+  pass.completion={renderer::LinearEmissionImage::Incomplete,S_OK,S_OK,-119,false};m.finish_composition(S_OK,route.composition_policy);
+  CHECK(pass.finishes==1&&pass.recoveries==1&&pass.last_source==S_OK&&m.composition_counts_.source==S_OK&&m.composition_counts_.restore==S_OK);
+  CHECK(m.hdr_->target()==candidate&&pass.candidate==old&&m.hdr_->exchange_calls==1&&pass.exchanges==std::vector<bool>({true}));
+  CHECK(m.composition_counts_.incomplete==1&&m.composition_counts_.native==0&&m.composition_frame_stopped_&&!pass.coverage_valid()&&!m.composition_state_lost_&&m.taa_invalidations==1);
+  auto next=m.before_draw({});CHECK(next.submit&&!next.composition&&pass.prepares==1&&m.composition_frame_stopped_);
+ }
+ {MotionOutput m;ready(m);m.composition_published_=true;m.composition_enhanced_=true;m.composition_readers_known_=false;auto route=m.before_draw({});CHECK(!route.composition&&m.composition_quarantined_&&m.composition_frame_stopped_);m.before_reset();CHECK(m.composition_quarantined_&&!m.composition_state_lost_);}
+ std::printf("linear_distance_fade_route checks=%u\n",checks-before);
+}
+
 void emission_environment_cases(){
  environment.clear();environment[L"X3M_HDR_TONEMAP"]=L"agx";configure_environment();CHECK(!linear_emission_requested&&emission_gain==1);
  environment[L"X3M_LINEAR_EMISSIONS"]=L"1";
@@ -527,37 +697,50 @@ void emission_environment_cases(){
 }
 // Transaction decisions execute production methods; the pass/HDR doubles only
 // script external results. No source draw exists here, so geometry is never replayed.
+void distance_fade_environment_cases(){
+ const unsigned before=checks;environment.clear();environment[L"X3M_HDR_TONEMAP"]=L"agx";configure_environment();CHECK(!linear_distance_fade_requested);
+ environment[L"X3M_LINEAR_DISTANCE_FADE"]=L"1";configure_environment();CHECK(!linear_distance_fade_requested);
+ environment[L"X3M_LINEAR_MATERIALS"]=L"1";configure_environment();CHECK(linear_distance_fade_requested&&!linear_emission_requested);
+ for(bool*dependency:{&taa_requested,&motion_output_requested,&hdr_requested}){*dependency=false;configure_environment();CHECK(!linear_distance_fade_requested);*dependency=true;}
+ for(const wchar_t*bad:{L"none",L"srgb",L"unknown"}){environment[L"X3M_HDR_DECODE"]=bad;configure_environment();CHECK(!linear_distance_fade_requested);}environment.erase(L"X3M_HDR_DECODE");
+ environment[L"X3M_HDR_TONEMAP"]=L"identity";configure_environment();CHECK(!linear_distance_fade_requested);environment[L"X3M_HDR_TONEMAP"]=L"agx";
+ environment[L"X3M_MATERIAL_DIRECT_GAIN"]=L"bad";configure_environment();CHECK(!linear_distance_fade_requested);environment.erase(L"X3M_MATERIAL_DIRECT_GAIN");
+ environment[L"X3M_LINEAR_EMISSIONS"]=L"1";configure_environment();CHECK(linear_distance_fade_requested&&linear_emission_requested);
+ for(const wchar_t*bad:{L"0",L"",L"true",L"11"}){environment[L"X3M_LINEAR_DISTANCE_FADE"]=bad;configure_environment();CHECK(!linear_distance_fade_requested);}
+ environment.clear();std::printf("linear_distance_fade_environment checks=%u\n",checks-before);
+}
+
 void emission_route_cases(){
  const unsigned before=checks;
  // Motion rollback quarantine uses the same early native-submission boundary
  // even when supplemental emission is disabled. No native draw is replayed.
  for(bool emission:{false,true}){MotionOutput m;m.linear_emission_requested_=emission;m.motion_state_lost_=true;m.motion_state_error_=-91;
-  auto r=m.before_draw({});CHECK(!r.submit&&!r.evaluated&&!r.emission&&r.submission_error==-91);CHECK(m.counters_.gates[1]==1&&m.taa_invalidations==1);
+  auto r=m.before_draw({});CHECK(!r.submit&&!r.evaluated&&!r.composition&&r.submission_error==-91);CHECK(m.counters_.gates[1]==1&&m.taa_invalidations==1);
   m.after_reset(E_FAIL);CHECK(m.motion_state_lost_);auto again=m.before_draw({});CHECK(!again.submit&&again.submission_error==-91);
  }
  Device device;IDirect3DPixelShader9 shader;
- auto ready=[&](MotionOutput&m){m.device_=&device;device.target_result=S_OK;m.linear_emission_requested_=true;m.emission_effective_=true;m.scene_open_=true;m.shadow_.emission_eligible_variant=&shader;m.emission_readers_known_=true;m.emission_=std::make_unique<renderer::LinearEmissionPass>();};
+ auto ready=[&](MotionOutput&m){m.device_=&device;device.target_result=S_OK;m.linear_emission_requested_=true;m.composition_effective_=true;m.scene_open_=true;m.shadow_.emission_pair=true;m.shadow_.emission_eligible_variant=&shader;m.composition_readers_known_=true;m.composition_=std::make_unique<renderer::LinearEmissionPass>();};
  for(unsigned refusal=0;refusal<23;++refusal){
-  MotionOutput m;ready(m);MotionDrawCall call;auto*pass=m.emission_.get();auto*target=m.hdr_->target();
-  switch(refusal){case 0:m.linear_emission_requested_=false;break;case 1:m.shadow_.emission_eligible_variant=nullptr;break;
-   case 2:call.emission_permission=false;break;case 3:call.indexed=false;break;case 4:call.user_memory=true;break;case 5:call.primitives=0;break;
+  MotionOutput m;ready(m);MotionDrawCall call;auto*pass=m.composition_.get();auto*target=m.hdr_->target();
+  switch(refusal){case 0:m.linear_emission_requested_=false;break;case 1:m.shadow_.emission_pair=false;m.shadow_.emission_eligible_variant=nullptr;break;
+   case 2:call.composition_permission=false;break;case 3:call.indexed=false;break;case 4:call.user_memory=true;break;case 5:call.primitives=0;break;
    case 6:m.scene_open_=false;break;case 7:m.active_queries_=1;break;case 8:m.shadow_.recording=true;break;case 9:m.bound_scene=false;break;
    case 10:m.main_msaa_=true;break;case 11:m.taa_enabled_=false;break;case 12:m.hdr_enabled_=false;break;case 13:m.hdr_state_=MotionOutput::HdrState::Suspended;break;
    case 14:m.hdr_->active=false;break;case 15:m.hdr_config_.decode=x3::temporal::AgxDecode::srgb;break;case 16:m.hdr_config_.tonemap=renderer::HdrTonemap::Identity;break;
-   case 17:pass->cap.enabled=false;break;case 18:m.emission_frame_stopped_=true;break;case 19:m.emission_quarantined_=true;break;
-   case 20:m.emission_readers_known_=false;break;case 21:m.emission_main_sampler_mask_=1;break;case 22:m.emission_busy_=true;break;}
-  MotionRoute route;m.prepare_emission(call,route);CHECK(route.submit&&!route.emission);CHECK(pass->prepares==0&&pass->coverage_valid()&&pass->begins==0);CHECK(m.hdr_->target()==target&&m.hdr_->exchange_calls==0);
-  const unsigned reason=refusal==1?0:refusal<=10?1:refusal<=17||refusal==22?2:refusal<=19?4:3;CHECK(refusal==0?m.emission_counts_.refused==0:m.emission_counts_.refused==1&&m.emission_counts_.refusal[reason]==1);
+   case 17:pass->cap.enabled=false;pass->cap.available_policies=0;break;case 18:m.composition_frame_stopped_=true;break;case 19:m.composition_quarantined_=true;break;
+   case 20:m.composition_readers_known_=false;break;case 21:m.composition_main_sampler_mask_=1;break;case 22:m.composition_busy_=true;break;}
+  MotionRoute route;m.prepare_composition(call,route);CHECK(route.submit&&!route.composition);CHECK(pass->prepares==0&&pass->coverage_valid()&&pass->begins==0);CHECK(m.hdr_->target()==target&&m.hdr_->exchange_calls==0);
+  const unsigned reason=refusal==1?0:refusal<=10?1:refusal<=17||refusal==22?2:refusal<=19?4:3;CHECK(refusal==0?m.composition_counts_.refused==0:m.composition_counts_.refused==1&&m.composition_counts_.refusal[reason]==1);
  }
  // Refused internal setup retains the already accumulated M; lost state stops
  // submission and the next before_draw never evaluates or prepares another pass.
- for(bool state:{true,false}){MotionOutput m;ready(m);auto&p=*m.emission_;p.preparation={false,state,S_OK,E_FAIL,-77};auto route=m.before_draw({});
-  CHECK(!route.emission&&route.submit==state&&p.prepares==1&&p.coverage_valid());CHECK(!m.emission_busy_&&m.emission_state_lost_==!state);CHECK(m.emission_counts_.prepare_failures==1&&m.emission_counts_.refusal[5]==1&&m.emission_counts_.prepare==E_FAIL&&m.emission_counts_.prepare_restore==-77);
-  if(!state){CHECK(route.submission_error==-77&&m.taa_invalidations==1);auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&p.prepares==1&&m.emission_counts_.suppressed==2);}
+ for(bool state:{true,false}){MotionOutput m;ready(m);auto&p=*m.composition_;p.preparation={false,state,S_OK,E_FAIL,-77};auto route=m.before_draw({});
+  CHECK(!route.composition&&route.submit==state&&p.prepares==1&&p.coverage_valid());CHECK(!m.composition_busy_&&m.composition_state_lost_==!state);CHECK(m.composition_counts_.prepare_failures==1&&m.composition_counts_.refusal[5]==1&&m.composition_counts_.prepare==E_FAIL&&m.composition_counts_.prepare_restore==-77);
+  if(!state){CHECK(route.submission_error==E_FAIL&&m.taa_invalidations==1);auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&p.prepares==1&&m.composition_counts_.suppressed==2);}
  }
  for(unsigned outcome=0;outcome<9;++outcome){
-  MotionOutput m;ready(m);auto&p=*m.emission_;auto*old=m.hdr_->target();auto*candidate=p.candidate;auto route=m.before_draw({});
-  CHECK(route.emission&&route.submit&&m.emission_busy_);CHECK(p.boundary.scene==old&&p.boundary.augmented==&shader&&p.boundary.frame==m.frame_&&p.boundary.admitted);
+  MotionOutput m;ready(m);auto&p=*m.composition_;auto*old=m.hdr_->target();auto*candidate=p.candidate;auto route=m.before_draw({});
+  CHECK(route.composition&&route.submit&&m.composition_busy_);CHECK(p.boundary.scene==old&&p.boundary.augmented==&shader&&p.boundary.frame==m.frame_&&p.boundary.admitted);
   CHECK(m.device_references()==0);HRESULT source=S_OK;
   if(outcome==1){source=-117;p.completion.image=renderer::LinearEmissionImage::Incomplete;}
   if(outcome==8)p.candidate->describable=false;
@@ -565,19 +748,19 @@ void emission_route_cases(){
   if(outcome==2){m.hdr_->exchange_results={E_FAIL,S_OK};}
   if(outcome==3){p.ack_result=E_FAIL;}
   if(outcome==4){m.hdr_->exchange_results={E_FAIL,E_FAIL};}
-  if(outcome==5){p.completion.image=renderer::LinearEmissionImage::Native;}
+  if(outcome==5){p.completion.image=renderer::LinearEmissionImage::Native;p.completion.composition=E_FAIL;}
   if(outcome==6){p.candidate_available=false;p.recovery.candidate_bound=false;}
-  m.finish_emission(source);CHECK(p.finishes==1&&p.last_source==source&&m.emission_counts_.source==source&&!m.emission_busy_);
-  if(outcome==0){CHECK(m.hdr_->target()==candidate&&p.candidate==old&&m.hdr_dirty_);CHECK(m.emission_counts_.linear==1&&m.emission_enhanced_&&m.taa_invalidations==0&&p.recoveries==0);}
-  if(outcome==1){CHECK(m.emission_counts_.incomplete==1&&m.emission_frame_stopped_&&!p.coverage_valid());CHECK(m.taa_invalidations==1&&p.recoveries==0&&!m.emission_enhanced_);}
-  if(outcome==2){CHECK(m.emission_counts_.exchange_failures==1&&m.emission_counts_.exchange==S_OK&&m.emission_counts_.exchanged==1);CHECK(m.hdr_->exchange_calls==2&&p.recoveries==1&&p.exchanges==std::vector<bool>({false,true}));CHECK(m.emission_counts_.native==1&&!m.emission_state_lost_&&!m.emission_enhanced_);}
-  if(outcome==3){CHECK(m.emission_counts_.ack_failures==1&&m.emission_counts_.ack==E_FAIL);CHECK(m.hdr_->target()==candidate&&m.hdr_->exchange_calls==1&&p.recoveries==0&&p.acks==1);CHECK(m.emission_state_lost_&&m.emission_frame_stopped_&&m.emission_counts_.incomplete==1);}
-  if(outcome==4){CHECK(p.recoveries==1&&m.hdr_->exchange_calls==2&&m.emission_state_lost_&&m.taa_invalidations==1);}
-  if(outcome==5){CHECK(m.emission_counts_.native==1&&p.recoveries==0&&!m.emission_enhanced_);}
-  if(outcome==8){CHECK(m.hdr_->target()==candidate&&p.candidate==old&&m.hdr_->exchange_calls==1&&p.acks==1&&p.exchanges[0]);CHECK(!m.hdr_target_.known&&m.emission_counts_.exchanged==1&&m.emission_state_lost_&&m.emission_frame_stopped_&&m.emission_counts_.incomplete==1&&m.taa_invalidations==1&&p.recoveries==0);}
-  if(outcome==7){CHECK(p.recoveries==1&&p.finishes==1&&m.emission_counts_.incomplete==1&&m.emission_frame_stopped_&&!m.emission_enhanced_);}
-  if(outcome==6){CHECK(p.recoveries==1&&m.hdr_->exchange_calls==0&&m.emission_state_lost_);}
-  if(m.emission_state_lost_){auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&p.prepares==1&&p.finishes==1);}
+  m.finish_composition(source);CHECK(p.finishes==1&&p.last_source==source&&m.composition_counts_.source==source&&!m.composition_busy_);
+  if(outcome==0){CHECK(m.hdr_->target()==candidate&&p.candidate==old&&m.hdr_dirty_);CHECK(m.composition_counts_.linear==1&&m.composition_enhanced_&&m.taa_invalidations==0&&p.recoveries==0);}
+  if(outcome==1){CHECK(m.composition_counts_.incomplete==1&&m.composition_frame_stopped_&&!p.coverage_valid());CHECK(m.taa_invalidations==1&&p.recoveries==0&&!m.composition_enhanced_);}
+  if(outcome==2){CHECK(m.composition_counts_.exchange_failures==1&&m.composition_counts_.exchange==S_OK&&m.composition_counts_.exchanged==1);CHECK(m.hdr_->exchange_calls==2&&p.recoveries==1&&p.exchanges==std::vector<bool>({false,true}));CHECK(m.composition_counts_.native==1&&!m.composition_state_lost_&&!m.composition_enhanced_);}
+  if(outcome==3){CHECK(m.composition_counts_.ack_failures==1&&m.composition_counts_.ack==E_FAIL);CHECK(m.hdr_->target()==candidate&&m.hdr_->exchange_calls==1&&p.recoveries==0&&p.acks==1);CHECK(m.composition_state_lost_&&m.composition_frame_stopped_&&m.composition_counts_.incomplete==1);}
+  if(outcome==4){CHECK(p.recoveries==1&&m.hdr_->exchange_calls==2&&m.composition_state_lost_&&m.taa_invalidations==1);}
+  if(outcome==5){CHECK(m.composition_counts_.native==1&&p.recoveries==0&&!m.composition_enhanced_&&p.coverage_valid()&&!m.composition_frame_stopped_&&m.composition_counts_.composition_failures==1);}
+  if(outcome==8){CHECK(m.hdr_->target()==candidate&&p.candidate==old&&m.hdr_->exchange_calls==1&&p.acks==1&&p.exchanges[0]);CHECK(!m.hdr_target_.known&&m.composition_counts_.exchanged==1&&m.composition_state_lost_&&m.composition_frame_stopped_&&m.composition_counts_.incomplete==1&&m.taa_invalidations==1&&p.recoveries==0);}
+  if(outcome==7){CHECK(p.recoveries==1&&p.finishes==1&&m.composition_counts_.incomplete==1&&m.composition_frame_stopped_&&!m.composition_enhanced_);}
+  if(outcome==6){CHECK(p.recoveries==1&&m.hdr_->exchange_calls==0&&m.composition_state_lost_);}
+  if(m.composition_state_lost_){auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&p.prepares==1&&p.finishes==1);}
  }
  // First restoration error survives deferred/mip/lazy cleanup; all owned lazy
  // changes are attempted, but the original draw is suppressed after uncertainty.
@@ -585,85 +768,85 @@ void emission_route_cases(){
   if(fault==0){m.deferred_flush_result_=-41;m.deferred_flushes_=1;}
   if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;device.ordinal=0;device.failed_calls={1};}
   if(fault==2)device.target_result=-43;
-  auto route=m.before_draw({});CHECK(!route.submit&&!route.emission&&m.emission_state_lost_&&m.emission_->prepares==0);CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==0);
+  auto route=m.before_draw({});CHECK(!route.submit&&!route.composition&&m.composition_state_lost_&&m.composition_->prepares==0);CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==0);
   CHECK(route.submission_error==(fault==0?-41:fault==1?E_FAIL:-43));device.failed_calls.clear();
  }
  // Empty frames still clear M once at the frame boundary. Failed allocation or
  // clear never reaches preparation and invalidates history.
- for(unsigned failure=0;failure<4;++failure){MotionOutput m;ready(m);IDirect3DTexture9 texture;IDirect3DSurface9 surface;surface.texture=&texture;m.hdr_main_=&surface;auto&p=*m.emission_;
+ for(unsigned failure=0;failure<4;++failure){MotionOutput m;ready(m);IDirect3DTexture9 texture;IDirect3DSurface9 surface;surface.texture=&texture;m.hdr_main_=&surface;auto&p=*m.composition_;
   if(failure==1)p.ensure_result=E_FAIL;if(failure==2)p.begin={false,true,S_OK,E_FAIL,S_OK};if(failure==3)p.begin={false,false,S_OK,E_FAIL,E_FAIL};
-  m.begin_emission_frame();CHECK(p.ensures==1&&p.begins==(failure==1?0u:1u)&&p.prepares==0&&!m.emission_busy_);
-  CHECK(m.emission_frame_stopped_==(failure!=0)&&m.emission_state_lost_==(failure==3));CHECK(m.taa_invalidations==(failure?1u:0u));
-  CHECK(m.emission_main_texture_==&texture&&m.emission_main_identity_==&texture&&m.emission_readers_known_);
-  CHECK(m.device_references()==7);retiring_emission=&m;release_check=alias_retirement_check;m.drop_redirect();release_check=nullptr;retiring_emission=nullptr;CHECK(texture.refs==1&&!m.emission_busy_);
+  m.begin_composition_frame();CHECK(p.ensures==1&&p.begins==(failure==1?0u:1u)&&p.prepares==0&&!m.composition_busy_);
+  CHECK(m.composition_frame_stopped_==(failure!=0)&&m.composition_state_lost_==(failure==3));CHECK(m.taa_invalidations==(failure?1u:0u));
+  CHECK(m.composition_main_texture_==&texture&&m.composition_main_identity_==&texture&&m.composition_readers_known_);
+  CHECK(m.device_references()==7);retiring_emission=&m;release_check=alias_retirement_check;m.drop_redirect();release_check=nullptr;retiring_emission=nullptr;CHECK(texture.refs==1&&!m.composition_busy_);
  }
  // Canonical alias detection covers all pixel, vertex and displacement slots;
  // unchanged setters use the cache, recording cannot change effective readers.
- {MotionOutput m;ready(m);IUnknown identity;IDirect3DTexture9 main;main.identity=&identity;IDirect3DBaseTexture9 alias;alias.identity=&identity;m.emission_main_identity_=&identity;m.resync_samplers();
-  CHECK(m.emission_readers_known_&&m.emission_reader_known_mask_==0x1fffffu);
+ {MotionOutput m;ready(m);IUnknown identity;IDirect3DTexture9 main;main.identity=&identity;IDirect3DBaseTexture9 alias;alias.identity=&identity;m.composition_main_identity_=&identity;m.resync_samplers();
+  CHECK(m.composition_readers_known_&&m.composition_reader_known_mask_==0x1fffffu);
   for(DWORD stage:{0u,15u,D3DVERTEXTEXTURESAMPLER0,D3DVERTEXTEXTURESAMPLER3,D3DDMAPSAMPLER}){
-   int reader=m.emission_texture_reader(stage,&alias);CHECK(reader==1);m.set_texture(stage,&alias,0,false,reader);CHECK(m.emission_main_sampler_mask_!=0);
-   const unsigned queries=alias.identity_queries;CHECK(m.emission_texture_reader(stage,&alias)==2&&alias.identity_queries==queries);
-   m.shadow_.recording=true;m.set_texture(stage,nullptr,0,false,0);m.shadow_.recording=false;CHECK(m.emission_main_sampler_mask_!=0);m.set_texture(stage,nullptr,0,false,0);CHECK(m.emission_main_sampler_mask_==0);
+   int reader=m.composition_texture_reader(stage,&alias);CHECK(reader==1);m.set_texture(stage,&alias,0,false,reader);CHECK(m.composition_main_sampler_mask_!=0);
+   const unsigned queries=alias.identity_queries;CHECK(m.composition_texture_reader(stage,&alias)==2&&alias.identity_queries==queries);
+   m.shadow_.recording=true;m.set_texture(stage,nullptr,0,false,0);m.shadow_.recording=false;CHECK(m.composition_main_sampler_mask_!=0);m.set_texture(stage,nullptr,0,false,0);CHECK(m.composition_main_sampler_mask_==0);
   }
-  alias.fail_identity=true;CHECK(m.emission_texture_reader(0,&alias)==-1);m.set_texture(0,&alias,0,false,-1);CHECK(!m.emission_readers_known_);m.set_texture(0,nullptr,0,false,0);CHECK(m.emission_readers_known_);
-  m.emission_identity_known_=false;CHECK(m.emission_texture_reader(1,&alias)==-1);m.emission_identity_known_=true;
-  m.emission_enhanced_=true;m.emission_export();CHECK(m.emission_quarantined_&&m.emission_frame_stopped_&&m.taa_invalidations==1);m.before_reset();CHECK(m.emission_quarantined_&&!m.emission_state_lost_&&m.device_references()==0);
+  alias.fail_identity=true;CHECK(m.composition_texture_reader(0,&alias)==-1);m.set_texture(0,&alias,0,false,-1);CHECK(!m.composition_readers_known_);m.set_texture(0,nullptr,0,false,0);CHECK(m.composition_readers_known_);
+  m.composition_identity_known_=false;CHECK(m.composition_texture_reader(1,&alias)==-1);m.composition_identity_known_=true;
+  m.composition_enhanced_=true;m.composition_export();CHECK(m.composition_quarantined_&&m.composition_frame_stopped_&&m.taa_invalidations==1);m.before_reset();CHECK(m.composition_quarantined_&&!m.composition_state_lost_&&m.device_references()==0);
  }
  // Native capability work is done at the latch, once per actual depth
  // format; ordinary draw eligibility only reads cached host state.
- {MotionOutput m;ready(m);auto&p=*m.emission_;m.emission_attach_attempted_=false;m.begin_emission_frame();CHECK(p.attaches==1);
-  m.begin_emission_frame();CHECK(p.attaches==1);m.pending_.depth.format=3;m.begin_emission_frame();CHECK(p.attaches==2);
+ {MotionOutput m;ready(m);auto&p=*m.composition_;m.composition_attach_attempted_=false;m.begin_composition_frame();CHECK(p.attaches==1);
+  m.begin_composition_frame();CHECK(p.attaches==1);m.pending_.depth.format=3;m.begin_composition_frame();CHECK(p.attaches==2);
   const unsigned reads=device.texture_reads,samplers=device.sampler_reads,transforms=renderer::emission_transforms;
-  m.emission_readers_known_=true;auto route=m.before_draw({});CHECK(route.emission&&device.texture_reads==reads&&device.sampler_reads==samplers&&renderer::emission_transforms==transforms&&p.attaches==2);
+  m.composition_readers_known_=true;auto route=m.before_draw({});CHECK(route.composition&&device.texture_reads==reads&&device.sampler_reads==samplers&&renderer::emission_transforms==transforms&&p.attaches==2);
  }
- {MotionOutput m;ready(m);auto&p=*m.emission_;m.linear_emission_requested_=false;const unsigned reads=device.texture_reads;m.begin_emission_frame();m.resync_samplers();auto route=m.before_draw({});CHECK(route.submit&&!route.emission&&p.prepares==0&&p.begins==0&&p.attaches==0&&device.texture_reads==reads);}
+ {MotionOutput m;ready(m);auto&p=*m.composition_;m.linear_emission_requested_=false;const unsigned reads=device.texture_reads;m.begin_composition_frame();m.resync_samplers();auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&p.prepares==0&&p.begins==0&&p.attaches==0&&device.texture_reads==reads);}
  // Prebound aliases and failed native getters are classified at resync;
  // returned COM references are released even on a failed getter. Unsupported
  // vertex/displacement capabilities avoid getters and remain known-unbound.
- {MotionOutput m;ready(m);IUnknown identity;IDirect3DBaseTexture9 alias;alias.identity=&identity;m.emission_main_identity_=&identity;
-  device.textures[D3DDMAPSAMPLER]=&alias;m.resync_samplers();CHECK(m.emission_main_sampler_mask_==(1u<<20)&&m.emission_readers_known_&&alias.refs==1);
-  device.texture_failures[D3DDMAPSAMPLER]=E_FAIL;m.resync_samplers();CHECK(!m.emission_readers_known_&&alias.refs==1);device.texture_failures.clear();device.textures.clear();
-  m.caps_.VertexTextureFilterCaps=m.caps_.DevCaps2=0;const unsigned reads=device.texture_reads;m.resync_samplers();CHECK(device.texture_reads==reads+16&&m.emission_readers_known_);
+ {MotionOutput m;ready(m);IUnknown identity;IDirect3DBaseTexture9 alias;alias.identity=&identity;m.composition_main_identity_=&identity;
+  device.textures[D3DDMAPSAMPLER]=&alias;m.resync_samplers();CHECK(m.composition_main_sampler_mask_==(1u<<20)&&m.composition_readers_known_&&alias.refs==1);
+  device.texture_failures[D3DDMAPSAMPLER]=E_FAIL;m.resync_samplers();CHECK(!m.composition_readers_known_&&alias.refs==1);device.texture_failures.clear();device.textures.clear();
+  m.caps_.VertexTextureFilterCaps=m.caps_.DevCaps2=0;const unsigned reads=device.texture_reads;m.resync_samplers();CHECK(device.texture_reads==reads+16&&m.composition_readers_known_);
  }
  // Reader uncertainty after enhancement invalidates this frame; sampling a
  // published main surface additionally quarantines future frames.
- for(bool published:{false,true}){MotionOutput m;ready(m);m.emission_effective_=true;m.emission_enhanced_=true;m.emission_readers_known_=false;m.emission_published_=published;
-  auto route=m.before_draw({});CHECK(route.submit&&!route.emission&&m.emission_frame_stopped_&&m.emission_->prepares==0);CHECK(m.emission_quarantined_==published&&m.taa_invalidations>=1);
+ for(bool published:{false,true}){MotionOutput m;ready(m);m.composition_effective_=true;m.composition_enhanced_=true;m.composition_readers_known_=false;m.composition_published_=published;
+  auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&m.composition_frame_stopped_&&m.composition_->prepares==0);CHECK(m.composition_quarantined_==published&&m.taa_invalidations>=1);
  }
  {MotionOutput m;ready(m);m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.lazy_rt1_=true;device.target_result=-72;m.sampler_biased_mask_=1;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_bindings_checked()==-71);CHECK(!m.lazy_rt1_&&!m.sampler_biased_mask_);device.failed_calls.clear();}
  // Capture can call the void restoration wrapper before before_draw. Even
  // after another wrapper consumes the deferred result, motion state loss
  // remains sticky until Reset, independently of optional emission.
- for(bool effective:{false,true})for(unsigned fault=0;fault<3;++fault){MotionOutput m;ready(m);m.emission_effective_=effective;m.linear_emission_requested_=effective;
+ for(bool effective:{false,true})for(unsigned fault=0;fault<3;++fault){MotionOutput m;ready(m);m.composition_effective_=effective;m.linear_emission_requested_=effective;
   if(fault==0){m.deferred_flush_result_=-81;m.deferred_flushes_=1;}
   if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;device.ordinal=0;device.failed_calls={1};}
   if(fault==2){m.lazy_rt1_=true;device.target_result=-82;}
-  m.restore_bindings();CHECK(m.emission_state_lost_==effective&&m.emission_frame_stopped_==effective);CHECK(m.motion_state_lost_&&m.taa_invalidations==1);
+  m.restore_bindings();CHECK(m.composition_state_lost_==effective&&m.composition_frame_stopped_==effective);CHECK(m.motion_state_lost_&&m.taa_invalidations==1);
   device.failed_calls.clear();device.target_result=S_OK;m.restore_bindings();CHECK(m.restore_bindings_checked()==S_OK);
-  auto route=m.before_draw({});CHECK(!route.submit&&!route.emission);CHECK(m.emission_state_lost_==effective&&m.emission_->prepares==0);
+  auto route=m.before_draw({});CHECK(!route.submit&&!route.composition);CHECK(m.composition_state_lost_==effective&&m.composition_->prepares==0);
  }
  // A quiet light-hook flush marks uncertainty immediately, using the actual
  // production template; consuming its diagnostic error cannot erase that flag.
- {MotionOutput m;ready(m);m.lazy_rt1_=true;device.target_result=-83;CHECK(m.flush_bindings<true>()==-83);CHECK(m.emission_state_lost_&&m.emission_frame_stopped_&&m.deferred_flushes_==1);
-  device.target_result=S_OK;m.restore_bindings();CHECK(m.deferred_flushes_==0&&m.deferred_flush_result_==S_OK);auto route=m.before_draw({});CHECK(!route.submit&&!route.evaluated&&m.emission_->prepares==0);
+ {MotionOutput m;ready(m);m.lazy_rt1_=true;device.target_result=-83;CHECK(m.flush_bindings<true>()==-83);CHECK(m.composition_state_lost_&&m.composition_frame_stopped_&&m.deferred_flushes_==1);
+  device.target_result=S_OK;m.restore_bindings();CHECK(m.deferred_flushes_==0&&m.deferred_flush_result_==S_OK);auto route=m.before_draw({});CHECK(!route.submit&&!route.evaluated&&m.composition_->prepares==0);
  }
- {MotionOutput m;ready(m);m.sampler_biased_mask_=1;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_mip_bias()==E_FAIL);device.failed_calls.clear();m.restore_bindings();CHECK(m.emission_state_lost_&&!m.before_draw({}).submit);}
+ {MotionOutput m;ready(m);m.sampler_biased_mask_=1;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_mip_bias()==E_FAIL);device.failed_calls.clear();m.restore_bindings();CHECK(m.composition_state_lost_&&!m.before_draw({}).submit);}
  // The writer boundary double records the exact requested main-surface
  // handoff. Query uncertainty requests that handoff, without directly setting
  // quarantine. Getter references are retired inside the busy-accounting guard.
  for(unsigned outcome=0;outcome<7;++outcome){MotionOutput m;ready(m);IDirect3DSurface9 surface;IDirect3DTexture9 main;IUnknown main_identity,other_identity;IDirect3DBaseTexture9 texture;
-  m.hdr_main_=&surface;m.emission_main_texture_=&main;m.emission_main_identity_=&main_identity;texture.identity=&other_identity;
+  m.hdr_main_=&surface;m.composition_main_texture_=&main;m.composition_main_identity_=&main_identity;texture.identity=&other_identity;
   if(outcome==0)texture.fail_identity=true;
   if(outcome==1)texture.identity=nullptr;
   if(outcome==2){texture.fail_identity=true;texture.partial_identity=true;}
   if(outcome==4)texture.identity=&main_identity;
-  if(outcome==6)m.emission_identity_known_=false;
+  if(outcome==6)m.composition_identity_known_=false;
   retiring_emission=&m;release_check=writer_retirement_check;m.before_texture_write(outcome==5?&main:&texture);release_check=nullptr;retiring_emission=nullptr;
-  const bool written=outcome!=3;CHECK(m.content_writes==(written?1u:0u)&&m.write_target==(written?&surface:nullptr));CHECK(!m.emission_busy_&&!m.emission_quarantined_&&m.emission_counts_.exports==0);
+  const bool written=outcome!=3;CHECK(m.content_writes==(written?1u:0u)&&m.write_target==(written?&surface:nullptr));CHECK(!m.composition_busy_&&!m.composition_quarantined_&&m.composition_counts_.exports==0);
   CHECK(main_identity.refs==1&&other_identity.refs==1&&main.refs==1&&texture.refs==1);CHECK(texture.identity_queries==(outcome==5?0u:1u)&&main.identity_queries==0);
  }
- {MotionOutput m;ready(m);IDirect3DSurface9 surface;IDirect3DBaseTexture9 texture;m.hdr_main_=&surface;m.emission_main_identity_=nullptr;
+ {MotionOutput m;ready(m);IDirect3DSurface9 surface;IDirect3DBaseTexture9 texture;m.hdr_main_=&surface;m.composition_main_identity_=nullptr;
   m.before_texture_write(nullptr);m.before_texture_write(&texture);CHECK(m.content_writes==0&&texture.identity_queries==0);
  }
  std::printf("linear_emission_route checks=%u\n",checks-before);
@@ -773,16 +956,16 @@ void attempted_state_cases(){
  }
  // Unavailable/nonrouted pairs must not native-submit if the preceding lazy
  // route cannot restore, including when optional emission is disabled.
- for(bool emission:{false,true}){Device d;MotionOutput m;m.device_=&d;m.emission_effective_=emission;m.lazy_rt1_=true;m.shadow_.xt_default_pair=true;m.shadow_.xt_default_ready=false;
+ for(bool emission:{false,true}){Device d;MotionOutput m;m.device_=&d;m.composition_effective_=emission;m.lazy_rt1_=true;m.shadow_.xt_default_pair=true;m.shadow_.xt_default_ready=false;
   d.target_result=-91;auto r=m.before_draw({});CHECK(!r.submit&&m.motion_state_lost_&&r.submission_error==-91&&!m.lazy_rt1_);
-  CHECK(m.emission_counts_.suppressed==(emission?1u:0u));d.target_result=S_OK;auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&next.submission_error==-91);
+  CHECK(m.composition_counts_.suppressed==(emission?1u:0u));d.target_result=S_OK;auto next=m.before_draw({});CHECK(!next.submit&&!next.evaluated&&next.submission_error==-91);
  }
  // A void restore point may consume the HRESULT before draw admission;
  // a quiet flush may precede an otherwise routed draw. Both quarantine at
  // the failure itself, before evaluation or any shader/native submission.
- for(bool quiet:{false,true})for(bool emission:{false,true}){Device d;MotionOutput m;m.device_=&d;m.emission_effective_=emission;m.lazy_rt1_=true;m.route_on_evaluation=quiet;
+ for(bool quiet:{false,true})for(bool emission:{false,true}){Device d;MotionOutput m;m.device_=&d;m.composition_effective_=emission;m.lazy_rt1_=true;m.route_on_evaluation=quiet;
   d.target_result=-92;if(quiet)CHECK(m.flush_bindings<true>()==-92);else m.restore_bindings();
-  CHECK(m.motion_state_lost_&&m.motion_state_error_==-92&&m.taa_invalidations>0);CHECK(m.emission_state_lost_==emission);
+  CHECK(m.motion_state_lost_&&m.motion_state_error_==-92&&m.taa_invalidations>0);CHECK(m.composition_state_lost_==emission);
   const auto shader_calls=d.calls.size();auto r=m.before_draw({});CHECK(!r.submit&&!r.evaluated&&!r.routed&&m.evaluations==0&&d.calls.size()==shader_calls&&r.submission_error==-92);
   // Later cleanup cannot erase or replace the first restoration error.
   d.target_result=-93;m.lazy_rt1_=true;m.restore_bindings();CHECK(m.motion_state_error_==-92);
@@ -902,5 +1085,8 @@ int main(){
  emission_instance_cache_cases();
  emission_route_cases();
  emission_environment_cases();
+ distance_fade_cache_cases();
+ distance_fade_route_cases();
+ distance_fade_environment_cases();
  std::printf("linear_material_live checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

@@ -20,31 +20,50 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class LinearMaterialLiveTests(unittest.TestCase):
-    def test_emission_terminal_export_source_contract(self):
+    def test_composition_terminal_export_source_contract(self):
         # Policy wiring witness only: transaction and Reset behavior are exercised
         # by the extracted C++ seam; this does not claim GPU publication coverage.
         source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         end = extract_function(source, 'void MotionOutput::end_redirect(')
         assignments = [line.strip() for line in end.splitlines()
-                       if 'emission_terminal_export_ =' in line]
+                       if 'composition_terminal_export_ =' in line]
         self.assertEqual(assignments, [
-            'emission_terminal_export_ = reason == HdrEnd::Hook || reason == HdrEnd::BloomCopy || reason == HdrEnd::Present;',
-            'emission_terminal_export_ = false;',
+            'composition_terminal_export_ = reason == HdrEnd::Hook || reason == HdrEnd::BloomCopy || reason == HdrEnd::Present;',
+            'composition_terminal_export_ = false;',
         ])
         end_scene = extract_function(source, 'void MotionOutput::before_end_scene() noexcept')
         self.assertEqual(' '.join(end_scene.split()),
                          'void MotionOutput::before_end_scene() noexcept { if (hdr_state_ == HdrState::Active) flush_redirect(); }')
         writeback = extract_function(source, 'renderer::HdrWriteback MotionOutput::hdr_writeback(')
-        self.assertIn('if (write && emission_enhanced_ && !emission_terminal_export_ && !emission_diagnostic_export_) emission_export();', writeback)
+        self.assertIn('if (write && composition_enhanced_ && !composition_terminal_export_ && !composition_diagnostic_export_) composition_export();', writeback)
+
+    def test_composition_installs_render_state_hook_without_state_shadow(self):
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        install = next(line.strip() for line in capture.splitlines()
+                       if 'hooked.set(57,set_render_state)' in line)
+        self.assertIn('||hooked.motion_output.composition_requested()', install.replace(' ', ''))
+        setter = extract_function(capture, 'HRESULT WINAPI set_render_state(')
+        self.assertIn('if(SUCCEEDED(hr))ctx.motion_output.set_render_state(state,value);', setter)
+
+    def test_unresolved_composition_capabilities_disable_reactive_baseline(self):
+        source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        policy = extract_function(source, 'if (composition_effective_ || composition_required_producers_)')
+        self.assertLess(policy.index('in.reactive_policy = renderer::ReactivePolicy::Unavailable;'),
+                        policy.index('composition_->coverage_valid()'))
+        self.assertIn('!composition_frame_stopped_', policy)
+        self.assertIn('in.reactive = composition_mask;', policy)
 
     def test_production_control_flow(self):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
         source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         signatures = [
+            'constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept',
+            'void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept',
             'unsigned MotionOutput::device_references() const noexcept',
             'void MotionOutput::release_resources() noexcept',
             'void MotionOutput::configure_linear_materials(bool requested, const renderer::LinearMaterialConfig& config) noexcept',
+            'void MotionOutput::configure_linear_distance_fade(bool requested) noexcept',
             'void MotionOutput::configure_linear_emissions(bool requested, float gain) noexcept',
             'void MotionOutput::register_vertex_shader(',
             'void MotionOutput::register_pixel_shader(',
@@ -52,14 +71,14 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'void MotionOutput::set_pixel_shader(',
             'void MotionOutput::set_sampler_state(',
             'void MotionOutput::set_texture(',
-            'int MotionOutput::emission_texture_reader(',
-            'void MotionOutput::emission_export() noexcept',
-            'void MotionOutput::release_emission_identity() noexcept',
+            'int MotionOutput::composition_texture_reader(',
+            'void MotionOutput::composition_export() noexcept',
+            'void MotionOutput::release_composition_identity() noexcept',
             'void MotionOutput::before_texture_write(',
-            'void MotionOutput::begin_emission_frame() noexcept',
-            'void MotionOutput::prepare_emission(',
-            'bool MotionOutput::publish_emission() noexcept',
-            'void MotionOutput::finish_emission(',
+            'void MotionOutput::begin_composition_frame() noexcept',
+            'void MotionOutput::prepare_composition(',
+            'bool MotionOutput::publish_composition() noexcept',
+            'void MotionOutput::finish_composition(',
             'MotionRoute MotionOutput::before_draw(',
             'void MotionOutput::restore_bindings() noexcept',
             'HRESULT MotionOutput::restore_bindings_checked() noexcept',
@@ -113,6 +132,9 @@ class LinearMaterialLiveTests(unittest.TestCase):
             self.assertIn('linear_material_xt_cache checks=', run.stdout)
             self.assertIn('linear_material_xt_deferred_notice checks=', run.stdout)
             self.assertIn('linear_emission_route checks=', run.stdout)
+            self.assertIn('linear_distance_fade_cache checks=', run.stdout)
+            self.assertIn('linear_distance_fade_route checks=', run.stdout)
+            self.assertIn('linear_distance_fade_environment checks=', run.stdout)
             self.assertEqual(run.stderr, '')
             print(run.stdout.strip())
 
@@ -206,6 +228,22 @@ class LinearMaterialLiveTests(unittest.TestCase):
         status, output, error = self.launch(*valid, '--hdr-decode', 'pow22')
         self.assertEqual(status, 0, error)
         self.assertIn('"X3M_EMISSION_GAIN": "1.0"', output)
+
+    def test_distance_fade_cli_dependencies_and_default_off(self):
+        valid = ('--motion-output', '--taa', '--object-trace', '--object-lifetime',
+                 '--ownership', '--hdr', '--hdr-tonemap', '--linear-materials',
+                 '--linear-distance-fade')
+        for missing in ('--taa', '--linear-materials'):
+            with self.subTest(missing=missing):
+                status, _, _ = self.launch(*(arg for arg in valid if arg != missing))
+                self.assertEqual(status, 2)
+        status, output, error = self.launch(*valid)
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "1"', output)
+        self.assertIn('"X3M_LINEAR_EMISSIONS": "0"', output)
+        status, output, error = self.launch(environment={'X3M_LINEAR_DISTANCE_FADE': '1'})
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
 
     def test_emission_cli_default_off_clears_inherited_values(self):
         status, output, error = self.launch(environment={'X3M_LINEAR_EMISSIONS': '1', 'X3M_EMISSION_GAIN': '16'})

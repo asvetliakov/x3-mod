@@ -307,3 +307,53 @@ values and 183,264 exact raw-A channels. The maximum normalized RGB tolerance
 fraction is 0.000071875. R1/R2 raw failures remain local and linked from the
 compact record. Native-Windows execution, combined fade/emission temporal-mask
 integration and live cost remain open.
+
+
+## Runtime qualification slice (source under review)
+
+The runtime slice adds an explicit, default-off `--linear-distance-fade`
+qualification option. It requires linear materials, motion/TAA and HDR with
+AgX gamma-2.2 decoding; additive emission remains an independent option. The
+original opaque admission gate is unchanged. Only the six exact Asteroid pairs
+with the reviewed depth-read-only, RGB-only source-over state can enter the fade
+bracket. Native or unsupported glass, station and alpha-tested draws are not
+promoted by this change.
+
+Shader registration retains a separate native/linear dual VS and PS. Setters and
+state-block resynchronization cache the exact pairing and required sampler mask;
+draw admission adds no shader lookup, compilation or allocation. Source blend
+tracking remains active with the optional general state shadow disabled. The
+existing composition owner saves and restores the augmented VS along with the
+native PS and blend state, then executes the original source once. It reuses its
+B/E/C/M pool and the exact qualified 600-byte composite; opaque and additive
+shader programs are unchanged.
+
+At the HDR latch, the shared owner qualifies additive and fade policy bits
+against the actual adapter display and scene-depth formats. Reset invalidates the
+display-format cache. An unresolved query or resource/program allocation failure
+keeps the requested producer set incomplete and retries only at a later latch.
+A proven immutable unsupported policy can remain native without activating the
+supplemental route. Once supported, a temporarily unavailable producer cannot
+be removed from the required set to admit partial history.
+
+One owner clears M once before either producer, including an empty frame.
+Missing required source coverage stops that frame and selects `Unavailable` with
+a null mask. A clean preparation refusal retains earlier M bytes but cannot
+claim a complete producer set. Native-B recovery retains completeness only when
+its coverage and restoration are certified; an invalid mask cannot be healed by
+a later producer. The existing current/previous supplemental-mask resolve,
+reader inventory, export quarantine, actual HDR owning-slot exchange and Reset
+retirement are shared by both policies, independent of additive enablement.
+
+The performance floor remains material: each prepared source incurs a full-size
+copy and composition, with an estimated 56 bytes/pixel of logical traffic per
+DIP (55.1 MB at 1280×768 or 116.1 MB at 1920×1080), excluding source raster,
+frame-mask clear, depth and driver traffic. The four FP16 pool targets occupy
+30.0 MiB or 63.3 MiB respectively; supporting both policies adds one small shader,
+not a second pool. Per-frame counters expose eligible/prepared/completed fade
+DIPs and that traffic estimate. The planned live comparison holds all other
+features fixed, alternates fade-off/on order, and measures fenced source-bracket
+and terminal-TAA/AgX completion at 1/4/16 ordered DIPs and both sizes. It does not
+infer GPU busy time or game FPS. Actual combined current/previous-mask behavior,
+image/state/failure integration and this cost comparison still require the
+reviewed live fixture; detached source-over evidence alone does not close them.
