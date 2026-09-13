@@ -218,7 +218,8 @@ def validate_functional(output,trace,fade,emission,lazy):
         assert status[10]==status[4],'all prepared controls publish linear or recovered B'
         assert status[12]==int(row['draws'])==len(expected),'each original source DIP is submitted once'
         assert status[13]==sum(s['kind']=='fade' for s in expected)*bool(fade)
-        assert status[11]==(0x8876086c if frame==FAILED_SOURCE and fade else 0)
+        completed=[s['hr'] for s in expected if s['prepared']]
+        assert status[11]==(completed[-1] if completed else 1),'last composed source HRESULT; S_FALSE before any prepared source'
         assert status[14]==sum(s['prepared'] for s in expected if s['kind']=='fade')
         assert status[15]==sum(s['linear'] for s in expected if s['kind']=='fade')
         if required:assert status[17]==stopped
@@ -370,15 +371,31 @@ def paired_cost(cases):
     return result
 
 
+def reusable_native(directory,hashes):
+    """Reuse only the retained, unchanged first native process after revalidation."""
+    directory=directory.resolve()
+    assert directory.name=='lazy1-fade0-emission0','reuse is scoped to the native baseline only'
+    prior=json.loads((directory.parent/'failed-result.json').read_text())
+    assert prior['passed'] is False and Path(prior['raw']).resolve()==directory.parent,'marker must describe this stopped run'
+    assert prior['inputs']==hashes,'retained native process must have the identical frozen fixture/DLL/program inputs'
+    for suffix,name in (('.exe','fixture.exe'),('.dll','d3d9.dll')):
+        expected=[value for path,value in hashes.items() if Path(path).suffix.lower()==suffix]
+        assert len(expected)==1 and sha(directory/name)==expected[0],'retained executed binary differs from the frozen input'
+    assert (directory/'stdout.txt').is_file()
+    return directory
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fixture',type=Path,required=True);parser.add_argument('--dll',type=Path,required=True)
     parser.add_argument('--programs',type=Path,default=Path('/tmp/x3-shader-sweep/programs'))
+    parser.add_argument('--reuse-native',type=Path,help='retained lazy1-fade0-emission0 directory from a parser-stopped run; exact input hashes and every output are revalidated')
     parser.add_argument('--result',type=Path,default=bottle.results_dir(ROOT,create=False)/'linear-distance-fade-live.json')
     args=parser.parse_args();assert bottle.BOTTLE=='X3','new qualification requires X3'
     inputs=[args.fixture.resolve(),args.dll.resolve(),*[args.programs.resolve()/name for name in PROGRAMS]]
     assert all(path.is_file() for path in inputs),'explicit prebuilt inputs and scoped original programs required'
     hashes={str(p):sha(p) for p in inputs}
+    native_reuse=reusable_native(args.reuse_native,hashes) if args.reuse_native else None
     raw=Path(tempfile.mkdtemp(prefix='x3-distance-fade-live-'))
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,raw=str(raw),scope=SCOPE,inputs=hashes,cases={},limitations=LIMITATIONS)
     # Batch all three draw counts into each timing process; alternating process
@@ -392,8 +409,11 @@ def main():
     try:
         for run in runs:
             assert not game_running(),'game running; no fixture launch'
-            work=raw/run['name'];work.mkdir()
-            shutil.copy2(inputs[0],work/'fixture.exe');shutil.copy2(inputs[1],work/'d3d9.dll')
+            reused=native_reuse is not None and run['name']=='lazy1-fade0-emission0'
+            work=native_reuse if reused else raw/run['name']
+            if not reused:
+                work.mkdir()
+                shutil.copy2(inputs[0],work/'fixture.exe');shutil.copy2(inputs[1],work/'d3d9.dll')
             env={k:v for k,v in os.environ.items() if not k.startswith('X3M_')}
             env.update(X3M_MOTION_OUTPUT='1',X3M_HDR=str(run['hdr']),X3M_HDR_TONEMAP='agx',X3M_HDR_DECODE='gamma2.2',
                        X3M_HDR_EXPOSURE='manual',X3M_HDR_EV_MANUAL='0',X3M_HDR_CLAMP='0',X3M_HDR_BLOOM='0',
@@ -407,9 +427,10 @@ def main():
             command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=n,b','--workdir',str(work),str(work/'fixture.exe'),'Z:'+str(inputs[2]),'Z:'+str(inputs[3]),mode]
             if run.get('timing'):command.append(f"{run['width']}x{run['height']}")
             start=time.monotonic()
-            with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as error:
-                child=subprocess.run(command,env=env,stdout=out,stderr=error,timeout=180)
-            assert child.returncode==0,f"{run['name']}: fixture failed; {work}"
+            if not reused:
+                with (work/'stdout.txt').open('w') as out,(work/'wine.log').open('w') as error:
+                    child=subprocess.run(command,env=env,stdout=out,stderr=error,timeout=180)
+                assert child.returncode==0,f"{run['name']}: fixture failed; {work}"
             logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()
             if run.get('timing'):case=validate_timing(output,run['fade'],run['width'],run['height'])
@@ -417,12 +438,16 @@ def main():
             else:
                 case=validate_functional(output,trace,run['fade'],run['emission'],run['lazy'])
                 case.update(validate_pixels(work,run['fade'],run['emission']))
-            case['seconds']=round(time.monotonic()-start,3);result['cases'][run['name']]=case
+            case['seconds']=round(time.monotonic()-start,3)
+            case['raw']=str(work);case['retained_native_process']=reused
+            result['cases'][run['name']]=case
             print(f"{run['name']}: passed, {case['frames']} frames, {case['seconds']} s",flush=True)
         compare_functional(result['cases'])
         result['paired_completion_cost']=paired_cost(result['cases'])
         assert hashes=={str(p):sha(p) for p in inputs},'prebuilt qualification inputs changed'
         result['functional_frames']=150;result['admission_frames']=8;result['timing_frames']=144
+        result['new_processes']=14 if native_reuse else 15
+        result['retained_processes']=int(native_reuse is not None)
         result['passed']=True
     finally:
         path=args.result if result['passed'] else raw/'failed-result.json';path.parent.mkdir(parents=True,exist_ok=True)

@@ -1,5 +1,6 @@
 """Focused positive/negative evidence checks; never execute Wine or rebuild DLLs."""
 import copy
+import json
 from pathlib import Path
 import re
 import struct
@@ -28,7 +29,8 @@ def report(fade=1,emission=1,lazy=1):
         s[0]=int(bool(required));s[1]=int(bool(required and not stopped))
         for index,key in ((4,'prepared'),(5,'linear'),(6,'native'),(7,'incomplete')):
             s[index]=sum(r[key] for r in sources)
-        s[10]=s[4];s[11]=0x8876086c if f==22 and fade else 0;s[12]=len(sources)
+        s[10]=s[4];completed=[r['hr'] for r in sources if r['prepared']]
+        s[11]=completed[-1] if completed else 1;s[12]=len(sources)
         s[13]=sum(r['kind']=='fade' for r in sources)*bool(fade)
         s[14]=sum(r['prepared'] for r in sources if r['kind']=='fade')
         s[15]=sum(r['linear'] for r in sources if r['kind']=='fade')
@@ -85,6 +87,14 @@ class FadeLiveReportTests(unittest.TestCase):
             with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_functional(output.replace(old,new,1),trace,1,1,1)
         with self.assertRaises(AssertionError):live.validate_functional(output,trace.replace('taa_resolved=0','taa_resolved=1',1),1,1,1)
 
+    def test_unprepared_hresult_is_s_false(self):
+        output,trace=report(0,0)
+        self.assertEqual(live.validate_functional(output,trace,0,0,1)['frames'],30)
+        with self.assertRaises(AssertionError):live.validate_functional(output.replace('s11=1','s11=0',1),trace,0,0,1)
+        output,trace=report(1,1)
+        self.assertIn('s11=1',next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=0 ')))
+        self.assertIn('s11=0',next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=1 ')))
+
     def test_no_healing_and_failed_source_contract(self):
         for frame in (19,20,24):
             rows,stopped=live.expected_sources(frame,1,1)
@@ -134,6 +144,23 @@ class FadeLiveReportTests(unittest.TestCase):
             path.write_bytes(bytes(64*64*8))
             path=work/'distance_fade_mask_0.rgba32f';path.write_bytes(struct.pack('<f',1.)+path.read_bytes()[4:])
             with self.assertRaises(AssertionError):live.validate_pixels(work,0,0)
+
+    def test_retained_native_requires_identical_inputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);work=root/'lazy1-fade0-emission0';work.mkdir()
+            (work/'stdout.txt').write_text('retained')
+            (work/'fixture.exe').write_bytes(b'fixture');(work/'d3d9.dll').write_bytes(b'dll')
+            hashes={'/frozen/fixture.exe':live.sha(work/'fixture.exe'),'/frozen/d3d9.dll':live.sha(work/'d3d9.dll')}
+            marker={'inputs':hashes,'passed':False,'raw':str(root.resolve())}
+            (root/'failed-result.json').write_text(json.dumps(marker))
+            self.assertEqual(live.reusable_native(work,hashes),work.resolve())
+            with self.assertRaises(AssertionError):live.reusable_native(work,dict(hashes,dll='changed'))
+            with self.assertRaises(AssertionError):live.reusable_native(root/'lazy1-fade1-emission0',hashes)
+            marker['passed']=True;(root/'failed-result.json').write_text(json.dumps(marker))
+            with self.assertRaises(AssertionError):live.reusable_native(work,hashes)
+            marker['passed']=False;(root/'failed-result.json').write_text(json.dumps(marker))
+            (work/'d3d9.dll').write_bytes(b'changed executed DLL')
+            with self.assertRaises(AssertionError):live.reusable_native(work,hashes)
 
     def test_timing_only_same_fenced_windows(self):
         out=['RESULT PASS frames=18 checks=1','FADE_CHECKS frames=18 submissions=126 benchmark=1']
