@@ -384,7 +384,7 @@ struct Fixture {
     void (*emission_fault)(IDirect3DDevice9*, unsigned, unsigned) = nullptr;
     HRESULT (*emission_readback)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*) = nullptr;
     HRESULT (*wrap_snapshot)(IDirect3DDevice9*, x3m::MotionOutputFixtureWrapSnapshot*) = nullptr;
-    bool materialwrap = false, materialwrap_depth = true, materialxt = false;
+    bool materialwrap = false, materialwrap_depth = true, materialxt = false, materialglass = false;
     bool linearmaterials = false; // Focused live combined-route/Reset/refcount script.
     bool hdr_agx = false;           // X3M_HDR_TONEMAP=agx: the presented image is AgX (the runner holds the reference)
     // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
@@ -523,7 +523,7 @@ struct Fixture {
         config.background_vs[0] = vs_hash; config.background_ps[0] = flat_hash;
         config.emission_scene_owner = emissions;
         config.force_taa_readback = emissions && !emission_bench;
-        config.observe_native_wrap = materialwrap || materialxt;
+        config.observe_native_wrap = materialwrap || materialxt || materialglass;
         if (object) config.scope = object->scope;
         configure(&config);
     }
@@ -550,7 +550,8 @@ struct Fixture {
             api(d->SetSamplerState(i, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP), "SetSamplerState v");
             // In the focused material script, initial attach and first Reset
             // admission must rely on resync getters, not setter repopulation.
-            if (!(linearmaterials && (frame == 0 || frame == 10 || frame == 21)))
+            if (!(linearmaterials && (frame == 0 || frame == 10 || frame == 21)) &&
+                !(materialglass && frame == 23))
                 api(d->SetSamplerState(i, D3DSAMP_SRGBTEXTURE, FALSE), "SetSamplerState srgb");
         }
     }
@@ -833,12 +834,12 @@ struct Fixture {
         std::vector<float> data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
         api(readback(d.p, data.data(), unsigned(data.size()), &w, &h), "fixture readback");
         require(w == W && h == H, "motion target matches the main dimensions");
-        if(!(materialwrap||materialxt) || materialwrap_depth){
+        if(!(materialwrap||materialxt||materialglass) || materialwrap_depth){
             api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "fixture depth readback");
             require(w == W && h == H, "depth target matches the main dimensions");
         }else require(readback_depth(d.p,depth_data.data(),unsigned(depth_data.size()),&w,&h)==D3DERR_NOTFOUND,"motion-only has no depth target");
         std::printf("MOTION_HASH frame=%llu motion=%016llx depth=%016llx\n", frame,
-                    static_cast<unsigned long long>(fnv(data.data(), data.size() * 4)), static_cast<unsigned long long>((materialwrap||materialxt)&&!materialwrap_depth?0:fnv(depth_data.data(), depth_data.size() * 4)));
+                    static_cast<unsigned long long>(fnv(data.data(), data.size() * 4)), static_cast<unsigned long long>((materialwrap||materialxt||materialglass)&&!materialwrap_depth?0:fnv(depth_data.data(), depth_data.size() * 4)));
         // The route must upload zero prior jitter in c216.zw: history rows are
         // unjittered, so the fragment's UV is already the previous unjittered UV.
         if (records.size() && std::any_of(records.begin(), records.end(), [](const DrawRecord& r) { return r.routed; })) {
@@ -890,7 +891,7 @@ struct Fixture {
             }
             if (!ok) { if (++mismatches <= 8) std::printf("MOTION_DIFF frame=%llu x=%u y=%u actual=%.9g,%.9g,%.9g,%.9g expected=%.9g,%.9g,%.9g,%.9g\n", frame, x, y, actual[0], actual[1], actual[2], actual[3], expected[0], expected[1], expected[2], expected[3]); }
             // RT2: device depth z/w of the front-most routed draw, sentinel elsewhere.
-            if((materialwrap||materialxt) && !materialwrap_depth)continue;
+            if((materialwrap||materialxt||materialglass) && !materialwrap_depth)continue;
             const float current = depth_data[std::size_t(y) * W + x];
             ++depth_checked;
             bool depth_ok;
@@ -2018,6 +2019,8 @@ struct Fixture {
         shared.reset();split.reset();
     }
 
+    #include "material_glass_live_inc.h"
+
     // XT live admission/transport witness. Full shader mathematics and authored
     // DEFAULT UV/weight policy are qualified by the detached reference fixture.
     // Disabled DEFAULT is never submitted: its original linkage is malformed.
@@ -2753,7 +2756,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|emissions|emissionsbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -2766,7 +2769,7 @@ int main(int argc, char** argv) {
         f.hdrfault = mode == "hdrfault";
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
         f.msaa = mode == "msaa";
-        f.materialwrap = mode == "materialwrap"; f.materialxt = mode == "materialxt";
+        f.materialwrap = mode == "materialwrap"; f.materialxt = mode == "materialxt"; f.materialglass = mode == "materialglass";
         f.linearmaterials = mode == "linearmaterials" || f.materialwrap;
         f.emission_bench = mode == "emissionsbench";
         f.emissions = mode == "emissions" || f.emission_bench;
@@ -2799,7 +2802,7 @@ int main(int argc, char** argv) {
         f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
         f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -2852,7 +2855,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if (f.taa && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

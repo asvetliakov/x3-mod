@@ -89,8 +89,8 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   transparent, background, and other scene writers remain beyond installed coverage. The
   [glass extension](architecture/glass-materials.md) adds six reviewed SM3 opaque-capable
   pairs in main source (168 pairs / 137 originals total), preserving native gloss/Fresnel.
-  Host and detached GPU checks pass (254 cases / 2,286 samples); live qualification
-  and installation remain pending.
+  Host, detached GPU (254 cases / 2,286 samples) and focused live routing
+  (216 frames / 4,258,208 checks) pass. Installation and gameplay remain pending.
 - **Bloom/exposure:** Run 28 shows substantial colored halos at gain 0.35;
   the user asks about slightly stronger cores. Keep current gain during material diagnosis;
   +1.5 EV appearance is accepted and selected as the installed Auto default. The meter

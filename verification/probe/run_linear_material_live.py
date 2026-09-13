@@ -18,6 +18,7 @@ import tempfile
 import time
 
 import bottle
+import linear_glass_live_reference as glass_live
 from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -576,7 +577,7 @@ def compare_xt_cases(cases):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--mode',choices=('corpus','wrap','xt'),default='corpus')
+    parser.add_argument('--mode',choices=('corpus','wrap','xt','glass'),default='corpus')
     parser.add_argument('--fixture', type=Path, required=True)
     parser.add_argument('--dll', type=Path, required=True)
     parser.add_argument('--programs', type=Path, default=PROGRAMS)
@@ -584,7 +585,7 @@ def main():
     args = parser.parse_args()
     if args.result is None: args.result=bottle.results_dir(ROOT,create=False)/('linear-material-live-'+args.mode+'.json' if args.mode!='corpus' else 'linear-material-live.json')
     fixture, dll = args.fixture.resolve(), args.dll.resolve()
-    programs = [args.programs.resolve() / name for name in (XT_PROGRAM_NAMES if args.mode=='xt' else PROGRAM_NAMES)]
+    programs = [args.programs.resolve() / name for name in (glass_live.PROGRAM_NAMES if args.mode=='glass' else XT_PROGRAM_NAMES if args.mode=='xt' else PROGRAM_NAMES)]
     assert bottle.BOTTLE == 'X3', 'new verification requires X3 bottle'
     assert all(path.is_file() for path in [fixture, dll, *programs]), 'prebuilt inputs or local programs missing'
     raw = Path(tempfile.mkdtemp(prefix='x3-linear-material-live-'))
@@ -592,6 +593,7 @@ def main():
                   scope='Actual live evaluate_draw across all 148 exact pairs / 115 originals, DEFAULT/BUMPMAP/LOW/Asteroid alternation, newly covered retained XT BUMP control and valid covered-VS unknown-PS refusal, exact family sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
                   mode=args.mode,
                   binaries={str(path): sha(path) for path in (fixture, dll)}, local_programs={path.name: sha(path) for path in programs}, cases={})
+    if args.mode=='glass': report['scope']=glass_live.SCOPE
     if args.mode=='xt': report['scope']='Actual live XT14 exact pairs, shared-D generic alternation, valid unknown mate, repaired DEFAULT ordinary fallback, sampler s5/s4 refusal, native WRAP/reserved-state restoration and Reset, plus two paired perspective RGB/alpha/temporal diagnostics with a physical highlight WRAP seam. Feature-off malformed DEFAULT is explicitly skipped; host seam owns its unavailable native-once path. Native Windows untested.'
     if args.mode=='wrap': report['scope']='Three actual native scalar WRAP carriers, two consecutive indexed submissions, native GetRenderState observation, full caller-state restoration, sampler refusal, StateBlock/Reset, depth on/motion-only fixture override, perdraw/lazy and material off/on; native alpha and RT1/RT2 twins. Detached qualification owns palette color math; no gameplay or native-Windows claim.'
     args.result.parent.mkdir(parents=True, exist_ok=True)
@@ -610,9 +612,10 @@ def main():
                        X3M_TAA_SENTINEL='1', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0', X3M_SCENE_HOOK='0',
                        X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0',
                        X3M_MOTION_RT_MODE=rt_mode, X3M_STATE_SHADOW='1', WINEDLLOVERRIDES='d3d9=n,b')
+            if args.mode=='glass': env['X3M_MATERIAL_EMISSIVE_GAIN']='1'
             if args.mode!='corpus': env['X3M_FIXTURE_MOTION_DEPTH']=str(depth)
-            fixture_mode={'corpus':'linearmaterials','wrap':'materialwrap','xt':'materialxt'}[args.mode]
-            extra_programs=[] if args.mode=='xt' else ['Z:'+str(path) for path in programs[2:7]]
+            fixture_mode={'corpus':'linearmaterials','wrap':'materialwrap','xt':'materialxt','glass':'materialglass'}[args.mode]
+            extra_programs=[] if args.mode in ('xt','glass') else ['Z:'+str(path) for path in programs[2:7]]
             command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=n,b', '--workdir', str(work), str(work / 'fixture.exe'),
                        'Z:' + str(programs[0]), 'Z:' + str(programs[1]), fixture_mode, *extra_programs]
             start = time.monotonic()
@@ -622,16 +625,17 @@ def main():
             logs = list((work / 'x3-modern-captures').glob('session-*.log'))
             assert len(logs) == 1, f'{name}: missing session log'
             with logs[0].open() as trace:
-                result = (validate_xt_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(depth),rt_mode) if args.mode=='xt' else validate_wrap_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(depth),rt_mode) if args.mode=='wrap' else validate_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(taa)))
+                result = (glass_live.validate_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(depth),rt_mode) if args.mode=='glass' else validate_xt_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(depth),rt_mode) if args.mode=='xt' else validate_wrap_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(depth),rt_mode) if args.mode=='wrap' else validate_case((work / 'stdout.txt').read_text(),trace,bool(material),bool(taa)))
             result['seconds'] = round(time.monotonic() - start, 3)
             report['cases'][name] = result
             print(f'{name}: {result["checks"]} checks, {result["frames"]} frames, held={result["held_references"]}', flush=True)
-        (compare_xt_cases if args.mode=='xt' else compare_wrap_cases if args.mode=='wrap' else compare_cases)(report['cases'])
+        (glass_live.compare_cases if args.mode=='glass' else compare_xt_cases if args.mode=='xt' else compare_wrap_cases if args.mode=='wrap' else compare_cases)(report['cases'])
         assert report['binaries'] == {str(path): sha(path) for path in (fixture, dll)}, 'prebuilt inputs changed during qualification'
         assert report['local_programs'] == {path.name: sha(path) for path in programs}, 'local programs changed during qualification'
         report['passed'] = True
         report['checks'] = sum(case['checks'] for case in report['cases'].values())
         report['limitations'] = ['Unknown sampler getter failure and combined creation/bind/restore failures are covered by scripted host control-flow checks, not injected into this GPU script.', 'The retained XT BUMP control now uses its own valid ordinary/linear linkage, constants, false native booleans and seven samplers; unknown-PS control has valid COLOR0 linkage and expects no motion route. Both preserve finite native output and exact FP16 twins.', 'Native Windows and gameplay appearance/performance remain unverified.']
+        if args.mode=='glass': report['limitations']=glass_live.LIMITATIONS
         if args.mode=='xt': report['limitations']=['Malformed DEFAULT programs with material disabled are skipped before frame/draw submission; no native linkage qualification is claimed.', 'Actual driver creation/bind failure injection remains covered by the scripted host seam; this mode verifies successful GPU availability and sampler refusal.', 'The 84 unit-lightmap samples prove routing. Two appended perspective diagnostics compare encoded linear RGB against actual ordinary working RGB using endpoint color inputs, an active point light and a highlight WRAP seam; alpha and temporal hashes are exact twins. Detached qualification owns the full XT equations.', 'Native Windows and gameplay appearance/performance remain unverified.']
         if args.mode=='wrap': report['limitations']=['Fixture-only attach override selects motion-only variants; device caps are unchanged.', 'Native WRAP states, alpha and temporal outputs are exact witnesses; independent detached qualification owns palette RGB mathematics.', 'Native Windows and gameplay appearance/performance remain unverified.']
     finally:

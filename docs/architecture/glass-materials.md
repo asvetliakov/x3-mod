@@ -2,7 +2,7 @@
 
 Derived archive review and source implementation, 2026-09-14. **Six SM3 glass
 pairs now have a reviewed opaque material conversion in main source and pass
-detached X3 GPU qualification. Live routing and installation remain pending.
+detached X3 GPU qualification. Focused live routing also passes; installation remains pending.
 The other 24 pairs remain unimplemented.** Actual
 blend state decides whether a draw instead needs ordered composition. The family
 name does not establish transparency. The archive study covers uncaptured
@@ -308,13 +308,14 @@ over-one P, Fresnel, diffuse-tinted gloss, cube direction/scale, masks, faces,
 fog/alpha, FLAT/Gouraud and perspective interpolation. Earlier 3,923 case
 payloads remain byte-identical. Missing-record controls and full/scoped report
 checks pass. The root-owned detached GPU qualification below is complete;
-actual runtime admission and native-Windows behavior remain unqualified.
+the focused live route is qualified below. Gameplay and native-Windows behavior
+remain unqualified.
 
 Independent Sol/high review found no unresolved production or evidence issue.
 The review's scoped-dependency finding was fixed: glass-only now loads and
 records exactly seven originals, validated with an isolated seven-file witness;
 it neither requires nor hashes unrelated prior/XT programs. Stale architecture
-wording was also corrected. Focused live routing is the next step.
+wording was also corrected. Focused live routing is recorded below.
 
 Root integration passes 58 focused transformer/reference/report tests in 62.493 s.
 The retained fixture for 254 glass cases is `/tmp/x3-glass-frozen/linear_material_fixture.exe`,
@@ -334,3 +335,34 @@ combined material are 0.736/0.787 ms with zero/eight point lights, versus
 ordinary motion 0.795/0.796 ms over 98,304 vertices. These small event-fenced
 samples do not establish gameplay speed or a speedup. Installed source remains
 `d9413fc`; no gameplay change was installed.
+
+
+## Focused live route qualification
+
+The verification-only extension reuses the consume-only
+`run_linear_material_live.py --mode glass` runner. It tests all six pairs with
+seven glass originals and the existing two-program bootstrap. Eight configurations
+cross material off/on, depth off/on and perdraw/lazy attachment; 27 frames each
+exercise sampler refusals, actual opaque RGBA-mask admission versus RGB-only and
+blended refusal, WRAP4/5 observation/restoration, StateBlock, Reset, native alpha
+and RT1/RT2 twins, plus two calibrated perspective RGB comparisons. The detached
+corpus owns the broader equation matrix; host control-flow evidence owns injected
+driver failures. No broad TAA or unchanged-family rerun was needed.
+
+Independent Sol/high review is clean after correcting the initial schedule,
+keeping consecutive lazy draws free of getter barriers, and preventing fixture
+setters from masking Reset sampler resynchronization. Twenty focused report tests
+pass, including malformed/missing/duplicate evidence. The retained fixture is
+`/tmp/x3-glass-live-frozen/motion_output_fixture.exe`, SHA-256
+`1ff5efc7f02968f34f31936cc1013f4d630567d8bab88a410cf39952a849d6fb`.
+
+Root built one clean candidate from reviewed source `44b4e34` and linked the
+existing test seam from its retained objects. The X3 Wine run passes **216 frames,
+432 native source observations and 4,258,208 checks**. The
+[canonical live result](../../verification/results/bottle-X3/linear-material-live-glass.json)
+binds the frozen binaries, scoped inputs, candidate/toolchain and raw results.
+The production DLL also passes the linked x87 audit (218 reachable functions).
+No new production per-draw work, broad benchmark or gameplay cost claim is
+introduced by this fixture extension. The actual game remains on `d9413fc`;
+glass is qualified for a future combined install, not installed or accepted in
+user gameplay. This does not establish a fix for the docking-port transition.

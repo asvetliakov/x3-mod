@@ -161,7 +161,7 @@ class LiveMaterialReportTests(unittest.TestCase):
         self.assertEqual(pixels,list(XT_PIXELS))
         self.assertIn('if(corrected&&!material)',method)
         self.assertLess(method.index('if(corrected&&!material)'),method.index('frame_begin();'))
-        self.assertIn('config.observe_native_wrap = materialwrap || materialxt;',source)
+        self.assertTrue('config.observe_native_wrap = materialwrap || materialxt || materialglass;' in source)
         self.assertIn('const unsigned refusal_stage=bump?5:4;',method)
         self.assertIn('compare(before,snapshot()',method)
         self.assertIn('before_ps,after_ps',method)

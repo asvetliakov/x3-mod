@@ -1,0 +1,3241 @@
+{
+  "passed": true,
+  "game_launched": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-linear-material-live-dijgzx7k",
+  "scope": "Actual live six SM3 glass pairs; seven glass originals and two existing bootstrap programs. Material off/on, depth off/on, perdraw/lazy, all three sampler refusals, actual opaque COLORWRITE15 versus7 and blend gate, physical WRAP4/5 observation/restoration, StateBlock/Reset, alpha and temporal twins, two calibrated perspective RGB comparisons. No gameplay or native-Windows runtime claim.",
+  "mode": "glass",
+  "binaries": {
+    "/private/tmp/x3-glass-live-frozen/motion_output_fixture.exe": "1ff5efc7f02968f34f31936cc1013f4d630567d8bab88a410cf39952a849d6fb",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glass-candidate-2kxlx8d9/source/verification/probe/build/motion-output-seam/d3d9.dll": "8b05c86fa35adceecb791c02324a299ccbd50e27798e9affcff9a1bda78a476b"
+  },
+  "local_programs": {
+    "vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
+    "ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+    "vs_c30104cb0efb6675.bin": "05a64b50c80704c0ef80ed818f790b1fabf3bb2ca8dbdee134ade54d6ec2fa8b",
+    "vs_e2ad860d5fbb3e59.bin": "c0aa7effc40cfcfc4c3b936c3809446f3be1048576b6a5138f6de3155f778d5d",
+    "vs_74fdc00d802b4027.bin": "5e2529bea7afcab8de4b2db15cb39d545bb3f5de84fd2a76471467d2a87e2068",
+    "ps_a66fb1981ba755b2.bin": "b50da3d3ad2e8e73b716c6c96d65e00b8aa06d156549d931c753962de2a84256",
+    "ps_ebc9b2b3f1564e9a.bin": "dadcbb9397698780bf86e29d3872aa35843b5e605bf541f800d386278fdb9f66",
+    "ps_f31c9e2701c8eee4.bin": "3970b213b81e46b686349925d50be2d7011cbfd36fa97ea6cce9cc0ec741671c",
+    "ps_9d49f288800f898d.bin": "ecad4b7350117126ef87a5b8339247d86ffd74ff405f7df93b484cd399fedf1b"
+  },
+  "cases": {
+    "depth0-perdraw-material0": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 24,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "4531bb85faa89e44",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "da216c818b96ee52",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 7.863
+    },
+    "depth0-perdraw-material1": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 33,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "9394f3261a7c5de3",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.156257417",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.526855469,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "cc7e6942222dcf48",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.157098295",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 2.061
+    },
+    "depth0-lazy-material0": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 24,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "4531bb85faa89e44",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "da216c818b96ee52",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 1.625
+    },
+    "depth0-lazy-material1": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 33,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "0000000000000000"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "9394f3261a7c5de3",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.156257417",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.526855469,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "cc7e6942222dcf48",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "0000000000000000"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.157098295",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 1.685
+    },
+    "depth1-perdraw-material0": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 26,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "4531bb85faa89e44",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "da216c818b96ee52",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 1.943
+    },
+    "depth1-perdraw-material1": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 35,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "9394f3261a7c5de3",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.156257417",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.526855469,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "cc7e6942222dcf48",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.157098295",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 1.905
+    },
+    "depth1-lazy-material0": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 26,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "22becf27fba61a41",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "4531bb85faa89e44",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.3046875,
+            0.432128906,
+            0.244628906,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "da216c818b96ee52",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 1.633
+    },
+    "depth1-lazy-material1": {
+      "frames": 27,
+      "checks": 532276,
+      "restorations": 54,
+      "native_draw_observations": 54,
+      "held_references": 35,
+      "samples": {
+        "0": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "1": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "2": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "3": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "4": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "5": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "6": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "7": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "8": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "9": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "10": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "11": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.52734375,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "4d6032aa457341b6",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "12": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "13": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "14": {
+          "rgba": [
+            0.918457031,
+            0.291015625,
+            0.103515625,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "acf29d0da0b17f9a",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "15": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "16": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "17": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "18": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            1.0
+          ],
+          "alpha_hash": "3d89e8e4c474a325",
+          "image_hash": "fee81c63d278909f",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "19": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "20": {
+          "rgba": [
+            1.3046875,
+            0.342041016,
+            0.154663086,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "ce7ad4ea48679c6b",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "4e88696c7674a325"
+          ]
+        },
+        "21": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "22": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "23": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "d5b9884a8674a325"
+          ]
+        },
+        "24": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "074f8bf06e072325",
+          "image_hash": "b5b276f072d872c4",
+          "temporal_hashes": [
+            "d92acdae1a7f7fe5",
+            "d5b9884a8674a325"
+          ]
+        },
+        "25": {
+          "rgba": [
+            1.12792969,
+            0.613769531,
+            0.428222656,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "9394f3261a7c5de3",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.156257417",
+            "rgb_range": "2.06085205"
+          }
+        },
+        "26": {
+          "rgba": [
+            1.12792969,
+            0.682617188,
+            0.526855469,
+            0.313720703
+          ],
+          "alpha_hash": "9d08d4550aa90492",
+          "image_hash": "cc7e6942222dcf48",
+          "temporal_hashes": [
+            "39e6e57a44fc2325",
+            "77001744d705679a"
+          ],
+          "transport": {
+            "pixels": "3997",
+            "max_error": "0.157098295",
+            "rgb_range": "2.06085205"
+          }
+        }
+      },
+      "seconds": 1.888
+    }
+  },
+  "checks": 4258208,
+  "limitations": [
+    "Existing scripted host control-flow evidence owns driver creation/bind/getter/restore failure injection; this GPU mode does not inject driver failures.",
+    "Detached 254-case glass qualification owns full material equations, both faces, over-one transport and term isolation. Live calibrated color inputs permit comparison against actual ordinary working RGB.",
+    "X3 detached evidence reports effective programmable COLOR FLAT=false; effective native-Windows FLAT interpolation remains unverified.",
+    "TAA resolve, unchanged earlier material families and broad performance chains are not rerun. Native alpha and motion/depth attachment outputs are checked directly.",
+    "Native Windows and gameplay appearance/performance remain unverified; the docking-port distance transition is a separate investigation."
+  ],
+  "production_candidate": {
+    "source_commit": "44b4e343ab1e01b2245e4f011201304cb48e8670",
+    "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glass-candidate-2kxlx8d9/source/build/d3d9.dll",
+    "dll_sha256": "e85a996511cbb1ab390c4af5732c4cb1da1326afe87d2b51fb58c0d27ccc2ebe",
+    "dll_bytes": 13383921,
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "seh_clang": "/usr/bin/clang",
+    "build_seconds": 9.570206208,
+    "installed": false,
+    "source_archive": "Clean git archive; fixture seam reuses candidate production objects with the existing explicit test macros",
+    "no_x87": {
+      "result": "PASS",
+      "reachable_functions": 218,
+      "raw": "/tmp/x3-glass-candidate-no-x87.json"
+    }
+  }
+}
