@@ -5,8 +5,9 @@ left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
 0.85 distance, opt-in FP16 bloom and reviewed DEFAULT/BUMPMAP linear materials;
 [build record](../../verification/results/linear-material-install.json).
-From the repository root, define this terminal helper once, then paste a run
-command below. Start with run 1; complete the rest over several sessions as convenient.
+From the repository root, paste a `./x3run` command below. The executable
+[launcher script](../../x3run) handles the shared lock and log snapshots; no shell
+function setup is needed. Start with run 1; complete the rest over several sessions as convenient.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
@@ -25,20 +26,7 @@ now fits the standard instruction budget and passes exact fixture comparisons;
 run 6 also covers that installed update. Emission integration is still agent
 work and adds no gameplay request yet.
 
-```sh
-x3run() {
-  local x3run_since_ns x3run_status
-  x3run_since_ns=$(python3 -c 'import time; print(time.time_ns())') || return
-  if X3M_BOTTLE=X3 python3 verification/probe/wine_lock.py --holder user-game \
-      python3 tools/manage.py launch --bottle X3 "$@"; then
-    x3run_status=0
-  else
-    x3run_status=$?
-  fi
-  python3 tools/analysis/snapshot_x3_run.py --since-ns "$x3run_since_ns" || true
-  return "$x3run_status"
-}
-```
+
 
 ## 1. Camera correction plus loading verification — Ready, start here
 
@@ -46,7 +34,7 @@ The **13° / 0.85-distance camera and chase firing correction** are installed.
 Combine reader and adjacency verification with the first normal save load:
 
 ```sh
-x3run --direct --camera chase --telemetry \
+./x3run --direct --camera chase --telemetry \
   --resource-read verify --dat-handles \
   --mesh-adjacency verify --mesh-adjacency-dump
 ```
@@ -77,7 +65,7 @@ Keep sharpen and mip bias at zero so this remains comparable to the earlier HDR
 baseline:
 
 ```sh
-x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
+./x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
   --telemetry --taa-debug --taa-sharpen 0 --taa-mip-bias 0 \
   --hdr --hdr-tonemap --capture-start 999999 --capture-frames 4
 ```
@@ -87,7 +75,7 @@ a bright object/emitter, and a turn between them. Do not set manual EV. Exit,
 then repeat the same save and camera positions with bloom enabled:
 
 ```sh
-x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
+./x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
   --telemetry --taa-debug --taa-sharpen 0 --taa-mip-bias 0 \
   --hdr --hdr-tonemap --hdr-bloom --capture-start 999999 --capture-frames 4
 ```
@@ -104,7 +92,7 @@ with exposure acceptance. It does not yet establish game FPS or real radiance.
 ## 4. Vanilla window/cursor comparison — Ready after any enhanced run
 
 ```sh
-x3run --direct --vanilla
+./x3run --direct --vanilla
 ```
 
 Alt-tab out and back once. Report whether both the macOS arrow and game cursor
@@ -119,7 +107,7 @@ admitted mismatches. An all-fallback run does not qualify either fast path.
 After acceptance, both fast modes may share one functional load:
 
 ```sh
-x3run --direct --telemetry --resource-read fast --dat-handles \
+./x3run --direct --telemetry --resource-read fast --dat-handles \
   --mesh-adjacency fast
 ```
 
@@ -137,7 +125,7 @@ available, an active light.
 First run with linear materials off:
 
 ```sh
-x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
   --motion-output --taa --telemetry --taa-debug --camera-log 1 \
   --taa-sharpen 0.75 --taa-mip-bias -0.5 \
   --hdr --hdr-tonemap --hdr-ev-manual 0 \
@@ -148,7 +136,7 @@ Exit, then repeat the same save, camera positions and sequence with linear
 materials on. Leave the three material gains at their default 1:
 
 ```sh
-x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
   --motion-output --taa --telemetry --taa-debug --camera-log 1 \
   --taa-sharpen 0.75 --taa-mip-bias -0.5 \
   --hdr --hdr-tonemap --hdr-ev-manual 0 --linear-materials \

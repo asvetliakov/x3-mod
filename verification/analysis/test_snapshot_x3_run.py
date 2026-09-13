@@ -2,7 +2,6 @@
 import importlib.util
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 from types import SimpleNamespace
@@ -188,18 +187,22 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.assertEqual((competing / 'keep').read_text(), 'concurrent snapshot')
         self.assertFalse((self.output / 'x3-bottleX3-run1').exists())
 
-    def test_shell_helper_preserves_game_exit_even_if_snapshot_fails(self):
-        document = (ROOT / 'docs/verification/user-runs.md').read_text()
-        helper = document.split('```sh\n', 1)[1].split('\n```', 1)[0]
+    def test_launcher_preserves_arguments_and_game_exit_even_if_snapshot_fails(self):
         executable = self.root / 'python3'
-        executable.write_text('#!/bin/sh\ncase "$1" in\n-c) echo 123;;\nverification/probe/wine_lock.py) exit "$X3_TEST_GAME_STATUS";;\ntools/analysis/snapshot_x3_run.py) exit 2;;\n*) exit 99;;\nesac\n')
+        executable.write_text('#!/bin/sh\nprintf "<%s>\\n" "$PWD" "$@" >> "$X3_TEST_CALLS"\ncase "$1" in\n-c) echo 123;;\nverification/probe/wine_lock.py) exit "$X3_TEST_GAME_STATUS";;\ntools/analysis/snapshot_x3_run.py) exit 2;;\n*) exit 99;;\nesac\n')
         executable.chmod(0o700)
-        shell = shutil.which('zsh') or shutil.which('bash')
-        self.assertIsNotNone(shell)
+        calls = self.root / 'calls.txt'
         for status in (0, 17):
-            completed = subprocess.run([shell, '-c', 'set -e\n' + helper + '\nx3run --direct\n'],
-                                       env=dict(os.environ, PATH=str(self.root), X3_TEST_GAME_STATUS=str(status)), capture_output=True, text=True)
+            calls.write_text('')
+            completed = subprocess.run([str(ROOT / 'x3run'), '--direct', '--camera', 'chase', 'argument with spaces'],
+                                       cwd=self.root,
+                                       env=dict(os.environ, PATH=str(self.root) + os.pathsep + os.environ['PATH'],
+                                                X3_TEST_GAME_STATUS=str(status), X3_TEST_CALLS=str(calls)), capture_output=True, text=True)
             self.assertEqual(completed.returncode, status, completed.stderr)
+            invoked = calls.read_text()
+            self.assertEqual(invoked.count(f'<{ROOT}>\n'), 3)
+            self.assertIn('<verification/probe/wine_lock.py>\n<--holder>\n<user-game>\n<python3>\n<tools/manage.py>\n<launch>\n<--bottle>\n<X3>\n<--direct>\n<--camera>\n<chase>\n<argument with spaces>\n', invoked)
+            self.assertIn('<tools/analysis/snapshot_x3_run.py>\n<--since-ns>\n<123>\n', invoked)
 
 
 if __name__ == '__main__':
