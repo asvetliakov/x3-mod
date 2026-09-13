@@ -179,11 +179,11 @@ class ChaseCameraPipeline(unittest.TestCase):
             self.assertEqual(r['verdict'], 0)
             ray = vec_mat([-x for x in r['pos']], transpose(r['basis']))
             self.assertAlmostEqual(0.5 - ray[1] / ray[2] / vfov / 2, 0.725, places=12)
-            self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(20)), places=12)
+            self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(13)), places=12)
             self.assertGreater(r['pos'][1], 0)
             self.assertLess(r['pos'][2], 0)
-            self.assertAlmostEqual(r['distance'], 0.6 * math.hypot(40, 200), places=10)
-            alpha = math.radians(20) + math.atan(0.45 * vfov)
+            self.assertAlmostEqual(r['distance'], 0.85 * math.hypot(40, 200), places=10)
+            alpha = math.radians(13) + math.atan(0.45 * vfov)
             self.assertAlmostEqual(math.atan2(r['pos'][1], -r['pos'][2]), alpha, places=12)
 
     def test_elevated_framing_handles_native_pitch_yaw_roll_and_ship_orientation(self):
@@ -462,11 +462,11 @@ class ChaseCameraPipeline(unittest.TestCase):
         d = self.d.defaults()
         self.assertEqual(d['rot_tau'], 0.22)
         self.assertEqual(d['pos_tau'], 0.30)
-        self.assertEqual(d['pitch_down_deg'], 20.0)
+        self.assertEqual(d['pitch_down_deg'], 13.0)
         self.assertEqual(d['lag_clamp_deg'], 8.0)
         self.assertEqual(d['pos_lag_clamp'], 0.10)
         self.assertEqual(d['offset_y'], 0.45)
-        self.assertEqual(d['distance_scale'], 0.6)
+        self.assertEqual(d['distance_scale'], 0.85)
         self.assertEqual(d['combat_tightness'], 0.0)
         self.assertEqual(d['max_dt'], 0.10)
         self.assertEqual(d['snap_coalesce_frames'], 3)
@@ -659,7 +659,7 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
         return 0, json.loads(output.getvalue())
 
     def test_pitch_down_is_forwarded_by_dry_run(self):
-        for value in ('0', '10', '20', '25', '30'):
+        for value in ('0', '10', '13', '20', '25', '30'):
             code, output = self.invoke('--camera', 'chase', '--chase-pitch-down-deg', value)
             self.assertEqual(code, 0)
             self.assertEqual(float(output['env']['X3M_CHASE_PITCH_DOWN_DEG']), float(value))

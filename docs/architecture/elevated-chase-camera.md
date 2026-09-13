@@ -9,15 +9,23 @@ new framing and timing is pending.
 
 ## Geometry contract
 
-`X3M_CHASE_PITCH_DOWN_DEG` / `--chase-pitch-down-deg` defaults to **20 degrees**, following the user’s request for a stronger view
-of the ship’s top. `--chase-pitch-down-deg 25` is also within the supported range.
+`X3M_CHASE_PITCH_DOWN_DEG` / `--chase-pitch-down-deg` defaults to **13 degrees**,
+following the user’s next-flight request to reduce the angle from 20 degrees.
+`--chase-pitch-down-deg 25` is also within the supported range.
 The accepted configuration range is `[0,30]`; zero explicitly selects the old
 geometry, rather than an elevated camera with zero depression. Combined with
 `--chase-rot-tau 0.15 --chase-pos-tau 0.20 --chase-distance-scale 1`, zero
 restores the previous framing and following behavior. The user requested a
-closer default: distance scale is now **0.6**, placing the settled camera at
-60% of the native boom length. The existing `offset_y=0.45`, rotation lag limit
-8 degrees and position lag limit 0.10 are retained.
+revised distance after that flight: distance scale is now **0.85**, placing
+the settled camera at 85% of the native boom length (previously 60%). The
+existing `offset_y=0.45`, rotation lag limit 8 degrees and position lag limit
+0.10 are retained.
+
+The 13-degree / 0.85 follow-up passed all 56 focused camera and camera-site
+tests. The orchestrator reviewed the author's source, CLI, geometry oracles
+and documentation delta with no open findings. This changes constants only;
+the existing performance analysis applies. These defaults are not installed
+yet; the third gameplay run below used 20 degrees / 0.6.
 
 For positive pitch, the target frame uses the ship's up axis and the native
 view forward axis projected onto the ship's horizontal XZ plane. This preserves
@@ -42,15 +50,16 @@ satisfies all three constraints together:
 
 For a horizontally centered native view, boom elevation is
 `pitch_down + atan(q)`. With `tan(half vertical FOV)=0.75`, the default gives
-38.65 degrees of boom elevation while looking down 20 degrees. This shows why
+31.65 degrees of boom elevation while looking down 13 degrees. This shows why
 simply pitching the old camera downward would fail: it would move the ship
 upward on screen without raising the camera. Native boom elevation and view
 pitch are accounted for by reconstructing the boom, not added twice.
 These guarantees describe the settled anchor. The ship silhouette and bounded
 spring lag can move its visible center. Pitch alone cannot guarantee the entire
 ship silhouette fits; that also depends on ship dimensions, FOV and distance.
-The closer 0.6 distance makes the ship appear larger and can crop its hull;
-it preserves the anchor placement, not a full-hull visibility guarantee.
+The 0.85 distance is farther out than the previous 0.6 setting, but remains
+closer than the native boom and can still crop the hull; it preserves the
+anchor placement, not a full-hull visibility guarantee.
 
 Invalid tunables prevent installation. Per-frame geometry separately refuses
 nonfinite FOV/slope, a combined signed vertical-plane elevation with absolute
@@ -92,7 +101,7 @@ allocation, lock, memory probe or per-frame logging. Three alternating
 one-million-step host samples per mode, including synthetic input generation,
 measured median 0.17053 us/step for legacy geometry and 0.16964 us/step for
 elevated geometry at the earlier explicit 10-degree / distance-scale-1 setting (the algorithm is
-unchanged by the new 20-degree / distance-scale-0.6 defaults); the small difference is noise, not a claimed speedup. All
+unchanged by the current 13-degree / distance-scale-0.85 defaults); the small difference is noise, not a claimed speedup. All
 six million frames applied without refusal. Local evidence:
 `verification/results/chase-elevated-host-performance.json`. These host timings
 do not measure CrossOver, the complete hook boundary, game FPS or load time.
