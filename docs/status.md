@@ -68,6 +68,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   ownership/TAA, Reset, state blocks and reference retirement. It remains opt-in
   and is installed after [review 51](verification/review-51-linear-materials.md).
   Gameplay material acceptance is run 6 in the brief queue.
+  The [next-slice decision](architecture/material-next-slice.md) selects shared
+  Khaak/Teladi/Xenon DEFAULT materials; offline proof is underway, with no
+  additional production change installed. Blended emissions need a separate
+  linear-composition and temporal-reactivity design.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.
