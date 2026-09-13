@@ -53,6 +53,13 @@ in every case because of its cap, versus +5.66…+8 for the old rule. Actual
 post-TAA meter inputs and presented images are absent, so this is a scoped
 counterfactual, not game acceptance of the new meter or its appearance.
 
+## Review effort preference (2026-09-13)
+
+The user changed secondary code/correctness reviews from Sol xhigh to Sol high
+for faster feedback. `AGENTS.md` now uses Sol high for all routine secondary
+work and independent reviews, with difficult findings escalated to the Astra
+orchestrator. Useful in-flight reviews may finish; new reviews use high.
+
 ## Shader provenance correction (2026-09-13)
 
 [Review 36](verification/review-36-shader-provenance.md) corrects an offline
