@@ -91,9 +91,11 @@ DLL and live bloom qualification remain pending.
 The user requested separate runtime exposure and bloom toggles for same-run
 comparisons; these are being implemented with visible state and logging before
 another such gameplay request. The user additionally requested an outdoor-space
-exposure evaluation against other modern space games, then adjustment. Separate
-research and capture-based policy evaluation are underway; do not merely lower
-the current permanent brightness cap. There is no new run for the HUD/stutter
+exposure evaluation against other modern space games, then adjustment. The independently reviewed [comparison and capture study](architecture/space-exposure-policy.md)
+favors fixed EV 0: all nine sampled frames request the old +2 EV ceiling,
+and sparse sky can trigger discontinuous targets. Fixed 0 is selected as the
+next production default, preserving AgX/bloom and optional Auto comparison.
+Implementation and visual acceptance remain pending; the installed default is unchanged. There is no new run for the HUD/stutter
 fixes yet.
 The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
@@ -125,16 +127,17 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   candidate sharpen 0.75 still needs its own measured capture.
 - **AgX is implemented and retained.** FP16 scene redirection exists, but its
   content remains decoded gamma-space game lighting. Scene-referred HDR lighting
-  and HDR display output are incomplete. The replacement space-aware exposure
-  meter is installed and awaits gameplay acceptance.
+  and HDR display output are incomplete. The space-aware exposure
+  meter is installed, but runs 24/25 show near-permanent +2 EV. The reviewed
+  policy decision selects fixed EV 0 by default; implementation is pending.
 - **Bloom live integration is installed and awaits gameplay acceptance.** The
   [compositor boundary](architecture/hdr-bloom-boundary.md) passes 714 combined
   X3 checks across both reference models, including Reset/ResetEx and original
   exception cleanup. Review 50 has no open findings. The scene handoff retains
   exact display parameters and adds no resolve or exposure-meter pass. Existing
   component image/state/recovery evidence remains linked from the design.
-  Run 3 in the [brief queue](verification/user-runs.md) combines exposure and
-  bloom A/B acceptance; game image quality and frame cost remain unverified.
+  Run 3 in the [brief queue](verification/user-runs.md) is complete and exposed
+  the pure-device attachment failure; corrected live bloom acceptance remains pending.
 - Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
   accepts crypto reuse; [run 18](verification/run18-camera-loading.md) verifies
   6,958 reader outputs and 15,354 meshes exactly with zero mismatches or faults.
