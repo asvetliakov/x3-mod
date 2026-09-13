@@ -13,7 +13,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 3 | FP16 lighting and HDR emissive | The [linear material path](architecture/scene-linear-materials.md) has design/disassembly, combined shaders and detached/live D3D9 qualification. The opt-in candidate is reviewed and installed; run 6 confirms a visible material change, with final appearance still under development; only covered opaque material evaluation becomes linear, not all scene blending or HDR output. Default-off additive emission integration now passes independent source/evidence review and isolated X3 live-route qualification; it is installed, while gameplay and its measured cost remain open. |
 | 4 | HDR bloom | [Live integration](architecture/hdr-bloom-boundary.md) connects the qualified filter/executor and compositor bridge. Combined X3 lifetime checks pass 714/714 across both reference models, including Reset/ResetEx and original exceptions; independently reviewed and installed, with first gameplay acceptance pending. It runs the original compositor once then replaces RGB, preserving original state/resources/alpha. Component image/state/recovery evidence is linked from the design. Initial bloom uses the current decoded gamma-space scene; real radiance still requires materials. Gameplay quality and frame cost remain unverified. |
 | 5 | Exposure / optional adaptation | [Reviewed outdoor-space evaluation](architecture/space-exposure-policy.md) selects fixed EV 0 as the installed default, with automatic exposure retained as an explicit option and same-run toggle. The previous Auto default mostly stayed at +2 EV in runs 24/25; the default/control changes are reviewed and installed. Same-run visual acceptance is queued as run 7. |
-| 6 | New material shaders | **Partial coverage, not complete.** Installed: 116 reviewed pairs / 83 originals across Argon/shared/Split/Terran hulls, standard lighting and Asteroid; [detached and live qualification](architecture/linear-asteroid-materials.md) passes. Run 6 is complete: converted surfaces visibly brighten, coverage is partial and gloss needs later tuning; selection stutters and distant shimmer remain under investigation. Six of the [inventoried 52 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md) are now covered. The 32-pair Boron/Paranid conversion and scalar transport are reviewed on isolated branches; GPU/live qualification remains. Other opaque pairs, older profiles, particles and blended writers still need conversion/composition coverage. Existing native shaders remain in use for uncovered materials. The [complete ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; the full goal includes all necessary families and whole-scene linear lighting. |
+| 6 | New material shaders | **Partial coverage, not complete.** Installed: 116 reviewed pairs / 83 originals across Argon/shared/Split/Terran hulls, standard lighting and Asteroid; [detached and live qualification](architecture/linear-asteroid-materials.md) passes. Run 6 is complete: converted surfaces visibly brighten, coverage is partial and gloss needs later tuning; selection stutters and distant shimmer remain under investigation. Six of the [inventoried 52 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md) are now covered. The 32-pair Boron/Paranid conversion and scalar transport are reviewed and integrated in main (148 pairs / 115 originals); their detached fixture is reviewed and built, while GPU/live qualification remains before installation. Other opaque pairs, older profiles, particles and blended writers still need conversion/composition coverage. Existing native shaders remain in use for uncovered materials. The [complete ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; the full goal includes all necessary families and whole-scene linear lighting. |
 | 7 | GTAO/SSAO | Not started. The motion route supplies R32F depth on RT2. |
 | 8 | Better directional/self shadows | Not started. |
 | 9 | Reflections/SSR | Not started. Needs a defined off-screen/environment fallback. |
@@ -45,16 +45,17 @@ they are not a measured final-image baseline.
    `/tmp/x3-bottleX3-run<N>/` before bounded analysis.
 2. Convert all necessary scene families using the [complete coverage ledger](architecture/material-coverage.md),
    including uncaptured and older-profile variants. Every pass identity needs a
-   converted role or a justified non-material disposition. The preceding 40 Split/standard-lighting pairs are GPU/live qualified. The
-   next group adds shared/Split BUMPMAP and Terran DEFAULT/BUMPMAP: 40 pairs,
-   bringing the source to 110. Source review and whole-group GPU/live qualification now pass;
-   the combined build is installed and awaits gameplay acceptance.
+   converted role or a justified non-material disposition. Installed opaque
+   coverage is 116 pairs. Qualify the reviewed 148-pair source next, then complete
+   the 14 XT contracts, including correction of four malformed native DEFAULT
+   linkages. Older profiles and other scene writers remain in scope.
 3. The [revised emission path](architecture/linear-emission-composition.md) passes
    detached and live X3 qualification and is installed behind a default-off flag.
    It preserves native recovery, original source results and supplemental
    temporal coverage for enhanced emissions. Its measured cost remains material;
-   a separate prototype fuses native-image copying and emission-target clearing,
-   with exact differential checks and paired timing required before adoption.
+   the reviewed native-image copy / emission-target clear fusion is now installed
+   after exact component and live-route qualification. Gameplay and further cost
+   reduction remain open.
    Opaque coverage alone does not justify changing blends or claiming scene-wide
    linear composition. Existing native-writer limitations and gameplay acceptance
    remain explicit.
