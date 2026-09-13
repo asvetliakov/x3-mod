@@ -106,25 +106,21 @@ favors fixed EV 0: all nine sampled frames request the old +2 EV ceiling,
 and sparse sky can trigger discontinuous targets. Fixed 0 is selected as the
 next production default, preserving AgX/bloom and optional Auto comparison.
 The default/control source is reviewed, qualified and installed; visual
-acceptance remains pending. There is no new run for the HUD/stutter
-fixes yet.
+acceptance remains pending. Run 7 now combines the HUD/stutter and comparison checks.
 The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
 geometry genuinely composites with the background; temporal coverage must
 preserve that mixture rather than force opaque depth. The bloom lifetime host
 fixture's emission Reset model is repaired and independently reviewed
 (33 scenarios / 139 checks); this checkpoint changes no installed code.
-The [motion/depth WRAP correction](architecture/motion-varying-wrap.md) is
-source-integrated and independently reviewed, including its interaction with
-emission and Reset (11 affected host tests pass). GPU qualification and
-installation remain pending.
-The [116-pair Asteroid/COLOR1 source](architecture/linear-asteroid-materials.md)
-is now integrated and independently reviewed with WRAP coexistence. The
-detached/live GPU updates pass pre-run review; execution and installation are
-pending. The complete 32-pair Boron/Paranid transformer and independent numeric
-reference are being implemented in `/tmp/x3-material-boron-paranid`, using
-whole-register RGB and native scalar relocation with a required live WRAP
-component mapping. The installed material count remains 110.
+The [motion/depth WRAP correction](architecture/motion-varying-wrap.md) and
+[116-pair Asteroid/COLOR1 source](architecture/linear-asteroid-materials.md) are
+reviewed, GPU/live-qualified and installed. The next material expansion remains
+isolated: 32 Boron/Paranid pairs and their independent reference are committed
+at `5e16c2f` in `/tmp/x3-material-boron-paranid`; the reviewed scalar WRAP
+integration is `110123b` in `/tmp/x3-palette-live-wrap`. The 3,541-case detached
+fixture in `/tmp/x3-palette-gpu` is under review and has not run on the GPU.
+Those 148-pair candidates are not installed.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent
@@ -160,18 +156,18 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
 - [Damage-branch motion output](architecture/damage-motion.md) is reviewed and
   source-integrated: 192 X3 GPU cases / 576 configurations preserve native
   branch/color behavior while adding motion and depth. The 41 affected contract
-  and profile tests pass after integration. Combined build/install and gameplay
-  remain pending; detached completion timings are not game FPS.
+  and profile tests pass after integration. The combined build is installed; gameplay remains pending. Detached
+  completion timings are not game FPS.
 - [Linear materials](architecture/scene-linear-materials.md) are installed with
   **83 original shaders / 116 pairs**, including Argon/shared/Split/Terran hulls
   and standard-lighting DEFAULT/BUMPMAP/LOW. The
   [whole-group qualification](architecture/linear-hull-materials.md) passes
-  independent review, 2,498 detached GPU cases and 24,540 live-route checks across
-  1,952 frames, with alpha/motion/depth preservation, ownership, Reset and
-  shader retirement. The clean combined build passes compilation, the
-  215-function x87 audit, unchanged 194 imports and an explicit-DLL load check.
-  The feature stays opt-in; gameplay acceptance remains run 6, combined with
-  the installed lead marker and new camera defaults. The
+  independent review; the [Asteroid extension](architecture/linear-asteroid-materials.md)
+  raises qualification to 2,757 detached GPU cases and 25,988 live-route checks
+  across 2,064 frames, preserving alpha/motion/depth, ownership, Reset and
+  shader retirement. The retained build passes compilation, the 215-function
+  x87 audit and an explicit-DLL load check. The feature stays opt-in; run 6
+  supplied initial feedback and run 7 covers the installed extension. The
   [coverage ledger](architecture/material-coverage.md) retains all 817 archive
   pass identities; [52 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md)
   and older-profile variants remain, alongside other scene writers. The six-pair

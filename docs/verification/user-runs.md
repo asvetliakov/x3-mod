@@ -213,8 +213,7 @@ Paired screenshots show brighter converted hull/station surfaces, partial
 coverage, and less apparent gloss. Final gloss/lighting/reflection tuning may
 follow later at the user's preference; accidental loss of native terms still
 needs exclusion. Keep accepted camera values. The central HUD correction and
-selection timings are being combined into a future build; no new run is ready
-for them yet. The current run-6 commands remain above as provenance.
+selection timings are now installed and combined into run 7. The current run-6 commands remain above as provenance.
 
 ## 7. Same-run exposure/bloom and chase HUD — Ready
 
