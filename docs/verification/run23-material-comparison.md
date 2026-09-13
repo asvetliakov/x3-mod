@@ -195,3 +195,72 @@ therefore exclude capture work and late transformed-shader creation as these
 stalls, but they do not measure the native target-selection, VM, lead-solver or
 central-HUD path. Focused timers around that native path are the supported next
 diagnostic step.
+
+## Far/near asteroid candidate
+
+The high-confidence visual/object candidate is the dark asteroid at projected
+origin `(303.11,306.78)` to `(302.37,306.87)` in frames 10752--10755 and
+`(358.94,386.37)` to `(358.23,386.67)` in frames 11607--11610. Both bursts use
+native context `node=7056e938`, `node_handle=50140`, `mesh=7666e368`,
+`model=00004fee`, `lod=0`, VB/IB `3445/3444`, and the exact Asteroid BUMP pair
+`167eb2d5629ab9d3` / `d44db87778a43b61`. The geometry is unchanged: an indexed
+triangle list with 1,712 primitives / 5,136 16-bit indices, 1,002 vertices and
+a 40-byte stride. This is clearly the same pictured rock and is distinct from
+the much larger right-hand asteroid (`node=7056e6b8`). The capture has no
+selected-target-to-node record, so it cannot prove that node `7056e938` is the
+game's selected target. The missing native target handle/pointer association is
+the remaining identification gap.
+
+The far draw is gate 4 with blocker `0x40` (`RasterState`): Z is enabled, Z
+write and alpha test are off, alpha blend is on with
+`SRCALPHA` / `INVSRCALPHA` and `BLENDOP=ADD`, separate-alpha blend is off, and
+the color-write mask is RGB only (`0x7`). The near draw is the same
+pair/geometry/LOD with Z write on, alpha blend off, `ONE` / `ZERO`, `ADD`,
+separate-alpha blend off, and RGBA writes (`0xf`). The pixel shader's alpha is
+exactly `s0.a * v0.a`; `s0` is the diffuse texture. Vertex `v0.a` comes from
+`c39.x`, optionally multiplied by its saturated `c41` fog term. Far has
+`b0=1`, `c39.x=1`, and `c41.xy=(1.0526316, 2.1052632e-7)`; near has `b0=0`
+and sparse-zero `c39=0`, which is irrelevant while blending is disabled. These
+captures prove a native render-state/alpha-path switch while `lod=0`; they do
+not prove an LOD switch or justify forcing opaque rendering or Z writes.
+
+A conservative 20-pixel projected-origin core in every far frame is 100% RT1
+alpha `-1` and RT2 depth `-1`, including a sentinel-only 3x3 neighborhood
+around every core pixel. With TAA history valid, cut 0,
+`camera_background_valid=1`, and sentinel camera policy 2, the resolve treats
+the asteroid pixels through far-background camera reprojection rather than the
+asteroid's object motion. Same-domain FP16 unresolved HDR versus resolved TAA
+differs on 97.45--99.36% of those core pixels, with 30.21--42.12% differing by
+more than 1/1024. History therefore actually affects almost the whole far core.
+An explicit acceptance/rejection mask was not captured, so equality cannot
+distinguish accepted identical or clipped history from rejection.
+
+Near, the asteroid's isolated valid-depth component is 5,763--5,790 pixels,
+with a bounding box of approximately `(311/312,342)` to `(394,430)`, and every
+pixel has RT1 alpha 1 and valid RT2 depth (`0.99997008--0.99997413`).
+Jitter-corrected object motion in frames 11608--11610 is median
+`(0.256--0.258,-0.107)` pixels, magnitude `0.279--0.281` pixels, matching the
+projected-origin previous-minus-current shift. Exact resolve-depth-footprint
+emulation passes 100% of component pixels in all three comparable pairs. FP16
+HDR-to-TAA differs on 63.27--65.39%, an actual lower bound on pixels whose
+accepted history changes their output. Current and previous reactive-mask
+readbacks are absent, so the capture does not establish an exact close
+acceptance fraction.
+
+The BUMP pixel shader samples s0--s3. Their formats are respectively DXT1,
+DXT5, DXT1 and DXT1; all four are 1024x1024, 11-level textures with anisotropic
+minification, linear magnification and mip filtering, maximum anisotropy 16,
+sRGB sampling off, and application LOD bias 0. Because the renderer applies
+mip bias only after a draw routes, the far gate-4 asteroid stays at bias 0
+while the near routed asteroid receives `-0.5` on s0--s3 during the draw. Every
+captured frame reports zero mip-bias failures. Asteroid color remains on the
+unconverted material shader in the installed 110-pair build in both cases;
+only its near motion/depth path is active.
+
+The bounded target metrics are local at
+`/tmp/run23-target-metrics.json`; the reusable full-burst analysis is at
+`/tmp/run23-analysis/motion-readback-run23-summary.json`. Candidate crops are
+`/tmp/run23-10752-asteroid-crop.png` and
+`/tmp/run23-11607-asteroid-crop.png`. This analysis uses neither stationary
+fixed-pixel variance nor a cross-domain comparison between 8-bit color and
+FP16 TAA.

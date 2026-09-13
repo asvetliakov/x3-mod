@@ -74,8 +74,9 @@ stutters, brighter converted surfaces, partial material coverage and less gloss.
 The captured eligible motion draws use linear materials on 4,420 of 5,800 draws
 (76.21%); most refusals are uncovered XT variants. This is draw coverage, not
 pixel coverage. Final gloss tuning may follow improved lighting/reflections;
-accidental term loss still needs exclusion. The fixture queue is unblocked;
-there is no new user run for these fixes yet.
+accidental term loss still needs exclusion. Run 3 (automatic exposure and bloom) is now requested on the unchanged
+installed build. Hold Wine fixtures and installs while the user performs that
+comparison; there is no new user run for the HUD/stutter fixes yet.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

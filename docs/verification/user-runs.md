@@ -67,13 +67,16 @@ includes the required motion and view-cut checks.
 
 ## 3. Space-aware exposure and bloom comparison — Ready
 
-Keep sharpen and mip bias at zero so this remains comparable to the earlier HDR
-baseline:
+Use the current installed build; no update is needed. Keep sharpen and mip bias
+at zero so this remains comparable to the earlier HDR baseline. Both commands
+include the accepted loading accelerators and use the vanilla camera mode:
 
 ```sh
 ./x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
   --telemetry --taa-debug --taa-sharpen 0 --taa-mip-bias 0 \
-  --hdr --hdr-tonemap --capture-start 999999 --capture-frames 4
+  --hdr --hdr-tonemap \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --capture-start 999999 --capture-frames 4
 ```
 
 Keep the game's **Glow enabled**. In this baseline, capture settled dark space,
@@ -83,12 +86,15 @@ then repeat the same save and camera positions with bloom enabled:
 ```sh
 ./x3run --direct --ownership --object-trace --object-lifetime --motion-output --taa \
   --telemetry --taa-debug --taa-sharpen 0 --taa-mip-bias 0 \
-  --hdr --hdr-tonemap --hdr-bloom --capture-start 999999 --capture-frames 4
+  --hdr --hdr-tonemap --hdr-bloom \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --capture-start 999999 --capture-frames 4
 ```
 
 Repeat the F8 samples. Report exposure pumping/adaptation, bright and dark
 detail, glow around emitters, HUD/menu readability and any obvious slowdown.
-After the comparison, change resolution once if practical. F8 records the
+Also select a target once and report whether the stutter occurs with chase
+disabled. After the comparison, change resolution once if practical. F8 records the
 scene/exposure inputs before bloom; a screenshot is useful for the final glow.
 Tell us which run was baseline/bloom and which bursts were captured. Log analysis
 must confirm `bloom_prepare ready=1` and `bloom_commit committed=1`; a silent
