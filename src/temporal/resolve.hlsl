@@ -32,7 +32,7 @@ float4 rejection : register(c6); // absolute device-depth tolerance, relative to
 // depth is the -1 sentinel (no routed opaque draw wrote it) is current-only;
 // 2 such a pixel is reprojected through the camera path with depth = far (1),
 // for a route that supplies a valid clip_to_previous for the background.
-float4 options : register(c7); // motion enabled, reactive enabled, mask snapshot mode, depth-sentinel policy
+float4 options : register(c7); // motion enabled, reactive enabled, snapshot (1 canonical, 2 expanded), depth-sentinel policy
 // c22.x is k of the reversible luminance weighting (c8..c21 are the AgX
 // block of the HDR write-back, left clear). Every colour that enters the
 // temporal statistics -- the current pixel, its 3x3 neighbourhood and every
@@ -105,6 +105,17 @@ void historyTap(float2 uv, float weight, inout float3 sum, inout float total, in
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Explicit GPU snapshot mode, used by TemporalPass only after validating s5.
     // Canonicalize coverage into owned R32F history; never infer it from alpha.
+    if (options.z > 1.5) {
+        // Raw supplemental FP16 coverage also affects neighboring color clip
+        // statistics. Store its 3x3 union once in current owned R32F history.
+        // This branch never samples a previous (already expanded) mask.
+        bool safe = true;
+        [unroll] for (int y = -1; y <= 1; ++y) {
+            [unroll] for (int x = -1; x <= 1; ++x)
+                safe = maskSafe(fetch(currentReactive, uv + float2(x, y) * sizeJitter.xy).r) && safe;
+        }
+        return float4(safe ? 0 : 1, 0, 0, 1);
+    }
     if (options.z > 0.5)
         return float4(maskSafe(fetch(currentReactive, uv).r) ? 0 : 1, 0, 0, 1);
     float4 current = fetch(currentColor, uv);

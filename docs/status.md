@@ -92,7 +92,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   inputs; broad runtime temporal admission remains unproved. The selected next
   temporal step preserves baseline motion and adds complete supplemental masks
   for enhanced emissions, rather than requiring a classifier for every native
-  writer. Its consumer and same-draw mask producer still need qualification.
+  writer. The consumer passes focused X3 image/state/Reset qualification without
+  live wiring. A shared-shader instruction-budget issue predates this extension;
+  reduce it before regenerating the embedded program. The same-draw mask
+  producer still needs qualification.
   No live emission route is selected.
   The [sun resource study](reverse-engineering/sun-material-identity.md) identifies
   the late TSuns lens-flare path; a pre-bloom sun material remains unproved.

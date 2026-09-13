@@ -178,6 +178,37 @@ A missing producer, snapshot failure or unsuccessful restoration cannot silently
 become an empty mask. Color/native-image recovery and usable-history publication
 remain separate success decisions.
 
+### Supplemental consumer qualification
+
+The consumer is implemented and independently reviewed, without live wiring.
+The focused [X3 result](../../verification/results/bottle-X3/temporal-supplemental-summary.json)
+passes 357 checks, 73 numerical samples and 89 state restorations, including
+the legacy reactive cases and one actual Reset across two generations. It
+qualifies combined motion/sentinel/far-plane handling, current and previous
+coverage, exact one-pixel expansion, disappearing effects, nonfinite mask
+canonicalization, incomplete-frame history suppression, transitions and failed
+operation/restoration recovery. No correctness finding remains in this delta.
+
+Two failed fixture attempts are retained in that result: an advertised-cap
+assertion stopped before execution, and an accumulation oracle incorrectly
+ignored the existing neighborhood clip. The final run changes those fixture
+checks only; reviewed consumer behavior was unchanged. It exited zero in
+33.207 seconds. This is verification duration, not frame time.
+
+Relative to the existing RequiredMask path, expansion adds eight mask fetches
+to its snapshot draw, without a further pass or steady-state allocation. Relative
+to the installed sentinel-only route, enabling supplemental coverage will add
+the mask snapshot draw and two R32F history surfaces, plus the producer's raw
+mask. End-to-end feature cost still needs measurement.
+
+The same compiler reports 1,179 slots / 4,487 DWORDs for the existing shared
+resolve and 1,261 / 4,768 for this source. X3 advertises a 512-slot limit but
+created and executed these programs; the mismatch is unexplained. This is a
+[portability concern](platform-portability.md), not cap-compliance evidence.
+The embedded production shader remains unchanged. Reduce the static budget and
+regenerate/qualify the embedded program before live selection. Native Windows
+execution, the three-output producer and live integration remain unverified.
+
 ### Spatial consumers and source ownership
 
 For the established HDR compositor boundary, `MotionOutput::scene_end_hook`

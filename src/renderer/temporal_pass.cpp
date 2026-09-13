@@ -247,13 +247,15 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     diagnostics_.timed=timing_;
     diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
     auto fail=[&](HRESULT hr){invalidate();diagnostics_.operation=hr;return hr;};
-    const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel;
+    const bool supplemental=in.reactive_policy==ReactivePolicy::SupplementalMaskWithDepthSentinel;
+    const bool mask=in.reactive_policy==ReactivePolicy::RequiredMask||supplemental;
+    const bool sentinel=in.reactive_policy==ReactivePolicy::DerivedFromDepthSentinel||supplemental;
     const bool draw_copy=in.color_surface&&copy_by_draw_;
     if(!out||!device_||!resolve_||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
         (in.motion_policy!=MotionPolicy::KnownCameraOnly&&in.motion_policy!=MotionPolicy::PerPixel)||
         (in.reactive_policy!=ReactivePolicy::Unavailable&&in.reactive_policy!=ReactivePolicy::KnownNonReactive&&
          in.reactive_policy!=ReactivePolicy::RequiredMask&&!sentinel)||
-        (in.reactive_policy!=ReactivePolicy::RequiredMask&&in.reactive)||
+        (!mask&&in.reactive)||
         bool(in.color)==bool(in.color_surface)||bool(in.depth_snapshot)==bool(in.current_depth)||
         (in.depth_snapshot&&!decoder_)||(sentinel&&!in.current_depth)||
         !x3::temporal::valid_sharpen(in.sharpen)||(in.sharpen>0&&(!in.color_surface||!sharpen_)))return fail(E_INVALIDARG);
@@ -266,9 +268,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     HRESULT hr=in.color?texture_input(device_,in.color,in.width,in.height,D3DFMT_A16B16G16R16F):surface_input(device_,in.color_surface,in.width,in.height,&surface_format);
     if(SUCCEEDED(hr))hr=in.current_depth?texture_input(device_,in.current_depth,in.width,in.height,D3DFMT_R32F):texture_input(device_,in.depth_snapshot,in.width,in.height,D3DFMT_D24X8);
     if(SUCCEEDED(hr)&&in.motion_policy==MotionPolicy::PerPixel)hr=texture_input(device_,in.motion,in.width,in.height,D3DFMT_A32B32G32R32F);
-    if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask)hr=texture_input(device_,in.reactive,in.width,in.height,D3DFMT_R32F);
+    if(SUCCEEDED(hr)&&mask)hr=texture_input(device_,in.reactive,in.width,in.height,supplemental?D3DFMT_A16B16G16R16F:D3DFMT_R32F);
     if(FAILED(hr))return fail(hr);
-    hr=allocate(in.width,in.height,in.reactive_policy==ReactivePolicy::RequiredMask);if(FAILED(hr))return fail(hr);
+    hr=allocate(in.width,in.height,mask);if(FAILED(hr))return fail(hr);
     hr=ensure_block();if(FAILED(hr))return fail(hr);
     history_.begin(in.width,in.height,in.epoch);
     if(in.camera_cut||in.cut||!in.history_allowed||in.reactive_policy==ReactivePolicy::Unavailable||
@@ -276,7 +278,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     x3::temporal::ResolveConstants constants{};std::copy(in.rejection,in.rejection+4,constants.rejection);
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
-        in.reactive_policy==ReactivePolicy::RequiredMask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k))return fail(E_INVALIDARG);
+        mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k))return fail(E_INVALIDARG);
     const bool used=history_.valid&&in.weight>0;
     auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
     std::uint64_t mark=stamp();
@@ -318,6 +320,18 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         step(call<SetPsFn>(SetPixelShader)(d,copy_))&&step(call<SetTextureFn>(SetTexture)(d,0,staging_)))hr=quad(in.width,in.height);
     if(SUCCEEDED(hr)&&in.depth_snapshot&&step(call<SetRtFn>(SetRenderTarget)(d,0,depth_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,decoder_))&&step(call<SetTextureFn>(SetTexture)(d,0,in.depth_snapshot)))hr=quad(in.width,in.height);
+    // Supplemental coverage must protect the current 3x3 color statistics too.
+    // Reuse the owned snapshot draw before resolve, with one-pixel expansion;
+    // the previous history is already canonical/expanded and stays untouched.
+    if(SUCCEEDED(hr)&&supplemental){
+        constants.options[2]=2;
+        if(step(call<SetRtFn>(SetRenderTarget)(d,0,reactive_surfaces_[next]))&&
+           step(call<SetPsFn>(SetPixelShader)(d,resolve_))&&
+           step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,4,constants.size_jitter,1))&&
+           step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
+           step(call<SetTextureFn>(SetTexture)(d,5,in.reactive)))hr=quad(in.width,in.height);
+        constants.options[2]=0;
+    }
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,resolve_))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
         step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kLuminanceRegister,constants.luminance,1))&&
@@ -325,8 +339,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         step(call<SetTextureFn>(SetTexture)(d,2,history_.valid?colors_[current_]:nullptr))&&
         step(call<SetTextureFn>(SetTexture)(d,3,history_.valid?depths_[current_]:nullptr))&&
         step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
-        step(call<SetTextureFn>(SetTexture)(d,5,in.reactive))&&
-        step(call<SetTextureFn>(SetTexture)(d,6,history_.valid&&in.reactive_policy==ReactivePolicy::RequiredMask?reactive_[current_]:nullptr)))hr=quad(in.width,in.height);
+        step(call<SetTextureFn>(SetTexture)(d,5,supplemental?reactive_[next]:in.reactive))&&
+        step(call<SetTextureFn>(SetTexture)(d,6,history_.valid&&mask?reactive_[current_]:nullptr)))hr=quad(in.width,in.height);
     if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask){
         constants.options[2]=1; // mask snapshot; current s5 stays borrowed only for this run
         if(step(call<SetRtFn>(SetRenderTarget)(d,0,reactive_surfaces_[next]))&&

@@ -7,9 +7,16 @@ namespace x3m::renderer {
 enum class MotionPolicy { Unavailable, KnownCameraOnly, PerPixel };
 // DerivedFromDepthSentinel needs no mask texture: a current pixel whose R32F
 // depth is the -1 sentinel (no routed opaque draw wrote it) resolves
-// current-only, and a sentinel previous tap contributes no energy. It requires
+// current-only; a sentinel previous tap remains valid background behind a
+// silhouette under the existing disocclusion rules. It requires
 // the direct R32F depth input; the D24X8 decoder cannot carry the sentinel.
-enum class ReactivePolicy { Unavailable, KnownNonReactive, RequiredMask, DerivedFromDepthSentinel };
+// SupplementalMaskWithDepthSentinel retains that baseline and additionally
+// requires complete current coverage for the enhanced source set (including
+// native-result fallback and zero gain). Raw FP16 red is exactly zero when safe;
+// all other values are reactive. The snapshot canonicalizes and expands by one
+// pixel before resolving color; previous snapshots must not be expanded again.
+// Incomplete coverage uses Unavailable with a null mask, which cannot seed history.
+enum class ReactivePolicy { Unavailable, KnownNonReactive, RequiredMask, DerivedFromDepthSentinel, SupplementalMaskWithDepthSentinel };
 struct FrameInputs {
     // Current color: exactly one of the two.
     // A16B16G16R16F texture at the frame size, native, complete local
@@ -35,7 +42,7 @@ struct FrameInputs {
     // Copied into the owned depth history; no decoder draw runs.
     IDirect3DTexture9* current_depth = nullptr;
     IDirect3DTexture9* motion = nullptr; // RGBA32F if PerPixel; alpha ABI in temporal/README
-    IDirect3DTexture9* reactive = nullptr; // R32F if RequiredMask; exactly 0 safe, all else reactive
+    IDirect3DTexture9* reactive = nullptr; // RequiredMask: R32F; Supplemental: A16B16G16R16F raw red coverage
     UINT width = 0, height = 0;
     std::uint64_t epoch = 0; // stable camera/scene/resource regime, not frame/clear count
     float clip_to_previous[16]{}; // unjittered, row-major, column-vector multiplication
@@ -72,10 +79,10 @@ struct FrameInputs {
     ReactivePolicy reactive_policy = ReactivePolicy::Unavailable;
     bool history_allowed = false, camera_cut = false;
     bool cut = false; // route cut detector verdict for this frame; rejects history like camera_cut
-    // With DerivedFromDepthSentinel: reproject sentinel pixels through
+    // With either depth-sentinel policy: reproject sentinel pixels through
     // clip_to_previous at the far plane instead of resolving them current-only.
-    // Only correct when clip_to_previous is a real camera reprojection (the
-    // route uploads identity today, so it leaves this false).
+    // Set true only when clip_to_previous is an actual valid camera
+    // reprojection; leave false when that contract is unavailable.
     bool sentinel_camera = false;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
@@ -88,7 +95,7 @@ struct Output {
     IDirect3DTexture9* depth = nullptr;
     std::uint64_t generation = 0;
     bool used_history = false;
-    IDirect3DTexture9* reactive = nullptr; // owned snapshot if RequiredMask; same borrowing rules
+    IDirect3DTexture9* reactive = nullptr; // owned R32F snapshot with either mask policy; same borrowing rules
     // Level 0 of color, for the caller's copy-back StretchRect into the 8-bit
     // main target. The caller owns state save/restore around the whole
     // copy / run / copy-back sequence; run restores only what it touched.

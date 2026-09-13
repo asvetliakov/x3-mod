@@ -1,0 +1,89 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "source_commit": "c590d9051971a18f54ebb339caf9f4ad2cdb6d71",
+  "baseline_commit": "fef3a1d93bae920ebcb04e1f53cc0ca83279dce4",
+  "provenance": {
+    "/Users/asvetl/x3-mod/src/renderer/temporal_pass.h": "28d8c965e11611b357d2c2b47415d819f4f9232fc12687e62ca2ef72247507eb",
+    "/Users/asvetl/x3-mod/src/renderer/temporal_pass.cpp": "4ba343d1feb014a765bdf9d4dfa651a3bd454301bc5bc55e3b55e6460b62efe8",
+    "/Users/asvetl/x3-mod/src/temporal/resolve.hlsl": "2e6ddd68bf917dc5cf603e4d71d00e6f0b37e9e926ab725ccd45b6085e9f686d",
+    "/Users/asvetl/x3-mod/src/temporal/resolve.h": "68f4b7a9e727c617cf76b75e1a669d90d8254e991f9d833cb12353f6432cec02",
+    "/Users/asvetl/x3-mod/verification/probe/temporal_pass_fixture.cpp": "8e29bc9e4a93e0ec72ce5fc318f57186b4f5023231dadfda81808472db9a7059",
+    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe": "284d3caf205bc967eddd9a30411c98905f6fe0ce862ef6b24a90b57c4bdebf59",
+    "/tmp/x3-temporal-supplemental-rym5mw33/baseline-resolve.hlsl": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8"
+  },
+  "command": [
+    "python3",
+    "/Users/asvetl/x3-mod/verification/probe/wine_lock.py",
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "--workdir",
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe",
+    "C:\\X3\\d3dx9_37.dll",
+    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/src/temporal/taa_sharpen_ps.hlsl",
+    "supplemental-only",
+    "Z:/tmp/x3-temporal-supplemental-rym5mw33/baseline-resolve.hlsl"
+  ],
+  "raw_output": "/tmp/x3-temporal-supplemental-final-ntqewh94",
+  "game_launched": false,
+  "previous_attempts": [
+    {
+      "exit_code": 1,
+      "wall_seconds": 32.1,
+      "raw_output": "/tmp/x3-temporal-supplemental-rym5mw33",
+      "result": "RESULT FAIL shared resolve fits advertised ps_3_0 instruction budget",
+      "budget": [
+        "RESOLVE_BUDGET variant=baseline dwords=4487 instruction_slots=1179 device_limit=512 headroom=-667 within_guaranteed_512=0",
+        "RESOLVE_BUDGET variant=supplemental dwords=4768 instruction_slots=1261 device_limit=512 headroom=-749 within_guaranteed_512=0",
+        "RESOLVE_BUDGET_DELTA instruction_slots=82 dwords=281"
+      ]
+    },
+    {
+      "exit_code": 1,
+      "wall_seconds": 34.967,
+      "raw_output": "/tmp/x3-temporal-supplemental-rerun-iok00uvj",
+      "result": "RESULT FAIL history resumes after complete frame",
+      "budget": [
+        "RESOLVE_BUDGET variant=baseline dwords=4487 instruction_slots=1179 device_limit=512 headroom=-667 within_guaranteed_512=0",
+        "RESOLVE_BUDGET variant=supplemental dwords=4768 instruction_slots=1261 device_limit=512 headroom=-749 within_guaranteed_512=0",
+        "RESOLVE_BUDGET_DELTA instruction_slots=82 dwords=281"
+      ],
+      "checks_passed": 268,
+      "samples_passed": 62
+    }
+  ],
+  "portability": "Baseline and supplemental shaders exceed X3 advertised static slot cap. Cause unexplained; actual X3 creation/execution is not cap compliance or native Windows qualification.",
+  "exit_code": 0,
+  "wall_seconds": 33.207,
+  "inputs_unchanged": true,
+  "checks_passed": 357,
+  "samples_passed": 73,
+  "legacy_reactive_cases": 1,
+  "supplemental_cases": 1,
+  "supplemental_resets": 1,
+  "budget": [
+    "RESOLVE_BUDGET variant=baseline dwords=4487 instruction_slots=1179 device_limit=512 headroom=-667 within_guaranteed_512=0",
+    "RESOLVE_BUDGET variant=supplemental dwords=4768 instruction_slots=1261 device_limit=512 headroom=-749 within_guaranteed_512=0",
+    "RESOLVE_BUDGET_DELTA instruction_slots=82 dwords=281"
+  ],
+  "failures": [],
+  "result": "RESULT PASS numerical=73 state_restorations=89 supplemental_only=1",
+  "numerical_checks": 73,
+  "state_restorations": 89
+}

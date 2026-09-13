@@ -362,6 +362,93 @@ struct RouteScene {
     FrameInputs inputs(){auto in=f.inputs();in.color=nullptr;in.color_surface=main8.p;in.depth_snapshot=nullptr;in.current_depth=depth32.p;return in;}
     Output run(TemporalPass& pass,FrameInputs in,const char* label){f.hostile();Snapshot before(d);check("route caller Begin",d->BeginScene());Output out;check(label,pass.run(in,&out));check("route caller End",d->EndScene());before.equals(d,label);require(out.color&&out.depth&&out.color_surface&&pass.diagnostics().history_valid,"route atomic outputs valid");return out;}
 };
+// Consumer-only FP16 raw coverage. No emission producer or live classification.
+void supplemental_cases(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS& pp,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("SUPPLEMENTAL_CASES");TemporalPass pass;check("supplemental initialize",pass.initialize(d,decoder,resolver));
+    for(unsigned generation=0;generation<2;++generation){
+        {
+        Fixture f(d,compiler);RouteScene route(f,compiler);
+        Com<IDirect3DTexture9> raw,r32,wrongSize;
+        check("supplemental FP16 raw",d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&raw.p,nullptr));
+        check("supplemental R32F wrong raw",d->CreateTexture(W,H,1,0,D3DFMT_R32F,D3DPOOL_MANAGED,&r32.p,nullptr));
+        check("supplemental wrong mask size",d->CreateTexture(W+1,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&wrongSize.p,nullptr));
+        {D3DLOCKED_RECT lock{};check("required transition mask lock",r32->LockRect(0,&lock,nullptr,0));for(UINT y=0;y<H;++y)std::memset(static_cast<char*>(lock.pBits)+y*lock.Pitch,0,W*4);check("required transition mask unlock",r32->UnlockRect(0));}
+        auto coverage=[&](float value,int px=-1,int py=-1){D3DLOCKED_RECT lock{};check("supplemental raw lock",raw->LockRect(0,&lock,nullptr,0));
+            for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){const float v=px<0||(int(x)==px&&int(y)==py)?value:0;
+                const unsigned short pixel[]={toHalf(v),toHalf(v),toHalf(v),toHalf(0)};std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*8,pixel,8);}
+            check("supplemental raw unlock",raw->UnlockRect(0));};
+        auto input=[&](){auto in=f.inputs();in.depth_snapshot=nullptr;in.current_depth=route.depth32.p;in.reactive=raw.p;in.reactive_policy=ReactivePolicy::SupplementalMaskWithDepthSentinel;return in;};
+        auto run=[&](FrameInputs in,const char* label,bool valid=true){
+            f.hostile();Snapshot before(d);check("supplemental Begin",d->BeginScene());Output out;
+            {Fault count(d,0);check(label,pass.run(in,&out));require(Fault::draws==(in.reactive?2u:1u),"one snapshot plus one color draw, no extra expansion pass");}
+            check("supplemental End",d->EndScene());before.equals(d,label);
+            require(out.color&&out.depth&&bool(out.reactive)==bool(in.reactive)&&pass.diagnostics().history_valid==valid,"supplemental atomic output validity");return out;};
+        route.depth([](UINT x,UINT){return x<4?-1.f:.5f;});coverage(0);
+        auto in=input();f.upload(.75f,.75f);auto seed=run(in,"supplemental first frame");require(!seed.used_history,"initial or reset frame has no history");
+        f.upload(.25f,1);coverage(1,8,8);auto born=run(in,"supplemental current mask and sentinel");
+        reactive_sample(d,born.color,8,8,.25f,"marked opaque pixel is current only");
+        reactive_sample(d,born.color,7,7,.25f,"diagonal one-pixel neighbor is current only");
+        reactive_sample(d,born.color,10,8,.5f,"two-pixel neighbor retains opaque history");
+        reactive_sample(d,born.color,2,8,.25f,"combined policy retains current sentinel rejection");
+        reactive_sample(d,born.depth,2,8,-1,"combined policy preserves sentinel depth");
+        reactive_sample(d,born.color,8,8,1,"supplemental preserves current alpha",3);
+        const auto mask=readback(d,born.reactive);unsigned marked=0;bool exact=true;
+        for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){const float expected=x>=7&&x<=9&&y>=7&&y<=9?1.f:0.f;exact=exact&&at<float>(mask,y*W+x)==expected;marked+=at<float>(mask,y*W+x)>0;}
+        require(exact&&marked==9,"single raw pixel expands to exact binary 3x3 union");
+        coverage(0);reactive_sample(d,born.reactive,8,8,1,"raw reuse cannot change owned expanded snapshot");
+        auto gone=run(in,"complete empty mask after disappearance");
+        reactive_sample(d,gone.color,7,7,.25f,"previous expanded diagonal rejects disappearance");
+        reactive_sample(d,gone.color,10,8,.375f,"previous mask is not expanded a second time");
+        reactive_sample(d,gone.reactive,8,8,0,"complete empty mask is valid current coverage");
+        if(generation==0){
+            // Real camera translation in the sentinel far plane, even with missing
+            // object history alpha -1; unrelated opaque history keeps motion policy.
+            in=input();in.sentinel_camera=true;in.camera_cut=true;f.upload(.5f,.75f);coverage(0);run(in,"far-plane warmup");
+            in.camera_cut=false;in.clip_to_previous[3]=2.f/W;f.upload(.25f,1);f.uploadMotion(-1);in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;
+            auto farResult=run(in,"combined sentinel camera reprojection");reactive_sample(d,farResult.color,2,8,.5f,"unmarked far-plane camera retains translated history");
+            reactive_sample(d,farResult.color,10,8,.25f,"opaque missing motion history still rejects");
+            coverage(1,2,8);auto farCurrent=run(in,"current far-plane supplemental coverage");reactive_sample(d,farCurrent.color,2,8,.25f,"current mask also rejects far-plane camera history");
+            in.camera_cut=true;f.upload(.5f,.75f);coverage(1,3,8);run(in,"marked far-plane warmup");
+            in.camera_cut=false;coverage(0);f.upload(.25f,1);auto farGone=run(in,"previous far-plane coverage lookup");
+            reactive_sample(d,farGone.color,2,8,.25f,"previous mask rejects reprojected far-plane emission");
+            in=input();in.camera_cut=true;f.upload(.75f,.75f);coverage(0);run(in,"object previous mask warmup");
+            coverage(1,9,8);run(in,"object marked history");in.camera_cut=false;coverage(0);f.upload(.25f,1);f.uploadMotion(1);
+            in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;
+            D3DLOCKED_RECT ml{};check("supplemental motion lock",f.motion->LockRect(0,&ml,nullptr,0));const float corr[]={10.f/W,8.5f/H,.5f,1};std::memcpy(static_cast<char*>(ml.pBits)+8*ml.Pitch+6*16,corr,16);check("supplemental motion unlock",f.motion->UnlockRect(0));
+            auto moved=run(in,"object nonzero history footprint");reactive_sample(d,moved.color,6,8,.25f,"previous coverage follows fractional object correspondence");
+            // Bright raw emitter one pixel away changes the clipping statistics.
+            // The independent legacy sentinel twin demonstrates history would blend
+            // without supplemental expansion, rather than coincidentally clip out.
+            TemporalPass baseline;check("bright edge baseline initialize",baseline.initialize(d,decoder,resolver));
+            in=input();in.camera_cut=true;coverage(0);f.upload(.75f,.75f);run(in,"bright edge warmup");auto legacy=in;legacy.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;legacy.reactive=nullptr;
+            f.run(baseline,legacy,"bright edge baseline warmup");in.camera_cut=false;coverage(1,8,8);f.upload(.25f,.25f);
+            D3DLOCKED_RECT cl{};check("bright edge color lock",f.color->LockRect(0,&cl,nullptr,0));const unsigned short bright[]={toHalf(64),toHalf(64),toHalf(64),toHalf(.375f)};std::memcpy(static_cast<char*>(cl.pBits)+8*cl.Pitch+8*8,bright,8);check("bright edge color unlock",f.color->UnlockRect(0));
+            auto edge=run(in,"expanded current mask prevents bright clip influence");legacy.camera_cut=false;auto unprotected=f.run(baseline,legacy,"bright edge legacy twin");
+            reactive_sample(d,edge.color,7,8,.25f,"bright adjacent pixel remains current only");reactive_sample(d,unprotected.color,7,8,.5f,"without supplemental mask bright neighbor permits old energy");reactive_sample(d,edge.color,8,8,.375f,"nontrivial current alpha preserved",3);
+            for(float value:{0.f,-0.f,.25f,-1.f,NAN,INFINITY,-INFINITY}){
+                in=input();in.camera_cut=true;coverage(0);f.upload(.75f,.75f);run(in,"canonical values warmup");in.camera_cut=false;coverage(value);f.upload(.25f,1);auto canonical=run(in,"FP16 raw canonicalization");
+                const bool safe=value==0;reactive_sample(d,canonical.reactive,8,8,safe?0.f:1.f,"zero safe nonzero nonfinite canonical coverage");reactive_sample(d,canonical.color,8,8,safe?.5f:.25f,"canonical coverage rejects conservatively");
+            }
+            in=input();coverage(1,0,0);auto border=run(in,"clamped border expansion");reactive_sample(d,border.reactive,1,1,1,"border diagonal expands");reactive_sample(d,border.reactive,15,15,0,"border expansion never wraps");
+            // Incomplete producer coverage is the existing Unavailable contract.
+            in=input();in.reactive_policy=ReactivePolicy::Unavailable;in.reactive=nullptr;f.upload(.75f,.75f);auto unavailable=run(in,"incomplete coverage",false);require(!unavailable.used_history,"incomplete cannot consume history");
+            in=input();coverage(0);f.upload(.25f,1);auto complete=run(in,"complete coverage restored");require(!complete.used_history,"incomplete frame cannot seed next history");reactive_sample(d,complete.color,8,8,.25f,"completion resumes current only");
+            f.upload(.5f,0);auto accumulated=run(in,"complete empty coverage accumulation");require(accumulated.used_history,"complete empty establishes usable history");reactive_sample(d,accumulated.color,8,8,.375f,"history resumes after complete frame");
+            for(auto policy:{ReactivePolicy::DerivedFromDepthSentinel,ReactivePolicy::KnownNonReactive,ReactivePolicy::RequiredMask}){in=input();in.reactive_policy=policy;in.reactive=policy==ReactivePolicy::RequiredMask?r32.p:nullptr;require(!run(in,"policy transition away").used_history,"policy transition invalidates");in=input();require(!run(in,"policy transition to supplemental").used_history,"supplemental policy transition invalidates");}
+            ++in.epoch;require(!run(in,"supplemental epoch change").used_history,"supplemental epoch invalidates");in.cut=true;require(!run(in,"supplemental camera cut").used_history,"supplemental cut invalidates");
+            Output failed;
+            auto refuse=[&](FrameInputs bad,const char* label){f.hostile();Snapshot before(d);require(pass.run(bad,&failed)==E_INVALIDARG&&!failed.color&&!failed.depth&&!failed.reactive&&!pass.diagnostics().history_valid,label);before.equals(d,label);};
+            in=input();in.reactive=nullptr;refuse(in,"supplemental missing mask refuses");in=input();in.reactive=wrongSize.p;refuse(in,"supplemental wrong mask size refuses");in=input();in.reactive=r32.p;refuse(in,"supplemental rejects R32F raw format");in=input();in.reactive_policy=ReactivePolicy::RequiredMask;refuse(in,"required mask still rejects FP16 format");
+            in=input();in.current_depth=nullptr;in.depth_snapshot=f.depth.p;refuse(in,"supplemental refuses decoder depth");in=input();in.caller_queries_idle=false;refuse(in,"supplemental refuses unknown queries");in=input();in.caller_stateblock_recording=true;refuse(in,"supplemental refuses recording");
+            in=input();auto owned=run(in,"supplemental refusal recovery");require(!owned.used_history,"refusal recovery does not consume invalid history");in.reactive=owned.reactive;refuse(in,"supplemental rejects owned mask alias");
+            for(unsigned draw:{1u,2u}){in=input();f.hostile();Snapshot before(d);check("supplemental fault Begin",d->BeginScene());{Fault fault(d,draw);require(pass.run(in,&failed)==E_FAIL&&!failed.color&&!failed.depth&&!failed.reactive&&!pass.diagnostics().history_valid,"snapshot or color fault rejects whole history set");}check("supplemental fault End",d->EndScene());before.equals(d,"supplemental draw fault restoration");require(!run(in,"supplemental draw fault recovery").used_history,"failed frame never publishes history");}
+            f.hostile();Snapshot before(d);check("supplemental restore fault Begin",d->BeginScene());{Fault fault(d,0,true,false);require(pass.run(in,&failed)==E_FAIL&&pass.diagnostics().operation==S_OK&&!failed.reactive&&!pass.diagnostics().history_valid,"supplemental restoration failure prevents publication");}check("supplemental restore fault End",d->EndScene());before.equals(d,"supplemental restore failure preserves remaining state");
+        }
+        if(!generation){Output failed;in=input();pass.before_reset();require(pass.run(in,&failed)==E_INVALIDARG&&!failed.reactive&&pass.diagnostics().reset_pending,"supplemental before_reset refuses");pass.after_reset(E_FAIL);require(pass.run(in,&failed)==E_INVALIDARG&&pass.diagnostics().reset_pending,"supplemental failed Reset keeps refusing");}
+        }
+        if(!generation){check("supplemental actual Reset",d->Reset(&pp));pass.after_reset(S_OK);std::puts("SUPPLEMENTAL_RESET PASS");}
+    }
+}
 void route_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
     std::puts("ROUTE_CASES");Fixture f(d,compiler);RouteScene s(f,compiler);Output failed;
     // 8-bit copy path against the direct FP16 path: bit-exact on the first frame
@@ -1314,10 +1401,28 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
     // writes the sharpen measurement images (one generation).
     const bool stationaryOnly=argc==6&&std::strcmp(argv[5],"stationary-only")==0;
     const bool measure=argc==6&&std::strcmp(argv[5],"sharpen-measure")==0;
-    try{if((argc!=5&&!stationaryOnly&&!measure)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
+    const bool supplementalOnly=argc==7&&std::strcmp(argv[5],"supplemental-only")==0;
+    try{if((argc!=5&&!stationaryOnly&&!measure&&!supplementalOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
+        if(supplementalOnly){
+            D3DCAPS9 caps{};check("supplemental shader budget caps",d->GetDeviceCaps(&caps));
+            auto disassemble=symbol<decltype(&D3DXDisassembleShader)>(d3dx.h,"D3DXDisassembleShader");
+            auto budget=[&](ID3DXBuffer* code,const char* label){Com<ID3DXBuffer> assembly;
+                check("supplemental resolve disassembly",disassemble(static_cast<DWORD*>(code->GetBufferPointer()),FALSE,nullptr,&assembly.p));
+                std::istringstream lines(static_cast<const char*>(assembly->GetBufferPointer()));std::string line;unsigned slots=0;
+                while(std::getline(lines,line))if(line.find("instruction slots used")!=std::string::npos){const auto start=line.find_first_of("0123456789");if(start!=std::string::npos)slots=unsigned(std::stoul(line.substr(start)));}
+                std::printf("RESOLVE_BUDGET variant=%s dwords=%lu instruction_slots=%u device_limit=%lu headroom=%d within_guaranteed_512=%u\n",label,code->GetBufferSize()/sizeof(DWORD),slots,caps.MaxPixelShader30InstructionSlots,int(caps.MaxPixelShader30InstructionSlots)-int(slots),unsigned(slots<=512));
+                require(slots>0&&static_cast<DWORD*>(code->GetBufferPointer())[0]==0xffff0300,"resolve instruction budget parsed for ps_3_0");return slots;};
+            Com<ID3DXBuffer> baseline;compile(compiler,file(argv[6]),"ps_3_0",&baseline.p);
+            const unsigned oldSlots=budget(baseline.p,"baseline"),newSlots=budget(rc.p,"supplemental");
+            std::printf("RESOLVE_BUDGET_DELTA instruction_slots=%d dwords=%ld\n",int(newSlots)-int(oldSlots),long(rc->GetBufferSize()/sizeof(DWORD))-long(baseline->GetBufferSize()/sizeof(DWORD)));
+            // The retained baseline also exceeds the advertised limit on X3.
+            // Report this unexplained portability concern; actual shader creation
+            // and execution below qualify only this backend, not cap compliance.
+        }
         auto* sharpener=static_cast<DWORD*>(sc->GetBufferPointer());
         if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}
+        else if(supplementalOnly){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());reactive_cases(d.p,compiler,decoder,resolver);supplemental_cases(d.p,pp,compiler,decoder,resolver);std::printf("RESULT PASS numerical=%u state_restorations=%u supplemental_only=1\n",numeric_checks,state_checks);result=0;}
         else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);sharpen_cases(d.p,compiler,decoder,resolver,sharpener);quad_twin_cases(d.p,compiler,decoder,resolver,sharpener);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
-        if(!stationaryOnly&&!measure){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
+        if(!stationaryOnly&&!measure&&!supplementalOnly){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}
