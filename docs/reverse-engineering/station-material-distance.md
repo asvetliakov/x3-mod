@@ -1,6 +1,6 @@
 # Station material distance changes: shared producer and Run 28 limits
 
-Native/shader research and capture-only diagnostic implementation, 2026-09-14. The user's reproduction is the red-marked docking-port structure on Federal Argon Shipyard; similar changes were seen elsewhere. Neither that description nor a projected node center identifies its shader or mesh. No game, Wine, DLL build or installation was performed. The isolated diagnostic source is not installed.
+Native/shader research and capture-only diagnostic implementation, 2026-09-14. The user's reproduction is the red-marked docking-port structure on Federal Argon Shipyard; similar changes were seen elsewhere. Neither that description nor a projected node center identifies its shader or mesh. The capture-only diagnostic extension is now installed in combined source `8442f43`; see the [install record](../../verification/results/linear-material-install.json). New target-to-node association evidence still requires a gameplay capture.
 
 The same ordinary native distance-fade producer can supply BUMP, DEFAULT and XT effects. It is not an asteroid-specific branch. This establishes a conditional material contract, not the cause of the photographed port transition. Run 28's four captured frames have shader fog disabled on every inspected relevant material draw.
 

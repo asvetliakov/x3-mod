@@ -1,15 +1,16 @@
 {
-  "source_commit": "d9413fc8377b1893f4845c977cda771d3edf1401",
-  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/source",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/source/build/d3d9.dll",
-  "build_log": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/build.log",
+  "source_commit": "8442f43dbcc1c529501ba551057ee5d811efdcbb",
+  "base": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-core-glass-candidate-2sqdqclt",
+  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-core-glass-candidate-2sqdqclt/source",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-core-glass-candidate-2sqdqclt/source/build/d3d9.dll",
+  "build_seconds": 10.008323334,
+  "dll_sha256": "1f6a473dd035894bb868adc113be8f76c7dfde4731157595def614d0411a42ba",
+  "dll_bytes": 13425946,
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "seh_clang": "/usr/bin/clang",
   "installed": true,
   "game_launched": false,
   "native_windows_verified": false,
-  "build_seconds": 8.89,
-  "dll_sha256": "7b3dd2885f9568c0d791dcc58b197276889b9de80a91fbdec38528cc50bff2b7",
-  "dll_bytes": 13351668,
-  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
   "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
   "bottle": {
     "name": "X3",
@@ -25,15 +26,16 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
   },
   "rollback": {
-    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/rollback-d3d9.dll",
-    "dll_sha256": "f4094be54971cb48171175536aded8f31a49e6853167ce14be7584320ab4f36e",
-    "source_commit": "541e3802fc3d9d5214920734ccf79bc12d61e279",
-    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/rollback-x3-modern-install.json"
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-core-glass-candidate-2sqdqclt/rollback-d3d9.dll",
+    "dll_sha256": "7b3dd2885f9568c0d791dcc58b197276889b9de80a91fbdec38528cc50bff2b7",
+    "source_commit": "d9413fc8377b1893f4845c977cda771d3edf1401",
+    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-core-glass-candidate-2sqdqclt/rollback-x3-modern-install.json",
+    "project_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-core-glass-candidate-2sqdqclt/rollback-project-install.json"
   },
   "no_x87": {
     "result": "PASS",
     "reachable_functions": 218,
-    "report": "/tmp/x3-selection-candidate-no-x87.json"
+    "report": "/tmp/x3-core-glass-candidate-no-x87.json"
   },
   "load": {
     "passed": true,
@@ -42,23 +44,31 @@
     "exports": 17,
     "result": "verification/results/bottle-X3/d3d9-exports-summary.json"
   },
-  "change": "Authored glow gain 0.35, Auto exposure default capped at +1.5 EV, corrected VM context provenance, 33-site selection/voice trace and 16 KiB combined hook arena.",
+  "change": "Six SM3 glass pairs (168 material pairs / 137 originals), authored glow gain0.375/scatter0.65, capture-only target/root/parent and native distance-fade context.",
   "qualification": {
-    "focused_host_tests": 31,
-    "focused_host_seconds": 13.787,
-    "selection_cpu": "verification/results/bottle-X3/selection-native-cpu-summary.json",
-    "bloom_gain": "docs/architecture/bloom-authored-glow.md",
-    "exposure_default": "docs/architecture/space-exposure-policy.md",
-    "provenance": "docs/reverse-engineering/chase-view-transition.md",
-    "unchanged_gpu_state_evidence": "docs/verification/combined-glow-materials.md",
-    "unchanged_gpu_source_commit": "541e3802fc3d9d5214920734ccf79bc12d61e279"
+    "glass": "docs/architecture/glass-materials.md",
+    "glass_gpu": "verification/results/bottle-X3/linear-glass-gpu.json",
+    "glass_live": "verification/results/bottle-X3/linear-material-live-glass.json",
+    "glass_gpu_cases": 254,
+    "glass_live_frames": 216,
+    "glass_live_checks": 4258208,
+    "bloom": "docs/architecture/bloom-authored-glow.md",
+    "bloom_host_tests": 27,
+    "bloom_host_seconds": 8.56,
+    "capture_diagnostics": "docs/reverse-engineering/station-material-distance.md",
+    "capture_host_tests": 24,
+    "production_checkpoints": [
+      "1fcb9c1",
+      "028d24e",
+      "2709cae"
+    ],
+    "unchanged_gpu_state_evidence": "docs/verification/combined-glow-materials.md"
   },
   "qualification_status": "passed-reviewed-installed",
   "launch_dry_run": {
-    "run9": true,
+    "passed": true,
     "game_launched": false,
-    "auto_ev_max": 1.5,
-    "game_phases": true,
-    "result": "/tmp/x3-run9-dry-run.json"
+    "result": "/tmp/x3-core-glass-dry-run.json",
+    "scope": "current enhanced chase/material/bloom/trace command; no config defaults changed"
   }
 }

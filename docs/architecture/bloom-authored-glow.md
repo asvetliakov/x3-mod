@@ -8,24 +8,24 @@ appearance is confirmed: run 27 motivated more strength, and run 28 shows
 substantial colored halos at the increased gain;
 gameplay frame cost remains unqualified. This changes extraction inside the existing
 [BloomPass](bloom-pass-runtime.md), not the original-once lifetime/state boundary.
-The installed build uses authored gain 0.35 and highlight gain 0.05. The separate
+The installed build uses authored gain 0.375, scatter 0.65 and highlight gain 0.05. The separate
 [exposure policy](space-exposure-policy.md) now defaults to Auto capped at +1.5 EV.
 
 ## Run 28 core adjustment
 
-The user requests a slightly tighter, stronger core. The next source candidate
+The user requests a slightly tighter, stronger core. The installed correction
 uses **authored gain 0.375 and scatter 0.65**, retaining highlight gain 0.05,
 five levels, threshold 1 and knee 0.5. This is a constant-only change in the
 retained-scene handoff; no shader compilation, texture fetch, pass, allocation,
 readback or per-draw work is added. The standalone filter's defaults are unchanged.
 
 The [compact calibration](../../verification/results/bloom-core-calibration.json)
-compares three candidates against installed gain 0.35/scatter 0.70 using Run 26
+compares three candidates against the Run 28 gain 0.35/scatter 0.70 using Run 26
 resolved-TAA frames 11079 and 36969 at +1.5 EV. Run 28's pre-TAA HDR captures
 were excluded because they are not the stage consumed by bloom. CPU-reference
 predictions for the selected candidate are:
 
-| Source region | Change in mean bloom effect relative to current |
+| Source region | Change in mean bloom effect relative to Run 28 |
 | --- | ---: |
 | Alpha exactly 1, emitter cores | +9.47% to +16.94% |
 | Strong partial alpha, 0.5–1 | +6.03% to +13.36% |
@@ -47,8 +47,9 @@ compositor parity. Existing GPU/state/lifetime evidence applies to unchanged
 programs and control flow; the next gameplay comparison owns visual acceptance.
 Independent Sol/high review approves the parameter semantics and calibration
 with no findings. All 27 affected host tests pass, including the 45-assertion
-production retain callback in release and sanitizer builds. The source candidate
-is not yet installed.
+production retain callback in release and sanitizer builds. The combined source `8442f43` is now installed; the
+[install record](../../verification/results/linear-material-install.json) binds
+its clean build, x87 audit, load smoke and rollback. Gameplay acceptance remains.
 
 ## Run 27 strength adjustment
 
@@ -65,8 +66,8 @@ This gives a stronger local halo without changing the unmarked highlight policy.
 The sweep cannot qualify halo shape because radius was held fixed. If strength
 is sufficient but spread remains too tight, evaluate radius separately. No shader
 recompile, extra draw, resource, texture fetch or CPU work is introduced: the
-existing constant carries the new gain. Gain 0.35 is installed; the completed
-[Run 9 / Run 28 comparison](../verification/run28-glow-materials.md) shows clear
+existing constant carries the new gain. Gain 0.35 was installed for the completed
+[Run 9 / Run 28 comparison](../verification/run28-glow-materials.md), which shows clear
 ON/OFF halos on a ship emitter and station ring. The user asks about a slight
 core increase. The broad halo already looks sufficient; retain the current
 gain while considering local-core emphasis separately from total strength.

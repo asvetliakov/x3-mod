@@ -2,7 +2,7 @@
 
 Derived archive review and source implementation, 2026-09-14. **Six SM3 glass
 pairs now have a reviewed opaque material conversion in main source and pass
-detached X3 GPU qualification. Focused live routing also passes; installation remains pending.
+detached X3 GPU qualification. Focused live routing also passes; the six-pair extension is installed, with gameplay acceptance pending.
 The other 24 pairs remain unimplemented.** Actual
 blend state decides whether a draw instead needs ordered composition. The family
 name does not establish transparency. The archive study covers uncaptured
@@ -333,8 +333,8 @@ despite requested FLAT, as recorded by the native classifier; this is not proof
 of native-Windows FLAT behavior. Representative completion-wall medians for
 combined material are 0.736/0.787 ms with zero/eight point lights, versus
 ordinary motion 0.795/0.796 ms over 98,304 vertices. These small event-fenced
-samples do not establish gameplay speed or a speedup. Installed source remains
-`d9413fc`; no gameplay change was installed.
+samples do not establish gameplay speed or a speedup. At this detached
+checkpoint the game remained on `d9413fc`.
 
 
 ## Focused live route qualification
@@ -363,6 +363,8 @@ existing test seam from its retained objects. The X3 Wine run passes **216 frame
 binds the frozen binaries, scoped inputs, candidate/toolchain and raw results.
 The production DLL also passes the linked x87 audit (218 reachable functions).
 No new production per-draw work, broad benchmark or gameplay cost claim is
-introduced by this fixture extension. The actual game remains on `d9413fc`;
-glass is qualified for a future combined install, not installed or accepted in
-user gameplay. This does not establish a fix for the docking-port transition.
+introduced by this fixture extension. The subsequent combined source `8442f43`
+is now installed with 168 pairs / 137 originals; its
+[install record](../../verification/results/linear-material-install.json) binds
+the clean build, x87 audit, load smoke and rollback. Gameplay acceptance remains.
+This does not establish a fix for the docking-port transition.

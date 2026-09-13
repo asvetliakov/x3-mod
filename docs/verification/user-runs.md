@@ -4,8 +4,8 @@ Updated 2026-09-14. Run 17 crypto acceptance and the first-person/chase
 left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
 0.9 distance, softer 0.28/0.38 s follow, predictive lead marker, opt-in FP16 bloom
-162 reviewed linear material pairs, the central chase display correction, and
-Auto exposure capped at +1.5 EV, stronger authored glow (0.35), and same-run exposure/bloom controls;
+168 reviewed linear material pairs, the central chase display correction, and
+Auto exposure capped at +1.5 EV, tighter authored glow (gain 0.375/scatter 0.65), and same-run exposure/bloom controls;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell

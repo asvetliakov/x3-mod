@@ -5,7 +5,7 @@ Updated 2026-09-14. This is the current handoff. Earlier checkpoints are in
 [goal checklist](goals.md), [run queue](verification/user-runs.md), and [original objective](user-objective.md)
 retain the full scope.
 
-The installed gameplay build is checkpoint `d9413fc`. Its scoped integration
+The installed gameplay build is checkpoint `8442f43`. Its scoped integration
 checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
 dark material on a docking port. Selection pauses are isolated to voice-stream
 creation; the user confirms missing target-name speech.
@@ -13,13 +13,13 @@ creation; the user confirms missing target-name speech.
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`7b3dd2885f9568c0d791dcc58b197276889b9de80a91fbdec38528cc50bff2b7` (13,351,668 bytes). The
+`1f6a473dd035894bb868adc113be8f76c7dfde4731157595def614d0411a42ba` (13,425,946 bytes). The
 [install record](../verification/results/linear-material-install.json) binds its source, scoped verification,
 load check, and rollback DLL.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,
 and a fixed EV 0 comparison through Ctrl+Shift+F9. Ctrl+Shift+F10 switches bloom contribution. Bloom, linear materials, and linear
-emissions remain opt-in. Installed material coverage is **162 exact pairs / 130 originals**; installed default-off
+emissions remain opt-in. Installed material coverage is **168 exact pairs / 137 originals**; installed default-off
 emission coverage is twenty exact SM2 DEFAULT/INSTANCE pairs.
 
 The installed chase defaults remain 13° pitch, distance 0.9, rotation/position response 0.28/0.38 s, offset 0.45,
@@ -31,15 +31,15 @@ HUD, and the selected WRAP/motion fixes are included.
 [Run 28](verification/run28-glow-materials.md), user run 9, is saved in
 `/tmp/x3-bottleX3-run28/` on installed source `d9413fc`. Screenshots show substantial
 colored halos at gain 0.35. The user approved a slightly tighter, stronger core;
-the reviewed next candidate uses gain 0.375/scatter 0.65, calibrated against saved
+the installed correction uses gain 0.375/scatter 0.65, calibrated against saved
 resolved-TAA inputs. Auto still mostly reaches its accepted +1.5-EV ceiling.
 
 The user reproduces dark docking-port parts becoming bright on approach and recalls
 it elsewhere. The one F8 burst shows stable routing and no common-shader fog-on
 transition, so it cannot establish the cause. No material bind failures occur;
-explicit refusals are still the not-yet-installed glass pair. Reviewed
+the Run 28 explicit refusals are the glass pair absent from that older build. Reviewed
 [capture-only target/root/parent and fade diagnostics](reverse-engineering/station-material-distance.md)
-are ready in source, pending the next combined install.
+are installed, pending gameplay association evidence.
 
 The [33-site trace](reverse-engineering/selection-native-vm.md) isolates ten
 input-side target publications to voice playback/stream creation. Eight take
@@ -56,11 +56,11 @@ visible; selection stutter also occurs with chase disabled.
 
 ## Newly installed and qualified
 
-The [prior combined qualification](verification/combined-glow-materials.md) supplies unchanged material/emission/bloom GPU evidence. Source `d9413fc` adds reviewed constant/default and diagnostic changes; 31 focused host tests and the 7,606-check native CPU fixture pass. Its clean build passes the linked x87 audit (218 reachable functions) and DLL load check (8 checks / 17 exports). EXE and bottle configuration are unchanged;
+The [prior combined qualification](verification/combined-glow-materials.md) supplies unchanged material/emission/bloom GPU evidence. Source `8442f43` adds six GPU/live-qualified glass pairs, tighter bloom and capture-only target/fade association diagnostics. The affected 27 bloom and 24 capture host tests pass; unchanged foundation evidence is reused. Its clean build passes the linked x87 audit (218 reachable functions) and DLL load check (8 checks / 17 exports). EXE and bottle configuration are unchanged;
 the previous DLL and installation record are retained for rollback.
 
 - **Authored bloom:** the retained-alpha correction is installed. Component GPU evidence passes 36 image
-  cases and 16 controls, Reset, exact destination alpha, and RGB within one display code. Run 27 confirms visible glow; stronger authored gain 0.35 is installed for Run 9.
+  cases and 16 controls, Reset, exact destination alpha, and RGB within one display code. Run 27 confirms visible glow; Run 28 shows stronger halos at gain 0.35; the approved gain 0.375/scatter 0.65 correction is now installed.
 - **162-pair materials:** all 52 inventoried additional SM3 opaque pairs have reviewed conversions.
   Detached GPU: 3,923 cases. Live corpus: 2,576 frames / 32,516 checks; scalar WRAP: 144 / 3,208;
   XT14 including four DEFAULT linkage repairs: 628 / 10,836,608. Exact temporal/state twins and Reset pass.
@@ -92,11 +92,11 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   [coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; older profiles,
   transparent, background, and other scene writers remain beyond installed coverage. The
   [glass extension](architecture/glass-materials.md) adds six reviewed SM3 opaque-capable
-  pairs in main source (168 pairs / 137 originals total), preserving native gloss/Fresnel.
+  installed pairs (168 pairs / 137 originals total), preserving native gloss/Fresnel.
   Host, detached GPU (254 cases / 2,286 samples) and focused live routing
-  (216 frames / 4,258,208 checks) pass. Installation and gameplay remain pending.
-- **Bloom/exposure:** the approved tighter-core candidate uses gain 0.375/scatter 0.65;
-  source/reference review and 27 affected host tests pass, installation is pending.
+  (216 frames / 4,258,208 checks) pass. Gameplay acceptance remains pending.
+- **Bloom/exposure:** the approved tighter-core correction uses gain 0.375/scatter 0.65;
+  source/reference review and 27 affected host tests pass, and it is installed.
   +1.5 EV appearance is accepted and selected as the installed Auto default. The meter
   still mostly reaches its ceiling; physically informed adaptation remains unproved.
 - **HDR scope:** FP16 and AgX work, but much of the scene is still compatibility-decoded gamma-space lighting.
