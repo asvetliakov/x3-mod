@@ -1,6 +1,6 @@
 # HDR bloom boundary: original execution followed by RGB replacement
 
-2026-09-13. **Chosen initial design; live integration remains incomplete.**
+2026-09-13. **Live integration implemented, reviewed and fixture-qualified; gameplay pending.**
 The [GPU executor](../verification/bloom-pass-fixture.md),
 [CPU/SEH bridge](../verification/review-43-compositor-bridge.md), and
 [shader bundle](../verification/review-47-bloom-programs.md) now have scoped
@@ -79,11 +79,11 @@ zero sharpening. Identity fallback, failed/unwound writes and rebind-only calls
 leave it invalid. Meter failure alone does not invalidate a successful image.
 
 The snapshot neither submits a meter nor computes exposure. The default null
-output skips snapshot copies and validation. It owns no COM references: upcoming
-MotionOutput integration must retain the corresponding pre-original scene
-before `end_redirect` clears its resolved-source/main pointers, then associate
-it with the owner/frame/Reset-qualified invocation. This API alone does not
-enable bloom or authorize a post-compositor write.
+output skips snapshot copies and validation. It owns no COM references. The
+MotionOutput handoff below supplies the corresponding pre-original scene before
+redirect cleanup; the caller still associates it with the owner/frame/Reset-
+qualified invocation. Neither API alone enables bloom or authorizes a
+post-compositor write.
 
 The author ran 52 paired host scenarios (104 invocations of the extracted,
 unchanged production `write_back` function), plus 26 AgX/exposure checks and a
@@ -95,11 +95,68 @@ output. Scripted D3D outcomes qualify this metadata/control flow; existing GPU
 state/image evidence remains separate. No GPU calls, allocations, locks or
 exposure work were added, and no Wine rerun was needed for this change.
 
+### Synchronous MotionOutput scene handoff
+
+`MotionOutput::scene_end_hook` accepts an optional `MotionHdrSceneCallback` and
+caller context. On the existing first eligible Scene-phase hook, it runs the
+existing HDR resolve and the normal writeback once through their existing
+paths. After a clean AgX writeback, before `end_redirect` releases main and
+clears its resolved pointer, the callback receives `MotionHdrScene`: borrowed
+device/scene/main pointers, device ID, frame and resource generation, and a
+reference to the exact `HdrDisplaySnapshot` consumed by that writeback.
+
+The callback is synchronous, under the existing capture mutex, and is only a
+retain/copy handoff. Its references expire when it returns. The caller copies
+the snapshot and takes its own scene/main COM references if needed; it must not
+throw, reenter MotionOutput, Reset/destroy/invalidate resources or begin GPU
+preparation inside the callback. Preparation starts after `scene_end_hook`
+returns. This API neither registers invocation storage nor provides Reset/SEH
+revocation: those remain required caller work under the ownership contract
+below. Ordinary HRESULT failure cleanup is not a claim to recover arbitrary
+SEH from COM calls.
+
+With TAA enabled, only this Hook's successful HDR resolve qualifies: a
+non-null resolved source, admitted attempt, successful operation/restoration
+and resolved/HDR verdict. A failed, skipped or earlier attempt still takes the
+existing unresolved display fallback but produces no handoff and cannot cause
+another resolve. With TAA disabled, the handoff acquires one temporary
+`GetContainer(IID_IDirect3DTexture9)` reference to the unresolved HDR target
+after successful writeback. Native COM supplies an owned reference; the public
+ownership wrapper supplies its canonical texture wrapper. Either is borrowed
+by the callback and released afterwards, including a non-null output returned
+with a failed HRESULT. The resolved path needs no extra container acquisition.
+
+Admission also requires an open scene, idle queries, no state-block recording,
+no release/reference-probe activity, no prior HDR unwind/block or restoration
+failure, matching main identity/dimensions and matching snapshot source and
+dimensions. `bloom_boundary_available()` exposes the current CPU-side gates
+for later requalification; it permits the correctly ended redirect and does
+not establish owner/frame/Reset identity or native post-state validity.
+`reference_accounting_busy()` exposes release and temporal-reference-probe
+activity to the capture owner's combined lifetime accounting.
+
+A null callback requests no snapshot, container reference or identity lookup.
+No new resolve, writeback, exposure-meter submission or history update is
+introduced. Existing `capture && taa_debug` diagnostics already flush the
+unresolved image before their resolved writeback and can therefore submit more
+than one meter; this handoff preserves that behavior and forwards the final
+display parameters. Bloom preparation must add no meter submission of its own.
+
+The focused host fixture passes **72 paired scenarios, 1,526 checks** and
+compiles the actual MotionOutput header and five
+unchanged function bodies (`scene_end_hook`, `resolve_allowed`, `resolve_hdr`,
+`hdr_writeback`, `end_redirect`) with scripted renderer/D3D outcomes. It checks
+callback ordering and caller-owned references, exact payload forwarding,
+single-attempt/default-null parity and the admission/failure cases. This is
+control-flow evidence, not GPU restoration, native Windows or invocation
+Reset/SEH qualification. The real translation unit is cross-compiled with the
+project x86 SSE2/stack flags; no Wine or game run is added for this handoff.
+
 ## Ownership, lifetime and return bridge
 
-The current `capture.cpp::scene_end_signal` broadcasts a void notification,
-and `scene_hook.cpp` tail-jumps to the original without a post callback. The
-new pre/post route needs one synchronous invocation record containing the exact
+The default `capture.cpp::scene_end_signal` broadcasts a void notification,
+and the default scene hook tail-jumps to original without a post callback. The
+optional bloom pre/post route uses one synchronous invocation record containing the exact
 owner device, thread, frame, reset generation, original continuation and
 retained scene/candidate/main references and the exact pre-original depth
 surface reference or an explicit known-null value. Capture that depth identity
@@ -109,10 +166,22 @@ is not an equivalent check. Match the verified engine device
 pointer exactly, or qualify canonical `IID_IUnknown` identity if necessary;
 never OR device decisions or select by surface dimensions/map order.
 
+The live capture callback only delivers that exact scene-end signal after a
+safe owner and its observed scene thread are selected. An unknown owner, wrong
+thread or invalid caller executes original once without broadcasting injected
+GPU work to other devices. Existing StretchRect/selector/EndScene fallback
+remains, with potentially different resolve timing. A safe-owner glow-off or
+candidate failure still gets its ordinary exact scene-end writeback. The
+`bloom_refusal` diagnostics record whether `ordinary_signal` was delivered.
+
 The pre callback checks the live glow preference, eligible Scene phase,
-successful redirect unwind, main identity and replacement resources. Menu,
-glow-off, duplicate/reentrant, wrong-device and wrong-phase calls keep the
-existing behavior. Refuse active queries and state-block recording, and recheck
+successful redirect unwind, main identity and replacement resources. An
+identified safe owner still receives the ordinary scene-end signal with glow
+off or unavailable bloom resources. Unknown owner, wrong thread and nested
+invocations decline injected work and run original once; they rely on the
+existing StretchRect/selector/EndScene fallback chain instead of the exact hook
+signal. This intentionally changes fallback timing rather than broadcasting
+GPU work to an unqualified owner. Refuse active queries and state-block recording, and recheck
 both immediately before any post-call GPU work: the original ran between those
 checks. A failed prepare leaves no post-write ticket. Do not repeat exposure metering, TAA
 resolve or history updates in the post callback or recovery.
@@ -215,7 +284,7 @@ No production CPU readback is required.
 
 | Failure point | Required action |
 | --- | --- |
-| Ownership/admission refusal before new preparation | Keep existing scene writeback behavior; execute original exactly once; no post write. |
+| Ownership/admission refusal before new preparation | Execute original exactly once; no post write. A safe identified owner retains ordinary scene writeback; unknown owner/thread uses the later established fallback chain. |
 | Scratch preparation fails, its state restoration succeeds | Restore the exact pre-original baseline; execute original exactly once; no post-write ticket. |
 | Preparation restoration fails | Revoke the ticket, disable/report unknown state, and execute original once under the existing device-failure policy; no clean-fallback claim. |
 | Original abnormal return or owner/reset change | Consume/drop the ticket; no post write; retain normal exception/device policy. |
@@ -299,3 +368,42 @@ preservation, post-call admission, single metering/EV ownership, deterministic
 MRT/sRGB state and rollback of failed writes/restoration. The annotation-target
 correction was checked against assembly. This is design approval only; the
 bridge and renderer implementation still require source and runtime review.
+
+
+## Live integration qualification (2026-09-13)
+
+The working integration selects the production pre/original/post bridge only
+with `X3M_HDR_BLOOM=1` (`manage.py --hdr-bloom`), the motion route, FP16 HDR,
+AgX and the scene hook. Default-off retains the ordinary scene tail jump.
+The scene site and immutable binding stay installed across device destruction;
+explicit shutdown requires external quiescence. See the selected lifetime
+policy in [the owner study](../reverse-engineering/bloom-invocation-owner.md).
+
+The live callsite's adjacent layer test, branch, CALL, compositor-done write
+and following reload were checked again against the installed EXE with bounded
+objdump disassembly. The wrapper path checks all 25 bytes, and all production
+scene installs now respect the engine patch install window. The once-per-frame
+legacy signal also uses `-fno-exceptions`, keeping MinGW SJLJ bookends outside
+its CPU transport contract.
+
+The focused production scene-hook fixture passed **43/43 checks in X3**:
+ordinary tail forwarding, bridge original-once behavior on acceptance/refusal,
+actual caller PC, copied binding, callback storage/context, refusal of shutdown
+inside an active invocation, wrong target/missing callback rejection, exact
+byte restoration and late-install refusal. It reuses the already-qualified
+bridge CPU/SEH transport; it does not replace that matrix or establish live GPU
+ownership. [Compact result](../../verification/results/bottle-X3/scene-compositor-summary.json).
+Reproduce with an existing CMake bridge package (no production rebuild):
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py \
+  python3 verification/probe/run_scene_compositor.py --bridge-dir build/compositor_bridge
+```
+
+Four launcher dry-run controls pass: enabled bloom, default-off, missing AgX
+rejection and explicit scene-hook-off rejection. The combined lifetime fixture
+passes 714/714 checks in X3 with zero skips; the host lifetime/admission fixture
+passes 29 scenarios and 111 checks. [Review 50](../verification/review-50-hdr-bloom-live-integration.md)
+approves the code and scoped evidence with no open findings. The next step is
+the clean candidate build/install; the chase candidate remains installed until
+that completes. Gameplay quality, frame cost and native Windows remain unverified.

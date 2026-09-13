@@ -48,14 +48,17 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   content remains decoded gamma-space game lighting. Scene-referred HDR lighting
   and HDR display output are incomplete. The replacement space-aware exposure
   meter is installed and awaits gameplay acceptance.
-- **Bloom components are reviewed and fixture-qualified but unlinked.** Next:
-  integrate the [compositor boundary](architecture/hdr-bloom-boundary.md), including
-  device ownership/lifetime, Reset, state restoration and recovery. The production
+- **Bloom live integration is reviewed and fixture-qualified.** The
+  [compositor boundary](architecture/hdr-bloom-boundary.md) passes 714 combined
+  X3 checks, with device lifetime, Reset/ResetEx and original exception cleanup.
+  [Review 50](verification/review-50-hdr-bloom-live-integration.md) has no open
+  findings. Clean candidate build/install is next; it is not gameplay-ready yet. The production
   bridge, owner helper, shader bundle and BloomPass evidence are linked from the
   [history](status-history-2026-09-13.md#bloom-preparation-checkpoint-2026-09-13).
-  The optional snapshot of exact AgX/writeback parameters is implemented,
-  reviewed and host-tested. Next connect the retained scene and that snapshot
-  to the owner/frame/Reset-qualified compositor invocation.
+  The exact AgX/writeback snapshot is implemented and reviewed. The synchronous
+  scene handoff and owner/frame/Reset-qualified invocation are now connected in
+  the working tree; focused scene-hook checks pass 43/43 in X3. The reviewed
+  chase candidate above remains installed while integration is completed.
 - Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
   accepts crypto reuse; reader verification and adjacency gameplay acceptance
   remain. Fast modes require meaningful verification, not merely fixture success.

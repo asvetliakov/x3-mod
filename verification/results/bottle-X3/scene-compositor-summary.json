@@ -1,0 +1,22 @@
+{
+  "binary_sha256": "cab7635343e4a82a9c2bb359d24ddc5668acdee7680237442a843c79ca4420f5",
+  "scene_signal_no_sjlj": true,
+  "native_windows_verified": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "passed": true,
+  "records": [
+    [
+      "43",
+      "0"
+    ]
+  ],
+  "returncode": 0
+}

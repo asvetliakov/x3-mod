@@ -461,6 +461,15 @@ HRESULT BloomPass::validate_inputs(const BloomPrepare& p) const noexcept {
     if (!enabled() || !p.scene || !b.admitted || !b.main || owned(b.main)
         || b.thread != GetCurrentThreadId() || !main_descriptor(b.main_desc)
         || !x3::temporal::valid_bloom_params(p.filter) || !x3::temporal::valid_sharpen(p.sharpen)) return E_INVALIDARG;
+    if (p.exact_sharpen && p.sharpen > 0) {
+        const auto& c = p.sharpen_constants.values;
+        for (float v : c) if (!std::isfinite(v)) return E_INVALIDARG;
+        // Preserve the supplied gain exactly; only validate its supported
+        // range and that its texel steps describe this same image.
+        if (c[0] < 0.25f || c[0] > 1.f || c[3] != 0.f
+            || c[1] != 1.f / float(b.main_desc.Width)
+            || c[2] != 1.f / float(b.main_desc.Height)) return E_INVALIDARG;
+    }
     const auto mode = p.decode;
     if (mode != x3::temporal::AgxDecode::gamma22 && mode != x3::temporal::AgxDecode::srgb
         && mode != x3::temporal::AgxDecode::none) return E_INVALIDARG;
@@ -577,8 +586,9 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
     }
     if (SUCCEEDED(result.operation) && p.sharpen > 0) {
         x3::temporal::SharpenConstants sharp{};
-        if (!x3::temporal::prepare_sharpen(sharp, p.sharpen, width, height)) result.operation = E_INVALIDARG;
-        else result.operation = call<SetConstants>(SetPixelShaderConstantF)(device_, x3::temporal::kSharpenRegister, sharp.values, 1);
+        if (p.exact_sharpen) sharp = p.sharpen_constants;
+        else if (!x3::temporal::prepare_sharpen(sharp, p.sharpen, width, height)) result.operation = E_INVALIDARG;
+        if (SUCCEEDED(result.operation)) result.operation = call<SetConstants>(SetPixelShaderConstantF)(device_, x3::temporal::kSharpenRegister, sharp.values, 1);
         if (SUCCEEDED(result.operation)) result.operation = fault(BloomFault::PrepareDraw) ? E_FAIL
             : draw(resources_.candidate, sharpen_, views.stage, nullptr);
     }

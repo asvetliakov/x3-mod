@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <cstdint>
+#include "compositor_bridge.h"
 
 // Engine scene-end boundary (X3M_SCENE_HOOK; default on with the route since
 // review 26: unset means on when X3M_MOTION_OUTPUT=1, "1" on, "0" off; the
@@ -17,13 +18,21 @@
 // void(void) with no stack cleanup, so nothing is forwarded. Same install and
 // rollback discipline as object_trace: exact-executable identity, expected
 // bytes at the site, VirtualProtect/FlushInstructionCache with rollback, the
-// original bytes restored at shutdown. Never installs on differing bytes.
-// No on-disk change; initialization and shutdown need quiescent rendering,
-// outside DllMain.
+// Never installs on differing bytes or after engine_patch's install window.
+// Optional bloom uses compositor_bridge's full CPU/SEH pre/original/post
+// transport after also checking adjacent caller instructions. The production
+// site/binding stay installed for the process lifetime; last-device release is
+// not proof of code quiescence. Explicit shutdown is for an externally
+// quiescent caller (including fixtures), outside DllMain. No on-disk change.
 namespace x3m::scene_hook {
 using Listener = void (*)();
 bool wanted();                      // the switch as parsed: "1", or unset with X3M_MOTION_OUTPUT=1 ("0" or unset without the route: off)
-bool initialize(Listener listener); // wanted(), SHA-256 + site bytes; idempotent while installed; fails closed otherwise
+// Optional callbacks select the qualified pre/original/post bridge. The hook
+// copies the binding and supplies the verified original itself. Configuration
+// is immutable after installation; null preserves the ordinary tail jump.
+bool initialize(Listener listener, const X3mCompositorBinding* callbacks = nullptr);
+bool compositor_active();
+std::uintptr_t compositor_caller_pc(); // zero unless our wrapper is active
 bool requested();                    // wanted() was seen by initialize
 bool installed();                    // our bytes own the site (active or awaiting rollback)
 bool active();                       // installed and signalling
@@ -34,6 +43,8 @@ bool shutdown();                     // restore the original bytes; true when no
 // Compile-only fixture seam (absent from production): the fixture executable
 // supplies its own E8 callsite and expected target; identity gate bypassed.
 bool fixture_install(void* callsite, void* expected_target, Listener listener);
+bool fixture_install_compositor(void* callsite, void* expected_target,
+                                const X3mCompositorBinding* callbacks);
 bool fixture_shutdown();
 #endif
 }

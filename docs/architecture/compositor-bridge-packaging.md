@@ -2,8 +2,9 @@
 
 2026-09-13. New `src/proxy/compositor_bridge.{h,S}` and
 `compositor_bridge_seh.c` implement the reusable CPU/SEH transport qualified by
-[review 39](../verification/review-39-bloom-return-bridge.md). They are **not
-wired into CMake, scene_hook or capture**, and no game installation changed.
+[review 39](../verification/review-39-bloom-return-bridge.md). CMake now links
+the bridge, owner helper and BloomPass using the arrangement below. This
+packaging step does not bind or install a game hook, and no game installation changed.
 Native Windows remains untested. Device selection, lifetime pins, Reset
 revocation and GPU behavior belong to the caller, not this transport.
 
@@ -114,11 +115,50 @@ not request disabling DEP or ASLR. A future SafeSEH-enabled build must use a
 linker that consumes the original metadata and cover every relevant handler;
 this helper must not be used to strip metadata from such a build.
 
-Proposed final packaging is thus: retain the current GNU/no-SafeSEH policy
-explicitly, consume the audited link object and narrow import archive, and audit
-the final proxy's imports/load configuration. The main integration owner must
-make that linker-policy decision when editing CMake; these isolated files do
-not silently make it for the full DLL.
+## CMake integration
+
+The project explicitly retains its current GNU/no-SafeSEH policy through
+`X3M_GNU_PE_NO_SAFESEH=ON`. CMake rejects disabling this option or using a
+non-GNU C++ compiler: neither selects a qualified alternative linker path.
+The custom SEH command passes `--gnu-pe-no-safeseh` to the reviewed helper and
+links its generated object plus narrow runtime archive into `d3d9`.
+BloomPass and the owner reader compile as ordinary C++ sources with the existing
+SSE2 and four-byte incoming stack options.
+
+The assembly custom command uses the configured MinGW C++ driver with
+`-x assembler-with-cpp`, so CMake cannot accidentally select a host assembler.
+Clang is discovered on PATH or selected through the `X3M_SEH_CLANG` CMake cache
+entry/environment variable; the helper receives CMake's cross-binutils paths.
+All commands quote paths and place generated outputs under the selected build
+directory's `compositor_bridge/`. The raw Clang object, assembly and existing
+compact helper report remain there. No broad `msvcrt-os` library is linked.
+
+The assembly depends on its source/header; the SEH package depends on its C
+source/header/helper. C++ dependency scanning remains CMake's normal mechanism.
+Thus editing unrelated callers does not rebuild either bridge object, while a
+shared bridge-header edit rebuilds both. Link-time runtime import/load-configuration
+audit remains part of final candidate qualification. Native Windows execution
+is still unverified.
+
+The 2026-09-13 scratch `RelWithDebInfo` build used MinGW GCC 16.2.0 and Apple
+Clang in a build path containing spaces. Against the retained chase DLL, its
+only import change was `msvcrt.dll!_except_handler3`; all existing module/symbol
+imports were unchanged. The load-configuration directory remained empty,
+`.sxdata` was absent, and DLL characteristics remained `0x140` (ASLR and DEP).
+The raw SEH object's undefined-symbol set still contained exactly the invoke
+helper and exception handler. CMake rejected the policy set to OFF, and the
+standalone helper without the acknowledgment still produced no GNU link copy.
+
+The clean scratch build took 6.65 seconds with six jobs. A no-op build took
+0.24 seconds; regenerating only the assembly plus relink took 0.85 seconds,
+and regenerating only the SEH package plus relink took 0.79 seconds. No C++
+objects rebuilt during either focused bridge dependency check. These are build
+costs, not frame timings. The bridge introduces no work until invoked. The
+motion-output seam builder explicitly reuses these three generated production
+artifacts, and its scene-hook compile matches production's `-fno-exceptions`
+CPU-boundary policy. The rebuilt scene-hook object had no SJLJ dependencies.
+This scratch qualification did not rebuild the retained candidate, install a
+DLL, execute Wine or launch the game.
 
 ## Verification artifacts
 

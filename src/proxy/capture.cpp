@@ -10,6 +10,9 @@
 #include "scene_capture.h"
 #include "object_trace.h"
 #include "scene_hook.h"
+#include "compositor_bridge.h"
+#include "compositor_owner.h"
+#include "../renderer/bloom_programs.h"
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
 #include "camera_state.h"
@@ -72,6 +75,7 @@ float taa_sharpen = 0.f;
 // at the frame corners for the lit statistic), X3M_HDR_DT_MS (fixed
 // adaptation step; fixtures).
 bool hdr_requested = false;
+bool bloom_requested = false; // X3M_HDR_BLOOM=1; opt-in AgX compositor replacement
 x3m::renderer::HdrConfig hdr_config{};
 // X3M_MOTION_RT_MODE=lazy keeps the route's RT1/RT2 bindings across routed
 // draws (experiment; default perdraw); X3M_MOTION_FRAME_LOG=<n> sets the
@@ -125,6 +129,7 @@ struct Hooks {
         table[slot] = reinterpret_cast<void*>(fn);
     }
 };
+struct CompositorInvocation;
 struct Device : Hooks {
     D3DCAPS9 caps{};
     uint64_t id = next_device_id++;
@@ -137,6 +142,14 @@ struct Device : Hooks {
     DrawInputReader draw_inputs;
     MotionCapture motion;
     MotionOutput motion_output;
+    renderer::BloomPass bloom;
+    CompositorInvocation* compositor = nullptr; // capture mutex; invocation owns its CPU/native pins
+    std::uint64_t reset_generation = 0;
+    DWORD scene_thread = 0;
+    unsigned bloom_busy = 0; // suppress all final-reference inference during injected operations
+    bool reset_active = false, bloom_attempted = false;
+    unsigned bloom_failure_reports = 0;
+    std::uint64_t bloom_prepared = 0, bloom_committed = 0;
     unsigned remaining = 0;
     bool capture = false;
     bool key_down = false;
@@ -170,7 +183,53 @@ void capture_event(Device& ctx,const char* operation,HRESULT result,bool before_
     if(ctx.capture)log("capture_event device=%llu frame=%llu seq=%llu after_draw=%llu op=%s result=%08lx qpc=%llu",ctx.id,ctx.frame,++ctx.events,ctx.draws-(before_draw?1:0),operation,result,telemetry::now());
 }
 std::map<IDirect3D9*, std::unique_ptr<Hooks>> factories;
-std::map<IDirect3DDevice9*, std::unique_ptr<Device>> devices;
+std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
+// Invocation storage is constructed explicitly by pre and destroyed by bridge
+// finally. No GCC destructor is relied upon across original's Windows SEH.
+struct CompositorInvocation {
+    std::shared_ptr<Device> owner;
+    IDirect3DDevice9* device = nullptr;
+    compositor_owner::Snapshot identity{};
+    renderer::BloomPrepare input{};
+    renderer::BloomCandidate candidate{};
+    bool native_pin = false, ready = false, revoked = false;
+};
+static_assert(sizeof(CompositorInvocation) <= X3M_CB_STORAGE_SIZE, "bridge invocation storage");
+static_assert(alignof(CompositorInvocation) <= 16, "bridge invocation alignment");
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+// Test-only bridge context: synthetic retained scene, actual COM/BloomPass and
+// production Release/Reset/cleanup. The fixture owns these borrowed inputs.
+struct BloomLifetimeFixture {
+    X3mCompositorBinding binding{};
+    IDirect3DDevice9* device=nullptr;
+    IDirect3DTexture9* scene=nullptr;
+    IDirect3DSurface9* main=nullptr;
+    IDirect3DSurface9* depth=nullptr;
+    std::weak_ptr<Device> owner;
+    unsigned counts[17]{};
+    bool bound=false;
+} bloom_lifetime_fixture;
+#endif
+struct BloomOperation {
+    Device& owner;
+    explicit BloomOperation(Device& d) noexcept : owner(d) { ++owner.bloom_busy; }
+    ~BloomOperation() { --owner.bloom_busy; }
+};
+template<class T> void bloom_drop(T*& value) noexcept {
+    T* old = value; value = nullptr; if (old) old->Release();
+}
+void revoke_compositor(Device& ctx) noexcept {
+    if (auto* call = ctx.compositor) {
+        call->revoked = true; call->ready = false;
+        call->input.boundary.admitted = false;
+        // Native pin deliberately survives Reset and reference cleanup.
+        BloomOperation internal(ctx);
+        bloom_drop(call->candidate.surface); call->candidate = {};
+        bloom_drop(call->input.scene);
+        bloom_drop(call->input.boundary.main);
+        bloom_drop(call->input.boundary.depth);
+    }
+}
 // State blocks change device state outside the setter hooks. With the motion
 // route enabled, each block gets a private vtable so Apply can resynchronize
 // the route's shadow. The block keeps its device alive, so the device pointer
@@ -442,17 +501,23 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         HookGuard lock;
         auto& ctx=*devices.at(d);
         auto fn=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(2);
-        // Owned motion objects (variants, RT1) each hold one device reference,
-        // so the application's final Release could never reach zero. Probe the
-        // count through the native slots; when only the caller's reference and
-        // ours remain, release ours first so the original semantics hold.
-        if(const unsigned held=ctx.motion_output.device_references()){
-            ctx.motion_output.restore_bindings(); // A kept binding would hold RT1/RT2 through the final Release.
+        // A registered invocation owns an explicit native pin. Delay final
+        // retirement until its cleanup drops transient aliases and releases that
+        // pin through this hook. Never count transient surface aliases as native
+        // device references or manufacture a zero return for the application.
+        const bool accounting = !ctx.compositor && !ctx.bloom_busy
+            && !ctx.motion_output.reference_accounting_busy() && !ctx.bloom.releasing();
+        const unsigned held = accounting
+            ? ctx.motion_output.device_references() + ctx.bloom.references() : 0;
+        if (held) {
+            ctx.motion_output.restore_bindings();
             const ULONG count=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
             const ULONG after=fn(d);
-            // Child destruction re-enters this hook through the public vtable;
-            // device_references() reports zero while release_resources runs.
-            if(after==held+1){ctx.motion_output.release_resources();log("motion_output_release device=%llu held=%u count=%lu released=1",ctx.id,held,count);}
+            if(after==held+1){
+                BloomOperation internal(ctx);
+                ctx.bloom.shutdown(); ctx.motion_output.release_resources();
+                log("motion_output_release device=%llu held=%u count=%lu released=1",ctx.id,held,count);
+            }
         }
         cpu.before_original();
         refs=fn(d);cpu.after_original();
@@ -463,9 +528,8 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
     // mutex is released, so its final report cannot wait on a lock we hold.
     if(last_device_destroyed){
         sampling_profiler::shutdown();
-        // The frame routine cannot run without a device: quiescent for the
-        // callsite restore (the object-trace patch keeps its own lifetime).
-        if(scene_hook::installed()){const bool restored=scene_hook::shutdown();log("scene_hook_shutdown restored=%u status=%s",restored,scene_hook::status());}
+        // The scene patch/binding remains installed for process lifetime. A
+        // bridge may still be returning after this final native Release.
         chase_camera::note_last_device(); // kept for the process lifetime (review 31 A3): a recreated device could not re-claim the site
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
@@ -478,6 +542,223 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
     }
     return refs;
 }
+// Exact owner qualification remains separate from the game-call transport.
+// This work is once per compositor, not part of any draw/setter hook.
+enum class BloomRefusal : unsigned { Caller, Owner, Device, Nested, Thread, Reset, Glow,
+    Scene, Pass, Boundary, Post, Count };
+constexpr const char* bloom_refusal_names[] = {"caller", "owner", "device", "nested", "thread", "reset",
+    "glow_off", "scene_handoff", "pass_unavailable", "boundary", "post_qualification"};
+std::uint64_t bloom_calls = 0, bloom_refusals[unsigned(BloomRefusal::Count)]{};
+void bloom_refuse(BloomRefusal reason,const Device* ctx=nullptr) noexcept {
+    const auto index=unsigned(reason);
+    const auto count=++bloom_refusals[index];
+    if(count==1)log("bloom_refusal reason=%s count=%llu device=%llu ordinary_signal=%u",
+        bloom_refusal_names[index],count,ctx?ctx->id:0,
+        unsigned(reason==BloomRefusal::Glow || reason==BloomRefusal::Scene || reason==BloomRefusal::Pass
+            || reason==BloomRefusal::Boundary || reason==BloomRefusal::Post));
+}
+bool compositor_glow_enabled(std::uintptr_t base) noexcept {
+    std::uint32_t settings=0; unsigned char flags=0; SIZE_T copied=0;
+    if(!ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(base+0x206f34),
+            &settings,sizeof settings,&copied) || copied!=sizeof settings
+            || !settings || settings>UINT32_MAX-0x100u)return false;
+    return ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(settings+0x100u),
+        &flags,sizeof flags,&copied) && copied==sizeof flags && (flags&0x80u);
+}
+void retain_compositor_scene(void* storage,const MotionHdrScene& scene) noexcept {
+    auto& call=*static_cast<CompositorInvocation*>(storage);
+    const auto& ctx=*call.owner;
+    if(call.revoked || call.input.scene || scene.device!=call.device || scene.device_id!=ctx.id
+            || scene.frame!=ctx.frame || !scene.display.valid || !scene.scene || !scene.main)return;
+    // Synchronous retain/copy only. MotionOutput still owns its writeback state;
+    // no preparation, Reset or renderer reentry until scene_end_hook returns.
+    scene.scene->AddRef(); call.input.scene=scene.scene;
+    scene.main->AddRef(); call.input.boundary.main=scene.main;
+    call.input.agx=scene.display.agx;
+    call.input.decode=scene.display.decode;
+    call.input.sharpen=scene.display.sharpen;
+    call.input.sharpen_constants=scene.display.sharpen_constants;
+    call.input.exact_sharpen=true;
+}
+bool compositor_current(const CompositorInvocation& call,bool refresh_owner=true) noexcept {
+    if(!call.owner || !call.native_pin || call.revoked)return false;
+    const Device& ctx=*call.owner;
+    const auto found=devices.find(call.device);
+    if(found==devices.end() || found->second.get()!=&ctx || ctx.compositor!=&call
+            || ctx.reset_active || ctx.reset_generation!=call.input.boundary.reset
+            || ctx.frame!=call.input.boundary.frame || ctx.scene_thread!=call.input.boundary.thread
+            || GetCurrentThreadId()!=ctx.scene_thread || !ctx.motion_output.bloom_boundary_available())return false;
+    if(!refresh_owner)return true;
+    compositor_owner::Snapshot now{};
+    const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+    return compositor_owner::read(base,now)==compositor_owner::Result::Ok
+        && compositor_owner::same(call.identity,now) && compositor_glow_enabled(base);
+}
+void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
+    // This constructor is nonthrowing; cleanup can always destroy the object,
+    // including when admission declines before a context is acquired.
+    auto& call=*new(storage) CompositorInvocation{};
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    if(++bloom_calls%300==0)
+        log("bloom_admission calls=%llu caller=%llu owner=%llu device=%llu nested=%llu thread=%llu reset=%llu glow_off=%llu scene_handoff=%llu pass_unavailable=%llu boundary=%llu post_qualification=%llu",
+            bloom_calls,bloom_refusals[0],bloom_refusals[1],bloom_refusals[2],bloom_refusals[3],bloom_refusals[4],bloom_refusals[5],
+            bloom_refusals[6],bloom_refusals[7],bloom_refusals[8],bloom_refusals[9],bloom_refusals[10]);
+    if(!scene_hook::compositor_active() || frame->caller_pc!=scene_hook::compositor_caller_pc()
+            || !frame->caller_stack || (frame->caller_stack&3u)){bloom_refuse(BloomRefusal::Caller);return;}
+    const auto base=reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+    if(compositor_owner::read(base,call.identity)!=compositor_owner::Result::Ok){bloom_refuse(BloomRefusal::Owner);return;}
+    call.device=reinterpret_cast<IDirect3DDevice9*>(call.identity.device);
+    const auto found=devices.find(call.device);
+    if(found==devices.end()){bloom_refuse(BloomRefusal::Device);return;}
+    Device& ctx=*found->second;
+    if(ctx.compositor){
+        // A nested original still executes, but invalidates the outer ticket;
+        // no separately retained resources are destroyed inside its GPU call.
+        ctx.compositor->revoked=true; ctx.compositor->ready=false; bloom_refuse(BloomRefusal::Nested,&ctx);return;
+    }
+    if(ctx.reset_active){bloom_refuse(BloomRefusal::Reset,&ctx);return;}
+    if(!ctx.scene_thread || ctx.scene_thread!=GetCurrentThreadId()){bloom_refuse(BloomRefusal::Thread,&ctx);return;}
+    call.owner=found->second;
+    ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(call.device); call.native_pin=true;
+    ctx.compositor=&call;
+    call.input.boundary.frame=ctx.frame; call.input.boundary.reset=ctx.reset_generation;
+    call.input.boundary.thread=ctx.scene_thread;
+    BloomOperation internal(ctx);
+    const bool glow=compositor_glow_enabled(base);
+    // Even glow-off and unavailable replacement retain the ordinary route's
+    // scene-end resolve/writeback. New work consumes its exact completed image.
+    ctx.motion_output.scene_end_hook(glow ? &retain_compositor_scene : nullptr,&call);
+    if(!glow){bloom_refuse(BloomRefusal::Glow,&ctx);return;}
+    if(!call.input.scene || !call.input.boundary.main || !compositor_current(call,false)){
+        bloom_refuse(BloomRefusal::Scene,&ctx);return;
+    }
+    if(!ctx.bloom_attempted){
+        ctx.bloom_attempted=true;
+        const HRESULT hr=ctx.bloom.attach(call.device,ctx.original,ctx.caps,renderer::bloom_programs());
+        log("bloom_attach device=%llu result=%08lx reason=%s references=%u",ctx.id,hr,ctx.bloom.caps().reason,ctx.bloom.references());
+    }
+    if(!ctx.bloom.enabled()){bloom_refuse(BloomRefusal::Pass,&ctx);return;}
+    const HRESULT main=call.input.boundary.main->GetDesc(&call.input.boundary.main_desc);
+    const HRESULT depth=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,IDirect3DSurface9**)>(40)
+        (call.device,&call.input.boundary.depth);
+    if(FAILED(main) || (FAILED(depth)&&depth!=D3DERR_NOTFOUND)
+            || (call.input.boundary.depth && FAILED(call.input.boundary.depth->GetDesc(&call.input.boundary.depth_desc)))){
+        bloom_refuse(BloomRefusal::Boundary,&ctx);return;
+    }
+    call.input.boundary.admitted=true;
+    const auto begin=telemetry::now();
+    const auto prepared=ctx.bloom.prepare(call.input);
+    if(!prepared.state_preserved)ctx.motion_output.stateblock_applied();
+    if(prepared.ready){
+        call.candidate=prepared.candidate;
+        call.candidate.surface->AddRef();
+        call.ready=compositor_current(call);
+        if(call.ready)++ctx.bloom_prepared;
+    }
+    if((call.ready && ctx.bloom_prepared==1) || (!prepared.ready && ctx.bloom_failure_reports++<8) || ctx.frame%300==0)
+        log("bloom_prepare device=%llu frame=%llu ready=%u reason=%s operation=%08lx restore=%08lx state_preserved=%u cpu_ticks=%llu bytes=%llu",
+            ctx.id,ctx.frame,call.ready,prepared.reason,prepared.operation,prepared.restore,prepared.state_preserved,
+            telemetry::now()-begin,ctx.bloom.resource_bytes());
+}
+void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
+    auto& call=*static_cast<CompositorInvocation*>(storage);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    if(!call.ready)return;
+    if(!compositor_current(call)){bloom_refuse(BloomRefusal::Post,call.owner.get());return;}
+    Device& ctx=*call.owner;
+    BloomOperation internal(ctx);
+    const auto begin=telemetry::now();
+    const auto result=ctx.bloom.commit(call.candidate,call.input.boundary);
+    call.ready=false; // every candidate is consumed at most once
+    if(!result.state_preserved)ctx.motion_output.stateblock_applied();
+    if(result.committed)++ctx.bloom_committed;
+    if((result.committed && ctx.bloom_committed==1) || (!result.committed && ctx.bloom_failure_reports++<8) || ctx.frame%300==0)
+        log("bloom_commit device=%llu frame=%llu committed=%u reason=%s operation=%08lx restore=%08lx recovery=%08lx recovery_restore=%08lx original_preserved=%u state_preserved=%u cpu_ticks=%llu",
+            ctx.id,ctx.frame,result.committed,result.reason,result.operation,result.restore,result.recovery,result.recovery_restore,
+            result.original_preserved,result.state_preserved,telemetry::now()-begin);
+}
+void compositor_cleanup(const X3mCompositorFrame*,void* storage,void*,int abnormal) {
+    auto& call=*static_cast<CompositorInvocation*>(storage);
+    IDirect3DDevice9* pin=nullptr;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(call.owner){
+            Device& ctx=*call.owner;
+            if(ctx.compositor==&call){
+                revoke_compositor(ctx);
+                ctx.compositor=nullptr;
+            }
+            if(abnormal && ctx.bloom_failure_reports++<8)
+                log("bloom_original_abnormal device=%llu frame=%llu",ctx.id,call.input.boundary.frame);
+        }
+        if(call.native_pin){call.native_pin=false;pin=call.device;}
+    }
+    // Keep capture mutex released: terminal Release can stop the profiler and
+    // emit final reports. The CPU pin survives any map erase inside this hook.
+    if(pin)release_device(pin);
+    call.~CompositorInvocation();
+}
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+void bloom_fixture_pre(const X3mCompositorFrame*,void* storage,void*) {
+    auto& call=*new(storage) CompositorInvocation{};
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    auto& f=bloom_lifetime_fixture; ++f.counts[0];
+    const auto found=devices.find(f.device);
+    if(found==devices.end() || found->second->compositor)return;
+    auto& ctx=*found->second;
+    f.counts[14]=ctx.motion_output.device_references();
+    f.counts[15]=ctx.motion_output.hdr_enabled();
+    f.counts[16]=ctx.motion_output.taa_enabled();
+    call.owner=found->second; f.owner=call.owner; call.device=f.device;
+    ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(f.device); call.native_pin=true;
+    ctx.compositor=&call;
+    ctx.scene_thread=GetCurrentThreadId();
+    call.input.boundary.frame=ctx.frame; call.input.boundary.reset=ctx.reset_generation;
+    call.input.boundary.thread=ctx.scene_thread;
+    BloomOperation internal(ctx);
+    if(!f.scene || !f.main)return;
+    f.scene->AddRef();call.input.scene=f.scene;
+    f.main->AddRef();call.input.boundary.main=f.main;
+    if(f.depth){f.depth->AddRef();call.input.boundary.depth=f.depth;}
+    if(FAILED(f.main->GetDesc(&call.input.boundary.main_desc))
+            || (f.depth && FAILED(f.depth->GetDesc(&call.input.boundary.depth_desc))))return;
+    x3::temporal::prepare(call.input.agx,1.f,65504.f,x3::temporal::AgxDecode::gamma22,x3::temporal::AgxLook::none);
+    call.input.sharpen=0.37f;
+    x3::temporal::prepare_sharpen(call.input.sharpen_constants,call.input.sharpen,
+        call.input.boundary.main_desc.Width,call.input.boundary.main_desc.Height);
+    call.input.exact_sharpen=true;
+    call.input.boundary.admitted=true;
+    if(!ctx.bloom_attempted){
+        ctx.bloom_attempted=true;
+        f.counts[12]=unsigned(ctx.bloom.attach(f.device,ctx.original,ctx.caps,renderer::bloom_programs()));
+    }
+    if(!ctx.bloom.enabled())return;
+    const auto prepared=ctx.bloom.prepare(call.input);
+    f.counts[12]=unsigned(prepared.operation);
+    if(prepared.ready){
+        call.candidate=prepared.candidate;call.candidate.surface->AddRef();
+        call.ready=true;++f.counts[4];
+    }
+}
+void bloom_fixture_post(const X3mCompositorFrame*,void* storage,void*) {
+    auto& call=*static_cast<CompositorInvocation*>(storage);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    auto& f=bloom_lifetime_fixture; ++f.counts[1];
+    if(!call.owner || !call.ready || call.revoked)return;
+    auto& ctx=*call.owner;
+    if(ctx.compositor!=&call || ctx.reset_active || ctx.reset_generation!=call.input.boundary.reset
+            || ctx.frame!=call.input.boundary.frame || GetCurrentThreadId()!=call.input.boundary.thread)return;
+    BloomOperation internal(ctx);
+    const auto committed=ctx.bloom.commit(call.candidate,call.input.boundary);
+    call.ready=false;f.counts[13]=unsigned(committed.operation);
+    if(committed.committed)++f.counts[5];
+}
+void bloom_fixture_cleanup(const X3mCompositorFrame* frame,void* storage,void* context,int abnormal) {
+    ++bloom_lifetime_fixture.counts[2];
+    if(abnormal)++bloom_lifetime_fixture.counts[3];
+    compositor_cleanup(frame,storage,context,abnormal);
+}
+#endif
 void finite_upload_metrics(IDirect3DDevice9* device,const Device& ctx,const char* phase) {
     if(!finite_positions_requested)return;
     ownership::FiniteUploadStatistics s{};
@@ -565,22 +846,44 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     if (logfile) { const auto begin=telemetry::now(); fflush(logfile); telemetry::record(ctx.stats,telemetry::Metric::LogFlush,telemetry::now()-begin); }
     return hr;
 }
-HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
+HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode,bool extended) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
     auto& ctx=*devices.at(d);
-    auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRESENT_PARAMETERS*)>(16);
+    // A Reset reentered from injected GPU work cannot destroy that work's
+    // stack-local saved state. Ordinary Reset during original is supported.
+    if(ctx.bloom_busy)return D3DERR_INVALIDCALL;
+    ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0;
+    revoke_compositor(ctx);
     ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
     ctx.scene_depth.invalidate();
     ctx.motion.invalidate();
-    ctx.motion_output.before_reset();
+    {
+        BloomOperation internal(ctx);
+        ctx.bloom.before_reset(); ctx.bloom_attempted=false;
+        ctx.motion_output.before_reset();
+    }
     presentation_parameters("reset_before",ctx.id,ctx.stats.focus_window,p);
     log("reset_begin ptr=%p device=%llu",d,ctx.id);
     finite_upload_metrics(d,ctx,"reset_before");
     const auto begin=telemetry::now();
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if(bloom_lifetime_fixture.bound && bloom_lifetime_fixture.device==d){
+        auto& counts=bloom_lifetime_fixture.counts; ++counts[6];
+        if(auto* call=ctx.compositor){
+            if(!call->input.scene && !call->input.boundary.main && !call->input.boundary.depth
+                    && !call->candidate.surface)++counts[7];
+            if(call->native_pin)++counts[10];
+        }
+    }
+#endif
     cpu.before_original();
-    HRESULT hr=fn(d,p);cpu.after_original(); telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
+    const HRESULT hr=extended
+        ? ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRESENT_PARAMETERS*,D3DDISPLAYMODEEX*)>(132)(d,p,mode)
+        : ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRESENT_PARAMETERS*)>(16)(d,p);
+    cpu.after_original(); ctx.reset_active=false;
+    telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
     ctx.motion_output.after_reset(hr);
     ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
@@ -588,6 +891,12 @@ HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
     if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
     telemetry::summary(ctx.stats,"reset",ctx.frame);
     log("reset_end device=%llu result=%08lx",ctx.id,hr); return hr;
+}
+HRESULT WINAPI reset(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p) {
+    return reset_common(d,p,nullptr,false);
+}
+HRESULT WINAPI reset_ex(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODEEX* mode) {
+    return reset_common(d,p,mode,true);
 }
 HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT c) {
     CpuCallBoundary cpu;
@@ -772,6 +1081,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
     ctx.motion_output.after_begin_scene(hr);
+    if(SUCCEEDED(hr))ctx.scene_thread=GetCurrentThreadId();
     return hr;
 }
 HRESULT WINAPI end_scene(IDirect3DDevice9* d){
@@ -1205,12 +1515,13 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     const bool supports_ex=SUCCEEDED(d->QueryInterface(IID_IDirect3DDevice9Ex,reinterpret_cast<void**>(&ex)))
         && static_cast<void*>(ex)==static_cast<void*>(d);
     if(ex) ex->Release();
-    auto ctx=std::make_unique<Device>(d,supports_ex?134:119);
+    auto ctx=std::make_shared<Device>(d,supports_ex?134:119);
     ctx->scene_depth.configure(scene_depth_capture_requested);
     ctx->stats.device=ctx->id;ctx->stats.window=window;ctx->stats.focus_window=focus;
     const HRESULT caps_result=d->GetDeviceCaps(&ctx->caps);
     log("capture_caps result=%08lx streams=%lu vs_float_count=%lu ps_version=%08lx",caps_result,ctx->caps.MaxStreams,ctx->caps.MaxVertexShaderConst,ctx->caps.PixelShaderVersion);
     ctx->set(2,release_device); ctx->set(16,reset); ctx->set(17,present);
+    if(supports_ex)ctx->set(132,reset_ex);
     ctx->set(37,set_rt);ctx->set(43,clear);
     if(scene_depth_capture_requested){
         ctx->set(34,stretch_rect);ctx->set(39,set_depth);
@@ -1245,12 +1556,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
     hooked.motion_output.configure_state_shadow(motion_state_shadow);
-    // The engine scene-end hook is installed at backend load; a device created
-    // after the last one was destroyed (the patch restored then) reinstalls it.
-    if(scene_hook::requested()&&!scene_hook::installed()){
-        scene_hook::initialize(&scene_end_signal);
-        log("scene_hook active=%u status=%s reinstalled=1",scene_hook::active(),scene_hook::status());
-    }
+    // Production scene patch and immutable binding persist across devices.
     hooked.motion_output.configure_scene_hook(scene_hook::active());
     hooked.motion_output.configure_hdr(hdr_requested,hdr_config);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
@@ -1440,6 +1746,7 @@ void initialize_log(HMODULE module) {
     meter_parameter(L"X3M_HDR_EV_DEADBAND", 0.f, 8.f, hdr_config.params.ev_deadband);
     meter_parameter(L"X3M_HDR_METER_EDGE_WEIGHT", 0.f, 1.f, hdr_config.params.meter_edge_weight);
     if(GetEnvironmentVariableW(L"X3M_HDR_DT_MS",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=1000.f)hdr_config.fixed_dt=v/1000.f;}
+    bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     motion_state_shadow=!(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1 && setting[0]==L'0');
@@ -1487,6 +1794,11 @@ void fixture_apply(Device& ctx) {
 
 // The engine scene-end signal: render thread, outside any device hook; every
 // route sees it under the same mutex the hooks hold.
+const X3mCompositorBinding* compositor_binding() noexcept {
+    static const X3mCompositorBinding callbacks{nullptr,&compositor_pre,&compositor_post,&compositor_cleanup,nullptr};
+    return bloom_requested && motion_output_requested && hdr_requested
+        && hdr_config.tonemap==renderer::HdrTonemap::Agx && scene_hook::wanted() ? &callbacks : nullptr;
+}
 void scene_end_signal() {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     for(auto& entry:devices) entry.second->motion_output.scene_end_hook();
@@ -1547,6 +1859,43 @@ extern "C" __declspec(dllexport) int x3m_scene_hook_fixture_shutdown() {
     const bool result=x3m::scene_hook::fixture_shutdown();
     for(auto& entry:x3m::devices) entry.second->motion_output.configure_scene_hook(x3m::scene_hook::active());
     return result;
+}
+// Synthetic owner only: renderer data, bridge, pin cleanup and native device
+// hooks are real. The fixture uses its own original function and outer SEH catch.
+extern "C" __declspec(dllexport) int x3m_bloom_lifetime_fixture_bind(void (*original)(),
+        IDirect3DDevice9* device,IDirect3DTexture9* scene,IDirect3DSurface9* main,IDirect3DSurface9* depth) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    auto& f=x3m::bloom_lifetime_fixture;
+    if(!original || !device || f.bound || x3m_compositor_bridge_active())return 0;
+    if(x3m::devices.find(device)==x3m::devices.end()){
+        // Production's separate Create9Ex factory currently passes through.
+        // Adopt the fixture's genuine Ex device explicitly to exercise the
+        // actual 134-slot ResetEx hook; this is not production Ex admission.
+        D3DDEVICE_CREATION_PARAMETERS creation{};
+        if(FAILED(device->GetCreationParameters(&creation)))return 0;
+        x3m::hook_device(device,creation.hFocusWindow,creation.hFocusWindow);
+    }
+    f={}; f.device=device;f.scene=scene;f.main=main;f.depth=depth;
+    f.binding={original,&x3m::bloom_fixture_pre,&x3m::bloom_fixture_post,&x3m::bloom_fixture_cleanup,nullptr};
+    f.bound=x3m_compositor_bridge_bind(&f.binding)!=0;
+    return f.bound;
+}
+extern "C" __declspec(dllexport) void* x3m_bloom_lifetime_fixture_entry() {
+    return reinterpret_cast<void*>(&x3m_compositor_bridge_entry);
+}
+extern "C" __declspec(dllexport) int x3m_bloom_lifetime_fixture_unbind() {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    auto& f=x3m::bloom_lifetime_fixture;
+    if(!f.bound || x3m_compositor_bridge_active() || !x3m_compositor_bridge_unbind())return 0;
+    f.bound=false;return 1;
+}
+extern "C" __declspec(dllexport) unsigned x3m_bloom_lifetime_fixture_query(unsigned key) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    auto& f=x3m::bloom_lifetime_fixture;
+    if(key==8)return x3m::devices.find(f.device)==x3m::devices.end();
+    if(key==9)return f.owner.expired();
+    if(key==11)return x3m_compositor_bridge_active();
+    return key<17?f.counts[key]:~0u;
 }
 extern "C" __declspec(dllexport) unsigned x3m_scene_hook_fixture_signals() { return unsigned(x3m::scene_hook::signals()); }
 extern "C" __declspec(dllexport) const char* x3m_scene_hook_fixture_status() { return x3m::scene_hook::status(); }

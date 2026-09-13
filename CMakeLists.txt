@@ -3,7 +3,47 @@ project(x3_modern_renderer VERSION 0.4.0 LANGUAGES CXX)
 if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
   message(FATAL_ERROR "Build for 32-bit Windows using cmake/mingw-i686.cmake")
 endif()
+# This project uses GNU PE ld without a SafeSEH table. The isolated MS-target
+# Clang SEH object requires the reviewed metadata-only conversion for that link.
+# An enabled SafeSEH build needs a compatible linker and a separate qualification.
+option(X3M_GNU_PE_NO_SAFESEH "Use the current GNU PE link without SafeSEH" ON)
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR NOT X3M_GNU_PE_NO_SAFESEH)
+  message(FATAL_ERROR "The compositor bridge requires the qualified GNU/no-SafeSEH link policy")
+endif()
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+if(DEFINED ENV{X3M_SEH_CLANG} AND NOT DEFINED X3M_SEH_CLANG)
+  set(X3M_SEH_CLANG "$ENV{X3M_SEH_CLANG}" CACHE FILEPATH "Clang with i686-pc-windows-msvc support")
+endif()
+find_program(X3M_SEH_CLANG NAMES clang REQUIRED)
+set(X3M_COMPOSITOR_BUILD "${CMAKE_CURRENT_BINARY_DIR}/compositor_bridge")
+set(X3M_COMPOSITOR_ASM "${X3M_COMPOSITOR_BUILD}/compositor_bridge.o")
+set(X3M_COMPOSITOR_SEH "${X3M_COMPOSITOR_BUILD}/compositor_bridge_seh_gnu.obj")
+set(X3M_COMPOSITOR_RUNTIME "${X3M_COMPOSITOR_BUILD}/libx3m_compositor_seh_runtime.a")
+# Use the configured cross compiler, not CMake's host assembler. This .S unit
+# includes only compositor_bridge.h; changes to C++ callers do not rebuild it.
+add_custom_command(OUTPUT "${X3M_COMPOSITOR_ASM}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${X3M_COMPOSITOR_BUILD}"
+  COMMAND "${CMAKE_CXX_COMPILER}" -x assembler-with-cpp -c
+    -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/proxy/compositor_bridge.S" -o "${X3M_COMPOSITOR_ASM}"
+  DEPENDS src/proxy/compositor_bridge.S src/proxy/compositor_bridge.h
+  COMMENT "Building compositor CPU boundary" VERBATIM)
+add_custom_command(OUTPUT "${X3M_COMPOSITOR_SEH}" "${X3M_COMPOSITOR_RUNTIME}"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/build/build_compositor_bridge.py"
+    --output-dir "${X3M_COMPOSITOR_BUILD}" --gnu-pe-no-safeseh
+    --clang "${X3M_SEH_CLANG}" --nm "${CMAKE_NM}" --objcopy "${CMAKE_OBJCOPY}"
+    --objdump "${CMAKE_OBJDUMP}" --dlltool "${CMAKE_DLLTOOL}"
+  DEPENDS tools/build/build_compositor_bridge.py src/proxy/compositor_bridge_seh.c src/proxy/compositor_bridge.h
+  BYPRODUCTS "${X3M_COMPOSITOR_BUILD}/compositor_bridge_seh.obj"
+    "${X3M_COMPOSITOR_BUILD}/compositor_bridge_seh.s"
+    "${X3M_COMPOSITOR_BUILD}/compositor_bridge_seh_runtime.def"
+    "${X3M_COMPOSITOR_BUILD}/compositor_bridge_build.json"
+  COMMENT "Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)" VERBATIM)
+set_source_files_properties("${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
+  PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
 add_library(d3d9 SHARED
+  "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
+  src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp
   src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
@@ -21,7 +61,7 @@ target_compile_features(d3d9 PRIVATE cxx_std_17)
 # registration otherwise runs before capture and unregistration after restore.
 # These adapters do not throw; the remaining sources retain their EH policy.
 set_source_files_properties(src/ownership/application_admission_abi.cpp
-  src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp
+  src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/scene_hook.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The engine-memory reader runs inside the lifetime observer's mutation scopes
 # and the light hooks, which do not preserve XMM state: build it without SSE/MMX
@@ -40,5 +80,7 @@ target_compile_definitions(d3d9 PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 # Do not enable fast-math or globally require unverified AVX/FMA instructions.
 target_compile_options(d3d9 PRIVATE -Wall -Wextra -Wno-cast-function-type -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
 target_link_options(d3d9 PRIVATE -static -static-libgcc -static-libstdc++ -Wl,--kill-at -Wl,--enable-stdcall-fixup)
-target_link_libraries(d3d9 PRIVATE dxguid advapi32)
+# Only _except_handler3 comes from msvcrt.dll; never substitute broad msvcrt-os,
+# which can silently redirect the existing UCRT imports.
+target_link_libraries(d3d9 PRIVATE "${X3M_COMPOSITOR_RUNTIME}" dxguid advapi32)
 set_target_properties(d3d9 PROPERTIES PREFIX "" OUTPUT_NAME "d3d9")

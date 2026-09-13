@@ -42,8 +42,8 @@ def sections(path):
         result[name]=data[offset:offset+size] if offset else bytes(size)
     return result
 
-def relocations(path):
-    output=subprocess.check_output(['i686-w64-mingw32-objdump','-r',str(path)],text=True)
+def relocations(path, objdump='i686-w64-mingw32-objdump'):
+    output=subprocess.check_output([objdump,'-r',str(path)],text=True)
     return '\n'.join(line for line in output.splitlines()
                      if 'file format' not in line and str(path) not in line).strip()
 
@@ -52,12 +52,16 @@ def main():
     parser.add_argument('--output-dir',required=True,type=Path)
     parser.add_argument('--gnu-pe-no-safeseh',action='store_true')
     parser.add_argument('--clang',default=os.environ.get('X3M_SEH_CLANG','/usr/bin/clang'))
+    # CMake passes its cross-toolchain paths; direct fixture users keep the
+    # established prefixed tools from PATH.
+    for tool in ('nm','objcopy','objdump','dlltool'):
+        parser.add_argument('--'+tool,default='i686-w64-mingw32-'+tool)
     args=parser.parse_args()
     out=args.output_dir.resolve();out.mkdir(parents=True,exist_ok=True)
     raw=out/'compositor_bridge_seh.obj';assembly=out/'compositor_bridge_seh.s'
     run([args.clang,*FLAGS,'-c',SOURCE,'-o',raw])
     run([args.clang,*FLAGS,'-S',SOURCE,'-o',assembly])
-    undefined=subprocess.check_output(['i686-w64-mingw32-nm','-u',str(raw)],text=True)
+    undefined=subprocess.check_output([args.nm,'-u',str(raw)],text=True)
     names={line.split()[-1] for line in undefined.splitlines() if line.strip()}
     if names!={'__except_handler3','_x3m_compositor_bridge_invoke'}:
         raise RuntimeError('Unexpected isolated SEH dependencies: '+repr(names))
@@ -67,7 +71,7 @@ def main():
     products=[raw,assembly]
     if args.gnu_pe_no_safeseh:
         link=out/'compositor_bridge_seh_gnu.obj'
-        run(['i686-w64-mingw32-objcopy','--remove-section=.sxdata',raw,link])
+        run([args.objcopy,'--remove-section=.sxdata',raw,link])
         linked_sections=sections(link)
         if set(linked_sections)!=set(raw_sections)-{'.sxdata'}:
             raise RuntimeError('Link copy changed section inventory beyond .sxdata')
@@ -77,12 +81,12 @@ def main():
             before=raw_sections[name]
             if value[:len(before)]!=before or any(value[len(before):]):
                 raise RuntimeError('Link copy changed section contents: '+name)
-        if relocations(raw)!=relocations(link):raise RuntimeError('Link copy changed relocations')
+        if relocations(raw,args.objdump)!=relocations(link,args.objdump):raise RuntimeError('Link copy changed relocations')
         products.append(link)
     definition=out/'compositor_bridge_seh_runtime.def'
     definition.write_text('LIBRARY msvcrt.dll\nEXPORTS\n_except_handler3\n')
     library=out/'libx3m_compositor_seh_runtime.a'
-    run(['i686-w64-mingw32-dlltool','--input-def',definition,'--output-lib',library])
+    run([args.dlltool,'--input-def',definition,'--output-lib',library])
     products.extend([definition,library])
     report={'clang':subprocess.check_output([args.clang,'--version'],text=True).splitlines()[0],
             'flags':FLAGS,'source_hashes':{str(p.relative_to(ROOT)):sha(p) for p in (SOURCE,HEADER,Path(__file__).resolve())},

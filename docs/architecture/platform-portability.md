@@ -18,6 +18,14 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
+- Opt-in bloom now uses documented D3D9 calls and a compiler-supported x86
+  SEH bridge; native Windows execution and live gameplay integration remain
+  unverified. Capture hooks ResetEx at slot 132 on admitted Ex-capable devices,
+  but the separate `Direct3DCreate9Ex`/`CreateDeviceEx` factory route still
+  forwards without capture adoption. The bloom lifetime fixture explicitly
+  adopts its genuine Ex device under its test-only seam to exercise ResetEx;
+  this does not establish production CreateDeviceEx enhancement support.
+
 - The opt-in [chase camera](chase-camera.md) modifies validated game structures
   through an x86 trampoline and uses public Win32 memory, protection and timing
   APIs. No Wine-private interface is required. It cross-compiles with the

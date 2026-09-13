@@ -900,7 +900,7 @@ bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
 // the D24X8 surface is not read. The bloom copy that 0x004c4750 may issue
 // afterwards (glow on) then finds the frame resolved and copies the resolved
 // image; with glow off no copy follows and the frame is resolved all the same.
-void MotionOutput::scene_end_hook() noexcept {
+void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context) noexcept {
     if (!enabled_) return;
     record_deferred();
     ++counters_.hook_signals;
@@ -922,7 +922,7 @@ void MotionOutput::scene_end_hook() noexcept {
     // redirect the write-back is a no-op and the resolve runs on the 8-bit
     // RT0 below, as before.
     resolve_hdr(SceneEndSource::Hook);
-    end_redirect(HdrEnd::Hook);
+    end_redirect(HdrEnd::Hook, callback, context);
     if (!taa_enabled_) return;
     if (!resolve_allowed(SceneEndSource::Hook)) return;
     // The resolve reads and rewrites RT0, which must be the latched main target
@@ -2267,12 +2267,13 @@ void MotionOutput::begin_redirect() noexcept {
 // One write-back through the pass (the ladder), with the capture-frame
 // readback of the FP16 image before the first one of the frame, the
 // telemetry and the block after an unwind.
-renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0, bool write) noexcept {
+renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0, bool write,
+                                                renderer::HdrDisplaySnapshot* display) noexcept {
     auto& h = counters_.hdr;
     if (write && capture_ && !h.writebacks && hdr_->target())
         readback_surface(hdr_->target(), D3DFMT_A16B16G16R16F, 8, L"hdr", L"rgba16f", "hdr_readback", "rgba16f_row_major", hdr_->width(), hdr_->height());
     const std::uint64_t begin = stamp();
-    const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_, hdr_resolved_);
+    const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_, hdr_resolved_, display);
     const std::uint64_t ticks = stamp() - begin;
     if (write) {
         ++h.writebacks; h.source = unsigned(r.source);
@@ -2320,9 +2321,44 @@ void MotionOutput::flush_redirect() noexcept {
     ++counters_.hdr.flushes;
     hdr_writeback(hdr_->target(), true);
 }
-void MotionOutput::end_redirect(HdrEnd reason) noexcept {
+void MotionOutput::end_redirect(HdrEnd reason, MotionHdrSceneCallback callback, void* context) noexcept {
     if (hdr_state_ == HdrState::Off) return;
-    if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) hdr_writeback(hdr_main_, hdr_dirty_ || hdr_resolved_ != nullptr);
+    if (hdr_state_ == HdrState::Active && hdr_ && hdr_main_) {
+        const bool write = hdr_dirty_ || hdr_resolved_ != nullptr;
+        const auto& t = counters_.taa;
+        // This optional handoff is stricter than the display fallback: failed
+        // or skipped TAA still presents the unresolved image as before, but
+        // cannot arm bloom or trigger another resolve through this callback.
+        const bool handoff = callback && reason == HdrEnd::Hook && bloom_boundary_available()
+            && selector_.state() == renderer::BoundaryState::Scene && counters_.hook_scene_end
+            && !main_msaa_
+            && (!taa_enabled_ || (hdr_resolved_ && t.attempted && t.resolved && t.hdr
+                && t.source == unsigned(SceneEndSource::Hook) && SUCCEEDED(t.result) && SUCCEEDED(t.restore)));
+        if (handoff) {
+            renderer::HdrDisplaySnapshot display;
+            const auto r = hdr_writeback(hdr_main_, write, &display);
+            if (display.valid && !r.unwind && r.tonemap && r.source == renderer::HdrWritebackSource::Shader
+                && SUCCEEDED(r.draw) && SUCCEEDED(r.restore)
+                && display.resolved == (hdr_resolved_ != nullptr)
+                && display.width && display.height && display.width == hdr_->width() && display.height == hdr_->height()
+                && display.width == main_.width && display.height == main_.height
+                && same(describe_surface(hdr_main_), main_)) {
+                IDirect3DTexture9* scene = hdr_resolved_;
+                const bool temporary = scene == nullptr;
+                HRESULT container = S_OK;
+                // TAA owns a resolved source. Without TAA, GetContainer takes
+                // a temporary public COM reference (canonical wrapper under
+                // ownership), released here after the caller pins its own.
+                if (temporary && hdr_->target())
+                    container = hdr_->target()->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&scene));
+                if (SUCCEEDED(container) && scene) {
+                    const MotionHdrScene ready{device_, scene, hdr_main_, id_, frame_, generation_, display};
+                    callback(context, ready);
+                }
+                if (temporary) release(scene); // includes a non-null output accompanying a failed HRESULT
+            }
+        } else hdr_writeback(hdr_main_, write);
+    }
     // Suspended: the application bound another surface itself and the main
     // target already holds the write-back of the switch; nothing to rebind.
     release(hdr_main_);

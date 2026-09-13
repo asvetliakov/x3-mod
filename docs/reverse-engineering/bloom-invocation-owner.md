@@ -1,10 +1,11 @@
 # Bloom invocation owner and wrapper-call ABI
 
 2026-09-13. Derived from the verified X3AP image, existing capture source and
-read-only Ghidra 12.1.3 inspection. **No production change or game/Wine run.**
-This narrows [the compositor contract](bloom-compositor-skip.md) and provides an
-implementation plan; it does not establish live owner observations or native
-Windows execution.
+read-only Ghidra 12.1.3 inspection. The selected capture integration below is
+now implemented behind opt-in `X3M_HDR_BLOOM=1`; the combined X3 synthetic-owner
+fixture passes as recorded below. The disassembly was read-only and no game was launched.
+This narrows [the compositor contract](bloom-compositor-skip.md); live game
+owner observations and native Windows execution remain unverified.
 
 ## Exact owner at the callsite
 
@@ -129,7 +130,7 @@ or justified by this remaining acceptance work.
 Use a small synchronous owner snapshot containing renderer,
 record, device, manager and manager-device. The isolated production helper
 `compositor_owner::read` implements that identity lookup with four exact-size
-RPM reads; it is not yet wired into capture. Settings/glow diagnostics and
+RPM reads; capture now uses it for admitted pre/post owner qualification. Settings/glow diagnostics and
 invocation eligibility are separate integration reads/checks, not additional
 identity fields or capabilities established by this helper. Read
 only after executable/site admission. For this once-per-compositor lookup,
@@ -150,106 +151,186 @@ then another after original before post; require the same renderer, record,
 manager and exact device. Re-reading detects change, but is not a substitute
 for a thread/lifetime contract. Record the successful BeginScene thread in
 `Device` and require the invocation to run on that observed scene thread;
-unknown/wrong thread declines. This requires one update per BeginScene, not
-per draw. The present source has no stored render-thread identity.
+unknown/wrong thread declines. Capture now records this identity once per
+successful BeginScene, not per draw, and clears it before Reset/ResetEx.
 
-`capture.cpp` currently owns contexts in
+Before integration, `capture.cpp` owned contexts in
 `map<IDirect3DDevice9*, unique_ptr<Device>>`. `scene_end_signal` broadcasts to
 all entries. A recursive mutex permits same-thread device callbacks;
 `release_device` can erase that map entry on native Release returning zero.
 Consequently neither a raw map pointer nor merely retaining the recursive
-mutex pins the context across original.
+mutex pinned the context across original.
 
-A concrete option is to make map values `shared_ptr<Device>` and take one
-strong **CPU context pin** into the invocation before preparation can reenter
-COM. Add a live/retiring flag and an owner-local pointer to the single registered
-bloom invocation. Keep the pin until explicit bridge cleanup, including SEH
-cleanup. Post requires the same map entry/id and a live, unrevoked invocation;
-a retired context may remain allocated but must never call its destroyed
-native device. The pin itself must not AddRef the native device: doing that
-silently changes the existing final-Release heuristic. One shared-pointer pin
-per frame has no new per-draw ownership operation.
+### Selected integration policy (2026-09-13)
 
-The present `release_device` asks `motion_output.device_references()` how many
-native device references its owned objects represent, probes native AddRef /
-Release, drops resources when only application+owned references remain, and
-finally calls native Release. Child destruction reenters the hook;
-`MotionOutput::releasing_`/`taa_busy_` suppress existing reference accounting
-during those internal releases. New invocation-held surface/state-block/texture
-references cannot simply be added to this count: aliases and texture-level
-references do not necessarily create one distinct native device reference per
-COM AddRef, and the optional ownership wrapper has its own logical children.
+The first live integration uses an **unlocked original and deferred device
+retirement**. This replaces the earlier proposal to infer terminal application
+ownership while invocation aliases are retained. The policy is implemented in capture and qualified by the combined synthetic
+fixture below; live game acceptance remains pending.
 
-The selected integration direction is a CPU context pin plus one explicit native
-`AddRef` invocation pin, with actual invocation-induced device references
-included in the final-reference accounting. Allocate/reuse the bloom pass under
-a measured reference-delta bracket, as the existing TAA integration does, and
-measure separately retained invocation references under the same serialization.
-Do not count surface/texture aliases as independent device references. The
-explicit native pin contributes exactly one; it does not replace accounting
-for resources. This policy still requires combined runtime qualification.
+1. Change map values to `shared_ptr<Device>`. Under the capture mutex, copy one
+   CPU context pin into explicitly constructed invocation storage; take one
+   native device `AddRef` through the saved original slot and register the
+   invocation before injected COM preparation. One invocation per device is
+   admitted; nested entries call original without creating another ticket.
+2. Pre and post each serialize with the capture mutex. Release it before
+   original. Keep the native pin, CPU pin and registered invocation across
+   original. All invocation mutation, including Reset revocation, uses the
+   mutex. Post requires the same map entry/id, owner snapshot, frame, Reset
+   generation, scene thread and still-registered unrevoked ticket.
+3. While an invocation is registered, `release_device` forwards native Release
+   **without the owned-resource final-reference heuristic**. The explicit pin
+   keeps the native object alive. Ordinary D3DX reference traffic does not revoke
+   the ticket. If another thread releases the final application reference,
+   Release returns the actual positive count reflecting our outstanding pin;
+   destruction waits for cleanup. No count is fabricated, and post admission
+   does not claim to prove that an application reference still exists.
+4. Cleanup drops every separately retained invocation reference under internal
+   release suppression, clears registration, then releases the explicit native
+   pin **through `release_device`**. At that point only the persistent renderer
+   resources need accounting, so the existing terminal heuristic can release
+   those before the pin's final native Release. The CPU pin survives map erasure
+   and is explicitly destroyed last. Bridge cleanup runs exactly once and
+   handles partial pre and an exception escaping original. Reference detachment
+   is idempotent, so Reset revocation followed by final cleanup is safe; the
+   callback must not destroy the invocation object a second time.
 
-Define a capture-wide internal-operation/retirement depth before entering any
-injected COM work. Nested parent Release callbacks during that work bypass the
-final-reference probe and cannot recursively revoke partially detached state.
-A normal nonterminal application or D3DX `GetDevice`/`Release` pair must retain
-the ticket. When the qualified probe identifies only application+owned
-references (`after == held + 1`, including the invocation pin), atomically mark
-retirement and detach the invocation, drop its measured references and the pin,
-then release owned pass resources under nested-release suppression before
-forwarding the final application Release. Its actual return can then reach zero.
+This avoids measuring invocation alias deltas. An AddRef of an already-owned
+surface can produce no native device-count delta, yet keep that object's device
+reference alive after another owner releases it during original; a pre-only
+measurement is not a general solution. Persistent BloomPass ownership instead
+uses its surface-only `references()` contract, qualified together with
+MotionOutput under both native and optional ownership reference models.
 
-Blind revocation on every device Release is rejected as the default policy:
-child destruction and ordinary D3DX reference traffic also enter this hook and
-could otherwise suppress bloom every frame. Conversely, adding a native pin
-without changing the final-reference accounting would hide teardown. Fixtures
-must cover nonterminal traffic, terminal Release, nested child callbacks and
-both native/ownership reference models before this policy is integrated.
+The combined release probe must be suppressed while **either** component is
+performing internal resource operations. In particular,
+`MotionOutput::device_references()` returning zero during `releasing_` or
+`taa_busy_` must suppress the whole combined probe: adding nonzero bloom
+references must not accidentally re-enable it. Expose that busy state explicitly.
+Use a bounded internal-operation depth around bloom preparation, reference
+cleanup and combined resource destruction; clear member pointers before Release
+so nested child callbacks see detached state. The ordinary final-release path
+releases both components before native object destruction.
 
-Before **any** native Reset or ResetEx, including one reentered from the same thread:
-mark/reset-generation invalidation first, revoke the registered invocation,
-detach and release all of its DEFAULT-pool scene/candidate/main/depth,
-saved-state and recovery references, then execute the existing
-`MotionOutput::before_reset()` resource/unbind path and native Reset. The
-current generation increment is in `after_reset`; it is too late by itself.
-The existing 134-slot Ex device table only hooks Reset at slot 16; integration
-must also cover ResetEx at slot 132 before admitting that path. Reset failure
-also leaves the old invocation revoked. Explicit later bridge
-cleanup sees empty references and only releases its CPU pin. The same registered
-revoke primitive belongs in resource shutdown/owner retirement.
+Before **any** native Reset or ResetEx, increment a capture-owned generation and
+mark Reset active, revoke the registered candidate, detach and release its
+DEFAULT-pool scene/candidate/main/depth references, then release BloomPass
+DEFAULT resources and execute `MotionOutput::before_reset()`. The explicit
+native pin and CPU pin remain until bridge cleanup; they do not retain DEFAULT
+resources. Reset failure leaves the invocation revoked. The 134-slot Ex table
+must hook ResetEx at slot 132 as well as Reset at slot 16. Reentrant Reset while
+original runs follows this same revocation path. Reentrant Reset from inside
+injected GPU work is outside the first integration's supported callback scope;
+its policy must not destroy live BloomPass stack-local transactions.
 
-Avoid a GCC RAII lock or smart-pointer destructor whose only cleanup path is
-unwinding through Windows SEH. If the new bridge holds a lock across original,
-its owned lock state must be released explicitly by the compiler-supported
-finally, as must the CPU pin. Alternatively, release the capture mutex for
-original and reacquire it for the admitted post transaction while keeping the
-CPU pin and registered revocation pointer. The latter avoids holding a global
-lock over original, but still requires synchronization around all invocation
-state. Existing device hooks have GCC RAII guards; arbitrary SEH through one
-of those guards is a separate lock-unwind qualification concern and is not
-fixed by a CPU pin. The main integration should choose and fixture-test the
-lock/SEH policy explicitly.
+### Lock and exception scope
 
-In particular, an unlocked original may still be executing when another thread
-releases its final application reference. That thread must not drop the
-invocation's native pin or destroy the device. Either exclude that transition
-until original exits, or mark retirement and defer the owned-reference cleanup
-until the invocation finishes while preserving the native pin. Returning a
-still-positive native count in that case reflects the outstanding invocation
-reference; never manufacture a zero result or destroy the device early. The
-combined lifetime fixture must cover this interleaving before selecting the
-unlocked-original option.
+Do not hold a GCC RAII lock across original. Original game-helper exceptions
+escaping after normally completed device hooks reach the compiler-supported
+bridge finally with no capture lock outstanding; it explicitly cleans the
+registered invocation. A normal pre/post callback releases its own lock before
+returning. Cleanup itself must not throw or raise. Continued SEH that resumes
+original does not revoke merely because exception search visited the frame.
 
-Last-device `release_device` currently shuts down `scene_hook` under the
-assumption that absence of devices implies a quiescent frame. With an active
-wrapper, a CPU invocation may still exist after map erasure. Defer hook teardown
-until the outer invocation count is zero; otherwise “last device” is no longer
-sufficient evidence of quiescence. Store a pending last-device transition and
-drain it from invocation cleanup; the existing one-shot branch cannot do this.
-Audit the profiler, chase notification and final resource/crypto reports in
-that branch too, and defer any action that assumes quiescence. No post draw
-is allowed while waiting. Zero invocations is necessary but not sufficient
-for cross-thread patch/module quiescence; retain the install-window contract.
+The supported GPU error model remains HRESULT failures with the existing
+BloomPass state restoration/recovery. Arbitrary backend SEH through injected
+D3D calls, or through an active GCC device-hook RAII frame, is **not** newly
+claimed recoverable. BloomPass also has stack-local SavedState/TextureViews
+whose GCC destructors are not Windows-SEH cleanup. Supporting such faults would
+require a separate cleanup transport; the bridge does not silently supply one.
+The optional replay/admission monitor is not a prerequisite for this policy.
+
+The exact scene-end signal is delivered only after a safe owner and scene
+thread are selected. A glow-off or candidate-preparation refusal on that owner
+still calls its ordinary MotionOutput scene-end hook, which performs the
+resolve/writeback when its existing route state is eligible. Unknown
+owner, wrong thread or invalid caller declines injected GPU work and does not
+broadcast to other devices; original executes once and the existing StretchRect,
+selector and EndScene fallback chain remains available. That fallback can resolve
+at a different time and is not an identical exact-boundary signal claim. Bounded
+refusal diagnostics distinguish those cases with `ordinary_signal=0`.
+
+### Hook lifetime and focused qualification
+
+Retain the production scene patch and immutable bridge binding for the process
+lifetime, including periods with zero devices; an unmatched owner simply takes
+original. Remove automatic last-device scene-hook restoration. A callback's
+cleanup still runs while bridge active count is one and assembly return code
+remains pending, so cleanup is not a valid patch/unbind point. Explicit fixture
+shutdown retains actual external quiescence plus active-count checks. Do not
+infer module-unload safety from an active count alone. Profiler shutdown and
+last-device reports must run with the capture mutex released.
+
+The combined fixture should cover: ordinary nonterminal GetDevice/Release;
+final Release from original and another thread; nested child releases during
+prepare, Reset and final shutdown; CPU context survival after map erase;
+Reset and ResetEx success/failure revoking before native entry while retaining
+only the device pin; owner/frame/thread/generation mismatch; nested bridge
+admission; normal cleanup and escaping/continued original SEH; and final device
+recreation with the scene patch still installed. Qualify persistent reference
+accounting with bloom plus TAA/HDR in the native and optional ownership models.
+Existing isolated bridge CPU/SEH and BloomPass HRESULT-recovery evidence can be
+reused; arbitrary injected-COM crashes are outside that evidence.
+
+## Capture integration evidence (2026-09-13)
+
+The [combined X3 record](../../verification/results/bottle-X3/capture-bloom-x3-summary.json)
+binds the explicit seam DLL/EXE and per-mode environments. **714 checks passed: 357 in each
+reference setting, 20 scenarios, zero skips.** Runs took 12.10 s and 8.61 s;
+these are fixture wall times, not game FPS or per-frame rendering benchmarks.
+The bottle was X3, WineArch `arm64`, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`,
+under CrossOver Preview. Native Windows was not run.
+
+The seam uses actual capture Release/Reset/ResetEx/cleanup, the production CPU/SEH
+bridge and actual BloomPass GPU preparation/commit with nonzero sharpen and an
+exact c23 block. It supplies a synthetic retained scene and original function,
+not the game's owner globals or selector. Every case observed **8 actual
+MotionOutput-held device references**, HDR enabled and TAA configured; actual
+motion/HDR shader ownership was combined with the pass's surface/shader
+ownership. Lazy TAA histories/resolve objects were not allocated by this fixture;
+their existing reference-delta evidence and the host combined busy-state controls
+remain relevant. The ownership=1 setting exercises the wrapped ordinary D3D9
+route. Genuine Ex devices are explicitly adopted only by the fixture seam;
+this does not qualify production CreateDeviceEx enhancement support.
+
+Both settings pass ordinary commit, nonterminal GetDevice/Release, final
+application Release from original and from a worker while original waits,
+Reset and ResetEx success/failure, an escaping original SEH exception and a
+continued original exception. Exception sites follow a normally returned
+SetRenderState hook. Every Reset witnesses all invocation DEFAULT references
+gone and the explicit native pin still alive before native entry. Terminal
+cases keep the native/CPU context alive during original, erase the map during
+cleanup and destroy the CPU pin afterward. Normal and continued cases commit;
+Reset/escaping cases do not. Existing isolated bridge CPU-state and BloomPass
+HRESULT recovery evidence is reused; arbitrary injected-COM SEH is outside
+this result.
+
+Reproduce against a root-owned explicit seam DLL, without rebuilding production:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timeout 60 python3 verification/probe/capture_bloom_x3_run.py --dll /absolute/path/to/seam/d3d9.dll
+```
+
+The runner builds only its standalone EXE, or accepts `--exe` to retain a built
+one, and runs the two reference settings sequentially. The paired parser has
+nine host tests. The separate host lifetime fixture compiles extracted current
+capture function bodies with scripted COM aliases and real mutex/shared_ptr,
+covering reference interleavings, busy suppression and admission changes:
+**29 scenarios, 111 checks pass**. It also verifies fresh post-original glow,
+pre refusal without a broadcast/pin, and exactly one ordinary null-callback
+scene-end signal for a safe-owner glow-off invocation.
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_capture_bloom_lifetime verification.analysis.test_capture_bloom_x3
+```
+
+The source performance pass found no new per-draw refcount, allocation or lock
+work. A context shared_ptr is copied once per admitted compositor; successful
+BeginScene records one thread identity. Invocation scratch is bounded within
+512 bytes and BloomPass reuses its surfaces/programs. Qualification makes three
+four-read owner snapshots per admitted frame, with fresh glow checks; diagnostics
+log first events and a 300-compositor summary. No rendering FPS claim follows
+from these checks.
 
 ## Local evidence and reproduction
 

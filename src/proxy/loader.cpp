@@ -61,8 +61,9 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         // X3M_SCENE_HOOK (default on with X3M_MOTION_OUTPUT=1, 0 off): the frame
         // routine's compositing callsite, exact executable and exact bytes
         // only, otherwise fails closed (the route keeps the copy/selector
-        // boundary); restored when the last device goes.
-        x3m::scene_hook::initialize(&x3m::scene_end_signal);
+        // boundary). Keep the site and immutable optional bloom bridge for the
+        // process lifetime: device destruction does not prove code quiescence.
+        x3m::scene_hook::initialize(&x3m::scene_end_signal, x3m::compositor_binding());
         x3m::log("scene_hook active=%u status=%s",x3m::scene_hook::active(),x3m::scene_hook::status());
         // X3M_CAMERA=chase: the cockpit-update trampoline (exact executable and
         // bytes, install window open here); unset or anything else leaves the

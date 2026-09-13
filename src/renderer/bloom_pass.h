@@ -46,6 +46,10 @@ struct BloomPrepare {
     x3::temporal::AgxConstants agx{};
     x3::temporal::AgxDecode decode = x3::temporal::AgxDecode::gamma22;
     float sharpen = 0.f;
+    // Live handoff copies the actual writeback c23. Standalone callers may
+    // leave this off to derive the existing parameters from strength/size.
+    x3::temporal::SharpenConstants sharpen_constants{};
+    bool exact_sharpen = false;
 };
 struct BloomCandidate {
     const void* owner = nullptr;

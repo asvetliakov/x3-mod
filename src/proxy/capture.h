@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <d3d9.h>
+#include "compositor_bridge.h"
 
 // Hooks preserve the backend's COM pointers, including resource GetDevice identity.
 // Ordinary capture performs readback queries only. Explicit scene-depth capture
@@ -19,6 +20,9 @@ void engine_memory_line(const char* phase, unsigned long long device, unsigned l
 // thread before the frame routine's compositing call; forwards to every hooked
 // device's route under the capture mutex.
 void scene_end_signal();
+// Optional original/pre/post transport. scene_hook fills original from its
+// verified target and retains an immutable copy for the process lifetime.
+const X3mCompositorBinding* compositor_binding() noexcept;
 // QPC stamp taken in DllMain (DLL_PROCESS_ATTACH): the origin of the
 // frame_end elapsed_ms field, which exists in every mode so a plain --direct
 // run's load times can be read from the log without telemetry.

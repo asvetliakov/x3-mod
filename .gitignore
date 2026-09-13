@@ -29,3 +29,7 @@ verification/results/bottle-*/bloom-filter-summary.json
 # Chase-fire qualification keeps one compact summary; verbose case logs stay local.
 verification/results/bottle-*/chase-fire-*.txt
 verification/results/bottle-*/chase-fire-*-wine.log
+
+# Combined bloom lifetime keeps a compact result; verbose runner logs stay local.
+verification/results/bottle-*/capture-bloom-x3-ownership-*.txt
+verification/results/bottle-*/capture-bloom-x3-ownership-*-wine.log

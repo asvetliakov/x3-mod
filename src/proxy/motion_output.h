@@ -235,6 +235,20 @@ struct MotionOutputFixtureConfig {
 };
 #endif
 
+// Synchronous pre-compositor handoff after the normal AgX write-back. All
+// pointers and the display reference are borrowed only until the callback
+// returns. The caller must copy display and AddRef scene/main if retaining
+// them, and separately qualify owner/thread/frame/Reset lifetime. This record
+// does not authorize a later GPU write or register Reset-time revocation.
+struct MotionHdrScene {
+    IDirect3DDevice9* device;
+    IDirect3DTexture9* scene;
+    IDirect3DSurface9* main;
+    std::uint64_t device_id, frame, generation;
+    const renderer::HdrDisplaySnapshot& display;
+};
+using MotionHdrSceneCallback = void (*)(void* context, const MotionHdrScene& scene) noexcept;
+
 class MotionOutput {
 public:
     MotionOutput() noexcept;
@@ -249,6 +263,16 @@ public:
     void attach(IDirect3DDevice9* device, void** native, std::uint64_t device_id,
                 const D3DCAPS9& caps, bool requested, telemetry::State* stats = nullptr) noexcept;
     bool enabled() const noexcept { return enabled_; }
+    // The capture owner must not apply a combined resource-reference heuristic
+    // during child destruction or the temporal pass's reference-count probe.
+    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_; }
+    // Current CPU-side admission only: the capture caller also qualifies the
+    // owner/thread/frame/Reset ticket and actual post-compositor device state.
+    // The redirect itself is Off after a successful handoff.
+    bool bloom_boundary_available() const noexcept {
+        return enabled_ && hdr_enabled_ && scene_open_ && !active_queries_ && !shadow_.recording
+            && !reference_accounting_busy() && !hdr_blocked_ && !counters_.hdr.unwind && !counters_.restore_failures;
+    }
     // RT2 (R32F current depth) is produced on this device: three simultaneous
     // targets, R32F render-target support and the three-format self test.
     bool depth_enabled() const noexcept { return depth_enabled_; }
@@ -309,7 +333,13 @@ public:
     // runs the temporal resolve on the bound RT0 (which must be the latched
     // main target); the StretchRect path then skips this frame's resolve.
     void configure_scene_hook(bool installed) noexcept { scene_hook_installed_ = installed; }
-    void scene_end_hook() noexcept;
+    // Optional callback is a retain/copy-only handoff before redirect cleanup;
+    // it must not throw, reenter MotionOutput, Reset/destroy/invalidate resources
+    // or perform GPU preparation. Preparation starts after this method returns.
+    // No callback on an ineligible boundary, failed/skipped TAA, or unclean AgX
+    // write-back. With TAA off, a clean unresolved FP16 scene may be handed off.
+    // Null callback preserves the existing path without new COM/snapshot work.
+    void scene_end_hook(MotionHdrSceneCallback callback = nullptr, void* context = nullptr) noexcept;
     // FP16 HDR scene path, stage 1 (X3M_HDR=1; requires the route). Effective
     // at attach: the pass runs its capability gate and four-format self test
     // there. The redirect binds the owned A16B16G16R16F target as RT0 at the
@@ -592,10 +622,11 @@ private:
     // HDR redirect (hdr_pass.h performs the device work; the policy is here).
     enum class HdrState { Off, Active, Suspended };
     void begin_redirect() noexcept;             // at the latching Clear (before it is forwarded)
-    void end_redirect(HdrEnd reason) noexcept;  // write back (when content is pending), rebind the main target, release it
+    void end_redirect(HdrEnd reason, MotionHdrSceneCallback callback = nullptr, void* context = nullptr) noexcept;
     void flush_redirect() noexcept;             // write back, keep the FP16 target bound
     void drop_redirect() noexcept;              // Reset/release: no write-back
-    renderer::HdrWriteback hdr_writeback(IDirect3DSurface9* final_rt0, bool write) noexcept;
+    renderer::HdrWriteback hdr_writeback(IDirect3DSurface9* final_rt0, bool write,
+                                       renderer::HdrDisplaySnapshot* display = nullptr) noexcept;
     bool hdr_is_main(IDirect3DSurface9* surface) noexcept;
     void log_hdr_frame() noexcept;
 

@@ -11,7 +11,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 1 | True HDR | FP16 RT0 redirection and identity write-back work in game. Content is still gamma-space game lighting decoded into FP16, not scene-referred radiance. Material/lighting replacement and verified HDR display output remain. |
 | 2 | Modern tonemapping | AgX is implemented and was seen in game at fixed EV 0. Keep AgX. A custom X3 look remains a later tuning task. |
 | 3 | FP16 lighting and HDR emissive | Not started. Requires the material pass; allocating an FP16 target does not complete this goal. |
-| 4 | HDR bloom | [Numerical core reviewed and compiler-qualified](verification/hdr-bloom-filter.md); standalone GPU fixture and independent precision diagnosis reviewed. Retained 40-case/540-image numerical qualification passes on the tested Steam backend; the original 38 ideal-oracle rejections remain recorded. Production executor and combined fixture reviewed/fixed; Steam and X3 combined GPU/state/recovery tests pass (16 controls, Reset, 25 images, maximum error one code). Renderer integration pending. The reviewed [initial boundary design](architecture/hdr-bloom-boundary.md) runs the original compositor then replaces RGB, preserving its state/resources/alpha; full bypass remains a later optimization. Initial bloom inherits the current scene-content limitation. GPU/game quality and cost remain unverified. |
+| 4 | HDR bloom | [Live integration](architecture/hdr-bloom-boundary.md) connects the qualified filter/executor and compositor bridge. Combined X3 lifetime checks pass 714/714 across both reference models, including Reset/ResetEx and original exceptions; independent review is complete, with build/install next. It runs the original compositor once then replaces RGB, preserving original state/resources/alpha. Component image/state/recovery evidence is linked from the design. Initial bloom uses the current decoded gamma-space scene; real radiance still requires materials. Gameplay quality and frame cost remain unverified. |
 | 5 | Automatic exposure | Existing whole-scene log-average meter overexposes black space (about +7 EV). Space-aware tile meter passed independent branch review and both-bottle fixtures; the reviewed build is integrated and installed; game validation remains. |
 | 6 | New material shaders | Not started. Prerequisite for scene-referred lighting and real HDR, with shader coverage beyond captured scenes. |
 | 7 | GTAO/SSAO | Not started. The motion route supplies R32F depth on RT2. |
@@ -68,8 +68,8 @@ they are not a measured final-image baseline.
    architecture review’s thirteen acceptance checks separately.
    Tune only from user impressions; combat tightness and optional scene fix
    remain disabled pending evidence.
-6. Implement HDR bloom on FP16 as the next visual checkpoint, with measured
-   cost, HUD separation and explicit treatment of the game's existing glow.
+6. Build/install the reviewed FP16 bloom, then accept it in game
+   with measured cost, HUD separation and comparison against the existing glow.
 7. Develop the material pass for scene-referred lighting/HDR emissives. Tune a
    custom AgX look with controlled captures as lighting evolves.
 
