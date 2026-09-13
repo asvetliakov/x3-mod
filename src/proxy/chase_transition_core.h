@@ -101,11 +101,11 @@ template<class T,unsigned First=16,unsigned Last=32> struct Window {
     }
 };
 struct Origin {
-    // valid: task=1, expected native instruction/dispatcher=2, method=4,
+    // valid: task=1, expected native instruction/dispatcher=2, readable context=4,
     // bounded stack=8; flags: read/contract refusal=1, stack truncation=2,
     // more candidate pairs than retained=4. No guessed script source names.
-    std::uint32_t valid=0,flags=0,task=0,pc=0,method=0,entry=0;
-    std::uint32_t returns[4]{},methods[4]{};
+    std::uint32_t valid=0,flags=0,task=0,pc=0,context=0,context_word0=0;
+    std::uint32_t returns[4]{},contexts[4]{};
     unsigned count=0;
 };
 template<class Reader,class CodeRange>
@@ -116,7 +116,7 @@ void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address)
     std::uint32_t vm=0,code=0,command=0,return_pc=0;
     if(!field(ebp,4,return_pc)||return_pc!=0x4a3909||!field(ebp,0xc,o.task)||
        !field(ebp,0x10,command)||command!=0x30||!field(0x6085e4,0,vm)||
-       !field(vm,8,code)||!field(o.task,0x1c,o.pc)||!field(o.task,0x3c,o.method)) {o.flags|=1;return;}
+       !field(vm,8,code)||!field(o.task,0x1c,o.pc)||!field(o.task,0x3c,o.context)) {o.flags|=1;return;}
     o.valid|=1;
     std::uintptr_t at=0;unsigned char op[5]{};
     if(o.pc<5||!code_address(code,o.pc-5,5,at)||!bytes(at,0,op,5)){o.flags|=1;return;}
@@ -130,7 +130,9 @@ void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address)
     if(op[0]!=0x82||cmd!=0x30||group>(0x1454/24)-3||
        !field(vm,(group+2)*24,dispatch)||dispatch!=0x42d340){o.flags|=1;return;}
     o.valid|=2;
-    if(o.method && !(o.method&3) && field(o.method,0,o.entry)&&code_offset(code,o.entry))o.valid|=4;
+    // Task+3c holds the dispatch context, not the resolved method-table row.
+    // Retain its first word as raw evidence; it is not a CODE offset.
+    if(o.context && !(o.context&3) && field(o.context,0,o.context_word0))o.valid|=4;
     else o.flags|=1;
     std::uint32_t base=0,capacity=0;std::int32_t index=0;
     if(!field(o.task,0x14,base)||!field(o.task,0x10,capacity)||!field(o.task,0x18,index)||
@@ -142,11 +144,11 @@ void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address)
     if(cells && !bytes(base-used*5,0,stack,cells*5)){o.flags|=1;return;}
     o.valid|=8;if(used>64)o.flags|=2;
     for(unsigned i=0;i+1<cells;++i)if(stack[i*5]==10 && stack[(i+1)*5]==3){
-        std::uint32_t method=0,entry=0,ret=0;
-        std::memcpy(&method,stack+i*5+1,4);std::memcpy(&ret,stack+(i+1)*5+1,4);
-        if(!method||(method&3)||!field(method,0,entry)||!code_offset(code,entry)||!code_offset(code,ret)){o.flags|=1;continue;}
+        std::uint32_t context=0,word0=0,ret=0;
+        std::memcpy(&context,stack+i*5+1,4);std::memcpy(&ret,stack+(i+1)*5+1,4);
+        if((context&&((context&3)||!field(context,0,word0)))||!code_offset(code,ret)){o.flags|=1;continue;}
         if(o.count==4){o.flags|=4;break;}
-        o.methods[o.count]=entry;o.returns[o.count++]=ret;
+        o.contexts[o.count]=context;o.returns[o.count++]=ret;
     }
 }
 }

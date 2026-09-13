@@ -70,8 +70,8 @@ fixture teardown only.
 With telemetry enabled, the transition group observes actual script mode writes
 `0x42e742`, deserialized mode writes `0x419e06` and connect setter `0x422cd0`.
 It records changed update snapshots plus constructor/destructor events. Script
-origins carry validated runtime CODE-relative PC, method entry and up to four
-bounded ancestry candidates. No global VM opcode hook is installed. Values
+origins carry validated runtime CODE-relative PC, raw dispatch context and up to four
+bounded saved-context/return-offset candidates. No global VM opcode hook is installed. Values
 come from actual writes; load-origin records are not mislabeled as script input.
 The [transition study](../reverse-engineering/chase-view-transition.md) explains
 why native return-address or elapsed-time heuristics cannot authorize a restore.

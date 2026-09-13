@@ -238,11 +238,11 @@ void report(std::uint64_t frame) {
     if(!diagnostics_active())return;
     log("chase_transition_window frame=%llu first=%u last=%u dropped=%llu lifetime_overflow=%llu thread_overflow=%llu origin_refusals_total=%llu suppressed_total=%llu",frame,out.first_used,out.last_used,out.dropped,over,threads,failed,skipped);
     auto print=[](const Event& e){
-        log("chase_transition_event event=%llu qpc=%llu generation=%llu update=%llu thread=%lu kind=%lu cockpit=0x%08lx caller=0x%08lx requested=%lu valid=%lu active_handle=%lu snapshot_valid=%lu mode=%lu connect=%lu ship=0x%08lx view=0x%08lx camera=0x%08lx sector=0x%08lx target=0x%08lx boom=%ld,%ld,%ld origin_valid=%lu origin_flags=%lu task=0x%08lx next_pc=0x%08lx method=0x%08lx entry=0x%08lx ancestry_count=%u ancestry=%08lx:%08lx,%08lx:%08lx,%08lx:%08lx,%08lx:%08lx",
+        log("chase_transition_event event=%llu qpc=%llu generation=%llu update=%llu thread=%lu kind=%lu cockpit=0x%08lx caller=0x%08lx requested=%lu valid=%lu active_handle=%lu snapshot_valid=%lu mode=%lu connect=%lu ship=0x%08lx view=0x%08lx camera=0x%08lx sector=0x%08lx target=0x%08lx boom=%ld,%ld,%ld origin_valid=%lu origin_flags=%lu task=0x%08lx next_pc=0x%08lx context=0x%08lx context_word0=0x%08lx context_return_count=%u context_returns=%08lx:%08lx,%08lx:%08lx,%08lx:%08lx,%08lx:%08lx",
             e.sequence,e.qpc,e.generation,e.update,e.thread,e.kind,e.cockpit,e.caller,e.requested,e.valid,e.handle,
             e.before.valid,e.before.mode,e.before.connect,e.before.ship,e.before.view,e.before.camera,e.before.sector,e.before.target,
-            e.before.boom[0],e.before.boom[1],e.before.boom[2],e.origin.valid,e.origin.flags,e.origin.task,e.origin.pc,e.origin.method,e.origin.entry,e.origin.count,
-            e.origin.methods[0],e.origin.returns[0],e.origin.methods[1],e.origin.returns[1],e.origin.methods[2],e.origin.returns[2],e.origin.methods[3],e.origin.returns[3]);
+            e.before.boom[0],e.before.boom[1],e.before.boom[2],e.origin.valid,e.origin.flags,e.origin.task,e.origin.pc,e.origin.context,e.origin.context_word0,e.origin.count,
+            e.origin.contexts[0],e.origin.returns[0],e.origin.contexts[1],e.origin.returns[1],e.origin.contexts[2],e.origin.returns[2],e.origin.contexts[3],e.origin.returns[3]);
     };
     for(unsigned i=0;i<out.first_used;++i)print(out.first[i]);
     const unsigned start=out.last_used==32?out.next:0;

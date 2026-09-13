@@ -72,8 +72,8 @@ all these commands, so that address cannot identify transition versus input.
 | --- | --- | --- |
 | VM `*0x006085e4` | `+8` | Runtime CODE base used for interpreter fetches and relative jumps. |
 | Task | `+0x1c` | Next CODE-relative instruction offset, set immediately before native dispatch. The five-byte native opcode begins at offset minus five. |
-| Task | `+0x3c` | Current script method record, changed by script calls and restored by returns. |
-| Method record | `+0` | Method entry CODE offset, added to VM CODE base on script entry. |
+| Task | `+0x3c` | Current dispatch context, changed by script calls and restored by returns; not a method-table row. |
+| Resolved method-table row (distinct from task context) | `+0` | Method entry CODE offset, copied to task `+0x1c` on script entry. |
 | Task | `+0x14`, `+0x18`, `+0x10` | Value-stack top/base pointer, signed five-byte-cell index and allocated cell capacity. Bounds must be validated before scanning. |
 | Task | `+0x22`, `+0x24` | Native argument count and marshalled argument pointer. |
 
@@ -85,15 +85,28 @@ return PC. The on-disk `x3story.obj` is compiled/encoded data; its raw offsets
 and operand bytes have not been equated to this runtime CODE representation.
 
 Script return records are also statically identifiable. `0x004a8620` writes a
-tag-3 return offset; `0x004a8640` writes the adjacent tag-10 method reference.
-The return operation (opcode `0x83`) itself scans for tag 10 followed by tag 3
-when unwinding an invalid method. A bounded diagnostic may retain up to four
-such pairs from at most 64 validated cells, recording method-entry and return
-CODE offsets, with explicit truncation/invalid-read flags. This is useful if
-both view selections call a shared camera helper; a current command PC alone
-then need not identify its initiating caller. These are observed candidate
-return records, not permission to interpret arbitrary tagged stack values as
-fully reconstructed source call stacks.
+tag-3 return offset; `0x004a8640` writes the adjacent tag-10 saved context,
+including a legitimate null context. The return operation (opcode `0x83`)
+scans for tag 10 followed by tag 3 at `0x004a39b3`/`0x004a39b8` and restores
+task `+0x3c` at `0x004a3a7b`. It adds the saved return offset to CODE base at
+`0x004a3a74`/`0x004a3a77`. The direct-call path pushes these values at
+`0x004a3d14`–`0x004a3d35` and sets the new context at `0x004a3d54`.
+
+The distinction matters: script entry `0x0049f330` loads the resolved method's
+entry from `[EDI]` and writes task `+0x1c` at `0x0049f3cc`, but writes the
+distinct ESI context to task `+0x3c` at `0x0049f3db`. Its first word is not a
+proven CODE offset. The source diagnostic therefore reports raw `context`,
+`context_word0`, and up to four `context_returns` pairs with
+`context_return_count`, rather than the previous misleading method/entry/ancestry
+names. Return offsets retain CODE range/read validation; nonnull context
+pointers must be aligned and readable. A null saved context remains admissible.
+Scanning stays bounded to 64 cells with explicit truncation/invalid-read flags.
+These are candidate return records, not a reconstructed source call stack.
+
+This corrects diagnostic interpretation only; it does not restore the camera or
+fix a selection stall. The host fixture covers non-CODE context data, null saved
+contexts, unreadable contexts, invalid return offsets and the existing bounded
+stack/lifetime cases. No allocations, additional hooks or larger scan are added.
 
 ## Native input reaches the same VM
 
@@ -198,7 +211,8 @@ EXE SHA-256 remains `fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add3
 The source guard now accepts `0x82`; the host positive witness uses it and the
 negative witness rejects VM return `0x83`. Both focused transition tests pass,
 and an independent reviewer reproduced the actual PE mapping. Command, native
-group/handler, method, memory bounds and ancestry gates remain unchanged. There
-is no added runtime work. This repairs kind-6 diagnostic origin/ancestry only;
+group/handler, PC and stack bounds remain unchanged. The separate context
+correction above removes the false method-entry check. Neither expands the scan
+or adds hooks. These repair kind-6 origin/context-return diagnostics only;
 it changes neither camera behavior nor target-lock callbacks and is not a
 selection-stutter fix. Installation awaits the next combined candidate.

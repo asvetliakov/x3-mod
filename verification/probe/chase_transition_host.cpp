@@ -53,6 +53,7 @@ struct Memory {
  }
  template<class T>void put(unsigned at,T value){std::memcpy(data.data()+at,&value,sizeof value);}
  void init(){
+  data.fill(0);reads=0;refused=0;
   // VM global is aliased in the reader; everything else is deterministic memory.
   put(0x2004,0x4a3909u);put(0x200c,0x3000u);put(0x2010,0x30u);
   put(0x4008,0x10000u);put(0x4048,0x42d340u); // group1 ->(1+2)*24
@@ -68,7 +69,7 @@ struct Memory {
  }
 };
 static void origins(){
- Memory m;m.init();auto o=m.capture();check(o.valid==15&&!o.flags&&o.count==1&&o.methods[0]==0x200&&o.returns[0]==0x300,"exact VM origin and candidate ancestry");
+ Memory m;m.init();auto o=m.capture();check(o.valid==15&&!o.flags&&o.count==1&&o.contexts[0]==0x5000&&o.returns[0]==0x300,"exact native-call origin and raw context-return candidates");
  m.put(0x2004,0x1234u);check(!m.capture().valid,"non VM native caller refuses");m.init();
  m.put(0x301c,4u);check(m.capture().valid==1&&m.capture().flags==1,"PC underflow refuses");m.init();
  m.data[0x10100]=0x83;check(m.capture().valid==1,"VM return opcode refuses native provenance");m.init();
@@ -80,8 +81,14 @@ static void origins(){
  m.put(0x3018,std::int32_t(-128));auto big=m.capture();check((big.valid&8)&&(big.flags&2),"bounded stack marks truncation");
  m.init();m.refused=0x8000-20;check(!(m.capture().valid&8)&&m.capture().flags,"unreadable stack explicit");m.refused=0;
  m.init();m.put(0x3018,std::int32_t(-10));for(unsigned i=0;i<5;++i){unsigned a=0x8000-50+i*10;m.data[a]=10;m.put(a+1,0x5000u);m.data[a+5]=3;m.put(a+6,0x300u);}
- auto many=m.capture();check(many.count==4&&(many.flags&4),"ancestry caps four and reports excess");
- m.init();m.put(0x5000,0x10000u);check(!(m.capture().valid&4)&&(m.capture().flags&1),"method code offset range refuses");
+ auto many=m.capture();check(many.count==4&&(many.flags&4),"context-return candidates cap four and report excess");
+ m.init();m.put(0x5000,0x10000u);auto raw=m.capture();
+ check((raw.valid&4)&&raw.context_word0==0x10000u&&raw.count==1,"context word is raw data, not a CODE offset");
+ m.init();m.put(0x8000-19,0u);auto null_context=m.capture();
+ check(null_context.count==1&&!null_context.flags&&null_context.contexts[0]==0,"native null saved context is valid");
+ m.init();m.put(0x8000-14,0x10000u);check(!m.capture().count&&(m.capture().flags&1),"return offset must remain in CODE");
+ m.init();m.put(0x8000-19,0x20000u);check(!m.capture().count&&(m.capture().flags&1),"unreadable nonnull saved context refuses");
+ m.init();m.put(0x303c,0x20000u);check(!(m.capture().valid&4)&&(m.capture().flags&1),"unreadable current context refuses");
 }
 static void handler_timings(){
  HandlerTiming t;

@@ -73,8 +73,9 @@ the previous DLL and installation record are retained for rollback.
   `--game-phases --telemetry` enables the bounded trace; run 27 isolates the delayed publisher and broad pre-simulation spans.
 
 A reviewed source-only correction fixes native VM opcode validation in chase
-transition diagnostics (`0x82`, not VM return `0x83`); this is not a camera or
-stutter behavior fix. See [provenance](reverse-engineering/chase-view-transition.md).
+transition diagnostics (`0x82`, not VM return `0x83`) and records saved dispatch
+contexts without treating them as method entries; these are not camera or
+stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transition.md).
 
 ## Current open issues
 
