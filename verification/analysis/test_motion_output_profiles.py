@@ -26,12 +26,13 @@ RESULT = ROOT / 'verification/results/motion-output-profiles.json'
 HEADER = ROOT / 'src/renderer/motion_output_profiles_inc.h'
 ARGON_VS, ARGON_PS = REFERENCE['vs'][0], REFERENCE['ps'][0]
 CLASS_C = 'C_relocated_registers_with_static_branches'
+CLASS_D = 'D_bounded_damage_branches'
 # Archive facts the sweep established (docs/reverse-engineering/shader-sweep.md).
 EFFECT_COUNT, PASS_COUNT, PROGRAM_COUNT = 3480, 6752, 751
 # Archive-wide classification of the 180 SM3 pass pairings.
 SM3_PAIRS = 180
 CLASS_COUNTS = {'A_reference_registers': 56, 'B_relocated_registers': 101, CLASS_C: 12,
-                'X_position_not_row_dot': 9, 'X_unsupported': 2}
+                CLASS_D: 2, 'X_position_not_row_dot': 9}
 # Rows whose four position dots are not adjacent (asteroid, moon and
 # planet_haze light-free variants); the transformer revalidates the span.
 SPACED_QUAD_ROWS = {('0c223ad11bce02d5', '7a0c3388065bb08d'), ('12b8a13f13fe8cfe', '550c2a4d4d3ed70f'),
@@ -203,7 +204,7 @@ class MotionOutputProfileTests(unittest.TestCase):
 
     def test_unsupported_sm3_pairs_carry_explicit_reasons(self):
         unsupported = self.result['unsupported_pairs']
-        assert len(unsupported) == 11
+        assert len(unsupported) == 9
         assert {(u['vs'], u['ps']) for u in unsupported} == {
             (p['vs'], p['ps']) for p in self.pairs if p['transformation_class'].startswith('X_')}
         for item in unsupported:
@@ -213,15 +214,23 @@ class MotionOutputProfileTests(unittest.TestCase):
             for reason in item['blocking_reasons']:
                 reasons[reason] = reasons.get(reason, 0) + 1
         assert reasons == {'vs_position_unknown:position_write_is_mov': 9,
-                           'ps_no_free_input_register': 2,
-                           'ps_control_flow_not_static_boolean_if': 2}
-        # The only non-position refusals: the damage variants whose pixel
-        # program also holds an `ifc` block (dynamic comparison, not a b# branch).
-        other = [u for u in unsupported if u['transformation_class'] == 'X_unsupported']
-        assert {u['ps'] for u in other} == {'31445adb0a62d134', 'd51cf763125cb85a'}
-        for item in other:
-            assert self.programs['ps_' + item['ps']]['control_flow_counts']['ifc'] == 1
-            assert item['observed_draws'] == 0
+                           'ps_no_free_input_register': 2}
+
+    def test_owned_damage_flow_profiles(self):
+        rows = [p for p in self.pairs if p['transformation_class'] == CLASS_D]
+        assert {p['vs'] for p in rows} == {'37c34a7478544c14'}
+        assert {p['ps'] for p in rows} == {'31445adb0a62d134', 'd51cf763125cb85a'}
+        for pair in rows:
+            pixel = self.programs['ps_' + pair['ps']]
+            proof = pixel['bounded_damage_flow']
+            assert proof['qualified'] and proof['ifc_comparison'] == 'ne'
+            assert proof['ifc_sources'] == ['r1.y', '-r1.y']
+            assert proof['maximum_depth'] == 1 and proof['depth_at_end'] == 0
+            assert proof['body_instruction_count'] == 1
+            assert max(proof['flow_dwords']) < min(proof['color_output_dwords']) < proof['append_dword']
+            assert pair['observed_draws'] == 0
+            assert pair['insertion_plan']['ps_temporaries'] == [6, 7, 8]
+            assert pair['insertion_plan']['ps_input_register'] == 8
 
     def test_insertion_plans_are_ordered_offsets(self):
         for pair in self.pairs:
@@ -277,7 +286,7 @@ class MotionOutputProfileTests(unittest.TestCase):
             pixel = tuple(json.dumps(plan[key]) for key in pixel_side)
             assert by_vs.setdefault(pair['vs'], vertex) == vertex, pair['vs']
             assert by_ps.setdefault(pair['ps'], pixel) == pixel, pair['ps']
-        assert len(by_vs) == 32 and len(by_ps) == 108
+        assert len(by_vs) == 32 and len(by_ps) == 110
 
     def test_program_facts_are_internally_consistent(self):
         assert len(self.programs) == PROGRAM_COUNT - 3  # Two z-only VS and the anomalous PS's partner are never paired.
@@ -757,7 +766,7 @@ class GeneratedHeaderTests(unittest.TestCase):
 
     def test_every_transformable_archive_pair_is_a_row(self):
         expected = header_rows(self.result)
-        assert len(self.rows) == len(expected) == sum(CLASS_COUNTS[name] for name in HEADER_CLASSES) == 169
+        assert len(self.rows) == len(expected) == sum(CLASS_COUNTS[name] for name in HEADER_CLASSES) == 171
         emitted = {'MotionOutputClass::' + symbol for symbol in HEADER_CLASSES.values()}
         blocked = {(pair['vs'], pair['ps']) for pair in self.result['pairs']
                    if pair['transformation_class'].startswith('X_')}
@@ -770,11 +779,12 @@ class GeneratedHeaderTests(unittest.TestCase):
         # A blocked pair is never a row, even when its programs host other rows
         # (the asteroid_0000 pixel programs pair with a transformable VS too).
         assert not blocked & {(row[0][2:-3], row[3][2:-3]) for row in self.rows}
-        assert len(blocked) == 11
+        assert len(blocked) == 9
         classes = [row[6].split('::')[1] for row in self.rows]
         assert classes.count('ReferenceRegisters') == 56
         assert classes.count('RelocatedRegisters') == 101
         assert classes.count('RelocatedRegistersWithBranches') == 12
+        assert classes.count('BoundedDamageBranches') == 2
         # Two clip-row families; the bound flag follows the matrix register.
         assert {(row[7], row[-7]) for row in self.rows} == {('24', 'true'), ('0', 'false')}
         assert sum(row[7] == '0' for row in self.rows) == 62
@@ -852,7 +862,7 @@ class GeneratedHeaderTests(unittest.TestCase):
             assert index not in programs['ps_' + ps]['declared_texcoord_input_indices']
             assert by_vs.setdefault(vs, row[-5:-3]) == row[-5:-3], 'rows sharing a VS agree on the vertex side'
             assert by_ps.setdefault(ps, row[-4:-1]) == row[-4:-1], 'rows sharing a PS agree on the pixel side'
-        assert sum(row[-2] == 'true' for row in self.rows) == 169 and DEPTH_NONE == 255
+        assert sum(row[-2] == 'true' for row in self.rows) == 171 and DEPTH_NONE == 255
         assert any(line.startswith('// vertex_depth_output_register / depth_texcoord_index')
                    for line in self.text.splitlines())
 

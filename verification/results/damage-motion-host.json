@@ -1,0 +1,412 @@
+{
+  "schema": 1,
+  "scope": "Two owned damage BUMPMAP motion epilogues: host proof and detached X3 R2 GPU qualification. Native Windows and gameplay integration unverified.",
+  "base_commit": "95cc02faa8588862468e177636d03215831a373b",
+  "production_built": false,
+  "game_launched": false,
+  "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sources": {
+    "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
+    "src/renderer/material_motion.h": "93f0123a6a691ac2f7539f19d86b8a4c95b2db35b004643c2469b4d657370e41",
+    "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+    "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "verification/probe/material_motion_structure.cpp": "e00aa3f312f24b6d3d3c3ac3de2eb1d8f8852d105dafc6ffc35601b1721be76e",
+    "verification/probe/run_material_motion_structure.py": "762dff21877d04c8b884fccecdd8eba4f58a17a66f1a7d0313e57303e3e069cf",
+    "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
+    "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
+    "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151"
+  },
+  "focused_unittests": {
+    "modules": [
+      "test_motion_output_profiles",
+      "test_damage_motion_contract",
+      "test_material_motion_report"
+    ],
+    "latest_combined_run_passed": 73,
+    "current_qualified_test_count": 85
+  },
+  "structure_runs": [
+    {
+      "mode": "release",
+      "passed": true,
+      "checks": 1711,
+      "single_bit_mutations": 1560128,
+      "alias_layouts": 1026,
+      "program_perturbations": 7689,
+      "skipped_perturbation_sites": 2,
+      "row_perturbations": 4446,
+      "rows": 171,
+      "transformed": 171,
+      "skipped": 0,
+      "executable_sha256_after": "e2f5c3a7a577e96dd3ce80d1b6ea5d283cf2483a16113ed234ee9bfbef2756a0",
+      "damage_rows": [
+        {
+          "index": 57,
+          "vs": "37c34a7478544c14",
+          "ps": "31445adb0a62d134",
+          "class": "D",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1888,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 1136,
+          "program_perturbation_sites": 1136,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 62,
+          "vs": "37c34a7478544c14",
+          "ps": "d51cf763125cb85a",
+          "class": "D",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1862,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 1136,
+          "program_perturbation_sites": 1136,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        }
+      ]
+    },
+    {
+      "mode": "asan-ubsan",
+      "passed": true,
+      "checks": 1711,
+      "single_bit_mutations": 1560128,
+      "alias_layouts": 1026,
+      "program_perturbations": 7689,
+      "skipped_perturbation_sites": 2,
+      "row_perturbations": 4446,
+      "rows": 171,
+      "transformed": 171,
+      "skipped": 0,
+      "executable_sha256_after": "86a5871702f8df1cbfd11a57fb6b55bf29b7a91fbabe805c730ae7daee3365a3",
+      "damage_rows": [
+        {
+          "index": 57,
+          "vs": "37c34a7478544c14",
+          "ps": "31445adb0a62d134",
+          "class": "D",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1888,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 1136,
+          "program_perturbation_sites": 1136,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        },
+        {
+          "index": 62,
+          "vs": "37c34a7478544c14",
+          "ps": "d51cf763125cb85a",
+          "class": "D",
+          "status": "PASS",
+          "observed_scene_draws": 0,
+          "mutation_sweep": "sampled",
+          "checks": 10,
+          "vertex_words": 798,
+          "pixel_words": 1862,
+          "single_bit_mutations": 4096,
+          "row_perturbations": 26,
+          "program_perturbations": 1136,
+          "program_perturbation_sites": 1136,
+          "position_quad_adjacent": true,
+          "vertex_exports_depth": true,
+          "pixel_writes_depth": true,
+          "skipped_perturbations": [],
+          "alias_layouts": 6
+        }
+      ]
+    }
+  ],
+  "direct_damage_critical_token_bits_per_shader": 1088,
+  "verbose_evidence_local": "verification/probe/build/damage-motion-evidence/",
+  "fixture_build": {
+    "commands": [
+      {
+        "command": [
+          "sh",
+          "verification/probe/build_material_motion.sh"
+        ],
+        "exit_code": 0,
+        "elapsed_s": 1.877
+      },
+      {
+        "command": [
+          "python3",
+          "-m",
+          "unittest",
+          "verification.analysis.test_material_motion_report.DamageReportTests"
+        ],
+        "exit_code": 0,
+        "elapsed_s": 0.831
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "elapsed_s": 0.047
+      }
+    ],
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "executable": "/private/tmp/x3-damage-motion/verification/probe/build/material_motion_fixture.exe",
+    "executable_bytes": 11183262,
+    "executable_sha256": "4d7f944fd71636309f4d8156c4390488aa66b671027f8d70588c292602cac49d",
+    "inputs": {
+      "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
+      "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151",
+      "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+      "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
+      "verification/probe/material_motion_fixture.cpp": "97e67ead2e69f65697d2293a697f56c518620dbae41500e96ae45c0307103e74",
+      "verification/probe/run_material_motion.py": "10a96135d0da6fc25f1511819a0f2b9ff5bd4e1d489c2fde8d7e849c48d82c49",
+      "verification/analysis/test_material_motion_report.py": "5ee873ea4fec33e08cfeaa979722d5d8f3ea56d3c58a9dd648d2fcd4689b2fe9"
+    },
+    "focused_host_tests": 18,
+    "planned_gpu_cases_with_mixed_bitdepth": 192,
+    "planned_gpu_configurations_with_mixed_bitdepth": 576,
+    "historical_report_regression_fix": {
+      "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_material_motion_report",
+      "passed": true,
+      "tests": 32,
+      "suite_elapsed_s": 3.288,
+      "scope": "explicit historical169-row table; default validation still uses current171-row table",
+      "cpp_rebuild_required": false
+    },
+    "gpu_qualified": false,
+    "matches_current_source": false,
+    "rebuild_required_before_gpu_qualification": true
+  },
+  "previous_169_rows_byte_identical": true,
+  "host_test_sources": {
+    "tools/analysis/inspect_motion_output_profiles.py": "44a35e8a45bc5b94b76286f5a0ad03053bc9a7b85b0f70c34ff11029c621baae",
+    "verification/analysis/test_damage_motion_contract.py": "68beb440f96ddaeacb2bb8ea1da9c060106a3089b45741c5f156dc15ae56f6fd",
+    "verification/analysis/test_motion_output_profiles.py": "54bf38fa1bbfe1d280b50103f5475ed8c70750013025a5699803b6608241340e",
+    "verification/analysis/test_material_motion_report.py": "58f14dbba150890e841db6773e028ff701a2f4f9141d52e3df4a9dce8053b44e",
+    "verification/probe/run_material_motion.py": "af5908285fe7e378a589bad2ff504695f65a9f2c737bc016b5b57795fcadfd06"
+  },
+  "review_fix": {
+    "finding": "Require separate b00/b01 and b00/b10 native image sensitivity for damage b0 and b1; aggregate any-boolean sensitivity is insufficient.",
+    "resolved_in_source": true,
+    "focused_host_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_material_motion_report",
+    "focused_host_passed": true,
+    "build_repeated": false,
+    "wine_executed": false,
+    "public_header_comment_only": true,
+    "current_source_hashes": {
+      "verification/probe/material_motion_fixture.cpp": "54cb61449ed5c57bdec3a35682233be3f445ec008794d1c6c78a01c79c247fb3",
+      "verification/probe/run_material_motion.py": "7719bc7edabed1c4b5b05eac8cb716f14a664e498521d91c5bf2c402045f9922",
+      "verification/analysis/test_material_motion_report.py": "125c51b46bd83d3e1ac8f7f5adb9a7e4f06953b68c6de9f22144d73de2b818d2",
+      "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0"
+    },
+    "focused_host_tests_before_r1": 36
+  },
+  "gpu_attempt_r1": {
+    "owner": "root",
+    "bottle": "X3",
+    "passed": false,
+    "failure": "native adjacent IFC threshold witness, before original/epilogue comparison",
+    "bad_pixels": 8,
+    "sampled_pixels": 32,
+    "case": {
+      "ps": "31445adb0a62d134",
+      "booleans": 0,
+      "generation": 0,
+      "depth": false,
+      "poison": false,
+      "winding": 0,
+      "format": 116
+    },
+    "executable_sha256": "25f2d4e19fe399f486a02e32711f86c7236d5ba969d1c06c7740ab0bd16cbf4b",
+    "immutable_evidence": "/tmp/x3-damage-motion-r1",
+    "report_sha256": "ac0ba90d54be6546233a90b69a7d5e3521e19fa5f6994390cbaa2deaecc171c5",
+    "diagnosis_status": "R2 centered inputs and raw trace establish the corrected fixture contract; precise R1 failure cause remains unproved because R1 raw values were not captured.",
+    "correction": {
+      "fixture_only": true,
+      "strict_threshold_oracle_unchanged": true,
+      "texel_center_offsets": true,
+      "native_sample_and_uv_float_bit_trace": true
+    }
+  },
+  "diagnostic_fixture_r2": {
+    "source_hashes": {
+      "verification/probe/material_motion_fixture.cpp": "1d1c6ef1576447106e0917db9f075dcddb1643089428c87cc402da87fc5ecc4d",
+      "verification/probe/run_material_motion.py": "af5908285fe7e378a589bad2ff504695f65a9f2c737bc016b5b57795fcadfd06",
+      "verification/analysis/test_material_motion_report.py": "58f14dbba150890e841db6773e028ff701a2f4f9141d52e3df4a9dce8053b44e",
+      "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
+      "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0",
+      "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151",
+      "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+      "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7"
+    },
+    "command": [
+      "sh",
+      "verification/probe/build_material_motion.sh"
+    ],
+    "elapsed_s": 2.814,
+    "exit_code": 0,
+    "executable_sha256": "a215b00ebee0c3950e035f0168af1997e8b49b21237fc96e7db51a00f4d9ee56",
+    "executable_bytes": 11184903,
+    "wine_executed": false,
+    "gpu_qualified": true,
+    "report_tests": 44,
+    "review_status": "approved: independent source/fix and post-run evidence review closed"
+  },
+  "implementation_agent_wine_executed": false,
+  "gpu_attempt_r2": {
+    "passed": true,
+    "owner": "root",
+    "canonical_summary": "verification/results/bottle-X3/material-motion-damage-summary.json",
+    "summary_sha256": "686d3c4837ddc87181081e3c8a355de91729aabcaa236c5a199df95428e3919f",
+    "immutable_evidence": "/tmp/x3-damage-motion-r2",
+    "source_hashes_match": true,
+    "raw_trace": {
+      "pixels": 32,
+      "all_witnesses": 192,
+      "bad_witness_pixels": 0,
+      "sampled_red": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "sampled_red_bits": [
+        "3e800000",
+        "3f000000",
+        "3f400000"
+      ],
+      "pre_weight": [
+        0.5,
+        0,
+        -0.5
+      ],
+      "post_weight": [
+        0.5,
+        0,
+        0
+      ],
+      "condition": [
+        0,
+        0,
+        1
+      ],
+      "threshold_counts": [
+        11,
+        11,
+        10
+      ],
+      "maximum_uv_center_error": 5.960464477539063e-08,
+      "r1_precise_cause_proved": false
+    },
+    "paired_completion_timings": {
+      "31445adb0a62d134": {
+        "groups": 6,
+        "native": {
+          "median_ms": 0.7797000000000001,
+          "mean_ms": 1.0553833333333333,
+          "min_ms": 0.6739,
+          "max_ms": 2.1668
+        },
+        "augmented": {
+          "median_ms": 0.91825,
+          "mean_ms": 0.9675,
+          "min_ms": 0.7842,
+          "max_ms": 1.248
+        },
+        "native_plus_replay": {
+          "median_ms": 1.0413000000000001,
+          "mean_ms": 1.0507666666666666,
+          "min_ms": 0.8222,
+          "max_ms": 1.2855
+        },
+        "paired_augmented_minus_native": {
+          "median_ms": 0.11174999999999996,
+          "mean_ms": -0.08788333333333331,
+          "min_ms": -0.9187999999999998,
+          "max_ms": 0.15149999999999997
+        },
+        "pair_deltas_ms": [
+          -0.10909999999999997,
+          0.11029999999999995,
+          -0.9187999999999998,
+          0.15149999999999997,
+          0.12560000000000004,
+          0.11319999999999997
+        ],
+        "size": [
+          1280,
+          768
+        ],
+        "format": 21
+      },
+      "d51cf763125cb85a": {
+        "groups": 6,
+        "native": {
+          "median_ms": 1.1572,
+          "mean_ms": 1.0372833333333333,
+          "min_ms": 0.6984,
+          "max_ms": 1.1859
+        },
+        "augmented": {
+          "median_ms": 1.10235,
+          "mean_ms": 1.2395,
+          "min_ms": 0.8328,
+          "max_ms": 2.188
+        },
+        "native_plus_replay": {
+          "median_ms": 1.3184,
+          "mean_ms": 1.2905333333333333,
+          "min_ms": 0.9618,
+          "max_ms": 1.7947
+        },
+        "paired_augmented_minus_native": {
+          "median_ms": 0.11914999999999998,
+          "mean_ms": 0.2022166666666667,
+          "min_ms": -0.3455999999999999,
+          "max_ms": 1.3414000000000001
+        },
+        "pair_deltas_ms": [
+          0.1066999999999998,
+          -0.24429999999999996,
+          0.13160000000000016,
+          -0.3455999999999999,
+          0.22350000000000003,
+          1.3414000000000001
+        ],
+        "size": [
+          1280,
+          768
+        ],
+        "format": 21
+      }
+    },
+    "evidence_review": "approved/closed"
+  }
+}

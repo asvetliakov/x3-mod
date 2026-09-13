@@ -29,6 +29,7 @@ SOURCES = [
     'verification/probe/material_motion_structure.cpp',
     'verification/probe/run_material_motion_structure.py',
     'src/renderer/current_depth_pixel_program.h', 'src/renderer/current_depth_pixel_program_inc.h',
+    'src/renderer/damage_motion_validation.h',
 ]
 ROW_CHECKS = [
     'pair_and_per_stage_lookups_applied_identically',
@@ -65,14 +66,14 @@ MUTATION_CHECKS = {'full': 'every_input_dword_every_bit_atomic_refusals',
 # position dots; straight-line classes prove refusal of a well-formed pixel
 # static branch; class C additionally proves the balance, depth, opcode,
 # condition and in-branch register refusals of the transformer's branch rule.
-PROGRAM_PERTURBATIONS = {'A': 26, 'B': 26, 'C': 40}
+PROGRAM_PERTURBATIONS = {'A': 26, 'B': 26, 'C': 40, 'D': 1131}
 PERTURBATION_CHECK = 'program_perturbations_refused_by_revalidation'
 # Rows whose four position dots are not adjacent (`quad=spaced`) add two
 # sites: the position temporary written between the dots and a balanced
 # block between them, both refused by the transformer's span checks.
 SPACED_QUAD_PERTURBATIONS = 2
 CLASS_LETTER = {'ReferenceRegisters': 'A', 'RelocatedRegisters': 'B',
-                'RelocatedRegistersWithBranches': 'C'}
+                'RelocatedRegistersWithBranches': 'C', 'BoundedDamageBranches': 'D'}
 # Program perturbation sites an archive program may not offer; the fixture
 # reports each as `SKIPPED row=<i> perturbation=<label>` and never for a
 # captured row (observed_scene_draws != 0), whose programs offer every site.

@@ -1,13 +1,17 @@
 # Same-draw material color and motion prototype
 
 The table-driven transformer adds motion output to the exact opaque SM3
-material pairs listed in the generated profile table (169 rows, classes A, B
-and C: every transformable pair a technique pass of the installed effects
+material pairs listed in the generated profile table (171 rows, classes A, B,
+C and D: every transformable pair a technique pass of the installed effects
 binds, see [motion-output-profiles.md](../reverse-engineering/motion-output-profiles.md)).
 It preserves the original vertex-position and pixel-color instructions, adds
 previous homogeneous clip coordinates, and writes the existing RGBA32F
 previous-UV / previous-depth / validity ABI to COLOR1. It makes no D3D calls;
 the live route binds its output (see [motion-output.md](motion-output.md)).
+
+The historical GPU results below qualify the original 169 A/B/C rows. The two
+new D rows pass [separate host proof and the bounded X3 R2 GPU fixture](../architecture/damage-motion.md);
+independent evidence review is approved; gameplay/native-Windows verification remains pending.
 
 The Argon reference pair passes the full inventory: **1,428 checks, 2,952
 analytic motion samples, 101,318,656 color-component comparisons, and 164

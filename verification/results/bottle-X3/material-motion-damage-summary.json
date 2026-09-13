@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "game_launched": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "status": "PASS",
+  "inputs": {
+    "/tmp/x3-shader-sweep/programs/vs_37c34a7478544c14.bin": "fd69f53f3c0d086fea1c6f16f1c4b622519d0ffbc1f421d322ceb0e33911c923",
+    "/tmp/x3-shader-sweep/programs/ps_31445adb0a62d134.bin": "750a6472c3f6662afa39afff148d9f0aeffec97b8a24854fe3f9499678cb9b76",
+    "/tmp/x3-shader-sweep/programs/ps_d51cf763125cb85a.bin": "2d839121941ee9d9c368a6ab465ed11340c50fe9c728e3c28a10d053b0e90198"
+  },
+  "source_commit": "95cc02faa8588862468e177636d03215831a373b",
+  "source_hashes": {
+    "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0",
+    "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
+    "src/renderer/damage_motion_validation.h": "f47dd569ef16fdde60381ea7be3300d457541b66b72be389cb50c94b9c1d0151",
+    "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+    "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
+    "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
+    "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
+    "src/renderer/rigid_position.h": "b3f8ef23a9d6bc527e40eb6c69d8dd79250a7c16ec36b232405d5e3087db59e7",
+    "src/renderer/rigid_position.cpp": "2cf2595243b733190bd4e5313a37f21a9f90503c5ead9d18a42ed80318139b49",
+    "src/renderer/rigid_position_profiles_inc.h": "e9a684f940b8ec461e736989e4e0dd75d09086b620eb00ed454193e57cf43a67",
+    "src/renderer/position_path_profiles_inc.h": "58c805afdad3777503dd9d839b06ba5908d7ea04dcc14286464ed5704d5280b9",
+    "src/renderer/pixel_coverage_profiles_inc.h": "85276e807f30e8d90b15cc91cb33dc2b7841e20449c710726651c7eef0f272a9",
+    "src/renderer/rigid_motion_pixel_program.h": "6f4374c126a65980d510eb47880003a0b951a24612c7ba5bf98776e60bb5ae1c",
+    "src/renderer/rigid_motion_pixel_program_inc.h": "5fdabcf40abafe3258eb47a3175be06a035fbcce1ae6cf94b3b3706ac878494b",
+    "src/temporal/rigid_motion_ps.hlsl": "9fad8bc470ca04dfa164da929c0343c14d3656cf6d7ba781643d8c55e8e66539",
+    "src/renderer/current_depth_pixel_program.h": "fd8ebaaf7ea379cfcda1423170e15fbe8a23347cbec5dba62f9e7b444c8b8553",
+    "src/renderer/current_depth_pixel_program_inc.h": "3ca1fc61affdc38b5e67ffe9302c27997df47de377b6a874f497927c35ab4311",
+    "src/temporal/current_depth_ps.hlsl": "e58fdb561b1f1cf32b04339e0d3d47e014f9e1f00989eba98d04ea262bed27e5",
+    "verification/probe/material_motion_fixture.cpp": "1d1c6ef1576447106e0917db9f075dcddb1643089428c87cc402da87fc5ecc4d",
+    "verification/probe/build_material_motion.sh": "b79eed949cf2f57317976b24b0060257a2a435597a9cd2982a3f673934b3777a",
+    "verification/probe/run_material_motion.py": "af5908285fe7e378a589bad2ff504695f65a9f2c737bc016b5b57795fcadfd06"
+  },
+  "executable_sha256": "a215b00ebee0c3950e035f0168af1997e8b49b21237fc96e7db51a00f4d9ee56",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "/private/tmp/x3-damage-motion/verification/probe/build/material_motion_fixture.exe",
+    "--damage",
+    "Z:/tmp/x3-shader-sweep/programs"
+  ],
+  "exit_code": 0,
+  "cases": 192,
+  "configurations": 576,
+  "checks": 9869,
+  "numerical": 20736,
+  "exact_color_components": 7077888,
+  "depth_cases": 1152,
+  "mixed_bit_depth": true,
+  "native_d3d9_path": "C:\\windows\\system32\\d3d9.dll",
+  "caps": [
+    "4",
+    "002ecff2",
+    "fffe0300",
+    "ffff0300",
+    "256",
+    "512",
+    "512"
+  ],
+  "resets": 1,
+  "timing_samples": 36,
+  "scope": "two exact damage pairs; native RGB/alpha, adjacent IFC witness, b0/b1, windings, poisoned epilogue scratch, both depth modes, replay and analytic references",
+  "report_sha256": "eab92a5f1b58f04155a7f3d45944ffb1cc5c88e794b7eb58ee081873e3e7cb18"
+}

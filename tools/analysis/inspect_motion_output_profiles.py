@@ -100,7 +100,8 @@ LIGHT_LOOP_MAX_COUNT = 8
 HEADER_CLASSES = {'A_reference_registers': 'ReferenceRegisters',
                   'B_relocated_registers': 'RelocatedRegisters',
                   'C_relocated_registers_with_static_branches':
-                    'RelocatedRegistersWithBranches'}
+                    'RelocatedRegistersWithBranches',
+                  'D_bounded_damage_branches': 'BoundedDamageBranches'}
 # Classes named in the banner but not emitted (none today).
 DEFERRED_CLASSES = {}
 # Class C admits only `if b#` / `else` / `endif` on boolean constant registers,
@@ -426,6 +427,107 @@ def position_site(items, model_major, decoded):
     return result
 
 
+# Owned game-material identities and derived offsets, not a general IFC policy.
+DAMAGE_VERTEX = '37c34a7478544c14'
+DAMAGE_CONTRACTS = {
+    '31445adb0a62d134': dict(dwords=1746, flow=[1411, 1417, 1436, 1442, 1627, 1689, 1701],
+                             mad=1418, cmp=1423, rgb=1736, zero_lane=2, two_lane=3),
+    'd51cf763125cb85a': dict(dwords=1720, flow=[1389, 1395, 1418, 1424, 1601, 1663, 1675],
+                             mad=1396, cmp=1405, rgb=1710, zero_lane=1, two_lane=2),
+}
+
+
+def damage_flow_proof(words, items, identifier, header_end):
+    """Full boundary/flow proof for two owned damage PS; identity checked by profile.
+
+    This is also callable independently of identity so mutant host fixtures test
+    the actual opcode/operand contract instead of stopping at a hash mismatch.
+    No game instruction is emitted, folded, relocated or otherwise rewritten.
+    """
+    c = DAMAGE_CONTRACTS.get(identifier)
+    if not c or len(words) != c['dwords'] or words[0] != 0xffff0300 or words[-1] != END:
+        return {'qualified': False}
+    flow_ops = [40, 43, 41, 43, 40, 42, 43]
+    zero = 0xa0000000 | c['zero_lane'] * 0x55 << 16 | 25
+    two = 0xa0000000 | c['two_lane'] * 0x55 << 16 | 25
+    arities = {1: 2, 6: 2, 7: 2, 36: 2, 2: 3, 5: 3, 8: 3, 9: 3, 11: 3,
+               32: 3, 66: 3, 4: 4, 18: 4, 88: 4, 90: 4}
+    depth = next_flow = body = outputs = initializers = 0
+    literal = False
+    at_expected = header_end
+    for item in items:
+        at, token, op = item['dword'], item['token'], item['opcode']
+        if at < header_end:
+            if at == 1313:
+                expected = [0xa00f0019, 0x3f800000] + ([0xbf800000, 0, 0x40000000]
+                            if c['zero_lane'] == 2 else [0, 0x40000000, 0xbf800000])
+                if token != 0x05000051 or list(item['words']) != expected:
+                    return {'qualified': False}
+                literal = True
+            if op not in (81, 31):
+                return {'qualified': False}
+            continue
+        if at != at_expected:
+            return {'qualified': False}
+        at_expected = at + item['length'] + 1
+        operands = list(item['words'])
+        if next_flow < 7 and at == c['flow'][next_flow]:
+            expected = flow_ops[next_flow]
+            if op != expected:
+                return {'qualified': False}
+            if op == 40:
+                if depth or token != 0x01000028 or operands != [0xe0e40800 | (next_flow == 4)]:
+                    return {'qualified': False}
+                depth = 1
+            elif op == 41:
+                if depth or token != 0x02050029 or operands != [0x80550001, 0x81550001]:
+                    return {'qualified': False}
+                depth = 1
+            else:
+                if depth != 1 or token != expected or operands:
+                    return {'qualified': False}
+                if op == 43:
+                    depth = 0
+            next_flow += 1
+            continue
+        if op not in arities or token != (arities[op] << 24 | op) or len(operands) != arities[op]:
+            return {'qualified': False}
+        if c['flow'][2] < at < c['flow'][3]:
+            if at != c['flow'][2] + 3 or op != 1 or operands != [0x80040001, zero]:
+                return {'qualified': False}
+            body += 1
+        if at == c['mad']:
+            if depth or op != 4 or operands != [0x80240001, two, 0x81000000, 0xa0000019]:
+                return {'qualified': False}
+            initializers += 1
+        if at == c['cmp']:
+            if depth or op != 88 or operands != [0x80020001, 0x80aa0001, zero, 0xa0000019]:
+                return {'qualified': False}
+            initializers += 1
+        if (c['mad'] < at < c['flow'][2] and at != c['cmp']
+                and register_of(operands[0]) == (0, 1) and operands[0] & 0x00060000):
+            return {'qualified': False}
+        if register_of(operands[0])[0] == 8:
+            if depth or next_flow != 7:
+                return {'qualified': False}
+            if at == c['rgb']:
+                if op != 4 or operands[0] != 0x80270800:
+                    return {'qualified': False}
+            elif at == c['rgb'] + 5:
+                if op != 5 or operands[0] != 0x80280800:
+                    return {'qualified': False}
+            else:
+                return {'qualified': False}
+            outputs += 1
+    if not literal or (next_flow, depth, outputs, initializers, body, at_expected) != (7, 0, 2, 2, 1, len(words) - 1):
+        return {'qualified': False}
+    return dict(qualified=True, flow_dwords=c['flow'], ifc_comparison='ne',
+                ifc_sources=['r1.y', '-r1.y'], body_dword=c['flow'][2] + 3,
+                assigned_scalar='r1.z', initializer_dwords=[c['mad'], c['cmp']],
+                color_output_dwords=[c['rgb'], c['rgb'] + 5], append_dword=len(words) - 1,
+                maximum_depth=1, depth_at_end=0, body_instruction_count=1)
+
+
 def profile(code, identifier, stage, model):
     digest = {'id': identifier, 'stage': stage, 'model': model,
               'bytes': len(code), 'fnv1a64': fnv1a64(code),
@@ -469,6 +571,8 @@ def profile(code, identifier, stage, model):
     digest['control_flow_max_depth'] = deepest
     digest['control_flow_depth_at_end'] = residual
     digest['static_branches'] = static_branches(items, decoded)
+    if stage == 'ps' and digest['fnv1a64'] in DAMAGE_CONTRACTS:
+        digest['bounded_damage_flow'] = damage_flow_proof(words, items, digest['fnv1a64'], header_end)
 
     read, written, relative_sites = Counter(), Counter(), []
     defined_registers = {(item['register_type'], item['register']) for item in definitions}
@@ -680,7 +784,10 @@ def classify(vertex, pixel):
         blocking.append('ps_control_flow_not_balanced')
     elif pixel.get('control_flow_counts'):
         # Class C: static boolean branches only, nested at most one deep.
-        if not (pixel.get('static_branches') or {}).get('only_boolean_if'):
+        owned_damage = (vertex.get('fnv1a64') == DAMAGE_VERTEX and
+                        pixel.get('fnv1a64') in DAMAGE_CONTRACTS and
+                        (pixel.get('bounded_damage_flow') or {}).get('qualified'))
+        if not (pixel.get('static_branches') or {}).get('only_boolean_if') and not owned_damage:
             blocking.append('ps_control_flow_not_static_boolean_if')
         if pixel.get('control_flow_max_depth', 0) > STATIC_BRANCH_MAX_DEPTH:
             blocking.append('ps_control_flow_depth_%d_exceeds_%d' % (
@@ -764,6 +871,8 @@ def classify(vertex, pixel):
         name = 'A_reference_registers'
     elif not flow:
         name = 'B_relocated_registers'
+    elif (pixel.get('bounded_damage_flow') or {}).get('qualified'):
+        name = 'D_bounded_damage_branches'
     else:
         name = 'C_relocated_registers_with_static_branches'
     return name, blocking, differences, plan
@@ -889,6 +998,9 @@ def render_header(result):
         '// RelocatedRegistersWithBranches rows: the pixel program holds only',
         '// if b#/else/endif blocks (boolean constant conditions, nesting depth <= %d,' % STATIC_BRANCH_MAX_DEPTH,
         '// balanced, depth 0 at the append point); the transformer revalidates this.',
+        '// BoundedDamageBranches: two owned damage PS, one exact top-level NE IFC',
+        '// and MOV body between static b0/b1 blocks; original writes after joins.',
+        '// Full opcode/operand/offset contract is independently revalidated.',
         '// position_dp4_dwords need not be adjacent: the arithmetic insert follows the',
         '// last dot and the span between the first dot and the insert is revalidated',
         '// to rewrite no position temporary and hold no control-flow instruction.',

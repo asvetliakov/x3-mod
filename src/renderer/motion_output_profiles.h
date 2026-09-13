@@ -22,6 +22,10 @@ enum class MotionOutputClass : std::uint8_t {
     // one, depth zero at the append point). The transformer revalidates that
     // shape from the words and refuses every other control flow.
     RelocatedRegistersWithBranches = 2,
+    // D: exactly the two damage BUMPMAP programs. Their owned token contract
+    // proves one top-level NE IFC/MOV/join between static b0/b1 blocks, with
+    // unconditional native color writes and END. Never a generic IFC class.
+    BoundedDamageBranches = 3,
 };
 
 struct MotionOutputProfile {
@@ -99,7 +103,11 @@ constexpr bool motion_output_depth_valid(const MotionOutputProfile& row) noexcep
     return vertex_ok && index_ok && pixel_ok && output_ok;
 }
 constexpr bool motion_output_profile_valid(const MotionOutputProfile& row) noexcept {
-    bool ok = row.vertex_version == 0xfffe0300u && row.pixel_version == 0xffff0300u &&
+    const bool class_valid = row.transformation_class == MotionOutputClass::ReferenceRegisters ||
+        row.transformation_class == MotionOutputClass::RelocatedRegisters ||
+        row.transformation_class == MotionOutputClass::RelocatedRegistersWithBranches ||
+        row.transformation_class == MotionOutputClass::BoundedDamageBranches;
+    bool ok = class_valid && row.vertex_version == 0xfffe0300u && row.pixel_version == 0xffff0300u &&
         row.vertex_dword_count > 2 && row.pixel_dword_count > 2 &&
         row.vertex_output_register < 12 && row.texcoord_index < 16 &&
         row.pixel_input_register < 10 && row.pixel_temporary_base + 3 <= 32 &&

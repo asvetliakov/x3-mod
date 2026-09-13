@@ -61,9 +61,9 @@ route uploads the same ranges for every pair.
 
 `src/renderer/motion_output_profiles.h` defines `MotionOutputProfile` and
 `MotionOutputClass` and includes the generated row list
-`motion_output_profiles_inc.h` (169 rows: 56 class A, 101 class B, 12 class C —
+`motion_output_profiles_inc.h` (171 rows: 56 class A, 101 class B, 12 class C, 2 class D —
 every transformable SM3 pairing of the 6,752 technique passes in the archives;
-32 distinct vertex and 108 distinct pixel programs). A row carries the original
+32 distinct vertex and 110 distinct pixel programs). A row carries the original
 fingerprints, lengths and version tokens, the matrix register and position
 temporary, the four position DP4 offsets and lane masks, the five insertion
 offsets, the four register choices, the light-loop bound flag and bound, the
@@ -72,18 +72,18 @@ current-depth registers (`vertex_depth_output_register`,
 `depth_output`; the inspector's `depth_plan` picks the first free register
 other than the motion one per program and the smallest TEXCOORD index no
 program of the row's VS/PS sharing component declares, so rows sharing a
-program agree; all 169 archive rows have the output, the worst pixel program
+program agree; all 171 archive rows have the output, the worst pixel program
 reaching exactly the ten SM3 inputs), and
 `observed_scene_draws` (capture metadata: draws in one session, zero for the
-153 rows never observed; it orders the rows and has no runtime meaning). Rows
+155 rows never observed; it orders the rows and has no runtime meaning). Rows
 are derived numbers only; the header states that they are transformer input,
 not an eligibility decision.
 
-Two clip-row families exist: 107 rows read the clip rows from **c24** under
+Two clip-row families exist: 109 rows read the clip rows from **c24** under
 the relative point-light loop (`light_loop_bound_required`, bound 8) and 62
 loop-free `_0000`/`_0001` variants read them from **c0** with no relative
 addressing at all (bound not required). The four position dots are issued in
-XYZW order and are adjacent in 163 rows; six loop-free asteroid, moon and
+XYZW order and are adjacent in 165 rows; six loop-free asteroid, moon and
 planet_haze rows interleave other work between the Z and W dots, so the row
 carries each dot's own offset and the insert follows the last dot. Both share the same splice; only the
 row's `matrix_register` and bound differ, and the route generalizes its shadow
@@ -95,6 +95,8 @@ and gate per row (see "Lookups and the route's per-row state" below).
 | B, `RelocatedRegisters` | Same code path; the row names the free VS output/TEXCOORD index and PS input/temporaries, and the authored fragment and the new declarations are relocated to them. |
 | C, `RelocatedRegistersWithBranches` | Same splice and relocation as B; the pixel program additionally holds static `if b#`/`else`/`endif` blocks. The pixel-side validation below admits exactly that control flow (boolean constant conditions, balanced, nesting depth at most one, one `else` per block, depth zero at the append point so the appended fragment is unconditional) and refuses every other control-flow opcode; classes A and B refuse any branch, and a class C row refuses a program without one. The twelve `xt_*` programs hold two sequential blocks on `b0` and `b1` (six, the captured ones among them) or a single block on `b0` (six). |
 
+| D, `BoundedDamageBranches` | Exactly two damage BUMPMAP PS with an independently validated top-level NE IFC / one MOV / join between the native b0/b1 blocks. Original instructions remain intact; the existing epilogue executes after all joins. See [damage motion](damage-motion.md) for ownership, full-token proof and detached X3 R2 GPU qualification. |
+
 Compile-time checks in the header prove that every row is well formed
 (register ranges, ordered offsets, XYZW lane masks, DP4 offsets ascending by
 at least one instruction with the insert one past the last, END at the
@@ -104,7 +106,7 @@ live route depends on.
 
 ## Lookups and the route's per-row state
 
-With 169 rows a linear scan per draw is no longer acceptable, so
+With 171 rows a linear scan per draw is no longer acceptable, so
 `material_motion.cpp` builds three sorted index tables over the rows at
 compile time (a constexpr stable insertion sort; a `static_assert` proves
 each index a permutation of the rows, the pair order strict and the two
@@ -171,8 +173,9 @@ are then revalidated against the actual words, and any inconsistency yields
   `else`/`endif` at depth 0, a second `else` in one block, and a depth other
   than zero at END; `ifc` (if_comp), `rep`/`endrep`, `loop`/`endloop`,
   `break`/`breakc`/`breakp`, `call`/`callnz`/`ret`/`label` and `setp`
-  refuse in every class, as does a malformed `if` token (length, predication,
-  relative or non-boolean condition).
+  refuse in A/B/C, as does a malformed `if` token (length, predication,
+  relative or non-boolean condition). Class D adds only the separately proved
+  damage IFC described above, retaining the generic operand/header checks.
 - The authored fragment itself is parsed and relocated only if it has the
   expected shape (three DEFs, one declaration, one color output, known
   straight-line opcodes).

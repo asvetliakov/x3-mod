@@ -1,6 +1,7 @@
 #include "material_motion.h"
 #include "rigid_motion_pixel_program.h"
 #include "current_depth_pixel_program.h"
+#include "damage_motion_validation.h"
 #include <iterator>
 
 namespace x3m::renderer {
@@ -68,6 +69,9 @@ bool block_close_opcode(unsigned opcode) noexcept {
 }
 bool subroutine_opcode(unsigned opcode) noexcept {
     return opcode == op_call || opcode == op_callnz || opcode == op_ret || opcode == op_label;
+}
+bool damage_class(const MotionOutputProfile& row) noexcept {
+    return row.transformation_class == MotionOutputClass::BoundedDamageBranches;
 }
 bool branching_class(const MotionOutputProfile& row) noexcept {
     return row.transformation_class == MotionOutputClass::RelocatedRegistersWithBranches;
@@ -245,7 +249,9 @@ bool pixel_structure(const MotionOutputProfile& row, const std::uint32_t* words,
     const std::size_t definition_end = row.pixel_definition_insert_dword;
     const std::size_t header_end = row.pixel_declaration_insert_dword;
     bool definition_boundary = false, header_boundary = false, relative = false;
-    const bool branches_allowed = branching_class(row);
+    const bool damage = damage_class(row);
+    if (damage && !detail::damage_pixel_structure(row, words, count)) return false;
+    const bool branches_allowed = branching_class(row) || damage;
     unsigned depth = 0, blocks = 0;
     bool else_seen[max_branch_depth + 1] = {};
     const bool framed = walk(words, count, [&](std::size_t at, std::uint32_t token, std::size_t length) {
@@ -265,9 +271,15 @@ bool pixel_structure(const MotionOutputProfile& row, const std::uint32_t* words,
                 declaration_usage(usage) != texcoord_usage ||
                 !pixel_texcoord_reserved(row, declaration_usage_index(usage));
         }
-        if (opcode == op_dcl || definition_opcode(opcode) || refused_flow_opcode(opcode) ||
+        if (opcode == op_dcl || definition_opcode(opcode) || (refused_flow_opcode(opcode) && !(damage && opcode == op_ifc)) ||
             opcode == op_texkill || (token & predicated_bit))
             return false;
+        if (damage && opcode == op_ifc) {
+            // The independent owned walk proved the operands and single MOV.
+            if (depth) return false;
+            else_seen[++depth] = false;
+            return true;
+        }
         if (static_branch_opcode(opcode)) {
             if (!branches_allowed || token != ((opcode == op_if ? 1u << 24 : 0u) | opcode)) return false;
             if (opcode == op_if) {
@@ -436,7 +448,7 @@ bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) 
 bool supported_class(const MotionOutputProfile& row) noexcept {
     return row.transformation_class == MotionOutputClass::ReferenceRegisters ||
         row.transformation_class == MotionOutputClass::RelocatedRegisters ||
-        branching_class(row);
+        branching_class(row) || damage_class(row);
 }
 // Compile-time sorted indices into the row table: by (vertex, pixel)
 // fingerprint for the pair lookup and by each stage's fingerprint (stable, so

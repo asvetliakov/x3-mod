@@ -145,6 +145,11 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   4,096 compressed resources, 7,642 meshes and 3,516 DAT reuses, no faults or
   reported stutters. Save loading was 41.571 s with crypto cache off, not a
   controlled speed comparison. Run 6 combines the reviewed loading switches.
+- [Damage-branch motion output](architecture/damage-motion.md) is reviewed and
+  source-integrated: 192 X3 GPU cases / 576 configurations preserve native
+  branch/color behavior while adding motion and depth. The 41 affected contract
+  and profile tests pass after integration. Combined build/install and gameplay
+  remain pending; detached completion timings are not game FPS.
 - [Linear materials](architecture/scene-linear-materials.md) are installed with
   **73 original shaders / 110 pairs**, including Argon/shared/Split/Terran hulls
   and standard-lighting DEFAULT/BUMPMAP/LOW. The

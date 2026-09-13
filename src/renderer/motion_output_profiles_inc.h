@@ -11,9 +11,13 @@
 //   A_reference_registers = MotionOutputClass::ReferenceRegisters
 //   B_relocated_registers = MotionOutputClass::RelocatedRegisters
 //   C_relocated_registers_with_static_branches = MotionOutputClass::RelocatedRegistersWithBranches
+//   D_bounded_damage_branches = MotionOutputClass::BoundedDamageBranches
 // RelocatedRegistersWithBranches rows: the pixel program holds only
 // if b#/else/endif blocks (boolean constant conditions, nesting depth <= 1,
 // balanced, depth 0 at the append point); the transformer revalidates this.
+// BoundedDamageBranches: two owned damage PS, one exact top-level NE IFC
+// and MOV body between static b0/b1 blocks; original writes after joins.
+// Full opcode/operand/offset contract is independently revalidated.
 // position_dp4_dwords need not be adjacent: the arithmetic insert follows the
 // last dot and the span between the first dot and the insert is revalidated
 // to rewrite no position temporary and hold no control-flow instruction.
@@ -381,6 +385,12 @@
  9, 7, 8, 7, 1, 252, 216, true, 8,
  10, 8, 9, true, 0},
 {0x37c34a7478544c14ull, 768, 0xfffe0300u,
+ 0x31445adb0a62d134ull, 1746, 0xffff0300u,
+ MotionOutputClass::BoundedDamageBranches, 24, 2, {633, 637, 641, 645}, {1, 2, 4, 8},
+ 500, 649, 1319, 1367, 1745,
+ 9, 7, 8, 6, 1, 252, 216, true, 8,
+ 10, 8, 9, true, 0},
+{0x37c34a7478544c14ull, 768, 0xfffe0300u,
  0x496049cec2066ed3ull, 1780, 0xffff0300u,
  MotionOutputClass::RelocatedRegistersWithBranches, 24, 2, {633, 637, 641, 645}, {1, 2, 4, 8},
  500, 649, 1325, 1373, 1779,
@@ -403,6 +413,12 @@
  MotionOutputClass::RelocatedRegistersWithBranches, 24, 2, {633, 637, 641, 645}, {1, 2, 4, 8},
  500, 649, 1311, 1356, 1683,
  9, 7, 8, 7, 1, 252, 216, true, 8,
+ 10, 8, 9, true, 0},
+{0x37c34a7478544c14ull, 768, 0xfffe0300u,
+ 0xd51cf763125cb85aull, 1720, 0xffff0300u,
+ MotionOutputClass::BoundedDamageBranches, 24, 2, {633, 637, 641, 645}, {1, 2, 4, 8},
+ 500, 649, 1319, 1364, 1719,
+ 9, 7, 8, 6, 1, 252, 216, true, 8,
  10, 8, 9, true, 0},
 {0x37c34a7478544c14ull, 768, 0xfffe0300u,
  0xedaef099780fcafeull, 1699, 0xffff0300u,

@@ -95,32 +95,32 @@ material pass is `P0`.
 | SM3 class A — reference registers | 56 | 224 | 4,025 | 35.02% |
 | SM3 class B — relocated registers | 101 | 352 | 2,517 | 21.90% |
 | SM3 class C — relocated registers, static branches in PS | 12 | 112 | 4,680 | 40.72% |
-| **A + B + C (table rows)** | **169** | **688** | **11,222** | **97.64%** |
+| SM3 class D — bounded damage IFC | 2 | 8 | 0 | 0 |
+| **A + B + C + D (table rows)** | **171** | **696** | **11,222** | **97.64%** |
 | SM3 X — position not a row dot | 9 | 80 | 112 | 0.97% |
-| SM3 X — other refusal | 2 | 8 | 0 | 0 |
 | SM2 (feasibility only, no rows) | 466 | 2,911 | 111 | 0.97% |
 | SM1 (unsupported) | 168 | 2,968 | 48 | 0.42% |
 | Passes without a VS or PS | 3 | 97 | 0 | 0 |
 
-**169 of the 180 SM3 pairings are rows**: 32 distinct vertex programs, 108
+**171 of the 180 SM3 pairings are rows**: 32 distinct vertex programs, 110
 distinct pixel programs, all in the `3_0` effect directory, from the
-`DEFAULT` (82 rows), `BUMPMAP` (73) and `BUMPMAP_LOW` (14) techniques. By
+`DEFAULT` (82 rows), `BUMPMAP` (75) and `BUMPMAP_LOW` (14) techniques. By
 family (a row counts once per family it occurs in): standard_lighting 30,
 argon / khaak / teladi / teladi_nodiff / xenon / split / terran / paranid 20
 each, boron 12, asteroid 10, xt_standard_lighting 6, xt_terraformer 6,
-glass 6, xt_standard_lighting_damage 4, moon 4, planet_haze 2. Sixteen rows
-were observed by the capture (the previous table); 153 were classified from
+glass 6, xt_standard_lighting_damage 6, moon 4, planet_haze 2. Sixteen rows
+were observed by the capture (the previous table); 155 were classified from
 the archive alone and have never been drawn in a captured session.
 
 ## Two clip-row families
 
 Every row's vertex program writes clip position with four
-`dp4 o0.<lane>, r<n>, c<m+lane>` issued in XYZW order (adjacent in 163 rows,
+`dp4 o0.<lane>, r<n>, c<m+lane>` issued in XYZW order (adjacent in 165 rows,
 spaced in six, see below), but the archive holds two families:
 
 | Family | Rows | Matrix register | Relative light loop | Effects |
 | --- | ---: | :-: | :-: | --- |
-| Point-light programs | 107 (A 33, B 62, C 12) | **c24** | yes: `rep i0` reading c0/c1/c2 at `a0.w`; the draw-time bound `i0.x` in [0, 8] keeps the reads in c0–23 | base and `2s` effects, all class C |
+| Point-light programs | 109 (A 33, B 62, C 12, D 2) | **c24** | yes: `rep i0` reading c0/c1/c2 at `a0.w`; the draw-time bound `i0.x` in [0, 8] keeps the reads in c0–23 | base and `2s` effects, all class C |
 | Loop-free variants | 62 (A 23, B 39) | **c0** | none: no relative addressing at all | the `_0000` / `_0001` effects (argon, khaak, boron, glass, moon, paranid, ...) |
 
 Here “loop-free” means no relative constant addressing; it does not mean
@@ -202,16 +202,16 @@ sorted pair index, see the prototype note), never by a VS alias.
 
 ## SM3 pairs that cannot host the transformation
 
-Eleven SM3 pairings (80 + 8 pass occurrences, 112 captured draws) have no
+Nine SM3 pairings (80 pass occurrences, 112 captured draws) have no
 row; `unsupported_pairs` in the JSON lists each with its reasons.
 
 | Pairs | Effects | Reason |
 | ---: | --- | --- |
 | 9 | bloom, bloom_0000 (HDR technique passes) | `position_write_is_mov`: the VS writes `o0` with `mov`. Fullscreen/post passes with no world transform; no previous WVP to apply. Two of them also have no free PS input register. |
-| 2 | xt_standard_lighting_damage, xt_standard_lighting_damage2s (PS `31445adb0a62d134`, `d51cf763125cb85a` with VS `37c34a7478544c14`) | `ps_control_flow_not_static_boolean_if`: besides two `if b#` blocks the PS holds an `ifc` block (a dynamic comparison), which no class admits. |
-
-The bloom passes keep the sentinel by design; the damage pair would need a
-class admitting `ifc`, which is not planned.
+The bloom passes keep the sentinel by design. The former damage refusals
+now have a separate [bounded motion contract](../architecture/damage-motion.md),
+with host proof and detached X3 R2 GPU qualification complete; no generic IFC
+acceptance was added.
 
 ## SM2 remainder: feasibility, no rows
 
@@ -261,7 +261,7 @@ python3 tools/analysis/inspect_motion_output_profiles.py \
   --emit-header src/renderer/motion_output_profiles_inc.h
 ```
 
-**169 rows** are emitted: 56 class A, 101 class B and 12 class C. Rows are
+**171 rows** are emitted: 56 class A, 101 class B, 12 class C and 2 class D. Rows are
 ordered by descending observed Scene draws, then by vertex and pixel
 fingerprint, so regeneration is byte-reproducible and the sixteen observed
 rows come first in their previous order with every previous field unchanged
@@ -312,7 +312,7 @@ revalidate the program it is handed. A row is not an eligibility decision.
   declarations do.
 - **Pair-and-state eligibility.** Aliases are broad: `53a0a641107ed76c` alone
   appears under argon, khaak, split, teladi and xenon effect paths, and the 32
-  row vertex programs serve 108 pixel programs. Eligibility stays keyed to the
+  row vertex programs serve 110 pixel programs. Eligibility stays keyed to the
   exact pair and draw state, never to a VS alias.
 
 The complete derived table — per-pair effect names, techniques and pass

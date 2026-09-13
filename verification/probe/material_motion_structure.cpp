@@ -4,6 +4,7 @@
 // Rows whose original programs are absent locally are skipped with a ROW line
 // saying so; the runner decides whether a skip is acceptable.
 #include "../../src/renderer/material_motion.h"
+#include "../../src/renderer/damage_motion_validation.h"
 #include "../../src/renderer/rigid_motion_pixel_program.h"
 #include "../../src/renderer/current_depth_pixel_program.h"
 #include <algorithm>
@@ -285,13 +286,14 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
         ++perturbations;
     };
     const auto mismatch = MaterialMotionResult::ProfileMismatch, applied = MaterialMotionResult::Applied;
+    const bool damage = row.transformation_class == MotionOutputClass::BoundedDamageBranches;
     const bool branching = row.transformation_class == MotionOutputClass::RelocatedRegistersWithBranches;
     bool contiguous = true;
     for (unsigned lane = 1; lane < 4; ++lane) contiguous = contiguous && row.position_dp4_dwords[lane] == row.position_dp4_dwords[lane - 1] + 4;
     // The class family is revalidated from the pixel words: a straight-line
     // program under a branching row, or a branching program under a
     // straight-line row, refuses; the vertex side does not depend on it.
-    { auto r = row; r.transformation_class = branching ? MotionOutputClass::RelocatedRegisters
+    { auto r = row; r.transformation_class = (branching || damage) ? MotionOutputClass::RelocatedRegisters
                                                        : MotionOutputClass::RelocatedRegistersWithBranches;
       refuse_row(r, applied, mismatch); }
     { auto r = row; r.vertex_output_register = 0; refuse_row(r, mismatch, applied); }        // o0 is declared and written.
@@ -508,7 +510,43 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
             target[i] = if_token; target[i + 1] = condition; target[i + 2] = endif_token;
             for (std::size_t k = 3; k <= n; ++k) target[i + k] = nop;
         };
-        if (!branching) {
+        if (damage) {
+            // Directly exercise the bounded contract with the ORIGINAL identity:
+            // rebinding the mutated hash alone would stop at ownership and never
+            // test its structural obligations. Every bit of all flow/condition,
+            // initializer, one-body and output opcode/destination words refuses.
+            require(detail::damage_pixel_structure(row, ps.data(), ps.size()), "native damage contract");
+            const bool two_sided = row.pixel_fingerprint == 0x31445adb0a62d134ull;
+            const std::size_t flow[] = {two_sided ? 1411u : 1389u, two_sided ? 1417u : 1395u,
+                two_sided ? 1436u : 1418u, two_sided ? 1442u : 1424u,
+                two_sided ? 1627u : 1601u, two_sided ? 1689u : 1663u,
+                two_sided ? 1701u : 1675u};
+            std::vector<std::size_t> critical(std::begin(flow), std::end(flow));
+            for (auto i : {flow[0] + 1, flow[2] + 1, flow[2] + 2, flow[4] + 1}) critical.push_back(i);
+            for (unsigned k = 3; k < 6; ++k) critical.push_back(flow[2] + k);
+            for (auto i : {two_sided ? 1418u : 1396u, two_sided ? 1423u : 1405u})
+                for (unsigned k = 0; k < 5; ++k) critical.push_back(i + k);
+            for (auto i : {two_sided ? 1736u : 1710u, two_sided ? 1741u : 1715u})
+                for (unsigned k = 0; k < 2; ++k) critical.push_back(i + k);
+            for (unsigned k = 0; k < 6; ++k) critical.push_back(1313 + k);
+            require(critical.size() == 34, "damage critical token inventory");
+            for (auto i : critical) for (unsigned bit = 0; bit < 32; ++bit) {
+                w = ps; w[i] ^= 1u << bit;
+                require(!detail::damage_pixel_structure(row, w.data(), w.size()), "damage direct contract mutation");
+                refuse_program(vs, w, "damage token contract mutation");
+            }
+            // A valid-looking replacement outside the owned flow sites must
+            // still refuse: no extra IFC/IF, kill, loop, return or predicate.
+            for (auto op : {0x19u, 0x1au, 0x1bu, 0x1cu, 0x1du, 0x1eu, 0x26u, 0x27u,
+                            0x28u, 0x29u, 0x2au, 0x2bu, 0x2cu, 0x2du, 0x41u, 0x5eu, 0x60u}) {
+                w = ps; w[first] = (w[first] & ~0xffffu) | op;
+                require(!detail::damage_pixel_structure(row, w.data(), w.size()), "damage extra flow");
+                refuse_program(vs, w, "damage extra flow refused");
+            }
+            w = ps; w[first] |= 0x40000000u;
+            require(!detail::damage_pixel_structure(row, w.data(), w.size()), "damage coissue");
+            refuse_program(vs, w, "damage coissue refused");
+        } else if (!branching) {
             // A well-formed static branch is still outside classes A and B.
             const auto wide = find(ps_at, [&](std::size_t i) { return i >= Pc && executable(ps[i]) && length(ps[i]) >= 2; });
             require(wide != 0, "no two-operand pixel instruction");
@@ -557,7 +595,7 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
             else skip("ABI constant read inside a branch");
         }
     }
-    require(program_perturbations + skipped.size() == (branching ? 40u : 26u) + (contiguous ? 0u : 2u) + 2 * vd + 3 * pd);
+    require(program_perturbations + skipped.size() == (damage ? 1131u : branching ? 40u : 26u) + (contiguous ? 0u : 2u) + 2 * vd + 3 * pd);
     require(row.observed_scene_draws == 0 || skipped.empty(), "a captured row offers every perturbation site");
     passed(index, "program_perturbations_refused_by_revalidation");
     // Single-bit mutation sweep: every bit of every input DWORD for the rows
@@ -605,7 +643,7 @@ static void test_row(unsigned index, const MotionOutputProfile& row, const Words
     std::printf("ROW index=%u vs=%016llx ps=%016llx class=%c status=PASS vertex_words=%zu pixel_words=%zu mutations=%zu sweep=%s program_perturbations=%u skipped=%zu quad=%s depth=%u\n",
                 index, static_cast<unsigned long long>(row.vertex_fingerprint), static_cast<unsigned long long>(row.pixel_fingerprint),
                 row.transformation_class == MotionOutputClass::ReferenceRegisters ? 'A' :
-                row.transformation_class == MotionOutputClass::RelocatedRegisters ? 'B' : 'C',
+                row.transformation_class == MotionOutputClass::RelocatedRegisters ? 'B' : damage ? 'D' : 'C',
                 output.vertex.size(), output.pixel.size(), mutations, full_sweep ? "full" : "sampled", program_perturbations, skipped.size(), contiguous ? "adjacent" : "spaced",
                 unsigned(vd + pd));
 }
