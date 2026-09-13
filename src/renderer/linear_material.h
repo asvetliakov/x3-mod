@@ -50,12 +50,12 @@ struct LinearMaterialPairContract {
 // One exact-pair lookup supplies both cached sampler admission and technique
 // telemetry. A zero mask is unsupported; technique alone never admits a draw.
 LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, std::uint64_t pixel) noexcept;
-// Exact 162 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
+// Exact 168 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs, independent of the temporal registry. The
 // live caller must also establish both combined objects, opaque scene coverage,
 // gamma-2.2 composition, sampler decode state, no MSAA and the existing temporal
 // gates. This helper establishes none of those draw-time conditions.
 // Hull DEFAULT returns 0x0f, hull BUMPMAP/LOW 0x1f; Asteroid DEFAULT/BUMP
-// return 0x07/0x0f; XT DEFAULT/BUMP return 0x1d/0x39, and unsupported pairs zero. The mask only
+// return 0x07/0x0f; glass DEFAULT returns 0x07; XT DEFAULT/BUMP return 0x1d/0x39, and unsupported pairs zero. The mask only
 // identifies required disabled-sRGB samplers; it establishes no dynamic gates.
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;

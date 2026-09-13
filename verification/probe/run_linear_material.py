@@ -22,6 +22,7 @@ import bottle
 from game_guard import game_running
 import linear_material_reference as ref
 import linear_xt_fixture_reference as xt_fixture
+import linear_glass_fixture_reference as glass_fixture
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
@@ -36,6 +37,7 @@ CODE_INPUTS = ('src/renderer/linear_material.cpp', 'src/renderer/linear_material
                'verification/probe/linear_material_fixture.cpp',
                'verification/probe/linear_material_reference.py',
                'verification/probe/linear_xt_fixture_reference.py',
+               'verification/probe/linear_glass_fixture_reference.py',
                'verification/analysis/xt_material_reference.py',
                'verification/probe/run_linear_material.py')
 PAIRS = [('53a0a641107ed76c', ps) for ps in ('63f96eba9eea7880', '8759c7838bbc86c2')]
@@ -91,13 +93,14 @@ PALETTE_PAIRS += [('33388c8897d428a5',p) for p in ('18d372968af4a480','188c5ab9d
 PALETTE_PAIRS += [(v,p) for v in ('b4059ab6af8fc529','2a560f246c90fa64') for p in ('7e5e41276b3d7514','43c9405568d2226f','5e056627e9ff3a8d','fce465befff2f623')]
 PAIRS += PALETTE_PAIRS
 PAIRS += xt_fixture.PAIRS
+PAIRS += glass_fixture.PAIRS
 FIXED_VERTICES |= {'ea3d15b287892410','a804f173f693944a','a7cddf2c98d61117','2a560f246c90fa64'}
-TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 113, 116, 122, 128, 138)
+TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 113, 116, 122, 128, 138, 162)
 FAMILIES = ('Argon', 'shared DEFAULT', 'Argon BUMP', 'Split DEFAULT',
             'standard DEFAULT', 'standard BUMP', 'standard LOW', 'shared BUMP',
             'Split BUMP', 'Terran DEFAULT', 'Terran BUMP', 'Asteroid DEFAULT', 'Asteroid BUMP',
             'Boron DEFAULT', 'Boron BUMP', 'Paranid DEFAULT', 'Paranid BUMP')
-FAMILIES += xt_fixture.FAMILIES
+FAMILIES += xt_fixture.FAMILIES + ('Glass',)
 CUBE_PATTERN, FOG, BOUNDARY, DETAIL_PATTERN = 1, 2, 4, 8
 PALETTE_GRADIENT, DIFFUSE_PATTERN, PALETTE_PERSPECTIVE = 16, 32, 64
 CUBE_BANDS_U = (.125, .25, .25, .5)
@@ -105,6 +108,7 @@ CUBE_BANDS_V = (.125, .375, .375, .75)
 
 
 def family_name(pair):
+    if pair >= 162:return 'Glass'
     if pair >= 148:return xt_fixture.family(pair)
     if pair < 110:return FAMILIES[pair // 10]
     if pair < 116:return FAMILIES[11 + (pair >= 113)]
@@ -534,7 +538,7 @@ def fixture_cases():
                 coefficients=[.25,.125,.0625,.03125],normal=[.25,.125,.875])
     for pair in (116,110,122,113,128,40,138,116):
         add('palette_family_alternation',pair=pair)
-    return xt_fixture.append_cases(cases)
+    return glass_fixture.append_cases(xt_fixture.append_cases(cases))
 
 
 def fields(c):
@@ -594,6 +598,9 @@ def palette_varying(c, sample=(8,8)):
 
 
 def expected(c, half_source=False, sample=(8,8), flat_effective=False):
+    if c['pair'] >= 162:
+        return glass_fixture.expected(c,half_source,sample,cube_sampler=cube_sample,
+                                      flat_color=flat_effective and bool(c['flags'] & 2048))
     if c['pair'] >= 148:
         return xt_fixture.expected(c,half_source,sample,cube_sampler=cube_sample,
                                    flat_color=flat_effective and bool(c['flags'] & xt_fixture.FLAT))
@@ -641,13 +648,18 @@ def expected_alpha(c):
     alpha=.625
     if c['flags'] & FOG:
         alpha*=min(1.,max(0.,c['fog_clip'][0]-c['fog_clip'][1]*math.hypot(*c['camera'])))
-    value=(c['diffuse'][3] if 110 <= c['pair'] < 116 else
+    value=(c['diffuse'][3] if 110 <= c['pair'] < 116 or c['pair'] >= 162 else
            c['glow']*c['lightmap'][3]+(1-c['glow'])*c['diffuse'][3])*alpha
     return ref.half(value) if c['fp16'] else value
 
 
 def validate_report(text, cases=None):
     cases = fixture_cases() if cases is None else cases
+    by_id = {c['id']: c for c in cases}
+    assert len(by_id) == len(cases), 'duplicate case ID'
+    selected_pairs = {PAIRS[c['pair']] for c in cases}
+    timing_pairs = tuple(p for p in TIMING_PAIRS if any(c['pair']==p for c in cases))
+    xt_timing_pairs = tuple(p for p in (148,150) if any(c['pair']==p for c in cases))
     lines = text.splitlines()
     assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}', 'missing final result'
     assert not any('FAIL' in line for line in lines), 'fixture reported failure'
@@ -664,7 +676,7 @@ def validate_report(text, cases=None):
     creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
     assert len(creates) == len([l for l in lines if l.startswith('CREATE ')]) and creates
     assert len({(r[0], r[1]) for r in creates}) == len(creates), 'duplicate shader creation'
-    required = {(stage, shader, str(depth)) for vs, ps in PAIRS for stage, shader in [('vs', vs), ('ps', ps)] for depth in (0, 1)}
+    required = {(stage, shader, str(depth)) for vs, ps in selected_pairs for stage, shader in [('vs', vs), ('ps', ps)] for depth in (0, 1)}
     observed = set()
     repaired_observed = set()
     for stage, key, count, words, ms in creates:
@@ -674,12 +686,12 @@ def validate_report(text, cases=None):
         if mode == '2': observed.add((stage, shader, depth))
         if key.endswith('_xt_repaired'):repaired_observed.add((stage,shader,depth,mode))
     assert required <= observed, 'missing combined program/depth creation'
-    repaired_required={(stage,shader,str(depth),str(mode)) for vs,ps in xt_fixture.PAIRS
-                       if vs=='494fe349b8bc12ec' for stage,shader in (('vs',vs),('ps',ps))
+    repaired_required={(stage,shader,str(depth),str(mode)) for vs,ps in selected_pairs
+                       if (vs,ps) in xt_fixture.PAIRS and vs=='494fe349b8bc12ec' for stage,shader in (('vs',vs),('ps',ps))
                        for depth in (0,1) for mode in (1,2)}
     assert repaired_required<=repaired_observed, 'missing pair-local repaired ordinary/linear program'
     invariants = re.findall(r'^INVARIANT id=(\d+) pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0 rgb_bad=0$', text, re.M)
-    assert list(map(int, invariants)) == list(range(len(cases))), 'missing or failed invariant'
+    assert list(map(int, invariants)) == [c['id'] for c in cases], 'missing or failed invariant'
     samples = re.findall(r'^SAMPLE id=(\d+) x=(\d+) y=(\d+) rgba=(\S+)$', text, re.M)
     assert len(samples) == len(cases) * 9, 'missing numerical sample'
     seen, maximum_abs, maximum_scaled, black_samples, hdr_samples = set(), 0., 0., 0, 0
@@ -689,10 +701,10 @@ def validate_report(text, cases=None):
                       for name in FAMILIES}
     for cid, x, y, rgba in samples:
         cid, x, y = int(cid), int(x), int(y)
-        assert 0 <= cid < len(cases) and x in (4, 8, 12) and y in (4, 8, 12)
+        assert cid in by_id and x in (4, 8, 12) and y in (4, 8, 12)
         assert (cid, x, y) not in seen, 'duplicate sample'
         seen.add((cid, x, y))
-        c = cases[cid]
+        c = by_id[cid]
         family = family_results[family_name(c['pair'])]
         actual = tuple(map(float, rgba.split(',')))
         assert len(actual) == 4 and all(map(math.isfinite, actual)), (cid, 'nonfinite GPU output')
@@ -733,22 +745,23 @@ def validate_report(text, cases=None):
         cid,x,y = int(cid),int(x),int(y)
         assert (cid,x,y) in expected_baselines and (cid,x,y) not in seen_baselines
         seen_baselines.add((cid,x,y))
-        c=cases[cid]
+        c=by_id[cid]
         actual=tuple(map(float,rgba.split(',')))
         assert len(actual)==4 and all(map(math.isfinite,actual))
-        wanted=[xt_fixture.expected(c,half,(x,y),linear=False,cube_sampler=cube_sample,
+        oracle=glass_fixture if c['pair']>=162 else xt_fixture
+        wanted=[oracle.expected(c,half,(x,y),linear=False,cube_sampler=cube_sample,
                   flat_color=flat_effective and bool(c['flags']&xt_fixture.FLAT)).encoded_rgba for half in (False,True)]
-        assert actual[3]==expected_alpha(c), 'XT ordinary alpha'
+        assert actual[3]==expected_alpha(c), 'ordinary alpha'
         for k,value in enumerate(actual[:3]):
             lo,hi=sorted(row[k] for row in wanted)
             fraction=max(lo-value,value-hi,0.)/(RGB_ABS_TOL+RGB_REL_TOL*max(abs(lo),abs(hi)))
             baseline_max=max(baseline_max,fraction)
-            assert fraction<=1., ('XT ordinary/reference mismatch',cid,x,y,k,value,lo,hi)
-    assert seen_baselines==expected_baselines, 'missing XT ordinary reference samples'
-    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100|110|113|116|122|128|138) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
-    assert len(timings) == 36 * len(TIMING_PAIRS)
+            assert fraction<=1., ('ordinary/reference mismatch',cid,x,y,k,value,lo,hi)
+    assert seen_baselines==expected_baselines, 'missing ordinary reference samples'
+    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100|110|113|116|122|128|138|162) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
+    assert len(timings) == 36 * len(timing_pairs)
     timing_summary = []
-    for pair in TIMING_PAIRS:
+    for pair in timing_pairs:
         for lights in (0, 8):
             rows = [r for r in timings if int(r[0]) == pair and int(r[1]) == lights]
             assert [int(r[3]) for r in rows] == list(range(18))
@@ -760,8 +773,8 @@ def validate_report(text, cases=None):
                                            lights=lights, mode=('original', 'motion', 'combined')[mode],
                                            samples=6, median_ms=statistics.median(values), min_ms=min(values), max_ms=max(values)))
     xt_timings = re.findall(r'^TIMING pair=(148|150) lights=([018]) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+) palette=(0|128) repaired=([01])$',text,re.M)
-    assert len(xt_timings)==2*3*2*18, 'missing XT matched timing windows'
-    for pair in (148,150):
+    assert len(xt_timings)==len(xt_timing_pairs)*3*2*18, 'missing XT matched timing windows'
+    for pair in xt_timing_pairs:
         for lights in (0,1,8):
             for palette in (0,128):
                 rows=[r for r in xt_timings if (int(r[0]),int(r[1]),int(r[5]))==(pair,lights,palette)]
@@ -776,9 +789,11 @@ def validate_report(text, cases=None):
                         samples=6,median_ms=statistics.median(values),min_ms=min(values),max_ms=max(values)))
     recognized = 1 + len(flat_rows) + len(creates) + len(invariants) + len(samples) + len(baselines) + len(timings) + len(xt_timings) + 1
     assert len(lines) == recognized, 'unexpected output rows'
-    return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=len({('vs',v) for v,p in PAIRS}|{('ps',p) for v,p in PAIRS}), shader_creations=len(creates),
-                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=3549,
-                xt_ordinary_samples=len(baselines),xt_ordinary_max_tolerance_fraction=baseline_max,
+    return dict(cases=len(cases), pairs=len(selected_pairs), unique_originals=len({('vs',v) for v,p in selected_pairs}|{('ps',p) for v,p in selected_pairs}), shader_creations=len(creates),
+                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=3549 if all(i in by_id for i in range(3549)) else 0,
+                xt_ordinary_samples=sum(148<=by_id[int(row[0])]['pair']<162 for row in baselines),
+                glass_ordinary_samples=sum(by_id[int(row[0])]['pair']>=162 for row in baselines),
+                ordinary_max_tolerance_fraction=baseline_max,
                 effective_programmable_color_flat=flat_effective,
                 boundary_cases=sum(bool(c["flags"] & BOUNDARY) for c in cases),
                 boundary_limit="Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence", invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
@@ -792,37 +807,62 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def main():
+def selected_originals(cases):
+    return {(stage,shader) for c in cases for stage,shader in
+            (('vs',PAIRS[c['pair']][0]),('ps',PAIRS[c['pair']][1]))}
+
+
+def original_provenance(cases, programs):
+    """Validate only original programs selected by this fixture case set."""
+    selected = selected_originals(cases)
+    inputs = {f'{stage}_{shader}.bin': sha(programs/f'{stage}_{shader}.bin')
+              for stage,shader in sorted(selected)}
+    if any(c['pair'] < xt_fixture.START for c in cases):
+        profiles = json.loads((ROOT/'docs/reverse-engineering/linear-material-profiles.json').read_text())
+        prior = {p['id']+'.bin':p['sha256'] for p in profiles['programs']}
+        required = {f'{stage}_{shader}.bin' for c in cases if c['pair'] < xt_fixture.START
+                    for stage,shader in (('vs',PAIRS[c['pair']][0]),('ps',PAIRS[c['pair']][1]))}
+        assert all(name in prior and inputs[name] == prior[name] for name in required), 'prior original input provenance'
+    expected_words = {}
+    if any(xt_fixture.START <= c['pair'] < glass_fixture.START for c in cases):
+        profiles = json.loads((ROOT/'docs/reverse-engineering/xt-material-profiles.json').read_text())['programs']
+        expected_words.update({('ps',p['ps']):p['words'] for p in profiles})
+        expected_words.update({('vs','494fe349b8bc12ec'):526,('vs','37c34a7478544c14'):768})
+    expected_words.update(glass_fixture.WORDS)
+    for (stage,identity),words in expected_words.items():
+        if (stage,identity) not in selected: continue
+        code=(programs/f'{stage}_{identity}.bin').read_bytes()
+        fingerprint=14695981039346656037
+        for byte in code:fingerprint=((fingerprint^byte)*1099511628211)&0xffffffffffffffff
+        assert len(code)==4*words and f'{fingerprint:016x}'==identity, 'additional original identity/size'
+    return inputs
+
+
+def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exe', type=Path, required=True, help='Previously built fixture EXE; this runner never builds')
     parser.add_argument('--programs', type=Path, default=PROGRAMS)
     parser.add_argument('--raw-dir', type=Path, default=Path('/tmp/x3-linear-material-gpu'))
-    args = parser.parse_args()
+    parser.add_argument('--glass-only', action='store_true', help='Run only new glass cases, retaining their original case IDs; skip unrelated timing passes')
+    return parser.parse_args(argv)
+
+
+def main():
+    args = parse_arguments()
     assert bottle.BOTTLE == 'X3', 'new fixtures require X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(), 'game running; fixture refused'
     cases = fixture_cases()
+    if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)
     case_file = args.raw_dir/'cases.bin'
     case_file.write_bytes(binary_cases(cases))
     report = args.raw_dir/'report.txt'
-    result_path = bottle.results_dir(ROOT)/'linear-material-gpu.json'
-    inputs = {f'{stage}_{shader}.bin': sha(args.programs/f'{stage}_{shader}.bin')
-              for vs, ps in PAIRS for stage, shader in [('vs', vs), ('ps', ps)]}
-    profiles = json.loads((ROOT/'docs/reverse-engineering/linear-material-profiles.json').read_text())
-    prior_inputs={p['id']+'.bin':p['sha256'] for p in profiles['programs']}
-    assert all(inputs.get(name)==value for name,value in prior_inputs.items()), 'prior original input provenance'
-    xt_profiles=json.loads((ROOT/'docs/reverse-engineering/xt-material-profiles.json').read_text())['programs']
-    expected_words={('ps',p['ps']):p['words'] for p in xt_profiles}
-    expected_words.update({('vs','494fe349b8bc12ec'):526,('vs','37c34a7478544c14'):768})
-    for (stage,identity),words in expected_words.items():
-        code=(args.programs/f'{stage}_{identity}.bin').read_bytes()
-        fingerprint=14695981039346656037
-        for byte in code:fingerprint=((fingerprint^byte)*1099511628211)&0xffffffffffffffff
-        assert len(code)==4*words and f'{fingerprint:016x}'==identity, 'XT original identity/size'
+    result_path = bottle.results_dir(ROOT)/('linear-glass-gpu.json' if args.glass_only else 'linear-material-gpu.json')
+    inputs = original_provenance(cases, args.programs)
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
-                  scope='162 pairs: prior148 plus all14XT; ten native BUMP/LOW conversions and four authored DEFAULT producer repairs. Detached ordinary/combined numerics, alpha/motion/depth, interpolation and diagnostic completion cost; original invalid DEFAULT is never submitted. No live route or native Windows runtime proof.',
-                  timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS',
+                  scope=('Six SM3 glass pairs: 254 new cases; earlier cases excluded; representative pair162 timing included. ' if args.glass_only else '168 pairs: prior148 plus all14XT and six SM3 glass, including four authored DEFAULT producer repairs. ') + 'Detached ordinary/combined numerics, alpha/motion/depth and interpolation. No live route or native Windows runtime proof.',
+                  timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS. Glass-only selects pair162 with 0/8 point lights and native/motion/combined variants.',
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),
                   code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS})

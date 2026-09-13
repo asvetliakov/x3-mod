@@ -786,3 +786,84 @@ def palette_pixel(profile, varying, diffuse, specular_mask, lightmap, cubemap,
     alpha=(glow*lightmap[3]+(1-glow)*diffuse[3])*quantize(_real(varying.alpha,'vertex alpha'))
     rgba=tuple(encode(v) for v in radiance)+(alpha,)
     return PixelResult(radiance,tuple(half(v) for v in rgba) if half_target else rgba)
+
+
+# Glass COLOR1 already contains native Fresnel; it is never a radiance carrier.
+GLASS_PROFILES = {
+    'a66fb1981ba755b2': PixelProfile(2, False, False, .5, 6, .5),
+    'ebc9b2b3f1564e9a': PixelProfile(2, False, True, .5, 6, .5),
+    'f31c9e2701c8eee4': PixelProfile(1, False, False, .5, 6, 1.),
+    '9d49f288800f898d': PixelProfile(1, False, True, .5, 6, 1.),
+}
+GLASS_FRESNEL_POWER = struct.unpack('<f', struct.pack('<f', 1.2))[0]
+
+
+@dataclass(frozen=True)
+class GlassVertexResult(VertexResult):
+    fresnel: float
+
+
+def glass_vertex(world_position, world_normal, camera_position, material_emissive,
+                 lights=(), *, fixed_single=False, material_alpha=1., fog_clip=None,
+                 gains=Gains(), linear=True):
+    """Native geometric producers and independently converted point/emissive RGB.
+
+    N remains unnormalized, V is normalized in VS. D3D LOG consumes abs(src),
+    so nonunit N may cross zero in 1-abs(N.V); no invented Fresnel saturation.
+    Zero maps through LOG=-inf then EXP=0. Interpolate the resulting F and cube
+    vector themselves; neither can be recomputed from interpolated N/V.
+    """
+    native = vertex(world_position, world_normal, camera_position, material_emissive,
+                    lights, fixed_single=fixed_single, material_alpha=material_alpha,
+                    fog_clip=fog_clip, gains=gains)
+    view = _unit(native.view, 'glass vertex view')
+    normal = native.normal
+    cosine = _dot(normal, view)
+    argument = abs(1. - abs(cosine))
+    fresnel = 0. if argument == 0. else 2. ** (math.log2(argument) * GLASS_FRESNEL_POWER)
+    reflection = tuple(2. * cosine * n - v for n, v in zip(normal, view))
+    rgb = native.linear_rgb
+    if not linear:
+        rgb = list(_vector(material_emissive, 3, 'native emissive', True))
+        for light in lights:
+            displacement = tuple(l-p for l,p in zip(light.position,world_position))
+            distance = math.hypot(*displacement)
+            weight = _sat(_dot(normal,_unit(displacement,'point displacement')))
+            weight *= _sat(1. / _dot(light.attenuation,(1.,distance,distance*distance)))
+            for i in range(3): rgb[i] += weight * light.color[i]
+    return GlassVertexResult(normal, view, reflection, tuple(rgb), native.alpha, fresnel)
+
+
+def glass_pixel(profile, varying, diffuse, specular_mask, cubemap, directions, *,
+                face=1., gains=Gains(), half_source=False, half_target=True, linear=True):
+    """Preserve diffuse-tinted q^6 gloss and a separately added S*F*cube term.
+
+    Native COLOR0 RGB is explicitly saturated; only its converted linear RGB
+    transport loses that radiance clamp. Alpha and Fresnel remain numeric data.
+    The float64/binary16 source envelope does not emulate every PP instruction.
+    """
+    contract = GLASS_PROFILES[profile]
+    if len(directions) != contract.directions: raise ValueError('glass directional count')
+    quantize = half if half_source else float
+    source = lambda v: tuple(quantize(x) for x in v)
+    normal = _unit(source(varying.normal),'glass pixel normal')
+    view = _unit(source(varying.view),'glass pixel view')
+    if contract.two_sided and face < 0: normal = tuple(-n for n in normal)
+    diffuse = source(_vector(diffuse,4,'diffuse',True))
+    mask = quantize(_real(specular_mask,'specular mask'))
+    fresnel = quantize(varying.fresnel)
+    if not callable(cubemap): raise TypeError('glass cube requires direction sampler')
+    cube = source(_vector(cubemap(source(varying.reflection)),3,'cube RGB',True))
+    transfer = decode if linear else float
+    lighting = list(varying.linear_rgb if linear else tuple(_sat(quantize(v)) for v in varying.linear_rgb))
+    for light in directions:
+        cosine = _sat(_dot(normal,light.direction))
+        reflected = tuple(2.*_dot(normal,light.direction)*n-l for n,l in zip(normal,light.direction))
+        q = _sat(_dot(view,reflected))
+        lobe = .5*cosine + 3.*mask*q**6*_sat(3.*cosine)
+        for i in range(3): lighting[i] += transfer(light.color[i])*lobe*(gains.direct if linear else 1.)
+    rgb = tuple(transfer(diffuse[i])*lighting[i] + contract.cube_coefficient*mask*fresnel*transfer(cube[i]) for i in range(3))
+    if linear: rgb = tuple(sanitize(v) for v in rgb)
+    alpha = diffuse[3]*quantize(varying.alpha)
+    rgba = tuple(encode(v) for v in rgb) + (alpha,) if linear else rgb+(alpha,)
+    return PixelResult(rgb,tuple(half(v) for v in rgba) if half_target else rgba)

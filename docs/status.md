@@ -87,8 +87,9 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
 - **Material appearance and coverage:** exclude accidental loss of native gloss terms before artistic tuning. The
   [coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; older profiles,
   transparent, background, and other scene writers remain beyond installed coverage. The
-  [glass study](architecture/glass-materials.md) identifies six additional SM3 opaque-capable
-  pairs and preserves their native gloss/Fresnel contracts; implementation is isolated.
+  [glass extension](architecture/glass-materials.md) adds six reviewed SM3 opaque-capable
+  pairs in main source (168 pairs / 137 originals total), preserving native gloss/Fresnel.
+  Host checks pass; GPU/live qualification and installation remain pending.
 - **Bloom/exposure:** authored glow works but is too subtle. Gain 0.35 is installed for the next comparison;
   +1.5 EV appearance is accepted and selected as the installed Auto default. The meter
   still mostly reaches its ceiling; physically informed adaptation remains unproved.

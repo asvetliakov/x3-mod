@@ -10,16 +10,18 @@ import unittest
 from unittest.mock import patch
 import linear_material_reference as ref
 import linear_xt_fixture_reference as xt_fixture
+import linear_glass_fixture_reference as glass_fixture
 from run_linear_material import BOUNDARY, CUBE_PATTERN, cube_sample, cube_location, expected_alpha, PALETTE_GRADIENT, PALETTE_PERSPECTIVE, DIFFUSE_PATTERN, palette_varying, pattern_diffuse, DETAIL_PATTERN, detail_sample, FIXED_VERTICES, PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, fixture_cases, binary_cases, expected, validate_report
 
 
-def report():
-    cases = fixture_cases()
+def report(cases=None):
+    cases = fixture_cases() if cases is None else cases
+    selected_pairs = {PAIRS[c['pair']] for c in cases}
     lines = ['CAPS mrt=4 vs_slots=512 ps_slots=512', 'FLAT effective=0 gouraud=.25 requested_flat=.25']
-    for stage, shader in sorted({(stage, shader) for vs, ps in PAIRS for stage, shader in [('vs', vs), ('ps', ps)]}):
+    for stage, shader in sorted({(stage, shader) for vs, ps in selected_pairs for stage, shader in [('vs', vs), ('ps', ps)]}):
         for depth in (0, 1):
             lines.append(f'CREATE stage={stage} key={shader}_2_{depth}_1_1_1 instructions=100 words=600 completed_ms=1.25')
-    for stage,shader in sorted({(stage,shader) for vs,ps in xt_fixture.PAIRS if vs=='494fe349b8bc12ec'
+    for stage,shader in sorted({(stage,shader) for vs,ps in selected_pairs if (vs,ps) in xt_fixture.PAIRS and vs=='494fe349b8bc12ec'
                                for stage,shader in (('vs',vs),('ps',ps))}):
         for depth in (0,1):
             for mode in (1,2):
@@ -34,14 +36,14 @@ def report():
                     rgba=','.join(format(v,'.17g') for v in expected(c,sample=(x,y)).encoded_rgba)
                 lines.append(f'SAMPLE id={c["id"]} x={x} y={y} rgba={rgba}')
                 if c['pair']>=148:
-                    native=xt_fixture.expected(c,sample=(x,y),linear=False,cube_sampler=cube_sample).encoded_rgba
+                    native=(glass_fixture if c['pair']>=162 else xt_fixture).expected(c,sample=(x,y),linear=False,cube_sampler=cube_sample).encoded_rgba
                     lines.append(f'BASELINE id={c["id"]} x={x} y={y} rgba='+','.join(format(v,'.17g') for v in native))
-    for pair in TIMING_PAIRS:
+    for pair in (p for p in TIMING_PAIRS if any(c['pair']==p for c in cases)):
         for lights in (0, 8):
             for i in range(18):
                 mode = 2-i%3 if (i//3)%2 else i%3
                 lines.append(f'TIMING pair={pair} lights={lights} mode={mode} iteration={i} draws=4 vertices=98304 width=256 completed_ms=1.5')
-    for pair in (148,150):
+    for pair in (p for p in (148,150) if any(c['pair']==p for c in cases)):
         for lights in (0,1,8):
             for palette in (0,128):
                 for i in range(18):
@@ -56,10 +58,37 @@ class ReportTests(unittest.TestCase):
     def setUpClass(cls):
         cls.text = report()
 
+    def test_glass_only_preserves_ids_and_requires_scoped_evidence(self):
+        from run_linear_material import parse_arguments
+        args=parse_arguments(['--exe','retained.exe','--glass-only'])
+        self.assertTrue(args.glass_only)
+        self.assertFalse(parse_arguments(['--exe','retained.exe']).glass_only)
+        full=fixture_cases()
+        cases=[c for c in full if c['pair']>=glass_fixture.START]
+        self.assertEqual([c['id'] for c in cases],list(range(3923,4177)))
+        payload=binary_cases(cases)
+        self.assertEqual(payload[4:],binary_cases(full)[4+3923*240:])
+        text=report(cases)
+        self.assertEqual(len(re.findall(r'^TIMING pair=162 ',text,re.M)),36)
+        self.assertEqual(len(re.findall(r'^TIMING ',text,re.M)),36)
+        result=validate_report(text,cases)
+        self.assertEqual((result['cases'],result['pairs'],result['unique_originals']),(254,6,7))
+        self.assertEqual(len(result['timings']),6)
+        self.assertEqual({(r['pair'],r['lights'],r['mode']) for r in result['timings']},
+                         {(162,n,m) for n in (0,8) for m in ('original','motion','combined')})
+        self.assertEqual(result['glass_ordinary_samples'],254*9)
+        for prefix in ('INVARIANT ','SAMPLE ','BASELINE ','CREATE ','FLAT ','TIMING pair=162 '):
+            lines=text.splitlines()
+            del lines[next(i for i,line in enumerate(lines) if line.startswith(prefix))]
+            with self.subTest(prefix=prefix),self.assertRaises(AssertionError):
+                validate_report('\n'.join(lines),cases)
+        with self.assertRaises(AssertionError):
+            validate_report(text.replace('SAMPLE id=3923 ','SAMPLE id=0 ',1),cases)
+
     def test_complete_report(self):
         result = validate_report(self.text)
-        self.assertEqual(result['pairs'], 162)
-        self.assertEqual(result['unique_originals'], 130)
+        self.assertEqual(result['pairs'], 168)
+        self.assertEqual(result['unique_originals'], 137)
         self.assertGreater(result['hdr_channels'], 0)
         self.assertGreater(result['exact_black_channels'], 0)
 
@@ -87,7 +116,7 @@ class ReportTests(unittest.TestCase):
             if p in xt_fixture.xt.CONTRACTS:
                 from types import SimpleNamespace
                 return SimpleNamespace(affine_color=True,directions=2,bump_map=xt_fixture.xt.CONTRACTS[p].bump)
-            return ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES[p]
+            return ref.PROFILES.get(p) or ref.ASTEROID_PROFILES.get(p) or ref.PALETTE_PROFILES.get(p) or ref.GLASS_PROFILES[p]
         self.assertEqual(affine,[getattr(profile(p),'affine_color',False) for p in pixels])
         self.assertEqual(directions,[profile(p).directions for p in pixels])
         bump=[v=='true' for v in re.findall(r'true|false',array('pixel_bump'))]
@@ -133,7 +162,7 @@ class ReportTests(unittest.TestCase):
 
     def test_bump_inventory_and_stable_cube_domain(self):
         cases=fixture_cases()
-        self.assertEqual(len(cases),3923)
+        self.assertEqual(sum(c['pair']<162 for c in cases),3923)
         self.assertTrue(all(c['pair']<20 for c in cases[:313]))
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='bump_pair_depth_face'},
                          {(p,d,r) for p in range(20,30) for d in (0,1) for r in (0,1)})
@@ -236,8 +265,8 @@ class ReportTests(unittest.TestCase):
 
     def test_expanded_pair_and_required_case_coverage(self):
         proof=json.loads((Path(__file__).resolve().parents[2]/'docs/reverse-engineering/linear-material-profiles.json').read_text())
-        self.assertEqual(set(PAIRS),{(p['vs'],p['ps']) for p in proof['pairs']} | set(xt_fixture.PAIRS))
-        self.assertEqual(len(PAIRS),162)
+        self.assertEqual(set(PAIRS),{(p['vs'],p['ps']) for p in proof['pairs']} | set(xt_fixture.PAIRS) | set(glass_fixture.PAIRS))
+        self.assertEqual(len(PAIRS),168)
         cases=fixture_cases()
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='extended_pair_depth_face'},
                          {(p,d,r) for p in range(30,70) for d in (0,1) for r in (0,1)})
@@ -415,7 +444,7 @@ class PaletteFixtureTests(unittest.TestCase):
         cases=fixture_cases()
         self.assertEqual(hashlib.sha256(binary_cases(cases[:2757])).hexdigest(),
                          '04413dc21403cffbfe6f6d0ef7c97cef27265d6319af1ceb3062e2831a28dd5e')
-        self.assertEqual(len(cases),3923)
+        self.assertEqual(sum(c['pair']<162 for c in cases),3923)
         self.assertEqual({(c['pair'],c['depth'],c['reverse']) for c in cases if c['label']=='palette_pair_depth_face'},
                          {(p,d,r) for p in range(116,148) for d in (0,1) for r in (0,1)})
         for label in ('palette_missing_history','palette_fog_alpha'):

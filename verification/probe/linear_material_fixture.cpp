@@ -55,7 +55,9 @@ static_assert(sizeof(Case) == 240, "binary case ABI");
 // O/detail data, 2048 requested FLAT, 4096/8192 O.r=.50/.51 (default .49),
 // 16384 alternate secondary UV, 32768 FLOAT2 UV, 65536 near-plane clipping.
 constexpr unsigned xt_first_pair = 148;
-bool is_xt(const Case& c) { return c.pair >= xt_first_pair; }
+constexpr unsigned glass_first_pair = 162;
+bool is_glass(const Case& c) { return c.pair >= glass_first_pair; }
+bool is_xt(const Case& c) { return c.pair >= xt_first_pair && c.pair < glass_first_pair; }
 bool xt_default(const Case& c) {
   return is_xt(c) && (c.pair == 148 || c.pair == 149 || c.pair == 156 || c.pair == 157);
 }
@@ -64,7 +66,8 @@ const char * vertex_ids[] = {
     "494fe349b8bc12ec",
     "b0602757fce6e870", "0c223ad11bce02d5", "233d17d26ce0c1fc", "167eb2d5629ab9d3", "330ceb9dd874ede2", "12b8a13f13fe8cfe",
     "29d7c575396ed280", "a420a010b0271479", "ea3d15b287892410", "57392213f62fef19", "5c17a381b149b3b9", "a804f173f693944a", "37e6956afd8b8d76", "2e0254dd999841c2", "a7cddf2c98d61117", "33388c8897d428a5", "b4059ab6af8fc529", "2a560f246c90fa64",
-    "37c34a7478544c14"};
+    "37c34a7478544c14",
+    "c30104cb0efb6675", "e2ad860d5fbb3e59", "74fdc00d802b4027"};
 const char * pixel_ids[] = {
     "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5", "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
     "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5", "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3",
@@ -79,7 +82,8 @@ const char * pixel_ids[] = {
     "3602b05ce11ca6ff", "8e58ac79b59b02b1", "042c9ae16f41feff", "68f0dd6791fd7d3d", "5c823b8507fa1442", "a6e1328c0bb3f401",
     "517540ae6d5e5410", "7a0c3388065bb08d", "d44db87778a43b61", "550c2a4d4d3ed70f",
     "39eb3c2258a516e1", "57acf59d19c73791", "f917d48ee826da1f", "77a5b2d62fb3be48", "a910daef935891ce", "62c180abe017e239", "ed44232013f67072", "f286856c3f400377", "9d27e7ba242f3831", "e1acf8a03850acaf", "f646f03be5a8708d", "ebf41e1ace7af45b", "c997a37560e266df", "675f9077d8fd21c4", "18d372968af4a480", "188c5ab9dbb98393", "7e5e41276b3d7514", "43c9405568d2226f", "5e056627e9ff3a8d", "fce465befff2f623",
-    "fffdabd910793aba", "e6794b6ec37ff71a", "5f82ecacd39529cd", "f1b0e820c7b488c3", "6733b119142c8d42", "496049cec2066ed3", "d51cf763125cb85a", "31445adb0a62d134", "fd58e6b7e8cf969c", "dd87737d697c6764", "d22f2ce2c740e6a7", "1de3d2dde345a7e3", "75fb9c6b05e28ea2", "edaef099780fcafe"};
+    "fffdabd910793aba", "e6794b6ec37ff71a", "5f82ecacd39529cd", "f1b0e820c7b488c3", "6733b119142c8d42", "496049cec2066ed3", "d51cf763125cb85a", "31445adb0a62d134", "fd58e6b7e8cf969c", "dd87737d697c6764", "d22f2ce2c740e6a7", "1de3d2dde345a7e3", "75fb9c6b05e28ea2", "edaef099780fcafe",
+    "a66fb1981ba755b2", "ebc9b2b3f1564e9a", "f31c9e2701c8eee4", "9d49f288800f898d"};
 // Derived register-layout facts; original instructions own the lobe and normal math.
 const bool pixel_affine[] = {
     true, true, false, true, true, false,
@@ -95,7 +99,8 @@ const bool pixel_affine[] = {
     true, true, true, true, false, false,
     false, false, false, false,
     false, false, false, false, false, false, false, false, true, true, true, true, false, false, true, true, true, true, false, false,
-    true, true, true, true, true, true, true, true, true, true, true, true, true, true};
+    true, true, true, true, true, true, true, true, true, true, true, true, true, true,
+    false, false, false, false};
 const bool pixel_bump[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -110,7 +115,8 @@ const bool pixel_bump[] = {
     true, true, true, true, true, true,
     false, false, true, true,
     false, false, false, false, true, true, true, true, false, false, false, false, false, false, true, true, true, true, true, true,
-    false, false, true, true, true, true, true, true, false, false, true, true, true, true};
+    false, false, true, true, true, true, true, true, false, false, true, true, true, true,
+    false, false, false, false};
 const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -125,7 +131,8 @@ const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false,
     false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-    false, false, false, false, false, false, false, false, false, false, false, false, false, false};
+    false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+    false, false, false, false};
 const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
@@ -140,7 +147,8 @@ const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 1, 2, 1,
     2, 2, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 1, 1};
 const unsigned pair_v[] = {
     0, 0, 1, 1, 1, 1,
     2, 2, 2, 2, 0, 0,
@@ -163,7 +171,8 @@ const unsigned pair_v[] = {
     5, 5,
     7, 8, 9, 10, 11, 12,
     13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 23, 23, 23, 23, 24, 24, 24, 24,
-    6, 6, 25, 25, 25, 25, 25, 25, 6, 6, 25, 25, 25, 25};
+    6, 6, 25, 25, 25, 25, 25, 25, 6, 6, 25, 25, 25, 25,
+    26, 26, 27, 27, 28, 28};
 const unsigned pair_p[] = {
     0, 1, 2, 3, 4, 5,
     2, 3, 4, 5, 6, 7,
@@ -186,7 +195,8 @@ const unsigned pair_p[] = {
     64, 65,
     66, 67, 67, 68, 69, 69,
     70, 71, 72, 73, 72, 73, 74, 75, 76, 77, 76, 77, 78, 79, 80, 81, 82, 83, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 86, 87, 88, 89,
-    90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103};
+    90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103,
+    104, 105, 106, 107, 106, 107};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -243,15 +253,22 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][104];
+  Words originals[2][108];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
-  Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
+  Shaders(IDirect3DDevice9 *device, const std::string &path,
+          const std::vector<Case>& cases) : d(device) {
     api(d->GetDeviceCaps(&caps));
-    for (unsigned i = 0; i < std::size(vertex_ids); ++i)
-      originals[0][i] = load(path + "\\vs_" + vertex_ids[i] + ".bin");
-    for (unsigned i = 0; i < std::size(pixel_ids); ++i)
-      originals[1][i] = load(path + "\\ps_" + pixel_ids[i] + ".bin");
+    // Scoped runs require only their selected originals. Load each once, after
+    // validating the case index; variant creation remains lazy in bind().
+    for (const auto& c:cases) {
+      require(c.pair < std::size(pair_v), "case shader pair bounds");
+      const unsigned v=pair_v[c.pair], p=pair_p[c.pair];
+      if (originals[0][v].empty())
+        originals[0][v] = load(path + "\\vs_" + vertex_ids[v] + ".bin");
+      if (originals[1][p].empty())
+        originals[1][p] = load(path + "\\ps_" + pixel_ids[p] + ".bin");
+    }
   }
   ~Shaders() {
     for (auto &x : vertices)
@@ -444,14 +461,15 @@ struct Gpu {
                    D3DRS_COLORWRITEENABLE2})
       api(d->SetRenderState(s, 15));
     api(d->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
-    api(d->SetRenderState(D3DRS_SHADEMODE, is_xt(c) && (c.flags & 2048) ? D3DSHADE_FLAT : D3DSHADE_GOURAUD));
+    api(d->SetRenderState(D3DRS_SHADEMODE, (is_xt(c) || is_glass(c)) && (c.flags & 2048) ? D3DSHADE_FLAT : D3DSHADE_GOURAUD));
     for (unsigned n=0;n<16;++n)
       api(d->SetRenderState(D3DRENDERSTATETYPE((n<8 ? D3DRS_WRAP0 : D3DRS_WRAP8)+(n%8)),0));
     api(d->SetVertexDeclaration(is_xt(c) ? (c.flags & 32768 ? xt_uv2_declaration.p : xt_declaration.p) : declaration.p));
     shaders.bind(c, mode);
     const bool bump = pixel_bump[pair_p[c.pair]];
     const bool asteroid = c.pair >= 110 && c.pair < 116;
-    const bool palette = c.pair >= 116 && !is_xt(c);
+    const bool glass = is_glass(c);
+    const bool palette = c.pair >= 116 && c.pair < 148;
     // Clear the union first: DEFAULT must never retain BUMP's stage-4 cube,
     // and switching stage-3 2D/cube roles must not depend on the last family.
     for (unsigned i = 0; i < 7; ++i)
@@ -463,7 +481,7 @@ struct Gpu {
     for (unsigned i = 0; i < (bump ? 4u : 3u); ++i) {
       D3DLOCKED_RECT lock{};
       api(textures[i]->LockRect(0, &lock, nullptr, 0));
-      std::memcpy(lock.pBits, is_xt(c) && i == (bump ? 2u : 1u) ? xt_specular : texels[i], 16);
+      std::memcpy(lock.pBits, (is_xt(c) || glass) && i == (bump ? 2u : 1u) ? xt_specular : texels[i], 16);
       api(textures[i]->UnlockRect(0));
       api(d->SetTexture(i, textures[i].p));
     }
@@ -483,7 +501,7 @@ struct Gpu {
       api(cube->UnlockRect(D3DCUBEMAP_FACES(face), 0));
     }
     if (!asteroid)
-      api(d->SetTexture(bump ? 4 : 3, cube.p));
+      api(d->SetTexture(glass ? 2 : bump ? 4 : 3, cube.p));
     if ((asteroid && (c.flags & 8)) || (palette && (c.flags & 32))) {
       D3DLOCKED_RECT lock{};
       api(detail->LockRect(0, &lock, nullptr, 0));
@@ -544,7 +562,7 @@ struct Gpu {
     bool fixed = pair_v[c.pair] == 2 || pair_v[c.pair] == 5 ||
                  pair_v[c.pair] == 9 || pair_v[c.pair] == 12 ||
                  pair_v[c.pair] == 15 || pair_v[c.pair] == 18 ||
-                 pair_v[c.pair] == 21 || pair_v[c.pair] == 24;
+                 pair_v[c.pair] == 21 || pair_v[c.pair] == 24 || pair_v[c.pair] == 28;
     unsigned matrix = fixed ? 0 : 24, normal = fixed ? 10 : 31,
              camera = fixed ? 13 : 34, emissive = fixed ? 19 : 40,
              alpha = fixed ? 18 : 39, tex = fixed ? 16 : 37;
@@ -553,7 +571,7 @@ struct Gpu {
       v[252 + k][k] = 1;
     }
     v[252][3] = -.125f;
-    if ((palette || is_xt(c)) && (c.flags & 64)) {
+    if ((palette || glass || is_xt(c)) && (c.flags & 64)) {
       // FLOAT3 object z supplies clip W; all vertices project to z=.5.
       // Previous clip keeps the same W and a projected -.125 X shift.
       v[matrix+2][2] = v[254][2] = .5f;
@@ -569,7 +587,7 @@ struct Gpu {
     if (is_xt(c) && (c.flags & 16)) {
       v[28][0]=.125f; v[29][1]=.0625f;
     }
-    if (palette && (c.flags & 16)) {
+    if ((palette || glass) && (c.flags & 16)) {
       const unsigned world = fixed ? 7 : 28;
       v[world][0]=c.f[47]; v[world+1][1]=c.f[48];
     }
@@ -617,7 +635,7 @@ struct Gpu {
     float p[221][4]{};
     unsigned profile = pair_p[c.pair];
     bool affine = pixel_affine[profile];
-    unsigned glow = affine ? 3 : 0, dir = asteroid ? 0 : glow + 1;
+    unsigned glow = affine ? 3 : 0, dir = (asteroid || glass) ? 0 : glow + 1;
     if (affine) {
       if (c.affine) {
         const float rows[12] = {.75f, .125f,   0,     .0625f, 0,     .5f,
@@ -627,7 +645,7 @@ struct Gpu {
         for (unsigned k = 0; k < 3; ++k)
           p[k][k] = 1;
     }
-    if (!asteroid) p[glow][0] = c.f[31];
+    if (!asteroid && !glass) p[glow][0] = c.f[31];
     p[dir][2] = 1;
     std::memcpy(p[dir + 1], c.f + 22, 12);
     if (pixel_directions[profile] == 2) {
@@ -751,7 +769,7 @@ struct Gpu {
   }
   void test(const Case &c) {
     std::vector<Pixel> native;
-    if (is_xt(c)) {
+    if (is_xt(c) || is_glass(c)) {
       state(c,0);
       api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));
       draw(c);
@@ -765,10 +783,10 @@ struct Gpu {
          motion_before = read(motion.p, D3DFMT_A32B32G32R32F);
     auto depth_before =
         c.depth ? read(current.p, D3DFMT_R32F) : std::vector<Pixel>{};
-    if (is_xt(c)) {
+    if (is_xt(c) || is_glass(c)) {
       require(native.size()==before.size() &&
               std::memcmp(native.data(),before.data(),before.size()*sizeof(Pixel))==0,
-              "XT native/repaired ordinary MRT baseline identity");
+              "native/repaired ordinary MRT baseline identity");
       for (unsigned y : {width/4,width/2,3*width/4})
         for (unsigned x : {width/4,width/2,3*width/4}) {
           const auto& p=before[y*width+x];
@@ -943,7 +961,7 @@ int main(int argc, char **argv) {
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
     file.read(reinterpret_cast<char *>(&count), 4);
-    require(count > 0 && count < 4000, "case count");
+    require(count > 0 && count <= 5000, "case count");
     std::vector<Case> cases(count);
     file.read(reinterpret_cast<char *>(cases.data()),
               cases.size() * sizeof(Case));
@@ -977,7 +995,7 @@ int main(int argc, char **argv) {
       api(factory->CreateDevice(0, D3DDEVTYPE_HAL, window,
                                 D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp,
                                 &device.p));
-      Shaders shaders(device.p, argv[1]);
+      Shaders shaders(device.p, argv[1], cases);
       std::printf("CAPS mrt=%lu vs_slots=%lu ps_slots=%lu\n",
                   shaders.caps.NumSimultaneousRTs,
                   shaders.caps.MaxVertexShader30InstructionSlots,
@@ -985,9 +1003,9 @@ int main(int argc, char **argv) {
       require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");
       {
         Gpu gpu(device.p, shaders, 16);
-        bool has_xt=false;
-        for (const auto& c:cases) has_xt=has_xt || is_xt(c);
-        if (has_xt) gpu.classify_flat();
+        bool has_color_fixture=false;
+        for (const auto& c:cases) has_color_fixture=has_color_fixture || is_xt(c) || is_glass(c);
+        if (has_color_fixture) gpu.classify_flat();
         for (const auto &c : cases) {
           require(c.pair < std::size(pair_v) && c.fp16 < 2 && c.depth < 2, "case bounds");
           gpu.test(c);
@@ -995,8 +1013,14 @@ int main(int argc, char **argv) {
       }
       {
         Gpu gpu(device.p, shaders, 256);
-        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u, 110u, 113u, 116u, 122u, 128u, 138u}) {
+        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u, 110u, 113u, 116u, 122u, 128u, 138u, 162u}) {
+          bool selected=false;
+          for (const auto& c:cases) selected=selected || c.pair==pair;
+          if (!selected) continue;
           Case timed = cases.front();
+          // Glass uses the same material in full/scoped runs, including nonzero Fresnel.
+          if (pair == glass_first_pair)
+            for (const auto& c:cases) if (c.pair==pair) { timed=c; break; }
           timed.pair = pair;
           timed.flags = pixel_bump[pair_p[pair]] ? 1 : 0;
           // Neutral normal for both AG reconstruction and LOW signed XYZ.

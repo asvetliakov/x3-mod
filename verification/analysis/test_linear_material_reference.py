@@ -59,7 +59,7 @@ class MaterialTests(unittest.TestCase):
         evidence = json.loads(path.read_text())
         expected = {}
         for row in evidence['programs']:
-            if row['id'].startswith('ps_') and not {'asteroid_default','asteroid_bump'} & set(row['families']):
+            if row['id'].startswith('ps_') and not {'asteroid_default','asteroid_bump','boron_default','boron_bump','paranid_default','paranid_bump','glass'} & set(row['families']):
                 app = row['lobe_coefficients'].get('source') == 'application'
                 if app:
                     self.assertEqual(row['lobe_coefficients'], {

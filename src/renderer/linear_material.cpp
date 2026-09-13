@@ -93,6 +93,7 @@ struct Pixel {
     // base/detail texture product instead of the hull cube/lightmap tail.
     unsigned asteroid_layout = 0;
     unsigned palette_style = 0; // Boron base=1, Boron single=2, Paranid=3.
+    unsigned glass_fresnel = 0; // Original COLOR1.x source operand; relocated to COLOR0.x.
 };
 constexpr Pixel pixels[] = {
     {0x8759c7838bbc86c2ull,1260,{1197,1175,1242,1229},1217,1206,1251,1,5,7,
@@ -276,12 +277,22 @@ constexpr Pixel pixels[] = {
      {313},{302,310,323,331,340,345,354,358,362,366,370,375,379,393},true,0,0,3},
     {0xfce465befff2f623ull,428,{376,213,307,410,345},0,328,419,3,2,0,
      {339},{328,336,349,357,366,371,380,384,388,392,396,401,405,419},true,0,0,3},
+    // Six SM3 glass pairs: diffuse s0, numeric gloss s1, environment cube s2.
+    {0xa66fb1981ba755b2ull,309,{295,255,287},0,276,299,1,1,3,
+     {248,253,208,240},{205,237,245,250,267,271,276,279,291,299},false,0,0,0,266},
+    {0xebc9b2b3f1564e9aull,341,{327,287,319},0,308,331,1,1,3,
+     {280,285,240,272},{237,269,277,282,299,303,308,311,323,331},false,0,0,0,298},
+    {0xf31c9e2701c8eee4ull,226,{212,174,204},0,192,216,1,1,0,
+     {202,0,0,0},{192,199,208,216},false,0,0,0,198},
+    {0x9d49f288800f898dull,258,{244,206,236},0,224,248,1,1,0,
+     {234,0,0,0},{224,231,240,248},false,0,0,0,230},
 };
 struct Vertex {
     std::uint64_t hash; unsigned words; bool loop; bool bump = false;
     unsigned asteroid_layout = 0;
     unsigned point = 0, emissive = 0, alpha = 0, point_temporary = 0;
     unsigned palette_style = 0, point_response = 0, point_accumulator = 0, alpha_temporary = 0;
+    unsigned glass_fresnel = 0; // Original EXP o6.x becomes o1.x; alpha stays o1.w.
 };
 constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
     {0x719856ce0c213220ull,526,true},{0xbadefd5143b3024full,481,false},
@@ -306,6 +317,9 @@ constexpr Vertex vertices[] = {{0x53a0a641107ed76cull,526,true},
     {0x33388c8897d428a5ull,603,true,true,0,449,464,539,1,3,3,0,2},
     {0xb4059ab6af8fc529ull,603,true,true,0,449,464,539,1,3,3,0,2},
     {0x2a560f246c90fa64ull,552,false,true,0,404,412,488,0,3,0,0,2},
+    {0xc30104cb0efb6675ull,550,true,false,0,431,446,503,5,0,0,0,0,546},
+    {0xe2ad860d5fbb3e59ull,550,true,false,0,431,446,503,5,0,0,0,0,546},
+    {0x74fdc00d802b4027ull,505,false,false,0,392,400,458,1,0,0,0,0,501},
 };
 // Explicit archive pair contract: base shaders never gain toggle-VS admission
 // from table position. The live caller caches this allocation-free contract.
@@ -477,6 +491,12 @@ constexpr Pair pairs[] = {
     {0xb4059ab6af8fc529ull,0xfce465befff2f623ull,0x1f},
     {0xea3d15b287892410ull,0x77a5b2d62fb3be48ull,0x0f},
     {0xea3d15b287892410ull,0xf917d48ee826da1full,0x0f},
+    {0xc30104cb0efb6675ull,0xa66fb1981ba755b2ull,0x07},
+    {0xc30104cb0efb6675ull,0xebc9b2b3f1564e9aull,0x07},
+    {0xe2ad860d5fbb3e59ull,0xf31c9e2701c8eee4ull,0x07},
+    {0xe2ad860d5fbb3e59ull,0x9d49f288800f898dull,0x07},
+    {0x74fdc00d802b4027ull,0xf31c9e2701c8eee4ull,0x07},
+    {0x74fdc00d802b4027ull,0x9d49f288800f898dull,0x07},
 };
 // Fixed family layouts, not a varying/temporary allocator. Asteroid's native
 // UV packing changes the existing motion/depth locations independently of
@@ -486,6 +506,7 @@ struct FamilyAbi { unsigned vertex_rgb, pixel_rgb, pixel_scratch;
     unsigned vertex_depth, pixel_depth, depth_texcoord; };
 constexpr FamilyAbi default_abi{8,7,9,6,5,4,7,6,5}, bump_abi{9,8,10,7,6,5,8,7,6};
 FamilyAbi family_abi(const Pixel& pixel) noexcept {
+    if (pixel.glass_fresnel) return {6,5,9,7,6,4,8,7,5};
     if (pixel.palette_style) return pixel.bump
         ? FamilyAbi{8,7,10,9,8,pixel.palette_style==3?5u:7u,10,9,8}
         : FamilyAbi{10,9,10,8,7,6,9,8,7};
@@ -500,8 +521,8 @@ unsigned temporal_temporary_base(const Pixel& pixel) noexcept {
     if (pixel.asteroid_layout) return 5;
     return pixel.bump ? (pixel.light1 ? 7u : pixel.affine_end ? 6u : 5u) : 5u;
 }
-unsigned point_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style) ? vertex.point : (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
-unsigned emissive_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style) ? vertex.emissive : (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
+unsigned point_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style || vertex.glass_fresnel) ? vertex.point : (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
+unsigned emissive_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style || vertex.glass_fresnel) ? vertex.emissive : (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
 unsigned kind(Word token) noexcept { return ((token >> 28) & 7) | ((token >> 8) & 24); }
 unsigned index(Word token) noexcept { return token & 0x7ff; }
 unsigned mask(Word token) noexcept { return (token >> 16) & 15; }
@@ -615,7 +636,7 @@ bool structure(const Word* code, std::size_t words, bool vertex, Structure& resu
             if (original && type==(vertex ? output_reg : input) &&
                 (reserved_varying(number,vertex,abi,relocated_rgb) || (usage==5 &&
                  (semantic==abi.motion_texcoord || semantic==abi.depth_texcoord)) ||
-                 (usage==LinearMaterialAbi::rgb_usage && semantic==LinearMaterialAbi::rgb_usage_index))) return false;
+                 (!relocated_rgb && usage==LinearMaterialAbi::rgb_usage && semantic==LinearMaterialAbi::rgb_usage_index))) return false;
             if ((type==output_reg && number>=12) || (type==input && !vertex && number>=10)) return false;
         } else if (op==def) {
             if (n!=5) return false;
@@ -675,8 +696,8 @@ bool no_write(const Word* code, const Structure& s, unsigned number, unsigned la
 bool vertex_sites(const Word* code, const Structure& s, const Vertex& vertex) noexcept {
     const bool loop=vertex.loop;
     const unsigned point=point_site(vertex), emissive=emissive_site(vertex);
-    const unsigned alpha=(vertex.asteroid_layout || vertex.palette_style) ? vertex.alpha : (loop?500:455)+(vertex.bump?27:0);
-    const unsigned point_temp=(vertex.asteroid_layout || vertex.palette_style) ? vertex.point_temporary : vertex.bump ? (loop?1:0) : (loop?5:1);
+    const unsigned alpha=(vertex.asteroid_layout || vertex.palette_style || vertex.glass_fresnel) ? vertex.alpha : (loop?500:455)+(vertex.bump?27:0);
+    const unsigned point_temp=(vertex.asteroid_layout || vertex.palette_style || vertex.glass_fresnel) ? vertex.point_temporary : vertex.bump ? (loop?1:0) : (loop?5:1);
     const unsigned response=vertex.palette_style?vertex.point_response:loop?3u:point_temp;
     const unsigned accumulator=vertex.palette_style?vertex.point_accumulator:0u;
     const unsigned alpha_temp=vertex.palette_style?vertex.alpha_temporary:vertex.bump?2u:0u;
@@ -695,6 +716,47 @@ bool vertex_sites(const Word* code, const Structure& s, const Vertex& vertex) no
         }
     return writes==3;
 }
+// Both COLOR semantics retain native flat/Gouraud interpolation. Only the
+// dead original P lanes are reused; no declaration-PP substitution is made
+// for Fresnel or alpha, and no TEXCOORD/WRAP state is introduced.
+bool glass_color_sites(const Word* code,const Structure& s,bool vertex,unsigned fresnel,
+                       unsigned clamp,unsigned alpha) noexcept {
+    unsigned color0=0,color1=0,uses0=0,uses1=0;
+    for (const auto& ins:s.instructions) {
+        const unsigned at=static_cast<unsigned>(ins.at);
+        if (ins.opcode==dcl && kind(code[at+2])==(vertex?output_reg:input)) {
+            const auto n=index(code[at+2]);
+            if (n== (vertex?1u:0u)) {
+                if (code[at+1]!=(0x80000000u|10u) || code[at+2]!=(dst(vertex?output_reg:input,n,xyzw)|(vertex?0:pp))) return false;
+                ++color0;
+            } else if (n==(vertex?6u:5u)) {
+                if (code[at+1]!=(0x80000000u|10u|(1u<<16)) || code[at+2]!=(dst(vertex?output_reg:input,n,1)|(vertex?0:pp))) return false;
+                ++color1;
+            }
+            continue;
+        }
+        if (ins.opcode==dcl || ins.opcode==def || !ins.count) continue;
+        if (vertex) {
+            if (kind(code[at+1])==output_reg && index(code[at+1])==6) {
+                if (at!=fresnel || !exact(code,s,at,14,dst(output_reg,6,1),{lane(temp,0,3)})) return false;
+                ++uses1;
+            }
+        } else for (unsigned n=2;n<=ins.count;++n) {
+            if (kind(code[at+n])!=input) continue;
+            if (index(code[at+n])==0) {
+                if (!((at==clamp && n==2 && code[at+n]==src(input,0)) ||
+                      (at==alpha && n==3 && code[at+n]==lane(input,0,3)))) return false;
+                ++uses0;
+            } else if (index(code[at+n])==5) {
+                if (at+n!=fresnel || n!=3 || ins.opcode!=mul || mask(code[at+1])!=8 ||
+                    !(code[at+1]&pp) || code[at+n]!=lane(input,5,0)) return false;
+                ++uses1;
+            }
+        }
+    }
+    return color0==1 && color1==1 && uses1==1 && (vertex || uses0==2);
+}
+
 bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept {
     if (p.asteroid_layout) {
         const unsigned detail=p.bump?3:2, specular=p.bump?2:1;
@@ -734,6 +796,38 @@ bool pixel_sites(const Word* code, const Structure& s, const Pixel& p) noexcept 
         // The exact physical specular fetch is data; the source proof retains
         // its scalar red chain and the optional AG normal reconstruction.
         return p.texture[specular]!=0 && outputs==2 && textures==detail+1 && directional==(p.light1?4u:1u);
+    }
+    if (p.glass_fresnel) {
+        for (unsigned sampler=0;sampler<3;++sampler)
+            if (!exact(code,s,p.texture[sampler],texld,dst(temp,0,xyzw)|pp,
+                       {src(input,sampler==2?4:1),src(10,sampler)})) return false;
+        if (!exact(code,s,p.clamp,mov,dst(temp,1)|pp|sat,{src(input,0)}) ||
+            !exact(code,s,p.final_rgb,mad,dst(color_output,0)|pp,{src(temp,1),src(temp,0),src(temp,2)}) ||
+            !exact(code,s,p.final_rgb+5,mul,dst(color_output,0,8)|pp,{lane(temp,0,3),lane(input,0,3)}) ||
+            !no_write(code,s,0,8,p.texture[0],p.final_rgb+5)) return false;
+        unsigned textures=0,outputs=0,lights=0;
+        for (const auto& ins:s.instructions) {
+            const unsigned at=static_cast<unsigned>(ins.at);
+            if (ins.opcode==texld) ++textures;
+            if (ins.opcode==dcl || ins.opcode==def || !ins.count) continue;
+            if (kind(code[at+1])==color_output) {
+                if (at!=p.final_rgb && at!=p.final_rgb+5) return false;
+                ++outputs;
+            }
+            if (std::find(p.rgb.begin(),p.rgb.end(),at)!=p.rgb.end() &&
+                (mask(code[at+1])!=xyz || !(code[at+1]&pp) ||
+                 (ins.opcode!=mov && ins.opcode!=add && ins.opcode!=mul && ins.opcode!=mad))) return false;
+            for (unsigned offset=2;offset<=ins.count;++offset) {
+                const auto value=code[at+offset];
+                if (kind(value)!=constant || (index(value)!=p.light0 && (!p.light1 || index(value)!=p.light1))) continue;
+                const auto found=std::find(p.color_source.begin(),p.color_source.end(),at+offset);
+                if (found==p.color_source.end() || value!=src(constant,index(value)) ||
+                    index(value)!=(found-p.color_source.begin()<2?p.light0:p.light1)) return false;
+                ++lights;
+            }
+        }
+        for (const unsigned at:p.rgb) if (at && (at>=s.boundary.size() || !s.boundary[at])) return false;
+        return textures==3 && outputs==2 && lights==(p.light1?4u:1u);
     }
     const unsigned lightmap=p.bump?3:2, cube=p.bump?4:3;
     const unsigned albedo=p.palette_style?(p.bump?1:4):p.bump?4:3, affine_source=p.bump?3:2;
@@ -927,11 +1021,11 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     const auto* row=selected_row(vertex,hash);
     const auto* row_pixel=row ? pixel_for(row->pixel_fingerprint,row->pixel_dword_count) : nullptr;
     if (!row || !row_pixel || row_pixel->bump!=bump ||
-        (vertex && (row_pixel->asteroid_layout!=v->asteroid_layout || row_pixel->palette_style!=v->palette_style))) return LinearMaterialResult::ProfileMismatch;
+        (vertex && (row_pixel->asteroid_layout!=v->asteroid_layout || row_pixel->palette_style!=v->palette_style || bool(row_pixel->glass_fresnel)!=bool(v->glass_fresnel)))) return LinearMaterialResult::ProfileMismatch;
     const auto abi=family_abi(*row_pixel);
     const auto* palette=row_pixel->palette_style ? palette_program(hash) : nullptr;
     if (row_pixel->palette_style && !palette) return LinearMaterialResult::ProfileMismatch;
-    if (row->transformation_class!=((bump || row_pixel->palette_style) ? MotionOutputClass::RelocatedRegisters : MotionOutputClass::ReferenceRegisters) ||
+    if (row->transformation_class!=((bump || row_pixel->palette_style || row_pixel->glass_fresnel) ? MotionOutputClass::RelocatedRegisters : MotionOutputClass::ReferenceRegisters) ||
         row->vertex_output_register!=abi.vertex_motion || row->pixel_input_register!=abi.pixel_motion ||
         row->pixel_temporary_base!=temporal_temporary_base(*row_pixel) ||
         row->vertex_constant_base!=252 || row->pixel_constant_base!=216 || row->pixel_output_register!=1 ||
@@ -941,8 +1035,9 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     const unsigned original_temp_count=vertex ? 7u : temporal_temporary_base(*p);
     try {
         Structure original_structure;
-        if (!structure(original,words,vertex,original_structure,true,abi,original_temp_count,row_pixel->palette_style!=0,bump && row_pixel->palette_style!=0) ||
+        if (!structure(original,words,vertex,original_structure,true,abi,original_temp_count,row_pixel->palette_style!=0,(bump && row_pixel->palette_style!=0) || row_pixel->glass_fresnel!=0) ||
             !(vertex?vertex_sites(original,original_structure,*v):pixel_sites(original,original_structure,*p)) ||
+            (row_pixel->glass_fresnel && !glass_color_sites(original,original_structure,vertex,vertex?v->glass_fresnel:p->glass_fresnel,vertex?0:p->clamp,vertex?0:p->final_rgb+5)) ||
             (row_pixel->palette_style && !palette_sites(original,original_structure,*palette,vertex,bump,row_pixel->palette_style)))
             return LinearMaterialResult::ProfileMismatch;
         Words motion;
@@ -972,7 +1067,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 // FLAT shading, without inheriting D3DRS_WRAPn texture state.
                 // Its distinct physical register leaves the original COLOR0
                 // declaration and alpha precision unchanged.
-                emit(combined,dcl,{0x80000000u|LinearMaterialAbi::rgb_usage|(LinearMaterialAbi::rgb_usage_index<<16),
+                if (!row_pixel->glass_fresnel) emit(combined,dcl,{0x80000000u|LinearMaterialAbi::rgb_usage|(LinearMaterialAbi::rgb_usage_index<<16),
                                   dst(vertex?output_reg:input,vertex?abi.vertex_rgb:abi.pixel_rgb)});
                 if (!vertex) {
                     transfer(combined,false,12,{src(constant,p->light0)},false,abi.pixel_scratch); gain(combined,false,12,0);
@@ -1015,7 +1110,14 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                         combined[copied+operand-at]=vertex ? dst(output_reg,3+scalar,8) : lane(input,2+scalar,3);
                 }
             }
+            if (row_pixel->glass_fresnel && op==dcl && kind(original[at+2])==(vertex?output_reg:input) &&
+                index(original[at+2])==(vertex?6u:5u)) {
+                // COLOR1 is now full-precision P; native Fresnel moved to the
+                // existing COLOR0.x lane, keeping its original input PP hint.
+                combined[copied+2]=dst(vertex?output_reg:input,vertex?6:5);
+            }
             if (vertex) {
+                if (v->glass_fresnel && at==v->glass_fresnel) combined[copied+1]=dst(output_reg,1,1);
                 if (at==point_site(*v)) {
                     combined[copied+3]=src(temp,7);
                     if (v->loop) { combined.erase(combined.begin()+copied+4); combined[copied]=(3u<<24)|mul; }
@@ -1025,6 +1127,8 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                     combined[copied+(v->loop?3:4)]=src(temp,7);
                 }
             } else if (op!=0xfffe) {
+                if (p->glass_fresnel>at && p->glass_fresnel<=at+n)
+                    combined[copied+p->glass_fresnel-at]=lane(input,0,0);
                 if (std::find(p->rgb.begin(),p->rgb.end(),at)!=p->rgb.end()) combined[copied+1]&=~pp;
                 if (at==p->clamp) {
                     combined[copied+1]&=~sat;
@@ -1033,7 +1137,10 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 for (unsigned ordinal=0; ordinal<p->color_source.size(); ++ordinal)
                     if (p->color_source[ordinal]>at && p->color_source[ordinal]<=at+n)
                         combined[copied+p->color_source[ordinal]-at]=src(temp,ordinal<2?12:13);
-                if (p->asteroid_layout) {
+                if (p->glass_fresnel) {
+                    if (at==p->texture[0] || at==p->texture[2])
+                        transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);
+                } else if (p->asteroid_layout) {
                     if (at==p->texture[0] || at==p->texture[p->bump?3:2])
                         transfer(combined,false,0,{src(temp,0)},false,abi.pixel_scratch);
                 } else {

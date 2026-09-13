@@ -1,11 +1,11 @@
 # Glass material conversion contracts
 
-Derived archive review, 2026-09-14. **All 30 glass pass identities remain outside
-linear-material conversion. Six SM3 identities can have an opaque material
-route; their actual blend state decides whether they instead need ordered
-composition.** The family name does not establish transparency. This study
-covers the uncaptured profiles as well as the Run 27 pair. It is a design and
-instruction review, with no replacement implementation or GPU qualification.
+Derived archive review and source implementation, 2026-09-14. **Six SM3 glass
+pairs now have a reviewed opaque material conversion in main source; GPU qualification and
+installation remain pending. The other 24 pairs remain unimplemented.** Actual
+blend state decides whether a draw instead needs ordered composition. The family
+name does not establish transparency. The archive study covers uncaptured
+profiles as well as the Run 27 pair; source evidence is recorded below.
 
 ## Evidence and complete boundary
 
@@ -188,9 +188,9 @@ precision. It is neither specular strength nor environment reflectivity. Never
 premultiply it twice. Native target alpha still depends on color-write mask and
 separate-alpha blend state, even when RGB uses source-over.
 
-## Candidate implementation boundaries
+## Implementation and remaining boundaries
 
-1. **Six-pair SM3 material producer.** Convert raw point/directional RGB before
+1. **Implemented six-pair SM3 material producer.** Convert raw point/directional RGB before
    light accumulation, preserve already-strength-scaled emissive under the
    existing material policy, decode D and C, and replace only the P radiance
    clamp with a full-precision transported linear P. Preserve the entire gloss
@@ -198,12 +198,12 @@ separate-alpha blend state, even when RGB uses source-over.
    native alpha. The diffuse multiplication includes the specular contribution;
    splitting it into an untinted additive highlight would lose native behavior.
    Term isolation must prove the separate cube contribution survives as well.
-2. **Opaque admission.** Reuse the existing opaque scene/material path when its
+2. **Implemented opaque admission.** Reuse the existing opaque scene/material path when its
    actual state gate passes. This directly addresses the captured unsupported
    opaque pair without requiring a transparent compositor first. Keep the
    original per-draw write mask and native alpha outcome; RGB-only effect
    defaults are not permission to force RGBA or weaken the opaque gate silently.
-3. **Source-over admission.** Reuse the [distance-fade composition contract](linear-distance-fade.md)
+3. **Remaining source-over admission.** Reuse the [distance-fade composition contract](linear-distance-fade.md)
    only for actual SRCALPHA/INVSRCALPHA ADD draws with its full state, target,
    recovery and alpha requirements satisfied. Supply the glass native/linear
    RGB twins and exact native alpha at the original draw position. Blended
@@ -212,7 +212,7 @@ separate-alpha blend state, even when RGB uses source-over.
    destination-alpha rules or depth-writing transparent states remain distinct
    admission cases until specified and checked. They are not automatically
    screen-emission passes.
-4. **Twelve-pair SM2 and twelve-pair SM1 producers.** Preserve each native
+4. **Remaining twelve-pair SM2 and twelve-pair SM1 producers.** Preserve each native
    equation above while promoting/rerouting radiance COLOR varyings into
    unclipped TEXCOORD transport and providing shader outputs usable by the
    shared material/temporal contracts. Establish older-profile native RGB/alpha
@@ -272,3 +272,52 @@ numerical reference is needed; do not invent lookup equations. Any later scene
 capture should correlate the selected object, node, draw and material state to
 resolve the user's appearance complaint. No additional user run is requested
 for this architecture checkpoint.
+
+## Six-pair source candidate
+
+The source implementation adds the four SM3 pixel and three vertex originals
+to the existing material core, with the exact six pair keys and sampler mask
+`0x07`. The opaque runtime gate and draw-state transaction are unchanged. The
+[derived source contract](../reverse-engineering/glass-material-profiles.json)
+and [host checker](../../verification/analysis/test_glass_material_transformer.py)
+record the COLOR carrier relocation above. The 24 older pairs remain outside
+this implementation; blended glass admission remains separate.
+
+Host qualification builds 56 variants over all seven originals, both depth
+modes and gains 0/1/4/16. It checks exact pair/cross-pair selection, unchanged
+native instruction spans except listed RGB/carrier edits, exact texture/control
+flow and temporal insertions, COLOR component/precision contracts, output
+aliasing and refusal rollback. Five transformer and six independent glass
+reference tests pass. The unchanged conventional 15-test and XT seven-test
+transformer regressions also pass; the consumed glass negative is replaced by
+an unconverted motion-qualified moon pair. The production translation unit
+cross-compiles with strict warnings, SSE2 and the four-byte incoming stack flags.
+
+The performance inspection adds no per-draw work beyond the existing cached
+contract: new pair rows are appended, so previous lookup order is unchanged.
+Create-time transformation of 56 variants measured 1.462 ms total (about 26.1
+microseconds each), excluding file I/O; this is a host diagnostic, not GPU time
+or game FPS. Maximum weighted static slots are VS 88/90 and PS 144/146 with
+depth off/on, below the SM3 minimum limit of 512.
+
+The existing detached fixture has 254 new glass cases (IDs 3923–4176), and its
+`--glass-only` option runs those cases with one representative glass performance
+window. Native/motion/combined comparisons cover all six pairs, full-precision
+over-one P, Fresnel, diffuse-tinted gloss, cube direction/scale, masks, faces,
+fog/alpha, FLAT/Gouraud and perspective interpolation. Earlier 3,923 case
+payloads remain byte-identical. Missing-record controls and full/scoped report
+checks pass. GPU execution, actual runtime admission and native-Windows behavior
+remain unqualified at this source checkpoint; no game run is requested here.
+
+Independent Sol/high review found no unresolved production or evidence issue.
+The review's scoped-dependency finding was fixed: glass-only now loads and
+records exactly seven originals, validated with an isolated seven-file witness;
+it neither requires nor hashes unrelated prior/XT programs. Stale architecture
+wording was also corrected. GPU qualification remains the next step.
+
+Root integration passes 58 focused transformer/reference/report tests in 62.493 s.
+The retained fixture for 254 glass cases is `/tmp/x3-glass-frozen/linear_material_fixture.exe`,
+SHA-256 `7e71e01d72bfaa95553118dcdf4f8550f2f7302fbd0f856a8dc895da580eb2f7`.
+Its first root-owned Wine attempt waited for the user's active Run 9 and timed
+out before fixture execution. That is a queued qualification, not a GPU failure
+or pass. Installed source remains `d9413fc`; no gameplay change was installed.

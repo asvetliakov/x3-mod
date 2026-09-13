@@ -1,0 +1,456 @@
+{
+  "schema": 1,
+  "scope": "Seven exact SM3 glass originals / six opaque-eligible pairs; no GPU qualification",
+  "pairs": [
+    [
+      "c30104cb0efb6675",
+      "a66fb1981ba755b2"
+    ],
+    [
+      "c30104cb0efb6675",
+      "ebc9b2b3f1564e9a"
+    ],
+    [
+      "e2ad860d5fbb3e59",
+      "f31c9e2701c8eee4"
+    ],
+    [
+      "e2ad860d5fbb3e59",
+      "9d49f288800f898d"
+    ],
+    [
+      "74fdc00d802b4027",
+      "f31c9e2701c8eee4"
+    ],
+    [
+      "74fdc00d802b4027",
+      "9d49f288800f898d"
+    ]
+  ],
+  "programs": [
+    {
+      "id": "vs_c30104cb0efb6675",
+      "words": 550,
+      "rgb": [],
+      "lights": [],
+      "textures": [],
+      "color_uses": [],
+      "fresnel": [
+        546
+      ],
+      "declarations": [
+        [
+          320,
+          1,
+          15,
+          0,
+          10,
+          0
+        ],
+        [
+          335,
+          6,
+          1,
+          0,
+          10,
+          1
+        ]
+      ],
+      "loop": true,
+      "point": 431,
+      "emissive": 446,
+      "alpha": 503
+    },
+    {
+      "id": "vs_e2ad860d5fbb3e59",
+      "words": 550,
+      "rgb": [],
+      "lights": [],
+      "textures": [],
+      "color_uses": [],
+      "fresnel": [
+        546
+      ],
+      "declarations": [
+        [
+          320,
+          1,
+          15,
+          0,
+          10,
+          0
+        ],
+        [
+          335,
+          6,
+          1,
+          0,
+          10,
+          1
+        ]
+      ],
+      "loop": true,
+      "point": 431,
+      "emissive": 446,
+      "alpha": 503
+    },
+    {
+      "id": "vs_74fdc00d802b4027",
+      "words": 505,
+      "rgb": [],
+      "lights": [],
+      "textures": [],
+      "color_uses": [],
+      "fresnel": [
+        501
+      ],
+      "declarations": [
+        [
+          302,
+          1,
+          15,
+          0,
+          10,
+          0
+        ],
+        [
+          317,
+          6,
+          1,
+          0,
+          10,
+          1
+        ]
+      ],
+      "loop": false,
+      "point": 392,
+      "emissive": 400,
+      "alpha": 458
+    },
+    {
+      "id": "ps_a66fb1981ba755b2",
+      "words": 309,
+      "rgb": [
+        205,
+        237,
+        245,
+        250,
+        267,
+        271,
+        276,
+        279,
+        291,
+        299
+      ],
+      "lights": [
+        [
+          208,
+          3
+        ],
+        [
+          240,
+          3
+        ],
+        [
+          248,
+          1
+        ],
+        [
+          253,
+          1
+        ]
+      ],
+      "textures": [
+        [
+          255,
+          1
+        ],
+        [
+          287,
+          2
+        ],
+        [
+          295,
+          0
+        ]
+      ],
+      "color_uses": [
+        [
+          266,
+          "v5",
+          "xxxx"
+        ],
+        [
+          278,
+          "v0",
+          "xyzw"
+        ],
+        [
+          307,
+          "v0",
+          "wwww"
+        ]
+      ],
+      "fresnel": [
+        266
+      ],
+      "declarations": [
+        [
+          122,
+          0,
+          15,
+          2,
+          10,
+          0
+        ],
+        [
+          137,
+          5,
+          1,
+          2,
+          10,
+          1
+        ]
+      ],
+      "clamp": 276,
+      "final_rgb": 299,
+      "alpha": 304,
+      "base": true
+    },
+    {
+      "id": "ps_ebc9b2b3f1564e9a",
+      "words": 341,
+      "rgb": [
+        237,
+        269,
+        277,
+        282,
+        299,
+        303,
+        308,
+        311,
+        323,
+        331
+      ],
+      "lights": [
+        [
+          240,
+          3
+        ],
+        [
+          272,
+          3
+        ],
+        [
+          280,
+          1
+        ],
+        [
+          285,
+          1
+        ]
+      ],
+      "textures": [
+        [
+          287,
+          1
+        ],
+        [
+          319,
+          2
+        ],
+        [
+          327,
+          0
+        ]
+      ],
+      "color_uses": [
+        [
+          298,
+          "v5",
+          "xxxx"
+        ],
+        [
+          310,
+          "v0",
+          "xyzw"
+        ],
+        [
+          339,
+          "v0",
+          "wwww"
+        ]
+      ],
+      "fresnel": [
+        298
+      ],
+      "declarations": [
+        [
+          128,
+          0,
+          15,
+          2,
+          10,
+          0
+        ],
+        [
+          143,
+          5,
+          1,
+          2,
+          10,
+          1
+        ]
+      ],
+      "clamp": 308,
+      "final_rgb": 331,
+      "alpha": 336,
+      "base": true
+    },
+    {
+      "id": "ps_f31c9e2701c8eee4",
+      "words": 226,
+      "rgb": [
+        192,
+        199,
+        208,
+        216
+      ],
+      "lights": [
+        [
+          202,
+          1
+        ]
+      ],
+      "textures": [
+        [
+          174,
+          1
+        ],
+        [
+          204,
+          2
+        ],
+        [
+          212,
+          0
+        ]
+      ],
+      "color_uses": [
+        [
+          194,
+          "v0",
+          "xyzw"
+        ],
+        [
+          198,
+          "v5",
+          "xxxx"
+        ],
+        [
+          224,
+          "v0",
+          "wwww"
+        ]
+      ],
+      "fresnel": [
+        198
+      ],
+      "declarations": [
+        [
+          100,
+          0,
+          15,
+          2,
+          10,
+          0
+        ],
+        [
+          115,
+          5,
+          1,
+          2,
+          10,
+          1
+        ]
+      ],
+      "clamp": 192,
+      "final_rgb": 216,
+      "alpha": 221,
+      "base": false
+    },
+    {
+      "id": "ps_9d49f288800f898d",
+      "words": 258,
+      "rgb": [
+        224,
+        231,
+        240,
+        248
+      ],
+      "lights": [
+        [
+          234,
+          1
+        ]
+      ],
+      "textures": [
+        [
+          206,
+          1
+        ],
+        [
+          236,
+          2
+        ],
+        [
+          244,
+          0
+        ]
+      ],
+      "color_uses": [
+        [
+          226,
+          "v0",
+          "xyzw"
+        ],
+        [
+          230,
+          "v5",
+          "xxxx"
+        ],
+        [
+          256,
+          "v0",
+          "wwww"
+        ]
+      ],
+      "fresnel": [
+        230
+      ],
+      "declarations": [
+        [
+          106,
+          0,
+          15,
+          2,
+          10,
+          0
+        ],
+        [
+          121,
+          5,
+          1,
+          2,
+          10,
+          1
+        ]
+      ],
+      "clamp": 224,
+      "final_rgb": 248,
+      "alpha": 253,
+      "base": false
+    }
+  ],
+  "transport": "Linear P: COLOR1.xyz o6/v5 full precision. Native Fresnel: COLOR0.x o1/v0 retains PP. Native alpha: COLOR0.w unchanged. Motion TEX4 and depth TEX5 unchanged."
+}
