@@ -21,3 +21,7 @@ verification/results/geometry-lease-build.txt
 # Non-Steam bottle runs: raw capture logs (several MB each) stay local; the JSON/text records are tracked.
 verification/results/bottle-*/*-capture.log
 .claude/worktrees/
+
+# Verbose per-image bloom reports remain local; compact reviewed records are tracked.
+verification/results/bloom-filter-summary.json
+verification/results/bottle-*/bloom-filter-summary.json

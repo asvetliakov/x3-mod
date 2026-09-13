@@ -1,0 +1,376 @@
+{
+  "schema": 1,
+  "passed": false,
+  "phase": "failed",
+  "scope": "standalone bloom GPU numerics only",
+  "retained": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-qi8sghb0",
+  "bottle": {
+    "name": "Steam",
+    "wine_arch": "win64",
+    "environment": {
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/Steam/cxbottle.conf"
+  },
+  "inputs_unchanged": true,
+  "caps": [
+    "CAPS ps=ffff0300 vs=fffe0300 max_width=16384 max_height=16384"
+  ],
+  "sampling_selftests": [
+    {
+      "name": "sampling_1px_hdr",
+      "passed": true
+    },
+    {
+      "name": "sampling_odd_ramp",
+      "passed": true
+    }
+  ],
+  "skipped_cases": [],
+  "gpu_admitted_dimensions": {
+    "max_width": 15611,
+    "max_height": 17
+  },
+  "error": "GPU readback differs from the predeclared oracle tolerance",
+  "record_sha256": "a65788fecd6167d89b87db4d7a451867552929bf045856759dee3c1df978892d",
+  "full_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-bloom-gpu-qi8sghb0/summary.json",
+  "image_count": 540,
+  "failed_image_count": 38,
+  "case_count": 40,
+  "all_extraction_variants": [
+    "extract_even_gamma",
+    "extract_even_none",
+    "extract_even_srgb",
+    "extract_gamma",
+    "extract_none",
+    "extract_srgb"
+  ],
+  "sources_before": {
+    "/Users/asvetl/x3-mod/src/temporal/agx.h": "5b4254964b0777aee4a035492ab305032bf60817c31b44fa741f0043c2c2b3e1",
+    "/Users/asvetl/x3-mod/src/temporal/bloom.h": "96b47ed015ca0d92049f0e7ce348715caf07d98388f96fb7cc786b75f350f268",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_common.hlsl": "ede4cad093ece1da226eeecaa3a4f236733b66f2e4c2657ba6f18e8f6e50bcc7",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_down_ps.hlsl": "b7cd43de0d51674a9dce1657fa9e0a90d475fe4749148e6808aa1b040ac6f0a5",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_gamma_ps.hlsl": "4e1e83c1ae348bb6d46c4a931c832b87c9eb69006e112d0fe4a25a19fdf1eb45",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_none_ps.hlsl": "ef60613250c44f59d4cf21ab09f92749553de6741c237d1093ad1f3699355697",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_even_srgb_ps.hlsl": "14cf21de3dc95bc461040323f18a45345a8b87718851787b4a5efbf37db3ea84",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_gamma_ps.hlsl": "ecb7e8d876264971cc566e22b8510a05aba660bcd58ee076163b0faa14c9f276",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_none_ps.hlsl": "e09422f2fe4727627892d448b1e5fc2f51100bc160988a9dd98ee2f11ed957bc",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_extract_srgb_ps.hlsl": "e6b79aac42aa32e079c540b2cb7b1bc20cb02d47a9bda81d481008f20ddd5e4f",
+    "/Users/asvetl/x3-mod/src/temporal/bloom_up_ps.hlsl": "c668fa10466468f70a4e8b1cb6e313a115c70e740f71c03f972d997fe830c8e6",
+    "/Users/asvetl/x3-mod/src/temporal/quad_vs.hlsl": "b4bdb74768bb3e4de04b6a910ff252ef943d7fc4514f31566af6af2ce41e8b57",
+    "/Users/asvetl/x3-mod/tools/analysis/agx_reference.py": "ecb22746b414681151404bc19773b0993e7254e47060864f5bf81681987f3a19",
+    "/Users/asvetl/x3-mod/tools/analysis/bloom_reference.py": "b7953640512cbf2caa292990d56ec1d7929ccfbe0722e2b9b1bc00efbe4f8521",
+    "/Users/asvetl/x3-mod/tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8",
+    "/Users/asvetl/x3-mod/verification/probe/bloom_filter_fixture.cpp": "abc8fb0f9cc6d1762c07b057acfa4bf693f9a98a38697d377fd36bfff72c2136",
+    "/Users/asvetl/x3-mod/verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+    "/Users/asvetl/x3-mod/verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+    "/Users/asvetl/x3-mod/verification/probe/run_bloom_filter.py": "8b2023cce62287c0e2b23dc671a8a6d878b1d4e3b3c5bb6f462de979b5068f10",
+    "/Users/asvetl/x3-mod/verification/probe/wine_lock.py": "b09ad9fa9d78151b0a04730ce23ed49ef9cc01eea01815a7655f900b1e54ede6"
+  },
+  "failed_stages": [
+    {
+      "generation": 0,
+      "name": "geometry_82",
+      "stage": "u3",
+      "failure_count": 3,
+      "max_absolute_error": 6.0,
+      "max_tolerance_ratio": 1.9751135690302193
+    },
+    {
+      "generation": 0,
+      "name": "geometry_82",
+      "stage": "u2",
+      "failure_count": 9,
+      "max_absolute_error": 12.0,
+      "max_tolerance_ratio": 2.983502983502983
+    },
+    {
+      "generation": 0,
+      "name": "geometry_82",
+      "stage": "u1",
+      "failure_count": 27,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 2.1925817650283204
+    },
+    {
+      "generation": 0,
+      "name": "geometry_82",
+      "stage": "u0",
+      "failure_count": 59,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 1.925133689839572
+    },
+    {
+      "generation": 0,
+      "name": "geometry_82",
+      "stage": "final",
+      "failure_count": 122,
+      "max_absolute_error": 16.0,
+      "max_tolerance_ratio": 1.89465706707086
+    },
+    {
+      "generation": 0,
+      "name": "geometry_8462",
+      "stage": "u3",
+      "failure_count": 3,
+      "max_absolute_error": 6.0,
+      "max_tolerance_ratio": 2.1087160262417997
+    },
+    {
+      "generation": 0,
+      "name": "geometry_8462",
+      "stage": "u2",
+      "failure_count": 9,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 1.2752391073326248
+    },
+    {
+      "generation": 0,
+      "name": "geometry_8462",
+      "stage": "u1",
+      "failure_count": 3,
+      "max_absolute_error": 12.0,
+      "max_tolerance_ratio": 1.034928848641656
+    },
+    {
+      "generation": 0,
+      "name": "geometry_8462",
+      "stage": "u0",
+      "failure_count": 21,
+      "max_absolute_error": 12.0,
+      "max_tolerance_ratio": 1.2010569300984866
+    },
+    {
+      "generation": 0,
+      "name": "geometry_8462",
+      "stage": "final",
+      "failure_count": 51,
+      "max_absolute_error": 20.0,
+      "max_tolerance_ratio": 1.3283740701381508
+    },
+    {
+      "generation": 0,
+      "name": "geometry_15611",
+      "stage": "u3",
+      "failure_count": 3,
+      "max_absolute_error": 4.0,
+      "max_tolerance_ratio": 2.076603599446239
+    },
+    {
+      "generation": 0,
+      "name": "geometry_15611",
+      "stage": "u2",
+      "failure_count": 12,
+      "max_absolute_error": 4.0,
+      "max_tolerance_ratio": 3.8308740068104425
+    },
+    {
+      "generation": 0,
+      "name": "geometry_15611",
+      "stage": "u1",
+      "failure_count": 26,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 3.0610292710924045
+    },
+    {
+      "generation": 0,
+      "name": "geometry_15611",
+      "stage": "u0",
+      "failure_count": 45,
+      "max_absolute_error": 16.0,
+      "max_tolerance_ratio": 2.476215300404014
+    },
+    {
+      "generation": 0,
+      "name": "geometry_15611",
+      "stage": "final",
+      "failure_count": 90,
+      "max_absolute_error": 20.0,
+      "max_tolerance_ratio": 2.4393549261417533
+    },
+    {
+      "generation": 0,
+      "name": "srgb_breakpoint",
+      "stage": "u2",
+      "failure_count": 3,
+      "max_absolute_error": 0.015625,
+      "max_tolerance_ratio": 1.0027575833542242
+    },
+    {
+      "generation": 0,
+      "name": "srgb_breakpoint",
+      "stage": "u1",
+      "failure_count": 3,
+      "max_absolute_error": 0.015625,
+      "max_tolerance_ratio": 1.017293997965412
+    },
+    {
+      "generation": 0,
+      "name": "srgb_breakpoint",
+      "stage": "u0",
+      "failure_count": 3,
+      "max_absolute_error": 0.0234375,
+      "max_tolerance_ratio": 1.3172338090010978
+    },
+    {
+      "generation": 0,
+      "name": "srgb_breakpoint",
+      "stage": "final",
+      "failure_count": 12,
+      "max_absolute_error": 0.0234375,
+      "max_tolerance_ratio": 1.3912505796877415
+    },
+    {
+      "generation": 1,
+      "name": "geometry_82",
+      "stage": "u3",
+      "failure_count": 3,
+      "max_absolute_error": 6.0,
+      "max_tolerance_ratio": 1.9751135690302193
+    },
+    {
+      "generation": 1,
+      "name": "geometry_82",
+      "stage": "u2",
+      "failure_count": 9,
+      "max_absolute_error": 12.0,
+      "max_tolerance_ratio": 2.983502983502983
+    },
+    {
+      "generation": 1,
+      "name": "geometry_82",
+      "stage": "u1",
+      "failure_count": 27,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 2.1925817650283204
+    },
+    {
+      "generation": 1,
+      "name": "geometry_82",
+      "stage": "u0",
+      "failure_count": 59,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 1.925133689839572
+    },
+    {
+      "generation": 1,
+      "name": "geometry_82",
+      "stage": "final",
+      "failure_count": 122,
+      "max_absolute_error": 16.0,
+      "max_tolerance_ratio": 1.89465706707086
+    },
+    {
+      "generation": 1,
+      "name": "geometry_8462",
+      "stage": "u3",
+      "failure_count": 3,
+      "max_absolute_error": 6.0,
+      "max_tolerance_ratio": 2.1087160262417997
+    },
+    {
+      "generation": 1,
+      "name": "geometry_8462",
+      "stage": "u2",
+      "failure_count": 9,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 1.2752391073326248
+    },
+    {
+      "generation": 1,
+      "name": "geometry_8462",
+      "stage": "u1",
+      "failure_count": 3,
+      "max_absolute_error": 12.0,
+      "max_tolerance_ratio": 1.034928848641656
+    },
+    {
+      "generation": 1,
+      "name": "geometry_8462",
+      "stage": "u0",
+      "failure_count": 21,
+      "max_absolute_error": 12.0,
+      "max_tolerance_ratio": 1.2010569300984866
+    },
+    {
+      "generation": 1,
+      "name": "geometry_8462",
+      "stage": "final",
+      "failure_count": 51,
+      "max_absolute_error": 20.0,
+      "max_tolerance_ratio": 1.3283740701381508
+    },
+    {
+      "generation": 1,
+      "name": "geometry_15611",
+      "stage": "u3",
+      "failure_count": 3,
+      "max_absolute_error": 4.0,
+      "max_tolerance_ratio": 2.076603599446239
+    },
+    {
+      "generation": 1,
+      "name": "geometry_15611",
+      "stage": "u2",
+      "failure_count": 12,
+      "max_absolute_error": 4.0,
+      "max_tolerance_ratio": 3.8308740068104425
+    },
+    {
+      "generation": 1,
+      "name": "geometry_15611",
+      "stage": "u1",
+      "failure_count": 26,
+      "max_absolute_error": 8.0,
+      "max_tolerance_ratio": 3.0610292710924045
+    },
+    {
+      "generation": 1,
+      "name": "geometry_15611",
+      "stage": "u0",
+      "failure_count": 45,
+      "max_absolute_error": 16.0,
+      "max_tolerance_ratio": 2.476215300404014
+    },
+    {
+      "generation": 1,
+      "name": "geometry_15611",
+      "stage": "final",
+      "failure_count": 90,
+      "max_absolute_error": 20.0,
+      "max_tolerance_ratio": 2.4393549261417533
+    },
+    {
+      "generation": 1,
+      "name": "srgb_breakpoint",
+      "stage": "u2",
+      "failure_count": 3,
+      "max_absolute_error": 0.015625,
+      "max_tolerance_ratio": 1.0027575833542242
+    },
+    {
+      "generation": 1,
+      "name": "srgb_breakpoint",
+      "stage": "u1",
+      "failure_count": 3,
+      "max_absolute_error": 0.015625,
+      "max_tolerance_ratio": 1.017293997965412
+    },
+    {
+      "generation": 1,
+      "name": "srgb_breakpoint",
+      "stage": "u0",
+      "failure_count": 3,
+      "max_absolute_error": 0.0234375,
+      "max_tolerance_ratio": 1.3172338090010978
+    },
+    {
+      "generation": 1,
+      "name": "srgb_breakpoint",
+      "stage": "final",
+      "failure_count": 12,
+      "max_absolute_error": 0.0234375,
+      "max_tolerance_ratio": 1.3912505796877415
+    }
+  ]
+}

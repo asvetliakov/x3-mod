@@ -87,8 +87,11 @@ SEH, ownership and restoration gaps; the retained old passes and added memory
 must be measured. The [filter numerical core](verification/hdr-bloom-filter.md) is now reviewed:
 seventeen numerical host tests, three static-budget controls and eight native
 shader compilations pass. Compile-time extraction variants reduce the largest
-program to 362 of the 512-slot SM3 minimum. A standalone GPU fixture is under
-review; GPU output, renderer integration and game acceptance remain pending.
+program to 362 of the 512-slot SM3 minimum. The first standalone GPU run completed 40 cases and Reset (540 stage
+readbacks), but 38 reconstruction readbacks failed the fixed numerical
+tolerance. Downsample stages and sampling controls passed. The retained
+failure is being diagnosed; GPU acceptance, renderer integration and game
+acceptance remain pending.
 No integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)

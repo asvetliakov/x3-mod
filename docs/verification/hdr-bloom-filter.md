@@ -56,8 +56,13 @@ PASS as current. Guard/input preflight refusals do not begin a new run.
 
 ## Next gates
 
-A standalone GPU fixture is being prepared to compare every pyramid stage to
-the independent oracle with explicit input and intermediate FP16 quantization.
+The first standalone GPU fixture run compared every pyramid stage to the
+independent oracle with explicit input and intermediate FP16 quantization.
+All 40 cases ran across two generations with a successful Reset and no
+dimension skips: 540 readbacks were produced, of which 38 reconstruction
+images failed the fixed tolerance. The downsample stages and both sampling
+controls passed. This is a rejected numerical run, not GPU qualification;
+the cause is under investigation.
 It must cover black/DC, impulse/chroma, odd and one-pixel dimensions, threshold,
 exposure/clamp extremes, Reset and resource cleanup. GPU qualification and
 native Windows runtime testing remain pending.
