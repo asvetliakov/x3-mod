@@ -1,7 +1,7 @@
 # Exposure for X3's outdoor space scenes
 
-2026-09-14. The next source candidate selects **Auto capped at +1.5 EV**
-following run 27 visual acceptance; the installed build still defaults to fixed EV 0.
+2026-09-14. The installed build selects **Auto capped at +1.5 EV**
+following run 27 visual acceptance; fixed EV 0 remains a comparison option.
 The scene model is black cosmos, small stars, large colored
 nebulae, planets/suns, ships and transient effects. Indoor/hangar adaptation
 is not a design premise. The current implementation is described in
@@ -14,7 +14,7 @@ Published practice in other space games is collected separately in
 ## Current policy after run 27
 
 The user preferred Auto to fixed EV 0 and then accepted the milder +1.5 EV
-comparison. Adopt **Auto with a +1.5 EV maximum** as the next production and
+comparison. Adopt **Auto with a +1.5 EV maximum** as the installed production and
 launcher default. Retain `--hdr-exposure fixed`, explicit manual EV, and the
 Ctrl+Shift+F9 Auto/fixed-0 comparison. Explicit manual EV remains authoritative;
 explicit EV limits remain supported. Standalone component defaults are unchanged.
@@ -74,8 +74,8 @@ it is useful comparison evidence, not the preferred production design.
 The planned same-run Auto/fixed-0 toggle allows the user to judge the existing
 +2 baseline against EV 0 without changing scene, camera, material coverage or
 bloom simultaneously. R1/R2 remain offline experiments and are not selected for
-production. Visual acceptance of the fixed default remains pending; a noticeable
-adaptation effect is not a quality requirement. The independent review approved
+production. The later Run 27 decision above supersedes the pending fixed-default
+comparison; a noticeable adaptation effect is not a quality requirement. The independent review approved
 the capture boundary, numerical method and conclusions after fixing the test
 module to propagate repository import failures and cover two reduction levels.
 All four focused study tests pass; no Wine or production build was required.

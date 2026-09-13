@@ -1,112 +1,64 @@
 {
-  "source_commit": "541e3802fc3d9d5214920734ccf79bc12d61e279",
-  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/build/d3d9.dll",
+  "source_commit": "d9413fc8377b1893f4845c977cda771d3edf1401",
+  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/source",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/source/build/d3d9.dll",
+  "build_log": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/build.log",
   "installed": true,
   "game_launched": false,
   "native_windows_verified": false,
+  "build_seconds": 8.89,
+  "dll_sha256": "7b3dd2885f9568c0d791dcc58b197276889b9de80a91fbdec38528cc50bff2b7",
+  "dll_bytes": 13351668,
   "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
-  "build_seconds": 8.504,
-  "dll_sha256": "f4094be54971cb48171175536aded8f31a49e6853167ce14be7584320ab4f36e",
-  "dll_bytes": 13325135,
-  "build_log": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/build.log",
-  "seam_build_seconds": 11.115,
-  "verification_artifacts": {
-    "seam": {
-      "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/verification/probe/build/motion-output-seam/d3d9.dll",
-      "sha256": "e7224bb06176105f75abb183e6ba0c451e9ab9fdb0e4fa7b4c6892824a3636ef"
-    },
-    "fixture": {
-      "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/verification/probe/build/motion_output_fixture.exe",
-      "sha256": "b43c7e8e5aa04a628abceab112b02be3c74d5dbcd408f49cbff1027619ed34a4"
-    },
-    "fixture_distinct_keys": {
-      "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/motion_output_fixture_distinct_keys.exe",
-      "sha256": "0d0051130cc038c9ed937a375ab26634edfe4f0fe25213cb773a63d49e89e30b",
-      "source_commit": "3d5c14e56e8b09c24e62d56a6924e8cc5176ab59",
-      "build_seconds": 4.481,
-      "scope": "WRAP/XT indexed history fixture correction only; production DLL and seam unchanged"
-    }
-  },
-  "no_x87": {
-    "result": "PASS",
-    "reachable_functions": 218,
-    "report": "/tmp/x3-glow-phases-fixed-no-x87.json"
-  },
-  "bloom_packaged_programs": {
-    "passed": true,
-    "count": 9,
-    "programs": {
-      "bloom_extract_gamma": {
-        "sha256": "012bba4ceb06c1c0acceb795a0b6051b17a5b2d34702aadee8c209dfb5580506",
-        "occurrences": 2
-      },
-      "bloom_extract_srgb": {
-        "sha256": "7ab2dd0f07401e7856beb458983d409fde3e029d5066e9016dbbb975fd5ba265",
-        "occurrences": 2
-      },
-      "bloom_extract_none": {
-        "sha256": "6916cb8d926bd713f8a3b0536cf4f554918d57bdfa874e2181043cc5e10af6c8",
-        "occurrences": 2
-      },
-      "bloom_extract_even_gamma": {
-        "sha256": "3063963c4c27700202e01e2e7349fbd04c779f7bcc6d63ea1dbd140ff52b56e7",
-        "occurrences": 2
-      },
-      "bloom_extract_even_srgb": {
-        "sha256": "1612fec13c69ce0ba284b24ff0f0f3cdf12142d4d4479b3ed9b646715d3ead8f",
-        "occurrences": 2
-      },
-      "bloom_extract_even_none": {
-        "sha256": "5e9406c803795b52f21e21cd57dcbd7083ce112d1f2b0eee97e54521bc8cdc1f",
-        "occurrences": 2
-      },
-      "bloom_down": {
-        "sha256": "9ea94135dd015f57feb39be5310a19e7ccad6d55a35f64bcb69fb242372adf42",
-        "occurrences": 2
-      },
-      "bloom_up": {
-        "sha256": "b79660f12279e31f8730048eafa052cd7bb89121ace426795cd1ae68c1ed5c34",
-        "occurrences": 2
-      },
-      "bloom_agx": {
-        "sha256": "7a5f651beee4a3a0dcfcfe4eb843022126789f04459b0cec8ca5f984402d94e6",
-        "occurrences": 2
-      }
-    }
-  },
-  "load": {
-    "passed": true,
-    "case": "writable",
-    "checks": 8,
-    "exports": 17
-  },
-  "change": "Authored-alpha bloom, 162 linear material pairs, twenty default-off SM2 emission pairs, bounded native selection-phase diagnostics and deferred XT availability logging.",
-  "qualification": {
-    "integration": "docs/verification/combined-glow-materials.md",
-    "bloom": "verification/results/bottle-X3/bloom-authored-glow.json",
-    "material_gpu": "verification/results/bottle-X3/linear-material-gpu.json",
-    "material_live": "verification/results/bottle-X3/linear-material-live.json",
-    "wrap_live": "verification/results/bottle-X3/linear-material-live-wrap.json",
-    "xt_live": "verification/results/bottle-X3/linear-material-live-xt.json",
-    "emission_live": "verification/results/bottle-X3/linear-emission-live-gpu.json",
-    "game_phases": "verification/results/bottle-X3/game-phase-cpu-r2.txt"
-  },
   "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
   "preserved_files": {
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
   },
   "rollback": {
-    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/rollback-d3d9.dll",
-    "dll_sha256": "3cbb350c3148e3e703677182cb9fb7b85e28af048f5b19c0dbe29b570ef9e42a",
-    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/rollback-x3-modern-install.json"
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/rollback-d3d9.dll",
+    "dll_sha256": "f4094be54971cb48171175536aded8f31a49e6853167ce14be7584320ab4f36e",
+    "source_commit": "541e3802fc3d9d5214920734ccf79bc12d61e279",
+    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/rollback-x3-modern-install.json"
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 218,
+    "report": "/tmp/x3-selection-candidate-no-x87.json"
+  },
+  "load": {
+    "passed": true,
+    "case": "writable",
+    "checks": 8,
+    "exports": 17,
+    "result": "verification/results/bottle-X3/d3d9-exports-summary.json"
+  },
+  "change": "Authored glow gain 0.35, Auto exposure default capped at +1.5 EV, corrected VM context provenance, 33-site selection/voice trace and 16 KiB combined hook arena.",
+  "qualification": {
+    "focused_host_tests": 31,
+    "focused_host_seconds": 13.787,
+    "selection_cpu": "verification/results/bottle-X3/selection-native-cpu-summary.json",
+    "bloom_gain": "docs/architecture/bloom-authored-glow.md",
+    "exposure_default": "docs/architecture/space-exposure-policy.md",
+    "provenance": "docs/reverse-engineering/chase-view-transition.md",
+    "unchanged_gpu_state_evidence": "docs/verification/combined-glow-materials.md",
+    "unchanged_gpu_source_commit": "541e3802fc3d9d5214920734ccf79bc12d61e279"
   },
   "qualification_status": "passed-reviewed-installed",
   "launch_dry_run": {
-    "run8": true,
+    "run9": true,
     "game_launched": false,
     "auto_ev_max": 1.5,
-    "game_phases": true
+    "game_phases": true,
+    "result": "/tmp/x3-run9-dry-run.json"
   }
 }

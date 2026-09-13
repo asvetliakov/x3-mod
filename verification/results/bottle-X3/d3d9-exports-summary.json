@@ -13,17 +13,17 @@
   },
   "scope": "Selected console-fixture cases under CrossOver Preview: 17 D3D9 exports, forwarded entry points and ret-N fallbacks; the readonly case additionally checks the %LOCALAPPDATA% session-log fallback. Not a native-Windows run.",
   "selected_case": "writable",
-  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/build/d3d9.dll",
+  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/source/build/d3d9.dll",
   "cases": {
     "writable": {
       "exit": 0,
       "checks": 8,
       "failures": 0,
       "readonly": false,
-      "directory": "verification/probe/build/d3d9-exports-writable-20260913-233946-651186",
-      "trace": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/verification/probe/build/d3d9-exports-writable-20260913-233946-651186/x3-modern-captures/session-20260913-233948-204.log",
-      "trace_sha256": "ae7d34012d8fc863ccbf7427a7633ad9c8c1a9992cbbc8b1319e7f99fed57088",
-      "capture_dir": "Z:\\private\\var\\folders\\l6\\0sdq5b49401b_4m_26gsl1f00000gn\\T\\x3-glow-phases-fixed-ij4o5w79\\source\\verification\\probe\\build\\d3d9-exports-writable-20260913-233946-651186\\x3-modern-captures",
+      "directory": "verification/probe/build/d3d9-exports-writable-20260914-012645-413906",
+      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260914-012645-413906/x3-modern-captures/session-20260914-012647-204.log",
+      "trace_sha256": "ed660c609790ac4df67f96d51e915f60a0bf66095cabbb1c99403a1b5a36f3b2",
+      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260914-012645-413906\\x3-modern-captures",
       "source": "game",
       "localappdata": "C:\\users\\crossover\\AppData\\Local",
       "userprofile": "C:\\users\\crossover",
@@ -35,7 +35,7 @@
         },
         "Direct3DCreate9On12": {
           "name": "Direct3DCreate9On12",
-          "result": "00299560"
+          "result": "00299968"
         },
         "Direct3D9EnableMaximizedWindowedModeShim": {
           "name": "Direct3D9EnableMaximizedWindowedModeShim",
@@ -66,17 +66,17 @@
       },
       "on12_forwarded": true,
       "on12ex_forwarded": false,
-      "dll_sha256": "f4094be54971cb48171175536aded8f31a49e6853167ce14be7584320ab4f36e",
-      "exe_sha256": "f6ac5adfe857d0fb02a36cff3658e900d938a4ea1befb6a6681f26f91e95dd4f",
+      "dll_sha256": "7b3dd2885f9568c0d791dcc58b197276889b9de80a91fbdec38528cc50bff2b7",
+      "exe_sha256": "839d170810134dafc2dcb16b96c3165024c72a2d929ce61493a81445ee4fe6f2",
       "env_lines": [
         "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
         "ENV USERPROFILE=C:\\users\\crossover"
       ]
     }
   },
-  "dll_sha256": "f4094be54971cb48171175536aded8f31a49e6853167ce14be7584320ab4f36e",
+  "dll_sha256": "7b3dd2885f9568c0d791dcc58b197276889b9de80a91fbdec38528cc50bff2b7",
   "export_directory": {
-    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/build/d3d9.dll",
+    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/source/build/d3d9.dll",
     "machine": "0x014c",
     "image_base": "0x6fb40000",
     "dll_name": "d3d9.dll",
@@ -231,13 +231,13 @@
     "tools/analysis/pe_exports.py": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea"
   },
   "binaries": {
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/verification/probe/build/d3d9_exports_fixture.exe": "f6ac5adfe857d0fb02a36cff3658e900d938a4ea1befb6a6681f26f91e95dd4f",
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-phases-fixed-ij4o5w79/source/build/d3d9.dll": "f4094be54971cb48171175536aded8f31a49e6853167ce14be7584320ab4f36e"
+    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "839d170810134dafc2dcb16b96c3165024c72a2d929ce61493a81445ee4fe6f2",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-glow-selection-candidate-9r6ddbgc/source/build/d3d9.dll": "7b3dd2885f9568c0d791dcc58b197276889b9de80a91fbdec38528cc50bff2b7"
   },
   "limits": [
     "Wine backend: three of the four naked forwarders reach Wine spec stubs and are resolved but not called; Direct3D9EnableMaximizedWindowedModeShim exercises the fallback path.",
     "The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.",
     "Windows is cross-compiled, not verified."
   ],
-  "report_sha256": "5d9ebb96316976f287fad43639cb4cc04d22f78b11d66291a8aeb2c22b1d26c3"
+  "report_sha256": "ee7282e6d396e9da1bd031c605083e25b3a2f5ebddbc524a8e9bf6cdfad85e14"
 }

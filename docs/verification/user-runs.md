@@ -5,7 +5,7 @@ left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. Installed build: chase firing fix with 13° pitch and
 0.9 distance, softer 0.28/0.38 s follow, predictive lead marker, opt-in FP16 bloom
 162 reviewed linear material pairs, the central chase display correction, and
-fixed exposure plus same-run exposure/bloom controls;
+Auto exposure capped at +1.5 EV, stronger authored glow (0.35), and same-run exposure/bloom controls;
 [build record](../../verification/results/linear-material-install.json).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
@@ -24,11 +24,42 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
 | 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; follow-ups combined into run 8 |
-| 8 | Restored glow, milder exposure and native selection-stutter trace | 0 | Completed as run 27; stronger glow and issue fixes pending |
+| 8 | Restored glow, milder exposure and native selection-stutter trace | 0 | Completed as run 27 |
+| 9 | Stronger glow and selection/voice timing | 1 | Ready on installed source `d9413fc` |
 
-**No new enhanced run is needed yet.** Run 4 remains the optional vanilla cursor comparison.
+**Run 9 is ready.** Run 4 remains the optional vanilla cursor comparison.
 Emission stays off for this comparison; its twenty-pair live route is qualified,
 but gameplay appearance and cost will need separate acceptance.
+
+## 9. Stronger glow and selection/voice timing — Ready
+
+Installed source `d9413fc` raises authored glow from 0.10 to 0.35, defaults to
+Auto capped at +1.5 EV, and adds timings inside target notification and voice
+playback. Camera values and material coverage stay as accepted. This build
+measures the selection pause; it does not claim to fix it or distant shimmer.
+Keep the **game's Glow enabled**.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --game-phases \
+  --taa-sharpen 0 --taa-mip-bias 0 \
+  --hdr --hdr-tonemap --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --capture-start 999999 --capture-frames 4
+```
+
+1. Load the usual save and settle. Select several different ships/objects, about
+   five seconds apart; then select the same targets again. Note whether the pause
+   differs on repeat selection and whether target speech plays around the pause.
+2. Face an engine emitter or station lights. Compare **Ctrl+Shift+F10** OFF/ON
+   without moving. Report whether glow strength and spread now look right;
+   screenshots are useful if it is still weak, excessive or oddly shaped.
+3. Exit normally. No F8 captures, sector changes or full camera retest are needed.
+   `x3run` saves the log automatically. Auto/+1.5 is the new default;
+   Ctrl+Shift+F9 still compares with fixed EV 0 if desired.
+
+One short session combines both checks. The command passes `--dry-run`; the
+agent has not launched the game.
 
 ## 8. Restored glow, milder exposure and selection trace — Completed
 

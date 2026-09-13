@@ -7,8 +7,8 @@ been promoted without recompilation and verified in the installed DLL;
 appearance is now confirmed in run 27, but the user finds the glow too subtle;
 gameplay frame cost remains unqualified. This changes extraction inside the existing
 [BloomPass](bloom-pass-runtime.md), not the original-once lifetime/state boundary.
-The installed build uses authored gain 0.10 and highlight gain 0.05.
-The next source candidate raises authored gain to 0.35; exposure defaults are unchanged.
+The installed build uses authored gain 0.35 and highlight gain 0.05. The separate
+[exposure policy](space-exposure-policy.md) now defaults to Auto capped at +1.5 EV.
 
 ## Run 27 strength adjustment
 
@@ -17,7 +17,7 @@ only authored gain from 0.10 to **0.35**, preserving highlight gain 0.05 and the
 existing radius/scatter. The calibration below already evaluates this value:
 at +1.5 EV the two source frames predict mean max-channel changes of 6.09–9.36
 display codes on emitters, 9.45–15.89 on unmarked pixels within eight pixels of
-strong emitters, and 0.176–0.226 farther than 32 pixels. At the installed 0.10,
+strong emitters, and 0.176–0.226 farther than 32 pixels. At the prior installed 0.10,
 the corresponding ranges are 1.95–2.98, 3.72–6.49 and 0.061–0.070.
 These are bounded offline estimates, not final gameplay pixels or native parity.
 
@@ -25,8 +25,8 @@ This gives a stronger local halo without changing the unmarked highlight policy.
 The sweep cannot qualify halo shape because radius was held fixed. If strength
 is sufficient but spread remains too tight, evaluate radius separately. No shader
 recompile, extra draw, resource, texture fetch or CPU work is introduced: the
-existing constant carries the new gain. Installation and visual acceptance of
-0.35 remain pending; do not repeat the completed run on the old build.
+existing constant carries the new gain. Gain 0.35 is installed; visual acceptance
+is queued as [Run 9](../verification/user-runs.md#9-stronger-glow-and-selectionvoice-timing--ready).
 
 ## Observed failure and native meaning
 
