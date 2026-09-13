@@ -1,0 +1,205 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "render_contract": {
+    "sampler_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "sampler_srgb": false,
+    "srgb_write": false,
+    "msaa": false,
+    "targets": [
+      "RGBA16F/RGBA32F",
+      "RGBA32F",
+      "R32F"
+    ],
+    "alpha_test": true,
+    "alpha_function": 7,
+    "alpha_reference": 1,
+    "color_mask0": 7,
+    "hardware_depth": "D24S8",
+    "hardware_depth_functions": [
+      "LESSEQUAL",
+      "EQUAL probes"
+    ],
+    "stencil": "off and diagnostic INCRSAT/DECRSAT twins",
+    "fixed_function_fog": false,
+    "dither": false
+  },
+  "scope": "Two captured Argon pairs, GE/ref1, mask7, blend off. Detached native/motion/combined coverage, retained alpha, hardware depth/stencil and poisoned MRT twins. No production gate/live TAA/native Windows qualification.",
+  "timing_scope": "No benchmark in this detached correctness mode; runtime route cost remains unmeasured.",
+  "tolerance": {
+    "rgb_relative": 0.006,
+    "rgb_absolute": 2e-05,
+    "tiny_rgb_absolute": 1e-12,
+    "retained_sample_precision": "float32/binary16 reference envelope",
+    "alpha": "exact"
+  },
+  "original_sha256": {
+    "ps_5e0a10fe752b6140.bin": "ffd612d6d0dcc9195322cfa71f11b6a76751c49e5b87fe660bfc7360bc0f1a19",
+    "ps_63f96eba9eea7880.bin": "2046f15c8d3c761508a5abf8e4b540c7d6aa8902d131f02533377e68a9bfa75b",
+    "vs_4944d81dfe531b37.bin": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
+    "vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c"
+  },
+  "executable_sha256": "5756a0a8c4a4aca9231b4b58e854649f738b9b508d73a9532dbdecbbff209fca",
+  "raw_report": "/tmp/x3-linear-alpha-test-gpu/report.txt",
+  "code_sha256": {
+    "src/renderer/linear_material.cpp": "f5e4532b43c026b8cd7349bcd38608cf087211e2155f60ca6b53b214d6c67cb3",
+    "src/renderer/linear_material.h": "b6db62b2f45cc306964876320a22033218378a41723f7cde6cdde8338710895b",
+    "src/renderer/linear_xt_material_inc.h": "ac003397997468cd59ca306f8f74a5667e7f3859ee0672ebff499411e2a1268c",
+    "src/renderer/linear_xt_profiles_inc.h": "15eb648b0af0808cba5dda48442ee171e820d34ca235227a13fcd08cb26b9e5e",
+    "src/renderer/material_motion.cpp": "e4e79cee3f4d2cb0bcb38d9e82b4d1ffe7009410211bea3aa79ae3bf4bfefe6c",
+    "src/renderer/material_motion.h": "4784fb7aacad1d633e4ca85cecdc428953ad71bc9570b9edbba858a3a7faedd0",
+    "src/renderer/motion_output_profiles.h": "df9b399c17e8053c0443446d72e09ac82d04f44937b9fbba802bba313339741f",
+    "src/renderer/motion_output_profiles_inc.h": "a6c007457874a944525b3406229ded1359a7738e858d5cbaadcd6c0554b4cdb7",
+    "docs/reverse-engineering/linear-material-profiles.json": "fca3a26846413632b314810a1093f228607f7044c7c3dd73ca9d321a59a56ba8",
+    "docs/reverse-engineering/xt-material-profiles.json": "3c8715479e0fe53c1336d891c09ccb6a2fd88e92873e6ac9e4f16a5167c6c80f",
+    "verification/probe/linear_material_fixture.cpp": "9661daeae2a856ba34f4cbc5231f451b30a1117cdd223ecb502173bd9f09cecf",
+    "verification/probe/linear_alpha_test_fixture_inc.h": "6de6729442ba425b791256c30110c9b4f0dae8b16d7c024ba14e2d3809e52b47",
+    "verification/probe/linear_material_reference.py": "43b3a8fbf5cb15c90600047f19fe8a9dd6b4455a69dd70d288bd9eaadaab7bb2",
+    "verification/probe/linear_xt_fixture_reference.py": "19e2ada0cd4e7d79086c364fa4b5ccae5c8931aa7fabddc2a4f8cf10740307e9",
+    "verification/probe/linear_glass_fixture_reference.py": "6e364915c820a21854dcada9ac563fdd0fe20d34f4aadc3909729d57fc600c1f",
+    "verification/analysis/xt_material_reference.py": "e7d1ada3e47bb0463a1fa48f062aceee0d54bd8d655a4c4688ec4c9135728344",
+    "verification/probe/run_linear_material.py": "71fa3ba7d2ec24a7a01a87ceb27be65371ad0d084b77df4017efad404192d048"
+  },
+  "exit_code": 0,
+  "cases": 48,
+  "pairs": 2,
+  "unique_originals": 4,
+  "shader_creations": 20,
+  "scenes": 288,
+  "twins": 864,
+  "checks": 2609760,
+  "alpha_samples": 12288,
+  "accepted_native_pixels": 5376,
+  "max_tolerance_fraction": 2.5301338717302897e-05,
+  "native_threshold_rows": [
+    {
+      "id": 0,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    },
+    {
+      "id": 6,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    },
+    {
+      "id": 12,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    },
+    {
+      "id": 18,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    },
+    {
+      "id": 24,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    },
+    {
+      "id": 30,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    },
+    {
+      "id": 36,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    },
+    {
+      "id": 42,
+      "alpha_bits": [
+        "00000000",
+        "3b808080",
+        "3b808081",
+        "3b808082",
+        "3b000000",
+        "3c000000",
+        "3f000000",
+        "3f800000"
+      ],
+      "native_coverage": "00110111"
+    }
+  ]
+}

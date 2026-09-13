@@ -1,6 +1,6 @@
 # Selected alpha-tested material route: architecture assessment
 
-2026-09-14. Source/shader architecture review and public D3D9 capability probe. Root has run the capability probe in X3; actual cutout MRT behavior and any production route remain unqualified. No production gate change.
+2026-09-14. Source/shader architecture review and public D3D9 capability probe. Root has run the capability probe and the selected detached cutout GPU twins in X3; both pass. The production cutout route and live TAA remain unqualified. No production gate change.
 
 ## Finding and bounded admission candidate
 
@@ -36,7 +36,7 @@ Reuse the existing detached linear-material fixture plus the selected live motio
 4. Move the cutout over independently moving opaque/background geometry. Passing samples own the foreground depth/correspondence; holes retain the real underlying writer or the original sentinel. Verify appearance/disappearance, jittered edges and minification, cutout/opaque and LOD transitions, Reset, feature toggles and failures. Reuse existing depth-disocclusion/history-reset behavior; no blanket mask is necessary merely because alpha testing is on. Do not fabricate foreground motion/depth in holes. Changing texture alpha/thresholds or nearly coplanar coverage may evade depth rejection: if those cases fail, add a specifically proved coverage-change invalidation/reactive policy before claiming general temporal support. A reactive fallback alone would not complete cutout TAA.
 5. Exercise missing caps/formats, wrong compare/ref/mask/blend/fog/dither/MSAA, unknown shadow state, setter mutation/failure and recovery, state-block invalidation, lazy/per-draw transitions and Reset. All refusal paths preserve native alpha-test behavior. Measure paired completion cost of only the selected route; there is no new required full-screen pass, though extra MRT bandwidth/fragment cost and any driver alpha-test scheduling cost remain to be measured.
 
-Recommended next action: decide whether to qualify this exact two-pair cutout state alongside the existing fade prototype. This is a materially simpler composition case and affects 32 captured draws, but importance for visible brightness or shimmer depends on the newly added target/ancestor capture and a same-object transition. Do not call it the station bug's cause or a solved visual issue.
+Root approved qualification of this exact two-pair cutout state alongside the existing fade prototype. This is a materially simpler composition case and affects 32 captured draws, but importance for visible brightness or shimmer depends on the newly added target/ancestor capture and a same-object transition. Do not call it the station bug's cause or a solved visual issue.
 
 ## Feasibility probe prepared
 
@@ -105,3 +105,140 @@ stderr is `/tmp/x3-alpha-test-caps-wine.log`, SHA-256
 Native Windows remains source/API-compatible and untested. The next bounded
 step is actual original/combined two-pair cutout twins in the existing material
 fixture; live MotionOutput/TAA acceptance remains a subsequent requirement.
+
+## Selected detached cutout fixture
+
+`run_linear_material.py --alpha-test-cutout --exe <retained fixture>` consumes
+one explicitly built EXE and the existing local original-program directory.
+It selects only pair 0 (Argon DEFAULT) and pair 21 (Argon BUMP), and bypasses the
+ordinary corpus/timing mode. `--glass-only` and this selector are mutually
+exclusive. No production shader, MotionOutput gate, capability cache or shared
+fade route is changed.
+
+There are 48 cases: both exact pairs, both current-depth modes and faces, each
+with six input variants. Those vary AlphaValue 0/0.625/1, Glow 0/1/0.375,
+asymmetric diffuse/lightmap alpha, float point samples around 1/255, actual UNORM
+point/linear sampling and mip 0/1, UV jitter, and shader fog off/on. RGB stays
+constant across each alpha texture so the existing independent float64 material
+reference can check the combined RGB without a second lighting implementation.
+The native alpha path is not rewritten. DEFAULT's exact final alpha multiply is
+at PS DWORD 1287 (END 1291); BUMP's is at DWORD 1349 (END 1353). Both use
+`mul_pp oC0.w,r2.w,v0.w`, with the native preceding `lrp_pp r2.w,c3.x,r0.w,r1.w`.
+Both vertex layouts use b0, c39.x AlphaValue and c41.xy FogClip.
+Their native UV producer explicitly builds `(u,v,1)`, then reads c37/c38 with
+DP3 (DEFAULT DWORDs 475/349; BUMP 502/358). The fixture's .z translations therefore
+use that explicit 1: at D3D9 integer pixel centers the tested UV is
+`((x+0.5+jitter)/16,(y+0.5)/16)`. Current c24..c27 and appended previous c252..c255
+are four rows dotted with an explicit homogeneous position. The foreground
+previous-X shift is -0.125; the actual opaque writer uses -0.25. This input math
+was independently checked against both original programs before the GPU run.
+
+For every case, alpha-test-off RGBA32F draws of untouched original, original
+plus motion, and combined plus motion must preserve all 256 native alpha values
+bitwise. The first ordered row is emitted as float bits before FP16 storage or
+mask 7 can hide the comparison input. A separate FP16 unmasked draw of each
+variant supplies that variant's exact accepted RGB storage. The actual original
+GREATEREQUAL/ref1 draw supplies coverage; no CPU `alpha >= 1/255` rule replaces it.
+Point threshold rows must retain zero/high-alpha anchors and the expected native
+sample positions, while the near-threshold pass bits are measured evidence.
+
+Each case has six scenes and three variants (864 twins total): clear depth
+pass/reject, diagnostic stencil pass/depth-fail twins, and actual opaque draws
+behind/in front of the cutout. The opaque draw has a distinct previous transform,
+so holes must retain the underlying draw's actual motion and current depth.
+RT0 alpha, motion and depth start with nontrivial poison. Every passing pixel
+must match its own unmasked RGB, the independently calculated previous UV/depth,
+and the original's coverage. Every rejected pixel must retain its prior values.
+Later equal-depth and equal-stencil draws expose the hardware D24S8 state through
+ordinary color readback: alpha rejection leaves depth/stencil unchanged; a
+stencil-enabled accepted alpha increments on depth pass or decrements on depth
+failure. Native and combined variants are checked against the same binary masks.
+This tests stencil semantics diagnostically; the proposed initial live state
+still has stencil disabled.
+
+The report parser requires ordered unique alpha/RGB/coverage rows, every scene
+and variant, all 20 exact shader creations, independent RGB bounds, nonvacuous
+neighboring coverage (except the intentional zero-AlphaValue cases), and exact
+check accounting. It rejects failed, incomplete, duplicate, malformed and
+out-of-scope reports. A host fixture extracts the actual per-pixel reducer and
+injects RT0-alpha, RGB, motion, depth and reference corruption; R32F comparisons
+intentionally use only the stored lane.
+
+Performance scope: this is detached correctness work. Allocations/readbacks and
+shader creation are outside gameplay and no normal per-draw work has been added.
+The selected mode deliberately skips the old corpus benchmark, which would test
+alpha-test-off state. Its runtime does not estimate game FPS or a live route's
+cost. A paired live route completion measurement is required when that route is
+implemented. The root-owned locked X3 fixture run passed;
+independent Sol/high source review is approved with no findings. Live MotionOutput state admission, failures,
+Reset/recovery and moving TAA edges remain unimplemented and unqualified here.
+
+Prepared fixture build: `sh verification/probe/build_linear_material.sh` passed
+with MinGW GCC 16.2.0 and the existing SSE2/four-byte-stack flags. The retained
+11,280,788-byte EXE is
+`/tmp/x3-alpha-test-materials/verification/probe/build/linear_material_fixture.exe`,
+SHA-256 `5756a0a8c4a4aca9231b4b58e854649f738b9b508d73a9532dbdecbbff209fca`.
+The affected report batch passed 49 methods in 59.620 seconds (four selected-mode
+methods plus 45 existing report methods). The additional extracted actual-pixel
+reducer method passed in 1.152 seconds, covering 48 injected pass/failure
+combinations. All four selected local originals match the existing profile
+provenance. No Wine or production build was run by this agent.
+
+Root-owned consume-only qualification command, after source review:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 /Users/asvetl/x3-mod/verification/probe/wine_lock.py \
+  --holder alpha-test-cutout --timeout 60 \
+  python3 /tmp/x3-alpha-test-materials/verification/probe/run_linear_material.py \
+  --alpha-test-cutout \
+  --exe /tmp/x3-alpha-test-materials/verification/probe/build/linear_material_fixture.exe \
+  --raw-dir /tmp/x3-linear-alpha-test-gpu
+```
+
+The runner hashes supplied binaries/originals/scoped source and records X3
+bottle provenance. Successful compact output is
+`verification/results/bottle-X3/linear-alpha-test-gpu.json` in that isolated
+worktree; raw stdout, Wine stderr and binary cases stay in the explicit `/tmp`
+directory. A failed run preserves the prior accepted summary and saves a local
+`failed-result.json`. This mode neither rebuilds nor installs a DLL.
+
+The same reviewer independently reproduced the five selected-mode host methods
+in 4.839 seconds, reconciled the exact check formula and shader/input ABI,
+verified the unchanged EXE hash above, and approved the detached qualification
+with no findings. The old detached fade runner now hashes the included cutout
+header as a compiled dependency; no fade behavior changed and no fade rerun was
+needed for that provenance entry. The same reviewer approved the root-owned GPU evidence with no findings, as recorded below.
+
+## X3 detached cutout result
+
+Root ran the retained fixture above under the Wine lease, consuming the existing
+EXE. Exit 0 and the strict parser both report PASS: **48 cases, 288 scenes,
+864 twins, 20 shader creations, 2,609,760 checks, 12,288 alpha samples and
+5,376 accepted native pixels**. The largest combined-RGB error was
+`2.5301338717302897e-05` of its existing reference tolerance. Alpha, native versus
+motion RGB, MRT ownership and hardware depth/stencil checks remain exact.
+No runtime completion benchmark was run or inferred from fixture duration.
+
+All eight point threshold rows (both pairs, faces and depth modes) retained
+native alpha bits `00000000,3b808080,3b808081,3b808082,3b000000,3c000000,3f000000,3f800000`
+and native coverage `00110111`. In particular the binary32 sample immediately
+below the normalized ref1 value is rejected; its nearest binary32 representation
+and next higher sample pass. This is an observed native GREATEREQUAL boundary,
+with zero and high-alpha anchors, not a CPU replacement for the comparison.
+
+The compact tracked result is
+[`linear-alpha-test-gpu.json`](../../verification/results/bottle-X3/linear-alpha-test-gpu.json),
+SHA-256 `6f59921e509974c0bf3d25de2d7b765f29bea8934bbbd4b2b7d462de1637f4f5`.
+Raw `/tmp/x3-linear-alpha-test-gpu/report.txt` is 60,420 bytes, SHA-256
+`d0826c7bcb7145518830832fcb9f4fb80166ccec8bb2f8b8d5bb1f29006b6055`;
+Wine stderr remains beside it. The result records CrossOver Preview bottle X3,
+WineArch arm64, configured `FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`; stderr
+corroborates msync. The retained EXE hash above, all 17 recorded source hashes and
+all four local original-program hashes match. The same Sol/high reviewer replayed
+the strict parser without Wine, independently reconciled raw counts, coverage
+and check totals, and approved this evidence with no findings.
+
+This establishes the selected detached shader/MRT contract in X3. It does not
+establish a port-specific cause, all cutout coverage, production state admission,
+recovery/Reset, temporal edge quality, live-route overhead or native Windows
+runtime behavior. Those remain the next bounded route qualification.

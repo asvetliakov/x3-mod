@@ -35,6 +35,7 @@ CODE_INPUTS = ('src/renderer/linear_material.cpp', 'src/renderer/linear_material
                'docs/reverse-engineering/linear-material-profiles.json',
                'docs/reverse-engineering/xt-material-profiles.json',
                'verification/probe/linear_material_fixture.cpp',
+               'verification/probe/linear_alpha_test_fixture_inc.h',
                'verification/probe/linear_material_reference.py',
                'verification/probe/linear_xt_fixture_reference.py',
                'verification/probe/linear_glass_fixture_reference.py',
@@ -838,12 +839,114 @@ def original_provenance(cases, programs):
     return inputs
 
 
+def alpha_cutout_cases():
+    """Two captured exact pairs; scoped fields are consumed only in cutout mode."""
+    base = fixture_cases()[0]
+    # AlphaValue, Glow, filter/texture kind, selected mip, UV pixel jitter, fog.
+    variants = ((1.,0.,0,0,0.,0), (1.,1.,1,1,.375,0),
+                (.625,.375,2,0,-.25,0), (0.,.375,1,0,0.,0),
+                (1.,0.,2,1,.25,2), (.625,1.,1,1,0.,2))
+    cases=[]
+    for pair in (0,21):
+        for depth in (0,1):
+            for reverse in (0,1):
+                for variant,(alpha,glow,texture,mip,jitter,fog) in enumerate(variants):
+                    c=copy.deepcopy(base)
+                    c.update(id=len(cases),pair=pair,depth=depth,reverse=reverse,
+                             label=f'cutout_{variant}',glow=glow,flags=fog,
+                             coefficients=[alpha,jitter,texture,mip])
+                    # UNORM and float textures have identical constant RGB.
+                    for source in ('diffuse','lightmap'):
+                        c[source][:3]=[round(v*255)/255 for v in c[source][:3]]
+                    cases.append(c)
+    return cases
+
+
+def validate_cutout_report(text,cases=None):
+    """Strict selected-mode framing plus existing independent material oracle."""
+    cases=alpha_cutout_cases() if cases is None else cases
+    assert cases==alpha_cutout_cases(), 'cutout case contract changed'
+    lines=text.splitlines()
+    assert lines and lines[-1]==f'RESULT PASS cases={len(cases)}', 'missing cutout completion'
+    assert not any('FAIL' in line for line in lines), 'cutout fixture failed'
+    caps=[l for l in lines if l.startswith('CAPS ')]
+    assert len(caps)==1 and re.fullmatch(r'CAPS mrt=\d+ vs_slots=\d+ ps_slots=\d+',caps[0])
+    assert int(re.search(r'mrt=(\d+)',caps[0])[1])>=3
+    creates=re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$',text,re.M)
+    assert len(creates)==len([l for l in lines if l.startswith('CREATE ')])
+    required={(stage,shader,mode,depth) for pair in (0,21) for stage,shader in zip(('vs','ps'),PAIRS[pair])
+              for mode in (0,1,2) for depth in ((0,) if mode==0 else (0,1))}
+    observed=set()
+    for stage,key,count,words,ms in creates:
+        shader,mode,depth,*gains=key.split('_')
+        record=(stage,shader,int(mode),int(depth))
+        assert record not in observed and record in required, 'unexpected/duplicate creation'
+        observed.add(record)
+        assert gains==(['1','1','1'] if int(mode)==2 else ['0','0','0'])
+        limit=int(re.search(stage+r'_slots=(\d+)',caps[0])[1])
+        assert 0<int(count)<=limit and int(words)>int(count)
+        assert math.isfinite(float(ms)) and float(ms)>=0
+    assert observed==required, 'missing original/motion/combined depth shader'
+    alpha=re.findall(r'^CUTOUT_ALPHA id=(\d+) bits=([0-9a-f,]+)$',text,re.M)
+    rgb=re.findall(r'^CUTOUT_RGB id=(\d+) rgb=(\S+)$',text,re.M)
+    coverage=re.findall(r'^CUTOUT_COVERAGE id=(\d+) passed=(\d+) rejected=(\d+) edges=(\d+) row=([01]{16})$',text,re.M)
+    twins=re.findall(r'^CUTOUT_TWIN id=(\d+) scene=(\d+) mode=(\d+) pixels=256 bad=0$',text,re.M)
+    for rows,label in ((alpha,'alpha'),(rgb,'rgb'),(coverage,'coverage')):
+        assert [int(r[0]) for r in rows]==[c['id'] for c in cases], 'missing/duplicate '+label
+    assert [tuple(map(int,r)) for r in twins]==[(c['id'],scene,mode) for c in cases for scene in range(6) for mode in range(3)], 'missing/duplicate cutout twin'
+    expected_checks=0; max_scaled=0.; threshold_rows=[]; passed_total=0
+    for c,(_,bits),(_,values),(_,passed,rejected,edges,row) in zip(cases,alpha,rgb,coverage):
+        tokens=bits.split(',')
+        assert len(tokens)==16 and all(re.fullmatch('[0-9a-f]{8}',v) for v in tokens)
+        source_alpha=[struct.unpack('<f',bytes.fromhex(v)[::-1])[0] for v in tokens]
+        assert all(math.isfinite(v) and 0<=v<=1 for v in source_alpha), 'invalid native alpha'
+        passed,rejected,edges=map(int,(passed,rejected,edges))
+        assert passed==row.count('1')*16 and rejected==256-passed
+        assert edges==sum(a!=b for a,b in zip(row,row[1:]))*16
+        if c['coefficients'][0]==0:
+            assert passed==0 and source_alpha==[0.]*16, 'zero AlphaValue must reject'
+        else:
+            assert 0<passed<256 and edges>0, 'vacuous native coverage'
+        if c['label']=='cutout_0':
+            threshold=struct.unpack('<f',struct.pack('<f',1/255))[0]
+            pattern=[0.,math.nextafter(threshold,0.),threshold,math.nextafter(threshold,1.),1/512,1/128,.5,1.]
+            # The native _pp path may retain FP32 or narrow to binary16. Bind
+            # sampled indices and near-threshold input; coverage stays native.
+            for i,value in enumerate(source_alpha):
+                expected_value=pattern[i%8]
+                assert abs(value-expected_value)<=max(2e-9,abs(ref.half(expected_value)-expected_value)+2e-9), 'wrong sampled alpha/UV'
+            assert row[0]==row[8]=='0' and row[6:8]==row[14:16]=='11'
+            threshold_rows.append(dict(id=c['id'],alpha_bits=tokens[:8],native_coverage=row[:8]))
+        actual=list(map(float,values.split(',')))
+        assert len(actual)==3 and all(map(math.isfinite,actual))
+        source=copy.deepcopy(c);source['fp16']=0
+        lo_result,hi_result=expected(source),expected(source,half_source=True)
+        for k,value in enumerate(actual):
+            lo,hi=sorted((lo_result.encoded_rgba[k],hi_result.encoded_rgba[k]))
+            scaled=max(lo-value,value-hi,0)/(RGB_ABS_TOL+RGB_REL_TOL*max(abs(lo),abs(hi)))
+            assert scaled<=1, 'independent combined RGB reference'
+            max_scaled=max(max_scaled,scaled)
+        expected_checks+=51714+1280*c['depth']+18*passed
+        passed_total+=passed
+    final=re.findall(r'^CUTOUT_RESULT cases=(\d+) scenes=(\d+) twins=(\d+) checks=(\d+)$',text,re.M)
+    assert len(final)==1 and tuple(map(int,final[0]))==(len(cases),len(cases)*6,len(cases)*18,expected_checks), 'cutout check accounting'
+    allowed=('CAPS ','CREATE ','CUTOUT_ALPHA ','CUTOUT_RGB ','CUTOUT_COVERAGE ','CUTOUT_TWIN ','CUTOUT_RESULT ','RESULT PASS ')
+    assert all(l.startswith(allowed) for l in lines), 'unexpected cutout output'
+    assert len(lines)==2+len(creates)+len(cases)*21+1, 'malformed/extra cutout row'
+    return dict(cases=len(cases),pairs=2,unique_originals=4,shader_creations=len(creates),
+                scenes=len(cases)*6,twins=len(cases)*18,checks=expected_checks,
+                alpha_samples=len(cases)*256,accepted_native_pixels=passed_total,
+                max_tolerance_fraction=max_scaled,native_threshold_rows=threshold_rows)
+
+
 def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exe', type=Path, required=True, help='Previously built fixture EXE; this runner never builds')
     parser.add_argument('--programs', type=Path, default=PROGRAMS)
     parser.add_argument('--raw-dir', type=Path, default=Path('/tmp/x3-linear-material-gpu'))
-    parser.add_argument('--glass-only', action='store_true', help='Run only new glass cases, retaining their original case IDs; skip unrelated timing passes')
+    selection=parser.add_mutually_exclusive_group()
+    selection.add_argument('--alpha-test-cutout',action='store_true',help='Only the two selected native cutout pairs; actual alpha/depth/stencil MRT twins')
+    selection.add_argument('--glass-only', action='store_true', help='Run only new glass cases, retaining their original case IDs; skip unrelated timing passes')
     return parser.parse_args(argv)
 
 
@@ -851,13 +954,13 @@ def main():
     args = parse_arguments()
     assert bottle.BOTTLE == 'X3', 'new fixtures require X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(), 'game running; fixture refused'
-    cases = fixture_cases()
+    cases = alpha_cutout_cases() if args.alpha_test_cutout else fixture_cases()
     if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)
     case_file = args.raw_dir/'cases.bin'
     case_file.write_bytes(binary_cases(cases))
     report = args.raw_dir/'report.txt'
-    result_path = bottle.results_dir(ROOT)/('linear-glass-gpu.json' if args.glass_only else 'linear-material-gpu.json')
+    result_path = bottle.results_dir(ROOT)/('linear-alpha-test-gpu.json' if args.alpha_test_cutout else 'linear-glass-gpu.json' if args.glass_only else 'linear-material-gpu.json')
     inputs = original_provenance(cases, args.programs)
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
@@ -866,14 +969,20 @@ def main():
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),
                   code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS})
+    if args.alpha_test_cutout:
+        result['scope']='Two captured Argon pairs, GE/ref1, mask7, blend off. Detached native/motion/combined coverage, retained alpha, hardware depth/stencil and poisoned MRT twins. No production gate/live TAA/native Windows qualification.'
+        result['timing_scope']='No benchmark in this detached correctness mode; runtime route cost remains unmeasured.'
+        result['render_contract'].update(alpha_test=True,alpha_function=7,alpha_reference=1,color_mask0=7,
+          hardware_depth='D24S8',hardware_depth_functions=['LESSEQUAL','EQUAL probes'],stencil='off and diagnostic INCRSAT/DECRSAT twins',fixed_function_fog=False,dither=False)
     wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
     command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file)]
+    if args.alpha_test_cutout: command.append('--alpha-test-cutout')
     try:
         with report.open('w') as out,(args.raw_dir/'wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1200)
         result['exit_code']=process.returncode
         assert process.returncode==0, 'fixture failed; see '+str(report)
-        result.update(validate_report(report.read_text(),cases))
+        result.update((validate_cutout_report if args.alpha_test_cutout else validate_report)(report.read_text(),cases))
         assert sha(args.exe)==result['executable_sha256'], 'executable changed'
         assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'
         assert all(sha(args.programs/name)==value for name,value in inputs.items()), 'original changed'

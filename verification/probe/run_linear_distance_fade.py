@@ -26,6 +26,7 @@ COMPOSITE_SHA256="0acae2e3dcfed4f04534cf09f3b74c897fd9c6e66e706c6a21c45deaf6da0b
 SCOPE=('src/renderer/linear_material.cpp','src/renderer/linear_distance_fade.h',
        'src/renderer/linear_emission_pass.cpp','src/renderer/linear_emission_pass.h',
        'verification/probe/linear_material_fixture.cpp',
+       'verification/probe/linear_alpha_test_fixture_inc.h',
        'verification/probe/linear_distance_fade_fixture_inc.h',
        'verification/probe/linear_distance_fade_composite_inc.h',
        'verification/probe/run_linear_distance_fade.py',

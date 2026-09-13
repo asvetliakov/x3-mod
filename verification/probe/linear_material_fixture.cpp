@@ -968,14 +968,16 @@ struct Gpu {
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
 #include "linear_distance_fade_fixture_inc.h"
 #endif
+#include "linear_alpha_test_fixture_inc.h"
 int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   try {
+    const bool cutout_mode=argc==4 && std::strcmp(argv[3],"--alpha-test-cutout")==0;
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
-    require(argc==3 || fade_mode,"args: programs cases [--distance-fade composite.bin]");
+    require(argc==3 || fade_mode || cutout_mode,"args: programs cases [--distance-fade composite.bin]");
 #else
-    require(argc == 3, "args: local programs directory, binary cases");
+    require(argc == 3 || cutout_mode, "args: programs cases [--alpha-test-cutout]");
 #endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
@@ -1020,6 +1022,8 @@ int main(int argc, char **argv) {
                   shaders.caps.MaxVertexShader30InstructionSlots,
                   shaders.caps.MaxPixelShader30InstructionSlots);
       require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");
+      if (cutout_mode) alpha_test_cutout_fixture(device.p,shaders,cases);
+      else {
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
       if (fade_mode) distance_fade_fixture(device.p,shaders,cases,argv[4]);
       else {
@@ -1071,6 +1075,7 @@ int main(int argc, char **argv) {
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
       }
 #endif
+      } // ordinary or selected cutout mode
     } // Release every D3D object before destroying its device window.
     require(DestroyWindow(window) != 0, "destroy window");
     require(FreeLibrary(runtime) != 0, "unload D3D9 runtime");
