@@ -24,7 +24,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All are installed; run 17 accepts the crypto path on X3 (844-check probe 12.835 → 0.1353 s). Reader/adjacency acceptance remains. The 27.574 s save gap is not a controlled cache A/B. Diagnostic timings are not uninstrumented game FPS. |
 | 15 | macOS menu bar | Not started. Also track the separate game/macOS double cursor after alt-tab; first compare with vanilla. |
 | 16 | Clustered forward lighting | Not started. Material and light reconstruction precede implementation. |
-| 17 | Modern third-person chase camera | **In progress:** existing prototype `7f4b251` integrated and reviewed/fixed; full 18-suite chain, 907 host tests and camera/site checks passed. Initially installed at `2e5f1af`; [first flight](verification/chase-first-run.md) confirms activation but reports subtle placement and trembling. Native position-selection correction and lower framing are reviewed, qualified by 972 host tests and X3 camera/load checks, and installed at `0c642df`. The second flight reports no trembling; elevated 20-degree framing, distance scale 0.6, softer follow and read-only mouse-fire diagnostics are reviewed and X3-qualified; installation is next. Right-mouse aiming works in first person but fires straight in chase and remains unresolved. Engine external-back-view replacement, default vanilla; menu behavior, aiming, cuts, reset survival and frame cost require acceptance. |
+| 17 | Modern third-person chase camera | **In progress:** existing prototype `7f4b251` integrated and reviewed/fixed; full 18-suite chain, 907 host tests and camera/site checks passed. Initially installed at `2e5f1af`; [first flight](verification/chase-first-run.md) confirms activation but reports subtle placement and trembling. Native position-selection correction and lower framing are reviewed, qualified by 972 host tests and X3 camera/load checks, and installed at `0c642df`. The second flight reports no trembling; elevated 20-degree framing, distance scale 0.6, softer follow and read-only mouse-fire diagnostics are reviewed, X3-qualified and installed at `dac2994`; user flight is next. Right-mouse aiming works in first person but fires straight in chase and remains unresolved. Engine external-back-view replacement, default vanilla; menu behavior, aiming, cuts, reset survival and frame cost require acceptance. |
 
 Evidence: [iteration 13](verification/iteration-13.md),
 [HDR scene path](verification/hdr-scene-path.md),
@@ -62,8 +62,8 @@ they are not a measured final-image baseline.
    at `2e5f1af`; the first flight confirmed activation and exposed placement and
    trembling issues. The native position-selection fix and lower framing are now
    reviewed, X3-qualified and installed at `0c642df`; the telemetry rerun reports
-   no trembling. Finish qualification/install of the requested elevated 20-degree,
-   distance-scale 0.6, softer-follow update and consolidated mouse-fire trace.
+   no trembling. The elevated 20-degree, distance-scale 0.6, softer-follow update and
+   consolidated mouse-fire trace are qualified and installed at `dac2994`.
    Compare right-mouse fire in first person and chase in the next session. Complete the
    architecture review’s thirteen acceptance checks separately.
    Tune only from user impressions; combat tightness and optional scene fix

@@ -18,35 +18,31 @@ Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
 [portability requirements and gaps](architecture/platform-portability.md).
 
-Current work: the initial chase integration `2e5f1af` passed the full eighteen-suite
-chain. The first-flight correction is now reviewed, qualified on X3 and installed.
-**Current install:** source checkpoint `0c642df`, DLL SHA-256
-`16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01`
-(11,606,225 bytes). Qualification passed 972 host tests, the focused 45
-camera/site tests, nine installed-EXE checks, the x86 camera controls and two X3
-DLL-load cases. The final audit matched 41 objects, 17 exports, all 192 existing
-imports, and 211 no-x87 boundary functions with zero violations. See
-[review 46](verification/review-46-chase-feedback.md) and the
-[qualification summary](../verification/results/chase-feedback-summary.json).
+**Current install:** source checkpoint `dac2994`, DLL SHA-256
+`2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c`
+(11,709,039 bytes), in bottle X3. It includes the elevated/closer/softer chase
+camera and read-only cursor/fire diagnostics. Qualification passed 994 host
+tests, 67 focused camera/site tests, six X3 aim-fixture cases / 124 checks,
+X3 camera-math controls and two DLL-load cases / 16 checks. The 42-object
+candidate retains 17 D3D9 exports; the sole new import is public UCRT `hypot`.
+Both callback CPU-state audits and 211 light-boundary no-x87 checks pass.
+See [review 49](verification/review-49-chase-aim-trace.md), the
+[host/build](../verification/results/chase-elevated-host-build-summary.json),
+[runtime](../verification/results/chase-elevated-runtime-summary.json) and
+[installation](../verification/results/chase-elevated-install.json) records.
 
 The [second user flight](verification/chase-second-run.md) reports **no trembling**
-with the installed anchor correction. All 12,615 applied samples use the native
+with the earlier `0c642df` anchor-correction build. All 12,615 applied samples use the native
 base anchor; the logged handler averages 23.841 microseconds in fully applied
 windows (excludes stub/state preservation, not FPS). The user requests an
 above-and-behind viewpoint and softer follow, and reports right-mouse aiming
-works in first person but fires straight in chase view. The next camera source
-uses a 20-degree downward look, distance scale 0.6 (user-requested closer view)
-and slower 0.22/0.30-second response. The consolidated camera/aim candidate is
-now [reviewed and qualified](verification/review-49-chase-aim-trace.md): 994 host
-tests, 67 focused tests, six X3 aim-fixture cases / 124 checks, X3 camera math,
-and two DLL-load cases / 16 checks pass. The clean 42-object DLL is
-`2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c`
-(11,709,039 bytes), **not installed yet**. Both callbacks pass the compiler
-CPU-state boundary audit; the earlier SJLJ gap is corrected with source-specific
-no-exceptions flags. See the [host/build](../verification/results/chase-elevated-host-build-summary.json)
-and [runtime](../verification/results/chase-elevated-runtime-summary.json) records.
-The four read-only cursor/fire observation sites are enabled only with chase
-plus telemetry. No mouse-fire behavior fix or native-Windows execution is claimed.
+works in first person but fires straight in chase view. The installed update
+uses a 20-degree downward look, distance scale 0.6
+(user-requested closer view) and slower 0.22/0.30-second response. The four
+read-only cursor/fire observation sites enable only with chase plus telemetry.
+The compiler SJLJ gap is corrected with source-specific no-exceptions flags.
+New framing/feel and the straight-fire cause need the next user flight; no
+mouse-fire behavior fix or native-Windows execution is claimed.
 
 The camera is vanilla by default; only `--camera chase` enables it. The
 [first user flight](verification/chase-first-run.md) confirms the hook applied
@@ -64,9 +60,9 @@ pending. The agent never launches the game. Native Windows remains untested.
 
 Installation matches the qualified DLL and app-local manifest. X3AP.exe and
 cxbottle.conf are unchanged; the chase and vanilla telemetry launch variants
-passed post-install `--dry-run`. The previous DLL `47f1452e…27ad` and manifest
+passed post-install `--dry-run`. The previous DLL `16d016d2…de01` and manifest
 are retained for rollback in the local directory recorded by
-[chase-feedback-install.json](../verification/results/chase-feedback-install.json).
+[chase-elevated-install.json](../verification/results/chase-elevated-install.json).
 Older entries below are historical and do not override this installed state.
 
 The [run-16 offline comparison](verification/run16-exposure-baseline.md) recovers

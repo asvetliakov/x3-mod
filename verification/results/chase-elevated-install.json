@@ -1,0 +1,220 @@
+{
+  "bottle": "X3",
+  "candidate": {
+    "bytes": 11709039,
+    "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/clean-candidate/d3d9.dll",
+    "sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c"
+  },
+  "command": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "/Users/asvetl/x3-mod/tools/manage.py",
+    "install",
+    "--bottle",
+    "X3",
+    "--dll-source",
+    "/tmp/x3-chase-elevated-qualification-UwDzq7/clean-candidate/d3d9.dll"
+  ],
+  "dry_runs": {
+    "chase": {
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+        "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+        "-noabout",
+        "-skipintro",
+        "-runinbg"
+      ],
+      "cwd": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+      "env": {
+        "X3M_BOTTLE": "X3",
+        "X3M_CAMERA": "chase",
+        "X3M_CAMERA_CUT_DEG": "20.0",
+        "X3M_CAMERA_LOG": "300",
+        "X3M_CAPTURE_FRAMES": "1",
+        "X3M_CAPTURE_START": "120",
+        "X3M_CHASE_COMBAT_TIGHTNESS": "0.0",
+        "X3M_CHASE_SCENE_FIX": "0",
+        "X3M_CRYPT_CACHE": "0",
+        "X3M_DAT_HANDLES": "0",
+        "X3M_DEPTH_COPY": "0",
+        "X3M_FINITE_POSITIONS": "0",
+        "X3M_FIXTURE_BOTTLE": "X3",
+        "X3M_GZ_BUFFER": "0",
+        "X3M_GZ_BUFFER_KB": "256",
+        "X3M_HDR": "0",
+        "X3M_HDR_CLAMP": "0.0",
+        "X3M_HDR_DECODE": "gamma2.2",
+        "X3M_HDR_EV": "0.0",
+        "X3M_HDR_EV_DEADBAND": "0.25",
+        "X3M_HDR_EV_MANUAL": "",
+        "X3M_HDR_EV_MAX": "2.0",
+        "X3M_HDR_EV_MIN": "-3.0",
+        "X3M_HDR_KEY_PULL": "0.25",
+        "X3M_HDR_LOOK": "none",
+        "X3M_HDR_METER_BG": "0.001953125",
+        "X3M_HDR_METER_EDGE_WEIGHT": "0.35",
+        "X3M_HDR_TONEMAP": "identity",
+        "X3M_HDR_WHITE_TARGET": "0.9",
+        "X3M_LOADING_PROBES": "0",
+        "X3M_MESH_ADJACENCY": "native",
+        "X3M_MESH_ADJACENCY_DUMP": "0",
+        "X3M_MESH_CACHE": "0",
+        "X3M_MOTION_CAPTURE": "0",
+        "X3M_MOTION_JITTER": "0",
+        "X3M_MOTION_OUTPUT": "0",
+        "X3M_MOTION_RT_MODE": "perdraw",
+        "X3M_OBJECT_LIFETIME": "0",
+        "X3M_OBJECT_TRACE": "0",
+        "X3M_OWNERSHIP": "0",
+        "X3M_PROFILE": "0",
+        "X3M_PROFILE_INTERVAL_US": "2000",
+        "X3M_RESOURCE_READ": "native",
+        "X3M_SCENE_DEPTH_CAPTURE": "0",
+        "X3M_SCENE_HOOK": "0",
+        "X3M_STATE_SHADOW": "1",
+        "X3M_TAA": "0",
+        "X3M_TAA_DEBUG": "0",
+        "X3M_TAA_SENTINEL": "auto",
+        "X3M_TELEMETRY": "1"
+      }
+    },
+    "vanilla": {
+      "command": [
+        "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+        "--bottle",
+        "X3",
+        "--no-update",
+        "--dll",
+        "d3d9=n,b",
+        "--workdir",
+        "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+        "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+        "-noabout",
+        "-skipintro",
+        "-runinbg"
+      ],
+      "cwd": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+      "env": {
+        "X3M_BOTTLE": "X3",
+        "X3M_CAMERA": "vanilla",
+        "X3M_CAMERA_CUT_DEG": "20.0",
+        "X3M_CAMERA_LOG": "300",
+        "X3M_CAPTURE_FRAMES": "1",
+        "X3M_CAPTURE_START": "120",
+        "X3M_CHASE_COMBAT_TIGHTNESS": "0.0",
+        "X3M_CHASE_SCENE_FIX": "0",
+        "X3M_CRYPT_CACHE": "0",
+        "X3M_DAT_HANDLES": "0",
+        "X3M_DEPTH_COPY": "0",
+        "X3M_FINITE_POSITIONS": "0",
+        "X3M_FIXTURE_BOTTLE": "X3",
+        "X3M_GZ_BUFFER": "0",
+        "X3M_GZ_BUFFER_KB": "256",
+        "X3M_HDR": "0",
+        "X3M_HDR_CLAMP": "0.0",
+        "X3M_HDR_DECODE": "gamma2.2",
+        "X3M_HDR_EV": "0.0",
+        "X3M_HDR_EV_DEADBAND": "0.25",
+        "X3M_HDR_EV_MANUAL": "",
+        "X3M_HDR_EV_MAX": "2.0",
+        "X3M_HDR_EV_MIN": "-3.0",
+        "X3M_HDR_KEY_PULL": "0.25",
+        "X3M_HDR_LOOK": "none",
+        "X3M_HDR_METER_BG": "0.001953125",
+        "X3M_HDR_METER_EDGE_WEIGHT": "0.35",
+        "X3M_HDR_TONEMAP": "identity",
+        "X3M_HDR_WHITE_TARGET": "0.9",
+        "X3M_LOADING_PROBES": "0",
+        "X3M_MESH_ADJACENCY": "native",
+        "X3M_MESH_ADJACENCY_DUMP": "0",
+        "X3M_MESH_CACHE": "0",
+        "X3M_MOTION_CAPTURE": "0",
+        "X3M_MOTION_JITTER": "0",
+        "X3M_MOTION_OUTPUT": "0",
+        "X3M_MOTION_RT_MODE": "perdraw",
+        "X3M_OBJECT_LIFETIME": "0",
+        "X3M_OBJECT_TRACE": "0",
+        "X3M_OWNERSHIP": "0",
+        "X3M_PROFILE": "0",
+        "X3M_PROFILE_INTERVAL_US": "2000",
+        "X3M_RESOURCE_READ": "native",
+        "X3M_SCENE_DEPTH_CAPTURE": "0",
+        "X3M_SCENE_HOOK": "0",
+        "X3M_STATE_SHADOW": "1",
+        "X3M_TAA": "0",
+        "X3M_TAA_DEBUG": "0",
+        "X3M_TAA_SENTINEL": "auto",
+        "X3M_TELEMETRY": "1"
+      }
+    }
+  },
+  "exe_and_config_unchanged": true,
+  "game_launched": false,
+  "installed": {
+    "X3AP.exe": {
+      "bytes": 2153984,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+    },
+    "cxbottle.conf": {
+      "bytes": 14280,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+    },
+    "d3d9.dll": {
+      "bytes": 11709039,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+      "sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c"
+    },
+    "x3-modern-install.json": {
+      "bytes": 210,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-install.json",
+      "sha256": "045ed4243a1fdcfe6339f2bd696ffcc440262750134220d91888629968733706"
+    }
+  },
+  "installer_output": "Installed /Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll; bottle configuration unchanged.",
+  "production_source_matches_qualified": true,
+  "qualification": {
+    "chase-elevated-host-build-summary.json": {
+      "bytes": 5943,
+      "path": "/Users/asvetl/x3-mod/verification/results/chase-elevated-host-build-summary.json",
+      "sha256": "e46026ec7c42edac2ae12090e5cc19bddf76385e3a3be8c363dc75c5722d6969"
+    },
+    "chase-elevated-runtime-summary.json": {
+      "bytes": 7582,
+      "path": "/Users/asvetl/x3-mod/verification/results/chase-elevated-runtime-summary.json",
+      "sha256": "fa7c6e6823e4aa9ddb8927eb8c54a7ff60d198eb80cb374dc825f97055e057cf"
+    }
+  },
+  "rollback": {
+    "X3AP.exe": {
+      "bytes": 2153984,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/baseline/installed/X3AP.exe",
+      "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+    },
+    "cxbottle.conf": {
+      "bytes": 14280,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/baseline/installed/cxbottle.conf",
+      "sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+    },
+    "d3d9.dll": {
+      "bytes": 11606225,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/baseline/installed/d3d9.dll",
+      "sha256": "16d016d2f12847dbc47c88c3a241a628d7390354ffb02465b63723b14187de01"
+    },
+    "x3-modern-install.json": {
+      "bytes": 169,
+      "path": "/tmp/x3-chase-elevated-qualification-UwDzq7/baseline/installed/x3-modern-install.json",
+      "sha256": "e22d7f9ca94d70dd2e3cf5e7693e02bdd84395f9bdd7aea5cc2cfe890585635f"
+    }
+  },
+  "rollback_directory": "/tmp/x3-chase-elevated-qualification-UwDzq7/baseline/installed",
+  "source_checkpoint": "dac2994f08de45186693ad02440fabb3b99beabd",
+  "status": "PASS"
+}
