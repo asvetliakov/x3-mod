@@ -1909,9 +1909,10 @@ void initialize_log(HMODULE module) {
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
     hdr_config=x3m::renderer::HdrConfig{};
-    // Production defaults to camera-independent EV0. Optional AUTO shaders
-    // and chain are prepared with HDR, but fixed mode never meters a frame.
-    hdr_config.exposure=x3m::renderer::ExposureMode::Manual;
+    // Run 27 accepted the milder AUTO appearance. Keep standalone component
+    // defaults independent; fixed EV0 remains available without frame metering.
+    hdr_config.exposure=x3m::renderer::ExposureMode::Auto;
+    hdr_config.params.ev_max=1.5f;
     hdr_config.allow_auto_toggle=true;
     if(GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
     if(GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32)>0){
@@ -1925,7 +1926,8 @@ void initialize_log(HMODULE module) {
     }
     if(GetEnvironmentVariableW(L"X3M_HDR_CLAMP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}
     const DWORD exposure_length=GetEnvironmentVariableW(L"X3M_HDR_EXPOSURE",setting,32);
-    if(exposure_length>0 && exposure_length<32 && !wcscmp(setting,L"auto"))hdr_config.exposure=x3m::renderer::ExposureMode::Auto;
+    if(exposure_length>0)hdr_config.exposure=(exposure_length<32 && !wcscmp(setting,L"auto"))
+        ? x3m::renderer::ExposureMode::Auto : x3m::renderer::ExposureMode::Manual;
     if(GetEnvironmentVariableW(L"X3M_HDR_EV_MANUAL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f){hdr_config.exposure=x3m::renderer::ExposureMode::Manual;hdr_config.ev_manual=v;}}
     if(GetEnvironmentVariableW(L"X3M_HDR_EV",setting,32)>0||GetEnvironmentVariableW(L"X3M_HDR_EV_OFFSET",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
     if(GetEnvironmentVariableW(L"X3M_HDR_KEY",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=64.f)hdr_config.params.key=v;}

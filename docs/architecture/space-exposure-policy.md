@@ -1,7 +1,8 @@
 # Exposure for X3's outdoor space scenes
 
-2026-09-13. Offline evaluation and selected policy; **fixed EV 0 is now
-installed, with visual acceptance pending**. The scene model is black cosmos, small stars, large colored
+2026-09-14. The next source candidate selects **Auto capped at +1.5 EV**
+following run 27 visual acceptance; the installed build still defaults to fixed EV 0.
+The scene model is black cosmos, small stars, large colored
 nebulae, planets/suns, ships and transient effects. Indoor/hangar adaptation
 is not a design premise. The current implementation is described in
 [HDR scene path](hdr-scene-path.md); the actual baseline is
@@ -10,9 +11,33 @@ is not a design premise. The current implementation is described in
 Published practice in other space games is collected separately in
 [the primary-source comparison](../research/space-game-exposure.md).
 
-## Selected policy and acceptance boundary
+## Current policy after run 27
 
-The orchestrator selected **fixed EV 0 as the default policy** for this legacy-content
+The user preferred Auto to fixed EV 0 and then accepted the milder +1.5 EV
+comparison. Adopt **Auto with a +1.5 EV maximum** as the next production and
+launcher default. Retain `--hdr-exposure fixed`, explicit manual EV, and the
+Ctrl+Shift+F9 Auto/fixed-0 comparison. Explicit manual EV remains authoritative;
+explicit EV limits remain supported. Standalone component defaults are unchanged.
+No metering equation, response time, highlight guard or tone curve changes here.
+
+Run 27 targets the ceiling in 329/331 active Auto reports, with the other two at
+startup zero. This is appearance acceptance of an almost steady boost in this
+sample, not proof that background metering represents illumination or provides
+useful adaptation. The research and light-aware metering limitations below still
+apply. A future light/context model should preserve the accepted appearance
+without introducing sky-driven pumping. Fixed exposure remains a useful control.
+
+Implementation changes only production initialization and launcher defaults.
+Absent direct environment policy selects Auto; explicit unknown/truncated policy
+still falls back to fixed, and explicit manual EV overrides either mode. Meter
+resources and toggle support already exist; Auto has its existing per-frame
+meter cost while fixed has none. No new resource, shader or pass is introduced.
+The next combined candidate will install this policy with stronger authored glow;
+run 27 already exercised the same explicit Auto/+1.5 configuration.
+
+## Earlier fixed-exposure evaluation (2026-09-13)
+
+At that checkpoint, the orchestrator selected **fixed EV 0 as the default policy** for this legacy-content
 stage, with Auto retained as an explicit option and same-run comparison.
 The [default and comparison controls](comparison-hotkeys.md) are implemented
 and independently reviewed, and installed in candidate `75dbbed`. The user

@@ -66,7 +66,7 @@ class ComparisonHotkeys(unittest.TestCase):
                     self.assertIn('failures=0', result.stdout)
                     print(name, result.stdout.strip())
 
-    def test_launcher_fixed_default_explicit_auto_and_manual_override(self):
+    def test_launcher_auto_default_fixed_and_manual_override(self):
         # Execute the real parser/validation AST and exact exposure environment
         # assignments. Stop before filesystem/launch/install handling.
         source = (ROOT / 'tools/manage.py').read_text()
@@ -81,21 +81,21 @@ class ComparisonHotkeys(unittest.TestCase):
             and isinstance(node.targets[0], ast.Subscript)
             and isinstance(node.targets[0].value, ast.Name) and node.targets[0].value.id == 'env'
             and isinstance(node.targets[0].slice, ast.Constant)
-            and node.targets[0].slice.value in ('X3M_HDR_EXPOSURE', 'X3M_HDR_EV_MANUAL')]
+            and node.targets[0].slice.value in ('X3M_HDR_EXPOSURE', 'X3M_HDR_EV_MANUAL', 'X3M_HDR_EV_MAX')]
         main.body = statements + assignments + [ast.Return(value=ast.Name(id='env', ctx=ast.Load()))]
         compiled = compile(ast.fix_missing_locations(ast.Module(body=[main], type_ignores=[])), 'manage_under_test.py', 'exec')
         scope = dict(argparse=argparse, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')
         exec(compiled, scope)
         base = ['manage.py', 'launch', '--motion-output', '--hdr', '--hdr-tonemap']
-        cases = [([], 'fixed', ''), (['--hdr-exposure', 'fixed'], 'fixed', ''),
+        cases = [([], 'auto', ''), (['--hdr-exposure', 'fixed'], 'fixed', ''),
                  (['--hdr-exposure', 'auto'], 'auto', ''),
                  (['--hdr-ev-manual', '-1'], 'fixed', '-1.0'),
                  (['--hdr-exposure', 'auto', '--hdr-ev-manual', '0.5'], 'fixed', '0.5')]
         for arguments, policy, manual in cases:
             with self.subTest(arguments=arguments), mock.patch.object(sys, 'argv', base + arguments):
-                scope['env'] = {'X3M_HDR_EXPOSURE': 'auto', 'X3M_HDR_EV_MANUAL': '2'}
+                scope['env'] = {'X3M_HDR_EXPOSURE': 'fixed', 'X3M_HDR_EV_MANUAL': '2', 'X3M_HDR_EV_MAX': '2.0'}
                 result = scope['main']()
-                self.assertEqual(result, {'X3M_HDR_EXPOSURE': policy, 'X3M_HDR_EV_MANUAL': manual})
+                self.assertEqual(result, {'X3M_HDR_EXPOSURE': policy, 'X3M_HDR_EV_MANUAL': manual, 'X3M_HDR_EV_MAX': '1.5'})
         for policy in ('fixed', 'auto'):
             with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--hdr-exposure', policy]), contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as error:
@@ -125,7 +125,9 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('call.input.filter.strength=ctx.comparison.bloom_requested?1.f:0.f;', handoff)
         hdr = (ROOT / 'src/renderer/hdr_pass.cpp').read_text()
         self.assertIn('caps_.tonemap && config_.meter_requested()', hdr)
-        self.assertIn('hdr_config.exposure=x3m::renderer::ExposureMode::Manual;', capture)
+        defaults = capture.split('hdr_config=x3m::renderer::HdrConfig{};', 1)[1].split('hdr_config.allow_auto_toggle=true;', 1)[0]
+        self.assertIn('hdr_config.exposure=x3m::renderer::ExposureMode::Auto;', defaults)
+        self.assertIn('hdr_config.params.ev_max=1.5f;', defaults)
         self.assertIn('hdr_config.allow_auto_toggle=true;', capture)
         self.assertIn('if (caps_.meter) ensure_chain(width, height)', hdr)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()

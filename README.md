@@ -45,9 +45,10 @@ expect a hitch. `--capture-start 1000` delays the automatic capture;
 Capture records live queried state, including stateblock changes, rather than
 assuming setter calls describe all current state.
 
-AgX now starts at **fixed EV 0** (exposure multiplier 1). Launch with
+The next AgX build defaults to **Auto capped at +1.5 EV**, following the accepted
+run 27 comparison; installation status is in [status](docs/status.md). Launch with
 `--motion-output --hdr --hdr-tonemap --hdr-bloom` to prepare both comparison
-features; `--hdr-exposure auto` explicitly selects automatic exposure instead.
+features; `--hdr-exposure fixed` selects fixed EV 0 instead.
 During play, hold **Ctrl+Shift**, then press **F9** to switch AUTO/fixed EV 0,
 or **F10** to switch bloom ON/OFF. Release the function key between presses.
 A brief panel shows the effective state or an unavailable/pending request.
@@ -114,7 +115,7 @@ tonemap of the FP16 scene with auto exposure (a GPU log-luminance tile
 meter reduced on the host to a space-aware statistic: the black sky is
 excluded, the centre-weighted median of the lit tiles maps to the key, the
 brightest 1 % of tiles are held under white, a dead band holds the target
-against small changes; EV −3..+2), the looks `--hdr-look none|golden|punchy`,
+against small changes; EV −3..+1.5 in production/launcher defaults (standalone components retain +2)), the looks `--hdr-look none|golden|punchy`,
 the decode `--hdr-decode gamma2.2|srgb|none`, `--hdr-ev` (offset),
 `--hdr-ev-manual` (fixed EV), `--hdr-clamp`, and the meter's `--hdr-meter-bg`,
 `--hdr-white-target`, `--hdr-key-pull`, `--hdr-ev-deadband`,

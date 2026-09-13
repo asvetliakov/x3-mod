@@ -1,22 +1,24 @@
 # Same-run exposure and bloom comparisons
 
-2026-09-13. Installed in candidate `75dbbed`. **In-game control/notice appearance
-and native Windows behavior remain unverified**. The separate
-[space-exposure evaluation](space-exposure-policy.md) selects fixed EV 0 as the
-production default. No automatic-meter parameters change here.
+Controls were installed in candidate `75dbbed`; runs 26/27 exercise their notices
+and toggles in game. Native Windows remains unverified. The 2026-09-14
+[exposure decision](space-exposure-policy.md) changes the next production default
+to Auto capped at +1.5 EV; installation is pending. The control protocol and
+meter equations are unchanged.
 
 ## Controls and truthful state
 
 Launch with `--motion-output --hdr --hdr-tonemap --hdr-bloom` to prepare the
 features. Keep the game's Glow setting enabled: the recovered compositor
 boundary depends on it. Existing launch commands keep HDR, AgX and enhanced
-bloom opt-in. AgX production initialization now uses fixed EV 0, multiplier 1;
-`--hdr-exposure auto` opts into the existing meter. `--hdr-exposure fixed|auto`
+bloom opt-in. The next AgX production initialization uses Auto capped at +1.5 EV;
+`--hdr-exposure fixed` selects fixed EV 0, multiplier 1. `--hdr-exposure fixed|auto`
 requires `--hdr-tonemap` when explicitly supplied. The launcher always writes
-`X3M_HDR_EXPOSURE`, overriding a stale inherited AUTO value, and clears stale
+`X3M_HDR_EXPOSURE`, overriding a stale inherited policy, and clears stale
 `X3M_HDR_EV_MANUAL`. An explicit `--hdr-ev-manual` remains authoritative over the
 policy option. Direct environment configuration accepts `auto`, `manual` or
-`fixed`; absent or unrecognized mode remains fixed.
+`fixed`; absent mode selects Auto, while an unrecognized or truncated explicit mode
+falls back to fixed.
 
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
 ON ↔ OFF. Each function key needs a new press. Ctrl+Shift must already be held
@@ -51,8 +53,8 @@ HdrPass's current mode and EV as before.
 ## Exposure handoff and capability preparation
 
 `HdrConfig` retains its old component default for standalone callers and
-fixtures. Production capture initialization explicitly selects manual zero and
-`allow_auto_toggle=true`. `HdrPass::attach` uses the existing format, shader and
+fixtures. Production capture initialization explicitly selects Auto, maximum EV
+1.5, and `allow_auto_toggle=true`; manual zero remains the comparison reference. `HdrPass::attach` uses the existing format, shader and
 self-test gates to prepare AUTO when either AUTO is selected or that flag is
 set. Its normal target setup prepares the meter chain for the available
 capability even while fixed. A chain failure disables AUTO capability; no key
@@ -165,15 +167,11 @@ when HDR+AgX were not requested. All five affected comparison/lifetime tests
 passed after review fixes, including 40 lifetime scenarios / 186 checks; the
 capture translation unit cross-compiled again and the diff check remained clean.
 
-GPU qualification must check legibility, visibility after AgX/bloom, unchanged
-F8/history inputs, current-frame state/EV logs, default fixed → AUTO → fixed
-handoff without stale-history flash, both bloom modes with original-once alpha
-parity, unavailable capability text, and alt-tab/Reset behavior. Two Clear API
-calls do not imply two backend GPU operations: many glyph rectangles may incur
-driver work, so visible-notice frame cost still needs measurement. Cross-
-compilation and host fakes establish source/transaction evidence, not native
-Windows or CrossOver pixels/performance. No Wine, gameplay or installation was
-performed for this checkpoint.
+The initial source checkpoint above performed no Wine run or installation.
+Subsequent qualification and gameplay evidence are recorded below. Source/host
+checks do not establish native Windows behavior or GPU cost. In particular, two
+Clear API calls need not become two backend operations: drawing many glyph
+rectangles can incur driver work, so notice cost remains unmeasured.
 
 ## Combined candidate
 
@@ -184,5 +182,16 @@ selected automatic-exposure fixture passes 120 frames / 245 checks; two hostile
 WRAP cases add 190 checks. These are selected-case passes, not a full-project
 suite result. The retained production DLL passes its load check and x87 audit;
 [the single install record](../../verification/results/linear-material-install.json)
-binds source, binaries, rollback and scoped evidence. Run 7 still needs to
-verify visible controls, notice cost and actual game compositor execution.
+binds source, binaries, rollback and scoped evidence. Runs 26/27 subsequently
+show the controls/notices in game and confirm actual compositor execution. Run
+27 records 94 accepted mode requests and all 77 sampled bloom prepare/commit
+pairs succeed; its F8 buffers precede final bloom and are not a notice pixel oracle.
+Notice cost, unavailable-capability appearance, focus/Reset behavior in more
+scenes, and native Windows execution remain separate acceptance limits.
+
+The 2026-09-14 default change starts **Auto → fixed → Auto**. All five affected
+host tests pass, including existing release/sanitized controls and notice cases.
+The launcher dry-run verifies Auto/+1.5 without explicit policy or EV options;
+the vanilla dry-run also passes. Explicit Auto/+1.5 already ran in run 27, so
+this default-only change does not require another GPU suite. The new default
+is source-ready and will be installed in the next combined candidate.

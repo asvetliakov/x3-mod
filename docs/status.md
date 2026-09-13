@@ -39,6 +39,8 @@ inside a 485.01 ms noncapture frame. A broad pre-simulation region also contains
 stalls; the synchronous internal callback/VM cause is not yet isolated.
 Auto reaches its +1.5 ceiling in 329/331 active reports, so the accepted appearance
 mostly reflects a steady boost in this run rather than demonstrated useful adaptation.
+The next source candidate adopts the accepted Auto/+1.5 profile as its default;
+installed defaults remain unchanged until the combined build.
 Material summaries show no shader-bind failures or sampler refusals; the only
 explicit refused pair is glass. Far alpha-blended asteroids bypass the opaque
 material/motion route. The captured near and far nodes differ, so a same-object
@@ -84,7 +86,8 @@ stutter behavior fix. See [provenance](reverse-engineering/chase-view-transition
   [coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; older profiles,
   transparent, background, and other scene writers remain beyond installed coverage.
 - **Bloom/exposure:** authored glow works but is too subtle. Gain 0.35 is prepared for the next build;
-  +1.5 EV appearance is accepted. Auto still mostly reaches its ceiling; default-policy work remains explicit.
+  +1.5 EV appearance is accepted and selected as the next Auto default. The meter
+  still mostly reaches its ceiling; physically informed adaptation remains unproved.
 - **HDR scope:** FP16 and AgX work, but much of the scene is still compatibility-decoded gamma-space lighting.
   Scene-referred lighting, complete linear blending, and verified HDR display output remain incomplete.
 - **Native Windows:** Windows-compatible source cross-compiles, but no native-Windows runtime is verified. Depth
