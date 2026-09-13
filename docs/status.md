@@ -125,7 +125,9 @@ handoff). The two affected proxy translation units compile for x86/SSE2. The
 Its reviewed detached fixture now passes 3,549 X3 GPU cases, including eight
 perspective-interpolation checks, with the previous 2,757 cases preserved exactly.
 The expanded live-route fixture is reviewed and source-integrated; its GPU run
-and 148-pair installation remain pending.
+and 148-pair installation remain pending. The remaining [14 XT pairs](architecture/xt-materials.md)
+have an independently reviewed design: ten native-compatible BUMP/LOW conversions
+and four explicit DEFAULT producer repairs. Their implementation remains ahead.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

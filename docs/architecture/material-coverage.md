@@ -158,7 +158,8 @@ Implementation should proceed in five bounded groups:
 
 1. Finish the [inventoried remaining SM3 opaque identities](../reverse-engineering/remaining-sm3-opaque-materials.md):
    six Asteroid pairs are installed, 32 Boron/Paranid pairs await GPU/live
-   qualification, and 14 XT pairs need material conversion. Preserve separate
+   qualification, and [14 XT pairs](xt-materials.md) have an independently reviewed
+   conversion/repair design awaiting implementation. Preserve separate
    DEFAULT, BUMPMAP and BUMPMAP_LOW contracts. The dynamic damage motion route
    is now installed; it does not itself convert damage material lighting.
 2. Validate gameplay for the installed ordered linear-composition and temporal
