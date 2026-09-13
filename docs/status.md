@@ -84,6 +84,8 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   target-lock publication and pre-simulation stalls; targeted disassembly of their internal work is underway.
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
+  The [normal/specular study](reverse-engineering/asteroid-specular-minification.md) identifies an independent
+  minification hypothesis and bounded diagnostics; no smoothing policy is selected.
 - **Material appearance and coverage:** exclude accidental loss of native gloss terms before artistic tuning. The
   [coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; older profiles,
   transparent, background, and other scene writers remain beyond installed coverage. The
