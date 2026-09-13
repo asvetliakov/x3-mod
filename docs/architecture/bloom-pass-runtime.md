@@ -2,15 +2,16 @@
 
 2026-09-13. `src/renderer/bloom_pass.h/.cpp` implements the resource/state work
 for [the original-then-RGB-replacement boundary](hdr-bloom-boundary.md) and
-[candidate composition](hdr-bloom-composition.md). It is not yet connected to
-capture, the scene hook, CMake or an installed DLL. Isolated production and
-fixture-enabled x86 compilation passed with the project's SSE2/four-byte
-incoming-stack flags. The subsequent
-[standalone GPU/state/recovery fixture](../verification/bloom-pass-fixture.md)
-passed on X3, including Reset and final-image checks. Integrated ownership and
-game acceptance remain pending. Native Windows execution is
-unverified; runtime feature availability does not depend on platform proof
-flags, backend-private behavior, DLL identities or hashes.
+[candidate composition](hdr-bloom-composition.md). The
+[live integration](hdr-bloom-boundary.md#live-integration-qualification-2026-09-13)
+connects capture, the scene hook and the installed DLL; its combined ownership
+fixture and the [standalone GPU/state/recovery fixture](../verification/bloom-pass-fixture.md)
+passed on X3. Run25 exposed a device-creation refusal before bloom could run;
+the [device creation policy](renderer-device-creation.md) addresses that source
+issue and records its separate verification limits. Game acceptance and native
+Windows execution remain unverified. Runtime feature availability does not
+depend on platform proof flags, backend-private behavior, DLL identities or
+hashes.
 
 ## API and caller obligations
 
@@ -23,6 +24,10 @@ or game shader bytes are used. Public creation flags refuse pure devices and
 software-only vertex processing; hardware and mixed devices are supported.
 Mixed devices temporarily select hardware VP for injected draws and restore
 the captured software-VP value through documented device calls.
+The captured CreateDevice route now removes the optional pure-device flag
+when motion output is requested at startup; see the
+[renderer device creation policy](renderer-device-creation.md). The executor
+keeps its refusal for devices supplied outside that route.
 
 Availability requires actual SM3/texture/filter/color-mask/StretchRect caps,
 public format checks for FP16 and A8R8G8B8 render-target textures and sampling,

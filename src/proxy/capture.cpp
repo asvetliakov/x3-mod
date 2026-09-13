@@ -1673,11 +1673,19 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     HookGuard lock;
+    // The startup motion route (including HDR/TAA/bloom) saves and resyncs
+    // state through documented Get* calls. PUREDEVICE forbids those reads.
+    // Keep hardware/mixed/software VP and every other application flag intact;
+    // normalize only this optional optimization before either the native or
+    // ownership-wrapped factory creates the device. No retry with pure flags:
+    // one native call retains its ordinary failure/output/parameter semantics.
+    const DWORD effective_flags=motion_output_requested ? flags & ~D3DCREATE_PUREDEVICE : flags;
+    log("device_creation_policy requested=%08lx effective=%08lx state_reads=%u",flags,effective_flags,unsigned(motion_output_requested));
     presentation_parameters("create_before",0,window,p);
     if(p) log("create_device adapter=%u flags=%08lx width=%u height=%u format=%u windowed=%u msaa=%u interval=%u",adapter,flags,p->BackBufferWidth,p->BackBufferHeight,p->BackBufferFormat,p->Windowed,p->MultiSampleType,p->PresentationInterval);
     const auto begin=telemetry::now();
     cpu.before_original();
-    HRESULT hr=factories.at(d)->get<HRESULT (WINAPI*)(IDirect3D9*,UINT,D3DDEVTYPE,HWND,DWORD,D3DPRESENT_PARAMETERS*,IDirect3DDevice9**)>(16)(d,adapter,type,window,flags,p,out);cpu.after_original();
+    HRESULT hr=factories.at(d)->get<HRESULT (WINAPI*)(IDirect3D9*,UINT,D3DDEVTYPE,HWND,DWORD,D3DPRESENT_PARAMETERS*,IDirect3DDevice9**)>(16)(d,adapter,type,window,effective_flags,p,out);cpu.after_original();
     telemetry::record(telemetry::process(),telemetry::Metric::CreateDevice,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("create_after",0,window,p);
     log("create_device_result hr=%08lx",hr);

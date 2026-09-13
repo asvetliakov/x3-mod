@@ -80,10 +80,21 @@ B as `/tmp/x3-bottleX3-run25/` (174 artifacts), with no snapshot issues. Selecti
 stutter also occurs with chase disabled. The user reports bright backgrounds
 without the earlier severe overexposure and no obvious exposure adaptation or
 bloom difference. A's log proves adaptation active but nearly always capped at
-+2 EV; every F8 burst is at that cap. B's actual bloom path is under analysis.
++2 EV; every F8 burst is at that cap. [A's analysis](verification/run24-exposure-baseline.md)
+records the limited adaptation and persistent stutters. [B's analysis](verification/run25-bloom-comparison.md)
+proves bloom never executed: the game's pure-device flag caused attachment to
+fail. The reviewed [device-creation correction](architecture/renderer-device-creation.md)
+now removes that optional flag when the enhanced renderer needs state reads,
+preserving hardware vertex processing and every other flag. Creation tests
+pass 18 scenarios / 218 assertions and strict x86 compilation passes; a new
+DLL and live bloom qualification remain pending.
 The user requested separate runtime exposure and bloom toggles for same-run
-comparisons; implement with visible state and logging before another such
-gameplay request. There is no new run for the HUD/stutter fixes yet.
+comparisons; these are being implemented with visible state and logging before
+another such gameplay request. The user additionally requested an outdoor-space
+exposure evaluation against other modern space games, then adjustment. Separate
+research and capture-based policy evaluation are underway; do not merely lower
+the current permanent brightness cap. There is no new run for the HUD/stutter
+fixes yet.
 The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
 geometry genuinely composites with the background; temporal coverage must

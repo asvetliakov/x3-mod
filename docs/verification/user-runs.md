@@ -18,7 +18,7 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | --- | --- | ---: | --- |
 | 1 | Chase aiming/framing + reader/adjacency verification | 0 | Accepted as run 18 |
 | 2 | Sharpen/shimmer + camera cuts with TAA | 0 | Merged into run 6 |
-| 3 | Automatic exposure + bloom off/on | 0 | Completed: A run 24, B run 25; analysis pending |
+| 3 | Automatic exposure + bloom off/on | 0 | Completed: A run 24; B run 25 exposed bloom initialization failure |
 | 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
@@ -72,8 +72,10 @@ referenced artifacts are preserved. Automatic exposure is active, and the user
 reports selection stutter with chase disabled and bright backgrounds without
 the earlier severe overexposure. Analysis of the exposure changes is underway.
 B is complete as run 25, with all 174 referenced artifacts preserved. The user
-noticed no visual bloom difference; actual activation and output are under
-analysis. Do not repeat either command for this item. Separate runtime exposure
+noticed no visual bloom difference; [analysis](run25-bloom-comparison.md) shows
+that bloom never attached because the game requested a pure D3D9 device.
+The source fix is reviewed but not installed. Do not repeat either command for
+this item. Separate runtime exposure
 and bloom toggles are requested for future same-run comparisons and are not
 installed yet. Commands below remain as provenance.
 
