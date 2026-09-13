@@ -1,4 +1,4 @@
-"""Float64 oracle for the bounded DEFAULT linear material families; never game code.
+"""Float64 oracle for bounded DEFAULT and Argon BUMPMAP materials; never game code.
 
 Equations are derived in docs/architecture/scene-linear-materials.md and
 material-color-inputs.md. This is a numerical reference, not a SM3 interpreter.
@@ -15,6 +15,11 @@ Optional half-source quantization models retained texture samples and original
 PS varying endpoints only. It does not simulate every permitted legacy _pp
 intermediate or interpolation rounding. New linear radiance remains float64
 in this oracle. Half-target quantization models the encoded FP16 scene store.
+Bump reconstruction retains A->binormal/G->tangent and RSQ's absolute source.
+The q=0 RSQ/RCP boundary, zero mixed normal/view and nonfinite geometry are
+outside its analytical domain; GPU fixtures separately qualify these original
+instructions. Nonzero near-zero q has no invented epsilon or fallback normal,
+but float64 results do not establish legacy partial-precision boundary behavior.
 """
 from dataclasses import dataclass
 import math
@@ -145,9 +150,10 @@ class PixelProfile:
     diffuse_coefficient: float = DIFFUSE_COEFFICIENT
     specular_power: int = 5
     cube_coefficient: float = 1.0
+    bump_map: bool = False
 
 
-# Original game-program identities describe twelve derived contracts, not raw code.
+# Original game-program identities describe eighteen derived contracts, not raw code.
 PROFILES = {
     "8759c7838bbc86c2": PixelProfile(2, True, False),
     "63f96eba9eea7880": PixelProfile(2, True, True),
@@ -162,6 +168,12 @@ PROFILES = {
     "8ab6188a40ca15ea": PixelProfile(1, True, True, 0.5, 6, 0.5),
     "8df6143d0e77d92e": PixelProfile(1, False, False, 0.5, 6, 0.5),
     "e16a9806ee3544c3": PixelProfile(1, False, True, 0.5, 6, 0.5),
+    "ca6bfa4a6cca7e2a": PixelProfile(2, True, False, bump_map=True),
+    "5e0a10fe752b6140": PixelProfile(2, True, True, bump_map=True),
+    "63379470db8d2a86": PixelProfile(1, True, False, bump_map=True),
+    "68915563dd0aac9a": PixelProfile(1, False, False, bump_map=True),
+    "d086fde54698070c": PixelProfile(1, True, True, bump_map=True),
+    "f17fffd88d134b04": PixelProfile(1, False, True, bump_map=True),
 }
 IDENTITY_AFFINE = ((1.0, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0),
                    (0.0, 0.0, 1.0, 0.0))
@@ -230,14 +242,65 @@ class PixelResult:
     encoded_rgba: Vec4
 
 
+@dataclass(frozen=True)
+class BumpGeometry:
+    normal: Vec3
+    view: Vec3
+    reflection: Vec3
+
+
+def bump_geometry(normal_sample, tangent, binormal, geometric_normal, view, *,
+                  two_sided=False, face=1.0, half_source=False) -> BumpGeometry:
+    """Derive the BUMPMAP PS geometry from sampled RGBA and interpolated vectors.
+
+    Inputs are already transformed/interpolated; do not normalize the basis.
+    Quantization covers input endpoints only, not intermediate _pp arithmetic.
+    The result has already been normalized and, where required, face-flipped.
+    q=0 is reserved for independent GPU RSQ/RCP qualification, not redefined.
+    """
+    if not isinstance(two_sided, bool) or not isinstance(half_source, bool):
+        raise TypeError("geometry switches must be boolean")
+    quantize = half if half_source else float
+    sample = tuple(quantize(x) for x in _vector(normal_sample, 4, "normal_sample"))
+    if not all(math.isfinite(x) and 0.0 <= x <= 1.0 for x in (sample[1], sample[3])):
+        raise ValueError("normal alpha/green must be normalized finite data samples")
+    def basis(values, name):
+        return _vector(tuple(quantize(x) for x in _vector(values, 3, name)), 3, name, True)
+    tangent = basis(tangent, "tangent")
+    binormal = basis(binormal, "binormal")
+    geometric_normal = basis(geometric_normal, "geometric_normal")
+    view = _unit(basis(view, "view"), "view")
+    x, y = 2.0 * sample[3] - 1.0, 2.0 * sample[1] - 1.0
+    q = 1.0 - x*x - y*y
+    if q == 0.0:
+        raise ValueError("q=0 requires separate GPU reciprocal-chain qualification")
+    z = math.sqrt(abs(q))
+    normal = _unit(tuple(y*t + x*b + z*n
+                         for t, b, n in zip(tangent, binormal, geometric_normal)), "mixed normal")
+    if two_sided:
+        face = _real(face, "face")
+        if not math.isfinite(face) or face == 0.0:
+            raise ValueError("face must be finite and nonzero")
+        if face < 0.0:
+            normal = tuple(-n for n in normal)
+    reflection = tuple(2.0 * _dot(view, normal) * n - v for n, v in zip(normal, view))
+    return BumpGeometry(normal, view, reflection)
+
+
 def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
           lightmap, cubemap, directions: Sequence[DirectionalLight], *,
           affine=IDENTITY_AFFINE, face=1.0, glow=0.0, gains=Gains(),
-          half_source=False, half_target=False) -> PixelResult:
+          half_source=False, half_target=False, normal_sample=None,
+          tangent=None, binormal=None) -> PixelResult:
     """Evaluate one PS sample using explicit sampled inputs and VS varyings.
 
-    Cube lookup geometry is exposed by vertex().reflection; this function takes
-    an already sampled cube RGB because texture sampling is outside this oracle.
+    DEFAULT takes already sampled cube RGB; vertex().reflection exposes its
+    lookup geometry. BUMPMAP requires cubemap(direction)->sampled RGB, supplied
+    by the caller, so sampling depends on the actual per-pixel reflection.
+    That callback models a cube function, not filtering or rasterization. BUMP
+    also requires normal_sample, tangent and binormal. varying.normal/view are
+    the original geometric VS inputs; varying.linear_rgb keeps geometric point
+    response, independently of the bumped PS normal.
     RGB gains leave the original alpha interpolation untouched. A caller using
     vertex() must pass the same Gains to both stages.
     """
@@ -257,18 +320,26 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
     source = lambda values, size, name: tuple(quantize(v) for v in _vector(values, size, name))
     diffuse = source(diffuse, 4, "diffuse")
     lightmap = source(lightmap, 4, "lightmap")
-    cubemap = source(cubemap, 3, "cubemap")
     mask = quantize(_real(specular_mask, "specular_mask"))
     if not math.isfinite(mask) or not 0.0 <= mask <= 1.0:
         raise ValueError("specular_mask must be a normalized finite data sample")
-    normal = _unit(source(varying.normal, 3, "normal"), "normal")
-    view = _unit(source(varying.view, 3, "view"), "view")
-    if contract.two_sided:
-        face = _real(face, "face")
-        if not math.isfinite(face) or face == 0.0:
-            raise ValueError("face must be finite and nonzero")
-        if face < 0.0:
-            normal = tuple(-x for x in normal)
+    if contract.bump_map:
+        if not callable(cubemap):
+            raise TypeError("BUMPMAP cubemap must sample RGB from its direction argument")
+        geometry = bump_geometry(normal_sample, tangent, binormal, varying.normal, varying.view,
+                                 two_sided=contract.two_sided, face=face, half_source=half_source)
+        normal, view = geometry.normal, geometry.view
+        cubemap = source(cubemap(geometry.reflection), 3, "cubemap sample")
+    else:
+        cubemap = source(cubemap, 3, "cubemap")
+        normal = _unit(source(varying.normal, 3, "normal"), "normal")
+        view = _unit(source(varying.view, 3, "view"), "view")
+        if contract.two_sided:
+            face = _real(face, "face")
+            if not math.isfinite(face) or face == 0.0:
+                raise ValueError("face must be finite and nonzero")
+            if face < 0.0:
+                normal = tuple(-x for x in normal)
     albedo_code = diffuse[:3]
     if contract.affine_color:
         try:

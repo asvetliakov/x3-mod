@@ -68,8 +68,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   cases and 1,228 live-route checks across ownership/TAA, Reset, state blocks
   and reference retirement. The feature stays opt-in; gameplay acceptance is
   run 6 in the brief queue. The [Argon BUMPMAP design](architecture/linear-bump-materials.md)
-  identifies the next ten pairs, five sampler roles and a separate varying ABI;
-  exact offline conversion proof is the next step.
+  now has independently reviewed offline proof and numerical reference for the
+  next ten pairs, five sampler roles and a separate varying ABI. Production
+  transformation, GPU boundaries and live routing are the next checkpoint;
+  these BUMPMAP shaders are not in the installed build yet.
   Blended emissions need a separate linear-composition and temporal-reactivity
   design, as the [next-slice study](architecture/material-next-slice.md) explains.
   Targeted disassembly established native color/emissive scaling. Covered

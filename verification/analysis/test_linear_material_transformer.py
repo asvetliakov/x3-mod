@@ -90,6 +90,10 @@ class LinearMaterialTransformerTests(unittest.TestCase):
             'ps_3b94320087e81945', 'ps_e3b7acc16da9932d', 'ps_7a14d4dcb28f27e5',
             'ps_8ab6188a40ca15ea', 'ps_8df6143d0e77d92e', 'ps_e16a9806ee3544c3',
         }
+        # Offline BUMPMAP certification must not imply production admission.
+        pending_bump = {row['id'] for row in cls.report['programs'] if 'argon_bump' in row['families']}
+        if pending_bump & implemented:
+            raise AssertionError('Offline BUMPMAP corpus entered runtime qualification')
         cls.report['programs'] = [row for row in cls.report['programs'] if row['id'] in implemented]
         if {row['id'] for row in cls.report['programs']} != implemented or not all(
                 ('argon' if row['id'] in ARGON_ORIGINALS else 'shared_default') in row['families']

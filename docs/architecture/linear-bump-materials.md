@@ -1,7 +1,7 @@
 # Linear Argon BUMPMAP material slice
 
 Design study, 2026-09-13, after the installed twenty-pair DEFAULT slice.
-**Proposed, not implemented or GPU-qualified.** Extend the existing opaque
+**Offline proof/reference reviewed; production and GPU qualification pending.** Extend the existing opaque
 material route to the complete Argon SM3 BUMPMAP contract. Evaluate color in
 linear light, then compatibility-encode into the current FP16 engine-space
 target. Retain alpha, geometric lighting response and same-draw motion/depth.
@@ -189,6 +189,17 @@ the motion transform against immutable original bytes, then merge insertions
 at original offsets. Never pass material-patched bytecode into original-hash
 motion validation or weaken its fingerprint guards.
 
+The existing production and fixture slot counters undercount control flow and
+cube sampling. Correct them with the implementation: REP/LOOP use three slots,
+ENDREP/ENDLOOP two, IF three, and pixel cube TEXLD four. BUMPMAP also introduces
+DP2ADD, which uses two. The previous DEFAULT figures (maximum VS 77 / PS 165)
+are estimates from that counter, not exact documented slot totals. Existing GPU
+creation evidence is unaffected; calculate corrected totals before extending
+the production gate. Use the observed instruction set and sampler declarations,
+rejecting unsupported forms rather than guessing a cost.
+[PS3 instruction costs](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-instructions-ps-3-0),
+[VS3 instruction costs](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-vs-instructions-vs-3-0).
+
 ## Bounded verification and remaining questions
 
 Offline proof/reference work can establish every pair, conversion location,
@@ -232,14 +243,22 @@ lifecycle; the added coverage should not grow repeated per-draw table scans.
 Only samplers named by the cached mask must be known FALSE. A failed or absent
 contract stays ineligible, and combined-stage availability remains separately
 checked so stale cache entries cannot authorize a partial pair.
+Store the contract in `Shadow`, so a full resynchronization clears it even when
+a shader getter fails. Successful shader setters must clear/recompute it for
+null or unknown shaders too. Registration of an already-bound shader clears it
+before releasing/replacing variants, including paths that return early or throw;
+only the completed registration repopulates it. State-block recording must not
+alter the active contract. Keep current HDR readiness and combined-object checks
+outside the cache, and avoid contract resolution when materials are disabled.
 Inspect generated slot counts and qualify the new varyings/partial-precision
 boundaries on GPU; fixture timings are not gameplay FPS. Existing owner,
 opaque/no-MSAA, gamma22/AgX, TAA, bind rollback and Reset gates stay in force.
 Native Windows behavior remains unverified and requires its own execution.
 
 No uncertain engine input producer required a new EXE hook or fresh game run
-for this design. Remaining decisive proof is the per-site conversion/resource
-audit and GPU treatment of preserved normal arithmetic, interpolation and
+for this design. The reviewed per-site conversion/resource audit is now complete.
+Remaining qualification includes transformed budgets and GPU treatment of
+preserved normal arithmetic, interpolation and
 directional cube sampling. Visual quality and actual cost await a later
 user-controlled scene run after implementation, not a prerequisite for this
 offline contract. Other BUMPMAP families remain separate work.
@@ -247,5 +266,22 @@ offline contract. Other BUMPMAP families remain separate work.
 Local evidence: `/tmp/x3-shader-sweep/programs/{vs,ps}_<hash>.bin` and matching
 `/tmp/x3-shader-sweep/disassembly/{vs,ps}_<hash>.bin.txt`; complete derived archive
 inventory and generated motion rows linked above. Raw game bytes and compiler
-disassembly remain untracked. No implementation, build or runtime test was
-performed for this study.
+disassembly remain untracked. The offline checkpoint adds proof/reference code
+and focused host checks; it changes no production shader or installed build.
+
+## Offline review verdict
+
+Independent review on 2026-09-13 found no blocking defect in this offline
+checkpoint. The generated proof binds the nine BUMPMAP originals, ten exact
+pairs and 24 archive pass occurrences; it covers the A-to-binormal/G-to-tangent
+basis, geometric point response, per-pixel normal/reflection chains, face
+handling, opacity, RGB sites and class-B resource exclusions. The prior 15
+DEFAULT program records and 20 pair rows remain unchanged apart from the added
+accurate original-slot annotation. Independent recounting against the linked
+SM3 tables confirmed BUMPMAP VS totals 62/51/62 and PS totals
+65/70/51/47/56/52. The focused profile and numerical-reference modules pass
+25 and 28 tests respectively. Five affected pure-host transformer tests also
+pass, retaining the installed 15-program/20-pair/120-variant corpus and previous
+Argon byte-exact baseline; the full focused set is 58 tests. This verdict certifies original-site structure
+and the analytical reference only; transformed budgets, GPU boundary behavior,
+production admission and native-Windows execution remain future qualification.

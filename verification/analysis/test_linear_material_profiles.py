@@ -5,6 +5,7 @@ X3M_SHADER_PROGRAM_DIRECTORY to select another local extraction directory.
 """
 from copy import deepcopy
 import json
+import hashlib
 import os
 from pathlib import Path
 import struct
@@ -80,15 +81,15 @@ class LocalOriginalTests(unittest.TestCase):
     def setUpClass(cls):
         cls.directory = Path(os.environ.get('X3M_SHADER_PROGRAM_DIRECTORY', '/tmp/x3-shader-sweep/programs'))
         if not all((cls.directory / (name + '.bin')).is_file() for name in linear.ORIGINALS):
-            raise unittest.SkipTest('local nine-original archive corpus unavailable')
+            raise unittest.SkipTest('local reviewed archive corpus unavailable')
         cls.codes = {name: (cls.directory / (name + '.bin')).read_bytes() for name in linear.ORIGINALS}
         cls.inventory_path = ROOT / 'verification/results/motion-output-profiles.json'
         cls.report = linear.inspect(cls.directory, cls.inventory_path)
 
     def test_all_originals_pairs_and_checked_in_profile_reproduce(self):
-        self.assertEqual(len(self.report['programs']), 15)
-        self.assertEqual(len(self.report['pairs']), 20)
-        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 120)
+        self.assertEqual(len(self.report['programs']), 24)
+        self.assertEqual(len(self.report['pairs']), 30)
+        self.assertEqual(sum(p['archive_pass_occurrences'] for p in self.report['pairs']), 144)
         self.assertEqual(self.report, json.loads((ROOT / 'docs/reverse-engineering/linear-material-profiles.json').read_text()))
         serialized = json.dumps(self.report)
         for forbidden in ('"token"', '"words"', '"expected"', '"replacement"'):
@@ -100,7 +101,7 @@ class LocalOriginalTests(unittest.TestCase):
             decoded = linear.decode_sites(items)
             definition = next(i for i in items if i['opcode'] == linear.motion.DEF)
             source = next(s['operand_dword'] for row in decoded.values() for s in row['sources'])
-            # DWORD 2 lies inside the original leading comment in these nine.
+            # DWORD 2 lies inside the original leading comment in every reviewed original.
             self.assertGreater(items[0]['dword'], 2)
             for at in (2, definition['dword'] + 2, source):
                 mutated = bytearray(code)
@@ -114,12 +115,13 @@ class LocalOriginalTests(unittest.TestCase):
         vertices = {p['id']: p for p in self.report['programs'] if p['id'].startswith('vs_')}
         for name, profile in vertices.items():
             point = profile['point_rgb_sources'][0]
-            fixed = name.endswith('badefd5143b3024f')
-            self.assertEqual(point['instruction_dword'], 389 if fixed else 428)
-            self.assertEqual(point['operand_dword'], 392 if fixed else 431)
+            bump = 'argon_bump' in profile['families']
+            fixed = name.endswith(('badefd5143b3024f', '19a246a56e9d9700'))
+            self.assertEqual(point['instruction_dword'], (398 if fixed else 437) if bump else (389 if fixed else 428))
+            self.assertEqual(point['operand_dword'], (401 if fixed else 440) if bump else (392 if fixed else 431))
             self.assertEqual(point['color_constant_indices'], [5] if fixed else list(range(1, 24, 3)))
             self.assertEqual(point.get('relative', False), not fixed)
-            self.assertEqual(profile['budget']['free_interpolator_registers'], [9, 10, 11])
+            self.assertEqual(profile['budget']['free_interpolator_registers'], [10, 11] if bump else [9, 10, 11])
 
     def test_every_pixel_preserves_alpha_precision_constraints(self):
         for profile in self.report['programs']:
@@ -134,7 +136,7 @@ class LocalOriginalTests(unittest.TestCase):
                 self.assertEqual(profile['alpha_output_sites'][0]['sources'][1]['swizzle'], 'wwww')
                 for texture in profile['texture_sources']:
                     self.assertIn('partial_precision', texture['fetch']['destination']['modifiers'])
-                    self.assertEqual(texture['conversion_write_mask'], None if texture['sampler'] == 1 else 'xyz')
+                    self.assertEqual(texture['conversion_write_mask'], None if texture['role'] in ('specular_data_red', 'normal_data_alpha_green') else 'xyz')
 
     def test_missing_site_rejected_even_for_the_original(self):
         decoded = linear.decode_sites(linear.motion.instructions(self.codes['vs_53a0a641107ed76c'])[1])
@@ -237,13 +239,14 @@ class LocalOriginalTests(unittest.TestCase):
     def test_selected_material_resources_are_reserved_in_both_depth_modes(self):
         for original in self.report['programs']:
             stage = original['id'][:2]
+            bump = 'argon_bump' in original['families']
             b = original['budget']
             self.assertEqual(b['reservations_apply_to_current_depth_modes'], [False, True])
             self.assertNotIn(6, b['free_texcoord_semantic_indices'])
             chosen = b['material_resources_proven_free_before_reservation']
-            self.assertEqual(chosen['rgb_interpolator_register'], 7 if stage == 'ps' else 8)
+            self.assertEqual(chosen['rgb_interpolator_register'], (8 if stage == 'ps' else 9) if bump else (7 if stage == 'ps' else 8))
             self.assertEqual(chosen['def_constants'], [212, 213] if stage == 'ps' else [248, 249])
-            if stage == 'vs':
+            if stage == 'vs' and not bump:
                 profile = linear.motion.profile(self.codes[original['id']], original['id'], stage, '3_0')
                 for key, value in [('constant_registers_direct', [248]), ('defined_constant_registers', [249]),
                                    ('free_output_registers', [6, 7, 9, 10, 11]),
@@ -256,10 +259,10 @@ class LocalOriginalTests(unittest.TestCase):
         pairs = [row for row in self.report['pairs'] if row['family'] == 'shared_default']
         self.assertEqual(len(pairs), 10)
         self.assertEqual(sum(row['archive_pass_occurrences'] for row in pairs), 96)
-        self.assertEqual(self.report['families']['shared_default']['production_status'], 'offline_proof_only')
+        self.assertEqual(self.report['families']['shared_default']['production_status'], 'qualified_24930b5')
         self.assertEqual(self.report['future_negative_pair']['ps'], '462342e3e5781384')
         self.assertNotIn((self.report['future_negative_pair']['vs'], '462342e3e5781384'), linear.PAIRS)
-        self.assertEqual(max(p['word_count'] for p in self.report['programs']), 1296)
+        self.assertEqual(max(p['word_count'] for p in self.report['programs']), 1354)
 
     def test_every_shared_lobe_rejects_mutations_without_a_hash_gate(self):
         for key in linear.FAMILIES['shared_default']['pixels']:
@@ -342,6 +345,183 @@ class LocalOriginalTests(unittest.TestCase):
             path.write_text(json.dumps(inventory))
             with self.assertRaisesRegex(ValueError, 'splice plan changed'):
                 linear.inspect(self.directory, path)
+
+    def test_prior_fifteen_profile_records_remain_exact_except_budget_annotation(self):
+        records = deepcopy([p for p in self.report['programs'] if 'argon_bump' not in p['families']])
+        self.assertEqual(len(records), 15)
+        for record in records:
+            record['budget'].pop('original_static_weighted_slots')
+        digest = hashlib.sha256(json.dumps(records, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        # Original proof records at approved 03e0b62, including all source
+        # offsets, alpha/liveness predicates, resource exclusions and identities.
+        self.assertEqual(digest, '4aa8aed58580ceef0a23659a5a67991fa33f58d602dec314a9854c722417a1d8')
+
+    def test_bump_inventory_is_separate_from_runtime_default(self):
+        rows = [p for p in self.report['programs'] if 'argon_bump' in p['families']]
+        pairs = [p for p in self.report['pairs'] if p['family'] == 'argon_bump']
+        self.assertEqual((len(rows), len(pairs), sum(p['archive_pass_occurrences'] for p in pairs)), (9, 10, 24))
+        self.assertEqual({p['motion_class'] for p in pairs}, {'B'})
+        self.assertEqual(self.report['families']['argon_bump']['production_status'], 'offline_proof_only')
+        self.assertEqual({(p['vs'], p['ps']) for p in pairs},
+                         {('4944d81dfe531b37', ps) for ps in ('ca6bfa4a6cca7e2a', '5e0a10fe752b6140')} |
+                         {(vs, ps) for vs in ('19a246a56e9d9700', '44c4a41ca92ae2e3') for ps in
+                          ('63379470db8d2a86', '68915563dd0aac9a', 'd086fde54698070c', 'f17fffd88d134b04')})
+        inventory = json.loads(self.inventory_path.read_text())
+        row = next(r for r in inventory['pairs'] if r['ps'] == 'ca6bfa4a6cca7e2a' and r['vs'] == '4944d81dfe531b37')
+        row['effects']['techniques'] = ['DEFAULT']
+        with self.assertRaises(ValueError):
+            linear.prove_archive_coverage(inventory)
+
+    def test_bump_normal_reflection_and_conversion_roles_are_independent(self):
+        # Separate literal expected sites from the implementation's shape table.
+        expected = {
+            'ca6bfa4a6cca7e2a': (1095, 1263, 1293, 'r4', 1260, 'r6', 65),
+            '5e0a10fe752b6140': (1098, 1289, 1319, 'r4', 1286, 'r6', 70),
+            '63379470db8d2a86': (1077, 1185, 1215, 'r4', 1182, 'r5', 51),
+            '68915563dd0aac9a': (175, 283, 296, 'r1', 280, 'r4', 47),
+            'd086fde54698070c': (1080, 1211, 1241, 'r4', 1208, 'r5', 56),
+            'f17fffd88d134b04': (178, 309, 322, 'r1', 306, 'r4', 52),
+        }
+        for key, (normal, reflection, convert_after, albedo, clamp, clamp_reg, slots) in expected.items():
+            row = next(p for p in self.report['programs'] if p['id'] == 'ps_' + key)
+            proof = row['alpha_and_affine_proof']
+            self.assertEqual(proof['normal_reconstruction_sites'][0]['instruction_dword'], normal)
+            self.assertEqual(proof['normal_channels'], {'alpha':'binormal_v5', 'green':'tangent_v4', 'red_blue':'unused'})
+            self.assertEqual(proof['reflection_coordinate_dword'], reflection)
+            self.assertEqual(proof['specular_power'], 5)
+            self.assertEqual(row['lobe_coefficients'], {'diffuse':0.4000000059604645, 'specular_power':5, 'cube':1.0})
+            self.assertEqual([t['role'] for t in row['texture_sources']],
+                             ['diffuse_rgb','normal_data_alpha_green','specular_data_red','lightmap_emissive_rgb','reflection_cube_rgb'])
+            self.assertEqual((row['texture_sources'][0]['conversion_after_dword'], row['texture_sources'][0]['conversion_rgb_register']), (convert_after, albedo))
+            self.assertEqual((row['color0_rgb_clamp']['instruction_dword'], row['color0_rgb_clamp']['destination']['name']), (clamp, clamp_reg))
+            self.assertEqual(row['budget']['original_static_weighted_slots'], slots)
+            self.assertTrue(all(t['destination']['mask'] == 'xyz' and 'partial_precision' in t['destination']['modifiers'] for t in row['rgb_precision_sites']))
+            geometry = {t['instruction_dword'] for t in proof['normal_reconstruction_sites']}
+            self.assertFalse(geometry & {t['instruction_dword'] for t in row['rgb_precision_sites']})
+
+    def test_bump_pixel_rejects_semantic_mutations_without_identity_gate(self):
+        # Each of six originals: channel swap, wrong basis, bad reciprocal,
+        # face order, power, mask, reflect source, affine, and independent alpha.
+        for key in linear.BUMP_PIXELS:
+            original = self.decoded_original('ps_' + key)
+            tex, affine, clamp, _, final = linear.BUMP_PIXELS[key]
+            proof = linear.prove_bump_pixel(original, key)
+            angular = proof['angular_and_mask_sites']
+            normal = tex[1]
+            mutations = [
+                (normal+4, 'source_swizzle', 1, 'xyzw'),
+                (normal+14, 'source_name', 1, 'v5'),
+                (normal+21, 'source_name', 1, 'v4'),
+                (normal+26, 'opcode', None, 7),
+                (normal+9, 'source_modifier', 1, 0),
+                (angular[5]['instruction_dword'], 'source_swizzle', 1, 'xxxx'),
+                (tex[2]+4, 'source_swizzle', 0 if len(linear.BUMP_PIXELS[key][3]) == 2 else 1, 'yyyy'),
+                (proof['reflection_coordinate_dword'], 'source_name', 2, 'v2'),
+                (tex[4], 'source_name', 0, 'v4'),
+                (tex[0]+4, 'destination_mask', None, 'xyzw' if not affine else 'xyz'),
+                (clamp, 'destination_mask', None, 'xyzw'),
+                (tex[3]+4, 'source_swizzle', 2, 'xxxx'),
+                (final+4, 'source_name', 1, 'v1'),
+                (final, 'destination_mask', None, 'xyzw'),
+            ]
+            if affine:
+                mutations.append((affine-4, 'source_name', 1, 'c0'))
+            if key in ('5e0a10fe752b6140','d086fde54698070c','f17fffd88d134b04'):
+                mutations.append((normal+56, 'source_name', 0, 'r1'))
+            for at, kind, operand, value in mutations:
+                broken = deepcopy(original)
+                if kind.startswith('source_'):
+                    broken[at]['sources'][operand]['source_modifier' if kind == 'source_modifier' else kind[7:]] = value
+                elif kind == 'opcode':
+                    broken[at]['item']['opcode'] = value
+                else:
+                    broken[at]['destination']['mask'] = value
+                with self.subTest(key=key, at=at, mutation=kind), self.assertRaises(ValueError):
+                    linear.prove_bump_pixel(broken, key)
+            for literal in proof['literal_sites']:
+                broken = deepcopy(original)
+                definition = broken[literal['definition_dword']]['item']
+                words = list(definition['words'])
+                words[literal['literal_dword'] - literal['definition_dword'] - 1] = struct.unpack('<I', struct.pack('<f', 0.5))[0]
+                definition['words'] = tuple(words)
+                with self.subTest(key=key, literal=literal['value']), self.assertRaises(ValueError):
+                    linear.prove_bump_pixel(broken, key)
+            # An extra write inserted in an otherwise reviewed scalar chain
+            # kills a live normal lane; exact occupancy must reject it.
+            broken = deepcopy(original)
+            at = normal + 33
+            broken[at] = deepcopy(broken[normal+14])
+            broken[at]['item']['dword'] = at
+            with self.subTest(key=key, extra_live_clobber=True), self.assertRaises(ValueError):
+                linear.prove_bump_pixel(broken, key)
+
+    def test_bump_vertex_proves_basis_fog_and_point_relative_model(self):
+        for key in linear.BUMP_VERTICES:
+            code = self.codes['vs_' + key]
+            profile = linear.motion.profile(code, 'vs_' + key, 'vs', '3_0')
+            original = self.decoded_original('vs_' + key)
+            loop = key != '19a246a56e9d9700'
+            linear.prove_bump_vertex(original, loop, profile)
+            shift = 0 if loop else -45
+            cases = [(437 if loop else 398, 1, 'name', 'c0'),
+                     (452 if loop else 406, 1 if loop else 2, 'name', 'c0'),
+                     (456+shift, 0, 'name', 'v3'), (461+shift, 0, 'name', 'v4'),
+                     (527+shift, 1, 'swizzle', 'yyyy'), (522+shift, 1, 'source_modifier', 0),
+                     (506+shift, 0, 'source_modifier', 0), (379, 1, 'name', 'c0')]
+            if loop:
+                cases += [(393, 0, 'name', 'i1'), (395, 1, 'swizzle', 'xxxx'),
+                          (429, 0, 'address_component', 'x'), (437, 1, 'name', 'c2')]
+            for at, operand, field, value in cases:
+                broken = deepcopy(original)
+                broken[at]['sources'][operand][field] = value
+                with self.subTest(key=key, at=at, field=field), self.assertRaises(ValueError):
+                    linear.prove_bump_vertex(broken, loop, profile)
+            broken = deepcopy(original)
+            broken[536+shift]['destination'].update(name='o1', mask='w')
+            with self.subTest(key=key, extra_alpha=True), self.assertRaises(ValueError):
+                linear.prove_bump_vertex(broken, loop, profile)
+            broken_profile = deepcopy(profile)
+            next(d for d in broken_profile['declarations'] if d['name'] == 'v3')['usage_name'] = 'tangent'
+            with self.subTest(key=key, swapped_declaration=True), self.assertRaises(ValueError):
+                linear.prove_bump_vertex(original, loop, broken_profile)
+
+    def test_bump_class_b_budget_rejects_original_and_temporal_collisions(self):
+        for key in list(linear.BUMP_VERTICES) + list(linear.BUMP_PIXELS):
+            stage = 'vs' if key in linear.BUMP_VERTICES else 'ps'
+            identifier = stage+'_'+key
+            profile = linear.motion.profile(self.codes[identifier], identifier, stage, '3_0')
+            loop = stage == 'vs' and key != '19a246a56e9d9700'
+            result = linear.budget(profile, stage, loop, True)
+            self.assertEqual(result['material_resources_proven_free_before_reservation']['rgb_texcoord_index'], 7)
+            for field, value in [('constant_registers_direct', [212 if stage == 'ps' else 248]),
+                                 ('defined_constant_registers', [216 if stage == 'ps' else 252]),
+                                 ('temporary_registers', list(range(11)) if stage == 'ps' else list(range(8))),
+                                 ('free_input_registers' if stage == 'ps' else 'free_output_registers', [9,10,11])]:
+                broken = dict(profile, **{field:value})
+                with self.subTest(key=key, field=field), self.assertRaises(ValueError):
+                    linear.budget(broken, stage, loop, True)
+
+    def test_weighted_slots_distinguish_cube_dp2add_repeat_and_unknown_opcode(self):
+        name = 'ps_68915563dd0aac9a'
+        decoded = self.decoded_original(name)
+        profile = linear.motion.profile(self.codes[name], name, 'ps', '3_0')
+        baseline = linear.weighted_slots(decoded, profile, 'ps')
+        changed = deepcopy(profile)
+        next(d for d in changed['declarations'] if d['name'] == 's4')['texture_type'] = 2
+        self.assertEqual(linear.weighted_slots(decoded, changed, 'ps'), baseline-3)
+        changed = deepcopy(decoded)
+        changed[184]['item']['opcode'] = 8  # DP3: one slot instead of DP2ADD's two.
+        self.assertEqual(linear.weighted_slots(changed, profile, 'ps'), baseline-1)
+        changed[184]['item']['opcode'] = 32  # POW is absent from originals.
+        with self.assertRaisesRegex(ValueError, 'unreviewed static slot opcode'):
+            linear.weighted_slots(changed, profile, 'ps')
+        name = 'vs_4944d81dfe531b37'
+        decoded = self.decoded_original(name)
+        profile = linear.motion.profile(self.codes[name], name, 'vs', '3_0')
+        self.assertEqual(linear.weighted_slots(decoded, profile, 'vs'), 62)
+        del decoded[393]
+        del decoded[451]
+        self.assertEqual(linear.weighted_slots(decoded, profile, 'vs'), 57)
 
 
 if __name__ == '__main__':
