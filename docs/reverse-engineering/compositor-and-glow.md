@@ -132,7 +132,7 @@ Ordered, with the call sites. `dev` = `*(*(0x00608b3c+0x18))` (the
 | 17b | `0x004c4dbe` | `fx->GetPass(technique, i)` `0x38` | |
 | 17c | `0x004c4dd0` | `fx->GetAnnotationByName(pass, "RenderColorTarget0")` `0x4c` | |
 | 17d | `0x004c4de7` | `fx->GetString(annotation, &name)` `0xcc` | |
-| 17e | `0x004c4e00` | string compare (`0x00469700`) against the 3-entry table | no annotation, no string, or no match ⇒ target = `saved_rt` (`0x004c4e22`) |
+| 17e | `0x004c4e00` | string compare (`0x00469700`) against the 3-entry table | missing annotation / failed `GetString` takes `saved_rt` (`0x004c4e22`). A successful string lookup with no table match does **not** take that fallback: it leaves the target local unchanged, potentially uninitialized on the first pass. See below. |
 | 17f | `0x004c4e3b` | `dev->SetRenderTarget(0, target)` `0x94` | |
 | 17g | `0x004c4e3f` | `0x004c6300(target)`: `surface->GetDesc` `0x30` then `dev->SetViewport` `0xbc` | viewport follows the target size |
 | 17h | `0x004c4e54` | `dev->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2)` `0x144` | full-screen quad |
@@ -145,6 +145,18 @@ Ordered, with the call sites. `dev` = `*(*(0x00608b3c+0x18))` (the
 **Not restored on exit:** render target 0 (it is already `saved_rt`, because the
 last pass has no `RenderColorTarget0`), the viewport (left at back-buffer size),
 and `SetSoftwareVertexProcessing`.
+
+The saved-RT and final-viewport statements describe the inspected stock effect's
+successful path. At `0x004c4e10..12` only a matching annotation string writes
+the target local `[ESP+0x28]`; exhausting the table branches straight to its
+use at `0x004c4e2a`. An unknown annotation string can therefore reuse a prior
+target or an uninitialized local. `SetRenderTarget`, viewport setup and the
+quad draw results are not checked by this loop. Modified effects require
+semantic target admission and successful-binding observation; do not interpret
+an unknown string, a requested target or four attempted draws as proof of a
+successful stock-style boundary. The proposed
+[bloom boundary](../architecture/hdr-bloom-boundary.md) executes the original
+fully, then overwrites only RGB while preserving its outgoing state and alpha.
 
 ### The passes, from `bloom.fb` and confirmed by capture
 

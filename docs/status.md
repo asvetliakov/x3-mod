@@ -71,8 +71,14 @@ replacement output, exact device ownership, engine state/cache restoration and
 failure recovery must be established. Pure render states are memoized; the
 older constant-upload note is corrected. The first captured GUI draw only
 narrows the inherited-state problem; actual boundary alpha-test state and
-arbitrary later materials remain unqualified. No bloom implementation or new
-game evidence is claimed, and this documentation does not change the DLL.
+arbitrary later materials remain unqualified. The selected initial
+[integration design](architecture/hdr-bloom-boundary.md) avoids that bypass gap:
+run the original fully, then replace RGB from retained pre-original inputs while
+preserving original alpha/state/resources. It includes recovery from a GPU copy
+of the finished original image. Independent review closed preparation, Reset,
+SEH, ownership and restoration gaps; the retained old passes and added memory
+must be measured. The filter numerical core is in progress separately. No
+integrated bloom or new game evidence is claimed; the installed DLL is unchanged.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)
 

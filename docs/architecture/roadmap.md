@@ -29,7 +29,10 @@ is the next visual feature; use the [existing glow/compositor
 map](../reverse-engineering/compositor-and-glow.md) and the reviewed
 [replacement contract](../reverse-engineering/bloom-compositor-skip.md) to avoid
 double bloom or HUD contamination. The latter supersedes the earlier one-line
-skip proposal; later-material inherited-state coverage remains open. A material pass is the prerequisite for real HDR lighting and
+skip proposal. The [chosen initial boundary](hdr-bloom-boundary.md) runs the
+original fully before RGB replacement, avoiding the bypass residue gap while
+retaining its GPU cost. Numerical filter work is in progress; integration and
+game acceptance remain. A material pass is the prerequisite for real HDR lighting and
 emissives. Custom AgX look tuning and temporal upscaling remain candidates.
 
 | Iteration | Deliverable | Acceptance gate |
