@@ -138,21 +138,21 @@ lookup. Keep opaque motion and the actual far-plane camera transform. Existing
 `RequiredMask` retains its complete conservative visible-RGB coverage contract;
 existing `DerivedFromDepthSentinel` remains unchanged.
 
-A new explicit `SupplementalMaskWithDepthSentinel` policy will require a
+A new explicit `SupplementalMaskWithDepthSentinel` policy requires a
 frame-complete **FP16 raw coverage texture for the enhanced source set**. Zero
 means no recorded source coverage; every other value, including nonfinite, is
-conservatively reactive. The proposed consumer will:
+conservatively reactive. The consumer:
 
-1. Validate that raw input, ownership, dimensions and frame regime.
-2. Before resolve, canonicalize and dilate its coverage by one pixel over a 3x3
+1. Validates that raw input, ownership, dimensions and frame regime.
+2. Before resolve, canonicalizes and dilates its coverage by one pixel over a 3x3
    neighborhood into the existing next-frame R32F mask surface. Extend the
    existing snapshot shader mode only for this dilation. This moves the existing
    mask snapshot pass before resolve; it does not add another full-screen pass.
-3. Resolve using this canonical current mask and the previously owned canonical
+3. Resolves using this canonical current mask and the previously owned canonical
    mask, with sentinel/camera controls also enabled. Do not dilate previous
    coverage again. Retain existing rejection of all nonzero-weight Catmull-Rom
    history taps, including disappearing sources.
-4. Publish color, depth and the mask together only after successful processing
+4. Publishes color, depth and the mask together only after successful processing
    and state restoration, under the existing history ownership/generation rules.
 
 The one-pixel expansion covers enhanced RGB's participation in current 3x3
@@ -225,12 +225,12 @@ propagated. Color-order barriers alone do not establish mask completeness.
 Current source coverage can conservatively survive later opaque occlusion;
 never erase it merely from an unsupported inference about effect motion.
 
-### Next producer qualification: third same-draw output
+### Third same-draw output: detached qualification
 
-After the existing two-output actual-original fixture, qualify an additional
-constant positive RGB output at oC2 in the augmented PS2 program. Bind a separate
-frame-persistent FP16 coverage target beside native B and linear E, clear it to
-zero once per admitted frame, and use the original geometry submission. Shared
+The detached fixture now qualifies an additional constant positive RGB output
+at oC2 in the augmented PS2 program. It binds a separate frame-persistent FP16
+coverage target beside native B and linear E, clears it to zero once per authored
+frame, and uses the original geometry submission. Shared
 RGB ADD/ONE/ONE accumulates a conservative nonzero union; it is not independent
 MAX blending. Alpha is irrelevant to that RGB union. Original VS, source oC0,
 alpha and depth/stencil behavior must remain qualified and unchanged; the initial
@@ -245,23 +245,66 @@ on all avoid an independent-write-mask prerequisite. An R32F MRT alternative
 would additionally need mixed-bit-depth capability and R32F blending support.
 These are [documented MRT contracts](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multiple-render-targets)
 and [format queries](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dusage-query),
-not evidence that the three-output PS2 producer has passed on a GPU. Existing
-three-target TAA does not establish its blending or original-oC0 parity.
+which the detached X3 result below checks directly. Existing three-target TAA
+alone does not establish this producer's blending or original-oC0 parity.
 
 The producer must preserve its mask across B/C publication choices, avoid
 aliasing motion/depth targets, prevent stale-frame reuse, and retire references
 correctly at Reset/shutdown while reusing allocations during steady rendering.
 Canonicalization uses shader sampling into R32F; no cross-format copy equivalence
 is assumed. Active queries and state-block recording remain refusal cases.
-Measure the added mask writes, snapshot/dilation and lifetime work. Qualify the
-pure consumer separately from the three-output producer, then qualify their
-integration; neither authorizes live routing. Do not alter the in-flight
-actual-original two-output fixture to add this work.
+Measure the added mask writes, snapshot/dilation and lifetime work. The pure
+consumer and three-output producer are separately qualified below; their
+integration remains a separate gate and neither authorizes live routing.
 
 The earlier detached experiment used immediate single-RT R32F coverage replay
 in a synthetic closed world. Its historical results and replay-cost estimates
 below remain evidence for that experiment. General native-writer replay and a
 complete scene classifier are no longer prerequisites for this supplemental slice.
+
+The pure transformer and detached GPU producer are now qualified for this
+bounded source set, without live routing or consumer integration. Independent
+source review found no correctness defect. With coverage disabled, all 25
+accepted two-output variants remain byte-identical to the prior accepted
+transformer outputs. Enabling coverage changes only the previously unused
+`c31.y` literal to one and appends two full, unmodified moves after the unchanged
+`oC1`: `c31.y` to dead temporary `r3`, then `r3` to `oC2`. The largest result is
+31 arithmetic slots plus one texture slot. Ten host tests cover 50 variants and
+548 structural, resource, alias and rollback checks. Variant creation remains
+bounded CPU work at shader creation; the option adds no per-draw CPU path.
+
+The first and only focused [X3 coverage result](../../verification/results/bottle-X3/linear-emission-mrt-coverage-gpu.json)
+passes 81 cases, 201 shader creations, 132 source draws and 97 brackets. Across
+the actual five PS2 and three VS2 originals, all 198,656 B/E channels match the
+retained two-output path bit-for-bit. All 99,328 native/reference channels and
+all 99,328 copy channels match. The mask oracle passes all 20,736 pixels: 15,536
+contain positive coverage and 5,200 remain exact zero. It covers source RGB,
+fade, gain and alpha at zero, original alpha-test/depth/viewport/scissor
+rejection, overlapping sources,
+two and sixteen separately published brackets, persistence across E clears and
+C rotation, and a rejected next-frame draw after the frame clear. Final alpha
+and depth/stencil also pass for all 20,736 pixels. Original and two-output hashes
+match the prior accepted record; the result pins all 25 three-output variants,
+the fixture executable and current source inputs.
+
+Paired EVENT-completion timings isolate two successful source draws with and
+without RT2, followed separately by a populated-mask clear. At 1920x1080 the
+median added source-write time is 0.0140 ms (all eight pairs positive, range
+0.0032--0.1523 ms), and the clear median is 0.3323 ms. At 1280x768 the write
+delta is noisy (median 0.0045 ms, range -0.1453--0.1166 ms; five of eight
+positive) and the clear median is 0.3253 ms. These are fixture completion times,
+not a GPU-only decomposition or game-FPS evidence; the accepted compositor
+benchmark was not repeated.
+
+This qualification covers successful detached same-draw submissions only. It
+does not provide the live owner, Reset/shutdown retirement, incomplete or
+partially failed MRT recovery, post-source fallback publication, TemporalPass
+handoff, gameplay cost or native-Windows execution. Ownership and integration
+need separate qualification; gameplay and native Windows remain unverified.
+The tested X3 device reports four MRTs,
+post-pixel-shader blending and independent write masks; the candidate itself
+uses three equal-format FP16 targets with full RGBA masks and therefore does not
+make independent write-mask support a requirement.
 
 ## Detached fixture and decision gate
 
@@ -734,7 +777,8 @@ fixture result.
 Orchestrator decision: keep the baseline compositor. The branch remains a
 separate reproducible experiment, not a selected optimization; do not repeat
 this benchmark merely to seek a favorable result. Actual-original qualification
-has passed. Next qualify the supplemental temporal consumer and third same-draw
-coverage output, then the single-draw live target ownership boundary. Historical
-draw adjacency does not yet justify batching. The fixture cost remains a
-live-integration concern, not proof of game FPS or a GPU-only bottleneck.
+has passed. The supplemental temporal consumer and third same-draw coverage
+output are now separately qualified; next prove the single-draw live target
+ownership and their integration. Historical draw adjacency does not yet justify
+batching. The fixture cost remains a live-integration concern, not proof of game
+FPS or a GPU-only bottleneck.

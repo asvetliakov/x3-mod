@@ -94,8 +94,10 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   for enhanced emissions, rather than requiring a classifier for every native
   writer. The consumer passes focused X3 image/state/Reset qualification without
   live wiring. A shared-shader instruction-budget issue predates this extension;
-  reduce it before regenerating the embedded program. The same-draw mask
-  producer still needs qualification.
+  reduce it before regenerating the embedded program. The three-output source
+  producer separately passes 81 X3 cases, preserving native color/alpha and
+  producing conservative coverage in the same draw. Target ownership and
+  consumer/producer integration remain.
   No live emission route is selected.
   The [sun resource study](reverse-engineering/sun-material-identity.md) identifies
   the late TSuns lens-flare path; a pre-bloom sun material remains unproved.

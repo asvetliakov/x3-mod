@@ -31,6 +31,7 @@ INPUTS = ('verification/probe/linear_emission_fixture.cpp',
           'verification/analysis/test_linear_emission_report.py',
           'verification/analysis/test_linear_emission_mrt_report.py',
           'verification/analysis/test_linear_emission_original_report.py',
+          'verification/analysis/test_linear_emission_coverage_report.py',
           'src/renderer/linear_emission.h', 'src/renderer/linear_emission.cpp')
 CAP = 65504.
 WIDTH = HEIGHT = 16
@@ -460,6 +461,44 @@ def original_cases():
     return cases
 
 
+def coverage_cases():
+    cases=original_cases()
+    def add(profile,label,operations,alpha=0,flags=0):
+        cases.append(dict(id=len(cases),label=label,mode=1,mask=0,alpha=alpha,write=15,fault=0,pattern=1,
+            flags=32|(profile<<16)|(64 if profile>=3 else 0)|flags,actual_profile=profile,ops=copy.deepcopy(operations)))
+        for o in cases[-1]['ops']:o['affine']=int(profile in (0,1,3))
+    for profile in range(5):
+        add(profile,'coverage_zero_rgb_alpha',[op(rect=(0,0,1,1),color=(0,0,0,0),gain=1)])
+    for alpha in range(3):
+        add(2,'coverage_zero_fade_alpha',[op(rect=(0,0,1,1),color=(.5,.25,.125,0),fade=0,gain=16)],alpha=alpha)
+    # M must survive every E clear/composition and must accumulate overlapping
+    # submissions while uncovered pixels remain zero. Gain0 avoids color drift.
+    a=op(rect=(0,0,.75,.75),gain=0);b=op(rect=(.25,.25,1,1),gain=0)
+    for brackets in (2,16):
+        add(2,'coverage_persistent_'+str(brackets),[copy.deepcopy((a,b)[i%2]) for i in range(brackets)],flags=2)
+    add(2,'coverage_next_frame_clear',[op(rect=(0,0,1,1),z=.9,gain=1)])
+    return cases
+
+
+def coverage_expected(c):
+    result=[0.]*256
+    for o in c['ops']:
+        assert o['kind']==1,'coverage fixture source-only frame'
+        if o['z']>=.75:continue
+        offset=4 if c['flags']&16 else 0;size=8 if c['flags']&16 else 16
+        l,t,rr,b=o['rect']
+        for i in pixels_in(o,c):
+            x,y=i%16,i//16
+            uv=((x+.5-offset-l*size)/((rr-l)*size),(y+.5-offset-t*size)/((b-t)*size))
+            alpha=mrt_sample(o,c,uv)[0][3]
+            if c['mask']==1 and alpha<=64/255:continue
+            if c['mask']==2 and alpha>=128/255:continue
+            # Deliberately independent of emission RGB, fade, gain or source
+            # alpha blend factors: source coverage is a separate RGB payload.
+            result[i]=half(result[i]+1.)
+    return result
+
+
 def original_fade(o,c,uv):
     if c['actual_profile']>=3:return 1.
     if not c['flags']&512:return o['fade']
@@ -557,8 +596,8 @@ def mrt_expected(c,include_sources=False):
     return result+(b,e) if include_sources else result
 
 
-def parse_mrt_pixels(data,cases,actual_original=False):
-    stride=4+256*(13 if actual_original else 5)*4
+def parse_mrt_pixels(data,cases,actual_original=False,coverage=False):
+    stride=4+256*(17 if coverage else 13 if actual_original else 5)*4
     assert len(data)==stride*len(cases),'MRT readback bytes'
     result=[]
     for c,offset in zip(cases,range(0,len(data),stride)):
@@ -596,19 +635,20 @@ def validate_branch_timings(text):
     return result
 
 
-def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=False):
+def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=False,coverage=False):
     lines=text.strip().splitlines()
     assert re.fullmatch(r'CAPS vs=fffe0300 ps=ffff0300 rt=[2-9]',lines[0]),'MRT shader caps'
     assert re.findall(r'^FORMAT name=(\w+) hr=00000000$',text,re.M)==['fp16_rt','fp16_blend','d24s8'],'MRT format caps'
     assert re.findall(r'^DEPTH_MATCH format=(\d+) hr=00000000$',text,re.M)==['113'],'MRT depth matches'
     caps=re.search(r'^MRT_CAPS slots=([2-9]) postblend=1 independent_masks=([01])$',text,re.M)
     assert caps,'MRT blend/mask caps'
-    shaders=42 if actual_original else 81 if branch_experiment else 78
-    end='ORIGINAL_RESULT' if actual_original else 'BRANCH_RESULT' if branch_experiment else 'MRT_RESULT'
+    if coverage:assert int(caps[1])>=3,'three-output MRT slots'
+    shaders=201 if coverage else 42 if actual_original else 81 if branch_experiment else 78
+    end='COVERAGE_RESULT' if coverage else 'ORIGINAL_RESULT' if actual_original else 'BRANCH_RESULT' if branch_experiment else 'MRT_RESULT'
     assert lines[-1]==f'{end} pass cases={len(cases)} shaders={shaders}','MRT clean completion'
     pattern=r'^MRT_CASE id=(\d+) sources=(\d+) bursts=(\d+) copy=(\d+) native=(\d+) zero=(\d+) alpha=(\d+) minuszero=(\d+) capzero=(\d+) infinite=(\d+) fallback=(\d+) incomplete=(\d+) refused=(\d+)$'
     rows=re.findall(pattern,text,re.M);assert len(rows)==len(cases),'MRT case rows'
-    actual=parse_mrt_pixels(data,cases,actual_original);maximum=0.;totals={k:0 for k in MRT_OPS};faults=[]
+    actual=parse_mrt_pixels(data,cases,actual_original,coverage);maximum=0.;totals={k:0 for k in MRT_OPS};faults=[]
     for c,row,(color,depth) in zip(cases,rows,actual):
         assert int(row[0])==c['id'],'MRT case order'
         ideal,idepth,count=mrt_expected(c)
@@ -642,6 +682,12 @@ def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=
             assert int(row[1])==mrt_expected(c)[2]['alpha']*4,(c['label'],'exact compositor equality missing')
         summary=validate_branch_timings(text)
         assert len(lines)==7+len(rows)+len(comparisons)+192,'unexpected branch output'
+    elif coverage:
+        parity=re.findall(r'^COVERAGE_CASE id=(\d+) parity=(\d+)$',text,re.M)
+        assert [int(row[0]) for row in parity]==[c['id'] for c in cases],'coverage parity cases'
+        assert [int(row[1]) for row in parity]==[mrt_expected(c)[2]['bursts']*2048 for c in cases],'two/three-output B/E parity'
+        summary=validate_coverage_timings(text)
+        assert len(lines)==7+len(rows)+len(parity)+48,'unexpected coverage output'
     elif actual_original:
         summary=[]
         assert len(lines)==7+len(rows),'unexpected actual-original output'
@@ -662,10 +708,10 @@ def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=
 
 
 
-def validate_original_report(text,data,cases):
-    result=validate_mrt_report(text,data,cases,actual_original=True)
+def validate_original_report(text,data,cases,coverage=False):
+    result=validate_mrt_report(text,data,cases,actual_original=True,coverage=coverage)
     energy_maximum=native_maximum=0.;alpha_count=0
-    stride=4+256*13*4
+    stride=4+256*(17 if coverage else 13)*4
     for c,offset in zip(cases,range(0,len(data),stride)):
         _,_,_,wanted_native,wanted_energy=mrt_expected(c,True)
         values=struct.unpack_from('<2048f',data,offset+4+1280*4)
@@ -687,6 +733,41 @@ def validate_original_report(text,data,cases):
         max_native_oracle_tolerance_fraction=native_maximum,exact_source_alpha_pixels=alpha_count)
     return result
 
+
+def validate_coverage_timings(text):
+    rows=re.findall(r'^COVERAGE_TIMING width=(\d+) height=(\d+) variant=([012]) pair=(\d+) order=([01]) completed_ms=(\S+)$',text,re.M)
+    assert len(rows)==48,'coverage timing rows'
+    summary=[]
+    for w,h in ((1280,768),(1920,1080)):
+        block=[x for x in rows if tuple(map(int,x[:2]))==(w,h)]
+        wanted=[(1-order if pair%2 else order,pair,order) for pair in range(8) for order in range(2)]
+        paired=[x for x in block if x[2]!='2'];clears=[x for x in block if x[2]=='2']
+        assert [tuple(map(int,x[2:5])) for x in paired]==wanted,'coverage paired order'
+        assert [tuple(map(int,x[3:5])) for x in clears]==[(i,0) for i in range(8)],'frame clear order'
+        assert all(math.isfinite(float(x[5])) and float(x[5])>=0 for x in block),'coverage timing value'
+        two=[float(x[5]) for x in paired if x[2]=='0'];three=[float(x[5]) for x in paired if x[2]=='1'];clear=[float(x[5]) for x in clears]
+        delta=[b-a for a,b in zip(two,three)]
+        summary.append(dict(width=w,height=h,samples=8,warmups=2,source_draws=2,authored_union_fraction=.5,
+            two_output_median_ms=statistics.median(two),three_output_median_ms=statistics.median(three),
+            paired_extra_output_median_ms=statistics.median(delta),frame_clear_median_ms=statistics.median(clear),
+            pairs=[dict(pair=i,two_first=i%2==0,two_ms=a,three_ms=b,extra_output_ms=b-a,frame_clear_ms=clear[i]) for i,(a,b) in enumerate(zip(two,three))]))
+    return summary
+
+
+def validate_coverage_report(text,data,cases):
+    result=validate_original_report(text,data,cases,True)
+    stride=4+256*17*4;covered=zero=0
+    for c,offset in zip(cases,range(0,len(data),stride)):
+        mask=struct.unpack_from('<1024f',data,offset+4+256*13*4)
+        for i,wanted in enumerate(coverage_expected(c)):
+            assert tuple(mask[i*4:i*4+3])==(wanted,)*3,(c['label'],i,'positive RGB coverage union')
+            covered+=wanted>0;zero+=wanted==0
+    result.update(coverage_variants=25,exact_two_three_output_channels=result['invariants']['bursts']*2048,
+        coverage_pixels=256*len(cases),covered_pixels=covered,uncovered_pixels=zero,
+        mask_contract='FP16 RGB positive iff at least one surviving source sample; additive count tested through16 draws; mask alpha ignored',
+        source_shader_model='Three unchanged original VS2; five original PS2;25 two-output and25 three-output transformer variants')
+    return result
+
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -694,7 +775,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--exe',type=Path,default=EXE)
     p.add_argument('--raw-dir',type=Path)
-    p.add_argument('--mode',choices=('ordered','mrt','mrt-branch','mrt-original'),default='ordered')
+    p.add_argument('--mode',choices=('ordered','mrt','mrt-branch','mrt-original','mrt-coverage'),default='ordered')
     p.add_argument('--programs',type=Path,default=Path('/tmp/x3-shader-sweep/programs'))
     args=p.parse_args()
     if args.raw_dir is None:args.raw_dir=Path('/tmp/x3-linear-emission-gpu'+('-'+args.mode if args.mode!='ordered' else ''))
@@ -702,7 +783,7 @@ def main():
     assert not game_running(),'game running; refused'
     assert args.exe.is_file(),'build the detached EXE explicitly first'
     args.raw_dir.mkdir(parents=True,exist_ok=True)
-    cases=original_cases() if args.mode=='mrt-original' else mrt_cases() if args.mode!='ordered' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
+    cases=coverage_cases() if args.mode=='mrt-coverage' else original_cases() if args.mode=='mrt-original' else mrt_cases() if args.mode!='ordered' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
     report=args.raw_dir/'report.txt';pixels=args.raw_dir/'pixels.bin'
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,
                 scope='Detached authored D3D9 ordered RGB/actual alpha, closed-world R32F mask producer, drift/cost/fault experiment; no live renderer or native Windows runtime qualification',
@@ -732,7 +813,7 @@ def main():
         result.update(scope='Detached zero-emission PS3 compositor branch experiment against unchanged baseline; same38 authored MRT cases, no live route or native Windows runtime proof',
             timing_scope='Paired baseline/branch QPC through EVENT completion with alternating order, matching inputs, cached source textures and pre-window fences; native-reference/paired-image readback excluded. Dense union50%, sparse disjoint union3.125%; single-source compositions cover31.25% or1.5625% each',
             comparison='All successful candidate compositions are compared RGBA bit-for-bit from identical A/E/B; native/refusal cases do not execute a compositor. Every case retains the original native-B/zero-lane/alpha/depth checks')
-    if args.mode=='mrt-original':
+    if args.mode in ('mrt-original','mrt-coverage'):
         originals={stage+'_'+name+'.bin':sha(args.programs/(stage+'_'+name+'.bin'))
                    for stage,names in (('vs',ORIGINAL_VS),('ps',ORIGINAL_PS)) for name in names}
         variants=args.raw_dir/'variants';variants.mkdir(exist_ok=True)
@@ -747,17 +828,24 @@ def main():
                 'Original VS identity WVP, transformed UVs, c12 fade and b0 fog paths are exercised; no live material/global constant ownership proof',
                 'Only shared ADD/ONE/ONE with full RGBA writes; inherited alpha tests are feasibility boundaries, not live admission',
                 'No source submission failure recovery, device-loss or HdrPass integration qualification'])
+    if args.mode=='mrt-coverage':
+        result.update(scope='Detached original three-output B/E/coverage producer, retained two-output parity, persistent FP16 RGB union and frame-clear experiment; no live route or native Windows runtime proof',
+            timing_scope='QPC through EVENT completion; paired two/three-output two-source draws plus populated-mask clear only. Matching50% authored union, allocations/setup/readbacks outside; retained compositor evidence unchanged',
+            coverage='M is same-format FP16 RT2, cleared once per authored frame and retained across brackets. Shared RGB ADD/ONE/ONE; alpha ignored; source alpha-test/depth/scissor/viewport retained')
+        result['targets']['M']='persistent FP16 positive RGB source union; alpha ignored'
     try:
         with report.open('w') as out,(args.raw_dir/'wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=900)
         result['exit_code']=process.returncode
         assert process.returncode==0,'fixture failed; '+str(report)
-        result.update(validate_original_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-original' else validate_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='ordered' else validate_mrt_report(report.read_text(),pixels.read_bytes(),cases,args.mode=='mrt-branch'))
+        result.update(validate_coverage_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-coverage' else validate_original_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-original' else validate_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='ordered' else validate_mrt_report(report.read_text(),pixels.read_bytes(),cases,args.mode=='mrt-branch'))
         assert result['code_sha256']=={name:sha(ROOT/name) for name in INPUTS},'source changed during run'
         assert result['executable_sha256']==sha(args.exe),'EXE changed during run'
-        if args.mode=='mrt-original':
+        if args.mode in ('mrt-original','mrt-coverage'):
             assert originals=={name:sha(args.programs/name) for name in originals},'original corpus changed during run'
             result['transformed_sha256']={f'ps_{name}-{g}.bin':sha(variants/f'ps_{name}-{g}.bin') for name in ORIGINAL_PS for g in range(5)}
+            if args.mode=='mrt-coverage':
+                result['coverage_transformed_sha256']={f'ps_{name}-{g}-coverage.bin':sha(variants/f'ps_{name}-{g}-coverage.bin') for name in ORIGINAL_PS for g in range(5)}
         result['passed']=True
     except BaseException as error:
         result['error']=repr(error)

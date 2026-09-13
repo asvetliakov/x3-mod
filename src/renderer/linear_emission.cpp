@@ -80,8 +80,8 @@ bool structure(const Word* code,std::size_t count,Shape& result) noexcept {
             if (!mask || (target!=(dst(target_type,target_index,mask)) && target!=(dst(target_type,target_index,mask)|pp))) return false;
             if (target_type==temporary) { if (target_index>=12) return false; }
             else if (target_type==output) {
-                if (target_index>1 || op!=mov || mask!=15 || (result.outputs&(1u<<target_index)) ||
-                    (target_index==1 && target!=dst(output,1,15))) return false;
+                if (target_index>2 || op!=mov || mask!=15 || (result.outputs&(1u<<target_index)) ||
+                    (target_index!=0 && target!=dst(output,target_index,15))) return false;
                 result.outputs|=1u<<target_index;
                 // SM2 output MOV uses a full, unmodified temporary source.
                 if (code[at+2]!=src(temporary,index(code[at+2]))) return false;
@@ -194,18 +194,25 @@ LinearEmissionResult linear_emission_pixel_variant(const Word* original,std::siz
     if (!structure(original,count,original_structure) || !original_shape(original,profile,original_structure)) return LinearEmissionResult::ProfileMismatch;
     try {
         Words result;
-        result.reserve(count+82);
+        result.reserve(count+(config.coverage?88:82));
         result.insert(result.end(),original,original+profile.declaration);
         emit(result,def,{dst(constant,30,15),bits(2.2f),bits(0),bits(65504),bits(1e-10f)});
-        emit(result,def,{dst(constant,31,15),bits(config.gain==0?0:config.gain),bits(0),bits(0),bits(0)});
+        emit(result,def,{dst(constant,31,15),bits(config.gain==0?0:config.gain),bits(config.coverage?1.0f:0.0f),bits(0),bits(0)});
         result.insert(result.end(),original+profile.declaration,original+profile.copy_before);
         emit(result,mov,{dst(temporary,2),src(temporary,0)});
         result.insert(result.end(),original+profile.copy_before,original+count-1);
         source_output(result,profile.fade);
+        if (config.coverage) {
+            // r3 is dead after emission output. Constant coverage deliberately
+            // ignores radiance, fade, native alpha and gain, including zero.
+            // PS2 color outputs require a full unmodified temporary MOV.
+            emit(result,mov,{dst(temporary,3,15),lane(constant,31,1)});
+            emit(result,mov,{dst(output,2,15),src(temporary,3)});
+        }
         result.push_back(end_token);
         Shape transformed;
-        if (!structure(result.data(),result.size(),transformed) || transformed.outputs!=3 || transformed.texture!=1 ||
-            transformed.arithmetic!=original_structure.arithmetic+(profile.fade?22u:21u)) return LinearEmissionResult::ResourceLimit;
+        if (!structure(result.data(),result.size(),transformed) || transformed.outputs!=(config.coverage?7u:3u) || transformed.texture!=1 ||
+            transformed.arithmetic!=original_structure.arithmetic+(profile.fade?22u:21u)+(config.coverage?2u:0u)) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;
     } catch (...) { return LinearEmissionResult::AllocationFailure; }

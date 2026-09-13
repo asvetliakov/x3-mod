@@ -935,7 +935,7 @@ struct MrtStats {
   unsigned sources = 0, bursts = 0, copies = 0, native_channels = 0,
            zero_channels = 0, alpha_channels = 0, negative_zero_channels = 0,
            cap_zero_channels = 0, infinite_channels = 0, fallbacks = 0,
-           incomplete = 0, refused = 0, compared_channels = 0;
+           incomplete = 0, refused = 0, compared_channels = 0, coverage_parity_channels = 0;
 };
 // Hashes are derived identities. Original bytes and transformed programs stay
 // in the local corpus/output directory, never generated tracked includes.
@@ -967,18 +967,19 @@ struct MrtFixture : Fixture {
   Com<IDirect3DVertexShader9> vs2;
   Com<IDirect3DPixelShader9> originals[8], augmented[8], composition,
       branch_composition;
-  bool use_branch = false, compare_compositors = false, actual = false;
+  bool use_branch = false, compare_compositors = false, actual = false, coverage_experiment = false, coverage_write = false;
   Com<IDirect3DVertexShader9> actual_vertices[3];
-  Com<IDirect3DPixelShader9> actual_originals[5], actual_variants[5][5];
+  Com<IDirect3DPixelShader9> actual_originals[5], actual_variants[5][5], coverage_variants[5][5];
   std::vector<std::uint32_t> original_vertices[3], original_pixels[5];
   std::vector<IDirect3DTexture9 *> textures;
   Saved application;
   MrtFixture(IDirect3DDevice9 *device, unsigned w, unsigned h,
              bool branch_experiment = false, const char *programs = nullptr,
-             const char *variants = nullptr)
+             const char *variants = nullptr, bool coverage = false)
       : Fixture(device, w, h, false), use_branch(branch_experiment),
-        compare_compositors(branch_experiment && w == 16), actual(programs != nullptr), application(device) {
+        compare_compositors(branch_experiment && w == 16), actual(programs != nullptr), coverage_experiment(coverage), coverage_write(coverage), application(device) {
     target(composite, D3DFMT_A16B16G16R16F);
+    if (coverage) target(mask, D3DFMT_A16B16G16R16F);
     if (w == 16)
       target(reference, D3DFMT_A16B16G16R16F);
     Words words;
@@ -1002,6 +1003,14 @@ struct MrtFixture : Fixture {
           output.write(reinterpret_cast<const char *>(transformed.data()), transformed.size() * 4);
           need(bool(output), "local transformed output");
           api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(transformed.data()), &actual_variants[p][g].p));
+          if (coverage) {
+            need(linear_emission_pixel_variant(saved.data(), saved.size(), {actual_gains[g], true}, transformed) == LinearEmissionResult::Applied, "coverage PS transform");
+            need(original_pixels[p] == saved, "coverage transform mutated original");
+            std::ofstream covered(std::string(variants) + "/ps_" + actual_ps[p] + "-" + std::to_string(g) + "-coverage.bin", std::ios::binary);
+            covered.write(reinterpret_cast<const char *>(transformed.data()), transformed.size() * 4);
+            need(bool(covered), "local coverage output");
+            api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(transformed.data()), &coverage_variants[p][g].p));
+          }
         }
       }
     } else {
@@ -1077,6 +1086,7 @@ struct MrtFixture : Fixture {
       make_textures(cs);
     else
       need(textures.size() == cs.ops.size(), "cached source texture count");
+    if (coverage_experiment) clear_coverage(); // Exactly once per authored frame.
     single(*a);
     fence();
   }
@@ -1092,7 +1102,7 @@ struct MrtFixture : Fixture {
       unsigned g = 0;
       while (g < 5 && actual_gains[g] != cs.ops[index].gain) ++g;
       need(g < 5, "actual gain variant");
-      return extra ? actual_variants[profile(cs)][g].p : actual_originals[profile(cs)].p;
+      return extra ? (coverage_write ? coverage_variants[profile(cs)][g].p : actual_variants[profile(cs)][g].p) : actual_originals[profile(cs)].p;
     }
     unsigned v = cs.ops[index].affine | ((cs.h.flags & 64) ? 0 : 2) | ((cs.h.flags & 32) ? 4 : 0);
     return extra ? augmented[v].p : originals[v].p;
@@ -1125,8 +1135,10 @@ struct MrtFixture : Fixture {
                     bool extra) {
     const auto &o = cs.ops[index];
     single(target);
-    if (extra)
+    if (extra) {
       api(d->SetRenderTarget(1, e->surface.p));
+      if (coverage_write) api(d->SetRenderTarget(2, mask.surface.p));
+    }
     api(d->SetDepthStencilSurface(depth.p));
     base();
     rs(D3DRS_DITHERENABLE, FALSE);
@@ -1151,6 +1163,7 @@ struct MrtFixture : Fixture {
     rs(D3DRS_DESTBLEND, D3DBLEND_ONE);
     rs(D3DRS_COLORWRITEENABLE, cs.h.write);
     rs(D3DRS_COLORWRITEENABLE1, 15);
+    if (coverage_write) rs(D3DRS_COLORWRITEENABLE2, 15);
     rs(D3DRS_SEPARATEALPHABLENDENABLE, cs.h.alpha != 0);
     rs(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
     rs(D3DRS_SRCBLENDALPHA, cs.h.alpha == 1   ? D3DBLEND_ZERO
@@ -1186,6 +1199,38 @@ struct MrtFixture : Fixture {
     base();
     rs(D3DRS_DITHERENABLE, FALSE);
     api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+  }
+  void clear_coverage() {
+    single(mask);
+    api(d->SetDepthStencilSurface(nullptr));
+    base();
+    rs(D3DRS_DITHERENABLE, FALSE);
+    api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+  }
+  unsigned compare_two_output(const Case &cs, unsigned start, unsigned end) {
+    // Original-native parity is already checked. Reuse reference as B and C
+    // as E, before C composition; retain the actual A/B/E/M unchanged.
+    copy(*a, reference);
+    Target *saved_e = e;
+    e = c;
+    clear_emission();
+    coverage_write = false;
+    for (unsigned i = start; i < end; ++i) {
+      source_state(cs, i, reference, true);
+      quad(cs.ops[i], cs.h.flags);
+    }
+    e = saved_e;
+    coverage_write = true;
+    api(d->EndScene());
+    fence();
+    auto native = read(*b, true), reference_b = read(reference, true),
+         energy = read(*e, true), reference_e = read(*c, true);
+    need(std::memcmp(native.data(), reference_b.data(), native.size()*4)==0,
+         "coverage output changed two-output native B");
+    need(std::memcmp(energy.data(), reference_e.data(), energy.size()*4)==0,
+         "coverage output changed two-output linear E");
+    api(d->BeginScene());
+    return width*height*8;
   }
   void compose_to(Target &output, bool branch) {
     single(output);
@@ -1225,6 +1270,10 @@ struct MrtFixture : Fixture {
     HRESULT h = d->GetRenderTarget(1, &extra.p);
     need(h == D3DERR_NOTFOUND && extra.p == nullptr,
          "stale emission MRT after adoption");
+    if (coverage_experiment) {
+      h = d->GetRenderTarget(2, &extra.p);
+      need(h == D3DERR_NOTFOUND && extra.p == nullptr, "stale coverage MRT after adoption");
+    }
     api(d->GetPixelShader(&pixel.p));
     api(d->GetVertexShader(&vertex.p));
     api(d->GetVertexDeclaration(&decl.p));
@@ -1384,6 +1433,8 @@ struct MrtFixture : Fixture {
         out.native_channels += width * height * 4;
         api(d->BeginScene());
       }
+      if (checks && coverage_experiment)
+        out.coverage_parity_channels += compare_two_output(cs, start, end);
       if (cs.h.flags & 256) {
         single(*e);
         api(d->SetDepthStencilSurface(nullptr));
@@ -1528,10 +1579,51 @@ void branch_timings(MrtFixture &f, unsigned width, unsigned height,
         }
     }
 }
+// Measure only new source MRT writes and one frame clear. Existing compositor
+// timings are retained. All setup/copies/readback are outside QPC windows.
+void coverage_timings(IDirect3DDevice9 *device, const char *programs,
+                      const char *variants, IDirect3DSurface9 *back) {
+  LARGE_INTEGER frequency;
+  need(QueryPerformanceFrequency(&frequency), "QPC frequency");
+  for (auto size : {std::pair<unsigned,unsigned>{1280,768}, {1920,1080}}) {
+    MrtFixture f(device, size.first, size.second, false, programs, variants, true);
+    Case cs = bench(1,0,1,0); cs.ops.resize(2); cs.h.count=2;
+    cs.h.flags=32|(2u<<16);
+    for (auto &o:cs.ops) o.affine=0;
+    f.initialize_mrt(cs);
+    for (unsigned pair=0; pair<10; ++pair) {
+      for (unsigned order=0; order<2; ++order) {
+        unsigned covered=pair%2 ? 1-order : order;
+        f.initialize_mrt(cs,true);
+        api(device->BeginScene()); f.copy(*f.a,*f.b); f.clear_emission();
+        api(device->EndScene()); f.fence();
+        f.coverage_write=covered!=0;
+        LARGE_INTEGER begin,end; QueryPerformanceCounter(&begin);
+        api(device->BeginScene());
+        for (unsigned i=0;i<2;++i) {
+          f.source_state(cs,i,*f.b,true); f.quad(cs.ops[i],cs.h.flags);
+        }
+        api(device->EndScene()); f.fence(); QueryPerformanceCounter(&end);
+        if (pair>=2) std::printf("COVERAGE_TIMING width=%u height=%u variant=%u pair=%u order=%u completed_ms=%.9f\n",
+          size.first,size.second,covered,pair-2,order,1000.*double(end.QuadPart-begin.QuadPart)/frequency.QuadPart);
+      }
+      // Populate M outside the window even when the pair ended with baseline.
+      f.coverage_write=true;
+      api(device->BeginScene());
+      for (unsigned i=0;i<2;++i) { f.source_state(cs,i,*f.b,true); f.quad(cs.ops[i],cs.h.flags); }
+      api(device->EndScene()); f.fence();
+      LARGE_INTEGER begin,end; QueryPerformanceCounter(&begin);
+      api(device->BeginScene()); f.clear_coverage(); api(device->EndScene()); f.fence(); QueryPerformanceCounter(&end);
+      if (pair>=2) std::printf("COVERAGE_TIMING width=%u height=%u variant=2 pair=%u order=0 completed_ms=%.9f\n",
+        size.first,size.second,pair-2,1000.*double(end.QuadPart-begin.QuadPart)/frequency.QuadPart);
+    }
+    f.single(f.scene); api(device->SetRenderTarget(0,back));
+  }
+}
 void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
                     const char *path, IDirect3DSurface9 *back,
                     bool branch_experiment = false, const char *programs = nullptr,
-                    const char *variants = nullptr) {
+                    const char *variants = nullptr, bool coverage = false) {
   D3DCAPS9 caps{};
   api(device->GetDeviceCaps(&caps));
   const DWORD required = D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
@@ -1541,11 +1633,11 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
                             D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING)),
               unsigned(bool(caps.PrimitiveMiscCaps &
                             D3DPMISCCAPS_INDEPENDENTWRITEMASKS)));
-  need(caps.NumSimultaneousRTs >= 2 &&
+  need(caps.NumSimultaneousRTs >= (coverage ? 3u : 2u) &&
            (caps.PrimitiveMiscCaps & required) == required,
        "same-format MRT shared blending caps");
   {
-    MrtFixture f(device, 16, 16, branch_experiment, programs, variants);
+    MrtFixture f(device, 16, 16, branch_experiment, programs, variants, coverage);
     std::ofstream raw(path, std::ios::binary);
     need(bool(raw), "MRT raw output");
     for (const auto &cs : cases) {
@@ -1563,6 +1655,11 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
       raw.write(reinterpret_cast<const char *>(depth.data()), depth.size() * 4);
       if (programs) for (auto *v : {&native, &energy})
         raw.write(reinterpret_cast<const char *>(v->data()), v->size() * 4);
+      if (coverage) {
+        auto mask = f.read(f.mask, true);
+        raw.write(reinterpret_cast<const char *>(mask.data()), mask.size()*4);
+        std::printf("COVERAGE_CASE id=%u parity=%u\n", cs.h.id, result.coverage_parity_channels);
+      }
       std::printf(
           "MRT_CASE id=%u sources=%u bursts=%u copy=%u native=%u "
           "zero=%u alpha=%u minuszero=%u capzero=%u infinite=%u fallback=%u "
@@ -1580,7 +1677,11 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
     f.single(f.scene);
     api(device->SetRenderTarget(0, back));
   }
-  if (programs) return; // Existing authored performance evidence is retained.
+  if (programs && !coverage) return; // Existing authored performance evidence is retained.
+  if (coverage) {
+    coverage_timings(device, programs, variants, back);
+    return;
+  }
   LARGE_INTEGER frequency;
   need(QueryPerformanceFrequency(&frequency), "QPC frequency");
   for (auto size : {std::pair<unsigned, unsigned>{1280, 768}, {1920, 1080}}) {
@@ -1635,10 +1736,11 @@ int main(int argc, char **argv) {
     need(argc == 3 ||
              (argc == 4 && (std::strcmp(argv[3], "--mrt") == 0 ||
                             std::strcmp(argv[3], "--mrt-branch") == 0)) ||
-             (argc == 6 && std::strcmp(argv[3], "--mrt-original") == 0),
+             (argc == 6 && (std::strcmp(argv[3], "--mrt-original") == 0 || std::strcmp(argv[3], "--mrt-coverage") == 0)),
          "arguments: cases.bin pixels.bin [--mrt|--mrt-branch]");
     bool mrt = argc >= 4;
     bool actual_original = argc == 6;
+    bool coverage = actual_original && std::strcmp(argv[3], "--mrt-coverage") == 0;
     bool branch_experiment = mrt && std::strcmp(argv[3], "--mrt-branch") == 0;
     auto cases = load(argv[1]);
     WNDCLASSA wc{};
@@ -1714,7 +1816,7 @@ int main(int argc, char **argv) {
       api(device->GetRenderTarget(0, &back.p));
       if (mrt) {
         mrt_experiment(device.p, cases, argv[2], back.p, branch_experiment,
-                       actual_original ? argv[4] : nullptr, actual_original ? argv[5] : nullptr);
+                       actual_original ? argv[4] : nullptr, actual_original ? argv[5] : nullptr, coverage);
       } else {
         {
           Fixture f(device.p, 16, 16);
@@ -1778,7 +1880,8 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf(actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=42\n"
+    std::printf(coverage ? "COVERAGE_RESULT pass cases=%u shaders=201\n"
+                : actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=42\n"
                 : branch_experiment ? "BRANCH_RESULT pass cases=%u shaders=81\n"
                 : mrt             ? "MRT_RESULT pass cases=%u shaders=78\n"
                                   : "RESULT pass cases=%u shaders=24\n",

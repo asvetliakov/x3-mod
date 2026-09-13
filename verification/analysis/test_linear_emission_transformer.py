@@ -48,13 +48,13 @@ def f32(value):
         return math.copysign(math.inf, value)
 
 
-def emission_math(words, items, native_end, rgb, fade):
+def emission_math(words, items, native_end, rgb, fade, output=1, native_alpha=0.):
     """Evaluate only authored DEF/tail operations; original RGB is an input.
 
     Ordered comparisons intentionally model the selected DX9 MAX/MIN operand
     semantics. Float32 rounding is an analytical host witness, not GPU parity.
     """
-    registers = {(0,2): [f32(x) for x in rgb] + [math.nan], (1,0): [f32(fade),0.,0.,0.]}
+    registers = {(0,0): [f32(x) for x in rgb] + [f32(native_alpha)], (0,2): [f32(x) for x in rgb] + [math.nan], (1,0): [f32(fade),0.,0.,0.]}
 
     def source(token):
         values = registers[shader.register_of(token)]
@@ -91,7 +91,7 @@ def emission_math(words, items, native_end, rgb, fade):
         for component in shader.mask_of(destination):
             lane = 'xyzw'.index(component)
             target[lane] = f32(computed[lane])
-    return registers[8,1]
+    return registers[8,output]
 
 
 class LinearEmissionTransformerTests(unittest.TestCase):
@@ -120,12 +120,14 @@ class LinearEmissionTransformerTests(unittest.TestCase):
     def each(self):
         for key, profile in PROFILES.items():
             for g, gain in enumerate(GAINS):
-                words, items, _ = shader.instructions((self.directory/f'ps_{key}-{g}.bin').read_bytes())
-                yield key, profile, gain, words, items
+                for coverage in (False, True):
+                    suffix = '-coverage' if coverage else ''
+                    words, items, _ = shader.instructions((self.directory/f'ps_{key}-{g}{suffix}.bin').read_bytes())
+                    yield key, profile, gain, coverage, words, items
 
     def test_all_five_originals_gains_aliases_and_failure_guards(self):
-        self.assertEqual((self.driver['programs'],self.driver['pairs'],self.driver['variants']), (5,5,25))
-        self.assertGreaterEqual(self.driver['checks'],243)
+        self.assertEqual((self.driver['programs'],self.driver['pairs'],self.driver['variants']), (5,5,50))
+        self.assertGreaterEqual(self.driver['checks'],500)
 
     def test_local_original_identities_and_untouched_vs2_contract(self):
         for key, profile in PROFILES.items():
@@ -139,7 +141,7 @@ class LinearEmissionTransformerTests(unittest.TestCase):
             self.assertFalse(list(self.directory.glob(f'vs_{key}*.bin')))
 
     def test_every_original_byte_comment_and_native_output_is_retained(self):
-        for key, profile, _, words, items in self.each():
+        for key, profile, _, _, words, items in self.each():
             _, count, declaration, copy, native, _, _ = profile
             original, _, _ = shader.instructions((self.originals/f'ps_{key}.bin').read_bytes())
             # Three precise insertion intervals partition the entire original,
@@ -154,7 +156,7 @@ class LinearEmissionTransformerTests(unittest.TestCase):
             self.assertEqual((sources[0]['name'],sources[0]['swizzle']), ('r0','xyzw'))
 
     def test_copy_precedes_original_fade_and_never_touches_raw_alpha(self):
-        for _, profile, _, words, items in self.each():
+        for _, profile, _, _, words, items in self.each():
             _, _, _, copy, _, _, fade = profile
             inserted = next(i for i in items if i['dword'] == copy+12)
             d,sources = shader.split_operands(inserted,2)
@@ -170,12 +172,12 @@ class LinearEmissionTransformerTests(unittest.TestCase):
     def test_full_precision_output_cap_order_resources_and_weighted_ps2_limits(self):
         expected_arithmetic = {'8360f422de08b5bd':29,'9975b706e5a1c999':29,'ff2473e73a6bdfa1':24,
                                '8559522220507d5e':27,'875e780adb131b16':22}
-        for key, profile, gain, _, items in self.each():
+        for key, profile, gain, coverage, _, items in self.each():
             _, count, _, _, _, affine, fade = profile
-            definitions, arithmetic, texture, outputs = {}, 0, 0, []
+            definitions, arithmetic, texture, outputs, temporaries = {}, 0, 0, [], set()
             appended = [i for i in items if i['dword'] >= count-1+15]
             self.assertEqual([i['opcode'] for i in appended],
-                             [11,10,11,32,32,32,88,11,10]+([5] if fade else [])+[5,11,10,1,1])
+                             [11,10,11,32,32,32,88,11,10]+([5] if fade else [])+[5,11,10,1,1]+([1,1] if coverage else []))
             for item in items:
                 if item['opcode'] == shader.DEF:
                     index = shader.register_of(item['words'][0])[1]
@@ -191,6 +193,7 @@ class LinearEmissionTransformerTests(unittest.TestCase):
                     arithmetic += 3 if item['opcode'] == 32 else 1
                 for operand in [d]+sources:
                     if operand['register_type'] == 0:
+                        temporaries.add(operand['register'])
                         self.assertLess(operand['register'],12)
                     if operand['register_type'] == 2:
                         self.assertLess(operand['register'],32)
@@ -200,22 +203,69 @@ class LinearEmissionTransformerTests(unittest.TestCase):
             for item in appended:
                 d,_ = shader.split_operands(item,2)
                 self.assertEqual(d['modifiers'],[])
-                self.assertIn(d['name'], ('r2','r3','oC1'))
-            self.assertEqual(outputs, [(1,'oC0','xyzw',['partial_precision']),(1,'oC1','xyzw',[])])
-            self.assertEqual((arithmetic,texture), (expected_arithmetic[key],1))
+                self.assertIn(d['name'], ('r2','r3','oC1','oC2'))
+            self.assertEqual(outputs, [(1,'oC0','xyzw',['partial_precision']),(1,'oC1','xyzw',[])]+
+                             ([(1,'oC2','xyzw',[])] if coverage else []))
+            self.assertEqual((arithmetic,texture), (expected_arithmetic[key]+2*coverage,1))
+            self.assertEqual(temporaries, {0,1,2,3} if affine else {0,2,3})
             self.assertLessEqual(arithmetic,64)
             self.assertLessEqual(texture,32)
             self.assertEqual(set(definitions), {3,30,31} if affine else {30,31})
             self.assertEqual(definitions[30], (f32(2.2),0.,65504.,f32(1e-10)))
-            self.assertEqual(definitions[31], (gain,0.,0.,0.))
+            self.assertEqual(definitions[31], (gain,float(coverage),0.,0.))
+            if coverage:
+                d,sources = shader.split_operands(appended[-2],2)
+                self.assertEqual((d['name'],d['mask'],sources[0]['name'],sources[0]['swizzle']), ('r3','xyzw','c31','yyyy'))
+                _,sources = shader.split_operands(appended[-1],2)
+                self.assertEqual((sources[0]['name'],sources[0]['swizzle']), ('r3','xyzw'))
+                appended = appended[:-2]
             # All channels are initialized before the one legal full MOV oC1.
             d,sources = shader.split_operands(appended[-2],2)
             self.assertEqual((d['name'],d['mask'],sources[0]['name'],sources[0]['swizzle']), ('r2','w','c30','yyyy'))
             _,sources = shader.split_operands(appended[-1],2)
             self.assertEqual((sources[0]['name'],sources[0]['swizzle']), ('r2','xyzw'))
 
+    def test_all_25_accepted_two_output_variants_remain_byte_exact(self):
+        # Captured from accepted two-output source 3c72347 before coverage edits.
+        # Canonical digest: sorted basename + NUL + complete shader bytes.
+        digest = hashlib.sha256()
+        for path in sorted(p for p in self.directory.glob('ps_*.bin') if '-coverage' not in p.name):
+            digest.update(path.name.encode() + b'\0')
+            digest.update(path.read_bytes())
+        self.assertEqual(digest.hexdigest(), '2b637e983bae9ef42a59c32851249f2b42f65449edc8911b4fe2ce26e38f481b')
+        self.assertEqual(self.driver['max_arithmetic'], [29,31])
+
+    def test_coverage_only_changes_unused_constant_lane_and_adds_final_two_moves(self):
+        for key, profile, gain, coverage, words, items in self.each():
+            if not coverage:
+                continue
+            old, old_items, _ = shader.instructions((self.directory/f'ps_{key}-{GAINS.index(gain)}.bin').read_bytes())
+            # Same exact instructions and opaque comments through oC1; only the
+            # previously unread c31.y literal changes before the coverage tail.
+            restored = list(words[:-7]) + list(words[-1:])
+            constant = next(i for i in items if i['opcode']==shader.DEF and shader.register_of(i['words'][0])==(2,31))
+            restored[constant['dword']+3] = 0
+            self.assertEqual(tuple(restored), old)
+            for item in old_items:
+                if item['opcode'] in (shader.DEF,shader.DCL):
+                    continue
+                _, sources = shader.split_operands(item,2)
+                for source in sources:
+                    if source['name']=='c31':
+                        self.assertEqual(source['swizzle'],'xxxx')
+
+    def test_constant_positive_coverage_including_zero_rgb_fade_alpha_and_gain(self):
+        for _, profile, gain, coverage, words, items in self.each():
+            if not coverage:
+                continue
+            for rgb in ([0.,0.,0.],[-0.,-1.,math.nan],[math.inf,-math.inf,65504.],[.25,.5,1.]):
+                for fade in (0.,.5,1.):
+                    for alpha in (0.,.5,1.):
+                        result = emission_math(words,items,profile[1]-1+15,rgb,fade,output=2,native_alpha=alpha)
+                        self.assertEqual(result,[1.,1.,1.,1.])
+
     def test_high_input_quarter_gain_distinguishes_decoded_cap_before_fade(self):
-        for key, profile, gain, words, items in self.each():
+        for key, profile, gain, _, words, items in self.each():
             if gain != .25:
                 continue
             fade = .5 if profile[-1] else 1.
@@ -230,7 +280,7 @@ class LinearEmissionTransformerTests(unittest.TestCase):
 
     def test_new_arithmetic_model_retains_linear_fade_gain_and_finite_endpoints(self):
         cases = ([.25,.5,1.], [0.,-0.,-1.], [math.nan,-math.inf,math.inf], [1e-12,256.,65504.])
-        for _, profile, gain, words, items in self.each():
+        for _, profile, gain, _, words, items in self.each():
             fade = .5 if profile[-1] else 1.
             for rgb in cases:
                 result = emission_math(words,items,profile[1]-1+15,rgb,fade)

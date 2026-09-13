@@ -33,7 +33,7 @@ int main(int argc,char** argv) {
         const std::uint64_t vertex[]={0xd5e1c75351ed3f04ull,0x32e75459998d0388ull,0x089091aab2d5eb13ull};
         const std::uint64_t pixel[]={0x8360f422de08b5bdull,0x9975b706e5a1c999ull,0xff2473e73a6bdfa1ull,0x8559522220507d5eull,0x875e780adb131b16ull};
         const float gains[]={0,0.25f,1,4,16};
-        unsigned variants=0, pairs=0; long long create_ns=0;
+        unsigned variants=0, pairs=0, max_arithmetic[2]={0,0}; long long create_ns[2]={0,0};
         for (const char* name:pixels) {
             const auto original=read(std::string(argv[1])+"/ps_"+name+".bin");
             const auto saved=original;
@@ -58,46 +58,65 @@ int main(int argc,char** argv) {
             Shape output_shape;
             require(!structure(extra_output.data(),extra_output.size(),output_shape) ||
                     !original_shape(extra_output.data(),profile,output_shape),"native output identity refusal without hash");
-            for (unsigned g=0;g<5;++g) {
-                Words result{91,92};
-                const auto begin=std::chrono::steady_clock::now();
-                const auto status=linear_emission_pixel_variant(original.data(),original.size(),{gains[g]},result);
-                create_ns+=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-begin).count();
-                if (status!=LinearEmissionResult::Applied) std::cerr<<name<<" status="<<static_cast<int>(status)<<'\n';
-                require(status==LinearEmissionResult::Applied,"reviewed original admission");
-                require(original==saved,"immutable input");
-                if (g==0) {
-                    // The tail's first POW: reject a vector exponent even
-                    // though register/framing limits and input hash are moot.
-                    auto wrong_power=result;
-                    const auto first_power=original.size()-1+15+12;
-                    wrong_power[first_power+3]=src(constant,30);
-                    Shape wrong_shape;
-                    require(!structure(wrong_power.data(),wrong_power.size(),wrong_shape),"POW scalar form refusal");
+            for (bool coverage:{false,true}) {
+                for (unsigned g=0;g<5;++g) {
+                    Words result{91,92};
+                    const auto begin=std::chrono::steady_clock::now();
+                    const auto status=linear_emission_pixel_variant(original.data(),original.size(),{gains[g],coverage},result);
+                    create_ns[coverage]+=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-begin).count();
+                    if (status!=LinearEmissionResult::Applied) std::cerr<<name<<" status="<<static_cast<int>(status)<<'\n';
+                    require(status==LinearEmissionResult::Applied,"reviewed original admission");
+                    require(original==saved,"immutable input");
+                    Shape result_shape;
+                    require(structure(result.data(),result.size(),result_shape) &&
+                            result_shape.outputs==(coverage?7u:3u) && result_shape.texture==1,
+                            "exact output and texture allocation");
+                    max_arithmetic[coverage]=std::max(max_arithmetic[coverage],result_shape.arithmetic);
+                    if (coverage && g==0) {
+                        for (unsigned mutation=0;mutation<4;++mutation) {
+                            auto broken=result;
+                            if (mutation==0) broken[broken.size()-3]|=pp;
+                            if (mutation==1) broken[broken.size()-3]=dst(output,3,15);
+                            if (mutation==2) broken[broken.size()-2]=lane(temporary,3,1);
+                            if (mutation==3) broken[broken.size()-3]=dst(output,1,15);
+                            Shape invalid_shape;
+                            require(!structure(broken.data(),broken.size(),invalid_shape),
+                                    "coverage output PP, allocation, swizzle and duplicate refusal");
+                        }
+                    }
+                    if (g==0) {
+                        // The tail's first POW: reject a vector exponent even
+                        // though register/framing limits and input hash are moot.
+                        auto wrong_power=result;
+                        const auto first_power=original.size()-1+15+12;
+                        wrong_power[first_power+3]=src(constant,30);
+                        Shape wrong_shape;
+                        require(!structure(wrong_power.data(),wrong_power.size(),wrong_shape),"POW scalar form refusal");
+                    }
+                    auto alias=original;
+                    require(linear_emission_pixel_variant(alias.data(),alias.size(),{gains[g],coverage},alias)==LinearEmissionResult::Applied && alias==result,"successful alias");
+                    write(std::string(argv[2])+"/ps_"+name+"-"+std::to_string(g)+(coverage?"-coverage":"")+".bin",result);
+                    ++variants;
                 }
-                auto alias=original;
-                require(linear_emission_pixel_variant(alias.data(),alias.size(),{gains[g]},alias)==LinearEmissionResult::Applied && alias==result,"successful alias");
-                write(std::string(argv[2])+"/ps_"+name+"-"+std::to_string(g)+".bin",result);
-                ++variants;
-            }
-            for (float invalid:{-1.0f,16.001f,std::numeric_limits<float>::infinity(),-std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
+                for (float invalid:{-1.0f,16.001f,std::numeric_limits<float>::infinity(),-std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
+                    Words result{91,92}; const auto before=result;
+                    require(linear_emission_pixel_variant(original.data(),original.size(),{invalid,coverage},result)==LinearEmissionResult::InvalidConfig && result==before,"invalid gain rollback");
+                    auto alias=original;
+                    require(linear_emission_pixel_variant(alias.data(),alias.size(),{invalid,coverage},alias)==LinearEmissionResult::InvalidConfig && alias==saved,"invalid gain alias rollback");
+                }
+                for (std::size_t offset:{std::size_t(0),std::size_t(2),original.size()-5,original.size()-1}) {
+                    auto broken=original; broken[offset]^=1; auto before=broken;
+                    require(linear_emission_pixel_variant(broken.data(),broken.size(),{1,coverage},broken)==LinearEmissionResult::UnsupportedShader && broken==before,"corrupted original alias rollback");
+                }
                 Words result{91,92}; const auto before=result;
-                require(linear_emission_pixel_variant(original.data(),original.size(),{invalid},result)==LinearEmissionResult::InvalidConfig && result==before,"invalid gain rollback");
-                auto alias=original;
-                require(linear_emission_pixel_variant(alias.data(),alias.size(),{invalid},alias)==LinearEmissionResult::InvalidConfig && alias==saved,"invalid gain alias rollback");
+                require(linear_emission_pixel_variant(nullptr,original.size(),{1,coverage},result)==LinearEmissionResult::InvalidInput && result==before,"null rollback");
+                require(linear_emission_pixel_variant(original.data(),1,{1,coverage},result)==LinearEmissionResult::InvalidInput && result==before,"short rollback");
+                require(linear_emission_pixel_variant(original.data(),original.size()-1,{1,coverage},result)==LinearEmissionResult::UnsupportedShader && result==before,"truncation rollback");
+                require(linear_emission_pixel_variant(original.data(),1109,{1,coverage},result)==LinearEmissionResult::UnsupportedShader && result==before,"bounded read before hash");
+                Words positive,negative;
+                require(linear_emission_pixel_variant(original.data(),original.size(),{0,coverage},positive)==LinearEmissionResult::Applied &&
+                        linear_emission_pixel_variant(original.data(),original.size(),{-0.0f,coverage},negative)==LinearEmissionResult::Applied && positive==negative,"signed-zero gain canonicalization");
             }
-            for (std::size_t offset:{std::size_t(0),std::size_t(2),original.size()-5,original.size()-1}) {
-                auto broken=original; broken[offset]^=1; auto before=broken;
-                require(linear_emission_pixel_variant(broken.data(),broken.size(),{},broken)==LinearEmissionResult::UnsupportedShader && broken==before,"corrupted original alias rollback");
-            }
-            Words result{91,92}; const auto before=result;
-            require(linear_emission_pixel_variant(nullptr,original.size(),{},result)==LinearEmissionResult::InvalidInput && result==before,"null rollback");
-            require(linear_emission_pixel_variant(original.data(),1,{},result)==LinearEmissionResult::InvalidInput && result==before,"short rollback");
-            require(linear_emission_pixel_variant(original.data(),original.size()-1,{},result)==LinearEmissionResult::UnsupportedShader && result==before,"truncation rollback");
-            require(linear_emission_pixel_variant(original.data(),1109,{},result)==LinearEmissionResult::UnsupportedShader && result==before,"bounded read before hash");
-            Words positive,negative;
-            require(linear_emission_pixel_variant(original.data(),original.size(),{0},positive)==LinearEmissionResult::Applied &&
-                    linear_emission_pixel_variant(original.data(),original.size(),{-0.0f},negative)==LinearEmissionResult::Applied && positive==negative,"signed-zero gain canonicalization");
         }
         for (unsigned v=0;v<3;++v) for (unsigned p=0;p<5;++p) {
             const bool expected=v==(p==0?0u:p<3?1u:2u);
@@ -110,6 +129,7 @@ int main(int argc,char** argv) {
         Words authored{0xffff0200u,0xffffu}, result{91,92};
         require(linear_emission_pixel_variant(authored.data(),authored.size(),{},result)==LinearEmissionResult::UnsupportedShader && result==Words({91,92}),"unreviewed valid framing");
         std::cout<<"{\"programs\":5,\"pairs\":"<<pairs<<",\"variants\":"<<variants<<",\"checks\":"<<checks
-                 <<",\"initial_creates_ns\":"<<create_ns<<"}\n";
+                 <<",\"initial_creates_ns\": ["<<create_ns[0]<<','<<create_ns[1]<<"]"
+                 <<",\"max_arithmetic\": ["<<max_arithmetic[0]<<','<<max_arithmetic[1]<<"]}\n";
     } catch (const std::exception& error) { std::cerr<<error.what()<<'\n'; return 1; }
 }
