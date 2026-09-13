@@ -7,17 +7,19 @@ full scope; the [original objective](user-objective.md) is unchanged.
 
 ## Installed build and current camera work
 
-Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `dac2994`:
-DLL SHA-256 `2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c`,
-11,709,039 bytes. The [install record](../verification/results/chase-elevated-install.json)
+Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `1b39130`:
+DLL SHA-256 `5a7e849f9873f3f491f0dc67710c1afc150d7fd40276c5b5903bb2e759a8610e`,
+11,763,091 bytes. The [install record](../verification/results/chase-fire-install.json)
 binds the reviewed candidate and rollback copy; EXE/configuration are unchanged.
-[Review 49](verification/review-49-chase-aim-trace.md) records the scoped host,
-x86 hook, camera-math and DLL-load evidence. Native Windows remains untested.
+[The current review](reverse-engineering/chase-mouse-fire.md) records scoped
+x86 hook, CPU-state, runtime and performance evidence; the install record
+includes the candidate load and actual CMake object checks. Native Windows remains untested.
 
-The installed chase defaults are **20° pitch, distance 0.6, rotation/position
+The installed chase defaults are **13° pitch, distance 0.85, rotation/position
 response 0.22/0.30 s, offset 0.45, lag limits 8°/0.10**. Vanilla is the default
 camera mode. Chase plus telemetry enables four read-only cursor/fire observation
-sites; they do not change weapon behavior. The compiler CPU-state boundary fix
+sites. The separate chase-fire branch hook works without telemetry and
+changes cursor-fire admission only for the active chase view. The compiler CPU-state boundary fix
 is included. Gameplay frame cost is not established by diagnostic timings.
 
 The user completed the first-person left/centre/right firing sweep and repeated
@@ -26,11 +28,11 @@ isolates the fault: first person admitted 229 cursor rays; external view rejecte
 all 180 attempts because the native cursor writer set cursor-active to zero.
 A chase-only firing correction is implemented and independently reviewed from the
 [verified admission branch](reverse-engineering/chase-mouse-fire.md#third-run-finding-and-proposed-scoped-correction).
-All four X3 fixture modes passed 307 checks; candidate build/install is next.
+All four X3 fixture modes passed 307 checks. The candidate is built and
+installed; gameplay acceptance remains pending.
 Earlier anchor correction removed the reported
-trembling in the second flight. The user now requests **13° pitch and distance
-0.85**; those source defaults pass 56 focused checks but are not installed.
-Batch any justified firing correction with the next camera build.
+trembling in the second flight. The requested **13° pitch and distance
+0.85** pass 56 focused checks and are included in this install.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

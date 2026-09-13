@@ -1,0 +1,79 @@
+{
+  "source_commit": "1b39130c2bce85819f8ca1347c61a175db69115f",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-chase-fire-candidate-h1wdy_15/d3d9.dll",
+  "dll_sha256": "5a7e849f9873f3f491f0dc67710c1afc150d7fd40276c5b5903bb2e759a8610e",
+  "dll_bytes": 11763091,
+  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "build": "cmake --build build --clean-first -j4",
+  "production_cpu_audits": {
+    "chase_fire": {
+      "no_exception_runtime_symbols": true,
+      "callback": "x3m_chase_fire_enter",
+      "boundary_instruction_inventory": {
+        "fnsave": 1,
+        "frstor": 2,
+        "stmxcsr": 1,
+        "fninit": 1,
+        "ldmxcsr": 2,
+        "ret": 1
+      },
+      "first_call": "GetLastError",
+      "last_epilogue_call": "SetLastError",
+      "sha256": "01333bc288913dea6cfc5ca970ababa7be560b428d3c41cceaced243788181c3"
+    },
+    "chase_camera": {
+      "no_exception_runtime_symbols": true,
+      "callback": "x3m_chase_camera_enter",
+      "boundary_instruction_inventory": {
+        "fnsave": 1,
+        "frstor": 2,
+        "stmxcsr": 1,
+        "fninit": 1,
+        "ldmxcsr": 2,
+        "ret": 1
+      },
+      "first_call": "GetLastError",
+      "last_epilogue_call": "SetLastError",
+      "sha256": "5e0d53a4bd4362a091a1ed2034b422166ae042b258d7628bfc4d2e24c430aa3e"
+    },
+    "chase_aim_trace": {
+      "no_exception_runtime_symbols": true,
+      "callback": "x3m_chase_aim_enter",
+      "boundary_instruction_inventory": {
+        "fnsave": 1,
+        "frstor": 2,
+        "stmxcsr": 1,
+        "fninit": 1,
+        "ldmxcsr": 2,
+        "ret": 1
+      },
+      "first_call": "GetLastError",
+      "last_epilogue_call": "SetLastError",
+      "sha256": "250eaf37b910d705534c34422bee953853fff6ad5cdeb0cb837db866f7b90d00"
+    }
+  },
+  "host_checks": {
+    "chase_defaults": 56,
+    "chase_fire_site": 6,
+    "hdr_snapshot_scenarios": 52,
+    "hdr_agx_exposure": 26
+  },
+  "x3_chase_fire": "verification/results/bottle-X3/chase-fire-summary.json",
+  "load": {
+    "passed": true,
+    "case": "writable",
+    "checks": 8,
+    "exports": 17
+  },
+  "game_launched": false,
+  "native_windows_verified": false,
+  "installed": true,
+  "previous_dll_sha256": "2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c",
+  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-chase-fire-candidate-h1wdy_15/rollback",
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "preserved_files": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "planned_launch_dry_run": true
+}

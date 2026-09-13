@@ -24,7 +24,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 | 14 | Additional improvements | Loading reduced from 87 s to about 34–38 s on X3; route-on frame time from 16.9 to 12.1 ms in the recorded comparisons. Crypto cache, reader and adjacency fixes passed independent review and scoped fixtures. All are installed; run 17 accepts the crypto path on X3 (844-check probe 12.835 → 0.1353 s). Reader/adjacency acceptance remains. The 27.574 s save gap is not a controlled cache A/B. Diagnostic timings are not uninstrumented game FPS. |
 | 15 | macOS menu bar | Not started. Also track the separate game/macOS double cursor after alt-tab; first compare with vanilla. |
 | 16 | Clustered forward lighting | Not started. Material and light reconstruction precede implementation. |
-| 17 | Modern third-person chase camera | **In progress.** Integrated and reviewed; the second flight reports no trembling after anchor correction. The [third flight](verification/chase-third-run.md) isolates native cursor-active admission as the chase firing failure. A scoped fix is in progress; requested 13-degree pitch / 0.85 distance defaults are committed but not installed. Vanilla remains the default. Menus, aiming, cuts, reset survival and frame cost still require acceptance; [current status](status.md) links the installed build and qualification history. |
+| 17 | Modern third-person chase camera | **In progress.** Integrated and reviewed; the second flight reports no trembling after anchor correction. The [third flight](verification/chase-third-run.md) isolates native cursor-active admission as the chase firing failure. The scoped fix and requested 13-degree pitch / 0.85 distance are reviewed, X3-qualified and installed; gameplay acceptance is pending. Vanilla remains the default. Menus, aiming, cuts, reset survival and frame cost still require acceptance; [current status](status.md) links the installed build and qualification history. |
 
 Evidence: [iteration 13](verification/iteration-13.md),
 [HDR scene path](verification/hdr-scene-path.md),
@@ -64,7 +64,7 @@ they are not a measured final-image baseline.
    reviewed, X3-qualified and installed at `0c642df`; the telemetry rerun reports
    no trembling. The elevated 20-degree, distance-scale 0.6, softer-follow update and
    consolidated mouse-fire trace are qualified and installed at `dac2994`.
-   Implement the diagnosed cursor-admission correction before the next firing comparison. Complete the
+   The cursor-admission correction and revised framing are installed; use the brief user run queue for the next firing comparison. Complete the
    architecture review’s thirteen acceptance checks separately.
    Tune only from user impressions; combat tightness and optional scene fix
    remain disabled pending evidence.
