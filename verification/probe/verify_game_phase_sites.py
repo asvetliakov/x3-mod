@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only instruction/ABI qualification of the 23 game phase markers.
+"""Read-only instruction/ABI qualification of the 33 game phase markers.
 
 The independent address/byte/target ledger below comes from targeted native
 analysis. Decode complete containing routines, not isolated opcode-looking
@@ -25,6 +25,8 @@ OVERLAY = (0x42a2d0, 0x42c1de)
 PUBLISHER = (0x425a10, 0x425c80)  # code ends immediately before its jump table
 SOUND = (0x49a350, 0x49a436)
 PRESENT = (0x4dac30, 0x4dac8d)
+PLAYBACK = (0x4997c0, 0x499aec)  # code ends immediately before its jump table
+STREAM = (0x498e30, 0x499022)
 # name, address, bytes, complete containing routine, rel32 destination (0=none)
 LEDGER = (
  ('loop_setup',0x403ab0,'81a008010000ffbfffff',MAIN,0),
@@ -50,11 +52,37 @@ LEDGER = (
  ('cold_end',0x49a3e9,'83c40885c0',SOUND,0),
  ('present_begin',0x4dac45,'8b4244ffd0',PRESENT,0),
  ('present_end',0x4dac4a,'3d68087688',PRESENT,0),
+ ('input_body',0x403b3a,'39aed8040000',MAIN,0),
+ ('input_after',0x403dc5,'f686a004000004',MAIN,0),
+ ('publisher_begin',0x425a10,'538b5c2408',PUBLISHER,0),
+ ('publisher_end',0x425c79,'5f5e5d5bc20400',PUBLISHER,0),
+ ('playback_begin',0x499849,'e8e2f5ffff',PLAYBACK,0x498e30),
+ ('playback_end',0x49984e,'83c4185fb801000000',PLAYBACK,0),
+ ('create_begin',0x498ef8,'e843f2ffff',STREAM,0x498140),
+ ('create_end',0x498f00,'83ef016685ff',STREAM,0),
+ ('seek_begin',0x498f55,'e8d6740300',STREAM,0x4d0430),
+ ('seek_end',0x498f5a,'83c40485c0',STREAM,0),
 )
 SITES = tuple(common.HookSpec('game_phase_'+name,va,bytes.fromhex(raw),*bounds)
               for name,va,raw,bounds,_ in LEDGER)
 TARGETS = {va: target for _,va,_,_,target in LEDGER if target}
 JUMP_TABLE = (0x425a21,0x425a84,0x425ba2,0x425c1b,0x425b12)
+MOV_JUMP_TABLE = (0x4997dd,0x499803,0x499859,0x499875,0x4998ee,0x499911,0x49982f,
+                  0x499891,0x499992,0x4999ea,0x499a0a,0x499a23,0x499a68,0x499a8e)
+RET_POP = {0x425a10:4,0x425c79:4}
+JOIN_EDGES = (
+    (0x403b10,0x403b3a),(0x403b26,0x403b3a),
+    (0x403c85,0x403dc5),(0x403d84,0x403dc5),(0x403db6,0x403dc5),
+    (0x425ba6,0x425c79),(0x425c1f,0x425c79),(0x425c57,0x425c79),
+    (0x498ee0,0x498f00),(0x498eeb,0x498f00),
+    (0x425bd6,0x425bed),(0x4041d8,0x403ab0),
+)
+SHARED_JOINS = {
+    0x403b3a:{0x403b10,0x403b26},
+    0x403dc5:{0x403c85,0x403d84,0x403db6},
+    0x425c79:{0x425ba6,0x425c1f,0x425c57},
+    0x498f00:{0x498ee0,0x498eeb},
+}
 # Context pins ABI-sensitive entry/exit semantics beyond the stolen bytes.
 WITNESSES = {
  'delayed_request': (0x42a455,'51b8030000008bce'),
@@ -82,7 +110,8 @@ def source_checks(text):
     # its rel32_offset means actual ret_pop; rel32_target means rel32_offset.
     actual = common.parse_source_specs(text)
     expected = [dict(name=s.name,va=s.va,bytes=s.expected,length=len(s.expected),
-                     rel32_offset=0,rel32_target=int(s.va in TARGETS)) for s in SITES]
+                     rel32_offset=RET_POP.get(s.va,0),rel32_target=int(s.va in TARGETS))
+                for s in SITES]
     return actual == expected
 
 
@@ -128,23 +157,47 @@ def inspect(image, decoded, source):
     ordered = sorted(SITES,key=lambda s:s.va)
     checks['nonoverlap'] = all(a.end <= b.va for a,b in zip(ordered,ordered[1:]))
     checks['complete_routines'] = all(decoded.get(b) for b in { (s.function_start,s.function_end) for s in SITES })
+    by_va = {i.va:i for i in all_instructions}
     raw_table = image.read(0x425c80,20)
     table = struct.unpack('<5I',raw_table) if raw_table and len(raw_table)==20 else ()
-    checks['publisher_jump_table'] = table==JUMP_TABLE and all(
-        not s.va < target < s.end for s in SITES for target in table)
+    checks['publisher_jump_table'] = (table==JUMP_TABLE and all(target in by_va for target in table)
+        and all(not s.va < target < s.end for s in SITES for target in table))
+    raw_mov_table = image.read(0x499aec,4*len(MOV_JUMP_TABLE))
+    mov_table = struct.unpack('<14I',raw_mov_table) if raw_mov_table and len(raw_mov_table)==56 else ()
+    checks['mov_jump_table'] = (mov_table==MOV_JUMP_TABLE and all(target in by_va for target in mov_table)
+        and all(PLAYBACK[0]<=target<PLAYBACK[1] for target in mov_table)
+        and all(not s.va < target < s.end for s in SITES for target in mov_table))
     checks['abi_context'] = all(image.read(va,len(bytes.fromhex(raw)))==bytes.fromhex(raw)
                                 for va,raw in WITNESSES.values())
     for name,bounds,start,end in (
         ('delayed_normal_endpoint',OVERLAY,0x42a45d,0x42a462),
         ('acquisition_normal_endpoint',PUBLISHER,0x425bac,0x425bed),
         ('cold_normal_endpoint',SOUND,0x49a3e4,0x49a3e9),
-        ('present_normal_endpoint',PRESENT,0x4dac45,0x4dac4a)):
+        ('present_normal_endpoint',PRESENT,0x4dac45,0x4dac4a),
+        ('playback_command6_entry',PLAYBACK,0x49982f,0x499849),
+        ('playback_normal_endpoint',PLAYBACK,0x499849,0x49984e),
+        ('create_normal_endpoint',STREAM,0x498ef8,0x498f00),
+        ('seek_normal_endpoint',STREAM,0x498f55,0x498f5a),
+        ('publisher_mode3_endpoint',PUBLISHER,0x425c1b,0x425c79)):
         checks[name] = all_paths_reach(decoded.get(bounds,[]),start,end)
-    # Entry edges are allowed; explicitly preserve the conditional acquisition
-    # join and normal main-loop backedge, without treating shutdown as a phase.
-    by_va = {i.va:i for i in all_instructions}
+    # Entry edges are allowed. Preserve every proved shared join, both input
+    # subdivisions and the normal main-loop backedge without treating shutdown
+    # as a phase. The create join deliberately starts at 498f00, after cleanup.
     checks['join_edges'] = all(at in by_va and common._is_direct_control(by_va[at])==target
-                              for at,target in ((0x425bd6,0x425bed),(0x4041d8,0x403ab0)))
+                              for at,target in JOIN_EDGES)
+    checks['shared_join_sources'] = all(
+        {i.va for i in all_instructions if common._is_direct_control(i)==target}==sources
+        for target,sources in SHARED_JOINS.items())
+    publisher_end = [by_va.get(at) for at in (0x425c79,0x425c7a,0x425c7b,0x425c7c,0x425c7d)]
+    checks['publisher_ret4_epilogue'] = (all(publisher_end)
+        and [i.mnemonic for i in publisher_end]==['pop','pop','pop','pop','ret']
+        and publisher_end[-1].raw==b'\xc2\x04\x00' and publisher_end[-1].end==0x425c80)
+    checks['publisher_mode3_switch'] = (0x425a1a in by_va
+        and by_va[0x425a1a].raw==bytes.fromhex('ff2485805c4200')
+        and len(table)==5 and table[3]==0x425c1b)
+    checks['mov_command6_switch'] = (0x4997d6 in by_va
+        and by_va[0x4997d6].raw==bytes.fromhex('ff2485ec9a4900')
+        and len(mov_table)==14 and mov_table[6]==0x49982f)
     checks['present_indirect_call'] = (0x4dac48 in by_va and by_va[0x4dac48].raw==b'\xff\xd0')
     return {'result':'PASS' if all(checks.values()) else 'FAIL','checks':checks,'sites':rows}
 

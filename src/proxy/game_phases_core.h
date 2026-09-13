@@ -4,7 +4,7 @@
 // Value-only state for one proved main-loop thread. The runtime owns thread
 // admission and the atomic lifecycle epoch; this core never calls native code.
 namespace x3m::game_phases::detail {
-constexpr unsigned phase_count=14, tape_capacity=96, stack_capacity=8;
+constexpr unsigned phase_count=14, tape_capacity=96, stack_capacity=8, call_count=8;
 struct Stamp {
     std::uint64_t qpc=0,user=0,kernel=0,query_end=0;
     bool cpu=false;
@@ -15,7 +15,7 @@ struct Pump {std::uint32_t active=0,flags=0;bool valid=false;};
 struct Segment {
     Stamp begin{},end{};
     std::uint64_t loop=0;
-    unsigned phase=0;
+    unsigned phase=0,input_part=0;
     Request request_begin{},request_end{};
     Pump pump{};
 };
@@ -32,12 +32,20 @@ struct Frame {
     unsigned used=0;
     bool overflow=false;
 };
+struct Witness {
+    std::uint32_t caller=0,previous_target=0,previous_mode=0,view=0,args[6]{};
+    std::uintptr_t end_esp=0;
+};
 struct Call {
     unsigned kind=0;
     Stamp begin{},end{};
     Request request{};
     Present present{};
     std::uint32_t result=0;
+    Witness witness{};
+    std::uint64_t loop=0,children=0;
+    unsigned phase=0;
+    bool first=false;
 };
 template<class T> struct Window {
     T first[4]{},recent[4]{};
@@ -67,11 +75,17 @@ struct Token {
     Present endpoint{};
     Frame staged{};
     bool bridged=false,detail=false;
+    Witness witness{};
+    std::uint64_t loop=0,children=0;
+    unsigned phase=0;
 };
 struct Core {
     std::uint64_t frequency=0,loop=0,invalidated=0,unmatched=0,overflow=0,order_errors=0,clock_errors=0;
     std::uint64_t frame_count=0,frame_max=0,frame_max_begin=0,frame_max_end=0,frame_max_id=0,frame_max_device=0;
-    Metric phases[phase_count]{},calls[4]{};
+    Metric phases[phase_count]{},calls[call_count]{},input_parts[3]{};
+    std::uint64_t ignored_joins=0;
+    unsigned first_mask=0,pending_first=0,input_part=0;
+    Call first_calls[4]{};
     Window<Frame> slow_frames;
     Window<Call> slow_calls;
     Segment tape[tape_capacity]{};
@@ -86,7 +100,7 @@ struct Core {
     void invalidate() noexcept {
         ++invalidated;
         phase_live=anchor_valid=false;used=depth=0;tape_overflow=false;
-        anchor={};request={};pump={};
+        anchor={};request={};pump={};input_part=0;
         for(auto& t:stack){t.raw=0;t.bridged=t.detail=false;t.endpoint={};}
     }
     bool valid(const Stamp& at) noexcept {
@@ -97,8 +111,9 @@ struct Core {
         if(!phase_live)return;
         if(at.qpc<phase_begin.qpc){++clock_errors;invalidate();return;}
         phases[phase].add(phase_begin,at);
+        if(phase==6)input_parts[input_part].add(phase_begin,at);
         if(anchor_valid&&at.qpc>phase_begin.qpc){
-            if(used<tape_capacity)tape[used++]={phase_begin,at,loop,phase,phase_request,request,pump};
+            if(used<tape_capacity)tape[used++]={phase_begin,at,loop,phase,input_part,phase_request,request,pump};
             else {++overflow;tape_overflow=true;}
         }
         phase_begin=at;phase_request=request;
@@ -108,20 +123,21 @@ struct Core {
         if(index==14){invalidate();return;}
         if(index>=phase_count)return;
         if(index==0){
-            if(phase_live&&phase!=13){++order_errors;invalidate();}
+            if(depth||(phase_live&&phase!=13)){++order_errors;invalidate();}
             segment(at);pump={};++loop;phase=0;phase_begin=at;phase_request=request;phase_live=true;return;
         }
         if(!phase_live){++unmatched;return;}
         if(index!=phase+1){++order_errors;invalidate();return;}
         segment(at);if(!phase_live)return;
-        phase=index;phase_begin=at;phase_request=request;
+        phase=index;input_part=0;phase_begin=at;phase_request=request;
     }
     void begin(unsigned kind,const Stamp& at,Request r={},std::uintptr_t raw=0) noexcept {
         if(!valid(at))return;
+        if(kind>=call_count){++unmatched;invalidate();return;}
         if(!phase_live){++unmatched;return;}
         if(depth==stack_capacity){++overflow;invalidate();return;}
         auto& t=stack[depth++];t.kind=kind;t.begin=at;t.request=r;t.raw=raw;
-        t.bridged=t.detail=false;t.endpoint={};
+        t.bridged=t.detail=false;t.endpoint={};t.witness={};t.loop=loop;t.phase=phase;t.children=0;
         if(kind<2)request=r;
     }
     // Called only with owned Device metadata, before ctx.frame is advanced.
@@ -164,14 +180,46 @@ struct Core {
             ++unmatched;invalidate();return;
         }
         calls[kind].add(t.begin,at);
-        if(frequency&&at.qpc-t.begin.qpc>=frequency/100)
-            slow_calls.add(Call{kind,t.begin,at,t.request,t.endpoint,result});
+        const bool first=kind>=4&&!(first_mask&(1u<<kind));
+        const Call record{kind,t.begin,at,t.request,t.endpoint,result,t.witness,t.loop,t.children,t.phase,false};
+        if(first){first_mask|=1u<<kind;pending_first|=1u<<kind;first_calls[kind-4]=record;first_calls[kind-4].first=true;}
+        if(frequency&&at.qpc-t.begin.qpc>=frequency/100)slow_calls.add(record);
+        if(depth>1)stack[depth-2].children+=at.qpc-t.begin.qpc;
         if(t.detail){t.staged.dispatch_end=at.qpc;slow_frames.add(t.staged);}
         t.raw=0;t.bridged=t.detail=false;--depth;
+    }
+    void input_boundary(unsigned part,const Stamp& at) noexcept {
+        if(!valid(at))return;
+        if(!phase_live||phase!=6||part!=input_part+1||part>2){++order_errors;invalidate();return;}
+        segment(at);if(phase_live)input_part=part;
+    }
+    bool targeted() const noexcept {return phase_live&&(phase==4||phase==6||phase==8);}
+    bool within(unsigned kind) const noexcept {
+        for(unsigned i=0;i<depth;++i)if(stack[i].kind==kind)return true;
+        return false;
+    }
+    Request request_for(unsigned kind) const noexcept {
+        for(unsigned i=depth;i-->0;)if(stack[i].kind==kind)return stack[i].request;
+        return {};
+    }
+    void target_begin(unsigned kind,const Stamp& at,Request r,Witness w) noexcept {
+        if(!targeted()||kind<4||kind>=call_count)return;
+        const auto previous=depth;begin(kind,at,r);
+        if(depth!=previous+1)return;
+        auto& t=stack[depth-1];t.witness=w;t.endpoint=anchor_valid?anchor:Present{};
+        if(kind==4)request=r;
+    }
+    void target_end(unsigned kind,const Stamp& at,std::uintptr_t esp,std::uint32_t result) noexcept {
+        // Shared native joins have legitimate untracked arrivals, including a
+        // nested mode2/null call while a mode3 publisher is open.
+        if(!depth||stack[depth-1].kind!=kind||stack[depth-1].witness.end_esp!=esp){++ignored_joins;return;}
+        end(kind,at,result);
     }
     void clear_window() noexcept {
         for(auto& m:phases)m={};
         for(auto& m:calls)m={};
+        for(auto& m:input_parts)m={};
+        ignored_joins=0;pending_first=0;
         slow_frames.clear();slow_calls.clear();frame_count=frame_max=frame_max_begin=frame_max_end=frame_max_id=frame_max_device=0;
         invalidated=unmatched=overflow=order_errors=clock_errors=0;
     }

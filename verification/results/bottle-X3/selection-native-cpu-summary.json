@@ -1,0 +1,171 @@
+{
+  "schema": "x3-selection-native-cpu-v1",
+  "result": "PASS",
+  "date": "2026-09-14",
+  "runtime": {
+    "application": "CrossOver Preview.app",
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+    "execution": "root-owned wine_lock; terminal exit 0",
+    "lock_holder": "selection-native-cpu",
+    "lock_timeout_seconds": 60,
+    "explicit_environment": {
+      "X3M_FIXTURE_BOTTLE": "X3"
+    },
+    "environment_scope": "FEX_X87REDUCEDPRECISION and WINEMSYNC are configured bottle values; no intentional overrides; stderr corroborates msync startup"
+  },
+  "artifact": {
+    "path": "/tmp/x3-selection-native-work/build/verification/game-phases/game_phase_cpu_fixture.exe",
+    "bytes": 334818,
+    "sha256": "a07c947cc6679c8cd6bfcd9fcc2c0ff9e7719e1086ec9bbfbcd2b26acffce98c",
+    "reviewed_source_patch_sha256": "ce42bfd068ef4e28c72d1a51cf3dfc050b67162a2602ec5ee21b870ca9f3512d",
+    "source_review": "approved"
+  },
+  "raw": {
+    "stdout": {
+      "path": "/tmp/x3-selection-native-cpu.txt",
+      "bytes": 14972,
+      "sha256": "9fe303bd974f5b4f8649660bae465f02786fdff00e2609758187950c50ac93b2"
+    },
+    "stderr": {
+      "path": "/tmp/x3-selection-native-cpu-wine.log",
+      "bytes": 76,
+      "sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31",
+      "content": "msync startup only"
+    }
+  },
+  "checks": {
+    "stubs": 33,
+    "replay_cases": 13,
+    "actual_target_handler_cases": 5,
+    "checks": 7606,
+    "failures": 0
+  },
+  "host_proof": {
+    "tests": 29,
+    "core_assertions": 149,
+    "sites": 33,
+    "site_checks": 24,
+    "combined_arena_bytes": 8580,
+    "arena_capacity": 16384,
+    "arena_headroom": 7804,
+    "old_8192_rejected": true
+  },
+  "main_loop_timing": {
+    "trials": 3,
+    "batches": 128,
+    "loops_per_batch": 4,
+    "marker_calls_per_loop": 18,
+    "owned_bridges_per_loop": 1,
+    "cpu_queries_per_enabled_loop": 17,
+    "baseline_loop_us": 20.061263,
+    "disabled_loop_us": 29.969531,
+    "enabled_loop_us": 184.557682,
+    "disabled_added_loop_us": 9.908268,
+    "enabled_added_loop_us": 164.496419,
+    "enabled_added_per_marker_equivalent_us": 9.13869,
+    "scope": "actual_emit_callback_core_owned_bridge_GetThreadTimes",
+    "harness": "paired_same_snapshot",
+    "normal_tape": "yes",
+    "pump_metadata": "valid",
+    "engine_read_epoch": "per_loop",
+    "warmup_loops_per_batch": 1,
+    "runtime_report_includes_warmup": "yes",
+    "game_fps": "unmeasured"
+  },
+  "target_timing": [
+    {
+      "variant": "nonnull_mode3",
+      "trials": 3,
+      "batches": 32,
+      "requests_per_batch": 16,
+      "marker_calls_per_request": 8,
+      "cpu_queries_per_request": 0,
+      "native_request_us": 1.098633,
+      "disabled_request_us": 5.378906,
+      "enabled_request_us": 8.276563,
+      "disabled_added_request_us": 4.280273,
+      "enabled_added_request_us": 7.17793,
+      "scope": "actual_emit_checked_reads_ESP_tokens",
+      "witness": "dynamic_cockpit_and_native_stack",
+      "engine_read_epoch": "per_request",
+      "admission_outside_clock": "yes",
+      "game_fps": "unmeasured"
+    },
+    {
+      "variant": "null_mode3",
+      "trials": 3,
+      "batches": 32,
+      "requests_per_batch": 16,
+      "marker_calls_per_request": 2,
+      "cpu_queries_per_request": 0,
+      "native_request_us": 1.085286,
+      "disabled_request_us": 2.144141,
+      "enabled_request_us": 3.206901,
+      "disabled_added_request_us": 1.058854,
+      "enabled_added_request_us": 2.121615,
+      "scope": "actual_emit_checked_reads_ESP_tokens",
+      "witness": "dynamic_cockpit_and_native_stack",
+      "engine_read_epoch": "per_request",
+      "admission_outside_clock": "yes",
+      "game_fps": "unmeasured"
+    },
+    {
+      "variant": "rejected_null_mode2",
+      "trials": 3,
+      "batches": 32,
+      "requests_per_batch": 16,
+      "marker_calls_per_request": 2,
+      "cpu_queries_per_request": 0,
+      "native_request_us": 1.059766,
+      "disabled_request_us": 2.171875,
+      "enabled_request_us": 2.652083,
+      "disabled_added_request_us": 1.112109,
+      "enabled_added_request_us": 1.592318,
+      "scope": "actual_emit_checked_reads_ESP_tokens",
+      "witness": "dynamic_cockpit_and_native_stack",
+      "engine_read_epoch": "per_request",
+      "admission_outside_clock": "yes",
+      "game_fps": "unmeasured"
+    }
+  ],
+  "runtime_observations": {
+    "windows": 4,
+    "error_keys": [
+      "invalidated",
+      "unmatched",
+      "overflow",
+      "order_errors",
+      "clock_errors",
+      "foreign",
+      "suppressed",
+      "read_failures",
+      "cpu_failures"
+    ],
+    "all_error_counters_zero": true,
+    "ignored_joins_by_window": [
+      0,
+      0,
+      0,
+      16
+    ],
+    "ignored_join_meaning": "final window contains 16 deliberately untracked mode-2 null shared-epilogue arrivals",
+    "main_final_loops": 5,
+    "main_final_frames": 4,
+    "main_aggregate_handlers": 34560,
+    "main_aggregate_cpu_queries": 32640,
+    "aggregate_scope": "384 enabled batches include one warmup and four measured loops each; Core final-window counters reflect only the last batch"
+  },
+  "limits": [
+    "Synthetic native-span and checked-read fixture; no game launched.",
+    "Timings are paired diagnostic overhead under X3/FEX, not game FPS or native media-call durations.",
+    "No actual selection-stall descendant has yet been attributed.",
+    "Native Windows runtime behavior remains unverified."
+  ],
+  "evidence_review": "approved by same source reviewer; no mismatches"
+}

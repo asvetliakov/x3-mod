@@ -102,5 +102,62 @@ int main(){
     core.pump={1,2,true};time_now+=100;core.boundary(3,at(time_now));
     check(core.tape[core.used-1].phase==2&&core.tape[core.used-1].pump.valid&&core.tape[core.used-1].pump.flags==2);
     core.invalidate();check(!core.pump.valid&&core.pump.active==0&&core.pump.flags==0);
+    // Input subdivisions retain an exact additive partition and real CPU
+    // samples, without changing the parent phase IDs or Present interval.
+    reset();loop(0);time_now+=100;core.boundary(0,at(time_now));
+    for(unsigned i=1;i<=6;++i)core.boundary(i,at(time_now+=100));
+    core.input_boundary(1,at(time_now+=300));core.input_boundary(2,at(time_now+=500));
+    core.boundary(7,at(time_now+=700));
+    check(core.input_parts[0].total==400); // includes first ordinary100us loop
+    check(core.input_parts[1].total==500&&core.input_parts[2].total==700);
+    check(core.phases[6].total==1600);
+    check(core.tape[core.used-3].input_part==0&&core.tape[core.used-2].input_part==1&&core.tape[core.used-1].input_part==2);
+    core.input_boundary(1,at(++time_now));check(core.order_errors==1&&!core.phase_live);
+
+    reset();loop(0);core.boundary(0,at(time_now+=100));
+    for(unsigned i=1;i<=6;++i)core.boundary(i,at(time_now+=100));
+    const auto base=time_now;Witness publisher;publisher.end_esp=0x1000;publisher.caller=0x42dd6e;
+    publisher.previous_target=0x11;publisher.view=0x88;
+    core.target_begin(4,at(base+10,false),{0x55,0x66,3},publisher);
+    check(core.request_for(4).target==0x66);
+    Witness playback;playback.end_esp=0xf00;playback.args[0]=7;
+    core.target_begin(5,at(base+20,false),core.request,playback);
+    Witness create;create.end_esp=0xe04;
+    core.target_begin(6,at(base+30,false),core.request,create);
+    core.target_end(6,at(base+80,false),0xe04,0x99);
+    Witness seek;seek.end_esp=0xe00;
+    core.target_begin(7,at(base+100,false),core.request,seek);
+    core.target_end(7,at(base+200,false),0xe00,0);
+    core.target_end(5,at(base+300,false),0xf00,1);
+    core.target_end(4,at(base+400,false),0x1000,1);
+    check(core.depth==0&&core.first_mask==0xf0&&core.pending_first==0xf0);
+    check(core.request_for(4).target==0);
+    check(core.first_calls[0].children==280&&core.first_calls[1].children==150);
+    check(core.first_calls[0].witness.caller==0x42dd6e&&core.first_calls[0].request.target==0x66);
+    check(core.first_calls[1].witness.args[0]==7&&core.first_calls[1].phase==6);
+    check(core.first_calls[1].present.frame==0&&core.first_calls[1].present.device==7);
+    check(core.slow_calls.count==0);check(core.calls[7].count==1&&core.calls[7].cpu_valid==0);
+    core.clear_window();check(core.pending_first==0&&core.first_mask==0xf0);
+    core.target_begin(4,at(base+500,false),{0x55,0,3},publisher);
+    core.target_end(4,at(base+510,false),0x2000,0); // unrelated shared join
+    check(core.depth==1&&core.ignored_joins==1);
+    core.target_end(4,at(base+520,false),0x1000,0); // null request valid short return
+    check(core.depth==0&&core.pending_first==0&&core.slow_calls.count==0);
+    core.target_begin(4,at(base+600,false),{0x55,0x77,3},publisher);
+    core.target_end(4,at(base+20000,false),0x1000,1);
+    check(core.slow_calls.count==1&&core.slow_calls.first[0].request.target==0x77);
+    check(!core.slow_calls.first[0].first);
+    core.target_begin(4,at(base+21000,false),{0x55,0x99,3},publisher);
+    core.invalidate();core.target_end(4,at(base+22000,false),0x1000,1);
+    check(!core.depth&&!core.anchor_valid&&core.ignored_joins==2);
+    check(core.slow_calls.count==1&&core.first_mask==0xf0); // no first-sample flood afterReset
+    core.boundary(0,at(base+23000));
+    core.target_begin(4,at(base+23001),{},publisher);check(!core.depth); // outside allowedphase
+    for(unsigned i=1;i<=4;++i)core.boundary(i,at(base+23002+i));
+    core.target_begin(5,at(base+24000),{},playback);check(core.depth==1); // queued playback withoutpublisher
+    core.target_end(5,at(base+54000),0xf00,0);
+    check(core.slow_calls.count==2&&core.slow_calls.first[1].phase==4);
+    core.target_begin(5,at(base+55000),{},playback);
+    core.boundary(0,at(base+56000));check(!core.depth&&core.order_errors==1); // escaped native call revoked
     std::printf("game_phases_host checks=%u failures=0 core_bytes=%zu\n",checks,sizeof(Core));
 }

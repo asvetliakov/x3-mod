@@ -36,7 +36,11 @@ run until the next combined candidate is ready.
 
 The first phase witness isolates a 458.85 ms delayed native target-lock publication
 inside a 485.01 ms noncapture frame. A broad pre-simulation region also contains selection-time
-stalls; the synchronous internal callback/VM cause is not yet isolated.
+stalls; the synchronous internal callback/VM cause is not yet isolated. The
+[next 33-site trace](reverse-engineering/selection-native-vm.md) separates input work,
+target notification, voice playback, stream creation and seeking. Its reviewed
+X3 fixture passes 7,606 checks, with about 0.1645 ms diagnostic overhead per
+synthetic loop; the expanded trace is not yet installed.
 Auto reaches its +1.5 ceiling in 329/331 active reports, so the accepted appearance
 mostly reflects a steady boost in this run rather than demonstrated useful adaptation.
 The next source candidate adopts the accepted Auto/+1.5 profile as its default;

@@ -46,7 +46,7 @@ struct SiteSpec {
 }
 
 namespace sites {
-constexpr unsigned Count=23;
+constexpr unsigned Count=33;
 engine_patch::SiteSpec kSites[Count];
 }
 
@@ -425,7 +425,7 @@ int main(){
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'game_phase_install checks=1078 failures=0\n')
+            self.assertEqual(run.stdout, 'game_phase_install checks=1538 failures=0\n')
             self.assertEqual(run.stderr, '')
 
     def test_actual_owner_and_synchronize_admission(self):
@@ -449,6 +449,66 @@ int main(){
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertEqual(run.stdout, 'game_phase_admission checks=39 failures=0\n')
             self.assertEqual(run.stderr, '')
+
+    def test_targeted_handler_reads_tokens_rejected_requests_and_failures(self):
+        source = (ROOT / 'src/proxy/game_phases.cpp').read_text()
+        handle = extract_named_function(source, 'handle')
+        start = handle.index('const std::uintptr_t esp=')
+        switch = handle.index('switch(index){', start)
+        arms = handle[handle.index('case sites::InputBody:', switch):handle.index('default:++read_failures;', switch)]
+        code = r'''
+#include "game_phases_core.h"
+#include <cassert>
+#include <cstring>
+#include <map>
+namespace detail=x3m::game_phases::detail;
+namespace sites {enum {InputBody=23,InputAfter,PublisherBegin,PublisherEnd,PlaybackBegin,PlaybackEnd,CreateBegin,CreateEnd,SeekBegin,SeekEnd};}
+detail::Core core;unsigned read_failures=0,reads=0,publisher_entries=0,publisher_filtered=0;
+std::map<std::uintptr_t,std::uint32_t> memory;
+namespace engine_memory {
+bool read(std::uintptr_t at,void* out,unsigned count){
+    ++reads;
+    for(unsigned i=0;i<count;i+=4){auto it=memory.find(at+i);if(it==memory.end())return false;std::memcpy(static_cast<char*>(out)+i,&it->second,4);}
+    return true;
+}}
+''' + extract_named_function(source, 'read_word') + (
+            'void target(unsigned index,const std::uint32_t* regs,detail::Stamp at) noexcept {'
+            + handle[start:switch+len('switch(index){')] + arms + 'default:break;}}') + r'''
+void reset(){core={};core.frequency=1000000;core.phase_live=true;core.phase=6;core.phase_begin.qpc=1;memory.clear();read_failures=reads=0;}
+int main(){
+    std::uint32_t r[8]{};r[3]=0x1ffc;r[6]=0x3000;r[7]=2;
+    reset();target(sites::PublisherBegin,r,{10});assert(!core.depth&&!reads&&publisher_entries==1&&publisher_filtered==1); // nonmode3 fastgate
+    r[7]=3;memory[0x2000]=0x42dd6e;memory[0x2004]=0; // native nulltarget does not touchcockpit
+    target(sites::PublisherBegin,r,{20});assert(core.depth==1&&reads==2&&core.stack[0].request.target==0);
+    r[3]=0x1fec;target(sites::PublisherEnd,r,{30});assert(!core.depth&&core.first_calls[0].witness.end_esp==0x1ff0);
+    reset();r[3]=0x1ffc;memory[0x2000]=0x42a462;memory[0x2004]=0x4444;
+    memory[0x31e0]=0x5555;memory[0x31e4]=0xabcd0002;memory[0x3010]=0x6666;
+    target(sites::PublisherBegin,r,{40});assert(core.depth==1&&reads==5);
+    assert(core.stack[0].witness.previous_mode==2&&core.stack[0].witness.previous_target==0x5555&&core.stack[0].witness.view==0x6666);
+    r[3]=0x17fc;for(unsigned i=0;i<6;++i)memory[0x1800+4*i]=100+i;
+    target(sites::PlaybackBegin,r,{50});assert(core.depth==2&&core.stack[1].witness.args[5]==105);
+    r[3]=0x13fc;memory[0x1400]=9;r[7]=0;target(sites::CreateBegin,r,{60});assert(core.depth==3);
+    r[3]=0x1400;r[7]=0x7777;target(sites::CreateEnd,r,{70});assert(core.depth==2&&core.first_calls[2].result==0x7777);
+    r[3]=0x13fc;r[7]=0x8888;target(sites::SeekBegin,r,{80});assert(core.depth==3&&core.stack[2].witness.args[1]==0x8888);
+    r[7]=0;target(sites::SeekEnd,r,{90});assert(core.depth==2&&core.first_calls[3].result==0);
+    r[3]=0x17fc;target(sites::PlaybackEnd,r,{100});assert(core.depth==1);
+    r[3]=0x1fec;target(sites::PublisherEnd,r,{110});assert(!core.depth&&core.first_calls[0].witness.caller==0x42a462);
+    reset();r[3]=0x1ffc;r[7]=3;memory[0x2000]=0x42dd6e;memory[0x2004]=0x4444;
+    target(sites::PublisherBegin,r,{120});assert(read_failures==1&&core.invalidated==1&&!core.depth);
+    reset();r[3]=0xfffffffc;target(sites::PublisherBegin,r,{130});assert(read_failures==1&&core.invalidated==1&&!reads);
+    reset();r[3]=0x17fc;target(sites::PlaybackBegin,r,{140});assert(read_failures==1&&core.invalidated==1);
+    reset();r[3]=0x13fc;target(sites::CreateBegin,r,{150});target(sites::SeekBegin,r,{160});assert(!reads&&!core.depth); // no playbackparent
+}
+'''
+        with tempfile.TemporaryDirectory(prefix='x3-game-phase-targeted-') as temporary:
+            cpp = Path(temporary) / 'fixture.cpp'
+            executable = Path(temporary) / 'fixture'
+            cpp.write_text(code)
+            build = subprocess.run(['c++', '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
+                                    '-I', str(ROOT / 'src/proxy'), str(cpp), '-o', str(executable)], capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(executable)], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
     def test_actual_delayed_begin_validation_and_word_read_fail_once(self):
         compiler = shutil.which('clang++') or shutil.which('c++')

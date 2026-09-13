@@ -51,14 +51,17 @@ asm(".text\n.globl _fixture_call\n_fixture_call:\n"
 static unsigned checks=0,failures=0;
 static void check(bool okay,const char* label){++checks;if(!okay){++failures;std::printf("FAIL %s\n",label);}}
 static std::uint32_t callbacks[marker::Count]{},observed[marker::Count][9]{};
-static std::uint32_t stack_args[marker::Count][5]{};
+static std::uint32_t stack_args[marker::Count][6]{};
 static bool capture_args=false;
 static void __cdecl hostile_callback(unsigned kind,const std::uint32_t* regs){
     check(kind<marker::Count,"callback marker ID");if(kind>=marker::Count)return;
     ++callbacks[kind];std::memcpy(observed[kind],regs,sizeof observed[kind]);
-    if(capture_args&&(kind==marker::DelayedBegin||kind==marker::ColdBegin||kind==marker::PresentBegin)){
+    if(capture_args&&(kind==marker::DelayedBegin||kind==marker::ColdBegin||kind==marker::PresentBegin||
+                     kind==marker::PublisherBegin||kind==marker::PlaybackBegin||
+                     kind==marker::CreateBegin||kind==marker::SeekBegin)){
         const auto* native=reinterpret_cast<const std::uint32_t*>(std::uintptr_t(regs[3])+4);
-        const unsigned words=kind==marker::DelayedBegin?1:kind==marker::ColdBegin?2:5;
+        const unsigned words=kind==marker::PlaybackBegin?6:kind==marker::PresentBegin?5:
+            (kind==marker::ColdBegin||kind==marker::PublisherBegin)?2:1;
         std::memcpy(stack_args[kind],native,words*sizeof *native);
     }
     unsigned cw=0,mxcsr=0,flags=0;
@@ -191,6 +194,161 @@ static void replay_checks(unsigned kind,unsigned variant){
 static inline double number(std::uint64_t value){
     return double(std::uint32_t(value>>32))*4294967296.0+double(std::uint32_t(value));
 }
+extern "C" {
+std::uint32_t target_native_counts[4]{},target_play_args[6]{},target_create_args[2]{},target_seek_args[2]{};
+std::uint32_t target_target=0x11112222,target_cockpit=0,target_mode=3;
+void target_play_witness();void target_create_witness();void target_seek_witness();
+}
+// Playback's helper is called by its synthetic callee: its native arguments
+// are two return PCs above ESP. The create/seek helpers are the direct callees.
+asm(".text\n.globl _target_play_witness\n_target_play_witness:\n"
+"incl _target_native_counts+4\n"
+"movl 8(%esp),%eax\n movl %eax,_target_play_args\n movl 12(%esp),%eax\n movl %eax,_target_play_args+4\n"
+"movl 16(%esp),%eax\n movl %eax,_target_play_args+8\n movl 20(%esp),%eax\n movl %eax,_target_play_args+12\n"
+"movl 24(%esp),%eax\n movl %eax,_target_play_args+16\n movl 28(%esp),%eax\n movl %eax,_target_play_args+20\n ret\n"
+".globl _target_create_witness\n_target_create_witness:\n incl _target_native_counts+8\n"
+"movl %eax,_target_create_args+4\n movl 4(%esp),%eax\n movl %eax,_target_create_args\n movl $0x24681357,%eax\n ret\n"
+".globl _target_seek_witness\n_target_seek_witness:\n incl _target_native_counts+12\n"
+"movl %eax,_target_seek_args+4\n movl 4(%esp),%eax\n movl %eax,_target_seek_args\n movl _replay_result,%eax\n ret\n");
+static constexpr std::uint32_t playback_args[6]={7,0,0,1,0xffffffff,0};
+struct TargetReplay {
+    void* body=nullptr;void* publisher_return=nullptr;
+    void* spans[8]{};patch::Site owned[8]{};unsigned installed=0;
+};
+static TargetReplay make_target_replay(){
+    TargetReplay r;
+    patch::Emitter create(128);void* create_body=create.here();
+    create.byte(0xbf);create.dword(2); // native shared join decrements EDI
+    create.byte(0x83);create.byte(0x3d);create.dword(std::uint32_t(address(&replay_choice)));create.byte(1);
+    create.byte(0x74);create.byte(15); // bypass push, EAX setup, CALL and cleanup
+    push(create,7);create.byte(0x33);create.byte(0xc0);
+    r.spans[4]=create.here();call(create,reinterpret_cast<void*>(&target_create_witness));
+    const unsigned char create_cleanup[]={0x83,0xc4,0x04};create.bytes(create_cleanup,sizeof create_cleanup);
+    r.spans[5]=create.here();
+    const unsigned char create_end[]={0x83,0xef,0x01,0x66,0x85,0xff,0x75,0x05,0xb8,0x05,0,0xad,0x0b,0xc3};
+    create.bytes(create_end,sizeof create_end);if(!create.finish())return r;
+    patch::Emitter seek(64);void* seek_body=seek.here();
+    push(seek,23);seek.byte(0xb8);seek.dword(0x33334444);
+    r.spans[6]=seek.here();call(seek,reinterpret_cast<void*>(&target_seek_witness));r.spans[7]=seek.here();
+    const unsigned char seek_end[]={0x83,0xc4,0x04,0x85,0xc0,0x75,0x05,0xb8,0x04,0,0xad,0x0b,0xc3};
+    seek.bytes(seek_end,sizeof seek_end);if(!seek.finish())return r;
+    patch::Emitter media(64);void* media_body=media.here();
+    call(media,reinterpret_cast<void*>(&target_play_witness));call(media,create_body);call(media,seek_body);media.byte(0xc3);
+    if(!media.finish())return r;
+    patch::Emitter playback(128);void* playback_body=playback.here();
+    playback.byte(0x57); // native dispatcher saves EDI below its six cdecl args
+    for(unsigned i=6;i;--i)push(playback,playback_args[i-1]);
+    r.spans[2]=playback.here();call(playback,media_body);r.spans[3]=playback.here();
+    const unsigned char playback_end[]={0x83,0xc4,0x18,0x5f,0xb8,0x01,0,0,0,0xc3};
+    playback.bytes(playback_end,sizeof playback_end);if(!playback.finish())return r;
+    patch::Emitter publisher(128);void* publisher_body=publisher.here();r.spans[0]=publisher_body;
+    // Exact 425a10 prologue, remaining three saves, and exact common epilogue.
+    const unsigned char publisher_start[]={0x53,0x8b,0x5c,0x24,0x08,0x55,0x56,0x57,0x8b,0xf1};
+    publisher.bytes(publisher_start,sizeof publisher_start);
+    publisher.byte(0xff);publisher.byte(0x05);publisher.dword(std::uint32_t(address(target_native_counts)));
+    const unsigned char gates[]={0x85,0xdb,0x74,0x0a,0x83,0xf8,0x03,0x75,0x05};publisher.bytes(gates,sizeof gates);
+    call(publisher,playback_body);r.spans[1]=publisher.here();
+    const unsigned char publisher_end[]={0x5f,0x5e,0x5d,0x5b,0xc2,0x04,0};publisher.bytes(publisher_end,sizeof publisher_end);
+    if(!publisher.finish())return r;
+    patch::Emitter wrapper(64);void* body=wrapper.here();
+    wrapper.byte(0xff);wrapper.byte(0x35);wrapper.dword(std::uint32_t(address(&target_target)));
+    wrapper.byte(0xa1);wrapper.dword(std::uint32_t(address(&target_mode)));
+    wrapper.byte(0x8b);wrapper.byte(0x0d);wrapper.dword(std::uint32_t(address(&target_cockpit)));
+    call(wrapper,publisher_body);r.publisher_return=wrapper.here();wrapper.byte(0xc3);
+    if(wrapper.finish())r.body=body;
+    return r;
+}
+static bool span_contract(unsigned kind,const void* at){
+    const auto& spec=marker::kSites[kind];const auto* bytes=static_cast<const unsigned char*>(at);
+    bool okay=true;
+    for(unsigned i=0;i<spec.length;++i){
+        if(spec.rel32_offset&&i>=spec.rel32_offset&&i<spec.rel32_offset+4)continue;
+        okay=okay&&bytes[i]==spec.expected[i];
+    }
+    check(okay,"synthetic span matches proved native opcodes except relocated call destination");return okay;
+}
+static bool install_target_replay(TargetReplay& r){
+    for(unsigned i=0;i<8;++i){
+        if(!span_contract(marker::PublisherBegin+i,r.spans[i]))return false;
+        if(!install_replay_marker(r.owned[i],marker::PublisherBegin+i,r.spans[i]))return false;
+        ++r.installed;
+    }
+    return true;
+}
+static void restore_target_replay(TargetReplay& r){
+    while(r.installed)check(patch::restore(r.owned[--r.installed]),"target synthetic span rollback");
+}
+static void target_variant(unsigned variant){
+    target_target=(variant==1||variant==2)?0:0x11112222;target_mode=variant==2?2:3;
+    replay_choice=variant==3?1:0;replay_result=variant==4?0:0x24681357;
+    std::memset(target_native_counts,0,sizeof target_native_counts);
+}
+static void target_replay_checks(){
+    TargetReplay r=make_target_replay();check(r.body!=nullptr,"nested target synthetic body emitted");if(!r.body)return;
+    // The executable arena is monotonic. Capture every native variant before
+    // one installation, then reuse those eight stubs for every hooked variant.
+    Snapshot baselines[5]{};std::uint32_t native_counts[5][4]{};
+    for(unsigned variant=0;variant<5;++variant){
+        target_variant(variant);invoke(r.body,baselines[variant]);
+        std::memcpy(native_counts[variant],target_native_counts,sizeof native_counts[variant]);
+    }
+    if(!install_target_replay(r)){restore_target_replay(r);return;}
+    for(unsigned variant=0;variant<5;++variant){
+        Snapshot hooked{};
+        std::uint32_t before[8]{};for(unsigned i=0;i<8;++i)before[i]=callbacks[marker::PublisherBegin+i];
+        target_variant(variant);capture_args=true;invoke(r.body,hooked);capture_args=false;compare(baselines[variant],hooked);
+        const bool nested=variant!=1&&variant!=2;
+        for(unsigned i=0;i<4;++i)check(target_native_counts[i]==native_counts[variant][i]&&native_counts[variant][i]==
+            (i==0?1:!nested?0:i==2&&variant==3?0:1),"nested native calls and bypass execute exact count");
+        for(unsigned i=0;i<8;++i)check(callbacks[marker::PublisherBegin+i]-before[i]==
+            (i<2?1:!nested?0:i==4&&variant==3?0:1),"nested endpoint or common join reached exact count");
+        const auto pub=marker::PublisherBegin;
+        check(observed[pub][7]==target_mode&&observed[pub][6]==target_cockpit&&
+              stack_args[pub][1]==target_target,"publisher entry EAX ECX and target at ESP+4 preserved");
+        check(stack_args[pub][0]==address(r.publisher_return),"publisher native return PC at entry ESP preserved");
+        check(observed[pub+1][3]+16==observed[pub][3],"publisher end ESP equals entry ESP minus four saved registers");
+        check(hooked.regs[0]==0x98765432&&hooked.regs[1]==0x12345678&&hooked.regs[2]==0x3456789a&&
+              hooked.regs[4]==0x23456789,"publisher POP x4 RET4 preserves native callee saves");
+        if(nested){
+            const auto play=marker::PlaybackBegin;
+            check(!std::memcmp(stack_args[play],playback_args,sizeof playback_args)&&
+                  !std::memcmp(target_play_args,playback_args,sizeof playback_args),"MOV6 six cdecl arguments reach marker and native callee");
+            check(observed[play][3]==observed[play+1][3]&&hooked.regs[7]==1,"MOV6 end precedes cleanup24 and replays POP EDI MOV EAX 1");
+            if(variant!=3){
+                const auto create=marker::CreateBegin;
+                check(stack_args[create][0]==7&&observed[create][7]==0&&target_create_args[0]==7&&target_create_args[1]==0,
+                      "create direct-call stack argument and EAX zero preserved");
+                check(observed[create+1][3]==observed[create][3]+4,"create endpoint follows caller cleanup4");
+            }
+            const auto seek=marker::SeekBegin;
+            check(stack_args[seek][0]==23&&observed[seek][7]==0x33334444&&target_seek_args[0]==23&&target_seek_args[1]==0x33334444,
+                  "seek direct-call stack argument and stream register preserved");
+            check(observed[seek][3]==observed[seek+1][3]&&observed[seek+1][7]==replay_result,
+                  "seek endpoint precedes cleanup and sees original result");
+            check(observed[play+1][7]==(variant==4?0x0bad0004:0x24681357),"seek TEST zero and nonzero outcomes control downstream native branch");
+        }
+    }
+    restore_target_replay(r);
+}
+static void input_replay_checks(unsigned variant){
+    std::uint32_t control[0x500/4]{};control[0x4d8/4]=variant;control[0x4a0/4]=variant?4:0;
+    patch::Emitter e(96);void* body=e.here();e.byte(0xbe);e.dword(std::uint32_t(address(control)));
+    e.byte(0x33);e.byte(0xed);e.byte(0x33);e.byte(0xc0);void* before=e.here();
+    const unsigned char cmp[]={0x39,0xae,0xd8,0x04,0,0,0x75,0x05,0xb8,1,0,0,0};e.bytes(cmp,sizeof cmp);
+    void* after=e.here();
+    const unsigned char test[]={0xf6,0x86,0xa0,0x04,0,0,4,0x74,0x05,0xb8,2,0,0,0,0xc3};e.bytes(test,sizeof test);
+    const bool emitted=e.finish()!=nullptr;check(emitted,"input CMP TEST synthetic body emitted");if(!emitted)return;
+    if(!span_contract(marker::InputBody,before)||!span_contract(marker::InputAfter,after))return;
+    Snapshot baseline{},hooked{};invoke(body,baseline);patch::Site first{},last{};
+    if(!install_replay_marker(first,marker::InputBody,before))return;
+    if(!install_replay_marker(last,marker::InputAfter,after)){check(patch::restore(first),"partial input marker rollback");return;}
+    const auto body_calls=callbacks[marker::InputBody],after_calls=callbacks[marker::InputAfter];
+    invoke(body,hooked);compare(baseline,hooked);
+    check(callbacks[marker::InputBody]==body_calls+1&&callbacks[marker::InputAfter]==after_calls+1,
+          "both input partition endpoints execute exactly once");
+    check(hooked.regs[7]==(variant?2:1),"input original CMP and TEST drive both branch outcomes");
+    check(patch::restore(last)&&patch::restore(first),"input original spans restored");
+}
 static constexpr std::uint32_t benchmark_raw_device=0x11112222;
 static void* benchmark_begin_adapter(void* next){
     patch::Emitter e(64);void* start=e.here();
@@ -209,6 +367,10 @@ static bool timed_loops(void* continuation,void* const* stubs,void* const* prese
         for(unsigned marker_id=0;marker_id<13;++marker_id){
             void* target=mode?stubs[marker_id]:continuation;
             fixture_call(std::uint32_t(address(target)),0,0,0,0,0);
+            if(marker_id==marker::Input){
+                fixture_call(std::uint32_t(address(mode?stubs[marker::InputBody]:continuation)),0,0,0,0,0);
+                fixture_call(std::uint32_t(address(mode?stubs[marker::InputAfter]:continuation)),0,0,0,0,0);
+            }
         }
         // The native caller has pushed device plus four null arguments before
         // PresentBegin. Both adapters reproduce those pushes and cleanup; only
@@ -271,10 +433,10 @@ static void benchmark(void* continuation,void* const* stubs){
             }
     check(valid,"paired baseline disabled enabled QPC samples");
     const double scale=1e6/number(std::uint64_t(frequency.QuadPart))/double(loops*batches*trials);
-    std::printf("GAME PHASE BENCH trials=%u batches=%u loops_per_batch=%u marker_calls_per_loop=16 owned_bridges_per_loop=1 cpu_queries_per_enabled_loop=15 baseline_loop_us=%.6f disabled_loop_us=%.6f enabled_loop_us=%.6f disabled_added_loop_us=%.6f enabled_added_loop_us=%.6f enabled_added_per_marker_equivalent_us=%.6f scope=actual_emit_callback_core_owned_bridge_GetThreadTimes harness=paired_same_snapshot normal_tape=yes pump_metadata=valid engine_read_epoch=per_loop warmup_loops_per_batch=1 runtime_report_includes_warmup=yes game_fps=unmeasured\n",
+    std::printf("GAME PHASE BENCH trials=%u batches=%u loops_per_batch=%u marker_calls_per_loop=18 owned_bridges_per_loop=1 cpu_queries_per_enabled_loop=17 baseline_loop_us=%.6f disabled_loop_us=%.6f enabled_loop_us=%.6f disabled_added_loop_us=%.6f enabled_added_loop_us=%.6f enabled_added_per_marker_equivalent_us=%.6f scope=actual_emit_callback_core_owned_bridge_GetThreadTimes harness=paired_same_snapshot normal_tape=yes pump_metadata=valid engine_read_epoch=per_loop warmup_loops_per_batch=1 runtime_report_includes_warmup=yes game_fps=unmeasured\n",
         trials,batches,loops,number(totals[0])*scale,number(totals[1])*scale,number(totals[2])*scale,
         (number(totals[1])-number(totals[0]))*scale,(number(totals[2])-number(totals[0]))*scale,
-        (number(totals[2])-number(totals[0]))*scale/16.0);
+        (number(totals[2])-number(totals[0]))*scale/18.0);
     // This is outside the measured batches. The production report supplies raw
     // GetThreadTimes query-sandwich totals/maxima and actual handler costs.
     phases::report(0);
@@ -282,6 +444,101 @@ static void benchmark(void* continuation,void* const* stubs){
     check(phases::fixture_pump_region(0,0),"fixture pump address region cleared before free");
     x3m::engine_memory::reset();
     check(VirtualFree(pump_globals,0,MEM_RELEASE)!=FALSE,"synthetic pump-global mapping released");
+}
+struct TargetState {std::uint64_t completed[4]{},ignored=0,reads=0;unsigned depth=0;};
+static bool target_state(TargetState& state){
+    const bool okay=phases::fixture_target_state(state.completed,&state.ignored,&state.reads,&state.depth);
+    check(okay,"owned actual target handler state available");return okay;
+}
+static void admit_target_phase(void* const* stubs,unsigned mode,void* continuation){
+    phases::fixture_enable(mode==2);
+    for(unsigned i=0;i<=marker::Input;++i)
+        fixture_call(std::uint32_t(address(mode?stubs[i]:continuation)),0,0,0,0,0);
+    fixture_call(std::uint32_t(address(mode?stubs[marker::InputBody]:continuation)),0,0,0,0,0);
+}
+static void check_target_delta(const TargetState& before,const TargetState& after,unsigned variant,unsigned repetitions){
+    const bool nested=variant!=1&&variant!=2;
+    for(unsigned i=0;i<4;++i){
+        const unsigned expected=i==0?(variant==2?0:repetitions):!nested?0:i==2&&variant==3?0:repetitions;
+        check(after.completed[i]-before.completed[i]==expected,"actual handler matches expected target stack tokens");
+    }
+    check(after.ignored-before.ignored==((variant==2||variant==3)?repetitions:0),"only native untracked shared joins are ignored");
+    check(after.reads==before.reads,"actual target checked reads have zero new failures");
+    check(before.depth==0&&after.depth==0,"all actual target handler tokens close at native ESP");
+}
+static void targeted_benchmark(void* continuation,void* const* stubs){
+    // The same synthetic native bodies execute in all modes. Two copies allow
+    // a true unpatched baseline without patching or generating code in a clock
+    // window. The hooked copy always traverses the actual production emitter.
+    TargetReplay native=make_target_replay(),hooked=make_target_replay();
+    check(native.body&&hooked.body,"paired targeted burst native bodies emitted");
+    if(!native.body||!hooked.body)return;
+    if(!install_target_replay(hooked)){restore_target_replay(hooked);return;}
+    auto* bytes=static_cast<unsigned char*>(VirtualAlloc(nullptr,0x10000,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
+    check(bytes!=nullptr,"dynamic target cockpit and pump witness allocated");
+    if(!bytes){restore_target_replay(hooked);return;}
+    *reinterpret_cast<std::uint32_t*>(bytes+0x8adc)=1;
+    *reinterpret_cast<std::uint32_t*>(bytes+0x6f3c)=std::uint32_t(address(bytes+0x9000));
+    *reinterpret_cast<std::uint32_t*>(bytes+0x9000)=0;
+    target_cockpit=std::uint32_t(address(bytes+0x1000));
+    *reinterpret_cast<std::uint32_t*>(bytes+0x1010)=0x22224444; // raw view witness only
+    *reinterpret_cast<std::uint32_t*>(bytes+0x11e0)=0x55556666;
+    *reinterpret_cast<std::uint32_t*>(bytes+0x11e4)=0xabcd0002;
+    phases::fixture_enable(false);const bool configured=phases::fixture_pump_region(address(bytes),0x10000);
+    check(configured,"dynamic target benchmark pump region configured");
+    if(!configured){VirtualFree(bytes,0,MEM_RELEASE);restore_target_replay(hooked);return;}
+    phases::fixture_set_callback(nullptr);Snapshot output{};fixture_output=&output;
+    // Functional checks use the real checked-read handler, including the short
+    // mode3 null interval (no cockpit dereference) and rejected mode2 epilogue.
+    for(unsigned variant=0;variant<5;++variant){
+        x3m::engine_memory::next_frame();admit_target_phase(stubs,2,continuation);target_variant(variant);
+        // Deliberately unreadable cockpit proves that rejected null/mode2
+        // entries do not touch the nonnull mode3 cockpit witness fields.
+        target_cockpit=(variant==1||variant==2)?1:std::uint32_t(address(bytes+0x1000));
+        TargetState before{},after{};if(!target_state(before))break;
+        invoke(hooked.body,output);if(target_state(after))check_target_delta(before,after,variant,1);
+    }
+    constexpr unsigned requests=16,batches=32,trials=3;
+    static const char* const variants[]={"nonnull_mode3","null_mode3","rejected_null_mode2"};
+    LARGE_INTEGER frequency{};bool valid=QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0;
+    for(unsigned variant=0;variant<3&&valid;++variant){
+        const bool nested=variant==0;
+        target_cockpit=nested?std::uint32_t(address(bytes+0x1000)):1;
+        std::uint64_t totals[3]{};
+        for(unsigned trial=0;trial<trials&&valid;++trial)
+            for(unsigned batch=0;batch<batches&&valid;++batch)
+                for(unsigned position=0;position<3&&valid;++position){
+                    const unsigned mode=(position+trial+1)%3;
+                    admit_target_phase(stubs,mode,continuation);target_variant(variant);
+                    TargetState before{},after{};if(mode==2&&!target_state(before)){valid=false;break;}
+                    void* body=mode?hooked.body:native.body;LARGE_INTEGER start{},end{};
+                    valid=QueryPerformanceCounter(&start)&&start.QuadPart>0;if(!valid)break;
+                    for(unsigned request=0;request<requests;++request){
+                        // Conservative first-touch validation once per request,
+                        // shared by all modes, instead of perpetual cache hits.
+                        x3m::engine_memory::next_frame();
+                        fixture_call(std::uint32_t(address(body)),0,0,0,0,0);
+                    }
+                    valid=QueryPerformanceCounter(&end)&&end.QuadPart>=start.QuadPart;
+                    if(valid)totals[mode]+=std::uint64_t(end.QuadPart-start.QuadPart);
+                    if(mode==2&&target_state(after))check_target_delta(before,after,variant,requests);
+                    for(unsigned i=0;i<4;++i)check(target_native_counts[i]==((i==0||nested)?requests:0),
+                        "target benchmark executes exactly the native bodies admitted by this variant");
+                }
+        if(valid){
+            const double scale=1e6/number(std::uint64_t(frequency.QuadPart))/double(requests*batches*trials);
+            std::printf("GAME PHASE TARGET BENCH variant=%s trials=%u batches=%u requests_per_batch=%u marker_calls_per_request=%u cpu_queries_per_request=0 native_request_us=%.6f disabled_request_us=%.6f enabled_request_us=%.6f disabled_added_request_us=%.6f enabled_added_request_us=%.6f scope=actual_emit_checked_reads_ESP_tokens witness=dynamic_cockpit_and_native_stack engine_read_epoch=per_request admission_outside_clock=yes game_fps=unmeasured\n",
+                variants[variant],trials,batches,requests,nested?8u:2u,number(totals[0])*scale,number(totals[1])*scale,number(totals[2])*scale,
+                (number(totals[1])-number(totals[0]))*scale,(number(totals[2])-number(totals[0]))*scale);
+        }
+        phases::report(0);
+    }
+    check(valid,"paired native disabled enabled targeted burst QPC samples for all three variants");
+    phases::fixture_enable(false);
+    check(phases::fixture_pump_region(0,0),"target pump witness cleared before free");
+    x3m::engine_memory::reset();target_cockpit=0;
+    check(VirtualFree(bytes,0,MEM_RELEASE)!=FALSE,"dynamic target witness released");
+    restore_target_replay(hooked);
 }
 int main(){
     for(unsigned i=0;i<sizeof fixture_xmm_seed;++i)fixture_xmm_seed[i]=static_cast<unsigned char>(i*37+9);
@@ -299,7 +556,10 @@ int main(){
     }
     replay_checks(0,0);replay_checks(1,0);replay_checks(1,1);
     replay_checks(2,0);replay_checks(2,1);replay_checks(3,0);
+    target_replay_checks();
+    input_replay_checks(0);input_replay_checks(1);
     benchmark(continuation,stubs);
-    std::printf("GAME PHASE CPU stubs=23 replay_cases=6 checks=%u failures=%u\n",checks,failures);
+    targeted_benchmark(continuation,stubs);
+    std::printf("GAME PHASE CPU stubs=%u replay_cases=13 actual_target_handler_cases=5 checks=%u failures=%u\n",unsigned(marker::Count),checks,failures);
     return failures?1:0;
 }

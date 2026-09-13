@@ -4,7 +4,9 @@
 static_assert(sizeof(void*)==4,"x86 code patching only");
 namespace x3m::engine_patch {
 namespace {
-constexpr unsigned arena_size=8192;
+// Fixed process-lifetime capacity: the combined 33-site phase and existing
+// chase/lead/aim diagnostic set needs 8,580 bytes, including native tails.
+constexpr unsigned arena_size=16384;
 unsigned char* arena=nullptr;
 unsigned arena_cursor=0;
 SRWLOCK arena_lock=SRWLOCK_INIT;

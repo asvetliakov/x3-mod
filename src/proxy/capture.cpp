@@ -2004,7 +2004,7 @@ void initialize_log(HMODULE module) {
         taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow,scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen);
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
-    game_phases::initialize(); // all 23 claims here, before the first Present
+    game_phases::initialize(); // all 33 claims here, before the first Present
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists

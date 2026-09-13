@@ -19,7 +19,7 @@ DWORD seen_epoch=0;
 detail::Core core;
 engine_patch::Site patches[sites::Count];
 detail::Metric handler_cost,query_cost,bridge_cost;
-std::uint64_t read_failures=0,cpu_failures=0;
+std::uint64_t read_failures=0,cpu_failures=0,publisher_entries=0,publisher_filtered=0;
 #ifdef X3M_GAME_PHASE_FIXTURE
 void (__cdecl* fixture_callback)(unsigned,const std::uint32_t*)=nullptr;
 std::uintptr_t pump_active_address=0,pump_flags_address=0;
@@ -59,7 +59,7 @@ bool read_word(std::uintptr_t at,std::uint32_t& value) noexcept {
 }
 void handle(unsigned index,const std::uint32_t* regs) noexcept {
     if(!active.load(std::memory_order_acquire)||!owner(index))return;
-    const auto at=stamp(index<detail::phase_count);
+    const auto at=stamp(index<detail::phase_count||index==sites::InputBody||index==sites::InputAfter);
     // A lifecycle event between admission and the clock must revoke the old
     // token before this timestamp is applied. Events after this acquire are
     // later than the recorded boundary and revoke it at the next endpoint.
@@ -95,6 +95,48 @@ void handle(unsigned index,const std::uint32_t* regs) noexcept {
             if(read_word(esp,word))core.begin(3,at,core.request,word);
             break;
         case sites::PresentEnd:core.end(3,at,regs[7]);break;
+        case sites::InputBody:core.input_boundary(1,at);break;
+        case sites::InputAfter:core.input_boundary(2,at);break;
+        case sites::PublisherBegin: {
+            ++publisher_entries;
+            if(regs[7]!=3||!core.targeted()){++publisher_filtered;break;}
+            detail::Witness w;
+            if(esp<16||esp>UINT32_MAX-4){++read_failures;core.invalidate();break;}
+            if(!read_word(esp,w.caller)||!read_word(esp+4,word))break;
+            const auto cockpit=std::uintptr_t(regs[6]);
+            // Mode3 dereferences cockpit only for a nonnull target. A null
+            // request returns through the shared epilogue without publication.
+            if(word){
+                if(!cockpit||cockpit>UINT32_MAX-0x1e8){++read_failures;core.invalidate();break;}
+                if(!read_word(cockpit+0x1e0,w.previous_target)||!read_word(cockpit+0x1e4,w.previous_mode)
+                    ||!read_word(cockpit+0x10,w.view))break;
+                w.previous_mode&=0xffff;
+            }
+            w.end_esp=esp-16;core.target_begin(4,at,{regs[6],word,3},w);break;
+        }
+        case sites::PublisherEnd:core.target_end(4,at,esp,regs[7]);break;
+        case sites::PlaybackBegin: {
+            if(!core.targeted())break;
+            detail::Witness w;w.end_esp=esp;
+            if(esp>UINT32_MAX-sizeof(w.args)||!engine_memory::read(esp,w.args,sizeof(w.args))){++read_failures;core.invalidate();break;}
+            core.target_begin(5,at,core.request_for(4),w);break;
+        }
+        case sites::PlaybackEnd:core.target_end(5,at,esp,regs[7]);break;
+        case sites::CreateBegin: {
+            if(!core.targeted()||!core.within(5))break;
+            detail::Witness w;
+            if(esp>UINT32_MAX-4){++read_failures;core.invalidate();break;}
+            if(!read_word(esp,w.args[0]))break;
+            w.args[1]=regs[7];w.end_esp=esp+4;core.target_begin(6,at,core.request_for(5),w);break;
+        }
+        case sites::CreateEnd:core.target_end(6,at,esp,regs[7]);break;
+        case sites::SeekBegin: {
+            if(!core.targeted()||!core.within(5))break;
+            detail::Witness w;
+            if(!read_word(esp,w.args[0]))break;
+            w.args[1]=regs[7];w.end_esp=esp;core.target_begin(7,at,core.request_for(5),w);break;
+        }
+        case sites::SeekEnd:core.target_end(7,at,esp,regs[7]);break;
         default:++read_failures;core.invalidate();break;
         }
     }
@@ -165,7 +207,7 @@ bool initialize() {
         else if(!object_trace::executable_verified())status="executable_unverified";
         else install_group(status);
     }
-    log("game_phase_mode requested=1 enabled=%u status=%s sites=23 owner=main_loop frame_threshold_ms=50 call_threshold_ms=10 tape=96 nesting=8 first=4 recent=4 qpc_frequency=%llu cpu_clock=GetThreadTimes",
+    log("game_phase_mode requested=1 enabled=%u status=%s sites=33 owner=main_loop frame_threshold_ms=50 call_threshold_ms=10 tape=96 nesting=8 first=4 recent=4 qpc_frequency=%llu cpu_clock=GetThreadTimes",
         unsigned(active.load()),status,core.frequency);
     for(unsigned i=0;i<sites::Count;++i)log("game_phase_site index=%u address=%08lx length=%u rel32=%u patched=%u status=%s",i,
         static_cast<unsigned long>(sites::kSites[i].address),sites::kSites[i].length,sites::kSites[i].rel32_offset,unsigned(patches[i].patched_in),patches[i].status);
@@ -185,15 +227,16 @@ void invalidate_device() noexcept {
 void report(std::uint64_t reporting_frame) {
     if(!active.load(std::memory_order_acquire)||GetCurrentThreadId()!=owner_thread.load(std::memory_order_acquire)||reporting)return;
     ErrorGuard error;synchronize();reporting=true;
-    log("game_phase_window frame=%llu owner=%lu loops=%llu frames=%llu max_ticks=%llu max_begin=%llu max_end=%llu max_device=%llu max_frame=%llu invalidated=%llu unmatched=%llu overflow=%llu order_errors=%llu clock_errors=%llu foreign=%u suppressed=%u read_failures=%llu cpu_failures=%llu slow_frames=%llu retained_frames=%u slow_calls=%llu retained_calls=%u",
+    log("game_phase_window frame=%llu owner=%lu loops=%llu frames=%llu max_ticks=%llu max_begin=%llu max_end=%llu max_device=%llu max_frame=%llu invalidated=%llu unmatched=%llu overflow=%llu order_errors=%llu clock_errors=%llu foreign=%u suppressed=%u read_failures=%llu cpu_failures=%llu slow_frames=%llu retained_frames=%u slow_calls=%llu retained_calls=%u ignored_joins=%llu publisher_entries=%llu publisher_filtered=%llu",
         reporting_frame,owner_thread.load(),core.loop,core.frame_count,core.frame_max,core.frame_max_begin,core.frame_max_end,core.frame_max_device,core.frame_max_id,
         core.invalidated,core.unmatched,core.overflow,core.order_errors,core.clock_errors,foreign_hits.exchange(0),suppressed.exchange(0),read_failures,cpu_failures,
-        core.slow_frames.count,core.slow_frames.first_used+core.slow_frames.recent_used,core.slow_calls.count,core.slow_calls.first_used+core.slow_calls.recent_used);
+        core.slow_frames.count,core.slow_frames.first_used+core.slow_frames.recent_used,core.slow_calls.count,core.slow_calls.first_used+core.slow_calls.recent_used,core.ignored_joins,publisher_entries,publisher_filtered);
     const auto metric=[](const char* category,unsigned index,const detail::Metric& m){
         if(m.count)log("game_phase_metric category=%s index=%u count=%llu ticks=%llu max_ticks=%llu max_begin=%llu max_end=%llu cpu_valid=%llu user_100ns=%llu kernel_100ns=%llu",category,index,m.count,m.total,m.maximum,m.begin,m.end,m.cpu_valid,m.user,m.kernel);
     };
     for(unsigned i=0;i<detail::phase_count;++i)metric("phase",i,core.phases[i]);
-    for(unsigned i=0;i<4;++i)metric("native_call",i,core.calls[i]);
+    for(unsigned i=0;i<detail::call_count;++i)metric("native_call",i,core.calls[i]);
+    for(unsigned i=0;i<3;++i)metric("input_part",i,core.input_parts[i]);
     metric("handler",0,handler_cost);metric("cpu_query",0,query_cost);metric("present_bridge",0,bridge_cost);
     const auto print_frame=[](const detail::Frame& f){
         const auto elapsed=f.current.qpc-f.previous.qpc;
@@ -202,20 +245,23 @@ void report(std::uint64_t reporting_frame) {
             f.dispatch_begin,f.dispatch_end,f.covered,elapsed>=f.covered?elapsed-f.covered:0,f.used,unsigned(f.overflow));
         for(unsigned i=0;i<f.used;++i){const auto& s=f.segments[i];
             const bool cpu=s.begin.cpu&&s.end.cpu&&s.end.user>=s.begin.user&&s.end.kernel>=s.begin.kernel;
-            log("game_phase_segment device=%llu frame=%llu index=%u phase=%u loop=%llu qpc_begin=%llu qpc_end=%llu cpu_valid=%u user_100ns=%llu kernel_100ns=%llu begin_query_begin=%llu begin_query_end=%llu end_query_begin=%llu end_query_end=%llu requested_target_begin=%08x requested_target_end=%08x requested_mode_begin=%u requested_mode_end=%u pump_valid=%u pump_active=%u pump_flags=%08x",
-                f.current.device,f.current.frame,i,s.phase,s.loop,s.begin.qpc,s.end.qpc,unsigned(cpu),cpu?s.end.user-s.begin.user:0,cpu?s.end.kernel-s.begin.kernel:0,
+            log("game_phase_segment device=%llu frame=%llu index=%u phase=%u input_part=%u loop=%llu qpc_begin=%llu qpc_end=%llu cpu_valid=%u user_100ns=%llu kernel_100ns=%llu begin_query_begin=%llu begin_query_end=%llu end_query_begin=%llu end_query_end=%llu requested_target_begin=%08x requested_target_end=%08x requested_mode_begin=%u requested_mode_end=%u pump_valid=%u pump_active=%u pump_flags=%08x",
+                f.current.device,f.current.frame,i,s.phase,s.input_part,s.loop,s.begin.qpc,s.end.qpc,unsigned(cpu),cpu?s.end.user-s.begin.user:0,cpu?s.end.kernel-s.begin.kernel:0,
                 s.begin.query_begin,s.begin.query_end,s.end.query_begin,s.end.query_end,s.request_begin.target,s.request_end.target,s.request_begin.mode,s.request_end.mode,unsigned(s.pump.valid),s.pump.active,s.pump.flags);
         }
     };
     for(unsigned i=0;i<core.slow_frames.first_used;++i)print_frame(core.slow_frames.first[i]);
     for(unsigned i=0;i<core.slow_frames.recent_used;++i)print_frame(core.slow_frames.recent[((core.slow_frames.recent_used==4?core.slow_frames.next:0)+i)&3]);
     const auto print_call=[](const detail::Call& c){
-        log("game_phase_slow_call kind=%u qpc_begin=%llu qpc_end=%llu cockpit=%08x requested_target=%08x requested_mode=%u result=%08x device=%llu reset=%llu frame=%llu endpoint_qpc=%llu",
-            c.kind,c.begin.qpc,c.end.qpc,c.request.cockpit,c.request.target,c.request.mode,c.result,c.present.device,c.present.reset,c.present.frame,c.present.qpc);
+        log("%s kind=%u qpc_begin=%llu qpc_end=%llu cockpit=%08x requested_target=%08x requested_mode=%u %s=%08x device=%llu reset=%llu frame=%llu endpoint_qpc=%llu loop=%llu phase=%u caller=%08x previous_target=%08x previous_mode=%u view=%08x end_esp=%08lx children_ticks=%llu exclusive_ticks=%llu first=%u anchor=%u anchor_capture=%u arg0=%08x arg1=%08x arg2=%08x arg3=%08x arg4=%08x arg5=%08x",
+            c.first?"game_phase_call_sample":"game_phase_slow_call",c.kind,c.begin.qpc,c.end.qpc,c.request.cockpit,c.request.target,c.request.mode,c.kind>=4?"endpoint_eax":"result",c.result,c.present.device,c.present.reset,c.present.frame,c.present.qpc,c.loop,c.phase,c.witness.caller,c.witness.previous_target,c.witness.previous_mode,c.witness.view,
+            static_cast<unsigned long>(c.witness.end_esp),c.children,(c.end.qpc-c.begin.qpc)>=c.children?(c.end.qpc-c.begin.qpc)-c.children:0,unsigned(c.first),unsigned(c.kind>=4&&c.present.qpc&&c.present.device&&c.present.raw),unsigned(c.present.captured),
+            c.witness.args[0],c.witness.args[1],c.witness.args[2],c.witness.args[3],c.witness.args[4],c.witness.args[5]);
     };
     for(unsigned i=0;i<core.slow_calls.first_used;++i)print_call(core.slow_calls.first[i]);
     for(unsigned i=0;i<core.slow_calls.recent_used;++i)print_call(core.slow_calls.recent[((core.slow_calls.recent_used==4?core.slow_calls.next:0)+i)&3]);
-    core.clear_window();handler_cost={};query_cost={};bridge_cost={};read_failures=cpu_failures=0;reporting=false;
+    for(unsigned i=4;i<detail::call_count;++i)if(core.pending_first&(1u<<i))print_call(core.first_calls[i-4]);
+    core.clear_window();handler_cost={};query_cost={};bridge_cost={};read_failures=cpu_failures=publisher_entries=publisher_filtered=0;reporting=false;
 }
 #ifdef X3M_GAME_PHASE_FIXTURE
 bool fixture_pump_region(std::uintptr_t base,std::uint32_t bytes) noexcept {
@@ -226,6 +272,11 @@ bool fixture_pump_region(std::uintptr_t base,std::uint32_t bytes) noexcept {
     if(!base||(base&3)||bytes<0x9004||base>UINT32_MAX-bytes)return false;
     pump_active_address=base+0x8adc;pump_flags_address=base+0x6f3c;
     return true;
+}
+bool fixture_target_state(std::uint64_t* completed4,std::uint64_t* ignored,std::uint64_t* reads,unsigned* depth) {
+    if(!completed4||!ignored||!reads||!depth||owner_thread.load()!=GetCurrentThreadId())return false;
+    for(unsigned i=0;i<4;++i)completed4[i]=core.calls[i+4].count;
+    *ignored=core.ignored_joins;*reads=read_failures;*depth=core.depth;return true;
 }
 void* fixture_emit(unsigned index,void*** next){return index<sites::Count?emit(index,next):nullptr;}
 void fixture_set_callback(void (__cdecl* callback)(unsigned,const std::uint32_t*)){fixture_callback=callback;}

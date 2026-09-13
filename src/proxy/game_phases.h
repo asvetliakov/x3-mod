@@ -13,6 +13,9 @@ void report(std::uint64_t reporting_frame); // existing periodic report, owner t
 // Configure only while disabled; (0,0) clears before freeing the allocation.
 // Caller owns the readable region; every marker still uses engine_memory::read.
 bool fixture_pump_region(std::uintptr_t base,std::uint32_t bytes) noexcept;
+// Same-thread fixture-only snapshot; four counters are publisher/play/create/seek.
+bool fixture_target_state(std::uint64_t* completed4,std::uint64_t* ignored_joins,
+                          std::uint64_t* read_failures,unsigned* depth);
 void* fixture_emit(unsigned index,void*** next);
 void fixture_set_callback(void (__cdecl* callback)(unsigned,const std::uint32_t*));
 void fixture_enable(bool enabled);
