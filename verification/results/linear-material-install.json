@@ -1,11 +1,11 @@
 {
-  "source_commit": "a56e77ea46cd9a165288933ba22290f5dfce6b10",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-linear-material-candidate-i5hibpqt/d3d9.dll",
-  "dll_sha256": "aeb40a3e5759b4e6b96d0840c8e8fffcf843985984faa5e85e14787cc27a755a",
-  "dll_bytes": 12345449,
+  "source_commit": "24930b563bf68c271a9406a2c68eafdf824e309d",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-shared-linear-material-candidate-oak4f4c1/d3d9.dll",
+  "dll_sha256": "24edac6c2c913e7994f2669f8d295ca0d56f79dd0bb9ef1b23f36fabf4efd724",
+  "dll_bytes": 12347043,
   "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
   "build": "cmake --build build --clean-first -j8",
-  "build_seconds": 6.933,
+  "build_seconds": 5.872,
   "imports_unchanged": true,
   "imports": 194,
   "import_dlls": 15,
@@ -14,20 +14,28 @@
     "reachable_functions": 211,
     "violations": 0
   },
-  "review": "docs/verification/review-51-linear-materials.md",
+  "review": "docs/architecture/material-next-slice.md#5-shared-default-runtime-checkpoint-review",
+  "coverage": {
+    "programs": 15,
+    "pairs": 20
+  },
   "fixtures": {
     "detached_gpu": "verification/results/bottle-X3/linear-material-gpu.json",
     "live": "verification/results/bottle-X3/linear-material-live.json"
   },
-  "new_host_tests": 17,
+  "affected_host_tests": {
+    "structure": 5,
+    "gpu_report": 11,
+    "live_report": 2
+  },
   "load": {
     "passed": true,
     "case": "writable",
     "checks": 8,
     "exports": 17
   },
-  "previous_dll_sha256": "ab9d689654fb5a6b593707089c16da2670c82792df7f64bcae215828e3f50304",
-  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-linear-material-candidate-i5hibpqt/rollback",
+  "previous_dll_sha256": "aeb40a3e5759b4e6b96d0840c8e8fffcf843985984faa5e85e14787cc27a755a",
+  "rollback": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-shared-linear-material-candidate-oak4f4c1/rollback",
   "installed": true,
   "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
   "preserved_files": {
@@ -35,7 +43,6 @@
     "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
   },
   "planned_launch_dry_run": true,
-  "vanilla_dry_run": true,
   "game_launched": false,
   "native_windows_verified": false
 }

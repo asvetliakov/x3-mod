@@ -9,7 +9,8 @@ The initial slice is the complete **Argon SM3 DEFAULT material contract**,
 including two-sided and toggle variants: 10 archive pass pairings, 3 VS programs
 and 6 PS programs. The reviewed [shared hull expansion](material-next-slice.md)
 adds ten Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT pairs with the same three VS
-and six additional PS. Its runtime candidate is qualified and reviewed; installation is next. Evaluate this material's diffuse, existing
+and six additional PS. Both contracts are qualified, reviewed and installed; gameplay acceptance
+is pending. Evaluate this material's diffuse, existing
 specular lobe, reflection and emissive contributions in an explicitly defined
 linear working space, then compatibility-encode its RGB into the existing
 engine-space FP16 scene. Keep the original alpha and live motion/depth outputs.
@@ -433,5 +434,5 @@ The fresh-candidate live result passes 1,228 checks across eight
 feature/ownership/TAA twins and 96 frames. Both families activate on their
 intended frames, Split retains ordinary motion, alpha/RT1/RT2 remain exact,
 attach/Reset and state blocks recover, and the three extra combined shader
-references retire to zero. Final review is complete; installation is next. The existing brief material run will cover the expanded candidate;
+references retire to zero. Final review and installation are complete; gameplay acceptance is pending. The existing brief material run will cover the expanded candidate;
 no separate gameplay session is being requested for each family.
