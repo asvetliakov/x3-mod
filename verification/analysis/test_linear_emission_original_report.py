@@ -1,5 +1,8 @@
 """Bounded actual-original GPU oracle/report checks; no bundled shader bytes."""
 import copy
+import hashlib
+import re
+from pathlib import Path
 import math
 import struct
 import unittest
@@ -17,7 +20,7 @@ def report(cases):
         data+=struct.pack('<I',c['id'])
         for values in ([v for p in color for v in p],depth,[v for p in native for v in p],[v for p in energy for v in p]):
             data+=struct.pack('<'+str(len(values))+'f',*values)
-    lines.append(f'ORIGINAL_RESULT pass cases={len(cases)} shaders=42')
+    lines.append(f'ORIGINAL_RESULT pass cases={len(cases)} shaders=77')
     return '\n'.join(lines)+'\n',bytes(data)
 
 
@@ -28,18 +31,57 @@ class OriginalReportTests(unittest.TestCase):
 
     def test_complete_pair_gain_and_program_record(self):
         result=r.validate_original_report(self.text,self.data,self.cases)
-        self.assertEqual(result['cases'],70)
-        self.assertEqual(result['original_vertex_programs'],3)
-        self.assertEqual(result['original_pixel_programs'],5)
-        self.assertEqual(result['source_variants'],25)
-        self.assertEqual(result['shader_creations'],42)
+        self.assertEqual(result['cases'],311)
+        self.assertEqual(result['original_vertex_programs'],8)
+        self.assertEqual(result['original_pixel_programs'],10)
+        self.assertEqual(result['source_variants'],50)
+        self.assertEqual(result['shader_creations'],77)
         self.assertEqual(result['timings'],[])
-        for p in range(5):
+        for p in range(20):
             rows=[c for c in self.cases if c['actual_profile']==p]
             self.assertEqual({o['gain'] for c in rows for o in c['ops']},set(r.ORIGINAL_GAINS))
-            self.assertTrue(all(bool(o['affine'])==(p in (0,1,3)) for c in rows for o in c['ops']))
+            self.assertTrue(all(bool(o['affine'])==(r.ORIGINAL_PAIRS[p][1] in r.AFFINE_PS) for c in rows for o in c['ops']))
         self.assertGreater(result['invariants']['minuszero'],0)
         self.assertGreater(result['invariants']['capzero'],0)
+
+    def test_retained_binary_prefix_and_complete_native_layouts(self):
+        for maker,count,digest in ((r.original_cases,70,'19b18d25533a2429de7f1217d06fdd13ff28932d4bb278bf854b1998e7a957c5'),
+                                  (r.coverage_cases,81,'4766f912430cd4ae2881cef7e710b0590e40c65827381f73907b5eb695b8fa7a'),
+                                  (r.pass_cases,60,'ede7c8d05b58e02979f37210a27eab5f16c64ef32581c24f679778d8dca855ec')):
+            self.assertEqual(hashlib.sha256(r.binary_cases(maker()[:count])).hexdigest(),digest)
+        from verification.analysis.test_linear_emission_transformer import PREVIOUS_PAIRS,NEW_PAIR_OCCURRENCES,PROFILES,PS2X,VERTICES
+        self.assertEqual({(r.ORIGINAL_VS[v],r.ORIGINAL_PS[p]) for v,p in r.ORIGINAL_PAIRS},PREVIOUS_PAIRS|set(NEW_PAIR_OCCURRENCES))
+        self.assertEqual(set(r.ORIGINAL_VS),set(VERTICES))
+        self.assertEqual(set(r.ORIGINAL_PS),set(PROFILES))
+        self.assertEqual({r.ORIGINAL_PS[p] for p in r.PS21},PS2X)
+        for pair,(v,p) in enumerate(r.ORIGINAL_PAIRS):
+            self.assertEqual(PROFILES[r.ORIGINAL_PS[p]][-2:],(p in r.AFFINE_PS,v not in r.NO_FADE_VS))
+        source=(Path(r.ROOT)/'verification/probe/linear_emission_fixture.cpp').read_text()
+        table=source.split('constexpr unsigned actual_pairs[][2] = ',1)[1].split(';',1)[0]
+        self.assertEqual(tuple(tuple(map(int,x)) for x in re.findall(r'\{(\d+),(\d+)\}',table)),r.ORIGINAL_PAIRS)
+
+    def test_instance_direct_uv_and_native_fog_are_independent(self):
+        default=next(c for c in self.cases if c['actual_profile']==2 and c['label']=='original_sampled_alpha')
+        instance=next(c for c in self.cases if c['actual_profile']==6 and c['label']=='original_sampled_alpha')
+        self.assertEqual(r.original_uv(instance,(.25,.25)),(.25,.25))
+        self.assertEqual(r.original_uv(default,(.25,.25)),(.25,.75))
+        self.assertNotEqual(r.mrt_sample(instance['ops'][0],instance,(.25,.25))[0],r.mrt_sample(default['ops'][0],default,(.25,.25))[0])
+        for pair in range(5,20):
+            if r.ORIGINAL_PAIRS[pair][0] in r.NO_FADE_VS:continue
+            c=next(c for c in self.cases if c['actual_profile']==pair and c['label']=='original_vertex_fog' and not c['flags']&(2048|4096))
+            o=c['ops'][0]
+            self.assertGreater(r.original_fade(o,c,(.25,.75)),0)
+            self.assertLess(r.original_fade(o,c,(.25,.75)),o['fade'])
+
+    def test_every_new_pair_decoded_cap_precedes_fade_and_quarter_gain(self):
+        rows=[c for c in self.cases if c['label']=='original_decoded_cap_before_scale']
+        self.assertEqual({c['actual_profile'] for c in rows},set(range(5,20)))
+        for c in rows:
+            o=c['ops'][0];fade=1 if r.ORIGINAL_PAIRS[c['actual_profile']][0] in r.NO_FADE_VS else .125
+            native,energy=r.mrt_sample(o,c,(.5,.5))
+            self.assertEqual(energy[:3],[r.CAP*fade*.25]*3)
+            self.assertEqual(native[3],.125)
+            self.assertLess(energy[0],r.CAP)
 
     def test_actual_prefade_decode_and_raw_sampled_alpha(self):
         c=next(c for c in self.cases if c['actual_profile']==0 and c['ops'][0]['gain']==4)
@@ -70,7 +112,7 @@ class OriginalReportTests(unittest.TestCase):
             if c['label']=='original_vertex_fog' and c['flags']&(2048|4096):
                 wanted=0. if c['flags']&2048 else c['ops'][0]['fade']
                 self.assertEqual(r.original_fade(c['ops'][0],c,(.25,.75)),wanted)
-        for p in (3,4):
+        for p in (3,4,13,14):
             c=next(c for c in self.cases if c['actual_profile']==p)
             o=copy.deepcopy(c['ops'][0]);o['fade']=0
             self.assertEqual(r.original_fade(o,c,(.5,.5)),1.)
@@ -101,7 +143,7 @@ class OriginalReportTests(unittest.TestCase):
 
     def test_rejects_native_parity_count_and_shader_creation_mismatch(self):
         for text in (self.text.replace('native=1024','native=1023',1),
-                     self.text.replace('shaders=42','shaders=41'),
+                     self.text.replace('shaders=77','shaders=41'),
                      self.text.replace('postblend=1','postblend=0')):
             with self.assertRaises(AssertionError):r.validate_original_report(text,self.data,self.cases)
 

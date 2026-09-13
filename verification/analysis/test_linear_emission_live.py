@@ -14,6 +14,11 @@ def witness(enabled=True):
                  linear=draws if enabled and i not in (5,6,7,8,9) else 0,native=int(enabled and i in (6,7,9)),incomplete=int(enabled and i==8),
                  refused=(1+int(i in (5,8)) if enabled else 0),suppressed=0,exchanged=prepared,original_calls=draws,source_hr='8876086c' if enabled and i==8 else '00000000',fault=r.FAULTS.get(i,0))
         lines.append('EMISSION_LIVE '+' '.join(f'{k}={v}' for k,v in row.items()))
+        if i>=r.LEGACY_FRAMES:
+            pair=(i-r.LEGACY_FRAMES)//2;v,p=r.PAIR_INDICES[pair]
+            lines.append(f'EMISSION_CORPUS frame={i} pair={pair} vs={r.VERTICES[v]} ps={r.PIXELS[p]} '
+                         f'instance={int(3<=v<=6)} affine={int(p not in (2,4,5,6))} '
+                         f'fade={int(p not in (3,4))} fog={int(p not in (3,4))} disappeared={i%2}')
         routed=1 if i==8 else 2;resolved=int(i!=8)
         trace += [f'motion_output_frame frame={i} draws={3+draws} routed={routed} depth_routed={routed} matched={1 if i in (8,9) else 2} jittered={routed} '
                   f'cut={int(i==9)} cut_missing={.5 if i==9 else 0} taa_attempted={resolved} taa_resolved={resolved} '
@@ -23,8 +28,8 @@ def witness(enabled=True):
         if resolved:trace.append(f'motion_output_taa_readback frame={i} result=00000000')
         if enabled:trace.append(f'linear_emission_frame frame={i} exports=0 quarantine=0 state_lost=0')
     lines.append('EMISSION_REJECTED frame=8 source_failed=1 original_b=1 b_routed=0 b_jittered=0 taa=0 history_seeded=0 copy_exact=1 native_hr=8876086c')
-    lines += [f'EMISSION_CHECKS frames=12 submissions={sum(r.DRAWS)} numeric=100 max_fraction=.5 reset=1 ordered_overwrites=20',
-              'RESULT PASS checks=100 restorations=50 frames=12 taa_reference_frames=11 taa_skipped_frames=1 taa_frames=11 taa_history_frames=8']
+    lines += [f'EMISSION_CHECKS frames={r.FRAMES} submissions={sum(r.DRAWS)} numeric=100 max_fraction=.5 reset=1 ordered_overwrites=20',
+              f'RESULT PASS checks=100 restorations=50 frames={r.FRAMES} taa_reference_frames={r.FRAMES-1} taa_skipped_frames=1 taa_frames={r.FRAMES-1} taa_history_frames={r.FRAMES-4}']
     trace += ['motion_output_release released=1 held=20']
     return '\n'.join(lines),'\n'.join(trace)
 
@@ -33,9 +38,40 @@ class EmissionLiveTests(unittest.TestCase):
     def test_on_off_and_once_counts(self):
         for enabled in (False,True):
             result=r.validate(*witness(enabled),enabled)
-            self.assertEqual(result['frames'],12)
-            self.assertEqual(result['submissions'],10)
-            self.assertEqual(result['exact_temporal_frames'],11)
+            self.assertEqual(result['frames'],52)
+            self.assertEqual(result['submissions'],30)
+            self.assertEqual(result['exact_temporal_frames'],51)
+
+    def test_all_exact_pairs_and_native_layouts_required(self):
+        text,trace=witness()
+        for old,new in [('vs=5b7a3ccd9e7df00a','vs=32e75459998d0388'),
+                        ('ps=47e15e20d63b0e93','ps=39f3b4d5b6a5aaed'),
+                        ('instance=1','instance=0'),('fog=1','fog=0'),
+                        ('disappeared=1','disappeared=0')]:
+            with self.subTest(old=old),self.assertRaises(AssertionError):
+                r.validate(text.replace(old,new,1),trace,True)
+        for frame in (12,13,50,51):
+            missing='\n'.join(x for x in text.splitlines()
+                              if not x.startswith(f'EMISSION_CORPUS frame={frame} '))
+            with self.subTest(frame=frame),self.assertRaises(AssertionError):
+                r.validate(missing,trace,True)
+
+    def test_fixture_inventory_matches_production_and_preserves_native_models(self):
+        source=(r.ROOT/'src/renderer/linear_emission.cpp').read_text()
+        table=source.split('constexpr Pair pairs[] = {',1)[1].split('};',1)[0]
+        self.assertEqual(tuple(re.findall(r'0x([0-9a-f]{16})ull,0x([0-9a-f]{16})ull',table)),r.PAIRS)
+        fixture=(r.ROOT/'verification/probe/motion_output_emission_inc.h').read_text()
+        for kind,values in (('vertex',r.VERTICES),('pixel',r.PIXELS)):
+            table=fixture.split(f'{kind}_ids[] = {{',1)[1].split('};',1)[0]
+            self.assertEqual(tuple(re.findall(r'0x([0-9a-f]{16})ull',table)),values)
+        table=fixture.split('const EmissionPair pairs[] = {',1)[1].split('};',1)[0]
+        self.assertEqual(tuple(tuple(map(int,pair)) for pair in re.findall(r'\{(\d+),(\d+)\}',table)),r.PAIR_INDICES)
+        self.assertEqual((len(set(r.PAIRS)),len(r.VERTICES),len(r.PIXELS)),(20,8,10))
+        self.assertIn('0xffff0201u : 0xffff0200u',fixture)
+        self.assertIn('instance ? 11 : 13',fixture)
+        self.assertIn('instance ? 10 : 12',fixture)
+        self.assertIn('faded ? 10 : 4',fixture)
+        self.assertIn('f.scope(nullptr)',fixture)
 
     def test_duplicate_original_or_exchange_missing_rejected(self):
         text,trace=witness()
@@ -91,7 +127,7 @@ class EmissionLiveTests(unittest.TestCase):
 
     def test_successful_resolve_readbacks_include_reset_and_first_frame(self):
         text,trace=witness()
-        for frame in (0,10,11):
+        for frame in (0,10,11,12,13,50,51):
             missing='\n'.join(x for x in trace.splitlines()
                               if not x.startswith(f'motion_output_taa_readback frame={frame} '))
             with self.subTest(frame=frame),self.assertRaises(AssertionError):
@@ -116,7 +152,23 @@ class EmissionLiveTests(unittest.TestCase):
                 (work/f'emission_mask_{i}.rgba32f').write_bytes(bytes(64*64*16))
             (work/'emission_color_8.rgba32f').write_bytes(bytes(64*64*16))
             (work/'presented_8.bgra8').write_bytes(bytes(64*64*4))
-            self.assertEqual(r.validate_pixels(work)['covered_pixels'],[0]*12)
+            self.assertEqual(r.validate_pixels(work,False)['covered_pixels'],[0]*r.FRAMES)
+            with self.assertRaises(AssertionError):r.validate_pixels(work,True)
+            mask=[0.]*(64*64*4)
+            for y in range(16,48):
+                for x in range(8,40):
+                    for k in range(3):mask[(y*64+x)*4+k]=1.
+            encoded=struct.pack('<16384f',*mask)
+            for i in range(r.LEGACY_FRAMES,r.FRAMES,2):
+                (work/f'emission_mask_{i}.rgba32f').write_bytes(encoded)
+            self.assertEqual(r.validate_pixels(work,True)['covered_pixels'][r.LEGACY_FRAMES:],[1024,0]*20)
+            (work/'emission_mask_51.rgba32f').write_bytes(encoded)
+            with self.assertRaises(AssertionError):r.validate_pixels(work,True)
+            (work/'emission_mask_51.rgba32f').write_bytes(bytes(64*64*16))
+            mask[(16*64+8)*4+1]=0.
+            (work/'emission_mask_50.rgba32f').write_bytes(struct.pack('<16384f',*mask))
+            with self.assertRaises(AssertionError):r.validate_pixels(work,True)
+            (work/'emission_mask_50.rgba32f').write_bytes(encoded)
             (capture/'taa_1_8.rgba16f').write_bytes(bytes(64*64*8))
             with self.assertRaises(AssertionError):r.validate_pixels(work)
             (capture/'taa_1_8.rgba16f').unlink()
@@ -145,7 +197,7 @@ class EmissionLiveTests(unittest.TestCase):
 
     def test_numeric_and_frame_completion_bounds(self):
         text,trace=witness()
-        for old,new in [('max_fraction=.5','max_fraction=1.001'),('max_fraction=.5','max_fraction=nan'),('frames=12 submissions','frames=11 submissions'),('RESULT PASS','RESULT FAIL')]:
+        for old,new in [('max_fraction=.5','max_fraction=1.001'),('max_fraction=.5','max_fraction=nan'),('frames=52 submissions','frames=51 submissions'),('RESULT PASS','RESULT FAIL')]:
             with self.assertRaises(AssertionError):r.validate(text.replace(old,new,1),trace,True)
 
 

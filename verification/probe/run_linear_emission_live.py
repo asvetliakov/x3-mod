@@ -21,10 +21,24 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/analysis'))
 import agx_reference
 PROGRAMS=('vs_53a0a641107ed76c.bin','ps_8759c7838bbc86c2.bin','vs_d5e1c75351ed3f04.bin','ps_8360f422de08b5bd.bin')
-FRAMES=12
+# Exact reviewed identities, in production table order; no shader-byte payloads.
+VERTICES=('d5e1c75351ed3f04','32e75459998d0388','089091aab2d5eb13',
+          '5b7a3ccd9e7df00a','6435a84d8ac5908e','89193868c61c3846',
+          'a520be365951c9dc','cfb2c31707d545bc')
+PIXELS=('8360f422de08b5bd','9975b706e5a1c999','ff2473e73a6bdfa1',
+        '8559522220507d5e','875e780adb131b16','39f3b4d5b6a5aaed',
+        '47e15e20d63b0e93','846c5c1a549f9491','c6dacb8f74b65c97',
+        'f0c91793a75e1203')
+PAIR_INDICES=((0,0),(1,1),(1,2),(2,3),(2,4),(3,1),(3,2),(4,5),(4,6),
+              (4,7),(4,8),(5,0),(5,9),(6,3),(6,4),(7,5),(7,6),(7,7),(7,8),(0,9))
+PAIRS=tuple((VERTICES[v],PIXELS[p]) for v,p in PAIR_INDICES)
+CORPUS_PROGRAMS=tuple(f'{stage}_{value}.bin' for stage,values in
+                      (('vs',VERTICES),('ps',PIXELS)) for value in values)
+LEGACY_FRAMES=12
+FRAMES=LEGACY_FRAMES+2*len(PAIRS)
 REJECTED_FRAME=8
 TAA_FRAMES=tuple(i for i in range(FRAMES) if i!=REJECTED_FRAME)
-DRAWS=[0,1,2,0,1,1,1,1,1,1,1,0]
+DRAWS=[0,1,2,0,1,1,1,1,1,1,1,0]+[1,0]*len(PAIRS)
 FAULTS={5:3,6:6,7:101,9:7}
 
 
@@ -34,7 +48,7 @@ def validate(output,trace,enabled):
     assert len(summary)==1 and not any(x.startswith('RESULT FAIL') for x in lines),'native fixture completion'
     summary=summary[0]
     assert int(summary['frames'])==FRAMES and int(summary['taa_reference_frames'])==len(TAA_FRAMES) and int(summary['taa_skipped_frames'])==1
-    assert int(summary['taa_frames'])==11 and int(summary['taa_history_frames'])==8
+    assert int(summary['taa_frames'])==FRAMES-1 and int(summary['taa_history_frames'])==FRAMES-4
     checks=[fields(x) for x in lines if x.startswith('EMISSION_CHECKS ')]
     assert len(checks)==1 and int(checks[0]['frames'])==FRAMES and int(checks[0]['submissions'])==sum(DRAWS)
     assert int(checks[0]['reset'])==1 and int(checks[0]['numeric'])>0 and int(checks[0]['ordered_overwrites'])>0
@@ -63,6 +77,15 @@ def validate(output,trace,enabled):
         assert int(row['suppressed'])==0
         assert int(row['original_calls'])==DRAWS[i],(i,'actual original DIP invoked once, independently of prepared route')
         if enabled and i==8:assert int(row['source_hr'],16)&0x80000000
+    corpus=[fields(x) for x in lines if x.startswith('EMISSION_CORPUS ')]
+    assert [int(x['frame']) for x in corpus]==list(range(LEGACY_FRAMES,FRAMES)), 'complete accepted/disappearing pair corpus'
+    for offset,row in enumerate(corpus):
+        pair=offset//2;v,p=PAIR_INDICES[pair]
+        expected=dict(frame=str(LEGACY_FRAMES+offset),pair=str(pair),vs=VERTICES[v],ps=PIXELS[p],
+                      instance=str(int(3<=v<=6)),affine=str(int(p not in (2,4,5,6))),
+                      fade=str(int(p not in (3,4))),fog=str(int(p not in (3,4))),
+                      disappeared=str(offset%2))
+        assert row==expected,(pair,'exact native pair/layout and disappeared schedule')
     rejected=[fields(x) for x in lines if x.startswith('EMISSION_REJECTED ')]
     assert len(rejected)==1
     rejected_hr=int(rejected[0].pop('native_hr'),16)
@@ -100,10 +123,10 @@ def validate(output,trace,enabled):
     assert all(x['result']=='00000000' for x in temporal.values())
     return dict(frames=FRAMES,checks=int(summary['checks']),restorations=int(summary['restorations']),submissions=sum(DRAWS),
                 max_numeric_fraction=ratio,exact_temporal_frames=len(TAA_FRAMES),expected_temporal_frame_indices=TAA_FRAMES,rejected_frame=REJECTED_FRAME,rejected_source_hresult=f'{rejected_hr:08x}',reset=1,device_final_release=True,
-                held_references=int(releases[0]['held']),frames_detail=rows)
+                held_references=int(releases[0]['held']),frames_detail=rows,corpus_pairs=len(PAIRS),original_vs=len(VERTICES),original_ps=len(PIXELS),corpus_detail=corpus)
 
 
-def validate_pixels(work):
+def validate_pixels(work,enabled=None):
     capture=work/'x3-modern-captures';hashes=[];masks=[]
     for frame in range(FRAMES):
         actual_path=capture/f'taa_1_{frame}.rgba16f';reference_path=work/f'reference_taa_{frame}.rgba16f'
@@ -117,6 +140,13 @@ def validate_pixels(work):
         mask=(work/f'emission_mask_{frame}.rgba32f').read_bytes();assert len(mask)==64*64*16
         values=struct.unpack('<16384f',mask);assert all(math.isfinite(v) and v>=0 for i,v in enumerate(values) if i%4<3)
         masks.append(sum(v>0 for v in values[::4]))
+        if enabled is not None and frame>=LEGACY_FRAMES:
+            present=enabled and frame%2==0
+            assert masks[-1]==(1024 if present else 0),(frame,'actual pair coverage or disappearing mask')
+            for y in range(64):
+                for x in range(64):
+                    expected=float(present and 8<=x<40 and 16<=y<48)
+                    assert all(values[(y*64+x)*4+k]==expected for k in range(3)),(frame,x,y,'exact supplemental footprint')
     raw=(work/'emission_color_8.rgba32f').read_bytes();display=(work/'presented_8.bgra8').read_bytes()
     assert len(raw)==64*64*16 and len(display)==64*64*4
     source=struct.unpack('<16384f',raw);maximum=0.
@@ -148,15 +178,15 @@ def main():
     parser.add_argument('--programs',type=Path,default=Path('/tmp/x3-shader-sweep/programs'))
     parser.add_argument('--result',type=Path,default=bottle.results_dir(ROOT,create=False)/'linear-emission-live-gpu.json')
     args=parser.parse_args();assert bottle.BOTTLE=='X3','X3 fixture bottle required'
-    inputs=[args.fixture.resolve(),args.dll.resolve(),*[args.programs.resolve()/x for x in PROGRAMS]]
+    inputs=[args.fixture.resolve(),args.dll.resolve(),*[args.programs.resolve()/x for x in dict.fromkeys(PROGRAMS+CORPUS_PROGRAMS)]]
     assert all(x.is_file() for x in inputs),'explicit prebuilt inputs and local originals required'
     hashes={str(x):sha(x) for x in inputs};raw=Path(tempfile.mkdtemp(prefix='x3-linear-emission-live-'))
     result=dict(passed=False,bottle=bottle.describe(),raw=str(raw),inputs=hashes,cases={},game_launched=False,
-        scope='Actual capture DIP/MotionOutput/LinearEmissionPass/HdrPass owning exchange/supplemental TemporalPass; one original source pair, prior shader/component corpus retained',
+        scope='Actual capture DIP/MotionOutput/LinearEmissionPass/HdrPass owning exchange/supplemental TemporalPass; 20 exact original source pairs / 8 native VS / 10 native PS, including PS2.1, native DEFAULT UV and INSTANCE direct UV/fog/no-fade; prior 12 functional frames retained',
         limitations=['Native Windows and gameplay untested',
             'X3M_SCENE_HOOK=0 and a fixture-only compositor-owner admission override are used. Production game owner-memory binding at BeginScene is not exercised here; prior bloom owner/thread qualification is reused. Actual capture DIP, pass, Hdr exchange, supplemental TemporalPass and terminal StretchRect remain exercised.',
             'Failed source witness is a real invalid-index-buffer DIP; partial GPU submission semantics remain host/component-qualified only',
-            'Twelve functional frames include one real failed-source rejection (frame8): eleven successful TAA frames resolve at StretchRect; frame8 performs an unrecognized native copy and unresolved HDR publication ending at Present, with no TAA/history seed. This is not a healthy Present-triggered TAA qualification.',
+            'Fifty-two functional frames include the original twelve controls plus twenty accepted/disappearing exact pairs and one real failed-source rejection (frame8): fifty-one successful TAA frames resolve at StretchRect; frame8 performs an unrecognized native copy and unresolved HDR publication ending at Present, with no TAA/history seed. This is not a healthy Present-triggered TAA qualification.',
             'R1 used the wrong later-material declaration. R2 requested exact comparison with a nonrepresentable FP16 alpha sum. This fixture binds the correct declaration and uses an exactly representable .25 second source alpha; strict alpha equality and RGB tolerances are unchanged.',
             'Functional TAA readback uses a seam-only resolve-output flag independent of capture admission and persists across Reset. It is disabled for timing. Source snapshots and functional HDR readbacks explicitly get the logical RT before sampling, restoring borrowed MRT/mip state. R3 observed bias restoration during diagnostic readback; explicit getters now avoid relying on backend child-release callback timing. Immediate physical bias after each A/B draw and exact restores (two healthy, A-only one on the failed frame) are checked; consecutive lazy bias retention is not claimed here and retains its dedicated prior evidence.'])
     try:
@@ -181,7 +211,7 @@ def main():
             output=(work/'stdout.txt').read_text()
             if benchmark:case=validate_timing(output,bool(enabled))
             else:
-                case=validate(output,logs[0].read_text(),bool(enabled));case.update(validate_pixels(work))
+                case=validate(output,logs[0].read_text(),bool(enabled));case.update(validate_pixels(work,bool(enabled)))
             case['seconds']=time.monotonic()-start
             result['cases'][key]=case
             print(f'{key}: completed',flush=True)

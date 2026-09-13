@@ -19,7 +19,7 @@ def report(cases):
             for order in range(2):
                 variant=1-order if pair%2 else order
                 lines.append(f'PASS_TIMING width={w} height={h} variant={variant} pair={pair} order={order} completed_ms={1+pair*.125+variant*.0625}')
-    lines.append(f'PASS_RESULT pass cases={len(cases)} shaders=288')
+    lines.append(f'PASS_RESULT pass cases={len(cases)} shaders=528')
     return '\n'.join(lines)+'\n',data
 
 
@@ -32,20 +32,20 @@ class PassReportTests(unittest.TestCase):
         return r.validate_coverage_report(text if text is not None else self.text,data if data is not None else self.data,self.cases,True)
 
     def test_admitted_cases_keep_original_profiles_and_single_draws(self):
-        self.assertEqual(len(self.cases),60)
-        self.assertEqual(sum(len(c['ops']) for c in self.cases),85)
-        self.assertEqual({c['actual_profile'] for c in self.cases},set(range(5)))
+        self.assertEqual(len(self.cases),271)
+        self.assertEqual(sum(len(c['ops']) for c in self.cases),371)
+        self.assertEqual({c['actual_profile'] for c in self.cases},set(range(20)))
         self.assertTrue(all(c['flags']&2 and not c['mask'] for c in self.cases))
         result=self.validate()
-        self.assertEqual(result['component_comparison_channels'],245760)
-        self.assertEqual(result['shader_creations'],288)
+        self.assertEqual(result['component_comparison_channels'],1110016)
+        self.assertEqual(result['shader_creations'],528)
         self.assertEqual(result['steady_allocations'],0)
         self.assertTrue(result['native_reset_passed'])
 
     def test_component_proof_is_mandatory(self):
         for old,new in [('channels=4096','channels=4095'),('allocations=0','allocations=1'),('checks=16','checks=15'),
                         ('source_replays=0','source_replays=1'),('forbidden_calls=0','forbidden_calls=1'),
-                        ('retained_programs=4','retained_programs=0'),('transaction=1','transaction=0'),('shaders=288','shaders=287')]:
+                        ('retained_programs=4','retained_programs=0'),('transaction=1','transaction=0'),('shaders=528','shaders=527')]:
             with self.subTest(old=old),self.assertRaises(AssertionError):self.validate(self.text.replace(old,new,1))
 
     def test_color_alpha_depth_energy_mask_checks_remain(self):

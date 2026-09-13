@@ -30,10 +30,10 @@ class FusedReportTests(unittest.TestCase):
 
     def test_all_twins_and_paired_cost_summary(self):
         result=self.validate()
-        self.assertEqual(result['fused_image_twins'],60)
-        self.assertEqual(result['fused_exact_channels'],261120)
-        self.assertEqual(result['indexed_source_draws'],85)
-        self.assertEqual(result['component_comparison_channels'],245760)
+        self.assertEqual(result['fused_image_twins'],271)
+        self.assertEqual(result['fused_exact_channels'],1179392)
+        self.assertEqual(result['indexed_source_draws'],371)
+        self.assertEqual(result['component_comparison_channels'],1110016)
         self.assertTrue(result['native_reset_passed'])
         for timing in result['timings']:
             self.assertEqual(timing['samples'],8)
@@ -48,7 +48,7 @@ class FusedReportTests(unittest.TestCase):
                self.text.replace('FUSED_CASE id=0','FUSED_CASE id=1',1),
                self.text.replace('rgba_depth_mask_exact=1','rgba_depth_mask_exact=0',1),
                re.sub(r'(FUSED_CASE id=0 .*sources=)\d+',r'\g<1>999',self.text),
-               self.text.replace('FUSED_RESULT pass cases=60','FUSED_RESULT pass cases=59'),
+               self.text.replace('FUSED_RESULT pass cases=271','FUSED_RESULT pass cases=270'),
                self.text+'unexpected\n']
         for text in edits:
             with self.subTest(edit=text[-100:]),self.assertRaises(AssertionError):self.validate(text)
@@ -104,9 +104,9 @@ class FusedReportTests(unittest.TestCase):
     def test_runner_consumes_prebuilt_and_binds_all_inputs(self):
         result=self.run_mocked()
         self.assertTrue(result['passed'])
-        self.assertEqual(result['cases'],60)
-        self.assertEqual(len(result['original_sha256']),8)
-        self.assertEqual(len(result['coverage_transformed_sha256']),25)
+        self.assertEqual(result['cases'],271)
+        self.assertEqual(len(result['original_sha256']),18)
+        self.assertEqual(len(result['coverage_transformed_sha256']),50)
         self.assertIn('src/renderer/linear_emission_copy_clear_inc.h',result['code_sha256'])
         self.assertEqual(len(result['cases_sha256']),64)
         self.assertEqual(len(result['executable_sha256']),64)

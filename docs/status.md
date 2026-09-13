@@ -15,8 +15,8 @@ The next combined candidate is being prepared for emitter-glow correction,
 broader selection-stutter diagnostics and qualified material expansion.
 The [complete SM2 effects/engine source batch](architecture/linear-emission-composition.md#complete-sm2-effectsengine-extension)
 adds all 15 remaining SM2 pairs, reaching 20 exact emission pairs. Source and
-host verification pass independent review; added-pair GPU/live qualification
-is pending. This does not enable emission integration by default or change the
+host verification pass independent review; all 20 pairs now also pass detached
+GPU coverage/composition checks, with live qualification pending. This does not enable emission integration by default or change the
 installed build.
 The [authored-glow correction](architecture/bloom-authored-glow.md) is now
 reviewed and source-integrated with its GPU-qualified embedded shader bundle:

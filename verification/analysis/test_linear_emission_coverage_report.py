@@ -24,7 +24,7 @@ def report(cases):
                 variant=1-order if pair%2 else order
                 lines.append(f'COVERAGE_TIMING width={w} height={h} variant={variant} pair={pair} order={order} completed_ms={1+pair*.125+variant*.0625}')
             lines.append(f'COVERAGE_TIMING width={w} height={h} variant=2 pair={pair} order=0 completed_ms=.25')
-    lines.append(f'COVERAGE_RESULT pass cases={len(cases)} shaders=201')
+    lines.append(f'COVERAGE_RESULT pass cases={len(cases)} shaders=381')
     return '\n'.join(lines)+'\n',bytes(data)
 
 
@@ -34,13 +34,13 @@ class CoverageReportTests(unittest.TestCase):
         cls.cases=r.coverage_cases();cls.text,cls.data=report(cls.cases)
 
     def test_original_prefix_and_three_output_record(self):
-        self.assertEqual(self.cases[:70],r.original_cases())
+        self.assertEqual(self.cases[:70],r.original_cases()[:70])
         result=r.validate_coverage_report(self.text,self.data,self.cases)
-        self.assertEqual(result['cases'],81)
-        self.assertEqual(result['shader_creations'],201)
-        self.assertEqual(result['coverage_variants'],25)
+        self.assertEqual(result['cases'],376)
+        self.assertEqual(result['shader_creations'],381)
+        self.assertEqual(result['coverage_variants'],50)
         self.assertEqual(result['exact_two_three_output_channels'],result['invariants']['bursts']*2048)
-        self.assertEqual(result['covered_pixels']+result['uncovered_pixels'],81*256)
+        self.assertEqual(result['covered_pixels']+result['uncovered_pixels'],376*256)
         self.assertEqual(result['max_energy_tolerance_fraction'],0)
 
     def test_zero_color_fade_gain_and_alpha_still_have_coverage(self):
@@ -60,7 +60,7 @@ class CoverageReportTests(unittest.TestCase):
             self.assertIn(n/2,mask)
             self.assertIn(0,mask)
             self.assertEqual(r.mrt_expected(c)[2]['bursts'],n)
-        self.assertEqual(r.coverage_expected(self.cases[-1]),[0.]*256)
+        self.assertEqual(r.coverage_expected(self.cases[80]),[0.]*256)
 
     def test_alpha_depth_scissor_and_viewport_limit_union(self):
         for label in ('original_sampled_alpha','original_alpha_test'):
@@ -68,14 +68,14 @@ class CoverageReportTests(unittest.TestCase):
             mask=r.coverage_expected(c)
             self.assertGreater(sum(mask),0)
             self.assertLess(sum(v>0 for v in mask),256)
-        c=copy.deepcopy(self.cases[-1]);c['ops'][0]['z']=.4
+        c=copy.deepcopy(self.cases[80]);c['ops'][0]['z']=.4
         self.assertEqual(r.coverage_expected(c),[1.]*256)
         c['mask']=1;c['ops'][0]['color'][3]=0
         self.assertEqual(r.coverage_expected(c),[0.]*256)
 
     def test_requires_three_slots_but_no_independent_mask_cap(self):
         self.assertFalse(r.validate_coverage_report(self.text,self.data,self.cases)['mrt_caps']['independent_write_masks'])
-        for text in (self.text.replace('slots=4','slots=2'),self.text.replace('postblend=1','postblend=0'),self.text.replace('shaders=201','shaders=200')):
+        for text in (self.text.replace('slots=4','slots=2'),self.text.replace('postblend=1','postblend=0'),self.text.replace('shaders=381','shaders=380')):
             with self.assertRaises(AssertionError):r.validate_coverage_report(text,self.data,self.cases)
 
     def test_rejects_coverage_erasure_false_positive_and_parity_loss(self):
@@ -88,7 +88,7 @@ class CoverageReportTests(unittest.TestCase):
     def test_mask_alpha_is_not_a_payload(self):
         raw=bytearray(self.data)
         struct.pack_into('<f',raw,4+256*13*4+12,123.)
-        self.assertEqual(r.validate_coverage_report(self.text,raw,self.cases)['cases'],81)
+        self.assertEqual(r.validate_coverage_report(self.text,raw,self.cases)['cases'],376)
 
     def test_paired_cost_and_clear_identity(self):
         for row in r.validate_coverage_timings(self.text):

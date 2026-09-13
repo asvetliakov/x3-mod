@@ -435,20 +435,33 @@ def mrt_cases():
 
 
 # Derived identities/contracts only; originals stay in the local corpus.
-ORIGINAL_PS = ('8360f422de08b5bd','9975b706e5a1c999','ff2473e73a6bdfa1','8559522220507d5e','875e780adb131b16')
-ORIGINAL_VS = ('d5e1c75351ed3f04','32e75459998d0388','089091aab2d5eb13')
+ORIGINAL_PS = ('8360f422de08b5bd','9975b706e5a1c999','ff2473e73a6bdfa1','8559522220507d5e','875e780adb131b16',
+    '39f3b4d5b6a5aaed','47e15e20d63b0e93','846c5c1a549f9491','c6dacb8f74b65c97','f0c91793a75e1203')
+ORIGINAL_VS = ('d5e1c75351ed3f04','32e75459998d0388','089091aab2d5eb13',
+    '5b7a3ccd9e7df00a','6435a84d8ac5908e','89193868c61c3846','a520be365951c9dc','cfb2c31707d545bc')
 ORIGINAL_GAINS = (0.,.25,1.,4.,16.)
 
 
-def original_cases():
+# Pair index is carried in the existing high flag bits. The first five values
+# retain their original meaning and binary corpus exactly.
+ORIGINAL_PAIRS = ((0,0),(1,1),(1,2),(2,3),(2,4),
+    (3,1),(3,2),(4,5),(4,6),(4,7),(4,8),(5,0),(5,9),(6,3),(6,4),
+    (7,5),(7,6),(7,7),(7,8),(0,9))
+AFFINE_PS = frozenset((0,1,3,7,8,9))
+PS21 = frozenset((6,8,9))
+INSTANCE_VS = frozenset((3,4,5,6))
+NO_FADE_VS = frozenset((2,6))
+
+
+def original_cases(first=0,last=20):
     cases=[]
     def add(profile,label,operations,**kw):
         c=dict(id=len(cases),label=label,mode=1,mask=0,alpha=0,write=15,fault=0,pattern=1,
-               flags=32|(profile<<16)|(64 if profile>=3 else 0),actual_profile=profile,ops=copy.deepcopy(operations))
+               flags=32|(profile<<16)|(64 if ORIGINAL_PAIRS[profile][0] in NO_FADE_VS else 0),actual_profile=profile,ops=copy.deepcopy(operations))
         extra=kw.pop('flags',0);c['flags']|=extra;c.update(kw)
-        for o in c['ops']:o['affine']=int(profile in (0,1,3))
+        for o in c['ops']:o['affine']=int(ORIGINAL_PAIRS[profile][1] in AFFINE_PS)
         cases.append(c)
-    for profile in range(5):
+    for profile in range(first,last):
         for gain in ORIGINAL_GAINS:
             add(profile,'original_pair_gain',[
                 op(rect=(0,0,.75,.75),color=(.5,.25,.125,.125),fade=.75,gain=gain),
@@ -461,22 +474,24 @@ def original_cases():
         for alpha_test in (1,2):
             add(profile,'original_alpha_test', [op(rect=(0,0,1,1),gain=4),op(z=.9,gain=4)],
                 flags=4|1024,mask=alpha_test)
-        if profile<3:
+        if ORIGINAL_PAIRS[profile][0] not in NO_FADE_VS:
             for fog_flags in (512,512|2048,512|4096):
                 add(profile,'original_vertex_fog', [op(rect=(0,0,1,1),gain=4)],flags=fog_flags)
             add(profile,'original_zero_fade',[op(rect=(0,0,1,1),fade=0,gain=16)])
-        if profile in (0,1,3):
+        if ORIGINAL_PAIRS[profile][1] in AFFINE_PS:
             add(profile,'original_negative_affine',[op(rect=(0,0,1,1),color=(0,0,0,.125),fade=.5,gain=4)])
         add(profile,'original_finite_source_cap',[op(rect=(0,0,1,1),color=(0,256,0,.125),fade=.5,gain=16)])
+        if profile >= 5:
+            add(profile,'original_decoded_cap_before_scale',[op(rect=(0,0,1,1),color=(256,256,256,.125),fade=.125,gain=.25)])
     return cases
 
 
 def coverage_cases():
-    cases=original_cases()
+    cases=original_cases(0,5)
     def add(profile,label,operations,alpha=0,flags=0):
         cases.append(dict(id=len(cases),label=label,mode=1,mask=0,alpha=alpha,write=15,fault=0,pattern=1,
-            flags=32|(profile<<16)|(64 if profile>=3 else 0)|flags,actual_profile=profile,ops=copy.deepcopy(operations)))
-        for o in cases[-1]['ops']:o['affine']=int(profile in (0,1,3))
+            flags=32|(profile<<16)|(64 if ORIGINAL_PAIRS[profile][0] in NO_FADE_VS else 0)|flags,actual_profile=profile,ops=copy.deepcopy(operations)))
+        for o in cases[-1]['ops']:o['affine']=int(ORIGINAL_PAIRS[profile][1] in AFFINE_PS)
     for profile in range(5):
         add(profile,'coverage_zero_rgb_alpha',[op(rect=(0,0,1,1),color=(0,0,0,0),gain=1)])
     for alpha in range(3):
@@ -487,6 +502,14 @@ def coverage_cases():
     for brackets in (2,16):
         add(2,'coverage_persistent_'+str(brackets),[copy.deepcopy((a,b)[i%2]) for i in range(brackets)],flags=2)
     add(2,'coverage_next_frame_clear',[op(rect=(0,0,1,1),z=.9,gain=1)])
+    # Keep all81 accepted coverage payloads first, including their IDs.
+    for c in original_cases(5,20):
+        c['id']=len(cases);cases.append(c)
+    for profile in range(5,20):
+        add(profile,'coverage_zero_rgb_alpha',[op(rect=(0,0,1,1),color=(0,0,0,0),gain=1)])
+        if ORIGINAL_PAIRS[profile][0] not in NO_FADE_VS:
+            for alpha in range(3):
+                add(profile,'coverage_zero_fade_alpha',[op(rect=(0,0,1,1),color=(.5,.25,.125,0),fade=0,gain=16)],alpha=alpha)
     return cases
 
 
@@ -518,7 +541,7 @@ def pass_cases():
 
 
 def original_fade(o,c,uv):
-    if c['actual_profile']>=3:return 1.
+    if ORIGINAL_PAIRS[c['actual_profile']][0] in NO_FADE_VS:return 1.
     if not c['flags']&512:return o['fade']
     vw=8 if c['flags']&16 else 16
     l,t,rr,b=o['rect']
@@ -537,7 +560,7 @@ def original_fade(o,c,uv):
 
 
 def original_uv(c,uv):
-    return (.5*uv[0]+.125,-.5*uv[1]+.875) if c['flags']&1024 else uv
+    return (.5*uv[0]+.125,-.5*uv[1]+.875) if c['flags']&1024 and ORIGINAL_PAIRS[c['actual_profile']][0] not in INSTANCE_VS else uv
 
 
 def mrt_sample(o,c,uv):
@@ -675,7 +698,7 @@ def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=
     caps=re.search(r'^MRT_CAPS slots=([2-9]) postblend=1 independent_masks=([01])$',text,re.M)
     assert caps,'MRT blend/mask caps'
     if coverage:assert int(caps[1])>=3,'three-output MRT slots'
-    shaders=None if fused_comparison else 288 if component else 201 if coverage else 42 if actual_original else 81 if branch_experiment else 78
+    shaders=None if fused_comparison else 528 if component else 381 if coverage else 77 if actual_original else 81 if branch_experiment else 78
     end='PASS_RESULT' if component else 'COVERAGE_RESULT' if coverage else 'ORIGINAL_RESULT' if actual_original else 'BRANCH_RESULT' if branch_experiment else 'MRT_RESULT'
     completion=f'FUSED_RESULT pass cases={len(cases)}' if fused_comparison else f'{end} pass cases={len(cases)} shaders={shaders}'
     assert lines[-1]==completion,'MRT clean completion'
@@ -735,7 +758,7 @@ def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=
         summary=validate_pass_timings(text,fused_comparison)
         if fused_comparison:
             twins=re.findall(r'^FUSED_CASE id=(\d+) rgba_depth_mask_exact=1 sources=(\d+)$',text,re.M)
-            assert len(cases)==60 and [(int(i),int(n)) for i,n in twins]==[(c['id'],len(c['ops'])) for c in cases],'fused image twins'
+            assert len(cases)==271 and [(int(i),int(n)) for i,n in twins]==[(c['id'],len(c['ops'])) for c in cases],'fused image twins'
         assert len(lines)==7+(3 if fused_comparison else 2)*len(rows)+36,'unexpected component output'
     elif coverage:
         parity=re.findall(r'^COVERAGE_CASE id=(\d+) parity=(\d+)$',text,re.M)
@@ -758,7 +781,7 @@ def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=
                 assert len(values)==8 and all(math.isfinite(v) and v>=0 for v in values)
                 summary.append(dict(width=width,height=height,mode=('native','best-case two-source MRT burst','two single-source MRT brackets','copy only','clear only','composite only')[variant],samples=8,median_ms=statistics.median(values),min_ms=min(values),max_ms=max(values)))
         assert len(lines)==7+len(rows)+len(timings),'unexpected MRT output'
-    result=dict(cases=len(cases),shader_creations=shaders,source_variants=25 if actual_original else 8,mrt_caps=dict(slots=int(caps[1]),postpixel_blending=True,independent_write_masks=bool(int(caps[2]))),source_shader_model='vs_2_0/ps_2_0; native full/partial precision variants',invariants=totals,
+    result=dict(cases=len(cases),shader_creations=shaders,source_variants=50 if actual_original else 8,mrt_caps=dict(slots=int(caps[1]),postpixel_blending=True,independent_write_masks=bool(int(caps[2]))),source_shader_model='vs_2_0/ps_2_0; native full/partial precision variants',invariants=totals,
                 branch_experiment=branch_experiment,exact_compositor_channels=totals['alpha']*4 if branch_experiment else None,max_rgb_tolerance_fraction=maximum,exact_alpha_pixels=256*len(cases),depth_stencil_pixels=256*len(cases),faults=faults,timings=summary)
     if component:result['high_code_identity']=dict(stable_seed_channels=stable_capzero,feedback_categories=feedback_categories,
         policy='GPU-composed feedback category is descriptive and bounded by exact zero-E retention count; static seed counts remain exact; every actual-A zero-E lane is compared bitwise inside the EXE')
@@ -785,8 +808,11 @@ def validate_original_report(text,data,cases,coverage=False,component=False,fuse
                     assert fraction<=1,(c['label'],label,i,k,v,w,fraction)
                     if label=='linear E':energy_maximum=max(energy_maximum,fraction)
                     else:native_maximum=max(native_maximum,fraction)
-    result.update(original_vertex_programs=3,original_pixel_programs=5,reviewed_pairs=5,
-        source_shader_model='Three unchanged original VS2; five original PS2 native _pp paths and25 full-precision emission tails',
+    result.update(original_vertex_programs=8,original_pixel_programs=10,reviewed_pairs=20,
+        source_shader_model='Eight unchanged original VS2; seven exact PS2.0 and three exact PS2.1 native _pp paths; 50 full-precision emission tails',
+        exact_pairs=[dict(vs=ORIGINAL_VS[v],ps=ORIGINAL_PS[p],pixel_model='2.1' if p in PS21 else '2.0',
+                          vertex_layout='instance' if v in INSTANCE_VS else 'default',fade=v not in NO_FADE_VS)
+                     for v,p in ORIGINAL_PAIRS],
         gains=list(ORIGINAL_GAINS),max_energy_tolerance_fraction=energy_maximum,
         max_native_oracle_tolerance_fraction=native_maximum,exact_source_alpha_pixels=alpha_count)
     return result
@@ -846,10 +872,10 @@ def validate_coverage_report(text,data,cases,component=False,fused_comparison=Fa
         for i,wanted in enumerate(coverage_expected(c)):
             assert tuple(mask[i*4:i*4+3])==(wanted,)*3,(c['label'],i,'positive RGB coverage union')
             covered+=wanted>0;zero+=wanted==0
-    result.update(coverage_variants=25,exact_two_three_output_channels=result['invariants']['bursts']*2048,
+    result.update(coverage_variants=50,exact_two_three_output_channels=result['invariants']['bursts']*2048,
         coverage_pixels=256*len(cases),covered_pixels=covered,uncovered_pixels=zero,
         mask_contract='FP16 RGB positive iff at least one surviving source sample; additive count tested through16 draws; mask alpha ignored',
-        source_shader_model='Three unchanged original VS2; five original PS2;25 two-output and25 three-output transformer variants')
+        source_shader_model='Eight unchanged original VS2; seven exact PS2.0 and three exact PS2.1;50 two-output and50 three-output transformer variants')
     if component:
         result.update(component=True,component_comparison_channels=4096*len(cases),indexed_source_draws=sum(len(c['ops']) for c in cases),
             steady_allocations=0,fault_controls=16,capability_twins=2,native_reset_passed=True,post_reset_same_instance_transaction=True,
@@ -913,11 +939,11 @@ def main():
         result.update(scope='Detached actual-original VS2/PS2 augmentation, native MRT parity and independent emission/composition oracle; no live route or native Windows runtime proof',
             original_sha256=originals,original_dir=str(args.programs),
             timing_scope='No new timing pass; accepted authored MRT/branch cost evidence is retained unchanged',
-            source_shader_model='Three unchanged original VS2; five untouched original PS2 versus25 pure-transformer gain variants',
+            source_shader_model='Eight unchanged original VS2; seven exact PS2.0 and three exact PS2.1 programs versus50 pure-transformer gain variants',
             limitations=['Actual original native _pp oC0 plus new plain full oC1 requires runtime acceptance; this run cannot qualify native Windows',
                 'Finite original texture/affine/fade inputs only; source NaN/Inf and adverse emission intermediates remain GPU-unqualified',
                 'Affine preshader comments stay opaque; fixture supplies known c0..2 directly, not CPU preshader execution',
-                'Original VS identity WVP, transformed UVs, c12 fade and b0 fog paths are exercised; no live material/global constant ownership proof',
+                'Original VS identity WVP, DEFAULT transformed UV versus INSTANCE direct UV, layout-specific c12/c10 fade and b0 fog paths are exercised; no live material/global constant ownership proof',
                 'Only shared ADD/ONE/ONE with full RGBA writes; inherited alpha tests are feasibility boundaries, not live admission',
                 'No source submission failure recovery, device-loss or HdrPass integration qualification'])
     if args.mode=='mrt-coverage':
@@ -935,7 +961,7 @@ def main():
             'Injected failures test explicit classification/restoration and partial-B ownership recovery; real failed draw atomicity and device-loss recovery are not guaranteed',
             'Same pass retains four programs across actual Reset, recreates four targets and completes one independently compared post-Reset source transaction; live HdrPass handoff/reference retirement remains unintegrated']
     if args.mode=='mrt-fused':
-        result.update(scope='Isolated fused A-to-B/E-zero copy prototype versus checkpoint separate copy/Clear;60 exact C/B/E/M/depth twins plus retained component fault/cap/Reset gates',
+        result.update(scope='Isolated fused A-to-B/E-zero copy prototype versus checkpoint separate copy/Clear; all exact C/B/E/M/depth twins plus retained component fault/cap/Reset gates',
             timing_scope='Paired separate-copy and fused component brackets, same EXE/device;2 warmup pairs and8 alternating measured pairs per resolution. QPC through EVENT includes BeginScene, prepare, one original DIP, composition, local owning-slot acknowledgement and EndScene. Seeds, source setup, allocations, per-frame M clear and readback excluded; no live HdrPass exchange/TAA or game-FPS claim')
     result['command']=command
     try:

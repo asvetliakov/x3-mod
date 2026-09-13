@@ -1060,7 +1060,7 @@ opt-in and is not enabled in run 7.
 
 ## Complete SM2 effects/engine extension
 
-Source candidate in `/tmp/x3-effects-engine-sm2`, based on `d627125`, adds the
+Source integrated at `67c7c39` (prepared from `d627125`) adds the
 complete fifteen-pair group from the [remaining effects/engine inventory](../reverse-engineering/effects-engine-remaining-emission.md#actionable-next-group):
 five DEFAULT and ten INSTANCE pairs, representing 232 archive occurrences.
 Together with the prior five, this reaches **20 exact pairs, 10 PS and 8 native
@@ -1099,9 +1099,9 @@ no 2.x optional capability is needed by the added arithmetic. Microsoft's
 provide at least twelve temporary registers and 96 instruction slots, while the
 [PS2 instruction table](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-instructions-ps-2-0)
 assigns three slots to each POW. Actual creation, native-output parity and MRT
-behavior for the added originals, particularly the 2.1 token profiles and
-retained native output PP modifier, remain GPU acceptance items. Native Windows
-execution remains unverified.
+behavior for the added originals, including the 2.1 token profiles and retained
+native output PP modifier, now pass the complete X3 detached qualification below.
+Live integration and native Windows execution remain unverified for this batch.
 
 The existing same-submission live boundary is unchanged. Registration creates
 only the augmented PS and caches exact pair eligibility, including VS programs
@@ -1153,5 +1153,100 @@ this source checkpoint. Independent Sol/high source review by
 `material_conversion_sites/emission_sm2_review` passes with no open finding.
 The reviewer separately compared all fifty baseline files with zero mismatches
 and checked the exact archive matrix, model-specific validation, preservation,
-resource/failure guards and cached lifecycle. Actual-original GPU/live
-qualification must exercise the complete fifteen-pair batch together.
+resource/failure guards and cached lifecycle. The complete fifteen-pair batch is
+included in the detached qualification below; live qualification remains pending.
+
+### Complete twenty-pair fixture and detached qualification
+
+The detached and live fixtures now cover all twenty exact pairs, eight untouched
+VS programs and ten PS programs, including the three exact PS2.1 identities.
+Actual PS2.1 creation and MRT output parity now pass the coordinated X3 detached
+runs below. Live temporal acceptance remains pending. The preceding five-pair
+GPU records remain unchanged as historical evidence.
+
+The detached runner has 311 original-source cases, 376 three-output coverage
+cases and 271 component/fused comparison cases. Each added pair exercises all
+five gains, native raw or affine RGB, sampled alpha, DEFAULT transformed UV or
+INSTANCE direct UV, its native fog/no-fade layout, finite HDR and decoded-cap
+ordering before quarter gain and fade. Coverage retains positive RGB at zero
+source RGB, alpha or fade, and exact two/three-output native B/E twins. The old
+70 original, 81 coverage and 60 component binary payloads remain exact prefixes,
+with compact hashes pinned in the focused report test. The existing fifty
+accepted transformed programs remain in the bank; production transformation is
+unchanged. The complete bank creates fifty two-output and fifty three-output
+variants. Original mode creates 77 shaders; coverage creates 381 across its
+functional and two timing fixtures; component mode creates 528 including its
+retained pass programs and capability/failure/Reset controls.
+
+The live runner retains its original twelve functional frames and appends one
+accepted-emitter/disappearance pair per exact shader pair: 52 frames, 30 native
+source submissions and 51 exact TAA readbacks per functional configuration.
+It requires each ordered native identity, correct layout-dependent constants,
+RGB/raw-alpha parity and restored state, a precise current 1,024-pixel coverage
+rectangle, and the following frame's empty current mask plus history reactivity.
+The four existing off/on and lazy/per-draw configurations remain. The benchmark
+still uses its original single pair, twelve-frame schedule and eight measured
+samples; source creation and expanded functional readbacks are outside timing.
+
+Focused host verification passes 32 detached report tests across
+`test_linear_emission_original_report`, `test_linear_emission_coverage_report`,
+`test_linear_emission_pass_report` and `test_linear_emission_fused_report`, plus
+15 tests in `test_linear_emission_live`. These are parser/oracle and regression
+checks, not GPU results. Two stale old-corpus assertions were corrected and
+only the affected fused tests rerun. Independent review also corrected the
+component shader-creation total to include its fourth, post-Reset fixture bank;
+the seven component report tests and detached build pass after that correction.
+The standalone detached fixture and live
+fixture translation unit both compile with strict x86 SSE2/legacy-stack flags.
+No production DLL build, Wine execution, install or gameplay was performed.
+Independent Sol/high fixture review by
+`material_conversion_sites/emission_sm2_review` passes after the creation-count
+correction, with no remaining finding. It independently checked the complete
+pair tables, targeted native VS layouts, retained binary prefixes, numeric
+oracles, live temporal/mask/state schedule and unchanged measured workloads.
+
+
+The root executed the frozen detached EXE
+`23ee47bc47d92df78da869985efb0978afdfdcaf8d1124aa0f76b4b0d58240dc`
+in bottle X3, with both runs completing successfully (exit 0). The
+[coverage record](../../verification/results/bottle-X3/linear-emission-mrt-coverage-gpu.json)
+and [fused record](../../verification/results/bottle-X3/linear-emission-mrt-fused-gpu.json)
+bind the same EXE and frozen source inputs, all eighteen original programs and
+all hundred transformed variants. Both runs generate identical variants, and
+each retained fifty-program subset matches the accepted golden above exactly.
+The scoped runs qualify the complete batch
+together; no additional original-only or component-only run was needed.
+
+Coverage passes 376 cases, with 401,408 exact native RGBA channel comparisons,
+802,816 exact two/three-output B/E channel comparisons and 96,256 final-alpha,
+depth and coverage pixels. The current mask contains 76,896 covered and 19,360
+uncovered pixels, matching the independent positive-union oracle. Native raw
+alpha, +0 emission alpha, fog/UV behavior, cap-before-fade/gain and zero
+RGB/fade/alpha coverage witnesses pass. The maximum RGB error consumes 45.44%
+of the allowed `3e-5 + .003*abs(expected)` tolerance; native output parity is
+bit-exact rather than tolerance-based.
+
+The fused/component run passes all 271 exact image twins (1,179,392 C/B/E/M/depth
+channels), 371 indexed source draws, 1,110,016 component-comparison channels and
+379,904 exact native RGBA channels. Its maximum RGB tolerance fraction is
+64.53%. It also passes sixteen injected failure controls, two capability twins,
+zero steady allocations and the actual Reset test: four retained programs,
+four recreated targets and a compared post-Reset transaction on the same pass.
+Across both runs, 165,632 final alpha/depth pixels and 315,296 zero-emission
+identity channels pass. Failed native draw atomicity and real device-loss
+recovery remain outside these injected-control guarantees.
+
+Diagnostic paired medians at 1280×768 / 1920×1080 are +0.0592 / +0.12235 ms for
+the coverage output, with mask-clear medians 0.30515 / 0.3694 ms. Fused-minus-
+separate-copy paired medians are −0.0396 / −0.04625 ms; the lower-resolution
+range crosses zero. These are QPC-through-EVENT fixture measurements with
+unchanged workloads, two warmup pairs and eight measured pairs, not gameplay
+FPS estimates. This acceptance covers finite authored inputs and supplied
+preshader outputs on X3; source NaN/Inf, native Windows behavior, live HdrPass
+handoff and supplemental current/disappearing TAA integration for the new pairs
+remain separate acceptance items. Production sources and installation are
+unchanged by this fixture qualification.
+The same independent Sol/high reviewer accepts both compact GPU records with
+no finding after checking the frozen input/output hashes, exact generated case
+bytes, ordered raw completion rows, aggregate invariants, timing summaries and
+accepted fifty-program golden. No verification rerun was needed for this audit.

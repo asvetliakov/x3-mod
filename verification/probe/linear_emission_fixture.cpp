@@ -942,11 +942,18 @@ struct MrtStats {
 // Hashes are derived identities. Original bytes and transformed programs stay
 // in the local corpus/output directory, never generated tracked includes.
 constexpr const char *actual_ps[] = {"8360f422de08b5bd", "9975b706e5a1c999",
-    "ff2473e73a6bdfa1", "8559522220507d5e", "875e780adb131b16"};
+    "ff2473e73a6bdfa1", "8559522220507d5e", "875e780adb131b16",
+    "39f3b4d5b6a5aaed", "47e15e20d63b0e93", "846c5c1a549f9491",
+    "c6dacb8f74b65c97", "f0c91793a75e1203"};
 constexpr const char *actual_vs[] = {"d5e1c75351ed3f04", "32e75459998d0388",
-    "089091aab2d5eb13"};
+    "089091aab2d5eb13", "5b7a3ccd9e7df00a", "6435a84d8ac5908e",
+    "89193868c61c3846", "a520be365951c9dc", "cfb2c31707d545bc"};
 constexpr float actual_gains[] = {0, .25f, 1, 4, 16};
-unsigned actual_vertex(unsigned profile) { return profile == 0 ? 0 : profile < 3 ? 1 : 2; }
+constexpr unsigned actual_pairs[][2] = {{0,0},{1,1},{1,2},{2,3},{2,4},
+    {3,1},{3,2},{4,5},{4,6},{4,7},{4,8},{5,0},{5,9},{6,3},{6,4},
+    {7,5},{7,6},{7,7},{7,8},{0,9}};
+unsigned actual_vertex(unsigned pair) { return actual_pairs[pair][0]; }
+unsigned actual_pixel(unsigned pair) { return actual_pairs[pair][1]; }
 std::vector<std::uint32_t> local_program(const std::string &path) {
   std::ifstream f(path, std::ios::binary | std::ios::ate);
   need(bool(f), "open local original");
@@ -970,9 +977,9 @@ struct MrtFixture : Fixture {
   Com<IDirect3DPixelShader9> originals[8], augmented[8], composition,
       branch_composition;
   bool use_branch = false, compare_compositors = false, actual = false, coverage_experiment = false, coverage_write = false;
-  Com<IDirect3DVertexShader9> actual_vertices[3];
-  Com<IDirect3DPixelShader9> actual_originals[5], actual_variants[5][5], coverage_variants[5][5];
-  std::vector<std::uint32_t> original_vertices[3], original_pixels[5];
+  Com<IDirect3DVertexShader9> actual_vertices[8];
+  Com<IDirect3DPixelShader9> actual_originals[10], actual_variants[10][5], coverage_variants[10][5];
+  std::vector<std::uint32_t> original_vertices[8], original_pixels[10];
   std::vector<IDirect3DTexture9 *> textures;
   Saved application;
   MrtFixture(IDirect3DDevice9 *device, unsigned w, unsigned h,
@@ -987,15 +994,19 @@ struct MrtFixture : Fixture {
     Words words;
     if (actual) {
       using namespace x3m::renderer;
-      for (unsigned v = 0; v < 3; ++v) {
+      for (unsigned v = 0; v < 8; ++v) {
         original_vertices[v] = local_program(std::string(programs) + "/vs_" + actual_vs[v] + ".bin");
         need(local_fingerprint(original_vertices[v]) == std::stoull(actual_vs[v], nullptr, 16), "original VS fingerprint");
         api(d->CreateVertexShader(reinterpret_cast<const DWORD *>(original_vertices[v].data()), &actual_vertices[v].p));
       }
-      for (unsigned p = 0; p < 5; ++p) {
+      for (const auto &pair : actual_pairs)
+        need(linear_emission_pair_reviewed(std::stoull(actual_vs[pair[0]], nullptr, 16),
+             std::stoull(actual_ps[pair[1]], nullptr, 16)), "reviewed actual pair");
+      for (unsigned p = 0; p < 10; ++p) {
         original_pixels[p] = local_program(std::string(programs) + "/ps_" + actual_ps[p] + ".bin");
         const auto saved = original_pixels[p];
-        need(linear_emission_pair_reviewed(local_fingerprint(original_vertices[actual_vertex(p)]), local_fingerprint(saved)), "reviewed actual pair");
+        need(local_fingerprint(saved) == std::stoull(actual_ps[p], nullptr, 16), "original PS fingerprint");
+        need(saved[0] == ((p == 6 || p == 8 || p == 9) ? 0xffff0201u : 0xffff0200u), "exact original PS model");
         api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(saved.data()), &actual_originals[p].p));
         for (unsigned g = 0; g < 5; ++g) {
           std::vector<std::uint32_t> transformed;
@@ -1094,7 +1105,7 @@ struct MrtFixture : Fixture {
   }
   unsigned profile(const Case &cs) const {
     unsigned p = cs.h.flags >> 16;
-    need(p < 5, "actual profile index"); return p;
+    need(p < 20, "actual pair index"); return p;
   }
   IDirect3DVertexShader9 *source_vertex(const Case &cs) {
     return actual ? actual_vertices[actual_vertex(profile(cs))].p : vs2.p;
@@ -1104,7 +1115,7 @@ struct MrtFixture : Fixture {
       unsigned g = 0;
       while (g < 5 && actual_gains[g] != cs.ops[index].gain) ++g;
       need(g < 5, "actual gain variant");
-      return extra ? (coverage_write ? coverage_variants[profile(cs)][g].p : actual_variants[profile(cs)][g].p) : actual_originals[profile(cs)].p;
+      return extra ? (coverage_write ? coverage_variants[actual_pixel(profile(cs))][g].p : actual_variants[actual_pixel(profile(cs))][g].p) : actual_originals[actual_pixel(profile(cs))].p;
     }
     unsigned v = cs.ops[index].affine | ((cs.h.flags & 64) ? 0 : 2) | ((cs.h.flags & 32) ? 4 : 0);
     return extra ? augmented[v].p : originals[v].p;
@@ -1119,8 +1130,10 @@ struct MrtFixture : Fixture {
       uv[0]=.5f; uv[2]=.125f; uv[5]=-.5f; uv[6]=.875f;
     }
     unsigned v = actual_vertex(profile(cs));
-    api(d->SetVertexShaderConstantF(v == 2 ? 4 : 10, uv, 2));
-    if (v != 2) {
+    const bool instance = v >= 3 && v <= 6;
+    // INSTANCE consumes native v1 directly. c10/c11 are its fade/fog, not UV.
+    if (!instance) api(d->SetVertexShaderConstantF(v == 2 ? 4 : 10, uv, 2));
+    if (v != 2 && v != 6) {
       float world[12] = {.5f,0,0,.25f, 0,.5f,0,-.125f, 0,0,0,1};
       float camera[12] = {1,0,0,.125f, 0,1,0,.25f, 0,0,1,3};
       float fade[4] = {cs.ops[index].fade,0,0,0};
@@ -1128,8 +1141,8 @@ struct MrtFixture : Fixture {
       BOOL enabled = (cs.h.flags & 512) != 0;
       api(d->SetVertexShaderConstantF(4, world, 3));
       api(d->SetVertexShaderConstantF(7, camera, 3));
-      api(d->SetVertexShaderConstantF(12, fade, 1));
-      api(d->SetVertexShaderConstantF(13, fog, 1));
+      api(d->SetVertexShaderConstantF(instance ? 10 : 12, fade, 1));
+      api(d->SetVertexShaderConstantF(instance ? 11 : 13, fog, 1));
       api(d->SetVertexShaderConstantB(0, &enabled, 1));
     }
   }
@@ -1894,9 +1907,9 @@ int main(int argc, char **argv) {
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
     std::printf(fused_comparison ? "FUSED_RESULT pass cases=%u\n"
-                : component ? "PASS_RESULT pass cases=%u shaders=288\n"
-                : coverage ? "COVERAGE_RESULT pass cases=%u shaders=201\n"
-                : actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=42\n"
+                : component ? "PASS_RESULT pass cases=%u shaders=528\n"
+                : coverage ? "COVERAGE_RESULT pass cases=%u shaders=381\n"
+                : actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=77\n"
                 : branch_experiment ? "BRANCH_RESULT pass cases=%u shaders=81\n"
                 : mrt             ? "MRT_RESULT pass cases=%u shaders=78\n"
                                   : "RESULT pass cases=%u shaders=24\n",
