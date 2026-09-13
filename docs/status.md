@@ -92,13 +92,16 @@ preserving hardware vertex processing and every other flag. Creation tests
 pass 18 scenarios / 218 assertions and strict x86 compilation passes; a new
 DLL and live bloom qualification remain pending.
 The user requested separate runtime exposure and bloom toggles for same-run
-comparisons; these are being implemented with visible state and logging before
-another such gameplay request. The user additionally requested an outdoor-space
+comparisons; the [reviewed controls](architecture/comparison-hotkeys.md) are now
+source-integrated with visible state and logging. Ctrl+Shift+F9 switches exposure
+and Ctrl+Shift+F10 switches enhanced bloom contribution. The combined build and
+qualification precede another such gameplay request. The user additionally requested an outdoor-space
 exposure evaluation against other modern space games, then adjustment. The independently reviewed [comparison and capture study](architecture/space-exposure-policy.md)
 favors fixed EV 0: all nine sampled frames request the old +2 EV ceiling,
 and sparse sky can trigger discontinuous targets. Fixed 0 is selected as the
 next production default, preserving AgX/bloom and optional Auto comparison.
-Implementation and visual acceptance remain pending; the installed default is unchanged. There is no new run for the HUD/stutter
+The default/control source is reviewed and integrated; build and visual
+acceptance remain pending. The installed default is unchanged. There is no new run for the HUD/stutter
 fixes yet.
 The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
@@ -132,7 +135,8 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   content remains decoded gamma-space game lighting. Scene-referred HDR lighting
   and HDR display output are incomplete. The space-aware exposure
   meter is installed, but runs 24/25 show near-permanent +2 EV. The reviewed
-  policy decision selects fixed EV 0 by default; implementation is pending.
+  policy decision selects fixed EV 0 by default; reviewed source is integrated
+  with same-run comparison controls, and installation remains pending.
 - **Bloom live integration is installed and awaits gameplay acceptance.** The
   [compositor boundary](architecture/hdr-bloom-boundary.md) passes 714 combined
   X3 checks across both reference models, including Reset/ResetEx and original

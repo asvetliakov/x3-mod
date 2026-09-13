@@ -14,7 +14,8 @@ Published practice in other space games is collected separately in
 
 The orchestrator selected **fixed EV 0 as the default policy** for this legacy-content
 stage, with Auto retained as an explicit option and same-run comparison.
-Implementation is in progress; the installed build still uses the old Auto default. The user
+The [default and comparison controls](comparison-hotkeys.md) are implemented
+and independently reviewed; the installed build still uses the old Auto default. The user
 explicitly accepts no exposure adjustment as a complete option. Here that
 means multiplier 1 and no automatic adaptation; AgX and independently enabled
 bloom remain. It preserves relative authored brightness as the camera turns and has

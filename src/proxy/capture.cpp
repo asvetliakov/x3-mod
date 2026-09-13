@@ -22,6 +22,8 @@
 #include "draw_input.h"
 #include "motion_capture.h"
 #include "motion_output.h"
+#include "comparison_controls.h"
+#include "comparison_notice.h"
 #include "engine_memory.h"
 #include "cpu_state.h"
 #include "../ownership/d3d9_ownership.h"
@@ -66,7 +68,7 @@ float taa_sharpen = 0.f;
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
 // defaulting to the stage-1 identity behaviour: X3M_HDR_TONEMAP=agx|identity,
 // X3M_HDR_DECODE=gamma2.2|pow22|srgb|none, X3M_HDR_LOOK=none|golden|punchy,
-// X3M_HDR_CLAMP=<float>, X3M_HDR_EXPOSURE=auto|manual, X3M_HDR_EV_MANUAL=<ev>
+// X3M_HDR_CLAMP=<float>, X3M_HDR_EXPOSURE=auto|manual|fixed, X3M_HDR_EV_MANUAL=<ev>
 // (implies manual), X3M_HDR_EV=<offset> (alias X3M_HDR_EV_OFFSET),
 // X3M_HDR_KEY, X3M_HDR_EV_MIN/MAX, X3M_HDR_ADAPT_UP/DOWN (seconds),
 // X3M_HDR_METER_BG (tile background floor, scene units), X3M_HDR_METER_MIN_LIT
@@ -150,6 +152,11 @@ struct Device : Hooks {
     MotionCapture motion;
     MotionOutput motion_output;
     renderer::BloomPass bloom;
+    ComparisonControls comparison;
+    ComparisonNotice comparison_notice;
+    bool comparison_report_pending = false;
+    std::uint64_t bloom_effective_frame = UINT64_MAX;
+    bool bloom_effective_on = false;
     CompositorInvocation* compositor = nullptr; // capture mutex; invocation owns its CPU/native pins
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
@@ -596,6 +603,9 @@ void retain_compositor_scene(void* storage,const MotionHdrScene& scene) noexcept
     call.input.sharpen=scene.display.sharpen;
     call.input.sharpen_constants=scene.display.sharpen_constants;
     call.input.exact_sharpen=true;
+    // OFF uses the same RGB replacement after the original compositor, with
+    // zero bloom contribution. Skipping replacement would restore native glow.
+    if(!ctx.comparison.bloom_requested)call.input.filter.strength=0.f;
 }
 bool compositor_current(const CompositorInvocation& call,bool refresh_owner=true) noexcept {
     if(!call.owner || !call.native_pin || call.revoked)return false;
@@ -688,7 +698,10 @@ void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
     const auto result=ctx.bloom.commit(call.candidate,call.input.boundary);
     call.ready=false; // every candidate is consumed at most once
     if(!result.state_preserved)ctx.motion_output.stateblock_applied();
-    if(result.committed)++ctx.bloom_committed;
+    if(result.committed){
+        ++ctx.bloom_committed;ctx.bloom_effective_frame=ctx.frame;
+        ctx.bloom_effective_on=ctx.comparison.bloom_requested;
+    }
     if((result.committed && ctx.bloom_committed==1) || (!result.committed && ctx.bloom_failure_reports++<8) || ctx.frame%300==0)
         log("bloom_commit device=%llu frame=%llu committed=%u reason=%s operation=%08lx restore=%08lx recovery=%08lx recovery_restore=%08lx original_preserved=%u state_preserved=%u cpu_ticks=%llu",
             ctx.id,ctx.frame,result.committed,result.reason,result.operation,result.restore,result.recovery,result.recovery_restore,
@@ -796,13 +809,102 @@ void finite_upload_metrics(IDirect3DDevice9* device,const Device& ctx,const char
         log("finite_upload_reason device=%llu frame=%llu phase=%s reason=%u name=%s count=%llu",ctx.id,ctx.frame,phase,i,
             ownership::finite_evidence_reason_name(static_cast<ownership::FiniteEvidenceReason>(i)),s.reasons[i]);
 }
+bool comparison_foreground() noexcept {
+    DWORD process=0;
+    const HWND window=GetForegroundWindow();
+    return window && GetWindowThreadProcessId(window,&process) && process==GetCurrentProcessId();
+}
+const char* comparison_bloom_reason(const Device& ctx) noexcept {
+    if(!bloom_requested)return "not_prepared";
+    if(!scene_hook::compositor_active())return "boundary_unavailable";
+    if(!ctx.bloom_attempted)return "waiting_scene";
+    if(!ctx.bloom.enabled())return ctx.bloom.caps().reason;
+    return "ready";
+}
+bool comparison_bloom_ready(const Device& ctx) noexcept {
+    return bloom_requested && scene_hook::compositor_active() && ctx.bloom.enabled();
+}
+void comparison_log(Device& ctx,const char* phase,const char* key,bool accepted) noexcept {
+    const auto exposure=ctx.motion_output.comparison_exposure();
+    const bool bloom_effective=ctx.bloom_effective_frame==ctx.frame;
+    log("renderer_comparison device=%llu frame=%llu phase=%s key=%s accepted=%u exposure=%s effective_ev=%.6g exposure_ready=%u exposure_used=%u exposure_reason=%s bloom_requested=%u bloom_ready=%u bloom_used=%u bloom_effective=%u bloom_reason=%s bloom_off_filter_runs=1",
+        ctx.id,ctx.frame,phase,key,accepted,exposure.automatic?"auto":"fixed",double(exposure.ev),
+        exposure.ready,exposure.frame_used,exposure.reason,ctx.comparison.bloom_requested,
+        comparison_bloom_ready(ctx),bloom_effective,bloom_effective&&ctx.bloom_effective_on,comparison_bloom_reason(ctx));
+}
+void comparison_begin_frame(Device& ctx) noexcept {
+    // Ordinary launches pay no comparison input/foreground polling. A
+    // requested-but-refused capability still accepts the UNAVAILABLE notice.
+    if(!hdr_requested || hdr_config.tonemap!=renderer::HdrTonemap::Agx)return;
+    ComparisonKeys keys{};
+    keys.foreground=comparison_foreground();
+    keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
+    keys.shift=(GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;
+    keys.exposure=(GetAsyncKeyState(VK_F9)&0x8000)!=0;
+    keys.bloom=(GetAsyncKeyState(VK_F10)&0x8000)!=0;
+    const auto action=ctx.comparison.sample(keys);
+    if(!action.exposure && !action.bloom)return;
+    const bool boundary=!ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
+        && ctx.motion_output.comparison_boundary_available();
+    if(action.exposure){
+        const bool accepted=boundary && ctx.motion_output.comparison_toggle_exposure();
+        comparison_log(ctx,"request","ctrl_shift_f9",accepted);
+    }
+    if(action.bloom){
+        const bool accepted=boundary && comparison_bloom_ready(ctx);
+        if(accepted)ctx.comparison.bloom_requested=!ctx.comparison.bloom_requested;
+        comparison_log(ctx,"request","ctrl_shift_f10",accepted);
+    }
+    ctx.comparison_notice.show(GetTickCount64());ctx.comparison_report_pending=true;
+}
+void comparison_notice_text(Device& ctx) noexcept {
+    const auto exposure=ctx.motion_output.comparison_exposure();
+    char first[48]{},second[48]{};
+    if(!exposure.ready) {
+        if(!std::strcmp(exposure.reason,"auto_not_prepared"))
+            std::snprintf(first,sizeof first,"FIXED EV %+.2f / NO AUTO",double(exposure.ev));
+        else std::snprintf(first,sizeof first,"EXPOSURE UNAVAILABLE");
+    } else if(exposure.automatic)
+        std::snprintf(first,sizeof first,"EXPOSURE AUTO%s",exposure.frame_used?"":" / WAITING");
+    else std::snprintf(first,sizeof first,"FIXED EV %+.2f%s",double(exposure.ev),exposure.frame_used?"":" / WAITING");
+    if(!comparison_bloom_ready(ctx))std::snprintf(second,sizeof second,"BLOOM %s",
+        !std::strcmp(comparison_bloom_reason(ctx),"waiting_scene")?"WAITING":"UNAVAILABLE");
+    else std::snprintf(second,sizeof second,"BLOOM %s%s",ctx.comparison.bloom_requested?"ON":"OFF",
+        ctx.bloom_effective_frame==ctx.frame && ctx.bloom_effective_on==ctx.comparison.bloom_requested?"":" REQUESTED");
+    ctx.comparison_notice.text(first,second);
+}
 HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
     CpuCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
+    // Declare before the outer lock: final retirement can stop the profiler,
+    // and must run after that lock is released. The holder keeps the CPU owner
+    // alive through its normal hooked Release and any reentrant callbacks.
+    struct NoticePin {
+        IDirect3DDevice9* device=nullptr;
+        std::shared_ptr<Device> owner;
+        ~NoticePin(){if(device)device->Release();}
+    } notice_pin;
     HookGuard lock;
-    auto& ctx=*devices.at(d);
+    // The optional notice can reenter through documented device/surface APIs.
+    // Pin CPU ownership for this entry; its native pin lasts through Present.
+    auto owner=devices.at(d);
+    auto& ctx=*owner;
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
     ctx.motion_output.before_present();
+    if(ctx.comparison_report_pending){comparison_log(ctx,"frame","none",true);ctx.comparison_report_pending=false;}
+    if(ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()
+            && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
+            && ctx.motion_output.comparison_boundary_available()){
+        comparison_notice_text(ctx);
+        ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);notice_pin.device=d;notice_pin.owner=owner;
+        BloomOperation internal(ctx);
+        const auto notice=ctx.comparison_notice.draw(d,ctx.original,ctx.caps.NumSimultaneousRTs);
+        if(FAILED(notice.restore))ctx.motion_output.comparison_state_failed(notice.restore);
+        if(FAILED(notice.operation)||FAILED(notice.restore)){
+            log("renderer_comparison_notice device=%llu frame=%llu operation=%08lx restore=%08lx drawn=%u",ctx.id,ctx.frame,notice.operation,notice.restore,notice.drawn);
+            ctx.comparison_notice.hide();
+        }
+    }
     const auto begin=telemetry::now();
     cpu.before_original();
     const HRESULT hr=fn(d,a,b,w,r);cpu.after_original();
@@ -863,6 +965,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     ctx.scene_depth.begin_frame(d,ctx.id,ctx.frame,ctx.capture);
     ctx.motion_output.begin_frame(ctx.frame,ctx.capture);
+    comparison_begin_frame(ctx);
     ctx.motion.begin_frame(d,ctx.frame,ctx.capture && motion_capture_requested && motion_live_replay_available &&
         object_trace::active() && object_lifetime::active());
     if (ctx.capture) log("frame_begin device=%llu frame=%llu",ctx.id,ctx.frame);
@@ -878,6 +981,8 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     // stack-local saved state. Ordinary Reset during original is supported.
     if(ctx.bloom_busy || ctx.motion_output.emission_operation_active())return D3DERR_INVALIDCALL;
     ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.emission_scene_owner=false;
+    ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;
+    ctx.bloom_effective_frame=UINT64_MAX;
     revoke_compositor(ctx);
     ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
     ctx.scene_depth.invalidate();
@@ -1777,6 +1882,10 @@ void initialize_log(HMODULE module) {
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
     hdr_config=x3m::renderer::HdrConfig{};
+    // Production defaults to camera-independent EV0. Optional AUTO shaders
+    // and chain are prepared with HDR, but fixed mode never meters a frame.
+    hdr_config.exposure=x3m::renderer::ExposureMode::Manual;
+    hdr_config.allow_auto_toggle=true;
     if(GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
     if(GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32)>0){
         if(!wcscmp(setting,L"none"))hdr_config.decode=x3::temporal::AgxDecode::none;
@@ -1788,7 +1897,8 @@ void initialize_log(HMODULE module) {
         else if(!wcscmp(setting,L"punchy"))hdr_config.look=x3::temporal::AgxLook::punchy;
     }
     if(GetEnvironmentVariableW(L"X3M_HDR_CLAMP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}
-    if(GetEnvironmentVariableW(L"X3M_HDR_EXPOSURE",setting,32)>0 && !wcscmp(setting,L"manual"))hdr_config.exposure=x3m::renderer::ExposureMode::Manual;
+    const DWORD exposure_length=GetEnvironmentVariableW(L"X3M_HDR_EXPOSURE",setting,32);
+    if(exposure_length>0 && exposure_length<32 && !wcscmp(setting,L"auto"))hdr_config.exposure=x3m::renderer::ExposureMode::Auto;
     if(GetEnvironmentVariableW(L"X3M_HDR_EV_MANUAL",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f){hdr_config.exposure=x3m::renderer::ExposureMode::Manual;hdr_config.ev_manual=v;}}
     if(GetEnvironmentVariableW(L"X3M_HDR_EV",setting,32)>0||GetEnvironmentVariableW(L"X3M_HDR_EV_OFFSET",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>=-16.f&&v<=16.f)hdr_config.params.ev_offset=v;}
     if(GetEnvironmentVariableW(L"X3M_HDR_KEY",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=64.f)hdr_config.params.key=v;}

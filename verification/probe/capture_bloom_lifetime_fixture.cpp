@@ -6,11 +6,13 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
+#include "../../src/proxy/comparison_controls.h"
 
 #define WINAPI
 using DWORD = std::uint32_t;
@@ -51,7 +53,7 @@ struct NativeDevice {
     bool reset_observed_defaults_dropped = false;
     bool reset_observed_pin_alive = false;
 };
-struct IDirect3DDevice9 { NativeDevice* native = nullptr; };
+struct IDirect3DDevice9 { NativeDevice* native = nullptr; ULONG Release(); };
 
 static ULONG WINAPI native_addref(IDirect3DDevice9* device) {
     ++device->native->addref_calls;
@@ -157,6 +159,8 @@ struct BloomPass {
 } // namespace renderer
 
 struct MotionOutput {
+    struct ComparisonExposure {bool ready=true,automatic=false,frame_used=true;float ev=0.f;const char* reason="ready";};
+    ComparisonExposure comparison_exposure() const noexcept {return {};}
     std::vector<Surface*> resources;
     bool releasing_ = false, taa_busy_ = false, emission_busy_ = false, boundary_available = true;
     unsigned restores = 0, releases = 0, resets = 0, after_resets = 0, stateblocks = 0;
@@ -204,6 +208,16 @@ struct Device : Hooks {
     MotionCapture motion{};
     MotionOutput motion_output{};
     renderer::BloomPass bloom{};
+    ComparisonControls comparison{};
+    struct Notice {
+        unsigned hides=0;char first[64]{},second[64]{};
+        void hide() noexcept {++hides;}
+        void text(const char* a,const char* b) noexcept {
+            std::snprintf(first,sizeof first,"%s",a);std::snprintf(second,sizeof second,"%s",b);
+        }
+    } comparison_notice;
+    bool comparison_report_pending=false,bloom_effective_on=false;
+    std::uint64_t bloom_effective_frame=UINT64_MAX;
     CompositorInvocation* compositor = nullptr;
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
@@ -218,6 +232,7 @@ std::atomic<unsigned> Device::destructors{0};
 
 std::recursive_mutex mutex;
 std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
+bool bloom_requested=true;
 
 namespace compositor_owner {
 struct Snapshot { std::uintptr_t renderer = 1, record = 2, device = 0, manager = 3, manager_device = 0; };
@@ -267,7 +282,12 @@ static bool glow_enabled = true;
 static bool compositor_glow_enabled(std::uintptr_t) noexcept { return glow_enabled; }
 static void retain_compositor_scene(void*, const MotionHdrScene&) noexcept {}
 
-struct HookGuard { std::unique_lock<std::recursive_mutex> lock{mutex}; };
+static thread_local unsigned hook_guard_depth=0;
+struct HookGuard {
+    std::unique_lock<std::recursive_mutex> lock{mutex};
+    HookGuard(){++hook_guard_depth;}
+    ~HookGuard(){--hook_guard_depth;}
+};
 struct CpuCallBoundary { void before_original() noexcept {} void after_original() noexcept {} };
 namespace ownership {
 struct AdmissionMonitor {};
@@ -286,7 +306,10 @@ static State& process() noexcept { static State value; return value; }
 template<class... Args> static void record(Args&&...) noexcept {}
 template<class... Args> static void summary(Args&&...) noexcept {}
 } // namespace telemetry
-namespace sampling_profiler { static void shutdown() noexcept {} }
+namespace sampling_profiler {
+static unsigned shutdown_under_lock=0;
+static void shutdown() noexcept {if(hook_guard_depth)++shutdown_under_lock;}
+}
 namespace chase_camera { static void note_last_device() noexcept {} }
 namespace resource_reader { static void report() noexcept {} }
 namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }
@@ -403,6 +426,56 @@ static void nonterminal_get_device(AliasModel model) {
     check(env.ctx->bloom.shutdowns == shutdowns, "nonterminal Release keeps resources");
 }
 
+// Actual production holder, with the same declaration order as Present. The
+// independent wiring assertion binds this lifetime witness to that call site.
+static void notice_pin_lifetime(AliasModel model,unsigned drop_at) {
+    ++scenarios;
+    Environment env(model);
+    std::weak_ptr<Device> cpu=env.ctx;
+    const unsigned bad_shutdowns=sampling_profiler::shutdown_under_lock;
+    unsigned present_calls=0;
+    {
+        NoticePin pin;
+        HookGuard outer;
+        auto owner=env.ctx;
+        native_addref(&env.device);pin.device=&env.device;pin.owner=owner;
+        {
+            BloomOperation injected(*owner);
+            Surface* alias=env.motion(0);alias->AddRef();
+            if(drop_at==1)release_device(&env.device); // reentry during notice
+            alias->Release();
+        }
+        check(env.native.destroyed==0&&!owner->bloom.shutdowns,"notice pin survives callback and temporary aliases");
+        ++present_calls;
+        if(drop_at==2)release_device(&env.device); // reentry from native Present
+        check(env.native.destroyed==0&&devices.count(&env.device)==1,"notice pin remains through native Present");
+        if(drop_at)env.ctx.reset();
+    }
+    check(present_calls==1,"notice path submits original Present once");
+    check(sampling_profiler::shutdown_under_lock==bad_shutdowns,"final notice-pin retirement runs after outer lock");
+    if(drop_at){
+        check(env.native.destroyed==1&&devices.count(&env.device)==0,"normal pin Release retires last owned resources");
+        check(cpu.expired(),"notice CPU owner outlives native/map retirement");
+    }else check(env.native.destroyed==0&&devices.count(&env.device)==1&&!env.ctx->bloom.shutdowns,"nonterminal notice pin keeps application resources");
+}
+
+static void notice_readiness_text() {
+    ++scenarios;
+    Environment env(AliasModel::NativeObject);
+    env.ctx->bloom.enabled_=false;env.ctx->bloom_attempted=false;
+    comparison_notice_text(*env.ctx);
+    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM WAITING"),"configured unattempted bloom is waiting");
+    env.ctx->bloom_attempted=true;comparison_notice_text(*env.ctx);
+    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM UNAVAILABLE"),"attempted refused bloom is unavailable");
+    env.ctx->bloom.enabled_=true;comparison_notice_text(*env.ctx);
+    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM ON REQUESTED"),"ready bloom without this-frame commit remains requested");
+    env.ctx->bloom_effective_frame=env.ctx->frame;env.ctx->bloom_effective_on=true;comparison_notice_text(*env.ctx);
+    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM ON"),"this-frame successful commit confirms ON");
+    bloom_requested=false;env.ctx->bloom_attempted=false;comparison_notice_text(*env.ctx);
+    check(!std::strcmp(env.ctx->comparison_notice.second,"BLOOM UNAVAILABLE"),"unrequested bloom is unavailable not waiting");
+    bloom_requested=true;
+}
+
 static void final_during_invocation(AliasModel model, bool worker) {
     ++scenarios;
     Device::destructors = 0;
@@ -464,6 +537,8 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     check(env.ctx->reset_generation == 1 && !env.ctx->reset_active && env.ctx->scene_thread == 0,
           "Reset generation/thread state remains revoked after result");
     check(!env.ctx->emission_scene_owner, "Reset revokes prior emission scene admission");
+    check(env.ctx->comparison_notice.hides==1&&env.ctx->bloom_effective_frame==UINT64_MAX,
+          "Reset hides comparison notice and discards effective bloom frame");
     check((extended ? env.native.reset_ex_calls.load() : env.native.reset_calls.load()) == 1,
           "correct Reset vtable slot called once");
     compositor_cleanup(nullptr, storage, nullptr, success ? 0 : 1);
@@ -583,6 +658,8 @@ static void nested_invocation() {
 
 } // namespace x3m
 
+ULONG IDirect3DDevice9::Release(){return x3m::release_device(this);}
+
 int main() {
     using namespace x3m;
     for (auto model : {AliasModel::NativeObject, AliasModel::OwnershipAlias}) {
@@ -590,6 +667,7 @@ int main() {
         final_during_invocation(model, false);
         final_during_invocation(model, true);
         nested_busy_release(model);
+        for(unsigned drop_at:{0u,1u,2u})notice_pin_lifetime(model,drop_at);
         for (bool extended : {false, true}) for (bool success : {false, true})
             reset_case(model, extended, success);
         for (bool extended : {false, true}) emission_busy_reset(model, extended);
@@ -601,6 +679,7 @@ int main() {
                          PreRefusal::ResetActive}) pre_refusal(refusal);
     pre_glow_off();
     nested_invocation();
+    notice_readiness_text();
     std::printf("capture_bloom_lifetime scenarios=%u checks=%u failures=%u\n", scenarios, checks, failures);
     return failures ? 1 : 0;
 }

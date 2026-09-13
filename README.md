@@ -1,10 +1,11 @@
 # X3 Modern Renderer
 
-Experimental renderer modernization for X3: Albion Prelude running through
-**CrossOver Preview**, Steam bottle. Current implementation: a reversible 32-bit
-D3D9 capture proxy. **HDR, TAA and the other visual enhancements are not implemented
-yet.** The [roadmap](docs/architecture/roadmap.md) defines the successive testable
-iterations and acceptance criteria.
+Experimental renderer modernization for X3: Albion Prelude in the **X3** bottle
+of **CrossOver Preview**. The reversible 32-bit D3D9 proxy implements TAA and
+AgX; FP16 scene rendering, materials and bloom remain under active development.
+True HDR display output and whole-scene linear lighting are incomplete. See
+[current status](docs/status.md) and [acceptance goals](docs/goals.md) for the
+tested state and remaining work, including native Windows qualification.
 
 ## Build
 
@@ -43,6 +44,16 @@ expect a hitch. `--capture-start 1000` delays the automatic capture;
 `--capture-frames 0` disables automatic capture (F8 still captures one frame).
 Capture records live queried state, including stateblock changes, rather than
 assuming setter calls describe all current state.
+
+AgX now starts at **fixed EV 0** (exposure multiplier 1). Launch with
+`--motion-output --hdr --hdr-tonemap --hdr-bloom` to prepare both comparison
+features; `--hdr-exposure auto` explicitly selects automatic exposure instead.
+During play, hold **Ctrl+Shift**, then press **F9** to switch AUTO/fixed EV 0,
+or **F10** to switch bloom ON/OFF. Release the function key between presses.
+A brief panel shows the effective state or an unavailable/pending request.
+These controls work only while the game is foreground; **F8 is unchanged**.
+See [comparison controls](docs/architecture/comparison-hotkeys.md) for capability,
+exposure handoff and verification limits.
 
 For one combined loading/render-boundary/cursor diagnostic session:
 

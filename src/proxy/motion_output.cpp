@@ -748,6 +748,36 @@ template<typename Fn> void MotionOutput::taa_call(Fn&& fn) noexcept {
     taa_busy_ = false;
 }
 void MotionOutput::invalidate_taa() noexcept { if (taa_) taa_->invalidate(); camera_previous_ = renderer::CameraState{}; }
+
+MotionOutput::ComparisonExposure MotionOutput::comparison_exposure() const noexcept {
+    ComparisonExposure result{};
+    result.automatic = hdr_config_.exposure == renderer::ExposureMode::Auto;
+    if (!hdr_enabled_ || !hdr_) return result;
+    result.automatic = hdr_->exposure_mode() == renderer::ExposureMode::Auto;
+    result.ev = hdr_->exposure().ev();
+    result.frame_used = counters_.hdr.writebacks && counters_.hdr.tonemap
+        && SUCCEEDED(counters_.hdr.tonemap_draw) && !counters_.hdr.unwind;
+    if (!hdr_->tonemap_active()) { result.reason = "tonemap_unavailable"; return result; }
+    if (!hdr_->caps().meter) { result.reason = "auto_not_prepared"; return result; }
+    result.ready = true; result.reason = "ready";
+    return result;
+}
+bool MotionOutput::comparison_toggle_exposure() noexcept {
+    if (!comparison_boundary_available() || !comparison_exposure().ready) return false;
+    const auto mode = hdr_->exposure_mode() == renderer::ExposureMode::Auto
+        ? renderer::ExposureMode::Manual : renderer::ExposureMode::Auto;
+    if (!hdr_->comparison_exposure(mode)) return false;
+    // Exposure controls tonemap and the HDR resolve's luminance weighting.
+    // Keep TAA enabled, but make its next resolve seed a fresh history.
+    invalidate_taa();
+    return true;
+}
+void MotionOutput::comparison_state_failed(HRESULT result) noexcept {
+    if (FAILED(result) && !motion_state_lost_) {
+        motion_state_lost_ = true; motion_state_error_ = result;
+        invalidate_taa();
+    }
+}
 // Lazily creates the pass and its resolve shader (one device reference) the
 // first time a frame reaches the copy with the route able to resolve.
 bool MotionOutput::ensure_taa() noexcept {

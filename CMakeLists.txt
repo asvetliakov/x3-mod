@@ -44,7 +44,7 @@ set_source_files_properties("${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
 add_library(d3d9 SHARED
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
   src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp
-  src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp
+  src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp src/proxy/comparison_notice.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp

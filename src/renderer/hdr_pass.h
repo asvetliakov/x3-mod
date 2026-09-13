@@ -72,12 +72,14 @@ struct HdrConfig {
     x3::temporal::AgxLook look = x3::temporal::AgxLook::none;
     float clamp_max = 0.f;               // <= 0: off (65504 uploaded)
     ExposureMode exposure = ExposureMode::Auto;
+    bool allow_auto_toggle = false;      // prepare optional meter, even in fixed mode
     float ev_manual = 0.f;
     ExposureParams params{};
     float fixed_dt = 0.f;
     // X3M_TAA_SHARPEN in [0, 1]: RCAS of the tonemapped (or identity) image
     // when the write-back samples a resolved TAA image (sharpen.h). 0: off.
     float sharpen = 0.f;
+    bool meter_requested() const noexcept { return exposure == ExposureMode::Auto || allow_auto_toggle; }
 };
 const char* hdr_tonemap_name(HdrTonemap tonemap) noexcept;
 const char* hdr_look_name(x3::temporal::AgxLook look) noexcept;
@@ -168,6 +170,10 @@ public:
     // after repeated draw failures); applied only to a resolved source.
     bool sharpen_active() const noexcept { return caps_.sharpen && sharpen_shader_ && sharpen_failures_ < tonemap_failure_limit; }
     const ExposureState& exposure() const noexcept { return exposure_; }
+    ExposureMode exposure_mode() const noexcept { return config_.exposure; }
+    // Comparison-only handoff at a closed frame boundary; never provisions
+    // meter resources that startup did not prepare. Parameters are unchanged.
+    bool comparison_exposure(ExposureMode mode) noexcept;
     // At the latch of a frame (after the redirect bound): copies the previous
     // frame's tile image from its ring target to system memory and locks it
     // (the lagged readback, a Present after the chain wrote it), reduces it

@@ -453,6 +453,21 @@ public:
     void before_present() noexcept;
     void after_present(HRESULT result) noexcept;
 
+    struct ComparisonExposure {
+        bool ready = false, automatic = false, frame_used = false;
+        float ev = 0.f;
+        const char* reason = "hdr_unavailable";
+    };
+    ComparisonExposure comparison_exposure() const noexcept;
+    bool comparison_toggle_exposure() noexcept;
+    // Late notice/controls admission. Present still follows a refused notice.
+    bool comparison_boundary_available() const noexcept {
+        return enabled_ && !scene_open_ && !active_queries_ && !shadow_.recording
+            && !reference_accounting_busy() && !draw_submission_blocked()
+            && hdr_state_ == HdrState::Off && !hdr_blocked_;
+    }
+    void comparison_state_failed(HRESULT result) noexcept;
+
     // Variant registry: called after a successful native create with the hash
     // the capture already computed. Pointer reuse replaces the old entry.
     void register_vertex_shader(IDirect3DVertexShader9* shader, const DWORD* code,

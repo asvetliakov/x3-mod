@@ -900,7 +900,7 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
             : call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_tonemap_program()), &tonemap_shader_);
         if (FAILED(caps_.tonemap_shader) || !tonemap_shader_) { drop(tonemap_shader_); caps_.tonemap = false; caps_.tonemap_reason = "shader"; }
         else { caps_.tonemap = true; caps_.tonemap_reason = "ok"; }
-        if (caps_.tonemap && config_.exposure == ExposureMode::Auto) {
+        if (caps_.tonemap && config_.meter_requested()) {
             IDirect3D9* factory = nullptr; D3DDEVICE_CREATION_PARAMETERS creation{}; D3DDISPLAYMODE mode{};
             if (SUCCEEDED(call<GetDirect3DFn>(GetDirect3D)(device_, &factory)) && factory
                 && SUCCEEDED(call<GetCreationFn>(GetCreationParameters)(device_, &creation)) && SUCCEEDED(call<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &mode))) {
@@ -944,7 +944,7 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
     }
     if (!caps_.tonemap) {
         drop(tonemap_shader_); caps_.meter = false;
-        if (config_.tonemap == HdrTonemap::Agx && config_.exposure == ExposureMode::Auto && (!std::strcmp(caps_.meter_reason, "ok") || !std::strcmp(caps_.meter_reason, "off"))) caps_.meter_reason = "tonemap";
+        if (config_.tonemap == HdrTonemap::Agx && config_.meter_requested() && (!std::strcmp(caps_.meter_reason, "ok") || !std::strcmp(caps_.meter_reason, "off"))) caps_.meter_reason = "tonemap";
     }
     if (!caps_.meter) { drop(meter_level0_shader_); drop(meter_reduce_shader_); }
     prepare_constants();
@@ -959,6 +959,19 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
 void HdrPass::prepare_constants() noexcept {
     if (!x3::temporal::prepare(agx_, exposure_.exposure(), config_.clamp_max, config_.decode, config_.look))
         x3::temporal::prepare(agx_, 1.f, config_.clamp_max, config_.decode, config_.look);
+}
+
+bool HdrPass::comparison_exposure(ExposureMode mode) noexcept {
+    if (!tonemap_active() || !caps_.meter) return false;
+    config_.exposure = mode; config_.ev_manual = 0.f;
+    exposure_.configure(config_.params, mode, 0.f);
+    exposure_.reset();
+    // Discard old-mode meter results rather than applying them when AUTO
+    // resumes. The first fresh meter then adapts from neutral exposure.
+    chain_pending_[0] = chain_pending_[1] = false;
+    chain_slot_ = 0; latch_ticks_ = 0;
+    prepare_constants();
+    return true;
 }
 
 // At the latch: the previous frame's tile image (queued into the ring's
