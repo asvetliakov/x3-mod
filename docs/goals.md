@@ -43,11 +43,12 @@ they are not a measured final-image baseline.
    commands, prerequisites and acceptance; completed runs are not new requests.
    The agent never launches the game. Copy each session and readbacks to a new
    `/tmp/x3-bottleX3-run<N>/` before bounded analysis.
-2. The [ordered-emission experiment](architecture/linear-emission-composition.md#detached-feasibility-qualification)
-   is reviewed and X3-qualified. Its measured untouched-pixel drift and unresolved
-   post-draw fallback require a revised architecture before live integration.
-   Preserve encoded pixels, a current native result and complete temporal
-   coverage; opaque material coverage alone does not justify changing blends.
+2. The [revised emission candidate](architecture/linear-emission-composition.md#detached-mrt-candidate-qualification)
+   passes detached X3 qualification for untouched-channel preservation and a
+   current native recovery image. A measured branch optimization showed no
+   consistent benefit; retain the baseline and qualify actual game shaders,
+   live target ownership and complete temporal coverage, with batching/cost
+   still under investigation. Opaque coverage alone does not justify changing blends.
 3. Analyse the user's captures and fix observed failures. Reader and adjacency
    fast modes require meaningful verification work with zero admitted mismatches;
    an all-fallback session does not qualify them. Keep exposure/bloom and

@@ -502,14 +502,44 @@ def parse_mrt_pixels(data,cases):
     return result
 
 
-def validate_mrt_report(text,data,cases):
+def validate_branch_timings(text):
+    rows=re.findall(r'^BRANCH_TIMING width=(\d+) height=(\d+) sparse=([01]) workload=([012]) branch=([01]) pair=(\d+) order=([01]) completed_ms=(\S+)$',text,re.M)
+    assert len(rows)==192,'paired branch timing rows'
+    result=[]
+    for width,height in ((1280,768),(1920,1080)):
+        for sparse in (0,1):
+            for workload in range(3):
+                block=[r for r in rows if tuple(map(int,r[:4]))==(width,height,sparse,workload)]
+                assert [(int(r[5]),int(r[6])) for r in block]==[(pair,order) for pair in range(8) for order in range(2)],'paired timing order'
+                assert [int(r[4]) for r in block]==[1-order if pair%2 else order for pair in range(8) for order in range(2)],'baseline/branch alternation'
+                values={branch:[float(r[7]) for r in block if int(r[4])==branch] for branch in (0,1)}
+                assert all(math.isfinite(v) and v>=0 for group in values.values() for v in group),'branch timing values'
+                differences=[a-b for a,b in zip(values[0],values[1])]
+                result.append(dict(width=width,height=height,coverage='sparse' if sparse else 'dense',
+                    authored_union_fraction=1/32 if sparse else .5,
+                    authored_per_source_fraction=1/64 if sparse else .3125,
+                    composed_coverage_fractions=([1/64 if sparse else .3125]*2 if workload==2 else [1/32 if sparse else .5]),
+                    workload=('composite only','best-case two-source burst','two single-source brackets')[workload],
+                    samples_per_variant=8,warmups_per_variant=2,
+                    baseline=dict(median_ms=statistics.median(values[0]),min_ms=min(values[0]),max_ms=max(values[0])),
+                    branch=dict(median_ms=statistics.median(values[1]),min_ms=min(values[1]),max_ms=max(values[1])),
+                    branch_wins=sum(d>0 for d in differences),ties=sum(d==0 for d in differences),
+                    pairs=[dict(pair=i,baseline_first=i%2==0,baseline_ms=a,branch_ms=b,baseline_minus_branch_ms=a-b)
+                           for i,(a,b) in enumerate(zip(values[0],values[1]))],
+                    paired_baseline_minus_branch_ms=dict(median=statistics.median(differences),minimum=min(differences),maximum=max(differences))))
+    return result
+
+
+def validate_mrt_report(text,data,cases,branch_experiment=False):
     lines=text.strip().splitlines()
     assert re.fullmatch(r'CAPS vs=fffe0300 ps=ffff0300 rt=[2-9]',lines[0]),'MRT shader caps'
     assert re.findall(r'^FORMAT name=(\w+) hr=00000000$',text,re.M)==['fp16_rt','fp16_blend','d24s8'],'MRT format caps'
     assert re.findall(r'^DEPTH_MATCH format=(\d+) hr=00000000$',text,re.M)==['113'],'MRT depth matches'
     caps=re.search(r'^MRT_CAPS slots=([2-9]) postblend=1 independent_masks=([01])$',text,re.M)
     assert caps,'MRT blend/mask caps'
-    assert lines[-1]==f'MRT_RESULT pass cases={len(cases)} shaders=78','MRT clean completion'
+    shaders=81 if branch_experiment else 78
+    end='BRANCH_RESULT' if branch_experiment else 'MRT_RESULT'
+    assert lines[-1]==f'{end} pass cases={len(cases)} shaders={shaders}','MRT clean completion'
     pattern=r'^MRT_CASE id=(\d+) sources=(\d+) bursts=(\d+) copy=(\d+) native=(\d+) zero=(\d+) alpha=(\d+) minuszero=(\d+) capzero=(\d+) infinite=(\d+) fallback=(\d+) incomplete=(\d+) refused=(\d+)$'
     rows=re.findall(pattern,text,re.M);assert len(rows)==len(cases),'MRT case rows'
     actual=parse_mrt_pixels(data,cases);maximum=0.;totals={k:0 for k in MRT_OPS};faults=[]
@@ -538,19 +568,27 @@ def validate_mrt_report(text,data,cases):
     control=next(c['id'] for c in cases if c['label']=='native_encoded_control')
     qualified=next(c['id'] for c in cases if c['label']=='composition_refusal_native_adoption')
     assert actual[control]==actual[qualified],'composition refusal did not adopt current native result'
-    timings=re.findall(r'^MRT_TIMING width=(\d+) height=(\d+) variant=(\d+) sample=(\d+) completed_ms=(\S+)$',text,re.M)
-    assert len(timings)==96,'MRT timing rows';summary=[]
-    for width,height in ((1280,768),(1920,1080)):
-        block=[x for x in timings if tuple(map(int,x[:2]))==(width,height)]
-        assert [int(x[3]) for x in block]==list(range(48)),'MRT timing order'
-        assert [int(x[2]) for x in block]==[5-i%6 if (i//6)%2 else i%6 for i in range(48)],'MRT variant order'
-        for variant in range(6):
-            values=[float(x[4]) for x in block if int(x[2])==variant]
-            assert len(values)==8 and all(math.isfinite(v) and v>=0 for v in values)
-            summary.append(dict(width=width,height=height,mode=('native','best-case two-source MRT burst','two single-source MRT brackets','copy only','clear only','composite only')[variant],samples=8,median_ms=statistics.median(values),min_ms=min(values),max_ms=max(values)))
-    assert len(lines)==7+len(rows)+len(timings),'unexpected MRT output'
-    return dict(cases=len(cases),shader_creations=78,source_variants=8,mrt_caps=dict(slots=int(caps[1]),postpixel_blending=True,independent_write_masks=bool(int(caps[2]))),source_shader_model='vs_2_0/ps_2_0; native full/partial precision variants',invariants=totals,
-                max_rgb_tolerance_fraction=maximum,exact_alpha_pixels=256*len(cases),depth_stencil_pixels=256*len(cases),faults=faults,timings=summary)
+    if branch_experiment:
+        comparisons=re.findall(r'^BRANCH_COMPARE id=(\d+) channels=(\d+)$',text,re.M)
+        assert [int(row[0]) for row in comparisons]==[c['id'] for c in cases],'branch comparison cases'
+        for c,row in zip(cases,comparisons):
+            assert int(row[1])==mrt_expected(c)[2]['alpha']*4,(c['label'],'exact compositor equality missing')
+        summary=validate_branch_timings(text)
+        assert len(lines)==7+len(rows)+len(comparisons)+192,'unexpected branch output'
+    else:
+        timings=re.findall(r'^MRT_TIMING width=(\d+) height=(\d+) variant=(\d+) sample=(\d+) completed_ms=(\S+)$',text,re.M)
+        assert len(timings)==96,'MRT timing rows';summary=[]
+        for width,height in ((1280,768),(1920,1080)):
+            block=[x for x in timings if tuple(map(int,x[:2]))==(width,height)]
+            assert [int(x[3]) for x in block]==list(range(48)),'MRT timing order'
+            assert [int(x[2]) for x in block]==[5-i%6 if (i//6)%2 else i%6 for i in range(48)],'MRT variant order'
+            for variant in range(6):
+                values=[float(x[4]) for x in block if int(x[2])==variant]
+                assert len(values)==8 and all(math.isfinite(v) and v>=0 for v in values)
+                summary.append(dict(width=width,height=height,mode=('native','best-case two-source MRT burst','two single-source MRT brackets','copy only','clear only','composite only')[variant],samples=8,median_ms=statistics.median(values),min_ms=min(values),max_ms=max(values)))
+        assert len(lines)==7+len(rows)+len(timings),'unexpected MRT output'
+    return dict(cases=len(cases),shader_creations=shaders,source_variants=8,mrt_caps=dict(slots=int(caps[1]),postpixel_blending=True,independent_write_masks=bool(int(caps[2]))),source_shader_model='vs_2_0/ps_2_0; native full/partial precision variants',invariants=totals,
+                branch_experiment=branch_experiment,exact_compositor_channels=totals['alpha']*4 if branch_experiment else None,max_rgb_tolerance_fraction=maximum,exact_alpha_pixels=256*len(cases),depth_stencil_pixels=256*len(cases),faults=faults,timings=summary)
 
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -560,14 +598,14 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--exe',type=Path,default=EXE)
     p.add_argument('--raw-dir',type=Path)
-    p.add_argument('--mode',choices=('ordered','mrt'),default='ordered')
+    p.add_argument('--mode',choices=('ordered','mrt','mrt-branch'),default='ordered')
     args=p.parse_args()
-    if args.raw_dir is None:args.raw_dir=Path('/tmp/x3-linear-emission-gpu'+('-mrt' if args.mode=='mrt' else ''))
+    if args.raw_dir is None:args.raw_dir=Path('/tmp/x3-linear-emission-gpu'+('-'+args.mode if args.mode!='ordered' else ''))
     assert bottle.BOTTLE=='X3','set X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(),'game running; refused'
     assert args.exe.is_file(),'build the detached EXE explicitly first'
     args.raw_dir.mkdir(parents=True,exist_ok=True)
-    cases=mrt_cases() if args.mode=='mrt' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
+    cases=mrt_cases() if args.mode!='ordered' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
     report=args.raw_dir/'report.txt';pixels=args.raw_dir/'pixels.bin'
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,
                 scope='Detached authored D3D9 ordered RGB/actual alpha, closed-world R32F mask producer, drift/cost/fault experiment; no live renderer or native Windows runtime qualification',
@@ -580,7 +618,7 @@ def main():
                              'Injected failures refuse selected calls; no device-loss/partial-API-execution or successful post-submission native-recovery guarantee',
                              'Fullscene decode/reencode can drift untouched pixels; cap effects and rounding are reported separately'],
                 code_sha256={name:sha(ROOT/name) for name in INPUTS},executable_sha256=sha(args.exe),raw_dir=str(args.raw_dir))
-    if args.mode=='mrt':
+    if args.mode!='ordered':
         result.update(scope='Detached authored PS2 same-draw native B/linear E and per-channel untouched A/composite C experiment; no live HdrPass, temporal producer or native Windows runtime proof',
             targets=dict(A='FP16 immutable encoded candidate',B='FP16 current native result',E='FP16 linear emission',C='FP16 publication candidate',depth='D24S8',msaa=False,srgb=False),
             tolerance=dict(rgb_relative=RGB_REL,rgb_absolute=RGB_ABS,native_RT0='exact original/augmented GPU bytes',zero_E='exact per-channel A bits',alpha='exact B alpha'),
@@ -592,13 +630,17 @@ def main():
                           'Composition refusal adopts B after successful source calls; failed/partial MRT source draws and failed bind/restore are not rollback-qualified',
                           'One synthetic two-source burst; batching across application setters and live ownership/consumer integration are unapproved'])
     command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=b',str(args.exe),'Z:'+str(case_path),'Z:'+str(pixels)]
-    if args.mode=='mrt':command.append('--mrt')
+    if args.mode!='ordered':command.append('--'+args.mode)
+    if args.mode=='mrt-branch':
+        result.update(scope='Detached zero-emission PS3 compositor branch experiment against unchanged baseline; same38 authored MRT cases, no live route or native Windows runtime proof',
+            timing_scope='Paired baseline/branch QPC through EVENT completion with alternating order, matching inputs, cached source textures and pre-window fences; native-reference/paired-image readback excluded. Dense union50%, sparse disjoint union3.125%; single-source compositions cover31.25% or1.5625% each',
+            comparison='All successful candidate compositions are compared RGBA bit-for-bit from identical A/E/B; native/refusal cases do not execute a compositor. Every case retains the original native-B/zero-lane/alpha/depth checks')
     try:
         with report.open('w') as out,(args.raw_dir/'wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=900)
         result['exit_code']=process.returncode
         assert process.returncode==0,'fixture failed; '+str(report)
-        result.update((validate_mrt_report if args.mode=='mrt' else validate_report)(report.read_text(),pixels.read_bytes(),cases))
+        result.update(validate_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='ordered' else validate_mrt_report(report.read_text(),pixels.read_bytes(),cases,args.mode=='mrt-branch'))
         assert result['code_sha256']=={name:sha(ROOT/name) for name in INPUTS},'source changed during run'
         assert result['executable_sha256']==sha(args.exe),'EXE changed during run'
         result['passed']=True
@@ -606,7 +648,7 @@ def main():
         result['error']=repr(error)
         raise
     finally:
-        path=bottle.results_dir(ROOT)/('linear-emission-mrt-gpu.json' if args.mode=='mrt' else 'linear-emission-gpu.json') if result['passed'] else args.raw_dir/'failed-result.json'
+        path=bottle.results_dir(ROOT)/('linear-emission-'+args.mode+'-gpu.json' if args.mode!='ordered' else 'linear-emission-gpu.json') if result['passed'] else args.raw_dir/'failed-result.json'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(result,indent=2)+'\n')
         print(json.dumps({k:result[k] for k in ('passed','cases','error','max_rgb_tolerance_fraction') if k in result}))
 

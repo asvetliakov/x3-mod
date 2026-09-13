@@ -575,3 +575,47 @@ full-screen gamma arithmetic for zero-emission pixels before adding live
 ownership or original-shader augmentation; any optimization must retain the
 same image, alpha, zero-channel and recovery checks. Complete reactive coverage
 and actual-original/native-Windows qualification remain independent gates.
+
+### Detached zero-emission branch experiment
+
+Independent source and evidence review found no open defect in the bounded
+branch experiment. The shader samples A, E and B before control flow, sanitizes
+E, and skips only the decode/add/encode work when all three E channels compare
+equal to zero; the branch contains no texture or derivative-dependent
+instruction. The comparison renders the baseline and branch compositors from
+the same unchanged A/E/B inputs into distinct targets, after native parity has
+already been read back. Timing reinitializes and fences matching inputs for each
+alternating pair and excludes comparison/readback work.
+
+The accepted
+[X3 branch result](../../verification/results/bottle-X3/linear-emission-mrt-branch-gpu.json)
+passes the same 38 cases with 81 shader creations. All 115,712 successful
+baseline-versus-branch RGBA channels compare bit-for-bit; the existing 118,784
+copy and 118,784 native-parity channels, 9,728 alpha and depth pixels, 74,577
+zero-E lanes (including 86 negative-zero and 172 high-code witnesses), 256
+positive-infinity sanitation lanes, three fallbacks and two refusals also pass.
+The largest analytical RGB error remains 0.5634 of tolerance.
+
+Across eight pairs per workload, median paired baseline-minus-branch deltas in
+milliseconds (positive favors the branch) and branch wins were:
+
+| Size | Coverage | Composite | Two-source burst | Two brackets |
+| --- | --- | ---: | ---: | ---: |
+| 1280x768 | dense | +0.00185, 5/8 | -0.00160, 4/8 | +0.09950, 5/8 |
+| 1280x768 | sparse | -0.00225, 2/8 | -0.00100, 4/8 | +0.00560, 4/8 |
+| 1920x1080 | dense | -0.00205, 4/8 | -0.00635, 3/8 | -0.00415, 2/8 |
+| 1920x1080 | sparse | +0.00535, 5/8 | -0.00265, 4/8 | -0.00160, 3/8 |
+
+The branch won 45 of 96 pairs with no ties, while individual paired deltas
+included sizeable outliers in both directions. This run establishes image
+parity for the authored domain but does not show a consistent performance
+benefit. It has the same scope limits as the detached MRT candidate: no original
+shader augmentation, live route, native-Windows execution, gameplay cost or
+additional nonfinite-input qualification.
+
+Orchestrator decision: keep the baseline compositor. The branch remains a
+separate reproducible experiment, not a selected optimization; do not repeat
+this benchmark merely to seek a favorable result. Proceed with bounded
+actual-original shader qualification and examine whether the recorded consecutive
+draws provide a defensible batching opportunity. The fixture cost remains a
+live-integration concern, not proof of game FPS or a GPU-only bottleneck.

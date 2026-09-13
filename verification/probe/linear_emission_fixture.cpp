@@ -871,7 +871,7 @@ Words source_ps2(unsigned variant, bool augmented) {
   w.push_back(0xffff);
   return w;
 }
-Words selective_composite() {
+Words selective_composite(bool branch = false) {
   Words w{0xffff0300};
   ins(w, 31, {0x80000005, dst(1, 0, 3)});
   for (unsigned s = 0; s < 3; ++s)
@@ -884,10 +884,20 @@ Words selective_composite() {
   ins(w, 11, {dst(0, 5, 7), src(0, 5), src(2, 20, 0)});
   ins(w, 10, {dst(0, 5, 7), src(0, 5), src(2, 20, 0x55)});
   ins(w, 1, {dst(0, 0), src(0, 4)});
+  if (branch) {
+    // All three TEXLDs precede dynamic control flow. No derivative-dependent
+    // operation occurs inside the branch; exact zero is a contract value.
+    // https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/if-comp---ps
+    ins(w, D3DSIO_MAX, {dst(0, 7, 1), src(0, 5, 0), src(0, 5, 0x55)});
+    ins(w, D3DSIO_MAX, {dst(0, 7, 1), src(0, 7, 0), src(0, 5, 0xaa)});
+    ins(w, D3DSIO_IFC | (D3DSPC_GT << 16), {src(0, 7, 0), src(2, 20, 0)});
+  }
   gamma(w, false);
   ins(w, 2, {dst(0, 0, 7), src(0, 0), src(0, 5)});
   gamma(w, true);
   ins(w, 88, {dst(0, 0, 7), src(0, 5, 0xe4, true), src(0, 4), src(0, 0)});
+  if (branch)
+    ins(w, D3DSIO_ENDIF, {});
   ins(w, 1, {dst(0, 0, 8), src(0, 6, 0xff)});
   ins(w, 1, {dst(8, 0), src(0, 0)});
   w.push_back(0xffff);
@@ -924,17 +934,21 @@ struct MrtStats {
   unsigned sources = 0, bursts = 0, copies = 0, native_channels = 0,
            zero_channels = 0, alpha_channels = 0, negative_zero_channels = 0,
            cap_zero_channels = 0, infinite_channels = 0, fallbacks = 0,
-           incomplete = 0, refused = 0;
+           incomplete = 0, refused = 0, compared_channels = 0;
 };
 struct MrtFixture : Fixture {
   Target composite, reference;
   Target *a = &scene, *b = &scratch, *e = &layer, *c = &composite;
   Com<IDirect3DVertexShader9> vs2;
-  Com<IDirect3DPixelShader9> originals[8], augmented[8], composition;
+  Com<IDirect3DPixelShader9> originals[8], augmented[8], composition,
+      branch_composition;
+  bool use_branch = false, compare_compositors = false;
   std::vector<IDirect3DTexture9 *> textures;
   Saved application;
-  MrtFixture(IDirect3DDevice9 *device, unsigned w, unsigned h)
-      : Fixture(device, w, h, false), application(device) {
+  MrtFixture(IDirect3DDevice9 *device, unsigned w, unsigned h,
+             bool branch_experiment = false)
+      : Fixture(device, w, h, false), use_branch(branch_experiment),
+        compare_compositors(branch_experiment && w == 16), application(device) {
     target(composite, D3DFMT_A16B16G16R16F);
     if (w == 16)
       target(reference, D3DFMT_A16B16G16R16F);
@@ -948,6 +962,10 @@ struct MrtFixture : Fixture {
     }
     words = selective_composite();
     api(d->CreatePixelShader(words.data(), &composition.p));
+    if (branch_experiment) {
+      words = selective_composite(true);
+      api(d->CreatePixelShader(words.data(), &branch_composition.p));
+    }
   }
   ~MrtFixture() {
     d->SetRenderTarget(1, nullptr);
@@ -994,14 +1012,17 @@ struct MrtFixture : Fixture {
       api(tex->UnlockRect(0));
     }
   }
-  void initialize_mrt(const Case &cs) {
+  void initialize_mrt(const Case &cs, bool reuse_textures = false) {
     single(scene);
     a = &scene;
     b = &scratch;
     e = &layer;
     c = &composite;
     Fixture::initialize(cs);
-    make_textures(cs);
+    if (!reuse_textures)
+      make_textures(cs);
+    else
+      need(textures.size() == cs.ops.size(), "cached source texture count");
     single(*a);
     fence();
   }
@@ -1072,8 +1093,8 @@ struct MrtFixture : Fixture {
     rs(D3DRS_DITHERENABLE, FALSE);
     api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
   }
-  void compose() {
-    single(*c);
+  void compose_to(Target &output, bool branch) {
+    single(output);
     api(d->SetDepthStencilSurface(nullptr));
     base();
     rs(D3DRS_DITHERENABLE, FALSE);
@@ -1088,11 +1109,12 @@ struct MrtFixture : Fixture {
     api(d->SetTexture(0, a->texture.p));
     api(d->SetTexture(1, e->texture.p));
     api(d->SetTexture(2, b->texture.p));
-    api(d->SetPixelShader(composition.p));
+    api(d->SetPixelShader(branch ? branch_composition.p : composition.p));
     quad(full());
     for (unsigned s = 0; s < 3; ++s)
       api(d->SetTexture(s, nullptr));
   }
+  void compose() { compose_to(*c, use_branch); }
   void publish(Target &target) {
     single(target);
     api(d->SetDepthStencilSurface(application.depth.p));
@@ -1292,11 +1314,21 @@ struct MrtFixture : Fixture {
         continue;
       }
       compose();
+      // Native-reference readback is finished. Its target can now hold the
+      // other compositor without allocating or overwriting A/B/E/current C.
+      if (checks && compare_compositors)
+        compose_to(reference, !use_branch);
       if (checks) {
         api(d->EndScene());
         fence();
         auto energy = read(*e, true), native = read(*b, true),
              result = read(*c, true);
+        if (compare_compositors) {
+          auto other = read(reference, true);
+          need(std::memcmp(result.data(), other.data(), result.size() * 4) == 0,
+               "branch compositor differs from baseline bits");
+          out.compared_channels += width * height * 4;
+        }
         for (unsigned p = 0; p < width * height; ++p) {
           need(energy[p * 4 + 3] == 0 && !std::signbit(energy[p * 4 + 3]),
                "E alpha is not deterministic positive zero");
@@ -1350,8 +1382,63 @@ struct MrtFixture : Fixture {
     fence();
   }
 };
+void branch_timings(MrtFixture &f, unsigned width, unsigned height,
+                    LARGE_INTEGER frequency) {
+  for (unsigned sparse = 0; sparse < 2; ++sparse)
+    for (unsigned workload = 0; workload < 3; ++workload) {
+      Case cs = bench(1, 0, 1, workload == 2);
+      cs.h.flags |= 32;
+      cs.ops.resize(2);
+      cs.h.count = 2;
+      if (sparse) {
+        cs.ops[0].x0 = .125f;
+        cs.ops[0].y0 = .125f;
+        cs.ops[0].x1 = .25f;
+        cs.ops[0].y1 = .25f;
+        cs.ops[1].x0 = .375f;
+        cs.ops[1].y0 = .375f;
+        cs.ops[1].x1 = .5f;
+        cs.ops[1].y1 = .5f;
+      }
+      // Dense union=50%; sparse disjoint rectangles union=1/32=3.125%.
+      // Both dimensions give integral rectangle edges at both benchmark sizes.
+      f.initialize_mrt(cs);
+      for (unsigned pair = 0; pair < 10; ++pair)
+        for (unsigned order = 0; order < 2; ++order) {
+          unsigned branch = pair % 2 ? 1 - order : order;
+          f.use_branch = branch != 0;
+          f.initialize_mrt(cs, true);
+          if (workload == 0) {
+            api(f.d->BeginScene());
+            f.copy(*f.a, *f.b);
+            f.clear_emission();
+            for (unsigned i = 0; i < 2; ++i) {
+              f.source_state(cs, i, *f.b, true);
+              f.quad(cs.ops[i], cs.h.flags);
+            }
+            api(f.d->EndScene());
+            f.fence();
+          }
+          LARGE_INTEGER begin, end;
+          QueryPerformanceCounter(&begin);
+          if (workload == 0)
+            f.components(5);
+          else
+            f.run_mrt(cs, false);
+          QueryPerformanceCounter(&end);
+          if (pair >= 2)
+            std::printf(
+                "BRANCH_TIMING width=%u height=%u sparse=%u workload=%u "
+                "branch=%u pair=%u order=%u completed_ms=%.9f\n",
+                width, height, sparse, workload, branch, pair - 2, order,
+                1000. * double(end.QuadPart - begin.QuadPart) /
+                    frequency.QuadPart);
+        }
+    }
+}
 void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
-                    const char *path, IDirect3DSurface9 *back) {
+                    const char *path, IDirect3DSurface9 *back,
+                    bool branch_experiment = false) {
   D3DCAPS9 caps{};
   api(device->GetDeviceCaps(&caps));
   const DWORD required = D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
@@ -1365,7 +1452,7 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
            (caps.PrimitiveMiscCaps & required) == required,
        "same-format MRT shared blending caps");
   {
-    MrtFixture f(device, 16, 16);
+    MrtFixture f(device, 16, 16, branch_experiment);
     std::ofstream raw(path, std::ios::binary);
     need(bool(raw), "MRT raw output");
     for (const auto &cs : cases) {
@@ -1386,6 +1473,9 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
           result.negative_zero_channels, result.cap_zero_channels,
           result.infinite_channels, result.fallbacks, result.incomplete,
           result.refused);
+      if (branch_experiment)
+        std::printf("BRANCH_COMPARE id=%u channels=%u\n", cs.h.id,
+                    result.compared_channels);
     }
     need(bool(raw), "MRT raw write");
     f.single(f.scene);
@@ -1394,38 +1484,43 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
   LARGE_INTEGER frequency;
   need(QueryPerformanceFrequency(&frequency), "QPC frequency");
   for (auto size : {std::pair<unsigned, unsigned>{1280, 768}, {1920, 1080}}) {
-    MrtFixture f(device, size.first, size.second);
-    // One observed-count two-source burst: native, best-case batch, per-source.
-    // Copy/clear/composite groups are separate completion costs, not GPU times
-    // and not an additive decomposition of the bracket's overlapped execution.
-    for (unsigned iteration = 0; iteration < 60; ++iteration) {
-      unsigned variant =
-          (iteration / 6) % 2 ? 5 - iteration % 6 : iteration % 6;
-      Case cs = bench(variant ? 1 : 0, 0, 1, variant == 2);
-      cs.h.flags |= 32;
-      cs.ops.resize(2);
-      cs.h.count = 2;
-      f.initialize_mrt(cs);
-      if (variant >= 3) {
-        api(device->BeginScene());
-        f.copy(*f.a, *f.b);
-        f.clear_emission();
-        api(device->EndScene());
-        f.fence();
+    MrtFixture f(device, size.first, size.second, branch_experiment);
+    if (branch_experiment) {
+      branch_timings(f, size.first, size.second, frequency);
+    } else {
+      // One observed-count two-source burst: native, best-case batch,
+      // per-source. Copy/clear/composite groups are separate completion costs,
+      // not GPU times and not an additive decomposition of the bracket's
+      // overlapped execution.
+      for (unsigned iteration = 0; iteration < 60; ++iteration) {
+        unsigned variant =
+            (iteration / 6) % 2 ? 5 - iteration % 6 : iteration % 6;
+        Case cs = bench(variant ? 1 : 0, 0, 1, variant == 2);
+        cs.h.flags |= 32;
+        cs.ops.resize(2);
+        cs.h.count = 2;
+        f.initialize_mrt(cs);
+        if (variant >= 3) {
+          api(device->BeginScene());
+          f.copy(*f.a, *f.b);
+          f.clear_emission();
+          api(device->EndScene());
+          f.fence();
+        }
+        LARGE_INTEGER begin, end;
+        QueryPerformanceCounter(&begin);
+        if (variant < 3)
+          f.run_mrt(cs, false);
+        else
+          f.components(variant);
+        QueryPerformanceCounter(&end);
+        if (iteration >= 12)
+          std::printf("MRT_TIMING width=%u height=%u variant=%u sample=%u "
+                      "completed_ms=%.9f\n",
+                      size.first, size.second, variant, iteration - 12,
+                      1000. * double(end.QuadPart - begin.QuadPart) /
+                          frequency.QuadPart);
       }
-      LARGE_INTEGER begin, end;
-      QueryPerformanceCounter(&begin);
-      if (variant < 3)
-        f.run_mrt(cs, false);
-      else
-        f.components(variant);
-      QueryPerformanceCounter(&end);
-      if (iteration >= 12)
-        std::printf("MRT_TIMING width=%u height=%u variant=%u sample=%u "
-                    "completed_ms=%.9f\n",
-                    size.first, size.second, variant, iteration - 12,
-                    1000. * double(end.QuadPart - begin.QuadPart) /
-                        frequency.QuadPart);
     }
     f.single(f.scene);
     api(device->SetRenderTarget(0, back));
@@ -1437,9 +1532,12 @@ int main(int argc, char **argv) {
   HWND window = nullptr;
   HMODULE runtime = nullptr;
   try {
-    need(argc == 3 || (argc == 4 && std::strcmp(argv[3], "--mrt") == 0),
-         "arguments: cases.bin pixels.bin [--mrt]");
+    need(argc == 3 ||
+             (argc == 4 && (std::strcmp(argv[3], "--mrt") == 0 ||
+                            std::strcmp(argv[3], "--mrt-branch") == 0)),
+         "arguments: cases.bin pixels.bin [--mrt|--mrt-branch]");
     bool mrt = argc == 4;
+    bool branch_experiment = mrt && std::strcmp(argv[3], "--mrt-branch") == 0;
     auto cases = load(argv[1]);
     WNDCLASSA wc{};
     wc.lpfnWndProc = DefWindowProcA;
@@ -1513,7 +1611,7 @@ int main(int argc, char **argv) {
       Com<IDirect3DSurface9> back;
       api(device->GetRenderTarget(0, &back.p));
       if (mrt) {
-        mrt_experiment(device.p, cases, argv[2], back.p);
+        mrt_experiment(device.p, cases, argv[2], back.p, branch_experiment);
       } else {
         {
           Fixture f(device.p, 16, 16);
@@ -1577,8 +1675,9 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf(mrt ? "MRT_RESULT pass cases=%u shaders=78\n"
-                    : "RESULT pass cases=%u shaders=24\n",
+    std::printf(branch_experiment ? "BRANCH_RESULT pass cases=%u shaders=81\n"
+                : mrt             ? "MRT_RESULT pass cases=%u shaders=78\n"
+                                  : "RESULT pass cases=%u shaders=24\n",
                 unsigned(cases.size()));
     return 0;
   } catch (const std::exception &e) {

@@ -6,7 +6,7 @@ import unittest
 import run_linear_emission as r
 
 
-def report(cases):
+def report(cases,branch=False):
     lines=['CAPS vs=fffe0300 ps=ffff0300 rt=4']
     lines += [f'FORMAT name={name} hr=00000000' for name in ('fp16_rt','fp16_blend','d24s8')]
     lines += [f'DEPTH_MATCH format={f} hr=00000000' for f in (113,)]
@@ -15,7 +15,21 @@ def report(cases):
     for c in cases:
         color,depth,count=r.mrt_expected(c)
         lines.append('MRT_CASE id='+str(c['id'])+' '+' '.join(f'{k}={v}' for k,v in count.items()))
+        if branch:lines.append(f"BRANCH_COMPARE id={c['id']} channels={count['alpha']*4}")
         data+=struct.pack('<I1280f',c['id'],*(v for p in color for v in p),*depth)
+    if branch:
+        for w,h in ((1280,768),(1920,1080)):
+            for sparse in (0,1):
+                for workload in range(3):
+                    for pair in range(8):
+                        for order in range(2):
+                            variant=1-order if pair%2 else order
+                            # Pair-dependent common delay distinguishes paired deltas
+                            # from subtraction of unrelated aggregate medians.
+                            ms=1+pair*.125+(pair-3)*.0625*(1-variant)
+                            lines.append(f'BRANCH_TIMING width={w} height={h} sparse={sparse} workload={workload} branch={variant} pair={pair} order={order} completed_ms={ms}')
+        lines.append(f'BRANCH_RESULT pass cases={len(cases)} shaders=81')
+        return '\n'.join(lines)+'\n',bytes(data)
     for w,h in ((1280,768),(1920,1080)):
         for i in range(48):
             variant=5-i%6 if (i//6)%2 else i%6
@@ -138,5 +152,58 @@ class MrtReportTests(unittest.TestCase):
     def test_rejects_nonfinite_or_reordered_timings(self):
         for text in (self.text.replace('completed_ms=1.25','completed_ms=nan',1),self.text.replace('variant=0 sample=0','variant=1 sample=0',1)):
             with self.assertRaises(AssertionError):r.validate_mrt_report(text,self.data,self.cases)
+
+
+class BranchReportTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.cases=r.mrt_cases();cls.text,cls.data=report(cls.cases,True)
+
+    def test_same_cases_keep_native_and_untouched_invariants(self):
+        result=r.validate_mrt_report(self.text,self.data,self.cases,True)
+        baseline=r.validate_mrt_report(*report(self.cases),self.cases)
+        self.assertEqual(result['cases'],38)
+        self.assertEqual(result['invariants'],baseline['invariants'])
+        self.assertEqual(result['exact_compositor_channels'],baseline['invariants']['alpha']*4)
+        self.assertEqual(result['shader_creations'],81)
+        self.assertEqual(self.data,report(self.cases)[1])
+
+    def test_matching_pairs_alternate_and_retain_deltas_and_wins(self):
+        timings=r.validate_branch_timings(self.text)
+        self.assertEqual(len(timings),12)
+        for row in timings:
+            self.assertEqual(row['branch_wins'],4);self.assertEqual(row['ties'],1)
+            self.assertEqual(row['samples_per_variant'],8)
+            self.assertEqual([p['baseline_first'] for p in row['pairs']],[i%2==0 for i in range(8)])
+            self.assertEqual([p['baseline_minus_branch_ms'] for p in row['pairs']],[(i-3)*.0625 for i in range(8)])
+            self.assertEqual(row['paired_baseline_minus_branch_ms']['median'],.03125)
+            sparse=row['coverage']=='sparse'
+            self.assertEqual(row['authored_union_fraction'],1/32 if sparse else .5)
+            per=1/64 if sparse else .3125
+            self.assertEqual(row['authored_per_source_fraction'],per)
+            if row['workload']=='two single-source brackets':self.assertEqual(row['composed_coverage_fractions'],[per,per])
+
+    def test_rejects_missing_or_incorrect_exact_comparison(self):
+        for text in (self.text.replace('BRANCH_COMPARE id=0 channels=1024','BRANCH_COMPARE id=0 channels=1023'),
+                     self.text.replace('BRANCH_COMPARE id=0','BRANCH_COMPARE id=1'),
+                     self.text.replace('shaders=81','shaders=78')):
+            self.assertNotEqual(text,self.text)
+            with self.assertRaises(AssertionError):r.validate_mrt_report(text,self.data,self.cases,True)
+
+    def test_rejects_missing_pair_wrong_order_and_nonfinite_timing(self):
+        first=next(line for line in self.text.splitlines() if line.startswith('BRANCH_TIMING'))
+        for text in (self.text.replace(first+'\n','',1),
+                     self.text.replace('branch=0 pair=0 order=0','branch=1 pair=0 order=0',1),
+                     self.text.replace('pair=0 order=0','pair=1 order=0',1),
+                     self.text.replace('completed_ms=0.8125','completed_ms=nan',1)):
+            self.assertNotEqual(text,self.text)
+            with self.assertRaises(AssertionError):r.validate_branch_timings(text)
+
+    def test_branch_mode_still_rejects_negative_zero_sign_loss(self):
+        index=next(i for i,c in enumerate(self.cases) if c['label']=='zero_energy_rotations_64')
+        color=r.mrt_expected(self.cases[index])[0]
+        pixel=next(i for i,p in enumerate(color) if p[0]==0 and math.copysign(1,p[0])<0)
+        raw=bytearray(self.data);struct.pack_into('<f',raw,index*(4+1280*4)+4+pixel*16,0.)
+        with self.assertRaises(AssertionError):r.validate_mrt_report(self.text,raw,self.cases,True)
 
 if __name__=='__main__':unittest.main()
