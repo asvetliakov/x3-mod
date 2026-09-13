@@ -35,6 +35,13 @@ struct IDirect3DBaseTexture9:IUnknown{IUnknown*identity=this;bool fail_identity=
 struct IDirect3DTexture9:IDirect3DBaseTexture9{};
 struct IDirect3DSurface9:IUnknown{bool describable=true;IDirect3DTexture9*texture=nullptr;HRESULT GetContainer(unsigned,void**out){*out=texture;if(texture)texture->AddRef();return texture?S_OK:E_FAIL;}};
 template<class T>void release(T*&p){auto* saved=p;p=nullptr;if(saved)saved->Release();}
+struct XtNoticeLog {unsigned calls=0;std::uint64_t device=0,vs=0,ps=0;unsigned ready=0;} xt_notice_log;
+void (*xt_notice_callback)()=nullptr;
+void log(const char*format,std::uint64_t device,std::uint64_t vs,std::uint64_t ps,unsigned a,unsigned b,unsigned c,unsigned d){
+ if(std::strncmp(format,"linear_material_xt_default_unavailable ",sizeof("linear_material_xt_default_unavailable ")-1))return;
+ ++xt_notice_log.calls;xt_notice_log.device=device;xt_notice_log.vs=vs;xt_notice_log.ps=ps;xt_notice_log.ready=a|(b<<1)|(c<<2)|(d<<3);
+ if(xt_notice_callback)xt_notice_callback();
+}
 template<class...T>void log(const char*,T...){}
 namespace x3::temporal {enum class AgxDecode{gamma22,srgb,none};}
 namespace renderer {
@@ -196,7 +203,8 @@ public:
  SamplerShadow samplers_[16];
  ThrowingMap<ShaderEntry>vertex_,pixel_;
  D device_=nullptr;bool enabled_=true,requested_=true,depth_enabled_=true,linear_material_requested_=false;
- renderer::LinearMaterialConfig linear_material_config_{};bool xt_default_unavailable_logged_=false;
+ renderer::LinearMaterialConfig linear_material_config_{};
+ struct XtDefaultUnavailable {std::uint64_t device=0,vs=0,ps=0;unsigned ready_mask=0;bool seen=false,pending=false;} xt_default_unavailable_;
  std::unique_ptr<renderer::LinearEmissionPass>emission_;
  bool motion_state_lost_=false;HRESULT motion_state_error_=D3DERR_INVALIDCALL;
  void recover_motion_state()noexcept; HRESULT restore_wrap_states(MotionRoute&){return S_OK;}
@@ -252,7 +260,7 @@ public:
  HRESULT bind_targets(MotionRoute&)noexcept;HRESULT prepare_constants(MotionRoute&)noexcept;
  unsigned device_references()const noexcept;void release_resources()noexcept;
  void configure_linear_materials(bool,const renderer::LinearMaterialConfig&)noexcept;
- void configure_linear_emissions(bool,float)noexcept;void refresh_linear_emission_contract()noexcept;
+ void configure_linear_emissions(bool,float)noexcept;void refresh_linear_emission_contract()noexcept;void report_xt_default_unavailable()noexcept;
  void register_vertex_shader(IDirect3DVertexShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void register_pixel_shader(IDirect3DPixelShader9*,const DWORD*,std::size_t,std::uint64_t)noexcept;
  void set_vertex_shader(IDirect3DVertexShader9*)noexcept;void set_pixel_shader(IDirect3DPixelShader9*)noexcept;
@@ -720,7 +728,7 @@ void xt_default_cases(){
   Device d;MotionOutput m;m.configure_linear_materials(true,{});m.device_=&d;d.fail_program=failed;d.partial_program=partial;
   IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;DWORD v=10,p=22;d.bound_vs=&vs;d.bound_ps=&ps;m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);
   m.register_vertex_shader(&vs,&v,4,v);m.register_pixel_shader(&ps,&p,4,p);
-  CHECK(m.shadow_.xt_default_pair&&!m.shadow_.xt_default_ready&&m.shadow_.material_contract.sampler_mask==0&&m.xt_default_unavailable_logged_);
+  CHECK(m.shadow_.xt_default_pair&&!m.shadow_.xt_default_ready&&m.shadow_.material_contract.sampler_mask==0&&m.xt_default_unavailable_.seen);
   MotionRoute r;const auto calls=d.calls.size();CHECK(m.bind_variant_pair(r,true)==E_FAIL&&!r.vs_set&&!r.ps_set&&d.calls.size()==calls&&d.bound_vs==&vs&&d.bound_ps==&ps);
   d.fail_program=0;d.partial_program=false;
   if(failed==410||failed==510)m.register_vertex_shader(&vs,&v,4,v);else m.register_pixel_shader(&ps,&p,4,p);
@@ -789,7 +797,39 @@ void attempted_state_cases(){
  }
  std::printf("motion_attempted_state checks=%u\n",checks-begin);
 }
+MotionOutput* notice_owner=nullptr;
+void reenter_notice(){notice_owner->refresh_linear_material_contract();notice_owner->report_xt_default_unavailable();}
+void xt_deferred_notice_cases(){
+ const auto before=checks;xt_notice_log={};
+ Device d;MotionOutput m;m.device_=&d;
+ IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;
+ m.shadow_.vs_hash=10;m.shadow_.ps_hash=22;
+ m.refresh_linear_material_contract();CHECK(!m.xt_default_unavailable_.seen&&!m.xt_default_unavailable_.pending);
+ m.linear_material_requested_=true;m.shadow_.ps_hash=99;m.refresh_linear_material_contract();CHECK(!m.xt_default_unavailable_.seen);
+ m.shadow_.ps_hash=22;m.shadow_.vs_registered=m.shadow_.ps_registered=true;
+ m.shadow_.vs_xt_default_ordinary=m.shadow_.vs_xt_default_linear=&vs;
+ m.shadow_.ps_xt_default_ordinary=m.shadow_.ps_material_variant=&ps;
+ m.refresh_linear_material_contract();CHECK(m.shadow_.xt_default_ready&&!m.xt_default_unavailable_.seen);
+ m.id_=0x1122334455667788ull;m.shadow_.vs_xt_default_linear=nullptr;m.shadow_.ps_material_variant=nullptr;
+ m.refresh_linear_material_contract();CHECK(xt_notice_log.calls==0);
+ CHECK(m.xt_default_unavailable_.seen&&m.xt_default_unavailable_.pending&&m.xt_default_unavailable_.ready_mask==5);
+ // Later bindings/readiness and even owner ID cannot overwrite the first event.
+ m.id_=99;m.shadow_.ps_hash=23;m.shadow_.vs_xt_default_linear=&vs;m.shadow_.ps_material_variant=&ps;
+ m.refresh_linear_material_contract();CHECK(m.shadow_.xt_default_ready&&xt_notice_log.calls==0);
+ m.shadow_.ps_hash=25;m.shadow_.ps_material_variant=nullptr;m.refresh_linear_material_contract();
+ notice_owner=&m;xt_notice_callback=reenter_notice;m.report_xt_default_unavailable();xt_notice_callback=nullptr;notice_owner=nullptr;
+ CHECK(xt_notice_log.calls==1&&xt_notice_log.device==0x1122334455667788ull&&xt_notice_log.vs==10&&xt_notice_log.ps==22&&xt_notice_log.ready==5);
+ CHECK(!m.xt_default_unavailable_.pending&&m.xt_default_unavailable_.seen);
+ m.refresh_linear_material_contract();m.report_xt_default_unavailable();m.release_resources();CHECK(xt_notice_log.calls==1);
+ // A separate device can retire before Present: final release drains once.
+ MotionOutput retired;retired.device_=&d;retired.linear_material_requested_=true;retired.id_=77;
+ retired.shadow_.vs_hash=10;retired.shadow_.ps_hash=24;retired.refresh_linear_material_contract();CHECK(xt_notice_log.calls==1);
+ retired.release_resources();CHECK(xt_notice_log.calls==2&&xt_notice_log.device==77&&xt_notice_log.ps==24&&xt_notice_log.ready==0);
+ retired.release_resources();retired.report_xt_default_unavailable();CHECK(xt_notice_log.calls==2);
+ std::printf("linear_material_xt_deferred_notice checks=%u\n",checks-before);
+}
 int main(){
+ xt_deferred_notice_cases();
  environment[L"X3M_HDR_TONEMAP"]=L"agx";environment[L"X3M_LINEAR_MATERIALS"]=L"1";configure_environment();CHECK(linear_material_requested&&linear_material_config.direct_gain==1);
  for(const wchar_t*key:{L"X3M_MATERIAL_DIRECT_GAIN",L"X3M_MATERIAL_EMISSIVE_GAIN",L"X3M_LIGHTMAP_EMISSIVE_GAIN"}){
   for(const wchar_t*bad:{L"",L"nan",L"inf",L"-inf",L"-1",L"16.01",L"abc",L"1x",L"1 ",L"1111111111111111111111111111111111"}){environment[key]=bad;configure_environment();CHECK(!linear_material_requested);}

@@ -69,6 +69,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'void MotionOutput::record_deferred() noexcept',
             'void MotionOutput::resync_samplers() noexcept',
             'void MotionOutput::refresh_linear_material_contract() noexcept',
+            'void MotionOutput::report_xt_default_unavailable() noexcept',
             'void MotionOutput::refresh_linear_emission_contract() noexcept',
             'void MotionOutput::resync_shadow() noexcept',
             'void MotionOutput::begin_stateblock() noexcept',
@@ -110,9 +111,26 @@ class LinearMaterialLiveTests(unittest.TestCase):
             self.assertIn('failures=0', run.stdout)
             self.assertIn('linear_emission_cache checks=', run.stdout)
             self.assertIn('linear_material_xt_cache checks=', run.stdout)
+            self.assertIn('linear_material_xt_deferred_notice checks=', run.stdout)
             self.assertIn('linear_emission_route checks=', run.stdout)
             self.assertEqual(run.stderr, '')
             print(run.stdout.strip())
+
+    def test_xt_notice_stays_out_of_lightweight_hooks(self):
+        source=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        refresh=extract_function(source,'void MotionOutput::refresh_linear_material_contract() noexcept')
+        self.assertNotIn('log(',refresh)
+        self.assertNotIn('report_xt_default_unavailable(',refresh)
+        for name in ('set_vertex_shader','set_pixel_shader'):
+            setter=extract_function(source,'void MotionOutput::'+name+'(')
+            self.assertIn('refresh_linear_material_contract();',setter)
+            self.assertNotIn('log(',setter)
+        present=extract_function(source,'void MotionOutput::after_present(')
+        self.assertLess(present.index('report_xt_default_unavailable();'),present.index('if (!enabled_)'))
+        release=extract_function(source,'void MotionOutput::release_resources() noexcept')
+        self.assertIn('report_xt_default_unavailable();',release)
+        report=extract_function(source,'void MotionOutput::report_xt_default_unavailable() noexcept')
+        self.assertLess(report.index('event.pending = false'),report.index('log('))
 
     def test_xt_default_gate_precedes_jitter_and_native_submission(self):
         source = (ROOT / 'src/proxy/motion_output.cpp').read_text()

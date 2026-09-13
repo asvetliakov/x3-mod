@@ -307,6 +307,9 @@ void MotionOutput::release_resources() noexcept {
     shadow_.material_contract = {};
     history_.invalidate();
     fill_pending_ = false;
+    // Final retirement already owns the full logging/CPU-state boundary; do
+    // not lose a first unavailable event when no Present follows its setter.
+    report_xt_default_unavailable();
     if (mip_bias_bits_ && !mip_bias_summary_logged_) {
         // Session summary of the bias path (the per-frame line carries the
         // frame's counts); every biased stage was restored by the release hook.
@@ -2550,12 +2553,25 @@ void MotionOutput::refresh_linear_material_contract() noexcept {
         && (!shadow_.xt_default_pair || shadow_.xt_default_ready)
         ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
     shadow_.material_contract = contract;
-    if (shadow_.xt_default_pair && !shadow_.xt_default_ready && !xt_default_unavailable_logged_) {
-        xt_default_unavailable_logged_ = true;
-        log("linear_material_xt_default_unavailable device=%llu vs=%016llx ps=%016llx ordinary_vs=%u linear_vs=%u ordinary_ps=%u linear_ps=%u native_forward=1",
-            id_, shadow_.vs_hash, shadow_.ps_hash, bool(shadow_.vs_xt_default_ordinary), bool(shadow_.vs_xt_default_linear),
-            bool(shadow_.ps_xt_default_ordinary), bool(shadow_.ps_material_variant));
+    if (shadow_.xt_default_pair && !shadow_.xt_default_ready && !xt_default_unavailable_.seen) {
+        // Called by lightweight shader hooks: even integer-only printf formats
+        // can reach the CRT's x87 formatter. Keep this path integer-only.
+        auto& event = xt_default_unavailable_;
+        event.device = id_; event.vs = shadow_.vs_hash; event.ps = shadow_.ps_hash;
+        event.ready_mask = unsigned(bool(shadow_.vs_xt_default_ordinary))
+            | (unsigned(bool(shadow_.vs_xt_default_linear)) << 1)
+            | (unsigned(bool(shadow_.ps_xt_default_ordinary)) << 2)
+            | (unsigned(bool(shadow_.ps_material_variant)) << 3);
+        event.seen = true; event.pending = true;
     }
+}
+void MotionOutput::report_xt_default_unavailable() noexcept {
+    auto& event = xt_default_unavailable_;
+    if (!event.pending) return;
+    event.pending = false; // Reentrant reporting/setters cannot duplicate or replace it.
+    log("linear_material_xt_default_unavailable device=%llu vs=%016llx ps=%016llx ordinary_vs=%u linear_vs=%u ordinary_ps=%u linear_ps=%u native_forward=1",
+        event.device, event.vs, event.ps, event.ready_mask & 1u, (event.ready_mask >> 1) & 1u,
+        (event.ready_mask >> 2) & 1u, (event.ready_mask >> 3) & 1u);
 }
 void MotionOutput::refresh_linear_emission_contract() noexcept {
     // Creation/bind/resync only. Future draws consume this pointer without a
@@ -3243,6 +3259,7 @@ void MotionOutput::before_present() noexcept {
     if (capture_) readback();
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
+    report_xt_default_unavailable();
     if (!enabled_) return;
     if (FAILED(result)) invalidate_taa();
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);

@@ -638,6 +638,7 @@ private:
     void restore_jitter(MotionRoute& route) noexcept;
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void refresh_linear_material_contract() noexcept;
+    void report_xt_default_unavailable() noexcept;
     void refresh_linear_emission_contract() noexcept;
     void prepare_emission(const MotionDrawCall&, MotionRoute&) noexcept;
     void finish_emission(HRESULT) noexcept;
@@ -761,7 +762,13 @@ private:
         unsigned prepare_failures = 0, composition_failures = 0, restore_failures = 0, exchange_failures = 0, ack_failures = 0;
     } emission_counts_;
     unsigned material_refusals_logged_ = 0;
-    bool xt_default_unavailable_logged_ = false;
+    // Lightweight shader setters capture integers only. Formatting is deferred
+    // to the existing full CPU-state boundary around Present, once per lifetime.
+    struct XtDefaultUnavailable {
+        std::uint64_t device = 0, vs = 0, ps = 0;
+        unsigned ready_mask = 0;
+        bool seen = false, pending = false;
+    } xt_default_unavailable_;
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
     UINT target_width_ = 0, target_height_ = 0;

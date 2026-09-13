@@ -653,3 +653,22 @@ detached gate now covers shader creation and the recorded numerical,
 interpolation, clipping and alpha/temporal behavior on X3. The separate 162-pair
 live route, physical hostile-WRAP diagnostics, actual live Reset/retirement,
 native Windows and gameplay qualification remain pending.
+
+The combined candidate's linked x87 audit exposed one new diagnostic edge:
+`set_vs/set_ps → refresh_linear_material_contract → log → MinGW formatter`.
+Even the integer-only format string reached the formatter's x87 code, violating
+the existing lightweight shader-hook boundary. The audit remains unchanged.
+The setter now captures only the first device/VS/PS identity and four readiness
+bits in a bounded integer snapshot. `after_present` drains it before report
+gates; final resource retirement also drains it when no Present occurs. Both
+already run on full CPU-state/logging paths. Pending is cleared before logging,
+and the lifetime-once latch survives binding changes and Reset, preserving
+first-event identity without a heavier per-setter boundary or allocation.
+
+Two focused host tests pass, including 12 snapshot/report assertions and the
+existing extracted cache seam. Independent source review passes with no open
+finding. Strict i686/SSE2 compilation passes; object
+inspection finds no x87 instructions or formatter edge in the affected setter
+and refresh functions. Creation/bind diagnostics remain on their existing heavy
+paths. The final linked-DLL audit and candidate build remain the orchestrator's
+next gate; this source check is not a linked audit pass.
