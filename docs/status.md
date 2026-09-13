@@ -82,7 +82,8 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   recovery image. A branch experiment preserved the image but showed no
   consistent speedup; retain the baseline. The actual-original emission
   transformer is independently reviewed and passes seven host tests over five
-  pairs / 25 gain variants; detached GPU qualification is next. It is not linked
+  pairs / 25 gain variants. Its first detached X3 run passes 70 cases and 42
+  shader creations, with exact native color/alpha parity. It is not linked
   into the installed renderer. Disassembly identifies the material subset/pass
   loops, but the historical adjacent draws do not yet qualify batching.
   Copy/composition cost remains a live-integration

@@ -669,13 +669,41 @@ gain variants, including byte reconstruction, aliasing and failure rollback,
 register/output rules, weighted budgets and analytical finite/nonfinite
 witnesses. This is creation-time CPU work with bounded linear scans and one
 temporary result allocation; it adds no per-draw work. The host arithmetic
-model does not qualify GPU handling. Actual shader creation, native-oC0 parity,
-MRT output and native-Windows execution remain the next gates; no runtime route
-or feature support is added at this checkpoint.
+model does not qualify GPU handling. The following detached run qualifies actual
+shader creation, native-oC0 parity and MRT output on X3. Native Windows remains
+untested; no runtime route or feature support is added at this checkpoint.
+
+### Actual-original GPU qualification
+
+The first and only focused X3 run of the reviewed transformer passed and exited
+cleanly. The accepted
+[actual-original result](../../verification/results/bottle-X3/linear-emission-mrt-original-gpu.json)
+covers 70 cases, three unchanged original VS2 programs, five untouched original
+PS2 programs, all 25 gain variants and 42 shader creations. It executes 105
+source draws and accepts the original `_pp` oC0 together with the new full oC1
+on this backend. All 71,680 A-to-B copy channels and 71,680
+original-versus-augmented native RT0 channels compare exactly.
+
+The independent finite-source oracle passes for native B, linear E and composed
+C with maximum tolerance fractions 0.3252, 0.3127 and 0.4544 respectively. The
+run preserves 25,168 zero-E lanes, including 33 signed-zero and 70 high-code
+witnesses; 17,920 composed alpha and depth pixels and 35,840 direct B/E alpha
+values also pass exactly. The result pins the eight original files, 25 generated
+variants, fixture/core inputs and executable; independent review regenerated
+the same source, burst and invariant totals from the 70 cases.
+
+This qualifies actual-original shader creation, native-output parity and the
+finite sampled/affine/fade/gain composition domain on the tested X3
+CrossOver/FEX backend. It does not qualify native Windows, a live HdrPass route,
+game-owned constants or preshader execution, source NaN/infinity and adverse
+nonfinite intermediates, source-submission recovery, device loss or gameplay
+behavior. No new benchmark was run, and no runtime feature is added by this
+fixture result.
 
 Orchestrator decision: keep the baseline compositor. The branch remains a
 separate reproducible experiment, not a selected optimization; do not repeat
-this benchmark merely to seek a favorable result. Proceed with bounded
-actual-original shader qualification and examine whether the recorded consecutive
-draws provide a defensible batching opportunity. The fixture cost remains a
+this benchmark merely to seek a favorable result. Actual-original qualification
+has passed. Next qualify the supplemental temporal consumer and third same-draw
+coverage output, then the single-draw live target ownership boundary. Historical
+draw adjacency does not yet justify batching. The fixture cost remains a
 live-integration concern, not proof of game FPS or a GPU-only bottleneck.

@@ -29,7 +29,9 @@ INPUTS = ('verification/probe/linear_emission_fixture.cpp',
           'verification/probe/build_linear_emission.sh',
           'verification/probe/run_linear_emission.py',
           'verification/analysis/test_linear_emission_report.py',
-          'verification/analysis/test_linear_emission_mrt_report.py')
+          'verification/analysis/test_linear_emission_mrt_report.py',
+          'verification/analysis/test_linear_emission_original_report.py',
+          'src/renderer/linear_emission.h', 'src/renderer/linear_emission.cpp')
 CAP = 65504.
 WIDTH = HEIGHT = 16
 RGB_REL = .003  # full-precision POW plus binary16 store, no retained _pp lobe
@@ -421,7 +423,69 @@ def mrt_cases():
     return cases
 
 
+# Derived identities/contracts only; originals stay in the local corpus.
+ORIGINAL_PS = ('8360f422de08b5bd','9975b706e5a1c999','ff2473e73a6bdfa1','8559522220507d5e','875e780adb131b16')
+ORIGINAL_VS = ('d5e1c75351ed3f04','32e75459998d0388','089091aab2d5eb13')
+ORIGINAL_GAINS = (0.,.25,1.,4.,16.)
+
+
+def original_cases():
+    cases=[]
+    def add(profile,label,operations,**kw):
+        c=dict(id=len(cases),label=label,mode=1,mask=0,alpha=0,write=15,fault=0,pattern=1,
+               flags=32|(profile<<16)|(64 if profile>=3 else 0),actual_profile=profile,ops=copy.deepcopy(operations))
+        extra=kw.pop('flags',0);c['flags']|=extra;c.update(kw)
+        for o in c['ops']:o['affine']=int(profile in (0,1,3))
+        cases.append(c)
+    for profile in range(5):
+        for gain in ORIGINAL_GAINS:
+            add(profile,'original_pair_gain',[
+                op(rect=(0,0,.75,.75),color=(.5,.25,.125,.125),fade=.75,gain=gain),
+                op(rect=(.25,.25,1,1),color=(.125,.375,.5,.5),fade=.5,gain=gain)])
+        # Texture transform is independently witnessed along both axes. Full
+        # rectangle/even viewport keeps nearest sampling away from texel ties.
+        for alpha in range(3):
+            add(profile,'original_sampled_alpha', [op(rect=(0,0,1,1),gain=4)],
+                flags=4|16|1|1024,alpha=alpha)
+        for alpha_test in (1,2):
+            add(profile,'original_alpha_test', [op(rect=(0,0,1,1),gain=4),op(z=.9,gain=4)],
+                flags=4|1024,mask=alpha_test)
+        if profile<3:
+            for fog_flags in (512,512|2048,512|4096):
+                add(profile,'original_vertex_fog', [op(rect=(0,0,1,1),gain=4)],flags=fog_flags)
+            add(profile,'original_zero_fade',[op(rect=(0,0,1,1),fade=0,gain=16)])
+        if profile in (0,1,3):
+            add(profile,'original_negative_affine',[op(rect=(0,0,1,1),color=(0,0,0,.125),fade=.5,gain=4)])
+        add(profile,'original_finite_source_cap',[op(rect=(0,0,1,1),color=(0,256,0,.125),fade=.5,gain=16)])
+    return cases
+
+
+def original_fade(o,c,uv):
+    if c['actual_profile']>=3:return 1.
+    if not c['flags']&512:return o['fade']
+    vw=8 if c['flags']&16 else 16
+    l,t,rr,b=o['rect']
+    positions=((2*l-1-1/vw,1-2*t+1/vw),(2*rr-1-1/vw,1-2*t+1/vw),
+               (2*l-1-1/vw,1-2*b+1/vw),(2*rr-1-1/vw,1-2*b+1/vw))
+    clip=-.5 if c['flags']&2048 else 3. if c['flags']&4096 else 1.5
+    fades=[]
+    for x,y in positions:
+        # Original VS computes distance at each vertex, clamps fog, then the
+        # rasterizer interpolates COLOR0.x. This is not per-pixel distance.
+        distance=math.sqrt((.125-(.5*x+.25))**2+(.25-(.5*y-.125))**2+4)
+        fades.append(o['fade']*max(0.,min(1.,clip-.5*distance)))
+    u,v=uv
+    if u+v<=1:return fades[0]*(1-u-v)+fades[1]*u+fades[2]*v
+    return fades[1]*(1-v)+fades[2]*(1-u)+fades[3]*(u+v-1)
+
+
+def original_uv(c,uv):
+    return (.5*uv[0]+.125,-.5*uv[1]+.875) if c['flags']&1024 else uv
+
+
 def mrt_sample(o,c,uv):
+    geometry_uv=uv
+    if 'actual_profile' in c:uv=original_uv(c,uv)
     rgba=[half(x) for x in o['color']]
     if c['flags']&4:
         sample=((1.,1.,1.,.125),(.5,1.,.75,.5),(1.,.5,.5,0.),(.75,.25,1.,1.))[min(1,int(uv[1]*2))*2+min(1,int(uv[0]*2))]
@@ -432,12 +496,13 @@ def mrt_sample(o,c,uv):
              .5*rgb[1]+.25*rgb[2]+.0625,
              .125*rgb[0]+.875*rgb[2]-.03125]
     fade=1. if c['flags']&64 else o['fade']*(1-.5*uv[0] if c['flags']&8 else 1.)
+    if 'actual_profile' in c:fade=original_fade(o,c,geometry_uv)
     native=[x*fade for x in rgb]+rgba[3:]
     energy=[sanitize(decode(x)*fade*o['gain']) for x in rgb]+[0.]
     return native,energy
 
 
-def mrt_expected(c):
+def mrt_expected(c,include_sources=False):
     a=[initial_pixel(x,y,c['pattern']) for y in range(16) for x in range(16)]
     depth=[.75]*256;count={key:0 for key in MRT_OPS};start=0
     eligible=c['write']==15 and c['fault']!=1
@@ -488,11 +553,12 @@ def mrt_expected(c):
                 else:rgb.append(half(encode(sanitize(decode(x)+y))))
             result.append(rgb+native[3:]);count['alpha']+=1
         a=result;start=end
-    return a,[1. if z>.5 else 2. for z in depth],count
+    result=(a,[1. if z>.5 else 2. for z in depth],count)
+    return result+(b,e) if include_sources else result
 
 
-def parse_mrt_pixels(data,cases):
-    stride=4+256*5*4
+def parse_mrt_pixels(data,cases,actual_original=False):
+    stride=4+256*(13 if actual_original else 5)*4
     assert len(data)==stride*len(cases),'MRT readback bytes'
     result=[]
     for c,offset in zip(cases,range(0,len(data),stride)):
@@ -530,19 +596,19 @@ def validate_branch_timings(text):
     return result
 
 
-def validate_mrt_report(text,data,cases,branch_experiment=False):
+def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=False):
     lines=text.strip().splitlines()
     assert re.fullmatch(r'CAPS vs=fffe0300 ps=ffff0300 rt=[2-9]',lines[0]),'MRT shader caps'
     assert re.findall(r'^FORMAT name=(\w+) hr=00000000$',text,re.M)==['fp16_rt','fp16_blend','d24s8'],'MRT format caps'
     assert re.findall(r'^DEPTH_MATCH format=(\d+) hr=00000000$',text,re.M)==['113'],'MRT depth matches'
     caps=re.search(r'^MRT_CAPS slots=([2-9]) postblend=1 independent_masks=([01])$',text,re.M)
     assert caps,'MRT blend/mask caps'
-    shaders=81 if branch_experiment else 78
-    end='BRANCH_RESULT' if branch_experiment else 'MRT_RESULT'
+    shaders=42 if actual_original else 81 if branch_experiment else 78
+    end='ORIGINAL_RESULT' if actual_original else 'BRANCH_RESULT' if branch_experiment else 'MRT_RESULT'
     assert lines[-1]==f'{end} pass cases={len(cases)} shaders={shaders}','MRT clean completion'
     pattern=r'^MRT_CASE id=(\d+) sources=(\d+) bursts=(\d+) copy=(\d+) native=(\d+) zero=(\d+) alpha=(\d+) minuszero=(\d+) capzero=(\d+) infinite=(\d+) fallback=(\d+) incomplete=(\d+) refused=(\d+)$'
     rows=re.findall(pattern,text,re.M);assert len(rows)==len(cases),'MRT case rows'
-    actual=parse_mrt_pixels(data,cases);maximum=0.;totals={k:0 for k in MRT_OPS};faults=[]
+    actual=parse_mrt_pixels(data,cases,actual_original);maximum=0.;totals={k:0 for k in MRT_OPS};faults=[]
     for c,row,(color,depth) in zip(cases,rows,actual):
         assert int(row[0])==c['id'],'MRT case order'
         ideal,idepth,count=mrt_expected(c)
@@ -565,9 +631,10 @@ def validate_mrt_report(text,data,cases,branch_experiment=False):
                 wanted=initial_pixel(i%16,i//16,True)
                 assert struct.pack('<3f',*p[:3])==struct.pack('<3f',*wanted[:3]),'repeated zero-E channel bits'
     assert totals['minuszero'] and totals['capzero'],'signed-zero/high encoded identity witnesses missing'
-    control=next(c['id'] for c in cases if c['label']=='native_encoded_control')
-    qualified=next(c['id'] for c in cases if c['label']=='composition_refusal_native_adoption')
-    assert actual[control]==actual[qualified],'composition refusal did not adopt current native result'
+    if not actual_original:
+        control=next(c['id'] for c in cases if c['label']=='native_encoded_control')
+        qualified=next(c['id'] for c in cases if c['label']=='composition_refusal_native_adoption')
+        assert actual[control]==actual[qualified],'composition refusal did not adopt current native result'
     if branch_experiment:
         comparisons=re.findall(r'^BRANCH_COMPARE id=(\d+) channels=(\d+)$',text,re.M)
         assert [int(row[0]) for row in comparisons]==[c['id'] for c in cases],'branch comparison cases'
@@ -575,6 +642,9 @@ def validate_mrt_report(text,data,cases,branch_experiment=False):
             assert int(row[1])==mrt_expected(c)[2]['alpha']*4,(c['label'],'exact compositor equality missing')
         summary=validate_branch_timings(text)
         assert len(lines)==7+len(rows)+len(comparisons)+192,'unexpected branch output'
+    elif actual_original:
+        summary=[]
+        assert len(lines)==7+len(rows),'unexpected actual-original output'
     else:
         timings=re.findall(r'^MRT_TIMING width=(\d+) height=(\d+) variant=(\d+) sample=(\d+) completed_ms=(\S+)$',text,re.M)
         assert len(timings)==96,'MRT timing rows';summary=[]
@@ -587,9 +657,35 @@ def validate_mrt_report(text,data,cases,branch_experiment=False):
                 assert len(values)==8 and all(math.isfinite(v) and v>=0 for v in values)
                 summary.append(dict(width=width,height=height,mode=('native','best-case two-source MRT burst','two single-source MRT brackets','copy only','clear only','composite only')[variant],samples=8,median_ms=statistics.median(values),min_ms=min(values),max_ms=max(values)))
         assert len(lines)==7+len(rows)+len(timings),'unexpected MRT output'
-    return dict(cases=len(cases),shader_creations=shaders,source_variants=8,mrt_caps=dict(slots=int(caps[1]),postpixel_blending=True,independent_write_masks=bool(int(caps[2]))),source_shader_model='vs_2_0/ps_2_0; native full/partial precision variants',invariants=totals,
+    return dict(cases=len(cases),shader_creations=shaders,source_variants=25 if actual_original else 8,mrt_caps=dict(slots=int(caps[1]),postpixel_blending=True,independent_write_masks=bool(int(caps[2]))),source_shader_model='vs_2_0/ps_2_0; native full/partial precision variants',invariants=totals,
                 branch_experiment=branch_experiment,exact_compositor_channels=totals['alpha']*4 if branch_experiment else None,max_rgb_tolerance_fraction=maximum,exact_alpha_pixels=256*len(cases),depth_stencil_pixels=256*len(cases),faults=faults,timings=summary)
 
+
+
+def validate_original_report(text,data,cases):
+    result=validate_mrt_report(text,data,cases,actual_original=True)
+    energy_maximum=native_maximum=0.;alpha_count=0
+    stride=4+256*13*4
+    for c,offset in zip(cases,range(0,len(data),stride)):
+        _,_,_,wanted_native,wanted_energy=mrt_expected(c,True)
+        values=struct.unpack_from('<2048f',data,offset+4+1280*4)
+        for label,wanted,actual in (('native B',wanted_native,values[:1024]),('linear E',wanted_energy,values[1024:])):
+            for i,p in enumerate(wanted):
+                rgba=actual[i*4:i*4+4]
+                assert struct.pack('<f',rgba[3])==struct.pack('<f',p[3]),(c['label'],label,i,'raw alpha bits')
+                alpha_count+=1
+                for k,(v,w) in enumerate(zip(rgba[:3],p[:3])):
+                    assert math.isfinite(v),(c['label'],label,i,'nonfinite RGB')
+                    if label=='linear E':assert 0<=v<=CAP,(c['label'],'finite source cap')
+                    fraction=abs(v-w)/(RGB_ABS+RGB_REL*abs(w))
+                    assert fraction<=1,(c['label'],label,i,k,v,w,fraction)
+                    if label=='linear E':energy_maximum=max(energy_maximum,fraction)
+                    else:native_maximum=max(native_maximum,fraction)
+    result.update(original_vertex_programs=3,original_pixel_programs=5,reviewed_pairs=5,
+        source_shader_model='Three unchanged original VS2; five original PS2 native _pp paths and25 full-precision emission tails',
+        gains=list(ORIGINAL_GAINS),max_energy_tolerance_fraction=energy_maximum,
+        max_native_oracle_tolerance_fraction=native_maximum,exact_source_alpha_pixels=alpha_count)
+    return result
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -598,14 +694,15 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--exe',type=Path,default=EXE)
     p.add_argument('--raw-dir',type=Path)
-    p.add_argument('--mode',choices=('ordered','mrt','mrt-branch'),default='ordered')
+    p.add_argument('--mode',choices=('ordered','mrt','mrt-branch','mrt-original'),default='ordered')
+    p.add_argument('--programs',type=Path,default=Path('/tmp/x3-shader-sweep/programs'))
     args=p.parse_args()
     if args.raw_dir is None:args.raw_dir=Path('/tmp/x3-linear-emission-gpu'+('-'+args.mode if args.mode!='ordered' else ''))
     assert bottle.BOTTLE=='X3','set X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(),'game running; refused'
     assert args.exe.is_file(),'build the detached EXE explicitly first'
     args.raw_dir.mkdir(parents=True,exist_ok=True)
-    cases=mrt_cases() if args.mode!='ordered' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
+    cases=original_cases() if args.mode=='mrt-original' else mrt_cases() if args.mode!='ordered' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
     report=args.raw_dir/'report.txt';pixels=args.raw_dir/'pixels.bin'
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,
                 scope='Detached authored D3D9 ordered RGB/actual alpha, closed-world R32F mask producer, drift/cost/fault experiment; no live renderer or native Windows runtime qualification',
@@ -635,14 +732,32 @@ def main():
         result.update(scope='Detached zero-emission PS3 compositor branch experiment against unchanged baseline; same38 authored MRT cases, no live route or native Windows runtime proof',
             timing_scope='Paired baseline/branch QPC through EVENT completion with alternating order, matching inputs, cached source textures and pre-window fences; native-reference/paired-image readback excluded. Dense union50%, sparse disjoint union3.125%; single-source compositions cover31.25% or1.5625% each',
             comparison='All successful candidate compositions are compared RGBA bit-for-bit from identical A/E/B; native/refusal cases do not execute a compositor. Every case retains the original native-B/zero-lane/alpha/depth checks')
+    if args.mode=='mrt-original':
+        originals={stage+'_'+name+'.bin':sha(args.programs/(stage+'_'+name+'.bin'))
+                   for stage,names in (('vs',ORIGINAL_VS),('ps',ORIGINAL_PS)) for name in names}
+        variants=args.raw_dir/'variants';variants.mkdir(exist_ok=True)
+        command.extend(('Z:'+str(args.programs.resolve()),'Z:'+str(variants.resolve())))
+        result.update(scope='Detached actual-original VS2/PS2 augmentation, native MRT parity and independent emission/composition oracle; no live route or native Windows runtime proof',
+            original_sha256=originals,original_dir=str(args.programs),
+            timing_scope='No new timing pass; accepted authored MRT/branch cost evidence is retained unchanged',
+            source_shader_model='Three unchanged original VS2; five untouched original PS2 versus25 pure-transformer gain variants',
+            limitations=['Actual original native _pp oC0 plus new plain full oC1 requires runtime acceptance; this run cannot qualify native Windows',
+                'Finite original texture/affine/fade inputs only; source NaN/Inf and adverse emission intermediates remain GPU-unqualified',
+                'Affine preshader comments stay opaque; fixture supplies known c0..2 directly, not CPU preshader execution',
+                'Original VS identity WVP, transformed UVs, c12 fade and b0 fog paths are exercised; no live material/global constant ownership proof',
+                'Only shared ADD/ONE/ONE with full RGBA writes; inherited alpha tests are feasibility boundaries, not live admission',
+                'No source submission failure recovery, device-loss or HdrPass integration qualification'])
     try:
         with report.open('w') as out,(args.raw_dir/'wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=900)
         result['exit_code']=process.returncode
         assert process.returncode==0,'fixture failed; '+str(report)
-        result.update(validate_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='ordered' else validate_mrt_report(report.read_text(),pixels.read_bytes(),cases,args.mode=='mrt-branch'))
+        result.update(validate_original_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-original' else validate_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='ordered' else validate_mrt_report(report.read_text(),pixels.read_bytes(),cases,args.mode=='mrt-branch'))
         assert result['code_sha256']=={name:sha(ROOT/name) for name in INPUTS},'source changed during run'
         assert result['executable_sha256']==sha(args.exe),'EXE changed during run'
+        if args.mode=='mrt-original':
+            assert originals=={name:sha(args.programs/name) for name in originals},'original corpus changed during run'
+            result['transformed_sha256']={f'ps_{name}-{g}.bin':sha(variants/f'ps_{name}-{g}.bin') for name in ORIGINAL_PS for g in range(5)}
         result['passed']=True
     except BaseException as error:
         result['error']=repr(error)

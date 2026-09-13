@@ -1,4 +1,4 @@
-// Detached authored-shader experiment. No game shaders or renderer linkage.
+// Detached authored/original shader experiments. No live renderer integration.
 // run_linear_emission.py owns the independent per-store FP16 oracle.
 #define WIN32_LEAN_AND_MEAN
 #include <algorithm>
@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <windows.h>
+#include "../../src/renderer/linear_emission.h"
 void need(bool b, const char *s) {
   if (!b)
     throw std::runtime_error(s);
@@ -936,29 +937,82 @@ struct MrtStats {
            cap_zero_channels = 0, infinite_channels = 0, fallbacks = 0,
            incomplete = 0, refused = 0, compared_channels = 0;
 };
+// Hashes are derived identities. Original bytes and transformed programs stay
+// in the local corpus/output directory, never generated tracked includes.
+constexpr const char *actual_ps[] = {"8360f422de08b5bd", "9975b706e5a1c999",
+    "ff2473e73a6bdfa1", "8559522220507d5e", "875e780adb131b16"};
+constexpr const char *actual_vs[] = {"d5e1c75351ed3f04", "32e75459998d0388",
+    "089091aab2d5eb13"};
+constexpr float actual_gains[] = {0, .25f, 1, 4, 16};
+unsigned actual_vertex(unsigned profile) { return profile == 0 ? 0 : profile < 3 ? 1 : 2; }
+std::vector<std::uint32_t> local_program(const std::string &path) {
+  std::ifstream f(path, std::ios::binary | std::ios::ate);
+  need(bool(f), "open local original");
+  const auto size = f.tellg();
+  need(size > 0 && size % 4 == 0 && size <= 65536, "original byte size");
+  std::vector<std::uint32_t> words(static_cast<std::size_t>(size) / 4);
+  f.seekg(0); f.read(reinterpret_cast<char *>(words.data()), size);
+  need(bool(f), "read original"); return words;
+}
+std::uint64_t local_fingerprint(const std::vector<std::uint32_t> &words) {
+  std::uint64_t h = 0xcbf29ce484222325ull;
+  for (auto word : words) for (unsigned shift = 0; shift < 32; shift += 8) {
+    h ^= (word >> shift) & 255; h *= 0x100000001b3ull;
+  }
+  return h;
+}
 struct MrtFixture : Fixture {
   Target composite, reference;
   Target *a = &scene, *b = &scratch, *e = &layer, *c = &composite;
   Com<IDirect3DVertexShader9> vs2;
   Com<IDirect3DPixelShader9> originals[8], augmented[8], composition,
       branch_composition;
-  bool use_branch = false, compare_compositors = false;
+  bool use_branch = false, compare_compositors = false, actual = false;
+  Com<IDirect3DVertexShader9> actual_vertices[3];
+  Com<IDirect3DPixelShader9> actual_originals[5], actual_variants[5][5];
+  std::vector<std::uint32_t> original_vertices[3], original_pixels[5];
   std::vector<IDirect3DTexture9 *> textures;
   Saved application;
   MrtFixture(IDirect3DDevice9 *device, unsigned w, unsigned h,
-             bool branch_experiment = false)
+             bool branch_experiment = false, const char *programs = nullptr,
+             const char *variants = nullptr)
       : Fixture(device, w, h, false), use_branch(branch_experiment),
-        compare_compositors(branch_experiment && w == 16), application(device) {
+        compare_compositors(branch_experiment && w == 16), actual(programs != nullptr), application(device) {
     target(composite, D3DFMT_A16B16G16R16F);
     if (w == 16)
       target(reference, D3DFMT_A16B16G16R16F);
-    auto words = source_vs2();
-    api(d->CreateVertexShader(words.data(), &vs2.p));
-    for (unsigned v = 0; v < 8; ++v) {
-      words = source_ps2(v, false);
-      api(d->CreatePixelShader(words.data(), &originals[v].p));
-      words = source_ps2(v, true);
-      api(d->CreatePixelShader(words.data(), &augmented[v].p));
+    Words words;
+    if (actual) {
+      using namespace x3m::renderer;
+      for (unsigned v = 0; v < 3; ++v) {
+        original_vertices[v] = local_program(std::string(programs) + "/vs_" + actual_vs[v] + ".bin");
+        need(local_fingerprint(original_vertices[v]) == std::stoull(actual_vs[v], nullptr, 16), "original VS fingerprint");
+        api(d->CreateVertexShader(reinterpret_cast<const DWORD *>(original_vertices[v].data()), &actual_vertices[v].p));
+      }
+      for (unsigned p = 0; p < 5; ++p) {
+        original_pixels[p] = local_program(std::string(programs) + "/ps_" + actual_ps[p] + ".bin");
+        const auto saved = original_pixels[p];
+        need(linear_emission_pair_reviewed(local_fingerprint(original_vertices[actual_vertex(p)]), local_fingerprint(saved)), "reviewed actual pair");
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(saved.data()), &actual_originals[p].p));
+        for (unsigned g = 0; g < 5; ++g) {
+          std::vector<std::uint32_t> transformed;
+          need(linear_emission_pixel_variant(saved.data(), saved.size(), {actual_gains[g]}, transformed) == LinearEmissionResult::Applied, "original PS transform");
+          need(original_pixels[p] == saved, "original input mutated");
+          std::ofstream output(std::string(variants) + "/ps_" + actual_ps[p] + "-" + std::to_string(g) + ".bin", std::ios::binary);
+          output.write(reinterpret_cast<const char *>(transformed.data()), transformed.size() * 4);
+          need(bool(output), "local transformed output");
+          api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(transformed.data()), &actual_variants[p][g].p));
+        }
+      }
+    } else {
+      words = source_vs2();
+      api(d->CreateVertexShader(words.data(), &vs2.p));
+      for (unsigned v = 0; v < 8; ++v) {
+        words = source_ps2(v, false);
+        api(d->CreatePixelShader(words.data(), &originals[v].p));
+        words = source_ps2(v, true);
+        api(d->CreatePixelShader(words.data(), &augmented[v].p));
+      }
     }
     words = selective_composite();
     api(d->CreatePixelShader(words.data(), &composition.p));
@@ -1026,6 +1080,47 @@ struct MrtFixture : Fixture {
     single(*a);
     fence();
   }
+  unsigned profile(const Case &cs) const {
+    unsigned p = cs.h.flags >> 16;
+    need(p < 5, "actual profile index"); return p;
+  }
+  IDirect3DVertexShader9 *source_vertex(const Case &cs) {
+    return actual ? actual_vertices[actual_vertex(profile(cs))].p : vs2.p;
+  }
+  IDirect3DPixelShader9 *source_pixel(const Case &cs, unsigned index, bool extra) {
+    if (actual) {
+      unsigned g = 0;
+      while (g < 5 && actual_gains[g] != cs.ops[index].gain) ++g;
+      need(g < 5, "actual gain variant");
+      return extra ? actual_variants[profile(cs)][g].p : actual_originals[profile(cs)].p;
+    }
+    unsigned v = cs.ops[index].affine | ((cs.h.flags & 64) ? 0 : 2) | ((cs.h.flags & 32) ? 4 : 0);
+    return extra ? augmented[v].p : originals[v].p;
+  }
+  void actual_constants(const Case &cs, unsigned index) {
+    // Original VS reconstructs position.w=1 and texcoord.z=1. Identity WVP
+    // retains the fixture's half-pixel-adjusted geometry. No VS replacement.
+    float wvp[16] = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    api(d->SetVertexShaderConstantF(0, wvp, 4));
+    float uv[8] = {1,0,0,0, 0,1,0,0};
+    if (cs.h.flags & 1024) {
+      uv[0]=.5f; uv[2]=.125f; uv[5]=-.5f; uv[6]=.875f;
+    }
+    unsigned v = actual_vertex(profile(cs));
+    api(d->SetVertexShaderConstantF(v == 2 ? 4 : 10, uv, 2));
+    if (v != 2) {
+      float world[12] = {.5f,0,0,.25f, 0,.5f,0,-.125f, 0,0,0,1};
+      float camera[12] = {1,0,0,.125f, 0,1,0,.25f, 0,0,1,3};
+      float fade[4] = {cs.ops[index].fade,0,0,0};
+      float fog[4] = {cs.h.flags & 2048 ? -.5f : cs.h.flags & 4096 ? 3.f : 1.5f, .5f,0,0};
+      BOOL enabled = (cs.h.flags & 512) != 0;
+      api(d->SetVertexShaderConstantF(4, world, 3));
+      api(d->SetVertexShaderConstantF(7, camera, 3));
+      api(d->SetVertexShaderConstantF(12, fade, 1));
+      api(d->SetVertexShaderConstantF(13, fog, 1));
+      api(d->SetVertexShaderConstantB(0, &enabled, 1));
+    }
+  }
   void source_state(const Case &cs, unsigned index, Target &target,
                     bool extra) {
     const auto &o = cs.ops[index];
@@ -1035,10 +1130,9 @@ struct MrtFixture : Fixture {
     api(d->SetDepthStencilSurface(depth.p));
     base();
     rs(D3DRS_DITHERENABLE, FALSE);
-    api(d->SetVertexShader(vs2.p));
-    unsigned variant =
-        o.affine | ((cs.h.flags & 64) ? 0 : 2) | ((cs.h.flags & 32) ? 4 : 0);
-    api(d->SetPixelShader(extra ? augmented[variant].p : originals[variant].p));
+    api(d->SetVertexShader(source_vertex(cs)));
+    api(d->SetPixelShader(source_pixel(cs, index, extra)));
+    if (actual) actual_constants(cs, index);
     api(d->SetTexture(0, textures[index]));
     api(d->SetSamplerState(2, D3DSAMP_SRGBTEXTURE, TRUE));
     api(d->SetSamplerState(2, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP));
@@ -1135,10 +1229,8 @@ struct MrtFixture : Fixture {
     api(d->GetVertexShader(&vertex.p));
     api(d->GetVertexDeclaration(&decl.p));
     api(d->GetTexture(0, &tex.p));
-    unsigned variant = cs.ops[index].affine | ((cs.h.flags & 64) ? 0 : 2) |
-                       ((cs.h.flags & 32) ? 4 : 0);
     need(rt.p == target.surface.p && ds.p == depth.p &&
-             pixel.p == originals[variant].p && vertex.p == vs2.p &&
+             pixel.p == source_pixel(cs, index, false) && vertex.p == source_vertex(cs) &&
              decl.p == declaration.p && tex.p == textures[index],
          "published native binding state");
     D3DVIEWPORT9 view{}, wanted{cs.h.flags & 16 ? width / 4 : 0,
@@ -1438,7 +1530,8 @@ void branch_timings(MrtFixture &f, unsigned width, unsigned height,
 }
 void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
                     const char *path, IDirect3DSurface9 *back,
-                    bool branch_experiment = false) {
+                    bool branch_experiment = false, const char *programs = nullptr,
+                    const char *variants = nullptr) {
   D3DCAPS9 caps{};
   api(device->GetDeviceCaps(&caps));
   const DWORD required = D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
@@ -1452,18 +1545,24 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
            (caps.PrimitiveMiscCaps & required) == required,
        "same-format MRT shared blending caps");
   {
-    MrtFixture f(device, 16, 16, branch_experiment);
+    MrtFixture f(device, 16, 16, branch_experiment, programs, variants);
     std::ofstream raw(path, std::ios::binary);
     need(bool(raw), "MRT raw output");
     for (const auto &cs : cases) {
       f.initialize_mrt(cs);
       auto result = f.run_mrt(cs);
       auto color = f.read(*f.a, true);
+      // Actual-original mode has one bracket per case. Read B/E before the
+      // depth probe, so the independent oracle checks emission directly.
+      std::vector<float> native, energy;
+      if (programs) { native = f.read(*f.b, true); energy = f.read(*f.e, true); }
       f.single(*f.a);
       auto depth = f.depth_probe(true);
       raw.write(reinterpret_cast<const char *>(&cs.h.id), 4);
       raw.write(reinterpret_cast<const char *>(color.data()), color.size() * 4);
       raw.write(reinterpret_cast<const char *>(depth.data()), depth.size() * 4);
+      if (programs) for (auto *v : {&native, &energy})
+        raw.write(reinterpret_cast<const char *>(v->data()), v->size() * 4);
       std::printf(
           "MRT_CASE id=%u sources=%u bursts=%u copy=%u native=%u "
           "zero=%u alpha=%u minuszero=%u capzero=%u infinite=%u fallback=%u "
@@ -1481,6 +1580,7 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
     f.single(f.scene);
     api(device->SetRenderTarget(0, back));
   }
+  if (programs) return; // Existing authored performance evidence is retained.
   LARGE_INTEGER frequency;
   need(QueryPerformanceFrequency(&frequency), "QPC frequency");
   for (auto size : {std::pair<unsigned, unsigned>{1280, 768}, {1920, 1080}}) {
@@ -1534,9 +1634,11 @@ int main(int argc, char **argv) {
   try {
     need(argc == 3 ||
              (argc == 4 && (std::strcmp(argv[3], "--mrt") == 0 ||
-                            std::strcmp(argv[3], "--mrt-branch") == 0)),
+                            std::strcmp(argv[3], "--mrt-branch") == 0)) ||
+             (argc == 6 && std::strcmp(argv[3], "--mrt-original") == 0),
          "arguments: cases.bin pixels.bin [--mrt|--mrt-branch]");
-    bool mrt = argc == 4;
+    bool mrt = argc >= 4;
+    bool actual_original = argc == 6;
     bool branch_experiment = mrt && std::strcmp(argv[3], "--mrt-branch") == 0;
     auto cases = load(argv[1]);
     WNDCLASSA wc{};
@@ -1611,7 +1713,8 @@ int main(int argc, char **argv) {
       Com<IDirect3DSurface9> back;
       api(device->GetRenderTarget(0, &back.p));
       if (mrt) {
-        mrt_experiment(device.p, cases, argv[2], back.p, branch_experiment);
+        mrt_experiment(device.p, cases, argv[2], back.p, branch_experiment,
+                       actual_original ? argv[4] : nullptr, actual_original ? argv[5] : nullptr);
       } else {
         {
           Fixture f(device.p, 16, 16);
@@ -1675,7 +1778,8 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf(branch_experiment ? "BRANCH_RESULT pass cases=%u shaders=81\n"
+    std::printf(actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=42\n"
+                : branch_experiment ? "BRANCH_RESULT pass cases=%u shaders=81\n"
                 : mrt             ? "MRT_RESULT pass cases=%u shaders=78\n"
                                   : "RESULT pass cases=%u shaders=24\n",
                 unsigned(cases.size()));
