@@ -4,7 +4,9 @@ Read `docs/status.md`, `docs/user-objective.md`, and the architecture/reverse-en
 notes before continuing. This is X3: Albion Prelude, x86, in the X3 bottle of
 **CrossOver Preview.app**, not CrossOver.app. The game executable is
 `~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe`.
-The Steam bottle remains the default for fixtures, not gameplay.
+Use X3 for new fixture runs as well as gameplay. Legacy runners still default
+to Steam internally, so set `X3M_FIXTURE_BOTTLE=X3` explicitly (user update,
+2026-09-13); do not routinely repeat verification on both bottles.
 
 User preferences recorded 2026-09-10:
 
@@ -103,7 +105,10 @@ Test coordination (added 2026-09-12):
   `tools/manage.py` launches into `X3` (`X3M_BOTTLE` overrides). The fixture
   runners under `verification/probe/` select their bottle through
   `verification/probe/bottle.py`: `X3M_FIXTURE_BOTTLE` (default `Steam`, so the
-  recorded results stay comparable). Any other bottle writes its records under
+  recorded results stay comparable). **User update, 2026-09-13: new verification
+  needs only the X3 bottle. Set `X3M_FIXTURE_BOTTLE=X3` for all new fixture
+  invocations; do not run a Steam counterpart as a routine acceptance step.**
+  Existing Steam evidence stays as historical provenance. Any other bottle writes its records under
   `verification/results/bottle-<name>/`, and every summary records the bottle
   name, WineArch and the two emulation environment lines. See
   `docs/verification/bottles.md` for the X3 validation record.

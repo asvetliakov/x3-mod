@@ -57,6 +57,14 @@ in every case because of its cap, versus +5.66…+8 for the old rule. Actual
 post-TAA meter inputs and presented images are absent, so this is a scoped
 counterfactual, not game acceptance of the new meter or its appearance.
 
+## Fixture bottle preference (2026-09-13)
+
+New CrossOver verification uses only **X3**, per the user’s latest preference.
+Legacy runners still default to Steam internally; new invocations explicitly
+set `X3M_FIXTURE_BOTTLE=X3`. Completed Steam evidence is retained, and routine
+qualification no longer repeats the same suite on both bottles. Native Windows
+remains a required, currently untested target.
+
 ## Review effort preference (2026-09-13)
 
 The user changed secondary code/correctness reviews from Sol xhigh to Sol high
