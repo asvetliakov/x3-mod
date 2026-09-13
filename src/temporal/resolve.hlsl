@@ -102,6 +102,13 @@ void historyTap(float2 uv, float weight, inout float3 sum, inout float total, in
         }
     }
 }
+// Keep the bounded neighborhood loops rolled to fit the ps_3_0 static
+// instruction budget. Traversal and arithmetic order stay unchanged. SM3 has
+// no dynamic temporary-component indexing: select the exact Catmull-Rom weight
+// for the loop index in [0,3] without changing its value.
+float loopWeight(float4 weights, int index) {
+    return index == 0 ? weights.x : (index == 1 ? weights.y : (index == 2 ? weights.z : weights.w));
+}
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Explicit GPU snapshot mode, used by TemporalPass only after validating s5.
     // Canonicalize coverage into owned R32F history; never infer it from alpha.
@@ -110,8 +117,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         // statistics. Store its 3x3 union once in current owned R32F history.
         // This branch never samples a previous (already expanded) mask.
         bool safe = true;
-        [unroll] for (int y = -1; y <= 1; ++y) {
-            [unroll] for (int x = -1; x <= 1; ++x)
+        [loop] for (int y = -1; y <= 1; ++y) {
+            [loop] for (int x = -1; x <= 1; ++x)
                 safe = maskSafe(fetch(currentReactive, uv + float2(x, y) * sizeJitter.xy).r) && safe;
         }
         return float4(safe ? 0 : 1, 0, 0, 1);
@@ -162,8 +169,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // "silhouette", corner pixels).
     float2 dilate = 0;
     float nearest = depth;
-    [unroll] for (int ky = -1; ky <= 1; ++ky) {
-        [unroll] for (int kx = -1; kx <= 1; ++kx) {
+    [loop] for (int ky = -1; ky <= 1; ++ky) {
+        [loop] for (int kx = -1; kx <= 1; ++kx) {
             if (kx != 0 || ky != 0) {
                 float neighbor = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy).r;
                 if (validDepth(neighbor) && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); }
@@ -241,8 +248,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // as negated forms that a NaN passes), so it fails closed.
     float tolerance = max(rejection.x, rejection.y * abs(expectedDepth));
     float considered = 0, proven = 0;
-    [unroll] for (int ty = 0; ty < 2; ++ty) {
-        [unroll] for (int tx = 0; tx < 2; ++tx) {
+    [loop] for (int ty = 0; ty < 2; ++ty) {
+        [loop] for (int tx = 0; tx < 2; ++tx) {
             float weight = (tx ? f.x : 1 - f.x) * (ty ? f.y : 1 - f.y);
             // Taps of negligible weight cannot reject: they carry no visible energy.
             if (weight > 0.01) {
@@ -273,9 +280,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         float2 w2 = 0.5 * f + 2 * f2 - 1.5 * f3;
         float2 w3 = -0.5 * f2 + 0.5 * f3;
         float4 wx = float4(w0.x, w1.x, w2.x, w3.x), wy = float4(w0.y, w1.y, w2.y, w3.y);
-        [unroll] for (int j = 0; j < 4; ++j) {
-            [unroll] for (int i = 0; i < 4; ++i)
-                historyTap(tap + float2(i - 1, j - 1) * sizeJitter.xy, wx[i] * wy[j], accumulated, total, reactive);
+        [loop] for (int j = 0; j < 4; ++j) {
+            [loop] for (int i = 0; i < 4; ++i)
+                historyTap(tap + float2(i - 1, j - 1) * sizeJitter.xy, loopWeight(wx, i) * loopWeight(wy, j), accumulated, total, reactive);
         }
     }
     if (reactive || total < 0.5) return float4(color, alpha);
@@ -292,8 +299,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // Invalid neighboring values cannot poison the statistics.
     float3 low = weighted, high = weighted, mean = 0, square = 0;
     float count = 0;
-    [unroll] for (int ny = -1; ny <= 1; ++ny) {
-        [unroll] for (int nx = -1; nx <= 1; ++nx) {
+    [loop] for (int ny = -1; ny <= 1; ++ny) {
+        [loop] for (int nx = -1; nx <= 1; ++nx) {
             float3 neighbor = fetch(currentColor, uv + float2(nx, ny) * sizeJitter.xy).rgb;
             if (finiteColor(neighbor)) {
                 neighbor = weigh(neighbor);

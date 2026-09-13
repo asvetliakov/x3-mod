@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/temporal/resolve.hlsl",
-  "source_sha256": "6dc25ca6186191436c77eb5ecdc5fc033dbc71f39f415abd576c66c27c3d7a16",
+  "source_sha256": "d3b7a1ea3b0082a39d6c410a3bc47587d1537c7f62f827959a51bcf88e341594",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,12 +10,12 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": null,
-  "word_count": 4487,
-  "bytecode_sha256": "4cd8ad52d674c8abb9fde779e3c913d9dbba513fdadfec00f21b7d7c21959f48",
-  "header_sha256": "b8a2e7d7af306591e20b6d64bbdc4a5b61036c83ad97f3db1b11d40ec758c699",
+  "word_count": 1891,
+  "bytecode_sha256": "2bfba715ac91237011b156336b1a713098a3c6fab08ea22b3ee7a4645b9b09c8",
+  "header_sha256": "9fa4667340b0eea1fee9392d70ce82e9defe8bb7f00f989079c4399b5862237c",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
-    "tools/shaders/generate_rigid_motion_pixel.py": "ecd275c268c671908592159806aaab59bb0668dbde81b15e99e06c776f85eae8"
+    "tools/shaders/generate_rigid_motion_pixel.py": "f06de770a196bf37908c177e8fc9660b969c69e3119e01980aa62c37b575fa9d"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

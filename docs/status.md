@@ -72,33 +72,20 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   All previous DEFAULT variants remain byte-exact; BUMPMAP uses a separate
   varying ABI and cached sampler admission. The feature stays opt-in; gameplay
   acceptance remains run 6 in the brief queue, with no additional run required.
-  Blended emissions now have an [ordered-composition study](architecture/linear-emission-composition.md)
-  backed by targeted engine disassembly and bounded trace analysis. Its detached
-  color/coverage/cost experiment is reviewed and X3-qualified, but measured
-  untouched-pixel drift and unresolved post-draw fallback rule out promoting it
-  unchanged. The next architecture must preserve encoded pixels and a current
-  native result until publication. A same-draw native/emission MRT candidate
-  now passes 38 detached X3 cases, preserving untouched channels and a native
-  recovery image. A branch experiment preserved the image but showed no
-  consistent speedup; retain the baseline. The actual-original emission
-  transformer is independently reviewed and passes seven host tests over five
-  pairs / 25 gain variants. Its first detached X3 run passes 70 cases and 42
-  shader creations, with exact native color/alpha parity. It is not linked
-  into the installed renderer. Disassembly identifies the material subset/pass
-  loops, but the historical adjacent draws do not yet qualify batching.
-  Copy/composition cost remains a live-integration
-  concern. A [background study](reverse-engineering/background-temporal-coverage.md)
-  distinguishes sampled camera-centered nebula motion from changing stardust
-  inputs; broad runtime temporal admission remains unproved. The selected next
-  temporal step preserves baseline motion and adds complete supplemental masks
-  for enhanced emissions, rather than requiring a classifier for every native
-  writer. The consumer passes focused X3 image/state/Reset qualification without
-  live wiring. A shared-shader instruction-budget issue predates this extension;
-  reduce it before regenerating the embedded program. The three-output source
-  producer separately passes 81 X3 cases, preserving native color/alpha and
-  producing conservative coverage in the same draw. Target ownership and
-  consumer/producer integration remain.
-  No live emission route is selected.
+  [Blended emission work](architecture/linear-emission-composition.md) now has
+  independently qualified original-shader augmentation, same-draw native color
+  and supplemental coverage, and a temporal consumer. The latest producer run
+  passes 81 X3 cases; 30 paired temporal frames are pixel-exact after reducing
+  the shared shader from 1,261 to 507 instruction slots. The smaller program
+  meets the standard static limit but has a modest measured completion-time
+  cost. Review is closed and the regenerated embedded bytes match the qualified
+  program. Production build/installation is next; the installed shader remains
+  unchanged. Target ownership and single-draw pass integration are in
+  progress; no live emission route is enabled. Copy/composition cost remains a
+  concern, and historical adjacent draws do not yet qualify batching. The
+  [background study](reverse-engineering/background-temporal-coverage.md) retains
+  the existing native temporal limitations; global writer classification is not
+  a prerequisite for supplemental coverage of enhanced emissions.
   The [sun resource study](reverse-engineering/sun-material-identity.md) identifies
   the late TSuns lens-flare path; a pre-bloom sun material remains unproved.
   Targeted disassembly established native color/emissive scaling. Covered

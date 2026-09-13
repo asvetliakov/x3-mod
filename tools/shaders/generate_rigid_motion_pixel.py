@@ -24,6 +24,7 @@ checked-in artifacts without changing them. The compiler DLL is an external
 local prerequisite, never redistributed. Only our authored shaders' compiled
 programs and deterministic provenance are retained. No D3D device is created;
 X3AP must nevertheless be stopped for this tool.
+Run through verification/probe/wine_lock.py; X3M_FIXTURE_BOTTLE selects the bottle.
 """
 import argparse
 import hashlib
@@ -37,6 +38,7 @@ import tempfile
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'verification/probe'))
 from game_guard import game_running  # noqa: E402
+import bottle  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 COMPILER_SOURCE = ROOT / 'tools/shaders/compile_rigid_motion_pixel.cpp'
@@ -149,8 +151,7 @@ def compile_one(name, args):
         subprocess.run(['i686-w64-mingw32-g++', '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
                         '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2',
                         '-static', str(COMPILER_SOURCE), '-o', str(exe)], check=True)
-        subprocess.run(['/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine',
-                        '--bottle', 'Steam', '--no-update', '--dll', 'd3dx9_37=n',
+        subprocess.run([bottle.WINE, *bottle.wine_args(), '--dll', 'd3dx9_37=n',
                         str(exe), 'Z:' + str(inputs[3]), 'Z:' + str(compiled), 'Z:' + str(binary), target],
                        check=True, timeout=60, env=dict(os.environ, WINEDLLOVERRIDES='d3dx9_37=n'))
         data = binary.read_bytes()
@@ -158,7 +159,7 @@ def compile_one(name, args):
         raise RuntimeError('Compilation inputs changed')
     words = validate(data, target)
     text = '// Generated from our original %s. Do not edit.\n' % source.relative_to(ROOT)
-    text += '// Reproduce: python3 tools/shaders/generate_rigid_motion_pixel.py --check\n'
+    text += '// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader %s --check\n' % name
     text += ''.join('    ' + ', '.join(f'0x{v:08x}u' for v in words[i:i+6]) + ',\n'
                     for i in range(0, len(words), 6))
     record = dict(schema=1, source=str(source.relative_to(ROOT)), source_sha256=before[source],
@@ -185,7 +186,7 @@ def main():
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--shader', choices=sorted(SHADERS), action='append',
                         help='fragment to (re)compile; default: every fragment')
-    parser.add_argument('--d3dx', type=Path, default=Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll')
+    parser.add_argument('--d3dx', type=Path, default=bottle.game_dir() / 'd3dx9_37.dll')
     args = parser.parse_args()
     if game_running():
         raise RuntimeError('X3AP running or process inventory failed; postpone compilation')

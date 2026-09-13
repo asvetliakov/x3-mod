@@ -18,13 +18,17 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
-- The existing shared TAA resolve compiles to 1,179 reported instruction slots,
-  while the X3 fixture device advertises `MaxPixelShader30InstructionSlots=512`.
-  The supplemental-mask candidate adds 82 slots. Historical X3 execution does
-  not explain or resolve that advertised-cap mismatch; native drivers may
-  enforce their limit. Reduce the static budget and qualify image/performance
-  parity before promoting the expanded shared shader. See the
-  [emission temporal work](linear-emission-composition.md#consumer-contract).
+- The previously embedded TAA resolve reported 1,179 instruction slots, while the
+  X3 fixture device advertises `MaxPixelShader30InstructionSlots=512`; the first
+  unrolled supplemental source reported 1,261. Historical X3 execution of those
+  shaders does not make them cap compliant. The reviewed all-loop supplemental
+  source now compiles to 507 slots / 1,891 DWORDs, within both the documented
+  ps_3_0 minimum and the X3 advertised limit. Its focused X3 qualification
+  matches the 1,261-slot source exactly over 30 paired frames and passes the full
+  temporal and Reset coverage; measured full-pass completion-wall cost is small
+  but noisy and is not a GPU-busy or game-FPS claim. The regenerated embedded artifact matches the qualified bytecode; production
+  build/installation and gameplay acceptance remain, and native-Windows execution
+  remains unverified. See the [emission temporal work](linear-emission-composition.md#consumer-contract).
 
 - Opt-in bloom now uses documented D3D9 calls and a compiler-supported x86
   SEH bridge; native Windows execution and live gameplay integration remain

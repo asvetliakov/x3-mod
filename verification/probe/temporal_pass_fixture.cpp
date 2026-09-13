@@ -1394,6 +1394,96 @@ void sharpen_measure(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,
     for(UINT n=0;n<8;++n)d->SetTexture(n,nullptr);
     d->SetPixelShader(nullptr);
 }
+// Same inputs and independent histories through unrolled/rolled programs.
+// Strict RGB equality is the initial oracle; report every measured difference
+// before failing, rather than adjusting tolerances after a mismatch.
+void loop_twins(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* baseline,const DWORD* candidate){
+    std::puts("LOOP_TWINS");Fixture f(d,compiler);RouteScene route(f,compiler);
+    TemporalPass original,loop;check("loop twin baseline initialize",original.initialize(d,decoder,baseline));check("loop twin candidate initialize",loop.initialize(d,decoder,candidate));
+    Com<IDirect3DTexture9> raw;check("loop twin FP16 mask",d->CreateTexture(W,H,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&raw.p,nullptr));
+    const char* names[]={"finite","nonfinite","hdr","motion","supplemental"};
+    for(unsigned scenario=0;scenario<5;++scenario)for(unsigned frame=0;frame<6;++frame){
+        hdr::upload16(f.color.p,[&](UINT x,UINT y,float* pixel){
+            for(UINT c=0;c<3;++c){float v=.125f*float(1+(x*3+y*5+frame+c)%11);if(scenario==2)v*=c==0?256.f:c==1?32.f:4.f;
+                if(scenario==1&&((x+y+frame)%7==0))v=c==0?NAN:c==1?INFINITY:-INFINITY;
+                pixel[c]=v;}
+            pixel[3]=(x==0&&y==0)?-0.f:.125f*float(1+(x+frame)%7);
+        });
+        hdr::upload16(raw.p,[&](UINT x,UINT y,float* pixel){float v=0;
+            if(scenario==4&&frame>=1&&frame<=3&&x==5+frame&&y==8)v=frame==3?NAN:1.f;
+            pixel[0]=pixel[1]=pixel[2]=v;pixel[3]=0;
+        });
+        route.depth([&](UINT x,UINT y){return x<2?-1.f:((x+y+frame)%5==0?.25f:.5f);});
+        f.uploadMotion(1);
+        if(scenario==3){D3DLOCKED_RECT lock{};check("loop twin motion lock",f.motion->LockRect(0,&lock,nullptr,0));
+            for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){const float v[]={(x+.875f)/W,(y+.75f)/H,.5f,((x+y+frame)%13==0)?-1.f:1.f};std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*16,v,16);}
+            check("loop twin motion unlock",f.motion->UnlockRect(0));}
+        auto in=f.inputs();in.depth_snapshot=nullptr;in.current_depth=route.depth32.p;in.epoch=20+scenario;in.weight=.875f;
+        in.current_jitter[0]=frame&1?.125f:-.125f;in.current_jitter[1]=frame&2?.25f:-.25f;
+        in.clip_to_previous[3]=frame?(.75f/W):0;in.clip_to_previous[7]=frame?(-.5f/H):0;
+        in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=true;
+        if(scenario==2)in.luminance_k=.125f;
+        if(scenario==3){in.motion_policy=MotionPolicy::PerPixel;in.motion=f.motion.p;}
+        if(scenario==4){in.reactive_policy=ReactivePolicy::SupplementalMaskWithDepthSentinel;in.reactive=raw.p;}
+        auto a=f.run(original,in,"unrolled loop twin");auto b=f.run(loop,in,"rolled loop twin");
+        const auto ac=readback(d,a.color),bc=readback(d,b.color);unsigned changed=0,maxUlp=0,nonfinite=0;double maxAbs=0;bool alpha=true;
+        auto ordered=[](unsigned short bits){return bits&0x8000?0x8000-int(bits&0x7fff):0x8000+int(bits);};
+        for(UINT pixel=0;pixel<W*H;++pixel){alpha=alpha&&at<unsigned short>(ac,pixel*4+3)==at<unsigned short>(bc,pixel*4+3);
+            for(UINT channel=0;channel<3;++channel){const auto ah=at<unsigned short>(ac,pixel*4+channel),bh=at<unsigned short>(bc,pixel*4+channel);changed+=ah!=bh;
+                maxUlp=std::max(maxUlp,unsigned(std::abs(ordered(ah)-ordered(bh))));const float av=halfFloat(ah),bv=halfFloat(bh);
+                if(std::isfinite(av)&&std::isfinite(bv))maxAbs=std::max(maxAbs,double(std::fabs(av-bv)));else ++nonfinite;}}
+        const bool depth=readback(d,a.depth)==readback(d,b.depth);
+        const bool mask=bool(a.reactive)==bool(b.reactive)&&(!a.reactive||readback(d,a.reactive)==readback(d,b.reactive));
+        std::printf("LOOP_TWIN case=%s frame=%u rgb_changed=%u max_abs=%.9g max_ulp=%u nonfinite=%u alpha_exact=%u depth_exact=%u mask_exact=%u history_equal=%u\n",names[scenario],frame,changed,maxAbs,maxUlp,nonfinite,unsigned(alpha),unsigned(depth),unsigned(mask),unsigned(a.used_history==b.used_history));
+        ++numeric_checks;require(!changed&&!nonfinite&&alpha&&depth&&mask&&a.used_history==b.used_history,"rolled resolve matches independent unrolled history exactly");
+    }
+}
+// Submission-to-EVENT-completion wall time, not GPU-busy time or game FPS.
+// Only run/Issue/GetData/QPC are inside each sample; no readback, source upload,
+// logging, shader creation, allocation or initial history seeding is timed.
+void loop_timings(IDirect3DDevice9* d,const DWORD* baseline,const DWORD* candidate){
+    LARGE_INTEGER frequency{};check("timing QPC frequency",QueryPerformanceFrequency(&frequency)?S_OK:E_FAIL);
+    Com<IDirect3DQuery9> completion;check("timing event query",d->CreateQuery(D3DQUERYTYPE_EVENT,&completion.p));
+    auto stamp=[](){LARGE_INTEGER now{};QueryPerformanceCounter(&now);return now.QuadPart;};
+    auto drain=[&](){check("timing issue completion",completion->Issue(D3DISSUE_END));const auto start=stamp();HRESULT hr;
+        while((hr=completion->GetData(nullptr,0,D3DGETDATA_FLUSH))==S_FALSE){if(stamp()-start>frequency.QuadPart*10)throw std::runtime_error("timing event timeout");Sleep(0);}check("timing completion",hr);};
+    Com<IDirect3DSurface9> saved;check("timing save target",d->GetRenderTarget(0,&saved.p));D3DVIEWPORT9 savedViewport{};check("timing save viewport",d->GetViewport(&savedViewport));
+    const char* modes[]={"stationary","fractional","current_only","supplemental_empty"};
+    for(auto size:{std::pair<UINT,UINT>{1280,768},{1920,1080}}){const UINT width=size.first,height=size.second;
+        Com<IDirect3DTexture9> color,depth,raw;Com<IDirect3DSurface9> caller;
+        check("timing color",d->CreateTexture(width,height,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&color.p,nullptr));
+        check("timing raw mask",d->CreateTexture(width,height,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_MANAGED,&raw.p,nullptr));
+        check("timing depth",d->CreateTexture(width,height,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depth.p,nullptr));
+        check("timing caller target",d->CreateRenderTarget(width,height,D3DFMT_A16B16G16R16F,D3DMULTISAMPLE_NONE,0,FALSE,&caller.p,nullptr));
+        for(auto* texture:{color.p,raw.p}){D3DLOCKED_RECT lock{};check("timing upload lock",texture->LockRect(0,&lock,nullptr,0));const unsigned short pixel[]={toHalf(.5f),toHalf(.25f),toHalf(1),toHalf(.375f)};
+            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x){auto* destination=static_cast<char*>(lock.pBits)+y*lock.Pitch+x*8;if(texture==raw.p)std::memset(destination,0,8);else std::memcpy(destination,pixel,8);}
+            check("timing upload unlock",texture->UnlockRect(0));}
+        {Com<IDirect3DTexture9> staging;check("timing depth staging",d->CreateTexture(width,height,1,0,D3DFMT_R32F,D3DPOOL_SYSTEMMEM,&staging.p,nullptr));D3DLOCKED_RECT lock{};check("timing depth lock",staging->LockRect(0,&lock,nullptr,0));const float z=.5f;
+            for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&z,4);
+            check("timing depth unlock",staging->UnlockRect(0));check("timing depth upload",d->UpdateTexture(staging.p,depth.p));}
+        for(UINT stage=0;stage<16;++stage)check("timing clear sampler",d->SetTexture(stage,nullptr));
+        check("timing clear depth",d->SetDepthStencilSurface(nullptr));for(UINT rt=1;rt<4;++rt)check("timing clear MRT",d->SetRenderTarget(rt,nullptr));check("timing bind caller",d->SetRenderTarget(0,caller.p));
+        for(unsigned mode=0;mode<4;++mode){TemporalPass passes[2];check("timing baseline initialize",passes[0].initialize(d,nullptr,baseline));check("timing loop initialize",passes[1].initialize(d,nullptr,candidate));
+            FrameInputs in{};in.color=color.p;in.current_depth=depth.p;in.width=width;in.height=height;in.epoch=mode+1;in.weight=.9f;std::copy(identity,identity+16,in.clip_to_previous);
+            in.motion_policy=MotionPolicy::KnownCameraOnly;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=false;
+            if(mode==1){in.clip_to_previous[3]=.75f/width;in.clip_to_previous[7]=-.5f/height;}
+            if(mode==2)in.reactive_policy=ReactivePolicy::Unavailable;
+            if(mode==3){in.reactive_policy=ReactivePolicy::SupplementalMaskWithDepthSentinel;in.reactive=raw.p;}
+            Output output[2];for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("timing warm run",passes[which].run(in,&output[which]));drain();}
+            for(unsigned which=0;which<2;++which)require(output[which].used_history==(mode!=2),"timing warm history policy");
+            double ms[2][6]{};for(unsigned pair=0;pair<6;++pair){const unsigned first=pair&1;
+                for(unsigned step=0;step<2;++step){const unsigned which=first^step;drain();const auto start=stamp();check("timing measured run",passes[which].run(in,&output[which]));drain();ms[which][pair]=1000.*double(stamp()-start)/double(frequency.QuadPart);}
+                std::printf("LOOP_TIMING_PAIR width=%u height=%u case=%s pair=%u first=%s baseline_ms=%.6f loop_ms=%.6f delta_ms=%.6f\n",width,height,modes[mode],pair,first?"loop":"baseline",ms[0][pair],ms[1][pair],ms[1][pair]-ms[0][pair]);}
+            // Validate uniform output outside the timed interval, including exact
+            // current alpha. Detailed mask/depth equivalence is in loop_twins.
+            for(unsigned which=0;which<2;++which){const auto bytes=sharpen::surface(d,output[which].color_surface,width,height,D3DFMT_A16B16G16R16F,8);const UINT center=(height/2*width+width/2)*4;bool exact=true;
+                const float expected[]={.5f,.25f,1,.375f};for(UINT c=0;c<4;++c)exact=exact&&at<unsigned short>(bytes,center+c)==toHalf(expected[c]);require(exact,"timed uniform image and alpha remain exact");}
+            double baseSum=0,loopSum=0,deltaMin=1e30,deltaMax=-1e30;for(unsigned pair=0;pair<6;++pair){baseSum+=ms[0][pair];loopSum+=ms[1][pair];deltaMin=std::min(deltaMin,ms[1][pair]-ms[0][pair]);deltaMax=std::max(deltaMax,ms[1][pair]-ms[0][pair]);}
+            std::printf("LOOP_TIMING_SUMMARY width=%u height=%u case=%s pairs=6 baseline_min_ms=%.6f baseline_max_ms=%.6f baseline_mean_ms=%.6f loop_min_ms=%.6f loop_max_ms=%.6f loop_mean_ms=%.6f paired_delta_min_ms=%.6f paired_delta_max_ms=%.6f paired_delta_mean_ms=%.6f\n",width,height,modes[mode],*std::min_element(ms[0],ms[0]+6),*std::max_element(ms[0],ms[0]+6),baseSum/6,*std::min_element(ms[1],ms[1]+6),*std::max_element(ms[1],ms[1]+6),loopSum/6,deltaMin,deltaMax,(loopSum-baseSum)/6);
+        }
+        check("timing restore caller target",d->SetRenderTarget(0,saved.p));check("timing restore caller viewport",d->SetViewport(&savedViewport));
+    }
+}
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     // Optional sixth argument: "stationary-only" runs just the stationary
     // stability scene (one generation), used to record the negative proof
@@ -1402,8 +1492,10 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
     const bool stationaryOnly=argc==6&&std::strcmp(argv[5],"stationary-only")==0;
     const bool measure=argc==6&&std::strcmp(argv[5],"sharpen-measure")==0;
     const bool supplementalOnly=argc==7&&std::strcmp(argv[5],"supplemental-only")==0;
-    try{if((argc!=5&&!stationaryOnly&&!measure&&!supplementalOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
-        if(supplementalOnly){
+    const bool loopQualify=argc==7&&std::strcmp(argv[5],"loop-qualify")==0;
+    try{if((argc!=5&&!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>|loop-qualify <baseline-resolve>]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
+        Com<ID3DXBuffer> baseline;
+        if(supplementalOnly||loopQualify){
             D3DCAPS9 caps{};check("supplemental shader budget caps",d->GetDeviceCaps(&caps));
             auto disassemble=symbol<decltype(&D3DXDisassembleShader)>(d3dx.h,"D3DXDisassembleShader");
             auto budget=[&](ID3DXBuffer* code,const char* label){Com<ID3DXBuffer> assembly;
@@ -1412,8 +1504,9 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 while(std::getline(lines,line))if(line.find("instruction slots used")!=std::string::npos){const auto start=line.find_first_of("0123456789");if(start!=std::string::npos)slots=unsigned(std::stoul(line.substr(start)));}
                 std::printf("RESOLVE_BUDGET variant=%s dwords=%lu instruction_slots=%u device_limit=%lu headroom=%d within_guaranteed_512=%u\n",label,code->GetBufferSize()/sizeof(DWORD),slots,caps.MaxPixelShader30InstructionSlots,int(caps.MaxPixelShader30InstructionSlots)-int(slots),unsigned(slots<=512));
                 require(slots>0&&static_cast<DWORD*>(code->GetBufferPointer())[0]==0xffff0300,"resolve instruction budget parsed for ps_3_0");return slots;};
-            Com<ID3DXBuffer> baseline;compile(compiler,file(argv[6]),"ps_3_0",&baseline.p);
-            const unsigned oldSlots=budget(baseline.p,"baseline"),newSlots=budget(rc.p,"supplemental");
+            compile(compiler,file(argv[6]),"ps_3_0",&baseline.p);
+            const unsigned oldSlots=budget(baseline.p,"baseline"),newSlots=budget(rc.p,loopQualify?"loop":"supplemental");
+            if(loopQualify)require(newSlots<=512&&newSlots<=caps.MaxPixelShader30InstructionSlots,"rolled resolve fits guaranteed and advertised instruction budget");
             std::printf("RESOLVE_BUDGET_DELTA instruction_slots=%d dwords=%ld\n",int(newSlots)-int(oldSlots),long(rc->GetBufferSize()/sizeof(DWORD))-long(baseline->GetBufferSize()/sizeof(DWORD)));
             // The retained baseline also exceeds the advertised limit on X3.
             // Report this unexplained portability concern; actual shader creation
@@ -1424,5 +1517,9 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}
         else if(supplementalOnly){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());reactive_cases(d.p,compiler,decoder,resolver);supplemental_cases(d.p,pp,compiler,decoder,resolver);std::printf("RESULT PASS numerical=%u state_restorations=%u supplemental_only=1\n",numeric_checks,state_checks);result=0;}
         else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);sharpen_cases(d.p,compiler,decoder,resolver,sharpener);quad_twin_cases(d.p,compiler,decoder,resolver,sharpener);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
-        if(!stationaryOnly&&!measure&&!supplementalOnly){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
+        if(loopQualify){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());auto* unrolled=static_cast<DWORD*>(baseline->GetBufferPointer());
+            std::printf("LOOP_FULL_SUITE numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);
+            supplemental_cases(d.p,pp,compiler,decoder,resolver);loop_twins(d.p,compiler,decoder,unrolled,resolver);loop_timings(d.p,unrolled,resolver);
+            std::printf("RESULT PASS numerical=%u state_restorations=%u loop_qualify=1\n",numeric_checks,state_checks);result=0;}
+        if(!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify){std::printf("RESULT PASS numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);result=0;}
     }catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());}if(window)DestroyWindow(window);UnregisterClassA(cls.lpszClassName,cls.hInstance);return result;}
