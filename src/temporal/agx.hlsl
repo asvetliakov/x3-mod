@@ -7,8 +7,8 @@
 // registers so the host uploads the very numbers the reference uses.
 //
 // Contract
-//   s0   scene colour: the resolved FP16 image (TAA output, or the bloom
-//        composite in stage 5) in ENGINE space, sampled point/clamp at LOD 0
+//   s0   scene colour: the resolved FP16 image (TAA output) in ENGINE space,
+//        sampled point/clamp at LOD 0
 //        through the -0.5 pixel quad of resolve.hlsl. The alpha carries through.
 //   out  the game's A8R8G8B8 main surface, SRGBWRITEENABLE=FALSE, blending off.
 //        oC0.rgb is ALREADY display encoded by the outset matrix; there is no
@@ -97,6 +97,21 @@ float3 look(float3 v)
     return y + lookSlope.w * (graded - y);
 }
 
+// Tail shared by the ordinary transform and bloom composition. Input has
+// already been decoded, firefly-clamped and exposed. Bloom is added in float32
+// immediately before this function; never store that sum into FP16 or decode
+// it again. Keep expression order identical to the original tonemap.
+float4 agxTonemapExposed(float3 v, float alpha)
+{
+    v = mul3(inset0, inset1, inset2, v); // inset
+    v = clamp(log2(max(v, logFloor)), logRange.x, logRange.z);
+    v = (v - logRange.x) * logRange.y;   // 0..1 log encoding
+    v = contrast(v);
+    v = look(v);
+    v = mul3(outset0, outset1, outset2, v); // outset: display encoded
+    return float4(saturate(v), alpha);
+}
+
 // The whole transform of one engine-space sample: display-encoded RGB with
 // the alpha carried. main() applies it to the centre sample; agx_sharpen_ps.hlsl
 // (AGX_NO_MAIN defined before including this file) applies it to five taps.
@@ -105,13 +120,7 @@ float4 agxTonemap(float4 scene)
     float3 v = decodeEngine(scene.rgb);
     v = min(v, exposure.y);              // X3M_HDR_CLAMP firefly guard (65504 = off)
     v *= exposure.x;                     // exp2(EV_adapted)
-    v = mul3(inset0, inset1, inset2, v); // inset
-    v = clamp(log2(max(v, logFloor)), logRange.x, logRange.z);
-    v = (v - logRange.x) * logRange.y;   // 0..1 log encoding
-    v = contrast(v);
-    v = look(v);
-    v = mul3(outset0, outset1, outset2, v); // outset: display encoded
-    return float4(saturate(v), scene.a);
+    return agxTonemapExposed(v, scene.a);
 }
 
 #ifndef AGX_NO_MAIN
