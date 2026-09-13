@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "complete_union": true,
+  "variants": 12,
+  "cases": 24,
+  "constructed": 0,
+  "decoded": 0,
+  "exe_sha256": "59e4b07bd489125d9fd02138f76814c7e4f605821f0b0d3d2596ec72d92d767e",
+  "source_records": [
+    {
+      "path": "/tmp/x3-voice-stream-probe-r1/result.json",
+      "sha256": "580f9dee2338c8ac6b7d6c8c283fb9b80ab2706ddf711a36450ca40dcfef7cdb",
+      "completed": false,
+      "cases": 20,
+      "elapsed_seconds": 246.397506875
+    },
+    {
+      "path": "/tmp/x3-voice-stream-probe-r1-tail/result.json",
+      "sha256": "85aea64095998c3a07762bea710c9d1bbf87e279836f56ef441715d13ecad8c4",
+      "completed": true,
+      "cases": 4,
+      "elapsed_seconds": 48.138292291999996
+    }
+  ],
+  "operators": {
+    "co_initialize": {
+      "calls": 12,
+      "wall_ms": 15211.831400000001,
+      "cpu_ms": 550.0,
+      "hresults": {
+        "00000000": 12
+      }
+    },
+    "directsound_create": {
+      "calls": 12,
+      "wall_ms": 5830.915999999998,
+      "cpu_ms": 440.0,
+      "hresults": {
+        "00000000": 12
+      }
+    },
+    "directsound_cooperative": {
+      "calls": 12,
+      "wall_ms": 2.2558999999999996,
+      "cpu_ms": 0.0,
+      "hresults": {
+        "00000000": 12
+      }
+    },
+    "add_audio": {
+      "calls": 24,
+      "wall_ms": 226.7884,
+      "cpu_ms": 110.0,
+      "hresults": {
+        "00000000": 24
+      }
+    },
+    "set_pcm": {
+      "calls": 24,
+      "wall_ms": 0.4308,
+      "cpu_ms": 0.0,
+      "hresults": {
+        "00000000": 24
+      }
+    },
+    "wrapper_init": {
+      "calls": 24,
+      "wall_ms": 1.0596,
+      "cpu_ms": 0.0,
+      "hresults": {
+        "80040154": 24
+      }
+    },
+    "open_file": {
+      "calls": 48,
+      "wall_ms": 15721.359199999999,
+      "cpu_ms": 10260.0,
+      "hresults": {
+        "80040217": 48
+      }
+    },
+    "add_source": {
+      "calls": 8,
+      "wall_ms": 105.20620000000001,
+      "cpu_ms": 110.0,
+      "hresults": {
+        "00000000": 8
+      }
+    },
+    "find_output": {
+      "calls": 8,
+      "wall_ms": 0.1895,
+      "cpu_ms": 0.0,
+      "hresults": {
+        "00000000": 8
+      }
+    },
+    "render": {
+      "calls": 16,
+      "wall_ms": 5292.909900000001,
+      "cpu_ms": 2770.0,
+      "hresults": {
+        "80040218": 16
+      }
+    }
+  },
+  "measured_stage_wall_seconds": 43.17624489999999,
+  "runner_wall_seconds": 294.535799167,
+  "limits": [
+    "Not an in-game HRESULT trace or restored audible speech.",
+    "No decoded samples; sample/buffer/RUN stages not reached.",
+    "Connected-pin row absence does not prove successful enumeration.",
+    "Runner minus stage wall is unmeasured lifecycle/orchestration, not method CPU."
+  ],
+  "outside_measured_stages_seconds": 251.359554267,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  }
+}

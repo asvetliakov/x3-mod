@@ -1,7 +1,7 @@
 # Run 28: failed native voice-stream creation
 
-2026-09-14. Bounded read-only study; no game/Wine execution, production changes,
-build, or cache implementation. The user confirms that target-name speech is
+2026-09-14. Native disassembly study followed by a root-owned standalone
+documented-API probe; no game launch, production audio change or cache implementation. The user confirms that target-name speech is
 absent. Restoring speech is the acceptance condition; suppressing repeated
 attempts is not a fix.
 
@@ -168,8 +168,65 @@ teardown order; do not move raw graph pointers to a worker or reuse a partially
 failed graph without complete cleanup. [Initialize contract](https://learn.microsoft.com/en-us/previous-versions/ms784027%28v%3Dvs.85%29).
 The accompanying `/tmp/x3-voice-stream-study/com-contracts.md` contains independently checked interface,
 GUID, lifetime and HRESULT references. Native-Windows source compatibility is
-required; neither native-Windows nor new X3 execution was performed in this study.
+required; the preceding disassembly/research phase did not execute the game or a Wine probe.
+The later standalone X3 execution is recorded below; native Windows remains unverified.
 
 Local Ghidra exports `lifetime.txt`, `reuse-startup.txt`, and `audio-init.txt`
 contain the bounded raw inspection and must remain untracked. Only this derived
 note, the small outcome summary and COM contract note are intended for review.
+
+## Documented-API voice probe: graph connection failure
+
+The root-owned X3 probe reproduces failed construction for both actual voice
+archives 144 and 244. The retained R1 partial plus its disjoint two-configuration
+tail cover **12 configurations / 24 fresh constructions**: three native graph
+routes, with/without the optional speech wrapper, two repeats each. All 24 fail
+before sample/buffer/RUN or PCM decoding. Source files and codec registrations
+were not modified, and no sound output was started.
+
+| Measured boundary | Calls | Result | Wall / owner-thread CPU |
+| --- | ---: | --- | ---: |
+| Primary audio + requested PCM format | 24 each | all succeed | — |
+| Optional speech DMO Init | 24 | `80040154` REGDB_E_CLASSNOTREG | 1.060 / 0 ms |
+| Alternate AddSourceFilter / FindPin | 8 each | all succeed | — |
+| Alternate Render | 16 | `80040218` VFW_E_CANNOT_RENDER | 5292.910 / 2770 ms |
+| OpenFile, including native retries/fallback | 48 | `80040217` VFW_E_CANNOT_CONNECT | 15721.359 / 10260 ms |
+
+Removing the unavailable optional Voice DMO does **not** repair connection.
+DirectSound startup succeeds. Retained source-filter CLSIDs identify AsyncReader,
+not WM ASF Reader; no connected-pin rows are emitted, although R1 does not record
+EnumPins failures and therefore cannot prove an exhaustive disconnected-pin
+inventory. This identifies source/decoder **connection building** as the failed
+stage in the standalone native-equivalent path, not a uniquely missing codec.
+It is not yet an in-game HRESULT trace or restored audible speech.
+
+The game already retains successfully created streams, so a permanent negative
+cache would hide missing speech rather than fix it. The next bounded comparison
+will explicitly activate WM ASF Reader, Load the unchanged `.dat` file, inspect
+offered audio types, and connect to the existing manual PCM sink—with an explicit
+Standard WMA decoder control. A `.dat` source-selection repair remains a candidate,
+not a proven fix. Microsoft documents the [cannot-connect code](https://learn.microsoft.com/en-us/windows/win32/directshow/error-and-success-codes)
+and [WM ASF Reader source/decoder boundary](https://learn.microsoft.com/en-us/windows/win32/directshow/wm-asf-reader-filter).
+
+The two commands took 294.536 s overall, versus 43.176 s in measured method brackets.
+The 251.360 s residual includes process/orchestration and other unmeasured work;
+it is **not** COM-method CPU or game frame cost. R1 stopped at its budget after
+20 cases; only the missing four were run afterwards. Future diagnostics batch
+fresh graphs in one owner process to avoid this measured process-lifetime cost.
+
+Compact combined evidence: [voice-stream-create.json](../../verification/results/bottle-X3/voice-stream-create.json).
+The record retains both immutable local source-record identities and the exact
+EXE identity. The source/runner received independent Sol/high review; the final
+runner's eight focused host tests pass. No production audio hook or cache change
+is included in this diagnosis checkpoint.
+
+Reproducible sources: [probe](../../verification/probe/voice_stream_probe.cpp),
+[build-only script](../../verification/probe/build_voice_stream.sh),
+[consume-only runner](../../verification/probe/run_voice_stream_probe.py), and
+[focused parser tests](../../verification/analysis/test_voice_stream_probe.py).
+The retained EXE was built before source relocation; its native C++ contents
+are unchanged. Build with `sh verification/probe/build_voice_stream.sh` only
+when new source requires it; existing evidence consumes the frozen EXE.
+Every run requires `X3M_FIXTURE_BOTTLE=X3` and the shared `wine_lock.py` wrapper.
+The complete default batch has 12 configurations; repeated `--variant 244:2:1
+--variant 244:2:0` selects exactly the disjoint tail used here.

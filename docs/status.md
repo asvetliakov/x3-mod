@@ -46,7 +46,10 @@ input-side target publications to voice playback/stream creation. Eight take
 424–512 ms, with virtually all time in creation. The user hears no target-name
 speech. [Disassembly](reverse-engineering/voice-stream-creation.md) confirms null
 creation returns, existing voice files and an existing successful-stream cache;
-a standalone audio-construction probe is being prepared to isolate the failure.
+the standalone probe reproduces connection failure in all 24 constructions
+across both actual voice files and three tested graph-construction routes. Removing the optional
+speech decoder does not repair it. An explicit ASF-reader/decoder probe is next;
+no production audio repair is installed.
 Other unexplained slow-frame residuals remain. The earlier
 [Run 27 delayed publisher](verification/run27-glow-selection.md) is a separate witness.
 
