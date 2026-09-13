@@ -66,17 +66,27 @@ PAIRS += [(vs, ps) for vs in ('719856ce0c213220', 'badefd5143b3024f') for ps in
 PAIRS += [('4944d81dfe531b37', ps) for ps in ('3602b05ce11ca6ff', '8e58ac79b59b02b1')]
 PAIRS += [(vs, ps) for vs in ('44c4a41ca92ae2e3', '19a246a56e9d9700') for ps in
           ('042c9ae16f41feff', '68f0dd6791fd7d3d', '5c823b8507fa1442', 'a6e1328c0bb3f401')]
-TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+ASTEROID_PAIRS = (
+    ('b0602757fce6e870','517540ae6d5e5410'),
+    ('0c223ad11bce02d5','7a0c3388065bb08d'),
+    ('233d17d26ce0c1fc','7a0c3388065bb08d'),
+    ('167eb2d5629ab9d3','d44db87778a43b61'),
+    ('330ceb9dd874ede2','550c2a4d4d3ed70f'),
+    ('12b8a13f13fe8cfe','550c2a4d4d3ed70f'))
+PAIRS += list(ASTEROID_PAIRS)
+FIXED_VERTICES = {'badefd5143b3024f','19a246a56e9d9700',
+                  '233d17d26ce0c1fc','12b8a13f13fe8cfe'}
+TIMING_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 113)
 FAMILIES = ('Argon', 'shared DEFAULT', 'Argon BUMP', 'Split DEFAULT',
             'standard DEFAULT', 'standard BUMP', 'standard LOW', 'shared BUMP',
-            'Split BUMP', 'Terran DEFAULT', 'Terran BUMP')
-CUBE_PATTERN, FOG, BOUNDARY = 1, 2, 4
+            'Split BUMP', 'Terran DEFAULT', 'Terran BUMP', 'Asteroid DEFAULT', 'Asteroid BUMP')
+CUBE_PATTERN, FOG, BOUNDARY, DETAIL_PATTERN = 1, 2, 4, 8
 CUBE_BANDS_U = (.125, .25, .25, .5)
 CUBE_BANDS_V = (.125, .375, .375, .75)
 
 
 def family_name(pair):
-    return FAMILIES[pair // 10]
+    return FAMILIES[pair // 10] if pair < 110 else FAMILIES[11 + (pair >= 113)]
 
 
 def cube_location(direction):
@@ -110,6 +120,16 @@ AFFINE = ((.75, .125, 0, .0625), (0, .5, .25, .03125), (.125, 0, .875, -.03125))
 # is independent of half-target storage and is not permission to clamp HDR.
 RGB_REL_TOL = .006
 RGB_ABS_TOL = 2e-5
+
+
+def detail_sample(c):
+    # Native Asteroid detail UV = 3*base UV, whether separate TEX1 or TEX0.zw.
+    # Binary-exact constant UVs keep point samples away from texel boundaries.
+    if not c['flags'] & DETAIL_PATTERN:
+        return tuple(c['lightmap'])
+    u,v = c['coefficients'][2:]
+    ix,iy = (min(3,max(0,int(3*t*4))) for t in (u,v))
+    return ((ix+1)/8.,(iy+1)/8.,(ix+iy+1)/16.,.875)
 
 
 def fixture_cases():
@@ -385,6 +405,54 @@ def fixture_cases():
         add('hull_boundary_q_zero',pair=pair,normal_sample=[.25,.5,.75,1.],flags=BOUNDARY,fp16=0)
     for pair in (70,20,80,50,90,0,100,60,72,82,92,102,76,86,96,106,40):
         add('hull_family_alternation',pair=pair)
+    # The 2,498 prior case payloads stay byte-exact. Asteroid reuses fields:
+    # lightmap = detail RGBA; coefficients = base/detail weights and base UV.
+    base.update(coefficients=[1.,.5,.0625,.1875])
+    for pair in range(110,116):
+        for depth in (0,1):
+            for reverse in (0,1):
+                add('asteroid_pair_depth_face',pair=pair,depth=depth,reverse=reverse)
+        for weights in ((1.,0.),(0.,1.),(.75,.25),(2.,.5),(0.,0.)):
+            add('asteroid_weights',pair=pair,coefficients=[*weights,.0625,.1875])
+        for gains in ([0.,0.,0.],[4.,1.,1.],[1.,16.,1.],[1.,1.,16.]):
+            add('asteroid_independent_gains',pair=pair,gains=gains)
+        add('asteroid_missing_history',pair=pair,valid=0)
+        for lights in ((1,) if PAIRS[pair][0] in FIXED_VERTICES else (0,1,8)):
+            for gain in (1.,4.,16.):
+                add('asteroid_lights_gains',pair=pair,lights=lights,gains=[gain]*3)
+        for reverse in (0,1):
+            add('asteroid_fog_alpha',pair=pair,reverse=reverse,flags=FOG)
+        for source in ('point','material','dir0','dir1'):
+            isolated={key:[0.]*3 for key in ('point','material','dir0','dir1')}
+            isolated[source]=base[source]
+            add('asteroid_isolated_'+source,pair=pair,**isolated)
+        lightonly=dict(point=[0.]*3,material=[0.]*3,dir0=[1.]*3,dir1=[0.]*3)
+        add('asteroid_second_direction',pair=pair,normal=[0.,0.,-1.],camera=[0.,0.,-4.],
+            point=[0.]*3,material=[0.]*3,dir0=[0.]*3,dir1=[.5,.25,.75])
+        add('asteroid_unit_diffuse',pair=pair,mask=0.,**lightonly)
+        add('asteroid_cubic_specular',pair=pair,mask=1.,camera=[.6,0.,.8],**lightonly)
+        add('asteroid_grazing_specular',pair=pair,mask=1.,normal=[.9797958971132712,0.,.2],
+            camera=[.3919183588453085,0.,-.92],**lightonly)
+        for uv in ((.0625,.1875),(.1875,.0625),(.3125,.1875)):
+            add('asteroid_detail_uv',pair=pair,flags=DETAIL_PATTERN,coefficients=[.25,2.,*uv])
+        add('asteroid_detail_alpha_ignored',pair=pair,lightmap=[.125,.25,.0625,0.])
+        add('asteroid_base_alpha',pair=pair,diffuse=[.5,.25,.75,.125])
+        add('asteroid_full_precision',pair=pair,fp16=0,diffuse=[.3333,.0625,1.25,.75])
+        if pair>=113:
+            for label,changes in (
+                ('alpha_binormal',dict(normal_sample=[.25,.5,.75,.75])),
+                ('green_tangent',dict(normal_sample=[.25,.75,.75,.5])),
+                ('unused_red_blue',dict(normal_sample=[1.,.5,0.,.75])),
+                ('negative_q',dict(normal_sample=[.25,.9375,.75,.9375])),
+                ('nonorthogonal',dict(tangent=[1.,.25,.125],binormal=[.125,1.,.25],normal_sample=[.25,.75,.75,.625])),
+                ('mirrored',dict(binormal=[0.,-1.,0.],normal_sample=[.25,.5,.75,.75]))):
+                add('asteroid_normal_'+label,pair=pair,camera=[.6,0.,.8],mask=1.,**changes)
+            for sample in ([.25,.5,.75,.5],[.25,.9375,.75,.9375]):
+                add('asteroid_geometric_point',pair=pair,normal_sample=sample,
+                    point=[.5,.25,.125],material=[0.]*3,dir0=[0.]*3,dir1=[0.]*3)
+            add('asteroid_boundary_q_zero',pair=pair,normal_sample=[.25,.5,.75,1.],flags=BOUNDARY,fp16=0)
+    for pair in (110,0,113,20,111,112,114,115,100,110):
+        add('asteroid_family_alternation',pair=pair)
     return cases
 
 
@@ -408,15 +476,21 @@ def expected(c, half_source=False):
     f32 = lambda x: struct.unpack('<f', struct.pack('<f', x))[0]
     vector = lambda key: tuple(f32(x) for x in c[key])
     gains = ref.Gains(*vector('gains'))
-    fixed = PAIRS[c['pair']][0] in ('badefd5143b3024f','19a246a56e9d9700')
+    fixed = PAIRS[c['pair']][0] in FIXED_VERTICES
     lights = [ref.PointLight((0, 0, 2), vector('point'), (2, .25, .125))] * (1 if fixed else c['lights'])
     varying = ref.vertex((0, 0, 0), vector('normal'), vector('camera'), vector('material'), lights,
                          fixed_single=fixed, material_alpha=.625, gains=gains,
                          fog_clip=vector('fog_clip') if c['flags'] & FOG else None)
     profile = PAIRS[c['pair']][1]
     directions = [ref.DirectionalLight((0, 0, 1), vector('dir0'))]
-    if ref.PROFILES[profile].directions == 2:
+    contract = ref.ASTEROID_PROFILES[profile] if c['pair'] >= 110 else ref.PROFILES[profile]
+    if contract.directions == 2:
         directions.append(ref.DirectionalLight((0, 0, -1), vector('dir1')))
+    if c['pair'] >= 110:
+        return ref.asteroid_pixel(profile,varying,vector('diffuse'),tuple(f32(v) for v in detail_sample(c)),
+            f32(c['mask']),directions,weights=ref.AsteroidWeights(*vector('coefficients')[:2]),
+            gains=gains,half_source=half_source,half_target=bool(c['fp16']),
+            normal_sample=vector('normal_sample'),tangent=vector('tangent'),binormal=vector('binormal'))
     return ref.pixel(profile, varying, vector('diffuse'), f32(c['mask']), vector('lightmap'),
                      (cube_sample if c['flags'] & CUBE_PATTERN else lambda _:vector('cube')[:3])
                      if ref.PROFILES[profile].bump_map else vector('cube')[:3], directions, affine=AFFINE if c['affine'] else ref.IDENTITY_AFFINE,
@@ -431,7 +505,8 @@ def expected_alpha(c):
     alpha=.625
     if c['flags'] & FOG:
         alpha*=min(1.,max(0.,c['fog_clip'][0]-c['fog_clip'][1]*math.hypot(*c['camera'])))
-    value=(c['glow']*c['lightmap'][3]+(1-c['glow'])*c['diffuse'][3])*alpha
+    value=(c['diffuse'][3] if c['pair'] >= 110 else
+           c['glow']*c['lightmap'][3]+(1-c['glow'])*c['diffuse'][3])*alpha
     return ref.half(value) if c['fp16'] else value
 
 
@@ -502,7 +577,7 @@ def validate_report(text, cases=None):
         # whole-RT motion-only comparison also checks bit-for-bit alpha equality.
         assert actual[3] == ideal.encoded_rgba[3], (cid, 'authored alpha')
     assert not failures, ('RGB oracle mismatches', failures[:12], 'total', len(failures))
-    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
+    timings = re.findall(r'^TIMING pair=(0|10|20|30|40|50|60|70|80|90|100|110|113) lights=(0|8) mode=([012]) iteration=(\d+) draws=4 vertices=98304 width=256 completed_ms=(\S+)$', text, re.M)
     assert len(timings) == 36 * len(TIMING_PAIRS)
     timing_summary = []
     for pair in TIMING_PAIRS:
@@ -519,7 +594,7 @@ def validate_report(text, cases=None):
     recognized = 1 + len(creates) + len(invariants) + len(samples) + len(timings) + 1
     assert len(lines) == recognized, 'unexpected output rows'
     return dict(cases=len(cases), pairs=len(PAIRS), unique_originals=len({('vs',v) for v,p in PAIRS}|{('ps',p) for v,p in PAIRS}), shader_creations=len(creates),
-                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=1527,
+                samples=len(samples), analytic_samples=9*sum(not bool(c["flags"] & BOUNDARY) for c in cases), families=family_results, original_case_prefix=2498,
                 boundary_cases=sum(bool(c["flags"] & BOUNDARY) for c in cases),
                 boundary_limit="Finite capped RGB storage and alpha/temporal identity only; no float64 full-color equivalence", invariant_pixels=256*len(cases), max_rgb_envelope_error=maximum_abs,
                 max_tolerance_fraction=maximum_scaled, exact_black_channels=black_samples,
@@ -552,7 +627,7 @@ def main():
     assert inputs == {p['id']+'.bin':p['sha256'] for p in profiles['programs']}, 'original input provenance'
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
-                  scope='110 reviewed pairs: Argon/shared/Split/Terran DEFAULT and BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
+                  scope='116 reviewed pairs including six Asteroid DEFAULT/BUMPMAP pairs: Argon/shared/Split/Terran DEFAULT and BUMPMAP, standard_lighting DEFAULT/BUMPMAP/BUMPMAP_LOW; detached combined shader numerics, alpha/motion identity and diagnostic cost; no live route or native Windows runtime proof',
                   timing_scope='QPC through EVENT completion; 4 managed-buffer DrawPrimitive calls, 98,304 vertices, one Begin/EndScene, fenced setup, no readback; not GPU timestamps or game FPS',
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),

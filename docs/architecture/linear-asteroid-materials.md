@@ -3,9 +3,8 @@
 The isolated Asteroid extension starts from the reviewed 110-pair source
 checkpoint `10e447b`. It adds the complete SM3 Asteroid DEFAULT/BUMPMAP group:
 **six VS, four PS and six exact pairs**, bringing the transformer to **83
-originals / 116 pairs**. The pure source review is approved; GPU/live
-qualification and installation of these additions remain blocked as described
-below. This is a step toward complete material coverage; the
+originals / 116 pairs**. The pure source review is approved and the detached X3 qualification below now
+passes. Live qualification and installation of these additions remain pending. This is a step toward complete material coverage; the
 remaining 46 opaque SM3 pairs and lower shader models remain in scope.
 
 The [original profile report](../reverse-engineering/linear-material-profiles.json)
@@ -226,6 +225,7 @@ numerical expectations are unchanged because they inspect rendered outputs,
 not the previous RGB semantic number; their next actual run must bind the
 COLOR1 candidate and retain native-alpha, temporal and fallback checks.
 
+
 ## Main source integration
 
 Pure checkpoint `bf62f6e` is integrated after the motion/depth WRAP correction.
@@ -233,5 +233,66 @@ The sole merge conflict was a host-double declaration; both rollback and
 material-counter methods are retained. Independent integration review confirms
 the cached BUMP contract and WRAP shadow/Reset recovery remain independent.
 The ten affected live-control/WRAP host tests pass, including 34,611 WRAP
-assertions. Detached and live GPU fixture updates remain separate pending their
-execution; the installed build still has the previous 110-pair implementation.
+assertions. Detached GPU qualification now passes as recorded below; live verification
+remains pending; the installed build still has the previous 110-pair implementation.
+
+## Detached 116-pair X3 qualification (R1)
+
+The single frozen whole-group run passed on 2026-09-13 in **X3**, CrossOver
+Preview arm64 Wine (`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), under the shared
+Wine lock. The [compact result](../../verification/results/bottle-X3/linear-material-gpu.json)
+binds all 83 original shader hashes, scoped source hashes, the explicit fixture
+EXE and raw `/tmp/x3-linear-material-116-r1/report.txt`. Its terminal result is
+`PASS cases=2757`; exit code is zero. The fixture EXE is 11,196,870 bytes,
+SHA-256 `9e4836ae0a0a763768a6955616556d4056c917802da5ef00569a4f4c2cb1df7b`,
+built with GCC 16.2.0 using the existing standalone SSE2/incoming-stack build.
+All recorded source inputs still match the completed run. No game was launched.
+
+This qualifies the actual separate-register COLOR1 variants over **116 pairs**,
+both depth modes and **697 shader creations**. The 2,498 previously accepted
+case payloads remain byte-exact; 259 appended cases include 256 Asteroid cases
+(115 DEFAULT, 141 BUMP) and three old-family alternation controls. All six
+Asteroid pairs exercise winding, independent gains, missing history, native
+loop zero/one/eight and fixed-single point lights, fog/base alpha, base/detail
+weights including the deliberately noncomplementary `2/.5`, and a patterned
+detail texture that distinguishes both axes of the original 3x UV mapping.
+Cubic highlights, the absent outer factor three, the second directional light,
+grazing response, AG channels/negative-q, and geometric-point versus bumped-PS
+lighting have independent numerical witnesses.
+
+The run produced **24,813 samples** and **705,792 whole-target invariant pixels**,
+with no alpha, motion, depth or finite-storage mismatch. Of the samples, 24,381
+have float64/retained-sample-envelope RGB comparisons; 48 operational boundary
+cases retain only finite capped RGB and exact alpha/temporal requirements.
+The unchanged tolerance is `2e-5 + 0.006*RGB` (tiny-source absolute tolerance
+`1e-12`); maximum tolerance fraction was **0.1614341**, with maximum envelope
+error `0.00390625`. Each Asteroid technique's maximum fraction was `0.1599756`
+and maximum error approximately `0.000976568`. Exact black and HDR checks
+covered 4,617 and 3,609 sampled channels respectively. No tolerance was widened.
+
+Diagnostic timings fence setup, then measure QPC through EVENT completion for
+four managed-buffer draws, 98,304 submitted vertices and a 256x256 target,
+without readback inside the timed window. Each mode/light-count cell has six
+post-warmup samples; mode order alternates. The two new representative families
+have these batch medians in milliseconds:
+
+| Asteroid technique | Point lights | Original | Motion | Combined | Combined observed range |
+| --- | ---: | ---: | ---: | ---: | --- |
+| DEFAULT | 0 | 0.60530 | 0.67275 | 0.78210 | 0.7768–0.7868 |
+| DEFAULT | 8 | 0.56395 | 0.67050 | 0.78620 | 0.7761–0.7920 |
+| BUMP | 0 | 0.67760 | 0.78340 | 0.78915 | 0.7721–1.3547 |
+| BUMP | 8 | 0.67175 | 0.79455 | 0.80525 | 0.7774–0.9076 |
+
+All 13 family timing groups remain in the compact record. These measurements
+include CPU submission, backend scheduling and completion; they are neither
+isolated GPU timestamps nor a game-FPS estimate. The BUMP zero-light outlier
+makes median-only performance claims inappropriate. Shader creation totaled
+42.1504 ms in this process, also diagnostic rather than gameplay loading time.
+
+The earlier pending-GPU statements describe the pre-run checkpoint; this result
+supersedes them **only for the detached case bank above**. It does not resolve
+the separate mixed-register alpha failure, qualify every FLAT/perspective/wrap
+interpolation state, or prove live route/state/Reset/fallback integration.
+Those live checks remain separate, as do native Windows execution, installation
+and gameplay image/performance acceptance. The original experiment history and
+unchanged ordinary-motion/reference evidence remain intact.

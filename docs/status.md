@@ -166,8 +166,12 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   [coverage ledger](architecture/material-coverage.md) retains all 817 archive
   pass identities; [52 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md)
   and older-profile variants remain, alongside other scene writers. The six-pair
-  Asteroid candidate and separate COLOR1 transport pass source review; full
-  GPU/live qualification is in progress. The [Boron/Paranid contract](reverse-engineering/boron-paranid-materials.md)
+  Asteroid candidate and separate COLOR1 transport pass source review and
+  2,757 detached GPU cases; the 64-case interpolation qualification preserves
+  native alpha/temporal outputs and independently matches RGB. X3 treats
+  programmable COLOR as Gouraud even when FLAT is requested; that backend
+  limitation is explicitly separated from candidate parity. Combined live
+  qualification and installation remain pending. The [Boron/Paranid contract](reverse-engineering/boron-paranid-materials.md)
   covers all 32 remaining pairs and identifies a whole-register transport
   candidate after the mixed-declaration X3 alpha failure.
   [Blended emission work](architecture/linear-emission-composition.md) now has

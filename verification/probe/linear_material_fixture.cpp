@@ -41,14 +41,16 @@ template <class T> struct Com {
 };
 struct Case {
   unsigned id, pair, depth, lights, reverse, affine, valid, fp16, flags;
+  // Asteroid uses lightmap RGBA as detail; f47..50 = base/detail weights, base UV.
   // Existing f[0..31] retain their meanings. Append normal RGBA, B, T,
-  // camera, fog clip and scalar diffuse/specular/reflection/power; flags: asymmetric cube=1, fog=2, boundary=4.
+  // camera, fog clip and scalar diffuse/specular/reflection/power; flags: asymmetric cube=1, fog=2, boundary=4, detail UV pattern=8.
   float f[51];
 };
 static_assert(sizeof(Case) == 240, "binary case ABI");
 const char * vertex_ids[] = {
     "53a0a641107ed76c", "719856ce0c213220", "badefd5143b3024f", "4944d81dfe531b37", "44c4a41ca92ae2e3", "19a246a56e9d9700",
-    "494fe349b8bc12ec"};
+    "494fe349b8bc12ec",
+    "b0602757fce6e870", "0c223ad11bce02d5", "233d17d26ce0c1fc", "167eb2d5629ab9d3", "330ceb9dd874ede2", "12b8a13f13fe8cfe"};
 const char * pixel_ids[] = {
     "63f96eba9eea7880", "8759c7838bbc86c2", "593e5dea9b3457d5", "7a0bb00a8070496a", "8d5b2ba0fb4d13bf", "dab93928f26906f7",
     "3b94320087e81945", "e3b7acc16da9932d", "7a14d4dcb28f27e5", "8ab6188a40ca15ea", "8df6143d0e77d92e", "e16a9806ee3544c3",
@@ -60,7 +62,8 @@ const char * pixel_ids[] = {
     "1f26d41bcb7dac1e", "bdcdb3ab996ae4e0", "78963cdc7c710e04", "1ed1bf0fdec00e1a", "2b04461d0dae038b", "acc83ed2509d84a1",
     "3006f8030a467739", "d6e8bdde0e4c515f", "e5ea78b8b0b0fe07", "f42202faf57a3c89", "769c3814fc0efba8", "22cc5b05a55ef61e",
     "ef2bf556f207b8bd", "91b6c09eb47f8555", "cc09f17db377fd9e", "3755809bd40afc13", "61418505e5d8f998", "b5f1d4145171026b",
-    "3602b05ce11ca6ff", "8e58ac79b59b02b1", "042c9ae16f41feff", "68f0dd6791fd7d3d", "5c823b8507fa1442", "a6e1328c0bb3f401"};
+    "3602b05ce11ca6ff", "8e58ac79b59b02b1", "042c9ae16f41feff", "68f0dd6791fd7d3d", "5c823b8507fa1442", "a6e1328c0bb3f401",
+    "517540ae6d5e5410", "7a0c3388065bb08d", "d44db87778a43b61", "550c2a4d4d3ed70f"};
 // Derived register-layout facts; original instructions own the lobe and normal math.
 const bool pixel_affine[] = {
     true, true, false, true, true, false,
@@ -73,7 +76,8 @@ const bool pixel_affine[] = {
     true, true, true, true, false, false,
     true, true, true, true, false, false,
     true, true, true, true, false, false,
-    true, true, true, true, false, false};
+    true, true, true, true, false, false,
+    false, false, false, false};
 const bool pixel_bump[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -85,7 +89,8 @@ const bool pixel_bump[] = {
     true, true, true, true, true, true,
     true, true, true, true, true, true,
     false, false, false, false, false, false,
-    true, true, true, true, true, true};
+    true, true, true, true, true, true,
+    false, false, true, true};
 const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
@@ -97,7 +102,8 @@ const bool pixel_application[] = {
     false, false, false, false, false, false,
     false, false, false, false, false, false,
     false, false, false, false, false, false,
-    false, false, false, false, false, false};
+    false, false, false, false, false, false,
+    false, false, false, false};
 const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
@@ -109,7 +115,8 @@ const unsigned pixel_directions[] = {
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
     2, 2, 1, 1, 1, 1,
-    2, 2, 1, 1, 1, 1};
+    2, 2, 1, 1, 1, 1,
+    2, 1, 2, 1};
 const unsigned pair_v[] = {
     0, 0, 1, 1, 1, 1,
     2, 2, 2, 2, 0, 0,
@@ -129,7 +136,8 @@ const unsigned pair_v[] = {
     0, 0, 1, 1, 1, 1,
     2, 2, 2, 2, 3, 3,
     4, 4, 4, 4, 5, 5,
-    5, 5};
+    5, 5,
+    7, 8, 9, 10, 11, 12};
 const unsigned pair_p[] = {
     0, 1, 2, 3, 4, 5,
     2, 3, 4, 5, 6, 7,
@@ -149,7 +157,8 @@ const unsigned pair_p[] = {
     54, 55, 56, 57, 58, 59,
     56, 57, 58, 59, 60, 61,
     62, 63, 64, 65, 62, 63,
-    64, 65};
+    64, 65,
+    66, 67, 67, 68, 69, 69};
 Words load(const std::string &path) {
   std::ifstream in(path, std::ios::binary | std::ios::ate);
   require(bool(in), "missing local program");
@@ -206,7 +215,7 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   D3DCAPS9 caps;
-  Words originals[2][66];
+  Words originals[2][70];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path) : d(device) {
@@ -319,7 +328,7 @@ struct Gpu {
   Shaders &shaders;
   unsigned width;
   Com<IDirect3DSurface9> back, color[2], motion, current;
-  Com<IDirect3DTexture9> textures[4];
+  Com<IDirect3DTexture9> textures[4], detail;
   Com<IDirect3DCubeTexture9> cube;
   Com<IDirect3DVertexDeclaration9> declaration;
   Gpu(IDirect3DDevice9 *device, Shaders &s, unsigned size)
@@ -337,6 +346,8 @@ struct Gpu {
     for (auto &t : textures)
       api(d->CreateTexture(1, 1, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
                            &t.p, nullptr));
+    api(d->CreateTexture(4, 4, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
+                         &detail.p, nullptr));
     api(d->CreateCubeTexture(4, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_MANAGED,
                              &cube.p, nullptr));
     const D3DVERTEXELEMENT9 elements[] = {
@@ -385,6 +396,7 @@ struct Gpu {
     api(d->SetVertexDeclaration(declaration.p));
     shaders.bind(c, mode);
     const bool bump = pixel_bump[pair_p[c.pair]];
+    const bool asteroid = c.pair >= 110;
     // Clear the union first: DEFAULT must never retain BUMP's stage-4 cube,
     // and switching stage-3 2D/cube roles must not depend on the last family.
     for (unsigned i = 0; i < 5; ++i)
@@ -414,7 +426,19 @@ struct Gpu {
         }
       api(cube->UnlockRect(D3DCUBEMAP_FACES(face), 0));
     }
-    api(d->SetTexture(bump ? 4 : 3, cube.p));
+    if (!asteroid)
+      api(d->SetTexture(bump ? 4 : 3, cube.p));
+    if (asteroid && (c.flags & 8)) {
+      D3DLOCKED_RECT lock{};
+      api(detail->LockRect(0, &lock, nullptr, 0));
+      for (unsigned y=0;y<4;++y)
+        for (unsigned x=0;x<4;++x) {
+          const float value[4]={(x+1)/8.f,(y+1)/8.f,(x+y+1)/16.f,.875f};
+          std::memcpy(static_cast<char *>(lock.pBits)+y*lock.Pitch+x*16,value,16);
+        }
+      api(detail->UnlockRect(0));
+      api(d->SetTexture(bump ? 3 : 2, detail.p));
+    }
     for (unsigned i = 0; i < 5; ++i) {
       for (auto state : {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER})
         api(d->SetSamplerState(i, state, D3DTEXF_POINT));
@@ -424,7 +448,8 @@ struct Gpu {
       api(d->SetSamplerState(i, D3DSAMP_SRGBTEXTURE, FALSE));
     }
     float v[256][4]{};
-    bool fixed = pair_v[c.pair] == 2 || pair_v[c.pair] == 5;
+    bool fixed = pair_v[c.pair] == 2 || pair_v[c.pair] == 5 ||
+                 pair_v[c.pair] == 9 || pair_v[c.pair] == 12;
     unsigned matrix = fixed ? 0 : 24, normal = fixed ? 10 : 31,
              camera = fixed ? 13 : 34, emissive = fixed ? 19 : 40,
              alpha = fixed ? 18 : 39, tex = fixed ? 16 : 37;
@@ -441,6 +466,11 @@ struct Gpu {
     v[fixed ? 20 : 41][1] = c.f[46];
     v[alpha][0] = .625f;
     v[tex][0] = v[tex + 1][1] = 1;
+    if (asteroid) {
+      // Constant base UV; the actual original computes detail UV = 3*base UV.
+      v[tex][0] = v[tex+1][1] = 0;
+      v[tex][2] = c.f[49]; v[tex+1][2] = c.f[50];
+    }
     std::memcpy(v[emissive], c.f + 16, 12);
     for (unsigned i = 0; i < (fixed ? 1u : 8u); ++i) {
       unsigned base = fixed ? 4 : i * 3;
@@ -458,7 +488,7 @@ struct Gpu {
     float p[221][4]{};
     unsigned profile = pair_p[c.pair];
     bool affine = pixel_affine[profile];
-    unsigned glow = affine ? 3 : 0, dir = glow + 1;
+    unsigned glow = affine ? 3 : 0, dir = asteroid ? 0 : glow + 1;
     if (affine) {
       if (c.affine) {
         const float rows[12] = {.75f, .125f,   0,     .0625f, 0,     .5f,
@@ -468,12 +498,19 @@ struct Gpu {
         for (unsigned k = 0; k < 3; ++k)
           p[k][k] = 1;
     }
-    p[glow][0] = c.f[31];
+    if (!asteroid) p[glow][0] = c.f[31];
     p[dir][2] = 1;
     std::memcpy(p[dir + 1], c.f + 22, 12);
     if (pixel_directions[profile] == 2) {
       p[dir + 2][2] = -1;
       std::memcpy(p[dir + 3], c.f + 25, 12);
+    }
+    if (asteroid) {
+      const unsigned weight = 2 * pixel_directions[profile];
+      p[weight][0] = c.f[48]; // actual detail scalar
+      p[weight+1][0] = c.f[47]; // actual base scalar, never reconstructed
+      const BOOL native_flags[2] = {FALSE,FALSE};
+      api(d->SetPixelShaderConstantB(0,native_flags,2));
     }
     if (pixel_application[profile]) {
       // Original CTAB layout: specular,power,reflection,diffuse follow lights.
@@ -705,13 +742,18 @@ int main(int argc, char **argv) {
       }
       {
         Gpu gpu(device.p, shaders, 256);
-        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u}) {
+        for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u, 110u, 113u}) {
           Case timed = cases.front();
           timed.pair = pair;
           timed.flags = pixel_bump[pair_p[pair]] ? 1 : 0;
           // Neutral normal for both AG reconstruction and LOW signed XYZ.
           timed.f[32] = timed.f[33] = timed.f[35] = .5f;
           timed.f[34] = 1.f;
+          if (pair >= 110) {
+            timed.flags = 0;
+            timed.f[47]=1; timed.f[48]=.5f;
+            timed.f[49]=.0625f; timed.f[50]=.1875f;
+          }
           gpu.timing(timed);
         }
       }

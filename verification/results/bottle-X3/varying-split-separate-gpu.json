@@ -1,0 +1,132 @@
+{
+  "pass_": true,
+  "mode": "separate",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "/private/tmp/x3-material-asteroid/verification/probe/build/varying-split/varying_split_fixture.exe",
+    "separate"
+  ],
+  "raw_directory": "/tmp/x3-varying-separate-r3",
+  "exe": "/private/tmp/x3-material-asteroid/verification/probe/build/varying-split/varying_split_fixture.exe",
+  "exe_sha256": "bb7d43649bf335100fa7115a30889605a84c7d76567b2e0277f73a6904672f0c",
+  "source_sha256": {
+    "verification/probe/varying_split_fixture.cpp": "07a59ee0dd7c5b229e46104171ebe23bb36dee59f54434fb741ac1e7af17383f",
+    "verification/probe/build_varying_split.sh": "6b0707725ec8836ac078ee36bfb76084fb8434d95525cfa487502fd6e722a17b",
+    "verification/probe/run_varying_split.py": "9dce88174dac344e5878600d1dd2b926f0d3681d91f54c2f1933400d7d51eb9b",
+    "verification/analysis/test_varying_split.py": "87b8e810efdf10687bc7518db8fa0b0bf059262833367d58442c1b2c6373f57d"
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "exit_code": 0,
+  "wall_seconds": 4.563043875,
+  "independent_cpu_checks": 420096,
+  "independent_cpu_max_fraction": 0.04077085695280812,
+  "exact_alpha_pixels": 786432,
+  "exact_temporal_vectors": 1572864,
+  "native_flat_conformance": false,
+  "requested_flat_cases": 32,
+  "effective_flat_cases": 0,
+  "effective_gouraud_cases": 64,
+  "qualification_draws": 192,
+  "classifier_draws": 3,
+  "cases": 64,
+  "gouraud_cases": 32,
+  "flat_cases": 32,
+  "shader_creates": 12,
+  "draws": 195,
+  "programs": [
+    {
+      "depth": "0",
+      "kind": "native",
+      "draws": "35",
+      "coverage": "52920"
+    },
+    {
+      "depth": "0",
+      "kind": "reference_centroid",
+      "draws": "32",
+      "coverage": "48384"
+    },
+    {
+      "depth": "0",
+      "kind": "reference_color",
+      "draws": "32",
+      "coverage": "48384"
+    },
+    {
+      "depth": "1",
+      "kind": "native",
+      "draws": "32",
+      "coverage": "48384"
+    },
+    {
+      "depth": "1",
+      "kind": "reference_centroid",
+      "draws": "32",
+      "coverage": "48384"
+    },
+    {
+      "depth": "1",
+      "kind": "reference_color",
+      "draws": "32",
+      "coverage": "48384"
+    }
+  ],
+  "coverage": 96768,
+  "max_fraction": 0.040770857,
+  "host_negative_contracts": 10,
+  "limitations": [
+    "Synthetic finite positive RGB and no MSAA only; no game shader or live routing qualification.",
+    "The diagnostic mode preserves classified failed comparisons and never qualifies packing.",
+    "Separate mode deliberately excludes all packed variants; original R1 and strict-flat R2 failures remain unchanged.",
+    "Separate mode selects effective flat/Gouraud CPU interpolation only from a fresh native-alpha FLAT/GOURAUD/FLAT classifier and verified Set/Get states; candidate RGB cannot select its oracle.",
+    "native_flat_conformance=false records backend divergence from documented flat COLOR semantics, not a universal flat-conformance pass.",
+    "Separate mode is resource-feasibility evidence and does not solve the ten-input Boron/Paranid originals; a zero filler is relocated for the authored reference.",
+    "TEX9 packed candidate is Gouraud with WRAP9=0; undefined mixed-semantic flat mode is never submitted.",
+    "COLOR1 non-PP full precision is inferred from combined SM3 contracts and tested against dedicated TEX and CPU, not merely separate COLOR1.",
+    "For classified effective-FLAT only, the full-TEX reference repeats first-vertex RGB while retaining original alpha/fog inputs and instruction words; R3 classified all cases effective-Gouraud.",
+    "64 float32-epsilon relative plus 1e-12 absolute is a fixed experimental envelope, not a universal hardware interpolation bound.",
+    "PP may execute at full precision; no PP/full difference is required. Native Windows runtime remains unverified.",
+    "Malformed declarations/context checks are host oracle refusals, not device validation claims.",
+    "Diagnostic correctness fixture only; no gameplay performance claim.",
+    "R1/R2 remain failed immutable runs. Packing diagnostic execution was intentionally skipped after abandoning that production route."
+  ],
+  "raw_report_sha256": "483a4f4dd31e6787872ce367b2980d1f67f3178f6ac2c4723f3e0cbce9ffaab2",
+  "retained_runner_summary_sha256": "eccfe2c7853b0f3d243d4aa86a0cd553abb624de640d894488b634e339e410b9",
+  "review": "Same independent source/oracle/evidence reviewer approved R3; no open finding.",
+  "qualification_scope": "Separate physical COLOR1 full RGB agrees with independently full TEX/CPU under native-effective interpolation; original COLOR0 PP alpha and temporal data remain exact. This is not native FLAT conformance or same-register packing qualification.",
+  "prior_failed_runs": [
+    {
+      "label": "same-register packing",
+      "raw_directory": "/tmp/x3-varying-split-r1",
+      "exit_code": 1,
+      "failed_case": 0,
+      "exe_sha256": "db290b1fcaf81e63de4276b2fe31c31395cff3f5b8041864b325cae61b3dff2b",
+      "failed_record_sha256": "57945baa14a973d8fc07c310e42f3e2ad23b3df7491903ebae093e217aac647d",
+      "raw_report_sha256": "11397732167691b5d7af25b90b934b4a7d2b9aafcb99dd69d3ed5ced921221e9",
+      "finding": "All 28 shader creations succeeded; all 1,512 covered alpha lanes were 0x7fc00000 in each packed variant. Dedicated references preserved alpha. RGB and RT1/RT2 matched references. Packing was abandoned; the optional diagnostic mode was not executed."
+    },
+    {
+      "label": "documented flat oracle",
+      "raw_directory": "/tmp/x3-varying-separate-r2",
+      "exit_code": 1,
+      "failed_case": 32,
+      "exe_sha256": "d8c4f0c7e5133057c7fcc414892664724eb96f0ec82993c9db15364d537f1975",
+      "failed_record_sha256": "c3ce3a92048a431e5e1633e7fe575b6349376775c23ef3dc4a4faef3dec456ff",
+      "raw_report_sha256": "54b28e9c8a6e365a639810f91c0b871ba6250da0b8eb1b86e2d72aa2ad2975bc",
+      "finding": "All 32 Gouraud cases passed. Under requested FLAT, native COLOR0 and separate COLOR1 instead matched Gouraud bit-for-bit. Pixel 520 red was 0.999800503254, with first-vertex expected 0.999755859375 and unchanged tolerance 7.6275328861e-6. R3 uses a fresh native-alpha classifier rather than widening tolerance."
+    }
+  ]
+}

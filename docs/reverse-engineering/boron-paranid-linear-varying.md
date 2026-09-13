@@ -6,23 +6,23 @@ pairs, six distinct VS and ten distinct PS. That study made no production or
 profile changes. Its declaration proposals and reasoning below are retained as
 **historical pre-qualification analysis**, not the current recommendation.
 
-**Current decision boundary after synthetic X3 R1:** same-register semantic
-packing failed native-alpha preservation. The first checked case returned NaN
-alpha for all three packed variants, although all 28 shader creations succeeded.
-The separately declared COLOR1 reference produced the expected alpha and RGB in
-that first case; this limited observation is not complete qualification of
-separate COLOR1, actual material programs, or native Windows. Do not adopt the
-mixed COLOR0.w PP / COLOR1.xyz full-precision construction on the strength of
-legal declaration masks or successful shader creation.
+**Current decision after synthetic X3 R1–R3:** same-register semantic packing
+failed native-alpha preservation and is abandoned for the production route.
+Separate physical COLOR1 RGB passed the bounded synthetic qualification while
+retaining the whole original COLOR0/alpha declaration. The accepted
+[compact R3 record](../../verification/results/bottle-X3/varying-split-separate-gpu.json)
+preserves both earlier failures and distinguishes native parity from documented
+FLAT conformance: this X3 stack reports FLAT state but interpolates native COLOR
+as Gouraud. Native Windows remains unverified.
 
-The next candidate is a **separate physical COLOR1 RGB varying**, retaining the
-whole original COLOR0/alpha declaration and using a bounded scalar-varying
-relocation to recover the required register where necessary. Its exact
-producer/consumer, precision, centroid, linkage and resource proofs remain
-required, followed by actual interpolation qualification. Separate COLOR1 and
-scalar relocation are pending; this note does not authorize an allocator,
-relaxed native-alpha precision, or same-register packing. The earlier TEXCOORD9
-comparison is also historical and requires known GOURAUD and WRAP9=0.
+The Boron/Paranid candidate therefore needs a **separate physical COLOR1 RGB
+varying**, with bounded scalar-varying relocation to recover a register where
+necessary. This synthetic record proves neither that relocation nor actual game
+programs. Their producer/consumer, precision, centroid, linkage and resource
+proofs belong to their material qualification. Do not adopt mixed COLOR0.w PP /
+COLOR1.xyz full precision merely because masks are legal or shader creation
+succeeds. The earlier TEXCOORD9 packing proposal is historical and additionally
+requires known GOURAUD and WRAP9=0.
 
 ## Original producer and consumer contract
 
@@ -231,3 +231,61 @@ specifies triangle-list triangle i's first vertex as i*3. The single-triangle
 fixture therefore uses submitted vertex zero. Preserve the independent native
 COLOR0 alpha comparison rather than importing fixed-function fog/specular-alpha
 exceptions into the SM3 color-semantic test.
+
+## Synthetic qualification and retained failures
+
+The authored fixture, runner and focused host tests are
+[varying_split_fixture.cpp](../../verification/probe/varying_split_fixture.cpp),
+[run_varying_split.py](../../verification/probe/run_varying_split.py) and
+[test_varying_split.py](../../verification/analysis/test_varying_split.py).
+Thirteen focused host tests pass. They check independent declaration mappings,
+unchanged alpha/fog and temporal instruction words, rejected malformed contracts,
+state/classifier ambiguity, and precision gradients that would reject two equally
+half-rounded reference paths. Host refusals are not device-validation claims.
+No extracted game shader bytes are tracked.
+
+R1 successfully created all 28 authored shaders, then failed its first case:
+all 1,512 covered pixels in every same-register packed variant had alpha bits
+`0x7fc00000`. Dedicated references retained native alpha; full RGB and RT1/RT2
+matched. The failure remains under `/tmp/x3-varying-split-r1`. The optional
+13-program packing diagnostic was not executed because that production route
+was abandoned.
+
+R2 used separate COLOR1 and passed all 32 Gouraud cases. Its first requested-FLAT
+case failed the documented first-vertex RGB oracle. Native COLOR0 and separate
+COLOR1 RGBA were each bit-identical to their corresponding Gouraud draw, including
+1,512 distinct alpha values. This was not a candidate-only interpolation change
+or a different provoking vertex. The failed run remains under
+`/tmp/x3-varying-separate-r2`; its tolerance and verdict were not changed.
+
+R3 ran a native-only fresh FLAT → GOURAUD → FLAT classifier before the matrix.
+Set/Get state values stayed 1/2/1 before and after each draw. The classifier uses
+nonuniform native alpha with first-vertex fog below zero, for which documented
+flat alpha is exactly positive zero at any permitted PP precision. It requires
+either that exact zero reference or exact agreement with a nonconstant Gouraud
+reference, plus exact repeated-FLAT stability; all other behavior fails. Candidate
+RGB never selects the CPU oracle. The measured native alpha matched Gouraud in
+all three draws, so the record says **`native_flat_conformance=false`**.
+
+The separate-only matrix then passed 64 cases: 32 requested Gouraud and 32
+requested FLAT, all 64 classified effective Gouraud. Both depth modes, fog/plain,
+affine/perspective interpolation and four precision/HDR gradients are covered,
+without MSAA. Twelve shader creations succeeded. The 192 qualification draws
+plus three classifier draws produced 420,096 independent CPU RGB checks,
+786,432 exact alpha comparisons and 1,572,864 exact RT1/RT2 vector comparisons.
+Maximum error was 0.040770857 of the unchanged `1e-12 + 64 * FLT_EPSILON * |RGB|`
+envelope. The envelope is a predeclared experiment bound, not a universal hardware
+accuracy guarantee. Partial precision may execute at full precision; no PP/full
+difference is required.
+
+R3 exited zero in 4.563 seconds; this is fixture completion time, not a renderer
+or gameplay performance measurement. Raw files remain under
+`/tmp/x3-varying-separate-r3`. The same independent reviewer approved source,
+oracle correction and final evidence. The compact record binds the executable,
+scoped source hashes, raw report and prior failure witnesses.
+
+This accepts separate COLOR1 parity and precision under the observed native
+interpolation, not backend FLAT conformance, native Windows runtime, MSAA,
+nonfinite inputs, scalar relocation, or complete material/live-route behavior.
+The authored reference relocates a zero filler to retain ten occupied PS input
+registers; it is not a solution for the ten-input Boron/Paranid originals.

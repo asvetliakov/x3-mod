@@ -1452,94 +1452,20 @@ struct Fixture {
         const auto shared_words=load(shared_path);
         require(fnv(shared_words.data(),shared_words.size()*4)==0x3b94320087e81945ull,"shared VS positive uses reviewed shared DEFAULT PS");
         const auto split_words=load(split_path);
-        require(fnv(split_words.data(),split_words.size()*4)==0xfffdabd910793abaull,"shared VS negative uses motion-reviewed class-C PS");
+        require(fnv(split_words.data(),split_words.size()*4)==0x5f82ecacd39529cdull,"valid XT BUMP negative uses motion-reviewed class-C PS");
         Com<IDirect3DPixelShader9> shared, split;
         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(shared_words.data()),&shared.p),"CreatePixelShader shared DEFAULT");
         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(split_words.data()),&split.p),"CreatePixelShader class-C motion-only");
         // This real class-C pair remains motion-capable but material-uncovered.
-        // Preserve its original shader and own ABI; never borrow a BUMP setup.
+        // Preserve its complete XT BUMP input ABI, including detail and occlusion.
         const std::string supplied(bump_negative_path);
         const auto slash=supplied.find_last_of("/\\");
         require(slash!=std::string::npos,"corpus program directory");
         const auto directory=supplied.substr(0,slash+1);
-        const auto negative_vs_words=load((directory+"vs_494fe349b8bc12ec.bin").c_str());
-        require(fnv(negative_vs_words.data(),negative_vs_words.size()*4)==0x494fe349b8bc12ecull,"class-C original VS identity");
+        const auto negative_vs_words=load((directory+"vs_37c34a7478544c14.bin").c_str());
+        require(fnv(negative_vs_words.data(),negative_vs_words.size()*4)==0x37c34a7478544c14ull,"class-C original VS identity");
         Com<IDirect3DVertexShader9> negative_vs;
         api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(negative_vs_words.data()),&negative_vs.p),"create class-C original VS");
-        auto negative_inputs=[&]() {
-            // Original b0 decal/b1 color branches are disabled. The native PS
-            // also reads unprovided TEX6.x; this control asserts raw-bit twins,
-            // never an analytical color or an invented material varying.
-            const BOOL branches[2]={FALSE,FALSE};
-            api(d->SetPixelShaderConstantB(0,branches,2),"class-C original static branches");
-            float c[21][4]{};c[0][0]=c[1][1]=c[2][2]=1;
-            c[4][0]=.25f;c[5][2]=c[7][2]=1;c[9][0]=1;c[10][0]=10;c[12][0]=1;c[13][0]=1;c[19][0]=1;
-            api(d->SetPixelShaderConstantF(0,c[0],21),"class-C original constants");
-            api(d->SetTexture(0,textures[0].p),"class-C diffuse");
-            api(d->SetTexture(1,textures[1].p),"class-C specular");
-            api(d->SetTexture(2,textures[2].p),"class-C lightmap");
-            api(d->SetTexture(3,cube.p),"class-C cube");
-            api(d->SetTexture(4,textures[0].p),"class-C decal");
-            api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,FALSE),"class-C s4 original state");
-            api(d->SetSamplerState(4,D3DSAMP_MINFILTER,D3DTEXF_POINT),"class-C s4 min filter");
-            api(d->SetSamplerState(4,D3DSAMP_MAGFILTER,D3DTEXF_POINT),"class-C s4 mag filter");
-            api(d->SetSamplerState(4,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"class-C s4 mip filter");
-            api(d->SetSamplerState(4,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP),"class-C s4 address u");
-            api(d->SetSamplerState(4,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP),"class-C s4 address v");
-            api(d->SetVertexDeclaration(declaration.p),"class-C original declaration");
-        };
-        float first[4]{};
-        for(unsigned i=0;i<12;++i) {
-            frame_begin();linear_material_inputs();write_reserved();
-            if(i>=2&&i<=5)api(d->SetSamplerState(i-2,D3DSAMP_SRGBTEXTURE,TRUE),"refuse sampler decode");
-            if(i==6||i==7) {
-                api(d->BeginStateBlock(),"material BeginStateBlock");
-                api(d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,TRUE),"record sampler decode");
-                Com<IDirect3DStateBlock9> block;api(d->EndStateBlock(&block.p),"material EndStateBlock");
-                if(i==7)api(block->Apply(),"material recorded Apply");
-            }
-            if(i==8) {
-                Com<IDirect3DStateBlock9> block;api(d->CreateStateBlock(D3DSBT_ALL,&block.p),"material capture stateblock");
-                api(d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,TRUE),"temporary sampler decode");
-                api(block->Apply(),"material restore sampler Apply");
-            }
-            const bool eligible=i<2||i==6||i==8||i>=10;
-            // Keep the exact same VS object while alternating covered Argon
-            // and shared DEFAULT PS programs; class-C remains motion-only.
-            if(i==1)std::swap(ps.p,shared.p);
-            if(i==9){negative_inputs();std::swap(vs.p,negative_vs.p);std::swap(ps.p,split.p);}
-            draw(a,0,0,0,true,true,i!=0&&i!=9&&i!=10);
-            if(i==9){std::swap(vs.p,negative_vs.p);std::swap(ps.p,split.p);}
-            if(i==1)std::swap(ps.p,shared.p);
-            unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
-            require(w==W&&h==H,"material FP16 dimensions");
-            const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
-            const double expected=material&&eligible?std::pow(4.,1./2.2):1.;
-            // Uncovered class-C color is compared to the feature-off twin by the
-            // runner; the analytic witness covers Argon and shared DEFAULT.
-            if(i!=9)for(unsigned lane=0;lane<3;++lane)
-                require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"actual material/ordinary FP16 color witness");
-            if(i==0)std::memcpy(first,center,sizeof first);
-            if(i==10||i==11)require(!std::memcmp(first,center,sizeof first),"Reset retains cached shader gains and alpha");
-            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,material&&eligible,
-                eligible?0u:i==9?1u:4u,i==9?0x494fe349b8bc12ecull:vs_hash,i==1?0x3b94320087e81945ull:i==9?0xfffdabd910793abaull:ps_hash,double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
-            frame_end();
-            if(i==9) {
-                api(SetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN","16")?S_OK:E_FAIL,"change environment after attach");
-                reset();
-            }
-        }
-        // Extend the unchanged twelve-frame DEFAULT prefix with the class-B
-        // route. Separate managed geometry adds real tangent/binormal inputs;
-        // position/UV/normal remain exactly the original full-screen triangle.
-        const auto bump_vs_words=load(bump_vs_path), bump_ps_words=load(bump_ps_path), negative_words=load(bump_negative_path);
-        require(fnv(bump_vs_words.data(),bump_vs_words.size()*4)==0x4944d81dfe531b37ull,"reviewed BUMP VS");
-        require(fnv(bump_ps_words.data(),bump_ps_words.size()*4)==0xca6bfa4a6cca7e2aull,"reviewed BUMP PS");
-        require(fnv(negative_words.data(),negative_words.size()*4)==0xfffdabd910793abaull,"class-C motion-only negative PS");
-        Com<IDirect3DVertexShader9> bump_vs;
-        Com<IDirect3DPixelShader9> bump_ps;
-        api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(bump_vs_words.data()),&bump_vs.p),"Create BUMP VS");
-        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(bump_ps_words.data()),&bump_ps.p),"Create BUMP PS");
         Com<IDirect3DVertexDeclaration9> bump_declaration;
         const D3DVERTEXELEMENT9 elements[]={
             {0,0,D3DDECLTYPE_FLOAT16_4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},
@@ -1568,6 +1494,93 @@ struct Fixture {
             std::memcpy(static_cast<char*>(normal_lock.pBits)+y*normal_lock.Pitch+x*4,&normal_texel,4);
         api(normal->UnlockRect(0),"normal map unlock");
         Object bump=a;bump.name="BUMP";bump.vb=bump_vb.p;bump.recorded=false;
+        auto negative_inputs=[&]() {
+            // Valid native XT BUMP linkage, seven samplers, and the original
+            // false decal/color-mixing branches. This is ordinary motion only.
+            const BOOL branches[2]={FALSE,FALSE};
+            api(d->SetPixelShaderConstantB(0,branches,2),"XT original static branches");
+            float vertex[8][4]{};
+            vertex[0][0]=1;vertex[1][0]=.625f; // c39 reflection, c40 alpha
+            vertex[3][0]=2;vertex[4][0]=.1f; // c42 exponent, c43 minimum
+            vertex[5][0]=1;vertex[6][0]=12;vertex[7][0]=.9f; // fog, highlight, preshader complement
+            api(d->SetVertexShaderConstantF(39,vertex[0],8),"XT native VS c39..46");
+            float c[24][4]{};c[0][0]=c[1][1]=c[2][2]=1;c[3][0]=.5f;
+            c[5][2]=c[7][2]=1;c[9][0]=1;c[10][0]=10;
+            for(unsigned row:{11u,12u,13u,14u,15u,16u})c[row][0]=1;
+            c[22][0]=9;c[23][0]=.5f;
+            api(d->SetPixelShaderConstantF(0,c[0],24),"XT native PS constants");
+            IDirect3DBaseTexture9* samplers[]={textures[0].p,normal.p,textures[1].p,textures[2].p,cube.p,textures[2].p,normal.p};
+            for(unsigned stage=0;stage<7;++stage){
+                api(d->SetTexture(stage,samplers[stage]),"XT native sampler");
+                api(d->SetSamplerState(stage,D3DSAMP_SRGBTEXTURE,FALSE),"XT native SRGB state");
+                for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(d->SetSamplerState(stage,filter,D3DTEXF_POINT),"XT point filter");
+                api(d->SetSamplerState(stage,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"XT no mip");
+                api(d->SetSamplerState(stage,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP),"XT clamp u");
+                api(d->SetSamplerState(stage,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP),"XT clamp v");
+            }
+            // Detail RG and AG normal must both reconstruct finite unit normals.
+            D3DLOCKED_RECT lock{};api(normal->LockRect(0,&lock,nullptr,0),"XT normal lock");
+            const DWORD texel=0x80808080u;
+            for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,&texel,4);
+            api(normal->UnlockRect(0),"XT normal unlock");
+            api(d->SetVertexDeclaration(bump_declaration.p),"XT native basis declaration");
+        };
+        require(!material || (GetEnvironmentVariableA("X3M_MATERIAL_EMISSIVE_GAIN",setting,sizeof setting)>0&&std::atof(setting)==4.),"Asteroid witness uses startup material gain four");
+        float first[4]{};
+        for(unsigned i=0;i<12;++i) {
+            frame_begin();linear_material_inputs();write_reserved();
+            if(i>=2&&i<=5)api(d->SetSamplerState(i-2,D3DSAMP_SRGBTEXTURE,TRUE),"refuse sampler decode");
+            if(i==6||i==7) {
+                api(d->BeginStateBlock(),"material BeginStateBlock");
+                api(d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,TRUE),"record sampler decode");
+                Com<IDirect3DStateBlock9> block;api(d->EndStateBlock(&block.p),"material EndStateBlock");
+                if(i==7)api(block->Apply(),"material recorded Apply");
+            }
+            if(i==8) {
+                Com<IDirect3DStateBlock9> block;api(d->CreateStateBlock(D3DSBT_ALL,&block.p),"material capture stateblock");
+                api(d->SetSamplerState(1,D3DSAMP_SRGBTEXTURE,TRUE),"temporary sampler decode");
+                api(block->Apply(),"material restore sampler Apply");
+            }
+            const bool eligible=i<2||i==6||i==8||i>=10;
+            // Keep the exact same VS object while alternating covered Argon
+            // and shared DEFAULT PS programs; class-C remains motion-only.
+            if(i==1)std::swap(ps.p,shared.p);
+            if(i==9){negative_inputs();std::swap(vs.p,negative_vs.p);std::swap(ps.p,split.p);}
+            draw(i==9?bump:a,0,0,0,true,true,i!=0&&i!=9&&i!=10,Alter::None,true,i==9?40:24);
+            if(i==9){std::swap(vs.p,negative_vs.p);std::swap(ps.p,split.p);}
+            if(i==1)std::swap(ps.p,shared.p);
+            unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
+            require(w==W&&h==H,"material FP16 dimensions");
+            const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
+            const double expected=material&&eligible?std::pow(4.,1./2.2):1.;
+            // Zero lighting plus unit lightmap gives a finite native XT control.
+            for(unsigned lane=0;lane<3;++lane)
+                require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"actual material/ordinary FP16 color witness");
+            if(i==0)std::memcpy(first,center,sizeof first);
+            if(i==10||i==11)require(!std::memcmp(first,center,sizeof first),"Reset retains cached shader gains and alpha");
+            std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,material&&eligible,
+                eligible?0u:i==9?1u:4u,i==9?0x37c34a7478544c14ull:vs_hash,i==1?0x3b94320087e81945ull:i==9?0x5f82ecacd39529cdull:ps_hash,double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
+            frame_end();
+            if(i==9) {
+                api(SetEnvironmentVariableA("X3M_LIGHTMAP_EMISSIVE_GAIN","16")?S_OK:E_FAIL,"change environment after attach");
+                reset();
+            }
+        }
+        // Extend the unchanged twelve-frame DEFAULT prefix with the class-B
+        // route. Separate managed geometry adds real tangent/binormal inputs;
+        // position/UV/normal remain exactly the original full-screen triangle.
+        const auto bump_vs_words=load(bump_vs_path), bump_ps_words=load(bump_ps_path), negative_words=load(bump_negative_path);
+        require(fnv(bump_vs_words.data(),bump_vs_words.size()*4)==0x4944d81dfe531b37ull,"reviewed BUMP VS");
+        require(fnv(bump_ps_words.data(),bump_ps_words.size()*4)==0xca6bfa4a6cca7e2aull,"reviewed BUMP PS");
+        require(fnv(negative_words.data(),negative_words.size()*4)==0x5f82ecacd39529cdull,"class-C motion-only negative PS");
+        Com<IDirect3DVertexShader9> bump_vs;
+        Com<IDirect3DPixelShader9> bump_ps;
+        api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(bump_vs_words.data()),&bump_vs.p),"Create BUMP VS");
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(bump_ps_words.data()),&bump_ps.p),"Create BUMP PS");
+        api(normal->LockRect(0,&normal_lock,nullptr,0),"restore BUMP normal lock");
+        for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)
+            std::memcpy(static_cast<char*>(normal_lock.pBits)+y*normal_lock.Pitch+x*4,&normal_texel,4);
+        api(normal->UnlockRect(0),"restore BUMP normal unlock");
         float bump_first[4]{};
         for(unsigned i=12;i<24;++i){
             frame_begin();linear_material_inputs();write_reserved();
@@ -1577,6 +1590,9 @@ struct Fixture {
             // other frames explicitly establish the actual state at s4.
             if(i!=21)api(d->SetSamplerState(4,D3DSAMP_SRGBTEXTURE,FALSE),"s4 linear state");
             if(use_bump){
+                api(normal->LockRect(0,&normal_lock,nullptr,0),"BUMP normal reset lock");
+                for(unsigned y=0;y<2;++y)for(unsigned x=0;x<2;++x)std::memcpy(static_cast<char*>(normal_lock.pBits)+y*normal_lock.Pitch+x*4,&normal_texel,4);
+                api(normal->UnlockRect(0),"BUMP normal reset unlock");
                 api(d->SetTexture(1,normal.p),"BUMP normal sample");
                 api(d->SetTexture(2,textures[1].p),"BUMP scalar mask");
                 api(d->SetTexture(3,textures[2].p),"BUMP lightmap");
@@ -1602,28 +1618,28 @@ struct Fixture {
             const bool matched=i==13||i==14||i==15||i==16||i==22;
             if(use_bump){std::swap(vs.p,bump_vs.p);std::swap(ps.p,bump_ps.p);}
             if(negative){negative_inputs();std::swap(vs.p,negative_vs.p);std::swap(ps.p,split.p);}
-            draw(use_bump?bump:a,0,0,0,true,true,matched,Alter::None,true,use_bump?40:24);
+            draw(use_bump||negative?bump:a,0,0,0,true,true,matched,Alter::None,true,use_bump||negative?40:24);
             if(negative){std::swap(vs.p,negative_vs.p);std::swap(ps.p,split.p);}
             if(use_bump){std::swap(vs.p,bump_vs.p);std::swap(ps.p,bump_ps.p);}
             unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
             require(w==W&&h==H,"BUMP FP16 dimensions");
             const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
             const double expected=material&&eligible?std::pow(4.,1./2.2):1.;
-            if(!negative)for(unsigned lane=0;lane<3;++lane)
+            for(unsigned lane=0;lane<3;++lane)
                 require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"BUMP/DEFAULT actual FP16 witness");
             if(i==12)std::memcpy(bump_first,center,sizeof bump_first);
             if(i==21||i==22)require(!std::memcmp(bump_first,center,sizeof bump_first),"BUMP Reset retains cached gains and alpha");
             std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=%u vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,material&&eligible,
-                eligible?0u:negative?1u:4u,negative?0x494fe349b8bc12ecull:use_bump?0x4944d81dfe531b37ull:vs_hash,
-                negative?0xfffdabd910793abaull:use_bump?0xca6bfa4a6cca7e2aull:ps_hash,
+                eligible?0u:negative?1u:4u,negative?0x37c34a7478544c14ull:use_bump?0x4944d81dfe531b37ull:vs_hash,
+                negative?0x5f82ecacd39529cdull:use_bump?0xca6bfa4a6cca7e2aull:ps_hash,
                 double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
             frame_end();
             if(i==20){reset();bump.recorded=false;}
         }
         // Complete pair publication is qualified in one corpus. Reuse the six
         // already-created covered originals, so each identity owns one variant.
-        const char* corpus_vs[]={"53a0a641107ed76c","719856ce0c213220","badefd5143b3024f","4944d81dfe531b37","19a246a56e9d9700","44c4a41ca92ae2e3","494fe349b8bc12ec"};
-        const char* corpus_ps[]={"8759c7838bbc86c2","63f96eba9eea7880","593e5dea9b3457d5","7a0bb00a8070496a","8d5b2ba0fb4d13bf","dab93928f26906f7","3b94320087e81945","e3b7acc16da9932d","7a14d4dcb28f27e5","8ab6188a40ca15ea","8df6143d0e77d92e","e16a9806ee3544c3","ca6bfa4a6cca7e2a","5e0a10fe752b6140","63379470db8d2a86","68915563dd0aac9a","d086fde54698070c","f17fffd88d134b04","462342e3e5781384","827d8d2d617bedce","02606104fa59fb29","1d638938d93421b3","bd4d51c08486c6e0","de2dd381fa64193d","7c83ed50c9894e44","e70adc744a38ca59","db644b73b68c0547","ff32b602a271c327","f6a501717c3e5ca8","55826dc176afe464","0c1f3f0f440e4a0c","64bac8bb307eb896","789449ffd931d23e","4f052209611387f0","abf3c0fad53456d8","cf449bcb069aec4f","99153c144030c396","c1452981fd0bff64","b0f9313b77cc78ee","d514bf852d8a9c58","dff6a3d360603fa2","f1d14a7dbf7c6173","1f26d41bcb7dac1e","bdcdb3ab996ae4e0","78963cdc7c710e04","1ed1bf0fdec00e1a","2b04461d0dae038b","acc83ed2509d84a1","3006f8030a467739","d6e8bdde0e4c515f","e5ea78b8b0b0fe07","f42202faf57a3c89","769c3814fc0efba8","22cc5b05a55ef61e","ef2bf556f207b8bd","91b6c09eb47f8555","cc09f17db377fd9e","3755809bd40afc13","61418505e5d8f998","b5f1d4145171026b","3602b05ce11ca6ff","8e58ac79b59b02b1","042c9ae16f41feff","68f0dd6791fd7d3d","5c823b8507fa1442","a6e1328c0bb3f401"};
+        const char* corpus_vs[]={"53a0a641107ed76c","719856ce0c213220","badefd5143b3024f","4944d81dfe531b37","19a246a56e9d9700","44c4a41ca92ae2e3","494fe349b8bc12ec","b0602757fce6e870","0c223ad11bce02d5","233d17d26ce0c1fc","167eb2d5629ab9d3","330ceb9dd874ede2","12b8a13f13fe8cfe"};
+        const char* corpus_ps[]={"8759c7838bbc86c2","63f96eba9eea7880","593e5dea9b3457d5","7a0bb00a8070496a","8d5b2ba0fb4d13bf","dab93928f26906f7","3b94320087e81945","e3b7acc16da9932d","7a14d4dcb28f27e5","8ab6188a40ca15ea","8df6143d0e77d92e","e16a9806ee3544c3","ca6bfa4a6cca7e2a","5e0a10fe752b6140","63379470db8d2a86","68915563dd0aac9a","d086fde54698070c","f17fffd88d134b04","462342e3e5781384","827d8d2d617bedce","02606104fa59fb29","1d638938d93421b3","bd4d51c08486c6e0","de2dd381fa64193d","7c83ed50c9894e44","e70adc744a38ca59","db644b73b68c0547","ff32b602a271c327","f6a501717c3e5ca8","55826dc176afe464","0c1f3f0f440e4a0c","64bac8bb307eb896","789449ffd931d23e","4f052209611387f0","abf3c0fad53456d8","cf449bcb069aec4f","99153c144030c396","c1452981fd0bff64","b0f9313b77cc78ee","d514bf852d8a9c58","dff6a3d360603fa2","f1d14a7dbf7c6173","1f26d41bcb7dac1e","bdcdb3ab996ae4e0","78963cdc7c710e04","1ed1bf0fdec00e1a","2b04461d0dae038b","acc83ed2509d84a1","3006f8030a467739","d6e8bdde0e4c515f","e5ea78b8b0b0fe07","f42202faf57a3c89","769c3814fc0efba8","22cc5b05a55ef61e","ef2bf556f207b8bd","91b6c09eb47f8555","cc09f17db377fd9e","3755809bd40afc13","61418505e5d8f998","b5f1d4145171026b","3602b05ce11ca6ff","8e58ac79b59b02b1","042c9ae16f41feff","68f0dd6791fd7d3d","5c823b8507fa1442","a6e1328c0bb3f401","517540ae6d5e5410","7a0c3388065bb08d","d44db87778a43b61","550c2a4d4d3ed70f"};
         struct CorpusPair { unsigned vertex,pixel; bool bump,affine,standard,low; };
         const CorpusPair corpus[]={
             {0,0,false,true,false,false},
@@ -1736,13 +1752,18 @@ struct Fixture {
             {5,63,true,true,false,false},
             {5,64,true,false,false,false},
             {5,65,true,false,false,false},
+            {7,66,false,false,false,false},
+            {8,67,false,false,false,false},
+            {9,67,false,false,false,false},
+            {10,68,true,false,false,false},
+            {11,69,true,false,false,false},
+            {12,69,true,false,false,false},
         };
-        Com<IDirect3DVertexShader9> vertex_bank[7];
-        Com<IDirect3DPixelShader9> pixel_bank[66];
-        for(unsigned i=0;i<7;++i) {
+        Com<IDirect3DVertexShader9> vertex_bank[13];
+        Com<IDirect3DPixelShader9> pixel_bank[70];
+        for(unsigned i=0;i<13;++i) {
             if(i==0)vertex_bank[i].p=vs.p;
             else if(i==3)vertex_bank[i].p=bump_vs.p;
-            else if(i==6)vertex_bank[i].p=negative_vs.p;
             if(vertex_bank[i].p)vertex_bank[i]->AddRef();
             else {
                 const auto code=load((directory+"vs_"+corpus_vs[i]+".bin").c_str());
@@ -1750,7 +1771,7 @@ struct Fixture {
                 api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&vertex_bank[i].p),"create corpus VS");
             }
         }
-        for(unsigned i=0;i<66;++i) {
+        for(unsigned i=0;i<70;++i) {
             const std::string id(corpus_ps[i]);
             if(id=="8759c7838bbc86c2")pixel_bank[i].p=ps.p;
             else if(id=="3b94320087e81945")pixel_bank[i].p=shared.p;
@@ -1763,7 +1784,7 @@ struct Fixture {
             }
         }
         Object corpus_object=a;corpus_object.name="CORPUS";
-        for(unsigned pair=0;pair<110;++pair) {
+        for(unsigned pair=0;pair<116;++pair) {
             const auto& contract=corpus[pair];
             corpus_object.vb=contract.bump?bump_vb.p:vb_a.p;
             corpus_object.scope.node_serial=1000+pair;
@@ -1772,7 +1793,8 @@ struct Fixture {
             corpus_object.recorded=false;
             for(unsigned repeat=0;repeat<2;++repeat) {
                 frame_begin();linear_material_inputs();write_reserved();
-                const bool fixed=contract.vertex==2||contract.vertex==4;
+                const bool asteroid=pair>=110;
+                const bool fixed=contract.vertex==2||contract.vertex==4||contract.vertex==9||contract.vertex==12;
                 // Fixed-point originals use c0..3 for position and c7..20 for
                 // world/normal/view/UV/alpha. rows() still writes c24 harmlessly.
                 if(fixed) {
@@ -1805,17 +1827,50 @@ struct Fixture {
                     api(d->SetTexture(4,cube.p),"corpus reflection");
                     api(d->SetVertexDeclaration(bump_declaration.p),"corpus basis declaration");
                 } else api(d->SetTexture(4,nullptr),"corpus DEFAULT s4 unused");
+                if(asteroid) {
+                    // Distinct authored base/detail RGB, explicit complementary
+                    // preshader weights, zero directional/specular/point terms.
+                    const BOOL branches[2]={FALSE,FALSE};
+                    api(d->SetPixelShaderConstantB(0,branches,2),"Asteroid native false booleans");
+                    const float emissive[4]={1,1,1,0};
+                    api(d->SetVertexShaderConstantF(fixed?19:40,emissive,1),"Asteroid unit material emissive");
+                    float values[6][4]{};values[0][2]=values[2][2]=1;
+                    const unsigned weights=contract.pixel==66||contract.pixel==68?4:2;
+                    values[weights][0]=.75f;values[weights+1][0]=.25f;
+                    api(d->SetPixelShaderConstantF(0,values[0],6),"Asteroid native directions and weights");
+                    api(d->SetTexture(contract.bump?3:2,textures[2].p),"Asteroid detail RGB");
+                    api(d->SetTexture(4,nullptr),"Asteroid has no reflection");
+                }
                 std::swap(vs.p,vertex_bank[contract.vertex].p);std::swap(ps.p,pixel_bank[contract.pixel].p);
                 draw(corpus_object,0,0,0,true,true,repeat!=0,Alter::None,true,contract.bump?40:24);
                 std::swap(vs.p,vertex_bank[contract.vertex].p);std::swap(ps.p,pixel_bank[contract.pixel].p);
                 unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
                 require(w==W&&h==H,"corpus FP16 dimensions");
                 const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
-                const double expected=material?std::pow(4.,1./2.2):1.;
-                for(unsigned lane=0;lane<3;++lane)require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"corpus combined binding witness");
+                const double base[]={128./255.,64./255.,32./255.};
+                for(unsigned lane=0;lane<3;++lane){
+                    const double expected=asteroid?(material?std::pow(4.*(.25*std::pow(base[lane],2.2)+.75),1./2.2):.25*base[lane]+.75):(material?std::pow(4.,1./2.2):1.);
+                    require(std::isfinite(center[lane])&&std::fabs(center[lane]-expected)<.005,"corpus combined binding witness");
+                }
                 std::printf("LINEAR_LIVE frame=%llu combined=%u refusal=0 vs=%s ps=%s rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,material,corpus_vs[contract.vertex],corpus_ps[contract.pixel],double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
                 frame_end();
             }
+        }
+        // Valid shader linkage: the synthetic PS consumes the original COLOR0. The
+        // same covered VS cannot make this unknown PS a material/motion pair.
+        const DWORD unknown_program[]={0xffff0300u,0x5000051u,0xa00f0000u,0x3f000000u,0x3e800000u,0x3f400000u,0x3f800000u,0x200001fu,0x8000000au,0x900f0000u,0x2000001u,0x800f0800u,0xa0e40000u,0x3000005u,0x80080800u,0xa0ff0000u,0x90ff0000u,0xffffu};
+        Com<IDirect3DPixelShader9> unknown;
+        api(d->CreatePixelShader(unknown_program,&unknown.p),"create valid unknown PS");
+        for(unsigned repeat=0;repeat<2;++repeat){
+            frame_begin();linear_material_inputs();write_reserved();
+            std::swap(ps.p,unknown.p);
+            draw(a,0,0,0,true,false,false);
+            std::swap(ps.p,unknown.p);
+            unsigned w=0,h=0;const auto image=hdr_image(&w,&h);
+            const float* center=&image[(std::size_t(H/2)*W+W/2)*4];
+            require(center[0]==.5f&&center[1]==.25f&&center[2]==.75f&&center[3]==.625f,"valid unknown PS native output");
+            std::printf("LINEAR_LIVE frame=%llu combined=0 refusal=0 vs=%016llx ps=%016llx rgba=%.9g,%.9g,%.9g,%.9g native_hash=%016llx\n",frame,vs_hash,static_cast<unsigned long long>(fnv(unknown_program,sizeof unknown_program)),double(center[0]),double(center[1]),double(center[2]),double(center[3]),static_cast<unsigned long long>(fnv(image.data(),image.size()*sizeof(float))));
+            frame_end();
         }
         // Extra originals/resources are released before final device Release;
         // their cached variants remain route-owned and must also retire.

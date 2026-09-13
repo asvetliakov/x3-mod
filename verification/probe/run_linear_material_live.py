@@ -9,6 +9,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -21,8 +22,9 @@ from game_guard import game_running
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = Path('/tmp/x3-shader-sweep/programs')
-PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin', 'ps_fffdabd910793aba.bin',
-                 'vs_4944d81dfe531b37.bin', 'ps_ca6bfa4a6cca7e2a.bin', 'ps_fffdabd910793aba.bin')
+PROGRAM_NAMES = ('vs_53a0a641107ed76c.bin', 'ps_8759c7838bbc86c2.bin', 'ps_3b94320087e81945.bin', 'ps_5f82ecacd39529cd.bin',
+                 'vs_4944d81dfe531b37.bin', 'ps_ca6bfa4a6cca7e2a.bin', 'ps_5f82ecacd39529cd.bin')
+PROGRAM_NAMES += ('vs_37c34a7478544c14.bin',)
 FRAME_COUNT = 24
 ELIGIBLE = {0, 1, 6, 8, 10, 11, 12, 14, 16, 17, 18, 20, 21, 22, 23}
 BUMP_FRAMES = set(range(12, 24)) - {17, 23}
@@ -30,10 +32,10 @@ MATCHED = set(range(FRAME_COUNT)) - {0, 9, 10, 12, 17, 18, 19, 20, 21, 23}
 PIXEL_PROGRAMS = ['8759c7838bbc86c2'] * FRAME_COUNT
 VERTEX_PROGRAMS = ['4944d81dfe531b37' if frame in BUMP_FRAMES else '53a0a641107ed76c' for frame in range(FRAME_COUNT)]
 for frame in BUMP_FRAMES: PIXEL_PROGRAMS[frame] = 'ca6bfa4a6cca7e2a'
-PIXEL_PROGRAMS[19] = 'fffdabd910793aba'
+PIXEL_PROGRAMS[19] = '5f82ecacd39529cd'
 PIXEL_PROGRAMS[1] = '3b94320087e81945'
-PIXEL_PROGRAMS[9] = 'fffdabd910793aba'
-VERTEX_PROGRAMS[9] = VERTEX_PROGRAMS[19] = '494fe349b8bc12ec'
+PIXEL_PROGRAMS[9] = '5f82ecacd39529cd'
+VERTEX_PROGRAMS[9] = VERTEX_PROGRAMS[19] = '37c34a7478544c14'
 BUMP_FRAMES.discard(19)
 
 # Explicit source-qualified pair corpus; each pair appears twice, first unseen
@@ -149,6 +151,12 @@ CORPUS_PAIRS = (
     ('44c4a41ca92ae2e3', '68f0dd6791fd7d3d', True),
     ('44c4a41ca92ae2e3', '5c823b8507fa1442', True),
     ('44c4a41ca92ae2e3', 'a6e1328c0bb3f401', True),
+    ('b0602757fce6e870', '517540ae6d5e5410', False),
+    ('0c223ad11bce02d5', '7a0c3388065bb08d', False),
+    ('233d17d26ce0c1fc', '7a0c3388065bb08d', False),
+    ('167eb2d5629ab9d3', 'd44db87778a43b61', True),
+    ('330ceb9dd874ede2', '550c2a4d4d3ed70f', True),
+    ('12b8a13f13fe8cfe', '550c2a4d4d3ed70f', True),
 )
 IMPLEMENTED_PROGRAMS = {('vs', v) for v, _, _ in CORPUS_PAIRS} | {('ps', p) for _, p, _ in CORPUS_PAIRS}
 PROGRAM_NAMES += tuple(sorted(f'{stage}_{identifier}.bin' for stage, identifier in IMPLEMENTED_PROGRAMS
@@ -161,7 +169,23 @@ for pair, (vertex, pixel, bump) in enumerate(CORPUS_PAIRS):
         if repeat: MATCHED.add(frame)
         PIXEL_PROGRAMS.append(pixel)
         VERTEX_PROGRAMS.append(vertex)
+ASTEROID_FRAMES = set(range(244, 256))
+UNKNOWN_FRAMES = {256, 257}
+UNKNOWN_PIXEL = 'fed278e46915d6da'
+# Unknown PS draws have valid COLOR0 linkage but no motion/material row. They
+# are last, so no later corpus correspondence depends on their missing history.
+PIXEL_PROGRAMS.extend([UNKNOWN_PIXEL] * 2)
+VERTEX_PROGRAMS.extend(['53a0a641107ed76c'] * 2)
 FRAME_COUNT = len(PIXEL_PROGRAMS)
+MOTION_FRAMES = set(range(FRAME_COUNT)) - UNKNOWN_FRAMES
+
+
+def expected_rgb(frame, material):
+    if frame in UNKNOWN_FRAMES: return [.5, .25, .75]
+    if frame in ASTEROID_FRAMES:
+        base = [128/255, 64/255, 32/255]
+        return [(4 * (.25 * value**2.2 + .75))**(1/2.2) if material else .25 * value + .75 for value in base]
+    return [(4**(1/2.2) if material and frame in ELIGIBLE else 1.)] * 3
 
 
 def sha(path):
@@ -190,19 +214,22 @@ def validate_case(output, trace_lines, material, taa):
         elif line.startswith('linear_material_variant '): variants.append(row)
     assert set(live) == set(motion) == set(frames) == set(range(FRAME_COUNT)), 'missing frame evidence'
     for frame, row in frames.items():
-        assert int(row['routed']) == int(row['depth_routed']) == 1, (frame, 'motion lost')
+        assert int(row['routed']) == int(row['depth_routed']) == int(frame in MOTION_FRAMES), (frame, 'motion lost')
         assert int(row['matched']) == int(frame in MATCHED), (frame, 'history changed')
+        assert int(row['gate3']) == int(frame in UNKNOWN_FRAMES), (frame, 'unknown PS pair refusal changed')
         assert int(row['apply_failures']) == int(row['restore_failures']) == 0, (frame, 'state failed')
         assert int(row['taa_resolved']) == int(taa), (frame, 'TAA changed')
         assert int(live[frame]['combined']) == int(material and frame in ELIGIBLE)
+        expected_refusal = 1 if frame in (9, 19) else 4 if frame in MOTION_FRAMES-ELIGIBLE else 0
+        assert int(live[frame]['refusal']) == expected_refusal, (frame, 'stdout refusal reason changed')
         assert live[frame]['ps'] == PIXEL_PROGRAMS[frame] and live[frame]['vs'] == VERTEX_PROGRAMS[frame], (frame, 'wrong material program pair')
     if material:
         assert set(material_frames) == set(range(FRAME_COUNT))
-        assert len(variants) == 73 and {(row['kind'], row['original']) for row in variants} == IMPLEMENTED_PROGRAMS, 'combined program inventory differs'
+        assert len(variants) == 83 and {(row['kind'], row['original']) for row in variants} == IMPLEMENTED_PROGRAMS, 'combined program inventory differs'
         assert all(int(row['transform']) == 0 and int(row['create'], 16) == 0 for row in variants)
         for frame, row in material_frames.items():
             assert int(row['routed']) == int(frame in ELIGIBLE), (frame, 'combined selection')
-            assert int(row['refused']) == int(frame not in ELIGIBLE), (frame, 'material refusal')
+            assert int(row['refused']) == int(frame in MOTION_FRAMES and frame not in ELIGIBLE), (frame, 'material refusal')
             assert int(row['bind_failures']) == 0
             assert int(row['bump_routed']) == int(frame in ELIGIBLE and frame in BUMP_FRAMES), (frame, 'BUMP route witness')
     else:
@@ -216,7 +243,7 @@ def validate_case(output, trace_lines, material, taa):
                 rgba=[list(map(float, live[i]['rgba'].split(','))) for i in range(FRAME_COUNT)],
                 native_hashes=[live[i]['native_hash'] for i in range(FRAME_COUNT)],
                 temporal_hashes=[[motion[i]['motion'], motion[i]['depth']] for i in range(FRAME_COUNT)],
-                combined_frames=sorted(ELIGIBLE) if material else [], refused_frames=sorted(set(range(FRAME_COUNT))-ELIGIBLE) if material else [])
+                combined_frames=sorted(ELIGIBLE) if material else [], refused_frames=sorted(MOTION_FRAMES-ELIGIBLE) if material else [])
 
 
 def compare_cases(cases):
@@ -226,15 +253,16 @@ def compare_cases(cases):
             assert on['temporal_hashes'] == off['temporal_hashes'], 'material route changed RT1/RT2'
             assert on['pixel_programs'] == off['pixel_programs'] == PIXEL_PROGRAMS, 'material positive/negative schedule changed'
             assert on['vertex_programs'] == off['vertex_programs'] == VERTEX_PROGRAMS, 'material vertex schedule changed'
-            assert on['held_references'] == off['held_references'] + 73, 'seventy-three additional shader objects not reflected in actual device retirement'
+            assert on['held_references'] == off['held_references'] + 83, 'eighty-three additional shader objects not reflected in actual device retirement'
             for frame in range(FRAME_COUNT):
                 assert on['rgba'][frame][3] == off['rgba'][frame][3], 'alpha changed'
                 if frame not in ELIGIBLE:
                     assert on['native_hashes'][frame] == off['native_hashes'][frame], 'refusal changed raw native FP16 output'
-                    # The class-C original reads an unprovided varying. Preserve
-                    # its bits without inventing finite/analytical RGB semantics.
-                    if frame not in (9, 19): assert on['rgba'][frame] == off['rgba'][frame], 'refusal changed original material color'
-                else: assert min(on['rgba'][frame][:3]) > 1.8 and max(off['rgba'][frame][:3]) == 1., 'combined FP16 witness absent'
+                    assert on['rgba'][frame] == off['rgba'][frame], 'refusal changed original material color'
+                    assert all(math.isfinite(value) for value in on['rgba'][frame]), 'valid fallback must stay finite'
+                else:
+                    for case, material in ((off, False), (on, True)):
+                        assert all(abs(actual-wanted)<.005 for actual,wanted in zip(case['rgba'][frame][:3],expected_rgb(frame,material))), 'combined FP16 witness absent'
     for taa in (0, 1):
         for material in (0, 1):
             a, b = (cases[f'ownership{o}-taa{taa}-material{material}'] for o in (0, 1))
@@ -254,7 +282,7 @@ def main():
     assert all(path.is_file() for path in [fixture, dll, *programs]), 'prebuilt inputs or local programs missing'
     raw = Path(tempfile.mkdtemp(prefix='x3-linear-material-live-'))
     report = dict(passed=False, game_launched=False, bottle=bottle.describe(), raw=str(raw),
-                  scope='Actual live evaluate_draw across all 110 exact pairs / 73 originals, DEFAULT/BUMPMAP/LOW alternation and shared-VS class-C ordinary-motion fallback, five-sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
+                  scope='Actual live evaluate_draw across all 116 exact pairs / 83 originals, DEFAULT/BUMPMAP/LOW/Asteroid alternation, valid native XT BUMP ordinary-motion fallback and valid covered-VS unknown-PS refusal, exact family sampler admission, FP16 color witness, unchanged RT1/RT2, stateblocks, Reset, cached gains and owned shader retirement; ownership 0/1 and TAA off/on. Native Windows untested.',
                   binaries={str(path): sha(path) for path in (fixture, dll)}, local_programs={path.name: sha(path) for path in programs}, cases={})
     args.result.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -268,7 +296,7 @@ def main():
                     env = {key: value for key, value in os.environ.items() if not key.startswith('X3M_')}
                     env.update(X3M_MOTION_OUTPUT='1', X3M_HDR='1', X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2',
                                X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
-                               X3M_LINEAR_MATERIALS=str(material), X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='1',
+                               X3M_LINEAR_MATERIALS=str(material), X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='4',
                                X3M_LIGHTMAP_EMISSIVE_GAIN='4', X3M_OWNERSHIP=str(ownership), X3M_TAA=str(taa),
                                X3M_TAA_SENTINEL='1', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0', X3M_SCENE_HOOK='0',
                                X3M_TELEMETRY='1', X3M_MOTION_FRAME_LOG='1', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES='0',
@@ -291,7 +319,7 @@ def main():
         assert report['local_programs'] == {path.name: sha(path) for path in programs}, 'local programs changed during qualification'
         report['passed'] = True
         report['checks'] = sum(case['checks'] for case in report['cases'].values())
-        report['limitations'] = ['Unknown sampler getter failure and combined creation/bind/restore failures are covered by scripted host control-flow checks, not injected into this GPU script.', 'Class-C fallback uses its own original constants/booleans/samplers and compares raw FP16 bits; an unprovided original varying prevents analytical color claims.', 'Native Windows and gameplay appearance/performance remain unverified.']
+        report['limitations'] = ['Unknown sampler getter failure and combined creation/bind/restore failures are covered by scripted host control-flow checks, not injected into this GPU script.', 'XT BUMP fallback uses its own valid linkage, constants, false native booleans and seven samplers; unknown-PS control has valid COLOR0 linkage and expects no motion route. Both preserve finite native output and exact FP16 twins.', 'Native Windows and gameplay appearance/performance remain unverified.']
     finally:
         destination = args.result if report['passed'] else raw / 'failed-result.json'
         destination.write_text(json.dumps(report, indent=2) + '\n')
