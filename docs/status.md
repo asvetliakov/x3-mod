@@ -5,6 +5,10 @@ preserved in [status history](status-history-2026-09-13.md). Read history only
 for a relevant unresolved question. The [goal checklist](goals.md) retains the
 full scope; the [original objective](user-objective.md) is unchanged.
 
+**Paused for an account switch at the user's request.** Agents and project
+build/test processes are stopped. Preserve the uncommitted work; read the
+[pause handoff](pause-handoff-2026-09-13.md) before resuming on user instruction.
+
 ## Installed build and current camera work
 
 Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `c663b03`:
