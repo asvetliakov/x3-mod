@@ -57,8 +57,10 @@ one tonemap draw writes the display-encoded 8-bit result into the *game's* main
 surface as RT0, RT1–3 unbound, depth off, blending off, `COLORWRITEENABLE=15`,
 `SRGBWRITEENABLE=FALSE`. Output alpha is the **scene alpha, carried through
 unchanged**: the original highlight program `1c90e79667bdaddf` multiplies
-sampled RGB by the sampled *alpha* and derives its mask from
-`1 − saturate(alpha)`, so writing alpha 1 would silently change the glow mask.
+sampled RGB by the sampled *alpha* for colored glow and derives a separate
+thresholded white-highlight mask multiplied by `1 − saturate(alpha)`, so
+writing alpha 1 would silently change both terms. The exact equations and
+observed constants are in [the compositor study](../reverse-engineering/compositor-and-glow.md).
 (The resolve hit this exact bug; `temporal-integration.md`, "Findings while
 wiring".)
 
@@ -72,13 +74,14 @@ log it and disable the feature for the device.
 **What the game's bloom sees.** *Stage 1*: `0x004c4750` runs unmodified, so its
 `StretchRect` copies the **LDR, AgX-tonemapped, display-encoded** image and the
 four bloom passes, GUI and text at `0x0047253f` behave exactly as today. Visible
-consequence: `g_HighlightThreshold` now selects highlights from a
-tone-compressed image, so glow is weaker than vanilla. *Stage 2*: an HDR bloom
-chain over the resolved FP16 image (5–6 half-res `A16B16G16R16F` levels, 13-tap
-down, tent up) is inserted before the tonemap and the hook **skips** the
-original call — the compositor's only full-screen output is its final glow
-composite into main RT0, which our tonemap draw replaces. Gate the skip on the
-player's glow setting; that gate is the open RE item (§9).
+consequence: tone compression changes the thresholded white-highlight term;
+the independent alpha-authored colored term remains brightness-weighted and is
+not governed by that threshold. This does not prove all glow is weaker than
+vanilla. The original Stage 2 skip proposal is superseded by the
+[original-once/RGB-replacement boundary](hdr-bloom-boundary.md). Run 26 showed
+that its initial RGB-only replacement omitted the native alpha-authored glow;
+the [authored-glow correction](bloom-authored-glow.md) records the bounded
+replacement policy and qualification limits.
 
 ## 2. Shader implications
 

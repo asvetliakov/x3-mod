@@ -154,6 +154,64 @@ class BloomTests(unittest.TestCase):
         for v, expected in ((0, 0), (1, 0), (2, .25), (3, 1), (4, 2)):
             self.assertAlmostEqual(ref.prefilter((v,) * 3, soft, mode='none')[0], expected)
 
+    def test_legacy_prefilter_is_exactly_alpha_independent(self):
+        params = ref.Params(authored_glow_gain=0, highlight_gain=1)
+        for exposure in (1, 2 ** 1.5, 4):
+            expected = ref.prefilter((1.7, .8, .2), params, exposure=exposure, mode='none')
+            for alpha in (0, .5, 1, -1, math.nan, math.inf, -math.inf):
+                self.assertEqual(ref.prefilter((1.7, .8, .2, alpha), params,
+                                              exposure=exposure, mode='none'), expected)
+
+    def test_authored_masks_are_complementary_without_double_counting(self):
+        rgb = (2., .5, .25)
+        params = ref.Params(threshold=1, knee=.5, authored_glow_gain=2,
+                            highlight_gain=.25)
+        exposed = ref.exposed(rgb, mode='none')
+        legacy = ref.prefilter(rgb, dataclasses.replace(params, authored_glow_gain=0),
+                               mode='none')
+        for alpha in (0., .5, 1.):
+            actual = ref.prefilter(rgb + (alpha,), params, mode='none')
+            expected = tuple(alpha * 2 * value + (1 - alpha) * .25 * highlight
+                             for value, highlight in zip(exposed, legacy))
+            self.assertEqual(actual, expected)
+        self.assertEqual(ref.prefilter(rgb + (0.,), params, mode='none'),
+                         tuple(.25 * value for value in legacy))
+        self.assertEqual(ref.prefilter(rgb + (1.,), params, mode='none'),
+                         tuple(2 * value for value in exposed))
+
+    def test_subthreshold_authored_color_and_alpha_sanitizing(self):
+        rgb = (.2, .1, .05)
+        params = ref.Params(authored_glow_gain=2, highlight_gain=.05)
+        self.assertEqual(ref.prefilter(rgb + (0.,), params, mode='none'), (0., 0., 0.))
+        self.assertEqual(ref.prefilter(rgb + (1.,), params, mode='none'), (.4, .2, .1))
+        self.assertEqual(ref.prefilter(rgb + (.5,), params, mode='none'), (.2, .1, .05))
+        for alpha in (math.nan, -math.inf, -2.):
+            self.assertEqual(ref.prefilter(rgb + (alpha,), params, mode='none'), (0., 0., 0.))
+        for alpha in (math.inf, 2.):
+            self.assertEqual(ref.prefilter(rgb + (alpha,), params, mode='none'), (.4, .2, .1))
+        self.assert_image_constant(ref.bloom(solid(5, 3, rgb + (1.,)), params,
+                                             mode='none'), (.4, .2, .1))
+
+    def test_authored_extraction_bounds_nonfinite_rgb_before_fp16_store(self):
+        params = ref.Params(threshold=0, authored_glow_gain=4, highlight_gain=1)
+        self.assertEqual(ref.prefilter((math.inf,) * 3 + (1.,), params, mode='none'),
+                         (ref.FP16_MAX,) * 3)
+        self.assertEqual(ref.prefilter((math.nan, math.inf, -math.inf, 1.), params,
+                                      mode='none'), (0., ref.FP16_MAX, 0.))
+        # Missing alpha is the same zero authored mask as the shader's ordered clamp.
+        self.assertEqual(ref.prefilter((1., 1., 1.), params, mode='none'), (1., 1., 1.))
+
+    def test_authored_off_composite_matches_exposed_source_at_selected_evs(self):
+        image = [[(1.2, .4, .1, 0.), (.3, .6, .9, .5), (.1, .2, .3, 1.)]]
+        params = ref.Params(strength=0, authored_glow_gain=2, highlight_gain=.05)
+        for ev in (0., 1.5, 2.):
+            exposure = 2 ** ev
+            result = ref.composite(image, params, exposure=exposure, mode='gamma2.2')
+            for actual, source in zip(result[0], image[0]):
+                expected = tuple(value * exposure for value in ref.decode(source[:3],
+                                                                           'gamma2.2')) + source[3:]
+                self.assertEqual(actual, expected)
+
     def test_exposure_units_and_clamp_order(self):
         p = ref.Params(threshold=2, knee=.5)
         self.assertEqual(ref.prefilter((1, 1, 1), p, exposure=2, mode='none'),
@@ -193,7 +251,9 @@ class BloomTests(unittest.TestCase):
     def test_invalid_inputs(self):
         for field, values in {'levels': (0, 7, 1.5, True), 'strength': (-1, 1.1, math.inf),
                               'threshold': (-1, 65505, math.nan), 'knee': (-.1, 1.1),
-                              'scatter': (-.1, 1.1)}.items():
+                              'scatter': (-.1, 1.1),
+                              'authored_glow_gain': (-.1, 4.1, math.nan, math.inf),
+                              'highlight_gain': (-.1, 1.1, math.nan, math.inf)}.items():
             for value in values:
                 with self.assertRaises(ValueError):
                     dataclasses.replace(ref.Params(), **{field: value}).validate()
@@ -226,9 +286,26 @@ int main() {
  assert(prepare_bloom_layout(l,{1,1},6) && l.count==1 && l.pixels==1);
  BloomParams p{}; BloomConstants c{};
  assert(p.levels==5 && p.strength==.05f && p.threshold==1 && p.knee==.5f && p.scatter==.7f);
+ assert(p.authored_glow_gain==0 && p.highlight_gain==.05f);
+ const AgxDecode modes[]={AgxDecode::gamma22,AgxDecode::srgb,AgxDecode::none};
+ for (AgxDecode mode : modes) {
+   BloomParams legacy_params{}; BloomConstants legacy{}, authored{};
+   assert(prepare_bloom(legacy,{13,7},{7,4},legacy_params,2,4,mode));
+   assert(legacy.radiance[3]==0 && legacy.decode[3]==0);
+   legacy_params.authored_glow_gain=2; legacy_params.highlight_gain=.125f;
+   assert(prepare_bloom(authored,{13,7},{7,4},legacy_params,2,4,mode));
+   assert(authored.radiance[3]==2 && authored.decode[3]==.125f);
+   for(unsigned i=0;i<3;++i) assert(authored.decode[i]==legacy.decode[i]);
+ }
  assert(prepare_bloom(c,{13,7},{7,4},p,2,4,AgxDecode::srgb));
  assert(c.source[0]==13 && c.destination[1]==4 && c.radiance[0]==2 && c.radiance[1]==4);
- assert(c.radiance[2]==65504 && c.decode[1]==1 && c.decode[2]==0);
+ assert(c.radiance[2]==65504 && c.radiance[3]==0);
+ assert(c.decode[0]==1 && c.decode[1]==1 && c.decode[2]==0 && c.decode[3]==0);
+ const float legacy_decode[3]={c.decode[0],c.decode[1],c.decode[2]};
+ p.authored_glow_gain=2; p.highlight_gain=.125f;
+ assert(prepare_bloom(c,{13,7},{7,4},p,2,4,AgxDecode::srgb));
+ assert(c.radiance[3]==2 && c.decode[3]==.125f);
+ for(unsigned i=0;i<3;++i) assert(c.decode[i]==legacy_decode[i]);
  assert(!prepare_bloom(c,{13,7},{7,4},p,0,4,AgxDecode::none) && c.radiance[0]==2);
  assert(!prepare_bloom(c,{13,7},{7,4},p,1,4,static_cast<AgxDecode>(999)));
  assert(!prepare_bloom(c,{16385,7},{7,4},p,1,4,AgxDecode::none));
@@ -237,11 +314,21 @@ int main() {
  p={}; p.knee=1.1f; assert(!valid_bloom_params(p));
  p={}; p.strength=-1; assert(!valid_bloom_params(p));
  p={}; p.threshold=65505; assert(!valid_bloom_params(p));
+ p={}; p.authored_glow_gain=4; assert(valid_bloom_params(p));
+ p.authored_glow_gain=4.01f; assert(!valid_bloom_params(p));
+ p.authored_glow_gain=-1; assert(!valid_bloom_params(p));
+ p={}; p.authored_glow_gain=std::numeric_limits<float>::quiet_NaN(); assert(!valid_bloom_params(p));
+ p={}; p.authored_glow_gain=std::numeric_limits<float>::infinity(); assert(!valid_bloom_params(p));
+ p={}; p.highlight_gain=0; assert(valid_bloom_params(p));
+ p.highlight_gain=1; assert(valid_bloom_params(p));
+ p.highlight_gain=1.01f; assert(!valid_bloom_params(p));
+ p.highlight_gain=-.01f; assert(!valid_bloom_params(p));
+ p={}; p.highlight_gain=std::numeric_limits<float>::quiet_NaN(); assert(!valid_bloom_params(p));
+ p={}; p.highlight_gain=std::numeric_limits<float>::infinity(); assert(!valid_bloom_params(p));
  assert(kBloomFirstRegister==24 && kBloomRegisterCount==5 && kBloomMaxLevels==6);
  assert(bloom_even_extraction({82,2}) && !bloom_even_extraction({82,1}));
  assert(!bloom_even_extraction({0,2}) && !bloom_even_extraction({2,3}));
  BloomExtractShader shader=BloomExtractShader::gamma22;
- const AgxDecode modes[]={AgxDecode::gamma22,AgxDecode::srgb,AgxDecode::none};
  for (unsigned i=0;i<3;++i) {
    assert(select_bloom_extract(shader,{7,1},modes[i]) && static_cast<unsigned>(shader)==i);
    assert(select_bloom_extract(shader,{82,2},modes[i]) && static_cast<unsigned>(shader)==i+3);

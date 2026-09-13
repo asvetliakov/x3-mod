@@ -7,6 +7,7 @@ production BloomPass, but never executes Wine or publishes a GPU pass.
 from __future__ import annotations
 import argparse
 import json
+import math
 from pathlib import Path
 import re
 import struct
@@ -41,24 +42,57 @@ def make_cases():
             for strength in (0., .5):
                 for sharp in (0., .75):
                     cases.append(dict(mode=mode, kind=kind, width=w, height=h,
-                                      strength=strength, sharp=sharp, image=image))
+                                      strength=strength, sharp=sharp, threshold=0., exposure=1.,
+                                      authored_glow_gain=0., highlight_gain=.05, image=image))
+    # Six bounded authored configurations, each paired as final strength 0/1
+    # to exercise the runtime F10 contribution gate against the same input.
+    configurations = (
+        ('gamma2.2', 8, 6, 0., .1), ('gamma2.2', 9, 7, 1.5, .2),
+        ('srgb', 8, 6, 2., .1), ('srgb', 9, 7, 0., .2),
+        ('none', 8, 6, 1.5, .1), ('none', 9, 7, 2., .2),
+    )
+    for mode, w, h, ev, gain in configurations:
+        image = []
+        for y in range(h):
+            row = []
+            for x in range(w):
+                if (x, y) == (w // 2, h // 2):
+                    pixel = (.18, .04, .01, 1.)
+                elif (x, y) == (0, 0):
+                    pixel = (2., .5, .125, 0.)
+                else:
+                    alpha = (0., .5, 1.)[(x + 2 * y) % 3]
+                    if y == 0 and x == 1: alpha = math.nan
+                    if y == 0 and x == 2: alpha = -math.inf
+                    if y == 0 and x == 3: alpha = math.inf
+                    pixel = ((x % 5 + 1) / 5, (y % 4 + 1) / 6,
+                             (1 + (x + y) % 6) / 12, alpha)
+                row.append(pixel)
+            image.append(row)
+        for strength in (0., 1.):
+            cases.append(dict(mode=mode, kind='authored', width=w, height=h,
+                              strength=strength, sharp=0., threshold=1., exposure=2 ** ev,
+                              authored_glow_gain=gain, highlight_gain=.05, image=image))
     return cases
 
 
 def write_cases(cases, path):
     with path.open('wb') as f:
-        f.write(b'X3BP0001' + struct.pack('<I',len(cases)))
+        f.write(b'X3BP0002' + struct.pack('<I',len(cases)))
         for c in cases:
-            f.write(struct.pack('<3I2f',c['width'],c['height'],ref.DECODE_MODES.index(c['mode']),c['strength'],c['sharp']))
+            f.write(struct.pack('<3I6f',c['width'],c['height'],ref.DECODE_MODES.index(c['mode']),
+                                c['strength'],c['sharp'],c['threshold'],c['exposure'],
+                                c['authored_glow_gain'],c['highlight_gain']))
             for row in c['image']:
                 for p in row:
                     f.write(struct.pack('<4e',*p))
 
 
 def expected(c):
-    p = ref.Params(levels=3, threshold=0, strength=c['strength'])
-    bloom = ref.bloom(c['image'],p,mode=c['mode'])
-    display = [[oracle.composition(e,b,c['strength'],mode=c['mode'])
+    p = ref.Params(levels=3, threshold=c['threshold'], strength=c['strength'],
+                   authored_glow_gain=c['authored_glow_gain'], highlight_gain=c['highlight_gain'])
+    bloom = ref.bloom(c['image'],p,exposure=c['exposure'],mode=c['mode'])
+    display = [[oracle.composition(e,b,c['strength'],exposure=c['exposure'],mode=c['mode'])
                 for e,b in zip(row,blur)] for row,blur in zip(c['image'],bloom)]
     if not c['sharp']:
         return [[p[:3] for p in row] for row in display]
@@ -86,7 +120,7 @@ def compare(c,path,baseline_path):
 def validate_log(text,cases,returncode):
     lines=text.splitlines()
     terminal=[line for line in lines if line.startswith('RESULT ')]
-    if returncode or terminal!=['RESULT PASS cases=24 controls=16 checks=40 reset=1 reset_cases=1'] \
+    if returncode or terminal!=[f'RESULT PASS cases={len(cases)} controls=16 checks={len(cases)+16} reset=1 reset_cases=1'] \
             or not lines or lines[-1]!=terminal[0] or any('FAIL' in line for line in lines):
         raise ValueError('Missing, duplicate, failed or nonterminal fixture result')
     neutral=re.findall(r'^FILL label=neutral requested=6b193957 mismatches=(\d+) first=(\d+) observed=([0-9a-f]{8})$',text,re.MULTILINE)
@@ -107,7 +141,7 @@ def validate_log(text,cases,returncode):
         raise ValueError('Missing/duplicate NPatch capability or injected-draw assertion')
     reset=[line for line in lines if line.startswith('RESET_CASE ')]
     last=cases[-1]
-    if reset!=[f"RESET_CASE index=23 width={last['width']} height={last['height']} checks=1 pass=1"]:
+    if reset!=[f"RESET_CASE index={len(cases)-1} width={last['width']} height={last['height']} checks=1 pass=1"]:
         raise ValueError('Missing/duplicate/incorrect post-Reset case')
     if any(line.startswith(('CASE ','CONTROL ')) and not re.fullmatch(
             r'(?:CONTROL test=\d+ pass=1|CASE index=\d+ width=\d+ height=\d+ checks=\d+ pass=1)',line) for line in lines):
@@ -186,7 +220,9 @@ def main():
         report['hostile_adaptive_verified']='ADAPTIVE accepted=1 ' in log
         if not report['hostile_adaptive_verified']: report['untested'].append('hostile adaptive tessellation state rejected by backend')
         for i,c in enumerate(corpus): report['images'].append(dict(index=i,**compare(c,directory/f'case_{i}.bgra8',directory/f'c{i}_t0_original.bgra8')))
-        report['reset_image']=compare(corpus[-1],directory/'reset_case.bgra8',directory/'reset_c23_t0_original.bgra8')
+        reset_index=len(corpus)-1
+        report['reset_image']=compare(corpus[-1],directory/'reset_case.bgra8',
+                                      directory/f'reset_c{reset_index}_t0_original.bgra8')
         if not report['reset_image']['passed']: raise RuntimeError('Post-Reset independent image mismatch')
         report['compiled_shaders']={name:filtering.digest(directory/(name+'.cso')) for name in NAMES}
         if not all(x['passed'] for x in report['images']): raise RuntimeError('Independent image oracle mismatch')

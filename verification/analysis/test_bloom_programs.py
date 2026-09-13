@@ -11,7 +11,8 @@ spec = importlib.util.spec_from_file_location('production_bloom_generator',
     ROOT / 'tools/shaders/generate_bloom_programs.py')
 tool = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tool)
-COMPILER = Path.home() / 'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll'
+import bottle
+COMPILER = bottle.game_dir() / 'd3dx9_37.dll'
 
 
 class BloomProgramsTests(unittest.TestCase):

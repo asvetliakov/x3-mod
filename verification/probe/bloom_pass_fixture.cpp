@@ -49,16 +49,25 @@ void bytes(const std::string& path, const void* p, size_t n) {
     std::ofstream out(path, std::ios::binary); require(bool(out.write((const char*)p, n)), "write bytes");
 }
 template<class T> T read(std::ifstream& f) { T v{}; require(bool(f.read((char*)&v, sizeof(v))), "truncated input"); return v; }
-struct Case { unsigned w, h, mode; float strength, sharp; std::vector<unsigned short> pixels; };
+struct Case {
+    unsigned w, h, mode;
+    float strength, sharp, threshold, exposure, authored_glow_gain, highlight_gain;
+    std::vector<unsigned short> pixels;
+};
 std::vector<Case> cases(const std::string& directory) {
     std::ifstream f(directory + "/cases.bin", std::ios::binary);
-    char magic[8]; require(bool(f.read(magic, 8)) && !std::memcmp(magic, "X3BP0001", 8), "input magic");
-    unsigned n = read<unsigned>(f); require(n == 24, "input count");
+    char magic[8]; require(bool(f.read(magic, 8)) && !std::memcmp(magic, "X3BP0002", 8), "input magic");
+    unsigned n = read<unsigned>(f); require(n == 36, "input count");
     std::vector<Case> out;
     for (unsigned i = 0; i < n; ++i) {
         Case c{}; c.w=read<unsigned>(f); c.h=read<unsigned>(f); c.mode=read<unsigned>(f);
-        c.strength=read<float>(f); c.sharp=read<float>(f);
+        c.strength=read<float>(f); c.sharp=read<float>(f); c.threshold=read<float>(f);
+        c.exposure=read<float>(f); c.authored_glow_gain=read<float>(f); c.highlight_gain=read<float>(f);
         require(c.w >= 4 && c.w <= 32 && c.h >= 4 && c.h <= 32 && c.mode < 3, "input bounds");
+        x3::temporal::BloomParams params{};params.strength=c.strength;params.threshold=c.threshold;
+        params.authored_glow_gain=c.authored_glow_gain;params.highlight_gain=c.highlight_gain;
+        require(x3::temporal::valid_bloom_params(params)&&c.exposure>0&&c.exposure<=65504.f,
+                "input parameters");
         c.pixels.resize(c.w*c.h*4);
         require(bool(f.read((char*)c.pixels.data(), c.pixels.size()*2)), "input pixels"); out.push_back(std::move(c));
     }
@@ -230,8 +239,10 @@ unsigned run_case(IDirect3DDevice9* d,const D3DCAPS9& caps,void* const* native,c
     scene.upload(c);sentinel.upload(c);Com<IDirect3DVertexBuffer9> vb;
     check(d->CreateVertexBuffer(128,0,0,D3DPOOL_MANAGED,&vb.p,nullptr),"Create stream");
     BloomPrepare input{};input.scene=scene.texture.p;input.decode=static_cast<x3::temporal::AgxDecode>(c.mode);
-    input.sharpen=c.sharp;input.filter.levels=3;input.filter.threshold=0;input.filter.strength=c.strength;
-    require(x3::temporal::prepare(input.agx,1,0,input.decode,x3::temporal::AgxLook::none),"AgX constants");
+    input.sharpen=c.sharp;input.filter.levels=3;input.filter.threshold=c.threshold;
+    input.filter.strength=c.strength;input.filter.authored_glow_gain=c.authored_glow_gain;
+    input.filter.highlight_gain=c.highlight_gain;
+    require(x3::temporal::prepare(input.agx,c.exposure,0,input.decode,x3::temporal::AgxLook::none),"AgX constants");
     auto& boundary=input.boundary;boundary.main=main.surface.p;check(main.surface->GetDesc(&boundary.main_desc),"Main desc");
     boundary.frame=7;boundary.reset=post_reset?3:2;boundary.thread=GetCurrentThreadId();boundary.admitted=true;
     unsigned checks=0;
@@ -338,7 +349,10 @@ unsigned run_case(IDirect3DDevice9* d,const D3DCAPS9& caps,void* const* native,c
     std::printf("%s index=%u width=%u height=%u checks=%u pass=1\n",post_reset?"RESET_CASE":"CASE",index,c.w,c.h,checks);return checks;
 }
 }
-int main(int argc,char** argv) {
+#ifndef X3M_BLOOM_PASS_FIXTURE_ENTRY
+#define X3M_BLOOM_PASS_FIXTURE_ENTRY main
+#endif
+int X3M_BLOOM_PASS_FIXTURE_ENTRY(int argc,char** argv) {
     try {
         require(argc==3,"usage: fixture compiler.dll directory");const std::string dir=argv[2];auto input=cases(dir);Programs programs(argv[1],dir);
         HMODULE module=LoadLibraryA("d3d9.dll");require(module,"Load D3D9");auto address=GetProcAddress(module,"Direct3DCreate9");
@@ -380,10 +394,11 @@ int main(int argc,char** argv) {
         require(!pass.valid(reset_token),"Native Reset resurrected ticket");
         BloomBoundary rejected{};rejected.admitted=true;rejected.frame=7;rejected.reset=3;rejected.thread=GetCurrentThreadId();
         auto old=pass.commit(reset_token,rejected);require(!old.committed&&!old.write_attempted,"Pre-Reset token wrote after Reset");
-        checks+=run_case(device.p,caps,native,programs.bundle,input.back(),23,dir,false,pass,nullptr,true);
+        checks+=run_case(device.p,caps,native,programs.bundle,input.back(),unsigned(input.size()-1),dir,false,pass,nullptr,true);
         DestroyWindow(window);
         require(npatch_draw_checks>0,"Missing injected draw NPatch assertions");
         std::printf("NPATCH_DRAWS checked=%u pass=1\n",npatch_draw_checks);
-        std::printf("RESULT PASS cases=24 controls=16 checks=%u reset=1 reset_cases=1\n",checks);return 0;
+        std::printf("RESULT PASS cases=%u controls=16 checks=%u reset=1 reset_cases=1\n",
+                    unsigned(input.size()),checks);return 0;
     } catch(const std::exception& e) {std::printf("RESULT FAIL reason=%s\n",e.what());return 1;}
 }

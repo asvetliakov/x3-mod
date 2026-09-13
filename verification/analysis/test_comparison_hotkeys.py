@@ -27,12 +27,17 @@ class ComparisonHotkeys(unittest.TestCase):
     def test_production_notice_state_failure_and_allocation_contract(self):
         self.run_host('comparison_notice_fixture.cpp', [], notice=True)
 
-    def run_host(self, fixture, functions, exposure=False, notice=False):
+    def test_production_bloom_handoff_preserves_display_and_off_filtering(self):
+        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        functions = [extract_function(source, 'void retain_compositor_scene(')]
+        self.run_host('comparison_bloom_handoff_fixture.cpp', functions, handoff=True)
+
+    def run_host(self, fixture, functions, exposure=False, notice=False, handoff=False):
         compiler = shutil.which('clang++') or shutil.which('c++')
         self.assertIsNotNone(compiler)
         with tempfile.TemporaryDirectory(prefix='x3-comparison-') as temporary:
             directory = Path(temporary)
-            (directory / 'comparison_exposure_under_test_inc.h').write_text('\n'.join(functions))
+            (directory / ('comparison_handoff_under_test_inc.h' if handoff else 'comparison_exposure_under_test_inc.h')).write_text('\n'.join(functions))
             stub = ROOT / 'verification/probe/hdr_display_snapshot_stubs/d3d9.h'
             (directory / 'd3d9.h').write_text(f'#include "{stub}"\n' + textwrap.dedent('''
                 #define WINAPI
@@ -117,7 +122,7 @@ class ComparisonHotkeys(unittest.TestCase):
         reset = extract_function(capture, 'HRESULT reset_common(')
         self.assertIn('ctx.comparison_notice.hide();ctx.comparison.reset_focus()', reset)
         handoff = extract_function(capture, 'void retain_compositor_scene(')
-        self.assertIn('if(!ctx.comparison.bloom_requested)call.input.filter.strength=0.f;', handoff)
+        self.assertIn('call.input.filter.strength=ctx.comparison.bloom_requested?1.f:0.f;', handoff)
         hdr = (ROOT / 'src/renderer/hdr_pass.cpp').read_text()
         self.assertIn('caps_.tonemap && config_.meter_requested()', hdr)
         self.assertIn('hdr_config.exposure=x3m::renderer::ExposureMode::Manual;', capture)

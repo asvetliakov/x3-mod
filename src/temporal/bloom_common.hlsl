@@ -39,9 +39,9 @@ float3 bloomExposed(float3 engine)
     // any FP16 store. Max product 65504^2 is safe in float32 registers.
     return min(min(decoded, bloomRadiance.y) * bloomRadiance.x, bloomRadiance.z);
 }
-float3 bloomPrefilter(float3 engine)
+float3 bloomPrefilter(float4 engine)
 {
-    float3 e = bloomExposed(engine);
+    float3 e = bloomExposed(engine.rgb);
     float y = dot(e, float3(0.2126, 0.7152, 0.0722));
     float t = bloomFilter.x;
     float k = t * bloomFilter.y;
@@ -50,7 +50,17 @@ float3 bloomPrefilter(float3 engine)
     float soft = q * (q / max(4 * k, 1e-10));
     float contribution = max(y - t, soft);
     // At threshold zero y/y gives full contribution; black remains zero.
-    return e * saturate(contribution / max(y, 1e-10));
+    float weight = saturate(contribution / max(y, 1e-10));
+    // Keep legacy RGB-only callers independent of alpha, including NaN alpha.
+    if (bloomRadiance.w <= 0) return e * weight;
+    // This is the native scene's authored-glow channel, not surface opacity.
+    // Ordered clamp: NaN/negative/-inf -> 0; +inf/values above one -> 1.
+    float a = engine.a >= 0 ? min(engine.a, 1.0) : 0;
+    // The complementary highlight term avoids counting an authored emitter
+    // twice. Both terms are exposed-linear and share the existing pyramid.
+    // Gains can exceed one, so bound BEFORE the first FP16 scratch store.
+    float scale = a * bloomRadiance.w + (1 - a) * bloomDecode.w * weight;
+    return min(e * scale, bloomRadiance.z);
 }
 // Exact four-fetch form of the nine-bilinear-sample separable [1 2 1]/4
 // tent. At texel phase f, each axis has four discrete weights

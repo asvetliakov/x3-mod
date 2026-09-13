@@ -1,0 +1,501 @@
+{
+  "schema": 1,
+  "passed": true,
+  "scope": "Staged shader/GPU correctness and bounded paired completion timing; no candidate DLL or gameplay acceptance",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "gains": {
+    "authored": 0.1,
+    "highlight": 0.05,
+    "final_on": 1,
+    "final_off": 0
+  },
+  "exposure_default_changed": false,
+  "compilation": {
+    "artifacts_path": "/tmp/x3-bloom-authored-qualified-r2/artifacts.json",
+    "batches": [
+      "/tmp/x3-bloom-authored-qualified/artifacts.json",
+      "/tmp/x3-bloom-authored-qualified-r2/artifacts.json"
+    ],
+    "all_nine_bytecodes_identical_between_batches": true,
+    "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+    "kernels": [
+      {
+        "name": "bloom_extract_gamma",
+        "baseline_slots": 330,
+        "new_slots": 397,
+        "slot_delta": 67,
+        "baseline_dwords": 1375,
+        "new_dwords": 1665,
+        "dword_delta": 290,
+        "bytecode_sha256": "012bba4ceb06c1c0acceb795a0b6051b17a5b2d34702aadee8c209dfb5580506"
+      },
+      {
+        "name": "bloom_extract_srgb",
+        "baseline_slots": 362,
+        "new_slots": 425,
+        "slot_delta": 63,
+        "baseline_dwords": 1498,
+        "new_dwords": 1775,
+        "dword_delta": 277,
+        "bytecode_sha256": "7ab2dd0f07401e7856beb458983d409fde3e029d5066e9016dbbb975fd5ba265"
+      },
+      {
+        "name": "bloom_extract_none",
+        "baseline_slots": 245,
+        "new_slots": 308,
+        "slot_delta": 63,
+        "baseline_dwords": 1060,
+        "new_dwords": 1337,
+        "dword_delta": 277,
+        "bytecode_sha256": "6916cb8d926bd713f8a3b0536cf4f554918d57bdfa874e2181043cc5e10af6c8"
+      },
+      {
+        "name": "bloom_extract_even_gamma",
+        "baseline_slots": 145,
+        "new_slots": 176,
+        "slot_delta": 31,
+        "baseline_dwords": 658,
+        "new_dwords": 799,
+        "dword_delta": 141,
+        "bytecode_sha256": "3063963c4c27700202e01e2e7349fbd04c779f7bcc6d63ea1dbd140ff52b56e7"
+      },
+      {
+        "name": "bloom_extract_even_srgb",
+        "baseline_slots": 160,
+        "new_slots": 188,
+        "slot_delta": 28,
+        "baseline_dwords": 722,
+        "new_dwords": 849,
+        "dword_delta": 127,
+        "bytecode_sha256": "1612fec13c69ce0ba284b24ff0f0f3cdf12142d4d4479b3ed9b646715d3ead8f"
+      },
+      {
+        "name": "bloom_extract_even_none",
+        "baseline_slots": 108,
+        "new_slots": 136,
+        "slot_delta": 28,
+        "baseline_dwords": 518,
+        "new_dwords": 651,
+        "dword_delta": 133,
+        "bytecode_sha256": "5e9406c803795b52f21e21cd57dcbd7083ce112d1f2b0eee97e54521bc8cdc1f"
+      },
+      {
+        "name": "bloom_down",
+        "baseline_slots": 78,
+        "new_slots": 78,
+        "slot_delta": 0,
+        "baseline_dwords": 358,
+        "new_dwords": 358,
+        "dword_delta": 0,
+        "bytecode_sha256": "9ea94135dd015f57feb39be5310a19e7ccad6d55a35f64bcb69fb242372adf42"
+      },
+      {
+        "name": "bloom_up",
+        "baseline_slots": 45,
+        "new_slots": 45,
+        "slot_delta": 0,
+        "baseline_dwords": 255,
+        "new_dwords": 255,
+        "dword_delta": 0,
+        "bytecode_sha256": "b79660f12279e31f8730048eafa052cd7bb89121ace426795cd1ae68c1ed5c34"
+      },
+      {
+        "name": "bloom_agx",
+        "baseline_slots": 108,
+        "new_slots": 108,
+        "slot_delta": 0,
+        "baseline_dwords": 603,
+        "new_dwords": 603,
+        "dword_delta": 0,
+        "bytecode_sha256": "7a5f651beee4a3a0dcfcfe4eb843022126789f04459b0cec8ca5f984402d94e6"
+      }
+    ]
+  },
+  "gpu": {
+    "summary": {
+      "path": "/tmp/x3-bloom-authored-pass/summary.json",
+      "bytes": 81867,
+      "sha256": "9bcb54dbff5273c9ce76e2f938689ba0e2ff526fee1f966997797e1416c79852"
+    },
+    "exit_code": 0,
+    "cases": 36,
+    "controls": 16,
+    "checks": 52,
+    "reset_cases": 1,
+    "all_images_passed": true,
+    "max_code_error": 1,
+    "allowed_code_error": 3,
+    "alpha_errors": 0,
+    "reset": {
+      "passed": true,
+      "max_code_error": 1,
+      "alpha_errors": 0
+    },
+    "all_nine_gpu_shaders_match_stage": true,
+    "inputs_unchanged": true,
+    "canonical_summary": "verification/results/bottle-X3/bloom-pass-summary.json"
+  },
+  "timing": {
+    "exit_code": 0,
+    "execution_reported_by": "root, PTY session79433",
+    "arguments": [
+      "/tmp/x3-bloom-authored-timing-build/bloom_pass_timing_fixture.exe",
+      "Z:/tmp/x3-bloom-authored-qualified-r2/baseline",
+      "Z:/tmp/x3-bloom-authored-qualified-r2/new"
+    ],
+    "stdout": {
+      "path": "/tmp/x3-bloom-authored-timing.txt",
+      "bytes": 4221,
+      "sha256": "63b1d6bfd0856956df5ce3aab12ef7b94b758515323f5ecbdc41cd99d86bbda4"
+    },
+    "stderr": {
+      "path": "/tmp/x3-bloom-authored-timing-wine.log",
+      "bytes": 76,
+      "sha256": "06bb0bf4cb250155ea8c208eb08f13662e526c8f474265eac9a41e565eafaf31"
+    },
+    "executable_hash_after_run": {
+      "path": "/tmp/x3-bloom-authored-timing-build/bloom_pass_timing_fixture.exe",
+      "bytes": 11406860,
+      "sha256": "be5da06fe433b977ee914682fb51e85b04b14104b9fc219be23e93adadf5d6f1"
+    },
+    "executable_hash_before_run_available": false,
+    "source_and_parser_snapshot_after_run": [
+      {
+        "path": "verification/probe/bloom_pass_timing_fixture.cpp",
+        "bytes": 14685,
+        "sha256": "9c3ef4ccb6a3404efa7e7610a991467b8b70b5ddfa486ad523368591ff981c66"
+      },
+      {
+        "path": "verification/probe/bloom_pass_fixture.cpp",
+        "bytes": 29422,
+        "sha256": "f85aedecdae75bdaa08041701dcfd6345ab6614ce15fe4c0709d8e56569936b0"
+      },
+      {
+        "path": "verification/probe/bloom_pass_timing_fixture_build.py",
+        "bytes": 962,
+        "sha256": "10b3ce839bb98173551f024ad9a13ff27cb3298fb9e609c850da33604da77b32"
+      },
+      {
+        "path": "verification/probe/run_bloom_pass_timing.py",
+        "bytes": 11678,
+        "sha256": "f1e42b45767fba9745b5a612ed1dbc2bc6ea6f16ac275f0de348a9b06b8e4d8b"
+      },
+      {
+        "path": "src/renderer/bloom_pass.cpp",
+        "bytes": 41665,
+        "sha256": "b12be8231e5222817c05f4cdf5b44bd90c59cffe60248a265818965ca0fafb1e"
+      },
+      {
+        "path": "src/renderer/bloom_pass.h",
+        "bytes": 7937,
+        "sha256": "e5245bd225ac26cad0771d5931a3bbb3ffc509e6c2cc64a26841092c9a14e5e8"
+      }
+    ],
+    "all_24_csos_match_staged_before_hashes": true,
+    "measurements": {
+      "pixel_shader_version": "ffff0300",
+      "max_ps30_instruction_slots": 512,
+      "qpc_frequency": 10000000,
+      "create_ps_records": 8,
+      "samples": [
+        {
+          "metric": "full",
+          "width": 1280,
+          "height": 768,
+          "pair": 0,
+          "order": "old-new",
+          "old_ticks": 9124,
+          "new_ticks": 11738,
+          "old_ms": 0.9124,
+          "new_ms": 1.1738
+        },
+        {
+          "metric": "full",
+          "width": 1280,
+          "height": 768,
+          "pair": 1,
+          "order": "new-old",
+          "old_ticks": 10118,
+          "new_ticks": 12417,
+          "old_ms": 1.0118,
+          "new_ms": 1.2417
+        },
+        {
+          "metric": "full",
+          "width": 1280,
+          "height": 768,
+          "pair": 2,
+          "order": "old-new",
+          "old_ticks": 8613,
+          "new_ticks": 13987,
+          "old_ms": 0.8613,
+          "new_ms": 1.3987
+        },
+        {
+          "metric": "full",
+          "width": 1280,
+          "height": 768,
+          "pair": 3,
+          "order": "new-old",
+          "old_ticks": 12631,
+          "new_ticks": 10480,
+          "old_ms": 1.2631,
+          "new_ms": 1.048
+        },
+        {
+          "metric": "full",
+          "width": 1280,
+          "height": 768,
+          "pair": 4,
+          "order": "old-new",
+          "old_ticks": 10020,
+          "new_ticks": 9409,
+          "old_ms": 1.002,
+          "new_ms": 0.9409
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1280,
+          "height": 768,
+          "pair": 0,
+          "order": "old-new",
+          "old_ticks": 3103,
+          "new_ticks": 3336,
+          "old_ms": 0.3103,
+          "new_ms": 0.3336
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1280,
+          "height": 768,
+          "pair": 1,
+          "order": "new-old",
+          "old_ticks": 3138,
+          "new_ticks": 3253,
+          "old_ms": 0.3138,
+          "new_ms": 0.3253
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1280,
+          "height": 768,
+          "pair": 2,
+          "order": "old-new",
+          "old_ticks": 3068,
+          "new_ticks": 3143,
+          "old_ms": 0.3068,
+          "new_ms": 0.3143
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1280,
+          "height": 768,
+          "pair": 3,
+          "order": "new-old",
+          "old_ticks": 3166,
+          "new_ticks": 3116,
+          "old_ms": 0.3166,
+          "new_ms": 0.3116
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1280,
+          "height": 768,
+          "pair": 4,
+          "order": "old-new",
+          "old_ticks": 3213,
+          "new_ticks": 3235,
+          "old_ms": 0.3213,
+          "new_ms": 0.3235
+        },
+        {
+          "metric": "full",
+          "width": 1279,
+          "height": 767,
+          "pair": 0,
+          "order": "old-new",
+          "old_ticks": 12223,
+          "new_ticks": 9975,
+          "old_ms": 1.2223,
+          "new_ms": 0.9975
+        },
+        {
+          "metric": "full",
+          "width": 1279,
+          "height": 767,
+          "pair": 1,
+          "order": "new-old",
+          "old_ticks": 14540,
+          "new_ticks": 9957,
+          "old_ms": 1.454,
+          "new_ms": 0.9957
+        },
+        {
+          "metric": "full",
+          "width": 1279,
+          "height": 767,
+          "pair": 2,
+          "order": "old-new",
+          "old_ticks": 9921,
+          "new_ticks": 10318,
+          "old_ms": 0.9921,
+          "new_ms": 1.0318
+        },
+        {
+          "metric": "full",
+          "width": 1279,
+          "height": 767,
+          "pair": 3,
+          "order": "new-old",
+          "old_ticks": 10080,
+          "new_ticks": 10218,
+          "old_ms": 1.008,
+          "new_ms": 1.0218
+        },
+        {
+          "metric": "full",
+          "width": 1279,
+          "height": 767,
+          "pair": 4,
+          "order": "old-new",
+          "old_ticks": 10906,
+          "new_ticks": 10140,
+          "old_ms": 1.0906,
+          "new_ms": 1.014
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1279,
+          "height": 767,
+          "pair": 0,
+          "order": "old-new",
+          "old_ticks": 3094,
+          "new_ticks": 4276,
+          "old_ms": 0.3094,
+          "new_ms": 0.4276
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1279,
+          "height": 767,
+          "pair": 1,
+          "order": "new-old",
+          "old_ticks": 4538,
+          "new_ticks": 4553,
+          "old_ms": 0.4538,
+          "new_ms": 0.4553
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1279,
+          "height": 767,
+          "pair": 2,
+          "order": "old-new",
+          "old_ticks": 4388,
+          "new_ticks": 4342,
+          "old_ms": 0.4388,
+          "new_ms": 0.4342
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1279,
+          "height": 767,
+          "pair": 3,
+          "order": "new-old",
+          "old_ticks": 3097,
+          "new_ticks": 4304,
+          "old_ms": 0.3097,
+          "new_ms": 0.4304
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1279,
+          "height": 767,
+          "pair": 4,
+          "order": "old-new",
+          "old_ticks": 3276,
+          "new_ticks": 4392,
+          "old_ms": 0.3276,
+          "new_ms": 0.4392
+        }
+      ],
+      "summaries": [
+        {
+          "metric": "full",
+          "width": 1280,
+          "height": 768,
+          "old_median_ticks": 10020,
+          "new_median_ticks": 11738,
+          "old_median_ms": 1.002,
+          "new_median_ms": 1.1738,
+          "ratio": 1.1714570858283433,
+          "paired_delta_ms": {
+            "min": -0.2151,
+            "median": 0.2299,
+            "max": 0.5374
+          }
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1280,
+          "height": 768,
+          "old_median_ticks": 3138,
+          "new_median_ticks": 3235,
+          "old_median_ms": 0.3138,
+          "new_median_ms": 0.3235,
+          "ratio": 1.0309114085404716,
+          "paired_delta_ms": {
+            "min": -0.005,
+            "median": 0.0075,
+            "max": 0.0233
+          }
+        },
+        {
+          "metric": "full",
+          "width": 1279,
+          "height": 767,
+          "old_median_ticks": 10906,
+          "new_median_ticks": 10140,
+          "old_median_ms": 1.0906,
+          "new_median_ms": 1.014,
+          "ratio": 0.9297634329726756,
+          "paired_delta_ms": {
+            "min": -0.4583,
+            "median": -0.0766,
+            "max": 0.0397
+          }
+        },
+        {
+          "metric": "extract_first_draw",
+          "width": 1279,
+          "height": 767,
+          "old_median_ticks": 3276,
+          "new_median_ticks": 4342,
+          "old_median_ms": 0.3276,
+          "new_median_ms": 0.4342,
+          "ratio": 1.3253968253968254,
+          "paired_delta_ms": {
+            "min": -0.0046,
+            "median": 0.1116,
+            "max": 0.1207
+          }
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Timing raw run did not capture an executable before hash; explicit retained executable/build ownership and after hash are recorded, not atomic input-guard evidence.",
+    "Paired QPC spans include CPU, driver, EVENT-query overhead and GPU completion; they are not pure GPU timings or game FPS.",
+    "Five alternating pairs per group bound this diagnostic observation, not general performance; full-pass spread crosses zero.",
+    "Native Windows and authored-glow gameplay remain unverified.",
+    "Legacy source/reference arithmetic is unchanged; GPU parity uses the three-code bound, not byte-exact old/new GPU twins."
+  ]
+}

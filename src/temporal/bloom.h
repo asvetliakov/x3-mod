@@ -10,6 +10,7 @@ constexpr unsigned kBloomMaxDimension = 16384; // additionally enforce device ca
 constexpr unsigned kBloomFirstRegister = 24;  // AgX c8..21, RCAS c23
 constexpr unsigned kBloomRegisterCount = 5;
 constexpr float kBloomMaxStrength = 1.f;
+constexpr float kBloomMaxAuthoredGlowGain = 4.f;
 
 struct BloomParams {
     unsigned levels = 5;
@@ -17,6 +18,10 @@ struct BloomParams {
     float threshold = 1.f; // exposed-linear Rec.709 luminance; zero disables cut
     float knee = 0.5f;     // fraction of threshold, [0,1]
     float scatter = 0.7f;  // convex contribution from the next coarser level
+    // Zero keeps the legacy RGB-only source arithmetic. Positive values opt
+    // into alpha-authored colored glow plus complementary HDR highlights.
+    float authored_glow_gain = 0.f;
+    float highlight_gain = 0.05f; // only used in the authored-glow mode
 };
 struct BloomSize { unsigned width = 0, height = 0; };
 struct BloomLayout {
@@ -28,8 +33,8 @@ struct BloomConstants {
     float source[4]{};      // c24: source/coarse width,height,1/width,1/height
     float destination[4]{}; // c25: output/fine width,height,1/width,1/height
     float filter[4]{1.f, 0.5f, 0.7f, 0.05f}; // c26: threshold,knee,scatter,strength
-    float radiance[4]{1.f, kAgxClampOff, kAgxClampOff, 0.f}; // c27: exposure,decoded clamp,FP16 bound,-
-    float decode[4]{kAgxDecodeGamma, 0.f, 0.f, 0.f}; // c28: same mode ABI as AgX
+    float radiance[4]{1.f, kAgxClampOff, kAgxClampOff, 0.f}; // c27: exposure,decoded clamp,FP16 bound,authored-glow gain
+    float decode[4]{kAgxDecodeGamma, 0.f, 0.f, 0.f}; // c28: AgX decode xyz; authored-mode highlight gain in w
 };
 static_assert(sizeof(BloomConstants) == kBloomRegisterCount * 4 * sizeof(float));
 
@@ -38,7 +43,10 @@ inline bool valid_bloom_params(const BloomParams& p) noexcept {
         && std::isfinite(p.strength) && p.strength >= 0.f && p.strength <= kBloomMaxStrength
         && std::isfinite(p.threshold) && p.threshold >= 0.f && p.threshold <= kAgxClampOff
         && std::isfinite(p.knee) && p.knee >= 0.f && p.knee <= 1.f
-        && std::isfinite(p.scatter) && p.scatter >= 0.f && p.scatter <= 1.f;
+        && std::isfinite(p.scatter) && p.scatter >= 0.f && p.scatter <= 1.f
+        && std::isfinite(p.authored_glow_gain) && p.authored_glow_gain >= 0.f
+        && p.authored_glow_gain <= kBloomMaxAuthoredGlowGain
+        && std::isfinite(p.highlight_gain) && p.highlight_gain >= 0.f && p.highlight_gain <= 1.f;
 }
 inline bool valid_bloom_size(BloomSize s) noexcept {
     return s.width && s.height && s.width <= kBloomMaxDimension && s.height <= kBloomMaxDimension;
@@ -91,6 +99,10 @@ inline bool prepare_bloom(BloomConstants& out, BloomSize source, BloomSize desti
     next.filter[2] = p.scatter; next.filter[3] = p.strength;
     next.radiance[0] = agx.exposure[0]; next.radiance[1] = agx.exposure[1];
     for (unsigned i = 0; i < 4; ++i) next.decode[i] = agx.decode[i];
+    next.radiance[3] = p.authored_glow_gain;
+    // c28.w was unused; retain its old zero value in the legacy mode. xyz
+    // remain the decode ABI, and c8..21 still carry the exact display block.
+    if (p.authored_glow_gain > 0.f) next.decode[3] = p.highlight_gain;
     out = next;
     return true;
 }

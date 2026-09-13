@@ -556,6 +556,8 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
     c.filter[2] = p.filter.scatter; c.filter[3] = p.filter.strength;
     c.radiance[0] = p.agx.exposure[0]; c.radiance[1] = p.agx.exposure[1];
     for (unsigned i = 0; i < 4; ++i) c.decode[i] = p.agx.decode[i];
+    c.radiance[3] = p.filter.authored_glow_gain;
+    if (p.filter.authored_glow_gain > 0.f) c.decode[3] = p.filter.highlight_gain;
     x3::temporal::BloomExtractShader selected{};
     if (!x3::temporal::select_bloom_extract(selected, {width, height}, p.decode))
         first_failure(result.operation, E_INVALIDARG);

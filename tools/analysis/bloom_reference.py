@@ -16,6 +16,7 @@ from agx_reference import DECODE_MODES, FP16_MAX, LUMA_WEIGHTS, decode
 MAX_LEVELS = 6
 MAX_DIMENSION = 16384
 MAX_STRENGTH = 1.0
+MAX_AUTHORED_GLOW_GAIN = 4.0
 
 
 @dataclass(frozen=True)
@@ -25,12 +26,16 @@ class Params:
     threshold: float = 1.0
     knee: float = 0.5
     scatter: float = 0.7
+    authored_glow_gain: float = 0.0
+    highlight_gain: float = 0.05
 
     def validate(self):
         if type(self.levels) is not int or not 1 <= self.levels <= MAX_LEVELS:
             raise ValueError('levels must be an integer in [1,6]')
         for name, maximum in (('strength', MAX_STRENGTH), ('threshold', FP16_MAX),
-                              ('knee', 1.0), ('scatter', 1.0)):
+                              ('knee', 1.0), ('scatter', 1.0),
+                              ('authored_glow_gain', MAX_AUTHORED_GLOW_GAIN),
+                              ('highlight_gain', 1.0)):
             v = getattr(self, name)
             if not math.isfinite(v) or not 0 <= v <= maximum:
                 raise ValueError(f'invalid {name}')
@@ -73,7 +78,13 @@ def exposed(rgb, exposure=1.0, clamp_max=0.0, mode='gamma2.2'):
 
 
 def prefilter(rgb, params=Params(), exposure=1.0, clamp_max=0.0, mode='gamma2.2'):
-    """Threshold each decoded/exposed source sample BEFORE area reduction."""
+    """Extract one decoded/exposed source sample BEFORE area reduction.
+
+    Zero ``authored_glow_gain`` is the original RGB-only threshold branch and
+    deliberately never observes alpha.  A positive gain uses saturated alpha
+    as the native authored-glow mask and gates the threshold term by its
+    complement.  RGB input has an implicit zero authored mask.
+    """
     params.validate()
     e = exposed(rgb, exposure, clamp_max, mode)
     y = sum(c * w for c, w in zip(e, LUMA_WEIGHTS))
@@ -81,7 +92,14 @@ def prefilter(rgb, params=Params(), exposure=1.0, clamp_max=0.0, mode='gamma2.2'
     q = min(max(y - t + k, 0.0), 2 * k)
     soft = q * (q / max(4 * k, 1e-10))
     weight = min(max(max(y - t, soft) / max(y, 1e-10), 0.0), 1.0)
-    return tuple(v * weight for v in e)
+    legacy = tuple(v * weight for v in e)
+    if params.authored_glow_gain <= 0:
+        return legacy
+    raw_alpha = rgb[3] if len(rgb) >= 4 else 0.0
+    alpha = min(raw_alpha, 1.0) if raw_alpha >= 0 else 0.0
+    scale = (alpha * params.authored_glow_gain
+             + (1 - alpha) * params.highlight_gain * weight)
+    return tuple(min(v * scale, FP16_MAX) for v in e)
 
 
 def _shape(image):

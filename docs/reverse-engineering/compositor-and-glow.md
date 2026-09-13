@@ -1,6 +1,6 @@
 # The bloom compositor `0x004c4750`, the glow option and the scene-end boundary
 
-Static analysis only (Ghidra 12.1.3, `-readOnly -noanalysis`) of the installed
+Static engine analysis (Ghidra 12.1.3, `-readOnly -noanalysis`) of the installed
 `X3AP.exe`, SHA-256
 `fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`, preferred
 base `0x00400000`; plus in-memory reads of the installed CAT/DAT archives and a
@@ -8,6 +8,10 @@ query over the existing flight capture
 `verification/results/game-flight-capture-summary.json`. No game or device was
 launched. Decompiler output and archive slices stayed under the session
 scratchpad and are not committed.
+
+The shader equations and `DEFAULT` constants below were corrected against the
+existing run 26 capture on 2026-09-13. This follow-up reused local offline
+disassembly and read only selected draw records; it launched no game or device.
 
 This closes the reverse-engineering gap recorded in
 [hdr-scene-path.md](../architecture/hdr-scene-path.md) §9.
@@ -185,10 +189,13 @@ supplies the scene, which the engine implements as step 8 + step 12.
 | 97 `Vert_Y` | 0 | 0 | 0 | 5 | 6 | 1 | 15 | 0 |
 | **98 `FinalCombine`** | 0 | 0 | **1** | **2 = `ONE`** | **4 = `INVSRCCOLOR`** | 1 `ADD` | 15 | 0 |
 
-So the composite is `dst = src + dst·(1 − src)` — a screen-style soft add over
+So the RGB composite is `dst = src + dst·(1 − src)` — a screen-style soft add over
 the untouched back-buffer scene, not a plain `ONE`/`ONE` additive. The three
 intermediate passes are opaque. Those states are set by the effect passes
 through the state manager; the engine sets no blend state around the compositor.
+Run 26 additionally records separate-alpha blending enabled for `FinalCombine`,
+with source/destination alpha factors both `ZERO` and operation `ADD`; its
+outgoing alpha is zero. The RGB equation alone does not establish alpha behavior.
 
 ## 3. Resources — created in `0x004c4330`, released in `0x004c46d0`
 
@@ -216,27 +223,80 @@ string search finds **no reference** to `g_HighlightThreshold`, `SceneIntensity`
 `g_BlurWeightModifier`, `Exposure` or `Gamma`: the engine never overrides them,
 so the artistic intent is entirely the effect file's compiled defaults.
 
-Read from the `bloom.fb` parameter records (scalar layout
-`Type=3 FLOAT, Class=0 SCALAR, name, semantic, 0, rows=1, cols=1, value`):
+The earlier scalar-record interpretation in this section assigned incorrect
+values to `DEFAULT` parameters. The captured shader constant tables, their
+actual instructions, and runtime constants supersede that interpretation:
 
-| Parameter | Default | UI label (annotation) |
-| --- | ---: | --- |
-| `Exposure` | 1.0 | Exposure (slider) |
-| `Gamma` | 2.0 | Gamma (slider) |
-| `g_BlurWidth` | 5.0 | Blur Width (slider) |
-| `g_Sigma` | 0.87 | Sigma (slider) |
-| `g_HighlightThreshold` | 1.0 | Highlight threshold (slider) |
-| `SceneIntensity` | 0.9 | Scene intensity (slider) |
-| `HighlightIntensity` | 2.0 | Highlight intensity (slider) |
-| `LightMapGlowIntensity` | 1.2 | LightMap Glow intensity (slider) |
-| `g_BlurWeightModifier` | *not decoded* (non-scalar record) | Blur Weight Modifier (slider) |
+| Parameter | Shader register | Captured `DEFAULT` value |
+| --- | --- | ---: |
+| `g_HighlightThreshold` | DownSample `c0.x` | 0.87 |
+| Reciprocal threshold span, computed by the preshader | DownSample `c1.x` | 7.69230795, approximately `1 / (1 − 0.87)` |
+| `HighlightIntensity` | FinalCombine `c0.x` | 0.9 |
+| `LightMapGlowIntensity` | FinalCombine `c1.x` | 2.0 |
 
-Interpretation for stage 2: highlights are selected at **1.0** against an 8-bit
-scene copy (so, in practice, only fully-saturated pixels), multiplied by 2.0,
-and added to 0.9× the scene through the `ONE`/`INVSRCCOLOR` composite; the blur
-is a 5-tap-wide Gaussian with σ 0.87 at half resolution, run separably.
-`Exposure`/`Gamma` exist in the parameter list and belong to the `HDR`
-technique, which this build never selects.
+Run 26 frames **10955–10957**, draw **497** (`DownSample`) and draw **500**
+(`FinalCombine`), record successful `GetPixelShaderConstantF` calls
+(`HRESULT = 0`). All three sampled frames agree: threshold
+`0.8700000047683716`, reciprocal span `7.692307949066162`, highlight intensity
+`0.8999999761581421`, and lightmap-glow intensity `2.0`. These agree with the
+existing offline shader disassembly and CTAB defaults. The earlier threshold
+1.0 / highlight 2.0 / lightmap-glow 1.2 values are not this captured state.
+
+The effect also declares `Exposure`, `Gamma`, and `SceneIntensity`. This
+correction does not establish their unused/default values or the unselected
+`HDR` technique's behavior. In particular, `SceneIntensity` contributes no
+term to the inspected `DEFAULT` final-combine shader.
+
+### Exact native extraction and combination
+
+Let `C = (R,G,B)` and `A` be the sampled native scene-map color and alpha.
+`sat` clamps to `[0,1]`. The downsample shader computes:
+
+```text
+Y     = 0.299 R + 0.587 G + 0.114 B
+u     = sat((Y − T) × K)              // T = c0.x, K = c1.x
+h     = u² × (3 − 2u)
+D.rgb = A × C
+D.a   = h × (1 − sat(A))
+```
+
+The colored-glow term uses the sampled alpha directly; only the complement
+in the highlight term explicitly saturates it. The stock scene map is
+`A8R8G8B8`, so sampled alpha already lies in `[0,1]`. These equations describe
+the shader arithmetic; native partial precision and intermediate UNORM
+quantization remain applicable.
+
+Let `B` denote the native separable blur, which processes all four channels.
+Each inspected blur shader makes **25 texture samples per pass** at half
+resolution; the former five-tap description was incorrect. Run 26 draws
+**498/499** in the same three frames record horizontal/vertical offsets
+`−12..+12` source texels at 640×384. The symmetric weights agree across both
+axes and frames and sum to **1.2000000411644578 per pass**, not 1. The blur
+preshader defaults identify `g_BlurWidth = 2`, `g_Sigma = 5`, and
+`g_BlurWeightModifier = 1.2`; the last scales the normalized weights. The
+two-pass constant-color gain is approximately 1.44 before intermediate UNORM
+saturation/quantization. Normalizing these captured weights to 1 would change
+the native reference. FinalCombine emits:
+
+```text
+S.rgb = LightMapGlowIntensity × B(D.rgb)
+      + HighlightIntensity   × B(D.a)    // scalar broadcast to RGB
+S.a   = 0
+```
+
+The captured values therefore give `S.rgb = 2 × B(D.rgb) + 0.9 × B(D.a)`.
+The shader samples only the blurred glow texture; the original scene enters
+through destination blending (§2). There is no `0.9 × scene` multiplication.
+The highlight channel produces white bloom; the alpha-weighted RGB channel
+preserves the source color.
+
+For `A = 1`, colored glow survives at **any nonzero brightness** and the white
+highlight channel is suppressed. For `A = 0`, colored glow is zero and the
+white highlight channel follows the smooth transition from luminance 0.87 to
+1. Intermediate alpha mixes both. Below 0.87, `h = 0` but `A × C` can still
+be nonzero. Thus neither a threshold-only explanation nor “only saturated
+pixels bloom” describes the native effect. An RGB-only luminance extraction
+can discard authored colored glow even when its HDR bloom passes execute.
 
 **`g_EnableGlow` is a material parameter, not a bloom parameter.** Its only
 reference is `0x004c1de0` inside the material routine `0x004c0150`, where
@@ -354,9 +414,11 @@ rebinds RT0, and it leaves it bound to the back buffer.
    `saved_rt` obtained from `GetRenderTarget(0)`. If the hook writes the
    tonemapped 8-bit image into the game's main surface before returning, the
    `StretchRect` at step 12 copies exactly that, and every later pass, the HUD and
-   the text are unaffected. The `g_HighlightThreshold = 1.0` default means glow
-   will select only pixels that tonemap to white — the "weaker than vanilla glow"
-   effect predicted in `hdr-scene-path.md` §1 is quantitatively explained.
+   the text retain their native execution. Tonemapping changes both the colored
+   glow's RGB input and the luminance used by the 0.87-to-1 highlight ramp (§4).
+   Preserving alpha retains the authored glow weight, including contributions
+   below that ramp. The earlier claim that only pixels tonemapped to white can
+   bloom was incorrect; reduced glow cannot be attributed to that premise.
 3. **The redirect must be unwound before the hook returns.** `saved_rt` is read
    *inside* `0x004c4750`; if the device still holds the FP16 surface at that
    point, the compositor would copy the FP16 target into an `A8R8G8B8` texture
@@ -388,10 +450,11 @@ rebinds RT0, and it leaves it bound to the back buffer.
    written back.
 7. **Alpha still matters.** `FinalCombine`'s source shader is
    `ff6eed5a5ddf3a3a`; the *downsample* shader `1c90e79667bdaddf` is the one
-   `hdr-scene-path.md` §1 identifies as deriving its highlight mask from
-   `1 − saturate(alpha)` of the scene copy. Since that copy is a `StretchRect`
-   of the game's main surface, the tonemap write-back's `oC0.a = scene.a` rule
-   is load-bearing exactly as recorded.
+   that multiplies RGB by scene alpha and multiplies its luminance-derived
+   highlight ramp by `1 − saturate(alpha)` (§4). Since the scene copy is a
+   `StretchRect` of the game's main surface, the tonemap write-back's
+   `oC0.a = scene.a` rule preserves both native extraction inputs. Replacing
+   extraction with a luminance-only filter loses the first of these signals.
 8. **`t_SceneMap` is full-resolution `A8R8G8B8` and re-created only by
    `0x004c4330`.** A resolution change or device reset that goes through that
    function will free and re-create all five globals; a proxy holding references
@@ -421,3 +484,19 @@ in root `06.cat`, XOR `0x33` then gzip, `<page id="1912">`), using
 disk. The blend-state table was queried from the existing
 `verification/results/game-flight-capture-summary.json`, frame 5449, draws
 93–106.
+
+The run 26 correction uses captured `ps_1c90e79667bdaddf.bin` and
+`ps_ff6eed5a5ddf3a3a.bin` under `/tmp/x3-bottleX3-run26`, byte-identical to the
+corresponding files in `/tmp/x3-shader-sweep/programs`; the existing Microsoft
+D3DX offline text is in `/tmp/x3-shader-sweep/disassembly`. Their sizes are
+920 and 404 bytes. SHA-256, respectively:
+`471525673f46bc18a6d0a8e9f22984a5f4672e833fa6eafbbb32b6c4dd72a54e` and
+`d060278e1cb15591b40e3ce47589645cdea1b767555bf73889b99c18b097ad56`.
+The two run 26 blur shaders also match those earlier local program files.
+Existing `shader_end`, `gpu_words`, and `parse_ctab` helpers validate complete
+token streams and constant-register mappings. Selected runtime constant/state
+records and derived kernels remain local in `/tmp/run26-native-bloom-constants.json`,
+`/tmp/run26-native-bloom-blur-constants.json`, and
+`/tmp/run26-native-bloom-kernel.json`. No raw shader instructions or bytes were
+added to this document. The capture omits sampler address U/V, so the kernel
+record does not establish edge-addressing behavior.

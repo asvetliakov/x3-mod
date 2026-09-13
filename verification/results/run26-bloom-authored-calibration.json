@@ -1,0 +1,953 @@
+{
+  "policy": "extract = gain*clamp(alpha,0,1)*E + 0.05*(1-clamp(alpha,0,1))*K(E)",
+  "pyramid": {
+    "dimensions": [
+      [
+        640,
+        384
+      ],
+      [
+        320,
+        192
+      ],
+      [
+        160,
+        96
+      ],
+      [
+        80,
+        48
+      ],
+      [
+        40,
+        24
+      ]
+    ],
+    "levels": 5,
+    "scatter": 0.7
+  },
+  "dimensions": [
+    1280,
+    768
+  ],
+  "distance_metric": "Chebyshev distance from alpha > 0.5 source pixels; 8px and 32px square dilations",
+  "delta_metric": "maximum absolute continuous AgX RGB difference, expressed in 8-bit display-code units",
+  "optimized_operation_crosscheck": {
+    "downsample_max_abs_error": 8.881784197001252e-16,
+    "tent_max_abs_error": 2.6645352591003757e-15
+  },
+  "limitations": [
+    "Double-precision CPU modern-path oracle; GPU FP16 intermediate-store rounding is omitted.",
+    "Input is captured TAA output and there is no observed post-bloom readback.",
+    "PNG renders quantize the simulated AgX output to 8-bit RGB and are numerical predictions, not game captures.",
+    "Chebyshev distance bins are square-radius diagnostics, not Euclidean halo radii."
+  ],
+  "scope": "Offline CPU calibration; no final-main GPU or gameplay image claim",
+  "selected_authored_gain": 0.1,
+  "selected_highlight_gain": 0.05,
+  "exposure_default_changed": false,
+  "inputs": [
+    {
+      "path": "/tmp/x3-bottleX3-run26/taa_1_11079.rgba16f",
+      "bytes": 7864320,
+      "sha256": "d4a143a9f77a0521c606866d8094486a0231adea5533ce2084b1c226d0cc6c7b"
+    },
+    {
+      "path": "/tmp/x3-bottleX3-run26/taa_1_36969.rgba16f",
+      "bytes": 7864320,
+      "sha256": "811cbbd44d5eb2ea345e845ea2e99b23cd72e690b78779fefc01a1b71376cac9"
+    }
+  ],
+  "scratch_provenance": [
+    {
+      "path": "/tmp/x3-bloom-run26-gain-sweep.json",
+      "bytes": 81847,
+      "sha256": "7818ec1f0237e6712943480265317f7965fc9ae94c4ec9a8c0cd28a88b84b528"
+    },
+    {
+      "path": "/tmp/x3-bloom-run26-gain-sweep.py",
+      "bytes": 13318,
+      "sha256": "3ac18e0e65e5ef269c9aacc05aed71813d9abed364420ba0a02d20aac796e0d1"
+    },
+    {
+      "path": "/tmp/x3-bloom-run26-reference.py",
+      "bytes": 12069,
+      "sha256": "925267595f6c95577042eadf52805681b10a41d098160944c6b201756d2d227e"
+    }
+  ],
+  "group_definition": {
+    "marked_all": "alpha>0",
+    "emitter_a_gt_0_5": "alpha>0.5",
+    "unmarked_all": "alpha==0",
+    "dark_unmarked_ev0_luma_lt_0_01": "alpha==0 and EV0 decoded luminance<0.01"
+  },
+  "native_comparison": {
+    "kernel": "/tmp/run26-native-bloom-kernel.json",
+    "kernel_sum_per_axis": 1.2000000411644578,
+    "proven_behavior": "native colored term is 2.0*B(alpha*gamma-space RGB), plus 0.9*B(smoothstep highlight*(1-alpha)), screen-blended into the scene",
+    "reason": "native equations, constants, 640x384 targets, and exact 25-tap weights are now proven, but edge addressing remains unrecorded and exact downsample/upsample plus partial-precision/UNORM emulation was outside this bounded modern-gain sweep; no missing behavior was invented",
+    "status": "not rendered"
+  },
+  "results": [
+    {
+      "frame": 11079,
+      "ev": 0.0,
+      "gain": 0.05,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 0.622152316074974,
+          "gt_1_code": 3707,
+          "gt_4_codes": 602
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 1.105037072291801,
+          "gt_1_code": 1414,
+          "gt_4_codes": 25
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.059958614804956345,
+          "gt_1_code": 14400,
+          "gt_4_codes": 2983
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.06967250896304891,
+          "gt_1_code": 11483,
+          "gt_4_codes": 2618
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 1.9554033647079554,
+          "gt_1_code": 5075,
+          "gt_4_codes": 1972
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.005800243350328773,
+          "gt_1_code": 1409,
+          "gt_4_codes": 0
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 0.0,
+      "gain": 0.1,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 1.1779617339475397,
+          "gt_1_code": 5464,
+          "gt_4_codes": 1411
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 2.1676549837069237,
+          "gt_1_code": 2223,
+          "gt_4_codes": 134
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.11729223867371495,
+          "gt_1_code": 22180,
+          "gt_4_codes": 8262
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.13637133874156707,
+          "gt_1_code": 17281,
+          "gt_4_codes": 6896
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 3.624628999690138,
+          "gt_1_code": 6498,
+          "gt_4_codes": 3279
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.017435558622610803,
+          "gt_1_code": 4860,
+          "gt_4_codes": 262
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 0.0,
+      "gain": 0.2,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 2.1746863825422724,
+          "gt_1_code": 6737,
+          "gt_4_codes": 3531
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 4.191311681833,
+          "gt_1_code": 2484,
+          "gt_4_codes": 1312
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.21904293728611304,
+          "gt_1_code": 30660,
+          "gt_4_codes": 14936
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.2525561349210111,
+          "gt_1_code": 23055,
+          "gt_4_codes": 12125
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 6.479457416128566,
+          "gt_1_code": 7943,
+          "gt_4_codes": 4975
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.03927409797862021,
+          "gt_1_code": 9061,
+          "gt_4_codes": 1952
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 0.0,
+      "gain": 0.35,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 3.4824390710036,
+          "gt_1_code": 7588,
+          "gt_4_codes": 5041
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 7.008484727291471,
+          "gt_1_code": 2543,
+          "gt_4_codes": 2073
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.3543756335609637,
+          "gt_1_code": 38993,
+          "gt_4_codes": 21274
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.4048752740331249,
+          "gt_1_code": 27918,
+          "gt_4_codes": 16946
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 10.01905125278251,
+          "gt_1_code": 9187,
+          "gt_4_codes": 6132
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.06824631463862164,
+          "gt_1_code": 12592,
+          "gt_4_codes": 4984
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 0.0,
+      "gain": 0.5,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 4.638466039337792,
+          "gt_1_code": 8183,
+          "gt_4_codes": 5836
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 9.604483684032086,
+          "gt_1_code": 2553,
+          "gt_4_codes": 2331
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.4761315889540828,
+          "gt_1_code": 46317,
+          "gt_4_codes": 25408
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.5404007452322988,
+          "gt_1_code": 31398,
+          "gt_4_codes": 19883
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 12.99921504655296,
+          "gt_1_code": 9871,
+          "gt_4_codes": 6917
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.09510692791010979,
+          "gt_1_code": 14973,
+          "gt_4_codes": 7131
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 1.5,
+      "gain": 0.05,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 0.9680843142380773,
+          "gt_1_code": 3946,
+          "gt_4_codes": 973
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 1.0227745864166493,
+          "gt_1_code": 984,
+          "gt_4_codes": 34
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.14282825402335322,
+          "gt_1_code": 25672,
+          "gt_4_codes": 10242
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.18337982545779022,
+          "gt_1_code": 21733,
+          "gt_4_codes": 9448
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 3.7403102430522868,
+          "gt_1_code": 6157,
+          "gt_4_codes": 3067
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.03389848698584419,
+          "gt_1_code": 8724,
+          "gt_4_codes": 1138
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 1.5,
+      "gain": 0.1,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 1.714823217313287,
+          "gt_1_code": 6000,
+          "gt_4_codes": 1975
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 1.9512231251079266,
+          "gt_1_code": 2072,
+          "gt_4_codes": 142
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.25225274629619615,
+          "gt_1_code": 33689,
+          "gt_4_codes": 16588
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.3216793992274022,
+          "gt_1_code": 27618,
+          "gt_4_codes": 14642
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 6.488849264367674,
+          "gt_1_code": 7636,
+          "gt_4_codes": 4530
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.06095314090305794,
+          "gt_1_code": 12843,
+          "gt_4_codes": 4087
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 1.5,
+      "gain": 0.2,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 2.9894614397128927,
+          "gt_1_code": 7541,
+          "gt_4_codes": 3594
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 3.6980628732185186,
+          "gt_1_code": 2466,
+          "gt_4_codes": 755
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.44226349815348637,
+          "gt_1_code": 43399,
+          "gt_4_codes": 24398
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.5588538119414285,
+          "gt_1_code": 34305,
+          "gt_4_codes": 20755
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 10.85436737362077,
+          "gt_1_code": 8978,
+          "gt_4_codes": 6088
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.108869553839278,
+          "gt_1_code": 17215,
+          "gt_4_codes": 8007
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 1.5,
+      "gain": 0.35,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 4.585161660854762,
+          "gt_1_code": 8514,
+          "gt_4_codes": 5420
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 6.090109424043582,
+          "gt_1_code": 2543,
+          "gt_4_codes": 1834
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.6845764704764932,
+          "gt_1_code": 56103,
+          "gt_4_codes": 31122
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 0.8572951920333715,
+          "gt_1_code": 42510,
+          "gt_4_codes": 25835
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 15.890333027484099,
+          "gt_1_code": 9973,
+          "gt_4_codes": 7375
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.17576362353668293,
+          "gt_1_code": 22396,
+          "gt_4_codes": 11397
+        }
+      }
+    },
+    {
+      "frame": 11079,
+      "ev": 1.5,
+      "gain": 0.5,
+      "groups": {
+        "marked_all": {
+          "count": 21427,
+          "mean_codes": 5.948317686434452,
+          "gt_1_code": 9354,
+          "gt_4_codes": 6366
+        },
+        "emitter_a_gt_0_5": {
+          "count": 2571,
+          "mean_codes": 8.258198491686194,
+          "gt_1_code": 2555,
+          "gt_4_codes": 2201
+        },
+        "unmarked_all": {
+          "count": 961613,
+          "mean_codes": 0.8938233676795225,
+          "gt_1_code": 67066,
+          "gt_4_codes": 35678
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 647692,
+          "mean_codes": 1.111901399351533,
+          "gt_1_code": 49242,
+          "gt_4_codes": 29077
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 13537,
+          "mean_codes": 19.93037272226826,
+          "gt_1_code": 10508,
+          "gt_4_codes": 8042
+        },
+        "unmarked_far_gt_32px": {
+          "count": 852443,
+          "mean_codes": 0.2386832549189302,
+          "gt_1_code": 26953,
+          "gt_4_codes": 13399
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 0.0,
+      "gain": 0.05,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 0.7095406952751449,
+          "gt_1_code": 13436,
+          "gt_4_codes": 1566
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 1.4694799909075404,
+          "gt_1_code": 6449,
+          "gt_4_codes": 57
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.10364051294176614,
+          "gt_1_code": 22995,
+          "gt_4_codes": 6386
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.10676690233657726,
+          "gt_1_code": 21782,
+          "gt_4_codes": 5756
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 0.9760345275928101,
+          "gt_1_code": 8559,
+          "gt_4_codes": 3934
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.013974547007178807,
+          "gt_1_code": 2697,
+          "gt_4_codes": 0
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 0.0,
+      "gain": 0.1,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 1.355939434832215,
+          "gt_1_code": 17594,
+          "gt_4_codes": 5130
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 2.875682843912916,
+          "gt_1_code": 7492,
+          "gt_4_codes": 1939
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.1980601185936717,
+          "gt_1_code": 35371,
+          "gt_4_codes": 12912
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.20428070170081317,
+          "gt_1_code": 33882,
+          "gt_4_codes": 11939
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 1.7755213814038036,
+          "gt_1_code": 11305,
+          "gt_4_codes": 6217
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.027770773801564005,
+          "gt_1_code": 5575,
+          "gt_4_codes": 160
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 0.0,
+      "gain": 0.2,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 2.5350299413318242,
+          "gt_1_code": 22043,
+          "gt_4_codes": 12967
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 5.537331264395349,
+          "gt_1_code": 7929,
+          "gt_4_codes": 6341
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.3703008888378649,
+          "gt_1_code": 54126,
+          "gt_4_codes": 21418
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.38279416285423923,
+          "gt_1_code": 51901,
+          "gt_4_codes": 20212
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 3.1656584923865583,
+          "gt_1_code": 15028,
+          "gt_4_codes": 8312
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.05407782751946728,
+          "gt_1_code": 9709,
+          "gt_4_codes": 1798
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 0.0,
+      "gain": 0.35,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 4.122193874776892,
+          "gt_1_code": 26430,
+          "gt_4_codes": 16130
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 9.20512612714511,
+          "gt_1_code": 8358,
+          "gt_4_codes": 7292
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.5997258987338414,
+          "gt_1_code": 75055,
+          "gt_4_codes": 30081
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.6213941718058964,
+          "gt_1_code": 71505,
+          "gt_4_codes": 28673
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 4.935447101487909,
+          "gt_1_code": 20061,
+          "gt_4_codes": 10305
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.0920043275048519,
+          "gt_1_code": 14315,
+          "gt_4_codes": 3797
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 0.0,
+      "gain": 0.5,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 5.547359605642006,
+          "gt_1_code": 29338,
+          "gt_4_codes": 18214
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 12.54552350009697,
+          "gt_1_code": 8545,
+          "gt_4_codes": 7658
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.8049717696976779,
+          "gt_1_code": 91614,
+          "gt_4_codes": 38325
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.8353400367565603,
+          "gt_1_code": 86772,
+          "gt_4_codes": 36737
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 6.4483217825079935,
+          "gt_1_code": 24018,
+          "gt_4_codes": 11671
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.12944411722675328,
+          "gt_1_code": 18218,
+          "gt_4_codes": 5809
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 1.5,
+      "gain": 0.05,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 1.1693891619796244,
+          "gt_1_code": 16602,
+          "gt_4_codes": 3281
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 1.529736333186297,
+          "gt_1_code": 6136,
+          "gt_4_codes": 95
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.24482503658283045,
+          "gt_1_code": 42242,
+          "gt_4_codes": 15330
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.26131432219939427,
+          "gt_1_code": 40854,
+          "gt_4_codes": 14515
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 2.0890491152754334,
+          "gt_1_code": 12270,
+          "gt_4_codes": 6846
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.03652722601656466,
+          "gt_1_code": 6996,
+          "gt_4_codes": 357
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 1.5,
+      "gain": 0.1,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 2.175871872345942,
+          "gt_1_code": 21887,
+          "gt_4_codes": 8541
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 2.9803534333126818,
+          "gt_1_code": 7394,
+          "gt_4_codes": 2369
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.4536360994339072,
+          "gt_1_code": 63161,
+          "gt_4_codes": 24512
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.48444538506443746,
+          "gt_1_code": 61341,
+          "gt_4_codes": 23370
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 3.7236535013650554,
+          "gt_1_code": 16621,
+          "gt_4_codes": 9128
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.06988827124289324,
+          "gt_1_code": 12065,
+          "gt_4_codes": 2235
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 1.5,
+      "gain": 0.2,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 3.942703713018394,
+          "gt_1_code": 27485,
+          "gt_4_codes": 15763
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 5.690126943839192,
+          "gt_1_code": 8105,
+          "gt_4_codes": 6036
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 0.8116624703935759,
+          "gt_1_code": 92338,
+          "gt_4_codes": 38805
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 0.8671740189434453,
+          "gt_1_code": 89223,
+          "gt_4_codes": 37427
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 6.363302455585707,
+          "gt_1_code": 22894,
+          "gt_4_codes": 11658
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.135148789419185,
+          "gt_1_code": 19339,
+          "gt_4_codes": 5790
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 1.5,
+      "gain": 0.35,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 6.20436160054431,
+          "gt_1_code": 32647,
+          "gt_4_codes": 19873
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 9.362534722955717,
+          "gt_1_code": 8484,
+          "gt_4_codes": 7101
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 1.2588102660203095,
+          "gt_1_code": 120918,
+          "gt_4_codes": 54058
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 1.3452371850218394,
+          "gt_1_code": 115686,
+          "gt_4_codes": 52413
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 9.448013840484755,
+          "gt_1_code": 28752,
+          "gt_4_codes": 14675
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.22648671629275796,
+          "gt_1_code": 26863,
+          "gt_4_codes": 9328
+        }
+      }
+    },
+    {
+      "frame": 36969,
+      "ev": 1.5,
+      "gain": 0.5,
+      "groups": {
+        "marked_all": {
+          "count": 55074,
+          "mean_codes": 8.16746691706418,
+          "gt_1_code": 35795,
+          "gt_4_codes": 22695
+        },
+        "emitter_a_gt_0_5": {
+          "count": 8858,
+          "mean_codes": 12.657836555578948,
+          "gt_1_code": 8653,
+          "gt_4_codes": 7601
+        },
+        "unmarked_all": {
+          "count": 927966,
+          "mean_codes": 1.6422379813432455,
+          "gt_1_code": 142726,
+          "gt_4_codes": 66658
+        },
+        "dark_unmarked_ev0_luma_lt_0_01": {
+          "count": 821303,
+          "mean_codes": 1.7552330897456334,
+          "gt_1_code": 135585,
+          "gt_4_codes": 64563
+        },
+        "unmarked_near_chebyshev_le_8px": {
+          "count": 45672,
+          "mean_codes": 11.950980764478881,
+          "gt_1_code": 32478,
+          "gt_4_codes": 17158
+        },
+        "unmarked_far_gt_32px": {
+          "count": 632120,
+          "mean_codes": 0.31063148017520426,
+          "gt_1_code": 32570,
+          "gt_4_codes": 12369
+        }
+      }
+    }
+  ]
+}

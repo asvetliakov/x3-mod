@@ -4,6 +4,8 @@ These tests do not qualify GPU/state behavior. They prevent stale/incomplete
 logs, missing image bytes, alpha corruption and gross no-op RGB from passing.
 """
 from pathlib import Path
+import hashlib
+import math
 import struct
 import sys
 import tempfile
@@ -19,16 +21,17 @@ class FixtureAcceptance(unittest.TestCase):
         self.lines += [f'CONTROL test={i} pass=1' for i in range(16)]
         self.lines += [f"CASE index={i} width={c['width']} height={c['height']} checks={16 if i==0 else 1} pass=1"
                        for i,c in enumerate(self.cases)]
+        last=self.cases[-1]
         self.lines += ['NPATCH accepted=1 hr=00000000','ADAPTIVE accepted=1 hr=00000000','NPATCH_DRAWS checked=10 pass=1',
-                       'RESET_CASE index=23 width=9 height=7 checks=1 pass=1',
-                       'RESULT PASS cases=24 controls=16 checks=40 reset=1 reset_cases=1']
+                       f"RESET_CASE index={len(self.cases)-1} width={last['width']} height={last['height']} checks=1 pass=1",
+                       f'RESULT PASS cases={len(self.cases)} controls=16 checks={len(self.cases)+16} reset=1 reset_cases=1']
 
     def test_terminal_and_complete_records(self):
         fixture.validate_log('\n'.join(self.lines),self.cases,0)
         for lines,code in [(self.lines,1),(self.lines[:-1],0),(self.lines+self.lines[-1:],0),
                            (self.lines+['unexpected after terminal'],0),(self.lines[1:],0),
                            ([self.lines[0]]+self.lines,0),
-                           ([x for x in self.lines if not x.startswith('CASE index=23 ')],0),
+                           ([x for x in self.lines if not x.startswith(f'CASE index={len(self.cases)-1} ')],0),
                            ([x for x in self.lines if not x.startswith('RESET_CASE ')],0),
                            ([x for x in self.lines if not x.startswith('NPATCH_DRAWS ')],0),
                            (['API_FAIL getter']+self.lines,0),
@@ -37,14 +40,78 @@ class FixtureAcceptance(unittest.TestCase):
                 fixture.validate_log('\n'.join(lines),self.cases,code)
 
     def test_corpus_has_six_extract_variants_and_sharpen_strength_controls(self):
-        self.assertEqual(len(self.cases),24)
-        self.assertEqual({(c['mode'],c['width']%2) for c in self.cases},
+        legacy=self.cases[:24]
+        self.assertEqual(len(legacy),24)
+        self.assertEqual({(c['mode'],c['width']%2) for c in legacy},
                          {(m,p) for m in fixture.ref.DECODE_MODES for p in (0,1)})
-        for c in self.cases:
+        for c in legacy:
+            self.assertEqual((c['threshold'],c['exposure'],c['authored_glow_gain'],c['highlight_gain']),
+                             (0.,1.,0.,.05))
             self.assertEqual(len(fixture.expected(c)),c['height'])
         for i in range(0,24,4):
             a=fixture.expected(self.cases[i]);b=fixture.expected(self.cases[i+2])
             self.assertGreater(max(abs(x-y) for ar,br in zip(a,b) for ap,bp in zip(ar,br) for x,y in zip(ap,bp)),.005)
+
+    def test_legacy_case_inputs_and_expectations_retain_canonical_bytes(self):
+        inputs=hashlib.sha256();expected=hashlib.sha256()
+        for c in self.cases[:24]:
+            inputs.update(struct.pack('<3I2f',c['width'],c['height'],
+                                      fixture.ref.DECODE_MODES.index(c['mode']),
+                                      c['strength'],c['sharp']))
+            for row in c['image']:
+                for pixel in row:inputs.update(struct.pack('<4e',*pixel))
+            for row in fixture.expected(c):
+                for pixel in row:expected.update(struct.pack('<3d',*pixel))
+        self.assertEqual(inputs.hexdigest(),
+                         '596005b9481f7771c0564f19dcc61b4673640cda317c05aa1e0089e4e2a8f7fe')
+        self.assertEqual(expected.hexdigest(),
+                         '46c4b26ac1b977efd3c89df5542ae8684ce2e7e9452662c10ce4b37d6835f698')
+
+    def test_authored_cases_cover_masks_evs_decoders_geometry_and_f10_gate(self):
+        authored=self.cases[24:]
+        self.assertEqual(len(authored),12)
+        self.assertEqual({(c['mode'],c['width']%2) for c in authored},
+                         {(m,p) for m in fixture.ref.DECODE_MODES for p in (0,1)})
+        self.assertEqual({round(math.log2(c['exposure']),1) for c in authored},{0.,1.5,2.})
+        self.assertEqual({c['authored_glow_gain'] for c in authored},{.1,.2})
+        self.assertEqual((self.cases[-1]['kind'],self.cases[-1]['strength']),('authored',1.))
+        for index in range(0,len(authored),2):
+            off,on=authored[index:index+2]
+            self.assertEqual({off['strength'],on['strength']},{0.,1.})
+            alphas=[p[3] for row in off['image'] for p in row]
+            self.assertEqual({a for a in alphas if math.isfinite(a)},{0.,.5,1.})
+            self.assertEqual(sum(math.isnan(a) for a in alphas),1)
+            self.assertEqual(sum(math.isinf(a) and a < 0 for a in alphas),1)
+            self.assertEqual(sum(math.isinf(a) and a > 0 for a in alphas),1)
+            self.assertTrue(all(math.isfinite(v) for row in off['image'] for p in row for v in p[:3]))
+            off_expected=fixture.expected(off);on_expected=fixture.expected(on)
+            self.assertTrue(all(math.isfinite(v) for expected in (off_expected,on_expected)
+                                for row in expected for p in row for v in p))
+            for actual,source in zip((p for row in off_expected for p in row),
+                                     (p for row in off['image'] for p in row)):
+                base=fixture.oracle.composition(source,(0.,0.,0.),0.,
+                                                exposure=off['exposure'],mode=off['mode'])
+                self.assertEqual(actual,base[:3])
+            difference=max(abs(fixture.oracle.code8(a)-fixture.oracle.code8(b))
+                           for ar,br in zip(off_expected,on_expected)
+                           for ap,bp in zip(ar,br) for a,b in zip(ap,bp))
+            self.assertGreater(difference,fixture.MAX_CODE_ERROR)
+            emitter=on['image'][on['height']//2][on['width']//2]
+            legacy=fixture.ref.prefilter(emitter,fixture.ref.Params(threshold=1),
+                                         exposure=on['exposure'],mode=on['mode'])
+            colored=fixture.ref.prefilter(emitter,fixture.ref.Params(
+                threshold=1,authored_glow_gain=on['authored_glow_gain'],highlight_gain=.05),
+                exposure=on['exposure'],mode=on['mode'])
+            self.assertEqual(legacy,(0.,0.,0.))
+            self.assertGreater(max(colored),0.)
+            params=fixture.ref.Params(threshold=1,authored_glow_gain=on['authored_glow_gain'],
+                                      highlight_gain=.05)
+            for x,sanitized in ((1,0.),(2,0.),(3,1.)):
+                pixel=on['image'][0][x]
+                actual=fixture.ref.prefilter(pixel,params,exposure=on['exposure'],mode=on['mode'])
+                wanted=fixture.ref.prefilter(pixel[:3]+(sanitized,),params,
+                                             exposure=on['exposure'],mode=on['mode'])
+                self.assertEqual(actual,wanted)
 
     def test_structured_cases_detect_skipped_sharpen(self):
         for i in range(0,len(self.cases),2):
@@ -77,6 +144,16 @@ class FixtureAcceptance(unittest.TestCase):
             a,b=Path(directory)/'a',Path(directory)/'b'
             fixture.write_cases(self.cases,a);fixture.write_cases(fixture.make_cases(),b)
             self.assertEqual(a.read_bytes(),b.read_bytes())
-            self.assertEqual(a.read_bytes()[:12],b'X3BP0001'+struct.pack('<I',24))
+            payload=a.read_bytes()
+            self.assertEqual(payload[:12],b'X3BP0002'+struct.pack('<I',36))
+            offset=12
+            for c in self.cases:
+                header=struct.pack('<3I6f',c['width'],c['height'],
+                                   fixture.ref.DECODE_MODES.index(c['mode']),c['strength'],
+                                   c['sharp'],c['threshold'],c['exposure'],
+                                   c['authored_glow_gain'],c['highlight_gain'])
+                self.assertEqual(payload[offset:offset+len(header)],header)
+                offset+=len(header)+c['width']*c['height']*8
+            self.assertEqual(offset,len(payload))
 
 if __name__=='__main__':unittest.main()

@@ -6,11 +6,11 @@
 sampler2D bloomInput : register(s0);
 float3 bloomRead(float2 cell)
 {
-    float3 v = tex2Dlod(bloomInput, float4((cell + 0.5) * bloomSource.zw, 0, 0)).rgb;
+    float4 v = tex2Dlod(bloomInput, float4((cell + 0.5) * bloomSource.zw, 0, 0));
 #ifdef BLOOM_EXTRACT
     return bloomPrefilter(v); // nonlinear operations BEFORE spatial averaging
 #else
-    return v; // already exposed-linear, bounded FP16
+    return v.rgb; // already exposed-linear, bounded FP16
 #endif
 }
 float4 main(float2 uv : TEXCOORD0) : COLOR0

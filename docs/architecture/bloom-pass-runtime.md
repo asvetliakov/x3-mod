@@ -8,7 +8,10 @@ connects capture, the scene hook and the installed DLL; its combined ownership
 fixture and the [standalone GPU/state/recovery fixture](../verification/bloom-pass-fixture.md)
 passed on X3. Run25 exposed a device-creation refusal before bloom could run;
 the [device creation policy](renderer-device-creation.md) addresses that source
-issue and records its separate verification limits. Game acceptance and native
+issue and records its separate verification limits. Run 26 confirms that
+creation blocker is removed and the replacement runs, but exposes missing
+alpha-authored glow; the [extraction correction](bloom-authored-glow.md) records
+its source/host work and remaining shader/GPU qualification. Game acceptance and native
 Windows execution remain unverified. Runtime feature availability does not
 depend on platform proof flags, backend-private behavior, DLL identities or
 hashes.

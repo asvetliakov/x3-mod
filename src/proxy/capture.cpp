@@ -605,9 +605,14 @@ void retain_compositor_scene(void* storage,const MotionHdrScene& scene) noexcept
     call.input.sharpen=scene.display.sharpen;
     call.input.sharpen_constants=scene.display.sharpen_constants;
     call.input.exact_sharpen=true;
-    // OFF uses the same RGB replacement after the original compositor, with
-    // zero bloom contribution. Skipping replacement would restore native glow.
-    if(!ctx.comparison.bloom_requested)call.input.filter.strength=0.f;
+    // Restore the native scene alpha's authored colored-glow intent before
+    // AgX, with a complementary HDR-highlight contribution. These are linear
+    // art weights, not a reproduction of the native display-space screen blend.
+    call.input.filter.authored_glow_gain=0.1f;
+    call.input.filter.highlight_gain=0.05f;
+    // OFF retains the same filtering/RGB replacement, with zero final gain.
+    // Skipping replacement would restore the original compositor's glow.
+    call.input.filter.strength=ctx.comparison.bloom_requested?1.f:0.f;
 }
 bool compositor_current(const CompositorInvocation& call,bool refresh_owner=true) noexcept {
     if(!call.owner || !call.native_pin || call.revoked)return false;

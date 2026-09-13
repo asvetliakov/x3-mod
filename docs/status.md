@@ -18,6 +18,11 @@ adds all 15 remaining SM2 pairs, reaching 20 exact emission pairs. Source and
 host verification pass independent review; added-pair GPU/live qualification
 is pending. This does not enable emission integration by default or change the
 installed build.
+The [authored-glow correction](architecture/bloom-authored-glow.md) is now
+reviewed and source-integrated with its GPU-qualified embedded shader bundle:
+36 image cases and 16 controls pass, with at most one display code of error
+and exact destination alpha, including Reset. Bounded paired timing is recorded
+in the owning note; gameplay cost and appearance still need the next build.
 
 ## Installed build and current camera work
 
