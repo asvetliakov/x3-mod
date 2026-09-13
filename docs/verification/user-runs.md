@@ -11,6 +11,18 @@ Close X3 between runs and report completed numbers. After exit, the helper print
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
 
+| Run | Purpose | Sessions | Status |
+| --- | --- | ---: | --- |
+| 1 | Chase aiming/framing + reader/adjacency verification | 1 | Start here |
+| 2 | Sharpen/shimmer + camera cuts with TAA | 1 | Ready |
+| 3 | Automatic exposure + bloom off/on | 2 | Ready |
+| 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
+| 5 | Reader/adjacency fast modes | 1 | Wait for run 1 log acceptance |
+| 6 | Linear hull materials off/on at fixed exposure | 2 | Ready |
+
+These are separate comparisons, not one long required session. Detached emission
+and temporal experiments are still agent work and add no gameplay request yet.
+
 ```sh
 x3run() {
   local x3run_since_ns x3run_status
