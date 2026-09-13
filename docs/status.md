@@ -5,9 +5,9 @@ preserved in [status history](status-history-2026-09-13.md). Read history only
 for a relevant unresolved question. The [goal checklist](goals.md) retains the
 full scope; the [original objective](user-objective.md) is unchanged.
 
-**Paused for an account switch at the user's request.** Agents and project
-build/test processes are stopped. Preserve the uncommitted work; read the
-[pause handoff](pause-handoff-2026-09-13.md) before resuming on user instruction.
+Work resumed on the user's instruction after the account switch. The
+[pause handoff](pause-handoff-2026-09-13.md) preserves the unfinished emission
+qualification, material expansion and camera implementation context.
 
 ## Installed build and current camera work
 

@@ -1,7 +1,7 @@
 # Account-switch pause
 
-Paused at the user's explicit request on 2026-09-13. **Do not resume work until
-the user asks.** All eight running secondary agents were interrupted; the final
+Historical pause snapshot, 2026-09-13. **The user subsequently asked to resume;
+work is active again.** At the pause, all eight running secondary agents were interrupted; the final
 agent inventory contains only completed/interrupted secondary agents. A process
 inventory found no project Wine runner, fixture, compiler, CMake/Ninja build or
 Ghidra headless process. No installation is in progress.
