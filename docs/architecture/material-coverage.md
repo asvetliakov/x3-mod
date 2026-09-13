@@ -1,9 +1,9 @@
 # Complete scene color-writer coverage
 
-Current coverage ledger, 2026-09-13. This is the accounting boundary for the
-user's requirement to convert **all necessary scene shaders**, rather than only
-the 116 exact pairs in the installed material route. It uses the complete archive
-sweep and pass-pair inventory. It does not authorize a shader from its filename,
+Current coverage ledger, 2026-09-14. This is the accounting boundary for the
+user's requirement to convert **all necessary scene shaders**, including the
+identities beyond the 162 exact pairs in the installed material route. It uses the
+complete archive sweep and pass-pair inventory. It does not authorize a shader from its filename,
 copy game bytecode into the repository, or make UI, depth and post-process
 programs material shaders.
 
@@ -16,23 +16,32 @@ counterpart. The complete pairs divide into 180 SM3, 466 SM2/2.x and 168 SM1
 pairs. These are exact full-program identities; the 642 comment-stripped GPU
 token variants are useful similarity evidence but are not replacement keys.
 
-The installed linear-material implementation admits exactly **116 pairs / 83
-programs**: 20 Argon DEFAULT/BUMPMAP, 20 shared Khaak/Teladi/Teladi_nodiff/Xenon
-DEFAULT/BUMPMAP, 20 Split DEFAULT/BUMPMAP, 20 Terran DEFAULT/BUMPMAP and 30
-standard-lighting DEFAULT/BUMPMAP/LOW, plus six Asteroid DEFAULT/BUMPMAP pairs.
-Shared hull identities count once. Main source also contains the reviewed
-32-pair Boron/Paranid expansion (148 pairs / 115 originals); that expansion is
-not installed and still needs GPU/live qualification.
-The [Split/standard group](linear-standard-materials.md) and
-[remaining conventional hull group](linear-hull-materials.md) retain the complete
-source, detached GPU and live-route qualification. Installation is complete;
-gameplay acceptance remains separate. The five high-quality PS2 effects/engine
-emission profiles are also installed behind their own default-off flag. Their
-producer/component corpus and focused one-pair live integration are qualified;
-gameplay and complete scene composition remain open.
+The production and installed linear-material implementation admits exactly
+**162 pairs / 130 original shader stages**. It contains 20 Argon
+DEFAULT/BUMPMAP, 20 shared Khaak/Teladi/Teladi_nodiff/Xenon DEFAULT/BUMPMAP,
+20 Split DEFAULT/BUMPMAP, 20 Terran DEFAULT/BUMPMAP, 30 standard-lighting
+DEFAULT/BUMPMAP/LOW, six Asteroid DEFAULT/BUMPMAP, 32 Boron/Paranid and 14 XT
+DEFAULT/BUMPMAP/LOW pairs. Shared identities count once. This is the complete
+162-pair conventional SM3 opaque/material union in the ledger; the six mixed-state
+SM3 glass identities remain separate. The
+[Split/standard group](linear-standard-materials.md),
+[remaining conventional hull group](linear-hull-materials.md),
+[palette group](linear-palette-materials.md), [Asteroid group](linear-asteroid-materials.md)
+and [XT group](xt-materials.md) retain the source and qualification boundaries;
+gameplay appearance remains separate.
 
-A fixed-width 16-hex join of the five production profiles against the complete
-pair inventory finds all five in `sm2_pairs`; none is outside the archive. The
+The installed default-off emission registry separately admits **20 exact SM2
+pairs / 18 original shader stages**: eight native VS and ten PS. It covers all
+384 SM2/2.x `effects`/`engine` archive occurrences across DEFAULT and INSTANCE.
+Detached and live qualification cover all 20 pairs; gameplay appearance and
+performance remain open, and actual submissions still need the qualified
+scene/target/additive-state gates. The separately qualified nine-pair SM1 helper
+is not linked into production and does not yet solve nonadditive ordered
+composition.
+
+Within that 20-pair registry, a fixed-width 16-hex join of the original five
+high-quality DEFAULT profiles against the complete pair inventory finds all five
+in `sm2_pairs`; none is outside the archive. The
 leading-zero VS identity `089091aab2d5eb13` matches both `effects_0000/_0001`
 pairs. Family incidence is therefore three for `effects` and three for `engine`:
 the base pair is shared, two more are effects-only and two are engine-only,
@@ -102,32 +111,32 @@ is reused by more than one technique. They account for `DEFAULT` (D), `BUMPMAP`
 | Family | Alias | Programs VS/PS | Pairs 3/2/1/+I | Technique membership | Current disposition |
 | --- | :-: | ---: | ---: | --- | --- |
 | `adeffects` | A | 4 / 5 | 0 / 3 / 2 / 0 | D 5 | Textured color with constant alpha; all 5 require scene-owner and blend-state proof before transparent/emissive conversion. |
-| `argon` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 converted**: all SM3 D and B. The 84 SM2/SM1 pairs remain. |
+| `argon` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 converted and installed**: all SM3 D and B. The 84 SM2/SM1 pairs remain. |
 | `asteroid` | B | 30 / 24 | 6 / 18 / 12 / 0 | D 18, B 18 | **6 SM3 pairs converted and installed** with base/detail semantics retained; 30 older-profile identities remain. Native blended far-fog draws remain outside opaque admission. |
 | `bloom` | C | 18 / 29 | 9 / 20 / 0 / 0 | D 28, H 4 | Post-process contract. Do not apply material transfer to highlight masks, blur alpha or compositor math; handle as a whole under the existing bloom boundary. |
-| `boron` | A | 45 / 40 | 12 / 36 / 24 / 0 | D 36, B 36 | 12 SM3 pairs have reviewed source and scalar transport, pending GPU/live qualification; none installed yet. The other 60 older-profile identities remain. |
-| `effects` | A | 12 / 12 | 0 / 16 / 6 / 0 | D 10, I 10, IB 2 | Emissive/transparent. The shared base pair plus two effects-only pairs are 3 of the deduplicated five-pair high-quality D work; these 3 incidences are implemented by the installed five-profile live route; 19 family pairs remain, and gameplay acceptance is pending. |
-| `engine` | A | 10 / 7 | 0 / 6 / 6 / 0 | D 5, I 5, IB 2 | Emissive/transparent. The shared base pair plus two engine-only pairs are the other 3 incidences in that five-pair work; these 3 incidences are implemented by the installed five-profile live route; 9 family pairs remain, and gameplay acceptance is pending. |
-| `glass` | A | 18 / 16 | 6 / 12 / 12 / 0 | D 30 | Transparent lit material; all 30 require linear destination/blend policy. The SM3 COLOR0 clamp is a candidate, not authorization. |
+| `boron` | A | 45 / 40 | 12 / 36 / 24 / 0 | D 36, B 36 | **12 SM3 pairs converted and installed**; 60 older-profile identities remain. |
+| `effects` | A | 12 / 12 | 0 / 16 / 6 / 0 | D 10, I 10, IB 2 | Emissive/transparent. **All 16 SM2 family pairs are in the installed default-off producer**; actual draws require the qualified additive state gate. The six SM1 family incidences are in the qualified deduplicated nine-pair helper but remain outside production composition/admission. |
+| `engine` | A | 10 / 7 | 0 / 6 / 6 / 0 | D 5, I 5, IB 2 | Emissive/transparent. **All six SM2 family pairs are in the installed default-off producer**; actual draws require the qualified additive state gate. The six SM1 family incidences are in the qualified deduplicated nine-pair helper but remain outside production composition/admission. |
+| `glass` | A | 18 / 16 | 6 / 12 / 12 / 0 | D 30 | [Reflective lit scene material](glass-materials.md); all 30 remain. Run 27 proves an opaque population for one SM3 pair and all effect defaults are opaque, but actual draw state remains authoritative. The six SM3 pairs can use opaque admission when its gates pass; any blended use needs the matching ordered-composition contract. |
 | `gui2d` | B | 4 / 4 | 0 / 0 / 4 / 0 | D 2, I 2 | UI instances require no scene-material conversion. Two exact pairs are also `nebula`; exclude only from proved UI ownership, never by hash alone. |
-| `khaak` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 converted**: SM3 D/B, shared with the next three listed shared families. The other 84 family pairs remain. |
+| `khaak` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 converted and installed**: SM3 D/B, shared with the next three listed shared families. The other 84 family pairs remain. |
 | `moon` | B | 11 / 7 | 2 / 3 / 6 / 0 | D 11 | Background/surface material; all 11 remain. Its older COLOR varyings need their own HDR-preservation contract. |
 | `nebula` | A | 2 / 2 | 0 / 0 / 2 / 0 | D 2 | Background/transparent; both pairs remain and are exact `gui2d` pair identities, so pass ownership is mandatory. |
 | `nebulafog` | A | 2 / 2 | 0 / 0 / 2 / 0 | D 2 | Background/transparent lookup material; both remain. Volumetric meaning is unproved. |
-| `paranid` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | 20 SM3 pairs have reviewed source and scalar transport, pending GPU/live qualification; none installed yet. The other 84 older-profile identities remain. |
+| `paranid` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 SM3 pairs converted and installed**; 84 older-profile identities remain. |
 | `particles` | A | 2 / 2 | 0 / 0 / 2 / 0 | D 2 | Transparent SM1 billboards; both remain. Define radiance/coverage, composition and stable temporal identity together. |
 | `planet_haze` | B | 3 / 3 | 1 / 0 / 2 / 0 | D 3 | Background/transparent lookup material; all 3 remain. Fixed 0.05 alpha is coverage, not emissive strength. |
 | `planet_v` | A | 6 / 4 | 0 / 3 / 3 / 0 | D 6 | Background/surface material; all 6 remain. Over-one lighting is limited in older COLOR varyings, not by an SM3 PS clamp. |
 | `split` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 converted and installed**: SM3 D/B; 84 older-profile identities remain. |
 | `standard_lighting` | A | 45 / 81 | 30 / 89 / 24 / 1 | D 52, B 52, BL 52 | **30 converted and installed**: SM3 D/B/BL; 113 complete older-profile pairs plus the incomplete pass remain. |
 | `stardust` | B | 4 / 2 | 0 / 0 / 4 / 0 | D 2, I 2 | Background/transparent; all 4 remain. A shared GUI pixel program prevents PS-hash ownership decisions. |
-| `teladi` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete 104-pair identity set as `khaak`; **20 shared SM3 D/B pairs converted**, 84 remain. |
-| `teladi_nodiff` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete set and coverage as `teladi`; the name does not prove diffuse is absent. |
+| `teladi` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete 104-pair identity set as `khaak`; **20 shared SM3 D/B pairs converted and installed**, 84 remain. |
+| `teladi_nodiff` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete set and installed coverage as `teladi`; the name does not prove diffuse is absent. |
 | `terran` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | **20 converted and installed**: SM3 D/B; 84 older-profile identities remain. |
-| `xenon` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete set and coverage as `khaak`; **20 shared SM3 D/B pairs converted**, 84 remain. |
-| `xt_standard_lighting` | D | 13 / 28 | 6 / 18 / 8 / 0 | D 12, B 12, BL 12 | Extended opaque material; all 32 remain. Bump, occlusion/detail and static branches need an explicit contract. |
-| `xt_standard_lighting_damage` | D | 13 / 28 | 6 / 18 / 8 / 0 | D 12, B 12, BL 12 | Extended opaque material; all 32 remain. Their two SM3 dynamic-`ifc` pairs now have reviewed, GPU-qualified motion output installed; linear materials remain separate. |
-| `xt_terraformer` | D | 13 / 28 | 6 / 18 / 8 / 0 | D 12, B 12, BL 12 | Extended opaque material; all 32 remain. Additional sampled RGB needs a separately proved role. |
+| `xenon` | A | 45 / 56 | 20 / 60 / 24 / 0 | D 52, B 52 | Same complete set and installed coverage as `khaak`; **20 shared SM3 D/B pairs converted and installed**, 84 remain. |
+| `xt_standard_lighting` | D | 13 / 28 | 6 / 18 / 8 / 0 | D 12, B 12, BL 12 | **All six SM3 family pairs are converted and installed**, including authored DEFAULT linkage repair; 26 older-profile identities remain. |
+| `xt_standard_lighting_damage` | D | 13 / 28 | 6 / 18 / 8 / 0 | D 12, B 12, BL 12 | **All six SM3 family pairs are converted and installed**, with damage `ifc` and shared DEFAULT/LOW identities preserved; 26 older-profile identities remain. |
+| `xt_terraformer` | D | 13 / 28 | 6 / 18 / 8 / 0 | D 12, B 12, BL 12 | **All six SM3 family pairs are converted and installed**, including authored DEFAULT linkage repair and proved additional RGB roles; 26 older-profile identities remain. |
 | `z_only` | B | 4 / 2 | 0 / 0 / 2 / 2 | ZA 2, ZF 2 | Provisional depth/alpha-test scope. Apply no color conversion only when draw state proves color is irrelevant; otherwise retain as unresolved. |
 
 The family matrix accounts for every exact alias family, lower profile and
@@ -142,8 +151,8 @@ family rows:
 
 | Group | Families | Unique programs VS/PS | Exact pass identities 3/2/1/+I | Status and boundary |
 | --- | ---: | ---: | ---: | --- |
-| Opaque/material | 14 | 169 / 405 | 162 / 405 / 120 / 1 | 688 identities total; 116 have installed material support. **572 remain outside the installed conversion**: 46 SM3 and 526 SM2/SM1/incomplete; 32 of the SM3 pairs now have reviewed source pending qualification. Gameplay acceptance remains separate. |
-| Emissive/transparent | 5 | 41 / 39 | 6 / 35 / 25 / 0 | 66 identities total. The five-profile `effects`/`engine` high-quality D implementation is installed; 61 identities still need conversion/composition, and gameplay is pending; glass, particles and `adeffects` need distinct blend/coverage policies. |
+| Conventional opaque/material | 14 | 169 / 405 | 162 / 405 / 120 / 1 | 688 identities total; all 162 SM3 identities have installed material support. **526 remain outside the installed conversion**: 405 SM2/2.x, 120 SM1 and one incomplete pass. Gameplay appearance remains separate. |
+| Mixed scene color/emission | 5 | 41 / 39 | 6 / 35 / 25 / 0 | 66 identities total. All 20 deduplicated SM2 `effects`/`engine` pairs have an installed default-off additive producer; **46 identities remain outside production**. Nine SM1 `effects`/`engine` pairs have an isolated qualified producer but still need live composition/admission. The other 37 identities include opaque or blended glass plus particles and `adeffects`, so actual state and ownership select their conversion contract. |
 | Background | 6 | 26 / 20 | 3 / 6 / 19 / 0 | 28 identities total. Convert surface/light math or compose transparency by role; two `nebula` identities are also UI identities. |
 | Post/UI/depth | 3 | 26 / 35 | 9 / 20 / 6 / 2 | 37 identities total. Keep stock bloom under its post boundary, UI unconverted under proved ownership, and z-only conditional on state. |
 
@@ -154,21 +163,18 @@ shared across groups, producing ten extra group memberships, without necessarily
 sharing the complete pair. The global totals above are therefore the
 authoritative denominator.
 
-Implementation should proceed in five bounded groups:
+Coverage is being closed in five bounded groups:
 
-1. Finish the [inventoried remaining SM3 opaque identities](../reverse-engineering/remaining-sm3-opaque-materials.md):
-   six Asteroid pairs are installed, 32 Boron/Paranid pairs await GPU/live
-   qualification, and [14 XT pairs](xt-materials.md) have an independently reviewed
-   conversion/repair design awaiting implementation. Preserve separate
-   DEFAULT, BUMPMAP and BUMPMAP_LOW contracts. The dynamic damage motion route
-   is now installed; it does not itself convert damage material lighting.
-2. Validate gameplay for the installed ordered linear-composition and temporal
-   boundary of the five high-quality `effects`/`engine` profiles, then extend it using the [remaining effects/engine contracts](../reverse-engineering/effects-engine-remaining-emission.md):
-   one batch covers all 15 remaining SM2 pairs, followed by the nine SM1 pairs
-   and their separate output/blend work. The 37 other
-   transparent/emissive identities need their own blend and alpha contracts.
-   Historical capture of every alias is not required: qualified shaders still
-   need the actual per-submission scene, target and state gates.
+1. **Conventional SM3 opaque/material complete in production.** The installed 162-pair union includes Asteroid, Boron/Paranid and all [14 XT pairs](xt-materials.md), with
+   separate DEFAULT, BUMPMAP and BUMPMAP_LOW contracts. Runtime appearance and
+   state-gated cases such as [glass](glass-materials.md) remain separate evidence.
+2. Continue the installed ordered linear-composition and temporal boundary for
+   all 20 SM2 `effects`/`engine` profiles. Integrate the qualified
+   [nine-pair SM1 producer](linear-emission-sm1.md) only after completing its
+   required output/blend contract, including nonadditive populations. The 37 other mixed scene-color identities need their
+   own ownership, blend and alpha decisions. Historical capture of every alias is
+   not required: qualified shaders still need actual per-submission scene, target
+   and state gates.
 3. Add the separate older-profile opaque path for 405 SM2/2.x, 120 SM1 and one
    incomplete identity. This requires model-specific varying/output and TAA
    handling; absence from captures is not an exclusion.
@@ -192,5 +198,6 @@ Sources: [complete shader sweep](../reverse-engineering/shader-sweep.md),
 [family review](../reverse-engineering/shader-family-review.md),
 [motion pair inventory](../reverse-engineering/motion-output-profiles.md),
 [current DEFAULT material design](scene-linear-materials.md),
-[current BUMPMAP material design](linear-bump-materials.md), and
-[emission composition brief](material-next-slice.md).
+[current BUMPMAP material design](linear-bump-materials.md),
+[emission composition contract](linear-emission-composition.md), and the
+[glass material study](glass-materials.md).

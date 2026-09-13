@@ -85,7 +85,9 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
 - **Material appearance and coverage:** exclude accidental loss of native gloss terms before artistic tuning. The
   [coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities; older profiles,
-  transparent, background, and other scene writers remain beyond installed coverage.
+  transparent, background, and other scene writers remain beyond installed coverage. The
+  [glass study](architecture/glass-materials.md) identifies six additional SM3 opaque-capable
+  pairs and preserves their native gloss/Fresnel contracts; implementation is isolated.
 - **Bloom/exposure:** authored glow works but is too subtle. Gain 0.35 is prepared for the next build;
   +1.5 EV appearance is accepted and selected as the next Auto default. The meter
   still mostly reaches its ceiling; physically informed adaptation remains unproved.
