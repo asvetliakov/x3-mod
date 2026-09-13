@@ -10,7 +10,7 @@ Preview are both required targets; native Windows runtime behavior is untested.
 |---|---|---|
 | 1 | True HDR | FP16 RT0 redirection and identity write-back work in game. The FP16 scene still contains gamma-space game lighting; downstream decoding does not make that lighting scene-referred. Material/lighting replacement and verified HDR display output remain. |
 | 2 | Modern tonemapping | AgX is implemented and was seen in game at fixed EV 0. Keep AgX. A custom X3 look remains a later tuning task. |
-| 3 | FP16 lighting and HDR emissive | The [linear material path](architecture/scene-linear-materials.md) has design/disassembly, combined shaders and detached/live D3D9 qualification. The opt-in candidate is reviewed and installed; game acceptance is pending; only covered opaque material evaluation becomes linear, not all scene blending or HDR output. |
+| 3 | FP16 lighting and HDR emissive | The [linear material path](architecture/scene-linear-materials.md) has design/disassembly, combined shaders and detached/live D3D9 qualification. The opt-in candidate is reviewed and installed; game acceptance is pending; only covered opaque material evaluation becomes linear, not all scene blending or HDR output. Default-off additive emission integration now passes independent source/evidence review and isolated X3 live-route qualification; installation/gameplay and its measured cost remain open. |
 | 4 | HDR bloom | [Live integration](architecture/hdr-bloom-boundary.md) connects the qualified filter/executor and compositor bridge. Combined X3 lifetime checks pass 714/714 across both reference models, including Reset/ResetEx and original exceptions; independently reviewed and installed, with first gameplay acceptance pending. It runs the original compositor once then replaces RGB, preserving original state/resources/alpha. Component image/state/recovery evidence is linked from the design. Initial bloom uses the current decoded gamma-space scene; real radiance still requires materials. Gameplay quality and frame cost remain unverified. |
 | 5 | Automatic exposure | Existing whole-scene log-average meter overexposes black space (about +7 EV). Space-aware tile meter passed independent branch review and both-bottle fixtures; the reviewed build is integrated and installed; game validation remains. |
 | 6 | New material shaders | **Partial coverage, not complete.** Installed: 30 reviewed Argon/shared-hull pairs; gameplay acceptance remains. [Split DEFAULT and standard lighting DEFAULT/BUMPMAP/LOW](architecture/linear-standard-materials.md) add 40 implemented pairs with independent review and detached/live GPU qualification; installation and gameplay acceptance remain. Other families, older profiles, particles and blended writers still need conversion and appropriate composition/coverage semantics. Existing native shaders remain in use for uncovered materials. The [complete coverage ledger](architecture/material-coverage.md) accounts for all 817 archive pass identities, including toggles and non-material exclusions. The full goal includes all necessary families and whole-scene linear lighting. |
@@ -45,9 +45,10 @@ they are not a measured final-image baseline.
    `/tmp/x3-bottleX3-run<N>/` before bounded analysis.
 2. Convert all necessary scene families using the [complete coverage ledger](architecture/material-coverage.md),
    including uncaptured and older-profile variants. Every pass identity needs a
-   converted role or a justified non-material disposition. The next related
-   opaque group is all 40 Split DEFAULT and standard-lighting DEFAULT/BUMPMAP/LOW
-   pairs, including toggles; this proceeds alongside emission integration.
+   converted role or a justified non-material disposition. The preceding 40 Split/standard-lighting pairs are GPU/live qualified. The
+   next group adds shared/Split BUMPMAP and Terran DEFAULT/BUMPMAP: 40 pairs,
+   bringing the source to 110. Pure review is approved; GPU/live execution
+   awaits the user finishing the requested loading run.
 3. The [revised emission candidate](architecture/linear-emission-composition.md#detached-mrt-candidate-qualification)
    passes detached X3 qualification for untouched-channel preservation and a
    current native recovery image. A measured branch optimization showed no
@@ -56,7 +57,10 @@ they are not a measured final-image baseline.
    for enhanced emissions, preserving baseline sentinel/camera motion. Complete
    classification of unrelated native writers is not this slice's prerequisite;
    their existing limitations remain. Batching/cost are still under investigation.
-   No live emission route is selected; opaque coverage alone does not justify changing blends.
+   The opt-in live emission route is now qualified on X3 and awaits installation
+   and gameplay. Its combined completion window has a measured cost; the next
+   isolated experiment fuses native-image copying and emission-target clearing.
+   Opaque coverage alone does not justify changing blends.
 4. Analyse the user's captures and fix observed failures. Reader and adjacency
    fast modes require meaningful verification work with zero admitted mismatches;
    an all-fallback session does not qualify them. Keep exposure/bloom and

@@ -96,7 +96,9 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   Their live-routing extension also passes independent review and 16,496 checks
   across 1,312 frames, including TAA, ownership, Reset and shader retirement.
   Installation and gameplay acceptance remain; the installed build still
-  contains 30 pairs.
+  contains 30 pairs. The next [40 hull pairs](architecture/linear-hull-materials.md)
+  have passed pure source review; GPU/live execution is held while the user
+  performs the requested run 5 loading check. No Wine fixture may overlap it.
   [Blended emission work](architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color
   and supplemental coverage, and a temporal consumer. The latest producer run
