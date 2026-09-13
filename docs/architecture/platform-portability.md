@@ -18,28 +18,31 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
-- Generated shader interpolators still inherit application shading/wrap state.
-  The installed material RGB uses TEXCOORD6/7; the isolated Asteroid extension
-  also uses TEXCOORD8. Unlike native COLOR0, these do not retain flat-color
-  interpolation, and their corresponding D3DRS_WRAP states can alter values.
-  Injected motion/depth TEXCOORDs likewise need an explicit zero-wrap contract.
-  These effects follow the documented [SM3 interpolation rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3);
-  current normal-state X3 fixtures do not qualify nondefault states. No observed
-  gameplay defect has been attributed to this gap. The next material install
-  is held for qualification of COLOR1 RGB transport and scoped motion/depth
-  wrap save/restore, including failure, state-block and Reset behavior. The
-  existing gameplay A/B keeps the installed build fixed.
+- The installed 168-pair material route carries generated material RGB in a
+  separate whole COLOR1 varying, keeping RGB on the COLOR interpolation path
+  and avoiding application D3DRS_WRAP state. Palette scalar relocations copy each
+  source WRAP component to its destination for the draw, while generated
+  motion/depth TEXCOORD components use the scoped zero-WRAP transaction; caller
+  state is restored on success, failure, StateBlock and Reset paths. The X3
+  detached and live hostile-WRAP fixtures qualify these contracts. The Preview
+  backend's programmable COLOR classifier remained Gouraud when FLAT was
+  requested, so those results do not establish native-Windows FLAT behavior.
+  Native-Windows interpolation and WRAP execution remain unverified; no observed
+  gameplay defect has been attributed to this portability gap. See the
+  [palette transport](linear-palette-materials.md), [XT qualification](xt-materials.md)
+  and [combined evidence](../verification/combined-glow-materials.md).
 
-- The 110-pair material live fixture's class-C negative uses an original XT
-  pair (`494fe349b8bc12ec` / `fffdabd910793aba`) whose VS does not provide all
-  PS-declared semantic components. Microsoft's [SM3 matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)
-  classify missing semantics/masks as invalid linkage. Its successful X3 draw
-  and off/on raw-image equality are backend observations, not portable fallback
-  evidence. All 110 converted material pairs retain their separate qualification;
-  this limits the negative control. The next live fixture must add a valid
-  unconverted motion pair and a separately valid same-VS refusal control.
-  Targeted XT research is resolving the actual native binding and intended
-  missing inputs before material conversion; do not invent backend defaults.
+- The original four XT DEFAULT pairs still have malformed SM3 linkage under
+  Microsoft's [matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)
+  and are never used as portable ordinary fallbacks. The installed 14-pair XT
+  route instead publishes complete authored ordinary and linear DEFAULT pairs
+  together; its ten valid BUMPMAP/BUMPMAP_LOW pairs retain their original
+  ordinary programs. Exact-pair readiness, fallback, hostile WRAP,
+  interpolation, Reset and retirement pass the detached and live X3 fixtures.
+  The authored DEFAULT geometry is a reviewed replacement contract rather than
+  recovered native behavior. Native-Windows creation, linkage, interpolation,
+  state recovery and runtime execution remain unverified; successful Preview
+  execution does not establish them. See [XT materials](xt-materials.md).
 
 - The previously embedded TAA resolve reported 1,179 instruction slots, while the
   X3 fixture device advertises `MaxPixelShader30InstructionSlots=512`; the first
@@ -54,13 +57,20 @@ Recording runtime hashes in test reports remains useful provenance.
   build/load check. Gameplay acceptance and native-Windows execution remain
   unverified. See the [emission temporal work](linear-emission-composition.md#consumer-contract).
 
-- Opt-in bloom now uses documented D3D9 calls and a compiler-supported x86
-  SEH bridge; native Windows execution and live gameplay integration remain
-  unverified. Capture hooks ResetEx at slot 132 on admitted Ex-capable devices,
-  but the separate `Direct3DCreate9Ex`/`CreateDeviceEx` factory route still
-  forwards without capture adoption. The bloom lifetime fixture explicitly
-  adopts its genuine Ex device under its test-only seam to exercise ResetEx;
-  this does not establish production CreateDeviceEx enhancement support.
+- Opt-in bloom uses documented D3D9 calls and a compiler-supported x86 SEH
+  bridge. Runs 27 and 28 verify CrossOver gameplay integration, including
+  visible authored-color halos and working ON/OFF control; Run 28 exercised
+  gain 0.35/scatter 0.70. The installed gain 0.375/scatter 0.65 adjustment has
+  offline calibration and focused source/reference checks, but its exact
+  gameplay appearance and gameplay performance remain unverified. Native-Windows
+  execution also remains unverified. Capture hooks ResetEx at slot 132 on
+  admitted Ex-capable devices, but the separate
+  `Direct3DCreate9Ex`/`CreateDeviceEx` factory route still forwards without
+  capture adoption. The bloom lifetime fixture explicitly adopts its genuine
+  Ex device under its test-only seam to exercise ResetEx; this does not establish
+  production CreateDeviceEx enhancement support. See the
+  [authored-glow evidence](bloom-authored-glow.md) and
+  [Run 28 comparison](../verification/run28-glow-materials.md).
 
 - The opt-in [chase camera](chase-camera.md) modifies validated game structures
   through an x86 trampoline and uses public Win32 memory, protection and timing

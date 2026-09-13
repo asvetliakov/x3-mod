@@ -45,9 +45,9 @@ they are not a measured final-image baseline.
    `/tmp/x3-bottleX3-run<N>/` before bounded analysis.
 2. Convert all necessary scene families using the [complete coverage ledger](architecture/material-coverage.md),
    including uncaptured and older-profile variants. Every pass identity needs a
-   converted role or a justified non-material disposition. Installed opaque
-   coverage is 162 pairs, including all 14 XT contracts and correction of four
-   malformed native DEFAULT linkages. Nine SM1 emission pairs pass isolated
+   converted role or a justified non-material disposition. Installed coverage is
+   168 pairs, including six SM3 glass pairs, all 14 XT contracts and correction of
+   four malformed native DEFAULT linkages. Nine SM1 emission pairs pass isolated
    X3 promotion/parity qualification and await live integration; glass, distance fading, older profiles and other scene writers
    remain in scope.
 3. The [revised emission path](architecture/linear-emission-composition.md) passes
