@@ -351,6 +351,7 @@ bool initialize() {
     bool bad_tunable = false;
     tunables.rot_tau = env_double(L"X3M_CHASE_ROT_TAU", tunables.rot_tau, &bad_tunable);
     tunables.pos_tau = env_double(L"X3M_CHASE_POS_TAU", tunables.pos_tau, &bad_tunable);
+    tunables.pitch_down_deg = env_double(L"X3M_CHASE_PITCH_DOWN_DEG", tunables.pitch_down_deg, &bad_tunable);
     tunables.offset_y = env_double(L"X3M_CHASE_OFFSET_Y", tunables.offset_y, &bad_tunable);
     tunables.distance_scale = env_double(L"X3M_CHASE_DISTANCE_SCALE", tunables.distance_scale, &bad_tunable);
     tunables.lag_clamp_deg = env_double(L"X3M_CHASE_LAG_CLAMP_DEG", tunables.lag_clamp_deg, &bad_tunable);
@@ -382,10 +383,10 @@ bool initialize() {
     }
     state = okay ? "active" : site.status;
     log("chase_camera requested=1 installed=%u status=%s site=0x%08lx length=%u rel32_offset=%u atomic_write=%u arena_used=%u "
-        "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f distance_scale=%.3f lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
+        "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f pitch_down_deg=%.2f distance_scale=%.3f lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
         "snap_coalesce_frames=%u scene_fix=%u handler_timing=%u predicate=view_object_is_ref_object lifetime=process scope=external_back_view",
         unsigned(okay), state.load(), static_cast<unsigned long>(site_va), site_spec.length, site_spec.rel32_offset, unsigned(site.atomic_write), engine_patch::arena_used(),
-        tunables.rot_tau, tunables.pos_tau, tunables.offset_y, tunables.distance_scale, tunables.lag_clamp_deg, tunables.pos_lag_clamp, tunables.combat_tightness,
+        tunables.rot_tau, tunables.pos_tau, tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, tunables.lag_clamp_deg, tunables.pos_lag_clamp, tunables.combat_tightness,
         tunables.combat_tightness > 0 ? "tracking_1e4_unverified" : "off", tunables.max_dt, tunables.snap_coalesce_frames, unsigned(scene_fix_enabled), unsigned(timing_enabled));
     SetLastError(error);
     return okay;

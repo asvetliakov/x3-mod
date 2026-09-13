@@ -134,9 +134,13 @@ units kept exact in doubles; `B_cam = R_view × B_ship` is the engine's identity
    a degree of lag at most that soon after a snap) but does **not** raise the
    TAA cut again (`coalesced` counter). Every other reason moves the world or
    the view and always cuts.
-6. **Target orientation** `B_t = pitch_up(δ) × B_v`, `δ = atan(offset_y ×
-   tan(half vfov))`, so the ship sits `offset_y` of the half screen height
-   below centre.
+6. **Target orientation/framing**: positive `pitch_down_deg` uses the
+   native view yaw in a ship-up frame, looks down by that angle, and rebuilds
+   the boom to preserve scaled distance and project the anchor at `offset_y`
+   below center. Native camera-local pitch/roll are replaced; ship world roll
+   is retained. See [elevated geometry and guards](elevated-chase-camera.md).
+   Explicit zero preserves the old target `B_t = pitch_up(δ) × B_v`,
+   `δ = atan(offset_y × tan(half vfov))`, and the native scaled boom.
 7. **Orientation spring**: `x = log(B_tᵀ × B_c)` (rotation vector from the new
    target to the current basis, world frame), critically damped closed form
    with `ω = 1/τ`: `x(dt) = (x + (v + ωx) dt) e^{−ω dt}`, `v(dt) = (v −
@@ -163,7 +167,8 @@ units kept exact in doubles; `B_cam = R_view × B_ship` is the engine's identity
    frame line reports `tracking=<+0x1e4> locked=<0|1> locked_frames=`, so the
    first run validates the field semantics with tightness 0 before any value
    is used; the study's field evidence is in [external-camera.md §2](../reverse-engineering/external-camera.md).
-8. **Boom spring**: target boom `o_t = (o_local × distance_scale) × B_ship`;
+8. **Boom spring**: target boom is the elevated framing construction in step
+   6, or `o_t = (o_local × distance_scale) × B_ship` with explicit zero pitch;
    `x_p = o_prev − o_t` (both ship-relative: constant velocity gives no lag,
    turns and boom changes swing), same closed form with `pos_tau` (scaled by
    the same tightness factor while locked), clamp `|x_p| ≤ pos_lag_clamp ×
@@ -182,20 +187,21 @@ next applied frame snaps.
 
 The mode switch stays `X3M_CAMERA=chase|vanilla` (`--camera`); the tunables
 are `X3M_CHASE_*` / `--chase-*` (review O7) so they cannot collide with the
-TAA camera read's `X3M_CAMERA_CUT_DEG` / `X3M_CAMERA_LOG`. Defaults per review
-A7: a critically damped spring lags a constant rate Ω by `2τΩ`, so at
-`rot_tau` 0.15 s a 60°/s fighter turn reaches the 8° clamp and settles in
-~0.6 s after the turn, a 5°/s capital turn shows ~1.5°; the boom lag adds at
-most `atan(0.10)` ≈ 5.7° in the same direction, ~14° of ship excursion
-combined (was 10° + `atan(0.20)` ≈ 21° with the pre-review 0.20 s / 10° /
-0.30 s / 0.20).
+TAA camera read's `X3M_CAMERA_CUT_DEG` / `X3M_CAMERA_LOG`. The second user
+flight reported no trembling after the native-anchor correction. New softer
+defaults are 0.22 s rotation / 0.30 s position; lag limits remain 8 degrees /
+0.10 of boom length. Larger tau softens onset and extends settling while
+sustained turns retain the same clamp bounds. See the
+[elevated framing iteration](elevated-chase-camera.md) for geometry, legacy
+compatibility and verification; these new defaults await game acceptance.
 
 | Variable | Flag | Default | Range | Meaning |
 | --- | --- | --- | --- | --- |
 | `X3M_CAMERA` | `--camera chase` | vanilla | `chase` | install the hook |
-| `X3M_CHASE_ROT_TAU` | `--chase-rot-tau` | 0.15 s | (0, 10] | orientation spring time constant (for the critically damped form 63 % of a step is done in ~2.15τ and 95 % in ~4.75τ) |
-| `X3M_CHASE_POS_TAU` | `--chase-pos-tau` | 0.20 s | (0, 10] | boom spring time constant |
-| `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.45 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); 0.45 puts a centred native anchor at 72.5% of screen height; native boom elevation can shift the actual silhouette |
+| `X3M_CHASE_ROT_TAU` | `--chase-rot-tau` | 0.22 s | (0, 10] | orientation spring time constant (for the critically damped form 63 % of a step is done in ~2.15τ and 95 % in ~4.75τ) |
+| `X3M_CHASE_POS_TAU` | `--chase-pos-tau` | 0.30 s | (0, 10] | boom spring time constant |
+| `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.45 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); 0.45 projects the settled anchor at 72.5% of screen height in elevated mode; silhouette and lag can shift the visible center |
+| `X3M_CHASE_PITCH_DOWN_DEG` | `--chase-pitch-down-deg` | 20° | [0, 30] | downward look in the ship-up/native-yaw frame; zero restores legacy framing geometry |
 | `X3M_CHASE_DISTANCE_SCALE` | `--chase-distance-scale` | 1.0 | (0, 10] | multiplies the vanilla boom (the scripts already size it per ship class) |
 | `X3M_CHASE_LAG_CLAMP_DEG` | `--chase-lag-clamp-deg` | 8° | [0, 90] | orientation lag clamp = the screen window |
 | `X3M_CHASE_POS_LAG_CLAMP` | `--chase-pos-lag-clamp` | 0.10 | [0, 1] | boom lag clamp as a fraction of the boom |
@@ -248,7 +254,7 @@ unset. `snap_coalesce_frames` (3) is compiled in.
 
 - Install: `chase_camera requested=1 installed=<0|1> status=<active|reason>
   site=0x00420e06 length=10 rel32_offset=6 atomic_write=0 arena_used=…
-  rot_tau=… pos_tau=… offset_y=… distance_scale=… lag_clamp_deg=…
+  rot_tau=… pos_tau=… offset_y=… pitch_down_deg=… distance_scale=… lag_clamp_deg=…
   pos_lag_clamp=… combat_tightness=… combat=<off|tracking_1e4_unverified>
   max_dt=… snap_coalesce_frames=3 scene_fix=<0|1> handler_timing=<0|1>
   predicate=view_object_is_ref_object lifetime=process scope=external_back_view`.
@@ -323,8 +329,8 @@ unset. `snap_coalesce_frames` (3) is compiled in.
 
 ## Open questions
 
-- The spring defaults were active in the first flight; the new 0.45 framing
-  default and corrected native anchor still need the user's visual acceptance.
+- The corrected native anchor no longer trembles in the second user flight.
+  Elevated framing and softer spring defaults still need visual acceptance.
 - Boom lag semantics: ship-relative (constant velocity = no lag, implemented)
   versus world-frame (acceleration lag, big steady lag at X3 speeds relative to
   the boom); the former is the safer default. A small clamped world-frame

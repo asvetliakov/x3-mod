@@ -29,6 +29,18 @@ imports, and 211 no-x87 boundary functions with zero violations. See
 [review 46](verification/review-46-chase-feedback.md) and the
 [qualification summary](../verification/results/chase-feedback-summary.json).
 
+The [second user flight](verification/chase-second-run.md) reports **no trembling**
+with the installed anchor correction. All 12,615 applied samples use the native
+base anchor; the logged handler averages 23.841 microseconds in fully applied
+windows (excludes stub/state preservation, not FPS). The user requests an
+above-and-behind viewpoint and softer follow, and reports right-mouse aiming
+works in first person but fires straight in chase view. The next camera source
+uses a 20-degree downward look and slower 0.22/0.30-second response; its
+[reviewed elevated geometry](verification/review-48-elevated-camera.md) passes
+56 focused tests and x86 compilation. It is **not installed yet**. Consolidated
+read-only firing diagnostics are being implemented before the next user run;
+no mouse-fire behavior fix is claimed.
+
 The camera is vanilla by default; only `--camera chase` enables it. The
 [first user flight](verification/chase-first-run.md) confirms the hook applied
 5,871 frames, but the user reports subtle placement and trembling in flight.

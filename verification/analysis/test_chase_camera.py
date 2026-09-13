@@ -15,6 +15,11 @@ Review 31 additions: the verbatim-basis pass-through (connect mode 3,
 the combat-tightness scaling of the time constants.
 """
 import math
+import contextlib
+import io
+import json
+import sys
+from unittest import mock
 import random
 import shutil
 import subprocess
@@ -25,13 +30,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1]
-DEFAULT_TUNABLES = dict(rot_tau=0.20, pos_tau=0.30, offset_y=0.0, distance_scale=1.0, lag_clamp_deg=90.0, pos_lag_clamp=1.0, max_dt=0.1, snap_ratio=20.0)
+DEFAULT_TUNABLES = dict(rot_tau=0.20, pos_tau=0.30, offset_y=0.0, pitch_down_deg=0.0, distance_scale=1.0, lag_clamp_deg=90.0, pos_lag_clamp=1.0, max_dt=0.1, snap_ratio=20.0)
 
 
 def yaw(theta):
     """Basis rows (right, up, forward) of a ship yawed by theta about world Y (left-handed, det +1)."""
     c, s = math.cos(theta), math.sin(theta)
     return [c, 0, -s, 0, 1, 0, s, 0, c]
+
+
+def pitch(theta):
+    c, s = math.cos(theta), math.sin(theta)
+    return [1, 0, 0, 0, c, -s, 0, s, c]
 
 
 def roll(phi):
@@ -68,14 +78,14 @@ class Driver:
 
     def tunables(self, **kw):
         t = {**DEFAULT_TUNABLES, 'combat_tightness': 0.0, 'snap_coalesce_frames': 3, **kw}
-        out = self.send('T {rot_tau} {pos_tau} {offset_y} {distance_scale} {lag_clamp_deg} {pos_lag_clamp} {max_dt} {snap_ratio} {combat_tightness} {snap_coalesce_frames}'.format(**t))
+        out = self.send('T {rot_tau} {pos_tau} {offset_y} {distance_scale} {lag_clamp_deg} {pos_lag_clamp} {max_dt} {snap_ratio} {combat_tightness} {snap_coalesce_frames} {pitch_down_deg}'.format(**t))
         assert out[0] == 'T'
         return int(out[1]) == 1
 
     def defaults(self):
         out = self.send('D')
         assert out[0] == 'D', out
-        names = ['rot_tau', 'pos_tau', 'offset_y', 'distance_scale', 'lag_clamp_deg', 'pos_lag_clamp', 'combat_tightness', 'max_dt', 'snap_ratio', 'snap_coalesce_frames']
+        names = ['rot_tau', 'pos_tau', 'offset_y', 'distance_scale', 'lag_clamp_deg', 'pos_lag_clamp', 'combat_tightness', 'max_dt', 'snap_ratio', 'snap_coalesce_frames', 'pitch_down_deg']
         return dict(zip(names, map(float, out[1:])))
 
     def reset(self):
@@ -159,6 +169,105 @@ class ChaseCameraPipeline(unittest.TestCase):
         camera_space = vec_mat([-x for x in result['pos']], transpose(result['basis']))
         screen_y = 0.5 - 0.5 * camera_space[1] / (camera_space[2] * 0.75)
         self.assertAlmostEqual(screen_y, 0.725, places=12)
+
+    def test_elevated_default_projects_low_while_looking_down_and_preserves_distance(self):
+        self.d.tunables(**self.d.defaults())
+        for vfov in (0.25, 0.5625, 0.75, 1.5):
+            self.d.reset()
+            r = self.d.frame(1 / 60, boom=(0, 40, -200), half_vfov_tan=vfov)
+            self.assertEqual(r['verdict'], 0)
+            ray = vec_mat([-x for x in r['pos']], transpose(r['basis']))
+            self.assertAlmostEqual(0.5 - ray[1] / ray[2] / vfov / 2, 0.725, places=12)
+            self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(20)), places=12)
+            self.assertGreater(r['pos'][1], 0)
+            self.assertLess(r['pos'][2], 0)
+            self.assertAlmostEqual(r['distance'], math.hypot(40, 200), places=10)
+            alpha = math.radians(20) + math.atan(0.45 * vfov)
+            self.assertAlmostEqual(math.atan2(r['pos'][1], -r['pos'][2]), alpha, places=12)
+
+    def test_elevated_framing_handles_native_pitch_yaw_roll_and_ship_orientation(self):
+        self.d.tunables(**{**self.d.defaults(), 'distance_scale': 1.7, 'pitch_down_deg': 10})
+        ship = mat_mul(roll(0.8), yaw(1.2))
+        native = mat_mul(roll(0.12), mat_mul(pitch(0.2), yaw(0.15)))
+        boom, position = (15, 70, -200), (150000, -200000, 123000)
+        r = self.d.frame(1 / 60, ship=ship, ship_pos=position, view_rel=native, boom=boom)
+        self.assertEqual(r['verdict'], 0)
+        ray = vec_mat([a-b for a,b in zip(position,r['pos'])], transpose(r['basis']))
+        native_ray = vec_mat([-x for x in boom], transpose(native))
+        self.assertAlmostEqual(ray[0] / ray[2], native_ray[0] / native_ray[2], places=10)
+        self.assertAlmostEqual(ray[1] / ray[2], -0.45 * 0.75, places=10)
+        relative = mat_mul(r['basis'], transpose(ship))
+        self.assertAlmostEqual(relative[7], -math.sin(math.radians(10)), places=12)
+        self.assertAlmostEqual(relative[1], 0, places=12)  # native local roll removed
+        self.assertAlmostEqual(r['distance'], math.sqrt(sum(x*x for x in boom))*1.7, places=9)
+        self.assertLess(rotation_angle_deg(mat_mul(r['view_rel'], ship), r['basis']), 0.00001)
+
+    def test_zero_pitch_restores_exact_legacy_geometry(self):
+        self.d.tunables(offset_y=0.45, pitch_down_deg=0, distance_scale=1.4, rot_tau=0.15, pos_tau=0.20)
+        ship, native, boom = yaw(0.4), mat_mul(roll(0.1), pitch(-0.1)), (20, 50, -200)
+        r = self.d.frame(1 / 60, ship=ship, view_rel=native, boom=boom)
+        expected_pos = vec_mat([x*1.4 for x in boom], ship)
+        expected_basis = mat_mul(pitch(math.atan(0.45*0.75)), mat_mul(native, ship))
+        for a, b in zip(r['pos'], expected_pos):
+            self.assertAlmostEqual(a, b, places=10)
+        for a, b in zip(r['basis'], expected_basis):
+            self.assertAlmostEqual(a, b, places=12)
+
+    def test_elevated_translation_remains_invariant_and_reentry_snaps(self):
+        self.d.tunables(**self.d.defaults())
+        first = self.d.frame(1 / 60)
+        for n in range(1, 101):
+            p = (n*10, n*20, n*100)
+            r = self.d.frame(1 / 60, ship_pos=p)
+            self.assertFalse(r['snapped'])
+            self.assertAlmostEqual(r['pos_lag'], 0, places=10)
+            for actual, origin, offset in zip(r['pos'], p, first['pos']):
+                self.assertAlmostEqual(actual-origin, offset, places=10)
+        self.assertEqual(self.d.frame(1 / 60, connect=4)['verdict'], 3)
+        self.assertTrue(self.d.frame(1 / 60)['snapped'])
+        self.assertEqual(self.d.frame(1 / 60, ship_pos=(100000, 0, 0))['snap_reason'], 16)
+
+    def test_elevated_tunables_and_frame_geometry_fail_closed(self):
+        for value in (-0.1, 30.01, 89, 90, float('inf'), float('nan')):
+            self.assertFalse(self.d.tunables(pitch_down_deg=value), value)
+            self.assertEqual(self.d.frame(1/60)['verdict'], 4)
+        self.assertTrue(self.d.tunables(pitch_down_deg=30, offset_y=1))
+        for vfov in (10, 1e308, float('inf'), float('nan')):
+            self.assertEqual(self.d.frame(1/60, half_vfov_tan=vfov)['verdict'], 4)
+        self.assertTrue(self.d.tunables(pitch_down_deg=1, offset_y=-1))
+        self.assertEqual(self.d.frame(1/60, half_vfov_tan=10)['verdict'], 4)
+        self.assertTrue(self.d.tunables(pitch_down_deg=30, offset_y=-1))
+        r = self.d.frame(1/60, half_vfov_tan=0.75)
+        self.assertEqual(r['verdict'], 0)
+        ray = vec_mat([-x for x in r['pos']], transpose(r['basis']))
+        self.assertAlmostEqual(ray[1]/ray[2], 0.75, places=12)
+
+    def test_elevated_front_side_internal_scripted_gates_are_preserved(self):
+        self.d.tunables(**self.d.defaults())
+        for kwargs, verdict in (({'boom': (0,0,200)},2), ({'boom':(200,0,-100)},2),
+                                ({'mode':1},1), ({'connect':3},7), ({'connect':4},3), ({'flags':4},7)):
+            self.assertEqual(self.d.frame(1/60, **kwargs)['verdict'], verdict)
+        self.assertTrue(self.d.frame(1/60)['snapped'])
+
+    def test_elevated_long_turn_is_stable_with_original_bounds(self):
+        self.d.tunables(**self.d.defaults())
+        r = self.d.long_run(100000, 1/60, 1.1, 0.5)
+        self.assertEqual((r['applied'], r['refused'], r['snaps']), (100000, 0, 1))
+        self.assertLess(r['max_ortho'], 1e-12)
+        self.assertLess(r['max_identity'], 1e-12)
+        self.assertLessEqual(r['max_lag_deg'], 8.000001)
+
+    def test_softer_default_settles_more_slowly_without_increasing_bounds(self):
+        lags = []
+        for rot_tau, pos_tau in ((0.15, 0.20), (0.22, 0.30)):
+            self.d.reset()
+            self.d.tunables(**{**self.d.defaults(), 'rot_tau':rot_tau, 'pos_tau':pos_tau})
+            self.d.frame(1/60)
+            for _ in range(30):
+                r = self.d.frame(1/60, ship=yaw(math.radians(5)))
+            lags.append((r['lag_deg'], r['pos_lag']))
+        self.assertGreater(lags[1][0], lags[0][0])
+        self.assertGreater(lags[1][1], lags[0][1])
 
     def test_first_frame_snaps_to_the_vanilla_pose(self):
         r = self.d.frame(1 / 60, ship_pos=(1000, -500, 250000), boom=(0, 40, -200))
@@ -350,8 +459,9 @@ class ChaseCameraPipeline(unittest.TestCase):
 
     def test_compiled_defaults_match_review_and_first_flight_framing(self):
         d = self.d.defaults()
-        self.assertEqual(d['rot_tau'], 0.15)
-        self.assertEqual(d['pos_tau'], 0.20)
+        self.assertEqual(d['rot_tau'], 0.22)
+        self.assertEqual(d['pos_tau'], 0.30)
+        self.assertEqual(d['pitch_down_deg'], 20.0)
         self.assertEqual(d['lag_clamp_deg'], 8.0)
         self.assertEqual(d['pos_lag_clamp'], 0.10)
         self.assertEqual(d['offset_y'], 0.45)
@@ -524,6 +634,41 @@ class ChaseCameraPipeline(unittest.TestCase):
         self.assertLessEqual(run['max_lag_deg'], 10 + 1e-9)
         self.assertGreater(run['max_lag_deg'], 1.0)  # the ship really is turning
         self.assertLess(run['max_identity'], 1e-9)
+
+
+
+
+class ChaseCameraLaunchOptions(unittest.TestCase):
+    def invoke(self, *args):
+        from tools import manage
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory(prefix='x3-chase-launch-') as directory:
+            wine = Path(directory) / 'wine'
+            wine.touch()
+            (Path(directory) / 'X3AP.exe').touch()
+            argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', directory, *args]
+            with mock.patch.object(sys, 'argv', argv), mock.patch.object(manage, 'WINE', wine), \
+                    mock.patch.object(manage.subprocess, 'call', side_effect=AssertionError('must never launch')) as call, \
+                    contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    manage.main()
+                except SystemExit as error:
+                    return error.code, None
+                call.assert_not_called()
+        return 0, json.loads(output.getvalue())
+
+    def test_pitch_down_is_forwarded_by_dry_run(self):
+        for value in ('0', '10', '20', '25', '30'):
+            code, output = self.invoke('--camera', 'chase', '--chase-pitch-down-deg', value)
+            self.assertEqual(code, 0)
+            self.assertEqual(float(output['env']['X3M_CHASE_PITCH_DOWN_DEG']), float(value))
+
+    def test_pitch_down_requires_chase_mode(self):
+        self.assertEqual(self.invoke('--chase-pitch-down-deg', '10')[0], 2)
+
+    def test_invalid_pitch_down_is_rejected_before_launch(self):
+        for value in ('-1', '30.1', '90', 'nan', 'inf'):
+            self.assertEqual(self.invoke('--camera', 'chase', '--chase-pitch-down-deg', value)[0], 2)
 
 
 if __name__ == '__main__':

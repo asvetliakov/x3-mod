@@ -1,0 +1,52 @@
+{
+  "scope": "macOS host exact production pose math plus synthetic input generation; not Wine/native Windows/handler CPU or game FPS",
+  "steps_per_sample": 1000000,
+  "samples": [
+    {
+      "pitch_down_deg": 0,
+      "seconds": 0.191529791,
+      "us_per_step": 0.191529791,
+      "applied": 1000000,
+      "refused": 0
+    },
+    {
+      "pitch_down_deg": 10,
+      "seconds": 0.17176141700000014,
+      "us_per_step": 0.17176141700000014,
+      "applied": 1000000,
+      "refused": 0
+    },
+    {
+      "pitch_down_deg": 0,
+      "seconds": 0.17052825000000005,
+      "us_per_step": 0.17052825000000005,
+      "applied": 1000000,
+      "refused": 0
+    },
+    {
+      "pitch_down_deg": 10,
+      "seconds": 0.16928916700000007,
+      "us_per_step": 0.16928916700000007,
+      "applied": 1000000,
+      "refused": 0
+    },
+    {
+      "pitch_down_deg": 0,
+      "seconds": 0.1683389580000001,
+      "us_per_step": 0.1683389580000001,
+      "applied": 1000000,
+      "refused": 0
+    },
+    {
+      "pitch_down_deg": 10,
+      "seconds": 0.169637834,
+      "us_per_step": 0.169637834,
+      "applied": 1000000,
+      "refused": 0
+    }
+  ],
+  "median_us": {
+    "0": 0.17052825000000005,
+    "10": 0.169637834
+  }
+}

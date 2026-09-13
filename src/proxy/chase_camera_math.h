@@ -152,15 +152,14 @@ inline bool clamp_spring(Spring& s, double limit) {
     return true;
 }
 
-// Defaults per review 31 (A7): a critically damped spring lags a constant
-// angular rate W by 2*tau*W, so at rot_tau 0.15 s a 60 deg/s fighter turn
-// reaches the 8 deg clamp and settles in ~0.6 s after the turn, a 5 deg/s
-// capital turn shows ~1.5 deg; the boom lag adds at most atan(0.10) ~ 5.7 deg
-// in the same direction, ~14 deg of ship excursion combined.
+// Softer follow after the corrected user flight: retain the existing lag
+// bounds while increasing settling time. Elevated framing is independent of
+// spring lag; see docs/architecture/elevated-chase-camera.md.
 struct Tunables {
-    double rot_tau = 0.15;          // s, orientation spring time constant (X3M_CHASE_ROT_TAU)
-    double pos_tau = 0.20;          // s, boom-offset spring time constant (X3M_CHASE_POS_TAU)
+    double rot_tau = 0.22;          // s, orientation spring time constant (X3M_CHASE_ROT_TAU)
+    double pos_tau = 0.30;          // s, boom-offset spring time constant (X3M_CHASE_POS_TAU)
     double offset_y = 0.45;         // 72.5% screen height from a centred native anchor (X3M_CHASE_OFFSET_Y)
+    double pitch_down_deg = 20.0;  // 0 keeps legacy framing; (0,30] sets ship-relative downward look
     double distance_scale = 1.0;    // multiplies the vanilla boom offset (X3M_CHASE_DISTANCE_SCALE)
     double lag_clamp_deg = 8.0;     // max orientation lag (X3M_CHASE_LAG_CLAMP_DEG)
     double pos_lag_clamp = 0.10;    // max |offset lag| as a fraction of the boom length (X3M_CHASE_POS_LAG_CLAMP)
@@ -172,6 +171,7 @@ struct Tunables {
 };
 inline bool valid(const Tunables& t) {
     return t.rot_tau > 0 && t.rot_tau <= 10 && t.pos_tau > 0 && t.pos_tau <= 10 && std::isfinite(t.offset_y) && std::fabs(t.offset_y) <= 1 &&
+           t.pitch_down_deg >= 0 && t.pitch_down_deg <= 30 &&
            t.distance_scale > 0 && t.distance_scale <= 10 && t.lag_clamp_deg >= 0 && t.lag_clamp_deg <= 90 && t.pos_lag_clamp >= 0 && t.pos_lag_clamp <= 1 &&
            t.combat_tightness >= 0 && t.combat_tightness <= 1 && t.max_dt > 0 && t.max_dt <= 5 && t.snap_ratio >= 1 && t.max_orthonormality_error > 0 &&
            t.snap_coalesce_frames <= 60;
@@ -284,13 +284,47 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
     const bool coalesce = snap == 4 && s.tracking && s.applied_since_snap < t.snap_coalesce_frames;
     if (snap) reset(s);
 
-    // Target orientation: the vanilla camera pitched up so the ship sits below centre.
-    const double pitch = std::atan(t.offset_y * in.half_vfov_tan);
-    Mat3 target = mul(local_pitch(pitch), in.vanilla_cam);
-    if (!orthonormalize(target)) return refuse(Verdict::Degenerate);
-    // Target boom: the vanilla boom in the ship frame, scaled, back in world space.
-    const Vec3 target_boom = mul(boom_local * t.distance_scale, ship);
     const double target_length = boom * t.distance_scale;
+    Mat3 target;
+    Vec3 target_boom;
+    if (t.pitch_down_deg == 0) {
+        // Explicit compatibility mode: retain the old boom and its pitch-up
+        // framing, including native elevation/roll and their screen offset.
+        target = mul(local_pitch(std::atan(t.offset_y * in.half_vfov_tan)), in.vanilla_cam);
+        target_boom = mul(boom_local * t.distance_scale, ship);
+    } else {
+        // Ship-up frame, retaining native view yaw. The ship's own world roll
+        // is preserved; native local camera roll/pitch are replaced. Construct
+        // the boom from the desired projected anchor, rather than adding a
+        // pitch to a native boom that may already be elevated.
+        const Vec3 native_forward = row(in.view_rel, 2);
+        const double horizontal = std::hypot(native_forward.x, native_forward.z);
+        const double down = t.pitch_down_deg * pi / 180.0;
+        const double screen_slope = t.offset_y * in.half_vfov_tan;
+        const double elevation = down + std::atan(screen_slope);
+        // Keep the vertical framing plane well away from a vertical/forward
+        // boom. This also rejects extreme FOV/tunable combinations per frame.
+        if (!(horizontal > 1e-9) || !std::isfinite(screen_slope) || std::fabs(elevation) >= 80.0 * pi / 180.0)
+            return refuse(Verdict::InvalidInput);
+        const Vec3 heading = {native_forward.x / horizontal, 0, native_forward.z / horizontal};
+        const Vec3 right = {heading.z, 0, -heading.x};
+        const Vec3 forward = heading * std::cos(down) + Vec3{0, -std::sin(down), 0};
+        const Vec3 up = cross(forward, right);
+        Mat3 relative = {{{right.x, right.y, right.z}, {up.x, up.y, up.z}, {forward.x, forward.y, forward.z}}};
+        // Preserve the native horizontal anchor slope, but refuse native rays
+        // beyond 60 degrees from forward: those are not an ordinary back view.
+        const Vec3 native_ray = mul(boom_local * -1.0, transpose(in.view_rel));
+        if (!(native_ray.z > 1e-9) || std::fabs(native_ray.x) > std::sqrt(3.0) * native_ray.z)
+            return refuse(Verdict::NotBackView);
+        const Vec3 camera_boom = {-native_ray.x / native_ray.z, screen_slope, -1};
+        const Vec3 local_target_boom = mul(camera_boom * (target_length / length(camera_boom)), relative);
+        // Native lateral offsets/yaw must not place the elevated target in
+        // front of the ship despite passing the original native-view gate.
+        if (!(local_target_boom.z < -0.1 * target_length)) return refuse(Verdict::NotBackView);
+        target = mul(relative, ship);
+        target_boom = mul(local_target_boom, ship);
+    }
+    if (!orthonormalize(target)) return refuse(Verdict::Degenerate);
 
     const double step_dt = std::fmin(std::fmax(dt, 0.0), t.max_dt);
     // A9: with a target locked both time constants shrink by (1 - tightness);
