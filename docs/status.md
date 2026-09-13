@@ -77,6 +77,12 @@ pixel coverage. Final gloss tuning may follow improved lighting/reflections;
 accidental term loss still needs exclusion. Run 3 (automatic exposure and bloom) is now requested on the unchanged
 installed build. Hold Wine fixtures and installs while the user performs that
 comparison; there is no new user run for the HUD/stutter fixes yet.
+The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
+the native distance-based blend/depth switch and its alpha calculation. Far
+geometry genuinely composites with the background; temporal coverage must
+preserve that mixture rather than force opaque depth. The bloom lifetime host
+fixture's emission Reset model is repaired and independently reviewed
+(33 scenarios / 139 checks); this checkpoint changes no installed code.
 
 Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent

@@ -409,3 +409,12 @@ is installed in X3; [the compact install record](../../verification/results/bloo
 binds its source, toolchain, byte identity, load check and rollback. Gameplay
 quality, frame cost and native Windows remain unverified. Use run 3 in the
 [brief queue](../verification/user-runs.md) for the exposure/bloom comparison.
+
+Following emission integration, the host lifetime fixture now models the
+emission-operation guard and scene-owner admission used by production Reset.
+Its **33 scenarios / 139 checks** include reentrant Reset/ResetEx refusal while
+emission is active, preserving the invocation and resources before native
+dispatch, and admission revocation on ordinary successful or failed resets.
+Independent review and the focused host test pass. This repairs the test
+double and extends coverage; production behavior and the installed DLL are
+unchanged.

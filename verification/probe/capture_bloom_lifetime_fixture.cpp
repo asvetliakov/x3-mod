@@ -158,10 +158,11 @@ struct BloomPass {
 
 struct MotionOutput {
     std::vector<Surface*> resources;
-    bool releasing_ = false, taa_busy_ = false, boundary_available = true;
+    bool releasing_ = false, taa_busy_ = false, emission_busy_ = false, boundary_available = true;
     unsigned restores = 0, releases = 0, resets = 0, after_resets = 0, stateblocks = 0;
     unsigned scene_end_hooks = 0, scene_end_callbacks = 0;
-    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_; }
+    bool emission_operation_active() const noexcept { return emission_busy_; }
+    bool reference_accounting_busy() const noexcept { return releasing_ || taa_busy_ || emission_busy_; }
     unsigned device_references() const noexcept {
         return reference_accounting_busy() ? 0u : static_cast<unsigned>(resources.size());
     }
@@ -207,7 +208,7 @@ struct Device : Hooks {
     std::uint64_t reset_generation = 0;
     DWORD scene_thread = 0;
     unsigned bloom_busy = 0;
-    bool reset_active = false, bloom_attempted = false;
+    bool reset_active = false, bloom_attempted = false, emission_scene_owner = false;
     unsigned bloom_failure_reports = 0, bloom_prepared = 0, bloom_committed = 0, remaining = 0;
     bool capture = false;
     static std::atomic<unsigned> destructors;
@@ -448,6 +449,7 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     construct_invocation(env, call);
     env.native.reset_result = success ? S_OK : E_FAIL;
     env.native.reset_ex_result = success ? S_OK : E_FAIL;
+    env.ctx->emission_scene_owner = true;
     const unsigned adds = env.native.addref_calls;
     D3DPRESENT_PARAMETERS parameters{};
     D3DDISPLAYMODEEX mode{};
@@ -461,11 +463,36 @@ static void reset_case(AliasModel model, bool extended, bool success) {
     check(env.native.addref_calls == adds, "Reset nested child Releases do not run reference probe");
     check(env.ctx->reset_generation == 1 && !env.ctx->reset_active && env.ctx->scene_thread == 0,
           "Reset generation/thread state remains revoked after result");
+    check(!env.ctx->emission_scene_owner, "Reset revokes prior emission scene admission");
     check((extended ? env.native.reset_ex_calls.load() : env.native.reset_calls.load()) == 1,
           "correct Reset vtable slot called once");
     compositor_cleanup(nullptr, storage, nullptr, success ? 0 : 1);
     check(env.native.destroyed == 0 && devices.count(&env.device) == 1,
           "cleanup releases only explicit pin while application owner remains");
+}
+
+static void emission_busy_reset(AliasModel model, bool extended) {
+    ++scenarios;
+    Environment env(model);
+    alignas(CompositorInvocation) unsigned char storage[sizeof(CompositorInvocation)];
+    auto* call = reinterpret_cast<CompositorInvocation*>(storage);
+    construct_invocation(env, call);
+    env.ctx->motion_output.emission_busy_ = true;
+    env.ctx->emission_scene_owner = true;
+    D3DPRESENT_PARAMETERS parameters{};
+    D3DDISPLAYMODEEX mode{};
+    const HRESULT result = extended ? reset_ex(&env.device, &parameters, &mode)
+                                    : reset(&env.device, &parameters);
+    check(result == D3DERR_INVALIDCALL, "active emission rejects reentrant Reset/ResetEx");
+    check(env.native.reset_calls == 0 && env.native.reset_ex_calls == 0,
+          "rejected emission Reset never reaches either native slot");
+    check(env.ctx->motion_output.resets == 0 && env.ctx->bloom.resets == 0,
+          "rejected Reset preserves active injected resources");
+    check(env.ctx->reset_generation == 0 && !env.ctx->reset_active && !call->revoked,
+          "rejected Reset leaves the current invocation generation intact");
+    check(env.ctx->emission_scene_owner, "rejected Reset leaves current emission admission intact");
+    env.ctx->motion_output.emission_busy_ = false;
+    compositor_cleanup(nullptr, storage, nullptr, 0);
 }
 
 enum class Mismatch { None, Frame, Thread, Generation, Owner, Glow };
@@ -565,6 +592,7 @@ int main() {
         nested_busy_release(model);
         for (bool extended : {false, true}) for (bool success : {false, true})
             reset_case(model, extended, success);
+        for (bool extended : {false, true}) emission_busy_reset(model, extended);
     }
     for (auto mismatch : {Mismatch::None, Mismatch::Frame, Mismatch::Thread,
                           Mismatch::Generation, Mismatch::Owner, Mismatch::Glow}) post_case(mismatch);
