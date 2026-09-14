@@ -85,3 +85,22 @@ The existing node read remains 0x150 bytes; parent +18 and raw alpha override +1
 Performance inspection: no dynamic allocation, lock acquisition, game callback or native submission is added by these readers. The fixed cache occupies under 7 KiB per Device. Its worst-case key search is 512 small comparisons on capture draws only; no live noncapture draw enters it. Per distinct capture node the new ancestry work is at most 15 checked 44-byte reads and 17 small records; per distinct camera it is one 0x374-byte read plus scale/config fields. Capture cost is intentionally not presented as game FPS. Extra work remains inside the existing capture timing metric.
 
 Focused validation covers the actual pure reader/cache with synthetic memory and brace-extracts the production logging endpoint to exercise LastError, first-sample emission, reuse and failure. It includes malformed and cyclic active registries, ancestor read failure/cycle/depth limit, same pointer with changed handle or parent, target clearing, changed frame/Reset/diagnostic epoch, bounded cache exhaustion, and exact preservation of hostile raw bits. Windows-compatible source is syntax-checked with the project's x86/SSE2/stack flags; no native Windows or Wine behavior is claimed. Independent Sol/high source review approved with no findings. All 24 focused unittest methods pass; the reviewer reproduced them in 2.495 seconds. Full capture.cpp and object_trace.cpp x86 syntax-only compilation passes with SSE2, four-byte incoming stack and warnings-as-errors. No Wine qualification is required to claim these host/source results, and no runtime result is implied.
+
+## Run 11 captures: no fog transition; coexisting lighting on every station model
+
+Triage of the five run-11 F8 frames (`/tmp/x3-bottleX3-run36/`, frames 1476, 1699,
+1917, 13681, 14601; the last two are the station approach) on installed `3f06979`:
+shader `b0` and `D3DRS_FOGENABLE` are 0 on every inspected BUMP/DEFAULT/port draw
+(port draws per frame 2, 2, 3, 2, 1; BUMP 32, 32, 37, 15, 8; DEFAULT 53, 53, 73, 14,
+14), so no native distance-fog transition exists in any capture. `object_fade` rows
+are per camera only (N/F `0x017d7840/0x01c9c380` early, `0x02faf080/0x03473bc0` at the
+station); ancestry rows show `alpha13c=0` for the port draws. Between 13681 and
+14601 the surviving station node `0e9d37b8` (model `5471`, LOD 2) repeats an identical
+16-draw sequence; node `25180e80` (model `5436`) is present at 13681 and absent at
+14601 (visibility, not a state flip). Every station model key mixes converted and
+native lighting (routed/refused: `543f` 42/3, `542a` 42/3, `5427` 15/1, `5436` 12/1,
+`5471` 30/2); the refused remainder is the source-over port pair
+`4944d81dfe531b37/64bac8bb307eb896` (Z-write off, SRCALPHA/INVSRCALPHA, gate 4). The
+state precondition for the coexisting-lighting explanation therefore exists on every
+station; pixel-level proof and the remedy are the subject of
+`docs/architecture/linear-station-source-over.md`.
