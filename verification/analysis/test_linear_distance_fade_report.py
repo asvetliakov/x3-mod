@@ -43,6 +43,16 @@ def witness(raw):
     for reset in (0,1):
         active=[c for c in run.expanded_cases(source) if (c['id']>=1000)==bool(reset)];calls=sum(run.steps(c) for c in active)
         lines.append(f"FADE_BATCH reset={reset} cases={len(active)} brackets={calls-sum(c['affine'] in (1,2) for c in active)} native={calls} restored={calls} refs_before=10 refs_after=10")
+    for index,(label,bound,covered) in enumerate(run.REGION_CASES):
+        x,y,w,h=run.REGION_VIEWPORT.get(label,(0,0,16,16))
+        rect=(x+1,y+1,x+w-1,y+h-1) if bound else (x,y,x+w,y+h)
+        inside=lambda px,py:covered and rect[0]+1<=px<rect[2]-1 and rect[1]+1<=py<rect[3]-1
+        mask=[(1.,1.,1.,0.) if inside(n%16,n//16) else (0.,0.,0.,0.) for n in range(256)]
+        write(raw/f"fade_{5000+index}_0_M.rgba32f",mask)
+        lines.append(f"FADE_REGION id={5000+index} label={label} bound={bound} reason={run.REGION_REASONS.get(label,0)} "
+                     f"rect={rect[0]},{rect[1]},{rect[2]},{rect[3]} viewport={x},{y},{w},{h} covered={sum(m[0]==1 for m in mask)} "
+                     f"violations=0 area={(rect[2]-rect[0])*(rect[3]-rect[1])}")
+    lines.append(f"FADE_REGION_RESULT cases={len(run.REGION_CASES)} bound={sum(c[1] for c in run.REGION_CASES)} violations=0")
     lines+=['FADE_RESULT PASS reset=1 partial_vs_failures=1','RESULT PASS cases=65']
     return '\n'.join(lines),source
 

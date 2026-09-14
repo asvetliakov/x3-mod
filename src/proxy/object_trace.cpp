@@ -172,6 +172,15 @@ bool initialize() {
 bool active(){return observation.load();}
 bool recovery_required(){return installed&&!observation.load();}
 const char* status(){return state.load();}
+bool scope_descriptor(uintptr_t* descriptor,uint32_t* depth) {
+    if(descriptor)*descriptor=0;
+    if(depth)*depth=0;
+    if(!descriptor||!depth||!observation.load())return false;
+    const DWORD error=GetLastError(); // TlsGetValue writes ERROR_SUCCESS on success
+    Scope* scope=top();
+    if(scope){*descriptor=scope->args[0];*depth=scope->depth;}
+    SetLastError(error);return scope!=nullptr;
+}
 bool current(Snapshot* out,bool matrices) {
     if(!out)return false;
     const DWORD error=GetLastError();*out={};

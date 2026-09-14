@@ -29,10 +29,23 @@ SCOPE=('src/renderer/linear_material.cpp','src/renderer/linear_distance_fade.h',
        'verification/probe/linear_alpha_test_fixture_inc.h',
        'verification/probe/linear_distance_fade_fixture_inc.h',
        'verification/probe/linear_distance_fade_composite_inc.h',
+       'src/proxy/fade_region_math.h','src/proxy/fade_region_core.h',
        'verification/probe/run_linear_distance_fade.py',
        'verification/probe/linear_material_reference.py','verification/probe/run_linear_material.py')
 BAD_BACKGROUND=0x100000
 OCCLUDER=0x200000
+# Region case group (linear_distance_fade_fixture_inc.h region_cases, same
+# order): label, whether the production projection must yield a box-derived
+# rectangle, whether the source must rasterise at least one M pixel, and the
+# application viewport. Rectangles come from the fixture's call of the
+# production header; the runner re-checks every M pixel against them.
+REGION_CASES=(('interior',1,1),('edge_left',1,1),('edge_right',1,1),('edge_top',1,1),('edge_bottom',1,1),
+              ('corner',1,1),('offscreen',1,0),('w_zero',0,0),('w_negative',0,0),('w_tiny',1,0),('near_plane',1,1),
+              ('nan_rows',0,0),('inf_rows',0,0),('rows_unknown',0,1),('bound_unknown',0,1),('negative_extent',0,0),
+              ('fill_wireframe',0,0),('tiny',1,0),('huge',1,1),('viewport_offset',1,1),('scissor',1,1))+tuple(
+              (f'jitter_{k}',1,1) for k in range(1,9))
+REGION_VIEWPORT={'viewport_offset':(4,4,8,8)}
+REGION_REASONS={'w_zero':4,'w_negative':4,'nan_rows':5,'inf_rows':5,'rows_unknown':2,'bound_unknown':3,'negative_extent':3,'fill_wireframe':6}
 
 def cases():
     base=dict(depth=1,lights=1,reverse=0,affine=0,valid=1,fp16=1,
@@ -207,7 +220,8 @@ def validate_report(text,source,raw):
                         max_fraction=max(max_fraction,fraction)
                     channels+=1
             current=output
-    return dict(cases=len(expected),source_calls=sum(steps(c) for c in expected),
+    regions=validate_regions(text,raw)
+    return dict(cases=len(expected),source_calls=sum(steps(c) for c in expected),**regions,
                 numerical_channels=channels,alpha_values=alpha_values,q_values=q_values,
                 mask_values=mask_values,exact_raw_channels=exact_raw,max_tolerance_fraction=max_fraction,
                 energy_channels=q_values*3,exact_energy_channels=exact_energy,
@@ -215,6 +229,38 @@ def validate_report(text,source,raw):
                 source_alpha_identity='Exact original/dual native RGBA and native/E alpha in RGBA32F before FP16 storage',
                 fault_cases=5,capability_refusals=4,state_refusals=3,reset=True,owned_references_retired=True,
                 temporal_scope='Pass coverage only; no current/previous mask integration or transparent TAA claim')
+
+def validate_regions(text,raw):
+    rows=[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith('FADE_REGION ')]
+    assert [r['label'] for r in rows]==[c[0] for c in REGION_CASES],'exact ordered region case set'
+    result=re.search(r'^FADE_REGION_RESULT cases=(\d+) bound=(\d+) violations=(\d+)$',text,re.M)
+    assert result and int(result.group(1))==len(REGION_CASES) and int(result.group(3))==0,'region group terminal line'
+    assert int(result.group(2))==sum(c[1] for c in REGION_CASES),'bound case count'
+    fractions={};violations=0;covered_total=0
+    for (label,expect_bound,expect_covered),row in zip(REGION_CASES,rows):
+        x,y,w,h=REGION_VIEWPORT.get(label,(0,0,SIZE,SIZE))
+        assert tuple(int(v) for v in row['viewport'].split(','))==(x,y,w,h),(label,'viewport')
+        l,t,r,b=(int(v) for v in row['rect'].split(','))
+        assert int(row['bound'])==expect_bound,(label,'bound flag',row)
+        assert int(row['reason'])==REGION_REASONS.get(label,0),(label,'reason',row)
+        if not expect_bound:assert (l,t,r,b)==(x,y,x+w,y+h),(label,'full viewport on doubt',row)
+        assert x<=l<r<=x+w and y<=t<b<=y+h,(label,'rectangle inside the viewport',row)
+        assert int(row['area'])==(r-l)*(b-t)
+        mask=pixels(raw/f"fade_{int(row['id'])}_0_M.rgba32f")
+        covered=0
+        for n,m in enumerate(mask):
+            if m[0]==0:continue
+            assert m==(1.,1.,1.,0.),(label,'M value',m)
+            covered+=1;px,py=n%SIZE,n//SIZE
+            if not (l<=px<r and t<=py<b):violations+=1
+        assert covered==int(row['covered']),(label,'covered count')
+        assert int(row['violations'])==0 and violations==0,(label,'M pixel outside the rectangle')
+        if expect_covered:assert covered>0,(label,'source rasterised nothing')
+        if label=='offscreen':assert covered==0,(label,'off-screen box rasterised')
+        covered_total+=covered;fractions[label]=(r-l)*(b-t)/(w*h)
+    return dict(region_cases=len(rows),region_bound_cases=sum(c[1] for c in REGION_CASES),region_violations=violations,
+                region_covered_pixels=covered_total,region_area_fractions=fractions,
+                region_scope='Step 1: rectangle derived and witnessed against M only; the prototype-1 bracket composes the full target')
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 

@@ -29,6 +29,10 @@ const char* status(); // static diagnostic string; initialize once, then read
 // engine matrices (8 of the 12 reads): the route needs node, camera and
 // registry only; capture frames and diagnostics keep the default.
 bool current(Snapshot* out, bool matrices = true);
+// The innermost seam scope on this thread without any memory read: its first
+// stack argument (the material descriptor of 0x004c0150) and its depth.
+// false (outputs zero) without observation or scope. LastError preserved.
+bool scope_descriptor(uintptr_t* descriptor, uint32_t* depth);
 bool shutdown(); // restore only our own displacement, while no submission can run
 #ifdef X3M_OBJECT_TRACE_FIXTURE
 // Compile-only original fixture seam: absent from production. Caller owns code

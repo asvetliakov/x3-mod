@@ -297,6 +297,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
     drop_redirect();
     if (composition_) { composition_->detach(); composition_.reset(); }
+    fade_bounds_.clear();
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
     // of this function must not probe a device that no longer exists.
@@ -803,6 +804,7 @@ void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexc
     if (composition_requested()) {
         const unsigned blend = state == D3DRS_SRCBLEND ? 0u : state == D3DRS_DESTBLEND ? 1u : state == D3DRS_BLENDOP ? 2u : 3u;
         if (blend < 3) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
+        if (state == D3DRS_FILLMODE) { shadow_.fill_mode = value; shadow_.fill_mode_known = true; }
     }
 }
 void MotionOutput::render_state_failed(D3DRENDERSTATETYPE state) noexcept {
@@ -1872,6 +1874,7 @@ void MotionOutput::before_reset() noexcept {
     drop_redirect(); // The FP16 target goes with RT1/RT2.
     release_target();
     if (composition_) { composition_busy_ = true; composition_->before_reset(); composition_busy_ = false; }
+    fade_bounds_.clear(); // relearned after Reset; allocation ids never recur
     composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
     if (hdr_) hdr_->before_reset();
@@ -2171,11 +2174,13 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
 void MotionOutput::set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride) noexcept {
     if (!enabled_ || shadow_.recording || stream) return;
     shadow_.stream0 = buffer ? resource_id(buffer) : 0;
+    shadow_.stream0_identity = shadow_.stream0 ? reinterpret_cast<std::uintptr_t>(buffer) : 0;
     shadow_.stream0_offset = offset; shadow_.stream0_stride = stride;
 }
 void MotionOutput::set_indices(IDirect3DIndexBuffer9* buffer) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.indices = buffer ? resource_id(buffer) : 0;
+    shadow_.indices_identity = shadow_.indices ? reinterpret_cast<std::uintptr_t>(buffer) : 0;
 }
 // Declaration identity is the hash of its elements (as draw_input does), plus
 // the stream-0 POSITION0 layout the key records.
@@ -2276,6 +2281,7 @@ void MotionOutput::resync_shadow() noexcept {
         const D3DRENDERSTATETYPE blend[] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP};
         for (unsigned i = 0; i < 3; ++i)
             shadow_.composition_blend_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, blend[i], &shadow_.composition_blend[i]));
+        shadow_.fill_mode_known = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_FILLMODE, &shadow_.fill_mode));
     }
     resync_samplers();
 }
@@ -2555,8 +2561,7 @@ void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
     if (!shadow_.rows_known[window] || !main_.width || !main_.height) return;
     float rows[16];
     std::memcpy(rows, shadow_.rows[window], sizeof rows);
-    const float jx = 2.f * jitter_[0] / float(main_.width), jy = -2.f * jitter_[1] / float(main_.height);
-    for (unsigned k = 0; k < 4; ++k) { rows[k] += jx * rows[12 + k]; rows[4 + k] += jy * rows[12 + k]; }
+    fade_region::jitter_rows(rows, jitter_[0], jitter_[1], main_.width, main_.height); // shared with the region projection
     const std::uint64_t begin = draw_stamp();
     const HRESULT hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, row.matrix_register, rows, 4);
     const std::uint64_t ticks = draw_stamp() - begin;
@@ -2706,6 +2711,8 @@ void MotionOutput::begin_composition_frame() noexcept {
         const bool first = !composition_attach_attempted_;
         composition_depth_format_ = depth_format; composition_attach_attempted_ = true;
         try { if (!composition_) composition_ = std::make_unique<renderer::LinearEmissionPass>(); } catch (...) {}
+        if ((requested & 2u) && !fade_bounds_.reserved() && !fade_bounds_.reserve())
+            log("fade_region_table device=%llu reserve=failed", id_);
         if (composition_) {
             const HRESULT hr = composition_->attach(device_, native_, caps_, composition_adapter_format_, depth_format, requested);
             if (first || hr != composition_attach_result_)
@@ -2793,6 +2800,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         if (required && route.scene) { composition_frame_stopped_ = true; invalidate_taa(); }
         return;
     }
+    if (fade) derive_fade_region(route);
     composition_busy_ = true;
     renderer::LinearEmissionBoundary boundary{hdr_->target(), fade ? shadow_.ps_fade_variant : shadow_.emission_eligible_variant, frame_, true};
     boundary.policy = policy;
@@ -3126,6 +3134,65 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // The mip LOD bias of the routed material stages, while the jitter is on
     // (a failed sampler call is counted and logged; the draw still routes).
     if (mip_bias_bits_ && jitter_active_) apply_mip_bias();
+}
+
+// Step 1 of the region design: the rectangle for an admitted fade draw, from
+// the owning part's AABB (fade_bounds_) through the rows the draw uses
+// (jittered like apply_jitter when route.jittered), intersected with the
+// application viewport and the owning target. Every doubt selects the full
+// viewport (an unknown viewport selects the whole target); nothing here
+// changes the bracket yet. Per draw: one table probe, on a hit two content
+// views (each one recursive registry_mutex take, one map find and one native
+// GetPrivateData on the backend buffer: two native calls and two mutex takes
+// per admitted fade draw), eight corner projections; no allocation, no device
+// Get, no float formatting (the per-draw line carries the fraction as an
+// integer per mille of the viewport area, or of the target area when the
+// viewport is unknown).
+void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
+    using namespace fade_region;
+    route.fade_region_evaluated = true;
+    const Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity};
+    const Result bound = fade_region::resolve(fade_bounds_, query);
+    auto& counts = composition_counts_;
+    ++counts.region_status[unsigned(bound.status) < unsigned(Status::Count) ? unsigned(bound.status) : 0u];
+    if (bound.hit) ++counts.region_hit; else if (bound.status == Status::Bound) ++counts.region_miss;
+    if (bound.poisoned_now) ++counts.region_poisoned;
+    if (bound.evicted) ++counts.region_evicted;
+    const auto& v = shadow_.viewport;
+    const Viewport viewport{v.x, v.y, v.known ? v.width : 0u, v.known ? v.height : 0u};
+    const float* rows = nullptr;
+    float jittered[16];
+    if (shadow_.vs_row) {
+        const std::size_t window = window_of(shadow_.vs_row->matrix_register);
+        if (window < motion_matrix_windows_max && shadow_.rows_known[window]) {
+            std::memcpy(jittered, shadow_.rows[window], sizeof jittered);
+            if (route.jittered && main_.width && main_.height) jitter_rows(jittered, jitter_[0], jitter_[1], main_.width, main_.height);
+            rows = jittered;
+        }
+    }
+    const bool fill_solid = shadow_.fill_mode_known && shadow_.fill_mode == D3DFILL_SOLID;
+    const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : 0u), std::int32_t(hdr_ ? hdr_->height() : 0u)};
+    Region region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target);
+    // Never beyond the owning target, on every path; empty -> 1x1 at its origin.
+    region.rect = intersect(region.rect, target);
+    if (empty(region.rect)) region.rect = {target.left, target.top, target.left + 1, target.top + 1};
+    route.fade_region = region;
+    ++counts.region_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
+    // One denominator: the viewport area; the target area only while the
+    // viewport is unknown (the log names which one).
+    const bool of_viewport = region.reason != Reason::Viewport;
+    const std::uint64_t whole = of_viewport ? std::uint64_t(viewport.width) * viewport.height : area(target);
+    const unsigned permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
+    counts.region_permille_sum += permille;
+    if (region.bound) ++counts.region_bound; else ++counts.region_full;
+    if (capture_)
+        log("fade_region device=%llu frame=%llu index=%lu bound=%u reason=%u status=%s hit=%u poisoned=%u evicted=%u depth=%lu descriptor=%p part=%p aabb=%ld,%ld,%ld,%ld,%ld,%ld vb=%llu ib=%llu vb_rev=%llu ib_rev=%llu jittered=%u rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s table_used=%u table_poisoned=%u",
+            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), status_name(bound.status), bound.hit, bound.poisoned_now, bound.evicted,
+            static_cast<unsigned long>(bound.depth), reinterpret_cast<void*>(bound.descriptor), reinterpret_cast<void*>(bound.part),
+            long(bound.aabb[0]), long(bound.aabb[1]), long(bound.aabb[2]), long(bound.aabb[3]), long(bound.aabb[4]), long(bound.aabb[5]),
+            shadow_.stream0, shadow_.indices, bound.vb_revision, bound.ib_revision, route.jittered,
+            long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target",
+            fade_bounds_.used(), fade_bounds_.poisoned());
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
@@ -3612,6 +3679,14 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 composition_counts_.refused, composition_counts_.suppressed, composition_counts_.exports, composition_quarantined_, composition_state_lost_,
                 composition_ && composition_->coverage_valid() && !composition_frame_stopped_ && !composition_quarantined_,
                 composition_counts_.eligible_fade, composition_counts_.prepared_fade, composition_counts_.linear_fade, composition_counts_.pool_traffic_bytes);
+        if (distance_fade_requested_ && (composition_counts_.region_bound || composition_counts_.region_full))
+            log("fade_region_frame device=%llu frame=%llu bound=%u full=%u hit=%u miss=%u poisoned=%u evicted=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u status_no_table=%u status_no_scope=%u status_content=%u status_poisoned=%u status_read=%u status_back_link=%u status_no_record=%u status_invalid=%u table_used=%u table_poisoned=%u table_evictions=%u",
+                id_, frame_, composition_counts_.region_bound, composition_counts_.region_full, composition_counts_.region_hit, composition_counts_.region_miss, composition_counts_.region_poisoned, composition_counts_.region_evicted,
+                double(composition_counts_.region_permille_sum) / (1000.0 * double(composition_counts_.region_bound + composition_counts_.region_full)),
+                composition_counts_.region_reason[1], composition_counts_.region_reason[2], composition_counts_.region_reason[3], composition_counts_.region_reason[4],
+                composition_counts_.region_reason[5], composition_counts_.region_reason[6], composition_counts_.region_status[1], composition_counts_.region_status[2], composition_counts_.region_status[3],
+                composition_counts_.region_status[4], composition_counts_.region_status[5], composition_counts_.region_status[6], composition_counts_.region_status[7], composition_counts_.region_status[8],
+                fade_bounds_.used(), fade_bounds_.poisoned(), fade_bounds_.evictions());
         if (composition_requested())
             log("%s_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx",
                 distance_fade_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2], composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],
@@ -3702,6 +3777,11 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 19: return composition_ ? composition_->caps().supported_policies : 0;
     case 20: return composition_ ? composition_->references() : 0;
     case 21: return composition_ ? composition_->allocations() : 0;
+    case 22: return composition_counts_.region_bound;
+    case 23: return composition_counts_.region_full;
+    case 24: return composition_counts_.region_hit;
+    case 25: return composition_counts_.region_poisoned;
+    case 26: return fade_bounds_.reserved();
     case 30: return unsigned(cutout_caps_);
     case 31: return cutout_cap_queries_;
     case 32: return cutout_coverage_missed_;

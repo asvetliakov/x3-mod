@@ -2,7 +2,10 @@
 // mode.
 #include "../../src/renderer/linear_emission_pass.h"
 #include "../../src/renderer/quad_vertex_program.h"
+#include "../../src/proxy/fade_region_math.h"
 #include <algorithm>
+#include <cmath>
+#include <limits>
 namespace fade_fixture {
 constexpr D3DFORMAT format = D3DFMT_A16B16G16R16F;
 constexpr D3DRENDERSTATETYPE watched[] = {D3DRS_ZENABLE,
@@ -271,6 +274,124 @@ void source_state(Gpu &gpu, Case c, IDirect3DSurface9 *target,
   api(d->SetVertexShaderConstantF((vi == 9 || vi == 12) ? 18 : 39, alpha, 1));
   draw.bind();
 }
+// Region case group (docs/architecture/linear-distance-fade-region.md, step
+// 1): asteroid-pair geometry sampled inside a synthetic object-space AABB,
+// drawn through the unchanged prototype-1 bracket with the rows the
+// production projection sees; every M pixel the source rasterised must lie in
+// the rectangle x3m::fade_region::derive computes. Labels and order are
+// mirrored by run_linear_distance_fade.py (REGION_CASES).
+struct RegionCase {
+  const char *label;
+  float centre[3], half[3];
+  float rows[16];        // rows as the application submits them (c24..c27)
+  unsigned jitter;       // 0: none; else the 1-based Halton index (production sequence)
+  unsigned viewport[4];  // application viewport; {0,0,0,0} = whole 16x16 target
+  unsigned scissor;      // SCISSORTESTENABLE with rect (0,0,8,8)
+  unsigned rows_known, bound_known, fill_solid;
+};
+constexpr float region_nan = std::numeric_limits<float>::quiet_NaN();
+constexpr float region_inf = std::numeric_limits<float>::infinity();
+// Perspective-like rows: x' = s x, y' = s y, w = z + d; z' = w / 2 unless
+// near_plane, where z' = z crosses the near plane while every w stays > 0.
+#define REGION_ROWS(s, d) {s, 0, 0, 0, 0, s, 0, 0, 0, 0, .5f, .5f * (d), 0, 0, 1, d}
+#define REGION_NEAR(s, d) {s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1, 0, 0, 0, 1, d}
+constexpr RegionCase region_cases[] = {
+    {"interior", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"edge_left", {-1.5f, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"edge_right", {1.5f, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"edge_top", {0, 1.5f, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"edge_bottom", {0, -1.5f, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"corner", {1.5f, 1.5f, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"offscreen", {6, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"w_zero", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, .5f), 0, {}, 0, 1, 1, 1},
+    {"w_negative", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 0), 0, {}, 0, 1, 1, 1},
+    {"w_tiny", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, .5f + 1.f / 1024 + 1e-6f), 0, {}, 0, 1, 1, 1},
+    {"near_plane", {0, 0, 0}, {.5f, .5f, .5f}, REGION_NEAR(1, 2), 0, {}, 0, 1, 1, 1},
+    {"nan_rows", {0, 0, 0}, {.5f, .5f, .5f}, {region_nan, 0, 0, 0, 0, 1, 0, 0, 0, 0, .5f, 1, 0, 0, 1, 2}, 0, {}, 0, 1, 1, 1},
+    {"inf_rows", {0, 0, 0}, {.5f, .5f, .5f}, {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, .5f, 1, 0, 0, 1, region_inf}, 0, {}, 0, 1, 1, 1},
+    {"rows_unknown", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 0, 1, 1},
+    {"bound_unknown", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 0, 1},
+    {"negative_extent", {0, 0, 0}, {.5f, -.5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"fill_wireframe", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 0},
+    {"tiny", {0, 0, 0}, {.005f, .005f, .005f}, REGION_ROWS(1, 2), 0, {}, 0, 1, 1, 1},
+    {"huge", {0, 0, 0}, {2, 2, 2}, REGION_ROWS(4, 5), 0, {}, 0, 1, 1, 1},
+    {"viewport_offset", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {4, 4, 8, 8}, 0, 1, 1, 1},
+    {"scissor", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 0, {}, 1, 1, 1, 1},
+    {"jitter_1", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 1, {}, 0, 1, 1, 1},
+    {"jitter_2", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 2, {}, 0, 1, 1, 1},
+    {"jitter_3", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 3, {}, 0, 1, 1, 1},
+    {"jitter_4", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 4, {}, 0, 1, 1, 1},
+    {"jitter_5", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 5, {}, 0, 1, 1, 1},
+    {"jitter_6", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 6, {}, 0, 1, 1, 1},
+    {"jitter_7", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 7, {}, 0, 1, 1, 1},
+    {"jitter_8", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 8, {}, 0, 1, 1, 1},
+};
+#undef REGION_ROWS
+#undef REGION_NEAR
+// motion_output.cpp's jitter sequence: Halton bases 2 and 3, 1-based index,
+// centred on the raster centre.
+float region_halton(unsigned index, unsigned base) {
+  float fraction = 1.f, result = 0.f;
+  while (index) {
+    fraction /= float(base);
+    result += fraction * float(index % base);
+    index /= base;
+  }
+  return result;
+}
+// Geometry sampled inside the box: the eight corners plus 24 deterministic
+// interior points; the twelve face triangles plus 20 interior triangles.
+struct BoxDraw {
+  IDirect3DDevice9 *d;
+  Com<IDirect3DVertexBuffer9> vb;
+  Com<IDirect3DIndexBuffer9> ib;
+  static constexpr unsigned vertices = 32, triangles = 32;
+  BoxDraw(IDirect3DDevice9 *device, const Case &c, const RegionCase &r)
+      : d(device) {
+    float verts[vertices][14]{};
+    unsigned short indices[triangles * 3]{};
+    unsigned seed = 0x9e3779b9u;
+    auto next = [&seed]() {
+      seed = seed * 1664525u + 1013904223u;
+      return float(seed >> 8) / float(1u << 24); // [0, 1)
+    };
+    for (unsigned n = 0; n < vertices; ++n) {
+      auto &v = verts[n];
+      for (unsigned a = 0; a < 3; ++a) {
+        const float t = n < 8 ? float((n >> a) & 1u) : next();
+        v[a] = r.centre[a] + (2 * t - 1) * r.half[a];
+      }
+      std::memcpy(v + 5, c.f + 28, 12);
+      std::memcpy(v + 8, c.f + 36, 12);
+      std::memcpy(v + 11, c.f + 39, 12);
+    }
+    const unsigned short faces[12][3] = {{0, 1, 2}, {1, 3, 2}, {4, 6, 5}, {5, 6, 7},
+                                         {0, 4, 1}, {1, 4, 5}, {2, 3, 6}, {3, 7, 6},
+                                         {0, 2, 4}, {2, 6, 4}, {1, 5, 3}, {3, 5, 7}};
+    unsigned cursor = 0;
+    for (const auto &f : faces)
+      for (unsigned k = 0; k < 3; ++k)
+        indices[cursor++] = f[k];
+    while (cursor < triangles * 3)
+      indices[cursor++] = static_cast<unsigned short>(unsigned(next() * vertices) % vertices);
+    api(d->CreateVertexBuffer(vertices * 56, 0, 0, D3DPOOL_MANAGED, &vb.p, nullptr));
+    api(d->CreateIndexBuffer(triangles * 6, 0, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ib.p, nullptr));
+    void *data = nullptr;
+    api(vb->Lock(0, 0, &data, 0));
+    std::memcpy(data, verts, sizeof verts);
+    api(vb->Unlock());
+    api(ib->Lock(0, 0, &data, 0));
+    std::memcpy(data, indices, sizeof indices);
+    api(ib->Unlock());
+  }
+  void bind() {
+    api(d->SetStreamSource(0, vb.p, 0, 56));
+    api(d->SetIndices(ib.p));
+  }
+  HRESULT issue() {
+    return d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, vertices, 0, triangles);
+  }
+};
 void equal(const std::vector<Pixel> &a, const std::vector<Pixel> &b,
            const char *message) {
   require(a.size() == b.size() &&
@@ -554,6 +675,94 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
                   c.id, c.pair, steps, case_native, case_brackets, c.affine,
                   unsigned(after_reset));
       ++checked;
+    }
+    if (!after_reset) {
+      // Region group: the 'full' case of pair 110 (alpha 1) supplies the
+      // material state; the geometry, rows, viewport and scissor are the
+      // region case's. The bracket is prototype 1, unchanged.
+      const Case *base = nullptr;
+      for (const auto &c : cases)
+        if (c.id == 2) base = &c;
+      require(base && base->pair == 110 && base->f[6] == 1, "region base case");
+      unsigned region_violations = 0, region_bound_cases = 0;
+      for (unsigned i = 0; i < std::size(region_cases); ++i) {
+        const auto &r = region_cases[i];
+        const unsigned id = 5000 + i;
+        upload.background(scene.surface.p, false);
+        BoxDraw draw(d, *base, r);
+        Draw unused(d, *base, 0, 16);
+        source_state(gpu, *base, scene.surface.p, depth.p, unused);
+        draw.bind();
+        shaders.bind(*base, 3);
+        IDirect3DVertexShader9 *augmented_vs = shaders.vertices.at(shaders.key(*base, 3, false));
+        IDirect3DPixelShader9 *augmented_ps = shaders.pixels.at(shaders.key(*base, 3, true));
+        // The rows the draw uses: the application's rows, jittered exactly as
+        // MotionOutput::apply_jitter does (shared helper), on the device and
+        // in the projection.
+        float rows[16];
+        std::memcpy(rows, r.rows, sizeof rows);
+        if (r.jitter)
+          x3m::fade_region::jitter_rows(rows, region_halton(r.jitter, 2) - .5f, region_halton(r.jitter, 3) - .5f, 16, 16);
+        api(d->SetVertexShaderConstantF(24, rows, 4));
+        x3m::fade_region::Viewport viewport{0, 0, 16, 16};
+        if (r.viewport[2]) {
+          viewport = {r.viewport[0], r.viewport[1], r.viewport[2], r.viewport[3]};
+          D3DVIEWPORT9 vp{r.viewport[0], r.viewport[1], r.viewport[2], r.viewport[3], 0, 1};
+          api(d->SetViewport(&vp));
+        }
+        if (r.scissor) {
+          const RECT scissor{0, 0, 8, 8};
+          api(d->SetScissorRect(&scissor));
+          api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE));
+        }
+        api(d->SetRenderState(D3DRS_FILLMODE, r.fill_solid ? D3DFILL_SOLID : D3DFILL_WIREFRAME));
+        x3m::fade_region::Box box{};
+        for (unsigned a = 0; a < 3; ++a) { box.centre[a] = r.centre[a]; box.half[a] = r.half[a]; }
+        const auto region = x3m::fade_region::derive(r.rows_known ? rows : nullptr, r.bound_known != 0, box, viewport, r.fill_solid != 0, x3m::fade_region::Rect{0, 0, 16, 16});
+        const auto rect = x3m::fade_region::intersect(region.rect, x3m::fade_region::Rect{0, 0, 16, 16});
+        Snapshot caller(d);
+        auto begin = pass.begin_frame(id + 1);
+        require(begin.ready && begin.state_preserved, "region M frame clear");
+        LinearEmissionBoundary boundary{scene.surface.p, augmented_ps, id + 1, true, augmented_vs};
+        api(d->BeginScene());
+        const auto prep = pass.prepare(boundary);
+        require(prep.ready, "region bracket prepared");
+        const HRESULT source = draw.issue();
+        const auto finish = pass.finish(source);
+        api(d->EndScene());
+        if (FAILED(source) || finish.image != LinearEmissionImage::Linear)
+          std::printf("FADE_REGION_FAILURE label=%s source=%08lx image=%u composition=%08lx restore=%08lx\n",
+                      r.label, source, unsigned(finish.image), finish.composition, finish.restore);
+        require(SUCCEEDED(source) && finish.image == LinearEmissionImage::Linear, "region bracket completed");
+        auto *slot = pass.owning_candidate();
+        require(slot && *slot, "region owning candidate");
+        std::swap(scene.surface.p, *slot);
+        api(pass.acknowledge_exchange(true));
+        caller.check(d, scene.surface.p);
+        require(pass.coverage_valid(), "region coverage complete");
+        const auto mask = gpu.read(pass.coverage_target(), format);
+        dump("M", id, 0, mask);
+        unsigned covered = 0, violations = 0;
+        for (unsigned n = 0; n < mask.size(); ++n) {
+          if (mask[n].f[0] == 0)
+            continue;
+          ++covered;
+          if (!x3m::fade_region::contains(rect, int(n % 16), int(n / 16)))
+            ++violations;
+        }
+        region_violations += violations;
+        region_bound_cases += region.bound;
+        api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE));
+        api(d->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID));
+        std::printf("FADE_REGION id=%u label=%s bound=%u reason=%u rect=%d,%d,%d,%d viewport=%u,%u,%u,%u covered=%u violations=%u area=%llu\n",
+                    id, r.label, region.bound, unsigned(region.reason), rect.left, rect.top, rect.right, rect.bottom,
+                    viewport.x, viewport.y, viewport.width, viewport.height, covered, violations,
+                    static_cast<unsigned long long>(x3m::fade_region::area(rect)));
+      }
+      require(pass.allocations() == allocations, "no region pool allocation");
+      require(region_violations == 0, "M pixel outside its region rectangle");
+      std::printf("FADE_REGION_RESULT cases=%u bound=%u violations=%u\n",
+                  unsigned(std::size(region_cases)), region_bound_cases, region_violations);
     }
     api(d->SetTexture(0, nullptr));
     api(d->SetTexture(1, nullptr));

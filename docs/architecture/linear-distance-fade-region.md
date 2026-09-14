@@ -294,3 +294,109 @@ with `f ∈ {1, ≈0.06, ≈0.01}` and actual region-pixel counters per frame.
   statically): step-1 counters.
 - **Actual `f` distribution and fixed bracket cost**: step-1 witness and step-3
   timings; no gameplay claim before them.
+
+## Step 1 — implemented 2026-09-14 (bound, projection, witness; no composition change)
+
+Code: `src/proxy/fade_region_math.h` (pure projection: `project_box`,
+`derive`, `jitter_rows`, shared with the fixture and the host driver),
+`src/proxy/fade_region_core.h` (`BoundTable`, Windows-free, driven through an
+`Environment` of three function pointers: validated read, seam scope, buffer
+content view), `src/proxy/fade_region.{h,cpp}` (production binding to
+`engine_memory::read`, `object_trace::scope_descriptor` and
+`ownership::get_buffer_content_view`; `resolve` preserves LastError),
+`object_trace::scope_descriptor` (TLS scope's `args[0]` and depth, no memory
+read), `MotionOutput::derive_fade_region` (after refusals 0–4 of
+`prepare_composition`, before `prepare()`; `apply_jitter` now uses the shared
+`jitter_rows`). Per admitted fade DIP the `fade_region` capture line carries
+bound/reason/status, hit/poison/eviction, scope depth, descriptor, part, the
+six raw AABB fields, VB/IB ids and revisions, the rectangle and the area
+fraction as an integer per mille (no float formatting in the draw hook); the
+per-frame `fade_region_frame` line (Present boundary) sums bound/full/hit/
+miss/poisoned/evicted, the reason and status histograms, the mean `f` and the
+table occupancy. Fixture status keys 22–26 expose the counters.
+
+Table: 1024 entries reserved with the composition pass, dropped at Reset and
+teardown; keyed by the VB allocation id, 32-slot probe window. A full window
+evicts its oldest unpoisoned entry (poisoned entries are kept as long as any
+unpoisoned one exists); the slot is chosen before any game read and committed
+only after every read and lookup succeeded, so a refused read evicts nothing.
+Per-hit cost: one probe plus two `get_buffer_content_view` calls (each one
+recursive-mutex acquisition, one map find, one metadata read); no other
+registry lookup. A miss adds five validated reads (descriptor head, AABB,
+back-link, up to 16 subset records at 8 bytes each).
+
+Deviations from section 1, all fail-closed:
+
+- Subset-record ownership is proven by identity: the record's `+0x0c`/`+0x10`
+  pointers must equal the application buffer pointers the device was given at
+  `SetStreamSource`/`SetIndices`. Both are the public ownership wrappers (the
+  capture hooks observe the wrapper device, `loader.cpp`), the same COM
+  identities D3DX handed the engine; no `resource_id` or native lookup on a
+  pointer read from game memory. A hit re-checks both identities, the IB id
+  and the descriptor before the revision gate; any mismatch poisons.
+- `FILLMODE` is shadowed separately (`shadow_.fill_mode`, refreshed at
+  resync with composition requested); unknown or non-SOLID selects the full
+  viewport (`Reason::FillMode`).
+- The scissor intersection is deferred to step 2, where the pass already
+  holds `saved.scissor`; scissor only removes coverage, so the step-1
+  rectangle stays conservative without it (fixture case `scissor`).
+- The rectangle is intersected with the owning target's size; an empty
+  result is the 1×1 rectangle at the viewport origin. An unknown or empty
+  application viewport selects the whole owning target (never an empty
+  rectangle), like every other refusal selects the full viewport.
+
+Acceptance (after review fixes, main merged at c978089):
+
+- Host: `PYTHONPATH=verification/probe python3 -m unittest
+  verification.analysis.test_linear_distance_fade
+  verification.analysis.test_linear_distance_fade_report
+  verification.analysis.test_fade_region` — 19 tests OK. The driver
+  (`verification/probe/fade_region_host.cpp`) ran 400 random cases
+  (viewport offset, zero and maximal `|p| = 2` extents, arbitrary rows,
+  jitter on half of them) with 10⁴ interior points each: 326 bounded cases,
+  0 points outside, 74 refused, all by `w ≤ 0`; a Python re-projection of 40
+  cases agrees bit-exactly on the rectangle and 10⁴+ sampled pixels; hand
+  rectangles (identity rows, half 0.5, 16×16 → `(2,2,15,15)`, off-screen →
+  `(0,0,1,1)`, viewport `(4,4,8,8)` → `(4,4,12,12)`, zero extent →
+  `(6,6,11,11)`, jitter ±0.5 px → `(3,3,15,15)`/`(2,2,14,14)`); every
+  doubt (corner `w = 0`, negative `w`, NaN/inf rows or centre, unknown rows,
+  unknown/poisoned bound, negative extent, non-solid fill) yields the full
+  viewport and an empty viewport the whole target. Table scenarios
+  (`--table`, fake descriptor/part/record memory, fake registry): learn
+  (5 reads, revisions 7/3, AABB `400,-800,200,1200,600,300` → centre
+  `400/65536…`), hit (0 reads), back-link mismatch (3 reads), no record
+  (5 reads), revision advance → poison, poison persists, IB-id and
+  descriptor mismatch → poison, matching ids with other wrapper identities →
+  poison (never a hit), box outside the `|p| ≤ 2` domain → invalid (full
+  viewport), content unknown, read refused, 32-entry
+  window full → eviction of the oldest unpoisoned entry (poisoned kept),
+  refused read evicts nothing, clear.
+- DLL: `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build build -j8` — zero
+  warnings; `python3 verification/probe/check_no_x87.py build/d3d9.dll` —
+  PASS, 223 reachable functions, no violations (fresh build after the merge
+  with main 03a660c and the review fixes). Not an install candidate.
+- Wine fixture (`linear-distance-fade-gpu-region1c.json`, bottle X3, 4.9 s, after the merge with main 03a660c):
+  the 71 existing cases unchanged (257 source calls, 580,608 numerical
+  channels, 183,264 exact raw and 193,536 exact energy channels, max
+  tolerance fraction 7.19e-5); 29 region cases through the prototype-1
+  bracket with the production `derive`, 1535 covered pixels of the M target
+  read back, **0 outside their rectangle**, 21 bounded cases and 8
+  full-viewport refusals (`w_zero`, `w_negative`, `nan_rows`, `inf_rows`,
+  `rows_unknown`, `bound_unknown`, `negative_extent`, `fill_wireframe`).
+  Area fractions at 16×16: interior 0.316, edges 0.211–0.246, corner 0.164,
+  off-screen 0.0039, tiny 0.098, near-plane crossing 0.316, viewport offset
+  0.766 of its 8×8 viewport, jitter indices 1–8 0.316–0.391, `w_tiny` and
+  `huge` 1.0 (clamped, still bound-derived). The detached fixture has no
+  seam scope and no ownership registry, so the bound *hit* path is proven on
+  the host only; at runtime the `fade_region_frame` counters (`bound` versus
+  `full`, status histogram) show which path the user's capture took.
+- Live witness: the per-DIP and per-frame lines above are wired for the
+  user's next capture. The every-k-th-frame M readback with emission off and
+  its "pixels outside the union" validator are **not** wired: they need a
+  readback path in `MotionOutput` plus a validator in
+  `run_linear_distance_fade_live.py`; the live fixture has no seam scope, so
+  it would only exercise the full-viewport path. Not run.
+
+Open from step 1: the per-draw cost of the two content views is not yet
+measured in the game; the half-conversion item above remains.
