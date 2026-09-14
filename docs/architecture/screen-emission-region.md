@@ -134,3 +134,16 @@ targets, unresolved B-assembly/publication contract); **composing into B and cop
 backup quad (saves 24f but changes the ratified ladder for no measured gain at run-11 rectangle sizes);
 **scissoring the source too** (blinds the witness); **admitting unbounded draws at full viewport** as the
 fade does (three fullscreen quads per bullet at the observed rate, so unbounded must mean native).
+
+## Step B evidence, 2026-09-14 (capture query)
+
+The run-28 and run-11 session logs contain no draw with `ps=ec1f5c4a2f4e1445`
+(the shader is compiled and dumped, never bound); the row-19 evidence in the
+effects-engine note came from an earlier capture set not under `/tmp`. The same
+VS `5e484a06672e28fb` draws in those frames with `ps=0a523f33ac47ae05` from a
+dynamic write-only vertex buffer (`usage=520`), locked with `D3DLOCK_DISCARD`,
+positions `FLOAT3` at offset 0, stride 24 (TEXCOORD FLOAT2 at 12, D3DCOLOR at
+20), one draw per buffer revision (revisions 926/1149/1367 in frames
+1476/1699/1917). The ownership layer records lock flags and revision but no byte
+range, so the window record of section 6 is a new contract, and the writer site
+must come from disassembly (brief dispatched).
