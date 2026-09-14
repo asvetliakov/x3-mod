@@ -44,6 +44,8 @@ User run 11 (fade region route plus the armed cutout runtime, `--linear-distance
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
 with the game's DirectSound setup (`877317b`) still does not reproduce the `SetState(RUN)` failure.
 Merged agent worktrees and the two merged cutout worktrees are pruned.
+The opt-in per-frame shimmer trace (`--shimmer-trace`, reviewed, merged `09e62bb`) is ready to
+ride the next candidate for the distant-shimmer report; not installed.
 
 The installed gameplay build is checkpoint `3f06979` (previous `8442f43` retained for
 rollback). Its scoped integration checks pass; the new options are default-off. Run 28 confirms stronger visible glow and reproduces distance-dependent
