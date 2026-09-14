@@ -109,7 +109,7 @@ zero covered pixels outside the derived rectangles in every sampled frame, no
 full-viewport fallbacks, and only shallow fades (`f_hist` 1962, 98, 11, 0, 0,
 0, 0, 0). The cutout runtime stayed available (`cutout_caps=1`, 7827 routed
 draws) and the docking port remained on the native path, still darkening on
-approach; frame-time medians equal run 28 (4097 µs against 4104 µs). Details
+approach; frame-time medians equal run 28 (`frame_end` windows of 4097 ms against 4104 ms; the field is a ~300-frame window total, ≈ 13.7 ms per frame, not µs per frame — corrected 2026-09-14, see the completed-run archive). Details
 are in the [completed-run archive](archive/user-runs-completed.md), the
 [region note](architecture/linear-distance-fade-region.md) and the
 [cutout note](architecture/alpha-tested-materials.md).

@@ -394,9 +394,9 @@ pixels, within TAA/dither noise. The evidence supports unchanged-state minificat
 magnitude the user sees is not established by the captures. Shimmer trace: armed (12,209 `shimmer_frame`,
 131,615 `shimmer_draw` lines) but it never logs the station pair, and no zoom frames exist. `motion_route`
 gates: 2346 matched, 104 pair, 165 draw-state; top draw-state signatures: exact source-over 84, alpha-tested
-opaque 69. Frame time (45 `frame_end` samples): median 5196 µs, p95 10484 µs, versus 4097 µs in run 11;
+opaque 69. Frame time (45 `frame_end` windows, ms per window, see the unit correction at the end of this file): median 5196, p95 10484, versus 4097 in run 11;
 no rank correlation with `shimmer_draw` count (0.07) or fade draws (0.04); frames with 0 fade draws
-median 2787 µs. The cross-run comparison is confounded by the new shimmer trace and the low sample count.
+median 2787 ms per window. The cross-run comparison is confounded by the new shimmer trace and the low sample count.
 
 ## 15. Screen emission on bullets (packed policy 8 in the region bracket) — Completed, acceptance failed
 
@@ -415,11 +415,21 @@ bound rects at the firing captures cover 58–90 % of the 1280×768 viewport (e.
 `rect=189,28,985,742 f_permille=578`), against 38×47 px for a distant bullet at frame 990, so the
 bracket cost is near-fullscreen while firing and bullet pixels cannot be isolated from the scene in
 the HDR captures (max channel > 1.0 in every firing capture; no bullet-only reference in run 14).
-Frame time: 66 throttled `frame_end` samples; firing frames median 2591 µs / p95 4699 µs, non-firing
-2536 µs (p95 contaminated by loading); too sparse for a per-bracket figure. Fade and docking-port
+Frame time: 66 throttled `frame_end` samples; firing windows median 2591 ms / p95 4699 ms, non-firing
+2536 ms per window (p95 contaminated by loading; window totals, see the unit correction at the end of this file); too sparse for a per-bracket figure. Fade and docking-port
 counters show no refusals under policy 8. Interpretation handed to implementation: the player's own
 bullets start at or behind the camera plane, so the locked-prefix extrema have w ≤ 0 (refused, drawn
 native) or barely positive w (extrema explode to near-fullscreen rects); the mixed native/packed
 result is the likely "dimmer" appearance. Fix: near-plane clipping of the bound in clip space plus a
 capture-only per-draw tight-AABB luminance line. No bracket cap is adopted: the data show the bound,
 not the count, is the cost driver.
+
+
+**Unit correction (2026-09-14 evening):** `frame_end dt_ms` is the elapsed time in milliseconds since
+the previous `frame_end` line, which is logged every 300 frames or on a capture frame (`capture.cpp`,
+`ctx.capture || ctx.frame%300==0`). The figures quoted as "µs" in the run entries above are therefore
+window totals in ms, not per-frame microseconds; a 4097 ms window over 300 frames is ≈ 13.7 ms per frame
+(≈ 73 fps) on a diagnostic build. Cross-run comparisons of the same field remain valid; absolute per-frame
+figures must divide by the actual frame delta between consecutive lines. Recomputed that way: run 14
+median 18.2 ms/frame (p95 52.6, shimmer trace on); run 16 median 27.1 ms/frame (p95 84.7, `--voice-decoder
+--game-phases --audio-sites`, windows include loading). Diagnostic timings are not game FPS.

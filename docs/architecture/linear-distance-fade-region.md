@@ -750,7 +750,7 @@ with zero outside pixels over 196 sampled frames. Aggregated `f_hist` 1962, 98,
 (≤ 5 %). Regions: 2087 per-DIP lines, 100 frame summaries, 0 full-viewport
 fallbacks (`full=0`, all `status=bound`); area mean 3367 px², median 2352 px²,
 max 24150 px² against a 983040 px² viewport (≈0.3 % typical, 2.5 % max). Frame
-time (`frame_end dt_ms`, 60-frame samples) n=59 median 4097 µs, p95 10104 µs,
+time (`frame_end dt_ms`, window totals in ms between logged lines, not µs per frame — unit corrected 2026-09-14) n=59 median 4097, p95 10104,
 max 27040 µs against run 28 n=99 median 4104 µs, p95 8824 µs, max 26467 µs:
 equal medians, and the run-11 tail is a smaller sample with no fade-cost field,
 so it is not attributable. No poisoned or evicted regions, no reset/recovery.
@@ -788,6 +788,6 @@ silently off and an explicit `--linear-distance-fade` without them still errors.
 14 and 15: the witness was clean in all three (run 11 196 sampled frames, run 14
 238, run 15 587, zero covered pixels outside the derived rectangles, no
 unprepared/overflow/truncation), and run 11 measured frame time equal to the
-run-28 baseline (median 4097 µs against 4104 µs). Only the launcher default
+run-28 baseline (`frame_end` window medians 4097 ms against 4104 ms, ≈ 13.7 ms per frame; the field is a window total, not µs per frame). Only the launcher default
 changed; the DLL contract (`X3M_LINEAR_DISTANCE_FADE=0|1`) is unchanged, so an
 installed build behaves exactly as before for a given resolved value.
