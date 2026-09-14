@@ -1,5 +1,5 @@
 // Detached qualification of the production AmbientOcclusionPass
-// (docs/architecture/ambient-occlusion.md, section 7, step 1): synthetic R32F
+// (docs/architecture/ambient-occlusion.md, section 7, steps 1 and 1b): synthetic R32F
 // device depth for analytic scenes through the real chain, the CPU reference
 // of ambient_occlusion_reference.h, the flat-plane and sentinel identities,
 // the multiply application against the CPU law, hostile state restoration,
@@ -20,8 +20,11 @@
 #include <string>
 #include <vector>
 using namespace x3m::renderer;
-constexpr DWORD linearize_words[] = {
-#include "../../src/renderer/ambient_occlusion_linearize_program_inc.h"
+// The FP16 store-rounding probe below draws the HDR path's identity write-back
+// (a point-sampled copy) from an R32F source into an R16F target; the chain's
+// own programs all read depth and are not identities.
+constexpr DWORD writeback_words[] = {
+#include "../../src/renderer/hdr_writeback_program_inc.h"
 };
 template<class T> struct Com {
     T* p = nullptr;
@@ -119,8 +122,8 @@ HRESULT complete_fence(IDirect3DQuery9* q) {
 }
 // Per-quad timing: with a fence armed, every draw of a chain is fenced before
 // and after (CPU submit + GPU completion of that quad alone) and its ticks are
-// accumulated by draw index (linearize, gtao, blur1, blur2, apply).
-struct DrawTimer { IDirect3DQuery9* fence = nullptr; unsigned index = 0; LONGLONG ticks[5]{}; HRESULT failure = S_OK; } draw_timer;
+// accumulated by draw index (linearize, gtao, blur, apply).
+struct DrawTimer { IDirect3DQuery9* fence = nullptr; unsigned index = 0; LONGLONG ticks[4]{}; HRESULT failure = S_OK; } draw_timer;
 HRESULT WINAPI hook_draw(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const void* v, UINT s) {
     if (++faults.draw_calls == faults.draw_fail_at) return faults.draw_error;
     if (!draw_timer.fence) return reinterpret_cast<DrawUpFn>(original[83])(d, t, c, v, s);
@@ -130,7 +133,7 @@ HRESULT WINAPI hook_draw(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const 
     if (SUCCEEDED(hr)) hr = complete_fence(draw_timer.fence);
     QueryPerformanceCounter(&b);
     if (FAILED(hr)) draw_timer.failure = hr;
-    if (draw_timer.index < 5) draw_timer.ticks[draw_timer.index] += b.QuadPart - a.QuadPart;
+    if (draw_timer.index < 4) draw_timer.ticks[draw_timer.index] += b.QuadPart - a.QuadPart;
     ++draw_timer.index;
     return draw;
 }
@@ -228,8 +231,8 @@ struct Frame {
         check("target texture", d->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &target.p, nullptr));
         check("target staging", d->CreateTexture(w, h, 1, 0, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &target_sys.p, nullptr));
         check("target surface", target->GetSurfaceLevel(0, &target_surface.p));
-        check("term readback", d->CreateOffscreenPlainSurface(hw, hh, D3DFMT_R16F, D3DPOOL_SYSTEMMEM, &read_term.p, nullptr));
         check("half readback", d->CreateOffscreenPlainSurface(hw, hh, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &read_half.p, nullptr));
+        check("term readback", d->CreateOffscreenPlainSurface(hw, hh, D3DFMT_R16F, D3DPOOL_SYSTEMMEM, &read_term.p, nullptr));
         check("target readback", d->CreateOffscreenPlainSurface(w, h, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &read_target.p, nullptr));
     }
     void upload_depth(IDirect3DDevice9* d, const std::vector<float>& values) {
@@ -249,19 +252,19 @@ struct Frame {
         check("unlock target", target_sys->UnlockRect(0));
         check("update target", d->UpdateTexture(target_sys.p, target.p));
     }
-    std::vector<std::uint16_t> read16(IDirect3DDevice9* d, IDirect3DSurface9* source, IDirect3DSurface9* sink, unsigned width, unsigned height, unsigned channels) {
-        check("readback", d->GetRenderTargetData(source, sink));
-        D3DLOCKED_RECT lr{}; check("lock readback", sink->LockRect(&lr, nullptr, D3DLOCK_READONLY));
-        std::vector<std::uint16_t> out(std::size_t(width) * height * channels);
-        for (unsigned y = 0; y < height; ++y) std::memcpy(&out[std::size_t(y) * width * channels], static_cast<char*>(lr.pBits) + y * lr.Pitch, width * channels * 2);
-        check("unlock readback", sink->UnlockRect());
-        return out;
-    }
     std::vector<float> read32(IDirect3DDevice9* d, IDirect3DSurface9* source, IDirect3DSurface9* sink, unsigned width, unsigned height) {
         check("readback", d->GetRenderTargetData(source, sink));
         D3DLOCKED_RECT lr{}; check("lock readback", sink->LockRect(&lr, nullptr, D3DLOCK_READONLY));
         std::vector<float> out(std::size_t(width) * height);
         for (unsigned y = 0; y < height; ++y) std::memcpy(&out[std::size_t(y) * width], static_cast<char*>(lr.pBits) + y * lr.Pitch, width * 4);
+        check("unlock readback", sink->UnlockRect());
+        return out;
+    }
+    std::vector<std::uint16_t> read16(IDirect3DDevice9* d, IDirect3DSurface9* source, IDirect3DSurface9* sink, unsigned width, unsigned height, unsigned channels) {
+        check("readback", d->GetRenderTargetData(source, sink));
+        D3DLOCKED_RECT lr{}; check("lock readback", sink->LockRect(&lr, nullptr, D3DLOCK_READONLY));
+        std::vector<std::uint16_t> out(std::size_t(width) * height * channels);
+        for (unsigned y = 0; y < height; ++y) std::memcpy(&out[std::size_t(y) * width * channels], static_cast<char*>(lr.pBits) + y * lr.Pitch, width * channels * 2);
         check("unlock readback", sink->UnlockRect());
         return out;
     }
@@ -279,7 +282,10 @@ std::vector<double> term_values(Frame& f, IDirect3DDevice9* d, IDirect3DTexture9
     return out;
 }
 // One scene through the chain with the CPU reference, the identities and the multiply law.
-struct SceneRun { std::vector<double> term; std::vector<std::uint16_t> before, after; std::vector<float> half; };
+// `half` is the CPU reference's half-resolution linear depth in view units;
+// the GPU target holds the same depth divided by |m32| and is compared against
+// it below (the coverage mask and the upsample weights use the reference's).
+struct SceneRun { std::vector<double> term; std::vector<std::uint16_t> before, after; std::vector<double> half; };
 SceneRun run_scene(IDirect3DDevice9* d, AmbientOcclusionPass& pass, Frame& f, const Scene& s, const ao_reference::Params& p, bool oracle) {
     f.upload_depth(d, s.depth); f.fill_target(d);
     SceneRun r;
@@ -295,28 +301,33 @@ SceneRun run_scene(IDirect3DDevice9* d, AmbientOcclusionPass& pass, Frame& f, co
     if (bindings) { IDirect3DSurface9* rt0 = nullptr; check("rt0", d->GetRenderTarget(0, &rt0)); rt0->Release(); require((label + "_bindings_returned").c_str(), bindings->returned(d, rt0)); }
     require((label + "_references").c_str(), pass.references() == 13);
     r.term = term_values(f, d, out.term);
-    Com<IDirect3DSurface9> hs; check("half surface", pass.fixture_half_depth()->GetSurfaceLevel(0, &hs.p));
-    r.half = f.read32(d, hs.p, f.read_half.p, f.hw, f.hh);
+    r.half = ao_reference::linearize(s.depth, f.w, f.h, f.hw, f.hh, p);
+    {   // Linearization: the GPU's half-resolution target against the CPU one.
+        // The target holds the scale-free depth z / |m32| (ao_linearize_ps.hlsl).
+        Com<IDirect3DSurface9> hs; check("half surface", pass.fixture_half_depth()->GetSurfaceLevel(0, &hs.p));
+        const std::vector<float> gpu = f.read32(d, hs.p, f.read_half.p, f.hw, f.hh);
+        double max_rel = 0; unsigned sentinel_mismatch = 0;
+        for (std::size_t i = 0; i < r.half.size(); ++i) {
+            if (r.half[i] < 0) { sentinel_mismatch += gpu[i] != -1.f; continue; }
+            max_rel = std::max(max_rel, std::fabs(double(gpu[i]) * -p.m32 - r.half[i]) / r.half[i]);
+        }
+        require((label + "_linearize").c_str(), max_rel <= 2e-3 && sentinel_mismatch == 0);
+    }
     r.after = f.read16(d, f.target_surface.p, f.read_target.p, f.w, f.h, 4);
     if (!oracle) return r;
-    // Linearization: the GPU half depth against the CPU one (float32 division of the same terms).
     std::vector<double> ref_half;
     std::vector<double> ref = ao_reference::term(s.depth, f.w, f.h, p, &ref_half);
     for (double& v : ref) v = 1 - v; // visibility space, like r.term
-    double max_rel = 0; unsigned sentinel_mismatch = 0, sentinel = 0;
-    for (std::size_t i = 0; i < ref_half.size(); ++i) {
-        if (ref_half[i] < 0) { ++sentinel; if (r.half[i] != -1.f) ++sentinel_mismatch; continue; }
-        max_rel = std::max(max_rel, std::fabs(r.half[i] - ref_half[i]) / ref_half[i]);
-    }
-    require((label + "_linearize").c_str(), max_rel <= 2e-3 && sentinel_mismatch == 0);
+    unsigned sentinel = 0;
+    for (double v : ref_half) sentinel += v < 0;
     // The term against the CPU reference: mean, 99.9th percentile and maximum absolute difference.
     std::vector<double> diffs(ref.size()); double mean = 0; unsigned within = 0, ones = 0;
     for (std::size_t i = 0; i < ref.size(); ++i) { diffs[i] = std::fabs(r.term[i] - ref[i]); mean += diffs[i]; within += diffs[i] <= .02; ones += r.term[i] == 1; }
     mean /= double(ref.size());
     std::vector<double> sorted = diffs; std::sort(sorted.begin(), sorted.end());
     const double p999 = sorted[std::size_t(double(sorted.size() - 1) * .999)], maximum = sorted.back();
-    std::printf("REFERENCE scene=%s width=%u height=%u pixels=%zu sentinel=%u ones=%u mean_abs=%.6f p999=%.6f max=%.6f within_002=%u half_depth_max_rel=%.3e\n",
-                s.name.c_str(), f.w, f.h, ref.size(), sentinel, ones, mean, p999, maximum, within, max_rel);
+    std::printf("REFERENCE scene=%s width=%u height=%u pixels=%zu sentinel=%u ones=%u mean_abs=%.6f p999=%.6f max=%.6f within_002=%u\n",
+                s.name.c_str(), f.w, f.h, ref.size(), sentinel, ones, mean, p999, maximum, within);
     require((label + "_reference").c_str(), mean <= 2e-3 && double(within) / double(ref.size()) >= .999);
     if (std::getenv("X3M_AO_DUMP")) { // local diagnostics only: raw float64 term images beside the executable (blurred and unblurred)
         pass.fixture_skip_blur(true);
@@ -337,7 +348,7 @@ SceneRun run_scene(IDirect3DDevice9* d, AmbientOcclusionPass& pass, Frame& f, co
     // The multiply law: expected = fp16(before * factor) per RGB channel from
     // the GPU's own term/half depth, alpha untouched; reported in fp16 ulps.
     unsigned exact = 0, one_ulp = 0, over = 0, alpha_changed = 0, exact_truncate = 0; int max_ulp = 0;
-    const std::vector<double> half_depth(r.half.begin(), r.half.end());
+    const std::vector<double>& half_depth = r.half;
     std::vector<double> occlusion(r.term.size()); for (std::size_t i = 0; i < occlusion.size(); ++i) occlusion[i] = 1 - r.term[i]; // the stored term again
     for (unsigned y = 0; y < f.h; ++y) for (unsigned x = 0; x < f.w; ++x) {
         const std::size_t i = std::size_t(y) * f.w + x;
@@ -386,7 +397,7 @@ void timing(IDirect3DDevice9* d, AmbientOcclusionPass& pass, unsigned w, unsigne
     AmbientOcclusionResult out;
     check("timing warm", pass.execute(in, &out));
     std::vector<double> on, off, submit;
-    for (unsigned i = 0; i < 20; ++i) { // 3 warmup pairs, 7 measured pairs (on, off alternating)
+    for (unsigned i = 0; i < 36; ++i) { // 3 warmup pairs, 15 measured pairs (on, off alternating)
         LARGE_INTEGER a{}, b{}, c{};
         check("lead fence", complete_fence(fence.p));
         QueryPerformanceCounter(&a);
@@ -407,9 +418,13 @@ void timing(IDirect3DDevice9* d, AmbientOcclusionPass& pass, unsigned w, unsigne
     check("final fence", complete_fence(fence.p));
     check("timing end", d->EndScene());
     const double on_m = median(on), off_m = median(off), submit_m = median(submit);
-    std::printf("TIMING width=%u height=%u fenced_on_ms=%.4f fenced_off_ms=%.4f submit_ms=%.4f chain_ms=%.4f gpu_ms=%.4f samples=%zu\n",
-                w, h, on_m, off_m, submit_m, on_m - off_m, std::max(0., on_m - off_m - submit_m), on.size());
-    // Diagnostic only: the chain without its two blur quads (three passes),
+    // The medians carry the block's noise (this backend's paired windows spread
+    // by a few tenths of a millisecond between blocks), so the cheapest windows
+    // of the block are reported beside them as the floor of the chain's cost.
+    const double on_lo = *std::min_element(on.begin(), on.end()), off_lo = *std::min_element(off.begin(), off.end());
+    std::printf("TIMING width=%u height=%u fenced_on_ms=%.4f fenced_off_ms=%.4f submit_ms=%.4f chain_ms=%.4f chain_min_ms=%.4f gpu_ms=%.4f samples=%zu\n",
+                w, h, on_m, off_m, submit_m, on_m - off_m, std::max(0., on_lo - off_lo), std::max(0., on_m - off_m - submit_m), on.size());
+    // Diagnostic only: the chain without its blur quad (three passes),
     // to separate per-pass overhead from shader cost.
     pass.fixture_skip_blur(true);
     std::vector<double> short_on;
@@ -425,21 +440,21 @@ void timing(IDirect3DDevice9* d, AmbientOcclusionPass& pass, unsigned w, unsigne
     pass.fixture_skip_blur(false);
     std::printf("TIMING_VARIANT width=%u height=%u variant=no_blur fenced_on_ms=%.4f chain_ms=%.4f samples=%zu\n", w, h, median(short_on), median(short_on) - off_m, short_on.size());
     // Per-quad breakdown: each draw fenced on both sides, 8 chains (2 warmup).
-    const char* names[5] = {"linearize", "gtao", "blur1", "blur2", "apply"};
-    std::vector<double> per_quad[5];
+    const char* names[4] = {"linearize", "gtao", "blur", "apply"};
+    std::vector<double> per_quad[4];
     check("quads begin", d->BeginScene());
     for (unsigned i = 0; i < 8; ++i) {
         draw_timer = {}; draw_timer.fence = fence.p;
         check("quads execute", pass.execute(in, &out));
         const DrawTimer sample = draw_timer; draw_timer = {};
         check("quads fences", sample.failure);
-        require("per_quad_draw_count", sample.index == 5);
-        if (i >= 2) for (unsigned q = 0; q < 5; ++q) per_quad[q].push_back(ms(sample.ticks[q], freq));
+        require("per_quad_draw_count", sample.index == 4);
+        if (i >= 2) for (unsigned q = 0; q < 4; ++q) per_quad[q].push_back(ms(sample.ticks[q], freq));
     }
     check("quads end", d->EndScene());
     std::printf("TIMING_QUADS width=%u height=%u", w, h);
     double total = 0;
-    for (unsigned q = 0; q < 5; ++q) { const double m = median(per_quad[q]); total += m; std::printf(" %s_ms=%.4f", names[q], m); }
+    for (unsigned q = 0; q < 4; ++q) { const double m = median(per_quad[q]); total += m; std::printf(" %s_ms=%.4f", names[q], m); }
     std::printf(" sum_ms=%.4f samples=%zu\n", total, per_quad[0].size());
 }
 int main() {
@@ -469,31 +484,33 @@ int main() {
         // Capability twins: refused by name before any creation.
         { AmbientOcclusionPass twin; D3DCAPS9 c = caps; c.PixelShaderVersion = D3DPS_VERSION(2, 0);
           require("twin_ps_2_0", FAILED(twin.attach(d, hooked, c, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "ps_3_0" && twin.references() == 0);
-          c = caps; c.MaxPixelShader30InstructionSlots = 400;
+          c = caps; c.MaxPixelShader30InstructionSlots = 300; // below the largest program (397 slots)
           require("twin_ps_slots", FAILED(twin.attach(d, hooked, c, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "ps_slots" && twin.references() == 0);
           c = caps; c.DestBlendCaps &= ~DWORD(D3DPBLENDCAPS_SRCCOLOR);
           require("twin_blend_factors", FAILED(twin.attach(d, hooked, c, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "blend_factors" && twin.references() == 0);
           faults = {}; faults.shader_fail_at = 3;
           require("fault_shader_create", FAILED(twin.attach(d, hooked, caps, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "programs" && twin.references() == 0 && !twin.caps().enabled);
           faults = {}; }
-        { // FP16 store rounding of this backend: the embedded linearize program writes c0.y / (d - c0.x) with d = 1, c0.x = 0
-          // into an R16F target; 1 - 2^-13 and 1 + 3 * 2^-12 lie above their fp16 midpoints, so round-to-nearest stores
-          // 1.0 / 1.000977 and truncation stores 0.99951 / 1.0.
-          Com<IDirect3DPixelShader9> ps; check("probe ps", d->CreatePixelShader(linearize_words, &ps.p));
+        { // FP16 store rounding of this backend: the identity write-back program copies an R32F
+          // source (which holds the value exactly) into an R16F target; 1 - 2^-13 and 1 + 3 * 2^-12
+          // lie above their fp16 midpoints, so round-to-nearest stores 1.0 / 1.000977 and
+          // truncation stores 0.99951 / 1.0.
+          Com<IDirect3DPixelShader9> ps; check("probe ps", d->CreatePixelShader(writeback_words, &ps.p));
           Com<IDirect3DVertexShader9> vs; check("probe vs", d->CreateVertexShader(reinterpret_cast<const DWORD*>(quad_vertex_program()), &vs.p));
           Com<IDirect3DVertexDeclaration9> decl; check("probe decl", d->CreateVertexDeclaration(quad_declaration, &decl.p));
           Com<IDirect3DTexture9> ones, ones_default, sink; Com<IDirect3DSurface9> sink_surface, read;
-          check("probe depth", d->CreateTexture(4, 4, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &ones.p, nullptr));
-          check("probe depth default", d->CreateTexture(4, 4, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &ones_default.p, nullptr));
-          { D3DLOCKED_RECT lr{}; check("probe lock", ones->LockRect(0, &lr, nullptr, 0)); for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) reinterpret_cast<float*>(static_cast<char*>(lr.pBits) + y * lr.Pitch)[x] = 1.f; check("probe unlock", ones->UnlockRect(0)); }
-          check("probe update", d->UpdateTexture(ones.p, ones_default.p));
+          check("probe source", d->CreateTexture(4, 4, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &ones.p, nullptr));
+          check("probe source default", d->CreateTexture(4, 4, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &ones_default.p, nullptr));
           check("probe sink", d->CreateTexture(4, 4, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R16F, D3DPOOL_DEFAULT, &sink.p, nullptr)); check("probe sink surface", sink->GetSurfaceLevel(0, &sink_surface.p));
           check("probe read", d->CreateOffscreenPlainSurface(4, 4, D3DFMT_R16F, D3DPOOL_SYSTEMMEM, &read.p, nullptr));
           const double values[2] = {1 - 1. / 8192, 1 + 3. / 4096}; std::uint16_t stored[2] = {};
           for (unsigned k = 0; k < 2; ++k) {
-              const float c0[4] = {0.f, float(values[k]), 0.f, 0.f}, c1[4] = {4.f, 4.f, 4.f, 4.f};
+              { D3DLOCKED_RECT lr{}; check("probe lock", ones->LockRect(0, &lr, nullptr, 0));
+                for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) reinterpret_cast<float*>(static_cast<char*>(lr.pBits) + y * lr.Pitch)[x] = float(values[k]);
+                check("probe unlock", ones->UnlockRect(0)); }
+              check("probe update", d->UpdateTexture(ones.p, ones_default.p));
               check("probe rt", d->SetRenderTarget(0, sink_surface.p)); check("probe ps set", d->SetPixelShader(ps.p)); check("probe vs set", d->SetVertexShader(vs.p)); check("probe decl set", d->SetVertexDeclaration(decl.p));
-              check("probe c0", d->SetPixelShaderConstantF(0, c0, 1)); check("probe c1", d->SetPixelShaderConstantF(1, c1, 1)); check("probe texture", d->SetTexture(0, ones_default.p));
+              check("probe texture", d->SetTexture(0, ones_default.p));
               check("probe filter", d->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT)); check("probe filter", d->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT));
               check("probe depth off", d->SetRenderState(D3DRS_ZENABLE, FALSE)); check("probe depth surface", d->SetDepthStencilSurface(nullptr));
               QuadVertex quad[4]; quad_vertices(4, 4, quad);
@@ -578,7 +595,7 @@ int main() {
           Snapshot pre(d); faults = {}; faults.draw_fail_at = 3; faults.draw_error = E_FAIL;
           AmbientOcclusionResult out; const HRESULT hr = pass.execute(frame_inputs(f, p, true), &out); faults = {};
           Snapshot post(d); auto after = f.read16(d, f.target_surface.p, f.read_target.p, W, H, 4);
-          require("fault_draw_failed", hr == E_FAIL && out.failed == AmbientOcclusionStage::BlurH && out.term == nullptr && !out.applied && SUCCEEDED(out.restore));
+          require("fault_draw_failed", hr == E_FAIL && out.failed == AmbientOcclusionStage::Blur && out.term == nullptr && !out.applied && SUCCEEDED(out.restore));
           require("fault_draw_restored", pre == post && before == after);
           SceneRun again = run_scene(d, pass, f, sphere, p, false);
           require("fault_draw_recovered", again.term == clean_sphere);
@@ -589,7 +606,7 @@ int main() {
           AmbientOcclusionFrame lost_frame = frame_inputs(f, p, true); lost_frame.caller_scene_open = true;
           const HRESULT lost = pass.execute(lost_frame, &out); faults = {};
           check("lost scene end", d->EndScene());
-          require("fault_lost_mid_chain", lost == D3DERR_DEVICELOST && out.failed == AmbientOcclusionStage::BlurV && out.restore == D3DERR_DEVICELOST && out.term == nullptr);
+          require("fault_lost_mid_chain", lost == D3DERR_DEVICELOST && out.failed == AmbientOcclusionStage::Apply && out.restore == D3DERR_DEVICELOST && out.term == nullptr);
           require("execute_after_lost_still_runs", SUCCEEDED(pass.execute(frame_inputs(f, p, true), &out))); }
         { pass.before_reset();
           require("before_reset_released", pass.references() == 6 && pass.reset_pending());
@@ -612,6 +629,7 @@ int main() {
           std::printf("RESET PASS references=%u allocations=%u\n", pass.references(), pass.allocations()); }
         timing(d, pass, 1280, 768, freq.QuadPart);
         timing(d, pass, 1920, 1080, freq.QuadPart);
+        timing(d, pass, 1280, 768, freq.QuadPart); // repeat: the first block of a device runs cold, so the chain cost is read from the pair
         pass.detach();
         require("detach_released", pass.references() == 0 && !pass.caps().enabled);
         std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);

@@ -1,7 +1,7 @@
 #pragma once
 // Detached half-resolution GTAO chain (docs/architecture/ambient-occlusion.md,
-// step 1): linearize -> horizon search -> two depth-aware blurs -> bilateral
-// upsample and multiply application, five quads on a borrowed D3D9 device
+// step 1b): linearize -> horizon search -> one 2D depth-aware blur ->
+// bilateral upsample and multiply application, four quads on a borrowed D3D9 device
 // through native vtable slots, like TemporalPass / LinearEmissionPass. This
 // class does not hook the route, choose the frame, identify the scene target
 // or read pixels back; the caller (later the scene-end hook) supplies the
@@ -43,7 +43,7 @@ struct AmbientOcclusionFrame {
     bool caller_queries_idle = false; // positive knowledge, as for TemporalPass
 };
 enum class AmbientOcclusionStage : unsigned {
-    None, Validate, Targets, Block, Capture, Normalize, Scene, Linearize, Gtao, BlurH, BlurV, Apply, EndScene, Restore
+    None, Validate, Targets, Block, Capture, Normalize, Scene, Linearize, Gtao, Blur, Apply, EndScene, Restore
 };
 struct AmbientOcclusionResult {
     HRESULT operation = S_FALSE, restore = S_FALSE;
@@ -70,7 +70,7 @@ public:
     // a size change; a failure releases every partial target (rollback).
     HRESULT prepare(UINT width, UINT height) noexcept;
     // One chain. Captures the owned D3DSBT_ALL block and the bindings, runs
-    // the five quads, restores. A failed step restores and publishes nothing
+    // the four quads, restores. A failed step restores and publishes nothing
     // (result.failed names it); a lost device stops restoration as in
     // TemporalPass. With frame.target null the apply quad is skipped.
     HRESULT execute(const AmbientOcclusionFrame&, AmbientOcclusionResult*) noexcept;

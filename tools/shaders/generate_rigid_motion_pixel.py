@@ -82,8 +82,8 @@ SHADERS = {
                         provenance=ROOT / 'verification/results/quad-vertex-program.json',
                         target='vs_3_0'),
     # The ambient occlusion chain (docs/architecture/ambient-occlusion.md, step
-    # 1): linearize, GTAO horizon search, the separable depth-aware blur and
-    # the bilateral upsample / multiply application.
+    # 1b): linearize, the GTAO horizon search, one 2D depth-aware blur and the
+    # bilateral upsample / multiply application.
     'ao_linearize': dict(source=ROOT / 'src/temporal/ao_linearize_ps.hlsl',
                          header=ROOT / 'src/renderer/ambient_occlusion_linearize_program_inc.h',
                          provenance=ROOT / 'verification/results/ambient-occlusion-linearize-program.json'),

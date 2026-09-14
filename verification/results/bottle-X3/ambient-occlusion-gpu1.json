@@ -11,21 +11,21 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "sources": {
-  "src/renderer/ambient_occlusion_pass.h": "be4dc60c0949dd76ed5c6d599da1ee9ec4a7cef7fb73edbbd155848cd767c23e",
-  "src/renderer/ambient_occlusion_pass.cpp": "2dd46653afc8f2aa8d214e33ffb630d37768578abbfa488eb9391a1c77ff2c07",
+  "src/renderer/ambient_occlusion_pass.h": "4a16f1e232bb8236271a0998d332bbac53b1da75580ddb3745b4379d765927f4",
+  "src/renderer/ambient_occlusion_pass.cpp": "00a39d62d805eca164150c66e8a41a8a6c4db9c59975c8e935562691e10f3ae4",
   "src/renderer/ambient_occlusion_caps.h": "a1fe930a0c51594bb50c517a933b497b0169fb1964fc07a3bea6b8e31b4d2863",
-  "src/renderer/ambient_occlusion_linearize_program_inc.h": "aab428ec5db86a0b8a757c4897b62ec5ca5f655cebdcf3b0f9ed50d399038690",
-  "src/renderer/ambient_occlusion_gtao_program_inc.h": "eee60744f22febfe6ff8c8da8b627dd42481c65366a702e948e355f29dc45517",
-  "src/renderer/ambient_occlusion_blur_program_inc.h": "5ccb2aaf1d8ed2e9e23ba52aaf2d067182f8ea40634d1e343d7c80bcc156fd7f",
-  "src/renderer/ambient_occlusion_apply_program_inc.h": "d357cb4ad0dc34f0ceeffb651ae448e5c00aacdc4a6073fc0a729785056c7516",
-  "src/temporal/ao_linearize_ps.hlsl": "cb3ae5f76f25ab909daeffeddda0fec974732690caa879b283a8b62f91a1e24d",
-  "src/temporal/ao_gtao_ps.hlsl": "7f85af560606c16c2339274d57e4c004c52750373a568972fc2c35ebafa8d243",
-  "src/temporal/ao_blur_ps.hlsl": "3119ed284f5e761dc13f44634c0835697d363124a3cf4f2b44ed5e609aebc920",
-  "src/temporal/ao_apply_ps.hlsl": "559b2570d0bb36efd2face3bd28019e4d3f919d9c0ce618a766937fff40e8521",
-  "verification/probe/ambient_occlusion_fixture.cpp": "590f677e4b86011bbad822176b020d228a0fcc8d38b6a87edddd7cc7c26ce491",
-  "verification/probe/ambient_occlusion_reference.h": "aaf37bbaf1b1b249c9e8563bd7bc6fb56228fac928223eee11e186ba8604a73c",
+  "src/renderer/ambient_occlusion_linearize_program_inc.h": "9fe436693e0f0bffe2a3eff72fb0fa35121d25228896c2702b7b2a2af01c0a8c",
+  "src/renderer/ambient_occlusion_gtao_program_inc.h": "8629d8f4c462edbc0a015e842e7dee1e9fa912b7883180dd843311b74b4191a2",
+  "src/renderer/ambient_occlusion_blur_program_inc.h": "6a31252ce176641b3218b2f87b904d63cd1b2c1346e93d6143bd316f47719a6c",
+  "src/renderer/ambient_occlusion_apply_program_inc.h": "66087f065c434b96dac0e4286cf738591ec5382415265e7bd1d67cf6ed8b7a7a",
+  "src/temporal/ao_linearize_ps.hlsl": "2f37da06e857b6669a89e8642daec4df8191b8fd37240208b769f5feccfb2a7d",
+  "src/temporal/ao_gtao_ps.hlsl": "8b66228f1802738f7c1a75e0797d0a4ac1f7f24c391ab8cfd5f676f51e08fd08",
+  "src/temporal/ao_blur_ps.hlsl": "45915cd9137b624a7a87e4857aed299d541a68b1396eb1421ad330cb67ab75ac",
+  "src/temporal/ao_apply_ps.hlsl": "a324676e2184cbdfdfdb9ee1c6be97e97d08f006819239f7270cf1f8a07dc718",
+  "verification/probe/ambient_occlusion_fixture.cpp": "c2be10e2dc637da35970b607012b5eafbc58257a7c80557c6bfe02b98629c62b",
+  "verification/probe/ambient_occlusion_reference.h": "2663490d62824ee5f54afe7de7ae4911a8793399b2d3a3f21dce1e485d9e345e",
   "verification/probe/build_ambient_occlusion.sh": "3c8107c5a2a9b8b1a1a0e2985655451ccc16fda2c3e9d77752434a01ab4e98ba",
-  "verification/probe/run_ambient_occlusion.py": "293f4ffb44da3a5298f41c216a087a511261d3625f46791773fff732b8c3fc11"
+  "verification/probe/run_ambient_occlusion.py": "14b9dffc750be0739fea3909ed510400edb8073fd87d2c02d92fde842efc226e"
  },
  "budget_ms": {
   "estimate_fixed": [
@@ -40,7 +40,7 @@
   "mean_abs": 0.002,
   "within_002_fraction": 0.999
  },
- "executable_sha256": "685a9d44faea656843c414f60c42b0117dc66c1a40fbe5e6905b8e09c217ec6f",
+ "executable_sha256": "72a8b81c2021c11a7be02c0d1015cdb0e10f2fd991f37fc65885736bd5dd7dba",
  "command": [
   "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
   "--bottle",
@@ -49,11 +49,11 @@
   "--dll",
   "d3d9=b",
   "--workdir",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3c86dd33812893e0/verification/probe/build/ambient-occlusion",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3c86dd33812893e0/verification/probe/build/ambient-occlusion/ambient_occlusion_fixture.exe"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a687429be804c2dd5/verification/probe/build/ambient-occlusion",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a687429be804c2dd5/verification/probe/build/ambient-occlusion/ambient_occlusion_fixture.exe"
  ],
  "exit_code": 0,
- "report_sha256": "297f724ed1f6326c9ffa33c62e37d6b517bf7848ab01906529c05437c74acbbb",
+ "report_sha256": "95f8bd87b097ea59ab2277f530a7e83605f98e646e72a7b5a64634d11121979c",
  "report": {
   "checks": [
    [
@@ -333,6 +333,10 @@
     true
    ],
    [
+    "scene_sphere_linearize",
+    true
+   ],
+   [
     "fault_draw_recovered",
     true
    ],
@@ -381,7 +385,43 @@
     true
    ],
    [
+    "scene_sphere_linearize",
+    true
+   ],
+   [
     "reset_bit_identical",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
     true
    ],
    [
@@ -465,7 +505,6 @@
     "p999": 0.0,
     "max": 0.0,
     "within_002": 245760,
-    "half_depth_max_rel": 6.885e-07,
     "within_002_fraction": 1.0
    },
    "tilted": {
@@ -474,12 +513,11 @@
     "height": 768,
     "pixels": 245760,
     "sentinel": 124160,
-    "ones": 245671,
+    "ones": 245760,
     "mean_abs": 0.0,
     "p999": 0.0,
     "max": 0.0,
     "within_002": 245760,
-    "half_depth_max_rel": 9.802e-06,
     "within_002_fraction": 1.0
    },
    "sphere": {
@@ -488,12 +526,11 @@
     "height": 768,
     "pixels": 245760,
     "sentinel": 127173,
-    "ones": 242258,
+    "ones": 242725,
     "mean_abs": 0.0,
-    "p999": 0.000122,
-    "max": 0.000366,
+    "p999": 6.1e-05,
+    "max": 0.000244,
     "within_002": 245760,
-    "half_depth_max_rel": 3.101e-06,
     "within_002_fraction": 1.0
    },
    "corner": {
@@ -502,12 +539,11 @@
     "height": 768,
     "pixels": 245760,
     "sentinel": 0,
-    "ones": 219759,
-    "mean_abs": 5e-06,
+    "ones": 221415,
+    "mean_abs": 3e-06,
     "p999": 0.000244,
-    "max": 0.000366,
+    "max": 0.000244,
     "within_002": 245760,
-    "half_depth_max_rel": 3.836e-07,
     "within_002_fraction": 1.0
    },
    "step": {
@@ -516,12 +552,11 @@
     "height": 768,
     "pixels": 245760,
     "sentinel": 0,
-    "ones": 239233,
+    "ones": 239663,
     "mean_abs": 1e-06,
-    "p999": 0.000244,
-    "max": 0.000366,
+    "p999": 0.000122,
+    "max": 0.000488,
     "within_002": 245760,
-    "half_depth_max_rel": 6.885e-07,
     "within_002_fraction": 1.0
    }
   },
@@ -538,15 +573,15 @@
     "scene": "tilted",
     "label": "flat_identity",
     "covered": 121600,
-    "not_one": 89,
+    "not_one": 0,
     "below_0999": 0,
     "passed": true
    },
    {
     "scene": "sphere",
     "label": "contact_ring",
-    "mean": 0.9569,
-    "min": 0.8774,
+    "mean": 0.9567,
+    "min": 0.8468,
     "pixels": 62,
     "passed": true
    },
@@ -570,7 +605,7 @@
     "scene": "corner",
     "label": "crease_near",
     "mean": 0.9199,
-    "min": 0.826,
+    "min": 0.828,
     "pixels": 1920,
     "passed": true
    },
@@ -578,7 +613,7 @@
     "scene": "corner",
     "label": "crease_floor",
     "mean": 0.9639,
-    "min": 0.826,
+    "min": 0.828,
     "pixels": 4480,
     "passed": true
    },
@@ -610,7 +645,7 @@
     "scene": "step",
     "label": "far_side_edge_darkened",
     "mean": 0.8215,
-    "min": 0.7843,
+    "min": 0.7305,
     "pixels": 1152,
     "passed": true
    }
@@ -633,37 +668,37 @@
     "one_ulp": 0,
     "over": 0,
     "max_ulp": 0,
-    "exact_truncate": 2947743,
+    "exact_truncate": 2949120,
     "alpha_changed": 0
    },
    "sphere": {
     "scene": "sphere",
     "channels": 2949120,
-    "exact": 2921625,
-    "one_ulp": 27495,
+    "exact": 2923610,
+    "one_ulp": 25510,
     "over": 0,
     "max_ulp": 1,
-    "exact_truncate": 2945221,
+    "exact_truncate": 2946846,
     "alpha_changed": 0
    },
    "corner": {
     "scene": "corner",
     "channels": 2949120,
-    "exact": 2746254,
-    "one_ulp": 202866,
+    "exact": 2755319,
+    "one_ulp": 193801,
     "over": 0,
     "max_ulp": 1,
-    "exact_truncate": 2943551,
+    "exact_truncate": 2944563,
     "alpha_changed": 0
    },
    "step": {
     "scene": "step",
     "channels": 2949120,
-    "exact": 2898016,
-    "one_ulp": 51104,
+    "exact": 2901739,
+    "one_ulp": 47381,
     "over": 0,
     "max_ulp": 1,
-    "exact_truncate": 2949115,
+    "exact_truncate": 2948700,
     "alpha_changed": 0
    }
   },
@@ -671,12 +706,13 @@
    {
     "width": 1280,
     "height": 768,
-    "fenced_on_ms": 0.8599,
-    "fenced_off_ms": 0.0166,
-    "submit_ms": 0.1169,
-    "chain_ms": 0.8433,
-    "gpu_ms": 0.7264,
-    "samples": 7,
+    "fenced_on_ms": 1.0777,
+    "fenced_off_ms": 0.0153,
+    "submit_ms": 0.1096,
+    "chain_ms": 1.0624,
+    "chain_min_ms": 0.7486,
+    "gpu_ms": 0.9528,
+    "samples": 15,
     "budget": {
      "cap_ms": 0.8,
      "acceptance_ms": 0.5,
@@ -687,17 +723,35 @@
    {
     "width": 1920,
     "height": 1080,
-    "fenced_on_ms": 1.3743,
-    "fenced_off_ms": 0.0133,
-    "submit_ms": 0.1184,
-    "chain_ms": 1.361,
-    "gpu_ms": 1.2426,
-    "samples": 7,
+    "fenced_on_ms": 1.3401,
+    "fenced_off_ms": 0.0151,
+    "submit_ms": 0.0949,
+    "chain_ms": 1.325,
+    "chain_min_ms": 1.2292,
+    "gpu_ms": 1.2301,
+    "samples": 15,
     "budget": {
      "cap_ms": 0.8,
      "acceptance_ms": 0.5,
      "within_acceptance": false,
      "within_cap": false
+    }
+   },
+   {
+    "width": 1280,
+    "height": 768,
+    "fenced_on_ms": 0.5267,
+    "fenced_off_ms": 0.015,
+    "submit_ms": 0.0873,
+    "chain_ms": 0.5117,
+    "chain_min_ms": 0.4985,
+    "gpu_ms": 0.4244,
+    "samples": 15,
+    "budget": {
+     "cap_ms": 0.8,
+     "acceptance_ms": 0.5,
+     "within_acceptance": false,
+     "within_cap": true
     }
    }
   ],
@@ -705,23 +759,31 @@
    {
     "width": 1280,
     "height": 768,
-    "linearize_ms": 0.3587,
-    "gtao_ms": 0.4865,
-    "blur1_ms": 0.3743,
-    "blur2_ms": 0.3606,
-    "apply_ms": 0.4878,
-    "sum_ms": 2.0679,
+    "linearize_ms": 0.3178,
+    "gtao_ms": 0.55,
+    "blur_ms": 0.3083,
+    "apply_ms": 0.4279,
+    "sum_ms": 1.604,
     "samples": 6
    },
    {
     "width": 1920,
     "height": 1080,
-    "linearize_ms": 0.2465,
-    "gtao_ms": 0.4743,
-    "blur1_ms": 0.2036,
-    "blur2_ms": 0.2046,
-    "apply_ms": 0.3387,
-    "sum_ms": 1.4677,
+    "linearize_ms": 0.3165,
+    "gtao_ms": 0.4228,
+    "blur_ms": 0.3063,
+    "apply_ms": 0.3204,
+    "sum_ms": 1.366,
+    "samples": 6
+   },
+   {
+    "width": 1280,
+    "height": 768,
+    "linearize_ms": 0.2067,
+    "gtao_ms": 0.3023,
+    "blur_ms": 0.1877,
+    "apply_ms": 0.3152,
+    "sum_ms": 1.0119,
     "samples": 6
    }
   ],
@@ -742,7 +804,7 @@
   },
   "attach": {
    "enabled": 1,
-   "largest_program_slots": 483,
+   "largest_program_slots": 397,
    "references": 6
   },
   "reset": {
@@ -750,7 +812,7 @@
    "allocations": 2
   },
   "result": {
-   "checks": 99,
+   "checks": 109,
    "failures": 0,
    "verdict": "PASS"
   },
@@ -759,20 +821,28 @@
     "width": 1280,
     "height": 768,
     "variant": "no_blur",
-    "fenced_on_ms": 0.8076,
-    "chain_ms": 0.791,
+    "fenced_on_ms": 0.7335,
+    "chain_ms": 0.7182,
     "samples": 4
    },
    {
     "width": 1920,
     "height": 1080,
     "variant": "no_blur",
-    "fenced_on_ms": 0.6975,
-    "chain_ms": 0.6842,
+    "fenced_on_ms": 0.7314,
+    "chain_ms": 0.7163,
+    "samples": 4
+   },
+   {
+    "width": 1280,
+    "height": 768,
+    "variant": "no_blur",
+    "fenced_on_ms": 0.4951,
+    "chain_ms": 0.4801,
     "samples": 4
    }
   ],
-  "check_count": 99,
+  "check_count": 109,
   "check_failures": 0,
   "failed_checks": []
  }
