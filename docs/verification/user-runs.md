@@ -25,6 +25,8 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
 | 11 | Fade region route and alpha-tested cutout, combined | 1 | Completed as user run 11, snapshot run36 |
 | 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
+| 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Pending candidate |
+| 14 | Station source-over linear route, fade region and shimmer trace, combined | 1 | Pending candidate |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
@@ -58,6 +60,56 @@ Report: whether it hung or reached the menu, the session path the launcher
 prints, and the size of `/tmp/x3-witness-quartz.log.z`. Analysis greps that
 trace for the failing stream's graph composition and the filter that returned
 `80004005`; the log is never read whole.
+
+## 13. Target-name speech with the decoder plugin and the DMO fallback hook — Pending candidate
+
+Needs the next candidate (voice DMO fallback hook `d1de1b9`); do not start until
+this entry says Ready. The hook acts only when the game's speech-decoder `Init`
+fails with class-not-registered, so the load hang of runs 29–36 should be gone
+(`docs/architecture/voice-decoder-adapter.md`, "DMO fallback hook"). Keep the
+run short: load the usual save, select five or six different targets (ships and
+stations), listen for the target-name speech, note whether selection still
+pauses, open one NPC comm dialogue, then quit. If the loading screen hangs again
+for more than 30 s, force-quit and report; do not retry.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --game-phases --audio-sites --voice-decoder /tmp/x3-wma-plugin-v3 \
+  --capture-start 999999 --capture-frames 1
+```
+
+Report: hang or not, speech heard or not (and whether it starts at the right
+word), selection pauses, comm video/audio, and the session path. Analysis reads
+the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
+the selection timing.
+
+## 14. Station source-over linear route, fade region and shimmer trace, combined — Pending candidate
+
+Same candidate as run 13, no decoder. Adds the station docking-port draws to the
+linear fade route (`docs/architecture/linear-station-source-over.md`) and the
+per-frame shimmer trace. Fly the run-11 path: asteroids and distant objects in
+normal and zoom view (use zoom on a shimmering asteroid for a few seconds), then
+the Argon station approach with the docking port in view; press F8 once at
+distance and once close to the port, and once while zoomed on a shimmering
+asteroid.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --linear-distance-fade --fade-witness --shimmer-trace \
+  --capture-start 999999 --capture-frames 1
+```
+
+Report: whether the docking port still darkens or brightens with distance, any
+change on the fading asteroids, frame rate, and the session path. Analysis reads
+the witness lines (zero outside pixels required), the `fade_refused_rect` lines
+against the HDR captures for the pixel proof, and the shimmer trace around the
+zoom frames.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
