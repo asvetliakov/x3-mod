@@ -43,11 +43,11 @@ Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
-| 22 | LOD scale 2×, fade-band trembling fix, docking-port screenshot pair | 1 | Pending the next candidate |
+| 22 | LOD scale 2×, fade-band trembling fix, docking-port screenshot pair | 1 | Ready (candidate `53a0d8a7…` from `509a273` installed) |
 
-## 22. LOD scale 2×, fade-band trembling fix, docking-port screenshot pair — Pending the candidate
+## 22. LOD scale 2×, fade-band trembling fix, docking-port screenshot pair — Ready
 
-One run on the next candidate (hash recorded in status once installed): `--lod-scale 2` (the
+One run on the installed candidate `53a0d8a7…` (`509a273`, record `verification/results/run22-candidate-install.json`): `--lod-scale 2` (the
 engine's LOD switch distances doubled by the byte-verified patch,
 [lod-scale.md](../architecture/lod-scale.md)) and the fade-band trembling fix
 ([asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md), "Run 49"). Load the

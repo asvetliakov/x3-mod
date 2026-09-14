@@ -13,15 +13,16 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`39b090d02c150e1da443532c84ad299334d17e49a8d9ec6bd16d05ecd4fe96cd` (14,247,499 bytes), a clean
-build of `77a649b` (installed 2026-09-15 early morning): screen emission step D (per-draw bullet
-vertex hull), the `loading_phase` markers, the z_only depth-prepass jitter with the
-`unjittered_depth_writers` counter, on top of everything in the previous build. The
-[install record](../verification/results/run20-candidate-install.json) binds its source, audits
-(no-x87 224 functions, 17 exports, load check), scoped qualification (locked-prefix live 24 frames,
-screen-emission live 14 cases, motion-output 118 cases at `1d49489`, host tests 48) and the
-rollback DLL `ab6e17ba…` (`5d06316`) kept with its manifest in the candidate directory. EXE and
-`cxbottle.conf` unchanged.
+`53a0d8a7f76e89836a66068ce166af095058fd3e10b6cbb5693a2b0027d35c5b` (14,299,619 bytes), a clean
+build of `509a273` (installed 2026-09-15 morning): the fade-band motion arm with hysteresis (fading
+reviewed pairs routed through TAA instead of masked current-only; the run-21 trembling fix) and
+`--lod-scale` (default-off, same-length EXE memory patch at `0x0047d44b`, cap 4), on top of the
+run-20 build (step D, loading markers, z_only prepass jitter). The
+[install record](../verification/results/run22-candidate-install.json) binds its source, audits
+(no-x87 225 functions, 17 exports, load check, both site verifiers), scoped qualification
+(motion-output 123 case runs / 107 names PASS, fade live 34 PASS at `509a273`, host tests 54) and
+the rollback DLL `39b090d0…` (`77a649b`) kept with its manifest in the candidate directory. EXE
+and `cxbottle.conf` unchanged.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,
 and a fixed EV 0 comparison through Ctrl+Shift+F9. Ctrl+Shift+F10 switches bloom contribution. Bloom, linear materials, and linear
@@ -39,13 +40,11 @@ asteroid triangle dropout fixed and accepted; step D bullets accepted (no
 fullscreen bracket in 50,654 frames); loading markers read menu 12.9 s and a
 21.7 s save-load stall; the far port was captured (37 px) and its radiance
 moves only 6 % between far and near; AO ran in the debug factor view for the
-whole session and is a few pixels wide at gameplay distances. Run 21 session A
-(snapshot run49) is complete: AO invisible at radius 100 and closed as default-off
-(zero cost when off); the bullet dimming is refuted (witness every frame, zero
-pixels outside the hull, peak higher than runs 19/20); a new symptom, one station
-section trembling at 4.7 km, is under diagnosis. Session B (vanilla far/near
-approach to the port and a ship) is not reported yet. No run is queued until the
-trembling diagnosis and the directional-shadows note land. Details in the
+whole session and is a few pixels wide at gameplay distances. Run 22 on the installed
+`53a0d8a7…` build: the docking-port screenshot pair with an F8 at each, `--lod-scale 2`
+appearance and frame rate, and the trembling check; command and report items in
+the [run queue](verification/user-runs.md). Runs 19–21 are complete (details in the
+[completed-run archive](archive/user-runs-completed.md)). Details in the
 [completed-run archive](archive/user-runs-completed.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
 but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
@@ -88,9 +87,12 @@ darkening on a ship. Details in the
   mask, so the resolve returns the raw jittered sample every frame (measured
   shift = Δjitter, up to 0.9 px) while routed neighbours are reprojected
   ([asteroid-fog-temporal.md](reverse-engineering/asteroid-fog-temporal.md),
-  "Run 49"). Fix in implementation on Fable: route fade-band draws of reviewed
-  pairs with their own motion rows and keep them out of the mask above a fade
-  threshold; rides the next candidate.
+  "Run 49"). Fixed in the installed build: fade-band draws of reviewed pairs are
+  routed with their own motion rows above 500 ‰ of the program's own fade
+  fraction (hysteresis 100 ‰), masked current-only below; fixture resolved
+  residual ≤ 0.07 px against a raw shift equal to the jitter; run 22 confirms
+  in game ([linear-distance-fade-region.md](architecture/linear-distance-fade-region.md),
+  "Fade-band route").
 - **Distant shimmer:** root cause named — `cutout::missed` on a source-over
   *blended* alpha-tested cutout draw refused at the motion gate drops the whole
   frame's TAA history (15 % of frames in runs 11/14, none in run 15). The
@@ -115,9 +117,10 @@ darkening on a ship. Details in the
   the same port, so the analysis compares the pixels the user means. Notes
   [station-material-distance.md](reverse-engineering/station-material-distance.md),
   [docking-port-lod-consistency.md](architecture/docking-port-lod-consistency.md)
-  (native parity ratified, low priority). A separate `--lod-scale` option is in
-  implementation from [lod-selection.md](reverse-engineering/lod-selection.md)
-  (one global float, same-length patch at `0x0047d44b`, default-off, cap 4).
+  (native parity ratified, low priority). `--lod-scale` is installed (default-off) from
+  [lod-selection.md](reverse-engineering/lod-selection.md): one global float,
+  same-length patch at `0x0047d44b`, two reviews, cap 4; run 22 tests 2×
+  ([lod-scale.md](architecture/lod-scale.md)).
 - **Bullets / screen emission:** step E (publication-time decode, parity within
   one FP16 code) and step D (per-draw vertex hull, fan batch 1.2 % of the viewport
   vs 89.6 % for the box; derive 1.7–27 µs per draw, sentinel fill 17 µs per lock)

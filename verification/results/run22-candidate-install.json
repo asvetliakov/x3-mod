@@ -10,7 +10,7 @@
   "seh_clang": "/usr/bin/clang (Apple clang 21.0.0)",
   "build": "git worktree add --detach (clean export of 509a273, worktree porcelain empty); cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build; cmake --build build -j4 (0 warnings, 11 s). The handed-over candidate is the copy at <base>/candidate/d3d9.dll, hashed after the build and re-hashed after the last fixture step: unchanged. The detached worktree was pruned after the build; the candidate copy and the logs under <base> remain.",
   "source_tree_note": "The main checkout carried nine dirty tracked files at export time, all runner outputs under verification/results/bottle-X3/ (d3d9-exports*, linear-distance-fade-live.json, motion-output-*). src/, tools/, cmake/, verification/probe/ and verification/analysis/ were clean, so no build input is dirty; the candidate is built from the detached 509a273 worktree and does not contain them.",
-  "installed": false,
+  "installed": true,
   "game_launched": false,
   "native_windows_verified": false,
   "bottle": {
@@ -22,11 +22,11 @@
   },
   "preserved_files_note": "Not installed; bottle X3 and its EXE/config were not touched by this candidate (one read-only export fixture under the Wine lock and one launcher --dry-run). EXE and cxbottle.conf hashes rechecked after the runs and equal to the run-20 record.",
   "rollback": {
-    "dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/rollback-d3d9.dll",
     "dll_sha256": "39b090d02c150e1da443532c84ad299334d17e49a8d9ec6bd16d05ecd4fe96cd",
     "source_commit": "77a649b",
-    "install_record": "verification/results/run20-candidate-install.json",
-    "note": "The currently installed DLL is the run-20 candidate; keep it and its launcher manifest for rollback."
+    "bottle_manifest": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/rollback-x3-modern-install.json",
+    "install_record": "verification/results/run20-candidate-install.json"
   },
   "no_x87": {
     "result": "PASS",
@@ -145,5 +145,9 @@
   "change": "Carries the installed 39b090d0 (77a649b) forward to 509a273 with two merges: the fade-band motion arm (1455bed plus the review/live fixes 509a273) that routes fading draws of reviewed pairs at gate 4 above X3M_FADE_ROUTE instead of masking them, with a 100 permille per-node hysteresis band, camera-invalid estimates refused and fade_held counters; and --lod-scale (bfe1909), a same-length FMUL memory patch at EXE 0x0047d44b mirrored in the proxy, default-off with a cap of 4. Also the run-19/20/21 ledgers and notes (docs only). No new default enables AO, emission or the LOD patch.",
   "changed_dependencies": "git diff --stat 77a649b..509a273 -- src/ tools/: 9 files, +530/-9 (capture.cpp, fade_route_core.h, loader.cpp, lod_scale.cpp/.h/_core.h, motion_output.cpp/.h, tools/manage.py); 24 commits.",
   "run22_acceptance": "The user's run 22 is the acceptance for the behavior; this record covers the candidate only.",
-  "installed_sha256_verified": false
+  "installed_sha256_verified": true,
+  "installed_at": "2026-09-15T02:58:47+04:00",
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "launcher_manifest": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-install.json",
+  "motion_output_case_count_note": "motion-output-summary.json lists 107 distinct case names; motion-output.txt has 123 exit=0 case runs (variants); both PASS at 509a273"
 }
