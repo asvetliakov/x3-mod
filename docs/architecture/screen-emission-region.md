@@ -332,3 +332,31 @@ on exactly frames 2/7/10/12 with 128 outside pixels and the other half missing; 
 native, pool of 4. Paired windows (source, median delta on−off per bracket): 1280×768 0.15–0.38 ms at
 2,967 px; 1920×1080 0.16–0.49 ms at 5,959 px (at 16 DIPs 0.36 → 2.99 ms at both sizes, ≈0.165 ms per bracket).
 Host: `test_screen_emission_live` 7 OK; x87 audit PASS. Native Windows behaviour remains unverified.
+
+### Run 17 defect (2026-09-14): the per-fragment decode collapses accumulated dim fragments
+
+Run 17 (`/tmp/x3-bottleX3-run42/`, candidate `5b92484a` from `066e18f`) admitted every bound bullet draw
+(500/500 bound, 2–4 packed brackets per firing frame, `packed_incomplete` 0) and the bolts nearly vanished
+in the game while every fixture passed. The bracket executes: the witness counts 5,000–9,400 covered M
+pixels per firing frame inside the union with 0 outside, the 20 `packed_sample` centres sit off the thin
+bolts (post = pre, both `S_OK`), and the shader-local `def c30/c31` survive the application's pixel
+constant block (run 17 sets c0–c35 at every bullet draw, c30/c31 included): a live fixture frame that set
+that exact block after the PS bind composed the packed law within tolerance and restored the block (kind
+`c`, not kept; the D3DMetal bottle gives `def` precedence, native Windows is unverified). The root cause is
+the law itself under the bullet geometry. A bolt is a chain of overlapping soft sprites drawn in one
+non-indexed DIP (99 quads for the run-17 198-primitive draw); natively the encoded values accumulate
+`B' = q + (1 - q) B` and are decoded once by the write-back, whereas policy 8 decodes each fragment
+(`E = decode(T) h`) before accumulating `L' = E + (1 - q) L`. For one fragment on black the two coincide
+(`encode(decode(q)) = q`); for n dim fragments the packed sum is `decode(T)/T` times smaller per unit of
+native coverage, so the soft tail (small T, many overlaps) collapses while the bright core (T ≈ 1) barely
+changes. `verification/analysis/screen_emission_display_ratio.py` measures this through the run-17
+write-back (gamma-2.2 decode, EV 0, AgX, no look) on a synthetic soft sprite chain (the DXT5 sprite and
+vertex alpha were not captured): overlap 1 identical laws; overlap 8, σ 3 px, spacing 2 px on black,
+display luminance native / packed at 0, 3, 5, 7 px off the axis = 0.779/0.662, 0.749/0.567, 0.586/0.317,
+0.202/0.051 (tail-to-core ratio 0.26 native vs 0.08 packed); gain 4 lifts the core past native (0.863) with
+the tail ratio still 0.17; on a nebula (A ≈ 0.2) the tail ratio is 0.52 vs 0.32. Option (a), the
+display-referred source (the linear radiance that reproduces the native display result under the active
+write-back), is `decode(native B)`, i.e. the packed red lane: exact by construction for every order and
+overlap and identical to native, so it carries no enhancement; option (b), a calibrated gain, cannot
+restore the tail-to-core ratio. Neither is adopted here; the composition contract for the accumulated
+bullet sprites is the orchestrator's decision. No production change was made for this defect.
