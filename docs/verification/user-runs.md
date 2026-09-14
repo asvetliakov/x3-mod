@@ -118,8 +118,8 @@ The run-14 command plus `--screen-emission` (step C of
 [screen-emission-region.md](../architecture/screen-emission-region.md)): the
 bullet draws of the nine SM1 screen pairs compose through the packed policy 8
 inside their locked-prefix rectangle; unbounded, unknown-state or
-capability-refused draws stay native. Needs a fresh install candidate built from
-the merged tree. Fly the run-14 path, then fire the weapons at a target (an
+capability-refused draws stay native. The candidate `76d7750` (DLL `608b35d8…`) is
+installed. Fly the run-14 path, then fire the weapons at a target (an
 asteroid or a ship) for a few seconds in normal and zoom view, and press F8
 once while firing; the witness stays on (`--fade-witness`, every 30th frame).
 
