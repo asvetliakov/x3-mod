@@ -27,6 +27,9 @@ constexpr unsigned D3DRS_COLORWRITEENABLE1=190,D3DRS_COLORWRITEENABLE2=191;
 constexpr unsigned D3DRS_ZENABLE=7,D3DRS_ZWRITEENABLE=14,D3DRS_ALPHATESTENABLE=15,D3DRS_ALPHABLENDENABLE=27,D3DRS_COLORWRITEENABLE=168,D3DRS_SRGBWRITEENABLE=194;
 constexpr unsigned D3DRS_WRAP0=128,D3DRS_WRAP7=135,D3DRS_WRAP8=198,D3DRS_WRAP15=205;
 constexpr unsigned D3DRS_FILLMODE=8;
+// Step C packed-screen state: the native screen blend and the projected-TSS gate.
+constexpr unsigned D3DRS_DITHERENABLE=26,D3DBLEND_ONE=2,D3DBLEND_INVSRCCOLOR=4;
+constexpr unsigned D3DTSS_TEXTURETRANSFORMFLAGS=24,D3DTTFF_PROJECTED=256;
 struct RECT{long left=0,top=0,right=0,bottom=0;};
 constexpr unsigned motion_shadow_state_count=24;
 constexpr std::array<unsigned,24>shadow_states{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_COLORWRITEENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,128,129,130,131,132,133,134,135,198,199,200,201,202,203,204,205};
@@ -58,6 +61,12 @@ bool linear_emission_config_valid(const LinearEmissionConfig& c){return std::isf
 unsigned emission_transforms=0,emission_lookups=0;float emission_gain=0;bool emission_reject=false,emission_throw=false;
 bool linear_emission_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++emission_lookups;return (vs==50&&(ps==60||ps==61))||(vs==52&&ps==60);}
 LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t*p,std::size_t,const LinearEmissionConfig& c,std::vector<std::uint32_t>& words){++emission_transforms;CHECK(c.coverage);emission_gain=c.gain;if(emission_throw)throw std::bad_alloc();if(emission_reject)return LinearEmissionResult::AllocationFailure;if(*p!=60&&*p!=61)return LinearEmissionResult::UnsupportedShader;words={*p+300};return LinearEmissionResult::Applied;}
+// Step C promotion double: outcomes and the requested output set only; the
+// real PackedScreen transform is checked by the pure SM1 transformer fixture.
+enum class LinearEmissionSm1Outputs {Native=1,Emission=2,Coverage=3,PackedScreen=4};
+struct LinearEmissionSm1Config {float gain=1;LinearEmissionSm1Outputs outputs=LinearEmissionSm1Outputs::Coverage;bool native_partial_precision=false;};
+unsigned sm1_transforms=0;float sm1_gain=0;bool sm1_reject=false;
+LinearEmissionResult linear_emission_sm1_pixel_variant(const std::uint32_t*p,std::size_t,const LinearEmissionSm1Config&c,std::vector<std::uint32_t>&words){++sm1_transforms;CHECK(c.outputs==LinearEmissionSm1Outputs::PackedScreen);sm1_gain=c.gain;if(sm1_reject)return LinearEmissionResult::AllocationFailure;if(*p!=95&&*p!=96)return LinearEmissionResult::UnsupportedShader;words={*p+700};return LinearEmissionResult::Applied;}
 struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightmap_emissive_gain=1;};
 enum class LinearMaterialResult{Applied,UnsupportedShader};
 unsigned fade_transforms=0,fade_lookups=0;bool fade_reject=false,fade_throw=false;
@@ -104,7 +113,7 @@ LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::s
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
 }
 namespace renderer {
-enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2,DistanceFadeInPlace=4};
+enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2,DistanceFadeInPlace=4,PackedScreenInPlace=8};
 constexpr unsigned composition_policy_bit(LinearCompositionPolicy p){return unsigned(p);}
 enum class LinearEmissionImage {None,Linear,Native,Incomplete};
 struct LinearEmissionPreparation{bool ready=true,state_preserved=true;HRESULT saved=S_OK,operation=S_OK,restore=S_OK;};
@@ -134,6 +143,15 @@ struct Pass {IDirect3DSurface9 initial,*current=&initial;unsigned exchange_calls
  bool active=true;unsigned references(){return 0;} bool tonemap_active()const{return active;}void shutdown(){}void after_reset(HRESULT){}void before_reset(){}void bind(void*,void*){}};
 struct History{void invalidate(){}};
 namespace camera_state {void reset(){}}
+// Step C admission double: synthetic screen identities (vs 90/91, ps 95/96)
+// stand in for the nine SM1 pairs; the real table is a header constant checked
+// by its own test, never re-encoded here.
+namespace screen_emission {
+unsigned pair_lookups=0,pixel_lookups=0,vertex_lookups=0;
+inline bool admitted_vertex_shader(std::uint64_t vs)noexcept{++vertex_lookups;return vs==90;}
+inline bool admitted_pair(std::uint64_t vs,std::uint64_t ps)noexcept{++pair_lookups;return (vs==90&&ps==95)||(vs==91&&ps==96);}
+inline bool admitted_pixel_shader(std::uint64_t ps)noexcept{++pixel_lookups;return ps==95||ps==96;}
+}
 namespace cutout {enum class Capability:std::uint8_t{Pending,Ready,Unsupported,Retry};
 unsigned pair_lookups=0;constexpr bool pair(std::uint64_t,std::uint64_t) noexcept {return false;}}
 enum class MotionGate{Feature=1};
@@ -146,12 +164,15 @@ struct MotionRoute {
  bool depth=false,linear_material=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
  bool vs_constants_set=false,ps_constants_set=false,jittered=true;
  DWORD saved_write1=15,saved_write2=15;
- struct {RECT rect{};unsigned reason=0;bool bound=false;} fade_region{};bool fade_region_evaluated=false;unsigned fade_region_permille=0;
+ struct Region {RECT rect{};unsigned reason=0;bool bound=false;};
+ Region fade_region{};bool fade_region_evaluated=false;unsigned fade_region_permille=0;
+ Region prefix_region{};bool prefix_evaluated=false;unsigned prefix_region_permille=0;
 };
 struct Counters{unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
 struct D3DDISPLAYMODE{D3DFORMAT Format=D3DFMT_UNKNOWN;};
 struct Device {
  unsigned display_mode_reads=0;HRESULT display_mode_result=S_OK;D3DFORMAT display_mode_format=1;
+ unsigned stage_reads=0;DWORD stage_flags=0;HRESULT stage_result=S_OK;
  HRESULT target_result=S_OK;std::vector<int> calls; std::vector<unsigned> failed_calls; unsigned ordinal=0;
  IDirect3DVertexShader9* bound_vs=nullptr;IDirect3DPixelShader9* bound_ps=nullptr;
  std::array<DWORD,6> srgb{};unsigned sampler_reads=0;int fail_sampler=-1;bool fail_combined_create=false,fail_motion_create=false,fail_get_vs=false,fail_get_ps=false;
@@ -178,6 +199,7 @@ using SetVsFn=HRESULT(*)(D,IDirect3DVertexShader9*);using SetPsFn=HRESULT(*)(D,I
 using CreateVsFn=HRESULT(*)(D,const DWORD*,IDirect3DVertexShader9**);using CreatePsFn=HRESULT(*)(D,const DWORD*,IDirect3DPixelShader9**);
 using SetSamplerStateFn=HRESULT(*)(D,DWORD,D3DSAMPLERSTATETYPE,DWORD);
 using GetRenderStateFn=HRESULT(*)(D,DWORD,DWORD*);
+using GetStageFn=HRESULT(*)(D,DWORD,unsigned,DWORD*);
 using GetSamplerStateFn=HRESULT(*)(D,DWORD,D3DSAMPLERSTATETYPE,DWORD*);
 using GetTextureFn=HRESULT(*)(D,DWORD,IDirect3DBaseTexture9**);
 using SetRenderStateFn=HRESULT(*)(D,DWORD,DWORD);using SetConstantsFFn=HRESULT(*)(D,UINT,const float*,UINT);
@@ -186,7 +208,7 @@ using GetConstantsFFn=HRESULT(*)(D,UINT,float*,UINT);using GetConstantsIFn=HRESU
 using GetStreamFn=HRESULT(*)(D,UINT,IDirect3DVertexBuffer9**,UINT*,UINT*);using GetIndicesFn=HRESULT(*)(D,IDirect3DIndexBuffer9**);
 using GetDeclarationFn=HRESULT(*)(D,IDirect3DVertexDeclaration9**);using GetRenderTargetFn=HRESULT(*)(D,DWORD,IDirect3DSurface9**);
 using GetDepthFn=HRESULT(*)(D,IDirect3DSurface9**);using GetViewportFn=HRESULT(*)(D,D3DVIEWPORT9*);
-enum Slots{SetRenderTarget,SetSamplerState,SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport,GetRenderState,GetDisplayMode};
+enum Slots{SetRenderTarget,SetSamplerState,SetVertexShader,SetPixelShader,CreateVertexShader,CreatePixelShader,GetSamplerState,GetTexture,SetRenderState,SetVertexShaderConstantF,SetPixelShaderConstantF,GetVertexShader,GetPixelShader,GetVertexShaderConstantF,GetVertexShaderConstantI,GetPixelShaderConstantF,GetStreamSource,GetIndices,GetVertexDeclaration,GetRenderTarget,GetDepthStencilSurface,GetViewport,GetRenderState,GetDisplayMode,GetTextureStageState};
 HRESULT set_vs(D d,IDirect3DVertexShader9*p){d->calls.push_back(1);d->bound_vs=p;if(d->fails())return E_FAIL;return S_OK;}
 HRESULT set_ps(D d,IDirect3DPixelShader9*p){d->calls.push_back(2);d->bound_ps=p;if(d->fails())return E_FAIL;return S_OK;}
 HRESULT create_vs(D d,const DWORD*p,IDirect3DVertexShader9**out){++d->vs_creates;if(*p==d->fail_program){if(d->partial_program)*out=new IDirect3DVertexShader9;return E_FAIL;}if((*p>=200&&d->fail_combined_create)||(*p<200&&d->fail_motion_create))return E_FAIL;*out=new IDirect3DVertexShader9;return S_OK;}
@@ -207,20 +229,22 @@ HRESULT get_target(D,DWORD,IDirect3DSurface9**p){*p=nullptr;return D3DERR_NOTFOU
 HRESULT get_depth(D,IDirect3DSurface9**p){*p=nullptr;return D3DERR_NOTFOUND;}
 HRESULT get_display_mode(D d,UINT index,D3DDISPLAYMODE*out){CHECK(index==0);++d->display_mode_reads;out->Format=d->display_mode_format;return d->display_mode_result;}
 HRESULT get_state(D,DWORD,DWORD*out){*out=0;return S_OK;}
+HRESULT get_stage(D d,DWORD stage,unsigned type,DWORD*out){CHECK(stage==0&&type==D3DTSS_TEXTURETRANSFORMFLAGS);++d->stage_reads;*out=d->stage_flags;return d->stage_result;}
 HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*screen_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
+ bool screen_pair=false;IDirect3DPixelShader9*ps_screen_variant=nullptr,*screen_eligible_variant=nullptr;std::uint64_t stream0=0;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr;
  bool xt_default_pair=false,xt_default_ready=false,cutout_pair=false,asteroid_pair=false;
  DWORD fill_mode=0;bool fill_mode_known=false;
  IDirect3DVertexShader9*vs_xt_default_ordinary=nullptr,*vs_xt_default_linear=nullptr;IDirect3DPixelShader9*ps_xt_default_ordinary=nullptr;
- DWORD composition_blend[3]{};bool composition_blend_known[3]{};
+ DWORD composition_blend[4]{};bool composition_blend_known[4]{};
  DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};
  renderer::LinearMaterialPairContract material_contract{};float rows[1][16]{};bool rows_known[1]{};int integer0[4]{};bool integer0_known=false;
  Surface rt0,depth;Viewport viewport;bool extra_rt[4]{};
@@ -240,14 +264,17 @@ public:
  bool composition_busy_=false,composition_state_lost_=false,composition_frame_stopped_=false,composition_enhanced_=false,composition_quarantined_=false,composition_readers_known_=false,composition_published_=false;
  IDirect3DTexture9*composition_main_texture_=nullptr;IUnknown*composition_main_identity_=nullptr;
  std::uint32_t composition_main_sampler_mask_=0,composition_reader_known_mask_=0;IDirect3DBaseTexture9*composition_textures_[21]{};
- struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;unsigned in_place=0,in_place_linear=0,in_place_incomplete=0,recovery_failures=0;std::uint64_t region_pixels=0;HRESULT recovery=S_FALSE;}composition_counts_;
+ struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;unsigned in_place=0,in_place_linear=0,in_place_incomplete=0,recovery_failures=0;std::uint64_t region_pixels=0;unsigned packed_eligible=0,packed_unbounded_refused=0,packed_caps_refused=0,packed_admitted=0,packed_linear=0,packed_incomplete=0;std::uint64_t packed_region_pixels=0;HRESULT recovery=S_FALSE;}composition_counts_;
  unsigned composition_adapter_format_=1,composition_depth_format_=2;bool composition_attach_attempted_=true,composition_effective_=false,composition_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
  bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;
  unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
  struct FadeBounds{bool storage=false,fail_reserve=false;unsigned clears=0,reserves=0;
   bool reserve(){++reserves;if(fail_reserve)return false;storage=true;return true;}
   void clear(){++clears;storage=false;}bool reserved()const{return storage;}}fade_bounds_;
- struct FadeWitness{static constexpr unsigned rect_capacity=1024;bool prepared[rect_capacity]{};unsigned prepared_count=0,last=rect_capacity;}fade_witness_;
+ struct FadeWitness{static constexpr unsigned rect_capacity=1024,buckets=8,line_budget=64;
+  RECT rects[rect_capacity]{};bool prepared[rect_capacity]{};
+  unsigned count=0,prepared_count=0,last=rect_capacity,logged=0;bool overflow=false;unsigned f_hist[buckets]{};
+  IDirect3DSurface9*copy=nullptr;}fade_witness_;
  unsigned witness_releases_=0,fade_regions_derived_=0,cutout_candidates_=0,mip_bias_failure_reports_=0;
  bool witness_frame_=false;bool witness_frame()const noexcept{return witness_frame_;}
  void release_fade_witness()noexcept{++witness_releases_;}
@@ -265,6 +292,9 @@ public:
  unsigned cutout_probes_=0;void probe_cutout_caps(bool=false)noexcept{++cutout_probes_;}
  bool distance_fade_requested_=false;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
+ bool screen_emission_requested_=false,screen_emission_bound_=false;unsigned prefix_regions_derived_=0;
+ // Step B's bound derivation is a separate seam; here it only records the call.
+ void derive_prefix_region(const MotionDrawCall&,MotionRoute&)noexcept{++prefix_regions_derived_;}
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
  bool hdr_target_failed_=false,hdr_blocked_=false,target_failed_=false,pending_valid_=false,main_msaa_=false,msaa_logged_=false;unsigned hdr_blocked_latches_=0,main_msaa_samples_=0;Surface main_,main_depth_;History selector_;renderer::CameraState camera_previous_;
  unsigned taa_references_=0;std::unique_ptr<Pass>hdr_=std::make_unique<Pass>(),taa_;History history_;
@@ -288,6 +318,7 @@ public:
   case GetDepthStencilSurface:return reinterpret_cast<F>(reinterpret_cast<void*>(get_depth));case GetViewport:return reinterpret_cast<F>(reinterpret_cast<void*>(get_viewport));
   case GetDisplayMode:return reinterpret_cast<F>(reinterpret_cast<void*>(get_display_mode));
   case GetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_state));
+  case GetTextureStageState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_stage));
   case SetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_state));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}
  }
  void set_stream_source(UINT,IDirect3DVertexBuffer9*,UINT,UINT){}void set_indices(IDirect3DIndexBuffer9*){}void set_vertex_declaration(IDirect3DVertexDeclaration9*){}
@@ -307,7 +338,8 @@ public:
  void drop_redirect(){release_composition_identity();} void release_target(){release(target_surface_);release(depth_surface_);}
  template<class F>void taa_call(F&&f){f();}void invalidate_render_states(){states_invalidated=true;}
  HRESULT bind_target(unsigned index,IUnknown*p){return set_target(device_,index,static_cast<IDirect3DSurface9*>(p));}
- HRESULT render_state(unsigned index,DWORD*out){*out=device_->write_masks[index==D3DRS_COLORWRITEENABLE1?1:2];return S_OK;}
+ DWORD dither_=0;HRESULT dither_result_=S_OK;unsigned dither_reads_=0;
+ HRESULT render_state(unsigned index,DWORD*out){if(index==D3DRS_DITHERENABLE){++dither_reads_;*out=dither_;return dither_result_;}*out=device_->write_masks[index==D3DRS_COLORWRITEENABLE1?1:2];return S_OK;}
  HRESULT bind_targets(MotionRoute&)noexcept;HRESULT prepare_constants(MotionRoute&)noexcept;
  unsigned device_references()const noexcept;void release_resources()noexcept;
  void configure_linear_materials(bool,const renderer::LinearMaterialConfig&)noexcept;
@@ -333,7 +365,7 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
 }
 namespace x3m {namespace renderer=::renderer;}
 unsigned fade_witness_frames=0;bool shimmer_trace_requested=false;
-bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false;float emission_gain=1;
+bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;
 renderer::LinearMaterialConfig linear_material_config;
 renderer::HdrConfig hdr_config;
 #include "linear_material_live_under_test_inc.h"
