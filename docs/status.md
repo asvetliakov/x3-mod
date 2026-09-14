@@ -30,6 +30,9 @@ timestamps in build v3 (`6a2c763`), but gameplay launches hang on the loading
 screen (runs 29–35 and the witness attempt, which produced no snapshot): the witness run shows `SetState(RUN)` returning `E_FAIL`
 followed by a COM teardown wait; root cause open (see the handoff). The WMP11
 bottle experiment was reverted byte-identically (`2e64c4d`).
+User decision (2026-09-14): no native-codec or bottle-clone route; fix through the plugin path,
+and if that proves too hard, fail early on the missing audio so the selection stutter goes away
+(this supersedes the earlier rejection of negative caching).
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
