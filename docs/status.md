@@ -184,10 +184,14 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   availability is not restored speech; see the
   [adapter note](architecture/voice-decoder-adapter.md).
 - **Distant shimmer reported in run 11:** distant asteroids and stations appear to
-  shimmer in motion, described as parts of geometry disappearing; the user is unsure
-  whether it is new. The fade-region witness is clean, so the evidence does not
-  implicate the region route; the cause is unidentified and the report is carried as
-  part of the open TAA distant-shimmer item.
+  shimmer in motion, described as parts of geometry disappearing. The run-14 shimmer
+  trace (2026-09-14 evening) shows TAA history dropped on 15 % of frames (`camera_state
+  reason=3`, previous view invalid, 100 % coincident with `taa_history=0`) in clusters
+  during fast translation, long-standing (run 11: 15 %, run 15: none), with real LOD
+  switches rare and isolated draw gaps on the same frames; four of five clusters start
+  after a valid camera relatch with no cut, so an `invalidate_taa` site fires between
+  frames. A Fable diagnosis with per-site instrumentation is in progress; the fade
+  route is not implicated (witness clean).
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
   The [normal/specular study](reverse-engineering/asteroid-specular-minification.md) identifies an independent
