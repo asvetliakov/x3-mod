@@ -51,11 +51,11 @@ def fields(line):
 def parse(text):
     """The fixture's report as one dictionary (also the host test's subject)."""
     lines = text.splitlines()
-    report = {'checks': {}, 'reference': {}, 'oracles': [], 'apply': {}, 'timing': [], 'caps': None, 'attach': None, 'reset': None, 'result': None}
+    report = {'checks': [], 'reference': {}, 'oracles': [], 'apply': {}, 'timing': [], 'timing_quads': [], 'fp16_store': None, 'caps': None, 'attach': None, 'reset': None, 'result': None}
     for line in lines:
         if line.startswith('CHECK '):
             _, label, verdict = line.split(' ', 2)
-            report['checks'][label] = verdict.strip() == 'PASS'
+            report['checks'].append([label, verdict.strip() == 'PASS'])  # a list: labels repeat (recovery and Reset rerun a scene)
         elif line.startswith('REFERENCE '):
             entry = fields(line)
             report['reference'][entry['scene']] = entry
@@ -70,6 +70,10 @@ def parse(text):
             report['timing'].append(fields(line))
         elif line.startswith('TIMING_VARIANT '):
             report.setdefault('timing_variants', []).append(fields(line))
+        elif line.startswith('TIMING_QUADS '):
+            report['timing_quads'].append(fields(line))
+        elif line.startswith('FP16_STORE '):
+            report['fp16_store'] = fields(line)
         elif line.startswith('CAPS '):
             report['caps'] = fields(line)
         elif line.startswith('ATTACH '):
@@ -80,7 +84,8 @@ def parse(text):
             report['result'] = fields(line)
             report['result']['verdict'] = line.split()[1]
     report['check_count'] = len(report['checks'])
-    report['check_failures'] = sum(not v for v in report['checks'].values())
+    report['check_failures'] = sum(not passed for _, passed in report['checks'])
+    report['failed_checks'] = [label for label, passed in report['checks'] if not passed]
     for entry in report['reference'].values():
         entry['within_002_fraction'] = entry['within_002'] / entry['pixels'] if entry.get('pixels') else 0
     for entry in report['timing']:
@@ -108,6 +113,8 @@ def main():
         record['report'] = parse(text)
         report = record['report']
         assert run.returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and report['check_failures'] == 0, text[-2000:]
+        assert report['result']['checks'] == report['check_count'], (report['result'], report['check_count'])
+        assert len(report['timing_quads']) == 2 and report['fp16_store'] and report['fp16_store']['mode'] in ('round_to_nearest', 'truncate'), (report['timing_quads'], report['fp16_store'])
         assert sorted(report['reference']) == ['corner', 'plane', 'sphere', 'step', 'tilted'], report['reference']
         for scene, entry in report['reference'].items():
             assert entry['mean_abs'] <= REFERENCE_TOLERANCE['mean_abs'] and entry['within_002_fraction'] >= REFERENCE_TOLERANCE['within_002_fraction'], (scene, entry)
@@ -125,6 +132,8 @@ def main():
             summary['reference'] = {s: (e['mean_abs'], e['p999'], e['max'], e['within_002_fraction']) for s, e in record['report']['reference'].items()}
             summary['apply'] = {s: (a['exact'], a['one_ulp'], a['over'], a['max_ulp']) for s, a in record['report']['apply'].items()}
             summary['timing'] = [(t['width'], t['height'], t['submit_ms'], t['chain_ms'], t['gpu_ms'], t['budget']['within_cap']) for t in record['report']['timing']]
+            summary['timing_quads'] = record['report']['timing_quads']
+            summary['fp16_store'] = record['report']['fp16_store']
         print(json.dumps(summary, indent=1))
     return 0 if record['passed'] else 1
 

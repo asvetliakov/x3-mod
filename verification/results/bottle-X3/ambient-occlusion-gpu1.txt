@@ -3,15 +3,19 @@ CHECK twin_ps_2_0 PASS
 CHECK twin_ps_slots PASS
 CHECK twin_blend_factors PASS
 CHECK fault_shader_create PASS
+FP16_STORE value0=0.99987793 stored0=3bff value1=1.00073242 stored1=3c00 mode=truncate
+CHECK fp16_store_mode_established PASS
 ATTACH enabled=1 largest_program_slots=483 references=6
 CHECK attach_enabled PASS
 CHECK fault_target_create PASS
 CHECK prepare_targets PASS
+CHECK auto_depth_present PASS
 CHECK refuse_8bit_target PASS
 CHECK refuse_unknown_queries PASS
 CHECK refuse_bad_params PASS
 CHECK scene_plane_execute PASS
 CHECK scene_plane_state_preserved PASS
+CHECK scene_plane_bindings_returned PASS
 CHECK scene_plane_references PASS
 CHECK scene_plane_linearize PASS
 REFERENCE scene=plane width=1280 height=768 pixels=245760 sentinel=0 ones=245760 mean_abs=0.000000 p999=0.000000 max=0.000000 within_002=245760 half_depth_max_rel=6.885e-07
@@ -23,6 +27,7 @@ ORACLE scene=plane label=flat_identity covered=245760 not_one=0 below_0999=0 PAS
 CHECK oracle_plane_flat_identity PASS
 CHECK scene_tilted_execute PASS
 CHECK scene_tilted_state_preserved PASS
+CHECK scene_tilted_bindings_returned PASS
 CHECK scene_tilted_references PASS
 CHECK scene_tilted_linearize PASS
 REFERENCE scene=tilted width=1280 height=768 pixels=245760 sentinel=124160 ones=245671 mean_abs=0.000000 p999=0.000000 max=0.000000 within_002=245760 half_depth_max_rel=9.802e-06
@@ -34,6 +39,7 @@ ORACLE scene=tilted label=flat_identity covered=121600 not_one=89 below_0999=0 P
 CHECK oracle_tilted_flat_identity PASS
 CHECK scene_sphere_execute PASS
 CHECK scene_sphere_state_preserved PASS
+CHECK scene_sphere_bindings_returned PASS
 CHECK scene_sphere_references PASS
 CHECK scene_sphere_linearize PASS
 REFERENCE scene=sphere width=1280 height=768 pixels=245760 sentinel=127173 ones=242258 mean_abs=0.000000 p999=0.000122 max=0.000366 within_002=245760 half_depth_max_rel=3.101e-06
@@ -49,6 +55,7 @@ ORACLE scene=sphere label=convex_top mean=1.0000 min=1.0000 pixels=1687 PASS
 CHECK oracle_sphere_convex_top PASS
 CHECK scene_corner_execute PASS
 CHECK scene_corner_state_preserved PASS
+CHECK scene_corner_bindings_returned PASS
 CHECK scene_corner_references PASS
 CHECK scene_corner_linearize PASS
 REFERENCE scene=corner width=1280 height=768 pixels=245760 sentinel=0 ones=219759 mean_abs=0.000005 p999=0.000244 max=0.000366 within_002=245760 half_depth_max_rel=3.836e-07
@@ -66,6 +73,7 @@ ORACLE scene=corner label=wall_beyond_radius mean=1.0000 min=1.0000 pixels=13824
 CHECK oracle_corner_wall_beyond_radius PASS
 CHECK scene_step_execute PASS
 CHECK scene_step_state_preserved PASS
+CHECK scene_step_bindings_returned PASS
 CHECK scene_step_references PASS
 CHECK scene_step_linearize PASS
 REFERENCE scene=step width=1280 height=768 pixels=245760 sentinel=0 ones=239233 mean_abs=0.000001 p999=0.000244 max=0.000366 within_002=245760 half_depth_max_rel=6.885e-07
@@ -81,6 +89,7 @@ CHECK fault_draw_failed PASS
 CHECK fault_draw_restored PASS
 CHECK scene_sphere_execute PASS
 CHECK scene_sphere_state_preserved PASS
+CHECK scene_sphere_bindings_returned PASS
 CHECK scene_sphere_references PASS
 CHECK fault_draw_recovered PASS
 CHECK fault_lost_mid_chain PASS
@@ -89,14 +98,34 @@ CHECK before_reset_released PASS
 CHECK refuse_while_reset_pending PASS
 CHECK prepare_refused_while_reset_pending PASS
 CHECK after_reset_accepts PASS
+CHECK auto_depth_present PASS
 CHECK scene_sphere_execute PASS
 CHECK scene_sphere_state_preserved PASS
+CHECK scene_sphere_bindings_returned PASS
 CHECK scene_sphere_references PASS
 CHECK reset_bit_identical PASS
 RESET PASS references=13 allocations=2
-TIMING width=1280 height=768 fenced_on_ms=0.8532 fenced_off_ms=0.0153 submit_ms=0.1143 chain_ms=0.8379 gpu_ms=0.7236 samples=7
-TIMING_VARIANT width=1280 height=768 variant=no_blur fenced_on_ms=0.7948 chain_ms=0.7795 samples=4
-TIMING width=1920 height=1080 fenced_on_ms=1.4083 fenced_off_ms=0.0158 submit_ms=0.1078 chain_ms=1.3925 gpu_ms=1.2847 samples=7
-TIMING_VARIANT width=1920 height=1080 variant=no_blur fenced_on_ms=0.6923 chain_ms=0.6765 samples=4
+TIMING width=1280 height=768 fenced_on_ms=0.8599 fenced_off_ms=0.0166 submit_ms=0.1169 chain_ms=0.8433 gpu_ms=0.7264 samples=7
+TIMING_VARIANT width=1280 height=768 variant=no_blur fenced_on_ms=0.8076 chain_ms=0.7910 samples=4
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+TIMING_QUADS width=1280 height=768 linearize_ms=0.3587 gtao_ms=0.4865 blur1_ms=0.3743 blur2_ms=0.3606 apply_ms=0.4878 sum_ms=2.0679 samples=6
+TIMING width=1920 height=1080 fenced_on_ms=1.3743 fenced_off_ms=0.0133 submit_ms=0.1184 chain_ms=1.3610 gpu_ms=1.2426 samples=7
+TIMING_VARIANT width=1920 height=1080 variant=no_blur fenced_on_ms=0.6975 chain_ms=0.6842 samples=4
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+CHECK per_quad_draw_count PASS
+TIMING_QUADS width=1920 height=1080 linearize_ms=0.2465 gtao_ms=0.4743 blur1_ms=0.2036 blur2_ms=0.2046 apply_ms=0.3387 sum_ms=1.4677 samples=6
 CHECK detach_released PASS
-RESULT PASS checks=73 failures=0
+RESULT PASS checks=99 failures=0

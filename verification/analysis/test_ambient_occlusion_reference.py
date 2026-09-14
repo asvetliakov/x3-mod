@@ -4,8 +4,8 @@ Compiles verification/probe/ambient_occlusion_reference.h with the native
 compiler and drives it on small synthetic depth images: the fp16 model, the
 flat-plane identity (fronto-parallel and tilted: the stored occlusion term is
 exactly 0 including the borders), the sentinel identity, a wall next to a
-floor occluding the crease and not the far floor, and the multiply factor's
-endpoints. No Wine, no device.
+floor occluding the crease and not the far floor, the multiply factor's
+endpoints, and the recorded plane darkening of XeGTAO's view-angle horizon. No Wine, no device.
 """
 from pathlib import Path
 import shutil
@@ -47,6 +47,15 @@ int main() {
         if (std::fabs(py + 20) < 1e-6 && 100 - zz <= 15) { crease += corner[y * (w / 2) + x]; ++nc; }
         if (std::fabs(py + 20) < 1e-6 && 100 - zz >= 40 && 100 - zz <= 90) { far += corner[y * (w / 2) + x]; ++nf; } }
     std::printf("crease_mean=%.4f n=%u far_mean=%.4f n=%u\n", crease / nc, nc, far / nf, nf);
+    // The recorded measurement behind the shader's tangent-plane horizon: the
+    // same reference with XeGTAO's view-angle horizon on the fronto-parallel
+    // plane at the fixture's size (1280x768, radius 10, z = 200); the term is
+    // reported as visibility (1 - occlusion).
+    { Params pv = p; pv.view_angle_horizon = true; pv.m00 = pv.m11 * 768 / 1280.; pv.jitter_index = 5;
+      const unsigned W = 1280, H = 768; std::vector<float> dv(W * H, float(p.m22 + p.m32 / 200));
+      std::vector<double> zv; const auto tv = term(dv, W, H, pv, &zv);
+      double sum = 0, worst = 0; for (double v : tv) { sum += v; worst = std::max(worst, v); }
+      std::printf("view_angle_plane_mean=%.4f min=%.4f\n", 1 - sum / tv.size(), 1 - worst); }
     std::vector<double> occ(4, .5), hz(4, 100.);
     const float d100 = float(p.m22 + p.m32 / 100);
     std::printf("factor=%.6f,%.6f,%.6f\n", factor(std::vector<double>(4, 0.), hz, 2, 2, 1, 1, d100, p), factor(occ, hz, 2, 2, 1, 1, d100, p), factor(occ, hz, 2, 2, 1, 1, -1.f, p));
@@ -79,6 +88,10 @@ class AmbientOcclusionReferenceTests(unittest.TestCase):
         self.assertGreater(crease_mean, 0.02)  # occlusion term: 0 is unoccluded
         self.assertEqual(far_mean, 0.0)
         self.assertGreater(int(crease['n']), 0)
+        view_mean, view_min = float(values['view_angle_plane_mean'].split()[0]), float(values['view_angle_plane_mean'].split()[1].split('=')[1])
+        self.assertLess(view_mean, 0.999)  # the view-angle horizon darkens a flat plane (recorded in the design note: 0.9969 / 0.8623)
+        self.assertLess(view_min, 0.9)
+        print('view_angle_plane mean=%.4f min=%.4f' % (view_mean, view_min))
         full, half, sentinel = (float(v) for v in values['factor'].split(','))
         self.assertEqual((full, sentinel), (1.0, 1.0))
         self.assertAlmostEqual(half, (1 - .5 * .5) ** (1 / 2.2), places=6)

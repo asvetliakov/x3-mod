@@ -18,6 +18,10 @@ struct Params {
     double m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0;
     double radius = 1, strength = .5, falloff = .615, max_radius_px = 64, depth_tolerance = .05;
     unsigned jitter_index = 0;
+    // Measurement only (test_ambient_occlusion_reference.py): XeGTAO's horizon
+    // cosine from the tap's angle to the view vector instead of the shader's
+    // elevation above the tangent plane. Not what the shader does.
+    bool view_angle_horizon = false;
 };
 struct V3 { double x, y, z; };
 inline V3 operator-(V3 a, V3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
@@ -115,22 +119,31 @@ inline double gtao_pixel(const HalfImage& img, unsigned x, unsigned y) {
         const double n = sign * std::acos(cosN);
         const double sinN = sign * std::sqrt(saturate(1 - cosN * cosN));
         double elevation0 = 0, elevation1 = 0;
-        auto tap = [&](double offx, double offy, double elevation) {
+        double horizon0 = -sinN, horizon1 = sinN; // view-angle variant only: cos(n + pi/2), cos(n - pi/2)
+        auto tap = [&](double offx, double offy, double low, double& horizon, double elevation) {
             const double tx = std::clamp(std::floor(x + .5 + offx), 0., double(img.w) - 1), ty = std::clamp(std::floor(y + .5 + offy), 0., double(img.h) - 1);
             const double z = img.at(long(tx), long(ty));
             const V3 delta = img.position(tx, ty, z) - centre;
             const double dist = length(delta);
-            const double sine = saturate(dot(delta, normal) / std::max(dist, 1e-12)) * saturate(dist * falloffMul + falloffAdd);
-            return (z >= 0 && dist > zc * 1e-4) ? std::max(elevation, sine) : elevation;
+            const double weight = saturate(dist * falloffMul + falloffAdd);
+            const bool valid = z >= 0 && dist > zc * 1e-4;
+            if (p.view_angle_horizon && valid) horizon = std::max(horizon, low + (dot(delta, view) / dist - low) * weight);
+            const double sine = saturate(dot(delta, normal) / std::max(dist, 1e-12)) * weight;
+            return valid ? std::max(elevation, sine) : elevation;
         };
         for (int step = 0; step < 4; ++step) {
             const double s = (step + stepNoise) * .25 * radiusPx;
-            elevation0 = tap(dirx * s, diry * s, elevation0);
-            elevation1 = tap(-dirx * s, -diry * s, elevation1);
+            elevation0 = tap(dirx * s, diry * s, -sinN, horizon0, elevation0);
+            elevation1 = tap(-dirx * s, -diry * s, sinN, horizon1, elevation1);
         }
-        const double h1 = n + std::acos(elevation0), h0 = n - std::acos(elevation1);
-        const double cos2h1n = cosN * (2 * elevation0 * elevation0 - 1) - sinN * 2 * elevation0 * std::sqrt(saturate(1 - elevation0 * elevation0));
-        const double cos2h0n = cosN * (2 * elevation1 * elevation1 - 1) + sinN * 2 * elevation1 * std::sqrt(saturate(1 - elevation1 * elevation1));
+        double h1 = n + std::acos(elevation0), h0 = n - std::acos(elevation1);
+        double cos2h1n = cosN * (2 * elevation0 * elevation0 - 1) - sinN * 2 * elevation0 * std::sqrt(saturate(1 - elevation0 * elevation0));
+        double cos2h0n = cosN * (2 * elevation1 * elevation1 - 1) + sinN * 2 * elevation1 * std::sqrt(saturate(1 - elevation1 * elevation1));
+        if (p.view_angle_horizon) { // XeGTAO: h from acos of the horizon cosines, clamped to n +- pi/2
+            h0 = n + std::clamp(-std::acos(std::clamp(horizon1, -1., 1.)) - n, -kPi / 2, kPi / 2);
+            h1 = n + std::clamp(std::acos(std::clamp(horizon0, -1., 1.)) - n, -kPi / 2, kPi / 2);
+            cos2h0n = std::cos(2 * h0 - n); cos2h1n = std::cos(2 * h1 - n);
+        }
         const double arc0 = (cosN + 2 * h0 * sinN - cos2h0n) * .25, arc1 = (cosN + 2 * h1 * sinN - cos2h1n) * .25;
         visibility += projectedLength * (arc0 + arc1) / (cosN + n * sinN);
         weightSum += projectedLength;

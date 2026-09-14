@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <d3d9.h>
 #include "../../src/renderer/ambient_occlusion_pass.h"
+#include "../../src/renderer/quad_vertex_program.h"
 #include "ambient_occlusion_reference.h"
 #include <algorithm>
 #include <cmath>
@@ -19,6 +20,9 @@
 #include <string>
 #include <vector>
 using namespace x3m::renderer;
+constexpr DWORD linearize_words[] = {
+#include "../../src/renderer/ambient_occlusion_linearize_program_inc.h"
+};
 template<class T> struct Com {
     T* p = nullptr;
     ~Com() { reset(); }
@@ -108,9 +112,27 @@ HRESULT WINAPI hook_create_ps(IDirect3DDevice9* d, const DWORD* words, IDirect3D
     if (++faults.shader_calls == faults.shader_fail_at) return E_OUTOFMEMORY;
     return reinterpret_cast<CreatePsFn>(original[106])(d, words, out);
 }
+HRESULT complete_fence(IDirect3DQuery9* q) {
+    HRESULT hr = q->Issue(D3DISSUE_END); if (FAILED(hr)) return hr;
+    const DWORD begin = GetTickCount();
+    for (;;) { hr = q->GetData(nullptr, 0, D3DGETDATA_FLUSH); if (hr != S_FALSE) return hr; if (GetTickCount() - begin > 5000) return E_FAIL; Sleep(0); }
+}
+// Per-quad timing: with a fence armed, every draw of a chain is fenced before
+// and after (CPU submit + GPU completion of that quad alone) and its ticks are
+// accumulated by draw index (linearize, gtao, blur1, blur2, apply).
+struct DrawTimer { IDirect3DQuery9* fence = nullptr; unsigned index = 0; LONGLONG ticks[5]{}; HRESULT failure = S_OK; } draw_timer;
 HRESULT WINAPI hook_draw(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const void* v, UINT s) {
     if (++faults.draw_calls == faults.draw_fail_at) return faults.draw_error;
-    return reinterpret_cast<DrawUpFn>(original[83])(d, t, c, v, s);
+    if (!draw_timer.fence) return reinterpret_cast<DrawUpFn>(original[83])(d, t, c, v, s);
+    HRESULT hr = complete_fence(draw_timer.fence);
+    LARGE_INTEGER a{}, b{}; QueryPerformanceCounter(&a);
+    const HRESULT draw = reinterpret_cast<DrawUpFn>(original[83])(d, t, c, v, s);
+    if (SUCCEEDED(hr)) hr = complete_fence(draw_timer.fence);
+    QueryPerformanceCounter(&b);
+    if (FAILED(hr)) draw_timer.failure = hr;
+    if (draw_timer.index < 5) draw_timer.ticks[draw_timer.index] += b.QuadPart - a.QuadPart;
+    ++draw_timer.index;
+    return draw;
 }
 // Everything the chain may touch, compared byte for byte around execute.
 struct Snapshot {
@@ -129,6 +151,7 @@ struct Snapshot {
         IDirect3DVertexBuffer9* vb = nullptr; UINT off = 0, stride = 0, freq = 0;
         check("snapshot stream", d->GetStreamSource(0, &vb, &off, &stride)); check("snapshot freq", d->GetStreamSourceFreq(0, &freq)); object(vb); add(off); add(stride); add(freq);
         IDirect3DIndexBuffer9* ib = nullptr; check("snapshot indices", d->GetIndices(&ib)); object(ib);
+        for (UINT n = 0; n < 4; ++n) { IDirect3DBaseTexture9* t = nullptr; check("snapshot vertex texture", d->GetTexture(D3DVERTEXTEXTURESAMPLER0 + n, &t)); object(t); }
         for (UINT n = 0; n < 8; ++n) {
             IDirect3DBaseTexture9* t = nullptr; check("snapshot texture", d->GetTexture(n, &t)); object(t);
             for (UINT j = 1; j <= 13; ++j) { DWORD v = 0; hr = d->GetSamplerState(n, D3DSAMPLERSTATETYPE(j), &v); add(hr); add(v); }
@@ -144,7 +167,36 @@ struct Snapshot {
     }
     bool operator==(const Snapshot& o) const { return bytes == o.bytes; }
 };
+// The route's bindings around the scene end: RT1/RT2 of the routed draws and
+// the game's depth surface stay bound; vertex-sampler textures are hostile
+// extras the D3DSBT_ALL block must carry back.
+struct Bindings {
+    Com<IDirect3DTexture9> rt1, rt2, vertex[4];
+    Com<IDirect3DSurface9> rt1_surface, rt2_surface, depth;
+    Bindings(IDirect3DDevice9* d, unsigned w, unsigned h) {
+        check("rt1", d->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &rt1.p, nullptr)); check("rt1 surface", rt1->GetSurfaceLevel(0, &rt1_surface.p));
+        check("rt2", d->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &rt2.p, nullptr)); check("rt2 surface", rt2->GetSurfaceLevel(0, &rt2_surface.p));
+        for (auto& v : vertex) check("vertex texture", d->CreateTexture(4, 4, 1, 0, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &v.p, nullptr));
+        check("auto depth", d->GetDepthStencilSurface(&depth.p)); require("auto_depth_present", depth.p != nullptr);
+    }
+    void bind(IDirect3DDevice9* d) {
+        check("bind rt1", d->SetRenderTarget(1, rt1_surface.p)); check("bind rt2", d->SetRenderTarget(2, rt2_surface.p)); check("bind depth", d->SetDepthStencilSurface(depth.p));
+        for (UINT i = 0; i < 4; ++i) check("bind vertex texture", d->SetTexture(D3DVERTEXTEXTURESAMPLER0 + i, vertex[i].p));
+    }
+    // Every binding back after the chain (exact pointers; the getters AddRef).
+    bool returned(IDirect3DDevice9* d, IDirect3DSurface9* rt0) const {
+        bool ok = true;
+        IDirect3DSurface9* s = nullptr;
+        for (auto [i, expected] : {std::pair{0u, rt0}, std::pair{1u, rt1_surface.p}, std::pair{2u, rt2_surface.p}}) { s = nullptr; ok = SUCCEEDED(d->GetRenderTarget(i, &s)) && s == expected && ok; if (s) s->Release(); }
+        s = nullptr; HRESULT hr = d->GetRenderTarget(3, &s); ok = (hr == D3DERR_NOTFOUND || (SUCCEEDED(hr) && s == nullptr)) && ok; if (s) s->Release();
+        s = nullptr; ok = SUCCEEDED(d->GetDepthStencilSurface(&s)) && s == depth.p && ok; if (s) s->Release();
+        for (UINT i = 0; i < 4; ++i) { IDirect3DBaseTexture9* t = nullptr; ok = SUCCEEDED(d->GetTexture(D3DVERTEXTEXTURESAMPLER0 + i, &t)) && t == vertex[i].p && ok; if (t) t->Release(); }
+        return ok;
+    }
+};
+Bindings* bindings = nullptr; // set by main for the 1280x768 frames
 void hostile(IDirect3DDevice9* d, IDirect3DBaseTexture9* texture) {
+    if (bindings) bindings->bind(d);
     for (auto [s, v] : {std::pair{D3DRS_ALPHABLENDENABLE, DWORD(TRUE)}, std::pair{D3DRS_SRCBLEND, DWORD(D3DBLEND_SRCALPHA)}, std::pair{D3DRS_DESTBLEND, DWORD(D3DBLEND_INVSRCALPHA)},
                         std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_REVSUBTRACT)}, std::pair{D3DRS_SCISSORTESTENABLE, DWORD(TRUE)}, std::pair{D3DRS_ZENABLE, DWORD(TRUE)},
                         std::pair{D3DRS_COLORWRITEENABLE, DWORD(1)}, std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_CW)}, std::pair{D3DRS_FILLMODE, DWORD(D3DFILL_WIREFRAME)},
@@ -240,6 +292,7 @@ SceneRun run_scene(IDirect3DDevice9* d, AmbientOcclusionPass& pass, Frame& f, co
     const std::string label = "scene_" + s.name;
     require((label + "_execute").c_str(), SUCCEEDED(hr) && out.applied && out.term && out.half_width == f.hw && out.half_height == f.hh && out.failed == AmbientOcclusionStage::None);
     require((label + "_state_preserved").c_str(), pre == post);
+    if (bindings) { IDirect3DSurface9* rt0 = nullptr; check("rt0", d->GetRenderTarget(0, &rt0)); rt0->Release(); require((label + "_bindings_returned").c_str(), bindings->returned(d, rt0)); }
     require((label + "_references").c_str(), pass.references() == 13);
     r.term = term_values(f, d, out.term);
     Com<IDirect3DSurface9> hs; check("half surface", pass.fixture_half_depth()->GetSurfaceLevel(0, &hs.p));
@@ -321,11 +374,6 @@ void oracle_line(const char* scene, const char* label, double mean, double minim
     std::printf("ORACLE scene=%s label=%s mean=%.4f min=%.4f pixels=%u %s\n", scene, label, mean, minimum, count, pass ? "PASS" : "FAIL");
     require((std::string("oracle_") + scene + "_" + label).c_str(), pass);
 }
-HRESULT complete_fence(IDirect3DQuery9* q) {
-    HRESULT hr = q->Issue(D3DISSUE_END); if (FAILED(hr)) return hr;
-    const DWORD begin = GetTickCount();
-    for (;;) { hr = q->GetData(nullptr, 0, D3DGETDATA_FLUSH); if (hr != S_FALSE) return hr; if (GetTickCount() - begin > 5000) return E_FAIL; Sleep(0); }
-}
 double ms(LONGLONG ticks, LONGLONG f) { return double(ticks) * 1000. / double(f); }
 double median(std::vector<double> v) { std::sort(v.begin(), v.end()); return v[v.size() / 2]; }
 void timing(IDirect3DDevice9* d, AmbientOcclusionPass& pass, unsigned w, unsigned h, LONGLONG freq) {
@@ -376,6 +424,23 @@ void timing(IDirect3DDevice9* d, AmbientOcclusionPass& pass, unsigned w, unsigne
     check("short end", d->EndScene());
     pass.fixture_skip_blur(false);
     std::printf("TIMING_VARIANT width=%u height=%u variant=no_blur fenced_on_ms=%.4f chain_ms=%.4f samples=%zu\n", w, h, median(short_on), median(short_on) - off_m, short_on.size());
+    // Per-quad breakdown: each draw fenced on both sides, 8 chains (2 warmup).
+    const char* names[5] = {"linearize", "gtao", "blur1", "blur2", "apply"};
+    std::vector<double> per_quad[5];
+    check("quads begin", d->BeginScene());
+    for (unsigned i = 0; i < 8; ++i) {
+        draw_timer = {}; draw_timer.fence = fence.p;
+        check("quads execute", pass.execute(in, &out));
+        const DrawTimer sample = draw_timer; draw_timer = {};
+        check("quads fences", sample.failure);
+        require("per_quad_draw_count", sample.index == 5);
+        if (i >= 2) for (unsigned q = 0; q < 5; ++q) per_quad[q].push_back(ms(sample.ticks[q], freq));
+    }
+    check("quads end", d->EndScene());
+    std::printf("TIMING_QUADS width=%u height=%u", w, h);
+    double total = 0;
+    for (unsigned q = 0; q < 5; ++q) { const double m = median(per_quad[q]); total += m; std::printf(" %s_ms=%.4f", names[q], m); }
+    std::printf(" sum_ms=%.4f samples=%zu\n", total, per_quad[0].size());
 }
 int main() {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
@@ -390,9 +455,11 @@ int main() {
         const unsigned W = 1280, H = 768;
         D3DPRESENT_PARAMETERS pp{}; pp.Windowed = TRUE; pp.SwapEffect = D3DSWAPEFFECT_DISCARD; pp.hDeviceWindow = window; pp.BackBufferWidth = W; pp.BackBufferHeight = H;
         pp.BackBufferFormat = D3DFMT_A8R8G8B8; pp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+        pp.EnableAutoDepthStencil = TRUE; pp.AutoDepthStencilFormat = D3DFMT_D24S8; // the route runs with the game's depth surface bound
         Com<IDirect3DDevice9> device; check("CreateDevice", api->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp, &device.p));
         IDirect3DDevice9* d = device.p;
         D3DCAPS9 caps{}; check("caps", d->GetDeviceCaps(&caps));
+        Com<IDirect3DSurface9> backbuffer, auto_depth; check("backbuffer", d->GetRenderTarget(0, &backbuffer.p)); check("auto depth surface", d->GetDepthStencilSurface(&auto_depth.p));
         D3DDISPLAYMODE mode{}; check("display mode", api->GetAdapterDisplayMode(0, &mode));
         LARGE_INTEGER freq{}; QueryPerformanceFrequency(&freq);
         std::memcpy(original, *reinterpret_cast<void***>(d), sizeof original); std::memcpy(hooked, original, sizeof hooked);
@@ -409,6 +476,36 @@ int main() {
           faults = {}; faults.shader_fail_at = 3;
           require("fault_shader_create", FAILED(twin.attach(d, hooked, caps, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "programs" && twin.references() == 0 && !twin.caps().enabled);
           faults = {}; }
+        { // FP16 store rounding of this backend: the embedded linearize program writes c0.y / (d - c0.x) with d = 1, c0.x = 0
+          // into an R16F target; 1 - 2^-13 and 1 + 3 * 2^-12 lie above their fp16 midpoints, so round-to-nearest stores
+          // 1.0 / 1.000977 and truncation stores 0.99951 / 1.0.
+          Com<IDirect3DPixelShader9> ps; check("probe ps", d->CreatePixelShader(linearize_words, &ps.p));
+          Com<IDirect3DVertexShader9> vs; check("probe vs", d->CreateVertexShader(reinterpret_cast<const DWORD*>(quad_vertex_program()), &vs.p));
+          Com<IDirect3DVertexDeclaration9> decl; check("probe decl", d->CreateVertexDeclaration(quad_declaration, &decl.p));
+          Com<IDirect3DTexture9> ones, ones_default, sink; Com<IDirect3DSurface9> sink_surface, read;
+          check("probe depth", d->CreateTexture(4, 4, 1, 0, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &ones.p, nullptr));
+          check("probe depth default", d->CreateTexture(4, 4, 1, 0, D3DFMT_R32F, D3DPOOL_DEFAULT, &ones_default.p, nullptr));
+          { D3DLOCKED_RECT lr{}; check("probe lock", ones->LockRect(0, &lr, nullptr, 0)); for (unsigned y = 0; y < 4; ++y) for (unsigned x = 0; x < 4; ++x) reinterpret_cast<float*>(static_cast<char*>(lr.pBits) + y * lr.Pitch)[x] = 1.f; check("probe unlock", ones->UnlockRect(0)); }
+          check("probe update", d->UpdateTexture(ones.p, ones_default.p));
+          check("probe sink", d->CreateTexture(4, 4, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R16F, D3DPOOL_DEFAULT, &sink.p, nullptr)); check("probe sink surface", sink->GetSurfaceLevel(0, &sink_surface.p));
+          check("probe read", d->CreateOffscreenPlainSurface(4, 4, D3DFMT_R16F, D3DPOOL_SYSTEMMEM, &read.p, nullptr));
+          const double values[2] = {1 - 1. / 8192, 1 + 3. / 4096}; std::uint16_t stored[2] = {};
+          for (unsigned k = 0; k < 2; ++k) {
+              const float c0[4] = {0.f, float(values[k]), 0.f, 0.f}, c1[4] = {4.f, 4.f, 4.f, 4.f};
+              check("probe rt", d->SetRenderTarget(0, sink_surface.p)); check("probe ps set", d->SetPixelShader(ps.p)); check("probe vs set", d->SetVertexShader(vs.p)); check("probe decl set", d->SetVertexDeclaration(decl.p));
+              check("probe c0", d->SetPixelShaderConstantF(0, c0, 1)); check("probe c1", d->SetPixelShaderConstantF(1, c1, 1)); check("probe texture", d->SetTexture(0, ones_default.p));
+              check("probe filter", d->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT)); check("probe filter", d->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT));
+              check("probe depth off", d->SetRenderState(D3DRS_ZENABLE, FALSE)); check("probe depth surface", d->SetDepthStencilSurface(nullptr));
+              QuadVertex quad[4]; quad_vertices(4, 4, quad);
+              check("probe begin", d->BeginScene()); check("probe draw", d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(QuadVertex))); check("probe end", d->EndScene());
+              check("probe readback", d->GetRenderTargetData(sink_surface.p, read.p));
+              D3DLOCKED_RECT lr{}; check("probe lock read", read->LockRect(&lr, nullptr, D3DLOCK_READONLY)); stored[k] = *static_cast<const std::uint16_t*>(lr.pBits); check("probe unlock read", read->UnlockRect());
+          }
+          check("probe restore rt", d->SetRenderTarget(0, backbuffer.p)); check("probe restore depth", d->SetDepthStencilSurface(auto_depth.p)); check("probe restore texture", d->SetTexture(0, nullptr));
+          check("probe restore ps", d->SetPixelShader(nullptr)); check("probe restore vs", d->SetVertexShader(nullptr));
+          const bool nearest = stored[0] == 0x3c00 && stored[1] == 0x3c02, truncate = stored[0] == 0x3bff && stored[1] == 0x3c00;
+          std::printf("FP16_STORE value0=%.8f stored0=%04x value1=%.8f stored1=%04x mode=%s\n", values[0], stored[0], values[1], stored[1], nearest ? "round_to_nearest" : truncate ? "truncate" : "other");
+          require("fp16_store_mode_established", nearest || truncate); }
         AmbientOcclusionPass pass;
         check("attach", pass.attach(d, hooked, caps, mode.Format, D3DFMT_A16B16G16R16F));
         std::printf("ATTACH enabled=%d largest_program_slots=%u references=%u\n", pass.caps().enabled, pass.caps().largest_program_slots, pass.references());
@@ -421,6 +518,7 @@ int main() {
         require("prepare_targets", pass.references() == 12 && pass.allocations() == 1 && pass.half_width() == 640 && pass.half_height() == 384);
         const auto p = projection(W, H);
         Frame f(d, W, H);
+        Bindings* route_bindings = new Bindings(d, W, H); bindings = route_bindings;
         // Refusals: an 8-bit target, unknown query state, the pass's own term as depth.
         { Com<IDirect3DTexture9> eight; check("8-bit target", d->CreateTexture(W, H, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &eight.p, nullptr));
           Com<IDirect3DSurface9> es; check("8-bit surface", eight->GetSurfaceLevel(0, &es.p));
@@ -501,10 +599,15 @@ int main() {
         { // Release every default-pool object of the fixture, Reset, re-create.
           Frame* released = new Frame(d, 16, 16); delete released; }
         f.depth.reset(); f.target_surface.reset(); f.target.reset();
+        bindings = nullptr; check("unbind before reset", d->SetRenderTarget(1, nullptr)); check("unbind before reset", d->SetRenderTarget(2, nullptr));
+        for (UINT i = 0; i < 4; ++i) check("unbind before reset", d->SetTexture(D3DVERTEXTEXTURESAMPLER0 + i, nullptr));
+        delete route_bindings; route_bindings = nullptr; backbuffer.reset(); auto_depth.reset();
         const HRESULT reset = d->Reset(&pp); check("Reset", reset); pass.after_reset(reset);
         require("after_reset_accepts", !pass.reset_pending());
         { Frame g(d, W, H);
+          Bindings after_reset_bindings(d, W, H); bindings = &after_reset_bindings;
           SceneRun after = run_scene(d, pass, g, sphere, p, false);
+          bindings = nullptr;
           require("reset_bit_identical", after.term == clean_sphere && pass.references() == 13 && pass.allocations() == 2);
           std::printf("RESET PASS references=%u allocations=%u\n", pass.references(), pass.allocations()); }
         timing(d, pass, 1280, 768, freq.QuadPart);

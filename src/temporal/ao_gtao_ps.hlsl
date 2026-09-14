@@ -6,9 +6,10 @@
 // steps = 16 depth taps, cosine-weighted horizon integral with a distance
 // falloff, radius in view units capped in half-resolution pixels. Horizons
 // are measured as each tap's elevation above the reconstructed tangent plane
-// (see horizonTap), not as the tap's angle from the view vector: with
-// texel-quantized taps that angle leaves the slice plane and darkens flat
-// surfaces by up to 20 %, while the elevation is exactly 0 on the surface. Every tap
+// (see horizonTap), a choice over XeGTAO's angle from the view vector: with
+// texel-quantized taps that angle leaves the slice plane and an unoccluded
+// plane reads below 1 (float64 reference at 1280x768: mean 0.9969, minimum
+// 0.8623 at the borders), while the elevation is exactly 0 on the surface. Every tap
 // samples the centre of the texel it names, so the CPU reference of
 // verification/probe/ambient_occlusion_reference.h reproduces the same texel
 // choices. Per-slice results are normalized by the slice's unoccluded value

@@ -170,5 +170,6 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   blending on the owning format, blend-factor caps, `MaxPixelShader30InstructionSlots` against a
   conservative count of the embedded programs, one `D3DSBT_ALL` block, five `DrawPrimitiveUP` quads.
   Cross-compiled with the SSE2/four-byte-stack policy; native Windows execution unverified. The
-  Preview backend truncates FP16 render-target stores (fixture: the multiply law is bit-exact under a
-  truncating model, one ulp under round-to-nearest); the term stores occlusion so 0 is exact either way.
+  fixture's `FP16_STORE` probe shows the Preview backend truncates FP16 render-target stores; the
+  multiply law matches the CPU law within one FP16 ulp (bit-exact wherever the factor is 1), and the
+  term stores occlusion so an unoccluded pixel is exactly 0 under either rounding mode.

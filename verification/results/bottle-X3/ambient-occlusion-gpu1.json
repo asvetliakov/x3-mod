@@ -19,13 +19,13 @@
   "src/renderer/ambient_occlusion_blur_program_inc.h": "5ccb2aaf1d8ed2e9e23ba52aaf2d067182f8ea40634d1e343d7c80bcc156fd7f",
   "src/renderer/ambient_occlusion_apply_program_inc.h": "d357cb4ad0dc34f0ceeffb651ae448e5c00aacdc4a6073fc0a729785056c7516",
   "src/temporal/ao_linearize_ps.hlsl": "cb3ae5f76f25ab909daeffeddda0fec974732690caa879b283a8b62f91a1e24d",
-  "src/temporal/ao_gtao_ps.hlsl": "750d74139c56907fbacd0f3e0855d54f2ece4ee168883e270917023a422a8f47",
+  "src/temporal/ao_gtao_ps.hlsl": "7f85af560606c16c2339274d57e4c004c52750373a568972fc2c35ebafa8d243",
   "src/temporal/ao_blur_ps.hlsl": "3119ed284f5e761dc13f44634c0835697d363124a3cf4f2b44ed5e609aebc920",
   "src/temporal/ao_apply_ps.hlsl": "559b2570d0bb36efd2face3bd28019e4d3f919d9c0ce618a766937fff40e8521",
-  "verification/probe/ambient_occlusion_fixture.cpp": "9cbbb9f174bec60abb76a421b9fa5595d76278d1bec00ab7918a8d3438c65a42",
-  "verification/probe/ambient_occlusion_reference.h": "f4e83f16ccac33b09499a652d72fdf4b4f670c7e2eddd6dde15b651e3a9a7125",
+  "verification/probe/ambient_occlusion_fixture.cpp": "590f677e4b86011bbad822176b020d228a0fcc8d38b6a87edddd7cc7c26ce491",
+  "verification/probe/ambient_occlusion_reference.h": "aaf37bbaf1b1b249c9e8563bd7bc6fb56228fac928223eee11e186ba8604a73c",
   "verification/probe/build_ambient_occlusion.sh": "3c8107c5a2a9b8b1a1a0e2985655451ccc16fda2c3e9d77752434a01ab4e98ba",
-  "verification/probe/run_ambient_occlusion.py": "03b3973820735c3502e936c10e99ecfb06380f649d0b74214ab458c36d14ae33"
+  "verification/probe/run_ambient_occlusion.py": "293f4ffb44da3a5298f41c216a087a511261d3625f46791773fff732b8c3fc11"
  },
  "budget_ms": {
   "estimate_fixed": [
@@ -40,7 +40,7 @@
   "mean_abs": 0.002,
   "within_002_fraction": 0.999
  },
- "executable_sha256": "bc05dffb900d9e3aeb46d803d880938c2909a6522c938fcdd6edf2e446239def",
+ "executable_sha256": "685a9d44faea656843c414f60c42b0117dc66c1a40fbe5e6905b8e09c217ec6f",
  "command": [
   "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
   "--bottle",
@@ -53,77 +53,406 @@
   "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3c86dd33812893e0/verification/probe/build/ambient-occlusion/ambient_occlusion_fixture.exe"
  ],
  "exit_code": 0,
- "report_sha256": "f4e9705f7d13b80986538d9380cf04904bda3635c72f1b2b095114a5c09b8545",
+ "report_sha256": "297f724ed1f6326c9ffa33c62e37d6b517bf7848ab01906529c05437c74acbbb",
  "report": {
-  "checks": {
-   "twin_ps_2_0": true,
-   "twin_ps_slots": true,
-   "twin_blend_factors": true,
-   "fault_shader_create": true,
-   "attach_enabled": true,
-   "fault_target_create": true,
-   "prepare_targets": true,
-   "refuse_8bit_target": true,
-   "refuse_unknown_queries": true,
-   "refuse_bad_params": true,
-   "scene_plane_execute": true,
-   "scene_plane_state_preserved": true,
-   "scene_plane_references": true,
-   "scene_plane_linearize": true,
-   "scene_plane_reference": true,
-   "scene_plane_sentinel_identity": true,
-   "scene_plane_apply_law": true,
-   "oracle_plane_flat_identity": true,
-   "scene_tilted_execute": true,
-   "scene_tilted_state_preserved": true,
-   "scene_tilted_references": true,
-   "scene_tilted_linearize": true,
-   "scene_tilted_reference": true,
-   "scene_tilted_sentinel_identity": true,
-   "scene_tilted_apply_law": true,
-   "oracle_tilted_flat_identity": true,
-   "scene_sphere_execute": true,
-   "scene_sphere_state_preserved": true,
-   "scene_sphere_references": true,
-   "scene_sphere_linearize": true,
-   "scene_sphere_reference": true,
-   "scene_sphere_sentinel_identity": true,
-   "scene_sphere_apply_law": true,
-   "oracle_sphere_contact_ring": true,
-   "oracle_sphere_no_halo": true,
-   "oracle_sphere_convex_top": true,
-   "scene_corner_execute": true,
-   "scene_corner_state_preserved": true,
-   "scene_corner_references": true,
-   "scene_corner_linearize": true,
-   "scene_corner_reference": true,
-   "scene_corner_sentinel_identity": true,
-   "scene_corner_apply_law": true,
-   "oracle_corner_crease_near": true,
-   "oracle_corner_crease_floor": true,
-   "oracle_corner_floor_beyond_radius": true,
-   "oracle_corner_wall_beyond_radius": true,
-   "scene_step_execute": true,
-   "scene_step_state_preserved": true,
-   "scene_step_references": true,
-   "scene_step_linearize": true,
-   "scene_step_reference": true,
-   "scene_step_sentinel_identity": true,
-   "scene_step_apply_law": true,
-   "oracle_step_near_side_unoccluded": true,
-   "oracle_step_far_side_edge_darkened": true,
-   "fault_draw_failed": true,
-   "fault_draw_restored": true,
-   "fault_draw_recovered": true,
-   "fault_lost_mid_chain": true,
-   "execute_after_lost_still_runs": true,
-   "before_reset_released": true,
-   "refuse_while_reset_pending": true,
-   "prepare_refused_while_reset_pending": true,
-   "after_reset_accepts": true,
-   "reset_bit_identical": true,
-   "detach_released": true
-  },
+  "checks": [
+   [
+    "twin_ps_2_0",
+    true
+   ],
+   [
+    "twin_ps_slots",
+    true
+   ],
+   [
+    "twin_blend_factors",
+    true
+   ],
+   [
+    "fault_shader_create",
+    true
+   ],
+   [
+    "fp16_store_mode_established",
+    true
+   ],
+   [
+    "attach_enabled",
+    true
+   ],
+   [
+    "fault_target_create",
+    true
+   ],
+   [
+    "prepare_targets",
+    true
+   ],
+   [
+    "auto_depth_present",
+    true
+   ],
+   [
+    "refuse_8bit_target",
+    true
+   ],
+   [
+    "refuse_unknown_queries",
+    true
+   ],
+   [
+    "refuse_bad_params",
+    true
+   ],
+   [
+    "scene_plane_execute",
+    true
+   ],
+   [
+    "scene_plane_state_preserved",
+    true
+   ],
+   [
+    "scene_plane_bindings_returned",
+    true
+   ],
+   [
+    "scene_plane_references",
+    true
+   ],
+   [
+    "scene_plane_linearize",
+    true
+   ],
+   [
+    "scene_plane_reference",
+    true
+   ],
+   [
+    "scene_plane_sentinel_identity",
+    true
+   ],
+   [
+    "scene_plane_apply_law",
+    true
+   ],
+   [
+    "oracle_plane_flat_identity",
+    true
+   ],
+   [
+    "scene_tilted_execute",
+    true
+   ],
+   [
+    "scene_tilted_state_preserved",
+    true
+   ],
+   [
+    "scene_tilted_bindings_returned",
+    true
+   ],
+   [
+    "scene_tilted_references",
+    true
+   ],
+   [
+    "scene_tilted_linearize",
+    true
+   ],
+   [
+    "scene_tilted_reference",
+    true
+   ],
+   [
+    "scene_tilted_sentinel_identity",
+    true
+   ],
+   [
+    "scene_tilted_apply_law",
+    true
+   ],
+   [
+    "oracle_tilted_flat_identity",
+    true
+   ],
+   [
+    "scene_sphere_execute",
+    true
+   ],
+   [
+    "scene_sphere_state_preserved",
+    true
+   ],
+   [
+    "scene_sphere_bindings_returned",
+    true
+   ],
+   [
+    "scene_sphere_references",
+    true
+   ],
+   [
+    "scene_sphere_linearize",
+    true
+   ],
+   [
+    "scene_sphere_reference",
+    true
+   ],
+   [
+    "scene_sphere_sentinel_identity",
+    true
+   ],
+   [
+    "scene_sphere_apply_law",
+    true
+   ],
+   [
+    "oracle_sphere_contact_ring",
+    true
+   ],
+   [
+    "oracle_sphere_no_halo",
+    true
+   ],
+   [
+    "oracle_sphere_convex_top",
+    true
+   ],
+   [
+    "scene_corner_execute",
+    true
+   ],
+   [
+    "scene_corner_state_preserved",
+    true
+   ],
+   [
+    "scene_corner_bindings_returned",
+    true
+   ],
+   [
+    "scene_corner_references",
+    true
+   ],
+   [
+    "scene_corner_linearize",
+    true
+   ],
+   [
+    "scene_corner_reference",
+    true
+   ],
+   [
+    "scene_corner_sentinel_identity",
+    true
+   ],
+   [
+    "scene_corner_apply_law",
+    true
+   ],
+   [
+    "oracle_corner_crease_near",
+    true
+   ],
+   [
+    "oracle_corner_crease_floor",
+    true
+   ],
+   [
+    "oracle_corner_floor_beyond_radius",
+    true
+   ],
+   [
+    "oracle_corner_wall_beyond_radius",
+    true
+   ],
+   [
+    "scene_step_execute",
+    true
+   ],
+   [
+    "scene_step_state_preserved",
+    true
+   ],
+   [
+    "scene_step_bindings_returned",
+    true
+   ],
+   [
+    "scene_step_references",
+    true
+   ],
+   [
+    "scene_step_linearize",
+    true
+   ],
+   [
+    "scene_step_reference",
+    true
+   ],
+   [
+    "scene_step_sentinel_identity",
+    true
+   ],
+   [
+    "scene_step_apply_law",
+    true
+   ],
+   [
+    "oracle_step_near_side_unoccluded",
+    true
+   ],
+   [
+    "oracle_step_far_side_edge_darkened",
+    true
+   ],
+   [
+    "fault_draw_failed",
+    true
+   ],
+   [
+    "fault_draw_restored",
+    true
+   ],
+   [
+    "scene_sphere_execute",
+    true
+   ],
+   [
+    "scene_sphere_state_preserved",
+    true
+   ],
+   [
+    "scene_sphere_bindings_returned",
+    true
+   ],
+   [
+    "scene_sphere_references",
+    true
+   ],
+   [
+    "fault_draw_recovered",
+    true
+   ],
+   [
+    "fault_lost_mid_chain",
+    true
+   ],
+   [
+    "execute_after_lost_still_runs",
+    true
+   ],
+   [
+    "before_reset_released",
+    true
+   ],
+   [
+    "refuse_while_reset_pending",
+    true
+   ],
+   [
+    "prepare_refused_while_reset_pending",
+    true
+   ],
+   [
+    "after_reset_accepts",
+    true
+   ],
+   [
+    "auto_depth_present",
+    true
+   ],
+   [
+    "scene_sphere_execute",
+    true
+   ],
+   [
+    "scene_sphere_state_preserved",
+    true
+   ],
+   [
+    "scene_sphere_bindings_returned",
+    true
+   ],
+   [
+    "scene_sphere_references",
+    true
+   ],
+   [
+    "reset_bit_identical",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "per_quad_draw_count",
+    true
+   ],
+   [
+    "detach_released",
+    true
+   ]
+  ],
   "reference": {
    "plane": {
     "scene": "plane",
@@ -342,11 +671,11 @@
    {
     "width": 1280,
     "height": 768,
-    "fenced_on_ms": 0.8532,
-    "fenced_off_ms": 0.0153,
-    "submit_ms": 0.1143,
-    "chain_ms": 0.8379,
-    "gpu_ms": 0.7236,
+    "fenced_on_ms": 0.8599,
+    "fenced_off_ms": 0.0166,
+    "submit_ms": 0.1169,
+    "chain_ms": 0.8433,
+    "gpu_ms": 0.7264,
     "samples": 7,
     "budget": {
      "cap_ms": 0.8,
@@ -358,11 +687,11 @@
    {
     "width": 1920,
     "height": 1080,
-    "fenced_on_ms": 1.4083,
-    "fenced_off_ms": 0.0158,
-    "submit_ms": 0.1078,
-    "chain_ms": 1.3925,
-    "gpu_ms": 1.2847,
+    "fenced_on_ms": 1.3743,
+    "fenced_off_ms": 0.0133,
+    "submit_ms": 0.1184,
+    "chain_ms": 1.361,
+    "gpu_ms": 1.2426,
     "samples": 7,
     "budget": {
      "cap_ms": 0.8,
@@ -372,6 +701,37 @@
     }
    }
   ],
+  "timing_quads": [
+   {
+    "width": 1280,
+    "height": 768,
+    "linearize_ms": 0.3587,
+    "gtao_ms": 0.4865,
+    "blur1_ms": 0.3743,
+    "blur2_ms": 0.3606,
+    "apply_ms": 0.4878,
+    "sum_ms": 2.0679,
+    "samples": 6
+   },
+   {
+    "width": 1920,
+    "height": 1080,
+    "linearize_ms": 0.2465,
+    "gtao_ms": 0.4743,
+    "blur1_ms": 0.2036,
+    "blur2_ms": 0.2046,
+    "apply_ms": 0.3387,
+    "sum_ms": 1.4677,
+    "samples": 6
+   }
+  ],
+  "fp16_store": {
+   "value0": 0.99987793,
+   "stored0": "3bff",
+   "value1": 1.00073242,
+   "stored1": "3c00",
+   "mode": "truncate"
+  },
   "caps": {
    "ps": "ffff0300",
    "vs": "fffe0300",
@@ -390,7 +750,7 @@
    "allocations": 2
   },
   "result": {
-   "checks": 73,
+   "checks": 99,
    "failures": 0,
    "verdict": "PASS"
   },
@@ -399,20 +759,21 @@
     "width": 1280,
     "height": 768,
     "variant": "no_blur",
-    "fenced_on_ms": 0.7948,
-    "chain_ms": 0.7795,
+    "fenced_on_ms": 0.8076,
+    "chain_ms": 0.791,
     "samples": 4
    },
    {
     "width": 1920,
     "height": 1080,
     "variant": "no_blur",
-    "fenced_on_ms": 0.6923,
-    "chain_ms": 0.6765,
+    "fenced_on_ms": 0.6975,
+    "chain_ms": 0.6842,
     "samples": 4
    }
   ],
-  "check_count": 67,
-  "check_failures": 0
+  "check_count": 99,
+  "check_failures": 0,
+  "failed_checks": []
  }
 }

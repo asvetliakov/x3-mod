@@ -148,23 +148,42 @@ flicker in motion, HUD unchanged, +0.5 ms median.
 
 ## Step 1 — implemented
 
-Detached chain (2026-09-14, this commit): `src/renderer/ambient_occlusion_pass.{h,cpp}` (attach / prepare /
-execute / before_reset / after_reset / detach, native slots, one owned `D3DSBT_ALL` block, gates in
-`ambient_occlusion_caps.h`: ps/vs 3.0, conservative slot count ≤ `MaxPixelShader30InstructionSlots`
-(GTAO program 483 of 512), R32F/R16F render targets, post-pixel-shader blending on the owning format,
-ZERO/SRCCOLOR factors), programs `src/temporal/ao_{linearize,gtao,blur,apply}_ps.hlsl` compiled by
-`tools/shaders/generate_rigid_motion_pixel.py`. Linked into the DLL, referenced by nothing yet.
-Deviations from section 2, both forced by the fixture's identities: horizons are each tap's elevation
-above the reconstructed tangent plane (the tap's angle from the view vector leaves the slice plane
-under texel-quantized taps and darkened planes by up to 20 %), per-slice arcs are normalized by the
-unoccluded value `cos n + n sin n`, and the R16F term stores occlusion `1 − visibility` (this backend
-truncates FP16 stores, so `1 − ε` lost an ulp per pass; 0 is exact). Radius is in metres
-(`radius_metres`, default 2) times `units_per_metre` = 5 (`camera-state-and-frame-routine.md`,
-"Ambient occlusion inputs"). Fixture `verification/probe/run_ambient_occlusion.py`
-(`ambient-occlusion-gpu1.json`): 73 checks; term vs the float64 reference max 3.7·10⁻⁴ (fp16
-quantization) on all five scenes; fronto-parallel plane exactly 1, tilted plane 89 of 121,600 pixels
-≥ 0.999 (device-depth quantization); sentinel term 1 and target bit-identical; multiply law within one
-FP16 ulp under round-to-nearest, bit-exact under a truncating store (plane 100 %); fault ladder and
-Reset bit-identical. Cost at 1280×768: submit 0.11 ms + fenced GPU 0.72 ms = 0.84 ms chain (over the
-0.8 cap; three passes without the blurs still 0.78 ms, so per-pass overhead, not shader cost);
-1920×1080 1.39 ms. Not tuned; the scene-end hook (step 2) waits on the run-14 query and this cost.
+Detached chain (2026-09-14): `src/renderer/ambient_occlusion_pass.{h,cpp}` (attach / prepare / execute /
+before_reset / after_reset / detach, native slots, one owned `D3DSBT_ALL` block, gates in
+`ambient_occlusion_caps.h`: ps/vs 3.0, conservative slot count ≤ `MaxPixelShader30InstructionSlots` (GTAO
+program 483 of 512), R32F/R16F render targets, post-pixel-shader blending on the owning format, ZERO/SRCCOLOR
+factors), programs `src/temporal/ao_{linearize,gtao,blur,apply}_ps.hlsl` compiled by
+`tools/shaders/generate_rigid_motion_pixel.py`. Linked into the DLL, referenced by nothing yet. `prepare`
+allocates the three half-resolution targets on the first frame and on a resolution change (rollback on a
+partial failure); `execute` calls it. Radius is in metres (`radius_metres`, default 2) times
+`units_per_metre` = 5 (`camera-state-and-frame-routine.md`, "Ambient occlusion inputs").
+
+Three deviations from section 2, all choices made for the fixture's exact identities: (1) horizons are each
+tap's elevation above the reconstructed tangent plane, not the tap's angle from the view vector (the float64
+reference with XeGTAO's horizon on the fronto-parallel plane at 1280×768 reads mean 0.9969, minimum 0.8623 at
+the borders, because texel-quantized taps leave the slice plane; `test_ambient_occlusion_reference.py`
+records it); (2) each slice's arc is normalized by its unoccluded value `cos n + n sin n` and the slices are
+averaged with the projected-normal weight, so a surface tilted by `n` in a slice loses the same fraction of
+that slice for the same horizon as a fronto-parallel one (XeGTAO leaves the tilted slice above 1 and clamps
+after averaging, under-counting partial occlusion there); (3) the R16F term stores occlusion `1 − visibility`,
+so an unoccluded pixel is exactly 0 (the fixture's `FP16_STORE` probe shows this backend truncates FP16
+render-target stores, which turned `1 − ε` into a lost ulp per pass).
+
+Fixture `verification/probe/run_ambient_occlusion.py` (`verification/results/bottle-X3/ambient-occlusion-gpu1.json`,
+99 checks): the float64 reference is a transliteration of the shaders (same taps; a fidelity check, max
+difference 3.7·10⁻⁴ = fp16 quantization on the five scenes); the analytic oracles are the independent check
+(fronto-parallel plane exactly 1; tilted plane 89 of 121,600 pixels below 1, none below 0.999, from the R32F
+device-depth quantization; sentinel term 1 and target bit-identical; contact ring 0.957 mean; crease 0.92;
+step far side 0.82; no halo beyond 1.3 R). The multiply law holds within one FP16 ulp: exact on the plane
+under both rounding models, 100 % under round-to-nearest and 99.95 % under truncation on the tilted plane,
+99.1 % / 99.9 % on the sphere, so the blend's product precision is not the store's and neither model is exact
+everywhere. RT1/RT2, the auto depth surface and four vertex-sampler textures bound before every chain come
+back by pointer (`D3DSBT_ALL` carries the vertex samplers). Fault ladder and Reset bit-identical.
+
+Cost (EVENT-fenced, 7 pairs): 1280×768 submit 0.11 ms + 0.72 ms to GPU completion = 0.83 ms chain, over the
+0.8 ms cap; 1920×1080 1.35 ms. Per-quad fenced in isolation (each includes its own render-pass flush and
+completion): 768p linearize 0.35, gtao 0.46, blur 0.33 + 0.33, apply 0.47 (sum 1.94, so the chain overlaps
+them); 1080p 0.22, 0.46, 0.20 + 0.20, 0.34. Without the two blurs the chain is 0.81 ms at 768p and 0.66 ms at
+1080p. The numbers do not isolate one cause; the cheapest safe reduction they support is fewer passes: fold the
+linearization into the GTAO quad (drops one pass and the half R32F target) and replace the two blurs by one
+2D 5×5 depth-aware blur. Not tuned in step 1; the scene-end hook (step 2) waits on the run-14 query and this cost.
