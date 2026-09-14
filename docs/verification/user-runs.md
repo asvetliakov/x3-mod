@@ -33,6 +33,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 14 | Station source-over linear route, fade region and shimmer trace, combined | 0 | Completed as user run 14, snapshot run39 (witness clean, port composed, darkening persists) |
 | 16 | Run 13 retry: target-name speech with the decoder plugin and the fixed DMO fallback hook | 0 | Completed as user run 16, snapshot run41: loads, speech works, crackle under investigation |
 | 17 | Bullet bound after near-plane clipping, packed_sample brightness | 0 | Completed as user run 17, snapshot run42: 100 % bound, witness clean, dimmer unresolved (centre sample) |
+| 18 | Voice crackle fix: decoder plugin v4 (no new DLL) | 1 | Ready (installed `5b92484a…`, plugin `/tmp/x3-wma-plugin-v4`) |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
@@ -92,6 +93,27 @@ Report: hang or not, speech heard or not (and whether it starts at the right
 word), selection pauses, comm video/audio, and the session path. Analysis reads
 the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
 the selection timing.
+
+## 18. Voice crackle fix: decoder plugin v4 — Ready
+
+No new DLL. The crackle of run 16 is a full-scale integer wrap in CrossOver's stock audio converter
+(float samples slightly above 1.0 wrap to large negative values, about fifty per second of speech);
+plugin v4 limits the decoder's float output just below full scale, and the replica dump now matches
+the reference decoder with zero wrapped samples (`docs/verification/voice-decoder.md`). Same
+procedure as run 16 with the v4 plugin path; v3 stays in place, so `--voice-decoder
+/tmp/x3-wma-plugin-v3` reverts.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --game-phases --audio-sites --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 1
+```
+
+Report: whether the crackle on loud syllables is gone, whether the voice sounds quieter or duller,
+and whether selection latency changed; the session path.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
