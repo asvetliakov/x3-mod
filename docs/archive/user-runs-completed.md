@@ -478,6 +478,61 @@ full-scale wrap (`docs/verification/voice-decoder.md`). Selection latency (phase
 decoder. Per-frame proxy from `frame_end` windows: run 46 29.4 ms, run 41 27.1 ms (both with the site
 trace and phase telemetry on); no per-frame regression from the plugin.
 
+## 20. Step D bullets, asteroid prepass jitter, loading markers, AO radius 20, port and ship far/near — Completed
+
+Completed as user run 20, snapshot `/tmp/x3-bottleX3-run48/`, log
+`session-20260915-002408-212.log` (335 MB), installed DLL `39b090d0…` (`77a649b`, record
+`verification/results/run20-candidate-install.json`). User report: no asteroid shimmer at all;
+the bolts look the same, possibly very slightly dimmer, unsure; the AO view was "mostly white,
+twin gray lines when close" (the run carried `--ao-debug`, so the whole session showed the gray
+occlusion factor, not AO applied to the image); the docking port still darkens on approach.
+Per-question analysis is in the owning ledgers —
+[motion-output](../verification/motion-output.md) (prepass `gate=3 jittered=1`, `reason=3` 0.008 %),
+[screen-emission](../verification/screen-emission.md) (firing frames 23902–23909, hull/aabb 0.32–0.35),
+[ambient-occlusion](../verification/ambient-occlusion.md) (4,464 attached frames, the radius law)
+and [station-material-distance](../reverse-engineering/station-material-distance.md) (the far/near
+port pair `0f768ad8`); the `loading_phase` markers are in
+[loading-observations](../reverse-engineering/loading-observations.md) (menu 12.9 s, save load 21.7 s).
+The instructions as issued follow.
+
+One run on the installed candidate `39b090d0…` (`77a649b`, record
+`verification/results/run20-candidate-install.json`: z_only prepass jitter, step D, `loading_phase` markers). Load the usual save.
+
+1. **Asteroids**: zoom on a distant asteroid field as in run 19 and say whether triangles still
+   vanish and reappear. While zoomed and at rest on a far asteroid, press F8 once (this launch
+   captures 8 consecutive frames). Analysis: `unjittered_depth_writers=0` on every
+   `motion_output_frame` line, no jitter-side holes in the 8 pre-resolve frames.
+2. **Docking port and ship**: pick one Argon docking port; fly out until the port is clearly small
+   (about a thumbnail, under ~30 px), F8; fly back until it fills about a third of the screen, F8.
+   Do the same far/near F8 pair on one ship. Say whether each darkens. Analysis: the per-draw path
+   and the HDR captures of each pair (`docs/reverse-engineering/station-material-distance.md`).
+3. **Bullets**: fire at a target for a few seconds, F8 once while firing. Say whether the bolts
+   look like run 19. Analysis: `hull_px`/`aabb_px`, `window_end_scans`/`scans`, `sentinel_us`,
+   brackets no longer near-fullscreen (`docs/verification/screen-emission.md`).
+4. **Ambient occlusion at radius 20 m**: near a station and near an asteroid press Ctrl+Shift+F11 a
+   few times; say whether the darkening in creases and contact areas is visible now, and whether
+   it looks wrong anywhere (halos, crawling, HUD), and the frame rate on versus off if you
+   notice it. Analysis: `ambient_occlusion_frame cpu_us`, `radius_px`, the on/off captures.
+   Optional second short session (B, below): the same launch with `--ao-debug` replaces the
+   image by the gray occlusion factor whenever AO is on; load the save, look at a station and
+   an asteroid, quit, and say whether the gray view shows creases and contact darkening.
+5. **Loading**: nothing to do; the log now carries `loading_phase` markers for menu-shown and
+   save-load; report roughly how long the menu and the save load took by feel.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness --screen-emission --screen-emission-timing \
+  --ambient-occlusion --ao-timing --ao-radius 20 --ao-debug \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+Report: the session path, and the five observations above. Frame rate on versus off for AO is
+still useful if you notice it.
+
 ## 19. Combined: AO off/on, bullets at gain 1, cutout shimmer fix, same-port far/near pair — Completed
 
 Completed as user run 19, snapshot `/tmp/x3-bottleX3-run47/`, log
