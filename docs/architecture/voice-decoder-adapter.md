@@ -189,3 +189,33 @@ tolerance; the native probe then reports anchor errors within 0.02 ms and
 v1 error up to 701 ms, v2 47 ms). v3 is the gameplay candidate once the load
 hang above is fixed; v1 and v2 stay for rollback.
 
+
+## Alternative: native WMP10 codecs in the bottle
+
+Instead of a process-local adapter, the bottle can carry Microsoft's own WMA
+codecs. That was tried on 2026-09-14 with user authorization (full record in
+`docs/verification/bottles.md`): `wmp10` cannot install into bottle X3, which
+is a `win64` prefix, so `winetricks --unattended wmp11` installed the XP x64
+package and its WOW64 32-bit `wmvcore`, `WMASF`, `wmadmod`, `MFPLAT`,
+`WMSPDMOD` and `l3codecp.acm`, with `native` overrides for `wmvcore`, `wmasf`,
+`mfplat`, `wmp`, `wmpnssci`, `wmplayer.exe` and `l3codeca.acm`. It does work
+for the reader interface: the retained sync probe opens both voice archives
+with `hr=0`, reads metadata and reports PCM 44100/1/16 with no winegstreamer
+trace in stderr. It does not work for the route the game uses: the
+native-update probe and the startup replica both fail to build a DirectShow
+graph for the `.dat` archives, `hr=80040217` (`VFW_E_CANNOT_CONNECT`) on every
+stream, zero reads and zero bytes, so there is no anchor error to compare with
+v1 (-701 ms) or v3 (0.02 ms). Native quartz filters and the native ASF/WMA
+DMOs do not connect under this Wine build, and replacing `mfplat` bottle-wide
+is a large, non-portable side effect besides. This alternative is therefore not
+a substitute for the adapter: the adapter stays process-local and keeps working
+on stock Wine and on native Windows, whereas this route requires a
+redistributable install per machine, changes every process in the bottle, and
+in its current state leaves the game's own voice path unable to open a stream.
+The bottle was reverted the same day - all thirteen `native` overrides deleted
+and `gdiplus.dll` restored from the CrossOver builtins, with the
+`DllOverrides` section diffing identical to the pre-change `user.reg` - and the
+sync probe reconfirms the two known points: plain, both archives fail
+`open_hr=80004005` at `sync_open`; with the v3 libav plugin on
+`GST_PLUGIN_PATH_1_0`/`GST_REGISTRY_1_0`, both open with `hr=0` and report PCM
+44100/1/16. The adapter remains the route to pursue.
