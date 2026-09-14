@@ -45,8 +45,7 @@ expect a hitch. `--capture-start 1000` delays the automatic capture;
 Capture records live queried state, including stateblock changes, rather than
 assuming setter calls describe all current state.
 
-The next AgX build defaults to **Auto capped at +1.5 EV**, following the accepted
-run 27 comparison; installation status is in [status](docs/status.md). Launch with
+The installed defaults are recorded in [status](docs/status.md). Launch with
 `--motion-output --hdr --hdr-tonemap --hdr-bloom` to prepare both comparison
 features; `--hdr-exposure fixed` selects fixed EV 0 instead.
 During play, hold **Ctrl+Shift**, then press **F9** to switch AUTO/fixed EV 0,

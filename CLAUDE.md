@@ -58,6 +58,9 @@ failed agent.
   spawning a fresh one; its context is cached.
 - One agent per task. Agents do not spawn agents. Fan out only when the parts
   are genuinely independent.
+- Use `isolation: "worktree"` only for agents that edit source. Agents that
+  build or run fixtures work in the main checkout under the Wine queue owner;
+  a worktree that runs fixtures accumulates gigabytes of untracked results.
 - Do not add "verify with a subagent" or "double-check" instructions to Opus
   briefs; Opus 5 verifies on its own and such lines cause over-verification.
 
