@@ -478,6 +478,61 @@ full-scale wrap (`docs/verification/voice-decoder.md`). Selection latency (phase
 decoder. Per-frame proxy from `frame_end` windows: run 46 29.4 ms, run 41 27.1 ms (both with the site
 trace and phase telemetry on); no per-frame regression from the plugin.
 
+## 21. AO appearance at radius 100, bullet witness on firing frames, vanilla port approach — Completed (session A)
+
+Completed as user run 21 session A, snapshot `/tmp/x3-bottleX3-run49/`, log
+`session-20260915-010311-212.log` (495 MB), installed DLL `39b090d0…` (`77a649b`, no new build).
+**Session B (the vanilla port-approach comparison) has not been run or reported by the user**;
+the port-darkening question therefore stays open where it is tracked
+([station-material-distance](../reverse-engineering/station-material-distance.md)). User report:
+ambient occlusion makes no visible difference on or off at radius 100, near a station or in an
+asteroid field; the bolts are unchanged; a station section (hangar/dock bay, `screenshots/jitter1.png`)
+trembles up and down at about 4.7 km in chase view and stops closer. Per-question analysis is in the
+owning ledgers — [ambient-occlusion](../verification/ambient-occlusion.md) (8,866 attached frames,
+`cpu_us` mean 177.3 µs, the default-off decision), [screen-emission](../verification/screen-emission.md)
+(13,385 witness lines, 0 outside; firing frames 9889–9896) and
+[motion-output](../verification/motion-output.md) (the new station jitter, diagnosis in progress).
+The instructions as issued follow.
+
+No new build; the installed `39b090d0…` (`77a649b`) is used. Two short sessions.
+
+**Session A (enhanced).** Load the usual save.
+
+1. **Ambient occlusion**: near a station (within ~1 km) and in an asteroid field, press
+   Ctrl+Shift+F11 a few times. This time the scene is shaded (no gray view), and the radius is
+   100 m (the launcher and DLL cap), the readable-footprint proxy from
+   [ambient-occlusion-scale.md](../architecture/ambient-occlusion-scale.md). Say whether creases,
+   docking bays, hull plating and asteroid contact areas darken visibly, whether it looks wrong
+   anywhere (dark halos around objects against the nebula, crawling, HUD), and whether you would
+   keep it on. Press F8 once with AO on and once off at the same spot near the station, without
+   moving. Analysis: `ambient_occlusion_frame reason=ok` on the on-capture, the on/off HDR pair,
+   `cpu_us`.
+2. **Bullets**: fire at a target for a few seconds, F8 once while firing. The witness now samples
+   every frame. Analysis: `fade_witness outside` on the firing frames, `packed_sample` peaks.
+3. Anything else you notice, including the loading time by feel.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission --screen-emission-timing \
+  --ambient-occlusion --ao-timing --ao-radius 100 \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+**Session B (vanilla, eyes only).** Same save, same Argon station: fly out until the docking port
+is thumbnail-sized, then back until it fills a third of the screen, and do the same on one ship.
+Say whether the port and the ship darken when near in vanilla too. No capture, no snapshot.
+
+```sh
+./x3run --direct --vanilla
+```
+
+Report: session A path, the AO verdict (keep / adjust / drop) with where it looked right or
+wrong, the bullets, and the vanilla darkening answer.
+
 ## 20. Step D bullets, asteroid prepass jitter, loading markers, AO radius 20, port and ship far/near — Completed
 
 Completed as user run 20, snapshot `/tmp/x3-bottleX3-run48/`, log

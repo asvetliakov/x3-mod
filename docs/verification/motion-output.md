@@ -1023,3 +1023,35 @@ Limits of the log evidence: no group holds a camera still on a far asteroid
 8 pre-resolve frames is conclusive, and the fix rests on the user's in-game
 acceptance plus the jitter gating above, not on a captured before/after pixel
 pair.
+
+
+## User run 21 (run49): a station section trembles at ~4.7 km (2026-09-15)
+
+User run 21 session A (snapshot `/tmp/x3-bottleX3-run49/`, log
+`session-20260915-010311-212.log`, 495 MB, installed DLL `39b090d0…` from
+`77a649b`; log queried, never read whole). The asteroid dropout accepted in run
+20 did not return, but the user reports a **new symptom**: one section of a
+station — the hangar/dock bay area, `screenshots/jitter1.png` — trembles up and
+down at about 4.7 km in chase view, and the trembling stops as the camera comes
+closer.
+
+Triage of the six capture-group frames (4900, 5485, 9889, 11940, 12213, 13181;
+`target_id 1173`, an asteroid, in all of them):
+
+| Measure | Run 21 |
+| --- | --- |
+| `motion_output_frame` `unjittered_depth_writers` | 0 on all six frames |
+| Routed station nodes 58844–58851 and 58872 | `gate=0 jittered=1` on every line (`vs=4944d81dfe531b37`, PS `0c1f3f0f440e4a0c` / `ca6bfa4a6cca7e2a` / `c30104cb0efb6675`) |
+| Docking-port pair (`ps=64bac8bb307eb896`) | `gate=4 jittered=1` |
+| `motion_route` rows with `jittered=0 node=00000000` | up to 13 per frame |
+| Node handles 58245, 58246, 60278–60280, 51946–51948 | never appear in any `motion_route` row |
+
+So the station geometry the route does own is jittered consistently, and nothing
+in the route writes depth unjittered; the candidates for a sub-object that moves
+against its neighbours are the unattributed `node=00000000` draws and the node
+handles that the route never sees at all. That is not enough to name the
+mechanism — a same-draw jitter mismatch, a per-node transform seam and an LOD
+switch at that distance all fit the rows above.
+
+Diagnosis is in progress on Fable; it will name and own the note where the
+mechanism is written up.

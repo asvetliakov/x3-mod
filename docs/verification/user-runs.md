@@ -37,51 +37,8 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 19 | Combined: AO off/on (Ctrl+Shift+F11), bullets at gain 1, cutout shimmer fix, same-port far/near pair | 0 | Completed as user run 19, snapshot run47: cutout exemption holds (`reason=3` 0.01 %), bolts accepted at gain 1; AO runs but is invisible at 2 m, port darkening and asteroid triangle dropout still open |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 | 20 | Asteroid prepass jitter, port and ship far/near pairs, step D bullets, AO radius 20, loading markers | 0 | Completed as user run 20, snapshot run48: asteroid triangle dropout fixed and accepted, step-D brackets no longer fullscreen, loading markers fired; AO ran in debug view only, port darkening still open |
+| 21 | AO appearance at a readable footprint (`--ao-radius 100`, no debug view), bullet witness every frame, vanilla port approach | 1 | Completed as user run 21, snapshot run49 (session A only): the fade witness is clean on the firing frames and the bolts are accepted, AO is invisible at radius 100 and is now default-off, a new station-section jitter at ~4.7 km is under diagnosis; session B (vanilla port approach) has not been reported |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
-
-| 21 | AO appearance at a readable footprint (`--ao-radius 100`, no debug view), bullet witness every frame, vanilla port approach | 2 | Ready (no new DLL; installed `39b090d0…`) |
-
-## 21. AO appearance at radius 100, bullet witness on firing frames, vanilla port approach — Ready
-
-No new build; the installed `39b090d0…` (`77a649b`) is used. Two short sessions.
-
-**Session A (enhanced).** Load the usual save.
-
-1. **Ambient occlusion**: near a station (within ~1 km) and in an asteroid field, press
-   Ctrl+Shift+F11 a few times. This time the scene is shaded (no gray view), and the radius is
-   100 m (the launcher and DLL cap), the readable-footprint proxy from
-   [ambient-occlusion-scale.md](../architecture/ambient-occlusion-scale.md). Say whether creases,
-   docking bays, hull plating and asteroid contact areas darken visibly, whether it looks wrong
-   anywhere (dark halos around objects against the nebula, crawling, HUD), and whether you would
-   keep it on. Press F8 once with AO on and once off at the same spot near the station, without
-   moving. Analysis: `ambient_occlusion_frame reason=ok` on the on-capture, the on/off HDR pair,
-   `cpu_us`.
-2. **Bullets**: fire at a target for a few seconds, F8 once while firing. The witness now samples
-   every frame. Analysis: `fade_witness outside` on the firing frames, `packed_sample` peaks.
-3. Anything else you notice, including the loading time by feel.
-
-```sh
-./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
-  --motion-output --taa --telemetry --camera-log 1 \
-  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
-  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
-  --fade-witness 1 --screen-emission --screen-emission-timing \
-  --ambient-occlusion --ao-timing --ao-radius 100 \
-  --voice-decoder /tmp/x3-wma-plugin-v4 \
-  --capture-start 999999 --capture-frames 8
-```
-
-**Session B (vanilla, eyes only).** Same save, same Argon station: fly out until the docking port
-is thumbnail-sized, then back until it fills a third of the screen, and do the same on one ship.
-Say whether the port and the ship darken when near in vanilla too. No capture, no snapshot.
-
-```sh
-./x3run --direct --vanilla
-```
-
-Report: session A path, the AO verdict (keep / adjust / drop) with where it looked right or
-wrong, the bullets, and the vanilla darkening answer.
-

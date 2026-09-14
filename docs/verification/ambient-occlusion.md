@@ -134,3 +134,39 @@ is effectively uncapped at gameplay distances and shrinks to about one pixel at
 scale (fixed world radius, distance-dependent radius, or a screen-space floor)
 is a design decision pending in `docs/architecture/ambient-occlusion-scale.md`;
 a rerun without `--ao-debug` is what settles the appearance question.
+
+## User run 21 (run49, 2026-09-15): visible at radius 100? No — AO stays off
+
+Third gameplay run of AO, session A of run 21 (snapshot `/tmp/x3-bottleX3-run49/`,
+log `session-20260915-010311-212.log`, 495 MB, installed DLL `39b090d0…` from
+`77a649b`; `--ambient-occlusion --ao-timing --ao-radius 100`; log queried, never
+read whole). `ambient_occlusion_mode` reports `radius_m=100 strength=0.5
+debug=0 timing=1`: the debug factor view is off, so this run finally shows AO
+applied to the image, at the readable-footprint radius chosen in
+[ambient-occlusion-scale.md](../architecture/ambient-occlusion-scale.md).
+
+`ambient_occlusion_frame`: 12,919 lines, `attached=1` on 8,866 and `attached=0`
+on 4,053, in 14 toggle pairs — the pass ran for most of the session. `cpu_us`
+while attached: mean 177.3 µs, median 136 µs (run 20: 211.5, run 19: 203.1);
+0.0 µs on the 4,053 off frames.
+
+**The user sees no visible difference on or off**, near a station and in an
+asteroid field, at radius 100 m. The log cannot contradict or confirm that with
+pixels: only one capture group falls in an off window (frames 4900–4907) and it
+is about 600 frames from the nearest on group, so there is no same-spot on/off
+pixel pair in this run either.
+
+Cost when disabled, for the record: without `--ambient-occlusion` the pass is
+never reached — `run_ambient_occlusion` is not called at all
+(`src/proxy/motion_output.cpp` near lines 1362 and 1442). With the option
+present but the pass toggled off, the gate near `motion_output.cpp:1573` returns
+before both the allocation (near line 1602) and the execute call (near line
+1655), which matches the measured 0.0 µs. So the default-off configuration costs
+nothing.
+
+**Decision (user, 2026-09-15): ambient occlusion stays default-off.** Three
+gameplay runs at 2 m, 20 m and 100 m produced no appearance the user values, so
+there is no sun-weighted AO v2 and no further scale work. The pass, its
+resources and its Reset/recovery handling are retained only as a base for
+screen-space shadow work, should the directional-shadows design choose that
+route (`docs/architecture/directional-shadows.md`, pending).
