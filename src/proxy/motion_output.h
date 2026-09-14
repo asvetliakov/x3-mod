@@ -201,8 +201,9 @@ struct MotionFrameCounters {
     // it ran and applied, the reason it did not, the pass's results and the
     // chain's CPU wall time (timing mode only).
     struct {
-        bool attempted = false, attached = false, ran = false, applied = false;
+        bool attempted = false, attached = false, ran = false, applied = false, enabled = true;
         const char* reason = "off";
+        const char* source = "none"; // hook | copy (the bloom-copy fallback)
         HRESULT result = S_FALSE, restore = S_FALSE;
         std::uint32_t failed_stage = 0, width = 0, height = 0;
         float radius_px = 0;
@@ -495,6 +496,10 @@ public:
     void configure_ambient_occlusion(bool requested, float radius_metres, float strength, bool debug, bool timing) noexcept {
         ao_requested_ = requested; ao_radius_metres_ = radius_metres; ao_strength_ = strength; ao_debug_ = debug; ao_timing_ = timing || debug;
     }
+    // Ctrl+Shift+F11 (comparison-hotkeys.md): flips the per-frame enable of
+    // the chain while --ambient-occlusion is on; the pass stays attached.
+    // Returns the new state, or -1 when the option is off.
+    int ambient_occlusion_toggle() noexcept;
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -1150,7 +1155,14 @@ private:
     // polled without blocking one frame later. Every device object is created
     // and released under taa_call (the same reference accounting as the resolve).
     std::unique_ptr<renderer::AmbientOcclusionPass> ao_;
-    bool ao_requested_ = false, ao_debug_ = false, ao_timing_ = false, ao_attach_failed_ = false;
+    bool ao_requested_ = false, ao_debug_ = false, ao_timing_ = false, ao_attach_failed_ = false, ao_enabled_ = true;
+    // Hysteresis: the format of the last successful attach and the frame of
+    // the last attach attempt (re-attach at most once per ao_reattach_frames);
+    // consecutive chain failures refuse the device after ao_failure_limit.
+    D3DFORMAT ao_attached_format_ = D3DFMT_UNKNOWN;
+    std::uint64_t ao_attach_frame_ = 0;
+    unsigned ao_attach_count_ = 0, ao_chain_failures_ = 0;
+    static constexpr unsigned ao_failure_limit = 3, ao_reattach_frames = 60;
     float ao_radius_metres_ = 2.f, ao_strength_ = .5f;
     D3DFORMAT ao_target_format_ = D3DFMT_UNKNOWN, ao_adapter_format_ = D3DFMT_UNKNOWN;
     HRESULT ao_attach_result_ = S_FALSE;
@@ -1158,7 +1170,7 @@ private:
     struct AoTimingSlot { IDirect3DQuery9 *disjoint = nullptr, *frequency = nullptr, *begin = nullptr, *end = nullptr; std::uint64_t frame = 0; bool issued = false; };
     AoTimingSlot ao_timing_slots_[2]{};
     unsigned ao_timing_cursor_ = 0;
-    bool ao_timing_failed_ = false, ao_timing_created_ = false;
+    bool ao_timing_failed_ = false, ao_timing_created_ = false, ao_timing_lost_ = false;
     double ao_gpu_us_ = -1.;          // the most recent completed pair (microseconds; -1: none or disjoint)
     std::uint64_t ao_gpu_frame_ = 0;  // the frame that pair measured
     void run_ambient_occlusion() noexcept;

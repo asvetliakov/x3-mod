@@ -380,8 +380,9 @@ struct Fixture {
     // aohook script (ambient occlusion at the scene-end hook): the DLL's switches
     // as the fixture reads them (X3M_AMBIENT_OCCLUSION, X3M_FIXTURE_AO_FAULT=attach,
     // X3M_AO_DEBUG, X3M_AO_STRENGTH) decide the pixel law of the crease frames.
-    bool aohook = false, ao_env = false, ao_fault = false, ao_debug = false;
+    bool aohook = false, ao_env = false, ao_fault = false, ao_debug = false, ao_toggle_script = false;
     float ao_strength = .5f;
+    int (*ao_toggle)(IDirect3DDevice9*) = nullptr; // x3m_ambient_occlusion_fixture_toggle: the Ctrl+Shift+F11 action
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
     unsigned reactive_uploads = 0; // reference reactive-mask uploads (supplemental policy frames)
@@ -1573,10 +1574,25 @@ struct Fixture {
         hook_installed = true;
         std::printf("HOOK installed=%u status=%s ao=%u fault=%u debug=%u strength=%.3f hdr=%u\n", hook_installed, hook_status(), ao_env, ao_fault, ao_debug, ao_strength, hdr);
         const bool pixels = !hdr;
-        if (!ao_debug) { hook_frame(true, false); hook_frame(true, false); hook_frame(false, false); reset(); history_valid = false; }
-        ao_crease_frame(pixels); ao_crease_frame(false); ao_crease_frame(false);
-        reset(); history_valid = false;
-        ao_crease_frame(pixels); ao_crease_frame(false);
+        // f1 signals before the scene: the copy path is the scene end (the AO
+        // chain runs at the bloom copy under the same contract).
+        if (!ao_debug) { hook_frame(true, false); hook_frame(true, true); hook_frame(false, false); }
+        if (ao_toggle_script) {
+            // Ctrl+Shift+F11 twin: off for two flat frames after a Reset (byte-exact
+            // with the reference resolve, reason=disabled), on again for the crease.
+            require(ao_toggle != nullptr, "toggle export");
+            int state = ao_toggle(d.p); std::printf("AO_TOGGLE frame=%llu enabled=%d\n", frame, state); require(state == (ao_env ? 0 : -1), "toggle off");
+            reset(); history_valid = false;
+            hook_frame(true, false); hook_frame(true, false);
+            state = ao_toggle(d.p); std::printf("AO_TOGGLE frame=%llu enabled=%d\n", frame, state); require(state == (ao_env ? 1 : -1), "toggle on");
+            reset(); history_valid = false;
+            ao_crease_frame(pixels); ao_crease_frame(false);
+        } else {
+            if (!ao_debug) { reset(); history_valid = false; }
+            ao_crease_frame(pixels); ao_crease_frame(false); ao_crease_frame(false);
+            reset(); history_valid = false;
+            ao_crease_frame(pixels); ao_crease_frame(false);
+        }
         require(hook_shutdown() == 1 && !std::strcmp(hook_status(), "restored"), "shutdown restores the callsite");
         hook_installed = false;
         VirtualFree(hook_code, 0, MEM_RELEASE); hook_code = nullptr; hook_fixture = nullptr;
@@ -2979,6 +2995,8 @@ int main(int argc, char** argv) {
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
         f.ao_env = f.taa && GetEnvironmentVariableA("X3M_AMBIENT_OCCLUSION", setting, sizeof setting) == 1 && setting[0] == '1';
         f.ao_fault = GetEnvironmentVariableA("X3M_FIXTURE_AO_FAULT", setting, sizeof setting) == 6 && !std::strcmp(setting, "attach");
+        f.ao_toggle_script = GetEnvironmentVariableA("X3M_FIXTURE_AO_TOGGLE", setting, sizeof setting) == 1 && setting[0] == '1';
+        f.ao_toggle = symbol<int (*)(IDirect3DDevice9*)>(runtime, "x3m_ambient_occlusion_fixture_toggle", false);
         f.ao_debug = f.ao_env && GetEnvironmentVariableA("X3M_AO_DEBUG", setting, sizeof setting) == 1 && setting[0] == '1';
         { char strength[32]{}; if (GetEnvironmentVariableA("X3M_AO_STRENGTH", strength, sizeof strength) > 0) { char* end = nullptr; const float v = std::strtof(strength, &end); if (end != strength && *end == '\0' && v >= 0.f && v <= 1.f) f.ao_strength = v; } }
         f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));

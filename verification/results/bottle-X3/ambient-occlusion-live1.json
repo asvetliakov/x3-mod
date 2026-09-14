@@ -11,27 +11,31 @@
  },
  "game_launched": false,
  "script": "aohook",
- "frames_per_case": 8,
+ "frames_per_case": {
+  "default": 8,
+  "debug": 5,
+  "toggle": 7
+ },
  "inputs": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/motion_output_fixture.exe": "13dbb78c23451c1e11ff84fe41b8b0e5dad44aa5735181223670608e4ba285ce",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/motion-output-seam/d3d9.dll": "d8283d995f2197eec798fd1b6f16db12eeb343ad3bfc0d7e5e6a4006595053a6",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/motion_output_fixture.exe": "c7405962a9c82a2074f19f9fd929917d45ecf87da40eee517b68460bec5e4c21",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/motion-output-seam/d3d9.dll": "99944a30ac11a3699c30992eb77f91a03e5904bda3b35e5611b45c2eda58bdce",
   "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
   "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
  },
  "sources": {
-  "src/proxy/motion_output.cpp": "41c3a66259176b50e679ca343981732efb29bff0ad7f98d89116158a5e384ee7",
-  "src/proxy/motion_output.h": "d7f3e66833dea26d8a5392347f1490e9a8da177f0c1885e76bd6bb58557747c0",
-  "src/proxy/capture.cpp": "8133fef7865b2834661fc2a04743e53feee2a0825e3d7c21af2070d71453dd90",
+  "src/proxy/motion_output.cpp": "573906e96a66ed36f8f2b7f2d64c4b97dd61bee132a4faf4c168365bc810f45b",
+  "src/proxy/motion_output.h": "bd4eb70ed729cf348862b66f03298f3692081bc91d808ed93ab315e57cb7050f",
+  "src/proxy/capture.cpp": "34dcb2e84760a58797ceee3fa626d1b04db1bd3c1269ce9d33f1fa87c82ce8e7",
   "src/renderer/ambient_occlusion_pass.cpp": "2197c8f903f44ba268ba171e091a36dbcfbb2d3d3e73742d3110cb769743f17f",
   "src/renderer/ambient_occlusion_pass.h": "0f395c9980a33b3c2ff0c7da0602063d73846cb5eed6937bee3f2a53b1826dfc",
-  "verification/probe/motion_output_fixture.cpp": "5496cbedd31c22c9588ce061f9030228d1182182d9ff5beee4dd29df4559f1ce",
+  "verification/probe/motion_output_fixture.cpp": "f92854ac63c64bd4d6fa3102d9927d3268dfa6a5b4e40a0a583176cddcaea0f7",
   "verification/probe/build_motion_output.sh": "7e4942068f9c18894de80218a390d76ec927fe7941a85f5a737285ac3600b73c",
-  "verification/probe/run_ambient_occlusion_live.py": "ac9ccb3ec0cd202445d914899b1df88ea2d2a1b5bdb1b978d239d71736b5a477"
+  "verification/probe/run_ambient_occlusion_live.py": "59c612396363f14267554cc287f0da4afd1e9b4ad197ac6888c9d50e60254d72"
  },
  "cases": {
   "ao-on": {
    "frames": 8,
-   "checks": 111,
+   "checks": 112,
    "restorations": 32,
    "law": "multiply",
    "pixel_frames": [
@@ -55,32 +59,53 @@
     }
    ],
    "ao_lines": 8,
+   "enabled": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "toggles": 0,
+   "timing_lost": 0,
+   "gpu_timing_states": [
+    "unavailable"
+   ],
+   "sources": [
+    "hook",
+    "copy",
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook"
+   ],
    "ran": 8,
    "applied": 8,
    "target_format": 21,
    "slots": 397,
    "attaches": 1,
-   "cpu_us_median": 487.0,
-   "cpu_us_min": 184.0,
+   "cpu_us_median": 498.0,
+   "cpu_us_min": 183.0,
    "gpu_us": [],
    "gpu_us_median": null,
    "gpu_timing": "unavailable",
    "radius_px": 2.13,
    "markers": [
     {
-     "frame": 1,
-     "draw_index": 3
-    },
-    {
      "frame": 2,
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-on-20260914-175829-964765"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-on-20260914-181230-198548"
   },
   "ao-off": {
    "frames": 8,
-   "checks": 111,
+   "checks": 112,
    "restorations": 32,
    "law": "identity",
    "pixel_frames": [
@@ -104,11 +129,11 @@
     }
    ],
    "ao_lines": 0,
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-off-20260914-175834-120134"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-off-20260914-181234-448905"
   },
   "ao-fault": {
    "frames": 8,
-   "checks": 111,
+   "checks": 112,
    "restorations": 32,
    "law": "identity",
    "pixel_frames": [
@@ -134,7 +159,7 @@
    "ao_lines": 8,
    "attach_reason": "ps_3_0",
    "ran": 0,
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-fault-20260914-175835-709405"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-fault-20260914-181236-026017"
   },
   "ao-debug": {
    "frames": 5,
@@ -162,13 +187,32 @@
     }
    ],
    "ao_lines": 5,
+   "enabled": [
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "toggles": 0,
+   "timing_lost": 0,
+   "gpu_timing_states": [
+    "unavailable"
+   ],
+   "sources": [
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook"
+   ],
    "ran": 5,
    "applied": 5,
    "target_format": 21,
    "slots": 397,
    "attaches": 1,
-   "cpu_us_median": 652.0,
-   "cpu_us_min": 127.0,
+   "cpu_us_median": 419.0,
+   "cpu_us_min": 246.0,
    "gpu_us": [],
    "gpu_us_median": null,
    "gpu_timing": "unavailable",
@@ -183,37 +227,188 @@
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-debug-20260914-175837-234058"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-debug-20260914-181237-566132"
   },
   "ao-hdr": {
    "frames": 8,
-   "checks": 105,
+   "checks": 106,
    "restorations": 32,
    "law": "multiply",
    "pixel_frames": [],
    "ao_lines": 8,
+   "enabled": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "toggles": 0,
+   "timing_lost": 0,
+   "gpu_timing_states": [
+    "unavailable"
+   ],
+   "sources": [
+    "hook",
+    "copy",
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook"
+   ],
    "ran": 8,
    "applied": 8,
    "target_format": 113,
    "slots": 397,
    "attaches": 1,
-   "cpu_us_median": 292.0,
-   "cpu_us_min": 116.0,
+   "cpu_us_median": 369.0,
+   "cpu_us_min": 125.0,
    "gpu_us": [],
    "gpu_us_median": null,
    "gpu_timing": "unavailable",
    "radius_px": 2.13,
    "markers": [
     {
-     "frame": 1,
+     "frame": 2,
      "draw_index": 3
-    },
+    }
+   ],
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-hdr-20260914-181239-189069"
+  },
+  "ao-toggle": {
+   "frames": 7,
+   "checks": 125,
+   "restorations": 28,
+   "law": "multiply",
+   "pixel_frames": [
+    {
+     "frame": 5,
+     "darkened": 1115,
+     "sentinel": 1344,
+     "max_drop": 14,
+     "centre_mean": 4.883,
+     "outer_mean": 0.0,
+     "changed": 1115
+    }
+   ],
+   "ao_lines": 7,
+   "enabled": [
+    1,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1
+   ],
+   "toggles": 2,
+   "timing_lost": 0,
+   "gpu_timing_states": [
+    "pending",
+    "unavailable"
+   ],
+   "sources": [
+    "hook",
+    "copy",
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook"
+   ],
+   "ran": 5,
+   "applied": 5,
+   "target_format": 21,
+   "slots": 397,
+   "attaches": 1,
+   "cpu_us_median": 250.0,
+   "cpu_us_min": 181.0,
+   "gpu_us": [],
+   "gpu_us_median": null,
+   "gpu_timing": "unavailable",
+   "radius_px": 2.13,
+   "markers": [
     {
      "frame": 2,
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-hdr-20260914-175838-706669"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-toggle-20260914-181240-924426"
+  },
+  "ao-pollfault": {
+   "frames": 8,
+   "checks": 112,
+   "restorations": 32,
+   "law": "multiply",
+   "pixel_frames": [
+    {
+     "frame": 3,
+     "darkened": 1097,
+     "sentinel": 1408,
+     "max_drop": 15,
+     "centre_mean": 5.3,
+     "outer_mean": 0.0,
+     "changed": 1097
+    },
+    {
+     "frame": 6,
+     "darkened": 1148,
+     "sentinel": 1408,
+     "max_drop": 17,
+     "centre_mean": 4.951,
+     "outer_mean": 0.0,
+     "changed": 1148
+    }
+   ],
+   "ao_lines": 8,
+   "enabled": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "toggles": 0,
+   "timing_lost": 3,
+   "gpu_timing_states": [
+    "lost"
+   ],
+   "sources": [
+    "hook",
+    "copy",
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook",
+    "hook"
+   ],
+   "ran": 8,
+   "applied": 8,
+   "target_format": 21,
+   "slots": 397,
+   "attaches": 1,
+   "cpu_us_median": 485.0,
+   "cpu_us_min": 137.0,
+   "gpu_us": [],
+   "gpu_us_median": null,
+   "gpu_timing": "unavailable",
+   "radius_px": 2.13,
+   "markers": [
+    {
+     "frame": 2,
+     "draw_index": 3
+    }
+   ],
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-pollfault-20260914-181242-077266"
   }
  }
 }

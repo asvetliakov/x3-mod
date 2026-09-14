@@ -33,12 +33,14 @@ SOURCES = ('src/proxy/motion_output.cpp', 'src/proxy/motion_output.h', 'src/prox
            'src/renderer/ambient_occlusion_pass.cpp', 'src/renderer/ambient_occlusion_pass.h',
            'verification/probe/motion_output_fixture.cpp', 'verification/probe/build_motion_output.sh',
            'verification/probe/run_ambient_occlusion_live.py')
-FRAMES = {False: 8, True: 5}                 # aohook script frames per twin (debug twin: crease frames only)
-PIXEL_FRAMES = {False: (3, 6), True: (0, 3)}  # frames without history whose pixel law is checked
+FRAMES = {'default': 8, 'debug': 5, 'toggle': 7}                 # aohook script frames per twin
+PIXEL_FRAMES = {'default': (3, 6), 'debug': (0, 3), 'toggle': (5,)}  # frames without history whose pixel law is checked
+TOGGLE_ENABLED = [1, 1, 1, 0, 0, 1, 1]                            # the toggle twin's per-frame enable
 FORMAT_A8R8G8B8, FORMAT_A16B16G16R16F = 21, 113
 # The twins. hdr: the FP16 route. fault: the attach seam. debug: the grayscale view.
-CASES = [dict(name='ao-on', ao=1), dict(name='ao-off', ao=0), dict(name='ao-fault', ao=1, fault=True),
-         dict(name='ao-debug', ao=1, debug=True), dict(name='ao-hdr', ao=1, hdr=True)]
+CASES = [dict(name='ao-on', ao=1), dict(name='ao-off', ao=0), dict(name='ao-fault', ao=1, fault='attach'),
+         dict(name='ao-debug', ao=1, debug=True), dict(name='ao-hdr', ao=1, hdr=True),
+         dict(name='ao-toggle', ao=1, toggle=True), dict(name='ao-pollfault', ao=1, fault='poll')]
 
 
 def sha(path):
@@ -73,7 +75,7 @@ def parse_fixture(text):
 
 def parse_trace(text):
     """The DLL session log: the AO device/frame lines, the timing refusal, the scene-end markers."""
-    report = {'device': [], 'frames': [], 'markers': [], 'failed': [], 'timing_unavailable': False, 'mode': None}
+    report = {'device': [], 'frames': [], 'markers': [], 'failed': [], 'toggles': [], 'timing_unavailable': False, 'timing_lost': 0, 'mode': None}
     for line in text.splitlines():
         if 'ambient_occlusion_device ' in line:
             report['device'].append(fields(line))
@@ -85,6 +87,10 @@ def parse_trace(text):
             report['failed'].append(fields(line))
         elif 'ambient_occlusion_timing ' in line and 'queries=unavailable' in line:
             report['timing_unavailable'] = True
+        elif 'ambient_occlusion_timing ' in line and 'queries=lost' in line:
+            report['timing_lost'] += 1
+        elif 'ambient_occlusion_toggle ' in line:
+            report['toggles'].append(fields(line))
         elif 'ambient_occlusion_mode ' in line:
             report['mode'] = fields(line)
     return report
@@ -93,25 +99,26 @@ def parse_trace(text):
 def validate_case(case, fixture, trace):
     """One twin's verdict: raises AssertionError with the first failed expectation."""
     name = case['name']
-    ao, fault, debug, hdr = case.get('ao', 0), case.get('fault', False), case.get('debug', False), case.get('hdr', False)
-    active = ao and not fault
+    ao, fault, debug, hdr, toggle = case.get('ao', 0), case.get('fault'), case.get('debug', False), case.get('hdr', False), case.get('toggle', False)
+    active = ao and fault != 'attach'
+    script = 'debug' if debug else 'toggle' if toggle else 'default'
     assert fixture['result'] == 'PASS', f'{name}: fixture result {fixture["result"]}'
     assert fixture['hook'] and fixture['hook'].get('installed') == 1, f'{name}: hook not installed'
     assert not fixture['violations'], f'{name}: pixel-law violations {fixture["violations"][:2]}'
     crease = fixture['crease']
     pixel = [c for c in crease if 'darkened' in c]
-    expected_pixel = 0 if hdr else 2
+    expected_pixel = 0 if hdr else len(PIXEL_FRAMES[script])
     assert len(pixel) == expected_pixel, f'{name}: {len(pixel)} pixel-law frames, expected {expected_pixel}'
     law = 'identity' if not active else 'debug' if debug else 'multiply'
     assert all(c['law'] == law for c in crease), f'{name}: crease law {[c["law"] for c in crease]} != {law}'
-    assert [c['frame'] for c in pixel] == list(PIXEL_FRAMES[bool(debug)]) if not hdr else True, (name, [c['frame'] for c in pixel])
+    assert [c['frame'] for c in pixel] == list(PIXEL_FRAMES[script]) if not hdr else True, (name, [c['frame'] for c in pixel])
     for c in pixel:
         assert c['violations'] == 0 and c['sentinel'] > 0, (name, c)
         if active:
             assert c['darkened'] > 0 and c['centre_mean'] > c['outer_mean'], (name, c)
         else:
             assert c['darkened'] == 0 and c['changed'] == 0, (name, c)
-    frames_expected = FRAMES[bool(debug)]
+    frames_expected = FRAMES[script]
     summary = {'frames': frames_expected, 'checks': fixture['checks'], 'restorations': fixture['restorations'], 'law': law,
                'pixel_frames': [{k: c[k] for k in ('frame', 'darkened', 'sentinel', 'max_drop', 'centre_mean', 'outer_mean', 'changed')} for c in pixel]}
     # The DLL side.
@@ -124,11 +131,20 @@ def validate_case(case, fixture, trace):
     assert len(frames) == frames_expected, f'{name}: {len(frames)} ambient_occlusion_frame lines, expected {frames_expected}'
     assert [f['frame'] for f in frames] == list(range(frames_expected)), (name, [f['frame'] for f in frames])
     for f in frames:
-        for key in ('attached', 'ran', 'reason', 'gpu_us', 'cpu_us', 'width', 'height', 'radius_px'):
+        for key in ('attached', 'ran', 'reason', 'gpu_us', 'cpu_us', 'width', 'height', 'radius_px', 'enabled', 'source', 'gpu_timing'):
             assert key in f, (name, key, f)
     devices = trace['device']
     assert len(devices) >= 1, f'{name}: no ambient_occlusion_device line'
-    if fault:
+    assert len(devices) == 1, f'{name}: {len(devices)} attaches (hysteresis: one per format)'
+    expected_enabled = TOGGLE_ENABLED if toggle else [1] * frames_expected
+    assert [f['enabled'] for f in frames] == expected_enabled, (name, [f['enabled'] for f in frames])
+    assert [t['enabled'] for t in trace['toggles']] == ([0, 1] if toggle else []), (name, trace['toggles'])
+    # Flat frame 1 signals before the scene: the chain runs at the bloom copy.
+    expected_source = ['hook'] * frames_expected
+    if not debug:
+        expected_source[1] = 'copy'
+    assert [f['source'] for f in frames] == expected_source, (name, [f['source'] for f in frames])
+    if fault == 'attach':
         assert all(d['attached'] == 0 and d['reason'] == 'ps_3_0' for d in devices), (name, devices)
         assert all(f['attached'] == 0 and f['ran'] == 0 and f['reason'] == 'attach' for f in frames), (name, frames[0])
         assert not trace['failed'], (name, trace['failed'])
@@ -137,17 +153,29 @@ def validate_case(case, fixture, trace):
     assert all(d['attached'] == 1 and d['reason'] == 'ok' for d in devices), (name, devices)
     expected_format = FORMAT_A16B16G16R16F if hdr else FORMAT_A8R8G8B8
     assert all(d['target_format'] == expected_format for d in devices), (name, [d['target_format'] for d in devices])
-    assert all(f['attached'] == 1 and f['ran'] == 1 and f['reason'] == 'ok' and f['applied'] == 1 for f in frames), (name, [f['reason'] for f in frames])
+    on = [f for f, e in zip(frames, expected_enabled) if e]
+    off = [f for f, e in zip(frames, expected_enabled) if not e]
+    assert all(f['attached'] == 1 and f['ran'] == 1 and f['reason'] == 'ok' and f['applied'] == 1 for f in on), (name, [f['reason'] for f in frames])
+    assert all(f['ran'] == 0 and f['applied'] == 0 and f['reason'] == 'disabled' for f in off), (name, [f['reason'] for f in off])
+    frames = on
+    if fault == 'poll':
+        # The forced poll failure released the sets before any issue: no crash, the
+        # chain still ran, every line reports the lost state, one notice per set.
+        assert trace['timing_lost'] >= 1 and all(f['gpu_timing'] == 'lost' and f['gpu_us'] == -1 for f in frames), (name, trace['timing_lost'], frames[0])
+    else:
+        assert all(f['gpu_timing'] in ('queries', 'unavailable') for f in frames), (name, [f['gpu_timing'] for f in frames])
     assert all(f['width'] == 64 and f['height'] == 64 and f['cpu_us'] > 0 for f in frames), (name, frames[0])
     assert all(f['debug'] == int(bool(debug)) for f in frames), (name, frames[0])
     assert not trace['failed'], (name, trace['failed'])
     gpu = [f['gpu_us'] for f in frames if f['gpu_us'] >= 0]
-    if not trace['timing_unavailable']:
+    if not trace['timing_unavailable'] and fault != 'poll':
         assert gpu, f'{name}: timestamp queries created but no pair completed'
     markers = trace['markers']
     assert markers and all(m['draw_index'] >= 1 for m in markers), (name, markers[:2])
     cpu = sorted(f['cpu_us'] for f in frames)
-    summary.update(ao_lines=len(frames), ran=sum(f['ran'] for f in frames), applied=sum(f['applied'] for f in frames),
+    summary.update(ao_lines=len(trace['frames']), enabled=expected_enabled, toggles=len(trace['toggles']), timing_lost=trace['timing_lost'],
+                   gpu_timing_states=sorted({f['gpu_timing'] for f in trace['frames']}), sources=[f['source'] for f in trace['frames']],
+                   ran=sum(f['ran'] for f in frames), applied=sum(f['applied'] for f in frames),
                    target_format=expected_format, slots=devices[0].get('slots'), attaches=len(devices),
                    cpu_us_median=cpu[len(cpu) // 2], cpu_us_min=cpu[0], gpu_us=gpu, gpu_us_median=sorted(gpu)[len(gpu) // 2] if gpu else None,
                    gpu_timing='timestamp' if gpu else 'unavailable', radius_px=frames[0]['radius_px'],
@@ -170,7 +198,7 @@ def environment(case):
                X3M_LINEAR_MATERIALS='0', X3M_LINEAR_EMISSIONS='0', X3M_LINEAR_DISTANCE_FADE='0', X3M_SCREEN_EMISSION='0',
                X3M_AMBIENT_OCCLUSION=str(case.get('ao', 0)), X3M_AO_RADIUS='2', X3M_AO_STRENGTH='0.5',
                X3M_AO_DEBUG='1' if case.get('debug') else '0', X3M_AO_TIMING='1',
-               X3M_FIXTURE_AO_FAULT='attach' if case.get('fault') else '')
+               X3M_FIXTURE_AO_FAULT=case.get('fault') or '', X3M_FIXTURE_AO_TOGGLE='1' if case.get('toggle') else '0')
     return env
 
 
@@ -190,7 +218,7 @@ def main(argv=None):
     assert all(p.is_file() for p in inputs), f'inputs missing: {[str(p) for p in inputs if not p.is_file()]}'
     only = set(args.cases)
     build = PROBE / 'build'
-    result = dict(passed=False, bottle=bottle.describe(), game_launched=False, script='aohook', frames_per_case=FRAMES[False],
+    result = dict(passed=False, bottle=bottle.describe(), game_launched=False, script='aohook', frames_per_case=FRAMES,
                   inputs={str(p): sha(p) for p in inputs}, sources={s: sha(ROOT / s) for s in SOURCES}, cases={})
     try:
         for case in CASES:

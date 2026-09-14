@@ -305,7 +305,7 @@ public:
  bool hdr_target_failed_=false,hdr_blocked_=false,target_failed_=false,pending_valid_=false,main_msaa_=false,msaa_logged_=false;unsigned hdr_blocked_latches_=0,main_msaa_samples_=0;Surface main_,main_depth_;History selector_;renderer::CameraState camera_previous_;
  unsigned taa_references_=0;std::unique_ptr<Pass>hdr_=std::make_unique<Pass>(),taa_;History history_;
  // Ambient occlusion pass and its timestamp queries (step 2): lifetime seams only.
- std::unique_ptr<Pass>ao_;bool ao_timing_created_=false,ao_timing_failed_=false;unsigned ao_timing_releases_=0;
+ std::unique_ptr<Pass>ao_;bool ao_timing_created_=false,ao_timing_failed_=false,ao_timing_lost_=false;unsigned ao_timing_releases_=0,ao_chain_failures_=0;D3DFORMAT ao_adapter_format_=D3DFMT_UNKNOWN;
  void ao_timing_release()noexcept{++ao_timing_releases_;ao_timing_created_=false;}
  IUnknown*target_surface_=nullptr,*depth_surface_=nullptr,*sentinel_ps_=nullptr,*sentinel_mrt_ps_=nullptr,*quad_vs_=nullptr,*quad_declaration_=nullptr;
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;renderer::HdrConfig hdr_config_;

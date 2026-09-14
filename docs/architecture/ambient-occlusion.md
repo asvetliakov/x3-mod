@@ -70,7 +70,13 @@ follow the signal). The resolve consumes the darkened target, the bloom copy see
 image, the HUD is untouched: HUD separation is by phase, not depth. The reactive mask M is not read
 or written. Blended Z-write-off scene draws (7–21 per frame, `emission-draw-order.md`) over routed
 surfaces are darkened by the same factor; the strength floor bounds it and the debug view shows it.
-If a run objects, v2 moves the chain to a mid-scene bracket at the first blended draw.
+If a run objects, v2 moves the chain to a mid-scene bracket at the first blended draw. Rule
+(step 2): the chain runs only on a frame the resolve will take, evaluated with the resolve's own
+preconditions (TAA attached, jitter active, RT2 filled, no state block recording, no active
+application queries, no MSAA, the resolve not yet attempted this frame) plus a valid scene camera,
+so a darkened sample is either temporally filtered or not presented at all. The bloom-copy fallback
+(the route's scene end when the engine hook did not signal) runs the chain under the same contract,
+before its resolve, when the hook did not run it that frame (`source=copy` on the frame line).
 
 ## 4. Application and what it must not touch
 
@@ -249,11 +255,25 @@ Timing (`--ao-timing`/`--ao-debug`): one line per frame,
 `TIMESTAMP` end pairs, scaled by `TIMESTAMPFREQ`; two rotating sets polled with `D3DGETDATA_FLUSH`,
 never blocking, so the value is the most recently completed pair and `gpu_frame` names its frame);
 a `CreateQuery` refusal fails closed to CPU wall time (`ambient_occlusion_timing queries=unavailable`,
-`gpu_us=-1`). `cpu_us` is the QPC wall time of the `execute` call. `radius_px` is the half-resolution
-screen radius at 20 m, capped at 64. Outside timing mode the per-frame cost is the chain itself:
-one `GetRenderTarget`, one `GetContainer`, the four quads and the block capture/restore; no per-draw
-work. The CrossOver Preview backend refuses the timestamp query types (D3DERR_NOTAVAILABLE), so the
-live fixture records CPU time only; native D3D9 drivers generally provide them (unverified here).
+`gpu_us=-1`). A poll that fails (a lost device) releases the sets before anything is issued again
+(`gpu_timing=lost`, one `queries=lost` line; CPU time until Reset). `cpu_us` is the QPC wall time of
+the `execute` call. `radius_px` is the half-resolution screen radius at 20 m, capped at 64. The line
+also carries `enabled=` (the hotkey state), `source=hook|copy` and
+`gpu_timing=queries|unavailable|lost|pending`. Outside timing mode the per-frame cost is the chain
+itself: one `GetRenderTarget`, one `GetContainer`, the four quads and the block capture/restore; no
+per-draw work. Timestamp queries return `D3DERR_NOTAVAILABLE` on CrossOver Preview's D3D9, so the
+frame line carries CPU wall time there; the GPU cost is bounded by the detached fixture's
+event-query fencing (below) and measured in game by an off/on A/B on the same flight, which the
+hotkey makes a same-run comparison.
+
+Hotkey: **Ctrl+Shift+F11** (comparison-hotkeys.md; F9 exposure, F10 bloom) flips a per-frame
+enable read at the scene end while `--ambient-occlusion` is on. The pass stays attached (no
+re-attach cost); a disabled frame logs `reason=disabled enabled=0`; each press logs
+`ambient_occlusion_toggle device= frame= enabled=`. The chord uses the comparison sampler (fresh
+press, Ctrl+Shift armed in the previous foreground sample) and is polled only when the option is on;
+it has no on-screen notice. Failure policy: `ao_failure_limit` (3) consecutive chain failures refuse
+the device until Reset (`reason=failed_limit`); a target format that alternates with the redirect
+state re-attaches at most once per 60 frames.
 
 Live fixture `verification/probe/run_ambient_occlusion_live.py` (`aohook` script of
 `motion_output_fixture.cpp`, 64x64, fixture-seam DLL, record
@@ -270,8 +290,13 @@ codes against 0 in the outer band, 1408 sentinel pixels unchanged, 8/8 frames `r
 ao-off (bit-identical, no AO lines), ao-fault (`X3M_FIXTURE_AO_FAULT=attach` lowers the shader model:
 `ambient_occlusion_device attached=0 reason=ps_3_0`, all frames `reason=attach`, crease frames
 bit-identical), ao-debug (gray factor, sentinel 255, above the floor, 1360/1369 pixels below 255,
-maximum 27/31 codes), ao-hdr (attach on format 113, identity on the flat frames, 8/8 ran). Two Resets
-per twin; the fixture's state snapshot around the hook shows no difference in any frame. Fixture cost
+maximum 27/31 codes), ao-hdr (attach on format 113, identity on the flat frames, 8/8 ran), ao-toggle
+(the export behind Ctrl+Shift+F11 flips the flag: frames 3-4 flat and byte-exact with the reference
+resolve at `reason=disabled`, frames 5-6 crease darkened again, two toggle lines, one attach),
+ao-pollfault (`X3M_FIXTURE_AO_FAULT=poll`: a timestamp set that polls as a lost device is released
+before anything is issued; the chain still runs, `gpu_timing=lost`). Flat frame 1 of every non-debug
+twin signals before the scene, so its chain runs at the bloom copy (`source=copy`). Two Resets per
+twin; the fixture's state snapshot around the hook shows no difference in any frame. Fixture cost
 at 64x64 on this backend: median `cpu_us` 292-652 per twin, minimum 116-184 (the frame after an
 attach or Reset pays the target/block creation, 10-15 ms). The game-size cost is the detached
 fixture's (below).

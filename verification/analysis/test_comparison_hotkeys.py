@@ -117,8 +117,12 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;', present)
         self.assertIn('ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()', present)
         polling = extract_function(capture, 'void comparison_begin_frame(')
-        self.assertLess(polling.index('if(!hdr_requested || hdr_config.tonemap!=renderer::HdrTonemap::Agx)return;'),
+        # Ordinary launches (no HDR AgX, no ambient occlusion) return before any key or foreground query.
+        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested)return;'),
                         polling.index('comparison_foreground()'))
+        self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
+        self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),
+                        polling.index('if(!action.exposure && !action.bloom)return;'))
         reset = extract_function(capture, 'HRESULT reset_common(')
         self.assertIn('ctx.comparison_notice.hide();ctx.comparison.reset_focus()', reset)
         handoff = extract_function(capture, 'void retain_compositor_scene(')

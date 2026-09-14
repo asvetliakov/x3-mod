@@ -25,13 +25,19 @@ RESULT PASS checks=111 restorations=0 frames=8 motion_pixels=0
 '''
 
 
-def trace(attached=1, ran=1, reason='ok', device_reason='ok', frames=8, applied=1, gpu=-1.0, unavailable=True, debug=0):
+def trace(attached=1, ran=1, reason='ok', device_reason='ok', frames=8, applied=1, gpu=-1.0, unavailable=True, debug=0, enabled=None, toggles=(), timing='unavailable', lost=0):
     lines = ['ambient_occlusion_mode requested=1 enabled=1 motion_output=1 taa=1 radius_m=2 strength=0.5 debug=0 timing=1',
              f'ambient_occlusion_device device=1 attached={attached} reason={device_reason} result=00000000 target_format=21 adapter_format=22 slots=397 radius_m=2.000 strength=0.500 debug=0 timing=1 taa_references=6']
     if unavailable:
         lines.append('ambient_occlusion_timing device=1 queries=unavailable result=8876086a')
+    lines += ['ambient_occlusion_timing device=1 queries=lost result=88760868 frame=0'] * lost
+    enabled = enabled or [1] * frames
     for f in range(frames):
-        lines.append(f'ambient_occlusion_frame device=1 frame={f} attached={attached} ran={ran} reason={reason} gpu_us={gpu} cpu_us={150 + f} width=64 height=64 radius_px=2.13 gpu_frame=0 applied={applied} result=00000000 restore=00000000 stage=0 debug={debug}')
+        for t in toggles:
+            if t[0] == f:
+                lines.append(f'ambient_occlusion_toggle device=1 frame={f} enabled={t[1]}')
+        on = enabled[f]
+        lines.append(f'ambient_occlusion_frame device=1 frame={f} attached={attached} ran={ran if on else 0} reason={reason if on else "disabled"} gpu_us={gpu} cpu_us={150 + f} width=64 height=64 radius_px=2.13 gpu_frame=0 enabled={on} source={"copy" if f == 1 else "hook"} gpu_timing={timing} applied={applied if on else 0} result=00000000 restore=00000000 stage=0 debug={debug}')
         if f in (1, 2):
             lines.append(f'scene_end_marker device=1 frame={f} draw_index=3')
     return '\n'.join(lines) + '\n'
@@ -55,6 +61,8 @@ class AmbientOcclusionLiveReportTests(unittest.TestCase):
             self.assertIn(key, line)
         self.assertEqual((line['gpu_us'], line['cpu_us'], line['width'], line['radius_px']), (-1.0, 150, 64, 2.13))
         self.assertTrue(report['timing_unavailable'])
+        self.assertEqual((line['enabled'], line['source'], line['gpu_timing']), (1, 'hook', 'unavailable'))
+        self.assertEqual(report['frames'][1]['source'], 'copy')
         self.assertEqual([m['draw_index'] for m in report['markers']], [3, 3])
         self.assertEqual(report['device'][0]['slots'], 397)
 
@@ -70,13 +78,31 @@ class AmbientOcclusionLiveReportTests(unittest.TestCase):
         summary = runner.validate_case({'name': 'ao-on', 'ao': 1}, runner.parse_fixture(FIXTURE), runner.parse_trace(trace(unavailable=False, gpu=310.5)))
         self.assertEqual((summary['gpu_timing'], summary['gpu_us_median']), ('timestamp', 310.5))
 
+    def test_toggle_twin(self):
+        text = FIXTURE.replace('AO_CREASE frame=3 law=multiply darkened=1097', 'AO_CREASE frame=5 law=multiply darkened=1097')
+        text = '\n'.join(l for l in text.splitlines() if not l.startswith(('AO_CREASE frame=4', 'AO_CREASE frame=6', 'AO_CREASE frame=7'))) + '\n'
+        text = text.replace('AO_CREASE frame=5 law=multiply changed=1115 pixel_check=0', 'AO_CREASE frame=6 law=multiply changed=1115 pixel_check=0')
+        toggled = trace(frames=7, enabled=[1, 1, 1, 0, 0, 1, 1], toggles=((3, 0), (5, 1)))
+        summary = runner.validate_case({'name': 'ao-toggle', 'ao': 1, 'toggle': True}, runner.parse_fixture(text), runner.parse_trace(toggled))
+        self.assertEqual((summary['frames'], summary['ran'], summary['toggles'], summary['enabled']), (7, 5, 2, [1, 1, 1, 0, 0, 1, 1]))
+        self.assertEqual([p['frame'] for p in summary['pixel_frames']], [5])
+        with self.assertRaises(AssertionError):  # a frame that ran while disabled
+            runner.validate_case({'name': 'ao-toggle', 'ao': 1, 'toggle': True}, runner.parse_fixture(text), runner.parse_trace(trace(frames=7, toggles=((3, 0), (5, 1)))))
+
+    def test_poll_fault_twin(self):
+        lost = trace(timing='lost', lost=2)
+        summary = runner.validate_case({'name': 'ao-pollfault', 'ao': 1, 'fault': 'poll'}, runner.parse_fixture(FIXTURE), runner.parse_trace(lost))
+        self.assertEqual((summary['timing_lost'], summary['gpu_timing_states'], summary['ran']), (2, ['lost'], 8))
+        with self.assertRaises(AssertionError):  # the lost state must be visible on the frame line
+            runner.validate_case({'name': 'ao-pollfault', 'ao': 1, 'fault': 'poll'}, runner.parse_fixture(FIXTURE), runner.parse_trace(trace(lost=1)))
+
     def test_fault_twin(self):
         text = FIXTURE.replace('law=multiply darkened=1097 sentinel=1408 violations=0 max_drop=15 centre_mean=5.300 outer_mean=0.000 changed=1097',
                                'law=identity darkened=0 sentinel=1408 violations=0 max_drop=0 centre_mean=0.000 outer_mean=0.000 changed=0')
         text = text.replace('law=multiply darkened=1148 sentinel=1408 violations=0 max_drop=17 centre_mean=4.951 outer_mean=0.000 changed=1148',
                             'law=identity darkened=0 sentinel=1408 violations=0 max_drop=0 centre_mean=0.000 outer_mean=0.000 changed=0').replace('law=multiply', 'law=identity')
         fault = trace(attached=0, ran=0, reason='attach', device_reason='ps_3_0', applied=0, unavailable=False)
-        summary = runner.validate_case({'name': 'ao-fault', 'ao': 1, 'fault': True}, runner.parse_fixture(text), runner.parse_trace(fault))
+        summary = runner.validate_case({'name': 'ao-fault', 'ao': 1, 'fault': 'attach'}, runner.parse_fixture(text), runner.parse_trace(fault))
         self.assertEqual((summary['law'], summary['attach_reason'], summary['ran']), ('identity', 'ps_3_0', 0))
         # The same transcript is not a passing multiply twin: the chain did not run.
         with self.assertRaises(AssertionError):

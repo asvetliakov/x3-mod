@@ -1295,6 +1295,10 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // of the main target, so the application copies the resolved image); any
     // other copy reading the main target flushes first, one writing it ends
     // first.
+    // The bloom copy is the fallback scene end: the AO chain runs here under
+    // the same contract as at the hook (RT2 complete, brackets finished, the
+    // resolve follows on the same target) when the hook did not run it.
+    if (bloom && ao_requested_ && !counters_.ao.attempted) { counters_.ao.source = "copy"; run_ambient_occlusion(); }
     if (hdr_state_ != HdrState::Off) {
         if (bloom) { resolve_hdr(SceneEndSource::StretchRect); end_redirect(HdrEnd::BloomCopy); }
         else if (hdr_is_main(destination)) end_redirect(HdrEnd::ContentWrite);
@@ -1373,7 +1377,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     // Ambient occlusion on the owning scene target (RT2 complete, every
     // in-place bracket finished, the resolve not yet run): the resolve below
     // consumes the darkened target.
-    if (ao_requested_) run_ambient_occlusion();
+    if (ao_requested_) { counters_.ao.source = "hook"; run_ambient_occlusion(); }
     // The FP16 scene ends here. Stage 3 order (section 4 of the HDR design):
     // the resolve on the FP16 target while it is RT0, then the write-back of
     // the resolved image (meter, tonemap) and the rebind of the main target
@@ -1410,7 +1414,10 @@ constexpr unsigned ao_log_limit = 8;
 bool MotionOutput::ensure_ambient_occlusion(D3DFORMAT target_format) noexcept {
     if (ao_ && ao_->caps().enabled && ao_target_format_ == target_format) return true;
     if (ao_attach_failed_ && ao_target_format_ == target_format) return false;
-    ao_target_format_ = target_format; ao_attach_failed_ = true;
+    // Hysteresis: a target format alternating with the redirect state (FP16
+    // active / suspended) re-attaches at most once per ao_reattach_frames.
+    if (ao_attach_count_ && frame_ < ao_attach_frame_ + ao_reattach_frames) return false;
+    ao_target_format_ = target_format; ao_attach_failed_ = true; ao_attach_frame_ = frame_; ++ao_attach_count_;
     if (!ao_) { try { ao_ = std::make_unique<renderer::AmbientOcclusionPass>(); } catch (...) { ao_attach_result_ = E_OUTOFMEMORY; return false; } }
     const char* reason = "";
     HRESULT hr = E_FAIL;
@@ -1430,6 +1437,7 @@ bool MotionOutput::ensure_ambient_occlusion(D3DFORMAT target_format) noexcept {
         taa_call([&] { hr = ao_->attach(device_, native_, caps, ao_adapter_format_, target_format); });
         reason = ao_->caps().reason;
         ao_attach_failed_ = FAILED(hr) || !ao_->caps().enabled;
+        if (!ao_attach_failed_) { ao_attached_format_ = target_format; ao_chain_failures_ = 0; }
     }
     ao_attach_result_ = hr;
     if (ao_attach_logs_ < ao_log_limit) {
@@ -1471,13 +1479,27 @@ void MotionOutput::ao_timing_release() noexcept {
 void MotionOutput::ao_timing_poll(AoTimingSlot& slot) noexcept {
     if (!slot.issued) return;
     BOOL disjoint = FALSE; UINT64 frequency = 0, begin = 0, end = 0;
-    HRESULT hr = slot.disjoint->GetData(&disjoint, sizeof disjoint, D3DGETDATA_FLUSH);
+    HRESULT hr = D3DERR_DEVICELOST;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Fixture seam (X3M_FIXTURE_AO_FAULT=poll): the slot was marked issued
+    // without queries; the poll reports a lost device before any dereference.
+    if (!slot.disjoint) { ao_timing_release(); ao_timing_failed_ = true; ao_timing_lost_ = true;
+        if (ao_failure_logs_ < ao_log_limit) { ++ao_failure_logs_; log("ambient_occlusion_timing device=%llu queries=lost result=%08lx frame=%llu", id_, hr, frame_); }
+        return; }
+#endif
+    hr = slot.disjoint->GetData(&disjoint, sizeof disjoint, D3DGETDATA_FLUSH);
     if (hr == S_OK) hr = slot.frequency->GetData(&frequency, sizeof frequency, D3DGETDATA_FLUSH);
     if (hr == S_OK) hr = slot.begin->GetData(&begin, sizeof begin, D3DGETDATA_FLUSH);
     if (hr == S_OK) hr = slot.end->GetData(&end, sizeof end, D3DGETDATA_FLUSH);
     if (hr == S_FALSE) return;
     slot.issued = false;
-    if (hr != S_OK) { ao_timing_release(); ao_timing_failed_ = true; return; } // lost device or a refused query: CPU time only
+    if (hr != S_OK) {
+        // A lost device or a refused query: release the sets, CPU time only
+        // until Reset. The caller re-checks ao_timing_created_ before issuing.
+        ao_timing_release(); ao_timing_failed_ = true; ao_timing_lost_ = true;
+        if (ao_failure_logs_ < ao_log_limit) { ++ao_failure_logs_; log("ambient_occlusion_timing device=%llu queries=lost result=%08lx frame=%llu", id_, hr, frame_); }
+        return;
+    }
     ao_gpu_frame_ = slot.frame;
     ao_gpu_us_ = (disjoint || !frequency || end < begin) ? -1. : double(end - begin) * 1e6 / double(frequency);
 }
@@ -1485,13 +1507,21 @@ void MotionOutput::run_ambient_occlusion() noexcept {
     auto& a = counters_.ao;
     a.attempted = true; a.reason = "ok";
     auto skip = [&](const char* why) { a.reason = why; if (ao_timing_) log_ambient_occlusion_frame(); };
-    if (!taa_enabled_) return skip("taa");
+    a.enabled = ao_enabled_;
+    if (!ao_enabled_) return skip("disabled");
+    // The chain runs only on a frame the resolve will take (resolve_allowed's
+    // preconditions, evaluated here without consuming the single attempt): the
+    // darkened sample is temporally filtered or not presented at all.
+    if (!taa_enabled_ || taa_failed_) return skip("taa");
     if (composition_state_lost_ || motion_state_lost_) return skip("state_lost");
+    if (counters_.taa.attempted) return skip("resolved");
     if (main_msaa_) return skip("msaa");
+    if (!jitter_active_) return skip("no_jitter");
     if (!counters_.filled || !target_surface_ || !depth_surface_ || !depth_enabled_) return skip("no_depth");
     if (shadow_.recording) return skip("recording");
     if (active_queries_) return skip("queries");
     if (!camera_scene_.valid) return skip("camera");
+    if (ao_chain_failures_ >= ao_failure_limit) return skip("failed_limit");
     // The owning scene target: the FP16 target while the redirect is active,
     // else the latched main target; anything else is not the scene.
     IDirect3DSurface9* rt0 = nullptr;
@@ -1526,23 +1556,37 @@ void MotionOutput::run_ambient_occlusion() noexcept {
     LARGE_INTEGER t0{}, t1{};
     taa_call([&] {
         AoTimingSlot* slot = nullptr;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        // Fixture seam (X3M_FIXTURE_AO_FAULT=poll, once): a set that looks issued
+        // with no queries behind it, so the poll below fails as a lost device would.
+        if (ao_timing_ && !ao_timing_created_ && !ao_timing_failed_) {
+            char fault[16]{};
+            if (GetEnvironmentVariableA("X3M_FIXTURE_AO_FAULT", fault, sizeof fault) > 0 && !std::strcmp(fault, "poll")) {
+                ao_timing_created_ = true; ao_timing_slots_[ao_timing_cursor_ ^ 1u].issued = true; ao_timing_slots_[ao_timing_cursor_ ^ 1u].frame = frame_;
+            }
+        }
+#endif
         if (ao_timing_ && ao_timing_create()) {
             // Poll last frame's pair first (its result is this line's gpu_us), then
-            // take the other slot; a slot still pending is left alone.
+            // take the other slot; a slot still pending is left alone. A failed
+            // poll releases the sets, so the created state is re-checked before
+            // any query is issued.
             ao_timing_poll(ao_timing_slots_[ao_timing_cursor_ ^ 1u]);
-            slot = &ao_timing_slots_[ao_timing_cursor_];
-            ao_timing_poll(*slot);
-            if (slot->issued) slot = nullptr;
-            else {
-                HRESULT q = slot->disjoint->Issue(D3DISSUE_BEGIN);
-                if (SUCCEEDED(q)) q = slot->begin->Issue(D3DISSUE_END);
-                if (FAILED(q)) { ao_timing_release(); ao_timing_failed_ = true; slot = nullptr; }
+            if (ao_timing_created_) {
+                slot = &ao_timing_slots_[ao_timing_cursor_];
+                ao_timing_poll(*slot);
+                if (!ao_timing_created_ || slot->issued || !slot->disjoint || !slot->begin) slot = nullptr;
+                else {
+                    HRESULT q = slot->disjoint->Issue(D3DISSUE_BEGIN);
+                    if (SUCCEEDED(q)) q = slot->begin->Issue(D3DISSUE_END);
+                    if (FAILED(q)) { ao_timing_release(); ao_timing_failed_ = true; slot = nullptr; }
+                }
             }
         }
         if (ao_timing_) QueryPerformanceCounter(&t0);
         hr = ao_->execute(in, &out);
         if (ao_timing_) QueryPerformanceCounter(&t1);
-        if (slot) {
+        if (slot && ao_timing_created_) {
             HRESULT q = slot->end->Issue(D3DISSUE_END);
             if (SUCCEEDED(q)) q = slot->frequency->Issue(D3DISSUE_END);
             if (SUCCEEDED(q)) q = slot->disjoint->Issue(D3DISSUE_END);
@@ -1560,12 +1604,13 @@ void MotionOutput::run_ambient_occlusion() noexcept {
     if (FAILED(hr)) {
         // Fail closed: the pass restored its block and published nothing; the
         // frame continues untouched (a lost device is reported by the frame line).
-        a.reason = "failed";
+        // ao_failure_limit consecutive failures refuse the device until Reset.
+        a.reason = "failed"; ++ao_chain_failures_;
         if (ao_failure_logs_ < ao_log_limit) {
             ++ao_failure_logs_;
-            log("ambient_occlusion_failed device=%llu frame=%llu result=%08lx restore=%08lx stage=%u", id_, frame_, out.operation, out.restore, unsigned(out.failed));
+            log("ambient_occlusion_failed device=%llu frame=%llu result=%08lx restore=%08lx stage=%u failures=%u limit=%u", id_, frame_, out.operation, out.restore, unsigned(out.failed), ao_chain_failures_, ao_failure_limit);
         }
-    } else { a.ran = true; a.applied = out.applied; }
+    } else { a.ran = true; a.applied = out.applied; ao_chain_failures_ = 0; }
     if (ao_timing_) log_ambient_occlusion_frame();
 }
 // One line per frame in timing/debug mode. gpu_us is the most recently
@@ -1575,9 +1620,16 @@ void MotionOutput::run_ambient_occlusion() noexcept {
 // half-resolution screen radius at 20 m, capped at the pass's limit.
 void MotionOutput::log_ambient_occlusion_frame() noexcept {
     const auto& a = counters_.ao;
-    log("ambient_occlusion_frame device=%llu frame=%llu attached=%u ran=%u reason=%s gpu_us=%.1f cpu_us=%.1f width=%u height=%u radius_px=%.2f gpu_frame=%llu applied=%u result=%08lx restore=%08lx stage=%u debug=%u",
+    const char* timing = ao_timing_created_ ? "queries" : ao_timing_lost_ ? "lost" : ao_timing_failed_ ? "unavailable" : "pending";
+    log("ambient_occlusion_frame device=%llu frame=%llu attached=%u ran=%u reason=%s gpu_us=%.1f cpu_us=%.1f width=%u height=%u radius_px=%.2f gpu_frame=%llu enabled=%u source=%s gpu_timing=%s applied=%u result=%08lx restore=%08lx stage=%u debug=%u",
         id_, frame_, a.attached, a.ran, a.reason, ao_gpu_us_, double(a.cpu_ticks), a.width, a.height, double(a.radius_px), ao_gpu_frame_,
-        a.applied, a.result, a.restore, a.failed_stage, ao_debug_);
+        a.enabled, a.source, timing, a.applied, a.result, a.restore, a.failed_stage, ao_debug_);
+}
+int MotionOutput::ambient_occlusion_toggle() noexcept {
+    if (!ao_requested_) return -1;
+    ao_enabled_ = !ao_enabled_;
+    log("ambient_occlusion_toggle device=%llu frame=%llu enabled=%u", id_, frame_, ao_enabled_);
+    return ao_enabled_ ? 1 : 0;
 }
 void MotionOutput::after_begin_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = true; }
 void MotionOutput::after_end_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = false; }
@@ -2130,7 +2182,8 @@ void MotionOutput::before_reset() noexcept {
     // The AO targets and block go after RT1/RT2 (design section 5); the
     // timestamp queries are device objects and go with them (recreated lazily).
     if (ao_ || ao_timing_created_) taa_call([&] { ao_timing_release(); if (ao_) ao_->before_reset(); });
-    ao_timing_failed_ = false;
+    ao_timing_failed_ = false; ao_timing_lost_ = false; ao_chain_failures_ = 0;
+    ao_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format (as for the composition pass).
     target_failed_ = false;
     history_.invalidate();
     selector_.invalidate();

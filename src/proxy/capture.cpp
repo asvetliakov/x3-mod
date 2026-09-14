@@ -895,14 +895,19 @@ void comparison_log(Device& ctx,const char* phase,const char* key,bool accepted)
 void comparison_begin_frame(Device& ctx) noexcept {
     // Ordinary launches pay no comparison input/foreground polling. A
     // requested-but-refused capability still accepts the UNAVAILABLE notice.
-    if(!hdr_requested || hdr_config.tonemap!=renderer::HdrTonemap::Agx)return;
+    // Ctrl+Shift+F11 (ambient occlusion on/off) polls with the same sampler
+    // when --ambient-occlusion is on; it has no notice and no report.
+    const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;
+    if(!hdr_compare && !ambient_occlusion_requested)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
     keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
     keys.shift=(GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;
-    keys.exposure=(GetAsyncKeyState(VK_F9)&0x8000)!=0;
-    keys.bloom=(GetAsyncKeyState(VK_F10)&0x8000)!=0;
+    keys.exposure=hdr_compare && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
+    keys.bloom=hdr_compare && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
+    keys.ambient_occlusion=ambient_occlusion_requested && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
+    if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();
     if(!action.exposure && !action.bloom)return;
     const bool boundary=!ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
         && ctx.motion_output.comparison_boundary_available();
@@ -2098,13 +2103,16 @@ void initialize_log(HMODULE module) {
     // X3M_AMBIENT_OCCLUSION=1: the AO chain at the scene end (needs the route
     // and the resolve, which integrates the rotated noise). The whole radius and
     // strength strings must parse; out of range keeps the default.
-    {const bool asked=GetEnvironmentVariableW(L"X3M_AMBIENT_OCCLUSION",setting,32)==1 && setting[0]==L'1';
+    // A value that does not fit the buffer (GetEnvironmentVariableW returns the
+    // required size, >= 32) is invalid for every AO variable.
+    {const auto ao_env=[&](const wchar_t* name){const DWORD n=GetEnvironmentVariableW(name,setting,32);return n>0&&n<32?n:0ul;};
+     const bool asked=ao_env(L"X3M_AMBIENT_OCCLUSION")==1 && setting[0]==L'1';
      ambient_occlusion_requested=asked && motion_output_requested && taa_requested;
      ambient_occlusion_radius=2.f;ambient_occlusion_strength=.5f;
-     if(GetEnvironmentVariableW(L"X3M_AO_RADIUS",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.1f&&v<=100.f)ambient_occlusion_radius=v;}
-     if(GetEnvironmentVariableW(L"X3M_AO_STRENGTH",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)ambient_occlusion_strength=v;}
-     ambient_occlusion_debug=ambient_occlusion_requested && GetEnvironmentVariableW(L"X3M_AO_DEBUG",setting,32)==1 && setting[0]==L'1';
-     ambient_occlusion_timing=ambient_occlusion_requested && (ambient_occlusion_debug || (GetEnvironmentVariableW(L"X3M_AO_TIMING",setting,32)==1 && setting[0]==L'1'));
+     if(ao_env(L"X3M_AO_RADIUS")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.1f&&v<=100.f)ambient_occlusion_radius=v;}
+     if(ao_env(L"X3M_AO_STRENGTH")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)ambient_occlusion_strength=v;}
+     ambient_occlusion_debug=ambient_occlusion_requested && ao_env(L"X3M_AO_DEBUG")==1 && setting[0]==L'1';
+     ambient_occlusion_timing=ambient_occlusion_requested && (ambient_occlusion_debug || (ao_env(L"X3M_AO_TIMING")==1 && setting[0]==L'1'));
      if(asked)log("ambient_occlusion_mode requested=1 enabled=%u motion_output=%u taa=%u radius_m=%g strength=%g debug=%u timing=%u",ambient_occlusion_requested,motion_output_requested,taa_requested,double(ambient_occlusion_radius),double(ambient_occlusion_strength),ambient_occlusion_debug,ambient_occlusion_timing);}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
@@ -2313,5 +2321,12 @@ extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_exposure(IDirect3DDevic
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_hdr_exposure(out,floats);
+}
+// The Ctrl+Shift+F11 action without the key: the same toggle the sampler calls.
+extern "C" __declspec(dllexport) int x3m_ambient_occlusion_fixture_toggle(IDirect3DDevice9* device) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end()) return -2;
+    return it->second->motion_output.ambient_occlusion_toggle();
 }
 #endif
