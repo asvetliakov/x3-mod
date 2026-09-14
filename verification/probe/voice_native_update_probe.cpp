@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cwchar>
 #include <vector>
 
 static_assert(sizeof(void*)==4,"probe must use the game's x86 COM ABI");
@@ -28,6 +29,7 @@ static LARGE_INTEGER frequency;
 static std::atomic<DWORD> active_tick{0};
 static HANDLE watchdog_stop;
 static DWORD owner_thread;
+static bool report_refs=false;
 static DWORD WINAPI watchdog(void*) {
     while(WaitForSingleObject(watchdog_stop,100)==WAIT_TIMEOUT) {
         DWORD begin=active_tick.load();
@@ -64,7 +66,13 @@ struct Trace {
         return hr;
     }
     template<class T> void release(const char* name,T*& p) {
-        if(p) {call(name,1,false,[&]{p->Release();return S_OK;});p=nullptr;}
+        if(p) {
+            ULONG left=0;call(name,1,false,[&]{left=p->Release();return S_OK;});
+            // Documented IUnknown::Release return value; only useful for the
+            // last owned reference of a root object, reported for lifetime.
+            if(report_refs) {prefix("VOICE_RELEASE");std::printf(" name=%s refs=%lu\n",name,static_cast<unsigned long>(left));}
+            p=nullptr;
+        }
     }
 };
 static void guid_text(REFGUID g,char* b) {
@@ -330,15 +338,152 @@ struct Graph {
         if(ok&&!total_nonzero)return t.need("silent_all_cues",E_FAIL);
         return ok;
     }
+    // ---- actual-file mode ----------------------------------------------
+    // Same native construction as above; only the read schedule differs.
+    struct Totals { int segments{},reads{},nonzero_reads{}; std::uint64_t bytes{},nonzero{}; bool eos{}; bool monotonic{true}; };
+    HRESULT finish_update(HRESULT hr) {
+        // Native 4d0767 polls CompletionStatus(0,0) without an external event.
+        if(hr!=MS_S_PENDING) {pending=false;return hr;}
+        pending=true;
+        HRESULT done=t.call("sample_complete",1,true,[&] {
+            const DWORD begin=GetTickCount();
+            while(DWORD(GetTickCount()-begin)<15000) {
+                pump();HRESULT status=sample->CompletionStatus(0,0);
+                if(status!=MS_S_PENDING)return status;
+                MsgWaitForMultipleObjects(0,nullptr,FALSE,5,QS_ALLINPUT);
+            }
+            return HRESULT_FROM_WIN32(WAIT_TIMEOUT);
+        });
+        if(done!=MS_S_PENDING)pending=false;
+        return done;
+    }
+    bool segment(const char* name,double start_s,double window_s,bool to_eos,std::vector<BYTE>* capture,Totals& tot) {
+        t.phase=name;
+        if(!audio_enabled)return t.need("native_no_audio",HRESULT_FROM_WIN32(ERROR_NO_DATA));
+        const DWORD read_bytes=(format.nAvgBytesPerSec/format.nBlockAlign)*format.nBlockAlign; // one second; native app sample holds two
+        if(!read_bytes||read_bytes>pcm.size())return t.need("read_size",E_INVALIDARG);
+        if(!t.need("set_buffer_read",t.call("set_buffer_read",1,true,[&]{return data->SetBuffer(read_bytes,pcm.data(),0);})))return false;
+        if(!t.need("cue_pause",t.call("cue_pause",1,true,[&]{return control->Pause();})))return false;
+        if(!t.need("cue_seek",t.twice("cue_seek",[&]{return position->put_CurrentPosition(start_s);})))return false;
+        if(!t.need("cue_run",t.twice("cue_run",[&]{return control->Run();})))return false;
+        const std::uint64_t window_bytes=std::uint64_t(window_s*format.nAvgBytesPerSec);
+        const int cap=int(window_s)+8;
+        int reads=0,nonzero_reads=0;std::uint64_t bytes=0,nonzero_total=0;
+        STREAM_TIME first_start=0,last_end=0;bool have=false,eos=false,monotonic=true,failed=false;
+        const char* reason="window";HRESULT post=E_PENDING;
+        for(int index=0;index<cap;++index) {
+            std::fill(pcm.begin(),pcm.begin()+read_bytes,BYTE(0));
+            HRESULT hr=finish_update(t.call("sample_update",1,true,[&]{return sample->Update(SSUPDATE_ASYNC,nullptr,nullptr,0);}));
+            if(hr!=S_OK) {
+                if(hr==MS_S_ENDOFSTREAM) {eos=true;reason="endofstream";}
+                else if(hr==MS_S_NOUPDATE)reason="noupdate";
+                else if(hr==E_ABORT)reason="abort";
+                else {reason="failed";failed=true;t.need("sample_update",hr);}
+                t.prefix("VOICE_READ");std::printf(" segment=%s index=%d hr=%08lx actual=0 start=0 end=0 current=0 nonzero=0 peak=0\n",name,index,static_cast<unsigned long>(hr));
+                break;
+            }
+            DWORD size{},actual{};BYTE* ptr{};STREAM_TIME start{},end{},now{};
+            if(!t.need("sample_info",t.call("sample_info",1,true,[&]{return data->GetInfo(&size,&ptr,&actual);})))return false;
+            if(!t.need("sample_times",t.call("sample_times",1,true,[&]{return sample->GetSampleTimes(&start,&end,&now);})))return false;
+            if(!ptr||actual>read_bytes||actual>size||actual%format.nBlockAlign)return t.need("sample_bounds",E_FAIL);
+            if(!actual) {
+                reason="empty";
+                t.prefix("VOICE_READ");std::printf(" segment=%s index=%d hr=%08lx actual=0 start=%lld end=%lld current=%lld nonzero=0 peak=0\n",name,index,static_cast<unsigned long>(hr),static_cast<long long>(start),static_cast<long long>(end),static_cast<long long>(now));
+                break;
+            }
+            unsigned nonzero=0,peak=0;
+            for(DWORD n=0;n<actual;n+=2) {std::int16_t value;std::memcpy(&value,ptr+n,2);int v=value;nonzero+=v!=0;peak=std::max(peak,unsigned(std::abs(v)));}
+            if(end<=start||(have&&end<=last_end))monotonic=false;
+            if(!have) {first_start=start;have=true;}
+            last_end=end;bytes+=actual;nonzero_total+=nonzero;nonzero_reads+=nonzero!=0;++reads;
+            if(capture&&capture->size()<4u*1024u*1024u)capture->insert(capture->end(),ptr,ptr+actual);
+            t.prefix("VOICE_READ");std::printf(" segment=%s index=%d hr=%08lx actual=%lu start=%lld end=%lld current=%lld nonzero=%u peak=%u\n",name,index,static_cast<unsigned long>(hr),static_cast<unsigned long>(actual),static_cast<long long>(start),static_cast<long long>(end),static_cast<long long>(now),nonzero,peak);
+            if(!to_eos&&bytes>=window_bytes) break;
+        }
+        if(eos) {
+            // One documented update past end of stream; it must not decode data.
+            post=finish_update(t.call("post_eos_update",1,false,[&]{return sample->Update(SSUPDATE_ASYNC,nullptr,nullptr,0);}));
+        }
+        // Native pauses the graph once a cue end is reached (004d0700 tail).
+        if(!failed)t.call("cue_end_pause",1,false,[&]{return control->Pause();});
+        cancel_pending();
+        t.prefix("VOICE_SEGMENT");
+        std::printf(" name=%s start_ms=%lld reads=%d bytes=%llu decoded_ms=%.3f span_ms=%.3f first_start=%lld last_end=%lld nonzero=%llu nonzero_reads=%d eos=%d monotonic=%d end_reason=%s post_eos_hr=%08lx\n",
+            name,static_cast<long long>(start_s*1000.+0.5),reads,static_cast<unsigned long long>(bytes),
+            format.nAvgBytesPerSec?1000.*double(bytes)/format.nAvgBytesPerSec:0.,(last_end-first_start)/10000.,
+            static_cast<long long>(first_start),static_cast<long long>(last_end),static_cast<unsigned long long>(nonzero_total),
+            nonzero_reads,eos,monotonic,reason,static_cast<unsigned long>(post));
+        ++tot.segments;tot.reads+=reads;tot.nonzero_reads+=nonzero_reads;tot.bytes+=bytes;tot.nonzero+=nonzero_total;
+        tot.eos=tot.eos||eos;tot.monotonic=tot.monotonic&&monotonic;
+        return !failed&&reads>0;
+    }
 };
+static void actual_case(Trace& t,IDirectSound8* sound,int id,const wchar_t* path,double window_s,double tail_s,std::vector<BYTE>* capture) {
+    pump();t.source=id;t.wrapper=0;t.route=0;t.repeat=0;t.fatal="none";t.fatal_hr=S_OK;
+    Graph g(t);Graph::Totals tot{};
+    const bool made=g.create(path,sound);
+    bool ok=made,seeked=false;
+    if(ok) {
+        ok=g.segment("head",0.,window_s,false,capture,tot);
+        // The retained-stream reuse path seeks (004d0430) before restarting.
+        if(ok&&g.duration>4*window_s) {seeked=true;ok=g.segment("seek",g.duration/2.,window_s,false,nullptr,tot);}
+        if(ok)ok=g.segment("tail",g.duration>tail_s?g.duration-tail_s:0.,tail_s+4.,true,nullptr,tot);
+    }
+    const double requested=made?window_s*(seeked?2.:1.)+tail_s:0.;
+    const double decoded=g.format.nAvgBytesPerSec?double(tot.bytes)/g.format.nAvgBytesPerSec:0.;
+    t.prefix("VOICE_FILE");
+    std::printf(" created=%d complete=%d seeked=%d duration_s=%.6f requested_s=%.3f decoded_s=%.6f segments=%d reads=%d bytes=%llu nonzero_reads=%d nonzero=%llu eos=%d monotonic=%d rate=%lu channels=%u bits=%u fatal=%s hr=%08lx\n",
+        made,ok,seeked,g.duration,requested,decoded,tot.segments,tot.reads,static_cast<unsigned long long>(tot.bytes),
+        tot.nonzero_reads,static_cast<unsigned long long>(tot.nonzero),tot.eos,tot.monotonic,
+        static_cast<unsigned long>(g.format.nSamplesPerSec),g.format.nChannels,g.format.wBitsPerSample,
+        t.fatal,static_cast<unsigned long>(t.fatal_hr));
+    // Native teardown order (004d1d40/004d1a40); refcounts printed per release.
+    g.cleanup();
+}
+static void actual_reopen(Trace& t,IDirectSound8* sound,int id,const wchar_t* path,int attempt) {
+    pump();t.source=id;t.wrapper=0;t.route=0;t.repeat=attempt;t.fatal="none";t.fatal_hr=S_OK;
+    Graph g(t);Graph::Totals tot{};
+    const bool made=g.create(path,sound);
+    const bool read=made&&g.segment("reopen",0.,1.,false,nullptr,tot);
+    t.prefix("VOICE_REOPEN");
+    std::printf(" attempt=%d created=%d read=%d reads=%d bytes=%llu nonzero_reads=%d fatal=%s hr=%08lx\n",
+        attempt,made,read,tot.reads,static_cast<unsigned long long>(tot.bytes),tot.nonzero_reads,
+        t.fatal,static_cast<unsigned long>(t.fatal_hr));
+    g.cleanup();
+}
+static void run_actual(Trace& t,IDirectSound8* sound,wchar_t** argv,double window_s,double tail_s) {
+    std::vector<BYTE> capture;
+    for(int file=0;file<2;++file) {
+        const int id=_wtoi(argv[4+file*2]);const wchar_t* path=argv[5+file*2];
+        actual_case(t,sound,id,path,window_s,tail_s,file?nullptr:&capture);
+        // Two further opens of the same file mimic the native stream cache reuse.
+        for(int attempt=1;attempt<=2;++attempt)actual_reopen(t,sound,id,path,attempt);
+    }
+    std::size_t written=0;
+    if(!capture.empty()) {
+        FILE* f=std::fopen("head.pcm","wb");
+        if(f) {written=std::fwrite(capture.data(),1,capture.size(),f);std::fclose(f);}
+    }
+    std::printf("VOICE_CAPTURE bytes=%llu written=%llu\n",static_cast<unsigned long long>(capture.size()),static_cast<unsigned long long>(written));
+}
 int wmain(int argc,wchar_t** argv) {
-    if(argc!=5)return 2;
-    Trace t;t.source=_wtoi(argv[1]);t.wrapper=_wtoi(argv[2]);t.route=_wtoi(argv[3]);
-    if((t.source!=144&&t.source!=244)||(t.wrapper!=0&&t.wrapper!=1)||t.route<0||t.route>2)return 2;
+    const bool actual=argc==8&&!std::wcscmp(argv[1],L"actual");
+    Trace t;double window_s=0,tail_s=0;
+    if(actual) {
+        const int window_ms=_wtoi(argv[2]),tail_ms=_wtoi(argv[3]);
+        if(window_ms<1000||window_ms>120000||tail_ms<1000||tail_ms>120000)return 2;
+        if(_wtoi(argv[4])<=0||_wtoi(argv[6])<=0)return 2;
+        window_s=window_ms/1000.;tail_s=tail_ms/1000.;report_refs=true;
+    } else {
+        if(argc!=5)return 2;
+        t.source=_wtoi(argv[1]);t.wrapper=_wtoi(argv[2]);t.route=_wtoi(argv[3]);
+        if((t.source!=144&&t.source!=244)||(t.wrapper!=0&&t.wrapper!=1)||t.route<0||t.route>2)return 2;
+    }
     setvbuf(stdout,nullptr,_IONBF,0);owner_thread=GetCurrentThreadId();QueryPerformanceFrequency(&frequency);
     watchdog_stop=CreateEventW(nullptr,TRUE,FALSE,nullptr);HANDLE watcher=CreateThread(nullptr,0,watchdog,nullptr,0,nullptr);
     if(!watchdog_stop||!watcher)return 3;
-    std::printf("VOICE_HEADER schema=1 source=%d wrapper=%d route=%d thread=%lu repeats=2 cues=2 batches=2 native_flags=336 audible=0 sample_event=0\n",t.source,t.wrapper,t.route,static_cast<unsigned long>(owner_thread));
+    if(actual)std::printf("VOICE_ACTUAL_HEADER schema=1 files=2 reopens=2 window_ms=%d tail_ms=%d thread=%lu native_flags=336 audible=0 sample_event=0\n",int(window_s*1000.+0.5),int(tail_s*1000.+0.5),static_cast<unsigned long>(owner_thread));
+    else std::printf("VOICE_HEADER schema=1 source=%d wrapper=%d route=%d thread=%lu repeats=2 cues=2 batches=2 native_flags=336 audible=0 sample_event=0\n",t.source,t.wrapper,t.route,static_cast<unsigned long>(owner_thread));
     HRESULT init=t.call("co_initialize",1,true,[]{return CoInitialize(nullptr);});
     if(FAILED(init)){std::printf("VOICE_ABORT stage=co_initialize hr=%08lx\n",static_cast<unsigned long>(init));SetEvent(watchdog_stop);WaitForSingleObject(watcher,1000);CloseHandle(watcher);CloseHandle(watchdog_stop);return 0;}
     WNDCLASSW wc{};wc.lpfnWndProc=DefWindowProcW;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"X3VoiceProbe";RegisterClassW(&wc);
@@ -347,14 +492,18 @@ int wmain(int argc,wchar_t** argv) {
     HRESULT ds=t.call("directsound_create",1,false,[&]{return DirectSoundCreate8(&DSDEVID_DefaultPlayback,&sound,nullptr);});
     HRESULT coop=E_POINTER;if(sound&&window)coop=t.call("directsound_cooperative",1,false,[&]{return sound->SetCooperativeLevel(window,DSSCL_PRIORITY);});
     std::printf("VOICE_STARTUP ds_hr=%08lx coop_hr=%08lx ds_present=%d window=%d primary_play=0\n",static_cast<unsigned long>(ds),static_cast<unsigned long>(coop),sound!=nullptr,window!=nullptr);
-    for(int repeat=0;repeat<2;++repeat) {
+    if(actual)run_actual(t,sound,argv,window_s,tail_s);
+    else for(int repeat=0;repeat<2;++repeat) {
         pump();t.repeat=repeat;t.fatal="none";t.fatal_hr=S_OK;
         Graph g(t);bool made=g.create(argv[4],sound);topology(t,g.graph);
         bool decoded=made&&g.decode();g.cleanup();
         t.prefix("VOICE_CASE");std::printf(" constructed=%d decoded=%d audio_enabled=%d fatal=%s hr=%08lx duration=%.6f cleanup=1\n",made,decoded,g.audio_enabled,t.fatal,static_cast<unsigned long>(t.fatal_hr),g.duration);
     }
-    t.repeat=-1;t.phase="shutdown";t.release("release_directsound",sound);if(window)DestroyWindow(window);
+    t.source=actual?0:t.source;t.repeat=-1;t.phase="shutdown";report_refs=false;
+    t.release("release_directsound",sound);if(window)DestroyWindow(window);
     t.call("co_uninitialize",1,false,[]{CoUninitialize();return S_OK;});
     SetEvent(watchdog_stop);WaitForSingleObject(watcher,1000);CloseHandle(watcher);CloseHandle(watchdog_stop);
-    std::printf("VOICE_COMPLETE cases=2 owner_thread=1 audible=0\n");return 0;
+    if(actual)std::printf("VOICE_ACTUAL_COMPLETE files=2 reopens=2 audible=0\n");
+    else std::printf("VOICE_COMPLETE cases=2 owner_thread=1 audible=0\n");
+    return 0;
 }

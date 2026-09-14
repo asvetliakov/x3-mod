@@ -296,6 +296,40 @@ interval cannot be dismissed as a cosmetic discrepancy.
 [FFmpeg Windows support](https://ffmpeg.org/platform.html#Windows),
 [licensing/build obligations](https://ffmpeg.org/legal.html).
 
+## Actual voice files through the native graph (2026-09-14)
+
+With the process-local WMA decoder present, the null-event probe gained an
+actual-file mode (`--mode actual`; the synthetic control is unchanged and still
+selected by `--pcm`). Both archives constructed the game-equivalent
+AMMultiMediaStream/audio-stream graph and returned decoded 44,100-Hz mono PCM16
+through `Update(SSUPDATE_ASYNC, NULL, NULL, 0)` with `CompletionStatus(0,0)`
+polling. Whole-file decoding is out of scope by declared length: `00144.dat`
+declares 44,304.046 s and `00244.dat` 3,335.779 s (ASF File Properties, play
+duration minus preroll), which is the 4.2 GB of PCM noted above. The mode
+therefore drives three bounded windows per file — head at 0 s, a seek to the
+midpoint (the reuse path seeks at `4d0430`; `IMediaPosition::put_CurrentPosition`
+is used), and a tail seeded 5 s before the declared end that runs to real end of
+stream. Per file: 45 reads, 45 nonzero, 3.96 MB PCM, 44.942 s (144) and 44.954 s
+(244) decoded against 45.000 s requested (0.13 % and 0.10 %). The graph duration
+from `get_Duration` equalled the declared duration exactly for both. Seek starts
+landed on the requested position to the reported hundred-nanosecond value; the
+tail ended at 44,303.5006 s and 3,335.5937 s, within 0.002 % and 0.006 % of
+declared. The tail update returned `MS_S_ENDOFSTREAM (0x00040003)` and one
+further update after end of stream returned `MS_S_ENDOFSTREAM` again with no
+data. Sample-time spans still run short of the byte duration (19,892/19,365 ms
+and 19,739/19,982 ms for 20,000 ms of bytes), consistent with the packet-residual
+arithmetic recorded earlier; byte counts, not timestamps, were used for the
+duration comparison. After the native teardown order the root
+`IAMMultiMediaStream::Release` returned 0 in all three lifetimes per file, and
+the two reopens of the same path each reconstructed and read 88,200 nonzero
+bytes, so nothing stayed alive between cache-reuse cycles. Run: 7.97 s wall,
+exit 0, bottle X3, results in
+`verification/results/bottle-X3/voice-native-actual.json`; raw stdout and a
+20-second `voice-00144-head.wav` (not played) stay local under
+`/tmp/x3-voice-native-actual-r1/`. This qualifies decoding, cueing, end of
+stream and object lifetime on the real archives only; no speech line was
+identified, played or restored, and no production audio change follows.
+
 Reproducible follow-ups reuse the frozen authored R1 helper:
 [ASF source](../../verification/probe/voice_asf_probe.cpp),
 [ASF runner](../../verification/probe/run_voice_asf_probe.py),
