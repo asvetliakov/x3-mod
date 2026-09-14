@@ -16,8 +16,9 @@ ratified [in-place region composition design](architecture/linear-distance-fade-
 `qualification/linear-cutout-main` (`34593a4`, worktree `/tmp/x3-cutout-main`) under
 escalated review and its first live fixture run; the isolated WMA decoder adapter
 ([note](architecture/voice-decoder-adapter.md)) is built, evidence-reviewed and
-decodes both real voice files through the null-event contract
-(`verification/results/bottle-X3/voice-native-actual.json`, `a9fff90`).
+decodes both real voice files through the null-event contract with exact cue
+timestamps in build v3 (`6a2c763`), but its first gameplay launch hangs on the
+loading screen (runs 29–35; triage and startup disassembly in progress).
 
 The installed gameplay build is checkpoint `8442f43`. Its scoped integration
 checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
