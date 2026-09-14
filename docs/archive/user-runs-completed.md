@@ -471,5 +471,9 @@ Completed as user run 18, snapshot `/tmp/x3-bottleX3-run46/`, installed DLL `5b9
 `/tmp/x3-wma-plugin-v4` (backup `~/x3-mod-resume-2026-09-14/artifacts/wma-plugin-v4/`). User report:
 no crackling any more, the voice is fine. Target-name speech is therefore working in gameplay through
 the plugin path plus the DMO fallback hook, with the decoder float limit removing the stock converter's
-full-scale wrap (`docs/verification/voice-decoder.md`). Selection-latency comparison against run 28
-still needs the phase-segment join; not done here.
+full-scale wrap (`docs/verification/voice-decoder.md`). Selection latency (phase join, same caller `0042dd6e` as run 28): no target publication crossed the
+10 ms slow-call threshold in run 46 (13 publisher entries) or run 41 (33 entries), against run 28's
+10 retained publishers with median 463.5 ms / p95 512.4 ms; the retained samples are 1.24 ms (run 46,
+0.83 ms in nested stream creation) and 3.69 ms (run 41). The selection pause is gone with the working
+decoder. Per-frame proxy from `frame_end` windows: run 46 29.4 ms, run 41 27.1 ms (both with the site
+trace and phase telemetry on); no per-frame regression from the plugin.

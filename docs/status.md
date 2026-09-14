@@ -174,7 +174,7 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
 
 ## Current open issues
 
-- **Target speech (resolved 2026-09-14 evening):** target-name speech plays in gameplay with `--voice-decoder /tmp/x3-wma-plugin-v4` and the fixed DMO fallback hook (runs 16 and 18); the run-16 crackle was a full-scale wrap in CrossOver's stock audio converter, removed by the plugin v4 float limit. The plugin lives outside the bottle and the repo (untracked, backed up); selection latency against run 28 is still to be measured.
+- **Target speech (resolved 2026-09-14 evening):** target-name speech plays in gameplay with `--voice-decoder /tmp/x3-wma-plugin-v4` and the fixed DMO fallback hook (runs 16 and 18); the run-16 crackle was a full-scale wrap in CrossOver's stock audio converter, removed by the plugin v4 float limit. The plugin lives outside the bottle and the repo (untracked, backed up); the selection pause is gone: no target publication over 10 ms in runs 16/18 against run 28's median 463 ms (archive §18).
 - **Selection stalls:** Run 28 isolates synchronous voice-stream creation inside target
   publication; target speech was absent then (see above). Investigate creation failure and lifecycle,
   retaining other unexplained slow-frame residuals rather than assigning all pauses to audio.
