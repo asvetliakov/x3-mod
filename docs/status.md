@@ -30,6 +30,9 @@ timestamps in build v3 (`6a2c763`), but gameplay launches hang on the loading
 screen (runs 29–36): the witness run shows `SetState(RUN)` returning `E_FAIL`
 followed by a COM teardown wait; root cause open (see the handoff). The WMP11
 bottle experiment was reverted byte-identically (`2e64c4d`).
+User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
+--fade-witness`) is queued as "Pending candidate" in the run queue; run 10 is on hold.
+Merged agent worktrees and the two merged cutout worktrees are pruned.
 
 The installed gameplay build is checkpoint `8442f43`. Its scoped integration
 checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
