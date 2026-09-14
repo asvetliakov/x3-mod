@@ -703,3 +703,127 @@ The user repeated the far/near approach with `./x3run --direct --vanilla` and co
 
 The port pair `4944d81dfe531b37/64bac8bb307eb896` has `fog=0 blend=1 zwrite=0 src=5 dst=6 mask=7` at every captured width (16–146 px) in runs 48 and 49; the VS fog bool is 0 and the constants at registers 39/41 are `(1,0,0,0)` at 53, 109, 122 and 145 px. `f_permille` on `fade_region` lines is the region-area bookkeeping, not a fade fraction. Node 52029 (`543f`): mean luma 0.048–0.083 with dark fraction 0.61–0.81 at 109–146 px (run 48) and 0.083 / 0.49 at 53–54 px (run 49, farther), i.e. less dark farther out. Run 49 also holds this node at LOD 3 (frames 11940–11947, 12213–12220, opaque), port-area luma not yet measured there. The user-reported "fine near, black flying away" is not reproduced by any single-node series; the next evidence is the user's screenshot pair with an F8 at each.
 
+
+## Run 22 (run51): the docking module darkens at range
+
+Read-only diagnosis, 2026-09-15, of the user's screenshot pair `screenshots/port-near.png` /
+`port-far.png` against snapshot `/tmp/x3-bottleX3-run51/` (`session-20260915-030036-468.log`,
+`hdr_1_*.rgba16f`, `depth_1_*.r32f`; installed `53a0d8a7`, `--lod-scale 2` applied:
+`lod_scale … patched=1`, `lod_scale_value … applied=2`). No build, no Wine, no launch; all
+reductions ran from the scratchpad and nothing raw is tracked.
+
+**Which frames, which object.** The two F8 groups are 4168–4175 and 4961–4968. Group 1 is the
+*far* screenshot and group 2 the *near* one (the arm geometry in the captures matches the
+screenshots one-to-one; within a group the eight frames are identical). The station on screen is
+**not** the targeted Military Outpost: `object_target` gives root handle 52731 (body model `53b8`,
+34 draws, XT BUMP `37c34a74/5f82ecac`), whose node projects to (648,380)/(647,369) at view depth
+81 192 / 80 543 world units — the 16 km object, about 18 px wide, directly behind the HUD bracket.
+The structure that fills the screen is root **52861**: body node 52901 (model `5411`, LOD 0, 35
+draws, 107 397 tri, Argon BUMP `4944d81d/ca6bfa4a` + two-sided `5e0a10fe`) and ten clamp parts
+(5× `35b42b43`, 822+32 tri, and 5× `35b42b44`, 134 tri, all `4944d81d/ca6bfa4a`) around the
+docking ring at screen (541–697, 301–402). The route-scoped depth puts it at view z 1294–1861
+(far) and 665–1244 (near); the camera moved 620 world units straight along its forward axis
+(5.07 world units per metre from the 16.0 km HUD readout: **347 m → 210 m**). The "arms folding"
+between the screenshots is perspective on arms that point at the camera.
+
+**What did not change** (frame 4172 vs 4965, every draw of root 52861 joined by index): node
+set, LOD (0 everywhere; no station node in either frame is above LOD 0, and the outpost's parts
+are LOD 0 too), VS/PS pairs, primitive counts, VB/IB identities and revisions (`usage=8 pool=1`,
+`revision=1`), all seven bound textures per draw, every PS constant (sun `LightDir_Dir0` c4 =
+(−0.297, 0.457, −0.838) world space, `LightDir_Color0` c5 = (0.664, 0.781, 0.586), glow, D1),
+`g_mWorld`/`g_mWorldIT` c28–c33, emissive c40, `g_AlphaValue`, fog `b0 = 0`, and the route
+(gate 0, routed, Z-write on, blend off; the 6 alpha-tested body draws are gate 4 refused in
+both). Only camera-derived registers differ: `g_mWorldViewProjection` c24–c27,
+`g_mViewInverse` c34–c36 and the point-light positions c0/c3. Hypotheses (a) degenerate far
+normals, (b) a different far material family and (d) the mod's fade/lod-scale routes are
+therefore excluded for this pair of frames: nothing the mesh or material supplies changed.
+
+**What did change: the ship's point light is culled per node.** The CTABs of `4944d81d`,
+`53a0a641` and `37c34a74` put `g_LightPoint` at c0–c23 (position, RGB, attenuation per light)
+and `g_nNumLightPoint` in i0.x. Light 0 sits 33 world units (6.6 m) from the camera — the
+player ship's light — white 255/256, attenuation `(1, 0.01, 0)`, i.e. `1/(1 + 0.01·d)`; light 1
+in the array is a stale cyan entry the count never reaches (`i0.x ≤ 1` on all 5 699 draws of
+the session: 4 963 with 0, 736 with 1). Per node of root 52861, distance from light 0 to the
+node origin and the count actually consumed by the loop:
+
+| node (model) | far d | far i0 | near d | near i0 |
+|---|---:|:-:|---:|:-:|
+| 52865 / 52866 (`35b42b43`/`44`) | 1368 / 1354 | 0 / 0 | 753 / 762 | 1 / 1 |
+| 52883 / 52884 | 1401 / 1395 | 0 / 0 | 786 / 802 | 1 / 1 |
+| 52871 / 52872 | 1604 / 1648 | 0 / 0 | 995 / 1056 | 1 / 1 |
+| 52889 / 52890 | 1654 / 1706 | 0 / 0 | 1040 / 1105 | 1 / 1 |
+| 52877 (`35b42b43`) | 1767 | 0 | 1148 | 1 |
+| 52878 (`35b42b44`) | 1843 | 0 | **1232** | **0** |
+| 52901 body (`5411`, world scale 19 536) | 3461 | 1 | 3214 | 1 |
+
+Identical in all eight frames of each group. For the small clamp nodes (world scale 174–221)
+the admission edge lies between origin distances 1148 and 1232 world units (≈ 230–245 m from
+the ship light); the body is admitted at 3461 because the test evidently uses the node's
+bounding radius, not its origin alone. The selection is discrete: a clamp node either runs one
+point-light iteration or none. The outpost's nodes at 16 km have `i0 = 0` in both frames.
+
+**Why that makes the module black and leaves the cylinder alone.** The sun direction is 47° in
+front of the camera (camera forward · L = +0.68; the sun disc is in the frame), so every face
+turned toward the camera — the arm tips and clamp fronts that dominate the module's pixels —
+has `saturate(N·L) = 0` from the sun, and the engine has no ambient term
+([camera-state-and-frame-routine.md](camera-state-and-frame-routine.md), round 2: no
+`g_LightAmbientIntensity` register, `D3DLIGHT9.Ambient = 0`). Those faces are lit by the ship's
+point light or by nothing but the lightmap/cube remainder. The cylinder's flanks face the sun
+and keep their radiance regardless of the point light.
+
+**Witness (same physical surface, both frames).** Every route-depth pixel of root 52861 in the
+far frame (x 430–800, z 300–4000) was unprojected with the far view/projection, reprojected with
+the near matrices and accepted when the near depth agrees within 2 % (22 297 surface points).
+Linear luma of the same points, far → near:
+
+| surface points | n | far mean | near mean | ratio | dark < 0.05 far → near |
+|---|---:|---:|---:|---:|---|
+| cylinder (far y < 280) | 8 686 | 0.1275 | 0.1381 | **1.08** | 0.12 → 0.04 |
+| module (far y ≥ 280) | 13 611 | 0.1019 | 0.1311 | **1.29** | 0.25 → 0.02 |
+| points dark at far (L < 0.05) | 4 394 | — | 0.0924 | median 2.8 | 1.00 → 0.11 |
+
+The added radiance is the point light's colour: on module points that gain more than 1.5× the
+far chromaticity is (0.233, 0.415, 0.348) (sun-tinted remainder) and the near−far delta is
+(0.368, 0.311, 0.322) against the light's (0.333, 0.333, 0.333) and the sun's
+(0.327, 0.385, 0.288). Under a sun-only model the same surface keeps its luma; under the smooth
+`1/(1+0.01d)` term alone the gain would be 1.46–1.71 for every node; the observed split
+(1.08 on the always-lit body, 2.8 on the far-dark module points, 0.25 → 0.02 dark fraction) is
+what the per-node on/off in the table predicts. The route-independent HDR rectangle numbers
+(module x 500–780 y 320–480 mean 0.049 far / 0.065 near, body 0.077 / 0.106) point the same
+way but include background and are not the witness.
+
+**Ranking.** (1) **Per-node range cull of the ship's point light**, the only point light in
+the session, with no ambient fill — supported by the i0 table (discrete flip on the ten clamp
+nodes, none on the body), the same-surface luma split and the delta chromaticity; it is native
+lighting, so it appears in vanilla (run 21 session B) and on ships (run 19). (2) **Smooth
+`1/(1+0.01d)` attenuation inside the admitted state** — real but secondary: it explains the
+body's 1.08 and the residual shading, not the black fronts. Not a LOD, subset, material, mip or
+fade effect: none of those inputs differ between the frames.
+
+**Fix direction and cost.** The look is native, so any change is an enhancement, not parity:
+
+- *Ambient/fill term on the converted materials* (the principled option): add
+  `albedo × ambient × AO` in the converted PS families (BUMP/DEFAULT/XT), ambient derived per
+  frame from D1 or a sector constant, scaled by the installed GTAO term where enabled. Cost: one
+  MAD per converted pixel and one constant per draw; no new pass. Risk: changes every shadowed
+  surface in the game (a visible global look change), needs a colour source and a Windows-neutral
+  constant path; the design hook already exists in `ambient-occlusion.md` §8.
+- *Extend the ship light instead* (cheap experiment): the per-node cull is a game decision the
+  proxy cannot see before the draw, but the VS loop only runs when `i0.x ≥ 1`; the proxy could
+  force `i0.x = 1` and supply the camera-anchored light with a gentler attenuation on converted
+  draws whose native count is 0 (fail closed: original `g_LightPoint` slot 0 must be the ship
+  light, checked by its distance to `g_mViewInverse` translation). Cost: one integer and one
+  float-constant upload per affected draw, no pixel cost beyond the existing per-vertex loop.
+  Risk: over-lit interiors near large objects and a headlight that never ends; it is a hack
+  around the game's range field (node `+0x158`), which a bounded RE of the light-admission site
+  could instead read and widen.
+
+**Open.** The light-admission site (which function compares node distance/radius against the
+light's range and writes `g_nNumLightPoint`) is not identified in the RE notes; node `+0x158`
+supplies the range (`material-color-inputs.md`). The same model key `35b42b44` draws with BUMP
+`4944d81d/ca6bfa4a` (s1 normal `1269` bound) at 300 m and with DEFAULT `53a0a641/8759c783`
+(no normal map, cube `1256` in s3) at 16 km on the outpost — a distance-driven technique switch
+at LOD 0 that earlier sections attributed to mesh LOD; worth its own bounded study. The
+screenshots' own rectangle statistics (module mean 0.057 in both PNGs) do not separate the
+effect because the rectangles are mostly background; the depth-masked reprojection above is the
+measurement to reuse.

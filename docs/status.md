@@ -80,7 +80,7 @@ darkening on a ship. Details in the
 - **Selection pause (resolved):** no target publication over 10 ms in runs 16/18
   against run 28's median 463 ms. Other unexplained slow-frame residuals remain
   open; see the [33-site trace](reverse-engineering/selection-native-vm.md).
-- **Fade-band objects tremble under TAA (run 21, owner found):** the "station
+- **Fade-band objects tremble under TAA (run 21, owner found; fixed, see above):** the "station
   section" in `screenshots/jitter1.png` is an asteroid in its distance-fade band
   seen through the hangar gap. Its blended colour pass is refused at the motion
   gate, the fade route binds it as a region and that region becomes the reactive
@@ -106,21 +106,24 @@ darkening on a ship. Details in the
   frames drop out); run 20 confirms in game and its `unjittered_depth_writers`
   counter names any other unjittered depth writer. Ledger
   [motion-output.md](verification/motion-output.md).
-- **Docking-port darkening (unexplained, vanilla too):** the user sees a port
-  that is fine near and black when flying away; run 21 session B shows the same
-  in vanilla, so it is not renderer-introduced. Neither of the two candidate
-  owners survives the captures: the LOD 2/3 switch shows no radiance step on the
-  measured same-node crossings, and the port pair carries no fog or fade constant
-  at any distance (the only dark bay, model `543f`, is less dark at 53 px than at
-  109–146 px). The run-20 "port" measurement was an asteroid part (corrected).
-  Next: the user's screenshot pair (fine near, black far) with an F8 at each on
-  the same port, so the analysis compares the pixels the user means. Notes
+- **Docking-module darkening (owner found, run 22):** the station module goes
+  black at range because the player ship's white point light (the only point
+  light in the session, attenuation 1/(1+0.01d)) is culled per node by range:
+  `g_nNumLightPoint` flips 1→0 on the ten module nodes between ≈1150 and ≈1350
+  world units while the large body node keeps it. With the sun in front of the
+  camera and no ambient term, the camera-facing module faces have no light and go
+  black; the sun-lit body is unaffected. Witnessed on the run-51 pair (same LOD 0,
+  same pairs, textures and constants; only the light count differs; module luma
+  ratio 1.29 near/far, dark fraction 0.25 → 0.02). Native behaviour, hence vanilla.
+  Earlier LOD-step and fade explanations are withdrawn. Fix direction: an
+  ambient/fill term in the converted materials (one MAD per pixel, also lights
+  black bays and night sides) or widening the engine's point-light admission
+  range (site not yet located). Decision pending.
   [station-material-distance.md](reverse-engineering/station-material-distance.md),
-  [docking-port-lod-consistency.md](architecture/docking-port-lod-consistency.md)
-  (native parity ratified, low priority). `--lod-scale` is installed (default-off) from
-  [lod-selection.md](reverse-engineering/lod-selection.md): one global float,
-  same-length patch at `0x0047d44b`, two reviews, cap 4; run 22 tests 2×
-  ([lod-scale.md](architecture/lod-scale.md)).
+  "Run 22". `--lod-scale` is installed default-off (run 22 at 2× applied
+  cleanly; 3× queued as run 23).
+- **Fade-band trembling:** fixed and accepted in run 22 (860 fading draws routed,
+  zero holds, no trembling reported).
 - **Bullets / screen emission:** step E (publication-time decode, parity within
   one FP16 code) and step D (per-draw vertex hull, fan batch 1.2 % of the viewport
   vs 89.6 % for the box; derive 1.7–27 µs per draw, sentinel fill 17 µs per lock)
