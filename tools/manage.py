@@ -105,7 +105,7 @@ def main():
     parser.add_argument('--chase-pos-lag-clamp', type=float, default=None, help='Maximum boom lag as a fraction of the boom length, 0..1 (X3M_CHASE_POS_LAG_CLAMP; default 0.10)')
     parser.add_argument('--chase-combat-tightness', type=float, default=None, help='0..1: while the cockpit reports a target lock (+0x1e4 tracking mode 1/4 with a tracked object; unverified in game) both spring time constants are scaled by (1 - tightness) (X3M_CHASE_COMBAT_TIGHTNESS; default 0 = off)')
     parser.add_argument('--chase-scene-fix', action='store_true', help='Also re-express the layer-0 cockpit-scene camera through the smoothed view each applied frame (X3M_CHASE_SCENE_FIX=1; default off until the first run shows an external-view HUD element rendered there; review 31 A5)')
-    parser.add_argument('--voice-decoder', type=Path, default=None, metavar='DIR', help='launch only, opt-in, default off: deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing (docs/architecture/voice-decoder-adapter.md)')
+    parser.add_argument('--voice-decoder', type=Path, default=None, metavar='DIR', help='launch only, opt-in, default off: deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing. Also sets X3M_VOICE_DMO_FALLBACK=1 so the proxy re-initialises the DMO wrapper the game creates with the registered WMA decoder DMO when the speech decoder class is unregistered (byte-verified hook at 0x004cfd46, inert where Init succeeds; docs/architecture/voice-decoder-adapter.md)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -374,7 +374,8 @@ def main():
                 parser.error(f'--voice-decoder: cannot create the registry directory {registry}: {error}')
             if not registry.is_dir() or not os.access(registry, os.W_OK):
                 parser.error(f'--voice-decoder: {registry} must be a writable directory.')
-            voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin')}
+            voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
+                         'X3M_VOICE_DMO_FALLBACK': '1'}  # the DMO wrapper fallback hook travels with the decoder
             env.update(voice_env)
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',

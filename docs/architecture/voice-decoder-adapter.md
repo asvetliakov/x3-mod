@@ -208,6 +208,34 @@ session frame 3, the sampler thread also writes `scope=timed` every 2 s
 (`--profile` required for the timed line). Launch:
 `python3 tools/manage.py launch --direct --telemetry --game-phases --audio-sites --profile --profile-raw --voice-decoder DIR`.
 
+## DMO fallback hook (2026-09-14)
+
+Root cause of the load hang (startup note §12–13): the game's media
+constructor `Init`s a DMO Wrapper with the Windows Media *Speech* decoder
+`{874131cb…}`, unregistered in the bottle, and adds the pin-less wrapper
+anyway; Wine's `Pause` then fails `E_FAIL`, the splitter stays paused and the
+graph's final `Release` spins in `RemoveFilter`. `src/proxy/voice_dmo_fallback.cpp`
+is a byte-verified post-call hook at `0x004cfd46` (`mov esi,eax` /
+`cmp esi,0x8007000e`, the return of `IDMOWrapperFilter::Init` at `004cfd44`;
+site ledger `verification/probe/verify_voice_dmo_site.py`, host test
+`test_voice_dmo_fallback.py`). Condition: EAX == `REGDB_E_CLASSNOTREG`
+(`0x80040154`). Action, inside `PreserveCpuState` with LastError kept: read the
+wrapper from `[EBX+0x9c]` through `engine_memory::read`, `QueryInterface`
+`IID_IDMOWrapperFilter`, `Init(CLSID_CWMADecMediaObject {2eeb4adf…},
+DMOCATEGORY_AUDIO_DECODER)`, release the view; on success the retry's `S_OK`
+replaces EAX in the PUSHAD frame so the game continues as on Windows; on
+failure EAX is untouched and the game retries as today. Documented COM only;
+one `engine_patch` claim in the install window, preflight bytes, rollback via
+`restore` if the stub cannot be chained, refused after the first Present.
+Gate: `X3M_VOICE_DMO_FALLBACK=1`, which `manage.py launch --voice-decoder DIR`
+sets with the two GStreamer variables; unset by default. Native Windows: the
+speech DMO is registered, `Init` returns `S_OK`, the hook only counts a hit.
+Log: `voice_dmo_fallback requested=1 installed=… status=…` at install and one
+`voice_dmo_fallback activation=N object= filter= qi_hr= init_hr=` line per
+activation, formatted after Present from an integer ring. Evidence: replica
+`game-dmo-fallback` `stream_run S_OK`, 5 samples, clean teardown (startup note
+§13); x87 audit PASS on the built DLL; not yet exercised in the game.
+
 ## Timing correction builds (2026-09-14)
 
 The ratified [cue timing correction](voice-cue-timing-correction.md) is applied as

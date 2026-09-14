@@ -2,6 +2,7 @@
 #include "capture_state.h"
 #include "telemetry.h"
 #include "game_phases.h"
+#include "voice_dmo_fallback.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
 #include "crypt_cache.h"
@@ -962,6 +963,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             ctx.id,ctx.frame,scene_confirmed,motion_committed,hr);
     const auto end=telemetry::now();
     game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d),ctx.id,ctx.reset_generation,ctx.frame,ctx.capture,end,static_cast<std::uint32_t>(hr));
+    voice_dmo_fallback::report(); // one atomic load per Present; lines only after an activation
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){
         log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
@@ -2074,6 +2076,7 @@ void initialize_log(HMODULE module) {
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present
+    voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
