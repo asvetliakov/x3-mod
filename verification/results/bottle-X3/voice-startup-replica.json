@@ -2323,6 +2323,439 @@
         "0:00:00.907851375      36716      0x1799d7000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"sink\" found.",
         "0:00:00.908548042      36716      0x3327fd000 DEBUG                   WINE wg_parser.c:1886:wg_parser_create: Created winegstreamer parser 0x17f06e080."
       ]
+    },
+    "plugin-v3-game-dmo-kill": {
+      "label": "plugin-v3-game-dmo-kill",
+      "mode": "game-dmo",
+      "dwell_ms": 0,
+      "outcome": "hung at remove_filters (stream 2)",
+      "completed": false,
+      "hung_step": "remove_filters",
+      "hung_stream": 2,
+      "hung_elapsed_ms": 15091,
+      "hung_after_stages": 50,
+      "created": 0,
+      "exit_code": 1,
+      "killed_pids": [
+        38590
+      ],
+      "survivors": [],
+      "process_wall_seconds": 28.418169167,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": null,
+      "exe_sha256": "575cbd48a21cc79a7e51e14f52baa0ddeafcf5cf129198b2b474d9603bfd2296",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": null,
+      "output": "/tmp/x3-voice-startup-kill",
+      "startup": {
+        "ds_hr": "00000000",
+        "coop_hr": "00000000",
+        "ds_present": "1",
+        "window": "1"
+      },
+      "primary": {
+        "flags": "d1",
+        "create_hr": "00000000",
+        "play_hr": "00000000",
+        "format_hr": "00000000",
+        "volume": "0",
+        "listener": "1",
+        "commit_hr": "00000000"
+      },
+      "key_steps": [
+        {
+          "stream": 0,
+          "name": "primary_create",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.316
+        },
+        {
+          "stream": 0,
+          "name": "primary_play",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.017
+        },
+        {
+          "stream": 0,
+          "name": "primary_set_format",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.115
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.102
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.02
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.755
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 1137.568
+        },
+        {
+          "stream": 2,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "80004005",
+          "wall_ms": 40.364
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.023
+        },
+        {
+          "stream": 2,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.043
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.005
+        }
+      ],
+      "stream_rows": [],
+      "sample_threads": [
+        {
+          "pid": 38571,
+          "threads": [
+            {
+              "thread": "Thread_27486272",
+              "top": [
+                "start (dyld)",
+                "??? (wine)",
+                "__wine_main (ntdll.so)",
+                "CFRunLoopRun (CoreFoundation)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27486273",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486386",
+              "top": [
+                "start_wqthread (libsystem_pthread.dylib)",
+                "_pthread_wqthread (libsystem_pthread.dylib)",
+                "__workq_kernreturn (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486393",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            }
+          ]
+        },
+        {
+          "pid": 38590,
+          "threads": [
+            {
+              "thread": "Thread_27486391",
+              "top": [
+                "start (dyld)",
+                "??? (wine)",
+                "__wine_main (ntdll.so)",
+                "CFRunLoopRun (CoreFoundation)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27486392",
+              "top": [
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)"
+              ]
+            },
+            {
+              "thread": "Thread_27486401",
+              "top": [
+                "start_wqthread (libsystem_pthread.dylib)",
+                "_pthread_wqthread (libsystem_pthread.dylib)",
+                "_dispatch_worker_thread2 (libdispatch.dylib)",
+                "_dispatch_root_queue_drain (libdispatch.dylib)",
+                "<deduplicated_symbol> (libdispatch.dylib)",
+                "_dispatch_client_callout (libdispatch.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486404",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486464",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "_NSEventThread (AppKit)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)",
+                "__CFRunLoopServiceMachPort (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27486468",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486469",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486505",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486506",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "HALC_IOThread::Entry(void*) (CoreAudio)",
+                "invocation function for block in HALC_ProxyIOContext::HALC_ProxyIOCont (CoreAudio)",
+                "HALC_ProxyIOContext::IOWorkLoop() (CoreAudio)",
+                "caulk::mach::semaphore::wait_signal_or_error(caulk::mach::semaphore&) (caulk)"
+              ]
+            },
+            {
+              "thread": "Thread_27486560",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (ntdll.so)",
+                "??? (winecoreaudio.so)",
+                "NtDelayExecution (ntdll.so)",
+                "__select (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486561",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)",
+                "??? (wine)"
+              ]
+            },
+            {
+              "thread": "Thread_27486562",
+              "top": [
+                "??? (ntdll.so)",
+                "NtUserGetMessage (win32u.so)",
+                "??? (win32u.so)",
+                "NtWaitForMultipleObjects (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27486563",
+              "top": [
+                "??? (ntdll.so)",
+                "NtRemoveIoCompletion (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27486564",
+              "top": [
+                "??? (ntdll.so)",
+                "NtNotifyChangeKey (ntdll.so)",
+                "NtNotifyChangeMultipleKeys (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27486565",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "CADeprecated::CAPThread::Entry(void*) (CoreMIDI)",
+                "CADeprecated::XThread::RunHelper(void*) (CoreMIDI)",
+                "MIDIProcess::MIDIInPortThread::Run() (CoreMIDI)",
+                "XServerMachPort::ReceiveMessage(int&, void*, int&) (CoreMIDI)"
+              ]
+            },
+            {
+              "thread": "Thread_27486593",
+              "top": [
+                "??? (ntdll.so)",
+                "??? (winecoreaudio.so)",
+                "_pthread_cond_wait (libsystem_pthread.dylib)",
+                "__psynch_cvwait (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486596",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "g_cond_wait (libglib-2.0.0.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486597",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "??? (libgstcoreelements.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486598",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "g_cond_wait (libglib-2.0.0.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486599",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "??? (libgstasf.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486602",
+              "top": [
+                "??? (ntdll.so)",
+                "??? (winegstreamer.so)",
+                "_pthread_cond_wait (libsystem_pthread.dylib)",
+                "__psynch_cvwait (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27486603",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)"
+              ]
+            }
+          ]
+        }
+      ],
+      "gst_log_tail": null
     }
   }
 }

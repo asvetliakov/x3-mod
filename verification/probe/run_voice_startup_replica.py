@@ -7,7 +7,7 @@ watchdog prints REPLICA_HUNG step=<name>; this runner watches stdout for that
 marker, samples the probe's host processes with macOS `sample` into the output
 directory, terminates them and records "hung at <step>". No game launch.
 """
-import argparse,json,os,re,subprocess,sys,time
+import argparse,json,os,re,signal,subprocess,sys,time
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT / "verification/probe"))
@@ -94,15 +94,43 @@ def parse_sample(text):
     return threads
 
 
-def pids_for(name):
-    """Host pids of the Wine-side probe processes (the runner and lock wrapper also name the EXE; skip python)."""
-    try:out=subprocess.run(['ps','-axo','pid=,args='],capture_output=True,text=True,timeout=10).stdout
-    except (subprocess.SubprocessError,OSError):return []
-    pids=[]
+def process_rows():
+    """pid -> (ppid, state, args) snapshot; empty on a ps failure."""
+    try:out=subprocess.run(['ps','-axo','pid=,ppid=,state=,args='],capture_output=True,text=True,timeout=10).stdout
+    except (subprocess.SubprocessError,OSError):return {}
+    rows={}
     for line in out.splitlines():
-        parts=line.split(None,1)
-        if len(parts)==2 and name in parts[1] and 'python' not in parts[1].lower() and int(parts[0])!=os.getpid():pids.append(int(parts[0]))
-    return pids[:4]
+        parts=line.split(None,3)
+        if len(parts)==4 and parts[0].isdigit() and parts[1].isdigit():rows[int(parts[0])]=(int(parts[1]),parts[2],parts[3])
+    return rows
+
+
+def replica_pids(rows=None,wrapper=None,name=EXE_NAME):
+    """Live PE replica processes: matched by image name and by descent from the wine wrapper.
+
+    The wine wrapper's own pid and this runner are excluded (the wrapper is killed
+    last, by the Popen handle); zombies are already dead and are not survivors.
+    Descendants of the wrapper count only when they are PE images, so wineserver
+    and other bottle services are never touched.
+    """
+    rows=process_rows() if rows is None else rows
+    stem=name[:-4] if name.lower().endswith('.exe') else name
+    def descends(pid):
+        seen=set()
+        while pid in rows and pid not in seen:
+            seen.add(pid);pid=rows[pid][0]
+            if wrapper is not None and pid==wrapper:return True
+        return False
+    pids=[]
+    for pid,(ppid,state,args) in rows.items():
+        if pid in (os.getpid(),wrapper) or state.startswith('Z') or 'python' in args.lower():continue
+        if stem in args or (descends(pid) and '.exe' in args.lower()):pids.append(pid)
+    return sorted(pids)
+
+
+def pids_for(name=EXE_NAME):
+    """Host pids of the Wine-side probe processes (the runner and lock wrapper also name the EXE; skip python)."""
+    return replica_pids(name=name)[:4]
 
 
 def sample_processes(output,seconds):
@@ -119,15 +147,43 @@ def sample_processes(output,seconds):
     return records
 
 
-def terminate(proc):
-    proc.terminate()
-    try:proc.wait(5);return
-    except subprocess.TimeoutExpired:pass
-    for pid in pids_for(EXE_NAME):
-        try:os.kill(pid,9)
+def _still_alive(pids,rows=None):
+    rows=process_rows() if rows is None else rows
+    return sorted(p for p in pids if p in rows and not rows[p][1].startswith('Z'))
+
+
+def _signal(pids,number,killed):
+    for pid in pids:
+        killed.add(pid)
+        try:os.kill(pid,number)
         except OSError:pass
-    try:proc.kill();proc.wait(10)
-    except (subprocess.TimeoutExpired,OSError):pass
+
+
+def terminate(proc,grace=2.0):
+    """Kill the PE replica processes, then the wine wrapper.
+
+    Terminating the wrapper alone leaves the PE process (the hung probe) spinning
+    under wine and invisible to a wrapper-anchored lookup, so the PE images are
+    enumerated and signalled first: SIGTERM, at most `grace` seconds, SIGKILL.
+    Returns the pids signalled and any process still alive afterwards.
+    """
+    killed=set();wrapper=proc.pid
+    _signal(replica_pids(wrapper=wrapper),signal.SIGTERM,killed)
+    deadline=time.monotonic()+grace
+    while time.monotonic()<deadline and replica_pids(wrapper=wrapper):time.sleep(0.2)
+    _signal(replica_pids(wrapper=wrapper),signal.SIGKILL,killed)
+    proc.terminate()
+    try:proc.wait(5)
+    except subprocess.TimeoutExpired:
+        try:proc.kill();proc.wait(10)
+        except (subprocess.TimeoutExpired,OSError):pass
+    # The wrapper is gone, so the parent chain no longer resolves: check the pids
+    # already identified by pid as well as any remaining name match.
+    def left():return sorted(set(replica_pids())|set(_still_alive(killed)))
+    deadline=time.monotonic()+grace
+    while time.monotonic()<deadline and left():
+        _signal(left(),signal.SIGKILL,killed);time.sleep(0.3)
+    return dict(killed_pids=sorted(killed),survivors=left())
 
 
 def tail(path,limit=65536):
@@ -153,17 +209,18 @@ def main():
     command=[bottle.WINE,*bottle.wine_args(),str(exe),a.mode,str(a.dwell_ms),*['Z:'+str(p).replace('/','\\') for p in media]]
     report=dict(schema=1,label=a.label,mode=a.mode,dwell_ms=a.dwell_ms,completed=False,hung_step=None,exe_sha256=a.exe_sha256,media=identities,bottle=bottle.describe(),
                 plugin_env=plugin,plugin_present=len(plugin)==len(PLUGIN_KEYS),gst_debug=env.get('GST_DEBUG'),gst_debug_file=env.get('GST_DEBUG_FILE'),wine_debug=env['WINEDEBUG'])
-    start=time.monotonic();samples=[];abort=None
+    start=time.monotonic();samples=[];abort=None;kill=dict(killed_pids=[],survivors=[])
     with (a.output/'stdout.txt').open('wb') as stdout,(a.output/'stderr.txt').open('wb') as stderr:
         proc=subprocess.Popen(command,cwd=a.output,env=env,stdout=stdout,stderr=stderr)
         while proc.poll() is None:
             time.sleep(0.5)
             if 'REPLICA_HUNG ' in tail(a.output/'stdout.txt'):
                 report['hang_detected_at_seconds']=time.monotonic()-start
-                samples=sample_processes(a.output,a.sample_seconds);terminate(proc);break
+                samples=sample_processes(a.output,a.sample_seconds);kill=terminate(proc);break
             if time.monotonic()-start>a.timeout:
-                abort=f'{a.timeout:g}s external timeout without watchdog report';samples=sample_processes(a.output,a.sample_seconds);terminate(proc);break
+                abort=f'{a.timeout:g}s external timeout without watchdog report';samples=sample_processes(a.output,a.sample_seconds);kill=terminate(proc);break
         report['exit_code']=proc.returncode
+    report['killed_pids']=kill['killed_pids'];report['survivors']=kill['survivors']
     report['process_wall_seconds']=time.monotonic()-start
     report['samples']=samples
     report['stderr_bytes']=(a.output/'stderr.txt').stat().st_size
@@ -179,7 +236,7 @@ def main():
     else:report['outcome']='inconclusive: '+report.get('abort','nonzero exit or invalid output')
     (a.output/'result.json').write_text(json.dumps(report,indent=2)+'\n')
     if a.record:
-        compact={k:report.get(k) for k in ('label','mode','dwell_ms','outcome','completed','hung_step','hung_stream','hung_elapsed_ms','hung_after_stages','created','exit_code','process_wall_seconds','plugin_present','plugin_env','gst_debug','exe_sha256','abort')}
+        compact={k:report.get(k) for k in ('label','mode','dwell_ms','outcome','completed','hung_step','hung_stream','hung_elapsed_ms','hung_after_stages','created','exit_code','killed_pids','survivors','process_wall_seconds','plugin_present','plugin_env','gst_debug','exe_sha256','abort')}
         compact['bottle']=report['bottle'];compact['media_sha256']=[m['sha256'] for m in identities]
         compact['play']=report.get('play');compact['output']=str(a.output)
         for k in ('startup','primary','key_steps','stream_rows'):compact[k]=report.get(k)
@@ -188,7 +245,7 @@ def main():
         record=json.loads(a.record.read_text()) if a.record.is_file() else dict(schema=1,runs={})
         record['runs'][a.label or a.output.name]=compact
         a.record.parent.mkdir(parents=True,exist_ok=True);a.record.write_text(json.dumps(record,indent=2)+'\n')
-    print(json.dumps({k:report[k] for k in ('outcome','completed','hung_step','created','exit_code','process_wall_seconds','abort') if k in report}))
+    print(json.dumps({k:report[k] for k in ('outcome','completed','hung_step','created','exit_code','killed_pids','survivors','process_wall_seconds','abort') if k in report}))
     return 0 if report['completed'] else 3 if report['hung_step'] else 1
 
 if __name__=='__main__':raise SystemExit(main())

@@ -1,4 +1,5 @@
 import unittest
+import unittest.mock
 import run_voice_startup_replica as probe
 
 
@@ -118,5 +119,60 @@ class ReplicaTests(unittest.TestCase):
         self.assertEqual([t['thread'] for t in threads],['Thread_101','Thread_202'])
         self.assertEqual(threads[1]['frames'][1],'wg_parser_stream_get_buffer (winegstreamer.so)')
         self.assertEqual(len(threads[0]['frames']),2)
+
+PS_ROWS={
+    1:(0,'Ss','/sbin/launchd'),
+    900:(1,'S','/usr/bin/python3 verification/probe/run_voice_startup_replica.py --exe build/voice_startup_replica.exe'),
+    950:(900,'S','/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle X3 Z:\\x3-mod\\voice_startup_replica.exe game-dmo'),
+    960:(950,'R','C:\\windows\\system32\\start.exe voice_startup_replica.exe'),
+    970:(960,'R','voice_startup_replica.exe'),
+    980:(960,'R','C:\\x3\\helper.exe'),
+    985:(1,'S','wineserver'),
+    990:(1,'Z','voice_startup_replica.exe <defunct>'),
+}
+
+
+class FakeProc:
+    """Popen stand-in: terminate() only stops the wrapper, as the real one does."""
+    def __init__(self,pid,rows):self.pid=pid;self.rows=rows;self.returncode=None;self.waits=[]
+    def terminate(self):self.rows.pop(self.pid,None);self.returncode=-15
+    def kill(self):self.terminate();self.returncode=-9
+    def wait(self,timeout=None):
+        self.waits.append(timeout)
+        if self.returncode is None:raise probe.subprocess.TimeoutExpired('wine',timeout)
+        return self.returncode
+
+
+class KillPathTests(unittest.TestCase):
+    def test_replica_pids_by_name_and_parent_chain(self):
+        pids=probe.replica_pids(rows=dict(PS_ROWS),wrapper=950)
+        # 960/970 name the image, 980 is a PE descendant of the wrapper; the runner
+        # (python), the wrapper itself, wineserver and the zombie are excluded.
+        self.assertEqual(pids,[960,970,980])
+        self.assertNotIn(990,probe.replica_pids(rows=dict(PS_ROWS)))
+        # Without a wrapper anchor the wine wrapper itself also names the image.
+        self.assertEqual(probe.replica_pids(rows=dict(PS_ROWS)),[950,960,970])
+
+    def test_terminate_kills_pe_first_then_wrapper_and_reports_pids(self):
+        rows=dict(PS_ROWS);signals=[]
+        def fake_kill(pid,number):
+            signals.append((pid,number))
+            if number==probe.signal.SIGKILL:rows.pop(pid,None)
+        proc=FakeProc(950,rows)
+        with unittest.mock.patch.object(probe.os,'kill',fake_kill),unittest.mock.patch.object(probe,'process_rows',lambda:rows):
+            result=probe.terminate(proc,grace=0.3)
+        self.assertEqual([s for s in signals if s[1]==probe.signal.SIGTERM],[(p,probe.signal.SIGTERM) for p in (960,970,980)])
+        self.assertEqual(result['killed_pids'],[960,970,980])
+        self.assertEqual(result['survivors'],[])
+        self.assertEqual(proc.returncode,-15)
+        # The PE processes die before the wrapper is touched.
+        self.assertNotIn(950,[p for p,_ in signals])
+
+    def test_terminate_reports_survivors_when_the_pe_process_ignores_signals(self):
+        rows=dict(PS_ROWS);proc=FakeProc(950,rows)
+        with unittest.mock.patch.object(probe.os,'kill',lambda pid,number:None),unittest.mock.patch.object(probe,'process_rows',lambda:rows):
+            result=probe.terminate(proc,grace=0.2)
+        self.assertEqual(result['survivors'],[960,970,980])
+        self.assertEqual(result['killed_pids'],[960,970,980])
 
 if __name__=='__main__':unittest.main()
