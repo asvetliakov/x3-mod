@@ -277,12 +277,14 @@ with `f ∈ {1, ≈0.06, ≈0.01}` and actual region-pixel counters per frame.
 
 ## Unknown, and what settles it
 
-- **VB rewrite after load.** Disassemble every caller of `Lock` on
-  subset-record VB/IB (slot `0x34`/`0x38` consumers beyond `0x004bbb10`,
-  `0x004bc1c0`). Until then the revision gate is the defence and the step-1
-  witness the evidence.
-- **Half conversion rounding** at `0x004bbb10`/`0x004bc1c0`: `2^-10` expansion
-  is safe for any rounding; disassembly can shrink it.
+- **VB rewrite after load: settled.** [mesh-buffer-rewrite.md](../reverse-engineering/mesh-buffer-rewrite.md)
+  finds every model VB/IB write inside the once-per-LOD fill `0x004bb470`
+  before the first draw, so the part AABB is a load-time constant. The
+  revision gate stays as defence in depth and the step-1 witness as evidence.
+- **Half conversion rounding**: the drawn buffers are `CloneMesh` output with
+  POSITION0 FLOAT16_4 on a device advertising that capability, so the `2^-10`
+  expansion is required, not optional; the rounding mode is unresolved and one
+  ULP is covered by it.
 - **`0x10000000` container branch** fields read from file: the M-outside-union
   witness covers it empirically; a bounded read of that parser confirms the six
   fields are stored, not zeroed.
