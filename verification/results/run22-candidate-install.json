@@ -1,0 +1,149 @@
+{
+  "source_commit": "509a273",
+  "base": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9",
+  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/source",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/candidate/d3d9.dll",
+  "build_seconds": 11,
+  "dll_sha256": "53a0d8a7f76e89836a66068ce166af095058fd3e10b6cbb5693a2b0027d35c5b",
+  "dll_bytes": 14299619,
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "seh_clang": "/usr/bin/clang (Apple clang 21.0.0)",
+  "build": "git worktree add --detach (clean export of 509a273, worktree porcelain empty); cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build; cmake --build build -j4 (0 warnings, 11 s). The handed-over candidate is the copy at <base>/candidate/d3d9.dll, hashed after the build and re-hashed after the last fixture step: unchanged. The detached worktree was pruned after the build; the candidate copy and the logs under <base> remain.",
+  "source_tree_note": "The main checkout carried nine dirty tracked files at export time, all runner outputs under verification/results/bottle-X3/ (d3d9-exports*, linear-distance-fade-live.json, motion-output-*). src/, tools/, cmake/, verification/probe/ and verification/analysis/ were clean, so no build input is dirty; the candidate is built from the detached 509a273 worktree and does not contain them.",
+  "installed": false,
+  "game_launched": false,
+  "native_windows_verified": false,
+  "bottle": {
+    "name": "X3",
+    "app": "CrossOver Preview.app",
+    "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "cxbottle_conf_sha256": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+    "unchanged": true
+  },
+  "preserved_files_note": "Not installed; bottle X3 and its EXE/config were not touched by this candidate (one read-only export fixture under the Wine lock and one launcher --dry-run). EXE and cxbottle.conf hashes rechecked after the runs and equal to the run-20 record.",
+  "rollback": {
+    "dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+    "dll_sha256": "39b090d02c150e1da443532c84ad299334d17e49a8d9ec6bd16d05ecd4fe96cd",
+    "source_commit": "77a649b",
+    "install_record": "verification/results/run20-candidate-install.json",
+    "note": "The currently installed DLL is the run-20 candidate; keep it and its launcher manifest for rollback."
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 225,
+    "violations": 0,
+    "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/no-x87.json",
+    "command": "python3 verification/probe/check_no_x87.py <candidate>"
+  },
+  "exports": {
+    "result": "PASS",
+    "names": 17,
+    "ordinals": "1-17",
+    "forwarders": 0,
+    "machine": "0x014c",
+    "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/pe-exports.txt",
+    "command": "python3 tools/analysis/pe_exports.py <candidate>"
+  },
+  "load": {
+    "passed": true,
+    "case": "writable",
+    "checks": 8,
+    "failures": 0,
+    "exports_resolved": 17,
+    "on12_forwarded": true,
+    "source": "game",
+    "dll_sha256_in_report": "53a0d8a7f76e89836a66068ce166af095058fd3e10b6cbb5693a2b0027d35c5b",
+    "result": "verification/results/bottle-X3/d3d9-exports-summary.json",
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll <candidate> --case writable",
+    "log": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/d3d9-exports.log"
+  },
+  "site_verifiers": {
+    "verify_lod_scale_site.py": {
+      "result": "PASS",
+      "checks": 9,
+      "failed": 0,
+      "site": "0x47d44b",
+      "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/lod-scale-site.json",
+      "reason": "new --lod-scale EXE memory patch (merge bfe1909): same-length replacement, whole-instruction site and window, no branch in the window",
+      "command": "PYTHONPATH=verification/probe python3 verification/probe/verify_lod_scale_site.py"
+    },
+    "verify_game_phase_sites.py": {
+      "result": "PASS",
+      "checks": 24,
+      "failed": 0,
+      "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/game-phase-sites.json",
+      "reason": "the phase/Present hook sites the candidate installs are unchanged since 77a649b; reverified against the same EXE",
+      "command": "PYTHONPATH=verification/probe python3 verification/probe/verify_game_phase_sites.py"
+    },
+    "verify_voice_dmo_site.py": {
+      "result": "reused",
+      "reason": "the voice DMO hook is unchanged since 5d06316; PASS with 10 checks recorded in verification/results/ao-stepe-install.json"
+    }
+  },
+  "host_tests": {
+    "command": "PYTHONPATH=verification/probe:verification/analysis python3 -m unittest verification.analysis.test_lod_scale_patch verification.analysis.test_lod_scale_launch verification.analysis.test_fade_region verification.analysis.test_motion_output_runner verification.analysis.test_linear_distance_fade_live_report verification.analysis.test_game_phases verification.analysis.test_loading_phase_markers",
+    "scope": "scoped to the modules covering the changes since 77a649b (lod-scale patch and launcher plumbing; fade-band route and its live report; motion-output runner; game phases and loading markers)",
+    "ran": 54,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 7.9,
+    "log": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/host-tests.log"
+  },
+  "qualification": {
+    "motion_output": {
+      "reused": true,
+      "status": "PASS",
+      "cases": 107,
+      "source_commit": "509a273",
+      "citation": "docs/verification/motion-output.md, '2026-09-15 - fade-band arm'; result file verification/results/bottle-X3/motion-output-summary.json (passed=true, 107 cases, no case with a non-zero exit)",
+      "reason": "the fade-band route and hysteresis were qualified on this exact source at 509a273; no motion-output dependency changed afterwards",
+      "note": "The brief cited '123 cases'; the recorded artifact and ledger entry at 509a273 show 107 suite cases PASS. The lower number is what the evidence supports."
+    },
+    "linear_distance_fade_live": {
+      "reused": true,
+      "status": "PASS",
+      "cases": 34,
+      "source_commit": "509a273",
+      "citation": "docs/verification/motion-output.md, '2026-09-15 - fade-band arm' (run_linear_distance_fade_live.py PASS, 34 cases); result verification/results/bottle-X3/linear-distance-fade-live.json (passed=true, 34 cases, 165 functional / 8 admission / 432 timing / 99 witness frames)",
+      "reason": "live fade-band arm evidence produced on this exact source; not rerun"
+    },
+    "reused_not_rerun": [
+      "ambient_occlusion_live (7 twins)",
+      "voice_replica",
+      "locked_prefix_live",
+      "screen_emission_live",
+      "screen_gpu_step_a",
+      "screen_bound_gpu",
+      "station_gpu",
+      "station_live",
+      "fade_region_gameplay",
+      "cutout_live",
+      "run_ambient_occlusion.py detached fixture",
+      "run_ownership.py"
+    ],
+    "reused_note": "AO live (7/7 twins with the post-Reset frames) and the voice replica are unchanged since 5d06316 and stand in verification/results/ao-stepe-install.json. locked_prefix_live (24 frames, 18 bound / 6 refused) and screen_emission_live (14 cases) were run against the run-20 candidate at 77a649b and are recorded in verification/results/run20-candidate-install.json; the screen-emission and locked-prefix sources are unchanged in 77a649b..509a273 (the diff touches capture.cpp, fade_route_core.h, loader.cpp, lod_scale*.{cpp,h}, motion_output.cpp/.h, tools/manage.py only).",
+    "not_run": []
+  },
+  "qualification_status": "qualified-not-installed (every scoped check passed: x87 225 reachable / 0 violations, 17 exports, load 8 checks 0 failures, lod-scale site 9 checks, game-phase sites 24 checks, host 54 tests; the fade-band motion-output suite 107 cases and the 34-case live fade report are cited from 509a273; AO, voice, locked-prefix and screen-emission reused)",
+  "launch_dry_run": {
+    "passed": true,
+    "game_launched": false,
+    "run": 22,
+    "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run22-candidate-h8l9/run22-dryrun.txt",
+    "command": "./x3run --direct --camera chase --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --fade-witness 1 --screen-emission --lod-scale 2 --voice-decoder /tmp/x3-wma-plugin-v4 --capture-start 999999 --capture-frames 8 --dry-run",
+    "output_line": "No new X3 proxy session; no snapshot created (vanilla/dry-run is expected).",
+    "wine_command": "wine --bottle X3 --no-update --dll d3d9=n,b --workdir <X3 dir> X3AP.exe -noabout -skipintro -runinbg",
+    "X3M_LOD_SCALE": "2.0",
+    "X3M_FADE_WITNESS": "1",
+    "X3M_MOTION_OUTPUT": "1",
+    "X3M_MOTION_JITTER": "1",
+    "X3M_MOTION_RT_MODE": "perdraw",
+    "X3M_AMBIENT_OCCLUSION": "0",
+    "note": "Run-22 command block from docs/verification/user-runs.md section 22, plus --dry-run. No vanilla dry-run: launcher and config behavior are unchanged apart from the new default-off --lod-scale flag. ./x3run takes the Wine lock itself, so it must not be wrapped in wine_lock.py (that self-deadlocks)."
+  },
+  "change": "Carries the installed 39b090d0 (77a649b) forward to 509a273 with two merges: the fade-band motion arm (1455bed plus the review/live fixes 509a273) that routes fading draws of reviewed pairs at gate 4 above X3M_FADE_ROUTE instead of masking them, with a 100 permille per-node hysteresis band, camera-invalid estimates refused and fade_held counters; and --lod-scale (bfe1909), a same-length FMUL memory patch at EXE 0x0047d44b mirrored in the proxy, default-off with a cap of 4. Also the run-19/20/21 ledgers and notes (docs only). No new default enables AO, emission or the LOD patch.",
+  "changed_dependencies": "git diff --stat 77a649b..509a273 -- src/ tools/: 9 files, +530/-9 (capture.cpp, fade_route_core.h, loader.cpp, lod_scale.cpp/.h/_core.h, motion_output.cpp/.h, tools/manage.py); 24 commits.",
+  "run22_acceptance": "The user's run 22 is the acceptance for the behavior; this record covers the candidate only.",
+  "installed_sha256_verified": false
+}
