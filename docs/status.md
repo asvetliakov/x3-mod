@@ -15,7 +15,9 @@ ratified [in-place region composition design](architecture/linear-distance-fade-
 (`67baa55`; step 1, per-draw bound derivation, merged in `4bcedea` with 0 region
 violations over 29 detached cases, plus the opt-in `--fade-witness` live M-readback
 witness merged in `97a0aa8` with a proven negative control; step 2, the in-place
-bracket, is in progress; no composition change is merged yet); the two-pair alpha-tested [cutout runtime](architecture/alpha-tested-materials.md)
+bracket in the composition pass, is merged (`f20f00f`: 586 bit-exact twins against
+the exchanged path, 1080p 16 DIPs at a 6 % region 7.58 → 1.93 ms); step 3, the
+runtime route, is next and nothing is installed); the two-pair alpha-tested [cutout runtime](architecture/alpha-tested-materials.md)
 is merged (`b9ae8dd`; two reviews, x87 audit PASS at 223 reachable functions, live
 X3 13 processes / 531 frames / 2,111,274 checks PASS, not installed);
 the isolated WMA decoder adapter
