@@ -29,6 +29,21 @@ constexpr double factor_min = 1.0, factor_max = 4.0;
 // The engine writes one of {1.0, 1.15, 1.2, 1.3, 1.4} (shader-quality mapping).
 constexpr float game_value_min = 1.0f, game_value_max = 1.4f;
 
+// Locale-independent decimal parse of X3M_LOD_SCALE: `[+]digits[.digits]` or
+// `.digits`, nothing else (no exponent, no whitespace, no locale separator).
+inline bool parse_factor(const char* text, double* out) {
+    if (!text || !*text) return false;
+    const char* p = text;
+    if (*p == '+') ++p;
+    double value = 0; unsigned digits = 0;
+    for (; *p >= '0' && *p <= '9'; ++p, ++digits) value = value * 10.0 + (*p - '0');
+    if (*p == '.') {
+        double scale = 0.1;
+        for (++p; *p >= '0' && *p <= '9'; ++p, ++digits) { value += (*p - '0') * scale; scale *= 0.1; }
+    }
+    if (*p != '\0' || digits == 0) return false;
+    *out = value; return true;
+}
 inline bool valid_factor(double f) { return std::isfinite(f) && f >= factor_min && f <= factor_max; }
 inline bool valid_game_value(float v) { return std::isfinite(v) && v >= game_value_min && v <= game_value_max; }
 inline float bits_to_float(std::uint32_t bits) { float v; std::memcpy(&v, &bits, 4); return v; }

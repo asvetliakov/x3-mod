@@ -321,7 +321,7 @@ extern "C" void* WINAPI Direct3DShaderValidatorCreate9() {
         x3m::ownership::AdmissionVeto::UnobservedRoute);
     return result;
 }
-BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
+BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     // Backend loading, file I/O and hooks intentionally happen outside loader lock.
     if (reason == DLL_PROCESS_ATTACH) {
         self_module = module;
@@ -329,7 +329,12 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
     } else if (reason == DLL_PROCESS_DETACH) {
         x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
-        x3m::lod_scale::shutdown(); // six original bytes back (VirtualProtect/FlushInstructionCache only); refuses bytes it does not own
+        // Dynamic unload only (reserved == NULL, FreeLibrary): the six original
+        // bytes go back before the operand's storage disappears. The module is
+        // pinned once the patch is live, so this path is unreachable then; at
+        // process exit (reserved != NULL) the threads are already gone and no
+        // code is rewritten (docs/architecture/lod-scale.md, "Lifetime").
+        if (reserved == nullptr) x3m::lod_scale::shutdown();
     }
     return TRUE;
 }

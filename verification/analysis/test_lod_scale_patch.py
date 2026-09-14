@@ -42,6 +42,15 @@ int main() {
         check(!mirror_bits(bits, 2.0, &out) && out == bits, "passthrough_out_of_band");
     }
     check(!mirror_bits(float_to_bits(1.0f), 8.0, &out) && out == float_to_bits(1.0f), "passthrough_bad_factor");
+    double parsed = 0;
+    check(parse_factor("2", &parsed) && parsed == 2.0, "parse_integer");
+    check(parse_factor("2.5", &parsed) && parsed == 2.5, "parse_decimal");
+    check(parse_factor("+1.25", &parsed) && parsed == 1.25, "parse_plus");
+    check(parse_factor(".5", &parsed) && parsed == 0.5, "parse_leading_point");
+    check(parse_factor("4.", &parsed) && parsed == 4.0, "parse_trailing_point");
+    const char* bad[] = {"", "2,5", " 2", "2 ", "2e0", "-2", "two", ".", "+", "0x2", "nan", "inf"};
+    for (const char* text : bad) check(!parse_factor(text, &parsed), "parse_rejects");
+    check(!parse_factor(nullptr, &parsed), "parse_null");
     std::printf("lod_scale_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
@@ -82,12 +91,15 @@ class LodScalePatch(unittest.TestCase):
             self.assertEqual(run.stdout, 'lod_scale_core checks_failed=0\n')
 
     def test_log_line_parser(self):
-        row = probe.parse_log_line('00:00:01.234 lod_scale requested=2 applied=0 game_value=0 proxy_value=0 patched=1 reason=game_value_pending')
-        self.assertEqual(row, {'requested': 2.0, 'applied': 0.0, 'game_value': 0.0, 'proxy_value': 0.0, 'patched': True, 'reason': 'game_value_pending'})
-        row = probe.parse_log_line('lod_scale requested=2 applied=2 game_value=1 proxy_value=0.5 patched=1 reason=ok')
+        row = probe.parse_log_line('00:00:01.234 lod_scale requested=2 applied=0 game_value=0 proxy_value=0 patched=1 reason=game_value_pending write=plain')
+        self.assertEqual(row, {'requested': 2.0, 'applied': 0.0, 'game_value': 0.0, 'proxy_value': 0.0, 'patched': True, 'reason': 'game_value_pending', 'write': 'plain'})
+        row = probe.parse_log_line('lod_scale requested=2 applied=2 game_value=1 proxy_value=0.5 patched=1 reason=ok write=plain')
         self.assertEqual((row['applied'], row['proxy_value'], row['patched'], row['reason']), (2.0, 0.5, True, 'ok'))
-        row = probe.parse_log_line('lod_scale requested=5 applied=0 game_value=0 proxy_value=0 patched=0 reason=factor_out_of_range')
-        self.assertEqual((row['patched'], row['reason']), (False, 'factor_out_of_range'))
+        row = probe.parse_log_line('lod_scale requested=5 applied=0 game_value=0 proxy_value=0 patched=0 reason=invalid_factor write=none')
+        self.assertEqual((row['patched'], row['reason'], row['write']), (False, 'invalid_factor', 'none'))
+        row = probe.parse_log_line('lod_scale requested=2,5 applied=0 game_value=0 proxy_value=0 patched=0 reason=invalid_factor write=none')
+        self.assertEqual((row['requested'], row['patched']), ('2,5', False))
+        self.assertIsNone(probe.parse_log_line('lod_scale requested=2 applied=2 game_value=1 proxy_value=0.5 patched=1 reason=ok'))  # no write field
         self.assertIsNone(probe.parse_log_line('lod_scale_value game_value=1 proxy_value=0.5 applied=2'))
 
     def test_synthetic_image_refuses_changed_window(self):
@@ -99,6 +111,9 @@ class LodScalePatch(unittest.TestCase):
                 report = probe.verify(f.name)
             checks = {k: v for k, v in report['checks'].items() if k != 'exe_identity'}
             self.assertEqual(all(checks.values()), expect, report)
+            # The wrong-hash gate rejects a synthetic image even with the bytes in place.
+            self.assertFalse(report['checks']['exe_identity'])
+            self.assertEqual(report['result'], 'FAIL')
 
     @unittest.skipUnless(probe.DEFAULT_EXE.is_file(), 'installed executable not present')
     def test_installed_executable(self):

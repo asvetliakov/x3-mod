@@ -30,7 +30,7 @@ WINDOW = bytes.fromhex('8b03 db4034 8b0d346f6000 d88960070000'.replace(' ', ''))
 SITE = WINDOW[SITE_VA - WINDOW_VA:]
 DECODE = (WINDOW_VA, NEXT_VA + 5)  # through the call, so the boundary after the site is decoded too
 LOG_RE = re.compile(r'\blod_scale requested=(?P<requested>\S+) applied=(?P<applied>\S+) game_value=(?P<game_value>\S+) '
-                    r'proxy_value=(?P<proxy_value>\S+) patched=(?P<patched>[01]) reason=(?P<reason>\S+)')
+                    r'proxy_value=(?P<proxy_value>\S+) patched=(?P<patched>[01]) reason=(?P<reason>\S+) write=(?P<write>none|atomic|plain)')
 
 
 def encode_replacement(mirror_address):
@@ -46,9 +46,13 @@ def parse_log_line(line):
     if not match:
         return None
     row = match.groupdict()
-    return {'requested': float(row['requested']), 'applied': float(row['applied']),
+    try:
+        requested = float(row['requested'])  # the raw setting; unparseable text stays a string
+    except ValueError:
+        requested = row['requested']
+    return {'requested': requested, 'applied': float(row['applied']),
             'game_value': float(row['game_value']), 'proxy_value': float(row['proxy_value']),
-            'patched': row['patched'] == '1', 'reason': row['reason']}
+            'patched': row['patched'] == '1', 'reason': row['reason'], 'write': row['write']}
 
 
 def source_constants(text):

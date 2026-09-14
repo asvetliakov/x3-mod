@@ -27,18 +27,44 @@ stays where it is.
 | Replacement | `d8 0d <disp32>` = `fmul dword [mirror]`, six bytes, `mirror` a 4-aligned `std::atomic<uint32_t>` in the DLL's data (32-bit image, any static reaches by disp32) |
 | Boundaries | same length; the next instruction stays `call 0x0052b5d0` at `0x0047d451` (probe check `next_instruction_boundary`) |
 | CPU state | FMUL m32 for FMUL m32: no general register, EFLAGS or x87 stack change; ECX is dead after the original load anyway |
-| Validation | exact executable (`object_trace::executable_verified`, SHA-256 `fdbf3418…`, size, base 0x400000), the 17-byte window `0047d440..0047d450` (`8b 03 / db 40 34 / 8b 0d 34 6f 60 00 / d8 89 60 07 00 00`), factor finite in [1, 4], `engine_patch` install window open |
+| Validation | factor parsed locale-independently (`[+]digits[.digits]`, `invalid_factor` otherwise, the raw setting logged) and in [1, 4]; `engine_patch` install window open; exact executable (`object_trace::executable_verified`, SHA-256 `fdbf3418…`, size, base 0x400000); the 17-byte window `0047d440..0047d450` (`8b 03 / db 40 34 / 8b 0d 34 6f 60 00 / d8 89 60 07 00 00`); the config pointer `*(0x606f34)` readable with its `+0x760` word (`config_unreadable` otherwise); this DLL pinned (`pin_failed` otherwise) |
 | Write | on the backend-load path (`initialize_log`, after the game-phase claims, before the device exists): `VirtualProtect`, `engine_patch::write_code` (plain copy: the span crosses the qword at `0x47d450`, acceptable only inside the install window), `FlushInstructionCache`, read-back compare, protection restored; any failed step rolls the original bytes back (`patch_rolled_back`) or, if even that fails, keeps the site registered (`rollback_failed`) for `shutdown()` |
-| Mirror | written before the patch is live; refreshed at every `Present` (two bounded `engine_memory::read`s, one aligned store only when the game value changed) and after every `Reset`, in case the bring-up path re-runs |
-| Rule | game value finite and in `[1.0, 1.4]` -> `mirror = game / factor` (applied); otherwise `mirror = the game's own bits` (the multiply gives the vanilla result). At install the game value is normally not yet written, so the install line reports `reason=game_value_pending` and the first Present after `004d8f10` logs `lod_scale_value … applied=<factor>` |
-| Restore | `DLL_PROCESS_DETACH` -> `lod_scale::shutdown()`: refuses bytes it does not own, else the six original bytes return under the same VirtualProtect/Flush discipline |
-| Log | `lod_scale requested=<f> applied=<f or 0> game_value=<v> proxy_value=<v> patched=<1/0> reason=<ok/game_value_pending/factor_out_of_range/late_claim/executable_mismatch/bytes_mismatch/protect_failed/patch_rolled_back/rollback_failed>` once at install; `lod_scale_value game_value= proxy_value= applied=` on each change of the game value (at most 16 lines) |
+| Mirror | seeded with the game's current `+0x760` bits (the vanilla operand) before the patch is live; refreshed at every `BeginScene` and `Present` (two bounded `engine_memory::read`s, one aligned store only when the game value changed) and after every `Reset`, in case the bring-up path re-runs |
+| Rule | game value finite and in `[1.0, 1.4]` -> `mirror = game / factor` (applied); otherwise `mirror = the game's own bits` (the multiply gives the vanilla result). At install the game value is normally not yet written, so the install line reports `reason=game_value_pending` and the first refresh after `004d8f10` logs `lod_scale_value … applied=<factor>` |
+| Log | `lod_scale requested=<raw setting> applied=<f or 0> game_value=<v> proxy_value=<v> patched=<1/0> reason=<ok/game_value_pending/invalid_factor/late_claim/executable_mismatch/bytes_mismatch/config_unreadable/pin_failed/protect_failed/patch_rolled_back/rollback_failed> write=<none/atomic/plain>` once at install (`plain` is expected: the span crosses a qword, see Write); `lod_scale_value game_value= proxy_value= applied=` on each change of the game value (at most 16 lines) |
 
 "Fail closed" is the vanilla multiply: with a mirror that holds the game's own
 bits the patched instruction computes exactly what the original would, so an
-unwritten or out-of-band value never scales anything. Before the config struct
-exists the mirror holds 1.0, the engine's own first constant (`004d97c9`); the
-loop cannot run without a device, so that value is never consumed.
+unwritten or out-of-band value never scales anything. If the config
+struct or its word is not readable on the load path, nothing is patched.
+
+## Ordering of the bring-up write and the first LOD pass
+
+`+0x760` is written by `004d8f10`, called once from the device-creation path
+`004dac90` at `004db058` after `CreateDevice` (the pixel-shader profile probe
+needs the device). The threshold loop lives in `0047cfe0`, reached from the
+frame routine `00471f50`, which the main loop calls at `00403f34` (the
+`render` phase marker) after the device exists. The proxy therefore sees the
+written value at the first `BeginScene` of the device, which the frame routine
+issues before its scene draws; that refresh is the evidence-backed hook, and
+`Present`/`Reset` refreshes cover any later rewrite. Whether `004dac90` runs
+again on a resolution change is not established (lod-selection.md, "Unknown");
+if it does, at most the LOD pass of one frame runs on the previous mirror,
+which was itself a valid in-band value. Not established either: that no LOD
+pass runs between the write and the first `BeginScene`; such a pass would use
+the pre-write bits (typically 0, the unwritten word), which vanilla would have
+consumed identically only before the write.
+
+## Lifetime
+
+Once the patch is live the DLL is pinned (`GetModuleHandleExW` with
+`GET_MODULE_HANDLE_EX_FLAG_PIN`, documented), so the absolute operand the game
+executes can never point into freed memory; the pin is taken before the write
+and its failure refuses the patch. `DllMain(DLL_PROCESS_DETACH)` restores the
+six bytes only for a dynamic unload (`lpReserved == NULL`, unreachable once
+pinned); at process exit (`lpReserved != NULL`) every other thread has already
+been terminated and the code is left as it is, so no executable memory is
+rewritten under the loader lock at exit.
 
 ## Cost and the cap
 

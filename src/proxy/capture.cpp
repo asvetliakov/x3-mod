@@ -1330,6 +1330,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
     ctx.motion_output.after_begin_scene(hr);
+    lod_scale::refresh(); // X3M_LOD_SCALE only: catches the bring-up write before the first frame's LOD pass
     if(SUCCEEDED(hr)) {
         ctx.scene_thread=GetCurrentThreadId(); ctx.composition_scene_owner=false; ctx.composition_scene_frame=ctx.frame;
         if(ctx.motion_output.composition_requested() && scene_hook::active()) {

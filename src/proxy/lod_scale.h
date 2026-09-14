@@ -10,14 +10,12 @@
 // the game's bits unchanged (vanilla result). No register, EFLAGS or x87
 // stack change: FMUL m32 for FMUL m32. Written on the backend-load path inside
 // the engine_patch install window after the exact-executable and 17-byte window
-// checks; VirtualProtect/FlushInstructionCache with rollback; the six original
-// bytes return at shutdown (DLL detach). Refreshed at each Present and Reset.
+// checks, with this module pinned (GetModuleHandleExW PIN) so the operand can
+// never point into freed memory; VirtualProtect/FlushInstructionCache with
+// rollback. Refreshed at each BeginScene, Present and Reset.
 // docs/architecture/lod-scale.md.
 namespace x3m::lod_scale {
-bool wanted();      // X3M_LOD_SCALE parses to a finite factor
-bool initialize();  // backend-load path only; logs one lod_scale line when requested
+bool initialize();  // backend-load path only; logs one lod_scale line when X3M_LOD_SCALE is set
 void refresh();     // re-reads the game value; one aligned store when it changed
-bool patched();
-const char* status();
-bool shutdown();    // restores the original bytes; true when nothing is installed
+bool shutdown();    // restores the original bytes (dynamic-unload detach only; the pin makes that unreachable); true when nothing is installed
 }
