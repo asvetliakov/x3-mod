@@ -1,7 +1,7 @@
 # Project status
 
-Updated 2026-09-15. This is the short current handoff; the current session
-handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
+Updated 2026-09-15 (midday checkpoint). This is the short current handoff; the current
+session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
 [status history 2026-09-14](archive/status-history-2026-09-14.md); earlier
@@ -43,8 +43,10 @@ moves only 6 % between far and near; AO ran in the debug factor view for the
 whole session and is a few pixels wide at gameplay distances. No run is open. Run 22
 (snapshot run51) is complete on the installed `53a0d8a7…` build: trembling fixed and
 accepted, `--lod-scale` tested and left default-off, the module darkening owned by the
-point-light range cull. Next candidate: the fill-light term once its design note is
-ratified and the user says go. Runs 19–22 are in the
+point-light range cull. Next candidate: the `--material-fill` term
+([fill-light.md](architecture/fill-light.md), ratified, implementation in flight at
+the checkpoint; see the handoff) followed by run 23 at the run-51 spot. Then the
+chase items (view restore after sector change, HUD anchor) and cascaded shadow maps. Runs 19–22 are in the
 [completed-run archive](archive/user-runs-completed.md). Details in the
 [completed-run archive](archive/user-runs-completed.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
