@@ -397,10 +397,12 @@ the camera read; relaxing it (a known-blended pair as the ordinary native
 colour-plus-motion fallback, or a bounded reactive region instead of a
 whole-frame drop) is a policy decision recorded in
 [../verification/motion-output.md](../verification/motion-output.md).
-Resolution (2026-09-14): a known-blended pair is no longer a candidate
+Resolution (2026-09-14): the exact source-over pair (blend on, SRCALPHA /
+INVSRCALPHA, `cutout::source_over`) is no longer a candidate
 (`mark_cutout_candidate` reads the ALPHABLENDENABLE shadow slot the gate
-already read; `cutout::missed` exempts a known blend, unknown stays
-conservative); the draw is the ordinary native colour path with camera
+already read and the factors from the composition blend shadow or one native
+query each; any other or unknown factor stays conservative); the draw is the
+ordinary native colour path with camera
 reprojection only and the frame keeps its history. The opaque miss rule is
 unchanged. Live proof: `seam-taa-cutout-blended` / `seam-taa-cutout-opaque`
 in `run_motion_output.py` (the fixture's `X3M_FIXTURE_CUTOUT_SCRIPT`).

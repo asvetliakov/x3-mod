@@ -148,7 +148,7 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         // steady-state scripts refuse from frame 0, whose begin_frame latch precedes
         // the first capability verdict (probed at the frame's HDR latch).
         const bool arm_active=cap==0&&f.mip_bias==0&&!(scripted&&iteration==0);
-        const bool missable=!script_blended&&wrong!=3; // a known-blended refusal (script or wrong 3) is an ordinary native colour draw: never a miss
+        const bool missable=!script_blended; // the exact source-over refusal is an ordinary native colour draw: never a miss (wrong 3, ONE/ZERO, still misses)
         if(!f.cutout_bench&&((plan>=45&&plan<=54)||plan==56))f.emission_fault(f.d.p,200,cap);
         f.frame_begin();f.linear_material_inputs();f.write_reserved();
         const float background_z=plan>=64&&plan<70?.300001f-.5f:step==12?-.3f:0;

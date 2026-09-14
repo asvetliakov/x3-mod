@@ -72,10 +72,9 @@ def arm_active(frame,bias=0,mixed=False):
 
 
 def missed(frame,material=True,bias=0,mixed=False):
-    # A known-blended refusal (wrong 3: ALPHABLENDENABLE on) is an ordinary
-    # native colour draw, never a coverage miss.
-    p=plan(frame,material,bias,mixed)
-    return int(material and not p['routed'] and arm_active(frame,bias,mixed) and p['wrong']!=3)
+    # Only the exact source-over triple (SRCALPHA/INVSRCALPHA) is exempt; the
+    # wrong-3 refusal (ALPHABLENDENABLE on with ONE/ZERO) still misses.
+    return int(material and not plan(frame,material,bias,mixed)['routed'] and arm_active(frame,bias,mixed))
 
 
 def rows(output,prefix):

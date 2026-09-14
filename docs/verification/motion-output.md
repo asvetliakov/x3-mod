@@ -911,10 +911,14 @@ Root cause of the run 11/14 distant shimmer (finding above): the game's
 source-over pass of the cutout pair (`blend=1 src=5 dst=6 atest=1 mask=7
 zwrite=0`), refused at gate 4 every frame the object is in view, counted as
 `cutout::missed` and dropped the frame's TAA history (11–15 % of frames).
-Decision implemented: `mark_cutout_candidate` reads the warm ALPHABLENDENABLE
-shadow slot (no new native query; the gate already read it) and a known-blended
-pair is not a candidate; `cutout::missed` carries `blend_known, blend` and
-treats an unknown blend state as conservative. The opaque miss rule is
+Decision implemented (review applied): the exact source-over triple
+(ALPHABLENDENABLE on, SRCBLEND SRCALPHA, DESTBLEND INVSRCALPHA, all known;
+`cutout::source_over`, independent of ZWRITEENABLE by design) is not a
+candidate; any other or unknown factor stays a conservative miss.
+`mark_cutout_candidate` reads the warm ALPHABLENDENABLE shadow slot and the
+factors from the composition blend shadow when maintained, otherwise one native
+GetRenderState each on that draw; the shadow-off configuration adds one
+GetRenderState per refused cutout-pair draw. The opaque miss rule is
 unchanged. The reactive-rectangle follow-up stays open
 ([alpha-tested-materials.md](../architecture/alpha-tested-materials.md)).
 
@@ -922,8 +926,19 @@ Fixture: `X3M_FIXTURE_CUTOUT_SCRIPT=blended|opaque` in
 `motion_output_cutout_inc.h` (twelve static frames, pair 0, one refused draw
 per frame; frame 0 is arm-inactive because the capability verdict lands at the
 frame's HDR latch, after the `begin_frame` latch). Plan 35 of the 70-plan
-cutout suite (`wrong=3`, ALPHABLENDENABLE on) is now expected not to miss in
-both the fixture and `run_linear_cutout_live.py`; that suite was not rerun.
+cutout suite (`wrong=3`, ALPHABLENDENABLE on with ONE/ZERO) still misses.
+Command of record for that suite (seam DLL): `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/run_linear_cutout_live.py
+--fixture verification/probe/build/motion_output_fixture.exe --dll
+verification/probe/build/motion-output-seam/d3d9.dll`; reviewer's run on the
+first revision: PASS, 13 runs, 2,111,281 checks, `paired_cost_qualified`,
+`linear-cutout-live.json`. Rerun on the review revision (exact source-over key):
+PASS, 13 runs, 2,111,281 checks, `paired_cost_qualified` (`build/d3d9.dll`
+6619baf4..., seam b9a4cd2d...); the two cutout twins re-pass with the same
+numbers (blended 49,624 checks, history 10/12, 0 `cutout_missed`; opaque
+49,612 checks, history 0/12, `cutout_missed` frames 1–11) and `check_no_x87.py`
+PASS (224 reachable functions). The full suite was not rerun after the review
+revision; the review-applied change is confined to the exemption key.
 
 | Check | Result |
 | --- | --- |

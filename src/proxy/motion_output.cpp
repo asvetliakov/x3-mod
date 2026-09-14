@@ -788,9 +788,9 @@ void MotionOutput::probe_cutout_caps(bool force) noexcept {
 // capability verdict refreshes it.
 // While the configured arm is active, an opaque exact pair drawn before the
 // frame's HDR latch, after a mid-frame Suspend or otherwise refused by the
-// per-draw gate misses coverage; a known-blended pair and a wholly inactive
-// configuration forward it as an ordinary draw with history retained and no
-// coverage verdict.
+// per-draw gate misses coverage; the exact source-over pair and a wholly
+// inactive configuration forward it as an ordinary draw with history retained
+// and no coverage verdict.
 bool MotionOutput::cutout_arm_configured() const noexcept {
     return linear_material_requested_ && cutout_caps_ == cutout::Capability::Ready && hdr_enabled_ && !mip_bias_bits_;
 }
@@ -815,12 +815,26 @@ void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
     route.cutout_test_known = SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE,&route.cutout_test));
     if (route.cutout_test_known && !route.cutout_test) return;
     // The game's source-over pass of the same pair (blend on, SRCALPHA /
-    // INVSRCALPHA, no depth write) is refused by the gate every frame the
-    // object is in view; it is an ordinary native colour draw (camera
-    // reprojection only), not a coverage miss. ALPHABLENDENABLE is a warm
-    // shadow slot the gate already read: no new native query.
+    // INVSRCALPHA, observed exactly; ZWRITEENABLE is deliberately not part of
+    // the key: a z-writing source-over draw has no cutout coverage semantics
+    // either) is refused by the gate every frame the object is in view; it is
+    // an ordinary native colour draw (camera reprojection only), not a
+    // coverage miss. Any other or unknown factor stays a conservative miss.
+    // ALPHABLENDENABLE is a warm shadow slot the gate already read; the two
+    // factors come from the composition blend shadow when it is maintained
+    // (composition requested) and otherwise from one native GetRenderState
+    // each, only on a blended exact-pair draw.
     route.cutout_blend_known = SUCCEEDED(render_state(D3DRS_ALPHABLENDENABLE,&route.cutout_blend));
-    if (route.cutout_blend_known && route.cutout_blend) return;
+    if (route.cutout_blend_known && route.cutout_blend) {
+        DWORD factor[2]{}; bool known[2]{};
+        const D3DRENDERSTATETYPE states[2] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND};
+        for (unsigned i = 0; i < 2; ++i) {
+            if (shadow_.composition_blend_known[i]) { factor[i] = shadow_.composition_blend[i]; known[i] = true; }
+            else known[i] = SUCCEEDED(render_state(states[i], &factor[i]));
+        }
+        route.cutout_source_over = cutout::source_over(true, route.cutout_blend, known[0], factor[0], known[1], factor[1]);
+        if (route.cutout_source_over) return;
+    }
     route.cutout_color_known = SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE,&route.cutout_color));
     if (route.cutout_color_known && !(route.cutout_color & 7u)) return;
     route.cutout_candidate = true;
@@ -4065,7 +4079,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (cutout::missed(route.cutout_candidate, route.submit, SUCCEEDED(result), route.routed || route.composition,
             route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,
             route.cutout_alpha_known, route.cutout_alpha, route.cutout_z_known, route.cutout_z,
-            route.cutout_zfunc_known, route.cutout_zfunc, route.cutout_blend_known, route.cutout_blend)) {
+            route.cutout_zfunc_known, route.cutout_zfunc, route.cutout_source_over)) {
         cutout_coverage_missed_ = true; ++counters_.cutout_missed; invalidate_taa(TaaInvalidateSite::CutoutMissed);
     }
     if (route.routed && route.cutout && SUCCEEDED(result)) ++counters_.cutout_routed;
