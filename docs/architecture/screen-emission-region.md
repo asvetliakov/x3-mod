@@ -305,8 +305,12 @@ logging: `--screen-emission-timing` (`X3M_SCREEN_EMISSION_TIMING=1`, requires th
 Present, where `packed_admitted`/`brackets_px` are that frame's composition counters and
 `cpu_us` is the `QueryPerformanceCounter` delta since the previous Present (the wall-clock
 frame time; 0 on the first one). One QPC and one log call per Present, one predicate when
-off. Parsed by `validate_screen_emission_frames` in
-`verification/probe/run_linear_distance_fade_live.py`.
+off. The live runner's `screen-timing-line` case turns the flag on over the functional
+process and checks the lines with `validate_screen_emission_frames`
+(`verification/probe/run_linear_distance_fade_live.py`): one line per Present of the device,
+frames increasing, every Present after the first with a measured delta, counters equal to
+that frame's `linear_composition_frame`, and the functional totals and packed samples
+unchanged against the run without the flag; the other cases assert the line is absent.
 
 Evidence: host `test_fade_region.py` (8 tests: `--near` 600 random straddling cases, 0
 failures, 0 outside points; hand cases straddle/exact/behind/beam equal to a Python

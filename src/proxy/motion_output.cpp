@@ -3603,12 +3603,10 @@ HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const rend
             const auto* bits = static_cast<const unsigned char*>(lock.pBits);
             if (bytes == 16) std::memcpy(out, bits, 16);
             else if (bytes == 8) {
+                // The same decoder the rectangle scan uses (packed_sample_half).
                 for (unsigned c = 0; c < 4; ++c) {
                     std::uint16_t h = 0; std::memcpy(&h, bits + 2 * c, 2);
-                    const unsigned exponent = (h >> 10) & 31u, mantissa = h & 1023u;
-                    const float value = exponent == 31 ? (mantissa ? std::numeric_limits<float>::quiet_NaN() : std::numeric_limits<float>::infinity())
-                        : std::ldexp(float(exponent ? 1024u + mantissa : mantissa), int(exponent ? exponent : 1) - 25);
-                    out[c] = h & 0x8000u ? -value : value;
+                    out[c] = packed_sample_half(h);
                 }
             } else {
                 DWORD v = 0; std::memcpy(&v, bits, 4);
@@ -3661,8 +3659,7 @@ HRESULT MotionOutput::scan_packed_rect(const fade_region::Rect& rect, PackedScan
                 pre_rgb[0] = float((va >> 16) & 255u) / 255.f; pre_rgb[1] = float((va >> 8) & 255u) / 255.f; pre_rgb[2] = float(va & 255u) / 255.f;
                 post_rgb[0] = float((vb >> 16) & 255u) / 255.f; post_rgb[1] = float((vb >> 8) & 255u) / 255.f; post_rgb[2] = float(vb & 255u) / 255.f;
             }
-            const bool changed = bytes == 4 ? ((*reinterpret_cast<const std::uint32_t*>(a) ^ *reinterpret_cast<const std::uint32_t*>(b)) & 0x00ffffffu) != 0
-                                            : std::memcmp(a, b, rgb_bytes) != 0;
+            const bool changed = std::memcmp(a, b, rgb_bytes) != 0; // A8R8G8B8 stores B,G,R,A: the first three bytes are the colour
             if (changed) ++scan.changed;
             const double pre_y = 0.2126 * pre_rgb[0] + 0.7152 * pre_rgb[1] + 0.0722 * pre_rgb[2];
             const double post_y = 0.2126 * post_rgb[0] + 0.7152 * post_rgb[1] + 0.0722 * post_rgb[2];
@@ -3684,12 +3681,16 @@ void MotionOutput::sample_packed_pre(const MotionRoute& route) noexcept {
     auto& s = packed_sample_;
     if (s.sampled >= packed_sample_cap) { ++composition_counts_.packed_sample_skipped; return; }
     ++s.sampled;
-    s.valid = true;
     s.rect = route.prefix_region.rect;
     s.clipped = route.prefix_region.clipped;
     s.index = counters_.draws;
     s.x = s.rect.left + (s.rect.right - s.rect.left) / 2; s.y = s.rect.top + (s.rect.bottom - s.rect.top) / 2;
+    // A target size/format change releases both copies inside the readback and
+    // clears the pending pre, so the slot is armed after it: every admitted
+    // sampled draw keeps its packed_sample line (with the readback's result),
+    // and packed_sample_skipped stays the cap's counter alone.
     s.pre_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, true, s.x, s.y, s.pre);
+    s.valid = true;
 }
 void MotionOutput::sample_packed_post(const RECT& composed) noexcept {
     auto& s = packed_sample_;
