@@ -188,10 +188,15 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   trace (2026-09-14 evening) shows TAA history dropped on 15 % of frames (`camera_state
   reason=3`, previous view invalid, 100 % coincident with `taa_history=0`) in clusters
   during fast translation, long-standing (run 11: 15 %, run 15: none), with real LOD
-  switches rare and isolated draw gaps on the same frames; four of five clusters start
-  after a valid camera relatch with no cut, so an `invalidate_taa` site fires between
-  frames. A Fable diagnosis with per-site instrumentation is in progress; the fade
-  route is not implicated (witness clean).
+  switches rare and isolated draw gaps on the same frames; the site is named
+  (`7f5be9e`, per-site `taa_invalidate` diagnostic merged): `cutout::missed` fires on every
+  frame a source-over *blended* alpha-tested draw of a cutout pair is refused at the motion
+  gate, dropping the whole frame's history (23/23 sampled cluster frames in run 14, 40 in
+  run 11, none in run 15). Orchestrator decision 2026-09-14 evening: known-blended draws
+  no longer count as a cutout miss (ordinary native colour path); a bounded reactive
+  rectangle is the follow-up if ghosting appears. The motion-output live suite (failing
+  since the cutout-arm merge, harness drift) is being repaired first; the policy change
+  follows with that suite as acceptance. The fade route is not implicated (witness clean).
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
   The [normal/specular study](reverse-engineering/asteroid-specular-minification.md) identifies an independent
