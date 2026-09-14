@@ -75,6 +75,23 @@ profile_pair scope=delta qpc=… slot=… rva=… caller=… count=…          
 profile_report_end qpc=… report_us=…
 ```
 
+With `X3M_PROFILE_RAW=1` (`--profile-raw`, load hang witness), at most once per
+thread per report period and only after the thread was resumed:
+
+```
+profile_raw slot=… tid=… eip=… esp=… ebp=… cs=… context_flags=… stack_known=… dwords=…   (leaf outside every pinned module)
+profile_raw_stack slot=… tid=… esp=… values=0x…@<module index>+0x<rva> 0x… …           (32 dwords from Esp inside the TEB stack range)
+profile_raw_failure slot=… tid=… call=SuspendThread|GetThreadContext error=… [context_flags=…]
+```
+
+`profile_thread` then also carries `suspend_failures_delta` and
+`context_failures_delta` for the report period. The dwords are copied inside the
+suspended window under the existing stack-range rule; classification and the
+log lines happen after `ResumeThread`. `profile_start` reports `raw=`,
+`raw_dwords=` and `periodic_s=` (the optional 2 s callback the game-phase audio
+witnesses register through `set_periodic`; it runs between ticks, never inside
+the window).
+
 A delta report is emitted every `X3M_PROFILE_REPORT_S` seconds (default 5) and
 its tables are then cleared and merged into cumulative tables. Every twelfth
 report, and at the quiescent shutdown, a `scope=cumulative` block follows with

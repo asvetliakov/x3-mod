@@ -178,6 +178,36 @@ built, the libav decoder connecting on the third at 3.04 s, then an unhandled
 adapter is not usable in the game until the cause is fixed and this section is
 updated.
 
+## Load hang witness build
+
+One consolidated diagnostic build records, from inside the process, where the
+main thread loops during the hang. Both mechanisms are default-off and change
+nothing when unset. `--profile --profile-raw` (`X3M_PROFILE_RAW=1`) makes the
+sampling profiler log, once per thread per report period, the raw
+`Eip/Esp/Ebp/SegCs`, `ContextFlags` and 32 stack dwords (each with module
+index + RVA when it falls in a pinned executable range) whenever a sampled
+thread's EIP resolves to no pinned module (the constant `module=0xffff
+rva=0x10000` leaf of runs 29–35), plus `profile_raw_failure` lines with the
+`SuspendThread`/`GetThreadContext` error codes and per-report failure counts on
+`profile_thread` (`docs/verification/sampling-profiler.md`).
+`--game-phases --audio-sites` (`X3M_AUDIO_SITES=1`) adds fourteen byte-verified
+markers to the game-phase group (`src/proxy/game_phase_sites.h`, indices 33–46,
+qualified by `verification/probe/verify_game_phase_sites.py`): the returns of
+`SetState(RUN)` (`4d03f5`) and `Pause` (`4d0407`) with their HRESULTs, the pump
+entry `4d34b0` and its drain-loop body `4d3532` (one hit per iteration), the six
+`00498370` manager-update call sites (`403b04` is the existing `services`
+marker), the refill entry `4d0700`, the `CompletionStatus` poll (`4d0762` call
+setup paired with the `4d0774` join, HRESULT bucketed as S_OK / MS_S_PENDING /
+MS_S_ENDOFSTREAM / other), the `Update` return after `4d0a61` and the cue play
+entry `498e30`. Every marker counts `total/current-frame/last-frame` (frames
+delimited by the main-loop head `403ab0`); the whole group installs
+transactionally and rolls back on any byte or claim mismatch, exactly as the
+phase markers do. One `game_phase_audio scope=window` line accompanies each
+`game_phase_window` report and, because the hang stops frame progression at
+session frame 3, the sampler thread also writes `scope=timed` every 2 s
+(`--profile` required for the timed line). Launch:
+`python3 tools/manage.py launch --direct --telemetry --game-phases --audio-sites --profile --profile-raw --voice-decoder DIR`.
+
 ## Timing correction builds (2026-09-14)
 
 The ratified [cue timing correction](voice-cue-timing-correction.md) is applied as

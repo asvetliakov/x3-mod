@@ -15,11 +15,16 @@ namespace x3m::sampling_profiler {
 struct Settings {
     unsigned interval_us=2000;  // X3M_PROFILE_INTERVAL_US, 100..1000000
     unsigned report_s=5;        // X3M_PROFILE_REPORT_S, 1..3600
+    bool raw=false;             // X3M_PROFILE_RAW=1: raw context + 32 stack dwords on an unresolved leaf, once per thread per report
 };
 // Starts the sampler when X3M_PROFILE=1; false (and silent) otherwise. One
 // generation per process: after shutdown a second initialize is refused.
 bool initialize();
 bool active();
+// Periodic callback run by the sampler thread between ticks (never inside the
+// suspended window), every `seconds` (1..3600); one slot, any thread may set
+// it. Nothing runs when the profiler is off.
+void set_periodic(void (*callback)(uint64_t qpc),unsigned seconds);
 // Quiescent teardown: stops the thread (bounded wait), writes the cumulative
 // report, closes every thread handle. Never call under a proxy lock or DllMain.
 void shutdown();
