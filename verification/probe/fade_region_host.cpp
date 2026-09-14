@@ -246,6 +246,10 @@ int run(unsigned seed, unsigned cases) {
     auto b = buffer(200);
     for (unsigned i = 0; i < 200; ++i) put(b, i, float(i), -float(i), 2.f * i);
     print("math_unknown", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    // An unmarked buffer's lock leaves no record; the draw marks it first.
+    print("unmarked_lock_ignored", (t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7), t.finish_lock(1, 7), look(t, 1, 96, box, cp, rev)), box, cp, rev, t);
+    t.mark(1);
+    print("marked_unknown", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
     t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7);
     print("math_pending", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
     const std::uint32_t scanned = t.finish_lock(1, 7);
@@ -272,10 +276,21 @@ int run(unsigned seed, unsigned cases) {
     print("relearned", look(t, 1, 200, box, cp, rev), box, cp, rev, t);
     t.erase(1);
     print("erased", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    // A nested lock (Lock while locked) invalidates the record through both
+    // Unlocks; the next fresh lock publishes again.
+    t.mark(3);
+    t.begin_lock(3, true, b.data(), b.size() * sizeof(float), 7); t.begin_lock(3, true, b.data(), b.size() * sizeof(float), 7);
+    t.finish_lock(3, 7);
+    print("nested_first_unlock", look(t, 3, 96, box, cp, rev), box, cp, rev, t);
+    t.finish_lock(3, 7);
+    print("nested_invalid", look(t, 3, 96, box, cp, rev), box, cp, rev, t);
+    t.begin_lock(3, true, b.data(), b.size() * sizeof(float), 7); t.finish_lock(3, 7);
+    print("nested_relearned", look(t, 3, 96, box, cp, rev), box, cp, rev, t);
+    t.erase(3);
     // Stale tail: 100 valid vertices in [-1, 1], garbage from 100 on.
     auto g = buffer(300);
     auto fill = [&](float tail) { for (unsigned i = 0; i < 300; ++i) { const float v = i < 100 ? (i % 2 ? 1.f : -1.f) : tail; put(g, i, v, v, v); } };
-    const auto publish = [&](std::uintptr_t key) { t.begin_lock(key, true, g.data(), g.size() * sizeof(float), 7); t.finish_lock(key, 7); };
+    const auto publish = [&](std::uintptr_t key) { t.mark(key); t.begin_lock(key, true, g.data(), g.size() * sizeof(float), 7); t.finish_lock(key, 7); };
     fill(std::numeric_limits<float>::quiet_NaN()); publish(2);
     print("tail_nan_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);        // checkpoint 1 holds NaN: refused
     print("tail_nan_96", look(t, 2, 96, box, cp, rev), box, cp, rev, t);          // checkpoint 0 clean: bound
@@ -301,13 +316,13 @@ int run(unsigned seed, unsigned cases) {
     print("length_capped", Lookup(scan(big.data(), big.size() * sizeof(float), &capped)), box, capped.vertices, capped.blocks, t);
     // Eviction: capacity + 1 distinct keys; the oldest (key 100) goes.
     Table e;
-    for (unsigned k = 0; k <= Table::capacity; ++k) { e.begin_lock(100 + k, true, b.data(), b.size() * sizeof(float), 7); e.finish_lock(100 + k, 7); }
+    for (unsigned k = 0; k <= Table::capacity; ++k) { e.mark(100 + k); e.begin_lock(100 + k, true, b.data(), b.size() * sizeof(float), 7); e.finish_lock(100 + k, 7); }
     print("evicted_oldest", look(e, 100, 96, box, cp, rev), box, cp, rev, e);
     print("evicted_kept", look(e, 101, 96, box, cp, rev), box, cp, rev, e);
     e.clear();
     print("cleared", look(e, 101, 96, box, cp, rev), box, cp, rev, e);
     // resolve_locked_prefix through the Environment binding.
-    Table r; r.begin_lock(0xd000, true, b.data(), b.size() * sizeof(float), 7); r.finish_lock(0xd000, 7); env_table = &r;
+    Table r; r.mark(0xd000); r.begin_lock(0xd000, true, b.data(), b.size() * sizeof(float), 7); r.finish_lock(0xd000, 7); env_table = &r;
     const x3m::fade_region::Environment env{&table::read_span, &table::scope, &table::content, &env_prefix};
     const x3m::fade_region::Environment no_prefix{&table::read_span, &table::scope, &table::content, nullptr};
     auto res = [&](const char* label, const x3m::fade_region::Result& out) {
@@ -341,7 +356,7 @@ int run(unsigned seed, unsigned cases) {
             for (unsigned a = 0; a < 3; ++a) { p[a] = float(centre[a] + (unit(rng) * 2 - 1) * half[a]); lo[a] = p[a] < lo[a] ? p[a] : lo[a]; hi[a] = p[a] > hi[a] ? p[a] : hi[a]; }
             put(v, i, p[0], p[1], p[2]);
         }
-        Table s; s.begin_lock(9, true, v.data(), v.size() * sizeof(float), 1); s.finish_lock(9, 1);
+        Table s; s.mark(9); s.begin_lock(9, true, v.data(), v.size() * sizeof(float), 1); s.finish_lock(9, 1);
         const Lookup l = look(s, 9, count, box, cp, rev);
         bool ok = l == Lookup::Bound && cp == (count + interval - 1) / interval - 1;
         bool tight = true;

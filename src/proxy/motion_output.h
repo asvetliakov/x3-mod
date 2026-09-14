@@ -881,7 +881,7 @@ private:
         // Step B locked-prefix bounds: qualifying draws (non-indexed
         // TRIANGLELIST, StartVertex 0, stride-24 FLOAT3 stream), those bound,
         // the lookup outcome and the sum of bound area fractions.
-        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0;
+        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0, prefix_instanced = 0;
         unsigned prefix_reason[unsigned(fade_region::Reason::Count)]{};
         unsigned prefix_lookup[unsigned(fade_region::prefix::Lookup::Count)]{};
         std::uint64_t prefix_permille_sum = 0;

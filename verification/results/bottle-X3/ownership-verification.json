@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "checks": 370,
+    "failures": 0
+  },
+  "wrapped": {
+    "checks": 553,
+    "failures": 0
+  },
+  "result": "PASS",
+  "backend_observations_equal": true,
+  "shared_hresult_outcomes_equal": true,
+  "limits": [
+    "Canonical identity checked while references overlap; an external-zero wrapper may be re-created.",
+    "No application or native refcount magnitude used as a production ownership rule.",
+    "Synthetic single-threaded fixture only; not integrated with installed game proxy."
+  ]
+}

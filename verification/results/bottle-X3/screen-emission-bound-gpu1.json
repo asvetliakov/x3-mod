@@ -19,25 +19,25 @@
     "d3d9=b",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/distance-fade/linear_material_fixture.exe",
     "Z:/private/tmp/x3-shader-sweep/programs",
-    "Z:/private/tmp/x3-screen-emission-bound-b2/cases.bin",
+    "Z:/private/tmp/x3-screen-emission-bound-b3/cases.bin",
     "--distance-fade",
     "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/distance-fade/composite.bin"
   ],
   "input_sha256": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/distance-fade/linear_material_fixture.exe": "3223ddb41749c7d4a0e98896a1539c7fccc39092a1b24c4f7b2a681173ee8c8f",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/distance-fade/linear_material_fixture.exe": "2a9661864594395e68a0033ae635713553f614ab44f61cfdedbac3e32e39c001",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/distance-fade/composite.bin": "7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d",
-    "/private/tmp/x3-screen-emission-bound-b2/cases.bin": "159de6b4ab1890391ba958fd76f3154ca06f227d961eabada657200a9f595db6",
+    "/private/tmp/x3-screen-emission-bound-b3/cases.bin": "159de6b4ab1890391ba958fd76f3154ca06f227d961eabada657200a9f595db6",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/renderer/linear_material.cpp": "f89fd94f7a0861b5562472a1e38690c0728de0ece047e3aa6c9ff8a0621cdcb6",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/renderer/linear_distance_fade.h": "92c73456d5980cf0c7a5400645fa33958f69be94b2040e7061d6073f460bb2ed",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/renderer/linear_emission_pass.cpp": "cdbc2e3c83ec02107e3029e580d8be196826a49753b69af6280ff37a12a95356",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/renderer/linear_emission_pass.h": "d55d7d11f173d709f95d0b0be17d9c2fe55b92114bf395c0ee914ddedc3e550a",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/linear_material_fixture.cpp": "6798ec96d09534b6effda105e4baddad8574a7235fb7d2a85f7c1bea25b0a6fa",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/linear_alpha_test_fixture_inc.h": "6de6729442ba425b791256c30110c9b4f0dae8b16d7c024ba14e2d3809e52b47",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/linear_distance_fade_fixture_inc.h": "a008e803be77cde5d309aac7aa600a8c1fb8130fa7ff7b8b4ce698d766e07d4f",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/linear_distance_fade_fixture_inc.h": "9c2fa6b352a8ab54c29022f1fd5d91242dae2c34e0c1cecc225e508c2fc163cd",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/linear_distance_fade_composite_inc.h": "17e078372527cb62cf461495bc0f46ef89f18f0b9c85ea4a44091ce207778931",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/proxy/fade_region_math.h": "84f5338f4be76ea53defe3a54d84cbbd00fd650e9a5bab101d3312c6059edcc8",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/proxy/fade_region_core.h": "e5d4cd1842f1e46c096229f26fb601532e04b5c4c134d05ee88431930bf1de9b",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/proxy/locked_prefix_core.h": "c5addc48f7e3a94cc20e0b18cf16adf3ad5c276be0b967adac78258adb58c825",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/src/proxy/locked_prefix_core.h": "49138c6fc787a3f80c54ee36b0ef8458a4d0791de5b807f25822c8eee7df1850",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/run_linear_distance_fade.py": "2fe62b98e14b5763d54ba80be55a33bcb5d3ab7ad9ddd34253ac16caac088b76",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/linear_material_reference.py": "43b3a8fbf5cb15c90600047f19fe8a9dd6b4455a69dd70d288bd9eaadaab7bb2",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/run_linear_material.py": "71fa3ba7d2ec24a7a01a87ceb27be65371ad0d084b77df4017efad404192d048",
@@ -54,7 +54,7 @@
     "/private/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
     "/private/tmp/x3-shader-sweep/programs/ps_64bac8bb307eb896.bin": "84eeded40acc811b109221fe5c7e1b5a898f3b9a34a1b4685937a24f6b1bc4a7"
   },
-  "raw_report": "/private/tmp/x3-screen-emission-bound-b2/report.txt",
+  "raw_report": "/private/tmp/x3-screen-emission-bound-b3/report.txt",
   "scope": "Detached exact seven-pair source-over prototype (six Asteroid, one station BUMPMAP); no live route",
   "tolerance": {
     "relative": 0.006,
@@ -63,7 +63,7 @@
   },
   "composite_bytes": 572,
   "exit_code": 0,
-  "wall_seconds": 5.891424249999999,
+  "wall_seconds": 3.7880526249999997,
   "cases": 78,
   "source_calls": 264,
   "region_cases": 29,
@@ -121,8 +121,8 @@
     "after_reset": 0.31640625
   },
   "prefix_scan_us": {
-    "max": 26.3,
-    "mean": 23.369230769230764,
+    "max": 25.0,
+    "mean": 23.946153846153848,
     "vertices_per_scan": 6144,
     "locks": 13
   },
@@ -146,9 +146,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.5424,
-      "min_ms": 0.4121,
-      "max_ms": 0.6434
+      "median_ms": 0.4157,
+      "min_ms": 0.4111,
+      "max_ms": 0.4194
     },
     {
       "width": 1280,
@@ -156,9 +156,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 1.5207,
-      "min_ms": 1.2425,
-      "max_ms": 1.8515
+      "median_ms": 0.9459,
+      "min_ms": 0.9115,
+      "max_ms": 1.0388
     },
     {
       "width": 1280,
@@ -166,9 +166,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 4.2609,
-      "min_ms": 2.2631,
-      "max_ms": 4.5206
+      "median_ms": 2.4407,
+      "min_ms": 2.3409,
+      "max_ms": 2.4708
     },
     {
       "width": 1280,
@@ -176,9 +176,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.4462,
-      "min_ms": 0.421,
-      "max_ms": 0.4686
+      "median_ms": 0.441,
+      "min_ms": 0.4157,
+      "max_ms": 0.4666
     },
     {
       "width": 1280,
@@ -186,9 +186,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.9444,
-      "min_ms": 0.915,
-      "max_ms": 1.0343
+      "median_ms": 1.0291,
+      "min_ms": 0.9819,
+      "max_ms": 1.0763
     },
     {
       "width": 1280,
@@ -196,9 +196,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 2.4312,
-      "min_ms": 2.3564,
-      "max_ms": 2.4908
+      "median_ms": 2.6372,
+      "min_ms": 2.4858,
+      "max_ms": 2.8035
     },
     {
       "width": 1280,
@@ -206,9 +206,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 0.9357,
-      "min_ms": 0.8021,
-      "max_ms": 0.9448
+      "median_ms": 0.953,
+      "min_ms": 0.811,
+      "max_ms": 0.9903
     },
     {
       "width": 1280,
@@ -216,9 +216,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 2.3673,
-      "min_ms": 2.3329,
-      "max_ms": 2.4245
+      "median_ms": 2.3475,
+      "min_ms": 2.3331,
+      "max_ms": 2.3977
     },
     {
       "width": 1280,
@@ -226,9 +226,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 4.2471,
-      "min_ms": 4.2087,
-      "max_ms": 4.4087
+      "median_ms": 5.4109,
+      "min_ms": 5.114,
+      "max_ms": 6.3444
     },
     {
       "width": 1280,
@@ -236,9 +236,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.2849,
-      "min_ms": 0.2787,
-      "max_ms": 0.4172
+      "median_ms": 0.2842,
+      "min_ms": 0.2733,
+      "max_ms": 0.2925
     },
     {
       "width": 1280,
@@ -246,9 +246,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 0.5732,
-      "min_ms": 0.5463,
-      "max_ms": 0.6734
+      "median_ms": 0.5778,
+      "min_ms": 0.544,
+      "max_ms": 0.6696
     },
     {
       "width": 1280,
@@ -256,9 +256,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 1.9117,
-      "min_ms": 1.8573,
-      "max_ms": 2.0185
+      "median_ms": 1.9257,
+      "min_ms": 1.7721,
+      "max_ms": 1.9982
     },
     {
       "width": 1280,
@@ -266,9 +266,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.2889,
-      "min_ms": 0.2824,
-      "max_ms": 0.2934
+      "median_ms": 0.3013,
+      "min_ms": 0.2788,
+      "max_ms": 0.3292
     },
     {
       "width": 1280,
@@ -276,9 +276,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.5592,
-      "min_ms": 0.5222,
-      "max_ms": 0.5842
+      "median_ms": 0.6125,
+      "min_ms": 0.5532,
+      "max_ms": 0.6527
     },
     {
       "width": 1280,
@@ -286,9 +286,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 1.948,
-      "min_ms": 1.7993,
-      "max_ms": 2.1358
+      "median_ms": 1.9225,
+      "min_ms": 1.8361,
+      "max_ms": 1.9408
     },
     {
       "width": 1280,
@@ -296,9 +296,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 0.5451,
-      "min_ms": 0.5371,
-      "max_ms": 0.5523
+      "median_ms": 0.6162,
+      "min_ms": 0.593,
+      "max_ms": 0.8432
     },
     {
       "width": 1280,
@@ -306,9 +306,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 1.3302,
-      "min_ms": 1.3059,
-      "max_ms": 1.482
+      "median_ms": 1.525,
+      "min_ms": 1.4717,
+      "max_ms": 1.5642
     },
     {
       "width": 1280,
@@ -316,9 +316,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 4.2221,
-      "min_ms": 4.0097,
-      "max_ms": 4.3681
+      "median_ms": 4.2735,
+      "min_ms": 4.1602,
+      "max_ms": 4.3757
     },
     {
       "width": 1920,
@@ -326,9 +326,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.6917,
-      "min_ms": 0.6789,
-      "max_ms": 0.806
+      "median_ms": 0.6822,
+      "min_ms": 0.6691,
+      "max_ms": 0.816
     },
     {
       "width": 1920,
@@ -336,9 +336,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 2.0104,
-      "min_ms": 1.9846,
-      "max_ms": 2.0937
+      "median_ms": 2.0097,
+      "min_ms": 1.9924,
+      "max_ms": 2.0437
     },
     {
       "width": 1920,
@@ -346,9 +346,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 6.7127,
-      "min_ms": 6.6185,
-      "max_ms": 6.7924
+      "median_ms": 6.7473,
+      "min_ms": 6.6683,
+      "max_ms": 6.818
     },
     {
       "width": 1920,
@@ -356,9 +356,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.8223,
-      "min_ms": 0.6795,
-      "max_ms": 0.8655
+      "median_ms": 0.7969,
+      "min_ms": 0.6711,
+      "max_ms": 0.8094
     },
     {
       "width": 1920,
@@ -366,9 +366,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 2.1537,
-      "min_ms": 2.0901,
-      "max_ms": 2.1804
+      "median_ms": 2.0751,
+      "min_ms": 1.9617,
+      "max_ms": 2.1258
     },
     {
       "width": 1920,
@@ -376,9 +376,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 7.0221,
-      "min_ms": 6.8125,
-      "max_ms": 7.1003
+      "median_ms": 6.8875,
+      "min_ms": 6.8361,
+      "max_ms": 7.137
     },
     {
       "width": 1920,
@@ -386,9 +386,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 1.062,
-      "min_ms": 1.0516,
-      "max_ms": 1.1837
+      "median_ms": 1.102,
+      "min_ms": 1.0587,
+      "max_ms": 1.2019
     },
     {
       "width": 1920,
@@ -396,9 +396,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 3.3914,
-      "min_ms": 3.3759,
-      "max_ms": 3.7356
+      "median_ms": 3.4575,
+      "min_ms": 3.3571,
+      "max_ms": 3.9584
     },
     {
       "width": 1920,
@@ -406,9 +406,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 13.2198,
-      "min_ms": 12.2008,
-      "max_ms": 14.4531
+      "median_ms": 12.2791,
+      "min_ms": 12.1637,
+      "max_ms": 12.4653
     },
     {
       "width": 1920,
@@ -416,9 +416,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.3018,
-      "min_ms": 0.2782,
-      "max_ms": 0.3206
+      "median_ms": 0.2982,
+      "min_ms": 0.2926,
+      "max_ms": 0.3087
     },
     {
       "width": 1920,
@@ -426,9 +426,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 0.6315,
-      "min_ms": 0.5229,
-      "max_ms": 0.677
+      "median_ms": 0.5883,
+      "min_ms": 0.5193,
+      "max_ms": 0.6836
     },
     {
       "width": 1920,
@@ -436,9 +436,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 1.9092,
-      "min_ms": 1.7523,
-      "max_ms": 2.0732
+      "median_ms": 1.9086,
+      "min_ms": 1.7688,
+      "max_ms": 1.9651
     },
     {
       "width": 1920,
@@ -446,9 +446,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.3055,
-      "min_ms": 0.29,
-      "max_ms": 0.3178
+      "median_ms": 0.2968,
+      "min_ms": 0.281,
+      "max_ms": 0.4219
     },
     {
       "width": 1920,
@@ -456,9 +456,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.6191,
-      "min_ms": 0.5446,
-      "max_ms": 0.6949
+      "median_ms": 0.6744,
+      "min_ms": 0.5559,
+      "max_ms": 0.7371
     },
     {
       "width": 1920,
@@ -466,9 +466,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 2.0707,
-      "min_ms": 1.9432,
-      "max_ms": 2.4231
+      "median_ms": 1.945,
+      "min_ms": 1.8719,
+      "max_ms": 2.0195
     },
     {
       "width": 1920,
@@ -476,9 +476,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 1.285,
-      "min_ms": 1.2004,
-      "max_ms": 1.4234
+      "median_ms": 1.068,
+      "min_ms": 1.0556,
+      "max_ms": 1.0986
     },
     {
       "width": 1920,
@@ -486,9 +486,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 3.8227,
-      "min_ms": 3.4,
-      "max_ms": 4.3149
+      "median_ms": 3.3786,
+      "min_ms": 3.354,
+      "max_ms": 3.4048
     },
     {
       "width": 1920,
@@ -496,9 +496,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 12.6052,
-      "min_ms": 12.4511,
-      "max_ms": 12.7405
+      "median_ms": 12.2795,
+      "min_ms": 12.1388,
+      "max_ms": 12.3683
     }
   ],
   "timing_scope": "EVENT-fenced windows of prepare/source/finish(/exchange) per frame on the detached device; M clear outside the window; not game FPS",

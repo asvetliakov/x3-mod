@@ -17,6 +17,7 @@
 #include "../renderer/quad_vertex_program.h"
 #include "../renderer/hdr_pass.h"
 #include "../ownership/d3d9_ownership.h"
+#include "screen_emission_admission.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -110,6 +111,7 @@ using GetFvfFn = HRESULT(WINAPI*)(D, DWORD*);
 using CreateVsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DVertexShader9**);
 using SetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9*);
 using GetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9**);
+using GetStreamFreqFn = HRESULT(WINAPI*)(D, UINT, UINT*);
 using SetConstantsFFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
 using GetConstantsFFn = HRESULT(WINAPI*)(D, UINT, float*, UINT);
 using GetConstantsIFn = HRESULT(WINAPI*)(D, UINT, int*, UINT);
@@ -821,8 +823,8 @@ void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexc
     if (composition_requested()) {
         const unsigned blend = composition_blend_index(state);
         if (blend < 4) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
-        if (state == D3DRS_FILLMODE) { shadow_.fill_mode = value; shadow_.fill_mode_known = true; }
     }
+    if ((composition_requested() || screen_emission_bound_) && state == D3DRS_FILLMODE) { shadow_.fill_mode = value; shadow_.fill_mode_known = true; }
 }
 // Capture-log accessors: the shadowed application value or -1 when unknown.
 // Pure shadow reads (no GetRenderState, no query counters), so the capture
@@ -2316,8 +2318,9 @@ void MotionOutput::resync_shadow() noexcept {
         const D3DRENDERSTATETYPE blend[] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE};
         for (unsigned i = 0; i < 4; ++i)
             shadow_.composition_blend_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, blend[i], &shadow_.composition_blend[i]));
-        shadow_.fill_mode_known = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_FILLMODE, &shadow_.fill_mode));
     }
+    if (composition_requested() || screen_emission_bound_)
+        shadow_.fill_mode_known = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_FILLMODE, &shadow_.fill_mode));
     resync_samplers();
 }
 
@@ -3277,7 +3280,11 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
         }
     }
     const bool fill_solid = shadow_.fill_mode_known && shadow_.fill_mode == D3DFILL_SOLID;
-    const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : 0u), std::int32_t(hdr_ ? hdr_->height() : 0u)};
+    // The owning target: the FP16 main while the HDR path holds it; for the
+    // locked-prefix diagnostic without it, the application's RT0 (step C
+    // composes into the HDR target and takes the first branch).
+    const bool rt0_target = source == BoundSource::LockedPrefix && !hdr_ && shadow_.rt0.known;
+    const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : rt0_target ? shadow_.rt0.width : 0u), std::int32_t(hdr_ ? hdr_->height() : rt0_target ? shadow_.rt0.height : 0u)};
     Region region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_fade_rect_set_ && source == BoundSource::Part) { region.rect = fixture_fade_rect_; region.reason = Reason::Bound; region.bound = true; }
@@ -3348,9 +3355,15 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
 // device Get. Off (the default) costs one bool test per draw.
 void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute& route) noexcept {
     using namespace fade_region;
+    // The producer first (screen_emission_admission.h, shared with step C's
+    // admission): only an admitted vertex shader's draws are evaluated, so
+    // unrelated stride-24 draws never get a bound from the wrong matrix and
+    // only their buffers are marked for the Unlock scan.
+    if (!screen_emission::admitted_vertex_shader(shadow_.vs_hash)) return;
     if (call.indexed || call.user_memory || call.topology != D3DPT_TRIANGLELIST || call.first != 0 || !call.primitives) return;
     if (!shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != prefix::stride || shadow_.stream0_offset != 0) return;
     if (!shadow_.declaration || shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3) return;
+    const std::uint64_t begin = draw_stamp();
     auto& counts = composition_counts_;
     ++counts.prefix_draws;
     route.prefix_evaluated = true;
@@ -3360,8 +3373,16 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     bool of_viewport = false;
     unsigned permille = 0;
     Region region = fade_rectangle(route, bound, of_viewport, permille, true, BoundSource::LockedPrefix, vertex_count);
-    if (!region.bound) region.rect = {0, 0, 0, 0}; // never the full viewport for this kind
+    // Instanced geometry (stream 0 frequency other than the default 1) draws
+    // more than the prefix; one documented Get per admitted draw, refused
+    // when it fails.
+    UINT frequency = 0;
+    if (region.bound && (FAILED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) || frequency != 1)) {
+        region.bound = false; region.reason = Reason::BoundUnknown; ++counts.prefix_instanced;
+    }
+    if (!region.bound) { region.rect = {0, 0, 0, 0}; permille = 0; } // never the full viewport for this kind
     route.prefix_region = region;
+    route.ticks += draw_stamp() - begin;
     ++counts.prefix_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
     ++counts.prefix_lookup[bound.prefix_refusal < unsigned(prefix::Lookup::Count) ? bound.prefix_refusal : 0u];
     if (region.bound) { ++counts.prefix_bound; counts.prefix_permille_sum += permille; } else ++counts.prefix_refused;
@@ -4078,13 +4099,13 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             const auto& pc = composition_counts_;
             ownership::LockedPrefixStatistics s{};
             ownership::get_locked_prefix_statistics(&s);
-            log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f lookups=%llu bounds=%llu table_used=%u table_evictions=%llu",
-                id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
+            log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u instanced=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f lookups=%llu bounds=%llu marks=%llu table_used=%u table_evictions=%llu",
+                id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_instanced, pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
                 pc.prefix_reason[1], pc.prefix_reason[2], pc.prefix_reason[3], pc.prefix_reason[4], pc.prefix_reason[5], pc.prefix_reason[6],
                 pc.prefix_lookup[1], pc.prefix_lookup[2], pc.prefix_lookup[3], pc.prefix_lookup[4], pc.prefix_lookup[5], pc.prefix_lookup[6],
                 static_cast<unsigned long long>(s.locks), static_cast<unsigned long long>(s.scans), static_cast<unsigned long long>(s.scanned_vertices),
                 s.qpc_frequency ? double(s.scan_ticks) * 1e6 / double(s.qpc_frequency) : 0.0,
-                static_cast<unsigned long long>(s.lookups), static_cast<unsigned long long>(s.bounds), s.used, static_cast<unsigned long long>(s.evictions));
+                static_cast<unsigned long long>(s.lookups), static_cast<unsigned long long>(s.bounds), static_cast<unsigned long long>(s.marks), s.used, static_cast<unsigned long long>(s.evictions));
         }
         if (composition_requested())
             log("%s_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u recovery_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx last_recovery=%08lx",

@@ -189,6 +189,9 @@ class FadeRegion(unittest.TestCase):
         for label,cp,hi in (('math_97','1',191),('math_192','1',191),('math_193','2',199),('math_200','2',199)):
             self.assertEqual((rows[label]['name'],rows[label]['checkpoint'],rows[label]['box']),('bound',cp,box(0,hi)),label)
         self.assertEqual(rows['math_96']['extra'],'200','vertices scanned')
+        self.assertEqual((rows['unmarked_lock_ignored']['name'],rows['unmarked_lock_ignored']['used']),('unknown','0'),'unmarked buffers are never recorded or scanned')
+        self.assertEqual((rows['marked_unknown']['name'],rows['marked_unknown']['used']),('unknown','1'),'a mark alone is no bound: the first draw is refused')
+        self.assertEqual([(rows[l]['name'],rows[l]['revision']) for l in ('nested_first_unlock','nested_invalid','nested_relearned')],[('invalid','2'),('invalid','2'),('bound','3')])
         for label,name in (('math_unknown','unknown'),('math_pending','pending'),('empty','empty'),('beyond','beyond'),('beyond_max','beyond'),
                            ('relock_pending','pending'),('unlock_failed','invalid'),('non_discard','invalid'),('thread_mismatch','invalid'),
                            ('relearned','bound'),('erased','unknown'),('tail_nan_100','nonfinite'),('tail_nan_96','bound'),('tail_nan_beyond','bound'),

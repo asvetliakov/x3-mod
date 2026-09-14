@@ -26,6 +26,9 @@ verification/results/bottle-*/*-capture.log
 verification/results/bloom-filter-summary.json
 verification/results/bottle-*/bloom-filter-summary.json
 
+# Ownership fixture runs keep the check reports; the Wine stderr logs stay local.
+verification/results/bottle-*/ownership-*-wine.log
+
 # Chase-fire qualification keeps one compact summary; verbose case logs stay local.
 verification/results/bottle-*/chase-fire-*.txt
 verification/results/bottle-*/chase-fire-*-wine.log

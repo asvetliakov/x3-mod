@@ -1,0 +1,71 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ftj_vwx7",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--dll",
+    "d3d9=n,b",
+    "--workdir",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ftj_vwx7",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ftj_vwx7/fixture.exe",
+    "Z:/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin",
+    "Z:/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin"
+  ],
+  "input_sha256": {
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/locked_prefix_live_fixture.exe": "bfd8433369203ad69cf3b48e87a7bc6f035e52d4c81f09613a028b3bdf5d3f58",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/build/d3d9.dll": "85342db6300af6e53f2bda4d7472014fdb4bd9a5119f50d1e7b23bf0c1b8a393",
+    "/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
+    "/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin": "44e6cd4c2a446bb968204c86369a62280a55004d8a35c231359bc8651c3ea082"
+  },
+  "environment": {
+    "X3M_OWNERSHIP": "1",
+    "X3M_MOTION_OUTPUT": "1",
+    "X3M_SCREEN_EMISSION_BOUND": "1",
+    "X3M_STATE_SHADOW": "1",
+    "X3M_SCENE_HOOK": "0",
+    "X3M_CAPTURE_START": "1",
+    "X3M_CAPTURE_FRAMES": "8",
+    "X3M_TELEMETRY": "1",
+    "X3M_MOTION_FRAME_LOG": "1",
+    "WINEDLLOVERRIDES": "d3d9=n,b"
+  },
+  "exit_code": 0,
+  "wall_seconds": 3.537,
+  "frames": 13,
+  "captured_draw_lines": 8,
+  "bound_frames": 8,
+  "refused_frames": 5,
+  "lookups": {
+    "unknown": 2,
+    "bound": 9,
+    "nonfinite": 1,
+    "invalid": 1
+  },
+  "instanced_refusals": 1,
+  "marks": 2,
+  "scans": 9,
+  "locks": 11,
+  "scan_us_total": 204.2,
+  "scan_us_per_scan": 22.688888888888886,
+  "rect_fractions": [
+    0.081,
+    0.081,
+    0.081,
+    0.079,
+    0.081
+  ],
+  "scope": "Proxy DLL path: MotionOutput::derive_prefix_region and the ownership Unlock scan executed under the game bullet VS/PS; no composition"
+}

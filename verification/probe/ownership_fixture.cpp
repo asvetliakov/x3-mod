@@ -58,7 +58,9 @@ static IDirect3D9* factory(){
     IDirect3D9* wrapped=nullptr;
     expect("factory null output rejected",FAILED(x3m::ownership::wrap_factory(native,nullptr)));
     expect("failed factory adoption preserves native reference",native->GetAdapterCount()>0);
-    if(!ok("wrap_factory",x3m::ownership::wrap_factory(native,&wrapped))){native->Release();return nullptr;}return wrapped;
+    // Step B locked-prefix bounds on: exercises the Lock/Unlock scan path (locked_prefix_case).
+    x3m::ownership::Options options{};options.locked_prefix_bounds=true;
+    if(!ok("wrap_factory",x3m::ownership::wrap_factory(native,&wrapped,options))){native->Release();return nullptr;}return wrapped;
 #else
     return native;
 #endif
@@ -153,6 +155,52 @@ static void swapchain_case(IDirect3DDevice9* device,D3DPRESENT_PARAMETERS pp){
     IDirect3DSwapChain9* additional=nullptr;if(ok("additional swapchain",device->CreateAdditionalSwapChain(&pp,&additional))){owner(additional,device);const UINT count=device->GetNumberOfSwapChains();std::printf("OBSERVE chains_with_additional=%u\n",count);IDirect3DSwapChain9* same=nullptr;const HRESULT enumerated=device->GetSwapChain(1,&same);std::printf("OBSERVE additional_enumeration=%08lx\n",enumerated);if(SUCCEEDED(enumerated))expect("additional chain canonical",same==additional);release(same);
         IDirect3DSurface9* back=nullptr;ok("additional backbuffer",additional->GetBackBuffer(0,D3DBACKBUFFER_TYPE_MONO,&back));if(back){IDirect3DSwapChain9* container=nullptr;ok("additional backbuffer container",back->GetContainer(IID_PPV_ARGS(&container)));expect("additional container canonical",container==additional);release(container);release(back);}release(additional);std::printf("OBSERVE chains_after_additional_release=%u\n",device->GetNumberOfSwapChains());}
 }
+#ifdef X3M_OWNERSHIP_WRAPPED
+// Step B locked-prefix bound (docs/architecture/screen-emission-region.md):
+// the ownership Lock/Unlock scan of a marked DISCARD-locked dynamic vertex
+// buffer with the bullet layout (FLOAT3 at 0, stride 24, 6144 x 24 bytes),
+// the record state machine (unmarked, marked, pending, nested, non-DISCARD,
+// NaN tail), erase at final Release and clear at Reset.
+static void locked_prefix_case(IDirect3DDevice9* device,D3DPRESENT_PARAMETERS pp){
+    using namespace x3m::ownership;
+    constexpr UINT bytes=147456;
+    auto write=[&](IDirect3DVertexBuffer9* vb,unsigned quads,float tail,DWORD flags){
+        void* data=nullptr;if(!ok("prefix lock",vb->Lock(0,bytes,&data,flags)))return;
+        float* words=static_cast<float*>(data);for(unsigned n=0;n<bytes/4;++n)words[n]=tail;
+        for(unsigned q=0;q<quads;++q)for(unsigned k=0;k<6;++k){float* v=words+(q*6+k)*6;v[0]=float(q)*.01f+((k&1)?.5f:-.5f);v[1]=(k>>1)?.25f:-.25f;v[2]=1+float(q)*.001f;}
+        ok("prefix unlock",vb->Unlock());};
+    auto view=[&](IDirect3DVertexBuffer9* vb,UINT count,bool mark){LockedPrefixView v{};const HRESULT hr=get_locked_prefix_view(vb,count,mark,&v);
+        // PREFIX, not OBSERVE: wrapped-only, so no baseline counterpart to compare.
+        std::printf("PREFIX view count=%u mark=%u hr=%08lx requested=%u known=%u reason=%u checkpoint=%lu revision=%llu\n",count,mark,hr,v.requested,v.known,v.reason,static_cast<unsigned long>(v.checkpoint),static_cast<unsigned long long>(v.revision));
+        expect("prefix view recognised",SUCCEEDED(hr)&&v.requested);return v;};
+    auto used=[]{LockedPrefixStatistics s{};get_locked_prefix_statistics(&s);return s.used;};
+    IDirect3DVertexBuffer9* vb=nullptr;if(!ok("prefix dynamic buffer",device->CreateVertexBuffer(bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&vb,nullptr)))return;
+    const unsigned used0=used();
+    expect("unmarked buffer unknown",view(vb,102,false).reason==1);
+    write(vb,17,0.f,D3DLOCK_DISCARD);
+    expect("unmarked lock not recorded",view(vb,102,false).reason==1&&used()==used0);
+    expect("first draw marks and is refused",view(vb,102,true).reason==1&&used()==used0+1);
+    write(vb,17,0.f,D3DLOCK_DISCARD);
+    LockedPrefixView v=view(vb,102,true);expect("scanned prefix bound",v.known&&v.checkpoint==1&&v.revision==1);
+    expect("covering box holds the quads and the zero tail",v.centre[0]-v.half[0]<=-.5&&v.centre[0]+v.half[0]>=.66-1e-5&&v.centre[1]-v.half[1]<=-.25&&v.centre[1]+v.half[1]>=.25&&v.centre[2]-v.half[2]<=0&&v.centre[2]+v.half[2]>=1.016-1e-4);
+    v=view(vb,96,true);expect("exact checkpoint excludes the tail",v.known&&v.checkpoint==0&&v.centre[2]-v.half[2]>=1-1e-6);
+    expect("draw past the scan refused",view(vb,6145,true).reason==5);
+    void* outer=nullptr;ok("prefix outer lock",vb->Lock(0,bytes,&outer,D3DLOCK_DISCARD));expect("locked buffer pending",view(vb,102,true).reason==2);
+    void* inner=nullptr;ok("prefix nested lock",vb->Lock(0,bytes,&inner,D3DLOCK_DISCARD));expect("nested lock invalid",view(vb,102,true).reason==3);
+    ok("prefix nested unlock",vb->Unlock());ok("prefix outer unlock",vb->Unlock());expect("nested lock stays invalid",view(vb,102,true).reason==3);
+    write(vb,17,0.f,0);expect("non-DISCARD lock invalid",view(vb,102,true).reason==3);
+    write(vb,17,__builtin_nanf(""),D3DLOCK_DISCARD);expect("NaN tail inside the covering checkpoint refused",view(vb,102,true).reason==6&&view(vb,96,true).known);
+    write(vb,17,0.f,D3DLOCK_DISCARD);v=view(vb,102,true);expect("relearned after every lock advanced the revision",v.known&&v.revision==6);
+    release(vb);expect("final release erases the record",used()==used0);
+    IDirect3DVertexBuffer9* sys=nullptr;if(!ok("prefix systemmem buffer",device->CreateVertexBuffer(bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_SYSTEMMEM,&sys,nullptr)))return;
+    view(sys,102,true);write(sys,17,0.f,D3DLOCK_DISCARD);expect("systemmem prefix bound before reset",view(sys,102,false).known&&used()==used0+1);
+    ok("prefix reset",device->Reset(&pp));
+    expect("reset clears the records",used()==0&&view(sys,102,false).reason==1);
+    write(sys,17,0.f,D3DLOCK_DISCARD);expect("after reset a lock without a mark is ignored",view(sys,102,false).reason==1&&used()==0);
+    view(sys,102,true);write(sys,17,0.f,D3DLOCK_DISCARD);expect("relearned after reset",view(sys,102,false).known);
+    release(sys);expect("systemmem release erases the record",used()==0);
+}
+#endif
 static void reset_case(IDirect3DDevice9* device,D3DPRESENT_PARAMETERS pp){
 #ifdef X3M_OWNERSHIP_WRAPPED
     unsigned before=renderer_destroyed;attach_history(device);
@@ -185,6 +233,9 @@ int main(){
         std::printf("ITERATION %u\n",iteration);IDirect3DDevice9* device=nullptr;if(!ok("create device",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|(iteration?D3DCREATE_PUREDEVICE:0),&pp,&device)))break;
         identity(device,"device identity");IDirect3D9* parent=nullptr;ok("device GetDirect3D",device->GetDirect3D(&parent));expect("canonical factory parent",parent==api);release(parent);
         texture_case(device);buffer_shader_case(device);surface_case(device);failure_output_case(device);query_case(device);container_case(device);swapchain_case(device,pp);reset_case(device,pp);
+#ifdef X3M_OWNERSHIP_WRAPPED
+        locked_prefix_case(device,pp);
+#endif
         const unsigned backend_before_final=backend_destroyed;mark_backend_lifetime(device);expect("implicit backbuffer marker survives released caller reference",backend_destroyed==backend_before_final);
 #ifdef X3M_OWNERSHIP_WRAPPED
         renderer_seam(device);const unsigned history_before_final=renderer_destroyed;attach_history(device);

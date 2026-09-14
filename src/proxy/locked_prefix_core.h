@@ -100,7 +100,7 @@ inline Cover cover(const Scan& s, std::uint32_t vertex_count, Box* box, std::uin
 // Why a lookup gave no bound; Bound == 0 as everywhere in the region code.
 enum class Lookup : unsigned {
     Bound = 0,
-    Unknown = 1,    // no entry for this buffer (never DISCARD-locked, erased or evicted)
+    Unknown = 1,    // no scan for this buffer (unmarked, marked but not locked since, erased, evicted or cleared)
     Pending = 2,    // locked now, or locked again since the last publication
     Invalid = 3,    // the last lock was not scanned (non-DISCARD, size unknown, thread mismatch, failed Unlock, ProcessVertices)
     Empty = 4, Beyond = 5, NonFinite = 6, // cover() outcomes on the published scan
@@ -112,26 +112,39 @@ inline const char* lookup_name(Lookup l) noexcept {
     return i < unsigned(Lookup::Count) ? names[i] : "invalid";
 }
 
-// Fixed table of per-buffer lock records keyed by an opaque identity (the
-// ownership node). Every Lock of a buffer starts a new revision; only a
-// DISCARD lock with a known window can be published at its Unlock. A full
-// table evicts the oldest record by lock stamp (bullet batches are a handful
-// of buffers per frame; the capacity is a bound, not a budget).
+// Fixed table of per-buffer records keyed by an opaque identity (the
+// ownership node). Only a marked buffer (one an admitted screen-emission draw
+// has been seen from, marked at that draw) is ever scanned, so the first draw
+// after creation is refused by design and unrelated DISCARD locks cost
+// nothing. State machine per record: Marked (no scan yet) -> Pending (locked)
+// -> Published (scanned at Unlock) | Invalid (non-DISCARD or nested lock,
+// unknown window, thread mismatch, failed Unlock, ProcessVertices); every Lock
+// advances the revision. A full table evicts the oldest record by stamp
+// (bullet batches are a handful of buffers per frame; the capacity is a
+// bound, not a budget).
 class Table {
 public:
     static constexpr unsigned capacity = 16;
-    enum class State : unsigned char { Free = 0, Pending, Published, Invalid };
-    // A successful Lock. scannable: DISCARD with a known window (mapping,
-    // length) on this thread; otherwise the record turns Invalid until the
-    // next lock. Returns the new revision.
+    enum class State : unsigned char { Free = 0, Marked, Pending, Published, Invalid };
+    // Learned at the draw: the next DISCARD Unlock of this buffer is scanned.
+    // Idempotent; an existing record keeps its state.
+    void mark(std::uintptr_t key) noexcept {
+        if (find(key)) return;
+        Entry* e = slot_for(key);
+        e->key = key; e->stamp = ++clock_; e->state = State::Marked;
+    }
+    // A successful Lock of a marked buffer (unmarked buffers are ignored:
+    // returns 0). scannable: DISCARD with a known window (mapping, length) on
+    // this thread; a nested lock or an unscannable one turns the record
+    // Invalid until the next fresh lock. Returns the new revision.
     std::uint64_t begin_lock(std::uintptr_t key, bool scannable, const void* mapping, std::size_t length, std::uint32_t thread) noexcept {
         Entry* e = find(key);
-        if (!e) e = slot_for(key);
-        const std::uint64_t revision = e->key == key && e->state != State::Free ? e->revision + 1 : 1;
-        e->key = key; e->revision = revision; e->stamp = ++clock_;
-        e->mapping = scannable ? mapping : nullptr; e->length = scannable ? length : 0; e->thread = thread;
-        e->state = scannable && mapping && length ? State::Pending : State::Invalid;
-        return revision;
+        if (!e) return 0;
+        const bool nested = e->state == State::Pending;
+        e->revision += 1; e->stamp = ++clock_;
+        e->mapping = scannable && !nested ? mapping : nullptr; e->length = scannable && !nested ? length : 0; e->thread = thread;
+        e->state = !nested && scannable && mapping && length ? State::Pending : State::Invalid;
+        return e->revision;
     }
     // Before the backend Unlock while the mapping is valid: scans a pending
     // record on its own thread and publishes it. Returns the vertices scanned
@@ -147,6 +160,7 @@ public:
     }
     // A failed Unlock, ProcessVertices into the buffer, or any doubt.
     void invalidate(std::uintptr_t key) noexcept { if (Entry* e = find(key)) e->state = State::Invalid; }
+    bool marked(std::uintptr_t key) const noexcept { return find(key) != nullptr; }
     // The buffer is gone; its identity may recur for a new allocation.
     void erase(std::uintptr_t key) noexcept { if (Entry* e = find(key)) *e = Entry{}; }
     void clear() noexcept { for (auto& e : entries_) e = Entry{}; }
@@ -154,7 +168,7 @@ public:
     // allocation, no scan. revision reports the record's revision when present.
     Lookup lookup(std::uintptr_t key, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint) const noexcept {
         const Entry* e = find(key);
-        if (!e) return Lookup::Unknown;
+        if (!e || e->state == State::Marked) return Lookup::Unknown;
         if (revision) *revision = e->revision;
         if (e->state == State::Pending) return Lookup::Pending;
         if (e->state != State::Published) return Lookup::Invalid;

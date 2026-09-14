@@ -82,7 +82,7 @@ def main():
             endings = [line for line in trace.splitlines() if line.startswith('OWNERSHIP RESULT ')]
             end = (re.fullmatch(r'OWNERSHIP RESULT checks=(\d+) failures=0', terminal)
                    if endings == [terminal] else None)
-            expected_checks = {'baseline': 370, 'wrapped': 431}[mode]
+            expected_checks = {'baseline': 370, 'wrapped': 553}[mode]  # wrapped: +61 per iteration for locked_prefix_case
             check_lines = [line for line in trace.splitlines() if line.startswith('CHECK ')]
             valid_end = (end and int(end[1]) == expected_checks == len(check_lines) and
                          all(line.endswith(' PASS') for line in check_lines))
@@ -93,7 +93,7 @@ def main():
                                       for mode in ('baseline', 'wrapped')}
         if manifest['sources'] != before or manifest['binaries_after'] != binaries:
             raise RuntimeError('Ownership inputs changed during verification')
-        manifest['source_sha256'] = manifest['sources']['src/ownership/d3d9_ownership.cpp', 'src/ownership/application_admission.h', 'src/ownership/application_admission.cpp', 'src/ownership/application_admission_abi.h', 'src/ownership/application_admission_abi.cpp']
+        manifest['source_sha256'] = manifest['sources']['src/ownership/d3d9_ownership.cpp']
         manifest.update(passed=True, phase='complete')
     except (Exception, KeyboardInterrupt) as error:
         manifest.update(passed=False, phase='failed', error=repr(error))

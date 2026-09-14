@@ -161,23 +161,37 @@ or bound to read instead.
 
 ## Step B — implemented (2026-09-14)
 
-No game hook. `src/proxy/locked_prefix_core.h` (header-only, host-testable): at a
-vertex buffer's Unlock the ownership layer (`X3M_SCREEN_EMISSION_BOUND=1`, default off,
-`Options::locked_prefix_bounds`) scans the mapped window of a `D3DLOCK_DISCARD` lock from
-offset 0 with an explicit size once under MFENCE, as `POSITION FLOAT3` at 0, stride 24, at
-most 6144 vertices, into 64 cumulative checkpoints: checkpoint k holds the min/max over
-vertices [0, 96(k+1)) and the first checkpoint whose prefix holds NaN, ±inf or |c| > 2^24
-(`world_limit`). Records are keyed by the buffer node in a 16-entry fixed table (no
-allocation); every Lock starts a new revision (Pending), a non-DISCARD lock, thread
-mismatch, failed Unlock or ProcessVertices invalidates, release erases, Reset clears. At a
-draw `MotionOutput::derive_prefix_region` (non-indexed TRIANGLELIST, StartVertex 0, stream 0
-stride 24, declaration POSITION FLOAT3 at 0; the declaration is checked at the draw because
-the buffer is not yet bound at its Unlock) takes checkpoint ⌈primCount·3/96⌉−1, a superset
-with at most 95 stale vertices, through `resolve_locked_prefix` (`BoundSource::LockedPrefix`)
-and `derive` with the c0–3 rows and jitter; `prefix_region.bound == false` means refuse to
-native in step C, never the full viewport. SizeToLock 0 is not scanned (the writer passes
-the size). Cost: 6144-vertex scan 23 µs mean / 26 µs max per lock under FEX
-(`screen-emission-bound-gpu1.json`), ≈20 µs native host; per draw one registry find and a
-table probe. Evidence: host `--prefix` (37 scenario lines, 300 random superset cases, 0
-failures), detached fixture 13 cases (11 bound, 2 refused, 148 M pixels, 0 violations,
-after-Reset relearn), x87 audit PASS on the built DLL. Nothing consumes the rectangle yet.
+No game hook. `src/proxy/locked_prefix_core.h` (header-only, host-testable) holds a
+16-entry fixed table of per-buffer records (no allocation) with the state machine
+Marked → Pending → Published | Invalid. A record exists only for a buffer an admitted
+screen-emission draw has been seen from: `MotionOutput::derive_prefix_region` (vertex
+shader in `screen_emission_admission.h`, today the bullet VS `5e484a06672e28fb`, the table
+step C's admission shares; non-indexed TRIANGLELIST, StartVertex 0, stream 0 stride 24,
+declaration POSITION FLOAT3 at 0, stream-0 frequency 1 by one documented
+`GetStreamSourceFreq`, else refused) marks the stream-0 buffer through the lookup, so the
+first draw after creation is refused by design and no other DISCARD lock is ever scanned
+(≈1 buffer per part batch per frame). At a marked buffer's Unlock the ownership layer
+(`X3M_SCREEN_EMISSION_BOUND=1`, default off, `Options::locked_prefix_bounds`) scans the
+mapped window of a `D3DLOCK_DISCARD` lock from offset 0 with an explicit size once under
+MFENCE as FLOAT3 at 0, stride 24, at most 6144 vertices, into 64 cumulative checkpoints:
+checkpoint k holds the min/max over vertices [0, 96(k+1)) and the first checkpoint whose
+prefix holds NaN, ±inf or |c| > 2^24 (`world_limit`). Every Lock advances the revision
+(Pending); a nested or non-DISCARD lock, SizeToLock 0, thread mismatch, failed Unlock or
+ProcessVertices makes it Invalid; final Release erases, Reset clears (both gated by the
+option). At the draw checkpoint ⌈primCount·3/96⌉−1 (a superset with at most 95 stale
+vertices; a draw past the scanned vertices or 6144 is `Cover::Beyond`, refused) goes through
+`resolve_locked_prefix` (`BoundSource::LockedPrefix`) and `derive` with the c0–3 rows;
+`route.jittered` is false for the unmodified bullet shaders, so the box is projected without
+jitter until step C decides whether the packed producer jitters. `prefix_region.bound ==
+false` means refuse to native in step C, never the full viewport; the derivation's ticks go
+to `route.ticks`. Cost: 6144-vertex scan 23 µs mean / 26 µs max per lock under FEX
+(`screen-emission-bound-gpu1.json`; `screen-emission-bound-live1.json` through the proxy
+DLL); the ≈20 µs host figure is a cached-memory host CPU number. Native D3D9 maps dynamic
+buffers write-combined, where reads are far slower: that cost is unmeasured and bounded by
+the allowlist, not by the scan. Evidence: host `--prefix` (42 scenario lines, 300 random
+superset cases, 0 failures); detached fixture 13 cases (11 bound, 2 refused, 0 violations,
+after-Reset relearn); `ownership_wrapped.exe` 553 checks (61 per device iteration on the
+Lock/Unlock path: unmarked ignored, mark, scan, nested, non-DISCARD, NaN tail, erase at
+Release, clear at Reset); proxy-loaded `run_locked_prefix_live.py` 13 frames under the game
+bullet VS/PS (8 bound, 5 refused); x87 audit PASS (`check_no_x87.py`, 224 reachable
+functions, no violation; the scan is integer/SSE scalar). Nothing consumes the rectangle yet.

@@ -586,8 +586,8 @@ ULONG release(Node* node, ApplicationAdmissionAbi& admission) {
         if (remaining) return remaining;
         application_nodes.erase(node->application);
         native_nodes.erase(node->identity);
-        if (node->kind == Kind::VertexBuffer) prefix_table.erase(reinterpret_cast<std::uintptr_t>(node));
-        if (node->kind == Kind::Device) { static_cast<Device*>(node)->retiring = true; prefix_table.clear(); }
+        if (node->kind == Kind::VertexBuffer && device_of(node)->options.locked_prefix_bounds) prefix_table.erase(reinterpret_cast<std::uintptr_t>(node));
+        if (node->kind == Kind::Device) { static_cast<Device*>(node)->retiring = true; if (static_cast<Device*>(node)->options.locked_prefix_bounds) prefix_table.clear(); }
     }
     // Parent remains logically alive until backend destruction has completed.
     // A child native Release may internally release its native device.
@@ -870,14 +870,14 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
     ExecutionState outgoing;
     observe_result(device,hr);
     if (SUCCEEDED(hr)&&node->kind==Kind::VertexBuffer&&device->options.locked_prefix_bounds) {
-        // Every successful lock starts a new revision; only a DISCARD lock of
-        // an explicit window from offset 0 (the observed writer passes the byte
-        // size) is scannable at its Unlock. SizeToLock 0 (whole buffer) would
-        // need a native GetDesc per lock and is left unscanned.
+        // Every successful lock of a marked buffer starts a new revision; only
+        // a DISCARD lock of an explicit window from offset 0 (the observed
+        // writer passes the byte size) is scannable at its Unlock. SizeToLock 0
+        // (whole buffer) would need a native GetDesc per lock and is left
+        // unscanned. Unmarked buffers are ignored (no record, no scan).
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         const bool scannable=(flags&D3DLOCK_DISCARD)&&offset==0&&size!=0&&data&&*data;
-        prefix_table.begin_lock(reinterpret_cast<std::uintptr_t>(node),scannable,scannable?*data:nullptr,scannable?size:0,GetCurrentThreadId());
-        ++prefix_stats.locks;
+        if(prefix_table.begin_lock(reinterpret_cast<std::uintptr_t>(node),scannable,scannable?*data:nullptr,scannable?size:0,GetCurrentThreadId()))++prefix_stats.locks;
     }
     if (SUCCEEDED(hr)) {
         auto* resource=static_cast<IDirect3DResource9*>(node->backend);
@@ -1118,7 +1118,7 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
     return execution_call(node, [&] {
         node->execution.before_reset();
-        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; prefix_table.clear(); }
+        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; if (node->options.locked_prefix_bounds) prefix_table.clear(); }
         retire_geometry(node);
         retire_finite(node);
         retire_copy_depth(node, S_FALSE);
@@ -1466,7 +1466,7 @@ HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentVi
     return S_OK;
 }
 
-HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, LockedPrefixView* out) noexcept {
+HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, bool mark, LockedPrefixView* out) noexcept {
     if (!out) return E_POINTER;
     *out = {};
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);
@@ -1476,8 +1476,10 @@ HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t ve
     out->requested = device_of(node)->options.locked_prefix_bounds;
     if (!out->requested) return S_OK;
     ++prefix_stats.lookups;
+    const auto key = reinterpret_cast<std::uintptr_t>(node);
+    if (mark && !prefix_table.marked(key)) { prefix_table.mark(key); ++prefix_stats.marks; }
     fade_region::Box box{};
-    const auto reason = prefix_table.lookup(reinterpret_cast<std::uintptr_t>(node), vertex_count, &box, &out->revision, &out->checkpoint);
+    const auto reason = prefix_table.lookup(key, vertex_count, &box, &out->revision, &out->checkpoint);
     out->reason = unsigned(reason);
     out->known = reason == fade_region::prefix::Lookup::Bound;
     out->status = out->known ? S_OK : S_FALSE;

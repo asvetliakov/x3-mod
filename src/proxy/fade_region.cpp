@@ -28,7 +28,8 @@ bool content(std::uintptr_t wrapper, std::uint64_t* revision) noexcept {
 // published scan's box (prefix::Table::lookup) or its refusal.
 bool prefix_bound(std::uintptr_t wrapper, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint, unsigned* refusal) noexcept {
     ownership::LockedPrefixView view{};
-    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(wrapper), vertex_count, &view);
+    // An admitted draw marks its buffer: the next DISCARD Unlock is scanned.
+    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(wrapper), vertex_count, true, &view);
     *refusal = view.reason; *revision = view.revision; *checkpoint = view.checkpoint;
     if (FAILED(hr) || !view.requested || !view.known) return false;
     for (unsigned a = 0; a < 3; ++a) { box->centre[a] = view.centre[a]; box->half[a] = view.half[a]; }

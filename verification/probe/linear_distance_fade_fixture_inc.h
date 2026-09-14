@@ -1256,6 +1256,11 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         void *data = nullptr;
         api(bullets->Lock(0, unsigned(prefix::max_bytes), &data, D3DLOCK_DISCARD));
         const auto key = reinterpret_cast<std::uintptr_t>(bullets.p);
+        // The draw side marks the buffer first (an admitted draw's lookup);
+        // an unmarked lock is ignored and a mark alone is no bound.
+        require(prefix_table.begin_lock(key, true, data, prefix::max_bytes, GetCurrentThreadId()) == 0, "unmarked lock ignored");
+        prefix_table.mark(key);
+        require(prefix_table.lookup(key, 6, nullptr, nullptr, nullptr) == prefix::Lookup::Unknown, "mark alone is no bound");
         const std::uint64_t revision = prefix_table.begin_lock(key, true, data, prefix::max_bytes, GetCurrentThreadId());
         ++lock_sequence;
         {

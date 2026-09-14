@@ -30,7 +30,7 @@ def verify():
         endings=[line for line in trace.splitlines() if line.startswith('OWNERSHIP RESULT ')]
         end=re.fullmatch(r'OWNERSHIP RESULT checks=(\d+) failures=(\d+)',terminal) if endings==[terminal] else None
         check_lines=[line for line in trace.splitlines() if line.startswith('CHECK ')]
-        assert end and int(end[2])==0 and int(end[1])==len(check_lines)=={'baseline':370,'wrapped':431}[mode],mode+' incomplete check inventory'
+        assert end and int(end[2])==0 and int(end[1])==len(check_lines)=={'baseline':370,'wrapped':553}[mode],mode+' incomplete check inventory'
         assert all(line.endswith(' PASS') for line in check_lines),mode+' nonpassing check'
         summary[mode]={'checks':int(end[1]),'failures':int(end[2])}
     # These are actual backend contracts, including Preview's additional chain
@@ -42,7 +42,8 @@ def verify():
     base_results=Counter(line for line in reports['baseline'].splitlines() if line.startswith('RESULT '))
     wrapped_results=Counter(line for line in reports['wrapped'].splitlines() if line.startswith('RESULT '))
     assert not (base_results-wrapped_results),'Wrapper changed API HRESULT outcomes'
-    required=['renderer history released before failed reset','renderer history released before successful reset','renderer history destroyed at final logical device release','renderer history lives while public child retains device','application wrapper rejected as renderer resource','failed factory adoption preserves native reference','native backend destroyed after final logical device release','Ex factory rejected at ownership boundary']
+    required=['scanned prefix bound','nested lock stays invalid','final release erases the record','reset clears the records','relearned after reset',
+              'renderer history released before failed reset','renderer history released before successful reset','renderer history destroyed at final logical device release','renderer history lives while public child retains device','application wrapper rejected as renderer resource','failed factory adoption preserves native reference','native backend destroyed after final logical device release','Ex factory rejected at ownership boundary']
     for name in required:assert f'CHECK {name} PASS' in reports['wrapped'],name
     summary.update(result='PASS',backend_observations_equal=True,shared_hresult_outcomes_equal=True,limits=['Canonical identity checked while references overlap; an external-zero wrapper may be re-created.','No application or native refcount magnitude used as a production ownership rule.','Synthetic single-threaded fixture only; not integrated with installed game proxy.'])
     (results/'ownership-verification.json').write_text(json.dumps(summary,indent=2)+'\n')
