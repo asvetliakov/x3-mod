@@ -16,6 +16,7 @@
 #include "../renderer/hdr_writeback_program.h"
 #include "../renderer/quad_vertex_program.h"
 #include "../renderer/hdr_pass.h"
+#include "../ownership/d3d9_ownership.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -1444,6 +1445,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     HRESULT format_result = S_OK, depth_format_result = S_OK, taa_format_result = S_OK, stretch_query = S_OK;
     quad_fvf_ = renderer::quad_fvf_requested();
     taa_copy_draw_ = false; std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "off");
+    { char setting[8]{}; screen_emission_bound_ = GetEnvironmentVariableA("X3M_SCREEN_EMISSION_BOUND", setting, sizeof setting) == 1 && setting[0] == '1'; }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { char setting[8]{}; fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
     {
@@ -2665,6 +2667,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     }
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
         mark_cutout_candidate(route);
+    if (screen_emission_bound_) derive_prefix_region(call, route);
     if (telemetry::draw_enabled()) {
         const std::uint64_t total = draw_stamp() - begin,
             excluded = route.ticks + (counters_.fill_ticks - fill_before) + (counters_.lazy_flush_ticks - flush_before);
@@ -3247,19 +3250,26 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 // Get, no float formatting (the per-draw line carries the fraction as an
 // integer per mille of the viewport area, or of the target area when the
 // viewport is unknown).
-fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only) noexcept {
+fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only,
+                                                 fade_region::BoundSource source, std::uint32_t vertex_count) noexcept {
     using namespace fade_region;
     const Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity};
     // The admitted route learns (resolve); the capture-only diagnostic only
     // peeks: the table's entries, stamps and counters are never touched by a
-    // draw the route did not admit.
-    bound = read_only ? fade_region::peek(fade_bounds_, query) : fade_region::resolve(fade_bounds_, query);
+    // draw the route did not admit. The locked-prefix source (step B) has no
+    // table here: one ownership lookup of the scan published at Unlock.
+    bound = source == BoundSource::LockedPrefix ? fade_region::resolve_locked_prefix(query, vertex_count)
+        : read_only ? fade_region::peek(fade_bounds_, query) : fade_region::resolve(fade_bounds_, query);
     const auto& v = shadow_.viewport;
     const Viewport viewport{v.x, v.y, v.known ? v.width : 0u, v.known ? v.height : 0u};
     const float* rows = nullptr;
     float jittered[16];
-    if (shadow_.vs_row) {
-        const std::size_t window = window_of(shadow_.vs_row->matrix_register);
+    // The rows the draw uses: the row's clip window for a part bound; c0-3
+    // for the locked prefix (the bullet VS transforms world positions through
+    // g_mViewProjection at c0-3 only, effects-engine-remaining-emission.md).
+    const bool rows_addressed = source == BoundSource::LockedPrefix || shadow_.vs_row;
+    if (rows_addressed) {
+        const std::size_t window = window_of(source == BoundSource::LockedPrefix ? 0u : shadow_.vs_row->matrix_register);
         if (window < motion_matrix_windows_max && shadow_.rows_known[window]) {
             std::memcpy(jittered, shadow_.rows[window], sizeof jittered);
             if (route.jittered && main_.width && main_.height) jitter_rows(jittered, jitter_[0], jitter_[1], main_.width, main_.height);
@@ -3270,7 +3280,7 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
     const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : 0u), std::int32_t(hdr_ ? hdr_->height() : 0u)};
     Region region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if (fixture_fade_rect_set_) { region.rect = fixture_fade_rect_; region.reason = Reason::Bound; region.bound = true; }
+    if (fixture_fade_rect_set_ && source == BoundSource::Part) { region.rect = fixture_fade_rect_; region.reason = Reason::Bound; region.bound = true; }
 #endif
     // Never beyond the owning target, on every path; empty -> 1x1 at its origin.
     region.rect = intersect(region.rect, target);
@@ -3322,6 +3332,45 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
             shadow_.stream0, shadow_.indices, bound.vb_revision, bound.ib_revision, route.jittered,
             long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target",
             fade_bounds_.used(), fade_bounds_.poisoned());
+}
+
+// Step B (screen-emission-region.md): a non-indexed TRIANGLELIST draw from
+// StartVertex 0 whose stream 0 is a stride-24 buffer with POSITION FLOAT3 at
+// offset 0 (the bullet writer's layout) gets the locked-prefix rectangle: the
+// scan the ownership layer published at the buffer's DISCARD Unlock, reduced
+// to the first checkpoint covering primCount*3 vertices, projected through
+// c0-3 as the fade route projects a part box. Every doubt (indexed, other
+// topology, StartVertex, unknown declaration or stride, no published scan,
+// lock since, nonfinite or absurd extrema, draw past the scan) leaves
+// prefix_region.bound false: such a draw is refused by step C, never given
+// the full viewport. Per qualifying draw: the shadow tests, one registry
+// find and fixed-table probe, eight corner projections; no allocation, no
+// device Get. Off (the default) costs one bool test per draw.
+void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute& route) noexcept {
+    using namespace fade_region;
+    if (call.indexed || call.user_memory || call.topology != D3DPT_TRIANGLELIST || call.first != 0 || !call.primitives) return;
+    if (!shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != prefix::stride || shadow_.stream0_offset != 0) return;
+    if (!shadow_.declaration || shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3) return;
+    auto& counts = composition_counts_;
+    ++counts.prefix_draws;
+    route.prefix_evaluated = true;
+    // primCount*3 without overflow: anything past the scan bound is refused.
+    const std::uint32_t vertex_count = call.primitives > prefix::max_vertices ? prefix::max_vertices + 1u : call.primitives * 3u;
+    Result bound{};
+    bool of_viewport = false;
+    unsigned permille = 0;
+    Region region = fade_rectangle(route, bound, of_viewport, permille, true, BoundSource::LockedPrefix, vertex_count);
+    if (!region.bound) region.rect = {0, 0, 0, 0}; // never the full viewport for this kind
+    route.prefix_region = region;
+    ++counts.prefix_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
+    ++counts.prefix_lookup[bound.prefix_refusal < unsigned(prefix::Lookup::Count) ? bound.prefix_refusal : 0u];
+    if (region.bound) { ++counts.prefix_bound; counts.prefix_permille_sum += permille; } else ++counts.prefix_refused;
+    if (capture_)
+        log("locked_prefix device=%llu frame=%llu index=%lu bound=%u reason=%u status=%s lookup=%s vb=%llu rev=%llu vertices=%lu checkpoint=%lu box=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s",
+            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), status_name(bound.status), prefix::lookup_name(prefix::Lookup(bound.prefix_refusal)),
+            shadow_.stream0, bound.vb_revision, static_cast<unsigned long>(vertex_count), static_cast<unsigned long>(bound.checkpoint),
+            bound.box.centre[0], bound.box.centre[1], bound.box.centre[2], bound.box.half[0], bound.box.half[1], bound.box.half[2],
+            long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target");
 }
 
 // Capture frames only. The draw was recognised (fade pair in the exact
@@ -4025,6 +4074,18 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 composition_counts_.region_reason[5], composition_counts_.region_reason[6], composition_counts_.region_status[1], composition_counts_.region_status[2], composition_counts_.region_status[3],
                 composition_counts_.region_status[4], composition_counts_.region_status[5], composition_counts_.region_status[6], composition_counts_.region_status[7], composition_counts_.region_status[8],
                 fade_bounds_.used(), fade_bounds_.poisoned(), fade_bounds_.evictions());
+        if (screen_emission_bound_ && composition_counts_.prefix_draws) {
+            const auto& pc = composition_counts_;
+            ownership::LockedPrefixStatistics s{};
+            ownership::get_locked_prefix_statistics(&s);
+            log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f lookups=%llu bounds=%llu table_used=%u table_evictions=%llu",
+                id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
+                pc.prefix_reason[1], pc.prefix_reason[2], pc.prefix_reason[3], pc.prefix_reason[4], pc.prefix_reason[5], pc.prefix_reason[6],
+                pc.prefix_lookup[1], pc.prefix_lookup[2], pc.prefix_lookup[3], pc.prefix_lookup[4], pc.prefix_lookup[5], pc.prefix_lookup[6],
+                static_cast<unsigned long long>(s.locks), static_cast<unsigned long long>(s.scans), static_cast<unsigned long long>(s.scanned_vertices),
+                s.qpc_frequency ? double(s.scan_ticks) * 1e6 / double(s.qpc_frequency) : 0.0,
+                static_cast<unsigned long long>(s.lookups), static_cast<unsigned long long>(s.bounds), s.used, static_cast<unsigned long long>(s.evictions));
+        }
         if (composition_requested())
             log("%s_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u recovery_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx last_recovery=%08lx",
                 distance_fade_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2], composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],

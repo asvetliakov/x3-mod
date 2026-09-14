@@ -96,6 +96,12 @@ struct MotionRoute {
     // Rectangle area per mille of its denominator, exactly the f_permille the
     // fade_region line reports; only meaningful with fade_region_evaluated.
     unsigned fade_region_permille = 0;
+    // Step B of docs/architecture/screen-emission-region.md: the locked-prefix
+    // rectangle of a non-indexed TRIANGLELIST draw from StartVertex 0 of a
+    // stride-24 FLOAT3 stream (X3M_SCREEN_EMISSION_BOUND=1). prefix_region.bound
+    // false means no bound: step C refuses such a draw, never the full viewport.
+    fade_region::Region prefix_region{};
+    bool prefix_evaluated = false;
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -712,7 +718,11 @@ private:
     // fill mode, clip to the owning target); the counters, witness and log
     // stay in derive_fade_region. Shared by the admitted route and the
     // capture-only refused-draw diagnostic.
-    fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only) noexcept;
+    fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only,
+                                       fade_region::BoundSource source = fade_region::BoundSource::Part, std::uint32_t vertex_count = 0) noexcept;
+    // Step B locked-prefix rectangle (screen-emission-region.md): counted and
+    // logged per draw in capture frames; nothing consumes it before step C.
+    void derive_prefix_region(const MotionDrawCall&, MotionRoute&) noexcept;
     // Shadowed application render state for the capture-only motion_route
     // line: the last value the shadow saw, or -1 when it is unknown. Reads no
     // device state, so a capture frame costs no extra GetRenderState.
@@ -868,7 +878,15 @@ private:
         unsigned region_reason[unsigned(fade_region::Reason::Count)]{};
         unsigned region_status[unsigned(fade_region::Status::Count)]{};
         std::uint64_t region_permille_sum = 0; // integer per-mille fractions; formatted only at the Present boundary
+        // Step B locked-prefix bounds: qualifying draws (non-indexed
+        // TRIANGLELIST, StartVertex 0, stride-24 FLOAT3 stream), those bound,
+        // the lookup outcome and the sum of bound area fractions.
+        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0;
+        unsigned prefix_reason[unsigned(fade_region::Reason::Count)]{};
+        unsigned prefix_lookup[unsigned(fade_region::prefix::Lookup::Count)]{};
+        std::uint64_t prefix_permille_sum = 0;
     } composition_counts_;
+    bool screen_emission_bound_ = false; // X3M_SCREEN_EMISSION_BOUND=1, read once at attach
     fade_region::BoundTable fade_bounds_; // reserved with the composition pass, dropped at Reset/teardown
     // Fade-region witness state: this frame's derived rectangles with their
     // prepared flag (the union takes prepared draws only; past the capacity

@@ -19,6 +19,7 @@ HMODULE backend;
 bool ownership_enabled = false;
 bool depth_copy_enabled = false;
 bool finite_positions_enabled = false;
+bool locked_prefix_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module);
@@ -33,6 +34,12 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     depth_copy_enabled = ownership_enabled && depth_requested;
     const bool finite_requested = GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS", setting, 8) == 1 && setting[0] == L'1';
     finite_positions_enabled = ownership_enabled && finite_requested;
+    // Step B locked-prefix bounds (screen-emission-region.md): the ownership
+    // Unlock scan; MotionOutput reads the same switch for the draw side.
+    const bool prefix_requested = GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1';
+    locked_prefix_enabled = ownership_enabled && prefix_requested;
+    if (prefix_requested)
+        x3m::log("screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0", locked_prefix_enabled);
     if (ownership_enabled || depth_requested)
         x3m::log("ownership_mode requested=%u depth_copy_requested=%u depth_copy_enabled=%u scope=normal9 fallback=native", ownership_enabled, depth_requested, depth_copy_enabled);
     if (finite_requested)
@@ -177,6 +184,7 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         options.capture_auto_depth = depth_copy_enabled;
         options.track_buffer_writes = x3m::object_trace::active() || finite_positions_enabled;
         options.capture_finite_positions = finite_positions_enabled;
+        options.locked_prefix_bounds = locked_prefix_enabled;
         // Live application-call admission is not yet serialized with replay.
         // Keep execution observation off until live replay consumes it. Its
         // synchronized snapshots do not provide write exclusion. Native

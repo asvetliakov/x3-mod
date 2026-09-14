@@ -9,8 +9,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+#include <chrono>
 #include <random>
 #include <string>
+#include <vector>
 
 using namespace x3m::fade_region;
 
@@ -147,7 +149,7 @@ void print(const char* label, const Result& r, const BoundTable& t) {
     reads = 0;
 }
 int run() {
-    const Environment env{&read_span, &scope, &content};
+    const Environment env{&read_span, &scope, &content, nullptr};
     const Query query{101, 202, vb, ib};
     BoundTable t;
     print("no_table", t.resolve(query, env), t);
@@ -210,13 +212,170 @@ int run() {
     return 0;
 }
 } // namespace table
+
+// --prefix: the locked-prefix scan, checkpoints, cover, table and the
+// resolve_locked_prefix binding (src/proxy/locked_prefix_core.h, step B of
+// screen-emission-region.md) on host memory. Every case prints one PREFIX
+// line; random cases prove the superset property (every drawn vertex inside
+// the covering box) with a garbage tail.
+namespace prefix_mode {
+using namespace x3m::fade_region::prefix;
+using x3m::fade_region::Box;
+constexpr unsigned quad = 6;
+std::vector<float> buffer(std::size_t vertices) { return std::vector<float>(vertices * stride / sizeof(float)); }
+void put(std::vector<float>& b, std::size_t i, float x, float y, float z) { b[i * 6] = x; b[i * 6 + 1] = y; b[i * 6 + 2] = z; }
+void print(const char* label, Lookup status, const Box& box, std::uint32_t checkpoint, std::uint64_t revision, const Table& t, unsigned extra = 0) {
+    std::printf("PREFIX %s status=%u name=%s box=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f checkpoint=%u revision=%llu used=%u evictions=%llu publications=%llu extra=%u\n",
+                label, unsigned(status), lookup_name(status), box.centre[0], box.centre[1], box.centre[2], box.half[0], box.half[1], box.half[2],
+                checkpoint, (unsigned long long)revision, t.used(), (unsigned long long)t.evictions(), (unsigned long long)t.publications(), extra);
+}
+Lookup look(const Table& t, std::uintptr_t key, std::uint32_t count, Box& box, std::uint32_t& checkpoint, std::uint64_t& revision) {
+    box = Box{}; checkpoint = 0; revision = 0;
+    return t.lookup(key, count, &box, &revision, &checkpoint);
+}
+// Fake production binding for resolve_locked_prefix: one published record.
+Table* env_table = nullptr;
+bool env_prefix(std::uintptr_t wrapper, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint, unsigned* refusal) noexcept {
+    const Lookup l = env_table->lookup(wrapper, vertex_count, box, revision, checkpoint);
+    *refusal = unsigned(l);
+    return l == Lookup::Bound;
+}
+int run(unsigned seed, unsigned cases) {
+    Table t; Box box{}; std::uint32_t cp = 0; std::uint64_t rev = 0;
+    // Checkpoint math: vertex i at (i, -i, 2i); 200 vertices -> 3 checkpoints.
+    auto b = buffer(200);
+    for (unsigned i = 0; i < 200; ++i) put(b, i, float(i), -float(i), 2.f * i);
+    print("math_unknown", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7);
+    print("math_pending", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    const std::uint32_t scanned = t.finish_lock(1, 7);
+    print("math_96", look(t, 1, 96, box, cp, rev), box, cp, rev, t, scanned);     // checkpoint 0: [0,96)
+    print("math_97", look(t, 1, 97, box, cp, rev), box, cp, rev, t);              // checkpoint 1: [0,192)
+    print("math_192", look(t, 1, 192, box, cp, rev), box, cp, rev, t);
+    print("math_193", look(t, 1, 193, box, cp, rev), box, cp, rev, t);            // checkpoint 2: [0,200)
+    print("math_200", look(t, 1, 200, box, cp, rev), box, cp, rev, t);
+    print("math_1", look(t, 1, 1, box, cp, rev), box, cp, rev, t);                // still checkpoint 0 (95 stale vertices)
+    print("empty", look(t, 1, 0, box, cp, rev), box, cp, rev, t);
+    print("beyond", look(t, 1, 201, box, cp, rev), box, cp, rev, t);
+    print("beyond_max", look(t, 1, max_vertices + 1, box, cp, rev), box, cp, rev, t);
+    // Revision: a second lock makes the record pending (revision 2); a
+    // failed Unlock invalidates; a non-DISCARD lock is invalid outright.
+    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7);
+    print("relock_pending", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    t.finish_lock(1, 7); t.invalidate(1);
+    print("unlock_failed", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    t.begin_lock(1, false, nullptr, 0, 7); t.finish_lock(1, 7);
+    print("non_discard", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7);
+    print("thread_mismatch", (t.finish_lock(1, 8), look(t, 1, 96, box, cp, rev)), box, cp, rev, t);
+    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7); t.finish_lock(1, 7);
+    print("relearned", look(t, 1, 200, box, cp, rev), box, cp, rev, t);
+    t.erase(1);
+    print("erased", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    // Stale tail: 100 valid vertices in [-1, 1], garbage from 100 on.
+    auto g = buffer(300);
+    auto fill = [&](float tail) { for (unsigned i = 0; i < 300; ++i) { const float v = i < 100 ? (i % 2 ? 1.f : -1.f) : tail; put(g, i, v, v, v); } };
+    const auto publish = [&](std::uintptr_t key) { t.begin_lock(key, true, g.data(), g.size() * sizeof(float), 7); t.finish_lock(key, 7); };
+    fill(std::numeric_limits<float>::quiet_NaN()); publish(2);
+    print("tail_nan_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);        // checkpoint 1 holds NaN: refused
+    print("tail_nan_96", look(t, 2, 96, box, cp, rev), box, cp, rev, t);          // checkpoint 0 clean: bound
+    for (unsigned i = 100; i < 192; ++i) put(g, i, 0, 0, 0); publish(2);
+    print("tail_nan_beyond", look(t, 2, 100, box, cp, rev), box, cp, rev, t);     // NaN only from 192: bound
+    fill(std::numeric_limits<float>::infinity()); publish(2);
+    print("tail_inf_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);
+    fill(1e30f); publish(2);
+    print("tail_absurd_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);     // beyond world_limit: refused
+    fill(world_limit); publish(2);
+    print("tail_limit_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);      // exactly the limit: bound, larger box
+    fill(1e6f); publish(2);
+    print("tail_huge_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);       // finite garbage: larger box
+    print("tail_huge_96", look(t, 2, 96, box, cp, rev), box, cp, rev, t);         // exact prefix: tight box
+    // A NaN inside the valid prefix is refused whatever the count.
+    fill(0); put(g, 5, std::numeric_limits<float>::quiet_NaN(), 0, 0); publish(2);
+    print("prefix_nan", look(t, 2, 96, box, cp, rev), box, cp, rev, t);
+    // Partial trailing vertex: 10 vertices plus 7 bytes scan as 10.
+    Scan partial{};
+    print("length_partial", Lookup(scan(g.data(), 10 * stride + 7, &partial)), box, partial.vertices, partial.blocks, t);
+    Scan capped{};
+    auto big = buffer(max_vertices + 10);
+    print("length_capped", Lookup(scan(big.data(), big.size() * sizeof(float), &capped)), box, capped.vertices, capped.blocks, t);
+    // Eviction: capacity + 1 distinct keys; the oldest (key 100) goes.
+    Table e;
+    for (unsigned k = 0; k <= Table::capacity; ++k) { e.begin_lock(100 + k, true, b.data(), b.size() * sizeof(float), 7); e.finish_lock(100 + k, 7); }
+    print("evicted_oldest", look(e, 100, 96, box, cp, rev), box, cp, rev, e);
+    print("evicted_kept", look(e, 101, 96, box, cp, rev), box, cp, rev, e);
+    e.clear();
+    print("cleared", look(e, 101, 96, box, cp, rev), box, cp, rev, e);
+    // resolve_locked_prefix through the Environment binding.
+    Table r; r.begin_lock(0xd000, true, b.data(), b.size() * sizeof(float), 7); r.finish_lock(0xd000, 7); env_table = &r;
+    const x3m::fade_region::Environment env{&table::read_span, &table::scope, &table::content, &env_prefix};
+    const x3m::fade_region::Environment no_prefix{&table::read_span, &table::scope, &table::content, nullptr};
+    auto res = [&](const char* label, const x3m::fade_region::Result& out) {
+        std::printf("RESOLVE %s status=%u name=%s source=%u bound=%u refusal=%u checkpoint=%u revision=%llu box=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n", label, unsigned(out.status),
+                    x3m::fade_region::status_name(out.status), unsigned(out.source), out.status == x3m::fade_region::Status::Bound, out.prefix_refusal, out.checkpoint,
+                    (unsigned long long)out.vb_revision, out.box.centre[0], out.box.centre[1], out.box.centre[2], out.box.half[0], out.box.half[1], out.box.half[2]);
+    };
+    res("bound", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd000, 0}, 200, env));
+    res("no_vb", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{0, 0, 0, 0}, 200, env));
+    res("zero_count", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd000, 0}, 0, env));
+    res("no_binding", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd000, 0}, 200, no_prefix));
+    res("unknown_buffer", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd001, 0}, 200, env));
+    res("beyond", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd000, 0}, 201, env));
+    // Random superset cases: N quads (6 vertices each) inside a random box,
+    // finite garbage tail; the covering box contains every drawn vertex and
+    // equals the true extent exactly when N*6 is a multiple of 96.
+    std::mt19937_64 rng(seed);
+    std::uniform_real_distribution<double> unit(0, 1);
+    unsigned failures = 0, exact = 0, larger = 0;
+    auto v = buffer(max_vertices);
+    for (unsigned c = 0; c < cases; ++c) {
+        const unsigned quads = 1 + unsigned(unit(rng) * (max_vertices / quad));
+        const unsigned count = quads * quad;
+        double centre[3], half[3];
+        for (unsigned a = 0; a < 3; ++a) { centre[a] = unit(rng) * 2000 - 1000; half[a] = unit(rng) * 100; }
+        const float tail = float(unit(rng) * 4000 - 2000);
+        for (unsigned i = 0; i < max_vertices; ++i) put(v, i, tail, -tail, tail * .5f);
+        float lo[3] = {3e38f, 3e38f, 3e38f}, hi[3] = {-3e38f, -3e38f, -3e38f};
+        for (unsigned i = 0; i < count; ++i) {
+            float p[3];
+            for (unsigned a = 0; a < 3; ++a) { p[a] = float(centre[a] + (unit(rng) * 2 - 1) * half[a]); lo[a] = p[a] < lo[a] ? p[a] : lo[a]; hi[a] = p[a] > hi[a] ? p[a] : hi[a]; }
+            put(v, i, p[0], p[1], p[2]);
+        }
+        Table s; s.begin_lock(9, true, v.data(), v.size() * sizeof(float), 1); s.finish_lock(9, 1);
+        const Lookup l = look(s, 9, count, box, cp, rev);
+        bool ok = l == Lookup::Bound && cp == (count + interval - 1) / interval - 1;
+        bool tight = true;
+        for (unsigned a = 0; a < 3 && ok; ++a) {
+            const double bl = box.centre[a] - box.half[a], bh = box.centre[a] + box.half[a];
+            ok = bl <= lo[a] && bh >= hi[a];
+            tight = tight && bl == double(lo[a]) && bh == double(hi[a]);
+        }
+        for (unsigned i = 0; i < count && ok; ++i)
+            for (unsigned a = 0; a < 3; ++a) { const double x = v[i * 6 + a]; ok = ok && x >= box.centre[a] - box.half[a] && x <= box.centre[a] + box.half[a]; }
+        if (!ok) ++failures;
+        else if (tight) ++exact; else ++larger;
+        if (count % interval == 0 && !tight) ++failures; // a whole number of checkpoints has no stale vertex
+    }
+    // Scan cost on this host: the full 6144-vertex window.
+    Scan timing{};
+    volatile float sink = 0;
+    const auto begin = std::chrono::steady_clock::now();
+    constexpr unsigned iterations = 2000;
+    for (unsigned i = 0; i < iterations; ++i) { v[i % 6] = float(i); scan(v.data(), v.size() * sizeof(float), &timing); sink = sink + timing.at[63].hi[0]; }
+    const double ns = double(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - begin).count()) / iterations;
+    std::printf("PREFIX_RANDOM cases=%u failures=%u exact=%u larger=%u scan_ns=%.0f vertices=%u\n", cases, failures, exact, larger, ns, timing.vertices);
+    return failures ? 1 : 0;
+}
+} // namespace prefix_mode
 } // namespace
 
 int main(int argc, char** argv) {
     if (argc >= 2 && std::strcmp(argv[1], "--table") == 0) return table::run();
+    if (argc >= 4 && std::strcmp(argv[1], "--prefix") == 0)
+        return prefix_mode::run(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)));
     if (argc >= 5 && std::strcmp(argv[1], "--random") == 0)
         return random_mode(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
     if (argc >= 2 && std::strcmp(argv[1], "--case") == 0) return case_mode(argc, argv);
-    std::fprintf(stderr, "usage: --random seed cases points | --case ...\n");
+    std::fprintf(stderr, "usage: --random seed cases points | --case ... | --table | --prefix seed cases\n");
     return 2;
 }

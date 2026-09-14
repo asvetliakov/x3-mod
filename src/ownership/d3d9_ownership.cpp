@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstring>
 #include "portable_managed_upload.h"
+#include "../proxy/locked_prefix_core.h"
 #include <limits>
 #include <type_traits>
 #include <new>
@@ -41,6 +42,12 @@ struct CopyDepth {
 std::recursive_mutex registry_mutex;
 std::unordered_map<IUnknown*, Node*> application_nodes;
 std::unordered_map<IUnknown*, Node*> native_nodes;
+
+// Step B locked-prefix records, keyed by the vertex buffer node (erased with
+// it), guarded by registry_mutex. One process-wide fixed table: the option is
+// per device but the bullet batches are a handful of buffers.
+fade_region::prefix::Table prefix_table;
+LockedPrefixStatistics prefix_stats;
 
 struct Node {
     Kind kind;
@@ -579,7 +586,8 @@ ULONG release(Node* node, ApplicationAdmissionAbi& admission) {
         if (remaining) return remaining;
         application_nodes.erase(node->application);
         native_nodes.erase(node->identity);
-        if (node->kind == Kind::Device) static_cast<Device*>(node)->retiring = true;
+        if (node->kind == Kind::VertexBuffer) prefix_table.erase(reinterpret_cast<std::uintptr_t>(node));
+        if (node->kind == Kind::Device) { static_cast<Device*>(node)->retiring = true; prefix_table.clear(); }
     }
     // Parent remains logically alive until backend destruction has completed.
     // A child native Release may internally release its native device.
@@ -861,6 +869,16 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
         : static_cast<IDirect3DIndexBuffer9*>(node->backend)->Lock(offset, size, data, flags);
     ExecutionState outgoing;
     observe_result(device,hr);
+    if (SUCCEEDED(hr)&&node->kind==Kind::VertexBuffer&&device->options.locked_prefix_bounds) {
+        // Every successful lock starts a new revision; only a DISCARD lock of
+        // an explicit window from offset 0 (the observed writer passes the byte
+        // size) is scannable at its Unlock. SizeToLock 0 (whole buffer) would
+        // need a native GetDesc per lock and is left unscanned.
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        const bool scannable=(flags&D3DLOCK_DISCARD)&&offset==0&&size!=0&&data&&*data;
+        prefix_table.begin_lock(reinterpret_cast<std::uintptr_t>(node),scannable,scannable?*data:nullptr,scannable?size:0,GetCurrentThreadId());
+        ++prefix_stats.locks;
+    }
     if (SUCCEEDED(hr)) {
         auto* resource=static_cast<IDirect3DResource9*>(node->backend);
         record_buffer_event(device,resource,BufferEvent::Lock,flags);
@@ -913,6 +931,15 @@ HRESULT buffer_unlock(Node* node) {
             if(!staged)invalidate_finite(side,FiniteEvidenceReason::MappingMismatch);
         }else invalidate_finite(side,failure);
       }
+      if(node->kind==Kind::VertexBuffer&&device->options.locked_prefix_bounds){
+        // The mapping is still valid here and the application's writes on
+        // this thread are complete; the scan is bounded to 6144 vertices.
+        LARGE_INTEGER begin{},end{};QueryPerformanceCounter(&begin);
+        asm volatile("mfence" ::: "memory");
+        const std::uint32_t vertices=prefix_table.finish_lock(reinterpret_cast<std::uintptr_t>(node),GetCurrentThreadId());
+        if(vertices){QueryPerformanceCounter(&end);++prefix_stats.scans;prefix_stats.scanned_vertices+=vertices;
+            prefix_stats.scan_ticks+=static_cast<std::uint64_t>(end.QuadPart-begin.QuadPart);}
+      }
     }
     incoming.restore();
     const HRESULT hr = node->kind == Kind::VertexBuffer
@@ -920,6 +947,10 @@ HRESULT buffer_unlock(Node* node) {
         : static_cast<IDirect3DIndexBuffer9*>(node->backend)->Unlock();
     ExecutionState outgoing;
     observe_result(device,hr);
+    if(FAILED(hr)&&node->kind==Kind::VertexBuffer&&device->options.locked_prefix_bounds){
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        prefix_table.invalidate(reinterpret_cast<std::uintptr_t>(node));
+    }
     record_buffer_event(device,resource,SUCCEEDED(hr)?BufferEvent::Unlock:BufferEvent::FailedUnlock);
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       auto* side=hold.value;
@@ -953,7 +984,11 @@ HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     ExecutionState incoming;auto native=unwrap(node,buffer);auto native_declaration=unwrap(node,declaration);
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       SideReference side{native?acquire_finite(node,native):nullptr};
-      if(side.value)invalidate_finite(side.value,FiniteEvidenceReason::ProcessVertices); }
+      if(side.value)invalidate_finite(side.value,FiniteEvidenceReason::ProcessVertices);
+      if(node->options.locked_prefix_bounds&&buffer){
+        const auto found=application_nodes.find(buffer);
+        if(found!=application_nodes.end())prefix_table.invalidate(reinterpret_cast<std::uintptr_t>(found->second));
+      } }
     incoming.restore();
     const HRESULT hr=node->native_->ProcessVertices(first,destination,count,native,native_declaration,flags);
     ExecutionState outgoing;
@@ -1083,7 +1118,7 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
     return execution_call(node, [&] {
         node->execution.before_reset();
-        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; }
+        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->resetting = true; prefix_table.clear(); }
         retire_geometry(node);
         retire_finite(node);
         retire_copy_depth(node, S_FALSE);
@@ -1429,6 +1464,33 @@ HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentVi
     out->known = !out->ambiguous && !value.pending;
     out->status = out->known ? S_OK : S_FALSE;
     return S_OK;
+}
+
+HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, LockedPrefixView* out) noexcept {
+    if (!out) return E_POINTER;
+    *out = {};
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(application);
+    if (found == application_nodes.end() || found->second->kind != Kind::VertexBuffer) return E_INVALIDARG;
+    Node* node = found->second;
+    out->requested = device_of(node)->options.locked_prefix_bounds;
+    if (!out->requested) return S_OK;
+    ++prefix_stats.lookups;
+    fade_region::Box box{};
+    const auto reason = prefix_table.lookup(reinterpret_cast<std::uintptr_t>(node), vertex_count, &box, &out->revision, &out->checkpoint);
+    out->reason = unsigned(reason);
+    out->known = reason == fade_region::prefix::Lookup::Bound;
+    out->status = out->known ? S_OK : S_FALSE;
+    if (out->known) { ++prefix_stats.bounds; for (unsigned a = 0; a < 3; ++a) { out->centre[a] = box.centre[a]; out->half[a] = box.half[a]; } }
+    return S_OK;
+}
+void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept {
+    if (!out) return;
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    *out = prefix_stats;
+    LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency);
+    out->qpc_frequency = static_cast<std::uint64_t>(frequency.QuadPart);
+    out->evictions = prefix_table.evictions(); out->used = prefix_table.used();
 }
 
 const char* finite_evidence_reason_name(FiniteEvidenceReason reason) noexcept {

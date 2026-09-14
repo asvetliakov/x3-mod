@@ -53,6 +53,21 @@ def witness(raw):
                      f"rect={rect[0]},{rect[1]},{rect[2]},{rect[3]} viewport={x},{y},{w},{h} covered={sum(m[0]==1 for m in mask)} "
                      f"violations=0 area={(rect[2]-rect[0])*(rect[3]-rect[1])}")
     lines.append(f"FADE_REGION_RESULT cases={len(run.REGION_CASES)} bound={sum(c[1] for c in run.REGION_CASES)} violations=0")
+    # Step B locked-prefix group: one group per Reset side; a refused case
+    # has no rectangle and its M pixels are not checked against one.
+    for reset,group in ((0,run.PREFIX_CASES),(1,(run.PREFIX_AFTER_RESET,))):
+        for index,(label,quads,tail,bound,covered) in enumerate(group):
+            id=(9500 if reset else 9000)+index;vertices=6*quads
+            rect=(4,4,13,13) if bound else (0,0,0,0)
+            inside=lambda px,py:covered and 5<=px<12 and 5<=py<12
+            mask=[(1.,1.,1.,0.) if inside(n%16,n//16) else (0.,0.,0.,0.) for n in range(256)]
+            write(raw/f"fade_{id}_0_M.rgba32f",mask)
+            lines.append(f"FADE_PREFIX id={id} label={label} quads={quads} vertices={vertices} primitives={2*quads} tail={tail} jitter=0 bound={bound} "
+                         f"expect_bound={bound} reason={0 if bound else 3} lookup={run.PREFIX_LOOKUPS.get(label,'bound')} checkpoint={(vertices+95)//96-1} revision=1 "
+                         f"box=0,0,0,.5,.5,.5 rect={rect[0]},{rect[1]},{rect[2]},{rect[3]} viewport=0,0,16,16 covered={sum(m[0]==1 for m in mask)} violations=0 "
+                         f"area={(rect[2]-rect[0])*(rect[3]-rect[1])} scan_us=23.50 scanned=6144 table_used=1")
+        lines.append(f"FADE_PREFIX_RESULT reset={reset} cases={len(group)} bound={sum(c[3] for c in group)} violations=0 locks={len(group)} "
+                     f"scan_us_max=25.00 scan_us_mean=23.50 vertices=6144 table_cleared={reset}")
     # Step 2 in-place witness lines (fixture order: region twins, rectangle
     # cases, ladder, capability refusal, Reset, then one batch line per side).
     for index,(label,_,_) in enumerate(run.REGION_CASES):

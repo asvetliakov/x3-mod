@@ -158,3 +158,26 @@ only the leading `primCount*3` vertices are valid, so an Unlock-time scan must
 be reduced to that prefix at the draw (`StartVertex` is always 0); positions are
 world-space `FLOAT3` at offset 0, stride 24; and the game keeps no bullet radius
 or bound to read instead.
+
+## Step B — implemented (2026-09-14)
+
+No game hook. `src/proxy/locked_prefix_core.h` (header-only, host-testable): at a
+vertex buffer's Unlock the ownership layer (`X3M_SCREEN_EMISSION_BOUND=1`, default off,
+`Options::locked_prefix_bounds`) scans the mapped window of a `D3DLOCK_DISCARD` lock from
+offset 0 with an explicit size once under MFENCE, as `POSITION FLOAT3` at 0, stride 24, at
+most 6144 vertices, into 64 cumulative checkpoints: checkpoint k holds the min/max over
+vertices [0, 96(k+1)) and the first checkpoint whose prefix holds NaN, ±inf or |c| > 2^24
+(`world_limit`). Records are keyed by the buffer node in a 16-entry fixed table (no
+allocation); every Lock starts a new revision (Pending), a non-DISCARD lock, thread
+mismatch, failed Unlock or ProcessVertices invalidates, release erases, Reset clears. At a
+draw `MotionOutput::derive_prefix_region` (non-indexed TRIANGLELIST, StartVertex 0, stream 0
+stride 24, declaration POSITION FLOAT3 at 0; the declaration is checked at the draw because
+the buffer is not yet bound at its Unlock) takes checkpoint ⌈primCount·3/96⌉−1, a superset
+with at most 95 stale vertices, through `resolve_locked_prefix` (`BoundSource::LockedPrefix`)
+and `derive` with the c0–3 rows and jitter; `prefix_region.bound == false` means refuse to
+native in step C, never the full viewport. SizeToLock 0 is not scanned (the writer passes
+the size). Cost: 6144-vertex scan 23 µs mean / 26 µs max per lock under FEX
+(`screen-emission-bound-gpu1.json`), ≈20 µs native host; per draw one registry find and a
+table probe. Evidence: host `--prefix` (37 scenario lines, 300 random superset cases, 0
+failures), detached fixture 13 cases (11 bound, 2 refused, 148 M pixels, 0 violations,
+after-Reset relearn), x87 audit PASS on the built DLL. Nothing consumes the rectangle yet.

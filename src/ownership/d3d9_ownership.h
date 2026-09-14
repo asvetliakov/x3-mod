@@ -22,7 +22,11 @@ struct Options {
     bool capture_finite_positions = false;
     std::uint32_t finite_payload_budget = 32u * 1024u * 1024u;
     std::uint32_t finite_sidecar_limit = 4096;
-
+    // Locked-prefix bounds (docs/architecture/screen-emission-region.md, step
+    // B): scan the mapped window of a DISCARD-locked vertex buffer at its
+    // Unlock into extrema checkpoints (src/proxy/locked_prefix_core.h). Off by
+    // default; X3M_SCREEN_EMISSION_BOUND=1. No payload is retained.
+    bool locked_prefix_bounds = false;
 };
 
 // On success, consumes exactly the caller's owned native reference. On failure,
@@ -56,6 +60,28 @@ struct BufferContentView {
 // Caller must serialize buffer writes, these views and their draw snapshots.
 // Native writes plus metadata updates are not a transaction for concurrent callers.
 HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentView* out) noexcept;
+
+// Step B locked-prefix bound of an application vertex buffer wrapper for its
+// leading vertex_count vertices (POSITION FLOAT3 at 0, stride 24 assumed by
+// the scan; the caller validates the declaration). S_OK for a recognised
+// wrapper; inspect requested/known. reason is a prefix::Lookup value. Never
+// locks, reads back or dereferences the wrapper; one registry find and one
+// fixed-table probe under the registry mutex.
+struct LockedPrefixView {
+    HRESULT status = S_FALSE;
+    bool requested = false, known = false;
+    unsigned reason = 1; // prefix::Lookup::Unknown
+    std::uint64_t revision = 0;
+    std::uint32_t checkpoint = 0;
+    double centre[3]{}, half[3]{};
+};
+HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, LockedPrefixView* out) noexcept;
+struct LockedPrefixStatistics {
+    std::uint64_t locks = 0, scans = 0, scanned_vertices = 0, scan_ticks = 0, qpc_frequency = 0;
+    std::uint64_t lookups = 0, bounds = 0, evictions = 0;
+    unsigned used = 0;
+};
+void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept;
 
 // Inspection-only native endpoint for a recognized VB/IB wrapper whose actual
 // Lock/Unlock slots still use our original forwarding methods. No COM calls or

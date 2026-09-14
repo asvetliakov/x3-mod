@@ -175,4 +175,42 @@ class FadeRegion(unittest.TestCase):
         self.assertEqual(rows['hit']['half'],'%.6f,%.6f,%.6f'%(1200/65536,600/65536,300/65536))
         self.assertEqual((rows['miss_learn']['vb_rev'],rows['poison_revision']['vb_rev']),('7','8'))
 
+    def test_locked_prefix_scan_table_and_resolution(self):
+        """Step B (screen-emission-region.md): checkpoint math, superset with a garbage tail, refusals, revision, eviction, binding."""
+        out=subprocess.run([str(self.driver),'--prefix','20260914','300'],capture_output=True,text=True)
+        self.assertEqual(out.returncode,0,out.stdout[-500:])
+        rows={l.split()[1]:fields(l) for l in out.stdout.splitlines() if l.startswith('PREFIX ')}
+        resolved={l.split()[1]:fields(l) for l in out.stdout.splitlines() if l.startswith('RESOLVE ')}
+        summary=fields(next(l for l in out.stdout.splitlines() if l.startswith('PREFIX_RANDOM ')))
+        # Checkpoint k covers [0, 96(k+1)): vertex i at (i, -i, 2i).
+        def box(lo,hi):return '%.6f,%.6f,%.6f,%.6f,%.6f,%.6f'%((lo+hi)/2,-(lo+hi)/2,lo+hi,(hi-lo)/2,(hi-lo)/2,hi-lo)
+        self.assertEqual((rows['math_96']['name'],rows['math_96']['checkpoint'],rows['math_96']['box']),('bound','0',box(0,95)))
+        self.assertEqual((rows['math_1']['checkpoint'],rows['math_1']['box']),('0',box(0,95)),'a 1-vertex draw takes checkpoint 0: at most 95 stale vertices')
+        for label,cp,hi in (('math_97','1',191),('math_192','1',191),('math_193','2',199),('math_200','2',199)):
+            self.assertEqual((rows[label]['name'],rows[label]['checkpoint'],rows[label]['box']),('bound',cp,box(0,hi)),label)
+        self.assertEqual(rows['math_96']['extra'],'200','vertices scanned')
+        for label,name in (('math_unknown','unknown'),('math_pending','pending'),('empty','empty'),('beyond','beyond'),('beyond_max','beyond'),
+                           ('relock_pending','pending'),('unlock_failed','invalid'),('non_discard','invalid'),('thread_mismatch','invalid'),
+                           ('relearned','bound'),('erased','unknown'),('tail_nan_100','nonfinite'),('tail_nan_96','bound'),('tail_nan_beyond','bound'),
+                           ('tail_inf_100','nonfinite'),('tail_absurd_100','nonfinite'),('tail_limit_100','bound'),('tail_huge_100','bound'),
+                           ('tail_huge_96','bound'),('prefix_nan','nonfinite'),('evicted_oldest','unknown'),('evicted_kept','bound'),('cleared','unknown')):
+            self.assertEqual(rows[label]['name'],name,label)
+        self.assertEqual([rows[l]['revision'] for l in ('math_pending','relock_pending','non_discard','thread_mismatch','relearned')],['1','2','3','4','5'],'every lock advances the revision')
+        # Stale-tail garbage: a finite tail inside the covering checkpoint widens the box; the exact prefix keeps it tight.
+        self.assertEqual(rows['tail_huge_96']['box'],'0.000000,0.000000,0.000000,1.000000,1.000000,1.000000')
+        self.assertEqual(rows['tail_huge_100']['box'],'499999.500000,499999.500000,499999.500000,500000.500000,500000.500000,500000.500000')
+        self.assertEqual((rows['length_partial']['checkpoint'],rows['length_partial']['revision']),('10','1'),'partial trailing vertex ignored')
+        self.assertEqual((rows['length_capped']['checkpoint'],rows['length_capped']['revision']),('6144','64'),'scan capped at 6144 vertices, 64 checkpoints')
+        self.assertEqual((rows['evicted_oldest']['used'],rows['evicted_oldest']['evictions']),('16','1'),'17th buffer evicts the oldest record')
+        self.assertEqual(rows['cleared']['used'],'0')
+        # resolve_locked_prefix maps lookup outcomes onto the region statuses.
+        self.assertEqual((resolved['bound']['name'],resolved['bound']['source'],resolved['bound']['checkpoint'],resolved['bound']['box']),('bound','1','2',box(0,199)))
+        for label,name,refusal in (('no_vb','no_scope','0'),('zero_count','no_scope','0'),('no_binding','content_unknown','0'),('unknown_buffer','content_unknown','1'),('beyond','invalid','5')):
+            self.assertEqual((resolved[label]['name'],resolved[label]['bound'],resolved[label]['refusal']),(name,'0',refusal),label)
+        # Random superset property: every drawn vertex inside the covering box; exact only at whole checkpoints.
+        self.assertEqual((summary['cases'],summary['failures'],summary['vertices']),('300','0','6144'))
+        self.assertGreater(int(summary['larger']),int(summary['exact']))
+        self.assertGreater(int(summary['exact']),0)
+        self.assertLess(float(summary['scan_ns']),2e6,'a 6144-vertex scan stays well under a millisecond on the host')
+
 if __name__=='__main__':unittest.main()

@@ -5,6 +5,7 @@
 #include <memory>
 #include <new>
 #include "fade_region_math.h"
+#include "locked_prefix_core.h"
 
 // Bound source for admitted distance-fade draws (docs/architecture/
 // linear-distance-fade-region.md, section 1), free of Windows and D3D so the
@@ -46,6 +47,11 @@ inline const char* status_name(Status status) noexcept {
     return i < unsigned(Status::Count) ? names[i] : "invalid";
 }
 
+// Where a draw's box comes from: the owning part's descriptor AABB (the fade
+// route, BoundTable) or the locked-prefix scan of a DISCARD-locked dynamic
+// vertex buffer (screen-emission-region.md step B, resolve_locked_prefix).
+enum class BoundSource : unsigned { Part = 0, LockedPrefix = 1 };
+
 struct Environment {
     // Validated read of the game's own memory; false refuses the span.
     bool (*read)(std::uintptr_t address, void* out, std::size_t size) noexcept;
@@ -54,6 +60,11 @@ struct Environment {
     // Write revision of a recognised, tracked, unlocked, unambiguous
     // application buffer wrapper; false otherwise. Never dereferences.
     bool (*content)(std::uintptr_t wrapper, std::uint64_t* revision) noexcept;
+    // Locked-prefix bound of a recognised vertex buffer wrapper for the
+    // leading vertex_count vertices (prefix::Table::lookup through the
+    // ownership layer); false with the prefix::Lookup reason in *refusal.
+    // Null when the production binding is absent (host table driver).
+    bool (*prefix)(std::uintptr_t wrapper, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint, unsigned* refusal) noexcept;
 };
 
 struct Query {
@@ -70,6 +81,9 @@ struct Result {
     std::int32_t aabb[6]{};      // centre x4, half-extent x4 (raw int32 fields)
     std::uint64_t vb_revision = 0, ib_revision = 0;
     Box box{};                   // POSITION0 units when status == Bound
+    BoundSource source = BoundSource::Part;
+    std::uint32_t vertex_count = 0, checkpoint = 0; // LockedPrefix: the drawn prefix and its covering checkpoint
+    unsigned prefix_refusal = 0; // LockedPrefix: prefix::Lookup when status != Bound
 };
 
 namespace layout {
@@ -81,6 +95,35 @@ constexpr std::uintptr_t record_buffers = 0x0c;     // VB at +0x0c, IB at +0x10
 constexpr unsigned record_cap = 16;
 constexpr double units = 1.0 / 65536.0;             // 4 x int16 / 16384: POSITION0 units
 constexpr std::int64_t domain = 2 * 65536;          // |centre| + half must stay within |p| <= 2
+}
+
+// Step B: the box of a non-indexed TRIANGLELIST draw from StartVertex 0 over
+// the leading vertex_count vertices of a DISCARD-locked dynamic vertex
+// buffer, from the scan published at its Unlock. No table here: the record
+// lives with the ownership layer's lock observation. Refusals map to the
+// existing statuses (NoScope: no buffer or empty draw; ContentUnknown: no
+// published scan, pending or invalidated lock; Invalid: nonfinite or absurd
+// extrema, or a draw past the scanned vertices) and carry the prefix reason.
+// A draw this refuses never gets the full viewport: the consumer refuses it.
+inline Result resolve_locked_prefix(const Query& query, std::uint32_t vertex_count, const Environment& env) noexcept {
+    Result out{};
+    out.source = BoundSource::LockedPrefix; out.vertex_count = vertex_count;
+    if (!query.vb_id || !query.vb || !vertex_count) { out.status = Status::NoScope; return out; }
+    if (!env.prefix) { out.status = Status::ContentUnknown; return out; }
+    Box box{}; std::uint64_t revision = 0; std::uint32_t checkpoint = 0; unsigned refusal = 0;
+    if (!env.prefix(query.vb, vertex_count, &box, &revision, &checkpoint, &refusal)) {
+        out.prefix_refusal = refusal; out.vb_revision = revision; out.checkpoint = checkpoint;
+        const auto reason = prefix::Lookup(refusal);
+        out.status = reason == prefix::Lookup::Empty || reason == prefix::Lookup::Beyond || reason == prefix::Lookup::NonFinite ? Status::Invalid : Status::ContentUnknown;
+        return out;
+    }
+    for (unsigned a = 0; a < 3; ++a)
+        if (!(box.half[a] >= 0) || !(box.centre[a] - box.half[a] >= -double(prefix::world_limit)) || !(box.centre[a] + box.half[a] <= double(prefix::world_limit))) {
+            out.prefix_refusal = unsigned(prefix::Lookup::NonFinite); out.status = Status::Invalid; return out;
+        }
+    out.box = box; out.vb_revision = revision; out.checkpoint = checkpoint;
+    out.status = Status::Bound;
+    return out;
 }
 
 class BoundTable {

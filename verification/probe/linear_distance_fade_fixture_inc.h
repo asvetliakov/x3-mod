@@ -3,11 +3,17 @@
 #include "../../src/renderer/linear_emission_pass.h"
 #include "../../src/renderer/quad_vertex_program.h"
 #include "../../src/proxy/fade_region_math.h"
+#include "../../src/proxy/locked_prefix_core.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
 namespace fade_fixture {
 constexpr D3DFORMAT format = D3DFMT_A16B16G16R16F;
+// Step B locked-prefix group (docs/architecture/screen-emission-region.md):
+// the production checkpoint table driven exactly as the ownership layer
+// drives it (begin_lock at Lock, finish_lock before Unlock, clear at Reset).
+x3m::fade_region::prefix::Table prefix_table;
+bool prefix_table_cleared = false;
 constexpr D3DRENDERSTATETYPE watched[] = {D3DRS_ZENABLE,
                                           D3DRS_ZWRITEENABLE,
                                           D3DRS_ALPHABLENDENABLE,
@@ -338,6 +344,39 @@ constexpr RegionCase region_cases[] = {
     {"jitter_7", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 7, {}, 0, 1, 1, 1},
     {"jitter_8", {0, 0, 0}, {.5f, .5f, .5f}, REGION_ROWS(1, 2), 8, {}, 0, 1, 1, 1},
 };
+// Step B locked-prefix group: a synthetic bullet producer. A dynamic
+// write-only vertex buffer of 6144 x 24 bytes (the captured 147456-byte
+// buffer) is DISCARD-locked whole, its tail filled with what stale DISCARD
+// memory could hold (zeros, NaN, huge finite, beyond the world limit), then
+// N quads (6 vertices each, POSITION FLOAT3 at 0, TEXCOORD at 12, D3DCOLOR at
+// 20) at seeded positions inside a world box are written as the prefix. The
+// production scan runs on the mapped window before Unlock; the draw is
+// non-indexed DrawPrimitive(TRIANGLELIST, 0, 2N) through the same bracket
+// as the region group; every M pixel must lie in the derived rectangle.
+// Labels and order are mirrored by run_linear_distance_fade.py (PREFIX_CASES).
+struct PrefixCase {
+  const char *label;
+  unsigned quads;         // N: 6N vertices drawn, 2N primitives
+  float centre[3], half[3];
+  unsigned jitter;        // 0: none; else the 1-based Halton index
+  unsigned tail;          // 0 zeros, 1 NaN, 2 huge finite (1e6), 3 beyond world_limit (1e30)
+  unsigned expect_bound;  // 1: the lookup must bound; 0: it must refuse (never the full viewport)
+};
+constexpr PrefixCase prefix_cases[] = {
+    {"one_quad", 1, {0, 0, 0}, {.5f, .5f, .5f}, 0, 0, 1},                 // 6 vertices: checkpoint 0 holds 90 stale zeros
+    {"sixteen_quads_nan_tail", 16, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 1},  // exactly 96: the NaN tail starts past the checkpoint
+    {"seventeen_quads_nan_tail", 17, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 0}, // 102: checkpoint 1 covers NaN vertices -> refused
+    {"seventeen_quads_zero_tail", 17, {0, 0, 0}, {.5f, .5f, .5f}, 0, 0, 1},
+    {"hundred_quads_huge_tail", 100, {0, 0, 0}, {.5f, .5f, .5f}, 0, 2, 1}, // 600: finite garbage widens the box, stays conservative
+    {"hundred_quads_absurd_tail", 100, {0, 0, 0}, {.5f, .5f, .5f}, 0, 3, 0}, // beyond the world limit -> refused
+    {"full_buffer", 1024, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 1},           // 6144 vertices, no tail
+    {"offset_box", 40, {1.2f, -.8f, 0}, {.4f, .4f, .2f}, 0, 0, 1},
+    {"edge_box", 25, {-1.6f, 1.6f, .2f}, {.5f, .5f, .3f}, 0, 2, 1},
+    {"jitter_1", 20, {0, 0, 0}, {.5f, .5f, .5f}, 1, 0, 1},
+    {"jitter_3", 32, {.3f, .2f, 0}, {.5f, .5f, .5f}, 3, 1, 1},             // exactly 192 with the NaN tail beyond
+    {"jitter_6", 33, {0, 0, 0}, {.5f, .5f, .5f}, 6, 0, 1},
+};
+constexpr PrefixCase prefix_after_reset = {"after_reset", 17, {0, 0, 0}, {.5f, .5f, .5f}, 2, 0, 1};
 #undef REGION_ROWS
 #undef REGION_NEAR
 // motion_output.cpp's jitter sequence: Halton bases 2 and 3, 1-based index,
@@ -1160,6 +1199,184 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         std::printf("FADE_INPLACE_RESET interrupted=1 detached=1\n");
       }
     }
+    {
+      // Step B locked-prefix group (prefix_cases above; one case after Reset
+      // on the cleared table). Same material state and bracket as the region
+      // group; the geometry is the synthetic bullet producer.
+      namespace prefix = x3m::fade_region::prefix;
+      const Case *base = nullptr;
+      for (const auto &c : cases)
+        if (c.id == 2)
+          base = &c;
+      require(base && base->pair == 110 && base->f[6] == 1, "prefix base case");
+      // Stream 1 carries the attributes the asteroid VS reads beyond the
+      // bullet layout (normal, binormal, tangent) so stream 0 keeps the
+      // writer's exact 24-byte layout.
+      const D3DVERTEXELEMENT9 bullet_elements[] = {
+          {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+          {0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+          {0, 20, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0},
+          {1, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0},
+          {1, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_BINORMAL, 0},
+          {1, 24, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TANGENT, 0},
+          D3DDECL_END()};
+      Com<IDirect3DVertexDeclaration9> bullet_declaration;
+      api(d->CreateVertexDeclaration(bullet_elements, &bullet_declaration.p));
+      Com<IDirect3DVertexBuffer9> attributes;
+      api(d->CreateVertexBuffer(prefix::max_vertices * 36, 0, 0, D3DPOOL_MANAGED, &attributes.p, nullptr));
+      {
+        void *data = nullptr;
+        api(attributes->Lock(0, 0, &data, 0));
+        auto *bytes = static_cast<unsigned char *>(data);
+        for (unsigned n = 0; n < prefix::max_vertices; ++n) {
+          std::memcpy(bytes + n * 36, base->f + 28, 12);
+          std::memcpy(bytes + n * 36 + 12, base->f + 36, 12);
+          std::memcpy(bytes + n * 36 + 24, base->f + 39, 12);
+        }
+        api(attributes->Unlock());
+      }
+      shaders.bind(*base, 3);
+      IDirect3DVertexShader9 *augmented_vs = shaders.vertices.at(shaders.key(*base, 3, false));
+      IDirect3DPixelShader9 *augmented_ps = shaders.pixels.at(shaders.key(*base, 3, true));
+      LARGE_INTEGER frequency{};
+      QueryPerformanceFrequency(&frequency);
+      unsigned prefix_violations = 0, prefix_bound_cases = 0, prefix_count = 0;
+      double scan_us_max = 0, scan_us_sum = 0;
+      std::uint64_t lock_sequence = 0;
+      const unsigned case_count = after_reset ? 1u : unsigned(std::size(prefix_cases));
+      for (unsigned i = 0; i < case_count; ++i) {
+        const PrefixCase &r = after_reset ? prefix_after_reset : prefix_cases[i];
+        const unsigned id = (after_reset ? 9500 : 9000) + i;
+        const unsigned vertices = r.quads * 6, primitives = r.quads * 2;
+        require(vertices <= prefix::max_vertices, "prefix case within the buffer");
+        upload.background(scene.surface.p, false);
+        // The writer's buffer: dynamic write-only, DISCARD-locked whole.
+        Com<IDirect3DVertexBuffer9> bullets;
+        api(d->CreateVertexBuffer(unsigned(prefix::max_bytes), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &bullets.p, nullptr));
+        void *data = nullptr;
+        api(bullets->Lock(0, unsigned(prefix::max_bytes), &data, D3DLOCK_DISCARD));
+        const auto key = reinterpret_cast<std::uintptr_t>(bullets.p);
+        const std::uint64_t revision = prefix_table.begin_lock(key, true, data, prefix::max_bytes, GetCurrentThreadId());
+        ++lock_sequence;
+        {
+          // Stale content first, over the whole window; then the valid prefix.
+          const float tail_value = r.tail == 1 ? std::numeric_limits<float>::quiet_NaN() : r.tail == 2 ? 1e6f : r.tail == 3 ? 1e30f : 0.f;
+          auto *words = static_cast<float *>(data);
+          for (unsigned n = 0; n < prefix::max_bytes / 4; ++n)
+            words[n] = tail_value;
+          unsigned seed = 0x2545f491u + r.quads;
+          auto next = [&seed]() {
+            seed = seed * 1664525u + 1013904223u;
+            return float(seed >> 8) / float(1u << 24);
+          };
+          const float size = std::min(std::min(r.half[0], r.half[1]), r.half[2]) * .25f;
+          for (unsigned q = 0; q < r.quads; ++q) {
+            float c[3];
+            for (unsigned a = 0; a < 3; ++a)
+              c[a] = r.centre[a] + (2 * next() - 1) * (r.half[a] - size);
+            const float corners[6][2] = {{c[0] - size, c[1] - size}, {c[0] + size, c[1] - size}, {c[0] - size, c[1] + size},
+                                         {c[0] + size, c[1] - size}, {c[0] + size, c[1] + size}, {c[0] - size, c[1] + size}};
+            for (unsigned k = 0; k < 6; ++k) {
+              auto *v = reinterpret_cast<unsigned char *>(data) + (q * 6 + k) * prefix::stride;
+              const float position[3] = {corners[k][0], corners[k][1], c[2]};
+              const float uv[2] = {float(k & 1), float(k >> 1)};
+              const std::uint32_t colour = 0xff000000u;
+              std::memcpy(v, position, 12);
+              std::memcpy(v + 12, uv, 8);
+              std::memcpy(v + 20, &colour, 4);
+            }
+          }
+        }
+        // The ownership layer's Unlock observation: fence, scan, publish.
+        LARGE_INTEGER begin{}, end{};
+        QueryPerformanceCounter(&begin);
+        asm volatile("mfence" ::: "memory");
+        const std::uint32_t scanned = prefix_table.finish_lock(key, GetCurrentThreadId());
+        QueryPerformanceCounter(&end);
+        const double scan_us = double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency.QuadPart);
+        scan_us_max = std::max(scan_us_max, scan_us);
+        scan_us_sum += scan_us;
+        require(scanned == prefix::max_vertices, "whole window scanned");
+        api(bullets->Unlock());
+        // The draw side: the first checkpoint covering primCount*3 vertices.
+        x3m::fade_region::Box box{};
+        std::uint64_t seen_revision = 0;
+        std::uint32_t checkpoint = 0;
+        const auto lookup = prefix_table.lookup(key, primitives * 3, &box, &seen_revision, &checkpoint);
+        require(seen_revision == revision, "prefix revision");
+        float rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, .5f, 1, 0, 0, 1, 2};
+        if (r.jitter)
+          x3m::fade_region::jitter_rows(rows, region_halton(r.jitter, 2) - .5f, region_halton(r.jitter, 3) - .5f, 16, 16);
+        const x3m::fade_region::Viewport viewport{0, 0, 16, 16};
+        const bool bound_known = lookup == prefix::Lookup::Bound;
+        auto region = x3m::fade_region::derive(rows, bound_known, box, viewport, true, x3m::fade_region::Rect{0, 0, 16, 16});
+        // Never the full viewport for this kind: a refused draw has no rectangle.
+        if (!region.bound)
+          region.rect = {0, 0, 0, 0};
+        const auto rect = region.bound ? x3m::fade_region::intersect(region.rect, x3m::fade_region::Rect{0, 0, 16, 16}) : region.rect;
+        Draw unused(d, *base, 0, 16);
+        auto arm = [&](IDirect3DSurface9 *target) {
+          source_state(gpu, *base, target, depth.p, unused);
+          api(d->SetVertexDeclaration(bullet_declaration.p));
+          api(d->SetStreamSource(0, bullets.p, 0, prefix::stride));
+          api(d->SetStreamSource(1, attributes.p, 0, 36));
+          api(d->SetIndices(nullptr));
+          api(d->SetVertexShaderConstantF(24, rows, 4));
+        };
+        arm(scene.surface.p);
+        Snapshot caller(d);
+        auto begin_frame = pass.begin_frame(id + 1);
+        require(begin_frame.ready && begin_frame.state_preserved, "prefix M frame clear");
+        LinearEmissionBoundary boundary{scene.surface.p, augmented_ps, id + 1, true, augmented_vs};
+        api(d->BeginScene());
+        const auto prep = pass.prepare(boundary);
+        require(prep.ready, "prefix bracket prepared");
+        const HRESULT source = d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, primitives);
+        const auto finish = pass.finish(source);
+        api(d->EndScene());
+        if (FAILED(source) || finish.image != LinearEmissionImage::Linear)
+          std::printf("FADE_PREFIX_FAILURE label=%s source=%08lx image=%u composition=%08lx restore=%08lx\n",
+                      r.label, source, unsigned(finish.image), finish.composition, finish.restore);
+        require(SUCCEEDED(source) && finish.image == LinearEmissionImage::Linear, "prefix bracket completed");
+        auto *slot = pass.owning_candidate();
+        require(slot && *slot, "prefix owning candidate");
+        std::swap(scene.surface.p, *slot);
+        api(pass.acknowledge_exchange(true));
+        caller.check(d, scene.surface.p);
+        require(pass.coverage_valid(), "prefix coverage complete");
+        const auto mask = gpu.read(pass.coverage_target(), format);
+        dump("M", id, 0, mask);
+        unsigned covered = 0, violations = 0;
+        for (unsigned n = 0; n < mask.size(); ++n) {
+          if (mask[n].f[0] == 0)
+            continue;
+          ++covered;
+          if (region.bound && !x3m::fade_region::contains(rect, int(n % 16), int(n / 16)))
+            ++violations;
+        }
+        prefix_violations += violations;
+        prefix_bound_cases += region.bound;
+        ++prefix_count;
+        api(d->SetStreamSource(1, nullptr, 0, 0));
+        api(d->SetStreamSource(0, nullptr, 0, 0));
+        api(d->SetVertexDeclaration(gpu.declaration.p));
+        std::printf("FADE_PREFIX id=%u label=%s quads=%u vertices=%u primitives=%u tail=%u jitter=%u bound=%u expect_bound=%u reason=%u lookup=%s checkpoint=%u revision=%llu "
+                    "box=%.4f,%.4f,%.4f,%.4f,%.4f,%.4f rect=%d,%d,%d,%d viewport=%u,%u,%u,%u covered=%u violations=%u area=%llu scan_us=%.2f scanned=%lu table_used=%u\n",
+                    id, r.label, r.quads, vertices, primitives, r.tail, r.jitter, region.bound, r.expect_bound, unsigned(region.reason), prefix::lookup_name(lookup), checkpoint,
+                    static_cast<unsigned long long>(seen_revision), box.centre[0], box.centre[1], box.centre[2], box.half[0], box.half[1], box.half[2],
+                    rect.left, rect.top, rect.right, rect.bottom, viewport.x, viewport.y, viewport.width, viewport.height, covered, violations,
+                    static_cast<unsigned long long>(x3m::fade_region::area(rect)), scan_us, static_cast<unsigned long>(scanned), prefix_table.used());
+        require(region.bound == (r.expect_bound != 0), "prefix bound expectation");
+        // The buffer goes with the case: the record is erased as the
+        // ownership layer erases it with the node.
+        prefix_table.erase(key);
+      }
+      require(pass.allocations() == allocations, "no prefix pool allocation");
+      require(prefix_violations == 0, "M pixel outside its prefix rectangle");
+      std::printf("FADE_PREFIX_RESULT reset=%u cases=%u bound=%u violations=%u locks=%llu scan_us_max=%.2f scan_us_mean=%.2f vertices=%u table_cleared=%u\n",
+                  unsigned(after_reset), prefix_count, prefix_bound_cases, prefix_violations, static_cast<unsigned long long>(lock_sequence), scan_us_max,
+                  prefix_count ? scan_us_sum / prefix_count : 0.0, unsigned(prefix::max_vertices), unsigned(after_reset && prefix_table_cleared));
+    }
     api(d->SetTexture(0, nullptr));
     api(d->SetTexture(1, nullptr));
     api(d->SetTexture(2, nullptr));
@@ -1305,6 +1522,9 @@ void distance_fade_fixture(IDirect3DDevice9 *d, Shaders &shaders,
   api(chain->GetPresentParameters(&pp));
   chain.p->Release();
   chain.p = nullptr;
+  // The ownership layer clears the locked-prefix table before Reset.
+  fade_fixture::prefix_table.clear();
+  fade_fixture::prefix_table_cleared = fade_fixture::prefix_table.used() == 0;
   api(d->Reset(&pp));
   fade_fixture::run(d, shaders, cases, composition, true);
   fade_fixture::timing(d, shaders, cases, composition);

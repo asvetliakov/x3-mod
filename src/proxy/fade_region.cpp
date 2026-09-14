@@ -24,7 +24,17 @@ bool content(std::uintptr_t wrapper, std::uint64_t* revision) noexcept {
     *revision = view.revision;
     return true;
 }
-const Environment production{&read_memory, &scope, &content};
+// The wrapper pointer is again a registry key only; the view carries the
+// published scan's box (prefix::Table::lookup) or its refusal.
+bool prefix_bound(std::uintptr_t wrapper, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint, unsigned* refusal) noexcept {
+    ownership::LockedPrefixView view{};
+    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(wrapper), vertex_count, &view);
+    *refusal = view.reason; *revision = view.revision; *checkpoint = view.checkpoint;
+    if (FAILED(hr) || !view.requested || !view.known) return false;
+    for (unsigned a = 0; a < 3; ++a) { box->centre[a] = view.centre[a]; box->half[a] = view.half[a]; }
+    return true;
+}
+const Environment production{&read_memory, &scope, &content, &prefix_bound};
 }
 
 const Environment& production_environment() noexcept { return production; }
@@ -38,6 +48,12 @@ Result resolve(BoundTable& table, const Query& query) noexcept {
 Result peek(const BoundTable& table, const Query& query) noexcept {
     const DWORD error = GetLastError();
     const Result out = table.peek(query, production);
+    SetLastError(error);
+    return out;
+}
+Result resolve_locked_prefix(const Query& query, std::uint32_t vertex_count) noexcept {
+    const DWORD error = GetLastError();
+    const Result out = fade_region::resolve_locked_prefix(query, vertex_count, production);
     SetLastError(error);
     return out;
 }

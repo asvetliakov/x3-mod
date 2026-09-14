@@ -30,7 +30,7 @@ SCOPE=('src/renderer/linear_material.cpp','src/renderer/linear_distance_fade.h',
        'verification/probe/linear_alpha_test_fixture_inc.h',
        'verification/probe/linear_distance_fade_fixture_inc.h',
        'verification/probe/linear_distance_fade_composite_inc.h',
-       'src/proxy/fade_region_math.h','src/proxy/fade_region_core.h',
+       'src/proxy/fade_region_math.h','src/proxy/fade_region_core.h','src/proxy/locked_prefix_core.h',
        'verification/probe/run_linear_distance_fade.py',
        'verification/probe/linear_material_reference.py','verification/probe/run_linear_material.py')
 BAD_BACKGROUND=0x100000
@@ -53,6 +53,16 @@ REGION_CASES=(('interior',1,1),('edge_left',1,1),('edge_right',1,1),('edge_top',
               ('fill_wireframe',0,0),('tiny',1,0),('huge',1,1),('viewport_offset',1,1),('scissor',1,1))+tuple(
               (f'jitter_{k}',1,1) for k in range(1,9))
 REGION_VIEWPORT={'viewport_offset':(4,4,8,8)}
+# Step B locked-prefix group (linear_distance_fade_fixture_inc.h prefix_cases,
+# same order): label, quads, tail kind (0 zeros, 1 NaN, 2 huge finite, 3
+# beyond the world limit), expected bound flag, whether the source must
+# rasterise at least one M pixel. The after-Reset case runs on the cleared table.
+PREFIX_CASES=(('one_quad',1,0,1,1),('sixteen_quads_nan_tail',16,1,1,1),('seventeen_quads_nan_tail',17,1,0,1),
+              ('seventeen_quads_zero_tail',17,0,1,1),('hundred_quads_huge_tail',100,2,1,1),('hundred_quads_absurd_tail',100,3,0,1),
+              ('full_buffer',1024,1,1,1),('offset_box',40,0,1,1),('edge_box',25,2,1,1),
+              ('jitter_1',20,0,1,1),('jitter_3',32,1,1,1),('jitter_6',33,0,1,1))
+PREFIX_AFTER_RESET=('after_reset',17,0,1,1)
+PREFIX_LOOKUPS={'seventeen_quads_nan_tail':'nonfinite','hundred_quads_absurd_tail':'nonfinite'}
 REGION_REASONS={'w_zero':4,'w_negative':4,'nan_rows':5,'inf_rows':5,'rows_unknown':2,'bound_unknown':3,'negative_extent':3,'fill_wireframe':6}
 # Step 2 in-place policy (linear_distance_fade_fixture_inc.h inplace_cases, same
 # order): label and bracket count. Every non-fault case step, every region case
@@ -276,6 +286,7 @@ def validate_report(text,source,raw):
                     channels+=1
             current=output
     regions=validate_regions(text,raw)
+    regions.update(validate_prefix(text,raw))
     regions.update(validate_inplace(text,expected))
     regions.update(validate_timing(text))
     return dict(cases=len(expected),source_calls=sum(steps(c) for c in expected),**regions,
@@ -318,6 +329,46 @@ def validate_regions(text,raw):
     return dict(region_cases=len(rows),region_bound_cases=sum(c[1] for c in REGION_CASES),region_violations=violations,
                 region_covered_pixels=covered_total,region_area_fractions=fractions,
                 region_scope='Step 1: rectangle derived and witnessed against M only; the prototype-1 bracket composes the full target')
+
+def validate_prefix(text,raw):
+    """Step B: every M pixel of the synthetic bullet producer inside the locked-prefix rectangle; refusals never get a rectangle."""
+    rows=[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith('FADE_PREFIX ')]
+    cases=PREFIX_CASES+(PREFIX_AFTER_RESET,)
+    assert [r['label'] for r in rows]==[c[0] for c in cases],'exact ordered prefix case set (both Reset sides)'
+    results=[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith('FADE_PREFIX_RESULT ')]
+    assert [int(r['reset']) for r in results]==[0,1],'one prefix group per Reset side'
+    assert int(results[0]['cases'])==len(PREFIX_CASES) and int(results[1]['cases'])==1
+    assert all(int(r['violations'])==0 for r in results) and int(results[1]['table_cleared'])==1,'prefix terminal lines'
+    assert int(results[0]['bound'])==sum(c[3] for c in PREFIX_CASES) and int(results[1]['bound'])==1
+    assert all(int(r['vertices'])==6144 for r in results),'the whole 6144-vertex window is scanned per lock'
+    violations=0;covered_total=0;fractions={};scan_us=[]
+    for (label,quads,tail,expect_bound,expect_covered),row in zip(cases,rows):
+        assert int(row['quads'])==quads and int(row['vertices'])==6*quads and int(row['primitives'])==2*quads and int(row['tail'])==tail,(label,row)
+        assert int(row['bound'])==expect_bound and int(row['expect_bound'])==expect_bound,(label,'bound flag',row)
+        assert row['lookup']==PREFIX_LOOKUPS.get(label,'bound'),(label,'lookup',row)
+        assert int(row['checkpoint'])==(6*quads+95)//96-1,(label,'covering checkpoint',row)
+        assert int(row['scanned'])==6144 and int(row['table_used'])==1,(label,'scan window and table occupancy',row)
+        l,t,r,b=(int(v) for v in row['rect'].split(','))
+        if expect_bound:assert 0<=l<r<=SIZE and 0<=t<b<=SIZE and int(row['reason'])==0,(label,'rectangle inside the viewport',row)
+        else:assert (l,t,r,b)==(0,0,0,0) and int(row['reason'])==3,(label,'a refused draw has no rectangle',row)
+        assert int(row['area'])==(r-l)*(b-t)
+        mask=pixels(raw/f"fade_{int(row['id'])}_0_M.rgba32f")
+        covered=0
+        for n,m in enumerate(mask):
+            if m[0]==0:continue
+            assert m==(1.,1.,1.,0.),(label,'M value',m)
+            covered+=1;px,py=n%SIZE,n//SIZE
+            if expect_bound and not (l<=px<r and t<=py<b):violations+=1
+        assert covered==int(row['covered']),(label,'covered count')
+        assert int(row['violations'])==0 and violations==0,(label,'M pixel outside the prefix rectangle')
+        if expect_covered:assert covered>0,(label,'source rasterised nothing')
+        covered_total+=covered;scan_us.append(float(row['scan_us']))
+        if expect_bound:fractions[label]=(r-l)*(b-t)/(SIZE*SIZE)
+    return dict(prefix_cases=len(rows),prefix_bound_cases=sum(c[3] for c in cases),prefix_refused_cases=sum(1 for c in cases if not c[3]),
+                prefix_violations=violations,prefix_covered_pixels=covered_total,prefix_area_fractions=fractions,
+                prefix_scan_us=dict(max=max(scan_us),mean=sum(scan_us)/len(scan_us),vertices_per_scan=6144,locks=len(rows)),
+                prefix_reset=dict(table_cleared=True,relearned=int(results[1]['bound'])==1),
+                prefix_scope='Step B: locked-prefix checkpoints scanned at Unlock, reduced at the draw, witnessed against M only; no route consumes the rectangle')
 
 def validate_inplace(text,expected):
     rows=lambda prefix:[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith(prefix+' ')]
