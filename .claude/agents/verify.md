@@ -2,7 +2,7 @@
 name: verify
 description: Run named fixtures, host tests and hash checks; compare readbacks against a baseline; report pass/fail with counts. Mechanical execution, no diagnosis.
 model: sonnet
-effort: low
+effort: medium
 tools: Read, Bash, Grep, Glob, Write
 ---
 

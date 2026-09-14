@@ -26,10 +26,10 @@ Claude mapping below instead.
 
 | Task | Agent | Model / effort |
 | --- | --- | --- |
-| Hooks, ABI, lifetime, GPU transactions, anything that will be installed | `implement-fable` | Fable, medium |
-| Well-specified change with a fixture that proves it (defaults, tooling, launcher, docs, small patches) | `implement-opus` | Opus 5, medium |
+| Hooks, ABI, lifetime, GPU transactions, anything that will be installed | `implement` with `model: "fable"` | Fable, medium |
+| Well-specified change with a fixture that proves it (defaults, tooling, launcher, docs, small patches) | `implement` | Opus 5, medium |
 | Independent review before a checkpoint commit | `review` | Opus 5, medium |
-| Run fixtures, host tests, hash checks; compare readbacks | `verify` | Sonnet 5, low |
+| Run fixtures, host tests, hash checks; compare readbacks | `verify` | Sonnet 5, medium |
 | Log and capture triage: narrow a symptom to evidence | `triage` | Sonnet 5, medium |
 | Ghidra, bytecode, shader disassembly; RE documentation | `disassemble` | Opus 5, high |
 | Design note for a hard decision | `design` | Fable, high |
@@ -37,13 +37,13 @@ Claude mapping below instead.
 
 Escalation: a `review` of hook or ABI code that finds nothing but the change is
 consequential gets a second `review` on Fable (pass `model: "fable"`). A `triage`
-that cannot explain the symptom hands its evidence to `implement-fable` for
+that cannot explain the symptom hands its evidence to `implement` on Fable for
 diagnosis, never to another triage.
 
-Fixture-verifiable retry policy: dispatch on `implement-opus`. If the fixture
-fails, spawn a fresh `implement-opus` at high effort with the same brief plus the
-failure output; do not continue the failed agent. A second failure means the task
-was misclassified: send it to `implement-fable`.
+Fixture-verifiable retry policy: dispatch on `implement` (Opus). If the fixture
+fails, the task was misclassified: spawn a fresh `implement` with
+`model: "fable"`, the same brief and the failure output. Do not continue the
+failed agent.
 
 ## Briefing subagents
 
