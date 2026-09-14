@@ -39,32 +39,10 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 20 | Asteroid prepass jitter, port and ship far/near pairs, step D bullets, AO radius 20, loading markers | 0 | Completed as user run 20, snapshot run48: asteroid triangle dropout fixed and accepted, step-D brackets no longer fullscreen, loading markers fired; AO ran in debug view only, port darkening still open |
 | 21 | AO appearance at a readable footprint (`--ao-radius 100`, no debug view), bullet witness every frame, vanilla port approach | 1 | Completed as user run 21, snapshot run49 (session A only): the fade witness is clean on the firing frames and the bolts are accepted, AO is invisible at radius 100 and is now default-off, a new station-section jitter at ~4.7 km is under diagnosis; session B (vanilla port approach) has not been reported |
 | 22 | LOD scale 2×, fade-band trembling fix, docking-port screenshot pair | 0 | Completed as user run 22, snapshot run51: trembling gone, LOD 2× applied, module darkening owned by point-light range |
-| 23 | LOD scale 3× on the run-49 route, frame cost | 1 | Ready (no new DLL; installed `53a0d8a7…`) |
+| 23 | LOD scale 3× on the run-49 route, frame cost | 0 | Withdrawn 2026-09-15: the user compared `--lod-scale 3` and `1` on the installed build and saw no visual difference; the option stays default-off (no patch without the option) |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
-
-## 23. LOD scale 3× on a known route, frame cost — Ready
-
-No new build. Same command as run 22 with `--lod-scale 3`. Fly the same sector and route as
-run 21 session A (the station approach and the asteroid field) so the LOD distribution and the
-frame time compare against run 49; say whether detail holds farther than at 2× and whether the
-frame rate drops in the busiest view. Press F8 once at the station approach and once in the
-asteroid field. Analysis: `lod_scale_value … applied=3`, `object_context lod=` shares vs runs 49/51,
-`frame_end dt_ms` vs run 49 on the same route, draws per frame.
-
-```sh
-./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
-  --motion-output --taa --telemetry --camera-log 1 \
-  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
-  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
-  --fade-witness 1 --screen-emission \
-  --lod-scale 3 \
-  --voice-decoder /tmp/x3-wma-plugin-v4 \
-  --capture-start 999999 --capture-frames 8
-```
-
-Report: the session path, detail and frame-rate impressions.
-
+No run is open. The next candidate (fill light, if ratified) gets its own entry.

@@ -40,11 +40,12 @@ asteroid triangle dropout fixed and accepted; step D bullets accepted (no
 fullscreen bracket in 50,654 frames); loading markers read menu 12.9 s and a
 21.7 s save-load stall; the far port was captured (37 px) and its radiance
 moves only 6 % between far and near; AO ran in the debug factor view for the
-whole session and is a few pixels wide at gameplay distances. Run 22 on the installed
-`53a0d8a7…` build: the docking-port screenshot pair with an F8 at each, `--lod-scale 2`
-appearance and frame rate, and the trembling check; command and report items in
-the [run queue](verification/user-runs.md). Runs 19–21 are complete (details in the
-[completed-run archive](archive/user-runs-completed.md)). Details in the
+whole session and is a few pixels wide at gameplay distances. No run is open. Run 22
+(snapshot run51) is complete on the installed `53a0d8a7…` build: trembling fixed and
+accepted, `--lod-scale` tested and left default-off, the module darkening owned by the
+point-light range cull. Next candidate: the fill-light term once its design note is
+ratified and the user says go. Runs 19–22 are in the
+[completed-run archive](archive/user-runs-completed.md). Details in the
 [completed-run archive](archive/user-runs-completed.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
 but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
@@ -120,8 +121,10 @@ darkening on a ship. Details in the
   black bays and night sides) or widening the engine's point-light admission
   range (site not yet located). Decision pending.
   [station-material-distance.md](reverse-engineering/station-material-distance.md),
-  "Run 22". `--lod-scale` is installed default-off (run 22 at 2× applied
-  cleanly; 3× queued as run 23).
+  "Run 22". `--lod-scale` is installed default-off and stays so: the user
+  compared 3× against 1× and saw no visual difference (View Distance "Very
+  High" already biases the LOD index); without the option nothing is patched
+  ([lod-scale.md](architecture/lod-scale.md)).
 - **Fade-band trembling:** fixed and accepted in run 22 (860 fading draws routed,
   zero holds, no trembling reported).
 - **Bullets / screen emission:** step E (publication-time decode, parity within
