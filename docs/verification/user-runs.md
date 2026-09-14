@@ -27,7 +27,7 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
 | 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Ready (candidate `76d7750` installed) |
 | 14 | Station source-over linear route, fade region and shimmer trace, combined | 1 | Ready (candidate `76d7750` installed) |
-| 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 1 | Pending candidate (step C merged, not built or installed) |
+| 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 1 | Ready (candidate `76d7750` installed) |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
