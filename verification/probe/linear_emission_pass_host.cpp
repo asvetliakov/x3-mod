@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <iostream>
 #include <memory>
@@ -19,8 +20,11 @@ void check(bool ok, const char *message) {
     std::exit(1);
   }
 }
+// DWORD index of the composite's `def c1` token (generate_screen_emission_programs.gain_literal_index).
+constexpr unsigned gain_literal_index = 25;
 struct Device : IDirect3DDevice9 {
   void *slots[119]{};
+  std::vector<std::vector<DWORD>> created_ps; // every CreatePixelShader payload, in order
   D3DCAPS9 caps{};
   IDirect3D9 factory;
   std::vector<std::unique_ptr<IUnknown>> objects;
@@ -323,8 +327,11 @@ struct Device : IDirect3DDevice9 {
       return S_OK;
     });
     slot(106,
-         [](IDirect3DDevice9 *p, const DWORD *,
+         [](IDirect3DDevice9 *p, const DWORD *words,
             IDirect3DPixelShader9 **o) -> HRESULT {
+           std::vector<DWORD> copy;
+           for (const DWORD *w = words; ; ++w) { copy.push_back(*w); if (*w == 0x0000ffffu) break; }
+           d(p).created_ps.push_back(std::move(copy));
            return d(p).output(106, d(p).make<IDirect3DPixelShader9>(), o);
          });
     slot(107, [](IDirect3DDevice9 *p, IDirect3DPixelShader9 *v) -> HRESULT {
@@ -926,7 +933,22 @@ void packed_policy() {
           "packed gain domain refusals keep the configured value");
     check(p.configure_packed_gain(mode == 0 ? 2.f : 1.f), "packed gain reconfigured");
     check(p.attach(&d, d.slots, d.caps, D3DFMT_A8R8G8B8, D3DFMT_D24S8, 15) == S_OK, "attach with policy 8 requested");
-    check(!p.configure_packed_gain(1.f) && p.packed_gain() == (mode == 0 ? 2.f : 1.f), "packed gain frozen after attach");
+    check(!p.configure_packed_gain(mode == 0 ? 1.f : 2.f) && p.configure_packed_gain(mode == 0 ? 2.f : 1.f) && p.packed_gain() == (mode == 0 ? 2.f : 1.f),
+          "packed gain frozen after attach; the applied value is accepted again (re-attach)");
+    if (mode == 0) {
+      // The created composite carries the patched literal: exactly one
+      // `def c1` (0x05000051, 0xa00f0001) at the generator's index
+      // (gain_literal_index in generate_screen_emission_programs.py) with
+      // g and 1 - g in the two following lanes.
+      const auto &words = d.created_ps.back();
+      unsigned found = 0, at = 0;
+      for (unsigned i = 0; i + 5 < words.size(); ++i)
+        if (words[i] == 0x05000051u && words[i + 1] == 0xa00f0001u) { ++found; at = i; }
+      float lanes[2]{};
+      if (found == 1) std::memcpy(lanes, &words[at + 2], sizeof lanes);
+      check(found == 1 && at == gain_literal_index && lanes[0] == 2.f && lanes[1] == -1.f,
+            "packed composite carries the patched gain literal at the generator's index");
+    }
     const unsigned expected = mode == 0 ? 15u : mode == 3 ? 1u : 7u;
     check(p.caps().supported_policies == expected && p.caps().available_policies == expected, "policy-8 capability gate");
     check(p.ensure_targets(17, 11) == S_OK, "pool");

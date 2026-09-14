@@ -92,6 +92,12 @@ void energy(Words& words,bool scalar) {
 // old is the modified flag (nonzero once any fragment had q_c != 0 in domain);
 // the green lane is masked off by the pass and keeps decode(A) from the plane
 // initialization. No per-fragment decode: the pass decodes once at publication.
+// Out-of-domain q (signed, > 1, HDR) is not clamped: the red lane must stay the
+// native value, and a clamped copy for the blue lane would cost two more
+// instructions per plane against constants; such fragments may cancel the flag
+// to exactly 0 or overflow it to non-finite, and the publication then copies A
+// or writes the non-finite encode. The bracket never refuses on it; the packed
+// corpus keeps these as boundary rows outside qualification.
 void packed_screen(Words& words) {
     emit(words,mov,{dst(temporary,1),src(constant,31,0xe9)}); // (1,0,0)
     emit(words,mov,{dst(temporary,1,8),lane(temporary,0,3)});

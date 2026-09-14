@@ -200,7 +200,7 @@ def main():
                 limitations=['Native Windows/gameplay untested. No source/assembly/restore/publication failure contract or live route is qualified.',
                     'Only bounded q in[0,1] and representable accumulation are mathematical qualification candidates. Signed/>1q/HDR/overflow rows retain raw q and operational mismatches/finiteness separately; no clamp or extra blend domain is adopted.',
                     'Step E: C = encode(g decode(B) + (1 - g) decode(A)) on the stored lanes (.006 relative/.00008 absolute, boundary rows doubled); at gain 1 in domain C must equal the native B within one FP16 code (native_c_diff beyond one code, native_c_off_by_one reported: the GPU POW round trip). Native assembled B RGBA and unchanged-channel A copying are exact. The green lane is never written by the source (plane masks 5).',
-                    'Assembly uses ordered exact-zero blue via ABS/CMP (the blue lane accumulates q). Its negative-linear clamp is only an operational boundary diagnostic; negative/nonfinite accumulated light has no accepted domain or overflow policy.',
+                    'Assembly uses ordered exact-zero blue via ABS/CMP (the blue lane accumulates q unclamped: out-of-domain q can cancel the flag to 0, publishing A, or overflow it to non-finite; the bracket never refuses on it). Its negative-linear clamp is only an operational boundary diagnostic; negative/nonfinite accumulated light has no accepted domain or overflow policy.',
                     'Persistent native-B assembly failure and physical return/publication semantics remain unresolved; live_publication is always false.'])
     try:
         results={}

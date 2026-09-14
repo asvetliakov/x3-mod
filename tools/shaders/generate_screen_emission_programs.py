@@ -15,8 +15,8 @@ the draw and P_c.y = decode(A_c) = decode(B_native before) from the plane
 initialization (never written by the source: plane masks 5), i.e.
 encode(decode(A) + g (decode(B_after) - decode(B_before))); unmodified
 channels (P_c.z = 0) copy A. The gain lives in `def c1` = (g, 1 - g, 2.2,
-1e-10), authored at g = 1 and patched by the pass at attach
-(GAIN_LITERAL_INDEX / gain_words). Outputs
+1e-10), authored at g = 1 and patched by the pass at attach at the DWORD index
+`gain_literal_index` (asserted against the pass host test). Outputs
 src/renderer/linear_screen_plane_init_inc.h and
 src/renderer/linear_screen_composite_inc.h. --check compares without writing.
 No compiler, D3D device or Wine is involved.
@@ -63,7 +63,8 @@ def gain_literal(gain):
 
 
 # DWORD index of the `def c1` instruction token in the composite program
-# (screen_ps(2, True)); the pass patches the two following gain lanes.
+# (screen_ps(2, True)); the pass patches the two lanes that follow the
+# register token. linear_emission_pass_host.cpp carries the same index.
 def gain_literal_index(words):
     matches = [i for i in range(len(words) - 5) if words[i] == 81 | (5 << 24) and words[i + 1] == dst(2, 1)]
     assert len(matches) == 1, matches

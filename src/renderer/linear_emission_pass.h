@@ -98,7 +98,8 @@ public:
   // Policy 8 gain g of the step E composition (X3M_SCREEN_EMISSION_GAIN):
   // finite, 0 <= g <= 16, default 1 (native by construction). Set before
   // attach; the composite program carries g as a patched literal, so no
-  // per-bracket constant traffic. Returns false (gain unchanged) when refused.
+  // per-bracket constant traffic. Returns false (gain unchanged) when refused;
+  // once attached only the applied value is accepted (true, a re-attach).
   bool configure_packed_gain(float gain) noexcept;
   float packed_gain() const noexcept { return packed_gain_; }
   const LinearEmissionPassCaps &caps() const noexcept;

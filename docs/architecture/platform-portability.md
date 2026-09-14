@@ -18,6 +18,20 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
+- The packed screen policy (policy 8, [screen emission](screen-emission-region.md),
+  step E) carries its constants as shader `def` literals: the promoted bullet
+  producer's `c31` (M = (1, 0, 0, a)) executes inside the application's draw
+  after the game has set pixel constants c0–c35 (run 17), and the pass's
+  composite `def c0`/`def c1` (decode exponents, the gain) run under the
+  pass's own binds. Documented D3D9 semantics load `def` values at
+  SetPixelShader and let a later SetPixelShaderConstantF override them; the
+  D3DMetal bottle gives the `def` precedence for the producer (a live frame
+  with the run-17 block set after the bind composed the law), native Windows
+  is unverified. A native override would break the coverage lane, not the
+  native lane; the fallback is a capability-checked producer variant without
+  constants or per-draw constant save/restore. No gameplay defect has been
+  attributed to it.
+
 - The installed 168-pair material route carries generated material RGB in a
   separate whole COLOR1 varying, keeping RGB on the COLOR interpolation path
   and avoiding application D3DRS_WRAP state. Palette scalar relocations copy each

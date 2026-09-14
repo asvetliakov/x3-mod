@@ -413,9 +413,12 @@ untouched in every run; the `screen-gain2` run (`X3M_SCREEN_EMISSION_GAIN=2`) fo
 brighter than native on all 1,300 bolt channels; the withdrawn per-fragment law would differ from
 native by up to 0.38. Functional 22 frames / 28 sources, 53 samples within fraction 0.124 (0.243 at
 gain 2), 20 eligible / 14 admitted / 13 linear / 1 incomplete / 3 unbounded, witness 0 outside.
-Bracket cost, paired windows (median delta on−off, source window, 16 DIPs): before (same host, step C
-law) 3.03 / 3.60 ms at 1280×768 and 2.68 / 2.73 ms at 1920×1080; after 2.73 / 2.63 ms and 2.67 / 2.62 ms
-(≈ 0.164–0.171 ms per bracket), i.e. no added cost. `screen_emission_display_ratio.py`: the step E
+Bracket cost, paired windows (median delta on−off, source window, 16 DIPs, per bracket): the retained
+step C record (`screen-emission-live1.json` at `883797d`) 0.165 / 0.160 ms at 1280×768 and
+0.164 / 0.172 ms at 1920×1080 (2.64 / 2.55 and 2.62 / 2.76 ms per window); after 0.171 / 0.164 ms and
+0.167 / 0.164 ms (2.73 / 2.63 and 2.67 / 2.62 ms), i.e. no added cost. `packed_samples.luminance_changed`
+falls from 6 to 0: step E leaves a native-valued pixel exactly native at g = 1 (the pre/post centre
+samples differ in alpha only), whereas the step C law changed the centre's luminance. `screen_emission_display_ratio.py`: the step E
 column equals native at every distance and background (tail/core 0.259 = native; gain 2 → 0.343, gain
 4 → 0.441 with the core lifted to 0.868 / 0.930). Host: x87 audit PASS (224 reachable). Native Windows
 behaviour remains unverified.

@@ -688,7 +688,8 @@ const LinearEmissionPassCaps &LinearEmissionPass::caps() const noexcept {
   return impl_ ? impl_->caps : off;
 }
 bool LinearEmissionPass::configure_packed_gain(float gain) noexcept {
-  if (impl_ || !std::isfinite(gain) || gain < 0.f || gain > 16.f) return false;
+  if (!std::isfinite(gain) || gain < 0.f || gain > 16.f) return false;
+  if (impl_) return packed_gain_ == gain; // attached: only the applied value is accepted
   packed_gain_ = gain;
   return true;
 }
