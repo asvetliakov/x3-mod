@@ -3792,8 +3792,8 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     ++counts.prefix_lookup[bound.prefix_refusal < unsigned(prefix::Lookup::Count) ? bound.prefix_refusal : 0u];
     if (region.bound) { ++counts.prefix_bound; counts.prefix_permille_sum += permille; if (region.clipped) ++counts.prefix_clipped; } else ++counts.prefix_refused;
     if (capture_)
-        log("locked_prefix device=%llu frame=%llu index=%lu bound=%u reason=%u clipped=%u status=%s lookup=%s vb=%llu rev=%llu vertices=%lu checkpoint=%lu box=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s",
-            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), region.clipped, status_name(bound.status), prefix::lookup_name(prefix::Lookup(bound.prefix_refusal)),
+        log("locked_prefix device=%llu frame=%llu index=%lu bound=%u reason=%u clipped=%u pad=%u status=%s lookup=%s vb=%llu rev=%llu vertices=%lu checkpoint=%lu box=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s",
+            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), region.clipped, region.pad, status_name(bound.status), prefix::lookup_name(prefix::Lookup(bound.prefix_refusal)),
             shadow_.stream0, bound.vb_revision, static_cast<unsigned long>(vertex_count), static_cast<unsigned long>(bound.checkpoint),
             bound.box.centre[0], bound.box.centre[1], bound.box.centre[2], bound.box.half[0], bound.box.half[1], bound.box.half[2],
             long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target");

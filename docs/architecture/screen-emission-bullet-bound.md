@@ -92,6 +92,20 @@ bullet w = 128) but ≈ 3 px at w = `zn` = 6. The 1-px pad is not enough there: 
 the exposure. Jitter ≤ 0.5 px stays inside the pad. Stale data: none (exact count). The witness
 (`outside=0`) remains the runtime detector; a non-conservative rectangle is still a hard failure.
 
+**Pad item: done (2026-09-14, before step D).** `fade_region_math.h` replaces the fixed 1 px with
+`pad_px = max(1, ceil(k / w_min))`, `k = 2 * half * 2^-22 * S`, where `S` is the largest Σ|terms| over the
+x, y and w rows and the eight expanded corners (a near-plane crossing is a convex combination of two
+corners, so the corner maximum bounds it) and `w_min` is the smallest clip w of the projected (clipped)
+polytope vertices. The factor 2 covers the w row: `|dsx| <= half * (|dx| + |x/w| * |dw|) / w` with
+`|x/w| <= 1` inside the viewport. Both routes get it — the part-bound fade projection and the
+locked-prefix near-cut one — since both call `project_box`. The pad is capped at 8 px so a degenerate w
+cannot inflate the rectangle; the cap does not weaken the bound where it is used, because the near cut
+keeps `w_min >= zn` (6 in gameplay) and `k / w` stays well below 8 at bullet magnitudes. The host `--near`
+oracle now runs a third of its cases at world coordinates 1e3–1e5 with the cancelling row translation and
+perturbs every interior point by the whole fp32 error bound in all directions: 0 outside at the derived
+pad, 4 outside when the pad is forced back to 1 px (`docs/verification/screen-emission.md`, 2026-09-14
+row). `Region::pad` is reported in the `locked_prefix` capture line.
+
 ## 5. Native Windows
 
 Documented D3D9 only; the sentinel is app-side memory inside the lock. Native maps dynamic buffers

@@ -40,6 +40,44 @@ enum class Reason : unsigned {
 // any rounding of the whole |p| <= 2 domain (note, section 2).
 constexpr double half_float_expansion = 1.0 / 1024.0;
 
+// Conservative pad, in pixels, for the fp32 `dp4` the GPU runs on the same
+// rows and points (docs/architecture/screen-emission-bullet-bound.md, section
+// 4). We project in double precision; the hardware does not, so a projected
+// hull vertex can land up to the fp32 rounding of its own dot product away
+// from where the rasteriser puts it.
+//
+//   Each clip component is a 4-term dot product: rounding it in fp32 costs at
+//   most 4 * 2^-24 * sum|terms| = 2^-22 * sum|terms| = eps_dp4 * S (no FMA
+//   contraction assumed; one contracted product stays inside the same bound).
+//   Cancellation is what makes S large: a bullet at world coordinate 1.2e5
+//   against a view translation of -1.2e5 has S ~ 2.4e5 even though the clip
+//   value is small. The note's calibration: S ~ 1.26e5 gives 0.03 clip units.
+//   Screen error: sx = half_w * (x/w + 1), so
+//     |dsx| <= half_w * (|dx| + |x/w| * |dw|) / w <= 2 * half * eps_dp4 * S / w
+//   for |x/w| <= 1 (a point outside the viewport needs no pad: the rectangle
+//   is clamped to the viewport anyway). Hence pad_px = ceil(k / w_min) with
+//   k = 2 * half * eps_dp4 * S and w_min the smallest clip w of the (clipped)
+//   polytope's vertices. At the note's numbers and half = 640 px this is
+//   ~3 px at w = 6 and under 1 px at w >= 100, matching section 4.
+//
+// Never below the historical 1 px (the rectangle only ever grows) and capped
+// at pad_limit so a degenerate w near zero cannot inflate the rectangle; the
+// viewport intersection bounds it in any case. The cap is not a hole in the
+// bound for the routes that use it: the near cut keeps w_min >= the game's zn
+// (6 in gameplay), where k / w stays well under pad_limit for the bullet
+// magnitudes; the host oracle reports cap-truncated cases separately
+// (verification/probe/fade_region_host.cpp, --near).
+constexpr double eps_dp4 = 1.0 / 4194304.0; // 4 * 2^-24
+constexpr unsigned pad_limit = 8;
+inline unsigned pad_pixels(double term_sum_max, double w_min, double half_max) noexcept {
+    const double k = 2.0 * half_max * eps_dp4 * term_sum_max;
+    if (!(k > 0) || !(w_min > 0)) return w_min > 0 ? 1u : pad_limit; // nonfinite or degenerate w
+    const double pad = std::ceil(k / w_min);
+    if (!(pad > 1)) return 1u; // covers NaN
+    if (!(pad < double(pad_limit))) return pad_limit;
+    return unsigned(pad);
+}
+
 // MotionOutput::apply_jitter's arithmetic, bit for bit (single precision,
 // SSE): rows[0] += jx_ndc * rows[3], rows[1] += jy_ndc * rows[3].
 inline void jitter_rows(float rows[16], float jx_px, float jy_px, unsigned width, unsigned height) noexcept {
@@ -88,11 +126,12 @@ struct NearClip {
 // clip = (r0.p, r1.p, r2.p, r3.p) with p = (x, y, z, 1) and row k at rows[4k..4k+3]
 // (the VS's dp4 oPos.k, v0, c[base+k]). Every corner must have finite clip
 // values and w > 0; then sx = X + (x/w + 1) W/2, sy = Y + (1 - y/w) H/2, the
-// rectangle [floor(min) - 1, ceil(max) + 1] inclusive on both axes,
+// rectangle [floor(min) - pad, ceil(max) + pad] inclusive on both axes
+// with the w-scaled pad above (>= the historical 1 px),
 // intersected with the viewport. An empty intersection yields the 1x1
 // rectangle at the viewport origin. Returns Reason::Bound and writes *out;
 // any other reason leaves *out untouched and the caller uses the full viewport.
-inline Reason project_box(const float rows[16], const Box& box, const Viewport& viewport, Rect* out, NearClip* cut = nullptr) noexcept {
+inline Reason project_box(const float rows[16], const Box& box, const Viewport& viewport, Rect* out, NearClip* cut = nullptr, unsigned* pad_out = nullptr) noexcept {
     if (!viewport.width || !viewport.height) return Reason::Viewport;
     for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return Reason::NonFinite;
     for (unsigned a = 0; a < 3; ++a) {
@@ -100,6 +139,11 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
         if (!(box.half[a] >= 0)) return Reason::BoundUnknown;
     }
     double clip[8][4];
+    // Largest |term| sum over the rows that reach the screen (x, y and w) and
+    // over the corners: the fp32 `dp4` error bound above. A near-plane
+    // crossing is a convex combination of two corners, and every term is
+    // affine in the point, so the corner maximum bounds the crossings too.
+    double term_sum_max = 0;
     for (unsigned corner = 0; corner < 8; ++corner) {
         double p[3];
         for (unsigned a = 0; a < 3; ++a) {
@@ -110,6 +154,10 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
             const float* row = rows + 4 * k;
             clip[corner][k] = double(row[0]) * p[0] + double(row[1]) * p[1] + double(row[2]) * p[2] + double(row[3]);
             if (!std::isfinite(clip[corner][k])) return Reason::NonFinite;
+            if (k == 2) continue; // the z row never reaches a screen coordinate
+            const double sum = std::fabs(double(row[0]) * p[0]) + std::fabs(double(row[1]) * p[1]) +
+                               std::fabs(double(row[2]) * p[2]) + std::fabs(double(row[3]));
+            if (sum > term_sum_max) term_sum_max = sum;
         }
         // Unclipped: refuse at the first corner with w <= 0, before the later
         // corners are evaluated (the fade route's reason histogram unchanged).
@@ -123,7 +171,7 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
         cut->clipped = behind;
         if (behind == 8) return Reason::BehindNear;
     }
-    double min_x = 0, max_x = 0, min_y = 0, max_y = 0;
+    double min_x = 0, max_x = 0, min_y = 0, max_y = 0, w_min = 0;
     const double X = double(viewport.x), Y = double(viewport.y);
     const double half_w = double(viewport.width) * 0.5, half_h = double(viewport.height) * 0.5;
     bool first = true;
@@ -134,8 +182,9 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
         const double sx = X + (c[0] / c[3] + 1.0) * half_w;
         const double sy = Y + (1.0 - c[1] / c[3]) * half_h;
         if (!std::isfinite(sx) || !std::isfinite(sy)) return Reason::NonFinite;
-        if (first) { min_x = max_x = sx; min_y = max_y = sy; first = false; }
+        if (first) { min_x = max_x = sx; min_y = max_y = sy; w_min = c[3]; first = false; }
         else {
+            w_min = c[3] < w_min ? c[3] : w_min;
             min_x = sx < min_x ? sx : min_x; max_x = sx > max_x ? sx : max_x;
             min_y = sy < min_y ? sy : min_y; max_y = sy > max_y ? sy : max_y;
         }
@@ -166,10 +215,12 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
     // far outside any target; the viewport intersection below clamps it.
     constexpr double limit = 1e9;
     auto clamp = [](double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; };
-    const Rect hull{std::int32_t(std::floor(clamp(min_x, -limit, limit))) - 1,
-                    std::int32_t(std::floor(clamp(min_y, -limit, limit))) - 1,
-                    std::int32_t(std::ceil(clamp(max_x, -limit, limit))) + 2,
-                    std::int32_t(std::ceil(clamp(max_y, -limit, limit))) + 2};
+    const std::int32_t pad = std::int32_t(pad_pixels(term_sum_max, w_min, half_w > half_h ? half_w : half_h));
+    if (pad_out) *pad_out = unsigned(pad);
+    const Rect hull{std::int32_t(std::floor(clamp(min_x, -limit, limit))) - pad,
+                    std::int32_t(std::floor(clamp(min_y, -limit, limit))) - pad,
+                    std::int32_t(std::ceil(clamp(max_x, -limit, limit))) + pad + 1,
+                    std::int32_t(std::ceil(clamp(max_y, -limit, limit))) + pad + 1};
     Rect rect = intersect(hull, full_rect(viewport));
     if (empty(rect)) rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1, std::int32_t(viewport.y) + 1};
     *out = rect;
@@ -186,6 +237,7 @@ struct Region {
     Reason reason = Reason::Viewport;
     bool bound = false;   // rect came from the box (reason == Bound)
     unsigned clipped = 0; // corners cut away by the near plane (near_clip only; 0 otherwise)
+    unsigned pad = 0;     // w-scaled fp32 pad actually applied, in pixels (Bound only)
 };
 inline Region derive(const float* rows, bool bound_known, const Box& box, const Viewport& viewport, bool fill_solid, const Rect& fallback, bool near_clip = false) noexcept {
     Region region{};
@@ -196,8 +248,10 @@ inline Region derive(const float* rows, bool bound_known, const Box& box, const 
     if (!bound_known) { region.reason = Reason::BoundUnknown; return region; }
     Rect rect{};
     NearClip cut{near_clip, 0};
-    region.reason = project_box(rows, box, viewport, &rect, &cut);
+    unsigned pad = 0;
+    region.reason = project_box(rows, box, viewport, &rect, &cut, &pad);
     region.clipped = cut.clipped;
+    region.pad = pad;
     if (region.reason == Reason::Bound) { region.rect = rect; region.bound = true; }
     return region;
 }
