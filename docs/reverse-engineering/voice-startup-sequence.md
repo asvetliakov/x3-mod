@@ -546,6 +546,79 @@ separates Pause from Run failure. A DLL witness, if ever needed, reads
 `[EBX+0x78]` at `4d03f7` and logs `EnumFilters`/`QueryFilterInfo` names with
 per-filter `GetState(0)`.
 
+## 12. Where the DMO wrapper is created, and who owns the RemoveFilter loop (2026-09-14)
+
+Provenance as in the header; GUIDs/xrefs by direct PE parse, listings by
+`i686-w64-mingw32-objdump`, untracked in `/tmp/x3-voice-dmo/`; Wine `11.15`.
+**GUID constants**, one code xref each, all inside `004cf460`: `0x563ae0`
+`DMOCATEGORY_AUDIO_DECODER`, `0x563af0` `CLSID_DMOWrapperFilter
+{94297043-bd82-4dfd-b0de-8177739c6d20}`, `0x563b00` the DMO
+`{874131cb-4ecc-443b-8948-746b89595d20}` (label `0x563b8c`), `0x54cea0`
+`IID_IDMOWrapperFilter`; `{2eeb4adf…}` does not occur in the EXE. **Creation
+site: `004cf460`, between `GetFilterGraph` (`004cfbe0`) and `OpenFile`
+(`004d0143`).** Object slots: `+0x9c` audio decoder, `+0xa0` video decoder,
+`+0xa4` MPEG-I splitter, `+0xa8` source filter, `+0xac` second splitter, `+0x78`
+graph.
+
+| Site | Step |
+| --- | --- |
+| `004cfc32`/`004cfc38` | `EAX = +0x8c`; `TEST AL,8` / `JE 004cfc48` — bit `8` (primary audio never added) diverts |
+| `004cfc48` | `CMP [ESP+0x1c],0` / `JE 004cfcaf`. `[ESP+0x1c]` is the stereo-route flag set at `004cfaf0`, read for `nChannels` at `004cfb40`; non-zero takes the MP3 decoder `{38be3000-dbf4-11d0-860e-00a024cfef6d}` at `004cfc6a` instead |
+| `004cfcaf` / `004cfcba` | `TEST EAX,0x100` / `JE 004cfd9f`, then `TEST AL,0x10` / `JE 004cfda3`. Both bits required; voice flags are `0x150` (§3), so **voice always takes this branch**. Without `0x100`: MPEG Audio Decoder `0x532b44` at `004cfdbb` |
+| `004cfcdf`/`004cfce4` | `CoCreateInstance(CLSID_DMOWrapperFilter 0x563af0, pUnkOuter=NULL, CLSCTX 3, IID_IBaseFilter 0x532aa4, &+0x9c)`; two attempts (`004cfd04 JGE`, `004cfd0a JBE 004cfcd0`), `E_OUTOFMEMORY` → `004b8b60` |
+| `004cfd1b`/`004cfd23` | `QueryInterface(IID_IDMOWrapperFilter 0x54cea0, &[ESP+0x14])`; `004cfd27 JL 004cfd68` |
+| `004cfd39`/`004cfd3e`/`004cfd44` | `IDMOWrapperFilter::Init(clsidDMO = 0x563b00, catDMO = 0x563ae0)` via `vtable+0x0c`; two attempts (`004cfd5e JGE`, `004cfd66 JBE 004cfd30`) |
+| `004cfd70` | `Release` of the `IDMOWrapperFilter` view; `004cfd7c` only picks the name string |
+| `004cfe03`/`004cfe15` | `CMP [EBX+0x9c],0` / `JE 004cfe1a`, else **`IFilterGraph::AddFilter(graph +0x78, +0x9c, pName = NULL)`** (`vtable+0x0c`) |
+
+`CoCreateInstance` failing twice leaves `+0x9c` NULL and the filter is silently
+not added — the stream is *not* aborted. **A failing `Init` is ignored**:
+`004cfd04`, `004cfd27` and `004cfd60` converge on `004cfd68`, and `004cfe03`
+adds the filter whenever the pointer is non-NULL — the EXE-side confirmation of
+§13. For voice the rest is skipped (`004cfe1a` `& 0x10`, `004cfed4`/`004cff87`
+`& 0x48`).
+
+**`004d1c20` is straight-line, not a loop.** `ESI` = object, `EDI` = 0:
+`IMediaControl::Stop` (`004d1c38`, `+0x74` `vt+0x24`), `SetState(STOP)`
+(`004d1c48`, `+0x04` `vt+0x1c`), then five blocks for `+0xa4`, `+0xa0`, `+0x9c`,
+`+0xac`, `+0xa8`:
+`RemoveFilter(graph +0x78, slot)` at `vtable+0x10` — `004d1c5e`, `004d1c8c`,
+`004d1cba`, `004d1ce8`, `004d1d16` — then `Release` (`vt+0x08`), slot nulled.
+The only compares are the NULL guards `004d1c50/52`, `004d1c7e/80`,
+`004d1cac/ae`, `004d1cda/dc`, `004d1d08/0a`; **every HRESULT is discarded**, no
+backward branch. The EXE holds exactly eight `RemoveFilter` sites; the other
+three (`004d1b24` `+0x9c`, `004d1b52` `+0xac`, `004d1bf6` `+0xa0`) are the same
+shape. §10's guess that `004d1c20` releases `+0x18`/`+0x1c` is wrong.
+
+**The 3.8 M `RemoveFilter` calls are Wine's loop, not a game retry** (correcting
+§13). The game enters it at `004d1dac`–`004d1db2`, `Release([ESI+0x78])` in
+`004d1d40` — or at `004d1dc8` (`+0x04`) if amstream holds the last graph
+reference. `quartz/filtergraph.c:453` is `while ((cursor =
+list_head(&This->filters))) IFilterGraph2_RemoveFilter(…)`, no other exit;
+`FilterGraph2_RemoveFilter` returns early **without unlinking** on a pin
+`Disconnect` failure (`:711`/`:721`) or a failing `JoinFilterGraph` (`:733` →
+`:758`); `source_Disconnect` (`libs/strmbase/pin.c:579`) supplies that failure
+with `VFW_E_NOT_STOPPED`, and `MediaFilter_Stop` (`:5082`) cannot clear it while
+`graph->state` is `State_Stopped` (§13). There is no game-side retry to bound:
+only filter state, the wrapper's presence or `RemoveFilter`'s outcome ends it.
+
+**Replica checklist** (`voice_startup_replica.cpp`; `game-dmo` matches 1–4 bar
+the `CLSCTX`):
+1. after `GetFilterGraph`: `CoCreateInstance(CLSID_DMOWrapperFilter, NULL,
+   CLSCTX_INPROC_SERVER|CLSCTX_INPROC_HANDLER (3), IID_IBaseFilter)` ×2;
+2. `QueryInterface(IID_IDMOWrapperFilter)` ×1;
+3. `Init({874131cb…}, DMOCATEGORY_AUDIO_DECODER)` ×2, result ignored; release it;
+4. `AddFilter(wrapper, NULL)` if non-NULL, *before* `OpenFile`; then `OpenFile`,
+   `SetState(RUN)`, `IMediaControl::Pause`;
+5. teardown: `IMediaControl::Stop`, `SetState(STOP)`, then a **fixed**
+   `RemoveFilter(slot); Release(slot)` per slot, HRESULT discarded — no
+   `EnumFilters`, no retry; `remove_filters()` as written is not the game;
+6. `Release` the graph, then the `IAMMultiMediaStream`, and time *that release*:
+   the hang step to report is `release_graph`, not a removal loop.
+
+Unknown: which filter Wine's loop settles on is not derivable from the EXE
+(`list_add_head`); run 12 and the replica observe `MediaStreamFilter`.
+
 ## 13. The DMO wrapper the game adds, and why it fails and spins (2026-09-14)
 
 (Section 12, the `0x004d1c20` / DMO-creation disassembly, is written separately.)
@@ -581,8 +654,9 @@ the paused splitter. The game's `004d1d40`/`004d1c20` teardown removes `"0001"`
 `FilterGraph2_RemoveFilter` (l. 678) disconnects the sink's peer first,
 strmbase `source_Disconnect` (`pin.c:579`) returns `VFW_E_NOT_STOPPED`
 (`0x80040224`) because the splitter is Paused, `RemoveFilter` returns it with
-the filter still listed, and the game retries: 3,802,638 `Removing filter
-L"MediaStreamFilter"` lines in run 12, 1,086,051 in the replica's 15 s.
+the filter still listed, and **`filter_graph_Release`'s own `while` loop retries
+forever** (§12 — the retry is Wine's, not the game's): 3,802,638 `Removing
+filter L"MediaStreamFilter"` lines in run 12, 1,086,051 in the replica's 15 s.
 
 **Replica reproduction** (mode `game-dmo`, EXE `575cbd48…`,
 `verification/results/bottle-X3/voice-startup-replica.json`):
