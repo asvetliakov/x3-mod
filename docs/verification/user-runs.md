@@ -42,9 +42,9 @@ Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
-| 21 | AO appearance at a readable footprint (`--ao-radius 200`, no debug view), bullet witness every frame, vanilla port approach | 2 | Ready (no new DLL; installed `39b090d0…`) |
+| 21 | AO appearance at a readable footprint (`--ao-radius 100`, no debug view), bullet witness every frame, vanilla port approach | 2 | Ready (no new DLL; installed `39b090d0…`) |
 
-## 21. AO appearance at radius 200, bullet witness on firing frames, vanilla port approach — Ready
+## 21. AO appearance at radius 100, bullet witness on firing frames, vanilla port approach — Ready
 
 No new build; the installed `39b090d0…` (`77a649b`) is used. Two short sessions.
 
@@ -52,7 +52,7 @@ No new build; the installed `39b090d0…` (`77a649b`) is used. Two short session
 
 1. **Ambient occlusion**: near a station (within ~1 km) and in an asteroid field, press
    Ctrl+Shift+F11 a few times. This time the scene is shaded (no gray view), and the radius is
-   200 m, which is the readable-footprint proxy from
+   100 m (the launcher and DLL cap), the readable-footprint proxy from
    [ambient-occlusion-scale.md](../architecture/ambient-occlusion-scale.md). Say whether creases,
    docking bays, hull plating and asteroid contact areas darken visibly, whether it looks wrong
    anywhere (dark halos around objects against the nebula, crawling, HUD), and whether you would
@@ -69,7 +69,7 @@ No new build; the installed `39b090d0…` (`77a649b`) is used. Two short session
   --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
   --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
   --fade-witness 1 --screen-emission --screen-emission-timing \
-  --ambient-occlusion --ao-timing --ao-radius 200 \
+  --ambient-occlusion --ao-timing --ao-radius 100 \
   --voice-decoder /tmp/x3-wma-plugin-v4 \
   --capture-start 999999 --capture-frames 8
 ```

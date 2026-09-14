@@ -40,7 +40,7 @@ fullscreen bracket in 50,654 frames); loading markers read menu 12.9 s and a
 21.7 s save-load stall; the far port was captured (37 px) and its radiance
 moves only 6 % between far and near; AO ran in the debug factor view for the
 whole session and is a few pixels wide at gameplay distances. Run 21 is queued (no new
-DLL): AO appearance at radius 200 as the footprint proxy, bullet witness on
+DLL): AO appearance at radius 100 (the option's cap) as the footprint proxy, bullet witness on
 every frame, and a vanilla approach to the same port and a ship. Details in the
 [completed-run archive](archive/user-runs-completed.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
@@ -118,7 +118,7 @@ darkening on a ship. Details in the
   view all session. Scale decision
   [ambient-occlusion-scale.md](architecture/ambient-occlusion-scale.md) is
   ratified with the run-21 amendment: appearance is judged first at
-  `--ao-radius 200`; the constant-footprint rule is implemented only if kept;
+  `--ao-radius 100`; the constant-footprint rule is implemented only if kept;
   X3's BUMPMAP is already tangent-space normal mapping, no height map exists,
   parallax has negative cost/benefit. Design
   [ambient-occlusion.md](architecture/ambient-occlusion.md), ledger

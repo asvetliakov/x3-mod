@@ -5,9 +5,9 @@ session. Owning implementation note: `ambient-occlusion.md` (steps 1, 1b, 2); le
 `../verification/ambient-occlusion.md`. Nothing here is implemented.
 
 **Ratified 2026-09-15 (orchestrator) with one amendment:** the appearance question is answered
-before the footprint rule is implemented. Run 21 uses the existing `--ao-radius 200` (no debug
-view) as the footprint proxy: 64 px (capped) under 800 m, 25.6 px at 2 km, 10 px at 5 km, which
-sits in the readable band at the distances run 20 measured. If the user finds the effect worth
+before the footprint rule is implemented. Run 21 uses the existing `--ao-radius 100` (the launcher and DLL upper bound; no debug
+view) as the footprint proxy: 64 px (capped) under 400 m, 25.6 px at 1 km, 12.8 px at 2 km,
+5 px at 5 km, which sits in the readable band within about 2 km of a station. If the user finds the effect worth
 keeping, the `R(d)` rule below is implemented as the next candidate; if not, AO leaves the
 default path and the chain stays only as the base for v2.
 
