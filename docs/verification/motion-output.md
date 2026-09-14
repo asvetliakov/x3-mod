@@ -846,3 +846,36 @@ cross-compiled but not executed. Setter-hook cost in the game is unmeasured.
 The engine scene-end hook is exercised on the fixture's own `E8` callsite
 through the seam; the game's `0x004721b1` patch is verified for its expected
 bytes and identity gate only, not in gameplay, and stays off by default.
+
+## TAA invalidation-site diagnostic (2026-09-14)
+
+Diagnosis of the `camera_state reason=3` clusters of user runs 11 and 14
+(history dropped on 15.1 % / 11.2 % of gameplay frames in a fast-translating
+segment; absent in run 15): named from the existing logs as the
+`cutout_missed` site (`after_draw`, `cutout::missed`: a source-over blended,
+alpha-tested draw of the cutout pair refused at gate 4 every frame), a
+documented conservative rule, not a cut-detector or camera-read defect. The
+evidence and the policy question are in
+[live-motion-route.md](../architecture/live-motion-route.md#temporal-resolve-at-the-bloom-copy-temporal-step-3).
+
+Change: every `invalidate_taa` caller is tagged (`TaaInvalidateSite`, 20
+sites), the route logs `taa_invalidate device= frame= site=` at most once per
+frame per site (integer-only at the call; flushed at the frame end and at a
+frame begin), and `camera_state` carries `prev_valid_at_policy=`. The runner
+asserts the exact per-frame site sets of every 12-frame TAA case
+(`{9: {reset}}`; strict skip `{skip, not_resolved}` on all 12 frames) and of
+the environment-map script (`not_resolved` on frames 1 and 3 only), and
+`prev_valid_at_policy` against the decision reason on every `camera_state`
+line.
+
+| Check | Result |
+| --- | --- |
+| `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 224 reachable functions, no violations (the sites on the light setter paths stay integer-only) |
+| Host tests (`test_motion_route_parse`, `test_camera_state_analysis`, `test_shimmer_trace`, `test_motion_output_runner`) | 28 tests OK |
+| `run_motion_output.py` full suite (bottle X3) | FAILS at the first case, `production-on` frame 0, `check_render_state` (`rs_queries=22 rs_hits=20`, no resync), before any TAA case: pre-existing since the last suite run at 2e5f1af (motion_output.cpp changed by 2,467 lines since, including the two `mark_cutout_candidate` state reads on refused scene draws); this change adds no render-state query |
+| Diagnostic partial (retained binaries of that build, `check_render_state` bypassed, `motion-output-partial.json`) | 9 TAA cases pass with the new assertions: production-taa-on 83 checks, seam-taa-on 164, seam-taa-camera-on 177, camera-sentinel1 176, camera-sentinel2 177, sentinel2-nocamera 158 (12 × {skip, not_resolved} + reset at 9), envmap 67 (not_resolved at 1 and 3), hook-on 141, hdr-tonemap-on 140 |
+
+Open: the `production-on` render-state count regression needs its own owner
+(the suite has not passed since the cutout arm merged); the `cutout_missed`
+policy for known-blended cutout draws (whole-frame history drop versus the
+ordinary native fallback) is the orchestrator's decision.

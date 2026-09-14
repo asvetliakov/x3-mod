@@ -643,7 +643,26 @@ def check_camera_log(name, trace, expects, camera, sentinel, frames_logged):
             assert state['history_view_valid'] == e['resolve'], (name, frame, state, e)
         else:  # no camera available: the route never attempts a read
             assert state['read_failure'] == '0' and state['reads'] == '0' and state['history_view_valid'] == '0', (name, frame, state)
+        # The history's view as the sentinel policy saw it, before this frame's
+        # resolve relatched it: valid exactly when the decision compared two
+        # views (reasons 0, 4, 5), never on reason 3, and otherwise (switch off
+        # or unreadable camera) when the previous frame's resolve latched a
+        # readable view (frame 0 and the first frame after Reset have none).
+        expected_previous = '1' if state['reason'] in ('0', '4', '5') else '0' if state['reason'] == '3' else str(int(camera and frame not in (0, 9)))
+        assert state['prev_valid_at_policy'] == expected_previous, (name, frame, state, expected_previous)
     return {f: {'policy': int(s['policy']), 'reason': int(s['reason']), 'cut': int(s['camera_cut']), 'rotation_deg': float(s['rotation_deg'])} for f, s in states.items()}
+
+
+def invalidate_sites(trace):
+    """`taa_invalidate device=.. frame=F site=<name>` lines, one set of site names per frame
+    (the DLL logs each site at most once per frame, at the frame's end or at the frame's
+    (re)begin; a Reset carries the frame the proxy began at the preceding Present)."""
+    sites = {}
+    for l in trace.splitlines():
+        if l.startswith('taa_invalidate '):
+            f = fields(l)
+            sites.setdefault(int(f['frame']), set()).add(f['site'])
+    return sites
 
 
 def mip_bias_text(mip_bias):
@@ -746,6 +765,18 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         expects = camera_expectations(lines)
         assert sorted(expects) == list(range(12)) and all(policies[f] == int(expects[f]['policy']) for f in policies), (name, policies)
         assert all(t['skipped'] == ('1' if strict_skip else '0') for t in taa_lines.values()), (name, 'skipped frames')
+        # Consolidated invalidation diagnostic: the Reset after frame 8's
+        # Present is the only history drop of a resolving script; the proxy
+        # begins frame 9 at that Present, so the site carries frame 9 (flushed
+        # by after_reset's re-begin, before motion_output_reset). The strict
+        # skip drops the history twice per frame, at the refused resolve
+        # (skip) and at the frame's end (not_resolved). Nothing else fires: no
+        # cutout miss, composition stop, restore failure or failed Present.
+        expected_sites = {f: {'skip', 'not_resolved'} for f in range(12)} if strict_skip else {}
+        expected_sites.setdefault(9, set()).add('reset')
+        sites = invalidate_sites(trace)
+        assert sites == expected_sites, (name, sites, expected_sites)
+        result['taa_invalidate_sites'] = {f: sorted(v) for f, v in sorted(sites.items())}
         if camera and sentinel != '1':
             assert {f for f, p in policies.items() if p == 2} == set(range(12)) - {0, 9} - CAMERA_CUT_FRAMES, (name, policies)
             assert all(expects[f]['cut'] == str(int(f in CAMERA_CUT_FRAMES)) for f in expects), (name, expects)
@@ -2095,6 +2126,10 @@ def validate_envmap(name, text, trace, directory, hdr=False):
     routes = [fields(l) for l in tl if l.startswith('motion_route ')]
     readbacks = {int(fields(l)['frame']) for l in tl if l.startswith('motion_output_readback ')}
     assert sorted(frames) == sorted(states) == list(range(ENVMAP_FRAMES)), (name, sorted(frames), sorted(states))
+    # The two rejected frames never reach the resolve: only the frame-end
+    # site fires (no skip: nothing was attempted); the routed frames drop nothing.
+    sites = invalidate_sites(trace)
+    assert {f: v for f, v in sites.items() if f < ENVMAP_FRAMES} == {1: {'not_resolved'}, 3: {'not_resolved'}}, (name, sites)
     for frame in (1, 3):
         f, s = frames[frame], states[frame]
         # Nine draws (background, six faces, two scene draws) all stopped at gate 2:

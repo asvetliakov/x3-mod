@@ -114,6 +114,36 @@ struct MotionRoute {
 // RT1/RT2 textures cannot share its sample count; motion_output_msaa_refused).
 enum class TaaSkip : unsigned { None = 0, Disabled = 1, NotReached = 2, NoJitter = 3, NotFilled = 4,
                                 Recording = 5, Queries = 6, Initialize = 7, Container = 8, CameraState = 9, Target = 10, Msaa = 11 };
+// Every path that drops the TAA history and the history's camera view
+// (invalidate_taa), for the consolidated `taa_invalidate site=<name>` line:
+// one bit per site, logged at most once per frame per site at the frame's
+// end or at a frame (re)begin (a Reset is logged by after_reset's re-begin,
+// with the frame the proxy began at the last Present). Sites on the light
+// setter paths record the bit only.
+enum class TaaInvalidateSite : unsigned {
+    RestoreFailed = 0,          // a route restore point failed (bindings, deferred/mip restore, lazy flush, undo, rollback)
+    StateLost = 1,              // a draw or resolve while motion state is already lost
+    Skip = 2,                   // resolve_allowed refused the resolve (taa_skip carries the reason)
+    Target = 3,                 // RT0 at the scene end is not the latched main/FP16 target
+    Container = 4,              // GetContainer of a route target failed
+    ResolveFailed = 5,          // the pass run or the copy-back failed
+    NotResolved = 6,            // the frame ended without a resolve (menu, rejected, never reached)
+    PresentFailed = 7,          // Present returned a failure
+    Reset = 8,                  // device Reset
+    ComparisonExposure = 9,     // the comparison exposure toggle reseeds the history
+    ComparisonStateFailed = 10, // a comparison-control operation failed
+    CompositionStateLost = 11,  // the linear composition pass lost device state
+    CompositionReaders = 12,    // the main-target readers are unknown while the enhanced image is live
+    CompositionExport = 13,     // the enhanced image was exported (quarantine)
+    CompositionAttach = 14,     // the composition pass could not attach or lacks a required policy
+    CompositionBegin = 15,      // the composition frame could not begin
+    CompositionRefused = 16,    // a required scene-source draw was refused
+    CompositionPrepare = 17,    // preparing a required composition failed
+    CompositionIncomplete = 18, // the composition ended without a linear image
+    CutoutMissed = 19,          // a requested cutout pair forwarded natively without owned motion (cutout::missed)
+    Count = 20
+};
+const char* taa_invalidate_site_name(TaaInvalidateSite site) noexcept;
 // Where this frame's resolve ran: at the engine scene-end hook (X3M_SCENE_HOOK,
 // before the compositing call 0x004c4750) or at the bloom copy (the StretchRect
 // hook, the fallback when the engine hook is absent or did not fire in the
@@ -170,6 +200,9 @@ struct MotionTaaCounters {
     std::uint32_t camera_policy = 1, camera_reason = 1;
     bool camera_cut = false;     // rotation since the previous resolved frame exceeded X3M_CAMERA_CUT_DEG
     float camera_rotation_deg = 0;
+    // The history's camera view was valid at the sentinel-policy call (before
+    // the resolve relatches it): camera_state prev_valid_at_policy.
+    bool camera_previous_valid = false;
     std::uint32_t source = 0;    // SceneEndSource of the attempt
     // Stage 3 of the HDR scene path: the resolve ran on the FP16 scene target
     // (in.color, no copy; its output is what the write-back samples) with k
@@ -864,7 +897,10 @@ private:
     // attempt was made; a later resolve_allowed of the same frame is then a
     // no-op, so the 8-bit path never runs after it.
     bool resolve_hdr(SceneEndSource source) noexcept;
-    void invalidate_taa() noexcept;
+    void invalidate_taa(TaaInvalidateSite site) noexcept;
+    // Logs the `taa_invalidate` line of every site recorded since the last
+    // flush (frame end and frame begin; no work when nothing fired).
+    void flush_taa_invalidate_log() noexcept;
     ULONG probe_references() noexcept;
     // Runs a TemporalPass call and folds the device references it created or
     // released into taa_references_ by probing the count before and after,
@@ -915,6 +951,7 @@ private:
     std::uint64_t cutout_probe_frame_ = 0;
     bool cutout_probe_frame_known_ = false, cutout_reset_pending_ = false;
     bool cutout_coverage_missed_ = false;
+    std::uint32_t taa_invalidate_pending_ = 0; // TaaInvalidateSite bits since the last flush
     renderer::LinearMaterialConfig linear_material_config_{};
     bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
     float screen_emission_gain_ = 1.f;
