@@ -67,7 +67,7 @@ v1 (half-resolution GTAO before the TAA resolve, default-off); its engine inputs
 (`c4f6940`: 0.2 m per view unit, default zn 6 / zf 2e6 in gameplay) and step 1, the detached pass with
 its analytic-oracle fixture, is reviewed and merged (99 checks; term within 3.7e-4 of the float64
 reference; chain after the step-1b reduction `30299db`: 0.51 ms warm / 1.06 ms first block at
-1280×768, 1.33 ms at 1080p; merged without an independent review, which step 2 must get first). The scene-end placement waits for the run-14 capture query on Z-test-off
+1280×768, 1.33 ms at 1080p; independently reviewed 2026-09-14 afternoon: PASS, five low findings fixed and merged in `ddc243b`, fixture 112 checks / 0 failures). The scene-end placement waits for the run-14 capture query on Z-test-off
 draws; nothing of it is referenced at runtime or installed.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
@@ -235,7 +235,9 @@ capabilities; neither has native-Windows runtime qualification.
 
 ## Next user action
 
-Three runs are ready on the installed `76d7750` candidate, in this order: run 13 (short: speech
+Run 13 crashed at the loading screen with an execute-access page fault (snapshot `/tmp/x3-bottleX3-run38/`, the DMO fallback hook installed and patched, its emitted stub never exercised by the replica); a Fable diagnosis with a hook-exercising replica mode is in progress. Run 14 is complete (snapshot `/tmp/x3-bottleX3-run39/`; the docking port still darkens with distance, zoom was unavailable); analysis in progress. Run 15 remains ready.
+
+The original three-run plan on the installed `76d7750` candidate, in this order: run 13 (short: speech
 with the decoder plugin and the DMO fallback hook; force-quit and report if the loading screen
 hangs), run 14 (station route, fade witness, shimmer trace: asteroids in zoom, station approach,
 F8 at distance and close), run 15 (run 14 plus `--screen-emission`: fire at a target for a few
