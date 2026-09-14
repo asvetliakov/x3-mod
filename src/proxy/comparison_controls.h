@@ -6,9 +6,9 @@ namespace x3m {
 // modifier change cannot become a fresh press. No OS calls or draw-path work.
 struct ComparisonKeys {
     bool foreground = false, control = false, shift = false;
-    bool exposure = false, bloom = false;
+    bool exposure = false, bloom = false, ambient_occlusion = false; // F9, F10, F11
 };
-struct ComparisonActions { bool exposure = false, bloom = false; };
+struct ComparisonActions { bool exposure = false, bloom = false, ambient_occlusion = false; };
 class ComparisonControls {
 public:
     ComparisonActions sample(const ComparisonKeys& keys) noexcept {
@@ -16,7 +16,7 @@ public:
         if (!keys.foreground) { focused_ = false; return result; }
         if (!focused_) {
             focused_ = true;
-            exposure_down_ = keys.exposure; bloom_down_ = keys.bloom;
+            exposure_down_ = keys.exposure; bloom_down_ = keys.bloom; ambient_occlusion_down_ = keys.ambient_occlusion;
             modifiers_down_ = keys.control && keys.shift;
             return result;
         }
@@ -25,14 +25,15 @@ public:
         if (modifiers_down_ && keys.control && keys.shift) {
             result.exposure = keys.exposure && !exposure_down_;
             result.bloom = keys.bloom && !bloom_down_;
+            result.ambient_occlusion = keys.ambient_occlusion && !ambient_occlusion_down_;
         }
-        exposure_down_ = keys.exposure; bloom_down_ = keys.bloom;
+        exposure_down_ = keys.exposure; bloom_down_ = keys.bloom; ambient_occlusion_down_ = keys.ambient_occlusion;
         modifiers_down_ = keys.control && keys.shift;
         return result;
     }
     void reset_focus() noexcept { focused_ = false; }
     bool bloom_requested = true;
 private:
-    bool focused_ = false, exposure_down_ = false, bloom_down_ = false, modifiers_down_ = false;
+    bool focused_ = false, exposure_down_ = false, bloom_down_ = false, ambient_occlusion_down_ = false, modifiers_down_ = false;
 };
 } // namespace x3m

@@ -72,6 +72,11 @@ def main():
     parser.add_argument('--linear-distance-fade', action='store_true', default=None, help='Qualify six Asteroid source-over materials in linear light (requires --linear-materials --taa and the material HDR/motion prerequisites; default on with linear materials and TAA, off otherwise; --no-linear-distance-fade disables; full-size composition cost per draw)')
     parser.add_argument('--no-linear-distance-fade', dest='linear_distance_fade', action='store_false', help='Keep the Asteroid source-over materials on the native route even when --linear-materials --taa are on (opt out of the default)')
     parser.add_argument('--fade-witness', type=int, nargs='?', const=30, default=None, metavar='K', help='Diagnostic fade-region witness (X3M_FADE_WITNESS=K; requires --linear-distance-fade; default off; "--fade-witness" alone means 30): every K-th frame without an admitted emission draw the M coverage target is read back once (GetRenderTargetData to a retained system-memory copy) and the covered pixels outside the union of that frame\'s derived fade rectangles are counted; one fade_witness line per K-th frame plus that frame\'s per-DIP fade_region lines (first 64, with a truncated count) in the session log, validated by verification/probe/run_linear_distance_fade_live.py (docs/architecture/linear-distance-fade-region.md, step 1)')
+    parser.add_argument('--ambient-occlusion', action='store_true', help='Half-resolution GTAO at the scene-end hook, multiplied into the scene target before the temporal resolve (X3M_AMBIENT_OCCLUSION=1; requires --motion-output --taa; default off). Ctrl+Shift+F11 toggles the chain off/on during play for a same-scene comparison (one ambient_occlusion_toggle log line per press; the pass stays attached). docs/architecture/ambient-occlusion.md, "Step 2"')
+    parser.add_argument('--ao-radius', type=float, default=None, metavar='METRES', help='Ambient occlusion world radius in metres, 0.1..100, default 2 (X3M_AO_RADIUS; requires --ambient-occlusion; view units are 0.2 m, the calibration is tunable because the view-unit check is inconclusive)')
+    parser.add_argument('--ao-strength', type=float, default=None, help='Ambient occlusion strength s of the factor 1 - s (1 - ao), 0..1, default 0.5 (X3M_AO_STRENGTH; requires --ambient-occlusion)')
+    parser.add_argument('--ao-debug', action='store_true', help='Ambient occlusion debug view: the factor is written as grayscale instead of multiplied, and the per-frame timing line is on (X3M_AO_DEBUG=1; requires --ambient-occlusion)')
+    parser.add_argument('--ao-timing', action='store_true', help='One ambient_occlusion_frame log line per frame with GPU timestamp and CPU wall time of the chain (X3M_AO_TIMING=1; requires --ambient-occlusion; default off)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
     parser.add_argument('--screen-emission', action='store_true', help='Packed screen emission of the bullet draws inside the region bracket (X3M_SCREEN_EMISSION=1, which also sets X3M_SCREEN_EMISSION_BOUND=1; requires --linear-materials --taa --motion-output --ownership and the material HDR prerequisites; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state with a locked-prefix bound compose through policy 8 in place; unbounded, unknown-state, capability-refused or otherwise refused draws stay native (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--linear-emissions', action='store_true', help='Compose reviewed additive scene emissions in linear light (requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode; default off)')
@@ -183,6 +188,14 @@ def main():
         parser.error('--fade-witness requires --linear-distance-fade.')
     if args.shimmer_trace and not (args.motion_output and args.taa):
         parser.error('--shimmer-trace requires --motion-output --taa.')
+    if args.ambient_occlusion and not (args.motion_output and args.taa):
+        parser.error('--ambient-occlusion requires --motion-output --taa.')
+    if not args.ambient_occlusion and (args.ao_radius is not None or args.ao_strength is not None or args.ao_debug or args.ao_timing):
+        parser.error('--ao-radius, --ao-strength, --ao-debug and --ao-timing require --ambient-occlusion.')
+    if args.ao_radius is not None and not (math.isfinite(args.ao_radius) and 0.1 <= args.ao_radius <= 100.0):
+        parser.error('--ao-radius must be within [0.1, 100].')
+    if args.ao_strength is not None and not (math.isfinite(args.ao_strength) and 0.0 <= args.ao_strength <= 1.0):
+        parser.error('--ao-strength must be within [0, 1].')
     if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
         parser.error('--fade-witness must be within [1,100000].')
     if args.screen_emission and not (args.linear_materials and args.taa and args.motion_output and args.ownership):
@@ -324,6 +337,12 @@ def main():
             env['X3M_FADE_WITNESS'] = str(args.fade_witness)
         if args.shimmer_trace:
             env['X3M_SHIMMER_TRACE'] = '1'
+        # Ambient occlusion: every switch explicit so an inherited value cannot enable it.
+        env['X3M_AMBIENT_OCCLUSION'] = '1' if args.ambient_occlusion else '0'
+        env['X3M_AO_RADIUS'] = repr(args.ao_radius if args.ao_radius is not None else 2.0)
+        env['X3M_AO_STRENGTH'] = repr(args.ao_strength if args.ao_strength is not None else 0.5)
+        env['X3M_AO_DEBUG'] = '1' if args.ao_debug else '0'
+        env['X3M_AO_TIMING'] = '1' if args.ao_timing else '0'
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
         env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
         for name, value in material_gains.items():

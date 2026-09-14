@@ -21,7 +21,9 @@ policy option. Direct environment configuration accepts `auto`, `manual` or
 falls back to fixed.
 
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
-ON ↔ OFF. Each function key needs a new press. Ctrl+Shift must already be held
+ON ↔ OFF (**F11** toggles the ambient occlusion chain when `--ambient-occlusion` is on; no
+notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/ambient-occlusion.md`
+"Step 2"). Each function key needs a new press. Ctrl+Shift must already be held
 in the previous foreground frame sample, preventing a modifier change from
 turning a held function key into a press. F8 capture is unchanged. Input is
 sampled once at the existing frame boundary, after Present and before the next

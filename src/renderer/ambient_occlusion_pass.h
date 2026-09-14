@@ -41,6 +41,10 @@ struct AmbientOcclusionFrame {
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge, as for TemporalPass
+    // Debug view (X3M_AO_DEBUG): the apply quad writes the factor
+    // pow(1 - s (1 - ao), 1/2.2) as grayscale into the target instead of
+    // multiplying (blend left off); every other quad is unchanged.
+    bool debug_view = false;
 };
 enum class AmbientOcclusionStage : unsigned {
     None, Validate, Targets, Block, Capture, Normalize, Scene, Linearize, Gtao, Blur, Apply, EndScene, Restore

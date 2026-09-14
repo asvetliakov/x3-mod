@@ -289,6 +289,35 @@ class LinearMaterialLiveTests(unittest.TestCase):
         self.assertIn('"X3M_LINEAR_EMISSIONS": "0"', output)
         self.assertIn('"X3M_EMISSION_GAIN": "1.0"', output)
 
+    def test_ambient_occlusion_cli_dependencies_and_defaults(self):
+        base = ('--motion-output', '--taa', '--object-trace', '--object-lifetime', '--ownership')
+        valid = (*base, '--ambient-occlusion')
+        for missing in ('--taa', '--motion-output'):
+            with self.subTest(missing=missing):
+                status, _, _ = self.launch(*(arg for arg in valid if arg != missing))
+                self.assertEqual(status, 2)
+        for dependent in (('--ao-radius', '3'), ('--ao-strength', '0.3'), ('--ao-debug',), ('--ao-timing',)):
+            with self.subTest(dependent=dependent):
+                status, _, _ = self.launch(*base, *dependent)
+                self.assertEqual(status, 2)
+        for bad in (('--ao-radius', '0'), ('--ao-radius', '101'), ('--ao-strength', '1.5'), ('--ao-strength', 'nan')):
+            with self.subTest(bad=bad):
+                status, _, _ = self.launch(*valid, *bad)
+                self.assertEqual(status, 2)
+        status, output, error = self.launch(*valid, '--ao-timing')
+        self.assertEqual(status, 0, error)
+        for line in ('"X3M_AMBIENT_OCCLUSION": "1"', '"X3M_AO_RADIUS": "2.0"', '"X3M_AO_STRENGTH": "0.5"', '"X3M_AO_DEBUG": "0"', '"X3M_AO_TIMING": "1"'):
+            self.assertIn(line, output)
+        status, output, error = self.launch(*valid, '--ao-radius', '3.5', '--ao-strength', '0.25', '--ao-debug')
+        self.assertEqual(status, 0, error)
+        for line in ('"X3M_AO_RADIUS": "3.5"', '"X3M_AO_STRENGTH": "0.25"', '"X3M_AO_DEBUG": "1"'):
+            self.assertIn(line, output)
+        # Default off, and an inherited value cannot enable it.
+        status, output, error = self.launch(*base, environment={'X3M_AMBIENT_OCCLUSION': '1', 'X3M_AO_DEBUG': '1'})
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_AMBIENT_OCCLUSION": "0"', output)
+        self.assertIn('"X3M_AO_DEBUG": "0"', output)
+
     def test_cli_clears_inherited_feature_and_gains(self):
         code, output, error = self.launch(environment={'X3M_LINEAR_MATERIALS': '1', 'X3M_MATERIAL_DIRECT_GAIN': '16'})
         self.assertEqual(code, 0, error)

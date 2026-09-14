@@ -140,7 +140,7 @@ struct LinearEmissionPass {
 struct Pass {IDirect3DSurface9 initial,*current=&initial;unsigned exchange_calls=0;std::vector<HRESULT> exchange_results;
  IDirect3DSurface9*target(){return current;}UINT width(){return 64;}UINT height(){return 32;}
  HRESULT exchange_target(IDirect3DSurface9*&candidate){const auto i=exchange_calls++;const HRESULT hr=i<exchange_results.size()?exchange_results[i]:S_OK;if(SUCCEEDED(hr))std::swap(candidate,current);return hr;}
- bool active=true;unsigned references(){return 0;} bool tonemap_active()const{return active;}void shutdown(){}void after_reset(HRESULT){}void before_reset(){}void bind(void*,void*){}};
+ bool active=true;unsigned references(){return 0;} bool tonemap_active()const{return active;}void shutdown(){}void after_reset(HRESULT){}void before_reset(){}void bind(void*,void*){}void detach(){}};
 struct History{void invalidate(){}};
 namespace camera_state {void reset(){}}
 // Step C admission double: synthetic screen identities (vs 90/91, ps 95/96)
@@ -304,6 +304,9 @@ public:
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
  bool hdr_target_failed_=false,hdr_blocked_=false,target_failed_=false,pending_valid_=false,main_msaa_=false,msaa_logged_=false;unsigned hdr_blocked_latches_=0,main_msaa_samples_=0;Surface main_,main_depth_;History selector_;renderer::CameraState camera_previous_;
  unsigned taa_references_=0;std::unique_ptr<Pass>hdr_=std::make_unique<Pass>(),taa_;History history_;
+ // Ambient occlusion pass and its timestamp queries (step 2): lifetime seams only.
+ std::unique_ptr<Pass>ao_;bool ao_timing_created_=false,ao_timing_failed_=false,ao_timing_lost_=false,ao_attach_failed_=false;unsigned ao_timing_releases_=0,ao_chain_failures_=0;D3DFORMAT ao_adapter_format_=D3DFMT_UNKNOWN,ao_target_format_=D3DFMT_UNKNOWN;
+ void ao_timing_release()noexcept{++ao_timing_releases_;ao_timing_created_=false;}
  IUnknown*target_surface_=nullptr,*depth_surface_=nullptr,*sentinel_ps_=nullptr,*sentinel_mrt_ps_=nullptr,*quad_vs_=nullptr,*quad_declaration_=nullptr;
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;renderer::HdrConfig hdr_config_;
  std::uint64_t id_=1,frame_=1,generation_=0;bool scene_open_=false;

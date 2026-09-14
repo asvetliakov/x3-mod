@@ -355,9 +355,10 @@ HRESULT AmbientOcclusionPass::execute(const AmbientOcclusionFrame& in, AmbientOc
     if (blur && SUCCEEDED(hr) && step(AmbientOcclusionStage::Blur, bind_and_draw(ao_surfaces_[1], hw, hh, blur_, ao_[0], half_depth_, nullptr)))
         term = ao_[1];
     // Apply: the multiply into the owning target under ZERO/SRCCOLOR (the
-    // factors were set by normalize; only the enable toggles here).
+    // factors were set by normalize; only the enable toggles here). The debug
+    // view leaves blending off (normalize cleared it) so the factor is written.
     bool applied = false;
-    if (SUCCEEDED(hr) && in.target && step(AmbientOcclusionStage::Apply, call<SetRsFn>(SetRenderState)(d, D3DRS_ALPHABLENDENABLE, TRUE)))
+    if (SUCCEEDED(hr) && in.target && step(AmbientOcclusionStage::Apply, call<SetRsFn>(SetRenderState)(d, D3DRS_ALPHABLENDENABLE, in.debug_view ? FALSE : TRUE)))
         applied = step(AmbientOcclusionStage::Apply, bind_and_draw(in.target, w, h, apply_, term, half_depth_, in.depth));
     if (own_scene && !lost(hr)) { const HRESULT end = call<SceneFn>(EndScene)(d); if (SUCCEEDED(hr) || lost(end)) { if (FAILED(end)) stage = AmbientOcclusionStage::EndScene; hr = end; } }
     out->operation = hr;
