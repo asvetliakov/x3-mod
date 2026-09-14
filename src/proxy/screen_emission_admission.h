@@ -12,11 +12,14 @@
 // checkpoint, all nine qualified detached). Step C admits any of them in the
 // exact native screen state (ADD, ONE/INVSRCCOLOR, mask 15) once a locked-
 // prefix bound exists. The bound itself is only derived for the three
-// INSTANCE_BULLETS vertex shaders (`bullet`): one byte-identical body apart
-// from comments, g_mViewProjection at c0-3 over world-space FLOAT3 positions
-// at stride 24 (effects-engine-remaining-emission.md, "Bullet vertex buffer
-// writer"). The DEFAULT/INSTANCE scalar-fade bodies transform through their
-// own matrices and have no bound source yet: their draws refuse to native.
+// INSTANCE_BULLETS vertex shaders (`bullet`): one body class per the SM1
+// note (101 DWORDs, 7 slots; g_mViewProjection at c0-3 over the position
+// input), of which only 5e484a06672e28fb has live and disassembly evidence
+// (effects-engine-remaining-emission.md, "Bullet vertex buffer writer"). The
+// bound is data-driven per buffer (the Unlock scan of the draw's own
+// stride-24 FLOAT3 stream); the VS identity only selects the c0-3 window.
+// The DEFAULT/INSTANCE scalar-fade bodies transform through their own
+// matrices and have no bound source yet: their draws refuse to native.
 namespace x3m::screen_emission {
 
 struct Pair {

@@ -689,7 +689,10 @@ SCREEN_PROGRAMS=tuple(dict.fromkeys(BOOTSTRAP+(f'vs_{FADE_PAIRS[0][0]}.bin',f'ps
 # Frame -> source kinds (s screen, f fade, e emission); the bullet buffer is
 # created before frame 0 and recreated after the Reset of frame 10, so frames
 # 1 and 11 are first draws (no scan yet: refused unbounded, native).
-SCREEN_PLAN=('','s','s','es','sf','fs','esf','s','s','s','s','s','s','se')
+# p: PROJECTED on stage 0, g: sRGB on sampler 0 (readiness refusals), d: dither
+# on (a different state, pair refusal); all bound, all native.
+SCREEN_PLAN=('','s','s','es','sf','fs','esf','s','s','s','s','s','s','se','p','g','d')
+SCREEN_KINDS='spgd'
 SCREEN_FRAMES=len(SCREEN_PLAN)
 SCREEN_OVERLAP={7:2}
 SCREEN_FAULT={8:5,9:6}   # 5 SourceBind -> refusal 5, native; 6 Composite -> Incomplete, A|R recovered
@@ -710,23 +713,27 @@ def screen_expected_sources(frame,screen=1,fade=1,emission=1,caps=1):
     frame-stop after a composite fault."""
     result=[];stopped=False
     for source,kind in enumerate(SCREEN_PLAN[frame]):
+        bullet=kind in SCREEN_KINDS
         fault=SCREEN_FAULT.get(frame,0) if kind=='s' else 0
-        active=bool(screen if kind=='s' else fade if kind=='f' else emission)
+        active=bool(screen if bullet else fade if kind=='f' else emission)
         applied=fault if active and (kind!='s' or caps) else 0 # the caps case queues no pass fault for a draw that never reaches the pass
-        eligible=int(kind=='s' and active)
+        eligible=int(kind in 'spg' and active) # d: dither on is a different state (pair refusal), never eligible
         unbounded=int(eligible and frame in SCREEN_UNBOUNDED_FRAMES)
         caps_refused=int(eligible and not unbounded and not caps)
-        admissible=active and not (kind=='s' and (unbounded or caps_refused))
-        prepared=int(admissible and not stopped and applied!=5)
+        readiness=int(eligible and not unbounded and not caps_refused and kind in 'pg') # PROJECTED stage / sRGB sampler
+        admissible=active and not (bullet and (unbounded or caps_refused or kind=='d'))
+        prepared=int(admissible and not stopped and applied!=5 and not readiness)
         incomplete=int(prepared and applied==6)
         linear=int(prepared and not incomplete)
         # Without the option the bullet pair is an ordinary non-producer pair
-        # (histogram bit 0); unbounded and caps refusals are outside the histogram.
-        refused=int((admissible and not prepared) or (kind=='s' and not active))
+        # (histogram bit 0), as is the dither state with it; unbounded and
+        # caps refusals are outside the histogram.
+        refused=int((admissible and not prepared) or (bullet and (not active or kind=='d')))
         if incomplete:stopped=True
-        result.append(dict(kind=kind,fault=applied,overlap=SCREEN_OVERLAP.get(frame,1) if kind=='s' else 1,prepared=prepared,linear=linear,native=0,incomplete=incomplete,refused=refused,
+        result.append(dict(kind=kind,fault=applied,overlap=SCREEN_OVERLAP.get(frame,1) if kind=='s' else 1,prepared=prepared,linear=linear,native=0,incomplete=incomplete,refused=refused,readiness=readiness,
                            packed_eligible=eligible,packed_admitted=int(kind=='s' and prepared),packed_linear=int(kind=='s' and linear),packed_incomplete=int(kind=='s' and incomplete),
-                           packed_unbounded=unbounded,packed_caps=caps_refused,prefix_bound=int(kind=='s' and screen and not unbounded),prefix_refused=unbounded,
+                           packed_unbounded=unbounded,packed_caps=caps_refused,prefix_bound=int(bullet and screen and not unbounded),prefix_refused=unbounded,
+                           witnessed=int(eligible and not unbounded and not caps_refused and not readiness), # reached the bracket's witness record
                            mask_valid=not stopped))
     return result,stopped
 
@@ -735,7 +742,7 @@ def screen_expected_witness(frame,screen=1,fade=1,emission=1,caps=1):
     sources,stopped=screen_expected_sources(frame,screen,fade,emission,caps)
     # A fade rectangle is recorded before admission; a packed rectangle only
     # for a bounded, caps-admitted screen draw that reaches the pass.
-    rects=sum(1 for s in sources if (s['kind']=='f' and fade) or (s['kind']=='s' and s['packed_eligible'] and not s['packed_unbounded'] and not s['packed_caps']))
+    rects=sum(1 for s in sources if (s['kind']=='f' and fade) or s['witnessed'])
     fade_prepared=sum(s['prepared'] for s in sources if s['kind']=='f');packed=sum(s['packed_admitted'] for s in sources)
     emission_prepared=sum(s['prepared'] for s in sources if s['kind']=='e')
     reason='no_fade' if not rects else 'emission' if emission_prepared else 'mask_invalid' if stopped else 'sampled'
@@ -763,10 +770,12 @@ def screen_native(before,texel,h,overlap):
 
 def screen_sample_expectation(row,sources,fade,emission):
     kind=row['kind'];source=int(row['source']);before=rgba(row['before']);wanted=sources[source]
-    if kind=='s':
+    if kind in SCREEN_KINDS:
         texel=tuple(map(float,row['q'].split(',')))+(float(row['a']),)
         assert texel==SCREEN_TEXEL,(row['frame'],'bullet texel')
+        assert not int(row['packed']) or kind=='s',(row['frame'],'only the admitted state composes')
         if not int(row['covered']):return before
+        if kind=='p':return None # projected coordinates: the native sample is undefined for the 1x1 texel too
         if wanted['incomplete']:return before # A|R recovered exactly
         if int(row['packed']):return screen_law(before,texel,1.,int(row['overlap']))
         # A packed bracket composes only inside its rectangle: with the injected
@@ -791,11 +800,11 @@ def validate_screen_samples(rows,expected_by_frame,fade,emission):
         assert row['kind']==sources[source]['kind'] and int(row['overlap'])==sources[source]['overlap']
         before,after=rgba(row['before']),rgba(row['after'])
         wanted=screen_sample_expectation(row,sources,fade,emission)
-        if wanted is None:continue # fade off: the native fade result has no CPU oracle here
+        if wanted is None:continue # fade off / projected stage: no CPU oracle
         for a,b in zip(after,wanted):
             fraction=abs(a-b)/(.006*abs(b)+.00002);maximum=max(maximum,fraction)
             assert fraction<=1,(key,'screen law / native / fade / emission',after,wanted,fraction)
-        if row['kind']=='s' and int(row['covered']) and int(row['overlap'])==1 and not sources[source]['incomplete'] and int(row['packed'])==int(row['bracket']):
+        if row['kind'] in 'sgd' and int(row['covered']) and int(row['overlap'])==1 and not sources[source]['incomplete'] and int(row['packed'])==int(row['bracket']):
             (packed_alpha if int(row['packed']) else native_alpha).setdefault(before[3],set()).add(after[3])
         count+=1
     for alpha,values in packed_alpha.items():
@@ -843,7 +852,7 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
             for key in ('prepared','linear','native','incomplete','refused','packed_eligible','packed_admitted','packed_linear','packed_incomplete','packed_unbounded','packed_caps','prefix_bound','prefix_refused'):
                 assert int(actual[key])==wanted[key],(frame,actual['source'],key,actual[key],wanted[key])
             rect=tuple(map(int,actual['rect'].split(',')))
-            assert rect==(SCREEN_QUAD if wanted['kind']=='s' else source_scissor(0)),(frame,'source rectangle')
+            assert rect==(SCREEN_QUAD if wanted['kind'] in SCREEN_KINDS else source_scissor(0)),(frame,'source rectangle')
             pixels=int(actual['packed_region_pixels'])
             if wanted['packed_admitted']:
                 assert pixels>0 and (region_pixels_per_bracket in (None,pixels)),(frame,'one bound rectangle per bracket',pixels)
@@ -874,12 +883,13 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
         assert int(row['region_pixels'])==int(status[29]) and int(row['region_pixels'])>=int(row['packed_region_pixels'])
         ref=refusals[frame]
         assert int(ref['preparation'])==sum(s['refused'] for s in expected if s['fault']==5),(frame,'prepare failure refusal',ref['preparation'])
-        assert int(ref['readiness'])==0 and int(ref['readers'])==0,(frame,'no readiness/reader refusal',ref)
+        assert int(ref['readiness'])==sum(s['readiness'] for s in expected),(frame,'readiness refusals: PROJECTED stage and sRGB sampler only',ref['readiness'])
+        assert int(ref['readers'])==0,(frame,'no reader refusal',ref)
     variants=[fields(line) for line in traces if line.startswith('screen_emission_variant ')]
     assert [(v['original'],int(v['transform']),int(v['create'],16)) for v in variants]==([(SCREEN_PAIR[1],0,0)] if screen else []),'the packed producer is created once for the row-19 PS, only with the option'
     packed_regions=[fields(line) for line in traces if line.startswith('packed_region ')]
     # One line per screen draw that reached the bracket's witness record: eligible, bounded, caps present (prepared or refused there).
-    assert [int(r['frame']) for r in packed_regions]==[f for f in range(SCREEN_FRAMES) for s in expected_by_frame[f][0] if s['packed_eligible'] and not s['packed_unbounded'] and not s['packed_caps']],'packed_region lines'
+    assert [int(r['frame']) for r in packed_regions]==[f for f in range(SCREEN_FRAMES) for s in expected_by_frame[f][0] if s['witnessed']],'packed_region lines'
     for r in packed_regions:
         assert (r['vs'],r['ps'])==SCREEN_PAIR
         assert tuple(map(int,r['rect'].split(',')))==(injected or tuple(map(int,r['rect'].split(','))))
@@ -895,7 +905,7 @@ def screen_expected_mask(frame,screen,fade,emission,caps,width=64,height=64):
     expected=[False]*(width*height)
     for s in sources:
         if not s['prepared']:continue
-        l,t,r,b=SCREEN_QUAD if s['kind']=='s' else source_scissor(0,width,height)
+        l,t,r,b=SCREEN_QUAD if s['kind'] in SCREEN_KINDS else source_scissor(0,width,height)
         for y in range(t,b):
             for x in range(l,r):expected[y*width+x]=True
     return expected
@@ -1061,7 +1071,9 @@ def main_screen(args):
         # The straddling and caps runs leave the sampled unaffected frames and
         # the native/fade/emission samples exactly as the functional run.
         functional=result['cases']['screen-functional']
-        assert result['cases']['screen-off']['totals']['packed_eligible']==0 and result['cases']['screen-caps']['totals']['packed_caps']==functional['totals']['packed_admitted']+functional['totals']['packed_incomplete']
+        # Caps refusal precedes the readiness gates: every bounded eligible draw of the functional run is caps-refused.
+        assert result['cases']['screen-off']['totals']['packed_eligible']==0
+        assert result['cases']['screen-caps']['totals']['packed_caps']==sum(s['packed_caps'] for f in range(SCREEN_FRAMES) for s in screen_expected_sources(f,1,1,1,0)[0])==functional['totals']['packed_eligible']-functional['totals']['packed_unbounded']
         result['passed']=True
     except Exception as error:
         result['error']=f'{type(error).__name__}: {error}'

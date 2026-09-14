@@ -1454,8 +1454,10 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     HRESULT format_result = S_OK, depth_format_result = S_OK, taa_format_result = S_OK, stretch_query = S_OK;
     quad_fvf_ = renderer::quad_fvf_requested();
     taa_copy_draw_ = false; std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "off");
-    { char setting[8]{}; screen_emission_bound_ = (GetEnvironmentVariableA("X3M_SCREEN_EMISSION_BOUND", setting, sizeof setting) == 1 && setting[0] == '1')
-        || (GetEnvironmentVariableA("X3M_SCREEN_EMISSION", setting, sizeof setting) == 1 && setting[0] == '1'); } // step C implies step B
+    // Step C implies step B through the route's own gate (the option with its
+    // prerequisites, capture.cpp), never through the raw variable.
+    { char setting[8]{}; screen_emission_bound_ = screen_emission_requested_
+        || (GetEnvironmentVariableA("X3M_SCREEN_EMISSION_BOUND", setting, sizeof setting) == 1 && setting[0] == '1'); }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { char setting[8]{}; fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
     {
@@ -2873,16 +2875,18 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     }
     // Step C (screen-emission-region.md, section 4): an exact SM1 screen pair
     // in the native screen state (ALPHABLENDENABLE, ADD, ONE/INVSRCCOLOR,
-    // mask 15, separate alpha off, Z-write off, sRGB write off; alpha test
-    // and Z test any). An unknown state refuses as readiness; policy 8 is not
-    // a required producer, so no screen refusal ever stops the frame.
+    // mask 15, separate alpha off, Z-write off, sRGB write off, dither off;
+    // alpha test and Z test any). An unknown state refuses as readiness, a
+    // different state is an ordinary (pair) refusal; policy 8 is not a
+    // required producer, so no screen refusal ever stops the frame.
     bool screen = false;
     if (shadow_.screen_pair && !fade) {
         bool known = true;
         for (unsigned i : {1u, 3u, 4u, 5u}) known = known && shadow_.states_known[i];
         for (unsigned i = 0; i < 4; ++i) known = known && shadow_.composition_blend_known[i];
-        if (!known) { ++composition_counts_.refused; ++composition_counts_.refusal[2]; return; }
-        screen = shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5]
+        DWORD dither = 0; // shadowed lazily like the cutout states (one Get, then the shadow)
+        if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) { ++composition_counts_.refused; ++composition_counts_.refusal[2]; return; }
+        screen = shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5] && !dither
             && shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_INVSRCCOLOR
             && shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3];
     }
@@ -3503,7 +3507,12 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     // Straddling case of the live fixture: a bound rectangle smaller than
     // the draw, so the packed bracket leaves the outside native and the
     // witness must fire.
-    if (fixture_screen_rect_set_ && region.bound) region.rect = fixture_screen_rect_;
+    if (fixture_screen_rect_set_ && region.bound) {
+        region.rect = fixture_screen_rect_;
+        const auto& v = shadow_.viewport;
+        const std::uint64_t whole = of_viewport ? std::uint64_t(v.width) * v.height : std::uint64_t(hdr_ ? hdr_->width() : 0u) * (hdr_ ? hdr_->height() : 0u);
+        permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
+    }
 #endif
     if (!region.bound) { region.rect = {0, 0, 0, 0}; permille = 0; } // never the full viewport for this kind
     route.prefix_region = region;

@@ -242,8 +242,9 @@ source, so their draws refuse to native. `linear_emission_sm1.cpp` joins the pro
 `PackedScreen` producer of each of the six SM1 pixel shaders is created once at registration
 (`screen_emission_variant` line), the VS stays original. `prepare_composition` admits an exact pair in the
 native screen state (blend on, ADD, ONE/INVSRCCOLOR, mask 15, separate alpha off, Z-write off, sRGB write
-off; alpha test and Z test any; sampler 0 sRGB off; one documented `GetTextureStageState` per bounded
-candidate refuses PROJECTED) through policy 8 with the bound locked-prefix rectangle, derived before
+off, dither off — a different state is a pair refusal, an unknown one a readiness refusal; alpha test and Z
+test any; sampler 0 sRGB off and one documented `GetTextureStageState` per bounded candidate refusing
+PROJECTED, both readiness refusals) through policy 8 with the bound locked-prefix rectangle, derived before
 admission (`before_draw` order). No bound → `packed_unbounded_refused`, no policy 8 → `packed_caps_refused`,
 both native, outside the refusal histogram and never frame-stopping (producer 8 is never required); refusals
 1–5 and the in-place ladder are the fade route's. `DrawPrimitive` now carries the scene permission and draw
@@ -252,12 +253,13 @@ the untouched bullet VS is not jittered, so the rectangle is projected without j
 `packed_eligible/admitted/linear/incomplete/unbounded_refused/caps_refused/region_pixels`; the witness union
 takes packed rectangles (`packed_prepared`, `packed_region` lines) and packed brackets no longer skip the
 sample. Fix on the way: the witness's retained readback surface is now counted by `device_references()`.
-Evidence (`screen-emission-live1.json`, 12 processes, seam DLL, 64×64): functional 14 frames, 19 sources,
-13 eligible / 10 admitted / 9 linear / 1 incomplete (composite fault: A|R recovered, frame stopped) / 2
-unbounded (first draw after creation and after Reset) / refusal 5 native, 441 px per bracket, 38 samples
+Evidence (`screen-emission-live1.json`, 12 processes, seam DLL, 64×64): functional 17 frames, 22 sources,
+15 eligible / 10 admitted / 9 linear / 1 incomplete (composite fault: A|R recovered, frame stopped) / 2
+unbounded (first draw after creation and after Reset) / refusal 5, PROJECTED-stage, sRGB-sampler and
+dither-on draws native (readiness 2, pair 1), 441 px per bracket, 38 samples
 within tolerance fraction 0.14 of the float64 law, packed alpha equal to the native blend, TAA reference
 bit-exact, witness 7 sampled frames 0 outside; off control 0 eligible; straddle (injected 8×16 half) fires
-on exactly frames 2/7/10/12 with 128 outside pixels and the other half missing; caps control 11 refused
+on exactly frames 2/7/10/12 with 128 outside pixels and the other half missing; caps control 13 refused
 native, pool of 4. Paired windows (source, median delta on−off per bracket): 1280×768 0.15–0.38 ms at
-2,967 px; 1920×1080 0.16–0.49 ms at 5,959 px (16 DIPs: 0.36 → 2.99 ms both sizes, ≈0.165 ms per bracket).
+2,967 px; 1920×1080 0.16–0.49 ms at 5,959 px (at 16 DIPs 0.36 → 2.99 ms at both sizes, ≈0.165 ms per bracket).
 Host: `test_screen_emission_live` 7 OK; x87 audit PASS. Native Windows behaviour remains unverified.

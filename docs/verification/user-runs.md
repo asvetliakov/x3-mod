@@ -139,7 +139,8 @@ every `fade_witness` line reports zero covered pixels outside the union
 (`outside=0`), `locked_prefix_frame` bound/draws near 100 % while firing (the
 first draw from each new buffer is refused by design), no
 `packed_incomplete`/`packed_caps_refused` on the `linear_composition_frame`
-lines, and the frame-time median within +0.5 ms of run 11's 4.097 ms.
+lines, and the frame-time median within +0.5 ms of run 11's 4.097 ms (the fixture's
+paired windows measured ≈0.165 ms per packed bracket at 16 DIPs, 1280×768 and 1920×1080).
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,

@@ -66,7 +66,7 @@ def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441):
         out.append(line('SCREEN_LIVE',frame=f,screen=screen,fade=fade,emission=emission,draws=len(sources),**{f's{i}':v for i,v in enumerate(s)},hash_alpha='a',hash_motion='m',hash_depth='d',hash_mask='k'))
         before=(1.,1.,1.,.39013671875)
         for i,r in enumerate(sources):
-            kind=r['kind'];rect=live.SCREEN_QUAD if kind=='s' else live.source_scissor(0)
+            kind=r['kind'];rect=live.SCREEN_QUAD if kind in live.SCREEN_KINDS else live.source_scissor(0)
             for x in live.SCREEN_SAMPLE_X:
                 covered=int(rect[0]<=x<rect[2]);packed=r['packed_admitted']
                 row=dict(frame=f,source=i,kind=kind,overlap=r['overlap'],x=x,y=32,covered=covered,bracket=int(bool(packed)),packed=int(bool(packed) and (not injected or injected[0]<=x<injected[2])),q='0.5,0.25,0.125',a=0.5,before=rgba(before),after='')
@@ -78,12 +78,12 @@ def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441):
             out.append(line('SCREEN_SOURCE',frame=f,source=i,kind=kind,overlap=r['overlap'],fault=r['fault'],hr='00000000',original_calls=1,prepared=r['prepared'],linear=r['linear'],native=0,incomplete=r['incomplete'],refused=r['refused'],
                             packed_eligible=r['packed_eligible'],packed_admitted=r['packed_admitted'],packed_linear=r['packed_linear'],packed_incomplete=r['packed_incomplete'],packed_unbounded=r['packed_unbounded'],packed_caps=r['packed_caps'],
                             packed_region_pixels=pixels,prefix_bound=r['prefix_bound'],prefix_refused=r['prefix_refused'],rect=','.join(map(str,rect)),mask_before=1,mask_after=int(r['mask_valid']),hash_mask_before='m0',hash_mask_after='m1' if r['prepared'] or r['fault']==5 else 'm0',hash_red_before='r0',hash_red_after='r1' if r['prepared'] else 'r0'))
-            if kind=='s' and r['packed_eligible'] and not r['packed_unbounded'] and not r['packed_caps']:
+            if r['witnessed']:
                 trace.append(line('packed_region',device=1,frame=f,index=i+2,vs=live.SCREEN_PAIR[0],ps=live.SCREEN_PAIR[1],vb=7,rect=','.join(map(str,injected or (31,23,52,44))),f_permille=107))
             submissions+=1
         total_pixels+=s[29]
         trace.append(line('linear_composition_frame',device=1,frame=f,prepared=s[4],linear=s[5],native=0,incomplete=s[7],refused=1,region_pixels=s[29],packed_eligible=s[40],packed_admitted=s[41],packed_linear=s[42],packed_incomplete=s[43],packed_unbounded_refused=s[44],packed_caps_refused=s[45],packed_region_pixels=s[46]))
-        trace.append(line('linear_composition_refusals',device=1,frame=f,pair=1,permission_scene=0,readiness=0,readers=0,frame_stop=0,preparation=sum(r['refused'] for r in sources if r['fault']==5)))
+        trace.append(line('linear_composition_refusals',device=1,frame=f,pair=1,permission_scene=0,readiness=sum(r['readiness'] for r in sources),readers=0,frame_stop=0,preparation=sum(r['refused'] for r in sources if r['fault']==5)))
         w=live.screen_expected_witness(f,screen,fade,emission,caps);sampled=w['reason']=='sampled'
         union=(live.rect_area(injected) if injected else region)*w['packed_prepared']+4096*w['fade_prepared']
         outside=(live.rect_area(live.SCREEN_QUAD)-live.rect_area(injected)) if injected and sampled and w['packed_prepared'] and not w['fade_prepared'] else 0
@@ -143,10 +143,6 @@ class AdmissionTable(unittest.TestCase):
         if not compiler:raise unittest.SkipTest('host compiler required')
         program='''#include "screen_emission_admission.h"
 #include <cstdio>
-int main(){using namespace x3m::screen_emission;unsigned pairs=0,vs=0,ps=0;
-for(const auto&p:pairs_ref()){}return 0;}'''
-        program='''#include "screen_emission_admission.h"
-#include <cstdio>
 int main(){using namespace x3m::screen_emission;unsigned ok=0;
 for(const auto& p:pairs){ok+=admitted_pair(p.vertex,p.pixel);ok+=admitted_pixel_shader(p.pixel);ok+=admitted_vertex_shader(p.vertex)==p.bullet;}
 ok+=!admitted_pair(pairs[0].vertex,pairs[3].pixel);ok+=!admitted_pair(0,pairs[0].pixel);ok+=!admitted_vertex_shader(0);ok+=!admitted_vertex_shader(pairs[3].vertex);
@@ -161,12 +157,14 @@ class RunnerParser(unittest.TestCase):
     def test_functional_report_and_laws(self):
         output,trace=screen_report()
         case=live.validate_screen_functional(output,trace)
-        self.assertEqual((case['frames'],case['sources'],case['region_pixels_per_bracket']),(14,19,441))
-        self.assertEqual(case['totals'],dict(packed_eligible=13,packed_admitted=10,packed_linear=9,packed_incomplete=1,packed_unbounded=2,packed_caps=0,packed_region_pixels=4410))
+        self.assertEqual((case['frames'],case['sources'],case['region_pixels_per_bracket']),(17,22,441))
+        self.assertEqual(case['totals'],dict(packed_eligible=15,packed_admitted=10,packed_linear=9,packed_incomplete=1,packed_unbounded=2,packed_caps=0,packed_region_pixels=4410))
+        gates={f:live.screen_expected_sources(f)[0][0] for f in (14,15,16)}
+        self.assertEqual([(g['kind'],g['readiness'],g['refused'],g['prepared'],g['packed_eligible'],g['prefix_bound']) for g in gates.values()],[('p',1,1,0,1,1),('g',1,1,0,1,1),('d',0,1,0,0,1)],'PROJECTED and sRGB refuse as readiness, dither as a different state; all bound and native')
         self.assertLessEqual(case['max_tolerance_fraction'],1e-9);self.assertGreaterEqual(case['alpha_pairs'],1)
         self.assertEqual(live.validate_screen_functional(*screen_report(screen=0),screen=0)['totals']['packed_eligible'],0)
         caps=live.validate_screen_functional(*screen_report(caps=0),caps=0)
-        self.assertEqual((caps['totals']['packed_caps'],caps['totals']['packed_admitted']),(11,0))
+        self.assertEqual((caps['totals']['packed_caps'],caps['totals']['packed_admitted']),(13,0))
         straddle=live.validate_screen_functional(*screen_report(injected=live.SCREEN_STRADDLE_RECT),injected=live.SCREEN_STRADDLE_RECT)
         self.assertEqual(straddle['region_pixels_per_bracket'],128)
         self.assertAlmostEqual(live.screen_law((1.,1.,1.,1.),live.SCREEN_TEXEL,1.,1)[0],(.5**2.2+.5)**(1/2.2))
@@ -185,7 +183,7 @@ class RunnerParser(unittest.TestCase):
         _,trace=screen_report()
         witness=live.validate_screen_witness(trace)
         self.assertEqual(witness['sampled_frames'],[2,4,5,7,8,10,12]);self.assertEqual(witness['outside_pixels'],0)
-        self.assertEqual(witness['skipped'],{'no_fade':3,'emission':3,'mask_invalid':1})
+        self.assertEqual(witness['skipped'],{'no_fade':6,'emission':3,'mask_invalid':1})
         self.assertEqual(witness['f_histogram']['f<=0.25'],7);self.assertEqual(witness['f_histogram']['f=1'],2)
         _,straddle=screen_report(injected=live.SCREEN_STRADDLE_RECT)
         with self.assertRaises(live.WitnessViolation) as raised:live.validate_screen_witness(straddle,injected=live.SCREEN_STRADDLE_RECT)

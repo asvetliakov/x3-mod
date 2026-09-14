@@ -109,13 +109,19 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     };
     // The bullet draw state: the captured screen state (effects ledger row
     // 19, 19 of 54 draws alpha-tested), Z test on, no scissor.
-    const auto bind_bullets=[&](bool projected) {
+    // `kind`: s the admitted state; p PROJECTED on stage 0; g sRGB on
+    // sampler 0; d DITHERENABLE on. p/g refuse as readiness, d as a
+    // different (pair) state; all three draw natively.
+    const auto bind_bullets=[&](char kind) {
+        const bool projected=kind=='p';
         f.scope(nullptr);f.scene_states();
         api(f.d->SetVertexDeclaration(bullet_declaration.p),"bullet declaration bind");api(f.d->SetStreamSource(0,bullets.p,0,stride),"bullet stream");
         api(f.d->SetStreamSourceFreq(0,1),"bullet frequency");api(f.d->SetIndices(nullptr),"bullet no indices");
         api(f.d->SetVertexShader(bullet_vs.p),"bullet VS bind");api(f.d->SetPixelShader(bullet_ps.p),"bullet PS bind");
         const float rows[16]={1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};api(f.d->SetVertexShaderConstantF(0,rows,4),"bullet g_mViewProjection");
         for(unsigned stage=0;stage<7;++stage){api(f.d->SetTexture(stage,stage?nullptr:static_cast<IDirect3DBaseTexture9*>(bullet_texture.p)),"bullet diffuse");common_sampler(stage);}
+        api(f.d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,kind=='g'?TRUE:FALSE),"bullet sampler 0 srgb");
+        api(f.d->SetRenderState(D3DRS_DITHERENABLE,kind=='d'?TRUE:FALSE),"bullet dither");
         api(f.d->SetTextureStageState(0,D3DTSS_TEXTURETRANSFORMFLAGS,projected?D3DTTFF_PROJECTED|D3DTTFF_COUNT3:D3DTTFF_DISABLE),"bullet stage 0 transform");
         api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"bullet no depth write");api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"bullet blending");
         api(f.d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_ONE),"bullet ONE");api(f.d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCCOLOR),"bullet INVSRCCOLOR");api(f.d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"bullet ADD");
@@ -176,7 +182,9 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     // Composite -> Incomplete, A|R recovered). Reset after frame 10 (the
     // buffer is recreated: frame 11 is the first draw again).
     struct Plan {const char* kinds;unsigned overlap;unsigned fault;};
-    const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0}};
+    // Frames 14-16: the readiness refusals (PROJECTED, sRGB sampler) and the
+    // dither state, each bound and native.
+    const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0},{"p",1,0},{"g",1,0},{"d",1,0}};
     const Plan control[]={{"",1,0},{"s",1,0},{"s",1,0}};
     const unsigned frames=f.screenemission_bench?18:qualified?unsigned(sizeof plans/sizeof plans[0]):unsigned(sizeof control/sizeof control[0]);
     unsigned submissions=0;
@@ -189,7 +197,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         f.emissions_enabled=required!=0||f.screen_enabled;
         if(f.screenemission_bench) {
             const unsigned count=plan<6?1:plan<12?4:16,sample=plan%6;
-            write_bullets(1);bind_bullets(false);
+            write_bullets(1);bind_bullets('s');
             const unsigned pixels_before=f.emission_status(f.d.p,46),admitted_before=f.emission_status(f.d.p,41),unbounded_before=f.emission_status(f.d.p,44);
             fence();LARGE_INTEGER begin,middle,end;QueryPerformanceCounter(&begin);
             for(unsigned i=0;i<count;++i){api(f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2),"timed bullet source");++submissions;++f.draw_index;}
@@ -204,11 +212,11 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         auto before=scene();
         for(unsigned source=0;p.kinds[source];++source) {
             const char kind=p.kinds[source];
-            const bool screen=kind=='s',emission=kind=='e';
+            const bool screen=kind=='s'||kind=='p'||kind=='g'||kind=='d',emission=kind=='e';
             const unsigned overlap=screen?p.overlap:1;
             unsigned fault=screen?p.fault:0;
             if(screen)write_bullets(overlap);
-            const RECT rect=screen?bind_bullets(false):bind_source(emission);
+            const RECT rect=screen?bind_bullets(kind):bind_source(emission);
             {Com<IDirect3DSurface9> logical;api(f.d->GetRenderTarget(0,&logical.p),"screen source snapshot application view");}
             const auto state=f.snapshot();
             float native_vs[48][4]{};api(f.d->GetVertexShaderConstantF(0,native_vs[0],48),"screen native VS constant snapshot");

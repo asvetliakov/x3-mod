@@ -8,6 +8,10 @@
 // uses the ownership copy helper's scoped, restored GPU state changes. Detailed
 // reads and optional depth preservation occur only in requested capture frames.
 namespace x3m {
+// Step C screen emission requested with its prerequisites (linear materials,
+// TAA); computed once in initialize_log. The loader enables the step B
+// Unlock scan through this gate, not through the raw variable.
+bool screen_emission_route_enabled() noexcept;
 void initialize_log(HMODULE module);
 void log(const char* format, ...);
 void hook_direct3d(IDirect3D9* object);

@@ -1896,6 +1896,7 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     return hr;
 }
 }
+bool screen_emission_route_enabled() noexcept { return screen_emission_requested; } // the one gate the loader's scan enable shares
 void initialize_log(HMODULE module) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     wchar_t path[32768]{}; GetModuleFileNameW(module,path,32768);
