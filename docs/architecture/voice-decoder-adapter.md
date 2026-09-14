@@ -277,7 +277,12 @@ destroyed, DLL detach; `RemoveVectoredExceptionHandler`) records the first
 access-violation-class fault (code, address, arena-relative classification,
 EIP/ESP/EAX/EBX/ESI/EDI, thread, hit and activation counts) into a fixed record
 published by an atomic sequence, counts later faults, and always continues the
-search. It takes no lock and touches no stdio: one preformatted copy of the line
+search. Counting rule: only the execute-fault signature (an access violation
+with DEP kind 8, or EIP equal to the faulting address) takes the one-shot
+record and increments `faults`; every other first-chance exception of the
+accepted codes (SEH-handled probes, the game's own `__try`, read/write faults)
+only increments `other_first_chance`; stack overflow is not accepted at all
+since the handler cannot format on the last guard page. It takes no lock and touches no stdio: one preformatted copy of the line
 is written unbuffered with `WriteFile` to the log's OS handle (best effort, may
 precede buffered lines), and `report()` formats the same line at the next Present
 with `faults=N`. No per-frame cost.

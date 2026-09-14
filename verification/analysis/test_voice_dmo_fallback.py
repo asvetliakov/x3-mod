@@ -80,7 +80,13 @@ class CallBinding(unittest.TestCase):
         self.assertIn('fault_count.fetch_add(1,std::memory_order_acq_rel)!=0)return EXCEPTION_CONTINUE_SEARCH', handler)
         self.assertIn('fault_seq.store(1,std::memory_order_release);', handler)
         self.assertIn('WriteFile(handle,line,DWORD(n),&written_bytes,nullptr)', handler)
-        self.assertEqual(handler.count('return EXCEPTION_CONTINUE_SEARCH;'), 4, 'the exception always continues')
+        self.assertEqual(handler.count('return EXCEPTION_CONTINUE_SEARCH;'), 5, 'the exception always continues')
+        self.assertNotIn('STACK_OVERFLOW', handler.split('default:', 1)[0], 'no formatting on the last guard page')
+        # The one-shot record is taken by the execute-fault signature only; other first-chance exceptions are counted.
+        self.assertIn('record->ExceptionInformation[0]==8', handler)
+        self.assertIn("if(!execute){other_first_chance.fetch_add(1,std::memory_order_relaxed);return EXCEPTION_CONTINUE_SEARCH;}", handler)
+        self.assertLess(handler.index('if(!execute)'), handler.index('fault_count.fetch_add'))
+        self.assertIn('other_first_chance=%lu', SOURCE)
         shutdown = SOURCE.split('void shutdown() {', 1)[1].split('\n}\n', 1)[0]
         self.assertIn('RemoveVectoredExceptionHandler(handler)', shutdown)
         self.assertIn('fault_handler=nullptr', shutdown)

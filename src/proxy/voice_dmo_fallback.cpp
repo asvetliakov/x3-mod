@@ -58,7 +58,7 @@ void* stub_entry=nullptr;
 // copy is written unbuffered to the log's OS handle (best effort, no lock).
 struct Fault { std::uint32_t code,address,access_kind,access,thread,arena,eip,esp,eax,ebx,esi,edi,hits,activations; };
 Fault fault{};
-std::atomic<std::uint32_t> fault_seq{0},fault_count{0};
+std::atomic<std::uint32_t> fault_seq{0},fault_count{0},other_first_chance{0};
 std::uint32_t fault_reported=0;
 void* fault_handler=nullptr;
 struct ErrorGuard { DWORD value=GetLastError();~ErrorGuard(){SetLastError(value);} };
@@ -122,24 +122,32 @@ engine_patch::SiteSpec site_spec() {
 #endif
     return spec;
 }
-int format_fault(char* out,unsigned size,const Fault& f,std::uint32_t faults) noexcept {
+int format_fault(char* out,unsigned size,const Fault& f,std::uint32_t faults,std::uint32_t other) noexcept {
     const bool in_arena=f.arena&&f.address>=f.arena&&f.address<f.arena+engine_patch::arena_capacity();
-    return std::snprintf(out,size,"voice_dmo_fallback_fault code=%08lx address=%08lx access_kind=%lu access=%08lx thread=%lu arena=%08lx arena_offset=%s%lx eip=%08lx esp=%08lx eax=%08lx ebx=%08lx esi=%08lx edi=%08lx hits=%lu activations=%lu faults=%lu\n",
+    return std::snprintf(out,size,"voice_dmo_fallback_fault code=%08lx address=%08lx access_kind=%lu access=%08lx thread=%lu arena=%08lx arena_offset=%s%lx eip=%08lx esp=%08lx eax=%08lx ebx=%08lx esi=%08lx edi=%08lx hits=%lu activations=%lu faults=%lu other_first_chance=%lu\n",
         static_cast<unsigned long>(f.code),static_cast<unsigned long>(f.address),static_cast<unsigned long>(f.access_kind),static_cast<unsigned long>(f.access),
         static_cast<unsigned long>(f.thread),static_cast<unsigned long>(f.arena),in_arena?"":"outside:",static_cast<unsigned long>(in_arena?f.address-f.arena:f.address),
         static_cast<unsigned long>(f.eip),static_cast<unsigned long>(f.esp),static_cast<unsigned long>(f.eax),static_cast<unsigned long>(f.ebx),static_cast<unsigned long>(f.esi),static_cast<unsigned long>(f.edi),
-        static_cast<unsigned long>(f.hits),static_cast<unsigned long>(f.activations),static_cast<unsigned long>(faults));
+        static_cast<unsigned long>(f.hits),static_cast<unsigned long>(f.activations),static_cast<unsigned long>(faults),static_cast<unsigned long>(other));
 }
 LONG CALLBACK fault_witness(EXCEPTION_POINTERS* info) {
     const EXCEPTION_RECORD* record=info?info->ExceptionRecord:nullptr;
     if(!record)return EXCEPTION_CONTINUE_SEARCH;
     switch(record->ExceptionCode){
-    case EXCEPTION_ACCESS_VIOLATION: case EXCEPTION_ILLEGAL_INSTRUCTION: case EXCEPTION_PRIV_INSTRUCTION:
-    case EXCEPTION_IN_PAGE_ERROR: case EXCEPTION_STACK_OVERFLOW: break;
-    default: return EXCEPTION_CONTINUE_SEARCH; // C++ throws, breakpoints, guard pages: not ours
+    case EXCEPTION_ACCESS_VIOLATION: case EXCEPTION_ILLEGAL_INSTRUCTION: case EXCEPTION_PRIV_INSTRUCTION: case EXCEPTION_IN_PAGE_ERROR: break;
+    default: return EXCEPTION_CONTINUE_SEARCH; // C++ throws, breakpoints, guard pages, stack overflow (no room to format): not ours
     }
-    if(fault_count.fetch_add(1,std::memory_order_acq_rel)!=0)return EXCEPTION_CONTINUE_SEARCH; // first fault only
+    // Counting rule: the one-shot record is taken by the execute-fault signature
+    // only (a jump into nothing: an access violation with DEP kind 8, or EIP equal
+    // to the faulting address); every other first-chance exception of these codes
+    // (SEH-handled probes, the game's own __try, read/write faults) is only
+    // counted in other_first_chance.
     const CONTEXT* c=info->ContextRecord;
+    const auto at=reinterpret_cast<std::uintptr_t>(record->ExceptionAddress);
+    const bool execute=record->ExceptionCode==EXCEPTION_ACCESS_VIOLATION&&record->NumberParameters>=2&&
+        (record->ExceptionInformation[0]==8||(c&&std::uintptr_t(c->Eip)==std::uintptr_t(record->ExceptionInformation[1]))||std::uintptr_t(record->ExceptionInformation[1])==at);
+    if(!execute){other_first_chance.fetch_add(1,std::memory_order_relaxed);return EXCEPTION_CONTINUE_SEARCH;}
+    if(fault_count.fetch_add(1,std::memory_order_acq_rel)!=0)return EXCEPTION_CONTINUE_SEARCH; // first execute fault only
     Fault f{};
     f.code=std::uint32_t(record->ExceptionCode);f.address=std::uint32_t(reinterpret_cast<std::uintptr_t>(record->ExceptionAddress));
     f.access_kind=record->NumberParameters>=1?std::uint32_t(record->ExceptionInformation[0]):0;
@@ -148,7 +156,7 @@ LONG CALLBACK fault_witness(EXCEPTION_POINTERS* info) {
     if(c){f.eip=c->Eip;f.esp=c->Esp;f.eax=c->Eax;f.ebx=c->Ebx;f.esi=c->Esi;f.edi=c->Edi;}
     f.hits=hits.load(std::memory_order_relaxed);f.activations=activations.load(std::memory_order_relaxed);
     fault=f;fault_seq.store(1,std::memory_order_release);
-    char line[320];const int n=format_fault(line,sizeof line,f,1);
+    char line[352];const int n=format_fault(line,sizeof line,f,1,other_first_chance.load(std::memory_order_relaxed));
     const HANDLE handle=log_handle();DWORD written_bytes=0;
     if(n>0&&handle!=INVALID_HANDLE_VALUE&&handle)WriteFile(handle,line,DWORD(n),&written_bytes,nullptr); // unbuffered, no lock; may precede buffered lines
     return EXCEPTION_CONTINUE_SEARCH;
@@ -200,7 +208,7 @@ void report() {
     if(!active.load(std::memory_order_acquire))return;
     if(fault_seq.load(std::memory_order_acquire)!=fault_reported){
         ErrorGuard error;fault_reported=fault_seq.load(std::memory_order_acquire);
-        char line[320];const int n=format_fault(line,sizeof line,fault,fault_count.load(std::memory_order_relaxed));
+        char line[352];const int n=format_fault(line,sizeof line,fault,fault_count.load(std::memory_order_relaxed),other_first_chance.load(std::memory_order_relaxed));
         if(n>0){line[n-1]=0;log("%s",line);} // the preformatted line without its newline
     }
     const std::uint32_t n=written.load(std::memory_order_acquire);
