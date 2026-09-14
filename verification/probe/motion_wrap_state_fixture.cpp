@@ -66,6 +66,7 @@ public:
  HRESULT motion_state_error_=D3DERR_INVALIDCALL;
  unsigned id_=1,generation_=0,frame_=0,taa_references_=0,logged_failures_=0,taa_invalidations=0,frames=0;
  Pass*taa_=nullptr;
+ Pass*ao_=nullptr; // AO step 2 (8b0a7c1): after_reset forwards to the ambient-occlusion pass when one is attached
  struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
   DWORD composition_blend[3]{};bool composition_blend_known[3]{};DWORD fill_mode=0;bool fill_mode_known=false;

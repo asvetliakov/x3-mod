@@ -316,6 +316,7 @@ static void shutdown() noexcept {if(hook_guard_depth)++shutdown_under_lock;}
 namespace chase_camera { static void note_last_device() noexcept {} }
 namespace resource_reader { static void report() noexcept {} }
 namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }
+namespace voice_dmo_fallback { static void shutdown() noexcept {} } // disarms the fault witness at the last device destroy (capture.cpp, voice DMO fallback hook)
 static void log(const char*, ...) noexcept {}
 static void final_admission_metric(ownership::AdmissionMonitor*, const char*) noexcept {}
 static void presentation_parameters(const char*, std::uint64_t, HWND, const D3DPRESENT_PARAMETERS*) noexcept {}

@@ -21,7 +21,8 @@ class MotionHdrSceneTests(unittest.TestCase):
         ranges = [
             ('bool MotionOutput::resolve_hdr(', '\nvoid MotionOutput::before_stretch('),
             ('bool MotionOutput::resolve_allowed(', '\n// The engine scene-end signal'),
-            ('void MotionOutput::scene_end_hook(', '\nvoid MotionOutput::after_begin_scene('),
+            # AO step 2 (8b0a7c1) put the ambient-occlusion members between scene_end_hook and after_begin_scene.
+            ('void MotionOutput::scene_end_hook(', '\n// ---- ambient occlusion at the scene end'),
             ('renderer::HdrWriteback MotionOutput::hdr_writeback(', '\nvoid MotionOutput::flush_redirect('),
             ('void MotionOutput::end_redirect(', '\nvoid MotionOutput::drop_redirect('),
         ]
