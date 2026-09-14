@@ -577,15 +577,20 @@ void MotionOutput::log_mip_bias_game_write() noexcept {
 }
 void MotionOutput::restore_mip_bias_stage(unsigned stage, HRESULT* first) noexcept {
     auto& s = samplers_[stage];
+    const std::uint32_t bit = 1u << stage;
+    // A stage whose restore already failed this frame is not retried before
+    // the next Present (no re-latching or counter growth at every restore
+    // point); the obligation stays recorded until a successful restore, an
+    // accepted application write or Reset clears it. Only a trusted saved
+    // value is ever written: after a failed application write there is none.
+    if (sampler_restore_failed_mask_ & bit) return;
+    if (!s.saved_known) { sampler_restore_failed_mask_ |= bit; return; }
     const HRESULT hr = native<SetSamplerStateFn>(SetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, s.saved_bias);
     ++counters_.mip_bias_restores; ++mip_bias_total_restores_;
-    // Cleared only by a successful restore. After a failure the device may
-    // still hold the route's bias, so the obligation stays recorded: a later
-    // successful restore, an accepted application write or Reset clears it,
-    // and the saved value is no longer trusted for re-reading.
-    if (SUCCEEDED(hr)) { s.biased = false; sampler_biased_mask_ &= ~(1u << stage); return; }
-    s.saved_known = false; if (SUCCEEDED(*first)) *first = hr;
+    if (SUCCEEDED(hr)) { s.biased = false; sampler_biased_mask_ &= ~bit; return; }
+    sampler_restore_failed_mask_ |= bit; if (SUCCEEDED(*first)) *first = hr;
 }
+void MotionOutput::release_mip_bias_retry_bound() noexcept { sampler_restore_failed_mask_ = 0; }
 HRESULT MotionOutput::restore_mip_bias() noexcept {
     HRESULT first = S_OK;
     for (std::uint32_t mask = sampler_biased_mask_; mask; mask &= mask - 1) restore_mip_bias_stage(unsigned(__builtin_ctz(mask)), &first);
@@ -646,7 +651,7 @@ void MotionOutput::apply_mip_bias() noexcept {
 // The union of reviewed material requirements is s0-s5. Each exact pair
 // admits only its own cached mask; unrelated stages do not affect admission.
 void MotionOutput::resync_samplers() noexcept {
-    sampler_bound_mask_ = sampler_biased_mask_ = 0;
+    sampler_bound_mask_ = sampler_biased_mask_ = 0; release_mip_bias_retry_bound();
     composition_main_sampler_mask_ = composition_reader_known_mask_ = 0; composition_readers_known_ = true;
     for (auto& texture : composition_textures_) texture = nullptr;
     for (unsigned stage = 0; stage < sampler_stage_count; ++stage) {
@@ -730,6 +735,9 @@ void MotionOutput::probe_cutout_caps(bool force) noexcept {
         release(factory);
     }
     cutout_cap_result_ = result; cutout_caps_ = verdict;
+    // The verdict is capability configuration, not transient HDR state: it
+    // refreshes the frame's arm latch (the probe runs at the HDR latch).
+    cutout_arm_active_ = cutout_arm_configured();
     if (cutout_cap_logs_ < failure_log_limit) {
         ++cutout_cap_logs_;
         log("linear_cutout_device device=%llu verdict=%u result=%08lx attempts=%lu mrt=%lu misc=%08lx alpha=%08lx adapter=%u type=%u display=%u fp16=%08lx motion=%08lx depth=%08lx",
@@ -737,17 +745,22 @@ void MotionOutput::probe_cutout_caps(bool force) noexcept {
             caps.AlphaCmpCaps,creation.AdapterOrdinal,unsigned(creation.DeviceType),unsigned(display.Format),formats[0],formats[1],formats[2]);
     }
 }
-// The cutout arm is active only with qualified capabilities, an active FP16
-// HDR scene and no mip bias (a separate, unqualified coverage modifier).
-// While it is inactive an Argon pair is an ordinary draw: native color plus
-// the motion fallback, with history retained and no coverage verdict.
-bool MotionOutput::cutout_arm_active() const noexcept {
-    return cutout_caps_ == cutout::Capability::Ready && !cutout_reset_pending_ && hdr_enabled_
-        && hdr_state_ == HdrState::Active && hdr_target_.known && hdr_target_.format == D3DFMT_A16B16G16R16F
-        && !mip_bias_bits_;
+// The cutout arm is configured active by the session's options and the
+// capability verdict alone: feature requested, capabilities Ready, HDR
+// enabled by configuration and zero configured mip bias (a separate,
+// unqualified coverage modifier). begin_frame latches it for the frame and a
+// capability verdict refreshes it.
+// While the configured arm is active, an exact pair drawn before the frame's
+// HDR latch, after a mid-frame Suspend or otherwise refused by the per-draw
+// gate misses coverage; only a wholly inactive configuration forwards it as
+// an ordinary draw with history retained and no coverage verdict.
+bool MotionOutput::cutout_arm_configured() const noexcept {
+    return linear_material_requested_ && cutout_caps_ == cutout::Capability::Ready && hdr_enabled_ && !mip_bias_bits_;
 }
 bool MotionOutput::cutout_draw_state() noexcept {
-    if (!cutout_arm_active()) return false;
+    if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !hdr_enabled_
+        || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F
+        || mip_bias_bits_) return false;
     std::array<std::uint32_t,8> states{};
     for (unsigned i=0;i<states.size();++i) {
         DWORD value=0;
@@ -757,10 +770,11 @@ bool MotionOutput::cutout_draw_state() noexcept {
     return cutout::state(states);
 }
 void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
-    // Only an active arm can miss coverage: an exact pair the per-draw gate
-    // refused or that failed to route. Disabled, Unsupported, Retry pending,
-    // inactive HDR or a nonzero bias never raise a reactive Unavailable.
-    if (!shadow_.cutout_pair || !cutout_arm_active()) return;
+    // Only the frame's configured-active arm can miss coverage: an exact pair
+    // the per-draw gate refused or that failed to route. Disabled, Unsupported,
+    // Retry pending, HDR off by configuration or a nonzero bias never raise a
+    // reactive Unavailable.
+    if (!shadow_.cutout_pair || !cutout_arm_active_) return;
     route.cutout_test_known = SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE,&route.cutout_test));
     if (route.cutout_test_known && !route.cutout_test) return;
     route.cutout_color_known = SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE,&route.cutout_color));
@@ -839,8 +853,8 @@ void MotionOutput::sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) no
     if (type==D3DSAMP_MIPMAPLODBIAS) {
         // before_set_sampler_state restored any owned bias; if that restore
         // failed the obligation is still recorded. Both native mutation
-        // outcomes now require a fresh read: no stale saved value may
-        // overwrite the application's value.
+        // outcomes leave the device value unknown: the saved value is no
+        // longer trusted, so no retry may overwrite the application's value.
         s.saved_known=false;
     }
 }
@@ -2309,7 +2323,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
-    cutout_coverage_missed_ = false;
+    cutout_coverage_missed_ = false; cutout_arm_active_ = cutout_arm_configured();
     composition_required_producers_ = 0;
     composition_counts_ = {}; composition_enhanced_ = false; composition_frame_stopped_ = false; composition_published_ = false;
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
@@ -3582,6 +3596,7 @@ void MotionOutput::before_present() noexcept {
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
     report_mip_bias_game_write_failure();
+    release_mip_bias_retry_bound();
     if (!enabled_) return;
     if (FAILED(result)) invalidate_taa();
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);

@@ -379,6 +379,7 @@ struct Fixture {
     bool hook = false, wrap = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
+    unsigned reactive_uploads = 0; // reference reactive-mask uploads (supplemental policy frames)
     // New fade mode reuses the supplemental scene/reference transport; its
     // effective producer set is latched from the runtime status each frame.
     bool distancefade = false, distancefade_bench = false;
@@ -969,7 +970,7 @@ struct Fixture {
             const float k = hdr_reference_input();
             std::vector<DWORD> expected; std::vector<unsigned char> half;
             const auto reactive = emissions&&emissions_enabled ? (emission_mask_valid?x3m::renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel:x3m::renderer::ReactivePolicy::Unavailable) : x3m::renderer::ReactivePolicy::DerivedFromDepthSentinel;
-            if(emissions&&emissions_enabled&&emission_mask_valid)reference.upload_reactive(emission_reference_mask);
+            if(emissions&&emissions_enabled&&emission_mask_valid){reference.upload_reactive(emission_reference_mask);++reactive_uploads;}
             const auto out = reference.run(jx, jy, pjx, pjy, expected_cut(), decision.matrix, decision.policy == 2, hdr, k, expected, half,reactive);
             history = out.used_history;
             const unsigned mismatches = presented_mismatches(after_image, expected, k);

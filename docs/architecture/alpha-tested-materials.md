@@ -269,7 +269,11 @@ setter from leaving an ambiguous restore obligation. Failure of that restoration
 uses the existing sticky state-loss path; the obligation itself is cleared only
 by a successful restore, an accepted application write or Reset, so a failed
 restore followed by a failed application write cannot leave the route's bias
-on the device unrecorded. The failure is recorded as integers in the hook and
+on the device unrecorded. A stage whose restore failed is attempted at most
+once per Present boundary (no re-latching or counter growth at every restore
+point), and only a trusted saved value is ever written: a failed application
+write distrusts it, after which the obligation waits for an accepted write or
+Reset. The failure is recorded as integers in the hook and
 formatted after Present or at retirement: the SetSamplerState hook is an
 audited light root and even an integer-only `log` call reaches the CRT's x87
 formatter. The conditional foreign restore has its own full CPU-state guard;
@@ -290,13 +294,16 @@ cannot revive it. Device verdict logging is bounded to sixteen heavy-path rows.
 
 A successful native-forward draw of a requested recognized cutout marks that
 frame's temporal input unavailable when it may have written foreground RGB
-without owned motion, but only while the cutout arm is active: feature
-enabled, capability verdict Ready, HDR active on the FP16 scene and zero
-configured mip bias, with the exact pair then refused by the per-draw gate or
-failed to route. While the arm is inactive (disabled, Unsupported, Retry
-pending, HDR inactive, nonzero bias) a refused pair is the ordinary native
-color plus motion fallback with trustworthy history retained and no reactive
-Unavailable. Known alpha-test off, no RGB writes, NEVER alpha/depth
+without owned motion, but only while the cutout arm is configured active:
+feature requested, capability verdict Ready, HDR enabled by configuration and
+zero configured mip bias, latched at frame start (refreshed by a capability
+verdict) and held for the frame regardless of transient HDR state. With
+the arm active, an exact pair drawn before the frame's HDR latch, after a
+mid-frame Suspend or otherwise refused by the per-draw gate or failed to route
+is a miss (frame Unavailable, no seed). Only a wholly inactive configuration
+(disabled, Unsupported, Retry pending, HDR off, nonzero bias) forwards a
+refused pair as the ordinary native color plus motion fallback with
+trustworthy history retained and no reactive Unavailable. Known alpha-test off, no RGB writes, NEVER alpha/depth
 rejection, failed native draws and suppressed submissions do not trigger this
 new rule either. The conservative decision does not claim to know pixel occlusion for
 a refused draw. It unions with distance-fade composition availability after the

@@ -193,8 +193,8 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         write("color",color);write("motion",motion);write("depth",depth);write("coverage",coverage);
         std::printf("CUTOUT_LIVE frame=%llu pair=%u step=%u wrong=%d material=%u depth=%u routed=%u matched=%u accepted=%u holes=%u owned=%u cap=%u cap_status=%u cap_queries=%u routed_delta=%u missed_delta=%u unavailable=%u\n",f.frame,pair,step,wrong,material,f.materialwrap_depth,routed,matched,accepted,holes,owned,cap,f.emission_status(f.d.p,30),f.emission_status(f.d.p,31),routed_delta,missed_delta,f.emission_status(f.d.p,32));
         if(mixed)fade(1);
-        f.emission_reference_color=mixed?scene():color;f.emissions_enabled=mixed||(material&&!routed&&arm_active); // only an active arm's refusal drops historyf.emission_mask_valid=mixed&&routed;
-        if(mixed){f.emission_reference_mask=read(3);unsigned covered=0;for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){const bool wanted=x>=f.W/8&&x<7*f.W/8&&y>=f.H/4&&y<3*f.H/4;const unsigned i=4*(y*f.W+x);for(unsigned c=0;c<3;++c)require_quiet((f.emission_reference_mask[i+c]>0)==wanted,"cutout interleaved native fade-mask union");covered+=wanted;}write("composed",f.emission_reference_color);write("mask",f.emission_reference_mask);std::printf("CUTOUT_UNION frame=%llu covered=%u unavailable=%u\n",f.frame,covered,!routed);}
+        f.emission_reference_color=mixed?scene():color;f.emissions_enabled=mixed||(material&&!routed&&arm_active);f.emission_mask_valid=mixed&&routed; // only an active arm's refusal drops history
+        if(mixed){f.emission_reference_mask=read(3);unsigned covered=0;for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){const bool wanted=x>=f.W/8&&x<7*f.W/8&&y>=f.H/4&&y<3*f.H/4;const unsigned i=4*(y*f.W+x);for(unsigned c=0;c<3;++c)require_quiet((f.emission_reference_mask[i+c]>0)==wanted,"cutout interleaved native fade-mask union");covered+=wanted;}write("composed",f.emission_reference_color);write("mask",f.emission_reference_mask);std::printf("CUTOUT_UNION frame=%llu covered=%u unavailable=%u mask_valid=%u reactive_uploads=%u\n",f.frame,covered,!routed,f.emission_mask_valid,f.reactive_uploads);}
         if(f.taa)f.boundary();
         else {api(f.d->SetDepthStencilSurface(nullptr),"cutout non-TAA boundary depth");api(f.d->StretchRect(f.back.p,nullptr,f.bloom_surface.p,nullptr,D3DTEXF_NONE),"cutout non-TAA publication");}
         api(f.d->EndScene(),"cutout EndScene");f.write_presented(f.color_image());api(f.d->SetDepthStencilSurface(f.depth.p),"cutout depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"cutout Present");++f.frame;++f.frames_since_reset;
@@ -202,5 +202,6 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         if(step==15){f.reset();for(auto& o:objects)o.recorded=false;}
     }
     api(f.d->SetIndices(nullptr),"cutout final indices release");api(f.d->SetStreamSource(0,nullptr,0,0),"cutout final stream release");
+    if(mixed)std::printf("CUTOUT_UNION_SUMMARY reactive_uploads=%u\n",f.reactive_uploads);
     std::printf("CUTOUT_CHECKS frames=%u benchmark=%u pairs=2\n",frames,f.cutout_bench);
 }

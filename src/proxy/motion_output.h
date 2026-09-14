@@ -664,7 +664,8 @@ private:
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void refresh_linear_material_contract() noexcept;
     void probe_cutout_caps(bool force = false) noexcept;
-    bool cutout_arm_active() const noexcept;
+    bool cutout_arm_configured() const noexcept;
+    void release_mip_bias_retry_bound() noexcept;
     bool cutout_draw_state() noexcept;
     void mark_cutout_candidate(MotionRoute& route) noexcept;
     void report_xt_default_unavailable() noexcept;
@@ -908,6 +909,8 @@ private:
     static constexpr unsigned sampler_stage_count = 16;
     SamplerShadow samplers_[sampler_stage_count]{};
     std::uint32_t sampler_bound_mask_ = 0, sampler_biased_mask_ = 0;
+    std::uint32_t sampler_restore_failed_mask_ = 0; // stages whose restore failed since the last Present (one attempt each)
+    bool cutout_arm_active_ = false;                // begin_frame latch of cutout_arm_configured()
     float mip_bias_ = 0.f;
     DWORD mip_bias_bits_ = 0;
     // Session totals of the bias path (logged at release) and the last

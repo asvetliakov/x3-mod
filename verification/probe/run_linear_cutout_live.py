@@ -144,7 +144,12 @@ def validate_report(output,material=True,depth=True,taa=True,bias=0,mixed=False)
         fade=rows(output,'CUTOUT_FADE ');assert [(int(r['frame']),int(r['source'])) for r in fade]==[(f,i) for f in range(3) for i in (0,1)]
         assert all(r['prepared']==r['original_calls']=='1' for r in fade)
         union=rows(output,'CUTOUT_UNION ');assert [(int(r['frame']),int(r['covered']),int(r['unavailable'])) for r in union]==[(0,1536,0),(1,1536,1),(2,1536,0)]
-    return dict(mixed=mixed,frames=frames,checks=int(terminal[0]['checks']),owned_pixels=owned,accepted_pixels=accepted,temporal_frames=temporal,rgb_samples=len(samples),max_rgb_tolerance_fraction=maximum,history_retained_frames=len(retained))
+        # The routed frames upload the fixture's valid fade mask (supplemental reactive policy); the
+        # refused frame proves a valid mask cannot hide missing cutout motion. Counts are cumulative
+        # before each frame's boundary, so the summary carries the last upload.
+        assert [(int(r['mask_valid']),int(r['reactive_uploads'])) for r in union]==[(1,0),(0,1),(1,1)],'mixed reactive mask uploads'
+        summary=rows(output,'CUTOUT_UNION_SUMMARY ');assert len(summary)==1 and int(summary[0]['reactive_uploads'])==2,'mixed reactive mask uploads'
+    return dict(mixed=mixed,frames=frames,checks=int(terminal[0]['checks']),owned_pixels=owned,accepted_pixels=accepted,temporal_frames=temporal,rgb_samples=len(samples),max_rgb_tolerance_fraction=maximum,history_retained_frames=len(retained),reactive_uploads=int(summary[0]['reactive_uploads']) if mixed else 0)
 
 
 def validate_pixels(work,result,depth=True):

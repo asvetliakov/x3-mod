@@ -171,7 +171,8 @@ public:
     bool composition_requested() const noexcept { return composition_requested_value; }
     void invalidate_taa() noexcept { ++taa_invalidations; }
     void probe_cutout_caps(bool force = false) noexcept;
-    bool cutout_arm_active() const noexcept;
+    bool cutout_arm_configured() const noexcept;
+    void release_mip_bias_retry_bound() noexcept;
     bool cutout_draw_state() noexcept;
     void mark_cutout_candidate(MotionRoute& route) noexcept;
     void render_state_failed(D3DRENDERSTATETYPE state) noexcept;
@@ -198,6 +199,8 @@ public:
     Surface hdr_target_{true,D3DFMT_A16B16G16R16F};
     DWORD mip_bias_bits_ = 0;
     unsigned logged_failures_ = 0;
+    std::uint32_t sampler_restore_failed_mask_ = 0;
+    bool cutout_arm_active_ = false;
     struct MipBiasGameWriteFailure {
         std::uint64_t device = 0, frame = 0;
         unsigned long index = 0, result = 0;
@@ -311,6 +314,7 @@ void capability_contract() {
     scenario();
     Harness good; good.output.probe_cutout_caps();
     check(good.output.cutout_caps_==Capability::Ready,"all required caps ready");
+    check(good.output.cutout_arm_active_,"a Ready verdict refreshes the frame's arm latch");
     check(good.output.cutout_cap_queries_==1 && good.device.factory.format_calls==3,"one complete probe");
     check(good.device.direct_calls==1 && good.device.creation_calls==1 && good.device.display_calls==1,"public native queries");
     check(good.device.factory.releases==1 && !good.device.factory.wrong_arguments,"factory release and arguments");
@@ -322,8 +326,9 @@ void capability_contract() {
         else if (missing==2) h.output.caps_.PrimitiveMiscCaps&=~D3DPMISCCAPS_INDEPENDENTWRITEMASKS;
         else if (missing==3) h.output.caps_.PrimitiveMiscCaps&=~D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
         else h.output.caps_.AlphaCmpCaps&=~D3DPCMPCAPS_GREATEREQUAL;
-        h.output.probe_cutout_caps();
+        h.output.cutout_arm_active_=true; h.output.probe_cutout_caps();
         check(h.output.cutout_caps_==Capability::Unsupported,"missing required cap unsupported");
+        check(!h.output.cutout_arm_active_,"an Unsupported verdict deactivates the frame's arm latch");
         check(h.device.direct_calls==0 && h.device.factory.format_calls==0,"numeric refusal has no adapter query");
     }
 
@@ -399,7 +404,8 @@ void draw_helpers() {
     h.output.hdr_target_.format=D3DFMT_A16B16G16R16F; h.output.mip_bias_bits_=1; check(!h.output.cutout_draw_state(),"mip bias refused");
 
     scenario(); Harness candidate; MotionRoute route;
-    candidate.output.cutout_caps_=Capability::Ready;
+    candidate.output.cutout_caps_=Capability::Ready; candidate.output.cutout_arm_active_=candidate.output.cutout_arm_configured();
+    check(candidate.output.cutout_arm_active_,"a configured arm latches active");
     candidate.output.mark_cutout_candidate(route);
     check(!route.cutout_candidate && candidate.output.render_queries==0,"nonpair is not candidate");
     candidate.output.shadow_.cutout_pair=true;
@@ -424,39 +430,53 @@ void draw_helpers() {
     check(route.cutout_candidate && !route.cutout_test_known,"unknown alpha-test remains conservative candidate");
     check(candidate.device.factory.format_calls==0,"candidate marking never probes capabilities");
 
-    // Policy: a refused/unrouted exact pair misses coverage only while the arm
-    // is active. An inactive arm forwards it as an ordinary draw and keeps history.
+    // Policy: a refused/unrouted exact pair misses coverage only while the
+    // frame's configured arm is active (feature, Ready caps, HDR enabled by
+    // configuration, zero bias). Transient HDR state does not deactivate it.
     scenario(); {
         const auto visible_miss=[](const MotionRoute& r){
             return x3m::cutout::missed(r.cutout_candidate,true,true,false,r.cutout_test_known,r.cutout_test,
                 r.cutout_color_known,r.cutout_color,r.cutout_alpha_known,r.cutout_alpha,r.cutout_z_known,r.cutout_z,
                 r.cutout_zfunc_known,r.cutout_zfunc);
         };
-        const auto inactive=[&](const char* what,auto&& configure){
+        const auto arm=[&](auto&& configure){
             Harness h; h.output.shadow_.cutout_pair=true;
             h.output.render_known[D3DRS_ALPHATESTENABLE]=true; h.output.render_values[D3DRS_ALPHATESTENABLE]=1;
             h.output.render_known[D3DRS_COLORWRITEENABLE]=true; h.output.render_values[D3DRS_COLORWRITEENABLE]=7;
-            h.output.cutout_caps_=Capability::Ready; configure(h.output);
+            h.output.cutout_caps_=Capability::Ready;
+            configure(h.output,true);                                     // frame-start configuration
+            h.output.cutout_arm_active_=h.output.cutout_arm_configured(); // begin_frame latch
+            configure(h.output,false);                                    // mid-frame state at the draw
             MotionRoute r; h.output.mark_cutout_candidate(r);
-            check(!h.output.cutout_arm_active() && !r.cutout_candidate && h.output.render_queries==0 && !visible_miss(r),what);
+            return std::pair<bool,bool>(h.output.cutout_arm_active_, r.cutout_candidate && visible_miss(r) && h.output.render_queries>0);
+        };
+        const auto inactive=[&](const char* what,auto&& configure){
+            const auto [active,miss]=arm([&](MotionOutput& o,bool start){ if(start) configure(o); });
+            check(!active && !miss,what);
         };
         inactive("unsupported caps: refused pair keeps history",[](MotionOutput& o){o.cutout_caps_=Capability::Unsupported;});
         inactive("retry pending: refused pair keeps history",[](MotionOutput& o){o.cutout_caps_=Capability::Retry;});
         inactive("pending caps: refused pair keeps history",[](MotionOutput& o){o.cutout_caps_=Capability::Pending;});
-        inactive("reset pending: refused pair keeps history",[](MotionOutput& o){o.cutout_reset_pending_=true;});
-        inactive("HDR disabled: refused pair keeps history",[](MotionOutput& o){o.hdr_enabled_=false;});
-        inactive("HDR inactive: refused pair keeps history",[](MotionOutput& o){o.hdr_state_=MotionOutput::HdrState::Off;});
-        inactive("HDR suspended: refused pair keeps history",[](MotionOutput& o){o.hdr_state_=MotionOutput::HdrState::Suspended;});
-        inactive("unknown HDR target: refused pair keeps history",[](MotionOutput& o){o.hdr_target_.known=false;});
-        inactive("non-FP16 HDR target: refused pair keeps history",[](MotionOutput& o){o.hdr_target_.format=D3DFMT_A32B32G32R32F;});
-        inactive("nonzero mip bias: refused pair keeps history",[](MotionOutput& o){o.mip_bias_bits_=1;});
-        Harness active; active.output.shadow_.cutout_pair=true; active.output.cutout_caps_=Capability::Ready;
-        active.output.render_known[D3DRS_ALPHATESTENABLE]=true; active.output.render_values[D3DRS_ALPHATESTENABLE]=1;
-        active.output.render_known[D3DRS_COLORWRITEENABLE]=true; active.output.render_values[D3DRS_COLORWRITEENABLE]=7;
-        active.output.render_known[D3DRS_ALPHAFUNC]=true; active.output.render_values[D3DRS_ALPHAFUNC]=5; // GREATER: refused by the gate, still visible
-        MotionRoute r; active.output.mark_cutout_candidate(r);
-        check(active.output.cutout_arm_active() && r.cutout_candidate && visible_miss(r),
-              "active arm: a gate-refused visible pair misses coverage and drops history");
+        inactive("feature disabled: refused pair keeps history",[](MotionOutput& o){o.linear_material_requested_=false;});
+        inactive("HDR disabled by configuration: refused pair keeps history",[](MotionOutput& o){o.hdr_enabled_=false;});
+        inactive("nonzero configured mip bias: refused pair keeps history",[](MotionOutput& o){o.mip_bias_bits_=1;});
+        const auto miss=[&](const char* what,auto&& configure){
+            const auto [active,missed]=arm([&](MotionOutput& o,bool start){ if(!start) configure(o); });
+            check(active && missed,what);
+        };
+        miss("active arm: a draw before the frame's HDR latch misses coverage",[](MotionOutput& o){o.hdr_state_=MotionOutput::HdrState::Off;});
+        miss("active arm: a draw after a mid-frame Suspend misses coverage",[](MotionOutput& o){o.hdr_state_=MotionOutput::HdrState::Suspended;});
+        miss("active arm: an unknown HDR target still misses coverage",[](MotionOutput& o){o.hdr_target_.known=false;});
+        miss("active arm: a non-FP16 HDR target still misses coverage",[](MotionOutput& o){o.hdr_target_.format=D3DFMT_A32B32G32R32F;});
+        miss("active arm: a reset-pending draw still misses coverage",[](MotionOutput& o){o.cutout_reset_pending_=true;});
+        miss("active arm: a gate-refused visible pair misses coverage",[](MotionOutput& o){o.render_known[D3DRS_ALPHAFUNC]=true; o.render_values[D3DRS_ALPHAFUNC]=5;});
+        // Only a probe verdict refreshes the latch; the stored field alone does not.
+        const auto [late_unsupported,late_miss]=arm([&](MotionOutput& o,bool start){ if(!start) o.cutout_caps_=Capability::Unsupported; });
+        check(late_unsupported && late_miss,"the frame-start latch holds until begin_frame or a probe verdict refreshes it");
+        Harness routed; routed.output.shadow_.cutout_pair=true; routed.output.cutout_caps_=Capability::Ready; routed.output.cutout_arm_active_=true;
+        routed.output.render_known[D3DRS_ALPHATESTENABLE]=true; routed.output.render_values[D3DRS_ALPHATESTENABLE]=1;
+        routed.output.render_known[D3DRS_COLORWRITEENABLE]=true; routed.output.render_values[D3DRS_COLORWRITEENABLE]=7;
+        MotionRoute r; routed.output.mark_cutout_candidate(r);
         check(!x3m::cutout::missed(r.cutout_candidate,true,true,true,r.cutout_test_known,r.cutout_test,r.cutout_color_known,
               r.cutout_color,r.cutout_alpha_known,r.cutout_alpha,r.cutout_z_known,r.cutout_z,r.cutout_zfunc_known,r.cutout_zfunc),
               "active arm: a routed pair is not missed");
@@ -580,6 +600,11 @@ void sampler_transaction() {
         check(h.output.samplers_[3].biased && (h.output.sampler_biased_mask_ & (1u << 3)) && !h.output.samplers_[3].saved_known,
               "a failed restore plus a failed write keeps the obligation recorded and distrusts the saved value");
         check(h.device.sampler_value[3] == route_bias, "the route's bias is still on the device after both failures");
+        check(h.output.sampler_restore_failed_mask_ == (1u << 3), "the failed stage is marked attempted for this frame");
+        { const unsigned calls = h.device.sampler_calls, restores = h.output.counters_.mip_bias_restores; HRESULT again = S_OK;
+          h.output.restore_mip_bias_stage(3, &again);
+          check(SUCCEEDED(again) && h.device.sampler_calls == calls && h.output.counters_.mip_bias_restores == restores
+                && h.output.samplers_[3].biased, "a restore point in the same frame does not retry, count or re-latch"); }
         check(h.output.samplers_[5].biased && (h.output.sampler_biased_mask_ & (1u << 5)),
               "the other held stage is untouched");
         check(h.output.logged_failures_ == 1, "a failed pre-restore consumes one bounded log slot");
@@ -599,16 +624,43 @@ void sampler_transaction() {
         h.output.report_mip_bias_game_write_failure();
         check(!h.output.mip_bias_game_write_failure_.pending, "reporting twice is idempotent");
         h.device.sampler_calls = 0; h.device.sampler_results[0] = E_FAIL; h.device.sampler_results[1] = E_FAIL;
-        check(hook_set_sampler_state(h, 5, D3DSAMP_MIPMAPLODBIAS, app_value) == E_FAIL, "third failing transaction");
+        { const unsigned failures = h.output.counters_.restore_failures;
+          check(hook_set_sampler_state(h, 5, D3DSAMP_MIPMAPLODBIAS, app_value) == E_FAIL && h.device.sampler_calls == 1
+                && h.output.counters_.restore_failures == failures && !h.output.mip_bias_game_write_failure_.pending,
+                "a stage already attempted this frame is not retried by a later write, counted or recorded"); }
+        h.output.release_mip_bias_retry_bound(); hold_bias(h, 6);
+        h.device.sampler_calls = 0; h.device.sampler_results[0] = E_FAIL; h.device.sampler_results[1] = E_FAIL;
+        check(hook_set_sampler_state(h, 6, D3DSAMP_MIPMAPLODBIAS, app_value) == E_FAIL, "third failing transaction, next frame");
         check(h.output.logged_failures_ == 2 && h.output.mip_bias_game_write_failure_.pending,
               "each reported pre-restore failure is logged under the shared bound");
-        // Recovery: a later successful restore clears the kept obligation.
+        // After Present the bound lifts, but a distrusted saved value is never written:
+        // the obligation waits for an accepted application write or Reset.
+        h.output.release_mip_bias_retry_bound();
         h.device.sampler_calls = 0; h.device.sampler_results[0] = S_OK; h.device.sampler_results[1] = S_OK;
-        HRESULT first = S_OK; h.output.restore_mip_bias_stage(3, &first);
-        check(SUCCEEDED(first) && owns_nothing(h.output, 3) && h.device.sampler_value[3] == held_value
-              && (h.output.sampler_biased_mask_ & (1u << 5)), "a later successful restore puts the saved value back and clears only that stage");
-        h.output.restore_mip_bias_stage(5, &first);
-        check(SUCCEEDED(first) && h.output.sampler_biased_mask_ == 0, "the remaining obligation clears on its own success");
+        { const unsigned restores = h.output.counters_.mip_bias_restores; HRESULT first = S_OK; h.output.restore_mip_bias_stage(3, &first);
+          check(SUCCEEDED(first) && h.device.sampler_calls == 0 && h.output.counters_.mip_bias_restores == restores
+                && h.output.samplers_[3].biased && h.device.sampler_value[3] == route_bias,
+                "no trusted saved value: the next frame's restore writes nothing and keeps the obligation"); }
+        check(hook_set_sampler_state(h, 3, D3DSAMP_MIPMAPLODBIAS, app_value) == S_OK && owns_nothing(h.output, 3)
+              && h.output.samplers_[3].saved_known && h.output.samplers_[3].saved_bias == app_value,
+              "an accepted application write clears the kept obligation");
+    }
+
+    // The owned restore fails without an application write (a restore point):
+    // the saved value stays trusted, one attempt per frame, then a successful
+    // restore in a later frame clears the obligation.
+    scenario(); { Harness h; arm(h); hold_bias(h, 4);
+        h.device.sampler_results[0] = E_FAIL; h.device.sampler_results[1] = E_FAIL;
+        HRESULT first = S_OK; h.output.restore_mip_bias_stage(4, &first);
+        check(first == E_FAIL && h.output.samplers_[4].biased && h.output.samplers_[4].saved_known && h.output.samplers_[4].saved_bias == held_value,
+              "a failed restore keeps the obligation and the trusted saved value");
+        first = S_OK; h.output.restore_mip_bias_stage(4, &first);
+        check(SUCCEEDED(first) && h.device.sampler_calls == 1 && h.output.counters_.mip_bias_restores == 1, "no second attempt in the same frame");
+        h.output.release_mip_bias_retry_bound();
+        h.device.sampler_calls = 0; h.device.sampler_results[0] = S_OK;
+        h.output.restore_mip_bias_stage(4, &first);
+        check(SUCCEEDED(first) && owns_nothing(h.output, 4) && h.device.sampler_value[4] == held_value && h.output.counters_.mip_bias_restores == 2,
+              "the next frame's restore puts the saved value back and clears the obligation");
     }
 
     // A failed restore whose application write is accepted still adopts the value.
@@ -685,7 +737,8 @@ class LinearCutoutContractTests(unittest.TestCase):
         selected = source[states_start:states_end] + '\n' + '\n\n'.join(
             extract_function(source, signature) for signature in (
                 'void MotionOutput::probe_cutout_caps(',
-                'bool MotionOutput::cutout_arm_active(',
+                'bool MotionOutput::cutout_arm_configured(',
+                'void MotionOutput::release_mip_bias_retry_bound(',
                 'bool MotionOutput::cutout_draw_state(',
                 'void MotionOutput::mark_cutout_candidate(',
                 'void MotionOutput::render_state_failed(',
@@ -751,7 +804,7 @@ class LinearCutoutContractTests(unittest.TestCase):
         self.assertIn('probe_cutout_caps(true);', extract_function(source, 'void MotionOutput::after_reset('))
         for signature in ('MotionRoute MotionOutput::before_draw(',
                           'void MotionOutput::evaluate_draw(',
-                          'bool MotionOutput::cutout_arm_active(',
+                          'bool MotionOutput::cutout_arm_configured(',
                           'bool MotionOutput::cutout_draw_state(',
                           'void MotionOutput::mark_cutout_candidate('):
             self.assertNotIn('probe_cutout_caps(', extract_function(source, signature))

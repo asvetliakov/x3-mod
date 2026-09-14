@@ -24,7 +24,8 @@ def report(material=True,depth=True,taa=True,bias=0,mixed=False):
             lines.append(f"CUTOUT_RGB frame={frame} pair={p['pair']} step={p['step']} reverse={int(p['step']==2)} rgb="+','.join(map(str,rgb)))
     if mixed:
         lines += [f'CUTOUT_FADE frame={f} source={i} prepared=1 original_calls=1' for f in range(3) for i in (0,1)]
-        lines += [f'CUTOUT_UNION frame={f} covered=1536 unavailable={int(f==1)}' for f in range(3)]
+        lines += [f'CUTOUT_UNION frame={f} covered=1536 unavailable={int(f==1)} mask_valid={int(f!=1)} reactive_uploads={int(f>0)}' for f in range(3)]
+        lines.append('CUTOUT_UNION_SUMMARY reactive_uploads=2')
     lines += [f'CUTOUT_CHECKS frames={frames} benchmark=0 pairs=2',
               f'RESULT PASS frames={frames} checks=100 restorations=64 taa_reference_frames={temporal} taa_skipped_frames={frames-temporal if taa else 0}']
     return '\n'.join(lines)
@@ -95,7 +96,11 @@ class CutoutReport(unittest.TestCase):
     def test_mixed_fade_union_and_missing_history(self):
         text=report(mixed=True);r=live.validate_report(text,mixed=True)
         self.assertTrue(r['mixed']);self.assertEqual(r['frames'],3)
-        for changed in (text.replace('covered=1536','covered=1535',1),text.replace('original_calls=1','original_calls=2',1),text.replace('CUTOUT_FADE frame=1 source=0','CUTOUT_FADE frame=1 source=1',1)):
+        self.assertEqual(r['reactive_uploads'],2)
+        for changed in (text.replace('covered=1536','covered=1535',1),text.replace('original_calls=1','original_calls=2',1),text.replace('CUTOUT_FADE frame=1 source=0','CUTOUT_FADE frame=1 source=1',1),
+                        # A lost emission_mask_valid (no reactive uploads) must be caught, not silently pass.
+                        text.replace('mask_valid=1 reactive_uploads=0','mask_valid=0 reactive_uploads=0',1),text.replace('reactive_uploads=1','reactive_uploads=0'),
+                        text.replace('CUTOUT_UNION_SUMMARY reactive_uploads=2','CUTOUT_UNION_SUMMARY reactive_uploads=0'),text.replace('CUTOUT_UNION_SUMMARY reactive_uploads=2\n','')):
             with self.assertRaises(AssertionError):live.validate_report(changed,mixed=True)
 
     def test_actual_pixel_reducer_corruption(self):
