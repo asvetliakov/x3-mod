@@ -879,3 +879,28 @@ Open: the `production-on` render-state count regression needs its own owner
 (the suite has not passed since the cutout arm merged); the `cutout_missed`
 policy for known-blended cutout draws (whole-frame history drop versus the
 ordinary native fallback) is the orchestrator's decision.
+
+## Live suite repaired on main (harness only, 2026-09-14)
+
+The suite passes again: 98 cases, 9,774 fixture checks, `motion-output-summary.json`
+`passed: true`. Four harness defects had accumulated behind the first failure;
+no production source was touched (the `invalidate_sites` / `prev_valid_at_policy`
+assertions of the invalidation-site diagnostic are unchanged).
+
+| Symptom | Cause | Harness repair |
+| --- | --- | --- |
+| `production-on` frame 0 `rs_queries=22 rs_hits=20`, no resync | the per-routed-draw wrap save reads WRAP4/WRAP5 (the route's motion and depth texcoord indices); with `X3M_FIXTURE_WRAP=0` no fixture setter ever wrote them, so the first read of each was a cold shadow miss. Frames 1-8 were 22/22. Per-draw query set: ZENABLE, ZWRITEENABLE, ALPHABLENDENABLE, ALPHATESTENABLE, SRGBWRITEENABLE, COLORWRITEENABLE, COLORWRITEENABLE1/2, WRAP4, WRAP5 - ten distinct states, none read twice | `seed_wrap_states()` in `frame_begin` writes the sixteen WRAP states with their D3D9 default 0 before the frame's first draw (device state unchanged, application shadow warm); skipped when the script owns the WRAP states |
+| `seam-hdr-ramp-*` `meter=1 meter_reason=ok` against an expected `0` | 75dbbed sets `HdrConfig::allow_auto_toggle` unconditionally, so `meter_requested()` holds in manual-EV mode and the meter capability is prepared | expectation is now `('1','ok')` with the tonemap, `('0','off')` without it, and `('0','self_test')` under `decode=none` |
+| `seam-hdr-exposure` `ev_max` 1.50 against the reference default 2.0 | the DLL's own `params.ev_max` default is 1.5 (75dbbed, "the milder AUTO appearance"); the runner still clamped its reference adaptation at `exposure_ref.EV_MAX` | `HDR_EV_MAX_DEFAULT = 1.5` in the runner; `seam-hdr-exposure-offset` pins `X3M_HDR_EV_MAX=2`, the ceiling its level stimulus was designed for (with 1.5 and the +1 EV offset levels A-C clamp onto the grey target) |
+| `seam-taa-mipbias-on` 176 checks against 164 | 39b31d5 added one check per frame at the bloom copy ("the DLL's mip bias sits on exactly the expected stages") | `expected_checks += 12` for a live bias in the TAA script, and the mip-bias twin comparison allows exactly that difference |
+
+| Check | Result |
+| --- | --- |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py` | PASS, 98 cases, 9,774 checks (`build/d3d9.dll` b6f8dbb8..., seam b73ca62a..., fixture 4f414bb8...) |
+| `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 224 reachable functions, no violations |
+| Host tests (`test_motion_output_runner`, `test_motion_route_parse`) | 16 tests OK |
+
+Open: under `X3M_HDR_DECODE=none` the HDR meter self-test's GPU level-0 value
+disagrees with `meter_level0()` by more than 1e-4 and the pass refuses the meter
+(`meter_reason=self_test`); every other decode passes. Auto exposure would be
+off in that configuration. Production question, not a harness one.

@@ -570,6 +570,20 @@ struct Fixture {
                 api(d->SetSamplerState(i, D3DSAMP_SRGBTEXTURE, FALSE), "SetSamplerState srgb");
         }
     }
+    // Warm the application side of the render-state shadow for the WRAP states
+    // the route reads once per routed draw (its motion and depth texcoord
+    // indices, WRAP4/WRAP5 for the reference pair). With X3M_FIXTURE_WRAP=0 no
+    // other fixture setter writes them, so the route's first read of each is a
+    // cold shadow miss with no resynchronization behind it: frame 0 reported
+    // rs_hits = rs_queries - 2 once the per-draw wrap save became unconditional.
+    // The written value is the D3D9 default the device already holds, so only
+    // the shadow changes. With X3M_FIXTURE_WRAP=1 scene_states owns these
+    // states (hostile values) and this seed stays out of the way.
+    void seed_wrap_states() {
+        if (wrap) return;
+        for (unsigned i = 0; i < 16; ++i)
+            api(d->SetRenderState(D3DRENDERSTATETYPE(i < 8 ? D3DRS_WRAP0 + i : D3DRS_WRAP8 + i - 8), 0), "seed WRAP");
+    }
     void scene_states() {
         for (auto s : {D3DRS_ALPHABLENDENABLE, D3DRS_ALPHATESTENABLE, D3DRS_SEPARATEALPHABLENDENABLE, D3DRS_FOGENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_SCISSORTESTENABLE, D3DRS_STENCILENABLE, D3DRS_DITHERENABLE, D3DRS_CLIPPLANEENABLE, D3DRS_LIGHTING})
             api(d->SetRenderState(s, FALSE), "SetRenderState off");
@@ -688,6 +702,7 @@ struct Fixture {
         if (jitter) { const unsigned index = unsigned(latches % jitter_samples) + 1; jx = halton(index, 2) - .5; jy = halton(index, 3) - .5; }
         else jx = jy = 0;
         ++latches;
+        seed_wrap_states();
         hostile_states();
         api(d->SetStreamSource(0, vb_a.p, 0, 24), "SetStreamSource"); api(d->SetVertexDeclaration(declaration.p), "SetVertexDeclaration");
         api(d->SetVertexShader(vs.p), "SetVertexShader"); api(d->SetPixelShader(flat.p), "SetPixelShader flat");
