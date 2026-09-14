@@ -8,23 +8,28 @@ retain the full scope.
 Work resumed 2026-09-14 under the Claude Code routing in `CLAUDE.md`. Unfinished
 work from the pause (cutout source, reviewed fade results, decoder build plans
 and the persistent backup) is recorded in
-[the September 14 resume handoff](handoff-2026-09-14.md); nothing there is installed.
-Checkpoints since: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
+[the September 14 morning handoff](archive/handoff-2026-09-14.md); the current
+handoff is [handoff-2026-09-14b.md](handoff-2026-09-14b.md), written at the evening
+compaction checkpoint. Nothing merged today is installed.
+Checkpoints today: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
 with the [per-part AABB finding](reverse-engineering/render-node-bounds.md) and the
 ratified [in-place region composition design](architecture/linear-distance-fade-region.md)
 (`67baa55`; step 1, per-draw bound derivation, merged in `4bcedea` with 0 region
 violations over 29 detached cases, plus the opt-in `--fade-witness` live M-readback
 witness merged in `97a0aa8` with a proven negative control; step 2, the in-place
 bracket in the composition pass, is merged (`f20f00f`: 586 bit-exact twins against
-the exchanged path, 1080p 16 DIPs at a 6 % region 7.58 → 1.93 ms); step 3, the
-runtime route, is next and nothing is installed); the two-pair alpha-tested [cutout runtime](architecture/alpha-tested-materials.md)
+the exchanged path); step 3, the runtime route, is merged (`2f6ed17`: live 26
+processes / 536 frames / 224 TAA readbacks, 1080p 16 DIPs ≈2.4–3.3 ms vs ≈8.0 ms
+for prototype 1); the option stays default-off and nothing is installed); the two-pair alpha-tested [cutout runtime](architecture/alpha-tested-materials.md)
 is merged (`b9ae8dd`; two reviews, x87 audit PASS at 223 reachable functions, live
 X3 13 processes / 531 frames / 2,111,274 checks PASS, not installed);
 the isolated WMA decoder adapter
 ([note](architecture/voice-decoder-adapter.md)) is built, evidence-reviewed and
 decodes both real voice files through the null-event contract with exact cue
-timestamps in build v3 (`6a2c763`), but its first gameplay launch hangs on the
-loading screen (runs 29–35; triage and startup disassembly in progress).
+timestamps in build v3 (`6a2c763`), but gameplay launches hang on the loading
+screen (runs 29–36): the witness run shows `SetState(RUN)` returning `E_FAIL`
+followed by a COM teardown wait; root cause open (see the handoff). The WMP11
+bottle experiment was reverted byte-identically (`2e64c4d`).
 
 The installed gameplay build is checkpoint `8442f43`. Its scoped integration
 checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
