@@ -946,3 +946,30 @@ revision; the review-applied change is confined to the exemption key.
 | After, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py` | PASS, 100 cases + 26 bench, 109,010 checks; `seam-taa-cutout-blended` 49,624 checks, history on 10 of 12 frames (frame 0 and the scripted cut current-only), `invalidate_sites {}`, 1,536 accepted pixels, `routed_delta=0 missed_delta=0` every frame; `seam-taa-cutout-opaque` 49,612 checks, history 0 of 12, `cutout_missed` on frames 1–11, `unavailable=1` (`build/d3d9.dll` 6b0a2205..., seam 48ab1ec5..., fixture ed87f1cb...) |
 | `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 224 reachable functions, no violations |
 | Host tests `test_motion_output_runner`, `test_motion_route_parse`, `test_linear_cutout_contract` | 19 tests OK (contract 41 scenarios, 278 checks: known-blended not a candidate / not a miss, blend-off still misses, unknown blend conservative) |
+
+## User run 19 (run47): the cutout exemption holds, the asteroids do not (2026-09-14)
+
+Acceptance evidence for the cutout-miss exemption above, from user run 19
+(snapshot `/tmp/x3-bottleX3-run47/`, log `session-20260914-225307-216.log`,
+installed DLL `ab6e17ba…` from `5d06316`; log queried, never read whole).
+
+| Measure | Run 19 | Reference |
+| --- | --- | --- |
+| `camera_state` lines | 24,729 | — |
+| reason distribution | `{0: 24190, 1: 529, 3: 3, 4: 6}` | — |
+| `reason=3` (history dropped) | 3 lines, 0.01 % | 15.1 % (run 11), 11.2 % (run 14) |
+| `taa_invalidate` sites | `not_resolved` 529 only; `cutout_missed` 0 | run 11/14: the `cutout_missed` clusters |
+| `linear_material_frame` final counters | `cutout_missed=0 cutout_routed=0` | — |
+
+The exemption itself has no log token of its own (`src/proxy/linear_cutout.h:48`,
+applied in `motion_output.cpp` near line 835), so it is confirmed indirectly: no
+`cutout_missed` site and no `cutout_routed` draw in a session where run 11/14
+produced them on 11–15 % of frames.
+
+Not fixed by it: the user still sees distant asteroids lose triangles that
+reappear (`screenshots/asteroids-shimmer1.png`, zoomed view). The far asteroids
+draw the native fog pass — `motion_route gate=4 routed=0 matched=0`; frame 18555
+holds only such draws and 14639 is mixed — and the route-scoped depth cannot show
+holes in a pass the route never owns, so this run cannot localise the dropout.
+The diagnosis stays open under
+[asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md).

@@ -477,3 +477,50 @@ full-scale wrap (`docs/verification/voice-decoder.md`). Selection latency (phase
 0.83 ms in nested stream creation) and 3.69 ms (run 41). The selection pause is gone with the working
 decoder. Per-frame proxy from `frame_end` windows: run 46 29.4 ms, run 41 27.1 ms (both with the site
 trace and phase telemetry on); no per-frame regression from the plugin.
+
+## 19. Combined: AO off/on, bullets at gain 1, cutout shimmer fix, same-port far/near pair — Completed
+
+Completed as user run 19, snapshot `/tmp/x3-bottleX3-run47/`, log
+`session-20260914-225307-216.log` (69.7 MB), installed DLL `ab6e17ba…` (`5d06316`, record
+`verification/results/ao-stepe-install.json`). User report: the cutout shimmer fix works on
+stations but distant asteroids still lose triangles that reappear; the docking port still
+darkens, and so does a ship; the bolts look right at gain 1 (no gain-2 run was made); ambient
+occlusion makes no visible difference on or off. Per-question analysis is in the owning ledgers —
+[motion-output](../verification/motion-output.md) (`reason=3` 0.01 %, no `cutout_missed`),
+[screen-emission](../verification/screen-emission.md) (firing frames 7877/9326),
+[ambient-occlusion](../verification/ambient-occlusion.md) (12,163 attached / 12,036 disabled frames)
+and [station-material-distance](../reverse-engineering/station-material-distance.md) (the same-port
+pair `22cba120`). The instructions as issued follow.
+
+One run covers four questions on the installed candidate `ab6e17ba…` (`5d06316`, record `verification/results/ao-stepe-install.json`) (AO step 2, screen emission step E, the
+cutout-miss exemption, the w-scaled pad; fade route default-on; plugin v4 for voice):
+
+1. **Distant shimmer**: fly the run-11 asteroid path in normal view; say whether distant asteroids
+   and stations still shimmer or vanish in parts. Analysis: `camera_state reason=3` rate (was
+   11–15 %; expected ≈0 outside real cuts), `taa_invalidate site=` lines.
+2. **Docking port**: approach an Argon station docking port and press F8 twice on the *same* port,
+   once far (the port small on screen) and once near (four times closer or more). Say whether it
+   still darkens/brightens. Analysis: per-draw inputs, `packed`/fade rects and the HDR captures
+   of the two frames (the first same-node distance pair).
+3. **Bullets**: fire at a target for a few seconds, F8 once while firing. Say whether the bolts
+   look like run 14 (they should: gain 1 is native parity) and nothing else changed.
+   Analysis: `packed_sample` `changed_px`/`max_post_y` vs `max_pre_y` on bolt pixels,
+   `screen_emission_frame` firing vs not.
+4. **Ambient occlusion**: near a station and near an asteroid, press Ctrl+Shift+F11 a few times to
+   toggle AO off/on, F8 once with AO on and once off in the same spot. Say whether the effect is
+   visible, where it looks right or wrong (dark halos, crawling, HUD affected), and the frame
+   rate on vs off. Analysis: `ambient_occlusion_frame cpu_us` on vs off, `ambient_occlusion_toggle`.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness --screen-emission --screen-emission-timing \
+  --ambient-occlusion --ao-timing \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 1
+```
+
+Optional second short run for the bolt HDR look: the same command plus `--screen-emission-gain 2`,
+fire a few seconds, F8 once, and say whether the brighter bolts with bloom look right.

@@ -648,3 +648,32 @@ cannot be walked. The per-LOD threshold values `LODrec[+0x34]`, their loader pro
 quality float at `*(0x606f34)+0x760` were not resolved, so the thresholds are stated as `D`
 brackets rather than in absolute view units, and `node+0xa0` is not captured. No hook is
 proposed by this study.
+
+## Run 19 (run47): the first same-port pair, and why it still does not decide
+
+User run 19 (snapshot `/tmp/x3-bottleX3-run47/`, log
+`session-20260914-225307-216.log`, installed DLL `ab6e17ba…` from `5d06316`)
+was asked for two F8 captures of the *same* docking port, once far and once
+near. It delivered a same-port pair through the `fade_region` part identity
+`22cba120` (node handles `52262` and `51982`, model `0000542a`, `lod=2`):
+
+| Frame | Port rect | Size | Route |
+| --- | --- | --- | --- |
+| 1695 | `158,174,215,219` | 57×45 px | source-over, `motion_route gate=4 routed=0 matched=0`, `zwrite=0 blend=1 src=5 dst=6` |
+| 24233 | `458,623,512,676` | 54×53 px | identical |
+
+Mean port luma is 0.1810 (1695) against 0.1759 (24233), a ratio of 0.972 — the
+same few-per-cent band as run 39, and again within TAA/dither noise.
+
+The pair is not the far/near pair the study needs: the logged port width
+plateaus at 53–58 px over frames 870–24330, so the session never captured a
+port small enough to be near the LOD 2/3 boundary, and no merged-opaque far
+instance was captured at all. The user also reports the darkening on a ship, not
+only on stations; the ship node `53194` (model `00004fef`, `lod=0`) draws opaque
+and routed identically at frames 7877 and 9326, and has no fade rect, so no
+width is logged for it.
+
+So the LOD-boundary explanation of the section above is still the best-supported
+mechanism but is **not** confirmed as the sole owner: the far/near pair remains
+uncaptured, and a ship at LOD 0 showing the same effect is outside its scope.
+The retry rides run 20.

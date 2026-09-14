@@ -70,3 +70,29 @@ build/d3d9.dll` PASS (224 reachable functions, no violations); host tests
 `test_ambient_occlusion_live_report`, `test_linear_material_live`, `test_motion_hdr_scene` 26 tests OK.
 The linear-material harness stub gained the two fields so `test_production_control_flow` still
 compiles the production `before_reset`.
+
+## User run 19 (run47, 2026-09-14): the pass runs, the appearance is invisible
+
+First gameplay run of AO step 2 (snapshot `/tmp/x3-bottleX3-run47/`, log
+`session-20260914-225307-216.log`, installed DLL `ab6e17ba…` from `5d06316`,
+`--ambient-occlusion --ao-timing`; the log was queried, never read whole).
+
+The pass behaves exactly as the fixture predicts. `ambient_occlusion_toggle`:
+21 lines, strictly alternating, so every Ctrl+Shift+F11 press was seen.
+`ambient_occlusion_frame`: 24,199 lines, `attached=1 reason=ok` on 12,163 and
+`attached=0 reason=disabled` on 12,036 — no `attach`, `format`, `sticky` or
+other reason appears at all. `radius_px=25.60` whenever the pass is on; the
+mode line reports `radius_m=2 strength=0.5`. `cpu_us` when on: mean 203.1 µs,
+median 136 µs, max 26,002 µs (a loading outlier); 0 when off. No Reset occurred
+in the session, so the post-Reset re-attach path is still fixture-only evidence.
+
+The user sees no difference on or off, near a station and near an asteroid. The
+two on/off capture pairs cannot settle it: 21950/22186 and 23946/24233 are 236
+and 287 frames apart, so their pixel differences (26.6 % and 77.8 % of pixels
+changing by more than 1 %) are camera motion, not AO. `frame_end` windows give
+4,546 ms with AO on against 4,017 ms off (mean per ~300-frame window), confounded
+by load and capture windows; not a cost verdict.
+
+Conclusion: the run passes as a functional check and fails as an appearance
+check — a 2 m occlusion radius is below the visible scale of X3 geometry. Run 20
+repeats it with `--ao-radius` and `--ao-debug`.
