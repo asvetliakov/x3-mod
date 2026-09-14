@@ -35,6 +35,10 @@ SOURCES = ('src/proxy/motion_output.cpp', 'src/proxy/motion_output.h', 'src/prox
            'verification/probe/run_ambient_occlusion_live.py')
 FRAMES = {'default': 8, 'debug': 5, 'toggle': 7}                 # aohook script frames per twin
 PIXEL_FRAMES = {'default': (3, 6), 'debug': (0, 3), 'toggle': (5,)}  # frames without history whose pixel law is checked
+# The first frame after each Reset in the aohook script. A Reset gives AO a
+# fresh attach: these frames must re-attach and run, not wait out the
+# re-attach hysteresis (the defect candidate 740a6dd7 caught).
+RESET_FRAMES = {'default': (3, 6), 'debug': (3,), 'toggle': (3, 5)}
 TOGGLE_ENABLED = [1, 1, 1, 0, 0, 1, 1]                            # the toggle twin's per-frame enable
 FORMAT_A8R8G8B8, FORMAT_A16B16G16R16F = 21, 113
 # The twins. hdr: the FP16 route. fault: the attach seam. debug: the grayscale view.
@@ -134,9 +138,13 @@ def validate_case(case, fixture, trace):
         for key in ('attached', 'ran', 'reason', 'gpu_us', 'cpu_us', 'width', 'height', 'radius_px', 'enabled', 'source', 'gpu_timing'):
             assert key in f, (name, key, f)
     devices = trace['device']
-    assert len(devices) >= 1, f'{name}: no ambient_occlusion_device line'
-    assert len(devices) == 1, f'{name}: {len(devices)} attaches (hysteresis: one per format)'
     expected_enabled = TOGGLE_ENABLED if toggle else [1] * frames_expected
+    # One attach per device lifetime plus one per Reset that is followed by an
+    # enabled frame: the hysteresis holds within a lifetime, a Reset clears it.
+    reset_frames = [f for f in RESET_FRAMES[script] if expected_enabled[f]]
+    expected_attaches = 1 + len(reset_frames)
+    assert len(devices) >= 1, f'{name}: no ambient_occlusion_device line'
+    assert len(devices) == expected_attaches, f'{name}: {len(devices)} attaches, expected {expected_attaches} (one per format, one per Reset)'
     assert [f['enabled'] for f in frames] == expected_enabled, (name, [f['enabled'] for f in frames])
     assert [t['enabled'] for t in trace['toggles']] == ([0, 1] if toggle else []), (name, trace['toggles'])
     # Flat frame 1 signals before the scene: the chain runs at the bloom copy.
@@ -153,6 +161,13 @@ def validate_case(case, fixture, trace):
     assert all(d['attached'] == 1 and d['reason'] == 'ok' for d in devices), (name, devices)
     expected_format = FORMAT_A16B16G16R16F if hdr else FORMAT_A8R8G8B8
     assert all(d['target_format'] == expected_format for d in devices), (name, [d['target_format'] for d in devices])
+    # A Reset gives AO a fresh attach: the first enabled frame after each Reset
+    # attaches and runs, it does not sit out the re-attach hysteresis.
+    post_reset = [f for f in trace['frames'] if f['frame'] in reset_frames]
+    assert [f['frame'] for f in post_reset] == reset_frames, (name, reset_frames, [f['frame'] for f in trace['frames']])
+    assert all(f['attached'] == 1 and f['ran'] == 1 and f['applied'] == 1 and f['reason'] == 'ok' for f in post_reset), \
+        f'{name}: post-Reset frames {reset_frames} must re-attach and run, got ' + repr([{k: f[k] for k in ("frame", "attached", "ran", "applied", "reason")} for f in post_reset])
+    summary['post_reset_frames'] = reset_frames
     on = [f for f, e in zip(frames, expected_enabled) if e]
     off = [f for f, e in zip(frames, expected_enabled) if not e]
     assert all(f['attached'] == 1 and f['ran'] == 1 and f['reason'] == 'ok' and f['applied'] == 1 for f in on), (name, [f['reason'] for f in frames])
@@ -176,7 +191,7 @@ def validate_case(case, fixture, trace):
     summary.update(ao_lines=len(trace['frames']), enabled=expected_enabled, toggles=len(trace['toggles']), timing_lost=trace['timing_lost'],
                    gpu_timing_states=sorted({f['gpu_timing'] for f in trace['frames']}), sources=[f['source'] for f in trace['frames']],
                    ran=sum(f['ran'] for f in frames), applied=sum(f['applied'] for f in frames),
-                   target_format=expected_format, slots=devices[0].get('slots'), attaches=len(devices),
+                   target_format=expected_format, slots=devices[0].get('slots'), attaches=len(devices), post_reset_frames=reset_frames,
                    cpu_us_median=cpu[len(cpu) // 2], cpu_us_min=cpu[0], gpu_us=gpu, gpu_us_median=sorted(gpu)[len(gpu) // 2] if gpu else None,
                    gpu_timing='timestamp' if gpu else 'unavailable', radius_px=frames[0]['radius_px'],
                    markers=[{'frame': m['frame'], 'draw_index': m['draw_index']} for m in markers])

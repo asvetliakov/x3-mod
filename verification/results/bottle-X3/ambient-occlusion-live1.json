@@ -17,20 +17,20 @@
   "toggle": 7
  },
  "inputs": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/motion_output_fixture.exe": "c7405962a9c82a2074f19f9fd929917d45ecf87da40eee517b68460bec5e4c21",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/motion-output-seam/d3d9.dll": "99944a30ac11a3699c30992eb77f91a03e5904bda3b35e5611b45c2eda58bdce",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/motion_output_fixture.exe": "c78632dc502602302b66cda19690de65f875b06a0fcf439ac2e9e10a49dc8ddf",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/motion-output-seam/d3d9.dll": "cbff369b27c1146b1adc18209c7d5ced4095b8a377fdc01fd2f334ffd83e3e0a",
   "/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
   "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
  },
  "sources": {
-  "src/proxy/motion_output.cpp": "573906e96a66ed36f8f2b7f2d64c4b97dd61bee132a4faf4c168365bc810f45b",
-  "src/proxy/motion_output.h": "bd4eb70ed729cf348862b66f03298f3692081bc91d808ed93ab315e57cb7050f",
-  "src/proxy/capture.cpp": "34dcb2e84760a58797ceee3fa626d1b04db1bd3c1269ce9d33f1fa87c82ce8e7",
+  "src/proxy/motion_output.cpp": "23364267325647c9670659796ad2a5d5ddae7c5772c426610a0b65968eca9d02",
+  "src/proxy/motion_output.h": "a03e802aae7edf994667e088f75b68511f4f643d14452a49484220322e1a71dd",
+  "src/proxy/capture.cpp": "f5756f69ba116988f45b81a4f7be1720a437253c4d9ca5c6f86129459b50f271",
   "src/renderer/ambient_occlusion_pass.cpp": "2197c8f903f44ba268ba171e091a36dbcfbb2d3d3e73742d3110cb769743f17f",
   "src/renderer/ambient_occlusion_pass.h": "0f395c9980a33b3c2ff0c7da0602063d73846cb5eed6937bee3f2a53b1826dfc",
-  "verification/probe/motion_output_fixture.cpp": "f92854ac63c64bd4d6fa3102d9927d3268dfa6a5b4e40a0a583176cddcaea0f7",
+  "verification/probe/motion_output_fixture.cpp": "fd0f22b08cbd49a8bf411f5b9a7f666b62491fafaf986e50124806424f98ec35",
   "verification/probe/build_motion_output.sh": "7e4942068f9c18894de80218a390d76ec927fe7941a85f5a737285ac3600b73c",
-  "verification/probe/run_ambient_occlusion_live.py": "59c612396363f14267554cc287f0da4afd1e9b4ad197ac6888c9d50e60254d72"
+  "verification/probe/run_ambient_occlusion_live.py": "7f3b8ab0b19134425ecb9bc449bf16ee54c46e7cd9b151aec955f1bc8ef74e5e"
  },
  "cases": {
   "ao-on": {
@@ -57,6 +57,10 @@
      "outer_mean": 0.0,
      "changed": 1148
     }
+   ],
+   "post_reset_frames": [
+    3,
+    6
    ],
    "ao_lines": 8,
    "enabled": [
@@ -88,9 +92,9 @@
    "applied": 8,
    "target_format": 21,
    "slots": 397,
-   "attaches": 1,
-   "cpu_us_median": 498.0,
-   "cpu_us_min": 183.0,
+   "attaches": 3,
+   "cpu_us_median": 312.0,
+   "cpu_us_min": 115.0,
    "gpu_us": [],
    "gpu_us_median": null,
    "gpu_timing": "unavailable",
@@ -101,7 +105,7 @@
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-on-20260914-181230-198548"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/ambient-occlusion-live-ao-on-20260914-202054-868742"
   },
   "ao-off": {
    "frames": 8,
@@ -129,7 +133,7 @@
     }
    ],
    "ao_lines": 0,
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-off-20260914-181234-448905"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/ambient-occlusion-live-ao-off-20260914-202059-025640"
   },
   "ao-fault": {
    "frames": 8,
@@ -159,7 +163,7 @@
    "ao_lines": 8,
    "attach_reason": "ps_3_0",
    "ran": 0,
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-fault-20260914-181236-026017"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/ambient-occlusion-live-ao-fault-20260914-202100-477698"
   },
   "ao-debug": {
    "frames": 5,
@@ -186,6 +190,9 @@
      "changed": 4096
     }
    ],
+   "post_reset_frames": [
+    3
+   ],
    "ao_lines": 5,
    "enabled": [
     1,
@@ -210,9 +217,9 @@
    "applied": 5,
    "target_format": 21,
    "slots": 397,
-   "attaches": 1,
-   "cpu_us_median": 419.0,
-   "cpu_us_min": 246.0,
+   "attaches": 2,
+   "cpu_us_median": 535.0,
+   "cpu_us_min": 139.0,
    "gpu_us": [],
    "gpu_us_median": null,
    "gpu_timing": "unavailable",
@@ -227,7 +234,7 @@
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-debug-20260914-181237-566132"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/ambient-occlusion-live-ao-debug-20260914-202101-918895"
   },
   "ao-hdr": {
    "frames": 8,
@@ -235,6 +242,10 @@
    "restorations": 32,
    "law": "multiply",
    "pixel_frames": [],
+   "post_reset_frames": [
+    3,
+    6
+   ],
    "ao_lines": 8,
    "enabled": [
     1,
@@ -265,8 +276,8 @@
    "applied": 8,
    "target_format": 113,
    "slots": 397,
-   "attaches": 1,
-   "cpu_us_median": 369.0,
+   "attaches": 3,
+   "cpu_us_median": 319.0,
    "cpu_us_min": 125.0,
    "gpu_us": [],
    "gpu_us_median": null,
@@ -278,7 +289,7 @@
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-hdr-20260914-181239-189069"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/ambient-occlusion-live-ao-hdr-20260914-202103-364626"
   },
   "ao-toggle": {
    "frames": 7,
@@ -295,6 +306,9 @@
      "outer_mean": 0.0,
      "changed": 1115
     }
+   ],
+   "post_reset_frames": [
+    5
    ],
    "ao_lines": 7,
    "enabled": [
@@ -325,9 +339,9 @@
    "applied": 5,
    "target_format": 21,
    "slots": 397,
-   "attaches": 1,
-   "cpu_us_median": 250.0,
-   "cpu_us_min": 181.0,
+   "attaches": 2,
+   "cpu_us_median": 153.0,
+   "cpu_us_min": 124.0,
    "gpu_us": [],
    "gpu_us_median": null,
    "gpu_timing": "unavailable",
@@ -338,7 +352,7 @@
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-toggle-20260914-181240-924426"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/ambient-occlusion-live-ao-toggle-20260914-202104-842041"
   },
   "ao-pollfault": {
    "frames": 8,
@@ -364,6 +378,10 @@
      "outer_mean": 0.0,
      "changed": 1148
     }
+   ],
+   "post_reset_frames": [
+    3,
+    6
    ],
    "ao_lines": 8,
    "enabled": [
@@ -395,9 +413,9 @@
    "applied": 8,
    "target_format": 21,
    "slots": 397,
-   "attaches": 1,
-   "cpu_us_median": 485.0,
-   "cpu_us_min": 137.0,
+   "attaches": 3,
+   "cpu_us_median": 490.0,
+   "cpu_us_min": 129.0,
    "gpu_us": [],
    "gpu_us_median": null,
    "gpu_timing": "unavailable",
@@ -408,7 +426,7 @@
      "draw_index": 3
     }
    ],
-   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion-live-ao-pollfault-20260914-181242-077266"
+   "raw": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6ef5a0f3c4c5e8dc/verification/probe/build/ambient-occlusion-live-ao-pollfault-20260914-202106-314797"
   }
  }
 }

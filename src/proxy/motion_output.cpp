@@ -2219,6 +2219,10 @@ void MotionOutput::before_reset() noexcept {
     if (ao_ || ao_timing_created_) taa_call([&] { ao_timing_release(); if (ao_) ao_->before_reset(); });
     ao_timing_failed_ = false; ao_timing_lost_ = false; ao_chain_failures_ = 0;
     ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
+    // The re-attach hysteresis counts format alternation within one device
+    // lifetime; a Reset starts a new one, so the first post-Reset frame must be
+    // free to re-attach instead of waiting out ao_reattach_frames.
+    ao_attach_count_ = 0; ao_attach_frame_ = 0;
     ao_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format (as for the composition pass).
     target_failed_ = false;
     history_.invalidate();
