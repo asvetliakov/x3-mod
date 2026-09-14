@@ -81,11 +81,16 @@ darkening on a ship. Details in the
 - **Selection pause (resolved):** no target publication over 10 ms in runs 16/18
   against run 28's median 463 ms. Other unexplained slow-frame residuals remain
   open; see the [33-site trace](reverse-engineering/selection-native-vm.md).
-- **Station section trembling (new, run 21):** one hangar/dock section of a
-  station at ≈4.7 km trembles vertically each frame and stops closer
-  (`screenshots/jitter1.png`); routed station subsets are all jittered, so the
-  candidate is an uncovered program drawn without routing or jitter; diagnosis
-  on Fable in progress, ledger [motion-output.md](verification/motion-output.md).
+- **Fade-band objects tremble under TAA (run 21, owner found):** the "station
+  section" in `screenshots/jitter1.png` is an asteroid in its distance-fade band
+  seen through the hangar gap. Its blended colour pass is refused at the motion
+  gate, the fade route binds it as a region and that region becomes the reactive
+  mask, so the resolve returns the raw jittered sample every frame (measured
+  shift = Δjitter, up to 0.9 px) while routed neighbours are reprojected
+  ([asteroid-fog-temporal.md](reverse-engineering/asteroid-fog-temporal.md),
+  "Run 49"). Fix in implementation on Fable: route fade-band draws of reviewed
+  pairs with their own motion rows and keep them out of the mask above a fade
+  threshold; rides the next candidate.
 - **Distant shimmer:** root cause named — `cutout::missed` on a source-over
   *blended* alpha-tested cutout draw refused at the motion gate drops the whole
   frame's TAA history (15 % of frames in runs 11/14, none in run 15). The
