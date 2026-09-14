@@ -925,13 +925,16 @@ def validate_packed_samples(traces,expected_by_frame,injected=None):
     """packed_sample lines (capture frames only, screen-emission-region.md
     step B grammar): one per admitted packed draw of a captured frame with
     both readbacks S_OK, finite values and the centre inside the rectangle;
-    none outside the capture window."""
+    none outside the capture window. The rectangle scan (changed_px, the
+    luminance maxima/sums and the post argmax) must succeed, stay inside the
+    rectangle and report at least one changed pixel whenever the centre
+    luminance changed."""
     rows=[fields(line) for line in traces if line.startswith('packed_sample ')]
     expected=[f for f in SCREEN_CAPTURE_FRAMES for s in expected_by_frame[f][0] if s['packed_admitted']]
     assert [int(r['frame']) for r in rows]==expected,('one packed_sample per admitted packed draw of a capture frame',[int(r['frame']) for r in rows],expected)
     frames=indexed(traces,'linear_composition_frame ','frame')
     assert all(int(frames[f]['packed_sample_skipped'])==0 for f in frames),'no capture frame exceeds the packed_sample cap (at most two admitted packed draws per frame)'
-    changed=0
+    changed=0;changed_lines=0;changed_pixels=0;scanned=0
     for r in rows:
         assert r['pre_result']=='00000000' and r['post_result']=='00000000',(r['frame'],'sample readbacks',r)
         rect=tuple(map(int,r['rect'].split(',')));cx,cy=map(int,r['centre'].split(','))
@@ -940,7 +943,53 @@ def validate_packed_samples(traces,expected_by_frame,injected=None):
         pre=[float(v) for v in r['pre'].split(',')];post=[float(v) for v in r['post'].split(',')]
         assert all(math.isfinite(v) for v in pre+post) and math.isfinite(float(r['pre_y'])) and math.isfinite(float(r['post_y'])),(r['frame'],'finite samples')
         changed+=int(r['pre_y']!=r['post_y'])
-    return dict(lines=len(rows),luminance_changed=changed)
+        assert r['scan_result']=='00000000',(r['frame'],'rectangle scan',r['scan_result'])
+        scan_px=int(r['scan_px']);changed_px=int(r['changed_px'])
+        assert 0<scan_px<=rect_area(rect),(r['frame'],'scanned pixels within the rectangle',scan_px,rect)
+        assert 0<=changed_px<=scan_px,(r['frame'],'changed pixels within the scan',changed_px,scan_px)
+        if r['pre_y']!=r['post_y']:assert changed_px>0,(r['frame'],'a changed centre implies changed rectangle pixels')
+        ax,ay=map(int,r['argmax'].split(','))
+        assert rect[0]<=ax<rect[2] and rect[1]<=ay<rect[3],(r['frame'],'argmax inside the rectangle',(ax,ay),rect)
+        stats=[float(r[k]) for k in ('max_pre_y','max_post_y','sum_pre_y','sum_post_y')]
+        stats+=[float(v) for k in ('argmax_pre','argmax_post') for v in r[k].split(',')]
+        assert all(math.isfinite(v) for v in stats),(r['frame'],'finite scan statistics',stats)
+        assert float(r['sum_pre_y'])>=float(r['max_pre_y'])-1e-6 and float(r['sum_post_y'])>=float(r['max_post_y'])-1e-6,(r['frame'],'the luminance sum covers its maximum')
+        scanned+=scan_px;changed_pixels+=changed_px;changed_lines+=int(changed_px>0)
+    return dict(lines=len(rows),luminance_changed=changed,changed_lines=changed_lines,changed_pixels=changed_pixels,scanned_pixels=scanned)
+
+
+def validate_screen_emission_frames(traces,frames=None):
+    """screen_emission_frame lines (--screen-emission-timing only, one per
+    Present of a device): frame numbers strictly increasing per device,
+    counters non-negative and cpu_us the wall-clock QPC delta since that
+    device's previous Present (0 on the first one, and only there). Counters
+    equal the same frame's linear_composition_frame line where it exists."""
+    rows=[fields(line) for line in traces if line.startswith('screen_emission_frame ')]
+    assert rows,'no screen_emission_frame line'
+    devices={}
+    for r in rows:devices.setdefault(r['device'],[]).append(r)
+    composition=indexed(traces,'linear_composition_frame ','frame')
+    total_us=0;total_px=0;total_admitted=0;measured=0;numbers=[]
+    for device,device_rows in devices.items():
+        device_numbers=[int(r['frame']) for r in device_rows]
+        assert device_numbers==sorted(set(device_numbers)),('one screen_emission_frame per Present, strictly increasing',device,device_numbers)
+        if frames is not None:assert device_numbers==list(frames),('a line per presented frame',device,device_numbers)
+        numbers.append(device_numbers)
+        for index,r in enumerate(device_rows):
+            admitted=int(r['packed_admitted']);pixels=int(r['brackets_px']);cpu=int(r['cpu_us'])
+            assert admitted>=0 and pixels>=0 and cpu>=0,(r['frame'],'non-negative counters',r)
+            if index==0:assert cpu==0,(device,'the first Present has no previous stamp',cpu)
+            line=composition.get(int(r['frame']))
+            if line is not None:
+                assert admitted==int(line['packed_admitted']) and pixels==int(line['packed_region_pixels']),(r['frame'],'timing counters equal the frame line',r,line)
+            total_us+=cpu;total_px+=pixels;total_admitted+=admitted;measured+=int(cpu>0)
+    # The QPC delta is a real frame time: a run whose every line reads zero
+    # would mean the stamp was never taken (below the counter's resolution is
+    # not expected for a rendered frame).
+    assert measured>=len(rows)-len(devices),('every Present after the first measures a wall-clock delta',measured,len(rows),len(devices))
+    return dict(lines=len(rows),devices=len(devices),frames=numbers[0] if len(numbers)==1 else numbers,
+                packed_admitted=total_admitted,brackets_px=total_px,measured=measured,
+                cpu_us_total=total_us,cpu_us_mean=total_us//max(1,measured))
 
 
 def screen_footprint(kind,x,y,width=64,height=64):
@@ -1092,6 +1141,9 @@ def main_screen(args):
     raw=Path(tempfile.mkdtemp(prefix='x3-screen-emission-live-'))
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,raw=str(raw),scope=SCREEN_SCOPE,inputs=hashes,cases={},limitations=SCREEN_LIMITATIONS)
     runs=[dict(name='screen-functional',screen=1,witness=True),dict(name='screen-off',screen=0,witness=True),
+          # The option's opt-in per-frame timing line on real Presents; the
+          # functional laws must hold unchanged with the diagnostic on.
+          dict(name='screen-timing-line',screen=1,witness=True,emission_timing=True),
           dict(name='screen-straddle',screen=1,witness=True,rect=SCREEN_STRADDLE_RECT,expect_violations=screen_straddle_violations()),
           dict(name='screen-caps',screen=1,witness=True,caps=0)]
     for width,height in RESOLUTIONS:
@@ -1113,6 +1165,7 @@ def main_screen(args):
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
                        X3M_CAPTURE_START='1000000' if run.get('timing') else str(SCREEN_CAPTURE_FRAMES.start),X3M_CAPTURE_FRAMES='0' if run.get('timing') else str(len(SCREEN_CAPTURE_FRAMES)),WINEDLLOVERRIDES='d3d9=n,b')
+            if run.get('emission_timing'):env['X3M_SCREEN_EMISSION_TIMING']='1'
             if run.get('witness'):env['X3M_FADE_WITNESS']=str(WITNESS_K)
             if run.get('rect'):env['X3M_FIXTURE_SCREEN_RECT']=','.join(map(str,run['rect']))
             if run.get('caps')==0:env['X3M_FIXTURE_SCREEN_CAPS_FAULT']='1'
@@ -1136,6 +1189,8 @@ def main_screen(args):
                 except WitnessViolation as violation:
                     assert violation.violations==run.get('expect_violations'),(run['name'],'unexpected witness violations',violation.violations,run.get('expect_violations'))
                     case['witness']=dict(k=WITNESS_K,expected_failure=str(violation),violations=violation.violations)
+                if run.get('emission_timing'):case['screen_emission_frames']=validate_screen_emission_frames(trace.splitlines())
+                else:assert not any(line.startswith('screen_emission_frame ') for line in trace.splitlines()),(run['name'],'no per-frame timing line without the flag')
             case['seconds']=round(time.monotonic()-start,3);case['raw']=str(work)
             result['cases'][run['name']]=case
         result['paired_cost']=screen_paired_cost(result['cases'])
@@ -1144,6 +1199,10 @@ def main_screen(args):
         functional=result['cases']['screen-functional']
         # Caps refusal precedes the readiness gates: every bounded eligible draw of the functional run is caps-refused.
         assert result['cases']['screen-off']['totals']['packed_eligible']==0
+        # The timing diagnostic changes nothing the functional laws measure.
+        timing_line=result['cases']['screen-timing-line']
+        assert timing_line['totals']==functional['totals'],('the timing flag changes no composition counter',timing_line['totals'],functional['totals'])
+        assert timing_line['packed_samples']==functional['packed_samples'],('the timing flag changes no packed sample',timing_line['packed_samples'])
         assert result['cases']['screen-caps']['totals']['packed_caps']==sum(s['packed_caps'] for f in range(SCREEN_FRAMES) for s in screen_expected_sources(f,1,1,1,0)[0])==functional['totals']['packed_eligible']-functional['totals']['packed_unbounded']
         result['passed']=True
     except Exception as error:

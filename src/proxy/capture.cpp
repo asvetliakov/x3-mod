@@ -88,6 +88,7 @@ bool hdr_requested = false;
 bool linear_emission_requested = false;
 bool linear_distance_fade_requested = false;
 bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step C)
+bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
 // X3M_AMBIENT_OCCLUSION=1 (default off; requires X3M_MOTION_OUTPUT=1 and
@@ -1832,6 +1833,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
+    hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
@@ -2085,6 +2087,12 @@ void initialize_log(HMODULE module) {
     {const bool asked=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION",setting,32)==1 && setting[0]==L'1';
      screen_emission_requested=asked && linear_material_requested && taa_requested;
      if(asked)log("screen_emission_mode requested=1 enabled=%u materials=%u taa=%u policy=8",screen_emission_requested,linear_material_requested,taa_requested);}
+    // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
+    // diagnostic (one screen_emission_frame line per Present). Needs the
+    // enabled option; the option itself stays free of per-frame logging.
+    {const bool asked=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_TIMING",setting,32)==1 && setting[0]==L'1';
+     screen_emission_timing_requested=asked && screen_emission_requested;
+     if(asked)log("screen_emission_timing_mode requested=1 enabled=%u screen=%u",screen_emission_timing_requested,screen_emission_requested);}
     // X3M_FADE_WITNESS=<k> (1..100000): every k-th frame the fade-region
     // witness reads the M coverage target back once (default off; needs the
     // distance-fade route; docs/architecture/linear-distance-fade-region.md).

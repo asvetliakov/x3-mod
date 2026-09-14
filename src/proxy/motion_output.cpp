@@ -284,7 +284,8 @@ unsigned MotionOutput::device_references() const noexcept {
     if (composition_) count += composition_->references();
     if (depth_surface_) ++count;
     if (fade_witness_.copy) ++count; // the witness's retained system-memory readback surface
-    if (packed_sample_.copy) ++count; // the packed_sample diagnostic's retained readback surface
+    if (packed_sample_.copy) ++count; // the packed_sample diagnostic's retained readback surfaces (post and pre)
+    if (packed_sample_.pre_copy) ++count;
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
     if (quad_vs_) ++count;
@@ -548,6 +549,10 @@ void MotionOutput::configure_fade_witness(unsigned frames) noexcept {
 void MotionOutput::configure_shimmer_trace(bool requested) noexcept {
     if (device_) return;
     shimmer_trace_ = requested;
+}
+void MotionOutput::configure_screen_emission_timing(bool requested) noexcept {
+    if (device_) return; // Process-start diagnostic configuration only.
+    screen_emission_timing_ = requested && screen_emission_requested_;
 }
 
 void MotionOutput::configure_mip_bias(float bias) noexcept {
@@ -3800,34 +3805,53 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
 // before the source draw (after prepare: A|R is copied to B|R, A itself is
 // untouched until finish composes) and after the composite, through one
 // documented GetRenderTargetData (whole surface: the destination must match
-// the source's size) into one retained system-memory surface of the
-// target's size and format and a 1x1 LockRect. At most
+// the source's size) into two retained system-memory surfaces of the
+// target's size and format (one pre, one post) and a 1x1 LockRect. At most
 // packed_sample_cap admitted draws per capture frame are sampled (the first
 // ones; the rest are counted in packed_sample_skipped on the frame line), so
 // a frame with hundreds of bullet draws costs at most 2 * cap copies. The
-// retained surface is allocated once per size/format, counted by
-// device_references() and released with the witness copy at Reset/teardown.
-HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const renderer::Surface& description, std::int32_t x, std::int32_t y, float out[4]) noexcept {
+// centre of a bracket around a thin beam is usually not a bullet pixel, so
+// the post sample also scans the whole rectangle out of the two copies
+// (scan_packed_rect): changed_px, the pre/post luminance maxima and sums and
+// the location of the post maximum with its colours. The retained surfaces
+// are allocated once per size/format, counted by device_references() and
+// released with the witness copy at Reset/teardown.
+static inline float packed_sample_half(std::uint16_t h) noexcept {
+    // Bit-exact half decode for the per-pixel scan (no ldexp in the loop).
+    const unsigned sign = unsigned(h) & 0x8000u, exponent = (h >> 10) & 31u, mantissa = h & 1023u;
+    unsigned bits;
+    if (!exponent) {
+        if (!mantissa) bits = sign << 16;
+        else { unsigned e = 113, m = mantissa; while (!(m & 1024u)) { m <<= 1; --e; } bits = (sign << 16) | (e << 23) | ((m & 1023u) << 13); }
+    } else if (exponent == 31) bits = (sign << 16) | 0x7f800000u | (mantissa << 13);
+    else bits = (sign << 16) | ((exponent + 112u) << 23) | (mantissa << 13);
+    float value; std::memcpy(&value, &bits, 4); return value;
+}
+static unsigned packed_sample_pixel_bytes(std::uint32_t format) noexcept {
+    switch (D3DFORMAT(format)) {
+    case D3DFMT_A16B16G16R16F: return 8;
+    case D3DFMT_A32B32G32R32F: return 16;
+    case D3DFMT_A8R8G8B8: case D3DFMT_X8R8G8B8: return 4;
+    default: return 0; // fail closed: no decode for other formats
+    }
+}
+HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const renderer::Surface& description, bool pre, std::int32_t x, std::int32_t y, float out[4]) noexcept {
     out[0] = out[1] = out[2] = out[3] = 0.f;
     if (!surface || !description.known || !description.width || !description.height) return D3DERR_NOTFOUND;
     if (x < 0 || y < 0 || std::uint32_t(x) >= description.width || std::uint32_t(y) >= description.height) return D3DERR_INVALIDCALL;
     const auto format = D3DFORMAT(description.format);
-    unsigned bytes = 0;
-    switch (format) {
-    case D3DFMT_A16B16G16R16F: bytes = 8; break;
-    case D3DFMT_A32B32G32R32F: bytes = 16; break;
-    case D3DFMT_A8R8G8B8: case D3DFMT_X8R8G8B8: bytes = 4; break;
-    default: return D3DERR_NOTAVAILABLE; // fail closed: no decode for other formats
-    }
+    const unsigned bytes = packed_sample_pixel_bytes(description.format);
+    if (!bytes) return D3DERR_NOTAVAILABLE;
     auto& s = packed_sample_;
-    if (s.copy && (s.copy_width != description.width || s.copy_height != description.height || s.copy_format != description.format)) release_packed_sample();
+    if ((s.copy || s.pre_copy) && (s.copy_width != description.width || s.copy_height != description.height || s.copy_format != description.format)) release_packed_sample();
+    IDirect3DSurface9*& slot = pre ? s.pre_copy : s.copy;
     HRESULT hr = S_OK;
-    if (!s.copy) {
-        hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, description.width, description.height, format, D3DPOOL_SYSTEMMEM, &s.copy, nullptr);
+    if (!slot) {
+        hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, description.width, description.height, format, D3DPOOL_SYSTEMMEM, &slot, nullptr);
         if (SUCCEEDED(hr)) { s.copy_width = description.width; s.copy_height = description.height; s.copy_format = description.format; }
-        else s.copy = nullptr;
+        else slot = nullptr;
     }
-    IDirect3DSurface9* copy = s.copy;
+    IDirect3DSurface9* copy = slot;
     if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
     if (SUCCEEDED(hr)) {
         const RECT pixel{x, y, x + 1, y + 1};
@@ -3837,12 +3861,10 @@ HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const rend
             const auto* bits = static_cast<const unsigned char*>(lock.pBits);
             if (bytes == 16) std::memcpy(out, bits, 16);
             else if (bytes == 8) {
+                // The same decoder the rectangle scan uses (packed_sample_half).
                 for (unsigned c = 0; c < 4; ++c) {
                     std::uint16_t h = 0; std::memcpy(&h, bits + 2 * c, 2);
-                    const unsigned exponent = (h >> 10) & 31u, mantissa = h & 1023u;
-                    const float value = exponent == 31 ? (mantissa ? std::numeric_limits<float>::quiet_NaN() : std::numeric_limits<float>::infinity())
-                        : std::ldexp(float(exponent ? 1024u + mantissa : mantissa), int(exponent ? exponent : 1) - 25);
-                    out[c] = h & 0x8000u ? -value : value;
+                    out[c] = packed_sample_half(h);
                 }
             } else {
                 DWORD v = 0; std::memcpy(&v, bits, 4);
@@ -3856,31 +3878,99 @@ HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const rend
 }
 void MotionOutput::release_packed_sample() noexcept {
     auto& s = packed_sample_;
-    release(s.copy); s.copy = nullptr; s.copy_width = s.copy_height = s.copy_format = 0; s.valid = false;
+    release(s.copy); s.copy = nullptr;
+    release(s.pre_copy); s.pre_copy = nullptr;
+    s.copy_width = s.copy_height = s.copy_format = 0; s.valid = false;
+}
+// Capture frames only, at most packed_sample_cap rectangles per frame: one
+// pass over the bound rectangle (clipped to the copies' extent) comparing the
+// two retained system-memory images. RGB is compared on the raw bits (exact),
+// luminance is Rec.709 on the decoded channels; no allocation and no D3D call
+// beyond the two LockRects.
+HRESULT MotionOutput::scan_packed_rect(const fade_region::Rect& rect, PackedScan& scan) noexcept {
+    auto& s = packed_sample_;
+    const unsigned bytes = packed_sample_pixel_bytes(s.copy_format);
+    if (!s.copy || !s.pre_copy || !bytes) return D3DERR_NOTAVAILABLE;
+    RECT box{rect.left > 0 ? LONG(rect.left) : 0, rect.top > 0 ? LONG(rect.top) : 0,
+             rect.right < std::int32_t(s.copy_width) ? LONG(rect.right) : LONG(s.copy_width),
+             rect.bottom < std::int32_t(s.copy_height) ? LONG(rect.bottom) : LONG(s.copy_height)};
+    if (box.right <= box.left || box.bottom <= box.top) return D3DERR_INVALIDCALL;
+    D3DLOCKED_RECT pre_lock{}, post_lock{};
+    HRESULT hr = s.pre_copy->LockRect(&pre_lock, &box, D3DLOCK_READONLY);
+    if (FAILED(hr)) return hr;
+    hr = s.copy->LockRect(&post_lock, &box, D3DLOCK_READONLY);
+    if (FAILED(hr)) { s.pre_copy->UnlockRect(); return hr; }
+    const unsigned width = unsigned(box.right - box.left), height = unsigned(box.bottom - box.top);
+    const unsigned rgb_bytes = bytes == 4 ? 3u : bytes / 4u * 3u;
+    double max_pre = -1.0, max_post = -1.0;
+    for (unsigned row = 0; row < height; ++row) {
+        const auto* a = static_cast<const unsigned char*>(pre_lock.pBits) + std::size_t(row) * std::size_t(pre_lock.Pitch);
+        const auto* b = static_cast<const unsigned char*>(post_lock.pBits) + std::size_t(row) * std::size_t(post_lock.Pitch);
+        for (unsigned column = 0; column < width; ++column, a += bytes, b += bytes) {
+            float pre_rgb[3], post_rgb[3];
+            if (bytes == 8) for (unsigned c = 0; c < 3; ++c) {
+                std::uint16_t ha = 0, hb = 0; std::memcpy(&ha, a + 2 * c, 2); std::memcpy(&hb, b + 2 * c, 2);
+                pre_rgb[c] = packed_sample_half(ha); post_rgb[c] = packed_sample_half(hb);
+            } else if (bytes == 16) { std::memcpy(pre_rgb, a, 12); std::memcpy(post_rgb, b, 12); }
+            else {
+                std::uint32_t va = 0, vb = 0; std::memcpy(&va, a, 4); std::memcpy(&vb, b, 4);
+                pre_rgb[0] = float((va >> 16) & 255u) / 255.f; pre_rgb[1] = float((va >> 8) & 255u) / 255.f; pre_rgb[2] = float(va & 255u) / 255.f;
+                post_rgb[0] = float((vb >> 16) & 255u) / 255.f; post_rgb[1] = float((vb >> 8) & 255u) / 255.f; post_rgb[2] = float(vb & 255u) / 255.f;
+            }
+            const bool changed = std::memcmp(a, b, rgb_bytes) != 0; // A8R8G8B8 stores B,G,R,A: the first three bytes are the colour
+            if (changed) ++scan.changed;
+            const double pre_y = 0.2126 * pre_rgb[0] + 0.7152 * pre_rgb[1] + 0.0722 * pre_rgb[2];
+            const double post_y = 0.2126 * post_rgb[0] + 0.7152 * post_rgb[1] + 0.0722 * post_rgb[2];
+            scan.sum_pre += pre_y; scan.sum_post += post_y;
+            if (pre_y > max_pre) max_pre = pre_y;
+            if (post_y > max_post) {
+                max_post = post_y;
+                scan.argmax_x = std::int32_t(box.left) + std::int32_t(column); scan.argmax_y = std::int32_t(box.top) + std::int32_t(row);
+                for (unsigned c = 0; c < 3; ++c) { scan.argmax_pre[c] = pre_rgb[c]; scan.argmax_post[c] = post_rgb[c]; }
+            }
+        }
+    }
+    scan.max_pre = max_pre < 0.0 ? 0.0 : max_pre; scan.max_post = max_post < 0.0 ? 0.0 : max_post;
+    scan.pixels = static_cast<unsigned long>(width) * height;
+    s.copy->UnlockRect(); s.pre_copy->UnlockRect();
+    return S_OK;
 }
 void MotionOutput::sample_packed_pre(const MotionRoute& route) noexcept {
     auto& s = packed_sample_;
     if (s.sampled >= packed_sample_cap) { ++composition_counts_.packed_sample_skipped; return; }
     ++s.sampled;
-    s.valid = true;
     s.rect = route.prefix_region.rect;
     s.clipped = route.prefix_region.clipped;
     s.index = counters_.draws;
     s.x = s.rect.left + (s.rect.right - s.rect.left) / 2; s.y = s.rect.top + (s.rect.bottom - s.rect.top) / 2;
-    s.pre_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, s.x, s.y, s.pre);
+    // A target size/format change releases both copies inside the readback and
+    // clears the pending pre, so the slot is armed after it: every admitted
+    // sampled draw keeps its packed_sample line (with the readback's result),
+    // and packed_sample_skipped stays the cap's counter alone.
+    s.pre_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, true, s.x, s.y, s.pre);
+    s.valid = true;
 }
 void MotionOutput::sample_packed_post(const RECT& composed) noexcept {
     auto& s = packed_sample_;
     if (!s.valid) return;
     s.valid = false;
     float post[4];
-    const HRESULT post_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, s.x, s.y, post);
+    const HRESULT post_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, false, s.x, s.y, post);
+    PackedScan scan{};
+    // Both readbacks must have landed for the rectangle comparison to mean
+    // anything; a failed one leaves the scan fields at zero with its result.
+    scan.result = SUCCEEDED(s.pre_result) && SUCCEEDED(post_result) ? scan_packed_rect(s.rect, scan) : post_result;
     auto luminance = [](const float* c) { return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
-    log("packed_sample device=%llu frame=%llu index=%lu rect=%ld,%ld,%ld,%ld clipped=%u composed=%ld,%ld,%ld,%ld centre=%ld,%ld format=%u pre=%.6g,%.6g,%.6g,%.6g pre_y=%.6g post=%.6g,%.6g,%.6g,%.6g post_y=%.6g pre_result=%08lx post_result=%08lx",
+    log("packed_sample device=%llu frame=%llu index=%lu rect=%ld,%ld,%ld,%ld clipped=%u composed=%ld,%ld,%ld,%ld centre=%ld,%ld format=%u pre=%.6g,%.6g,%.6g,%.6g pre_y=%.6g post=%.6g,%.6g,%.6g,%.6g post_y=%.6g pre_result=%08lx post_result=%08lx"
+        " scan_result=%08lx scan_px=%lu changed_px=%lu max_pre_y=%.6g max_post_y=%.6g sum_pre_y=%.6g sum_post_y=%.6g argmax=%ld,%ld argmax_pre=%.6g,%.6g,%.6g argmax_post=%.6g,%.6g,%.6g",
         id_, frame_, static_cast<unsigned long>(s.index), long(s.rect.left), long(s.rect.top), long(s.rect.right), long(s.rect.bottom), s.clipped,
         long(composed.left), long(composed.top), long(composed.right), long(composed.bottom), long(s.x), long(s.y), unsigned(hdr_target_.format),
         double(s.pre[0]), double(s.pre[1]), double(s.pre[2]), double(s.pre[3]), luminance(s.pre),
-        double(post[0]), double(post[1]), double(post[2]), double(post[3]), luminance(post), static_cast<unsigned long>(s.pre_result), static_cast<unsigned long>(post_result));
+        double(post[0]), double(post[1]), double(post[2]), double(post[3]), luminance(post), static_cast<unsigned long>(s.pre_result), static_cast<unsigned long>(post_result),
+        static_cast<unsigned long>(scan.result), scan.pixels, scan.changed, scan.max_pre, scan.max_post, scan.sum_pre, scan.sum_post,
+        long(scan.argmax_x), long(scan.argmax_y),
+        double(scan.argmax_pre[0]), double(scan.argmax_pre[1]), double(scan.argmax_pre[2]),
+        double(scan.argmax_post[0]), double(scan.argmax_post[1]), double(scan.argmax_post[2]));
 }
 
 // Capture frames only. The draw was recognised (fade pair in the exact
@@ -4556,6 +4646,20 @@ void MotionOutput::log_shimmer_frame(unsigned history_previous, unsigned history
             long(r.rect[0]), long(r.rect[1]), long(r.rect[2]), long(r.rect[3]));
     }
 }
+// One diagnostic line per Present with X3M_SCREEN_EMISSION_TIMING=1 (the
+// screen-emission option's opt-in timing): this frame's packed admissions and
+// bracket pixels with the wall-clock time since the previous Present. One
+// QueryPerformanceCounter and one log call; the frequency is read once.
+void MotionOutput::log_screen_emission_frame() noexcept {
+    LARGE_INTEGER now{};
+    const std::uint64_t stamp = QueryPerformanceCounter(&now) ? std::uint64_t(now.QuadPart) : 0u;
+    if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
+    const std::uint64_t ticks = stamp > present_qpc_ && present_qpc_ ? stamp - present_qpc_ : 0u;
+    present_qpc_ = stamp;
+    log("screen_emission_frame device=%llu frame=%llu packed_admitted=%u brackets_px=%llu cpu_us=%llu",
+        id_, frame_, composition_counts_.packed_admitted, composition_counts_.packed_region_pixels,
+        qpc_frequency_ ? ticks * 1000000u / qpc_frequency_ : 0u);
+}
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
     report_mip_bias_game_write_failure();
@@ -4565,6 +4669,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
     if (shimmer_trace_) log_shimmer_frame(unsigned(stats.previous), unsigned(stats.current), unsigned(committed));
+    if (screen_emission_timing_) log_screen_emission_frame();
     if (fade_refused_count_) log_fade_refused();
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):
