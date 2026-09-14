@@ -357,3 +357,13 @@ result=00000000 mrt=4`, 7827 routed draws. `cutout_missed` and
 (`motion_route gate=4 routed=0 matched=0`) in all five capture frames and is
 unchanged. No reported visual regression is attributed to this runtime by the
 evidence.
+
+Census over the run-28 and run-11 capture frames (2026-09-14): the Argon BUMP
+alpha-tested pair `4944d81dfe531b37/5e0a10fe752b6140` is gate-4 refused on every
+draw in run 28 (20 per frame) and routed on every draw in run 11 (32–37 per
+frame); the DEFAULT pair `53a0a641107ed76c/63f96eba9eea7880` goes from all refused
+(12–14 per frame) to majority routed (51–73 per frame) with a residual 1–3
+refusals per frame. Across the nine sampled frames only 182 gate-4 refusals on
+seven converted pairs remain, none classifiable by state from the current
+`motion_route` line (a capture-only state extension is queued for the next
+candidate).
