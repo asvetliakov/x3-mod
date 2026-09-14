@@ -13,17 +13,17 @@
   },
   "scope": "Selected console-fixture cases under CrossOver Preview: 17 D3D9 exports, forwarded entry points and ret-N fallbacks; the readonly case additionally checks the %LOCALAPPDATA% session-log fallback. Not a native-Windows run.",
   "selected_case": "writable",
-  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source/build/d3d9.dll",
+  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/build/d3d9.dll",
   "cases": {
     "writable": {
       "exit": 0,
       "checks": 8,
       "failures": 0,
       "readonly": false,
-      "directory": "verification/probe/build/d3d9-exports-writable-20260914-172142-682852",
-      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260914-172142-682852/x3-modern-captures/session-20260914-172144-208.log",
-      "trace_sha256": "46f688abadbc14f2ff2c1b1bc45ccfaac1e578f068e871bdfadcd433417d35b6",
-      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260914-172142-682852\\x3-modern-captures",
+      "directory": "verification/probe/build/d3d9-exports-writable-20260914-200239-699575",
+      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260914-200239-699575/x3-modern-captures/session-20260914-200239-408.log",
+      "trace_sha256": "5fe1f787763e91dde60b07f0fd87e241f993f494a1c63a20ef4074b63202d530",
+      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260914-200239-699575\\x3-modern-captures",
       "source": "game",
       "localappdata": "C:\\users\\crossover\\AppData\\Local",
       "userprofile": "C:\\users\\crossover",
@@ -66,17 +66,17 @@
       },
       "on12_forwarded": true,
       "on12ex_forwarded": false,
-      "dll_sha256": "5b92484a70852525798b37e6d34d7203929b986ca44479edb7e349790ca83670",
-      "exe_sha256": "c338db879f8a0897d752176fa9afba0f346469fbafbe0d2d1804db042e7eed4c",
+      "dll_sha256": "740a6dd7feab5afcf00ccc5e19f91d79c42dab7983fb36251d7998dbc72073eb",
+      "exe_sha256": "d3426dcbaa70a612e999c0f8dbccc659e5735e2f4cf198e73a19039c3bb2658d",
       "env_lines": [
         "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
         "ENV USERPROFILE=C:\\users\\crossover"
       ]
     }
   },
-  "dll_sha256": "5b92484a70852525798b37e6d34d7203929b986ca44479edb7e349790ca83670",
+  "dll_sha256": "740a6dd7feab5afcf00ccc5e19f91d79c42dab7983fb36251d7998dbc72073eb",
   "export_directory": {
-    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source/build/d3d9.dll",
+    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/build/d3d9.dll",
     "machine": "0x014c",
     "image_base": "0x6fb40000",
     "dll_name": "d3d9.dll",
@@ -231,13 +231,13 @@
     "tools/analysis/pe_exports.py": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea"
   },
   "binaries": {
-    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "c338db879f8a0897d752176fa9afba0f346469fbafbe0d2d1804db042e7eed4c",
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source/build/d3d9.dll": "5b92484a70852525798b37e6d34d7203929b986ca44479edb7e349790ca83670"
+    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "d3426dcbaa70a612e999c0f8dbccc659e5735e2f4cf198e73a19039c3bb2658d",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/build/d3d9.dll": "740a6dd7feab5afcf00ccc5e19f91d79c42dab7983fb36251d7998dbc72073eb"
   },
   "limits": [
     "Wine backend: three of the four naked forwarders reach Wine spec stubs and are resolved but not called; Direct3D9EnableMaximizedWindowedModeShim exercises the fallback path.",
     "The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.",
     "Windows is cross-compiled, not verified."
   ],
-  "report_sha256": "f2a377475664a77a90d98fbbd8e43cf67791a3d1bee0e6939e2cb50099dbaa53"
+  "report_sha256": "8735cdb36070bbecbe808ec350fbf957fa9a000dae043978de10c5fe59ed8ab5"
 }

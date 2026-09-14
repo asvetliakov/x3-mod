@@ -1,0 +1,184 @@
+{
+ "source_commit": "900d332",
+ "base": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv",
+ "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source",
+ "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/build/d3d9.dll",
+ "build_seconds": 10,
+ "dll_sha256": "740a6dd7feab5afcf00ccc5e19f91d79c42dab7983fb36251d7998dbc72073eb",
+ "dll_bytes": 14206852,
+ "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+ "seh_clang": "/usr/bin/clang",
+ "build": "git worktree add --detach (clean export of 900d332, worktree clean: porcelain empty); cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build -j4 (0 warnings)",
+ "source_tree_note": "The main checkout was clean at 900d332 (git status --porcelain empty) when the worktree was exported; the candidate was built from the detached 900d332 worktree. The fixture binaries (motion_output_fixture.exe, motion-output-seam/d3d9.dll, locked_prefix_live_fixture.exe, voice_startup_replica.exe) were also built inside the candidate worktree from the same sources.",
+ "installed": false,
+ "game_launched": false,
+ "native_windows_verified": false,
+ "installed_dll": null,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "preserved_files_note": "Not installed; bottle X3 and its EXE/config were not touched by this candidate (only read-only fixture runs under the Wine lock).",
+ "rollback": {
+  "dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "dll_sha256": "5b92484a70852525798b37e6d34d7203929b986ca44479edb7e349790ca83670",
+  "source_commit": "066e18f",
+  "install_record": "verification/results/voice-hook-install.json",
+  "note": "The currently installed DLL (066e18f, 5b92484a...) stays in place; this candidate is not installed, so rollback is a no-op."
+ },
+ "no_x87": {
+  "result": "PASS",
+  "reachable_functions": 224,
+  "violations": 0,
+  "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/no-x87.json"
+ },
+ "load": {
+  "passed": true,
+  "case": "writable",
+  "checks": 8,
+  "exports": 17,
+  "failures": 0,
+  "on12_forwarded": true,
+  "source": "game",
+  "result": "verification/results/bottle-X3/d3d9-exports-summary.json",
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll <candidate> --case writable"
+ },
+ "host_tests": {
+  "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+  "scope": "full discovery (release-checkpoint candidate with shared-infrastructure changes)",
+  "ran": 1756,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 4,
+  "seconds": 362.5,
+  "log": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/host-tests.log",
+  "note": "4 skipped, not the 5 quoted in the brief."
+ },
+ "site_verifiers": {
+  "verify_voice_dmo_site.py": {
+   "result": "PASS",
+   "checks": 10,
+   "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/voice-dmo-site.json"
+  },
+  "verify_game_phase_sites.py": {
+   "result": "PASS",
+   "checks": 24,
+   "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/game-phase-sites.json",
+   "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+  }
+ },
+ "change": "Carries the 066e18f candidate forward with the merges since it: ambient occlusion step 2 (the pass runs at the scene-end chain behind --ambient-occlusion, with the Ctrl+Shift+F11 toggle and --ao-timing), screen emission step E (the packed producer writes P_c without a per-fragment decode and the composite decodes once with --screen-emission-gain; native parity at gain 1), the packed_sample whole-rectangle scan and --screen-emission-timing frame line, the w-scaled conservative bound pad in fade_region_math.h, the TAA invalidation-site diagnostic (taa_invalidate site= and camera_state prev_valid_at_policy), and host-harness repairs. No new default enables AO or emission; the linear distance-fade route default is unchanged from the installed build.",
+ "changed_dependencies": "git diff --stat 066e18f..900d332 -- src/ tools/: 14 files, +880/-140 (capture.cpp, comparison_controls.h, fade_region_math.h, motion_output.{cpp,h}, ambient_occlusion_pass.{cpp,h}, linear_emission_pass.{cpp,h}, linear_emission_sm1.{cpp,h}, linear_screen_composite_inc.h, tools/manage.py, tools/shaders/generate_screen_emission_programs.py)",
+ "qualification": {
+  "ambient_occlusion_live": {
+   "passed": false,
+   "runner": "verification/probe/run_ambient_occlusion_live.py (candidate worktree fixtures)",
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_ambient_occlusion_live.py",
+   "cases_passed": 0,
+   "failed_case": "ao-on",
+   "expected": "PASS, 7 twins",
+   "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/verification/probe/build/ambient-occlusion-live-failed.json",
+   "raw": [
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/verification/probe/build/ambient-occlusion-live-ao-on-20260914-200333-963117",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/verification/probe/build/ambient-occlusion-live-ao-on-20260914-200421-700466"
+   ],
+   "detail": "Reproduced twice. Frames 0-2 run (applied=1, source hook/copy). The fixture Resets the device before frame 3; the trace shows reset_begin/reset_end result=0, taa_invalidate site=reset, motion_output_reset generation=2, then ambient_occlusion_frame frame=3 attached=0 ran=0 reason=attach with no ambient_occlusion_device line, so AO_CREASE frame=3 reports darkened=0 changed=0 and the fixture's 'the crease darkens, most at its centre' check fails.",
+   "diagnosis": "MotionOutput::on_reset (src/proxy/motion_output.cpp:2221) clears ao_attach_failed_ and ao_target_format_ but leaves ao_attach_count_/ao_attach_frame_, so the re-attach hysteresis at motion_output.cpp:1448 (ao_attach_count_ && frame_ < ao_attach_frame_ + ao_reattach_frames, ao_reattach_frames = 60) refuses the post-Reset re-attach for 60 frames. In game this means AO is off for ~1 s after every device Reset (alt-tab, mode change). Not fixed here: this candidate task is build/audit/record only."
+  },
+  "locked_prefix_live": {
+   "passed": true,
+   "frames": 15,
+   "bound_frames": 9,
+   "refused_frames": 6,
+   "scans": 11,
+   "scan_us_per_scan": 23.42,
+   "instanced_refusals": 1,
+   "wall_seconds": 4.121,
+   "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/verification/results/bottle-X3/screen-emission-bound-live1.json",
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_locked_prefix_live.py --fixture verification/probe/build/locked_prefix_live_fixture.exe --dll build/d3d9.dll"
+  },
+  "screen_emission_live": {
+   "passed": true,
+   "cases": 14,
+   "chain": {
+    "frame": 21,
+    "rect": [
+     8,
+     24,
+     38,
+     40
+    ],
+    "pixels": 480,
+    "native_changed": 456,
+    "max_layers": 8,
+    "max_codes": 1,
+    "alpha_exact": true,
+    "gain": 2.0,
+    "gain_max_tolerance_fraction": 0.151,
+    "bolt_channels": 1300
+   },
+   "functional": {
+    "frames": 22,
+    "sources": 28,
+    "region_pixels_per_bracket": 441,
+    "held_references": 59,
+    "samples": 53,
+    "max_tolerance_fraction": 0.1237
+   },
+   "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/source/verification/results/bottle-X3/screen-emission-live1.json",
+   "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_linear_distance_fade_live.py --screen-emission --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll"
+  },
+  "voice_replica": {
+   "passed": true,
+   "label": "candidate-900d332-game-dmo-hook",
+   "mode": "game-dmo-hook",
+   "outcome": "completed",
+   "created": 3,
+   "activations": 3,
+   "retries_ok": 3,
+   "retries_failed": 0,
+   "exit_code": 0,
+   "wall_seconds": 9.16,
+   "hook": "installed=1 patched=1 site=004014f6, 4 voice_dmo_fallback lines",
+   "exe_sha256": "f6ede9e35fd732020ddaae27f6a2af812df94bb418e6cf2082d3fc11e925d548",
+   "plugin": "/tmp/x3-wma-plugin-v4 (GST_PLUGIN_PATH_1_0, GST_REGISTRY_1_0 present)",
+   "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/voice-hook-replica/result.json"
+  },
+  "not_run": [
+   "verification/probe/run_motion_output.py (motion-output suite under repair by another agent)"
+  ],
+  "reused_not_rerun": [
+   "screen_gpu_step_a",
+   "screen_bound_gpu",
+   "station_gpu",
+   "station_live",
+   "fade_region_gameplay",
+   "cutout_live",
+   "ambient_occlusion detached fixture (run_ambient_occlusion.py)"
+  ],
+  "reused_note": "Unchanged GPU and live evidence from verification/results/voice-hook-install.json and the feature ledgers; only the fixtures touching the changed dependencies were rerun against this candidate."
+ },
+ "qualification_status": "failed-not-installed (ambient-occlusion live twin ao-on fails on the post-Reset re-attach; every other scoped check passed)",
+ "launch_dry_run": {
+  "passed": true,
+  "game_launched": false,
+  "run": 17,
+  "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-ao-stepe-candidate-nEMv/run17.txt",
+  "command": "./x3run <run-17 command> --ambient-occlusion --ao-timing --screen-emission-timing --voice-decoder /tmp/x3-wma-plugin-v4 --dry-run",
+  "X3M_AMBIENT_OCCLUSION": "1",
+  "X3M_SCREEN_EMISSION_GAIN": "1.0",
+  "X3M_LINEAR_DISTANCE_FADE": "1",
+  "X3M_AO_TIMING": "1",
+  "X3M_SCREEN_EMISSION_TIMING": "1",
+  "X3M_VOICE_DMO_FALLBACK": "1",
+  "note": "Run-17 command reconstructed from docs/archive/user-runs-completed.md section 17 (the run-11 enhanced set with --screen-emission --fade-witness; section 17 records the flags, not a literal command block). No vanilla dry-run: launcher config behavior unchanged."
+ },
+ "installed_sha256_verified": null,
+ "installed_at": null,
+ "launcher_manifest": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-install.json"
+}
