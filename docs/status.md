@@ -109,13 +109,16 @@ darkening on a ship. Details in the
   station is one merged opaque subset, nearer the port is its own source-over draw
   over a dark interior. Normal-map minification is refuted. The design note
   [docking-port-lod-consistency.md](architecture/docking-port-lod-consistency.md)
-  recommends native parity (blend-domain composite for the port pair) and is
-  **ratified 2026-09-15** as a low-priority item for a later candidate. Run 21
-  session B settled the owner: the blackening happens in vanilla too, so it is
-  the asset's LOD content step (LOD 3 shows hull texture where LOD 2 draws the
-  lattice over a dark interior), not the renderer. The only lever that moves the
-  flip is the game's own detail/quality setting; a lit-interior enhancement of the
-  near LOD would be artistic work, not parity.
+  recommends native parity (blend-domain composite) and is **ratified** as a
+  low-priority item. Run 21 session B: the blackening happens in vanilla too, so
+  it is not the renderer. The run-20 "port" measurement was an asteroid part
+  (corrected in the note); genuine same-node LOD crossings show no radiance step,
+  and the one dark bay (`543f`) is dark at LOD 2 because its interior is authored
+  geometry that X3 leaves unlit (no ambient term). The note's new section rejects
+  a port replay at LOD 3 and keeps a band cross-fade only as a default-off
+  experiment; the honest fix for a black bay is a fill/ambient term in the
+  converted materials (decision pending), and a proxy LOD-distance scale is under
+  disassembly ([lod-selection.md](reverse-engineering/lod-selection.md), pending).
   Measurements in
   [station-material-distance.md](reverse-engineering/station-material-distance.md).
 - **Bullets / screen emission:** step E (publication-time decode, parity within

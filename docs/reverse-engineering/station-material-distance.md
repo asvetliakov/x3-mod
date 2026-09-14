@@ -678,38 +678,20 @@ mechanism but is **not** confirmed as the sole owner: the far/near pair remains
 uncaptured, and a ship at LOD 0 showing the same effect is outside its scope.
 The retry rides run 20.
 
-## Run 20 (run48): a genuine far port, and no radiance step at the boundary
+## Run 20 (run48): correction — the measured part was an asteroid, not the port
 
-User run 20 (snapshot `/tmp/x3-bottleX3-run48/`, log
-`session-20260915-002408-212.log`, 335 MB, installed DLL `39b090d0…` from
-`77a649b`) delivered what run 19 could not: a docking port captured genuinely
-far as well as near, through the `fade_region` part identity `0f768ad8`
-(descriptor `2a4dd360`).
-
-| Frame | Distance | Port width | Port-rect linear luma |
-| --- | --- | ---: | ---: |
-| 44490 | far | 37 px | 0.2157 |
-| 47433 | far | 38 px | 0.2166 |
-| 43990 | near | 238 px | 0.2026 |
-| 45156 | near | 181 px | 0.2034 |
-
-The near/far ratio is ≈0.94, against 0.972 for run 19's equal-distance pair: a
-6 % change over a 6× width span, within the same TAA/dither noise band. So **the
-port radiance itself does not step at the LOD boundary in these captures** — the
-LOD-boundary mechanism of the section above is not supported by the first pair
-that could have shown it.
-
-Two gaps keep this short of a verdict. `fade_region` lines carry no
-`node_handle` and no `lod`, so the far instance's LOD and draw path could not be
-cross-referenced against the near one; that is a diagnostic gap in the line, not
-a finding. And the ship pair is again not identifiable: no capture-trigger line
-names the target, and the 23902 group has no dominant model.
-
-The user still perceives the darkening on approach. Since the logged radiance
-does not move, the next discriminator is not another instrumented run but a
-vanilla eyeball comparison of the same approach.
+The run-20 paragraph that stood here (far 37 px / near 181–238 px, luma ratio 0.94) measured
+`fade_region part=0f768ad8`, which the draw-index join in the
+[design note](../architecture/docking-port-lod-consistency.md) ("Band-limited cross-fade") shows
+to be the asteroid pair (`vs=167eb2d5… ps=d44db877…`), not a docking port. The real port draws in
+those captures are node 51860 (model `546b`, LOD 2, no rect) and node 51770 (`5471`, LOD 2,
+17×14 px). The same note measured two genuine same-node LOD 2→3 crossings (`542b` lit: mean
+0.107 → 0.101, dark fraction 0.03 → 0.04; `5427` dark: 0.0214 → 0.0206, dark fraction 0.92 → 0.93)
+with no step in the port area, and one genuinely dark bay (`543f`, 109–146 px, dark fraction
+0.61–0.81, interior luma 0.055) whose LOD-3 side is uncaptured. So the captured evidence does not
+show a radiance step at the LOD boundary; what it shows is an authored dark bay interior at LOD 2.
 
 ## Run 21 session B (vanilla, eyes only, 2026-09-15)
 
-The user repeated the far/near approach with `./x3run --direct --vanilla` and confirms the docking-port blackening happens in vanilla too. Combined with run 20 (the port radiance moves 6 % between the far LOD 3 hull-textured area and the near LOD 2 lattice draw), the darkening is the asset's LOD content step: LOD 3 has no port geometry and shows hull texture, LOD 2 draws the lattice over the authored dark interior. It is not renderer-introduced. The renderer-side residual is the +16 % near-side excess of the linear rule ([design note](../architecture/docking-port-lod-consistency.md), native-parity composite), which does not cause the step.
+The user repeated the far/near approach with `./x3run --direct --vanilla` and confirms the docking-port blackening happens in vanilla too. It is therefore not renderer-introduced. With the run-20 correction above, the best-supported reading is that the near LOD draws an authored dark bay interior (`543f`: dark fraction 0.61–0.81 at 109–146 px) which X3 leaves black because the engine has no ambient term, while the far LOD shows hull texture; the one uncaptured fact is the `543f` LOD-3 side. The renderer-side residual is the +16 % near-side excess of the linear rule ([design note](../architecture/docking-port-lod-consistency.md), native-parity composite), which does not cause the step.
 
