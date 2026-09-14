@@ -3962,14 +3962,14 @@
       "exit_code": 5,
       "killed_pids": [],
       "survivors": [],
-      "process_wall_seconds": 6.5615865,
+      "process_wall_seconds": 1.0277833749999998,
       "plugin_present": true,
       "plugin_env": {
         "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
         "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
       },
       "gst_debug": null,
-      "exe_sha256": "1257cf198dc03c40e754b888812eb3da124b5c8b0c6d07186ea42268ced00d75",
+      "exe_sha256": "240073b9ba6543253ff9b11099c8f04b6d8b12c94a41bede972af5d944493a56",
       "abort": "invalid diagnostic: unterminated step without a watchdog report",
       "bottle": {
         "name": "X3",
@@ -3986,10 +3986,13 @@
         "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
       ],
       "play": null,
-      "output": "/tmp/x3-voice-startup-hook1",
+      "output": "/tmp/x3-voice-startup-hook6",
       "hook": null,
       "sites": null,
-      "hook_lines": null,
+      "hook_lines": [
+        "voice_dmo_fallback requested=1 installed=1 status=ok site=004014f6 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=01130000 arena_size=16384 arena_used=152 stub=0113001c tail=01130000 dispatcher=01130014 entry_slot=01130010 enter=00401560 fault_witness=1",
+        "voice_dmo_fallback_fault code=c0000005 address=00000000 access_kind=8 access=00000000 thread=488 arena=01130000 arena_offset=outside:0 eip=00000000 esp=0022f9cc eax=003f36e4 ebx=0022f9e0 esi=00d51448 edi=003f3580 hits=1 activations=1 faults=1"
+      ],
       "startup": null,
       "primary": null,
       "key_steps": null,
@@ -4011,14 +4014,14 @@
       "exit_code": 0,
       "killed_pids": [],
       "survivors": [],
-      "process_wall_seconds": 7.065048166,
+      "process_wall_seconds": 3.562612,
       "plugin_present": true,
       "plugin_env": {
         "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
         "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
       },
       "gst_debug": null,
-      "exe_sha256": "71b6a942b58288b4ac633b7200c2752654c7988ebdd87503db948fee03109b73",
+      "exe_sha256": "5a29658ab6c9b179e35053e54cbe358c6dfa9b43ef3dfff8958d28a5d9760d6e",
       "abort": null,
       "bottle": {
         "name": "X3",
@@ -4044,9 +4047,9 @@
         "stuck": "0",
         "errors": "0",
         "bytes": "882000",
-        "elapsed_ms": "86"
+        "elapsed_ms": "97"
       },
-      "output": "/tmp/x3-voice-startup-hook2",
+      "output": "/tmp/x3-voice-startup-hook7",
       "hook": {
         "installed": "1",
         "site": "004014f6",
@@ -4113,147 +4116,147 @@
           "name": "primary_create",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.227
+          "wall_ms": 0.356
         },
         {
           "stream": 0,
           "name": "primary_play",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.014
+          "wall_ms": 0.023
         },
         {
           "stream": 0,
           "name": "primary_set_format",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.114
+          "wall_ms": 0.134
         },
         {
           "stream": 2,
           "name": "dmo_wrapper_init_hooked",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 161.916
+          "wall_ms": 248.055
         },
         {
           "stream": 2,
           "name": "dmo_wrapper_add",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.409
+          "wall_ms": 0.451
         },
         {
           "stream": 2,
           "name": "open_file",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 936.606
+          "wall_ms": 1490.405
         },
         {
           "stream": 2,
           "name": "stream_run",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 51.644
+          "wall_ms": 43.12
         },
         {
           "stream": 2,
           "name": "control_pause",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.113
+          "wall_ms": 0.067
         },
         {
           "stream": 3,
           "name": "dmo_wrapper_init_hooked",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 1.067
+          "wall_ms": 0.624
         },
         {
           "stream": 3,
           "name": "dmo_wrapper_add",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.011
+          "wall_ms": 0.003
         },
         {
           "stream": 3,
           "name": "open_file",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 211.723
+          "wall_ms": 187.397
         },
         {
           "stream": 3,
           "name": "stream_run",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 46.349
+          "wall_ms": 42.299
         },
         {
           "stream": 3,
           "name": "control_pause",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.019
+          "wall_ms": 0.015
         },
         {
           "stream": 1,
           "name": "dmo_wrapper_init_hooked",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.708
+          "wall_ms": 0.54
         },
         {
           "stream": 1,
           "name": "dmo_wrapper_add",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.004
+          "wall_ms": 0.002
         },
         {
           "stream": 1,
           "name": "open_file",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 206.321
+          "wall_ms": 184.923
         },
         {
           "stream": 1,
           "name": "stream_run",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 44.586
+          "wall_ms": 41.926
         },
         {
           "stream": 1,
           "name": "control_pause",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.017
+          "wall_ms": 0.013
         },
         {
           "stream": 1,
           "name": "control_run",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.007
+          "wall_ms": 0.004
         },
         {
           "stream": 1,
           "name": "buffer_stop",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.03
+          "wall_ms": 0.027
         },
         {
           "stream": 1,
           "name": "control_stop",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 1.399
+          "wall_ms": 1.137
         },
         {
           "stream": 1,
@@ -4267,7 +4270,7 @@
           "name": "remove_dmo_wrapper",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.01
+          "wall_ms": 0.005
         },
         {
           "stream": 1,
@@ -4302,21 +4305,21 @@
           "name": "control_stop",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.346
+          "wall_ms": 0.324
         },
         {
           "stream": 3,
           "name": "stream_stop",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.001
+          "wall_ms": 0.0
         },
         {
           "stream": 3,
           "name": "remove_dmo_wrapper",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.004
+          "wall_ms": 0.002
         },
         {
           "stream": 3,
@@ -4344,14 +4347,14 @@
           "name": "buffer_stop",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.001
+          "wall_ms": 0.0
         },
         {
           "stream": 2,
           "name": "control_stop",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.366
+          "wall_ms": 0.342
         },
         {
           "stream": 2,
@@ -4365,7 +4368,7 @@
           "name": "remove_dmo_wrapper",
           "attempt": 1,
           "hr": "00000000",
-          "wall_ms": 0.004
+          "wall_ms": 0.001
         },
         {
           "stream": 2,

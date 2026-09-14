@@ -12,7 +12,8 @@
 // only while the engine_patch install window is open, rolled back on failure.
 namespace x3m::voice_dmo_fallback {
 bool initialize(); // capture initialize_log only, after game_phases::initialize
-void report();     // Present time: formats one line per activation recorded by the hook
+void report();     // Present time: formats one line per activation recorded by the hook, and the fault witness line if one was recorded
+void shutdown();   // quiescent: disarms the fault witness (last device destroyed, DLL detach); the site patch stays
 #ifdef X3M_VOICE_DMO_FIXTURE
 // Fixture builds only (voice_startup_replica.cpp, mode game-dmo-hook): the site
 // address is a replica function carrying the game's eight bytes; the expected

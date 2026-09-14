@@ -6,6 +6,7 @@
 #include "capture.h"
 #include <objbase.h>
 #include <atomic>
+#include <cstdio>
 
 static_assert(sizeof(void*)==4,"Reviewed x86 game ABI only");
 namespace x3m::voice_dmo_fallback {
@@ -49,10 +50,16 @@ std::atomic<std::uint32_t> hits{0},activations{0},retries_ok{0},retries_failed{0
 Record ring[kRing];
 std::uint32_t reported=0;
 void* stub_entry=nullptr;
-// Fault witness, armed only while the hook is installed: one line per fault
-// (at most kFaultLines), then the exception continues to the next handler.
-constexpr LONG kFaultLines=4;
-volatile LONG fault_lines=0;
+// Fault witness, armed only while the hook is installed (initialize ..
+// shutdown): the first qualifying fault is recorded into this fixed record
+// (published by fault_seq), later ones are only counted, and the exception
+// always continues to the next handler. The handler takes no lock and touches
+// no stdio: report() formats the line at Present; before that one preformatted
+// copy is written unbuffered to the log's OS handle (best effort, no lock).
+struct Fault { std::uint32_t code,address,access_kind,access,thread,arena,eip,esp,eax,ebx,esi,edi,hits,activations; };
+Fault fault{};
+std::atomic<std::uint32_t> fault_seq{0},fault_count{0};
+std::uint32_t fault_reported=0;
 void* fault_handler=nullptr;
 struct ErrorGuard { DWORD value=GetLastError();~ErrorGuard(){SetLastError(value);} };
 // Main thread only (the constructor runs there, startup note section 1); no
@@ -115,6 +122,14 @@ engine_patch::SiteSpec site_spec() {
 #endif
     return spec;
 }
+int format_fault(char* out,unsigned size,const Fault& f,std::uint32_t faults) noexcept {
+    const bool in_arena=f.arena&&f.address>=f.arena&&f.address<f.arena+engine_patch::arena_capacity();
+    return std::snprintf(out,size,"voice_dmo_fallback_fault code=%08lx address=%08lx access_kind=%lu access=%08lx thread=%lu arena=%08lx arena_offset=%s%lx eip=%08lx esp=%08lx eax=%08lx ebx=%08lx esi=%08lx edi=%08lx hits=%lu activations=%lu faults=%lu\n",
+        static_cast<unsigned long>(f.code),static_cast<unsigned long>(f.address),static_cast<unsigned long>(f.access_kind),static_cast<unsigned long>(f.access),
+        static_cast<unsigned long>(f.thread),static_cast<unsigned long>(f.arena),in_arena?"":"outside:",static_cast<unsigned long>(in_arena?f.address-f.arena:f.address),
+        static_cast<unsigned long>(f.eip),static_cast<unsigned long>(f.esp),static_cast<unsigned long>(f.eax),static_cast<unsigned long>(f.ebx),static_cast<unsigned long>(f.esi),static_cast<unsigned long>(f.edi),
+        static_cast<unsigned long>(f.hits),static_cast<unsigned long>(f.activations),static_cast<unsigned long>(faults));
+}
 LONG CALLBACK fault_witness(EXCEPTION_POINTERS* info) {
     const EXCEPTION_RECORD* record=info?info->ExceptionRecord:nullptr;
     if(!record)return EXCEPTION_CONTINUE_SEARCH;
@@ -123,21 +138,19 @@ LONG CALLBACK fault_witness(EXCEPTION_POINTERS* info) {
     case EXCEPTION_IN_PAGE_ERROR: case EXCEPTION_STACK_OVERFLOW: break;
     default: return EXCEPTION_CONTINUE_SEARCH; // C++ throws, breakpoints, guard pages: not ours
     }
-    if(InterlockedIncrement(&fault_lines)>kFaultLines)return EXCEPTION_CONTINUE_SEARCH;
-    const auto address=reinterpret_cast<std::uintptr_t>(record->ExceptionAddress);
-    const std::uintptr_t access=record->NumberParameters>=2?std::uintptr_t(record->ExceptionInformation[1]):0;
-    const auto base=reinterpret_cast<std::uintptr_t>(engine_patch::arena_base());
-    const bool in_arena=base&&address>=base&&address<base+engine_patch::arena_capacity();
+    if(fault_count.fetch_add(1,std::memory_order_acq_rel)!=0)return EXCEPTION_CONTINUE_SEARCH; // first fault only
     const CONTEXT* c=info->ContextRecord;
-    log("voice_dmo_fallback_fault code=%08lx address=%08lx access_kind=%lu access=%08lx thread=%lu arena=%08lx arena_offset=%s%lx eip=%08lx esp=%08lx eax=%08lx ebx=%08lx esi=%08lx edi=%08lx hits=%u activations=%u",
-        static_cast<unsigned long>(record->ExceptionCode),static_cast<unsigned long>(address),
-        static_cast<unsigned long>(record->NumberParameters>=1?record->ExceptionInformation[0]:0),static_cast<unsigned long>(access),
-        static_cast<unsigned long>(GetCurrentThreadId()),static_cast<unsigned long>(base),in_arena?"":"outside:",
-        static_cast<unsigned long>(in_arena?address-base:address),
-        static_cast<unsigned long>(c?c->Eip:0),static_cast<unsigned long>(c?c->Esp:0),static_cast<unsigned long>(c?c->Eax:0),
-        static_cast<unsigned long>(c?c->Ebx:0),static_cast<unsigned long>(c?c->Esi:0),static_cast<unsigned long>(c?c->Edi:0),
-        hits.load(std::memory_order_relaxed),activations.load(std::memory_order_relaxed));
-    log_flush();
+    Fault f{};
+    f.code=std::uint32_t(record->ExceptionCode);f.address=std::uint32_t(reinterpret_cast<std::uintptr_t>(record->ExceptionAddress));
+    f.access_kind=record->NumberParameters>=1?std::uint32_t(record->ExceptionInformation[0]):0;
+    f.access=record->NumberParameters>=2?std::uint32_t(record->ExceptionInformation[1]):0;
+    f.thread=GetCurrentThreadId();f.arena=std::uint32_t(reinterpret_cast<std::uintptr_t>(engine_patch::arena_base()));
+    if(c){f.eip=c->Eip;f.esp=c->Esp;f.eax=c->Eax;f.ebx=c->Ebx;f.esi=c->Esi;f.edi=c->Edi;}
+    f.hits=hits.load(std::memory_order_relaxed);f.activations=activations.load(std::memory_order_relaxed);
+    fault=f;fault_seq.store(1,std::memory_order_release);
+    char line[320];const int n=format_fault(line,sizeof line,f,1);
+    const HANDLE handle=log_handle();DWORD written_bytes=0;
+    if(n>0&&handle!=INVALID_HANDLE_VALUE&&handle)WriteFile(handle,line,DWORD(n),&written_bytes,nullptr); // unbuffered, no lock; may precede buffered lines
     return EXCEPTION_CONTINUE_SEARCH;
 }
 bool install(const char*& status) {
@@ -174,8 +187,22 @@ bool fixture_site(std::uintptr_t address){ if(initialized||!address)return false
 const void* fixture_stub(){return stub_entry;}
 const void* fixture_tail(){return patch.tail;}
 #endif
+void shutdown() {
+    // Quiescent callers only (last device destroyed, DLL detach): the witness is
+    // disarmed and its pending line reported; the site patch stays for the
+    // process lifetime like the other game-phase claims (a media object may
+    // still be constructed after the last device).
+    void* handler=fault_handler;fault_handler=nullptr;
+    if(handler)RemoveVectoredExceptionHandler(handler);
+    report();
+}
 void report() {
     if(!active.load(std::memory_order_acquire))return;
+    if(fault_seq.load(std::memory_order_acquire)!=fault_reported){
+        ErrorGuard error;fault_reported=fault_seq.load(std::memory_order_acquire);
+        char line[320];const int n=format_fault(line,sizeof line,fault,fault_count.load(std::memory_order_relaxed));
+        if(n>0){line[n-1]=0;log("%s",line);} // the preformatted line without its newline
+    }
     const std::uint32_t n=written.load(std::memory_order_acquire);
     if(n==reported)return;
     ErrorGuard error;

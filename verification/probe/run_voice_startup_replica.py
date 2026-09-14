@@ -55,11 +55,7 @@ def validate(text):
     plays=[r for k,r in rows if k=='REPLICA_PLAY'];assert len(plays)<=1
     polls=[r for k,r in rows if k=='REPLICA_POLL']
     hook=[r for k,r in rows if k=='REPLICA_HOOK'];sites=[r for k,r in rows if k=='REPLICA_SITE']
-    if header['mode']=='game-dmo-hook':
-        # The production hook must be installed through engine_patch (site patched) and every
-        # replica site return must hand the game code the witness registers unchanged.
-        assert len(hook)==1 and hook[0]['installed']=='1' and hook[0]['patched']=='1'
-        for site in sites:assert site['ebx_ok']=='1' and site['esp_ok']=='1' and site['esi']==site['hr']
+    if header['mode']=='game-dmo-hook':assert len(hook)==1 and hook[0]['installed']=='1' and hook[0]['patched']=='1'
     else:assert not hook and not sites
     hook_lines=[line for line in text.splitlines() if line.startswith('voice_dmo_fallback')]
     result=dict(mode=header['mode'],hook=hook[0] if hook else None,sites=sites,hook_lines=hook_lines,dwell_ms=int(header['dwell_ms']),streams=streams,created=sum(r['created']=='1' for r in created),stream_rows=created,
@@ -73,6 +69,11 @@ def validate(text):
         result.update(hung_step=h['step'],hung_stream=int(h['stream']),hung_elapsed_ms=int(h['elapsed_ms']),hung_after_stages=len(stages))
         return result
     assert pending is None,'unterminated step without a watchdog report'
+    if header['mode']=='game-dmo-hook':
+        # The production hook is installed through engine_patch (checked above) and every replica
+        # site return, one per constructed stream, hands the game code the witness registers unchanged.
+        assert len(sites)==streams,'one site witness per constructed stream'
+        for site in sites:assert site['ebx_ok']=='1' and site['esp_ok']=='1' and site['esi']==site['hr']
     assert completes==[dict(streams=str(streams),audible='0')]
     assert len(created)==streams
     played=[r for r in created if r['stream']=='1']

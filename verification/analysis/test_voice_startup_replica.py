@@ -1,3 +1,4 @@
+import re
 import unittest
 import unittest.mock
 import run_voice_startup_replica as probe
@@ -135,6 +136,9 @@ class ReplicaTests(unittest.TestCase):
         with self.assertRaises(AssertionError):probe.validate(broken)
         with self.assertRaises(AssertionError):probe.validate(fixture('game-dmo-hook').replace('REPLICA_HOOK installed=1','REPLICA_HOOK installed=0'))
         with self.assertRaises(AssertionError):probe.validate(fixture('game-dmo-fallback').replace('\n','\nREPLICA_HOOK installed=1 site=1 patched=1 stub=1 tail=1\n',1))
+        # No site witness at all (a hook that never fired) is refused, not vacuously accepted.
+        empty=re.sub(r'REPLICA_SITE [^\n]*\n','',fixture('game-dmo-hook'))
+        with self.assertRaisesRegex(AssertionError,'one site witness per constructed stream'):probe.validate(empty)
         # Run 13's shape: the process died inside the hooked step, so the step is open and no watchdog line follows.
         crashed=fixture('game-dmo-hook');cut=crashed.index('name=dmo_wrapper_init_hooked');crashed=crashed[:crashed.index('\n',cut)+1]
         with self.assertRaisesRegex(AssertionError,'unterminated step'):probe.validate(crashed)

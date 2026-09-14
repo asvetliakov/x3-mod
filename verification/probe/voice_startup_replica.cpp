@@ -47,7 +47,7 @@ static_assert(sizeof(void*)==4,"probe must use the game's x86 COM ABI");
 // Fixture-side definitions of the proxy symbols the production hook links
 // against: its log lines go to stdout (the runner keeps every
 // voice_dmo_fallback* line), the executable identity check is the fixture's.
-namespace x3m { void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');std::fflush(stdout);} void log_flush(){std::fflush(stdout);} }
+namespace x3m { void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');std::fflush(stdout);} HANDLE log_handle() noexcept {return GetStdHandle(STD_OUTPUT_HANDLE);} }
 namespace x3m::object_trace { bool executable_verified(){return true;} }
 // dmodshow.h/dmoreg.h/wmcodecdsp.h are not in this MinGW; documented GUIDs, local names.
 DEFINE_GUID(CLSID_DMOWrapperFilter_local,0x94297043,0xbd82,0x4dfd,0xb0,0xde,0x81,0x77,0x73,0x9c,0x6d,0x20);
@@ -362,6 +362,9 @@ int wmain(int argc,wchar_t** argv) {
     Trace t;
     if(mode==MODE_GAME_DMO_HOOK) {
         // Production install path: the gate variable, the replica site, engine_patch claim, stub chained.
+        // No crash dialog / debugger: a fault ends the process with its code so the runner sees it
+        // (Wine's UnhandledExceptionFilter starts winedbg unless SEM_NOGPFAULTERRORBOX is set).
+        SetErrorMode(SEM_NOGPFAULTERRORBOX|SEM_FAILCRITICALERRORS);
         SetEnvironmentVariableW(L"X3M_VOICE_DMO_FALLBACK",L"1");
         const auto site=reinterpret_cast<std::uintptr_t>(replica_init_site);
         const bool installed=x3m::voice_dmo_fallback::fixture_site(site)&&x3m::voice_dmo_fallback::initialize();

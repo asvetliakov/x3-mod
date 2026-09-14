@@ -73,6 +73,25 @@ class CallBinding(unittest.TestCase):
         self.assertIn('view->vtbl->Release(view);', SOURCE)
         self.assertIn('AddVectoredExceptionHandler(1,&fault_witness)', SOURCE)
 
+    def test_fault_witness_is_lock_free_and_removed_at_shutdown(self):
+        handler = SOURCE.split('LONG CALLBACK fault_witness(EXCEPTION_POINTERS* info) {', 1)[1].split('\n}\n', 1)[0]
+        for forbidden in ('log(', 'log_flush', 'printf(', 'fflush', 'mutex', 'lock_guard', 'malloc', 'new '):
+            self.assertNotIn(forbidden, handler, forbidden)
+        self.assertIn('fault_count.fetch_add(1,std::memory_order_acq_rel)!=0)return EXCEPTION_CONTINUE_SEARCH', handler)
+        self.assertIn('fault_seq.store(1,std::memory_order_release);', handler)
+        self.assertIn('WriteFile(handle,line,DWORD(n),&written_bytes,nullptr)', handler)
+        self.assertEqual(handler.count('return EXCEPTION_CONTINUE_SEARCH;'), 4, 'the exception always continues')
+        shutdown = SOURCE.split('void shutdown() {', 1)[1].split('\n}\n', 1)[0]
+        self.assertIn('RemoveVectoredExceptionHandler(handler)', shutdown)
+        self.assertIn('fault_handler=nullptr', shutdown)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('voice_dmo_fallback::shutdown();', capture)
+        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        self.assertIn('DLL_PROCESS_DETACH', loader)
+        self.assertIn('x3m::voice_dmo_fallback::shutdown();', loader.split('DLL_PROCESS_DETACH', 1)[1])
+        report = SOURCE.split('void report() {', 1)[1].split('\n}\n', 1)[0]
+        self.assertIn('fault_seq.load(std::memory_order_acquire)!=fault_reported', report)
+
     @unittest.skipUnless(shutil.which(CXX) and shutil.which(OBJDUMP), 'MinGW i686 toolchain unavailable')
     def test_compiled_object_has_no_pure_virtual_call(self):
         with tempfile.TemporaryDirectory() as directory:

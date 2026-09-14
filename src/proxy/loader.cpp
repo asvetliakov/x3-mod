@@ -1,4 +1,5 @@
 #include "capture.h"
+#include "voice_dmo_fallback.h"
 #include "telemetry.h"
 #include "object_trace.h"
 #include "camera_state.h"
@@ -325,6 +326,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
         self_module = module;
         DisableThreadLibraryCalls(module);
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
+    } else if (reason == DLL_PROCESS_DETACH) {
+        x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
     }
     return TRUE;
 }
