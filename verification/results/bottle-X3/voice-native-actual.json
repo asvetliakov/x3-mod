@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "mode": "actual",
+  "completed": true,
+  "restored_speech": false,
+  "exe_sha256": "8bfffd55820117eed04a10817a9583cb572a6bdd7bdc3c0cb0b16717a303ee16",
+  "window_seconds": 20.0,
+  "tail_seconds": 5.0,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "media": [
+    {
+      "voice_id": 144,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00144.dat",
+      "bytes": 269633863,
+      "sha256": "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+      "declared_seconds": 44304.046
+    },
+    {
+      "voice_id": 244,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00244.dat",
+      "bytes": 20311023,
+      "sha256": "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+      "declared_seconds": 3335.779
+    }
+  ],
+  "exit_code": 0,
+  "process_wall_seconds": 7.967205250000001,
+  "stdout_bytes": 206195,
+  "stderr_bytes": 76,
+  "files": [
+    {
+      "voice_id": 144,
+      "reads": 45,
+      "pcm_bytes": 3963896,
+      "nonzero_reads": 45,
+      "decoded_seconds": 44.942132,
+      "requested_seconds": 45.0,
+      "graph_duration_seconds": 44304.046,
+      "declared_seconds": 44304.046,
+      "seeked": true,
+      "eos": true,
+      "live_root_objects": 0,
+      "segments": [
+        {
+          "name": "head",
+          "start_ms": "0",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "19892.235",
+          "first_start": "0",
+          "last_end": "198922353",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a"
+        },
+        {
+          "name": "seek",
+          "start_ms": "22152023",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "19365.628",
+          "first_start": "221520230000",
+          "last_end": "221713886284",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a"
+        },
+        {
+          "name": "tail",
+          "start_ms": "44299046",
+          "reads": "5",
+          "bytes": "435896",
+          "decoded_ms": "4942.132",
+          "span_ms": "4454.616",
+          "first_start": "442990460000",
+          "last_end": "443035006164",
+          "nonzero_reads": "5",
+          "eos": "1",
+          "end_reason": "endofstream",
+          "post_eos_hr": "00040003"
+        }
+      ],
+      "reopens": [
+        {
+          "attempt": "1",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        },
+        {
+          "attempt": "2",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        }
+      ]
+    },
+    {
+      "voice_id": 244,
+      "reads": 45,
+      "pcm_bytes": 3964950,
+      "nonzero_reads": 45,
+      "decoded_seconds": 44.954082,
+      "requested_seconds": 45.0,
+      "graph_duration_seconds": 3335.779,
+      "declared_seconds": 3335.779,
+      "seeked": true,
+      "eos": true,
+      "live_root_objects": 0,
+      "segments": [
+        {
+          "name": "head",
+          "start_ms": "0",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "19739.337",
+          "first_start": "0",
+          "last_end": "197393372",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a"
+        },
+        {
+          "name": "seek",
+          "start_ms": "1667890",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "19982.283",
+          "first_start": "16678895000",
+          "last_end": "16878717825",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a"
+        },
+        {
+          "name": "tail",
+          "start_ms": "3330779",
+          "reads": "5",
+          "bytes": "436950",
+          "decoded_ms": "4954.082",
+          "span_ms": "4814.716",
+          "first_start": "33307790000",
+          "last_end": "33355937157",
+          "nonzero_reads": "5",
+          "eos": "1",
+          "end_reason": "endofstream",
+          "post_eos_hr": "00040003"
+        }
+      ],
+      "reopens": [
+        {
+          "attempt": "1",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        },
+        {
+          "attempt": "2",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        }
+      ]
+    }
+  ],
+  "capture_bytes": 1764000,
+  "scope": "Actual game voice archives through the native AMMultiMediaStream route; bounded windows plus real end of stream; no speech restoration claim",
+  "wave": {
+    "path": "/tmp/x3-voice-native-actual-r1/voice-00144-head.wav",
+    "bytes": 1764000,
+    "played": false
+  }
+}
