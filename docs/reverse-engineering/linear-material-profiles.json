@@ -495,7 +495,7 @@
     "note": "Each original stage independently accepts its class-C motion transformation in both depth modes, and the 1648-DWORD PS refuses material conversion with output rollback and no material sampler mask. The original VS/PS pair is native-linkage-invalid; these stage-local host checks do not establish portable or live fallback. Live qualification requires separately linkage-valid controls."
   },
   "offset_units": "Zero-based DWORD positions in the ORIGINAL whole program, including opaque comments; end_dword/conversion_after_dword are exclusive.",
-  "motion_inventory_sha256": "fa8b70e0fb897994bdb939a1810f6574eba59611b4391d92464fe0f86bf60f58",
+  "motion_inventory_sha256": "1f579d212695c7d6202d2032dfe0849c4d52defd784e5ed4db0ced976fb34c74",
   "reserved_abi": {
     "vs_constants": [
       252,
