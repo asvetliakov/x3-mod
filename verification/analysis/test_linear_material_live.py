@@ -230,10 +230,13 @@ class LinearMaterialLiveTests(unittest.TestCase):
         self.assertEqual(status, 0, error)
         self.assertIn('"X3M_EMISSION_GAIN": "1.0"', output)
 
-    def test_distance_fade_cli_dependencies_and_default_off(self):
-        valid = ('--motion-output', '--taa', '--object-trace', '--object-lifetime',
-                 '--ownership', '--hdr', '--hdr-tonemap', '--linear-materials',
-                 '--linear-distance-fade')
+    # The fade route is default on with its prerequisites since 2026-09-14
+    # (runs 11/14/15); --no-linear-distance-fade opts out.
+    PREREQUISITES = ('--motion-output', '--taa', '--object-trace', '--object-lifetime',
+                     '--ownership', '--hdr', '--hdr-tonemap', '--linear-materials')
+
+    def test_distance_fade_cli_dependencies_and_explicit_on(self):
+        valid = (*self.PREREQUISITES, '--linear-distance-fade')
         for missing in ('--taa', '--linear-materials'):
             with self.subTest(missing=missing):
                 status, _, _ = self.launch(*(arg for arg in valid if arg != missing))
@@ -243,6 +246,40 @@ class LinearMaterialLiveTests(unittest.TestCase):
         self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "1"', output)
         self.assertIn('"X3M_LINEAR_EMISSIONS": "0"', output)
         status, output, error = self.launch(environment={'X3M_LINEAR_DISTANCE_FADE': '1'})
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
+
+    def test_distance_fade_defaults_on_with_its_prerequisites(self):
+        status, output, error = self.launch(*self.PREREQUISITES)
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "1"', output)
+        # The default is enough for the witness dependency.
+        status, output, error = self.launch(*self.PREREQUISITES, '--fade-witness')
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_FADE_WITNESS": "30"', output)
+
+    def test_distance_fade_default_stays_off_without_prerequisites(self):
+        for missing in ('--taa', '--linear-materials'):
+            with self.subTest(missing=missing):
+                status, output, error = self.launch(*(arg for arg in self.PREREQUISITES if arg != missing))
+                self.assertEqual(status, 0, error)
+                self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
+        status, output, error = self.launch()
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
+
+    def test_no_distance_fade_wins_over_the_default_and_the_explicit_flag(self):
+        status, output, error = self.launch(*self.PREREQUISITES, '--no-linear-distance-fade')
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
+        status, output, error = self.launch(*self.PREREQUISITES, '--linear-distance-fade', '--no-linear-distance-fade')
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
+        # Opting out also removes the witness dependency.
+        status, _, _ = self.launch(*self.PREREQUISITES, '--no-linear-distance-fade', '--fade-witness')
+        self.assertEqual(status, 2)
+        # Without prerequisites the opt-out is accepted and stays off.
+        status, output, error = self.launch('--no-linear-distance-fade')
         self.assertEqual(status, 0, error)
         self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
 

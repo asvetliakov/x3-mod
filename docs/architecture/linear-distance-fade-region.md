@@ -777,3 +777,17 @@ when its bound was known). Projection terms are integers scaled by 1e4; the
 draw hooks only fill a fixed integer array and the whole frame is formatted
 after Present. Parser and checks: `verification/probe/shimmer_trace.py`,
 `verification/analysis/test_shimmer_trace.py`.
+
+## Default — user decision 2026-09-14
+
+The linear distance-fade route is default on in the launcher wherever its
+prerequisites are on (`--linear-materials --taa`, hence `--motion-output --hdr
+--hdr-tonemap` and a gamma2.2/pow22 decode); without them the default stays
+silently off and an explicit `--linear-distance-fade` without them still errors.
+`--no-linear-distance-fade` opts out. The user took the decision after runs 11,
+14 and 15: the witness was clean in all three (run 11 196 sampled frames, run 14
+238, run 15 587, zero covered pixels outside the derived rectangles, no
+unprepared/overflow/truncation), and run 11 measured frame time equal to the
+run-28 baseline (median 4097 µs against 4104 µs). Only the launcher default
+changed; the DLL contract (`X3M_LINEAR_DISTANCE_FADE=0|1`) is unchanged, so an
+installed build behaves exactly as before for a given resolved value.

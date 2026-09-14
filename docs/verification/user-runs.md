@@ -10,6 +10,10 @@ fast co-activation passed as run 19. Run 9 is saved as run 28; its reported issu
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
 captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no snapshot.
+Since 2026-09-14 the linear distance-fade route is on by default whenever
+`--linear-materials --taa` are present ([region note](../architecture/linear-distance-fade-region.md),
+"Default"); the queue commands below keep `--linear-distance-fade` spelled out,
+which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
