@@ -358,6 +358,45 @@ frame (at most 16 per device). History is also invalidated by the cut
 verdict (inside the pass), before Reset, by a dimension change (the pass
 compares), by a failed Present and by any frame that did not resolve
 (menu frames, frames the selector rejected before the copy, skipped frames).
+
+Invalidation-site diagnostic (2026-09-14): every `invalidate_taa` caller
+carries a `TaaInvalidateSite` tag (`motion_output.h`), and the route logs
+`taa_invalidate device=D frame=F site=<name>` at most once per frame per
+site, at the frame's end after the `camera_state`/`motion_output_frame`
+lines (`reset` is flushed by `after_reset`'s re-begin, before
+`motion_output_reset`, with the number of the frame the proxy began at the
+preceding Present). The call itself stays
+integer-only (a bit in a pending mask) because the restore-failure sites sit
+on the light setter paths; there is no per-frame cost when nothing fires.
+Sites: `restore_failed`, `state_lost`, `skip` (with `taa_skip`), `target`,
+`container`, `resolve_failed`, `not_resolved`, `present_failed`, `reset`,
+`comparison_exposure`, `comparison_state_failed`, the `composition_*` family
+(state lost, readers unknown, export, attach, begin, refused, prepare,
+incomplete) and `cutout_missed`. `camera_state` also reports
+`prev_valid_at_policy=`, the history view's validity as the sentinel policy
+saw it before the resolve relatched it, so a `reason=3` frame that follows a
+resolved frame is attributable without the site line.
+
+Finding from user runs 11, 14 and 15 (bottle X3, `/tmp/x3-bottleX3-run36`,
+`run39`, `run40`): the `reason=3` clusters (1,363 of 12,210 frames in run 14,
+2,451 in run 11, 1 in run 15) are the `cutout_missed` site
+(`motion_output.cpp`, `after_draw`, `cutout::missed`). Every 60-frame
+`linear_material_frame` sample inside a cluster shows `cutout_missed=1`
+(23 of 23 in run 14, 40 in run 11) and every sample outside shows 0 (185 in
+run 14, all 301 in run 15). The captured cluster frames 9163 and 11940 carry
+two `motion_route` draws each with the cutout pair `53a0a641107ed76c` /
+`63f96eba9eea7880` refused at gate 4 with `blend=1 src=5 dst=6 atest=1
+mask=7 zwrite=0` (a source-over blended, alpha-tested variant of the cutout
+material, no object scope): the predicate does not exempt known blending, so
+the frame is marked Unavailable and the history dropped every frame the
+object stays in view. This is the documented conservative rule of
+[alpha-tested-materials.md](alpha-tested-materials.md) ("otherwise refused
+by the per-draw gate ... is a miss (frame Unavailable, no seed)"), not a
+defect of the cut detector (`cut=0` on all but the first cluster frame) or
+the camera read; relaxing it (a known-blended pair as the ordinary native
+colour-plus-motion fallback, or a bounded reactive region instead of a
+whole-frame drop) is a policy decision recorded as open in
+[../verification/motion-output.md](../verification/motion-output.md).
 A rejection after the copy (a different bloom or overlay sequence) keeps the
 history: the resolved scene is complete and the next correspondence is scene
 to scene.

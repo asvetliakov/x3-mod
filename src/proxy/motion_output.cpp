@@ -447,7 +447,7 @@ HRESULT MotionOutput::restore_bindings_checked() noexcept {
     // restore point before draw admission, leaves unknown state quarantined.
     auto quarantine = [&](HRESULT hr) {
         if (SUCCEEDED(hr)) return;
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = hr; invalidate_taa(); }
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = hr; invalidate_taa(TaaInvalidateSite::RestoreFailed); }
         if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
     };
     quarantine(first);
@@ -488,7 +488,7 @@ template<bool quiet> HRESULT MotionOutput::flush_bindings() noexcept {
         ++counters_.restore_failures; invalidate_render_states();
         // Integer-only even through the light SetRenderState path. A later
         // wrapper cannot erase state loss by consuming the deferred HRESULT.
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; invalidate_taa(); }
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; invalidate_taa(TaaInvalidateSite::RestoreFailed); }
         if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
     }
     if constexpr (quiet) {
@@ -871,7 +871,7 @@ void MotionOutput::before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE typ
     restore_mip_bias_stage(unsigned(stage), &restored);
     if (FAILED(restored)) {
         ++counters_.mip_bias_failures; ++mip_bias_total_failures_; ++counters_.restore_failures;
-        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; invalidate_taa(); }
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; invalidate_taa(TaaInvalidateSite::RestoreFailed); }
         if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
         // No log() here: this hook is an audited light root and even an
         // integer-only format reaches the CRT's x87 formatter. Keep the first
@@ -1028,7 +1028,28 @@ template<typename Fn> void MotionOutput::taa_call(Fn&& fn) noexcept {
     taa_references_ = unsigned(long(taa_references_) + (long(after) - long(before)));
     taa_busy_ = false;
 }
-void MotionOutput::invalidate_taa() noexcept { if (taa_) taa_->invalidate(); camera_previous_ = renderer::CameraState{}; }
+// Integer-only (light setter paths reach it): the site is recorded and logged
+// by flush_taa_invalidate_log at the frame boundary.
+void MotionOutput::invalidate_taa(TaaInvalidateSite site) noexcept {
+    if (taa_) taa_->invalidate();
+    camera_previous_ = renderer::CameraState{};
+    taa_invalidate_pending_ |= 1u << unsigned(site);
+}
+const char* taa_invalidate_site_name(TaaInvalidateSite site) noexcept {
+    static const char* const names[unsigned(TaaInvalidateSite::Count)] = {
+        "restore_failed", "state_lost", "skip", "target", "container", "resolve_failed", "not_resolved", "present_failed",
+        "reset", "comparison_exposure", "comparison_state_failed", "composition_state_lost", "composition_readers",
+        "composition_export", "composition_attach", "composition_begin", "composition_refused", "composition_prepare",
+        "composition_incomplete", "cutout_missed"};
+    return unsigned(site) < unsigned(TaaInvalidateSite::Count) ? names[unsigned(site)] : "unknown";
+}
+void MotionOutput::flush_taa_invalidate_log() noexcept {
+    std::uint32_t pending = taa_invalidate_pending_;
+    if (!pending) return;
+    taa_invalidate_pending_ = 0;
+    for (unsigned site = 0; pending; ++site, pending >>= 1)
+        if (pending & 1u) log("taa_invalidate device=%llu frame=%llu site=%s", id_, frame_, taa_invalidate_site_name(TaaInvalidateSite(site)));
+}
 
 MotionOutput::ComparisonExposure MotionOutput::comparison_exposure() const noexcept {
     ComparisonExposure result{};
@@ -1050,13 +1071,13 @@ bool MotionOutput::comparison_toggle_exposure() noexcept {
     if (!hdr_->comparison_exposure(mode)) return false;
     // Exposure controls tonemap and the HDR resolve's luminance weighting.
     // Keep TAA enabled, but make its next resolve seed a fresh history.
-    invalidate_taa();
+    invalidate_taa(TaaInvalidateSite::ComparisonExposure);
     return true;
 }
 void MotionOutput::comparison_state_failed(HRESULT result) noexcept {
     if (FAILED(result) && !motion_state_lost_) {
         motion_state_lost_ = true; motion_state_error_ = result;
-        invalidate_taa();
+        invalidate_taa(TaaInvalidateSite::ComparisonStateFailed);
     }
 }
 // Lazily creates the pass and its resolve shader (one device reference) the
@@ -1100,7 +1121,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
         hr = target_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&motion));
         if (SUCCEEDED(hr)) hr = depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth));
         if (SUCCEEDED(hr) && (!motion || !depth)) hr = E_NOINTERFACE;
-        if (FAILED(hr)) { t.skip = unsigned(TaaSkip::Container); t.result = hr; invalidate_taa(); }
+        if (FAILED(hr)) { t.skip = unsigned(TaaSkip::Container); t.result = hr; invalidate_taa(TaaInvalidateSite::Container); }
         else {
             if (capture_ && taa_debug_)
                 // GetRenderTargetData needs the exact format of the main target (A8R8G8B8 or X8R8G8B8).
@@ -1121,6 +1142,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // off, they stay current-only (policy 1) and the matrix is the
             // identity, which the resolve then never applies (docs/architecture/
             // temporal-integration.md, "Camera reprojection for sentinel pixels").
+            t.camera_previous_valid = camera_previous_.valid;
             const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_, camera_cut_degrees_);
             t.camera_policy = decision.policy; t.camera_reason = unsigned(decision.reason);
             t.camera_cut = decision.cut; t.camera_rotation_deg = decision.rotation_degrees;
@@ -1223,7 +1245,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     record(unsigned(telemetry::Metric::TaaCopyBack), copy_ticks, FAILED(hr));
                     t.copy = hr;
                 }
-                if (FAILED(hr)) invalidate_taa();
+                if (FAILED(hr)) invalidate_taa(TaaInvalidateSite::ResolveFailed);
                 else {
                     t.resolved = true; t.used_history = out.used_history;
                     // The history now holds this frame: its scene view is the
@@ -1265,13 +1287,13 @@ bool MotionOutput::resolve_hdr(SceneEndSource source) noexcept {
     const HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0);
     const bool bound = SUCCEEDED(hr) && rt0 == hdr_->target();
     release(rt0);
-    if (!bound) { t.skip = unsigned(TaaSkip::Target); t.result = FAILED(hr) ? hr : E_FAIL; t.hdr = true; invalidate_taa(); return true; }
+    if (!bound) { t.skip = unsigned(TaaSkip::Target); t.result = FAILED(hr) ? hr : E_FAIL; t.hdr = true; invalidate_taa(TaaInvalidateSite::Target); return true; }
     // The target's texture (the pass validates format, size and device; one
     // reference for the duration of the run).
     IDirect3DTexture9* scene = nullptr;
     HRESULT container = hdr_->target()->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&scene));
     if (SUCCEEDED(container) && !scene) container = E_NOINTERFACE;
-    if (FAILED(container)) { t.skip = unsigned(TaaSkip::Container); t.result = container; t.hdr = true; invalidate_taa(); return true; }
+    if (FAILED(container)) { t.skip = unsigned(TaaSkip::Container); t.result = container; t.hdr = true; invalidate_taa(TaaInvalidateSite::Container); return true; }
     resolve(hdr_main_, scene);
     release(scene);
     return true;
@@ -1323,10 +1345,10 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
 // of a second attempt in one frame).
 bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
     auto& t = counters_.taa;
-    if (composition_state_lost_ || motion_state_lost_) { invalidate_taa(); return false; }
+    if (composition_state_lost_ || motion_state_lost_) { invalidate_taa(TaaInvalidateSite::StateLost); return false; }
     if (t.attempted) return false;
     t.attempted = true; t.source = unsigned(source);
-    auto skip = [&](TaaSkip why) { t.skip = unsigned(why); invalidate_taa(); return false; };
+    auto skip = [&](TaaSkip why) { t.skip = unsigned(why); invalidate_taa(TaaInvalidateSite::Skip); return false; };
     // A multisampled main target routed nothing (no RT1/RT2, no jitter).
     if (main_msaa_) return skip(TaaSkip::Msaa);
     // The resolve without jitter is a no-op visually and would only blur.
@@ -1342,6 +1364,7 @@ bool MotionOutput::resolve_allowed(SceneEndSource source) noexcept {
     // previous view (the first one, after a cut or a Reset) still resolves:
     // that is how the history and its view are established.
     if (sentinel_mode_ == renderer::SentinelMode::Camera) {
+        t.camera_previous_valid = camera_previous_.valid;
         const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_, camera_cut_degrees_);
         if (decision.reason == renderer::SentinelReason::CurrentInvalid || decision.reason == renderer::SentinelReason::TransformFailed) {
             t.camera_policy = decision.policy; t.camera_reason = unsigned(decision.reason);
@@ -1400,7 +1423,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     const HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0);
     if (FAILED(hr) || !rt0 || !same(describe_surface(rt0), main_)) {
         counters_.taa.skip = unsigned(TaaSkip::Target); counters_.taa.result = FAILED(hr) ? hr : E_FAIL;
-        invalidate_taa(); release(rt0); return;
+        invalidate_taa(TaaInvalidateSite::Target); release(rt0); return;
     }
     resolve(rt0, nullptr);
     release(rt0);
@@ -2202,6 +2225,7 @@ void MotionOutput::before_reset() noexcept {
     fill_pending_ = false; pending_valid_ = false;
     main_ = {}; main_depth_ = {}; main_msaa_ = false; main_msaa_samples_ = 0; msaa_logged_ = false;
     camera_state::reset(); camera_previous_ = renderer::CameraState{};
+    taa_invalidate_pending_ |= 1u << unsigned(TaaInvalidateSite::Reset); // logged by after_reset's begin_frame (the frame begun at the last Present)
 }
 void MotionOutput::after_reset(HRESULT result) noexcept {
     ++generation_;
@@ -2666,6 +2690,7 @@ bool MotionOutput::scene_bound() const noexcept {
 }
 
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
+    flush_taa_invalidate_log(); // sites that fired since the last flush (Reset) carry the frame begun at the last Present
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
@@ -2871,7 +2896,7 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     route.vs_constants_set = route.ps_constants_set = false;
     if (FAILED(first)) {
         if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
-        invalidate_taa();
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
         ++counters_.restore_failures; invalidate_render_states();
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
@@ -2892,7 +2917,7 @@ void MotionOutput::rollback_route(MotionRoute& route) noexcept {
     undo(route); // Latches only if no earlier restoration failed.
     if (motion_state_lost_) {
         route.submit = false; route.submission_error = motion_state_error_;
-        invalidate_taa();
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
     }
 }
 
@@ -2947,15 +2972,15 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     ++counters_.draws;
     if (motion_state_lost_) {
         route.submit = false; route.submission_error = motion_state_error_;
-        ++counters_.gates[1]; invalidate_taa(); return route;
+        ++counters_.gates[1]; invalidate_taa(TaaInvalidateSite::StateLost); return route;
     }
     if (!enabled_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return route; }
     if (hdr_state_ == HdrState::Active) hdr_dirty_ = true; // every application draw lands in the FP16 target
     if (mip_bias_total_game_writes_ != mip_bias_logged_game_writes_) log_mip_bias_game_write();
     const std::uint64_t begin = draw_stamp(), fill_before = counters_.fill_ticks, flush_before = counters_.lazy_flush_ticks;
-    if (composition_state_lost_ || composition_busy_) { route.submit = false; ++composition_counts_.suppressed; if (composition_state_lost_) invalidate_taa(); return route; }
+    if (composition_state_lost_ || composition_busy_) { route.submit = false; ++composition_counts_.suppressed; if (composition_state_lost_) invalidate_taa(TaaInvalidateSite::CompositionStateLost); return route; }
     if (composition_effective_ && hdr_state_ != HdrState::Off && composition_enhanced_ && !composition_readers_known_) {
-        composition_frame_stopped_ = true; invalidate_taa();
+        composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionReaders);
     }
     if (composition_published_ && hdr_state_ != HdrState::Off && (composition_main_sampler_mask_ || !composition_readers_known_)) composition_export();
     route.evaluated = true;
@@ -2971,7 +2996,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; }
             route.submit = false; route.submission_error = motion_state_error_;
             if (composition_effective_) { composition_state_lost_ = true; ++composition_counts_.suppressed; }
-            invalidate_taa();
+            invalidate_taa(TaaInvalidateSite::RestoreFailed);
         } else if (route.submit) prepare_composition(call, route);
     }
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
@@ -3025,7 +3050,7 @@ void MotionOutput::release_composition_identity() noexcept {
 void MotionOutput::composition_export() noexcept {
     if (!composition_requested() || !composition_enhanced_ || composition_quarantined_) return;
     composition_quarantined_ = true; composition_frame_stopped_ = true;
-    ++composition_counts_.exports; invalidate_taa();
+    ++composition_counts_.exports; invalidate_taa(TaaInvalidateSite::CompositionExport);
 }
 void MotionOutput::begin_composition_frame() noexcept {
     if (!composition_requested()) return;
@@ -3060,7 +3085,7 @@ void MotionOutput::begin_composition_frame() noexcept {
             composition_attach_result_ = failure;
             composition_required_producers_ = producers;
             composition_busy_ = false;
-            invalidate_taa();
+            invalidate_taa(TaaInvalidateSite::CompositionAttach);
             return;
         }
         composition_adapter_format_ = display.Format;
@@ -3092,7 +3117,7 @@ void MotionOutput::begin_composition_frame() noexcept {
     composition_effective_ = composition_effective_ || (composition_ && composition_->caps().supported_policies != 0);
     if (!composition_ || !composition_->caps().enabled ||
         (composition_->caps().available_policies & composition_required_producers_) != composition_required_producers_) {
-        composition_busy_ = false; if (composition_effective_ || composition_required_producers_) invalidate_taa(); return;
+        composition_busy_ = false; if (composition_effective_ || composition_required_producers_) invalidate_taa(TaaInvalidateSite::CompositionAttach); return;
     }
     release(composition_main_texture_); composition_main_identity_ = nullptr; composition_identity_known_ = true;
     const HRESULT container = hdr_main_ ? hdr_main_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&composition_main_texture_)) : E_FAIL;
@@ -3115,7 +3140,7 @@ void MotionOutput::begin_composition_frame() noexcept {
         composition_state_lost_ = !begin.state_preserved;
     }
     composition_busy_ = false;
-    if (composition_frame_stopped_) invalidate_taa();
+    if (composition_frame_stopped_) invalidate_taa(TaaInvalidateSite::CompositionBegin);
 }
 void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& route) noexcept {
     if (!composition_requested()) return;
@@ -3130,7 +3155,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         for (unsigned i = 0; i < 6; ++i) known = known && shadow_.states_known[i];
         for (unsigned i = 0; i < 3; ++i) known = known && shadow_.composition_blend_known[i]; // the blend triple only
         if (!known) {
-            if (composition_required_producers_ & 2u) { composition_frame_stopped_ = true; invalidate_taa(); }
+            if (composition_required_producers_ & 2u) { composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionRefused); }
             ++composition_counts_.refused; ++composition_counts_.refusal[2]; return;
         }
         fade = shadow_.states[0] == D3DZB_TRUE && !shadow_.states[1] && !shadow_.states[2]
@@ -3210,7 +3235,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         ++composition_counts_.refused; ++composition_counts_.refusal[refusal];
         // Only missing required scene-source coverage poisons this frame.
         // Unrelated draws and permanently unsupported policies stay native.
-        if (required && route.scene) { composition_frame_stopped_ = true; invalidate_taa(); }
+        if (required && route.scene) { composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionRefused); }
         if (fade && capture_) record_fade_refused(route, refusal);
         return;
     }
@@ -3268,11 +3293,11 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     }
     composition_busy_ = false; ++composition_counts_.refused; ++composition_counts_.refusal[5]; ++composition_counts_.prepare_failures;
     if (fade && capture_) record_fade_refused(route, 5);
-    if (required) { composition_frame_stopped_ = true; invalidate_taa(); }
+    if (required) { composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionPrepare); }
     if (!prepared.state_preserved) {
         composition_state_lost_ = true; composition_frame_stopped_ = true; route.submit = false;
         route.submission_error = FAILED(prepared.saved) ? prepared.saved : FAILED(prepared.operation) ? prepared.operation : FAILED(prepared.restore) ? prepared.restore : D3DERR_INVALIDCALL;
-        ++composition_counts_.suppressed; invalidate_taa();
+        ++composition_counts_.suppressed; invalidate_taa(TaaInvalidateSite::CompositionStateLost);
     }
 }
 bool MotionOutput::publish_composition() noexcept {
@@ -3330,7 +3355,7 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
         if (FAILED(source) || completed.image != renderer::LinearEmissionImage::Linear || composition_state_lost_ || !composition_->coverage_valid()) {
             ++composition_counts_.incomplete; ++composition_counts_.in_place_incomplete;
             if (packed) ++composition_counts_.packed_incomplete;
-            composition_frame_stopped_ = true; invalidate_taa();
+            composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionIncomplete);
         } else {
             ++composition_counts_.linear; ++composition_counts_.in_place_linear;
             if (packed) ++composition_counts_.packed_linear; else ++composition_counts_.linear_fade;
@@ -3348,7 +3373,7 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
     composition_busy_ = false;
     if (!published) composition_state_lost_ = true;
     if (FAILED(source) || completed.image == renderer::LinearEmissionImage::Incomplete || !published || !composition_->coverage_valid()) {
-        ++composition_counts_.incomplete; composition_frame_stopped_ = true; invalidate_taa();
+        ++composition_counts_.incomplete; composition_frame_stopped_ = true; invalidate_taa(TaaInvalidateSite::CompositionIncomplete);
     } else if (completed.image == renderer::LinearEmissionImage::Linear) {
         ++composition_counts_.linear; composition_enhanced_ = true;
         if (policy == renderer::LinearCompositionPolicy::DistanceFade) ++composition_counts_.linear_fade;
@@ -4028,7 +4053,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
             route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,
             route.cutout_alpha_known, route.cutout_alpha, route.cutout_z_known, route.cutout_z,
             route.cutout_zfunc_known, route.cutout_zfunc)) {
-        cutout_coverage_missed_ = true; ++counters_.cutout_missed; invalidate_taa();
+        cutout_coverage_missed_ = true; ++counters_.cutout_missed; invalidate_taa(TaaInvalidateSite::CutoutMissed);
     }
     if (route.routed && route.cutout && SUCCEEDED(result)) ++counters_.cutout_routed;
     if (route.routed) {
@@ -4412,14 +4437,14 @@ void MotionOutput::log_camera_state() noexcept {
     log("camera_state device=%llu frame=%llu status=%s reads=%lu valid=%u read_failure=%lu failure=%lu projection=%p view=%p"
         " p00=%.7g p11=%.7g p20=%.7g p21=%.7g r00=%.7g r01=%.7g r02=%.7g r10=%.7g r11=%.7g r12=%.7g r20=%.7g r21=%.7g r22=%.7g t=%.7g,%.7g,%.7g"
         " background_valid=%u background_p00=%.7g background_p11=%.7g background_rotation_deg=%.4f"
-        " history_view_valid=%u history_view_frame=%llu rotation_deg=%.4f policy=%lu reason=%lu camera_cut=%u mode=%u cut_deg=%.2f",
+        " history_view_valid=%u history_view_frame=%llu rotation_deg=%.4f policy=%lu reason=%lu camera_cut=%u mode=%u cut_deg=%.2f prev_valid_at_policy=%u",
         id_, frame_, camera_state::status(), static_cast<unsigned long>(counters_.camera_reads), c.valid,
         static_cast<unsigned long>(counters_.camera_read_failure), static_cast<unsigned long>(counters_.camera_failure),
         reinterpret_cast<void*>(camera_projection_address_), reinterpret_cast<void*>(camera_view_address_),
         c.m00, c.m11, c.m20, c.m21, c.r[0], c.r[1], c.r[2], c.r[3], c.r[4], c.r[5], c.r[6], c.r[7], c.r[8], c.t[0], c.t[1], c.t[2],
         b.valid, b.m00, b.m11, background_rotation,
         camera_previous_.valid, camera_previous_frame_, t.camera_rotation_deg, static_cast<unsigned long>(t.camera_policy),
-        static_cast<unsigned long>(t.camera_reason), t.camera_cut, unsigned(sentinel_mode_), camera_cut_degrees_);
+        static_cast<unsigned long>(t.camera_reason), t.camera_cut, unsigned(sentinel_mode_), camera_cut_degrees_, t.camera_previous_valid);
 }
 
 // End of the frame's scene phase (consumed by the resolve at the copy): the median of the
@@ -4487,7 +4512,7 @@ void MotionOutput::before_present() noexcept {
     auto& t = counters_.taa;
     if (taa_enabled_) {
         if (!t.attempted) t.skip = unsigned(main_msaa_ ? TaaSkip::Msaa : TaaSkip::NotReached);
-        if (!t.resolved) invalidate_taa();
+        if (!t.resolved) invalidate_taa(TaaInvalidateSite::NotResolved);
     } else t.skip = unsigned(TaaSkip::Disabled);
     witness_readback();
     if (capture_) readback();
@@ -4665,7 +4690,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     report_mip_bias_game_write_failure();
     release_mip_bias_retry_bound();
     if (!enabled_) return;
-    if (FAILED(result)) invalidate_taa();
+    if (FAILED(result)) invalidate_taa(TaaInvalidateSite::PresentFailed);
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
     if (shimmer_trace_) log_shimmer_frame(unsigned(stats.previous), unsigned(stats.current), unsigned(committed));
@@ -4753,6 +4778,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     }
     if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
     if (hdr_enabled_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_hdr_frame();
+    flush_taa_invalidate_log();
 }
 
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
