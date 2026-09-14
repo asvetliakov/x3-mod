@@ -27,6 +27,7 @@
 #include "chase_camera.h"
 #include "../renderer/scene_boundary.h"
 #include "../renderer/motion_history.h"
+#include "../renderer/depth_prepass_profiles.h"
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
 #include "../renderer/ambient_occlusion_pass.h"
@@ -220,6 +221,11 @@ struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
     std::uint32_t cutout_routed = 0, cutout_missed = 0;
     std::uint32_t depth_routed = 0, jittered = 0;
+    // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
+    // while the jitter was active: every one breaks the "whole scene moves
+    // together" invariant behind the LESSEQUAL tests of later jittered draws
+    // (asteroid-fog-temporal.md, run 47). Zero is the expected value.
+    std::uint32_t unjittered_depth_writers = 0;
     std::uint32_t apply_failures = 0, restore_failures = 0;
     bool latched = false, filled = false;
     HRESULT fill_result = S_FALSE, fill_restore = S_OK;
@@ -696,7 +702,10 @@ private:
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IUnknown* distance_fade_variant = nullptr;
                          bool registered = false; // Valid original, independent of motion support.
-                         const renderer::MotionOutputProfile* row = nullptr; };
+                         const renderer::MotionOutputProfile* row = nullptr;
+                         // Depth-only prepass program (depth_prepass_profiles.h):
+                         // jittered like a row's VS, never routed. Exclusive with row.
+                         const renderer::DepthPrepassProfile* prepass = nullptr; };
     struct Shadow {
         IDirect3DVertexShader9* vs = nullptr;
         IDirect3DPixelShader9* ps = nullptr;
@@ -736,6 +745,7 @@ private:
         // other pair identities, never at a draw, and only while the trace is on.
         bool asteroid_pair = false;
         const renderer::MotionOutputProfile* vs_row = nullptr;
+        const renderer::DepthPrepassProfile* vs_prepass = nullptr; // jitter-only clip rows (no pair, never routes)
         float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
         bool rows_known[motion_matrix_windows_max]{};
         float vs_reserved[16]{};      // application c252-255, restored only if written

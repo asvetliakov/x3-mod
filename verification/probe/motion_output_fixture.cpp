@@ -196,10 +196,13 @@ struct Object {
 bool covers_a(double ox, double oy) { return ox >= -1 && oy <= 1 && ox - oy <= 2; }
 bool covers_b(double ox, double oy) { return ox >= -.9 && oy <= .9 && ox - oy <= -1.2; }
 // `flat`: drawn with the flat pixel program (never routed, flat colour);
-// `jittered`: the route jitters this draw's rows (scene draw with a table VS).
+// `jittered`: the route jitters this draw's rows (scene draw with a table VS
+// or a depth-only prepass program). `depth_only`: the draw writes depth and no
+// colour (z_only prepass, zonly script): the coverage oracle keeps the colour
+// class of the earlier draws and only advances the depth test.
 // A record with a null object marks an application depth-only Clear between
 // draws (burst script): the oracles restart the depth test there.
-struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; bool flat = false; bool jittered = false; bool keyed = false; };
+struct DrawRecord { Object* object; float t, p, zo; bool routed, matched; float pt, pp, pzo; bool flat = false; bool jittered = false; bool keyed = false; bool depth_only = false; };
 enum class Alter { None, Blend, FlatPixel, Hdr2, Hdr8, Hdr8Additive, HdrMid };
 // ps_3_0: def c0, 2, 2, 2, 1 ; mov oC0, c0 and def c0, 8, 8, 8, .5 ; mov oC0,
 // c0: original programs whose output exceeds the 8-bit range (hdrvalues).
@@ -405,6 +408,8 @@ struct Fixture {
     // Mip LOD bias script ("mipbias" mode) and the DLL's X3M_TAA_MIP_BIAS as
     // the fixture read it (0: the DLL biases nothing, every stage must read 0).
     bool mipbias = false; float mip_bias = 0;
+    bool zonly = false;                    // depth-only prepass script (run_zonly)
+    Com<IDirect3DVertexShader9> zonly_vs;  // the engine's z_only vs_1_1 program (clip rows in c0-3)
     bool msaa = false; unsigned msaa_samples = 0; // "msaa" script: a multisampled main target the route must refuse (D3)
     unsigned capture_start = 1, capture_frames = 8; // X3M_CAPTURE_START/FRAMES: capture frames restore before every draw's diagnostics
     Com<IDirect3DTexture9> ramp;    // 1024x1024 full mip chain, level i a constant grey 16 + 20 i (a LOD ramp)
@@ -844,7 +849,7 @@ struct Fixture {
                 if (!r.object->covers(ox, oy)) continue;
                 const double z = (.5 + r.zo) / wc;
                 if (z > depth_value + 1e-7) continue;
-                depth_value = z; kind = r.flat ? 2 : 1;
+                depth_value = z; if (!r.depth_only) kind = r.flat ? 2 : 1;
             }
             if (edge) { ++ambiguous; continue; }
             expected[std::size_t(y) * W + x] = static_cast<unsigned char>(kind);
@@ -1264,6 +1269,93 @@ struct Fixture {
             if (i == 3) { reset(); for (auto& known : model_saved_known) known = false; } // Reset: the shadow re-reads
         }
         require(!(enabled && seam) || frames_verified == frames, "every live mipbias frame verified against the oracle");
+    }
+    // ---- depth-only prepass script ("zonly" mode; jitter on) ----
+    //
+    // The engine's fogged-asteroid sequence (asteroid-fog-temporal.md, run 47):
+    // a depth-only prepass with the z_only vs_1_1 program c78b4c68a87fce74
+    // (null PS, ZWRITEENABLE on, COLORWRITEENABLE 0, LESSEQUAL, clip rows in
+    // c0-3), then the blended material draw of the same geometry (ZWRITEENABLE
+    // off, LESSEQUAL: gate 4 refuses it, the route still jitters it). Rows
+    // with perspective p = .125 give the triangle a depth slope along x
+    // (z = .5 / (1 + p ox)), so an x offset between the two draws changes the
+    // depth compared under LESSEQUAL by ~2e-3 per pixel, far above D24
+    // precision. Regular frames: the coverage oracle must see the material on
+    // every interior pixel (a dropped facet shows the background) and the
+    // fixture counts interior background pixels (holes) itself. Control
+    // frames (jx > 0 in the Halton sequence): the prepass rows are pre-shifted
+    // by the negative jitter so the route's own jitter cancels and the prepass
+    // lands unjittered, as the game's did before the fix; the jittered
+    // material fragment at p then carries the content of p - j, closer to
+    // the left, hence farther (larger z) on this slope, and fails LESSEQUAL
+    // over the whole interior: holes must appear, proving the oracle sees the
+    // failure mode. Reset after frame 3: the prepass identity must survive the
+    // shadow resynchronization.
+    void prepass_draw(Object& o, float t, float p, float zo, bool counter_jitter) {
+        scope(nullptr);
+        api(d->SetStreamSource(0, o.vb, 0, 24), "SetStreamSource prepass");
+        api(d->SetVertexShader(zonly_vs.p), "SetVertexShader z_only"); api(d->SetPixelShader(nullptr), "SetPixelShader null");
+        api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 0), "prepass colour mask off");
+        float m[16]; std::memcpy(m, identity, sizeof m); m[3] = t; m[11] = zo; m[12] = p;
+        if (counter_jitter) { // rows[0] -= jx_ndc rows[3], rows[1] -= jy_ndc rows[3]: the route adds them back (fade_region::jitter_rows)
+            const float jx_ndc = float(2 * jx / W), jy_ndc = float(-2 * jy / H);
+            for (unsigned i = 0; i < 4; ++i) { m[i] -= jx_ndc * m[12 + i]; m[4 + i] -= jy_ndc * m[12 + i]; }
+        }
+        api(d->SetVertexShaderConstantF(0, m, 4), "SetVertexShaderConstantF z_only rows");
+        float rows_before[16], rows_after[16];
+        api(d->GetVertexShaderConstantF(0, rows_before, 4), "GetVertexShaderConstantF c0-3 before");
+        const Snapshot before = snapshot();
+        api(d->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1), "DrawPrimitive prepass"); ++draw_index;
+        compare(before, snapshot(), "prepass");
+        api(d->GetVertexShaderConstantF(0, rows_after, 4), "GetVertexShaderConstantF c0-3 after");
+        require(std::memcmp(rows_before, rows_after, sizeof rows_before) == 0, "z_only clip rows c0-3 restored bit-exactly after the prepass");
+        api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 15), "prepass colour mask back");
+        material_state(); // c0-23 hold the lights again for the material draw
+        const bool jittered = enabled && jitter;
+        records.push_back({&o, t, p, zo, false, false, o.rt, o.rp, o.rzo, false, jittered, false, true});
+        std::printf("EXPECT frame=%llu index=%u object=%s routed=0 matched=0 jittered=%u prepass=1\n", frame, draw_index, o.name, jittered);
+    }
+    // Interior pixels of A at the jittered sample positions (2e-2 NDC inside
+    // every edge) and how many of them show the frame's background colour.
+    void interior_holes(const std::vector<DWORD>& image, float t, float p, unsigned& pixels, unsigned& holes) {
+        pixels = holes = 0; bool have_background = false; DWORD background = 0;
+        for (UINT y = 0; y < H && !have_background; ++y) for (UINT x = 0; x < W; ++x) {
+            double ox, oy, wc; object_point(x - jx, y - jy, t, p, ox, oy, wc);
+            if (!a.covers(ox, oy) && edge_distance(a, ox, oy) >= 2e-2) { background = image[std::size_t(y) * W + x]; have_background = true; break; }
+        }
+        require(have_background, "an uncovered pixel gives the frame's background colour");
+        for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
+            double ox, oy, wc; object_point(x - jx, y - jy, t, p, ox, oy, wc);
+            if (!a.covers(ox, oy) || edge_distance(a, ox, oy) < 2e-2) continue;
+            ++pixels; holes += image[std::size_t(y) * W + x] == background;
+        }
+    }
+    void run_zonly(const char* vs_path, unsigned frames) {
+        const std::string supplied(vs_path);
+        const auto slash = supplied.find_last_of("/\\");
+        require(slash != std::string::npos, "z_only program directory");
+        const auto code = load((supplied.substr(0, slash + 1) + "vs_c78b4c68a87fce74.bin").c_str());
+        require(code.size() == 89 && fnv(code.data(), code.size() * 4) == 0xc78b4c68a87fce74ull, "local z_only program is the reviewed alias");
+        api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()), &zonly_vs.p), "CreateVertexShader z_only");
+        for (unsigned i = 0; i < frames; ++i) {
+            frame_begin();
+            const bool control = jitter && (i == 2 || i == 4 || i == 6); // Halton indices 3, 5, 7: jx = .25, .125, .375
+            require(!control || jx > 0, "control frames carry a positive x jitter");
+            prepass_draw(a, .8f, .125f, 0, control);
+            api(d->SetRenderState(D3DRS_ZWRITEENABLE, FALSE), "material z-write off");
+            draw(a, .8f, .125f, 0, false, false, false, Alter::Blend);
+            api(d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE), "material z-write back");
+            if (control) skip_coverage = true; // the oracle expects the material everywhere; the control drops it on purpose
+            const auto image = color_image();
+            unsigned pixels = 0, holes = 0; interior_holes(image, .8f, .125f, pixels, holes);
+            std::printf("ZONLY frame=%llu control=%u jx=%.6f jy=%.6f pixels=%u holes=%u\n", frame, control, jx, jy, pixels, holes);
+            require(pixels > 500, "A covers enough interior pixels for the depth-parity evidence");
+            if (control) require(holes > pixels / 2, "control: an unjittered prepass drops the interior of the jittered material draw");
+            else require(holes == 0, "the jittered prepass depth and the jittered material draw agree: no dropped pixels");
+            frame_end();
+            if (i == 3) reset(); // the prepass identity survives the shadow resynchronization
+        }
+        require(!(enabled && seam) || frames_verified == frames, "every live zonly frame verified against the oracle");
     }
     // Environment-map sequence of the frame routine (camera-state-and-frame-
     // routine.md section 7): mid-frame EndScene, six cube-face target changes
@@ -2934,13 +3026,14 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
         f.bench = mode == "bench";
         f.burst = mode == "burst";
         f.mipbias = mode == "mipbias";
+        f.zonly = mode == "zonly";
         f.envmap = mode == "envmap";
         f.hook = mode == "hook";
         f.aohook = mode == "aohook";
@@ -2989,7 +3082,7 @@ int main(int argc, char** argv) {
         f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
         f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -3051,7 +3144,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if ((f.taa || f.cutout) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
@@ -3059,7 +3152,7 @@ int main(int argc, char** argv) {
         f.back.reset(); f.depth.reset(); f.bloom_surface.reset(); f.bloom.reset();
         for (UINT i = 0; i < 8; ++i) api(f.d->SetTexture(i, nullptr), "SetTexture null"); // the mipbias script binds stages 4 and 5 too
         api(f.d->SetVertexShader(nullptr), "unbind"); api(f.d->SetPixelShader(nullptr), "unbind"); api(f.d->SetStreamSource(0, nullptr, 0, 0), "unbind"); api(f.d->SetVertexDeclaration(nullptr), "unbind");
-        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.hdr2.reset(); f.hdr8.reset(); f.hdrmid.reset(); f.hdrconst.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset(); f.ramp.reset();
+        f.vs.reset(); f.ps.reset(); f.flat.reset(); f.zonly_vs.reset(); f.hdr2.reset(); f.hdr8.reset(); f.hdrmid.reset(); f.hdrconst.reset(); f.declaration.reset(); f.vb_a.reset(); f.vb_b.reset(); f.cube.reset(); f.ramp.reset();
         for (auto& t : f.textures) t.reset();
         const ULONG device_refs = f.d.p->Release(); f.d.p = nullptr;
         require(device_refs == 0, "device final Release reaches zero with the route's objects released");
