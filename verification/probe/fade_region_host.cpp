@@ -96,7 +96,7 @@ int case_mode(int argc, char** argv) {
     const bool rows_known = std::atoi(argv[i++]) != 0, bound_known = std::atoi(argv[i++]) != 0, fill = std::atoi(argv[i++]) != 0;
     if (i + 1 < argc) jitter_rows(rows, float(number(argv[i])), float(number(argv[i + 1])), v.width, v.height);
     const Region region = derive(rows_known ? rows : nullptr, bound_known, box, v, fill, Rect{0, 0, 64, 64});
-    std::printf("REGION bound=%u reason=%u rect=%d,%d,%d,%d f=%.9f\n", region.bound, unsigned(region.reason),
+    std::printf("REGION bound=%u reason=%u pad=%u rect=%d,%d,%d,%d f=%.9f\n", region.bound, unsigned(region.reason), region.pad,
                 region.rect.left, region.rect.top, region.rect.right, region.rect.bottom, area_fraction(region.rect, v));
     return 0;
 }
@@ -398,11 +398,19 @@ int near_mode(unsigned seed, unsigned cases, unsigned points) {
         for (unsigned a = 0; a < 3; ++a) { box.centre[a] = unit(rng) * 8 - 4; box.half[a] = unit(rng) * 3; }
         // x' = s x + tx, y' = s y + ty, z' = k (z + d - zn), w = z + d: near plane at w = zn.
         const double s = 0.25 + unit(rng) * 8, d = unit(rng) * 10 - 5, zn = 0.01 + unit(rng) * 3, k = 0.05 + unit(rng);
-        const float rows[16] = {float(s), 0, 0, float(unit(rng) * 4 - 2), 0, float(s), 0, float(unit(rng) * 4 - 2),
-                                0, 0, float(k), float(k * (d - zn)), 0, 0, 1, float(d)};
+        // Every third case is a world-coordinate case: the box sits at ~1e3 to
+        // ~1e5 and the rows carry the cancelling translation, exactly the
+        // bullet situation of screen-emission-bullet-bound.md section 4. The
+        // clip values are the same as at the origin; the fp32 dp4 error is not.
+        const double world = (c % 3 == 0) ? std::pow(10.0, 3 + unit(rng) * 2) : 0.0;
+        for (unsigned a = 0; a < 3; ++a) box.centre[a] += world;
+        const double tx = unit(rng) * 4 - 2, ty = unit(rng) * 4 - 2;
+        const float rows[16] = {float(s), 0, 0, float(tx - s * world), 0, float(s), 0, float(ty - s * world),
+                                0, 0, float(k), float(k * (d - zn) - k * world), 0, 0, 1, float(d - world)};
         Rect rect{}, plain{};
         NearClip cut{true, 0};
-        const Reason reason = project_box(rows, box, v, &rect, &cut);
+        unsigned pad = 0;
+        const Reason reason = project_box(rows, box, v, &rect, &cut, &pad);
         const Reason plain_reason = project_box(rows, box, v, &plain);
         unsigned behind_corners = 0;
         for (unsigned corner = 0; corner < 8; ++corner) {
@@ -415,7 +423,7 @@ int near_mode(unsigned seed, unsigned cases, unsigned points) {
         if (cut.clipped != behind_corners) fail = true;
         if ((reason == Reason::BehindNear) != (behind_corners == 8)) fail = true;
         if (behind_corners == 0 && (reason != plain_reason || std::memcmp(&rect, &plain, sizeof rect) != 0)) fail = true;
-        unsigned inside = 0, outside = 0, clipped = 0, invisible = 0;
+        unsigned inside = 0, outside = 0, clipped = 0, invisible = 0, outside_fp32 = 0;
         if (reason == Reason::Bound) {
             for (unsigned n = 0; n < points; ++n) {
                 double p[3];
@@ -428,12 +436,37 @@ int near_mode(unsigned seed, unsigned cases, unsigned points) {
                 bool clip_flag = false;
                 if (covered(rect, v, sx, sy, &clip_flag)) { if (clip_flag) ++clipped; else ++inside; }
                 else ++outside;
+                // The pad's actual duty: the hardware evaluates the same dp4
+                // in fp32. Perturb each screen-reaching clip component by the
+                // whole error bound eps_dp4 * sum|terms| in every direction;
+                // the padded rectangle must still cover the point.
+                double err[4] = {0, 0, 0, 0};
+                for (unsigned kk = 0; kk < 4; ++kk) {
+                    if (kk == 2) continue;
+                    const double sum = std::fabs(double(rows[4 * kk]) * p[0]) + std::fabs(double(rows[4 * kk + 1]) * p[1]) +
+                                       std::fabs(double(rows[4 * kk + 2]) * p[2]) + std::fabs(double(rows[4 * kk + 3]));
+                    err[kk] = eps_dp4 * sum;
+                }
+                for (int sx_sign = -1; sx_sign <= 1; sx_sign += 2)
+                    for (int sy_sign = -1; sy_sign <= 1; sy_sign += 2)
+                        for (int sw_sign = -1; sw_sign <= 1; sw_sign += 2) {
+                            const double w = clip[3] + sw_sign * err[3];
+                            if (!(w > 0)) continue; // fp32 would put it behind the eye; not rasterised as this point
+                            const double qx = v.x + ((clip[0] + sx_sign * err[0]) / w + 1) * v.width * .5;
+                            const double qy = v.y + (1 - (clip[1] + sy_sign * err[1]) / w) * v.height * .5;
+                            bool q_clip = false;
+                            // At the pad cap the bound is deliberately truncated
+                            // (pad_limit): report those points, do not fail on
+                            // them. In the game the near cut keeps w >= zn, far
+                            // from the cap; see the header's derivation.
+                            if (!covered(rect, v, qx, qy, &q_clip)) { ++outside_fp32; if (pad < pad_limit) fail = true; }
+                        }
             }
         }
         if (outside) fail = true;
         if (fail) ++failures;
-        std::printf("NEAR index=%u reason=%u plain_reason=%u behind=%u clipped=%u rect=%d,%d,%d,%d viewport=%u,%u inside=%u outside=%u clipped_points=%u invisible=%u fail=%u\n",
-                    c, unsigned(reason), unsigned(plain_reason), behind_corners, cut.clipped, rect.left, rect.top, rect.right, rect.bottom, v.width, v.height, inside, outside, clipped, invisible, unsigned(fail));
+        std::printf("NEAR index=%u reason=%u plain_reason=%u behind=%u clipped=%u pad=%u rect=%d,%d,%d,%d viewport=%u,%u inside=%u outside=%u outside_fp32=%u capped=%u clipped_points=%u invisible=%u fail=%u\n",
+                    c, unsigned(reason), unsigned(plain_reason), behind_corners, cut.clipped, pad, rect.left, rect.top, rect.right, rect.bottom, v.width, v.height, inside, outside, outside_fp32, unsigned(pad >= pad_limit), clipped, invisible, unsigned(fail));
     }
     std::printf("RESULT cases=%u failures=%u\n", cases, failures);
     return failures ? 1 : 0;
@@ -450,7 +483,7 @@ int near_case_mode(int argc, char** argv) {
     v.x = unsigned(std::strtoul(argv[i++], nullptr, 10)); v.y = unsigned(std::strtoul(argv[i++], nullptr, 10));
     v.width = unsigned(std::strtoul(argv[i++], nullptr, 10)); v.height = unsigned(std::strtoul(argv[i++], nullptr, 10));
     const Region region = derive(rows, true, box, v, true, Rect{0, 0, 64, 64}, true);
-    std::printf("REGION bound=%u reason=%u clipped=%u rect=%d,%d,%d,%d f=%.9f\n", region.bound, unsigned(region.reason), region.clipped,
+    std::printf("REGION bound=%u reason=%u clipped=%u pad=%u rect=%d,%d,%d,%d f=%.9f\n", region.bound, unsigned(region.reason), region.clipped, region.pad,
                 region.rect.left, region.rect.top, region.rect.right, region.rect.bottom, area_fraction(region.rect, v));
     return 0;
 }

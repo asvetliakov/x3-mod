@@ -22,6 +22,25 @@ import unittest
 ROOT=Path(__file__).resolve().parents[2]
 IDENTITY=[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
 EXPANSION=1/1024
+EPS_DP4=2**-22   # 4 * 2^-24: fp32 dp4 rounding of a 4-term dot product
+PAD_LIMIT=8
+
+def pad_pixels(term_sum_max,w_min,half_max):
+    """Python restatement of fade_region_math.h pad_pixels: the w-scaled
+    conservative pad for the GPU's fp32 dp4 (screen-emission-bullet-bound.md,
+    section 4)."""
+    k=2*half_max*EPS_DP4*term_sum_max
+    if not k>0 or not w_min>0:return 1 if w_min>0 else PAD_LIMIT
+    return max(1,min(PAD_LIMIT,math.ceil(k/w_min)))
+
+def term_sum_max(rows,centre,half):
+    """Largest sum of |terms| over the x, y and w rows and the eight expanded corners."""
+    best=0.0
+    for corner in range(8):
+        p=[centre[a]+((half[a]+EXPANSION) if corner>>a&1 else -(half[a]+EXPANSION)) for a in range(3)]
+        for k in (0,1,3):
+            best=max(best,sum(abs(rows[4*k+a]*p[a]) for a in range(3))+abs(rows[4*k+3]))
+    return best
 
 def perspective(s,d,z_row=None):
     return [s,0,0,0, 0,s,0,0]+(z_row or [0,0,.5,.5*d])+[0,0,1,d]
@@ -36,13 +55,15 @@ def reference_rect(rows,centre,half,viewport,jitter=None):
     if jitter:
         jx,jy,w,h=jitter;jx=2*jx/w;jy=-2*jy/h
         for k in range(4):rows[k]+=jx*rows[12+k];rows[4+k]+=jy*rows[12+k]
-    X,Y,W,H=viewport;xs=[];ys=[]
+    X,Y,W,H=viewport;xs=[];ys=[];ws=[]
     for corner in range(8):
         p=[centre[a]+((half[a]+EXPANSION) if corner>>a&1 else -(half[a]+EXPANSION)) for a in range(3)]
         clip=[rows[4*k]*p[0]+rows[4*k+1]*p[1]+rows[4*k+2]*p[2]+rows[4*k+3] for k in range(4)]
         if not clip[3]>0:return None
+        ws.append(clip[3])
         xs.append(X+(clip[0]/clip[3]+1)*W/2);ys.append(Y+(1-clip[1]/clip[3])*H/2)
-    l,t=math.floor(min(xs))-1,math.floor(min(ys))-1;r,b=math.ceil(max(xs))+2,math.ceil(max(ys))+2
+    pad=pad_pixels(term_sum_max(rows,centre,half),min(ws),max(W,H)/2)
+    l,t=math.floor(min(xs))-pad,math.floor(min(ys))-pad;r,b=math.ceil(max(xs))+pad+1,math.ceil(max(ys))+pad+1
     l,t,r,b=max(l,X),max(t,Y),min(r,X+W),min(b,Y+H)
     if r<=l or b<=t:return (X,Y,X+1,Y+1)
     return (l,t,r,b)
@@ -70,7 +91,8 @@ def reference_clip_rect(rows,centre,half,viewport):
             points.append([corners[a][k]+t*(corners[b][k]-corners[a][k]) for k in range(4)])
     xs=[X+(c[0]/c[3]+1)*W/2 for c in points];ys=[Y+(1-c[1]/c[3])*H/2 for c in points]
     clamp=lambda v:max(-1e9,min(1e9,v))
-    l,t=math.floor(clamp(min(xs)))-1,math.floor(clamp(min(ys)))-1;r,b=math.ceil(clamp(max(xs)))+2,math.ceil(clamp(max(ys)))+2
+    pad=pad_pixels(term_sum_max(rows,centre,half),min(c[3] for c in points),max(W,H)/2)
+    l,t=math.floor(clamp(min(xs)))-pad,math.floor(clamp(min(ys)))-pad;r,b=math.ceil(clamp(max(xs)))+pad+1,math.ceil(clamp(max(ys)))+pad+1
     l,t,r,b=max(l,X),max(t,Y),min(r,X+W),min(b,Y+H)
     if r<=l or b<=t:return (X,Y,X+1,Y+1),8-len([c for c in corners if c[2]>=0])
     return (l,t,r,b),8-len([c for c in corners if c[2]>=0])
@@ -93,7 +115,7 @@ class FadeRegion(unittest.TestCase):
         args+=[str(v) for v in viewport]+[str(rows_known),str(bound_known),str(fill)]
         if jitter:args+=[str(jitter[0]),str(jitter[1])]
         out=subprocess.check_output(args,text=True).strip()
-        f=fields(out);return int(f['bound']),int(f['reason']),rect_of(f['rect']),float(f['f'])
+        f=fields(out);self.pad=int(f['pad']);return int(f['bound']),int(f['reason']),rect_of(f['rect']),float(f['f'])
 
     def test_random_interior_points_inside_rectangle(self):
         out=subprocess.run([str(self.driver),'--random','20260914','400','10000'],capture_output=True,text=True)
@@ -116,6 +138,7 @@ class FadeRegion(unittest.TestCase):
     def near_case(self,rows,centre,half,viewport):
         args=[str(self.driver),'--near-case']+[str(v) for v in rows+list(centre)+list(half)+list(viewport)]
         f=fields(subprocess.check_output(args,text=True).strip())
+        self.pad=int(f['pad'])
         return int(f['bound']),int(f['reason']),int(f['clipped']),rect_of(f['rect']),float(f['f'])
 
     def test_near_clip_random_points_inside_and_behind_refused(self):
@@ -124,6 +147,13 @@ class FadeRegion(unittest.TestCase):
         rows=[fields(l) for l in out.stdout.splitlines() if l.startswith('NEAR ')]
         self.assertEqual(len(rows),600);self.assertEqual(sum(int(r['fail']) for r in rows),0)
         self.assertEqual(sum(int(r['outside']) for r in rows),0)
+        # The fp32 dp4 perturbation of every interior point stays inside the
+        # padded rectangle wherever the pad is not truncated by pad_limit; the
+        # capped cases (w far below any game near plane) are reported, not hidden.
+        self.assertEqual(sum(int(r['outside_fp32']) for r in rows if r['capped']=='0'),0,'worst-case fp32 dp4 perturbation stays inside the padded rect')
+        pads=[int(r['pad']) for r in rows if r['reason']=='0']
+        self.assertGreaterEqual(sum(p>1 for p in pads),40,'world-coordinate cases exercise a pad above 1 px')
+        self.assertLessEqual(max(pads),PAD_LIMIT)
         behind=[r for r in rows if r['reason']=='7'];cut=[r for r in rows if r['reason']=='0' and r['clipped']!='0'];plain=[r for r in rows if r['reason']=='0' and r['clipped']=='0']
         self.assertGreaterEqual(len(behind),40);self.assertGreaterEqual(len(cut),80);self.assertGreaterEqual(len(plain),80)
         self.assertTrue(all(r['behind']=='8' for r in behind))
@@ -171,6 +201,45 @@ class FadeRegion(unittest.TestCase):
             if expected is None:self.assertEqual((bound,reason,clipped),(0,7,8))
             else:self.assertEqual((bound,reason,clipped,rect),(1,0,behind,expected));cut+=clipped>0
         self.assertGreater(cut,10)
+
+    def test_w_scaled_pad_near_the_near_plane(self):
+        """screen-emission-bullet-bound.md section 4: the fp32 dp4 on world
+        coordinates ~1e5 costs ~0.03 clip units, several pixels at w = 6 and
+        nothing at w >= 100. The pad follows 1/w and only ever grows the rect."""
+        T=6e4;v=(0,0,1280,720);centre=[T,T,0];half=[.5,.5,.5]
+        def rows_at(w):return [1,0,0,-T, 0,1,0,-T, 0,0,0,w*.5, 0,0,1,w]
+        S=term_sum_max(rows_at(6),centre,half)
+        self.assertAlmostEqual(S,2*T+.5+EXPANSION,places=3)
+        self.assertAlmostEqual(S*EPS_DP4,.0286,places=3,msg='the note calibrates 1.26e5 terms to 0.03 clip units')
+        expected={6:7,30:2,100:1,1000:1}
+        for w,pad in expected.items():
+            rows=rows_at(w)
+            self.assertEqual(pad_pixels(S,w,640),pad)
+            bound,reason,rect,_=self.case(rows,centre,half,v)
+            self.assertEqual((bound,reason),(1,0))
+            self.assertEqual(self.pad,pad,f'w={w}')
+            self.assertEqual(rect,reference_rect(rows,centre,half,v))
+            # The unpadded (pure double-precision) hull, and the historical 1-px rect.
+            xs=[];ys=[]
+            for corner in range(8):
+                q=[centre[a]+((half[a]+EXPANSION) if corner>>a&1 else -(half[a]+EXPANSION)) for a in range(3)]
+                clip=[rows[4*k]*q[0]+rows[4*k+1]*q[1]+rows[4*k+2]*q[2]+rows[4*k+3] for k in range(4)]
+                xs.append((clip[0]/clip[3]+1)*v[2]/2);ys.append((1-clip[1]/clip[3])*v[3]/2)
+            hull=(math.floor(min(xs)),math.floor(min(ys)),math.ceil(max(xs))+1,math.ceil(max(ys))+1)
+            old=(hull[0]-1,hull[1]-1,hull[2]+1,hull[3]+1)
+            self.assertTrue(rect[0]<=hull[0] and rect[1]<=hull[1] and rect[2]>=hull[2] and rect[3]>=hull[3],(rect,hull))
+            self.assertTrue(rect[0]<=old[0] and rect[1]<=old[1] and rect[2]>=old[2] and rect[3]>=old[3],(rect,old))
+            self.assertEqual((rect[0],rect[1]),(old[0]-(pad-1),old[1]-(pad-1)))
+            # A point on the hull displaced by the whole fp32 error bound stays inside.
+            err=EPS_DP4*S
+            for sign in (-1,1):
+                sx=(( .5+EXPANSION+sign*err)/w+1)*v[2]/2;sy=(1-(.5+EXPANSION+sign*err)/w)*v[3]/2
+                self.assertTrue(rect[0]<=math.floor(sx)<rect[2] and rect[1]<=math.floor(sy)<rect[3],(w,rect,sx,sy))
+        # A degenerate w cannot inflate the rectangle beyond the cap.
+        self.assertEqual(pad_pixels(S,1e-9,640),PAD_LIMIT)
+        self.assertEqual(pad_pixels(S,0,640),PAD_LIMIT)
+        # Small coordinates keep the historical 1-px pad everywhere.
+        self.assertEqual(pad_pixels(term_sum_max(IDENTITY,[0,0,0],[.5,.5,.5]),1,640),1)
 
     def test_python_reprojection_agrees_and_contains_points(self):
         rng=random.Random(7);checked=0

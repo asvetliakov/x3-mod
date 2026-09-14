@@ -10,7 +10,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "game_launched": false,
-  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-y41gr9ov",
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-gof68ehm",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -19,14 +19,14 @@
     "--dll",
     "d3d9=n,b",
     "--workdir",
-    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-y41gr9ov",
-    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-y41gr9ov/fixture.exe",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-gof68ehm",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-gof68ehm/fixture.exe",
     "Z:/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin",
     "Z:/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin"
   ],
   "input_sha256": {
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source/verification/probe/build/locked_prefix_live_fixture.exe": "ef34a71793d06069557366a8c547644817dac8e139276f63e52d0c713f388e2e",
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source/build/d3d9.dll": "5b92484a70852525798b37e6d34d7203929b986ca44479edb7e349790ca83670",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2b184bcb7a0a0876/verification/probe/build/locked_prefix_live_fixture.exe": "2b7b4ae3f05dd9fa20b48049b89a04f9ec0a75a676a8ab8f57d51038a7f1fe94",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2b184bcb7a0a0876/build/d3d9.dll": "1c39311ae7888d9fce406a106c3400037a4faa9fed77c9af643f6f8c597a2934",
     "/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
     "/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin": "44e6cd4c2a446bb968204c86369a62280a55004d8a35c231359bc8651c3ea082"
   },
@@ -43,7 +43,7 @@
     "WINEDLLOVERRIDES": "d3d9=n,b"
   },
   "exit_code": 0,
-  "wall_seconds": 4.466,
+  "wall_seconds": 4.254,
   "frames": 15,
   "captured_draw_lines": 8,
   "bound_frames": 9,
@@ -58,8 +58,8 @@
   "marks": 2,
   "scans": 11,
   "locks": 13,
-  "scan_us_total": 269.8,
-  "scan_us_per_scan": 24.527272727272727,
+  "scan_us_total": 294.4,
+  "scan_us_per_scan": 26.763636363636362,
   "rect_fractions": [
     0.081,
     0.222,

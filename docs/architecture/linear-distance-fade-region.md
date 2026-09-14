@@ -791,3 +791,31 @@ unprepared/overflow/truncation), and run 11 measured frame time equal to the
 run-28 baseline (`frame_end` window medians 4097 ms against 4104 ms, ≈ 13.7 ms per frame; the field is a window total, not µs per frame). Only the launcher default
 changed; the DLL contract (`X3M_LINEAR_DISTANCE_FADE=0|1`) is unchanged, so an
 installed build behaves exactly as before for a given resolved value.
+
+## w-scaled fp32 pad — implemented 2026-09-14
+
+The 1 px margin of section 2 is replaced, in the shared `project_box`, by
+`pad_px = max(1, ceil(k / w_min))` with `k = 2 * half * 2^-22 * S`; `S` is the
+largest Σ|terms| over the x, y and w rows and the eight expanded corners and
+`w_min` the smallest clip w of the projected (clipped) polytope vertices,
+capped at 8 px and never below 1 px. Derivation and the cap argument:
+[screen-emission-bullet-bound.md](screen-emission-bullet-bound.md), section 4
+("Pad item: done"). The fade route inherits it because it shares the
+projection; the rectangle can only grow.
+
+- Host: `PYTHONPATH=verification/probe python3 -m unittest
+  verification.analysis.test_fade_region` — 9 tests OK. Pad cases at
+  w = 6 / 30 / 100 / 1000 (S = 1.2e5, half = 640 px) give 7 / 2 / 1 / 1 px,
+  each padded rectangle containing the old 1-px one; the `--near` oracle runs
+  a third of its 600 cases at world coordinates 1e3–1e5 with the cancelling
+  row translation and perturbs every interior point by the whole fp32 `dp4`
+  error bound (8 sign directions): 0 outside, and 4 outside when the pad is
+  forced back to 1 px.
+- Live (`verification/results/bottle-X3/linear-distance-fade-live.json`,
+  `run_linear_distance_fade_live.py` without `--screen-emission`, bottle X3):
+  PASS, 22 cases; `witness-full` / `witness-rect` 24,064 covered px, union
+  90,112 / 33,792, **0 outside**, 30 `fade_region` lines, `witness-control`
+  still failing on frames 16, 19, 21, 23, 27, 31 with 512 px each. A baseline
+  run of the same fixture built from the pre-change sources produced identical
+  covered, union, histogram and per-frame numbers: **rect delta 0 px** at this
+  fixture's coordinate magnitudes (pad = 1 everywhere).
