@@ -33,7 +33,9 @@
   "dll_sha256": "608b35d8f7aded08d30220ec279a14c3ac92b55b845de63e56ce32fb1e92c5c9",
   "source_commit": "76d7750",
   "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/rollback-x3-modern-install.json",
-  "note": "The installed d3d9.dll was verified at 608b35d8... (76d7750) before this candidate was built; the main session copies it aside at install time and fills installed_dll, installed_sha256_verified and installed_at."
+  "note": "The installed d3d9.dll was verified at 608b35d8... (76d7750) before this candidate was built; the main session copies it aside at install time and fills installed_dll, installed_sha256_verified and installed_at.",
+  "bottle_manifest": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/rollback-x3-modern-install.json",
+  "project_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/rollback-project-record.json"
  },
  "no_x87": {
   "result": "PASS",
@@ -130,5 +132,6 @@
   "note": "Run-13 command from docs/verification/user-runs.md section 13 with --dry-run from the main checkout; X3M_LINEAR_DISTANCE_FADE=1 now resolves from the launcher default, X3M_VOICE_DMO_FALLBACK=1 and the v3 plugin GST paths are present. No vanilla dry-run: launcher config behavior unchanged."
  },
  "installed_sha256_verified": true,
- "installed_at": "2026-09-14T17:27:13"
+ "installed_at": "2026-09-14T17:27:13",
+ "launcher_manifest": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-install.json"
 }
