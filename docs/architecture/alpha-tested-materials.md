@@ -242,3 +242,106 @@ This establishes the selected detached shader/MRT contract in X3. It does not
 establish a port-specific cause, all cutout coverage, production state admission,
 recovery/Reset, temporal edge quality, live-route overhead or native Windows
 runtime behavior. Those remain the next bounded route qualification.
+
+## Selected runtime route (implementation, qualification pending)
+
+The isolated runtime extension uses the existing `linear_materials` feature and
+only the two exact pairs above. It reuses their qualified shader transforms and
+the ordinary same-draw motion/depth transaction. It adds no shader discard,
+alpha approximation, draw replay, composition pass or per-pair option. The
+opaque arm is unchanged. The cutout arm requires an active owned FP16 HDR target,
+zero configured mip bias, native RGB mask 7, alpha test GREATEREQUAL/ref 1,
+Z enabled/write enabled/LESSEQUAL, no blending, fixed-function fog, dither or
+stencil, CULLNONE and solid fill. Existing scene, object, vertex, light-count,
+WRAP, target and sampler-decode contracts still apply. Shader fog is independent
+of fixed-function FOGENABLE and retains both qualified b0 outcomes.
+
+Pair identity is cached separately from variant readiness, so a recognized
+cutout whose shader objects are unavailable can still be identified as missing
+foreground coverage. Eight additional cached states bring the shadow to 32
+entries; storage remains arrays of values/known bits. The fixture's exported
+known mask shifts only indices 0–31. WRAP recovery still queries only its sixteen
+owned slots. Failed application render-state writes invalidate the corresponding
+known entry (and composition blend cache where relevant); failed sRGB sampler
+writes leave material decode unknown. A write to MIPMAPLODBIAS first restores
+that stage only if the route currently owns its bias, preventing a failed native
+setter from leaving an ambiguous restore obligation. Failure of that restoration
+uses the existing sticky state-loss path; the obligation itself is cleared only
+by a successful restore, an accepted application write or Reset, so a failed
+restore followed by a failed application write cannot leave the route's bias
+on the device unrecorded. A stage whose restore failed is attempted at most
+once per Present boundary (no re-latching or counter growth at every restore
+point), and only a trusted saved value is ever written: a failed application
+write distrusts it, after which the obligation waits for an accepted write or
+Reset. The failure is recorded as integers in the hook and
+formatted after Present or at retirement: the SetSamplerState hook is an
+audited light root and even an integer-only `log` call reaches the CRT's x87
+formatter. The conditional foreign restore has its own full CPU-state guard;
+ordinary sampler setters keep the light path.
+HRESULT forwarding and the existing light
+CPU/LastError boundary remain in place. Unknown material decode can use the
+already-qualified original-color plus motion fallback.
+
+Public device capability queries run at attach, successful Reset, or an HDR
+latch retry, never at draw admission. They require three MRTs, independent bit
+depths/write masks, POST blending, GREATEREQUAL and RT|POST texture support for
+FP16, RGBA32F and R32F using the actual adapter, device type and display format.
+Missing static caps or an actual format query returning NOTAVAILABLE is a
+persistent refusal until Reset. Failed metadata queries, allocation/device
+errors and other inconclusive format HRESULTs remain retryable, at most once per
+frame's HDR latch. Reset entry discards a prior positive result; a failed Reset
+cannot revive it. Device verdict logging is bounded to sixteen heavy-path rows.
+
+A successful native-forward draw of a requested recognized cutout marks that
+frame's temporal input unavailable when it may have written foreground RGB
+without owned motion, but only while the cutout arm is configured active:
+feature requested, capability verdict Ready, HDR enabled by configuration and
+zero configured mip bias, latched at frame start (refreshed by a capability
+verdict) and held for the frame regardless of transient HDR state. With
+the arm active, an exact pair drawn before the frame's HDR latch, after a
+mid-frame Suspend or otherwise refused by the per-draw gate or failed to route
+is a miss (frame Unavailable, no seed). Only a wholly inactive configuration
+(disabled, Unsupported, Retry pending, HDR off, nonzero bias) forwards a
+refused pair as the ordinary native color plus motion fallback with
+trustworthy history retained and no reactive Unavailable. Known alpha-test off, no RGB writes, NEVER alpha/depth
+rejection, failed native draws and suppressed submissions do not trigger this
+new rule either. The conservative decision does not claim to know pixel occlusion for
+a refused draw. It unions with distance-fade composition availability after the
+shared mask is resolved: a valid fade mask cannot hide missing cutout motion.
+Unavailable frames still resolve current color, but neither reuse nor seed TAA
+history. The next fully covered frame can seed history again. Successfully
+routed cutouts, including ordinary-motion fallbacks, retain normal history.
+
+The first qualification run exposed three script defects in that fixture,
+none in the runtime: the cutout origin shift wrapped 3 px every four frames
+(above the route's 2.4 px median cut bound at 64 px, which the fixture's cut
+model does not cover; it is now a 1 px triangle wave), the non-TAA boundary
+copied into a bloom surface the fixture only created with TAA on, and the
+interleaved fade source disabled the depth test the fade admission requires.
+A routed ordinary draw under a live nonzero bias keeps the route's bias on its
+mip-chain stages until the next restore point (the bloom copy included), so the
+draw and boundary comparisons expect exactly that. The runner compares combined
+RGB in the encoded FP16 output space (`encoded_rgba` envelope), as the opaque
+material runner does; the oracle's `linear_rgb` is an intermediate.
+
+The selected live fixture extends the existing motion seam and consumes a
+retained candidate DLL, seam and EXE. It uses actual native threshold/coverage
+twins, raw FP16 color and motion/depth readbacks, the existing material RGB
+oracle, and the existing production TAA reference. Capability/failed-mutation
+controls exist only under `X3M_MOTION_OUTPUT_FIXTURE`. Host tests execute the
+actual capability, admission and notification methods with scripted documented
+APIs; they do not establish GPU behavior. Live state/Reset recovery, moving
+cutout edges, mixed fade composition and completion timings remain pending the
+root-owned selected fixture run. Native Windows runtime and gameplay appearance
+remain unverified, and this is not a docking-port-specific fix or complete
+cutout-family coverage.
+
+Performance inspection: successful cutout admission adds eight cached integer
+state reads and no draw-time hash search, validation, allocation, lock or public
+capability query. Refused recognized candidates perform bounded cached state
+reads to exclude known nonwriters. The failure notifications add integer invalidation; a write over an owned mip
+bias adds one guarded native restore of that stage. Default zero bias never
+executes that restore. Normal callback logging is unchanged. Selected paired EVENT/QPC
+measurements will report total CPU/GPU submission completion cost separately
+from setup/readback and from gameplay FPS. Nonzero mip bias remains an explicit
+initial refusal, pending its own native-coverage qualification.
