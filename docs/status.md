@@ -38,7 +38,13 @@ game adds a qasf DMO Wrapper audio-decoder filter to its graph before the source
 filter's `Pause` returns `E_FAIL` inside `SetState(RUN)`, and the main thread then calls
 `RemoveFilter(MediaStreamFilter)` 3.8 million times until force-quit (the hang). Root-cause
 diagnosis on the Wine side and disassembly of the game's DMO creation and teardown loop are
-in progress (`docs/reverse-engineering/voice-startup-sequence.md` §11–13).
+settled and reproduced (`docs/reverse-engineering/voice-startup-sequence.md` §11–13): the game
+creates the wrapper for the Windows Media Speech decoder `{874131cb…}`, which is not registered
+in the bottle; `Init` fails `REGDB_E_CLASSNOTREG`, the game adds the pin-less wrapper anyway,
+`Pause` fails, and the graph never leaves Stopped so `RemoveFilter` returns `VFW_E_NOT_STOPPED`
+forever. The replica mode `game-dmo` reproduces the E_FAIL and the spin. Next: a process-local
+hook that retries `Init` with the registered WMA decoder DMO on that exact failure (inert on
+Windows), site from §12 disassembly.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
