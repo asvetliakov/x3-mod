@@ -973,3 +973,18 @@ holds only such draws and 14639 is mixed — and the route-scoped depth cannot s
 holes in a pass the route never owns, so this run cannot localise the dropout.
 The diagnosis stays open under
 [asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md).
+
+## z_only depth-prepass jitter: live fixture on the merged tree (2026-09-14, night)
+
+Commits `0a3a2db` (fix, reviewed on Fable: merge-clean, four low findings fixed in `1d49489`) and
+`1d49489`. Bottle X3, CrossOver Preview, `X3M_FIXTURE_BOTTLE=X3`, `wine_lock.py` wrapper, lock free.
+
+- `run_motion_output.py production-zonly seam-zonly`: exit 0, 31.1 s; checks 73 and 109;
+  `capture_frames=[1,2,3]`, `routes=6`; every `motion_output_frame` line
+  `jittered=2 routed=0 unjittered_depth_writers=0`; ZONLY holes 0 on frames 0, 1, 3, 5, 7, 8 and
+  2425 / 2414 / 2418 (= pixels) on the control frames 2, 4, 6. The first run of the same cases had
+  the same GPU result and failed only in `validate_zonly`, which expected route lines outside the
+  capture window (`Reset` after frame 3 stops the capture); the validator now pins the window.
+- Full default suite: 118 cases, all `exit=0`, `{"passed": true, "status": "PASS"}`, 3 min 55 s.
+  Results local under `verification/results/bottle-X3/motion-output-summary.json`.
+
