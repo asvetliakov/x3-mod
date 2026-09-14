@@ -563,3 +563,126 @@ the run-28/run-36 captures on installed `3f06979`. "No writer for `cam+0x360`" i
 displacement sweep — an aliased-base write is not excluded, and one Clear-hook read
 would close it. Bits of `0x0085492d` beyond `0x800000/0x40000/0x10000/0x4000` are
 unattributed.
+
+### Round 2 — the three `ambient-occlusion.md` §8 unknowns, closed (2026-09-14)
+
+Second pass on the same EXE (`fdbf3418…`), Ghidra read-only on
+`/tmp/x3-ghidra-research X3Render` with `X3CameraState.java`; raw output in
+`/tmp/x3-ao-re2/out1..out6.txt` (untracked). Specs: `data:005630d8 data:00563104
+ins:004c0150 ins:004c4fc0 dec:004bdda0 dec:004bdbf0 dec:004bdd20 dec:004bdea0
+dec:00479d10 dec:00488c70 load:0x360 load:0x270 load:0x16c txt:0x790 disp:0xcc
+range:004c5093:80 range:004c51fb:44`. Cross-checks are `grep`/stream reads of the
+run-39 and run-40 session logs (`/tmp/x3-bottleX3-run39|40`) and of
+`verification/results/shader-sweep-inventory.json` (751 programs) and
+`shader-registers.json` (47). No Wine command, no launch.
+
+**1. `g_LightAmbientIntensity`: no register, no upload, no value — confirmed from
+three directions.** The handle is cached at descriptor `+0x64` (`PUSH 0x5630d8` at
+`0x004c1a86`, store `0x004c1a9d`) and the whole `0x004c0150` body
+(`004c0150-004c40fb`) contains exactly two non-`ESP` `+0x64` loads, neither of them
+the descriptor: `0x004c0b0f` reads `*0x00608518 + 0x64` and `0x004c0bb7` is a vtable
+slot immediately called. There is therefore no `SetPixelShaderConstantF` /
+`SetVertexShaderConstantF` for it and nothing to grep in the capture. No program
+declares it either: 0 hits for any parameter name containing `Ambient` across the
+751-program archive sweep (731 carry a CTAB) and across `shader-registers.json` and
+`game-docking-shader-registers.json`, while `LightDir_Dir0` is declared by 507 of the
+751. Finally the engine's only ambient *field* is dead: the per-node light record is
+`malloc(0x6c)` + `memset 0` at `0x004bdd20` (a D3DLIGHT9 plus a dirty dword at
+`+0x68`), and its filler `0x004bdbf0` writes Type, Diffuse (`rec[1..3]` from node
+`+0x150/+0x152/+0x154` × the double `1/256` at `0x00565568`, alpha 1.0), Specular (1,1,1,1), Range,
+falloff and attenuation, and explicitly stores **`rec[9..0xc] = 0`**, i.e.
+`D3DLIGHT9.Ambient = (0,0,0,0)`. AO v2 has no true ambient share to weight by; the
+D1-derived estimate stands.
+
+**2. `LightDir_Dir0` is world space — now also proven from the capture.** The static
+read of `0x004c234d..0x004c245e` reproduced round 1 exactly (vector = light
+`[+0xb0/b4/b8]` − submitted node `[EBP+0xc][+0xb0/b4/b8]`, normalized, quantized
+through `0x0052b5d0` and `1/65536`, `w = 0`, no matrix anywhere). Run-39 evidence:
+for each capture frame, the per-draw `ps` constant was read at the register each
+program's own CTAB declares (`c0` for 3, `c4` for 7, `c5` for 6 of the 47-program
+set); 180 (node, model, program) triples are common to frames 1812, 2071 and 2316 and
+**every one has bit-identical float bits in all three frames**, while the camera basis
+rotates 5.514° (1812→2071), 1.316° (2071→2316), 6.294° overall and translates
+(68, 345, 98) units. A view-space vector cannot do that. Stronger: fitting the 615
+frame-1812 (direction, `object_position`) pairs to a single world point converges on
+`(−4.708e8, +7.144e8, −1.3151e9)` native with **median residual 0.0003°, max
+0.0007°**, i.e. `dir = normalize(L_world − node_world)` to within the `1/65536`
+quantization; `|L| ≈ 1.57e9` native ≈ 3.14e6 m ≈ 3100 km. The scene-wide spread is
+0.6° (`c4.x` from −0.310425 to −0.300079), so AO v2 may use one world direction per
+frame — but it must rotate it into view space itself. The register is *not* fixed:
+over the 751-program sweep the declarations sit at c4 (153), c1 (128), c22 (64),
+c5 (58), c0 (38), c19 (32), c7 (14), c21 (6), c18 (6), c39 (5), c13 (3); a consumer
+must read the CTAB. Light-record side: `0x004bdda0` writes `rec[0x34..0x3c]` = node
+`+0xb0/b4/b8` × `s` (world position in view units) and, for Type 3, `rec[0x40..0x48]`
+= −node position × `1/65536` — again no view transform. `0x004bdbf0` picks Type 2
+(spot) on node `+0x12c & 0x10`, Type 1 (point) on `& 0x400000`, else Type 3 and
+**sets `node+0x12c |= 0x800000`**, which is exactly the admission test of the
+two-light selector at `0x004c5061`: that flag means "directional light".
+
+**3. Per-view near/far: the AO pass does not need the regime.** Byte-level re-read of
+`0x004c5093..0x004c5145` settles the round-1 formula from the opcodes (`dc c9` =
+`FMUL ST(1),ST(0)` then `de e1` = `FSUBRP`, so the near term is `100·(1 − 4·fov/65536)`,
+not `99·4·fov/65536`): `zn = 6.0 + (fov < 0x2147 ? 100·(1 − 4·fov/65536) : 0)`,
+`zf = max(unsigned(view[+0x360])·s, 2e6)` (`0x00565570` = 2e6, `0x0056554c` = 2³² for
+the sign fixup, `0x00565768` = 6.0), `m22 → (*0x00608a38)[+0x28]` (`0x004c513e`),
+`m32 → [+0x38]` (`0x004c51fd`) — indices 10 and 14 of the row-major 4×4. *Writers of
+`+0x360`*: the full sweep of operands ending in `0x360]` returns 18 instructions, of
+which only `0x004c50f4`/`0x004c50fa` use a non-`ESP` base, both reads. Aliasing
+narrowed by the object size: `0x790` appears at four code sites only — `0x00479d5a`
+(loader), `0x00487df1` (`FUN_00487be0`), `0x00488c73` (allocator, `memset 0`),
+`0x00488f37` (`FUN_00488de0`), the last two in the same `push size / push fill /
+push dst` memset shape, and there is no 484-dword `rep movsd` clone (the only
+`MOV ECX,0x1e4` sites, `0x00424ee8` and `0x0044a8db`, are offsets). The scene-stream
+loader `0x00479d10` writes `_Dst[0xc0..0xd6]` and `_Dst[0xda..0xdd]` and skips
+`0xd7/0xd8/0xd9`, so `+0x360` is never authored; the allocator memsets `0x790` and
+defaults `_Dst[0xa6] = 0x4000` (+0x298, 90°). *Writers of the `+0x270` bit*: 83 sites
+end in `0x270]`; the only bit-setting writers are `OR 0x200` (`0x0041f511`), `OR 0x24`
+(`0x004202a7`, cockpit scene), `OR/AND 0x10000` (`0x0042157c`/`0x004215a0`,
+`0x004891fe`/`0x0048920b`, `0x00494232` — fog), `OR 0x8000` (`0x0042d571`) and
+`OR/AND 0x1` (`0x00477744`, `0x00489fdf`, `0x00489c1f`, `0x00489d34`, `0x0048a024`).
+**Nothing ORs `0x800000`**; it can only arrive through the six wholesale dword stores
+(`0x0041f91d`, `0x00420009`/`0x004201f5`, `0x00431a24`, `0x0046433a`, `0x004772ac`,
+`0x0047a3f9` = loader `_Dst[0x9c]`, and `0x00494f13` = script command `0x3b`) — the
+bit is authored scene state. *Capture cross-check, two further runs*: run-39 and
+run-40 `object_fade` rows show one camera per frame at `flags270=0x0085492d` with
+`near36c/far370` = 25e6/30e6 native (both runs) or 50e6/55e6 (run 39, second session
+camera) and `scale_bits=0x3c23d708/0a` (0.01), beside the background camera
+`0x00400135` at ~1e-5 and cockpit-scene cameras `0x00000025`, `0x00002025`,
+`0x00000001`; so gameplay takes the `0x800000` arm and nothing authored looks like a
+far plane except the fog pair. *Measured constants*: in every run-39 capture frame
+`vs_36f98d151fd6b0c6` uploads `g_mProj` at c4..c7 as `(0.79999995,0,0,0)`,
+`(0,1.33333325,0,0)`, `(0,0,1.00000298,−6.00001812)`, `(0,0,1,0)` — **m22 =
+1.00000298, m32 = −6.00001812**, exactly `zn = 6`, `zf = 2·10⁶`; `vs_5e484a06672e28fb`'s
+`g_mViewProjection` rows c2/c3 differ by 6.000 to 6.003 in the w term in all five
+capture frames (1812, 2071, 2316, 9163, 11940) — the same `zn` within the float
+cancellation of a ~10³ translation. Consequence: linearize as **`z_view = m32/(d − m22)`** — it reproduces
+`zn` at `d = 0` and `zf` at `d = 1` from the two floats the route already latches
+(`camera_reprojection.h:44` validates all 16 projection floats; m22 = `projection[10]`,
+m32 = `projection[14]`), it needs neither `+0x270` nor `+0x360` nor `+0x298`, and it
+follows the cockpit-zoom FOV path for free. Do **not** recover `zf` from `m22`:
+`m22 − 1 = 2.98e−6` in float32, so `zf` carries about ±4 %.
+
+**Hook-site notes (no hook added).** `0x004c5093 MOV EAX,[EDI+0x270]` is six bytes
+(`8b 87 70 02 00 00`), is not a branch target anywhere in the `FUN_004c4fc0` listing,
+and both EAX and EFLAGS are dead-in (EAX is redefined by the MOV itself, EFLAGS by
+`TEST EAX,0x800000` at `0x004c5099`); no x87 instruction executes between the entry
+`0x004c4fc0` and the site (its one CALL, `0x004c5013`, returns an integer compared at
+`0x004c501b`), EDI holds the view object and ESI is `this`. A 5-byte relative JMP fits
+inside the instruction with one pad byte and splits nothing. Caveats: the function
+installs an SEH frame in its first three instructions (`PUSH -1`, `PUSH 0x530668`,
+`FS:[0]` chain) and runs once per view submission — sector, background and cockpit
+scene in the same frame — so a detour must be reentrant and must not assume one call
+per frame. The per-draw sun upload `0x004c245e CALL ECX` is two bytes and its
+neighbour `0x004c2460 FLD float ptr [0x005654e0]` six, so a 5-byte patch there splits
+instructions and 8 bytes must be relocated (both position-independent); the x87 stack
+is empty at that point (drained by the FSTPs at `0x004c2440/47/4e` and `0x004c2457`).
+Neither hook is needed for AO: the projection floats are already latched at the Clear
+and the sun is a global read (`*0x00608518 + 0x628c` → `+0x5e8c` → `light[+0x16c]`).
+
+*Uncertainty*: the capture cross-checks come from the run-39/40 session logs of those
+runs' installed build; everything else is static on `fdbf3418…`. "No writer for
+`+0x360`" is now a displacement sweep plus a size-constant sweep, still not proof
+against an aliased base. The fitted sun world position is a least-squares inference
+from one frame, not a read of the light object. Whether `FUN_00487be0` and
+`FUN_00488de0` clear a camera object (not merely a `0x790`-sized one) was not
+established, and `+0x270` bits `0x4000/0x40000/0x100/0x1000000` remain unattributed.

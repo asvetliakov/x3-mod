@@ -136,17 +136,22 @@ flicker in motion, HUD unchanged, +0.5 ms median.
 
 ## 8. Unknowns and bounded briefs
 
-- **Ambient term**: `g_LightAmbientIntensity` exists as an effect parameter
-  (`effects-and-archives.md`) with no documented consumer or register. `disassemble`: which programs
-  read it, its upload site in `0x004c0150`, captured values. Settles whether v2 can weight AO by the
-  true ambient share instead of the D1 estimate above.
-- **Sun direction**: `LightDir_Dir0` sits at c4 (7 programs), c5 (6), c0 (3), c13 (1) in
-  `shader-registers.json`; its space (world or view) and update site (`0x004bdda0`) are unknown.
-  Settles the v2 sun-weighted blend `lerp(ao, 1, sunlit share)` with the reconstructed normal, the
-  directional-occlusion variant.
-- **Per-view near/far regime**: when `view[0x270] & 0x800000` holds in gameplay and the value of
-  `view[0x360]`; a Clear-hook capture of the globals or a bounded disassembly of the writers of
-  `+0x360`. Settles the linearization constants (else the defaults).
+- ~~**Ambient term**~~ **resolved** (`camera-state-and-frame-routine.md` §"Ambient occlusion
+  inputs", round 2): `g_LightAmbientIntensity` has no register, no upload and no consumer — its
+  handle at descriptor `+0x64` is never read in `0x004c0150`, 0 of the 751 archive programs declare
+  any `Ambient` parameter, and the per-node `D3DLIGHT9.Ambient` is stored as zero at `0x004bdbf0`.
+  v2 cannot weight by a true ambient share; the D1 estimate above stands.
+- ~~**Sun direction**~~ **resolved** (same section): `LightDir_Dir0` is **world space**, recomputed
+  per submitted node as `normalize(light+0xb0 − node+0xb0)` at `0x004c234d..0x004c245e`. Proven in
+  the capture: the values are bit-identical across run-39 frames 1812/2071/2316 while the camera
+  rotates 6.294°, and 615 frame-1812 draws fit one world light position to 0.0003° median residual.
+  v2 must rotate it into view space itself and read the register each program's CTAB declares
+  (507 of 751 programs declare it, at c4/c1/c22/c5/c0/c19/c7/c21/c18/c39/c13).
+- ~~**Per-view near/far regime**~~ **resolved** (same section): gameplay does take the
+  `view[0x270] & 0x800000` arm (run-39/40 sector camera `flags270=0x0085492d`), `view[0x360]` has no
+  writer and stays 0, and every run-39 capture frame carries `m22 = 1.00000298`,
+  `m32 = −6.00001812` (zn 6, zf 2·10⁶). The pass should not use `zn`/`zf` at all: linearize with
+  `z_view = m32/(d − m22)` from `projection[10]`/`projection[14]`, already latched at the Clear.
 - **View units**: read one known ship's fade-route AABB from a capture to pick `R`. Result (step 2):
   inconclusive. The fade-route AABB is a model-local box under a node scale, so it does not give the
   view-unit size of a known ship; the 0.2 m per view unit calibration of

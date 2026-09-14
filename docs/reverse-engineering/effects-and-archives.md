@@ -51,6 +51,8 @@ The selected bloom effect additionally contains `g_BlurWidth`, `g_Sigma`, `g_Hig
 
 `standard_lighting.fb` adds `g_MatReflectionBlur`, `g_MatColor` and light-related names. Recover actual constant types/register bindings from live shader CTAB or D3DX effect metadata before assigning numeric meanings.
 
+**Which of these names a shader actually declares** (CTAB sweep over the 751 indexed programs, 731 with a constant table, `verification/results/shader-sweep-inventory.json`): `LightDir_Dir0` 507, `LightDir_Color0` 493, `LightMapTexSampler` 392, `g_LightPoint` 204, `Race_Lighting_Sampler` 112, `g_nNumLightPoint` 67, `LightDir_Dir1`/`LightDir_Color1` 44 each, `LightMapGlowIntensity` 8, and **`g_LightAmbientIntensity` 0**. The register is per program, not per name: `LightDir_Dir0` is declared at c4 (153 programs), c1 (128), c22 (64), c5 (58), c0 (38), c19 (32), c7 (14), c21 (6), c18 (6), c39 (5), c13 (3), as a float3 (`parameter_class` 1, `parameter_type` 3) although the engine writes a float4 with `w = 0`. `g_LightAmbientIntensity` exists only as an EXE string (`0x005630d8`), an effect-name validator entry (`0x004ba652`) and an unused handle slot; it has no consumer (`camera-state-and-frame-routine.md` §"Ambient occlusion inputs").
+
 ## What this does not prove
 
 No scene draw capture has yet established HDR precision, UI pass order, motion vectors, depth readability, fog density semantics, a shadow-map pipeline, or a clustered light list. A `z_only` effect is not proof of shadow mapping. A cubemap helper import is not proof of SSR. Shader names support targeted investigation; they do not establish feature completion.
