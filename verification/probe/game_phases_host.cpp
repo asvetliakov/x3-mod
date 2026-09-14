@@ -159,5 +159,26 @@ int main(){
     check(core.slow_calls.count==2&&core.slow_calls.first[1].phase==4);
     core.target_begin(5,at(base+55000),{},playback);
     core.boundary(0,at(base+56000));check(!core.depth&&core.order_errors==1); // escaped native call revoked
+    // Present-cadence loading markers: 1 kHz clock, 3 s stall threshold.
+    LoadingPhases lp;lp.stall_ticks=3000;LoadingPhases::Marker m[2];
+    check(lp.present(1,0,0,1000,m)==0);check(lp.present(1,0,1,2800,m)==0); // splash gap under threshold
+    check(lp.present(1,0,2,4500,m)==0);check(lp.present(1,0,3,7499,m)==0); // 2999 ticks: not a stall
+    check(lp.present(1,0,4,13000,m)==1&&m[0].name==LoadingPhases::MenuShown&&m[0].frame==4&&m[0].qpc==13000&&m[0].stall==5501);
+    for(unsigned f=5;f<60;++f)check(lp.present(1,0,f,13000+(f-4)*20,m)==0); // menu cadence
+    check(lp.present(1,0,60,13000+56*20,m)==0);
+    check(lp.present(1,1,61,13000+56*20+9000,m)==0);check(lp.last_reset==1); // in-place Reset pause is not a stall
+    check(lp.present(2,0,0,13000+56*20+9000+8000,m)==0);check(lp.last_device==2); // device change is not a stall
+    check(lp.present(2,0,1,31140,m)==0);check(lp.present(2,0,2,31160,m)==0);
+    check(lp.present(2,0,3,52140,m)==2);
+    check(m[0].name==LoadingPhases::SaveLoadBegin&&m[0].frame==2&&m[0].qpc==31160&&m[0].stall==0);
+    check(m[1].name==LoadingPhases::SaveLoadComplete&&m[1].frame==3&&m[1].qpc==52140&&m[1].stall==20980);
+    check(lp.emitted==7);check(lp.present(2,0,4,80000,m)==0); // later stalls (sector change) never re-emit
+    check(lp.present(2,0,5,70000,m)==0); // clock going backwards re-anchors without a marker
+    LoadingPhases unset;check(unset.present(1,0,0,0,m)==0&&unset.present(1,0,1,1u<<30,m)==0); // no threshold, no markers
+    LoadingPhases early;early.stall_ticks=3000; // a stall between the first two Presents is labelled menu_shown
+    check(early.present(1,0,0,1000,m)==0);check(early.present(1,0,1,9000,m)==1&&m[0].name==LoadingPhases::MenuShown&&m[0].frame==1);
+    LoadingPhases pair;pair.stall_ticks=3000; // two devices presenting alternately never anchor a same-device gap
+    for(unsigned i=0;i<6;++i)check(pair.present(1+(i&1),0,i,1000+i*5000,m)==0);
+    check(pair.emitted==0);
     std::printf("game_phases_host checks=%u failures=0 core_bytes=%zu\n",checks,sizeof(Core));
 }

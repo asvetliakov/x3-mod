@@ -277,6 +277,30 @@ void invalidate_device() noexcept {
     if(!active.load(std::memory_order_acquire))return;
     invalidation_epoch.fetch_add(1,std::memory_order_release);
 }
+namespace {
+detail::LoadingPhases loading_phases; // Present path only (capture mutex)
+std::uint64_t loading_frequency=0;
+constexpr const char* loading_phase_names[detail::LoadingPhases::NameCount]={"menu_shown","save_load_begin","save_load_complete"};
+constexpr unsigned loading_stall_seconds=3; // splash gaps stay under 2 s, load stalls above 5 s (runs 39-46)
+}
+void loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_t frame) noexcept {
+    if(loading_phases.emitted==(1u<<detail::LoadingPhases::NameCount)-1)return; // all markers written: no clock
+    ErrorGuard error;
+    if(!loading_frequency){
+        LARGE_INTEGER f{};
+        if(!QueryPerformanceFrequency(&f)||f.QuadPart<=0)return;
+        loading_frequency=std::uint64_t(f.QuadPart);loading_phases.stall_ticks=loading_frequency*loading_stall_seconds;
+    }
+    const auto now=qpc();if(!now)return;
+    detail::LoadingPhases::Marker markers[2];
+    const unsigned count=loading_phases.present(device,reset,frame,now,markers);
+    for(unsigned i=0;i<count;++i){
+        const auto& m=markers[i];
+        const auto origin=static_cast<std::uint64_t>(dll_load_qpc);
+        log("loading_phase name=%s frame=%llu elapsed_ms=%llu stall_ms=%llu device=%llu qpc=%llu",loading_phase_names[m.name],m.frame,
+            m.qpc>=origin?(m.qpc-origin)*1000ull/loading_frequency:0,m.stall*1000ull/loading_frequency,device,m.qpc);
+    }
+}
 bool audio_active() noexcept {return audio_enabled&&active.load(std::memory_order_acquire);}
 void audio_report(const char* scope,std::uint64_t qpc_stamp) {
     if(!audio_active())return;

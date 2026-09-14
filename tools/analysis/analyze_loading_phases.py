@@ -29,6 +29,51 @@ def read_prefix(path):
                      sha256=hashlib.sha256(raw).hexdigest())
 
 
+LOADING_PHASE_NAMES = ('menu_shown', 'save_load_begin', 'save_load_complete')
+
+
+def extract_loading_phases(text):
+    """Collect the proxy's cadence-derived `loading_phase` lines (every mode).
+
+    Each name is kept once (first occurrence). Deltas are in ms from the
+    line's own elapsed_ms field (origin DllMain, like frame_end): menu_ms is
+    process start to menu shown, menu_to_save_ms the menu dwell, save_load_ms
+    the save-load stall; a delta is None while either end is missing.
+    """
+    markers, rejected = {}, []
+    for line_number, line in enumerate(text.splitlines(), 1):
+        if not line.startswith('loading_phase '):
+            continue
+        values = fields(line)
+        try:
+            name = values['name']
+            if name not in LOADING_PHASE_NAMES:
+                raise ValueError('unknown loading_phase name ' + name)
+            marker = dict(name=name, frame=int(values['frame']), elapsed_ms=int(values['elapsed_ms']),
+                          stall_ms=int(values['stall_ms']) if 'stall_ms' in values else None,
+                          line=line_number)
+            if marker['elapsed_ms'] < 0 or marker['frame'] < 0 or (marker['stall_ms'] is not None and marker['stall_ms'] < 0):
+                raise ValueError('negative loading_phase field')
+        except (KeyError, ValueError) as error:
+            rejected.append(dict(line=line_number, reason=str(error)))
+            continue
+        if name in markers:
+            rejected.append(dict(line=line_number, reason='duplicate loading_phase ' + name))
+            continue
+        markers[name] = marker
+
+    def delta(begin, end):
+        if begin is None or end is None:
+            return None
+        return markers[end]['elapsed_ms'] - markers[begin]['elapsed_ms']
+    present = {name: (name if name in markers else None) for name in LOADING_PHASE_NAMES}
+    return dict(markers=[markers[n] for n in LOADING_PHASE_NAMES if n in markers],
+                menu_ms=markers['menu_shown']['elapsed_ms'] if 'menu_shown' in markers else None,
+                menu_to_save_ms=delta(present['menu_shown'], present['save_load_begin']),
+                save_load_ms=delta(present['save_load_begin'], present['save_load_complete']),
+                rejected=rejected)
+
+
 def analyze(text, completed=False):
     combined = summarize(text)
     clock = combined['clock']
@@ -100,7 +145,7 @@ def analyze(text, completed=False):
                 coverage_begin_seconds=(coverage-origin)/frequency,
                 loading_totals=combined['loading_metrics'],graphics_totals=combined['metrics'],
                 startup_spans=combined['spans'],first_presents=combined['first_presents'],
-                markers=combined['markers'],windows=windows,
+                markers=combined['markers'],loading_phases=extract_loading_phases(text),windows=windows,
                 unchanged_reported_frame_runs=sorted(unchanged,key=lambda x:x['observed_duration_seconds'],reverse=True),
                 rejected=combined['rejected']+rejected,
                 limits=combined['limits']+[

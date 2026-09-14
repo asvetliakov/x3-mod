@@ -224,4 +224,34 @@ struct Core {
         invalidated=unmatched=overflow=order_errors=clock_errors=0;
     }
 };
+// Loading-phase markers derived from Present cadence alone; no engine site.
+// Splash frames present about a second apart, the menu load and the save load
+// stop Present for several seconds (docs/reverse-engineering/loading-observations.md,
+// "Phase markers"). The first stall at or above the threshold ends with the menu
+// shown; the next one is the save (or new-game) load, whose begin marker is the
+// last Present before it and is therefore reported late, with its own stamp.
+// Gaps across a device change or an in-place Reset (reset generation, which
+// the device id does not track) are not stalls. One caller thread (Present path).
+struct LoadingPhases {
+    enum Name : unsigned { MenuShown=0, SaveLoadBegin=1, SaveLoadComplete=2, NameCount=3 };
+    struct Marker { unsigned name=0; std::uint64_t frame=0,qpc=0,stall=0; };
+    std::uint64_t stall_ticks=0,last_device=0,last_reset=0,last_frame=0,last_qpc=0;
+    unsigned emitted=0; // bit per Name; each marker is written once per process
+    bool have_last=false;
+    // Returns the number of markers written to out (capacity 2), oldest first.
+    unsigned present(std::uint64_t device,std::uint64_t reset,std::uint64_t frame,std::uint64_t qpc,Marker* out) noexcept {
+        unsigned n=0;
+        if(have_last&&device==last_device&&reset==last_reset&&qpc>=last_qpc&&stall_ticks&&qpc-last_qpc>=stall_ticks){
+            const auto gap=qpc-last_qpc;
+            if(!(emitted&(1u<<MenuShown))){out[n++]={MenuShown,frame,qpc,gap};emitted|=1u<<MenuShown;}
+            else if(!(emitted&(1u<<SaveLoadBegin))){
+                out[n++]={SaveLoadBegin,last_frame,last_qpc,0};
+                out[n++]={SaveLoadComplete,frame,qpc,gap};
+                emitted|=(1u<<SaveLoadBegin)|(1u<<SaveLoadComplete);
+            }
+        }
+        last_device=device;last_reset=reset;last_frame=frame;last_qpc=qpc;have_last=true;
+        return n;
+    }
+};
 }
