@@ -338,6 +338,9 @@ Compact record: `verification/results/bottle-X3/voice-startup-replica.json`
 | `control-game` | no plugin | completed, all three `OpenFile` fail `80040217` (VFW_E_CANNOT_CONNECT), 2.05 s |
 | `plugin-v3-game-dwell3000` | v3, 3 s pump-only dwell after each construction and before play | completed, 11.1 s |
 | `plugin-v3-explicit-dwell3000` | v3, `AddSourceFilter`/`FindPin("Output")`/`Render` route then `OpenFile` fallback | completed (`Render` succeeds, 138–263 ms), 11.1 s |
+| `plugin-v3-game-ds` | v3, mode `game-ds` (EXE `45206752…`: section-10 DS init, visible 640×480 window, mono pre-`OpenFile` format, no `get_Duration`, `004d1d40` teardown) | completed: primary `0xd1` first try, listener present, `Play`/`SetFormat` `S_OK`; all `stream_run` `S_OK` (39–42 ms), 5 buffers in 86 ms, 6.58 s wall; no `E_FAIL`, no hang |
+| `plugin-v3-game-ds-stereo` | v3, `game-ds-stereo` (pre-`OpenFile` `SetFormat` nChannels 2) | all three `OpenFile` fail `80040217` although `avdec_wmav2` is autoplugged (12 libav log lines): the 2-channel audio pin cannot connect the mono decoder output; teardown (Stop/Stop/STOP twice) clean, 3.05 s |
+| `control-game-ds` | no plugin, `game-ds` | all `OpenFile` `80040217`, teardown clean, 3.04 s |
 
 **The hang does not reproduce.** What the replica establishes against the
 run-31 evidence (`/tmp/x3-gst-run31.log`, `/tmp/x3-run31-sample-game.txt`):
@@ -455,6 +458,21 @@ each issued **twice**, the second time after the graph reference at `+0x78` was
 released — then frees the PCM buffer `+0x5c` and releases `+0x44`, `+0x6c`,
 `+0x58`, `+0x54`. The replica's teardown only calls `SetState(STOP)` (l. 186)
 and never `IMediaControl::Stop`, so it cannot reproduce a `Stop`-side hang.
+
+**Replica after closing gaps 1–4** (runs `plugin-v3-game-ds*`, `control-game-ds`
+in the section 9 table; modes `game-ds`/`game-ds-stereo` of the replica). With
+the primary buffer, listener, visible window, route-dependent pre-`OpenFile`
+format, no `get_Duration` and the `004d1d40` order in place, the first voice
+stream's `SetState(RUN)` still returns `S_OK` under the v3 plugin, so the
+`E_FAIL` at `004d03f5` is not produced by any of rows 1–4. The stereo route
+fails earlier, at `OpenFile` (`VFW_E_CANNOT_CONNECT`), which would surface as
+`fatal=open_file` in the game, not as a `SetState` failure; the game's observed
+`E_FAIL` therefore points at the mono route with a difference the replica still
+does not carry: the `004b7400` config override of `0x608af8`/`0x608afc`, the
+`004d1c20` helper, or process state (loaded DLLs, other DirectSound buffers,
+graph count) the game has at load. The two-round Stop/Stop/`SetState(STOP)`
+teardown completes in under 2 ms per stream on both the success and the
+`OpenFile`-failure paths; no `REPLICA_HUNG`.
 
 Unknown: which constructor route voice takes (hence `nChannels` 1 vs 2), whether
 `004b7400` rewrites `0x608afc`, and whether `DAT_00606f34+0x100 & 0x4000`

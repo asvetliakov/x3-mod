@@ -12,7 +12,9 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT / "verification/probe"))
 from run_voice_stream_probe import fields,hr,digest,bottle,game_running
-MODES=('game','nopause','early_update','single','explicit')
+MODES=('game','nopause','early_update','single','explicit','game-ds','game-ds-stereo')
+GAME_DS_MODES=('game-ds','game-ds-stereo')  # section-10 DirectSound init, visible window, 004d1d40 teardown
+KEY_STEPS=('open_file','stream_run','control_pause','control_run','buffer_stop','control_stop','stream_stop','primary_create','primary_play','primary_set_format')
 MEDIA_IDS=(144,244,144)  # stream 1 (played), 2 and 3 (restored, never pumped)
 PLUGIN_KEYS=('GST_PLUGIN_PATH_1_0','GST_REGISTRY_1_0')
 EXE_NAME='voice_startup_replica.exe'
@@ -36,6 +38,10 @@ def validate(text):
     hungs=[r for k,r in rows if k=='REPLICA_HUNG'];assert len(hungs)<=1
     completes=[r for k,r in rows if k=='REPLICA_COMPLETE']
     startup=[r for k,r in rows if k=='REPLICA_STARTUP'];assert len(startup)==1
+    primary=[r for k,r in rows if k=='REPLICA_PRIMARY']
+    if header['mode'] in GAME_DS_MODES and startup[0]['ds_present']=='1':
+        assert len(primary)==1 and hr(primary[0]['create_hr'])==0 and int(primary[0]['flags'],16) in (0xd1,0x11,0x1) and primary[0]['listener'] in ('0','1')
+    else:assert not primary
     created=[r for k,r in rows if k=='REPLICA_STREAM']
     for row in created:
         assert 1<=int(row['stream'])<=streams and row['created'] in ('0','1')
@@ -49,7 +55,8 @@ def validate(text):
     plays=[r for k,r in rows if k=='REPLICA_PLAY'];assert len(plays)<=1
     polls=[r for k,r in rows if k=='REPLICA_POLL']
     result=dict(mode=header['mode'],dwell_ms=int(header['dwell_ms']),streams=streams,created=sum(r['created']=='1' for r in created),stream_rows=created,
-                startup=startup[0],stages=stages,polls=polls,play=plays[0] if plays else None,completed=False,hung_step=None)
+                startup=startup[0],primary=primary[0] if primary else None,stages=stages,polls=polls,play=plays[0] if plays else None,completed=False,hung_step=None,
+                key_steps=[dict(stream=int(r['stream']),name=r['name'],attempt=int(r['attempt']),hr=r['hr'],wall_ms=float(r['wall_ms'])) for r in stages if r['name'] in KEY_STEPS])
     if hungs:
         # The step the watchdog names must be the one still open on the main thread.
         h=hungs[0];assert not completes
@@ -175,6 +182,7 @@ def main():
         compact={k:report.get(k) for k in ('label','mode','dwell_ms','outcome','completed','hung_step','hung_stream','hung_elapsed_ms','hung_after_stages','created','exit_code','process_wall_seconds','plugin_present','plugin_env','gst_debug','exe_sha256','abort')}
         compact['bottle']=report['bottle'];compact['media_sha256']=[m['sha256'] for m in identities]
         compact['play']=report.get('play');compact['output']=str(a.output)
+        for k in ('startup','primary','key_steps','stream_rows'):compact[k]=report.get(k)
         compact['sample_threads']=[dict(pid=s['pid'],threads=[dict(thread=t['thread'],top=t['frames'][:6]) for t in s.get('threads',[])]) for s in samples]
         compact['gst_log_tail']=report.get('gst_log_tail')
         record=json.loads(a.record.read_text()) if a.record.is_file() else dict(schema=1,runs={})

@@ -2,16 +2,29 @@ import unittest
 import run_voice_startup_replica as probe
 
 
-def fixture(mode='game',hang_at=None,created=(True,True,True),play=True):
-    streams=1 if mode=='single' else 3
+def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fails=False):
+    streams=1 if mode=='single' else 3;ds=mode in probe.GAME_DS_MODES
     rows=[f'REPLICA_HEADER schema=1 mode={mode} streams={streams} dwell_ms=0 watchdog_ms=15000 thread=9 audible=0'];seq=0
     def stage(stream,name,code='00000000',attempt=1):
         nonlocal seq
         rows.append(f'REPLICA_BEGIN seq={seq} stream={stream} name={name} attempt={attempt}')
         if hang_at==(stream,name):rows.append(f'REPLICA_HUNG step={name} stream={stream} elapsed_ms=15020 thread=9');return False
         rows.append(f'REPLICA_STAGE seq={seq} stream={stream} name={name} attempt={attempt} hr={code} wall_ms=1.5');seq+=1;return True
-    stage(0,'co_initialize');stage(0,'directsound_create');stage(0,'directsound_cooperative')
+    stage(0,'co_initialize');stage(0,'directsound_create')
+    if ds:stage(0,'directsound_caps')
+    stage(0,'directsound_cooperative')
     rows.append('REPLICA_STARTUP ds_hr=00000000 coop_hr=00000000 ds_present=1 window=1')
+    if ds:
+        stage(0,'primary_create','88780032');stage(0,'primary_create','00000000',2);stage(0,'listener_qi');stage(0,'primary_play');stage(0,'primary_set_format');stage(0,'primary_get_volume')
+        for name in ('listener_doppler','listener_distance','listener_rolloff','listener_position','listener_commit'):stage(0,name)
+        rows.append('REPLICA_PRIMARY flags=11 create_hr=00000000 play_hr=00000000 format_hr=00000000 volume=0 listener=1 commit_hr=00000000')
+    teardown=(['buffer_stop','control_stop','stream_stop','release_position','release_control','release_audio','release_media','release_graph',('buffer_stop',2),('stream_stop',2),'release_buffer','release_sample','release_data','release_multimedia'] if ds
+              else ['buffer_stop','control_stop','stream_stop','release_position','release_control','release_buffer','release_sample','release_data','release_audio','release_media','release_graph','release_multimedia'])
+    def tear(stream):
+        for item in teardown:
+            name,attempt=item if isinstance(item,tuple) else (item,1)
+            if not stage(stream,name,'00000000',attempt):return False
+        return True
     order=[1] if streams==1 else [2,3,1]
     for n,stream in enumerate(order):
         ok=created[n]
@@ -23,6 +36,12 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True):
             rows.append(f'REPLICA_FAILURE stream={stream} name=open_file hr=80040217')
             rows.append(f'REPLICA_STREAM stream={stream} created=0 role={"played" if stream==1 else "restored"} fatal=open_file hr=80040217 duration=0.000 early_update_hr=8000000a');continue
         names=['open_file','release_audio_pre','release_media_pre','get_audio','audio_qi_post','get_format','activate_audio_data','set_buffer','data_format','create_sample','create_dsound_buffer','position_qi','control_qi','get_duration','can_seek_forward','stream_run']
+        if ds:names.remove('get_duration')
+        if ds and run_fails and stream==1:
+            for name in names[:-1]:stage(stream,name)
+            stage(stream,'stream_run','80004005');rows.append('REPLICA_FAILURE stream=1 name=stream_run hr=80004005')
+            if not tear(stream):return '\n'.join(rows)+'\n'
+            rows.append('REPLICA_STREAM stream=1 created=0 role=played fatal=stream_run hr=80004005 duration=0.000 early_update_hr=8000000a');continue
         if mode=='early_update':names.append('early_update')
         if mode!='nopause':names.append('control_pause')
         for name in names:
@@ -30,7 +49,7 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True):
             if not stage(stream,name,code):return '\n'.join(rows)+'\n'
         early='00040001' if mode=='early_update' else '8000000a'
         rows.append(f'REPLICA_STREAM stream={stream} created=1 role={"played" if stream==1 else "restored"} fatal=none hr=00000000 duration=44.304 early_update_hr={early}')
-    if created[-1] and play:
+    if created[-1] and play and not run_fails:
         if not stage(1,'control_run'):return '\n'.join(rows)+'\n'
         rows.append('REPLICA_POLL cycle=1 state=2 outcome=queued hr=00040001 bytes=0 elapsed_ms=1')
         rows.append('REPLICA_POLL cycle=2 state=2 outcome=pending hr=00040001 bytes=0 elapsed_ms=7')
@@ -38,8 +57,9 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True):
         rows.append('REPLICA_POLL cycle=41 state=1 outcome=consumed hr=00000000 bytes=176400 elapsed_ms=306')
         rows.append('REPLICA_PLAY stream=1 cycles=210 completed=5 queued=5 pending_polls=190 eos=0 stuck=0 errors=0 bytes=882000 elapsed_ms=1600')
     for stream in reversed(order):
-        for name in ('buffer_stop','control_stop','stream_stop','release_position','release_control','release_buffer','release_sample','release_data','release_audio','release_media','release_graph','release_multimedia'):
-            if not stage(stream,name):return '\n'.join(rows)+'\n'
+        if (ds and run_fails and stream==1) or not created[order.index(stream)]:continue
+        if not tear(stream):return '\n'.join(rows)+'\n'
+    if ds:stage(0,'primary_set_volume');stage(0,'release_listener');stage(0,'release_primary')
     stage(0,'release_directsound');stage(0,'co_uninitialize')
     rows.append(f'REPLICA_COMPLETE streams={streams} audible=0')
     return '\n'.join(rows)+'\n'
@@ -64,6 +84,17 @@ class ReplicaTests(unittest.TestCase):
         for mode in probe.MODES:
             r=probe.validate(fixture(mode));self.assertTrue(r['completed']);self.assertIsNone(r['hung_step'])
             self.assertEqual(r['created'],1 if mode=='single' else 3);self.assertEqual(r['play']['completed'],'5')
+
+    def test_game_ds_primary_row_and_run_failure_teardown(self):
+        r=probe.validate(fixture('game-ds-stereo'));self.assertTrue(r['completed']);self.assertEqual(r['primary']['flags'],'11')
+        self.assertNotIn('get_duration',[s['name'] for s in r['stages']])
+        r=probe.validate(fixture('game-ds',run_fails=True));self.assertTrue(r['completed']);self.assertEqual(r['created'],2);self.assertIsNone(r['play'])
+        runs=[k for k in r['key_steps'] if k['name']=='stream_run'];self.assertEqual([k['hr'] for k in runs],['00000000','00000000','80004005'])
+        stops=[(k['name'],k['attempt']) for k in r['key_steps'] if k['stream']==1 and k['name'].endswith('_stop')]
+        self.assertEqual(stops,[('buffer_stop',1),('control_stop',1),('stream_stop',1),('buffer_stop',2),('stream_stop',2)])
+        r=probe.validate(fixture('game-ds',hang_at=(1,'control_stop'),run_fails=True));self.assertEqual((r['hung_step'],r['hung_stream']),('control_stop',1))
+        for bad in (fixture('game-ds').replace('REPLICA_PRIMARY flags=11','REPLICA_PRIMARY flags=12'),fixture('game').replace('ds_present=1 window=1','ds_present=1 window=1\nREPLICA_PRIMARY flags=11 create_hr=00000000 play_hr=00000000 format_hr=00000000 volume=0 listener=1 commit_hr=00000000')):
+            with self.assertRaises(AssertionError):probe.validate(bad)
 
     def test_hang_names_open_step_and_forbids_completion(self):
         r=probe.validate(fixture(hang_at=(1,'control_pause')))

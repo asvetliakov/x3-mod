@@ -8,6 +8,11 @@
 // only; authored code; no audible output (the DirectSound ring is never played).
 // A watchdog thread reports any step that has not returned within 15 s and
 // leaves the process alive so the runner can sample its threads.
+// Modes game-ds / game-ds-stereo add the section-10 DirectSound initialisation
+// (004de060: primary buffer 0xd1/0x11/0x1, Play(LOOPING), SetFormat, 3D
+// listener), the game's visible 640x480 window, the route-dependent pre-OpenFile
+// SetFormat channel count, no get_Duration, and the synchronous 004d1d40
+// destructor order (Stop / Stop / SetState(STOP) issued twice) on every path.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -81,27 +86,36 @@ struct Trace {
         if(p){step(stream,name,1,true,[&]{p->Release();return S_OK;});p=nullptr;}
     }
 };
-enum Mode { MODE_GAME, MODE_NOPAUSE, MODE_EARLY_UPDATE, MODE_SINGLE, MODE_EXPLICIT };
+enum Mode { MODE_GAME, MODE_NOPAUSE, MODE_EARLY_UPDATE, MODE_SINGLE, MODE_EXPLICIT, MODE_GAME_DS, MODE_GAME_DS_STEREO };
+static bool game_ds(Mode m){return m==MODE_GAME_DS||m==MODE_GAME_DS_STEREO;}
+static const DWORD PRIMARY_RATE=44100; // 0x608afc as initialised by 004b8740 (004b7400 config override not modelled)
 struct Stream {
     Trace& t;int index;IAMMultiMediaStream* multi{};IMediaStream* media{};IAudioMediaStream* audio{};
     IGraphBuilder* graph{};IBaseFilter* source{};IAudioData* data{};IAudioStreamSample* sample{};IDirectSoundBuffer* buffer{};
     IMediaPosition* position{};IMediaControl* control{};std::vector<BYTE> pcm;WAVEFORMATEX format{};
     double duration{};const char* fatal="none";HRESULT fatal_hr=S_OK;bool created{};HRESULT early_update_hr=E_PENDING;
-    int state{1};bool pending{};
-    Stream(Trace& x,int i):t(x),index(i){}
+    int state{1};bool pending{};Mode mode{MODE_GAME};
+    Stream(Trace& x,int i,Mode m):t(x),index(i),mode(m){}
     bool need(const char* name,HRESULT hr) {
         if(FAILED(hr)){if(!std::strcmp(fatal,"none")){fatal=name;fatal_hr=hr;std::printf("REPLICA_FAILURE stream=%d name=%s hr=%08lx\n",index,name,static_cast<unsigned long>(hr));std::fflush(stdout);}return false;}
         return true;
     }
 #define NEED(name,expr) do{if(!need(name,t.step(index,name,1,true,[&]{return (expr);})))return false;}while(0)
-    bool create(const wchar_t* path,IDirectSound8* sound,Mode mode) {
+    bool create(const wchar_t* path,IDirectSound8* sound) {
+        const bool made=build(path,sound);
+        if(!made&&game_ds(mode))cleanup(); // 004d0160: MOV EAX,EBX; CALL 004d1d40 on the constructing thread, HRESULT discarded
+        return made;
+    }
+    bool build(const wchar_t* path,IDirectSound8* sound) {
         NEED("activate_stream",CoCreateInstance(CLSID_AMMultiMediaStream,nullptr,CLSCTX_INPROC_SERVER,IID_IAMMultiMediaStream,reinterpret_cast<void**>(&multi)));
         NEED("initialize",multi->Initialize(STREAMTYPE_READ,AMMSF_NOGRAPHTHREAD,nullptr));
         HRESULT added=E_FAIL;
         for(int i=1;i<=2;++i){added=t.step(index,"add_audio",i,true,[&]{return multi->AddMediaStream(nullptr,&MSPID_PrimaryAudio,0,&media);});if(SUCCEEDED(added))break;}
         if(!need("add_audio",added))return false;
         NEED("audio_qi_pre",media->QueryInterface(IID_IAudioMediaStream,reinterpret_cast<void**>(&audio)));
-        WAVEFORMATEX wanted{WAVE_FORMAT_PCM,1,44100,88200,2,16,0};
+        // 004cfba7: PCM / 16 bit / rate 0x608afc / nChannels 1 (004cf99f route) or 2 (004cf8bf route).
+        const WORD channels=mode==MODE_GAME_DS_STEREO?2:1;
+        WAVEFORMATEX wanted{WAVE_FORMAT_PCM,channels,PRIMARY_RATE,PRIMARY_RATE*channels*2u,static_cast<WORD>(channels*2),16,0};
         NEED("set_pcm",audio->SetFormat(&wanted));
         NEED("get_graph",multi->GetFilterGraph(&graph));
         HRESULT opened=E_FAIL;
@@ -135,7 +149,7 @@ struct Stream {
         }
         NEED("position_qi",graph->QueryInterface(IID_IMediaPosition,reinterpret_cast<void**>(&position)));
         NEED("control_qi",graph->QueryInterface(IID_IMediaControl,reinterpret_cast<void**>(&control)));
-        t.step(index,"get_duration",1,true,[&]{return position->get_Duration(&duration);});
+        if(!game_ds(mode))t.step(index,"get_duration",1,true,[&]{return position->get_Duration(&duration);}); // not in 004cf460
         LONG seekable{};t.step(index,"can_seek_forward",1,true,[&]{return position->CanSeekForward(&seekable);}); // 004d03c4
         NEED("stream_run",multi->SetState(STREAMSTATE_RUN)); // 004d03f5
         if(mode==MODE_EARLY_UPDATE) {
@@ -171,6 +185,7 @@ struct Stream {
         state=2;return FAILED(hr)?"update_error":"queued";
     }
     void cleanup() {
+        if(game_ds(mode)){cleanup_game();return;}
         if(pending) {
             // Bounded abort of the outstanding update before releasing the buffer it writes.
             HRESULT hr=t.step(index,"sample_cancel",1,true,[&]{
@@ -191,7 +206,28 @@ struct Stream {
         t.release(index,"release_source",source);
         t.release(index,"release_graph",graph);t.release(index,"release_multimedia",multi);pcm.clear();
     }
+    // 004d1d40 destructor: Stop(+0x44), IMediaControl::Stop(+0x74), SetState(STOP), Release +0x70/+0x74, helper 004d1c20
+    // (assumed to drop +0x18/+0x1c), Release graph +0x78, then 004d1a40 repeats Stop/Stop/SetState(STOP) on what is still
+    // held, frees the PCM buffer and releases +0x44/+0x6c/+0x58/+0x54; 004d1b70 releases +0x04. No sample cancel: the game
+    // relies on the STOP transitions alone, so a pending async Update is left to them.
+    void cleanup_game() {
+        for(int round=1;round<=2;++round) {
+            if(buffer)t.step(index,"buffer_stop",round,true,[&]{return buffer->Stop();});
+            if(control)t.step(index,"control_stop",round,true,[&]{return control->Stop();});
+            if(multi)t.step(index,"stream_stop",round,true,[&]{return multi->SetState(STREAMSTATE_STOP);});
+            if(round==1) {
+                t.release(index,"release_position",position);t.release(index,"release_control",control);
+                t.release(index,"release_audio",audio);t.release(index,"release_media",media);
+                if(graph&&source)t.step(index,"remove_source",1,true,[&]{return graph->RemoveFilter(source);});
+                t.release(index,"release_source",source);t.release(index,"release_graph",graph);
+            }
+        }
+        pcm.clear();pending=false;
+        t.release(index,"release_buffer",buffer);t.release(index,"release_sample",sample);t.release(index,"release_data",data);
+        t.release(index,"release_multimedia",multi);
+    }
 };
+static LRESULT CALLBACK replica_wndproc(HWND h,UINT m,WPARAM w,LPARAM l){return DefWindowProcA(h,m,w,l);}
 static Mode parse_mode(const wchar_t* text,bool& ok) {
     ok=true;
     if(!wcscmp(text,L"game"))return MODE_GAME;
@@ -199,6 +235,8 @@ static Mode parse_mode(const wchar_t* text,bool& ok) {
     if(!wcscmp(text,L"early_update"))return MODE_EARLY_UPDATE;
     if(!wcscmp(text,L"single"))return MODE_SINGLE;
     if(!wcscmp(text,L"explicit"))return MODE_EXPLICIT;
+    if(!wcscmp(text,L"game-ds"))return MODE_GAME_DS;
+    if(!wcscmp(text,L"game-ds-stereo"))return MODE_GAME_DS_STEREO;
     ok=false;return MODE_GAME;
 }
 int wmain(int argc,wchar_t** argv) {
@@ -216,13 +254,47 @@ int wmain(int argc,wchar_t** argv) {
     Trace t;
     HRESULT init=t.step(0,"co_initialize",1,true,[]{return CoInitialize(nullptr);});
     if(FAILED(init)){std::printf("REPLICA_ABORT stage=co_initialize hr=%08lx\n",static_cast<unsigned long>(init));return 0;}
-    WNDCLASSW wc{};wc.lpfnWndProc=DefWindowProcW;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"X3VoiceStartupReplica";RegisterClassW(&wc);
-    HWND window=CreateWindowW(wc.lpszClassName,L"X3 startup replica",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,wc.hInstance,nullptr);
-    IDirectSound8* sound{};
+    HWND window{};
+    if(game_ds(mode)) {
+        // 004dadd1/004dae0d: RegisterClassA with a real WndProc, CreateWindowExA(0, cls, cls, WS_VISIBLE|0xca0000, 0, 0, 640, 480, ...).
+        WNDCLASSA wc{};wc.lpfnWndProc=replica_wndproc;wc.hInstance=GetModuleHandleA(nullptr);wc.lpszClassName="X3VoiceStartupReplicaGame";wc.hCursor=LoadCursorA(nullptr,MAKEINTRESOURCEA(32512));RegisterClassA(&wc);
+        window=CreateWindowExA(0,wc.lpszClassName,wc.lpszClassName,0x10000000|0xca0000,0,0,640,480,nullptr,nullptr,wc.hInstance,nullptr);
+    } else {
+        WNDCLASSW wc{};wc.lpfnWndProc=DefWindowProcW;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"X3VoiceStartupReplica";RegisterClassW(&wc);
+        window=CreateWindowW(wc.lpszClassName,L"X3 startup replica",WS_OVERLAPPEDWINDOW,0,0,64,64,nullptr,nullptr,wc.hInstance,nullptr);
+    }
+    IDirectSound8* sound{};IDirectSoundBuffer* primary{};IDirectSound3DListener* listener{};LONG primary_volume=0;bool volume_read=false;
     HRESULT ds=t.step(0,"directsound_create",1,true,[&]{return DirectSoundCreate8(&DSDEVID_DefaultPlayback,&sound,nullptr);});
+    if(sound&&game_ds(mode)){DSCAPS caps{};caps.dwSize=sizeof(caps);static_assert(sizeof(DSCAPS)==0x60,"004de180 DSCAPS size");t.step(0,"directsound_caps",1,true,[&]{return sound->GetCaps(&caps);});}
     HRESULT coop=E_POINTER;if(sound&&window)coop=t.step(0,"directsound_cooperative",1,true,[&]{return sound->SetCooperativeLevel(window,DSSCL_PRIORITY);});
     if(FAILED(coop)&&sound){sound->Release();sound=nullptr;}
     std::printf("REPLICA_STARTUP ds_hr=%08lx coop_hr=%08lx ds_present=%d window=%d\n",static_cast<unsigned long>(ds),static_cast<unsigned long>(coop),sound!=nullptr,window!=nullptr);
+    if(sound&&game_ds(mode)) {
+        // 004de201..004de390: primary buffer with the 0xd1 -> 0x11 -> 0x1 fallback, 3D listener QI (tolerated), Play(LOOPING),
+        // then SetFormat(0x608af8), GetVolume and the listener setup with CommitDeferredSettings.
+        static const DWORD chain[3]={DSBCAPS_PRIMARYBUFFER|DSBCAPS_CTRL3D|DSBCAPS_CTRLPAN|DSBCAPS_CTRLVOLUME,DSBCAPS_PRIMARYBUFFER|DSBCAPS_CTRL3D,DSBCAPS_PRIMARYBUFFER};
+        static_assert(DSBCAPS_PRIMARYBUFFER==0x1&&DSBCAPS_CTRL3D==0x10&&DSBCAPS_CTRLPAN==0x40&&DSBCAPS_CTRLVOLUME==0x80,"SDK DirectSound flags required");
+        DWORD flags=0;HRESULT create_hr=E_FAIL,play_hr=E_FAIL,format_hr=E_FAIL,commit_hr=E_FAIL;
+        for(int i=0;i<3&&!primary;++i){flags=chain[i];create_hr=t.step(0,"primary_create",i+1,true,[&]{DSBUFFERDESC d{};d.dwSize=sizeof(d);static_assert(sizeof(DSBUFFERDESC)==0x24,"004de201 DSBUFFERDESC size");d.dwFlags=flags;return sound->CreateSoundBuffer(&d,&primary,nullptr);});}
+        if(primary) {
+            if(FAILED(t.step(0,"listener_qi",1,true,[&]{return primary->QueryInterface(IID_IDirectSound3DListener,reinterpret_cast<void**>(&listener));})))listener=nullptr;
+            play_hr=t.step(0,"primary_play",1,true,[&]{return primary->Play(0,0,DSBPLAY_LOOPING);});
+            if(play_hr==S_OK) {
+                WAVEFORMATEX wfx{WAVE_FORMAT_PCM,2,PRIMARY_RATE,PRIMARY_RATE*4,4,16,0}; // 0x608af8 from 004b8740
+                format_hr=t.step(0,"primary_set_format",1,true,[&]{return primary->SetFormat(&wfx);});
+                volume_read=SUCCEEDED(t.step(0,"primary_get_volume",1,true,[&]{return primary->GetVolume(&primary_volume);}));
+                if(listener) {
+                    t.step(0,"listener_doppler",1,true,[&]{return listener->SetDopplerFactor(1.0f,DS3D_IMMEDIATE);});
+                    t.step(0,"listener_distance",1,true,[&]{return listener->SetDistanceFactor(0.001f,DS3D_IMMEDIATE);}); // _0x565624
+                    t.step(0,"listener_rolloff",1,true,[&]{return listener->SetRolloffFactor(1.5f,DS3D_IMMEDIATE);}); // _0x565620
+                    t.step(0,"listener_position",1,true,[&]{return listener->SetPosition(0.f,0.f,0.f,DS3D_IMMEDIATE);});
+                    commit_hr=t.step(0,"listener_commit",1,true,[&]{return listener->CommitDeferredSettings();});
+                }
+            }
+        }
+        std::printf("REPLICA_PRIMARY flags=%lx create_hr=%08lx play_hr=%08lx format_hr=%08lx volume=%ld listener=%d commit_hr=%08lx\n",static_cast<unsigned long>(flags),static_cast<unsigned long>(create_hr),static_cast<unsigned long>(play_hr),static_cast<unsigned long>(format_hr),static_cast<long>(primary_volume),listener!=nullptr,static_cast<unsigned long>(commit_hr));
+        std::fflush(stdout);
+    }
     std::vector<Stream*> all;
     auto dwell=[&](const char* where){
         if(!dwell_ms)return;
@@ -235,9 +307,9 @@ int wmain(int argc,wchar_t** argv) {
     // asset loaders do between 00498370 visits.
     for(int n=1;n<=streams;++n) {
         const int index=streams==1?1:(n==streams?1:n+1);
-        Stream* s=new Stream(t,index);all.push_back(s);
+        Stream* s=new Stream(t,index,mode);all.push_back(s);
         t.step(index,"pump",1,true,[&]{pump();return S_OK;});
-        const bool made=s->create(argv[2+index],sound,mode);
+        const bool made=s->create(argv[2+index],sound);
         std::printf("REPLICA_STREAM stream=%d created=%d role=%s fatal=%s hr=%08lx duration=%.3f early_update_hr=%08lx\n",index,made,index==1?"played":"restored",s->fatal,static_cast<unsigned long>(s->fatal_hr),s->duration,static_cast<unsigned long>(s->early_update_hr));
         std::fflush(stdout);dwell(index==1?"played_construction":"restored_construction");
     }
@@ -265,6 +337,9 @@ int wmain(int argc,wchar_t** argv) {
         std::fflush(stdout);
     }
     for(auto it=all.rbegin();it!=all.rend();++it){(*it)->cleanup();delete *it;}
+    // 004de3b0: restore the primary volume, drop the listener and primary buffer, then the device.
+    if(primary&&volume_read)t.step(0,"primary_set_volume",1,true,[&]{return primary->SetVolume(primary_volume);});
+    t.release(0,"release_listener",listener);t.release(0,"release_primary",primary);
     t.release(0,"release_directsound",sound);if(window)DestroyWindow(window);
     t.step(0,"co_uninitialize",1,true,[]{CoUninitialize();return S_OK;});
     SetEvent(watchdog_stop);WaitForSingleObject(watcher,1000);CloseHandle(watcher);CloseHandle(watchdog_stop);
