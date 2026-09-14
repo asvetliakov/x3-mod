@@ -46,6 +46,11 @@ forever. The replica mode `game-dmo` reproduces the E_FAIL and the spin. The fix
 two reviews): a byte-verified post-call hook at the game's `Init` return that, only on that
 exact failure and only under `--voice-decoder`, retries `Init` with the registered WMA decoder
 DMO; the replica then runs, decodes and tears down cleanly. Not installed; needs a user run.
+The station docking-port source-over route (`docs/architecture/linear-station-source-over.md`,
+reviewed, merged `f56a393`: seventh fade pair, read-only refused-rect diagnostic, 78 detached
+cases / 300 bit-exact twins / 34 live processes, station windows ≈0.2 ms per draw) and the
+host-test harness repairs (`93f359c`) are merged. A candidate from `f56a393` is being built
+for user runs 13 (voice) and 14 (station, fade, shimmer trace).
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
