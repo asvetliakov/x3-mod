@@ -157,6 +157,14 @@ struct MotionRoute {
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0;
 };
 struct Surface { bool known = false; D3DFORMAT format = 0; };
+// Mirrors src/proxy/motion_output.h's TaaInvalidateSite; this double only
+// counts the calls, so the names exist for the extracted code to compile.
+enum class TaaInvalidateSite : unsigned { RestoreFailed = 0, StateLost = 1, Skip = 2, Target = 3,
+    Container = 4, ResolveFailed = 5, NotResolved = 6, PresentFailed = 7, Reset = 8,
+    ComparisonExposure = 9, ComparisonStateFailed = 10, CompositionStateLost = 11,
+    CompositionReaders = 12, CompositionExport = 13, CompositionAttach = 14, CompositionBegin = 15,
+    CompositionRefused = 16, CompositionPrepare = 17, CompositionIncomplete = 18,
+    CutoutMissed = 19, Count = 20 };
 
 class MotionOutput {
 public:
@@ -169,7 +177,7 @@ public:
         *value = render_values[state]; return S_OK;
     }
     bool composition_requested() const noexcept { return composition_requested_value; }
-    void invalidate_taa() noexcept { ++taa_invalidations; }
+    void invalidate_taa(TaaInvalidateSite) noexcept { ++taa_invalidations; }
     void probe_cutout_caps(bool force = false) noexcept;
     bool cutout_arm_configured() const noexcept;
     void release_mip_bias_retry_bound() noexcept;
