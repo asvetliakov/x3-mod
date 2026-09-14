@@ -313,45 +313,49 @@ HRESULT AmbientOcclusionPass::execute(const AmbientOcclusionFrame& in, AmbientOc
     // Every chain below is guarded by SUCCEEDED(hr) so no device call follows a failure.
     auto step = [&](AmbientOcclusionStage s, HRESULT value) { stage = s; hr = value; return SUCCEEDED(hr); };
     if (SUCCEEDED(hr) && !in.caller_scene_open) own_scene = step(AmbientOcclusionStage::Scene, call<SceneFn>(BeginScene)(d));
-    const float half_size[4] = {1.f / float(hw), 1.f / float(hh), float(hw), float(hh)};
-    // Linearize: c0 = (m22, m32), c1 = (w, h, hw, hh).
-    const float projection[4] = {p.m22, p.m32, 0.f, 0.f};
-    const float sizes[4] = {float(w), float(h), float(hw), float(hh)};
-    if (SUCCEEDED(hr) && step(AmbientOcclusionStage::Linearize, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, projection, 1)) &&
-        step(AmbientOcclusionStage::Linearize, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 1, sizes, 1)))
+    // One constant block for the four programs (c0..c7), uploaded once:
+    //   c0 half size, c1 the folded view ray of a half pixel, c2 the radius
+    //   terms, c3 the noise rotation and the pixels-per-view-unit factor,
+    //   c4 the half-texel -> full-texel depth uv of the linearize quad,
+    //   c5 (m22, tau, strength), c6 full size, c7 the half-texel centre offset
+    //   and the last half texel. The linearize quad stores the scale-free
+    //   depth zs = 1 / (m22 - d) = z / |m32| (src/temporal/ao_linearize_ps.hlsl),
+    //   so the radius and the falloff constants are divided by |m32| here;
+    //   every depth test downstream is relative and unchanged.
+    const double inv_m32 = 1. / -double(p.m32);
+    const double radius_units = double(p.radius_metres) * double(p.units_per_metre) * inv_m32;
+    const double falloff_range = double(p.falloff) * radius_units, falloff_from = radius_units - falloff_range;
+    const float block[8][4] = {
+        {1.f / float(hw), 1.f / float(hh), float(hw), float(hh)},
+        {float(2. / (double(hw) * double(p.m00))), float(-2. / (double(hh) * double(p.m11))),
+         float((1. / double(hw) - 1. - double(p.m20)) / double(p.m00)), float((1. - 1. / double(hh) - double(p.m21)) / double(p.m11))},
+        {float(radius_units), float(-1. / falloff_range), float(falloff_from / falloff_range + 1.), p.max_radius_px},
+        {float(p.jitter_index % 16u), float(double(p.m11) * double(hh) * .5), 0.f, 0.f},
+        {float(2. / double(w)), float(2. / double(h)), float(.5 / double(w)), float(.5 / double(h))},
+        {p.m22, p.depth_tolerance, p.strength, 0.f},
+        {float(w), float(h), 1.f / float(w), 1.f / float(h)},
+        {.5f / float(hw), .5f / float(hh), float(hw) - 1.f, float(hh) - 1.f},
+    };
+    if (SUCCEEDED(hr)) step(AmbientOcclusionStage::Linearize, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, &block[0][0], 8));
+    // Linearize: the caller's full-resolution device depth to the half-resolution
+    // linear target the other three quads read (~35 taps per half pixel).
+    if (SUCCEEDED(hr))
         step(AmbientOcclusionStage::Linearize, bind_and_draw(half_depth_surface_, hw, hh, linearize_, in.depth, nullptr, nullptr));
-    // GTAO: c0 = half size, c1 = (m00, m11, m20, m21), c2 = radius terms, c3 = (rotation, px per view unit at z = 1).
-    const float terms[4] = {p.m00, p.m11, p.m20, p.m21};
-    const float radius_units = p.radius_metres * p.units_per_metre;
-    const float falloff_range = p.falloff * radius_units, falloff_from = radius_units - falloff_range;
-    const float radius[4] = {radius_units, -1.f / falloff_range, falloff_from / falloff_range + 1.f, p.max_radius_px};
-    const float noise[4] = {float(p.jitter_index % 16u), p.m11 * float(hh) * .5f, 0.f, 0.f};
-    if (SUCCEEDED(hr) && step(AmbientOcclusionStage::Gtao, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, half_size, 1)) &&
-        step(AmbientOcclusionStage::Gtao, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 1, terms, 1)) &&
-        step(AmbientOcclusionStage::Gtao, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 2, radius, 1)) &&
-        step(AmbientOcclusionStage::Gtao, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 3, noise, 1)))
-        step(AmbientOcclusionStage::Gtao, bind_and_draw(ao_surfaces_[0], hw, hh, gtao_, half_depth_, nullptr, nullptr));
-    // Two blurs: c1 = (dx, dy, tau). ao0 -> ao1 -> ao0.
-    const float horizontal[4] = {1.f, 0.f, p.depth_tolerance, 0.f}, vertical[4] = {0.f, 1.f, p.depth_tolerance, 0.f};
+    // Horizon search: the half-resolution depth in, the occlusion term out.
+    if (SUCCEEDED(hr)) step(AmbientOcclusionStage::Gtao, bind_and_draw(ao_surfaces_[0], hw, hh, gtao_, half_depth_, nullptr, nullptr));
+    // One 2D depth-aware blur, ao0 -> ao1 (the term the apply quad reads).
     bool blur = true;
 #ifdef X3M_AMBIENT_OCCLUSION_FIXTURE
     blur = !fixture_skip_blur_;
 #endif
-    if (blur && SUCCEEDED(hr) && step(AmbientOcclusionStage::BlurH, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 1, horizontal, 1)))
-        step(AmbientOcclusionStage::BlurH, bind_and_draw(ao_surfaces_[1], hw, hh, blur_, ao_[0], half_depth_, nullptr));
-    if (blur && SUCCEEDED(hr) && step(AmbientOcclusionStage::BlurV, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 1, vertical, 1)))
-        step(AmbientOcclusionStage::BlurV, bind_and_draw(ao_surfaces_[0], hw, hh, blur_, ao_[1], half_depth_, nullptr));
+    IDirect3DTexture9* term = ao_[0];
+    if (blur && SUCCEEDED(hr) && step(AmbientOcclusionStage::Blur, bind_and_draw(ao_surfaces_[1], hw, hh, blur_, ao_[0], half_depth_, nullptr)))
+        term = ao_[1];
     // Apply: the multiply into the owning target under ZERO/SRCCOLOR (the
     // factors were set by normalize; only the enable toggles here).
     bool applied = false;
-    if (SUCCEEDED(hr) && in.target) {
-        const float full_size[4] = {float(w), float(h), 1.f / float(w), 1.f / float(h)};
-        const float apply_terms[4] = {p.m22, p.m32, p.depth_tolerance, p.strength};
-        if (step(AmbientOcclusionStage::Apply, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 1, full_size, 1)) &&
-            step(AmbientOcclusionStage::Apply, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 2, apply_terms, 1)) &&
-            step(AmbientOcclusionStage::Apply, call<SetRsFn>(SetRenderState)(d, D3DRS_ALPHABLENDENABLE, TRUE)))
-            applied = step(AmbientOcclusionStage::Apply, bind_and_draw(in.target, w, h, apply_, ao_[0], half_depth_, in.depth));
-    }
+    if (SUCCEEDED(hr) && in.target && step(AmbientOcclusionStage::Apply, call<SetRsFn>(SetRenderState)(d, D3DRS_ALPHABLENDENABLE, TRUE)))
+        applied = step(AmbientOcclusionStage::Apply, bind_and_draw(in.target, w, h, apply_, term, half_depth_, in.depth));
     if (own_scene && !lost(hr)) { const HRESULT end = call<SceneFn>(EndScene)(d); if (SUCCEEDED(hr) || lost(end)) { if (FAILED(end)) stage = AmbientOcclusionStage::EndScene; hr = end; } }
     out->operation = hr;
     out->restore = lost(hr) ? hr : saved.restore();
@@ -359,7 +363,7 @@ HRESULT AmbientOcclusionPass::execute(const AmbientOcclusionFrame& in, AmbientOc
         out->failed = FAILED(hr) ? stage : AmbientOcclusionStage::Restore;
         return FAILED(out->restore) ? out->restore : hr;
     }
-    out->applied = applied; out->term = ao_[0]; out->half_width = hw; out->half_height = hh;
+    out->applied = applied; out->term = term; out->half_width = hw; out->half_height = hh;
     return S_OK;
 }
 } // namespace x3m::renderer

@@ -114,13 +114,15 @@ def main():
         report = record['report']
         assert run.returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and report['check_failures'] == 0, text[-2000:]
         assert report['result']['checks'] == report['check_count'], (report['result'], report['check_count'])
-        assert len(report['timing_quads']) == 2 and report['fp16_store'] and report['fp16_store']['mode'] in ('round_to_nearest', 'truncate'), (report['timing_quads'], report['fp16_store'])
+        assert len(report['timing_quads']) == 3 and report['fp16_store'] and report['fp16_store']['mode'] in ('round_to_nearest', 'truncate'), (report['timing_quads'], report['fp16_store'])
         assert sorted(report['reference']) == ['corner', 'plane', 'sphere', 'step', 'tilted'], report['reference']
         for scene, entry in report['reference'].items():
             assert entry['mean_abs'] <= REFERENCE_TOLERANCE['mean_abs'] and entry['within_002_fraction'] >= REFERENCE_TOLERANCE['within_002_fraction'], (scene, entry)
         assert all(o['passed'] for o in report['oracles']) and len(report['oracles']) >= 10, report['oracles']
         assert all(a['over'] == 0 and a['alpha_changed'] == 0 for a in report['apply'].values()), report['apply']
-        assert [(t['width'], t['height']) for t in report['timing']] == [(1280, 768), (1920, 1080)], report['timing']
+        # 1280x768 is measured twice (first and last): the first timing block of a
+        # device runs cold, so the chain cost of a size is the smaller of its blocks.
+        assert [(t['width'], t['height']) for t in report['timing']] == [(1280, 768), (1920, 1080), (1280, 768)], report['timing']
         assert record['sources'] == {s: sha(ROOT / s) for s in SOURCES} and sha(EXE) == record['executable_sha256'], 'Provenance changed during run'
         record['passed'] = True
     finally:

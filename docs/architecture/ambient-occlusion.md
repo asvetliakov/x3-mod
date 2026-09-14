@@ -187,3 +187,23 @@ them); 1080p 0.22, 0.46, 0.20 + 0.20, 0.34. Without the two blurs the chain is 0
 1080p. The numbers do not isolate one cause; the cheapest safe reduction they support is fewer passes: fold the
 linearization into the GTAO quad (drops one pass and the half R32F target) and replace the two blurs by one
 2D 5×5 depth-aware blur. Not tuned in step 1; the scene-end hook (step 2) waits on the run-14 query and this cost.
+
+## Step 1b — cost reduction
+
+Four quads instead of five (2026-09-14): one 2D depth-aware blur (sparse 5x5 quincunx, centre 4,
+diagonals 2, axial +-2 weight 1) replaces the two separable 5-tap passes, the linearize quad stores the
+scale-free depth `zs = z / |m32| = 1 / (m22 - d)` (the caller divides the radius and the falloff by
+`|m32|`; every other test is relative), and the horizon search takes its half-pixel view ray, texel-centre
+offset and last texel from folded constants in one `SetPixelShaderConstantF` of c0..c7. GTAO is 397 of
+512 slots (was 483), linearize 8, blur 93, apply 70. Each slice now accumulates its *missing* arc
+`cos n / 2 - (a0 - a1) sin n / 2 + (cos(2h0 - n) + cos(2h1 - n)) / 4`, which is exactly 0 in float when both
+sides are unoccluded, so the flat-plane identity no longer depends on a cancellation.
+Folding the linearization into the horizon search (the reduction this note proposed) was implemented and
+measured first: it moves ~35 depth taps per half pixel to the full-resolution R32F and cost more than the
+pass it saved (1280x768 chain 1.10-1.18 ms against step 1's 0.83; 1920x1080 improved to 1.07), so the
+pass stays. Chain now: 1280x768 1.06 ms in the first timed block and 0.51 ms (floor 0.50) in a repeat
+block at the end of the same run, 1920x1080 1.33 ms (floor 1.23); per-quad in the warm block linearize
+0.20, gtao 0.30, blur 0.19, apply 0.30, each including its own ~0.2 ms fence and flush. The block-to-block
+spread of this backend is larger than the reduction, so the fixture now measures 1280x768 twice and
+reports both with the cheapest window of each block. Fidelity and oracles held: reference maximum
+4.9e-4, contact ring 0.9567 (was 0.9569), crease 0.9199, step far side 0.8215 (was 0.82).

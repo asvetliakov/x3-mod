@@ -1,7 +1,11 @@
 // Ambient occlusion chain, pass 2: the half-resolution GTAO horizon search
 // (docs/architecture/ambient-occlusion.md, section 2; XeGTAO-style). Input is
-// the half-resolution linear view depth of ao_linearize_ps.hlsl (-1 sentinel).
-// Per pixel: the view position from the projection terms, a normal from the
+// the half-resolution scale-free view depth zs = 1 / (m22 - d) of
+// ao_linearize_ps.hlsl (-1 sentinel), which is the view depth divided by the
+// constant |m32|; the caller scales the radius and the falloff constants by
+// the same factor, so nothing here changes (the pixels-per-view-unit factor
+// is a ratio, normals are normalized and every depth test is relative).
+// Per pixel: the view position from the folded ray terms, a normal from the
 // min-difference of the four depth neighbours (5 taps), 2 slices x 2 sides x 4
 // steps = 16 depth taps, cosine-weighted horizon integral with a distance
 // falloff, radius in view units capped in half-resolution pixels. Horizons
@@ -20,21 +24,21 @@
 // (never occluders). The 4x4 noise is the Bayer index of the pixel, rotated by
 // the caller's integer jitter index. The slice loop stays rolled.
 // Compiled into src/renderer/ambient_occlusion_gtao_program_inc.h.
-sampler depthTex : register(s0);
-float4 size : register(c0);       // xy = 1 / half width/height, zw = half width/height
-float4 projection : register(c1); // m00, m11, m20, m21
-float4 radius : register(c2);     // x = radius (view units), y = falloff mul, z = falloff add, w = max radius (half-res px)
-float4 noise : register(c3);      // x = integer rotation, y = m11 * half height / 2 (px per view unit at z = 1)
+sampler depthTex : register(s0); // half-resolution R32F linear depth (-1 sentinel)
+float4 size : register(c0);      // xy = 1 / half width/height, zw = half width/height
+float4 ray : register(c1);       // view ray of a half pixel: (x * ray.x + ray.z, y * ray.y + ray.w, 1) * z
+float4 radius : register(c2);    // x = radius (scaled view units), y = falloff mul, z = falloff add, w = max radius (half-res px)
+float4 noise : register(c3);     // x = integer rotation, y = m11 * half height / 2 (px per view unit at z = 1)
+float4 halfUV : register(c7);    // xy = 0.5 / half width/height (the texel-centre offset), zw = half width/height - 1
 
 static const float HALF_PI = 1.57079633;
 
+// The texel's depth, sampled at its centre in one mad from the pixel.
 float depthAt(float2 pixel) {
-    return tex2D(depthTex, (pixel + 0.5) * size.xy).r;
+    return tex2D(depthTex, pixel * size.xy + halfUV.xy).r;
 }
 float3 viewPosition(float2 pixel, float z) {
-    float2 uv = (pixel + 0.5) * size.xy;
-    float2 ndc = float2(2.0 * uv.x - 1.0, 1.0 - 2.0 * uv.y);
-    return float3((ndc.x - projection.z) * z / projection.x, (ndc.y - projection.w) * z / projection.y, z);
+    return float3(pixel.x * ray.x + ray.z, pixel.y * ray.y + ray.w, 1.0) * z;
 }
 // One horizon tap: the texel at pixel + offset (clamped to the image), sampled
 // at its centre. The tap's occlusion is its elevation above the reconstructed
@@ -45,7 +49,7 @@ float3 viewPosition(float2 pixel, float z) {
 // delta is float32 noise (~1e-7 of the position), so the cut is relative to
 // the depth (minDist = 1e-4 z, far below one texel's ~3e-3 z).
 float horizonTap(float2 pixel, float2 offset, float3 centre, float3 normal, float minDist, float elevation) {
-    float2 texel = clamp(floor(pixel + 0.5 + offset), 0.0, size.zw - 1.0);
+    float2 texel = clamp(floor(pixel + 0.5 + offset), 0.0, halfUV.zw);
     float z = depthAt(texel);
     float3 delta = viewPosition(texel, z) - centre;
     float dist = length(delta);
@@ -62,8 +66,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // off-image or sentinel neighbours lose, a lone invalid axis stays in-plane.
     float zl = depthAt(pixel + float2(-1.0, 0.0)), zr = depthAt(pixel + float2(1.0, 0.0));
     float zu = depthAt(pixel + float2(0.0, -1.0)), zd = depthAt(pixel + float2(0.0, 1.0));
-    bool lv = zl >= 0.0 && pixel.x >= 1.0, rv = zr >= 0.0 && pixel.x <= size.z - 2.0;
-    bool uv_ = zu >= 0.0 && pixel.y >= 1.0, dv = zd >= 0.0 && pixel.y <= size.w - 2.0;
+    bool lv = zl >= 0.0 && pixel.x >= 1.0, rv = zr >= 0.0 && pixel.x <= halfUV.z - 1.0;
+    bool uv_ = zu >= 0.0 && pixel.y >= 1.0, dv = zd >= 0.0 && pixel.y <= halfUV.w - 1.0;
     bool useR = rv && (!lv || abs(zr - zc) <= abs(zc - zl));
     bool useD = dv && (!uv_ || abs(zd - zc) <= abs(zc - zu));
     float zx = useR ? zr : (lv ? zl : zc);
@@ -84,7 +88,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float sliceNoise = frac((bayer + noise.x) / 16.0);
     float stepIndex = bayer * 5.0 + noise.x * 3.0;
     float stepNoise = (stepIndex - 16.0 * floor(stepIndex / 16.0) + 0.5) / 16.0;
-    float visibility = 0.0, weightSum = 0.0;
+    float occluded = 0.0, weightSum = 0.0;
     [loop] for (int slice = 0; slice < 2; ++slice) {
         float phi = (float(slice) + sliceNoise) * HALF_PI;
         float2 dir = float2(cos(phi), sin(phi));
@@ -107,19 +111,30 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             elevation0 = horizonTap(pixel, offset, centre, normal, minDist, elevation0);
             elevation1 = horizonTap(pixel, -offset, centre, normal, minDist, elevation1);
         }
-        float h1 = n + acos(elevation0);
-        float h0 = n - acos(elevation1);
+        // The slice's missing arc, not its visible arc: with the horizon
+        // angles h1 = n + acos(e0) and h0 = n - acos(e1), the two cosine-
+        // weighted arcs (cos n + 2 h sin n - cos(2h - n)) / 4 sum to
+        //   unoccluded - deficit,  deficit = cos n / 2 - (a0 - a1) sin n / 2
+        //                                    + (cos(2h0 - n) + cos(2h1 - n)) / 4
+        // with a0 = acos(e0), a1 = acos(e1) and unoccluded = cos n + n sin n.
+        // Written this way the unoccluded case is exact in float: e0 = e1 = 0
+        // gives a0 - a1 = 0 and cos(2h - n) = -cos n on both sides, so the
+        // deficit is cos n / 2 - cos n / 2 = 0 under any association (every
+        // term is a power-of-two multiple of cos n). The visible-arc form
+        // cancelled only to within a rounding step, which left single-ulp
+        // occlusion on parts of a flat plane.
+        float a0 = acos(elevation0), a1 = acos(elevation1);
         float cos2h1n = cosN * (2.0 * elevation0 * elevation0 - 1.0) - sinN * 2.0 * elevation0 * sqrt(saturate(1.0 - elevation0 * elevation0));
         float cos2h0n = cosN * (2.0 * elevation1 * elevation1 - 1.0) + sinN * 2.0 * elevation1 * sqrt(saturate(1.0 - elevation1 * elevation1));
-        float arc0 = (cosN + 2.0 * h0 * sinN - cos2h0n) * 0.25;
-        float arc1 = (cosN + 2.0 * h1 * sinN - cos2h1n) * 0.25;
+        float deficit = 0.5 * cosN - 0.5 * (a0 - a1) * sinN + 0.25 * (cos2h0n + cos2h1n);
         float unoccluded = cosN + n * sinN;
-        visibility += projectedLength * (arc0 + arc1) / unoccluded;
+        occluded += projectedLength * deficit / unoccluded;
         weightSum += projectedLength;
     }
-    // Stored as occlusion 1 - visibility: an unoccluded pixel is exactly 0 in
+    // Stored as occlusion 1 - visibility (the sum of the per-slice deficits):
+    // an unoccluded pixel is exactly 0 in
     // R16F (1 - epsilon would drop a whole ulp on a truncating store, and the
-    // blurs would drop another), and small occlusion keeps fp16's fine steps.
-    float occlusion = saturate(1.0 - visibility / weightSum);
+    // blur would drop another), and small occlusion keeps fp16's fine steps.
+    float occlusion = saturate(occluded / weightSum);
     return occlusion.xxxx;
 }

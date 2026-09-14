@@ -2,7 +2,8 @@
 // CPU reference of the ambient occlusion chain (src/temporal/ao_*_ps.hlsl),
 // float64 with the same texel choices: linearize at the even full texel,
 // the 5-tap normal, 2 slices x 2 sides x 4 steps of horizon taps at texel
-// centres (elevation above the tangent plane), the normalized per-slice arc, the two 5-tap depth-aware blurs and
+// centres (elevation above the tangent plane), the normalized per-slice arc,
+// the one 2D depth-aware blur of step 1b and
 // the bilateral upsample / multiply factor. R16F storage between GPU passes is
 // modelled by fp16 rounding (round to nearest even). Verification only: no
 // D3D, no Windows headers, compiled on the host by
@@ -59,6 +60,12 @@ inline double fp16(double value) {
     if (e == 31) return (h & 1023) ? NAN : s * INFINITY;
     return s * (e ? std::ldexp(double(1024 + (h & 1023)), int(e) - 25) : std::ldexp(double(h & 1023), -24));
 }
+// The reference works in view units. The GPU's half-resolution target holds
+// the same depth divided by the constant |m32| (the scale-free form of
+// ao_linearize_ps.hlsl); the horizon search is invariant under that scale
+// (radius, falloff and every depth test scale with it), so the two agree on
+// every result and the fixture rescales only when it compares the target
+// itself.
 inline double linearize(double d, const Params& p) { return d < 0 ? -1 : p.m32 / (d - p.m22); }
 // Half-resolution linear depth: the even full texel of every half texel.
 inline std::vector<double> linearize(const std::vector<float>& depth, unsigned w, unsigned h, unsigned hw, unsigned hh, const Params& p) {
@@ -105,7 +112,7 @@ inline double gtao_pixel(const HalfImage& img, unsigned x, unsigned y) {
     const double sliceNoise = std::fmod(bayer + rot, 16.) / 16;
     const double stepIndex = bayer * 5 + rot * 3;
     const double stepNoise = (stepIndex - 16 * std::floor(stepIndex / 16) + .5) / 16;
-    double visibility = 0, weightSum = 0;
+    double occluded = 0, weightSum = 0;
     for (int slice = 0; slice < 2; ++slice) {
         const double phi = (slice + sliceNoise) * (kPi / 2);
         const double dirx = std::cos(phi), diry = std::sin(phi);
@@ -136,19 +143,22 @@ inline double gtao_pixel(const HalfImage& img, unsigned x, unsigned y) {
             elevation0 = tap(dirx * s, diry * s, -sinN, horizon0, elevation0);
             elevation1 = tap(-dirx * s, -diry * s, sinN, horizon1, elevation1);
         }
-        double h1 = n + std::acos(elevation0), h0 = n - std::acos(elevation1);
+        const double a0 = std::acos(elevation0), a1 = std::acos(elevation1);
+        double skew = (a0 - a1) * .5; // (h0 + h1) / 2 - n, exactly 0 when the two sides agree
         double cos2h1n = cosN * (2 * elevation0 * elevation0 - 1) - sinN * 2 * elevation0 * std::sqrt(saturate(1 - elevation0 * elevation0));
         double cos2h0n = cosN * (2 * elevation1 * elevation1 - 1) + sinN * 2 * elevation1 * std::sqrt(saturate(1 - elevation1 * elevation1));
         if (p.view_angle_horizon) { // XeGTAO: h from acos of the horizon cosines, clamped to n +- pi/2
-            h0 = n + std::clamp(-std::acos(std::clamp(horizon1, -1., 1.)) - n, -kPi / 2, kPi / 2);
-            h1 = n + std::clamp(std::acos(std::clamp(horizon0, -1., 1.)) - n, -kPi / 2, kPi / 2);
+            const double h0 = n + std::clamp(-std::acos(std::clamp(horizon1, -1., 1.)) - n, -kPi / 2, kPi / 2);
+            const double h1 = n + std::clamp(std::acos(std::clamp(horizon0, -1., 1.)) - n, -kPi / 2, kPi / 2);
             cos2h0n = std::cos(2 * h0 - n); cos2h1n = std::cos(2 * h1 - n);
+            skew = (h0 + h1) * .5 - n;
         }
-        const double arc0 = (cosN + 2 * h0 * sinN - cos2h0n) * .25, arc1 = (cosN + 2 * h1 * sinN - cos2h1n) * .25;
-        visibility += projectedLength * (arc0 + arc1) / (cosN + n * sinN);
+        // The slice's missing arc (ao_gtao_ps.hlsl): exact zero when both sides are unoccluded.
+        const double deficit = .5 * cosN - skew * sinN + .25 * (cos2h0n + cos2h1n);
+        occluded += projectedLength * deficit / (cosN + n * sinN);
         weightSum += projectedLength;
     }
-    return saturate(1 - visibility / weightSum); // occlusion, as the R16F term stores it
+    return saturate(occluded / weightSum); // occlusion, as the R16F term stores it
 }
 inline std::vector<double> gtao(const std::vector<double>& halfz, unsigned hw, unsigned hh, const Params& p) {
     const HalfImage img{halfz, hw, hh, p};
@@ -156,17 +166,20 @@ inline std::vector<double> gtao(const std::vector<double>& halfz, unsigned hw, u
     for (unsigned y = 0; y < hh; ++y) for (unsigned x = 0; x < hw; ++x) out[std::size_t(y) * hw + x] = fp16(gtao_pixel(img, x, y));
     return out;
 }
-// One separable 5-tap depth-aware blur (ao_blur_ps.hlsl), fp16-stored.
-inline std::vector<double> blur(const std::vector<double>& ao, const std::vector<double>& halfz, unsigned hw, unsigned hh, int dx, int dy, double tau) {
+// The 2D depth-aware blur of step 1b (ao_blur_ps.hlsl), fp16-stored: a sparse
+// 5x5 quincunx, centre 4, the four diagonals 2 and the four axial taps at
+// distance 2 weight 1, each scaled by saturate(1 - |dz| / (tau * z)).
+inline std::vector<double> blur(const std::vector<double>& ao, const std::vector<double>& halfz, unsigned hw, unsigned hh, double tau) {
     std::vector<double> out(ao.size());
     auto at = [&](const std::vector<double>& v, long x, long y) { return v[std::size_t(std::clamp(y, 0L, long(hh) - 1)) * hw + std::size_t(std::clamp(x, 0L, long(hw) - 1))]; };
-    static const int taps[4] = {-2, -1, 1, 2}; static const double weights[4] = {1, 4, 4, 1};
+    static const int taps[8][2] = {{-1, -1}, {1, -1}, {-1, 1}, {1, 1}, {-2, 0}, {2, 0}, {0, -2}, {0, 2}};
+    static const double weights[8] = {2, 2, 2, 2, 1, 1, 1, 1};
     for (unsigned y = 0; y < hh; ++y) for (unsigned x = 0; x < hw; ++x) {
         const double zc = at(halfz, x, y);
         if (zc < 0) { out[std::size_t(y) * hw + x] = 0; continue; }
-        double sum = 6 * at(ao, x, y), weightSum = 6;
-        for (int i = 0; i < 4; ++i) {
-            const long tx = x + dx * taps[i], ty = y + dy * taps[i];
+        double sum = 4 * at(ao, x, y), weightSum = 4;
+        for (int i = 0; i < 8; ++i) {
+            const long tx = std::clamp(long(x) + taps[i][0], 0L, long(hw) - 1), ty = std::clamp(long(y) + taps[i][1], 0L, long(hh) - 1);
             const double z = at(halfz, tx, ty);
             const double w = z < 0 ? 0 : weights[i] * saturate(1 - std::fabs(z - zc) / (tau * zc));
             sum += w * at(ao, tx, ty); weightSum += w;
@@ -175,15 +188,14 @@ inline std::vector<double> blur(const std::vector<double>& ao, const std::vector
     }
     return out;
 }
-// The whole term chain: linearize, GTAO, horizontal then vertical blur. The
+// The whole term chain: linearize, GTAO, the 2D blur. The
 // result is the occlusion term as stored (0 = unoccluded); ambient_occlusion_fixture.cpp
 // compares 1 - term against 1 - readback.
 inline std::vector<double> term(const std::vector<float>& depth, unsigned w, unsigned h, const Params& p, std::vector<double>* half_depth = nullptr) {
     const unsigned hw = (w + 1) / 2, hh = (h + 1) / 2;
     std::vector<double> z = linearize(depth, w, h, hw, hh, p);
     std::vector<double> a = gtao(z, hw, hh, p);
-    a = blur(a, z, hw, hh, 1, 0, p.depth_tolerance);
-    a = blur(a, z, hw, hh, 0, 1, p.depth_tolerance);
+    a = blur(a, z, hw, hh, p.depth_tolerance);
     if (half_depth) *half_depth = std::move(z);
     return a;
 }
