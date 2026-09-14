@@ -328,3 +328,118 @@ approach — that is, a capture pair on the same node at clearly different dista
 texel readback, a debug view that outputs `s0.a` alone and `saturate(3*d_0)` alone for
 this pair would separate the two channels. Run 39 cannot do either: it has no distance
 transition on a single port node.
+
+### Texture evidence
+
+Offline archive study, 2026-09-14. No game run, no Wine command; the bottle was read
+only. Extraction, decode scripts and the raw DDS bytes stay in `/tmp/x3-port-tex/`
+(untracked); only derived numbers are recorded here.
+
+**Which files the capture identities are.** The capture logs no asset name, so the
+binding was resolved from the archives. Root `01.cat`..`13.cat` and `addon/*.cat`
+decode with the existing `read_catalogue`; a DAT slice is bytewise `XOR 0x33` and, for
+`.pck`/`.pbd`/`.pbb`, a gzip stream underneath. `types/dummies.pck` lists the
+`SDTYPE_ANIMATED` dock-port bodies, `types/cutdata.pck` maps their cut ids to scene
+paths (`19098 → 9098 → stations\docks\M6DockCarrier_quicklaunch_scene`, `19099 → 9099
+→ …M6DockCarrier_scene`), and `objects/stations/Shipyards/Argon_SY_scene.pbd`
+references exactly those dummy bodies. Body geometry is binary `BOB1`; its `MAT6`
+chunk stores `name\0`, `u16` type, value, with type `0x0000` long, `0x0001` bool,
+`0x0002` 16.16 fixed, `0x0005` four 16.16 fixed, `0x0008` string. A scan of all 3,451
+object entries (26,982 materials) found **1,128** source-over materials
+(`g_AlphaBlendEnable=1`, `SrcBlend=5`, `DestBlend=6`, `g_ZWriteEnable=0`,
+`g_ALPHATESTENABLE=0`). Exactly one family matches the draw's captured constants
+(`3 / 6 / 1 / 0.5`), its effect (`standard_lighting.fx`), its `g_CullMode=1` (NONE —
+hence the `standard_lighting2s` archive alias of this pair) and its 1024² DXT5 +
+DXT1 texture shapes:
+
+| capture | file (root `01.cat`) | header | SHA-256 of the decompressed DDS |
+|---|---|---|---|
+| s0 / 1850 / DXT5 1024² / 11 | `dds/metal_argon_lattice_windowedgrid_diff.pck` | DXT5 1024², 11 mips, 1,398,256 B | `7d860ec4a8f2db0b650682876f4ee49a272c0e7e5878c967240904b88afb3b9a` |
+| s1 / 1851 / DXT5 1024² / 11 | `dds/metal_argon_lattice_windowedgrid_bump.pck` | DXT5 1024², 11 mips, 1,398,256 B | `14f53a84b37b24b633c97565b2aa718c06b98e42920fb4a1510852ac3b263262` |
+| s2 / 1852 / DXT1 1024² / 11 | `dds/metal_argon_lattice_windowedgrid_spec.pck` | DXT1 1024², 11 mips, 699,192 B | `035f54f4722bcd03d905118bc3b923de920c58de10d534ef6ff2e16d9f51ef48` |
+
+The material is `standard_lighting.fx`, diffuse/bump/spec as above, `t_LightMapTexture
+= NULL` (hence the shared 32²/1-level dummy at s3) and `t_AlphaTexture =
+…_alpha8.tga`, which has no DDS and resolves to the 32²/6-level dummy bound at s5 and
+never sampled. It occurs **105** times across Argon station bodies, matching run 11's
+observation that every station model carries this refused pair.
+
+The only competing candidate was `metal_argon_specialglass_diff` (also DXT5 1024²/11,
+also source-over `standard_lighting.fx`, 98 occurrences). Two capture facts exclude
+it. All eleven port draws of run 39 — four different station models — bind the *same*
+triple 1850/1851/1852, and so does XT pair `37c34a7478544c14/f1b0e820c7b488c3`
+(draw 165, frame 1812); every XT material with the specialglass diffuse binds the dummy
+`NONE_NORMAL` bump, never a 1024² normal map, while the XT windowedgrid material binds
+all three. That XT draw's PS constants `c9..c12 = 3 / 6 / 1 / 0.5` also match the
+windowedgrid XT material (reflection 1.0) and not the specialglass XT material
+(reflection 1.5999908). This is an asset-side identification by state, constants,
+format and sharing; the capture carries no texel hash, so it is not a byte-level proof
+of the runtime upload.
+
+**Diffuse alpha (s0.a), whole texture.** DXT5 alpha decoded from the stored mip chain.
+Mip 0: mean **0.7749**, min **110/255 = 0.431**, max 1.0, **no zero texels**, 50.8 % of
+texels exactly 1.0, 49.2 % below 0.98, 11.2 % below 0.5. The 16-bin mip-0 histogram is
+bimodal: 532,785 texels in the top bin, 503,225 in bins 7–9 (≈0.44–0.62), 12,555 spread over bins 10–14 and only 11 in bin 6 (≈0.38–0.44).
+So the mask is a **soft half-transparent mask, not a cutout with holes**. Mean alpha per
+stored level is flat — 0.7749, 0.7708, 0.7676, 0.7663, 0.7663, 0.7658, 0.7691, 0.7648,
+0.7691, 0.7608, 0.7686 for levels 0…10 — as box filtering requires. **The alpha channel
+therefore applies a near-constant ≈0.775 attenuation at every distance and cannot itself
+produce a distance-dependent fade of the mean.** Its only distance-dependent part is the
+`α`–colour covariance the shader discards: it samples filtered `α` and filtered RGB
+separately and multiplies, giving `mean(α)·mean(C)` where correct filtering wants
+`mean(α·C)`. Box-filtering mip 0 gives the shader/correct ratio per level (also the
+ratio against mip 0, which is the visible change with distance):
+
+| level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| `mean(ᾱ·C̄) / mean(αC)` | 0.9993 | 0.9974 | 0.9935 | 0.9895 | 0.9824 | 0.9785 | 0.9689 | 0.9528 | 0.9513 |
+
+**Normal map (s1) under the shader's AG decode.** `x = 2·A−1`, `y = 2·G−1`,
+`z = sqrt(|1−x²−y²|)`. Mean tilt `sqrt(x²+y²)` and mean `z` of the **stored** mips:
+
+| level | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 |
+|---|---|---|---|---|---|---|---|---|---|
+| mean tilt | 0.1517 | 0.1688 | 0.1717 | 0.1531 | 0.1279 | 0.0871 | 0.0460 | 0.0190 | 0.0124 |
+| mean `z` | 0.9452 | 0.9401 | 0.9516 | 0.9682 | 0.9834 | 0.9933 | 0.9981 | 0.9997 | 0.9999 |
+
+Max tilt at mip 0 is 1.081 — above 1, which is why the `sqrt(abs(q))` fold matters. Per
+texel the decoded normal is unit by construction, so the length signal must be recovered
+from mip 0: box-filtering the decoded unit normals gives mean `|N̄|` and the Toksvig
+factor `|N̄| / (|N̄| + p(1−|N̄|))` at the captured `p = g_MatSpecularPower = 6`, i.e. the
+fraction of the specular peak that correct filtering would keep relative to what this
+shader produces from the renormalised average:
+
+| level | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 |
+|---|---|---|---|---|---|---|---|---|
+| mean `\|N̄\|` | 0.9931 | 0.9839 | 0.9717 | 0.9581 | 0.9507 | 0.9469 | 0.9455 | 0.9452 |
+| Toksvig, `p=6` | 0.9687 | 0.9283 | 0.8795 | 0.8239 | 0.7865 | 0.7629 | 0.7438 | 0.7420 |
+
+The specular map's mean red is level-independent as expected (0.5957, 0.5956, 0.5939,
+0.5901, 0.5847 for levels 0…4), so `m` contributes no systematic sign; `m̄ = 0.596`
+weights the specular term at `3·m̄ = 1.79` against the diffuse `0.5`.
+
+**Which channel dominates.** A 170×70 px rect for a 1024² texture is level
+`log2(1024/170) ≈ 2.59`; trilinear interpolation of the tables gives:
+
+| distance | level | alpha factor vs mip 0 | normal/specular factor |
+|---|---|---|---|
+| run 39 | 2.59 | 0.995 | **0.908** |
+| 2× | 3.59 | 0.991 | **0.847** |
+| 4× | 4.59 | 0.985 | **0.802** |
+
+**The normal-map channel dominates by roughly 19× at the run-39 distance** (9.2 %
+specular loss against 0.5 % alpha loss) and by about 13× at four times that distance.
+The earlier conjecture that alpha minification is "the stronger lever" is **wrong for
+this asset**: its alpha has no holes, its mean is level-invariant, and the only
+distance-dependent alpha term is the small discarded covariance. The alpha does impose a
+constant ≈0.775 attenuation of the whole composite at all distances, which explains why
+the port looks washed out but not why it darkens with range. A corrective material
+shader for this pair therefore needs the normal-variance path (LEAN/Toksvig moment
+channel, or footprint taps); a coverage-aware composite would buy at most ~1.5 % here.
+
+Unknown: the UV bounds of the six-triangle port part. The capture logs no vertex or UV
+data, so every number above is over the whole 1024² texture; a part that uses only the
+opaque region would see a smaller alpha attenuation and a part confined to the grille
+window would see more. The 16× anisotropic minification recorded at these draws also
+means the per-pixel LOD is at or below the isotropic estimate along the unminified axis,
+so the factors above are the pessimistic end for the given screen rect.
