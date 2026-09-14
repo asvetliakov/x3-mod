@@ -64,9 +64,11 @@ of 30 costs ≈5 ms — run 15 measures it. The second candidate (`76d7750`, DLL
 on it (record `verification/results/screen-emission-install.json`).
 Ambient occlusion (goal 7): the design `docs/architecture/ambient-occlusion.md` is ratified as
 v1 (half-resolution GTAO before the TAA resolve, default-off); its engine inputs are settled
-(`c4f6940`: 0.2 m per view unit, default zn 6 / zf 2e6 in gameplay) and the detached pass with
-its analytic-oracle fixture is being implemented (step 1); the scene-end placement waits for the
-run-14 capture query on Z-test-off draws.
+(`c4f6940`: 0.2 m per view unit, default zn 6 / zf 2e6 in gameplay) and step 1, the detached pass with
+its analytic-oracle fixture, is reviewed and merged (99 checks; term within 3.7e-4 of the float64
+reference; chain 0.84 ms at 1280×768, over the 0.8 ms cap: fold linearize into GTAO and use one
+2D blur before step 2). The scene-end placement waits for the run-14 capture query on Z-test-off
+draws; nothing of it is referenced at runtime or installed.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
