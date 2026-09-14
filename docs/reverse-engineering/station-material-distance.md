@@ -120,3 +120,211 @@ These are the only by-name writes of the blend/Z/test parameters in the whole `4
 Admission by captured draw state is therefore **stable** for these draws: Z-write off, blend on, SRCALPHA/INVSRCALPHA, alpha-test off, mask 7, AlphaValue 1 all follow from one asset-constant flags word and cannot change with camera distance, fog or a node alpha override. Two residual variations keep the same admissible state: a node `+13c != 0` rescales `g_AlphaValue` (`4c2a87..4c2b41`), and the fog block can still set `g_EnableFog=1`/`g_FogClip` at distance (`4c2e04`, no `+1a4` gate), so a `b0 = 1` port draw would pass the same check. A different LOD or subset can name a different material id and then fails the state check (fail-closed). `4c0c36` reads `+1a4` from the previous submission, before this call writes it.
 
 Unresolved: which of the two flag providers the port uses — the global table above or the per-subset material at `[[ESP+40]+0x28]` taken when mesh flag `[[ESP+6c]+0x50] & 0x10` is set (`4c027e`/`4c028a`, `4c1393`, `4c150f`); both are loaded asset data. The port material's actual MPF value was not read (no asset parse, no game run).
+
+## Docking-port pair: minification analysis
+
+Derived read-only bytecode study, 2026-09-14. No game run and no Wine command.
+The programs were disassembled earlier through the existing D3DX route
+(`tools/analysis/disassemble_shaders.cpp`, see `shader-sweep.md`); the cached
+output is byte-identical input to run 39's copy — `ps_64bac8bb307eb896.bin`
+SHA-256 `84eeded40acc811b109221fe5c7e1b5a898f3b9a34a1b4685937a24f6b1bc4a7` in both
+`/tmp/x3-shader-sweep/programs/` and `/tmp/x3-bottleX3-run39/`. Raw disassembly
+and the extracted draw block stay in `/tmp/x3-port-ps/`.
+
+### Interpolants
+
+VS `4944d81dfe531b37` (vs_3_0, 62 slots) writes, in PS register terms:
+
+| PS reg | VS output | Content |
+|---|---|---|
+| `v0.xyz` | `o1.xyz` | `sum_{i<i0} sat(Ng·dir_i)*color_i*rcp_sat(atten_i·(1,d,d²)) + g_MatEmissiveColor` |
+| `v0.w` | `o1.w` | `b0 ? sat(FogClip.x - FogClip.y*|cam-pos|)*g_AlphaValue : g_AlphaValue` |
+| `v1.xy` | `o2.xy` | `g_TexMatrix * (u,v)` — the only UV, shared by s0..s3 |
+| `v2.xyz` | `o3.xyz` | camera position (`g_mViewInverse` column 3) minus world position: eye vector, unnormalised |
+| `v3.xyz` | `o4.xyz` | world normal via `g_mWorldIT` |
+| `v4.xyz` | `o5.xyz` | world **tangent** via `g_mWorldIT` |
+| `v5.xyz` | `o6.xyz` | world **binormal** via `g_mWorldIT` |
+
+### Texture stage roles
+
+PS `64bac8bb307eb896` (ps_3_0, 67 slots, 5 texture) declares only s0..s4. Its CTAB
+names them and the arithmetic confirms each role. The capture binds seven stages;
+**stages 5 and 6 are never sampled by this program**.
+
+| stage | identity | CTAB name | format / size / levels | use in the bytecode |
+|---|---|---|---|---|
+| s0 | 1850 | `DiffuseTexSampler` | DXT5 1024² / 11 | `.rgb` albedo through the grading matrix; `.a` is the **only** alpha output |
+| s1 | 1851 | `BumpTexSampler` | DXT5 1024² / 11 | AG normal: `x = 2*S.a-1`, `y = 2*S.g-1` |
+| s2 | 1852 | `SpecularTexSampler` | DXT1 1024² / 11 | scalar red: gates both the specular sum and the cube reflection |
+| s3 | 1706 | `LightMapTexSampler` | DXT5 32² / **1** | `.rgb` added last; `.a` selected only when `g_EnableGlow`≠0 |
+| s4 | 1708 | `CubeMapTexSampler` | cube / **1** | environment lookup at `reflect(-V,N)` |
+| s5 | 1854 | — | DXT5 32² / 6 | bound, not sampled |
+| s6 | 1710 | — | A8R8G8B8 32² / 1 | bound, not sampled |
+
+### Arithmetic
+
+With `S` = s1 sample, `T`=`v4`, `B`=`v5`, `Ng`=`v3`, `V`=`nrm(v2)`, `m`=s2`.x`,
+`A`=s0`.rgb` after the `dp4` grading, `f` = ±1 from the `vFace` `cmp` pair:
+
+```
+x = 2*S.a - 1 ;  y = 2*S.g - 1 ;  z = sqrt(abs(1 - x*x - y*y))   // rsq then rcp
+N = f * normalize(y*T + x*B + z*Ng)
+d_k = saturate(N·L_k)
+R_k = 2*(N·L_k)*N - L_k                        // mad r2, r0, -r0.w, -c_k
+h_k = saturate(R_k·V)
+s_k = pow(h_k, g_MatSpecularPower) * saturate(3*d_k)
+direct = g_MatDiffuseStrength*(d_0*C_0 + d_1*C_1) + m*g_MatSpecularStrength*(s_0*C_0 + s_1*C_1)
+env    = cube(reflect(-V,N)) * m * A * g_MatReflectionStrength
+oC0.rgb = (direct + saturate(v0.rgb)) * A + env + lightmap.rgb
+oC0.a   = lerp(s0.a, lightmap.a, g_EnableGlow) * v0.w
+```
+
+The normal decode, the `sqrt(abs(q))` fold and the reflection construction are the
+**same expressions** as the asteroid BUMP pair in
+[asteroid-specular-minification.md](asteroid-specular-minification.md); this shader
+adds the cube reflection, the `g_Mat*Strength/Power` weights, the additive lightmap,
+the `vFace` two-sided flip and an identity brightness/contrast/saturation/hue
+preshader matrix in `c0..c2`. There is **no Fresnel term** anywhere.
+
+Normal-dependent: `d_0`, `d_1`, `s_0`, `s_1` and the cube lookup direction.
+Sampled scalars, normal-independent: `m` (s2 red), `A` (s0 rgb), the lightmap rgb,
+and the alpha.
+
+### Captured constants, draw index 216 (frames 1812 / 2071 / 2316 of run 39)
+
+All 34 non-zero PS float registers, all 32 render states, all 112 sampler rows and
+all 13 texture/desc rows are **byte-identical across the three frames** (SHA-256 of
+the row sets: `b6d6a065741a`, `9cddc712bf68`, `5cda9ec7d61e`, `2b36ce3fd993`). The
+capture writes constants sparse-zero (`src/proxy/capture_state.cpp:57`), so an absent
+register is exactly zero.
+
+| register | parameter | value |
+|---|---|---|
+| `c0..c2` | grading matrix (preshader) | identity, zero fourth column — a no-op |
+| `c3` | `g_EnableGlow` | **absent ⇒ 0** |
+| `c4` | `LightDir_Dir0` | `(-0.304886, 0.455627, -0.836319)`, unit |
+| `c5` | `LightDir_Color0` | `(0.664062, 0.781250, 0.585938)`, Rec.709 luma 0.742 |
+| `c6` | `LightDir_Dir1` | `(0.945480, 0.230774, 0.229752)`, unit |
+| `c7` | `LightDir_Color1` | `(0.128906, 0.257812, 0.214844)`, luma 0.227 |
+| `c8` | `g_MatSpecularStrength` | **3** |
+| `c9` | `g_MatSpecularPower` | **6** |
+| `c10` | `g_MatReflectionStrength` | 1 |
+| `c11` | `g_MatDiffuseStrength` | **0.5** |
+
+`c12`/`c13` are `def`-ed inside the program (`3,0,0,0` and `1,-1,0,2`); the host values
+logged at those registers belong to another effect and are shadowed. VS `b0 = false`,
+`i0 = (0,0,1,0)` so `g_nNumLightPoint = 0`, `c40` (`g_MatEmissiveColor`) absent ⇒ 0,
+`c39` (`g_AlphaValue`) = 1, `c41` (`g_FogClip`) = `(1,0)`, `c37/c38` identity.
+
+Two consequences follow directly. First, `v0.xyz = 0`: the point-light loop runs zero
+times and emissive is black, so **this material has no ambient or emissive floor in
+`oC0.rgb`** — apart from the additive 32² lightmap, every RGB term is a product of the
+sampled normal's response with the albedo. Second, `v0.w = 1`, so `oC0.a = s0.a`
+exactly.
+
+Relative weights at these constants: per light the specular peak is `3*m` against a
+diffuse peak of `0.5`, i.e. 6× at `m = 1` and equal at `m = 1/6`; light 0 outweighs
+light 1 by 3.3× in luma; `dot(c4,c6) = -0.375`, so the two lights are 112° apart and a
+single flat normal can satisfy `N·L > 0` for at most one of them. Exponent 6 gives a
+half-power half-angle of 27° — broad, the same caveat the asteroid note makes for its
+exponent 3.
+
+### Sign of the change under minification
+
+The decode rebuilds `z` from `x,y`, so the sampled normal is **unit by construction**:
+mip averaging shortens `(x,y)` toward `(0,0)`, `z` is restored to 1, and the shader
+shades with a *flattened but still unit* normal. The Toksvig length signal is
+destroyed before the shader can see it, exactly as recorded for the asteroid pair.
+The shader therefore evaluates `g(mean N)` where correct filtering wants `mean g(N)`.
+
+- `d_k = max(0, N·L_k)` is convex, so `mean d_k ≥ d_k(mean N)` (Jensen). The diffuse
+  term can only **lose** energy as the mip level rises, never gain. The common
+  heuristic that "diffuse N·L rises toward the geometric normal" holds for the
+  *unclamped* dot only; the `saturate` reverses it for any footprint that straddles a
+  terminator, and with the two lights 112° apart every footprint straddles one.
+- `s_k = h_k^6 * saturate(3*d_k)`. Where the surface is meaningfully lit (`d_k ≥ 1/3`)
+  the gate is a constant 1 and `h^6` is convex on `[0,1]`, so the same inequality holds;
+  in the terminator band the gate is linear in `d_k` and the product still falls with
+  flattening. This is the dominant term at the captured constants (weight `3*m*C_0`
+  against `0.5*C_0`).
+- The cube lookup is not convex in `N`; flattening merely converges it to the
+  geometric mirror direction. Stage 4 has one level and `MIPFILTER = NONE`, so the
+  cube itself never minifies; its distance dependence comes only through the direction
+  and through `m`.
+- `m` and `A` are ordinary scalars/colours: their mips converge to the local mean with
+  no systematic sign.
+
+So every normal-driven term in this shader is one that **falls** under minification,
+the dominant one is specular, and there is no ambient floor to hold the result up. The
+bytecode's expected sign of the luminance change with distance is negative, consistent
+with the reported darkening.
+
+### Alpha path
+
+`lrp_pp r2.w, c3.x, r0.w, r1.w` selects `s0.a` because `c3 = 0`; `r1.w` at that point
+holds `s0.a` from `texld_pp r1, v1, s0` (the earlier `d_0` in `r1.w` is overwritten by
+that fetch). `mul_pp oC0.w, r2.w, v0.w` with `v0.w = 1` leaves `oC0.a = s0.a`. The
+alpha is therefore a **sampled scalar, not a normal term** — but it is a scalar from a
+DXT5 1024² texture with a full 11-level mip chain, so it minifies. Under the fixed
+SRCALPHA/INVSRCALPHA source-over this multiplies the *entire* `oC0.rgb`, including the
+non-minifiable additive lightmap. If the port's diffuse alpha has any sub-unit texels
+inside the growing footprint (cut-out grille, decal border), the whole port — glow
+included — fades toward the background as distance grows. This is a second darkening
+path, independent of the normal, and at these constants it is the stronger lever
+because it scales every term at once. Whether the mip-0 alpha over these pixels is
+actually below 1 is **unknown**: the capture holds no texels.
+
+### Mip state at these draws
+
+Stages 0–3, 5, 6: `MAGFILTER = LINEAR(2)`, `MINFILTER = ANISOTROPIC(3)`,
+`MIPFILTER = LINEAR(2)`, `MIPMAPLODBIAS = 0`, `MAXMIPLEVEL = 0`,
+`MAXANISOTROPY = 16`, `SRGBTEXTURE = 0`. Stage 4 (cube): `MINFILTER = LINEAR(2)`,
+`MIPFILTER = NONE(0)`. Trilinear + 16× anisotropic minification is therefore fully in
+effect on the normal-map stage, with all eleven mips of the 1024² DXT5 reachable and
+no bias or clamp limiting the level.
+
+### What run 39 does *not* show
+
+The three "approach" frames are not at different distances. The world matrix of node
+`1ae7e1b0` (handle 52029) is identical in all three, and the camera-to-node distance
+recovered from the logged view matrices is 85774 / 85231 / 85456 world units — a 0.6 %
+spread, i.e. 0.009 mip levels. The other two port draws in the same frames sit at
+140 k and 159 k units but are different nodes (`229a89a8`, `2af395e8`), and the port
+draws at frames 9163/11940 belong to yet another node (`2162b570`, 403–415 k units).
+**These captures contain no distance transition for a single port node**, so they
+neither confirm nor refute minification; they only establish that state, pair,
+textures and constants are fixed. A bounded HDR probe of a 24² window at the projected
+node centre gave mean luminance 0.0020 / 0.0018 / 0.0034 across the three frames, but
+the window moves with the camera and the geometry is six triangles, so this is not
+evidence of a material change.
+
+### Conclusion and the bounded next step
+
+The bytecode **supports** unchanged-state minification as a mechanism and identifies
+two channels rather than one:
+
+1. Normal-map (s1) flattening collapsing a specular-dominated, ambient-free lighting
+   model — the same decode and the same lost length signal as the asteroid pair, with
+   a heavier specular weight (`3*m` vs the asteroid's `m`) and no vertex-light floor.
+2. Diffuse-alpha (s0 `.a`) minification scaling the entire source-over composite,
+   which the asteroid's opaque path does not have.
+
+A corrective material shader cannot use classic Toksvig here: `z` is reconstructed and
+the vector renormalised, so the averaged length is gone by the time the shader runs.
+It would need either a precomputed variance / LEAN-style moment channel alongside the
+normal mip chain (texture creation and upload interception, memory, binding, Reset and
+sharing validation), or a runtime footprint average — explicit `dsx/dsy` gradients with
+two or four child-footprint taps of s1, reconstructing and shading each — which fits
+PS 3.0 but costs repeated two-light arithmetic per tap. Screen-space `dsx/dsy` of the
+already-filtered normal cannot recover sub-texel variance and is a weaker fallback.
+Neither addresses channel 2; alpha minification needs a coverage-aware composite, not a
+specular filter.
+
+The bounded next diagnostic is **capture-only and needs no shader replacement**: a
+readback of the s1 and s0 texels actually addressed by these pixels along a *real*
+approach — that is, a capture pair on the same node at clearly different distances
+(target a ≥ 2× distance ratio, ≥ 1 mip level) recording, per draw, the decoded
+`sqrt(x²+y²)` of the normal sample and the `s0.a` value at the chosen LOD. Failing a
+texel readback, a debug view that outputs `s0.a` alone and `saturate(3*d_0)` alone for
+this pair would separate the two channels. Run 39 cannot do either: it has no distance
+transition on a single port node.

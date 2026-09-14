@@ -67,6 +67,20 @@ broader than the very high-power lobes for which specular aliasing is usually
 most severe. Alpha/background mixing, subpixel triangle coverage, albedo/detail,
 and TAA correspondence remain separate contributors.
 
+## Shared decode: the station docking-port pair
+
+The station docking-port pair `4944d81dfe531b37/64bac8bb307eb896` uses the identical
+AG decode, `sqrt(abs(q))` fold, `N = normalize(y*T + x*B + z*Ng)` reconstruction and
+`R = 2*(N·L)*N - L` reflection, with the same anisotropic/trilinear sampling of a
+DXT5 1024² normal map at bias 0. The length signal is discarded there for the same
+reason, so options 3-5 below apply unchanged to that material. Its differences and
+its second, alpha-side darkening channel are in
+[station-material-distance.md](station-material-distance.md), section "Docking-port
+pair: minification analysis": exponent 6 with an outer `g_MatSpecularStrength = 3`,
+`g_MatDiffuseStrength = 0.5`, a cube reflection, an additive unmipped lightmap, no
+ambient or emissive floor, and a source-over alpha taken from the minifiable
+diffuse-texture alpha.
+
 ## Options, in test order
 
 1. **Causal A/B before an appearance change.** On this exact pair, independently
