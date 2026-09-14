@@ -31,6 +31,8 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
 | 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Attempted as run 38: execute-access fault at the loading screen; hook fix in progress |
 | 14 | Station source-over linear route, fade region and shimmer trace, combined | 0 | Completed as user run 14, snapshot run39 (witness clean, port composed, darkening persists) |
+| 16 | Run 13 retry: target-name speech with the decoder plugin and the fixed DMO fallback hook | 1 | Ready (candidate `5b92484a…` from `066e18f` installed) |
+| 17 | Bullet bound after near-plane clipping, packed_sample brightness | 1 | Ready (same candidate) |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
@@ -90,6 +92,47 @@ Report: hang or not, speech heard or not (and whether it starts at the right
 word), selection pauses, comm video/audio, and the session path. Analysis reads
 the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
 the selection timing.
+
+## 16. Run 13 retry: speech with the decoder plugin and the fixed DMO fallback hook — Ready
+
+The candidate `5b92484a…` (source `066e18f`, record `verification/results/voice-hook-install.json`)
+is installed. Run 13 on the previous candidate died at the loading screen with an execute fault; the
+cause was in the hook itself (a devirtualised call to address 0) and is fixed and proven in the replica
+(`docs/verification/voice-decoder.md`). The fade route is now on by default. Same procedure as run 13:
+load the usual save, select five or six targets, listen for the target-name speech, note selection pauses,
+open one NPC comm dialogue, quit. If the loading screen hangs or the game dies, report the message and
+the session path; the new fault witness writes a `voice_dmo_fallback_fault` line into the session log.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --game-phases --audio-sites --voice-decoder /tmp/x3-wma-plugin-v3 \
+  --capture-start 999999 --capture-frames 1
+```
+
+Report: hang/crash or not, speech heard or not, selection pauses, comm audio, session path.
+
+## 17. Bullet bound after near-plane clipping, packed_sample brightness — Ready
+
+Same candidate, no decoder, no shimmer trace (it confounds frame time). Fire the weapons at a target
+(asteroid or ship) for several seconds in normal view, press F8 three or four times while firing, once
+while not firing, then quit. Tell me whether the bullets look dimmer, brighter or the same as without
+`--screen-emission` (run 14), and the frame rate while firing.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness --screen-emission \
+  --capture-start 999999 --capture-frames 1
+```
+
+Analysis: `locked_prefix_frame` bound/refused/clipped and the `reason_near` count (the w ≤ 0 refusals
+of run 15 must be gone), `packed_region_pixels` per firing frame, `packed_sample pre_y/post_y` at the
+captures (the brightness answer), witness `outside=0`, frame time firing vs not.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
