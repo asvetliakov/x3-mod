@@ -10,8 +10,9 @@ work from the pause (cutout source, reviewed fade results, decoder build plans
 and the persistent backup) is recorded in
 [the September 14 resume handoff](handoff-2026-09-14.md); nothing there is installed.
 Checkpoints since: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
-with the [per-part AABB finding](reverse-engineering/render-node-bounds.md) feeding a
-region-composition design; the cutout runtime is ported to branch
+with the [per-part AABB finding](reverse-engineering/render-node-bounds.md) and the
+ratified [in-place region composition design](architecture/linear-distance-fade-region.md)
+(`67baa55`; step 1, bound extraction with a conservativeness fixture, in progress); the cutout runtime is ported to branch
 `qualification/linear-cutout-main` (`34593a4`, worktree `/tmp/x3-cutout-main`) under
 escalated review and its first live fixture run; the isolated WMA decoder adapter
 ([note](architecture/voice-decoder-adapter.md)) is built, evidence-reviewed and
