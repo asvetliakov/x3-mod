@@ -46,13 +46,16 @@ inline void gamma(Words &w, bool encode) {
 inline Words program() {
   Words w{0xffff0300};
   emit(w, 31, {0x80000005, dst(1, 0, 3)});
-  for (unsigned s = 0; s < 3; ++s)
+  // Prototype 1: only A (s0) and Q,q (s1) are sampled. Fade admission
+  // requires RGB-only source writes, so native B.a equals A.a exactly; the
+  // owner still binds full B at s2 for recovery, but this program never
+  // declares or reads it.
+  for (unsigned s = 0; s < 2; ++s)
     emit(w, 31, {0x90000000, dst(10, s)});
   def(w, 20, 0, 65504, 1e-10f, 1e-22f);
   def(w, 21, 2.2f, 1.f / 2.2f, 1, 0);
   emit(w, 66, {dst(0, 4), src(1, 0), src(10, 0)}); // raw A
   emit(w, 66, {dst(0, 5), src(1, 0), src(10, 1)}); // Q,q
-  emit(w, 66, {dst(0, 6), src(1, 0), src(10, 2)}); // native B alpha
   emit(w, 11, {dst(0, 5, 7), src(0, 5), src(2, 20, 0)});
   emit(w, 10, {dst(0, 5, 7), src(0, 5), src(2, 20, 0x55)});
   emit(w, 11, {dst(0, 5, 8), src(0, 5, 0xff), src(2, 20, 0)});
@@ -68,7 +71,7 @@ inline Words program() {
   emit(w, 43, {});
   gamma(w, true);
   emit(w, 43, {});
-  emit(w, 1, {dst(0, 0, 8), src(0, 6, 0xff)});
+  emit(w, 1, {dst(0, 0, 8), src(0, 4, 0xff)}); // alpha = A.a (== B.a)
   emit(w, 1, {dst(8, 0), src(0, 0)});
   w.push_back(0xffff);
   return w;

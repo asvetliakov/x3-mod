@@ -265,8 +265,9 @@ The detached fixture reuses `LinearEmissionPass` under
 `X3M_LINEAR_DISTANCE_FADE_FIXTURE` for source-over state, an augmented VS and a
 supplied composition program. Production-macro-off pass tokens and embedded
 emission programs remain unchanged. The authored, host-exported composite is
-150 DWORDs; it performs scalar q endpoint branches with all texture reads before
-branching. Its exact input is pinned by the focused runner, which consumes a
+now the 143-DWORD / 572-byte prototype-1 program (SHA256 `7b5599fc…`); the
+150-DWORD / 600-byte program described by the R2/R3 results is superseded. It
+performs scalar q endpoint branches with all texture reads before branching. Its exact input is pinned by the focused runner, which consumes a
 prebuilt EXE and CSO without rebuilding or installing anything.
 
 The focused X3 GPU invocation passed 65 cases plus six after actual Reset:
@@ -331,7 +332,8 @@ draw admission adds no shader lookup, compilation or allocation. Source blend
 tracking remains active with the optional general state shadow disabled. The
 existing composition owner saves and restores the augmented VS along with the
 native PS and blend state, then executes the original source once. It reuses its
-B/E/C/M pool and the exact qualified 600-byte composite; opaque and additive
+B/E/C/M pool and the exact qualified composite (the 600-byte program at R3, now
+the 572-byte prototype-1 program); opaque and additive
 shader programs are unchanged.
 
 At the HDR latch, the shared owner qualifies additive and fade policy bits
@@ -359,6 +361,68 @@ frame-mask clear, depth and driver traffic. The four FP16 pool targets occupy
 not a second pool. Per-frame counters expose eligible/prepared/completed fade
 DIPs and that traffic estimate. The live comparison below holds all other
 features fixed and measures this cost without batching or a reduced copy region.
+
+### Prototype 1: two-sample fade composite (2026-09-14)
+
+The fade composite no longer samples native B. Admission requires RGB-only
+source writes (`COLORWRITEENABLE == 7`, no separate alpha blend), so B.a equals
+A.a exactly at every pixel; the program now takes the composed alpha from the
+raw A sample already needed for the q=0 path (`mov r0.w, r4.w`). The `dcl s2`
+and the third `texld` are gone; both remaining texture reads stay before the
+scalar q branches, and the q>0 / q<1 topology, gamma fragments and q=1 /
+nonfinite endpoints are unchanged. Authored program: 143 DWORDs (572 bytes),
+SHA256 `7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d`,
+replacing the 150-DWORD `0acae2e3…` program; the runtime copy in
+`src/renderer/linear_distance_fade_composite_inc.h` is promoted byte-for-byte
+and the host test ties it to the runner pin. Full B is still produced by the
+preparation copy and kept for native recovery, and the additive-emission
+composite still samples B (its alpha policy is unchanged).
+
+Detached X3 qualification (`verification/results/bottle-X3/linear-distance-fade-gpu-proto1.json`,
+raw `/tmp/x3-distance-fade-proto1-r1`): passed, 71 cases, 257 source calls, 183,264 exact raw channels, 580,608 numerical
+channels with maximum tolerance fraction 7.19e-5, 193,536/193,536 exact energy
+channels, exact native B and destination alpha, 5 fault cases, 4 capability and
+3 state refusals. The raw `report.txt` (not the JSON) shows the split of 65
+cases plus six after Reset and 50/50 device references before and after each
+batch. `verification/results/bottle-X3/linear-distance-fade-gpu.json` and
+`linear-distance-fade-live.json` are the superseded 150-DWORD baselines,
+retained for comparison.
+
+Per-draw work does not grow: the pass still performs the same copy, composite
+and state traffic, minus one texture fetch per composed pixel. The estimated
+logical traffic per DIP falls from 56 to 48 bytes/pixel (8 bytes of FP16 B read
+removed; 47.2 MB at 1280x768, 99.5 MB at 1920x1080). The owner's composite draw
+binds A, E and B for both policies through one `combine ? 3 : 1` loop and does
+not distinguish policies at the bind, so the unused B texture remains bound at
+s2 for the fade policy (one `GetContainer`/`SetTexture` per composite, no
+sampling).
+
+Live qualification (`verification/results/bottle-X3/linear-distance-fade-live-proto1.json`,
+raw `x3-distance-fade-live-fac48raw`): passed with the same totals as R3, 15
+processes / 302 frames, 4,502,255 functional/admission checks, 196 source DIPs,
+105 RGB samples, 490 restoration comparisons, 140 exact TAA/reference readbacks,
+maximum tolerance fraction 0.161591. Inputs were a fresh worktree seam DLL
+`15cac1c2…` and fixture `85404016…` built by `build_motion_output.sh` from a
+worktree CMake object tree (not installed). Paired median deltas, fade on minus
+off, across both process orders, in milliseconds; R3 (three-sample) beside
+prototype 1 (two-sample):
+
+| Resolution | DIPs | R3 source | P1 source | R3 terminal | P1 terminal |
+|---|---:|---:|---:|---:|---:|
+| 1280×768 | 1 | +0.449 to +0.530 | +0.391 to +0.433 | −0.039 to +0.036 | −0.132 to −0.131 |
+| 1280×768 | 4 | +1.596 to +1.641 | +1.413 to +1.435 | −0.032 to +0.086 | −0.058 to −0.032 |
+| 1280×768 | 16 | +3.299 to +4.808 | +4.188 to +4.299 | −0.828 to +0.009 | −0.036 to −0.016 |
+| 1920×1080 | 1 | +0.790 to +0.823 | +0.476 to +0.656 | −0.268 to +1.231 | −0.370 to −0.241 |
+| 1920×1080 | 4 | +2.653 to +2.733 | +2.501 to +2.570 | −0.943 to +0.440 | −0.348 to −0.125 |
+| 1920×1080 | 16 | +7.638 to +8.464 | +6.608 to +7.107 | −2.366 to −0.340 | −1.998 to −1.191 |
+
+Source windows fall 11–18% at 1280×768/1 and 4 DIPs and 6–40% at 1080p (16 DIPs:
+7.64–8.46 to 6.61–7.11 ms, 13–16%); the 1280×768/16-DIP cell lies inside the
+wide R3 range rather than improving it. Four samples per order remain order-sensitive and the
+1080p/1-DIP off-side medians differ by 0.37 ms between orders, so these are
+fenced completion windows, not GPU time or FPS. The 16-DIP cost remains
+material; prototype 1 alone does not make the feature acceptable for default
+enablement.
 
 ### Actual X3 runtime result and performance decision
 

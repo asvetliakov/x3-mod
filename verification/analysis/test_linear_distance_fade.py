@@ -168,9 +168,14 @@ class DistanceFadeProducer(unittest.TestCase):
         subprocess.run([str(self.driver),'--composite',str(output)],check=True)
         data=output.read_bytes()
         self.assertEqual(hashlib.sha256(data).hexdigest(),runner.COMPOSITE_SHA256)
-        self.assertEqual(len(data),600)
+        self.assertEqual(len(data),572,'prototype 1: 143 DWORDs, B sample removed')
         _,items=parse(data)
         self.assertEqual(motion.nesting(items),(True,2,0))
+        # Prototype 1 samples only A (s0) and Q,q (s1); alpha is A.a, never B.
+        self.assertEqual(sorted(motion.register_of(i['words'][1])[1] for i in items if i['opcode']==motion.DCL and motion.register_of(i['words'][1])[0]==10),[0,1])
+        self.assertEqual([motion.register_of(i['words'][2])[1] for i in items if i['opcode']==66],[0,1])
+        alpha=[i for i in items if i['opcode']==1 and motion.register_of(i['words'][0])==(0,0) and motion.mask_of(i['words'][0])=='w']
+        self.assertEqual([(motion.register_of(a['words'][1]),a['words'][1]>>16&255) for a in alpha],[((0,4),0xff)],'composed alpha reads raw A.a')
         branches=[i for i in items if i['opcode']==41]
         self.assertEqual([(struct.unpack_from('<I',data,i['dword']*4)[0]>>16)&255 for i in branches],[1,4])
         first=next(i['dword'] for i in items if i['opcode']==41)
@@ -180,8 +185,13 @@ class DistanceFadeProducer(unittest.TestCase):
         import re
         words=re.findall(r'0x([0-9a-f]{8})u',(ROOT/'src/renderer/linear_distance_fade_composite_inc.h').read_text())
         data=struct.pack('<'+str(len(words))+'I',*(int(x,16) for x in words))
-        self.assertEqual(len(data),600)
-        self.assertEqual(hashlib.sha256(data).hexdigest(),'0acae2e3dcfed4f04534cf09f3b74c897fd9c6e66e706c6a21c45deaf6da0b53')
+        self.assertEqual(len(data),572)
+        # Runtime copy is tied to the runner pin, which the GPU fixture enforces
+        # on the exported program (linear-distance-fade-gpu-proto1.json).
+        sys.path.insert(0,str(ROOT/'verification/probe'))
+        import run_linear_distance_fade as runner
+        self.assertEqual(hashlib.sha256(data).hexdigest(),runner.COMPOSITE_SHA256)
+        self.assertEqual(runner.COMPOSITE_SHA256,'7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d')
         # Old additive program bytes remain untouched; shared state/policy
         # changes are now covered by the whole-component host fixture.
         for name in ['linear_emission_composite_inc.h','linear_emission_copy_clear_inc.h']:

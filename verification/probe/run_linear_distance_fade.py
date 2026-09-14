@@ -22,7 +22,7 @@ import linear_material_reference as ref
 
 ROOT=Path(__file__).resolve().parents[2]
 SIZE=16
-COMPOSITE_SHA256="0acae2e3dcfed4f04534cf09f3b74c897fd9c6e66e706c6a21c45deaf6da0b53"
+COMPOSITE_SHA256="7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d"  # prototype 1: two-sample fade composite, 143 DWORDs
 SCOPE=('src/renderer/linear_material.cpp','src/renderer/linear_distance_fade.h',
        'src/renderer/linear_emission_pass.cpp','src/renderer/linear_emission_pass.h',
        'verification/probe/linear_material_fixture.cpp',
@@ -224,6 +224,7 @@ def main():
     parser.add_argument('--composite',type=Path,required=True,help='Frozen CSO from host --composite exporter')
     parser.add_argument('--programs',type=Path,default=Path('/tmp/x3-shader-sweep/programs'))
     parser.add_argument('--raw-dir',type=Path,required=True)
+    parser.add_argument('--result-name',default='linear-distance-fade-gpu.json',help='Compact result file name under the bottle results directory')
     args=parser.parse_args()
     assert bottle.BOTTLE=='X3','Set X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(),'Game running; no fixture launch'
@@ -256,7 +257,7 @@ def main():
     except BaseException as error:
         result['error']=repr(error);raise
     finally:
-        target=bottle.results_dir(ROOT)/'linear-distance-fade-gpu.json' if result['passed'] else args.raw_dir/'failed-result.json'
+        target=bottle.results_dir(ROOT)/args.result_name if result['passed'] else args.raw_dir/'failed-result.json'
         target.write_text(json.dumps(result,indent=2)+'\n')
         print(json.dumps({key:result[key] for key in ('passed','cases','source_calls','wall_seconds','error') if key in result}))
 
