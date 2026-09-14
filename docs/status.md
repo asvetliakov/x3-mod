@@ -39,9 +39,9 @@ asteroid triangle dropout fixed and accepted; step D bullets accepted (no
 fullscreen bracket in 50,654 frames); loading markers read menu 12.9 s and a
 21.7 s save-load stall; the far port was captured (37 px) and its radiance
 moves only 6 % between far and near; AO ran in the debug factor view for the
-whole session and is a few pixels wide at gameplay distances. Run 21 is being
-queued (AO per the pending scale note, witness on firing frames, a vanilla
-eyeball approach to the same port). Details in the
+whole session and is a few pixels wide at gameplay distances. Run 21 is queued (no new
+DLL): AO appearance at radius 200 as the footprint proxy, bullet witness on
+every frame, and a vanilla approach to the same port and a ship. Details in the
 [completed-run archive](archive/user-runs-completed.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
 but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
@@ -115,8 +115,12 @@ darkening on a ship. Details in the
   the term is invisible at gameplay distance because the radius is a few
   half-res pixels (`radius_px = 256·radius_m/distance_m` at 1280×768, cap 64;
   20 m gives 10 px at 500 m and 2.6 px at 2 km); run 20 also ran the gray debug
-  view all session. Scale decision (radius rule, strength, keep or drop) pending
-  the design note `docs/architecture/ambient-occlusion-scale.md`; design
+  view all session. Scale decision
+  [ambient-occlusion-scale.md](architecture/ambient-occlusion-scale.md) is
+  ratified with the run-21 amendment: appearance is judged first at
+  `--ao-radius 200`; the constant-footprint rule is implemented only if kept;
+  X3's BUMPMAP is already tangent-space normal mapping, no height map exists,
+  parallax has negative cost/benefit. Design
   [ambient-occlusion.md](architecture/ambient-occlusion.md), ledger
   [ambient-occlusion.md](verification/ambient-occlusion.md).
 - **Distance fade:** default-on in the installed build; the witness stayed clean

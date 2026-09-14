@@ -308,3 +308,8 @@ fixture's (below).
 
 Detached fixture rerun after the debug-view flag (step 1b chain unchanged otherwise): 112 checks, 0
 failures; 1280x768 0.78 ms first block / 0.59 ms repeat (floor 0.51), 1920x1080 1.39 ms.
+
+## Scale decision (2026-09-15)
+
+Runs 19/20 showed the metre radius is a few half-res pixels at gameplay distance. The scale rule, defaults and the keep/drop decision are in [ambient-occlusion-scale.md](ambient-occlusion-scale.md) (ratified with the run-21 amendment).
+

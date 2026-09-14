@@ -41,3 +41,47 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
+
+| 21 | AO appearance at a readable footprint (`--ao-radius 200`, no debug view), bullet witness every frame, vanilla port approach | 2 | Ready (no new DLL; installed `39b090d0…`) |
+
+## 21. AO appearance at radius 200, bullet witness on firing frames, vanilla port approach — Ready
+
+No new build; the installed `39b090d0…` (`77a649b`) is used. Two short sessions.
+
+**Session A (enhanced).** Load the usual save.
+
+1. **Ambient occlusion**: near a station (within ~1 km) and in an asteroid field, press
+   Ctrl+Shift+F11 a few times. This time the scene is shaded (no gray view), and the radius is
+   200 m, which is the readable-footprint proxy from
+   [ambient-occlusion-scale.md](../architecture/ambient-occlusion-scale.md). Say whether creases,
+   docking bays, hull plating and asteroid contact areas darken visibly, whether it looks wrong
+   anywhere (dark halos around objects against the nebula, crawling, HUD), and whether you would
+   keep it on. Press F8 once with AO on and once off at the same spot near the station, without
+   moving. Analysis: `ambient_occlusion_frame reason=ok` on the on-capture, the on/off HDR pair,
+   `cpu_us`.
+2. **Bullets**: fire at a target for a few seconds, F8 once while firing. The witness now samples
+   every frame. Analysis: `fade_witness outside` on the firing frames, `packed_sample` peaks.
+3. Anything else you notice, including the loading time by feel.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission --screen-emission-timing \
+  --ambient-occlusion --ao-timing --ao-radius 200 \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+**Session B (vanilla, eyes only).** Same save, same Argon station: fly out until the docking port
+is thumbnail-sized, then back until it fills a third of the screen, and do the same on one ship.
+Say whether the port and the ship darken when near in vanilla too. No capture, no snapshot.
+
+```sh
+./x3run --direct --vanilla
+```
+
+Report: session A path, the AO verdict (keep / adjust / drop) with where it looked right or
+wrong, the bullets, and the vanilla darkening answer.
+
