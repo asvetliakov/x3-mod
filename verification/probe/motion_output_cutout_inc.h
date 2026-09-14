@@ -79,11 +79,19 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
     Object objects[2]={f.a,f.b};for(unsigned i=0;i<2;++i){objects[i].scope.node_serial=9000+i;objects[i].scope.node=0x900000+i*0x100;objects[i].scope.mesh=0x910000+i*0x100;objects[i].vb=live.vb.p;objects[i].recorded=false;}
     char setting[16]{};const bool material=GetEnvironmentVariableA("X3M_LINEAR_MATERIALS",setting,sizeof setting)==1&&setting[0]=='1';
     const bool ordinary=GetEnvironmentVariableA("X3M_FIXTURE_CUTOUT_ORDINARY",setting,sizeof setting)==1&&setting[0]=='1';
+    // Steady-state scripts: every frame draws pair 0 at step 1 once, static,
+    // either as the game's source-over blended cutout pass (blend on,
+    // SRCALPHA/INVSRCALPHA, no depth write: refused at the gate, ordinary
+    // native colour, history kept) or as an opaque gate refusal (ALPHAFUNC
+    // GREATER: a coverage miss that drops the frame's history).
+    char script_setting[16]{};GetEnvironmentVariableA("X3M_FIXTURE_CUTOUT_SCRIPT",script_setting,sizeof script_setting);
+    const bool script_blended=std::strcmp(script_setting,"blended")==0,script_opaque=std::strcmp(script_setting,"opaque")==0,scripted=script_blended||script_opaque;
+    require(!scripted||(!mixed&&!f.cutout_bench),"cutout steady-state script is a plain run");
     // Each refusal changes precisely one admitted state. Invalid API enums are
     // not used: these are real accepted application state setters.
     const D3DRENDERSTATETYPE wrong_state[]={D3DRS_ALPHAFUNC,D3DRS_ALPHAREF,D3DRS_COLORWRITEENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_DITHERENABLE,D3DRS_CULLMODE,D3DRS_FILLMODE,D3DRS_STENCILENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_ZENABLE,D3DRS_SRGBWRITEENABLE};
     const DWORD wrong_value[]={D3DCMP_GREATER,2,15,TRUE,TRUE,TRUE,D3DCULL_CW,D3DFILL_WIREFRAME,TRUE,FALSE,D3DCMP_LESS,FALSE,TRUE};
-    const auto bind=[&](IDirect3DDevice9* d,Inputs& in,unsigned pair,unsigned step,float shift,bool control,int wrong) {
+    const auto bind=[&](IDirect3DDevice9* d,Inputs& in,unsigned pair,unsigned step,float shift,bool control,int wrong,bool blended=false) {
         for(auto s:{D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_DITHERENABLE,D3DRS_STENCILENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_CLIPPLANEENABLE})api(d->SetRenderState(s,FALSE),"cutout off state");
         api(d->SetRenderState(D3DRS_ZENABLE,TRUE),"cutout depth test");api(d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"cutout depth write");api(d->SetRenderState(D3DRS_ZFUNC,D3DCMP_LESSEQUAL),"cutout LE depth");
         api(d->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE),"cutout both faces");api(d->SetRenderState(D3DRS_FILLMODE,D3DFILL_SOLID),"cutout solid");
@@ -92,6 +100,7 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         RECT rect{LONG(f.W/8),LONG(f.H/8),LONG(7*f.W/8),LONG(7*f.H/8)};api(d->SetScissorRect(&rect),"cutout scissor");api(d->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"cutout scissor enabled");
         for(unsigned i=0;i<16;++i)api(d->SetRenderState(D3DRENDERSTATETYPE((i<8?D3DRS_WRAP0:D3DRS_WRAP8)+i%8),0),"cutout WRAP inputs");
         if(wrong>=0)api(d->SetRenderState(wrong_state[wrong],wrong_value[wrong]),"cutout single refusal state");
+        if(blended){api(d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"cutout blended pass");api(d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA),"cutout blended source alpha");api(d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCALPHA),"cutout blended inverse source alpha");api(d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"cutout blended ADD");api(d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"cutout blended no depth write");}
         api(d->SetVertexDeclaration(in.decl.p),"cutout declaration bind");api(d->SetStreamSource(0,in.vb.p,0,sizeof(Vertex)),"cutout stream bind");api(d->SetStreamSourceFreq(0,1),"cutout stream frequency");api(d->SetIndices(in.ib.p),"cutout indices bind");api(d->SetVertexShader(in.vs[pair].p),"cutout VS bind");api(d->SetPixelShader(in.ps[pair].p),"cutout PS bind");
         float vc[48][4]{},pc[8][4]{};for(unsigned i=0;i<4;++i)vc[24+i][i]=1;vc[24][3]=shift;for(unsigned i=0;i<3;++i)vc[31+i][i]=1;vc[36][3]=4;
         if(control){vc[24][3]+=float(2*f.jx/f.W);vc[25][3]-=float(2*f.jy/f.H);}
@@ -125,23 +134,27 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
     };
     unsigned last_seen[2]={~0u,~0u},last_first[2]={0,0};
     constexpr unsigned VSFailure=58,PSFailure=59,RSFailure=60,SamplerFailure=61,ResetFailure=62;
-    const unsigned frames=f.cutout_bench?18:mixed?3:70;
+    const unsigned frames=f.cutout_bench?18:mixed?3:scripted?12:70;
     for(unsigned iteration=0;iteration<frames;++iteration) {
         const unsigned plan=mixed?70+iteration:iteration;
         const unsigned near_steps[]={1,5,1,7,8,1};
-        const unsigned pair=f.cutout_bench||plan>=64?0:plan<32?plan/16:plan%2,step=f.cutout_bench?1:plan<32?plan%16:plan>=64&&plan<70?near_steps[plan-64]:1;const int wrong=plan>=32&&plan<45&&!f.cutout_bench?int(plan-32):plan==RSFailure||plan==71?1:-1;
+        const unsigned pair=f.cutout_bench||scripted||plan>=64?0:plan<32?plan/16:plan%2,step=f.cutout_bench||scripted?1:plan<32?plan%16:plan>=64&&plan<70?near_steps[plan-64]:1;const int wrong=script_opaque?0:scripted?-1:plan>=32&&plan<45&&!f.cutout_bench?int(plan-32):plan==RSFailure||plan==71?1:-1;
         // 1 px origin steps (0,1,2,1 px at 64 px): a sawtooth wrap would jump 3 px and trip the route's 2.4 px median cut rule.
-        const float shift=.03125f*float(2-std::abs(int(plan%4)-2)),prior=objects[pair%2].rt;
+        const float shift=scripted?0:.03125f*float(2-std::abs(int(plan%4)-2)),prior=objects[pair%2].rt;
         Object& object=objects[pair%2];const bool known=step!=13;
         const unsigned cap=plan>=45&&plan<=54?plan-45:plan==56?10:0;
-        const bool routed=(material&&f.mip_bias==0&&wrong<0&&!(cap>=1&&cap<=10))||step==10;
-        const bool arm_active=cap==0&&f.mip_bias==0; // inactive arm: ordinary native draw, no missed coverage, history kept
+        const bool routed=(material&&f.mip_bias==0&&wrong<0&&!script_blended&&!(cap>=1&&cap<=10))||step==10;
+        // Inactive arm: ordinary native draw, no missed coverage, history kept. The
+        // steady-state scripts refuse from frame 0, whose begin_frame latch precedes
+        // the first capability verdict (probed at the frame's HDR latch).
+        const bool arm_active=cap==0&&f.mip_bias==0&&!(scripted&&iteration==0);
+        const bool missable=!script_blended; // the exact source-over refusal is an ordinary native colour draw: never a miss (wrong 3, ONE/ZERO, still misses)
         if(!f.cutout_bench&&((plan>=45&&plan<=54)||plan==56))f.emission_fault(f.d.p,200,cap);
         f.frame_begin();f.linear_material_inputs();f.write_reserved();
         const float background_z=plan>=64&&plan<70?.300001f-.5f:step==12?-.3f:0;
-        f.draw(f.a,-.015625f*float(plan%3),0,background_z,true,true,f.a.recorded,Alter::None,false);
+        f.draw(f.a,scripted?0:-.015625f*float(plan%3),0,background_z,true,true,f.a.recorded,Alter::None,false);
         if(mixed)fade(0);
-        f.scope(known?&object:nullptr);bind(f.d.p,live,pair%2,step,shift,false,plan==RSFailure?-1:wrong);
+        f.scope(known?&object:nullptr);bind(f.d.p,live,pair%2,step,shift,false,plan==RSFailure?-1:wrong,script_blended);
         if(f.cutout_bench){
             if(ordinary)api(f.d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,TRUE),"cutout timed ordinary motion fallback");
             const unsigned count=plan<6?1:plan<12?4:16;fence();LARGE_INTEGER begin,end;QueryPerformanceCounter(&begin);for(unsigned i=0;i<count;++i)api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"cutout measured DIP");fence();QueryPerformanceCounter(&end);
@@ -170,13 +183,13 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         // this unhooked device. All native resources survive only this fixture.
         IDirect3DDevice9* nd=f.reference.d.p;Com<IDirect3DStateBlock9> saved;api(nd->CreateStateBlock(D3DSBT_ALL,&saved.p),"cutout native state save");Com<IDirect3DSurface9> saved_rt,saved_ds;api(nd->GetRenderTarget(0,&saved_rt.p),"cutout native RT save");const HRESULT ds_hr=nd->GetDepthStencilSurface(&saved_ds.p);require(SUCCEEDED(ds_hr)||ds_hr==D3DERR_NOTFOUND,"cutout native DS save");
         api(nd->SetDepthStencilSurface(nullptr),"cutout native DS unbind");api(nd->SetRenderTarget(0,target.p),"cutout native RT");api(nd->SetDepthStencilSurface(native_depth.p),"cutout native DS");const D3DVIEWPORT9 viewport{0,0,f.W,f.H,0,1};api(nd->SetViewport(&viewport),"cutout native viewport");
-        bind(nd,native,pair,step,shift,true,wrong);if(material&&plan==SamplerFailure)api(nd->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,TRUE),"cutout native mutated sampler");api(nd->SetRenderState(D3DRS_SCISSORTESTENABLE,FALSE),"cutout native full clear");api(nd->Clear(0,nullptr,D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL,0xffff00ff,plan>=64&&plan<70?.300001f:step==12?.2f:.5f,0),"cutout native poison and occluder depth");api(nd->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"cutout native scissor restore");api(nd->BeginScene(),"cutout native BeginScene");api(nd->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,step==2?6:0,2),"cutout native threshold oracle");api(nd->EndScene(),"cutout native EndScene");api(nd->GetRenderTargetData(target.p,staging.p),"cutout native readback");
+        bind(nd,native,pair,step,shift,true,wrong,script_blended);if(material&&plan==SamplerFailure)api(nd->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,TRUE),"cutout native mutated sampler");api(nd->SetRenderState(D3DRS_SCISSORTESTENABLE,FALSE),"cutout native full clear");api(nd->Clear(0,nullptr,D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL,0xffff00ff,plan>=64&&plan<70?.300001f:step==12?.2f:.5f,0),"cutout native poison and occluder depth");api(nd->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"cutout native scissor restore");api(nd->BeginScene(),"cutout native BeginScene");api(nd->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,step==2?6:0,2),"cutout native threshold oracle");api(nd->EndScene(),"cutout native EndScene");api(nd->GetRenderTargetData(target.p,staging.p),"cutout native readback");
         // Magenta poison stays distinct even if a refused fixed-fog state makes
         // native RGB black. Coverage still comes only from the actual original draw.
         D3DLOCKED_RECT lock{};api(staging->LockRect(&lock,nullptr,D3DLOCK_READONLY),"cutout native pixels lock");std::vector<float> coverage(std::size_t(f.W)*f.H);unsigned accepted=0,holes=0,owned=0;int rgb_sample=-1;
         const bool matched=routed&&known&&object.recorded&&last_seen[pair]+1==plan&&last_first[pair]==(step==2?6u:0u);
         for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){const unsigned n=y*f.W+x,i=4*n;const auto* p=reinterpret_cast<const unsigned short*>(static_cast<const char*>(lock.pBits)+y*lock.Pitch)+4*x;const bool pass=p[0]!=0x3c00||p[1]!=0||p[2]!=0x3c00;coverage[n]=pass;accepted+=pass;holes+=!pass;if(pass&&rgb_sample<0)rgb_sample=int(n);
-            if(pass&&(!material||plan==VSFailure||plan==PSFailure||plan==SamplerFailure)&&wrong<0){for(unsigned c=0;c<3;++c){const unsigned h=p[c],exponent=(h>>10)&31,mantissa=h&1023;const float native_rgb=std::ldexp(float(exponent?mantissa+1024:mantissa),exponent?int(exponent)-25:-24)*(h&0x8000?-1:1);require_quiet(color[i+c]==native_rgb,"cutout original fallback RGB exact native twin");}}
+            if(pass&&(!material||plan==VSFailure||plan==PSFailure||plan==SamplerFailure)&&wrong<0&&!script_blended){for(unsigned c=0;c<3;++c){const unsigned h=p[c],exponent=(h>>10)&31,mantissa=h&1023;const float native_rgb=std::ldexp(float(exponent?mantissa+1024:mantissa),exponent?int(exponent)-25:-24)*(h&0x8000?-1:1);require_quiet(color[i+c]==native_rgb,"cutout original fallback RGB exact native twin");}}
             const double u=(x-f.jx)/f.W+.5*(prior-shift)+.5/f.W,v=(y-f.jy)/f.H+.5/f.H;
             const unsigned errors=cutout_pixel_errors(&color[i],&before_color[i],&motion[i],&before_motion[i],
                 depth.empty()?0:depth[n],before_depth.empty()?0:before_depth[n],!depth.empty(),pass,routed,matched,step!=10&&wrong!=2,u,v,f.W,f.H);
@@ -189,11 +202,11 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         f.records.push_back({&object,shift,0,-.2f,routed,matched,prior,0,-.2f,false,f.jitter,routed&&known});if(routed&&known){object.recorded=true;object.rt=shift;last_seen[pair]=plan;last_first[pair]=step==2?6:0;}
         if(material&&rgb_sample>=0&&routed&&wrong<0&&plan!=VSFailure&&plan!=PSFailure&&plan!=SamplerFailure){const unsigned i=4*unsigned(rgb_sample);std::printf("CUTOUT_RGB frame=%llu pair=%u step=%u reverse=%u rgb=%.9g,%.9g,%.9g\n",f.frame,pair,step,step==2,color[i],color[i+1],color[i+2]);}
         const unsigned routed_delta=f.emission_status(f.d.p,33)-routed_before,missed_delta=f.emission_status(f.d.p,34)-missed_before;
-        if(step!=10)require(routed_delta==unsigned(routed)&&missed_delta==unsigned(material&&!routed&&arm_active),"cutout actual routing counters");
+        if(step!=10)require(routed_delta==unsigned(routed)&&missed_delta==unsigned(material&&!routed&&arm_active&&missable),"cutout actual routing counters");
         write("color",color);write("motion",motion);write("depth",depth);write("coverage",coverage);
-        std::printf("CUTOUT_LIVE frame=%llu pair=%u step=%u wrong=%d material=%u depth=%u routed=%u matched=%u accepted=%u holes=%u owned=%u cap=%u cap_status=%u cap_queries=%u routed_delta=%u missed_delta=%u unavailable=%u\n",f.frame,pair,step,wrong,material,f.materialwrap_depth,routed,matched,accepted,holes,owned,cap,f.emission_status(f.d.p,30),f.emission_status(f.d.p,31),routed_delta,missed_delta,f.emission_status(f.d.p,32));
+        std::printf("CUTOUT_LIVE frame=%llu pair=%u step=%u wrong=%d blended=%u material=%u depth=%u routed=%u matched=%u accepted=%u holes=%u owned=%u cap=%u cap_status=%u cap_queries=%u routed_delta=%u missed_delta=%u unavailable=%u\n",f.frame,pair,step,wrong,unsigned(script_blended),material,f.materialwrap_depth,routed,matched,accepted,holes,owned,cap,f.emission_status(f.d.p,30),f.emission_status(f.d.p,31),routed_delta,missed_delta,f.emission_status(f.d.p,32));
         if(mixed)fade(1);
-        f.emission_reference_color=mixed?scene():color;f.emissions_enabled=mixed||(material&&!routed&&arm_active);f.emission_mask_valid=mixed&&routed; // only an active arm's refusal drops history
+        f.emission_reference_color=mixed?scene():color;f.emissions_enabled=mixed||(material&&!routed&&arm_active&&missable);f.emission_mask_valid=mixed&&routed; // only an active arm's opaque refusal drops history
         if(mixed){f.emission_reference_mask=read(3);unsigned covered=0;for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){const bool wanted=x>=f.W/8&&x<7*f.W/8&&y>=f.H/4&&y<3*f.H/4;const unsigned i=4*(y*f.W+x);for(unsigned c=0;c<3;++c)require_quiet((f.emission_reference_mask[i+c]>0)==wanted,"cutout interleaved native fade-mask union");covered+=wanted;}write("composed",f.emission_reference_color);write("mask",f.emission_reference_mask);std::printf("CUTOUT_UNION frame=%llu covered=%u unavailable=%u mask_valid=%u reactive_uploads=%u\n",f.frame,covered,!routed,f.emission_mask_valid,f.reactive_uploads);}
         if(f.taa)f.boundary();
         else {api(f.d->SetDepthStencilSurface(nullptr),"cutout non-TAA boundary depth");api(f.d->StretchRect(f.back.p,nullptr,f.bloom_surface.p,nullptr,D3DTEXF_NONE),"cutout non-TAA publication");}

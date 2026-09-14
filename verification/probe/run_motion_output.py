@@ -186,10 +186,10 @@ VARIANTS = {
     'depth': dict(X3M_OWNERSHIP='1', X3M_DEPTH_COPY='1', X3M_SCENE_DEPTH_CAPTURE='1'),
     'admission': dict(X3M_OWNERSHIP='1', X3M_ADMISSION='1')}
 def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, bench=None, lazy=False, burst=False, camera=False, sentinel=None, envmap=False,
-         hook=None, shadow=True, hdr=False, hdr_fault=None, hdr_env=None, mip_bias=None, mipbias=False):
+         hook=None, shadow=True, hdr=False, hdr_fault=None, hdr_env=None, mip_bias=None, mipbias=False, cutout=None):
     return dict(name=name, mode=mode, variant=variant, enabled=enabled, jitter=jitter, taa=taa, bench=bench, lazy=lazy, burst=burst,
                 camera=camera, sentinel=sentinel, envmap=envmap, hook=hook, shadow=shadow, hdr=hdr, hdr_fault=hdr_fault, hdr_env=hdr_env or {},
-                mip_bias=mip_bias, mipbias=mipbias)
+                mip_bias=mip_bias, mipbias=mipbias, cutout=cutout)
 
 
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
@@ -351,6 +351,21 @@ TAA_BASE_REFERENCES = 4
 CASES += [case(f'bench-{size}-hdr-tonemap-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr=True, hdr_env=dict(AGX_AUTO, X3M_MOTION_FRAME_LOG='4', X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
 SHARPEN_MAX_CODE_ERROR = 1   # GPU rcp/mad against the double-precision reference, plus the 8-bit rounding
 HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault')
+# Cutout steady-state scripts (motion_output_cutout_inc.h, X3M_FIXTURE_CUTOUT_SCRIPT):
+# twelve static frames, one exact-pair draw per frame refused at the motion gate.
+# `blended` is the game's source-over cutout pass (blend=1 src=5 dst=6 atest=1
+# mask=7 zwrite=0): an ordinary native colour draw, never a coverage miss, the
+# frame's TAA history retained (the shimmer root cause of runs 11/14). `opaque`
+# is a gate refusal of the opaque pass (ALPHAFUNC GREATER): a coverage miss that
+# invalidates the frame's history every frame, as documented.
+CUTOUT_FRAMES = 12
+CUTOUT_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0',
+                  X3M_LINEAR_MATERIALS='1', X3M_MATERIAL_DIRECT_GAIN='1', X3M_MATERIAL_EMISSIVE_GAIN='1', X3M_LIGHTMAP_EMISSIVE_GAIN='1',
+                  X3M_LINEAR_DISTANCE_FADE='0', X3M_LINEAR_EMISSIONS='0', X3M_OWNERSHIP='1', X3M_TAA_SENTINEL='2', X3M_TAA_SHARPEN='0', X3M_TAA_MIP_BIAS='0',
+                  X3M_FIXTURE_MOTION_DEPTH='1', X3M_FIXTURE_CAMERA='rotate', X3M_MOTION_FRAME_LOG='1', X3M_TAA_DEBUG='1',
+                  X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0', X3M_FIXTURE_CUTOUT_MIXED='0', X3M_FIXTURE_CUTOUT_ORDINARY='0')
+CASES += [case(f'seam-taa-cutout-{script}', 'cutout', jitter=True, taa=True, lazy=True, hdr=True, cutout=script,
+               hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT=script)) for script in ('blended', 'opaque')]
 # Mip-bias script (motion_output_fixture.cpp run_mipbias): eight frames,
 # capture in frame 5 only (the capture diagnostics restore the bias before
 # every draw, so that frame re-sets it per routed draw), the frame line every
@@ -2421,6 +2436,55 @@ def validate_burst(name, mode, lazy, text, trace, directory, shadow=True, wrap=F
             'route_decisions': [(r['frame'], r['index'], r['gate'], r['routed'], r['matched']) for r in routes]}
 
 
+def validate_cutout(name, script, text, trace):
+    """Cutout steady-state script: every frame's exact-pair draw is refused at the gate and
+    forwarded native (no route, no motion write; the fixture's pixel oracle and restoration
+    checks are its own). `blended` keeps TAA history on every non-cut frame with no
+    `cutout_missed` invalidation; `opaque` misses coverage and invalidates every frame."""
+    blended = script == 'blended'
+    lines = text.splitlines()
+    terminal = [fields(l) for l in lines if l.startswith('RESULT PASS ')]
+    assert len(terminal) == 1 and not any(l.startswith('RESULT FAIL') for l in lines), f'{name}: fixture did not complete'
+    assert int(terminal[0]['frames']) == CUTOUT_FRAMES and int(terminal[0]['checks']) > 0, (name, terminal)
+    summary = [fields(l) for l in lines if l.startswith('CUTOUT_CHECKS ')]
+    assert summary == [dict(frames=str(CUTOUT_FRAMES), benchmark='0', pairs='2')], (name, summary)
+    live = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('CUTOUT_LIVE ')}
+    assert sorted(live) == list(range(CUTOUT_FRAMES)), (name, sorted(live))
+    # Frame 0's begin_frame latch precedes the first capability verdict (probed at the
+    # frame's HDR latch): the arm is inactive there and no script misses in frame 0.
+    missed = lambda frame: int(not blended and frame > 0)
+    for frame, row in live.items():
+        expected = dict(pair='0', step='1', wrong='-1' if blended else '0', blended=str(int(blended)), material='1', depth='1', routed='0', matched='0',
+                        owned='0', cap='0', cap_status='1', routed_delta='0', missed_delta=str(missed(frame)), unavailable=str(missed(frame)))
+        actual = {k: row[k] for k in expected}
+        assert actual == expected, (name, frame, actual, expected)
+        assert int(row['accepted']) > 0 and int(row['holes']) > 0, (name, frame, 'the refused pair must cover pixels and leave holes')
+    taa = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('TAA ')}
+    assert sorted(taa) == list(range(CUTOUT_FRAMES)), (name, sorted(taa))
+    assert all(r['skipped'] == '0' for r in taa.values()), (name, 'every frame resolves')
+    history = {f: int(r['history']) for f, r in taa.items()}
+    if blended:
+        for f, r in taa.items():
+            assert history[f] == int(f > 0 and r['cut'] == '0'), (name, f, 'blended refusal must retain history on every non-cut frame', r)
+        assert sum(history.values()) >= CUTOUT_FRAMES // 2, (name, 'history must accumulate', history)
+    else:
+        assert not any(history.values()), (name, 'opaque miss must run current-only every frame', history)
+    sites = invalidate_sites(trace)
+    missed_frames = sorted(f for f, v in sites.items() if 'cutout_missed' in v)
+    assert missed_frames == ([] if blended else list(range(1, CUTOUT_FRAMES))), (name, 'cutout_missed invalidation frames', missed_frames)
+    materials = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('linear_material_frame ')}
+    assert sorted(materials) == list(range(CUTOUT_FRAMES)), (name, sorted(materials))
+    for f, row in materials.items():
+        assert (row['cutout_routed'], row['cutout_missed'], row['cutout_unavailable']) == ('0', str(missed(f)), str(missed(f))), (name, f, row)
+    frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
+    assert sorted(frames) == list(range(CUTOUT_FRAMES)), (name, sorted(frames))
+    for f, row in frames.items():
+        assert (row['draws'], row['routed'], row['taa_resolved'], row['apply_failures'], row['restore_failures']) == ('3', '1', '1', '0', '0'), (name, f, row)
+    return dict(script=script, frames=CUTOUT_FRAMES, checks=int(terminal[0]['checks']), history_frames=sum(history.values()),
+                cutout_missed_frames=len(missed_frames), invalidate_sites={f: sorted(v) for f, v in sorted(sites.items())},
+                accepted_pixels=[int(live[f]['accepted']) for f in range(CUTOUT_FRAMES)])
+
+
 def validate_hook(name, installed, text, trace, directory, hdr=False):
     """Hook script: the patch discipline (refusals, bytes, restore), the trampoline
     contract (one signal per call, before the compositor, registers preserved)
@@ -2564,13 +2628,13 @@ def main(argv=None):
         wine_log = (RESULTS / 'motion-output-wine.log').open('w')
         result['bench'] = {}
         for entry in CASES + (WRAP_CASES if only else []):
-            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env, mip_bias, mipbias = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env', 'mip_bias', 'mipbias'))
+            name, mode, variant, enabled, jitter, taa, bench, lazy, burst, camera, sentinel, envmap, hook, shadow, hdr, hdr_fault, hdr_env, mip_bias, mipbias, cutout = (entry[k] for k in ('name', 'mode', 'variant', 'enabled', 'jitter', 'taa', 'bench', 'lazy', 'burst', 'camera', 'sentinel', 'envmap', 'hook', 'shadow', 'hdr', 'hdr_fault', 'hdr_env', 'mip_bias', 'mipbias', 'cutout'))
             if only and name not in only:
                 continue
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -2663,6 +2727,15 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} hook_status={case["hook_status"]} sources={case["sources"]}', flush=True)
+                continue
+            if cutout:
+                case = validate_cutout(name, cutout, text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} history_frames={case["history_frames"]} cutout_missed_frames={case["cutout_missed_frames"]}', flush=True)
                 continue
             if mipbias:
                 case = validate_mipbias(name, mode, lazy, mip_bias, text, trace, directory)

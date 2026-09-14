@@ -25,17 +25,29 @@ constexpr bool state(const std::array<std::uint32_t, 8>& actual) noexcept {
 }
 // Successful native forwarding can have written foreground color without
 // same-draw motion. Known no-color/NEVER draws and suppressed/failed submits do
-// not poison the frame. Unknown state is conservative, confined to an exact
-// requested scene cutout; visibility is not guessed from object identity.
+// not poison the frame. The game's source-over cutout pass, observed exactly
+// (ALPHABLENDENABLE on, SRCBLEND SRCALPHA, DESTBLEND INVSRCALPHA; independent
+// of ZWRITEENABLE), is not a miss either: it takes the ordinary native colour
+// path with camera reprojection only, the frame keeps its history. Any other
+// or unknown blend factor stays a conservative miss. Unknown state is
+// conservative, confined to an exact requested scene cutout; visibility is
+// not guessed from object identity.
 constexpr bool missed(bool candidate, bool submitted, bool success, bool routed,
                       bool test_known, std::uint32_t test,
                       bool color_known, std::uint32_t color,
                       bool alpha_known, std::uint32_t alpha,
                       bool z_known, std::uint32_t z,
-                      bool zfunc_known, std::uint32_t zfunc) noexcept {
+                      bool zfunc_known, std::uint32_t zfunc,
+                      bool source_over = false) noexcept {
     return candidate && submitted && success && !routed && (!test_known || test!=0)
         && (!color_known || (color & 7u)!=0) && (!alpha_known || alpha!=1)
-        && (!z_known || !z || !zfunc_known || zfunc!=1);
+        && (!z_known || !z || !zfunc_known || zfunc!=1)
+        && !source_over;
+}
+// The observed source-over triple, all three states known.
+constexpr bool source_over(bool blend_known, std::uint32_t blend, bool src_known, std::uint32_t src,
+                           bool dst_known, std::uint32_t dst) noexcept {
+    return blend_known && blend!=0 && src_known && src==5 && dst_known && dst==6; // D3DBLEND_SRCALPHA / D3DBLEND_INVSRCALPHA
 }
 // A valid supplemental fade mask cannot repair missing cutout correspondence.
 constexpr bool unavailable(bool missed_cutout, bool composition_required,

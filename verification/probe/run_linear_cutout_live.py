@@ -72,6 +72,8 @@ def arm_active(frame,bias=0,mixed=False):
 
 
 def missed(frame,material=True,bias=0,mixed=False):
+    # Only the exact source-over triple (SRCALPHA/INVSRCALPHA) is exempt; the
+    # wrong-3 refusal (ALPHABLENDENABLE on with ONE/ZERO) still misses.
     return int(material and not plan(frame,material,bias,mixed)['routed'] and arm_active(frame,bias,mixed))
 
 

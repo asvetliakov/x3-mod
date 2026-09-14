@@ -153,8 +153,8 @@ struct MotionRoute {
     bool routed = false, composition = false, submit = true;
     bool cutout_candidate = false;
     bool cutout_test_known = false, cutout_color_known = false;
-    bool cutout_alpha_known = false, cutout_z_known = false, cutout_zfunc_known = false;
-    DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0;
+    bool cutout_alpha_known = false, cutout_z_known = false, cutout_zfunc_known = false, cutout_blend_known = false, cutout_source_over = false;
+    DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
 };
 struct Surface { bool known = false; D3DFORMAT format = 0; };
 // Mirrors src/proxy/motion_output.h's TaaInvalidateSite; this double only
@@ -217,7 +217,8 @@ public:
     struct {
         bool cutout_pair = false, recording = false;
         bool states_known[motion_shadow_state_count]{};
-        bool composition_blend_known[3]{};
+        bool composition_blend_known[4]{};
+        DWORD composition_blend[4]{};
     } shadow_;
     struct {
         unsigned rs_resyncs = 0, rs_invalidations = 0, draws = 0;
@@ -290,8 +291,8 @@ void pure_contract() {
     auto missed=[](bool candidate=true,bool submitted=true,bool success=true,bool routed=false,
                    bool tk=true,DWORD test=1,bool ck=true,DWORD color=7,
                    bool ak=true,DWORD alpha=7,bool zk=true,DWORD z=1,
-                   bool zfk=true,DWORD zfunc=4) {
-        return x3m::cutout::missed(candidate,submitted,success,routed,tk,test,ck,color,ak,alpha,zk,z,zfk,zfunc);
+                   bool zfk=true,DWORD zfunc=4,bool source_over=false) {
+        return x3m::cutout::missed(candidate,submitted,success,routed,tk,test,ck,color,ak,alpha,zk,z,zfk,zfunc,source_over);
     };
     check(missed(),"visible unrouted cutout missed");
     check(!missed(false),"noncandidate");
@@ -308,6 +309,12 @@ void pure_contract() {
     check(!missed(true,true,true,false,true,1,true,7,true,7,true,1,true,D3DCMP_NEVER),"depth never");
     check(missed(true,true,true,false,true,1,true,7,true,7,true,0,true,D3DCMP_NEVER),"disabled depth can color");
     check(missed(true,true,true,false,true,1,true,7,true,7,true,1,false,D3DCMP_NEVER),"unknown zfunc conservative");
+    check(!missed(true,true,true,false,true,1,true,7,true,7,true,1,true,4,true),"exact source-over is native colour, not a miss");
+    check(x3m::cutout::source_over(true,1,true,5,true,6),"blend on, SRCALPHA/INVSRCALPHA");
+    check(!x3m::cutout::source_over(true,0,true,5,true,6),"blend off still misses");
+    check(!x3m::cutout::source_over(false,1,true,5,true,6),"unknown blend conservative");
+    check(!x3m::cutout::source_over(true,1,true,2,true,1),"ONE/ZERO is not source-over");
+    check(!x3m::cutout::source_over(true,1,false,5,true,6)&&!x3m::cutout::source_over(true,1,true,5,false,6),"unknown factor conservative");
 
     scenario();
     check(!x3m::cutout::unavailable(false,false,false),"optional unavailable composition ignored");
@@ -427,11 +434,28 @@ void draw_helpers() {
     candidate.output.mark_cutout_candidate(route);
     check(!route.cutout_candidate,"known no-RGB is not candidate");
     route={}; candidate.output.render_values[D3DRS_COLORWRITEENABLE]=7;
+    candidate.output.render_known[D3DRS_ALPHABLENDENABLE]=true; candidate.output.render_values[D3DRS_ALPHABLENDENABLE]=1;
+    candidate.output.mark_cutout_candidate(route);
+    check(route.cutout_candidate && !route.cutout_source_over,"blend on with unknown factors stays a conservative candidate");
+    route={}; candidate.output.render_known[D3DRS_SRCBLEND]=candidate.output.render_known[D3DRS_DESTBLEND]=true;
+    candidate.output.render_values[D3DRS_SRCBLEND]=2; candidate.output.render_values[D3DRS_DESTBLEND]=1;
+    candidate.output.mark_cutout_candidate(route);
+    check(route.cutout_candidate && !route.cutout_source_over,"blend on with ONE/ZERO stays a candidate");
+    route={}; candidate.output.render_values[D3DRS_SRCBLEND]=5; candidate.output.render_values[D3DRS_DESTBLEND]=6;
+    candidate.output.mark_cutout_candidate(route);
+    check(!route.cutout_candidate && route.cutout_source_over,"exact source-over pair is not candidate (ordinary native colour)");
+    route={}; candidate.output.render_known[D3DRS_SRCBLEND]=candidate.output.render_known[D3DRS_DESTBLEND]=false;
+    candidate.output.shadow_.composition_blend_known[0]=candidate.output.shadow_.composition_blend_known[1]=true;
+    candidate.output.shadow_.composition_blend[0]=5; candidate.output.shadow_.composition_blend[1]=6;
+    const unsigned queries_before=candidate.output.render_queries; candidate.output.mark_cutout_candidate(route);
+    check(!route.cutout_candidate && route.cutout_source_over && candidate.output.render_queries==queries_before+2,"maintained composition blend shadow supplies the factors without a query");
+    candidate.output.shadow_.composition_blend_known[0]=candidate.output.shadow_.composition_blend_known[1]=false;
+    route={}; candidate.output.render_values[D3DRS_ALPHABLENDENABLE]=0;
     for (auto state:{D3DRS_ALPHAFUNC,D3DRS_ZENABLE,D3DRS_ZFUNC}) {
         candidate.output.render_known[state]=true; candidate.output.render_values[state]=state==D3DRS_ALPHAFUNC?7:state==D3DRS_ZENABLE?1:4;
     }
     candidate.output.mark_cutout_candidate(route);
-    check(route.cutout_candidate && route.cutout_test_known && route.cutout_color_known
+    check(route.cutout_candidate && route.cutout_test_known && route.cutout_color_known && route.cutout_blend_known && route.cutout_blend==0 && !route.cutout_source_over
           && route.cutout_alpha_known && route.cutout_z_known && route.cutout_zfunc_known,"candidate snapshots visibility states");
     route={}; candidate.output.render_known[D3DRS_ALPHATESTENABLE]=false;
     candidate.output.mark_cutout_candidate(route);
@@ -445,7 +469,7 @@ void draw_helpers() {
         const auto visible_miss=[](const MotionRoute& r){
             return x3m::cutout::missed(r.cutout_candidate,true,true,false,r.cutout_test_known,r.cutout_test,
                 r.cutout_color_known,r.cutout_color,r.cutout_alpha_known,r.cutout_alpha,r.cutout_z_known,r.cutout_z,
-                r.cutout_zfunc_known,r.cutout_zfunc);
+                r.cutout_zfunc_known,r.cutout_zfunc,r.cutout_source_over);
         };
         const auto arm=[&](auto&& configure){
             Harness h; h.output.shadow_.cutout_pair=true;
@@ -486,7 +510,7 @@ void draw_helpers() {
         routed.output.render_known[D3DRS_COLORWRITEENABLE]=true; routed.output.render_values[D3DRS_COLORWRITEENABLE]=7;
         MotionRoute r; routed.output.mark_cutout_candidate(r);
         check(!x3m::cutout::missed(r.cutout_candidate,true,true,true,r.cutout_test_known,r.cutout_test,r.cutout_color_known,
-              r.cutout_color,r.cutout_alpha_known,r.cutout_alpha,r.cutout_z_known,r.cutout_z,r.cutout_zfunc_known,r.cutout_zfunc),
+              r.cutout_color,r.cutout_alpha_known,r.cutout_alpha,r.cutout_z_known,r.cutout_z,r.cutout_zfunc_known,r.cutout_zfunc,r.cutout_source_over),
               "active arm: a routed pair is not missed");
     }
 

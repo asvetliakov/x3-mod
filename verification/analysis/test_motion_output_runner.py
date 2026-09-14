@@ -57,10 +57,11 @@ class MotionOutputRunnerTests(unittest.TestCase):
         manual.update({'seam-hdr-ramp-ev-minus2': '-2', 'seam-hdr-ramp-ev-plus1-punchy': '1', 'production-hdr-ramp-none': '0',
                        'seam-taa-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-ev1': '1', 'seam-taa-hdr-tonemap-k0': '0',
                        'seam-ownership-taa-hdr-tonemap-on': '0', 'production-taa-hdr-tonemap-on': '0',
-                       'seam-taa-hook-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-sharpen-on': '0'})
+                       'seam-taa-hook-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-sharpen-on': '0',
+                       'seam-taa-cutout-blended': '0', 'seam-taa-cutout-opaque': '0'})
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (48, 14, 17))
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (50, 14, 19))
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
