@@ -397,3 +397,29 @@ gates: 2346 matched, 104 pair, 165 draw-state; top draw-state signatures: exact 
 opaque 69. Frame time (45 `frame_end` samples): median 5196 µs, p95 10484 µs, versus 4097 µs in run 11;
 no rank correlation with `shimmer_draw` count (0.07) or fade draws (0.04); frames with 0 fade draws
 median 2787 µs. The cross-run comparison is confounded by the new shimmer trace and the low sample count.
+
+## 15. Screen emission on bullets (packed policy 8 in the region bracket) — Completed, acceptance failed
+
+Completed as user run 15, snapshot `/tmp/x3-bottleX3-run40/` (82 referenced files; seven F8 captures,
+five while firing at frames 10128, 11469, 11967, 15281, 15432), on the installed candidate `76d7750`,
+run-15 command of the run queue. User report: the laser bullets look dimmer than in run 14.
+
+Analysis (log 31.7 MB / 252,068 lines, queried): witness clean (587 sampled `fade_witness` lines, all
+`outside=0`, no unprepared/overflow/truncation; 0 of 201 `fade_region` lines full viewport).
+`locked_prefix_frame` (292 lines): draws 800, bound 400, refused 400, every refusal `reason_w`
+(`NonPositiveW`), `lookup_*` 0, so the bounded rate is 50 %, not the expected near 100 %, and the
+design's first-draw-per-buffer refusal never fired. `linear_composition_frame` (301 lines):
+`packed_eligible` 508 = admitted 400 + unbounded-refused 108, `packed_incomplete` 0,
+`packed_caps_refused` 0; 4 admitted brackets per firing frame (median = p95 = max). The admitted
+bound rects at the firing captures cover 58–90 % of the 1280×768 viewport (e.g.
+`rect=189,28,985,742 f_permille=578`), against 38×47 px for a distant bullet at frame 990, so the
+bracket cost is near-fullscreen while firing and bullet pixels cannot be isolated from the scene in
+the HDR captures (max channel > 1.0 in every firing capture; no bullet-only reference in run 14).
+Frame time: 66 throttled `frame_end` samples; firing frames median 2591 µs / p95 4699 µs, non-firing
+2536 µs (p95 contaminated by loading); too sparse for a per-bracket figure. Fade and docking-port
+counters show no refusals under policy 8. Interpretation handed to implementation: the player's own
+bullets start at or behind the camera plane, so the locked-prefix extrema have w ≤ 0 (refused, drawn
+native) or barely positive w (extrema explode to near-fullscreen rects); the mixed native/packed
+result is the likely "dimmer" appearance. Fix: near-plane clipping of the bound in clip space plus a
+capture-only per-draw tight-AABB luminance line. No bracket cap is adopted: the data show the bound,
+not the count, is the cost driver.

@@ -27,7 +27,7 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
 | 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Attempted as run 38: execute-access fault at the loading screen; hook fix in progress |
 | 14 | Station source-over linear route, fade region and shimmer trace, combined | 0 | Completed as user run 14, snapshot run39 (witness clean, port composed, darkening persists) |
-| 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 1 | Ready (candidate `76d7750` installed) |
+| 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
@@ -86,36 +86,6 @@ Report: hang or not, speech heard or not (and whether it starts at the right
 word), selection pauses, comm video/audio, and the session path. Analysis reads
 the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
 the selection timing.
-
-## 15. Screen emission on bullets — Ready
-
-The run-14 command plus `--screen-emission` (step C of
-[screen-emission-region.md](../architecture/screen-emission-region.md)): the
-bullet draws of the nine SM1 screen pairs compose through the packed policy 8
-inside their locked-prefix rectangle; unbounded, unknown-state or
-capability-refused draws stay native. The candidate `76d7750` (DLL `608b35d8…`) is
-installed. Fly the run-14 path, then fire the weapons at a target (an
-asteroid or a ship) for a few seconds in normal and zoom view, and press F8
-once while firing; the witness stays on (`--fade-witness`, every 30th frame).
-
-```sh
-./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
-  --motion-output --taa --telemetry --camera-log 1 \
-  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
-  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
-  --linear-distance-fade --fade-witness --shimmer-trace --screen-emission \
-  --capture-start 999999 --capture-frames 1
-```
-
-Report: whether the bullets look different from run 14 (brighter cores, no
-missing or clipped bullets, no flicker), any change on the fading asteroids and
-the docking port, frame rate while firing, and the session path. Acceptance:
-every `fade_witness` line reports zero covered pixels outside the union
-(`outside=0`), `locked_prefix_frame` bound/draws near 100 % while firing (the
-first draw from each new buffer is refused by design), no
-`packed_incomplete`/`packed_caps_refused` on the `linear_composition_frame`
-lines, and the frame-time median within +0.5 ms of run 11's 4.097 ms (the fixture's
-paired windows measured ≈0.165 ms per packed bracket at 16 DIPs, 1280×768 and 1920×1080).
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
