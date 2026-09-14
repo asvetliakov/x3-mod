@@ -298,6 +298,9 @@ Optional one-counter addition if a per-frame number is wanted without
 images: at `src/proxy/motion_output.cpp:3551`, after
 `if (jitter_active_ && shadow_.vs_row) apply_jitter(route);`, add
 `else if (jitter_active_ && write == 1) ++counters_.unjittered_depth_writers;`
+and print it in `motion_output_frame`. `write` (ZWRITEENABLE) is already read
+for every tracked draw (`:3527`), so the cost is one compare per unrouted
+scene draw; no D3D call.
 
 ### Fix: the z_only prepass is jittered with the scene
 
@@ -332,20 +335,13 @@ so the route's jitter cancels and the prepass lands unjittered as the game's
 did: the material draw must then lose more than half its interior, proving
 the oracle detects the mechanism. The runner also checks every frame line
 (`jittered=2 routed=0 unjittered_depth_writers=0`) and the route records
-(prepass gate 3, material gate 4, both jittered).
-and print it in `motion_output_frame`. `write` (ZWRITEENABLE) is already read
-for every tracked draw (`:3527`), so the cost is one compare per unrouted
-scene draw; no D3D call. Expected value: the number of fogged asteroids
-(and any other prepass user) per frame, 0 in vanilla-like scenes.
+(prepass gate 3, material gate 4, both jittered) on the capture frames 1-3;
+the Reset after frame 3 closes the capture window, so the later frames carry
+the frame line and the fixture's own hole count only.
 
-### Consequence for the fix (not implemented here)
+### Other unjittered scene programs (run 47)
 
-The prepass must be jittered with the same rows as the draw that depth-tests
-against it: add the `z_only` aliases (`c78b4c68a87fce74`,
-`803ebfd17f79e413`, both WVP in c0–3 per
-[rigid-position-profiles.md](rigid-position-profiles.md)) to the
-jitter-eligible set, or jitter by rigid-profile row when no motion row
-exists. The other unjittered scene programs in run 47 (`d5e1c75351ed3f04`,
+The other unjittered scene programs in run 47 (`d5e1c75351ed3f04`,
 `5e484a06672e28fb`, `36f98d151fd6b0c6`) were seen with ZWRITEENABLE 0 where
 checked (frame 18555 indices 34/35) and are a lesser, sub-pixel-offset
 concern, not this symptom.

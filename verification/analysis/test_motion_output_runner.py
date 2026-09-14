@@ -229,7 +229,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
         self.assertEqual(runner.validate_burst('host', 'seam', False, text, trace, self.root)['checks'], 86)
 
     def zonly_output(self):
-        """Synthetic zonly report and trace: nine frames, prepass then material, controls at frames 2, 4 and 6."""
+        """Synthetic zonly report and trace: nine frames, prepass then material, controls at frames 2, 4 and 6;
+        the capture window (route records and readbacks) covers frames 1-3, the Reset after frame 3 closing it."""
         report = ['MODE seam=0 enabled=1 jitter=1 taa=0 msaa=0']
         trace = []
         for f in range(runner.ZONLY_FRAMES):
@@ -244,9 +245,10 @@ class MotionOutputRunnerTests(unittest.TestCase):
                 report.append(f'COVERAGE frame={f} jitter=1 checked=4000 mismatches=0 material=2000 background=1500')
             if f == 3:
                 report.append('RESET PASS')
+            capture = f in runner.ZONLY_CAPTURE_FRAMES
             trace.append(f'motion_output_frame device=1 frame={f} latched=1 draws=3 routed=0 gate2=1 gate3=1 gate4=1 apply_failures=0 '
-                         f'restore_failures=0 jitter=1 jittered=2 unjittered_depth_writers=0')
-            if 1 <= f <= 8:
+                         f'restore_failures=0 readbacks={2 if capture else 0} jitter=1 jittered=2 unjittered_depth_writers=0')
+            if capture:
                 trace.append(f'motion_route device=1 frame={f} index=2 gate=3 routed=0 matched=0 depth=0 jittered=1 vs={runner.ZONLY_VS} ps={"0" * 16} result=00000000')
                 trace.append(f'motion_route device=1 frame={f} index=3 gate=4 routed=0 matched=0 depth=0 jittered=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 result=00000000')
         report.append('RESULT PASS checks=80 restorations=27 frames=9')
@@ -260,14 +262,19 @@ class MotionOutputRunnerTests(unittest.TestCase):
         result = runner.validate_zonly('host', text, trace)
         self.assertEqual(result['unjittered_depth_writers'], {f: 0 for f in range(9)})
         self.assertEqual(result['holes'], {f: (1800 if f in (2, 4, 6) else 0) for f in range(9)})
-        self.assertEqual(result['routes'], 16)
+        self.assertEqual(result['routes'], 6)
+        self.assertEqual(result['capture_frames'], [1, 2, 3])
         bad = [(text, trace.replace('unjittered_depth_writers=0', 'unjittered_depth_writers=1', 1)),
                (text, trace.replace('jittered=2 unjittered', 'jittered=1 unjittered', 1)),
                (text.replace('pixels=2000 holes=0', 'pixels=2000 holes=7', 1), trace),
                (text.replace('pixels=2000 holes=1800', 'pixels=2000 holes=900', 1), trace),
                (text, trace.replace('index=2 gate=3 routed=0 matched=0 depth=0 jittered=1', 'index=2 gate=3 routed=0 matched=0 depth=0 jittered=0', 1)),
                (text, trace.replace(f'vs={runner.ZONLY_VS}', 'vs=53a0a641107ed76c', 1)),
-               (text.replace('mismatches=0', 'mismatches=3', 1), trace)]
+               (text.replace('mismatches=0', 'mismatches=3', 1), trace),
+               # A route record outside the capture window, and a capture frame that logged no readbacks.
+               (text, trace + '\nmotion_route device=1 frame=5 index=2 gate=3 routed=0 matched=0 depth=0 jittered=1 '
+                              f'vs={runner.ZONLY_VS} ps={"0" * 16} result=00000000'),
+               (text, trace.replace('readbacks=2', 'readbacks=0', 1))]
         for output, log in bad:
             with self.subTest(output=(output != text, log != trace)), self.assertRaises(AssertionError):
                 runner.validate_zonly('host', output, log)

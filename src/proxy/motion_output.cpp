@@ -38,9 +38,10 @@ namespace {
 // captured.
 struct MatrixWindows { UINT base[motion_matrix_windows_max]; std::size_t count; };
 constexpr void add_matrix_window(MatrixWindows& windows, UINT matrix_register) noexcept {
+    if (windows.count > motion_matrix_windows_max) return; // the overflow sentinel stands; base[] holds `max` entries
     bool seen = false;
     for (std::size_t i = 0; i < windows.count; ++i) seen = seen || windows.base[i] == matrix_register;
-    if (seen || windows.count > motion_matrix_windows_max) return;
+    if (seen) return;
     if (windows.count == motion_matrix_windows_max) { windows.count = motion_matrix_windows_max + 1; return; }
     windows.base[windows.count++] = matrix_register;
 }
