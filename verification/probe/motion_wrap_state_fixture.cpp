@@ -79,6 +79,7 @@ public:
  HRESULT bind_target(unsigned,void*){return S_OK;}
  bool cutout_reset_pending_=false; void probe_cutout_caps(bool){}
  bool composition_requested()const{return false;}
+ bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam
  void invalidate_taa(){++taa_invalidations;}
  void resync_shadow(){invalidate_render_states();}
  void begin_frame(unsigned,bool){++frames;}
