@@ -84,6 +84,7 @@ float taa_sharpen = 0.f;
 bool hdr_requested = false;
 bool linear_emission_requested = false;
 bool linear_distance_fade_requested = false;
+unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 float emission_gain = 1.f;
 bool linear_material_requested = false;
 x3m::renderer::LinearMaterialConfig linear_material_config{};
@@ -1792,6 +1793,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_materials(linear_material_requested,linear_material_config);
     hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
+    hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
@@ -2037,6 +2039,15 @@ void initialize_log(HMODULE module) {
     const bool fade_requested=GetEnvironmentVariableW(L"X3M_LINEAR_DISTANCE_FADE",setting,32)==1 && setting[0]==L'1';
     linear_distance_fade_requested=fade_requested && linear_material_requested && taa_requested;
     if(fade_requested)log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u",linear_distance_fade_requested,linear_material_requested,taa_requested);
+    // X3M_FADE_WITNESS=<k> (1..100000): every k-th frame the fade-region
+    // witness reads the M coverage target back once (default off; needs the
+    // distance-fade route; docs/architecture/linear-distance-fade-region.md).
+    fade_witness_frames=0;
+    {const DWORD length=GetEnvironmentVariableW(L"X3M_FADE_WITNESS",setting,32);
+     if(length>0&&length<32){bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
+        const unsigned long n=digits?wcstoul(setting,nullptr,10):0ul;if(digits&&n>=1&&n<=100000)fade_witness_frames=unsigned(n);
+        log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u",n,digits,fade_witness_frames&&linear_distance_fade_requested,linear_distance_fade_requested);}
+     else if(length)log("fade_witness_mode requested=overlong enabled=0 fade=%u",linear_distance_fade_requested);}
     bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");

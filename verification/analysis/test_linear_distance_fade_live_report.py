@@ -14,6 +14,34 @@ def line(prefix, **values):
     return prefix+' '+' '.join(f'{k}={v}' for k,v in values.items())
 
 
+def witness_trace(fade=1,emission=0,rect=None,outside=None,k=live.WITNESS_K):
+    """fade_witness/fade_region session-log lines of one fixture process; outside maps
+    frame -> covered pixels outside the union (the control's deliberate violation)."""
+    trace=[]
+    for f in range(live.FRAMES):
+        wanted=live.expected_witness(f,fade,emission)
+        rects=[rect or (0,0,64,64)]*wanted['rects']
+        for i,r in enumerate(rects):
+            area=(r[2]-r[0])*(r[3]-r[1]);permille=area*1000//4096
+            trace.append(line('fade_region',device=1,frame=f,index=i,bound=int(rect is not None),reason=0 if rect else 3,status='no_scope',hit=0,poisoned=0,evicted=0,depth=0,
+                              descriptor='00000000',part='00000000',aabb='0,0,0,0,0,0',vb=7,ib=9,vb_rev=3,ib_rev=1,jittered=1,rect=','.join(map(str,r)),
+                              f_permille=permille,f_of='viewport',table_used=0,table_poisoned=0))
+        if f%k:continue
+        hist=[0]*8
+        for r in rects:
+            permille=(r[2]-r[0])*(r[3]-r[1])*1000//4096
+            hist[0 if permille<=10 else 1 if permille<=20 else 2 if permille<=50 else 3 if permille<=100 else 4 if permille<=250 else 5 if permille<=500 else 6 if permille<1000 else 7]+=1
+        sampled=wanted['reason']=='sampled'
+        union=(rect[2]-rect[0])*(rect[3]-rect[1]) if rect else 4096
+        o=(outside or {}).get(f,0)
+        trace.append(line('fade_witness',device=1,frame=f,k=k,sampled=int(sampled),reason=wanted['reason'],result='00000000' if sampled else '00000001',
+                          width=64 if sampled else 0,height=64 if sampled else 0,rects=wanted['rects'],rects_prepared=wanted['fade_prepared'],
+                          rects_unprepared=wanted['rects']-wanted['fade_prepared'],overflow=0,lines_truncated=0,covered=(1024 if wanted['rects']<2 else 1536) if sampled else 0,
+                          outside=o if sampled else 0,union=union if sampled else 0,fade_prepared=wanted['fade_prepared'],emission_prepared=wanted['emission_prepared'],
+                          f_hist=','.join(map(str,hist))))
+    return '\n'.join(trace)
+
+
 def report(fade=1,emission=1,lazy=1):
     required=emission+2*fade
     out=['RESULT PASS frames=30 checks=123 restorations=35 taa_reference_frames=28 taa_skipped_frames=2',
@@ -180,6 +208,43 @@ class FadeLiveReportTests(unittest.TestCase):
         self.assertEqual(set(live.validate_timing(text,1,1280,768)['counts']),{'1','4','16'})
         for old,new in (('total_ms=3.0','total_ms=4.0'),('source_ms=1.0','source_ms=nan'),('emission=0','emission=1'),('count=16','count=8'),('sample=0','sample=1')):
             with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_timing(text.replace(old,new,1),1,1280,768)
+
+    def test_witness_positive_histogram_and_revisions(self):
+        result=live.validate_witness(witness_trace(),1,0)
+        self.assertEqual(result['outside_pixels'],0)
+        self.assertEqual(set(result['sampled_frames']),{f for f in range(30) if live.expected_witness(f,1,0)['reason']=='sampled'})
+        self.assertEqual(result['skipped'],{'no_fade':8,'mask_invalid':3})
+        self.assertEqual(sum(result['f_histogram'].values()),len(result['sampled_frames'])+sum(1 for f in (16,20,24)))
+        self.assertEqual(result['f_histogram']['f=1'],sum(result['f_histogram'].values()))
+        self.assertEqual(result['revisions_per_vb'],{'7':{'3':result['region_lines']}})
+        boxed=live.validate_witness(witness_trace(rect=live.WITNESS_RECT),1,0,rect=live.WITNESS_RECT)
+        self.assertEqual(boxed['union_area'],1536*len(boxed['sampled_frames']))
+        self.assertEqual(boxed['f_histogram']['f<=0.5'],sum(boxed['f_histogram'].values()))
+        second=lambda f:any(i>=1 and s['kind']=='fade' and s['prepared'] for i,s in enumerate(live.expected_sources(f,1,0)[0]))
+        self.assertEqual({f for f in range(30) if second(f) and live.expected_witness(f,1,0)['reason']=='sampled'},set(live.WITNESS_CONTROL_VIOLATIONS))
+
+    def test_witness_control_fails_for_outside_pixels_only(self):
+        trace=witness_trace(rect=live.WITNESS_CONTROL_RECT,outside=live.WITNESS_CONTROL_VIOLATIONS)
+        with self.assertRaises(live.WitnessViolation) as raised:live.validate_witness(trace,1,0,rect=live.WITNESS_CONTROL_RECT)
+        self.assertEqual(raised.exception.violations,live.WITNESS_CONTROL_VIOLATIONS)
+        self.assertIn('outside the union',str(raised.exception))
+        with self.assertRaises(live.WitnessViolation):live.validate_witness(witness_trace(outside={2:1}),1,0)
+
+    def test_witness_hostile_lines_refused(self):
+        trace=witness_trace(rect=live.WITNESS_RECT)
+        base=next(r for r in trace.splitlines() if r.startswith('fade_witness device=1 frame=2 '))
+        for old,new in (('sampled=1 reason=sampled','sampled=0 reason=sampled'),('result=00000000','result=8876086c'),('overflow=0','overflow=1'),
+                        ('rects=1 ','rects=2 '),('rects_prepared=1','rects_prepared=0'),('rects_unprepared=0','rects_unprepared=1'),('lines_truncated=0','lines_truncated=1'),
+                        ('fade_prepared=1','fade_prepared=0'),('width=64','width=32'),('union=1536','union=1535'),('k=1 ','k=2 ')):
+            with self.subTest(field=old):
+                self.assertIn(old,base)
+                with self.assertRaises(AssertionError):live.validate_witness(trace.replace(base,base.replace(old,new,1)),1,0,rect=live.WITNESS_RECT)
+        for old,new in (('reason=mask_invalid','reason=sampled'),('reason=no_fade','reason=emission')):
+            with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_witness(trace.replace(old,new,1),1,0,rect=live.WITNESS_RECT)
+        with self.assertRaises(AssertionError):live.validate_witness(trace.replace('rect=8,16,56,48','rect=8,16,55,48',1),1,0,rect=live.WITNESS_RECT)
+        with self.assertRaises(AssertionError):live.validate_witness('\n'.join(r for r in trace.splitlines() if r!=base),1,0,rect=live.WITNESS_RECT)
+        with self.assertRaises(AssertionError):live.validate_witness('\n'.join(r for r in trace.splitlines() if not r.startswith('fade_region device=1 frame=2 ')),1,0,rect=live.WITNESS_RECT)
+        with self.assertRaises(AssertionError):live.validate_witness(witness_trace(emission=1),1,0)
 
     def test_admission_refuses_false_availability(self):
         out=['RESULT PASS frames=4 checks=1']

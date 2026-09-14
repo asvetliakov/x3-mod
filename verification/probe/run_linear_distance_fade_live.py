@@ -35,6 +35,20 @@ FAILED_SOURCES=(22,29)
 PRESENT_FRAMES=tuple(range(2,14,2))
 RESOLUTIONS=((1280,768),(1920,1080))
 COUNTS=(1,4,16)
+# Fade-region witness (docs/architecture/linear-distance-fade-region.md, step 1):
+# X3M_FADE_WITNESS=1 samples every fixture frame. The fixture has no seam scope,
+# so its derived rectangles are the full viewport; X3M_FIXTURE_FADE_RECT (seam
+# only) injects a rectangle instead. The positive rectangle contains both fade
+# footprints ([8,40) and [24,56) by [16,48)); the control excludes the second
+# footprint (a prepared fade source at plan index >= 1), so those sampled
+# frames must report 16x32 covered pixels outside the union and the validator
+# must fail for exactly that reason.
+WITNESS_K=1
+WITNESS_RECT=(8,16,56,48)
+WITNESS_CONTROL_RECT=(8,16,40,48)
+WITNESS_CONTROL_VIOLATIONS={16:512,18:512,20:512,24:512,28:512}
+WITNESS_REASONS=('sampled','no_pass','no_fade','emission','mask_invalid')
+WITNESS_BUCKETS=('f<=0.01','f<=0.02','f<=0.05','f<=0.1','f<=0.25','f<=0.5','f<1','f=1')
 SCOPE=('Actual capture DIP / MotionOutput / shared additive-and-fade composition pool / '
        'Hdr owning exchange / supplemental TemporalPass. Six exact Asteroid pairs, one '
        'existing additive pair, and two bootstrap programs; no broad detached equation rerun.')
@@ -181,6 +195,88 @@ def expected_sources(frame,fade,emission):
                            original_calls=1,prepared=int(prepared),linear=int(linear),native=int(native),
                            incomplete=int(incomplete),mask_valid=bool((fade or emission) and not stopped)))
     return result,stopped
+
+
+class WitnessViolation(AssertionError):
+    """Covered M pixels outside the union of the frame's derived rectangles."""
+    def __init__(self,violations):
+        super().__init__(f'covered M pixels outside the union of the derived fade rectangles: {violations}')
+        self.violations=dict(violations)
+
+
+def expected_witness(frame,fade,emission):
+    """Witness verdict of one fixture frame: derived rectangles (admitted fade
+    sources reach derive before prepare), prepared counts and the skip reason."""
+    sources,stopped=expected_sources(frame,fade,emission)
+    derived=0;stop=False;failed=False
+    for (kind,_,_,fail),s in zip(source_plan(frame),sources):
+        active=bool(fade if kind=='fade' else emission)
+        if kind=='fade' and active and not stop and not failed:derived+=1
+        if active and (s['fault']==3 or s['incomplete']):stop=True
+        failed=failed or fail
+    fade_prepared=sum(s['prepared'] for s in sources if s['kind']=='fade')
+    emission_prepared=sum(s['prepared'] for s in sources if s['kind']=='emission')
+    if not derived:reason='no_fade'
+    elif emission_prepared:reason='emission'
+    elif stopped:reason='mask_invalid'
+    else:reason='sampled'
+    return dict(reason=reason,rects=derived,fade_prepared=fade_prepared,emission_prepared=emission_prepared)
+
+
+def validate_witness(trace,fade,emission,k=WITNESS_K,rect=None):
+    """fade_witness/fade_region session-log lines: every sampled frame has zero
+    covered pixels outside the union; reports the f histogram and the VB
+    revision distribution. Raises WitnessViolation (an AssertionError) with the
+    per-frame outside counts when the union is violated."""
+    lines=trace.splitlines()
+    rows=indexed(lines,'fade_witness ','frame')
+    assert set(rows)=={f for f in range(FRAMES) if f%k==0},'one fade_witness line per k-th frame'
+    regions={}
+    for line in lines:
+        if line.startswith('fade_region '):
+            r=fields(line);regions.setdefault(int(r['frame']),[]).append(r)
+    sampled=[];skipped={};hist=[0]*8;covered=union=0;violations=[];revisions={};overflow_frames=[]
+    for frame,row in sorted(rows.items()):
+        wanted=expected_witness(frame,fade,emission)
+        assert row['reason'] in WITNESS_REASONS and row['reason']==wanted['reason'],(frame,row['reason'],wanted['reason'])
+        assert int(row['k'])==k and int(row['sampled'])==int(row['reason']=='sampled')
+        assert int(row['rects'])==wanted['rects'],(frame,'derived rectangles',row['rects'],wanted['rects'])
+        assert int(row['rects_prepared'])==int(row['fade_prepared'])==wanted['fade_prepared'],(frame,'prepared rectangles')
+        assert int(row['rects_unprepared'])==wanted['rects']-wanted['fade_prepared'],(frame,'unprepared rectangles')
+        assert int(row['emission_prepared'])==wanted['emission_prepared'],(frame,'emission prepared')
+        logged=len(regions.get(frame,[]));truncated=int(row['lines_truncated'])
+        assert logged+truncated==wanted['rects'] and truncated==max(0,wanted['rects']-64),(frame,'per-DIP lines',logged,truncated)
+        if int(row['overflow']):overflow_frames.append(frame)
+        h=list(map(int,row['f_hist'].split(',')))
+        assert len(h)==8 and sum(h)==wanted['rects'],(frame,'f histogram')
+        for r in regions[frame] if frame in regions else ():
+            l,t,rr,b=map(int,r['rect'].split(','))
+            assert 0<=l<rr and 0<=t<b,(frame,'rectangle')
+            if rect is not None:assert (l,t,rr,b)==rect and int(r['bound'])==1 and int(r['reason'])==0,(frame,'synthetic rectangle',r['rect'])
+            revisions.setdefault(r['vb'],{});revisions[r['vb']][r['vb_rev']]=revisions[r['vb']].get(r['vb_rev'],0)+1
+        if row['reason']!='sampled':
+            skipped[row['reason']]=skipped.get(row['reason'],0)+1;continue
+        assert row['result']=='00000000',(frame,'witness readback',row['result'])
+        assert int(row['width'])==64 and int(row['height'])==64
+        c,o,u=(int(row[key]) for key in ('covered','outside','union'))
+        assert c>0 and u>=c-o,(frame,'sampled frame coverage')
+        if int(row['overflow']):assert u==64*64,(frame,'an overflowing frame takes the whole target as its union')
+        elif rect is not None:assert u==(rect[2]-rect[0])*(rect[3]-rect[1]),(frame,'union of the synthetic rectangle')
+        hist=[a+b for a,b in zip(hist,h)]
+        covered+=c;union+=u;sampled.append(frame)
+        if o:violations.append((frame,o))
+    if violations:raise WitnessViolation(violations)
+    return dict(k=k,sampled_frames=sampled,skipped=skipped,overflow_frames=overflow_frames,covered_pixels=covered,union_area=union,outside_pixels=0,
+                f_histogram=dict(zip(WITNESS_BUCKETS,hist)),region_lines=sum(len(v) for v in regions.values()),revisions_per_vb=revisions)
+
+
+def compare_witness(cases):
+    """The witness readback is read-only: every witness process reproduces the
+    fade-on/emission-off baseline images and counters bit for bit."""
+    baseline=cases['lazy1-fade1-emission0']
+    for name in ('witness-full','witness-rect','witness-control'):
+        for key in ('temporal_sha256','alpha_sha256','covered_pixels','frames_detail'):
+            assert cases[name][key]==baseline[key],(name,'witness changed the composed result',key)
 
 
 def indexed(lines,prefix,key):
@@ -413,6 +509,9 @@ def main():
     for width,height in RESOLUTIONS:
         for pair,order in enumerate(((0,1),(1,0))):
             for fade in order:runs.append(dict(name=f'timing-{width}x{height}-pair{pair}-fade{fade}',fade=fade,emission=0,lazy=1,taa=1,hdr=1,timing=True,width=width,height=height))
+    runs.append(dict(name='witness-full',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True))
+    runs.append(dict(name='witness-rect',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True,rect=WITNESS_RECT))
+    runs.append(dict(name='witness-control',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True,rect=WITNESS_CONTROL_RECT,expect_violations=WITNESS_CONTROL_VIOLATIONS))
     try:
         for run in runs:
             assert not game_running(),'game running; no fixture launch'
@@ -430,6 +529,9 @@ def main():
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy' if run['lazy'] else 'perdraw',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
                        X3M_CAPTURE_START='1000000' if run.get('timing') else '1',X3M_CAPTURE_FRAMES='0',WINEDLLOVERRIDES='d3d9=n,b')
+            if run.get('witness'):
+                env['X3M_FADE_WITNESS']=str(WITNESS_K)
+                if run.get('rect'):env['X3M_FIXTURE_FADE_RECT']=','.join(map(str,run['rect']))
             mode='distancefadebench' if run.get('timing') else 'distancefade'
             command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=n,b','--workdir',str(work),str(work/'fixture.exe'),'Z:'+str(inputs[2]),'Z:'+str(inputs[3]),mode]
             if run.get('timing'):command.append(f"{run['width']}x{run['height']}")
@@ -445,15 +547,23 @@ def main():
             else:
                 case=validate_functional(output,trace,run['fade'],run['emission'],run['lazy'])
                 case.update(validate_pixels(work,run['fade'],run['emission']))
+            if run.get('witness'):
+                try:
+                    case['witness']=validate_witness(trace,run['fade'],run['emission'],WITNESS_K,run.get('rect'))
+                    assert not run.get('expect_violations'),f"{run['name']}: the wrong rectangle must fail the witness"
+                except WitnessViolation as violation:
+                    assert violation.violations==run.get('expect_violations'),(run['name'],'unexpected witness violations',violation.violations)
+                    case['witness']=dict(k=WITNESS_K,expected_failure=str(violation),violations=violation.violations)
             case['seconds']=round(time.monotonic()-start,3)
             case['raw']=str(work);case['retained_native_process']=reused
             result['cases'][run['name']]=case
             print(f"{run['name']}: passed, {case['frames']} frames, {case['seconds']} s",flush=True)
         compare_functional(result['cases'])
+        compare_witness(result['cases'])
         result['paired_completion_cost']=paired_cost(result['cases'])
         assert hashes=={str(p):sha(p) for p in inputs},'prebuilt qualification inputs changed'
-        result['functional_frames']=150;result['admission_frames']=8;result['timing_frames']=144
-        result['new_processes']=14 if native_reuse else 15
+        result['functional_frames']=150;result['admission_frames']=8;result['timing_frames']=144;result['witness_frames']=90
+        result['new_processes']=17 if native_reuse else 18
         result['retained_processes']=int(native_reuse is not None)
         result['passed']=True
     finally:
