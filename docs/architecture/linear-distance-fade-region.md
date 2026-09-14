@@ -400,3 +400,133 @@ Acceptance (after review fixes, main merged at c978089):
 
 Open from step 1: the per-draw cost of the two content views is not yet
 measured in the game; the half-conversion item above remains.
+
+## Step 2 — implemented 2026-09-14 (in-place bracket, detached fixture; no runtime route)
+
+Code: `LinearCompositionPolicy::DistanceFadeInPlace = 4` in
+`src/renderer/linear_emission_pass.{h,cpp}`. The boundary carries
+`RECT region` + `region_known`; `LinearEmissionCompletion` gains `recovery`.
+Attach: policy 4 needs the fade caps plus `D3DPRASTERCAPS_SCISSORTEST` and
+shares the prototype-1 composite program (no third program; `CreatePs` is
+still called once per policy family). Bracket, per admitted DIP, exactly the
+section-3 shape: `save()`, `source_ok`, `select_region`, region backup
+(`draw(b, A, copy, &R)` = fused copy program with `SCISSORTESTENABLE = TRUE`
+and `SetScissorRect(R)`: B|R = A|R, E|R = 0), `restore(A)` + the MRT/mask/
+separate-alpha/augmented-program setters as today; the source draws into A;
+`finish`: `draw(A, b, composite, &R)` (s0 = B, s1 = E, prototype-1 program
+unchanged), `restore(A)`, phase back to idle. `owning_candidate()` is null,
+`acknowledge_exchange` returns `D3DERR_INVALIDCALL`, `recover_native()` returns
+`None`; `coverage_valid()` is true right after a successful `finish`. All
+device calls go through the native slots; the only new slot is `StretchRect`
+(34). Native call counts per in-place bracket (static count from the code,
+three simultaneous RTs, source-over state set): 65 getters in `save()`,
+149 setters + 1 quad draw in `prepare` (backup 67, restore 69, source setup
+13), 136 setters + 1 quad draw in `finish` (composite 67, restore 69); 285
+setters total, 4 more than prototype 1 (the two scissor pairs), and no
+exchange/acknowledgement afterwards. A failure after the source adds one
+`StretchRect`. No new pool, no full-screen pass: both quad passes are
+scissored to R.
+
+Deviations from sections 3–4, all fail-closed:
+
+- **Failure after the source is `Incomplete` with an exact recovery, not
+  `Native`.** The brief for this step required it: after a failed source or a
+  failed composite (including its scissor set) the rectangle of A may hold
+  partial writes, so `finish` restores state and then copies B|R back into
+  A|R with a same-size, same-format `StretchRect(D3DTEXF_NONE)` (documented
+  render-target to render-target copy; the fixture already used it as its
+  exact reference copy). When the restore itself failed, the recovery first
+  detaches the three sampler stages (B may still be bound where the composite
+  sampled it) and then copies. The image is `Incomplete`, `mask_valid =
+  false`, `blocked = true` — the frame is suppressed like a failed source
+  today. The "certified native fallback" of section 4 is therefore not
+  reachable for this policy; with a successful recovery the object is absent
+  from that frame instead of native. **A failed recovery (ladder stage 8)
+  leaves the partial source writes in A|R**; `mask_valid` and `blocked` are
+  the same (cleared/blocked), so "absent from the frame" holds only for a
+  successful recovery and the frame is suppressed either way. A restore
+  failure after a successful composite keeps the composed rectangle
+  (`recovery = S_FALSE`) and is `Incomplete` + blocked as before; a restore
+  failure combined with a failed source (stage 9) still recovers the
+  rectangle exactly. Fault seams: `Copy`, `RegionScissor`, `SourceBind`
+  (pre-source, clean refusal), `Composite`, `CompositeScissor`, `Restore`,
+  `RegionRecovery`.
+- `select_region` intersects the caller's rectangle with the target, the
+  saved application viewport and — when `SCISSORTESTENABLE` was saved on —
+  the application scissor (the step-1 deferral); unknown or empty selects the
+  whole target.
+- The fixture's separate-copy twin (`fixture_separate_copy`) drops policy 4 at
+  attach: the region backup must initialise E|R in the same rasterisation.
+- `verification/probe/linear_emission_pass_stubs/d3d9.h` gained
+  `RasterCaps`/`D3DPRASTERCAPS_SCISSORTEST` so the existing host scenarios
+  (`linear_emission_pass_host.cpp`, unchanged, 72 scenarios / 1750 checks)
+  still compile; they request policies 1 and 3 only.
+
+Acceptance:
+
+- Host: `PYTHONPATH=verification/probe python3 -m unittest
+  verification.analysis.test_linear_distance_fade
+  verification.analysis.test_linear_distance_fade_report
+  verification.analysis.test_fade_region` — 22 tests OK
+  (`test_linear_emission_pass_host` separately: 72 scenarios, 1750 checks).
+  New: the in-place
+  source contract (scissor caps gate, `StretchRect` slot, `select_region`, no
+  third program, no Wine symbols) and the report validator for the in-place
+  witness (batch counts, region/rectangle twins, ladder with first HRESULT,
+  source-once, recovery HRESULT, suppression and no exchange, caps refusal,
+  Reset, timing group) with 16 mutation rejections.
+- Wine fixture (`verification/results/bottle-X3/linear-distance-fade-gpu-region2.json`,
+  raw `/tmp/x3-distance-fade-region2b-r1`, bottle X3, 8.4 s): the 71 existing
+  cases unchanged versus `region1c` (257 source calls, 580,608 numerical
+  channels, 183,264 exact raw and 193,536 exact energy channels, max
+  tolerance fraction 7.19e-5, 5 fault cases, 4 + 3 refusals; 29 region cases,
+  21 bounded, 0 violations, 1535 covered pixels). In place: a second component
+  instance (own pool, own M) ran **293 brackets** on bit-exact copies of every
+  pre-draw A — 252 case steps (246 before Reset, alternating a known
+  conservative rectangle and the unknown whole target, 6 after Reset), all 29
+  region cases with the production rectangle (`scissor` → `4,4,13,13`,
+  `viewport_offset` → `5,5,12,12`, `offscreen` → `0,0,1,1`), 8 rectangle
+  cases (11 brackets: whole target unknown, exact, partial, zero coverage
+  under an application scissor, 1×1, disjoint pair, overlapping pair,
+  unknown-then-known pair — the pairs share one frame so B and E outside the
+  second rectangle are stale) and the no-scissor fallback twin; **586
+  bit-exact comparisons** (in-place A = exchanged C and in-place M =
+  exchanged M after every bracket), 0 differences. Ladder (9 stages, source
+  issued once each, exchange never reached): partial VS setter, copy and
+  region scissor faults are clean pre-source refusals (`first = E_FAIL`,
+  A and M untouched, coverage kept, frame not blocked); invalid source
+  (`first = D3DERR_INVALIDCALL`), composite and composite-scissor faults
+  recover A|R exactly (`recovery = S_OK`, A equals the pre-draw image),
+  coverage invalid, frame blocked; restore fault keeps the composed
+  rectangle bit-equal to the exchanged C; a recovery fault reports `E_FAIL`
+  and blocks; a restore fault together with a failed source detaches the
+  sampler stages and still recovers A|R exactly. Capability refusal: `RasterCaps` without `SCISSORTEST` attaches
+  with `supported = available = 2`, an in-place boundary is refused with
+  `D3DERR_NOTAVAILABLE` before any getter, and the same boundary as policy 2
+  completes through the exchange with a result equal to the in-place twin.
+  Reset: an in-place bracket interrupted after `prepare` leaves the caller's
+  A bound, E/M detached, 4 references, pool recreated after `ensure_targets`.
+- Timing (detached, EVENT-fenced windows of prepare/source/finish per frame,
+  M clear outside the window, median of 8 after 2 warm-ups; not game FPS):
+
+  | Size | f | DIPs | Prototype 1 (ms) | In place (ms) |
+  |---|---:|---:|---:|---:|
+  | 1280×768 | 1.0 | 1 / 4 / 16 | 0.94 / 2.45 / 5.07 | 0.64 / 1.60 / 4.98 |
+  | 1280×768 | 0.060 | 1 / 4 / 16 | 0.56 / 1.16 / 3.60 | 0.32 / 0.59 / 1.93 |
+  | 1280×768 | 0.010 | 1 / 4 / 16 | 0.51 / 1.04 / 2.82 | 0.28 / 0.58 / 1.92 |
+  | 1920×1080 | 1.0 | 1 / 4 / 16 | 1.11 / 3.51 / 12.67 | 1.10 / 3.47 / 12.69 |
+  | 1920×1080 | 0.060 | 1 / 4 / 16 | 0.84 / 2.16 / 7.58 | 0.39 / 0.65 / 1.93 |
+  | 1920×1080 | 0.010 | 1 / 4 / 16 | 0.75 / 2.08 / 6.80 | 0.33 / 0.59 / 1.98 |
+
+  At the whole target the two policies cost the same (the traffic is 48 B/px
+  either way; the exchange itself is free here). At the run27 bound
+  `f ≈ 0.06` the in-place window is 0.25× (1080p, 16 DIPs) and resolution
+  independent: ≈ 0.12 ms per bracket, which is the fixed CPU-side state
+  traffic (65 getters, 285 setters) that section 6 named as the next target.
+  Prototype 1's small-`f` windows are cheaper than its `f = 1` windows only
+  because the source draw itself shrinks.
+
+Not done here: the runtime route (`motion_output.cpp` still requests and
+publishes policies 1–2 only; `finish_composition` must treat an in-place
+completion as published and skip `publish_composition`), the live timings and
+per-frame region counters (step 3).

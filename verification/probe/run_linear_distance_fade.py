@@ -46,6 +46,25 @@ REGION_CASES=(('interior',1,1),('edge_left',1,1),('edge_right',1,1),('edge_top',
               (f'jitter_{k}',1,1) for k in range(1,9))
 REGION_VIEWPORT={'viewport_offset':(4,4,8,8)}
 REGION_REASONS={'w_zero':4,'w_negative':4,'nan_rows':5,'inf_rows':5,'rows_unknown':2,'bound_unknown':3,'negative_extent':3,'fill_wireframe':6}
+# Step 2 in-place policy (linear_distance_fade_fixture_inc.h inplace_cases, same
+# order): label and bracket count. Every non-fault case step, every region case
+# and every rectangle case is also run in place on a copy of A by a second
+# component instance; the fixture compares in-place A with the exchanged C and
+# the two M targets bit-exactly, so the runner only checks the witness counts.
+INPLACE_CASES=(('full_unknown',1),('exact',1),('partial',1),('zero_scissor',1),('tiny',1),('disjoint',2),('overlapping',2),('unknown_then_known',2))
+# Failure ladder: stage, label, prepared, expected first HRESULT, recovery HRESULT, coverage, blocked.
+INPLACE_LADDER=((1,'partial_vs',0,0x80004005,0x1,1,0),(2,'copy',0,0x80004005,0x1,1,0),(3,'region_scissor',0,0x80004005,0x1,1,0),
+                (4,'source',1,0x8876086c,0x0,0,1),(5,'composite',1,0x80004005,0x0,0,1),(6,'composite_scissor',1,0x80004005,0x0,0,1),
+                (7,'restore',1,0x80004005,0x1,0,1),(8,'recovery',1,0x8876086c,0x80004005,0,1),
+                (9,'restore_recovery',1,0x8876086c,0x0,0,1))
+TIMING_SIZES=((1280,768),(1920,1080));TIMING_FRACTIONS=3;TIMING_POLICIES=('exchange','inplace');TIMING_DIPS=(1,4,16);TIMING_ITERATIONS=8
+
+def inplace_brackets(active):
+    """In-place brackets of one batch: every non-fault case step, plus (first batch) region, rectangle and fallback twins."""
+    reset=any(c['id']>=1000 for c in active)
+    count=sum(steps(c) for c in active if not c['affine'])
+    if not reset:count+=len(REGION_CASES)+sum(b for _,b in INPLACE_CASES)+1
+    return count
 
 def cases():
     base=dict(depth=1,lights=1,reverse=0,affine=0,valid=1,fp16=1,
@@ -152,7 +171,7 @@ def validate_report(text,source,raw):
         assert int(row['first'],16)==(0x8876086c if fault==3 else 0x80004005),'chronological failure HRESULT'
         assert int(row['coverage'])==int(fault not in (3,5))
     assert text.count('FADE_CAPS refused=4')==1 and text.count('FADE_STATE refused=3')==1,'capability and state refusal witnesses'
-    assert re.search(r'^FADE_RESULT PASS reset=1 partial_vs_failures=1$',text,re.M),'actual partial setter failure and Reset'
+    assert re.search(r'^FADE_RESULT PASS reset=1 partial_vs_failures=2$',text,re.M),'actual partial setter failures (exchange and in-place ladders) and Reset'
     assert re.search(r'^RESULT PASS cases=65$',text,re.M),'fixture terminal success'
     batches=[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith('FADE_BATCH ')]
     assert len(batches)==2
@@ -221,6 +240,8 @@ def validate_report(text,source,raw):
                     channels+=1
             current=output
     regions=validate_regions(text,raw)
+    regions.update(validate_inplace(text,expected))
+    regions.update(validate_timing(text))
     return dict(cases=len(expected),source_calls=sum(steps(c) for c in expected),**regions,
                 numerical_channels=channels,alpha_values=alpha_values,q_values=q_values,
                 mask_values=mask_values,exact_raw_channels=exact_raw,max_tolerance_fraction=max_fraction,
@@ -261,6 +282,50 @@ def validate_regions(text,raw):
     return dict(region_cases=len(rows),region_bound_cases=sum(c[1] for c in REGION_CASES),region_violations=violations,
                 region_covered_pixels=covered_total,region_area_fractions=fractions,
                 region_scope='Step 1: rectangle derived and witnessed against M only; the prototype-1 bracket composes the full target')
+
+def validate_inplace(text,expected):
+    rows=lambda prefix:[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith(prefix+' ')]
+    assert not rows('FADE_INPLACE_DIFF') and not rows('FADE_INPLACE_REFUSAL') and not rows('FADE_INPLACE_INCOMPLETE'),'in-place mismatch witness'
+    batches=rows('FADE_INPLACE_BATCH')
+    assert [int(b['reset']) for b in batches]==[0,1],'one in-place batch per Reset side'
+    brackets=0
+    for reset,batch in enumerate(batches):
+        active=[c for c in expected if (c['id']>=1000)==bool(reset)]
+        want=inplace_brackets(active)
+        cases=sum(1 for c in active if not c['affine'])+(0 if reset else len(REGION_CASES)+len(INPLACE_CASES)+1)
+        assert int(batch['cases'])==cases,(reset,'in-place case count',batch)
+        assert int(batch['brackets'])==want and int(batch['native'])==want,(reset,'in-place bracket/source-once count',batch)
+        assert int(batch['exact_a'])==want and int(batch['exact_m'])==want,(reset,'bit-exact comparison count',batch)
+        brackets+=want
+    regions=rows('FADE_INPLACE_REGION')
+    assert [r['label'] for r in regions]==[c[0] for c in REGION_CASES] and all(int(r['exact'])==1 for r in regions),'region twins'
+    rect=rows('FADE_INPLACE')
+    assert [(r['label'],int(r['brackets'])) for r in rect]==list(INPLACE_CASES) and all(int(r['exact'])==1 for r in rect),'rectangle case group'
+    ladder=rows('FADE_INPLACE_FAILURE')
+    assert len(ladder)==len(INPLACE_LADDER),'in-place failure ladder'
+    for row,(stage,label,prepared,first,recovery,coverage,blocked) in zip(ladder,INPLACE_LADDER):
+        assert int(row['stage'])==stage and row['label']==label and int(row['native'])==1 and int(row['exchange'])==0,(label,row)
+        assert int(row['prepared'])==prepared and int(row['first'],16)==first,(label,'chronological first HRESULT',row)
+        assert int(row['recovery'],16)==recovery,(label,'recovery HRESULT',row)
+        assert int(row['coverage'])==coverage and int(row['blocked'])==blocked,(label,'suppression',row)
+    assert text.count('FADE_INPLACE_CAPS refused=1 fallback=1 exact=1')==1,'no-scissor capability refusal and exchange fallback'
+    assert text.count('FADE_INPLACE_RESET interrupted=1 detached=1')==1,'interrupted in-place bracket Reset'
+    return dict(inplace_cases=sum(int(b['cases']) for b in batches),inplace_brackets=brackets,inplace_exact_comparisons=2*brackets,
+                inplace_rectangle_cases=len(rect),inplace_ladder_stages=len(ladder),inplace_capability_refusals=1,inplace_reset=True,
+                inplace_scope='Step 2: in-place A equals the exchanged C and M bit-exactly per bracket; no runtime route (step 3)')
+
+def validate_timing(text):
+    rows=[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith('FADE_TIMING ')]
+    assert 'FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=8' in text,'timing group terminal line'
+    groups={};iterations={}
+    for r in rows:
+        key=(int(r['width']),int(r['height']),r['policy'],float(r['f']),int(r['dips']))
+        groups.setdefault(key,[]).append(float(r['completed_ms']));iterations.setdefault(key,[]).append(int(r['iteration']))
+    expected=len(TIMING_SIZES)*TIMING_FRACTIONS*len(TIMING_POLICIES)*len(TIMING_DIPS)
+    assert len(groups)==expected and all(v==list(range(TIMING_ITERATIONS)) for v in iterations.values()),'timing windows'
+    timing=[dict(width=w,height=h,policy=policy,area_fraction=f,dips=dips,median_ms=sorted(v)[len(v)//2],min_ms=min(v),max_ms=max(v))
+            for (w,h,policy,f,dips),v in sorted(groups.items())]
+    return dict(timing=timing,timing_scope='EVENT-fenced windows of prepare/source/finish(/exchange) per frame on the detached device; M clear outside the window; not game FPS')
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 

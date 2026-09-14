@@ -4,9 +4,13 @@
 #include <cstdint>
 #include <d3d9.h>
 namespace x3m::renderer {
-// One pool/coverage owner serves both producer policies. Policy bits are stable
+// One pool/coverage owner serves every producer policy. Policy bits are stable
 // configuration; each boundary selects only a capability-qualified program.
-enum class LinearCompositionPolicy : unsigned { AdditiveEmission = 1, DistanceFade = 2 };
+// DistanceFadeInPlace composes the fade rectangle back into the owning target
+// itself (docs/architecture/linear-distance-fade-region.md, section 3): no
+// owning candidate, no exchange, no acknowledgement. It shares the pool and
+// the DistanceFade program and additionally needs D3DPRASTERCAPS_SCISSORTEST.
+enum class LinearCompositionPolicy : unsigned { AdditiveEmission = 1, DistanceFade = 2, DistanceFadeInPlace = 4 };
 constexpr unsigned composition_policy_bit(LinearCompositionPolicy p) noexcept { return unsigned(p); }
 struct LinearEmissionPassCaps {
   bool enabled = false;
@@ -26,6 +30,9 @@ struct LinearEmissionCompletion {
   LinearEmissionImage image = LinearEmissionImage::None;
   HRESULT source = S_FALSE, composition = S_FALSE, restore = S_FALSE;
   bool candidate_bound = false; // NOT an ownership-publication acknowledgement
+  // In-place policy only: after a failed source or composite the rectangle of
+  // A is recovered from its pre-draw backup (exact copy); S_FALSE when unused.
+  HRESULT recovery = S_FALSE;
 };
 struct LinearEmissionBoundary {
   // Exact borrowed HdrPass owning-slot value A. GetRT0 may be a canonical
@@ -41,6 +48,12 @@ struct LinearEmissionBoundary {
   // Saved original VS must be restored even after a partially mutating setter.
   IDirect3DVertexShader9 *augmented_vertex = nullptr;
   LinearCompositionPolicy policy = LinearCompositionPolicy::AdditiveEmission;
+  // DistanceFadeInPlace: conservative target-pixel rectangle the source can
+  // touch (fade_region::derive). Unknown selects the whole owning target; the
+  // pass further intersects with the target, the viewport and an enabled
+  // application scissor, and any empty result again selects the whole target.
+  RECT region{};
+  bool region_known = false;
 };
 enum class LinearEmissionPassFault {
   None,
@@ -52,7 +65,10 @@ enum class LinearEmissionPassFault {
   Composite,
   Restore,
   RecoveryRestore,
-  FrameClear
+  FrameClear,
+  RegionScissor,    // in-place: scissor set of the region backup
+  CompositeScissor, // in-place: scissor set of the region composite
+  RegionRecovery    // in-place: exact rectangle recovery copy B|R -> A|R
 };
 class LinearEmissionPass {
 public:
@@ -76,6 +92,8 @@ public:
   LinearEmissionCompletion finish(HRESULT source) noexcept;
   // Only the selected, successfully bound candidate exposes its owning slot.
   // Caller may only pass *slot to HdrPass::exchange_target. No other mutation.
+  // DistanceFadeInPlace never exposes a slot: finish() already left the
+  // result in the owning target and returned the pass to idle.
   IDirect3DSurface9 **owning_candidate() noexcept;
   // Ownership acknowledgement only: even exchanged Incomplete B remains
   // incomplete/blocked with invalid coverage; this never authorizes history.

@@ -74,7 +74,7 @@ constexpr DWORD D3DCULL_NONE = 1, D3DFILL_SOLID = 3, D3DBLEND_ONE = 2,
                 D3DPMISCCAPS_SEPARATEALPHABLEND = 2,
                 D3DPMISCCAPS_INDEPENDENTWRITEMASKS = 4,
                 D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING = 8, D3DFVF_XYZRHW = 4,
-                D3DFVF_TEX1 = 256;
+                D3DFVF_TEX1 = 256, D3DPRASTERCAPS_SCISSORTEST = 0x01000000;
 constexpr DWORD D3DPS_VERSION(unsigned a, unsigned b) { return a * 256 + b; }
 constexpr DWORD D3DVS_VERSION(unsigned a, unsigned b) { return a * 256 + b; }
 constexpr unsigned char D3DDECLTYPE_FLOAT4 = 3, D3DDECLTYPE_FLOAT2 = 1,
@@ -108,7 +108,7 @@ struct D3DCAPS9 {
   DWORD NumSimultaneousRTs = 3, PixelShaderVersion = D3DPS_VERSION(3, 0),
         VertexShaderVersion = D3DVS_VERSION(3, 0),
         PrimitiveMiscCaps = D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING,
-        MaxTextureWidth = 4096, MaxTextureHeight = 4096;
+        MaxTextureWidth = 4096, MaxTextureHeight = 4096, RasterCaps = 0;
 };
 struct D3DDEVICE_CREATION_PARAMETERS {
   UINT AdapterOrdinal = 0;

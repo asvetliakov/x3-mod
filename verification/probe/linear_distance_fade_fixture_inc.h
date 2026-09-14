@@ -97,11 +97,12 @@ void dump(const char *label, unsigned id, unsigned step,
 struct Target {
   Com<IDirect3DTexture9> texture;
   Com<IDirect3DSurface9> surface;
-  Target(IDirect3DDevice9 *d, unsigned size) {
-    api(d->CreateTexture(size, size, 1, D3DUSAGE_RENDERTARGET, format,
+  Target(IDirect3DDevice9 *d, unsigned width, unsigned height) {
+    api(d->CreateTexture(width, height, 1, D3DUSAGE_RENDERTARGET, format,
                          D3DPOOL_DEFAULT, &texture.p, nullptr));
     api(texture->GetSurfaceLevel(0, &surface.p));
   }
+  Target(IDirect3DDevice9 *d, unsigned size) : Target(d, size, size) {}
 };
 // Inject one real setter mutation followed by failure, not merely a skipped
 // call.
@@ -123,23 +124,25 @@ struct Draw {
   Com<IDirect3DVertexBuffer9> vb;
   Com<IDirect3DIndexBuffer9> ib;
   unsigned primitives = 0;
+  // Ordinary source, two truly overlapping quads in one DIP, or two ordered
+  // DIPs with different rectangles. Integer pixel bounds avoid edge
+  // ambiguity.
   Draw(IDirect3DDevice9 *device, const Case &c, unsigned step, unsigned width)
+      : Draw(device, c, RECT{LONG(step ? 6 : 2), LONG(step ? 6 : 2), LONG(step ? 14 : 10), LONG(step ? 14 : 10)},
+             width, width, c.reverse == 1 ? 2 : 1) {}
+  // Quad covering exactly the target pixels [left, right) x [top, bottom).
+  Draw(IDirect3DDevice9 *device, const Case &c, const RECT &px, unsigned width, unsigned height, unsigned copies)
       : d(device) {
-    // Ordinary source, two truly overlapping quads in one DIP, or two ordered
-    // DIPs with different rectangles. Integer pixel bounds avoid edge
-    // ambiguity.
-    unsigned lo = step ? 6 : 2, hi = step ? 14 : 10;
-    unsigned copies = c.reverse == 1 ? 2 : 1;
     primitives = 2 * copies;
     float verts[8][14]{};
     unsigned short indices[12]{};
     for (unsigned copy = 0; copy < copies; ++copy) {
       unsigned base = 4 * copy;
-      const unsigned xy[4][2] = {{lo, lo}, {hi, lo}, {lo, hi}, {hi, hi}};
+      const LONG xy[4][2] = {{px.left, px.top}, {px.right, px.top}, {px.left, px.bottom}, {px.right, px.bottom}};
       for (unsigned n = 0; n < 4; ++n) {
         auto &v = verts[base + n];
         v[0] = 2.f * (xy[n][0] - .25f) / width - 1;
-        v[1] = 1 - 2.f * (xy[n][1] - .25f) / width;
+        v[1] = 1 - 2.f * (xy[n][1] - .25f) / height;
         v[2] = .5f;
         std::memcpy(v + 5, c.f + 28, 12);
         std::memcpy(v + 8, c.f + 36, 12);
@@ -398,6 +401,43 @@ void equal(const std::vector<Pixel> &a, const std::vector<Pixel> &b,
               !std::memcmp(a.data(), b.data(), a.size() * sizeof(Pixel)),
           message);
 }
+// Bit-exact comparison with a one-line witness of the first differing pixel.
+void exact(const std::vector<Pixel> &actual, const std::vector<Pixel> &expected,
+           const char *label, const char *message) {
+  require(actual.size() == expected.size(), message);
+  for (unsigned n = 0; n < actual.size(); ++n)
+    if (std::memcmp(&actual[n], &expected[n], sizeof(Pixel))) {
+      std::printf("FADE_INPLACE_DIFF label=%s pixel=%u x=%u y=%u actual=%g,%g,%g,%g expected=%g,%g,%g,%g\n",
+                  label, n, n % 16, n / 16, actual[n].f[0], actual[n].f[1], actual[n].f[2], actual[n].f[3],
+                  expected[n].f[0], expected[n].f[1], expected[n].f[2], expected[n].f[3]);
+      require(false, message);
+    }
+}
+constexpr auto in_place = LinearCompositionPolicy::DistanceFadeInPlace;
+// Rectangle case group of the in-place policy (docs/architecture/
+// linear-distance-fade-region.md, step 2). Every bracket runs twice: through
+// the prototype-1 exchange on A and in place on a bit-exact copy of A with
+// the rectangle; the in-place A must equal the exchanged C and the two M
+// targets must agree bit-exactly. Labels, order and bracket counts are
+// mirrored by run_linear_distance_fade.py (INPLACE_CASES).
+struct InPlaceCase {
+  const char *label;
+  unsigned brackets;
+  RECT draw[2];     // source quad pixels per bracket
+  int known[2];     // 0: unknown rectangle (whole target)
+  RECT region[2];   // the rectangle handed to the pass when known
+  unsigned scissor; // application scissor (12,12,16,16) enabled: zero coverage
+};
+constexpr InPlaceCase inplace_cases[] = {
+    {"full_unknown", 1, {{2, 2, 10, 10}, {}}, {0, 0}, {{}, {}}, 0},
+    {"exact", 1, {{2, 2, 10, 10}, {}}, {1, 0}, {{2, 2, 10, 10}, {}}, 0},
+    {"partial", 1, {{2, 2, 10, 10}, {}}, {1, 0}, {{0, 0, 12, 12}, {}}, 0},
+    {"zero_scissor", 1, {{2, 2, 10, 10}, {}}, {1, 0}, {{0, 0, 16, 16}, {}}, 1},
+    {"tiny", 1, {{5, 5, 6, 6}, {}}, {1, 0}, {{5, 5, 6, 6}, {}}, 0},
+    {"disjoint", 2, {{0, 0, 6, 6}, {8, 8, 14, 14}}, {1, 1}, {{0, 0, 6, 6}, {8, 8, 14, 14}}, 0},
+    {"overlapping", 2, {{2, 2, 10, 10}, {6, 6, 14, 14}}, {1, 1}, {{2, 2, 10, 10}, {6, 6, 14, 14}}, 0},
+    {"unknown_then_known", 2, {{2, 2, 10, 10}, {6, 6, 14, 14}}, {0, 1}, {{}, {6, 6, 14, 14}}, 0},
+};
 void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
          const Words &composition, bool after_reset) {
   Gpu gpu(d, shaders, 16);
@@ -453,6 +493,12 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
     LinearEmissionPass pass;
     pass.fixture_source_over(
         reinterpret_cast<const DWORD *>(composition.data()));
+    // Step 2 twin: a second component instance (own pool, own M) runs the
+    // in-place policy on a bit-exact copy of every pre-draw A.
+    LinearEmissionPass inplace;
+    inplace.fixture_source_over(reinterpret_cast<const DWORD *>(composition.data()));
+    Target twin(d, 16);
+    unsigned inplace_cases_run = 0, inplace_brackets = 0, inplace_native = 0, inplace_exact_a = 0, inplace_exact_m = 0;
     const HRESULT attached = pass.attach(d, slots.data(), shaders.caps,
                                          display.Format, D3DFMT_D24S8);
     std::printf("FADE_ATTACH reset=%u adapter=%u misc=%08lx hr=%08lx "
@@ -465,6 +511,54 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
     api(pass.ensure_targets(16, 16));
     const auto allocations = pass.allocations();
     require(allocations == 4, "one B/E/C/M pool");
+    require(pass.caps().supported_policies == 6 && pass.caps().available_policies == 6 &&
+                pass.caps().supports(in_place) && pass.caps().supports(LinearCompositionPolicy::DistanceFade),
+            "in-place policy available beside the exchange fade");
+    api(inplace.attach(d, slots.data(), shaders.caps, display.Format, D3DFMT_D24S8));
+    api(inplace.ensure_targets(16, 16));
+    require(inplace.allocations() == 4 && inplace.caps().supports(in_place), "in-place twin pool");
+    // One in-place bracket on the twin: arm() binds the identical source
+    // state on the twin target, issue() runs the identical source once. The
+    // result must equal the exchanged C and M of the primary bit-exactly.
+    auto twin_bracket = [&](std::uint64_t frame, bool first, IDirect3DPixelShader9 *ps, IDirect3DVertexShader9 *vs,
+                            bool known, RECT rect, auto &&arm, auto &&issue, const std::vector<Pixel> &expected_a,
+                            const std::vector<Pixel> &expected_m, const char *label) {
+      arm(twin.surface.p);
+      Snapshot caller(d);
+      if (first)
+        require(inplace.begin_frame(frame).ready, "in-place M frame clear");
+      LinearEmissionBoundary boundary{twin.surface.p, ps, frame, true, vs};
+      boundary.policy = in_place;
+      boundary.region = rect;
+      boundary.region_known = known;
+      api(d->BeginScene());
+      const auto prep = inplace.prepare(boundary);
+      if (!prep.ready)
+        std::printf("FADE_INPLACE_REFUSAL label=%s saved=%08lx operation=%08lx restore=%08lx\n", label, prep.saved,
+                    prep.operation, prep.restore);
+      require(prep.ready, "in-place bracket prepared");
+      const HRESULT source = issue();
+      ++inplace_native;
+      const auto done = inplace.finish(source);
+      api(d->EndScene());
+      if (FAILED(source) || done.image != LinearEmissionImage::Linear)
+        std::printf("FADE_INPLACE_INCOMPLETE label=%s source=%08lx image=%u composition=%08lx restore=%08lx recovery=%08lx\n",
+                    label, source, unsigned(done.image), done.composition, done.restore, done.recovery);
+      require(SUCCEEDED(source) && done.image == LinearEmissionImage::Linear && !done.candidate_bound &&
+                  done.recovery == S_FALSE && SUCCEEDED(done.restore) && SUCCEEDED(done.composition),
+              "in-place completion");
+      require(!inplace.owning_candidate() && inplace.acknowledge_exchange(true) == D3DERR_INVALIDCALL &&
+                  inplace.recover_native().image == LinearEmissionImage::None && !inplace.reference_accounting_busy(),
+              "in-place bracket reached the exchange path");
+      caller.check(d, twin.surface.p);
+      require(inplace.coverage_valid(), "in-place coverage complete");
+      exact(gpu.read(twin.surface.p, format), expected_a, label, "in-place A differs from the exchanged C");
+      ++inplace_exact_a;
+      exact(gpu.read(inplace.coverage_target(), format), expected_m, label, "in-place M differs from the exchanged M");
+      ++inplace_exact_m;
+      ++inplace_brackets;
+      require(inplace.allocations() == 4, "in-place per-draw pool allocation");
+    };
     for (auto c : cases) {
       if (after_reset && (c.id % 10) != 0)
         continue;
@@ -530,6 +624,8 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         api(d->SetRenderTarget(0, gpu.color[1].p));
         api(d->StretchRect(scene.surface.p, nullptr, native.surface.p, nullptr,
                            D3DTEXF_NONE));
+        if (!c.affine)
+          api(d->StretchRect(scene.surface.p, nullptr, twin.surface.p, nullptr, D3DTEXF_NONE));
         source_state(gpu, current, native.surface.p, depth.p, draw);
         api(d->BeginScene());
         api(draw.issue());
@@ -663,12 +759,24 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
                     pass.coverage_valid(),
                 "linear candidate and complete mask");
         dump("E", c.id, step, gpu.read(pass.fixture_energy(), format));
-        dump("M", c.id, step, gpu.read(pass.coverage_target(), format));
-        dump("C", c.id, step, gpu.read(scene.surface.p, format));
+        const auto composed_mask = gpu.read(pass.coverage_target(), format);
+        dump("M", c.id, step, composed_mask);
+        const auto composed = gpu.read(scene.surface.p, format);
+        dump("C", c.id, step, composed);
         if (current.f[6] == 0)
-          equal(gpu.read(scene.surface.p, format), initial,
-                "zero-alpha repeated bracket is exact raw A");
+          equal(composed, initial, "zero-alpha repeated bracket is exact raw A");
+        // In-place twin of this step: known conservative rectangle for even
+        // case rows, unknown (whole target) for odd rows.
+        {
+          const bool known = ((c.id / 10) % 2) == 0;
+          const LONG lo = (c.reverse == 2 && step) ? 6 : 2, hi = (c.reverse == 2 && step) ? 14 : 10;
+          twin_bracket(c.id + 1, step == 0, augmented_ps, augmented_vs, known, RECT{lo, lo, hi, hi},
+                       [&](IDirect3DSurface9 *target) { source_state(gpu, current, target, depth.p, draw); },
+                       [&]() { return draw.issue(); }, composed, composed_mask, "case");
+        }
       }
+      if (!c.affine)
+        ++inplace_cases_run;
       require(pass.allocations() == allocations, "no per-draw pool allocation");
       std::printf("FADE_CASE id=%u pair=%u steps=%u native=%u brackets=%u "
                   "fault=%u reset=%u\n",
@@ -689,10 +797,9 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         const auto &r = region_cases[i];
         const unsigned id = 5000 + i;
         upload.background(scene.surface.p, false);
+        api(d->StretchRect(scene.surface.p, nullptr, twin.surface.p, nullptr, D3DTEXF_NONE));
         BoxDraw draw(d, *base, r);
         Draw unused(d, *base, 0, 16);
-        source_state(gpu, *base, scene.surface.p, depth.p, unused);
-        draw.bind();
         shaders.bind(*base, 3);
         IDirect3DVertexShader9 *augmented_vs = shaders.vertices.at(shaders.key(*base, 3, false));
         IDirect3DPixelShader9 *augmented_ps = shaders.pixels.at(shaders.key(*base, 3, true));
@@ -703,19 +810,25 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         std::memcpy(rows, r.rows, sizeof rows);
         if (r.jitter)
           x3m::fade_region::jitter_rows(rows, region_halton(r.jitter, 2) - .5f, region_halton(r.jitter, 3) - .5f, 16, 16);
-        api(d->SetVertexShaderConstantF(24, rows, 4));
         x3m::fade_region::Viewport viewport{0, 0, 16, 16};
-        if (r.viewport[2]) {
+        if (r.viewport[2])
           viewport = {r.viewport[0], r.viewport[1], r.viewport[2], r.viewport[3]};
-          D3DVIEWPORT9 vp{r.viewport[0], r.viewport[1], r.viewport[2], r.viewport[3], 0, 1};
-          api(d->SetViewport(&vp));
-        }
-        if (r.scissor) {
-          const RECT scissor{0, 0, 8, 8};
-          api(d->SetScissorRect(&scissor));
-          api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE));
-        }
-        api(d->SetRenderState(D3DRS_FILLMODE, r.fill_solid ? D3DFILL_SOLID : D3DFILL_WIREFRAME));
+        auto arm = [&](IDirect3DSurface9 *target) {
+          source_state(gpu, *base, target, depth.p, unused);
+          draw.bind();
+          api(d->SetVertexShaderConstantF(24, rows, 4));
+          if (r.viewport[2]) {
+            D3DVIEWPORT9 vp{r.viewport[0], r.viewport[1], r.viewport[2], r.viewport[3], 0, 1};
+            api(d->SetViewport(&vp));
+          }
+          if (r.scissor) {
+            const RECT scissor{0, 0, 8, 8};
+            api(d->SetScissorRect(&scissor));
+            api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE));
+          }
+          api(d->SetRenderState(D3DRS_FILLMODE, r.fill_solid ? D3DFILL_SOLID : D3DFILL_WIREFRAME));
+        };
+        arm(scene.surface.p);
         x3m::fade_region::Box box{};
         for (unsigned a = 0; a < 3; ++a) { box.centre[a] = r.centre[a]; box.half[a] = r.half[a]; }
         const auto region = x3m::fade_region::derive(r.rows_known ? rows : nullptr, r.bound_known != 0, box, viewport, r.fill_solid != 0, x3m::fade_region::Rect{0, 0, 16, 16});
@@ -742,6 +855,14 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         require(pass.coverage_valid(), "region coverage complete");
         const auto mask = gpu.read(pass.coverage_target(), format);
         dump("M", id, 0, mask);
+        // In-place twin with the production rectangle: the conservativeness
+        // witness of step 1 is exactly what makes the in-place result equal.
+        twin_bracket(id + 1, true, augmented_ps, augmented_vs, true,
+                     RECT{rect.left, rect.top, rect.right, rect.bottom}, arm, [&]() { return draw.issue(); },
+                     gpu.read(scene.surface.p, format), mask, r.label);
+        ++inplace_cases_run;
+        std::printf("FADE_INPLACE_REGION id=%u label=%s rect=%d,%d,%d,%d exact=1\n", id, r.label, rect.left, rect.top,
+                    rect.right, rect.bottom);
         unsigned covered = 0, violations = 0;
         for (unsigned n = 0; n < mask.size(); ++n) {
           if (mask[n].f[0] == 0)
@@ -763,6 +884,272 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
       require(region_violations == 0, "M pixel outside its region rectangle");
       std::printf("FADE_REGION_RESULT cases=%u bound=%u violations=%u\n",
                   unsigned(std::size(region_cases)), region_bound_cases, region_violations);
+      // In-place rectangle group: alpha 0.5 so every covered pixel composes.
+      Case blend = *base;
+      blend.f[6] = .5f;
+      shaders.bind(blend, 3);
+      IDirect3DVertexShader9 *blend_vs = shaders.vertices.at(shaders.key(blend, 3, false));
+      IDirect3DPixelShader9 *blend_ps = shaders.pixels.at(shaders.key(blend, 3, true));
+      // Prototype-1 exchange bracket on the primary: returns exchanged C.
+      auto exchange_bracket = [&](std::uint64_t frame, bool first, unsigned scissor, Draw &draw) {
+        source_state(gpu, blend, scene.surface.p, depth.p, draw);
+        if (scissor) {
+          const RECT app{12, 12, 16, 16};
+          api(d->SetScissorRect(&app));
+          api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE));
+        }
+        Snapshot caller(d);
+        if (first)
+          require(pass.begin_frame(frame).ready, "rectangle M frame clear");
+        LinearEmissionBoundary boundary{scene.surface.p, blend_ps, frame, true, blend_vs};
+        api(d->BeginScene());
+        require(pass.prepare(boundary).ready, "rectangle exchange bracket prepared");
+        const HRESULT source = draw.issue();
+        const auto finish = pass.finish(source);
+        api(d->EndScene());
+        require(SUCCEEDED(source) && finish.image == LinearEmissionImage::Linear, "rectangle exchange bracket completed");
+        auto *slot = pass.owning_candidate();
+        require(slot && *slot, "rectangle owning candidate");
+        std::swap(scene.surface.p, *slot);
+        api(pass.acknowledge_exchange(true));
+        caller.check(d, scene.surface.p);
+        require(pass.coverage_valid(), "rectangle coverage complete");
+      };
+      for (unsigned i = 0; i < std::size(inplace_cases); ++i) {
+        const auto &r = inplace_cases[i];
+        const unsigned id = 6000 + i;
+        upload.background(scene.surface.p, false);
+        api(d->StretchRect(scene.surface.p, nullptr, twin.surface.p, nullptr, D3DTEXF_NONE));
+        const auto initial = gpu.read(scene.surface.p, format);
+        for (unsigned k = 0; k < r.brackets; ++k) {
+          Draw draw(d, blend, r.draw[k], 16, 16, 1);
+          exchange_bracket(id + 1, k == 0, r.scissor, draw);
+          const auto composed = gpu.read(scene.surface.p, format), mask = gpu.read(pass.coverage_target(), format);
+          if (r.scissor) {
+            equal(composed, initial, "zero coverage changed A");
+            for (const auto &m : mask)
+              require(m.f[0] == 0, "zero coverage marked M");
+          }
+          twin_bracket(id + 1, k == 0, blend_ps, blend_vs, r.known[k] != 0, r.region[k],
+                       [&](IDirect3DSurface9 *target) {
+                         source_state(gpu, blend, target, depth.p, draw);
+                         if (r.scissor) {
+                           const RECT app{12, 12, 16, 16};
+                           api(d->SetScissorRect(&app));
+                           api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE));
+                         }
+                       },
+                       [&]() { return draw.issue(); }, composed, mask, r.label);
+        }
+        api(d->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE));
+        ++inplace_cases_run;
+        std::printf("FADE_INPLACE id=%u label=%s brackets=%u exact=1\n", id, r.label, r.brackets);
+      }
+      // Failure ladder of the in-place bracket on the twin. Every stage issues
+      // the source at most once; nothing is exchanged; the first HRESULT is
+      // the chronologically first failure; a failure after the source leaves
+      // the rectangle of A exactly as before the draw (recovered from B).
+      Draw ladder_draw(d, blend, RECT{2, 2, 10, 10}, 16, 16, 1);
+      const RECT ladder_rect{2, 2, 10, 10};
+      const char *const ladder_labels[] = {"partial_vs", "copy", "region_scissor", "source", "composite",
+                                           "composite_scissor", "restore", "recovery", "restore_recovery"};
+      for (unsigned stage = 1; stage <= 9; ++stage) {
+        const unsigned id = 7000 + stage;
+        upload.background(twin.surface.p, false);
+        const auto initial = gpu.read(twin.surface.p, format);
+        // Exchange reference for the restore stage: the linear result stays.
+        std::vector<Pixel> linear;
+        if (stage == 7) {
+          upload.background(scene.surface.p, false);
+          equal(gpu.read(scene.surface.p, format), initial, "ladder reference background");
+          exchange_bracket(id + 1, true, 0, ladder_draw);
+          linear = gpu.read(scene.surface.p, format);
+        }
+        source_state(gpu, blend, twin.surface.p, depth.p, ladder_draw);
+        Snapshot caller(d);
+        require(inplace.begin_frame(id + 1).ready, "ladder M frame clear");
+        const auto prior_mask = gpu.read(inplace.coverage_target(), format);
+        LinearEmissionBoundary boundary{twin.surface.p, blend_ps, id + 1, true, blend_vs};
+        boundary.policy = in_place;
+        boundary.region = ladder_rect;
+        boundary.region_known = true;
+        if (stage == 1) fail_vs = blend_vs;
+        if (stage == 2) inplace.inject(LinearEmissionPassFault::Copy);
+        if (stage == 3) inplace.inject(LinearEmissionPassFault::RegionScissor);
+        if (stage == 5) inplace.inject(LinearEmissionPassFault::Composite);
+        if (stage == 6) inplace.inject(LinearEmissionPassFault::CompositeScissor);
+        if (stage == 7 || stage == 9) inplace.inject(LinearEmissionPassFault::Restore);
+        if (stage == 8) inplace.inject(LinearEmissionPassFault::RegionRecovery);
+        api(d->BeginScene());
+        const auto prep = inplace.prepare(boundary);
+        HRESULT first = S_OK;
+        unsigned prepared = 0, coverage = 0, blocked = 0;
+        HRESULT recovery = S_FALSE;
+        if (stage <= 3) {
+          require(!prep.ready && prep.operation == E_FAIL && prep.state_preserved && SUCCEEDED(prep.saved),
+                  "in-place pre-source first failure and rollback");
+          caller.check(d, twin.surface.p);
+          equal(gpu.read(twin.surface.p, format), initial, "in-place clean refusal touched A");
+          equal(gpu.read(inplace.coverage_target(), format), prior_mask, "in-place clean refusal touched M");
+          api(ladder_draw.issue());
+          api(d->EndScene());
+          first = prep.operation;
+          coverage = inplace.coverage_valid();
+          require(coverage == 1, "in-place clean refusal keeps coverage");
+          // Not blocked: the same frame accepts the next bracket.
+          api(d->BeginScene());
+          require(inplace.prepare(boundary).ready, "clean refusal blocked the frame");
+          const auto again = inplace.finish(ladder_draw.issue());
+          api(d->EndScene());
+          require(again.image == LinearEmissionImage::Linear, "post-refusal in-place bracket");
+          caller.check(d, twin.surface.p);
+        } else {
+          require(prep.ready, "in-place ladder prepared");
+          prepared = 1;
+          const HRESULT source = ladder_draw.issue(stage == 4 || stage == 8 || stage == 9);
+          const auto done = inplace.finish(source);
+          api(d->EndScene());
+          require(done.source == source, "in-place original source HRESULT retained");
+          require(done.image == LinearEmissionImage::Incomplete && !done.candidate_bound, "in-place failure image");
+          require(!inplace.owning_candidate() && inplace.acknowledge_exchange(true) == D3DERR_INVALIDCALL &&
+                      inplace.recover_native().image == LinearEmissionImage::None && !inplace.reference_accounting_busy(),
+                  "in-place failure reached the exchange path");
+          if (stage == 9) {
+            // Failed restore plus recovery: the recovery detached the three
+            // sampler stages before the copy; everything else was restored
+            // (the fault only flips the reported result).
+            Com<IDirect3DSurface9> rt0;
+            api(d->GetRenderTarget(0, &rt0.p));
+            require(rt0.p == twin.surface.p, "restore/recovery stage lost the caller's A");
+            for (unsigned i = 0; i < 3; ++i) {
+              Com<IDirect3DBaseTexture9> texture;
+              api(d->GetTexture(i, &texture.p));
+              require(!texture.p, "recovery after failed restore left a sampler stage bound");
+            }
+          } else
+            caller.check(d, twin.surface.p);
+          recovery = done.recovery;
+          if (stage == 9) {
+            require(FAILED(source) && done.composition == S_FALSE && done.restore == E_FAIL && done.recovery == S_OK,
+                    "failed restore must still recover the rectangle");
+            first = source;
+          } else if (stage == 4 || stage == 8) {
+            require(FAILED(source) && done.composition == S_FALSE, "invalid source must fail before composition");
+            first = source;
+            require(done.recovery == (stage == 8 ? E_FAIL : S_OK), "source failure recovery");
+          } else if (stage == 5 || stage == 6) {
+            require(SUCCEEDED(source) && done.composition == E_FAIL && SUCCEEDED(done.restore) && done.recovery == S_OK,
+                    "composite failure recovery");
+            first = done.composition;
+          } else {
+            require(SUCCEEDED(source) && SUCCEEDED(done.composition) && done.restore == E_FAIL && done.recovery == S_FALSE,
+                    "restore failure keeps the composed rectangle");
+            first = done.restore;
+            exact(gpu.read(twin.surface.p, format), linear, "restore", "restore failure lost the linear rectangle");
+          }
+          if (stage != 7 && stage != 8)
+            exact(gpu.read(twin.surface.p, format), initial, ladder_labels[stage - 1],
+                  "in-place recovery is not the exact pre-draw rectangle");
+          coverage = inplace.coverage_valid();
+          require(!coverage, "in-place failure left coverage valid");
+          // Suppression: the frame stays blocked until the next begin_frame.
+          const auto refused = inplace.prepare(boundary);
+          blocked = !refused.ready && refused.saved == S_FALSE && refused.operation == S_FALSE;
+          require(blocked, "failed in-place frame accepted another bracket");
+        }
+        std::printf("FADE_INPLACE_FAILURE id=%u stage=%u label=%s native=1 prepared=%u first=%08lx recovery=%08lx "
+                    "coverage=%u blocked=%u exchange=0\n",
+                    id, stage, ladder_labels[stage - 1], prepared, first, recovery, coverage, blocked);
+      }
+      require(inplace.allocations() == 4, "ladder allocated");
+      // Capability refusal: without D3DPRASTERCAPS_SCISSORTEST the in-place
+      // policy is unsupported and the same boundary falls back to the
+      // exchange-based fade, whose result equals the in-place result.
+      {
+        auto caps = shaders.caps;
+        caps.RasterCaps &= ~DWORD(D3DPRASTERCAPS_SCISSORTEST);
+        LinearEmissionPass noscissor;
+        noscissor.fixture_source_over(reinterpret_cast<const DWORD *>(composition.data()));
+        require(noscissor.attach(d, slots.data(), caps, display.Format, D3DFMT_D24S8) == S_OK &&
+                    noscissor.caps().enabled && noscissor.caps().supported_policies == 2 &&
+                    noscissor.caps().available_policies == 2 && !noscissor.caps().supports(in_place) &&
+                    noscissor.caps().supports(LinearCompositionPolicy::DistanceFade),
+                "scissor capability gates only the in-place policy");
+        api(noscissor.ensure_targets(16, 16));
+        const unsigned id = 8000;
+        upload.background(scene.surface.p, false);
+        api(d->StretchRect(scene.surface.p, nullptr, twin.surface.p, nullptr, D3DTEXF_NONE));
+        const auto initial = gpu.read(scene.surface.p, format);
+        source_state(gpu, blend, scene.surface.p, depth.p, ladder_draw);
+        Snapshot caller(d);
+        require(noscissor.begin_frame(id + 1).ready, "no-scissor M frame clear");
+        LinearEmissionBoundary boundary{scene.surface.p, blend_ps, id + 1, true, blend_vs};
+        boundary.policy = in_place;
+        boundary.region = ladder_rect;
+        boundary.region_known = true;
+        api(d->BeginScene());
+        const auto refusal = noscissor.prepare(boundary);
+        require(!refusal.ready && refusal.operation == D3DERR_NOTAVAILABLE && refusal.saved == S_FALSE &&
+                    refusal.state_preserved && refusal.restore == S_FALSE && noscissor.coverage_valid(),
+                "in-place refusal without scissor caps");
+        caller.check(d, scene.surface.p);
+        equal(gpu.read(scene.surface.p, format), initial, "capability refusal touched A");
+        // Fallback: the exchange-based fade on the same pass and boundary.
+        boundary.policy = LinearCompositionPolicy::DistanceFade;
+        require(noscissor.prepare(boundary).ready, "exchange fallback prepared");
+        const HRESULT source = ladder_draw.issue();
+        const auto finish = noscissor.finish(source);
+        api(d->EndScene());
+        require(SUCCEEDED(source) && finish.image == LinearEmissionImage::Linear, "exchange fallback completed");
+        auto *slot = noscissor.owning_candidate();
+        require(slot && *slot, "fallback owning candidate");
+        std::swap(scene.surface.p, *slot);
+        api(noscissor.acknowledge_exchange(true));
+        caller.check(d, scene.surface.p);
+        const auto composed = gpu.read(scene.surface.p, format), mask = gpu.read(noscissor.coverage_target(), format);
+        twin_bracket(id + 1, true, blend_ps, blend_vs, true, ladder_rect,
+                     [&](IDirect3DSurface9 *target) { source_state(gpu, blend, target, depth.p, ladder_draw); },
+                     [&]() { return ladder_draw.issue(); }, composed, mask, "no_scissor_fallback");
+        ++inplace_cases_run;
+        api(d->SetRenderTarget(2, nullptr));
+        api(d->SetRenderTarget(1, nullptr));
+        api(d->SetRenderTarget(0, gpu.back.p));
+        api(d->SetDepthStencilSurface(nullptr));
+        noscissor.before_reset();
+        require(noscissor.references() == 4, "no-scissor pool retired");
+        noscissor.detach();
+        require(noscissor.references() == 0, "no-scissor references retired");
+        std::printf("FADE_INPLACE_CAPS refused=1 fallback=1 exact=1\n");
+      }
+      // Reset with an in-place bracket interrupted after prepare: the owned
+      // MRT attachments (E, M) are detached, the caller's A stays bound.
+      {
+        const unsigned id = 8100;
+        upload.background(twin.surface.p, false);
+        source_state(gpu, blend, twin.surface.p, depth.p, ladder_draw);
+        require(inplace.begin_frame(id + 1).ready, "interrupted M frame clear");
+        LinearEmissionBoundary boundary{twin.surface.p, blend_ps, id + 1, true, blend_vs};
+        boundary.policy = in_place;
+        boundary.region = ladder_rect;
+        boundary.region_known = true;
+        api(d->BeginScene());
+        require(inplace.prepare(boundary).ready, "interrupted in-place bracket prepared");
+        api(d->EndScene());
+        require(inplace.reference_accounting_busy(), "interrupted bracket retains getters");
+        inplace.before_reset();
+        Com<IDirect3DSurface9> rt0, rt1, rt2;
+        api(d->GetRenderTarget(0, &rt0.p));
+        require(rt0.p == twin.surface.p, "interrupted in-place Reset replaced the caller's A");
+        const HRESULT h1 = d->GetRenderTarget(1, &rt1.p), h2 = d->GetRenderTarget(2, &rt2.p);
+        require((h1 == D3DERR_NOTFOUND || SUCCEEDED(h1)) && !rt1.p && (h2 == D3DERR_NOTFOUND || SUCCEEDED(h2)) && !rt2.p,
+                "interrupted in-place Reset retained E/M attachments");
+        require(inplace.references() == 4 && !inplace.reference_accounting_busy() && !inplace.coverage_valid() &&
+                    !inplace.owning_candidate(),
+                "interrupted in-place Reset retained bracket state");
+        api(inplace.ensure_targets(16, 16));
+        require(inplace.allocations() == 8, "in-place pool recreated after Reset");
+        std::printf("FADE_INPLACE_RESET interrupted=1 detached=1\n");
+      }
     }
     api(d->SetTexture(0, nullptr));
     api(d->SetTexture(1, nullptr));
@@ -782,6 +1169,13 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
             "only fixed programs remain after pool retirement");
     pass.detach();
     require(pass.references() == 0, "pass owned references retired");
+    inplace.before_reset();
+    require(inplace.references() == 4, "in-place fixed programs remain after pool retirement");
+    inplace.detach();
+    require(inplace.references() == 0, "in-place owned references retired");
+    std::printf("FADE_INPLACE_BATCH reset=%u cases=%u brackets=%u native=%u exact_a=%u exact_m=%u\n",
+                unsigned(after_reset), inplace_cases_run, inplace_brackets, inplace_native, inplace_exact_a,
+                inplace_exact_m);
   }
   const ULONG final_refs = d->AddRef();
   d->Release();
@@ -790,6 +1184,103 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
               "refs_before=%lu refs_after=%lu\n",
               unsigned(after_reset), checked, brackets, native_calls, restored,
               start_refs, final_refs);
+}
+// Paired EVENT-fenced completion windows of 1/4/16 brackets per frame for the
+// exchange fade and the in-place fade at whole-target, ~0.06 and ~0.01 area
+// fractions. The window covers prepare/source/finish (and the exchange) of
+// every bracket; the per-frame M clear runs before the fence. Diagnostic
+// timings on a detached device, not game FPS.
+void timing(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases, const Words &composition) {
+  Gpu gpu(d, shaders, 16);
+  const Case *base = nullptr;
+  for (const auto &c : cases)
+    if (c.id == 2) base = &c;
+  require(base && base->pair == 110, "timing base case");
+  Case blend = *base;
+  blend.f[6] = .5f;
+  shaders.bind(blend, 3);
+  IDirect3DVertexShader9 *vs = shaders.vertices.at(shaders.key(blend, 3, false));
+  IDirect3DPixelShader9 *ps = shaders.pixels.at(shaders.key(blend, 3, true));
+  std::array<void *, 119> slots{};
+  std::memcpy(slots.data(), *reinterpret_cast<void ***>(d), sizeof slots);
+  D3DDISPLAYMODE display{};
+  api(d->GetDisplayMode(0, &display));
+  Com<IDirect3DQuery9> event;
+  api(d->CreateQuery(D3DQUERYTYPE_EVENT, &event.p));
+  LARGE_INTEGER frequency;
+  QueryPerformanceFrequency(&frequency);
+  std::uint64_t frame = 1;
+  for (const auto &size : {std::make_pair(1280u, 768u), std::make_pair(1920u, 1080u)}) {
+    const unsigned w = size.first, h = size.second;
+    Target scene(d, w, h);
+    Com<IDirect3DSurface9> depth;
+    api(d->CreateDepthStencilSurface(w, h, D3DFMT_D24S8, D3DMULTISAMPLE_NONE, 0, TRUE, &depth.p, nullptr));
+    LinearEmissionPass pass;
+    pass.fixture_source_over(reinterpret_cast<const DWORD *>(composition.data()));
+    api(pass.attach(d, slots.data(), shaders.caps, display.Format, D3DFMT_D24S8));
+    api(pass.ensure_targets(w, h));
+    require(pass.caps().supports(in_place), "timing in-place caps");
+    for (const double fraction : {1.0, .06, .01}) {
+      RECT rect{0, 0, LONG(w), LONG(h)};
+      if (fraction < 1) {
+        const LONG side = LONG(std::lround(std::sqrt(fraction * w * h)));
+        rect = {LONG(w / 2) - side / 2, LONG(h / 2) - side / 2, LONG(w / 2) - side / 2 + side, LONG(h / 2) - side / 2 + side};
+      }
+      const double actual = double(rect.right - rect.left) * double(rect.bottom - rect.top) / (double(w) * h);
+      Draw draw(d, blend, rect, w, h, 1);
+      for (const bool inplace : {false, true})
+        for (const unsigned dips : {1u, 4u, 16u})
+          for (unsigned iteration = 0; iteration < 10; ++iteration) {
+            api(d->SetRenderTarget(2, nullptr));
+            api(d->SetRenderTarget(1, nullptr));
+            api(d->SetDepthStencilSurface(nullptr));
+            api(d->SetRenderTarget(0, scene.surface.p));
+            api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0x40404040, 1, 0));
+            source_state(gpu, blend, scene.surface.p, depth.p, draw);
+            require(pass.begin_frame(frame).ready, "timing M frame clear");
+            api(event->Issue(D3DISSUE_END));
+            gpu.wait(event.p);
+            LARGE_INTEGER begin, end;
+            QueryPerformanceCounter(&begin);
+            api(d->BeginScene());
+            for (unsigned k = 0; k < dips; ++k) {
+              LinearEmissionBoundary boundary{scene.surface.p, ps, frame, true, vs};
+              boundary.policy = inplace ? in_place : LinearCompositionPolicy::DistanceFade;
+              boundary.region = rect;
+              boundary.region_known = fraction < 1;
+              require(pass.prepare(boundary).ready, "timing bracket prepared");
+              const auto done = pass.finish(draw.issue());
+              require(done.image == LinearEmissionImage::Linear, "timing bracket completed");
+              if (!inplace) {
+                auto *slot = pass.owning_candidate();
+                require(slot && *slot, "timing owning candidate");
+                std::swap(scene.surface.p, *slot);
+                api(pass.acknowledge_exchange(true));
+              }
+            }
+            api(d->EndScene());
+            api(event->Issue(D3DISSUE_END));
+            gpu.wait(event.p);
+            QueryPerformanceCounter(&end);
+            ++frame;
+            if (iteration >= 2)
+              std::printf("FADE_TIMING width=%u height=%u policy=%s f=%.4f rect=%ld,%ld,%ld,%ld dips=%u iteration=%u "
+                          "completed_ms=%.6f\n",
+                          w, h, inplace ? "inplace" : "exchange", actual, rect.left, rect.top, rect.right, rect.bottom,
+                          dips, iteration - 2, 1000. * double(end.QuadPart - begin.QuadPart) / double(frequency.QuadPart));
+          }
+    }
+    api(d->SetRenderTarget(2, nullptr));
+    api(d->SetRenderTarget(1, nullptr));
+    api(d->SetRenderTarget(0, gpu.back.p));
+    api(d->SetDepthStencilSurface(nullptr));
+    api(d->SetStreamSource(0, nullptr, 0, 0));
+    api(d->SetIndices(nullptr));
+    pass.before_reset();
+    pass.detach();
+    require(pass.references() == 0, "timing pass retired");
+  }
+  std::printf("FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=8\n");
 }
 } // namespace fade_fixture
 void distance_fade_fixture(IDirect3DDevice9 *d, Shaders &shaders,
@@ -807,6 +1298,7 @@ void distance_fade_fixture(IDirect3DDevice9 *d, Shaders &shaders,
   chain.p = nullptr;
   api(d->Reset(&pp));
   fade_fixture::run(d, shaders, cases, composition, true);
+  fade_fixture::timing(d, shaders, cases, composition);
   std::printf("FADE_RESULT PASS reset=1 partial_vs_failures=%u\n",
               fade_fixture::failed_vs_calls);
 }

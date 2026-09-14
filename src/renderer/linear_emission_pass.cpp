@@ -12,6 +12,7 @@ enum Slot : unsigned {
   GetCreation = 9,
   GetBackBuffer = 18,
   CreateTexture = 23,
+  StretchRect = 34,
   SetRt = 37,
   GetRt = 38,
   SetDepth = 39,
@@ -209,6 +210,10 @@ struct LinearEmissionPass::Impl {
   IDirect3DVertexDeclaration9 *declaration = nullptr;
   IDirect3DPixelShader9 *copy = nullptr, *composite = nullptr, *source_over_composite = nullptr;
   bool source_over = false;
+  // DistanceFadeInPlace bracket: the backup, composite and recovery touch only
+  // this target rectangle (B and E outside it are stale and never read).
+  bool in_place = false;
+  RECT region{};
   UINT width = 0, height = 0;
   unsigned allocation_count = 0, rt_count = 0;
   Saved saved{};
@@ -398,8 +403,14 @@ struct LinearEmissionPass::Impl {
                 DWORD(D3DCLEAR_TARGET), D3DCOLOR(0), 1.f, DWORD(0));
     return hr;
   }
+  // region: DistanceFadeInPlace restricts the rasterization to one target
+  // rectangle with the documented scissor test (D3DRS_SCISSORTESTENABLE and
+  // SetScissorRect, gated by D3DPRASTERCAPS_SCISSORTEST at attach); the same
+  // -0.5 quad and programs run, so pixels inside the rectangle are exactly
+  // the full-target results. For the in-place composite a is B (s0), whose
+  // rectangle holds the pre-draw copy of A, and the destination is A itself.
   HRESULT draw(IDirect3DSurface9 *destination, IDirect3DSurface9 *a,
-               bool combine) noexcept {
+               bool combine, const RECT *region = nullptr) noexcept {
     IDirect3DTexture9 *views[3]{};
     IDirect3DSurface9 *sources[] = {a, e, b};
     // Bound stages follow the composite program: the additive composite reads
@@ -428,6 +439,13 @@ struct LinearEmissionPass::Impl {
       hr = call(SetRt, DWORD(1), e);
     if (SUCCEEDED(hr))
       hr = full_state();
+    if (SUCCEEDED(hr) && region) {
+      if (fault(combine ? LinearEmissionPassFault::CompositeScissor
+                        : LinearEmissionPassFault::RegionScissor))
+        hr = E_FAIL;
+      else if (SUCCEEDED(hr = call(SetRs, D3DRS_SCISSORTESTENABLE, DWORD(TRUE))))
+        hr = call(SetScissor, region);
+    }
     for (unsigned i = 0; i < stages && SUCCEEDED(hr); ++i)
       hr = call(SetTexture, DWORD(i),
                 static_cast<IDirect3DBaseTexture9 *>(views[i]));
@@ -490,6 +508,31 @@ struct LinearEmissionPass::Impl {
            !saved.state(D3DRS_STENCILENABLE) && !saved.state(D3DRS_FOGENABLE) &&
            !saved.state(D3DRS_DITHERENABLE) &&
            !saved.state(D3DRS_SRGBWRITEENABLE) && !saved.ss[0][5];
+  }
+  // Every doubt selects the whole target: an unknown rectangle, an empty
+  // intersection with the target, the application viewport or an enabled
+  // application scissor (the source cannot rasterize outside any of them).
+  RECT select_region(const LinearEmissionBoundary &boundary) const noexcept {
+    const RECT whole{0, 0, LONG(width), LONG(height)};
+    if (!boundary.region_known)
+      return whole;
+    RECT r = boundary.region;
+    auto clip = [&r](LONG l, LONG t, LONG rr, LONG bb) {
+      r.left = std::max(r.left, l);
+      r.top = std::max(r.top, t);
+      r.right = std::min(r.right, rr);
+      r.bottom = std::min(r.bottom, bb);
+    };
+    clip(0, 0, whole.right, whole.bottom);
+    const auto &v = saved.viewport;
+    if (v.Width > 0 && v.Height > 0 && v.X <= UINT(whole.right) && v.Y <= UINT(whole.bottom))
+      clip(LONG(v.X), LONG(v.Y), LONG(std::min<UINT>(v.X + v.Width, UINT(whole.right))),
+           LONG(std::min<UINT>(v.Y + v.Height, UINT(whole.bottom))));
+    if (saved.state(D3DRS_SCISSORTESTENABLE))
+      clip(saved.scissor.left, saved.scissor.top, saved.scissor.right, saved.scissor.bottom);
+    if (r.right <= r.left || r.bottom <= r.top)
+      return whole;
+    return r;
   }
   void reset_targets() noexcept {
     if (device && native && (b || e || c || m)) {
@@ -558,9 +601,9 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
                                    unsigned requested_policies) noexcept {
   detach();
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
-  if (fixture_source_over_) requested_policies = 2;
+  if (fixture_source_over_) requested_policies = 6;
 #endif
-  if (!device || !native || !requested_policies || (requested_policies & ~3u))
+  if (!device || !native || !requested_policies || (requested_policies & ~7u))
     return E_INVALIDARG;
   impl_ = new (std::nothrow) Impl;
   if (!impl_) return E_OUTOFMEMORY;
@@ -577,7 +620,10 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   unsigned supported = requested_policies;
   constexpr DWORD fade_caps = D3DPMISCCAPS_SEPARATEALPHABLEND |
       D3DPMISCCAPS_INDEPENDENTWRITEMASKS | D3DPMISCCAPS_COLORWRITEENABLE;
-  if ((caps9.PrimitiveMiscCaps & fade_caps) != fade_caps) supported &= ~2u;
+  if ((caps9.PrimitiveMiscCaps & fade_caps) != fade_caps) supported &= ~6u;
+  // The in-place bracket is the fade program under a documented scissor; a
+  // device without D3DPRASTERCAPS_SCISSORTEST keeps the exchange-based fade.
+  if (!(caps9.RasterCaps & D3DPRASTERCAPS_SCISSORTEST)) supported &= ~4u;
   if (!supported) { p.caps.reason = "source-over caps"; return D3DERR_NOTAVAILABLE; }
   // A transient format query or program failure cannot masquerade as an
   // immutable unsupported producer. NOTAVAILABLE is the format-cap refusal.
@@ -605,6 +651,9 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   }
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
   p.fused_copy = !fixture_separate_copy_;
+  // The region backup must initialize E inside the rectangle in the same
+  // rasterization; the checkpoint's separate full Clear twin has no region.
+  if (!p.fused_copy) p.caps.supported_policies &= ~4u;
   hr = p.call(CreatePs, p.fused_copy ? copy_words : separate_copy_words, &p.copy);
 #else
   hr = p.call(CreatePs, copy_words, &p.copy);
@@ -619,9 +668,12 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
     if (SUCCEEDED(hr) && !p.declaration) hr = E_FAIL;
   }
   HRESULT first = hr;
+  supported = p.caps.supported_policies;
   if (SUCCEEDED(hr)) {
     for (unsigned policy : {1u, 2u}) {
-      if (!(supported & policy)) continue;
+      // Policies 2 and 4 share the source-over composite program.
+      const bool wanted = policy == 1 ? (supported & 1u) != 0 : (supported & 6u) != 0;
+      if (!wanted) continue;
       auto *&program = policy == 1 ? p.composite : p.source_over_composite;
       const DWORD *words = policy == 1 ? composite_words : source_over_words;
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
@@ -629,7 +681,7 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
 #endif
       hr = p.call(CreatePs, words, &program);
       if (SUCCEEDED(hr) && !program) hr = E_FAIL;
-      if (SUCCEEDED(hr)) p.caps.available_policies |= policy;
+      if (SUCCEEDED(hr)) p.caps.available_policies |= policy == 1 ? 1u : (supported & 6u);
       else { drop(program); if (SUCCEEDED(first)) first = hr; }
     }
   }
@@ -704,6 +756,7 @@ LinearEmissionPass::begin_frame(std::uint64_t frame) noexcept {
   p.mask_valid = false;
   p.blocked = true;
   p.source_over = false;
+  p.in_place = false;
   out.saved = p.save();
   if (FAILED(out.saved)) {
     p.saved.release();
@@ -731,14 +784,17 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
       p.phase != Impl::Phase::Idle || !boundary.admitted || !boundary.scene ||
       !boundary.augmented || boundary.frame != p.frame)
     return out;
-  if (boundary.policy != LinearCompositionPolicy::AdditiveEmission && boundary.policy != LinearCompositionPolicy::DistanceFade) {
+  if (boundary.policy != LinearCompositionPolicy::AdditiveEmission && boundary.policy != LinearCompositionPolicy::DistanceFade &&
+      boundary.policy != LinearCompositionPolicy::DistanceFadeInPlace) {
     out.operation = E_INVALIDARG; return out;
   }
-  p.source_over = boundary.policy == LinearCompositionPolicy::DistanceFade;
+  p.in_place = boundary.policy == LinearCompositionPolicy::DistanceFadeInPlace;
+  p.source_over = boundary.policy != LinearCompositionPolicy::AdditiveEmission;
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
   if (fixture_source_over_) p.source_over = true;
 #endif
-  const auto policy = p.source_over ? LinearCompositionPolicy::DistanceFade : LinearCompositionPolicy::AdditiveEmission;
+  const auto policy = p.in_place ? LinearCompositionPolicy::DistanceFadeInPlace
+                      : p.source_over ? LinearCompositionPolicy::DistanceFade : LinearCompositionPolicy::AdditiveEmission;
   if (!p.caps.supports(policy)) { out.operation = D3DERR_NOTAVAILABLE; return out; }
   out.saved = p.save();
   if (FAILED(out.saved)) {
@@ -750,9 +806,13 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
     p.saved.release();
     return out;
   }
+  // In place: B|R = A|R and E|R = 0 under the scissor; the source then draws
+  // its native result into A itself (RT0 = A after restore), so B is a region
+  // backup rather than the recovery image and A outside R is never touched.
+  if (p.in_place) p.region = p.select_region(boundary);
   out.operation = p.fault(LinearEmissionPassFault::Copy)
                       ? E_FAIL
-                      : p.draw(p.b, boundary.scene, false);
+                      : p.draw(p.b, boundary.scene, false, p.in_place ? &p.region : nullptr);
   if (SUCCEEDED(out.operation)) {
     // Retain the preparation failure boundary after initialization, including
     // partial-copy failures: neither B nor E is published before the source.
@@ -761,7 +821,7 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
     else if (!p.fused_copy) out.operation = p.clear(p.e);
   }
   if (SUCCEEDED(out.operation))
-    out.operation = p.restore(p.b);
+    out.operation = p.restore(p.in_place ? boundary.scene : p.b);
   if (SUCCEEDED(out.operation))
     out.operation = p.call(SetRt, DWORD(1), p.e);
   if (SUCCEEDED(out.operation))
@@ -810,6 +870,58 @@ LinearEmissionCompletion LinearEmissionPass::finish(HRESULT source) noexcept {
   auto &p = *impl_;
   p.completion = {};
   p.completion.source = source;
+  if (p.in_place) {
+    // Composite R of A from B (s0, the pre-draw copy) and E (s1) under the
+    // scissor, then restore. Nothing is exchanged or acknowledged: A holds
+    // the result and the bracket is over. After a failed source or composite
+    // the rectangle of A is undefined (partial writes), so it is recovered
+    // exactly from B with a same-size, same-format StretchRect (documented
+    // render-target to render-target copy, no filtering) after the restore
+    // has detached B from the sampler stages; the frame is Incomplete either
+    // way and stays blocked, exactly as a failed source is today.
+    bool recover = FAILED(source);
+    if (FAILED(source)) {
+      p.completion.image = LinearEmissionImage::Incomplete;
+    } else {
+      p.completion.composition = p.fault(LinearEmissionPassFault::Composite)
+                                     ? E_FAIL
+                                     : p.draw(p.input_scene, p.b, true, &p.region);
+      recover = FAILED(p.completion.composition);
+      p.completion.image = recover ? LinearEmissionImage::Incomplete : LinearEmissionImage::Linear;
+    }
+    p.completion.restore = p.restore(p.input_scene);
+    if (p.fault(LinearEmissionPassFault::Restore))
+      p.completion.restore = E_FAIL;
+    if (FAILED(p.completion.restore))
+      p.completion.image = LinearEmissionImage::Incomplete;
+    if (recover) {
+      // A failed restore leaves the sampler stages unknown: B may still be
+      // bound where the composite sampled it. Detach the three stages the
+      // bracket uses before B becomes the StretchRect source (the state is
+      // already lost for the caller; blocked below). Its failure is the
+      // recovery's failure: A|R then keeps the partial writes.
+      HRESULT hr = S_OK;
+      if (FAILED(p.completion.restore))
+        for (unsigned i = 0; i < 3 && SUCCEEDED(hr); ++i)
+          hr = p.call(SetTexture, DWORD(i), static_cast<IDirect3DBaseTexture9 *>(nullptr));
+      if (SUCCEEDED(hr))
+        hr = p.fault(LinearEmissionPassFault::RegionRecovery)
+                 ? E_FAIL
+                 : p.call(StretchRect, p.b, static_cast<const RECT *>(&p.region), p.input_scene,
+                          static_cast<const RECT *>(&p.region), D3DTEXF_NONE);
+      p.completion.recovery = hr;
+    }
+    if (p.completion.image != LinearEmissionImage::Linear) {
+      p.mask_valid = false;
+      p.blocked = true;
+    }
+    p.saved.release();
+    p.phase = Impl::Phase::Idle;
+    p.selected = nullptr;
+    p.selected_surface = nullptr;
+    p.input_scene = nullptr;
+    return p.completion;
+  }
   if (FAILED(source)) {
     p.completion.image = LinearEmissionImage::Incomplete;
     p.mask_valid = false;

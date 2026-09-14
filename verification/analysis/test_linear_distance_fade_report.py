@@ -53,7 +53,28 @@ def witness(raw):
                      f"rect={rect[0]},{rect[1]},{rect[2]},{rect[3]} viewport={x},{y},{w},{h} covered={sum(m[0]==1 for m in mask)} "
                      f"violations=0 area={(rect[2]-rect[0])*(rect[3]-rect[1])}")
     lines.append(f"FADE_REGION_RESULT cases={len(run.REGION_CASES)} bound={sum(c[1] for c in run.REGION_CASES)} violations=0")
-    lines+=['FADE_RESULT PASS reset=1 partial_vs_failures=1','RESULT PASS cases=65']
+    # Step 2 in-place witness lines (fixture order: region twins, rectangle
+    # cases, ladder, capability refusal, Reset, then one batch line per side).
+    for index,(label,_,_) in enumerate(run.REGION_CASES):
+        lines.append(f"FADE_INPLACE_REGION id={5000+index} label={label} rect=1,1,15,15 exact=1")
+    for index,(label,brackets) in enumerate(run.INPLACE_CASES):
+        lines.append(f"FADE_INPLACE id={6000+index} label={label} brackets={brackets} exact=1")
+    for stage,label,prepared,first,recovery,coverage,blocked in run.INPLACE_LADDER:
+        lines.append(f"FADE_INPLACE_FAILURE id={7000+stage} stage={stage} label={label} native=1 prepared={prepared} first={first:08x} "
+                     f"recovery={recovery:08x} coverage={coverage} blocked={blocked} exchange=0")
+    lines+=['FADE_INPLACE_CAPS refused=1 fallback=1 exact=1','FADE_INPLACE_RESET interrupted=1 detached=1']
+    for reset in (0,1):
+        active=[c for c in run.expanded_cases(source) if (c['id']>=1000)==bool(reset)]
+        n=run.inplace_brackets(active);cases=sum(1 for c in active if not c['affine'])+(0 if reset else len(run.REGION_CASES)+len(run.INPLACE_CASES)+1)
+        lines.append(f"FADE_INPLACE_BATCH reset={reset} cases={cases} brackets={n} native={n} exact_a={n} exact_m={n}")
+    for w,h in run.TIMING_SIZES:
+        for f in (1.,.06,.01):
+            for policy in run.TIMING_POLICIES:
+                for dips in run.TIMING_DIPS:
+                    for i in range(run.TIMING_ITERATIONS):
+                        lines.append(f"FADE_TIMING width={w} height={h} policy={policy} f={f:.4f} rect=0,0,{w},{h} dips={dips} iteration={i} completed_ms={.5*dips+i*.01:.6f}")
+    lines.append('FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=8')
+    lines+=['FADE_RESULT PASS reset=1 partial_vs_failures=2','RESULT PASS cases=65']
     return '\n'.join(lines),source
 
 class DistanceFadeReport(unittest.TestCase):
@@ -68,7 +89,7 @@ class DistanceFadeReport(unittest.TestCase):
         self.assertNotIn('D3DFMT_A8R8G8B8',source)
         import re
         calls=re.findall(r'(?:refused|pass)\.attach\((.*?)\)',source,re.S)
-        self.assertEqual(len(calls),2)
+        self.assertEqual(len(calls),3,'refused, primary and timing attach')
         # slots.data() contains parentheses, so pin the complete argument spans.
         self.assertRegex(source,r'refused\.attach\(d, slots\.data\(\), caps, display\.Format,\s*D3DFMT_D24S8\)')
         self.assertRegex(source,r'pass\.attach\(d, slots\.data\(\), shaders\.caps,\s*display\.Format, D3DFMT_D24S8\)')
@@ -81,11 +102,42 @@ class DistanceFadeReport(unittest.TestCase):
         self.assertLess(result['max_tolerance_fraction'],.0001)
         self.assertEqual(result['energy_channels'],193536)
         self.assertEqual(result['exact_energy_channels'],193536)
+        # Step 2: 252 non-fault steps (246 first batch, 6 after Reset) plus 29
+        # region, 11 rectangle and 1 fallback twins, each compared twice (A, M).
+        self.assertEqual((result['inplace_cases'],result['inplace_brackets'],result['inplace_exact_comparisons']),(104,293,586))
+        self.assertEqual((result['inplace_rectangle_cases'],result['inplace_ladder_stages'],result['inplace_capability_refusals'],result['inplace_reset']),(8,9,1,True))
+        self.assertEqual(len(result['timing']),36)
+        self.assertEqual(result['timing'][0]['median_ms'],.5+4*.01)
+    def test_inplace_policy_witness_mutations_are_rejected(self):
+        # Selection (caps refusal, fallback), ladder (first HRESULT, source-once,
+        # recovery, suppression, no exchange) and the bit-exact twin counts.
+        for before,after in (
+            ('FADE_INPLACE_CAPS refused=1 fallback=1 exact=1','FADE_INPLACE_CAPS refused=0 fallback=1 exact=1'),
+            ('FADE_INPLACE_RESET interrupted=1 detached=1','FADE_INPLACE_RESET interrupted=1 detached=0'),
+            ('label=source native=1 prepared=1 first=8876086c recovery=00000000','label=source native=1 prepared=1 first=80004005 recovery=00000000'),
+            ('label=source native=1 prepared=1','label=source native=2 prepared=1'),
+            ('label=composite native=1 prepared=1 first=80004005 recovery=00000000','label=composite native=1 prepared=1 first=80004005 recovery=80004005'),
+            ('label=restore native=1 prepared=1 first=80004005 recovery=00000001 coverage=0 blocked=1','label=restore native=1 prepared=1 first=80004005 recovery=00000001 coverage=0 blocked=0'),
+            ('label=copy native=1 prepared=0 first=80004005 recovery=00000001 coverage=1','label=copy native=1 prepared=0 first=80004005 recovery=00000001 coverage=0'),
+            ('blocked=1 exchange=0','blocked=1 exchange=1'),
+            ('label=restore_recovery native=1 prepared=1 first=8876086c recovery=00000000','label=restore_recovery native=1 prepared=1 first=8876086c recovery=00000001'),
+            ('FADE_INPLACE id=6005 label=disjoint brackets=2 exact=1','FADE_INPLACE id=6005 label=disjoint brackets=1 exact=1'),
+            ('label=overlapping brackets=2 exact=1','label=overlapping brackets=2 exact=0'),
+            ('FADE_INPLACE_REGION id=5020 label=scissor rect=1,1,15,15 exact=1','FADE_INPLACE_REGION id=5020 label=scissor rect=1,1,15,15 exact=0'),
+            ('FADE_INPLACE_BATCH reset=0 cases=98 brackets=287 native=287 exact_a=287 exact_m=287','FADE_INPLACE_BATCH reset=0 cases=98 brackets=287 native=288 exact_a=287 exact_m=287'),
+            ('FADE_INPLACE_BATCH reset=1 cases=6 brackets=6 native=6 exact_a=6 exact_m=6','FADE_INPLACE_BATCH reset=1 cases=6 brackets=6 native=6 exact_a=5 exact_m=6'),
+            ('FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=8','FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=7'),
+            ('partial_vs_failures=2','partial_vs_failures=1')):
+            with self.subTest(before=before):
+                self.assertIn(before,self.text)
+                with self.assertRaises(AssertionError):self.validate(self.text.replace(before,after,1))
+        with self.assertRaises(AssertionError):self.validate(self.text+'\nFADE_INPLACE_DIFF label=case pixel=0 x=0 y=0 actual=0,0,0,0 expected=1,0,0,0')
+        with self.assertRaises(AssertionError):self.validate(self.text.replace('FADE_TIMING width=1920 height=1080 policy=inplace f=0.0100 rect=0,0,1920,1080 dips=16 iteration=7','FADE_TIMING width=1920 height=1080 policy=inplace f=0.0100 rect=0,0,1920,1080 dips=16 iteration=8',1))
     def test_hostile_report_mutations_are_rejected(self):
         for before,after in (
             ('FADE_CAPS refused=4','FADE_CAPS refused=3'),('FADE_STATE refused=3','FADE_STATE refused=2'),
             ('restored=251','restored=250'),('refs_after=10','refs_after=11'),
-            ('partial_vs_failures=1','partial_vs_failures=0'),
+            ('partial_vs_failures=2','partial_vs_failures=0'),
             ('first=8876086c','first=80004005'),
             ('id=101 stage=1 native=1','id=101 stage=1 native=2'),
             ('id=103 stage=3 native=1 prepared=1','id=103 stage=3 native=1 prepared=0'),

@@ -203,4 +203,34 @@ class DistanceFadeProducer(unittest.TestCase):
         self.assertIn('source_over_composite',source)
         self.assertNotIn('fixture_source_over_',source)
 
+    def test_in_place_policy_is_documented_d3d9_and_shares_the_fade_program(self):
+        # Step 2 (docs/architecture/linear-distance-fade-region.md): policy 4
+        # is gated by D3DPRASTERCAPS_SCISSORTEST, uses the scissor render state
+        # and SetScissorRect through the native slots, recovers the rectangle
+        # with a same-format StretchRect, and creates no program of its own.
+        header=(ROOT/'src/renderer/linear_emission_pass.h').read_text()
+        self.assertIn('DistanceFadeInPlace = 4',header)
+        self.assertIn('RECT region{};',header)
+        self.assertIn('HRESULT recovery = S_FALSE;',header)
+        compiler=shutil.which('i686-w64-mingw32-g++')
+        if not compiler:self.skipTest('x86 cross preprocessor unavailable')
+        source=subprocess.check_output([compiler,'-std=c++17','-E','-P',str(ROOT/'src/renderer/linear_emission_pass.cpp')]).decode()
+        self.assertIn('D3DPRASTERCAPS_SCISSORTEST',(ROOT/'src/renderer/linear_emission_pass.cpp').read_text())
+        self.assertIn('RasterCaps',source)
+        self.assertIn('StretchRect = 34',source)
+        self.assertIn('select_region',source)
+        for forbidden in ('wined3d','__wine'):
+            self.assertNotIn(forbidden,source)
+        body=(ROOT/'src/renderer/linear_emission_pass.cpp').read_text()
+        for forbidden in ('GetProcAddress','LoadLibrary','GetModuleHandle'):
+            self.assertNotIn(forbidden,body)
+        # No third composite program: the in-place composite is prototype 1's.
+        self.assertEqual(body.count('call(CreatePs,'),3,'copy (fixture twin and production) and the shared policy loop only')
+        # The fixture twin runs the exchange and in-place brackets on the same
+        # inputs and requires bit-exact equality of A/C and of the two M targets.
+        fixture=(ROOT/'verification/probe/linear_distance_fade_fixture_inc.h').read_text()
+        self.assertIn('in-place A differs from the exchanged C',fixture)
+        self.assertIn('in-place M differs from the exchanged M',fixture)
+        self.assertIn('caps.RasterCaps &= ~DWORD(D3DPRASTERCAPS_SCISSORTEST)',fixture)
+
 if __name__=='__main__': unittest.main()
