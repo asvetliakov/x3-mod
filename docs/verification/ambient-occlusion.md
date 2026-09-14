@@ -48,6 +48,7 @@ issuing (fixture twin ao-pollfault), `ao_adapter_format_` cleared at Reset, the 
 resolve's preconditions and run at the bloom-copy fallback too (`source=copy`, flat frame 1 of every
 non-debug twin), sticky refusal after three consecutive chain failures and a 60-frame re-attach
 hysteresis, overlong AO environment values rejected. Ctrl+Shift+F11 toggle added (twin ao-toggle).
+The toggle twin's disabled frames are flat frames (the factor is the identity there anyway), so the disabled proof is carried by the `reason=disabled ran=0 applied=0` assertions on those frames' lines, not by the pixels. Second look (3 low): attach verdict cleared at Reset, the AO gate mirrors `ensure_taa()` and the strict-sentinel transform skip, dead field removed.
 Informational, no code: the route fixture's state snapshot around the hook covers render targets,
 depth, viewport, scissor, shaders, streams, the watched render states, samplers 0-7 and PS c0-7; vertex
 samplers and texture-stage states rest on step 1's detached evidence (`D3DSBT_ALL` block, bindings by

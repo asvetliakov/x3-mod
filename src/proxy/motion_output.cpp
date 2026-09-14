@@ -1437,7 +1437,7 @@ bool MotionOutput::ensure_ambient_occlusion(D3DFORMAT target_format) noexcept {
         taa_call([&] { hr = ao_->attach(device_, native_, caps, ao_adapter_format_, target_format); });
         reason = ao_->caps().reason;
         ao_attach_failed_ = FAILED(hr) || !ao_->caps().enabled;
-        if (!ao_attach_failed_) { ao_attached_format_ = target_format; ao_chain_failures_ = 0; }
+        if (!ao_attach_failed_) ao_chain_failures_ = 0;
     }
     ao_attach_result_ = hr;
     if (ao_attach_logs_ < ao_log_limit) {
@@ -1521,6 +1521,12 @@ void MotionOutput::run_ambient_occlusion() noexcept {
     if (shadow_.recording) return skip("recording");
     if (active_queries_) return skip("queries");
     if (!camera_scene_.valid) return skip("camera");
+    if (!ensure_taa()) return skip("taa"); // the resolve's lazy initialization; a failure skips the resolve too
+    if (sentinel_mode_ == renderer::SentinelMode::Camera) {
+        // Strict mode skips the resolve on a failed transform (resolve_allowed); so does the chain.
+        const auto decision = renderer::camera_sentinel_policy(sentinel_mode_, camera_scene_, camera_previous_, camera_cut_degrees_);
+        if (decision.reason == renderer::SentinelReason::CurrentInvalid || decision.reason == renderer::SentinelReason::TransformFailed) return skip("camera");
+    }
     if (ao_chain_failures_ >= ao_failure_limit) return skip("failed_limit");
     // The owning scene target: the FP16 target while the redirect is active,
     // else the latched main target; anything else is not the scene.
@@ -2183,6 +2189,7 @@ void MotionOutput::before_reset() noexcept {
     // timestamp queries are device objects and go with them (recreated lazily).
     if (ao_ || ao_timing_created_) taa_call([&] { ao_timing_release(); if (ao_) ao_->before_reset(); });
     ao_timing_failed_ = false; ao_timing_lost_ = false; ao_chain_failures_ = 0;
+    ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
     ao_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format (as for the composition pass).
     target_failed_ = false;
     history_.invalidate();

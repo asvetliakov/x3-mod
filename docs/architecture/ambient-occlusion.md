@@ -72,7 +72,7 @@ or written. Blended Z-write-off scene draws (7–21 per frame, `emission-draw-or
 surfaces are darkened by the same factor; the strength floor bounds it and the debug view shows it.
 If a run objects, v2 moves the chain to a mid-scene bracket at the first blended draw. Rule
 (step 2): the chain runs only on a frame the resolve will take, evaluated with the resolve's own
-preconditions (TAA attached, jitter active, RT2 filled, no state block recording, no active
+preconditions (TAA initialized through the same `ensure_taa`, the strict-sentinel transform skip, jitter active, RT2 filled, no state block recording, no active
 application queries, no MSAA, the resolve not yet attempted this frame) plus a valid scene camera,
 so a darkened sample is either temporally filtered or not presented at all. The bloom-copy fallback
 (the route's scene end when the engine hook did not signal) runs the chain under the same contract,

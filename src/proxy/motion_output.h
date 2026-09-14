@@ -1156,10 +1156,8 @@ private:
     // and released under taa_call (the same reference accounting as the resolve).
     std::unique_ptr<renderer::AmbientOcclusionPass> ao_;
     bool ao_requested_ = false, ao_debug_ = false, ao_timing_ = false, ao_attach_failed_ = false, ao_enabled_ = true;
-    // Hysteresis: the format of the last successful attach and the frame of
-    // the last attach attempt (re-attach at most once per ao_reattach_frames);
+    // Hysteresis: the frame of the last attach attempt (re-attach at most once per ao_reattach_frames);
     // consecutive chain failures refuse the device after ao_failure_limit.
-    D3DFORMAT ao_attached_format_ = D3DFMT_UNKNOWN;
     std::uint64_t ao_attach_frame_ = 0;
     unsigned ao_attach_count_ = 0, ao_chain_failures_ = 0;
     static constexpr unsigned ao_failure_limit = 3, ao_reattach_frames = 60;
