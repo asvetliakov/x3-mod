@@ -271,8 +271,8 @@ inline Region derive(const float* rows, bool bound_known, const Box& box, const 
 // that are not a perspective projection: under one, z >= 0 implies w >= zn >
 // 0) is NonPositiveW; a nonfinite row, position or projection is NonFinite.
 //
-// The cut is made at z = -eps, eps = eps_dp4 * (largest z-row |term| sum of
-// the triangle), not at z = 0: the GPU evaluates the z row in fp32 too, so a
+// The cut is made at z = -eps, eps = eps_dp4 * (largest z-row |term| sum over
+// the prefix's extent), not at z = 0: the GPU evaluates the z row in fp32 too, so a
 // vertex whose exact z lies within eps behind the plane may still be in
 // front for the rasteriser, and a triangle hugging the plane could then be
 // drawn whole while an exact cut kept only a sliver of it. Every point the
@@ -282,11 +282,11 @@ inline Region derive(const float* rows, bool bound_known, const Box& box, const 
 // rows. `clipped` counts the vertices behind that shifted plane.
 //
 // The pad is the w-scaled fp32 bound above with S the largest |term| sum
-// over the x, y and w rows and the vertices (a crossing is a convex
-// combination of two vertices and every term is affine in the point, so the
-// vertex maximum bounds it) and w_min over the projected points. No
-// half-float expansion: the positions are the FLOAT3 values the GPU reads.
-// Cost: 4 double dot products, four |term| sums and one divide per vertex;
+// over the x, y and w rows and the corners of the prefix's own extent (each
+// sum is convex in the point, so the corner maximum bounds every vertex and
+// crossing) and w_min over the projected points. No half-float expansion:
+// the positions are the FLOAT3 values the GPU reads. Cost: one single-
+// precision extent pass, 4 double dot products and one divide per vertex;
 // no allocation. `info` receives the vertices cut away, the pad and the
 // object-space extent of the prefix (the box the step-B route would have
 // projected: the run-20 hull-versus-AABB comparison).
@@ -299,8 +299,32 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
     if (!viewport.width || !viewport.height) return Reason::Viewport;
     for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return Reason::NonFinite;
     if (!positions || !count || count % 3) return Reason::BoundUnknown;
-    double min_x = 0, max_x = 0, min_y = 0, max_y = 0, w_min = 0, term_sum_max = 0;
-    double lo[3] = {0, 0, 0}, hi[3] = {0, 0, 0};
+    // Pass 1: the prefix's extent (single precision, 3 compares per
+    // component) and finiteness. The |term| sums the pad and the cut need
+    // are convex in the point, so their maxima over the prefix are at the
+    // corners of this box: 24 sums once per draw instead of four per vertex.
+    float lo[3] = {positions[0], positions[1], positions[2]}, hi[3] = {positions[0], positions[1], positions[2]};
+    for (std::uint32_t v = 0; v < count; ++v) {
+        const float* q = positions + std::size_t(v) * 3;
+        for (unsigned a = 0; a < 3; ++a) {
+            const float x = q[a];
+            if (!std::isfinite(x)) return Reason::NonFinite;
+            lo[a] = x < lo[a] ? x : lo[a]; hi[a] = x > hi[a] ? x : hi[a];
+        }
+    }
+    double term_sum_max = 0, z_sum_max = 0;
+    for (unsigned corner = 0; corner < 8; ++corner) {
+        const double p[3] = {double((corner & 1u) ? hi[0] : lo[0]), double((corner & 2u) ? hi[1] : lo[1]), double((corner & 4u) ? hi[2] : lo[2])};
+        for (unsigned r = 0; r < 4; ++r) {
+            const float* row = rows + 4 * r;
+            const double sum = std::fabs(double(row[0]) * p[0]) + std::fabs(double(row[1]) * p[1]) +
+                               std::fabs(double(row[2]) * p[2]) + std::fabs(double(row[3]));
+            if (r == 2) { if (sum > z_sum_max) z_sum_max = sum; } // the z row decides the cut only
+            else if (sum > term_sum_max) term_sum_max = sum;
+        }
+    }
+    const double plane = -eps_dp4 * z_sum_max; // z >= plane: possibly rasterised
+    double min_x = 0, max_x = 0, min_y = 0, max_y = 0, w_min = 0;
     const double X = double(viewport.x), Y = double(viewport.y);
     const double half_w = double(viewport.width) * 0.5, half_h = double(viewport.height) * 0.5;
     bool first = true;
@@ -318,30 +342,18 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
         }
         return Reason::Bound;
     };
+    // Pass 2: four double dot products per vertex (finite: finite rows and
+    // positions cannot overflow a double), the cut, the projection.
     for (std::uint32_t v = 0; v < count; v += 3) {
         double clip[3][4];
-        double z_sum_max = 0;
+        bool in_front[3];
         for (unsigned k = 0; k < 3; ++k) {
             const float* q = positions + std::size_t(v + k) * 3;
             const double p[3] = {double(q[0]), double(q[1]), double(q[2])};
-            for (unsigned a = 0; a < 3; ++a) {
-                if (!std::isfinite(p[a])) return Reason::NonFinite;
-                if (v == 0 && k == 0) { lo[a] = hi[a] = p[a]; }
-                else { lo[a] = p[a] < lo[a] ? p[a] : lo[a]; hi[a] = p[a] > hi[a] ? p[a] : hi[a]; }
-            }
             for (unsigned r = 0; r < 4; ++r) {
                 const float* row = rows + 4 * r;
                 clip[k][r] = double(row[0]) * p[0] + double(row[1]) * p[1] + double(row[2]) * p[2] + double(row[3]);
-                if (!std::isfinite(clip[k][r])) return Reason::NonFinite;
-                const double sum = std::fabs(double(row[0]) * p[0]) + std::fabs(double(row[1]) * p[1]) +
-                                   std::fabs(double(row[2]) * p[2]) + std::fabs(double(row[3]));
-                if (r == 2) { if (sum > z_sum_max) z_sum_max = sum; } // the z row decides the cut only
-                else if (sum > term_sum_max) term_sum_max = sum;
             }
-        }
-        const double plane = -eps_dp4 * z_sum_max; // z >= plane: possibly rasterised
-        bool in_front[3];
-        for (unsigned k = 0; k < 3; ++k) {
             in_front[k] = !(clip[k][2] < plane);
             if (!in_front[k]) ++behind;
         }
@@ -366,7 +378,7 @@ inline Reason project_prefix(const float rows[16], const float* positions, std::
     }
     if (info) {
         info->behind = behind;
-        for (unsigned a = 0; a < 3; ++a) { info->aabb.centre[a] = (lo[a] + hi[a]) * 0.5; info->aabb.half[a] = (hi[a] - lo[a]) * 0.5; }
+        for (unsigned a = 0; a < 3; ++a) { info->aabb.centre[a] = (double(lo[a]) + double(hi[a])) * 0.5; info->aabb.half[a] = (double(hi[a]) - double(lo[a])) * 0.5; }
     }
     if (first) return Reason::BehindNear;
     constexpr double limit = 1e9;

@@ -642,7 +642,7 @@ void rasterise(const std::vector<Point>& poly, const Viewport& v, const Rect& re
 int run(unsigned seed, unsigned cases, unsigned triangles_max) {
     std::mt19937_64 rng(seed);
     std::uniform_real_distribution<double> unit(0, 1);
-    unsigned failures = 0;
+    unsigned failures = 0, capped = 0;
     for (unsigned c = 0; c < cases; ++c) {
         Viewport v{0, 0, 16 + unsigned(unit(rng) * 2032), 16 + unsigned(unit(rng) * 1064)};
         if (c % 5 == 4) { v.x = unsigned(unit(rng) * 40); v.y = unsigned(unit(rng) * 40); }
@@ -699,12 +699,17 @@ int run(unsigned seed, unsigned cases, unsigned triangles_max) {
             }
         }
         if (fail) ++failures;
-        std::printf("HULL index=%u kind=%u triangles=%u reason=%u behind=%u clipped=%u pad=%u rect=%d,%d,%d,%d hull_px=%llu aabb_px=%llu viewport=%u,%u covered=%llu outside=%llu footprint=%d,%d,%d,%d fail=%u\n",
-                    c, kind, triangles, unsigned(reason), behind, hull.behind, hull.pad, rect.left, rect.top, rect.right, rect.bottom,
+        // As --near: cases at the pad cap are reported, not hidden (the
+        // exact-arithmetic oracle cannot see the truncation; --near's fp32
+        // perturbation does).
+        const bool at_cap = reason == Reason::Bound && hull.pad >= pad_limit;
+        capped += at_cap;
+        std::printf("HULL index=%u kind=%u triangles=%u reason=%u behind=%u clipped=%u pad=%u capped=%u rect=%d,%d,%d,%d hull_px=%llu aabb_px=%llu viewport=%u,%u covered=%llu outside=%llu footprint=%d,%d,%d,%d fail=%u\n",
+                    c, kind, triangles, unsigned(reason), behind, hull.behind, hull.pad, unsigned(at_cap), rect.left, rect.top, rect.right, rect.bottom,
                     (unsigned long long)(reason == Reason::Bound ? area(rect) : 0), (unsigned long long)aabb_px, v.width, v.height,
                     (unsigned long long)fp.covered, (unsigned long long)fp.outside, fp.min_x, fp.min_y, fp.max_x + 1, fp.max_y + 1, unsigned(fail));
     }
-    std::printf("RESULT cases=%u failures=%u\n", cases, failures);
+    std::printf("RESULT cases=%u failures=%u capped=%u\n", cases, failures, capped);
     return failures ? 1 : 0;
 }
 // --hull-case rows(16) viewport(4) count xyz...: the prefix derivation as

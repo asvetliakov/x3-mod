@@ -262,6 +262,10 @@ class FadeRegion(unittest.TestCase):
         self.assertTrue(all(int(r['clipped'])<=int(r['behind']) for r in rows),'the -eps cut never counts more behind than the fp32 oracle')
         self.assertGreater(sum(int(r['hull_px'])<int(r['aabb_px']) for r in bound),100,'the hull is tighter than the box for most lists')
         self.assertGreater(sum(int(r['pad'])>1 for r in bound),20,'the w-scaled pad engages at bullet-scale cancellation')
+        # Cap-truncated pads are reported separately, as --near does; the exact-arithmetic oracle cannot see the truncation.
+        capped=[r for r in bound if int(r['capped'])]
+        self.assertEqual(len(capped),int(fields(out.stdout.splitlines()[-1])['capped']));self.assertTrue(all(int(r['pad'])==PAD_LIMIT for r in capped))
+        self.assertLess(len(capped),len(bound)//2,'most bound lists stay under the pad cap')
         self.assertTrue(all(int(r['clipped'])>0 for r in bound if r['kind']=='3'),'near-plane hugging lists are cut')
 
     def test_prefix_hull_hand_cases(self):

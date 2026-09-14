@@ -30,12 +30,14 @@ WINDOW=6144      # vertices of the whole 147456-byte buffer
 # Fixture frame script (locked_prefix_live_fixture.cpp): label, vertices,
 # bound flag, lookup name, vertices the Unlock scan published (0: none),
 # locks the frame performs on the marked buffer (recorded), viewport.
-FRAMES=(('first_draw_unknown',102,0,'unknown',0,0,(96,96)),('bound',102,1,'bound',WINDOW,1,(96,96)),
+BATCHES=lambda suffix:(('fan_176'+suffix,1056,1,'bound',1056,1,(320,192)),('straddle_72'+suffix,432,1,'bound',432,1,(320,192)),
+                       ('big_605_origin_tail'+suffix,3630,1,'bound',WINDOW,1,(320,192)),('small_27'+suffix,162,1,'bound',162,1,(320,192)))
+FRAMES=(('first_draw_unknown',102,0,'unknown',0,0,(96,96)),*BATCHES(''),('bound',102,1,'bound',WINDOW,1,(96,96)),
         ('near_straddle',96,1,'bound',WINDOW,1,(96,96)),('near_exact',96,1,'bound',WINDOW,1,(96,96)),('near_behind',96,0,'bound',WINDOW,1,(96,96)),('near_beam',96,1,'bound',WINDOW,1,(96,96)),
         ('nan_tail_96',96,1,'bound',WINDOW,1,(96,96)),('nan_tail_102',102,1,'bound',WINDOW,1,(96,96)),('prefix_nan_refused',102,0,'nonfinite',WINDOW,1,(96,96)),
         ('nested_lock_invalid',102,0,'invalid',0,2,(96,96)),('instanced_refused',102,0,'bound',WINDOW,1,(96,96)),('bound_after_instanced',102,1,'bound',WINDOW,1,(96,96)),
         ('full_buffer',6144,1,'bound',WINDOW,1,(96,96)),('no_relock_same_revision',6144,1,'bound',WINDOW,0,(96,96)),
-        ('fan_176',1056,1,'bound',1056,1,(320,192)),('straddle_72',432,1,'bound',432,1,(320,192)),('big_605_origin_tail',3630,1,'bound',WINDOW,1,(320,192)),('small_27',162,1,'bound',162,1,(320,192)),
+        *BATCHES('_plain'),
         ('after_reset_unknown',102,0,'unknown',0,0,(96,96)),('after_reset_bound',102,1,'bound',WINDOW,1,(96,96)))
 # Near-plane cases (screen-emission-region.md, step B; rows x' = x, y' = y,
 # z' = .1 (z - 1), w = z on the 96x96 viewport): reason, vertices cut by the
@@ -49,12 +51,15 @@ NEAR={'near_straddle':dict(reason=0,clipped=16,footprint=(48,30,84,36),max_permi
 # Step D geometry cases (screen-emission-bullet-bound.md section 1 through
 # the fixture's diagonal world frame): the hull rectangle's largest
 # admissible fraction of the 320x192 viewport, the AABB rectangle's smallest
-# (the step-B route on the same vertices), whether vertices are cut by the
-# near plane, and the bolts (for the per-draw cost report).
+# (the step-B route on the same vertices; computed on capture frames only,
+# so the `_plain` copies outside the capture window report aabb_px 0 and
+# the production per-draw cost), whether vertices are cut by the near
+# plane, and the bolts (for the per-draw cost report).
 HULL={'fan_176':dict(max_permille=260,aabb_min_permille=580,clipped=False,bolts=176),
       'straddle_72':dict(max_permille=260,aabb_min_permille=580,clipped=True,bolts=72),
       'big_605_origin_tail':dict(max_permille=260,aabb_min_permille=580,clipped=False,bolts=605),
       'small_27':dict(max_permille=260,aabb_min_permille=580,clipped=False,bolts=27)}
+HULL.update({label+'_plain':dict(case,aabb_min_permille=None) for label,case in list(HULL.items())})
 
 def fields(line):return dict(re.findall(r'(\w+)=([^\s]+)',line))
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -105,9 +110,12 @@ def validate(output,trace):
         l,t,r,b=rect_of(row['rect']);vw,vh=viewport
         hull_px,aabb_px=int(row['hull_px']),int(row['aabb_px'])
         footprint=rect_of(frame['footprint']);covered=int(frame['covered'])
+        captured=1<=index<=CAPTURE_FRAMES
         if bound:
             assert 0<=l<r<=vw and 0<=t<b<=vh and int(row['reason'])==0 and int(row['f_permille'])<1000,(label,'rectangle',row)
-            assert hull_px==(r-l)*(b-t) and int(summary['hull_px'])==hull_px and int(summary['aabb_px'])==aabb_px and 0<hull_px<=aabb_px,(label,'hull/aabb pixels',row,summary)
+            assert hull_px==(r-l)*(b-t) and int(summary['hull_px'])==hull_px and int(summary['aabb_px'])==aabb_px and hull_px>0,(label,'hull pixels',row,summary)
+            if captured:assert hull_px<=aabb_px,(label,'the AABB comparison on capture frames',row)
+            else:assert aabb_px==0,(label,'no AABB comparison outside capture frames',row)
             assert covered>0 and covers((l,t,r,b),footprint),(label,'the hull rectangle covers the GPU footprint',(l,t,r,b),footprint,covered)
             fractions.append(int(row['f_permille'])/1000)
         else:
@@ -122,19 +130,27 @@ def validate(output,trace):
         elif hull:
             permille=int(row['f_permille']);aabb_permille=aabb_px*1000//(vw*vh)
             assert permille<=hull['max_permille'],(label,'hull rectangle fraction',permille,hull)
-            assert aabb_permille>=hull['aabb_min_permille'],(label,'the AABB rectangle of the same vertices stays large',aabb_permille,hull)
+            if hull['aabb_min_permille'] is not None:assert captured and aabb_permille>=hull['aabb_min_permille'],(label,'the AABB rectangle of the same vertices stays large',aabb_permille,hull)
+            else:assert not captured,(label,'plain copy outside the capture window')
             assert (int(row['clipped'])>0)==hull['clipped'],(label,'near-plane cut',row)
-            us=float(summary['derive_us']);derive_us[hull['bolts']]=us
+            us=float(summary['derive_us'])
+            if label.endswith('_plain'):derive_us[hull['bolts']]=us # the production path (no AABB comparison)
             assert us>0 and int(row['ticks'])>0,(label,'per-draw derivation cost recorded (X3M_TELEMETRY_DRAW=1)',summary)
             hull_cases[label]=dict(bolts=hull['bolts'],vertices=vertices,rect=(l,t,r,b),hull_px=hull_px,aabb_px=aabb_px,hull_permille=permille,aabb_permille=aabb_permille,
                                    clipped=int(row['clipped']),pad=int(row['pad']),scanned=published,gpu_footprint=footprint,covered=covered,derive_us=us,ticks=int(row['ticks']))
         elif int(row['clipped'])!=0:raise AssertionError((label,'only near-plane cases are clipped',row))
         revisions.append(int(row['rev']))
     # The first lock of the buffer precedes its mark (unrecorded, frame 0);
-    # the nested frame locks twice (invalid); the instanced frame's lookup is
-    # bound but the draw is refused; no_relock keeps the revision.
-    assert revisions==[0,1,2,3,4,5,6,7,8,10,11,12,13,13,14,15,16,17,0,1],('revisions',revisions)
+    # every recorded lock advances the revision (the nested frame twice);
+    # no_relock keeps it; Reset starts the new buffer at 0.
+    expected_revisions=[];revision=0
+    for label,_,_,lookup,_,frame_locks,_ in FRAMES:
+        if label=='after_reset_unknown':revision=0
+        revision+=frame_locks;expected_revisions.append(revision if lookup!='unknown' else 0)
+    assert revisions==expected_revisions,('revisions',revisions,expected_revisions)
     assert set(near_cases)==set(NEAR) and set(hull_cases)==set(HULL),('every near-plane and hull case captured',sorted(near_cases),sorted(hull_cases))
+    for label in ('fan_176','straddle_72','big_605_origin_tail','small_27'):
+        assert hull_cases[label]['rect']==hull_cases[label+'_plain']['rect'],(label,'the plain copy derives the same rectangle')
     assert rechecks==0,('no record changed under a projection',rechecks)
     last=summaries[-1];expect=expected_counters()
     assert int(last['marks'])==2,('marks',last)
@@ -143,9 +159,10 @@ def validate(output,trace):
     return dict(frames=len(summaries),captured_draw_lines=len(rows),bound_frames=sum(f[2] for f in FRAMES),refused_frames=sum(1-f[2] for f in FRAMES),
                 lookups={name:sum(1 for f in FRAMES if f[3]==name) for name in ('unknown','bound','nonfinite','invalid')},
                 instanced_refusals=1,marks=int(last['marks']),scans=int(last['scans']),locks=int(last['locks']),scanned_vertices=int(last['scanned_vertices']),
-                sentinel_bytes=int(last['sentinel_bytes']),window_end_scans=int(last['window_end_scans']),
+                sentinel_bytes=int(last['sentinel_bytes']),sentinel_us_total=float(last['sentinel_us']),window_end_scans=int(last['window_end_scans']),rechecks=rechecks,
                 scan_us_total=scan_us,scan_us_per_scan=scan_us/int(last['scans']),rect_fractions=fractions,near_plane=near_cases,hull=hull_cases,
                 derive_us_per_draw={str(k):v for k,v in sorted(derive_us.items())},
+                derive_us_per_draw_with_aabb={str(v['bolts']):v['derive_us'] for k,v in hull_cases.items() if not k.endswith('_plain')},
                 scope='Proxy DLL path: MotionOutput::derive_prefix_region (step D vertex hull) and the ownership sentinel/Unlock scan executed under the game bullet VS/PS; GPU footprint read back by the fixture; no composition')
 
 def main():
@@ -181,6 +198,6 @@ def main():
     finally:
         target=args.result if result['passed'] else work/'failed-result.json';target.parent.mkdir(parents=True,exist_ok=True)
         target.write_text(json.dumps(result,indent=2)+'\n')
-        print(json.dumps({k:result[k] for k in ('passed','frames','scans','scan_us_per_scan','derive_us_per_draw','wall_seconds','error') if k in result}))
+        print(json.dumps({k:result[k] for k in ('passed','frames','scans','scan_us_per_scan','sentinel_us_total','derive_us_per_draw','derive_us_per_draw_with_aabb','wall_seconds','error') if k in result}))
 
 if __name__=='__main__':main()

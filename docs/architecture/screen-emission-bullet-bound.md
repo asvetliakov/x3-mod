@@ -155,7 +155,8 @@ keeps its meaning for non-perspective rows.
 
 Diagnostics: the per-draw `locked_prefix` line carries `scanned=` (published count), `hull_px=` and `aabb_px=`
 (the near-clipped rectangle of the prefix's own AABB, eight extra projections per bound draw) and `ticks=`;
-`locked_prefix_frame` adds `rechecks= hull_px= aabb_px= vertices= derive_us= sentinel_bytes= window_end_scans=`.
+`locked_prefix_frame` adds `rechecks= hull_px= aabb_px= vertices= derive_us= sentinel_bytes= sentinel_us=
+window_end_scans=`.
 `X3M_LOCKED_PREFIX_LOG=1` prints the per-draw line on every frame (fixtures); `X3M_TELEMETRY_DRAW=1` is needed
 for the tick fields.
 
@@ -165,19 +166,27 @@ perspective, zn = 6, 320×192 viewport, hull rectangle vs the AABB rectangle of 
 bolts (148…1842 deep) **1.2 % vs 89.6 %**; straddling 72-bolt beam (−320…7726, 18 vertices cut, pad 3)
 **17.5 % vs 100 %**; 605 bolts (500…6498) over a zero window (the run-15 origin tail: scanned 6144, drawn 3630,
 tail never in the bound) **10.6 % vs 96.5 %**; 27 bolts **0.1 % vs 70 %**. The GPU footprint the fixture reads
-back is inside the rectangle on every bound frame (14 of 20; fan footprint (145,92,187,104) in rect
+back is inside the rectangle on every bound frame (18 of 24; fan footprint (145,92,187,104) in rect
 (143,90,190,106)). A beam passing the camera diagonally (the section-1 `diag` model) still bounds to the
 quadrant between its entry corner and the vanishing point (≈ 25 %, modelled): that is the hull's bounding box,
-not slack. Per-draw derivation cost (lookup, projection, AABB comparison, recheck, one `GetStreamSourceFreq`):
-**4.6 / 8.4 / 18.6 / 56.3 µs at 27 / 72 / 176 / 605 bolts** (162 / 432 / 1056 / 3630 vertices; the 1056-vertex
-budget of section 3 was 25 µs). Scan: 16 scans at 12.4 µs mean — 13 ran to the window end because those
-fixture writers overwrite the whole window (6144 vertices, no sentinel left), the 3 sentinel-exact scans read
+not slack. Per-draw derivation cost on the steady-state path (lookup, one single-precision extent pass, four
+double dot products per vertex, recheck, one `GetStreamSourceFreq`; the AABB comparison runs on capture frames
+and under `--screen-emission-timing` only): **1.7 / 4.2 / 9.0 / 27.2 µs at 27 / 72 / 176 / 605 bolts** (162 /
+432 / 1056 / 3630 vertices; the section-3 budget was 25 µs at 1056, the review target 50 µs at 605). The |term|
+sums for the pad and the cut come from the eight corners of the prefix's own extent (convex in the point, so the
+corner maximum bounds every vertex and crossing) rather than per vertex; a first per-vertex version cost 63.6 µs
+at 605 bolts. With the AABB comparison the same draws cost 3.4 / 6.6 / 29.9 µs; the fan's capture-frame copy
+read 369 µs once as the first draw after the mark (first touch of the pooled 72 KB storage on the draw side; the
+plain copy of the same draw is 9.0 µs). Scan: 20 scans at 10.3 µs mean — 14 ran to the window end because those
+fixture writers overwrite the whole window (6144 vertices, no sentinel left), the 6 sentinel-exact scans read
 162–1056 vertices; host figures 0.39 µs at 1056 vertices behind the sentinel vs 2.4 µs for the window. Sentinel
-writes: 2,247,552 bytes over 18 locks (147 KB after a mark or a window-end scan, 25 KB / 10 KB after the exact
-ones). Host: `test_fade_region.py` 11 tests (`--hull` 600 random lists, 345 bound / 255 BehindNear, 1.85 M
+writes: 2,434,608 bytes over 22 locks (147 KB after a mark or a window-end scan, 25 KB / 10 KB after the exact
+ones), **371 µs in total = 16.9 µs per lock** (`sentinel_us` on the frame line; the whole-window fills dominate, a
+game frame with count-sized fills pays ≈ 1–3 µs per lock). Host: `test_fade_region.py` 11 tests (`--hull` 600 random lists, 345 bound / 255 BehindNear, 1.85 M
 covered pixels, 0 outside, hull ⊆ AABB rectangle; `--prefix` 43 scenarios + 300 random exact-prefix cases);
-`run_linear_distance_fade_live.py --screen-emission` 14 cases, witness 0 outside, chain max 1 code; x87 audit
-PASS (224 reachable). Section-6 acceptance (`f_mean` ≤ 0.15, Σ `packed_region_pixels` ≤ 0.6 Mpx, scan CPU ≤ 50 µs
+`run_linear_distance_fade_live.py --screen-emission` 14 cases, witness 0 outside, chain max 1 code;
+`run_ownership.py` wrapped 563 checks (the sentinel is read back from the mapping at Lock in both device
+iterations); x87 audit PASS (224 reachable). Section-6 acceptance (`f_mean` ≤ 0.15, Σ `packed_region_pixels` ≤ 0.6 Mpx, scan CPU ≤ 50 µs
 per firing frame) is for run 20.
 
 Open: at |world| ≈ 1.1e5 and w = zn = 6 the pad formula gives k/w ≈ 12 px, above `pad_limit` = 8 (the

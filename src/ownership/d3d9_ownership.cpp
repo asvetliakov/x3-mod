@@ -880,7 +880,11 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
         // buffers are ignored (no record, no sentinel, no scan).
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         const bool scannable=(flags&D3DLOCK_DISCARD)&&offset==0&&size!=0&&data&&*data;
+        // Timed: the sentinel is a streaming store into the mapping (write-combined on native D3D9).
+        LARGE_INTEGER begin{},end{};QueryPerformanceCounter(&begin);
+        const std::uint64_t bytes_before=prefix_table.sentinel_bytes();
         if(prefix_table.begin_lock(reinterpret_cast<std::uintptr_t>(node),scannable,scannable?*data:nullptr,scannable?size:0,GetCurrentThreadId()))++prefix_stats.locks;
+        if(prefix_table.sentinel_bytes()!=bytes_before){QueryPerformanceCounter(&end);prefix_stats.sentinel_ticks+=static_cast<std::uint64_t>(end.QuadPart-begin.QuadPart);}
     }
     if (SUCCEEDED(hr)) {
         auto* resource=static_cast<IDirect3DResource9*>(node->backend);
@@ -1497,7 +1501,7 @@ void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept {
     LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency);
     out->qpc_frequency = static_cast<std::uint64_t>(frequency.QuadPart);
     out->evictions = prefix_table.evictions(); out->used = prefix_table.used();
-    out->sentinel_bytes = prefix_table.sentinel_bytes(); out->window_end_scans = prefix_table.window_end_scans();
+    out->sentinel_bytes = prefix_table.sentinel_bytes(); out->window_end_scans = prefix_table.window_end_scans(); out->sentinel_ticks = prefix_stats.sentinel_ticks;
 }
 
 const char* finite_evidence_reason_name(FiniteEvidenceReason reason) noexcept {

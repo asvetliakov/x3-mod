@@ -12,7 +12,7 @@
   "game_launched": false,
   "fixtures": {
     "baseline": {
-      "exe_sha256": "179a1e50d4d3907ab0daf1dfe59eb4d9fb3314806400eb5bf438e835caa0ebc4",
+      "exe_sha256": "99977c54b35214dac00ebae125243fd4e76eeab403feafb766b9c2adfdf6e512",
       "report_sha256": "37c55d1f8719ccc87faf3686c2176e598205f0dec1c88868fa95a25526078d37",
       "exit": 0,
       "command": [
@@ -23,13 +23,13 @@
         "--dll",
         "d3d9=b",
         "--workdir",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/ownership-20260914-121459-950509-baseline",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/ownership-20260914-121459-950509-baseline/ownership_baseline.exe"
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/ownership-20260914-212558-321973-baseline",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/ownership-20260914-212558-321973-baseline/ownership_baseline.exe"
       ]
     },
     "wrapped": {
-      "exe_sha256": "10eb043d7b40b40394d891d2869f0b2738862c1b61deb7bdf44ed2da69216c90",
-      "report_sha256": "c0f3ac775078477395289876982ca661cab011582ecc40931f0179bcce778b90",
+      "exe_sha256": "8e640784dff07938516ea4bf55eb715559b032f707e521ea466c90e794bc4f48",
+      "report_sha256": "f4a2e48f4797b85b483ce43016c6515d3adad524dc44ab8e4b761eb802121048",
       "exit": 0,
       "command": [
         "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
@@ -39,8 +39,8 @@
         "--dll",
         "d3d9=b",
         "--workdir",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/ownership-20260914-121504-172821-wrapped",
-        "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/ownership-20260914-121504-172821-wrapped/ownership_wrapped.exe"
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/ownership-20260914-212602-736946-wrapped",
+        "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/ownership-20260914-212602-736946-wrapped/ownership_wrapped.exe"
       ]
     }
   },
@@ -48,10 +48,10 @@
   "fresh_build": true,
   "phase": "complete",
   "sources_before_build": {
-    "verification/probe/ownership_fixture.cpp": "3c5700e9f24afefa96d5afbbe627688dc00d6f7f1586444a2f587e87ba6afe5a",
+    "verification/probe/ownership_fixture.cpp": "07591f27b912519f34031e4263e25507c4bb72a20114d5dcf1e33c0b1d6cde95",
     "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_ownership.py": "579437ce91c8ac67e7bc1e254b7649db89f48231ec7017b94e62ca5ef738c158",
+    "verification/probe/run_ownership.py": "6aca76fd22488ca3ead6d913073638949e2df645bf00df68ca7608e848c71865",
     "verification/probe/verify_ownership.py": "924af6df51a8b66a8035aecbca5c96d45e2c2a6c86ebac524b36f0de00cfa1d4",
     "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
@@ -60,8 +60,8 @@
     "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
     "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
-    "src/ownership/d3d9_ownership.cpp": "5b2a46f2a1051a422ffe8125c27a6a007fdafef8b9163b9a83f19f2e6a3c5a78",
-    "src/ownership/d3d9_ownership.h": "bc575e96803412fa5f864090e9d8caed2328fe9298430198aa3e809ec530d39c",
+    "src/ownership/d3d9_ownership.cpp": "0b7411bd2e4a563219a11f65f44be31017953c8e7cd210b610e6f92843ef633d",
+    "src/ownership/d3d9_ownership.h": "5f1093f1952e14b3010885504c6533bf354f6a49d959c237f97fc72ba74ae2df",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
@@ -70,10 +70,10 @@
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c"
   },
   "sources_after_build": {
-    "verification/probe/ownership_fixture.cpp": "3c5700e9f24afefa96d5afbbe627688dc00d6f7f1586444a2f587e87ba6afe5a",
+    "verification/probe/ownership_fixture.cpp": "07591f27b912519f34031e4263e25507c4bb72a20114d5dcf1e33c0b1d6cde95",
     "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_ownership.py": "579437ce91c8ac67e7bc1e254b7649db89f48231ec7017b94e62ca5ef738c158",
+    "verification/probe/run_ownership.py": "6aca76fd22488ca3ead6d913073638949e2df645bf00df68ca7608e848c71865",
     "verification/probe/verify_ownership.py": "924af6df51a8b66a8035aecbca5c96d45e2c2a6c86ebac524b36f0de00cfa1d4",
     "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
@@ -82,8 +82,8 @@
     "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
     "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
-    "src/ownership/d3d9_ownership.cpp": "5b2a46f2a1051a422ffe8125c27a6a007fdafef8b9163b9a83f19f2e6a3c5a78",
-    "src/ownership/d3d9_ownership.h": "bc575e96803412fa5f864090e9d8caed2328fe9298430198aa3e809ec530d39c",
+    "src/ownership/d3d9_ownership.cpp": "0b7411bd2e4a563219a11f65f44be31017953c8e7cd210b610e6f92843ef633d",
+    "src/ownership/d3d9_ownership.h": "5f1093f1952e14b3010885504c6533bf354f6a49d959c237f97fc72ba74ae2df",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
@@ -92,14 +92,14 @@
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c"
   },
   "binaries_before": {
-    "baseline": "179a1e50d4d3907ab0daf1dfe59eb4d9fb3314806400eb5bf438e835caa0ebc4",
-    "wrapped": "10eb043d7b40b40394d891d2869f0b2738862c1b61deb7bdf44ed2da69216c90"
+    "baseline": "99977c54b35214dac00ebae125243fd4e76eeab403feafb766b9c2adfdf6e512",
+    "wrapped": "8e640784dff07938516ea4bf55eb715559b032f707e521ea466c90e794bc4f48"
   },
   "sources": {
-    "verification/probe/ownership_fixture.cpp": "3c5700e9f24afefa96d5afbbe627688dc00d6f7f1586444a2f587e87ba6afe5a",
+    "verification/probe/ownership_fixture.cpp": "07591f27b912519f34031e4263e25507c4bb72a20114d5dcf1e33c0b1d6cde95",
     "verification/probe/build_ownership.sh": "7fef2e5c6481c83e62e375a43e2501cc08a6889cf8c30312581a38df4da04348",
     "verification/probe/build_admission_dependencies.sh": "acb26589ad2da56d53afecaeabfea3a6e9ba05554702a9da5862eefe809a3ed2",
-    "verification/probe/run_ownership.py": "579437ce91c8ac67e7bc1e254b7649db89f48231ec7017b94e62ca5ef738c158",
+    "verification/probe/run_ownership.py": "6aca76fd22488ca3ead6d913073638949e2df645bf00df68ca7608e848c71865",
     "verification/probe/verify_ownership.py": "924af6df51a8b66a8035aecbca5c96d45e2c2a6c86ebac524b36f0de00cfa1d4",
     "tools/ownership/generate_d3d9_forwarders.py": "20010dff7f01703a27a4ecb3a8c129c60b84e413e9bdd62c0483dc72aceaae38",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
@@ -108,8 +108,8 @@
     "src/ownership/application_admission_abi.h": "87b649b12b179d6c86b93b39dd4ad061631cb65ff9f2480547686dbb7eed5782",
     "src/ownership/d3d9_classes_inc.h": "064eb45e36688352ec4623c3c46b124a1e7061c4e2cefe60787054b62758e6b3",
     "src/ownership/d3d9_forwarders_inc.h": "7d4856d463e7cad91f7dd930925b6f0f8a5e762c61fb14059a8d44b8405cf593",
-    "src/ownership/d3d9_ownership.cpp": "5b2a46f2a1051a422ffe8125c27a6a007fdafef8b9163b9a83f19f2e6a3c5a78",
-    "src/ownership/d3d9_ownership.h": "bc575e96803412fa5f864090e9d8caed2328fe9298430198aa3e809ec530d39c",
+    "src/ownership/d3d9_ownership.cpp": "0b7411bd2e4a563219a11f65f44be31017953c8e7cd210b610e6f92843ef633d",
+    "src/ownership/d3d9_ownership.h": "5f1093f1952e14b3010885504c6533bf354f6a49d959c237f97fc72ba74ae2df",
     "src/ownership/execution_state.cpp": "de1cb1bc78c51f91645a5aae7dcb1d2c81d60bd3712d7d3a4d68fbb00a061c56",
     "src/ownership/execution_state.h": "59fd04363c0ed9b3769156817d8257d576ca41299a3f9d954ca8274a6d7a226a",
     "src/ownership/finite_buffer_evidence.cpp": "d3554b310eb3e0d91a153d531f9cb4da132f5b945b394ad81b8f7c3a24a8eb67",
@@ -118,8 +118,8 @@
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c"
   },
   "binaries_after": {
-    "baseline": "179a1e50d4d3907ab0daf1dfe59eb4d9fb3314806400eb5bf438e835caa0ebc4",
-    "wrapped": "10eb043d7b40b40394d891d2869f0b2738862c1b61deb7bdf44ed2da69216c90"
+    "baseline": "99977c54b35214dac00ebae125243fd4e76eeab403feafb766b9c2adfdf6e512",
+    "wrapped": "8e640784dff07938516ea4bf55eb715559b032f707e521ea466c90e794bc4f48"
   },
-  "source_sha256": "5b2a46f2a1051a422ffe8125c27a6a007fdafef8b9163b9a83f19f2e6a3c5a78"
+  "source_sha256": "0b7411bd2e4a563219a11f65f44be31017953c8e7cd210b610e6f92843ef633d"
 }

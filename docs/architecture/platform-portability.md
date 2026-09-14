@@ -18,6 +18,20 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
+- The locked-prefix bullet bound (step D,
+  [screen-emission-bullet-bound.md](screen-emission-bullet-bound.md)) writes a
+  sentinel into the application's `D3DLOCK_DISCARD` mapping of a
+  `D3DUSAGE_WRITEONLY` dynamic vertex buffer before returning it (25–147 KB
+  memset per marked lock) and reads the written prefix back from the same
+  mapping at Unlock. Both are documented D3D9 (the mapping is ordinary
+  process memory during the lock; DISCARD contents are undefined), but on
+  native Windows such mappings are write-combined: the store streams, the
+  read is uncached and far slower than the CrossOver figures (12 µs per
+  6144-vertex scan, `sentinel_us` on the `locked_prefix_frame` line).
+  Unmeasured on native Windows; the documented remedy is a staging lock
+  (proxy memory returned, prefix copied at Unlock), which also makes the
+  retained copy free.
+
 - The packed screen policy (policy 8, [screen emission](screen-emission-region.md),
   step E) carries its constants as shader `def` literals: the promoted bullet
   producer's `c31` (M = (1, 0, 0, a)) executes inside the application's draw

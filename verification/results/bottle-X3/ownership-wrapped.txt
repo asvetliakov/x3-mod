@@ -330,104 +330,112 @@ CHECK child GetDevice PASS
 CHECK child canonical device PASS
 RESULT prefix dynamic buffer 00000000
 CHECK prefix dynamic buffer PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK unmarked buffer unknown PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK unmarked lock not recorded PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK first draw marks and is refused PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=1
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
 CHECK scanned prefix bound PASS
-CHECK covering box holds the quads and the zero tail PASS
-PREFIX view count=96 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=0 revision=1
+CHECK positions are the written prefix PASS
+PREFIX view count=96 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
-CHECK exact checkpoint excludes the tail PASS
-PREFIX view count=6145 mark=1 hr=00000000 requested=1 known=0 reason=5 checkpoint=0 revision=1
+CHECK smaller draw shares the record PASS
+PREFIX view count=6145 mark=1 hr=00000000 requested=1 known=0 reason=5 scanned=6144 revision=1 positions=0
 CHECK prefix view recognised PASS
 CHECK draw past the scan refused PASS
+RESULT prefix sentinel lock 00000000
+CHECK prefix sentinel lock PASS
+CHECK sentinel written at lock PASS
+RESULT prefix sentinel unlock 00000000
+CHECK prefix sentinel unlock PASS
+PREFIX view count=1 mark=1 hr=00000000 requested=1 known=0 reason=5 scanned=0 revision=2 positions=0
+CHECK prefix view recognised PASS
+CHECK empty prefix beyond PASS
 RESULT prefix outer lock 00000000
 CHECK prefix outer lock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=2 checkpoint=0 revision=2
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=2 scanned=0 revision=3 positions=0
 CHECK prefix view recognised PASS
 CHECK locked buffer pending PASS
 RESULT prefix nested lock 00000000
 CHECK prefix nested lock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 checkpoint=0 revision=3
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 scanned=0 revision=4 positions=0
 CHECK prefix view recognised PASS
 CHECK nested lock invalid PASS
 RESULT prefix nested unlock 00000000
 CHECK prefix nested unlock PASS
 RESULT prefix outer unlock 00000000
 CHECK prefix outer unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 checkpoint=0 revision=3
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 scanned=0 revision=4 positions=0
 CHECK prefix view recognised PASS
 CHECK nested lock stays invalid PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 checkpoint=0 revision=4
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 scanned=0 revision=5 positions=0
 CHECK prefix view recognised PASS
 CHECK non-DISCARD lock invalid PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=6 checkpoint=1 revision=5
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=6 positions=1
 CHECK prefix view recognised PASS
-PREFIX view count=96 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=0 revision=5
+PREFIX view count=103 mark=1 hr=00000000 requested=1 known=0 reason=6 scanned=6144 revision=6 positions=0
 CHECK prefix view recognised PASS
-CHECK NaN tail inside the covering checkpoint refused PASS
+CHECK NaN tail past the prefix stays clean, inside it refused PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=6
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=7 positions=1
 CHECK prefix view recognised PASS
 CHECK relearned after every lock advanced the revision PASS
 CHECK final release erases the record PASS
 RESULT prefix systemmem buffer 00000000
 CHECK prefix systemmem buffer PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=1
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
 CHECK systemmem prefix bound before reset PASS
 RESULT prefix reset 00000000
 CHECK prefix reset PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK reset clears the records PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK after reset a lock without a mark is ignored PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=1
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
 CHECK relearned after reset PASS
 CHECK systemmem release erases the record PASS
@@ -783,104 +791,112 @@ CHECK child GetDevice PASS
 CHECK child canonical device PASS
 RESULT prefix dynamic buffer 00000000
 CHECK prefix dynamic buffer PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK unmarked buffer unknown PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK unmarked lock not recorded PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK first draw marks and is refused PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=1
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
 CHECK scanned prefix bound PASS
-CHECK covering box holds the quads and the zero tail PASS
-PREFIX view count=96 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=0 revision=1
+CHECK positions are the written prefix PASS
+PREFIX view count=96 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
-CHECK exact checkpoint excludes the tail PASS
-PREFIX view count=6145 mark=1 hr=00000000 requested=1 known=0 reason=5 checkpoint=0 revision=1
+CHECK smaller draw shares the record PASS
+PREFIX view count=6145 mark=1 hr=00000000 requested=1 known=0 reason=5 scanned=6144 revision=1 positions=0
 CHECK prefix view recognised PASS
 CHECK draw past the scan refused PASS
+RESULT prefix sentinel lock 00000000
+CHECK prefix sentinel lock PASS
+CHECK sentinel written at lock PASS
+RESULT prefix sentinel unlock 00000000
+CHECK prefix sentinel unlock PASS
+PREFIX view count=1 mark=1 hr=00000000 requested=1 known=0 reason=5 scanned=0 revision=2 positions=0
+CHECK prefix view recognised PASS
+CHECK empty prefix beyond PASS
 RESULT prefix outer lock 00000000
 CHECK prefix outer lock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=2 checkpoint=0 revision=2
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=2 scanned=0 revision=3 positions=0
 CHECK prefix view recognised PASS
 CHECK locked buffer pending PASS
 RESULT prefix nested lock 00000000
 CHECK prefix nested lock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 checkpoint=0 revision=3
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 scanned=0 revision=4 positions=0
 CHECK prefix view recognised PASS
 CHECK nested lock invalid PASS
 RESULT prefix nested unlock 00000000
 CHECK prefix nested unlock PASS
 RESULT prefix outer unlock 00000000
 CHECK prefix outer unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 checkpoint=0 revision=3
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 scanned=0 revision=4 positions=0
 CHECK prefix view recognised PASS
 CHECK nested lock stays invalid PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 checkpoint=0 revision=4
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=3 scanned=0 revision=5 positions=0
 CHECK prefix view recognised PASS
 CHECK non-DISCARD lock invalid PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=6 checkpoint=1 revision=5
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=6 positions=1
 CHECK prefix view recognised PASS
-PREFIX view count=96 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=0 revision=5
+PREFIX view count=103 mark=1 hr=00000000 requested=1 known=0 reason=6 scanned=6144 revision=6 positions=0
 CHECK prefix view recognised PASS
-CHECK NaN tail inside the covering checkpoint refused PASS
+CHECK NaN tail past the prefix stays clean, inside it refused PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=6
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=7 positions=1
 CHECK prefix view recognised PASS
 CHECK relearned after every lock advanced the revision PASS
 CHECK final release erases the record PASS
 RESULT prefix systemmem buffer 00000000
 CHECK prefix systemmem buffer PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=1
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
 CHECK systemmem prefix bound before reset PASS
 RESULT prefix reset 00000000
 CHECK prefix reset PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK reset clears the records PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 CHECK after reset a lock without a mark is ignored PASS
-PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 checkpoint=0 revision=0
+PREFIX view count=102 mark=1 hr=00000000 requested=1 known=0 reason=1 scanned=0 revision=0 positions=0
 CHECK prefix view recognised PASS
 RESULT prefix lock 00000000
 CHECK prefix lock PASS
 RESULT prefix unlock 00000000
 CHECK prefix unlock PASS
-PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 checkpoint=1 revision=1
+PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 scanned=6144 revision=1 positions=1
 CHECK prefix view recognised PASS
 CHECK relearned after reset PASS
 CHECK systemmem release erases the record PASS
@@ -923,4 +939,4 @@ CHECK recover released factory through device PASS
 CHECK recovered factory canonical PASS
 CHECK parent-chain device final zero PASS
 CHECK factory references zero PASS
-OWNERSHIP RESULT checks=553 failures=0
+OWNERSHIP RESULT checks=563 failures=0

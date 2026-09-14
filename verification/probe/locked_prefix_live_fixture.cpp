@@ -269,6 +269,22 @@ int main(int argc, char** argv) {
         states();
         const float nan = std::numeric_limits<float>::quiet_NaN();
         f.write(17, 0.f); f.draw("first_draw_unknown", 17);            // marks; refused (unknown)
+        // Step D: the bullet-bound note's batches (section 1) through the
+        // diagonal world frame, 320x192 viewport, inside the proxy's capture
+        // window (frames 1-8) so the per-draw line carries the AABB
+        // comparison: hull rectangle against the AABB of the same vertices;
+        // the writer leaves the sentinel tail (exact scan) except the
+        // 605-bolt batch over a zero window (the run-15 origin tail, scanned
+        // to the window end, never in the bound).
+        float rows[16]; f.camera.rows(W, H, rows);
+        auto batches = [&](const char* suffix) {
+            std::string fan = std::string("fan_176") + suffix, straddle = std::string("straddle_72") + suffix, big = std::string("big_605_origin_tail") + suffix, small = std::string("small_27") + suffix;
+            f.write_batch(Batch::Fan176, 176, 1001, false); f.draw(fan.c_str(), 176, false, rows, W, H);
+            f.write_batch(Batch::Straddle72, 72, 1002, false); f.draw(straddle.c_str(), 72, false, rows, W, H);
+            f.write_batch(Batch::Big605, 605, 1003, true); f.draw(big.c_str(), 605, false, rows, W, H);
+            f.write_batch(Batch::Small27, 27, 1004, false); f.draw(small.c_str(), 27, false, rows, W, H);
+        };
+        batches("");
         f.write(17, 0.f); f.draw("bound", 17);
         // Near-plane cases (screen-emission-region.md, step B): a triangle
         // with one vertex behind the camera (the second triangle degenerate),
@@ -290,16 +306,10 @@ int main(int argc, char** argv) {
         f.write(17, 0.f); f.draw("bound_after_instanced", 17);
         f.write(1024, 0.f); f.draw("full_buffer", 1024);
         f.draw("no_relock_same_revision", 1024);                      // the published scan serves again
-        // Step D: the bullet-bound note's batches (section 1) through the
-        // diagonal world frame, 320x192 viewport: hull rectangle against the
-        // AABB of the same vertices; the writer leaves the sentinel tail
-        // (exact scan) except the 605-bolt batch over a zero window (the
-        // run-15 origin tail, scanned to the window end, never in the bound).
-        float rows[16]; f.camera.rows(W, H, rows);
-        f.write_batch(Batch::Fan176, 176, 1001, false); f.draw("fan_176", 176, false, rows, W, H);
-        f.write_batch(Batch::Straddle72, 72, 1002, false); f.draw("straddle_72", 72, false, rows, W, H);
-        f.write_batch(Batch::Big605, 605, 1003, true); f.draw("big_605_origin_tail", 605, false, rows, W, H);
-        f.write_batch(Batch::Small27, 27, 1004, false); f.draw("small_27", 27, false, rows, W, H);
+        // The same batches outside the capture window: the steady-state
+        // draw path (no AABB comparison), whose derive_us is the production
+        // per-draw cost.
+        batches("_plain");
         release(f.bullets); release(f.readback);
         api(f.d->Reset(&pp), "Reset");
         states();

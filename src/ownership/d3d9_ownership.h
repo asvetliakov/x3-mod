@@ -86,7 +86,7 @@ HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t ve
 struct LockedPrefixStatistics {
     std::uint64_t locks = 0, scans = 0, scanned_vertices = 0, scan_ticks = 0, qpc_frequency = 0;
     std::uint64_t lookups = 0, bounds = 0, marks = 0, evictions = 0;
-    std::uint64_t sentinel_bytes = 0, window_end_scans = 0; // step D: sentinel written at Lock; scans that met no sentinel
+    std::uint64_t sentinel_bytes = 0, sentinel_ticks = 0, window_end_scans = 0; // step D: sentinel written at Lock (bytes, QPC ticks); scans that met no sentinel
     unsigned used = 0;
 };
 void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept;

@@ -3743,8 +3743,9 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
         bound.box = hull.aabb;
         // The step-B comparison: the near-clipped rectangle of the prefix's
         // own AABB (eight corner projections; the per-draw and frame lines
-        // carry both areas so run 20 shows the reduction).
-        if (aabb_px) {
+        // carry both areas so run 20 shows the reduction). Capture frames
+        // and the timing diagnostic only: the steady-state draw path skips it.
+        if (aabb_px && (capture_ || screen_emission_timing_)) {
             *aabb_px = 0;
             if (region.bound) {
                 Rect box_rect{}; NearClip cut{true, 0};
@@ -3841,7 +3842,7 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     Result bound{};
     bool of_viewport = false;
     unsigned permille = 0;
-    std::uint64_t aabb_px = 0;
+    std::uint64_t aabb_px = 0; // 0 outside capture frames / the timing diagnostic
     Region region = fade_rectangle(route, bound, of_viewport, permille, true, BoundSource::LockedPrefix, vertex_count, &aabb_px);
     // The positions were projected without the registry mutex: the record
     // must still be published at the revision the lookup saw (a Lock in
@@ -4789,14 +4790,14 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             const auto& pc = composition_counts_;
             ownership::LockedPrefixStatistics s{};
             ownership::get_locked_prefix_statistics(&s);
-            log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u instanced=%u clipped=%u rechecks=%u f_mean=%.4f hull_px=%llu aabb_px=%llu vertices=%llu derive_us=%.1f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u reason_near=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f sentinel_bytes=%llu window_end_scans=%llu lookups=%llu bounds=%llu marks=%llu table_used=%u table_evictions=%llu",
+            log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u instanced=%u clipped=%u rechecks=%u f_mean=%.4f hull_px=%llu aabb_px=%llu vertices=%llu derive_us=%.1f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u reason_near=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f sentinel_bytes=%llu sentinel_us=%.1f window_end_scans=%llu lookups=%llu bounds=%llu marks=%llu table_used=%u table_evictions=%llu",
                 id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_instanced, pc.prefix_clipped, pc.prefix_rechecks, pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
                 static_cast<unsigned long long>(pc.prefix_hull_px), static_cast<unsigned long long>(pc.prefix_aabb_px), static_cast<unsigned long long>(pc.prefix_vertices), telemetry::microseconds(pc.prefix_ticks),
                 pc.prefix_reason[1], pc.prefix_reason[2], pc.prefix_reason[3], pc.prefix_reason[4], pc.prefix_reason[5], pc.prefix_reason[6], pc.prefix_reason[7],
                 pc.prefix_lookup[1], pc.prefix_lookup[2], pc.prefix_lookup[3], pc.prefix_lookup[4], pc.prefix_lookup[5], pc.prefix_lookup[6],
                 static_cast<unsigned long long>(s.locks), static_cast<unsigned long long>(s.scans), static_cast<unsigned long long>(s.scanned_vertices),
                 s.qpc_frequency ? double(s.scan_ticks) * 1e6 / double(s.qpc_frequency) : 0.0,
-                static_cast<unsigned long long>(s.sentinel_bytes), static_cast<unsigned long long>(s.window_end_scans),
+                static_cast<unsigned long long>(s.sentinel_bytes), s.qpc_frequency ? double(s.sentinel_ticks) * 1e6 / double(s.qpc_frequency) : 0.0, static_cast<unsigned long long>(s.window_end_scans),
                 static_cast<unsigned long long>(s.lookups), static_cast<unsigned long long>(s.bounds), static_cast<unsigned long long>(s.marks), s.used, static_cast<unsigned long long>(s.evictions));
         }
         if (composition_requested())
