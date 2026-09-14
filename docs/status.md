@@ -9,10 +9,14 @@ Work resumed 2026-09-14 under the Claude Code routing in `CLAUDE.md`. Unfinished
 work from the pause (cutout source, reviewed fade results, decoder build plans
 and the persistent backup) is recorded in
 [the September 14 resume handoff](handoff-2026-09-14.md); nothing there is installed.
-Checkpoints since: fade prototype 1 committed (`d8e189b`); the cutout worktree
-`/tmp/x3-cutout-runtime` has its host sampler test finished and review fixes in
-progress; the isolated WMA decoder build under `/tmp/x3-wma-plugin/` is complete
-and under evidence review before any fixture load.
+Checkpoints since: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
+with the [per-part AABB finding](reverse-engineering/render-node-bounds.md) feeding a
+region-composition design; the cutout runtime is ported to branch
+`qualification/linear-cutout-main` (`34593a4`, worktree `/tmp/x3-cutout-main`) under
+escalated review and its first live fixture run; the isolated WMA decoder adapter
+([note](architecture/voice-decoder-adapter.md)) is built, evidence-reviewed and
+decodes both real voice files through the null-event contract
+(`verification/results/bottle-X3/voice-native-actual.json`, `a9fff90`).
 
 The installed gameplay build is checkpoint `8442f43`. Its scoped integration
 checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
