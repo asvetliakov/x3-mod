@@ -369,3 +369,93 @@ thread's pure user-mode loop after the single open. The frozen sample carries
 host JIT addresses only; the guest-address bucketing of section 8 needs a
 sample with x86 program counters (or an in-game hang witness that records
 `EIP`), which no fixture can provide without launching the game.
+
+## 10. DirectSound initialisation and the game-vs-replica gap (2026-09-14)
+
+Same provenance as the header; instruction listings to `/tmp/x3-voice-ds/`
+(untracked). Import/GUID resolution by direct PE parse of the installed EXE
+(SHA-256 `fdbf3418…`, `.rdata` VA `0x00532000` → file `0x130c00`) and of the
+bottle's `syswow64\dsound.dll` export table.
+
+**The global DirectSound object.** `004de060` (audio init, called once from
+`00402780` at `004033e1`, after the main window exists) is the only writer of
+`0x608aec`; `004de3b0` is the only clearer. Sequence, all on the main thread:
+
+| Site | Call and arguments |
+| --- | --- |
+| `004de10d` | `CoInitialize(NULL)` — STA, HRESULT ignored |
+| `004de141` | `DSOUND.dll` ordinal 11 = **`DirectSoundCreate8`**(`&DSDEVID_DefaultPlayback` at `0x5628a8` = `{DEF00000-9C6D-47ED-AAF1-4DDA8F2B5C03}`, `&0x608aec`, `pUnkOuter=NULL`). Failure nulls `0x608aec` and clears config bits `0x5` |
+| `004de180` | `GetCaps(DSCAPS{dwSize=0x60})` (vtable `+0x10`) |
+| `004de196` | `SetCooperativeLevel(HWND 0x608ab0, 2 = DSSCL_PRIORITY)` (vtable `+0x18`); failure aborts init |
+| `004de201` / `004de253` / `004de2a1` | **primary** `CreateSoundBuffer(DSBUFFERDESC{dwSize=0x24, dwFlags=0xd1, rest 0}, &0x608af0, NULL)`; on failure retried with `dwFlags=0x11` then `0x1`. `0xd1` = PRIMARYBUFFER\|CTRL3D\|CTRLPAN\|CTRLVOLUME, `0x11` = PRIMARYBUFFER\|CTRL3D |
+| `004de2cc` | `QueryInterface(IID_IDirectSound3DListener {279AFA84-4981-11CE-A521-0020AF0BE560} at `0x5628c8`)` on the primary buffer → `0x608af4`; failure is tolerated (pointer nulled) |
+| `004de2e7` | primary `Play(0, 0, DSBPLAY_LOOPING)`; only on `S_OK` does the rest run |
+| `004de2fd` / `004de30f` | primary `SetFormat(&0x608af8)`, `GetVolume(&0x608d14)` (restored by `004de3b0` `SetVolume` at `004de3dd`); then `004de450` |
+| `004de332`…`004de390` | listener `SetDopplerFactor(1.0f, DS3D_IMMEDIATE)`, `SetDistanceFactor(_0x565624, IMMEDIATE)`, `SetRolloffFactor(_0x565620, IMMEDIATE)`, `SetPosition(0,0,0, IMMEDIATE)`, `CommitDeferredSettings()` |
+
+`0x608af8` is the WAVEFORMATEX initialised at `004b8740`: PCM, 2 ch, 44100 Hz,
+176400 B/s, align 4, 16 bit, `cbSize` 0 (`004b7400` can overwrite it from
+config). `0x608ab0` is the game's single top-level window, created at
+`004dae0d` `CreateWindowExA(0, cls, cls, style, 0, 0, 640, 480, …)` after
+`RegisterClassA` at `004dadd1`, with a real WndProc and `WS_VISIBLE` in every
+style branch (`0x90000000` fullscreen, else `0x10000000|0xca0000`).
+
+**Everything on the media object between `OpenFile` and `SetState(RUN)`**
+(`004cf460`, object `EBX`, stack WAVEFORMATEX at `[ESP+0x40]`):
+
+| Site | Call |
+| --- | --- |
+| `004d01ea` | `if (0x608aec == NULL) goto fail` |
+| `004d0209` | `IAMMultiMediaStream::GetMediaStream(MSPID_PrimaryAudio `0x532b84`, &+0x18)` (vtable `+0x10`) |
+| `004d0223` | `QueryInterface(IID_IAudioMediaStream {F7537560-A3BE-11D0-8212-00C04FC32C45} `0x532ad4`, &+0x1c)` |
+| `004d023a` | `IAudioMediaStream::GetFormat(&wfx)` (vtable `+0x24`); `+0x60 = nAvgBytesPerSec*2000/1000`, `+0x68 = wBitsPerSample>>3` |
+| `004d026a` | `+0x5c = alloc_004b89f0(flags=0, size in ESI = +0x60)`; freed with `_free` in `004d1a89`, i.e. the CRT-heap branch |
+| `004d028f` | `CoCreateInstance(CLSID_AMAudioData {F2468580-AF8A-11D0-8212-00C04FC32C45}, NULL, CLSCTX_INPROC_SERVER, IID_IAudioData {54C719C0-AF60-11D0-8212-00C04FC32C45}, &+0x54)` |
+| `004d02af` | `IAudioData::SetBuffer(cbSize=+0x60, pbData=+0x5c, dwFlags=0)` (vtable `+0x0c`) |
+| `004d02c6` | `IAudioData::SetFormat(&wfx)` — the *same* struct `GetFormat` filled (vtable `+0x1c`) |
+| `004d02e8` | `IAudioMediaStream::CreateSample(pAudioData=+0x54, dwFlags=0, &+0x58)` (vtable `+0x2c`); `+0x64 = 1` |
+| `004d034c` | `IDirectSound::CreateSoundBuffer(DSBUFFERDESC{dwSize=0x24, dwFlags=0x10088 (LOCSOFTWARE\|CTRLVOLUME\|GETCURRENTPOSITION2), dwBufferBytes = nAvgBytesPerSec*5000/1000, dwReserved=0, lpwfxFormat=&wfx, guid3DAlgorithm=GUID_NULL}, &+0x44, NULL)` on the **global** object; `+0x48 = 1` |
+| `004d038a` / `004d03a5` | graph `+0x78` QI `IID_IMediaPosition` `0x532b14` → `+0x70`, `IID_IMediaControl` `0x532b24` → `+0x74` |
+| `004d03c4` | `IMediaPosition::CanSeekForward(&local)` — **no `get_Duration`** |
+| `004d03de` | QI `IID_IMediaEvent` `0x532b04` → `+0x6c`, **skipped** when `+0x8c & 0x48` (always skipped for voice, bit `0x40`) |
+| `004d03f5` | `IAMMultiMediaStream::SetState(STREAMSTATE_RUN)` |
+
+Before `OpenFile` the same constructor does `AddMediaStream(NULL,
+MSPID_PrimaryAudio, dwFlags = ~(+0x8c >> 6) & 1, &+0x18)` at `004cf5e0`
+(= **0** for voice, bit `0x40`), QI `IID_IAudioMediaStream` at `004cfb1a`, then
+`IAudioMediaStream::SetFormat` at `004cfba7` (vtable `+0x28`) with a
+WAVEFORMATEX copied from `0x608af8` but overridden to PCM / 16 bit /
+`nSamplesPerSec = 0x608afc` / `nChannels = 1 or 2` (2 only when the
+constructor reached `004cfaf8` through `004cf8bf`, which sets the local stereo
+flag; the other route `004cf99f` sets a different slot and leaves 1), with
+`nBlockAlign = nChannels*2` and `nAvgBytesPerSec = nBlockAlign*rate`;
+`GetFilterGraph(&+0x78)` at `004cfbe0`.
+
+**Game vs replica** (`verification/probe/voice_startup_replica.cpp`):
+
+| # | Game | Replica | Verdict |
+| --- | --- | --- | --- |
+| 1 | primary buffer `0x608af0` created (`004de201`, flags `0xd1`/`0x11`/`0x1`), `Play(LOOPING)`, `SetFormat(44100/2ch/16)`, 3D listener with Doppler/distance/rolloff/position set | none: no primary buffer, no `SetFormat`, no `IDirectSound3DListener` | **largest gap.** The device is left at its default mix format and 2D mixer |
+| 2 | window is visible (`WS_VISIBLE`), 640×480, real WndProc, created before `DirectSoundCreate8` | `CreateWindowW(WS_OVERLAPPEDWINDOW)` 64×64, `DefWindowProcW`, never shown (l. 220) | focus-dependent; the stream buffer has neither `GLOBALFOCUS` nor `STICKYFOCUS` |
+| 3 | pre-`OpenFile` `SetFormat` channel count is route-dependent (1 or 2) | hardcoded `{PCM,1,44100,88200,2,16,0}` (l. 104) | matches only the mono route |
+| 4 | `CanSeekForward` only | `get_Duration` then `CanSeekForward` (l. 138–139) | extra call on the paused graph |
+| 5 | `DirectSoundCreate8(&DSDEVID_DefaultPlayback,…)`, `DSSCL_PRIORITY`, `CoInitialize(NULL)` STA, main thread | identical (l. 217, 222, 223) | **no difference** |
+| 6 | `DSBUFFERDESC` `0x24`/`0x10088`/`avg*5`/`&wfx`/GUID_NULL; `SetBuffer(avg*2)`; `SetFormat(wfx)`; `CreateSample(data,0,&s)` | identical (l. 127–134) | **no difference** |
+
+**`SetState(RUN)` failure path.** `004d03f9 JL 004d0160` jumps to
+`MOV EAX,EBX; CALL 004d1d40`, i.e. destruction runs **synchronously on the
+constructing (main) thread**, inside the same STA, with the HRESULT already
+discarded. `004d1d40` order: `IDirectSoundBuffer::Stop(+0x44)` →
+`IMediaControl::Stop(+0x74)` → `IAMMultiMediaStream::SetState(STREAMSTATE_STOP)`
+(`+0x04`) → `Release(+0x70)`, `Release(+0x74)` → helper `004d1c20` →
+`Release(+0x78)` (graph) → `004d1a40` → `004d1b70` → `Release(+0x04)` → `free`
+the `0xb4` record. `004d1a40` repeats `Stop(+0x44)`, `IMediaControl::Stop(+0x74)`
+and `SetState(STREAMSTATE_STOP)` on `+0x04` — so `Stop`/`SetState(STOP)` are
+each issued **twice**, the second time after the graph reference at `+0x78` was
+released — then frees the PCM buffer `+0x5c` and releases `+0x44`, `+0x6c`,
+`+0x58`, `+0x54`. The replica's teardown only calls `SetState(STOP)` (l. 186)
+and never `IMediaControl::Stop`, so it cannot reproduce a `Stop`-side hang.
+
+Unknown: which constructor route voice takes (hence `nChannels` 1 vs 2), whether
+`004b7400` rewrites `0x608afc`, and whether `DAT_00606f34+0x100 & 0x4000`
+(`004cf5a4`) is set at load. None of these is settled without a run.
