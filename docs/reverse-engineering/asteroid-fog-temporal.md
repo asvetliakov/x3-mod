@@ -190,3 +190,127 @@ bound diffuse alpha values and visible overlap/order at individual pixels,
 and direct target-to-node association. None requires guessing that the shader
 or LOD changed. The owning quantitative note records the captured windows;
 this note supplies the native cause and its alpha/depth constraints.
+
+## Run 47: triangles missing and reappearing
+
+Read-only diagnosis of user run 19 (snapshot `/tmp/x3-bottleX3-run47`, log
+`session-20260914-225307-216.log`, queried with grep/python only; no Wine, no
+build, no source change). Scratch images stayed outside the repository.
+
+### Mechanism 1 (supported by witnesses): jitter parity break against the engine's depth-only prepass
+
+The engine draws every **fogged** asteroid twice in the same frame: first a
+depth-only prepass with VS `c78b4c68a87fce74` (the `z_only` alias,
+[shader-fingerprints.md](shader-fingerprints.md)) and a **null pixel shader**,
+then the fogged material draw with the asteroid pair. Captured states:
+
+| Draw | VS / PS | ZENABLE | ZWRITEENABLE | ZFUNC | ALPHABLENDENABLE | COLORWRITEENABLE | `motion_route` |
+|---|---|---|---|---|---|---|---|
+| Prepass (frame 14639 index 6) | `c78b4c68a87fce74` / null | 1 | **1** | 4 LESSEQUAL | 0 | **0** | `gate=3 jittered=0` |
+| Fog draw (frame 14639 index 19) | `167eb2d5629ab9d3` / `d44db87778a43b61` | 1 | 0 | 4 LESSEQUAL | 1 (5/6) | 7 | `gate=4 jittered=1` |
+
+Same-node pairing from `object_context` in frame 14639: nodes `183f5fc8`,
+`183f5848`, `183fbc60`, `183fa860` appear at indices 6/19, 7/21, 12/27, 13/29
+(prepass, then fog draw). Frame 18555: prepass indices 6–9 then fog draws
+10–13 with identical primitive counts 7152/1712/1712/1712. The **near, opaque**
+asteroid nodes (`183f2dc8` index 26, `183faae0` index 28, `183f64c8` index 18)
+have no prepass: they are drawn once, opaque, routed and jittered.
+
+The route jitters "every scene draw whose VS has a table row, routed or not"
+(`src/proxy/motion_output.cpp:3549-3551`, `apply_jitter` runs before gate 3),
+so the fogged asteroid draw is jittered although gate 4 refuses it. The
+`z_only` VS has no row in `motion_output_profiles_inc.h` (only in the rigid
+position table, `rigid_position_profiles_inc.h:180`), so `shadow_.vs_row` is
+null and the prepass is **not** jittered: all 15 `c78b4c68a87fce74` route
+records in the log are `gate=3 jittered=0`. The fog draw's fragment at pixel
+p shows content at `p - jitter` and depth-tests LESSEQUAL against the
+prepass depth of the same surface at p. On a planar facet the difference is
+`grad(z) . (-jitter)`, uniform in sign over the facet: facets whose depth
+increases along `-jitter` fail everywhere and drop out as a whole, showing
+the background (dark against the sunlit side, hence "dark triangles"). The
+eight-sample Halton sequence changes the sign pattern every frame, so facets
+vanish and reappear per frame. Vanilla has no jitter, so both draws agree
+and no facet is lost. Blending in FP16 and the linear-material work are not
+involved: the refused draw keeps its original VS/PS and states
+(`bind_variant_pair` and the material variant are applied only inside the
+routed apply, `motion_output.cpp:3477-3486`; `linear_material_refusal` runs
+only after the motion gates); the only change to that draw is the jittered
+clip rows, restored bit-exactly after it (`restore_jitter`). `mip_bias=0`
+in this run.
+
+Witnesses from the run-47 capture frames (`hdr_1_<frame>.rgba16f` is the
+FP16 scene target read **before** the write-back and is not the resolved
+image, `motion_output.cpp:4289`; the resolve output stays in `hdr_resolved_`,
+`:1244`):
+
+- Frame 18555 (`jitter_x=-0.125 jitter_y=-0.277778`, only fogged asteroids
+  and unrouted draws, RT2 sentinel on 100 % of pixels): both large asteroids
+  show triangular holes on the **lower** limb only; the sunlit upper facets
+  are intact. Raster moves up by 0.28 px, so at p the fragment is the content
+  0.28 px lower, farther on the lower limb, closer on the upper limb.
+- Frame 14639 (`jitter_x=-0.25 jitter_y=+0.166667`): the three unrouted
+  asteroids (crops at x 330–420/y 440–530, 440–530/320–410, 580–660/240–330,
+  routed-depth fraction 0.000) show holes on the **upper-right** limb; the
+  three routed near asteroids (crops with routed-depth fraction 0.49–0.56)
+  have no holes. The hole side flips with the jitter sign, as the mechanism
+  predicts; the resolve cannot have produced them because they exist in the
+  pre-resolve image.
+
+### Mechanism 2 (rejected): resolve-side rejection or clamp on sentinel pixels
+
+For a pixel covered only by the unrouted blended draw: RT2 holds the fill
+sentinel -1 and RT1 alpha -1. Run 47 ran sentinel policy 2 on 24,190 of
+24,728 frames (`camera_policy=2 reason=0`; policy 1 on 538 frames), so the
+resolve sets `depth = 1`, reprojects through the camera far-plane path, keeps
+that path when no closer neighbour wins the 3x3 dilation, proves the
+disocclusion test by the sentinel previous depth, and accepts history clamped
+to the current 3x3 mean ± 1.25 sigma (weighted domain, `taa_k=1`) at weight
+0.9. Consequences: a stationary far asteroid accumulates normally; a whole
+missing facet makes the current neighbourhood dark, the clamp pulls the
+history into it, and the hole shows at nearly full contrast the same frame.
+The resolve therefore neither hides nor causes the flicker; it has no
+per-triangle term (fog alpha is per-vertex, interpolated, and the resolve
+never reads alpha). Evidence against this as the cause: holes in the
+pre-resolve FP16 image; `camera_state reason=3` 0.01 %, `cutout_missed` 0.
+
+Gate 4 refusal of the fog draw is expected (ALPHABLENDENABLE on, ZWRITEENABLE
+off fail `draw_state_ok`, `motion_output.cpp:3570-3581`) and the refusal path
+leaves the draw untouched except for the jitter rows, which is exactly the
+hazard: the jitter invariant "the whole scene moves together" assumes every
+depth writer in the scene is jittered, and the null-PS prepass is not.
+
+### Diagnostic for run 20 (no build needed for the witness)
+
+Same launch as run 19 plus `--capture-frames 8` (X3M_CAPTURE_FRAMES=8;
+`--taa-debug` is optional: on the HDR route the pre-resolve `hdr_<dev>_<frame>.rgba16f`
+readback is already written on every capture frame). Zoom on a far asteroid,
+hold still, press **F8** once: eight consecutive capture frames give
+`motion_output_frame ... jitter_x jitter_y` per frame, the `draw` /
+`object_context` / `state` records, and eight FP16 images. Expected: the
+same nodes drawn twice (`c78b4c68a87fce74`/null then the asteroid pair), the
+hole side following the sign of the jitter each frame, no holes on routed
+asteroids. Negative control if wanted: the same launch without `--taa`
+(jitter off) shows no holes. There is no runtime TAA or jitter hotkey
+(Ctrl+Shift+F9/F10/F11 are EV, bloom and AO); `X3M_SCENE_DEPTH_CAPTURE` and
+`X3M_TAA_DEBUG` add nothing the mechanism needs.
+
+Optional one-counter addition if a per-frame number is wanted without
+images: at `src/proxy/motion_output.cpp:3551`, after
+`if (jitter_active_ && shadow_.vs_row) apply_jitter(route);`, add
+`else if (jitter_active_ && write == 1) ++counters_.unjittered_depth_writers;`
+and print it in `motion_output_frame`. `write` (ZWRITEENABLE) is already read
+for every tracked draw (`:3527`), so the cost is one compare per unrouted
+scene draw; no D3D call. Expected value: the number of fogged asteroids
+(and any other prepass user) per frame, 0 in vanilla-like scenes.
+
+### Consequence for the fix (not implemented here)
+
+The prepass must be jittered with the same rows as the draw that depth-tests
+against it: add the `z_only` aliases (`c78b4c68a87fce74`,
+`803ebfd17f79e413`, both WVP in c0–3 per
+[rigid-position-profiles.md](rigid-position-profiles.md)) to the
+jitter-eligible set, or jitter by rigid-profile row when no motion row
+exists. The other unjittered scene programs in run 47 (`d5e1c75351ed3f04`,
+`5e484a06672e28fb`, `36f98d151fd6b0c6`) were seen with ZWRITEENABLE 0 where
+checked (frame 18555 indices 34/35) and are a lesser, sub-pixel-offset
+concern, not this symptom.
