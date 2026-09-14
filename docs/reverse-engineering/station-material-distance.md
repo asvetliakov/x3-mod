@@ -443,3 +443,95 @@ opaque region would see a smaller alpha attenuation and a part confined to the g
 window would see more. The 16× anisotropic minification recorded at these draws also
 means the per-pixel LOD is at or below the isotropic estimate along the unminified axis,
 so the factors above are the pessimistic end for the given screen rect.
+
+### Detached measurement
+
+Fixture run, 2026-09-14, bottle X3 (`verification/probe/port_distance_fixture.cpp`,
+`run_port_distance.py`, record `verification/results/bottle-X3/port-distance1.json`;
+no game launch). The real pair is created from the original bytecode
+(`vs_4944d81dfe531b37.bin` / `ps_64bac8bb307eb896.bin`, PS SHA-256
+`84eeded4…`) and the three original DDS images are bound at s0/s1/s2 with the
+captured sampler rows (MAG LINEAR, MIN ANISOTROPIC 16, MIP LINEAR, bias 0,
+MAXMIPLEVEL 0) and the captured constant block of draw index 216 (c4..c11 =
+light dirs/colours and 3 / 6 / 1 / 0.5; c3 absent ⇒ 0; VS `b0` false, `i0`
+`(0,0,1,0)`, `c39` = 1, `c37/c38` identity, `c40` absent ⇒ 0). Both untracked
+directories are arguments; the runner refuses to start unless the three texture
+hashes are the ones tabulated above. s3 and s4 are black 1×1 stand-ins — the
+captured lightmap is the shared 32²/1-level dummy and stage 4 has one level with
+MIPFILTER NONE, so neither minifies — which removes the additive and reflective
+terms rather than inventing values for them.
+
+A quad carrying the whole 1024² UV domain is drawn at three camera distances in
+the ratio 1 : 2 : 4 into a 1280×768 A16B16G16R16F target, giving centre widths
+170 / 85 / 43 px, i.e. isotropic levels 2.59 / 3.59 / 4.59. Nothing but the
+camera distance changes inside a configuration. Each case is drawn twice: once
+with the captured source-over state over black (`ALPHABLENDENABLE`
+SRCALPHA/INVSRCALPHA, ZWrite off, alpha test off, mask 7) and once with blending
+off and mask 15, which is the only way to read `oC0.a` — the captured mask 7
+never writes it. Statistics are Rec.709 luma over the covered pixels eroded by
+2 px. The three geometries are the design note's: head-on with light 0 at 30°
+from the normal, a mirror configuration (view 45°, light 0 at the exact mirror,
+`R·V = 1.000000`) and an off-peak one (view 60°, light 0 20° the other side,
+`R·V = 0.174`). The quad is tilted about the world X axis and the captured light
+pair is carried rigidly by the minimal rotation onto the requested direction, so
+both captured colours and their 112° separation are preserved
+(`dot(L0,L1) = −0.3753` in all three).
+
+Shader luminance relative to the run-39 distance (raw pass, before the blend):
+
+| configuration | 2× real | 4× real | 4× flat-normal control | 4× normal channel alone |
+|---|---|---|---|---|
+| head-on, light 30° | 1.039 | **1.077** | 1.033 | 1.042 |
+| view 45°, light at mirror | 1.078 | **1.153** | 1.099 | 1.049 |
+| view 60°, light 20° off-peak | 0.950 | **0.940** | 0.976 | 0.964 |
+
+**The real pair brightens with distance wherever the geometry is lit and darkens
+only off-peak.** The sign argument of "Sign of the change under minification"
+above is therefore **wrong for this pair**: it applies Jensen to `N·L` and `h^6`
+but omits that the decode renormalises the shortened `(x,y)` back to unit length,
+which raises `N·L`, the lobe and the gate together. Convexity bounds
+`mean g(N)` against `g(mean N)` — the filtering *error* — not `g(N_level)`
+against `g(N_0)`, which is what distance actually changes. The magnitude of the
+error (the Toksvig factors 0.908 / 0.847 / 0.802 in "Texture evidence") stands;
+only its attribution to a darkening was unfounded. The detached numbers confirm
+the simulation in [specular-antialiasing.md](../architecture/specular-antialiasing.md)
+(+6.9 % head-on, +11.5 % mirror, −1.1 % off-peak at 4.59) in sign everywhere and
+within about 4 points in magnitude.
+
+Three further results:
+
+- **Isolating the normal channel.** Replacing s1 with a flat normal (1×1,
+  A = G = 128) leaves the other channels minifying and still brightens the lit
+  configurations (1.033 / 1.099 at 4×), because the shader multiplies separately
+  filtered `m`, `A` and `α` and so discards their covariance. Dividing real by
+  flat gives the normal map's own contribution: **+4.2 % / +4.9 % / −3.6 %** at
+  4×. The normal channel is therefore not the dominant distance term at these
+  geometries; at the mirror the larger part of the +15 % is the discarded
+  `m`–`A` covariance.
+- **Peak versus mean.** Mean luminance and peak luminance move in opposite
+  directions where a highlight exists: max luma at 4× is 0.773 (head-on) and
+  0.353 (off-peak, real) against 0.764 / 0.712 for the flat control, while the
+  means rise. Filtering spreads the highlight — the flattened normal lights a
+  larger area more uniformly. Any correction must be judged on both.
+- **Alpha.** `oC0.a` is normal-independent as the bytecode says: the real and
+  flat runs give bit-identical alpha statistics. Its mean over the port's UV
+  domain is 0.755–0.758 at the run-39 distance and falls to **0.980 / 0.972 /
+  0.976 of that at 4×** (0.990 / 0.982 / 0.979 at 2×). So the alpha channel does
+  change with distance, by about 2 % at 4×, about twice what the stored-mip means
+  (0.7749 → 0.7663, −1.1 % at level 4) predict; trilinear interpolation between
+  DXT5-requantised levels and the domain edge account for the rest. It is a real
+  but second-order darkening lever, an order of magnitude below the colour
+  change, and it cannot reverse the sign: the composited luminance ratios at 4×
+  are 1.111 / 1.201 / 0.901, still brightening for both lit geometries.
+
+Bounds of the measurement. A flat quad carrying the whole texture is not the
+port's six triangles with their real UV bounds; the tilted configurations have a
+perspective LOD spread across the quad (the bounding box at 1× is 193–199 px
+wide against the 170 px centre width), slightly wider at 1× than at 4×; the
+lightmap and the cube reflection are excluded by construction. What the fixture
+does establish is the sign and the order of magnitude of the pair's own response
+to minification at the captured constants, which is what the contradiction was
+about. The originally reported darkening of receding ports is not explained by
+this material's colour response, and needs another owner — the candidates left
+untouched here are the cube term, the vertex/fog path and the LOD or subset
+change at range.
