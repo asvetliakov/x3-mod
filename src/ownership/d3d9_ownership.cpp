@@ -872,9 +872,12 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
     if (SUCCEEDED(hr)&&node->kind==Kind::VertexBuffer&&device->options.locked_prefix_bounds) {
         // Every successful lock of a marked buffer starts a new revision; only
         // a DISCARD lock of an explicit window from offset 0 (the observed
-        // writer passes the byte size) is scannable at its Unlock. SizeToLock 0
-        // (whole buffer) would need a native GetDesc per lock and is left
-        // unscanned. Unmarked buffers are ignored (no record, no scan).
+        // writer passes the byte size) is scannable at its Unlock, and such a
+        // lock gets the step-D sentinel written over the previous prefix's
+        // slots before the mapping is returned (DISCARD contents are
+        // undefined to the application). SizeToLock 0 (whole buffer) would
+        // need a native GetDesc per lock and is left unscanned. Unmarked
+        // buffers are ignored (no record, no sentinel, no scan).
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         const bool scannable=(flags&D3DLOCK_DISCARD)&&offset==0&&size!=0&&data&&*data;
         if(prefix_table.begin_lock(reinterpret_cast<std::uintptr_t>(node),scannable,scannable?*data:nullptr,scannable?size:0,GetCurrentThreadId()))++prefix_stats.locks;
@@ -933,7 +936,8 @@ HRESULT buffer_unlock(Node* node) {
       }
       if(node->kind==Kind::VertexBuffer&&device->options.locked_prefix_bounds){
         // The mapping is still valid here and the application's writes on
-        // this thread are complete; the scan is bounded to 6144 vertices.
+        // this thread are complete; the scan stops at the first sentinel
+        // vertex (bounded to 6144) and copies the written positions.
         LARGE_INTEGER begin{},end{};QueryPerformanceCounter(&begin);
         asm volatile("mfence" ::: "memory");
         const std::uint32_t vertices=prefix_table.finish_lock(reinterpret_cast<std::uintptr_t>(node),GetCurrentThreadId());
@@ -1478,12 +1482,12 @@ HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t ve
     ++prefix_stats.lookups;
     const auto key = reinterpret_cast<std::uintptr_t>(node);
     if (mark && !prefix_table.marked(key)) { prefix_table.mark(key); ++prefix_stats.marks; }
-    fade_region::Box box{};
-    const auto reason = prefix_table.lookup(key, vertex_count, &box, &out->revision, &out->checkpoint);
+    const float* positions = nullptr;
+    const auto reason = prefix_table.lookup(key, vertex_count, &positions, &out->revision, &out->scanned);
     out->reason = unsigned(reason);
-    out->known = reason == fade_region::prefix::Lookup::Bound;
+    out->known = reason == fade_region::prefix::Lookup::Bound && positions;
     out->status = out->known ? S_OK : S_FALSE;
-    if (out->known) { ++prefix_stats.bounds; for (unsigned a = 0; a < 3; ++a) { out->centre[a] = box.centre[a]; out->half[a] = box.half[a]; } }
+    if (out->known) { ++prefix_stats.bounds; out->positions = positions; }
     return S_OK;
 }
 void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept {
@@ -1493,6 +1497,7 @@ void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept {
     LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency);
     out->qpc_frequency = static_cast<std::uint64_t>(frequency.QuadPart);
     out->evictions = prefix_table.evictions(); out->used = prefix_table.used();
+    out->sentinel_bytes = prefix_table.sentinel_bytes(); out->window_end_scans = prefix_table.window_end_scans();
 }
 
 const char* finite_evidence_reason_name(FiniteEvidenceReason reason) noexcept {

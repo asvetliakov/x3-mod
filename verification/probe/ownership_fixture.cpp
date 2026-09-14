@@ -171,7 +171,7 @@ static void locked_prefix_case(IDirect3DDevice9* device,D3DPRESENT_PARAMETERS pp
         ok("prefix unlock",vb->Unlock());};
     auto view=[&](IDirect3DVertexBuffer9* vb,UINT count,bool mark){LockedPrefixView v{};const HRESULT hr=get_locked_prefix_view(vb,count,mark,&v);
         // PREFIX, not OBSERVE: wrapped-only, so no baseline counterpart to compare.
-        std::printf("PREFIX view count=%u mark=%u hr=%08lx requested=%u known=%u reason=%u checkpoint=%lu revision=%llu\n",count,mark,hr,v.requested,v.known,v.reason,static_cast<unsigned long>(v.checkpoint),static_cast<unsigned long long>(v.revision));
+        std::printf("PREFIX view count=%u mark=%u hr=%08lx requested=%u known=%u reason=%u scanned=%lu revision=%llu positions=%u\n",count,mark,hr,v.requested,v.known,v.reason,static_cast<unsigned long>(v.scanned),static_cast<unsigned long long>(v.revision),v.positions!=nullptr);
         expect("prefix view recognised",SUCCEEDED(hr)&&v.requested);return v;};
     auto used=[]{LockedPrefixStatistics s{};get_locked_prefix_statistics(&s);return s.used;};
     IDirect3DVertexBuffer9* vb=nullptr;if(!ok("prefix dynamic buffer",device->CreateVertexBuffer(bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&vb,nullptr)))return;
@@ -181,16 +181,22 @@ static void locked_prefix_case(IDirect3DDevice9* device,D3DPRESENT_PARAMETERS pp
     expect("unmarked lock not recorded",view(vb,102,false).reason==1&&used()==used0);
     expect("first draw marks and is refused",view(vb,102,true).reason==1&&used()==used0+1);
     write(vb,17,0.f,D3DLOCK_DISCARD);
-    LockedPrefixView v=view(vb,102,true);expect("scanned prefix bound",v.known&&v.checkpoint==1&&v.revision==1);
-    expect("covering box holds the quads and the zero tail",v.centre[0]-v.half[0]<=-.5&&v.centre[0]+v.half[0]>=.66-1e-5&&v.centre[1]-v.half[1]<=-.25&&v.centre[1]+v.half[1]>=.25&&v.centre[2]-v.half[2]<=0&&v.centre[2]+v.half[2]>=1.016-1e-4);
-    v=view(vb,96,true);expect("exact checkpoint excludes the tail",v.known&&v.checkpoint==0&&v.centre[2]-v.half[2]>=1-1e-6);
+    // The writer overwrote the whole window (a zero tail over the sentinel): scanned to the window end, positions exact.
+    LockedPrefixView v=view(vb,102,true);expect("scanned prefix bound",v.known&&v.scanned==6144&&v.revision==1&&v.positions);
+    expect("positions are the written prefix",v.positions&&v.positions[0]==-.5f&&v.positions[1]==-.25f&&v.positions[2]==1.f&&v.positions[101*3+2]==1+16*.001f&&v.positions[102*3]==0.f);
+    const float* first=v.positions;v=view(vb,96,true);expect("smaller draw shares the record",v.known&&v.positions==first&&v.scanned==6144);
     expect("draw past the scan refused",view(vb,6145,true).reason==5);
+    // The proxy writes the sentinel over the previous prefix before the
+    // mapping is returned; an Unlock without a write publishes an empty prefix.
+    void* mapped=nullptr;ok("prefix sentinel lock",vb->Lock(0,bytes,&mapped,D3DLOCK_DISCARD));
+    { std::uint32_t words[3]{};if(mapped)std::memcpy(words,mapped,sizeof words);expect("sentinel written at lock",words[0]==0xffffffffu&&words[1]==0xffffffffu&&words[2]==0xffffffffu); }
+    ok("prefix sentinel unlock",vb->Unlock());expect("empty prefix beyond",view(vb,1,true).reason==5);
     void* outer=nullptr;ok("prefix outer lock",vb->Lock(0,bytes,&outer,D3DLOCK_DISCARD));expect("locked buffer pending",view(vb,102,true).reason==2);
     void* inner=nullptr;ok("prefix nested lock",vb->Lock(0,bytes,&inner,D3DLOCK_DISCARD));expect("nested lock invalid",view(vb,102,true).reason==3);
     ok("prefix nested unlock",vb->Unlock());ok("prefix outer unlock",vb->Unlock());expect("nested lock stays invalid",view(vb,102,true).reason==3);
     write(vb,17,0.f,0);expect("non-DISCARD lock invalid",view(vb,102,true).reason==3);
-    write(vb,17,__builtin_nanf(""),D3DLOCK_DISCARD);expect("NaN tail inside the covering checkpoint refused",view(vb,102,true).reason==6&&view(vb,96,true).known);
-    write(vb,17,0.f,D3DLOCK_DISCARD);v=view(vb,102,true);expect("relearned after every lock advanced the revision",v.known&&v.revision==6);
+    write(vb,17,__builtin_nanf(""),D3DLOCK_DISCARD);expect("NaN tail past the prefix stays clean, inside it refused",view(vb,102,true).known&&view(vb,103,true).reason==6);
+    write(vb,17,0.f,D3DLOCK_DISCARD);v=view(vb,102,true);expect("relearned after every lock advanced the revision",v.known&&v.revision==7);
     release(vb);expect("final release erases the record",used()==used0);
     IDirect3DVertexBuffer9* sys=nullptr;if(!ok("prefix systemmem buffer",device->CreateVertexBuffer(bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_SYSTEMMEM,&sys,nullptr)))return;
     view(sys,102,true);write(sys,17,0.f,D3DLOCK_DISCARD);expect("systemmem prefix bound before reset",view(sys,102,false).known&&used()==used0+1);

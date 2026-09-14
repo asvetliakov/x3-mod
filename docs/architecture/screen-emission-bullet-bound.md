@@ -1,7 +1,7 @@
 # Step D — per-draw screen hull for the bullet bound
 
 Design note, 2026-09-14, sibling of [screen-emission-region.md](screen-emission-region.md) (step B and its
-near-plane subsection, read in the fix worktree at `a5f5986`). Not implemented. Question: a tight, conservative
+near-plane subsection, read in the fix worktree at `a5f5986`). Implemented 2026-09-14 (last section). Question: a tight, conservative
 rectangle for the player's bullet batches near the camera, so packed policy-8 brackets stop covering 58–100 %.
 
 Ratified 2026-09-14 by the orchestrator, conditional: implementation starts after run 16 reports the
@@ -136,3 +136,52 @@ prefix copied at Unlock) is the documented remedy and makes the retained copy fr
 Tail zeros: Wine's fresh allocation (frame 10373 says so) or a game write — the sentinel is right either
 way. Real spread of the 176-bullet fans (models 0–8 %, AABB 58–82 %): the dump or run 17. The fp32 bound
 assumes no FMA contraction (the 2⁻²² pad covers one bit). Native WC read cost; D3DMetal early stencil (D2 only).
+
+## Step D — implemented (2026-09-14)
+
+As decided: `locked_prefix_core.h` writes the all-ones sentinel at a marked buffer's DISCARD Lock over the
+previous prefix's slots (the whole window the first time; `Table::begin_lock`), scans at Unlock from vertex 0 to
+the first sentinel vertex (exact count, `bad_from` for NaN/inf/`world_limit`, positions copied into 72 KB of
+storage per slot, allocated at mark and pooled for the table's lifetime so erase/clear never free memory a draw
+reads), and `Table::lookup` hands the positions out with the revision. `fade_region_math.h::project_prefix`
+projects the drawn `primCount·3` positions per triangle through c0–3 with the near cut and the w-scaled pad
+(`derive_prefix`; `MotionOutput::derive_prefix_region`, then `recheck_locked_prefix` refuses a draw whose record
+changed under the projection). The 96-vertex checkpoints are gone. One addition to section 3: the cut is made
+at clip z = −ε, ε = 2⁻²²·Σ|z-row terms| of the triangle, not at z = 0, because the GPU evaluates the z row in
+fp32 too — a vertex within ε behind the plane may be rasterised whole, and the host oracle found the exact cut
+one vertex short on 2 of 600 lists before the shift. `Region::clipped` now counts the vertices behind that
+plane; the fixture's `near_exact` quad (vertices on the plane) reports `clipped=0`, and `Reason::NonPositiveW`
+keeps its meaning for non-perspective rows.
+
+Diagnostics: the per-draw `locked_prefix` line carries `scanned=` (published count), `hull_px=` and `aabb_px=`
+(the near-clipped rectangle of the prefix's own AABB, eight extra projections per bound draw) and `ticks=`;
+`locked_prefix_frame` adds `rechecks= hull_px= aabb_px= vertices= derive_us= sentinel_bytes= window_end_scans=`.
+`X3M_LOCKED_PREFIX_LOG=1` prints the per-draw line on every frame (fixtures); `X3M_TELEMETRY_DRAW=1` is needed
+for the tick fields.
+
+Measured (`run_locked_prefix_live.py`, proxy DLL, game bullet VS/PS, FEX; `screen-emission-bound-live1.json`):
+the section-1 geometries through a world frame rotated 50/−28/35° and offset by (−112000, 3000, 45000), 60°
+perspective, zn = 6, 320×192 viewport, hull rectangle vs the AABB rectangle of the same vertices — fan 176
+bolts (148…1842 deep) **1.2 % vs 89.6 %**; straddling 72-bolt beam (−320…7726, 18 vertices cut, pad 3)
+**17.5 % vs 100 %**; 605 bolts (500…6498) over a zero window (the run-15 origin tail: scanned 6144, drawn 3630,
+tail never in the bound) **10.6 % vs 96.5 %**; 27 bolts **0.1 % vs 70 %**. The GPU footprint the fixture reads
+back is inside the rectangle on every bound frame (14 of 20; fan footprint (145,92,187,104) in rect
+(143,90,190,106)). A beam passing the camera diagonally (the section-1 `diag` model) still bounds to the
+quadrant between its entry corner and the vanishing point (≈ 25 %, modelled): that is the hull's bounding box,
+not slack. Per-draw derivation cost (lookup, projection, AABB comparison, recheck, one `GetStreamSourceFreq`):
+**4.6 / 8.4 / 18.6 / 56.3 µs at 27 / 72 / 176 / 605 bolts** (162 / 432 / 1056 / 3630 vertices; the 1056-vertex
+budget of section 3 was 25 µs). Scan: 16 scans at 12.4 µs mean — 13 ran to the window end because those
+fixture writers overwrite the whole window (6144 vertices, no sentinel left), the 3 sentinel-exact scans read
+162–1056 vertices; host figures 0.39 µs at 1056 vertices behind the sentinel vs 2.4 µs for the window. Sentinel
+writes: 2,247,552 bytes over 18 locks (147 KB after a mark or a window-end scan, 25 KB / 10 KB after the exact
+ones). Host: `test_fade_region.py` 11 tests (`--hull` 600 random lists, 345 bound / 255 BehindNear, 1.85 M
+covered pixels, 0 outside, hull ⊆ AABB rectangle; `--prefix` 43 scenarios + 300 random exact-prefix cases);
+`run_linear_distance_fade_live.py --screen-emission` 14 cases, witness 0 outside, chain max 1 code; x87 audit
+PASS (224 reachable). Section-6 acceptance (`f_mean` ≤ 0.15, Σ `packed_region_pixels` ≤ 0.6 Mpx, scan CPU ≤ 50 µs
+per firing frame) is for run 20.
+
+Open: at |world| ≈ 1.1e5 and w = zn = 6 the pad formula gives k/w ≈ 12 px, above `pad_limit` = 8 (the
+section-4 calibration assumed S ≈ 1.26e5; the fixture's frame has S ≈ 2.4e5). Points at w ≈ zn project far
+outside the viewport in every measured case, so the cap has not been observed to matter; it is a bound to
+revisit with run-20 `pad=` values. Native Windows: the sentinel is a 25–147 KB streaming store into
+write-combined memory per lock and the scan an uncached read of the written prefix; both unmeasured.

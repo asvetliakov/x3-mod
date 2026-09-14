@@ -6,9 +6,12 @@ exact hand rectangles, and full viewport for every doubt (w <= 0, nonfinite,
 unknown rows, unknown or poisoned bound, non-solid fill, empty viewport), and
 the bound table (fade_region_core.h) driven against fake descriptor/part/
 subset-record memory and a fake buffer registry: learn, hit, back-link and
-record mismatch, revision/IB/descriptor poison, eviction. The C++ driver uses
-the production headers; a Python re-projection cross-checks a subset. No
-device, no Wine.
+record mismatch, revision/IB/descriptor poison, eviction. Step B/D
+(screen-emission notes): the locked-prefix sentinel scan and table
+(locked_prefix_core.h) and the per-draw vertex hull (project_prefix) against
+a rasterising oracle in the C++ driver plus a Python one here. The C++ driver
+uses the production headers; a Python re-projection cross-checks a subset.
+No device, no Wine.
 """
 import math
 from pathlib import Path
@@ -99,6 +102,42 @@ def reference_clip_rect(rows,centre,half,viewport):
 
 def box_of(lo,hi):
     return [(a+b)/2 for a,b in zip(lo,hi)],[(b-a)/2 for a,b in zip(lo,hi)]
+
+def footprint_pixels(rows,positions,viewport):
+    """Python oracle for project_prefix: each triangle's clip coordinates
+    (exact arithmetic), cut against z >= 0 by Sutherland-Hodgman, projected,
+    and every pixel whose centre lies inside the resulting convex polygon.
+    Independent of the C++ derivation and of the C++ oracle."""
+    rows=[float(v) for v in rows];X,Y,W,H=viewport;pixels=set()
+    for t in range(0,len(positions)//3-2,3):
+        poly=[]
+        for k in range(3):
+            p=positions[(t+k)*3:(t+k)*3+3]
+            poly.append([rows[4*r]*p[0]+rows[4*r+1]*p[1]+rows[4*r+2]*p[2]+rows[4*r+3] for r in range(4)])
+        cut=[]
+        for i in range(3):
+            a,b=poly[i],poly[(i+1)%3];ina,inb=a[2]>=0,b[2]>=0
+            if ina:cut.append(a)
+            if ina!=inb:
+                s=a[2]/(a[2]-b[2]);cut.append([a[r]+s*(b[r]-a[r]) for r in range(4)])
+        if len(cut)<3 or any(not c[3]>0 for c in cut):continue
+        pts=[(X+(c[0]/c[3]+1)*W/2,Y+(1-c[1]/c[3])*H/2) for c in cut]
+        lo_x=max(X,math.floor(min(p[0] for p in pts)));hi_x=min(X+W,math.ceil(max(p[0] for p in pts)))
+        lo_y=max(Y,math.floor(min(p[1] for p in pts)));hi_y=min(Y+H,math.ceil(max(p[1] for p in pts)))
+        def inside(px,py):
+            sign=0
+            for i in range(len(pts)):
+                ax,ay=pts[i];bx,by=pts[(i+1)%len(pts)]
+                cross=(bx-ax)*(py-ay)-(by-ay)*(px-ax)
+                if cross==0:continue
+                s=1 if cross>0 else -1
+                if sign==0:sign=s
+                elif s!=sign:return False
+            return True
+        for y in range(lo_y,hi_y):
+            for x in range(lo_x,hi_x):
+                if inside(x+.5,y+.5):pixels.add((x,y))
+    return pixels
 
 class FadeRegion(unittest.TestCase):
     @classmethod
@@ -201,6 +240,93 @@ class FadeRegion(unittest.TestCase):
             if expected is None:self.assertEqual((bound,reason,clipped),(0,7,8))
             else:self.assertEqual((bound,reason,clipped,rect),(1,0,behind,expected));cut+=clipped>0
         self.assertGreater(cut,10)
+
+    def hull_case(self,rows,viewport,positions):
+        args=[str(self.driver),'--hull-case']+[str(v) for v in rows]+[str(v) for v in viewport]+[str(len(positions)//3)]+[str(v) for v in positions]
+        return fields(subprocess.check_output(args,text=True).strip())
+
+    def test_prefix_hull_random_triangles_covered(self):
+        """Step D: random triangle lists (straddling, hugging and behind the near plane, bullet-scale
+        cancellation) against the C++ rasterising oracle: no covered pixel outside, BehindNear covers
+        nothing, the hull rectangle never exceeds the near-clipped AABB rectangle of the same vertices."""
+        out=subprocess.run([str(self.driver),'--hull','20260914','600','64'],capture_output=True,text=True)
+        self.assertEqual(out.returncode,0,out.stdout[-500:])
+        rows=[fields(l) for l in out.stdout.splitlines() if l.startswith('HULL ')]
+        self.assertEqual(len(rows),600);self.assertEqual(fields(out.stdout.splitlines()[-1])['failures'],'0')
+        bound=[r for r in rows if r['reason']=='0'];behind=[r for r in rows if r['reason']=='7']
+        self.assertEqual(len(bound)+len(behind),600);self.assertGreaterEqual(len(bound),300);self.assertGreaterEqual(len(behind),200)
+        self.assertEqual(sum(int(r['outside']) for r in rows),0)
+        self.assertGreater(sum(int(r['covered']) for r in bound),10**6)
+        self.assertEqual(sum(int(r['covered']) for r in behind),0)
+        self.assertTrue(all(0<int(r['hull_px'])<=int(r['aabb_px']) for r in bound))
+        self.assertTrue(all(int(r['clipped'])<=int(r['behind']) for r in rows),'the -eps cut never counts more behind than the fp32 oracle')
+        self.assertGreater(sum(int(r['hull_px'])<int(r['aabb_px']) for r in bound),100,'the hull is tighter than the box for most lists')
+        self.assertGreater(sum(int(r['pad'])>1 for r in bound),20,'the w-scaled pad engages at bullet-scale cancellation')
+        self.assertTrue(all(int(r['clipped'])>0 for r in bound if r['kind']=='3'),'near-plane hugging lists are cut')
+
+    def test_prefix_hull_hand_cases(self):
+        """Step D hand cases through project_prefix with the Python oracle: the fixture's near-plane
+        quads, a fan against its own AABB, the fp32 z tolerance and every refusal."""
+        v=(0,0,96,96)
+        def contains(rect,inner):return rect[0]<=inner[0] and rect[1]<=inner[1] and rect[2]>=inner[2] and rect[3]>=inner[3]
+        def check(rows,viewport,positions,expect_bound=1):
+            f=self.hull_case(rows,viewport,positions)
+            pixels=footprint_pixels(rows,positions,viewport)
+            rect=rect_of(f['rect'])
+            if expect_bound:
+                self.assertEqual(int(f['bound']),1,f)
+                self.assertTrue(all(rect[0]<=x<rect[2] and rect[1]<=y<rect[3] for x,y in pixels),(f,len(pixels)))
+                self.assertEqual(int(f['outside']),0,f)
+                if pixels:self.assertTrue(contains(rect,(min(x for x,_ in pixels),min(y for _,y in pixels),max(x for x,_ in pixels)+1,max(y for _,y in pixels)+1)))
+            return f,rect,pixels
+        # The live fixture's near-plane cases (one copy of the six vertices; (x, y, w) through NEAR_ROWS).
+        straddle=[0,0,-1, 0,.75,3, 1.5,.75,3, 0,.75,3, 0,.75,3, 0,.75,3]
+        f,rect,pixels=check(NEAR_ROWS,v,straddle)
+        self.assertEqual((int(f['reason']),int(f['clipped'])),(0,1));self.assertTrue(contains(rect,(48,30,84,36)),rect);self.assertGreater(len(pixels),100)
+        self.assertLess(int(f['hull_px']),int(f['aabb_px']),'the vertex hull beats the AABB of the same vertices')
+        exact=[0,-.25,1, .5,-.25,1, 0,.75,3, .5,-.25,1, 1.5,.75,3, 0,.75,3]
+        f,rect,pixels=check(NEAR_ROWS,v,exact)
+        self.assertEqual((int(f['reason']),int(f['clipped'])),(0,0),'vertices on the plane are in front');self.assertTrue(contains(rect,(48,36,72,60)),rect)
+        behind=[0,-.25,-1, .5,-.25,-1, 0,.75,-3, .5,-.25,-1, 1.5,.75,-3, 0,.75,-3]
+        f=self.hull_case(NEAR_ROWS,v,behind)
+        self.assertEqual((int(f['bound']),int(f['reason']),int(f['clipped']),rect_of(f['rect'])),(0,7,6,(0,0,96,96)));self.assertEqual(footprint_pixels(NEAR_ROWS,behind,v),set())
+        beam=[0,-.25,1, .5,-.25,1, 0,250,1000, .5,-.25,1, 500,250,1000, 0,250,1000]
+        f,rect,pixels=check(NEAR_ROWS,v,beam)
+        self.assertEqual(int(f['clipped']),0);self.assertLess(float(f['f']),.5);self.assertTrue(contains(rect,(48,36,72,60)),rect)
+        # A fan of thin quads along a diagonal in front of a perspective camera: hull far below the AABB.
+        rows=perspective(1,2);rng=random.Random(5);fan=[]
+        for i in range(40):
+            x,y,z=.02*i-.4,.01*i-.2,.5+.1*i
+            for dx,dy in ((-.01,0),(.01,0),(-.01,.02),(.01,0),(.01,.02),(-.01,.02)):fan+=[x+dx,y+dy,z]
+        f,rect,pixels=check(rows,(0,0,640,480),fan)
+        self.assertGreater(len(pixels),50);self.assertLess(int(f['hull_px']),int(f['aabb_px']),f)
+        # fp32 z tolerance at bullet-scale coordinates (T = 1e5 cancellation): a vertex 1e-4 clip units
+        # behind the plane may still be in front for the GPU's fp32 dp4, so it is not cut; one 0.05
+        # behind is.
+        T=100000.0;rows_t=[1,0,0,-T, 0,1,0,-T, 0,0,.1,-.1-.1*T, 0,0,1,-T]
+        def tri(z0):return [T+0,T+0,T+z0, T+.5,T+.2,T+2, T+.1,T+.6,T+2]
+        f=self.hull_case(rows_t,v,tri(1-1e-3))
+        self.assertEqual((int(f['bound']),int(f['clipped'])),(1,0),f)
+        f=self.hull_case(rows_t,v,tri(1-.5))
+        self.assertEqual((int(f['bound']),int(f['clipped'])),(1,1),f)
+        self.assertGreater(int(f['pad']),1,'bullet-scale cancellation pads by more than a pixel near the plane')
+        # Refusals: a count that is not a multiple of 3, a NaN position, nonfinite rows, an empty prefix.
+        self.assertEqual((int(self.hull_case(NEAR_ROWS,v,exact[:12])['bound']),int(self.hull_case(NEAR_ROWS,v,exact[:12])['reason'])),(0,3))
+        self.assertEqual(int(self.hull_case(NEAR_ROWS,v,['nan']+exact[1:])['reason']),5)
+        self.assertEqual(int(self.hull_case(['inf']+NEAR_ROWS[1:],v,exact)['reason']),5)
+        self.assertEqual(int(self.hull_case(NEAR_ROWS,v,[])['reason']),3)
+        self.assertEqual(int(self.hull_case(NEAR_ROWS,(0,0,0,0),exact)['reason']),1)
+        # Non-perspective rows with a vertex at w <= 0 in front of the plane: NonPositiveW, never a box.
+        self.assertEqual(int(self.hull_case([1,0,0,0, 0,1,0,0, 0,0,1,1, 0,0,0,-1],v,exact)['reason']),4)
+        # Random small lists through the Python oracle as well.
+        rng=random.Random(20260914);lists=0
+        for _ in range(40):
+            n=rng.randint(1,6);positions=[]
+            for _ in range(n*3):positions+=[rng.uniform(-2,2),rng.uniform(-2,2),rng.uniform(-2,4)]
+            f=self.hull_case(NEAR_ROWS,v,positions)
+            if int(f['bound']):check(NEAR_ROWS,v,positions);lists+=1
+            else:self.assertEqual((int(f['reason']),footprint_pixels(NEAR_ROWS,positions,v)),(7,set()))
+        self.assertGreater(lists,20)
 
     def test_w_scaled_pad_near_the_near_plane(self):
         """screen-emission-bullet-bound.md section 4: the fp32 dp4 on world
@@ -335,44 +461,47 @@ class FadeRegion(unittest.TestCase):
         self.assertEqual((rows['miss_learn']['vb_rev'],rows['poison_revision']['vb_rev']),('7','8'))
 
     def test_locked_prefix_scan_table_and_resolution(self):
-        """Step B (screen-emission-region.md): checkpoint math, superset with a garbage tail, refusals, revision, eviction, binding."""
+        """Step B/D (locked_prefix_core.h): sentinel at lock, exact scan, tails, refusals, revision, eviction, binding."""
         out=subprocess.run([str(self.driver),'--prefix','20260914','300'],capture_output=True,text=True)
         self.assertEqual(out.returncode,0,out.stdout[-500:])
         rows={l.split()[1]:fields(l) for l in out.stdout.splitlines() if l.startswith('PREFIX ')}
         resolved={l.split()[1]:fields(l) for l in out.stdout.splitlines() if l.startswith('RESOLVE ')}
         summary=fields(next(l for l in out.stdout.splitlines() if l.startswith('PREFIX_RANDOM ')))
-        # Checkpoint k covers [0, 96(k+1)): vertex i at (i, -i, 2i).
+        # Vertex i at (i, -i, 2i), 200 written behind the sentinel: exact count, exact extent per draw.
         def box(lo,hi):return '%.6f,%.6f,%.6f,%.6f,%.6f,%.6f'%((lo+hi)/2,-(lo+hi)/2,lo+hi,(hi-lo)/2,(hi-lo)/2,hi-lo)
-        self.assertEqual((rows['math_96']['name'],rows['math_96']['checkpoint'],rows['math_96']['box']),('bound','0',box(0,95)))
-        self.assertEqual((rows['math_1']['checkpoint'],rows['math_1']['box']),('0',box(0,95)),'a 1-vertex draw takes checkpoint 0: at most 95 stale vertices')
-        for label,cp,hi in (('math_97','1',191),('math_192','1',191),('math_193','2',199),('math_200','2',199)):
-            self.assertEqual((rows[label]['name'],rows[label]['checkpoint'],rows[label]['box']),('bound',cp,box(0,hi)),label)
-        self.assertEqual(rows['math_96']['extra'],'200','vertices scanned')
-        self.assertEqual((rows['unmarked_lock_ignored']['name'],rows['unmarked_lock_ignored']['used']),('unknown','0'),'unmarked buffers are never recorded or scanned')
+        self.assertEqual((rows['math_96']['name'],rows['math_96']['scanned'],rows['math_96']['box'],rows['math_96']['extra']),('bound','200',box(0,95),'200'))
+        self.assertEqual((rows['math_200']['box'],rows['math_1']['box']),(box(0,199),'0.000000,-0.000000,0.000000,0.000000,0.000000,0.000000'),'a draw takes exactly its own vertices: no stale superset')
+        self.assertEqual(rows['math_pending']['extra'],'1','the whole window is sentinelled at the first lock of a marked buffer')
+        self.assertEqual(rows['relock_pending']['extra'],'4800','the next lock sentinels the previous prefix (200 vertices x 24 bytes)')
+        self.assertEqual((rows['unmarked_lock_ignored']['name'],rows['unmarked_lock_ignored']['used'],rows['unmarked_lock_ignored']['extra']),('unknown','0','1'),'unmarked buffers are never recorded, sentinelled or scanned')
         self.assertEqual((rows['marked_unknown']['name'],rows['marked_unknown']['used']),('unknown','1'),'a mark alone is no bound: the first draw is refused')
         self.assertEqual([(rows[l]['name'],rows[l]['revision']) for l in ('nested_first_unlock','nested_invalid','nested_relearned')],[('invalid','2'),('invalid','2'),('bound','3')])
         for label,name in (('math_unknown','unknown'),('math_pending','pending'),('empty','empty'),('beyond','beyond'),('beyond_max','beyond'),
                            ('relock_pending','pending'),('unlock_failed','invalid'),('non_discard','invalid'),('thread_mismatch','invalid'),
-                           ('relearned','bound'),('erased','unknown'),('tail_nan_100','nonfinite'),('tail_nan_96','bound'),('tail_nan_beyond','bound'),
-                           ('tail_inf_100','nonfinite'),('tail_absurd_100','nonfinite'),('tail_limit_100','bound'),('tail_huge_100','bound'),
-                           ('tail_huge_96','bound'),('prefix_nan','nonfinite'),('evicted_oldest','unknown'),('evicted_kept','bound'),('cleared','unknown')):
+                           ('relearned','bound'),('erased','unknown'),('tail_sentinel_100','bound'),('tail_sentinel_101','beyond'),
+                           ('tail_nan_100','bound'),('tail_nan_101','nonfinite'),('tail_inf_100','bound'),('tail_inf_106','nonfinite'),
+                           ('tail_absurd_100','bound'),('tail_absurd_106','nonfinite'),('tail_limit_106','bound'),('tail_huge_100','bound'),('tail_huge_106','bound'),
+                           ('tail_zero_100','bound'),('prefix_nan_5','bound'),('prefix_nan_6','nonfinite'),('prefix_nan_96','nonfinite'),
+                           ('sentinel_vertex_50','bound'),('sentinel_vertex_51','beyond'),('evicted_oldest','unknown'),('evicted_kept','bound'),('cleared','unknown')):
             self.assertEqual(rows[label]['name'],name,label)
         self.assertEqual([rows[l]['revision'] for l in ('math_pending','relock_pending','non_discard','thread_mismatch','relearned')],['1','2','3','4','5'],'every lock advances the revision')
-        # Stale-tail garbage: a finite tail inside the covering checkpoint widens the box; the exact prefix keeps it tight.
-        self.assertEqual(rows['tail_huge_96']['box'],'0.000000,0.000000,0.000000,1.000000,1.000000,1.000000')
-        self.assertEqual(rows['tail_huge_100']['box'],'499999.500000,499999.500000,499999.500000,500000.500000,500000.500000,500000.500000')
-        self.assertEqual((rows['length_partial']['checkpoint'],rows['length_partial']['revision']),('10','1'),'partial trailing vertex ignored')
-        self.assertEqual((rows['length_capped']['checkpoint'],rows['length_capped']['revision']),('6144','64'),'scan capped at 6144 vertices, 64 checkpoints')
-        self.assertEqual((rows['evicted_oldest']['used'],rows['evicted_oldest']['evictions']),('16','1'),'17th buffer evicts the oldest record')
-        self.assertEqual(rows['cleared']['used'],'0')
-        # resolve_locked_prefix maps lookup outcomes onto the region statuses.
-        self.assertEqual((resolved['bound']['name'],resolved['bound']['source'],resolved['bound']['checkpoint'],resolved['bound']['box']),('bound','1','2',box(0,199)))
+        # Scan counts: exact behind a sentinel tail, the window (300) over a garbage tail; window-end scans counted.
+        self.assertEqual((rows['tail_sentinel_100']['extra'],rows['tail_nan_100']['extra'],rows['tail_zero_100']['extra'],rows['sentinel_vertex_50']['extra']),('100','300','300','50'))
+        self.assertEqual((rows['tail_sentinel_100']['window_end'],rows['tail_zero_100']['window_end']),('0','6'))
+        self.assertEqual((rows['tail_huge_100']['box'],rows['tail_huge_106']['box']),('0.000000,0.000000,0.000000,1.000000,1.000000,1.000000','499999.500000,499999.500000,499999.500000,500000.500000,500000.500000,500000.500000'),'garbage enters only a draw that covers it')
+        self.assertEqual((rows['sentinel_extent_after_50']['extra'],rows['sentinel_extent_after_100']['extra']),('1200','2400'),'the sentinel extent follows the previous scan')
+        self.assertEqual((rows['length_partial']['scanned'],rows['length_partial']['extra']),('10','1'),'partial trailing vertex ignored')
+        self.assertEqual((rows['length_capped']['scanned'],rows['length_capped']['extra']),('6144','1'),'scan capped at 6144 vertices')
+        self.assertEqual((rows['evicted_oldest']['used'],rows['evicted_oldest']['evictions'],rows['evicted_oldest']['extra']),('16','1','16'),'17th buffer evicts the oldest record; 16 pooled storage blocks')
+        self.assertEqual((rows['cleared']['used'],rows['cleared']['extra'],rows['erased']['extra']),('0','16','1'),'erase and clear keep the pooled storage')
+        # resolve_locked_prefix maps lookup outcomes onto the region statuses and hands the positions out.
+        self.assertEqual((resolved['bound']['name'],resolved['bound']['source'],resolved['bound']['scanned'],resolved['bound']['positions'],resolved['bound']['box']),('bound','1','200','1',box(0,199)))
         for label,name,refusal in (('no_vb','no_scope','0'),('zero_count','no_scope','0'),('no_binding','content_unknown','0'),('unknown_buffer','content_unknown','1'),('beyond','invalid','5')):
-            self.assertEqual((resolved[label]['name'],resolved[label]['bound'],resolved[label]['refusal']),(name,'0',refusal),label)
-        # Random superset property: every drawn vertex inside the covering box; exact only at whole checkpoints.
-        self.assertEqual((summary['cases'],summary['failures'],summary['vertices']),('300','0','6144'))
-        self.assertGreater(int(summary['larger']),int(summary['exact']))
-        self.assertGreater(int(summary['exact']),0)
-        self.assertLess(float(summary['scan_ns']),2e6,'a 6144-vertex scan stays well under a millisecond on the host')
+            self.assertEqual((resolved[label]['name'],resolved[label]['bound'],resolved[label]['refusal'],resolved[label]['positions']),(name,'0',refusal,'0'),label)
+        # Random exact-prefix property: bit-identical positions, exact count behind the sentinel, the window over garbage.
+        self.assertEqual((summary['cases'],summary['failures'],summary['exact'],summary['garbage']),('300','0','150','150'))
+        self.assertEqual((summary['vertices_1056'],summary['vertices_window']),('1056','6144'))
+        self.assertLess(float(summary['scan_ns_1056']),float(summary['scan_ns_window']),'the sentinel scan costs less than the whole window')
+        self.assertLess(float(summary['scan_ns_window']),2e6,'a 6144-vertex scan stays well under a millisecond on the host')
 
 if __name__=='__main__':unittest.main()

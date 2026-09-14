@@ -23,9 +23,10 @@ struct Options {
     std::uint32_t finite_payload_budget = 32u * 1024u * 1024u;
     std::uint32_t finite_sidecar_limit = 4096;
     // Locked-prefix bounds (docs/architecture/screen-emission-region.md, step
-    // B): scan the mapped window of a DISCARD-locked vertex buffer at its
-    // Unlock into extrema checkpoints (src/proxy/locked_prefix_core.h). Off by
-    // default; X3M_SCREEN_EMISSION_BOUND=1. No payload is retained.
+    // B/D): sentinel the mapped window of a marked DISCARD-locked vertex
+    // buffer at its Lock and copy the written positions at its Unlock
+    // (src/proxy/locked_prefix_core.h). Off by default;
+    // X3M_SCREEN_EMISSION_BOUND=1. Only positions are retained.
     bool locked_prefix_bounds = false;
 };
 
@@ -61,26 +62,31 @@ struct BufferContentView {
 // Native writes plus metadata updates are not a transaction for concurrent callers.
 HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentView* out) noexcept;
 
-// Step B locked-prefix bound of an application vertex buffer wrapper for its
-// leading vertex_count vertices (POSITION FLOAT3 at 0, stride 24 assumed by
-// the scan; the caller validates the declaration and the producer). mark
-// learns the buffer as a scan candidate: only marked buffers are scanned at
-// their next DISCARD Unlock, so the first draw of a buffer is refused. S_OK
-// for a recognised wrapper; inspect requested/known. reason is a
-// prefix::Lookup value. Never locks, reads back or dereferences the wrapper;
-// one registry find and one fixed-table probe under the registry mutex.
+// Step B/D locked-prefix positions of an application vertex buffer wrapper
+// for its leading vertex_count vertices (POSITION FLOAT3 at 0, stride 24
+// assumed by the scan; the caller validates the declaration and the
+// producer). mark learns the buffer as a scan candidate: only marked buffers
+// are sentinelled at their next DISCARD Lock and scanned at its Unlock, so the
+// first draw of a buffer is refused by design. S_OK for a recognised wrapper;
+// inspect requested/known. reason is a prefix::Lookup value. positions (3
+// floats per vertex, at least vertex_count of them) point into the table's
+// pooled storage and are valid while the revision holds: project them, then
+// call again with mark false and compare the revision. Never locks, reads
+// back or dereferences the wrapper; one registry find and one fixed-table
+// probe under the registry mutex.
 struct LockedPrefixView {
     HRESULT status = S_FALSE;
     bool requested = false, known = false;
     unsigned reason = 1; // prefix::Lookup::Unknown
     std::uint64_t revision = 0;
-    std::uint32_t checkpoint = 0;
-    double centre[3]{}, half[3]{};
+    std::uint32_t scanned = 0;          // vertices the Unlock scan published
+    const float* positions = nullptr;   // known only
 };
 HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, bool mark, LockedPrefixView* out) noexcept;
 struct LockedPrefixStatistics {
     std::uint64_t locks = 0, scans = 0, scanned_vertices = 0, scan_ticks = 0, qpc_frequency = 0;
     std::uint64_t lookups = 0, bounds = 0, marks = 0, evictions = 0;
+    std::uint64_t sentinel_bytes = 0, window_end_scans = 0; // step D: sentinel written at Lock; scans that met no sentinel
     unsigned used = 0;
 };
 void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept;

@@ -9,8 +9,8 @@
 #include <limits>
 namespace fade_fixture {
 constexpr D3DFORMAT format = D3DFMT_A16B16G16R16F;
-// Step B locked-prefix group (docs/architecture/screen-emission-region.md):
-// the production checkpoint table driven exactly as the ownership layer
+// Step B/D locked-prefix group (docs/architecture/screen-emission-region.md,
+// screen-emission-bullet-bound.md): the production prefix table driven exactly as the ownership layer
 // drives it (begin_lock at Lock, finish_lock before Unlock, clear at Reset).
 x3m::fade_region::prefix::Table prefix_table;
 bool prefix_table_cleared = false;
@@ -359,16 +359,21 @@ struct PrefixCase {
   unsigned quads;         // N: 6N vertices drawn, 2N primitives
   float centre[3], half[3];
   unsigned jitter;        // 0: none; else the 1-based Halton index
-  unsigned tail;          // 0 zeros, 1 NaN, 2 huge finite (1e6), 3 beyond world_limit (1e30)
+  unsigned tail;          // 0 zeros, 1 NaN, 2 huge finite (1e6), 3 beyond world_limit (1e30), 4 zeros with a NaN inside the prefix (vertex 3)
   unsigned expect_bound;  // 1: the lookup must bound; 0: it must refuse (never the full viewport)
 };
+// The tail is written over the whole window after the lock (a recycled
+// DISCARD window over the proxy's sentinel): the scan runs to the window
+// end, the draw takes exactly its own vertices, so no tail value ever enters
+// the bound; only a bad vertex inside the drawn prefix refuses.
 constexpr PrefixCase prefix_cases[] = {
-    {"one_quad", 1, {0, 0, 0}, {.5f, .5f, .5f}, 0, 0, 1},                 // 6 vertices: checkpoint 0 holds 90 stale zeros
-    {"sixteen_quads_nan_tail", 16, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 1},  // exactly 96: the NaN tail starts past the checkpoint
-    {"seventeen_quads_nan_tail", 17, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 0}, // 102: checkpoint 1 covers NaN vertices -> refused
+    {"one_quad", 1, {0, 0, 0}, {.5f, .5f, .5f}, 0, 0, 1},                 // 6 vertices over 6138 stale zeros
+    {"sixteen_quads_nan_tail", 16, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 1},  // 96 over a NaN tail
+    {"seventeen_quads_nan_tail", 17, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 1}, // 102 over a NaN tail (step B refused this: checkpoint superset)
     {"seventeen_quads_zero_tail", 17, {0, 0, 0}, {.5f, .5f, .5f}, 0, 0, 1},
-    {"hundred_quads_huge_tail", 100, {0, 0, 0}, {.5f, .5f, .5f}, 0, 2, 1}, // 600: finite garbage widens the box, stays conservative
-    {"hundred_quads_absurd_tail", 100, {0, 0, 0}, {.5f, .5f, .5f}, 0, 3, 0}, // beyond the world limit -> refused
+    {"hundred_quads_huge_tail", 100, {0, 0, 0}, {.5f, .5f, .5f}, 0, 2, 1}, // 600 over finite garbage: the hull ignores it
+    {"hundred_quads_absurd_tail", 100, {0, 0, 0}, {.5f, .5f, .5f}, 0, 3, 1}, // beyond the world limit only past the prefix
+    {"seventeen_quads_prefix_nan", 17, {0, 0, 0}, {.5f, .5f, .5f}, 0, 4, 0}, // NaN inside the drawn prefix -> refused
     {"full_buffer", 1024, {0, 0, 0}, {.5f, .5f, .5f}, 0, 1, 1},           // 6144 vertices, no tail
     {"offset_box", 40, {1.2f, -.8f, 0}, {.4f, .4f, .2f}, 0, 0, 1},
     {"edge_box", 25, {-1.6f, 1.6f, .2f}, {.5f, .5f, .3f}, 0, 2, 1},
@@ -1283,7 +1288,9 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
                                          {c[0] + size, c[1] - size}, {c[0] + size, c[1] + size}, {c[0] - size, c[1] + size}};
             for (unsigned k = 0; k < 6; ++k) {
               auto *v = reinterpret_cast<unsigned char *>(data) + (q * 6 + k) * prefix::stride;
-              const float position[3] = {corners[k][0], corners[k][1], c[2]};
+              float position[3] = {corners[k][0], corners[k][1], c[2]};
+              if (r.tail == 4 && q * 6 + k == 3)
+                position[0] = std::numeric_limits<float>::quiet_NaN();
               const float uv[2] = {float(k & 1), float(k >> 1)};
               const std::uint32_t colour = 0xff000000u;
               std::memcpy(v, position, 12);
@@ -1301,24 +1308,35 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         const double scan_us = double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency.QuadPart);
         scan_us_max = std::max(scan_us_max, scan_us);
         scan_us_sum += scan_us;
-        require(scanned == prefix::max_vertices, "whole window scanned");
+        require(scanned == prefix::max_vertices, "whole window scanned (the tail overwrote the sentinel)");
         api(bullets->Unlock());
-        // The draw side: the first checkpoint covering primCount*3 vertices.
-        x3m::fade_region::Box box{};
+        // The draw side: the leading primCount*3 positions, projected per triangle.
+        const float *positions = nullptr;
         std::uint64_t seen_revision = 0;
-        std::uint32_t checkpoint = 0;
-        const auto lookup = prefix_table.lookup(key, primitives * 3, &box, &seen_revision, &checkpoint);
+        std::uint32_t published = 0;
+        const auto lookup = prefix_table.lookup(key, primitives * 3, &positions, &seen_revision, &published);
         require(seen_revision == revision, "prefix revision");
         float rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, .5f, 1, 0, 0, 1, 2};
         if (r.jitter)
           x3m::fade_region::jitter_rows(rows, region_halton(r.jitter, 2) - .5f, region_halton(r.jitter, 3) - .5f, 16, 16);
         const x3m::fade_region::Viewport viewport{0, 0, 16, 16};
-        const bool bound_known = lookup == prefix::Lookup::Bound;
-        auto region = x3m::fade_region::derive(rows, bound_known, box, viewport, true, x3m::fade_region::Rect{0, 0, 16, 16});
+        const bool bound_known = lookup == prefix::Lookup::Bound && positions;
+        x3m::fade_region::PrefixHull hull{};
+        auto region = x3m::fade_region::derive_prefix(rows, bound_known ? positions : nullptr, primitives * 3, viewport, true, x3m::fade_region::Rect{0, 0, 16, 16}, &hull);
+        const x3m::fade_region::Box box = hull.aabb;
+        // The step-B comparison: the near-clipped rectangle of the prefix's own AABB.
+        std::uint64_t aabb_px = 0;
+        if (region.bound) {
+          x3m::fade_region::Rect box_rect{};
+          x3m::fade_region::NearClip cut{true, 0};
+          if (x3m::fade_region::project_box(rows, box, viewport, &box_rect, &cut) == x3m::fade_region::Reason::Bound)
+            aabb_px = x3m::fade_region::area(x3m::fade_region::intersect(box_rect, x3m::fade_region::Rect{0, 0, 16, 16}));
+        }
         // Never the full viewport for this kind: a refused draw has no rectangle.
         if (!region.bound)
           region.rect = {0, 0, 0, 0};
         const auto rect = region.bound ? x3m::fade_region::intersect(region.rect, x3m::fade_region::Rect{0, 0, 16, 16}) : region.rect;
+        require(!region.bound || x3m::fade_region::area(rect) <= aabb_px, "hull rectangle within the AABB rectangle");
         Draw unused(d, *base, 0, 16);
         auto arm = [&](IDirect3DSurface9 *target) {
           source_state(gpu, *base, target, depth.p, unused);
@@ -1365,10 +1383,10 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
         api(d->SetStreamSource(1, nullptr, 0, 0));
         api(d->SetStreamSource(0, nullptr, 0, 0));
         api(d->SetVertexDeclaration(gpu.declaration.p));
-        std::printf("FADE_PREFIX id=%u label=%s quads=%u vertices=%u primitives=%u tail=%u jitter=%u bound=%u expect_bound=%u reason=%u lookup=%s checkpoint=%u revision=%llu "
+        std::printf("FADE_PREFIX id=%u label=%s quads=%u vertices=%u primitives=%u tail=%u jitter=%u bound=%u expect_bound=%u reason=%u lookup=%s clipped=%u aabb_px=%llu revision=%llu "
                     "box=%.4f,%.4f,%.4f,%.4f,%.4f,%.4f rect=%d,%d,%d,%d viewport=%u,%u,%u,%u covered=%u violations=%u area=%llu scan_us=%.2f scanned=%lu table_used=%u\n",
-                    id, r.label, r.quads, vertices, primitives, r.tail, r.jitter, region.bound, r.expect_bound, unsigned(region.reason), prefix::lookup_name(lookup), checkpoint,
-                    static_cast<unsigned long long>(seen_revision), box.centre[0], box.centre[1], box.centre[2], box.half[0], box.half[1], box.half[2],
+                    id, r.label, r.quads, vertices, primitives, r.tail, r.jitter, region.bound, r.expect_bound, unsigned(region.reason), prefix::lookup_name(lookup), region.clipped,
+                    static_cast<unsigned long long>(aabb_px), static_cast<unsigned long long>(seen_revision), box.centre[0], box.centre[1], box.centre[2], box.half[0], box.half[1], box.half[2],
                     rect.left, rect.top, rect.right, rect.bottom, viewport.x, viewport.y, viewport.width, viewport.height, covered, violations,
                     static_cast<unsigned long long>(x3m::fade_region::area(rect)), scan_us, static_cast<unsigned long>(scanned), prefix_table.used());
         require(region.bound == (r.expect_bound != 0), "prefix bound expectation");

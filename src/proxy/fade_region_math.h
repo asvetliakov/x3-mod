@@ -256,4 +256,151 @@ inline Region derive(const float* rows, bool bound_known, const Box& box, const 
     return region;
 }
 
+// Step D (screen-emission-bullet-bound.md): the rectangle of a drawn
+// TRIANGLELIST vertex prefix itself, from the exact positions the Unlock scan
+// copied (3 floats per vertex, count a multiple of 3), through the same rows.
+// Per triangle: the vertices with clip z >= 0 are projected; a triangle that
+// straddles the near plane contributes its in-front vertices plus the exact
+// crossings of the two edges that cross (z is affine along an edge, t =
+// za / (za - zb)); a triangle entirely behind contributes nothing. D3D
+// rasterises a pixel whose centre lies inside the clipped triangle, which
+// lies inside the hull of those points, so the padded bounding rectangle of
+// all of them contains every pixel any triangle of the prefix touches. The
+// rectangle is the hull's bounding box: no polygon is built. A prefix with
+// every triangle behind is BehindNear; a projected point with w <= 0 (rows
+// that are not a perspective projection: under one, z >= 0 implies w >= zn >
+// 0) is NonPositiveW; a nonfinite row, position or projection is NonFinite.
+//
+// The cut is made at z = -eps, eps = eps_dp4 * (largest z-row |term| sum of
+// the triangle), not at z = 0: the GPU evaluates the z row in fp32 too, so a
+// vertex whose exact z lies within eps behind the plane may still be in
+// front for the rasteriser, and a triangle hugging the plane could then be
+// drawn whole while an exact cut kept only a sliver of it. Every point the
+// hardware can rasterise has exact z >= -eps, so the polytope cut at -eps
+// contains it (the term sum is convex along an edge, so the endpoint
+// maximum bounds the crossing); w there is >= zn - eps > 0 under the game's
+// rows. `clipped` counts the vertices behind that shifted plane.
+//
+// The pad is the w-scaled fp32 bound above with S the largest |term| sum
+// over the x, y and w rows and the vertices (a crossing is a convex
+// combination of two vertices and every term is affine in the point, so the
+// vertex maximum bounds it) and w_min over the projected points. No
+// half-float expansion: the positions are the FLOAT3 values the GPU reads.
+// Cost: 4 double dot products, four |term| sums and one divide per vertex;
+// no allocation. `info` receives the vertices cut away, the pad and the
+// object-space extent of the prefix (the box the step-B route would have
+// projected: the run-20 hull-versus-AABB comparison).
+struct PrefixHull {
+    unsigned behind = 0;   // vertices with clip z < 0
+    unsigned pad = 0;      // pad applied, in pixels (Bound only)
+    Box aabb{};            // object-space extent of the prefix (finite positions only)
+};
+inline Reason project_prefix(const float rows[16], const float* positions, std::uint32_t count, const Viewport& viewport, Rect* out, PrefixHull* info = nullptr) noexcept {
+    if (!viewport.width || !viewport.height) return Reason::Viewport;
+    for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return Reason::NonFinite;
+    if (!positions || !count || count % 3) return Reason::BoundUnknown;
+    double min_x = 0, max_x = 0, min_y = 0, max_y = 0, w_min = 0, term_sum_max = 0;
+    double lo[3] = {0, 0, 0}, hi[3] = {0, 0, 0};
+    const double X = double(viewport.x), Y = double(viewport.y);
+    const double half_w = double(viewport.width) * 0.5, half_h = double(viewport.height) * 0.5;
+    bool first = true;
+    unsigned behind = 0;
+    auto project = [&](const double* c) noexcept -> Reason {
+        if (!(c[3] > 0)) return Reason::NonPositiveW;
+        const double sx = X + (c[0] / c[3] + 1.0) * half_w;
+        const double sy = Y + (1.0 - c[1] / c[3]) * half_h;
+        if (!std::isfinite(sx) || !std::isfinite(sy)) return Reason::NonFinite;
+        if (first) { min_x = max_x = sx; min_y = max_y = sy; w_min = c[3]; first = false; }
+        else {
+            w_min = c[3] < w_min ? c[3] : w_min;
+            min_x = sx < min_x ? sx : min_x; max_x = sx > max_x ? sx : max_x;
+            min_y = sy < min_y ? sy : min_y; max_y = sy > max_y ? sy : max_y;
+        }
+        return Reason::Bound;
+    };
+    for (std::uint32_t v = 0; v < count; v += 3) {
+        double clip[3][4];
+        double z_sum_max = 0;
+        for (unsigned k = 0; k < 3; ++k) {
+            const float* q = positions + std::size_t(v + k) * 3;
+            const double p[3] = {double(q[0]), double(q[1]), double(q[2])};
+            for (unsigned a = 0; a < 3; ++a) {
+                if (!std::isfinite(p[a])) return Reason::NonFinite;
+                if (v == 0 && k == 0) { lo[a] = hi[a] = p[a]; }
+                else { lo[a] = p[a] < lo[a] ? p[a] : lo[a]; hi[a] = p[a] > hi[a] ? p[a] : hi[a]; }
+            }
+            for (unsigned r = 0; r < 4; ++r) {
+                const float* row = rows + 4 * r;
+                clip[k][r] = double(row[0]) * p[0] + double(row[1]) * p[1] + double(row[2]) * p[2] + double(row[3]);
+                if (!std::isfinite(clip[k][r])) return Reason::NonFinite;
+                const double sum = std::fabs(double(row[0]) * p[0]) + std::fabs(double(row[1]) * p[1]) +
+                                   std::fabs(double(row[2]) * p[2]) + std::fabs(double(row[3]));
+                if (r == 2) { if (sum > z_sum_max) z_sum_max = sum; } // the z row decides the cut only
+                else if (sum > term_sum_max) term_sum_max = sum;
+            }
+        }
+        const double plane = -eps_dp4 * z_sum_max; // z >= plane: possibly rasterised
+        bool in_front[3];
+        for (unsigned k = 0; k < 3; ++k) {
+            in_front[k] = !(clip[k][2] < plane);
+            if (!in_front[k]) ++behind;
+        }
+        const unsigned front = unsigned(in_front[0]) + unsigned(in_front[1]) + unsigned(in_front[2]);
+        if (!front) continue; // entirely behind the near plane: nothing rasterised
+        for (unsigned k = 0; k < 3; ++k) {
+            if (!in_front[k]) continue;
+            const Reason reason = project(clip[k]);
+            if (reason != Reason::Bound) return reason;
+        }
+        if (front == 3) continue;
+        for (unsigned k = 0; k < 3; ++k) {
+            const unsigned j = (k + 1) % 3;
+            if (in_front[k] == in_front[j]) continue;
+            const double za = clip[k][2] - plane, zb = clip[j][2] - plane;
+            const double t = za / (za - zb);
+            double c[4];
+            for (unsigned r = 0; r < 4; ++r) c[r] = clip[k][r] + t * (clip[j][r] - clip[k][r]);
+            const Reason reason = project(c);
+            if (reason != Reason::Bound) return reason;
+        }
+    }
+    if (info) {
+        info->behind = behind;
+        for (unsigned a = 0; a < 3; ++a) { info->aabb.centre[a] = (lo[a] + hi[a]) * 0.5; info->aabb.half[a] = (hi[a] - lo[a]) * 0.5; }
+    }
+    if (first) return Reason::BehindNear;
+    constexpr double limit = 1e9;
+    auto clamp = [](double v, double lo_, double hi_) { return v < lo_ ? lo_ : v > hi_ ? hi_ : v; };
+    const std::int32_t pad = std::int32_t(pad_pixels(term_sum_max, w_min, half_w > half_h ? half_w : half_h));
+    if (info) info->pad = unsigned(pad);
+    const Rect hull{std::int32_t(std::floor(clamp(min_x, -limit, limit))) - pad,
+                    std::int32_t(std::floor(clamp(min_y, -limit, limit))) - pad,
+                    std::int32_t(std::ceil(clamp(max_x, -limit, limit))) + pad + 1,
+                    std::int32_t(std::ceil(clamp(max_y, -limit, limit))) + pad + 1};
+    Rect rect = intersect(hull, full_rect(viewport));
+    if (empty(rect)) rect = {std::int32_t(viewport.x), std::int32_t(viewport.y), std::int32_t(viewport.x) + 1, std::int32_t(viewport.y) + 1};
+    *out = rect;
+    return Reason::Bound;
+}
+
+// derive's twin for the locked-prefix source: the same precedence (viewport,
+// rows, fill mode, then the positions), the prefix hull instead of the box.
+// positions == nullptr or count 0 means no usable prefix (BoundUnknown).
+inline Region derive_prefix(const float* rows, const float* positions, std::uint32_t count, const Viewport& viewport, bool fill_solid, const Rect& fallback, PrefixHull* info = nullptr) noexcept {
+    Region region{};
+    if (!viewport.width || !viewport.height) { region.reason = Reason::Viewport; region.rect = fallback; return region; }
+    region.rect = full_rect(viewport);
+    if (!rows) { region.reason = Reason::Rows; return region; }
+    if (!fill_solid) { region.reason = Reason::FillMode; return region; }
+    if (!positions || !count) { region.reason = Reason::BoundUnknown; return region; }
+    Rect rect{};
+    PrefixHull hull{};
+    region.reason = project_prefix(rows, positions, count, viewport, &rect, &hull);
+    region.clipped = hull.behind;
+    region.pad = hull.pad;
+    if (info) *info = hull;
+    if (region.reason == Reason::Bound) { region.rect = rect; region.bound = true; }
+    return region;
+}
+
 } // namespace x3m::fade_region
