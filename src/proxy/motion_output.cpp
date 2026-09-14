@@ -2784,7 +2784,11 @@ void MotionOutput::begin_composition_frame() noexcept {
 }
 void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& route) noexcept {
     if (!composition_requested()) return;
-    const bool fade_pair = shadow_.fade_sampler_mask != 0;
+    // A fade pair whose blend state is known off is an ordinary opaque draw
+    // (the station hull pair is mostly drawn opaque): it never enters the
+    // nine-state check, so an unknown other state cannot stop the frame. A
+    // blended or unknown-blend draw is checked as before (fail closed).
+    const bool fade_pair = shadow_.fade_sampler_mask != 0 && !(shadow_.states_known[3] && !shadow_.states[3]);
     bool fade = false;
     if (fade_pair) {
         bool known = true;
@@ -2863,6 +2867,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         return;
     }
     composition_busy_ = false; ++composition_counts_.refused; ++composition_counts_.refusal[5]; ++composition_counts_.prepare_failures;
+    if (fade && capture_) record_fade_refused(route, 5);
     if (required) { composition_frame_stopped_ = true; invalidate_taa(); }
     if (!prepared.state_preserved) {
         composition_state_lost_ = true; composition_frame_stopped_ = true; route.submit = false;
@@ -3226,10 +3231,13 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 // Get, no float formatting (the per-draw line carries the fraction as an
 // integer per mille of the viewport area, or of the target area when the
 // viewport is unknown).
-fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille) noexcept {
+fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only) noexcept {
     using namespace fade_region;
     const Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity};
-    bound = fade_region::resolve(fade_bounds_, query);
+    // The admitted route learns (resolve); the capture-only diagnostic only
+    // peeks: the table's entries, stamps and counters are never touched by a
+    // draw the route did not admit.
+    bound = read_only ? fade_region::peek(fade_bounds_, query) : fade_region::resolve(fade_bounds_, query);
     const auto& v = shadow_.viewport;
     const Viewport viewport{v.x, v.y, v.known ? v.width : 0u, v.known ? v.height : 0u};
     const float* rows = nullptr;
@@ -3264,7 +3272,7 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     Result bound{};
     bool of_viewport = false;
     unsigned permille = 0;
-    const Region region = fade_rectangle(route, bound, of_viewport, permille);
+    const Region region = fade_rectangle(route, bound, of_viewport, permille, false);
     auto& counts = composition_counts_;
     ++counts.region_status[unsigned(bound.status) < unsigned(Status::Count) ? unsigned(bound.status) : 0u];
     if (bound.hit) ++counts.region_hit; else if (bound.status == Status::Bound) ++counts.region_miss;
@@ -3301,17 +3309,18 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
 }
 
 // Capture frames only. The draw was recognised (fade pair in the exact
-// source-over state) and refused by admission; the step-1 rectangle is
-// derived exactly as for an admitted draw (the bound table is resolved, so a
-// capture frame may populate it) and kept as integers. Nothing is composed
-// and no composition counter, witness slot or route field changes.
+// source-over state) and refused by admission (1-5); the step-1 rectangle is
+// derived as for an admitted draw but through the read-only bound lookup
+// (no insert, stamp, poison or eviction) and kept as integers. Nothing is
+// composed and no composition counter, table counter, witness slot or route
+// field changes.
 void MotionOutput::record_fade_refused(const MotionRoute& route, unsigned refusal) noexcept {
     const unsigned slot = fade_refused_count_++;
     if (slot >= fade_refused_capacity) return;
     fade_region::Result bound{};
     bool of_viewport = false;
     unsigned permille = 0;
-    const auto region = fade_rectangle(route, bound, of_viewport, permille);
+    const auto region = fade_rectangle(route, bound, of_viewport, permille, true);
     auto& r = fade_refused_[slot];
     r.vs = shadow_.vs_hash; r.ps = shadow_.ps_hash;
     r.index = std::uint32_t(counters_.draws);

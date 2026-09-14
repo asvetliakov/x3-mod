@@ -51,8 +51,9 @@ whether a composed port still darkens with distance is a separate question (nati
 
 ## 2. Source alpha and the dual PS output
 
-Native: `a = interp(AlphaValue * (b0 ? sat(c41.x − c41.y·d) : 1)) * lrp(EnableGlow, Diffuse.a,
-LightMap.a)`, all `_pp`, one alpha write. With `b0 = 0` and `alpha13c = 0` the vertex factor is
+Native: `a = interp(AlphaValue * (b0 ? sat(c41.x − c41.y·d) : 1)) * (EnableGlow·LightMap.a +
+(1 − EnableGlow)·Diffuse.a)` (the `lrp` selects the lightmap alpha as EnableGlow rises, as the
+oracle `expected_alpha` does), all `_pp`, one alpha write. With `b0 = 0` and `alpha13c = 0` the vertex factor is
 `c39.x` (its captured value and `c3.x` EnableGlow are unread; the run-27 constants reduction
 settles both) and the texture alpha drives `a`. Pool outputs: A/B the untouched native `oC0`
 (RGB source-over, alpha unwritten under mask 7); E `(L, a)` with `L` the standard BUMPMAP linear
@@ -100,9 +101,16 @@ station; 1024 slots, 32-slot windows, eviction counted); `--fade-witness` remain
   1–5 (permission/scene, readiness, readers, frame stop, prepare failure; 0 never occurs, the
   draw is a fade pair in fade state), `node/model/lod` the object context read once at the draw
   without the lifetime lookup (zero when no scope), `bound/reason/status/rect/f_permille/f_of`
-  exactly the `fade_region` fields (the bound table is resolved for the draw, so a capture frame
-  may populate it), `refused_total` the frame's refused count including draws past the 16-record
-  capacity (which have no line). At most 16 lines per frame.
+  exactly the `fade_region` fields, derived through the read-only `BoundTable::peek` (a hit is
+  served from the entry, a miss performs the same validated reads into a local; no insert,
+  stamp, poison or eviction, so `table_used/table_poisoned` never change on a refused draw),
+  `refused_total` the frame's refused count including draws past the 16-record capacity (which
+  have no line). At most 16 lines per frame. An opaque draw of a fade pair (blend known off)
+  is not a candidate: it skips the nine-state check and takes the ordinary route, so an unknown
+  unrelated state cannot stop the frame.
+- Station variants not in the producer set: jitter is exercised only by the region jitter cases
+  (`jitter_1..8`, Asteroid base case), and the fixture textures are single-level, so mip
+  selection is not exercised for any producer.
 
 ## 5. Risks and cost
 
@@ -159,4 +167,16 @@ control fails exactly on 16/19/21/23/27/31. Station paired windows (median delta
 window): 1280×768 1/4/16 DIPs 0.22–0.24 / 0.80–0.82 / 2.12–2.14 ms; 1920×1080 0.27–0.37 /
 1.04–1.15 / 0.48–0.96 ms (the 16-DIP 1080p terminal window is noisy, −1.7 to −2.4 ms).
 `check_no_x87.py build/d3d9.dll` PASS, 224 reachable functions, no violations.
+
+Review fixes (same day, reruns of every check above): the refused-draw diagnostic derives its
+rectangle through the read-only `BoundTable::peek` (host `test_fade_region` 5 OK with five peek
+scenarios: no insert, no poison, no eviction, same box as the learn); a fade pair whose blend
+state is known off skips the nine-state check (ordinary route, no refusal); refusal 5 also
+records the rectangle. Live rerun (34 processes, 57 s): frame 14 adds a *routed* opaque station
+sibling (indexed VB, z row +.8, depth-rejected everywhere: `motion_output_frame` routed/gate5 and
+`linear_material_frame` routed/bump_routed each one above frame 13, gate 4 counts the native
+sibling and the blended sources, no `fade_refused_rect`), and frame 15 checks the composed
+pixel outside the overwrite survives bit for bit as the oracle-checked sample. Station paired
+windows (source window): 1280×768 0.15–0.24 / 0.78–0.80 / 2.10–2.12 ms; 1920×1080 0.36–0.37 /
+1.12–1.17 / 0.51–1.23 ms. Detached rerun unchanged (78 cases, 8.5 s).
 

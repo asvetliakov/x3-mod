@@ -34,6 +34,7 @@ BOOTSTRAP=('vs_53a0a641107ed76c.bin','ps_8759c7838bbc86c2.bin')
 FADE_PAIRS=tuple(material.PAIRS[110:116])+(material.PAIRS[component.STATION_PAIR],)
 STATION_PAIR=6
 STATION_SIBLING_PS='0c1f3f0f440e4a0c'
+STATION_SURVIVOR=(32,32)  # frame 15: composed pixel outside the overwrite, the frame's sample point
 STATION_ALPHA=.068359375  # AlphaValue .625 x fog .25 x lrp(EnableGlow .25, Diffuse.a .5, LightMap.a .25)
 STATION_FRAMES=(14,15,16,17)
 EMISSION_PAIR=('d5e1c75351ed3f04','8360f422de08b5bd')
@@ -223,9 +224,19 @@ def source_plan(frame):
 
 
 def station_opaque_draws(frame):
-    """Native opaque station draws of a frame: the sibling before the source (14),
-    the overwrite of the left half after it (15)."""
-    return [('sibling',(8,16,40,48))] if frame==14 else [('overwrite',(8,16,24,48))] if frame==15 else []
+    """Opaque station draws of a frame as (kind, rect, routed): frame 14 the
+    depth-rejected routed sibling (ordinary converted route, no pixel) and the
+    visible native sibling before the source; frame 15 the native overwrite of
+    the left half after it."""
+    return [('routed_sibling',(8,16,40,48),1),('sibling',(8,16,40,48),0)] if frame==14 else [('overwrite',(8,16,24,48),0)] if frame==15 else []
+
+
+def routed_station_draws(frame):
+    return sum(1 for _,_,routed in station_opaque_draws(frame) if routed)
+
+
+def native_station_draws(frame):
+    return sum(1 for _,_,routed in station_opaque_draws(frame) if not routed)
 
 
 def validate_station(output,trace,fade,emission=1):
@@ -237,11 +248,32 @@ def validate_station(output,trace,fade,emission=1):
     else) plus the native opaque station draws plus, with emission off, the
     frame's emission sources."""
     rows=[fields(line) for line in output.splitlines() if line.startswith('FADE_STATION ')]
-    assert [(int(r['frame']),r['kind'],tuple(map(int,r['rect'].split(',')))) for r in rows]==[(f,k,rect) for f in STATION_FRAMES for k,rect in station_opaque_draws(f)],'station opaque draws'
+    assert [(int(r['frame']),r['kind'],tuple(map(int,r['rect'].split(','))),int(r['routed'])) for r in rows]==[(f,k,rect,routed) for f in STATION_FRAMES for k,rect,routed in station_opaque_draws(f)],'station opaque draws'
+    samples={(int(r['frame']),int(r['source'])):r for r in (fields(line) for line in output.splitlines() if line.startswith('FADE_SAMPLE '))}
     for r in rows:
-        assert int(r['native'])==1 and int(r['routed'])==0 and int(r['hr'],16)==0
-        assert int(r['changed'])>0 and int(r['outside_changed'])==0,(r['frame'],'opaque station draw confined to its scissor')
-    result=dict(opaque_draws=[dict(frame=int(r['frame']),kind=r['kind'],rect=r['rect'],changed=int(r['changed'])) for r in rows])
+        assert int(r['native'])==1 and int(r['hr'],16)==0 and int(r['outside_changed'])==0,(r['frame'],'opaque station draw confined to its scissor')
+        assert (int(r['survivor_x']),int(r['survivor_y']))==STATION_SURVIVOR
+        if int(r['routed']):assert int(r['changed'])==0 and int(r['survivor_exact'])==1,(r['frame'],'routed opaque sibling is depth-rejected everywhere')
+        else:assert int(r['changed'])>0,(r['frame'],'visible opaque station draw')
+        if r['kind']=='overwrite':
+            # The composed pixel outside the overwrite survives bit for bit: the
+            # oracle-checked FADE_SAMPLE value of the frame's station source.
+            assert int(r['survivor_exact'])==1 and rgba(r['survivor'])==rgba(samples[(int(r['frame']),0)]['after']),(r['frame'],'composed station pixel survives the opaque overwrite')
+    result=dict(opaque_draws=[dict(frame=int(r['frame']),kind=r['kind'],rect=r['rect'],routed=int(r['routed']),changed=int(r['changed']),survivor_exact=int(r['survivor_exact'])) for r in rows])
+    # The routed sibling takes the ordinary converted route: against frame 13
+    # (the ordinary object alone) the frame routes one more draw at gate 5 (the
+    # seam's unknown scope) and the linear material route converts one more
+    # BUMP draw; the native siblings and the blended sources stop at gate 4.
+    # No capture frame records a refused station rectangle.
+    motion=indexed(trace.splitlines(),'motion_output_frame ','frame');material=indexed(trace.splitlines(),'linear_material_frame ','frame')
+    base=motion[13];base_material=material[13]
+    for frame in STATION_FRAMES:
+        routed=routed_station_draws(frame);native=native_station_draws(frame);sources=sum(s[0]=='fade' for s in source_plan(frame)) # emission sources are not a motion pair (gate 3)
+        row=motion[frame];mat=material[frame]
+        assert int(row['routed'])==int(base['routed'])+routed and int(row['gate5'])==int(base['gate5'])+routed,(frame,'routed opaque station sibling through the ordinary route',row['routed'],row['gate5'])
+        assert int(row['gate4'])==int(base['gate4'])+native+sources,(frame,'native siblings and blended sources refused at gate 4',row['gate4'])
+        assert int(mat['routed'])==int(base_material['routed'])+routed and int(mat['bump_routed'])==int(base_material['bump_routed'])+routed and int(mat['refused'])==int(base_material['refused']),(frame,'routed sibling converted as an ordinary BUMP material draw',mat)
+    assert not any(line.startswith('fade_refused_rect ') for line in trace.splitlines()),'admitted station sources never record a refused rectangle'
     if not fade:return result
     frames=indexed(trace.splitlines(),'linear_composition_frame ','frame')
     refusals=indexed(trace.splitlines(),'linear_composition_refusals ','frame')
@@ -254,7 +286,7 @@ def validate_station(output,trace,fade,emission=1):
         histogram[frame]={k:int(ref[k]) for k in ('pair','permission_scene','readiness','readers','frame_stop','preparation')}
     baseline=int(refusals[18]['pair'])
     for frame in STATION_FRAMES:
-        extra=len(station_opaque_draws(frame))+(0 if emission else sum(s[0]=='emission' for s in source_plan(frame)))
+        extra=native_station_draws(frame)+(0 if emission else sum(s[0]=='emission' for s in source_plan(frame)))
         assert histogram[frame]['pair']==baseline+extra,(frame,'only the native opaque station draws (and unrequested emission sources) are refused as non-producer pairs',histogram[frame]['pair'],baseline,extra)
     result.update(refusal_histogram=histogram,pair_refusal_baseline=baseline,admitted_sources=sum(len([s for s in source_plan(f) if s[0]=='fade']) for f in STATION_FRAMES))
     return result
@@ -435,7 +467,9 @@ def validate_functional(output,trace,fade,emission,lazy,rect=None):
         assert status[10]==status[4]-status[27],'exchanged controls are the emission ones; in-place fade never exchanges'
         assert status[28]==status[15],'in-place Linear completions are the fade linear ones'
         assert status[29]==expected_region_pixels(frame,fade,emission,rect),(frame,'region pixels actually composed',status[29])
-        assert status[12]==int(row['draws'])==len(expected),'each original source DIP is submitted once'
+        # Key 12 counts every submitted indexed DIP: the sources plus frame 14's
+        # routed (indexed) opaque sibling; the user-memory siblings are not DIPs.
+        assert status[12]==len(expected)+routed_station_draws(frame) and int(row['draws'])==len(expected),'each original source DIP is submitted once'
         assert status[13]==sum(s['kind']=='fade' for s in expected)*bool(fade)
         completed=[s['hr'] for s in expected if s['prepared']]
         assert status[11]==(completed[-1] if completed else 1),'last composed source HRESULT; S_FALSE before any prepared source'

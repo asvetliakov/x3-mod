@@ -24,11 +24,11 @@
     "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/build/distance-fade/composite.bin"
   ],
   "input_sha256": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/build/distance-fade/linear_material_fixture.exe": "afb1ab519a62dfb293c5f90998c0bc138296f90338321a69040af8b6871c6255",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/build/distance-fade/linear_material_fixture.exe": "eb72180ac6ddf1785a634a86856697f7867db70680efcf3485d71fa8e0cc12e4",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/build/distance-fade/composite.bin": "7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d",
     "/private/tmp/claude-501/-Users-asvetl-x3-mod/9ab70aa1-3c5b-44da-a2e5-61f9c98afa48/scratchpad/fade-gpu-station1/cases.bin": "159de6b4ab1890391ba958fd76f3154ca06f227d961eabada657200a9f595db6",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/renderer/linear_material.cpp": "f89fd94f7a0861b5562472a1e38690c0728de0ece047e3aa6c9ff8a0621cdcb6",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/renderer/linear_distance_fade.h": "ccc7d9c75f4ba0aa5d4e4a680857b04a250b4506a47b4cda375b4363f49ea06f",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/renderer/linear_distance_fade.h": "92c73456d5980cf0c7a5400645fa33958f69be94b2040e7061d6073f460bb2ed",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/renderer/linear_emission_pass.cpp": "cdbc2e3c83ec02107e3029e580d8be196826a49753b69af6280ff37a12a95356",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/renderer/linear_emission_pass.h": "d55d7d11f173d709f95d0b0be17d9c2fe55b92114bf395c0ee914ddedc3e550a",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/linear_material_fixture.cpp": "6798ec96d09534b6effda105e4baddad8574a7235fb7d2a85f7c1bea25b0a6fa",
@@ -36,8 +36,8 @@
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/linear_distance_fade_fixture_inc.h": "821b75594cdb8cf3564431e97ed1558ebff748aa638785231e13349aedc00f2c",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/linear_distance_fade_composite_inc.h": "17e078372527cb62cf461495bc0f46ef89f18f0b9c85ea4a44091ce207778931",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/proxy/fade_region_math.h": "84f5338f4be76ea53defe3a54d84cbbd00fd650e9a5bab101d3312c6059edcc8",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/proxy/fade_region_core.h": "df986c8133bec403002e42a57e3a6ab08976de5f6b0a04b3ff6ac1cdd724dcd0",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/run_linear_distance_fade.py": "2617dcc43d886824863e18077da31ef8e7d3556dfad0c8fce6e5047f296ed50b",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/src/proxy/fade_region_core.h": "5799de2f873a628499bc1788e003bef6d539fc0866fb474485ffb0536f904132",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/run_linear_distance_fade.py": "58ad238864f8e961ca7f81591eae34f624541c181cc434a4dd94ed42bedf0d26",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/linear_material_reference.py": "43b3a8fbf5cb15c90600047f19fe8a9dd6b4455a69dd70d288bd9eaadaab7bb2",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5c835b1b28482adb/verification/probe/run_linear_material.py": "71fa3ba7d2ec24a7a01a87ceb27be65371ad0d084b77df4017efad404192d048",
     "/private/tmp/x3-shader-sweep/programs/vs_b0602757fce6e870.bin": "33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785",
@@ -62,7 +62,7 @@
   },
   "composite_bytes": 572,
   "exit_code": 0,
-  "wall_seconds": 9.113856583,
+  "wall_seconds": 8.461253375,
   "cases": 78,
   "source_calls": 264,
   "region_cases": 29,
@@ -116,9 +116,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.4112,
-      "min_ms": 0.4063,
-      "max_ms": 0.4184
+      "median_ms": 0.415,
+      "min_ms": 0.4107,
+      "max_ms": 0.4337
     },
     {
       "width": 1280,
@@ -126,9 +126,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 0.9243,
-      "min_ms": 0.9206,
-      "max_ms": 0.9337
+      "median_ms": 0.9392,
+      "min_ms": 0.9238,
+      "max_ms": 1.0152
     },
     {
       "width": 1280,
@@ -136,9 +136,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 2.3059,
-      "min_ms": 2.2559,
-      "max_ms": 2.3766
+      "median_ms": 2.3308,
+      "min_ms": 2.2613,
+      "max_ms": 2.4983
     },
     {
       "width": 1280,
@@ -146,9 +146,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.4168,
-      "min_ms": 0.4097,
-      "max_ms": 0.4191
+      "median_ms": 0.4155,
+      "min_ms": 0.4076,
+      "max_ms": 0.4431
     },
     {
       "width": 1280,
@@ -156,9 +156,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.9562,
-      "min_ms": 0.9298,
-      "max_ms": 1.0384
+      "median_ms": 0.9346,
+      "min_ms": 0.9226,
+      "max_ms": 0.9781
     },
     {
       "width": 1280,
@@ -166,9 +166,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 2.4255,
-      "min_ms": 2.3917,
-      "max_ms": 2.506
+      "median_ms": 2.4652,
+      "min_ms": 2.4065,
+      "max_ms": 2.4812
     },
     {
       "width": 1280,
@@ -176,9 +176,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 1.0223,
-      "min_ms": 0.8624,
-      "max_ms": 1.1098
+      "median_ms": 0.957,
+      "min_ms": 0.8734,
+      "max_ms": 0.9802
     },
     {
       "width": 1280,
@@ -186,9 +186,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 2.9612,
-      "min_ms": 2.8051,
-      "max_ms": 3.3082
+      "median_ms": 2.7261,
+      "min_ms": 2.3435,
+      "max_ms": 3.0069
     },
     {
       "width": 1280,
@@ -196,9 +196,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 4.4179,
-      "min_ms": 4.2392,
-      "max_ms": 5.7401
+      "median_ms": 4.2552,
+      "min_ms": 4.196,
+      "max_ms": 4.4877
     },
     {
       "width": 1280,
@@ -206,9 +206,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.2772,
-      "min_ms": 0.2684,
-      "max_ms": 0.41
+      "median_ms": 0.2895,
+      "min_ms": 0.2786,
+      "max_ms": 0.4126
     },
     {
       "width": 1280,
@@ -216,9 +216,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 0.5307,
-      "min_ms": 0.5087,
-      "max_ms": 0.628
+      "median_ms": 0.569,
+      "min_ms": 0.5202,
+      "max_ms": 0.6475
     },
     {
       "width": 1280,
@@ -226,9 +226,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 1.8202,
-      "min_ms": 1.7454,
-      "max_ms": 1.9726
+      "median_ms": 1.8841,
+      "min_ms": 1.8291,
+      "max_ms": 2.1108
     },
     {
       "width": 1280,
@@ -236,9 +236,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.2862,
-      "min_ms": 0.2777,
-      "max_ms": 0.3379
+      "median_ms": 0.2827,
+      "min_ms": 0.2783,
+      "max_ms": 0.2885
     },
     {
       "width": 1280,
@@ -246,9 +246,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.577,
-      "min_ms": 0.5302,
-      "max_ms": 0.6513
+      "median_ms": 0.5583,
+      "min_ms": 0.5278,
+      "max_ms": 0.5705
     },
     {
       "width": 1280,
@@ -256,9 +256,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 1.8619,
-      "min_ms": 1.7836,
-      "max_ms": 1.9778
+      "median_ms": 1.8774,
+      "min_ms": 1.8035,
+      "max_ms": 1.9653
     },
     {
       "width": 1280,
@@ -266,9 +266,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 0.5474,
-      "min_ms": 0.5432,
-      "max_ms": 0.5543
+      "median_ms": 0.5441,
+      "min_ms": 0.54,
+      "max_ms": 0.548
     },
     {
       "width": 1280,
@@ -276,9 +276,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 1.3298,
-      "min_ms": 1.3012,
-      "max_ms": 1.3386
+      "median_ms": 1.332,
+      "min_ms": 1.3044,
+      "max_ms": 1.4487
     },
     {
       "width": 1280,
@@ -286,9 +286,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 4.0603,
-      "min_ms": 4.0075,
-      "max_ms": 4.0968
+      "median_ms": 4.1245,
+      "min_ms": 4.0628,
+      "max_ms": 4.155
     },
     {
       "width": 1920,
@@ -296,9 +296,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.6715,
-      "min_ms": 0.6657,
-      "max_ms": 0.8019
+      "median_ms": 0.6869,
+      "min_ms": 0.6644,
+      "max_ms": 0.8057
     },
     {
       "width": 1920,
@@ -306,9 +306,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 1.9625,
-      "min_ms": 1.9412,
-      "max_ms": 2.0954
+      "median_ms": 1.9536,
+      "min_ms": 1.9356,
+      "max_ms": 2.0645
     },
     {
       "width": 1920,
@@ -316,9 +316,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 6.5165,
-      "min_ms": 6.4381,
-      "max_ms": 6.5838
+      "median_ms": 6.4791,
+      "min_ms": 6.4551,
+      "max_ms": 6.5523
     },
     {
       "width": 1920,
@@ -326,9 +326,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.6747,
-      "min_ms": 0.6696,
-      "max_ms": 0.7045
+      "median_ms": 0.6754,
+      "min_ms": 0.6699,
+      "max_ms": 0.6973
     },
     {
       "width": 1920,
@@ -336,9 +336,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 2.0808,
-      "min_ms": 1.973,
-      "max_ms": 2.0939
+      "median_ms": 2.1078,
+      "min_ms": 2.0607,
+      "max_ms": 2.1251
     },
     {
       "width": 1920,
@@ -346,9 +346,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 6.7182,
-      "min_ms": 6.6938,
-      "max_ms": 6.817
+      "median_ms": 6.7465,
+      "min_ms": 6.6611,
+      "max_ms": 6.8201
     },
     {
       "width": 1920,
@@ -356,9 +356,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 1.0594,
-      "min_ms": 1.0506,
-      "max_ms": 1.0669
+      "median_ms": 1.0739,
+      "min_ms": 1.0574,
+      "max_ms": 1.0849
     },
     {
       "width": 1920,
@@ -366,9 +366,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 3.374,
-      "min_ms": 3.3431,
-      "max_ms": 3.4101
+      "median_ms": 3.3937,
+      "min_ms": 3.3658,
+      "max_ms": 3.5105
     },
     {
       "width": 1920,
@@ -376,9 +376,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 12.2554,
-      "min_ms": 12.1535,
-      "max_ms": 12.3375
+      "median_ms": 12.2979,
+      "min_ms": 12.1336,
+      "max_ms": 12.3465
     },
     {
       "width": 1920,
@@ -386,9 +386,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.2867,
-      "min_ms": 0.2706,
-      "max_ms": 0.4057
+      "median_ms": 0.2865,
+      "min_ms": 0.2772,
+      "max_ms": 0.4199
     },
     {
       "width": 1920,
@@ -396,9 +396,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 0.5741,
-      "min_ms": 0.5156,
-      "max_ms": 0.6563
+      "median_ms": 0.552,
+      "min_ms": 0.5134,
+      "max_ms": 0.6634
     },
     {
       "width": 1920,
@@ -406,9 +406,9 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 1.864,
-      "min_ms": 1.6943,
-      "max_ms": 2.092
+      "median_ms": 1.8409,
+      "min_ms": 1.756,
+      "max_ms": 1.8866
     },
     {
       "width": 1920,
@@ -416,9 +416,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.3148,
-      "min_ms": 0.284,
-      "max_ms": 0.4479
+      "median_ms": 0.2912,
+      "min_ms": 0.28,
+      "max_ms": 0.3237
     },
     {
       "width": 1920,
@@ -426,9 +426,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.5588,
-      "min_ms": 0.5212,
-      "max_ms": 0.6538
+      "median_ms": 0.5676,
+      "min_ms": 0.5233,
+      "max_ms": 0.6523
     },
     {
       "width": 1920,
@@ -436,9 +436,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 1.8244,
-      "min_ms": 1.7777,
-      "max_ms": 1.8522
+      "median_ms": 1.8661,
+      "min_ms": 1.7774,
+      "max_ms": 1.9067
     },
     {
       "width": 1920,
@@ -446,9 +446,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 1.0632,
-      "min_ms": 1.0471,
-      "max_ms": 1.0798
+      "median_ms": 1.0565,
+      "min_ms": 1.0483,
+      "max_ms": 1.1697
     },
     {
       "width": 1920,
@@ -456,9 +456,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 3.38,
-      "min_ms": 3.3456,
-      "max_ms": 3.385
+      "median_ms": 3.3911,
+      "min_ms": 3.3777,
+      "max_ms": 3.5244
     },
     {
       "width": 1920,
@@ -466,9 +466,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 12.4455,
-      "min_ms": 12.2317,
-      "max_ms": 12.6021
+      "median_ms": 12.219,
+      "min_ms": 12.1418,
+      "max_ms": 12.3588
     }
   ],
   "timing_scope": "EVENT-fenced windows of prepare/source/finish(/exchange) per frame on the detached device; M clear outside the window; not game FPS",

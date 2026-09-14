@@ -709,7 +709,7 @@ private:
     // fill mode, clip to the owning target); the counters, witness and log
     // stay in derive_fade_region. Shared by the admitted route and the
     // capture-only refused-draw diagnostic.
-    fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille) noexcept;
+    fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only) noexcept;
     void record_fade_refused(const MotionRoute& route, unsigned refusal) noexcept;
     void log_fade_refused() noexcept;
     void witness_readback() noexcept;       // Present boundary, every k-th frame, one bounded readback

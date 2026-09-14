@@ -152,7 +152,7 @@ def source_alpha(c):
     f32=lambda x:struct.unpack('<f',struct.pack('<f',x))[0]
     a=f32(c['diffuse'][3])
     if c['pair']==STATION_PAIR:
-        # Native: AlphaValue * fog * lrp(EnableGlow, Diffuse.a, LightMap.a).
+        # Native: AlphaValue * fog * (EnableGlow * LightMap.a + (1 - EnableGlow) * Diffuse.a).
         glow=f32(c['glow'])
         a=f32(station_alpha_value(c))*(glow*f32(c['lightmap'][3])+(1-glow)*a)
     if c['flags']&material.FOG:

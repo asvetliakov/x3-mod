@@ -155,8 +155,10 @@ int run() {
     scope_depth = 0; reset_memory(); scope_depth = 0;
     print("no_scope", t.resolve(query, env), t);
     reset_memory();
+    print("peek_miss", t.peek(query, env), t);        // same five reads, nothing inserted: used stays 0
     print("miss_learn", t.resolve(query, env), t);   // reads: head, aabb, back, record0, record1
     print("hit", t.resolve(query, env), t);           // no reads
+    print("peek_hit", t.peek(query, env), t);         // served from the entry, no reads, no stamp
     print("wrapper_learn", t.resolve(Query{109, 209, vb, ib}, env), t);
     print("wrapper_mismatch", t.resolve(Query{109, 209, other_vb, other_ib}, env), t); // same ids, other identities: poison, never a hit
     reset_memory();
@@ -169,9 +171,11 @@ int run() {
     print("no_record", t.resolve(Query{103, 203, vb, ib}, env), t);
     reset_memory();
     contents[0].revision = 8;                          // VB rewritten after first sight
+    print("peek_invalid", t.peek(query, env), t);     // reports Poisoned without poisoning: poisoned counter unchanged
     print("poison_revision", t.resolve(query, env), t);
     contents[0].revision = 7;
     print("poisoned_stays", t.resolve(query, env), t);
+    print("peek_poisoned", t.peek(query, env), t);    // poisoned entry: Poisoned, hit, no change
     print("ib_mismatch_new", t.resolve(Query{104, 204, vb, ib}, env), t);   // learns a fresh entry (different VB id)
     print("ib_mismatch_hit", t.resolve(Query{104, 205, vb, ib}, env), t);   // same VB id, different IB id: poison
     contents[1].known = false;
@@ -194,6 +198,7 @@ int run() {
     BoundTable e; e.reserve();
     for (unsigned i = 0; i < BoundTable::probe_window; ++i) { const Result r = e.resolve(Query{ids[i], 202, vb, ib}, env); if (r.status != Status::Bound || r.evicted) return 4; }
     contents[0].revision = 9; (void)e.resolve(Query{ids[1], 202, vb, ib}, env); contents[0].revision = 7; // poison ids[1]
+    print("peek_window_full", e.peek(Query{ids[BoundTable::probe_window], 202, vb, ib}, env), e); // a miss on a full window derives without evicting
     print("window_full", e.resolve(Query{ids[BoundTable::probe_window], 202, vb, ib}, env), e); // evicts ids[0], the oldest unpoisoned
     print("evicted_relearn", e.resolve(Query{ids[0], 202, vb, ib}, env), e);                     // ids[0] is gone: a miss that evicts again
     print("poisoned_kept", e.resolve(Query{ids[1], 202, vb, ib}, env), e);                       // ids[1] still poisoned

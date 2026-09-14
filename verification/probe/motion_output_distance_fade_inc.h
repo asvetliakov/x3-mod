@@ -198,13 +198,21 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
     // off, Z-write on, colour mask 15, through a user-memory DIP (never
     // routed). Counts the changed pixels inside its scissor and requires the
     // rest of A untouched.
-    const auto station_opaque=[&](const char* kind,const RECT& rect) {
+    // `routed`: the same opaque draw through the indexed VB with the rows'
+    // z row offset by +.8 (z .9 behind the ordinary object at .5): the route
+    // evaluates and routes it as an ordinary converted draw (its motion_route
+    // line says so) while the depth test rejects every pixel, so A, RT1 and
+    // RT2 (the fixture's oracle) stay untouched. The survivor point is the
+    // frame's sample point, compared before/after the draw.
+    const auto station_opaque=[&](const char* kind,const RECT& rect,bool routed) {
         bind_source(station_pair,false,false,0,false);
         api(f.d->SetPixelShader(pixel[station_sibling_pixel].p),"station sibling PS");
         api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE),"station opaque blend off");api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"station opaque Z-write");
         api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"station opaque mask");api(f.d->SetScissorRect(&rect),"station opaque scissor");
+        if(routed){const float behind[4]={0,0,1,.8f};api(f.d->SetVertexShaderConstantF(26,behind,1),"station routed z row");}
         const auto before=scene();
-        const HRESULT hr=f.d->DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST,0,4,2,triangles,D3DFMT_INDEX16,quad,sizeof(SourceVertex));
+        const unsigned sx=f.W/2,sy=f.H/2,si=(sy*f.W+sx)*4;
+        const HRESULT hr=routed?f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2):f.d->DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST,0,4,2,triangles,D3DFMT_INDEX16,quad,sizeof(SourceVertex));
         ++f.draw_index;require(SUCCEEDED(hr),"station opaque draw");
         const auto after=scene();
         unsigned changed=0,outside_changed=0;
@@ -213,9 +221,13 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
             const bool same=!std::memcmp(&before[i],&after[i],16);
             if(covered)changed+=!same;else outside_changed+=!same;
         }
-        std::printf("FADE_STATION frame=%llu kind=%s rect=%ld,%ld,%ld,%ld native=1 routed=0 hr=%08lx changed=%u outside_changed=%u\n",f.frame,kind,rect.left,rect.top,rect.right,rect.bottom,hr,changed,outside_changed);
-        require(changed>0&&outside_changed==0,"station opaque draw confined to its scissor");
-        api(f.d->SetIndices(nullptr),"station opaque index release");api(f.d->SetStreamSource(0,nullptr,0,0),"station opaque stream release");
+        const bool survivor_exact=!std::memcmp(&before[si],&after[si],16);
+        std::printf("FADE_STATION frame=%llu kind=%s rect=%ld,%ld,%ld,%ld native=1 routed=%u draw_index=%u hr=%08lx changed=%u outside_changed=%u survivor_x=%u survivor_y=%u survivor_exact=%u survivor=%.17g,%.17g,%.17g,%.17g\n",
+                    f.frame,kind,rect.left,rect.top,rect.right,rect.bottom,unsigned(routed),f.draw_index,hr,changed,outside_changed,sx,sy,unsigned(survivor_exact),after[si],after[si+1],after[si+2],after[si+3]);
+        if(routed)require(changed==0&&outside_changed==0,"routed opaque station draw is depth-rejected everywhere");
+        else require(changed>0&&outside_changed==0,"station opaque draw confined to its scissor");
+        if(!routed)api(f.d->SetIndices(nullptr),"station opaque index release");
+        api(f.d->SetStreamSource(0,nullptr,0,0),"station opaque stream release");
     };
     for(unsigned plan=0;plan<frames;++plan) {
         f.frame_begin();f.linear_material_inputs();f.write_reserved();
@@ -261,12 +273,12 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
         const bool source_failure=qualified&&(plan==25||plan==32);
         std::vector<float> expected_mask(std::size_t(f.W)*f.H*4,0);
         const RECT station_rect{LONG(f.W/8),LONG(f.H/4),LONG(5*f.W/8),LONG(3*f.H/4)};
-        if(qualified&&plan==14)station_opaque("sibling",station_rect);
+        if(qualified&&plan==14){station_opaque("routed_sibling",station_rect,true);station_opaque("sibling",station_rect,false);}
         auto before=scene();
         for(unsigned source=0;source<issued;++source) {
             const bool emission=source==1?second_emission:first_emission;
             const bool failed=source_failure&&source==(plan==25?0u:2u),zero=plan==1;
-            const double fade_alpha=pair==station_pair?.068359375:.078125; // AlphaValue .625 x fog .25 x lrp(EnableGlow, Diffuse.a, LightMap.a)
+            const double fade_alpha=pair==station_pair?.068359375:.078125; // AlphaValue .625 x fog .25 x (EnableGlow .25 x LightMap.a .25 + .75 x Diffuse.a .5)
             // As in the qualified emission fixture, the second additive source
             // uses .25 so the FP16 destination sum remains exactly representable.
             const float emission_alpha=source>=2?.25f:.125f;
@@ -326,7 +338,7 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
         }
         // Frame 15: an opaque draw (Z-write on) overwrites the left half of the
         // composed station source; M keeps the source footprint.
-        if(qualified&&plan==15)station_opaque("overwrite",RECT{station_rect.left,station_rect.top,LONG(3*f.W/8),station_rect.bottom});
+        if(qualified&&plan==15)station_opaque("overwrite",RECT{station_rect.left,station_rect.top,LONG(3*f.W/8),station_rect.bottom},false);
         f.emission_reference_color=scene();
         raw(3,f.emission_reference_mask);
         f.emission_mask_valid=required&&f.emission_status(f.d.p,1);

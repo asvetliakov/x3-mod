@@ -128,11 +128,38 @@ public:
             out.vb_revision = vb_revision; out.ib_revision = ib_revision;
             if (!valid) { entry->poisoned = true; ++poisoned_; out.poisoned_now = true; out.status = Status::Poisoned; return out; }
         } else if (!learn(query, descriptor, env, out)) return out;
-        for (unsigned a = 0; a < 3; ++a) {
-            out.box.centre[a] = double(out.aabb[a]) * layout::units;
-            out.box.half[a] = double(out.aabb[3 + a]) * layout::units;
+        finish(out);
+        return out;
+    }
+    // Read-only twin of resolve for diagnostics (the capture-only refused-draw
+    // rectangle): the same scope, probe and validation, but no clock, stamp,
+    // poison, insert or eviction. A hit is served from the entry (an invalid
+    // one reports Poisoned without poisoning it); a miss performs the same
+    // validated reads into `out` only. Table counters never change.
+    Result peek(const Query& query, const Environment& env) const noexcept {
+        Result out{};
+        if (!entries_) { out.status = Status::NoTable; return out; }
+        std::uintptr_t descriptor = 0; std::uint32_t depth = 0;
+        const bool scoped = env.scope(&descriptor, &depth) && descriptor && depth;
+        out.depth = depth; out.descriptor = descriptor;
+        if (!scoped || !query.vb_id || !query.ib_id || !query.vb || !query.ib) { out.status = Status::NoScope; return out; }
+        if (const Entry* entry = find(query.vb_id)) {
+            out.hit = true; out.part = entry->part;
+            std::memcpy(out.aabb, entry->aabb, sizeof out.aabb);
+            if (entry->poisoned) { out.status = Status::Poisoned; return out; }
+            std::uint64_t vb_revision = 0, ib_revision = 0;
+            const bool valid = entry->ib == query.ib_id && entry->descriptor == descriptor
+                && entry->vb_wrapper == query.vb && entry->ib_wrapper == query.ib
+                && env.content(query.vb, &vb_revision) && env.content(query.ib, &ib_revision)
+                && vb_revision == entry->vb_revision && ib_revision == entry->ib_revision;
+            out.vb_revision = vb_revision; out.ib_revision = ib_revision;
+            if (!valid) { out.status = Status::Poisoned; return out; }
+        } else {
+            std::uintptr_t part = 0; std::uint64_t vb_revision = 0, ib_revision = 0;
+            if (!read_box(query, descriptor, env, out, part, vb_revision, ib_revision)) return out;
+            out.vb_revision = vb_revision; out.ib_revision = ib_revision;
         }
-        out.status = Status::Bound;
+        finish(out);
         return out;
     }
 private:
@@ -157,25 +184,22 @@ private:
         }
         return nullptr;
     }
-    // A free slot in the window, else the oldest unpoisoned entry, else the
-    // oldest poisoned one. Never null; chosen before any game read, committed
-    // by learn only after every read and lookup succeeded.
-    Entry* slot_for(std::uint64_t vb) noexcept {
-        const std::uint32_t start = slot_of(vb);
-        Entry* oldest = nullptr; Entry* oldest_poisoned = nullptr;
-        for (unsigned i = 0; i < probe_window; ++i) {
-            Entry& e = entries_[(start + i) & (capacity - 1)];
-            if (!e.used) return &e;
-            if (e.poisoned) { if (!oldest_poisoned || e.stamp < oldest_poisoned->stamp) oldest_poisoned = &e; }
-            else if (!oldest || e.stamp < oldest->stamp) oldest = &e;
+    const Entry* find(std::uint64_t vb) const noexcept { return const_cast<BoundTable*>(this)->find(vb); }
+    static void finish(Result& out) noexcept {
+        for (unsigned a = 0; a < 3; ++a) {
+            out.box.centre[a] = double(out.aabb[a]) * layout::units;
+            out.box.half[a] = double(out.aabb[3 + a]) * layout::units;
         }
-        return oldest ? oldest : oldest_poisoned;
+        out.status = Status::Bound;
     }
-    bool learn(const Query& query, std::uintptr_t descriptor, const Environment& env, Result& out) noexcept {
-        Entry* entry = slot_for(query.vb_id); // table checked before any game read
+    // The validated game reads and content lookups of a miss, into `out`
+    // only: no table state is touched. Shared by learn (which then commits
+    // the entry) and peek.
+    static bool read_box(const Query& query, std::uintptr_t descriptor, const Environment& env, Result& out,
+                         std::uintptr_t& part, std::uint64_t& vb_revision, std::uint64_t& ib_revision) noexcept {
         std::uint32_t head[4]{}; // +0 part, +4 (+6 short 1), +8 count (short), +c records
         if (!env.read(descriptor, head, sizeof head)) { out.status = Status::ReadFailed; return false; }
-        const std::uintptr_t part = head[0];
+        part = head[0];
         out.part = part;
         if (!part) { out.status = Status::BackLink; return false; }
         std::int32_t fields[7]{}; std::uint32_t back = 0;
@@ -203,8 +227,27 @@ private:
             matched = std::uintptr_t(buffers[0]) == query.vb && std::uintptr_t(buffers[1]) == query.ib;
         }
         if (!matched) { out.status = Status::NoRecord; return false; }
-        std::uint64_t vb_revision = 0, ib_revision = 0;
         if (!env.content(query.vb, &vb_revision) || !env.content(query.ib, &ib_revision)) { out.status = Status::ContentUnknown; return false; }
+        return true;
+    }
+    // A free slot in the window, else the oldest unpoisoned entry, else the
+    // oldest poisoned one. Never null; chosen before any game read, committed
+    // by learn only after every read and lookup succeeded.
+    Entry* slot_for(std::uint64_t vb) noexcept {
+        const std::uint32_t start = slot_of(vb);
+        Entry* oldest = nullptr; Entry* oldest_poisoned = nullptr;
+        for (unsigned i = 0; i < probe_window; ++i) {
+            Entry& e = entries_[(start + i) & (capacity - 1)];
+            if (!e.used) return &e;
+            if (e.poisoned) { if (!oldest_poisoned || e.stamp < oldest_poisoned->stamp) oldest_poisoned = &e; }
+            else if (!oldest || e.stamp < oldest->stamp) oldest = &e;
+        }
+        return oldest ? oldest : oldest_poisoned;
+    }
+    bool learn(const Query& query, std::uintptr_t descriptor, const Environment& env, Result& out) noexcept {
+        Entry* entry = slot_for(query.vb_id); // table checked before any game read
+        std::uintptr_t part = 0; std::uint64_t vb_revision = 0, ib_revision = 0;
+        if (!read_box(query, descriptor, env, out, part, vb_revision, ib_revision)) return false;
         if (entry->used) { out.evicted = true; ++evictions_; --used_; if (entry->poisoned) --poisoned_; }
         *entry = Entry{};
         entry->used = true; entry->stamp = clock_;
