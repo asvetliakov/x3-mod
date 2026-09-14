@@ -10,6 +10,7 @@ Owning design: `docs/architecture/ambient-occlusion.md`. One entry per run of
 | 2026-09-14 | step 1b (cost reduction) | 109 / 0 failures | 0, 0, 2.4e-4, 2.4e-4, 4.9e-4 (plane, tilted, sphere, corner, step) | ≤ 1 FP16 ulp; plane bit-exact; FP16 store probe: truncate | 1.06 ms first block / 0.51 ms repeat block (floor 0.50) · 1.33 ms (floor 1.23) | PASS; warm 1280×768 chain within the 0.8 ms cap and at the 0.5 ms acceptance, cold block above it |
 | 2026-09-14 | step 1b independent review (Opus, read-only rerun) | 109 / 0 failures | 0, 0, 2.4e-4, 2.4e-4, 4.9e-4 | ≤ 1 FP16 ulp; plane bit-exact; truncate | 0.78 ms first block / 0.53 ms repeat (floor 0.51) · 1.33 ms (floor 1.22) | PASS; math, c0..c7 layout, state/Reset and ledger numbers confirmed; no check removed vs step 1 (+8 per-quad counts, +2 sphere linearize); five low findings listed below, none blocking step 2 |
 | 2026-09-14 | step 1b review fixes (five findings) | 112 / 0 failures (+3 over 109: the 397-slot boundary attach and its detach, the denormal-m32 refusal) | 0, 0, 2.4e-4, 2.4e-4, 4.9e-4 (plane, tilted, sphere, corner, step) | ≤ 1 FP16 ulp; plane and tilted bit-exact; truncate | 1.11 ms first block / 0.75 ms repeat (floor 0.74) · 1.33 ms (floor 1.23) | PASS; bytecode unchanged (blur program sha256 cb9fd497..., 490 words), host tests 4 OK |
+| 2026-09-14 | step 2 (scene-end hook, launcher, timing; debug-view flag added to the pass) | 112 / 0 failures (detached rerun) | 0, 0, 2.4e-4, 2.4e-4, 4.9e-4 | ≤ 1 FP16 ulp; plane and tilted bit-exact; truncate | 0.78 ms first block / 0.59 ms repeat (floor 0.51) · 1.39 ms (floor 1.27) | PASS; live fixture `run_ambient_occlusion_live.py` PASS, 5 twins (ao-on 111 checks, 8/8 frames ran; ao-off 111; ao-fault 111, reason ps_3_0; ao-debug 58; ao-hdr 105, format 113), record `ambient-occlusion-live1.json`; crease law frames 1097/1148 px darkened, max drop 15/17, 1408 sentinel unchanged; timestamp queries unavailable on this backend (CPU wall time only, median 292-652 us at 64x64); `check_no_x87.py build/d3d9.dll` PASS (224 functions, 0 violations); host tests 34 OK; launcher dry run shows `X3M_AMBIENT_OCCLUSION=1` |
 
 Host tests: `test_ambient_occlusion_caps.py`, `test_ambient_occlusion_reference.py`,
 `test_ambient_occlusion_report.py` (4 tests; the reference test records the view-angle-horizon plane
@@ -31,3 +32,12 @@ to 2e-3 relative); the "Bayer noise still averages out" claim in `ao_blur_ps.hls
 covers 7 of the 16 residue cells mod 4 — recounted as 7 while fixing — oracle means moved ≤ 0.002); `finite_params` accepts a denormal m32 that would
 overflow the folded 1/|m32|; the twin slot probe fell to 300 against a 397-slot program. The review rerun
 did not replace the committed record (restored after the run).
+
+Step 2 host tests: `test_ambient_occlusion_live_report.py` (6 tests: the fixture and trace parsers, the
+`ambient_occlusion_frame` grammar, the multiply/fault/off verdicts) and the launcher case
+`test_ambient_occlusion_cli_dependencies_and_defaults` in `test_linear_material_live.py`; the
+linear-material harness gained the AO lifetime stubs (`ao_`, `ao_timing_release`) so
+`test_production_control_flow` still compiles the production `release_resources`/`before_reset`/`after_reset`.
+Live record: `verification/results/bottle-X3/ambient-occlusion-live1.json` (bottle X3, arm64,
+FEX_X87REDUCEDPRECISION=1, WINEMSYNC=1). The run-39/40 capture query and the view-unit check are recorded in
+`docs/architecture/ambient-occlusion.md`, section 8.

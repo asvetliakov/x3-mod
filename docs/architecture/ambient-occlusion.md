@@ -1,7 +1,7 @@
 # Screen-space ambient occlusion on the linear material path
 
-Design note for goal 7 (GTAO/SSAO), written 2026-09-14 at `4ce8fc8` for ratification. Not
-implemented. Roadmap row 7 gate: stable depth interpretation, temporal filtering, correct occlusion
+Design note for goal 7 (GTAO/SSAO), written 2026-09-14 at `4ce8fc8` for ratification; steps 1,
+1b and 2 are implemented (sections at the end). Roadmap row 7 gate: stable depth interpretation, temporal filtering, correct occlusion
 and HUD separation.
 
 
@@ -141,10 +141,20 @@ flicker in motion, HUD unchanged, +0.5 ms median.
 - **Per-view near/far regime**: when `view[0x270] & 0x800000` holds in gameplay and the value of
   `view[0x360]`; a Clear-hook capture of the globals or a bounded disassembly of the writers of
   `+0x360`. Settles the linearization constants (else the defaults).
-- **View units**: read one known ship's fade-route AABB from a capture to pick `R`.
+- **View units**: read one known ship's fade-route AABB from a capture to pick `R`. Result (step 2):
+  inconclusive. The fade-route AABB is a model-local box under a node scale, so it does not give the
+  view-unit size of a known ship; the 0.2 m per view unit calibration of
+  `camera-state-and-frame-routine.md` ("Ambient occlusion inputs") stays the working value and the
+  radius is a launcher option (`--ao-radius <metres>`, default 2) to be tuned in the run.
 - **In-scene HUD**: whether any Z-test-off draw (target boxes, reticle) precedes the scene end; a
   capture query over the `motion_route` draw-state fields (`f4cd0a0`). Depth cannot separate them;
-  phase does. If present, v2's mid-scene bracket is required.
+  phase does. If present, v2's mid-scene bracket is required. Result (runs 39/40, all 12 capture
+  frames): every Z-test-off draw is either among the first 1-5 draws of the frame, before the first
+  scene-bound draw, or after the last main-target draw, where the engine switches to a 640x384 surface;
+  no per-draw scene-end index existed in the capture, which is why step 2 logs the
+  `scene_end_marker frame=F draw_index=N` line on capture frames (the frame's draw counter at the
+  moment the hook sets `hook_scene_end`), so post-hook draws are identifiable by index in the next run.
+  The scene-end placement stands; the mid-scene bracket stays a v2 option.
 
 ## Step 1 — implemented
 
@@ -210,3 +220,61 @@ reports both with the cheapest window of each block. Fidelity and oracles held: 
 offsets cover 7 of the 16 residue cells (mod 4) of the horizon search's 4x4 Bayer pattern, so a tap set
 sees 7 of its 16 values where the separable pair saw all 16; that is not an averaging argument, the
 justification is the measurement above (oracle means moved by at most 0.002).
+
+## Step 2 — implemented
+
+Live placement (2026-09-14). `MotionOutput::scene_end_hook` (`src/proxy/motion_output.cpp`) runs
+`run_ambient_occlusion()` right after the lazy-binding flush (`restore_bindings`) and the
+`hook_scene_end` latch, before `resolve_hdr` / `resolve` (`taa_->run`), so both routes' resolves
+consume the darkened target: on the 8-bit route the owning target is the latched main surface, on
+the FP16 route the HDR target while it is RT0 (`hdr_state_ == Active`), attach keyed on that format
+(A8R8G8B8/X8R8G8B8 or A16B16G16R16F; re-attached when it changes). The pass, its targets and the
+timing queries are created and released under `taa_call`, so `taa_references` accounts for them;
+`before_reset` releases them after RT1/RT2, `after_reset(S_OK)` re-arms, `release_resources`
+detaches. Gates per frame (`reason=`): `taa`, `state_lost`, `msaa`, `no_depth`, `recording`,
+`queries`, `camera`, `target`, `attach` (the pass's capability reason on the one-time
+`ambient_occlusion_device` line), `reset_pending`, `depth_container`, `failed` (the pass restored its
+block and published nothing; up to eight `ambient_occlusion_failed` lines). Inputs: RT2's texture,
+`camera_scene_.m00/m11/m20/m21` from the latch, the default scratch `m22 = 1.000003`,
+`m32 = -6.0000184`, `jitter_index` from the frame counters, radius in metres times 5 units/m.
+Launcher: `--ambient-occlusion` (requires `--motion-output --taa`; `X3M_AMBIENT_OCCLUSION=1`),
+`--ao-radius <metres>` (0.1..100, default 2, `X3M_AO_RADIUS`), `--ao-strength` (0..1, default 0.5,
+`X3M_AO_STRENGTH`), `--ao-debug` (`X3M_AO_DEBUG=1`: the apply quad writes the factor as grayscale,
+blend off; implies timing), `--ao-timing` (`X3M_AO_TIMING=1`). Every switch is written explicitly
+so an inherited value cannot enable it; default off.
+
+Timing (`--ao-timing`/`--ao-debug`): one line per frame,
+`ambient_occlusion_frame device= frame= attached= ran= reason= gpu_us= cpu_us= width= height= radius_px= gpu_frame= applied= result= restore= stage= debug=`.
+`gpu_us` comes from documented D3D9 timestamp queries (`TIMESTAMPDISJOINT` begin/end around
+`TIMESTAMP` end pairs, scaled by `TIMESTAMPFREQ`; two rotating sets polled with `D3DGETDATA_FLUSH`,
+never blocking, so the value is the most recently completed pair and `gpu_frame` names its frame);
+a `CreateQuery` refusal fails closed to CPU wall time (`ambient_occlusion_timing queries=unavailable`,
+`gpu_us=-1`). `cpu_us` is the QPC wall time of the `execute` call. `radius_px` is the half-resolution
+screen radius at 20 m, capped at 64. Outside timing mode the per-frame cost is the chain itself:
+one `GetRenderTarget`, one `GetContainer`, the four quads and the block capture/restore; no per-draw
+work. The CrossOver Preview backend refuses the timestamp query types (D3DERR_NOTAVAILABLE), so the
+live fixture records CPU time only; native D3D9 drivers generally provide them (unverified here).
+
+Live fixture `verification/probe/run_ambient_occlusion_live.py` (`aohook` script of
+`motion_output_fixture.cpp`, 64x64, fixture-seam DLL, record
+`verification/results/bottle-X3/ambient-occlusion-live1.json`). Scene: the flat frames of the hook
+script (fronto-parallel planes: the factor is the exact identity, and the main target after the hook
+equals the reference resolve byte for byte, i.e. the AO-off image) and a crease frame (object A drawn
+twice with perspective terms p = +-1.5 so the Z test keeps the nearer plane on each side of ox = 0:
+a concave crease with slope about 1.2, sentinel columns beyond |ndc x| > 2/3). On the frames without
+history (the first after each Reset) the presented image is the multiplied scene, checked per pixel
+against the main target read before the hook: sentinel pixels bit-identical, every channel within
+[floor(b (1-s)^(1/2.2)) - 1, b], darkening present and concentrated in the centre band. Twins: ao-on
+(1097/1148 pixels darkened on the two law frames, maximum drop 15/17 codes, centre-band mean 5.3/5.0
+codes against 0 in the outer band, 1408 sentinel pixels unchanged, 8/8 frames `ran=1 applied=1`),
+ao-off (bit-identical, no AO lines), ao-fault (`X3M_FIXTURE_AO_FAULT=attach` lowers the shader model:
+`ambient_occlusion_device attached=0 reason=ps_3_0`, all frames `reason=attach`, crease frames
+bit-identical), ao-debug (gray factor, sentinel 255, above the floor, 1360/1369 pixels below 255,
+maximum 27/31 codes), ao-hdr (attach on format 113, identity on the flat frames, 8/8 ran). Two Resets
+per twin; the fixture's state snapshot around the hook shows no difference in any frame. Fixture cost
+at 64x64 on this backend: median `cpu_us` 292-652 per twin, minimum 116-184 (the frame after an
+attach or Reset pays the target/block creation, 10-15 ms). The game-size cost is the detached
+fixture's (below).
+
+Detached fixture rerun after the debug-view flag (step 1b chain unchanged otherwise): 112 checks, 0
+failures; 1280x768 0.78 ms first block / 0.59 ms repeat (floor 0.51), 1920x1080 1.39 ms.

@@ -29,6 +29,7 @@
 #include "../renderer/motion_history.h"
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
+#include "../renderer/ambient_occlusion_pass.h"
 #include "../renderer/hdr_pass.h"
 #include "../renderer/linear_material.h"
 #include "linear_cutout.h"
@@ -195,6 +196,18 @@ struct MotionFrameCounters {
     bool jitter_active = false;
     std::uint32_t jitter_index = 0;
     float jitter[2]{}, jitter_previous[2]{};
+    // Ambient occlusion at the scene-end hook (docs/architecture/ambient-occlusion.md,
+    // step 2): whether the chain was attempted, the attach verdict, whether
+    // it ran and applied, the reason it did not, the pass's results and the
+    // chain's CPU wall time (timing mode only).
+    struct {
+        bool attempted = false, attached = false, ran = false, applied = false;
+        const char* reason = "off";
+        HRESULT result = S_FALSE, restore = S_FALSE;
+        std::uint32_t failed_stage = 0, width = 0, height = 0;
+        float radius_px = 0;
+        std::uint64_t cpu_ticks = 0;
+    } ao;
     // Cut detector: median screen displacement of the matched draws' projected
     // origins against their previous rows, and the fraction of keyed routed
     // draws whose key the previous frame lacked; the resolve rejects history
@@ -472,6 +485,16 @@ public:
     // route the write-back's sharpened program draws it (configure_hdr's
     // HdrConfig::sharpen carries the same value to the pass).
     void configure_taa_sharpen(float sharpness) noexcept { taa_sharpen_ = sharpness; }
+    // Ambient occlusion (X3M_AMBIENT_OCCLUSION=1; requires the route and the
+    // resolve): the half-resolution GTAO chain multiplies the owning scene
+    // target at the scene-end hook, before the resolve. `radius_metres` is the
+    // world radius (view units are 0.2 m), `strength` the s of the factor
+    // 1 - s (1 - ao); `debug` writes the factor as grayscale instead of
+    // multiplying; `timing` (or debug) logs one ambient_occlusion_frame line per
+    // frame with GPU timestamp and CPU wall time of the chain.
+    void configure_ambient_occlusion(bool requested, float radius_metres, float strength, bool debug, bool timing) noexcept {
+        ao_requested_ = requested; ao_radius_metres_ = radius_metres; ao_strength_ = strength; ao_debug_ = debug; ao_timing_ = timing || debug;
+    }
     bool hdr_redirected() const noexcept { return hdr_state_ != HdrState::Off; }
     // BEFORE the application's SetRenderTarget: the surface to bind natively.
     // Index 0 while redirected: the application's main surface maps to the FP16
@@ -1120,6 +1143,30 @@ private:
     // copy-back presented it); at the limit the sharpen is no longer requested.
     unsigned taa_sharpen_failures_ = 0;
     static constexpr unsigned sharpen_failure_limit = 3;
+    // Ambient occlusion pass (attached lazily at the first eligible scene end
+    // for the owning target's format; re-attached when that format changes),
+    // its switches, the attach verdict and, in timing mode, two rotating sets
+    // of timestamp queries (TIMESTAMPDISJOINT / TIMESTAMPFREQ / two TIMESTAMP)
+    // polled without blocking one frame later. Every device object is created
+    // and released under taa_call (the same reference accounting as the resolve).
+    std::unique_ptr<renderer::AmbientOcclusionPass> ao_;
+    bool ao_requested_ = false, ao_debug_ = false, ao_timing_ = false, ao_attach_failed_ = false;
+    float ao_radius_metres_ = 2.f, ao_strength_ = .5f;
+    D3DFORMAT ao_target_format_ = D3DFMT_UNKNOWN, ao_adapter_format_ = D3DFMT_UNKNOWN;
+    HRESULT ao_attach_result_ = S_FALSE;
+    unsigned ao_attach_logs_ = 0, ao_failure_logs_ = 0;
+    struct AoTimingSlot { IDirect3DQuery9 *disjoint = nullptr, *frequency = nullptr, *begin = nullptr, *end = nullptr; std::uint64_t frame = 0; bool issued = false; };
+    AoTimingSlot ao_timing_slots_[2]{};
+    unsigned ao_timing_cursor_ = 0;
+    bool ao_timing_failed_ = false, ao_timing_created_ = false;
+    double ao_gpu_us_ = -1.;          // the most recent completed pair (microseconds; -1: none or disjoint)
+    std::uint64_t ao_gpu_frame_ = 0;  // the frame that pair measured
+    void run_ambient_occlusion() noexcept;
+    bool ensure_ambient_occlusion(D3DFORMAT target_format) noexcept;
+    bool ao_timing_create() noexcept;
+    void ao_timing_release() noexcept;
+    void ao_timing_poll(AoTimingSlot& slot) noexcept;
+    void log_ambient_occlusion_frame() noexcept;
     // The pass's resolved FP16 output (borrowed: valid until the pass's next
     // run, invalidate, before_reset or shutdown), published by the stage-3
     // resolve for the write-back of the same scene end and cleared with it.

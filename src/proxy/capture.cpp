@@ -90,6 +90,14 @@ bool linear_distance_fade_requested = false;
 bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step C)
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
+// X3M_AMBIENT_OCCLUSION=1 (default off; requires X3M_MOTION_OUTPUT=1 and
+// X3M_TAA=1): the half-resolution GTAO chain at the scene-end hook before the
+// resolve (docs/architecture/ambient-occlusion.md, step 2). X3M_AO_RADIUS=<m>
+// (0.1..100, default 2), X3M_AO_STRENGTH=<s> (0..1, default 0.5),
+// X3M_AO_DEBUG=1 (factor written as grayscale; implies timing),
+// X3M_AO_TIMING=1 (one ambient_occlusion_frame line per frame).
+bool ambient_occlusion_requested = false, ambient_occlusion_debug = false, ambient_occlusion_timing = false;
+float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
 float emission_gain = 1.f;
 bool linear_material_requested = false;
 x3m::renderer::LinearMaterialConfig linear_material_config{};
@@ -1818,6 +1826,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_screen_emission(screen_emission_requested);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
+    hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
@@ -2086,6 +2095,17 @@ void initialize_log(HMODULE module) {
      shimmer_trace_requested=asked && motion_output_requested && taa_requested;
      if(asked)log("shimmer_trace_mode requested=1 enabled=%u motion_output=%u taa=%u",shimmer_trace_requested,motion_output_requested,taa_requested);}
     bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
+    // X3M_AMBIENT_OCCLUSION=1: the AO chain at the scene end (needs the route
+    // and the resolve, which integrates the rotated noise). The whole radius and
+    // strength strings must parse; out of range keeps the default.
+    {const bool asked=GetEnvironmentVariableW(L"X3M_AMBIENT_OCCLUSION",setting,32)==1 && setting[0]==L'1';
+     ambient_occlusion_requested=asked && motion_output_requested && taa_requested;
+     ambient_occlusion_radius=2.f;ambient_occlusion_strength=.5f;
+     if(GetEnvironmentVariableW(L"X3M_AO_RADIUS",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.1f&&v<=100.f)ambient_occlusion_radius=v;}
+     if(GetEnvironmentVariableW(L"X3M_AO_STRENGTH",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)ambient_occlusion_strength=v;}
+     ambient_occlusion_debug=ambient_occlusion_requested && GetEnvironmentVariableW(L"X3M_AO_DEBUG",setting,32)==1 && setting[0]==L'1';
+     ambient_occlusion_timing=ambient_occlusion_requested && (ambient_occlusion_debug || (GetEnvironmentVariableW(L"X3M_AO_TIMING",setting,32)==1 && setting[0]==L'1'));
+     if(asked)log("ambient_occlusion_mode requested=1 enabled=%u motion_output=%u taa=%u radius_m=%g strength=%g debug=%u timing=%u",ambient_occlusion_requested,motion_output_requested,taa_requested,double(ambient_occlusion_radius),double(ambient_occlusion_strength),ambient_occlusion_debug,ambient_occlusion_timing);}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
     motion_state_shadow=!(GetEnvironmentVariableW(L"X3M_STATE_SHADOW",setting,32)==1 && setting[0]==L'0');

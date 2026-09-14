@@ -11,8 +11,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "sources": {
-  "src/renderer/ambient_occlusion_pass.h": "4a16f1e232bb8236271a0998d332bbac53b1da75580ddb3745b4379d765927f4",
-  "src/renderer/ambient_occlusion_pass.cpp": "0f727326ec3b4f31815cdb50dd1fb50c8d75bad35a84e1a0d06bf317c854a807",
+  "src/renderer/ambient_occlusion_pass.h": "0f395c9980a33b3c2ff0c7da0602063d73846cb5eed6937bee3f2a53b1826dfc",
+  "src/renderer/ambient_occlusion_pass.cpp": "2197c8f903f44ba268ba171e091a36dbcfbb2d3d3e73742d3110cb769743f17f",
   "src/renderer/ambient_occlusion_caps.h": "a1fe930a0c51594bb50c517a933b497b0169fb1964fc07a3bea6b8e31b4d2863",
   "src/renderer/ambient_occlusion_linearize_program_inc.h": "9fe436693e0f0bffe2a3eff72fb0fa35121d25228896c2702b7b2a2af01c0a8c",
   "src/renderer/ambient_occlusion_gtao_program_inc.h": "8629d8f4c462edbc0a015e842e7dee1e9fa912b7883180dd843311b74b4191a2",
@@ -41,7 +41,7 @@
   "mean_abs": 0.002,
   "within_002_fraction": 0.999
  },
- "executable_sha256": "59bde2e5c0f6c281bd0e9b5e9d8623ed66f8e0d484ffc4e62f173c27c41676f1",
+ "executable_sha256": "51d581f9baa577ea615b652abe16694e4f211d1779736116eff23e6799e92480",
  "command": [
   "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
   "--bottle",
@@ -50,11 +50,11 @@
   "--dll",
   "d3d9=b",
   "--workdir",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3d9ffc8686f49ec6/verification/probe/build/ambient-occlusion",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a3d9ffc8686f49ec6/verification/probe/build/ambient-occlusion/ambient_occlusion_fixture.exe"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad9c17b0bd9c13978/verification/probe/build/ambient-occlusion/ambient_occlusion_fixture.exe"
  ],
  "exit_code": 0,
- "report_sha256": "9373c2c2f918accf7b13285c8b4ceb0b80408d59c2de8a36b80f7eee9bdd0a48",
+ "report_sha256": "15ddc512c2431221959347d8c632718b22b70334b94922f7c52a30fb4331fbf4",
  "report": {
   "checks": [
    [
@@ -719,29 +719,29 @@
    {
     "width": 1280,
     "height": 768,
-    "fenced_on_ms": 1.1201,
-    "fenced_off_ms": 0.0151,
-    "submit_ms": 0.1066,
-    "chain_ms": 1.105,
-    "chain_min_ms": 0.7463,
-    "gpu_ms": 0.9984,
+    "fenced_on_ms": 0.797,
+    "fenced_off_ms": 0.0146,
+    "submit_ms": 0.1076,
+    "chain_ms": 0.7824,
+    "chain_min_ms": 0.7515,
+    "gpu_ms": 0.6748,
     "samples": 15,
     "budget": {
      "cap_ms": 0.8,
      "acceptance_ms": 0.5,
      "within_acceptance": false,
-     "within_cap": false
+     "within_cap": true
     }
    },
    {
     "width": 1920,
     "height": 1080,
-    "fenced_on_ms": 1.3463,
-    "fenced_off_ms": 0.0158,
-    "submit_ms": 0.0943,
-    "chain_ms": 1.3305,
-    "chain_min_ms": 1.2322,
-    "gpu_ms": 1.2362,
+    "fenced_on_ms": 1.4051,
+    "fenced_off_ms": 0.0147,
+    "submit_ms": 0.1338,
+    "chain_ms": 1.3904,
+    "chain_min_ms": 1.2668,
+    "gpu_ms": 1.2566,
     "samples": 15,
     "budget": {
      "cap_ms": 0.8,
@@ -753,12 +753,12 @@
    {
     "width": 1280,
     "height": 768,
-    "fenced_on_ms": 0.7668,
-    "fenced_off_ms": 0.0151,
-    "submit_ms": 0.0933,
-    "chain_ms": 0.7517,
-    "chain_min_ms": 0.7413,
-    "gpu_ms": 0.6584,
+    "fenced_on_ms": 0.6039,
+    "fenced_off_ms": 0.0158,
+    "submit_ms": 0.1307,
+    "chain_ms": 0.5881,
+    "chain_min_ms": 0.5127,
+    "gpu_ms": 0.4574,
     "samples": 15,
     "budget": {
      "cap_ms": 0.8,
@@ -772,31 +772,31 @@
    {
     "width": 1280,
     "height": 768,
-    "linearize_ms": 0.3198,
-    "gtao_ms": 0.5442,
-    "blur_ms": 0.3171,
-    "apply_ms": 0.441,
-    "sum_ms": 1.6221,
+    "linearize_ms": 0.323,
+    "gtao_ms": 0.5388,
+    "blur_ms": 0.3202,
+    "apply_ms": 0.4294,
+    "sum_ms": 1.6114,
     "samples": 6
    },
    {
     "width": 1920,
     "height": 1080,
-    "linearize_ms": 0.3224,
-    "gtao_ms": 0.4302,
-    "blur_ms": 0.3082,
-    "apply_ms": 0.3324,
-    "sum_ms": 1.3932,
+    "linearize_ms": 0.3651,
+    "gtao_ms": 0.562,
+    "blur_ms": 0.3409,
+    "apply_ms": 0.4373,
+    "sum_ms": 1.7053,
     "samples": 6
    },
    {
     "width": 1280,
     "height": 768,
-    "linearize_ms": 0.3209,
-    "gtao_ms": 0.5375,
-    "blur_ms": 0.325,
-    "apply_ms": 0.4242,
-    "sum_ms": 1.6076,
+    "linearize_ms": 0.2336,
+    "gtao_ms": 0.3178,
+    "blur_ms": 0.3033,
+    "apply_ms": 0.3123,
+    "sum_ms": 1.167,
     "samples": 6
    }
   ],
@@ -834,24 +834,24 @@
     "width": 1280,
     "height": 768,
     "variant": "no_blur",
-    "fenced_on_ms": 0.7438,
-    "chain_ms": 0.7287,
+    "fenced_on_ms": 0.7739,
+    "chain_ms": 0.7593,
     "samples": 4
    },
    {
     "width": 1920,
     "height": 1080,
     "variant": "no_blur",
-    "fenced_on_ms": 0.7448,
-    "chain_ms": 0.729,
+    "fenced_on_ms": 0.744,
+    "chain_ms": 0.7293,
     "samples": 4
    },
    {
     "width": 1280,
     "height": 768,
     "variant": "no_blur",
-    "fenced_on_ms": 0.7396,
-    "chain_ms": 0.7245,
+    "fenced_on_ms": 0.5188,
+    "chain_ms": 0.503,
     "samples": 4
    }
   ],

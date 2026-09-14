@@ -86,7 +86,7 @@ enum Slot : unsigned {
     SetVertexShaderConstantF = 94, GetVertexShaderConstantF = 95, GetVertexShaderConstantI = 97,
     SetStreamSource = 100, GetStreamSource = 101, GetStreamSourceFreq = 103, GetIndices = 105,
     CreatePixelShader = 106, SetPixelShader = 107, GetPixelShader = 108,
-    SetPixelShaderConstantF = 109, GetPixelShaderConstantF = 110
+    SetPixelShaderConstantF = 109, GetPixelShaderConstantF = 110, CreateQuery = 118
 };
 using D = IDirect3DDevice9*;
 using SetRenderTargetFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DSurface9*);
@@ -134,6 +134,7 @@ using GetCreationFn = HRESULT(WINAPI*)(D, D3DDEVICE_CREATION_PARAMETERS*);
 using CountFn = ULONG(WINAPI*)(D);
 using StretchFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
 using ColorFillFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, D3DCOLOR);
+using CreateQueryFn = HRESULT(WINAPI*)(D, D3DQUERYTYPE, IDirect3DQuery9**);
 
 // The route's own quads (sentinel fill, self test) draw through the shared
 // vs_3_0 pass-through (renderer/quad_vertex_program.h), and D3D9 pairs vs_3_0
@@ -318,6 +319,7 @@ void MotionOutput::release_resources() noexcept {
     // of this function must not probe a device that no longer exists.
     if (hdr_) { hdr_->shutdown(); hdr_.reset(); hdr_enabled_ = false; }
     if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
+    if (ao_ || ao_timing_created_) { taa_call([&] { ao_timing_release(); if (ao_) ao_->detach(); }); ao_.reset(); }
     release(sentinel_ps_);
     release(sentinel_mrt_ps_);
     release(quad_vs_); release(quad_declaration_);
@@ -1364,6 +1366,14 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     restore_bindings();
     if (!cut_finished_) finish_cut_detector();
     counters_.hook_scene_end = true;
+    // Capture-frame marker (ambient-occlusion.md section 8, "In-scene HUD"):
+    // the frame's draw counter at the signal, so draws after the scene end
+    // are identifiable by index in the per-draw capture log.
+    if (capture_) log("scene_end_marker device=%llu frame=%llu draw_index=%lu", id_, frame_, static_cast<unsigned long>(counters_.draws));
+    // Ambient occlusion on the owning scene target (RT2 complete, every
+    // in-place bracket finished, the resolve not yet run): the resolve below
+    // consumes the darkened target.
+    if (ao_requested_) run_ambient_occlusion();
     // The FP16 scene ends here. Stage 3 order (section 4 of the HDR design):
     // the resolve on the FP16 target while it is RT0, then the write-back of
     // the resolved image (meter, tonemap) and the rebind of the main target
@@ -1385,6 +1395,189 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     }
     resolve(rt0, nullptr);
     release(rt0);
+}
+// ---- ambient occlusion at the scene end (ambient-occlusion.md, step 2) ------
+namespace {
+// Default projection scratch (camera-state-and-frame-routine.md sections 3-4):
+// zn = 6, zf = 2e6. The route latches m00/m11/m20/m21 only.
+constexpr float ao_default_m22 = 1.000003f, ao_default_m32 = -6.0000184f;
+constexpr float ao_units_per_metre = 5.f;    // 1 view unit = 0.2 m
+constexpr float ao_reference_distance = 100.f; // 20 m: the distance radius_px is reported at
+constexpr unsigned ao_log_limit = 8;
+}
+// Lazily attaches the pass for the owning target's format (the gates run once
+// per format; a failed gate is remembered until the format changes).
+bool MotionOutput::ensure_ambient_occlusion(D3DFORMAT target_format) noexcept {
+    if (ao_ && ao_->caps().enabled && ao_target_format_ == target_format) return true;
+    if (ao_attach_failed_ && ao_target_format_ == target_format) return false;
+    ao_target_format_ = target_format; ao_attach_failed_ = true;
+    if (!ao_) { try { ao_ = std::make_unique<renderer::AmbientOcclusionPass>(); } catch (...) { ao_attach_result_ = E_OUTOFMEMORY; return false; } }
+    const char* reason = "";
+    HRESULT hr = E_FAIL;
+    if (ao_adapter_format_ == D3DFMT_UNKNOWN) {
+        D3DDISPLAYMODE display{};
+        if (SUCCEEDED(hr = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display))) ao_adapter_format_ = display.Format;
+        else reason = "adapter_query";
+    }
+    if (ao_adapter_format_ != D3DFMT_UNKNOWN) {
+        D3DCAPS9 caps = caps_;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        // Fixture seam: X3M_FIXTURE_AO_FAULT=attach makes the shader-model gate
+        // refuse (fail-closed twin of the live fixture).
+        char fault[16]{};
+        if (GetEnvironmentVariableA("X3M_FIXTURE_AO_FAULT", fault, sizeof fault) > 0 && !std::strcmp(fault, "attach")) caps.PixelShaderVersion = 0;
+#endif
+        taa_call([&] { hr = ao_->attach(device_, native_, caps, ao_adapter_format_, target_format); });
+        reason = ao_->caps().reason;
+        ao_attach_failed_ = FAILED(hr) || !ao_->caps().enabled;
+    }
+    ao_attach_result_ = hr;
+    if (ao_attach_logs_ < ao_log_limit) {
+        ++ao_attach_logs_;
+        log("ambient_occlusion_device device=%llu attached=%u reason=%s result=%08lx target_format=%u adapter_format=%u slots=%u radius_m=%.3f strength=%.3f debug=%u timing=%u taa_references=%u",
+            id_, !ao_attach_failed_, ao_attach_failed_ ? reason : "ok", hr, unsigned(target_format), unsigned(ao_adapter_format_),
+            ao_->caps().largest_program_slots, double(ao_radius_metres_), double(ao_strength_), ao_debug_, ao_timing_, taa_references_);
+    }
+    return !ao_attach_failed_;
+}
+// Timestamp queries (documented D3D9: TIMESTAMPDISJOINT brackets the pair,
+// TIMESTAMPFREQ scales it). A CreateQuery refusal (D3DERR_NOTAVAILABLE) fails
+// closed to CPU wall time only. Called inside taa_call.
+bool MotionOutput::ao_timing_create() noexcept {
+    if (ao_timing_created_) return true;
+    if (ao_timing_failed_) return false;
+    HRESULT hr = S_OK;
+    for (auto& slot : ao_timing_slots_) {
+        if (SUCCEEDED(hr)) hr = native<CreateQueryFn>(CreateQuery)(device_, D3DQUERYTYPE_TIMESTAMPDISJOINT, &slot.disjoint);
+        if (SUCCEEDED(hr)) hr = native<CreateQueryFn>(CreateQuery)(device_, D3DQUERYTYPE_TIMESTAMPFREQ, &slot.frequency);
+        if (SUCCEEDED(hr)) hr = native<CreateQueryFn>(CreateQuery)(device_, D3DQUERYTYPE_TIMESTAMP, &slot.begin);
+        if (SUCCEEDED(hr)) hr = native<CreateQueryFn>(CreateQuery)(device_, D3DQUERYTYPE_TIMESTAMP, &slot.end);
+        if (SUCCEEDED(hr) && !(slot.disjoint && slot.frequency && slot.begin && slot.end)) hr = E_FAIL;
+    }
+    if (FAILED(hr)) {
+        ao_timing_release(); ao_timing_failed_ = true;
+        if (ao_failure_logs_ < ao_log_limit) { ++ao_failure_logs_; log("ambient_occlusion_timing device=%llu queries=unavailable result=%08lx", id_, hr); }
+        return false;
+    }
+    ao_timing_created_ = true;
+    return true;
+}
+void MotionOutput::ao_timing_release() noexcept {
+    for (auto& slot : ao_timing_slots_) { release(slot.disjoint); release(slot.frequency); release(slot.begin); release(slot.end); slot.issued = false; }
+    ao_timing_created_ = false; ao_gpu_us_ = -1.; ao_gpu_frame_ = 0;
+}
+// Non-blocking poll of an issued slot (D3DGETDATA_FLUSH submits pending work
+// without waiting); S_FALSE leaves the slot issued for the next poll.
+void MotionOutput::ao_timing_poll(AoTimingSlot& slot) noexcept {
+    if (!slot.issued) return;
+    BOOL disjoint = FALSE; UINT64 frequency = 0, begin = 0, end = 0;
+    HRESULT hr = slot.disjoint->GetData(&disjoint, sizeof disjoint, D3DGETDATA_FLUSH);
+    if (hr == S_OK) hr = slot.frequency->GetData(&frequency, sizeof frequency, D3DGETDATA_FLUSH);
+    if (hr == S_OK) hr = slot.begin->GetData(&begin, sizeof begin, D3DGETDATA_FLUSH);
+    if (hr == S_OK) hr = slot.end->GetData(&end, sizeof end, D3DGETDATA_FLUSH);
+    if (hr == S_FALSE) return;
+    slot.issued = false;
+    if (hr != S_OK) { ao_timing_release(); ao_timing_failed_ = true; return; } // lost device or a refused query: CPU time only
+    ao_gpu_frame_ = slot.frame;
+    ao_gpu_us_ = (disjoint || !frequency || end < begin) ? -1. : double(end - begin) * 1e6 / double(frequency);
+}
+void MotionOutput::run_ambient_occlusion() noexcept {
+    auto& a = counters_.ao;
+    a.attempted = true; a.reason = "ok";
+    auto skip = [&](const char* why) { a.reason = why; if (ao_timing_) log_ambient_occlusion_frame(); };
+    if (!taa_enabled_) return skip("taa");
+    if (composition_state_lost_ || motion_state_lost_) return skip("state_lost");
+    if (main_msaa_) return skip("msaa");
+    if (!counters_.filled || !target_surface_ || !depth_surface_ || !depth_enabled_) return skip("no_depth");
+    if (shadow_.recording) return skip("recording");
+    if (active_queries_) return skip("queries");
+    if (!camera_scene_.valid) return skip("camera");
+    // The owning scene target: the FP16 target while the redirect is active,
+    // else the latched main target; anything else is not the scene.
+    IDirect3DSurface9* rt0 = nullptr;
+    HRESULT hr = native<GetRenderTargetFn>(GetRenderTarget)(device_, 0, &rt0);
+    if (FAILED(hr) || !rt0) { release(rt0); a.result = FAILED(hr) ? hr : E_FAIL; return skip("target"); }
+    D3DFORMAT format = D3DFMT_UNKNOWN;
+    if (hdr_state_ == HdrState::Active && hdr_ && hdr_->target() && rt0 == hdr_->target()) format = D3DFMT_A16B16G16R16F;
+    else if (hdr_state_ == HdrState::Off && same(describe_surface(rt0), main_)) format = static_cast<D3DFORMAT>(main_.format);
+    if (format == D3DFMT_UNKNOWN) { release(rt0); return skip("target"); }
+    if (!ensure_ambient_occlusion(format)) { release(rt0); a.result = ao_attach_result_; return skip("attach"); }
+    a.attached = true;
+    if (ao_->reset_pending()) { release(rt0); return skip("reset_pending"); }
+    IDirect3DTexture9* depth = nullptr;
+    hr = depth_surface_->GetContainer(IID_IDirect3DTexture9, reinterpret_cast<void**>(&depth));
+    if (SUCCEEDED(hr) && !depth) hr = E_NOINTERFACE;
+    if (FAILED(hr)) { release(rt0); a.result = hr; return skip("depth_container"); }
+    renderer::AmbientOcclusionFrame in{};
+    in.depth = depth; in.target = rt0; in.width = main_.width; in.height = main_.height;
+    in.params.m00 = camera_scene_.m00; in.params.m11 = camera_scene_.m11; in.params.m20 = camera_scene_.m20; in.params.m21 = camera_scene_.m21;
+    in.params.m22 = ao_default_m22; in.params.m32 = ao_default_m32;
+    in.params.radius_metres = ao_radius_metres_; in.params.units_per_metre = ao_units_per_metre; in.params.strength = ao_strength_;
+    in.params.jitter_index = counters_.jitter_index;
+    in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording; in.caller_queries_idle = active_queries_ == 0;
+    in.debug_view = ao_debug_;
+    a.width = in.width; a.height = in.height;
+    {
+        const double hh = double((in.height + 1) / 2);
+        const double px = double(ao_radius_metres_) * double(ao_units_per_metre) * double(camera_scene_.m11) * hh * .5 / double(ao_reference_distance);
+        a.radius_px = float(px < double(in.params.max_radius_px) ? px : double(in.params.max_radius_px));
+    }
+    renderer::AmbientOcclusionResult out{};
+    LARGE_INTEGER t0{}, t1{};
+    taa_call([&] {
+        AoTimingSlot* slot = nullptr;
+        if (ao_timing_ && ao_timing_create()) {
+            // Poll last frame's pair first (its result is this line's gpu_us), then
+            // take the other slot; a slot still pending is left alone.
+            ao_timing_poll(ao_timing_slots_[ao_timing_cursor_ ^ 1u]);
+            slot = &ao_timing_slots_[ao_timing_cursor_];
+            ao_timing_poll(*slot);
+            if (slot->issued) slot = nullptr;
+            else {
+                HRESULT q = slot->disjoint->Issue(D3DISSUE_BEGIN);
+                if (SUCCEEDED(q)) q = slot->begin->Issue(D3DISSUE_END);
+                if (FAILED(q)) { ao_timing_release(); ao_timing_failed_ = true; slot = nullptr; }
+            }
+        }
+        if (ao_timing_) QueryPerformanceCounter(&t0);
+        hr = ao_->execute(in, &out);
+        if (ao_timing_) QueryPerformanceCounter(&t1);
+        if (slot) {
+            HRESULT q = slot->end->Issue(D3DISSUE_END);
+            if (SUCCEEDED(q)) q = slot->frequency->Issue(D3DISSUE_END);
+            if (SUCCEEDED(q)) q = slot->disjoint->Issue(D3DISSUE_END);
+            if (FAILED(q)) { ao_timing_release(); ao_timing_failed_ = true; }
+            else { slot->issued = true; slot->frame = frame_; ao_timing_cursor_ ^= 1u; }
+        }
+    });
+    release(depth); release(rt0);
+    if (ao_timing_) {
+        LARGE_INTEGER f{}; QueryPerformanceFrequency(&f);
+        a.cpu_ticks = f.QuadPart ? std::uint64_t((double(t1.QuadPart - t0.QuadPart) * 1e6) / double(f.QuadPart)) : 0; // microseconds
+    }
+    a.result = out.operation; a.restore = out.restore; a.failed_stage = unsigned(out.failed);
+    if (FAILED(out.restore)) invalidate_render_states();
+    if (FAILED(hr)) {
+        // Fail closed: the pass restored its block and published nothing; the
+        // frame continues untouched (a lost device is reported by the frame line).
+        a.reason = "failed";
+        if (ao_failure_logs_ < ao_log_limit) {
+            ++ao_failure_logs_;
+            log("ambient_occlusion_failed device=%llu frame=%llu result=%08lx restore=%08lx stage=%u", id_, frame_, out.operation, out.restore, unsigned(out.failed));
+        }
+    } else { a.ran = true; a.applied = out.applied; }
+    if (ao_timing_) log_ambient_occlusion_frame();
+}
+// One line per frame in timing/debug mode. gpu_us is the most recently
+// completed timestamp pair (gpu_frame names its frame; normally the previous
+// one), -1 while none completed, the queries are unavailable or the interval
+// was disjoint. cpu_us is the wall time of the execute call. radius_px is the
+// half-resolution screen radius at 20 m, capped at the pass's limit.
+void MotionOutput::log_ambient_occlusion_frame() noexcept {
+    const auto& a = counters_.ao;
+    log("ambient_occlusion_frame device=%llu frame=%llu attached=%u ran=%u reason=%s gpu_us=%.1f cpu_us=%.1f width=%u height=%u radius_px=%.2f gpu_frame=%llu applied=%u result=%08lx restore=%08lx stage=%u debug=%u",
+        id_, frame_, a.attached, a.ran, a.reason, ao_gpu_us_, double(a.cpu_ticks), a.width, a.height, double(a.radius_px), ao_gpu_frame_,
+        a.applied, a.result, a.restore, a.failed_stage, ao_debug_);
 }
 void MotionOutput::after_begin_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = true; }
 void MotionOutput::after_end_scene(HRESULT result) noexcept { if (enabled_ && SUCCEEDED(result)) scene_open_ = false; }
@@ -1934,6 +2127,10 @@ void MotionOutput::before_reset() noexcept {
     if (hdr_) hdr_->before_reset();
     hdr_target_failed_ = false; hdr_blocked_ = false; hdr_blocked_latches_ = 0; // a Reset clears the cause of an unwind
     if (taa_) taa_call([&] { taa_->before_reset(); });
+    // The AO targets and block go after RT1/RT2 (design section 5); the
+    // timestamp queries are device objects and go with them (recreated lazily).
+    if (ao_ || ao_timing_created_) taa_call([&] { ao_timing_release(); if (ao_) ao_->before_reset(); });
+    ao_timing_failed_ = false;
     target_failed_ = false;
     history_.invalidate();
     selector_.invalidate();
@@ -1944,6 +2141,7 @@ void MotionOutput::before_reset() noexcept {
 void MotionOutput::after_reset(HRESULT result) noexcept {
     ++generation_;
     if (taa_) taa_->after_reset(result);
+    if (ao_) ao_->after_reset(result);
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
     // The interrupted frame continues after a successful Reset; capture is off.
