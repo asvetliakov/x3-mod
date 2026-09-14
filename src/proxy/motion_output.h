@@ -448,9 +448,13 @@ public:
     // Step C of docs/architecture/screen-emission-region.md: the packed screen
     // bracket (policy 8) for the nine SM1 screen pairs of
     // screen_emission_admission.h. Configure before attach; needs the linear
-    // material route (the fade prerequisites). Default off.
-    void configure_screen_emission(bool requested) noexcept;
+    // material route (the fade prerequisites). Default off. `gain` is the
+    // step E composition gain g (X3M_SCREEN_EMISSION_GAIN, default 1: the
+    // composed bullet is native by construction), handed to the pass before
+    // its attach; the caller validates the range.
+    void configure_screen_emission(bool requested, float gain = 1.f) noexcept;
     bool screen_emission_requested() const noexcept { return screen_emission_requested_; }
+    float screen_emission_gain() const noexcept { return screen_emission_gain_; }
     // Diagnostic fade-region witness (X3M_FADE_WITNESS=<k>, note section 7,
     // step 1): every k-th frame without an admitted emission draw the M
     // coverage target is read back once and its covered pixels counted
@@ -896,6 +900,7 @@ private:
     bool cutout_coverage_missed_ = false;
     renderer::LinearMaterialConfig linear_material_config_{};
     bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
+    float screen_emission_gain_ = 1.f;
     unsigned composition_required_producers_ = 0;
     HRESULT composition_attach_result_ = S_FALSE;
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};

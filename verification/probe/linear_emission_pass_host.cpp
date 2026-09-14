@@ -2,7 +2,9 @@
 // These scripted public interfaces neither execute shaders nor prove x86 ABI.
 #include "../../src/renderer/linear_emission_pass.h"
 #include <array>
+#include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -917,7 +919,14 @@ void packed_policy() {
                 !alone.caps().enabled && alone.references() == 0 && std::string(alone.caps().reason) == "packed caps",
             "packed-only capability refusal");
     }
+    // Step E gain: finite 0..16 before attach only; the default is 1.
+    check(p.packed_gain() == 1.f && p.configure_packed_gain(2.f) && p.packed_gain() == 2.f, "packed gain configured before attach");
+    check(!p.configure_packed_gain(-1.f) && !p.configure_packed_gain(17.f) && !p.configure_packed_gain(std::nanf("")) &&
+              !p.configure_packed_gain(std::numeric_limits<float>::infinity()) && p.packed_gain() == 2.f,
+          "packed gain domain refusals keep the configured value");
+    check(p.configure_packed_gain(mode == 0 ? 2.f : 1.f), "packed gain reconfigured");
     check(p.attach(&d, d.slots, d.caps, D3DFMT_A8R8G8B8, D3DFMT_D24S8, 15) == S_OK, "attach with policy 8 requested");
+    check(!p.configure_packed_gain(1.f) && p.packed_gain() == (mode == 0 ? 2.f : 1.f), "packed gain frozen after attach");
     const unsigned expected = mode == 0 ? 15u : mode == 3 ? 1u : 7u;
     check(p.caps().supported_policies == expected && p.caps().available_policies == expected, "policy-8 capability gate");
     check(p.ensure_targets(17, 11) == S_OK, "pool");
@@ -948,9 +957,9 @@ void packed_policy() {
                 d.rt[2] != d.rt[1] && d.rt[2] != d.rt[3],
             "packed source targets: M, P_r = E, P_g, P_b");
       check(d.rs[D3DRS_DESTBLEND] == D3DBLEND_INVSRCALPHA && d.rs[D3DRS_COLORWRITEENABLE] == 9 &&
-                d.rs[D3DRS_COLORWRITEENABLE1] == 7 && d.rs[D3DRS_COLORWRITEENABLE2] == 7 && d.rs[D3DRS_COLORWRITEENABLE3] == 7 &&
+                d.rs[D3DRS_COLORWRITEENABLE1] == 5 && d.rs[D3DRS_COLORWRITEENABLE2] == 5 && d.rs[D3DRS_COLORWRITEENABLE3] == 5 &&
                 d.ps == ps && d.vs == nullptr,
-            "packed source blend, masks and untouched VS");
+            "packed source blend, red|blue plane masks (step E) and untouched VS");
       check(d.stage_gets > gets, "packed bracket saves five stages");
       auto done = p.finish(S_OK);
       check(done.image == LinearEmissionImage::Linear && !done.candidate_bound && !p.owning_candidate() && p.coverage_valid(),

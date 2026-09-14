@@ -1,5 +1,11 @@
 // Mathematical packed-screen prototype only. No live return/publication policy.
 // Native game programs remain local; fixture shaders/resources are authored.
+// Step E law (docs/architecture/screen-emission-region.md): the source writes
+// the red|blue plane lanes only (native B accumulation and the modified
+// flag), the green lane keeps decode(A) from the initialization, and the C
+// assembly decodes once: C = encode(g decode(B) + (1 - g) decode(A)); at
+// g = 1 C is the native B exactly. Schedule 3 draws an 8-layer overlapping
+// chain in one DIP.
 #define WIN32_LEAN_AND_MEAN
 #include "../../src/renderer/linear_emission_sm1.h"
 #include <algorithm>
@@ -186,6 +192,9 @@ float gain_for(unsigned c) {
 unsigned gain_index(unsigned c) {
   return c == 4 ? 1 : c == 5 || c == 17 ? 2 : c == 6 ? 3 : 0;
 }
+constexpr float gains[] = {1, 0, .25f, 2.5f};
+constexpr unsigned SCHEDULES = 4, CHAIN_LAYERS = 8;
+unsigned layers_of(unsigned schedule) { return schedule == 3 ? CHAIN_LAYERS : 2; }
 void literal(Words &w, unsigned regno, float a, float b, float c, float d) {
   DWORD v[4];
   const float f[] = {a, b, c, d};
@@ -201,9 +210,10 @@ Words fullscreen_vs() {
   w.push_back(0xffffu);
   return w;
 }
-// Init=0, native B assembly=1, enhanced C assembly=2. All operations consume
+// Init=0, native B assembly=1, C assembly=2 (step E: decode(P.x) once, gain
+// as the `def c1` literal (g, 1 - g, 2.2, 1e-10)). All operations consume
 // owned immutable planes/A only; no source geometry is replayed for assembly.
-Words screen_ps(unsigned kind) {
+Words screen_ps(unsigned kind, float gain = 1.f) {
   Words w{0xffff0200u};
   const unsigned samples = kind == 0   ? 1
                            : kind == 1 ? 4
@@ -214,6 +224,8 @@ Words screen_ps(unsigned kind) {
     ins(w, 31, {0x90000000u, dst(10, i)});
   if (kind != 1)
     literal(w, 0, 0, kind ? 1.f / 2.2f : 2.2f, kind ? 1e-22f : 1e-10f, 1);
+  if (kind == 2)
+    literal(w, 1, gain, 1.f - gain, 2.2f, 1e-10f);
   for (unsigned i = 0; i < samples; ++i)
     ins(w, 66, {dst(0, i), src(3, 0), src(10, i)});
   if (!kind) {
@@ -230,7 +242,13 @@ Words screen_ps(unsigned kind) {
       if (kind == 1)
         ins(w, 1, {dst(0, output, 1u << c), src(0, c, 0)});
       else {
-        ins(w, 11, {dst(0, 6, 1), src(0, c, 0x55), src(2, 0, 0)});
+        // r6.x = g decode(max(P.x, 1e-10)) + (1 - g) P.y, clamped at 0
+        ins(w, 11, {dst(0, 6, 1), src(0, c, 0), src(2, 1, 0xff)});
+        ins(w, 32, {dst(0, 6, 1), src(0, 6, 0), src(2, 1, 0xaa)});
+        ins(w, 5, {dst(0, 6, 1), src(0, 6, 0), src(2, 1, 0)});
+        ins(w, 4, {dst(0, 6, 1), src(0, c, 0x55), src(2, 1, 0x55), src(0, 6, 0)});
+        ins(w, 11, {dst(0, 6, 1), src(0, 6, 0), src(2, 0, 0)});
+        // r6.y = encode(r6.x) with an exact zero; unmodified channels copy A
         ins(w, 11, {dst(0, 6, 2), src(0, 6, 0), src(2, 0, 0xaa)});
         ins(w, 32, {dst(0, 6, 2), src(0, 6, 0x55), src(2, 0, 0x55)});
         ins(w, 88,
@@ -299,7 +317,7 @@ struct Fixture {
   Com<IDirect3DIndexBuffer9> ib;
   Com<IDirect3DTexture9> atlas;
   Com<IDirect3DVertexShader9> full_vs;
-  Com<IDirect3DPixelShader9> screen[3];
+  Com<IDirect3DPixelShader9> screen[3], composite[4]; // composite[g]: C assembly at gains[g]
   Com<IDirect3DQuery9> event;
   LARGE_INTEGER frequency{};
   Fixture(unsigned w, unsigned h) : width(w), height(h) {
@@ -359,11 +377,11 @@ struct Fixture {
         D3DDECL_END()};
     api(d->CreateVertexDeclaration(el, &decl.p), "native declaration");
     api(d->CreateVertexDeclaration(full, &full_decl.p), "assembly declaration");
-    api(d->CreateVertexBuffer(8 * sizeof(Vertex), 0, 0, D3DPOOL_MANAGED, &vb.p,
-                              nullptr),
+    api(d->CreateVertexBuffer(4 * CHAIN_LAYERS * sizeof(Vertex), 0, 0,
+                              D3DPOOL_MANAGED, &vb.p, nullptr),
         "source VB");
-    api(d->CreateIndexBuffer(24, 0, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ib.p,
-                             nullptr),
+    api(d->CreateIndexBuffer(12 * CHAIN_LAYERS, 0, D3DFMT_INDEX16,
+                             D3DPOOL_MANAGED, &ib.p, nullptr),
         "source IB");
     const auto code = fullscreen_vs();
     api(d->CreateVertexShader(reinterpret_cast<const DWORD *>(code.data()),
@@ -376,6 +394,12 @@ struct Fixture {
       api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(ps.data()),
                                &screen[i].p),
           "init/assembly PS");
+    }
+    for (unsigned g = 0; g < 4; ++g) {
+      auto ps = screen_ps(2, gains[g]);
+      api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(ps.data()),
+                               &composite[g].p),
+          "gain C assembly PS");
     }
     need(QueryPerformanceFrequency(&frequency), "QPC");
     targets();
@@ -542,7 +566,7 @@ struct Fixture {
     api(d->SetTexture(0, a.texture.p), "init A");
     full_draw(0);
   }
-  void assemble(bool enhanced) {
+  void assemble(bool enhanced, unsigned gain = 0) {
     detach();
     api(d->SetDepthStencilSurface(nullptr), "assembly no depth");
     api(d->SetRenderTarget(0, enhanced ? c.surface.p : b.surface.p),
@@ -554,9 +578,23 @@ struct Fixture {
     api(d->SetTexture(3, m.texture.p), "assembly M");
     if (enhanced)
       api(d->SetTexture(4, a.texture.p), "assembly immutable A");
-    full_draw(enhanced ? 2 : 1);
+    if (enhanced) {
+      api(d->SetVertexShader(full_vs.p), "full VS");
+      api(d->SetPixelShader(composite[gain].p), "gain C assembly");
+      api(d->SetVertexDeclaration(full_decl.p), "full declaration");
+      const float l = -1 - 1.f / width, r = 1 - 1.f / width,
+                  t = 1 + 1.f / height, bot = -1 + 1.f / height;
+      const float quad[] = {l, t,   0, 1, 0, 0, r, t,   0, 1, 1, 0,
+                            l, bot, 0, 1, 0, 1, r, bot, 0, 1, 1, 1};
+      api(d->BeginScene(), "full BeginScene");
+      api(d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, 24),
+          "owned full draw");
+      api(d->EndScene(), "full EndScene");
+    } else
+      full_draw(1);
   }
-  void prepare(unsigned which, unsigned layout, bool reverse) {
+  void prepare(unsigned which, unsigned layout, bool reverse,
+               unsigned layers = 2) {
     atlas.reset();
     const bool unorm = which >= 7 && which <= 10;
     api(d->CreateTexture(2, 1, 1, 0,
@@ -607,9 +645,14 @@ struct Fixture {
               half(texels[i][k]);
     }
     api(atlas->UnlockRect(0), "atlas unlock");
-    Vertex vertices[8];
-    for (unsigned i = 0; i < 2; ++i) {
-      float l = i ? -.65f : -.85f, r = i ? .85f : .65f;
+    // Two particles (schedules 0-2) or the 8-layer chain (schedule 3): quad i
+    // spans [-.9 + .1 i, .1 + .1 i], so the strip x in [-.2, .1] carries all
+    // eight layers and the coverage falls off to one layer at both ends;
+    // particle i uses atlas texel i % 2 and the alternating vertex alpha.
+    Vertex vertices[4 * CHAIN_LAYERS];
+    for (unsigned i = 0; i < layers; ++i) {
+      float l = layers > 2 ? -.9f + .1f * float(i) : i ? -.65f : -.85f,
+            r = layers > 2 ? .1f + .1f * float(i) : i ? .85f : .65f;
       if (which == 20) {
         l -= .7f;
         r += .1f;
@@ -618,25 +661,26 @@ struct Fixture {
       unsigned alpha = (which == 3 || which == 15 || which == 16 || which == 18)
                            ? 255
                        : which == 17 ? 32
-                       : i           ? 192
+                       : i % 2       ? 192
                                      : 128;
+      const float u = i % 2 ? .75f : .25f;
       DWORD color = (alpha << 24) | 0x3070d0u;
-      Vertex quad[] = {{l, .8f, z, i ? .75f : .25f, .5f, color},
-                       {r, .8f, z, i ? .75f : .25f, .5f, color},
-                       {l, -.8f, z, i ? .75f : .25f, .5f, color},
-                       {r, -.8f, z, i ? .75f : .25f, .5f, color}};
+      Vertex quad[] = {{l, .8f, z, u, .5f, color},
+                       {r, .8f, z, u, .5f, color},
+                       {l, -.8f, z, u, .5f, color},
+                       {r, -.8f, z, u, .5f, color}};
       std::memcpy(vertices + i * 4, quad, sizeof quad);
     }
     void *data = nullptr;
     api(vb->Lock(0, 0, &data, 0), "source vertices lock");
     std::memcpy(data, vertices, sizeof vertices);
     api(vb->Unlock(), "source vertices unlock");
-    unsigned short indices[12];
+    unsigned short indices[6 * CHAIN_LAYERS];
     const unsigned short quad[] = {0, 1, 2, 2, 1, 3};
-    for (unsigned i = 0; i < 2; ++i)
+    for (unsigned i = 0; i < layers; ++i)
       for (unsigned k = 0; k < 6; ++k)
-        indices[i * 6 + k] =
-            static_cast<unsigned short>(quad[k] + 4 * (reverse ? 1 - i : i));
+        indices[i * 6 + k] = static_cast<unsigned short>(
+            quad[k] + 4 * (reverse && layers == 2 ? 1 - i : i));
     api(ib->Lock(0, 0, &data, 0), "source indices lock");
     std::memcpy(data, indices, sizeof indices);
     api(ib->Unlock(), "source indices unlock");
@@ -680,7 +724,7 @@ struct Fixture {
     if (measuring)
       api(d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE),
           "raw measurement no blend");
-    masks(packed && !measuring ? 9 : 15, packed && !measuring ? 7 : 15);
+    masks(packed && !measuring ? 9 : 15, packed && !measuring ? 5 : 15);
     api(d->SetTexture(0, atlas.p), "original atlas");
     api(d->SetVertexShader(vs), "untouched VS");
     api(d->SetPixelShader(ps), "source PS");
@@ -696,9 +740,10 @@ struct Fixture {
         "depth initialize");
   }
   void submit(unsigned schedule, int single = -1) {
+    const unsigned vertices = 4 * layers_of(schedule);
     api(d->BeginScene(), "source BeginScene");
     if (single >= 0)
-      api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 8,
+      api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, vertices,
                                   unsigned(single) * 6, 2),
           "measurement particle DIP");
     else if (schedule == 1) {
@@ -707,12 +752,14 @@ struct Fixture {
       api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 8, 6, 2),
           "ordered source DIP2");
     } else
-      api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 8, 0, 4),
+      api(d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, vertices, 0,
+                                  2 * layers_of(schedule)),
           "one original overlapping DIP");
     api(d->EndScene(), "source EndScene");
   }
   std::array<Image, 3> measure(unsigned which, IDirect3DVertexShader9 *vs,
-                               IDirect3DPixelShader9 *ps, unsigned particle) {
+                               IDirect3DPixelShader9 *ps, unsigned particle,
+                               unsigned schedule) {
     detach();
     for (auto &p : planes)
       api(d->ColorFill(p.surface.p, nullptr, 0), "raw witness clear");
@@ -720,7 +767,7 @@ struct Fixture {
       api(d->SetRenderTarget(i, planes[i].surface.p), "measurement output");
     clear_depth();
     bind_source(which, vs, ps, false, true);
-    submit(0, int(particle));
+    submit(schedule, int(particle));
     return {image(planes[0]), image(planes[1]), image(planes[2])};
   }
   void native_begin(unsigned which, IDirect3DVertexShader9 *vs,
@@ -766,53 +813,21 @@ void raw(const std::string &name, const Image &image) {
        "raw witness bytes");
   std::fclose(f);
 }
-double energy(double t, double h, double gain) {
-  t = std::clamp(t, 0., 65504.);
-  return std::clamp(std::min(std::pow(t, 2.2), 65504.) * h * gain, 0., 65504.);
-}
 double store(double value) { return fp16(half(float(value))); }
-// The raw measurement stores T and h in FP16. Propagate their half-ULP
-// intervals, full-precision transfer error and one target ULP per store through
-// the ordered in-domain recurrence, rather than comparing only final colors.
-struct Interval {
-  double low, high;
-};
-Interval measured(unsigned short bits) {
-  if (bits == 0)
-    return {0, 0};
-  const double x = fp16(bits);
-  return {(fp16(bits - 1) + x) / 2, (x + fp16(bits + 1)) / 2};
-}
-Interval rounded(Interval x) {
-  auto lo = half(float(std::max(0., x.low))),
-       hi = half(float(std::max(0., x.high)));
-  return {fp16(lo ? lo - 1 : 0), fp16(hi < 0x7bff ? hi + 1 : hi)};
-}
-Interval advance(Interval old, unsigned short texture, unsigned short fade,
-                 double gain) {
-  auto t = measured(texture), h = measured(fade);
-  h.low = std::max(0., h.low);
-  h.high = std::min(1., h.high);
-  const double qlo = std::clamp(t.low * h.low - 1e-7, 0., 1.),
-               qhi = std::clamp(t.high * h.high + 1e-7, 0., 1.);
-  double elo = energy(t.low, h.low, gain), ehi = energy(t.high, h.high, gain);
-  if (ehi > 0) {
-    elo = std::max(0., elo - (.00004 + .003 * elo));
-    ehi += .00004 + .003 * ehi;
-  }
-  return rounded({elo + (1 - qhi) * old.low, ehi + (1 - qlo) * old.high});
-}
-Interval encoded_interval(Interval linear) {
-  double lo = std::pow(linear.low, 1. / 2.2),
-         hi = std::pow(linear.high, 1. / 2.2);
-  return rounded(
-      {std::max(0., lo - (.00004 + .003 * lo)), hi + .00004 + .003 * hi});
+// Step E publication law on the stored lanes: C = encode(g decode(B) +
+// (1 - g) decode(A)), B the stored native lane, decode(A) the stored
+// initialization, exact zero preserved.
+double composed(double stored_b, double stored_linear_a, double gain) {
+  const double l = std::max(
+      gain * std::pow(std::max(stored_b, 1e-10), 2.2) + (1 - gain) * stored_linear_a, 0.);
+  return l > 0 ? store(std::pow(l, 1. / 2.2)) : 0.;
 }
 struct Metrics {
   unsigned b_diff = 0, alpha_diff = 0, c_diff = 0, plane_diff = 0,
            mask_diff = 0, alpha_mask_diff = 0, unchanged_diff = 0,
            init_diff = 0, nonfinite = 0, surviving = 0, overlap = 0,
-           flag_zero_changed = 0, unchanged_covered = 0;
+           flag_zero_changed = 0, unchanged_covered = 0, max_layers = 0,
+           native_c_diff = 0, native_c_off_by_one = 0;
   double max_fraction = 0;
   bool failed() const {
     return b_diff || alpha_diff || c_diff || plane_diff || mask_diff ||
@@ -833,22 +848,11 @@ void close_value(double got, double wanted, unsigned &failures, Metrics &m,
   if (fraction > 1)
     ++failures;
 }
-void inside(double got, Interval wanted, unsigned &failures, Metrics &m) {
-  if (!std::isfinite(got)) {
-    ++failures;
-    ++m.nonfinite;
-    return;
-  }
-  const double excess = std::max({wanted.low - got, got - wanted.high, 0.});
-  m.max_fraction = std::max(m.max_fraction,
-                            excess / (.00008 + .003 * std::abs(wanted.high)));
-  if (excess > 0)
-    ++failures;
-}
 struct Result {
   Image native, b, c, mask, initial_mask;
   std::array<Image, 3> planes, initial_planes;
-  std::array<Image, 3> ref[2];
+  std::array<Image, 3> ref[CHAIN_LAYERS];
+  unsigned layers = 2;
   Metrics metrics;
 };
 void check(Result &r, const Image &a, unsigned which) {
@@ -862,10 +866,16 @@ void check(Result &r, const Image &a, unsigned which) {
     if (r.initial_mask[i] != half(float(seed)) ||
         r.initial_mask[i + 3] != a[i + 3])
       ++m.init_diff;
-    bool live[2] = {r.ref[0][2][i] != 0, r.ref[1][2][i] != 0};
-    m.surviving += live[0] + live[1];
-    m.overlap += live[0] && live[1];
-    for (unsigned s = 0; s < 2; ++s)
+    bool live[CHAIN_LAYERS] = {};
+    unsigned count = 0;
+    for (unsigned s = 0; s < r.layers; ++s) {
+      live[s] = r.ref[s][2][i] != 0;
+      count += live[s];
+    }
+    m.surviving += count;
+    m.overlap += count >= 2;
+    m.max_layers = std::max(m.max_layers, count);
+    for (unsigned s = 0; s < r.layers; ++s)
       if (live[s]) {
         double source_a = fp16(r.ref[s][0][i + 3]);
         mask = store(1 + (1 - source_a) * mask);
@@ -886,26 +896,20 @@ void check(Result &r, const Image &a, unsigned which) {
       if (initial[i] != a[i + k] || initial[i + 2] != 0)
         ++m.init_diff;
       close_value(fp16(initial[i + 1]), linear, m.init_diff, m);
-      // Use the independently validated stored initialization, preserving its
-      // GPU POW-to-FP16 rounding in every subsequent target-store recurrence.
+      // The green lane is never written by the source (plane masks 5): it
+      // stays the independently validated stored decode(A), the pre-draw
+      // decoded value the publication subtracts.
       linear = fp16(initial[i + 1]);
-      Interval expected_linear{linear, linear};
-      for (unsigned s = 0; s < 2; ++s)
+      for (unsigned s = 0; s < r.layers; ++s)
         if (live[s]) {
           double t = fp16(r.ref[s][0][i + k]), h = fp16(r.ref[s][1][i]),
-                 q = t * h, e = energy(t, h, gain);
-          if (!boundary(which))
-            expected_linear = advance(expected_linear, r.ref[s][0][i + k],
-                                      r.ref[s][1][i], gain);
+                 q = t * h;
           encoded = store(q + (1 - q) * encoded);
-          linear = store(e + (1 - q) * linear);
-          modified = store((q != 0 || e != 0 ? 1. : 0.) + (1 - q) * modified);
+          modified = store(q + (1 - q) * modified);
         }
       close_value(fp16(plane[i]), encoded, m.plane_diff, m);
-      if (boundary(which))
-        close_value(fp16(plane[i + 1]), linear, m.plane_diff, m);
-      else
-        inside(fp16(plane[i + 1]), expected_linear, m.plane_diff, m);
+      if (plane[i + 1] != initial[i + 1])
+        ++m.plane_diff;
       close_value(fp16(plane[i + 2]), modified, m.plane_diff, m);
       if (plane[i + 3] != initial[i + 3])
         ++m.alpha_mask_diff;
@@ -913,18 +917,26 @@ void check(Result &r, const Image &a, unsigned which) {
         ++m.b_diff;
       if (plane[i + 2] == 0 && plane[i + 1] != initial[i + 1])
         ++m.flag_zero_changed;
-      if ((live[0] || live[1]) && modified == 0)
+      if (count && modified == 0)
         ++m.unchanged_covered;
       if (plane[i + 2] == 0) {
         if (r.c[i + k] != a[i + k])
           ++m.unchanged_diff;
       } else {
-        double wanted = store(std::pow(std::max(linear, 0.), 1. / 2.2));
-        if (boundary(which))
-          close_value(fp16(r.c[i + k]), wanted, m.c_diff, m, 2);
-        else
-          inside(fp16(r.c[i + k]), encoded_interval(expected_linear), m.c_diff,
-                 m);
+        // Publication on the stored lanes; at gain 1 in domain C must be the
+        // native B within one FP16 code (the GPU's POW round trip
+        // encode(decode(B)) lands one code low on a few percent of the
+        // values; exact matches and off-by-one codes are counted apart).
+        const double wanted = composed(fp16(plane[i]), linear, gain);
+        close_value(fp16(r.c[i + k]), wanted, m.c_diff, m,
+                    boundary(which) ? 2 : 1);
+        if (gain == 1 && !boundary(which)) {
+          const int codes = int(r.c[i + k]) - int(r.native[i + k]);
+          if (codes > 1 || codes < -1 || (r.c[i + k] & 0x8000) != (r.native[i + k] & 0x8000))
+            ++m.native_c_diff;
+          else if (codes)
+            ++m.native_c_off_by_one;
+        }
       }
     }
   }
@@ -933,10 +945,11 @@ Result run_case(Fixture &f, unsigned which, unsigned layout, unsigned schedule,
                 IDirect3DVertexShader9 *vs, IDirect3DPixelShader9 *original,
                 IDirect3DPixelShader9 *promoted,
                 IDirect3DPixelShader9 *witness_ps) {
-  f.prepare(which, layout, schedule == 2);
   Result r;
-  r.ref[0] = f.measure(which, vs, witness_ps, 0);
-  r.ref[1] = f.measure(which, vs, witness_ps, 1);
+  r.layers = layers_of(schedule);
+  f.prepare(which, layout, schedule == 2, r.layers);
+  for (unsigned s = 0; s < r.layers; ++s)
+    r.ref[s] = f.measure(which, vs, witness_ps, s, schedule);
   f.native_begin(which, vs, original);
   f.submit(schedule);
   r.native = f.image(f.native);
@@ -952,7 +965,7 @@ Result run_case(Fixture &f, unsigned which, unsigned layout, unsigned schedule,
     r.planes[k] = f.image(f.planes[k]);
   f.assemble(false);
   r.b = f.image(f.b);
-  f.assemble(true);
+  f.assemble(true, gain_index(which));
   r.c = f.image(f.c);
   check(r, f.image(f.a), which);
   return r;
@@ -967,7 +980,7 @@ void failure_files(const std::string &prefix, const Result &r) {
     raw(prefix + "_plane" + std::to_string(k) + ".rgba16f", r.planes[k]);
     raw(prefix + "_initial_plane" + std::to_string(k) + ".rgba16f",
         r.initial_planes[k]);
-    for (unsigned s = 0; s < 2; ++s)
+    for (unsigned s = 0; s < r.layers; ++s)
       raw(prefix + "_ref" + std::to_string(s) + "_" + std::to_string(k) +
               ".rgba16f",
           r.ref[s][k]);
@@ -1056,7 +1069,6 @@ int main(int argc, char **argv) {
       api(f.d->CreatePixelShader(
               reinterpret_cast<const DWORD *>(measuring.data()), &measure.p),
           "raw sample/multiplier/coverage witness");
-      const float gains[] = {1, 0, .25f, 2.5f};
       for (unsigned g = 0; g < 4; ++g) {
         x3m::renderer::LinearEmissionSm1Config config;
         config.outputs = x3m::renderer::LinearEmissionSm1Outputs::PackedScreen;
@@ -1074,7 +1086,7 @@ int main(int argc, char **argv) {
       for (unsigned which = 0; which < CASES; ++which) {
         Image previous_b, previous_c, previous_mask;
         std::array<Image, 3> previous_planes;
-        for (unsigned schedule = 0; schedule < 3; ++schedule) {
+        for (unsigned schedule = 0; schedule < SCHEDULES; ++schedule) {
           ++rows;
           const unsigned g = gain_index(which);
           if (FAILED(created[g])) {
@@ -1109,7 +1121,7 @@ int main(int argc, char **argv) {
             previous_mask = r.mask;
             previous_planes = r.planes;
           }
-          const bool failed = m.failed() || same_dip_diff;
+          const bool failed = m.failed() || same_dip_diff || m.native_c_diff;
           if (boundary(which))
             boundary_failures += failed;
           else
@@ -1121,13 +1133,15 @@ int main(int argc, char **argv) {
               "nonfinite=%u surviving=%u overlap=%u same_dip_diff=%u "
               "order_changed=%u flag_zero_changed=%u unchanged_covered=%u "
               "max_fraction=%.9g "
-              "original_dips=%u packed_dips=%u\n",
+              "original_dips=%u packed_dips=%u layers=%u max_layers=%u "
+              "native_c_diff=%u native_c_off_by_one=%u\n",
               p, which, cases[which], schedule, unsigned(boundary(which)),
               m.b_diff, m.alpha_diff, m.c_diff, m.plane_diff, m.mask_diff,
               m.alpha_mask_diff, m.unchanged_diff, m.init_diff, m.nonfinite,
               m.surviving, m.overlap, same_dip_diff, changed,
               m.flag_zero_changed, m.unchanged_covered, m.max_fraction,
-              schedule == 1 ? 2 : 1, schedule == 1 ? 2 : 1);
+              schedule == 1 ? 2 : 1, schedule == 1 ? 2 : 1, r.layers,
+              m.max_layers, m.native_c_diff, m.native_c_off_by_one);
           if (failed && !saved[boundary(which)]) {
             saved[boundary(which)] = true;
             const std::string prefix = "failure_p" + std::to_string(p) + "_c" +
@@ -1155,11 +1169,11 @@ int main(int argc, char **argv) {
       }
     }
     std::printf(
-        "PACKED_COMPLETE pairs=9 cases=%u schedules=3 rows=%u unsupported=%u "
+        "PACKED_COMPLETE pairs=9 cases=%u schedules=%u rows=%u unsupported=%u "
         "failures=%u boundary_failures=%u order_changed=%u reset=1 "
         "owned_targets=8 target_bytes=%llu live_publication=0\n",
-        CASES, rows, unsupported, failures, boundary_failures, order_changed,
-        8ull * W * H * 8);
+        CASES, SCHEDULES, rows, unsupported, failures, boundary_failures,
+        order_changed, 8ull * W * H * 8);
     return 0;
   } catch (const std::exception &e) {
     std::printf("PACKED_ABORT reason=%s\n", e.what());

@@ -10,12 +10,16 @@ namespace x3m::renderer {
 // itself (docs/architecture/linear-distance-fade-region.md, section 3): no
 // owning candidate, no exchange, no acknowledgement. It shares the pool and
 // the DistanceFade program and additionally needs D3DPRASTERCAPS_SCISSORTEST.
-// PackedScreenInPlace runs the packed screen law L' = E + (1 - q) L inside
-// the same in-place bracket (docs/architecture/screen-emission-region.md):
-// backup B|R = A|R, plane init (P_c|R = (A_c, decode(A)_c, 0), M.alpha = A.alpha),
-// the source into M (red|alpha) and three planes under ONE/INVSRCALPHA, then
-// a scissored composite into A. Planes: E = P_r, C = P_g, one extra P_b; it
-// needs four simultaneous targets, independent masks and INVSRCALPHA on FP16.
+// PackedScreenInPlace runs the step E composition of
+// docs/architecture/screen-emission-region.md inside the same in-place
+// bracket: backup B|R = A|R, plane init (P_c|R = (A_c, decode(A)_c, 0),
+// M.alpha = A.alpha), the source into M (red|alpha) and the red|blue lanes of
+// three planes under ONE/INVSRCALPHA (the red lane accumulates the native
+// encoded value exactly as the game does; the green lane keeps decode(A) =
+// decode(B_before)), then one scissored composite into A that decodes once:
+// C = encode(decode(A) + g (decode(B_after) - decode(A))), unmodified
+// channels copy A. Planes: E = P_r, C = P_g, one extra P_b; it needs four
+// simultaneous targets, independent masks and INVSRCALPHA on FP16.
 enum class LinearCompositionPolicy : unsigned { AdditiveEmission = 1, DistanceFade = 2, DistanceFadeInPlace = 4, PackedScreenInPlace = 8 };
 constexpr unsigned composition_policy_bit(LinearCompositionPolicy p) noexcept { return unsigned(p); }
 struct LinearEmissionPassCaps {
@@ -91,6 +95,12 @@ public:
   HRESULT attach(IDirect3DDevice9 *, void *const *native, const D3DCAPS9 &,
                  D3DFORMAT adapter_format, D3DFORMAT depth_format,
                  unsigned requested_policies = composition_policy_bit(LinearCompositionPolicy::AdditiveEmission)) noexcept;
+  // Policy 8 gain g of the step E composition (X3M_SCREEN_EMISSION_GAIN):
+  // finite, 0 <= g <= 16, default 1 (native by construction). Set before
+  // attach; the composite program carries g as a patched literal, so no
+  // per-bracket constant traffic. Returns false (gain unchanged) when refused.
+  bool configure_packed_gain(float gain) noexcept;
+  float packed_gain() const noexcept { return packed_gain_; }
   const LinearEmissionPassCaps &caps() const noexcept;
   // Resource creation happens only here, outside any prepare/finish bracket.
   HRESULT ensure_targets(UINT width, UINT height) noexcept;
@@ -140,6 +150,7 @@ public:
 private:
   struct Impl;
   Impl *impl_ = nullptr;
+  float packed_gain_ = 1.f;
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
   bool fixture_separate_copy_ = false;
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE

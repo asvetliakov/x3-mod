@@ -374,3 +374,48 @@ native to within the write-back's rounding (tail/core ratio preserved); `g > 1` 
 HDR so bloom and exposure see it. The per-fragment decode of the previous law is withdrawn for
 sprite chains; unbounded/unknown draws still refuse to native. The user chooses `g` from a gameplay
 comparison; nothing defaults above 1.
+
+### Step E — implemented (2026-09-14)
+
+The composition is now the ratified law end to end. Producer (`linear_emission_sm1.cpp`,
+`PackedScreen`): `M = (1, 0, 0, a)`, `P_c = (q_c, q_c, q_c, q_c)`, no per-fragment decode (11/12
+arithmetic slots instead of 41/42, no POW; `config.gain` is unused for this output). Bracket
+(`linear_emission_pass.cpp`): the source writes the red|blue plane lanes only
+(`COLORWRITEENABLE1..3 = 5`), so the red lane accumulates `B_native` under ONE/INVSRCALPHA exactly as
+the game's ONE/INVSRCCOLOR does, the blue lane `q + (1 - q) old` is the modified flag and the green
+lane keeps `decode(A) = decode(B_before)` from the plane initialization. The composite
+(`generate_screen_emission_programs.py`, `linear_screen_composite_inc.h`, 184 DWORDs, 44 ALU) decodes
+once: `C = encode(max(g decode(max(P.x, 1e-10)) + (1 - g) P.y, 0))`, unmodified channels copy A, alpha
+is M.alpha; `def c1 = (g, 1 - g, 2.2, 1e-10)` is authored at `g = 1` and patched at attach
+(`configure_packed_gain`, finite 0..16, before attach only; exactly one `def c1` or the policy is
+withheld), so at `g = 1` the `(1 - g)` lane is an exact zero and the composed lane is
+`decode(B_native)` bit for bit before the encode. No constant traffic per bracket, no extra pass: the
+per-pixel cost moves from the fragments to the composite (+3 POW per rectangle pixel). Gain:
+`--screen-emission-gain G` (0.5..8, requires `--screen-emission`) sets `X3M_SCREEN_EMISSION_GAIN`
+(always explicit, default `1.0`); `capture.cpp` reads it once (`screen_emission_mode ... gain=
+gain_valid=`; unparsable or out of range keeps 1), `MotionOutput::configure_screen_emission(bool,
+gain)` hands it to the pass before its attach.
+
+Evidence. Packed corpus (`run_linear_emission_sm1_packed.py`, `linear-emission-sm1-packed.json`): 864
+rows (9 pairs × 24 cases × 4 schedules; schedule 3 is a new 8-layer overlapping chain in ONE DIP,
+`max_layers` 8 on every full-coverage case), 720 in-domain rows with 0 failures, 144 boundary rows
+with 54 operational failures (the q lane overflows to non-finite on the `overflow`/`hdr` boundary
+chains, signed q on the chain; witness `failure_p0_c15_s3`); at gain 1 in domain C equals the native B
+within one FP16 code, exact on 99.39 % of the 2,603,097 surviving channel values and one code low on
+15,900 (`native_c_off_by_one`, the GPU POW round trip `encode(decode(B))`); helper budgets
+initialize 22 / assemble_b 5 / assemble_c 44 ALU. Live fixture (`run_linear_distance_fade_live.py
+--screen-emission`, `screen-emission-live1.json`, 13 processes): frame 21 draws the fade source and
+then kind `c`, eight 16×16 soft-sprite quads (tint (.55, 1, .45), σ 3 px, opaque alpha) shifted 2 px
+along x from pixel 8 in one DIP, rectangle (8, 24, 38, 40), 480 px, 456 changed, 8 layers; the composed
+rectangle equals the native twin (the off run) within 1 FP16 code with the alpha exact, outside it A is
+untouched in every run; the `screen-gain2` run (`X3M_SCREEN_EMISSION_GAIN=2`) follows
+`encode(decode(A) + 2 (decode(B) - decode(A)))` on the twin within tolerance fraction 0.15 and is
+brighter than native on all 1,300 bolt channels; the withdrawn per-fragment law would differ from
+native by up to 0.38. Functional 22 frames / 28 sources, 53 samples within fraction 0.124 (0.243 at
+gain 2), 20 eligible / 14 admitted / 13 linear / 1 incomplete / 3 unbounded, witness 0 outside.
+Bracket cost, paired windows (median delta on−off, source window, 16 DIPs): before (same host, step C
+law) 3.03 / 3.60 ms at 1280×768 and 2.68 / 2.73 ms at 1920×1080; after 2.73 / 2.63 ms and 2.67 / 2.62 ms
+(≈ 0.164–0.171 ms per bracket), i.e. no added cost. `screen_emission_display_ratio.py`: the step E
+column equals native at every distance and background (tail/core 0.259 = native; gain 2 → 0.343, gain
+4 → 0.441 with the core lifted to 0.868 / 0.930). Host: x87 audit PASS (224 reachable). Native Windows
+behaviour remains unverified.

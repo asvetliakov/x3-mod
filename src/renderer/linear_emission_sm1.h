@@ -22,9 +22,10 @@ bool linear_emission_sm1_pair_reviewed(std::uint64_t vertex,
 // opaque comments. This cannot promise historical SM1 precision equivalence:
 // native B/alpha/interpolation/MRT qualification is mandatory before integration.
 // Screen composition and projected-TSS handling are separate runtime contracts.
-// PackedScreen writes M=(1,0,0,a), Pc=(q_c,E_c,modified_c,q_c). It
-// requires four targets, independent masks and ONE/INVSRCALPHA in the detached
-// prototype; native-B assembly/publication failure remains unresolved.
+// PackedScreen writes M=(1,0,0,a), Pc=(q_c,q_c,q_c,q_c): no per-fragment
+// decode (step E of screen-emission-region.md; the pass masks the green lane
+// and decodes the accumulated native lane once at publication, config.gain is
+// unused). It requires four targets, independent masks and ONE/INVSRCALPHA.
 // Failure preserves output; original may alias output. No D3D/per-draw work.
 LinearEmissionResult linear_emission_sm1_pixel_variant(
     const std::uint32_t* original, std::size_t count,

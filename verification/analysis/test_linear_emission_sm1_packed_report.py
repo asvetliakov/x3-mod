@@ -7,7 +7,7 @@ import run_linear_emission_sm1_packed as r
 
 HELPERS=('PACKED_HELPER name=initialize words=80 alu=22 tex=1 temps=2 samplers=1 outputs=15 constants=1',
          'PACKED_HELPER name=assemble_b words=60 alu=5 tex=4 temps=5 samplers=4 outputs=1 constants=0',
-         'PACKED_HELPER name=assemble_c words=140 alu=26 tex=5 temps=7 samplers=5 outputs=1 constants=1')
+         'PACKED_HELPER name=assemble_c words=184 alu=44 tex=5 temps=7 samplers=5 outputs=1 constants=2')
 
 def caps(w=32,h=32):return f'PACKED_CAPS width={w} height={h} mrt=4 masks=1 post_blend=1 src_one=1 dst_invsrcalpha=1 ps1_max=8'
 def witness(failure=None,unsupported=None):
@@ -15,7 +15,7 @@ def witness(failure=None,unsupported=None):
     for p in range(9):
         for g in range(4):lines.append(f'PACKED_CREATE pair={p} gain_index={g} words=201 hr={"8876086c" if unsupported==(p,g) else "00000000"}')
         for c,name in enumerate(r.CASES):
-            for s in range(3):
+            for s in range(r.SCHEDULES):
                 base=f'PACKED_CASE pair={p} case={c} name={name} schedule={s}'
                 if unsupported==(p,r.gain_index(c)):
                     missing+=1;lines.append(base+f' status=unsupported hr=8876086c boundary={int(c in r.BOUNDARIES)}');continue
@@ -26,17 +26,19 @@ def witness(failure=None,unsupported=None):
                 if bad:
                     if boundary:boundary_failures+=1
                     else:failures+=1
+                layers=r.CHAIN_LAYERS if s==3 else 2
                 survived=0 if c in (9,13) else 700 if c in (7,10,12) else 1400
                 overlap=500 if survived==1400 else 0
+                max_layers=0 if survived==0 else layers if survived==1400 else 1
                 changed=100 if s==2 else 0
                 if c==0:order+=changed
                 lines.append(base+f' status=measured boundary={int(boundary)} '+' '.join(f'{k}={v}' for k,v in counts.items())+
-                             f' surviving={survived} overlap={overlap} order_changed={changed} flag_zero_changed=0 unchanged_covered={700 if c in (1,2) else 0} max_fraction=0 original_dips={2 if s==1 else 1} packed_dips={2 if s==1 else 1}')
+                             f' surviving={survived} overlap={overlap} order_changed={changed} flag_zero_changed=0 unchanged_covered={700 if c in (1,2) else 0} max_fraction=0 original_dips={2 if s==1 else 1} packed_dips={2 if s==1 else 1} layers={layers} max_layers={max_layers} native_c_off_by_one={0 if c in (4,5,6,9,13) or c in r.BOUNDARIES else 3}')
                 if bad and boundary not in first:
                     first.add(boundary);lines.append(f'PACKED_WITNESS pair={p} case={c} schedule={s} boundary={int(boundary)} prefix=failure_p{p}_c{c}_s{s}')
                 if p==0 and c==16 and s==0:lines.append('PACKED_RANGE_WITNESS prefix=range_q2 q_clamped_by_fixture=0 qualification=0')
         if p==4:lines.append('PACKED_RESET passed=1')
-    lines.append(f'PACKED_COMPLETE pairs=9 cases=24 schedules=3 rows=648 unsupported={missing} failures={failures} boundary_failures={boundary_failures} order_changed={order} reset=1 owned_targets=8 target_bytes=65536 live_publication=0')
+    lines.append(f'PACKED_COMPLETE pairs=9 cases=24 schedules=4 rows=864 unsupported={missing} failures={failures} boundary_failures={boundary_failures} order_changed={order} reset=1 owned_targets=8 target_bytes=65536 live_publication=0')
     return '\n'.join(lines)
 
 
@@ -44,19 +46,26 @@ class PackedReportTests(unittest.TestCase):
     def test_complete_all_nine_domain_and_compact_resource_report(self):
         report=r.validate(witness())
         self.assertTrue(report['qualified_in_domain']);self.assertFalse(report['live_publication'])
-        self.assertEqual((report['pairs'],report['rows'],report['creations']),(9,648,36))
-        self.assertEqual(len(report['pair_schedule_results']),27)
+        self.assertEqual((report['pairs'],report['rows'],report['creations'],report['schedules'],report['chain_layers']),(9,864,36,4,8))
+        self.assertEqual(len(report['pair_schedule_results']),36)
+        self.assertEqual([x['max_layers'] for x in report['pair_schedule_results'][:4]],[2,2,2,8])
+        self.assertEqual(report['native_c_off_by_one'],9*4*3*(24-3-4-2))
+        with self.assertRaises(AssertionError):r.validate(witness().replace('native_c_off_by_one=3','native_c_off_by_one=500',1))
+        with self.assertRaises(AssertionError):r.validate(witness().replace('native_c_off_by_one=0','native_c_off_by_one=1',1))
         self.assertNotIn('case_results',report)
         self.assertEqual(report['gains'],(1.,0.,.25,2.5))
         self.assertEqual(len(report['helpers']),3)
 
     def test_native_alpha_plane_mask_or_unchanged_failure_is_not_qualified(self):
         for field in r.ERRORS:
-            s=1 if field=='same_dip_diff' else 0
+            s=1 if field=='same_dip_diff' else 3 if field=='native_c_diff' else 0
             with self.subTest(field=field):
                 report=r.validate(witness((0,1,s,field)))
                 self.assertTrue(report['completed']);self.assertFalse(report['qualified_in_domain'])
                 self.assertEqual(report['failures'],1)
+        # The chain schedule must reach all eight layers; a gain case never reports native_c_diff.
+        with self.assertRaises(AssertionError):r.validate(witness().replace('schedule=3 status=measured boundary=0 b_diff=0 alpha_diff=0 c_diff=0 plane_diff=0 mask_diff=0 alpha_mask_diff=0 unchanged_diff=0 init_diff=0 nonfinite=0 same_dip_diff=0 native_c_diff=0 surviving=1400 overlap=500 order_changed=0 flag_zero_changed=0 unchanged_covered=0 max_fraction=0 original_dips=1 packed_dips=1 layers=8 max_layers=8 native_c_off_by_one=3','schedule=3 status=measured boundary=0 b_diff=0 alpha_diff=0 c_diff=0 plane_diff=0 mask_diff=0 alpha_mask_diff=0 unchanged_diff=0 init_diff=0 nonfinite=0 same_dip_diff=0 native_c_diff=0 surviving=1400 overlap=500 order_changed=0 flag_zero_changed=0 unchanged_covered=0 max_fraction=0 original_dips=1 packed_dips=1 layers=8 max_layers=7 native_c_off_by_one=3',1))
+        with self.assertRaises(AssertionError):r.validate(witness((0,4,0,'native_c_diff')))
 
     def test_signed_range_overflow_are_operational_not_new_domains(self):
         for c in r.BOUNDARIES:
@@ -121,8 +130,10 @@ class PackedReportTests(unittest.TestCase):
         self.assertIn('src(0, 6, 0xaa) | 0x1000000u',source)
         self.assertIn('masks(8, 7)',source)
         self.assertIn('packed && !measuring ? 9 : 15',source)
-        self.assertIn('packed && !measuring ? 7 : 15',source)
-        self.assertIn('Interval expected_linear{linear, linear}',source)
+        self.assertIn('packed && !measuring ? 5 : 15',source)
+        self.assertIn('composed(fp16(plane[i]), linear, gain)',source)
+        self.assertIn('int(r.c[i + k]) - int(r.native[i + k])',source)
+        self.assertIn('literal(w, 1, gain, 1.f - gain, 2.2f, 1e-10f)',source)
         self.assertIn('pixel_variant',source)
         build=(r.ROOT/'verification/probe/build_linear_emission_sm1_packed.sh').read_text()
         self.assertNotIn('d3d9.dll',build)

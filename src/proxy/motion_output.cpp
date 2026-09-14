@@ -537,9 +537,10 @@ void MotionOutput::configure_linear_distance_fade(bool requested) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
     distance_fade_requested_ = requested && linear_material_requested_;
 }
-void MotionOutput::configure_screen_emission(bool requested) noexcept {
+void MotionOutput::configure_screen_emission(bool requested, float gain) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
     screen_emission_requested_ = requested && linear_material_requested_;
+    screen_emission_gain_ = gain;
 }
 void MotionOutput::configure_fade_witness(unsigned frames) noexcept {
     if (device_) return;
@@ -3071,6 +3072,10 @@ void MotionOutput::begin_composition_frame() noexcept {
         if ((requested & 2u) && !fade_bounds_.reserved() && !fade_bounds_.reserve())
             log("fade_region_table device=%llu reserve=failed", id_);
         if (composition_) {
+            // Step E: the packed composite carries the gain as a literal; a
+            // refused value (out of the pass's domain) leaves the default 1.
+            if ((requested & 8u) && !composition_->configure_packed_gain(screen_emission_gain_))
+                log("screen_emission_gain device=%llu requested=%g refused=1 applied=%g", id_, double(screen_emission_gain_), double(composition_->packed_gain()));
             const HRESULT hr = composition_->attach(device_, native_, caps_, composition_adapter_format_, depth_format, requested);
             if (first || hr != composition_attach_result_)
                 log("linear_composition_device device=%llu result=%08lx requested=%u supported=%u available=%u reason=%s depth_format=%u", id_, hr,

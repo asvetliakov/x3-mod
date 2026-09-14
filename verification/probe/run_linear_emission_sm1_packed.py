@@ -2,7 +2,11 @@
 """Consume an approved prebuilt packed-screen EXE; never build or launch the game.
 
 Run through wine_lock.py with X3M_FIXTURE_BOTTLE=X3. This is a detached
-mathematical GPU prototype, not a live native-B/publication contract.
+mathematical GPU prototype, not a live native-B/publication contract. Step E
+(screen-emission-region.md): the source writes the red|blue plane lanes only,
+the C assembly decodes the accumulated native lane once with the gain as a
+literal, and at gain 1 every in-domain C equals the native B bit for bit;
+schedule 3 accumulates an 8-layer overlapping chain in one DIP.
 """
 import argparse
 import hashlib
@@ -30,8 +34,10 @@ CASES=('asymmetric','zero_channel','zero_rgb','q_one','gain_zero','gain_quarter'
        'overflow_boundary','flat','clip','perspective','uv_flip','fog_layout')
 BOUNDARIES=(15,16,17,18)
 GAINS=(1.,0.,.25,2.5)
+SCHEDULES=4          # 0 one DIP two particles, 1 two DIPs, 2 reversed order, 3 one DIP eight-layer chain
+CHAIN_LAYERS=8
 ERRORS=('b_diff','alpha_diff','c_diff','plane_diff','mask_diff','alpha_mask_diff',
-        'unchanged_diff','init_diff','nonfinite','same_dip_diff')
+        'unchanged_diff','init_diff','nonfinite','same_dip_diff','native_c_diff')
 PROGRAMS=tuple(dict.fromkeys(f'{kind}_{pair[index]}.bin' for pair in PAIRS for index,kind in ((0,'vs'),(1,'ps'))))
 PHASES=('native_dip','initialize','packed_dip','assemble_b','assemble_c')
 
@@ -52,7 +58,7 @@ def validate_caps(lines,width,height):
 
 def validate_helpers(lines):
     rows=[fields(x) for x in lines if x.startswith('PACKED_HELPER ')]
-    expected=(('initialize',22,1,2,1,15,1),('assemble_b',5,4,5,4,1,0),('assemble_c',26,5,7,5,1,1))
+    expected=(('initialize',22,1,2,1,15,1),('assemble_b',5,4,5,4,1,0),('assemble_c',44,5,7,5,1,2))
     assert [(x['name'],*[int(x[k]) for k in ('alu','tex','temps','samplers','outputs','constants')]) for x in rows]==list(expected),'authored init/B/C resource budgets'
     assert all(int(x['words'])>0 for x in rows)
     return rows
@@ -67,9 +73,9 @@ def validate(output):
         assert int(x['words'])>0
         creation[int(x['pair']),int(x['gain_index'])]=not bool(int(x['hr'],16)&0x80000000)
     rows=[fields(x) for x in lines if x.startswith('PACKED_CASE ')]
-    assert [(int(x['pair']),int(x['case']),int(x['schedule'])) for x in rows]==[(p,c,s) for p in range(9) for c in range(24) for s in range(3)],'all-nine ordered/overlapping corpus required'
+    assert [(int(x['pair']),int(x['case']),int(x['schedule'])) for x in rows]==[(p,c,s) for p in range(9) for c in range(24) for s in range(SCHEDULES)],'all-nine ordered/overlapping/chain corpus required'
     aggregates={(p,s):dict(pair=p,schedule=s,measured=0,unsupported=0,in_domain_failures=0,boundary_failures=0,
-                          max_fraction=0.,flag_zero_changed_boundary=0,**{key:0 for key in ERRORS}) for p in range(9) for s in range(3)}
+                          max_fraction=0.,flag_zero_changed_boundary=0,max_layers=0,native_c_off_by_one=0,native_c_channels=0,**{key:0 for key in ERRORS}) for p in range(9) for s in range(SCHEDULES)}
     indexed={};unsupported=failures=boundary_failures=order_changed=0
     for row in rows:
         p,c,s=(int(row[k]) for k in ('pair','case','schedule'));agg=aggregates[p,s];indexed[p,c,s]=row
@@ -82,10 +88,25 @@ def validate(output):
         assert all(0<=v<=100000 for v in counts.values())
         for key,value in counts.items():agg[key]+=value
         assert int(row['original_dips'])==int(row['packed_dips'])==(2 if s==1 else 1),'one-DIP overlap cannot be replaced by particle replay'
-        assert 0<=int(row['overlap'])<=1024 and 0<=int(row['surviving'])<=2048
+        layers=CHAIN_LAYERS if s==3 else 2
+        assert int(row['layers'])==layers and 0<=int(row['max_layers'])<=layers
+        agg['max_layers']=max(agg['max_layers'],int(row['max_layers']))
+        assert 0<=int(row['overlap'])<=1024 and 0<=int(row['surviving'])<=1024*layers
         if c in (9,13):assert int(row['surviving'])==int(row['overlap'])==0
         else:assert int(row['surviving'])>0
-        if c in (0,1,2,3,4,5,6,8,11,14):assert int(row['overlap'])>0
+        if c in (0,1,2,3,4,5,6,8,11,14):
+            assert int(row['overlap'])>0
+            # The chain schedule accumulates every layer on its middle strip.
+            assert int(row['max_layers'])==layers,(p,c,s,'full overlap depth',row['max_layers'])
+        # C equals the native B within one FP16 code at gain 1 in domain
+        # (step E); the counters are only reported there, and the off-by-one
+        # codes (the GPU POW round trip) stay a small fraction of the
+        # surviving channel values.
+        off=int(row['native_c_off_by_one'])
+        if c in (4,5,6) or c in BOUNDARIES:assert counts['native_c_diff']==off==0
+        else:
+            agg['native_c_off_by_one']+=off;agg['native_c_channels']+=3*int(row['surviving'])
+            assert off<=int(row['surviving'])*3//10,(p,c,s,'off-by-one codes bounded',off,row['surviving'])
         assert s==1 or counts['same_dip_diff']==0
         assert s==2 or int(row['order_changed'])==0
         if c in (1,2):assert int(row['unchanged_covered'])>0,'actual covered unchanged-channel witness'
@@ -99,7 +120,7 @@ def validate(output):
     # Both accepted and rejected alpha/depth controls must actually exist; a
     # success with no surviving particles is not mathematical qualification.
     for p in range(9):
-        for s in range(3):
+        for s in range(SCHEDULES):
             if not creation[p,0]:continue
             count=lambda c:int(indexed[p,c,s]['surviving'])
             assert 0<count(7)<count(8)==count(0)
@@ -109,7 +130,7 @@ def validate(output):
             assert int(indexed[p,0,2]['order_changed'])>0,'asymmetric sources must expose primitive-order dependence'
     complete=[fields(x) for x in lines if x.startswith('PACKED_COMPLETE ')]
     assert len(complete)==1
-    expected=dict(pairs=9,cases=24,schedules=3,rows=648,unsupported=unsupported,failures=failures,
+    expected=dict(pairs=9,cases=24,schedules=SCHEDULES,rows=24*9*SCHEDULES,unsupported=unsupported,failures=failures,
                   boundary_failures=boundary_failures,order_changed=order_changed,reset=1,
                   owned_targets=8,target_bytes=8*32*32*8,live_publication=0)
     assert {k:int(v) for k,v in complete[0].items()}==expected
@@ -124,8 +145,9 @@ def validate(output):
         assert indexed[p,c,s]['status']=='measured' and any(int(indexed[p,c,s][key]) for key in ERRORS)
     ranges=[fields(x) for x in lines if x.startswith('PACKED_RANGE_WITNESS ')]
     assert ranges==([dict(prefix='range_q2',q_clamped_by_fixture='0',qualification='0')] if creation[0,0] else [])
-    return dict(completed=True,qualified_in_domain=failures==unsupported==0,live_publication=False,
-                pairs=9,original_vs=9,original_ps=6,cases=24,schedules=3,rows=648,gains=GAINS,creations=36,
+    off_by_one=sum(a['native_c_off_by_one'] for a in aggregates.values());channels=sum(a['native_c_channels'] for a in aggregates.values())
+    return dict(completed=True,qualified_in_domain=failures==unsupported==0,live_publication=False,native_c_off_by_one=off_by_one,native_c_channels=channels,
+                pairs=9,original_vs=9,original_ps=6,cases=24,schedules=SCHEDULES,rows=24*9*SCHEDULES,gains=GAINS,creations=36,chain_layers=CHAIN_LAYERS,
                 unsupported=unsupported,failures=failures,boundary_failures=boundary_failures,
                 order_changed=order_changed,reset=1,owned_targets=8,target_bytes=8*32*32*8,
                 caps=caps,helpers=helpers,pair_schedule_results=list(aggregates.values()),witnesses=witnesses,range_witnesses=ranges)
@@ -177,8 +199,8 @@ def main():
                 game_launched=False,scope='Detached packed-channel mathematical GPU prototype; original native source and independent measurement draws are separate qualification baselines, not proposed live geometry replay.',
                 limitations=['Native Windows/gameplay untested. No source/assembly/restore/publication failure contract or live route is qualified.',
                     'Only bounded q in[0,1] and representable accumulation are mathematical qualification candidates. Signed/>1q/HDR/overflow rows retain raw q and operational mismatches/finiteness separately; no clamp or extra blend domain is adopted.',
-                    'C checks propagate measured FP16 sample/multiplier half-ULP intervals, .003 relative/.00004 absolute transfer error and one target ULP per ordered store, then encode/store. Native assembled B RGBA and unchanged-channel A copying are exact.',
-                    'Assembly uses ordered exact-zero blue via ABS/CMP. Its negative-linear clamp is only an operational boundary diagnostic; negative/nonfinite accumulated light has no accepted domain or overflow policy.',
+                    'Step E: C = encode(g decode(B) + (1 - g) decode(A)) on the stored lanes (.006 relative/.00008 absolute, boundary rows doubled); at gain 1 in domain C must equal the native B within one FP16 code (native_c_diff beyond one code, native_c_off_by_one reported: the GPU POW round trip). Native assembled B RGBA and unchanged-channel A copying are exact. The green lane is never written by the source (plane masks 5).',
+                    'Assembly uses ordered exact-zero blue via ABS/CMP (the blue lane accumulates q). Its negative-linear clamp is only an operational boundary diagnostic; negative/nonfinite accumulated light has no accepted domain or overflow policy.',
                     'Persistent native-B assembly failure and physical return/publication semantics remain unresolved; live_publication is always false.'])
     try:
         results={}

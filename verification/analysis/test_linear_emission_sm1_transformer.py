@@ -76,8 +76,8 @@ class Sm1TransformerTests(unittest.TestCase):
     def test_driver_all_profiles_pairs_mutations_alias_and_resources(self):
         self.assertEqual((self.report['variants'],self.report['pairs']),(210,9))
         self.assertGreater(self.report['checks'],7000)
-        self.assertEqual(self.report['max_slots'],[4,26,28,42])
-        self.assertEqual(self.report['max_words'],201)
+        self.assertEqual(self.report['max_slots'],[4,26,28,12])
+        self.assertEqual(self.report['max_words'],153)
 
     def test_all_current_sm2_outputs_and_registry_are_retained(self):
         record=json.loads((ROOT/'verification/results/bottle-X3/linear-emission-mrt-coverage-gpu.json').read_text())
@@ -171,7 +171,9 @@ class Sm1TransformerTests(unittest.TestCase):
             self.assertEqual(words[0],0xffff0200)
             actual=[i for i in items if i['opcode'] not in (31,81)]
             self.assertTrue(all(not i['words'][0]&0x200000 for i in actual))
-            self.assertEqual(sum(3 if i['opcode']==32 else 1 for i in actual if i['opcode']!=66),42 if h in SCALAR else 41)
+            # Step E: no per-fragment decode (no POW in the packed producer).
+            self.assertEqual(sum(3 if i['opcode']==32 else 1 for i in actual if i['opcode']!=66),12 if h in SCALAR else 11)
+            self.assertFalse(any(i['opcode']==32 for i in actual))
             self.assertEqual(sum(i['opcode']==66 for i in actual),1)
             outs=[i for i in actual if shader.register_of(i['words'][0])[0]==8]
             self.assertEqual([shader.register_of(i['words'][0])[1] for i in outs],[0,1,2,3])
@@ -182,8 +184,10 @@ class Sm1TransformerTests(unittest.TestCase):
             self.assertEqual(r[8,0],[1.,0.,0.,f32(texture[3])])
             for c in range(3):
                 q=f32(texture[c]*weight);plane=r[8,c+1]
-                self.assertEqual((plane[0],plane[2],plane[3]),(q,1.,q))
-                self.assertAlmostEqual(plane[1],sanitize(decode(texture[c])*weight*GAINS[g]),delta=2e-6)
+                # P_c = (q, q, q, q): the red lane accumulates native B, the blue
+                # lane is the modified flag, the green lane is masked off by the
+                # pass (it keeps decode(A) from the plane initialization).
+                self.assertEqual(plane,[q,q,q,q])
 
     def test_packed_zero_signed_and_cap_order_are_explicit(self):
         for h in SCALAR+BULLET:
@@ -191,10 +195,9 @@ class Sm1TransformerTests(unittest.TestCase):
                 _,items=self.packed[h,g];r,_=simulate(items,tex,(.125,0.,0.,.125))
                 self.assertEqual(r[8,0][:3],[1.,0.,0.])
                 for c in range(3):
-                    q=r[8,c+1][0];e=r[8,c+1][1]
-                    self.assertEqual(r[8,c+1][2],float(q!=0 or e!=0))
-                    self.assertEqual(r[8,c+1][3],q)
-                if tex[0]==256:self.assertEqual(r[8,1][1],65504*.125*.25)
+                    q=r[8,c+1][0]
+                    self.assertEqual(r[8,c+1],[q]*4) # the gain never enters the producer (step E: gain at publication)
+                if tex[0]==256:self.assertEqual(r[8,1][0],256*.125) # native q uncapped, no decode
                 if tex[0]<0:self.assertLess(r[8,1][0],0) # no invented clamp of native q
 
     def test_packed_ordered_law_and_unchanged_channel(self):
@@ -211,18 +214,25 @@ class Sm1TransformerTests(unittest.TestCase):
                 a=fragment[8,0][3]
                 alpha=half(a+(1-a)*alpha);mask=half(1+(1-a)*mask)
                 for c in range(3):
-                    q,e,flag,srcalpha=fragment[8,c+1]
+                    q,_,flag,srcalpha=fragment[8,c+1]
                     native[c]=half(q+(1-q)*native[c])
-                    planes[c]=[half(v+(1-srcalpha)*old) for v,old in zip((q,e,flag),planes[c])]
+                    # Red and blue lanes only (plane masks 5): green keeps decode(A).
+                    planes[c]=[half(q+(1-srcalpha)*planes[c][0]),planes[c][1],half(flag+(1-srcalpha)*planes[c][2])]
             self.assertEqual([p[0] for p in planes],native)
+            self.assertEqual([p[1] for p in planes],[half(decode(x)) for x in A])
             self.assertEqual(planes[2][2],0.)
             self.assertGreater(mask,.5)
             return planes,alpha
         forward,af=accumulate(fragments);reverse,ar=accumulate(fragments[::-1])
-        self.assertNotEqual(forward[0][1],reverse[0][1])
+        # The screen blend is commutative in exact arithmetic; only FP16 stores can order it.
+        self.assertAlmostEqual(forward[0][0],reverse[0][0],places=2)
         self.assertEqual(af,ar) # these selected binary alpha values compose exactly
         # Assembly must copy immutable A when the channel flag is ordered zero.
         self.assertEqual(forward[2][0],half(A[2]))
         self.assertEqual(forward[2][2],0.)
+        # Step E publication at g = 1: encode(decode(B_native)) is the native lane.
+        for c in range(2):
+            self.assertAlmostEqual(forward[c][0]**2.2*1+forward[c][1]*0,forward[c][0]**2.2)
+            self.assertEqual(half((forward[c][0]**2.2)**(1/2.2)),forward[c][0])
 
 if __name__=='__main__':unittest.main()

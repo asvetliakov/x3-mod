@@ -2,12 +2,22 @@
 """Author the packed screen policy's two ps_3_0 programs as generated fragments.
 
 The programs are the qualified prototype's helpers (`screen_ps(0)` plane
-initialization and `screen_ps(2)` enhanced C assembly in
+initialization and `screen_ps(2)` C assembly in
 verification/probe/linear_emission_sm1_packed_fixture.cpp, ps_2_0) ported to
 ps_3_0 so that they pair with the proxy's vs_3_0 quad program: only the version
 token and the input declaration/register (t0 -> v0 with a TEXCOORD0 usage)
 differ; every arithmetic, sampler and constant token is the prototype's.
-Outputs src/renderer/linear_screen_plane_init_inc.h and
+
+Step E composition (docs/architecture/screen-emission-region.md): the C
+assembly decodes the accumulated native lane once,
+C_c = encode(g decode(P_c.x) + (1 - g) P_c.y) where P_c.x is B_native after
+the draw and P_c.y = decode(A_c) = decode(B_native before) from the plane
+initialization (never written by the source: plane masks 5), i.e.
+encode(decode(A) + g (decode(B_after) - decode(B_before))); unmodified
+channels (P_c.z = 0) copy A. The gain lives in `def c1` = (g, 1 - g, 2.2,
+1e-10), authored at g = 1 and patched by the pass at attach
+(GAIN_LITERAL_INDEX / gain_words). Outputs
+src/renderer/linear_screen_plane_init_inc.h and
 src/renderer/linear_screen_composite_inc.h. --check compares without writing.
 No compiler, D3D device or Wine is involved.
 """
@@ -46,6 +56,20 @@ def literal(w, regno, a, b, c, d):
     ins(w, 81, [dst(2, regno), *struct.unpack('<4I', struct.pack('<4f', a, b, c, d))])
 
 
+def gain_literal(gain):
+    """The composite's `def c1`: (g, 1 - g, 2.2, 1e-10); at g = 1 the second
+    lane is an exact zero so the composed lane is decode(B_native) exactly."""
+    return (f32(gain), f32(f32(1) - f32(gain)), 2.2, 1e-10)
+
+
+# DWORD index of the `def c1` instruction token in the composite program
+# (screen_ps(2, True)); the pass patches the two following gain lanes.
+def gain_literal_index(words):
+    matches = [i for i in range(len(words) - 5) if words[i] == 81 | (5 << 24) and words[i + 1] == dst(2, 1)]
+    assert len(matches) == 1, matches
+    return matches[0]
+
+
 def screen_ps(kind, ps3):
     """kind 0: plane/M.alpha initialization; 2: enhanced C assembly.
 
@@ -62,6 +86,8 @@ def screen_ps(kind, ps3):
     for i in range(samples):
         ins(w, 31, [0x90000000, dst(10, i)])
     literal(w, 0, 0, f32(f32(1) / f32(2.2)) if kind else 2.2, 1e-22 if kind else 1e-10, 1)
+    if kind:
+        literal(w, 1, *gain_literal(1.0))
     for i in range(samples):
         ins(w, 66, [dst(0, i), coord, src(10, i)])
     if kind == 0:
@@ -75,7 +101,13 @@ def screen_ps(kind, ps3):
     else:
         output = 5
         for c in range(3):
-            ins(w, 11, [dst(0, 6, 1), src(0, c, 0x55), src(2, 0, 0)])
+            # r6.x = g decode(max(P_c.x, 1e-10)) + (1 - g) P_c.y, clamped at 0
+            ins(w, 11, [dst(0, 6, 1), src(0, c, 0), src(2, 1, 0xff)])
+            ins(w, 32, [dst(0, 6, 1), src(0, 6, 0), src(2, 1, 0xaa)])
+            ins(w, 5, [dst(0, 6, 1), src(0, 6, 0), src(2, 1, 0)])
+            ins(w, 4, [dst(0, 6, 1), src(0, c, 0x55), src(2, 1, 0x55), src(0, 6, 0)])
+            ins(w, 11, [dst(0, 6, 1), src(0, 6, 0), src(2, 0, 0)])
+            # r6.y = encode(r6.x) with an exact zero; the channel copies A when unmodified
             ins(w, 11, [dst(0, 6, 2), src(0, 6, 0), src(2, 0, 0xaa)])
             ins(w, 32, [dst(0, 6, 2), src(0, 6, 0x55), src(2, 0, 0x55)])
             ins(w, 88, [dst(0, 6, 2), src(0, 6, 0) | 0x1000000, src(2, 0, 0), src(0, 6, 0x55)])

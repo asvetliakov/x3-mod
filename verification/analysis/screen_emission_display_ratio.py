@@ -1,7 +1,9 @@
 """Run-17 defect measurement: display luminance of a bullet bolt under the
-native screen blend, the packed screen law (policy 8) and the display-referred
-option (a), through the run-17 write-back (gamma-2.2 decode, manual EV 0, AgX,
-no look, no clamp; docs/architecture/screen-emission-region.md, step C).
+native screen blend, the withdrawn step C packed law (per-fragment decode),
+the display-referred option (a) and the ratified step E law (decode the
+accumulated native value once, scale by g), through the run-17 write-back
+(gamma-2.2 decode, manual EV 0, AgX, no look, no clamp;
+docs/architecture/screen-emission-region.md, steps C and E).
 
 Captured inputs (run 17, draw index 17 of frame 6383): ADD ONE/INVSRCCOLOR, gain
 1, 198 primitives per draw (99 quads, a chain of overlapping sprites per
@@ -54,7 +56,7 @@ def native(background, chain, h=1.0):
 
 
 def packed(background, chain, h=1.0, gain=1.0):
-    """The ratified law: L' = E + (1 - q) L with E = decode(T) h gain per fragment."""
+    """The withdrawn step C law: L' = E + (1 - q) L with E = decode(T) h gain per fragment."""
     light = [decode(background[c]) for c in range(3)]
     for q in chain:
         light = [decode(q[c]) * h * gain + (1 - q[c] * h) * light[c] for c in range(3)]
@@ -67,6 +69,14 @@ def option_a(background, chain, h=1.0):
     composed A is native B itself (the packed red lane), exact by construction
     for every order and overlap; it carries no enhancement."""
     return native(background, chain, h)
+
+
+def step_e(background, chain, h=1.0, gain=1.0):
+    """The ratified step E law: accumulate the native encoded value exactly as
+    the game does, decode ONCE at publication and scale the bolt's own
+    contribution, C = encode(decode(A) + gain (decode(B_native) - decode(A)))."""
+    b = native(background, chain, h)
+    return tuple(encode(decode(background[c]) + gain * (decode(b[c]) - decode(background[c]))) for c in range(3))
 
 
 def display(engine_rgb):
@@ -85,6 +95,8 @@ def measure(background=(0.0, 0.0, 0.0), overlap=8, sigma=3.0, spacing=2.0, gains
                    option_a=luma(display(option_a(background, chain))))
         for gain in gains:
             row[f'packed_gain_{gain:g}'] = luma(display(packed(background, chain, gain=gain)))
+        for gain in gains:
+            row[f'step_e_gain_{gain:g}'] = luma(display(step_e(background, chain, gain=gain)))
         rows.append(row)
     core = rows[0]
     ratios = {}
