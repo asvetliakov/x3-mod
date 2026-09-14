@@ -235,6 +235,12 @@ Log: `voice_dmo_fallback requested=1 installed=… status=…` at install and on
 activation, formatted after Present from an integer ring. Evidence: replica
 `game-dmo-fallback` `stream_run S_OK`, 5 samples, clean teardown (startup note
 §13); x87 audit PASS on the built DLL; not yet exercised in the game.
+Cost: the first activation loads winegstreamer/mfplat and probes a transform,
+about 195 ms once on the main thread inside the constructor; later activations
+0.5 ms (loading-time rule: one-time, counted in the next load timing). Windows
+exposure is nil unless `X3M_VOICE_DMO_FALLBACK=1` is set, which only
+`--voice-decoder` does; on an N edition without the speech DMO the substitution
+is the correct decoder for the WMA2 voice files.
 
 ## Timing correction builds (2026-09-14)
 

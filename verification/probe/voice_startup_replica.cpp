@@ -18,8 +18,9 @@
 // IDMOWrapperFilter::Init(CLSID_CWMSPDecMediaObject, DMOCATEGORY_AUDIO_DECODER)
 // (two attempts) and AddFilter(NULL name) whatever Init returned. Teardown is
 // section 12's straight-line 004d1c20: RemoveFilter(slot); Release(slot) per
-// slot with every HRESULT discarded, then the graph Release, which is where
-// Wine's filter_graph_Release loop spins (the watchdog names release_graph).
+// slot with every HRESULT discarded, then the graph Release; amstream holds the
+// last graph reference, so the unfixed mode hangs at release_multimedia, where
+// Wine's filter_graph_Release loop spins (run plugin-v3-game-dmo-teardown12).
 // Mode game-dmo-fallback is the production hook's action: when Init returns
 // REGDB_E_CLASSNOTREG it re-issues Init with the registered WMA decoder DMO
 // (CLSID_CWMADecMediaObject) and the same category, and continues unchanged.
