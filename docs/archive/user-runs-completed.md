@@ -614,3 +614,16 @@ the selection timing.
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
+
+Moved from the open queue on 2026-09-14. Outcome: the user ran vanilla (`./x3run --direct --vanilla`) and the double cursor reproduces there too, with the recipe "alt-tab out, move the desktop cursor outside the game window position, alt-tab back". So it is vanilla CrossOver/game behaviour, not a proxy regression; owner note `docs/architecture/window-and-cursor.md`.
+
+## 4. Vanilla window/cursor comparison — Completed
+
+```sh
+./x3run --direct --vanilla
+```
+
+Alt-tab out and back once. Report whether both the macOS arrow and game cursor
+appear, whether their positions differ, and whether the macOS menu bar overlaps
+the game. Compare the same screen as the enhanced run; load the save if the
+problem only appears during gameplay. No F8 capture is needed.

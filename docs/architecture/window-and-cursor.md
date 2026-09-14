@@ -17,6 +17,16 @@ X3 is a 32-bit D3D9 application. The standalone graphics probe loads WineD3D for
 
 `WM_SETCURSOR` default handling can restore the class cursor in the client area. Observe the message, hit-test and actual handler result rather than assuming focus alone hides it. [Microsoft WM_SETCURSOR](https://learn.microsoft.com/en-us/windows/win32/menurc/wm-setcursor).
 
+## Vanilla reproduction (user run 4, 2026-09-14)
+
+The double cursor is present in vanilla (`./x3run --direct --vanilla`, no proxy): alt-tab
+out of the game, move the desktop cursor outside the game window's screen position, alt-tab
+back, and both the macOS arrow and the game cursor are visible. It is therefore not a proxy
+regression, and the regression checklist below only has to show that the proxy does not make
+it worse. The recipe ("cursor outside the window on return") weakens the reset/loss and
+backbuffer-image hypotheses in the table and favours the host target/capture-state one: on
+reactivation the native cursor is left visible until the mouse re-enters the client area.
+
 ## Hypotheses and discriminating evidence
 
 | Hypothesis | Evidence to seek | What would weaken it |

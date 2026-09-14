@@ -123,8 +123,10 @@ darkening on a ship. Details in the
   native-Windows runtime is verified. Depth provision, CreateDeviceEx adoption,
   MRT/PS2.1, Reset/presentation, performance and HDR output remain gaps
   ([platform-portability.md](architecture/platform-portability.md)).
-- **Window/cursor:** the macOS menu bar and the double cursor after alt-tab
-  remain open. Queue run 4 is the optional vanilla comparison.
+- **Window/cursor:** the macOS menu bar remains open. The double cursor after
+  alt-tab reproduces in vanilla (run 4, 2026-09-14: move the desktop cursor
+  outside the window before alt-tabbing back), so it is not a proxy regression;
+  recipe and reading in [window-and-cursor.md](architecture/window-and-cursor.md).
 
 Keep raw captures and builds local, use focused verification, and update the owning
 note instead of expanding this handoff. Remaining scope: [roadmap](architecture/roadmap.md).

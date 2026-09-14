@@ -20,7 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 1 | Chase aiming/framing + reader/adjacency verification | 0 | Accepted as run 18 |
 | 2 | Sharpen/shimmer + camera cuts with TAA | 0 | Merged into run 6 |
 | 3 | Automatic exposure + bloom off/on | 0 | Completed: A run 24; B run 25 exposed bloom initialization failure |
-| 4 | Vanilla double-cursor/menu-bar comparison | 1 | After any enhanced run |
+| 4 | Vanilla double-cursor/menu-bar comparison | 0 | Completed 2026-09-14 (vanilla, no snapshot): the double cursor reproduces in vanilla after alt-tab when the desktop cursor is moved outside the window before returning; vanilla behaviour, not a proxy regression |
 | 5 | Reader/adjacency fast modes | 0 | Accepted as run 19 |
 | 6 | Linear hull materials off/on plus sharpen/cuts at fixed exposure | 0 | Completed: A run 20, B runs 21–23; analysis/quality follow-ups remain |
 | 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; follow-ups combined into run 8 |
@@ -37,14 +37,3 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 19 | Combined: AO off/on (Ctrl+Shift+F11), bullets at gain 1, cutout shimmer fix, same-port far/near pair | 0 | Completed as user run 19, snapshot run47: cutout exemption holds (`reason=3` 0.01 %), bolts accepted at gain 1; AO runs but is invisible at 2 m, port darkening and asteroid triangle dropout still open |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 | 20 | Step D, loading markers, AO radius/debug, asteroid diagnostic, port far/near retry | 1 | Pending the next candidate |
-
-## 4. Vanilla window/cursor comparison — Ready after any enhanced run
-
-```sh
-./x3run --direct --vanilla
-```
-
-Alt-tab out and back once. Report whether both the macOS arrow and game cursor
-appear, whether their positions differ, and whether the macOS menu bar overlaps
-the game. Compare the same screen as the enhanced run; load the save if the
-problem only appears during gameplay. No F8 capture is needed.
