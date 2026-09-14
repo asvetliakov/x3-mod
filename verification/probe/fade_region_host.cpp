@@ -6,6 +6,7 @@
 // Windows.
 #include "../../src/proxy/fade_region_math.h"
 #include "../../src/proxy/fade_region_core.h"
+#include "../../src/proxy/fade_route_core.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -746,9 +747,48 @@ int case_mode(int argc, char** argv) {
 }
 } // namespace hull_mode
 
+// Fade-band arm helpers (fade_route_core.h): the register table, the exact
+// fade-band state and the fraction at the origin distance, for the Python
+// restatement in test_fade_region.py.
+namespace fade_route_mode {
+int registers(int, char** argv) {
+    x3m::fade_route::Registers r{};
+    const bool known = x3m::fade_route::registers(std::strtoull(argv[2], nullptr, 16), r);
+    std::printf("REGISTERS vs=%s known=%u alpha=%u fog=%u\n", argv[2], known, r.alpha, r.fog);
+    return 0;
+}
+int state(int argc, char** argv) {
+    if (argc < 12) return 2;
+    std::uint32_t v[10];
+    for (unsigned i = 0; i < 10; ++i) v[i] = std::uint32_t(std::strtoul(argv[2 + i], nullptr, 10));
+    std::printf("STATE fade_band=%u\n", x3m::fade_route::state(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9]));
+    return 0;
+}
+// --fade-route alpha fog_enable fog_x fog_y rows[16] camera_valid m00 m11 m20 m21 threshold
+int fraction(int argc, char** argv) {
+    if (argc < 2 + 4 + 16 + 5 + 1) return 2;
+    const float alpha = std::strtof(argv[2], nullptr);
+    const bool fog = std::strtoul(argv[3], nullptr, 10) != 0;
+    const float fog_x = std::strtof(argv[4], nullptr), fog_y = std::strtof(argv[5], nullptr);
+    float rows[16];
+    for (unsigned i = 0; i < 16; ++i) rows[i] = std::strtof(argv[6 + i], nullptr);
+    const bool camera = std::strtoul(argv[22], nullptr, 10) != 0;
+    const float m00 = std::strtof(argv[23], nullptr), m11 = std::strtof(argv[24], nullptr), m20 = std::strtof(argv[25], nullptr), m21 = std::strtof(argv[26], nullptr);
+    const unsigned threshold = unsigned(std::strtoul(argv[27], nullptr, 10));
+    float distance = 0;
+    const bool ok = x3m::fade_route::origin_distance(rows, camera, m00, m11, m20, m21, distance);
+    const float f = ok ? x3m::fade_route::fraction(alpha, fog, fog_x, fog_y, distance) : 0.f;
+    const unsigned permille = ok ? x3m::fade_route::permille(f) : 0u;
+    std::printf("FRACTION ok=%u distance=%.9g fraction=%.9g permille=%u admit=%u\n", ok, double(distance), double(f), permille, ok && x3m::fade_route::admit(permille, threshold));
+    return 0;
+}
+} // namespace fade_route_mode
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc >= 3 && std::strcmp(argv[1], "--fade-route-registers") == 0) return fade_route_mode::registers(argc, argv);
+    if (argc >= 2 && std::strcmp(argv[1], "--fade-route-state") == 0) return fade_route_mode::state(argc, argv);
+    if (argc >= 2 && std::strcmp(argv[1], "--fade-route") == 0) return fade_route_mode::fraction(argc, argv);
     if (argc >= 5 && std::strcmp(argv[1], "--hull") == 0)
         return hull_mode::run(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
     if (argc >= 2 && std::strcmp(argv[1], "--hull-case") == 0) return hull_mode::case_mode(argc, argv);

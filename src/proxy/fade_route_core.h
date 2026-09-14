@@ -1,0 +1,85 @@
+#pragma once
+#include <cmath>
+#include <cstdint>
+
+// Fade-band motion arm (docs/architecture/linear-distance-fade-region.md,
+// "Fade-band route"; docs/reverse-engineering/asteroid-fog-temporal.md, run
+// 49): pure admission helpers, no D3D. A reviewed motion pair drawn in the
+// engine's exact fade-band state (Z test on, Z-write off, alpha test off,
+// SRCALPHA/INVSRCALPHA ADD, RGB mask 7, sRGB write off, separate alpha off)
+// is routed like an opaque draw when its fade fraction estimate reaches the
+// threshold, instead of being composed by the fade bracket and masked
+// current-only. Host-tested through verification/probe/fade_region_host.cpp
+// (--fade-route) from verification/analysis/test_fade_region.py.
+namespace x3m::fade_route {
+// The seven distance-fade vertex programs (linear_distance_fade.h) and the
+// registers their CTAB names: g_AlphaValue (float4, .x used), g_FogClip
+// (float4, .xy used), g_EnableFog = b0 for every one (shader sweep
+// inventory, verification/results/shader-sweep-inventory.json; the loop
+// programs carry c39/c41, the two fixed-light programs c18/c20).
+struct Registers { std::uint8_t alpha = 0, fog = 0; };
+constexpr bool registers(std::uint64_t vs, Registers& out) noexcept {
+    switch (vs) {
+    case 0xb0602757fce6e870ull: case 0x0c223ad11bce02d5ull: case 0x167eb2d5629ab9d3ull:
+    case 0x330ceb9dd874ede2ull: case 0x4944d81dfe531b37ull:
+        out = Registers{39, 41}; return true;
+    case 0x233d17d26ce0c1fcull: case 0x12b8a13f13fe8cfeull:
+        out = Registers{18, 20}; return true;
+    default: return false;
+    }
+}
+// The exact fade-band render state (the fade route's nine-state check plus
+// the separate-alpha switch off). Public D3D9 enum values: D3DZB_TRUE 1,
+// D3DBLEND_SRCALPHA 5, D3DBLEND_INVSRCALPHA 6, D3DBLENDOP_ADD 1.
+constexpr bool state(std::uint32_t z, std::uint32_t z_write, std::uint32_t alpha_test, std::uint32_t blend,
+                     std::uint32_t color_mask, std::uint32_t srgb_write, std::uint32_t src, std::uint32_t dst,
+                     std::uint32_t op, std::uint32_t separate_alpha) noexcept {
+    return z == 1 && z_write == 0 && alpha_test == 0 && blend != 0 && color_mask == 7 && srgb_write == 0
+        && src == 5 && dst == 6 && op == 1 && separate_alpha == 0;
+}
+// Distance of the object origin to the camera from the draw's clip rows
+// (four rows as uploaded: clip = row_k . (x, y, z, 1), so the origin's clip
+// is the translation column) and the camera's projection scales (row-vector
+// D3D perspective with P[11] = 1: x_c = x_v m00 + z_v m20, y_c = y_v m11 +
+// z_v m21, w_c = z_v; camera_reprojection.h). Without a valid camera the
+// view depth w alone stands in (a lower bound of the distance: the estimate
+// then errs towards routing). False for w <= 0 or a nonfinite input.
+inline bool origin_distance(const float rows[16], bool camera_valid, float m00, float m11, float m20, float m21,
+                            float& out) noexcept {
+    const float xc = rows[3], yc = rows[7], w = rows[15];
+    if (!std::isfinite(xc) || !std::isfinite(yc) || !std::isfinite(w) || !(w > 0.f)) return false;
+    if (!camera_valid || !(m00 > 0.f) || !(m11 > 0.f) || !std::isfinite(m20) || !std::isfinite(m21)) { out = w; return true; }
+    const float xv = (xc - w * m20) / m00, yv = (yc - w * m21) / m11;
+    const float d = std::sqrt(xv * xv + yv * yv + w * w);
+    if (!std::isfinite(d)) return false;
+    out = d; return true;
+}
+// The vertex program's alpha (asteroid-fog-temporal.md, "Exact shader alpha"):
+// COLOR0.a = g_AlphaValue.x * saturate(g_FogClip.x - g_FogClip.y * distance)
+// with fog, g_AlphaValue.x without. Evaluated at the origin distance, so a
+// large mesh straddling the band is admitted by its origin. Nonfinite
+// inputs yield 0 (never admitted).
+inline float fraction(float alpha_x, bool fog, float fog_x, float fog_y, float distance) noexcept {
+    if (!std::isfinite(alpha_x) || !std::isfinite(fog_x) || !std::isfinite(fog_y) || !std::isfinite(distance)) return 0.f;
+    float factor = 1.f;
+    if (fog) {
+        factor = fog_x - fog_y * distance;
+        if (!(factor > 0.f)) factor = 0.f;
+        if (factor > 1.f) factor = 1.f;
+    }
+    const float f = alpha_x * factor;
+    return std::isfinite(f) ? f : 0.f;
+}
+// Per mille of the fraction, clamped to [0, 1000].
+inline unsigned permille(float f) noexcept {
+    if (!(f > 0.f)) return 0u;
+    if (f >= 1.f) return 1000u;
+    return unsigned(f * 1000.f);
+}
+// Admission by threshold (per mille, X3M_FADE_ROUTE): the arm is off for a
+// threshold above 1000; 0 admits every recognised fade-band draw.
+constexpr unsigned threshold_off = 1001u;
+constexpr bool admit(unsigned f_permille, unsigned threshold_permille) noexcept {
+    return threshold_permille <= 1000u && f_permille >= threshold_permille;
+}
+} // namespace x3m::fade_route

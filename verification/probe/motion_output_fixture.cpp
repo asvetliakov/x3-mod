@@ -393,6 +393,7 @@ struct Fixture {
     // effective producer set is latched from the runtime status each frame.
     bool distancefade = false, distancefade_bench = false;
     bool cutout = false, cutout_bench = false;
+    bool faderoute = false; // fade-band motion arm script (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT)
     bool distancefade_enabled = false, distancefade_emissions_enabled = false;
     // Packed screen emission script (screen-emission-region.md step C): the
     // fade/emission transport plus the bullet pair; X3M_SCREEN_EMISSION as read.
@@ -3001,6 +3002,7 @@ struct Fixture {
 #include "motion_output_distance_fade_inc.h"
 #include "motion_output_screen_emission_inc.h"
 #include "motion_output_cutout_inc.h"
+#include "motion_output_fade_route_inc.h"
 } // namespace
 // The glow pass stand-in: records the signal count at entry (the trampoline's
 // signal must precede it), then with glow the depth unbind and the bloom copy
@@ -3026,7 +3028,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -3044,14 +3046,16 @@ int main(int argc, char** argv) {
         f.materialwrap = mode == "materialwrap"; f.materialxt = mode == "materialxt"; f.materialglass = mode == "materialglass";
         f.linearmaterials = mode == "linearmaterials" || f.materialwrap;
         f.cutout_bench = mode == "cutoutbench"; f.cutout = mode == "cutout" || f.cutout_bench;
+        f.faderoute = mode == "faderoute";
         f.distancefade_bench = mode == "distancefadebench";
         f.distancefade = mode == "distancefade" || f.distancefade_bench;
         f.screenemission_bench = mode == "screenemissionbench";
         f.screenemission = mode == "screenemission" || f.screenemission_bench;
         f.emission_bench = mode == "emissionsbench" || f.distancefade_bench || f.screenemission_bench;
-        f.emissions = mode == "emissions" || f.emission_bench || f.distancefade || f.screenemission || f.cutout;
+        f.emissions = mode == "emissions" || f.emission_bench || f.distancefade || f.screenemission || f.cutout || f.faderoute;
         if(f.emission_bench&&!f.distancefade&&!f.screenemission){Fixture::W=1920;Fixture::H=1080;}
-        if(f.emissions && !f.distancefade && !f.screenemission && !f.cutout && argc!=6)throw std::runtime_error("emissions needs original emission VS/PS paths");
+        if(f.faderoute && argc!=4)throw std::runtime_error("faderoute uses bootstrap originals");
+        if(f.emissions && !f.distancefade && !f.screenemission && !f.cutout && !f.faderoute && argc!=6)throw std::runtime_error("emissions needs original emission VS/PS paths");
         if(f.screenemission && argc!=(f.screenemission_bench?5:4))throw std::runtime_error("screenemission uses bootstrap originals and optional benchmark WxH");
         if(f.cutout && argc!=(f.cutout_bench?5:4))throw std::runtime_error("cutout uses bootstrap originals and optional benchmark WxH");
         if(f.distancefade && argc!=(f.distancefade_bench?5:4))throw std::runtime_error("distancefade uses bootstrap originals and optional benchmark WxH");
@@ -3143,8 +3147,8 @@ int main(int argc, char** argv) {
         f.scope(nullptr);
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
-        if ((f.taa || f.cutout) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
+        if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }
