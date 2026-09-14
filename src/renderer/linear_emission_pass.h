@@ -10,7 +10,13 @@ namespace x3m::renderer {
 // itself (docs/architecture/linear-distance-fade-region.md, section 3): no
 // owning candidate, no exchange, no acknowledgement. It shares the pool and
 // the DistanceFade program and additionally needs D3DPRASTERCAPS_SCISSORTEST.
-enum class LinearCompositionPolicy : unsigned { AdditiveEmission = 1, DistanceFade = 2, DistanceFadeInPlace = 4 };
+// PackedScreenInPlace runs the packed screen law L' = E + (1 - q) L inside
+// the same in-place bracket (docs/architecture/screen-emission-region.md):
+// backup B|R = A|R, plane init (P_c|R = (A_c, decode(A)_c, 0), M.alpha = A.alpha),
+// the source into M (red|alpha) and three planes under ONE/INVSRCALPHA, then
+// a scissored composite into A. Planes: E = P_r, C = P_g, one extra P_b; it
+// needs four simultaneous targets, independent masks and INVSRCALPHA on FP16.
+enum class LinearCompositionPolicy : unsigned { AdditiveEmission = 1, DistanceFade = 2, DistanceFadeInPlace = 4, PackedScreenInPlace = 8 };
 constexpr unsigned composition_policy_bit(LinearCompositionPolicy p) noexcept { return unsigned(p); }
 struct LinearEmissionPassCaps {
   bool enabled = false;
@@ -52,8 +58,8 @@ struct LinearEmissionBoundary {
   // Saved original VS must be restored even after a partially mutating setter.
   IDirect3DVertexShader9 *augmented_vertex = nullptr;
   LinearCompositionPolicy policy = LinearCompositionPolicy::AdditiveEmission;
-  // DistanceFadeInPlace: conservative target-pixel rectangle the source can
-  // touch (fade_region::derive). Unknown selects the whole owning target; the
+  // In-place policies (4, 8): conservative target-pixel rectangle the source
+  // can touch (fade_region::derive). Unknown selects the whole owning target; the
   // pass further intersects with the target, the viewport and an enabled
   // application scissor, and any empty result again selects the whole target.
   RECT region{};
@@ -72,7 +78,8 @@ enum class LinearEmissionPassFault {
   FrameClear,
   RegionScissor,    // in-place: scissor set of the region backup
   CompositeScissor, // in-place: scissor set of the region composite
-  RegionRecovery    // in-place: exact rectangle recovery copy B|R -> A|R
+  RegionRecovery,   // in-place: exact rectangle recovery copy B|R -> A|R
+  PlaneInit         // packed: the plane/M.alpha initialization draw
 };
 class LinearEmissionPass {
 public:
@@ -128,6 +135,7 @@ public:
   LinearEmissionCompletion fixture_completion() const noexcept;
   IDirect3DSurface9 *fixture_native() const noexcept;
   IDirect3DSurface9 *fixture_energy() const noexcept;
+  IDirect3DSurface9 *fixture_plane_b() const noexcept; // policy 8 only, else null
 #endif
 private:
   struct Impl;

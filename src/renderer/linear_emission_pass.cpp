@@ -167,10 +167,25 @@ constexpr DWORD composite_words[] = {
 constexpr DWORD source_over_words[] = {
 #include "linear_distance_fade_composite_inc.h"
 };
+// Packed screen policy (docs/architecture/screen-emission-region.md): the
+// qualified prototype's plane initialization and C assembly, ps_3_0 ports of
+// the ps_2_0 helpers of linear_emission_sm1_packed_fixture.cpp with identical
+// arithmetic (tools/shaders/generate_screen_emission_programs.py).
+constexpr DWORD plane_init_words[] = {
+#include "linear_screen_plane_init_inc.h"
+};
+constexpr DWORD packed_composite_words[] = {
+#include "linear_screen_composite_inc.h"
+};
+// Sampler stages a bracket saves, detaches and restores: s0..s2 for the
+// exchange/fade programs, s0..s4 for a packed bracket (its composite reads
+// five stages). The count is bracket-local so policies 1-4 keep their
+// getter/setter inventory when policy 8 is merely available.
+constexpr unsigned base_stages = 3, max_stages = 5;
 struct Saved {
   IDirect3DSurface9 *rt[4]{};
   IDirect3DSurface9 *depth = nullptr;
-  IDirect3DBaseTexture9 *texture[3]{};
+  IDirect3DBaseTexture9 *texture[max_stages]{};
   IDirect3DVertexShader9 *vs = nullptr;
   IDirect3DPixelShader9 *ps = nullptr;
   IDirect3DVertexDeclaration9 *declaration = nullptr;
@@ -179,7 +194,7 @@ struct Saved {
   RECT scissor{};
   DWORD fvf = 0, frequency = 1;
   UINT offset = 0, stride = 0;
-  DWORD rs[std::size(states)]{}, ss[3][std::size(samplers)]{};
+  DWORD rs[std::size(states)]{}, ss[max_stages][std::size(samplers)]{};
   void release() noexcept {
     for (auto &p : rt)
       drop(p);
@@ -206,13 +221,19 @@ struct LinearEmissionPass::Impl {
   D3DFORMAT depth_format = D3DFMT_UNKNOWN;
   LinearEmissionPassCaps caps{};
   IDirect3DSurface9 *b = nullptr, *e = nullptr, *c = nullptr, *m = nullptr;
+  // Packed planes: P_r = e, P_g = c (every bracket initializes the rectangle
+  // it reads, and the exchange policies rewrite E and C whole), P_b = pb.
+  IDirect3DSurface9 *pb = nullptr;
   IDirect3DVertexShader9 *vs = nullptr;
   IDirect3DVertexDeclaration9 *declaration = nullptr;
   IDirect3DPixelShader9 *copy = nullptr, *composite = nullptr, *source_over_composite = nullptr;
+  IDirect3DPixelShader9 *plane_init = nullptr, *packed_composite = nullptr;
   bool source_over = false;
-  // DistanceFadeInPlace bracket: the backup, composite and recovery touch only
-  // this target rectangle (B and E outside it are stale and never read).
-  bool in_place = false;
+  // In-place bracket (policies 4 and 8): the backup, composite and recovery
+  // touch only this target rectangle (B, E and the planes outside it are
+  // stale and never read).
+  bool in_place = false, packed = false;
+  unsigned stages = base_stages; // set per bracket in begin_frame/prepare
   RECT region{};
   UINT width = 0, height = 0;
   unsigned allocation_count = 0, rt_count = 0;
@@ -246,7 +267,7 @@ struct LinearEmissionPass::Impl {
   }
   bool owned(IDirect3DSurface9 *p) const noexcept {
     return p && (same_object(p, b) || same_object(p, e) || same_object(p, c) ||
-                 same_object(p, m));
+                 same_object(p, m) || same_object(p, pb));
   }
   bool supported_state(D3DRENDERSTATETYPE state) const noexcept {
     // Additive-only callers retain the old native getter/setter inventory.
@@ -264,7 +285,7 @@ struct LinearEmissionPass::Impl {
                                          D3DPMISCCAPS_INDEPENDENTWRITEMASKS));
   }
   bool distinct_from_pool(IDirect3DSurface9 *surface) noexcept {
-    for (auto *target : {b, e, c, m}) {
+    for (auto *target : {b, e, c, m, pb}) {
       bool equal = false;
       if (FAILED(object_identity(surface, target, equal)) || equal)
         return false;
@@ -300,7 +321,7 @@ struct LinearEmissionPass::Impl {
     GET(GetPs, &saved.ps);
     GET(GetStream, UINT(0), &saved.stream, &saved.offset, &saved.stride);
     GET(GetFreq, UINT(0), &saved.frequency);
-    for (unsigned i = 0; i < 3; ++i) {
+    for (unsigned i = 0; i < stages; ++i) {
       GET(GetTexture, DWORD(i), &saved.texture[i]);
       for (unsigned j = 0; j < std::size(samplers); ++j) {
         GET(GetSampler, DWORD(i), samplers[j], &saved.ss[i][j]);
@@ -321,7 +342,7 @@ struct LinearEmissionPass::Impl {
       if (SUCCEEDED(first) && FAILED(h))
         first = h;
     };
-    for (unsigned i = 0; i < 3; ++i)
+    for (unsigned i = 0; i < stages; ++i)
       step(call(SetTexture, DWORD(i),
                 static_cast<IDirect3DBaseTexture9 *>(nullptr)));
     for (unsigned i = 1; i < rt_count; ++i)
@@ -340,7 +361,7 @@ struct LinearEmissionPass::Impl {
     step(call(SetPs, saved.ps));
     step(call(SetStream, UINT(0), saved.stream, saved.offset, saved.stride));
     step(call(SetFreq, UINT(0), saved.frequency));
-    for (unsigned i = 0; i < 3; ++i) {
+    for (unsigned i = 0; i < stages; ++i) {
       step(call(SetTexture, DWORD(i), saved.texture[i]));
       for (unsigned j = 0; j < std::size(samplers); ++j)
         step(call(SetSampler, DWORD(i), samplers[j], saved.ss[i][j]));
@@ -352,7 +373,7 @@ struct LinearEmissionPass::Impl {
   }
   HRESULT target(IDirect3DSurface9 *surface) noexcept {
     HRESULT hr;
-    for (unsigned i = 0; i < 3; ++i)
+    for (unsigned i = 0; i < stages; ++i)
       if (FAILED(hr = call(SetTexture, DWORD(i),
                            static_cast<IDirect3DBaseTexture9 *>(nullptr))))
         return hr;
@@ -378,12 +399,26 @@ struct LinearEmissionPass::Impl {
       if (supported_state(states[i]) &&
           FAILED(hr = call(SetRs, states[i], fullscreen[i])))
         return hr;
-    for (unsigned i = 0; i < 3; ++i)
+    for (unsigned i = 0; i < stages; ++i)
       for (unsigned j = 0; j < std::size(samplers); ++j)
         if (FAILED(
                 hr = call(SetSampler, DWORD(i), samplers[j], sample_values[j])))
           return hr;
     return S_OK;
+  }
+  // Write masks of the plane initialization: M alpha only (red, the live
+  // coverage lane, is preserved), planes RGB only.
+  HRESULT plane_masks() noexcept {
+    HRESULT hr = call(SetRs, D3DRS_COLORWRITEENABLE, DWORD(8));
+    for (unsigned i = 1; i < 4 && SUCCEEDED(hr); ++i)
+      hr = call(SetRs, D3DRENDERSTATETYPE(i == 1 ? D3DRS_COLORWRITEENABLE1 : i == 2 ? D3DRS_COLORWRITEENABLE2 : D3DRS_COLORWRITEENABLE3), DWORD(7));
+    return hr;
+  }
+  HRESULT attach_planes() noexcept {
+    HRESULT hr = call(SetRt, DWORD(1), e);
+    if (SUCCEEDED(hr)) hr = call(SetRt, DWORD(2), c);
+    if (SUCCEEDED(hr)) hr = call(SetRt, DWORD(3), pb);
+    return hr;
   }
   HRESULT clear(IDirect3DSurface9 *surface) noexcept {
     // Native Clear uses target selection and viewport clipping, not the
@@ -403,25 +438,42 @@ struct LinearEmissionPass::Impl {
                 DWORD(D3DCLEAR_TARGET), D3DCOLOR(0), 1.f, DWORD(0));
     return hr;
   }
-  // region: DistanceFadeInPlace restricts the rasterization to one target
+  // region: the in-place policies restrict the rasterization to one target
   // rectangle with the documented scissor test (D3DRS_SCISSORTESTENABLE and
   // SetScissorRect, gated by D3DPRASTERCAPS_SCISSORTEST at attach); the same
   // -0.5 quad and programs run, so pixels inside the rectangle are exactly
-  // the full-target results. For the in-place composite a is B (s0), whose
-  // rectangle holds the pre-draw copy of A, and the destination is A itself.
-  HRESULT draw(IDirect3DSurface9 *destination, IDirect3DSurface9 *a,
-               bool combine, const RECT *region = nullptr) noexcept {
-    IDirect3DTexture9 *views[3]{};
-    IDirect3DSurface9 *sources[] = {a, e, b};
-    // Bound stages follow the composite program: the additive composite reads
-    // s0..s2 (A, E, B); the source-over fade composite reads only s0..s1 and
-    // takes the composed alpha from A, so B is neither queried nor bound for
-    // it. The copy reads only A. Stage 2 is still detached by target() and
-    // its samplers set by full_state(), and save()/restore() cover stages
-    // 0..2 for both policies, so the caller-visible contract is unchanged.
-    const unsigned stages = combine ? (source_over ? 2u : 3u) : 1u;
+  // the full-target results. For the in-place composites a is B (s0 for the
+  // fade, s4 for the packed composite), whose rectangle holds the pre-draw
+  // copy of A, and the destination is A itself.
+  enum class Program { Copy, Composite, PlaneInit, PackedComposite };
+  HRESULT draw(Program kind, IDirect3DSurface9 *destination, IDirect3DSurface9 *a,
+               const RECT *region = nullptr) noexcept {
+    IDirect3DTexture9 *views[max_stages]{};
+    IDirect3DSurface9 *sources[max_stages]{};
+    IDirect3DPixelShader9 *program = nullptr;
+    unsigned bound = 1;
+    // Bound stages follow the program: the additive composite reads s0..s2
+    // (A, E, B); the source-over fade composite reads only s0..s1 and takes
+    // the composed alpha from A, so B is neither queried nor bound for it.
+    // The copy and the plane initialization read only A. The packed composite
+    // reads the three planes, M and B (s4, the prototype's immutable A).
+    // Every stage the policy family saves is detached by target() and set by
+    // full_state(), so the caller-visible contract is unchanged.
+    switch (kind) {
+    case Program::Copy:
+      sources[0] = a; program = copy; break;
+    case Program::Composite:
+      sources[0] = a; sources[1] = e; sources[2] = b;
+      bound = source_over ? 2u : 3u;
+      program = source_over ? source_over_composite : composite; break;
+    case Program::PlaneInit:
+      sources[0] = a; program = plane_init; break;
+    case Program::PackedComposite:
+      sources[0] = e; sources[1] = c; sources[2] = pb; sources[3] = m; sources[4] = a;
+      bound = 5; program = packed_composite; break;
+    }
     HRESULT hr = S_OK;
-    for (unsigned i = 0; i < stages; ++i) {
+    for (unsigned i = 0; i < bound; ++i) {
       hr = sources[i]->GetContainer(IID_IDirect3DTexture9,
                                     reinterpret_cast<void **>(&views[i]));
       if (FAILED(hr) || !views[i]) {
@@ -432,25 +484,32 @@ struct LinearEmissionPass::Impl {
     }
     if (SUCCEEDED(hr))
       hr = target(destination);
-    // A and M remain untouched. The copy writes exact B and initializes E in
-    // one rasterization; full_state disables blending and enables both masks.
-    // target() detached every extra attachment, including supplemental M.
-    if (SUCCEEDED(hr) && !combine && fused_copy)
+    // A and M remain untouched by the copy. The copy writes exact B and
+    // initializes E in one rasterization; full_state disables blending and
+    // enables every mask. target() detached every extra attachment.
+    if (SUCCEEDED(hr) && kind == Program::Copy && fused_copy)
       hr = call(SetRt, DWORD(1), e);
+    if (SUCCEEDED(hr) && kind == Program::PlaneInit)
+      hr = attach_planes();
     if (SUCCEEDED(hr))
       hr = full_state();
+    if (SUCCEEDED(hr) && kind == Program::PlaneInit)
+      hr = plane_masks();
     if (SUCCEEDED(hr) && region) {
-      if (fault(combine ? LinearEmissionPassFault::CompositeScissor
-                        : LinearEmissionPassFault::RegionScissor))
+      const bool composite = kind == Program::Composite || kind == Program::PackedComposite;
+      if (fault(composite ? LinearEmissionPassFault::CompositeScissor
+                          : LinearEmissionPassFault::RegionScissor))
         hr = E_FAIL;
       else if (SUCCEEDED(hr = call(SetRs, D3DRS_SCISSORTESTENABLE, DWORD(TRUE))))
         hr = call(SetScissor, region);
     }
-    for (unsigned i = 0; i < stages && SUCCEEDED(hr); ++i)
+    for (unsigned i = 0; i < bound && SUCCEEDED(hr); ++i)
       hr = call(SetTexture, DWORD(i),
                 static_cast<IDirect3DBaseTexture9 *>(views[i]));
     if (SUCCEEDED(hr))
-      hr = call(SetPs, combine ? (source_over ? source_over_composite : composite) : copy);
+      hr = call(SetPs, program);
+    if (SUCCEEDED(hr) && kind == Program::PlaneInit && fault(LinearEmissionPassFault::PlaneInit))
+      hr = E_FAIL;
     if (SUCCEEDED(hr)) {
       QuadVertex vertices[4];
       quad_vertices(width, height, vertices);
@@ -481,6 +540,21 @@ struct LinearEmissionPass::Impl {
         depth.Height < height || depth.MultiSampleType != D3DMULTISAMPLE_NONE ||
         depth.MultiSampleQuality)
       return false;
+    if (packed) {
+      // The screen state of docs/architecture/screen-emission-region.md
+      // section 4: native ONE/INVSRCCOLOR on all four channels, no separate
+      // alpha blend, Z-write off, alpha test any. The VS stays untouched.
+      return saved.state(D3DRS_ALPHABLENDENABLE) &&
+             saved.state(D3DRS_BLENDOP) == D3DBLENDOP_ADD &&
+             saved.state(D3DRS_SRCBLEND) == D3DBLEND_ONE &&
+             saved.state(D3DRS_DESTBLEND) == D3DBLEND_INVSRCCOLOR &&
+             saved.state(D3DRS_COLORWRITEENABLE) == 15 &&
+             !saved.state(D3DRS_SEPARATEALPHABLENDENABLE) &&
+             !saved.state(D3DRS_ZWRITEENABLE) &&
+             !saved.state(D3DRS_STENCILENABLE) && !saved.state(D3DRS_FOGENABLE) &&
+             !saved.state(D3DRS_DITHERENABLE) &&
+             !saved.state(D3DRS_SRGBWRITEENABLE) && !saved.ss[0][5];
+    }
     if (source_over) {
       return boundary.augmented_vertex &&
              saved.state(D3DRS_ALPHABLENDENABLE) &&
@@ -535,8 +609,8 @@ struct LinearEmissionPass::Impl {
     return r;
   }
   void reset_targets() noexcept {
-    if (device && native && (b || e || c || m)) {
-      for (unsigned i = 0; i < 3; ++i) {
+    if (device && native && (b || e || c || m || pb)) {
+      for (unsigned i = 0; i < stages; ++i) {
         IDirect3DBaseTexture9 *texture = nullptr;
         IDirect3DTexture9 *tex = nullptr;
         IDirect3DSurface9 *level = nullptr;
@@ -582,6 +656,7 @@ struct LinearEmissionPass::Impl {
     drop(e);
     drop(c);
     drop(m);
+    drop(pb);
     width = height = 0;
     phase = Phase::Idle;
     selected = nullptr;
@@ -603,7 +678,7 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
   if (fixture_source_over_) requested_policies = 6;
 #endif
-  if (!device || !native || !requested_policies || (requested_policies & ~7u))
+  if (!device || !native || !requested_policies || (requested_policies & ~15u))
     return E_INVALIDARG;
   impl_ = new (std::nothrow) Impl;
   if (!impl_) return E_OUTOFMEMORY;
@@ -624,7 +699,18 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   // The in-place bracket is the fade program under a documented scissor; a
   // device without D3DPRASTERCAPS_SCISSORTEST keeps the exchange-based fade.
   if (!(caps9.RasterCaps & D3DPRASTERCAPS_SCISSORTEST)) supported &= ~4u;
-  if (!supported) { p.caps.reason = "source-over caps"; return D3DERR_NOTAVAILABLE; }
+  // The packed bracket binds M and three planes at once (rt_count is capped
+  // at four above), masks M red|alpha against RGB planes, scissors its quads
+  // and blends the source with ONE/INVSRCALPHA on the FP16 planes.
+  constexpr DWORD packed_caps = D3DPMISCCAPS_INDEPENDENTWRITEMASKS | D3DPMISCCAPS_COLORWRITEENABLE;
+  if (caps9.NumSimultaneousRTs < 4 || (caps9.PrimitiveMiscCaps & packed_caps) != packed_caps ||
+      !(caps9.RasterCaps & D3DPRASTERCAPS_SCISSORTEST) ||
+      !(caps9.SrcBlendCaps & D3DPBLENDCAPS_ONE) || !(caps9.DestBlendCaps & D3DPBLENDCAPS_INVSRCALPHA))
+    supported &= ~8u;
+  if (!supported) {
+    p.caps.reason = (requested_policies & 8u) && !(requested_policies & 6u) ? "packed caps" : "source-over caps";
+    return D3DERR_NOTAVAILABLE;
+  }
   // A transient format query or program failure cannot masquerade as an
   // immutable unsupported producer. NOTAVAILABLE is the format-cap refusal.
   p.caps.supported_policies = supported;
@@ -653,7 +739,7 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   p.fused_copy = !fixture_separate_copy_;
   // The region backup must initialize E inside the rectangle in the same
   // rasterization; the checkpoint's separate full Clear twin has no region.
-  if (!p.fused_copy) p.caps.supported_policies &= ~4u;
+  if (!p.fused_copy) p.caps.supported_policies &= ~12u;
   hr = p.call(CreatePs, p.fused_copy ? copy_words : separate_copy_words, &p.copy);
 #else
   hr = p.call(CreatePs, copy_words, &p.copy);
@@ -669,7 +755,8 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   }
   HRESULT first = hr;
   supported = p.caps.supported_policies;
-  if (SUCCEEDED(hr)) {
+  const bool base = SUCCEEDED(hr);
+  if (base) {
     for (unsigned policy : {1u, 2u}) {
       // Policies 2 and 4 share the source-over composite program.
       const bool wanted = policy == 1 ? (supported & 1u) != 0 : (supported & 6u) != 0;
@@ -685,10 +772,24 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
       else { drop(program); if (SUCCEEDED(first)) first = hr; }
     }
   }
+  if (base && (supported & 8u)) {
+    // Policy 8 owns two programs; both must exist before the policy and its
+    // five-stage save/restore inventory are offered.
+    IDirect3DPixelShader9 **programs[] = {&p.plane_init, &p.packed_composite};
+    const DWORD *const words[] = {plane_init_words, packed_composite_words};
+    hr = S_OK;
+    for (unsigned i = 0; i < 2 && SUCCEEDED(hr); ++i) {
+      hr = p.call(CreatePs, words[i], programs[i]);
+      if (SUCCEEDED(hr) && !*programs[i]) hr = E_FAIL;
+    }
+    if (SUCCEEDED(hr)) p.caps.available_policies |= 8u;
+    else { drop(p.plane_init); drop(p.packed_composite); if (SUCCEEDED(first)) first = hr; }
+  }
   p.caps.programs = first;
   p.caps.enabled = p.caps.available_policies != 0;
   if (!p.caps.enabled) {
     drop(p.copy); drop(p.composite); drop(p.source_over_composite);
+    drop(p.plane_init); drop(p.packed_composite);
     drop(p.vs); drop(p.declaration);
   }
   p.caps.reason = FAILED(first) ? "programs" : "ok";
@@ -700,15 +801,17 @@ HRESULT LinearEmissionPass::ensure_targets(UINT width, UINT height) noexcept {
   auto &p = *impl_;
   if (p.phase != Impl::Phase::Idle)
     return D3DERR_INVALIDCALL;
-  if (width == p.width && height == p.height && p.b && p.e && p.c && p.m)
+  const unsigned count = p.caps.supports(LinearCompositionPolicy::PackedScreenInPlace) ? 5u : 4u;
+  if (width == p.width && height == p.height && p.b && p.e && p.c && p.m && (count < 5 || p.pb))
     return S_OK;
   if (width > p.caps9.MaxTextureWidth || height > p.caps9.MaxTextureHeight)
     return D3DERR_NOTAVAILABLE;
   if (p.fault(LinearEmissionPassFault::Allocation))
     return E_OUTOFMEMORY;
-  IDirect3DSurface9 *surfaces[4]{};
+  IDirect3DSurface9 *surfaces[5]{};
   HRESULT hr = S_OK;
-  for (auto &surface : surfaces) {
+  for (unsigned i = 0; i < count; ++i) {
+    auto &surface = surfaces[i];
     IDirect3DTexture9 *texture = nullptr;
     hr = p.call(CreateTexture, width, height, UINT(1),
                 DWORD(D3DUSAGE_RENDERTARGET), D3DFMT_A16B16G16R16F,
@@ -724,7 +827,7 @@ HRESULT LinearEmissionPass::ensure_targets(UINT width, UINT height) noexcept {
       break;
   }
   if (SUCCEEDED(hr))
-    for (unsigned i = 0; i < 4; ++i)
+    for (unsigned i = 0; i < count; ++i)
       for (unsigned j = 0; j < i; ++j) {
         bool equal = false;
         HRESULT identity = object_identity(surfaces[i], surfaces[j], equal);
@@ -733,11 +836,12 @@ HRESULT LinearEmissionPass::ensure_targets(UINT width, UINT height) noexcept {
       }
   if (SUCCEEDED(hr)) {
     p.reset_targets();
-    p.allocation_count += 4;
+    p.allocation_count += count;
     p.b = surfaces[0];
     p.e = surfaces[1];
     p.c = surfaces[2];
     p.m = surfaces[3];
+    p.pb = surfaces[4];
     p.width = width;
     p.height = height;
   } else
@@ -757,6 +861,8 @@ LinearEmissionPass::begin_frame(std::uint64_t frame) noexcept {
   p.blocked = true;
   p.source_over = false;
   p.in_place = false;
+  p.packed = false;
+  p.stages = base_stages;
   out.saved = p.save();
   if (FAILED(out.saved)) {
     p.saved.release();
@@ -785,17 +891,20 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
       !boundary.augmented || boundary.frame != p.frame)
     return out;
   if (boundary.policy != LinearCompositionPolicy::AdditiveEmission && boundary.policy != LinearCompositionPolicy::DistanceFade &&
-      boundary.policy != LinearCompositionPolicy::DistanceFadeInPlace) {
+      boundary.policy != LinearCompositionPolicy::DistanceFadeInPlace && boundary.policy != LinearCompositionPolicy::PackedScreenInPlace) {
     out.operation = E_INVALIDARG; return out;
   }
-  p.in_place = boundary.policy == LinearCompositionPolicy::DistanceFadeInPlace;
-  p.source_over = boundary.policy != LinearCompositionPolicy::AdditiveEmission;
+  p.packed = boundary.policy == LinearCompositionPolicy::PackedScreenInPlace;
+  p.in_place = boundary.policy == LinearCompositionPolicy::DistanceFadeInPlace || p.packed;
+  p.source_over = boundary.policy == LinearCompositionPolicy::DistanceFade || boundary.policy == LinearCompositionPolicy::DistanceFadeInPlace;
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
-  if (fixture_source_over_) p.source_over = true;
+  if (fixture_source_over_ && !p.packed) p.source_over = true;
 #endif
-  const auto policy = p.in_place ? LinearCompositionPolicy::DistanceFadeInPlace
+  const auto policy = p.packed ? LinearCompositionPolicy::PackedScreenInPlace
+                      : p.in_place ? LinearCompositionPolicy::DistanceFadeInPlace
                       : p.source_over ? LinearCompositionPolicy::DistanceFade : LinearCompositionPolicy::AdditiveEmission;
   if (!p.caps.supports(policy)) { out.operation = D3DERR_NOTAVAILABLE; return out; }
+  p.stages = p.packed ? max_stages : base_stages;
   out.saved = p.save();
   if (FAILED(out.saved)) {
     p.saved.release();
@@ -812,7 +921,7 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
   if (p.in_place) p.region = p.select_region(boundary);
   out.operation = p.fault(LinearEmissionPassFault::Copy)
                       ? E_FAIL
-                      : p.draw(p.b, boundary.scene, false, p.in_place ? &p.region : nullptr);
+                      : p.draw(Impl::Program::Copy, p.b, boundary.scene, p.in_place ? &p.region : nullptr);
   if (SUCCEEDED(out.operation)) {
     // Retain the preparation failure boundary after initialization, including
     // partial-copy failures: neither B nor E is published before the source.
@@ -820,16 +929,31 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
     if (p.fault(LinearEmissionPassFault::EmissionClear)) out.operation = E_FAIL;
     else if (!p.fused_copy) out.operation = p.clear(p.e);
   }
-  if (SUCCEEDED(out.operation))
-    out.operation = p.restore(p.in_place ? boundary.scene : p.b);
-  if (SUCCEEDED(out.operation))
-    out.operation = p.call(SetRt, DWORD(1), p.e);
-  if (SUCCEEDED(out.operation))
-    out.operation = p.call(SetRt, DWORD(2), p.m);
-  if (SUCCEEDED(out.operation) && p.supported_state(D3DRS_COLORWRITEENABLE1))
-    out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE1, DWORD(15));
-  if (SUCCEEDED(out.operation) && p.supported_state(D3DRS_COLORWRITEENABLE2))
-    out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE2, DWORD(15));
+  if (SUCCEEDED(out.operation) && p.packed) {
+    // Plane init under the same scissor: P_c|R = (A_c, decode(A)_c, 0) and
+    // M.alpha|R = A.alpha (red masked off). A is only sampled here; the
+    // source then writes M and the planes, never A (section 3 of the note).
+    out.operation = p.draw(Impl::Program::PlaneInit, p.m, boundary.scene, &p.region);
+    if (SUCCEEDED(out.operation)) out.operation = p.restore(p.m);
+    if (SUCCEEDED(out.operation)) out.operation = p.attach_planes();
+    if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE, DWORD(9));
+    for (unsigned i = 1; i < 4 && SUCCEEDED(out.operation); ++i)
+      out.operation = p.call(SetRs, D3DRENDERSTATETYPE(i == 1 ? D3DRS_COLORWRITEENABLE1 : i == 2 ? D3DRS_COLORWRITEENABLE2 : D3DRS_COLORWRITEENABLE3), DWORD(7));
+    // The native INVSRCCOLOR becomes INVSRCALPHA: every plane attenuates by
+    // its own oCi.a = q_c and M by the native alpha (the prototype's blend).
+    if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_DESTBLEND, DWORD(D3DBLEND_INVSRCALPHA));
+  } else {
+    if (SUCCEEDED(out.operation))
+      out.operation = p.restore(p.in_place ? boundary.scene : p.b);
+    if (SUCCEEDED(out.operation))
+      out.operation = p.call(SetRt, DWORD(1), p.e);
+    if (SUCCEEDED(out.operation))
+      out.operation = p.call(SetRt, DWORD(2), p.m);
+    if (SUCCEEDED(out.operation) && p.supported_state(D3DRS_COLORWRITEENABLE1))
+      out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE1, DWORD(15));
+    if (SUCCEEDED(out.operation) && p.supported_state(D3DRS_COLORWRITEENABLE2))
+      out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE2, DWORD(15));
+  }
   if (SUCCEEDED(out.operation) && p.source_over) {
     out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE2, DWORD(7));
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_SEPARATEALPHABLENDENABLE, DWORD(TRUE));
@@ -844,6 +968,7 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
   if (SUCCEEDED(out.operation)) {
     if (p.fault(LinearEmissionPassFault::SourceBind)) out.operation = E_FAIL;
     else if (p.source_over) out.operation = p.call(SetVs, boundary.augmented_vertex);
+    // Packed: the VS stays the application's; only the PS is substituted.
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetPs, boundary.augmented);
   }
   if (FAILED(out.operation)) {
@@ -886,7 +1011,8 @@ LinearEmissionCompletion LinearEmissionPass::finish(HRESULT source) noexcept {
     } else {
       p.completion.composition = p.fault(LinearEmissionPassFault::Composite)
                                      ? E_FAIL
-                                     : p.draw(p.input_scene, p.b, true, &p.region);
+                                     : p.draw(p.packed ? Impl::Program::PackedComposite : Impl::Program::Composite,
+                                              p.input_scene, p.b, &p.region);
       recover = FAILED(p.completion.composition);
       p.completion.image = recover ? LinearEmissionImage::Incomplete : LinearEmissionImage::Linear;
     }
@@ -897,13 +1023,14 @@ LinearEmissionCompletion LinearEmissionPass::finish(HRESULT source) noexcept {
       p.completion.image = LinearEmissionImage::Incomplete;
     if (recover) {
       // A failed restore leaves the sampler stages unknown: B may still be
-      // bound where the composite sampled it. Detach the three stages the
-      // bracket uses before B becomes the StretchRect source (the state is
-      // already lost for the caller; blocked below). Its failure is the
-      // recovery's failure: A|R then keeps the partial writes.
+      // bound where the composite sampled it. Detach the stages the bracket
+      // uses before B becomes the StretchRect source (the state is already
+      // lost for the caller; blocked below). Its failure is the recovery's
+      // failure: A|R then keeps the partial writes (packed: A|R was never
+      // written by the source, so a failed recovery still leaves it intact).
       HRESULT hr = S_OK;
       if (FAILED(p.completion.restore))
-        for (unsigned i = 0; i < 3 && SUCCEEDED(hr); ++i)
+        for (unsigned i = 0; i < p.stages && SUCCEEDED(hr); ++i)
           hr = p.call(SetTexture, DWORD(i), static_cast<IDirect3DBaseTexture9 *>(nullptr));
       if (SUCCEEDED(hr))
         hr = p.fault(LinearEmissionPassFault::RegionRecovery)
@@ -931,7 +1058,7 @@ LinearEmissionCompletion LinearEmissionPass::finish(HRESULT source) noexcept {
   } else {
     p.completion.composition = p.fault(LinearEmissionPassFault::Composite)
                                    ? E_FAIL
-                                   : p.draw(p.c, p.saved.rt[0], true);
+                                   : p.draw(Impl::Program::Composite, p.c, p.saved.rt[0]);
     p.completion.image = SUCCEEDED(p.completion.composition)
                              ? LinearEmissionImage::Linear
                              : LinearEmissionImage::Native;
@@ -1011,8 +1138,8 @@ unsigned LinearEmissionPass::references() const noexcept {
   if (!impl_)
     return 0;
   const auto &p = *impl_;
-  return !!p.b + !!p.e + !!p.c + !!p.m + !!p.vs + !!p.copy + !!p.composite +
-         !!p.declaration + !!p.source_over_composite;
+  return !!p.b + !!p.e + !!p.c + !!p.m + !!p.pb + !!p.vs + !!p.copy + !!p.composite +
+         !!p.declaration + !!p.source_over_composite + !!p.plane_init + !!p.packed_composite;
 }
 void LinearEmissionPass::before_reset() noexcept {
   if (impl_)
@@ -1025,6 +1152,8 @@ void LinearEmissionPass::detach() noexcept {
   drop(impl_->copy);
   drop(impl_->composite);
   drop(impl_->source_over_composite);
+  drop(impl_->plane_init);
+  drop(impl_->packed_composite);
   drop(impl_->vs);
   drop(impl_->declaration);
   delete impl_;
@@ -1047,6 +1176,9 @@ IDirect3DSurface9 *LinearEmissionPass::fixture_native() const noexcept {
 }
 IDirect3DSurface9 *LinearEmissionPass::fixture_energy() const noexcept {
   return impl_ ? impl_->e : nullptr;
+}
+IDirect3DSurface9 *LinearEmissionPass::fixture_plane_b() const noexcept {
+  return impl_ ? impl_->pb : nullptr;
 }
 #endif
 } // namespace x3m::renderer

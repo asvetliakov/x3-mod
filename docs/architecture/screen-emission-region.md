@@ -159,6 +159,41 @@ be reduced to that prefix at the draw (`StartVertex` is always 0); positions are
 world-space `FLOAT3` at offset 0, stride 24; and the game keeps no bullet radius
 or bound to read instead.
 
+## Step A — implemented 2026-09-14 (policy 8, detached fixture; no admission or route)
+
+`LinearCompositionPolicy::PackedScreenInPlace = 8` in `src/renderer/linear_emission_pass.{h,cpp}`, the section-1
+bracket verbatim: `save()`, packed `source_ok` (ONE/INVSRCCOLOR, mask 15, separate alpha off, Z-write off, alpha test
+any, VS untouched), region backup B|R = A|R (fused copy), **plane init** under the same scissor (new fault seam
+`PlaneInit`; masks M = 8, planes = 7), `restore(M)` + RT1–3 = planes, masks 9/7/7/7, `DESTBLEND = INVSRCALPHA`,
+augmented PS only; `finish`: scissored packed composite into A (s0–2 planes, s3 M, s4 B), `restore(A)`, the fade
+ladder's exact recovery. Planes: **E = P_r, C = P_g, one new P_b** (one 15.8 MiB FP16 plane added at 1080p; the five-target pool is
+≈79 MiB); M.alpha
+is the per-bracket scratch lane — consumer audit: `resolve.hlsl` reads `.r` only, the live witness readback tests
+RGB, the temporal route hands the texture to that resolve; nothing reads alpha. Caps: `NumSimultaneousRTs ≥ 4`,
+independent masks, scissor, `D3DPBLENDCAPS_ONE`/`INVSRCALPHA`; two ps_3_0 programs generated from the prototype's
+helpers with identical arithmetic (`tools/shaders/generate_screen_emission_programs.py`); the save/restore
+inventory grows to five sampler stages only when policy 8 is available. `motion_output.cpp` untouched (step C).
+Fixture (`verification/probe/screen_emission_step_a_fixture.cpp`, includes the frozen packed prototype TU; runner
+`run_screen_emission_step_a.py`; result `verification/results/bottle-X3/screen-emission-gpu-step-a.json`): all
+**540 in-domain rows** (9 pairs × 20 cases × one-DIP overlap / two DIPs / reverse, 180 each) through policy 8
+under the prototype-coverage rectangle (+1 px), the unknown whole target and +3 px are **bit-exact inside R
+against the prototype's C and A outside, M red/green/blue whole and alpha inside R equal, no coverage outside
+any rectangle** (508,518 region pixels); the injected straddling rectangle (`--rect=8,8,24,24`) keeps the law
+inside, A outside and fires the witness (419 covered pixels outside); fade→packed and packed→fade on overlapping
+rectangles pass a sequential oracle (fade stage against a CPU oracle, max tolerance fraction 0.14; packed stage
+bit-exact against the prototype run on the intermediate; coverage is counted as the live witness does, a
+non-negative nonzero half); an emission exchange after a packed bracket equals a
+fresh pass bit-exactly (E/C alias); the 10-stage ladder (copy, region scissor, plane init, source bind → clean
+refusal with A and M coverage untouched, frame not blocked; source, composite, composite scissor, restore,
+recovery, restore+recovery → `Incomplete`, first HRESULT chronological, A exact even with a failed recovery,
+exchange never reached, frame blocked); four capability refusals (three targets alone/beside the others,
+INVSRCALPHA, masks); Reset with an interrupted bracket (owned RT0 replaced by the backbuffer, planes detached,
+pool recreated, post-Reset row exact). Cost, paired EVENT-fenced windows at 16 DIPs: native 0.33 ms →
+packed 2.42 / 2.59 ms (1280×768, 2352 / 24150 px) and 2.40 / 2.52 ms (1920×1080): **≈0.13–0.14 ms per bracket**,
+the fixed setter floor of the fade bracket plus one quad, resolution independent. Deviations: the fixture
+lives beside the packed prototype rather than in `run_linear_distance_fade.py` (its corpus and C oracle are
+there); the rectangle is injected by argument; a refusal after plane init leaves M.alpha|R seeded (scratch).
+
 ## Step B — implemented (2026-09-14)
 
 No game hook. `src/proxy/locked_prefix_core.h` (header-only, host-testable) holds a

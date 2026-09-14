@@ -66,7 +66,8 @@ enum D3DSAMPLERSTATETYPE {
   D3DSAMP_MIPMAPLODBIAS
 };
 constexpr DWORD D3DCULL_NONE = 1, D3DFILL_SOLID = 3, D3DBLEND_ONE = 2,
-                D3DBLEND_ZERO = 1, D3DBLEND_SRCALPHA = 5, D3DBLEND_INVSRCALPHA = 6, D3DBLENDOP_ADD = 1, D3DTEXF_NONE = 0,
+                D3DBLEND_ZERO = 1, D3DBLEND_INVSRCCOLOR = 4, D3DBLEND_SRCALPHA = 5, D3DBLEND_INVSRCALPHA = 6, D3DBLENDOP_ADD = 1, D3DTEXF_NONE = 0,
+                D3DPBLENDCAPS_ONE = 2, D3DPBLENDCAPS_INVSRCALPHA = 32,
                 D3DTEXF_POINT = 1, D3DTADDRESS_CLAMP = 3, D3DZB_TRUE = 1,
                 D3DCLEAR_TARGET = 1, D3DUSAGE_RENDERTARGET = 1,
                 D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING = 2,
@@ -108,7 +109,7 @@ struct D3DCAPS9 {
   DWORD NumSimultaneousRTs = 3, PixelShaderVersion = D3DPS_VERSION(3, 0),
         VertexShaderVersion = D3DVS_VERSION(3, 0),
         PrimitiveMiscCaps = D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING,
-        MaxTextureWidth = 4096, MaxTextureHeight = 4096, RasterCaps = 0;
+        MaxTextureWidth = 4096, MaxTextureHeight = 4096, RasterCaps = 0, SrcBlendCaps = 0, DestBlendCaps = 0;
 };
 struct D3DDEVICE_CREATION_PARAMETERS {
   UINT AdapterOrdinal = 0;

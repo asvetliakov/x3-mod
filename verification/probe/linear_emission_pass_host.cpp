@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <vector>
 using namespace x3m::renderer;
 namespace {
@@ -22,14 +23,15 @@ struct Device : IDirect3DDevice9 {
   IDirect3D9 factory;
   std::vector<std::unique_ptr<IUnknown>> objects;
   IDirect3DSurface9 *rt[4]{}, *depth = nullptr, *back = nullptr;
-  IDirect3DBaseTexture9 *textures[3]{};
+  IDirect3DBaseTexture9 *textures[5]{};
   IDirect3DPixelShader9 *ps = nullptr;
   IDirect3DVertexShader9 *vs = nullptr;
   IDirect3DVertexDeclaration9 *decl = nullptr;
   IDirect3DVertexBuffer9 *stream = nullptr;
   D3DVIEWPORT9 viewport{};
   RECT scissor{};
-  DWORD fvf = 0, freq = 1, rs[27]{}, ss[3][8]{};
+  DWORD fvf = 0, freq = 1, rs[27]{}, ss[5][8]{};
+  unsigned stage_gets = 0, stage_sets = 0; // sampler-stage texture/state traffic
   unsigned offset = 0, stride = 0, draws = 0, source_draws = 0, clears = 0,
            texture_creates = 0;
   unsigned bad_state_calls = 0, bad_rt_calls = 0, rs3_calls = 0,
@@ -214,22 +216,30 @@ struct Device : IDirect3DDevice9 {
     slot(
         64,
         [](IDirect3DDevice9 *p, DWORD i, IDirect3DBaseTexture9 **o) -> HRESULT {
+          if (i >= 5) std::abort(); // stage inventory bound
+          ++d(p).stage_gets;
           return d(p).output(64, d(p).textures[i], o);
         });
     slot(65,
          [](IDirect3DDevice9 *p, DWORD i, IDirect3DBaseTexture9 *v) -> HRESULT {
+           if (i >= 5) std::abort(); // stage inventory bound
+           ++d(p).stage_sets;
            bind(d(p).textures[i], v);
            return S_OK;
          });
     slot(68,
          [](IDirect3DDevice9 *p, DWORD i, D3DSAMPLERSTATETYPE s,
             DWORD *v) -> HRESULT {
+           if (i >= 5) std::abort(); // stage inventory bound
+           ++d(p).stage_gets;
            *v = d(p).ss[i][s];
            return S_OK;
          });
     slot(69,
          [](IDirect3DDevice9 *p, DWORD i, D3DSAMPLERSTATETYPE s,
             DWORD v) -> HRESULT {
+           if (i >= 5) std::abort(); // stage inventory bound
+           ++d(p).stage_sets;
            d(p).ss[i][s] = v;
            return S_OK;
          });
@@ -872,7 +882,90 @@ void composition_policies() {
 }
 
 } // namespace
+// Policy 8 (packed screen): capability gate, plane pool, bracket bindings,
+// and the stage inventory of a policy-4 bracket unchanged by its availability.
+void packed_policy() {
+  constexpr DWORD packed_misc = D3DPMISCCAPS_COLORWRITEENABLE | D3DPMISCCAPS_SEPARATEALPHABLEND |
+                                D3DPMISCCAPS_INDEPENDENTWRITEMASKS;
+  auto fade_bracket = [](LinearEmissionPass &p, Device &d, IDirect3DSurface9 *a, unsigned &gets, unsigned &sets) {
+    d.rs[D3DRS_SRCBLEND] = D3DBLEND_SRCALPHA; d.rs[D3DRS_DESTBLEND] = D3DBLEND_INVSRCALPHA;
+    d.rs[D3DRS_COLORWRITEENABLE] = 7;
+    auto *fade_vs = d.make<IDirect3DVertexShader9>(); auto *ps = d.make<IDirect3DPixelShader9>();
+    LinearEmissionBoundary boundary{a, ps, 9, true, fade_vs};
+    boundary.policy = LinearCompositionPolicy::DistanceFadeInPlace;
+    boundary.region = RECT{2, 2, 9, 7}; boundary.region_known = true;
+    d.stage_gets = d.stage_sets = 0;
+    check(p.prepare(boundary).ready, "policy-4 bracket ready");
+    check(p.finish(S_OK).image == LinearEmissionImage::Linear, "policy-4 bracket linear");
+    gets = d.stage_gets; sets = d.stage_sets;
+  };
+  unsigned baseline_gets = 0, baseline_sets = 0;
+  for (unsigned mode : {1u, 0u, 2u, 3u}) { // the three-target baseline first
+    ++scenarios; Device d;
+    d.caps.PrimitiveMiscCaps |= packed_misc;
+    d.caps.RasterCaps = D3DPRASTERCAPS_SCISSORTEST;
+    d.caps.SrcBlendCaps = D3DPBLENDCAPS_ONE; d.caps.DestBlendCaps = D3DPBLENDCAPS_INVSRCALPHA;
+    d.caps.NumSimultaneousRTs = mode == 1 ? 3 : 4;
+    if (mode == 2) d.caps.DestBlendCaps = 0;
+    if (mode == 3) d.caps.PrimitiveMiscCaps &= ~DWORD(D3DPMISCCAPS_INDEPENDENTWRITEMASKS);
+    auto *a = d.scene(); a->AddRef();
+    LinearEmissionPass p;
+    if (mode) {
+      // Packed-only request: refused at attach with its own reason and no allocation.
+      LinearEmissionPass alone;
+      check(alone.attach(&d, d.slots, d.caps, D3DFMT_A8R8G8B8, D3DFMT_D24S8, 8) == D3DERR_NOTAVAILABLE &&
+                !alone.caps().enabled && alone.references() == 0 && std::string(alone.caps().reason) == "packed caps",
+            "packed-only capability refusal");
+    }
+    check(p.attach(&d, d.slots, d.caps, D3DFMT_A8R8G8B8, D3DFMT_D24S8, 15) == S_OK, "attach with policy 8 requested");
+    const unsigned expected = mode == 0 ? 15u : mode == 3 ? 1u : 7u;
+    check(p.caps().supported_policies == expected && p.caps().available_policies == expected, "policy-8 capability gate");
+    check(p.ensure_targets(17, 11) == S_OK, "pool");
+    check(p.allocations() == (mode == 0 ? 5u : 4u) && p.references() == (mode == 0 ? 12u : mode == 3 ? 8u : 9u),
+          "five-target pool only with policy 8");
+    check(p.begin_frame(9).ready, "frame");
+    if (mode == 3) { a->Release(); p.before_reset(); p.detach(); d.no_leaks(); continue; }
+    unsigned gets = 0, sets = 0;
+    fade_bracket(p, d, a, gets, sets);
+    if (mode == 1) { baseline_gets = gets; baseline_sets = sets; }
+    if (mode == 0)
+      check(gets == baseline_gets && sets == baseline_sets, "policy-4 stage inventory changed by policy-8 availability");
+    // Packed boundary: the native screen state.
+    d.rs[D3DRS_SRCBLEND] = D3DBLEND_ONE; d.rs[D3DRS_DESTBLEND] = D3DBLEND_INVSRCCOLOR;
+    d.rs[D3DRS_COLORWRITEENABLE] = 15;
+    auto *ps = d.make<IDirect3DPixelShader9>();
+    LinearEmissionBoundary boundary{a, ps, 9, true, nullptr};
+    boundary.policy = LinearCompositionPolicy::PackedScreenInPlace;
+    boundary.region = RECT{1, 1, 8, 6}; boundary.region_known = true;
+    d.stage_gets = d.stage_sets = 0;
+    auto prepared = p.prepare(boundary);
+    if (mode != 0) {
+      check(!prepared.ready && prepared.operation == D3DERR_NOTAVAILABLE && prepared.saved == S_FALSE &&
+                d.stage_gets == 0 && p.coverage_valid(), "policy-8 refusal before any getter");
+    } else {
+      check(prepared.ready, "packed bracket ready");
+      check(d.rt[0] == p.coverage_target() && d.rt[1] == p.fixture_energy() && d.rt[3] == p.fixture_plane_b() && d.rt[2] &&
+                d.rt[2] != d.rt[1] && d.rt[2] != d.rt[3],
+            "packed source targets: M, P_r = E, P_g, P_b");
+      check(d.rs[D3DRS_DESTBLEND] == D3DBLEND_INVSRCALPHA && d.rs[D3DRS_COLORWRITEENABLE] == 9 &&
+                d.rs[D3DRS_COLORWRITEENABLE1] == 7 && d.rs[D3DRS_COLORWRITEENABLE2] == 7 && d.rs[D3DRS_COLORWRITEENABLE3] == 7 &&
+                d.ps == ps && d.vs == nullptr,
+            "packed source blend, masks and untouched VS");
+      check(d.stage_gets > gets, "packed bracket saves five stages");
+      auto done = p.finish(S_OK);
+      check(done.image == LinearEmissionImage::Linear && !done.candidate_bound && !p.owning_candidate() && p.coverage_valid(),
+            "packed bracket composed in place");
+      check(d.rt[0] == a && !d.rt[1] && !d.rt[2] && !d.rt[3] && d.rs[D3DRS_DESTBLEND] == D3DBLEND_INVSRCCOLOR &&
+                d.rs[D3DRS_COLORWRITEENABLE] == 15 && !d.textures[3] && !d.textures[4],
+            "packed bracket restored the caller state");
+    }
+    a->Release(); p.before_reset();
+    check(p.references() == (mode == 0 ? 7u : 5u), "programs survive pool retirement");
+    p.detach(); d.no_leaks();
+  }
+}
 int main() {
+  packed_policy();
   composition_policies();
   fused_preparation();
   outputs();

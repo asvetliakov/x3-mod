@@ -1,0 +1,517 @@
+{
+  "completed": true,
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-step-a-eckrj1ez",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "inputs": {
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa17566ecb72c5d51/verification/probe/build/screen_emission_step_a_fixture.exe": "75339ccdde422bbc28c1d819657adfd25e38e91c2d8d9ea8e6c9694d4f019c69",
+    "/private/tmp/x3-shader-sweep/programs/vs_0d44b36d48d24f7a.bin": "713454caeba5cf1f1fe883f5d75bdbd82729b53e14e4dc12939ea4d5d1f7ed11",
+    "/private/tmp/x3-shader-sweep/programs/ps_078494828322bcca.bin": "d3d9d01b3b5ca6da54ccab8156217d0094b0a9afcfe999e08594c2602f6d8b7c",
+    "/private/tmp/x3-shader-sweep/programs/vs_1b6863a088a177af.bin": "5848f50faba11d893d8bb7f3c2319657b84231282a1a540c19b2f2dac8e6c599",
+    "/private/tmp/x3-shader-sweep/programs/ps_84d3de8887c963c5.bin": "419cb59b8934cd4e5150840c094c130a0eb670dafa6e561265d21fa3814e560b",
+    "/private/tmp/x3-shader-sweep/programs/vs_21a2c13be7f989c3.bin": "e898a9d4afd52d8db3b87185d06b8603fe959b3c699604ea1759111512482517",
+    "/private/tmp/x3-shader-sweep/programs/ps_d4a26efb7c603931.bin": "07cb2ee4b820302bf3c511c028ddd3489119052d6c1796b7b4f115986f81b2df",
+    "/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
+    "/private/tmp/x3-shader-sweep/programs/ps_ec1f5c4a2f4e1445.bin": "e198f355cba45e82e5aadb59da818d1384f532c4a508b7d83c6180d016ba7407",
+    "/private/tmp/x3-shader-sweep/programs/vs_637dadcb5efa3288.bin": "433fa6b6cf61c708623da3bd2f4d3e69f7a06126cce70621c965f6edf4d200cd",
+    "/private/tmp/x3-shader-sweep/programs/vs_6da1b1b6ed63ec82.bin": "75551d3b9d50c301858f91cba7fbe1db52d7d527b1eead24b7115e528a34e44b",
+    "/private/tmp/x3-shader-sweep/programs/ps_2ea025492d370c8e.bin": "19c48004ff38a4f22b0861c981652002e1e4f0a82c98428f8af4c84f00c04df5",
+    "/private/tmp/x3-shader-sweep/programs/vs_88620f88d6e0a00e.bin": "898046dea20c3b33636f6d330afbf65526648948da5b213119987215cd614667",
+    "/private/tmp/x3-shader-sweep/programs/ps_a5c3495e27270b4a.bin": "5f7f214588de4305de1f8d747361d6da13c32ba831810e527a8039f863baac38",
+    "/private/tmp/x3-shader-sweep/programs/vs_ed42e0742e47dca4.bin": "4bb7a0c1de6690cc222cd9c73694c2ab69f036c1cfea18b549b8860cd1822323",
+    "/private/tmp/x3-shader-sweep/programs/vs_f9755e1154244f58.bin": "454aba796270480ac25ae2835bbdf51897d09993214250cac7a82f8a7cfe3ffe"
+  },
+  "source_sha256": {
+    "src/renderer/linear_emission_pass.cpp": "87cbf7447555c402d1aa53dd6b0db713f70262ca8d519daf2a22d8166d249071",
+    "src/renderer/linear_emission_pass.h": "1370ff4f1117144d0f76a6b79873127055956eb48af646ee378fe98ecdea9462",
+    "src/renderer/linear_screen_plane_init_inc.h": "34a7baf27ae21412901d74a039dfa669fb2495704030dc2da15f8a10773b0f42",
+    "src/renderer/linear_screen_composite_inc.h": "720db6eb7bf426a4e4961f2f606dd7a3556a54ec997bf096294ac63c74572d5c",
+    "src/renderer/linear_emission_sm1.cpp": "add848ab9933ea1b717afd715866dd2f26b3adb0720409d466548bc964c73d7c",
+    "src/renderer/linear_emission_sm1.h": "69c7492c1f53c919625ab2f7511e6f086b9bc2984b9a87afdfc57fdd66e452b8",
+    "verification/probe/screen_emission_step_a_fixture.cpp": "422061766aea8e8dd28a391a7cb5891d51b47c785339454b0f01511d07fd4baa",
+    "verification/probe/linear_emission_sm1_packed_fixture.cpp": "f5f00d5dacdaa26ca2fdbfedde0af53bd2976aeeb4effb262b5eb211b7655505",
+    "verification/probe/build_screen_emission_step_a.sh": "2213c91ecb0b71f2c81d5a231465b6f9e0ab6325018ab0d8da4e62562da8a1d9",
+    "verification/probe/run_screen_emission_step_a.py": "9505fd2720fe5f716bf178d7569a8a328a0a0ee91564b8267b1e8a3e2a3c89cc"
+  },
+  "game_launched": false,
+  "scope": "Step A: PackedScreenInPlace (policy 8) of the production pass inside the in-place region bracket, detached; no runtime admission or route",
+  "limitations": [
+    "Native Windows untested; documented D3D9 only.",
+    "No bound (step B) and no admission/route change (step C).",
+    "Bit-exactness is against the qualified packed prototype on this X3 backend; timings are detached diagnostics."
+  ],
+  "functional": {
+    "completed": true,
+    "bit_exact": true,
+    "rows": 540,
+    "exact": 540,
+    "exact_inside": 540,
+    "exact_outside": 540,
+    "exact_mask": 540,
+    "conservative_rectangles": 540,
+    "prototype_rows_passed": 540,
+    "one_dip": 180,
+    "two_dips": 180,
+    "reverse": 180,
+    "region_pixels": 508518,
+    "surviving": 545616,
+    "overlap": 218268,
+    "straddle": {
+      "rect": "8,8,24,24",
+      "inside_diff": "0",
+      "outside_diff": "0",
+      "red_outside": "419",
+      "witness_fired": "1"
+    },
+    "sequences": [
+      {
+        "order": "fade_packed",
+        "fade_rect": "2,2,22,22",
+        "packed_rect": "2,3,31,30",
+        "fade_diff": "0",
+        "fade_max_fraction": "0.126253",
+        "packed_inside_diff": "0",
+        "packed_outside_diff": "0"
+      },
+      {
+        "order": "packed_fade",
+        "fade_rect": "2,2,22,22",
+        "packed_rect": "2,3,31,30",
+        "fade_diff": "0",
+        "fade_max_fraction": "0.139633",
+        "packed_inside_diff": "0",
+        "packed_outside_diff": "0"
+      }
+    ],
+    "alias": {
+      "exchange": "1",
+      "c_diff": "0",
+      "m_diff": "0"
+    },
+    "ladder": [
+      {
+        "stage": 1,
+        "label": "copy",
+        "native": 1,
+        "prepared": 0,
+        "first": "80004005",
+        "recovery": "00000001",
+        "coverage": 1,
+        "blocked": 0,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 2,
+        "label": "region_scissor",
+        "native": 1,
+        "prepared": 0,
+        "first": "80004005",
+        "recovery": "00000001",
+        "coverage": 1,
+        "blocked": 0,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 3,
+        "label": "plane_init",
+        "native": 1,
+        "prepared": 0,
+        "first": "80004005",
+        "recovery": "00000001",
+        "coverage": 1,
+        "blocked": 0,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 4,
+        "label": "source_bind",
+        "native": 1,
+        "prepared": 0,
+        "first": "80004005",
+        "recovery": "00000001",
+        "coverage": 1,
+        "blocked": 0,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 5,
+        "label": "source",
+        "native": 1,
+        "prepared": 1,
+        "first": "8876086c",
+        "recovery": "00000000",
+        "coverage": 0,
+        "blocked": 1,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 6,
+        "label": "composite",
+        "native": 1,
+        "prepared": 1,
+        "first": "80004005",
+        "recovery": "00000000",
+        "coverage": 0,
+        "blocked": 1,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 7,
+        "label": "composite_scissor",
+        "native": 1,
+        "prepared": 1,
+        "first": "80004005",
+        "recovery": "00000000",
+        "coverage": 0,
+        "blocked": 1,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 8,
+        "label": "restore",
+        "native": 1,
+        "prepared": 1,
+        "first": "80004005",
+        "recovery": "00000001",
+        "coverage": 0,
+        "blocked": 1,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 9,
+        "label": "recovery",
+        "native": 1,
+        "prepared": 1,
+        "first": "8876086c",
+        "recovery": "80004005",
+        "coverage": 0,
+        "blocked": 1,
+        "exact_a": 1,
+        "exchange": 0
+      },
+      {
+        "stage": 10,
+        "label": "restore_recovery",
+        "native": 1,
+        "prepared": 1,
+        "first": "8876086c",
+        "recovery": "00000000",
+        "coverage": 0,
+        "blocked": 1,
+        "exact_a": 1,
+        "exchange": 0
+      }
+    ],
+    "capability_refusals": 4,
+    "reset": {
+      "interrupted": "1",
+      "detached": "1",
+      "post_reset_inside_diff": "0",
+      "post_reset_outside_diff": "0"
+    },
+    "witnesses": [],
+    "owned_targets": 5,
+    "target_bytes": 40960,
+    "live_publication": false,
+    "seconds": 9.420333625000001
+  },
+  "timing": {
+    "timing": [
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "native",
+        "dips": 1,
+        "median_ms": 0.33799999999999997,
+        "min_ms": 0.3241,
+        "max_ms": 0.5984
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "native",
+        "dips": 4,
+        "median_ms": 0.33425,
+        "min_ms": 0.1996,
+        "max_ms": 0.3477
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "native",
+        "dips": 16,
+        "median_ms": 0.33925,
+        "min_ms": 0.336,
+        "max_ms": 0.3603
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 1,
+        "median_ms": 0.4544,
+        "min_ms": 0.3724,
+        "max_ms": 0.5243
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 4,
+        "median_ms": 0.8358,
+        "min_ms": 0.778,
+        "max_ms": 0.8991
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 16,
+        "median_ms": 2.3712999999999997,
+        "min_ms": 2.2957,
+        "max_ms": 2.4539
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "native",
+        "dips": 1,
+        "median_ms": 0.3295,
+        "min_ms": 0.2029,
+        "max_ms": 0.3389
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "native",
+        "dips": 4,
+        "median_ms": 0.3306,
+        "min_ms": 0.2008,
+        "max_ms": 0.3417
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "native",
+        "dips": 16,
+        "median_ms": 0.33915,
+        "min_ms": 0.3262,
+        "max_ms": 0.3461
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 1,
+        "median_ms": 0.43655,
+        "min_ms": 0.4241,
+        "max_ms": 0.4619
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 4,
+        "median_ms": 0.891,
+        "min_ms": 0.8853,
+        "max_ms": 0.9991
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 16,
+        "median_ms": 2.442,
+        "min_ms": 2.2588,
+        "max_ms": 2.6859
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "native",
+        "dips": 1,
+        "median_ms": 0.33575,
+        "min_ms": 0.2038,
+        "max_ms": 0.3487
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "native",
+        "dips": 4,
+        "median_ms": 0.26944999999999997,
+        "min_ms": 0.2063,
+        "max_ms": 0.3366
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "native",
+        "dips": 16,
+        "median_ms": 0.3378,
+        "min_ms": 0.3284,
+        "max_ms": 0.3525
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 1,
+        "median_ms": 0.46575,
+        "min_ms": 0.4502,
+        "max_ms": 0.4967
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 4,
+        "median_ms": 0.8115,
+        "min_ms": 0.7651,
+        "max_ms": 0.8774
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 16,
+        "median_ms": 2.4112,
+        "min_ms": 2.3438,
+        "max_ms": 2.55
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 24150,
+        "policy": "native",
+        "dips": 1,
+        "median_ms": 0.27745,
+        "min_ms": 0.2062,
+        "max_ms": 0.3344
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 24150,
+        "policy": "native",
+        "dips": 4,
+        "median_ms": 0.3319,
+        "min_ms": 0.205,
+        "max_ms": 0.338
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 24150,
+        "policy": "native",
+        "dips": 16,
+        "median_ms": 0.3367,
+        "min_ms": 0.3351,
+        "max_ms": 0.4581
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 1,
+        "median_ms": 0.4359,
+        "min_ms": 0.4305,
+        "max_ms": 0.4445
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 4,
+        "median_ms": 0.91045,
+        "min_ms": 0.7957,
+        "max_ms": 0.9602
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 16,
+        "median_ms": 2.55465,
+        "min_ms": 2.3802,
+        "max_ms": 2.6735
+      }
+    ],
+    "per_bracket": [
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "dips": 16,
+        "native_ms": 0.33925,
+        "packed_ms": 2.3712999999999997,
+        "per_bracket_ms": 0.127003125
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "dips": 16,
+        "native_ms": 0.33915,
+        "packed_ms": 2.442,
+        "per_bracket_ms": 0.131428125
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "dips": 16,
+        "native_ms": 0.3378,
+        "packed_ms": 2.4112,
+        "per_bracket_ms": 0.1295875
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 24150,
+        "dips": 16,
+        "native_ms": 0.3367,
+        "packed_ms": 2.55465,
+        "per_bracket_ms": 0.138621875
+      }
+    ],
+    "scope": "Paired EVENT-fenced windows of the native source alone and prepare/source/finish per frame on the detached device; M clear outside the window; not game FPS",
+    "seconds": 1.7646696249999998
+  }
+}
