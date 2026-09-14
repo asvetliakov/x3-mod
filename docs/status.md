@@ -118,3 +118,9 @@ comparison remains available there. Runs 13–18 are complete (details in the
 
 Keep raw captures and builds local, use focused verification, and update the owning
 note instead of expanding this handoff. Remaining scope: [roadmap](architecture/roadmap.md).
+
+- **Loading time (census 2026-09-14 late evening):** no log marker splits menu and save load, so the
+  34–38 s figure cannot be re-measured directly; the `frame_end elapsed_ms` at frame 600 is 40–45 s in
+  runs 11/14/16/17, with one 23–32 s stall in the first 600 frames of which the instrumented reader/inflate
+  path explains 10–11 s and the rest is unattributed. Next: a `loading_phase` marker at menu-shown and
+  save-load-complete, then attribution of the remaining stall; not started.
