@@ -73,7 +73,8 @@ class VoiceDecoderLaunchOption(unittest.TestCase):
             self.assertEqual(delivered['command'], baseline['command'])
             added = {k: v for k, v in delivered['env'].items() if k not in baseline['env']}
             self.assertEqual(added, {'GST_PLUGIN_PATH_1_0': str(root / 'runtime/plugins'),
-                                     'GST_REGISTRY_1_0': str(root / 'registry/x3-arm64.bin')})
+                                     'GST_REGISTRY_1_0': str(root / 'registry/x3-arm64.bin'),
+                                     'X3M_VOICE_DMO_FALLBACK': '1'})
             self.assertEqual({k: v for k, v in delivered['env'].items() if k in baseline['env']}, baseline['env'])
             for name in FORBIDDEN:
                 self.assertNotIn(name, delivered['env'])

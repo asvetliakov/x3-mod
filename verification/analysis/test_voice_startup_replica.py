@@ -19,7 +19,8 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fail
         stage(0,'primary_create','88780032');stage(0,'primary_create','00000000',2);stage(0,'listener_qi');stage(0,'primary_play');stage(0,'primary_set_format');stage(0,'primary_get_volume')
         for name in ('listener_doppler','listener_distance','listener_rolloff','listener_position','listener_commit'):stage(0,name)
         rows.append('REPLICA_PRIMARY flags=11 create_hr=00000000 play_hr=00000000 format_hr=00000000 volume=0 listener=1 commit_hr=00000000')
-    teardown=(['buffer_stop','control_stop','stream_stop','release_position','release_control','release_audio','release_media','release_graph',('buffer_stop',2),('stream_stop',2),'release_buffer','release_sample','release_data','release_multimedia'] if ds
+    teardown=(['buffer_stop','control_stop','stream_stop','release_position','release_control','release_audio','release_media']
+              +(['remove_dmo_wrapper','release_dmo_wrapper'] if mode in ('game-dmo','game-dmo-fallback') else [])+['release_graph',('buffer_stop',2),('stream_stop',2),'release_buffer','release_sample','release_data','release_multimedia'] if ds
               else ['buffer_stop','control_stop','stream_stop','release_position','release_control','release_buffer','release_sample','release_data','release_audio','release_media','release_graph','release_multimedia'])
     def tear(stream):
         for item in teardown:
@@ -32,6 +33,13 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fail
         if not stage(stream,'pump'):return '\n'.join(rows)+'\n'
         for name in ('activate_stream','initialize','add_audio','audio_qi_pre','set_pcm','get_graph'):
             if not stage(stream,name):return '\n'.join(rows)+'\n'
+        if mode.startswith('game-dmo'):
+            # 004cfcd0..004cfe18: wrapper create, QI, Init (speech DMO unregistered), then the mode's action and AddFilter.
+            stage(stream,'dmo_wrapper_create');stage(stream,'dmo_wrapper_qi');stage(stream,'dmo_wrapper_init','80040154')
+            if mode=='game-dmo-fallback':stage(stream,'dmo_wrapper_init_fallback')
+            else:stage(stream,'dmo_wrapper_init','80040154',2)
+            if mode=='game-dmo-skip':stage(stream,'dmo_wrapper_skip')
+            else:stage(stream,'dmo_wrapper_add')
         if not ok:
             stage(stream,'open_file','80040217');stage(stream,'open_file','80040217',2)
             rows.append(f'REPLICA_FAILURE stream={stream} name=open_file hr=80040217')
@@ -94,6 +102,16 @@ class ReplicaTests(unittest.TestCase):
         stops=[(k['name'],k['attempt']) for k in r['key_steps'] if k['stream']==1 and k['name'].endswith('_stop')]
         self.assertEqual(stops,[('buffer_stop',1),('control_stop',1),('stream_stop',1),('buffer_stop',2),('stream_stop',2)])
         r=probe.validate(fixture('game-ds',hang_at=(1,'control_stop'),run_fails=True));self.assertEqual((r['hung_step'],r['hung_stream']),('control_stop',1))
+
+    def test_game_dmo_modes_record_the_wrapper_steps_and_the_graph_release_hang(self):
+        r=probe.validate(fixture('game-dmo-fallback'));self.assertTrue(r['completed'])
+        names=[(k['stream'],k['name'],k['hr']) for k in r['key_steps'] if k['stream']==1 and k['name'].startswith('dmo_')]
+        self.assertEqual(names,[(1,'dmo_wrapper_init','80040154'),(1,'dmo_wrapper_init_fallback','00000000'),(1,'dmo_wrapper_add','00000000')])
+        self.assertIn('release_graph',[k['name'] for k in r['key_steps']])
+        r=probe.validate(fixture('game-dmo-skip'));self.assertTrue(r['completed'])
+        self.assertEqual([k['name'] for k in r['key_steps'] if k['stream']==1 and k['name'].startswith('dmo_')],['dmo_wrapper_init','dmo_wrapper_init','dmo_wrapper_skip'])
+        self.assertNotIn('remove_dmo_wrapper',[k['name'] for k in r['key_steps']])
+        r=probe.validate(fixture('game-dmo',hang_at=(2,'release_graph')));self.assertEqual((r['hung_step'],r['hung_stream']),('release_graph',2))
         for bad in (fixture('game-ds').replace('REPLICA_PRIMARY flags=11','REPLICA_PRIMARY flags=12'),fixture('game').replace('ds_present=1 window=1','ds_present=1 window=1\nREPLICA_PRIMARY flags=11 create_hr=00000000 play_hr=00000000 format_hr=00000000 volume=0 listener=1 commit_hr=00000000')):
             with self.assertRaises(AssertionError):probe.validate(bad)
 

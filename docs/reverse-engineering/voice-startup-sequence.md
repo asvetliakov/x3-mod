@@ -666,17 +666,26 @@ filter L"MediaStreamFilter"` lines in run 12, 1,086,051 in the replica's 15 s.
 | `plugin-v3-game-dmo` | `80040154` ×2, `dmo_wrapper_add` `S_OK` | `S_OK` 1580 ms | **`80004005`** 44 ms | `remove_dmo_wrapper` `S_OK`; `remove_filters` first `RemoveFilter` `80040224`, **`REPLICA_HUNG step=remove_filters`** at 15 s (`/tmp/x3-voice-startup-dmo1`, trace `/tmp/x3-voice-startup-dmo1-cx.log`) |
 | `control-game-dmo` (no plugin) | `80040154` ×2 | `80040217` ×2 | not reached | `remove_filters` 3 iterations, clean, 5.6 s |
 
-**Fixes on our side, ranked.** (b) Process-local, behind the CrossOver
-capability boundary and inert on Windows: when the game's `Init` fails with
-`REGDB_E_CLASSNOTREG`, retry it with the registered WMA decoder
-`{2eeb4adf…}` (winegstreamer `wma_decoder`, `AllocateStreamingResources`
-`S_OK`) so the wrapper carries a DMO, stays unconnected and pauses/runs; the
-game's later `Stop` then stops every filter and `RemoveFilter` succeeds. Site:
-the game's `Init` call (§12) or the qasf vtable slot. Proof before a game run:
-a replica mode doing the same retry must show `stream_run` `S_OK` and a clean
-`remove_filters`. (c) Fail-early fallback: bound the `004d1c20` retry (or stop
-the paused filters individually before `RemoveFilter`), which ends the hang
-but leaves voice absent. (a) Steering the splitter to compressed WMA cannot
-help: the wrapper has no DMO and no pins, and the game asked for the speech
-decoder. (d) Making `CoCreateInstance(CLSID_DMOWrapperFilter)` fail depends on
-the game's untested branch after that failure (§12).
+**Fix (implemented, 2026-09-14): the DMO fallback hook.** `src/proxy/voice_dmo_fallback.cpp`
+(`X3M_VOICE_DMO_FALLBACK=1`, set by `manage.py launch --voice-decoder`) patches
+the return of the `Init` call, `004cfd46` `mov esi,eax` / `cmp esi,0x8007000e`
+(eight bytes, no relative branch, verified by
+`verification/probe/verify_voice_dmo_site.py`): when EAX is
+`REGDB_E_CLASSNOTREG` it QIs `[EBX+0x9c]` for `IDMOWrapperFilter` and calls
+`Init(CLSID_CWMADecMediaObject {2eeb4adf…}, DMOCATEGORY_AUDIO_DECODER)`; a
+successful retry is returned to the game in EAX, so `004cfd5e` takes the
+Windows path (one attempt) and the wrapper carries a DMO, pauses, runs and is
+removed. Proof, replica mode `game-dmo-fallback` (EXE `ebb569c3…`,
+`voice-startup-replica.json`): `plugin-v3-game-dmo-fallback` — `dmo_wrapper_init`
+`80040154`, `dmo_wrapper_init_fallback` `S_OK` (195 ms first, 0.5 ms after),
+`open_file` `S_OK`, **`stream_run` `S_OK` 40 ms**, `control_pause` `S_OK`, play
+5 samples / 882000 bytes in 90 ms, `remove_dmo_wrapper` and `release_graph`
+`S_OK`, completed in 6.6 s; `control-game-dmo-fallback` (no plugin) — the retry
+itself fails (`d0000001`, winegstreamer without the decoder), `open_file`
+`80040217` ×2, clean teardown 5.6 s. With the §12 teardown (straight-line
+`RemoveFilter`/`Release`, then graph and `IAMMultiMediaStream` release) the
+unfixed mode `game-dmo` (`plugin-v3-game-dmo-teardown12`) still hangs, now at
+`release_multimedia` (amstream holds the last graph reference; §12's `004d1dc8`
+case). Alternatives not needed: `game-dmo-skip` (release the wrapper, skip
+`AddFilter`) was not run; (c) bounding the removal has nothing to bound (Wine's
+loop); (a) and (d) as before.

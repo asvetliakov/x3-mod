@@ -2756,6 +2756,1197 @@
         }
       ],
       "gst_log_tail": null
+    },
+    "plugin-v3-game-dmo-fallback": {
+      "label": "plugin-v3-game-dmo-fallback",
+      "mode": "game-dmo-fallback",
+      "dwell_ms": 0,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 3,
+      "exit_code": 0,
+      "killed_pids": [],
+      "survivors": [],
+      "process_wall_seconds": 6.637064459,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": null,
+      "exe_sha256": "ebb569c385477313a3fd44534cf6e1c619083cc9c1fab91064a98db02226f894",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": {
+        "stream": "1",
+        "cycles": "15",
+        "completed": "5",
+        "queued": "5",
+        "pending_polls": "0",
+        "eos": "0",
+        "stuck": "0",
+        "errors": "0",
+        "bytes": "882000",
+        "elapsed_ms": "90"
+      },
+      "output": "/tmp/x3-voice-startup-fallback1",
+      "startup": {
+        "ds_hr": "00000000",
+        "coop_hr": "00000000",
+        "ds_present": "1",
+        "window": "1"
+      },
+      "primary": {
+        "flags": "d1",
+        "create_hr": "00000000",
+        "play_hr": "00000000",
+        "format_hr": "00000000",
+        "volume": "0",
+        "listener": "1",
+        "commit_hr": "00000000"
+      },
+      "key_steps": [
+        {
+          "stream": 0,
+          "name": "primary_create",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.307
+        },
+        {
+          "stream": 0,
+          "name": "primary_play",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.019
+        },
+        {
+          "stream": 0,
+          "name": "primary_set_format",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.112
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.146
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 195.185
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.37
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 1356.319
+        },
+        {
+          "stream": 2,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 41.33
+        },
+        {
+          "stream": 2,
+          "name": "control_pause",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.061
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.019
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.556
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.003
+        },
+        {
+          "stream": 3,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 179.713
+        },
+        {
+          "stream": 3,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 40.164
+        },
+        {
+          "stream": 3,
+          "name": "control_pause",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.012
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.026
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.475
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.003
+        },
+        {
+          "stream": 1,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 177.942
+        },
+        {
+          "stream": 1,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 40.102
+        },
+        {
+          "stream": 1,
+          "name": "control_pause",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.01
+        },
+        {
+          "stream": 1,
+          "name": "control_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.006
+        },
+        {
+          "stream": 1,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.02
+        },
+        {
+          "stream": 1,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 1.189
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 1,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 1,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 1,
+          "name": "buffer_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 3,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.339
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.002
+        },
+        {
+          "stream": 3,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "buffer_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.367
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.002
+        },
+        {
+          "stream": 2,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        }
+      ],
+      "stream_rows": [
+        {
+          "stream": "2",
+          "created": "1",
+          "role": "restored",
+          "fatal": "none",
+          "hr": "00000000",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "3",
+          "created": "1",
+          "role": "restored",
+          "fatal": "none",
+          "hr": "00000000",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "1",
+          "created": "1",
+          "role": "played",
+          "fatal": "none",
+          "hr": "00000000",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        }
+      ],
+      "sample_threads": [],
+      "gst_log_tail": null
+    },
+    "control-game-dmo-fallback": {
+      "label": "control-game-dmo-fallback",
+      "mode": "game-dmo-fallback",
+      "dwell_ms": 0,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 0,
+      "exit_code": 0,
+      "killed_pids": [],
+      "survivors": [],
+      "process_wall_seconds": 5.603317916,
+      "plugin_present": false,
+      "plugin_env": {},
+      "gst_debug": null,
+      "exe_sha256": "ebb569c385477313a3fd44534cf6e1c619083cc9c1fab91064a98db02226f894",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": null,
+      "output": "/tmp/x3-voice-startup-fallback-control",
+      "startup": {
+        "ds_hr": "00000000",
+        "coop_hr": "00000000",
+        "ds_present": "1",
+        "window": "1"
+      },
+      "primary": {
+        "flags": "d1",
+        "create_hr": "00000000",
+        "play_hr": "00000000",
+        "format_hr": "00000000",
+        "volume": "0",
+        "listener": "1",
+        "commit_hr": "00000000"
+      },
+      "key_steps": [
+        {
+          "stream": 0,
+          "name": "primary_create",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.218
+        },
+        {
+          "stream": 0,
+          "name": "primary_play",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.011
+        },
+        {
+          "stream": 0,
+          "name": "primary_set_format",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.086
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.104
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 1,
+          "hr": "d0000001",
+          "wall_ms": 33.94
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.035
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 2,
+          "hr": "d0000001",
+          "wall_ms": 0.223
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.75
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "80040217",
+          "wall_ms": 1045.713
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 2,
+          "hr": "80040217",
+          "wall_ms": 178.596
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.068
+        },
+        {
+          "stream": 2,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 2,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.026
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 1,
+          "hr": "d0000001",
+          "wall_ms": 0.289
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.027
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 2,
+          "hr": "d0000001",
+          "wall_ms": 0.257
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 3,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "80040217",
+          "wall_ms": 120.277
+        },
+        {
+          "stream": 3,
+          "name": "open_file",
+          "attempt": 2,
+          "hr": "80040217",
+          "wall_ms": 153.872
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.002
+        },
+        {
+          "stream": 3,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 3,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.024
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 1,
+          "hr": "d0000001",
+          "wall_ms": 0.221
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.023
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init_fallback",
+          "attempt": 2,
+          "hr": "d0000001",
+          "wall_ms": 0.203
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.005
+        },
+        {
+          "stream": 1,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "80040217",
+          "wall_ms": 150.192
+        },
+        {
+          "stream": 1,
+          "name": "open_file",
+          "attempt": 2,
+          "hr": "80040217",
+          "wall_ms": 137.472
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.002
+        },
+        {
+          "stream": 1,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.003
+        },
+        {
+          "stream": 1,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        }
+      ],
+      "stream_rows": [
+        {
+          "stream": "2",
+          "created": "0",
+          "role": "restored",
+          "fatal": "open_file",
+          "hr": "80040217",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "3",
+          "created": "0",
+          "role": "restored",
+          "fatal": "open_file",
+          "hr": "80040217",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "1",
+          "created": "0",
+          "role": "played",
+          "fatal": "open_file",
+          "hr": "80040217",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        }
+      ],
+      "sample_threads": [],
+      "gst_log_tail": null
+    },
+    "plugin-v3-game-dmo-teardown12": {
+      "label": "plugin-v3-game-dmo-teardown12",
+      "mode": "game-dmo",
+      "dwell_ms": 0,
+      "outcome": "hung at release_multimedia (stream 2)",
+      "completed": false,
+      "hung_step": "release_multimedia",
+      "hung_stream": 2,
+      "hung_elapsed_ms": 15017,
+      "hung_after_stages": 56,
+      "created": 0,
+      "exit_code": 1,
+      "killed_pids": [
+        45134
+      ],
+      "survivors": [],
+      "process_wall_seconds": 29.3615185,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": null,
+      "exe_sha256": "ebb569c385477313a3fd44534cf6e1c619083cc9c1fab91064a98db02226f894",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": null,
+      "output": "/tmp/x3-voice-startup-dmo2",
+      "startup": {
+        "ds_hr": "00000000",
+        "coop_hr": "00000000",
+        "ds_present": "1",
+        "window": "1"
+      },
+      "primary": {
+        "flags": "d1",
+        "create_hr": "00000000",
+        "play_hr": "00000000",
+        "format_hr": "00000000",
+        "volume": "0",
+        "listener": "1",
+        "commit_hr": "00000000"
+      },
+      "key_steps": [
+        {
+          "stream": 0,
+          "name": "primary_create",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.321
+        },
+        {
+          "stream": 0,
+          "name": "primary_play",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.018
+        },
+        {
+          "stream": 0,
+          "name": "primary_set_format",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.124
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.123
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.025
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.867
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 251.636
+        },
+        {
+          "stream": 2,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "80004005",
+          "wall_ms": 39.682
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.02
+        },
+        {
+          "stream": 2,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.046
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 2,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        }
+      ],
+      "stream_rows": [],
+      "sample_threads": [
+        {
+          "pid": 45131,
+          "threads": [
+            {
+              "thread": "Thread_27510954",
+              "top": [
+                "start (dyld)",
+                "??? (wine)",
+                "__wine_main (ntdll.so)",
+                "CFRunLoopRun (CoreFoundation)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27510955",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510957",
+              "top": [
+                "start_wqthread (libsystem_pthread.dylib)",
+                "_pthread_wqthread (libsystem_pthread.dylib)",
+                "__workq_kernreturn (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510965",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            }
+          ]
+        },
+        {
+          "pid": 45134,
+          "threads": [
+            {
+              "thread": "Thread_27510963",
+              "top": [
+                "start (dyld)",
+                "??? (wine)",
+                "__wine_main (ntdll.so)",
+                "CFRunLoopRun (CoreFoundation)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27510964",
+              "top": [
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)",
+                "??? (wine)"
+              ]
+            },
+            {
+              "thread": "Thread_27510974",
+              "top": [
+                "start_wqthread (libsystem_pthread.dylib)",
+                "_pthread_wqthread (libsystem_pthread.dylib)",
+                "_dispatch_worker_thread2 (libdispatch.dylib)",
+                "_dispatch_root_queue_drain (libdispatch.dylib)",
+                "<deduplicated_symbol> (libdispatch.dylib)",
+                "_dispatch_client_callout (libdispatch.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510979",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510983",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "_NSEventThread (AppKit)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)",
+                "__CFRunLoopServiceMachPort (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27510986",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510987",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510988",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510989",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "HALC_IOThread::Entry(void*) (CoreAudio)",
+                "invocation function for block in HALC_ProxyIOContext::HALC_ProxyIOCont (CoreAudio)",
+                "HALC_ProxyIOContext::IOWorkLoop() (CoreAudio)",
+                "caulk::mach::semaphore::wait_signal_or_error(caulk::mach::semaphore&) (caulk)"
+              ]
+            },
+            {
+              "thread": "Thread_27510992",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (ntdll.so)",
+                "??? (winecoreaudio.so)",
+                "NtDelayExecution (ntdll.so)",
+                "__select (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27510993",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)",
+                "??? (<unknown binary>)"
+              ]
+            },
+            {
+              "thread": "Thread_27510994",
+              "top": [
+                "??? (ntdll.so)",
+                "NtUserGetMessage (win32u.so)",
+                "??? (win32u.so)",
+                "NtWaitForMultipleObjects (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27510995",
+              "top": [
+                "??? (ntdll.so)",
+                "NtRemoveIoCompletion (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27510996",
+              "top": [
+                "??? (ntdll.so)",
+                "NtNotifyChangeKey (ntdll.so)",
+                "NtNotifyChangeMultipleKeys (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27510997",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "CADeprecated::CAPThread::Entry(void*) (CoreMIDI)",
+                "CADeprecated::XThread::RunHelper(void*) (CoreMIDI)",
+                "MIDIProcess::MIDIInPortThread::Run() (CoreMIDI)",
+                "XServerMachPort::ReceiveMessage(int&, void*, int&) (CoreMIDI)"
+              ]
+            },
+            {
+              "thread": "Thread_27510998",
+              "top": [
+                "??? (ntdll.so)",
+                "??? (winecoreaudio.so)",
+                "_pthread_cond_wait (libsystem_pthread.dylib)",
+                "__psynch_cvwait (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27511000",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "g_cond_wait (libglib-2.0.0.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27511001",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "??? (libgstcoreelements.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27511002",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "g_cond_wait (libglib-2.0.0.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27511003",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "??? (libgstasf.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27511005",
+              "top": [
+                "??? (ntdll.so)",
+                "??? (winegstreamer.so)",
+                "_pthread_cond_wait (libsystem_pthread.dylib)",
+                "__psynch_cvwait (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27511007",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)"
+              ]
+            }
+          ]
+        }
+      ],
+      "gst_log_tail": null
     }
   }
 }
