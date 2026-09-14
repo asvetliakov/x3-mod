@@ -177,9 +177,11 @@ constexpr DWORD plane_init_words[] = {
 constexpr DWORD packed_composite_words[] = {
 #include "linear_screen_composite_inc.h"
 };
-// Sampler stages the bracket saves, detaches and restores: s0..s2 for the
-// exchange/fade programs, s0..s4 once the packed composite is available.
-constexpr unsigned max_stages = 5;
+// Sampler stages a bracket saves, detaches and restores: s0..s2 for the
+// exchange/fade programs, s0..s4 for a packed bracket (its composite reads
+// five stages). The count is bracket-local so policies 1-4 keep their
+// getter/setter inventory when policy 8 is merely available.
+constexpr unsigned base_stages = 3, max_stages = 5;
 struct Saved {
   IDirect3DSurface9 *rt[4]{};
   IDirect3DSurface9 *depth = nullptr;
@@ -231,7 +233,7 @@ struct LinearEmissionPass::Impl {
   // touch only this target rectangle (B, E and the planes outside it are
   // stale and never read).
   bool in_place = false, packed = false;
-  unsigned stages = 3;
+  unsigned stages = base_stages; // set per bracket in begin_frame/prepare
   RECT region{};
   UINT width = 0, height = 0;
   unsigned allocation_count = 0, rt_count = 0;
@@ -705,7 +707,10 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
       !(caps9.RasterCaps & D3DPRASTERCAPS_SCISSORTEST) ||
       !(caps9.SrcBlendCaps & D3DPBLENDCAPS_ONE) || !(caps9.DestBlendCaps & D3DPBLENDCAPS_INVSRCALPHA))
     supported &= ~8u;
-  if (!supported) { p.caps.reason = "source-over caps"; return D3DERR_NOTAVAILABLE; }
+  if (!supported) {
+    p.caps.reason = (requested_policies & 8u) && !(requested_policies & 6u) ? "packed caps" : "source-over caps";
+    return D3DERR_NOTAVAILABLE;
+  }
   // A transient format query or program failure cannot masquerade as an
   // immutable unsupported producer. NOTAVAILABLE is the format-cap refusal.
   p.caps.supported_policies = supported;
@@ -777,7 +782,7 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
       hr = p.call(CreatePs, words[i], programs[i]);
       if (SUCCEEDED(hr) && !*programs[i]) hr = E_FAIL;
     }
-    if (SUCCEEDED(hr)) { p.caps.available_policies |= 8u; p.stages = max_stages; }
+    if (SUCCEEDED(hr)) p.caps.available_policies |= 8u;
     else { drop(p.plane_init); drop(p.packed_composite); if (SUCCEEDED(first)) first = hr; }
   }
   p.caps.programs = first;
@@ -857,6 +862,7 @@ LinearEmissionPass::begin_frame(std::uint64_t frame) noexcept {
   p.source_over = false;
   p.in_place = false;
   p.packed = false;
+  p.stages = base_stages;
   out.saved = p.save();
   if (FAILED(out.saved)) {
     p.saved.release();
@@ -898,6 +904,7 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
                       : p.in_place ? LinearCompositionPolicy::DistanceFadeInPlace
                       : p.source_over ? LinearCompositionPolicy::DistanceFade : LinearCompositionPolicy::AdditiveEmission;
   if (!p.caps.supports(policy)) { out.operation = D3DERR_NOTAVAILABLE; return out; }
+  p.stages = p.packed ? max_stages : base_stages;
   out.saved = p.save();
   if (FAILED(out.saved)) {
     p.saved.release();

@@ -35,6 +35,9 @@ Image surface_image(Fixture &f, IDirect3DSurface9 *s) {
   api(f.readback->UnlockRect(), "read unlock");
   return im;
 }
+// The live witness's criterion (motion_output.cpp witness_readback): a
+// non-negative nonzero half marks coverage.
+bool covered(unsigned short bits) { return !(bits & 0x8000u) && (bits & 0x7fffu); }
 bool inside(const RECT &r, unsigned x, unsigned y) {
   return LONG(x) >= r.left && LONG(x) < r.right && LONG(y) >= r.top && LONG(y) < r.bottom;
 }
@@ -43,7 +46,7 @@ bool inside(const RECT &r, unsigned x, unsigned y) {
 RECT coverage_rect(const Image &mask, unsigned w, unsigned h, LONG margin) {
   LONG l = LONG(w), t = LONG(h), r = 0, b = 0;
   for (unsigned p = 0; p < w * h; ++p)
-    if (mask[p * 4]) {
+    if (covered(mask[p * 4])) {
       const LONG x = LONG(p % w), y = LONG(p / w);
       l = std::min(l, x); t = std::min(t, y); r = std::max(r, x + 1); b = std::max(b, y + 1);
     }
@@ -74,7 +77,7 @@ unsigned mask_diff(const Image &got, const Image &ref, const RECT &r, unsigned w
 unsigned red_outside(const Image &mask, const RECT &r, unsigned w, unsigned h) {
   unsigned n = 0;
   for (unsigned p = 0; p < w * h; ++p)
-    if (mask[p * 4] && !inside(r, p % w, p / w)) ++n;
+    if (covered(mask[p * 4]) && !inside(r, p % w, p / w)) ++n;
   return n;
 }
 struct Sources {

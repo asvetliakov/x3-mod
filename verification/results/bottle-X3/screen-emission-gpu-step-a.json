@@ -1,6 +1,6 @@
 {
   "completed": true,
-  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-step-a-zq0iwcx2",
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-step-a-eckrj1ez",
   "bottle": {
     "name": "X3",
     "wine_arch": "arm64",
@@ -11,7 +11,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "inputs": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa17566ecb72c5d51/verification/probe/build/screen_emission_step_a_fixture.exe": "167596c121b93246d5d4d391012910d345eb169656f34692eaf23c590750f92d",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa17566ecb72c5d51/verification/probe/build/screen_emission_step_a_fixture.exe": "75339ccdde422bbc28c1d819657adfd25e38e91c2d8d9ea8e6c9694d4f019c69",
     "/private/tmp/x3-shader-sweep/programs/vs_0d44b36d48d24f7a.bin": "713454caeba5cf1f1fe883f5d75bdbd82729b53e14e4dc12939ea4d5d1f7ed11",
     "/private/tmp/x3-shader-sweep/programs/ps_078494828322bcca.bin": "d3d9d01b3b5ca6da54ccab8156217d0094b0a9afcfe999e08594c2602f6d8b7c",
     "/private/tmp/x3-shader-sweep/programs/vs_1b6863a088a177af.bin": "5848f50faba11d893d8bb7f3c2319657b84231282a1a540c19b2f2dac8e6c599",
@@ -29,16 +29,16 @@
     "/private/tmp/x3-shader-sweep/programs/vs_f9755e1154244f58.bin": "454aba796270480ac25ae2835bbdf51897d09993214250cac7a82f8a7cfe3ffe"
   },
   "source_sha256": {
-    "src/renderer/linear_emission_pass.cpp": "2c9d900f65754b891c509652112232b770e74bb19c5663f0ba5c36e67dfb0602",
+    "src/renderer/linear_emission_pass.cpp": "87cbf7447555c402d1aa53dd6b0db713f70262ca8d519daf2a22d8166d249071",
     "src/renderer/linear_emission_pass.h": "1370ff4f1117144d0f76a6b79873127055956eb48af646ee378fe98ecdea9462",
     "src/renderer/linear_screen_plane_init_inc.h": "34a7baf27ae21412901d74a039dfa669fb2495704030dc2da15f8a10773b0f42",
     "src/renderer/linear_screen_composite_inc.h": "720db6eb7bf426a4e4961f2f606dd7a3556a54ec997bf096294ac63c74572d5c",
     "src/renderer/linear_emission_sm1.cpp": "add848ab9933ea1b717afd715866dd2f26b3adb0720409d466548bc964c73d7c",
     "src/renderer/linear_emission_sm1.h": "69c7492c1f53c919625ab2f7511e6f086b9bc2984b9a87afdfc57fdd66e452b8",
-    "verification/probe/screen_emission_step_a_fixture.cpp": "389ebc2314d6dbc918c744c85f3b76c971f75476fcb7477efe2238729d804b8e",
+    "verification/probe/screen_emission_step_a_fixture.cpp": "422061766aea8e8dd28a391a7cb5891d51b47c785339454b0f01511d07fd4baa",
     "verification/probe/linear_emission_sm1_packed_fixture.cpp": "f5f00d5dacdaa26ca2fdbfedde0af53bd2976aeeb4effb262b5eb211b7655505",
     "verification/probe/build_screen_emission_step_a.sh": "2213c91ecb0b71f2c81d5a231465b6f9e0ab6325018ab0d8da4e62562da8a1d9",
-    "verification/probe/run_screen_emission_step_a.py": "dbc0f53b7c4dc651de7a9fe995bcd3a13c07805c96341e48c39daa6fe2d96d7d"
+    "verification/probe/run_screen_emission_step_a.py": "9505fd2720fe5f716bf178d7569a8a328a0a0ee91564b8267b1e8a3e2a3c89cc"
   },
   "game_launched": false,
   "scope": "Step A: PackedScreenInPlace (policy 8) of the production pass inside the in-place region bracket, detached; no runtime admission or route",
@@ -228,7 +228,7 @@
     "owned_targets": 5,
     "target_bytes": 40960,
     "live_publication": false,
-    "seconds": 6.6821480840000005
+    "seconds": 9.420333625000001
   },
   "timing": {
     "timing": [
@@ -238,149 +238,149 @@
         "area": 2352,
         "policy": "native",
         "dips": 1,
-        "median_ms": 0.33740000000000003,
-        "min_ms": 0.2124,
-        "max_ms": 0.3549
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 2352,
-        "policy": "native",
-        "dips": 4,
-        "median_ms": 0.33765,
-        "min_ms": 0.2012,
-        "max_ms": 0.3538
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 2352,
-        "policy": "native",
-        "dips": 16,
-        "median_ms": 0.33330000000000004,
-        "min_ms": 0.1991,
-        "max_ms": 0.3449
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 2352,
-        "policy": "packed",
-        "dips": 1,
-        "median_ms": 0.4763,
-        "min_ms": 0.4555,
-        "max_ms": 0.5854
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 2352,
-        "policy": "packed",
-        "dips": 4,
-        "median_ms": 0.8096,
-        "min_ms": 0.7621,
-        "max_ms": 0.8897
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 2352,
-        "policy": "packed",
-        "dips": 16,
-        "median_ms": 2.4191000000000003,
-        "min_ms": 2.2431,
-        "max_ms": 2.4745
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 24150,
-        "policy": "native",
-        "dips": 1,
-        "median_ms": 0.33599999999999997,
-        "min_ms": 0.3242,
-        "max_ms": 0.3392
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 24150,
-        "policy": "native",
-        "dips": 4,
-        "median_ms": 0.33594999999999997,
-        "min_ms": 0.3259,
-        "max_ms": 0.3492
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 24150,
-        "policy": "native",
-        "dips": 16,
-        "median_ms": 0.33740000000000003,
-        "min_ms": 0.3293,
-        "max_ms": 0.3441
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 24150,
-        "policy": "packed",
-        "dips": 1,
-        "median_ms": 0.4406,
-        "min_ms": 0.4323,
-        "max_ms": 0.5582
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 24150,
-        "policy": "packed",
-        "dips": 4,
-        "median_ms": 0.8993500000000001,
-        "min_ms": 0.8798,
-        "max_ms": 0.9489
-      },
-      {
-        "width": 1280,
-        "height": 768,
-        "area": 24150,
-        "policy": "packed",
-        "dips": 16,
-        "median_ms": 2.58785,
-        "min_ms": 2.341,
-        "max_ms": 2.707
-      },
-      {
-        "width": 1920,
-        "height": 1080,
-        "area": 2352,
-        "policy": "native",
-        "dips": 1,
-        "median_ms": 0.28090000000000004,
-        "min_ms": 0.2035,
-        "max_ms": 0.3409
-      },
-      {
-        "width": 1920,
-        "height": 1080,
-        "area": 2352,
-        "policy": "native",
-        "dips": 4,
-        "median_ms": 0.33699999999999997,
-        "min_ms": 0.2351,
-        "max_ms": 0.3788
-      },
-      {
-        "width": 1920,
-        "height": 1080,
-        "area": 2352,
-        "policy": "native",
-        "dips": 16,
         "median_ms": 0.33799999999999997,
-        "min_ms": 0.3356,
-        "max_ms": 0.3463
+        "min_ms": 0.3241,
+        "max_ms": 0.5984
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "native",
+        "dips": 4,
+        "median_ms": 0.33425,
+        "min_ms": 0.1996,
+        "max_ms": 0.3477
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "native",
+        "dips": 16,
+        "median_ms": 0.33925,
+        "min_ms": 0.336,
+        "max_ms": 0.3603
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 1,
+        "median_ms": 0.4544,
+        "min_ms": 0.3724,
+        "max_ms": 0.5243
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 4,
+        "median_ms": 0.8358,
+        "min_ms": 0.778,
+        "max_ms": 0.8991
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 2352,
+        "policy": "packed",
+        "dips": 16,
+        "median_ms": 2.3712999999999997,
+        "min_ms": 2.2957,
+        "max_ms": 2.4539
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "native",
+        "dips": 1,
+        "median_ms": 0.3295,
+        "min_ms": 0.2029,
+        "max_ms": 0.3389
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "native",
+        "dips": 4,
+        "median_ms": 0.3306,
+        "min_ms": 0.2008,
+        "max_ms": 0.3417
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "native",
+        "dips": 16,
+        "median_ms": 0.33915,
+        "min_ms": 0.3262,
+        "max_ms": 0.3461
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 1,
+        "median_ms": 0.43655,
+        "min_ms": 0.4241,
+        "max_ms": 0.4619
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 4,
+        "median_ms": 0.891,
+        "min_ms": 0.8853,
+        "max_ms": 0.9991
+      },
+      {
+        "width": 1280,
+        "height": 768,
+        "area": 24150,
+        "policy": "packed",
+        "dips": 16,
+        "median_ms": 2.442,
+        "min_ms": 2.2588,
+        "max_ms": 2.6859
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "native",
+        "dips": 1,
+        "median_ms": 0.33575,
+        "min_ms": 0.2038,
+        "max_ms": 0.3487
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "native",
+        "dips": 4,
+        "median_ms": 0.26944999999999997,
+        "min_ms": 0.2063,
+        "max_ms": 0.3366
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "area": 2352,
+        "policy": "native",
+        "dips": 16,
+        "median_ms": 0.3378,
+        "min_ms": 0.3284,
+        "max_ms": 0.3525
       },
       {
         "width": 1920,
@@ -388,9 +388,9 @@
         "area": 2352,
         "policy": "packed",
         "dips": 1,
-        "median_ms": 0.48024999999999995,
-        "min_ms": 0.4378,
-        "max_ms": 0.4886
+        "median_ms": 0.46575,
+        "min_ms": 0.4502,
+        "max_ms": 0.4967
       },
       {
         "width": 1920,
@@ -398,9 +398,9 @@
         "area": 2352,
         "policy": "packed",
         "dips": 4,
-        "median_ms": 0.802,
-        "min_ms": 0.7767,
-        "max_ms": 0.8475
+        "median_ms": 0.8115,
+        "min_ms": 0.7651,
+        "max_ms": 0.8774
       },
       {
         "width": 1920,
@@ -408,9 +408,9 @@
         "area": 2352,
         "policy": "packed",
         "dips": 16,
-        "median_ms": 2.3950500000000003,
-        "min_ms": 2.356,
-        "max_ms": 2.515
+        "median_ms": 2.4112,
+        "min_ms": 2.3438,
+        "max_ms": 2.55
       },
       {
         "width": 1920,
@@ -418,9 +418,9 @@
         "area": 24150,
         "policy": "native",
         "dips": 1,
-        "median_ms": 0.33345,
-        "min_ms": 0.2078,
-        "max_ms": 0.3346
+        "median_ms": 0.27745,
+        "min_ms": 0.2062,
+        "max_ms": 0.3344
       },
       {
         "width": 1920,
@@ -428,9 +428,9 @@
         "area": 24150,
         "policy": "native",
         "dips": 4,
-        "median_ms": 0.3339,
-        "min_ms": 0.3293,
-        "max_ms": 0.3376
+        "median_ms": 0.3319,
+        "min_ms": 0.205,
+        "max_ms": 0.338
       },
       {
         "width": 1920,
@@ -438,9 +438,9 @@
         "area": 24150,
         "policy": "native",
         "dips": 16,
-        "median_ms": 0.3347,
-        "min_ms": 0.3277,
-        "max_ms": 0.3404
+        "median_ms": 0.3367,
+        "min_ms": 0.3351,
+        "max_ms": 0.4581
       },
       {
         "width": 1920,
@@ -448,9 +448,9 @@
         "area": 24150,
         "policy": "packed",
         "dips": 1,
-        "median_ms": 0.43325,
-        "min_ms": 0.4277,
-        "max_ms": 0.4384
+        "median_ms": 0.4359,
+        "min_ms": 0.4305,
+        "max_ms": 0.4445
       },
       {
         "width": 1920,
@@ -458,9 +458,9 @@
         "area": 24150,
         "policy": "packed",
         "dips": 4,
-        "median_ms": 0.9197500000000001,
-        "min_ms": 0.8898,
-        "max_ms": 1.4363
+        "median_ms": 0.91045,
+        "min_ms": 0.7957,
+        "max_ms": 0.9602
       },
       {
         "width": 1920,
@@ -468,9 +468,9 @@
         "area": 24150,
         "policy": "packed",
         "dips": 16,
-        "median_ms": 2.5185500000000003,
-        "min_ms": 2.3983,
-        "max_ms": 2.6527
+        "median_ms": 2.55465,
+        "min_ms": 2.3802,
+        "max_ms": 2.6735
       }
     ],
     "per_bracket": [
@@ -479,39 +479,39 @@
         "height": 768,
         "area": 2352,
         "dips": 16,
-        "native_ms": 0.33330000000000004,
-        "packed_ms": 2.4191000000000003,
-        "per_bracket_ms": 0.13036250000000002
+        "native_ms": 0.33925,
+        "packed_ms": 2.3712999999999997,
+        "per_bracket_ms": 0.127003125
       },
       {
         "width": 1280,
         "height": 768,
         "area": 24150,
         "dips": 16,
-        "native_ms": 0.33740000000000003,
-        "packed_ms": 2.58785,
-        "per_bracket_ms": 0.140653125
+        "native_ms": 0.33915,
+        "packed_ms": 2.442,
+        "per_bracket_ms": 0.131428125
       },
       {
         "width": 1920,
         "height": 1080,
         "area": 2352,
         "dips": 16,
-        "native_ms": 0.33799999999999997,
-        "packed_ms": 2.3950500000000003,
-        "per_bracket_ms": 0.12856562500000002
+        "native_ms": 0.3378,
+        "packed_ms": 2.4112,
+        "per_bracket_ms": 0.1295875
       },
       {
         "width": 1920,
         "height": 1080,
         "area": 24150,
         "dips": 16,
-        "native_ms": 0.3347,
-        "packed_ms": 2.5185500000000003,
-        "per_bracket_ms": 0.13649062500000003
+        "native_ms": 0.3367,
+        "packed_ms": 2.55465,
+        "per_bracket_ms": 0.138621875
       }
     ],
     "scope": "Paired EVENT-fenced windows of the native source alone and prepare/source/finish per frame on the detached device; M clear outside the window; not game FPS",
-    "seconds": 1.7598945419999996
+    "seconds": 1.7646696249999998
   }
 }

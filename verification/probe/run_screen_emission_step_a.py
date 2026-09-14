@@ -58,7 +58,7 @@ def validate(output):
         l,t,r,b=rect(row['rect']);assert r<=32 and b<=32
         if s==1:assert (l,t,r,b)==(0,0,32,32),'unknown selects the whole target'
         counts=[int(row[k]) for k in ('inside_diff','outside_diff','mask_diff','red_outside')]
-        assert int(row['prototype_failed'])==0,'prototype gate failed in-domain';proto+=1
+        assert int(row['prototype_failed'])==0,'prototype gate failed in-domain';proto+=int(row['prototype_failed'])==0
         assert all(0<=v<=8192 for v in counts)
         inside+=counts[0]==0;outside+=counts[1]==0;mask+=counts[2]==0;conservative+=counts[3]==0
         ok=not any(counts);exact+=ok;per_schedule[s]+=ok;pixels+=(r-l)*(b-t)

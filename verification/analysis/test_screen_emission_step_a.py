@@ -114,7 +114,9 @@ class StepAPolicyAndLayoutTests(unittest.TestCase):
     def test_plane_layout_reuses_e_and_c_and_saves_five_stages(self):
         body=(ROOT/'src/renderer/linear_emission_pass.cpp').read_text()
         self.assertIn('sources[0] = e; sources[1] = c; sources[2] = pb; sources[3] = m; sources[4] = a;',body)
-        self.assertIn('constexpr unsigned max_stages = 5;',body);self.assertIn('IDirect3DBaseTexture9 *texture[max_stages]{};',body)
+        self.assertIn('constexpr unsigned base_stages = 3, max_stages = 5;',body);self.assertIn('IDirect3DBaseTexture9 *texture[max_stages]{};',body)
+        # Bracket-local stage inventory: policies 1-4 keep three stages when policy 8 is merely available.
+        self.assertIn('p.stages = p.packed ? max_stages : base_stages;',body);self.assertNotIn('p.stages = max_stages;',body)
         self.assertIn('supports(LinearCompositionPolicy::PackedScreenInPlace) ? 5u : 4u',body)
         self.assertIn('same_object(p, m) || same_object(p, pb)',body);self.assertIn('for (auto *target : {b, e, c, m, pb})',body)
         self.assertRegex(body,r'hr = call\(SetRt, DWORD\(1\), e\);\s*if \(SUCCEEDED\(hr\)\) hr = call\(SetRt, DWORD\(2\), c\);\s*if \(SUCCEEDED\(hr\)\) hr = call\(SetRt, DWORD\(3\), pb\);')

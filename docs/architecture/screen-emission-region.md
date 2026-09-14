@@ -166,7 +166,8 @@ bracket verbatim: `save()`, packed `source_ok` (ONE/INVSRCCOLOR, mask 15, separa
 any, VS untouched), region backup B|R = A|R (fused copy), **plane init** under the same scissor (new fault seam
 `PlaneInit`; masks M = 8, planes = 7), `restore(M)` + RT1–3 = planes, masks 9/7/7/7, `DESTBLEND = INVSRCALPHA`,
 augmented PS only; `finish`: scissored packed composite into A (s0–2 planes, s3 M, s4 B), `restore(A)`, the fade
-ladder's exact recovery. Planes: **E = P_r, C = P_g, one new P_b** (five-target pool, 15.8 MiB at 1080p); M.alpha
+ladder's exact recovery. Planes: **E = P_r, C = P_g, one new P_b** (one 15.8 MiB FP16 plane added at 1080p; the five-target pool is
+≈79 MiB); M.alpha
 is the per-bracket scratch lane — consumer audit: `resolve.hlsl` reads `.r` only, the live witness readback tests
 RGB, the temporal route hands the texture to that resolve; nothing reads alpha. Caps: `NumSimultaneousRTs ≥ 4`,
 independent masks, scissor, `D3DPBLENDCAPS_ONE`/`INVSRCALPHA`; two ps_3_0 programs generated from the prototype's
@@ -180,7 +181,8 @@ against the prototype's C and A outside, M red/green/blue whole and alpha inside
 any rectangle** (508,518 region pixels); the injected straddling rectangle (`--rect=8,8,24,24`) keeps the law
 inside, A outside and fires the witness (419 covered pixels outside); fade→packed and packed→fade on overlapping
 rectangles pass a sequential oracle (fade stage against a CPU oracle, max tolerance fraction 0.14; packed stage
-bit-exact against the prototype run on the intermediate); an emission exchange after a packed bracket equals a
+bit-exact against the prototype run on the intermediate; coverage is counted as the live witness does, a
+non-negative nonzero half); an emission exchange after a packed bracket equals a
 fresh pass bit-exactly (E/C alias); the 10-stage ladder (copy, region scissor, plane init, source bind → clean
 refusal with A and M coverage untouched, frame not blocked; source, composite, composite scissor, restore,
 recovery, restore+recovery → `Incomplete`, first HRESULT chronological, A exact even with a failed recovery,
