@@ -360,3 +360,17 @@ write-back), is `decode(native B)`, i.e. the packed red lane: exact by construct
 overlap and identical to native, so it carries no enhancement; option (b), a calibrated gain, cannot
 restore the tail-to-core ratio. Neither is adopted here; the composition contract for the accumulated
 bullet sprites is the orchestrator's decision. No production change was made for this defect.
+
+
+## Step E — composition contract for accumulated sprites (ratified 2026-09-14 evening)
+
+Decision by the orchestrator, autonomous session: the packed screen law is redefined so that the
+composed bullet equals the native result by construction and the enhancement is a separate gain.
+The bracket keeps accumulating the native encoded value `B_native` (the red lane, ONE/INVSRCCOLOR in
+encoded space, exactly as the game does) and converts it once at publication:
+`E = decode(B_native_after) - decode(B_native_before)` (the bolt's own display-referred contribution,
+decoded once) scaled by `g` (`--screen-emission-gain`, default 1.0). At `g = 1` the presented bolt is
+native to within the write-back's rounding (tail/core ratio preserved); `g > 1` lifts the bolt into
+HDR so bloom and exposure see it. The per-fragment decode of the previous law is withdrawn for
+sprite chains; unbounded/unknown draws still refuse to native. The user chooses `g` from a gameplay
+comparison; nothing defaults above 1.
