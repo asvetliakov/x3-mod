@@ -278,6 +278,12 @@ public:
  unsigned witness_releases_=0,fade_regions_derived_=0,cutout_candidates_=0,mip_bias_failure_reports_=0;
  bool witness_frame_=false;bool witness_frame()const noexcept{return witness_frame_;}
  void release_fade_witness()noexcept{++witness_releases_;}
+ // Capture-only packed_sample readback surface and its sampling seam.
+ struct{bool valid=false;unsigned sampled=0;IDirect3DSurface9*copy=nullptr;std::uint32_t copy_width=0,copy_height=0,copy_format=0;}packed_sample_;
+ unsigned packed_sample_releases_=0,packed_samples_pre_=0,packed_samples_post_=0;
+ void sample_packed_pre(const MotionRoute&)noexcept{++packed_samples_pre_;}
+ void sample_packed_post(const RECT&)noexcept{++packed_samples_post_;}
+ void release_packed_sample()noexcept{++packed_sample_releases_;packed_sample_.copy=nullptr;}
  void report_mip_bias_game_write_failure()noexcept{++mip_bias_failure_reports_;}
  void derive_fade_region(MotionRoute&route)noexcept{++fade_regions_derived_;route.fade_region_evaluated=true;}
  void mark_cutout_candidate(MotionRoute&)noexcept{++cutout_candidates_;}
