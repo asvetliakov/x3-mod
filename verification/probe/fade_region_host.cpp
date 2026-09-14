@@ -782,6 +782,20 @@ int fraction(int argc, char** argv) {
     std::printf("FRACTION ok=%u distance=%.9g fraction=%.9g permille=%u admit=%u\n", ok, double(distance), double(f), permille, ok && x3m::fade_route::admit(permille, threshold));
     return 0;
 }
+// --fade-route-hysteresis threshold key:frame:permille ... -> one ADMIT line per step (fade_route_core.h Hysteresis)
+int hysteresis(int argc, char** argv) {
+    if (argc < 3) return 2;
+    const unsigned threshold = unsigned(std::strtoul(argv[2], nullptr, 10));
+    x3m::fade_route::Hysteresis table;
+    for (int i = 3; i < argc; ++i) {
+        unsigned long long key = 0, frame = 0; unsigned permille = 0;
+        if (std::sscanf(argv[i], "%llu:%llu:%u", &key, &frame, &permille) != 3) return 2;
+        bool held = false;
+        const bool admitted = table.admit(key, frame, permille, threshold, held);
+        std::printf("ADMIT step=%d key=%llu frame=%llu permille=%u admit=%u held=%u entries=%u\n", i - 3, key, frame, permille, admitted, held, table.count);
+    }
+    return 0;
+}
 } // namespace fade_route_mode
 } // namespace
 
@@ -789,6 +803,7 @@ int main(int argc, char** argv) {
     if (argc >= 3 && std::strcmp(argv[1], "--fade-route-registers") == 0) return fade_route_mode::registers(argc, argv);
     if (argc >= 2 && std::strcmp(argv[1], "--fade-route-state") == 0) return fade_route_mode::state(argc, argv);
     if (argc >= 2 && std::strcmp(argv[1], "--fade-route") == 0) return fade_route_mode::fraction(argc, argv);
+    if (argc >= 3 && std::strcmp(argv[1], "--fade-route-hysteresis") == 0) return fade_route_mode::hysteresis(argc, argv);
     if (argc >= 5 && std::strcmp(argv[1], "--hull") == 0)
         return hull_mode::run(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
     if (argc >= 2 && std::strcmp(argv[1], "--hull-case") == 0) return hull_mode::case_mode(argc, argv);

@@ -871,9 +871,21 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
         || !fade_route::origin_distance(shadow_.rows[window], camera_scene_.valid, camera_scene_.m00, camera_scene_.m11,
                                         camera_scene_.m20, camera_scene_.m21, distance)) { ++counters_.fade_refused; return false; }
     route.fade_permille = fade_route::permille(fade_route::fraction(alpha[0], enable != FALSE, fog[0], fog[1], distance));
-    if (!fade_route::admit(route.fade_permille, fade_route_threshold_)) { ++counters_.fade_refused; return false; }
-    route.fade_arm = true;
+    bool held = false;
+    if (!fade_hysteresis_.admit(fade_identity(), frame_, route.fade_permille, fade_route_threshold_, held)) { ++counters_.fade_refused; return false; }
+    route.fade_arm = true; route.fade_held = held;
     return true;
+}
+// The node identity of the current draw for the arm's hysteresis, read the
+// way record_fade_refused reads it (identity only, no lifetime lookup): gate
+// 4 runs before scope sampling. 0 without observation.
+std::uint64_t MotionOutput::fade_identity() noexcept {
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (fixture_configured_) return fixture_.scope.known ? fixture_.scope.node : 0;
+#endif
+    object_trace::Snapshot scope{};
+    if (object_trace::current(&scope, false) && (scope.valid & object_trace::Node)) return scope.node;
+    return 0;
 }
 void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
     // Only the frame's configured-active arm can miss coverage: an exact pair
@@ -2300,6 +2312,7 @@ void MotionOutput::before_reset() noexcept {
     release_target();
     if (composition_) { composition_busy_ = true; composition_->before_reset(); composition_busy_ = false; }
     fade_bounds_.clear(); // relearned after Reset; allocation ids never recur
+    fade_hysteresis_.clear(); // the arm starts again at the threshold after Reset
     release_fade_witness(); release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
     composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
@@ -3767,7 +3780,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     route.routed = true; route.matched = matched;
-    if (route.fade_arm) ++counters_.fade_routed;
+    if (route.fade_arm) { ++counters_.fade_routed; if (route.fade_held) ++counters_.fade_held; }
     if (route.linear_material) {
         ++counters_.material_routed;
         if (shadow_.material_contract.bump) ++counters_.material_bump_routed;
@@ -4229,7 +4242,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (capture_ && route.scene) {
         const auto& k = route.key;
         log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u pass=%lu rows_hash=%016llx result=%08lx"
-            " zwrite=%ld blend=%ld src=%ld dst=%ld atest=%ld mask=%ld sepalpha=%ld fog=%ld fade_arm=%u fade_permille=%u",
+            " zwrite=%ld blend=%ld src=%ld dst=%ld atest=%ld mask=%ld sepalpha=%ld fog=%ld fade_arm=%u fade_permille=%u fade_held=%u",
             id_, frame_, counters_.draws, unsigned(route.gate), route.routed, route.matched, route.routed && route.depth, jittered, shadow_.vs_hash, shadow_.ps_hash,
             reinterpret_cast<void*>(k.node), reinterpret_cast<void*>(k.camera), static_cast<unsigned long>(k.node_handle),
             static_cast<unsigned long>(k.camera_handle), k.object_lifetime, k.camera_lifetime, route.load_epoch, route.registry_epoch,
@@ -4239,7 +4252,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
             shadow_state_field(D3DRS_ZWRITEENABLE), shadow_state_field(D3DRS_ALPHABLENDENABLE),
             composition_blend_field(0), composition_blend_field(1),
             shadow_state_field(D3DRS_ALPHATESTENABLE), shadow_state_field(D3DRS_COLORWRITEENABLE),
-            composition_blend_field(3), shadow_state_field(D3DRS_FOGENABLE), unsigned(route.fade_arm), route.fade_permille);
+            composition_blend_field(3), shadow_state_field(D3DRS_FOGENABLE), unsigned(route.fade_arm), route.fade_permille, unsigned(route.fade_held));
     }
 }
 
@@ -4897,11 +4910,11 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 composition_counts_.prepare_failures, composition_counts_.composition_failures, composition_counts_.restore_failures, composition_counts_.exchange_failures, composition_counts_.ack_failures, composition_counts_.recovery_failures,
                 composition_counts_.prepare, composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition, composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack, composition_counts_.recovery);
         if (linear_material_requested_)
-            log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u fade_routed=%lu fade_refused=%lu fade_route=%u",
+            log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u",
                 id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
                 static_cast<unsigned long>(c.material_bind_failures), static_cast<unsigned long>(c.cutout_routed),
                 static_cast<unsigned long>(c.cutout_missed), unsigned(cutout_coverage_missed_), unsigned(cutout_caps_),
-                static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), fade_route_threshold_);
+                static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held), fade_route_threshold_);
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
@@ -5010,6 +5023,7 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 50: return counters_.fade_routed;
     case 51: return counters_.fade_refused;
     case 52: return fade_route_threshold_;
+    case 53: return counters_.fade_held;
     case 36: { static_assert(motion_shadow_state_count <= 32); unsigned mask=0;
         for (unsigned i=0;i<motion_shadow_state_count;++i) if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
         return mask; }

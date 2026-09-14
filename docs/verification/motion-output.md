@@ -1055,3 +1055,23 @@ switch at that distance all fit the rows above.
 
 Diagnosis is in progress on Fable; it will name and own the note where the
 mechanism is written up.
+
+
+## 2026-09-15 — fade-band arm: live cases repaired, hysteresis, sentinel and hover scripts
+
+The merged fade-band arm (6a895ee) failed its own live case for harness
+reasons: the asteroid VS maps `oT0` through the c37/c38 rows, whose live-fixture
+values sample one texel of Q's ramp, and the masked composite (shader alpha
+.078) carried under one 8-bit code per pixel. Q now gets identity UV rows, alpha
+1 and a camera at the origin; the resolved shift is measured on the reference
+FP16 resolve the fixture asserts equal to the presented frame. Review findings
+folded in: a 100 ‰ per-node hysteresis band (`fade_route::Hysteresis`,
+`fade_held` counters), the camera-invalid estimate refused instead of using the
+view depth, the sentinel-policy wording corrected, and two new scripts. Design
+and numbers: `docs/architecture/linear-distance-fade-region.md`, "Fade-band
+route". Five live cases on X3 with the seam DLL: routed / routed-perdraw /
+sentinel 5100 checks, raw error ≤ 0.006 px, resolved residual ≤ 0.069 px;
+masked 408 checks, resolved residual 0.000 px; hover 3536 checks, 8 routed
+frames of which 5 held, switch step 3.7 % at 449 ‰. `run_linear_distance_fade_live.py`
+PASS, 34 cases. Host: 49 tests OK across the runner, fade-region and
+live-report modules.

@@ -470,8 +470,10 @@ class FadeRegion(unittest.TestCase):
         rows=[1,0,0,3, 0,1,0,4, 0,0,1,0, 0,0,0,2]
         ok,d,f,_,_=self.fade_route(1,1,(1,.1),rows,(1,1.5,2,0,0))
         self.assertEqual(ok,1);self.assertAlmostEqual(d,math.sqrt(12),places=5);self.assertAlmostEqual(f,1-.1*math.sqrt(12),places=5)
-        ok,d,f,_,_=self.fade_route(1,1,(1,.1),rows,(0,0,0,0,0))
-        self.assertEqual((ok,d),(1,2.));self.assertAlmostEqual(f,.8,places=6)
+        # Without a valid camera the depth w alone would understate the distance (2 < sqrt(12)) and
+        # overstate the fraction: refused (the bracket keeps the draw). A degenerate projection likewise.
+        self.assertEqual(self.fade_route(1,1,(1,.1),rows,(0,0,0,0,0))[0],0)
+        self.assertEqual(self.fade_route(1,1,(1,.1),rows,(1,0,2,0,0))[0],0)
         # An off-centre projection (m20, m21) cancels: x_c = w * m20 is the axis.
         rows=[1,0,0,1, 0,1,0,-.5, 0,0,1,0, 0,0,0,2]
         self.assertEqual(self.fade_route(1,1,(1,.25),rows,(1,1,1,.5,-.25))[1:3],(2.,.5))
@@ -484,6 +486,37 @@ class FadeRegion(unittest.TestCase):
         self.assertEqual(self.fade_route(1,1,(.5,1),IDENTITY,camera)[2:],(0.,0,0))     # .5 - 1 < 0 -> 0
         self.assertEqual(self.fade_route(.5,1,(4,1),IDENTITY,camera)[2:],(.5,500,1))   # saturate(3) = 1
         self.assertEqual(self.fade_route(2,1,(1,0),IDENTITY,camera)[3:],(1000,1))      # alpha above one clamps the permille
+
+    def hysteresis(self,threshold,steps):
+        """--fade-route-hysteresis: (admit, held, entries) per (key, frame, permille) step."""
+        args=[str(self.driver),'--fade-route-hysteresis',str(threshold)]+[f'{k}:{f}:{p}' for k,f,p in steps]
+        rows=[fields(l) for l in subprocess.check_output(args,text=True).splitlines()]
+        return [(int(r['admit']),int(r['held']),int(r['entries'])) for r in rows]
+
+    def test_fade_band_arm_hysteresis(self):
+        """Hysteresis at the threshold (fade_route_core.h Hysteresis): a node admitted at >= threshold stays
+        admitted down to threshold - 100 while it is seen within 8 frames; a refusal, a gap or an eviction
+        starts it again at the threshold; key 0 is the threshold alone."""
+        # Hover: 520 arms, 450 held twice, 380 refuses and disarms, 450 refused, 520 arms again.
+        self.assertEqual(self.hysteresis(500,[(7,0,520),(7,1,450),(7,2,450),(7,3,380),(7,4,450),(7,5,520),(7,6,499)]),
+                         [(1,0,1),(1,1,1),(1,1,1),(0,0,1),(0,0,1),(1,0,1),(1,1,1)])
+        # The band edge: 400 is held at threshold 500, 399 is not; threshold 50 holds down to 0; threshold 0 admits everything.
+        self.assertEqual(self.hysteresis(500,[(1,0,500),(1,1,400),(1,2,399)]),[(1,0,1),(1,1,1),(0,0,1)])
+        self.assertEqual(self.hysteresis(50,[(1,0,50),(1,1,0)]),[(1,0,1),(1,1,1)])
+        self.assertEqual(self.hysteresis(0,[(1,0,0),(2,1,0)]),[(1,0,1),(1,0,2)])
+        # Off (1001): never admitted, nothing stored. Key 0: threshold alone, nothing stored.
+        self.assertEqual(self.hysteresis(1001,[(1,0,1000),(1,1,1000)]),[(0,0,0),(0,0,0)])
+        self.assertEqual(self.hysteresis(500,[(0,0,600),(0,1,450)]),[(1,0,0),(0,0,0)])
+        # Expiry: seen 8 frames later still held, 9 frames later not; a frame going backwards (Reset) not.
+        self.assertEqual(self.hysteresis(500,[(1,0,600),(1,8,450)]),[(1,0,1),(1,1,1)])
+        self.assertEqual(self.hysteresis(500,[(1,0,600),(1,9,450)]),[(1,0,1),(0,0,1)])
+        self.assertEqual(self.hysteresis(500,[(1,5,600),(1,4,450)]),[(1,0,1),(0,0,1)])
+        # Keys are independent; a full table evicts its oldest entry, which then starts at the threshold.
+        self.assertEqual(self.hysteresis(500,[(1,0,600),(2,0,450),(1,1,450),(2,1,600),(2,2,450)]),[(1,0,1),(0,0,2),(1,1,2),(1,0,2),(1,1,2)])
+        fill=[(k,1,600) for k in range(2,66)]  # key 1 armed at frame 0 is the oldest of 65 keys
+        steps=[(1,0,600)]+fill+[(1,2,450)]
+        result=self.hysteresis(500,steps)
+        self.assertEqual(result[0],(1,0,1));self.assertEqual(result[-2][2],64);self.assertEqual(result[-1],(0,0,64))
 
     def test_bound_table_scenarios(self):
         """Fake descriptor/part/record memory and a fake buffer registry drive BoundTable::resolve."""

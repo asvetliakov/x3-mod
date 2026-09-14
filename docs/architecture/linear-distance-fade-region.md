@@ -851,27 +851,53 @@ Rule (`src/proxy/fade_route_core.h`, `MotionOutput::fade_arm_admits`, gate 4):
   for the two fixed-light ones, shader-sweep inventory) and evaluated at the
   origin distance of the draw's clip rows (`x_v = (x_c − w·m20)/m00`,
   `y_v = (y_c − w·m21)/m11`, `z_v = w` with the scene camera's projection
-  scales; the depth `w` alone when the camera is invalid). The draw is routed
-  when the estimate in per mille reaches `X3M_FADE_ROUTE` (default 500;
-  `off` disables the arm; 0 routes every recognised fade-band draw). Below the
+  scales). Without a valid camera the draw is refused to the bracket: the
+  depth `w` alone is a lower bound of the distance and would overstate the
+  fraction, routing draws below the threshold (under `X3M_TAA_SENTINEL=2`
+  such a frame skips the resolve anyway). The draw is routed when the
+  estimate in per mille reaches `X3M_FADE_ROUTE` (default 500; `off`
+  disables the arm; 0 routes every recognised fade-band draw). Below the
   threshold the draw takes the fade bracket exactly as before: a fully faded
   region may stay current-only. The region's `f_permille` of the
   `fade_region` line is the rectangle's viewport-area share, not this
   fraction; the estimate is logged as `fade_permille` on the capture
   `motion_route` line. The per-vertex fade of a large mesh straddling the
   band is admitted by its origin.
+- **Hysteresis.** An object whose estimate hovers about the threshold would
+  otherwise alternate between the route and the bracket every frame, and the
+  two composites differ: the bracket mixes linear values, the route lets the
+  game's blend mix the encoded FP16 target (measured below: 3.7 % of the
+  composite at 449 ‰, P sample). `fade_route::Hysteresis` (64 entries, keyed
+  by the draw's node identity read the way `fade_refused_rect` reads it,
+  identity only) keeps a node admitted at ≥ threshold admitted while its
+  estimate stays ≥ threshold − 100 ‰ and it is seen within 8 frames; a
+  refusal, a gap or an eviction (the oldest entry) starts it again at the
+  threshold; a draw without node identity is decided by the threshold alone.
+  Reset clears the table. Held admissions are counted as `fade_held` on the
+  `linear_material_frame` line and flagged `fade_held=1` on the capture
+  `motion_route` line. The switch still happens, once, at the band's lower
+  edge rather than every frame at the threshold.
 - **What the route does.** The same variant pair, rows, jitter, history key
   and gates 5–6 as an opaque draw: RT1 carries the draw's own previous
   unjittered UV and depth with alpha 1, which the draw's own
   `SRCALPHA/INVSRCALPHA` blend passes exactly (`src·1 + dst·0`); an unmatched
-  draw's alpha −1 folds to the fill sentinel over a sentinel and to a rejected
-  alpha over a valid neighbour, so it stays current-only as any mode-0 draw.
-  RT2 stays bound for the variant's `oC2` but with `COLORWRITEENABLE2 = 0`
-  (the depth fragment's alpha is z/w, which the blend would fold into the
-  stored depth); the pixel keeps the sentinel or the routed depth behind it,
-  and the resolve takes the correspondence from RT1 on the far-plane path
-  (policy 2) or the neighbour's depth. The fade bracket is not entered, so M
-  is clear there and the neighbourhood clip absorbs the slow alpha change.
+  draw's alpha −1 (`−src + 2·dst`) folds to the fill sentinel over the
+  sentinel and to the rejected alpha 3 over a matched neighbour's rows
+  (measured: the hover script's re-armed frame over A), which the resolve
+  rejects as any mode-0 draw. RT2 stays bound for the variant's `oC2` but
+  with `COLORWRITEENABLE2 = 0` (the depth fragment's alpha is z/w, which the
+  blend would fold into the stored depth), so the pixel keeps the depth
+  sentinel or the routed depth behind it. Over a routed opaque draw the
+  resolve takes the neighbour's depth and this RT1 correspondence. Over the
+  sentinel (no opaque draw beneath, `resolve.hlsl` depth-sentinel block) the
+  policy decides: under `X3M_TAA_SENTINEL=1` the pixel returns current-only
+  before RT1 is read, routed fade draw or not; under policy 2 the pixel takes
+  the far-plane camera path (depth 1) and a matched draw's RT1 rows (alpha 1)
+  supply the correspondence, while an unmatched draw's −1 over the sentinel
+  keeps the camera far-plane path (the exactly −1, undilated case of the
+  motion block) and is reprojected as background rather than held
+  current-only. The fade bracket is not entered, so M is clear there and the
+  neighbourhood clip absorbs the slow alpha change.
   Colour: the material variant's encoded linear colour, blended natively in
   the FP16 target by the game's source-over factors — the bracket's linear
   source-over is given up for routed draws (exact at alpha 1, a gamma-space
@@ -879,7 +905,9 @@ Rule (`src/proxy/fade_route_core.h`, `MotionOutput::fade_arm_admits`, gate 4):
   every non-reviewed pair are untouched.
 - **Cost.** Per recognised fade-band draw: eight shadowed state reads (the
   blend triple from the composition shadow when maintained), one
-  `GetStreamSourceFreq`, three constant Gets, one square root; no allocation.
+  `GetStreamSourceFreq`, three constant Gets, one square root, one identity
+  read (`object_trace::current` without matrices) and a scan of at most 64
+  hysteresis entries; no allocation.
   One routed draw per fading object (frame 11940: 1 of 51 gate-4 draws), the
   same constant upload and MRT bind as any routed draw, no extra pass.
 - **Preserved.** TAA off: the arm is off (`taa_enabled_`), native parity
@@ -899,17 +927,37 @@ Evidence:
   verification.analysis.test_motion_output_runner
   verification.analysis.test_linear_distance_fade_report
   verification.analysis.test_linear_distance_fade_live_report
-  verification.analysis.test_fade_region` — 48 tests OK, including the
+  verification.analysis.test_fade_region` — 49 tests OK, including the
   register table, the state predicate, the fraction at the identity rows
   (.625 · (.75 − .125) = .390625 → 390, refused at 500; alpha 1 / fog (1, 0) →
-  1000), off-axis and off-centre distances, nonfinite and w ≤ 0 refusals.
-- Live (`run_motion_output.py`, seam DLL, `faderoute` mode, three cases;
+  1000), off-axis distances, the camera-invalid and degenerate-projection
+  refusals, nonfinite and w ≤ 0 refusals, and the hysteresis table (the
+  507/449/390 hover sequence, the 400 band edge, thresholds 50/0/off, key 0,
+  expiry at 8 frames, a frame going backwards, independent keys, eviction of
+  the oldest of 65 keys).
+- Live (`run_motion_output.py`, seam DLL, `faderoute` mode, five cases;
   orchestrator-run): `seam-taa-fade-route-routed` (lazy),
-  `seam-taa-fade-route-routed-perdraw`, `seam-taa-fade-route-masked`. Twelve
+  `seam-taa-fade-route-routed-perdraw`, `seam-taa-fade-route-masked`,
+  `seam-taa-fade-route-sentinel`, `seam-taa-fade-route-hover`. Twelve
   frames, rotating camera (cut at 7), the routed full-screen A plus two quads
   of `b0602757fce6e870/517540ae6d5e5410` in the fade-band state: P (constant
-  texels) for the composite oracle at (12, 12) and (20, 20), Q (diffuse ramp)
-  for a Lucas–Kanade shift of the raw FP16 scene and the presented frame.
+  texels, the live fixture's camera distance 4) for the composite oracle at
+  (12, 12) and (20, 20), Q (a 16×16 diffuse ramp `r = u, g = v`, alpha 1,
+  identity UV rows c37/c38, camera at the origin) for a Lucas–Kanade shift of
+  the raw FP16 scene and of the resolved FP16 image (`reference_taa_<f>`, the
+  fixture's reference resolve of the DLL's own RT1/M/colour inputs, which the
+  fixture requires the presented frame to equal within one 8-bit code). The
+  first live run of the merged tree failed on both quads for harness reasons,
+  not production ones: the VS computes `oT0 = ((u, v, 1)·c37.xyz, (u, v,
+  1)·c38.xyz)` and the live fixture's rows `(0, 0, .0625)/(0, 0, .1875)` sample
+  one texel (a flat Q), and the masked composite at the shader's distance-4
+  alpha .078 carries under one 8-bit code per pixel across Q. `sentinel`
+  scissors A to rows 32–63 (the selector's Scene phase needs a depth-writing
+  draw) so the quads sit over the fill under policy 2, the run-49
+  configuration; `hover` drives P's `g_AlphaValue` and Q's `g_FogClip`
+  (`(permille/1000 − 1, −1)` at alpha 1 and distance 4, where the shader
+  factor saturates while the CPU estimate at distance 1 hovers) through 507,
+  449, 449, 390, 449, 449, 507, 449, 390, 507, 449, 449 ‰.
   Expected: routed — `fade_routed=2`, route records `gate=0 routed=1
   matched=1 jittered=1 fade_arm=1 fade_permille=1000`, RT1 alpha 1 with the
   quads' own UV on every interior pixel (frame 0: the −1 sentinel), M clear,
@@ -920,10 +968,28 @@ Evidence:
   masked — `fade_refused=2 prepared=2`, `gate=4 fade_permille=390`, RT1
   preserved, M on every interior pixel, P equal to the fade oracle at the same
   tolerance (the bracket's bytes are the pre-change ones: its code is
-  untouched), resolved shift = raw shift (the trembling reproduced). Commands:
+  untouched), resolved shift = raw shift (the trembling reproduced);
+  sentinel — as routed with the quads over the fill; hover — routed on frames
+  0–2, 6–7, 9–11 (`fade_held=2` on 1, 2, 7, 10, 11), refused on 3–5 and 8, the
+  route records of the capture frames held (449, `fade_held=1`), refused at
+  390 and refused at 449 (disarmed), a re-armed frame unmatched (alpha 3 over
+  A's rows), held frames' P at the native encoded mix `encode(L)·a +
+  dst·(1 − a)` (a = .125 · g_AlphaValue) and refused frames' P at the bracket
+  oracle at the same alpha, the resolved shift stable across matched frames
+  and equal to the raw shift across bracketed ones. Results 2026-09-15 (X3,
+  seam DLL): routed / routed-perdraw / sentinel 5100 checks, raw error
+  ≤ 0.006 px over 22 axis samples, resolved residual ≤ 0.069 px over 16
+  (Δjitter 0.25–0.81 px); masked 408 checks, raw error ≤ 0.044 px, resolved
+  residual 0.000 px; hover 3536 checks, raw ≤ 0.006 px, resolved ≤ 0.053 px
+  over 10 samples, switch step at 449 ‰ between a held and a refused frame
+  0.0356 (3.7 % of the composite; the native mix is darker: (.942, .923,
+  .951) versus (.962, .958, .965) over a white destination). Commands:
   `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
   verification/probe/run_motion_output.py seam-taa-fade-route-routed
-  seam-taa-fade-route-routed-perdraw seam-taa-fade-route-masked` and, for the
-  unchanged live fade script, `X3M_FIXTURE_BOTTLE=X3 python3
-  verification/probe/wine_lock.py python3
-  verification/probe/run_linear_distance_fade_live.py`.
+  seam-taa-fade-route-routed-perdraw seam-taa-fade-route-masked
+  seam-taa-fade-route-sentinel seam-taa-fade-route-hover` and, for the
+  unchanged live fade script (PASS, 34 cases, 64 s), `X3M_FIXTURE_BOTTLE=X3
+  python3 verification/probe/wine_lock.py python3
+  verification/probe/run_linear_distance_fade_live.py --fixture
+  verification/probe/build/motion_output_fixture.exe --dll
+  verification/probe/build/motion-output-seam/d3d9.dll`.

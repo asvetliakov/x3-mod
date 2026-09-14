@@ -112,6 +112,7 @@ struct MotionRoute {
     // is bound with its write mask cleared for such a draw; RT1 blends
     // exactly (motion alpha 1 under SRCALPHA/INVSRCALPHA).
     bool fade_arm = false;
+    bool fade_held = false; // admitted below the threshold by the hysteresis band only
     unsigned fade_permille = 0;
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
@@ -231,7 +232,7 @@ struct MotionFrameCounters {
     // by the arm, and those recognised but refused (fraction below the
     // threshold, unreadable constants, device not ready), which then take
     // the fade bracket or the native path exactly as before.
-    std::uint32_t fade_routed = 0, fade_refused = 0;
+    std::uint32_t fade_routed = 0, fade_refused = 0, fade_held = 0; // fade_held: of fade_routed, admitted by the hysteresis band
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
     // while the jitter was active: every one breaks the "whole scene moves
@@ -829,6 +830,7 @@ private:
     // Fade-band arm evaluation at gate 4 (the six shadowed states already
     // read); true admits the draw as a routed fade-band draw.
     bool fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write, std::size_t window, bool loop_bounded) noexcept;
+    std::uint64_t fade_identity() noexcept; // the draw's node identity for the arm's hysteresis (0: unknown)
     void mark_cutout_candidate(MotionRoute& route) noexcept;
     void report_xt_default_unavailable() noexcept;
     void report_mip_bias_game_write_failure() noexcept;
@@ -995,6 +997,7 @@ private:
     bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
     float screen_emission_gain_ = 1.f;
     unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
+    fade_route::Hysteresis fade_hysteresis_; // per node identity; cleared at Reset
     unsigned composition_required_producers_ = 0;
     HRESULT composition_attach_result_ = S_FALSE;
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};

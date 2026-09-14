@@ -117,14 +117,15 @@ def fade_alpha(pair):
     return STATION_ALPHA if pair==STATION_PAIR else .078125
 
 
-def expected_composite(before,pair,zero=False,overlap=1):
+def expected_composite(before,pair,zero=False,overlap=1,alpha_value=None):
     c=sample_case(pair,zero)
     linear=material.expected(component.oracle_case(c)).linear_rgb
     # The live Asteroid originals retain material alpha .625; the detached source
     # fixture deliberately overwrote it with one. The station case already carries
-    # its AlphaValue. All factors here are binary-exact.
-    alpha=(1. if pair==STATION_PAIR else .625)*component.source_alpha(c)
-    assert alpha==fade_alpha(pair) or zero
+    # its AlphaValue. All factors here are binary-exact. alpha_value overrides the
+    # asteroid pairs' g_AlphaValue.x (the fade-route hover script).
+    alpha=(1. if pair==STATION_PAIR else .625 if alpha_value is None else alpha_value)*component.source_alpha(c)
+    assert alpha==fade_alpha(pair) or zero or alpha_value is not None
     q=0.;energy=[0.]*3
     for _ in range(overlap):
         q=component.fp16_rt_store(alpha+(1-alpha)*q)

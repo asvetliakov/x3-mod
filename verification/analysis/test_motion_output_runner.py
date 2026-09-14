@@ -60,10 +60,11 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-ownership-taa-hdr-tonemap-on': '0', 'production-taa-hdr-tonemap-on': '0',
                        'seam-taa-hook-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-sharpen-on': '0',
                        'seam-taa-cutout-blended': '0', 'seam-taa-cutout-opaque': '0',
-                       'seam-taa-fade-route-routed': '0', 'seam-taa-fade-route-routed-perdraw': '0', 'seam-taa-fade-route-masked': '0'})
+                       'seam-taa-fade-route-routed': '0', 'seam-taa-fade-route-routed-perdraw': '0', 'seam-taa-fade-route-masked': '0',
+                       'seam-taa-fade-route-sentinel': '0', 'seam-taa-fade-route-hover': '0'})
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (53, 14, 22))
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (55, 14, 24))
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
@@ -283,52 +284,61 @@ class MotionOutputRunnerTests(unittest.TestCase):
 
     def fade_route_output(self, script, directory, lazy=True, shift_resolved=None):
         """Synthetic fade-route report, trace and per-frame images: quad Q carries a ramp
-        that moves with the jitter in the raw FP16 scene; the presented frame is stable
-        (routed) or moves with the jitter too (masked) unless shift_resolved overrides it."""
+        that moves with the jitter in the raw FP16 scene; the resolved FP16 image is
+        stable after a routed frame or moves with the jitter after a bracketed one
+        unless shift_resolved overrides it. The scripts' per-frame decisions follow
+        the runner's tables (hover: the hysteresis sequence)."""
         import run_linear_distance_fade_live as live_fade
-        routed = script == 'routed'
         frames = runner.FADE_ROUTE_FRAMES
         report = ['MODE seam=1 enabled=1 jitter=1 taa=1 msaa=0']
         trace = []
         case = live_fade.sample_case(0); case['diffuse'][3] = 1.
         linear = live_fade.material.expected(live_fade.component.oracle_case(case)).linear_rgb
+        encoded = live_fade.component.compose((0., 0., 0., 1.), [live_fade.component.fp16_rt_store(v) for v in linear], 1.)[:3]
         before = (.3, .2, .1, .5)
         for f in range(frames):
             _, jx, jy = runner.expected_jitter(f)
+            routed, held = runner.fade_route_routed(script, f), runner.fade_route_held(script, f)
+            matched = routed and f > 0 and runner.fade_route_routed(script, f - 1)
+            permille = runner.fade_route_permille(script, f)
             history = int(f not in (0, runner.FADE_ROUTE_CUT_FRAME))
-            report.append(f'FADE_ROUTE frame={f} script={script} routed={int(routed)} matched={int(routed and f > 0)} fade_routed={2 * routed} fade_refused={2 * (not routed)} '
-                          f'prepared={2 * (not routed)} covered=800 own_motion={2 * 196 * routed} mask_set={2 * 196 * (not routed)} mask_valid=1 threshold=500 draws=2')
+            report.append(f'FADE_ROUTE frame={f} script={script} routed={int(routed)} matched={int(matched)} fade_routed={2 * routed} fade_refused={2 * (not routed)} '
+                          f'fade_held={2 * held} prepared={2 * (not routed)} covered=800 own_motion={2 * 196 * routed} mask_set={2 * 196 * (not routed)} mask_valid=1 threshold=500 draws=2')
             for x, y in runner.FADE_ROUTE_SAMPLES:
-                if routed:
+                if script == 'hover':
+                    alpha = .125 * runner.FADE_ROUTE_HOVER_ALPHA[f]
+                    after = tuple(live_fade.component.fp16_rt_store(e * alpha + b * (1 - alpha)) for e, b in zip(encoded, before)) + (before[3],) if routed else \
+                        live_fade.expected_composite(before, 0, alpha_value=runner.FADE_ROUTE_HOVER_ALPHA[f])
+                elif routed:
                     after = live_fade.component.compose(before, [live_fade.component.fp16_rt_store(v) for v in linear], 1.)
                 else:
                     after = live_fade.expected_composite(before, 0)
                 report.append(f'FADE_ROUTE_SAMPLE frame={f} x={x} y={y} before={",".join(map(repr, before))} after={",".join(map(repr, after))}')
             report.append(f'TAA frame={f} history={history} cut={int(f == runner.FADE_ROUTE_CUT_FRAME)} changed=100 policy=2 skipped=0')
-            trace.append(f'motion_output_frame device=1 frame={f} rt_mode={"lazy" if lazy else "perdraw"} draws=4 routed={3 if routed else 1} gate4={0 if routed else 2} '
+            trace.append(f'motion_output_frame device=1 frame={f} rt_mode={"lazy" if lazy else "perdraw"} draws=4 routed={1 + 2 * routed} gate4={0 if routed else 2} '
                          f'apply_failures=0 restore_failures=0 taa_resolved=1 taa_history={history}')
-            trace.append(f'linear_material_frame device=1 frame={f} routed={3 if routed else 1} bump_routed=0 refused=0 bind_failures=0 cutout_routed=0 cutout_missed=0 '
-                         f'cutout_unavailable=0 cutout_caps=1 fade_routed={2 * routed} fade_refused={2 * (not routed)} fade_route=500')
+            trace.append(f'linear_material_frame device=1 frame={f} routed={1 + 2 * routed} bump_routed=0 refused=0 bind_failures=0 cutout_routed=0 cutout_missed=0 '
+                         f'cutout_unavailable=0 cutout_caps=1 fade_routed={2 * routed} fade_refused={2 * (not routed)} fade_held={2 * held} fade_route=500')
             if f in runner.FADE_ROUTE_CAPTURE:
                 trace.append(f'motion_route device=1 frame={f} index=2 gate=0 routed=1 matched=1 depth=1 jittered=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 result=00000000 '
-                             'zwrite=1 blend=0 src=2 dst=1 atest=0 mask=15 sepalpha=0 fog=0 fade_arm=0 fade_permille=0')
+                             'zwrite=1 blend=0 src=2 dst=1 atest=0 mask=15 sepalpha=0 fog=0 fade_arm=0 fade_permille=0 fade_held=0')
                 for index in (3, 4):
-                    trace.append(f'motion_route device=1 frame={f} index={index} gate={0 if routed else 4} routed={int(routed)} matched={int(routed)} depth={int(routed)} jittered=1 '
+                    trace.append(f'motion_route device=1 frame={f} index={index} gate={0 if routed else 4} routed={int(routed)} matched={int(matched)} depth={int(routed)} jittered=1 '
                                  f'vs={runner.FADE_ROUTE_PAIR[0]} ps={runner.FADE_ROUTE_PAIR[1]} result=00000000 zwrite=0 blend=1 src=5 dst=6 atest=0 mask=7 sepalpha=0 fog=0 '
-                                 f'fade_arm={int(routed)} fade_permille={runner.FADE_ROUTE_PERMILLE[script]}')
-            # Images: the raw ramp moves with the jitter; the presented one stays put
-            # (routed) or moves with it (masked).
+                                 f'fade_arm={int(routed)} fade_permille={permille} fade_held={int(held)}')
+            # Images: the raw ramp moves with the jitter; the resolved one stays put
+            # after a routed frame or moves with the jitter after a bracketed one.
             raw = []
-            shown = bytearray()
+            shown = []
             sx, sy = (0., 0.) if routed else (jx, jy)
             if shift_resolved is not None:
                 sx, sy = shift_resolved(f)
             for y in range(64):
                 for x in range(64):
                     raw += [.3 + .02 * (x - jx), .3 + .02 * (y - jy), .5, 1.]
-                    shown += bytes((128, max(0, min(255, round(8 + 8 * (y - 8 - sy)))), max(0, min(255, round(8 + 8 * (x - 40 - sx)))), 255))
+                    shown += [.3 + .02 * (x - sx), .3 + .02 * (y - sy), .5, 1.]
             (directory / f'fade_route_color_{f}.f32').write_bytes(struct.pack('<%df' % len(raw), *raw))
-            (directory / f'presented_{f}.bgra8').write_bytes(bytes(shown))
+            (directory / f'reference_taa_{f}.rgba16f').write_bytes(struct.pack('<%de' % len(shown), *shown))
         report.append(f'FADE_ROUTE_CHECKS frames={frames} script={script} quads=2')
         report.append(f'RESULT PASS checks=900 restorations=36 frames={frames}')
         return '\n'.join(report), '\n'.join(trace)
@@ -336,12 +346,17 @@ class MotionOutputRunnerTests(unittest.TestCase):
     def test_fade_route_cases_and_validator(self):
         cases = [c for c in runner.CASES if c['mode'] == 'faderoute']
         self.assertEqual([(c['name'], c['lazy'], c['hdr_env']['X3M_FIXTURE_FADE_SCRIPT']) for c in cases],
-                         [('seam-taa-fade-route-routed', True, 'routed'), ('seam-taa-fade-route-routed-perdraw', False, 'routed'), ('seam-taa-fade-route-masked', True, 'masked')])
+                         [('seam-taa-fade-route-routed', True, 'routed'), ('seam-taa-fade-route-routed-perdraw', False, 'routed'), ('seam-taa-fade-route-masked', True, 'masked'),
+                          ('seam-taa-fade-route-sentinel', True, 'sentinel'), ('seam-taa-fade-route-hover', True, 'hover')])
         self.assertTrue(all(c['jitter'] and c['taa'] and c['hdr'] and c['hdr_env']['X3M_LINEAR_DISTANCE_FADE'] == '1'
                             and c['hdr_env']['X3M_LINEAR_MATERIALS'] == '1' and c['hdr_env']['X3M_TAA_SENTINEL'] == '2'
                             and c['hdr_env']['X3M_FIXTURE_CAMERA'] == 'rotate' and 'X3M_FADE_ROUTE' not in c['hdr_env'] for c in cases))
         self.assertEqual((runner.FADE_ROUTE_ENV['X3M_CAPTURE_START'], runner.FADE_ROUTE_ENV['X3M_CAPTURE_FRAMES']), ('2', '3'))
-        for script, lazy in (('routed', True), ('routed', False), ('masked', True)):
+        # The hover tables: 507 arms, 449 is held, 390 disarms, 449 stays refused, 507 arms again.
+        self.assertEqual(runner.FADE_ROUTE_HOVER_PERMILLE, (507, 449, 449, 390, 449, 449, 507, 449, 390, 507, 449, 449))
+        self.assertEqual([runner.fade_route_routed('hover', f) for f in range(12)], [True, True, True, False, False, False, True, True, False, True, True, True])
+        self.assertEqual([runner.fade_route_held('hover', f) for f in range(12)], [False, True, True, False, False, False, False, True, False, False, True, True])
+        for script, lazy in (('routed', True), ('routed', False), ('masked', True), ('sentinel', True), ('hover', True)):
             with self.subTest(script=script, lazy=lazy):
                 directory = self.root / f'fade-{script}-{int(lazy)}'; directory.mkdir()
                 text, trace = self.fade_route_output(script, directory, lazy)
@@ -350,10 +365,14 @@ class MotionOutputRunnerTests(unittest.TestCase):
                 self.assertGreaterEqual(result['raw_evidence'], runner.FADE_ROUTE_MIN_EVIDENCE)
                 self.assertGreaterEqual(result['resolved_evidence'], runner.FADE_ROUTE_MIN_EVIDENCE)
                 self.assertLess(result['worst_raw_error_px'], .02)
-                self.assertLess(result['worst_resolved_residual_px'], .12)  # the synthetic 8-bit ramp's quantization (slope 8 codes/px)
+                self.assertLess(result['worst_resolved_residual_px'], .02)
                 self.assertLessEqual(result['max_code_error'], 1.0)
                 self.assertLessEqual(result['max_tolerance_fraction'], 1.0)
                 self.assertEqual(result['shifts'][1]['history'], 1)
+                self.assertEqual((result['routed_frames'], result['held_frames']), {'routed': (12, 0), 'masked': (0, 0), 'sentinel': (12, 0), 'hover': (8, 5)}[script])
+                if script == 'hover':
+                    self.assertEqual(result['switch_step']['permille'], 449)
+                    self.assertGreater(result['switch_step']['max_relative'], 0)  # the native mix and the bracket differ at .09 alpha
         # Wrong binding mode, a fade draw the arm did not route, an unrouted route
         # record, the wrong estimate, a masked composite off by one code, a
         # history drop, and the resolved image moving with the jitter (the run-49
@@ -362,6 +381,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
         text, trace = self.fade_route_output('routed', directory)
         bad = [(text, trace, False),
                (text.replace('fade_routed=2', 'fade_routed=1', 1), trace, True),
+               (text.replace('fade_held=0', 'fade_held=2', 1), trace, True),
+               (text, trace.replace('fade_permille=1000 fade_held=0', 'fade_permille=1000 fade_held=1', 1), True),
                (text, trace.replace('index=3 gate=0 routed=1', 'index=3 gate=4 routed=0', 1), True),
                (text, trace.replace('fade_permille=1000', 'fade_permille=999', 1), True),
                (text, trace.replace('fade_route=500', 'fade_route=400', 1), True),

@@ -42,13 +42,14 @@ constexpr bool state(std::uint32_t z, std::uint32_t z_write, std::uint32_t alpha
 // is the translation column) and the camera's projection scales (row-vector
 // D3D perspective with P[11] = 1: x_c = x_v m00 + z_v m20, y_c = y_v m11 +
 // z_v m21, w_c = z_v; camera_reprojection.h). Without a valid camera the
-// view depth w alone stands in (a lower bound of the distance: the estimate
-// then errs towards routing). False for w <= 0 or a nonfinite input.
+// draw is refused (the bracket keeps it): the view depth w alone is a lower
+// bound of the distance, so it overestimates the fraction and would route
+// draws below the threshold. False for w <= 0 or a nonfinite input.
 inline bool origin_distance(const float rows[16], bool camera_valid, float m00, float m11, float m20, float m21,
                             float& out) noexcept {
     const float xc = rows[3], yc = rows[7], w = rows[15];
     if (!std::isfinite(xc) || !std::isfinite(yc) || !std::isfinite(w) || !(w > 0.f)) return false;
-    if (!camera_valid || !(m00 > 0.f) || !(m11 > 0.f) || !std::isfinite(m20) || !std::isfinite(m21)) { out = w; return true; }
+    if (!camera_valid || !(m00 > 0.f) || !(m11 > 0.f) || !std::isfinite(m20) || !std::isfinite(m21)) return false;
     const float xv = (xc - w * m20) / m00, yv = (yc - w * m21) / m11;
     const float d = std::sqrt(xv * xv + yv * yv + w * w);
     if (!std::isfinite(d)) return false;
@@ -82,4 +83,39 @@ constexpr unsigned threshold_off = 1001u;
 constexpr bool admit(unsigned f_permille, unsigned threshold_permille) noexcept {
     return threshold_permille <= 1000u && f_permille >= threshold_permille;
 }
+// Hysteresis at the threshold, keyed by the draw's node identity: an object
+// whose estimate hovers about X3M_FADE_ROUTE would otherwise alternate
+// between the route and the bracket every frame (the composite steps between
+// the native encoded-space mix and the bracket's linear source-over). A key
+// admitted at >= threshold stays admitted while its estimate is >= threshold
+// - band; a key refused, not seen for more than `expiry` frames, or evicted
+// from the table (the oldest entry goes) starts again at the threshold. Key
+// 0 (no identity) is decided by the threshold alone and never stored.
+// Fixed storage, a linear scan per recognised fade-band draw.
+struct Hysteresis {
+    static constexpr unsigned band = 100u, capacity = 64u;
+    static constexpr std::uint64_t expiry = 8u;
+    struct Entry { std::uint64_t key = 0, frame = 0; bool armed = false; };
+    Entry entries[capacity]{};
+    unsigned count = 0;
+    void clear() noexcept { count = 0; }
+    // `held`: admitted below the threshold by the band only.
+    bool admit(std::uint64_t key, std::uint64_t frame, unsigned f_permille, unsigned threshold_permille, bool& held) noexcept {
+        held = false;
+        if (threshold_permille > 1000u) return false;
+        if (!key) return f_permille >= threshold_permille;
+        Entry* entry = nullptr; unsigned oldest = 0;
+        for (unsigned i = 0; i < count; ++i) {
+            if (entries[i].key == key) { entry = &entries[i]; break; }
+            if (entries[i].frame < entries[oldest].frame) oldest = i;
+        }
+        const bool armed = entry && entry->armed && frame >= entry->frame && frame - entry->frame <= expiry;
+        const unsigned low = threshold_permille > band ? threshold_permille - band : 0u;
+        const bool admitted = f_permille >= threshold_permille || (armed && f_permille >= low);
+        held = admitted && f_permille < threshold_permille;
+        if (!entry) { entry = count < capacity ? &entries[count++] : &entries[oldest]; entry->key = key; }
+        entry->frame = frame; entry->armed = admitted;
+        return admitted;
+    }
+};
 } // namespace x3m::fade_route
