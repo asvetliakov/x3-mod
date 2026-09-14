@@ -206,4 +206,7 @@ block at the end of the same run, 1920x1080 1.33 ms (floor 1.23); per-quad in th
 0.20, gtao 0.30, blur 0.19, apply 0.30, each including its own ~0.2 ms fence and flush. The block-to-block
 spread of this backend is larger than the reduction, so the fixture now measures 1280x768 twice and
 reports both with the cheapest window of each block. Fidelity and oracles held: reference maximum
-4.9e-4, contact ring 0.9567 (was 0.9569), crease 0.9199, step far side 0.8215 (was 0.82).
+4.9e-4, contact ring 0.9567 (was 0.9569), crease 0.9199, step far side 0.8215 (was 0.82). The quincunx
+offsets cover 7 of the 16 residue cells (mod 4) of the horizon search's 4x4 Bayer pattern, so a tap set
+sees 7 of its 16 values where the separable pair saw all 16; that is not an averaging argument, the
+justification is the measurement above (oracle means moved by at most 0.002).

@@ -22,6 +22,7 @@ EXE = ROOT / 'verification/probe/build/ambient-occlusion/ambient_occlusion_fixtu
 SOURCES = ('src/renderer/ambient_occlusion_pass.h', 'src/renderer/ambient_occlusion_pass.cpp', 'src/renderer/ambient_occlusion_caps.h',
            'src/renderer/ambient_occlusion_linearize_program_inc.h', 'src/renderer/ambient_occlusion_gtao_program_inc.h',
            'src/renderer/ambient_occlusion_blur_program_inc.h', 'src/renderer/ambient_occlusion_apply_program_inc.h',
+           'src/renderer/hdr_writeback_program_inc.h',  # the fixture's FP16 store-rounding probe embeds it
            'src/temporal/ao_linearize_ps.hlsl', 'src/temporal/ao_gtao_ps.hlsl', 'src/temporal/ao_blur_ps.hlsl', 'src/temporal/ao_apply_ps.hlsl',
            'verification/probe/ambient_occlusion_fixture.cpp', 'verification/probe/ambient_occlusion_reference.h',
            'verification/probe/build_ambient_occlusion.sh', 'verification/probe/run_ambient_occlusion.py')

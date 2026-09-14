@@ -1,6 +1,8 @@
 CAPS ps=ffff0300 vs=fffe0300 ps30_slots=512 rts=4 src_zero=1 dest_srccolor=1
 CHECK twin_ps_2_0 PASS
 CHECK twin_ps_slots PASS
+CHECK twin_ps_slots_boundary PASS
+CHECK twin_ps_slots_boundary_detach PASS
 CHECK twin_blend_factors PASS
 CHECK fault_shader_create PASS
 FP16_STORE value0=0.99987793 stored0=3bff value1=1.00073242 stored1=3c00 mode=truncate
@@ -13,6 +15,7 @@ CHECK auto_depth_present PASS
 CHECK refuse_8bit_target PASS
 CHECK refuse_unknown_queries PASS
 CHECK refuse_bad_params PASS
+CHECK refuse_denormal_m32 PASS
 CHECK scene_plane_execute PASS
 CHECK scene_plane_state_preserved PASS
 CHECK scene_plane_bindings_returned PASS
@@ -107,8 +110,8 @@ CHECK scene_sphere_references PASS
 CHECK scene_sphere_linearize PASS
 CHECK reset_bit_identical PASS
 RESET PASS references=13 allocations=2
-TIMING width=1280 height=768 fenced_on_ms=1.0777 fenced_off_ms=0.0153 submit_ms=0.1096 chain_ms=1.0624 chain_min_ms=0.7486 gpu_ms=0.9528 samples=15
-TIMING_VARIANT width=1280 height=768 variant=no_blur fenced_on_ms=0.7335 chain_ms=0.7182 samples=4
+TIMING width=1280 height=768 fenced_on_ms=1.1201 fenced_off_ms=0.0151 submit_ms=0.1066 chain_ms=1.1050 chain_min_ms=0.7463 gpu_ms=0.9984 samples=15
+TIMING_VARIANT width=1280 height=768 variant=no_blur fenced_on_ms=0.7438 chain_ms=0.7287 samples=4
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
@@ -117,9 +120,9 @@ CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
-TIMING_QUADS width=1280 height=768 linearize_ms=0.3178 gtao_ms=0.5500 blur_ms=0.3083 apply_ms=0.4279 sum_ms=1.6040 samples=6
-TIMING width=1920 height=1080 fenced_on_ms=1.3401 fenced_off_ms=0.0151 submit_ms=0.0949 chain_ms=1.3250 chain_min_ms=1.2292 gpu_ms=1.2301 samples=15
-TIMING_VARIANT width=1920 height=1080 variant=no_blur fenced_on_ms=0.7314 chain_ms=0.7163 samples=4
+TIMING_QUADS width=1280 height=768 linearize_ms=0.3198 gtao_ms=0.5442 blur_ms=0.3171 apply_ms=0.4410 sum_ms=1.6221 samples=6
+TIMING width=1920 height=1080 fenced_on_ms=1.3463 fenced_off_ms=0.0158 submit_ms=0.0943 chain_ms=1.3305 chain_min_ms=1.2322 gpu_ms=1.2362 samples=15
+TIMING_VARIANT width=1920 height=1080 variant=no_blur fenced_on_ms=0.7448 chain_ms=0.7290 samples=4
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
@@ -128,9 +131,9 @@ CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
-TIMING_QUADS width=1920 height=1080 linearize_ms=0.3165 gtao_ms=0.4228 blur_ms=0.3063 apply_ms=0.3204 sum_ms=1.3660 samples=6
-TIMING width=1280 height=768 fenced_on_ms=0.5267 fenced_off_ms=0.0150 submit_ms=0.0873 chain_ms=0.5117 chain_min_ms=0.4985 gpu_ms=0.4244 samples=15
-TIMING_VARIANT width=1280 height=768 variant=no_blur fenced_on_ms=0.4951 chain_ms=0.4801 samples=4
+TIMING_QUADS width=1920 height=1080 linearize_ms=0.3224 gtao_ms=0.4302 blur_ms=0.3082 apply_ms=0.3324 sum_ms=1.3932 samples=6
+TIMING width=1280 height=768 fenced_on_ms=0.7668 fenced_off_ms=0.0151 submit_ms=0.0933 chain_ms=0.7517 chain_min_ms=0.7413 gpu_ms=0.6584 samples=15
+TIMING_VARIANT width=1280 height=768 variant=no_blur fenced_on_ms=0.7396 chain_ms=0.7245 samples=4
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
@@ -139,6 +142,6 @@ CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
 CHECK per_quad_draw_count PASS
-TIMING_QUADS width=1280 height=768 linearize_ms=0.2067 gtao_ms=0.3023 blur_ms=0.1877 apply_ms=0.3152 sum_ms=1.0119 samples=6
+TIMING_QUADS width=1280 height=768 linearize_ms=0.3209 gtao_ms=0.5375 blur_ms=0.3250 apply_ms=0.4242 sum_ms=1.6076 samples=6
 CHECK detach_released PASS
-RESULT PASS checks=109 failures=0
+RESULT PASS checks=112 failures=0
