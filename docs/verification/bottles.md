@@ -120,3 +120,147 @@ rebuilt `build/d3d9.dll` concurrently.
   6.5 MB each) are ignored through `.gitignore`; the JSON/text records stay.
 - The Steam bottle stays the default for the fixtures: on X3 the profiler and
   any fixture that prints non-finite floats cannot be validated.
+
+## 2026-09-14: native Windows Media codecs in bottle X3 (user-authorized)
+
+Goal: replace Wine's builtin `wmvcore`/`wmasf`/`wmadmod` WMA decoding in bottle
+X3 with Microsoft's native codecs, to see whether the voice timing and the
+DirectShow route behave like Windows.
+
+**What was installed.** `winetricks --unattended wmp11` (exit 0). `wmp10` is
+not usable here: the bottle is `WineArch=arm64` / `#arch=win64`, winetricks
+refuses it (`This package (wmp10) does not work on a 64-bit installation`), and
+under `--force` `MP10Setup.exe`'s `setup_wm.exe /Quiet` runs but installs
+nothing (it sees WinXP x64). `wmp11` has a win64 branch and installed the
+XP x64 package, whose WOW64 half is the 32-bit codec set the game would use.
+
+- Installer: `wmp11-windowsxp-x64-enu.exe`,
+  sha256 `5af407cf336849aff435044ec28f066dd523bbdc22d1ce7aaddb5263084f5526`
+  (matches winetricks' expected hash), cached under `~/.cache/winetricks/wmp11`.
+- winetricks 20260125, sha256
+  `431f82fc74000e6c864409f1d8fb495d696c03928808e3e8acffc45179312a7b`.
+- Dependency verbs pulled in: `wsh57` (already installed) and `gdiplus`, which
+  replaced `gdiplus.dll` in both `system32` and `syswow64` with the Win7 SP1
+  native build and set `gdiplus=native`. That is wider than WMA and is the one
+  unrelated setting this change touched.
+
+**Invocation.** CrossOver's `bin/wine` is a Perl wrapper that selects a bottle
+with `--bottle` and ignores `WINEPREFIX`; with plain `WINE=.../bin/wine`
+winetricks fails with `Unable to find the 'default' bottle`. It also resolves a
+bare `setup.exe` argument against its own working directory, giving
+`winewrapper.exe:error: cannot execute L"setup_wm.exe /Quiet"`. Both are solved
+by a two-line shim that runs
+`wine --bottle X3 --no-update --workdir "$PWD" "$@"` and is passed as `WINE`
+and `WINE64`. Everything ran under
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timeout 60`.
+
+**Overrides added** (`HKCU\Software\Wine\DllOverrides`, diffed against the
+pre-change `user.reg`): `wmvcore`, `wmasf`, `mfplat`, `wmp`, `wmpnssci`,
+`wmplayer.exe`, `l3codeca.acm`, `gdiplus` = `native`; `jscript`, `vbscript`,
+`scrrun`, `cscript.exe`, `wscript.exe` = `native,builtin` (from `wsh57`).
+No override touches `d3d9`, `d3dx9_37`, `dsound` or any project DLL.
+
+**Files.** `syswow64` now holds the Oct-2006 native `wmvcore.dll` (2450944),
+`WMASF.dll` (222208), `wmadmod.dll` (757248), `MFPLAT.dll`, `WMSPDMOD.dll`,
+`l3codecp.acm`. winetricks deletes the builtin placeholders in *both*
+`system32` and `syswow64` but the x64 package installed nothing 64-bit, so the
+64-bit `wmvcore/wmasf/mfplat/wmp` were restored by hand from the pre-change
+copies. Game files untouched: `X3AP.exe` sha256
+`fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab` before and
+after, and all 28 `drive_c/X3/*.cat|*.dat` names and sizes identical.
+
+**Rollback record**: `/tmp/x3-bottleX3-pre-wmp/` holds `system.reg`,
+`user.reg`, `userdef.reg`, `cxbottle.conf`, `system32.ls`, `syswow64.ls`,
+`gamedata.ls`, `x3ap.sha256`, the pre-change WMP DLLs under `dlls/`, and the
+four winetricks transcripts.
+
+**Probe outcome: the sync-reader path gains, the DirectShow path breaks.**
+
+- `run_sync_probe.py` (IWMSyncReader, so `wmvcore` directly): both archives
+  `open_hr=00000000`, metadata read, one output of PCM 44100 Hz / 1 ch /
+  16 bit. stderr is 76 bytes (the two msync lines only) with
+  `WINEDEBUG=-all,+quartz,+wmvcore,+wmadec,+winegstreamer,+winediag`: no
+  `winegstreamer` or builtin-`wmvcore` trace at all, i.e. the native DLL now
+  serves the reader. Open cost 47.8 ms (144) and 1.5 ms (244) wall.
+  `/tmp/x3-voice-sync-wmp-r1`.
+- `run_voice_native_update.py --mode actual`: every graph now fails at
+  `open_file` with `hr=80040217` (`VFW_E_CANNOT_CONNECT`), on both archives and
+  all three repeats, so reads=0, bytes=0, eos=0, duration 0.000 s against the
+  declared lengths, no reopen ever succeeds and the runner aborts on
+  `VOICE_CAPTURE bytes=0`. No anchor error or span can be computed, so there is
+  nothing to place next to v1 (-701 ms) and v3 (0.02 ms).
+  `/tmp/x3-voice-native-wmp-r1`,
+  `verification/results/bottle-X3/voice-native-actual-wmp.json`.
+- `run_voice_startup_replica.py`: `outcome=completed`, `hung_step=null`, 5.05 s
+  wall, so the load hang still does not reproduce - but all three streams show
+  `fatal=open_file hr=80040217`, `created=0`. `/tmp/x3-voice-startup-wmp-r1`.
+
+The native codecs therefore serve `IWMSyncReader` but leave quartz unable to
+build a graph for the `.dat` voice archives; in that state the game's own voice
+route would not play.
+
+**Reverted the same day.** The overrides are the only thing that made the
+installed files live, so the revert is registry plus one file pair:
+
+- `wine --bottle X3 reg delete 'HKCU\Software\Wine\DllOverrides' /v "*<name>" /f`
+  for all thirteen values (the Wine override values carry a leading `*`; without
+  it `reg delete` answers `Unable to find the specified registry value`).
+- `gdiplus.dll` was overwritten in place by the `gdiplus` verb, so both copies
+  were restored from the CrossOver install: `system32` from
+  `lib/wine/aarch64-windows/gdiplus.dll` (1646144 bytes, sha256 `7b50754f...ae0d`)
+  and `syswow64` from `lib/wine/i386-windows/gdiplus.dll` (589376,
+  `b2a62069...4982`), both matching the pre-change listing sizes and byte-identical
+  to the untouched Titan Quest bottle.
+- The `DllOverrides` values now diff **identical** to the pre-change `user.reg`
+  (5 values before, 5 after). `X3AP.exe` sha256 and all 28 `*.cat`/`*.dat`
+  entries unchanged again.
+- The installed WMP11 files stay on disk under `syswow64` and
+  `Program Files (x86)\Windows Media Player`; without an override Wine prefers
+  its builtins, so they are inert. Removing them is a separate cleanup.
+
+**Full revert to the pre-change state (same day).** The override removal above
+left the installed files and the WMP11 COM/DMO registrations behind, so the
+bottle was taken the rest of the way back under one lock hold (`wmp-revert2`),
+with no Wine process holding the bottle (`lsof +D drive_c` empty; the two
+`winedevice.exe` that `lsof` appears to place in X3 started 2026-09-10, before
+the bottle existed, and their cwd inode is not X3's `system32`):
+
+- Current registry saved to `/tmp/x3-bottleX3-post-wmp/`, then the key diff
+  classified: system.reg +4303 keys / -56, user.reg +130 / -1, userdef.reg 0/0.
+  Every addition is `Software\Classes\{Wow6432Node,Interface,CLSID,Typelib}`,
+  `Microsoft\{MediaPlayer,Windows Media,Multimedia,Updates,SystemCertificates}`
+  and media file associations; every removal is a scripting or WMP CLSID under
+  `Software\Classes\Wow6432Node\CLSID` plus five WMP/eventlog/certificate
+  parents - all attributable to the `wsh57` and WMP `regsvr32` runs. All three
+  hives were then restored from `/tmp/x3-bottleX3-pre-wmp/` and now compare
+  byte-identical.
+- 51 files and directories absent from the pre-change listing were removed from
+  `syswow64` (the WMP11/WMDM/DRM set, `l3codecp.acm`, `scripten.inf`,
+  `spuninst.exe`, `update/`), plus `Program Files (x86)\Windows Media Player`
+  and the `windows\temp\_wmp10`, `_wmp11`, `_gdiplus`, `_wsh57` staging
+  directories. 15 files that winetricks overwrote in place (`wmvcore`, `wmasf`,
+  `mfplat`, `wmadmod`, `wmp`, `wmvdecod`, `qasf`, `jscript`, `vbscript`,
+  `scrrun`, `scrobj`, `dispex`, `wshom.ocx`, `cscript.exe`, `wscript.exe`) were
+  restored from `lib/wine/i386-windows` in the CrossOver install, and
+  `gdiplus.dll` from `aarch64-windows` / `i386-windows`. `drive_c/X3` was never
+  touched.
+- Verified: `system32` 837 entries and `syswow64` 875 entries match the
+  pre-change listings with no missing, extra or size-mismatched name; all three
+  `.reg` files byte-identical; `X3AP.exe` sha256 unchanged and the 28
+  `*.cat`/`*.dat` entries identical.
+
+Post-revert sync probe, twice under the lock:
+
+- plain: both archives `open_hr=80004005`, `metadata=0`, `outputs=0`,
+  `fatal=sync_open`, stderr 16422 bytes with `winegstreamer` trace - the
+  pre-install R3 behaviour (the ASF is recognised, the Open fails for lack of a
+  WMA decoder). `/tmp/x3-voice-sync-revert-r1`.
+- with `GST_PLUGIN_PATH_1_0=/tmp/x3-wma-plugin-v3/runtime/plugins` and
+  `GST_REGISTRY_1_0=/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin`: both archives
+  `open_hr=00000000`, metadata read, one output PCM 44100/1/16 - the libav
+  decoder path is intact. `/tmp/x3-voice-sync-revert-r2`.
+
+Repeated after the full revert with the same results: `-r3` plain, both
+`open_hr=80004005`, `fatal=sync_open`, stderr 16422 bytes; `-r4` with the v3
+plugin, both `open_hr=00000000`, PCM 44100/1/16. The probe runs leave no
+registry key added or removed. The bottle is back to its pre-2026-09-14 state.

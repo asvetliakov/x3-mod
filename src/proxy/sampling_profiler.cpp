@@ -3,6 +3,7 @@
 #include <tlhelp32.h>
 #include <algorithm>
 #include <atomic>
+#include <cstdio>
 #include <cstring>
 #include <cwchar>
 
@@ -11,14 +12,14 @@
 // refresh step (the target's own stack between its TEB limits, and executable
 // ranges of modules pinned at first sight, recorded with VirtualQuery inside the
 // pinned allocation, so nothing the tick reads can be unmapped while the
-// sampler runs). No allocation, logging, CRT I/O or
-// other Wine/Win32 calls: a suspended thread may own the heap, loader or log
-// lock. Every table is fixed-size static storage owned by the sampler thread;
+// sampler runs) and GetLastError (a TEB field of the sampler itself). No
+// allocation, logging, CRT I/O or other Wine/Win32 calls: a suspended thread
+// may own the heap, loader or log lock. Every table is fixed-size static storage owned by the sampler thread;
 // other threads only read the atomic counters.
 namespace x3m::sampling_profiler {
 namespace {
 constexpr unsigned max_threads=32, max_modules=128, max_ranges=4, max_sorted=max_modules*max_ranges;
-constexpr unsigned chain_limit=32, scan_dwords=1024, scan_limit=64, merged_limit=chain_limit+scan_limit;
+constexpr unsigned chain_limit=32, scan_dwords=1024, scan_limit=64, merged_limit=chain_limit+scan_limit, raw_dwords=32;
 constexpr unsigned leaf_capacity=65536, frame_capacity=65536, pair_capacity=16384, probe_limit=64;
 constexpr unsigned delta_tops=48, delta_pair_tops=32, cumulative_tops=256, cumulative_every=12;
 constexpr uintptr_t stack_limit_bytes=64u<<20;
@@ -38,6 +39,8 @@ struct Thread {
     unsigned start_module=~0u; uint32_t start_rva=0;
     uint64_t samples=0, total=0, leaf[KindCount]{}, leaf_total[KindCount]{};
     uint64_t suspend_failures=0, context_failures=0, stack_unknown=0;
+    uint64_t suspend_failures_delta=0, context_failures_delta=0;   // per report period
+    bool raw_logged=false, raw_failure_logged=false;                // X3M_PROFILE_RAW rate limit, per report period
 };
 struct LeafKey { uint32_t rva; uint16_t module; uint16_t slot; };   // slot stored +1: zero means empty
 struct FrameKey { uint32_t rva; uint32_t slot; };
@@ -90,6 +93,11 @@ std::atomic<unsigned> thread_count{0}, module_count{0}, unsampled_count{0};
 // Per-report accumulators owned by the sampler thread.
 uint64_t delta_ticks=0, delta_tick_total=0, delta_tick_max=0, delta_samples=0, delta_refresh=0, delta_dropped=0;
 uint64_t last_report=0, last_refresh=0;
+// Optional periodic callback (game_phases audio witnesses): run by the sampler
+// thread between ticks, never inside the suspended window.
+std::atomic<void (*)(uint64_t)> periodic_callback{nullptr};
+std::atomic<uint64_t> periodic_ticks{0};
+uint64_t last_periodic=0;
 
 uint64_t qpc(){LARGE_INTEGER v{};QueryPerformanceCounter(&v);return uint64_t(v.QuadPart);}
 double us(uint64_t ticks){return frequency?double(ticks)*1e6/double(frequency):0;}
@@ -123,18 +131,25 @@ bool call_precedes(uintptr_t address,const SortedRange& r){
 struct Walk {
     uintptr_t eip=0; unsigned leaf_module=~0u; bool stack_known=false;
     unsigned count=0; struct Entry{uintptr_t slot,address;} merged[merged_limit];
+    // Raw witness (X3M_PROFILE_RAW=1): the context as returned, its
+    // ContextFlags, the failure code of a refused GetThreadContext and the
+    // first raw_dwords stack dwords inside the verified stack range.
+    uintptr_t esp=0, ebp=0; uint32_t seg_cs=0, context_flags=0; DWORD context_error=0;
+    unsigned raw_count=0; uintptr_t raw[raw_dwords];
 };
 // Inside the suspended window. Returns false when the context is unavailable.
 bool capture(const Thread& t,Walk& w){
     CONTEXT context{};context.ContextFlags=CONTEXT_CONTROL|CONTEXT_INTEGER;
-    if(!GetThreadContext(t.handle,&context))return false;
+    if(!GetThreadContext(t.handle,&context)){w.context_error=GetLastError();w.context_flags=context.ContextFlags;return false;}
     const uintptr_t eip=context.Eip,esp=context.Esp,ebp=context.Ebp;
     w.eip=eip;w.leaf_module=module_of(eip);w.count=0;w.stack_known=false;
+    w.esp=esp;w.ebp=ebp;w.seg_cs=uint32_t(context.SegCs);w.context_flags=context.ContextFlags;w.context_error=0;w.raw_count=0;
     if(!t.teb||t.teb%4)return true;
     const auto* tib=reinterpret_cast<const volatile uintptr_t*>(t.teb);
     const uintptr_t base=tib[1],limit=tib[2]; // NT_TIB: ExceptionList, StackBase, StackLimit
     if(!(limit<base&&base-limit<=stack_limit_bytes&&limit%4==0&&base%4==0&&esp>=limit&&esp<base&&esp%4==0))return true;
     w.stack_known=true;
+    if(settings.raw)for(uintptr_t slot=esp;slot<base&&w.raw_count<raw_dwords;slot+=4)w.raw[w.raw_count++]=*reinterpret_cast<const volatile uintptr_t*>(slot);
     Walk::Entry chain[chain_limit];unsigned chain_count=0;
     uintptr_t frame=ebp;
     while(chain_count<chain_limit){
@@ -312,16 +327,46 @@ void refresh(){
     const uint64_t cost=qpc()-begin;delta_refresh+=cost;refresh_total.fetch_add(cost,std::memory_order_relaxed);
 }
 
+// After the resume, at most once per thread per report period: the raw
+// context of a leaf that resolved to no pinned module, plus the stack dwords
+// with the pinned executable range each one falls in (module index + RVA).
+void raw_dump(unsigned slot,Thread& t,const Walk& w){
+    t.raw_logged=true;
+    log("profile_raw slot=%u tid=%lu eip=0x%08lx esp=0x%08lx ebp=0x%08lx cs=0x%04lx context_flags=0x%08lx stack_known=%u dwords=%u",
+        slot,t.tid,static_cast<unsigned long>(w.eip),static_cast<unsigned long>(w.esp),static_cast<unsigned long>(w.ebp),static_cast<unsigned long>(w.seg_cs),
+        static_cast<unsigned long>(w.context_flags),unsigned(w.stack_known),w.raw_count);
+    char text[raw_dwords*40+8];unsigned used=0;
+    for(unsigned i=0;i<w.raw_count;++i){
+        const uintptr_t value=w.raw[i];const SortedRange* r=range_of(value);
+        int n;
+        if(r)n=std::snprintf(text+used,sizeof text-used,"%s0x%08lx@%u+0x%lx",i?" ":"",static_cast<unsigned long>(value),r->module,static_cast<unsigned long>(value-modules[r->module].base));
+        else n=std::snprintf(text+used,sizeof text-used,"%s0x%08lx",i?" ":"",static_cast<unsigned long>(value));
+        if(n<=0||unsigned(n)>=sizeof text-used)break;
+        used+=unsigned(n);
+    }
+    text[used]=0;
+    log("profile_raw_stack slot=%u tid=%lu esp=0x%08lx values=%s",slot,t.tid,static_cast<unsigned long>(w.esp),text);
+}
 void tick(){
     const uint64_t begin=qpc();
     Walk walk;
     for(unsigned slot=0;slot<max_threads;++slot){
         auto& t=threads[slot];
         if(!t.used||t.retired||!t.handle)continue;
-        if(SuspendThread(t.handle)==DWORD(-1)){++t.suspend_failures;continue;}
+        if(SuspendThread(t.handle)==DWORD(-1)){
+            const DWORD error=GetLastError();++t.suspend_failures;++t.suspend_failures_delta;
+            if(settings.raw&&!t.raw_failure_logged){t.raw_failure_logged=true;log("profile_raw_failure slot=%u tid=%lu call=SuspendThread error=%lu",slot,t.tid,error);}
+            continue;
+        }
         const bool ok=capture(t,walk);
         ResumeThread(t.handle);   // every path resumes, including a failed context read
-        if(ok)aggregate(slot,t,walk);else ++t.context_failures;
+        if(ok){
+            aggregate(slot,t,walk);
+            if(settings.raw&&walk.leaf_module==~0u&&!t.raw_logged)raw_dump(slot,t,walk);
+        } else {
+            ++t.context_failures;++t.context_failures_delta;
+            if(settings.raw&&!t.raw_failure_logged){t.raw_failure_logged=true;log("profile_raw_failure slot=%u tid=%lu call=GetThreadContext error=%lu context_flags=0x%08lx",slot,t.tid,walk.context_error,static_cast<unsigned long>(walk.context_flags));}
+        }
     }
     const uint64_t cost=qpc()-begin;
     ++delta_ticks;delta_tick_total+=cost;delta_tick_max=std::max(delta_tick_max,cost);
@@ -354,11 +399,12 @@ void report_threads(const char* scope,uint64_t stamp,bool cumulative){
     for(unsigned slot=0;slot<max_threads;++slot){const auto& t=threads[slot];if(!t.used)continue;
         const uint64_t* leaf=cumulative?t.leaf_total:t.leaf;const uint64_t samples=cumulative?t.total:t.samples;
         if(!samples&&!cumulative&&!t.retired)continue;
-        log("profile_thread scope=%s qpc=%llu slot=%u tid=%lu samples=%llu total=%llu leaf_x3ap=%llu leaf_ntdll=%llu leaf_wine=%llu leaf_d3dx=%llu leaf_zlib=%llu leaf_xml=%llu leaf_proxy=%llu leaf_other=%llu stack_unknown=%llu suspend_failures=%llu context_failures=%llu start_module=%u start_rva=0x%lx retired=%u",
+        log("profile_thread scope=%s qpc=%llu slot=%u tid=%lu samples=%llu total=%llu leaf_x3ap=%llu leaf_ntdll=%llu leaf_wine=%llu leaf_d3dx=%llu leaf_zlib=%llu leaf_xml=%llu leaf_proxy=%llu leaf_other=%llu stack_unknown=%llu suspend_failures=%llu context_failures=%llu start_module=%u start_rva=0x%lx retired=%u suspend_failures_delta=%llu context_failures_delta=%llu",
             scope,static_cast<unsigned long long>(stamp),slot,t.tid,static_cast<unsigned long long>(samples),static_cast<unsigned long long>(t.total),
             static_cast<unsigned long long>(leaf[KindX3ap]),static_cast<unsigned long long>(leaf[KindNtdll]),static_cast<unsigned long long>(leaf[KindWine]),static_cast<unsigned long long>(leaf[KindD3dx]),
             static_cast<unsigned long long>(leaf[KindZlib]),static_cast<unsigned long long>(leaf[KindXml]),static_cast<unsigned long long>(leaf[KindProxy]),static_cast<unsigned long long>(leaf[KindOther]),
-            static_cast<unsigned long long>(t.stack_unknown),static_cast<unsigned long long>(t.suspend_failures),static_cast<unsigned long long>(t.context_failures),t.start_module,static_cast<unsigned long>(t.start_rva),t.retired);
+            static_cast<unsigned long long>(t.stack_unknown),static_cast<unsigned long long>(t.suspend_failures),static_cast<unsigned long long>(t.context_failures),t.start_module,static_cast<unsigned long>(t.start_rva),t.retired,
+            static_cast<unsigned long long>(t.suspend_failures_delta),static_cast<unsigned long long>(t.context_failures_delta));
     }
 }
 // Delta report, then (every cumulative_every reports, or at shutdown) the
@@ -377,7 +423,10 @@ void report(bool final){
     leaf_delta.dropped=frame_delta.dropped=pair_delta.dropped=0;
     sample_count.fetch_add(delta_samples,std::memory_order_relaxed);drop_count.fetch_add(dropped,std::memory_order_relaxed);
     const uint64_t reports=report_count.fetch_add(1,std::memory_order_relaxed)+1;
-    for(auto& t:threads){t.samples=0;std::memset(t.leaf,0,sizeof t.leaf);if(t.retired){t.used=false;t.retired=false;}}
+    for(auto& t:threads){
+        t.samples=0;std::memset(t.leaf,0,sizeof t.leaf);t.suspend_failures_delta=t.context_failures_delta=0;t.raw_logged=t.raw_failure_logged=false;
+        if(t.retired){t.used=false;t.retired=false;}
+    }
     delta_ticks=delta_tick_total=delta_tick_max=delta_samples=delta_refresh=0;
     if(final||reports%cumulative_every==0){
         log("profile_report scope=cumulative qpc=%llu frequency=%llu since_start_us=%.3f samples=%llu ticks=%llu tick_us_mean=%.3f tick_us_max=%.3f refresh_us=%.3f report_us=%.3f dropped=%llu cumulative_dropped=%llu table_used=%u,%u,%u final=%u",
@@ -400,6 +449,7 @@ DWORD WINAPI sampler_main(LPVOID){
         if(begin-last_refresh>=frequency){refresh();last_refresh=begin;}
         tick();
         const uint64_t after=qpc();
+        if(auto callback=periodic_callback.load(std::memory_order_acquire);callback&&after-last_periodic>=periodic_ticks.load(std::memory_order_relaxed)){last_periodic=after;callback(after);}
         if(after-last_report>=report_interval_ticks)report(false);
         // Duty cycle at most one half: never sleep less than the tick just cost.
         const uint64_t cost=after-begin,rest=std::max(interval_ticks>cost?interval_ticks-cost:0,cost);
@@ -424,6 +474,7 @@ bool initialize(){
     frequency=uint64_t(f.QuadPart);
     settings.interval_us=env_number(L"X3M_PROFILE_INTERVAL_US",2000,100,1000000);
     settings.report_s=env_number(L"X3M_PROFILE_REPORT_S",5,1,3600);
+    settings.raw=env_number(L"X3M_PROFILE_RAW",0,0,1)==1;
     interval_ticks=frequency*settings.interval_us/1000000;report_interval_ticks=frequency*settings.report_s;
     init_tid=GetCurrentThreadId();
     main_base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
@@ -436,16 +487,24 @@ bool initialize(){
     if(windows_directory_length>=MAX_PATH)windows_directory_length=0;
     stop_event=CreateEventW(nullptr,TRUE,FALSE,nullptr);
     if(!stop_event){log("profile_start enabled=0 reason=no_event error=%lu",GetLastError());return false;}
-    startup=qpc();last_report=startup;
+    startup=qpc();last_report=last_periodic=startup;
     sampler=CreateThread(nullptr,0,sampler_main,nullptr,CREATE_SUSPENDED,&sampler_tid);
     if(!sampler){log("profile_start enabled=0 reason=no_thread error=%lu",GetLastError());CloseHandle(stop_event);stop_event=nullptr;return false;}
     SetThreadPriority(sampler,THREAD_PRIORITY_ABOVE_NORMAL);
-    log("profile_start schema=1 enabled=1 qpc=%llu frequency=%llu interval_us=%u report_s=%u sampler_tid=%lu init_tid=%lu main_base=0x%08lx proxy_base=0x%08lx query_thread=%u chain_limit=%u scan_dwords=%u threads_max=%u modules_max=%u tables=%u,%u,%u",
-        static_cast<unsigned long long>(startup),static_cast<unsigned long long>(frequency),settings.interval_us,settings.report_s,sampler_tid,init_tid,static_cast<unsigned long>(main_base),static_cast<unsigned long>(proxy_base),query_thread!=nullptr,chain_limit,scan_dwords,max_threads,max_modules,leaf_capacity,frame_capacity,pair_capacity);
+    log("profile_start schema=1 enabled=1 qpc=%llu frequency=%llu interval_us=%u report_s=%u sampler_tid=%lu init_tid=%lu main_base=0x%08lx proxy_base=0x%08lx query_thread=%u chain_limit=%u scan_dwords=%u threads_max=%u modules_max=%u tables=%u,%u,%u raw=%u raw_dwords=%u periodic_s=%llu",
+        static_cast<unsigned long long>(startup),static_cast<unsigned long long>(frequency),settings.interval_us,settings.report_s,sampler_tid,init_tid,static_cast<unsigned long>(main_base),static_cast<unsigned long>(proxy_base),query_thread!=nullptr,chain_limit,scan_dwords,max_threads,max_modules,leaf_capacity,frame_capacity,pair_capacity,
+        unsigned(settings.raw),raw_dwords,static_cast<unsigned long long>(periodic_callback.load()?periodic_ticks.load()/frequency:0));
     ResumeThread(sampler);
     return true;
 }
 bool active(){return sampler!=nullptr&&!finished;}
+void set_periodic(void (*callback)(uint64_t),unsigned seconds){
+    // Ticks derive from the QPC frequency once the sampler knows it; before
+    // initialize() the interval is stored in seconds and scaled there.
+    LARGE_INTEGER f{};const uint64_t hz=frequency?frequency:(QueryPerformanceFrequency(&f)&&f.QuadPart>0?uint64_t(f.QuadPart):0);
+    periodic_ticks.store(hz*std::max(1u,std::min(seconds,3600u)),std::memory_order_relaxed);
+    periodic_callback.store(callback,std::memory_order_release);
+}
 void shutdown(){
     if(!sampler||finished)return;
     finished=true;

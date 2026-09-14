@@ -1,4 +1,4 @@
-"""Independent admission/refusal checks for the 33 native marker contracts."""
+"""Independent admission/refusal checks for the 47 native marker contracts."""
 import dataclasses
 import re
 import shutil
@@ -73,13 +73,21 @@ def emitter_fixture_source():
 
 class SourceAndReplay(unittest.TestCase):
     def test_exact_production_order_and_spec_fields(self):
-        self.assertEqual(len(probe.SITES),33)
+        self.assertEqual(len(probe.SITES),47)
+        self.assertEqual(probe.PHASE_COUNT,33)
+        self.assertEqual([s.va for s in probe.SITES[probe.PHASE_COUNT:]],
+                         [0x4d03f7,0x4d0409,0x4d34b0,0x4d3532,0x403a7f,0x403a98,0x49729b,0x486809,
+                          0x492dbe,0x4d0700,0x4d0762,0x4d0774,0x4d0a63,0x498e30])
         self.assertTrue(probe.source_checks(probe.SOURCE.read_text()))
 
     def test_ret_pop_and_relocation_fields_cannot_swap(self):
         text=probe.SOURCE.read_text()
         self.assertIn(',5,0,1}',text)
         self.assertFalse(probe.source_checks(text.replace(',5,0,1}',',5,1,0}',1)))
+        self.assertIn('"game_phase_audio_poll_after",0x004d0774',text)
+        self.assertIn('},10,0,6}',text)
+        self.assertFalse(probe.source_checks(text.replace('},10,0,6}','},10,0,1}',1)))
+        self.assertFalse(probe.source_checks(text.replace('},8,0,4}','},8,0,0}',1)))
         self.assertIn('"game_phase_publisher_begin",0x00425a10',text)
         self.assertIn('},5,4,0}',text)
         self.assertIn('"game_phase_publisher_end",0x00425c79',text)
@@ -106,7 +114,9 @@ class SourceAndReplay(unittest.TestCase):
                     self.assertEqual(len(code),len(site.expected))
                     self.assertEqual(code[0],site.expected[0])
                     if site.va in probe.TARGETS:
-                        target=(arena+5+probe.struct.unpack_from('<i',code,1)[0])&0xffffffff
+                        offset=probe.RELATIVE[site.va][0]
+                        self.assertEqual(code[:offset],site.expected[:offset])
+                        target=(arena+offset+4+probe.struct.unpack_from('<i',code,offset)[0])&0xffffffff
                         self.assertEqual(target,probe.TARGETS[site.va])
                     else:self.assertEqual(code,site.expected)
 
@@ -148,7 +158,7 @@ class SourceAndReplay(unittest.TestCase):
         self.assertIsNotNone(match)
         families['resource_reader']=[int(match.group(1))]
         self.assertEqual({name:len(value) for name,value in families.items()},
-                         {'resource_reader':1,'game_phases':33,'chase_camera':1,
+                         {'resource_reader':1,'game_phases':47,'chase_camera':1,
                           'chase_transition':9,'chase_lead':9,'chase_aim_trace':4})
         lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
         self.assertEqual([row['name'] for row in lead_rows],[
@@ -186,8 +196,8 @@ class SourceAndReplay(unittest.TestCase):
             return True,cursor
 
         accepted,used=admit(capacity)
-        self.assertTrue(accepted);self.assertEqual(used,8580)
-        self.assertEqual(capacity-used,7804)
+        self.assertTrue(accepted);self.assertEqual(used,10724)
+        self.assertEqual(capacity-used,5660)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
         old_game=23
@@ -217,10 +227,10 @@ class NativeSites(unittest.TestCase):
     def report(self,image=None,decoded=None):
         return probe.inspect(image or self.image,decoded or self.decoded,self.source)
 
-    def test_actual_executable_and_all_33_spans(self):
+    def test_actual_executable_and_all_47_spans(self):
         report=probe.verify()
         self.assertEqual(report['result'],'PASS',report['checks'])
-        self.assertEqual(len(report['sites']),33)
+        self.assertEqual(len(report['sites']),47)
 
     def test_corrupted_byte_refused_at_every_site(self):
         for site in probe.SITES:
@@ -266,7 +276,10 @@ class NativeSites(unittest.TestCase):
             with self.subTest(site=site.name):
                 decoded=dict(self.decoded)
                 bounds=(site.function_start,site.function_end)
-                decoded[bounds]=[dataclasses.replace(i,operands='0x400000') if i.va==site.va else i
+                # The relative branch is the last instruction of the span (a
+                # call/jmp is the whole span; a Jcc follows the flag setter).
+                decoded[bounds]=[dataclasses.replace(i,operands='0x400000')
+                                 if site.va<=i.va<site.end and probe.common._is_direct_control(i) is not None else i
                                  for i in decoded[bounds]]
                 row=next(row for row in self.report(decoded=decoded)['sites'] if row['name']==site.name)
                 self.assertFalse(row['relative_contract'])

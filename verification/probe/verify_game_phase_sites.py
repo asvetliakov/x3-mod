@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Read-only instruction/ABI qualification of the 33 game phase markers.
+"""Read-only instruction/ABI qualification of the 47 game phase markers.
+
+Indices 0..32 are the phase group; 33..46 are the audio-path witnesses of the
+load hang build (X3M_AUDIO_SITES=1), installed after the phase group.
 
 The independent address/byte/target ledger below comes from targeted native
 analysis. Decode complete containing routines, not isolated opcode-looking
@@ -27,7 +30,14 @@ SOUND = (0x49a350, 0x49a436)
 PRESENT = (0x4dac30, 0x4dac8d)
 PLAYBACK = (0x4997c0, 0x499aec)  # code ends immediately before its jump table
 STREAM = (0x498e30, 0x499022)
+MEDIA_CREATE = (0x4cf460, 0x4d0428)   # media object constructor (voice-startup-sequence.md)
+PUMP = (0x4d34b0, 0x4d3613)           # Win32 message pump
+INIT_SCRIPT = (0x497200, 0x4972cc)    # _Init dispatch, manager update after it
+BODY_LOADER = (0x4863c0, 0x486918)    # body cache + loader (loading-orchestration.md)
+ASSET_LOADER = (0x492970, 0x492e1f)
+REFILL = (0x4d0700, 0x4d0c31)         # per-media refill state machine
 # name, address, bytes, complete containing routine, rel32 destination (0=none)
+# [, rel32 field offset, mnemonic] for a relative branch that is not a call at offset 1
 LEDGER = (
  ('loop_setup',0x403ab0,'81a008010000ffbfffff',MAIN,0),
  ('clock',0x403af0,'e80bd30a00',MAIN,0x4b0e00),
@@ -62,10 +72,28 @@ LEDGER = (
  ('create_end',0x498f00,'83ef016685ff',STREAM,0),
  ('seek_begin',0x498f55,'e8d6740300',STREAM,0x4d0430),
  ('seek_end',0x498f5a,'83c40485c0',STREAM,0),
+ ('audio_setstate_after',0x4d03f7,'85c00f8c61fdffff',MEDIA_CREATE,0x4d0160,4,'jl'),
+ ('audio_pause_after',0x4d0409,'85c00f8c4ffdffff',MEDIA_CREATE,0x4d0160,4,'jl'),
+ ('audio_pump_entry',0x4d34b0,'83ec245355',PUMP,0),
+ ('audio_pump_body',0x4d3532,'6a006a006a00',PUMP,0),
+ ('audio_manager_preloop1',0x403a7f,'e8ec480900',MAIN,0x498370),
+ ('audio_manager_preloop2',0x403a98,'e8d3480900',MAIN,0x498370),
+ ('audio_manager_init',0x49729b,'e8d0100000',INIT_SCRIPT,0x498370),
+ ('audio_manager_body',0x486809,'e8621b0100',BODY_LOADER,0x498370),
+ ('audio_manager_asset',0x492dbe,'e8ad550000',ASSET_LOADER,0x498370),
+ ('audio_refill_entry',0x4d0700,'83ec445355',REFILL,0),
+ ('audio_poll_call',0x4d0762,'6a006a0050ffd2',REFILL,0),
+ ('audio_poll_after',0x4d0774,'837e64040f85b6020000',REFILL,0x4d0a34,6,'jne'),
+ ('audio_update_after',0x4d0a63,'8bf881ff0e000780',REFILL,0),
+ ('audio_cue_play',0x498e30,'518b44241c',STREAM,0),
 )
-SITES = tuple(common.HookSpec('game_phase_'+name,va,bytes.fromhex(raw),*bounds)
-              for name,va,raw,bounds,_ in LEDGER)
-TARGETS = {va: target for _,va,_,_,target in LEDGER if target}
+PHASE_COUNT = 33
+SITES = tuple(common.HookSpec('game_phase_'+row[0],row[1],bytes.fromhex(row[2]),*row[3])
+              for row in LEDGER)
+TARGETS = {row[1]: row[4] for row in LEDGER if row[4]}
+# rel32 field offset and expected mnemonic of every relative site (calls at offset 1)
+RELATIVE = {row[1]: (row[5],row[6]) if len(row)>5 else (1,'jmp' if row[1]==0x42a462 else 'call')
+            for row in LEDGER if row[4]}
 JUMP_TABLE = (0x425a21,0x425a84,0x425ba2,0x425c1b,0x425b12)
 MOV_JUMP_TABLE = (0x4997dd,0x499803,0x499859,0x499875,0x4998ee,0x499911,0x49982f,
                   0x499891,0x499992,0x4999ea,0x499a0a,0x499a23,0x499a68,0x499a8e)
@@ -110,7 +138,7 @@ def source_checks(text):
     # its rel32_offset means actual ret_pop; rel32_target means rel32_offset.
     actual = common.parse_source_specs(text)
     expected = [dict(name=s.name,va=s.va,bytes=s.expected,length=len(s.expected),
-                     rel32_offset=RET_POP.get(s.va,0),rel32_target=int(s.va in TARGETS))
+                     rel32_offset=RET_POP.get(s.va,0),rel32_target=RELATIVE[s.va][0] if s.va in TARGETS else 0)
                 for s in SITES]
     return actual == expected
 
@@ -119,9 +147,10 @@ def relocated_bytes(spec, arena):
     """Independent x86 modulo-32-bit reference for SiteSpec's one rel32 field."""
     result = bytearray(spec.expected)
     if spec.va in TARGETS:
-        original = struct.unpack_from('<i',result,1)[0]
-        target = (spec.va+5+original) & 0xffffffff
-        struct.pack_into('<I',result,1,(target-arena-5) & 0xffffffff)
+        offset = RELATIVE[spec.va][0]
+        original = struct.unpack_from('<i',result,offset)[0]
+        target = (spec.va+offset+4+original) & 0xffffffff
+        struct.pack_into('<I',result,offset,(target-arena-offset-4) & 0xffffffff)
     return bytes(result)
 
 
@@ -138,13 +167,17 @@ def inspect(image, decoded, source):
         span = [i for i in own if spec.va <= i.va < spec.end]
         controls = [i for i in span if common._is_direct_control(i) is not None]
         if relative:
-            expected_op = 'jmp' if spec.va == 0x42a462 else 'call'
-            row['relative_contract'] = (len(span)==1 and len(controls)==1 and
+            offset,expected_op = RELATIVE[spec.va]
+            # Exactly one relative branch, the last instruction of the span, its
+            # rel32 field at the declared offset (call/jmp: the whole span).
+            row['relative_contract'] = (bool(span) and len(controls)==1 and controls[0] is span[-1] and
                 controls[0].mnemonic==expected_op and
                 common._is_direct_control(controls[0])==TARGETS[spec.va] and
-                controls[0].raw==spec.expected)
+                controls[0].end==spec.end and
+                controls[0].va-spec.va+len(controls[0].raw)-4==offset and
+                span[-1].raw==spec.expected[controls[0].va-spec.va:])
             row['relocation_targets'] = [
-                (arena+5+struct.unpack_from('<i',relocated_bytes(spec,arena),1)[0]) & 0xffffffff
+                (arena+offset+4+struct.unpack_from('<i',relocated_bytes(spec,arena),offset)[0]) & 0xffffffff
                 for arena in (0x10000000,0x71000000,0xf1000000)]
             row['relocation_ok'] = row['relocation_targets']==[TARGETS[spec.va]]*3
         else:
