@@ -33,10 +33,15 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Next user action
 
-Run 19 on the installed `ab6e17ba…` candidate. Its command and what to report
-are in the [run queue](verification/user-runs.md); the optional vanilla cursor
-comparison remains available there. Runs 13–18 are complete (details in the
-[completed-run archive](archive/user-runs-completed.md)).
+Run 20 on the next candidate (step D, loading-phase markers, AO radius/debug
+test, asteroid diagnostic, port and ship far/near retry); it is queued in the
+[run queue](verification/user-runs.md) once the candidate is installed. Run 19
+(snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
+but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
+but is invisible at the 2 m radius; the port pair was captured at one distance
+(57/54 px, same draw path, radiance within 3 %) and the user also sees the
+darkening on a ship. Details in the
+[completed-run archive](archive/user-runs-completed.md).
 
 ## User decisions (2026-09-14)
 
@@ -48,6 +53,11 @@ comparison remains available there. Runs 13–18 are complete (details in the
 - Cutout-miss exemption: known-blended draws no longer count as a cutout miss.
 - Voice: plugin path only, no native-codec or bottle-clone route; fail early on
   missing audio if the plugin path fails.
+- After run 19 (late evening): docking-port design note stays unratified and the
+  linear rule unchanged until run 20 captures a real far state and a ship pair;
+  `--screen-emission-gain` 1 stays the default (no gain-2 run); AO stays
+  default-off and run 20 tests appearance with `--ao-radius 20` and `--ao-debug`
+  instead of a code change.
 
 ## Open items
 
