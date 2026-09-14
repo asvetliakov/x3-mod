@@ -315,3 +315,57 @@ lifecycle behaviour on native Windows too, and would need its own design.
 * `DAT_00608adc` is identified as an app-active/no-modal-dialog flag from
   `004cc020`/`004cc060`/`004cc0a0`/`004cc0e0`; its full set of writers
   (`004cbf70`, `004d3620`, `004dac90`, `00401e0e`) was not audited.
+
+## 9. Startup replica without the game (2026-09-14)
+
+`verification/probe/voice_startup_replica.cpp` (runner
+`run_voice_startup_replica.py`, host test
+`verification/analysis/test_voice_startup_replica.py`) performs the sequence of
+sections 4–5 on the main thread: three `AMMultiMediaStream` objects
+(`Initialize(READ, NOGRAPHTHREAD)`, primary audio, `OpenFile` on
+`addon\mov\00144.dat`/`00244.dat`/`00144.dat`, 2-second `IAudioData`,
+DirectSound ring, `SetState(RUN)` then `Pause`), streams 2 and 3 never pumped,
+stream 1 `Run` (`004d1870`) then the `004d34b0` drain interleaved with the
+`004d0700` state machine (`Update(ASYNC,0,0,0)` two attempts,
+`CompletionStatus(0,0)` advancing on `S_OK` only). A 15 s per-step watchdog
+prints `REPLICA_HUNG step=`; the runner then `sample`s and kills the process.
+Compact record: `verification/results/bottle-X3/voice-startup-replica.json`
+(EXE `8dfa7d5f…`, raw output under `/tmp/x3-voice-startup-{r1,c1,r2,r3}`).
+
+| Run | Environment | Outcome |
+| --- | --- | --- |
+| `plugin-v3-game` | v3 plugin | completed, 3 graphs, 5 full 176,400-byte buffers in 87 ms, 5.56 s wall |
+| `control-game` | no plugin | completed, all three `OpenFile` fail `80040217` (VFW_E_CANNOT_CONNECT), 2.05 s |
+| `plugin-v3-game-dwell3000` | v3, 3 s pump-only dwell after each construction and before play | completed, 11.1 s |
+| `plugin-v3-explicit-dwell3000` | v3, `AddSourceFilter`/`FindPin("Output")`/`Render` route then `OpenFile` fallback | completed (`Render` succeeds, 138–263 ms), 11.1 s |
+
+**The hang does not reproduce.** What the replica establishes against the
+run-31 evidence (`/tmp/x3-gst-run31.log`, `/tmp/x3-run31-sample-game.txt`):
+
+* Every `OpenFile` creates **three** `asfdemux` instances, the first two torn
+  down about 0.5 ms after creation before any decoder is autoplugged
+  (`pad_removed_cb: No pin matching pad`), the third connecting `avdec_wmav2`.
+  Run 31 shows exactly this pattern once (`asfdemux0`/`1` at 2.948/2.951 s,
+  `asfdemux2` + libav at 3.004–3.041 s): the game built **one** stream at
+  load, not three, so the savegame `MOVI` restore explanation of section 3 is
+  not supported by that log.
+* In the run-31 sample the game's main thread (`Thread_26904311`) is in FEX
+  JIT code for all 2539 samples with **no host frame** — no syscall, no
+  `ntdll.so`, no `win32u.so`. It is not blocked in quartz, amstream,
+  winegstreamer or the kernel; it is running pure x86 user code (game or PE
+  DLL) for the whole sample. The `004d3532` drain loop is excluded (it calls
+  `NtUserPeekMessage`/`NtUserGetMessage`), as is any `Sleep`-based wait.
+* The pipeline threads are in the no-consumer state section 7 predicts:
+  `multiqueue2:src_0` blocked in `gst_ffmpegauddec_handle_frame → gst_pad_push
+  → winegstreamer.so+0x98c8` (sink chain waiting for the PE side to take the
+  buffer), one PE thread in `winegstreamer.so+0x76f4 → pthread_cond_wait`, one
+  PE thread in `NtWaitForSingleObject`, `wine_qz_async_reader_io` inside
+  `read()`, `wine_qz_graph_worker` idle in `NtUserGetMessage`. This state is
+  also reached by the replica's never-pumped streams without any effect on the
+  main thread.
+
+What the replica cannot model is therefore the game step itself: the main
+thread's pure user-mode loop after the single open. The frozen sample carries
+host JIT addresses only; the guest-address bucketing of section 8 needs a
+sample with x86 program counters (or an in-game hang witness that records
+`EIP`), which no fixture can provide without launching the game.

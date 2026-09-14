@@ -1,0 +1,247 @@
+{
+  "schema": 1,
+  "runs": {
+    "plugin-v3-game": {
+      "label": "plugin-v3-game",
+      "mode": "game",
+      "dwell_ms": 0,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 3,
+      "exit_code": 0,
+      "process_wall_seconds": 5.558616834,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": "3,WINE:5,decodebin:4",
+      "exe_sha256": "8dfa7d5fc24bcb09ff8ca66052c3ceec1d19e6c17f6e0d89828a7f04c6409def",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": {
+        "stream": "1",
+        "cycles": "15",
+        "completed": "5",
+        "queued": "5",
+        "pending_polls": "0",
+        "eos": "0",
+        "stuck": "0",
+        "errors": "0",
+        "bytes": "882000",
+        "elapsed_ms": "87"
+      },
+      "output": "/tmp/x3-voice-startup-r1",
+      "sample_threads": [],
+      "gst_log_tail": [
+        "0:00:00.832888791      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832892458      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832897708      21307      0x1751d7000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"src_0\" found.",
+        "0:00:00.832914125      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832920541      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832924416      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832928416      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832931541      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832935333      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832938250      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832941208      21307      0x1751d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x17718b7c0, message type state-changed.",
+        "0:00:00.832975000      21307      0x1751d7000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"sink\" found."
+      ]
+    },
+    "control-game": {
+      "label": "control-game",
+      "mode": "game",
+      "dwell_ms": 0,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 0,
+      "exit_code": 0,
+      "process_wall_seconds": 2.047872042,
+      "plugin_present": false,
+      "plugin_env": {},
+      "gst_debug": "3,WINE:5,decodebin:4",
+      "exe_sha256": "8dfa7d5fc24bcb09ff8ca66052c3ceec1d19e6c17f6e0d89828a7f04c6409def",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": null,
+      "output": "/tmp/x3-voice-startup-c1",
+      "sample_threads": [],
+      "gst_log_tail": [
+        "0:00:01.038048041      21328      0x33d594000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type stream-status.",
+        "0:00:01.038064125      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038071083      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038076458      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038080791      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038086833      21328      0x175a84000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"src_0\" found.",
+        "0:00:01.038103750      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038108000      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038111083      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038116416      21328      0x175a84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x1779c0840, message type state-changed.",
+        "0:00:01.038135166      21328      0x175a84000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"sink\" found.",
+        "0:00:01.038820333      21328      0x30e3fd000 DEBUG                   WINE wg_parser.c:1886:wg_parser_create: Created winegstreamer parser 0x1759a81f0."
+      ]
+    },
+    "plugin-v3-game-dwell3000": {
+      "label": "plugin-v3-game-dwell3000",
+      "mode": "game",
+      "dwell_ms": 3000,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 3,
+      "exit_code": 0,
+      "process_wall_seconds": 11.137890959,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": "3,WINE:5,decodebin:4",
+      "exe_sha256": "8dfa7d5fc24bcb09ff8ca66052c3ceec1d19e6c17f6e0d89828a7f04c6409def",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": {
+        "stream": "1",
+        "cycles": "20",
+        "completed": "5",
+        "queued": "5",
+        "pending_polls": "5",
+        "eos": "0",
+        "stuck": "0",
+        "errors": "0",
+        "bytes": "882000",
+        "elapsed_ms": "126"
+      },
+      "output": "/tmp/x3-voice-startup-r2",
+      "sample_threads": [],
+      "gst_log_tail": [
+        "0:00:09.858346166      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858350708      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858356916      21347      0x178e84000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"src_0\" found.",
+        "0:00:09.858377125      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858384541      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858389041      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858393458      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858397041      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858401416      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858404875      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858408250      21347      0x178e84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x178c55830, message type state-changed.",
+        "0:00:09.858444666      21347      0x178e84000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"sink\" found."
+      ]
+    },
+    "plugin-v3-explicit-dwell3000": {
+      "label": "plugin-v3-explicit-dwell3000",
+      "mode": "explicit",
+      "dwell_ms": 3000,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 3,
+      "exit_code": 0,
+      "process_wall_seconds": 11.128553041,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": "3,WINE:5,decodebin:4",
+      "exe_sha256": "8dfa7d5fc24bcb09ff8ca66052c3ceec1d19e6c17f6e0d89828a7f04c6409def",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": {
+        "stream": "1",
+        "cycles": "15",
+        "completed": "5",
+        "queued": "5",
+        "pending_polls": "0",
+        "eos": "0",
+        "stuck": "0",
+        "errors": "0",
+        "bytes": "882000",
+        "elapsed_ms": "90"
+      },
+      "output": "/tmp/x3-voice-startup-r3",
+      "sample_threads": [],
+      "gst_log_tail": [
+        "0:00:09.940518209      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940523000      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940530209      21445      0x178384000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"src_0\" found.",
+        "0:00:09.940553875      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940562084      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940566459      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940571042      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940574542      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940578667      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940582042      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940585542      21445      0x178384000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x3170474f0, message type state-changed.",
+        "0:00:09.940622167      21445      0x178384000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"sink\" found."
+      ]
+    }
+  }
+}
