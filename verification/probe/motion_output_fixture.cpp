@@ -382,6 +382,7 @@ struct Fixture {
     // New fade mode reuses the supplemental scene/reference transport; its
     // effective producer set is latched from the runtime status each frame.
     bool distancefade = false, distancefade_bench = false;
+    bool cutout = false, cutout_bench = false;
     bool distancefade_enabled = false, distancefade_emissions_enabled = false;
     std::vector<float> emission_reference_color, emission_reference_mask;
     unsigned (*emission_status)(IDirect3DDevice9*, unsigned) = nullptr;
@@ -1137,7 +1138,7 @@ struct Fixture {
         if (model_biased) ++model_draws;
     }
     void model_unrouted() { if (bias_live()) model_restore(); }
-    void model_game_write(unsigned stage) { model_biased &= ~(1u << stage); model_saved_known[stage] = true; }
+    void model_game_write(unsigned stage) { if (model_biased & (1u << stage)) ++model_restores; model_biased &= ~(1u << stage); model_saved_known[stage] = true; }
     DWORD sampler_bias(UINT stage) { DWORD value = ~0ul; api(d->GetSamplerState(stage, D3DSAMP_MIPMAPLODBIAS, &value), "GetSamplerState MIPMAPLODBIAS"); return value; }
     // Stages 0-7 holding exactly the DLL's bias (a bit mask) against the script's expectation.
     void expect_bias(const char* label, unsigned expected) {
@@ -2744,6 +2745,7 @@ struct Fixture {
 };
 #include "motion_output_emission_inc.h"
 #include "motion_output_distance_fade_inc.h"
+#include "motion_output_cutout_inc.h"
 } // namespace
 // The glow pass stand-in: records the signal count at entry (the trampoline's
 // signal must precede it), then with glow the depth unbind and the bloom copy
@@ -2769,7 +2771,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench|distancefade|distancefadebench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|emissions|emissionsbench|distancefade|distancefadebench|cutout|cutoutbench [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -2784,19 +2786,21 @@ int main(int argc, char** argv) {
         f.msaa = mode == "msaa";
         f.materialwrap = mode == "materialwrap"; f.materialxt = mode == "materialxt"; f.materialglass = mode == "materialglass";
         f.linearmaterials = mode == "linearmaterials" || f.materialwrap;
+        f.cutout_bench = mode == "cutoutbench"; f.cutout = mode == "cutout" || f.cutout_bench;
         f.distancefade_bench = mode == "distancefadebench";
         f.distancefade = mode == "distancefade" || f.distancefade_bench;
         f.emission_bench = mode == "emissionsbench" || f.distancefade_bench;
-        f.emissions = mode == "emissions" || f.emission_bench || f.distancefade;
+        f.emissions = mode == "emissions" || f.emission_bench || f.distancefade || f.cutout;
         if(f.emission_bench&&!f.distancefade){Fixture::W=1920;Fixture::H=1080;}
-        if(f.emissions && !f.distancefade && argc!=6)throw std::runtime_error("emissions needs original emission VS/PS paths");
+        if(f.emissions && !f.distancefade && !f.cutout && argc!=6)throw std::runtime_error("emissions needs original emission VS/PS paths");
+        if(f.cutout && argc!=(f.cutout_bench?5:4))throw std::runtime_error("cutout uses bootstrap originals and optional benchmark WxH");
         if(f.distancefade && argc!=(f.distancefade_bench?5:4))throw std::runtime_error("distancefade uses bootstrap originals and optional benchmark WxH");
         if(f.linearmaterials && argc!=9)throw std::runtime_error("linearmaterials needs DEFAULT and BUMP positive/negative shader paths");
         if(!f.emissions && argc==6)throw std::runtime_error("unexpected emission program paths");
         if(!f.linearmaterials && argc==9)throw std::runtime_error("unexpected additional program path");
         if (f.msaa) { char samples[8]{}; f.msaa_samples = GetEnvironmentVariableA("X3M_FIXTURE_MSAA", samples, sizeof samples) > 0 ? unsigned(std::atoi(samples)) : 2u; if (f.msaa_samples < 2 || f.msaa_samples > 16) throw std::runtime_error("X3M_FIXTURE_MSAA must be 2..16"); }
         if (f.hdrramp) { Fixture::W = 64; Fixture::H = ramp_rows; }
-        if (f.bench || f.distancefade_bench) {
+        if (f.bench || f.distancefade_bench || f.cutout_bench) {
             unsigned w = 0, h = 0;
             if (argc != 5 || std::sscanf(argv[4], "%ux%u", &w, &h) != 2 || !w || !h || w > 8192 || h > 8192) throw std::runtime_error("bench needs WxH");
             Fixture::W = w; Fixture::H = h;
@@ -2872,8 +2876,8 @@ int main(int argc, char** argv) {
         f.scope(nullptr);
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
-        if (f.taa && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
+        if ((f.taa || f.cutout) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
+        if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

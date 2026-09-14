@@ -1,5 +1,6 @@
 #include "motion_output.h"
 #include "capture.h"
+#include "cpu_state.h"
 #include "capture_state.h"
 #include "scene_capture.h"
 #include "telemetry.h"
@@ -186,18 +187,21 @@ constexpr unsigned failure_log_limit = 16;
 // checks and the COLORWRITEENABLE1/2 masks saved around RT1/RT2. With
 // X3M_STATE_SHADOW on, the SetRenderState hook keeps the application's values
 // here and the route issues no GetRenderState for them after the first read.
-// The last sixteen slots cache WRAP0–15; each routed draw queries only the
-// one or two generated TEXCOORD indices, never the original material semantics.
+// Slots 8–23 cache WRAP0–15; routed draws query only their owned indices.
+// Slots 24–31 are the eight selected cutout states; opaque draws do not query them.
 constexpr D3DRENDERSTATETYPE shadow_states[motion_shadow_state_count] = {
     D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ALPHATESTENABLE, D3DRS_ALPHABLENDENABLE,
     D3DRS_COLORWRITEENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_COLORWRITEENABLE1, D3DRS_COLORWRITEENABLE2,
     D3DRS_WRAP0, D3DRS_WRAP1, D3DRS_WRAP2, D3DRS_WRAP3, D3DRS_WRAP4, D3DRS_WRAP5, D3DRS_WRAP6, D3DRS_WRAP7,
-    D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15};
+    D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15,
+    D3DRS_ALPHAFUNC, D3DRS_ALPHAREF, D3DRS_ZFUNC, D3DRS_FOGENABLE, D3DRS_DITHERENABLE,
+    D3DRS_STENCILENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE};
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept {
     // WRAP8 starts a second, non-contiguous D3DRENDERSTATETYPE range.
     if (state >= D3DRS_WRAP0 && state <= D3DRS_WRAP7) return 8u + unsigned(state - D3DRS_WRAP0);
     if (state >= D3DRS_WRAP8 && state <= D3DRS_WRAP15) return 16u + unsigned(state - D3DRS_WRAP8);
     for (unsigned i = 0; i < 8; ++i) if (shadow_states[i] == state) return i;
+    for (unsigned i = 24; i < motion_shadow_state_count; ++i) if (shadow_states[i] == state) return i;
     return unsigned(motion_shadow_state_count);
 }
 const char* scene_end_source_name(std::uint32_t source) noexcept {
@@ -288,6 +292,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.material_contract = {};
+    shadow_.cutout_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
     drop_redirect();
@@ -305,6 +310,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
+    shadow_.cutout_pair = false;
     history_.invalidate();
     fill_pending_ = false;
     // Final retirement already owns the full logging/CPU-state boundary; do
@@ -668,6 +674,90 @@ void MotionOutput::resync_samplers() noexcept {
     }
 }
 
+// ---- selected native cutout admission -------------------------------------
+static_assert(D3DCMP_GREATEREQUAL == cutout::values[0] && D3DCMP_LESSEQUAL == cutout::values[2]
+    && D3DCULL_NONE == cutout::values[6] && D3DFILL_SOLID == cutout::values[7]);
+static_assert(static_cast<std::uint32_t>(D3DERR_NOTAVAILABLE) == 0x8876086au);
+void MotionOutput::probe_cutout_caps(bool force) noexcept {
+    if (!linear_material_requested_ || !device_ || cutout_reset_pending_) return;
+    if (!force && (cutout_caps_ == cutout::Capability::Ready || cutout_caps_ == cutout::Capability::Unsupported
+        || (cutout_probe_frame_known_ && cutout_probe_frame_ == frame_))) return;
+    cutout_probe_frame_ = frame_; cutout_probe_frame_known_ = true; ++cutout_cap_queries_;
+    D3DCAPS9 caps = caps_;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    switch (fixture_cutout_cap_fault_) {
+    case 1: caps.NumSimultaneousRTs = 2; break;
+    case 2: caps.PrimitiveMiscCaps &= ~D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS; break;
+    case 3: caps.PrimitiveMiscCaps &= ~D3DPMISCCAPS_INDEPENDENTWRITEMASKS; break;
+    case 4: caps.PrimitiveMiscCaps &= ~D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING; break;
+    case 5: caps.AlphaCmpCaps &= ~D3DPCMPCAPS_GREATEREQUAL; break;
+    default: break;
+    }
+#endif
+    constexpr DWORD required = D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS
+        | D3DPMISCCAPS_INDEPENDENTWRITEMASKS | D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING;
+    HRESULT result = D3DERR_NOTAVAILABLE;
+    auto verdict = cutout::Capability::Unsupported;
+    HRESULT formats[3] = {S_FALSE,S_FALSE,S_FALSE};
+    D3DDEVICE_CREATION_PARAMETERS creation{}; D3DDISPLAYMODE display{};
+    if (caps.NumSimultaneousRTs >= 3 && (caps.PrimitiveMiscCaps & required) == required
+        && (caps.AlphaCmpCaps & D3DPCMPCAPS_GREATEREQUAL)) {
+        IDirect3D9* factory = nullptr;
+        result = native<GetDirect3DFn>(GetDirect3D)(device_, &factory);
+        if (SUCCEEDED(result) && !factory) result = E_FAIL;
+        if (SUCCEEDED(result)) result = native<GetCreationFn>(GetCreationParameters)(device_, &creation);
+        if (SUCCEEDED(result)) result = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if (SUCCEEDED(result) && fixture_cutout_cap_fault_ == 10) { fixture_cutout_cap_fault_ = 0; result = E_FAIL; }
+#endif
+        const bool metadata_ready = SUCCEEDED(result);
+        const D3DFORMAT targets[] = {D3DFMT_A16B16G16R16F,D3DFMT_A32B32G32R32F,D3DFMT_R32F};
+        for (unsigned i=0;i<3 && SUCCEEDED(result);++i) {
+            result = factory->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,display.Format,
+                D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,D3DRTYPE_TEXTURE,targets[i]);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+            if (fixture_cutout_cap_fault_ == i+6) result = D3DERR_NOTAVAILABLE;
+            if (!i && fixture_cutout_cap_fault_ == 9) { fixture_cutout_cap_fault_ = 0; result = E_OUTOFMEMORY; }
+#endif
+            formats[i] = result;
+        }
+        // Only an actual format NOTAVAILABLE is a permanent capability refusal.
+        // Failed adapter metadata (even NOTAVAILABLE) leaves support unknown.
+        verdict = metadata_ready ? cutout::query_result(result) : cutout::Capability::Retry;
+        release(factory);
+    }
+    cutout_cap_result_ = result; cutout_caps_ = verdict;
+    if (cutout_cap_logs_ < failure_log_limit) {
+        ++cutout_cap_logs_;
+        log("linear_cutout_device device=%llu verdict=%u result=%08lx attempts=%lu mrt=%lu misc=%08lx alpha=%08lx adapter=%u type=%u display=%u fp16=%08lx motion=%08lx depth=%08lx",
+            id_,unsigned(cutout_caps_),result,cutout_cap_queries_,caps.NumSimultaneousRTs,caps.PrimitiveMiscCaps,
+            caps.AlphaCmpCaps,creation.AdapterOrdinal,unsigned(creation.DeviceType),unsigned(display.Format),formats[0],formats[1],formats[2]);
+    }
+}
+bool MotionOutput::cutout_draw_state() noexcept {
+    if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !hdr_enabled_
+        || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F
+        || mip_bias_bits_) return false; // nonzero bias is a separate, unqualified coverage modifier
+    std::array<std::uint32_t,8> states{};
+    for (unsigned i=0;i<states.size();++i) {
+        DWORD value=0;
+        if (FAILED(render_state(shadow_states[24+i],&value))) return false;
+        states[i]=value;
+    }
+    return cutout::state(states);
+}
+void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
+    if (!shadow_.cutout_pair) return;
+    route.cutout_test_known = SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE,&route.cutout_test));
+    if (route.cutout_test_known && !route.cutout_test) return;
+    route.cutout_color_known = SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE,&route.cutout_color));
+    if (route.cutout_color_known && !(route.cutout_color & 7u)) return;
+    route.cutout_candidate = true;
+    route.cutout_alpha_known = SUCCEEDED(render_state(D3DRS_ALPHAFUNC,&route.cutout_alpha));
+    route.cutout_z_known = SUCCEEDED(render_state(D3DRS_ZENABLE,&route.cutout_z));
+    route.cutout_zfunc_known = SUCCEEDED(render_state(D3DRS_ZFUNC,&route.cutout_zfunc));
+}
+
 // ---- render-state shadow ---------------------------------------------------
 
 // Light path (no logging, no telemetry record): an application write to a
@@ -686,6 +776,47 @@ void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexc
     if (composition_requested()) {
         const unsigned blend = state == D3DRS_SRCBLEND ? 0u : state == D3DRS_DESTBLEND ? 1u : state == D3DRS_BLENDOP ? 2u : 3u;
         if (blend < 3) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
+    }
+}
+void MotionOutput::render_state_failed(D3DRENDERSTATETYPE state) noexcept {
+    if (!enabled_ || shadow_.recording) return;
+    const unsigned i=shadow_index(state);
+    if (i<motion_shadow_state_count) { shadow_.states_known[i]=false; ++counters_.rs_invalidations; }
+    const unsigned blend=state==D3DRS_SRCBLEND ? 0u : state==D3DRS_DESTBLEND ? 1u : state==D3DRS_BLENDOP ? 2u : 3u;
+    if (blend<3) shadow_.composition_blend_known[blend]=false;
+}
+void MotionOutput::before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept {
+    if (!enabled_ || shadow_.recording || stage >= sampler_stage_count
+        || type != D3DSAMP_MIPMAPLODBIAS || !samplers_[stage].biased) return;
+    // Put back only this stage's owned bias before the application's write.
+    // Otherwise a failed setter with/without mutation is indistinguishable:
+    // either retaining or clearing our obligation could overwrite/leak state.
+    // Preserve legacy CPU state around the additional foreign native call;
+    // the ordinary light sampler path still performs integer work only.
+    PreserveCpuState cpu;
+    HRESULT restored = S_OK;
+    restore_mip_bias_stage(unsigned(stage), &restored);
+    if (FAILED(restored)) {
+        ++counters_.mip_bias_failures; ++mip_bias_total_failures_; ++counters_.restore_failures;
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; invalidate_taa(); }
+        if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias_game_write",
+                id_, frame_, counters_.draws, restored);
+        }
+    }
+}
+void MotionOutput::sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept {
+    if (stage>=sampler_stage_count || shadow_.recording) return;
+    auto& s=samplers_[stage];
+    if (type==D3DSAMP_SRGBTEXTURE) s.srgb_known=false;
+    if (type==D3DSAMP_MIPFILTER) s.mipfilter_known=false;
+    if (type==D3DSAMP_MIPMAPLODBIAS) {
+        // before_set_sampler_state already removed any owned bias. Both
+        // native mutation outcomes now require a fresh read, with no stale
+        // restoration obligation that could overwrite the application's value.
+        s.saved_known=false;
     }
 }
 HRESULT MotionOutput::get_render_state_native(D3DRENDERSTATETYPE state, DWORD* value) noexcept {
@@ -783,7 +914,7 @@ void MotionOutput::recover_motion_state() noexcept {
     // A successful Reset restores the API state contract. A failed resync must
     // not clear quarantine; a later successful Reset may retry all sixteen reads.
     bool known = true;
-    for (unsigned i = 8; i < motion_shadow_state_count; ++i) {
+    for (unsigned i = 8; i < 24; ++i) {
         const HRESULT hr = get_render_state_native(shadow_states[i], &shadow_.states[i]);
         shadow_.states_known[i] = SUCCEEDED(hr);
         known = known && SUCCEEDED(hr);
@@ -924,6 +1055,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     in.reactive = composition_mask;
                     in.reactive_policy = renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel;
                 }
+            }
+            if (cutout::unavailable(cutout_coverage_missed_,
+                    composition_effective_ || composition_required_producers_, composition_mask != nullptr)) {
+                in.reactive = nullptr;
+                in.reactive_policy = renderer::ReactivePolicy::Unavailable; // no reuse AND no history seed
             }
             // A chase-camera snap (X3M_CAMERA=chase) is a cut too: the smoothed
             // view is discontinuous there even when the rotation stays under
@@ -1230,6 +1366,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     stats_ = stats; lazy_rt1_ = lazy_rt2_ = false;
     enabled_ = false; depth_enabled_ = false;
     if (!requested) return;
+    probe_cutout_caps(true);
     history_ = renderer::MotionRowHistory(4096); // Reserves both tables once; ready() false on failure.
     try { displacements_.reserve(4096); } catch (...) { displacements_.clear(); displacements_.shrink_to_fit(); }
     history_available_ = object_trace::active() && object_lifetime::active();
@@ -1677,8 +1814,11 @@ void MotionOutput::fill_sentinel() noexcept {
 }
 
 void MotionOutput::before_reset() noexcept {
+    cutout_caps_ = cutout::Capability::Pending; cutout_cap_result_ = S_FALSE;
+    cutout_probe_frame_known_ = false; cutout_reset_pending_ = true;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.material_contract = {};
+    shadow_.cutout_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
     // D3DPOOL_DEFAULT objects must not exist across Reset; shaders survive it.
@@ -1711,7 +1851,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
     // The interrupted frame continues after a successful Reset; capture is off.
-    if (SUCCEEDED(result)) { resync_shadow(); recover_motion_state(); begin_frame(frame_, false); }
+    if (SUCCEEDED(result)) { cutout_reset_pending_ = false; probe_cutout_caps(true); resync_shadow(); recover_motion_state(); begin_frame(frame_, false); }
     log("motion_output_reset device=%llu result=%08lx generation=%llu taa_references=%u", id_, result, generation_, taa_references_);
 }
 
@@ -1724,6 +1864,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     if (shader && shadow_.vs == shader) {
         shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
         shadow_.material_contract = {};
+    shadow_.cutout_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
         shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
@@ -1816,6 +1957,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     if (shader && shadow_.ps == shader) {
         shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr;
         shadow_.material_contract = {};
+    shadow_.cutout_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.ps_xt_default_ordinary = nullptr;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
@@ -1914,6 +2056,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
     shadow_.material_contract = {};
+    shadow_.cutout_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
@@ -1935,6 +2078,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.material_contract = {};
+    shadow_.cutout_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
@@ -2140,6 +2284,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
+    cutout_coverage_missed_ = false;
     composition_required_producers_ = 0;
     composition_counts_ = {}; composition_enhanced_ = false; composition_frame_stopped_ = false; composition_published_ = false;
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
@@ -2435,6 +2580,8 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             invalidate_taa();
         } else if (route.submit) prepare_composition(call, route);
     }
+    if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
+        mark_cutout_candidate(route);
     if (telemetry::draw_enabled()) {
         const std::uint64_t total = draw_stamp() - begin,
             excluded = route.ticks + (counters_.fill_ticks - fill_before) + (counters_.lazy_flush_ticks - flush_before);
@@ -2684,6 +2831,7 @@ void MotionOutput::refresh_linear_material_contract() noexcept {
         && (!shadow_.xt_default_pair || shadow_.xt_default_ready)
         ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
     shadow_.material_contract = contract;
+    shadow_.cutout_pair = linear_material_requested_ && cutout::pair(shadow_.vs_hash, shadow_.ps_hash);
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready && !xt_default_unavailable_.seen) {
         // Called by lightweight shader hooks: even integer-only printf formats
         // can reach the CRT's x87 formatter. Keep this path integer-only.
@@ -2740,9 +2888,15 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         : (material ? shadow_.ps_material_variant : shadow_.ps_variant);
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (route.cutout && material && SUCCEEDED(hr) && fixture_cutout_vs_fault_) { --fixture_cutout_vs_fault_; hr = E_FAIL; }
+#endif
     if (SUCCEEDED(hr)) {
         route.ps_set = true;
         hr = native<SetPsFn>(SetPixelShader)(device_, ps);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+        if (route.cutout && material && SUCCEEDED(hr) && fixture_cutout_ps_fault_) { --fixture_cutout_ps_fault_; hr = E_FAIL; }
+#endif
     }
     if (FAILED(hr) && SUCCEEDED(route.preparation_error)) route.preparation_error = hr;
     if (material && FAILED(hr)) {
@@ -2806,7 +2960,8 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         route.gate = MotionGate::Pair; ++counters_.gates[3]; return;
     }
     route.depth = depth_enabled_ && renderer::material_motion_pixel_writes_depth(*pair, depth_enabled_);
-    // Gate 4: opaque ordinary draw state, known rows in the VS row's clip-row
+    // Gate 4: opaque state or the separately qualified exact cutout arm,
+    // known rows in the VS row's clip-row
     // window, the row's light-loop bound where it reads constants relatively,
     // no user-memory geometry, no instancing, known declaration/stream identity.
     const auto& profile = *shadow_.vs_row;
@@ -2816,15 +2971,17 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     DWORD blend = 1, test = 1, srgb = 1, color = 0; UINT frequency = 0;
     const bool draw_state_ok = !call.user_memory && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1 &&
         SUCCEEDED(render_state(D3DRS_ALPHABLENDENABLE, &blend)) && !blend &&
-        SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE, &test)) && !test &&
+        SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE, &test)) &&
         SUCCEEDED(render_state(D3DRS_SRGBWRITEENABLE, &srgb)) && !srgb &&
-        SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE, &color)) && color == 15 &&
+        SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE, &color)) &&
+        ((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && cutout_draw_state())) &&
         SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) &&
         !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) && (frequency & 0x3fffffffu) <= 1 &&
         shadow_.rows_known[window] && loop_bounded &&
         shadow_.stream0 && shadow_.stream0_stride && shadow_.declaration && call.primitives &&
         (!call.indexed || shadow_.indices);
     if (!draw_state_ok) { route.gate = MotionGate::DrawState; ++counters_.gates[4]; return; }
+    route.cutout = test != 0;
     // Key geometry fields come from the shadowed bindings and draw arguments.
     auto& key = route.key;
     key.vertex_buffer = shadow_.stream0; key.stream_offset = shadow_.stream0_offset; key.stride = shadow_.stream0_stride;
@@ -2936,6 +3093,13 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
     if (route.composition) finish_composition(result, route.composition_policy);
+    if (cutout::missed(route.cutout_candidate, route.submit, SUCCEEDED(result), route.routed || route.composition,
+            route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,
+            route.cutout_alpha_known, route.cutout_alpha, route.cutout_z_known, route.cutout_z,
+            route.cutout_zfunc_known, route.cutout_zfunc)) {
+        cutout_coverage_missed_ = true; ++counters_.cutout_missed; invalidate_taa();
+    }
+    if (route.routed && route.cutout && SUCCEEDED(result)) ++counters_.cutout_routed;
     if (route.routed) {
         // route_draw: the apply (before_draw) plus this undo, without the
         // native draw between them and without the jitter writes.
@@ -3066,6 +3230,7 @@ void MotionOutput::begin_redirect() noexcept {
     hdr_target_ = describe_surface(hdr_->target());
     hdr_state_ = HdrState::Active; hdr_dirty_ = true; hdr_latch_pending_ = true;
     h.redirected = true;
+    probe_cutout_caps(); // a transient verdict retries at this boundary, never a draw
     // Stage 2: consume the previous frame's meter and adapt the EV this
     // frame's tonemap consumes (a no-op with the identity write-back).
     if (hdr_->tonemap_active()) {
@@ -3412,14 +3577,15 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 composition_counts_.prepare_failures, composition_counts_.composition_failures, composition_counts_.restore_failures, composition_counts_.exchange_failures, composition_counts_.ack_failures,
                 composition_counts_.prepare, composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition, composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack);
         if (linear_material_requested_)
-            log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu",
+            log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u",
                 id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
-                static_cast<unsigned long>(c.material_bind_failures));
+                static_cast<unsigned long>(c.material_bind_failures), static_cast<unsigned long>(c.cutout_routed),
+                static_cast<unsigned long>(c.cutout_missed), unsigned(cutout_coverage_missed_), unsigned(cutout_caps_));
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
-            " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
+            " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
             " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx",
             id_, frame_, counters_.latched, static_cast<unsigned long>(main_msaa_ ? main_msaa_samples_ : 0u), counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
@@ -3442,7 +3608,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             us(c.jitter_ticks), us(c.fill_ticks), us(c.taa_run_ticks), us(c.taa_capture_ticks), us(c.taa_copy_color_ticks),
             us(c.taa_copy_depth_ticks), us(c.taa_draw_ticks), us(c.taa_apply_ticks), us(c.taa_copy_back_ticks), us(c.readback_ticks),
             state_shadow_, static_cast<unsigned long>(c.rs_queries), static_cast<unsigned long>(c.rs_hits), static_cast<unsigned long>(c.rs_gets),
-            static_cast<unsigned long>(c.rs_resyncs), static_cast<unsigned long>(c.sb_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
+            static_cast<unsigned long>(c.rs_resyncs), static_cast<unsigned long>(c.rs_invalidations), static_cast<unsigned long>(c.sb_resyncs), scene_hook_installed_, scene_end_source_name(c.taa.source), static_cast<unsigned long>(c.scene_end_check),
             static_cast<unsigned long>(c.hook_signals), static_cast<unsigned long>(c.hook_outside_scene), static_cast<unsigned long>(c.hook_state),
             static_cast<unsigned long>(c.draws_after_hook), c.bloom_copy_seen,
             double(mip_bias_), static_cast<unsigned long>(c.mip_bias_sets), static_cast<unsigned long>(c.mip_bias_restores),
@@ -3459,6 +3625,12 @@ void MotionOutput::fixture_configure(const MotionOutputFixtureConfig& config) no
     fixture_ = config; fixture_configured_ = true;
 }
 void MotionOutput::fixture_emission_fault(unsigned kind, unsigned count) noexcept {
+    if (kind == 200) { fixture_cutout_cap_fault_ = count; cutout_caps_ = cutout::Capability::Pending;
+        cutout_cap_result_ = S_FALSE; cutout_probe_frame_known_ = false; return; }
+    if (kind == 210) { fixture_cutout_vs_fault_ = count; return; }
+    if (kind == 211) { fixture_cutout_ps_fault_ = count; return; }
+    if (kind == 220) { fixture_cutout_rs_fault_ = count; return; }
+    if (kind == 221) { fixture_cutout_sampler_fault_ = count; return; }
     if (kind == 101) { fixture_emission_exchange_fault_ = count; return; }
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
     if (composition_ && kind <= unsigned(renderer::LinearEmissionPassFault::FrameClear)) composition_->inject(static_cast<renderer::LinearEmissionPassFault>(kind), count);
@@ -3489,8 +3661,27 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 19: return composition_ ? composition_->caps().supported_policies : 0;
     case 20: return composition_ ? composition_->references() : 0;
     case 21: return composition_ ? composition_->allocations() : 0;
+    case 30: return unsigned(cutout_caps_);
+    case 31: return cutout_cap_queries_;
+    case 32: return cutout_coverage_missed_;
+    case 33: return counters_.cutout_routed;
+    case 34: return counters_.cutout_missed;
+    case 35: return static_cast<unsigned>(cutout_cap_result_);
+    case 36: { static_assert(motion_shadow_state_count <= 32); unsigned mask=0;
+        for (unsigned i=0;i<motion_shadow_state_count;++i) if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
+        return mask; }
     default: return 0;
     }
+}
+HRESULT MotionOutput::fixture_setter_result(HRESULT result,unsigned slot,unsigned selector) noexcept {
+    if (FAILED(result)) return result;
+    if (slot==57 && fixture_cutout_rs_fault_ && fixture_cutout_rs_fault_==selector) {
+        fixture_cutout_rs_fault_=0; return E_FAIL;
+    }
+    if (slot==69 && fixture_cutout_sampler_fault_ && fixture_cutout_sampler_fault_-1==selector) {
+        fixture_cutout_sampler_fault_=0; return E_FAIL;
+    }
+    return result;
 }
 void MotionOutput::fixture_hdr_fault(unsigned kind, unsigned count) noexcept {
     if (hdr_) hdr_->set_fault(static_cast<renderer::HdrFault>(kind), count);

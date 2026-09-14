@@ -59,7 +59,7 @@ class MotionWrapStatesTests(unittest.TestCase):
         self.assertIn('route.submit = false; route.submission_error = motion_state_error_;', rollback)
         before = extract_function(source, 'MotionRoute MotionOutput::before_draw(')
         self.assertLess(before.index('if (motion_state_lost_)'), before.index('evaluate_draw(call, route)'))
-        self.assertIn('else if (route.submit) prepare_emission(call, route)', before)
+        self.assertIn('else if (route.submit) prepare_composition(call, route)', before)
         after = extract_function(source, 'void MotionOutput::after_draw(')
         self.assertIn('undo(route);', after)
         apply_wrap = extract_function(source, 'HRESULT MotionOutput::apply_wrap_states(')
@@ -87,8 +87,8 @@ class MotionWrapStatesTests(unittest.TestCase):
 
     def test_shadow_index_contract(self):
         header = (ROOT / 'src/proxy/motion_output.h').read_text()
-        self.assertIn('motion_shadow_state_count = 24;', header)
-        self.assertIn('emission_state_lost_ || motion_state_lost_', header)
+        self.assertIn('motion_shadow_state_count = 32;', header)
+        self.assertIn('composition_state_lost_ || motion_state_lost_', header)
         self.assertIn('DWORD saved_wrap[6]{};', header)
         self.assertIn('renderer::LinearMaterialPairContract material_contract{};', header)
         self.assertNotIn('material_sampler_mask', header)

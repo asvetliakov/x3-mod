@@ -359,7 +359,8 @@ HDR_MODES = ('hdrvalues', 'hdrfault', 'hdrramp', 'hdrexposure', 'hdrtonemapfault
 # draw is sentinel-only (gate 5: no scope in this script).
 MIPBIAS_FRAMES = 8
 MIPBIAS_CAPTURE = (5,)
-MIPBIAS_ANCHORS = {'odd': (9, 8), 'even': (11, 10), 'capture': (15, 14)}
+# An application write over a held stage bias first restores that stage.
+MIPBIAS_ANCHORS = {'odd': (9, 9), 'even': (11, 11), 'capture': (15, 15)}
 MIPBIAS_EXPECT = {'odd': dict(draws=12, routed=9, matched=0, gate2=1, gate3=2, gate4=0, gate5=9, gate6=0, apply_failures=0, restore_failures=0),
                   'even': dict(draws=14, routed=10, matched=0, gate2=1, gate3=2, gate4=1, gate5=10, gate6=0, apply_failures=0, restore_failures=0)}
 MIPBIAS_STAGES = '0011'  # stages 0 and 4 carry the bias (hex mask of the frame line)
@@ -389,7 +390,7 @@ HDR_FAULT_SCRIPT = {0: dict(fault=0, redirected=1, unwind=0, source='shader', re
 # regular script's resynchronizations per frame (frame 7: two state block
 # Applies; frame 8: EndStateBlock).
 RS_FILL_GETS = 14
-RS_SHADOW_STATES = 24  # eight gate/mask states plus WRAP0..15, all invalidated by resync
+RS_SHADOW_STATES = 32  # eight gate/mask states, WRAP0..15, eight cutout states; invalidated by resync
 SEAM_RESYNCS = {7: 2, 8: 1}
 # Hook script: seven frames (glow on, outside-Scene signal, glow off) and the
 # per-frame expectations with the patch installed / unpatched.
@@ -1288,13 +1289,19 @@ def check_render_state(name, frame, summary, shadow, resyncs):
     """The DLL's per-frame render-state counters against the shadow switch."""
     assert summary['state_shadow'] == str(int(shadow)), (name, frame, summary)
     q, h, g, r = (int(summary[k]) for k in ('rs_queries', 'rs_hits', 'rs_gets', 'rs_resyncs'))
+    # Failed application setters drop single shadow entries without a re-read;
+    # they are counted apart so a resync still has to show a shadow miss.
+    i = int(summary.get('rs_invalidations', 0))
     assert r == resyncs and q >= 2 * int(summary['draws']), (name, frame, q, h, g, r)
     assert g == RS_FILL_GETS + q - h, (name, frame, q, h, g)
     if shadow:
-        assert h == q if not r else 0 < q - h <= RS_SHADOW_STATES * r, (name, frame, q, h, r)
+        if not r and not i:
+            assert h == q, (name, frame, q, h)
+        else:
+            assert (0 < q - h if r else 0 <= q - h) and q - h <= RS_SHADOW_STATES * r + i, (name, frame, q, h, r, i)
     else:
         assert h == 0, (name, frame, q, h)
-    return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r}
+    return {'queries': q, 'hits': h, 'gets': g, 'resyncs': r, 'invalidations': i}
 
 
 # ---- FP16 HDR scene path, stage 2 -------------------------------------------
