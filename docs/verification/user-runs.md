@@ -22,15 +22,47 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 7 | Fixed/automatic exposure and bloom toggles, central chase HUD and selection timing | 0 | Completed as run 26; follow-ups combined into run 8 |
 | 8 | Restored glow, milder exposure and native selection-stutter trace | 0 | Completed as run 27 |
 | 9 | Stronger glow and selection/voice timing | 0 | Completed as run 28 on source `d9413fc` |
+| 10 | Target-name speech with the opt-in WMA decoder | 1 | Ready |
 
-**No new enhanced run is needed yet.** Run 28 analysis and the next combined
-changes are underway. Run 4 remains the optional vanilla cursor comparison.
+**Run 10 is open**: the first gameplay test of the opt-in WMA decoder. Run 28
+analysis and the next combined changes are underway. Run 4 remains the optional vanilla cursor comparison.
 Emission stays off for this comparison; its twenty-pair live route is qualified,
 but gameplay appearance and cost will need separate acceptance.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
+
+## 10. Target-name speech with the opt-in WMA decoder — Ready
+
+The process-local decoder plugin is delivered by environment only, to this one
+game process; nothing is written into the game, the bottle or any global
+configuration. The plugin lives in `/tmp/x3-wma-plugin`; if `/tmp` was cleared,
+copy the backup back first:
+
+```sh
+cp -R /Users/asvetl/x3-mod-resume-2026-09-14/artifacts/wma-plugin /tmp/x3-wma-plugin
+```
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --voice-decoder /tmp/x3-wma-plugin \
+  --capture-start 999999 --capture-frames 1
+```
+
+Load the usual save and select several different targets (ships and stations,
+including repeats of the same name). Report:
+
+1. whether target-name speech is heard at all, and for which selections;
+2. whether the pause on selection changed compared with run 28 (longer, shorter
+   or the same);
+3. whether spoken lines sound cut short at the end.
+
+No F8 capture is needed. If the game fails to start, rerun the same command
+without `--voice-decoder` and report which of the two failed.
 
 ## 4. Vanilla window/cursor comparison — Ready after any enhanced run
 
