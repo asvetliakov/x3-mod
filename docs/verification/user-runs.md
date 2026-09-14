@@ -24,7 +24,7 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 9 | Stronger glow and selection/voice timing | 0 | Completed as run 28 on source `d9413fc` |
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
 | 11 | Fade region route and alpha-tested cutout, combined | 1 | Completed as user run 11, snapshot run36 |
-| 12 | Voice load-hang Wine trace witness (no new build) | 1 | Ready |
+| 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
@@ -37,7 +37,7 @@ analysis and the next combined changes are underway. Run 4 remains the optional 
 Emission stays off for this comparison; its twenty-pair live route is qualified,
 but gameplay appearance and cost will need separate acceptance.
 
-## 12. Voice load-hang Wine trace witness — Ready
+## 12. Voice load-hang Wine trace witness — Completed
 
 Purpose: capture CrossOver's own quartz/amstream trace of the loading-screen
 hang with the decoder plugin, to see which filter fails `Pause`/`Run` inside

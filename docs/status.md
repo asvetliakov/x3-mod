@@ -33,6 +33,12 @@ bottle experiment was reverted byte-identically (`2e64c4d`).
 User decision (2026-09-14): no native-codec or bottle-clone route; fix through the plugin path,
 and if that proves too hard, fail early on the missing audio so the selection stutter goes away
 (this supersedes the earlier rejection of negative caching).
+User run 12 (Wine `CX_LOG` quartz/amstream trace, snapshot run37) locates the failure: the
+game adds a qasf DMO Wrapper audio-decoder filter to its graph before the source; that
+filter's `Pause` returns `E_FAIL` inside `SetState(RUN)`, and the main thread then calls
+`RemoveFilter(MediaStreamFilter)` 3.8 million times until force-quit (the hang). Root-cause
+diagnosis on the Wine side and disassembly of the game's DMO creation and teardown loop are
+in progress (`docs/reverse-engineering/voice-startup-sequence.md` §11–13).
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
