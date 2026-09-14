@@ -402,8 +402,15 @@ struct LinearEmissionPass::Impl {
                bool combine) noexcept {
     IDirect3DTexture9 *views[3]{};
     IDirect3DSurface9 *sources[] = {a, e, b};
+    // Bound stages follow the composite program: the additive composite reads
+    // s0..s2 (A, E, B); the source-over fade composite reads only s0..s1 and
+    // takes the composed alpha from A, so B is neither queried nor bound for
+    // it. The copy reads only A. Stage 2 is still detached by target() and
+    // its samplers set by full_state(), and save()/restore() cover stages
+    // 0..2 for both policies, so the caller-visible contract is unchanged.
+    const unsigned stages = combine ? (source_over ? 2u : 3u) : 1u;
     HRESULT hr = S_OK;
-    for (unsigned i = 0; i < (combine ? 3u : 1u); ++i) {
+    for (unsigned i = 0; i < stages; ++i) {
       hr = sources[i]->GetContainer(IID_IDirect3DTexture9,
                                     reinterpret_cast<void **>(&views[i]));
       if (FAILED(hr) || !views[i]) {
@@ -421,7 +428,7 @@ struct LinearEmissionPass::Impl {
       hr = call(SetRt, DWORD(1), e);
     if (SUCCEEDED(hr))
       hr = full_state();
-    for (unsigned i = 0; i < (combine ? 3u : 1u) && SUCCEEDED(hr); ++i)
+    for (unsigned i = 0; i < stages && SUCCEEDED(hr); ++i)
       hr = call(SetTexture, DWORD(i),
                 static_cast<IDirect3DBaseTexture9 *>(views[i]));
     if (SUCCEEDED(hr))

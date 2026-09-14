@@ -424,6 +424,39 @@ fenced completion windows, not GPU time or FPS. The 16-DIP cost remains
 material; prototype 1 alone does not make the feature acceptable for default
 enablement.
 
+### Prototype 1b: policy-aware composite bind (2026-09-14)
+
+The composite draw in `LinearEmissionPass::draw` now binds only the stages its
+program declares: the source-over fade composite queries and binds A and E
+(stages 0–1), the additive composite A, E and B (stages 0–2), the copy A alone.
+For the fade policy this removes one `GetContainer` (QueryInterface + AddRef),
+one `SetTexture` and one `Release` per composite draw. Nothing else moves:
+`target()` still detaches stages 0–2 before every draw, `full_state()` still
+sets the sampler states on stages 0–2, and `save()`/`restore()` still cover
+stages 0–2 for both policies, so the pass keeps restoring exactly the stages it
+touches and the caller-visible contract, the stage-1 first-failure path and the
+additive policy are unchanged. The fixture snapshot compares all four caller
+stages against their pre-pass bindings and needed no change.
+
+Detached X3 qualification (`verification/results/bottle-X3/linear-distance-fade-gpu-proto1b.json`,
+raw `/tmp/x3-distance-fade-proto1b-r1`): passed, 71 cases, 257 source calls,
+183,264 exact raw channels, 580,608 numerical channels with maximum tolerance
+fraction 7.19e-5, 193,536/193,536 exact energy channels, 5 fault cases, 4
+capability and 3 state refusals; every count equals prototype 1. Live
+qualification (live result kept local and in the resume backup as `linear-distance-fade-live-proto1b.json`; its counts are identical to prototype 1's tracked live result; seam DLL `93d43791…`,
+fixture `12c43cf6…`, raw `x3-distance-fade-live-flwj1xt5`): passed, 15
+processes / 302 frames, 4,502,255 checks, 490 restorations, 196 source DIPs,
+105 RGB samples, 140 exact TAA readbacks, maximum tolerance fraction 0.161591,
+identical to prototype 1. Paired source-window deltas (fade on minus off, both
+orders, ms), P1 beside P1b: 1280×768 1/4/16 DIPs 0.391–0.433 / 1.413–1.435 /
+4.188–4.299 versus 0.504–0.723 / 1.449–1.483 / 3.774–4.231; 1920×1080
+0.476–0.656 / 2.501–2.570 / 6.608–7.107 versus 0.298–0.849 / 2.483–2.515 /
+6.698–7.532. The P1b ranges overlap P1 in every cell and the order-to-order
+spread (up to 0.55 ms at 1080p/1 DIP) exceeds the cell-to-cell differences, so
+the removed per-composite calls are below the resolution of these fenced
+windows; the change is justified by the eliminated work, not by a measured
+saving.
+
 ### Actual X3 runtime result and performance decision
 
 The [live result](../../verification/results/bottle-X3/linear-distance-fade-live.json)
