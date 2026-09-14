@@ -16,10 +16,11 @@ def line(prefix, **values):
 
 def report(fade=1,emission=1,lazy=1):
     required=emission+2*fade
-    out=['RESULT PASS frames=30 checks=123 restorations=35 taa_reference_frames=29 taa_skipped_frames=1',
-         'RESET PASS',line('FADE_RESET',refs=3+bin(required).count('1') if required else 0,allocations=4 if required else 0),
-         'FADE_OPAQUE_RETURN frame=13 matched=1',
-         'FADE_REJECTED frame=22 source_failed=1 taa=0 history_seeded=0 copy_exact=1']
+    out=['RESULT PASS frames=30 checks=123 restorations=35 taa_reference_frames=28 taa_skipped_frames=2',
+         'FADE_OPAQUE_RETURN frame=13 matched=1']
+    for f in (26,29):out += ['RESET PASS',line('FADE_RESET',frame=f,refs=3+bin(required).count('1') if required else 0,allocations=4 if required else 0,quarantine=int(bool(required) and f==29),state_lost=0)]
+    out += [line('FADE_REJECTED',frame=f,source_failed=1,taa=0,history_seeded=0,copy_exact=1) for f in live.FAILED_SOURCES]
+    out += [line('FADE_EXPORT',frame=29,quarantine=int(bool(required)),state_lost=0)]
     native={i:(.95,.94,.96,1.) for i in range(6)}
     out += [line('FADE_NATIVE',pair=i,before='1,1,1,1',after=','.join(map(str,native[i]))) for i in range(6)]
     trace=['motion_output_release held=123 released=1']
@@ -58,8 +59,8 @@ def report(fade=1,emission=1,lazy=1):
                 before=after
         out.append(line('FADE_GEOMETRY',frame=f,ordinary_t=.03125*(f%3)))
         out.append(line('FADE_CAMERA',frame=f,view_translation=f'{.125*(f%5)},0,0'))
-        trace.append(line('motion_output_frame',frame=f,rt_mode='lazy' if lazy else 'perdraw',apply_failures=0,restore_failures=0,taa_resolved=int(f!=22),taa_history=int(f not in (0,22,23,27))))
-        if f!=22:trace.append(line('motion_output_taa_readback',frame=f,result='00000000'))
+        trace.append(line('motion_output_frame',frame=f,rt_mode='lazy' if lazy else 'perdraw',apply_failures=0,restore_failures=0,taa_resolved=int(f not in live.FAILED_SOURCES),taa_history=int(f not in (0,22,23,27,29))))
+        if f not in live.FAILED_SOURCES:trace.append(line('motion_output_taa_readback',frame=f,result='00000000'))
     out.append(line('FADE_CHECKS',frames=30,submissions=sum(len(live.source_plan(f)) for f in range(30)),qualified=1,benchmark=0))
     return '\n'.join(out),'\n'.join(trace)
 
@@ -68,12 +69,12 @@ class FadeLiveReportTests(unittest.TestCase):
     def test_scope_and_source_order(self):
         self.assertEqual(len(live.FADE_PAIRS),6)
         self.assertEqual(len(live.PROGRAMS),14)
-        self.assertEqual(sum(len(live.source_plan(f)) for f in range(30)),35)
+        self.assertEqual(sum(len(live.source_plan(f)) for f in range(30)),38)
         for fade in (0,1):
             for emission in (0,1):
                 for lazy in (0,1):
                     result=live.validate_functional(*report(fade,emission,lazy),fade,emission,lazy)
-                    self.assertEqual((result['frames'],result['sources'],result['samples']),(30,35,21))
+                    self.assertEqual((result['frames'],result['sources'],result['samples']),(30,38,21))
 
     def test_missing_duplicate_or_corrupt_rows_refused(self):
         output,trace=report()
@@ -86,6 +87,13 @@ class FadeLiveReportTests(unittest.TestCase):
         for old,new in (('s20=9','s20=10'),('s21=4','s21=8'),('original_calls=1','original_calls=2'),('s16=3','s16=1'),('s18=3','s18=1'),('ordinary_t=0.03125','ordinary_t=0'),('matched=1','matched=0'),('overlap=2','overlap=1'),('hr=8876086c','hr=00000000'),('mask_after=0','mask_after=1')):
             with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_functional(output.replace(old,new,1),trace,1,1,1)
         with self.assertRaises(AssertionError):live.validate_functional(output,trace.replace('taa_resolved=0','taa_resolved=1',1),1,1,1)
+
+    def test_quarantine_export_and_reset_persist(self):
+        output,trace=report(1,1)
+        for old,new in (('FADE_EXPORT frame=29 quarantine=1','FADE_EXPORT frame=29 quarantine=0'),
+                        ('FADE_RESET frame=29 refs=5 allocations=4 quarantine=1','FADE_RESET frame=29 refs=5 allocations=4 quarantine=0'),
+                        ('FADE_RESET frame=29 refs=5','FADE_RESET frame=29 refs=9')):
+            with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_functional(output.replace(old,new,1),trace,1,1,1)
 
     def test_unprepared_hresult_is_s_false(self):
         output,trace=report(0,0)
@@ -106,8 +114,10 @@ class FadeLiveReportTests(unittest.TestCase):
         self.assertTrue(rows[0]['mask_valid'])
         for fade in (0,1):
             rows,_=live.expected_sources(22,fade,1)
-            self.assertEqual(rows[1]['hr'],0x8876086c)
-            self.assertEqual(rows[1]['incomplete'],fade)
+            self.assertEqual(rows[0]['hr'],0x8876086c)
+            self.assertEqual(rows[0]['incomplete'],fade)
+            self.assertEqual(rows[1]['prepared'],0)
+            self.assertEqual(rows[1]['mask_valid'],not fade)
 
     def test_independent_linear_witness_rejects_native_or_wrong_alpha(self):
         output,_=report()
@@ -131,14 +141,14 @@ class FadeLiveReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             work=Path(tmp);(work/'x3-modern-captures').mkdir()
             for frame in range(30):
-                if frame!=22:
+                if frame not in live.FAILED_SOURCES:
                     for path in (work/f'reference_taa_{frame}.rgba16f',work/'x3-modern-captures'/f'taa_1_{frame}.rgba16f'):path.write_bytes(bytes(64*64*8))
                 (work/f'distance_fade_color_{frame}.rgba32f').write_bytes(struct.pack('<4f',1.,1.,1.,.5)*(64*64))
                 (work/f'distance_fade_mask_{frame}.rgba32f').write_bytes(bytes(64*64*16))
             result=live.validate_pixels(work,0,0)
             self.assertEqual(sum(result['covered_pixels']),0)
             self.assertEqual(len(result['temporal_sha256']),live.FRAMES)
-            self.assertIsNone(result['temporal_sha256'][live.FAILED_SOURCE])
+            for frame in live.FAILED_SOURCES:self.assertIsNone(result['temporal_sha256'][frame])
             path=work/'x3-modern-captures/taa_1_0.rgba16f';path.write_bytes(b'X'+path.read_bytes()[1:])
             with self.assertRaises(AssertionError):live.validate_pixels(work,0,0)
             path.write_bytes(bytes(64*64*8))

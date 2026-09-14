@@ -189,14 +189,16 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
         else if(plan==1)issued=1;
         else if(plan>=2&&plan<14){pair=(plan-2)/2;issued=plan%2==0;}
         else if(plan==15||plan==21||plan==26)issued=1;
-        else if(plan==16||plan==17||plan==18||plan==19||plan==20||plan==22||plan==23||plan==24||plan==25||plan==27||plan==28){issued=2;first_emission=plan==18||plan==19||plan==22||plan==28;second_emission=plan==17||plan==20||plan==23||plan==24||plan==25||plan==27;}
-        if(qualified&&(plan==19||plan==20||plan==24))issued=3;
-        const bool source_failure=qualified&&plan==22;
+        else if(plan==16||plan==17||plan==18||plan==19||plan==20||plan==22||plan==23||plan==24||plan==25||plan==27||plan==28||plan==29){issued=2;first_emission=plan==18||plan==19||plan==28;second_emission=plan==17||plan==20||plan==22||plan==23||plan==24||plan==25||plan==27||plan==29;}
+        if(qualified&&(plan==19||plan==20||plan==24||plan==29))issued=3;
+        // A first-source failure can recover at the next frame Clear. A failed
+        // original after published enhancement must retain export quarantine.
+        const bool source_failure=qualified&&(plan==22||plan==29);
         std::vector<float> expected_mask(std::size_t(f.W)*f.H*4,0);
         auto before=scene();
         for(unsigned source=0;source<issued;++source) {
             const bool emission=source==1?second_emission:first_emission;
-            const bool failed=source_failure&&source==1,zero=plan==1;
+            const bool failed=source_failure&&source==(plan==22?0u:2u),zero=plan==1;
             // As in the qualified emission fixture, the second additive source
             // uses .25 so the FP16 destination sum remains exactly representable.
             const float emission_alpha=source>=2?.25f:.125f;
@@ -275,11 +277,17 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
             api(f.d->EndScene(),"fade rejected EndScene");f.verify_motion();api(f.d->SetDepthStencilSurface(f.depth.p),"fade rejected depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"fade rejected Present");++f.frame;++f.frames_since_reset;
             std::printf("FADE_REJECTED frame=%u source_failed=1 taa=0 history_seeded=0 copy_exact=1\n",plan);
         } else f.frame_end();
-        if(qualified&&plan==26) {
+        if(qualified&&plan==29) {
+            const unsigned quarantine=f.emission_status(f.d.p,3),state_lost=f.emission_status(f.d.p,2);
+            std::printf("FADE_EXPORT frame=%u quarantine=%u state_lost=%u\n",plan,quarantine,state_lost);
+            require(quarantine==unsigned(required!=0)&&state_lost==0,"fade failed export quarantines earlier enhancement without state loss");
+        }
+        if(qualified&&(plan==26||plan==29)) {
             const unsigned refs_before=f.emission_status(f.d.p,20);
             f.reset();const unsigned refs_after=f.emission_status(f.d.p,20);
-            std::printf("FADE_RESET refs=%u allocations=%u\n",refs_after,f.emission_status(f.d.p,21));
-            require(required?(refs_before>=4&&refs_after==refs_before-4):refs_after==0,"fade Reset releases four targets and retains reusable programs");
+            std::printf("FADE_RESET frame=%u refs=%u allocations=%u quarantine=%u state_lost=%u\n",plan,refs_after,f.emission_status(f.d.p,21),f.emission_status(f.d.p,3),f.emission_status(f.d.p,2));
+            require(refs_before>=4?refs_after==refs_before-4:refs_before==0&&refs_after==0,"fade Reset releases four targets and retains reusable programs");
+            require(f.emission_status(f.d.p,3)==unsigned(plan==29&&required!=0)&&f.emission_status(f.d.p,2)==0,"fade Reset clears state loss and preserves export quarantine");
         }
     }
     api(f.d->SetIndices(nullptr),"fade final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"fade final stream release");

@@ -31,7 +31,7 @@ FADE_PAIRS=tuple(material.PAIRS[110:116])
 EMISSION_PAIR=('d5e1c75351ed3f04','8360f422de08b5bd')
 PROGRAMS=tuple(dict.fromkeys(BOOTSTRAP+tuple(f'vs_{v}.bin' for v,_ in FADE_PAIRS)+tuple(f'ps_{p}.bin' for _,p in FADE_PAIRS)+(f'vs_{EMISSION_PAIR[0]}.bin',f'ps_{EMISSION_PAIR[1]}.bin')))
 FRAMES=30
-FAILED_SOURCE=22
+FAILED_SOURCES=(22,29)
 PRESENT_FRAMES=tuple(range(2,14,2))
 RESOLUTIONS=((1280,768),(1920,1080))
 COUNTS=(1,4,16)
@@ -42,7 +42,7 @@ LIMITATIONS=[
     'A fixture-only scene-owner admission seam replaces game owner-memory binding; actual capture, render-state admission, original DIP, HDR exchange, supplemental TAA and terminal publication remain exercised.',
     'The six bounded linear-color witnesses reuse the detached Asteroid oracle and fixed observed X3 FP16 render-target round-toward-zero model. This store rule is not a native-Windows guarantee.',
     'Current/previous reactive coverage rejects invalid blended history; it does not implement layered transparent temporal accumulation or establish a shimmer fix.',
-    'A real invalid-index-buffer source establishes one failed native call and no completed history. Partial driver submission and unrelated capability matrices retain existing host/component evidence.',
+    'Real invalid-index-buffer sources establish exact native failure and no completed history. A failure before enhancement recovers next frame; earlier enhancement followed by rejected publication explicitly quarantines composition through Reset. Partial driver submission retains existing host/component evidence.',
     'Timing toggles only fade, with the same material/motion/TAA/emission settings. EVENT-fenced source and terminal windows exclude setup, the frame-level M clear, and readbacks; paired processes identify order effects but are not GPU timestamps or game FPS.',
     'Native Windows, installation, gameplay appearance and docking-port distance-transition causality remain unverified.',
 ]
@@ -154,27 +154,29 @@ def source_plan(frame):
         19:[('emission',0,0,False),('fade',0,3,False),('emission',0,0,False)],
         20:[('fade',0,0,False),('emission',0,3,False),('fade',0,0,False)],
         21:[('fade',0,6,False)],
-        22:[('emission',0,0,False),('fade',0,0,True)],
+        22:[('fade',0,0,True),('emission',0,0,False)],
         23:[('fade',0,0,False),('emission',0,0,False)],
         24:[('fade',0,0,False),('emission',0,7,False),('fade',0,0,False)],
         25:[('fade',0,0,False),('emission',0,0,False)],
         26:[('fade',0,0,False)],
         27:[('fade',0,0,False),('emission',0,0,False)],
         28:[('emission',0,0,False),('fade',0,0,False)],
+        29:[('fade',0,0,False),('emission',0,0,False),('fade',0,0,True)],
     }
     return plans.get(frame,[])
 
 
 def expected_sources(frame,fade,emission):
-    stopped=False;result=[]
+    stopped=False;scene_failed=False;result=[]
     for kind,pair,fault,failed in source_plan(frame):
         active=bool(fade if kind=='fade' else emission)
         applied_fault=fault if active else 0
-        prepared=active and not stopped and applied_fault!=3
+        prepared=active and not stopped and not scene_failed and applied_fault!=3
         linear=prepared and not (failed or applied_fault in (6,7))
         native=prepared and applied_fault==6 and not failed
         incomplete=prepared and (failed or applied_fault==7)
         if active and (applied_fault==3 or incomplete):stopped=True
+        scene_failed=scene_failed or failed
         result.append(dict(kind=kind,pair=pair,fault=applied_fault,hr=0x8876086c if failed else 0,
                            original_calls=1,prepared=int(prepared),linear=int(linear),native=int(native),
                            incomplete=int(incomplete),mask_valid=bool((fade or emission) and not stopped)))
@@ -193,7 +195,7 @@ def validate_functional(output,trace,fade,emission,lazy):
     assert len(terminal)==1 and not any(line.startswith('RESULT FAIL') for line in lines)
     summary=terminal[0]
     assert int(summary['frames'])==FRAMES and int(summary['checks'])>0 and int(summary['restorations'])>0
-    assert int(summary['taa_reference_frames'])==FRAMES-1 and int(summary['taa_skipped_frames'])==1
+    assert int(summary['taa_reference_frames'])==FRAMES-len(FAILED_SOURCES) and int(summary['taa_skipped_frames'])==len(FAILED_SOURCES)
     live=indexed(lines,'FADE_LIVE ','frame')
     assert set(live)==set(range(FRAMES))
     source_rows=[fields(line) for line in lines if line.startswith('FADE_SOURCE ')]
@@ -246,14 +248,19 @@ def validate_functional(output,trace,fade,emission,lazy):
     translations=[tuple(map(float,row['view_translation'].split(','))) for row in cameras]
     assert all(len(v)==3 and all(math.isfinite(x) for x in v) for v in translations) and len(set(translations))>2
     assert [fields(line) for line in lines if line.startswith('FADE_OPAQUE_RETURN ')]==[dict(frame='13',matched='1')]
-    assert [fields(line) for line in lines if line.startswith('FADE_REJECTED ')]==[dict(frame='22',source_failed='1',taa='0',history_seeded='0',copy_exact='1')]
+    assert [fields(line) for line in lines if line.startswith('FADE_REJECTED ')]==[dict(frame=str(f),source_failed='1',taa='0',history_seeded='0',copy_exact='1') for f in FAILED_SOURCES]
+    assert [fields(line) for line in lines if line.startswith('FADE_EXPORT ')]==[dict(frame='29',quarantine=str(int(bool(required))),state_lost='0')]
     checks=[fields(line) for line in lines if line.startswith('FADE_CHECKS ')]
     assert len(checks)==1 and int(checks[0]['frames'])==FRAMES and int(checks[0]['submissions'])==total_sources
     assert checks[0]['qualified']=='1' and checks[0]['benchmark']=='0'
-    assert sum(line=='RESET PASS' for line in lines)==1
+    assert sum(line=='RESET PASS' for line in lines)==2
     resets=[fields(line) for line in lines if line.startswith('FADE_RESET ')]
-    assert len(resets)==1 and int(resets[0]['refs'])==(3+bin(required).count('1') if required else 0)
-    assert int(resets[0]['allocations'])==(4 if required else 0)
+    assert [int(row['frame']) for row in resets]==[26,29]
+    for row in resets:
+        assert int(row['refs'])==(3+bin(required).count('1') if required else 0)
+        assert int(row['allocations'])==(4 if required else 0)
+        assert int(row['quarantine'])==int(bool(required) and int(row['frame'])==29)
+        assert int(row['state_lost'])==0
     releases=[fields(line) for line in traces if line.startswith('motion_output_release ')]
     assert len(releases)==1 and int(releases[0]['released'])==1
     motion=indexed(traces,'motion_output_frame ','frame')
@@ -261,10 +268,10 @@ def validate_functional(output,trace,fade,emission,lazy):
     for frame,row in motion.items():
         assert row['rt_mode']==('lazy' if lazy else 'perdraw')
         assert int(row['apply_failures'])==int(row['restore_failures'])==0
-        assert int(row['taa_resolved'])==int(frame!=FAILED_SOURCE)
-        if frame==FAILED_SOURCE:assert int(row['taa_history'])==0
+        assert int(row['taa_resolved'])==int(frame not in FAILED_SOURCES)
+        if frame in FAILED_SOURCES:assert int(row['taa_history'])==0
     temporal=indexed(traces,'motion_output_taa_readback ','frame')
-    assert set(temporal)==set(range(FRAMES))-{FAILED_SOURCE}
+    assert set(temporal)==set(range(FRAMES))-set(FAILED_SOURCES)
     assert all(row['result']=='00000000' for row in temporal.values())
     native=native_baselines([fields(line) for line in lines if line.startswith('FADE_NATIVE ')])
     sample_result=validate_samples([fields(line) for line in lines if line.startswith('FADE_SAMPLE ')],fade,emission,native)
@@ -277,7 +284,7 @@ def validate_pixels(work,fade,emission):
     for frame in range(FRAMES):
         actual_path=work/'x3-modern-captures'/f'taa_1_{frame}.rgba16f'
         reference_path=work/f'reference_taa_{frame}.rgba16f'
-        if frame==FAILED_SOURCE:
+        if frame in FAILED_SOURCES:
             assert not actual_path.exists() and not reference_path.exists(),'failed native source must not publish or seed TAA'
             temporal.append(None)
         else:
