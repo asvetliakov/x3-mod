@@ -96,3 +96,41 @@ by load and capture windows; not a cost verdict.
 Conclusion: the run passes as a functional check and fails as an appearance
 check — a 2 m occlusion radius is below the visible scale of X3 geometry. Run 20
 repeats it with `--ao-radius` and `--ao-debug`.
+
+## User run 20 (run48, 2026-09-15): the debug view was on, and the radius law
+
+Second gameplay run of AO (snapshot `/tmp/x3-bottleX3-run48/`, log
+`session-20260915-002408-212.log`, 335 MB, installed DLL `39b090d0…` from
+`77a649b`, record `verification/results/run20-candidate-install.json`;
+`--ambient-occlusion --ao-timing --ao-radius 20 --ao-debug`; log queried, never
+read whole).
+
+`ambient_occlusion_mode` reports `radius_m=20 strength=0.5 debug=1`: the debug
+factor view was on for the *whole* session, not only for an optional second
+short run. That is what the user saw and described — "mostly white, twin gray
+lines when close" — so this run says nothing about the appearance of AO applied
+to the image; it shows the factor buffer.
+
+`ambient_occlusion_frame`: 50,236 lines, `attached=1` on 4,464 (8.9 %) in about
+26 toggle bursts; `cpu_us` mean 211.5 µs while attached (run 19: 203.1 µs), and
+GPU timing is unavailable in this build. All ten F8 capture groups landed in
+`attached=0` gaps, so no capture in this run shows AO at all.
+
+`radius_px=64.00` on every attached line. That is not a per-pixel value: it is a
+reference-distance diagnostic evaluated at 100 units = 20 m and clamped by the
+cap (`src/proxy/motion_output.cpp` near lines 1471 and 1621). The per-pixel law
+is in `src/proxy/ambient_occlusion_pass.cpp:329–335`,
+`radius_px = 256·radius_m/distance_m` at 1280×768 with a 64 px cap:
+
+| `radius_m` | 500 m | 2 km | 5 km |
+| ---: | ---: | ---: | ---: |
+| 20 | 10.2 px | 2.6 px | 1.0 px |
+| 50 | 25.6 px | 6.4 px | 2.6 px |
+| 200 | 64 px (capped) | 25.6 px | 10.2 px |
+
+At `radius_m=20` the cap binds only closer than about 80 m, so the run-20 radius
+is effectively uncapped at gameplay distances and shrinks to about one pixel at
+5 km; `strength=0.5` caps the darkening at factor 0.5 regardless. Choosing the
+scale (fixed world radius, distance-dependent radius, or a screen-space floor)
+is a design decision pending in `docs/architecture/ambient-occlusion-scale.md`;
+a rerun without `--ao-debug` is what settles the appearance question.

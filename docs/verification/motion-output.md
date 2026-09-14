@@ -988,3 +988,38 @@ Commits `0a3a2db` (fix, reviewed on Fable: merge-clean, four low findings fixed 
 - Full default suite: 118 cases, all `exit=0`, `{"passed": true, "status": "PASS"}`, 3 min 55 s.
   Results local under `verification/results/bottle-X3/motion-output-summary.json`.
 
+
+## User run 20 (run48): the asteroid dropout is gone (2026-09-15)
+
+User run 20 (snapshot `/tmp/x3-bottleX3-run48/`, log
+`session-20260915-002408-212.log`, 335 MB, installed DLL `39b090d0…` from
+`77a649b`, record `verification/results/run20-candidate-install.json`; log
+queried, never read whole). This is the first gameplay run of the z_only
+depth-prepass jitter.
+
+**The user reports no asteroid shimmer at all** — the triangles that vanished
+and reappeared in runs 11, 14 and 19 (`screenshots/asteroids-shimmer1.png`) do
+not do so on this build. The dropout tracked in
+[asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md) is
+therefore **fixed and accepted in game**.
+
+| Measure | Run 20 | Run 19 (run47) |
+| --- | --- | --- |
+| `motion_output_frame` lines | 924, `unjittered_depth_writers=0` on all | — |
+| `camera_state` lines | 50,655 | 24,729 |
+| reason distribution | `{0: 50230, 1: 418, 3: 4, 4: 2}` | `{0: 24190, 1: 529, 3: 3, 4: 6}` |
+| `reason=3` (history dropped) | 4 lines, 0.008 % | 0.01 % |
+| `taa_invalidate` sites | `not_resolved` 418 only | `not_resolved` 529 only |
+
+The ten F8 capture groups (8 frames each, first frames 4817, 8791, 10663, 23902,
+43314, 43990, 44490, 45156, 47022, 47433) carry both the prepass
+`vs=c78b4c68a87fce74` and the fog `vs=167eb2d5629ab9d3` in six of the ten. In
+the 47022–47029 group every prepass line is `gate=3 jittered=1` and every fog
+line `gate=4 jittered=1`; run 47 had the prepass at `jittered=0`. That is the
+route-side change the fix was built for, observed in the game.
+
+Limits of the log evidence: no group holds a camera still on a far asteroid
+(`camera_rotation_deg` ≈ 1° in all ten), so no pixel-flip comparison across the
+8 pre-resolve frames is conclusive, and the fix rests on the user's in-game
+acceptance plus the jitter gating above, not on a captured before/after pixel
+pair.
