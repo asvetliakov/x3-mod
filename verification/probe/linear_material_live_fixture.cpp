@@ -26,6 +26,8 @@ constexpr unsigned IID_IUnknown=1,IID_IDirect3DTexture9=2;
 constexpr unsigned D3DRS_COLORWRITEENABLE1=190,D3DRS_COLORWRITEENABLE2=191;
 constexpr unsigned D3DRS_ZENABLE=7,D3DRS_ZWRITEENABLE=14,D3DRS_ALPHATESTENABLE=15,D3DRS_ALPHABLENDENABLE=27,D3DRS_COLORWRITEENABLE=168,D3DRS_SRGBWRITEENABLE=194;
 constexpr unsigned D3DRS_WRAP0=128,D3DRS_WRAP7=135,D3DRS_WRAP8=198,D3DRS_WRAP15=205;
+constexpr unsigned D3DRS_FILLMODE=8;
+struct RECT{long left=0,top=0,right=0,bottom=0;};
 constexpr unsigned motion_shadow_state_count=24;
 constexpr std::array<unsigned,24>shadow_states{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_COLORWRITEENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,128,129,130,131,132,133,134,135,198,199,200,201,202,203,204,205};
 unsigned releases=0, checks=0, failures=0;
@@ -82,6 +84,8 @@ LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vs,std::u
 }
 unsigned xt_transforms=0,xt_lookups=0;
 bool linear_material_xt_default_pair(std::uint64_t vs,std::uint64_t ps){++xt_lookups;return vs==10&&ps>=22&&ps<=25;}
+unsigned asteroid_lookups=0;
+bool linear_material_asteroid_pair(std::uint64_t vs,std::uint64_t ps){++asteroid_lookups;return vs>=70&&vs<76&&ps==80+(vs-70)%4;}
 LinearMaterialResult linear_material_xt_default_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o,bool,bool linear){
  ++xt_transforms;if(*p!=10)return LinearMaterialResult::UnsupportedShader;o={*p+(linear?500u:400u)};return LinearMaterialResult::Applied;
 }
@@ -100,12 +104,12 @@ LinearMaterialResult linear_material_vertex_variant(const std::uint32_t*p,std::s
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t*p,std::size_t n,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool d){return linear_material_vertex_variant(p,n,c,o,d);}
 }
 namespace renderer {
-enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2};
+enum class LinearCompositionPolicy:unsigned{AdditiveEmission=1,DistanceFade=2,DistanceFadeInPlace=4};
 constexpr unsigned composition_policy_bit(LinearCompositionPolicy p){return unsigned(p);}
 enum class LinearEmissionImage {None,Linear,Native,Incomplete};
 struct LinearEmissionPreparation{bool ready=true,state_preserved=true;HRESULT saved=S_OK,operation=S_OK,restore=S_OK;};
-struct LinearEmissionCompletion{LinearEmissionImage image=LinearEmissionImage::Linear;HRESULT source=S_OK,composition=S_OK,restore=S_OK;bool candidate_bound=true;};
-struct LinearEmissionBoundary{IDirect3DSurface9*scene;IDirect3DPixelShader9*augmented;std::uint64_t frame;bool admitted;IDirect3DVertexShader9*augmented_vertex=nullptr;LinearCompositionPolicy policy=LinearCompositionPolicy::AdditiveEmission;};
+struct LinearEmissionCompletion{LinearEmissionImage image=LinearEmissionImage::Linear;HRESULT source=S_OK,composition=S_OK,restore=S_OK;bool candidate_bound=true;HRESULT recovery=S_FALSE;RECT region{};};
+struct LinearEmissionBoundary{IDirect3DSurface9*scene;IDirect3DPixelShader9*augmented;std::uint64_t frame;bool admitted;IDirect3DVertexShader9*augmented_vertex=nullptr;LinearCompositionPolicy policy=LinearCompositionPolicy::AdditiveEmission;RECT region{};bool region_known=false;};
 // This double exposes transaction outcomes only; it never draws or simulates shader math.
 struct LinearEmissionPass {
  struct Caps{bool enabled=true;unsigned supported_policies=1,available_policies=1;bool supports(LinearCompositionPolicy p)const{return (available_policies&unsigned(p))!=0;}const char*reason="scripted";}cap;D3DFORMAT attached_adapter_format=D3DFMT_UNKNOWN;unsigned requested_policies=0,clears=0;std::uint64_t last_frame=0;std::array<unsigned char,4>mask_bytes{0,0,0,0};unsigned attaches=0,prepares=0,finishes=0,recoveries=0,acks=0,begins=0,ensures=0,held=7;
@@ -130,6 +134,8 @@ struct Pass {IDirect3DSurface9 initial,*current=&initial;unsigned exchange_calls
  bool active=true;unsigned references(){return 0;} bool tonemap_active()const{return active;}void shutdown(){}void after_reset(HRESULT){}void before_reset(){}void bind(void*,void*){}};
 struct History{void invalidate(){}};
 namespace camera_state {void reset(){}}
+namespace cutout {enum class Capability:std::uint8_t{Pending,Ready,Unsupported,Retry};
+unsigned pair_lookups=0;constexpr bool pair(std::uint64_t,std::uint64_t) noexcept {return false;}}
 enum class MotionGate{Feature=1};
 struct MotionDrawCall{bool indexed=true,user_memory=false;unsigned primitives=3;bool composition_permission=true;};
 namespace telemetry{enum class Metric{RouteGate,RouteSetRenderTarget,RouteLazyFlush};bool draw_enabled(){return false;}}
@@ -140,6 +146,7 @@ struct MotionRoute {
  bool depth=false,linear_material=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
  bool vs_constants_set=false,ps_constants_set=false,jittered=true;
  DWORD saved_write1=15,saved_write2=15;
+ struct {RECT rect{};unsigned reason=0;bool bound=false;} fade_region{};bool fade_region_evaluated=false;unsigned fade_region_permille=0;
 };
 struct Counters{unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
 struct D3DDISPLAYMODE{D3DFORMAT Format=D3DFMT_UNKNOWN;};
@@ -210,7 +217,8 @@ public:
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr;
- bool xt_default_pair=false,xt_default_ready=false;
+ bool xt_default_pair=false,xt_default_ready=false,cutout_pair=false,asteroid_pair=false;
+ DWORD fill_mode=0;bool fill_mode_known=false;
  IDirect3DVertexShader9*vs_xt_default_ordinary=nullptr,*vs_xt_default_linear=nullptr;IDirect3DPixelShader9*ps_xt_default_ordinary=nullptr;
  DWORD composition_blend[3]{};bool composition_blend_known[3]{};
  DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};
@@ -232,10 +240,29 @@ public:
  bool composition_busy_=false,composition_state_lost_=false,composition_frame_stopped_=false,composition_enhanced_=false,composition_quarantined_=false,composition_readers_known_=false,composition_published_=false;
  IDirect3DTexture9*composition_main_texture_=nullptr;IUnknown*composition_main_identity_=nullptr;
  std::uint32_t composition_main_sampler_mask_=0,composition_reader_known_mask_=0;IDirect3DBaseTexture9*composition_textures_[21]{};
- struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;}composition_counts_;
+ struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;unsigned in_place=0,in_place_linear=0,in_place_incomplete=0,recovery_failures=0;std::uint64_t region_pixels=0;HRESULT recovery=S_FALSE;}composition_counts_;
  unsigned composition_adapter_format_=1,composition_depth_format_=2;bool composition_attach_attempted_=true,composition_effective_=false,composition_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
  bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;
  unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
+ struct FadeBounds{bool storage=false,fail_reserve=false;unsigned clears=0,reserves=0;
+  bool reserve(){++reserves;if(fail_reserve)return false;storage=true;return true;}
+  void clear(){++clears;storage=false;}bool reserved()const{return storage;}}fade_bounds_;
+ struct FadeWitness{static constexpr unsigned rect_capacity=1024;bool prepared[rect_capacity]{};unsigned prepared_count=0,last=rect_capacity;}fade_witness_;
+ unsigned witness_releases_=0,fade_regions_derived_=0,cutout_candidates_=0,mip_bias_failure_reports_=0;
+ bool witness_frame_=false;bool witness_frame()const noexcept{return witness_frame_;}
+ void release_fade_witness()noexcept{++witness_releases_;}
+ void report_mip_bias_game_write_failure()noexcept{++mip_bias_failure_reports_;}
+ void derive_fade_region(MotionRoute&route)noexcept{++fade_regions_derived_;route.fade_region_evaluated=true;}
+ void mark_cutout_candidate(MotionRoute&)noexcept{++cutout_candidates_;}
+ // Capture-only refused-rectangle record: a double for the extracted code,
+ // unused while the production refusal path does not call it.
+ bool capture_=false;unsigned fade_refusals_recorded_=0;
+ void record_fade_refused(const MotionRoute&,unsigned)noexcept{++fade_refusals_recorded_;}
+ std::uint32_t sampler_restore_failed_mask_=0;
+ void release_mip_bias_retry_bound()noexcept{sampler_restore_failed_mask_=0;}
+ cutout::Capability cutout_caps_=cutout::Capability::Pending;HRESULT cutout_cap_result_=S_FALSE;
+ bool cutout_probe_frame_known_=false,cutout_reset_pending_=false,shimmer_trace_=false;
+ unsigned cutout_probes_=0;void probe_cutout_caps(bool=false)noexcept{++cutout_probes_;}
  bool distance_fade_requested_=false;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
@@ -305,6 +332,7 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
  std::wmemcpy(out,it->second.c_str(),it->second.size()+1);return DWORD(it->second.size());
 }
 namespace x3m {namespace renderer=::renderer;}
+unsigned fade_witness_frames=0;bool shimmer_trace_requested=false;
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false;float emission_gain=1;
 renderer::LinearMaterialConfig linear_material_config;
 renderer::HdrConfig hdr_config;
@@ -580,7 +608,7 @@ void distance_fade_route_cases(){
  };
  // Both producers share one frame clear, pool owner, identity and mask.
  for(bool emissions:{false,true}){MotionOutput m;ready(m);m.linear_emission_requested_=emissions;auto&pass=*m.composition_;pass.cap.supported_policies=pass.cap.available_policies=emissions?3:2;m.composition_attach_attempted_=false;
-  m.begin_composition_frame();CHECK(pass.attaches==1&&pass.requested_policies==(emissions?3u:2u)&&pass.clears==1&&m.composition_required_producers_==(emissions?3u:2u)&&!m.composition_frame_stopped_);states(m);
+  m.begin_composition_frame();CHECK(pass.attaches==1&&pass.requested_policies==(emissions?7u:6u)&&pass.clears==1&&m.composition_required_producers_==(emissions?3u:2u)&&!m.composition_frame_stopped_);states(m);
   auto route=m.before_draw({});CHECK(route.composition&&route.composition_policy==renderer::LinearCompositionPolicy::DistanceFade&&pass.boundary.augmented_vertex==&vs&&pass.boundary.augmented==&ps);
   m.finish_composition(S_OK,route.composition_policy);CHECK(m.composition_counts_.linear_fade==1&&m.composition_counts_.pool_traffic_bytes==64u*32u*56u);
   if(emissions){m.shadow_.fade_sampler_mask=0;m.shadow_.emission_pair=true;m.shadow_.emission_eligible_variant=&ps;route=m.before_draw({});CHECK(route.composition&&route.composition_policy==renderer::LinearCompositionPolicy::AdditiveEmission&&pass.boundary.augmented_vertex==nullptr);m.finish_composition(S_OK,route.composition_policy);}
@@ -766,9 +794,10 @@ void emission_route_cases(){
  // changes are attempted, but the original draw is suppressed after uncertainty.
  for(unsigned fault=0;fault<3;++fault){MotionOutput m;ready(m);m.lazy_rt1_=true;
   if(fault==0){m.deferred_flush_result_=-41;m.deferred_flushes_=1;}
-  if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;device.ordinal=0;device.failed_calls={1};}
+  if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};}
   if(fault==2)device.target_result=-43;
-  auto route=m.before_draw({});CHECK(!route.submit&&!route.composition&&m.composition_state_lost_&&m.composition_->prepares==0);CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==0);
+  auto route=m.before_draw({});CHECK(!route.submit&&!route.composition&&m.composition_state_lost_&&m.composition_->prepares==0);
+  CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==(fault==1?1u:0u)&&m.sampler_restore_failed_mask_==(fault==1?1u:0u));
   CHECK(route.submission_error==(fault==0?-41:fault==1?E_FAIL:-43));device.failed_calls.clear();
  }
  // Empty frames still clear M once at the frame boundary. Failed allocation or
@@ -814,13 +843,13 @@ void emission_route_cases(){
  for(bool published:{false,true}){MotionOutput m;ready(m);m.composition_effective_=true;m.composition_enhanced_=true;m.composition_readers_known_=false;m.composition_published_=published;
   auto route=m.before_draw({});CHECK(route.submit&&!route.composition&&m.composition_frame_stopped_&&m.composition_->prepares==0);CHECK(m.composition_quarantined_==published&&m.taa_invalidations>=1);
  }
- {MotionOutput m;ready(m);m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.lazy_rt1_=true;device.target_result=-72;m.sampler_biased_mask_=1;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_bindings_checked()==-71);CHECK(!m.lazy_rt1_&&!m.sampler_biased_mask_);device.failed_calls.clear();}
+ {MotionOutput m;ready(m);m.deferred_flush_result_=-71;m.deferred_flushes_=1;m.lazy_rt1_=true;device.target_result=-72;m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_bindings_checked()==-71);CHECK(!m.lazy_rt1_&&m.sampler_biased_mask_==1&&m.sampler_restore_failed_mask_==1);device.failed_calls.clear();}
  // Capture can call the void restoration wrapper before before_draw. Even
  // after another wrapper consumes the deferred result, motion state loss
  // remains sticky until Reset, independently of optional emission.
  for(bool effective:{false,true})for(unsigned fault=0;fault<3;++fault){MotionOutput m;ready(m);m.composition_effective_=effective;m.linear_emission_requested_=effective;
   if(fault==0){m.deferred_flush_result_=-81;m.deferred_flushes_=1;}
-  if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;device.ordinal=0;device.failed_calls={1};}
+  if(fault==1){m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};}
   if(fault==2){m.lazy_rt1_=true;device.target_result=-82;}
   m.restore_bindings();CHECK(m.composition_state_lost_==effective&&m.composition_frame_stopped_==effective);CHECK(m.motion_state_lost_&&m.taa_invalidations==1);
   device.failed_calls.clear();device.target_result=S_OK;m.restore_bindings();CHECK(m.restore_bindings_checked()==S_OK);
@@ -831,7 +860,7 @@ void emission_route_cases(){
  {MotionOutput m;ready(m);m.lazy_rt1_=true;device.target_result=-83;CHECK(m.flush_bindings<true>()==-83);CHECK(m.composition_state_lost_&&m.composition_frame_stopped_&&m.deferred_flushes_==1);
   device.target_result=S_OK;m.restore_bindings();CHECK(m.deferred_flushes_==0&&m.deferred_flush_result_==S_OK);auto route=m.before_draw({});CHECK(!route.submit&&!route.evaluated&&m.composition_->prepares==0);
  }
- {MotionOutput m;ready(m);m.sampler_biased_mask_=1;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_mip_bias()==E_FAIL);device.failed_calls.clear();m.restore_bindings();CHECK(m.composition_state_lost_&&!m.before_draw({}).submit);}
+ {MotionOutput m;ready(m);m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;device.ordinal=0;device.failed_calls={1};CHECK(m.restore_mip_bias()==E_FAIL);CHECK(m.sampler_restore_failed_mask_==1&&m.restore_mip_bias()==S_OK&&m.counters_.mip_bias_restores==1);device.failed_calls.clear();m.restore_bindings();CHECK(m.composition_state_lost_&&!m.before_draw({}).submit);}
  // The writer boundary double records the exact requested main-surface
  // handoff. Query uncertainty requests that handoff, without directly setting
  // quarantine. Getter references are retired inside the busy-accounting guard.
@@ -975,7 +1004,7 @@ void attempted_state_cases(){
  }
  // No lazy objects are needed: a consumed deferred/mip failure also sticks.
  for(bool deferred:{false,true}){Device d;MotionOutput m;m.device_=&d;
-  if(deferred){m.deferred_flush_result_=-94;m.deferred_flushes_=1;}else{m.sampler_biased_mask_=1;m.samplers_[0].biased=true;d.failed_calls={1};}
+  if(deferred){m.deferred_flush_result_=-94;m.deferred_flushes_=1;}else{m.sampler_biased_mask_=1;m.samplers_[0].biased=true;m.samplers_[0].saved_known=true;d.failed_calls={1};}
   m.restore_bindings();CHECK(m.motion_state_lost_&&m.motion_state_error_==(deferred?-94:E_FAIL));CHECK(!m.before_draw({}).submit);
  }
  std::printf("motion_attempted_state checks=%u\n",checks-begin);
