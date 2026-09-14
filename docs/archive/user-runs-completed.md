@@ -464,3 +464,12 @@ bullet pixel, this does not yet prove a no-op composite. The diagnostic is being
 whole-rect change counts and max/argmax pre/post, plus a per-frame timing line, for run 18. Frame
 time is not resolvable per firing frame from the 300-frame `frame_end` windows (≈ 9.9 ms/frame average
 over one 83-frame window).
+
+## 18. Voice crackle fix: decoder plugin v4 — Completed
+
+Completed as user run 18, snapshot `/tmp/x3-bottleX3-run46/`, installed DLL `5b92484a…` with plugin
+`/tmp/x3-wma-plugin-v4` (backup `~/x3-mod-resume-2026-09-14/artifacts/wma-plugin-v4/`). User report:
+no crackling any more, the voice is fine. Target-name speech is therefore working in gameplay through
+the plugin path plus the DMO fallback hook, with the decoder float limit removing the stock converter's
+full-scale wrap (`docs/verification/voice-decoder.md`). Selection-latency comparison against run 28
+still needs the phase-segment join; not done here.
