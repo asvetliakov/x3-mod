@@ -1,0 +1,124 @@
+--- a/ext/libav/gstavauddec.c
++++ b/ext/libav/gstavauddec.c
+@@ -38,6 +38,56 @@
+ #include "gstavauddec.h"
+ 
+ GST_DEBUG_CATEGORY_STATIC (GST_CAT_PERFORMANCE);
++
++/* Local modification (X3 voice-cue timing correction, not upstream).
++ *
++ * Wine's amstream computes a stream time from a byte position with
++ * stream_time_from_position():
++ *   start_time + (position * 10000000 + bps/2) / bps
++ * where position is a 32-bit DWORD, so position * 10000000 wraps every
++ * 429.5 bytes and the reported time collapses onto the start of the
++ * upstream media sample plus a sawtooth. The arithmetic is exact only
++ * while a media sample is at most 429 bytes (429 * 10^7 + 44100 < 2^32).
++ * gst-libav emits one buffer per AVFrame and ffmpeg's wmadec emits a whole
++ * WMA superframe per AVFrame (up to 15 * 2048 samples), so each media
++ * sample is far past that bound and the game trims voice cues against a
++ * start time that can lag by up to ~0.7 s.
++ *
++ * Emit each decoded frame as consecutive sub-buffers of at most
++ * GST_FFMPEGAUDDEC_MAX_SUBFRAME_SAMPLES samples: 200 samples is 400 bytes
++ * of mono 16-bit PCM, the format this path negotiates, which is under the
++ * 429-byte bound with margin. (A sample here is one frame across all
++ * channels, so a stereo 16-bit format would be 800 bytes and would need a
++ * smaller cap; the game never negotiates one on this path.)
++ * GstAudioDecoder assigns each sub-buffer's PTS/duration from its own
++ * sample counter, so no timestamp arithmetic is done here.
++ */
++#define GST_FFMPEGAUDDEC_MAX_SUBFRAME_SAMPLES 200
++
++/* Second half of the same local modification.
++ *
++ * GstAudioDecoder ships DEFAULT_TOLERANCE 0, so it resyncs its output
++ * timeline (base_ts, sample counter) to the presentation time of every input
++ * frame. Measured on a host-only filesrc ! asfdemux ! avdec_wmav2 ! fakesink
++ * dump of the game's 00144.dat: ffmpeg's wmav2 emits about 0.5 % more samples
++ * than the ASF packet timeline advances (60 s of packet time carried 60.3 s of
++ * samples), and a resync happens at literally every packet boundary (164
++ * non-zero PTS steps for 165 packets), each jumping the output timeline by up
++ * to 35.6 ms. Those jumps, not the position wrap, are what remains of the cue
++ * anchor error once the sub-buffer cap above is in place.
++ *
++ * A non-zero tolerance makes the decoder keep its own sample-counted timeline
++ * and resync only when the accumulated difference exceeds it, which is what
++ * the byte-position arithmetic downstream needs. The value has to exceed the
++ * drift accumulated between two seeks, not just one step: the measured drift
++ * is about 5 ms/s (up to 11 ms/s locally), so 500 ms covers roughly 100 s of
++ * continuous decoding - far longer than any voice cue, which is re-seeked -
++ * while staying small enough that a genuine stream discontinuity still forces
++ * a resync. It is a deliberate trade: within one cue the reported times are
++ * exactly byte-linear, and they drift from the ASF packet timeline by about
++ * 0.5 % of the time since the last seek.
++ */
++#define GST_FFMPEGAUDDEC_TIMESTAMP_TOLERANCE (500 * GST_MSECOND)
+ 
+ /* A number of function prototypes are given so we can refer to them later. */
+ static void gst_ffmpegauddec_base_init (GstFFMpegAudDecClass * klass);
+@@ -151,6 +201,13 @@
+ 
+   gst_audio_decoder_set_drainable (GST_AUDIO_DECODER (ffmpegdec), TRUE);
+   gst_audio_decoder_set_needs_format (GST_AUDIO_DECODER (ffmpegdec), TRUE);
++
++  /* See GST_FFMPEGAUDDEC_TIMESTAMP_TOLERANCE above: default the jitter
++   * tolerance instead of leaving the base class at 0, which resyncs the
++   * output timeline to every input packet. The "tolerance" property still
++   * overrides this. */
++  gst_audio_decoder_set_tolerance (GST_AUDIO_DECODER (ffmpegdec),
++      GST_FFMPEGAUDDEC_TIMESTAMP_TOLERANCE);
+ }
+ 
+ static void
+@@ -562,10 +619,47 @@
+       need_more_data);
+ 
+   if (outbuf) {
++    GstAudioMeta *ameta;
++    gint bpf;
++    gsize total, done;
++
+     GST_LOG_OBJECT (ffmpegdec, "Decoded data, buffer %" GST_PTR_FORMAT, outbuf);
+-    *ret =
+-        gst_audio_decoder_finish_subframe (GST_AUDIO_DECODER_CAST (ffmpegdec),
+-        outbuf);
++
++    /* See GST_FFMPEGAUDDEC_MAX_SUBFRAME_SAMPLES above: split the decoded
++     * frame into consecutive sub-buffers of at most that many samples.
++     * Frames already at or below the cap are delivered unchanged. */
++    bpf = GST_AUDIO_INFO_BPF (&ffmpegdec->info);
++    ameta = gst_buffer_get_audio_meta (outbuf);
++    total = ameta ? ameta->samples :
++        (bpf > 0 ? gst_buffer_get_size (outbuf) / bpf : 0);
++
++    if (bpf <= 0 || total <= GST_FFMPEGAUDDEC_MAX_SUBFRAME_SAMPLES) {
++      *ret =
++          gst_audio_decoder_finish_subframe (GST_AUDIO_DECODER_CAST (ffmpegdec),
++          outbuf);
++    } else {
++      for (done = 0; done < total; done += GST_FFMPEGAUDDEC_MAX_SUBFRAME_SAMPLES) {
++        gsize nsamples = MIN ((gsize) GST_FFMPEGAUDDEC_MAX_SUBFRAME_SAMPLES,
++            total - done);
++        GstBuffer *sub;
++
++        /* gst_audio_buffer_truncate() consumes a reference and handles both
++         * the interleaved and the planar (GstAudioMeta) layout. */
++        sub = gst_audio_buffer_truncate (gst_buffer_ref (outbuf), bpf, done,
++            nsamples);
++        if (G_UNLIKELY (sub == NULL)) {
++          *ret = GST_FLOW_ERROR;
++          break;
++        }
++
++        *ret =
++            gst_audio_decoder_finish_subframe (GST_AUDIO_DECODER_CAST
++            (ffmpegdec), sub);
++        if (*ret != GST_FLOW_OK)
++          break;
++      }
++      gst_buffer_unref (outbuf);
++    }
+   } else {
+     GST_DEBUG_OBJECT (ffmpegdec, "We didn't get a decoded buffer");
+   }

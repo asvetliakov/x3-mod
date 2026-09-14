@@ -43,6 +43,36 @@ def near(value,target,tolerance):
     return target>0 and abs(value-target)/target<=tolerance
 
 
+def read_metrics(reads,bytes_per_second):
+    """Per-read anchor error and span for one segment's VOICE_READ rows.
+
+    The anchor is the first reported sample start of the segment; a read that
+    follows N PCM bytes has byte-derived position N/bytes_per_second, so
+    anchor_error = start - (first_start + N/bytes_per_second). Span is the
+    read's own reported end minus start. Both in ms; empty/error rows
+    (actual=0) carry no times and are skipped."""
+    out=[];before=0;anchor=None
+    for row in reads:
+        actual=int(row['actual'])
+        if actual<=0:continue
+        start=int(row['start'])
+        if anchor is None:anchor=start
+        out.append(dict(index=int(row['index']),bytes=actual,
+            anchor_error_ms=round((start-anchor-before*1e7/bytes_per_second)/1e4,3),
+            span_ms=round((int(row['end'])-start)/1e4,3)))
+        before+=actual
+    return out
+
+
+def read_summary(details):
+    """Anchor-error and span statistics over a set of per-read metrics."""
+    if not details:return dict(reads=0)
+    errors=[d['anchor_error_ms'] for d in details];spans=[d['span_ms'] for d in details]
+    return dict(reads=len(details),max_abs_anchor_error_ms=round(max(abs(e) for e in errors),3),
+        min_anchor_error_ms=min(errors),max_anchor_error_ms=max(errors),
+        min_span_ms=min(spans),max_span_ms=max(spans),mean_span_ms=round(sum(spans)/len(spans),3))
+
+
 def check_actual(text,ids,window_s,tail_s,declared):
     rows=[(x.split()[0],fields(x)) for x in text.splitlines() if x.startswith('VOICE_')]
     assert rows and rows[0][0]=='VOICE_ACTUAL_HEADER'
@@ -65,7 +95,7 @@ def check_actual(text,ids,window_s,tail_s,declared):
     assert len(capture)==1 and int(capture[0]['bytes'])==int(capture[0]['written'])>0
     files=[r for k,r in rows if k=='VOICE_FILE']
     assert [r['source'] for r in files]==[str(i) for i in ids]
-    summary=[]
+    summary=[];interior=[];tail_reads=[]
     for source,file in zip(ids,files):
         key=str(source)
         assert file['created']==file['complete']==file['eos']==file['monotonic']=='1'
@@ -77,11 +107,16 @@ def check_actual(text,ids,window_s,tail_s,declared):
         assert near(float(file['duration_s']),declared[source],0.05),('declared duration',key)
         segments=[r for k,r in rows if k=='VOICE_SEGMENT' and r['source']==key and r['repeat']=='0']
         assert [r['name'] for r in segments]==(['head','seek','tail'] if file['seeked']=='1' else ['head','tail'])
+        bytes_per_second=int(file['rate'])*int(file['channels'])*int(file['bits'])//8
+        assert bytes_per_second>0
+        detail={}
         for segment in segments:
             assert int(segment['nonzero_reads'])>0 and segment['monotonic']=='1'
             reads=[r for k,r in rows if k=='VOICE_READ' and r['source']==key and r['repeat']=='0' and r['segment']==segment['name']]
             assert sum(int(r['actual'])>0 for r in reads)==int(segment['reads'])>0
             assert sum(int(r['actual']) for r in reads)==int(segment['bytes'])
+            detail[segment['name']]=read_metrics(reads,bytes_per_second)
+            (tail_reads if segment['name']=='tail' else interior).extend(detail[segment['name']])
             if segment['name']=='tail':
                 assert segment['eos']=='1' and segment['end_reason']=='endofstream'
                 assert hr(segment['post_eos_hr']) in (0x40001,0x40003,0x80070026) or not hr(segment['post_eos_hr'])&0x80000000
@@ -100,9 +135,12 @@ def check_actual(text,ids,window_s,tail_s,declared):
             nonzero_reads=int(file['nonzero_reads']),decoded_seconds=decoded,requested_seconds=requested,
             graph_duration_seconds=float(file['duration_s']),declared_seconds=declared[source],
             seeked=file['seeked']=='1',eos=True,live_root_objects=0,
-            segments=[{k:s[k] for k in ('name','start_ms','reads','bytes','decoded_ms','span_ms','first_start','last_end','nonzero_reads','eos','end_reason','post_eos_hr')} for s in segments],
+            bytes_per_second=bytes_per_second,
+            segments=[dict({k:s[k] for k in ('name','start_ms','reads','bytes','decoded_ms','span_ms','first_start','last_end','nonzero_reads','eos','end_reason','post_eos_hr')},
+                reads_detail=detail[s['name']],reads_summary=read_summary(detail[s['name']])) for s in segments],
             reopens=[{k:r[k] for k in ('attempt','created','read','reads','bytes','nonzero_reads')} for r in reopens]))
     return dict(completed=True,files=summary,capture_bytes=int(capture[0]['bytes']),
+        anchor=dict(interior=read_summary(interior),tail=read_summary(tail_reads)),
         scope='Actual game voice archives through the native AMMultiMediaStream route; bounded windows plus real end of stream; no speech restoration claim')
 
 
@@ -147,7 +185,7 @@ def run_actual(a):
     if a.record:
         a.record.parent.mkdir(parents=True,exist_ok=True)
         a.record.write_text(json.dumps(report,indent=2)+'\n')
-    print(json.dumps({k:report[k] for k in ('completed','abort','process_wall_seconds','capture_bytes') if k in report}))
+    print(json.dumps({k:report[k] for k in ('completed','abort','process_wall_seconds','capture_bytes','anchor') if k in report}))
     return 0 if report['completed'] else 1
 
 

@@ -60,8 +60,9 @@ CrossOver's `libgstaudio-1.0.0.dylib`, handles planar layouts and the
 frame and assigns each sub-buffer's PTS/duration from its own sample counter,
 so the patch does no timestamp arithmetic). Proposed `N = 200` samples: 400
 bytes of mono 16-bit PCM at the negotiated format, under the 429-byte no-wrap
-limit with margin, and still ≤ 429 bytes for a stereo 16-bit format the game
-never negotiates here. That makes the arithmetic **exact** (rounding to 100 ns)
+limit with margin; a sample here is one frame across all channels, so a stereo
+16-bit format would be 800 bytes and would need a smaller cap, but the game
+never negotiates one on this path. That makes the arithmetic **exact** (rounding to 100 ns)
 rather than "< 20 ms"; the 10 ms fallback (`N = 441`, at most two wraps,
 error in (−9.74, 0] ms) is only worth taking if the per-buffer cost below
 proves measurable.

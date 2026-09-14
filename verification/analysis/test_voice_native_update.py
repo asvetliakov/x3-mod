@@ -73,6 +73,37 @@ class ActualModeTests(unittest.TestCase):
                        good.replace('nonzero=44100 peak=9000','nonzero=0 peak=0').replace('nonzero_reads=1','nonzero_reads=0')):
             with self.assertRaises(AssertionError):self.check(broken)
 
+    def test_anchor_error_and_span_statistics(self):
+        # One head segment of three 1 s reads whose reported starts lag the
+        # byte-derived position by a known amount, plus one exact tail read.
+        rows=[dict(index=0,actual=88200,start=0,end=10000000),
+              dict(index=1,actual=88200,start=7000000,end=17000000),
+              dict(index=2,actual=44100,start=17000000,end=22000000),
+              dict(index=3,actual=0,start=0,end=0)]
+        detail=probe.read_metrics([{k:str(v) for k,v in r.items()} for r in rows],88200)
+        self.assertEqual([d['index'] for d in detail],[0,1,2])
+        self.assertEqual([d['anchor_error_ms'] for d in detail],[0.0,-300.0,-300.0])
+        self.assertEqual([d['span_ms'] for d in detail],[1000.0,1000.0,500.0])
+        summary=probe.read_summary(detail)
+        self.assertEqual(summary,dict(reads=3,max_abs_anchor_error_ms=300.0,min_anchor_error_ms=-300.0,
+            max_anchor_error_ms=0.0,min_span_ms=500.0,max_span_ms=1000.0,mean_span_ms=833.333))
+        self.assertEqual(probe.read_summary([]),dict(reads=0))
+
+    def test_record_carries_per_read_anchor_and_span_fields(self):
+        result=self.check(make_actual_log())
+        self.assertEqual(set(result['anchor']),{'interior','tail'})
+        # The shape fixture has one exact read per segment: no lag, full span.
+        self.assertEqual(result['anchor']['interior']['reads'],4)
+        self.assertEqual(result['anchor']['tail']['reads'],2)
+        self.assertEqual(result['anchor']['interior']['max_abs_anchor_error_ms'],0.0)
+        self.assertEqual(result['anchor']['interior']['max_span_ms'],20000.0)
+        for f in result['files']:
+            self.assertEqual(f['bytes_per_second'],88200)
+            for s in f['segments']:
+                self.assertEqual(len(s['reads_detail']),int(s['reads']))
+                self.assertEqual(s['reads_summary']['reads'],int(s['reads']))
+                self.assertEqual(s['reads_detail'][0]['anchor_error_ms'],0.0)
+
     def test_declared_duration_from_asf_header(self):
         properties=uuid.UUID('8CABDCA1-A947-11CF-8EE4-00C00C205365').bytes_le
         body=b'\x00'*40+struct.pack('<QQQ',33373580000,33364620000,1579)+struct.pack('<IIII',0,2261,2261,48646)
