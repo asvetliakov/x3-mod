@@ -99,6 +99,7 @@ bool read_code(uintptr_t address,unsigned char* out,unsigned count);
 // Arena accounting for reports.
 unsigned arena_used();
 unsigned arena_capacity();
+const void* arena_base(); // nullptr before the first claim; for fault diagnostics
 // A `call rel32` site redirected to a replacement with the same calling
 // convention (the pool's _fopen/_fclose call sites). Verified against the
 // expected callee; fails closed.

@@ -12,9 +12,9 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT / "verification/probe"))
 from run_voice_stream_probe import fields,hr,digest,bottle,game_running
-MODES=('game','nopause','early_update','single','explicit','game-ds','game-ds-stereo','game-dmo','game-dmo-fallback','game-dmo-skip')
-GAME_DS_MODES=('game-ds','game-ds-stereo','game-dmo','game-dmo-fallback','game-dmo-skip')  # section-10 DirectSound init, visible window, 004d1d40 teardown
-KEY_STEPS=('dmo_wrapper_init','dmo_wrapper_init_fallback','dmo_wrapper_skip','dmo_wrapper_add','remove_dmo_wrapper','release_graph','open_file','stream_run','control_pause','control_run','buffer_stop','control_stop','stream_stop','primary_create','primary_play','primary_set_format')
+MODES=('game','nopause','early_update','single','explicit','game-ds','game-ds-stereo','game-dmo','game-dmo-fallback','game-dmo-skip','game-dmo-hook')
+GAME_DS_MODES=('game-ds','game-ds-stereo','game-dmo','game-dmo-fallback','game-dmo-skip','game-dmo-hook')  # section-10 DirectSound init, visible window, 004d1d40 teardown
+KEY_STEPS=('dmo_wrapper_init','dmo_wrapper_init_fallback','dmo_wrapper_init_hooked','dmo_wrapper_skip','dmo_wrapper_add','remove_dmo_wrapper','release_graph','open_file','stream_run','control_pause','control_run','buffer_stop','control_stop','stream_stop','primary_create','primary_play','primary_set_format')
 MEDIA_IDS=(144,244,144)  # stream 1 (played), 2 and 3 (restored, never pumped)
 PLUGIN_KEYS=('GST_PLUGIN_PATH_1_0','GST_REGISTRY_1_0')
 EXE_NAME='voice_startup_replica.exe'
@@ -54,7 +54,11 @@ def validate(text):
     assert [int(r['stream']) for r in created]==([1] if streams==1 else [2,3,1])[:len(created)]
     plays=[r for k,r in rows if k=='REPLICA_PLAY'];assert len(plays)<=1
     polls=[r for k,r in rows if k=='REPLICA_POLL']
-    result=dict(mode=header['mode'],dwell_ms=int(header['dwell_ms']),streams=streams,created=sum(r['created']=='1' for r in created),stream_rows=created,
+    hook=[r for k,r in rows if k=='REPLICA_HOOK'];sites=[r for k,r in rows if k=='REPLICA_SITE']
+    if header['mode']=='game-dmo-hook':assert len(hook)==1 and hook[0]['installed']=='1' and hook[0]['patched']=='1'
+    else:assert not hook and not sites
+    hook_lines=[line for line in text.splitlines() if line.startswith('voice_dmo_fallback')]
+    result=dict(mode=header['mode'],hook=hook[0] if hook else None,sites=sites,hook_lines=hook_lines,dwell_ms=int(header['dwell_ms']),streams=streams,created=sum(r['created']=='1' for r in created),stream_rows=created,
                 startup=startup[0],primary=primary[0] if primary else None,stages=stages,polls=polls,play=plays[0] if plays else None,completed=False,hung_step=None,
                 key_steps=[dict(stream=int(r['stream']),name=r['name'],attempt=int(r['attempt']),hr=r['hr'],wall_ms=float(r['wall_ms'])) for r in stages if r['name'] in KEY_STEPS])
     if hungs:
@@ -65,6 +69,11 @@ def validate(text):
         result.update(hung_step=h['step'],hung_stream=int(h['stream']),hung_elapsed_ms=int(h['elapsed_ms']),hung_after_stages=len(stages))
         return result
     assert pending is None,'unterminated step without a watchdog report'
+    if header['mode']=='game-dmo-hook':
+        # The production hook is installed through engine_patch (checked above) and every replica
+        # site return, one per constructed stream, hands the game code the witness registers unchanged.
+        assert len(sites)==streams,'one site witness per constructed stream'
+        for site in sites:assert site['ebx_ok']=='1' and site['esp_ok']=='1' and site['esi']==site['hr']
     assert completes==[dict(streams=str(streams),audible='0')]
     assert len(created)==streams
     played=[r for r in created if r['stream']=='1']
@@ -230,6 +239,8 @@ def main():
         assert (a.output/'stdout.txt').stat().st_size<=4*1024*1024
         report.update(validate((a.output/'stdout.txt').read_text(errors='replace')))
     except (AssertionError,ValueError,KeyError,IndexError) as e:report['abort']='invalid diagnostic: '+str(e)
+    if 'hook_lines' not in report:  # a crash mid-step invalidates the diagnostic; keep the hook's install and fault lines
+        report['hook_lines']=[line for line in tail(a.output/'stdout.txt').splitlines() if line.startswith('voice_dmo_fallback')]
     if abort:report['abort']=abort
     if report['hung_step']:report['outcome']=f"hung at {report['hung_step']} (stream {report.get('hung_stream')})"
     elif report['completed']:report['outcome']='completed'
@@ -239,6 +250,7 @@ def main():
         compact={k:report.get(k) for k in ('label','mode','dwell_ms','outcome','completed','hung_step','hung_stream','hung_elapsed_ms','hung_after_stages','created','exit_code','killed_pids','survivors','process_wall_seconds','plugin_present','plugin_env','gst_debug','exe_sha256','abort')}
         compact['bottle']=report['bottle'];compact['media_sha256']=[m['sha256'] for m in identities]
         compact['play']=report.get('play');compact['output']=str(a.output)
+        compact['hook']=report.get('hook');compact['sites']=report.get('sites');compact['hook_lines']=report.get('hook_lines')
         for k in ('startup','primary','key_steps','stream_rows'):compact[k]=report.get(k)
         compact['sample_threads']=[dict(pid=s['pid'],threads=[dict(thread=t['thread'],top=t['frames'][:6]) for t in s.get('threads',[])]) for s in samples]
         compact['gst_log_tail']=report.get('gst_log_tail')

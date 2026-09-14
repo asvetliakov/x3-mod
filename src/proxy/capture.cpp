@@ -35,6 +35,7 @@
 #include <cstdarg>
 #include <cmath>
 #include <cstdio>
+#include <io.h>
 #include <cstdint>
 #include <cstring>
 #include <map>
@@ -48,6 +49,7 @@ namespace x3m {
 namespace {
 std::recursive_mutex mutex;
 FILE* logfile;
+HANDLE log_os_handle=INVALID_HANDLE_VALUE; // log_handle(): exception-context writes bypass stdio
 std::wstring directory;
 unsigned capture_start = 120;
 unsigned capture_count = 1;
@@ -598,6 +600,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         chase_camera::note_last_device(); // kept for the process lifetime (review 31 A3): a recreated device could not re-claim the site
         resource_reader::report(); // final summary without telemetry; the reader itself stays installed (loading continues without a device)
         loading_trace::crypt_cache_report("session"); // cumulative totals; bounded native cache retained until process exit
+        voice_dmo_fallback::shutdown(); // disarms the fault witness; the site patch stays with the other claims
     }
     if(!refs){
         // A nested final factory Release can report this device root still
@@ -1930,6 +1933,7 @@ void initialize_log(HMODULE module) {
         }
     }
     if(logfile) setvbuf(logfile,nullptr,_IOFBF,1024*1024);
+    if(logfile) log_os_handle=reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(logfile)));
     {
         // Logged as UTF-8 through WideCharToMultiByte: the CRT's %ls conversion
         // runs in the "C" locale and drops the whole line on a character it
@@ -2148,6 +2152,7 @@ void log(const char* format,...) {
     if(!logfile) return;
     va_list args; va_start(args,format); vfprintf(logfile,format,args); va_end(args); fputc('\n',logfile);
 }
+HANDLE log_handle() noexcept { return log_os_handle; }
 void hook_direct3d(IDirect3D9* d) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     if(factories.count(d)) return;

@@ -1,3 +1,4 @@
+import re
 import unittest
 import unittest.mock
 import run_voice_startup_replica as probe
@@ -6,6 +7,9 @@ import run_voice_startup_replica as probe
 def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fails=False):
     streams=1 if mode=='single' else 3;ds=mode in probe.GAME_DS_MODES
     rows=[f'REPLICA_HEADER schema=1 mode={mode} streams={streams} dwell_ms=0 watchdog_ms=15000 thread=9 audible=0'];seq=0
+    if mode=='game-dmo-hook':
+        rows.append('voice_dmo_fallback requested=1 installed=1 status=ok site=004014f6 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=01130000 arena_size=16384 arena_used=152 stub=0113001c tail=01130000 dispatcher=01130014 entry_slot=01130010 enter=00401560 fault_witness=1')
+        rows.append('REPLICA_HOOK installed=1 site=004014f6 patched=1 stub=0113001c tail=01130000')
     def stage(stream,name,code='00000000',attempt=1):
         nonlocal seq
         rows.append(f'REPLICA_BEGIN seq={seq} stream={stream} name={name} attempt={attempt}')
@@ -20,7 +24,7 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fail
         for name in ('listener_doppler','listener_distance','listener_rolloff','listener_position','listener_commit'):stage(0,name)
         rows.append('REPLICA_PRIMARY flags=11 create_hr=00000000 play_hr=00000000 format_hr=00000000 volume=0 listener=1 commit_hr=00000000')
     teardown=(['buffer_stop','control_stop','stream_stop','release_position','release_control','release_audio','release_media']
-              +(['remove_dmo_wrapper','release_dmo_wrapper'] if mode in ('game-dmo','game-dmo-fallback') else [])+['release_graph',('buffer_stop',2),('stream_stop',2),'release_buffer','release_sample','release_data','release_multimedia'] if ds
+              +(['remove_dmo_wrapper','release_dmo_wrapper'] if mode in ('game-dmo','game-dmo-fallback','game-dmo-hook') else [])+['release_graph',('buffer_stop',2),('stream_stop',2),'release_buffer','release_sample','release_data','release_multimedia'] if ds
               else ['buffer_stop','control_stop','stream_stop','release_position','release_control','release_buffer','release_sample','release_data','release_audio','release_media','release_graph','release_multimedia'])
     def tear(stream):
         for item in teardown:
@@ -35,9 +39,16 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fail
             if not stage(stream,name):return '\n'.join(rows)+'\n'
         if mode.startswith('game-dmo'):
             # 004cfcd0..004cfe18: wrapper create, QI, Init (speech DMO unregistered), then the mode's action and AddFilter.
-            stage(stream,'dmo_wrapper_create');stage(stream,'dmo_wrapper_qi');stage(stream,'dmo_wrapper_init','80040154')
-            if mode=='game-dmo-fallback':stage(stream,'dmo_wrapper_init_fallback')
-            else:stage(stream,'dmo_wrapper_init','80040154',2)
+            stage(stream,'dmo_wrapper_create')
+            if mode=='game-dmo-hook':
+                # The machine-code Init loop with the production hook on its site: one step, the hook's activation line, the site witness.
+                stage(stream,'dmo_wrapper_init_hooked')
+                rows.append(f'voice_dmo_fallback activation={stream} object=00d51448 filter=003f3580 qi_hr=00000000 init_hr=00000000 hits={stream} activations={stream} retries_ok={stream} retries_failed=0 skipped=0')
+                rows.append(f'REPLICA_SITE stream={stream} hr=00000000 esi=00000000 edi=00000000 ebx_ok=1 esp_ok=1 object=00d51448 wrapper=003f3580')
+            else:
+                stage(stream,'dmo_wrapper_qi');stage(stream,'dmo_wrapper_init','80040154')
+                if mode=='game-dmo-fallback':stage(stream,'dmo_wrapper_init_fallback')
+                else:stage(stream,'dmo_wrapper_init','80040154',2)
             if mode=='game-dmo-skip':stage(stream,'dmo_wrapper_skip')
             else:stage(stream,'dmo_wrapper_add')
         if not ok:
@@ -114,6 +125,23 @@ class ReplicaTests(unittest.TestCase):
         r=probe.validate(fixture('game-dmo',hang_at=(2,'release_graph')));self.assertEqual((r['hung_step'],r['hung_stream']),('release_graph',2))
         for bad in (fixture('game-ds').replace('REPLICA_PRIMARY flags=11','REPLICA_PRIMARY flags=12'),fixture('game').replace('ds_present=1 window=1','ds_present=1 window=1\nREPLICA_PRIMARY flags=11 create_hr=00000000 play_hr=00000000 format_hr=00000000 volume=0 listener=1 commit_hr=00000000')):
             with self.assertRaises(AssertionError):probe.validate(bad)
+
+    def test_game_dmo_hook_mode_records_the_install_and_site_witness(self):
+        r=probe.validate(fixture('game-dmo-hook'));self.assertTrue(r['completed'])
+        self.assertEqual(r['hook']['patched'],'1');self.assertEqual(len(r['sites']),3);self.assertEqual(len(r['hook_lines']),4)
+        self.assertEqual([k['name'] for k in r['key_steps'] if k['stream']==1][:2],['dmo_wrapper_init_hooked','dmo_wrapper_add'])
+        self.assertIn('remove_dmo_wrapper',[k['name'] for k in r['key_steps'] if k['stream']==1])
+        # A site return that hands the game code a different HRESULT in ESI, a hook that did not install, or hook rows in another mode are refused.
+        broken=fixture('game-dmo-hook').replace('esi=00000000 edi=00000000 ebx_ok=1','esi=80040154 edi=00000000 ebx_ok=1',1)
+        with self.assertRaises(AssertionError):probe.validate(broken)
+        with self.assertRaises(AssertionError):probe.validate(fixture('game-dmo-hook').replace('REPLICA_HOOK installed=1','REPLICA_HOOK installed=0'))
+        with self.assertRaises(AssertionError):probe.validate(fixture('game-dmo-fallback').replace('\n','\nREPLICA_HOOK installed=1 site=1 patched=1 stub=1 tail=1\n',1))
+        # No site witness at all (a hook that never fired) is refused, not vacuously accepted.
+        empty=re.sub(r'REPLICA_SITE [^\n]*\n','',fixture('game-dmo-hook'))
+        with self.assertRaisesRegex(AssertionError,'one site witness per constructed stream'):probe.validate(empty)
+        # Run 13's shape: the process died inside the hooked step, so the step is open and no watchdog line follows.
+        crashed=fixture('game-dmo-hook');cut=crashed.index('name=dmo_wrapper_init_hooked');crashed=crashed[:crashed.index('\n',cut)+1]
+        with self.assertRaisesRegex(AssertionError,'unterminated step'):probe.validate(crashed)
 
     def test_hang_names_open_step_and_forbids_completion(self):
         r=probe.validate(fixture(hang_at=(1,'control_pause')))

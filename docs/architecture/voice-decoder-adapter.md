@@ -242,6 +242,51 @@ exposure is nil unless `X3M_VOICE_DMO_FALLBACK=1` is set, which only
 `--voice-decoder` does; on an N edition without the speech DMO the substitution
 is the correct decoder for the WMA2 voice files.
 
+**Run 13 crash (2026-09-14) and fix.** The first game execution of the hook died
+at session frame 3 with `page fault on execute access to 09870000`. Root cause,
+in the compiled code and not in the emitted stub: the hook bound
+`IDMOWrapperFilter` as a local abstract C++ class in its anonymous namespace,
+and GCC (`-O2`, closed hierarchy for a TU-local type) devirtualised
+`view->Init(...)` into a direct `call __cxa_pure_virtual`; that weak symbol
+resolved to absolute 0, so the installed DLL (`608b35d8…`, preferred base
+`6fb40000`) carried `e8 … call 0` at `6fb9486d` and the relocated image jumped
+to `0 + delta` (with the DLL loaded at `793b0000`, exactly `09870000`, the
+fault address). The fixture proved it: replica mode `game-dmo-hook`
+(`verification/probe/voice_startup_replica.cpp`) installs the production hook
+through `engine_patch` on `replica_init_site`, a machine-code copy of
+`004cfd0e..004cfd7c` with the game's register contract (EBX media object with
+the wrapper at +0x9c, EDI 0, `[ESP+0x14]` view, EAX Init's HRESULT) and the
+site's exact eight bytes; built with the old binding (replica EXE
+`240073b9…`, record run `plugin-v3-game-dmo-hook-unfixed`, raw
+`/tmp/x3-voice-startup-hook6`) it dies inside `dmo_wrapper_init_hooked` with the
+witness line `code=c0000005 eip=00000000 … hits=1 activations=1 faults=1`; the
+winedbg backtrace of the first such build (`1257cf19…`, not retained, raw
+`/tmp/x3-voice-startup-hook1`) showed frame 1 at the stub's call return and
+`[esp]` after a `call 0` in the hook's own code, with the emitted stub and tail
+bytes decoded correct. The fix binds the interface as an explicit
+C vtable (`vtbl->Init(view,…)`, slot +0x0c as the game uses at `004cfd36`), which
+cannot be devirtualised; the rebuilt DLL calls `[edx+0xc]`. After the fix the
+same mode completes: three activations, `retries_ok=3`, every site return with
+ESI = HRESULT, EDI 0, EBX and ESP intact, `stream_run S_OK`, 5 samples /
+882000 bytes, clean teardown (`plugin-v3-game-dmo-hook`, 3.6 s). The host test
+compiles the hook and rejects any `__cxa_pure_virtual` symbol or relocation.
+Install line additions for the next run: arena base/size/used, stub, tail,
+dispatcher, entry slot and `enter` addresses. Fault witness: a vectored
+exception handler armed between `initialize()` and `shutdown()` (last device
+destroyed, DLL detach; `RemoveVectoredExceptionHandler`) records the first
+access-violation-class fault (code, address, arena-relative classification,
+EIP/ESP/EAX/EBX/ESI/EDI, thread, hit and activation counts) into a fixed record
+published by an atomic sequence, counts later faults, and always continues the
+search. Counting rule: only the execute-fault signature (an access violation
+with DEP kind 8, or EIP equal to the faulting address) takes the one-shot
+record and increments `faults`; every other first-chance exception of the
+accepted codes (SEH-handled probes, the game's own `__try`, read/write faults)
+only increments `other_first_chance`; stack overflow is not accepted at all
+since the handler cannot format on the last guard page. It takes no lock and touches no stdio: one preformatted copy of the line
+is written unbuffered with `WriteFile` to the log's OS handle (best effort, may
+precede buffered lines), and `report()` formats the same line at the next Present
+with `faults=N`. No per-frame cost.
+
 ## Timing correction builds (2026-09-14)
 
 The ratified [cue timing correction](voice-cue-timing-correction.md) is applied as
