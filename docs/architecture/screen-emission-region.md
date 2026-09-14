@@ -147,3 +147,14 @@ positions `FLOAT3` at offset 0, stride 24 (TEXCOORD FLOAT2 at 12, D3DCOLOR at
 1476/1699/1917). The ownership layer records lock flags and revision but no byte
 range, so the window record of section 6 is a new contract, and the writer site
 must come from disassembly (brief dispatched).
+
+Disassembly answered both facts: the writer, its whole-buffer `D3DLOCK_DISCARD`
+lock at `0x004bfdd9`, the `memcpy` of `count*24` bytes from a persistent
+system-memory copy, and the non-indexed `DrawPrimitive(4, 0, count/3)` at
+`0x004c008a` are documented in
+[bullet vertex buffer writer](../reverse-engineering/effects-engine-remaining-emission.md#bullet-vertex-buffer-writer-2026-09-14).
+Consequences for step B: the lock window is the whole 147456-byte buffer while
+only the leading `primCount*3` vertices are valid, so an Unlock-time scan must
+be reduced to that prefix at the draw (`StartVertex` is always 0); positions are
+world-space `FLOAT3` at offset 0, stride 24; and the game keeps no bullet radius
+or bound to read instead.

@@ -238,3 +238,81 @@ Sources: [complete coverage ledger](../architecture/material-coverage.md),
 `verification/results/motion-output-profiles.json`. Targeted instruction facts
 were derived locally from `/tmp/x3-shader-sweep/programs`; no game program or
 decompiler output is tracked.
+
+## Bullet vertex buffer writer (2026-09-14)
+
+Ghidra headless on `X3AP.exe` (SHA-256 `fdbf3418…`, base `0x00400000`,
+`-noanalysis -readOnly`); raw decompiler output kept local. The particle
+renderer `0x004bf4c0` is *not* this path (effect `particles`, technique
+`BASE_NoLight`, stride `0x20`, 0x3a9800-byte buffer at `0x004be887`); row 19
+comes from the instanced-mesh path beside it. Frame cycle from `FUN_0047e920`:
+`0x0047e958` → `FUN_0046cde0` clears `group+0x10 & 3` and calls `FUN_004bf8e0`
+per part batch to zero the vertex count; each visible object appends via
+`FUN_0046cef0` → `FUN_004bf960`; `0x0047eb7a` → `FUN_0046d080` walks group list
+`scene+0x40` and calls the draw `FUN_004bfd40` once per part batch.
+
+Structures. Group node: `+0x0c` model id, `+0x10` bit 1 = collected, `+0x18`
+flags (bit `0x20000000` picks the technique), `+0x1c` bit `0x10` picks a
+material effect name (else `"effects"`, `0x0055608c`), `+0x20` max instances,
+`+0x2c` instance count, `+0x30` part list. Part batch (0x1c bytes, allocated in
+`FUN_0046c9f0`, keyed by texture id): `+0x08` texture id int16, `+0x10` vertices
+per instance, `+0x18` → VB record. VB record (0x10 bytes, from `FUN_004bf960` /
+`FUN_004bf8e0`, released in `FUN_004c00d0`): `+0x00` `IDirect3DVertexBuffer9*`,
+`+0x04` system-memory vertex array (malloc, same size), `+0x08` byte size,
+`+0x0c` current vertex count. `CreateVertexBuffer` (device vtable `+0x68`) at
+`0x004bfa41`, length `group[+0x20] * partbatch[+0x10] * 0x18`, usage `0x208`
+(`0x218` when device mode `+0x6d8` is 2); captured 147456 = 1024 × 6 × 24.
+
+1. Lock/Unlock. `Lock` (vtable `+0x2c`) at `0x004bfdd9`: `OffsetToLock = 0`,
+`SizeToLock = [rec+0x08]` (whole buffer), `Flags = 0x2000` (`D3DLOCK_DISCARD`,
+pushed at `0x004bfdba`); `memcpy` (`0x00515810`) writes `[rec+0x0c] * 0x18`
+bytes from `[rec+0x04]`; `Unlock` (`+0x30`) at `0x004bfe09`. One lock per part
+batch per frame with at most one draw after it, so the window is the whole
+buffer while only `count*24` leading bytes are valid; early returns after
+`0x004bfe0b` can leave a lock with no draw.
+
+2. CPU source. `FUN_004bf960` appends `partbatch[+0x10]` vertices per instance
+(6 for bullets: a flat triangle-list quad from the model; no camera-facing
+construction exists in this path). Per vertex: model int16 position triple at
+`model[+8] + index*0x18`, scaled `*4 * 1.52587890625e-05` (`0x005654e0`), then
+`D3DXVec3Transform` by the per-instance matrix from `FUN_004c64f0(object,
+scale)`, so stored positions are already world space, matching the VP-only VS.
+UV: two int32 at `src+0x0c`/`+0x10`, same scale, optionally remapped by the
+0x80-byte records at `object[+0x1ac]`. Colour is `alpha << 24`, alpha from
+`object[+0x13c]` or 0xff, RGB zero (contract B1). Writes go to `[rec+0x04] +
+[rec+0x0c]*0x18`, count incremented per vertex. No per-bullet radius, centre or
+bound is kept or computed here.
+
+3. Draw. Non-indexed: declaration `0x00608d58`, `SetStreamSource(0, [rec+0x00],
+0, 0x18)` at `0x004c0047`, renderer slot `+0x68` with 0 (index source cleared)
+at `0x004c005e`, then at `0x004c008a`
+`DrawPrimitive(4, StartVertex = 0, PrimitiveCount = [rec+0x0c] / 3)` (unsigned
+division by the `0xaaaaaaab` magic), so the drawn range is always
+`[0, primCount*3)` from the start of the lock window.
+
+4. Cheaper bound. The game precomputes none, but the identical bytes sit in
+cached system memory at `[rec+0x04]` with the exact count at `[rec+0x0c]` before
+the Lock. Two 5-byte hook sites hold the record in `EBX`: `0x004bfdba`
+(`68 00 20 00 00`, before the Lock) and `0x004c0074` (`b8 ab aa aa aa`, before
+the draw). Both are exact instruction boundaries; `EBX` is the record, `EBP`
+(effect), `ECX` and `ESI` stay live across them, `EDX` is dead at `0x004c0074`
+(the next `MUL` overwrites it) and flags are dead at both (next consumers
+`TEST EAX,EAX` at `0x004bfddb`, `MUL` at `0x004c0079`); `FUN_004bfd40` is
+reached only from the single flush `FUN_0046d080`, so neither site is reentrant.
+Without a hook the proxy must scan the mapped window and reduce it to the drawn
+prefix (per-block extrema at Unlock combined at the draw with `primCount*3`),
+because the tail beyond `count*24` is undefined DISCARD content.
+
+5. Pixel shader. `SetTechnique` (effect vtable `+0x34`) at `0x004bfeee` with
+`"INSTANCE_BULLETS"` (`0x005633dc`) when `group[+0x18] & 0x20000000`, else at
+`0x004bfefe` with `"INSTANCE"` (`0x005633f0`). The function sets only
+`g_mViewProjection` and `t_DiffuseTexture` and, unlike the particle path, no
+`g_SrcBlend`/`g_DestBlend`/`g_ZEnable`/`g_ZWriteEnable`, so row 19's
+ADD/ONE/INVSRCCOLOR comes from the archive pass state of `INSTANCE_BULLETS` and
+`ec1f5c4a…` vs `0a523f33…` is a property of the loaded archive/profile, not a
+runtime branch here.
+
+Unresolved: the object flag feeding `group[+0x18]` bit `0x20000000`, the source
+of the material effect name behind `group[+0x1c] & 0x10`, and whether another
+caller of `FUN_004bf960` can mix non-bullet geometry into one record (records
+are keyed by model id and texture id, so mixing is possible).
