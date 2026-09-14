@@ -171,12 +171,14 @@ public:
     bool composition_requested() const noexcept { return composition_requested_value; }
     void invalidate_taa() noexcept { ++taa_invalidations; }
     void probe_cutout_caps(bool force = false) noexcept;
+    bool cutout_arm_active() const noexcept;
     bool cutout_draw_state() noexcept;
     void mark_cutout_candidate(MotionRoute& route) noexcept;
     void render_state_failed(D3DRENDERSTATETYPE state) noexcept;
     void sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept;
     void before_set_sampler_state(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept;
     void restore_mip_bias_stage(unsigned stage,HRESULT* first) noexcept;
+    void report_mip_bias_game_write_failure() noexcept;
     void set_sampler_state(DWORD stage,D3DSAMPLERSTATETYPE type,DWORD value) noexcept;
 
     IDirect3DDevice9* device_ = nullptr;
@@ -196,6 +198,11 @@ public:
     Surface hdr_target_{true,D3DFMT_A16B16G16R16F};
     DWORD mip_bias_bits_ = 0;
     unsigned logged_failures_ = 0;
+    struct MipBiasGameWriteFailure {
+        std::uint64_t device = 0, frame = 0;
+        unsigned long index = 0, result = 0;
+        bool pending = false;
+    } mip_bias_game_write_failure_;
     struct {
         bool cutout_pair = false, recording = false;
         bool states_known[motion_shadow_state_count]{};
@@ -392,6 +399,7 @@ void draw_helpers() {
     h.output.hdr_target_.format=D3DFMT_A16B16G16R16F; h.output.mip_bias_bits_=1; check(!h.output.cutout_draw_state(),"mip bias refused");
 
     scenario(); Harness candidate; MotionRoute route;
+    candidate.output.cutout_caps_=Capability::Ready;
     candidate.output.mark_cutout_candidate(route);
     check(!route.cutout_candidate && candidate.output.render_queries==0,"nonpair is not candidate");
     candidate.output.shadow_.cutout_pair=true;
@@ -415,6 +423,44 @@ void draw_helpers() {
     candidate.output.mark_cutout_candidate(route);
     check(route.cutout_candidate && !route.cutout_test_known,"unknown alpha-test remains conservative candidate");
     check(candidate.device.factory.format_calls==0,"candidate marking never probes capabilities");
+
+    // Policy: a refused/unrouted exact pair misses coverage only while the arm
+    // is active. An inactive arm forwards it as an ordinary draw and keeps history.
+    scenario(); {
+        const auto visible_miss=[](const MotionRoute& r){
+            return x3m::cutout::missed(r.cutout_candidate,true,true,false,r.cutout_test_known,r.cutout_test,
+                r.cutout_color_known,r.cutout_color,r.cutout_alpha_known,r.cutout_alpha,r.cutout_z_known,r.cutout_z,
+                r.cutout_zfunc_known,r.cutout_zfunc);
+        };
+        const auto inactive=[&](const char* what,auto&& configure){
+            Harness h; h.output.shadow_.cutout_pair=true;
+            h.output.render_known[D3DRS_ALPHATESTENABLE]=true; h.output.render_values[D3DRS_ALPHATESTENABLE]=1;
+            h.output.render_known[D3DRS_COLORWRITEENABLE]=true; h.output.render_values[D3DRS_COLORWRITEENABLE]=7;
+            h.output.cutout_caps_=Capability::Ready; configure(h.output);
+            MotionRoute r; h.output.mark_cutout_candidate(r);
+            check(!h.output.cutout_arm_active() && !r.cutout_candidate && h.output.render_queries==0 && !visible_miss(r),what);
+        };
+        inactive("unsupported caps: refused pair keeps history",[](MotionOutput& o){o.cutout_caps_=Capability::Unsupported;});
+        inactive("retry pending: refused pair keeps history",[](MotionOutput& o){o.cutout_caps_=Capability::Retry;});
+        inactive("pending caps: refused pair keeps history",[](MotionOutput& o){o.cutout_caps_=Capability::Pending;});
+        inactive("reset pending: refused pair keeps history",[](MotionOutput& o){o.cutout_reset_pending_=true;});
+        inactive("HDR disabled: refused pair keeps history",[](MotionOutput& o){o.hdr_enabled_=false;});
+        inactive("HDR inactive: refused pair keeps history",[](MotionOutput& o){o.hdr_state_=MotionOutput::HdrState::Off;});
+        inactive("HDR suspended: refused pair keeps history",[](MotionOutput& o){o.hdr_state_=MotionOutput::HdrState::Suspended;});
+        inactive("unknown HDR target: refused pair keeps history",[](MotionOutput& o){o.hdr_target_.known=false;});
+        inactive("non-FP16 HDR target: refused pair keeps history",[](MotionOutput& o){o.hdr_target_.format=D3DFMT_A32B32G32R32F;});
+        inactive("nonzero mip bias: refused pair keeps history",[](MotionOutput& o){o.mip_bias_bits_=1;});
+        Harness active; active.output.shadow_.cutout_pair=true; active.output.cutout_caps_=Capability::Ready;
+        active.output.render_known[D3DRS_ALPHATESTENABLE]=true; active.output.render_values[D3DRS_ALPHATESTENABLE]=1;
+        active.output.render_known[D3DRS_COLORWRITEENABLE]=true; active.output.render_values[D3DRS_COLORWRITEENABLE]=7;
+        active.output.render_known[D3DRS_ALPHAFUNC]=true; active.output.render_values[D3DRS_ALPHAFUNC]=5; // GREATER: refused by the gate, still visible
+        MotionRoute r; active.output.mark_cutout_candidate(r);
+        check(active.output.cutout_arm_active() && r.cutout_candidate && visible_miss(r),
+              "active arm: a gate-refused visible pair misses coverage and drops history");
+        check(!x3m::cutout::missed(r.cutout_candidate,true,true,true,r.cutout_test_known,r.cutout_test,r.cutout_color_known,
+              r.cutout_color,r.cutout_alpha_known,r.cutout_alpha,r.cutout_z_known,r.cutout_z,r.cutout_zfunc_known,r.cutout_zfunc),
+              "active arm: a routed pair is not missed");
+    }
 
     scenario(); Harness invalidation;
     const unsigned alpha_ref=shadow_index(D3DRS_ALPHAREF), srgb_write=shadow_index(D3DRS_SRGBWRITEENABLE);
@@ -531,18 +577,38 @@ void sampler_transaction() {
               "a failed owned restore quarantines the effective composition");
         check(h.output.counters_.mip_bias_failures == 1 && h.output.mip_bias_total_failures_ == 1
               && h.output.counters_.restore_failures == 1, "the failed restore is counted once");
-        check(owns_nothing(h.output, 3) && !h.output.samplers_[3].saved_known,
-              "a failed restore plus a failed write leaves no stale obligation and no saved value");
+        check(h.output.samplers_[3].biased && (h.output.sampler_biased_mask_ & (1u << 3)) && !h.output.samplers_[3].saved_known,
+              "a failed restore plus a failed write keeps the obligation recorded and distrusts the saved value");
+        check(h.device.sampler_value[3] == route_bias, "the route's bias is still on the device after both failures");
         check(h.output.samplers_[5].biased && (h.output.sampler_biased_mask_ & (1u << 5)),
               "the other held stage is untouched");
-        check(h.output.logged_failures_ == 1, "a failed pre-restore emits one bounded log line");
+        check(h.output.logged_failures_ == 1, "a failed pre-restore consumes one bounded log slot");
+        check(h.output.mip_bias_game_write_failure_.pending && h.output.mip_bias_game_write_failure_.result == static_cast<unsigned long>(E_FAIL)
+              && h.output.mip_bias_game_write_failure_.index == h.output.counters_.draws,
+              "the hook records the failure for deferred formatting instead of logging in the light root");
         h.device.sampler_results[2] = E_FAIL; h.device.sampler_results[3] = E_FAIL;
         check(hook_set_sampler_state(h, 5, D3DSAMP_MIPMAPLODBIAS, app_value) == E_FAIL, "second failing transaction");
         check(h.output.taa_invalidations == 1, "state loss is latched once");
         check(h.output.counters_.restore_failures == 2 && h.output.counters_.mip_bias_failures == 2,
               "each failed restore is counted");
-        check(h.output.sampler_biased_mask_ == 0, "no owned bias survives a failed restore");
-        check(h.output.logged_failures_ == 2, "each failed pre-restore is logged under the shared bound");
+        check(h.output.sampler_biased_mask_ == ((1u << 3) | (1u << 5)), "every failed restore keeps its obligation");
+        check(h.output.logged_failures_ == 1 && h.output.mip_bias_game_write_failure_.pending,
+              "an unreported first failure is kept; a second one before Present only counts");
+        h.output.report_mip_bias_game_write_failure();
+        check(!h.output.mip_bias_game_write_failure_.pending, "Present-side reporting clears the pending event");
+        h.output.report_mip_bias_game_write_failure();
+        check(!h.output.mip_bias_game_write_failure_.pending, "reporting twice is idempotent");
+        h.device.sampler_calls = 0; h.device.sampler_results[0] = E_FAIL; h.device.sampler_results[1] = E_FAIL;
+        check(hook_set_sampler_state(h, 5, D3DSAMP_MIPMAPLODBIAS, app_value) == E_FAIL, "third failing transaction");
+        check(h.output.logged_failures_ == 2 && h.output.mip_bias_game_write_failure_.pending,
+              "each reported pre-restore failure is logged under the shared bound");
+        // Recovery: a later successful restore clears the kept obligation.
+        h.device.sampler_calls = 0; h.device.sampler_results[0] = S_OK; h.device.sampler_results[1] = S_OK;
+        HRESULT first = S_OK; h.output.restore_mip_bias_stage(3, &first);
+        check(SUCCEEDED(first) && owns_nothing(h.output, 3) && h.device.sampler_value[3] == held_value
+              && (h.output.sampler_biased_mask_ & (1u << 5)), "a later successful restore puts the saved value back and clears only that stage");
+        h.output.restore_mip_bias_stage(5, &first);
+        check(SUCCEEDED(first) && h.output.sampler_biased_mask_ == 0, "the remaining obligation clears on its own success");
     }
 
     // A failed restore whose application write is accepted still adopts the value.
@@ -576,9 +642,9 @@ void sampler_transaction() {
         hold_bias(h, 0);
         hook_set_sampler_state(h, 0, D3DSAMP_MIPMAPLODBIAS, app_value);
         check(events_are(plain, 3) && h.output.counters_.mip_bias_restores == 0, "recording never restores");
-        h.output.shadow_.recording = false; cpu_event_count = 0;
+        h.output.shadow_.recording = false; cpu_event_count = 0; h.device.sampler_calls = 0; // the device model accepts four calls
         hook_set_sampler_state(h, 0, D3DSAMP_MIPMAPLODBIAS, app_value);
-        check(h.output.counters_.mip_bias_restores == 1, "only the written held stage is restored");
+        check(h.output.counters_.mip_bias_restores == 1 && quiet(h.output), "only the written held stage is restored");
         check(h.output.sampler_biased_mask_ == (1u << 4) && h.output.samplers_[4].biased,
               "the unwritten held stage keeps its bias");
     }
@@ -619,6 +685,7 @@ class LinearCutoutContractTests(unittest.TestCase):
         selected = source[states_start:states_end] + '\n' + '\n\n'.join(
             extract_function(source, signature) for signature in (
                 'void MotionOutput::probe_cutout_caps(',
+                'bool MotionOutput::cutout_arm_active(',
                 'bool MotionOutput::cutout_draw_state(',
                 'void MotionOutput::mark_cutout_candidate(',
                 'void MotionOutput::render_state_failed(',
@@ -626,6 +693,7 @@ class LinearCutoutContractTests(unittest.TestCase):
                 'void MotionOutput::set_sampler_state(',
                 'void MotionOutput::restore_mip_bias_stage(',
                 'void MotionOutput::before_set_sampler_state(',
+                'void MotionOutput::report_mip_bias_game_write_failure(',
             )
         )
         with tempfile.TemporaryDirectory(prefix='x3-linear-cutout-contract-') as temporary:
@@ -683,6 +751,7 @@ class LinearCutoutContractTests(unittest.TestCase):
         self.assertIn('probe_cutout_caps(true);', extract_function(source, 'void MotionOutput::after_reset('))
         for signature in ('MotionRoute MotionOutput::before_draw(',
                           'void MotionOutput::evaluate_draw(',
+                          'bool MotionOutput::cutout_arm_active(',
                           'bool MotionOutput::cutout_draw_state(',
                           'void MotionOutput::mark_cutout_candidate('):
             self.assertNotIn('probe_cutout_caps(', extract_function(source, signature))

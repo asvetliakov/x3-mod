@@ -459,7 +459,7 @@ struct Fixture {
     void acquire_swapchain_surfaces() {
         api(d->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back.p), "GetBackBuffer");
         api(d->GetDepthStencilSurface(&depth.p), "GetDepthStencilSurface");
-        if (taa) {
+        if (taa || cutout) { // the cutout script publishes through the bloom copy without TAA too
             api(d->CreateTexture(W, H, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &bloom.p, nullptr), "CreateTexture bloom");
             api(bloom->GetSurfaceLevel(0, &bloom_surface.p), "bloom level");
         }
@@ -935,9 +935,18 @@ struct Fixture {
         // Reading logical main before terminal publication is a real export;
         // emission mode snapshots its owned FP16 input through the native seam.
         const auto before_image = emissions ? std::vector<DWORD>(std::size_t(W)*H) : color_image();
-        const Snapshot before = snapshot();
+        Snapshot before = snapshot();
         api(d->StretchRect(back.p, nullptr, bloom_surface.p, nullptr, D3DTEXF_NONE), "StretchRect bloom copy");
-        compare(before, snapshot(), "boundary");
+        const Snapshot after_copy = snapshot();
+        if (bias_live()) {
+            // A routed draw may still hold the route's bias here (the mip-bias
+            // script's model): the copy is a restore point, so afterwards every
+            // stage holds the application's own value again.
+            expect_bias("boundary copy restores the application's bias", 0);
+            for (unsigned s = 0; s < sampler_stages; ++s)
+                if (before.samplers[s][sampler_count - 1] == float_bits(mip_bias)) before.samplers[s][sampler_count - 1] = after_copy.samplers[s][sampler_count - 1];
+        }
+        compare(before, after_copy, "boundary");
         const auto after_image = color_image(), bloom_image = color_image(bloom_surface.p);
         require(bloom_image == after_image, "the application's bloom copy receives the main target as resolved");
         unsigned changed = 0;

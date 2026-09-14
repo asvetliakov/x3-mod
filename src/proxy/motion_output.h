@@ -664,9 +664,11 @@ private:
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void refresh_linear_material_contract() noexcept;
     void probe_cutout_caps(bool force = false) noexcept;
+    bool cutout_arm_active() const noexcept;
     bool cutout_draw_state() noexcept;
     void mark_cutout_candidate(MotionRoute& route) noexcept;
     void report_xt_default_unavailable() noexcept;
+    void report_mip_bias_game_write_failure() noexcept;
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
     void finish_composition(HRESULT, renderer::LinearCompositionPolicy) noexcept;
@@ -807,6 +809,14 @@ private:
         unsigned ready_mask = 0;
         bool seen = false, pending = false;
     } xt_default_unavailable_;
+    // The application's own D3DSAMP_MIPMAPLODBIAS write hook (an audited
+    // light root) must stay integer-only: a failed pre-write restore is
+    // recorded here and formatted after Present or at retirement.
+    struct MipBiasGameWriteFailure {
+        std::uint64_t device = 0, frame = 0;
+        unsigned long index = 0, result = 0;
+        bool pending = false;
+    } mip_bias_game_write_failure_;
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
     UINT target_width_ = 0, target_height_ = 0;

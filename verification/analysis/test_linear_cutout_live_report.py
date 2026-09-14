@@ -16,10 +16,11 @@ def report(material=True,depth=True,taa=True,bias=0,mixed=False):
         row=dict(frame=frame,**p,material=int(material),depth=int(depth),matched=0,accepted=accepted,
                  holes=4096-accepted,owned=accepted*p['routed'],cap_status=2 if 1<=p['cap']<=8 else 3 if p['cap']>=9 else 1,
                  cap_queries=frame+1,routed_delta=p['routed'] if p['step']!=10 else 0,
-                 missed_delta=int(material and not p['routed']),unavailable=int(material and not p['routed']))
+                 missed_delta=live.missed(frame,material,bias,mixed),unavailable=live.missed(frame,material,bias,mixed))
         lines.append('CUTOUT_LIVE '+' '.join(f'{k}={v}' for k,v in row.items()))
+        if taa:lines.append(f'TAA frame={frame} history={int(frame>0)} cut=0 changed=0 policy=1 skipped=0')
         if material and p['routed'] and p['wrong']<0 and frame not in (58,59,61) and accepted:
-            rgb=live.material_reference.expected(live.rgb_case(p['pair'],p['step'])).linear_rgb
+            rgb=live.material_reference.expected(live.rgb_case(p['pair'],p['step'])).encoded_rgba[:3]
             lines.append(f"CUTOUT_RGB frame={frame} pair={p['pair']} step={p['step']} reverse={int(p['step']==2)} rgb="+','.join(map(str,rgb)))
     if mixed:
         lines += [f'CUTOUT_FADE frame={f} source={i} prepared=1 original_calls=1' for f in range(3) for i in (0,1)]
@@ -47,6 +48,7 @@ class CutoutReport(unittest.TestCase):
         text=report()
         changes=(('routed_delta=1','routed_delta=0'),('owned=512','owned=511'),('holes=3584','holes=3585'),
                  ('cap=9 cap_status=3','cap=9 cap_status=1'),('cap=0 cap_status=1','cap=0 cap_status=3'),
+                 ('TAA frame=46 history=1 cut=0','TAA frame=46 history=0 cut=0'),('TAA frame=56 history=1 cut=0 changed=0 policy=1 skipped=0','TAA frame=56 history=1 cut=0 changed=0 policy=1 skipped=1'),
                  ('unavailable=1','unavailable=0'))
         for before,after in changes:
             # cap fields are separated by the fixture's other ordered fields.
@@ -58,6 +60,19 @@ class CutoutReport(unittest.TestCase):
             changed=text.replace(line,line.split('rgb=')[0]+'rgb='+rgb)
             with self.subTest(rgb=rgb),self.assertRaises(AssertionError):live.validate_report(changed)
 
+    def test_inactive_arm_never_reports_missed(self):
+        for bias in (0,-.5):
+            text=report(bias=bias)
+            for frame in (46,50,54,56)+((3,12) if bias else ()):
+                line=next(l for l in text.splitlines() if l.startswith(f'CUTOUT_LIVE frame={frame} '))
+                self.assertTrue(line.endswith('missed_delta=0 unavailable=0'),line)
+                with self.subTest(bias=bias,frame=frame),self.assertRaises(AssertionError):
+                    live.validate_report(text.replace(line,line.replace('missed_delta=0 unavailable=0','missed_delta=1 unavailable=1')),bias=bias)
+            line=next(l for l in text.splitlines() if l.startswith('CUTOUT_LIVE frame=33 '))
+            self.assertTrue(line.endswith(f'missed_delta={int(not bias)} unavailable={int(not bias)}'),line)
+        self.assertEqual(live.validate_report(report(bias=-.5),bias=-.5)['history_retained_frames'],24)
+        self.assertEqual(live.validate_report(report())['history_retained_frames'],10)
+
     def test_native_trace_counts_and_state_cost(self):
         result=live.validate_report(report())
         lines=[]
@@ -65,7 +80,7 @@ class CutoutReport(unittest.TestCase):
             p=live.plan(frame)
             values=dict(frame=frame,draws=3,routed=1+p['routed'],depth=1,taa_resolved=1,apply_failures=0,restore_failures=0,present='00000000',state_shadow=1,rt_mode='lazy',rs_queries=20,rs_hits=18,rs_gets=2)
             lines.append('motion_output_frame '+' '.join(f'{k}={v}' for k,v in values.items()))
-            values=dict(frame=frame,cutout_routed=p['routed'] if p['step']!=10 else 0,cutout_missed=int(not p['routed']),cutout_unavailable=int(not p['routed']),bind_failures=int(frame in (58,59)))
+            values=dict(frame=frame,cutout_routed=p['routed'] if p['step']!=10 else 0,cutout_missed=live.missed(frame),cutout_unavailable=live.missed(frame),bind_failures=int(frame in (58,59)))
             lines.append('linear_material_frame '+' '.join(f'{k}={v}' for k,v in values.items()))
         text='\n'.join(lines)
         self.assertEqual(live.validate_trace(text,result,True,True,True,True,True,0)['native_render_state_gets'],140)

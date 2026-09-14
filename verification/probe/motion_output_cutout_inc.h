@@ -115,7 +115,7 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         api(f.d->SetVertexShader(live.fade_vs.p),"cutout interleave fade vertex");api(f.d->SetPixelShader(live.fade_ps.p),"cutout interleave fade pixel");
         const float alpha[]={.625f,0,0,0};api(f.d->SetVertexShaderConstantF(39,alpha,1),"cutout interleave fade alpha");
         const float pc[][4]={{0,0,1,0},{.375f,.25f,.5f,0},{0,0,-1,0},{.125f,.5f,.25f,0},{.5f,0,0,0},{1,0,0,0}};api(f.d->SetPixelShaderConstantF(0,pc[0],6),"cutout interleave fade pixel inputs");
-        api(f.d->SetTexture(3,nullptr),"cutout interleave fade no cube");api(f.d->SetRenderState(D3DRS_ZENABLE,FALSE),"cutout interleave fade no depth test");api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"cutout interleave fade no depth write");api(f.d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"cutout interleave fade no alpha test");api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"cutout interleave fade blending");api(f.d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA),"cutout interleave source alpha");api(f.d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCALPHA),"cutout interleave destination alpha");api(f.d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"cutout interleave ADD");
+        api(f.d->SetTexture(3,nullptr),"cutout interleave fade no cube");api(f.d->SetRenderState(D3DRS_ZENABLE,TRUE),"cutout interleave fade depth test (the fade admission requires it)");api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"cutout interleave fade no depth write");api(f.d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"cutout interleave fade no alpha test");api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"cutout interleave fade blending");api(f.d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA),"cutout interleave source alpha");api(f.d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCALPHA),"cutout interleave destination alpha");api(f.d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"cutout interleave ADD");
         RECT rect{LONG((source?3:1)*f.W/8),LONG(f.H/4),LONG((source?7:5)*f.W/8),LONG(3*f.H/4)};api(f.d->SetScissorRect(&rect),"cutout interleave fade rectangle");
         const auto before=scene(),motion=read(1),depth=read(2);const auto state=f.snapshot();const unsigned prepared=f.emission_status(f.d.p,4),calls=f.emission_status(f.d.p,12);
         api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"cutout actual interleaved fade DIP");f.compare(state,f.snapshot(),"cutout interleaved fade restoration");
@@ -130,10 +130,12 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         const unsigned plan=mixed?70+iteration:iteration;
         const unsigned near_steps[]={1,5,1,7,8,1};
         const unsigned pair=f.cutout_bench||plan>=64?0:plan<32?plan/16:plan%2,step=f.cutout_bench?1:plan<32?plan%16:plan>=64&&plan<70?near_steps[plan-64]:1;const int wrong=plan>=32&&plan<45&&!f.cutout_bench?int(plan-32):plan==RSFailure||plan==71?1:-1;
-        const float shift=.03125f*float(plan%4),prior=objects[pair%2].rt;
+        // 1 px origin steps (0,1,2,1 px at 64 px): a sawtooth wrap would jump 3 px and trip the route's 2.4 px median cut rule.
+        const float shift=.03125f*float(2-std::abs(int(plan%4)-2)),prior=objects[pair%2].rt;
         Object& object=objects[pair%2];const bool known=step!=13;
         const unsigned cap=plan>=45&&plan<=54?plan-45:plan==56?10:0;
         const bool routed=(material&&f.mip_bias==0&&wrong<0&&!(cap>=1&&cap<=10))||step==10;
+        const bool arm_active=cap==0&&f.mip_bias==0; // inactive arm: ordinary native draw, no missed coverage, history kept
         if(!f.cutout_bench&&((plan>=45&&plan<=54)||plan==56))f.emission_fault(f.d.p,200,cap);
         f.frame_begin();f.linear_material_inputs();f.write_reserved();
         const float background_z=plan>=64&&plan<70?.300001f-.5f:step==12?-.3f:0;
@@ -157,6 +159,11 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         const unsigned queries_before=f.emission_status(f.d.p,31);
         const unsigned routed_before=f.emission_status(f.d.p,33),missed_before=f.emission_status(f.d.p,34);
         api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,step==2?6:0,2),"cutout actual original DIP");++f.draw_index;
+        // A routed ordinary draw under a live nonzero bias holds the route's bias on the
+        // mip-chain stages (the 1-level cube is ineligible) until the next restore point,
+        // exactly as the mip-bias script models; everything else is restored immediately.
+        const unsigned biased=routed&&f.bias_live()?(pair?0x0fu:0x07u):0u;
+        if(biased){f.expect_bias("cutout routed ordinary draw holds the bias",biased);for(unsigned s=0;s<8;++s)if(biased>>s&1)state.samplers[s][sampler_count-1]=f.float_bits(f.mip_bias);}
         f.compare(state,f.snapshot(),"cutout complete draw restoration");require(f.emission_status(f.d.p,31)==queries_before,"cutout draw does not query capabilities");for(unsigned i=0;i<13;++i){DWORD value=0;api(f.d->GetRenderState(wrong_state[i],&value),"cutout admission readback");require(value==before_extra[i],"cutout exact admission-state restoration");}
         const auto color=scene(),motion=read(1),depth=read(2);
         // Save reference device state because its production TemporalPass shares
@@ -182,11 +189,11 @@ void run_cutout_integration(Fixture& f,const char* original_path) {
         f.records.push_back({&object,shift,0,-.2f,routed,matched,prior,0,-.2f,false,f.jitter,routed&&known});if(routed&&known){object.recorded=true;object.rt=shift;last_seen[pair]=plan;last_first[pair]=step==2?6:0;}
         if(material&&rgb_sample>=0&&routed&&wrong<0&&plan!=VSFailure&&plan!=PSFailure&&plan!=SamplerFailure){const unsigned i=4*unsigned(rgb_sample);std::printf("CUTOUT_RGB frame=%llu pair=%u step=%u reverse=%u rgb=%.9g,%.9g,%.9g\n",f.frame,pair,step,step==2,color[i],color[i+1],color[i+2]);}
         const unsigned routed_delta=f.emission_status(f.d.p,33)-routed_before,missed_delta=f.emission_status(f.d.p,34)-missed_before;
-        if(step!=10)require(routed_delta==unsigned(routed)&&missed_delta==unsigned(material&&!routed),"cutout actual routing counters");
+        if(step!=10)require(routed_delta==unsigned(routed)&&missed_delta==unsigned(material&&!routed&&arm_active),"cutout actual routing counters");
         write("color",color);write("motion",motion);write("depth",depth);write("coverage",coverage);
         std::printf("CUTOUT_LIVE frame=%llu pair=%u step=%u wrong=%d material=%u depth=%u routed=%u matched=%u accepted=%u holes=%u owned=%u cap=%u cap_status=%u cap_queries=%u routed_delta=%u missed_delta=%u unavailable=%u\n",f.frame,pair,step,wrong,material,f.materialwrap_depth,routed,matched,accepted,holes,owned,cap,f.emission_status(f.d.p,30),f.emission_status(f.d.p,31),routed_delta,missed_delta,f.emission_status(f.d.p,32));
         if(mixed)fade(1);
-        f.emission_reference_color=mixed?scene():color;f.emissions_enabled=mixed||(material&&!routed);f.emission_mask_valid=mixed&&routed;
+        f.emission_reference_color=mixed?scene():color;f.emissions_enabled=mixed||(material&&!routed&&arm_active); // only an active arm's refusal drops historyf.emission_mask_valid=mixed&&routed;
         if(mixed){f.emission_reference_mask=read(3);unsigned covered=0;for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){const bool wanted=x>=f.W/8&&x<7*f.W/8&&y>=f.H/4&&y<3*f.H/4;const unsigned i=4*(y*f.W+x);for(unsigned c=0;c<3;++c)require_quiet((f.emission_reference_mask[i+c]>0)==wanted,"cutout interleaved native fade-mask union");covered+=wanted;}write("composed",f.emission_reference_color);write("mask",f.emission_reference_mask);std::printf("CUTOUT_UNION frame=%llu covered=%u unavailable=%u\n",f.frame,covered,!routed);}
         if(f.taa)f.boundary();
         else {api(f.d->SetDepthStencilSurface(nullptr),"cutout non-TAA boundary depth");api(f.d->StretchRect(f.back.p,nullptr,f.bloom_surface.p,nullptr,D3DTEXF_NONE),"cutout non-TAA publication");}

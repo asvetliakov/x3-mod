@@ -266,8 +266,14 @@ known entry (and composition blend cache where relevant); failed sRGB sampler
 writes leave material decode unknown. A write to MIPMAPLODBIAS first restores
 that stage only if the route currently owns its bias, preventing a failed native
 setter from leaving an ambiguous restore obligation. Failure of that restoration
-uses the existing sticky state-loss path. The conditional foreign restore has
-its own full CPU-state guard; ordinary sampler setters keep the light path.
+uses the existing sticky state-loss path; the obligation itself is cleared only
+by a successful restore, an accepted application write or Reset, so a failed
+restore followed by a failed application write cannot leave the route's bias
+on the device unrecorded. The failure is recorded as integers in the hook and
+formatted after Present or at retirement: the SetSamplerState hook is an
+audited light root and even an integer-only `log` call reaches the CRT's x87
+formatter. The conditional foreign restore has its own full CPU-state guard;
+ordinary sampler setters keep the light path.
 HRESULT forwarding and the existing light
 CPU/LastError boundary remain in place. Unknown material decode can use the
 already-qualified original-color plus motion fallback.
@@ -284,14 +290,32 @@ cannot revive it. Device verdict logging is bounded to sixteen heavy-path rows.
 
 A successful native-forward draw of a requested recognized cutout marks that
 frame's temporal input unavailable when it may have written foreground RGB
-without owned motion. Known alpha-test off, no RGB writes, NEVER alpha/depth
+without owned motion, but only while the cutout arm is active: feature
+enabled, capability verdict Ready, HDR active on the FP16 scene and zero
+configured mip bias, with the exact pair then refused by the per-draw gate or
+failed to route. While the arm is inactive (disabled, Unsupported, Retry
+pending, HDR inactive, nonzero bias) a refused pair is the ordinary native
+color plus motion fallback with trustworthy history retained and no reactive
+Unavailable. Known alpha-test off, no RGB writes, NEVER alpha/depth
 rejection, failed native draws and suppressed submissions do not trigger this
-new rule. The conservative decision does not claim to know pixel occlusion for
+new rule either. The conservative decision does not claim to know pixel occlusion for
 a refused draw. It unions with distance-fade composition availability after the
 shared mask is resolved: a valid fade mask cannot hide missing cutout motion.
 Unavailable frames still resolve current color, but neither reuse nor seed TAA
 history. The next fully covered frame can seed history again. Successfully
 routed cutouts, including ordinary-motion fallbacks, retain normal history.
+
+The first qualification run exposed three script defects in that fixture,
+none in the runtime: the cutout origin shift wrapped 3 px every four frames
+(above the route's 2.4 px median cut bound at 64 px, which the fixture's cut
+model does not cover; it is now a 1 px triangle wave), the non-TAA boundary
+copied into a bloom surface the fixture only created with TAA on, and the
+interleaved fade source disabled the depth test the fade admission requires.
+A routed ordinary draw under a live nonzero bias keeps the route's bias on its
+mip-chain stages until the next restore point (the bloom copy included), so the
+draw and boundary comparisons expect exactly that. The runner compares combined
+RGB in the encoded FP16 output space (`encoded_rgba` envelope), as the opaque
+material runner does; the oracle's `linear_rgb` is an intermediate.
 
 The selected live fixture extends the existing motion seam and consumes a
 retained candidate DLL, seam and EXE. It uses actual native threshold/coverage

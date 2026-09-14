@@ -32,12 +32,14 @@ LIMITATIONS=[
     'Two selected exact shader pairs and the initially admitted RGB-mask7 GE/ref1 state only.',
     'Fixture scene-owner/scope replaces game memory identity; actual native DIP, capability/state admission, HDR, same-draw motion/depth, and TAA remain live.',
     'Native Windows runtime, gameplay appearance and docking-port causality remain unverified.',
-    'Native alpha/coverage and fallback RGB twins are exact; combined RGB reuses the detached material oracle with '
-    'its own tolerance constants (RGB_REL_TOL .006, RGB_ABS_TOL 2e-5), which already cover the FP16 store.',
+    'Native alpha/coverage and fallback RGB twins are exact; combined RGB reuses the detached material oracle in its '
+    'gamma-2.2 encoded output space (binary32/binary16 source envelope) with its own tolerance constants '
+    '(RGB_REL_TOL .006, RGB_ABS_TOL 2e-5), which already cover the FP16 store.',
     'The routed material arm compares combined RGB at one accepted pixel per frame: the route replaces the color by '
     'design so no exact native twin exists, and the detached oracle evaluates one texel sample, not a per-pixel image.',
-    'TAA history publication is independent of cutout admission in every scripted configuration, so refusal '
-    'suppressing history is not a covered property; the non-TAA configurations only prove no reference is generated.',
+    'TAA history publication is independent of cutout admission in every scripted configuration. Inactive-arm refusals '
+    '(unsupported/retrying capabilities, nonzero bias) are asserted to retain history from the TAA rows; active-arm '
+    'refusals dropping history are asserted only by the fixture history script; non-TAA configurations only prove no reference is generated.',
     'Nonzero mip bias is a refusal control, not admitted cutout support.',
     'EVENT/QPC completion includes CPU and GPU submission cost and excludes setup/readbacks; it is not game FPS.',
     'Near-coplanar changing-alpha edge errors are reported against current color without a selected artistic acceptance threshold; unavailable shader objects and state-lost rollback remain separate qualification gaps.',
@@ -60,6 +62,17 @@ def plan(frame,material=True,bias=0,mixed=False):
     cap=frame-45 if 45<=frame<=54 else 10 if frame==56 else 0
     routed=bool(material and bias==0 and wrong<0 and cap==0) or step==10
     return dict(pair=pair,step=step,wrong=wrong,cap=cap,routed=int(routed))
+
+
+def arm_active(frame,bias=0,mixed=False):
+    # The cutout arm is inactive with unsupported/retrying capabilities or a
+    # nonzero mip bias: a refused pair is then an ordinary native draw that
+    # keeps TAA history and never raises a reactive Unavailable.
+    return plan(frame,True,bias,mixed)['cap']==0 and bias==0
+
+
+def missed(frame,material=True,bias=0,mixed=False):
+    return int(material and not plan(frame,material,bias,mixed)['routed'] and arm_active(frame,bias,mixed))
 
 
 def rows(output,prefix):
@@ -96,14 +109,21 @@ def validate_report(output,material=True,depth=True,taa=True,bias=0,mixed=False)
         own=int(row['owned']);assert own==n*expected['routed'];owned+=own
         if expected['step']!=10:
             assert int(row['routed_delta'])==expected['routed']
-            assert int(row['missed_delta'])==int(material and not expected['routed'])
-        assert int(row['unavailable'])==int(material and not expected['routed'])
+            assert int(row['missed_delta'])==missed(frame,material,bias,mixed)
+        assert int(row['unavailable'])==missed(frame,material,bias,mixed)
         if material:
             cap=expected['cap'];assert int(row['cap_status'])==(2 if 1<=cap<=8 else 3 if cap>=9 else 1),(frame,'capability verdict/recovery')
         accepted.append(n)
         if taa:temporal.append(frame)
     assert int(terminal[0]['taa_reference_frames'])==len(temporal)
     assert int(terminal[0]['taa_skipped_frames'])==0
+    # Inactive-arm refusals (capability block, nonzero bias before the first
+    # Reset) keep TAA history: only a scripted cut runs current-only.
+    retained=[f for f in range(1,frames) if material and taa and not arm_active(f,bias,mixed) and (plan(f,material,bias,mixed)['cap']>0 or f<15)]
+    if retained:
+        taa_rows={int(r['frame']):r for r in rows(output,'TAA ')}
+        for f in retained:
+            r=taa_rows[f];assert int(r['history'])==int(r['cut']=='0') and r['skipped']=='0',(f,'inactive arm must retain TAA history',r['history'],r['cut'])
     samples=rows(output,'CUTOUT_RGB ')
     expected_samples=[f for f in range(frames) if material and plan(f,material,bias,mixed)['routed'] and plan(f,material,bias,mixed)['wrong']<0 and f not in (58,59,61) and accepted[f]]
     assert [int(r['frame']) for r in samples]==expected_samples,'complete unique independent RGB samples'
@@ -111,16 +131,20 @@ def validate_report(output,material=True,depth=True,taa=True,bias=0,mixed=False)
     for sample in samples:
         frame=int(sample['frame']);p=plan(frame,material,bias,mixed);assert int(sample['pair'])==p['pair'] and int(sample['step'])==p['step'] and int(sample['reverse'])==(p['step']==2)
         c=rgb_case(p['pair'],p['step'])
-        wanted=material_reference.expected(c).linear_rgb
+        # The scene stores the route's gamma-2.2 encoded output (X3M_HDR_DECODE=gamma2.2),
+        # so compare the encoded RGBA envelope exactly as run_linear_material does,
+        # never the oracle's linear_rgb intermediate.
+        ideal=material_reference.expected(c);quantized=material_reference.expected(c,half_source=True)
         actual=tuple(map(float,sample['rgb'].split(',')));assert len(actual)==3
-        for a,b in zip(actual,wanted):
-            tolerance=material_reference.RGB_ABS_TOL+material_reference.RGB_REL_TOL*abs(b)
-            fraction=abs(a-b)/tolerance;assert math.isfinite(a) and fraction<=1,(frame,'combined RGB oracle',a,b,fraction);maximum=max(maximum,fraction)
+        for k,a in enumerate(actual):
+            lo=min(ideal.encoded_rgba[k],quantized.encoded_rgba[k]);hi=max(ideal.encoded_rgba[k],quantized.encoded_rgba[k])
+            tolerance=material_reference.RGB_ABS_TOL+material_reference.RGB_REL_TOL*max(abs(lo),abs(hi))
+            fraction=max(lo-a,a-hi,0.)/tolerance;assert math.isfinite(a) and fraction<=1,(frame,'combined RGB oracle',a,lo,hi,fraction);maximum=max(maximum,fraction)
     if mixed:
         fade=rows(output,'CUTOUT_FADE ');assert [(int(r['frame']),int(r['source'])) for r in fade]==[(f,i) for f in range(3) for i in (0,1)]
         assert all(r['prepared']==r['original_calls']=='1' for r in fade)
         union=rows(output,'CUTOUT_UNION ');assert [(int(r['frame']),int(r['covered']),int(r['unavailable'])) for r in union]==[(0,1536,0),(1,1536,1),(2,1536,0)]
-    return dict(mixed=mixed,frames=frames,checks=int(terminal[0]['checks']),owned_pixels=owned,accepted_pixels=accepted,temporal_frames=temporal,rgb_samples=len(samples),max_rgb_tolerance_fraction=maximum)
+    return dict(mixed=mixed,frames=frames,checks=int(terminal[0]['checks']),owned_pixels=owned,accepted_pixels=accepted,temporal_frames=temporal,rgb_samples=len(samples),max_rgb_tolerance_fraction=maximum,history_retained_frames=len(retained))
 
 
 def validate_pixels(work,result,depth=True):
@@ -179,8 +203,8 @@ def validate_trace(trace,result,material,depth,taa,shadow,lazy,bias):
         for frame,row in enumerate(materials):
             p=plan(frame,material,bias,result['mixed'])
             assert int(row['cutout_routed'])==(p['routed'] if p['step']!=10 else 0)
-            assert int(row['cutout_missed'])==int(not p['routed'])
-            assert int(row['cutout_unavailable'])==int(not p['routed'])
+            assert int(row['cutout_missed'])==missed(frame,material,bias,result['mixed'])
+            assert int(row['cutout_unavailable'])==missed(frame,material,bias,result['mixed'])
             # Only the selected live post-mutation bind faults cause failures.
             assert int(row['bind_failures'])==int(not result['mixed'] and frame in (58,59) and not bias)
     return dict(render_state_queries=queries,render_state_hits=hits,native_render_state_gets=native_gets)

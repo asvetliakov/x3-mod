@@ -316,6 +316,7 @@ void MotionOutput::release_resources() noexcept {
     // Final retirement already owns the full logging/CPU-state boundary; do
     // not lose a first unavailable event when no Present follows its setter.
     report_xt_default_unavailable();
+    report_mip_bias_game_write_failure();
     if (mip_bias_bits_ && !mip_bias_summary_logged_) {
         // Session summary of the bias path (the per-frame line carries the
         // frame's counts); every biased stage was restored by the release hook.
@@ -577,11 +578,13 @@ void MotionOutput::log_mip_bias_game_write() noexcept {
 void MotionOutput::restore_mip_bias_stage(unsigned stage, HRESULT* first) noexcept {
     auto& s = samplers_[stage];
     const HRESULT hr = native<SetSamplerStateFn>(SetSamplerState)(device_, stage, D3DSAMP_MIPMAPLODBIAS, s.saved_bias);
-    // Cleared either way: a failed restore leaves the device unknown, and the
-    // next routed draw re-reads the value before it sets the bias again.
-    s.biased = false; sampler_biased_mask_ &= ~(1u << stage);
     ++counters_.mip_bias_restores; ++mip_bias_total_restores_;
-    if (FAILED(hr)) { s.saved_known = false; if (SUCCEEDED(*first)) *first = hr; }
+    // Cleared only by a successful restore. After a failure the device may
+    // still hold the route's bias, so the obligation stays recorded: a later
+    // successful restore, an accepted application write or Reset clears it,
+    // and the saved value is no longer trusted for re-reading.
+    if (SUCCEEDED(hr)) { s.biased = false; sampler_biased_mask_ &= ~(1u << stage); return; }
+    s.saved_known = false; if (SUCCEEDED(*first)) *first = hr;
 }
 HRESULT MotionOutput::restore_mip_bias() noexcept {
     HRESULT first = S_OK;
@@ -734,10 +737,17 @@ void MotionOutput::probe_cutout_caps(bool force) noexcept {
             caps.AlphaCmpCaps,creation.AdapterOrdinal,unsigned(creation.DeviceType),unsigned(display.Format),formats[0],formats[1],formats[2]);
     }
 }
+// The cutout arm is active only with qualified capabilities, an active FP16
+// HDR scene and no mip bias (a separate, unqualified coverage modifier).
+// While it is inactive an Argon pair is an ordinary draw: native color plus
+// the motion fallback, with history retained and no coverage verdict.
+bool MotionOutput::cutout_arm_active() const noexcept {
+    return cutout_caps_ == cutout::Capability::Ready && !cutout_reset_pending_ && hdr_enabled_
+        && hdr_state_ == HdrState::Active && hdr_target_.known && hdr_target_.format == D3DFMT_A16B16G16R16F
+        && !mip_bias_bits_;
+}
 bool MotionOutput::cutout_draw_state() noexcept {
-    if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !hdr_enabled_
-        || hdr_state_ != HdrState::Active || !hdr_target_.known || hdr_target_.format != D3DFMT_A16B16G16R16F
-        || mip_bias_bits_) return false; // nonzero bias is a separate, unqualified coverage modifier
+    if (!cutout_arm_active()) return false;
     std::array<std::uint32_t,8> states{};
     for (unsigned i=0;i<states.size();++i) {
         DWORD value=0;
@@ -747,7 +757,10 @@ bool MotionOutput::cutout_draw_state() noexcept {
     return cutout::state(states);
 }
 void MotionOutput::mark_cutout_candidate(MotionRoute& route) noexcept {
-    if (!shadow_.cutout_pair) return;
+    // Only an active arm can miss coverage: an exact pair the per-draw gate
+    // refused or that failed to route. Disabled, Unsupported, Retry pending,
+    // inactive HDR or a nonzero bias never raise a reactive Unavailable.
+    if (!shadow_.cutout_pair || !cutout_arm_active()) return;
     route.cutout_test_known = SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE,&route.cutout_test));
     if (route.cutout_test_known && !route.cutout_test) return;
     route.cutout_color_known = SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE,&route.cutout_color));
@@ -800,12 +813,23 @@ void MotionOutput::before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE typ
         ++counters_.mip_bias_failures; ++mip_bias_total_failures_; ++counters_.restore_failures;
         if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; invalidate_taa(); }
         if (composition_effective_) { composition_state_lost_ = true; composition_frame_stopped_ = true; }
-        if (logged_failures_ < failure_log_limit) {
+        // No log() here: this hook is an audited light root and even an
+        // integer-only format reaches the CRT's x87 formatter. Keep the first
+        // unreported failure; the counters above carry any that follow.
+        auto& event = mip_bias_game_write_failure_;
+        if (!event.pending && logged_failures_ < failure_log_limit) {
             ++logged_failures_;
-            log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias_game_write",
-                id_, frame_, counters_.draws, restored);
+            event.device = id_; event.frame = frame_; event.index = counters_.draws;
+            event.result = static_cast<unsigned long>(restored); event.pending = true;
         }
     }
+}
+void MotionOutput::report_mip_bias_game_write_failure() noexcept {
+    auto& event = mip_bias_game_write_failure_;
+    if (!event.pending) return;
+    event.pending = false;
+    log("motion_output_restore_failed device=%llu frame=%llu index=%lu result=%08lx what=mip_bias_game_write",
+        event.device, event.frame, event.index, event.result);
 }
 void MotionOutput::sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) noexcept {
     if (stage>=sampler_stage_count || shadow_.recording) return;
@@ -813,9 +837,10 @@ void MotionOutput::sampler_state_failed(DWORD stage,D3DSAMPLERSTATETYPE type) no
     if (type==D3DSAMP_SRGBTEXTURE) s.srgb_known=false;
     if (type==D3DSAMP_MIPFILTER) s.mipfilter_known=false;
     if (type==D3DSAMP_MIPMAPLODBIAS) {
-        // before_set_sampler_state already removed any owned bias. Both
-        // native mutation outcomes now require a fresh read, with no stale
-        // restoration obligation that could overwrite the application's value.
+        // before_set_sampler_state restored any owned bias; if that restore
+        // failed the obligation is still recorded. Both native mutation
+        // outcomes now require a fresh read: no stale saved value may
+        // overwrite the application's value.
         s.saved_known=false;
     }
 }
@@ -3556,6 +3581,7 @@ void MotionOutput::before_present() noexcept {
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
+    report_mip_bias_game_write_failure();
     if (!enabled_) return;
     if (FAILED(result)) invalidate_taa();
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
