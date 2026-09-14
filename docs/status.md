@@ -119,9 +119,11 @@ The reviewed [distance-fade proposal](architecture/linear-distance-fade.md) uses
 one native submission, a linear blended layer, and shared reactive coverage. Its
 detached prototype passes 71 X3 cases / 257 source calls with native recovery;
 runtime admission and combined temporal-mask integration are implemented and
-independently reviewed on qualification branch `ad3fefe`; its clean DLL builds
-and passes the x87 audit. Actual live image/state/TAA and paired cost checks
-remain pending; that candidate is not installed. It does
+independently reviewed from production source `ad3fefe`; its clean DLL passes
+the x87 audit. The actual X3 image/state/TAA/Reset qualification passes 302 frames
+and 4,502,255 functional/admission checks. Performance is not accepted: the source
+bracket adds about 7.64–8.46 ms at 1080p/16 ordered DIPs. The option stays off and
+the candidate is not installed; measured cost reduction is the next step. It does
 not yet solve layered temporal accumulation. The [alpha-tested material route](architecture/alpha-tested-materials.md)
 passes the X3 capability check and detached coverage/alpha/depth/stencil twins
 for two exact Argon pairs (48 cases / 864 twins). Live admission and TAA remain

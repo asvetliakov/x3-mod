@@ -29,7 +29,7 @@ struct Device : IDirect3DDevice9 {
   IDirect3DVertexBuffer9 *stream = nullptr;
   D3DVIEWPORT9 viewport{};
   RECT scissor{};
-  DWORD fvf = 0, freq = 1, rs[24]{}, ss[3][8]{};
+  DWORD fvf = 0, freq = 1, rs[27]{}, ss[3][8]{};
   unsigned offset = 0, stride = 0, draws = 0, source_draws = 0, clears = 0,
            texture_creates = 0;
   unsigned bad_state_calls = 0, bad_rt_calls = 0, rs3_calls = 0,
@@ -37,6 +37,7 @@ struct Device : IDirect3DDevice9 {
   IDirect3DSurface9* draw_rt[3]{};
   DWORD draw_blend = 1;
   bool fail_energy_bind = false;
+  IDirect3DVertexShader9* fail_after_vs = nullptr;
   bool device_calls_forbidden = false;
   unsigned forbidden_device_accesses = 0;
   int fault_slot = -1;
@@ -277,7 +278,8 @@ struct Device : IDirect3DDevice9 {
            return d(p).output(91, d(p).make<IDirect3DVertexShader9>(), o);
          });
     slot(92, [](IDirect3DDevice9 *p, IDirect3DVertexShader9 *v) -> HRESULT {
-      bind(d(p).vs, v);
+      auto& a=d(p); bind(a.vs, v);
+      if (v && v==a.fail_after_vs) { a.fail_after_vs=nullptr; return E_FAIL; }
       return S_OK;
     });
     slot(93, [](IDirect3DDevice9 *p, IDirect3DVertexShader9 **o) -> HRESULT {
@@ -814,8 +816,64 @@ void fused_preparation() {
   }
 }
 
+void composition_policies() {
+  // Both policies share one pool/M clear, and policy switches are bracket-local.
+  for (unsigned mode=0;mode<5;++mode) {
+    ++scenarios; Device d;
+    if (mode!=0) d.caps.PrimitiveMiscCaps |= D3DPMISCCAPS_COLORWRITEENABLE |
+        D3DPMISCCAPS_SEPARATEALPHABLEND | D3DPMISCCAPS_INDEPENDENTWRITEMASKS;
+    auto* a=d.scene(); a->AddRef();
+    LinearEmissionPass p;
+    if (mode==1) d.fault_output(106,3,false); // Fade creation fails; additive survives.
+    const HRESULT attached=p.attach(&d,d.slots,d.caps,D3DFMT_A8R8G8B8,D3DFMT_D24S8,3);
+    check(p.caps().supported_policies==(mode==0?1u:3u),"immutable policy qualification");
+    check(p.caps().available_policies==(mode<=1?1u:3u),"created policy inventory");
+    check(attached==(mode==1?E_FAIL:S_OK),"policy creation first HRESULT");
+    if (mode<=1) { a->Release(); p.detach(); d.no_leaks(); continue; }
+    check(p.ensure_targets(17,11)==S_OK && p.references()==9 && p.allocations()==4,"one mixed-policy B/E/C/M pool");
+    check(p.begin_frame(4).ready,"mixed frame clear"); const auto clears=d.clears;
+    auto* old_vs=d.make<IDirect3DVertexShader9>(); Device::bind(d.vs,old_vs);
+    auto* fade_vs=d.make<IDirect3DVertexShader9>(); auto* ps=d.make<IDirect3DPixelShader9>();
+    for (unsigned which=0;which<3;++which) {
+      const bool fade=which==1;
+      d.rs[D3DRS_SRCBLEND]=fade?D3DBLEND_SRCALPHA:D3DBLEND_ONE;
+      d.rs[D3DRS_DESTBLEND]=fade?D3DBLEND_INVSRCALPHA:D3DBLEND_ONE;
+      d.rs[D3DRS_COLORWRITEENABLE]=fade?7:15;
+      d.rs[D3DRS_SRCBLENDALPHA]=17; d.rs[D3DRS_DESTBLENDALPHA]=23; d.rs[D3DRS_BLENDOPALPHA]=31;
+      LinearEmissionBoundary boundary{a,ps,4,true}; boundary.augmented_vertex=fade_vs;
+      boundary.policy=fade?LinearCompositionPolicy::DistanceFade:LinearCompositionPolicy::AdditiveEmission;
+      if (mode==3 && fade) d.fail_after_vs=fade_vs;
+      auto prepared=p.prepare(boundary);
+      if (mode==3 && fade) {
+        check(!prepared.ready && prepared.operation==E_FAIL && prepared.state_preserved,"partial VS failure rollback");
+        check(d.vs==old_vs && d.rt[0]==a && !d.rt[1] && !d.rt[2],"partial VS restored bindings");
+        check(p.coverage_valid(),"clean refusal preserves earlier M bytes");
+      } else {
+        check(prepared.ready,"policy bracket ready");
+        check(d.vs==(fade?fade_vs:old_vs),"policy-specific augmented VS binding");
+        if (fade) check(d.rs[D3DRS_SEPARATEALPHABLENDENABLE] && d.rs[D3DRS_SRCBLENDALPHA]==D3DBLEND_ONE
+            && d.rs[D3DRS_DESTBLENDALPHA]==D3DBLEND_INVSRCALPHA && d.rs[D3DRS_BLENDOPALPHA]==D3DBLENDOP_ADD
+            && d.rs[D3DRS_COLORWRITEENABLE2]==7,"source-over MRT alpha/coverage contract");
+        if (mode==4 && fade) p.inject(LinearEmissionPassFault::Composite);
+        auto done=p.finish(S_OK);
+        check(done.image==(mode==4 && fade?LinearEmissionImage::Native:LinearEmissionImage::Linear),"policy image/native-B recovery");
+        check(p.owning_candidate()!=nullptr,"policy owning candidate");
+        std::swap(a,*p.owning_candidate());
+        check(p.acknowledge_exchange(true)==S_OK && p.coverage_valid(),"mixed coverage/ownership ack");
+        check(d.vs==old_vs,"original VS restored after policy bracket");
+      }
+      check(d.rs[D3DRS_SRCBLENDALPHA]==17 && d.rs[D3DRS_DESTBLENDALPHA]==23 && d.rs[D3DRS_BLENDOPALPHA]==31
+          && !d.rs[D3DRS_SEPARATEALPHABLENDENABLE],"separate-alpha state restored across policies");
+      check(d.clears==clears && p.allocations()==4,"policy switch recleared M or reallocated pool");
+    }
+    a->Release(); p.before_reset(); check(p.references()==5,"mixed programs survive Reset with pool retired");
+    p.detach(); d.no_leaks();
+  }
+}
+
 } // namespace
 int main() {
+  composition_policies();
   fused_preparation();
   outputs();
   pool_identity();

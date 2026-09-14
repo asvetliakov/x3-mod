@@ -9,6 +9,13 @@
 #include <vector>
 using namespace x3m::renderer;
 int main(int argc, char **argv) {
+#ifndef X3M_FADE_BASELINE
+  if (argc == 4 && std::strcmp(argv[1], "--pair-mask") == 0) {
+    std::cout << linear_distance_fade_sampler_mask(std::stoull(argv[2], nullptr, 16),
+                                                  std::stoull(argv[3], nullptr, 16)) << '\n';
+    return 0;
+  }
+#endif
   if (argc == 3 && std::strcmp(argv[1], "--composite") == 0) {
     const auto words = distance_fade_composite::program();
     std::ofstream output(argv[2], std::ios::binary);

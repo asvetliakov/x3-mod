@@ -4,8 +4,16 @@
 #include <cstdint>
 #include <d3d9.h>
 namespace x3m::renderer {
+// One pool/coverage owner serves both producer policies. Policy bits are stable
+// configuration; each boundary selects only a capability-qualified program.
+enum class LinearCompositionPolicy : unsigned { AdditiveEmission = 1, DistanceFade = 2 };
+constexpr unsigned composition_policy_bit(LinearCompositionPolicy p) noexcept { return unsigned(p); }
 struct LinearEmissionPassCaps {
   bool enabled = false;
+  unsigned supported_policies = 0, available_policies = 0;
+  bool supports(LinearCompositionPolicy policy) const noexcept {
+    return (available_policies & composition_policy_bit(policy)) != 0;
+  }
   const char *reason = "detached";
   HRESULT formats = S_FALSE, programs = S_FALSE;
 };
@@ -30,11 +38,9 @@ struct LinearEmissionBoundary {
   // no recording/reentrancy/Reset/handoff pins, and flushed lazy MRT state.
   // Source shader has no oDepth; internal targets have no application aliases.
   bool admitted = false;
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
-  // Detached source-over experiment. Saved original VS must be restored even
-  // when this setter fails after changing the physical binding.
+  // Saved original VS must be restored even after a partially mutating setter.
   IDirect3DVertexShader9 *augmented_vertex = nullptr;
-#endif
+  LinearCompositionPolicy policy = LinearCompositionPolicy::AdditiveEmission;
 };
 enum class LinearEmissionPassFault {
   None,
@@ -56,7 +62,8 @@ public:
   LinearEmissionPass &operator=(const LinearEmissionPass &) = delete;
   // Device/table borrowed. Every injected device call uses native slots.
   HRESULT attach(IDirect3DDevice9 *, void *const *native, const D3DCAPS9 &,
-                 D3DFORMAT adapter_format, D3DFORMAT depth_format) noexcept;
+                 D3DFORMAT adapter_format, D3DFORMAT depth_format,
+                 unsigned requested_policies = composition_policy_bit(LinearCompositionPolicy::AdditiveEmission)) noexcept;
   const LinearEmissionPassCaps &caps() const noexcept;
   // Resource creation happens only here, outside any prepare/finish bracket.
   HRESULT ensure_targets(UINT width, UINT height) noexcept;

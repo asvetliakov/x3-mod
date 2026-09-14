@@ -1,7 +1,8 @@
 # Linear distance-fade composition: Run 27 investigation
 
-Status: reviewed detached prototype with X3 GPU qualification, 2026-09-14.
-Runtime admission, shared temporal-mask integration and installation are pending.
+Status: detached and actual X3 runtime correctness passed, 2026-09-14.
+Performance acceptance, installation and gameplay qualification remain pending;
+the runtime option remains default-off.
 This note owns the fade-route proposal; the [coverage ledger](material-coverage.md)
 owns the captured material population. The [native fade analysis](../reverse-engineering/asteroid-fog-temporal.md)
 already establishes the engine mechanism, so another broad trace or disassembly
@@ -211,7 +212,10 @@ node-origin admission, per-vertex fade and partial diffuse alpha can themselves
 change coverage at the state switch. Changing those engine semantics would be a
 separate decision requiring same-object evidence, not an implicit lighting fix.
 
-## Qualification and next decision
+## Qualification plan and remaining decision
+
+The original plan below is covered by the detached and actual runtime results
+later in this note. Performance acceptance and gameplay claims remain separate.
 
 Before integration, extend the existing detached shader/pass fixture with actual
 original b0 off/on, captured c39/c41, alpha 0/partial/1, unequal backgrounds,
@@ -237,9 +241,10 @@ without evidence. Paired completion timings should isolate this bracket at
 representative resolutions and counts; do not infer batching safety from old
 adjacency or equate component timing with game FPS.
 
-The qualified prototype below precedes runtime integration; a gate-only installed
-patch is insufficient. Eventual integrated telemetry should count recognized fade state bypasses
-before material-availability counters, using cached state and integer increments.
+The detached prototype alone does not qualify runtime integration; a gate-only
+installed patch is insufficient. The reviewed integration counts recognized fade
+state bypasses before material-availability counters, using cached state and
+integer increments.
 Existing native RE and this capture already justify the prototype; no additional
 broad game load is needed to choose its initial contract. Same-node transition
 and station-pass identification remain necessary for later user-visible claims.
@@ -305,5 +310,122 @@ After the same independent reviewer approved that correction, a retained-data
 reparse passed 580,608 numerical channel checks, 129,024 alpha values, 258,048 mask
 values and 183,264 exact raw-A channels. The maximum normalized RGB tolerance
 fraction is 0.000071875. R1/R2 raw failures remain local and linked from the
-compact record. Native-Windows execution, combined fade/emission temporal-mask
-integration and live cost remain open.
+compact record. That prototype did not qualify combined fade/emission temporal
+integration or live cost; the runtime result below supplies the later evidence.
+Native-Windows execution remains open.
+
+
+## Reviewed runtime integration
+
+The runtime slice adds an explicit, default-off `--linear-distance-fade`
+qualification option. It requires linear materials, motion/TAA and HDR with
+AgX gamma-2.2 decoding; additive emission remains an independent option. The
+original opaque admission gate is unchanged. Only the six exact Asteroid pairs
+with the reviewed depth-read-only, RGB-only source-over state can enter the fade
+bracket. Native or unsupported glass, station and alpha-tested draws are not
+promoted by this change.
+
+Shader registration retains a separate native/linear dual VS and PS. Setters and
+state-block resynchronization cache the exact pairing and required sampler mask;
+draw admission adds no shader lookup, compilation or allocation. Source blend
+tracking remains active with the optional general state shadow disabled. The
+existing composition owner saves and restores the augmented VS along with the
+native PS and blend state, then executes the original source once. It reuses its
+B/E/C/M pool and the exact qualified 600-byte composite; opaque and additive
+shader programs are unchanged.
+
+At the HDR latch, the shared owner qualifies additive and fade policy bits
+against the actual adapter display and scene-depth formats. Reset invalidates the
+display-format cache. An unresolved query or resource/program allocation failure
+keeps the requested producer set incomplete and retries only at a later latch.
+A proven immutable unsupported policy can remain native without activating the
+supplemental route. Once supported, a temporarily unavailable producer cannot
+be removed from the required set to admit partial history.
+
+One owner clears M once before either producer, including an empty frame.
+Missing required source coverage stops that frame and selects `Unavailable` with
+a null mask. A clean preparation refusal retains earlier M bytes but cannot
+claim a complete producer set. Native-B recovery retains completeness only when
+its coverage and restoration are certified; an invalid mask cannot be healed by
+a later producer. The existing current/previous supplemental-mask resolve,
+reader inventory, export quarantine, actual HDR owning-slot exchange and Reset
+retirement are shared by both policies, independent of additive enablement.
+
+The performance floor remains material: each prepared source incurs a full-size
+copy and composition, with an estimated 56 bytes/pixel of logical traffic per
+DIP (55.1 MB at 1280×768 or 116.1 MB at 1920×1080), excluding source raster,
+frame-mask clear, depth and driver traffic. The four FP16 pool targets occupy
+30.0 MiB or 63.3 MiB respectively; supporting both policies adds one small shader,
+not a second pool. Per-frame counters expose eligible/prepared/completed fade
+DIPs and that traffic estimate. The live comparison below holds all other
+features fixed and measures this cost without batching or a reduced copy region.
+
+### Actual X3 runtime result and performance decision
+
+The [live result](../../verification/results/bottle-X3/linear-distance-fade-live.json)
+passes all 15 processes and 302 frames: 150 functional, eight prerequisite-control
+and 144 timing frames. Functional/admission checks total **4,502,255**, with 490
+restoration comparisons, 190 functional source DIPs plus six admission DIPs, 105
+independent RGB samples, 30 original-program reference pairs and **140 exact TAA
+frame readbacks**. The five functional configurations cover fade/emission off/on
+combinations with lazy attachment and a both-on per-draw twin. The two controls
+with TAA or HDR disabled preserve native submission and decline supplemental
+availability. No game was launched. The bottle was X3 arm64 with
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`.
+
+The same independent reviewer approved the retained source, input hashes and
+actual evidence after the R3 run. The result binds the unchanged reviewed
+production slice `ad3fefe`, seam
+`e19f5a4d…`, and R3 fixture `148f48c1…`; complete input hashes are in the result.
+The fixture uses the actual capture DIP path, shared composition pool, owning HDR
+exchange and terminal TAA/AgX path. Its scene-owner seam substitutes for game
+owner-memory admission. All six fade pairs have independent CPU-linear color
+witnesses and exact native FP16 twins on a separate system-D3D reference device.
+Ordered mixed producers, self-overlap, alpha-zero coverage, disappearance,
+matched opaque return, camera rotation/translation and ordinary-object motion
+are included. Mask coverage matches the independently expected producer
+footprints; actual/reference TAA readbacks compare exactly with current/previous
+coverage enabled. The maximum RGB tolerance fraction is 0.161591, below the limit
+of one.
+
+Two rejected-source cases deliberately have different recovery contracts.
+Frame 22 fails before any successful enhancement and recovers next frame. When
+fade is disabled, the rejected scene can still retain a valid empty M, but cannot
+resolve or seed TAA. Frame 29 enhances before a failed source and unqualified
+publication: export quarantine must persist through successful Reset. Reset
+releases four targets while retaining reusable programs; current required bits
+are not a resource inventory. Both failed native sources execute once and retain
+their original HRESULT. R1's unprepared-source status incorrectly expected
+`S_OK` instead of `S_FALSE`; R2 conflated recoverable failure with this hostile
+publication contract. Their failed raw evidence remains local. R3 corrects the
+fixture and oracle without relaxing production reader, lifetime or Reset rules.
+
+Timing toggles only fade, with material/motion/TAA/HDR unchanged and emission off
+on both sides. Each resolution runs off/on and on/off process order; each process
+batches 1/4/16 ordered DIPs with two warmup and four measured frames per count.
+The table gives the range of **paired median deltas across those two orders**, in
+milliseconds. Each source and terminal window is EVENT-fenced; their sum uses
+the same begin/middle/end timestamps.
+
+| Resolution | Ordered DIPs | Source bracket delta | Source + terminal delta |
+|---|---:|---:|---:|
+| 1280×768 | 1 | +0.449 to +0.530 | +0.488 to +0.497 |
+| 1280×768 | 4 | +1.596 to +1.641 | +1.597 to +1.687 |
+| 1280×768 | 16 | +3.299 to +4.808 | +2.534 to +4.816 |
+| 1920×1080 | 1 | +0.790 to +0.823 | +0.505 to +2.035 |
+| 1920×1080 | 4 | +2.653 to +2.733 | +1.705 to +3.168 |
+| 1920×1080 | 16 | +7.638 to +8.464 | +5.323 to +8.124 |
+
+The source overhead is material and grows with ordered source count. Terminal
+deltas depend strongly on process order: at 1080p/16 DIPs they are −0.340 and
+−2.366 ms. These negative values do not establish an optimization or compensate
+for the source cost. The measurements include CPU submission and completion
+waiting, exclude setup, the frame-level M clear and readbacks, and are neither
+GPU timestamps nor game FPS. Four paired samples per order do not establish a
+population confidence interval.
+
+**Correctness passed; performance acceptance remains open.** Keep the opt-in
+option default-off. The measured 1080p cost does not justify default enablement
+or a gameplay performance claim. Installation with the feature enabled requires
+an explicit performance decision; native Windows execution, same-node in-game
+transition quality, shimmer and docking-port appearance remain unverified.

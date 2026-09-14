@@ -85,6 +85,15 @@ class DistanceFadeProducer(unittest.TestCase):
             check=True,capture_output=True,text=True)
         return int(result.stdout.split()[0]),output.read_bytes()
 
+    def test_exact_pair_sampler_contract(self):
+        expected = {pair: 7 if index < 3 else 15 for index, pair in enumerate(PAIRS)}
+        vertices = [pair[0] for pair in PAIRS] + ['0', '836022c003f4cf37']
+        pixels = sorted({pair[1] for pair in PAIRS}) + ['0', 'a66fb1981ba755b2']
+        for vs in vertices:
+            for ps in pixels:
+                actual = subprocess.check_output([str(self.driver), '--pair-mask', vs, ps], text=True)
+                self.assertEqual(int(actual), expected.get((vs, ps), 0), (vs, ps))
+
     def test_native_body_and_direct_pp_alpha_are_exact(self):
         for name,generated in self.generated.items():
             original=body((self.programs/(name+'.bin')).read_bytes())
@@ -167,15 +176,21 @@ class DistanceFadeProducer(unittest.TestCase):
         first=next(i['dword'] for i in items if i['opcode']==41)
         self.assertTrue(all(i['dword']<first for i in items if i['opcode']==66),'no derivative sampling in divergent control flow')
 
-    def test_macro_off_emission_component_tokens_unchanged(self):
+    def test_promoted_composite_is_exact_qualified_bytecode(self):
+        import re
+        words=re.findall(r'0x([0-9a-f]{8})u',(ROOT/'src/renderer/linear_distance_fade_composite_inc.h').read_text())
+        data=struct.pack('<'+str(len(words))+'I',*(int(x,16) for x in words))
+        self.assertEqual(len(data),600)
+        self.assertEqual(hashlib.sha256(data).hexdigest(),'0acae2e3dcfed4f04534cf09f3b74c897fd9c6e66e706c6a21c45deaf6da0b53')
+        # Old additive program bytes remain untouched; shared state/policy
+        # changes are now covered by the whole-component host fixture.
+        for name in ['linear_emission_composite_inc.h','linear_emission_copy_clear_inc.h']:
+            self.assertEqual((ROOT/'src/renderer'/name).read_bytes(),subprocess.check_output(['git','show','bee7d71:src/renderer/'+name],cwd=ROOT))
         compiler=shutil.which('i686-w64-mingw32-g++')
-        if not compiler: self.skipTest('x86 cross preprocessor unavailable')
-        baseline=self.work/'emission-baseline.cpp'
-        baseline.write_bytes(subprocess.check_output(['git','show','2cf65ae:src/renderer/linear_emission_pass.cpp'],cwd=ROOT))
-        command=[compiler,'-std=c++17','-E','-P','-I',str(ROOT/'src/renderer')]
-        for defines in ([],['-DX3M_LINEAR_EMISSION_PASS_FIXTURE']):
-            old=subprocess.check_output(command+defines+[str(baseline)])
-            new=subprocess.check_output(command+defines+[str(ROOT/'src/renderer/linear_emission_pass.cpp')])
-            self.assertEqual(b''.join(old.split()),b''.join(new.split()))
+        if not compiler:self.skipTest('x86 cross preprocessor unavailable')
+        source=subprocess.check_output([compiler,'-std=c++17','-E','-P',str(ROOT/'src/renderer/linear_emission_pass.cpp')]).decode()
+        self.assertIn('boundary.augmented_vertex',source,'real source-over VS setter cannot remain fixture-only')
+        self.assertIn('source_over_composite',source)
+        self.assertNotIn('fixture_source_over_',source)
 
 if __name__=='__main__': unittest.main()

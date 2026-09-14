@@ -103,11 +103,9 @@ constexpr D3DRENDERSTATETYPE states[] = {D3DRS_ZENABLE,
                                          D3DRS_COLORWRITEENABLE1,
                                          D3DRS_COLORWRITEENABLE2,
                                          D3DRS_COLORWRITEENABLE3
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
                                          , D3DRS_BLENDOPALPHA,
                                          D3DRS_SRCBLENDALPHA,
                                          D3DRS_DESTBLENDALPHA
-#endif
 };
 constexpr DWORD fullscreen[] = {FALSE,
                                 FALSE,
@@ -133,11 +131,9 @@ constexpr DWORD fullscreen[] = {FALSE,
                                 15,
                                 15,
                                 15
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
                                 , D3DBLENDOP_ADD,
                                 D3DBLEND_ONE,
                                 D3DBLEND_ZERO
-#endif
 };
 constexpr D3DSAMPLERSTATETYPE samplers[] = {
     D3DSAMP_MINFILTER,   D3DSAMP_MAGFILTER,    D3DSAMP_MIPFILTER,
@@ -166,6 +162,9 @@ constexpr DWORD separate_copy_words[] = {
 #endif
 constexpr DWORD composite_words[] = {
 #include "linear_emission_composite_inc.h"
+};
+constexpr DWORD source_over_words[] = {
+#include "linear_distance_fade_composite_inc.h"
 };
 struct Saved {
   IDirect3DSurface9 *rt[4]{};
@@ -208,7 +207,8 @@ struct LinearEmissionPass::Impl {
   IDirect3DSurface9 *b = nullptr, *e = nullptr, *c = nullptr, *m = nullptr;
   IDirect3DVertexShader9 *vs = nullptr;
   IDirect3DVertexDeclaration9 *declaration = nullptr;
-  IDirect3DPixelShader9 *copy = nullptr, *composite = nullptr;
+  IDirect3DPixelShader9 *copy = nullptr, *composite = nullptr, *source_over_composite = nullptr;
+  bool source_over = false;
   UINT width = 0, height = 0;
   unsigned allocation_count = 0, rt_count = 0;
   Saved saved{};
@@ -223,9 +223,6 @@ struct LinearEmissionPass::Impl {
   LinearEmissionCompletion completion{};
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
   bool fused_copy = true;
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
-  bool source_over = false;
-#endif
   LinearEmissionPassFault fault_kind = LinearEmissionPassFault::None;
   unsigned fault_count = 0;
   bool fault(LinearEmissionPassFault f) noexcept {
@@ -247,6 +244,9 @@ struct LinearEmissionPass::Impl {
                  same_object(p, m));
   }
   bool supported_state(D3DRENDERSTATETYPE state) const noexcept {
+    // Additive-only callers retain the old native getter/setter inventory.
+    if (state == D3DRS_BLENDOPALPHA || state == D3DRS_SRCBLENDALPHA || state == D3DRS_DESTBLENDALPHA)
+      return source_over;
     if (state == D3DRS_COLORWRITEENABLE)
       return (caps9.PrimitiveMiscCaps & D3DPMISCCAPS_COLORWRITEENABLE) != 0;
     if (state == D3DRS_SEPARATEALPHABLENDENABLE)
@@ -425,7 +425,7 @@ struct LinearEmissionPass::Impl {
       hr = call(SetTexture, DWORD(i),
                 static_cast<IDirect3DBaseTexture9 *>(views[i]));
     if (SUCCEEDED(hr))
-      hr = call(SetPs, combine ? composite : copy);
+      hr = call(SetPs, combine ? (source_over ? source_over_composite : composite) : copy);
     if (SUCCEEDED(hr)) {
       QuadVertex vertices[4];
       quad_vertices(width, height, vertices);
@@ -456,7 +456,6 @@ struct LinearEmissionPass::Impl {
         depth.Height < height || depth.MultiSampleType != D3DMULTISAMPLE_NONE ||
         depth.MultiSampleQuality)
       return false;
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     if (source_over) {
       return boundary.augmented_vertex &&
              saved.state(D3DRS_ALPHABLENDENABLE) &&
@@ -472,7 +471,6 @@ struct LinearEmissionPass::Impl {
              !saved.state(D3DRS_DITHERENABLE) &&
              !saved.state(D3DRS_SRGBWRITEENABLE) && !saved.ss[0][5];
     }
-#endif
     return saved.state(D3DRS_ALPHABLENDENABLE) &&
            saved.state(D3DRS_BLENDOP) == D3DBLENDOP_ADD &&
            saved.state(D3DRS_SRCBLEND) == D3DBLEND_ONE &&
@@ -549,62 +547,54 @@ const LinearEmissionPassCaps &LinearEmissionPass::caps() const noexcept {
 }
 HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
                                    void *const *native, const D3DCAPS9 &caps9,
-                                   D3DFORMAT format, D3DFORMAT depth) noexcept {
+                                   D3DFORMAT format, D3DFORMAT depth,
+                                   unsigned requested_policies) noexcept {
   detach();
-  if (!device || !native)
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  if (fixture_source_over_) requested_policies = 2;
+#endif
+  if (!device || !native || !requested_policies || (requested_policies & ~3u))
     return E_INVALIDARG;
   impl_ = new (std::nothrow) Impl;
-  if (!impl_)
-    return E_OUTOFMEMORY;
+  if (!impl_) return E_OUTOFMEMORY;
   auto &p = *impl_;
-  p.device = device;
-  p.native = native;
-  p.caps9 = caps9;
+  p.device = device; p.native = native; p.caps9 = caps9;
   p.depth_format = depth;
   p.rt_count = std::min(4u, unsigned(caps9.NumSimultaneousRTs));
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
-  p.source_over = fixture_source_over_ != nullptr;
-  if (p.source_over &&
-      ((caps9.PrimitiveMiscCaps & (D3DPMISCCAPS_SEPARATEALPHABLEND |
-                                  D3DPMISCCAPS_INDEPENDENTWRITEMASKS |
-                                  D3DPMISCCAPS_COLORWRITEENABLE)) !=
-       (D3DPMISCCAPS_SEPARATEALPHABLEND | D3DPMISCCAPS_INDEPENDENTWRITEMASKS |
-        D3DPMISCCAPS_COLORWRITEENABLE))) {
-    p.caps.reason = "source-over caps";
-    return D3DERR_NOTAVAILABLE;
-  }
-#endif
   p.caps.reason = "caps";
   if (caps9.NumSimultaneousRTs < 3 ||
       caps9.PixelShaderVersion < D3DPS_VERSION(3, 0) ||
       caps9.VertexShaderVersion < D3DVS_VERSION(3, 0) ||
       !(caps9.PrimitiveMiscCaps & D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING))
     return D3DERR_NOTAVAILABLE;
+  unsigned supported = requested_policies;
+  constexpr DWORD fade_caps = D3DPMISCCAPS_SEPARATEALPHABLEND |
+      D3DPMISCCAPS_INDEPENDENTWRITEMASKS | D3DPMISCCAPS_COLORWRITEENABLE;
+  if ((caps9.PrimitiveMiscCaps & fade_caps) != fade_caps) supported &= ~2u;
+  if (!supported) { p.caps.reason = "source-over caps"; return D3DERR_NOTAVAILABLE; }
+  // A transient format query or program failure cannot masquerade as an
+  // immutable unsupported producer. NOTAVAILABLE is the format-cap refusal.
+  p.caps.supported_policies = supported;
   IDirect3D9 *factory = nullptr;
   D3DDEVICE_CREATION_PARAMETERS creation{};
   HRESULT hr = p.call(GetDirect3D, &factory);
-  if (SUCCEEDED(hr) && !factory)
-    hr = E_FAIL;
+  if (SUCCEEDED(hr) && !factory) hr = E_FAIL;
+  if (SUCCEEDED(hr)) hr = p.call(GetCreation, &creation);
   if (SUCCEEDED(hr))
-    hr = p.call(GetCreation, &creation);
-  if (SUCCEEDED(hr))
-    hr = factory->CheckDeviceFormat(
-        creation.AdapterOrdinal, creation.DeviceType, format,
+    hr = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, format,
         D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,
         D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F);
   if (SUCCEEDED(hr))
-    hr = factory->CheckDeviceFormat(creation.AdapterOrdinal,
-                                    creation.DeviceType, format, 0,
-                                    D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F);
+    hr = factory->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType,
+                                    format, 0, D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F);
   if (SUCCEEDED(hr))
-    hr = factory->CheckDepthStencilMatch(creation.AdapterOrdinal,
-                                         creation.DeviceType, format,
-                                         D3DFMT_A16B16G16R16F, depth);
+    hr = factory->CheckDepthStencilMatch(creation.AdapterOrdinal, creation.DeviceType,
+                                         format, D3DFMT_A16B16G16R16F, depth);
   drop(factory);
   p.caps.formats = hr;
   if (FAILED(hr)) {
-    p.caps.reason = "formats";
-    return hr;
+    if (hr == D3DERR_NOTAVAILABLE) p.caps.supported_policies = 0;
+    p.caps.reason = "formats"; return hr;
   }
 #ifdef X3M_LINEAR_EMISSION_PASS_FIXTURE
   p.fused_copy = !fixture_separate_copy_;
@@ -612,40 +602,38 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
 #else
   hr = p.call(CreatePs, copy_words, &p.copy);
 #endif
-  if (SUCCEEDED(hr) && !p.copy)
-    hr = E_FAIL;
+  if (SUCCEEDED(hr) && !p.copy) hr = E_FAIL;
   if (SUCCEEDED(hr)) {
-    hr = p.call(CreatePs,
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
-                p.source_over ? fixture_source_over_ :
-#endif
-                composite_words, &p.composite);
-    if (SUCCEEDED(hr) && !p.composite)
-      hr = E_FAIL;
-  }
-  if (SUCCEEDED(hr)) {
-    hr = p.call(CreateVs,
-                reinterpret_cast<const DWORD *>(quad_vertex_program()), &p.vs);
-    if (SUCCEEDED(hr) && !p.vs)
-      hr = E_FAIL;
+    hr = p.call(CreateVs, reinterpret_cast<const DWORD *>(quad_vertex_program()), &p.vs);
+    if (SUCCEEDED(hr) && !p.vs) hr = E_FAIL;
   }
   if (SUCCEEDED(hr)) {
     hr = p.call(CreateDecl, quad_declaration, &p.declaration);
-    if (SUCCEEDED(hr) && !p.declaration)
-      hr = E_FAIL;
+    if (SUCCEEDED(hr) && !p.declaration) hr = E_FAIL;
   }
-  p.caps.programs = hr;
-  if (FAILED(hr)) {
-    drop(p.copy);
-    drop(p.composite);
-    drop(p.vs);
-    drop(p.declaration);
-    p.caps.reason = "programs";
-    return hr;
+  HRESULT first = hr;
+  if (SUCCEEDED(hr)) {
+    for (unsigned policy : {1u, 2u}) {
+      if (!(supported & policy)) continue;
+      auto *&program = policy == 1 ? p.composite : p.source_over_composite;
+      const DWORD *words = policy == 1 ? composite_words : source_over_words;
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+      if (policy == 2 && fixture_source_over_) words = fixture_source_over_;
+#endif
+      hr = p.call(CreatePs, words, &program);
+      if (SUCCEEDED(hr) && !program) hr = E_FAIL;
+      if (SUCCEEDED(hr)) p.caps.available_policies |= policy;
+      else { drop(program); if (SUCCEEDED(first)) first = hr; }
+    }
   }
-  p.caps.enabled = true;
-  p.caps.reason = "ok";
-  return S_OK;
+  p.caps.programs = first;
+  p.caps.enabled = p.caps.available_policies != 0;
+  if (!p.caps.enabled) {
+    drop(p.copy); drop(p.composite); drop(p.source_over_composite);
+    drop(p.vs); drop(p.declaration);
+  }
+  p.caps.reason = FAILED(first) ? "programs" : "ok";
+  return first;
 }
 HRESULT LinearEmissionPass::ensure_targets(UINT width, UINT height) noexcept {
   if (!impl_ || !impl_->caps.enabled || !width || !height)
@@ -708,6 +696,7 @@ LinearEmissionPass::begin_frame(std::uint64_t frame) noexcept {
     return out;
   p.mask_valid = false;
   p.blocked = true;
+  p.source_over = false;
   out.saved = p.save();
   if (FAILED(out.saved)) {
     p.saved.release();
@@ -735,6 +724,15 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
       p.phase != Impl::Phase::Idle || !boundary.admitted || !boundary.scene ||
       !boundary.augmented || boundary.frame != p.frame)
     return out;
+  if (boundary.policy != LinearCompositionPolicy::AdditiveEmission && boundary.policy != LinearCompositionPolicy::DistanceFade) {
+    out.operation = E_INVALIDARG; return out;
+  }
+  p.source_over = boundary.policy == LinearCompositionPolicy::DistanceFade;
+#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
+  if (fixture_source_over_) p.source_over = true;
+#endif
+  const auto policy = p.source_over ? LinearCompositionPolicy::DistanceFade : LinearCompositionPolicy::AdditiveEmission;
+  if (!p.caps.supports(policy)) { out.operation = D3DERR_NOTAVAILABLE; return out; }
   out.saved = p.save();
   if (FAILED(out.saved)) {
     p.saved.release();
@@ -765,7 +763,6 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
     out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE1, DWORD(15));
   if (SUCCEEDED(out.operation) && p.supported_state(D3DRS_COLORWRITEENABLE2))
     out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE2, DWORD(15));
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
   if (SUCCEEDED(out.operation) && p.source_over) {
     out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE2, DWORD(7));
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_SEPARATEALPHABLENDENABLE, DWORD(TRUE));
@@ -773,23 +770,15 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_SRCBLENDALPHA, DWORD(D3DBLEND_ONE));
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_DESTBLENDALPHA, DWORD(D3DBLEND_INVSRCALPHA));
   }
-#endif
   if (SUCCEEDED(out.operation))
     out.operation = p.call(SetViewport, &p.saved.viewport);
   if (SUCCEEDED(out.operation))
     out.operation = p.call(SetScissor, &p.saved.scissor);
-#ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
   if (SUCCEEDED(out.operation)) {
     if (p.fault(LinearEmissionPassFault::SourceBind)) out.operation = E_FAIL;
     else if (p.source_over) out.operation = p.call(SetVs, boundary.augmented_vertex);
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetPs, boundary.augmented);
   }
-#else
-  if (SUCCEEDED(out.operation))
-    out.operation = p.fault(LinearEmissionPassFault::SourceBind)
-                        ? E_FAIL
-                        : p.call(SetPs, boundary.augmented);
-#endif
   if (FAILED(out.operation)) {
     out.restore = p.restore(boundary.scene);
     if (p.fault(LinearEmissionPassFault::Restore))
@@ -903,7 +892,7 @@ unsigned LinearEmissionPass::references() const noexcept {
     return 0;
   const auto &p = *impl_;
   return !!p.b + !!p.e + !!p.c + !!p.m + !!p.vs + !!p.copy + !!p.composite +
-         !!p.declaration;
+         !!p.declaration + !!p.source_over_composite;
 }
 void LinearEmissionPass::before_reset() noexcept {
   if (impl_)
@@ -915,6 +904,7 @@ void LinearEmissionPass::detach() noexcept {
   impl_->reset_targets();
   drop(impl_->copy);
   drop(impl_->composite);
+  drop(impl_->source_over_composite);
   drop(impl_->vs);
   drop(impl_->declaration);
   delete impl_;
