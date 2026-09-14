@@ -37,3 +37,5 @@ verification/results/bottle-*/chase-fire-*-wine.log
 verification/results/bottle-*/capture-bloom-x3-ownership-*.txt
 verification/results/bottle-*/capture-bloom-x3-ownership-*-wine.log
 /screenshots/
+# Ambient occlusion fixture: the Wine stderr log stays local; the JSON/text records are tracked.
+verification/results/bottle-*/ambient-occlusion-gpu1-wine.log

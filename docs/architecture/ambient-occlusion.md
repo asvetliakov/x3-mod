@@ -145,3 +145,26 @@ flicker in motion, HUD unchanged, +0.5 ms median.
 - **In-scene HUD**: whether any Z-test-off draw (target boxes, reticle) precedes the scene end; a
   capture query over the `motion_route` draw-state fields (`f4cd0a0`). Depth cannot separate them;
   phase does. If present, v2's mid-scene bracket is required.
+
+## Step 1 — implemented
+
+Detached chain (2026-09-14, this commit): `src/renderer/ambient_occlusion_pass.{h,cpp}` (attach / prepare /
+execute / before_reset / after_reset / detach, native slots, one owned `D3DSBT_ALL` block, gates in
+`ambient_occlusion_caps.h`: ps/vs 3.0, conservative slot count ≤ `MaxPixelShader30InstructionSlots`
+(GTAO program 483 of 512), R32F/R16F render targets, post-pixel-shader blending on the owning format,
+ZERO/SRCCOLOR factors), programs `src/temporal/ao_{linearize,gtao,blur,apply}_ps.hlsl` compiled by
+`tools/shaders/generate_rigid_motion_pixel.py`. Linked into the DLL, referenced by nothing yet.
+Deviations from section 2, both forced by the fixture's identities: horizons are each tap's elevation
+above the reconstructed tangent plane (the tap's angle from the view vector leaves the slice plane
+under texel-quantized taps and darkened planes by up to 20 %), per-slice arcs are normalized by the
+unoccluded value `cos n + n sin n`, and the R16F term stores occlusion `1 − visibility` (this backend
+truncates FP16 stores, so `1 − ε` lost an ulp per pass; 0 is exact). Radius is in metres
+(`radius_metres`, default 2) times `units_per_metre` = 5 (`camera-state-and-frame-routine.md`,
+"Ambient occlusion inputs"). Fixture `verification/probe/run_ambient_occlusion.py`
+(`ambient-occlusion-gpu1.json`): 73 checks; term vs the float64 reference max 3.7·10⁻⁴ (fp16
+quantization) on all five scenes; fronto-parallel plane exactly 1, tilted plane 89 of 121,600 pixels
+≥ 0.999 (device-depth quantization); sentinel term 1 and target bit-identical; multiply law within one
+FP16 ulp under round-to-nearest, bit-exact under a truncating store (plane 100 %); fault ladder and
+Reset bit-identical. Cost at 1280×768: submit 0.11 ms + fenced GPU 0.72 ms = 0.84 ms chain (over the
+0.8 cap; three passes without the blurs still 0.78 ms, so per-pass overhead, not shader cost);
+1920×1080 1.39 ms. Not tuned; the scene-end hook (step 2) waits on the run-14 query and this cost.

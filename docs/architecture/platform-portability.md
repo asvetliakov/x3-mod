@@ -165,3 +165,10 @@ Windows builds, CrossOver runtime tests and eventual native-Windows runtime test
 
 See the [runtime dependency and interception audit](runtime-dependencies.md) for
 concrete remaining gates, removal status and the separate depth-adapter gap.
+- The ambient occlusion pass (`src/renderer/ambient_occlusion_pass.cpp`, step 1, detached) uses
+  documented D3D9 only: `CheckDeviceFormat` gates for the R32F/R16F render targets and post-pixel-shader
+  blending on the owning format, blend-factor caps, `MaxPixelShader30InstructionSlots` against a
+  conservative count of the embedded programs, one `D3DSBT_ALL` block, five `DrawPrimitiveUP` quads.
+  Cross-compiled with the SSE2/four-byte-stack policy; native Windows execution unverified. The
+  Preview backend truncates FP16 render-target stores (fixture: the multiply law is bit-exact under a
+  truncating model, one ulp under round-to-nearest); the term stores occlusion so 0 is exact either way.
