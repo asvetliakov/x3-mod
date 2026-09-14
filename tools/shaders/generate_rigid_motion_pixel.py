@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Ten authored programs are embedded: the motion fragment
+Fourteen authored programs are embedded (the four of the ambient occlusion
+chain, src/temporal/ao_*_ps.hlsl -> src/renderer/ambient_occlusion_*_program_inc.h,
+are listed in SHADERS only): the motion fragment
 (src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
 the current-depth fragment
 (src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
@@ -79,6 +81,21 @@ SHADERS = {
                         header=ROOT / 'src/renderer/quad_vertex_program_inc.h',
                         provenance=ROOT / 'verification/results/quad-vertex-program.json',
                         target='vs_3_0'),
+    # The ambient occlusion chain (docs/architecture/ambient-occlusion.md, step
+    # 1): linearize, GTAO horizon search, the separable depth-aware blur and
+    # the bilateral upsample / multiply application.
+    'ao_linearize': dict(source=ROOT / 'src/temporal/ao_linearize_ps.hlsl',
+                         header=ROOT / 'src/renderer/ambient_occlusion_linearize_program_inc.h',
+                         provenance=ROOT / 'verification/results/ambient-occlusion-linearize-program.json'),
+    'ao_gtao': dict(source=ROOT / 'src/temporal/ao_gtao_ps.hlsl',
+                    header=ROOT / 'src/renderer/ambient_occlusion_gtao_program_inc.h',
+                    provenance=ROOT / 'verification/results/ambient-occlusion-gtao-program.json'),
+    'ao_blur': dict(source=ROOT / 'src/temporal/ao_blur_ps.hlsl',
+                    header=ROOT / 'src/renderer/ambient_occlusion_blur_program_inc.h',
+                    provenance=ROOT / 'verification/results/ambient-occlusion-blur-program.json'),
+    'ao_apply': dict(source=ROOT / 'src/temporal/ao_apply_ps.hlsl',
+                     header=ROOT / 'src/renderer/ambient_occlusion_apply_program_inc.h',
+                     provenance=ROOT / 'verification/results/ambient-occlusion-apply-program.json'),
 }
 VERSION_TOKENS = {'ps_3_0': 0xffff0300, 'vs_3_0': 0xfffe0300}
 INCLUDE = re.compile(r'^#include "([^"]+)"\s*$')
