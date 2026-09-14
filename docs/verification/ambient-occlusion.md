@@ -8,6 +8,7 @@ Owning design: `docs/architecture/ambient-occlusion.md`. One entry per run of
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-09-14 | step 1 (review fixes) | 99 / 0 failures (list, labels repeat for recovery and Reset reruns) | 0, 0, 3.7e-4, 3.7e-4, 3.7e-4 (plane, tilted, sphere, corner, step) | ≤ 1 FP16 ulp; plane bit-exact; FP16 store probe: truncate | 0.83 ms / 1.35 ms (submit 0.11); per-quad breakdown in the record | PASS; cost over the 0.8 ms cap, reported |
 | 2026-09-14 | step 1b (cost reduction) | 109 / 0 failures | 0, 0, 2.4e-4, 2.4e-4, 4.9e-4 (plane, tilted, sphere, corner, step) | ≤ 1 FP16 ulp; plane bit-exact; FP16 store probe: truncate | 1.06 ms first block / 0.51 ms repeat block (floor 0.50) · 1.33 ms (floor 1.23) | PASS; warm 1280×768 chain within the 0.8 ms cap and at the 0.5 ms acceptance, cold block above it |
+| 2026-09-14 | step 1b independent review (Opus, read-only rerun) | 109 / 0 failures | 0, 0, 2.4e-4, 2.4e-4, 4.9e-4 | ≤ 1 FP16 ulp; plane bit-exact; truncate | 0.78 ms first block / 0.53 ms repeat (floor 0.51) · 1.33 ms (floor 1.22) | PASS; math, c0..c7 layout, state/Reset and ledger numbers confirmed; no check removed vs step 1 (+8 per-quad counts, +2 sphere linearize); five low findings listed below, none blocking step 2 |
 
 Host tests: `test_ambient_occlusion_caps.py`, `test_ambient_occlusion_reference.py`,
 `test_ambient_occlusion_report.py` (4 tests; the reference test records the view-angle-horizon plane
@@ -21,3 +22,11 @@ and sentinel identities are exact. Folding the linearization into the horizon se
 rejected on cost (1280×768 chain 1.10–1.18 ms); the record of that variant is not retained, its numbers
 are in `docs/architecture/ambient-occlusion.md`, "Step 1b". `check_no_x87.py build/d3d9.dll`: PASS
 (224 reachable functions, 0 violations). Host tests: 4, OK.
+
+Step 1b review findings (2026-09-14, none blocking; fixed in the follow-up commit named in the next row):
+`ambient_occlusion_fixture.cpp` includes `hdr_writeback_program_inc.h`, missing from the runner's SOURCES
+provenance list; the apply-law comment at the reference half-depth feed is stale (GPU half depth only bounded
+to 2e-3 relative); the "Bayer noise still averages out" claim in `ao_blur_ps.hlsl` is unverified (the quincunx
+hits 6 of 16 Bayer cells mod 4, oracle means moved ≤ 0.002); `finite_params` accepts a denormal m32 that would
+overflow the folded 1/|m32|; the twin slot probe fell to 300 against a 397-slot program. The review rerun
+did not replace the committed record (restored after the run).
