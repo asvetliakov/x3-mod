@@ -53,7 +53,7 @@ host-test harness repairs (`93f359c`) are merged. The `f56a393` candidate was in
 After that install, main also carries the capture-only draw-state fields on `motion_route`
 lines (`f4cd0a0`, for classifying the remaining gate-4 refusals); it rides the next candidate.
 The full host suite is green again after the fixture-harness repairs (`93f359c`, merge of
-`188ffb4`): 1696 tests, 0 failures, 5 skipped.
+`188ffb4`): 1710 tests, 0 failures, 5 skipped (after the step-C harness repair `6ac3dcd`).
 Screen emission (goal 3): the region-bracketed design `docs/architecture/screen-emission-region.md`
 is ratified; step B (bullet bound from Unlock-time extrema checkpoints, draw-learned allowlist,
 reviewed, `2c15609`) is merged and step A (packed screen policy 8 in the pass, 540/540 rows

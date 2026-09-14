@@ -162,5 +162,5 @@
   },
   "installed_sha256_verified": true,
   "installed_at": "2026-09-14T13:52:25",
-  "host_tests_note": "test_linear_material_live.test_production_control_flow failed at 76d7750 because the extracted-source harness lacks the step-C symbols; a harness-only repair is in progress and will be recorded here."
+  "host_tests_note": "test_linear_material_live.test_production_control_flow (and test_motion_wrap_states) failed at 76d7750 because the extracted-source harnesses lacked the step-C symbols; harness-only repair merged as 6ac3dcd; full discovery 1710 tests OK, 0 failures."
 }
