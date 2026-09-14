@@ -104,23 +104,20 @@ darkening on a ship. Details in the
   frames drop out); run 20 confirms in game and its `unjittered_depth_writers`
   counter names any other unjittered depth writer. Ledger
   [motion-output.md](verification/motion-output.md).
-- **Docking-port darkening:** owner is the engine's LOD boundary
-  (`0x0047cfe0`, `s = r·640/D`, no hysteresis); beyond ≈52–57 px port width the
-  station is one merged opaque subset, nearer the port is its own source-over draw
-  over a dark interior. Normal-map minification is refuted. The design note
+- **Docking-port darkening (unexplained, vanilla too):** the user sees a port
+  that is fine near and black when flying away; run 21 session B shows the same
+  in vanilla, so it is not renderer-introduced. Neither of the two candidate
+  owners survives the captures: the LOD 2/3 switch shows no radiance step on the
+  measured same-node crossings, and the port pair carries no fog or fade constant
+  at any distance (the only dark bay, model `543f`, is less dark at 53 px than at
+  109–146 px). The run-20 "port" measurement was an asteroid part (corrected).
+  Next: the user's screenshot pair (fine near, black far) with an F8 at each on
+  the same port, so the analysis compares the pixels the user means. Notes
+  [station-material-distance.md](reverse-engineering/station-material-distance.md),
   [docking-port-lod-consistency.md](architecture/docking-port-lod-consistency.md)
-  recommends native parity (blend-domain composite) and is **ratified** as a
-  low-priority item. Run 21 session B: the blackening happens in vanilla too, so
-  it is not the renderer. The run-20 "port" measurement was an asteroid part
-  (corrected in the note); genuine same-node LOD crossings show no radiance step,
-  and the one dark bay (`543f`) is dark at LOD 2 because its interior is authored
-  geometry that X3 leaves unlit (no ambient term). The note's new section rejects
-  a port replay at LOD 3 and keeps a band cross-fade only as a default-off
-  experiment; the honest fix for a black bay is a fill/ambient term in the
-  converted materials (decision pending), and a proxy LOD-distance scale is under
-  disassembly ([lod-selection.md](reverse-engineering/lod-selection.md), pending).
-  Measurements in
-  [station-material-distance.md](reverse-engineering/station-material-distance.md).
+  (native parity ratified, low priority). A separate `--lod-scale` option is in
+  implementation from [lod-selection.md](reverse-engineering/lod-selection.md)
+  (one global float, same-length patch at `0x0047d44b`, default-off, cap 4).
 - **Bullets / screen emission:** step E (publication-time decode, parity within
   one FP16 code) and step D (per-draw vertex hull, fan batch 1.2 % of the viewport
   vs 89.6 % for the box; derive 1.7–27 µs per draw, sentinel fill 17 µs per lock)
