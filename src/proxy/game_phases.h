@@ -9,6 +9,11 @@ void present_endpoint(std::uintptr_t raw,std::uint64_t device,std::uint64_t rese
                       std::uint64_t frame,bool captured,std::uint64_t qpc,std::uint32_t result) noexcept;
 void invalidate_device() noexcept; // every Reset attempt and final Release, any thread
 void report(std::uint64_t reporting_frame); // existing periodic report, owner thread only
+// Audio-path witnesses (X3M_AUDIO_SITES=1 with X3M_GAME_PHASES=1): counters
+// only, readable from any thread; the line is written by report() per window
+// and by the sampling profiler's periodic callback every 2 s.
+bool audio_active() noexcept;
+void audio_report(const char* scope,std::uint64_t qpc);
 #ifdef X3M_GAME_PHASE_FIXTURE
 // Configure only while disabled; (0,0) clears before freeing the allocation.
 // Caller owns the readable region; every marker still uses engine_memory::read.
