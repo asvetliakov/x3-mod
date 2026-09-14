@@ -228,8 +228,11 @@ capabilities; neither has native-Windows runtime qualification.
 
 ## Next user action
 
-No new enhanced run is requested. User run 11 is complete (snapshot run36); the
-distant-shimmer report needs a per-frame diagnostic before another run is queued. The optional
+Three runs are ready on the installed `76d7750` candidate, in this order: run 13 (short: speech
+with the decoder plugin and the DMO fallback hook; force-quit and report if the loading screen
+hangs), run 14 (station route, fade witness, shimmer trace: asteroids in zoom, station approach,
+F8 at distance and close), run 15 (run 14 plus `--screen-emission`: fire at a target for a few
+seconds, F8 while firing). Commands and what to report are in the [run queue](verification/user-runs.md). The optional
 vanilla cursor comparison remains available in the [run queue](verification/user-runs.md).
 
 ## Stable foundation and later scope
