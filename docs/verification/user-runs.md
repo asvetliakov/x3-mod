@@ -36,12 +36,12 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 18 | Voice crackle fix: decoder plugin v4 (no new DLL) | 0 | Completed as user run 18, snapshot run46: no crackle, voice fine |
 | 19 | Combined: AO off/on (Ctrl+Shift+F11), bullets at gain 1, cutout shimmer fix, same-port far/near pair | 0 | Completed as user run 19, snapshot run47: cutout exemption holds (`reason=3` 0.01 %), bolts accepted at gain 1; AO runs but is invisible at 2 m, port darkening and asteroid triangle dropout still open |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
-| 20 | Step D, loading markers, AO radius/debug, asteroid diagnostic, port far/near retry | 1 | Pending the next candidate |
+| 20 | Asteroid prepass jitter, port and ship far/near pairs, step D bullets, AO radius 20, loading markers | 1 | Ready (candidate `39b090d0…` from `77a649b` installed) |
 
-## 20. Step D bullets, asteroid prepass jitter, loading markers, AO radius 20, port and ship far/near — Pending the candidate
+## 20. Step D bullets, asteroid prepass jitter, loading markers, AO radius 20, port and ship far/near — Ready
 
-One run on the next candidate (built from main after the z_only prepass jitter, step D and the
-`loading_phase` markers; hash recorded in status once installed). Load the usual save.
+One run on the installed candidate `39b090d0…` (`77a649b`, record
+`verification/results/run20-candidate-install.json`: z_only prepass jitter, step D, `loading_phase` markers). Load the usual save.
 
 1. **Asteroids**: zoom on a distant asteroid field as in run 19 and say whether triangles still
    vanish and reappear. While zoomed and at rest on a far asteroid, press F8 once (this launch

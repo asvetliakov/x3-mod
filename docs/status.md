@@ -1,7 +1,7 @@
 # Project status
 
-Updated 2026-09-14. This is the short current handoff; the current session
-handoff is [handoff-2026-09-14d.md](handoff-2026-09-14d.md). The day's narrative
+Updated 2026-09-15. This is the short current handoff; the current session
+handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
 [status history 2026-09-14](archive/status-history-2026-09-14.md); earlier
@@ -13,14 +13,15 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`ab6e17bacbb525bc4f80fb6361498133cbf377704c9ff2f1fe309ab4a9395262` (14,209,414 bytes), a clean
-rebuild of `5d06316` (AO step 2 with the Reset fix, screen emission step E, the cutout-miss
-exemption, the bullet diagnostics and pad, the TAA invalidation-site diagnostic, fade default-on).
-The [install record](../verification/results/ao-stepe-install.json) binds its source, scoped
-verification (motion-output suite 100 + 26, AO live 7 twins, step-C live 14 cases, locked prefix,
-voice replica), load check, and the rollback DLL `5b92484a…` (`066e18f`). EXE and `cxbottle.conf`
-unchanged. Builds are not byte-reproducible (PE timestamp): the record notes the recorded build
-`4866a41a` was overwritten by a fixture `--build` step, and the installed bytes were re-audited.
+`39b090d02c150e1da443532c84ad299334d17e49a8d9ec6bd16d05ecd4fe96cd` (14,247,499 bytes), a clean
+build of `77a649b` (installed 2026-09-15 early morning): screen emission step D (per-draw bullet
+vertex hull), the `loading_phase` markers, the z_only depth-prepass jitter with the
+`unjittered_depth_writers` counter, on top of everything in the previous build. The
+[install record](../verification/results/run20-candidate-install.json) binds its source, audits
+(no-x87 224 functions, 17 exports, load check), scoped qualification (locked-prefix live 24 frames,
+screen-emission live 14 cases, motion-output 118 cases at `1d49489`, host tests 48) and the
+rollback DLL `ab6e17ba…` (`5d06316`) kept with its manifest in the candidate directory. EXE and
+`cxbottle.conf` unchanged.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,
 and a fixed EV 0 comparison through Ctrl+Shift+F9. Ctrl+Shift+F10 switches bloom contribution. Bloom, linear materials, and linear
@@ -33,9 +34,9 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Next user action
 
-Run 20 on the next candidate (step D, loading-phase markers, AO radius/debug
-test, asteroid diagnostic, port and ship far/near retry); it is queued in the
-[run queue](verification/user-runs.md) once the candidate is installed. Run 19
+Run 20 on the installed `39b090d0…` candidate: asteroid prepass-jitter fix,
+port and ship far/near pairs, step D bullets, AO at radius 20 m, loading
+markers; command and report items in the [run queue](verification/user-runs.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
 but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
 but is invisible at the 2 m radius; the port pair was captured at one distance
@@ -74,10 +75,15 @@ darkening on a ship. Details in the
   *blended* alpha-tested cutout draw refused at the motion gate drops the whole
   frame's TAA history (15 % of frames in runs 11/14, none in run 15). The
   exemption is merged and rides the installed build; pending run 19 confirmation.
-  Ledger [motion-output.md](verification/motion-output.md). The fade route is not
-  implicated (witness clean). Independent minification hypothesis and bounded
-  diagnostics: [asteroid-specular-minification.md](reverse-engineering/asteroid-specular-minification.md);
-  no smoothing policy selected, and no forced opaque depth or inferred LOD change.
+  Run 19 confirmed the exemption (reason 3 at 0.01 %) but distant zoomed asteroids
+  still lost triangles: owner found and fixed in the installed build. The engine draws
+  fogged asteroids as a depth-only prepass then a blended draw; the route jittered
+  only the second, so facets failed LESSEQUAL on the jitter side
+  ([asteroid-fog-temporal.md](reverse-engineering/asteroid-fog-temporal.md), "Run 47").
+  The z_only programs are now jittered with the scene (fixture: zero holes, control
+  frames drop out); run 20 confirms in game and its `unjittered_depth_writers`
+  counter names any other unjittered depth writer. Ledger
+  [motion-output.md](verification/motion-output.md).
 - **Docking-port darkening:** owner is the engine's LOD boundary
   (`0x0047cfe0`, `s = r·640/D`, no hysteresis); beyond ≈52–57 px port width the
   station is one merged opaque subset, nearer the port is its own source-over draw
