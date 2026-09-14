@@ -5,6 +5,11 @@ Updated 2026-09-14. This is the current handoff. Earlier checkpoints are in
 [goal checklist](goals.md), [run queue](verification/user-runs.md), and [original objective](user-objective.md)
 retain the full scope.
 
+**Paused at the user’s request for a usage/account switch.** All workers and
+project jobs are stopped. Start the next session from
+[the September 14 resume handoff](handoff-2026-09-14.md); it records unfinished
+cutout source, reviewed fade results, decoder build plans and the persistent backup.
+
 The installed gameplay build is checkpoint `8442f43`. Its scoped integration
 checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
 dark material on a docking port. Selection pauses are isolated to voice-stream
