@@ -1,134 +1,134 @@
 {
-  "source_commit": "066e18f",
-  "base": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1",
-  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source",
-  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source/build/d3d9.dll",
-  "build_seconds": 10.168982028961182,
-  "dll_sha256": "5b92484a70852525798b37e6d34d7203929b986ca44479edb7e349790ca83670",
-  "dll_bytes": 14091812,
-  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
-  "seh_clang": "/usr/bin/clang",
-  "build": "git worktree add --detach (clean export of 066e18f, worktree clean: porcelain empty); cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build -j4",
-  "source_tree_note": "The main checkout carried docs-only changes (docs/status.md commit and docs/architecture edits from a design agent) at build time; the candidate was built from the detached 066e18f worktree, which is clean by construction.",
-  "installed": false,
+ "source_commit": "066e18f",
+ "base": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1",
+ "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source",
+ "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/source/build/d3d9.dll",
+ "build_seconds": 10.168982028961182,
+ "dll_sha256": "5b92484a70852525798b37e6d34d7203929b986ca44479edb7e349790ca83670",
+ "dll_bytes": 14091812,
+ "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+ "seh_clang": "/usr/bin/clang",
+ "build": "git worktree add --detach (clean export of 066e18f, worktree clean: porcelain empty); cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build -j4",
+ "source_tree_note": "The main checkout carried docs-only changes (docs/status.md commit and docs/architecture edits from a design agent) at build time; the candidate was built from the detached 066e18f worktree, which is clean by construction.",
+ "installed": true,
+ "game_launched": false,
+ "native_windows_verified": false,
+ "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "preserved_files": {
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "preserved_files_note": "Hashes read by the builder before install; both unchanged from the 76d7750 install record. The main session rechecks them after install.",
+ "rollback": {
+  "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/rollback-d3d9.dll",
+  "dll_sha256": "608b35d8f7aded08d30220ec279a14c3ac92b55b845de63e56ce32fb1e92c5c9",
+  "source_commit": "76d7750",
+  "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/rollback-x3-modern-install.json",
+  "note": "The installed d3d9.dll was verified at 608b35d8... (76d7750) before this candidate was built; the main session copies it aside at install time and fills installed_dll, installed_sha256_verified and installed_at."
+ },
+ "no_x87": {
+  "result": "PASS",
+  "reachable_functions": 224,
+  "violations": 0,
+  "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/no-x87.json"
+ },
+ "load": {
+  "passed": true,
+  "case": "writable",
+  "checks": 8,
+  "exports": 17,
+  "failures": 0,
+  "on12_forwarded": true,
+  "source": "game",
+  "result": "verification/results/bottle-X3/d3d9-exports-summary.json",
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll <candidate> --case writable"
+ },
+ "host_tests": {
+  "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_voice_dmo_fallback verification.analysis.test_voice_startup_replica verification.analysis.test_fade_region verification.analysis.test_screen_emission_live verification.analysis.test_screen_emission_step_a verification.analysis.test_linear_material_live verification.analysis.test_ambient_occlusion_report",
+  "scope": "modules selected by the dependencies changed since 76d7750",
+  "test_voice_dmo_fallback.py": 19,
+  "test_voice_startup_replica.py": 10,
+  "test_fade_region.py": 8,
+  "test_screen_emission_live.py": 7,
+  "test_screen_emission_step_a.py": 6,
+  "test_linear_material_live.py": 14,
+  "test_ambient_occlusion_report.py": 2,
+  "total": 66,
+  "failures": 1,
+  "failure_detail": {
+   "test": "test_linear_material_live.LinearMaterialLiveTests.test_production_control_flow",
+   "reason": "Pre-existing at 066e18f: the host stub verification/probe/linear_material_live_fixture.cpp lacks the packed_sample diagnostic symbols the extracted production region now references (packed_sample_, release_packed_sample, sample_packed_pre, sample_packed_post), so the extracted-source fixture fails to compile.",
+   "scope": "Harness staleness, not a defect in the candidate DLL; the other 13 tests in the module pass and the DLL builds, passes check_no_x87 and loads under Wine."
+  }
+ },
+ "site_verifiers": {
+  "verify_voice_dmo_site.py": {
+   "result": "PASS",
+   "checks": 10,
+   "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/voice-dmo-site.json",
+   "note": "speech CLSID, audio decoder category, complete routine, preceded-by-indirect-call, no direct edges to the site, EXE identity all true"
+  },
+  "verify_game_phase_sites.py": {
+   "result": "PASS",
+   "checks": 24,
+   "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/game-phase-sites.json",
+   "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+   "note": "publisher mode-3 switch, mov command-6 switch, Present indirect call, non-overlap, EXE identity all true"
+  }
+ },
+ "change": "Carries the 76d7750 candidate forward with three merged, reviewed changes: the voice DMO fallback hook fix (the game's speech-decoder Init devirtualised to __cxa_pure_virtual, now bound explicitly through the C vtable, with the engine_patch arena_base, capture log_handle/shutdown and loader detach that go with it), the screen-emission bullet bound near-plane clip (project_box cuts the locked-prefix box at clip z = 0, BehindNear reason, capped capture-only packed_sample diagnostic), and the ambient-occlusion step 1b pass, which is detached and unreferenced at runtime. The launcher resolves the linear distance fade route on by default. No new default enables the AO pass and no shipping behavior changes beyond the fade route default and the hook fix.",
+ "changed_dependencies": "git diff --stat 76d7750..066e18f -- src/ tools/: 23 files, +1630/-40 (voice_dmo_fallback.{cpp,h}, engine_patch.{cpp,h}, capture.{cpp,h}, loader.cpp, fade_region_math.h, motion_output.{cpp,h}, ambient_occlusion_pass.{cpp,h}, ambient_occlusion_caps.h, four ambient_occlusion_*_program_inc.h, four ao_*.hlsl, manage.py, generate_rigid_motion_pixel.py)",
+ "qualification": {
+  "voice_dmo_fallback_design": "docs/architecture/voice-decoder-adapter.md",
+  "voice_replica": "verification/results/bottle-X3/voice-startup-replica.json",
+  "voice_replica_run": "candidate-066e18f-game-dmo-hook",
+  "voice_replica_mode": "game-dmo-hook",
+  "voice_replica_outcome": "completed",
+  "voice_replica_created": 3,
+  "voice_replica_exit_code": 0,
+  "voice_replica_wall_seconds": 7.09,
+  "voice_replica_hook": "installed=1 patched=1 site=004014f6, 3 replica sites, 4 voice_dmo_fallback lines, retries_ok=3, retries_failed=0",
+  "voice_replica_exe_sha256": "2918015ae01e2f09319fe0e9607a4efa7e26b0f75efdb770988c8e8dcd7db8ed",
+  "voice_replica_plugin": "/tmp/x3-wma-plugin-v3 (GST_PLUGIN_PATH_1_0, GST_REGISTRY_1_0 present)",
+  "screen_bound_live": "verification/results/bottle-X3/screen-emission-bound-live1.json",
+  "screen_bound_live_frames": 15,
+  "screen_bound_live_bound_frames": 9,
+  "screen_bound_live_refused_frames": 6,
+  "screen_bound_live_scans": 11,
+  "screen_bound_live_scan_us_per_scan": 24.53,
+  "screen_bound_live_passed": true,
+  "screen_emission_design": "docs/architecture/screen-emission-region.md",
+  "screen_emission_bullet_bound": "docs/architecture/screen-emission-bullet-bound.md",
+  "reused_not_rerun": [
+   "screen_gpu_step_a",
+   "screen_bound_gpu",
+   "screen_live",
+   "station_gpu",
+   "station_live",
+   "fade_region_gameplay",
+   "cutout_live"
+  ],
+  "reused_note": "Unchanged GPU and live evidence from verification/results/screen-emission-install.json; only the fixtures touching the changed dependencies (voice replica hook mode, locked-prefix live bound) were rerun against this candidate."
+ },
+ "qualification_status": "passed-not-installed",
+ "launch_dry_run": {
+  "passed": true,
   "game_launched": false,
-  "native_windows_verified": false,
-  "installed_dll": null,
-  "bottle": {
-    "name": "X3",
-    "wine_arch": "arm64",
-    "environment": {
-      "FEX_X87REDUCEDPRECISION": "1",
-      "WINEMSYNC": "1"
-    },
-    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
-  },
-  "preserved_files": {
-    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
-    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
-  },
-  "preserved_files_note": "Hashes read by the builder before install; both unchanged from the 76d7750 install record. The main session rechecks them after install.",
-  "rollback": {
-    "dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
-    "dll_sha256": "608b35d8f7aded08d30220ec279a14c3ac92b55b845de63e56ce32fb1e92c5c9",
-    "source_commit": "76d7750",
-    "install_record": "verification/results/screen-emission-install.json",
-    "note": "The installed d3d9.dll was verified at 608b35d8... (76d7750) before this candidate was built; the main session copies it aside at install time and fills installed_dll, installed_sha256_verified and installed_at."
-  },
-  "no_x87": {
-    "result": "PASS",
-    "reachable_functions": 224,
-    "violations": 0,
-    "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/no-x87.json"
-  },
-  "load": {
-    "passed": true,
-    "case": "writable",
-    "checks": 8,
-    "exports": 17,
-    "failures": 0,
-    "on12_forwarded": true,
-    "source": "game",
-    "result": "verification/results/bottle-X3/d3d9-exports-summary.json",
-    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll <candidate> --case writable"
-  },
-  "host_tests": {
-    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_voice_dmo_fallback verification.analysis.test_voice_startup_replica verification.analysis.test_fade_region verification.analysis.test_screen_emission_live verification.analysis.test_screen_emission_step_a verification.analysis.test_linear_material_live verification.analysis.test_ambient_occlusion_report",
-    "scope": "modules selected by the dependencies changed since 76d7750",
-    "test_voice_dmo_fallback.py": 19,
-    "test_voice_startup_replica.py": 10,
-    "test_fade_region.py": 8,
-    "test_screen_emission_live.py": 7,
-    "test_screen_emission_step_a.py": 6,
-    "test_linear_material_live.py": 14,
-    "test_ambient_occlusion_report.py": 2,
-    "total": 66,
-    "failures": 1,
-    "failure_detail": {
-      "test": "test_linear_material_live.LinearMaterialLiveTests.test_production_control_flow",
-      "reason": "Pre-existing at 066e18f: the host stub verification/probe/linear_material_live_fixture.cpp lacks the packed_sample diagnostic symbols the extracted production region now references (packed_sample_, release_packed_sample, sample_packed_pre, sample_packed_post), so the extracted-source fixture fails to compile.",
-      "scope": "Harness staleness, not a defect in the candidate DLL; the other 13 tests in the module pass and the DLL builds, passes check_no_x87 and loads under Wine."
-    }
-  },
-  "site_verifiers": {
-    "verify_voice_dmo_site.py": {
-      "result": "PASS",
-      "checks": 10,
-      "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/voice-dmo-site.json",
-      "note": "speech CLSID, audio decoder category, complete routine, preceded-by-indirect-call, no direct edges to the site, EXE identity all true"
-    },
-    "verify_game_phase_sites.py": {
-      "result": "PASS",
-      "checks": 24,
-      "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/game-phase-sites.json",
-      "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
-      "note": "publisher mode-3 switch, mov command-6 switch, Present indirect call, non-overlap, EXE identity all true"
-    }
-  },
-  "change": "Carries the 76d7750 candidate forward with three merged, reviewed changes: the voice DMO fallback hook fix (the game's speech-decoder Init devirtualised to __cxa_pure_virtual, now bound explicitly through the C vtable, with the engine_patch arena_base, capture log_handle/shutdown and loader detach that go with it), the screen-emission bullet bound near-plane clip (project_box cuts the locked-prefix box at clip z = 0, BehindNear reason, capped capture-only packed_sample diagnostic), and the ambient-occlusion step 1b pass, which is detached and unreferenced at runtime. The launcher resolves the linear distance fade route on by default. No new default enables the AO pass and no shipping behavior changes beyond the fade route default and the hook fix.",
-  "changed_dependencies": "git diff --stat 76d7750..066e18f -- src/ tools/: 23 files, +1630/-40 (voice_dmo_fallback.{cpp,h}, engine_patch.{cpp,h}, capture.{cpp,h}, loader.cpp, fade_region_math.h, motion_output.{cpp,h}, ambient_occlusion_pass.{cpp,h}, ambient_occlusion_caps.h, four ambient_occlusion_*_program_inc.h, four ao_*.hlsl, manage.py, generate_rigid_motion_pixel.py)",
-  "qualification": {
-    "voice_dmo_fallback_design": "docs/architecture/voice-decoder-adapter.md",
-    "voice_replica": "verification/results/bottle-X3/voice-startup-replica.json",
-    "voice_replica_run": "candidate-066e18f-game-dmo-hook",
-    "voice_replica_mode": "game-dmo-hook",
-    "voice_replica_outcome": "completed",
-    "voice_replica_created": 3,
-    "voice_replica_exit_code": 0,
-    "voice_replica_wall_seconds": 7.09,
-    "voice_replica_hook": "installed=1 patched=1 site=004014f6, 3 replica sites, 4 voice_dmo_fallback lines, retries_ok=3, retries_failed=0",
-    "voice_replica_exe_sha256": "2918015ae01e2f09319fe0e9607a4efa7e26b0f75efdb770988c8e8dcd7db8ed",
-    "voice_replica_plugin": "/tmp/x3-wma-plugin-v3 (GST_PLUGIN_PATH_1_0, GST_REGISTRY_1_0 present)",
-    "screen_bound_live": "verification/results/bottle-X3/screen-emission-bound-live1.json",
-    "screen_bound_live_frames": 15,
-    "screen_bound_live_bound_frames": 9,
-    "screen_bound_live_refused_frames": 6,
-    "screen_bound_live_scans": 11,
-    "screen_bound_live_scan_us_per_scan": 24.53,
-    "screen_bound_live_passed": true,
-    "screen_emission_design": "docs/architecture/screen-emission-region.md",
-    "screen_emission_bullet_bound": "docs/architecture/screen-emission-bullet-bound.md",
-    "reused_not_rerun": [
-      "screen_gpu_step_a",
-      "screen_bound_gpu",
-      "screen_live",
-      "station_gpu",
-      "station_live",
-      "fade_region_gameplay",
-      "cutout_live"
-    ],
-    "reused_note": "Unchanged GPU and live evidence from verification/results/screen-emission-install.json; only the fixtures touching the changed dependencies (voice replica hook mode, locked-prefix live bound) were rerun against this candidate."
-  },
-  "qualification_status": "passed-not-installed",
-  "launch_dry_run": {
-    "passed": true,
-    "game_launched": false,
-    "run": 13,
-    "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/run13.json",
-    "env_keys": 65,
-    "linear_distance_fade": "1",
-    "note": "Run-13 command from docs/verification/user-runs.md section 13 with --dry-run from the main checkout; X3M_LINEAR_DISTANCE_FADE=1 now resolves from the launcher default, X3M_VOICE_DMO_FALLBACK=1 and the v3 plugin GST paths are present. No vanilla dry-run: launcher config behavior unchanged."
-  },
-  "installed_sha256_verified": null,
-  "installed_at": null
+  "run": 13,
+  "result": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-voice-hook-candidate-H2e1/run13.json",
+  "env_keys": 65,
+  "linear_distance_fade": "1",
+  "note": "Run-13 command from docs/verification/user-runs.md section 13 with --dry-run from the main checkout; X3M_LINEAR_DISTANCE_FADE=1 now resolves from the launcher default, X3M_VOICE_DMO_FALLBACK=1 and the v3 plugin GST paths are present. No vanilla dry-run: launcher config behavior unchanged."
+ },
+ "installed_sha256_verified": true,
+ "installed_at": "2026-09-14T17:27:13"
 }
