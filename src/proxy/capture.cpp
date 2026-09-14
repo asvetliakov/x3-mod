@@ -3,6 +3,7 @@
 #include "telemetry.h"
 #include "game_phases.h"
 #include "voice_dmo_fallback.h"
+#include "lod_scale.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
 #include "crypt_cache.h"
@@ -985,6 +986,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d),ctx.id,ctx.reset_generation,ctx.frame,ctx.capture,end,static_cast<std::uint32_t>(hr));
     game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame); // cadence-derived loading_phase lines, every mode
     voice_dmo_fallback::report(); // one atomic load per Present; lines only after an activation
+    lod_scale::refresh(); // X3M_LOD_SCALE only: two bounded reads per Present, one store when the game value changed
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){
         log("telemetry_present_window device=%llu frame=%llu override=%p device_window=%p result=%08lx",ctx.id,ctx.frame,w,ctx.stats.window,hr);
@@ -1086,6 +1088,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
     ctx.motion_output.after_reset(hr);
+    lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
     finite_upload_metrics(d,ctx,"reset_after");
     if(SUCCEEDED(hr)&&p&&p->hDeviceWindow)ctx.stats.window=p->hDeviceWindow;
@@ -1327,6 +1330,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
     ctx.motion_output.after_begin_scene(hr);
+    lod_scale::refresh(); // X3M_LOD_SCALE only: catches the bring-up write before the first frame's LOD pass
     if(SUCCEEDED(hr)) {
         ctx.scene_thread=GetCurrentThreadId(); ctx.composition_scene_owner=false; ctx.composition_scene_frame=ctx.frame;
         if(ctx.motion_output.composition_requested() && scene_hook::active()) {
@@ -2151,6 +2155,7 @@ void initialize_log(HMODULE module) {
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
+    lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
     resource_reader::initialize(); // X3M_RESOURCE_READ=verify|fast, X3M_DAT_HANDLES=1; after the probes so its stub chains behind theirs
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
