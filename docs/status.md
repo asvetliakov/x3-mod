@@ -62,6 +62,11 @@ bit-exact, 0.13 ms per bracket, reviewed, merged `2c12f33`) are merged; step C (
 0 outside, ≈0.16–0.18 ms per bracket at 16 DIPs; no per-frame bracket cap yet, so a bullet burst
 of 30 costs ≈5 ms — run 15 measures it. The second candidate (`76d7750`, DLL `608b35d8…`) is installed; runs 13, 14 and 15 are ready
 on it (record `verification/results/screen-emission-install.json`).
+Ambient occlusion (goal 7): the design `docs/architecture/ambient-occlusion.md` is ratified as
+v1 (half-resolution GTAO before the TAA resolve, default-off); its engine inputs are settled
+(`c4f6940`: 0.2 m per view unit, default zn 6 / zf 2e6 in gameplay) and the detached pass with
+its analytic-oracle fixture is being implemented (step 1); the scene-end placement waits for the
+run-14 capture query on Z-test-off draws.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
