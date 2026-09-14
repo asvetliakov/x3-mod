@@ -52,6 +52,8 @@ cases / 300 bit-exact twins / 34 live processes, station windows ≈0.2 ms per d
 host-test harness repairs (`93f359c`) are merged. The candidate from `f56a393` is installed
 (DLL `2bbe7904…`, record `verification/results/station-voice-install.json`); user runs 13 (voice)
 and 14 (station, fade, shimmer trace) are ready.
+After that install, main also carries the capture-only draw-state fields on `motion_route`
+lines (`f4cd0a0`, for classifying the remaining gate-4 refusals); it rides the next candidate.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
