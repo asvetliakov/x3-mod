@@ -42,9 +42,10 @@ settled and reproduced (`docs/reverse-engineering/voice-startup-sequence.md` §1
 creates the wrapper for the Windows Media Speech decoder `{874131cb…}`, which is not registered
 in the bottle; `Init` fails `REGDB_E_CLASSNOTREG`, the game adds the pin-less wrapper anyway,
 `Pause` fails, and the graph never leaves Stopped so `RemoveFilter` returns `VFW_E_NOT_STOPPED`
-forever. The replica mode `game-dmo` reproduces the E_FAIL and the spin. Next: a process-local
-hook that retries `Init` with the registered WMA decoder DMO on that exact failure (inert on
-Windows), site from §12 disassembly.
+forever. The replica mode `game-dmo` reproduces the E_FAIL and the spin. The fix is merged (`d1de1b9`,
+two reviews): a byte-verified post-call hook at the game's `Init` return that, only on that
+exact failure and only under `--voice-decoder`, retries `Init` with the registered WMA decoder
+DMO; the replica then runs, decodes and tears down cleanly. Not installed; needs a user run.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
