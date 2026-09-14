@@ -1597,8 +1597,12 @@ HRESULT WINAPI set_render_state(IDirect3DDevice9* d,D3DRENDERSTATETYPE state,DWO
     PlainHookGuard lock;auto& ctx=*devices.at(d);
     ctx.motion_output.before_set_render_state(state);
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD)>(57)(d,state,value);cpu.after_original();
+    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD)>(57)(d,state,value);cpu.after_original();
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    hr=ctx.motion_output.fixture_setter_result(hr,57,unsigned(state));
+#endif
     if(SUCCEEDED(hr))ctx.motion_output.set_render_state(state,value);
+    else ctx.motion_output.render_state_failed(state);
     return hr;
 }
 // Texture tracking serves mip bias and emission reader identity. Sampler
@@ -1627,9 +1631,14 @@ HRESULT WINAPI set_sampler_state(IDirect3DDevice9* d,DWORD stage,D3DSAMPLERSTATE
     LightCallBoundary cpu;
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     PlainHookGuard lock;auto& ctx=*devices.at(d);
+    ctx.motion_output.before_set_sampler_state(stage,type);
     cpu.before_original();
-    const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD)>(69)(d,stage,type,value);cpu.after_original();
+    HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,D3DSAMPLERSTATETYPE,DWORD)>(69)(d,stage,type,value);cpu.after_original();
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if(type==D3DSAMP_SRGBTEXTURE)hr=ctx.motion_output.fixture_setter_result(hr,69,stage);
+#endif
     if(SUCCEEDED(hr))ctx.motion_output.set_sampler_state(stage,type,value);
+    else ctx.motion_output.sampler_state_failed(stage,type);
     return hr;
 }
 // Lazy mode only: an application read of a write mask the route holds must

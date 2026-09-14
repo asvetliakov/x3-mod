@@ -178,3 +178,14 @@ built, the libav decoder connecting on the third at 3.04 s, then an unhandled
 adapter is not usable in the game until the cause is fixed and this section is
 updated.
 
+## Timing correction builds (2026-09-14)
+
+The ratified [cue timing correction](voice-cue-timing-correction.md) is applied as
+`voice-decoder-subbuffer.patch` on the private gst-libav copy. Build v3 under
+`/tmp/x3-wma-plugin-v3/` (backup `artifacts/wma-plugin-v3` in the resume
+directory) caps output buffers at 200 samples and sets a 500 ms decoder
+tolerance; the native probe then reports anchor errors within 0.02 ms and
+1000 ms spans within 0.02 ms (`verification/results/bottle-X3/voice-native-actual-v3.json`,
+v1 error up to 701 ms, v2 47 ms). v3 is the gameplay candidate once the load
+hang above is fixed; v1 and v2 stay for rollback.
+

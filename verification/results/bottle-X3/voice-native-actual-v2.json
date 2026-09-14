@@ -1,0 +1,825 @@
+{
+  "schema": 1,
+  "mode": "actual",
+  "completed": true,
+  "restored_speech": false,
+  "exe_sha256": "61821a8389670ad045fcdf5efa8fa20a9ddf0986a18e92e9fe06e7a62d88a1b5",
+  "window_seconds": 20.0,
+  "tail_seconds": 5.0,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "media": [
+    {
+      "voice_id": 144,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00144.dat",
+      "bytes": 269633863,
+      "sha256": "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+      "declared_seconds": 44304.046
+    },
+    {
+      "voice_id": 244,
+      "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/mov/00244.dat",
+      "bytes": 20311023,
+      "sha256": "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+      "declared_seconds": 3335.779
+    }
+  ],
+  "exit_code": 0,
+  "process_wall_seconds": 7.539493458,
+  "stdout_bytes": 206181,
+  "stderr_bytes": 76,
+  "files": [
+    {
+      "voice_id": 144,
+      "reads": 45,
+      "pcm_bytes": 3963896,
+      "nonzero_reads": 45,
+      "decoded_seconds": 44.942132,
+      "requested_seconds": 45.0,
+      "graph_duration_seconds": 44304.046,
+      "declared_seconds": 44304.046,
+      "seeked": true,
+      "eos": true,
+      "live_root_objects": 0,
+      "bytes_per_second": 88200,
+      "segments": [
+        {
+          "name": "head",
+          "start_ms": "0",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "19965.279",
+          "first_start": "0",
+          "last_end": "199652789",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a",
+          "reads_detail": [
+            {
+              "index": 0,
+              "bytes": 88200,
+              "anchor_error_ms": 0.0,
+              "span_ms": 973.762
+            },
+            {
+              "index": 1,
+              "bytes": 88200,
+              "anchor_error_ms": -26.238,
+              "span_ms": 979.322
+            },
+            {
+              "index": 2,
+              "bytes": 88200,
+              "anchor_error_ms": -46.916,
+              "span_ms": 999.642
+            },
+            {
+              "index": 3,
+              "bytes": 88200,
+              "anchor_error_ms": -47.274,
+              "span_ms": 1000.521
+            },
+            {
+              "index": 4,
+              "bytes": 88200,
+              "anchor_error_ms": -46.753,
+              "span_ms": 1011.562
+            },
+            {
+              "index": 5,
+              "bytes": 88200,
+              "anchor_error_ms": -35.191,
+              "span_ms": 987.882
+            },
+            {
+              "index": 6,
+              "bytes": 88200,
+              "anchor_error_ms": -47.309,
+              "span_ms": 1001.522
+            },
+            {
+              "index": 7,
+              "bytes": 88200,
+              "anchor_error_ms": -45.787,
+              "span_ms": 1020.562
+            },
+            {
+              "index": 8,
+              "bytes": 88200,
+              "anchor_error_ms": -25.225,
+              "span_ms": 991.522
+            },
+            {
+              "index": 9,
+              "bytes": 88200,
+              "anchor_error_ms": -33.703,
+              "span_ms": 987.442
+            },
+            {
+              "index": 10,
+              "bytes": 88200,
+              "anchor_error_ms": -46.261,
+              "span_ms": 1000.442
+            },
+            {
+              "index": 11,
+              "bytes": 88200,
+              "anchor_error_ms": -45.819,
+              "span_ms": 1000.401
+            },
+            {
+              "index": 12,
+              "bytes": 88200,
+              "anchor_error_ms": -45.417,
+              "span_ms": 998.882
+            },
+            {
+              "index": 13,
+              "bytes": 88200,
+              "anchor_error_ms": -46.535,
+              "span_ms": 1000.002
+            },
+            {
+              "index": 14,
+              "bytes": 88200,
+              "anchor_error_ms": -46.533,
+              "span_ms": 1000.882
+            },
+            {
+              "index": 15,
+              "bytes": 88200,
+              "anchor_error_ms": -45.651,
+              "span_ms": 999.401
+            },
+            {
+              "index": 16,
+              "bytes": 88200,
+              "anchor_error_ms": -46.249,
+              "span_ms": 1000.002
+            },
+            {
+              "index": 17,
+              "bytes": 88200,
+              "anchor_error_ms": -46.247,
+              "span_ms": 1000.082
+            },
+            {
+              "index": 18,
+              "bytes": 88200,
+              "anchor_error_ms": -46.166,
+              "span_ms": 999.442
+            },
+            {
+              "index": 19,
+              "bytes": 88200,
+              "anchor_error_ms": -46.723,
+              "span_ms": 1012.002
+            }
+          ],
+          "reads_summary": {
+            "reads": 20,
+            "max_abs_anchor_error_ms": 47.309,
+            "min_anchor_error_ms": -47.309,
+            "max_anchor_error_ms": 0.0,
+            "min_span_ms": 973.762,
+            "max_span_ms": 1020.562,
+            "mean_span_ms": 998.264
+          }
+        },
+        {
+          "name": "seek",
+          "start_ms": "22152023",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "19998.673",
+          "first_start": "221520230000",
+          "last_end": "221720216734",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a",
+          "reads_detail": [
+            {
+              "index": 0,
+              "bytes": 88200,
+              "anchor_error_ms": 0.0,
+              "span_ms": 1021.757
+            },
+            {
+              "index": 1,
+              "bytes": 88200,
+              "anchor_error_ms": 21.757,
+              "span_ms": 988.882
+            },
+            {
+              "index": 2,
+              "bytes": 88200,
+              "anchor_error_ms": 10.639,
+              "span_ms": 1000.322
+            },
+            {
+              "index": 3,
+              "bytes": 88200,
+              "anchor_error_ms": 10.961,
+              "span_ms": 1005.642
+            },
+            {
+              "index": 4,
+              "bytes": 88200,
+              "anchor_error_ms": 16.603,
+              "span_ms": 999.762
+            },
+            {
+              "index": 5,
+              "bytes": 88200,
+              "anchor_error_ms": 16.365,
+              "span_ms": 994.642
+            },
+            {
+              "index": 6,
+              "bytes": 88200,
+              "anchor_error_ms": 11.007,
+              "span_ms": 999.762
+            },
+            {
+              "index": 7,
+              "bytes": 88200,
+              "anchor_error_ms": 10.769,
+              "span_ms": 1005.442
+            },
+            {
+              "index": 8,
+              "bytes": 88200,
+              "anchor_error_ms": 16.211,
+              "span_ms": 982.442
+            },
+            {
+              "index": 9,
+              "bytes": 88200,
+              "anchor_error_ms": -1.347,
+              "span_ms": 1011.882
+            },
+            {
+              "index": 10,
+              "bytes": 88200,
+              "anchor_error_ms": 10.535,
+              "span_ms": 1000.401
+            },
+            {
+              "index": 11,
+              "bytes": 88200,
+              "anchor_error_ms": 10.937,
+              "span_ms": 1005.322
+            },
+            {
+              "index": 12,
+              "bytes": 88200,
+              "anchor_error_ms": 16.258,
+              "span_ms": 993.962
+            },
+            {
+              "index": 13,
+              "bytes": 88200,
+              "anchor_error_ms": 10.22,
+              "span_ms": 1000.122
+            },
+            {
+              "index": 14,
+              "bytes": 88200,
+              "anchor_error_ms": 10.342,
+              "span_ms": 988.122
+            },
+            {
+              "index": 15,
+              "bytes": 88200,
+              "anchor_error_ms": -1.535,
+              "span_ms": 1020.401
+            },
+            {
+              "index": 16,
+              "bytes": 88200,
+              "anchor_error_ms": 18.866,
+              "span_ms": 997.322
+            },
+            {
+              "index": 17,
+              "bytes": 88200,
+              "anchor_error_ms": 16.188,
+              "span_ms": 993.882
+            },
+            {
+              "index": 18,
+              "bytes": 88200,
+              "anchor_error_ms": 10.07,
+              "span_ms": 999.882
+            },
+            {
+              "index": 19,
+              "bytes": 88200,
+              "anchor_error_ms": 9.952,
+              "span_ms": 988.721
+            }
+          ],
+          "reads_summary": {
+            "reads": 20,
+            "max_abs_anchor_error_ms": 21.757,
+            "min_anchor_error_ms": -1.535,
+            "max_anchor_error_ms": 21.757,
+            "min_span_ms": 982.442,
+            "max_span_ms": 1021.757,
+            "mean_span_ms": 999.934
+          }
+        },
+        {
+          "name": "tail",
+          "start_ms": "44299046",
+          "reads": "5",
+          "bytes": "435896",
+          "decoded_ms": "4942.132",
+          "span_ms": "5000.009",
+          "first_start": "442990460000",
+          "last_end": "443040460090",
+          "nonzero_reads": "5",
+          "eos": "1",
+          "end_reason": "endofstream",
+          "post_eos_hr": "00040003",
+          "reads_detail": [
+            {
+              "index": 0,
+              "bytes": 88200,
+              "anchor_error_ms": 0.0,
+              "span_ms": 1046.311
+            },
+            {
+              "index": 1,
+              "bytes": 88200,
+              "anchor_error_ms": 46.311,
+              "span_ms": 1000.322
+            },
+            {
+              "index": 2,
+              "bytes": 88200,
+              "anchor_error_ms": 46.633,
+              "span_ms": 1016.882
+            },
+            {
+              "index": 3,
+              "bytes": 88200,
+              "anchor_error_ms": 63.515,
+              "span_ms": 1000.202
+            },
+            {
+              "index": 4,
+              "bytes": 83096,
+              "anchor_error_ms": 63.717,
+              "span_ms": 936.293
+            }
+          ],
+          "reads_summary": {
+            "reads": 5,
+            "max_abs_anchor_error_ms": 63.717,
+            "min_anchor_error_ms": 0.0,
+            "max_anchor_error_ms": 63.717,
+            "min_span_ms": 936.293,
+            "max_span_ms": 1046.311,
+            "mean_span_ms": 1000.002
+          }
+        }
+      ],
+      "reopens": [
+        {
+          "attempt": "1",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        },
+        {
+          "attempt": "2",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        }
+      ]
+    },
+    {
+      "voice_id": 244,
+      "reads": 45,
+      "pcm_bytes": 3964950,
+      "nonzero_reads": 45,
+      "decoded_seconds": 44.954082,
+      "requested_seconds": 45.0,
+      "graph_duration_seconds": 3335.779,
+      "declared_seconds": 3335.779,
+      "seeked": true,
+      "eos": true,
+      "live_root_objects": 0,
+      "bytes_per_second": 88200,
+      "segments": [
+        {
+          "name": "head",
+          "start_ms": "0",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "19953.599",
+          "first_start": "0",
+          "last_end": "199535986",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a",
+          "reads_detail": [
+            {
+              "index": 0,
+              "bytes": 88200,
+              "anchor_error_ms": 0.0,
+              "span_ms": 954.762
+            },
+            {
+              "index": 1,
+              "bytes": 88200,
+              "anchor_error_ms": -45.238,
+              "span_ms": 1010.841
+            },
+            {
+              "index": 2,
+              "bytes": 88200,
+              "anchor_error_ms": -34.397,
+              "span_ms": 989.002
+            },
+            {
+              "index": 3,
+              "bytes": 88200,
+              "anchor_error_ms": -45.395,
+              "span_ms": 1011.322
+            },
+            {
+              "index": 4,
+              "bytes": 88200,
+              "anchor_error_ms": -34.073,
+              "span_ms": 988.322
+            },
+            {
+              "index": 5,
+              "bytes": 88200,
+              "anchor_error_ms": -45.751,
+              "span_ms": 999.322
+            },
+            {
+              "index": 6,
+              "bytes": 88200,
+              "anchor_error_ms": -46.429,
+              "span_ms": 1000.322
+            },
+            {
+              "index": 7,
+              "bytes": 88200,
+              "anchor_error_ms": -46.107,
+              "span_ms": 1000.322
+            },
+            {
+              "index": 8,
+              "bytes": 88200,
+              "anchor_error_ms": -45.785,
+              "span_ms": 1010.762
+            },
+            {
+              "index": 9,
+              "bytes": 88200,
+              "anchor_error_ms": -35.023,
+              "span_ms": 988.442
+            },
+            {
+              "index": 10,
+              "bytes": 88200,
+              "anchor_error_ms": -46.581,
+              "span_ms": 1012.202
+            },
+            {
+              "index": 11,
+              "bytes": 88200,
+              "anchor_error_ms": -34.379,
+              "span_ms": 988.762
+            },
+            {
+              "index": 12,
+              "bytes": 88200,
+              "anchor_error_ms": -45.617,
+              "span_ms": 1012.082
+            },
+            {
+              "index": 13,
+              "bytes": 88200,
+              "anchor_error_ms": -33.535,
+              "span_ms": 999.281
+            },
+            {
+              "index": 14,
+              "bytes": 88200,
+              "anchor_error_ms": -34.254,
+              "span_ms": 1000.043
+            },
+            {
+              "index": 15,
+              "bytes": 88200,
+              "anchor_error_ms": -34.211,
+              "span_ms": 988.762
+            },
+            {
+              "index": 16,
+              "bytes": 88200,
+              "anchor_error_ms": -45.449,
+              "span_ms": 1017.281
+            },
+            {
+              "index": 17,
+              "bytes": 88200,
+              "anchor_error_ms": -28.168,
+              "span_ms": 999.762
+            },
+            {
+              "index": 18,
+              "bytes": 88200,
+              "anchor_error_ms": -28.406,
+              "span_ms": 994.002
+            },
+            {
+              "index": 19,
+              "bytes": 88200,
+              "anchor_error_ms": -34.404,
+              "span_ms": 988.002
+            }
+          ],
+          "reads_summary": {
+            "reads": 20,
+            "max_abs_anchor_error_ms": 46.581,
+            "min_anchor_error_ms": -46.581,
+            "max_anchor_error_ms": 0.0,
+            "min_span_ms": 954.762,
+            "max_span_ms": 1017.281,
+            "mean_span_ms": 997.68
+          }
+        },
+        {
+          "name": "seek",
+          "start_ms": "1667890",
+          "reads": "20",
+          "bytes": "1764000",
+          "decoded_ms": "20000.000",
+          "span_ms": "20011.500",
+          "first_start": "16678895000",
+          "last_end": "16879009999",
+          "nonzero_reads": "20",
+          "eos": "0",
+          "end_reason": "window",
+          "post_eos_hr": "8000000a",
+          "reads_detail": [
+            {
+              "index": 0,
+              "bytes": 88200,
+              "anchor_error_ms": 0.0,
+              "span_ms": 1011.423
+            },
+            {
+              "index": 1,
+              "bytes": 88200,
+              "anchor_error_ms": 11.423,
+              "span_ms": 999.401
+            },
+            {
+              "index": 2,
+              "bytes": 88200,
+              "anchor_error_ms": 10.824,
+              "span_ms": 989.002
+            },
+            {
+              "index": 3,
+              "bytes": 88200,
+              "anchor_error_ms": -0.173,
+              "span_ms": 999.882
+            },
+            {
+              "index": 4,
+              "bytes": 88200,
+              "anchor_error_ms": -0.291,
+              "span_ms": 1020.882
+            },
+            {
+              "index": 5,
+              "bytes": 88200,
+              "anchor_error_ms": 20.591,
+              "span_ms": 978.401
+            },
+            {
+              "index": 6,
+              "bytes": 88200,
+              "anchor_error_ms": -1.008,
+              "span_ms": 1000.442
+            },
+            {
+              "index": 7,
+              "bytes": 88200,
+              "anchor_error_ms": -0.566,
+              "span_ms": 999.882
+            },
+            {
+              "index": 8,
+              "bytes": 88200,
+              "anchor_error_ms": -0.684,
+              "span_ms": 1000.442
+            },
+            {
+              "index": 9,
+              "bytes": 88200,
+              "anchor_error_ms": -0.241,
+              "span_ms": 999.961
+            },
+            {
+              "index": 10,
+              "bytes": 88200,
+              "anchor_error_ms": -0.28,
+              "span_ms": 999.882
+            },
+            {
+              "index": 11,
+              "bytes": 88200,
+              "anchor_error_ms": -0.398,
+              "span_ms": 1012.002
+            },
+            {
+              "index": 12,
+              "bytes": 88200,
+              "anchor_error_ms": 11.604,
+              "span_ms": 987.962
+            },
+            {
+              "index": 13,
+              "bytes": 88200,
+              "anchor_error_ms": -0.434,
+              "span_ms": 999.882
+            },
+            {
+              "index": 14,
+              "bytes": 88200,
+              "anchor_error_ms": -0.552,
+              "span_ms": 1000.002
+            },
+            {
+              "index": 15,
+              "bytes": 88200,
+              "anchor_error_ms": -0.55,
+              "span_ms": 999.882
+            },
+            {
+              "index": 16,
+              "bytes": 88200,
+              "anchor_error_ms": -0.668,
+              "span_ms": 1000.322
+            },
+            {
+              "index": 17,
+              "bytes": 88200,
+              "anchor_error_ms": -0.346,
+              "span_ms": 999.521
+            },
+            {
+              "index": 18,
+              "bytes": 88200,
+              "anchor_error_ms": -0.824,
+              "span_ms": 999.442
+            },
+            {
+              "index": 19,
+              "bytes": 88200,
+              "anchor_error_ms": -1.382,
+              "span_ms": 1012.882
+            }
+          ],
+          "reads_summary": {
+            "reads": 20,
+            "max_abs_anchor_error_ms": 20.591,
+            "min_anchor_error_ms": -1.382,
+            "max_anchor_error_ms": 20.591,
+            "min_span_ms": 978.401,
+            "max_span_ms": 1020.882,
+            "mean_span_ms": 1000.575
+          }
+        },
+        {
+          "name": "tail",
+          "start_ms": "3330779",
+          "reads": "5",
+          "bytes": "436950",
+          "decoded_ms": "4954.082",
+          "span_ms": "4999.760",
+          "first_start": "33307790000",
+          "last_end": "33357787595",
+          "nonzero_reads": "5",
+          "eos": "1",
+          "end_reason": "endofstream",
+          "post_eos_hr": "00040003",
+          "reads_detail": [
+            {
+              "index": 0,
+              "bytes": 88200,
+              "anchor_error_ms": 0.0,
+              "span_ms": 1057.751
+            },
+            {
+              "index": 1,
+              "bytes": 88200,
+              "anchor_error_ms": 57.751,
+              "span_ms": 988.642
+            },
+            {
+              "index": 2,
+              "bytes": 88200,
+              "anchor_error_ms": 46.392,
+              "span_ms": 1000.322
+            },
+            {
+              "index": 3,
+              "bytes": 88200,
+              "anchor_error_ms": 46.714,
+              "span_ms": 1016.642
+            },
+            {
+              "index": 4,
+              "bytes": 84150,
+              "anchor_error_ms": 63.356,
+              "span_ms": 936.404
+            }
+          ],
+          "reads_summary": {
+            "reads": 5,
+            "max_abs_anchor_error_ms": 63.356,
+            "min_anchor_error_ms": 0.0,
+            "max_anchor_error_ms": 63.356,
+            "min_span_ms": 936.404,
+            "max_span_ms": 1057.751,
+            "mean_span_ms": 999.952
+          }
+        }
+      ],
+      "reopens": [
+        {
+          "attempt": "1",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        },
+        {
+          "attempt": "2",
+          "created": "1",
+          "read": "1",
+          "reads": "1",
+          "bytes": "88200",
+          "nonzero_reads": "1"
+        }
+      ]
+    }
+  ],
+  "capture_bytes": 1764000,
+  "anchor": {
+    "interior": {
+      "reads": 80,
+      "max_abs_anchor_error_ms": 47.309,
+      "min_anchor_error_ms": -47.309,
+      "max_anchor_error_ms": 21.757,
+      "min_span_ms": 954.762,
+      "max_span_ms": 1021.757,
+      "mean_span_ms": 999.113
+    },
+    "tail": {
+      "reads": 10,
+      "max_abs_anchor_error_ms": 63.717,
+      "min_anchor_error_ms": 0.0,
+      "max_anchor_error_ms": 63.717,
+      "min_span_ms": 936.293,
+      "max_span_ms": 1057.751,
+      "mean_span_ms": 999.977
+    }
+  },
+  "scope": "Actual game voice archives through the native AMMultiMediaStream route; bounded windows plus real end of stream; no speech restoration claim",
+  "wave": {
+    "path": "/tmp/x3-voice-native-v2-r1/voice-00144-head.wav",
+    "bytes": 1764000,
+    "played": false
+  }
+}

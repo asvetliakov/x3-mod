@@ -15,7 +15,9 @@ constexpr unsigned D3DRS_ZENABLE=7,D3DRS_ZWRITEENABLE=14,D3DRS_ALPHATESTENABLE=1
  D3DRS_COLORWRITEENABLE=168,D3DRS_SRGBWRITEENABLE=194,D3DRS_COLORWRITEENABLE1=190,D3DRS_COLORWRITEENABLE2=191,
  D3DRS_WRAP0=128,D3DRS_WRAP1=129,D3DRS_WRAP2=130,D3DRS_WRAP3=131,D3DRS_WRAP4=132,D3DRS_WRAP5=133,D3DRS_WRAP6=134,D3DRS_WRAP7=135,
  D3DRS_WRAP8=198,D3DRS_WRAP9=199,D3DRS_WRAP10=200,D3DRS_WRAP11=201,D3DRS_WRAP12=202,D3DRS_WRAP13=203,D3DRS_WRAP14=204,D3DRS_WRAP15=205;
-constexpr unsigned motion_shadow_state_count=24,failure_log_limit=16;
+constexpr unsigned D3DRS_ALPHAFUNC=25,D3DRS_ALPHAREF=24,D3DRS_ZFUNC=23,D3DRS_FOGENABLE=28,D3DRS_DITHERENABLE=26,
+ D3DRS_STENCILENABLE=52,D3DRS_CULLMODE=22,D3DRS_FILLMODE=8,D3DRS_SRCBLEND=19,D3DRS_DESTBLEND=20,D3DRS_BLENDOP=171;
+constexpr unsigned motion_shadow_state_count=32,failure_log_limit=16;
 namespace renderer {
 struct MotionOutputProfile{std::uint8_t texcoord_index=4,depth_texcoord_index=7;};
 struct LinearMaterialScalarTransport{
@@ -66,6 +68,7 @@ public:
  Pass*taa_=nullptr;
  struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
+  DWORD composition_blend[3]{};bool composition_blend_known[3]{};DWORD fill_mode=0;bool fill_mode_known=false;
   bool vs_reserved_written=false,ps_reserved_written=false;void*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
   bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
@@ -74,6 +77,8 @@ public:
  template<class F> F native(unsigned n){switch(n){case GetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_state));case SetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_state));
  case SetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_ps));case SetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_vs));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}}
  HRESULT bind_target(unsigned,void*){return S_OK;}
+ bool cutout_reset_pending_=false; void probe_cutout_caps(bool){}
+ bool composition_requested()const{return false;}
  void invalidate_taa(){++taa_invalidations;}
  void resync_shadow(){invalidate_render_states();}
  void begin_frame(unsigned,bool){++frames;}

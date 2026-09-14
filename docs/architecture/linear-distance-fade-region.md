@@ -373,7 +373,7 @@ Acceptance (after review fixes, main merged at c978089):
   -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build build -j8` — zero
   warnings; `python3 verification/probe/check_no_x87.py build/d3d9.dll` —
   PASS, 219 reachable functions, no violations. Not an install candidate.
-- Wine fixture (`linear-distance-fade-gpu-region1b.json`, bottle X3, 5.0 s):
+- Wine fixture (`linear-distance-fade-gpu-region1c.json`, bottle X3, 4.9 s, after the merge with main 03a660c):
   the 71 existing cases unchanged (257 source calls, 580,608 numerical
   channels, 183,264 exact raw and 193,536 exact energy channels, max
   tolerance fraction 7.19e-5); 29 region cases through the prototype-1

@@ -19,14 +19,14 @@
     "d3d9=b",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/verification/probe/build/distance-fade/linear_material_fixture.exe",
     "Z:/private/tmp/x3-shader-sweep/programs",
-    "Z:/private/tmp/x3-distance-fade-region1b-r1/cases.bin",
+    "Z:/private/tmp/x3-distance-fade-region1c-r1/cases.bin",
     "--distance-fade",
     "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/verification/probe/build/distance-fade/composite.bin"
   ],
   "input_sha256": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/verification/probe/build/distance-fade/linear_material_fixture.exe": "9188d0f5ed7a46679f48a173b713b22fa21b9a9122aa2ccfa1d3d032e23a1d9c",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/verification/probe/build/distance-fade/linear_material_fixture.exe": "1d38d5f2f8245f84a84a1340bb437ab66eff4b9e350c9772d6619c341a4357e0",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/verification/probe/build/distance-fade/composite.bin": "7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d",
-    "/private/tmp/x3-distance-fade-region1b-r1/cases.bin": "ba173f4434318ae8d56a910494b959387781355541204467f68f60f1acc2de8e",
+    "/private/tmp/x3-distance-fade-region1c-r1/cases.bin": "ba173f4434318ae8d56a910494b959387781355541204467f68f60f1acc2de8e",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/src/renderer/linear_material.cpp": "9c721ddba1056034ecba1d681fce60e4f7c959e7f7c9da6477d3630670ddd9e3",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/src/renderer/linear_distance_fade.h": "ebef28bd6566fe6972d59851054718757cd0c91648ac30b63efe4a799e4bfd5b",
     "/Users/asvetl/x3-mod/.claude/worktrees/agent-aab1e33f335e7b7be/src/renderer/linear_emission_pass.cpp": "1779140636aed33c3e3d5271703492a494c26164648fb604a283c4c1576bf711",
@@ -50,7 +50,7 @@
     "/private/tmp/x3-shader-sweep/programs/ps_550c2a4d4d3ed70f.bin": "4cabe57e615dae67307a2c875fdef49c1211b2235c80b16c6b938e358128c900",
     "/private/tmp/x3-shader-sweep/programs/vs_12b8a13f13fe8cfe.bin": "2bbd1f6d8d88dc72663e3b4408d0c3d12fa89127dbaa8cd95c682ee2b6198bac"
   },
-  "raw_report": "/private/tmp/x3-distance-fade-region1b-r1/report.txt",
+  "raw_report": "/private/tmp/x3-distance-fade-region1c-r1/report.txt",
   "scope": "Detached exact six-pair source-over prototype; no live route",
   "tolerance": {
     "relative": 0.006,
@@ -59,7 +59,7 @@
   },
   "composite_bytes": 572,
   "exit_code": 0,
-  "wall_seconds": 4.951504666,
+  "wall_seconds": 4.893813417,
   "cases": 71,
   "source_calls": 257,
   "region_cases": 29,

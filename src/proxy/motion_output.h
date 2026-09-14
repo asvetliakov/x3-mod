@@ -31,6 +31,7 @@
 #include "../renderer/camera_reprojection.h"
 #include "../renderer/hdr_pass.h"
 #include "../renderer/linear_material.h"
+#include "linear_cutout.h"
 #include "../renderer/linear_emission.h"
 #include "../renderer/linear_emission_pass.h"
 #include "../renderer/linear_distance_fade.h"
@@ -46,7 +47,7 @@ inline constexpr std::size_t motion_matrix_windows_max = 4;
 // Render states the route reads per draw and shadows from the SetRenderState
 // hook (X3M_STATE_SHADOW): the selector's z states, the gate-4 opaque-draw
 // checks and the write masks saved around RT1/RT2 (motion_output.cpp lists them).
-inline constexpr std::size_t motion_shadow_state_count = 24;
+inline constexpr std::size_t motion_shadow_state_count = 32;
 }
 
 namespace x3m {
@@ -69,6 +70,9 @@ struct MotionRoute {
     HRESULT submission_error = D3DERR_INVALIDCALL;
     HRESULT preparation_error = S_OK; // First internal failure; never replaces the native draw result.
     renderer::LinearCompositionPolicy composition_policy = renderer::LinearCompositionPolicy::AdditiveEmission;
+    bool cutout_candidate = false, cutout = false; // requested exact scene pair; admitted alpha-test arm
+    bool cutout_test_known = false, cutout_color_known = false, cutout_alpha_known = false, cutout_z_known = false, cutout_zfunc_known = false;
+    DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0;
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
@@ -169,6 +173,7 @@ struct MotionTaaCounters {
 };
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
+    std::uint32_t cutout_routed = 0, cutout_missed = 0;
     std::uint32_t depth_routed = 0, jittered = 0;
     std::uint32_t apply_failures = 0, restore_failures = 0;
     bool latched = false, filled = false;
@@ -215,6 +220,10 @@ struct MotionFrameCounters {
     // so the full re-read is required: iteration 10's one resync per frame on
     // the latch-only transition screen is attributed through this field).
     std::uint32_t rs_queries = 0, rs_hits = 0, rs_gets = 0, rs_resyncs = 0, sb_resyncs = 0;
+    // A failed application SetRenderState drops that one shadow entry. It is
+    // not a resync (no re-read follows), so it is counted apart: a resync
+    // must still show at least one shadow miss at the next query.
+    std::uint32_t rs_invalidations = 0;
     // Engine scene-end hook (X3M_SCENE_HOOK): signals this frame, signals that
     // arrived outside the selector's Scene phase (with the selector state of
     // the last one), draws evaluated after a Scene-phase signal (compositing
@@ -357,6 +366,7 @@ public:
     void before_set_render_state(D3DRENDERSTATETYPE state) noexcept;
     // After a successful application SetRenderState; ignored while recording.
     void set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept;
+    void render_state_failed(D3DRENDERSTATETYPE state) noexcept;
     // Engine scene-end hook (X3M_SCENE_HOOK): `installed` records whether the
     // callsite patch is live (for the cross-check verdict); scene_end_hook is
     // the trampoline's signal, called before the engine's compositing call on
@@ -425,6 +435,8 @@ public:
     void before_texture_write(IDirect3DBaseTexture9* texture) noexcept;
     bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept;
     void set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept;
+    void before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
+    void sampler_state_failed(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
     // X3M_TAA_SHARPEN in [0, 1]: post-resolve RCAS of the display image
     // (docs/architecture/temporal-integration.md "Post-resolve sharpen"); 0
     // (default) leaves both routes bit-identical to the unsharpened ones. On
@@ -558,6 +570,7 @@ public:
     // is queued for the pass) and the FP16 target as floats (4 per pixel).
     bool fixture_emission_owner() const noexcept { return fixture_configured_ && fixture_.emission_scene_owner; }
     void fixture_emission_fault(unsigned kind, unsigned count) noexcept;
+    HRESULT fixture_setter_result(HRESULT result, unsigned slot, unsigned selector) noexcept;
     unsigned fixture_emission_status(unsigned key) const noexcept;
     void fixture_hdr_fault(unsigned kind, unsigned count) noexcept;
     HRESULT fixture_hdr_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
@@ -612,6 +625,7 @@ private:
         // Published only at registration/SetShader; draws neither look up nor
         // validate the four objects. An incomplete pair stays native-forward.
         bool xt_default_pair = false, xt_default_ready = false;
+        bool cutout_pair = false; // identity independent of variant/capability availability
         const renderer::MotionOutputProfile* vs_row = nullptr;
         float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
         bool rows_known[motion_matrix_windows_max]{};
@@ -662,7 +676,13 @@ private:
     void restore_jitter(MotionRoute& route) noexcept;
     void evaluate_draw(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void refresh_linear_material_contract() noexcept;
+    void probe_cutout_caps(bool force = false) noexcept;
+    bool cutout_arm_configured() const noexcept;
+    void release_mip_bias_retry_bound() noexcept;
+    bool cutout_draw_state() noexcept;
+    void mark_cutout_candidate(MotionRoute& route) noexcept;
     void report_xt_default_unavailable() noexcept;
+    void report_mip_bias_game_write_failure() noexcept;
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
@@ -763,6 +783,12 @@ private:
     std::map<void*, ShaderEntry> vertex_, pixel_;
     Shadow shadow_{};
     bool linear_material_requested_ = false;
+    cutout::Capability cutout_caps_ = cutout::Capability::Pending;
+    HRESULT cutout_cap_result_ = S_FALSE;
+    std::uint32_t cutout_cap_queries_ = 0, cutout_cap_logs_ = 0;
+    std::uint64_t cutout_probe_frame_ = 0;
+    bool cutout_probe_frame_known_ = false, cutout_reset_pending_ = false;
+    bool cutout_coverage_missed_ = false;
     renderer::LinearMaterialConfig linear_material_config_{};
     bool linear_emission_requested_ = false, distance_fade_requested_ = false;
     unsigned composition_required_producers_ = 0;
@@ -807,6 +833,14 @@ private:
         unsigned ready_mask = 0;
         bool seen = false, pending = false;
     } xt_default_unavailable_;
+    // The application's own D3DSAMP_MIPMAPLODBIAS write hook (an audited
+    // light root) must stay integer-only: a failed pre-write restore is
+    // recorded here and formatted after Present or at retirement.
+    struct MipBiasGameWriteFailure {
+        std::uint64_t device = 0, frame = 0;
+        unsigned long index = 0, result = 0;
+        bool pending = false;
+    } mip_bias_game_write_failure_;
     IDirect3DSurface9* target_surface_ = nullptr; // Level 0 of the owned RGBA32F texture (RT1).
     IDirect3DSurface9* depth_surface_ = nullptr;  // Level 0 of the owned R32F texture (RT2).
     UINT target_width_ = 0, target_height_ = 0;
@@ -898,6 +932,8 @@ private:
     static constexpr unsigned sampler_stage_count = 16;
     SamplerShadow samplers_[sampler_stage_count]{};
     std::uint32_t sampler_bound_mask_ = 0, sampler_biased_mask_ = 0;
+    std::uint32_t sampler_restore_failed_mask_ = 0; // stages whose restore failed since the last Present (one attempt each)
+    bool cutout_arm_active_ = false;                // begin_frame latch of cutout_arm_configured()
     float mip_bias_ = 0.f;
     DWORD mip_bias_bits_ = 0;
     // Session totals of the bias path (logged at release) and the last
@@ -946,6 +982,8 @@ private:
     bool fixture_stretch_fault_ = false; // X3M_FIXTURE_STRETCH_FAULT=1: the round-trip self test "fails" (taa_copy=draw)
     float fixture_last_pixel_abi_[8]{};
     unsigned fixture_emission_exchange_fault_ = 0;
+    unsigned fixture_cutout_cap_fault_ = 0, fixture_cutout_vs_fault_ = 0, fixture_cutout_ps_fault_ = 0;
+    unsigned fixture_cutout_rs_fault_ = 0, fixture_cutout_sampler_fault_ = 0;
     unsigned fixture_hdr_fault_kind_ = 0, fixture_hdr_fault_count_ = 0; // queued until the pass exists
 #endif
 };

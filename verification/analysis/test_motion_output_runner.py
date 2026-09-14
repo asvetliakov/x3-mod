@@ -72,18 +72,29 @@ class MotionOutputRunnerTests(unittest.TestCase):
         self.assertEqual(hdr['seam-taa-hdr-tonemap-k0']['X3M_TAA_K'], '0')
 
     def test_render_state_resync_bound_includes_wrap_slots(self):
-        self.assertEqual(runner.RS_SHADOW_STATES, 24)
-        summary = dict(state_shadow='1', draws='12', rs_queries='48', rs_hits='24',
-                       rs_gets=str(runner.RS_FILL_GETS + 24), rs_resyncs='1')
+        self.assertEqual(runner.RS_SHADOW_STATES, 32)
+        summary = dict(state_shadow='1', draws='12', rs_queries='64', rs_hits='32',
+                       rs_gets=str(runner.RS_FILL_GETS + 32), rs_resyncs='1')
         runner.check_render_state('host', 7, summary, True, 1)
-        for changed in ({'rs_hits': '23', 'rs_gets': str(runner.RS_FILL_GETS + 25)},
-                        {'rs_gets': str(runner.RS_FILL_GETS + 23)}, {'rs_resyncs': '0'}):
+        for changed in ({'rs_hits': '31', 'rs_gets': str(runner.RS_FILL_GETS + 33)},
+                        {'rs_gets': str(runner.RS_FILL_GETS + 31)}, {'rs_resyncs': '0'}):
             with self.subTest(changed=changed), self.assertRaises(AssertionError):
                 runner.check_render_state('host', 7, dict(summary, **changed), True, 1)
+        # A late failed setter invalidates an entry without a later query: it is
+        # counted apart from resyncs, and a resync still requires a shadow miss.
+        runner.check_render_state('host', 0, dict(summary, rs_hits='64', rs_gets=str(runner.RS_FILL_GETS),
+                                                  rs_resyncs='0', rs_invalidations='1'), True, 0)
+        for changed in ({'rs_hits': '64', 'rs_gets': str(runner.RS_FILL_GETS)},
+                        {'rs_hits': '64', 'rs_gets': str(runner.RS_FILL_GETS), 'rs_invalidations': '1'},
+                        {'rs_hits': '63', 'rs_gets': str(runner.RS_FILL_GETS + 1), 'rs_resyncs': '0',
+                         'rs_invalidations': '0'}):
+            with self.subTest(changed=changed), self.assertRaises(AssertionError):
+                runner.check_render_state('host', 0, dict(summary, **changed), True,
+                                          int(changed.get('rs_resyncs', summary['rs_resyncs'])))
         # No resync still permits no shadow misses; shadow-off still requires
         # every query to be a native get, independent of the enlarged bound.
-        runner.check_render_state('host', 0, dict(summary, rs_hits='48', rs_gets=str(runner.RS_FILL_GETS), rs_resyncs='0'), True, 0)
-        runner.check_render_state('host', 0, dict(summary, state_shadow='0', rs_hits='0', rs_gets=str(runner.RS_FILL_GETS + 48)), False, 1)
+        runner.check_render_state('host', 0, dict(summary, rs_hits='64', rs_gets=str(runner.RS_FILL_GETS), rs_resyncs='0'), True, 0)
+        runner.check_render_state('host', 0, dict(summary, state_shadow='0', rs_hits='0', rs_gets=str(runner.RS_FILL_GETS + 64)), False, 1)
 
     def run_selected(self, selectors, consume=True, mutate=False):
         build = self.root / 'build'
