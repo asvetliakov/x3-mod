@@ -4,9 +4,10 @@ import unittest.mock
 import run_voice_startup_replica as probe
 
 
-def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fails=False):
+def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fails=False,dump_seconds=None):
     streams=1 if mode=='single' else 3;ds=mode in probe.GAME_DS_MODES
     rows=[f'REPLICA_HEADER schema=1 mode={mode} streams={streams} dwell_ms=0 watchdog_ms=15000 thread=9 audible=0'];seq=0
+    if dump_seconds:rows.append(f'REPLICA_PCM_HEADER dump=1 dump_seconds={dump_seconds}')
     if mode=='game-dmo-hook':
         rows.append('voice_dmo_fallback requested=1 installed=1 status=ok site=004014f6 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=01130000 arena_size=16384 arena_used=152 stub=0113001c tail=01130000 dispatcher=01130014 entry_slot=01130010 enter=00401560 fault_witness=1')
         rows.append('REPLICA_HOOK installed=1 site=004014f6 patched=1 stub=0113001c tail=01130000')
@@ -71,14 +72,26 @@ def fixture(mode='game',hang_at=None,created=(True,True,True),play=True,run_fail
         rows.append(f'REPLICA_STREAM stream={stream} created=1 role={"played" if stream==1 else "restored"} fatal=none hr=00000000 duration=44.304 early_update_hr={early}')
     if created[-1] and play and not run_fails:
         if not stage(1,'control_run'):return '\n'.join(rows)+'\n'
+        if dump_seconds:
+            # One REPLICA_PCM row per consumed application sample: 2 s of mono 44100/16 each.
+            rows.insert(1,'REPLICA_PCM_FORMAT stream=1 tag=1 ch=1 rate=44100 bits=16')
+            offset=0
+            for n in range(dump_seconds//2):
+                rows.append(f'REPLICA_PCM cycle={41+n*40} bytes=176400 t_start={offset*10000000//88200} '
+                            f't_end={(offset+176400)*10000000//88200} src=offset offset={offset} written=176400')
+                offset+=176400
         rows.append('REPLICA_POLL cycle=1 state=2 outcome=queued hr=00040001 bytes=0 elapsed_ms=1')
         rows.append('REPLICA_POLL cycle=2 state=2 outcome=pending hr=00040001 bytes=0 elapsed_ms=7')
         rows.append('REPLICA_POLL cycle=40 state=4 outcome=completed hr=00000000 bytes=0 elapsed_ms=300')
         rows.append('REPLICA_POLL cycle=41 state=1 outcome=consumed hr=00000000 bytes=176400 elapsed_ms=306')
-        rows.append('REPLICA_PLAY stream=1 cycles=210 completed=5 queued=5 pending_polls=190 eos=0 stuck=0 errors=0 bytes=882000 elapsed_ms=1600')
+        if dump_seconds:
+            rows.append(f'REPLICA_PLAY stream=1 cycles=1200 completed={dump_seconds//2} queued={dump_seconds//2} pending_polls=1100 '
+                        f'eos=0 stuck=0 errors=0 bytes={dump_seconds//2*176400} elapsed_ms={dump_seconds*1000}')
+        else:rows.append('REPLICA_PLAY stream=1 cycles=210 completed=5 queued=5 pending_polls=190 eos=0 stuck=0 errors=0 bytes=882000 elapsed_ms=1600')
     for stream in reversed(order):
         if (ds and run_fails and stream==1) or not created[order.index(stream)]:continue
         if not tear(stream):return '\n'.join(rows)+'\n'
+    if dump_seconds and created[-1] and play and not run_fails:rows.append(f'REPLICA_PCM_TOTAL bytes={dump_seconds//2*176400}')
     if ds:stage(0,'primary_set_volume');stage(0,'release_listener');stage(0,'release_primary')
     stage(0,'release_directsound');stage(0,'co_uninitialize')
     rows.append(f'REPLICA_COMPLETE streams={streams} audible=0')
@@ -142,6 +155,22 @@ class ReplicaTests(unittest.TestCase):
         # Run 13's shape: the process died inside the hooked step, so the step is open and no watchdog line follows.
         crashed=fixture('game-dmo-hook');cut=crashed.index('name=dmo_wrapper_init_hooked');crashed=crashed[:crashed.index('\n',cut)+1]
         with self.assertRaisesRegex(AssertionError,'unterminated step'):probe.validate(crashed)
+
+    def test_dump_pcm_run_records_format_and_bytes_only(self):
+        r=probe.validate(fixture('game-dmo-hook',dump_seconds=60))
+        self.assertTrue(r['completed']);self.assertEqual(r['play']['completed'],'30')
+        pcm=r['pcm'];self.assertEqual(pcm['format'],dict(tag=1,channels=1,rate=44100,bits=16))
+        self.assertEqual((pcm['buffers'],pcm['bytes'],pcm['total_bytes'],pcm['dump_seconds']),(30,30*176400,30*176400,60))
+        self.assertEqual(pcm['time_sources'],['offset'])
+        self.assertNotIn('pcm_bytes',pcm)  # the record never carries the samples
+        self.assertIsNone(probe.validate(fixture('game-dmo-hook'))['pcm'])
+        # A short write, a non-advancing offset, a byte total that disagrees and PCM rows without the header are refused.
+        good=fixture('game',dump_seconds=10)
+        for bad in (good.replace('src=offset offset=0 written=176400','src=offset offset=0 written=100000'),
+                    good.replace('offset=176400 written','offset=0 written'),
+                    good.replace('REPLICA_PCM_TOTAL bytes=882000','REPLICA_PCM_TOTAL bytes=1'),
+                    good.replace('REPLICA_PCM_HEADER dump=1 dump_seconds=10\n','')):
+            with self.assertRaises(AssertionError):probe.validate(bad)
 
     def test_hang_names_open_step_and_forbids_completion(self):
         r=probe.validate(fixture(hang_at=(1,'control_pause')))
