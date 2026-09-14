@@ -122,7 +122,7 @@ class StepAPolicyAndLayoutTests(unittest.TestCase):
         self.assertRegex(body,r'hr = call\(SetRt, DWORD\(1\), e\);\s*if \(SUCCEEDED\(hr\)\) hr = call\(SetRt, DWORD\(2\), c\);\s*if \(SUCCEEDED\(hr\)\) hr = call\(SetRt, DWORD\(3\), pb\);')
         # motion_output.cpp keeps requesting and publishing policies 1-4 only (step C is later).
         route=(ROOT/'src/proxy/motion_output.cpp').read_text()
-        self.assertNotIn('PackedScreenInPlace',route)
+        self.assertIn('PackedScreenInPlace',route) # step C admits the policy from the route (screen-emission-region.md)
 
 
 def prototype_words(kind):

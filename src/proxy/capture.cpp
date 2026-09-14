@@ -85,6 +85,7 @@ float taa_sharpen = 0.f;
 bool hdr_requested = false;
 bool linear_emission_requested = false;
 bool linear_distance_fade_requested = false;
+bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step C)
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
 float emission_gain = 1.f;
@@ -171,6 +172,7 @@ struct Device : Hooks {
     unsigned composition_draw_depth = 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     unsigned fixture_emission_source_calls = 0;
+    unsigned fixture_primitive_source_calls = 0; // submitted DrawPrimitive calls this frame (screen fixture key 49)
     bool fixture_observe_native_wrap = false;
     MotionOutputFixtureWrapSnapshot fixture_wrap{};
 #endif
@@ -1006,7 +1008,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame; ctx.draws=0; ctx.composition_scene_owner=false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    ctx.fixture_emission_source_calls=0;
+    ctx.fixture_emission_source_calls=0; ctx.fixture_primitive_source_calls=0;
 #endif
     ctx.events=0; ctx.stats.frame=ctx.frame;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
@@ -1105,7 +1107,21 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"primitive",t,c);
     if (devices.at(d)->capture) log("draw_args start_vertex=%u",s);
-    auto route=ctx.motion_output.before_draw({false,false,t,c,s,0,0,0});
+    // Step C (screen-emission-region.md): the bullet screen draws are
+    // non-indexed; they get the same scene/thread permission and draw scope
+    // as the indexed DIP so the packed bracket can admit them.
+    const bool composition_permission=ctx.composition_scene_owner && ctx.composition_scene_frame==ctx.frame && ctx.scene_thread==GetCurrentThreadId()
+        && !ctx.reset_active && !ctx.compositor && !ctx.bloom_busy && !ctx.composition_draw_depth
+        && !ctx.motion_output.reference_accounting_busy();
+    struct CompositionDrawScope {
+        unsigned& depth; bool enabled;
+        CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
+        ~CompositionDrawScope(){if(enabled)--depth;}
+    } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
+    auto route=ctx.motion_output.before_draw({false,false,t,c,s,0,0,0,composition_permission});
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if(route.submit)++ctx.fixture_primitive_source_calls;
+#endif
     timer.begin();
     cpu.before_original();
     const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,UINT,UINT)>(81)(d,t,s,c):route.submission_error;cpu.after_original();
@@ -1796,6 +1812,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_materials(linear_material_requested,linear_material_config);
     hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
+    hooked.motion_output.configure_screen_emission(screen_emission_requested);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
@@ -2043,6 +2060,12 @@ void initialize_log(HMODULE module) {
     const bool fade_requested=GetEnvironmentVariableW(L"X3M_LINEAR_DISTANCE_FADE",setting,32)==1 && setting[0]==L'1';
     linear_distance_fade_requested=fade_requested && linear_material_requested && taa_requested;
     if(fade_requested)log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u",linear_distance_fade_requested,linear_material_requested,taa_requested);
+    // X3M_SCREEN_EMISSION=1: the packed screen bracket (policy 8) for the
+    // nine SM1 screen pairs; the same material/TAA prerequisites as the fade
+    // route (the pass composes into the AgX FP16 scene). Default off.
+    {const bool asked=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION",setting,32)==1 && setting[0]==L'1';
+     screen_emission_requested=asked && linear_material_requested && taa_requested;
+     if(asked)log("screen_emission_mode requested=1 enabled=%u materials=%u taa=%u policy=8",screen_emission_requested,linear_material_requested,taa_requested);}
     // X3M_FADE_WITNESS=<k> (1..100000): every k-th frame the fade-region
     // witness reads the M coverage target back once (default off; needs the
     // distance-fade route; docs/architecture/linear-distance-fade-region.md).
@@ -2050,8 +2073,8 @@ void initialize_log(HMODULE module) {
     {const DWORD length=GetEnvironmentVariableW(L"X3M_FADE_WITNESS",setting,32);
      if(length>0&&length<32){bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
         const unsigned long n=digits?wcstoul(setting,nullptr,10):0ul;if(digits&&n>=1&&n<=100000)fade_witness_frames=unsigned(n);
-        log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u",n,digits,fade_witness_frames&&linear_distance_fade_requested,linear_distance_fade_requested);}
-     else if(length)log("fade_witness_mode requested=overlong enabled=0 fade=%u",linear_distance_fade_requested);}
+        log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u screen=%u",n,digits,fade_witness_frames&&(linear_distance_fade_requested||screen_emission_requested),linear_distance_fade_requested,screen_emission_requested);}
+     else if(length)log("fade_witness_mode requested=overlong enabled=0 fade=%u screen=%u",linear_distance_fade_requested,screen_emission_requested);}
     // X3M_SHIMMER_TRACE=1: per-frame distant-shimmer diagnostic (off by
     // default; needs the motion route and TAA; no other behaviour changes).
     {const bool asked=GetEnvironmentVariableW(L"X3M_SHIMMER_TRACE",setting,32)==1 && setting[0]==L'1';
@@ -2163,6 +2186,7 @@ extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDi
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end())return 0;
     if(key==12)return it->second->fixture_emission_source_calls;
+    if(key==49)return it->second->fixture_primitive_source_calls;
     return it->second->motion_output.fixture_emission_status(key);
 }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_target(IDirect3DDevice9* device,unsigned target,float* out,unsigned floats,unsigned* width,unsigned* height) {

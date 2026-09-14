@@ -18,6 +18,7 @@
 #include "../renderer/hdr_pass.h"
 #include "../ownership/d3d9_ownership.h"
 #include "screen_emission_admission.h"
+#include "../renderer/linear_emission_sm1.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -78,7 +79,7 @@ enum Slot : unsigned {
     CreateOffscreenPlainSurface = 36, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, GetRenderState = 58,
-    GetTexture = 64, SetTexture = 65, GetSamplerState = 68, SetSamplerState = 69,
+    GetTexture = 64, SetTexture = 65, GetTextureStageState = 66, GetSamplerState = 68, SetSamplerState = 69,
     SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
     CreateVertexDeclaration = 86, SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90,
     CreateVertexShader = 91, SetVertexShader = 92, GetVertexShader = 93,
@@ -100,6 +101,7 @@ using GetRenderStateFn = HRESULT(WINAPI*)(D, D3DRENDERSTATETYPE, DWORD*);
 using GetTextureFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DBaseTexture9**);
 using SetSamplerStateFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD);
 using GetSamplerStateFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD*);
+using GetStageFn = HRESULT(WINAPI*)(D, DWORD, D3DTEXTURESTAGESTATETYPE, DWORD*);
 using SetScissorFn = HRESULT(WINAPI*)(D, const RECT*);
 using GetScissorFn = HRESULT(WINAPI*)(D, RECT*);
 using DrawUpFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, UINT, const void*, UINT);
@@ -280,12 +282,13 @@ unsigned MotionOutput::device_references() const noexcept {
     if (hdr_) count += hdr_->references();
     if (composition_) count += composition_->references();
     if (depth_surface_) ++count;
+    if (fade_witness_.copy) ++count; // the witness's retained system-memory readback surface
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
     for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; }
-    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; }
+    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.screen_variant) ++count; }
     return count;
 }
 
@@ -318,7 +321,7 @@ void MotionOutput::release_resources() noexcept {
     release(sentinel_mrt_ps_);
     release(quad_vs_); release(quad_declaration_);
     for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); }
-    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); }
+    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.screen_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
@@ -531,9 +534,13 @@ void MotionOutput::configure_linear_distance_fade(bool requested) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
     distance_fade_requested_ = requested && linear_material_requested_;
 }
+void MotionOutput::configure_screen_emission(bool requested) noexcept {
+    if (device_) return; // Process-start shader-cache configuration only.
+    screen_emission_requested_ = requested && linear_material_requested_;
+}
 void MotionOutput::configure_fade_witness(unsigned frames) noexcept {
     if (device_) return;
-    fade_witness_interval_ = distance_fade_requested_ ? frames : 0u;
+    fade_witness_interval_ = distance_fade_requested_ || screen_emission_requested_ ? frames : 0u;
 }
 void MotionOutput::configure_shimmer_trace(bool requested) noexcept {
     if (device_) return;
@@ -1447,7 +1454,8 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     HRESULT format_result = S_OK, depth_format_result = S_OK, taa_format_result = S_OK, stretch_query = S_OK;
     quad_fvf_ = renderer::quad_fvf_requested();
     taa_copy_draw_ = false; std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "off");
-    { char setting[8]{}; screen_emission_bound_ = GetEnvironmentVariableA("X3M_SCREEN_EMISSION_BOUND", setting, sizeof setting) == 1 && setting[0] == '1'; }
+    { char setting[8]{}; screen_emission_bound_ = (GetEnvironmentVariableA("X3M_SCREEN_EMISSION_BOUND", setting, sizeof setting) == 1 && setting[0] == '1')
+        || (GetEnvironmentVariableA("X3M_SCREEN_EMISSION", setting, sizeof setting) == 1 && setting[0] == '1'); } // step C implies step B
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { char setting[8]{}; fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
     {
@@ -1455,6 +1463,12 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         fixture_fade_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_FADE_RECT", setting, sizeof setting) > 0
             && std::sscanf(setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r && t < b;
         if (fixture_fade_rect_set_) fixture_fade_rect_ = {std::int32_t(l), std::int32_t(t), std::int32_t(r), std::int32_t(b)};
+        char screen_setting[64]{}; l = t = r = b = 0;
+        fixture_screen_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_RECT", screen_setting, sizeof screen_setting) > 0
+            && std::sscanf(screen_setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r && t < b;
+        if (fixture_screen_rect_set_) fixture_screen_rect_ = {std::int32_t(l), std::int32_t(t), std::int32_t(r), std::int32_t(b)};
+        char caps_setting[8]{};
+        fixture_screen_caps_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_CAPS_FAULT", caps_setting, sizeof caps_setting) == 1 && caps_setting[0] == '1';
     }
 #endif
     if (caps.NumSimultaneousRTs < 2) reason = "mrt_count";
@@ -1941,7 +1955,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.vs == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
         shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2034,7 +2048,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.ps == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr;
+        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_screen_variant = nullptr;
         shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2051,6 +2065,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         release(entry.xt_default_linear_variant);
         release(entry.distance_fade_variant);
         release(entry.emission_variant);
+        release(entry.screen_variant);
         entry.hash = hash;
         entry.row = nullptr;
         if (!enabled_ || !code || !bytes || bytes % 4) return;
@@ -2082,6 +2097,26 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             if (result != renderer::LinearEmissionResult::UnsupportedShader)
                 log("linear_emission_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g coverage=1",
                     id_, hash, unsigned(result), hr, unsigned(words.size()), double(linear_emission_config_.gain));
+        }
+        // Step C (screen-emission-region.md): the promoted PackedScreen
+        // producer of one of the six SM1 screen pixel shaders, from the
+        // pure-promotion checkpoint (linear_emission_sm1.cpp): M = (1,0,0,a)
+        // and the three channel planes. Created once here, never at a draw;
+        // the original VS stays untouched in the bracket.
+        if (screen_emission_requested_ && screen_emission::admitted_pixel_shader(hash)) {
+            std::vector<std::uint32_t> words;
+            renderer::LinearEmissionSm1Config config{};
+            config.gain = linear_emission_config_.gain; config.outputs = renderer::LinearEmissionSm1Outputs::PackedScreen;
+            const auto result = renderer::linear_emission_sm1_pixel_variant(
+                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, config, words);
+            IDirect3DPixelShader9* variant = nullptr;
+            HRESULT hr = E_FAIL;
+            if (result == renderer::LinearEmissionResult::Applied)
+                hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+            if (SUCCEEDED(hr) && variant) entry.screen_variant = variant;
+            else release(variant);
+            log("screen_emission_variant device=%llu original=%016llx transform=%u create=%08lx words=%u gain=%g outputs=packed",
+                id_, hash, unsigned(result), hr, unsigned(words.size()), double(config.gain));
         }
         entry.row = renderer::material_motion_pixel_row(hash, bytes / 4);
         if (entry.row) {
@@ -2133,7 +2168,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2155,7 +2190,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
 }
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr;
+    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_screen_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2168,6 +2203,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_registered = it->second.registered;
     shadow_.ps_fade_variant = static_cast<IDirect3DPixelShader9*>(it->second.distance_fade_variant);
     shadow_.ps_emission_variant = it->second.emission_variant;
+    shadow_.ps_screen_variant = it->second.screen_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
     shadow_.ps_material_variant = static_cast<IDirect3DPixelShader9*>(it->second.material_variant);
     shadow_.ps_xt_default_ordinary = static_cast<IDirect3DPixelShader9*>(it->second.xt_default_ordinary_variant);
@@ -2657,6 +2693,9 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     if (composition_published_ && hdr_state_ != HdrState::Off && (composition_main_sampler_mask_ || !composition_readers_known_)) composition_export();
     route.evaluated = true;
     evaluate_draw(call, route);
+    // Step B rectangle before step C's admission: an admitted screen draw
+    // composes inside it; without it the draw stays native.
+    if (screen_emission_bound_) derive_prefix_region(call, route);
     if (!route.routed) {
         const HRESULT restored = restore_bindings_checked();
         if (FAILED(restored)) {
@@ -2670,7 +2709,6 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     }
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
         mark_cutout_candidate(route);
-    if (screen_emission_bound_) derive_prefix_region(call, route);
     if (telemetry::draw_enabled()) {
         const std::uint64_t total = draw_stamp() - begin,
             excluded = route.ticks + (counters_.fill_ticks - fill_before) + (counters_.lazy_flush_ticks - flush_before);
@@ -2733,7 +2771,15 @@ void MotionOutput::begin_composition_frame() noexcept {
     // fade bracket beside the exchange fade (policy 2 stays the fallback when the
     // device lacks D3DPRASTERCAPS_SCISSORTEST: the pass then reports 4 unsupported).
     const unsigned producers = (linear_emission_requested_ ? 1u : 0u) | (distance_fade_requested_ ? 2u : 0u);
-    const unsigned requested = producers | (distance_fade_requested_ ? 4u : 0u);
+    // Bit 8 asks for the packed screen bracket (step C); it never joins the
+    // required producers, so a device without its caps refuses screen draws
+    // to native without stopping any frame.
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    const bool screen_policy = screen_emission_requested_ && !fixture_screen_caps_fault_;
+#else
+    const bool screen_policy = screen_emission_requested_;
+#endif
+    const unsigned requested = producers | (distance_fade_requested_ ? 4u : 0u) | (screen_policy ? 8u : 0u);
     if (composition_adapter_format_ == D3DFMT_UNKNOWN) {
         // An unanswered capability query is not proof of immutable exclusion.
         // Retry only at the frame latch; this frame must not seed ordinary TAA
@@ -2825,24 +2871,53 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
             && shadow_.composition_blend[0] == D3DBLEND_SRCALPHA
             && shadow_.composition_blend[1] == D3DBLEND_INVSRCALPHA && shadow_.composition_blend[2] == D3DBLENDOP_ADD;
     }
+    // Step C (screen-emission-region.md, section 4): an exact SM1 screen pair
+    // in the native screen state (ALPHABLENDENABLE, ADD, ONE/INVSRCCOLOR,
+    // mask 15, separate alpha off, Z-write off, sRGB write off; alpha test
+    // and Z test any). An unknown state refuses as readiness; policy 8 is not
+    // a required producer, so no screen refusal ever stops the frame.
+    bool screen = false;
+    if (shadow_.screen_pair && !fade) {
+        bool known = true;
+        for (unsigned i : {1u, 3u, 4u, 5u}) known = known && shadow_.states_known[i];
+        for (unsigned i = 0; i < 4; ++i) known = known && shadow_.composition_blend_known[i];
+        if (!known) { ++composition_counts_.refused; ++composition_counts_.refusal[2]; return; }
+        screen = shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5]
+            && shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_INVSRCCOLOR
+            && shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3];
+    }
     const bool emitter = shadow_.emission_pair;
-    if (!fade && !emitter) { ++composition_counts_.refused; ++composition_counts_.refusal[0]; return; }
+    if (!fade && !emitter && !screen) { ++composition_counts_.refused; ++composition_counts_.refusal[0]; return; }
     if (fade) ++composition_counts_.eligible_fade;
-    const unsigned producer = fade ? 2u : 1u;
+    if (screen) {
+        ++composition_counts_.packed_eligible;
+        // The bound first: a screen draw without a locked-prefix rectangle
+        // (first draw after creation, scan refused, indexed/instanced/other
+        // layout, scalar-fade body) stays native, never the full viewport;
+        // so does one whose device lacks policy 8. Neither is a refusal of
+        // the histogram: the native draw is the status quo of every bullet.
+        if (!route.prefix_evaluated || !route.prefix_region.bound) { ++composition_counts_.packed_unbounded_refused; return; }
+        if (!composition_ || !composition_->caps().supports(renderer::LinearCompositionPolicy::PackedScreenInPlace)) { ++composition_counts_.packed_caps_refused; return; }
+    }
+    const unsigned producer = fade ? 2u : screen ? 8u : 1u;
     // Fade composes in place (section 3 of linear-distance-fade-region.md) when
     // the pass offers policy 4; otherwise the exchange policy 2 remains the
-    // route. Emission keeps its exchange bracket in either case.
-    const bool in_place = fade && composition_ && composition_->caps().supports(renderer::LinearCompositionPolicy::DistanceFadeInPlace);
-    const auto policy = in_place ? renderer::LinearCompositionPolicy::DistanceFadeInPlace
+    // route. Emission keeps its exchange bracket in either case. The packed
+    // screen bracket is in place only (policy 8; no exchange, no full viewport).
+    const bool in_place = screen || (fade && composition_ && composition_->caps().supports(renderer::LinearCompositionPolicy::DistanceFadeInPlace));
+    const auto policy = screen ? renderer::LinearCompositionPolicy::PackedScreenInPlace
+        : in_place ? renderer::LinearCompositionPolicy::DistanceFadeInPlace
         : fade ? renderer::LinearCompositionPolicy::DistanceFade : renderer::LinearCompositionPolicy::AdditiveEmission;
     const bool required = (composition_required_producers_ & producer) != 0;
     unsigned refusal = 6;
-    if (!call.composition_permission || !call.indexed || call.user_memory || !call.primitives
+    // The bullet screen draws are non-indexed (DrawPrimitive from StartVertex
+    // 0, the bound's contract); the fade/emission sources are indexed DIPs.
+    if (!call.composition_permission || (screen ? call.indexed : !call.indexed) || call.user_memory || !call.primitives
         || !scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_) refusal = 1;
     else if (!taa_enabled_ || !hdr_enabled_ || hdr_state_ != HdrState::Active || !hdr_ || !hdr_->tonemap_active()
         || hdr_config_.decode != x3::temporal::AgxDecode::gamma22 || hdr_config_.tonemap != renderer::HdrTonemap::Agx
         || !composition_ || !composition_->caps().supports(policy) || composition_busy_
-        || (fade ? (!shadow_.vs_fade_variant || !shadow_.ps_fade_variant) : !shadow_.emission_eligible_variant)) refusal = 2;
+        || (fade ? (!shadow_.vs_fade_variant || !shadow_.ps_fade_variant) : screen ? !shadow_.screen_eligible_variant : !shadow_.emission_eligible_variant)) refusal = 2;
     else if (!composition_readers_known_ || composition_main_sampler_mask_) refusal = 3;
     else if (composition_frame_stopped_ || composition_quarantined_) refusal = 4;
     if (refusal == 6 && fade) {
@@ -2851,6 +2926,16 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
             if ((shadow_.fade_sampler_mask & (1u << stage)) && (!samplers_[stage].srgb_known || samplers_[stage].srgb)) refusal = 2;
         const auto* row = shadow_.vs_row;
         if (!row || (row->light_loop_bound_required && (!shadow_.integer0_known || shadow_.integer0[0] < 0 || shadow_.integer0[0] > int(row->light_loop_max_count)))) refusal = 2;
+    }
+    if (refusal == 6 && screen) {
+        // The diffuse sampler must not decode sRGB (the promoted PS samples
+        // it as the original does) and stage 0 must not project its
+        // coordinates: the SM1 originals leave W undefined under PROJECTED
+        // (linear-emission-sm1.md). One documented Get per bounded candidate.
+        DWORD flags = 0;
+        if (!samplers_[0].srgb_known || samplers_[0].srgb
+            || FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags))
+            || (flags & D3DTTFF_PROJECTED)) refusal = 2;
     }
     if (refusal != 6) {
         ++composition_counts_.refused; ++composition_counts_.refusal[refusal];
@@ -2861,16 +2946,39 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         return;
     }
     if (fade) derive_fade_region(route);
+    if (screen && witness_frame()) {
+        // The packed rectangle joins the witness union exactly as a fade
+        // rectangle does (derive_fade_region records those); prepared below.
+        auto& w = fade_witness_;
+        w.last = FadeWitness::rect_capacity;
+        if (w.count < FadeWitness::rect_capacity) { w.last = w.count; w.rects[w.count] = route.prefix_region.rect; w.prepared[w.count] = false; }
+        else w.overflow = true;
+        ++w.count;
+        const unsigned permille = route.prefix_region_permille;
+        const unsigned bucket = permille <= 10 ? 0u : permille <= 20 ? 1u : permille <= 50 ? 2u : permille <= 100 ? 3u
+            : permille <= 250 ? 4u : permille <= 500 ? 5u : permille < 1000 ? 6u : 7u;
+        ++w.f_hist[bucket];
+        const bool witness_line = w.logged < FadeWitness::line_budget;
+        if (witness_line) ++w.logged;
+        if (capture_ || witness_line) {
+            const auto& r = route.prefix_region.rect;
+            log("packed_region device=%llu frame=%llu index=%lu vs=%016llx ps=%016llx vb=%llu rect=%ld,%ld,%ld,%ld f_permille=%u",
+                id_, frame_, static_cast<unsigned long>(counters_.draws), shadow_.vs_hash, shadow_.ps_hash, shadow_.stream0,
+                long(r.left), long(r.top), long(r.right), long(r.bottom), permille);
+        }
+    }
     composition_busy_ = true;
-    renderer::LinearEmissionBoundary boundary{hdr_->target(), fade ? shadow_.ps_fade_variant : shadow_.emission_eligible_variant, frame_, true};
+    renderer::LinearEmissionBoundary boundary{hdr_->target(), fade ? shadow_.ps_fade_variant : screen ? shadow_.screen_eligible_variant : shadow_.emission_eligible_variant, frame_, true};
     boundary.policy = policy;
-    boundary.augmented_vertex = fade ? shadow_.vs_fade_variant : nullptr;
+    boundary.augmented_vertex = fade ? shadow_.vs_fade_variant : nullptr; // packed: the VS stays the application's
     if (in_place) {
         // derive_fade_region always yields a rectangle: the box projection or,
         // on every doubt, the full viewport (whole target while the viewport is
         // unknown), already clipped to the owning target. The pass intersects
         // it further with the saved viewport and an enabled application scissor.
-        const auto& r = route.fade_region.rect;
+        // The packed rectangle is the bound locked-prefix projection (never the
+        // full viewport: an unbounded draw was refused above).
+        const auto& r = screen ? route.prefix_region.rect : route.fade_region.rect;
         boundary.region = RECT{r.left, r.top, r.right, r.bottom};
         boundary.region_known = true;
     }
@@ -2881,7 +2989,8 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         route.composition = true; route.composition_policy = policy;
         ++composition_counts_.prepared;
         if (fade) ++composition_counts_.prepared_fade;
-        if (fade && witness_frame() && fade_witness_.last < FadeWitness::rect_capacity) {
+        if (screen) ++composition_counts_.packed_admitted;
+        if ((fade || screen) && witness_frame() && fade_witness_.last < FadeWitness::rect_capacity) {
             fade_witness_.prepared[fade_witness_.last] = true; ++fade_witness_.prepared_count;
         }
         if (in_place) ++composition_counts_.in_place; // traffic and region pixels are added at finish from the pass's rectangle
@@ -2924,7 +3033,11 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
     composition_counts_.composition = completed.composition; composition_counts_.restore = completed.restore;
     if (FAILED(completed.composition)) ++composition_counts_.composition_failures;
     if (FAILED(completed.restore)) ++composition_counts_.restore_failures;
-    if (policy == renderer::LinearCompositionPolicy::DistanceFadeInPlace) {
+    if (policy == renderer::LinearCompositionPolicy::DistanceFadeInPlace || policy == renderer::LinearCompositionPolicy::PackedScreenInPlace) {
+        // Policy 8 takes the same branch: the packed composite lands in A|R,
+        // the failure ladder is the fade one (screen-emission-region.md,
+        // section 2), 112 bytes of pool traffic per region pixel.
+        const bool packed = policy == renderer::LinearCompositionPolicy::PackedScreenInPlace;
         // No candidate, exchange or acknowledgement: finish() composed A|R in
         // place from B|R and E|R and returned the pass to idle. Linear means A
         // holds the composed rectangle and the frame's M stays valid. Anything
@@ -2938,16 +3051,19 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
         const std::uint64_t pixels = r.right > r.left && r.bottom > r.top
             ? std::uint64_t(r.right - r.left) * std::uint64_t(r.bottom - r.top) : 0u;
         composition_counts_.region_pixels += pixels;
-        composition_counts_.pool_traffic_bytes += pixels * 48u;
+        composition_counts_.pool_traffic_bytes += pixels * (packed ? 112u : 48u);
+        if (packed) composition_counts_.packed_region_pixels += pixels;
         composition_counts_.recovery = completed.recovery;
         if (FAILED(completed.recovery)) ++composition_counts_.recovery_failures;
         if (FAILED(completed.restore)) composition_state_lost_ = true;
         composition_busy_ = false;
         if (FAILED(source) || completed.image != renderer::LinearEmissionImage::Linear || composition_state_lost_ || !composition_->coverage_valid()) {
             ++composition_counts_.incomplete; ++composition_counts_.in_place_incomplete;
+            if (packed) ++composition_counts_.packed_incomplete;
             composition_frame_stopped_ = true; invalidate_taa();
         } else {
-            ++composition_counts_.linear; ++composition_counts_.linear_fade; ++composition_counts_.in_place_linear;
+            ++composition_counts_.linear; ++composition_counts_.in_place_linear;
+            if (packed) ++composition_counts_.packed_linear; else ++composition_counts_.linear_fade;
             composition_enhanced_ = true;
         }
         return;
@@ -3008,6 +3124,9 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
     shadow_.emission_pair = linear_emission_requested_ && shadow_.vs_registered && shadow_.ps_registered
         && renderer::linear_emission_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.emission_eligible_variant = shadow_.emission_pair ? shadow_.ps_emission_variant : nullptr;
+    shadow_.screen_pair = screen_emission_requested_ && shadow_.vs_registered && shadow_.ps_registered
+        && screen_emission::admitted_pair(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.screen_eligible_variant = shadow_.screen_pair ? shadow_.ps_screen_variant : nullptr;
     shadow_.fade_sampler_mask = distance_fade_requested_ && shadow_.vs_registered && shadow_.ps_registered
         ? renderer::linear_distance_fade_sampler_mask(shadow_.vs_hash, shadow_.ps_hash) : 0;
 }
@@ -3380,8 +3499,15 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     if (region.bound && (FAILED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) || frequency != 1)) {
         region.bound = false; region.reason = Reason::BoundUnknown; ++counts.prefix_instanced;
     }
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    // Straddling case of the live fixture: a bound rectangle smaller than
+    // the draw, so the packed bracket leaves the outside native and the
+    // witness must fire.
+    if (fixture_screen_rect_set_ && region.bound) region.rect = fixture_screen_rect_;
+#endif
     if (!region.bound) { region.rect = {0, 0, 0, 0}; permille = 0; } // never the full viewport for this kind
     route.prefix_region = region;
+    route.prefix_region_permille = permille;
     route.ticks += draw_stamp() - begin;
     ++counts.prefix_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
     ++counts.prefix_lookup[bound.prefix_refusal < unsigned(prefix::Lookup::Count) ? bound.prefix_refusal : 0u];
@@ -3928,10 +4054,12 @@ void MotionOutput::witness_readback() noexcept {
     if (!fade_witness_interval_ || frame_ % fade_witness_interval_ != 0) return;
     auto& w = fade_witness_;
     const auto& cc = composition_counts_;
-    const unsigned emission_prepared = cc.prepared - cc.prepared_fade;
+    // Exchange (emission) brackets rewrite M whole; in-place fade and packed
+    // brackets add their rectangles to the union instead.
+    const unsigned emission_prepared = cc.prepared - cc.prepared_fade - cc.packed_admitted;
     IDirect3DSurface9* mask = composition_ ? composition_->coverage_target() : nullptr;
     const char* reason = "sampled";
-    if (!distance_fade_requested_ || !composition_ || !mask) reason = "no_pass";
+    if ((!distance_fade_requested_ && !screen_emission_requested_) || !composition_ || !mask) reason = "no_pass";
     else if (!w.count) reason = "no_fade";
     else if (emission_prepared) reason = "emission";
     else if (composition_frame_stopped_ || composition_quarantined_ || composition_state_lost_ || !composition_->coverage_valid()) reason = "mask_invalid";
@@ -3988,10 +4116,10 @@ void MotionOutput::witness_readback() noexcept {
         ++counters_.readbacks; counters_.readback_ticks += ticks;
         record(unsigned(telemetry::Metric::RouteReadback), ticks, FAILED(hr), std::uint64_t(width) * height * 8u);
     }
-    log("fade_witness device=%llu frame=%llu k=%u sampled=%u reason=%s result=%08lx width=%u height=%u rects=%u rects_prepared=%u rects_unprepared=%u overflow=%u lines_truncated=%u covered=%u outside=%u union=%llu fade_prepared=%u emission_prepared=%u f_hist=%u,%u,%u,%u,%u,%u,%u,%u",
+    log("fade_witness device=%llu frame=%llu k=%u sampled=%u reason=%s result=%08lx width=%u height=%u rects=%u rects_prepared=%u rects_unprepared=%u overflow=%u lines_truncated=%u covered=%u outside=%u union=%llu fade_prepared=%u emission_prepared=%u packed_prepared=%u f_hist=%u,%u,%u,%u,%u,%u,%u,%u",
         id_, frame_, fade_witness_interval_, unsigned(sample), reason, hr, unsigned(width), unsigned(height), w.count, w.prepared_count,
         w.count - w.prepared_count, unsigned(w.overflow), w.count > w.logged ? w.count - w.logged : 0u, covered, outside,
-        static_cast<unsigned long long>(union_area), cc.prepared_fade, emission_prepared,
+        static_cast<unsigned long long>(union_area), cc.prepared_fade, emission_prepared, cc.packed_admitted,
         w.f_hist[0], w.f_hist[1], w.f_hist[2], w.f_hist[3], w.f_hist[4], w.f_hist[5], w.f_hist[6], w.f_hist[7]);
 }
 void MotionOutput::release_fade_witness() noexcept {
@@ -4081,12 +4209,15 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
         const auto& c = counters_;
         if (composition_requested())
-            log("%s_frame device=%llu frame=%llu prepared=%u linear=%u native=%u incomplete=%u refused=%u suppressed=%u exports=%u quarantine=%u state_lost=%u mask_valid=%u fade_eligible=%u fade_prepared=%u fade_linear=%u pool_traffic_estimate_bytes=%llu in_place=%u in_place_linear=%u in_place_incomplete=%u region_pixels=%llu",
-                distance_fade_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.prepared, composition_counts_.linear, composition_counts_.native, composition_counts_.incomplete,
+            log("%s_frame device=%llu frame=%llu prepared=%u linear=%u native=%u incomplete=%u refused=%u suppressed=%u exports=%u quarantine=%u state_lost=%u mask_valid=%u fade_eligible=%u fade_prepared=%u fade_linear=%u pool_traffic_estimate_bytes=%llu in_place=%u in_place_linear=%u in_place_incomplete=%u region_pixels=%llu"
+                " packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded_refused=%u packed_caps_refused=%u packed_region_pixels=%llu",
+                distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.prepared, composition_counts_.linear, composition_counts_.native, composition_counts_.incomplete,
                 composition_counts_.refused, composition_counts_.suppressed, composition_counts_.exports, composition_quarantined_, composition_state_lost_,
                 composition_ && composition_->coverage_valid() && !composition_frame_stopped_ && !composition_quarantined_,
                 composition_counts_.eligible_fade, composition_counts_.prepared_fade, composition_counts_.linear_fade, composition_counts_.pool_traffic_bytes,
-                composition_counts_.in_place, composition_counts_.in_place_linear, composition_counts_.in_place_incomplete, composition_counts_.region_pixels);
+                composition_counts_.in_place, composition_counts_.in_place_linear, composition_counts_.in_place_incomplete, composition_counts_.region_pixels,
+                composition_counts_.packed_eligible, composition_counts_.packed_admitted, composition_counts_.packed_linear, composition_counts_.packed_incomplete,
+                composition_counts_.packed_unbounded_refused, composition_counts_.packed_caps_refused, composition_counts_.packed_region_pixels);
         if (distance_fade_requested_ && (composition_counts_.region_bound || composition_counts_.region_full))
             log("fade_region_frame device=%llu frame=%llu bound=%u full=%u hit=%u miss=%u poisoned=%u evicted=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u status_no_table=%u status_no_scope=%u status_content=%u status_poisoned=%u status_read=%u status_back_link=%u status_no_record=%u status_invalid=%u table_used=%u table_poisoned=%u table_evictions=%u",
                 id_, frame_, composition_counts_.region_bound, composition_counts_.region_full, composition_counts_.region_hit, composition_counts_.region_miss, composition_counts_.region_poisoned, composition_counts_.region_evicted,
@@ -4109,7 +4240,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         }
         if (composition_requested())
             log("%s_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u recovery_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx last_recovery=%08lx",
-                distance_fade_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2], composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],
+                distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2], composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],
                 composition_counts_.prepare_failures, composition_counts_.composition_failures, composition_counts_.restore_failures, composition_counts_.exchange_failures, composition_counts_.ack_failures, composition_counts_.recovery_failures,
                 composition_counts_.prepare, composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition, composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack, composition_counts_.recovery);
         if (linear_material_requested_)
@@ -4211,6 +4342,15 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 33: return counters_.cutout_routed;
     case 34: return counters_.cutout_missed;
     case 35: return static_cast<unsigned>(cutout_cap_result_);
+    case 40: return composition_counts_.packed_eligible;
+    case 41: return composition_counts_.packed_admitted;
+    case 42: return composition_counts_.packed_linear;
+    case 43: return composition_counts_.packed_incomplete;
+    case 44: return composition_counts_.packed_unbounded_refused;
+    case 45: return composition_counts_.packed_caps_refused;
+    case 46: return unsigned(composition_counts_.packed_region_pixels);
+    case 47: return composition_counts_.prefix_bound;
+    case 48: return composition_counts_.prefix_refused;
     case 36: { static_assert(motion_shadow_state_count <= 32); unsigned mask=0;
         for (unsigned i=0;i<motion_shadow_state_count;++i) if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
         return mask; }

@@ -1,0 +1,287 @@
+// Live packed screen emission (docs/architecture/screen-emission-region.md,
+// step C): the game's row-19 bullet pair vs_5e484a06672e28fb/ps_ec1f5c4a2f4e1445
+// drawn non-indexed from a DISCARD-locked dynamic buffer filled like the
+// bullet writer (FLOAT3 world position, FLOAT2 uv, D3DCOLOR; stride 24;
+// whole-buffer lock; StartVertex 0), in the native screen state
+// (ADD, ONE/INVSRCCOLOR, mask 15, Z-write off, alpha test on), mixed with
+// one Asteroid fade source (pair 0) and the additive emission source of the
+// fade fixture. The fixture owns original inputs, state/pixel witnesses and
+// scheduling; Python holds the packed-law oracle. The bullet VS transforms
+// world positions through c0-3 (g_mViewProjection): the rows are the
+// identity, so positions are clip coordinates and the quad footprint is
+// exact in pixels.
+void run_screen_emission_integration(Fixture& f,const char* original_path) {
+    require(f.seam&&f.enabled&&f.emission_status&&f.emission_fault&&f.emission_readback,"screen emission live seam");
+    const bool qualified=f.taa&&f.hdr&&f.hdr_agx;
+    const auto sibling=[&](const char* stage,const char* hash) {
+        const std::string supplied(original_path);const auto slash=supplied.find_last_of("/\\");
+        require(slash!=std::string::npos,"screen emission original directory");
+        return supplied.substr(0,slash+1)+stage+"_"+hash+".bin";
+    };
+    const auto original_vs=[&](const char* hash,Com<IDirect3DVertexShader9>& out) {
+        const auto code=load(sibling("vs",hash).c_str());
+        require(fnv(code.data(),code.size()*4)==std::strtoull(hash,nullptr,16),"screen original VS identity");
+        api(f.d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&out.p),"screen original VS");
+    };
+    const auto original_ps=[&](const char* hash,Com<IDirect3DPixelShader9>& out) {
+        const auto code=load(sibling("ps",hash).c_str());
+        require(fnv(code.data(),code.size()*4)==std::strtoull(hash,nullptr,16),"screen original PS identity");
+        api(f.d->CreatePixelShader(reinterpret_cast<const DWORD*>(code.data()),&out.p),"screen original PS");
+    };
+    Com<IDirect3DVertexShader9> bullet_vs,fade_vs,emission_vs;Com<IDirect3DPixelShader9> bullet_ps,fade_ps,emission_ps;
+    original_vs("5e484a06672e28fb",bullet_vs);original_ps("ec1f5c4a2f4e1445",bullet_ps);
+    if(!f.screenemission_bench) {
+        original_vs("b0602757fce6e870",fade_vs);original_ps("517540ae6d5e5410",fade_ps);
+        original_vs("d5e1c75351ed3f04",emission_vs);original_ps("8360f422de08b5bd",emission_ps);
+    }
+    // The bullet writer's layout and buffer (0x00608d58; 147456 bytes, whole
+    // DISCARD lock, count*24 bytes valid, StartVertex 0).
+    constexpr unsigned stride=24,max_vertices=6144,buffer_bytes=max_vertices*stride;
+    const D3DVERTEXELEMENT9 bullet_elements[]={{0,0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},{0,12,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},{0,20,D3DDECLTYPE_D3DCOLOR,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_COLOR,0},D3DDECL_END()};
+    Com<IDirect3DVertexDeclaration9> bullet_declaration;Com<IDirect3DVertexBuffer9> bullets;
+    api(f.d->CreateVertexDeclaration(bullet_elements,&bullet_declaration.p),"bullet declaration");
+    const auto create_bullets=[&](){api(f.d->CreateVertexBuffer(buffer_bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&bullets.p,nullptr),"bullet buffer");};
+    create_bullets();
+    // Quad footprint in clip space (rows = identity): functional script
+    // x in [0,.5], y in [-.25,.25] -> pixels [W/2,3W/4) x [3H/8,5H/8);
+    // bench: a small centred quad (+-.05: 96x54 px at 1080p, 64x38 at 1280x768).
+    const float qx0=f.screenemission_bench?-.05f:0.f,qx1=f.screenemission_bench?.05f:.5f,qy0=f.screenemission_bench?-.05f:-.25f,qy1=f.screenemission_bench?.05f:.25f,qz=.1f;
+    const RECT quad_rect{LONG(std::lround((qx0+1)*f.W/2.)),LONG(std::lround((1-qy1)*f.H/2.)),LONG(std::lround((qx1+1)*f.W/2.)),LONG(std::lround((1-qy0)*f.H/2.))};
+    // The writer: whole-buffer DISCARD lock, the stale tail first, then
+    // `quads` copies of the quad (two triangles each) from vertex 0.
+    const auto write_bullets=[&](unsigned quads) {
+        void* data=nullptr;api(bullets->Lock(0,buffer_bytes,&data,D3DLOCK_DISCARD),"bullet discard lock");
+        auto* words=static_cast<float*>(data);for(unsigned n=0;n<buffer_bytes/4;++n)words[n]=0.f;
+        const float corners[6][2]={{qx0,qy0},{qx1,qy0},{qx0,qy1},{qx1,qy0},{qx1,qy1},{qx0,qy1}};
+        for(unsigned q=0;q<quads;++q)for(unsigned k=0;k<6;++k) {
+            auto* v=static_cast<unsigned char*>(data)+(q*6+k)*stride;
+            const float position[3]={corners[k][0],corners[k][1],qz},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu; // h = COLOR0.w = 1
+            std::memcpy(v,position,12);std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);
+        }
+        api(bullets->Unlock(),"bullet discard unlock");
+    };
+    // Textures: the bullet texel (q = T * h, native alpha a = T.a), the
+    // Asteroid pair-0 texels and the emission texel of the fade fixture.
+    const float bullet_texel[4]={.5f,.25f,.125f,.5f};
+    const float texels[][4]={{.5f,.25f,.75f,.5f},{.25f,.375f,.75f,.625f},{.25f,.875f,.125f,.75f},{.125f,.25f,.0625f,.25f},{.5f,.25f,.75f,0},{.5f,.25f,.125f,.125f}};
+    Com<IDirect3DTexture9> bullet_texture,textures[6];
+    const auto texel=[&](const float* value,Com<IDirect3DTexture9>& out) {
+        api(f.d->CreateTexture(1,1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&out.p,nullptr),"screen source texture");
+        D3DLOCKED_RECT lock{};api(out->LockRect(0,&lock,nullptr,0),"screen texture lock");std::memcpy(lock.pBits,value,16);api(out->UnlockRect(0),"screen texture unlock");
+    };
+    texel(bullet_texel,bullet_texture);for(unsigned i=0;i<6;++i)texel(texels[i],textures[i]);
+    // The fade/emission quad and indices of the fade fixture.
+    struct SourceVertex {float p[3],uv[2],n[3],b[3],t[3];};
+    const float l=-1-1.f/f.W,r=1-1.f/f.W,t=1+1.f/f.H,b=-1+1.f/f.H;
+    const SourceVertex quad[]={{{l,t,.1f},{0,0},{0,0,1},{0,1,0},{1,0,0}},{{r,t,.1f},{1,0},{0,0,1},{0,1,0},{1,0,0}},{{l,b,.1f},{0,1},{0,0,1},{0,1,0},{1,0,0}},{{r,b,.1f},{1,1},{0,0,1},{0,1,0},{1,0,0}}};
+    const D3DVERTEXELEMENT9 elements[]={{0,0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},{0,12,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},{0,20,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0},{0,32,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0},{0,44,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT,0},D3DDECL_END()};
+    Com<IDirect3DVertexDeclaration9> declaration;Com<IDirect3DVertexBuffer9> vertices;Com<IDirect3DIndexBuffer9> indices;
+    api(f.d->CreateVertexDeclaration(elements,&declaration.p),"screen fade declaration");
+    api(f.d->CreateVertexBuffer(sizeof quad,0,0,D3DPOOL_MANAGED,&vertices.p,nullptr),"screen fade vertices");
+    void* data=nullptr;api(vertices->Lock(0,0,&data,0),"screen fade vertex lock");std::memcpy(data,quad,sizeof quad);api(vertices->Unlock(),"screen fade vertex unlock");
+    const unsigned short triangles[]={0,1,2,2,1,3};
+    api(f.d->CreateIndexBuffer(sizeof triangles,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"screen fade indices");
+    api(indices->Lock(0,0,&data,0),"screen fade index lock");std::memcpy(data,triangles,sizeof triangles);api(indices->Unlock(),"screen fade index unlock");
+    const auto raw=[&](unsigned target,std::vector<float>& image) {
+        unsigned w=0,h=0;image.assign(std::size_t(f.W)*f.H*(target==2?1:4),0);
+        const HRESULT hr=f.emission_readback(f.d.p,target,image.data(),unsigned(image.size()),&w,&h);
+        require(hr==D3DERR_NOTFOUND||SUCCEEDED(hr),"screen raw supplemental readback");
+        if(SUCCEEDED(hr))require(w==f.W&&h==f.H,"screen raw dimensions");
+        return hr;
+    };
+    const auto scene=[&]() {
+        Com<IDirect3DSurface9> logical;api(f.d->GetRenderTarget(0,&logical.p),"screen application RT view");
+        if(!f.hdr){const auto image=f.color_image();std::vector<float> out(image.size()*4);for(std::size_t i=0;i<image.size();++i)for(unsigned c=0;c<4;++c)out[4*i+c]=float((image[i]>>(c==0?16:c==1?8:c==2?0:24))&255)/255.f;return out;}
+        unsigned w=0,h=0;auto image=f.hdr_image(&w,&h);require(w==f.W&&h==f.H,"screen HDR image dimensions");return image;
+    };
+    const auto hash=[](const std::vector<float>& image){return fnv(image.data(),image.size()*sizeof(float));};
+    // M's red lane alone: the live coverage; alpha is the packed bracket's
+    // per-bracket scratch (seeded by the plane init even when the source
+    // bind then fails; screen-emission-region.md, step A deviations).
+    const auto hash_red=[](const std::vector<float>& image){std::vector<float> red(image.size()/4);for(std::size_t i=0;i<red.size();++i)red[i]=image[4*i];return fnv(red.data(),red.size()*sizeof(float));};
+    const auto write_raw=[&](const char* kind,const std::vector<float>& image) {
+        char name[96];std::snprintf(name,sizeof name,"screen_emission_%s_%llu.rgba32f",kind,f.frame);
+        FILE* file=std::fopen(name,"wb");require(file!=nullptr,"screen raw output");require(std::fwrite(image.data(),sizeof(float),image.size(),file)==image.size(),"screen raw bytes");std::fclose(file);
+    };
+    const auto common_sampler=[&](unsigned stage) {
+        for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(f.d->SetSamplerState(stage,filter,D3DTEXF_POINT),"screen point sampling");
+        api(f.d->SetSamplerState(stage,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"screen no mip");api(f.d->SetSamplerState(stage,D3DSAMP_SRGBTEXTURE,FALSE),"screen numeric sampler");
+    };
+    // The bullet draw state: the captured screen state (effects ledger row
+    // 19, 19 of 54 draws alpha-tested), Z test on, no scissor.
+    const auto bind_bullets=[&](bool projected) {
+        f.scope(nullptr);f.scene_states();
+        api(f.d->SetVertexDeclaration(bullet_declaration.p),"bullet declaration bind");api(f.d->SetStreamSource(0,bullets.p,0,stride),"bullet stream");
+        api(f.d->SetStreamSourceFreq(0,1),"bullet frequency");api(f.d->SetIndices(nullptr),"bullet no indices");
+        api(f.d->SetVertexShader(bullet_vs.p),"bullet VS bind");api(f.d->SetPixelShader(bullet_ps.p),"bullet PS bind");
+        const float rows[16]={1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};api(f.d->SetVertexShaderConstantF(0,rows,4),"bullet g_mViewProjection");
+        for(unsigned stage=0;stage<7;++stage){api(f.d->SetTexture(stage,stage?nullptr:static_cast<IDirect3DBaseTexture9*>(bullet_texture.p)),"bullet diffuse");common_sampler(stage);}
+        api(f.d->SetTextureStageState(0,D3DTSS_TEXTURETRANSFORMFLAGS,projected?D3DTTFF_PROJECTED|D3DTTFF_COUNT3:D3DTTFF_DISABLE),"bullet stage 0 transform");
+        api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"bullet no depth write");api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"bullet blending");
+        api(f.d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_ONE),"bullet ONE");api(f.d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCCOLOR),"bullet INVSRCCOLOR");api(f.d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"bullet ADD");
+        api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"bullet mask 15");api(f.d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"bullet alpha test");
+        api(f.d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"bullet alpha func");api(f.d->SetRenderState(D3DRS_ALPHAREF,1),"bullet alpha ref");
+        api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,FALSE),"bullet no scissor");
+        return quad_rect;
+    };
+    // The fade fixture's Asteroid pair 0 (run_linear_distance_fade case 0 inputs)
+    // and its additive emission source, both under the quarter-viewport scissor.
+    const auto bind_source=[&](bool emission) {
+        f.scope(nullptr);f.scene_states();
+        api(f.d->SetVertexDeclaration(declaration.p),"screen fade declaration bind");api(f.d->SetStreamSource(0,vertices.p,0,sizeof(SourceVertex)),"screen fade stream");
+        api(f.d->SetStreamSourceFreq(0,1),"screen fade frequency");api(f.d->SetIndices(indices.p),"screen fade indices");
+        api(f.d->SetVertexShader(emission?emission_vs.p:fade_vs.p),"screen fade VS bind");api(f.d->SetPixelShader(emission?emission_ps.p:fade_ps.p),"screen fade PS bind");
+        float vc[48][4]{},pc[12][4]{};
+        if(emission){for(unsigned i=0;i<4;++i)vc[i][i]=1;vc[10][0]=vc[11][1]=1;vc[12][0]=.5f;pc[0][0]=pc[1][1]=pc[2][2]=1;}
+        else {
+            const unsigned matrix=24,normal=31,camera=34,uv=37,alpha=39,emissive=40,point=0;
+            for(unsigned i=0;i<4;++i)vc[matrix+i][i]=1;
+            for(unsigned i=0;i<3;++i)vc[normal+i][i]=1;
+            vc[camera+2][3]=4;vc[uv][2]=.0625f;vc[uv+1][2]=.1875f;
+            vc[alpha][0]=.625f;vc[emissive][0]=.25f;vc[emissive][1]=.125f;vc[emissive][2]=.0625f;
+            vc[41][0]=.75f;vc[41][1]=.125f;
+            vc[point][2]=2;vc[point+1][0]=.5f;vc[point+1][1]=.25f;vc[point+1][2]=.125f;vc[point+2][0]=2;vc[point+2][1]=.25f;vc[point+2][2]=.125f;
+            pc[0][2]=1;pc[1][0]=.375f;pc[1][1]=.25f;pc[1][2]=.5f;pc[2][2]=-1;pc[3][0]=.125f;pc[3][1]=.5f;pc[3][2]=.25f;pc[4][0]=.5f;pc[5][0]=1;
+        }
+        api(f.d->SetVertexShaderConstantF(0,vc[0],48),"screen fade VS inputs");api(f.d->SetPixelShaderConstantF(0,pc[0],12),"screen fade PS inputs");
+        const int count[4]={1,0,1,0};const BOOL fog=!emission;api(f.d->SetVertexShaderConstantI(0,count,1),"screen fade point count");api(f.d->SetVertexShaderConstantB(0,&fog,1),"screen fade fog");
+        for(unsigned stage=0;stage<7;++stage) {
+            IDirect3DBaseTexture9* texture=nullptr;
+            if(emission){if(stage==0)texture=textures[5].p;}
+            else if(stage==0)texture=textures[0].p;else if(stage==1)texture=textures[2].p;else if(stage==2)texture=textures[3].p;
+            api(f.d->SetTexture(stage,texture),"screen fade sampler role");common_sampler(stage);
+        }
+        api(f.d->SetTextureStageState(0,D3DTSS_TEXTURETRANSFORMFLAGS,D3DTTFF_DISABLE),"screen fade stage 0 transform");
+        api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"screen fade no depth write");api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,TRUE),"screen fade blending");
+        api(f.d->SetRenderState(D3DRS_SRCBLEND,emission?D3DBLEND_ONE:D3DBLEND_SRCALPHA),"screen fade blend source");api(f.d->SetRenderState(D3DRS_DESTBLEND,emission?D3DBLEND_ONE:D3DBLEND_INVSRCALPHA),"screen fade blend destination");
+        api(f.d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD),"screen fade additive operation");api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,emission?15:7),"screen fade mask");
+        const RECT rect{LONG(f.W/8),LONG(f.H/4),LONG(5*f.W/8),LONG(3*f.H/4)};
+        api(f.d->SetScissorRect(&rect),"screen fade scissor");api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"screen fade scissor enable");
+        return rect;
+    };
+    // X3M_FIXTURE_SCREEN_RECT (seam only): the injected bound rectangle of the
+    // straddling case; the bracket composes only inside it.
+    char rect_setting[64]{};long il=0,it=0,ir=0,ib=0;
+    const bool injected=GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_RECT",rect_setting,sizeof rect_setting)>0&&std::sscanf(rect_setting,"%ld,%ld,%ld,%ld",&il,&it,&ir,&ib)==4;
+    const RECT injected_rect{il,it,ir,ib};
+    // X3M_FIXTURE_SCREEN_CAPS_FAULT=1 (seam only): the caps-refusal case; no
+    // pass fault is queued for a screen draw that never reaches the pass.
+    char caps_setting[8]{};
+    const bool caps_fault=GetEnvironmentVariableA("X3M_FIXTURE_SCREEN_CAPS_FAULT",caps_setting,sizeof caps_setting)==1&&caps_setting[0]=='1';
+    Com<IDirect3DQuery9> completion;LARGE_INTEGER frequency{};
+    if(f.screenemission_bench){require(qualified,"screen benchmark complete activation");api(f.d->CreateQuery(D3DQUERYTYPE_EVENT,&completion.p),"screen benchmark EVENT");require(QueryPerformanceFrequency(&frequency),"screen benchmark QPC");}
+    const auto fence=[&](){api(completion->Issue(D3DISSUE_END),"screen timed EVENT issue");f.wait(completion.p);};
+    // Plan: kind s = screen, f = fade, e = emission; overlap doubles the quad in
+    // one DIP; faults are pass faults (5 SourceBind -> refusal 5 native; 6
+    // Composite -> Incomplete, A|R recovered). Reset after frame 10 (the
+    // buffer is recreated: frame 11 is the first draw again).
+    struct Plan {const char* kinds;unsigned overlap;unsigned fault;};
+    const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0}};
+    const Plan control[]={{"",1,0},{"s",1,0},{"s",1,0}};
+    const unsigned frames=f.screenemission_bench?18:qualified?unsigned(sizeof plans/sizeof plans[0]):unsigned(sizeof control/sizeof control[0]);
+    unsigned submissions=0;
+    const auto covered_by=[](const RECT& rect,unsigned x,unsigned y){return LONG(x)>=rect.left&&LONG(x)<rect.right&&LONG(y)>=rect.top&&LONG(y)<rect.bottom;};
+    for(unsigned plan=0;plan<frames;++plan) {
+        f.frame_begin();f.linear_material_inputs();f.write_reserved();
+        const float ordinary_t=.03125f*float(plan%3);
+        f.draw(f.a,ordinary_t,0,0,true,true,f.a.recorded,Alter::None,false);
+        const unsigned required=f.emission_status(f.d.p,16);
+        f.emissions_enabled=required!=0||f.screen_enabled;
+        if(f.screenemission_bench) {
+            const unsigned count=plan<6?1:plan<12?4:16,sample=plan%6;
+            write_bullets(1);bind_bullets(false);
+            const unsigned pixels_before=f.emission_status(f.d.p,46),admitted_before=f.emission_status(f.d.p,41),unbounded_before=f.emission_status(f.d.p,44);
+            fence();LARGE_INTEGER begin,middle,end;QueryPerformanceCounter(&begin);
+            for(unsigned i=0;i<count;++i){api(f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2),"timed bullet source");++submissions;++f.draw_index;}
+            fence();QueryPerformanceCounter(&middle);
+            api(f.d->SetDepthStencilSurface(nullptr),"screen timed terminal depth");api(f.d->StretchRect(f.back.p,nullptr,f.bloom_surface.p,nullptr,D3DTEXF_NONE),"screen timed TAA AgX publication");api(f.d->EndScene(),"screen timed EndScene");fence();QueryPerformanceCounter(&end);
+            const unsigned admitted=f.emission_status(f.d.p,41)-admitted_before,unbounded=f.emission_status(f.d.p,44)-unbounded_before,pixels=f.emission_status(f.d.p,46)-pixels_before;
+            if(sample>=2)std::printf("SCREEN_TIMING width=%u height=%u count=%u sample=%u screen=%u admitted=%u unbounded=%u region_pixels=%u quad=%ld,%ld,%ld,%ld source_ms=%.9f terminal_ms=%.9f total_ms=%.9f\n",f.W,f.H,count,sample-2,f.screen_enabled,admitted,unbounded,pixels,quad_rect.left,quad_rect.top,quad_rect.right,quad_rect.bottom,1000.*double(middle.QuadPart-begin.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-middle.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-begin.QuadPart)/frequency.QuadPart);
+            api(f.d->SetDepthStencilSurface(f.depth.p),"screen benchmark depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"screen benchmark Present");++f.frame;++f.frames_since_reset;continue;
+        }
+        const Plan& p=qualified?plans[plan]:control[plan];
+        std::vector<float> expected_mask(std::size_t(f.W)*f.H*4,0);
+        auto before=scene();
+        for(unsigned source=0;p.kinds[source];++source) {
+            const char kind=p.kinds[source];
+            const bool screen=kind=='s',emission=kind=='e';
+            const unsigned overlap=screen?p.overlap:1;
+            unsigned fault=screen?p.fault:0;
+            if(screen)write_bullets(overlap);
+            const RECT rect=screen?bind_bullets(false):bind_source(emission);
+            {Com<IDirect3DSurface9> logical;api(f.d->GetRenderTarget(0,&logical.p),"screen source snapshot application view");}
+            const auto state=f.snapshot();
+            float native_vs[48][4]{};api(f.d->GetVertexShaderConstantF(0,native_vs[0],48),"screen native VS constant snapshot");
+            constexpr D3DRENDERSTATETYPE blend_states[]={D3DRS_SRCBLEND,D3DRS_DESTBLEND,D3DRS_BLENDOP,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_SRCBLENDALPHA,D3DRS_DESTBLENDALPHA,D3DRS_BLENDOPALPHA,D3DRS_COLORWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_COLORWRITEENABLE2,D3DRS_COLORWRITEENABLE3};
+            DWORD blend_before[11]{};for(unsigned i=0;i<11;++i)api(f.d->GetRenderState(blend_states[i],&blend_before[i]),"screen caller blend snapshot");
+            std::vector<float> motion_before,depth_before,mask_before;
+            raw(1,motion_before);raw(2,depth_before);const HRESULT mask_hr_before=raw(3,mask_before);
+            unsigned prior[50];for(unsigned k=0;k<50;++k)prior[k]=f.emission_status(f.d.p,k);
+            if(!(screen?f.screen_enabled&&!caps_fault:emission?required&1u:required&2u))fault=0;
+            if(fault)f.emission_fault(f.d.p,fault,1);
+            const HRESULT hr=screen?f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2*overlap):f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2);
+            ++submissions;++f.draw_index;
+            require(SUCCEEDED(hr),"screen original source HRESULT");
+            f.compare(state,f.snapshot(),"screen source restoration");
+            float restored_vs[48][4]{};api(f.d->GetVertexShaderConstantF(0,restored_vs[0],48),"screen native VS constant readback");require(!std::memcmp(native_vs,restored_vs,sizeof native_vs),"screen native VS constants restored");
+            for(unsigned i=0;i<11;++i){DWORD value=0;api(f.d->GetRenderState(blend_states[i],&value),"screen caller blend readback");require(value==blend_before[i],"screen exact caller blend/mask restoration");}
+            unsigned delta[50];for(unsigned k=0;k<50;++k)delta[k]=f.emission_status(f.d.p,k)-prior[k];
+            require((screen?delta[49]:delta[12])==1,"screen actual native source once");
+            auto after=scene();
+            std::vector<float> motion_after,depth_after,mask_after;
+            raw(1,motion_after);raw(2,depth_after);const HRESULT mask_hr_after=raw(3,mask_after);
+            require(motion_before==motion_after&&depth_before==depth_after,"screen source preserves ordinary RT1 RT2 exactly");
+            const bool packed=screen&&delta[41]==1,recovered=packed&&delta[43]==1;
+            const RECT composed=packed&&injected?injected_rect:rect;
+            for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x) {
+                const unsigned i=(y*f.W+x)*4;const bool covered=covered_by(rect,x,y)&&(!packed||covered_by(composed,x,y));
+                for(unsigned k=0;k<4;++k)require_quiet(std::isfinite(after[i+k]),"screen finite actual scene");
+                if(!covered||recovered)require_quiet(!std::memcmp(&before[i],&after[i],16),"screen excluded (or recovered) raw A exact");
+                else if(!screen&&!emission)require_quiet(after[i+3]==before[i+3],"screen fade native destination alpha exact");
+                else if(emission&&f.hdr)require_quiet(after[i+3]==before[i+3]+.125f,"screen mixed emission alpha source once");
+                if(SUCCEEDED(mask_hr_before)&&SUCCEEDED(mask_hr_after)&&mask_before[i]>0)require_quiet(mask_after[i]>0,"screen earlier shared mask footprint retained");
+                if(covered_by(rect,x,y)&&delta[4]==1)for(unsigned k=0;k<3;++k)expected_mask[i+k]=1; // the source writes M unscissored: the whole quad
+            }
+            // Numerical witnesses: inside the quad and every scissor, and inside
+            // the quad only (outside the fade/emission scissor and the injected
+            // half rectangle). Python holds the packed / native / fade laws.
+            const unsigned sample_x[2]={f.W/2+4,f.W/2+12};
+            for(unsigned sample=0;sample<2;++sample) {
+                const unsigned x=sample_x[sample],y=f.H/2,i=(y*f.W+x)*4;
+                std::printf("SCREEN_SAMPLE frame=%llu source=%u kind=%c overlap=%u x=%u y=%u covered=%u bracket=%u packed=%u q=%.9g,%.9g,%.9g a=%.9g before=%.17g,%.17g,%.17g,%.17g after=%.17g,%.17g,%.17g,%.17g\n",f.frame,source,kind,overlap,x,y,unsigned(covered_by(rect,x,y)),unsigned(packed),unsigned(packed&&covered_by(composed,x,y)),
+                            double(bullet_texel[0]),double(bullet_texel[1]),double(bullet_texel[2]),double(bullet_texel[3]),before[i],before[i+1],before[i+2],before[i+3],after[i],after[i+1],after[i+2],after[i+3]);
+            }
+            std::printf("SCREEN_SOURCE frame=%llu source=%u kind=%c overlap=%u fault=%u hr=%08lx original_calls=%u prepared=%u linear=%u native=%u incomplete=%u refused=%u packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded=%u packed_caps=%u packed_region_pixels=%u prefix_bound=%u prefix_refused=%u rect=%ld,%ld,%ld,%ld mask_before=%u mask_after=%u hash_mask_before=%016llx hash_mask_after=%016llx hash_red_before=%016llx hash_red_after=%016llx\n",
+                        f.frame,source,kind,overlap,fault,hr,screen?delta[49]:delta[12],delta[4],delta[5],delta[6],delta[7],delta[8],delta[40],delta[41],delta[42],delta[43],delta[44],delta[45],delta[46],delta[47],delta[48],rect.left,rect.top,rect.right,rect.bottom,prior[1],f.emission_status(f.d.p,1),static_cast<unsigned long long>(hash(mask_before)),static_cast<unsigned long long>(hash(mask_after)),static_cast<unsigned long long>(hash_red(mask_before)),static_cast<unsigned long long>(hash_red(mask_after)));
+            before=std::move(after);
+        }
+        f.emission_reference_color=scene();
+        raw(3,f.emission_reference_mask);
+        f.emission_mask_valid=(required||f.screen_enabled)&&f.emission_status(f.d.p,1);
+        if(f.emission_mask_valid)for(std::size_t i=0;i<expected_mask.size();i+=4)require_quiet((f.emission_reference_mask[i]>0)==(expected_mask[i]>0),"screen canonical combined producer union");
+        if(qualified){write_raw("color",f.emission_reference_color);write_raw("mask",f.emission_reference_mask);}
+        std::vector<float> alpha(std::size_t(f.W)*f.H),motion,depth;
+        for(std::size_t i=0;i<alpha.size();++i)alpha[i]=f.emission_reference_color[4*i+3];
+        raw(1,motion);raw(2,depth);
+        std::printf("SCREEN_LIVE frame=%llu screen=%u fade=%u emission=%u draws=%u",f.frame,f.screen_enabled,f.distancefade_enabled,f.distancefade_emissions_enabled,unsigned(std::strlen(p.kinds)));
+        for(unsigned i=0;i<50;++i)std::printf(" s%u=%u",i,f.emission_status(f.d.p,i));
+        std::printf(" hash_alpha=%016llx hash_motion=%016llx hash_depth=%016llx hash_mask=%016llx\n",static_cast<unsigned long long>(hash(alpha)),static_cast<unsigned long long>(hash(motion)),static_cast<unsigned long long>(hash(depth)),static_cast<unsigned long long>(hash(f.emission_reference_mask)));
+        if(!qualified) {
+            require(f.emission_status(f.d.p,41)==0,"screen missing prerequisite never admits");
+            api(f.d->EndScene(),"screen admission-control EndScene");f.verify_motion();api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"screen admission-control Present");++f.frame;++f.frames_since_reset;
+        } else f.frame_end();
+        if(qualified&&plan==10) {
+            // Reset: the pool targets go, the DEFAULT-pool bullet buffer is
+            // recreated (a fresh buffer: its first draw is refused again).
+            const unsigned refs_before=f.emission_status(f.d.p,20),allocations_before=f.emission_status(f.d.p,21);
+            bullets.reset();
+            f.reset();create_bullets();
+            const unsigned refs_after=f.emission_status(f.d.p,20);
+            std::printf("SCREEN_RESET frame=%u refs_before=%u refs_after=%u allocations=%u quarantine=%u state_lost=%u\n",plan,refs_before,refs_after,allocations_before,f.emission_status(f.d.p,3),f.emission_status(f.d.p,2));
+            require(refs_after<refs_before&&refs_before-refs_after==allocations_before,"screen Reset releases every pool target and retains the programs");
+            require(f.emission_status(f.d.p,3)==0&&f.emission_status(f.d.p,2)==0,"screen Reset clears state loss without quarantine");
+        }
+    }
+    api(f.d->SetIndices(nullptr),"screen final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"screen final stream release");
+    std::printf("SCREEN_CHECKS frames=%u submissions=%u qualified=%u benchmark=%u quad=%ld,%ld,%ld,%ld injected=%u\n",frames,submissions,qualified,f.screenemission_bench,quad_rect.left,quad_rect.top,quad_rect.right,quad_rect.bottom,unsigned(injected));
+}

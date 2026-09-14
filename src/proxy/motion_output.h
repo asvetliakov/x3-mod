@@ -102,6 +102,7 @@ struct MotionRoute {
     // false means no bound: step C refuses such a draw, never the full viewport.
     fade_region::Region prefix_region{};
     bool prefix_evaluated = false;
+    unsigned prefix_region_permille = 0; // area per mille of the viewport (witness f histogram)
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -430,6 +431,12 @@ public:
     void configure_linear_emissions(bool requested, float gain) noexcept;
     bool linear_emissions_requested() const noexcept { return linear_emission_requested_; }
     void configure_linear_distance_fade(bool requested) noexcept;
+    // Step C of docs/architecture/screen-emission-region.md: the packed screen
+    // bracket (policy 8) for the nine SM1 screen pairs of
+    // screen_emission_admission.h. Configure before attach; needs the linear
+    // material route (the fade prerequisites). Default off.
+    void configure_screen_emission(bool requested) noexcept;
+    bool screen_emission_requested() const noexcept { return screen_emission_requested_; }
     // Diagnostic fade-region witness (X3M_FADE_WITNESS=<k>, note section 7,
     // step 1): every k-th frame without an admitted emission draw the M
     // coverage target is read back once and its covered pixels counted
@@ -442,7 +449,7 @@ public:
     // a fixed per-frame array and logs them plus the frame's TAA state after
     // Present. Off costs one predicate per draw and nothing else.
     void configure_shimmer_trace(bool requested) noexcept;
-    bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_; }
+    bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
@@ -615,6 +622,7 @@ private:
                          IUnknown* xt_default_ordinary_variant = nullptr;
                          IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
+                         IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IUnknown* distance_fade_variant = nullptr;
                          bool registered = false; // Valid original, independent of motion support.
                          const renderer::MotionOutputProfile* row = nullptr; };
@@ -624,6 +632,11 @@ private:
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
+        IDirect3DPixelShader9* ps_screen_variant = nullptr;
+        // Exact SM1 screen pair (screen_emission_admission.h) and its created
+        // packed producer; shader eligibility only, admission is per draw.
+        bool screen_pair = false;
+        IDirect3DPixelShader9* screen_eligible_variant = nullptr;
         IDirect3DVertexShader9* vs_fade_variant = nullptr;
         IDirect3DPixelShader9* ps_fade_variant = nullptr;
         std::uint32_t fade_sampler_mask = 0; // exact six-pair contract, independent of creation readiness
@@ -836,7 +849,7 @@ private:
     bool cutout_probe_frame_known_ = false, cutout_reset_pending_ = false;
     bool cutout_coverage_missed_ = false;
     renderer::LinearMaterialConfig linear_material_config_{};
-    bool linear_emission_requested_ = false, distance_fade_requested_ = false;
+    bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
     unsigned composition_required_producers_ = 0;
     HRESULT composition_attach_result_ = S_FALSE;
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};
@@ -865,6 +878,14 @@ private:
         // and the sum of the rectangles the pass actually backed up and composed.
         unsigned in_place = 0, in_place_linear = 0, in_place_incomplete = 0, recovery_failures = 0;
         std::uint64_t region_pixels = 0;
+        // Packed screen brackets (policy 8, screen-emission-region.md step C):
+        // exact screen pairs in the native screen state, those refused for
+        // want of a locked-prefix bound (native, never the full viewport) or
+        // for want of policy 8 (device caps), those prepared, completed Linear
+        // or Incomplete, and the sum of their rectangles (also in region_pixels).
+        unsigned packed_eligible = 0, packed_unbounded_refused = 0, packed_caps_refused = 0;
+        unsigned packed_admitted = 0, packed_linear = 0, packed_incomplete = 0;
+        std::uint64_t packed_region_pixels = 0;
         HRESULT recovery = S_FALSE;
         unsigned prepared = 0, linear = 0, native = 0, incomplete = 0, refused = 0, suppressed = 0, exports = 0, exchanged = 0;
         HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE, restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
@@ -1105,6 +1126,11 @@ private:
     // fixture has no seam scope. Never compiled into production.
     bool fixture_fade_rect_set_ = false;
     fade_region::Rect fixture_fade_rect_{};
+    // X3M_FIXTURE_SCREEN_RECT=l,t,r,b replaces a bound locked-prefix rectangle
+    // (the straddling case: the witness must fire); X3M_FIXTURE_SCREEN_CAPS_FAULT=1
+    // withholds policy 8 from the attach request (the caps-refusal case).
+    bool fixture_screen_rect_set_ = false, fixture_screen_caps_fault_ = false;
+    fade_region::Rect fixture_screen_rect_{};
     float fixture_last_pixel_abi_[8]{};
     unsigned fixture_emission_exchange_fault_ = 0;
     unsigned fixture_cutout_cap_fault_ = 0, fixture_cutout_vs_fault_ = 0, fixture_cutout_ps_fault_ = 0;

@@ -72,6 +72,7 @@ def main():
     parser.add_argument('--linear-distance-fade', action='store_true', help='Qualify six Asteroid source-over materials in linear light (requires --linear-materials --taa; default off; full-size composition cost per draw)')
     parser.add_argument('--fade-witness', type=int, nargs='?', const=30, default=None, metavar='K', help='Diagnostic fade-region witness (X3M_FADE_WITNESS=K; requires --linear-distance-fade; default off; "--fade-witness" alone means 30): every K-th frame without an admitted emission draw the M coverage target is read back once (GetRenderTargetData to a retained system-memory copy) and the covered pixels outside the union of that frame\'s derived fade rectangles are counted; one fade_witness line per K-th frame plus that frame\'s per-DIP fade_region lines (first 64, with a truncated count) in the session log, validated by verification/probe/run_linear_distance_fade_live.py (docs/architecture/linear-distance-fade-region.md, step 1)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
+    parser.add_argument('--screen-emission', action='store_true', help='Packed screen emission of the bullet draws inside the region bracket (X3M_SCREEN_EMISSION=1, which also sets X3M_SCREEN_EMISSION_BOUND=1; requires --linear-materials --taa --motion-output --ownership and the material HDR prerequisites; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state with a locked-prefix bound compose through policy 8 in place; unbounded, unknown-state, capability-refused or otherwise refused draws stay native (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--linear-emissions', action='store_true', help='Compose reviewed additive scene emissions in linear light (requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--emission-gain', type=float, default=None, help='Linear emission gain, finite 0..16, default 1 (requires --linear-emissions)')
     parser.add_argument('--linear-materials', action='store_true', help='Evaluate the reviewed hull-material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
@@ -178,6 +179,8 @@ def main():
         parser.error('--shimmer-trace requires --motion-output --taa.')
     if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
         parser.error('--fade-witness must be within [1,100000].')
+    if args.screen_emission and not (args.linear_materials and args.taa and args.motion_output and args.ownership):
+        parser.error('--screen-emission requires --linear-materials --taa --motion-output --ownership (and material HDR/motion prerequisites).')
     if args.linear_emissions and (not args.motion_output or not args.taa or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
         parser.error('--linear-emissions requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode.')
     if args.emission_gain is not None and not args.linear_emissions:
@@ -307,6 +310,10 @@ def main():
         env['X3M_HDR'] = '1' if args.hdr else '0'
         env['X3M_LINEAR_EMISSIONS'] = '1' if args.linear_emissions else '0'
         env['X3M_LINEAR_DISTANCE_FADE'] = '1' if args.linear_distance_fade else '0'
+        # Step C screen emission implies the step B bound; both explicit so a
+        # stale shell value cannot enable either.
+        env['X3M_SCREEN_EMISSION'] = '1' if args.screen_emission else '0'
+        env['X3M_SCREEN_EMISSION_BOUND'] = '1' if args.screen_emission else '0'
         if args.fade_witness is not None:
             env['X3M_FADE_WITNESS'] = str(args.fade_witness)
         if args.shimmer_trace:

@@ -36,7 +36,10 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     finite_positions_enabled = ownership_enabled && finite_requested;
     // Step B locked-prefix bounds (screen-emission-region.md): the ownership
     // Unlock scan; MotionOutput reads the same switch for the draw side.
-    const bool prefix_requested = GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1';
+    // X3M_SCREEN_EMISSION=1 (step C) needs the bound and implies it; the
+    // launcher sets both variables, the DLL accepts either.
+    const bool prefix_requested = (GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1')
+        || (GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION", setting, 8) == 1 && setting[0] == L'1');
     locked_prefix_enabled = ownership_enabled && prefix_requested;
     if (prefix_requested)
         x3m::log("screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0", locked_prefix_enabled);
