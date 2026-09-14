@@ -195,6 +195,10 @@ def case(name, mode, variant='plain', enabled='1', jitter=False, taa=False, benc
 CASES = [case(f'{dll}-{state}' if variant == 'plain' else f'{dll}-{variant}-{state}', dll, variant, enabled)
          for variant in VARIANTS for dll in ('production', 'seam') for state, enabled in (('off', '0'), ('on', '1'))]
 CASES += [case(f'{dll}-jitter-on', dll, jitter=True) for dll in ('production', 'seam')]
+# Depth-only prepass parity (asteroid-fog-temporal.md, run 47): the z_only
+# vs_1_1 prepass and the later jittered LESSEQUAL draw of the same geometry
+# must agree; the frame line's unjittered_depth_writers must stay 0.
+CASES += [case(f'{dll}-zonly', 'zonly', jitter=True) for dll in ('production', 'seam')]
 # Temporal step 3: the resolve at the boundary (jitter implied by the DLL),
 # plain and through the wrapper, with the debug readbacks of the resolved image.
 CASES += [case(f'{dll}-taa-on', dll, jitter=True, taa=True) for dll in ('production', 'seam')]
@@ -1126,6 +1130,64 @@ def validate_msaa(name, text, trace, samples=2):
     assert sum(l.startswith('motion_output_release ') for l in tl) == 1, name
     return {'mode': 'msaa', 'samples': samples, 'frames': 3, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
             'refused': refused[0], 'frame_lines': {f: {k: v[k] for k in ('msaa', 'routed', 'jittered', 'taa_skip', 'gate1', 'draws')} for f, v in frames.items()}}
+
+
+ZONLY_FRAMES, ZONLY_CONTROL_FRAMES, ZONLY_VS = 9, {2, 4, 6}, 'c78b4c68a87fce74'
+
+
+def validate_zonly(name, text, trace):
+    """The zonly script (asteroid-fog-temporal.md, run 47): nine frames, each a depth-only prepass with the z_only
+    vs_1_1 program (null PS, ZWRITEENABLE on, COLORWRITEENABLE 0) followed by the blended, z-write-off material draw
+    of the same sloped geometry. Regular frames: zero interior holes (the route jittered both draws, so the LESSEQUAL
+    test against the prepass depth passes everywhere) and the coverage oracle agrees. Control frames (jx > 0): the
+    prepass is pre-shifted so the route's jitter cancels; the material draw must then lose more than half its interior.
+    Every frame line reports unjittered_depth_writers=0 with both scene draws jittered and none routed; the capture
+    frames' route records show the prepass at gate 3 (no pair) and the material draw at gate 4, both jittered."""
+    lines = text.splitlines()
+    assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
+    assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
+    terminal = fields(lines[-1])
+    mode_line = fields([l for l in lines if l.startswith('MODE ')][0])
+    assert mode_line['enabled'] == '1' and mode_line['jitter'] == '1' and mode_line['taa'] == '0', (name, mode_line)
+    assert int(terminal['frames']) == ZONLY_FRAMES and text.count('RESET PASS') == 1, (name, terminal)
+    restores = [fields(l) for l in lines if l.startswith('RESTORE ')]
+    assert len(restores) == 3 * ZONLY_FRAMES and all(r['differences'] == '0' for r in restores), f'{name}: restoration differences'
+    zonly = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('ZONLY ')}
+    assert sorted(zonly) == list(range(ZONLY_FRAMES)), (name, sorted(zonly))
+    coverage = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('COVERAGE ')}
+    holes = {}
+    for frame, z in zonly.items():
+        control = frame in ZONLY_CONTROL_FRAMES
+        assert z['control'] == str(int(control)) and int(z['pixels']) > 500, (name, frame, z)
+        _, ejx, ejy = expected_jitter(frame)
+        assert abs(float(z['jx']) - ejx) < 1e-5 and abs(float(z['jy']) - ejy) < 1e-5, (name, frame, z, ejx, ejy)
+        holes[frame] = int(z['holes'])
+        if control:
+            assert float(z['jx']) > 0 and holes[frame] > int(z['pixels']) // 2, (name, frame, z)
+            assert frame not in coverage, (name, frame)  # the oracle is skipped on purpose
+        else:
+            assert holes[frame] == 0 and coverage[frame]['mismatches'] == '0' and int(coverage[frame]['material']) > 0, (name, frame, z, coverage.get(frame))
+    tl = trace.splitlines()
+    frames = {int(fields(l)['frame']): fields(l) for l in tl if l.startswith('motion_output_frame ')}
+    assert sorted(frames) == list(range(ZONLY_FRAMES)), (name, sorted(frames))
+    for frame, summary in frames.items():
+        assert summary['jitter'] == '1' and summary['latched'] == '1', (name, frame, summary)
+        assert (summary['draws'], summary['routed'], summary['jittered'], summary['unjittered_depth_writers']) == ('3', '0', '2', '0'), (name, frame, summary)
+        assert (summary['gate3'], summary['gate4']) == ('1', '1'), (name, frame, summary)
+        assert summary['apply_failures'] == summary['restore_failures'] == '0', (name, frame, summary)
+    routes = [fields(l) for l in tl if l.startswith('motion_route ')]
+    expects = [fields(l) for l in lines if l.startswith('EXPECT ') and 1 <= int(fields(l)['frame']) <= 8]
+    assert len(expects) == 16 and {(r['frame'], r['index']) for r in routes} == {(e['frame'], e['index']) for e in expects}, (name, len(routes), len(expects))
+    for e in expects:
+        match = [r for r in routes if r['frame'] == e['frame'] and r['index'] == e['index']]
+        assert len(match) == 1 and match[0]['routed'] == '0' and match[0]['jittered'] == e['jittered'] == '1' and match[0]['result'] == '00000000', (name, e, match)
+        prepass = e.get('prepass') == '1'
+        assert match[0]['gate'] == ('3' if prepass else '4'), (name, e, match)
+        assert (match[0]['vs'] == ZONLY_VS and match[0]['ps'] == '0' * 16) == prepass, (name, e, match)
+    assert not any(l.startswith(('motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl), name
+    return {'mode': 'zonly', 'frames': ZONLY_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
+            'holes': holes, 'control_frames': sorted(ZONLY_CONTROL_FRAMES), 'unjittered_depth_writers': {f: int(v['unjittered_depth_writers']) for f, v in frames.items()},
+            'routes': len(routes)}
 
 
 def validate_hdr(name, trace, directory, hdr, hdr_fault, frames, capture_frames, end, taa, ends=None, redirected=None, width=64, height=64):
@@ -2634,7 +2696,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -2664,7 +2726,7 @@ def main(argv=None):
                 # The mip-bias script: every frame's line, capture in frame 5 only.
                 env['X3M_MOTION_FRAME_LOG'] = '1'
                 env['X3M_CAPTURE_START'] = str(MIPBIAS_CAPTURE[0]); env['X3M_CAPTURE_FRAMES'] = str(len(MIPBIAS_CAPTURE))
-            if mode in HDR_MODES:
+            if mode in HDR_MODES or mode == 'zonly':
                 env['X3M_MOTION_FRAME_LOG'] = '1'  # every frame's route and hdr lines
             command = [str(WINE), '--bottle', bottle.BOTTLE, '--no-update', '--dll', 'd3d9=n,b', '--workdir', str(directory),
                        str(directory / candidate_exe.name)] + ['Z:' + str(p) for p in RAW] + ['hook' if hook is not None else 'burst' if burst else 'mipbias' if mipbias else 'envmap' if envmap else mode] + ([bench] if bench else [])
@@ -2699,6 +2761,15 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} refused_frame={case["refused"]["frame"]}', flush=True)
+                continue
+            if mode == 'zonly':
+                case = validate_zonly(name, text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} holes={case["holes"]} unjittered_depth_writers={case["unjittered_depth_writers"]}', flush=True)
                 continue
             if mode in HDR_MODES:
                 case = {'hdrvalues': validate_hdrvalues, 'hdrfault': validate_hdrfault, 'hdrramp': validate_hdrramp,

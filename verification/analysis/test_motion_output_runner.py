@@ -228,6 +228,50 @@ class MotionOutputRunnerTests(unittest.TestCase):
         text, trace = self.burst_output(wrap=False)
         self.assertEqual(runner.validate_burst('host', 'seam', False, text, trace, self.root)['checks'], 86)
 
+    def zonly_output(self):
+        """Synthetic zonly report and trace: nine frames, prepass then material, controls at frames 2, 4 and 6."""
+        report = ['MODE seam=0 enabled=1 jitter=1 taa=0 msaa=0']
+        trace = []
+        for f in range(runner.ZONLY_FRAMES):
+            _, jx, jy = runner.expected_jitter(f)
+            control = f in runner.ZONLY_CONTROL_FRAMES
+            report += ['RESTORE frame=%d label=fill differences=0' % f, 'RESTORE frame=%d label=prepass differences=0' % f,
+                       'RESTORE frame=%d label=draw differences=0' % f,
+                       f'EXPECT frame={f} index=2 object=A routed=0 matched=0 jittered=1 prepass=1',
+                       f'EXPECT frame={f} index=3 object=A routed=0 matched=0 jittered=1',
+                       f'ZONLY frame={f} control={int(control)} jx={jx:.6f} jy={jy:.6f} pixels=2000 holes={1800 if control else 0}']
+            if not control:
+                report.append(f'COVERAGE frame={f} jitter=1 checked=4000 mismatches=0 material=2000 background=1500')
+            if f == 3:
+                report.append('RESET PASS')
+            trace.append(f'motion_output_frame device=1 frame={f} latched=1 draws=3 routed=0 gate2=1 gate3=1 gate4=1 apply_failures=0 '
+                         f'restore_failures=0 jitter=1 jittered=2 unjittered_depth_writers=0')
+            if 1 <= f <= 8:
+                trace.append(f'motion_route device=1 frame={f} index=2 gate=3 routed=0 matched=0 depth=0 jittered=1 vs={runner.ZONLY_VS} ps={"0" * 16} result=00000000')
+                trace.append(f'motion_route device=1 frame={f} index=3 gate=4 routed=0 matched=0 depth=0 jittered=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 result=00000000')
+        report.append('RESULT PASS checks=80 restorations=27 frames=9')
+        return '\n'.join(report), '\n'.join(trace)
+
+    def test_zonly_cases_and_validator(self):
+        zonly = [c for c in runner.CASES if c['mode'] == 'zonly']
+        self.assertEqual([c['name'] for c in zonly], ['production-zonly', 'seam-zonly'])
+        self.assertTrue(all(c['jitter'] and not c['taa'] and c['enabled'] == '1' for c in zonly))
+        text, trace = self.zonly_output()
+        result = runner.validate_zonly('host', text, trace)
+        self.assertEqual(result['unjittered_depth_writers'], {f: 0 for f in range(9)})
+        self.assertEqual(result['holes'], {f: (1800 if f in (2, 4, 6) else 0) for f in range(9)})
+        self.assertEqual(result['routes'], 16)
+        bad = [(text, trace.replace('unjittered_depth_writers=0', 'unjittered_depth_writers=1', 1)),
+               (text, trace.replace('jittered=2 unjittered', 'jittered=1 unjittered', 1)),
+               (text.replace('pixels=2000 holes=0', 'pixels=2000 holes=7', 1), trace),
+               (text.replace('pixels=2000 holes=1800', 'pixels=2000 holes=900', 1), trace),
+               (text, trace.replace('index=2 gate=3 routed=0 matched=0 depth=0 jittered=1', 'index=2 gate=3 routed=0 matched=0 depth=0 jittered=0', 1)),
+               (text, trace.replace(f'vs={runner.ZONLY_VS}', 'vs=53a0a641107ed76c', 1)),
+               (text.replace('mismatches=0', 'mismatches=3', 1), trace)]
+        for output, log in bad:
+            with self.subTest(output=(output != text, log != trace)), self.assertRaises(AssertionError):
+                runner.validate_zonly('host', output, log)
+
 
 if __name__ == '__main__':
     unittest.main()

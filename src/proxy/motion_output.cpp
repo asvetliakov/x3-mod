@@ -37,15 +37,19 @@ namespace {
 // own clip rows, fails here rather than routing draws the shadow never
 // captured.
 struct MatrixWindows { UINT base[motion_matrix_windows_max]; std::size_t count; };
+constexpr void add_matrix_window(MatrixWindows& windows, UINT matrix_register) noexcept {
+    bool seen = false;
+    for (std::size_t i = 0; i < windows.count; ++i) seen = seen || windows.base[i] == matrix_register;
+    if (seen || windows.count > motion_matrix_windows_max) return;
+    if (windows.count == motion_matrix_windows_max) { windows.count = motion_matrix_windows_max + 1; return; }
+    windows.base[windows.count++] = matrix_register;
+}
+// Clip-row windows of every jittered program: the pair table's VS rows and
+// the depth-only prepass programs (jitter only, depth_prepass_profiles.h).
 constexpr MatrixWindows derive_matrix_windows() noexcept {
     MatrixWindows windows{};
-    for (const auto& row : renderer::motion_output_profiles) {
-        bool seen = false;
-        for (std::size_t i = 0; i < windows.count; ++i) seen = seen || windows.base[i] == row.matrix_register;
-        if (seen) continue;
-        if (windows.count == motion_matrix_windows_max) { windows.count = motion_matrix_windows_max + 1; break; }
-        windows.base[windows.count++] = row.matrix_register;
-    }
+    for (const auto& row : renderer::motion_output_profiles) add_matrix_window(windows, row.matrix_register);
+    for (const auto& row : renderer::depth_prepass_profiles) add_matrix_window(windows, row.matrix_register);
     return windows;
 }
 constexpr MatrixWindows matrix_windows = derive_matrix_windows();
@@ -71,6 +75,12 @@ constexpr bool rows_match_shadow() noexcept {
     return true;
 }
 static_assert(rows_match_shadow(), "every profile row must name a shadowed clip-row window and, when bounded, the i0.x <= 8 bound below its rows");
+constexpr bool prepass_rows_match_shadow() noexcept {
+    for (const auto& row : renderer::depth_prepass_profiles)
+        if (window_of(row.matrix_register) >= motion_matrix_windows_max) return false;
+    return true;
+}
+static_assert(prepass_rows_match_shadow(), "every depth-prepass row must name a shadowed clip-row window");
 // IDirect3DDevice9 vtable slots, verified against the MinGW d3d9.h method order
 // by verification/probe/abi_check.cpp (compile-time offsetof assertions).
 enum Slot : unsigned {
@@ -2278,7 +2288,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
-        shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
+        shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
     }
     if (!requested_ || !shader) return;
     try {
@@ -2290,7 +2300,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         release(entry.xt_default_linear_variant);
         release(entry.distance_fade_variant);
         entry.hash = hash;
-        entry.row = nullptr;
+        entry.row = nullptr; entry.prepass = nullptr;
         if (!enabled_ || !code || !bytes || bytes % 4) return;
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
@@ -2311,6 +2321,9 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         // eligibility is decided per draw in before_draw (gate 3). The row
         // lookup is a binary search over the table (no scan).
         entry.row = renderer::material_motion_vertex_row(hash, bytes / 4);
+        // Depth-only prepass programs: jitter identity only (no variant, no
+        // pair); a program with a pair row never needs the second path.
+        if (!entry.row) entry.prepass = renderer::depth_prepass_vertex_row(hash, bytes / 4, code[0]);
         if (entry.row) {
             std::vector<std::uint32_t> words;
             const auto result = renderer::material_motion_vertex_variant(reinterpret_cast<const std::uint32_t*>(code), bytes / 4, words, depth_enabled_);
@@ -2491,7 +2504,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
-    shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
+    shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr; shadow_.vs_prepass = nullptr;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
@@ -2500,6 +2513,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.vs_fade_variant = static_cast<IDirect3DVertexShader9*>(it->second.distance_fade_variant);
     shadow_.vs_variant = static_cast<IDirect3DVertexShader9*>(it->second.variant);
     shadow_.vs_row = it->second.row;
+    shadow_.vs_prepass = it->second.prepass;
     shadow_.vs_material_variant = static_cast<IDirect3DVertexShader9*>(it->second.material_variant);
     shadow_.vs_xt_default_ordinary = static_cast<IDirect3DVertexShader9*>(it->second.xt_default_ordinary_variant);
     shadow_.vs_xt_default_linear = it->second.xt_default_linear_variant;
@@ -2956,19 +2970,22 @@ void MotionOutput::rollback_route(MotionRoute& route) noexcept {
 // (src/temporal/README.md). The shadow keeps the application's unjittered
 // rows: history records them and after_draw writes them back bit-exactly.
 void MotionOutput::apply_jitter(MotionRoute& route) noexcept {
-    const auto& row = *shadow_.vs_row;
-    const std::size_t window = window_of(row.matrix_register);
+    // A pair row's VS or a depth-only prepass program: the same clip-row
+    // jitter either way, so the prepass depth and the later jittered draw of
+    // the same surface agree under LESSEQUAL.
+    const UINT matrix_register = shadow_.vs_row ? shadow_.vs_row->matrix_register : shadow_.vs_prepass->matrix_register;
+    const std::size_t window = window_of(matrix_register);
     if (!shadow_.rows_known[window] || !main_.width || !main_.height) return;
     float rows[16];
     std::memcpy(rows, shadow_.rows[window], sizeof rows);
     fade_region::jitter_rows(rows, jitter_[0], jitter_[1], main_.width, main_.height); // shared with the region projection
     const std::uint64_t begin = draw_stamp();
-    const HRESULT hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, row.matrix_register, rows, 4);
+    const HRESULT hr = native<SetConstantsFFn>(SetVertexShaderConstantF)(device_, matrix_register, rows, 4);
     const std::uint64_t ticks = draw_stamp() - begin;
     ++counters_.jitter_writes; counters_.jitter_ticks += ticks;
     record(unsigned(telemetry::Metric::RouteJitter), ticks, FAILED(hr));
     if (SUCCEEDED(hr)) {
-        route.jittered = true; route.jitter_register = row.matrix_register;
+        route.jittered = true; route.jitter_register = matrix_register;
         ++counters_.jittered;
     }
 }
@@ -3546,9 +3563,13 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {
         route.gate = MotionGate::Pair; ++counters_.gates[3]; return;
     }
-    // Every scene draw whose VS has a table row is jittered, routed or not,
-    // so the rasterized coverage of the whole scene moves together.
-    if (jitter_active_ && shadow_.vs_row) apply_jitter(route);
+    // Every scene draw whose VS has a table row or is a reviewed depth-only
+    // prepass program is jittered, routed or not, so the rasterized coverage
+    // (and depth) of the whole scene moves together. A depth writer that
+    // still goes out unjittered is counted: it breaks that invariant for every
+    // later jittered draw depth-tested against it (asteroid-fog-temporal.md).
+    if (jitter_active_ && (shadow_.vs_row || shadow_.vs_prepass)) apply_jitter(route);
+    if (jitter_active_ && !route.jittered && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1) ++counters_.unjittered_depth_writers;
     // Gate 3: exact reviewed pair (one profile-table row) with both variants
     // registered. Variants are per program; the pair check is what keys
     // eligibility, so a VS alias shared with an unreviewed PS never routes.
@@ -4811,7 +4832,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 static_cast<unsigned long>(c.material_bind_failures), static_cast<unsigned long>(c.cutout_routed),
                 static_cast<unsigned long>(c.cutout_missed), unsigned(cutout_coverage_missed_), unsigned(cutout_caps_));
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
-        log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
+        log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u scene_open=%u active_queries=%lu taa_references=%u"
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
             " state_shadow=%u rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
@@ -4824,7 +4845,8 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             unsigned(stats.previous), unsigned(stats.current), committed, unsigned(selector_.state()), result,
             depth_enabled_, static_cast<unsigned long>(counters_.depth_routed), counters_.jitter_active, counters_.jitter_index,
             counters_.jitter[0], counters_.jitter[1], counters_.jitter_previous[0], counters_.jitter_previous[1],
-            static_cast<unsigned long>(counters_.jittered), counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
+            static_cast<unsigned long>(counters_.jittered), static_cast<unsigned long>(counters_.unjittered_depth_writers),
+            counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
             counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,

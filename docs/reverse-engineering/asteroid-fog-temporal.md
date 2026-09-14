@@ -298,6 +298,41 @@ Optional one-counter addition if a per-frame number is wanted without
 images: at `src/proxy/motion_output.cpp:3551`, after
 `if (jitter_active_ && shadow_.vs_row) apply_jitter(route);`, add
 `else if (jitter_active_ && write == 1) ++counters_.unjittered_depth_writers;`
+
+### Fix: the z_only prepass is jittered with the scene
+
+`src/renderer/depth_prepass_profiles.h` names the two z_only aliases
+(`c78b4c68a87fce74`, 89 dwords; `803ebfd17f79e413`, 95 dwords; both vs_1_1,
+clip rows in c0-3, the same `MadXYZIdentityWFromX` row-dot path the rigid
+position table records: `r0 = v0.xyz * c4.x + c4.y`, `oPos = dp4(r0, c0..c3)`).
+Registration binds a program to that table only when it has no pair row;
+`evaluate_draw` then jitters it exactly like a pair row's VS (`apply_jitter`
+takes the register from either table, `restore_jitter` puts the application
+rows back bit-exactly) and nothing else changes: the draw keeps its null PS,
+ZWRITE/ZFUNC/COLORWRITE state and never routes (gate 3 still needs a pair
+row). The c0-3 window was already shadowed (62 pair rows use register 0), so
+the vs_1_1 constant window needs no new shadow state; the windows are derived
+from both tables with a static assertion. Jitter off (no TAA) takes the
+unchanged path. Per draw the cost is one pointer test.
+
+Counter: `unjittered_depth_writers` on `motion_output_frame` counts scene
+draws with ZENABLE and ZWRITEENABLE on that went out unjittered while the
+jitter was active (after gate 2, so background and overlay draws are not
+counted). Run 20 must show it at 0 on every frame; a nonzero count names
+another depth writer without a table row.
+
+Fixture: `run_motion_output.py` cases `production-zonly` and `seam-zonly`
+(fixture mode `zonly`, nine frames, Reset after frame 3). Each frame draws the
+real `c78b4c68a87fce74` prepass (null PS, COLORWRITEENABLE 0, ZWRITE on,
+LESSEQUAL, rows in c0-3) and then the blended z-write-off material draw of the
+same triangle with perspective rows (depth slope along x). Regular frames
+require zero interior holes and the coverage oracle's agreement; control
+frames 2, 4 and 6 (jx > 0) pre-shift the prepass rows by the negative jitter
+so the route's jitter cancels and the prepass lands unjittered as the game's
+did: the material draw must then lose more than half its interior, proving
+the oracle detects the mechanism. The runner also checks every frame line
+(`jittered=2 routed=0 unjittered_depth_writers=0`) and the route records
+(prepass gate 3, material gate 4, both jittered).
 and print it in `motion_output_frame`. `write` (ZWRITEENABLE) is already read
 for every tracked draw (`:3527`), so the cost is one compare per unrouted
 scene draw; no D3D call. Expected value: the number of fogged asteroids
