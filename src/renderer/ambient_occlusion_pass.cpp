@@ -68,6 +68,9 @@ template<class Resource> HRESULT same_device(IDirect3DDevice9* device, Resource*
 bool finite_params(const AmbientOcclusionParams& p) noexcept {
     for (float v : {p.m00, p.m11, p.m20, p.m21, p.m22, p.m32, p.radius_metres, p.units_per_metre, p.strength, p.falloff, p.max_radius_px, p.depth_tolerance})
         if (!std::isfinite(v)) return false;
+    // m32 < 0 alone admits a denormal whose folded reciprocal 1 / |m32| (the
+    // radius and falloff scale of ao_linearize_ps.hlsl) overflows to infinity.
+    if (!std::isfinite(1.f / std::fabs(p.m32))) return false;
     return p.m00 > 0.f && p.m11 > 0.f && p.m22 > 1.f && p.m32 < 0.f && p.radius_metres > 0.f && p.units_per_metre > 0.f && p.strength >= 0.f && p.strength <= 1.f &&
            p.falloff > 0.f && p.falloff < 1.f && p.max_radius_px >= 2.f && p.depth_tolerance > 0.f;
 }

@@ -346,7 +346,9 @@ SceneRun run_scene(IDirect3DDevice9* d, AmbientOcclusionPass& pass, Frame& f, co
     for (std::size_t i = 0; i < s.depth.size(); ++i) if (s.depth[i] < 0) for (unsigned c = 0; c < 4; ++c) if (r.before[i * 4 + c] != r.after[i * 4 + c]) ++target_sentinel_bad;
     require((label + "_sentinel_identity").c_str(), term_sentinel_bad == 0 && target_sentinel_bad == 0);
     // The multiply law: expected = fp16(before * factor) per RGB channel from
-    // the GPU's own term/half depth, alpha untouched; reported in fp16 ulps.
+    // the GPU's own term and the CPU reference half depth (the GPU half depth
+    // itself is only bounded to 2e-3 relative by the _linearize check above,
+    // too loose to feed a 1-ulp expectation), alpha untouched; in fp16 ulps.
     unsigned exact = 0, one_ulp = 0, over = 0, alpha_changed = 0, exact_truncate = 0; int max_ulp = 0;
     const std::vector<double>& half_depth = r.half;
     std::vector<double> occlusion(r.term.size()); for (std::size_t i = 0; i < occlusion.size(); ++i) occlusion[i] = 1 - r.term[i]; // the stored term again
@@ -484,8 +486,13 @@ int main() {
         // Capability twins: refused by name before any creation.
         { AmbientOcclusionPass twin; D3DCAPS9 c = caps; c.PixelShaderVersion = D3DPS_VERSION(2, 0);
           require("twin_ps_2_0", FAILED(twin.attach(d, hooked, c, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "ps_3_0" && twin.references() == 0);
-          c = caps; c.MaxPixelShader30InstructionSlots = 300; // below the largest program (397 slots)
+          // Tight against the 397-slot GTAO program: 396 must be refused, 397 must attach.
+          c = caps; c.MaxPixelShader30InstructionSlots = 396;
           require("twin_ps_slots", FAILED(twin.attach(d, hooked, c, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "ps_slots" && twin.references() == 0);
+          c = caps; c.MaxPixelShader30InstructionSlots = 397;
+          { const bool attached = SUCCEEDED(twin.attach(d, hooked, c, mode.Format, D3DFMT_A16B16G16R16F));
+            require("twin_ps_slots_boundary", attached && twin.caps().enabled);
+            twin.detach(); require("twin_ps_slots_boundary_detach", twin.references() == 0); }
           c = caps; c.DestBlendCaps &= ~DWORD(D3DPBLENDCAPS_SRCCOLOR);
           require("twin_blend_factors", FAILED(twin.attach(d, hooked, c, mode.Format, D3DFMT_A16B16G16R16F)) && std::string(twin.caps().reason) == "blend_factors" && twin.references() == 0);
           faults = {}; faults.shader_fail_at = 3;
@@ -544,7 +551,10 @@ int main() {
           in = frame_inputs(f, p, true); in.caller_queries_idle = false;
           require("refuse_unknown_queries", pass.execute(in, &out) == E_INVALIDARG);
           in = frame_inputs(f, p, true); in.params.strength = 2.f;
-          require("refuse_bad_params", pass.execute(in, &out) == E_INVALIDARG); }
+          require("refuse_bad_params", pass.execute(in, &out) == E_INVALIDARG);
+          // m32 finite but so small that the folded 1 / |m32| overflows to infinity.
+          in = frame_inputs(f, p, true); in.params.m32 = -1e-42f;
+          require("refuse_denormal_m32", pass.execute(in, &out) == E_INVALIDARG && out.failed == AmbientOcclusionStage::Validate); }
         const char* names[] = {"plane", "tilted", "sphere", "corner", "step"};
         std::vector<double> clean_sphere;
         for (const char* name : names) {

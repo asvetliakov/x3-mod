@@ -3,9 +3,11 @@
 // 5-tap passes of step 1 (one render pass instead of two for the same 18
 // fetches). The kernel is a sparse 5x5 quincunx, centre weight 4, the four
 // diagonals (+-1, +-1) weight 2 and the four axial taps (+-2, 0), (0, +-2)
-// weight 1: support +-2 in both axes as the separable 1 4 6 4 1 pair had, so
-// the 4x4 Bayer noise of the horizon search still averages out, at 9 texels
-// instead of 25.
+// weight 1: support +-2 in both axes as the separable 1 4 6 4 1 pair had, at 9
+// texels instead of 25. The offsets cover 7 of the 16 residue cells (mod 4) of
+// the horizon search's 4x4 Bayer pattern, so a tap set sees 7 of its 16 values,
+// not all 16 as the separable pair did; the justification is measured, not an
+// averaging argument: against that pair the oracle means moved by <= 0.002.
 // Depth is the half-resolution linear target of ao_linearize_ps.hlsl
 // (sampler 1, -1 sentinel); each tap's weight is scaled by
 // saturate(1 - |dz| / (tau * z)), which is invariant under that target's
