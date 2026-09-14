@@ -53,3 +53,20 @@ Informational, no code: the route fixture's state snapshot around the hook cover
 depth, viewport, scissor, shaders, streams, the watched render states, samplers 0-7 and PS c0-7; vertex
 samplers and texture-stage states rest on step 1's detached evidence (`D3DSBT_ALL` block, bindings by
 pointer).
+
+Re-attach hysteresis after Reset (2026-09-14). Candidate `740a6dd7` failed qualification on the
+`ao-on` twin: `before_reset` cleared `ao_attach_failed_`/`ao_target_format_` but left
+`ao_attach_count_`/`ao_attach_frame_` armed, so the first post-Reset frame was refused by the
+60-frame hysteresis (`ambient_occlusion_frame attached=0 ran=0 reason=attach`, `AO_CREASE frame=3
+darkened=0`). `before_reset` now also clears the count and frame; the hysteresis still holds within a
+device lifetime for the format-alternation case. `run_ambient_occlusion_live.py` gained the missing
+check: every post-Reset frame (`RESET_FRAMES`: default 3 and 6, debug 3, toggle 5 - frame 3 is the
+disabled toggle frame) must report `attached=1 ran=1 applied=1 reason=ok`, and the device-line count
+is now `1 + one attach per Reset` (ao-on/ao-hdr/ao-pollfault 3, ao-debug/ao-toggle 2) instead of a
+flat 1. Host test `test_multiply_twin_needs_the_post_reset_frames_to_reattach` covers the parser
+verdict. Evidence: `run_ambient_occlusion_live.py` PASS, 7 twins, post_reset_frames [3, 6] for ao-on;
+the pre-fix build reproduces `AO_CREASE frame=3 darkened=0` (fixture exit 1); `check_no_x87.py
+build/d3d9.dll` PASS (224 reachable functions, no violations); host tests
+`test_ambient_occlusion_live_report`, `test_linear_material_live`, `test_motion_hdr_scene` 26 tests OK.
+The linear-material harness stub gained the two fields so `test_production_control_flow` still
+compiles the production `before_reset`.

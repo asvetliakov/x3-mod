@@ -25,9 +25,15 @@ RESULT PASS checks=111 restorations=0 frames=8 motion_pixels=0
 '''
 
 
-def trace(attached=1, ran=1, reason='ok', device_reason='ok', frames=8, applied=1, gpu=-1.0, unavailable=True, debug=0, enabled=None, toggles=(), timing='unavailable', lost=0):
-    lines = ['ambient_occlusion_mode requested=1 enabled=1 motion_output=1 taa=1 radius_m=2 strength=0.5 debug=0 timing=1',
-             f'ambient_occlusion_device device=1 attached={attached} reason={device_reason} result=00000000 target_format=21 adapter_format=22 slots=397 radius_m=2.000 strength=0.500 debug=0 timing=1 taa_references=6']
+# One ambient_occlusion_device line per attach: the first plus one per Reset that
+# is followed by an enabled frame (default script 1+2, debug 1+1, toggle 1+1).
+ATTACHES = {8: 3, 5: 2, 7: 2}
+
+
+def trace(attached=1, ran=1, reason='ok', device_reason='ok', frames=8, applied=1, gpu=-1.0, unavailable=True, debug=0, enabled=None, toggles=(), timing='unavailable', lost=0, attaches=None):
+    device = f'ambient_occlusion_device device=1 attached={attached} reason={device_reason} result=00000000 target_format=21 adapter_format=22 slots=397 radius_m=2.000 strength=0.500 debug=0 timing=1 taa_references=6'
+    lines = ['ambient_occlusion_mode requested=1 enabled=1 motion_output=1 taa=1 radius_m=2 strength=0.5 debug=0 timing=1']
+    lines += [device] * (ATTACHES[frames] if attaches is None else attaches)
     if unavailable:
         lines.append('ambient_occlusion_timing device=1 queries=unavailable result=8876086a')
     lines += ['ambient_occlusion_timing device=1 queries=lost result=88760868 frame=0'] * lost
@@ -71,6 +77,27 @@ class AmbientOcclusionLiveReportTests(unittest.TestCase):
         self.assertEqual((summary['law'], summary['ao_lines'], summary['ran'], summary['applied'], summary['gpu_timing']), ('multiply', 8, 8, 8, 'unavailable'))
         self.assertEqual(summary['cpu_us_median'], 154)
         self.assertEqual([p['frame'] for p in summary['pixel_frames']], [3, 6])
+
+    def test_multiply_twin_needs_the_post_reset_frames_to_reattach(self):
+        """The defect candidate 740a6dd7 caught: before_reset left the re-attach
+        hysteresis armed, so the first frame after a Reset reported
+        attached=0 ran=0 reason=attach. Frames 3 and 6 are the post-Reset frames."""
+        self.assertEqual(runner.RESET_FRAMES['default'], (3, 6))
+        text = trace()
+        for f in (3, 6):
+            text = text.replace(f'frame={f} attached=1 ran=1 reason=ok', f'frame={f} attached=0 ran=0 reason=attach')
+        text = text.replace('applied=1 result=00000000 restore=00000000 stage=0 debug=0\nambient_occlusion_frame device=1 frame=4',
+                            'applied=0 result=00000000 restore=00000000 stage=0 debug=0\nambient_occlusion_frame device=1 frame=4')
+        report = runner.parse_trace(text)
+        self.assertEqual([(f['attached'], f['ran']) for f in report['frames'] if f['frame'] in (3, 6)], [(0, 0), (0, 0)])
+        with self.assertRaises(AssertionError) as caught:
+            runner.validate_case({'name': 'ao-on', 'ao': 1}, runner.parse_fixture(FIXTURE), report)
+        self.assertIn('post-Reset frames [3, 6]', str(caught.exception))
+        # A Reset re-attaches: one device line per lifetime plus one per Reset.
+        self.assertEqual(runner.validate_case({'name': 'ao-on', 'ao': 1}, runner.parse_fixture(FIXTURE),
+                                              runner.parse_trace(trace()))['post_reset_frames'], [3, 6])
+        with self.assertRaises(AssertionError):  # a single attach across two Resets
+            runner.validate_case({'name': 'ao-on', 'ao': 1}, runner.parse_fixture(FIXTURE), runner.parse_trace(trace(attaches=1)))
 
     def test_multiply_twin_needs_a_completed_pair_when_queries_exist(self):
         with self.assertRaises(AssertionError):
