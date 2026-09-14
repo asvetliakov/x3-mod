@@ -12,7 +12,8 @@ and the persistent backup) is recorded in
 Checkpoints since: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
 with the [per-part AABB finding](reverse-engineering/render-node-bounds.md) and the
 ratified [in-place region composition design](architecture/linear-distance-fade-region.md)
-(`67baa55`; step 1, bound extraction with a conservativeness fixture, in progress); the two-pair alpha-tested [cutout runtime](architecture/alpha-tested-materials.md)
+(`67baa55`; step 1, per-draw bound derivation, merged in `4bcedea` with 0 region
+violations over 29 detached cases and no composition change yet); the two-pair alpha-tested [cutout runtime](architecture/alpha-tested-materials.md)
 is merged (`b9ae8dd`; two reviews, x87 audit PASS at 223 reachable functions, live
 X3 13 processes / 531 frames / 2,111,274 checks PASS, not installed);
 the isolated WMA decoder adapter
