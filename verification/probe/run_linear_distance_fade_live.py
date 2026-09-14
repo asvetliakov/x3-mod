@@ -929,6 +929,8 @@ def validate_packed_samples(traces,expected_by_frame,injected=None):
     rows=[fields(line) for line in traces if line.startswith('packed_sample ')]
     expected=[f for f in SCREEN_CAPTURE_FRAMES for s in expected_by_frame[f][0] if s['packed_admitted']]
     assert [int(r['frame']) for r in rows]==expected,('one packed_sample per admitted packed draw of a capture frame',[int(r['frame']) for r in rows],expected)
+    frames=indexed(traces,'linear_composition_frame ','frame')
+    assert all(int(frames[f]['packed_sample_skipped'])==0 for f in frames),'no capture frame exceeds the packed_sample cap (at most two admitted packed draws per frame)'
     changed=0
     for r in rows:
         assert r['pre_result']=='00000000' and r['post_result']=='00000000',(r['frame'],'sample readbacks',r)

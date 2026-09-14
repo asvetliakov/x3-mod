@@ -269,11 +269,17 @@ box was cut). Capture frames only, zero cost otherwise (one bool per admitted pa
 format=<D3DFORMAT> pre=r,g,b,a pre_y=<Rec.709 luminance> post=r,g,b,a post_y=
 pre_result=%08lx post_result=%08lx` — the HDR target A sampled at the centre of the bound
 rectangle after `prepare` (A|R copied to B|R, A untouched) and after the composite, one
-documented `GetRenderTargetData` into a system-memory surface of A's size and format plus a
-1×1 `LockRect` each (A16B16G16R16F, A32B32G32R32F, A8R8G8B8/X8R8G8B8 decoded; other
-formats fail closed with `D3DERR_NOTAVAILABLE`); the surface is created and released per
-sample, so Reset has nothing to drop. `pre_y`/`post_y` per admitted bullet against the
-native run is the "dimmer" comparison run 16 needs.
+documented `GetRenderTargetData` (whole surface: the destination must match the source's
+size) into one retained system-memory surface of A's size and format plus a 1×1 `LockRect`
+each (A16B16G16R16F, A32B32G32R32F, A8R8G8B8/X8R8G8B8 decoded; other formats fail closed
+with `D3DERR_NOTAVAILABLE`). Cap: the first `packed_sample_cap` = 4 admitted packed draws
+of a capture frame are sampled, the rest are counted in `packed_sample_skipped=` on the
+`linear_composition_frame` line (a run-15 frame with 400 admitted draws costs 8 copies, not
+800). The retained surface is allocated once per size/format, counted by
+`device_references()`, released with the witness copy at Reset and teardown; the pending
+`pre` is cleared in `begin_frame`, so an unmatched pre never pairs with a later frame's
+post. `pre_y`/`post_y` per admitted bullet against the native run is the "dimmer"
+comparison run 16 needs.
 
 Evidence: host `test_fade_region.py` (8 tests: `--near` 600 random straddling cases, 0
 failures, 0 outside points; hand cases straddle/exact/behind/beam equal to a Python
@@ -287,7 +293,8 @@ draws and the behind-plane h), bound rectangles n (30,6,64,35) 24 %, x (30,6,64,
 b (30,0,64,43) 36 % of 64×64, each covering its footprint, fade witness outside=0 on all ten
 sampled frames (17, 18, 20 included), injected straddle violations {…, 17: 84, 18: 128,
 20: 128}, seven `packed_sample` lines over capture frames 2–9 (six with a changed centre
-luminance, the composite-fault frame unchanged), Reset and caps runs unchanged (see the
+luminance, the composite-fault frame unchanged, `packed_sample_skipped=0` on all 21 frames,
+held references 59 unchanged with the retained surface released), Reset and caps runs unchanged (see the
 ledger [screen-emission.md](../verification/screen-emission.md)); x87 audit PASS (224
 reachable functions).
 

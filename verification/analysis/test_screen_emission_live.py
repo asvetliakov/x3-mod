@@ -97,7 +97,7 @@ def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441):
                                   centre=f'{l+(rr-l)//2},{tp+(b-tp)//2}',format=113,pre='1,1,1,0.39',pre_y=1,post=post,post_y='0.7' if r['linear'] else 1,pre_result='00000000',post_result='00000000'))
             submissions+=1
         total_pixels+=s[29]
-        trace.append(line('linear_composition_frame',device=1,frame=f,prepared=s[4],linear=s[5],native=0,incomplete=s[7],refused=1,region_pixels=s[29],packed_eligible=s[40],packed_admitted=s[41],packed_linear=s[42],packed_incomplete=s[43],packed_unbounded_refused=s[44],packed_caps_refused=s[45],packed_region_pixels=s[46]))
+        trace.append(line('linear_composition_frame',device=1,frame=f,prepared=s[4],linear=s[5],native=0,incomplete=s[7],refused=1,region_pixels=s[29],packed_eligible=s[40],packed_admitted=s[41],packed_linear=s[42],packed_incomplete=s[43],packed_unbounded_refused=s[44],packed_caps_refused=s[45],packed_sample_skipped=0,packed_region_pixels=s[46]))
         trace.append(line('linear_composition_refusals',device=1,frame=f,pair=1,permission_scene=0,readiness=sum(r['readiness'] for r in sources),readers=0,frame_stop=0,preparation=sum(r['refused'] for r in sources if r['fault']==5)))
         w=live.screen_expected_witness(f,screen,fade,emission,caps);sampled=w['reason']=='sampled'
         packed_kinds=[r['kind'] for r in sources if r['packed_admitted']]

@@ -111,6 +111,9 @@ inline Reason project_box(const float rows[16], const Box& box, const Viewport& 
             clip[corner][k] = double(row[0]) * p[0] + double(row[1]) * p[1] + double(row[2]) * p[2] + double(row[3]);
             if (!std::isfinite(clip[corner][k])) return Reason::NonFinite;
         }
+        // Unclipped: refuse at the first corner with w <= 0, before the later
+        // corners are evaluated (the fade route's reason histogram unchanged).
+        if (!(cut && cut->enabled) && !(clip[corner][3] > 0)) return Reason::NonPositiveW;
     }
     const bool clipping = cut && cut->enabled;
     if (cut) cut->clipped = 0;
