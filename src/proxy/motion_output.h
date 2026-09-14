@@ -803,7 +803,8 @@ private:
     // stay in derive_fade_region. Shared by the admitted route and the
     // capture-only refused-draw diagnostic.
     fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only,
-                                       fade_region::BoundSource source = fade_region::BoundSource::Part, std::uint32_t vertex_count = 0) noexcept;
+                                       fade_region::BoundSource source = fade_region::BoundSource::Part, std::uint32_t vertex_count = 0,
+                                       std::uint64_t* aabb_px = nullptr) noexcept;
     // Step B locked-prefix rectangle (screen-emission-region.md): counted and
     // logged per draw in capture frames; nothing consumes it before step C.
     void derive_prefix_region(const MotionDrawCall&, MotionRoute&) noexcept;
@@ -1013,8 +1014,14 @@ private:
         unsigned prefix_reason[unsigned(fade_region::Reason::Count)]{};
         unsigned prefix_lookup[unsigned(fade_region::prefix::Lookup::Count)]{};
         std::uint64_t prefix_permille_sum = 0;
+        // Step D: over bound draws, the hull rectangle's pixels against the
+        // near-clipped AABB rectangle of the same vertices (the step-B box),
+        // the drawn vertices, and the derivation's ticks over every qualifying draw.
+        std::uint64_t prefix_hull_px = 0, prefix_aabb_px = 0, prefix_vertices = 0, prefix_ticks = 0;
+        unsigned prefix_rechecks = 0; // bound withdrawn: the record changed under the projection
     } composition_counts_;
     bool screen_emission_bound_ = false; // X3M_SCREEN_EMISSION_BOUND=1, read once at attach
+    bool locked_prefix_log_ = false;     // X3M_LOCKED_PREFIX_LOG=1: the per-draw locked_prefix line on every frame (fixtures), not only capture frames
     fade_region::BoundTable fade_bounds_; // reserved with the composition pass, dropped at Reset/teardown
     // Fade-region witness state: this frame's derived rectangles with their
     // prepared flag (the union takes prepared draws only; past the capacity

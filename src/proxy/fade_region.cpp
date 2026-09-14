@@ -25,14 +25,14 @@ bool content(std::uintptr_t wrapper, std::uint64_t* revision) noexcept {
     return true;
 }
 // The wrapper pointer is again a registry key only; the view carries the
-// published scan's box (prefix::Table::lookup) or its refusal.
-bool prefix_bound(std::uintptr_t wrapper, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint, unsigned* refusal) noexcept {
+// published scan's positions (prefix::Table::lookup) or its refusal.
+bool prefix_bound(std::uintptr_t wrapper, std::uint32_t vertex_count, const float** positions, std::uint32_t* scanned, std::uint64_t* revision, unsigned* refusal) noexcept {
     ownership::LockedPrefixView view{};
-    // An admitted draw marks its buffer: the next DISCARD Unlock is scanned.
+    // An admitted draw marks its buffer: the next DISCARD lock is sentinelled and its Unlock scanned.
     const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(wrapper), vertex_count, true, &view);
-    *refusal = view.reason; *revision = view.revision; *checkpoint = view.checkpoint;
-    if (FAILED(hr) || !view.requested || !view.known) return false;
-    for (unsigned a = 0; a < 3; ++a) { box->centre[a] = view.centre[a]; box->half[a] = view.half[a]; }
+    *refusal = view.reason; *revision = view.revision; *scanned = view.scanned;
+    if (FAILED(hr) || !view.requested || !view.known || !view.positions) return false;
+    *positions = view.positions;
     return true;
 }
 const Environment production{&read_memory, &scope, &content, &prefix_bound};
@@ -57,6 +57,16 @@ Result resolve_locked_prefix(const Query& query, std::uint32_t vertex_count) noe
     const Result out = fade_region::resolve_locked_prefix(query, vertex_count, production);
     SetLastError(error);
     return out;
+}
+// After the projection: the record must still be published at the same
+// revision (a Lock on another thread in between advances it and may have
+// rewritten the positions under the projection). No mark, one registry find.
+bool recheck_locked_prefix(const Query& query, std::uint32_t vertex_count, std::uint64_t revision) noexcept {
+    const DWORD error = GetLastError();
+    ownership::LockedPrefixView view{};
+    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(query.vb), vertex_count, false, &view);
+    SetLastError(error);
+    return SUCCEEDED(hr) && view.requested && view.known && view.revision == revision;
 }
 
 } // namespace x3m::fade_region

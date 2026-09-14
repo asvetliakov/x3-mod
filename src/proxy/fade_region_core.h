@@ -60,11 +60,12 @@ struct Environment {
     // Write revision of a recognised, tracked, unlocked, unambiguous
     // application buffer wrapper; false otherwise. Never dereferences.
     bool (*content)(std::uintptr_t wrapper, std::uint64_t* revision) noexcept;
-    // Locked-prefix bound of a recognised vertex buffer wrapper for the
+    // Locked-prefix positions of a recognised vertex buffer wrapper for the
     // leading vertex_count vertices (prefix::Table::lookup through the
-    // ownership layer); false with the prefix::Lookup reason in *refusal.
-    // Null when the production binding is absent (host table driver).
-    bool (*prefix)(std::uintptr_t wrapper, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint, unsigned* refusal) noexcept;
+    // ownership layer): 3 floats per vertex, valid while the revision holds;
+    // false with the prefix::Lookup reason in *refusal. Null when the
+    // production binding is absent (host table driver).
+    bool (*prefix)(std::uintptr_t wrapper, std::uint32_t vertex_count, const float** positions, std::uint32_t* scanned, std::uint64_t* revision, unsigned* refusal) noexcept;
 };
 
 struct Query {
@@ -82,7 +83,8 @@ struct Result {
     std::uint64_t vb_revision = 0, ib_revision = 0;
     Box box{};                   // POSITION0 units when status == Bound
     BoundSource source = BoundSource::Part;
-    std::uint32_t vertex_count = 0, checkpoint = 0; // LockedPrefix: the drawn prefix and its covering checkpoint
+    std::uint32_t vertex_count = 0, scanned = 0; // LockedPrefix: the drawn prefix and the vertices the Unlock scan published
+    const float* positions = nullptr;             // LockedPrefix: the prefix's positions (3 floats per vertex) when status == Bound
     unsigned prefix_refusal = 0; // LockedPrefix: prefix::Lookup when status != Bound
 };
 
@@ -97,31 +99,29 @@ constexpr double units = 1.0 / 65536.0;             // 4 x int16 / 16384: POSITI
 constexpr std::int64_t domain = 2 * 65536;          // |centre| + half must stay within |p| <= 2
 }
 
-// Step B: the box of a non-indexed TRIANGLELIST draw from StartVertex 0 over
-// the leading vertex_count vertices of a DISCARD-locked dynamic vertex
-// buffer, from the scan published at its Unlock. No table here: the record
-// lives with the ownership layer's lock observation. Refusals map to the
-// existing statuses (NoScope: no buffer or empty draw; ContentUnknown: no
-// published scan, pending or invalidated lock; Invalid: nonfinite or absurd
-// extrema, or a draw past the scanned vertices) and carry the prefix reason.
-// A draw this refuses never gets the full viewport: the consumer refuses it.
+// Step B/D: the positions of a non-indexed TRIANGLELIST draw from
+// StartVertex 0 over the leading vertex_count vertices of a DISCARD-locked
+// dynamic vertex buffer, from the scan published at its Unlock. No table
+// here: the record lives with the ownership layer's lock observation.
+// Refusals map to the existing statuses (NoScope: no buffer or empty draw;
+// ContentUnknown: no published scan, pending or invalidated lock; Invalid:
+// a nonfinite or absurd vertex inside the drawn prefix, or a draw past the
+// scanned vertices) and carry the prefix reason. A draw this refuses never
+// gets the full viewport: the consumer refuses it. The caller projects
+// out.positions (project_prefix) and then rechecks the revision.
 inline Result resolve_locked_prefix(const Query& query, std::uint32_t vertex_count, const Environment& env) noexcept {
     Result out{};
     out.source = BoundSource::LockedPrefix; out.vertex_count = vertex_count;
     if (!query.vb_id || !query.vb || !vertex_count) { out.status = Status::NoScope; return out; }
     if (!env.prefix) { out.status = Status::ContentUnknown; return out; }
-    Box box{}; std::uint64_t revision = 0; std::uint32_t checkpoint = 0; unsigned refusal = 0;
-    if (!env.prefix(query.vb, vertex_count, &box, &revision, &checkpoint, &refusal)) {
-        out.prefix_refusal = refusal; out.vb_revision = revision; out.checkpoint = checkpoint;
+    const float* positions = nullptr; std::uint32_t scanned = 0; std::uint64_t revision = 0; unsigned refusal = 0;
+    if (!env.prefix(query.vb, vertex_count, &positions, &scanned, &revision, &refusal) || !positions) {
+        out.prefix_refusal = refusal; out.vb_revision = revision; out.scanned = scanned;
         const auto reason = prefix::Lookup(refusal);
         out.status = reason == prefix::Lookup::Empty || reason == prefix::Lookup::Beyond || reason == prefix::Lookup::NonFinite ? Status::Invalid : Status::ContentUnknown;
         return out;
     }
-    for (unsigned a = 0; a < 3; ++a)
-        if (!(box.half[a] >= 0) || !(box.centre[a] - box.half[a] >= -double(prefix::world_limit)) || !(box.centre[a] + box.half[a] <= double(prefix::world_limit))) {
-            out.prefix_refusal = unsigned(prefix::Lookup::NonFinite); out.status = Status::Invalid; return out;
-        }
-    out.box = box; out.vb_revision = revision; out.checkpoint = checkpoint;
+    out.positions = positions; out.vb_revision = revision; out.scanned = scanned;
     out.status = Status::Bound;
     return out;
 }

@@ -1,9 +1,12 @@
-// Host driver for src/proxy/fade_region_math.h (verification/analysis/
-// test_fade_region.py). Random boxes, rows and viewports: every interior point
-// projected on the CPU must land inside the derived rectangle; hand cases print
-// the rectangle for exact comparison. No D3D, no Windows.
+// Host driver for src/proxy/fade_region_math.h and locked_prefix_core.h
+// (verification/analysis/test_fade_region.py). Random boxes, rows and
+// viewports: every interior point projected on the CPU must land inside the
+// derived rectangle; random triangle lists (step D) against a rasterising
+// oracle; hand cases print the rectangle for exact comparison. No D3D, no
+// Windows.
 #include "../../src/proxy/fade_region_math.h"
 #include "../../src/proxy/fade_region_core.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -12,6 +15,7 @@
 #include <chrono>
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace x3m::fade_region;
@@ -213,122 +217,168 @@ int run() {
 }
 } // namespace table
 
-// --prefix: the locked-prefix scan, checkpoints, cover, table and the
-// resolve_locked_prefix binding (src/proxy/locked_prefix_core.h, step B of
-// screen-emission-region.md) on host memory. Every case prints one PREFIX
-// line; random cases prove the superset property (every drawn vertex inside
-// the covering box) with a garbage tail.
+// --prefix: the locked-prefix sentinel, scan, table and the
+// resolve_locked_prefix binding (src/proxy/locked_prefix_core.h, steps B and
+// D of the screen-emission notes) on host memory. Every case prints one
+// PREFIX line; random cases prove the exact-prefix property (the positions a
+// bound lookup hands out are bit-identical to the written prefix) with a
+// garbage or sentinel tail.
 namespace prefix_mode {
 using namespace x3m::fade_region::prefix;
 using x3m::fade_region::Box;
 constexpr unsigned quad = 6;
 std::vector<float> buffer(std::size_t vertices) { return std::vector<float>(vertices * stride / sizeof(float)); }
 void put(std::vector<float>& b, std::size_t i, float x, float y, float z) { b[i * 6] = x; b[i * 6 + 1] = y; b[i * 6 + 2] = z; }
-void print(const char* label, Lookup status, const Box& box, std::uint32_t checkpoint, std::uint64_t revision, const Table& t, unsigned extra = 0) {
-    std::printf("PREFIX %s status=%u name=%s box=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f checkpoint=%u revision=%llu used=%u evictions=%llu publications=%llu extra=%u\n",
-                label, unsigned(status), lookup_name(status), box.centre[0], box.centre[1], box.centre[2], box.half[0], box.half[1], box.half[2],
-                checkpoint, (unsigned long long)revision, t.used(), (unsigned long long)t.evictions(), (unsigned long long)t.publications(), extra);
+// Box of the leading count positions a lookup handed out (nullptr: zeros).
+Box extent(const float* positions, std::uint32_t count) {
+    Box box{};
+    if (!positions || !count) return box;
+    double lo[3], hi[3];
+    for (unsigned a = 0; a < 3; ++a) lo[a] = hi[a] = positions[a];
+    for (std::uint32_t i = 1; i < count; ++i) for (unsigned a = 0; a < 3; ++a) {
+        const double v = positions[i * 3 + a];
+        lo[a] = v < lo[a] ? v : lo[a]; hi[a] = v > hi[a] ? v : hi[a];
+    }
+    for (unsigned a = 0; a < 3; ++a) { box.centre[a] = (lo[a] + hi[a]) / 2; box.half[a] = (hi[a] - lo[a]) / 2; }
+    return box;
 }
-Lookup look(const Table& t, std::uintptr_t key, std::uint32_t count, Box& box, std::uint32_t& checkpoint, std::uint64_t& revision) {
-    box = Box{}; checkpoint = 0; revision = 0;
-    return t.lookup(key, count, &box, &revision, &checkpoint);
+struct Look { Lookup status = Lookup::Unknown; const float* positions = nullptr; std::uint64_t revision = 0; std::uint32_t scanned = 0; };
+Look look(const Table& t, std::uintptr_t key, std::uint32_t count) {
+    Look l; l.status = t.lookup(key, count, &l.positions, &l.revision, &l.scanned); return l;
+}
+void print(const char* label, const Look& l, std::uint32_t count, const Table& t, unsigned extra = 0) {
+    const Box box = extent(l.status == Lookup::Bound ? l.positions : nullptr, count);
+    std::printf("PREFIX %s status=%u name=%s box=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f scanned=%u revision=%llu used=%u evictions=%llu publications=%llu sentinel_bytes=%llu window_end=%llu extra=%u\n",
+                label, unsigned(l.status), lookup_name(l.status), box.centre[0], box.centre[1], box.centre[2], box.half[0], box.half[1], box.half[2],
+                l.scanned, (unsigned long long)l.revision, t.used(), (unsigned long long)t.evictions(), (unsigned long long)t.publications(),
+                (unsigned long long)t.sentinel_bytes(), (unsigned long long)t.window_end_scans(), extra);
 }
 // Fake production binding for resolve_locked_prefix: one published record.
 Table* env_table = nullptr;
-bool env_prefix(std::uintptr_t wrapper, std::uint32_t vertex_count, Box* box, std::uint64_t* revision, std::uint32_t* checkpoint, unsigned* refusal) noexcept {
-    const Lookup l = env_table->lookup(wrapper, vertex_count, box, revision, checkpoint);
+bool env_prefix(std::uintptr_t wrapper, std::uint32_t vertex_count, const float** positions, std::uint32_t* scanned, std::uint64_t* revision, unsigned* refusal) noexcept {
+    const Lookup l = env_table->lookup(wrapper, vertex_count, positions, revision, scanned);
     *refusal = unsigned(l);
     return l == Lookup::Bound;
 }
 int run(unsigned seed, unsigned cases) {
-    Table t; Box box{}; std::uint32_t cp = 0; std::uint64_t rev = 0;
-    // Checkpoint math: vertex i at (i, -i, 2i); 200 vertices -> 3 checkpoints.
-    auto b = buffer(200);
-    for (unsigned i = 0; i < 200; ++i) put(b, i, float(i), -float(i), 2.f * i);
-    print("math_unknown", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
-    // An unmarked buffer's lock leaves no record; the draw marks it first.
-    print("unmarked_lock_ignored", (t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7), t.finish_lock(1, 7), look(t, 1, 96, box, cp, rev)), box, cp, rev, t);
+    Table t;
+    // Vertex i at (i, -i, 2i): 200 vertices written by the game's writer,
+    // i.e. after the Lock (the sentinel is written at begin_lock, the
+    // prefix over it, the tail left alone).
+    auto b = buffer(300);
+    auto write_math = [&] { for (unsigned i = 0; i < 200; ++i) put(b, i, float(i), -float(i), 2.f * i); };
+    print("math_unknown", look(t, 1, 96), 96, t);
+    // An unmarked buffer's lock leaves no record and no sentinel; the draw marks it first.
+    std::fill(b.begin(), b.end(), 0.f);
+    print("unmarked_lock_ignored", (t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7), t.finish_lock(1, 7), look(t, 1, 96)), 96, t, unsigned(b[0] == 0.f));
     t.mark(1);
-    print("marked_unknown", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    print("marked_unknown", look(t, 1, 96), 96, t);
     t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7);
-    print("math_pending", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    std::uint32_t words[3]; std::memcpy(words, b.data() + 299 * 6, sizeof words);
+    print("math_pending", look(t, 1, 96), 96, t, unsigned(words[0] == sentinel_word && words[2] == sentinel_word)); // whole window sentinelled
+    write_math();
     const std::uint32_t scanned = t.finish_lock(1, 7);
-    print("math_96", look(t, 1, 96, box, cp, rev), box, cp, rev, t, scanned);     // checkpoint 0: [0,96)
-    print("math_97", look(t, 1, 97, box, cp, rev), box, cp, rev, t);              // checkpoint 1: [0,192)
-    print("math_192", look(t, 1, 192, box, cp, rev), box, cp, rev, t);
-    print("math_193", look(t, 1, 193, box, cp, rev), box, cp, rev, t);            // checkpoint 2: [0,200)
-    print("math_200", look(t, 1, 200, box, cp, rev), box, cp, rev, t);
-    print("math_1", look(t, 1, 1, box, cp, rev), box, cp, rev, t);                // still checkpoint 0 (95 stale vertices)
-    print("empty", look(t, 1, 0, box, cp, rev), box, cp, rev, t);
-    print("beyond", look(t, 1, 201, box, cp, rev), box, cp, rev, t);
-    print("beyond_max", look(t, 1, max_vertices + 1, box, cp, rev), box, cp, rev, t);
-    // Revision: a second lock makes the record pending (revision 2); a
-    // failed Unlock invalidates; a non-DISCARD lock is invalid outright.
+    print("math_96", look(t, 1, 96), 96, t, scanned);       // exact: 200 written, scan stopped at the sentinel
+    print("math_200", look(t, 1, 200), 200, t);
+    print("math_1", look(t, 1, 1), 1, t);                  // a 1-vertex draw: its one vertex
+    print("empty", look(t, 1, 0), 0, t);
+    print("beyond", look(t, 1, 201), 201, t);
+    print("beyond_max", look(t, 1, max_vertices + 1), 0, t);
+    // Revision: a second lock makes the record pending (revision 2) and
+    // sentinels exactly the previous prefix (200 vertices); a failed Unlock
+    // invalidates; a non-DISCARD lock is invalid outright.
+    const std::uint64_t before = t.sentinel_bytes();
     t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7);
-    print("relock_pending", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
-    t.finish_lock(1, 7); t.invalidate(1);
-    print("unlock_failed", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    print("relock_pending", look(t, 1, 96), 96, t, unsigned(t.sentinel_bytes() - before));
+    write_math(); t.finish_lock(1, 7); t.invalidate(1);
+    print("unlock_failed", look(t, 1, 96), 96, t);
     t.begin_lock(1, false, nullptr, 0, 7); t.finish_lock(1, 7);
-    print("non_discard", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
-    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7);
-    print("thread_mismatch", (t.finish_lock(1, 8), look(t, 1, 96, box, cp, rev)), box, cp, rev, t);
-    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7); t.finish_lock(1, 7);
-    print("relearned", look(t, 1, 200, box, cp, rev), box, cp, rev, t);
+    print("non_discard", look(t, 1, 96), 96, t);
+    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7); write_math();
+    print("thread_mismatch", (t.finish_lock(1, 8), look(t, 1, 96)), 96, t);
+    t.begin_lock(1, true, b.data(), b.size() * sizeof(float), 7); write_math(); t.finish_lock(1, 7);
+    print("relearned", look(t, 1, 200), 200, t);
     t.erase(1);
-    print("erased", look(t, 1, 96, box, cp, rev), box, cp, rev, t);
+    print("erased", look(t, 1, 96), 96, t, t.allocated());
     // A nested lock (Lock while locked) invalidates the record through both
     // Unlocks; the next fresh lock publishes again.
     t.mark(3);
     t.begin_lock(3, true, b.data(), b.size() * sizeof(float), 7); t.begin_lock(3, true, b.data(), b.size() * sizeof(float), 7);
     t.finish_lock(3, 7);
-    print("nested_first_unlock", look(t, 3, 96, box, cp, rev), box, cp, rev, t);
+    print("nested_first_unlock", look(t, 3, 96), 96, t);
     t.finish_lock(3, 7);
-    print("nested_invalid", look(t, 3, 96, box, cp, rev), box, cp, rev, t);
-    t.begin_lock(3, true, b.data(), b.size() * sizeof(float), 7); t.finish_lock(3, 7);
-    print("nested_relearned", look(t, 3, 96, box, cp, rev), box, cp, rev, t);
+    print("nested_invalid", look(t, 3, 96), 96, t);
+    t.begin_lock(3, true, b.data(), b.size() * sizeof(float), 7); write_math(); t.finish_lock(3, 7);
+    print("nested_relearned", look(t, 3, 96), 96, t);
     t.erase(3);
-    // Stale tail: 100 valid vertices in [-1, 1], garbage from 100 on.
+    // Tails: 100 valid vertices in [-1, 1]; the writer then either leaves
+    // the sentinel (as the game does) or overwrites the tail with what a
+    // recycled DISCARD window could hold.
     auto g = buffer(300);
-    auto fill = [&](float tail) { for (unsigned i = 0; i < 300; ++i) { const float v = i < 100 ? (i % 2 ? 1.f : -1.f) : tail; put(g, i, v, v, v); } };
-    const auto publish = [&](std::uintptr_t key) { t.mark(key); t.begin_lock(key, true, g.data(), g.size() * sizeof(float), 7); t.finish_lock(key, 7); };
-    fill(std::numeric_limits<float>::quiet_NaN()); publish(2);
-    print("tail_nan_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);        // checkpoint 1 holds NaN: refused
-    print("tail_nan_96", look(t, 2, 96, box, cp, rev), box, cp, rev, t);          // checkpoint 0 clean: bound
-    for (unsigned i = 100; i < 192; ++i) put(g, i, 0, 0, 0); publish(2);
-    print("tail_nan_beyond", look(t, 2, 100, box, cp, rev), box, cp, rev, t);     // NaN only from 192: bound
-    fill(std::numeric_limits<float>::infinity()); publish(2);
-    print("tail_inf_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);
-    fill(1e30f); publish(2);
-    print("tail_absurd_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);     // beyond world_limit: refused
-    fill(world_limit); publish(2);
-    print("tail_limit_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);      // exactly the limit: bound, larger box
-    fill(1e6f); publish(2);
-    print("tail_huge_100", look(t, 2, 100, box, cp, rev), box, cp, rev, t);       // finite garbage: larger box
-    print("tail_huge_96", look(t, 2, 96, box, cp, rev), box, cp, rev, t);         // exact prefix: tight box
-    // A NaN inside the valid prefix is refused whatever the count.
-    fill(0); put(g, 5, std::numeric_limits<float>::quiet_NaN(), 0, 0); publish(2);
-    print("prefix_nan", look(t, 2, 96, box, cp, rev), box, cp, rev, t);
-    // Partial trailing vertex: 10 vertices plus 7 bytes scan as 10.
+    auto prefix = [&] { for (unsigned i = 0; i < 100; ++i) { const float v = i % 2 ? 1.f : -1.f; put(g, i, v, v, v); } };
+    auto tail = [&](float value) { for (unsigned i = 100; i < 300; ++i) put(g, i, value, value, value); };
+    const auto publish = [&](std::uintptr_t key, auto&& writer) { t.mark(key); t.begin_lock(key, true, g.data(), g.size() * sizeof(float), 7); writer(); return t.finish_lock(key, 7); };
+    std::uint32_t n = publish(2, [&] { prefix(); });
+    print("tail_sentinel_100", look(t, 2, 100), 100, t, n);                     // exact count: 100
+    print("tail_sentinel_101", look(t, 2, 101), 101, t);                        // beyond
+    n = publish(2, [&] { prefix(); tail(std::numeric_limits<float>::quiet_NaN()); });
+    print("tail_nan_100", look(t, 2, 100), 100, t, n);                          // the prefix is clean: bound
+    print("tail_nan_101", look(t, 2, 101), 101, t);                             // vertex 100 is NaN: refused
+    n = publish(2, [&] { prefix(); tail(std::numeric_limits<float>::infinity()); });
+    print("tail_inf_100", look(t, 2, 100), 100, t, n);
+    print("tail_inf_106", look(t, 2, 106), 106, t);
+    n = publish(2, [&] { prefix(); tail(1e30f); });
+    print("tail_absurd_100", look(t, 2, 100), 100, t, n);                       // beyond world_limit only past the prefix
+    print("tail_absurd_106", look(t, 2, 106), 106, t);
+    n = publish(2, [&] { prefix(); tail(world_limit); });
+    print("tail_limit_106", look(t, 2, 106), 106, t, n);                        // exactly the limit: finite
+    n = publish(2, [&] { prefix(); tail(1e6f); });
+    print("tail_huge_100", look(t, 2, 100), 100, t, n);                         // finite garbage: not in the 100-vertex prefix
+    print("tail_huge_106", look(t, 2, 106), 106, t);                            // but in a 106-vertex draw
+    n = publish(2, [&] { prefix(); tail(0.f); });
+    print("tail_zero_100", look(t, 2, 100), 100, t, n);                         // the run-15 origin tail: scan to the window end, exact draw
+    // A NaN inside the valid prefix refuses every draw that covers it.
+    n = publish(2, [&] { prefix(); put(g, 5, std::numeric_limits<float>::quiet_NaN(), 0, 0); });
+    print("prefix_nan_5", look(t, 2, 5), 5, t, n);
+    print("prefix_nan_6", look(t, 2, 6), 6, t);
+    print("prefix_nan_96", look(t, 2, 96), 96, t);
+    // A real vertex that equals the sentinel ends the scan early: a draw past it is beyond.
+    n = publish(2, [&] { prefix(); std::uint32_t s[3] = {sentinel_word, sentinel_word, sentinel_word}; std::memcpy(g.data() + 50 * 6, s, sizeof s); });
+    print("sentinel_vertex_50", look(t, 2, 50), 50, t, n);
+    print("sentinel_vertex_51", look(t, 2, 51), 51, t);
+    // The sentinel extent follows the previous scan: after the 300-vertex
+    // window-end scan above the next lock sentinels 300 vertices, after an
+    // exact 100 it sentinels 100.
+    { const std::uint64_t s0 = t.sentinel_bytes(); n = publish(2, [&] { prefix(); }); const std::uint64_t s1 = t.sentinel_bytes();
+      print("sentinel_extent_after_50", look(t, 2, 100), 100, t, unsigned(s1 - s0)); // previous scan: 50 vertices -> 1200 bytes
+      const std::uint64_t s2 = t.sentinel_bytes(); publish(2, [&] { prefix(); });
+      print("sentinel_extent_after_100", look(t, 2, 100), 100, t, unsigned(t.sentinel_bytes() - s2)); }
+    // Partial trailing vertex: 10 vertices plus 7 bytes scan as 10; a window
+    // past max_vertices is capped.
+    std::vector<float> positions(storage_floats);
     Scan partial{};
-    print("length_partial", Lookup(scan(g.data(), 10 * stride + 7, &partial)), box, partial.vertices, partial.blocks, t);
+    std::fill(g.begin(), g.end(), 0.f);
+    print("length_partial", Look{Lookup(scan(g.data(), 10 * stride + 7, positions.data(), &partial)), nullptr, partial.bad_from, partial.vertices}, 0, t, unsigned(partial.window_end));
     Scan capped{};
     auto big = buffer(max_vertices + 10);
-    print("length_capped", Lookup(scan(big.data(), big.size() * sizeof(float), &capped)), box, capped.vertices, capped.blocks, t);
-    // Eviction: capacity + 1 distinct keys; the oldest (key 100) goes.
+    print("length_capped", Look{Lookup(scan(big.data(), big.size() * sizeof(float), positions.data(), &capped)), nullptr, capped.bad_from, capped.vertices}, 0, t, unsigned(capped.window_end));
+    // Eviction: capacity + 1 distinct keys; the oldest (key 100) goes; the
+    // storage pool stays at capacity blocks.
     Table e;
-    for (unsigned k = 0; k <= Table::capacity; ++k) { e.mark(100 + k); e.begin_lock(100 + k, true, b.data(), b.size() * sizeof(float), 7); e.finish_lock(100 + k, 7); }
-    print("evicted_oldest", look(e, 100, 96, box, cp, rev), box, cp, rev, e);
-    print("evicted_kept", look(e, 101, 96, box, cp, rev), box, cp, rev, e);
+    for (unsigned k = 0; k <= Table::capacity; ++k) { e.mark(100 + k); e.begin_lock(100 + k, true, b.data(), b.size() * sizeof(float), 7); write_math(); e.finish_lock(100 + k, 7); }
+    print("evicted_oldest", look(e, 100, 96), 96, e, e.allocated());
+    print("evicted_kept", look(e, 101, 96), 96, e);
     e.clear();
-    print("cleared", look(e, 101, 96, box, cp, rev), box, cp, rev, e);
+    print("cleared", look(e, 101, 96), 96, e, e.allocated());
     // resolve_locked_prefix through the Environment binding.
-    Table r; r.mark(0xd000); r.begin_lock(0xd000, true, b.data(), b.size() * sizeof(float), 7); r.finish_lock(0xd000, 7); env_table = &r;
+    Table r; r.mark(0xd000); r.begin_lock(0xd000, true, b.data(), b.size() * sizeof(float), 7); write_math(); r.finish_lock(0xd000, 7); env_table = &r;
     const x3m::fade_region::Environment env{&table::read_span, &table::scope, &table::content, &env_prefix};
     const x3m::fade_region::Environment no_prefix{&table::read_span, &table::scope, &table::content, nullptr};
     auto res = [&](const char* label, const x3m::fade_region::Result& out) {
-        std::printf("RESOLVE %s status=%u name=%s source=%u bound=%u refusal=%u checkpoint=%u revision=%llu box=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n", label, unsigned(out.status),
-                    x3m::fade_region::status_name(out.status), unsigned(out.source), out.status == x3m::fade_region::Status::Bound, out.prefix_refusal, out.checkpoint,
-                    (unsigned long long)out.vb_revision, out.box.centre[0], out.box.centre[1], out.box.centre[2], out.box.half[0], out.box.half[1], out.box.half[2]);
+        const Box box = extent(out.positions, out.vertex_count);
+        std::printf("RESOLVE %s status=%u name=%s source=%u bound=%u refusal=%u scanned=%u revision=%llu positions=%u box=%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n", label, unsigned(out.status),
+                    x3m::fade_region::status_name(out.status), unsigned(out.source), out.status == x3m::fade_region::Status::Bound, out.prefix_refusal, out.scanned,
+                    (unsigned long long)out.vb_revision, out.positions != nullptr, box.centre[0], box.centre[1], box.centre[2], box.half[0], box.half[1], box.half[2]);
     };
     res("bound", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd000, 0}, 200, env));
     res("no_vb", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{0, 0, 0, 0}, 200, env));
@@ -336,12 +386,15 @@ int run(unsigned seed, unsigned cases) {
     res("no_binding", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd000, 0}, 200, no_prefix));
     res("unknown_buffer", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd001, 0}, 200, env));
     res("beyond", x3m::fade_region::resolve_locked_prefix(x3m::fade_region::Query{5, 0, 0xd000, 0}, 201, env));
-    // Random superset cases: N quads (6 vertices each) inside a random box,
-    // finite garbage tail; the covering box contains every drawn vertex and
-    // equals the true extent exactly when N*6 is a multiple of 96.
+    // Random exact-prefix cases: N quads (6 vertices each) inside a random
+    // box written after the lock; even cases leave the sentinel tail, odd
+    // cases overwrite the whole window with finite garbage first (a recycled
+    // DISCARD window). The bound positions must equal the written prefix bit
+    // for bit and the box they span the true extent; the scan count is
+    // exact with the sentinel and the window with garbage.
     std::mt19937_64 rng(seed);
     std::uniform_real_distribution<double> unit(0, 1);
-    unsigned failures = 0, exact = 0, larger = 0;
+    unsigned failures = 0, exact = 0, garbage = 0;
     auto v = buffer(max_vertices);
     for (unsigned c = 0; c < cases; ++c) {
         const unsigned quads = 1 + unsigned(unit(rng) * (max_vertices / quad));
@@ -349,36 +402,46 @@ int run(unsigned seed, unsigned cases) {
         double centre[3], half[3];
         for (unsigned a = 0; a < 3; ++a) { centre[a] = unit(rng) * 2000 - 1000; half[a] = unit(rng) * 100; }
         const float tail = float(unit(rng) * 4000 - 2000);
-        for (unsigned i = 0; i < max_vertices; ++i) put(v, i, tail, -tail, tail * .5f);
+        Table s; s.mark(9); s.begin_lock(9, true, v.data(), v.size() * sizeof(float), 1);
+        const bool recycled = c % 2 == 1;
+        if (recycled) for (unsigned i = 0; i < max_vertices; ++i) put(v, i, tail, -tail, tail * .5f);
         float lo[3] = {3e38f, 3e38f, 3e38f}, hi[3] = {-3e38f, -3e38f, -3e38f};
         for (unsigned i = 0; i < count; ++i) {
             float p[3];
             for (unsigned a = 0; a < 3; ++a) { p[a] = float(centre[a] + (unit(rng) * 2 - 1) * half[a]); lo[a] = p[a] < lo[a] ? p[a] : lo[a]; hi[a] = p[a] > hi[a] ? p[a] : hi[a]; }
             put(v, i, p[0], p[1], p[2]);
         }
-        Table s; s.mark(9); s.begin_lock(9, true, v.data(), v.size() * sizeof(float), 1); s.finish_lock(9, 1);
-        const Lookup l = look(s, 9, count, box, cp, rev);
-        bool ok = l == Lookup::Bound && cp == (count + interval - 1) / interval - 1;
-        bool tight = true;
-        for (unsigned a = 0; a < 3 && ok; ++a) {
-            const double bl = box.centre[a] - box.half[a], bh = box.centre[a] + box.half[a];
-            ok = bl <= lo[a] && bh >= hi[a];
-            tight = tight && bl == double(lo[a]) && bh == double(hi[a]);
-        }
+        const std::uint32_t n = s.finish_lock(9, 1);
+        const Look l = look(s, 9, count);
+        bool ok = l.status == Lookup::Bound && l.positions && n == (recycled ? max_vertices : count) && l.scanned == n;
         for (unsigned i = 0; i < count && ok; ++i)
-            for (unsigned a = 0; a < 3; ++a) { const double x = v[i * 6 + a]; ok = ok && x >= box.centre[a] - box.half[a] && x <= box.centre[a] + box.half[a]; }
-        if (!ok) ++failures;
-        else if (tight) ++exact; else ++larger;
-        if (count % interval == 0 && !tight) ++failures; // a whole number of checkpoints has no stale vertex
+            for (unsigned a = 0; a < 3; ++a) ok = ok && std::memcmp(&l.positions[i * 3 + a], &v[i * 6 + a], sizeof(float)) == 0;
+        if (ok) {
+            const Box box = extent(l.positions, count);
+            for (unsigned a = 0; a < 3; ++a) ok = ok && box.centre[a] - box.half[a] == double(lo[a]) && box.centre[a] + box.half[a] == double(hi[a]);
+        }
+        if (ok && look(s, 9, count + 1).status != (recycled ? Lookup::Bound : Lookup::Beyond)) ok = false; // one past the prefix
+        if (!ok) ++failures; else if (recycled) ++garbage; else ++exact;
     }
-    // Scan cost on this host: the full 6144-vertex window.
-    Scan timing{};
+    // Scan cost on this host: an exact 1056-vertex prefix behind the
+    // sentinel, and the whole 6144-vertex window (no sentinel met).
     volatile float sink = 0;
-    const auto begin = std::chrono::steady_clock::now();
-    constexpr unsigned iterations = 2000;
-    for (unsigned i = 0; i < iterations; ++i) { v[i % 6] = float(i); scan(v.data(), v.size() * sizeof(float), &timing); sink = sink + timing.at[63].hi[0]; }
-    const double ns = double(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - begin).count()) / iterations;
-    std::printf("PREFIX_RANDOM cases=%u failures=%u exact=%u larger=%u scan_ns=%.0f vertices=%u\n", cases, failures, exact, larger, ns, timing.vertices);
+    auto time_scan = [&](std::uint32_t written, bool sentinel_tail) {
+        Table s; s.mark(9); s.begin_lock(9, true, v.data(), v.size() * sizeof(float), 1);
+        if (!sentinel_tail) for (unsigned i = 0; i < max_vertices; ++i) put(v, i, 1, 2, 3);
+        for (unsigned i = 0; i < written; ++i) put(v, i, float(i), 1, 2);
+        Scan timing{};
+        const auto begin = std::chrono::steady_clock::now();
+        constexpr unsigned iterations = 2000;
+        for (unsigned i = 0; i < iterations; ++i) { v[i % 6] = float(i); scan(v.data(), v.size() * sizeof(float), positions.data(), &timing); sink = sink + positions[3]; }
+        const double ns = double(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - begin).count()) / iterations;
+        s.finish_lock(9, 1);
+        return std::pair<double, std::uint32_t>(ns, timing.vertices);
+    };
+    const auto exact_scan = time_scan(1056, true);
+    const auto window_scan = time_scan(1056, false);
+    std::printf("PREFIX_RANDOM cases=%u failures=%u exact=%u garbage=%u scan_ns_1056=%.0f vertices_1056=%u scan_ns_window=%.0f vertices_window=%u\n",
+                cases, failures, exact, garbage, exact_scan.first, exact_scan.second, window_scan.first, window_scan.second);
     return failures ? 1 : 0;
 }
 } // namespace prefix_mode
@@ -488,9 +551,207 @@ int near_case_mode(int argc, char** argv) {
     return 0;
 }
 
+// --hull seed cases triangles: step D (screen-emission-bullet-bound.md).
+// Random triangle lists through perspective-like rows whose near plane cuts
+// through, before or behind them, against an independent oracle: each
+// triangle's clip coordinates are evaluated the way the GPU does (fp32
+// dp4), the polygon is clipped against z >= 0 (Sutherland-Hodgman, no
+// shared code with project_prefix), projected, and rasterised with pixel
+// centres; every covered pixel must lie inside the derived rectangle
+// (outside == 0). A BehindNear list must cover no pixel; the derivation's
+// behind count never exceeds the oracle's (its cut sits eps behind the
+// plane); the rectangle lies inside the near-clipped rectangle of the list's
+// own AABB (the step-B route) unless it is the off-screen 1x1 fallback.
+namespace hull_mode {
+struct Point { double x, y; };
+// Screen-space polygon of one triangle's visible part, from fp32 clip values.
+std::vector<Point> visible_polygon(const float rows[16], const float* tri, const Viewport& v, unsigned* behind) {
+    struct Clip { double c[4]; };
+    std::vector<Clip> poly;
+    for (unsigned k = 0; k < 3; ++k) {
+        Clip q{};
+        for (unsigned r = 0; r < 4; ++r) {
+            // fp32 dp4 with left-to-right accumulation, as a scalar shader would.
+            float acc = rows[4 * r] * tri[3 * k];
+            acc += rows[4 * r + 1] * tri[3 * k + 1];
+            acc += rows[4 * r + 2] * tri[3 * k + 2];
+            acc += rows[4 * r + 3];
+            q.c[r] = acc;
+        }
+        if (q.c[2] < 0) ++*behind;
+        poly.push_back(q);
+    }
+    // Clip against z >= 0.
+    std::vector<Clip> out;
+    for (unsigned i = 0; i < poly.size(); ++i) {
+        const Clip& a = poly[i]; const Clip& b = poly[(i + 1) % poly.size()];
+        const bool ina = a.c[2] >= 0, inb = b.c[2] >= 0;
+        if (ina) out.push_back(a);
+        if (ina != inb) {
+            const double t = a.c[2] / (a.c[2] - b.c[2]);
+            Clip m{};
+            for (unsigned r = 0; r < 4; ++r) m.c[r] = a.c[r] + t * (b.c[r] - a.c[r]);
+            out.push_back(m);
+        }
+    }
+    std::vector<Point> screen;
+    for (const Clip& q : out) {
+        if (!(q.c[3] > 0)) return {}; // not a perspective row set here: the derivation refuses NonPositiveW
+        screen.push_back({v.x + (q.c[0] / q.c[3] + 1) * v.width * .5, v.y + (1 - q.c[1] / q.c[3]) * v.height * .5});
+    }
+    return screen;
+}
+bool inside(const std::vector<Point>& poly, double px, double py) {
+    // Convex polygon, either winding: the point is inside when it lies on
+    // the same side of every edge (or on an edge).
+    int sign = 0;
+    for (unsigned i = 0; i < poly.size(); ++i) {
+        const Point& a = poly[i]; const Point& b = poly[(i + 1) % poly.size()];
+        const double cross = (b.x - a.x) * (py - a.y) - (b.y - a.y) * (px - a.x);
+        if (cross == 0) continue;
+        const int s = cross > 0 ? 1 : -1;
+        if (sign == 0) sign = s; else if (s != sign) return false;
+    }
+    return true;
+}
+struct Footprint { std::uint64_t covered = 0, outside = 0; std::int32_t min_x = 0, min_y = 0, max_x = -1, max_y = -1; };
+// Pixels whose centre lies inside the polygon (full rasterisation up to a
+// budget, then a random sample plus the pixels around each vertex).
+void rasterise(const std::vector<Point>& poly, const Viewport& v, const Rect& rect, std::mt19937_64& rng, Footprint* fp) {
+    if (poly.size() < 3) return;
+    double lo_x = poly[0].x, hi_x = poly[0].x, lo_y = poly[0].y, hi_y = poly[0].y;
+    for (const Point& p : poly) { lo_x = std::min(lo_x, p.x); hi_x = std::max(hi_x, p.x); lo_y = std::min(lo_y, p.y); hi_y = std::max(hi_y, p.y); }
+    const double vx0 = v.x, vy0 = v.y, vx1 = double(v.x) + v.width, vy1 = double(v.y) + v.height;
+    const std::int32_t x0 = std::int32_t(std::floor(std::max(lo_x, vx0))), x1 = std::int32_t(std::ceil(std::min(hi_x, vx1)));
+    const std::int32_t y0 = std::int32_t(std::floor(std::max(lo_y, vy0))), y1 = std::int32_t(std::ceil(std::min(hi_y, vy1)));
+    if (x1 <= x0 || y1 <= y0) return;
+    auto test = [&](std::int32_t x, std::int32_t y) {
+        if (x < std::int32_t(vx0) || y < std::int32_t(vy0) || x >= std::int32_t(vx1) || y >= std::int32_t(vy1)) return;
+        if (!inside(poly, x + .5, y + .5)) return;
+        ++fp->covered;
+        if (fp->max_x < fp->min_x) { fp->min_x = fp->max_x = x; fp->min_y = fp->max_y = y; }
+        fp->min_x = std::min(fp->min_x, x); fp->max_x = std::max(fp->max_x, x); fp->min_y = std::min(fp->min_y, y); fp->max_y = std::max(fp->max_y, y);
+        if (!contains(rect, x, y)) ++fp->outside;
+    };
+    const std::uint64_t pixels = std::uint64_t(x1 - x0) * std::uint64_t(y1 - y0);
+    if (pixels <= 40000) { for (std::int32_t y = y0; y < y1; ++y) for (std::int32_t x = x0; x < x1; ++x) test(x, y); return; }
+    std::uniform_int_distribution<std::int32_t> dx(x0, x1 - 1), dy(y0, y1 - 1);
+    for (unsigned n = 0; n < 4000; ++n) test(dx(rng), dy(rng));
+    for (const Point& p : poly) for (int ox = -2; ox <= 2; ++ox) for (int oy = -2; oy <= 2; ++oy) test(std::int32_t(std::floor(p.x)) + ox, std::int32_t(std::floor(p.y)) + oy);
+}
+int run(unsigned seed, unsigned cases, unsigned triangles_max) {
+    std::mt19937_64 rng(seed);
+    std::uniform_real_distribution<double> unit(0, 1);
+    unsigned failures = 0, capped = 0;
+    for (unsigned c = 0; c < cases; ++c) {
+        Viewport v{0, 0, 16 + unsigned(unit(rng) * 2032), 16 + unsigned(unit(rng) * 1064)};
+        if (c % 5 == 4) { v.x = unsigned(unit(rng) * 40); v.y = unsigned(unit(rng) * 40); }
+        // x' = s x + tx, y' = s y + ty, z' = k (z + d - zn), w = z + d: near plane at w = zn.
+        const double s = 0.25 + unit(rng) * 8, d = unit(rng) * 10 - 5, zn = 0.01 + unit(rng) * 3, k = 0.05 + unit(rng);
+        const double world = (c % 3 == 0) ? std::pow(10.0, 3 + unit(rng) * 2) : 0.0; // bullet-scale cancellation
+        const double tx = unit(rng) * 4 - 2, ty = unit(rng) * 4 - 2;
+        const float rows[16] = {float(s), 0, 0, float(tx - s * world), 0, float(s), 0, float(ty - s * world),
+                                0, 0, float(k), float(k * (d - zn) - k * world), 0, 0, 1, float(d - world)};
+        const unsigned triangles = 1 + unsigned(unit(rng) * triangles_max);
+        std::vector<float> positions(triangles * 9);
+        // Geometry kinds: scattered small triangles, one long beam along a
+        // diagonal, a batch entirely behind, a batch hugging the near plane.
+        const unsigned kind = c % 4;
+        double centre[3] = {unit(rng) * 6 - 3, unit(rng) * 6 - 3, unit(rng) * 10 - 4};
+        double half[3] = {unit(rng) * 3, unit(rng) * 3, unit(rng) * 4};
+        if (kind == 2) { centre[2] = -d - zn - 5 - unit(rng) * 5; half[2] = std::min(half[2], 4.0); }
+        if (kind == 3) { centre[2] = -d + zn; half[2] = 0.02 + unit(rng) * 0.2; }
+        for (unsigned t = 0; t < triangles; ++t) {
+            double base[3];
+            const double along = unit(rng);
+            for (unsigned a = 0; a < 3; ++a) base[a] = kind == 1 ? centre[a] - half[a] + 2 * half[a] * along : centre[a] + (unit(rng) * 2 - 1) * half[a];
+            const double size = kind == 1 ? 0.05 + unit(rng) * 0.2 : 0.02 + unit(rng) * 1.5;
+            for (unsigned k2 = 0; k2 < 3; ++k2) for (unsigned a = 0; a < 3; ++a) positions[t * 9 + k2 * 3 + a] = float(base[a] + world * (a < 3) + (unit(rng) * 2 - 1) * size);
+        }
+        Rect rect{};
+        PrefixHull hull{};
+        const Reason reason = project_prefix(rows, positions.data(), triangles * 3, v, &rect, &hull);
+        Footprint fp{};
+        unsigned behind = 0;
+        bool degenerate_w = false;
+        for (unsigned t = 0; t < triangles; ++t) {
+            unsigned b = 0;
+            const auto poly = visible_polygon(rows, positions.data() + t * 9, v, &b);
+            behind += b;
+            if (b < 3 && poly.empty()) degenerate_w = true;
+            rasterise(poly, v, reason == Reason::Bound ? rect : Rect{0, 0, 0, 0}, rng, &fp);
+        }
+        bool fail = false;
+        if (hull.behind > behind) fail = true;
+        if (reason == Reason::BehindNear && fp.covered) fail = true;
+        if (reason != Reason::Bound && reason != Reason::BehindNear && !degenerate_w) fail = true;
+        if (reason == Reason::Bound && fp.outside) fail = true;
+        // The step-B box of the same vertices contains the hull rectangle.
+        Rect box_rect{}; NearClip cut{true, 0};
+        std::uint64_t aabb_px = 0;
+        if (reason == Reason::Bound) {
+            const Reason box_reason = project_box(rows, hull.aabb, v, &box_rect, &cut);
+            if (box_reason != Reason::Bound) fail = true;
+            else {
+                aabb_px = area(box_rect);
+                const bool fallback = area(rect) == 1 && rect.left == std::int32_t(v.x) && rect.top == std::int32_t(v.y) && fp.covered == 0;
+                if (!fallback && (rect.left < box_rect.left || rect.top < box_rect.top || rect.right > box_rect.right || rect.bottom > box_rect.bottom)) fail = true;
+            }
+        }
+        if (fail) ++failures;
+        // As --near: cases at the pad cap are reported, not hidden (the
+        // exact-arithmetic oracle cannot see the truncation; --near's fp32
+        // perturbation does).
+        const bool at_cap = reason == Reason::Bound && hull.pad >= pad_limit;
+        capped += at_cap;
+        std::printf("HULL index=%u kind=%u triangles=%u reason=%u behind=%u clipped=%u pad=%u capped=%u rect=%d,%d,%d,%d hull_px=%llu aabb_px=%llu viewport=%u,%u covered=%llu outside=%llu footprint=%d,%d,%d,%d fail=%u\n",
+                    c, kind, triangles, unsigned(reason), behind, hull.behind, hull.pad, unsigned(at_cap), rect.left, rect.top, rect.right, rect.bottom,
+                    (unsigned long long)(reason == Reason::Bound ? area(rect) : 0), (unsigned long long)aabb_px, v.width, v.height,
+                    (unsigned long long)fp.covered, (unsigned long long)fp.outside, fp.min_x, fp.min_y, fp.max_x + 1, fp.max_y + 1, unsigned(fail));
+    }
+    std::printf("RESULT cases=%u failures=%u capped=%u\n", cases, failures, capped);
+    return failures ? 1 : 0;
+}
+// --hull-case rows(16) viewport(4) count xyz...: the prefix derivation as
+// the locked-prefix source runs it, plus the oracle footprint and the
+// near-clipped AABB rectangle of the same vertices.
+int case_mode(int argc, char** argv) {
+    if (argc < 2 + 16 + 4 + 1) { std::fprintf(stderr, "hull-case arguments\n"); return 2; }
+    float rows[16]; Viewport v{};
+    int i = 2;
+    for (auto& r : rows) r = float(std::strtod(argv[i++], nullptr));
+    v.x = unsigned(std::strtoul(argv[i++], nullptr, 10)); v.y = unsigned(std::strtoul(argv[i++], nullptr, 10));
+    v.width = unsigned(std::strtoul(argv[i++], nullptr, 10)); v.height = unsigned(std::strtoul(argv[i++], nullptr, 10));
+    const unsigned count = unsigned(std::strtoul(argv[i++], nullptr, 10));
+    if (argc < i + int(count) * 3) { std::fprintf(stderr, "hull-case positions\n"); return 2; }
+    std::vector<float> positions(count * 3);
+    for (auto& p : positions) p = float(std::strtod(argv[i++], nullptr));
+    PrefixHull hull{};
+    const Region region = derive_prefix(rows, positions.data(), count, v, true, Rect{0, 0, 64, 64}, &hull);
+    std::mt19937_64 rng(1);
+    Footprint fp{};
+    for (unsigned t = 0; t + 3 <= count; t += 3) {
+        unsigned b = 0;
+        const auto poly = visible_polygon(rows, positions.data() + t * 3, v, &b);
+        rasterise(poly, v, region.bound ? region.rect : Rect{0, 0, 0, 0}, rng, &fp);
+    }
+    Rect box_rect{}; NearClip cut{true, 0};
+    const Reason box_reason = count && count % 3 == 0 ? project_box(rows, hull.aabb, v, &box_rect, &cut) : Reason::BoundUnknown;
+    std::printf("HULL_CASE bound=%u reason=%u clipped=%u pad=%u rect=%d,%d,%d,%d f=%.9f hull_px=%llu aabb_reason=%u aabb_rect=%d,%d,%d,%d aabb_px=%llu covered=%llu outside=%llu footprint=%d,%d,%d,%d\n",
+                region.bound, unsigned(region.reason), region.clipped, region.pad, region.rect.left, region.rect.top, region.rect.right, region.rect.bottom,
+                area_fraction(region.rect, v), (unsigned long long)(region.bound ? area(region.rect) : 0), unsigned(box_reason), box_rect.left, box_rect.top, box_rect.right, box_rect.bottom,
+                (unsigned long long)(box_reason == Reason::Bound ? area(box_rect) : 0), (unsigned long long)fp.covered, (unsigned long long)fp.outside,
+                fp.min_x, fp.min_y, fp.max_x + 1, fp.max_y + 1);
+    return 0;
+}
+} // namespace hull_mode
+
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc >= 5 && std::strcmp(argv[1], "--hull") == 0)
+        return hull_mode::run(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
+    if (argc >= 2 && std::strcmp(argv[1], "--hull-case") == 0) return hull_mode::case_mode(argc, argv);
     if (argc >= 5 && std::strcmp(argv[1], "--near") == 0)
         return near_mode(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
     if (argc >= 2 && std::strcmp(argv[1], "--near-case") == 0) return near_case_mode(argc, argv);
@@ -500,6 +761,6 @@ int main(int argc, char** argv) {
     if (argc >= 5 && std::strcmp(argv[1], "--random") == 0)
         return random_mode(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
     if (argc >= 2 && std::strcmp(argv[1], "--case") == 0) return case_mode(argc, argv);
-    std::fprintf(stderr, "usage: --random seed cases points | --case ... | --near seed cases points | --near-case ... | --table | --prefix seed cases\n");
+    std::fprintf(stderr, "usage: --random seed cases points | --case ... | --near seed cases points | --near-case ... | --hull seed cases triangles | --hull-case ... | --table | --prefix seed cases\n");
     return 2;
 }

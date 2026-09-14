@@ -10,4 +10,6 @@ Result resolve(BoundTable& table, const Query& query) noexcept;
 Result peek(const BoundTable& table, const Query& query) noexcept; // read-only twin (diagnostics)
 // Step B locked-prefix bound (ownership::get_locked_prefix_view); preserves LastError.
 Result resolve_locked_prefix(const Query& query, std::uint32_t vertex_count) noexcept;
+// Step D: true while the record is still published at `revision` (called after the projection); preserves LastError.
+bool recheck_locked_prefix(const Query& query, std::uint32_t vertex_count, std::uint64_t revision) noexcept;
 }

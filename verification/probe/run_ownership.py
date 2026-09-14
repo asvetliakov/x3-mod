@@ -82,7 +82,7 @@ def main():
             endings = [line for line in trace.splitlines() if line.startswith('OWNERSHIP RESULT ')]
             end = (re.fullmatch(r'OWNERSHIP RESULT checks=(\d+) failures=0', terminal)
                    if endings == [terminal] else None)
-            expected_checks = {'baseline': 370, 'wrapped': 553}[mode]  # wrapped: +61 per iteration for locked_prefix_case
+            expected_checks = {'baseline': 370, 'wrapped': 563}[mode]  # wrapped: +66 per device iteration (2) for locked_prefix_case; observed 563
             check_lines = [line for line in trace.splitlines() if line.startswith('CHECK ')]
             valid_end = (end and int(end[1]) == expected_checks == len(check_lines) and
                          all(line.endswith(' PASS') for line in check_lines))

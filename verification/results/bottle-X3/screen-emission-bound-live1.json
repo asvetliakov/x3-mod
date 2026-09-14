@@ -10,7 +10,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "game_launched": false,
-  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ucdch4js",
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-7zg1ih_j",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -19,14 +19,14 @@
     "--dll",
     "d3d9=n,b",
     "--workdir",
-    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ucdch4js",
-    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ucdch4js/fixture.exe",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-7zg1ih_j",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-7zg1ih_j/fixture.exe",
     "Z:/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin",
     "Z:/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin"
   ],
   "input_sha256": {
-    "/Users/asvetl/x3-mod/verification/probe/build/locked_prefix_live_fixture.exe": "01a019ee268886881152f0610b2220a901035638381ee5036080d0be75d59200",
-    "/Users/asvetl/x3-mod/build/d3d9.dll": "431f274360ff491993cb997514706f943a2c15e4d8c474203657f23d0b129abc",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/locked_prefix_live_fixture.exe": "82559f09e6b059e0aef1635193371e23e67fc626b2b762d481871a064c627e19",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/build/d3d9.dll": "5ec0f35a142524668ed94994fe819f7fda8b866c7480502801d458b57cc6d032",
     "/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
     "/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin": "44e6cd4c2a446bb968204c86369a62280a55004d8a35c231359bc8651c3ea082"
   },
@@ -34,6 +34,8 @@
     "X3M_OWNERSHIP": "1",
     "X3M_MOTION_OUTPUT": "1",
     "X3M_SCREEN_EMISSION_BOUND": "1",
+    "X3M_LOCKED_PREFIX_LOG": "1",
+    "X3M_TELEMETRY_DRAW": "1",
     "X3M_STATE_SHADOW": "1",
     "X3M_SCENE_HOOK": "0",
     "X3M_CAPTURE_START": "1",
@@ -43,68 +45,100 @@
     "WINEDLLOVERRIDES": "d3d9=n,b"
   },
   "exit_code": 0,
-  "wall_seconds": 3.951,
-  "frames": 15,
-  "captured_draw_lines": 8,
-  "bound_frames": 9,
+  "wall_seconds": 3.639,
+  "frames": 24,
+  "captured_draw_lines": 24,
+  "bound_frames": 18,
   "refused_frames": 6,
   "lookups": {
     "unknown": 2,
-    "bound": 11,
+    "bound": 20,
     "nonfinite": 1,
     "invalid": 1
   },
   "instanced_refusals": 1,
   "marks": 2,
-  "scans": 11,
-  "locks": 13,
-  "scan_us_total": 258.3,
-  "scan_us_per_scan": 23.481818181818184,
+  "scans": 20,
+  "locks": 22,
+  "scanned_vertices": 89316,
+  "sentinel_bytes": 2434608,
+  "sentinel_us_total": 371.1,
+  "window_end_scans": 14,
+  "rechecks": 0,
+  "scan_us_total": 205.8,
+  "scan_us_per_scan": 10.290000000000001,
   "rect_fractions": [
-    0.081,
-    0.222,
-    0.287,
-    0.341,
-    0.079
+    0.012,
+    0.175,
+    0.106,
+    0.001,
+    0.07,
+    0.043,
+    0.079,
+    0.079,
+    0.073,
+    0.07,
+    0.07,
+    0.091,
+    0.091,
+    0.012,
+    0.175,
+    0.106,
+    0.001,
+    0.07
   ],
   "near_plane": {
     "near_straddle": {
       "reason": 0,
-      "clipped": 4,
+      "clipped": 16,
       "rect": [
-        46,
-        10,
-        96,
-        51
+        47,
+        28,
+        87,
+        38
       ],
-      "f_permille": 222,
+      "f_permille": 43,
       "footprint": [
         48,
         30,
         84,
         36
-      ]
+      ],
+      "gpu_footprint": [
+        48,
+        30,
+        84,
+        36
+      ],
+      "covered": 186
     },
     "near_exact": {
       "reason": 0,
-      "clipped": 4,
+      "clipped": 0,
       "rect": [
-        46,
-        10,
-        96,
-        63
+        47,
+        35,
+        74,
+        62
       ],
-      "f_permille": 287,
+      "f_permille": 79,
       "footprint": [
         48,
         36,
         72,
         60
-      ]
+      ],
+      "gpu_footprint": [
+        48,
+        36,
+        72,
+        60
+      ],
+      "covered": 576
     },
     "near_behind": {
       "reason": 7,
-      "clipped": 8,
+      "clipped": 96,
       "rect": [
         0,
         0,
@@ -112,25 +146,261 @@
         0
       ],
       "f_permille": 0,
-      "footprint": null
+      "footprint": null,
+      "gpu_footprint": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "covered": 0
     },
     "near_beam": {
       "reason": 0,
-      "clipped": 4,
+      "clipped": 0,
       "rect": [
-        46,
-        0,
-        96,
-        63
+        47,
+        35,
+        74,
+        62
       ],
-      "f_permille": 341,
+      "f_permille": 79,
       "footprint": [
         48,
         36,
         72,
         60
-      ]
+      ],
+      "gpu_footprint": [
+        48,
+        36,
+        72,
+        60
+      ],
+      "covered": 576
     }
   },
-  "scope": "Proxy DLL path: MotionOutput::derive_prefix_region and the ownership Unlock scan executed under the game bullet VS/PS; no composition"
+  "hull": {
+    "fan_176": {
+      "bolts": 176,
+      "vertices": 1056,
+      "rect": [
+        143,
+        90,
+        190,
+        106
+      ],
+      "hull_px": 752,
+      "aabb_px": 55104,
+      "hull_permille": 12,
+      "aabb_permille": 896,
+      "clipped": 0,
+      "pad": 1,
+      "scanned": 1056,
+      "gpu_footprint": [
+        145,
+        92,
+        187,
+        104
+      ],
+      "covered": 27,
+      "derive_us": 369.1,
+      "ticks": 3691
+    },
+    "straddle_72": {
+      "bolts": 72,
+      "vertices": 432,
+      "rect": [
+        157,
+        34,
+        320,
+        100
+      ],
+      "hull_px": 10758,
+      "aabb_px": 61440,
+      "hull_permille": 175,
+      "aabb_permille": 1000,
+      "clipped": 18,
+      "pad": 3,
+      "scanned": 432,
+      "gpu_footprint": [
+        172,
+        72,
+        320,
+        95
+      ],
+      "covered": 318,
+      "derive_us": 6.6,
+      "ticks": 66
+    },
+    "big_605_origin_tail": {
+      "bolts": 605,
+      "vertices": 3630,
+      "rect": [
+        92,
+        70,
+        223,
+        120
+      ],
+      "hull_px": 6550,
+      "aabb_px": 59328,
+      "hull_permille": 106,
+      "aabb_permille": 965,
+      "clipped": 0,
+      "pad": 1,
+      "scanned": 6144,
+      "gpu_footprint": [
+        97,
+        72,
+        218,
+        118
+      ],
+      "covered": 21,
+      "derive_us": 29.9,
+      "ticks": 299
+    },
+    "small_27": {
+      "bolts": 27,
+      "vertices": 162,
+      "rect": [
+        154,
+        90,
+        165,
+        99
+      ],
+      "hull_px": 99,
+      "aabb_px": 43008,
+      "hull_permille": 1,
+      "aabb_permille": 700,
+      "clipped": 0,
+      "pad": 1,
+      "scanned": 162,
+      "gpu_footprint": [
+        156,
+        92,
+        161,
+        96
+      ],
+      "covered": 3,
+      "derive_us": 3.4,
+      "ticks": 34
+    },
+    "fan_176_plain": {
+      "bolts": 176,
+      "vertices": 1056,
+      "rect": [
+        143,
+        90,
+        190,
+        106
+      ],
+      "hull_px": 752,
+      "aabb_px": 0,
+      "hull_permille": 12,
+      "aabb_permille": 0,
+      "clipped": 0,
+      "pad": 1,
+      "scanned": 1056,
+      "gpu_footprint": [
+        145,
+        92,
+        187,
+        104
+      ],
+      "covered": 27,
+      "derive_us": 9.0,
+      "ticks": 90
+    },
+    "straddle_72_plain": {
+      "bolts": 72,
+      "vertices": 432,
+      "rect": [
+        157,
+        34,
+        320,
+        100
+      ],
+      "hull_px": 10758,
+      "aabb_px": 0,
+      "hull_permille": 175,
+      "aabb_permille": 0,
+      "clipped": 18,
+      "pad": 3,
+      "scanned": 432,
+      "gpu_footprint": [
+        172,
+        72,
+        320,
+        95
+      ],
+      "covered": 318,
+      "derive_us": 4.2,
+      "ticks": 42
+    },
+    "big_605_origin_tail_plain": {
+      "bolts": 605,
+      "vertices": 3630,
+      "rect": [
+        92,
+        70,
+        223,
+        120
+      ],
+      "hull_px": 6550,
+      "aabb_px": 0,
+      "hull_permille": 106,
+      "aabb_permille": 0,
+      "clipped": 0,
+      "pad": 1,
+      "scanned": 6144,
+      "gpu_footprint": [
+        97,
+        72,
+        218,
+        118
+      ],
+      "covered": 21,
+      "derive_us": 27.2,
+      "ticks": 272
+    },
+    "small_27_plain": {
+      "bolts": 27,
+      "vertices": 162,
+      "rect": [
+        154,
+        90,
+        165,
+        99
+      ],
+      "hull_px": 99,
+      "aabb_px": 0,
+      "hull_permille": 1,
+      "aabb_permille": 0,
+      "clipped": 0,
+      "pad": 1,
+      "scanned": 162,
+      "gpu_footprint": [
+        156,
+        92,
+        161,
+        96
+      ],
+      "covered": 3,
+      "derive_us": 1.7,
+      "ticks": 17
+    }
+  },
+  "derive_us_per_draw": {
+    "27": 1.7,
+    "72": 4.2,
+    "176": 9.0,
+    "605": 27.2
+  },
+  "derive_us_per_draw_with_aabb": {
+    "176": 369.1,
+    "72": 6.6,
+    "605": 29.9,
+    "27": 3.4
+  },
+  "scope": "Proxy DLL path: MotionOutput::derive_prefix_region (step D vertex hull) and the ownership sentinel/Unlock scan executed under the game bullet VS/PS; GPU footprint read back by the fixture; no composition"
 }

@@ -63,7 +63,7 @@ def witness(raw):
             mask=[(1.,1.,1.,0.) if inside(n%16,n//16) else (0.,0.,0.,0.) for n in range(256)]
             write(raw/f"fade_{id}_0_M.rgba32f",mask)
             lines.append(f"FADE_PREFIX id={id} label={label} quads={quads} vertices={vertices} primitives={2*quads} tail={tail} jitter=0 bound={bound} "
-                         f"expect_bound={bound} reason={0 if bound else 3} lookup={run.PREFIX_LOOKUPS.get(label,'bound')} checkpoint={(vertices+95)//96-1} revision=1 "
+                         f"expect_bound={bound} reason={0 if bound else 3} lookup={run.PREFIX_LOOKUPS.get(label,'bound')} clipped=0 aabb_px={(rect[2]-rect[0])*(rect[3]-rect[1])} revision=1 "
                          f"box=0,0,0,.5,.5,.5 rect={rect[0]},{rect[1]},{rect[2]},{rect[3]} viewport=0,0,16,16 covered={sum(m[0]==1 for m in mask)} violations=0 "
                          f"area={(rect[2]-rect[0])*(rect[3]-rect[1])} scan_us=23.50 scanned=6144 table_used=1")
         lines.append(f"FADE_PREFIX_RESULT reset={reset} cases={len(group)} bound={sum(c[3] for c in group)} violations=0 locks={len(group)} "
