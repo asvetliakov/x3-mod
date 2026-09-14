@@ -9,6 +9,10 @@ Work resumed 2026-09-14 under the Claude Code routing in `CLAUDE.md`. Unfinished
 work from the pause (cutout source, reviewed fade results, decoder build plans
 and the persistent backup) is recorded in
 [the September 14 resume handoff](handoff-2026-09-14.md); nothing there is installed.
+Checkpoints since: fade prototype 1 committed (`d8e189b`); the cutout worktree
+`/tmp/x3-cutout-runtime` has its host sampler test finished and review fixes in
+progress; the isolated WMA decoder build under `/tmp/x3-wma-plugin/` is complete
+and under evidence review before any fixture load.
 
 The installed gameplay build is checkpoint `8442f43`. Its scoped integration
 checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
@@ -126,9 +130,12 @@ detached prototype passes 71 X3 cases / 257 source calls with native recovery;
 runtime admission and combined temporal-mask integration are implemented and
 independently reviewed from production source `ad3fefe`; its clean DLL passes
 the x87 audit. The actual X3 image/state/TAA/Reset qualification passes 302 frames
-and 4,502,255 functional/admission checks. Performance is not accepted: the source
-bracket adds about 7.64–8.46 ms at 1080p/16 ordered DIPs. The option stays off and
-the candidate is not installed; measured cost reduction is the next step. It does
+and 4,502,255 functional/admission checks. Prototype 1 (`d8e189b`) drops the
+native-B sample from the fade composite (143 DWORDs); detached and live results
+match the baselines exactly and the paired 1080p source window falls from
+7.64–8.46 to 6.61–7.11 ms for 16 ordered DIPs. Performance is still not accepted;
+the option stays off and the candidate is not installed. The next reduction needs
+a proven conservative screen bound from the engine (disassembly in progress). It does
 not yet solve layered temporal accumulation. The [alpha-tested material route](architecture/alpha-tested-materials.md)
 passes the X3 capability check and detached coverage/alpha/depth/stencil twins
 for two exact Argon pairs (48 cases / 864 twins). Live admission and TAA remain
