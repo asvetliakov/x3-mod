@@ -49,9 +49,7 @@ DMO; the replica then runs, decodes and tears down cleanly. Not installed; needs
 The station docking-port source-over route (`docs/architecture/linear-station-source-over.md`,
 reviewed, merged `f56a393`: seventh fade pair, read-only refused-rect diagnostic, 78 detached
 cases / 300 bit-exact twins / 34 live processes, station windows ≈0.2 ms per draw) and the
-host-test harness repairs (`93f359c`) are merged. The candidate from `f56a393` is installed
-(DLL `2bbe7904…`, record `verification/results/station-voice-install.json`); user runs 13 (voice)
-and 14 (station, fade, shimmer trace) are ready.
+host-test harness repairs (`93f359c`) are merged. The `f56a393` candidate was installed and then superseded the same day by `76d7750` (below).
 After that install, main also carries the capture-only draw-state fields on `motion_route`
 lines (`f4cd0a0`, for classifying the remaining gate-4 refusals); it rides the next candidate.
 The full host suite is green again after the fixture-harness repairs (`93f359c`, merge of
@@ -62,7 +60,8 @@ reviewed, `2c15609`) is merged and step A (packed screen policy 8 in the pass, 5
 bit-exact, 0.13 ms per bracket, reviewed, merged `2c12f33`) are merged; step C (runtime admission behind
 `--screen-emission`, two reviews, merged) completes the route: live 22 sources, 10 admitted, witness
 0 outside, ≈0.16–0.18 ms per bracket at 16 DIPs; no per-frame bracket cap yet, so a bullet burst
-of 30 costs ≈5 ms — run 15 measures it. A second candidate is being built so runs 13–15 share it.
+of 30 costs ≈5 ms — run 15 measures it. The second candidate (`76d7750`, DLL `608b35d8…`) is installed; runs 13, 14 and 15 are ready
+on it (record `verification/results/screen-emission-install.json`).
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
@@ -71,7 +70,7 @@ Merged agent worktrees and the two merged cutout worktrees are pruned.
 The opt-in per-frame shimmer trace (`--shimmer-trace`, reviewed, merged `09e62bb`) is ready to
 ride the next candidate for the distant-shimmer report; not installed.
 
-The installed gameplay build is checkpoint `f56a393` (previous `3f06979` retained for
+The installed gameplay build is checkpoint `76d7750` (previous `f56a393` retained for
 rollback). Its scoped integration checks pass; the new options are default-off. Run 28 confirms stronger visible glow and reproduces distance-dependent
 dark material on a docking port. Selection pauses are isolated to voice-stream
 creation; the user confirms missing target-name speech.
@@ -79,8 +78,8 @@ creation; the user confirms missing target-name speech.
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`2bbe790431d571f3406030c4b605d70b3f7ccb552f247323cba705fa188ddb01` (13,723,818 bytes). The
-[install record](../verification/results/station-voice-install.json) binds its source, scoped verification,
+`608b35d8f7aded08d30220ec279a14c3ac92b55b845de63e56ce32fb1e92c5c9` (13,939,273 bytes). The
+[install record](../verification/results/screen-emission-install.json) binds its source, scoped verification,
 load check, and rollback DLL.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,

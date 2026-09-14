@@ -25,8 +25,8 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
 | 11 | Fade region route and alpha-tested cutout, combined | 1 | Completed as user run 11, snapshot run36 |
 | 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
-| 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Ready (candidate `f56a393` installed) |
-| 14 | Station source-over linear route, fade region and shimmer trace, combined | 1 | Ready (candidate `f56a393` installed) |
+| 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Ready (candidate `76d7750` installed) |
+| 14 | Station source-over linear route, fade region and shimmer trace, combined | 1 | Ready (candidate `76d7750` installed) |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 1 | Pending candidate (step C merged, not built or installed) |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
@@ -64,8 +64,8 @@ trace for the failing stream's graph composition and the filter that returned
 
 ## 13. Target-name speech with the decoder plugin and the DMO fallback hook — Ready
 
-The candidate `f56a393` (DLL `2bbe7904…`, record
-`verification/results/station-voice-install.json`) is installed; run 13 first, then 14. The hook acts only when the game's speech-decoder `Init`
+The candidate `76d7750` (DLL `608b35d8…`, record
+`verification/results/screen-emission-install.json`) is installed; run 13 first, then 14, then 15. The hook acts only when the game's speech-decoder `Init`
 fails with class-not-registered, so the load hang of runs 29–36 should be gone
 (`docs/architecture/voice-decoder-adapter.md`, "DMO fallback hook"). Keep the
 run short: load the usual save, select five or six different targets (ships and
@@ -112,7 +112,7 @@ the witness lines (zero outside pixels required), the `fade_refused_rect` lines
 against the HDR captures for the pixel proof, and the shimmer trace around the
 zoom frames.
 
-## 15. Screen emission on bullets — Pending candidate
+## 15. Screen emission on bullets — Ready
 
 The run-14 command plus `--screen-emission` (step C of
 [screen-emission-region.md](../architecture/screen-emission-region.md)): the
