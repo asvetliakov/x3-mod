@@ -10,11 +10,11 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "game_launched": false,
- "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj",
+ "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76",
  "scope": "Actual capture DrawPrimitive / MotionOutput admission / packed screen policy 8 in the shared pool / locked-prefix bound from the ownership Unlock scan / Hdr FP16 scene / supplemental TemporalPass. The row-19 bullet pair, one exact Asteroid fade pair, one additive emission pair and two bootstrap programs.",
  "inputs": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ac111da7715ade2bb/verification/probe/build/motion_output_fixture.exe": "3c54fb42358f7896109ac2d90adaaba8814faf00d220b031a1bd2f8942b5fd6a",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ac111da7715ade2bb/verification/probe/build/motion-output-seam/d3d9.dll": "fcc6bf89ba46cf00ca26f72761628b1c2936dcad8b53bdcb23690e58be28b860",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ada6d2c590ea6088f/verification/probe/build/motion_output_fixture.exe": "3af9d1644647bfa8505ca427bb7785fd56295d437d235f52cdb42cf5b6cfb086",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-ada6d2c590ea6088f/verification/probe/build/motion-output-seam/d3d9.dll": "a48a6823df55af68b349129230a4146d69d86da1245db4c439f302d58cc9c43f",
   "/private/tmp/x3-shader-sweep/programs/vs_53a0a641107ed76c.bin": "bc402d1c2bfbbcb9fedd98890db845dab2a24da8cfb5a88a74c4eafa40f7a50c",
   "/private/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
   "/private/tmp/x3-shader-sweep/programs/vs_b0602757fce6e870.bin": "33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785",
@@ -26,20 +26,59 @@
  },
  "cases": {
   "screen-functional": {
-   "frames": 17,
-   "sources": 22,
+   "frames": 21,
+   "sources": 26,
    "region_pixels_per_bracket": 441,
+   "bracket_pixels": {
+    "s": 441,
+    "n": 986,
+    "x": 1258,
+    "b": 1462
+   },
+   "near_rects": {
+    "n": {
+     "rect": [
+      30,
+      6,
+      64,
+      35
+     ],
+     "f_permille": 240
+    },
+    "x": {
+     "rect": [
+      30,
+      6,
+      64,
+      43
+     ],
+     "f_permille": 307
+    },
+    "b": {
+     "rect": [
+      30,
+      0,
+      64,
+      43
+     ],
+     "f_permille": 356
+    }
+   },
    "totals": {
-    "packed_eligible": 15,
-    "packed_admitted": 10,
-    "packed_linear": 9,
+    "packed_eligible": 19,
+    "packed_admitted": 13,
+    "packed_linear": 12,
     "packed_incomplete": 1,
-    "packed_unbounded": 2,
+    "packed_unbounded": 3,
     "packed_caps": 0,
-    "packed_region_pixels": 4410
+    "packed_region_pixels": 8116
    },
    "held_references": 59,
-   "samples": 42,
+   "packed_samples": {
+    "lines": 7,
+    "luminance_changed": 6
+   },
+   "samples": 50,
    "max_tolerance_fraction": 0.13781129854352084,
    "alpha_pairs": 1,
    "temporal_sha256": [
@@ -59,7 +98,11 @@
     "47b332ae3b199a723de6b3f99cafbe364a05b5ca194eba949c69ce1383fb0e89",
     "bd2f0e65eb8836a861188990b61791c5214f1e69d7d3f4d3d39c299f452caf4d",
     "910c6d83f7ef836db7d344f62bf9aa63f5c8043880363712190617b0598c8751",
-    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959"
+    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959",
+    "b31822fad31e965c3d24e95c1fb739690ae173f0ac5e53043e5f8feb8ad0195e",
+    "d377ea26f007917b259907102644386e5f145d36aabfa72fc200ae8c15592352",
+    "eec82dbb5201310ae4c9fa97e8cfce4da14759e3e9224262a815179106eb3745",
+    "c0afc7c34836ae7bd3d29f436919c942e341839b4176a87ed17855902b1a0740"
    ],
    "witness": {
     "k": 1,
@@ -70,34 +113,39 @@
      7,
      8,
      10,
-     12
+     12,
+     17,
+     18,
+     20
     ],
     "skipped": {
-     "no_fade": 6,
+     "no_fade": 7,
      "emission": 3,
      "mask_invalid": 1
     },
-    "covered_pixels": 3328,
-    "union_area": 9956,
+    "covered_pixels": 3924,
+    "union_area": 13662,
     "outside_pixels": 0,
     "f_histogram": {
      "f<=0.01": 0,
      "f<=0.02": 0,
      "f<=0.05": 0,
      "f<=0.1": 0,
-     "f<=0.25": 7,
-     "f<=0.5": 0,
+     "f<=0.25": 8,
+     "f<=0.5": 2,
      "f<1": 0,
      "f=1": 2
     }
    },
-   "seconds": 4.253,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-functional"
+   "seconds": 5.043,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-functional"
   },
   "screen-off": {
-   "frames": 17,
-   "sources": 22,
+   "frames": 21,
+   "sources": 26,
    "region_pixels_per_bracket": null,
+   "bracket_pixels": {},
+   "near_rects": {},
    "totals": {
     "packed_eligible": 0,
     "packed_admitted": 0,
@@ -108,7 +156,11 @@
     "packed_region_pixels": 0
    },
    "held_references": 54,
-   "samples": 42,
+   "packed_samples": {
+    "lines": 0,
+    "luminance_changed": 0
+   },
+   "samples": 50,
    "max_tolerance_fraction": 0.12145788326439923,
    "alpha_pairs": 0,
    "temporal_sha256": [
@@ -128,7 +180,11 @@
     "7685e7f857581fee3ecdd2d00ab7ea3a3be53fd48238c33e7d0c5142760cda24",
     "bd2f0e65eb8836a861188990b61791c5214f1e69d7d3f4d3d39c299f452caf4d",
     "910c6d83f7ef836db7d344f62bf9aa63f5c8043880363712190617b0598c8751",
-    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959"
+    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959",
+    "f532e57d2a34600b79649afac0e6dee03d63a485494e10091c6a449d4f217483",
+    "6f77e29722df71cf1e13db999afb31ed4caebd1ebf9ef68d5095302548efbae1",
+    "eec82dbb5201310ae4c9fa97e8cfce4da14759e3e9224262a815179106eb3745",
+    "283893d2735bb3aec18ad652900c3b937c1226333570879f20a94fe281ee65eb"
    ],
    "witness": {
     "k": 1,
@@ -137,7 +193,7 @@
      5
     ],
     "skipped": {
-     "no_fade": 14,
+     "no_fade": 18,
      "emission": 1
     },
     "covered_pixels": 2048,
@@ -154,24 +210,35 @@
      "f=1": 2
     }
    },
-   "seconds": 1.97,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-off"
+   "seconds": 2.06,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-off"
   },
   "screen-straddle": {
-   "frames": 17,
-   "sources": 22,
+   "frames": 21,
+   "sources": 26,
    "region_pixels_per_bracket": 128,
+   "bracket_pixels": {
+    "s": 128,
+    "n": 128,
+    "x": 128,
+    "b": 128
+   },
+   "near_rects": {},
    "totals": {
-    "packed_eligible": 15,
-    "packed_admitted": 10,
-    "packed_linear": 9,
+    "packed_eligible": 19,
+    "packed_admitted": 13,
+    "packed_linear": 12,
     "packed_incomplete": 1,
-    "packed_unbounded": 2,
+    "packed_unbounded": 3,
     "packed_caps": 0,
-    "packed_region_pixels": 1280
+    "packed_region_pixels": 1664
    },
    "held_references": 59,
-   "samples": 42,
+   "packed_samples": {
+    "lines": 7,
+    "luminance_changed": 6
+   },
+   "samples": 50,
    "max_tolerance_fraction": 0.13781129854352084,
    "alpha_pairs": 1,
    "temporal_sha256": [
@@ -191,36 +258,49 @@
     "0bfed68f30b66098e3b7717e31e84929093fe959bd0421490998a6127843783b",
     "bd2f0e65eb8836a861188990b61791c5214f1e69d7d3f4d3d39c299f452caf4d",
     "910c6d83f7ef836db7d344f62bf9aa63f5c8043880363712190617b0598c8751",
-    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959"
+    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959",
+    "11b0325e1427b8b2ff63187178e93e77f56a4385ebf2b4e6761c5218979331bb",
+    "7b9a748ec8c3c8f2bd86cfe7aac507bbd959bc663607f441599b30b75eca31c8",
+    "eec82dbb5201310ae4c9fa97e8cfce4da14759e3e9224262a815179106eb3745",
+    "1185d3503854b7d7b809b498cb7d3773249de1723fc98f87b5c7ba443a5ff20e"
    ],
    "witness": {
     "k": 1,
-    "expected_failure": "covered M pixels outside the union of the derived fade rectangles: [(2, 128), (7, 128), (10, 128), (12, 128)]",
+    "expected_failure": "covered M pixels outside the union of the derived fade rectangles: [(2, 128), (7, 128), (10, 128), (12, 128), (17, 84), (18, 128), (20, 128)]",
     "violations": {
      "2": 128,
      "7": 128,
      "10": 128,
-     "12": 128
+     "12": 128,
+     "17": 84,
+     "18": 128,
+     "20": 128
     }
    },
-   "seconds": 1.99,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-straddle"
+   "seconds": 2.304,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-straddle"
   },
   "screen-caps": {
-   "frames": 17,
-   "sources": 22,
+   "frames": 21,
+   "sources": 26,
    "region_pixels_per_bracket": null,
+   "bracket_pixels": {},
+   "near_rects": {},
    "totals": {
-    "packed_eligible": 15,
+    "packed_eligible": 19,
     "packed_admitted": 0,
     "packed_linear": 0,
     "packed_incomplete": 0,
-    "packed_unbounded": 2,
-    "packed_caps": 13,
+    "packed_unbounded": 3,
+    "packed_caps": 16,
     "packed_region_pixels": 0
    },
    "held_references": 55,
-   "samples": 42,
+   "packed_samples": {
+    "lines": 0,
+    "luminance_changed": 0
+   },
+   "samples": 50,
    "max_tolerance_fraction": 0.12145788326439923,
    "alpha_pairs": 0,
    "temporal_sha256": [
@@ -240,7 +320,11 @@
     "7685e7f857581fee3ecdd2d00ab7ea3a3be53fd48238c33e7d0c5142760cda24",
     "bd2f0e65eb8836a861188990b61791c5214f1e69d7d3f4d3d39c299f452caf4d",
     "910c6d83f7ef836db7d344f62bf9aa63f5c8043880363712190617b0598c8751",
-    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959"
+    "e7e605f1fd0ea175a46048581c2b7d3bb4a4c1ef764e1ffd33b7300c3f9f7959",
+    "f532e57d2a34600b79649afac0e6dee03d63a485494e10091c6a449d4f217483",
+    "6f77e29722df71cf1e13db999afb31ed4caebd1ebf9ef68d5095302548efbae1",
+    "eec82dbb5201310ae4c9fa97e8cfce4da14759e3e9224262a815179106eb3745",
+    "283893d2735bb3aec18ad652900c3b937c1226333570879f20a94fe281ee65eb"
    ],
    "witness": {
     "k": 1,
@@ -249,7 +333,7 @@
      5
     ],
     "skipped": {
-     "no_fade": 14,
+     "no_fade": 18,
      "emission": 1
     },
     "covered_pixels": 2048,
@@ -266,8 +350,8 @@
      "f=1": 2
     }
    },
-   "seconds": 1.946,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-caps"
+   "seconds": 2.026,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-caps"
   },
   "screen-timing-1280x768-pair0-screen0": {
    "width": 1280,
@@ -283,73 +367,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.6289,
-      "terminal": 1.9853,
-      "total": 2.6142
+      "source": 0.3511,
+      "terminal": 1.954,
+      "total": 2.3051
      },
      {
-      "source": 0.2401,
-      "terminal": 2.0119,
-      "total": 2.252
+      "source": 0.3393,
+      "terminal": 1.9774,
+      "total": 2.3167
      },
      {
-      "source": 0.2181,
-      "terminal": 2.0583,
-      "total": 2.2764
+      "source": 0.3348,
+      "terminal": 1.9743,
+      "total": 2.3091
      },
      {
-      "source": 0.3515,
-      "terminal": 2.038,
-      "total": 2.3895
+      "source": 0.32,
+      "terminal": 2.0128,
+      "total": 2.3328
      }
     ],
     "4": [
      {
-      "source": 0.2319,
-      "terminal": 1.915,
-      "total": 2.1469
+      "source": 0.3355,
+      "terminal": 1.8957,
+      "total": 2.2312
      },
      {
-      "source": 0.3569,
-      "terminal": 2.0349,
-      "total": 2.3918
+      "source": 0.3206,
+      "terminal": 1.9816,
+      "total": 2.3022
      },
      {
-      "source": 0.3461,
-      "terminal": 1.8954,
-      "total": 2.2415
+      "source": 0.1986,
+      "terminal": 1.9915,
+      "total": 2.1901
      },
      {
-      "source": 0.3401,
-      "terminal": 1.8987,
-      "total": 2.2388
+      "source": 0.3157,
+      "terminal": 1.7622,
+      "total": 2.0779
      }
     ],
     "16": [
      {
-      "source": 0.3672,
-      "terminal": 1.9068,
-      "total": 2.274
+      "source": 0.3339,
+      "terminal": 1.971,
+      "total": 2.3049
      },
      {
-      "source": 0.3644,
-      "terminal": 1.7919,
-      "total": 2.1563
+      "source": 0.3442,
+      "terminal": 1.8569,
+      "total": 2.2011
      },
      {
-      "source": 0.3605,
-      "terminal": 1.8672,
-      "total": 2.2277
+      "source": 0.3511,
+      "terminal": 2.0174,
+      "total": 2.3685
      },
      {
-      "source": 0.3609,
-      "terminal": 1.8865,
-      "total": 2.2474
+      "source": 0.3366,
+      "terminal": 1.8679,
+      "total": 2.2045
      }
     ]
    },
-   "seconds": 1.342,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1280x768-pair0-screen0"
+   "seconds": 1.457,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1280x768-pair0-screen0"
   },
   "screen-timing-1280x768-pair0-screen1": {
    "width": 1280,
@@ -365,73 +449,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.6617,
-      "terminal": 2.0534,
-      "total": 2.7151
+      "source": 0.6155,
+      "terminal": 1.9216,
+      "total": 2.5371
      },
      {
-      "source": 0.5186,
-      "terminal": 1.9473,
-      "total": 2.4659
+      "source": 0.49,
+      "terminal": 1.8873,
+      "total": 2.3773
      },
      {
-      "source": 0.511,
-      "terminal": 1.9269,
-      "total": 2.4379
+      "source": 0.4652,
+      "terminal": 1.8893,
+      "total": 2.3545
      },
      {
-      "source": 0.5037,
-      "terminal": 2.0377,
-      "total": 2.5414
+      "source": 0.3969,
+      "terminal": 1.9758,
+      "total": 2.3727
      }
     ],
     "4": [
      {
-      "source": 0.9773,
-      "terminal": 2.004,
-      "total": 2.9813
+      "source": 1.0252,
+      "terminal": 1.9775,
+      "total": 3.0027
      },
      {
-      "source": 0.9296,
-      "terminal": 1.8901,
-      "total": 2.8197
+      "source": 0.9201,
+      "terminal": 1.8578,
+      "total": 2.7779
      },
      {
-      "source": 0.962,
-      "terminal": 1.89,
-      "total": 2.852
+      "source": 0.9174,
+      "terminal": 1.8669,
+      "total": 2.7843
      },
      {
-      "source": 0.92,
-      "terminal": 1.9033,
-      "total": 2.8233
+      "source": 0.9962,
+      "terminal": 1.7464,
+      "total": 2.7426
      }
     ],
     "16": [
      {
-      "source": 3.1016,
-      "terminal": 1.8913,
-      "total": 4.9929
+      "source": 2.9226,
+      "terminal": 1.7711,
+      "total": 4.6937
      },
      {
-      "source": 2.9731,
-      "terminal": 1.7527,
-      "total": 4.7258
+      "source": 3.0197,
+      "terminal": 1.8468,
+      "total": 4.8665
      },
      {
-      "source": 2.8902,
-      "terminal": 1.8618,
-      "total": 4.752
+      "source": 2.9687,
+      "terminal": 1.9675,
+      "total": 4.9362
      },
      {
-      "source": 2.982,
-      "terminal": 1.8958,
-      "total": 4.8778
+      "source": 3.0075,
+      "terminal": 1.9827,
+      "total": 4.9902
      }
     ]
    },
-   "seconds": 1.363,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1280x768-pair0-screen1"
+   "seconds": 1.514,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1280x768-pair0-screen1"
   },
   "screen-timing-1280x768-pair1-screen1": {
    "width": 1280,
@@ -447,73 +531,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.6001,
-      "terminal": 1.9909,
-      "total": 2.591
+      "source": 0.7934,
+      "terminal": 1.9669,
+      "total": 2.7603
      },
      {
-      "source": 0.5039,
-      "terminal": 1.9811,
-      "total": 2.485
+      "source": 0.4994,
+      "terminal": 1.8703,
+      "total": 2.3697
      },
      {
-      "source": 0.4038,
-      "terminal": 1.9222,
-      "total": 2.326
+      "source": 0.4727,
+      "terminal": 2.0085,
+      "total": 2.4812
      },
      {
-      "source": 0.3784,
-      "terminal": 2.0478,
-      "total": 2.4262
+      "source": 0.4449,
+      "terminal": 1.9889,
+      "total": 2.4338
      }
     ],
     "4": [
      {
-      "source": 0.9213,
-      "terminal": 1.889,
-      "total": 2.8103
+      "source": 1.0029,
+      "terminal": 1.973,
+      "total": 2.9759
      },
      {
-      "source": 0.9833,
-      "terminal": 1.8963,
-      "total": 2.8796
+      "source": 0.8948,
+      "terminal": 1.881,
+      "total": 2.7758
      },
      {
-      "source": 0.9537,
-      "terminal": 1.9029,
-      "total": 2.8566
+      "source": 0.9285,
+      "terminal": 1.8569,
+      "total": 2.7854
      },
      {
-      "source": 0.9239,
-      "terminal": 1.7631,
-      "total": 2.687
+      "source": 0.9141,
+      "terminal": 1.8723,
+      "total": 2.7864
      }
     ],
     "16": [
      {
-      "source": 2.9482,
-      "terminal": 1.8784,
-      "total": 4.8266
+      "source": 2.8803,
+      "terminal": 1.8584,
+      "total": 4.7387
      },
      {
-      "source": 2.8996,
-      "terminal": 1.8954,
-      "total": 4.795
+      "source": 2.9724,
+      "terminal": 1.9786,
+      "total": 4.951
      },
      {
-      "source": 2.9675,
-      "terminal": 1.8839,
-      "total": 4.8514
+      "source": 3.0833,
+      "terminal": 1.9004,
+      "total": 4.9837
      },
      {
-      "source": 2.9888,
-      "terminal": 1.8774,
-      "total": 4.8662
+      "source": 2.9193,
+      "terminal": 2.2886,
+      "total": 5.2079
      }
     ]
    },
-   "seconds": 1.407,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1280x768-pair1-screen1"
+   "seconds": 1.479,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1280x768-pair1-screen1"
   },
   "screen-timing-1280x768-pair1-screen0": {
    "width": 1280,
@@ -529,73 +613,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.7431,
-      "terminal": 2.1237,
-      "total": 2.8668
+      "source": 0.5773,
+      "terminal": 1.9148,
+      "total": 2.4921
      },
      {
-      "source": 0.2187,
-      "terminal": 1.937,
-      "total": 2.1557
+      "source": 0.3241,
+      "terminal": 1.9183,
+      "total": 2.2424
      },
      {
-      "source": 0.3445,
-      "terminal": 1.9189,
-      "total": 2.2634
+      "source": 0.3196,
+      "terminal": 2.1566,
+      "total": 2.4762
      },
      {
-      "source": 0.3628,
-      "terminal": 2.0492,
-      "total": 2.412
+      "source": 0.3317,
+      "terminal": 2.0397,
+      "total": 2.3714
      }
     ],
     "4": [
      {
-      "source": 0.3457,
-      "terminal": 1.9102,
-      "total": 2.2559
+      "source": 0.333,
+      "terminal": 1.9798,
+      "total": 2.3128
      },
      {
-      "source": 0.3522,
-      "terminal": 1.8747,
-      "total": 2.2269
+      "source": 0.3206,
+      "terminal": 1.8858,
+      "total": 2.2064
      },
      {
-      "source": 0.3427,
-      "terminal": 1.9064,
-      "total": 2.2491
+      "source": 0.3251,
+      "terminal": 1.9978,
+      "total": 2.3229
      },
      {
-      "source": 0.2207,
-      "terminal": 1.8983,
-      "total": 2.119
+      "source": 0.2368,
+      "terminal": 1.856,
+      "total": 2.0928
      }
     ],
     "16": [
      {
-      "source": 0.3632,
-      "terminal": 1.9231,
-      "total": 2.2863
+      "source": 0.4517,
+      "terminal": 2.2272,
+      "total": 2.6789
      },
      {
-      "source": 0.368,
-      "terminal": 1.879,
-      "total": 2.247
+      "source": 0.4246,
+      "terminal": 2.1639,
+      "total": 2.5885
      },
      {
-      "source": 0.3604,
-      "terminal": 1.886,
-      "total": 2.2464
+      "source": 0.3818,
+      "terminal": 2.2167,
+      "total": 2.5985
      },
      {
-      "source": 0.3575,
-      "terminal": 1.9028,
-      "total": 2.2603
+      "source": 0.3625,
+      "terminal": 2.6883,
+      "total": 3.0508
      }
     ]
    },
-   "seconds": 1.337,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1280x768-pair1-screen0"
+   "seconds": 1.419,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1280x768-pair1-screen0"
   },
   "screen-timing-1920x1080-pair0-screen0": {
    "width": 1920,
@@ -611,73 +695,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.2204,
-      "terminal": 3.6731,
-      "total": 3.8935
+      "source": 0.327,
+      "terminal": 3.6341,
+      "total": 3.9611
      },
      {
-      "source": 0.212,
-      "terminal": 3.5942,
-      "total": 3.8062
+      "source": 0.3194,
+      "terminal": 3.5078,
+      "total": 3.8272
      },
      {
-      "source": 0.3613,
-      "terminal": 3.512,
-      "total": 3.8733
+      "source": 0.3216,
+      "terminal": 3.6975,
+      "total": 4.0191
      },
      {
-      "source": 0.3488,
-      "terminal": 3.6039,
-      "total": 3.9527
+      "source": 0.3251,
+      "terminal": 3.5493,
+      "total": 3.8744
      }
     ],
     "4": [
      {
-      "source": 0.3507,
-      "terminal": 3.5101,
-      "total": 3.8608
+      "source": 0.3322,
+      "terminal": 3.4865,
+      "total": 3.8187
      },
      {
-      "source": 0.2137,
-      "terminal": 3.5647,
-      "total": 3.7784
+      "source": 0.3348,
+      "terminal": 3.5006,
+      "total": 3.8354
      },
      {
-      "source": 0.3386,
-      "terminal": 3.5839,
-      "total": 3.9225
+      "source": 0.3202,
+      "terminal": 3.5253,
+      "total": 3.8455
      },
      {
-      "source": 0.3369,
-      "terminal": 3.4406,
-      "total": 3.7775
+      "source": 0.3235,
+      "terminal": 3.4936,
+      "total": 3.8171
      }
     ],
     "16": [
      {
-      "source": 0.3601,
-      "terminal": 3.4719,
-      "total": 3.832
+      "source": 0.3388,
+      "terminal": 3.243,
+      "total": 3.5818
      },
      {
-      "source": 0.3558,
-      "terminal": 3.5233,
-      "total": 3.8791
+      "source": 0.3395,
+      "terminal": 2.0969,
+      "total": 2.4364
      },
      {
-      "source": 0.3617,
-      "terminal": 3.4273,
-      "total": 3.789
+      "source": 0.334,
+      "terminal": 1.8219,
+      "total": 2.1559
      },
      {
-      "source": 0.357,
-      "terminal": 3.4372,
-      "total": 3.7942
+      "source": 0.3333,
+      "terminal": 1.7439,
+      "total": 2.0772
      }
     ]
    },
-   "seconds": 1.392,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1920x1080-pair0-screen0"
+   "seconds": 1.454,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1920x1080-pair0-screen0"
   },
   "screen-timing-1920x1080-pair0-screen1": {
    "width": 1920,
@@ -693,73 +777,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.8616,
-      "terminal": 1.9678,
-      "total": 2.8294
+      "source": 0.5951,
+      "terminal": 3.5627,
+      "total": 4.1578
      },
      {
-      "source": 0.5355,
-      "terminal": 2.2042,
-      "total": 2.7397
+      "source": 0.4869,
+      "terminal": 3.5401,
+      "total": 4.027
      },
      {
-      "source": 0.3794,
-      "terminal": 1.9163,
-      "total": 2.2957
+      "source": 0.4649,
+      "terminal": 3.53,
+      "total": 3.9949
      },
      {
-      "source": 0.3456,
-      "terminal": 1.9025,
-      "total": 2.2481
+      "source": 0.4526,
+      "terminal": 3.5456,
+      "total": 3.9982
      }
     ],
     "4": [
      {
-      "source": 0.8757,
-      "terminal": 1.7659,
-      "total": 2.6416
+      "source": 1.018,
+      "terminal": 3.4536,
+      "total": 4.4716
      },
      {
-      "source": 0.9112,
-      "terminal": 1.8866,
-      "total": 2.7978
+      "source": 0.9311,
+      "terminal": 3.5682,
+      "total": 4.4993
      },
      {
-      "source": 0.8735,
-      "terminal": 2.0187,
-      "total": 2.8922
+      "source": 1.0889,
+      "terminal": 3.5346,
+      "total": 4.6235
      },
      {
-      "source": 0.9308,
-      "terminal": 1.8849,
-      "total": 2.8157
+      "source": 1.2967,
+      "terminal": 3.6844,
+      "total": 4.9811
      }
     ],
     "16": [
      {
-      "source": 3.0956,
-      "terminal": 1.8944,
-      "total": 4.99
+      "source": 2.9975,
+      "terminal": 3.5083,
+      "total": 6.5058
      },
      {
-      "source": 3.1267,
-      "terminal": 1.9077,
-      "total": 5.0344
+      "source": 2.8865,
+      "terminal": 3.4723,
+      "total": 6.3588
      },
      {
-      "source": 3.1175,
-      "terminal": 1.8664,
-      "total": 4.9839
+      "source": 2.9203,
+      "terminal": 3.3509,
+      "total": 6.2712
      },
      {
-      "source": 3.0257,
-      "terminal": 2.0259,
-      "total": 5.0516
+      "source": 3.0108,
+      "terminal": 3.4912,
+      "total": 6.502
      }
     ]
    },
-   "seconds": 1.489,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1920x1080-pair0-screen1"
+   "seconds": 1.508,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1920x1080-pair0-screen1"
   },
   "screen-timing-1920x1080-pair1-screen1": {
    "width": 1920,
@@ -775,73 +859,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.5816,
-      "terminal": 3.6451,
-      "total": 4.2267
+      "source": 0.5775,
+      "terminal": 3.4747,
+      "total": 4.0522
      },
      {
-      "source": 0.522,
-      "terminal": 3.508,
-      "total": 4.03
+      "source": 0.4908,
+      "terminal": 3.4297,
+      "total": 3.9205
      },
      {
-      "source": 0.494,
-      "terminal": 3.6185,
-      "total": 4.1125
+      "source": 0.4735,
+      "terminal": 3.5956,
+      "total": 4.0691
      },
      {
-      "source": 0.4901,
-      "terminal": 3.5769,
-      "total": 4.067
+      "source": 0.4827,
+      "terminal": 3.5622,
+      "total": 4.0449
      }
     ],
     "4": [
      {
-      "source": 1.0324,
-      "terminal": 3.4351,
-      "total": 4.4675
+      "source": 0.9496,
+      "terminal": 3.4717,
+      "total": 4.4213
      },
      {
-      "source": 0.9113,
-      "terminal": 3.5541,
-      "total": 4.4654
+      "source": 0.9891,
+      "terminal": 3.4666,
+      "total": 4.4557
      },
      {
-      "source": 0.939,
-      "terminal": 3.5419,
-      "total": 4.4809
+      "source": 1.0167,
+      "terminal": 3.4781,
+      "total": 4.4948
      },
      {
-      "source": 1.0355,
-      "terminal": 3.431,
-      "total": 4.4665
+      "source": 0.9957,
+      "terminal": 3.4508,
+      "total": 4.4465
      }
     ],
     "16": [
      {
-      "source": 2.8867,
-      "terminal": 3.402,
-      "total": 6.2887
+      "source": 3.1342,
+      "terminal": 3.4575,
+      "total": 6.5917
      },
      {
-      "source": 2.9474,
-      "terminal": 3.5293,
-      "total": 6.4767
+      "source": 3.1323,
+      "terminal": 3.4613,
+      "total": 6.5936
      },
      {
-      "source": 3.0258,
-      "terminal": 3.3885,
-      "total": 6.4143
+      "source": 3.0973,
+      "terminal": 3.42,
+      "total": 6.5173
      },
      {
-      "source": 3.0335,
-      "terminal": 3.3925,
-      "total": 6.426
+      "source": 2.9556,
+      "terminal": 3.4649,
+      "total": 6.4205
      }
     ]
    },
-   "seconds": 1.433,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1920x1080-pair1-screen1"
+   "seconds": 1.462,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1920x1080-pair1-screen1"
   },
   "screen-timing-1920x1080-pair1-screen0": {
    "width": 1920,
@@ -857,73 +941,73 @@
    "counts": {
     "1": [
      {
-      "source": 0.3491,
-      "terminal": 3.489,
-      "total": 3.8381
+      "source": 0.2242,
+      "terminal": 3.5497,
+      "total": 3.7739
      },
      {
-      "source": 0.3806,
-      "terminal": 3.534,
-      "total": 3.9146
+      "source": 0.223,
+      "terminal": 3.5143,
+      "total": 3.7373
      },
      {
-      "source": 0.3424,
-      "terminal": 3.6478,
-      "total": 3.9902
+      "source": 0.2301,
+      "terminal": 3.5052,
+      "total": 3.7353
      },
      {
-      "source": 0.3557,
-      "terminal": 3.6097,
-      "total": 3.9654
+      "source": 0.3499,
+      "terminal": 3.5563,
+      "total": 3.9062
      }
     ],
     "4": [
      {
-      "source": 0.2183,
-      "terminal": 3.4292,
-      "total": 3.6475
+      "source": 0.3259,
+      "terminal": 3.4321,
+      "total": 3.758
      },
      {
-      "source": 0.3455,
-      "terminal": 3.5745,
-      "total": 3.92
+      "source": 0.3325,
+      "terminal": 3.4676,
+      "total": 3.8001
      },
      {
-      "source": 0.225,
-      "terminal": 3.5398,
-      "total": 3.7648
+      "source": 0.3247,
+      "terminal": 3.5856,
+      "total": 3.9103
      },
      {
-      "source": 0.3372,
-      "terminal": 3.4825,
-      "total": 3.8197
+      "source": 0.322,
+      "terminal": 3.4354,
+      "total": 3.7574
      }
     ],
     "16": [
      {
-      "source": 0.7367,
-      "terminal": 3.4526,
-      "total": 4.1893
+      "source": 0.3625,
+      "terminal": 3.436,
+      "total": 3.7985
      },
      {
-      "source": 0.3649,
-      "terminal": 3.5573,
-      "total": 3.9222
+      "source": 0.3724,
+      "terminal": 3.6332,
+      "total": 4.0056
      },
      {
-      "source": 0.3676,
-      "terminal": 3.4234,
-      "total": 3.791
+      "source": 0.3437,
+      "terminal": 3.4193,
+      "total": 3.763
      },
      {
-      "source": 0.3821,
-      "terminal": 3.434,
-      "total": 3.8161
+      "source": 0.3495,
+      "terminal": 2.9641,
+      "total": 3.3136
      }
     ]
    },
-   "seconds": 1.412,
-   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-vc58tvhj/screen-timing-1920x1080-pair1-screen0"
+   "seconds": 1.419,
+   "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-screen-emission-live-y3278n76/screen-timing-1920x1080-pair1-screen0"
   }
  },
  "limitations": [
@@ -946,44 +1030,44 @@
    "region_pixels_per_bracket": 2967,
    "ordered_dips": 1,
    "per_bracket_source_delta_ms": [
-    0.2154,
-    0.0375
+    0.1406,
+    0.1642
    ],
    "pairs": [
     {
      "order": "off/on",
      "off_median_ms": {
-      "source": 0.2958,
-      "terminal": 2.0249499999999996,
-      "total": 2.3329500000000003
+      "source": 0.33704999999999996,
+      "terminal": 1.9758499999999999,
+      "total": 2.3129
      },
      "on_median_ms": {
-      "source": 0.5147999999999999,
-      "terminal": 1.9925000000000002,
-      "total": 2.50365
+      "source": 0.4776,
+      "terminal": 1.90545,
+      "total": 2.375
      },
      "paired_window_median_delta_ms": {
-      "source": 0.21535,
-      "terminal": -0.03244999999999976,
-      "total": 0.15669999999999984
+      "source": 0.14055,
+      "terminal": -0.06099999999999994,
+      "total": 0.052999999999999936
      }
     },
     {
      "order": "on/off",
      "off_median_ms": {
-      "source": 0.35365,
-      "terminal": 1.9931,
-      "total": 2.3377
+      "source": 0.32789999999999997,
+      "terminal": 1.9789999999999999,
+      "total": 2.4238
      },
      "on_median_ms": {
-      "source": 0.45385,
-      "terminal": 1.986,
-      "total": 2.4556
+      "source": 0.48605,
+      "terminal": 1.9779,
+      "total": 2.4575
      },
      "paired_window_median_delta_ms": {
-      "source": 0.03745000000000001,
-      "terminal": 0.0009500000000000064,
-      "total": 0.03840000000000021
+      "source": 0.1642,
+      "terminal": -0.04939999999999989,
+      "total": 0.0948500000000001
      }
     }
    ]
@@ -1000,44 +1084,44 @@
    "region_pixels_per_bracket": 2967,
    "ordered_dips": 4,
    "per_bracket_source_delta_ms": [
-    0.1495,
-    0.1553
+    0.1713,
+    0.1592
    ],
    "pairs": [
     {
      "order": "off/on",
      "off_median_ms": {
-      "source": 0.3431,
-      "terminal": 1.90685,
-      "total": 2.24015
+      "source": 0.31815,
+      "terminal": 1.93865,
+      "total": 2.2106500000000002
      },
      "on_median_ms": {
-      "source": 0.9458,
-      "terminal": 1.8967,
-      "total": 2.83765
+      "source": 0.9581500000000001,
+      "terminal": 1.86235,
+      "total": 2.7811
      },
      "paired_window_median_delta_ms": {
-      "source": 0.5979,
-      "terminal": -0.00040000000000006697,
-      "total": 0.5975000000000001
+      "source": 0.6850999999999999,
+      "terminal": -0.06980000000000008,
+      "total": 0.6294499999999998
      }
     },
     {
      "order": "on/off",
      "off_median_ms": {
-      "source": 0.3442,
-      "terminal": 1.9023500000000002,
-      "total": 2.238
+      "source": 0.32284999999999997,
+      "terminal": 1.9327999999999999,
+      "total": 2.2596
      },
      "on_median_ms": {
-      "source": 0.9388000000000001,
-      "terminal": 1.8926500000000002,
-      "total": 2.83345
+      "source": 0.9213,
+      "terminal": 1.8766500000000002,
+      "total": 2.7859
      },
      "paired_window_median_delta_ms": {
-      "source": 0.62105,
-      "terminal": -0.012349999999999972,
-      "total": 0.5877499999999998
+      "source": 0.6366499999999999,
+      "terminal": -0.005799999999999916,
+      "total": 0.61625
      }
     }
    ]
@@ -1054,44 +1138,44 @@
    "region_pixels_per_bracket": 2967,
    "ordered_dips": 16,
    "per_bracket_source_delta_ms": [
-    0.1634,
-    0.1623
+    0.1653,
+    0.1595
    ],
    "pairs": [
     {
      "order": "off/on",
      "off_median_ms": {
-      "source": 0.36265000000000003,
-      "terminal": 1.8768500000000001,
-      "total": 2.2375499999999997
+      "source": 0.34040000000000004,
+      "terminal": 1.9194499999999999,
+      "total": 2.2546999999999997
      },
      "on_median_ms": {
-      "source": 2.97755,
-      "terminal": 1.87655,
-      "total": 4.8149
+      "source": 2.9881,
+      "terminal": 1.9071500000000001,
+      "total": 4.901350000000001
      },
      "paired_window_median_delta_ms": {
-      "source": 2.6149000000000004,
-      "terminal": -0.01045000000000007,
-      "total": 2.5999499999999998
+      "source": 2.6442499999999995,
+      "terminal": -0.029999999999999916,
+      "total": 2.61655
      }
     },
     {
      "order": "on/off",
      "off_median_ms": {
-      "source": 0.3618,
-      "terminal": 1.8944,
-      "total": 2.25365
+      "source": 0.4032,
+      "terminal": 2.2219499999999996,
+      "total": 2.6387
      },
      "on_median_ms": {
-      "source": 2.9578499999999996,
-      "terminal": 1.8811499999999999,
-      "total": 4.839
+      "source": 2.94585,
+      "terminal": 1.9395,
+      "total": 4.96735
      },
      "paired_window_median_delta_ms": {
-      "source": 2.59605,
-      "terminal": -0.01375000000000004,
-      "total": 2.5765000000000002
+      "source": 2.5523,
+      "terminal": -0.3425499999999998,
+      "total": 2.2598000000000003
      }
     }
    ]
@@ -1108,44 +1192,44 @@
    "region_pixels_per_bracket": 5959,
    "ordered_dips": 1,
    "per_bracket_source_delta_ms": [
-    0.1708,
-    0.1465
+    0.1554,
+    0.2556
    ],
    "pairs": [
     {
      "order": "off/on",
      "off_median_ms": {
-      "source": 0.2846,
-      "terminal": 3.59905,
-      "total": 3.8834
+      "source": 0.32335,
+      "terminal": 3.5917000000000003,
+      "total": 3.91775
      },
      "on_median_ms": {
-      "source": 0.45745,
-      "terminal": 1.94205,
-      "total": 2.5177
+      "source": 0.4759,
+      "terminal": 3.5428499999999996,
+      "total": 4.0126
      },
      "paired_window_median_delta_ms": {
-      "source": 0.1708,
-      "terminal": -1.64855,
-      "total": -1.32205
+      "source": 0.15539999999999998,
+      "terminal": -0.037550000000000194,
+      "total": 0.16025
      }
     },
     {
      "order": "on/off",
      "off_median_ms": {
-      "source": 0.35240000000000005,
-      "terminal": 3.57185,
-      "total": 3.94
+      "source": 0.22715000000000002,
+      "terminal": 3.532,
+      "total": 3.7556
      },
      "on_median_ms": {
-      "source": 0.508,
-      "terminal": 3.5977,
-      "total": 4.08975
+      "source": 0.48675,
+      "terminal": 3.5184499999999996,
+      "total": 4.0485500000000005
      },
      "paired_window_median_delta_ms": {
-      "source": 0.14650000000000002,
-      "terminal": -0.027649999999999952,
-      "total": 0.1188499999999999
+      "source": 0.2556,
+      "terminal": -0.03455000000000008,
+      "total": 0.23075000000000023
      }
     }
    ]
@@ -1162,44 +1246,44 @@
    "region_pixels_per_bracket": 5959,
    "ordered_dips": 4,
    "per_bracket_source_delta_ms": [
-    0.1411,
-    0.1765
+    0.1818,
+    0.1663
    ],
    "pairs": [
     {
      "order": "off/on",
      "off_median_ms": {
-      "source": 0.33775,
-      "terminal": 3.5374,
-      "total": 3.8196
+      "source": 0.32785,
+      "terminal": 3.4970999999999997,
+      "total": 3.82705
      },
      "on_median_ms": {
-      "source": 0.8934500000000001,
-      "terminal": 1.88575,
-      "total": 2.80675
+      "source": 1.05345,
+      "terminal": 3.5514,
+      "total": 4.5614
      },
      "paired_window_median_delta_ms": {
-      "source": 0.5644,
-      "terminal": -1.62165,
-      "total": -1.00545
+      "source": 0.72725,
+      "terminal": 0.038450000000000095,
+      "total": 0.72095
      }
     },
     {
      "order": "on/off",
      "off_median_ms": {
-      "source": 0.2811,
-      "terminal": 3.5111499999999998,
-      "total": 3.79225
+      "source": 0.32530000000000003,
+      "terminal": 3.4515000000000002,
+      "total": 3.77905
      },
      "on_median_ms": {
-      "source": 0.9857,
-      "terminal": 3.4885,
-      "total": 4.4670000000000005
+      "source": 0.9924,
+      "terminal": 3.46915,
+      "total": 4.4511
      },
      "paired_window_median_delta_ms": {
-      "source": 0.70615,
-      "terminal": -0.009149999999999991,
-      "total": 0.6814499999999999
+      "source": 0.6651499999999999,
+      "terminal": 0.007200000000000095,
+      "total": 0.6594499999999999
      }
     }
    ]
@@ -1216,44 +1300,44 @@
    "region_pixels_per_bracket": 5959,
    "ordered_dips": 16,
    "per_bracket_source_delta_ms": [
-    0.1716,
-    0.1636
+    0.1639,
+    0.1723
    ],
    "pairs": [
     {
      "order": "off/on",
      "off_median_ms": {
-      "source": 0.35855,
-      "terminal": 3.4545500000000002,
-      "total": 3.8131
+      "source": 0.33640000000000003,
+      "terminal": 1.9594,
+      "total": 2.29615
      },
      "on_median_ms": {
-      "source": 3.1065500000000004,
-      "terminal": 1.9010500000000001,
-      "total": 5.0122
+      "source": 2.9589,
+      "terminal": 3.48175,
+      "total": 6.4304
      },
      "paired_window_median_delta_ms": {
-      "source": 2.7456500000000004,
-      "terminal": -1.5692,
-      "total": 1.1764500000000002
+      "source": 2.6225,
+      "terminal": 1.4522,
+      "total": 4.0188500000000005
      }
     },
     {
      "order": "on/off",
      "off_median_ms": {
-      "source": 0.37485,
-      "terminal": 3.4433,
-      "total": 3.8691500000000003
+      "source": 0.356,
+      "terminal": 3.42765,
+      "total": 3.7807500000000003
      },
      "on_median_ms": {
-      "source": 2.9866,
-      "terminal": 3.39725,
-      "total": 6.42015
+      "source": 3.1148,
+      "terminal": 3.4594,
+      "total": 6.5545
      },
      "paired_window_median_delta_ms": {
-      "source": 2.61695,
-      "terminal": -0.03820000000000001,
-      "total": 2.5822000000000003
+      "source": 2.7567500000000003,
+      "terminal": 0.01110000000000011,
+      "total": 2.7737499999999997
      }
     }
    ]

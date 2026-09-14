@@ -736,6 +736,24 @@ private:
     // Step B locked-prefix rectangle (screen-emission-region.md): counted and
     // logged per draw in capture frames; nothing consumes it before step C.
     void derive_prefix_region(const MotionDrawCall&, MotionRoute&) noexcept;
+    // Capture-only packed-bracket luminance sample (packed_sample line).
+    HRESULT sample_target_pixel(IDirect3DSurface9*, const renderer::Surface&, std::int32_t x, std::int32_t y, float out[4]) noexcept;
+    void sample_packed_pre(const MotionRoute&) noexcept;
+    void sample_packed_post(const RECT& composed) noexcept;
+    void release_packed_sample() noexcept;
+    static constexpr unsigned packed_sample_cap = 4; // admitted packed draws sampled per capture frame
+    struct PackedSample {
+        bool valid = false;
+        unsigned sampled = 0; // this frame's samples (reset in begin_frame)
+        IDirect3DSurface9* copy = nullptr; // retained system-memory readback surface, one per size/format
+        std::uint32_t copy_width = 0, copy_height = 0, copy_format = 0;
+        fade_region::Rect rect{};
+        unsigned clipped = 0;
+        std::uint64_t index = 0;
+        std::int32_t x = 0, y = 0;
+        float pre[4]{};
+        HRESULT pre_result = S_FALSE;
+    } packed_sample_;
     // Shadowed application render state for the capture-only motion_route
     // line: the last value the shadow saw, or -1 when it is unknown. Reads no
     // device state, so a capture frame costs no extra GetRenderState.
@@ -886,6 +904,7 @@ private:
         unsigned packed_eligible = 0, packed_unbounded_refused = 0, packed_caps_refused = 0;
         unsigned packed_admitted = 0, packed_linear = 0, packed_incomplete = 0;
         std::uint64_t packed_region_pixels = 0;
+        unsigned packed_sample_skipped = 0; // capture frames: admitted packed draws beyond packed_sample_cap
         HRESULT recovery = S_FALSE;
         unsigned prepared = 0, linear = 0, native = 0, incomplete = 0, refused = 0, suppressed = 0, exports = 0, exchanged = 0;
         HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE, restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
@@ -902,7 +921,7 @@ private:
         // Step B locked-prefix bounds: qualifying draws (non-indexed
         // TRIANGLELIST, StartVertex 0, stride-24 FLOAT3 stream), those bound,
         // the lookup outcome and the sum of bound area fractions.
-        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0, prefix_instanced = 0;
+        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0, prefix_instanced = 0, prefix_clipped = 0; // clipped: bound after a near-plane cut
         unsigned prefix_reason[unsigned(fade_region::Reason::Count)]{};
         unsigned prefix_lookup[unsigned(fade_region::prefix::Lookup::Count)]{};
         std::uint64_t prefix_permille_sum = 0;

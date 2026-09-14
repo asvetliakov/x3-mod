@@ -691,15 +691,26 @@ SCREEN_PROGRAMS=tuple(dict.fromkeys(BOOTSTRAP+(f'vs_{FADE_PAIRS[0][0]}.bin',f'ps
 # 1 and 11 are first draws (no scan yet: refused unbounded, native).
 # p: PROJECTED on stage 0, g: sRGB on sampler 0 (readiness refusals), d: dither
 # on (a different state, pair refusal); all bound, all native.
-SCREEN_PLAN=('','s','s','es','sf','fs','esf','s','s','s','s','s','s','se','p','g','d')
-SCREEN_KINDS='spgd'
+# Near-plane kinds (screen-emission-region.md, step B; rows x' = x, y' = y,
+# z' = .1 (z - 1), w = z, the D3D near plane at w = 1): n a triangle with one
+# vertex behind the camera (visible trapezoid NDC (0,.25),(.5,.25),(.75,.375),
+# (0,.375)), x the quad with its near edge exactly on the plane, h the quad
+# entirely behind (refused BehindNear, nothing rasterised), b a beam from the
+# near plane to w = 1000; n, x and b are admitted in the screen state.
+SCREEN_PLAN=('','s','s','es','sf','fs','esf','s','s','s','s','s','s','se','p','g','d','n','x','h','b')
+SCREEN_KINDS='spgdnxhb'
+SCREEN_ADMITTED_KINDS='snxb'   # the screen state with a bound: admitted when caps and readiness allow
+SCREEN_NEAR_KINDS='nxhb'
 SCREEN_FRAMES=len(SCREEN_PLAN)
+SCREEN_CAPTURE_FRAMES=range(2,10) # X3M_CAPTURE_START=2, X3M_CAPTURE_FRAMES=8: the packed_sample diagnostic frames
 SCREEN_OVERLAP={7:2}
 SCREEN_FAULT={8:5,9:6}   # 5 SourceBind -> refusal 5, native; 6 Composite -> Incomplete, A|R recovered
 SCREEN_UNBOUNDED_FRAMES=(1,11)
 SCREEN_RESET_FRAME=10
 SCREEN_STATUS_KEYS=50
 SCREEN_QUAD=(32,24,48,40)           # pixels of the functional quad (64x64)
+SCREEN_NEAR_TRAPEZOID=(32,20,56,24) # bounding box of the n footprint (84 pixels: rows 20-23, x from 32 below 48 + 2 (24 - y))
+SCREEN_KIND_RECT={'n':SCREEN_NEAR_TRAPEZOID,'h':(0,0,0,0)} # the SCREEN_SOURCE rect of the other kinds is SCREEN_QUAD
 SCREEN_STRADDLE_RECT=(32,24,40,40)  # injected bound: the right half of the quad stays native
 SCREEN_TEXEL=(.5,.25,.125,.5)       # bullet diffuse texel: q = rgb * h (h = 1), a = .5
 SCREEN_GAIN=1.
@@ -717,8 +728,8 @@ def screen_expected_sources(frame,screen=1,fade=1,emission=1,caps=1):
         fault=SCREEN_FAULT.get(frame,0) if kind=='s' else 0
         active=bool(screen if bullet else fade if kind=='f' else emission)
         applied=fault if active and (kind!='s' or caps) else 0 # the caps case queues no pass fault for a draw that never reaches the pass
-        eligible=int(kind in 'spg' and active) # d: dither on is a different state (pair refusal), never eligible
-        unbounded=int(eligible and frame in SCREEN_UNBOUNDED_FRAMES)
+        eligible=int(kind in 'spg'+SCREEN_NEAR_KINDS and active) # d: dither on is a different state (pair refusal), never eligible
+        unbounded=int(eligible and (frame in SCREEN_UNBOUNDED_FRAMES or kind=='h')) # h: the whole prefix behind the near plane
         caps_refused=int(eligible and not unbounded and not caps)
         readiness=int(eligible and not unbounded and not caps_refused and kind in 'pg') # PROJECTED stage / sRGB sampler
         admissible=active and not (bullet and (unbounded or caps_refused or kind=='d'))
@@ -730,8 +741,9 @@ def screen_expected_sources(frame,screen=1,fade=1,emission=1,caps=1):
         # caps refusals are outside the histogram.
         refused=int((admissible and not prepared) or (bullet and (not active or kind=='d')))
         if incomplete:stopped=True
+        admitted_kind=kind in SCREEN_ADMITTED_KINDS
         result.append(dict(kind=kind,fault=applied,overlap=SCREEN_OVERLAP.get(frame,1) if kind=='s' else 1,prepared=prepared,linear=linear,native=0,incomplete=incomplete,refused=refused,readiness=readiness,
-                           packed_eligible=eligible,packed_admitted=int(kind=='s' and prepared),packed_linear=int(kind=='s' and linear),packed_incomplete=int(kind=='s' and incomplete),
+                           packed_eligible=eligible,packed_admitted=int(admitted_kind and prepared),packed_linear=int(admitted_kind and linear),packed_incomplete=int(admitted_kind and incomplete),
                            packed_unbounded=unbounded,packed_caps=caps_refused,prefix_bound=int(bullet and screen and not unbounded),prefix_refused=unbounded,
                            witnessed=int(eligible and not unbounded and not caps_refused and not readiness), # reached the bracket's witness record
                            mask_valid=not stopped))
@@ -773,7 +785,7 @@ def screen_sample_expectation(row,sources,fade,emission):
     if kind in SCREEN_KINDS:
         texel=tuple(map(float,row['q'].split(',')))+(float(row['a']),)
         assert texel==SCREEN_TEXEL,(row['frame'],'bullet texel')
-        assert not int(row['packed']) or kind=='s',(row['frame'],'only the admitted state composes')
+        assert not int(row['packed']) or kind in SCREEN_ADMITTED_KINDS,(row['frame'],'only the admitted state composes')
         if not int(row['covered']):return before
         if kind=='p':return None # projected coordinates: the native sample is undefined for the 1x1 texel too
         if wanted['incomplete']:return before # A|R recovered exactly
@@ -804,7 +816,7 @@ def validate_screen_samples(rows,expected_by_frame,fade,emission):
         for a,b in zip(after,wanted):
             fraction=abs(a-b)/(.006*abs(b)+.00002);maximum=max(maximum,fraction)
             assert fraction<=1,(key,'screen law / native / fade / emission',after,wanted,fraction)
-        if row['kind'] in 'sgd' and int(row['covered']) and int(row['overlap'])==1 and not sources[source]['incomplete'] and int(row['packed'])==int(row['bracket']):
+        if row['kind'] in 'sgdxb' and int(row['covered']) and int(row['overlap'])==1 and not sources[source]['incomplete'] and int(row['packed'])==int(row['bracket']):
             (packed_alpha if int(row['packed']) else native_alpha).setdefault(before[3],set()).add(after[3])
         count+=1
     for alpha,values in packed_alpha.items():
@@ -829,7 +841,7 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
     expected_by_frame={f:screen_expected_sources(f,screen,fade,emission,caps) for f in range(SCREEN_FRAMES)}
     policies=(3|IN_PLACE_POLICY)|(8 if screen and caps else 0)
     totals=dict(packed_eligible=0,packed_admitted=0,packed_linear=0,packed_incomplete=0,packed_unbounded=0,packed_caps=0,packed_region_pixels=0)
-    region_pixels_per_bracket=None;total_sources=0
+    bracket_pixels={};total_sources=0 # kind -> region pixels of one packed bracket (one bound rectangle per kind)
     for frame,row in live.items():
         assert int(row['screen'])==screen and int(row['fade'])==fade and int(row['emission'])==emission
         status=[int(row[f's{i}']) for i in range(SCREEN_STATUS_KEYS)]
@@ -852,13 +864,16 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
             for key in ('prepared','linear','native','incomplete','refused','packed_eligible','packed_admitted','packed_linear','packed_incomplete','packed_unbounded','packed_caps','prefix_bound','prefix_refused'):
                 assert int(actual[key])==wanted[key],(frame,actual['source'],key,actual[key],wanted[key])
             rect=tuple(map(int,actual['rect'].split(',')))
-            assert rect==(SCREEN_QUAD if wanted['kind'] in SCREEN_KINDS else source_scissor(0)),(frame,'source rectangle')
+            kind=wanted['kind']
+            assert rect==(SCREEN_KIND_RECT.get(kind,SCREEN_QUAD) if kind in SCREEN_KINDS else source_scissor(0)),(frame,'source rectangle')
             pixels=int(actual['packed_region_pixels'])
             if wanted['packed_admitted']:
-                assert pixels>0 and (region_pixels_per_bracket in (None,pixels)),(frame,'one bound rectangle per bracket',pixels)
-                region_pixels_per_bracket=pixels
+                assert pixels>0 and (bracket_pixels.get(kind,pixels)==pixels),(frame,'one bound rectangle per bracket',pixels)
+                bracket_pixels[kind]=pixels
                 if injected:assert pixels==rect_area(injected),(frame,'injected rectangle composed')
-                else:assert pixels>=rect_area(SCREEN_QUAD),(frame,'the conservative bound covers the quad')
+                else:
+                    assert pixels>=rect_area(SCREEN_KIND_RECT.get(kind,SCREEN_QUAD)),(frame,'the conservative bound covers the footprint')
+                    if kind in SCREEN_NEAR_KINDS:assert pixels<2048,(frame,kind,'a clipped bound stays well below the 64x64 viewport',pixels)
             else:assert pixels==0
             if not wanted['prepared']:
                 # An unprepared source never touches the coverage lane; a bind
@@ -889,12 +904,57 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
     assert [(v['original'],int(v['transform']),int(v['create'],16)) for v in variants]==([(SCREEN_PAIR[1],0,0)] if screen else []),'the packed producer is created once for the row-19 PS, only with the option'
     packed_regions=[fields(line) for line in traces if line.startswith('packed_region ')]
     # One line per screen draw that reached the bracket's witness record: eligible, bounded, caps present (prepared or refused there).
-    assert [int(r['frame']) for r in packed_regions]==[f for f in range(SCREEN_FRAMES) for s in expected_by_frame[f][0] if s['witnessed']],'packed_region lines'
-    for r in packed_regions:
+    witnessed=[(f,s['kind']) for f in range(SCREEN_FRAMES) for s in expected_by_frame[f][0] if s['witnessed']]
+    assert [int(r['frame']) for r in packed_regions]==[f for f,_ in witnessed],'packed_region lines'
+    near_rects={}
+    for r,(frame,kind) in zip(packed_regions,witnessed):
         assert (r['vs'],r['ps'])==SCREEN_PAIR
-        assert tuple(map(int,r['rect'].split(',')))==(injected or tuple(map(int,r['rect'].split(','))))
+        rect=tuple(map(int,r['rect'].split(',')))
+        if injected:assert rect==injected,(frame,'injected rectangle')
+        else:
+            footprint=SCREEN_KIND_RECT.get(kind,SCREEN_QUAD)
+            assert rect[0]<=footprint[0] and rect[1]<=footprint[1] and rect[2]>=footprint[2] and rect[3]>=footprint[3],(frame,kind,'the bound rectangle covers the visible footprint',rect,footprint)
+            if kind in SCREEN_NEAR_KINDS:near_rects[kind]=dict(rect=rect,f_permille=int(r['f_permille']))
+    if screen and caps and not injected:assert set(near_rects)=={'n','x','b'},('near-plane kinds bounded and witnessed',near_rects)
     sample_result=validate_screen_samples([fields(line) for line in lines if line.startswith('SCREEN_SAMPLE ')],expected_by_frame,fade,emission)
-    return dict(frames=SCREEN_FRAMES,sources=total_sources,region_pixels_per_bracket=region_pixels_per_bracket,totals=totals,held_references=int(releases[0]['held']),**sample_result)
+    packed_samples=validate_packed_samples(traces,expected_by_frame,injected)
+    return dict(frames=SCREEN_FRAMES,sources=total_sources,region_pixels_per_bracket=bracket_pixels.get('s'),bracket_pixels=bracket_pixels,near_rects=near_rects,totals=totals,held_references=int(releases[0]['held']),packed_samples=packed_samples,**sample_result)
+
+
+def validate_packed_samples(traces,expected_by_frame,injected=None):
+    """packed_sample lines (capture frames only, screen-emission-region.md
+    step B grammar): one per admitted packed draw of a captured frame with
+    both readbacks S_OK, finite values and the centre inside the rectangle;
+    none outside the capture window."""
+    rows=[fields(line) for line in traces if line.startswith('packed_sample ')]
+    expected=[f for f in SCREEN_CAPTURE_FRAMES for s in expected_by_frame[f][0] if s['packed_admitted']]
+    assert [int(r['frame']) for r in rows]==expected,('one packed_sample per admitted packed draw of a capture frame',[int(r['frame']) for r in rows],expected)
+    frames=indexed(traces,'linear_composition_frame ','frame')
+    assert all(int(frames[f]['packed_sample_skipped'])==0 for f in frames),'no capture frame exceeds the packed_sample cap (at most two admitted packed draws per frame)'
+    changed=0
+    for r in rows:
+        assert r['pre_result']=='00000000' and r['post_result']=='00000000',(r['frame'],'sample readbacks',r)
+        rect=tuple(map(int,r['rect'].split(',')));cx,cy=map(int,r['centre'].split(','))
+        assert rect[0]<=cx<rect[2] and rect[1]<=cy<rect[3],(r['frame'],'centre inside the rectangle')
+        if injected:assert tuple(map(int,r['composed'].split(',')))==injected
+        pre=[float(v) for v in r['pre'].split(',')];post=[float(v) for v in r['post'].split(',')]
+        assert all(math.isfinite(v) for v in pre+post) and math.isfinite(float(r['pre_y'])) and math.isfinite(float(r['post_y'])),(r['frame'],'finite samples')
+        changed+=int(r['pre_y']!=r['post_y'])
+    return dict(lines=len(rows),luminance_changed=changed)
+
+
+def screen_footprint(kind,x,y,width=64,height=64):
+    """Whether the bullet source of `kind` rasterises pixel (x, y): the n
+    trapezoid under the D3D9 convention (integer pixel centres, top-left fill
+    rule: top/left edges inclusive, bottom/right exclusive), the rectangle else."""
+    if kind!='n':
+        l,t,r,b=SCREEN_KIND_RECT.get(kind,SCREEN_QUAD);return l<=x<r and t<=y<b
+    u=x/(width/2)-1;v=1-y/(height/2)
+    return .25<v<=.375 and 0<=u<.5+2*(v-.25)
+
+
+def screen_footprint_area(kind,width=64,height=64):
+    return sum(screen_footprint(kind,x,y,width,height) for y in range(height) for x in range(width))
 
 
 def screen_expected_mask(frame,screen,fade,emission,caps,width=64,height=64):
@@ -905,9 +965,11 @@ def screen_expected_mask(frame,screen,fade,emission,caps,width=64,height=64):
     expected=[False]*(width*height)
     for s in sources:
         if not s['prepared']:continue
-        l,t,r,b=SCREEN_QUAD if s['kind'] in SCREEN_KINDS else source_scissor(0,width,height)
+        bullet=s['kind'] in SCREEN_KINDS
+        l,t,r,b=(0,0,width,height) if bullet else source_scissor(0,width,height)
         for y in range(t,b):
-            for x in range(l,r):expected[y*width+x]=True
+            for x in range(l,r):
+                if not bullet or screen_footprint(s['kind'],x,y,width,height):expected[y*width+x]=True
     return expected
 
 
@@ -953,12 +1015,21 @@ def validate_screen_witness(trace,screen=1,fade=1,emission=1,caps=1,k=WITNESS_K,
 
 
 def screen_straddle_violations(width=64,height=64):
-    """Frames where the injected half rectangle leaves covered quad pixels
-    outside the union: the packed frames sampled by the witness."""
-    outside=rect_area(SCREEN_QUAD)-rect_area(SCREEN_STRADDLE_RECT)
+    """Frames where the injected half rectangle leaves covered bullet pixels
+    outside the union: the packed frames sampled by the witness. Per kind:
+    the footprint minus its overlap with the injected rectangle (the n
+    trapezoid lies entirely outside it)."""
+    def outside(kind):
+        l,t,r,b=SCREEN_STRADDLE_RECT
+        return sum(screen_footprint(kind,x,y,width,height) and not (l<=x<r and t<=y<b) for y in range(height) for x in range(width))
     # A prepared fade source's rectangle is the full viewport (no seam scope):
     # its union hides the straddle on the mixed frames.
-    return {f:outside for f in range(SCREEN_FRAMES) if screen_expected_witness(f)['reason']=='sampled' and screen_expected_witness(f)['packed_prepared'] and not screen_expected_witness(f)['fade_prepared']}
+    result={}
+    for f in range(SCREEN_FRAMES):
+        w=screen_expected_witness(f)
+        if w['reason']!='sampled' or not w['packed_prepared'] or w['fade_prepared']:continue
+        result[f]=sum(outside(s['kind']) for s in screen_expected_sources(f)[0] if s['packed_admitted'])
+    return result
 
 
 def validate_screen_timing(output,trace,screen,width,height):
@@ -1041,7 +1112,7 @@ def main_screen(args):
                        X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5',
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
-                       X3M_CAPTURE_START='1000000' if run.get('timing') else '1',X3M_CAPTURE_FRAMES='0',WINEDLLOVERRIDES='d3d9=n,b')
+                       X3M_CAPTURE_START='1000000' if run.get('timing') else str(SCREEN_CAPTURE_FRAMES.start),X3M_CAPTURE_FRAMES='0' if run.get('timing') else str(len(SCREEN_CAPTURE_FRAMES)),WINEDLLOVERRIDES='d3d9=n,b')
             if run.get('witness'):env['X3M_FADE_WITNESS']=str(WITNESS_K)
             if run.get('rect'):env['X3M_FIXTURE_SCREEN_RECT']=','.join(map(str,run['rect']))
             if run.get('caps')==0:env['X3M_FIXTURE_SCREEN_CAPS_FAULT']='1'

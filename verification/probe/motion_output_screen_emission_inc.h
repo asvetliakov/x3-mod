@@ -47,16 +47,51 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     // bench: a small centred quad (+-.05: 96x54 px at 1080p, 64x38 at 1280x768).
     const float qx0=f.screenemission_bench?-.05f:0.f,qx1=f.screenemission_bench?.05f:.5f,qy0=f.screenemission_bench?-.05f:-.25f,qy1=f.screenemission_bench?.05f:.25f,qz=.1f;
     const RECT quad_rect{LONG(std::lround((qx0+1)*f.W/2.)),LONG(std::lround((1-qy1)*f.H/2.)),LONG(std::lround((qx1+1)*f.W/2.)),LONG(std::lround((1-qy0)*f.H/2.))};
+    // Near-plane kinds (screen-emission-region.md, step B): rows x' = x,
+    // y' = y, z' = .1 (z - 1), w = z put the D3D near plane at w = 1; the
+    // vertices below are clip-space (x, y, w) triples. n: one triangle with a
+    // vertex behind the camera (second triangle degenerate), visible as the
+    // trapezoid NDC (0,.25),(.5,.25),(.75,.375),(0,.375); x: the quad with its
+    // near edge exactly on the near plane (footprint = the functional quad);
+    // h: the quad entirely behind (nothing rasterised, refused BehindNear);
+    // b: a beam from the near plane to w = 1000 (footprint = the quad).
+    const auto near_kind=[](char kind){return kind=='n'||kind=='x'||kind=='h'||kind=='b';};
+    const float near_rows[16]={1,0,0,0, 0,1,0,0, 0,0,.1f,-.1f, 0,0,1,0};
+    const float near_vertices[4][6][3]={
+        {{0,0,-1},{0,.75f,3},{1.5f,.75f,3},{0,.75f,3},{0,.75f,3},{0,.75f,3}},                       // n
+        {{0,-.25f,1},{.5f,-.25f,1},{0,.75f,3},{.5f,-.25f,1},{1.5f,.75f,3},{0,.75f,3}},               // x
+        {{0,-.25f,-1},{.5f,-.25f,-1},{0,.75f,-3},{.5f,-.25f,-1},{1.5f,.75f,-3},{0,.75f,-3}},         // h
+        {{0,-.25f,1},{.5f,-.25f,1},{0,250,1000},{.5f,-.25f,1},{500,250,1000},{0,250,1000}}};         // b
+    const auto near_index=[](char kind){return kind=='n'?0u:kind=='x'?1u:kind=='h'?2u:3u;};
+    // Pixel footprint the rasteriser can touch, per kind (64x64 functional
+    // script): the trapezoid's bounding box for n, empty for h, the quad else.
+    const auto kind_rect=[&](char kind) {
+        if(kind=='n')return RECT{LONG(f.W/2),LONG(std::lround(.625*f.H/2.)),LONG(std::lround(1.75*f.W/2.)),LONG(std::lround(.75*f.H/2.))};
+        if(kind=='h')return RECT{0,0,0,0};
+        return quad_rect;
+    };
+    // Whether the source of `kind` rasterises pixel (x, y): the n trapezoid
+    // under the D3D9 convention (pixel centres at integer coordinates, the
+    // top-left fill rule: top and left edges inclusive, bottom and right
+    // exclusive, as the functional quad's edges already rely on), the
+    // rectangle else.
+    const auto covered_source=[&](char kind,const RECT& rect,unsigned x,unsigned y) {
+        if(kind!='n')return LONG(x)>=rect.left&&LONG(x)<rect.right&&LONG(y)>=rect.top&&LONG(y)<rect.bottom;
+        const double u=x/(f.W/2.)-1,v=1-y/(f.H/2.);
+        return v>.25&&v<=.375&&u>=0&&u<.5+2*(v-.25);
+    };
     // The writer: whole-buffer DISCARD lock, the stale tail first, then
-    // `quads` copies of the quad (two triangles each) from vertex 0.
-    const auto write_bullets=[&](unsigned quads) {
+    // `quads` copies of the quad (two triangles each) from vertex 0; a
+    // near-plane kind writes its six vertices once.
+    const auto write_bullets=[&](unsigned quads,char kind='s') {
         void* data=nullptr;api(bullets->Lock(0,buffer_bytes,&data,D3DLOCK_DISCARD),"bullet discard lock");
         auto* words=static_cast<float*>(data);for(unsigned n=0;n<buffer_bytes/4;++n)words[n]=0.f;
         const float corners[6][2]={{qx0,qy0},{qx1,qy0},{qx0,qy1},{qx1,qy0},{qx1,qy1},{qx0,qy1}};
         for(unsigned q=0;q<quads;++q)for(unsigned k=0;k<6;++k) {
             auto* v=static_cast<unsigned char*>(data)+(q*6+k)*stride;
             const float position[3]={corners[k][0],corners[k][1],qz},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu; // h = COLOR0.w = 1
-            std::memcpy(v,position,12);std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);
+            if(near_kind(kind))std::memcpy(v,near_vertices[near_index(kind)][k],12);else std::memcpy(v,position,12);
+            std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);
         }
         api(bullets->Unlock(),"bullet discard unlock");
     };
@@ -118,7 +153,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         api(f.d->SetVertexDeclaration(bullet_declaration.p),"bullet declaration bind");api(f.d->SetStreamSource(0,bullets.p,0,stride),"bullet stream");
         api(f.d->SetStreamSourceFreq(0,1),"bullet frequency");api(f.d->SetIndices(nullptr),"bullet no indices");
         api(f.d->SetVertexShader(bullet_vs.p),"bullet VS bind");api(f.d->SetPixelShader(bullet_ps.p),"bullet PS bind");
-        const float rows[16]={1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};api(f.d->SetVertexShaderConstantF(0,rows,4),"bullet g_mViewProjection");
+        const float rows[16]={1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};api(f.d->SetVertexShaderConstantF(0,near_kind(kind)?near_rows:rows,4),"bullet g_mViewProjection");
         for(unsigned stage=0;stage<7;++stage){api(f.d->SetTexture(stage,stage?nullptr:static_cast<IDirect3DBaseTexture9*>(bullet_texture.p)),"bullet diffuse");common_sampler(stage);}
         api(f.d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,kind=='g'?TRUE:FALSE),"bullet sampler 0 srgb");
         api(f.d->SetRenderState(D3DRS_DITHERENABLE,kind=='d'?TRUE:FALSE),"bullet dither");
@@ -128,7 +163,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"bullet mask 15");api(f.d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"bullet alpha test");
         api(f.d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"bullet alpha func");api(f.d->SetRenderState(D3DRS_ALPHAREF,1),"bullet alpha ref");
         api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,FALSE),"bullet no scissor");
-        return quad_rect;
+        return kind_rect(kind);
     };
     // The fade fixture's Asteroid pair 0 (run_linear_distance_fade case 0 inputs)
     // and its additive emission source, both under the quarter-viewport scissor.
@@ -183,8 +218,9 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     // buffer is recreated: frame 11 is the first draw again).
     struct Plan {const char* kinds;unsigned overlap;unsigned fault;};
     // Frames 14-16: the readiness refusals (PROJECTED, sRGB sampler) and the
-    // dither state, each bound and native.
-    const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0},{"p",1,0},{"g",1,0},{"d",1,0}};
+    // dither state, each bound and native. Frames 17-20: the near-plane
+    // kinds (n straddling, x exact, h behind, b beam).
+    const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0},{"p",1,0},{"g",1,0},{"d",1,0},{"n",1,0},{"x",1,0},{"h",1,0},{"b",1,0}};
     const Plan control[]={{"",1,0},{"s",1,0},{"s",1,0}};
     const unsigned frames=f.screenemission_bench?18:qualified?unsigned(sizeof plans/sizeof plans[0]):unsigned(sizeof control/sizeof control[0]);
     unsigned submissions=0;
@@ -212,10 +248,10 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         auto before=scene();
         for(unsigned source=0;p.kinds[source];++source) {
             const char kind=p.kinds[source];
-            const bool screen=kind=='s'||kind=='p'||kind=='g'||kind=='d',emission=kind=='e';
+            const bool screen=kind=='s'||kind=='p'||kind=='g'||kind=='d'||near_kind(kind),emission=kind=='e';
             const unsigned overlap=screen?p.overlap:1;
             unsigned fault=screen?p.fault:0;
-            if(screen)write_bullets(overlap);
+            if(screen)write_bullets(overlap,kind);
             const RECT rect=screen?bind_bullets(kind):bind_source(emission);
             {Com<IDirect3DSurface9> logical;api(f.d->GetRenderTarget(0,&logical.p),"screen source snapshot application view");}
             const auto state=f.snapshot();
@@ -242,13 +278,13 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             const bool packed=screen&&delta[41]==1,recovered=packed&&delta[43]==1;
             const RECT composed=packed&&injected?injected_rect:rect;
             for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x) {
-                const unsigned i=(y*f.W+x)*4;const bool covered=covered_by(rect,x,y)&&(!packed||covered_by(composed,x,y));
+                const unsigned i=(y*f.W+x)*4;const bool covered=covered_source(kind,rect,x,y)&&(!packed||covered_by(composed,x,y));
                 for(unsigned k=0;k<4;++k)require_quiet(std::isfinite(after[i+k]),"screen finite actual scene");
                 if(!covered||recovered)require_quiet(!std::memcmp(&before[i],&after[i],16),"screen excluded (or recovered) raw A exact");
                 else if(!screen&&!emission)require_quiet(after[i+3]==before[i+3],"screen fade native destination alpha exact");
                 else if(emission&&f.hdr)require_quiet(after[i+3]==before[i+3]+.125f,"screen mixed emission alpha source once");
                 if(SUCCEEDED(mask_hr_before)&&SUCCEEDED(mask_hr_after)&&mask_before[i]>0)require_quiet(mask_after[i]>0,"screen earlier shared mask footprint retained");
-                if(covered_by(rect,x,y)&&delta[4]==1)for(unsigned k=0;k<3;++k)expected_mask[i+k]=1; // the source writes M unscissored: the whole quad
+                if(covered_source(kind,rect,x,y)&&delta[4]==1)for(unsigned k=0;k<3;++k)expected_mask[i+k]=1; // the source writes M unscissored: the whole quad
             }
             // Numerical witnesses: inside the quad and every scissor, and inside
             // the quad only (outside the fade/emission scissor and the injected
@@ -256,7 +292,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             const unsigned sample_x[2]={f.W/2+4,f.W/2+12};
             for(unsigned sample=0;sample<2;++sample) {
                 const unsigned x=sample_x[sample],y=f.H/2,i=(y*f.W+x)*4;
-                std::printf("SCREEN_SAMPLE frame=%llu source=%u kind=%c overlap=%u x=%u y=%u covered=%u bracket=%u packed=%u q=%.9g,%.9g,%.9g a=%.9g before=%.17g,%.17g,%.17g,%.17g after=%.17g,%.17g,%.17g,%.17g\n",f.frame,source,kind,overlap,x,y,unsigned(covered_by(rect,x,y)),unsigned(packed),unsigned(packed&&covered_by(composed,x,y)),
+                std::printf("SCREEN_SAMPLE frame=%llu source=%u kind=%c overlap=%u x=%u y=%u covered=%u bracket=%u packed=%u q=%.9g,%.9g,%.9g a=%.9g before=%.17g,%.17g,%.17g,%.17g after=%.17g,%.17g,%.17g,%.17g\n",f.frame,source,kind,overlap,x,y,unsigned(covered_source(kind,rect,x,y)),unsigned(packed),unsigned(packed&&covered_by(composed,x,y)),
                             double(bullet_texel[0]),double(bullet_texel[1]),double(bullet_texel[2]),double(bullet_texel[3]),before[i],before[i+1],before[i+2],before[i+3],after[i],after[i+1],after[i+2],after[i+3]);
             }
             std::printf("SCREEN_SOURCE frame=%llu source=%u kind=%c overlap=%u fault=%u hr=%08lx original_calls=%u prepared=%u linear=%u native=%u incomplete=%u refused=%u packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded=%u packed_caps=%u packed_region_pixels=%u prefix_bound=%u prefix_refused=%u rect=%ld,%ld,%ld,%ld mask_before=%u mask_after=%u hash_mask_before=%016llx hash_mask_after=%016llx hash_red_before=%016llx hash_red_after=%016llx\n",

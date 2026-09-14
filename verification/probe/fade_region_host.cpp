@@ -382,15 +382,91 @@ int run(unsigned seed, unsigned cases) {
     return failures ? 1 : 0;
 }
 } // namespace prefix_mode
+// --near seed cases points: near-plane clipping (screen-emission-region.md,
+// step B). Perspective-like rows whose near plane (clip z = 0, at w = d_n)
+// cuts through, before or behind random boxes. Every interior point with
+// clip z >= 0 (the D3D-visible half-space) must land inside the clipped
+// rectangle; a box with every corner behind must be BehindNear; a box with no
+// corner behind must give exactly the unclipped rectangle.
+int near_mode(unsigned seed, unsigned cases, unsigned points) {
+    std::mt19937_64 rng(seed);
+    std::uniform_real_distribution<double> unit(0, 1);
+    unsigned failures = 0;
+    for (unsigned c = 0; c < cases; ++c) {
+        Viewport v{0, 0, 16 + unsigned(unit(rng) * 2032), 16 + unsigned(unit(rng) * 1064)};
+        Box box{};
+        for (unsigned a = 0; a < 3; ++a) { box.centre[a] = unit(rng) * 8 - 4; box.half[a] = unit(rng) * 3; }
+        // x' = s x + tx, y' = s y + ty, z' = k (z + d - zn), w = z + d: near plane at w = zn.
+        const double s = 0.25 + unit(rng) * 8, d = unit(rng) * 10 - 5, zn = 0.01 + unit(rng) * 3, k = 0.05 + unit(rng);
+        const float rows[16] = {float(s), 0, 0, float(unit(rng) * 4 - 2), 0, float(s), 0, float(unit(rng) * 4 - 2),
+                                0, 0, float(k), float(k * (d - zn)), 0, 0, 1, float(d)};
+        Rect rect{}, plain{};
+        NearClip cut{true, 0};
+        const Reason reason = project_box(rows, box, v, &rect, &cut);
+        const Reason plain_reason = project_box(rows, box, v, &plain);
+        unsigned behind_corners = 0;
+        for (unsigned corner = 0; corner < 8; ++corner) {
+            double p[3];
+            for (unsigned a = 0; a < 3; ++a) p[a] = box.centre[a] + ((corner >> a) & 1u ? 1 : -1) * (box.half[a] + half_float_expansion);
+            const double z = rows[8] * p[0] + rows[9] * p[1] + rows[10] * p[2] + rows[11];
+            if (z < 0) ++behind_corners;
+        }
+        bool fail = false;
+        if (cut.clipped != behind_corners) fail = true;
+        if ((reason == Reason::BehindNear) != (behind_corners == 8)) fail = true;
+        if (behind_corners == 0 && (reason != plain_reason || std::memcmp(&rect, &plain, sizeof rect) != 0)) fail = true;
+        unsigned inside = 0, outside = 0, clipped = 0, invisible = 0;
+        if (reason == Reason::Bound) {
+            for (unsigned n = 0; n < points; ++n) {
+                double p[3];
+                for (unsigned a = 0; a < 3; ++a) p[a] = box.centre[a] + (unit(rng) * 2 - 1) * box.half[a];
+                double clip[4];
+                for (unsigned kk = 0; kk < 4; ++kk) clip[kk] = double(rows[4 * kk]) * p[0] + double(rows[4 * kk + 1]) * p[1] + double(rows[4 * kk + 2]) * p[2] + double(rows[4 * kk + 3]);
+                if (clip[2] < 0) { ++invisible; continue; } // behind the near plane: D3D never rasterises it
+                if (!(clip[3] > 0)) { fail = true; continue; }
+                const double sx = v.x + (clip[0] / clip[3] + 1) * v.width * .5, sy = v.y + (1 - clip[1] / clip[3]) * v.height * .5;
+                bool clip_flag = false;
+                if (covered(rect, v, sx, sy, &clip_flag)) { if (clip_flag) ++clipped; else ++inside; }
+                else ++outside;
+            }
+        }
+        if (outside) fail = true;
+        if (fail) ++failures;
+        std::printf("NEAR index=%u reason=%u plain_reason=%u behind=%u clipped=%u rect=%d,%d,%d,%d viewport=%u,%u inside=%u outside=%u clipped_points=%u invisible=%u fail=%u\n",
+                    c, unsigned(reason), unsigned(plain_reason), behind_corners, cut.clipped, rect.left, rect.top, rect.right, rect.bottom, v.width, v.height, inside, outside, clipped, invisible, unsigned(fail));
+    }
+    std::printf("RESULT cases=%u failures=%u\n", cases, failures);
+    return failures ? 1 : 0;
+}
+// --near-case rows(16) centre(3) half(3) viewport(4): derive with the near
+// cut, as the locked-prefix source runs it.
+int near_case_mode(int argc, char** argv) {
+    if (argc < 2 + 16 + 3 + 3 + 4) { std::fprintf(stderr, "near-case arguments\n"); return 2; }
+    float rows[16]; Box box{}; Viewport v{};
+    int i = 2;
+    for (auto& r : rows) r = float(std::strtod(argv[i++], nullptr));
+    for (auto& c : box.centre) c = std::strtod(argv[i++], nullptr);
+    for (auto& h : box.half) h = std::strtod(argv[i++], nullptr);
+    v.x = unsigned(std::strtoul(argv[i++], nullptr, 10)); v.y = unsigned(std::strtoul(argv[i++], nullptr, 10));
+    v.width = unsigned(std::strtoul(argv[i++], nullptr, 10)); v.height = unsigned(std::strtoul(argv[i++], nullptr, 10));
+    const Region region = derive(rows, true, box, v, true, Rect{0, 0, 64, 64}, true);
+    std::printf("REGION bound=%u reason=%u clipped=%u rect=%d,%d,%d,%d f=%.9f\n", region.bound, unsigned(region.reason), region.clipped,
+                region.rect.left, region.rect.top, region.rect.right, region.rect.bottom, area_fraction(region.rect, v));
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
+    if (argc >= 5 && std::strcmp(argv[1], "--near") == 0)
+        return near_mode(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
+    if (argc >= 2 && std::strcmp(argv[1], "--near-case") == 0) return near_case_mode(argc, argv);
     if (argc >= 2 && std::strcmp(argv[1], "--table") == 0) return table::run();
     if (argc >= 4 && std::strcmp(argv[1], "--prefix") == 0)
         return prefix_mode::run(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)));
     if (argc >= 5 && std::strcmp(argv[1], "--random") == 0)
         return random_mode(unsigned(std::strtoul(argv[2], nullptr, 10)), unsigned(std::strtoul(argv[3], nullptr, 10)), unsigned(std::strtoul(argv[4], nullptr, 10)));
     if (argc >= 2 && std::strcmp(argv[1], "--case") == 0) return case_mode(argc, argv);
-    std::fprintf(stderr, "usage: --random seed cases points | --case ... | --table | --prefix seed cases\n");
+    std::fprintf(stderr, "usage: --random seed cases points | --case ... | --near seed cases points | --near-case ... | --table | --prefix seed cases\n");
     return 2;
 }

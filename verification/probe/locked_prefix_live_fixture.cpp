@@ -5,7 +5,8 @@
 // game's bullet vertex shader (vs_5e484a06672e28fb) and pixel shader draw
 // non-indexed quads from a DISCARD-locked dynamic buffer with the writer's
 // layout, one draw per frame, through a scripted sequence (first draw,
-// steady state, NaN tail, nested lock, instanced stream, Reset). The
+// steady state, near-plane straddling / exact / behind / long beam, NaN
+// tail, nested lock, instanced stream, Reset). The
 // proxy's capture log carries the locked_prefix / locked_prefix_frame lines
 // the runner checks. No X3, no game launch.
 #define WIN32_LEAN_AND_MEAN
@@ -74,13 +75,31 @@ struct Fixture {
         if (nested) api(bullets->Unlock(), "nested unlock");
         api(bullets->Unlock(), "discard unlock");
     }
-    void draw(const char* label, unsigned quads, bool instanced = false) {
+    // Near-plane cases: six explicit clip-space vertices (x, y, w; the rows
+    // below map object (x, y, z) to clip (x, y, .1 (z - 1), z), so the D3D
+    // near plane z' = 0 sits at w = 1) repeated 16 times: exactly 96
+    // vertices, one whole checkpoint, no stale tail in the box.
+    void write_near(const float (*vertices)[3]) {
+        void* data = nullptr;
+        api(bullets->Lock(0, bytes, &data, D3DLOCK_DISCARD), "near discard lock");
+        auto* words = static_cast<float*>(data);
+        for (unsigned n = 0; n < bytes / 4; ++n) words[n] = 0.f;
+        for (unsigned q = 0; q < 16; ++q) for (unsigned k = 0; k < 6; ++k) {
+            auto* v = reinterpret_cast<unsigned char*>(data) + (q * 6 + k) * stride;
+            const float uv[2] = {float(k & 1), float(k >> 1)};
+            const DWORD colour = 0xff000000u;
+            std::memcpy(v, vertices[k], 12); std::memcpy(v + 12, uv, 8); std::memcpy(v + 20, &colour, 4);
+        }
+        api(bullets->Unlock(), "near discard unlock");
+    }
+    static constexpr float near_rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, .1f, -.1f, 0, 0, 1, 0};
+    void draw(const char* label, unsigned quads, bool instanced = false, const float* rows_override = nullptr) {
         ++frame;
         api(d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xff202020, 1.f, 0), "clear");
         api(d->BeginScene(), "BeginScene");
         // g_mViewProjection at c0-3: x' = x, y' = y, z' = z/2 + 1, w = z + 2.
         const float rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, .5f, 1, 0, 0, 1, 2};
-        api(d->SetVertexShaderConstantF(0, rows, 4), "rows");
+        api(d->SetVertexShaderConstantF(0, rows_override ? rows_override : rows, 4), "rows");
         api(d->SetVertexDeclaration(declaration), "declaration");
         api(d->SetStreamSource(0, bullets, 0, stride), "stream 0");
         api(d->SetStreamSource(1, instance, 0, 4), "stream 1");
@@ -136,7 +155,19 @@ int main(int argc, char** argv) {
         api(f.d->SetPixelShader(ps), "set PS");
         const float nan = std::numeric_limits<float>::quiet_NaN();
         f.write(17, 0.f); f.draw("first_draw_unknown", 17);            // marks; refused (unknown)
-        for (unsigned i = 0; i < 3; ++i) { f.write(17, 0.f); f.draw("bound", 17); }
+        f.write(17, 0.f); f.draw("bound", 17);
+        // Near-plane cases (screen-emission-region.md, step B): a triangle
+        // with one vertex behind the camera (the second triangle degenerate),
+        // a quad whose near edge lies exactly on the near plane, a quad
+        // entirely behind it, and a beam from the near plane to w = 1000.
+        const float straddle[6][3] = {{0, 0, -1}, {0, .75f, 3}, {1.5f, .75f, 3}, {0, .75f, 3}, {0, .75f, 3}, {0, .75f, 3}};
+        const float exact[6][3] = {{0, -.25f, 1}, {.5f, -.25f, 1}, {0, .75f, 3}, {.5f, -.25f, 1}, {1.5f, .75f, 3}, {0, .75f, 3}};
+        const float behind[6][3] = {{0, -.25f, -1}, {.5f, -.25f, -1}, {0, .75f, -3}, {.5f, -.25f, -1}, {1.5f, .75f, -3}, {0, .75f, -3}};
+        const float beam[6][3] = {{0, -.25f, 1}, {.5f, -.25f, 1}, {0, 250, 1000}, {.5f, -.25f, 1}, {500, 250, 1000}, {0, 250, 1000}};
+        f.write_near(straddle); f.draw("near_straddle", 16, false, Fixture::near_rows);
+        f.write_near(exact); f.draw("near_exact", 16, false, Fixture::near_rows);
+        f.write_near(behind); f.draw("near_behind", 16, false, Fixture::near_rows);
+        f.write_near(beam); f.draw("near_beam", 16, false, Fixture::near_rows);
         f.write(16, nan); f.draw("bound_exact_checkpoint", 16);       // 96 vertices: the NaN tail is beyond
         f.write(17, nan); f.draw("nan_tail_refused", 17);             // 102: checkpoint 1 holds NaN
         f.write(17, 0.f, true); f.draw("nested_lock_invalid", 17);

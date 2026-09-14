@@ -283,6 +283,7 @@ unsigned MotionOutput::device_references() const noexcept {
     if (composition_) count += composition_->references();
     if (depth_surface_) ++count;
     if (fade_witness_.copy) ++count; // the witness's retained system-memory readback surface
+    if (packed_sample_.copy) ++count; // the packed_sample diagnostic's retained readback surface
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
     if (quad_vs_) ++count;
@@ -311,7 +312,7 @@ void MotionOutput::release_resources() noexcept {
     drop_redirect();
     if (composition_) { composition_->detach(); composition_.reset(); }
     fade_bounds_.clear();
-    release_fade_witness();
+    release_fade_witness(); release_packed_sample();
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
     // of this function must not probe a device that no longer exists.
@@ -1927,7 +1928,7 @@ void MotionOutput::before_reset() noexcept {
     release_target();
     if (composition_) { composition_busy_ = true; composition_->before_reset(); composition_busy_ = false; }
     fade_bounds_.clear(); // relearned after Reset; allocation ids never recur
-    release_fade_witness(); // the M target is recreated after Reset; the copy follows its size
+    release_fade_witness(); release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
     composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
     if (hdr_) hdr_->before_reset();
@@ -2403,6 +2404,7 @@ bool MotionOutput::scene_bound() const noexcept {
 
 void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     frame_ = frame; capture_ = capture; telemetry_ = telemetry::enabled();
+    packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {};
     cutout_coverage_missed_ = false; cutout_arm_active_ = cutout_arm_configured();
@@ -2993,7 +2995,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         route.composition = true; route.composition_policy = policy;
         ++composition_counts_.prepared;
         if (fade) ++composition_counts_.prepared_fade;
-        if (screen) ++composition_counts_.packed_admitted;
+        if (screen) { ++composition_counts_.packed_admitted; if (capture_) sample_packed_pre(route); }
         if ((fade || screen) && witness_frame() && fade_witness_.last < FadeWitness::rect_capacity) {
             fade_witness_.prepared[fade_witness_.last] = true; ++fade_witness_.prepared_count;
         }
@@ -3057,6 +3059,7 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
         composition_counts_.region_pixels += pixels;
         composition_counts_.pool_traffic_bytes += pixels * (packed ? 112u : 48u);
         if (packed) composition_counts_.packed_region_pixels += pixels;
+        if (packed && capture_) sample_packed_post(r);
         composition_counts_.recovery = completed.recovery;
         if (FAILED(completed.recovery)) ++composition_counts_.recovery_failures;
         if (FAILED(completed.restore)) composition_state_lost_ = true;
@@ -3408,7 +3411,11 @@ fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_
     // composes into the HDR target and takes the first branch).
     const bool rt0_target = source == BoundSource::LockedPrefix && !hdr_ && shadow_.rt0.known;
     const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : rt0_target ? shadow_.rt0.width : 0u), std::int32_t(hdr_ ? hdr_->height() : rt0_target ? shadow_.rt0.height : 0u)};
-    Region region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target);
+    // The locked-prefix box is cut against the D3D near plane (z >= 0) before
+    // the divide: a bullet batch that starts behind the camera is bounded by
+    // its visible part, one entirely behind is refused as BehindNear. The
+    // part-bound fade route keeps the plain projection (NonPositiveW -> full).
+    Region region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target, source == BoundSource::LockedPrefix);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_fade_rect_set_ && source == BoundSource::Part) { region.rect = fixture_fade_rect_; region.reason = Reason::Bound; region.bound = true; }
 #endif
@@ -3520,13 +3527,102 @@ void MotionOutput::derive_prefix_region(const MotionDrawCall& call, MotionRoute&
     route.ticks += draw_stamp() - begin;
     ++counts.prefix_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
     ++counts.prefix_lookup[bound.prefix_refusal < unsigned(prefix::Lookup::Count) ? bound.prefix_refusal : 0u];
-    if (region.bound) { ++counts.prefix_bound; counts.prefix_permille_sum += permille; } else ++counts.prefix_refused;
+    if (region.bound) { ++counts.prefix_bound; counts.prefix_permille_sum += permille; if (region.clipped) ++counts.prefix_clipped; } else ++counts.prefix_refused;
     if (capture_)
-        log("locked_prefix device=%llu frame=%llu index=%lu bound=%u reason=%u status=%s lookup=%s vb=%llu rev=%llu vertices=%lu checkpoint=%lu box=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s",
-            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), status_name(bound.status), prefix::lookup_name(prefix::Lookup(bound.prefix_refusal)),
+        log("locked_prefix device=%llu frame=%llu index=%lu bound=%u reason=%u clipped=%u status=%s lookup=%s vb=%llu rev=%llu vertices=%lu checkpoint=%lu box=%.3f,%.3f,%.3f,%.3f,%.3f,%.3f rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s",
+            id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), region.clipped, status_name(bound.status), prefix::lookup_name(prefix::Lookup(bound.prefix_refusal)),
             shadow_.stream0, bound.vb_revision, static_cast<unsigned long>(vertex_count), static_cast<unsigned long>(bound.checkpoint),
             bound.box.centre[0], bound.box.centre[1], bound.box.centre[2], bound.box.half[0], bound.box.half[1], bound.box.half[2],
             long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target");
+}
+
+// Capture frames only (zero cost otherwise: one bool test per admitted
+// packed draw). The "dimmer bullets" diagnostic of screen-emission-region.md,
+// step B: the composed target A sampled at the centre of the bound rectangle
+// before the source draw (after prepare: A|R is copied to B|R, A itself is
+// untouched until finish composes) and after the composite, through one
+// documented GetRenderTargetData (whole surface: the destination must match
+// the source's size) into one retained system-memory surface of the
+// target's size and format and a 1x1 LockRect. At most
+// packed_sample_cap admitted draws per capture frame are sampled (the first
+// ones; the rest are counted in packed_sample_skipped on the frame line), so
+// a frame with hundreds of bullet draws costs at most 2 * cap copies. The
+// retained surface is allocated once per size/format, counted by
+// device_references() and released with the witness copy at Reset/teardown.
+HRESULT MotionOutput::sample_target_pixel(IDirect3DSurface9* surface, const renderer::Surface& description, std::int32_t x, std::int32_t y, float out[4]) noexcept {
+    out[0] = out[1] = out[2] = out[3] = 0.f;
+    if (!surface || !description.known || !description.width || !description.height) return D3DERR_NOTFOUND;
+    if (x < 0 || y < 0 || std::uint32_t(x) >= description.width || std::uint32_t(y) >= description.height) return D3DERR_INVALIDCALL;
+    const auto format = D3DFORMAT(description.format);
+    unsigned bytes = 0;
+    switch (format) {
+    case D3DFMT_A16B16G16R16F: bytes = 8; break;
+    case D3DFMT_A32B32G32R32F: bytes = 16; break;
+    case D3DFMT_A8R8G8B8: case D3DFMT_X8R8G8B8: bytes = 4; break;
+    default: return D3DERR_NOTAVAILABLE; // fail closed: no decode for other formats
+    }
+    auto& s = packed_sample_;
+    if (s.copy && (s.copy_width != description.width || s.copy_height != description.height || s.copy_format != description.format)) release_packed_sample();
+    HRESULT hr = S_OK;
+    if (!s.copy) {
+        hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, description.width, description.height, format, D3DPOOL_SYSTEMMEM, &s.copy, nullptr);
+        if (SUCCEEDED(hr)) { s.copy_width = description.width; s.copy_height = description.height; s.copy_format = description.format; }
+        else s.copy = nullptr;
+    }
+    IDirect3DSurface9* copy = s.copy;
+    if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, surface, copy);
+    if (SUCCEEDED(hr)) {
+        const RECT pixel{x, y, x + 1, y + 1};
+        D3DLOCKED_RECT lock{};
+        hr = copy->LockRect(&lock, &pixel, D3DLOCK_READONLY);
+        if (SUCCEEDED(hr)) {
+            const auto* bits = static_cast<const unsigned char*>(lock.pBits);
+            if (bytes == 16) std::memcpy(out, bits, 16);
+            else if (bytes == 8) {
+                for (unsigned c = 0; c < 4; ++c) {
+                    std::uint16_t h = 0; std::memcpy(&h, bits + 2 * c, 2);
+                    const unsigned exponent = (h >> 10) & 31u, mantissa = h & 1023u;
+                    const float value = exponent == 31 ? (mantissa ? std::numeric_limits<float>::quiet_NaN() : std::numeric_limits<float>::infinity())
+                        : std::ldexp(float(exponent ? 1024u + mantissa : mantissa), int(exponent ? exponent : 1) - 25);
+                    out[c] = h & 0x8000u ? -value : value;
+                }
+            } else {
+                DWORD v = 0; std::memcpy(&v, bits, 4);
+                out[0] = float((v >> 16) & 255u) / 255.f; out[1] = float((v >> 8) & 255u) / 255.f; out[2] = float(v & 255u) / 255.f;
+                out[3] = format == D3DFMT_X8R8G8B8 ? 1.f : float((v >> 24) & 255u) / 255.f;
+            }
+            copy->UnlockRect();
+        }
+    }
+    return hr;
+}
+void MotionOutput::release_packed_sample() noexcept {
+    auto& s = packed_sample_;
+    release(s.copy); s.copy = nullptr; s.copy_width = s.copy_height = s.copy_format = 0; s.valid = false;
+}
+void MotionOutput::sample_packed_pre(const MotionRoute& route) noexcept {
+    auto& s = packed_sample_;
+    if (s.sampled >= packed_sample_cap) { ++composition_counts_.packed_sample_skipped; return; }
+    ++s.sampled;
+    s.valid = true;
+    s.rect = route.prefix_region.rect;
+    s.clipped = route.prefix_region.clipped;
+    s.index = counters_.draws;
+    s.x = s.rect.left + (s.rect.right - s.rect.left) / 2; s.y = s.rect.top + (s.rect.bottom - s.rect.top) / 2;
+    s.pre_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, s.x, s.y, s.pre);
+}
+void MotionOutput::sample_packed_post(const RECT& composed) noexcept {
+    auto& s = packed_sample_;
+    if (!s.valid) return;
+    s.valid = false;
+    float post[4];
+    const HRESULT post_result = sample_target_pixel(hdr_ ? hdr_->target() : nullptr, hdr_target_, s.x, s.y, post);
+    auto luminance = [](const float* c) { return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+    log("packed_sample device=%llu frame=%llu index=%lu rect=%ld,%ld,%ld,%ld clipped=%u composed=%ld,%ld,%ld,%ld centre=%ld,%ld format=%u pre=%.6g,%.6g,%.6g,%.6g pre_y=%.6g post=%.6g,%.6g,%.6g,%.6g post_y=%.6g pre_result=%08lx post_result=%08lx",
+        id_, frame_, static_cast<unsigned long>(s.index), long(s.rect.left), long(s.rect.top), long(s.rect.right), long(s.rect.bottom), s.clipped,
+        long(composed.left), long(composed.top), long(composed.right), long(composed.bottom), long(s.x), long(s.y), unsigned(hdr_target_.format),
+        double(s.pre[0]), double(s.pre[1]), double(s.pre[2]), double(s.pre[3]), luminance(s.pre),
+        double(post[0]), double(post[1]), double(post[2]), double(post[3]), luminance(post), static_cast<unsigned long>(s.pre_result), static_cast<unsigned long>(post_result));
 }
 
 // Capture frames only. The draw was recognised (fade pair in the exact
@@ -4219,14 +4315,14 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         const auto& c = counters_;
         if (composition_requested())
             log("%s_frame device=%llu frame=%llu prepared=%u linear=%u native=%u incomplete=%u refused=%u suppressed=%u exports=%u quarantine=%u state_lost=%u mask_valid=%u fade_eligible=%u fade_prepared=%u fade_linear=%u pool_traffic_estimate_bytes=%llu in_place=%u in_place_linear=%u in_place_incomplete=%u region_pixels=%llu"
-                " packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded_refused=%u packed_caps_refused=%u packed_region_pixels=%llu",
+                " packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded_refused=%u packed_caps_refused=%u packed_region_pixels=%llu packed_sample_skipped=%u",
                 distance_fade_requested_ || screen_emission_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.prepared, composition_counts_.linear, composition_counts_.native, composition_counts_.incomplete,
                 composition_counts_.refused, composition_counts_.suppressed, composition_counts_.exports, composition_quarantined_, composition_state_lost_,
                 composition_ && composition_->coverage_valid() && !composition_frame_stopped_ && !composition_quarantined_,
                 composition_counts_.eligible_fade, composition_counts_.prepared_fade, composition_counts_.linear_fade, composition_counts_.pool_traffic_bytes,
                 composition_counts_.in_place, composition_counts_.in_place_linear, composition_counts_.in_place_incomplete, composition_counts_.region_pixels,
                 composition_counts_.packed_eligible, composition_counts_.packed_admitted, composition_counts_.packed_linear, composition_counts_.packed_incomplete,
-                composition_counts_.packed_unbounded_refused, composition_counts_.packed_caps_refused, composition_counts_.packed_region_pixels);
+                composition_counts_.packed_unbounded_refused, composition_counts_.packed_caps_refused, composition_counts_.packed_region_pixels, composition_counts_.packed_sample_skipped);
         if (distance_fade_requested_ && (composition_counts_.region_bound || composition_counts_.region_full))
             log("fade_region_frame device=%llu frame=%llu bound=%u full=%u hit=%u miss=%u poisoned=%u evicted=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u status_no_table=%u status_no_scope=%u status_content=%u status_poisoned=%u status_read=%u status_back_link=%u status_no_record=%u status_invalid=%u table_used=%u table_poisoned=%u table_evictions=%u",
                 id_, frame_, composition_counts_.region_bound, composition_counts_.region_full, composition_counts_.region_hit, composition_counts_.region_miss, composition_counts_.region_poisoned, composition_counts_.region_evicted,
@@ -4239,9 +4335,9 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             const auto& pc = composition_counts_;
             ownership::LockedPrefixStatistics s{};
             ownership::get_locked_prefix_statistics(&s);
-            log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u instanced=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f lookups=%llu bounds=%llu marks=%llu table_used=%u table_evictions=%llu",
-                id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_instanced, pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
-                pc.prefix_reason[1], pc.prefix_reason[2], pc.prefix_reason[3], pc.prefix_reason[4], pc.prefix_reason[5], pc.prefix_reason[6],
+            log("locked_prefix_frame device=%llu frame=%llu draws=%u bound=%u refused=%u instanced=%u clipped=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u reason_near=%u lookup_unknown=%u lookup_pending=%u lookup_invalid=%u lookup_empty=%u lookup_beyond=%u lookup_nonfinite=%u locks=%llu scans=%llu scanned_vertices=%llu scan_us=%.1f lookups=%llu bounds=%llu marks=%llu table_used=%u table_evictions=%llu",
+                id_, frame_, pc.prefix_draws, pc.prefix_bound, pc.prefix_refused, pc.prefix_instanced, pc.prefix_clipped, pc.prefix_bound ? double(pc.prefix_permille_sum) / (1000.0 * double(pc.prefix_bound)) : 0.0,
+                pc.prefix_reason[1], pc.prefix_reason[2], pc.prefix_reason[3], pc.prefix_reason[4], pc.prefix_reason[5], pc.prefix_reason[6], pc.prefix_reason[7],
                 pc.prefix_lookup[1], pc.prefix_lookup[2], pc.prefix_lookup[3], pc.prefix_lookup[4], pc.prefix_lookup[5], pc.prefix_lookup[6],
                 static_cast<unsigned long long>(s.locks), static_cast<unsigned long long>(s.scans), static_cast<unsigned long long>(s.scanned_vertices),
                 s.qpc_frequency ? double(s.scan_ticks) * 1e6 / double(s.qpc_frequency) : 0.0,
