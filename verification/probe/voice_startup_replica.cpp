@@ -26,6 +26,12 @@
 // (CLSID_CWMADecMediaObject) and the same category, and continues unchanged.
 // Mode game-dmo-skip is the alternative: on Init failure release the wrapper
 // and null the slot so AddFilter is skipped.
+// Option --dump-pcm <path> appends every consumed application-sample buffer to
+// <path> (decoded PCM as the game would consume it) and logs REPLICA_PCM per
+// cycle plus one REPLICA_PCM_FORMAT line, for offline artefact scanning
+// (verification/analysis/voice_pcm_scan.py). It lifts the five-sample cap in
+// favour of --dump-seconds <s> (default 60). Nothing is played; the dump is a
+// local file under /tmp.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -160,6 +166,7 @@ struct Stream {
     IMediaPosition* position{};IMediaControl* control{};IBaseFilter* wrapper{};std::vector<BYTE> pcm;WAVEFORMATEX format{};
     double duration{};const char* fatal="none";HRESULT fatal_hr=S_OK;bool created{};HRESULT early_update_hr=E_PENDING;
     int state{1};bool pending{};Mode mode{MODE_GAME};
+    FILE* dump{};int cycle{};std::uint64_t dumped{};  // --dump-pcm sink, the play loop's cycle number and the running byte offset
     Stream(Trace& x,int i,Mode m):t(x),index(i),mode(m){}
     bool need(const char* name,HRESULT hr) {
         if(FAILED(hr)){if(!std::strcmp(fatal,"none")){fatal=name;fatal_hr=hr;std::printf("REPLICA_FAILURE stream=%d name=%s hr=%08lx\n",index,name,static_cast<unsigned long>(hr));std::fflush(stdout);}return false;}
@@ -237,6 +244,7 @@ struct Stream {
         NEED("audio_qi_post",media->QueryInterface(IID_IAudioMediaStream,reinterpret_cast<void**>(&audio)));
         NEED("get_format",audio->GetFormat(&format));
         std::printf("REPLICA_FORMAT stream=%d tag=%u rate=%lu channels=%u bits=%u align=%u avg=%lu\n",index,format.wFormatTag,static_cast<unsigned long>(format.nSamplesPerSec),format.nChannels,format.wBitsPerSample,format.nBlockAlign,static_cast<unsigned long>(format.nAvgBytesPerSec));
+        if(dump){std::printf("REPLICA_PCM_FORMAT stream=%d tag=%u ch=%u rate=%lu bits=%u\n",index,format.wFormatTag,format.nChannels,static_cast<unsigned long>(format.nSamplesPerSec),format.wBitsPerSample);std::fflush(stdout);}
         if(format.wFormatTag!=WAVE_FORMAT_PCM||!format.nBlockAlign||!format.nAvgBytesPerSec||format.nAvgBytesPerSec>1000000)return need("pcm_domain",E_INVALIDARG);
         pcm.resize(format.nAvgBytesPerSec*2); // +0x60: two seconds per application sample
         NEED("activate_audio_data",CoCreateInstance(CLSID_AMAudioData,nullptr,CLSCTX_INPROC_SERVER,IID_IAudioData,reinterpret_cast<void**>(&data)));
@@ -275,7 +283,23 @@ struct Stream {
             DWORD size{},actual{};BYTE* ptr{};STREAM_TIME start{},end{},now{};
             hr=t.step(index,"sample_info",1,false,[&]{return data->GetInfo(&size,&ptr,&actual);});
             if(FAILED(hr))return "info_error";
-            hr=t.step(index,"sample_times",1,false,[&]{return sample->GetSampleTimes(&start,&end,&now);});
+            const HRESULT times=t.step(index,"sample_times",1,false,[&]{return sample->GetSampleTimes(&start,&end,&now);});
+            if(dump&&ptr&&actual) {
+                // The bytes the game would hand to DirectSound, in order, with the
+                // buffer's stream time when the sample carries one (100 ns units) and
+                // the running byte offset converted to 100 ns units when it does not.
+                const size_t written=std::fwrite(ptr,1,actual,dump);
+                const bool exposed=SUCCEEDED(times)&&(start||end);
+                const double rate=format.nAvgBytesPerSec?double(format.nAvgBytesPerSec):1.;
+                const STREAM_TIME t0=exposed?start:static_cast<STREAM_TIME>(dumped/rate*1e7);
+                const STREAM_TIME t1=exposed?end:static_cast<STREAM_TIME>((dumped+actual)/rate*1e7);
+                std::printf("REPLICA_PCM cycle=%d bytes=%lu t_start=%lld t_end=%lld src=%s offset=%llu written=%lu\n",cycle,
+                    static_cast<unsigned long>(actual),static_cast<long long>(t0),static_cast<long long>(t1),exposed?"sample":"offset",
+                    static_cast<unsigned long long>(dumped),static_cast<unsigned long>(written));
+                std::fflush(stdout);
+                dumped+=actual;
+            }
+            hr=times;
             bytes=actual;state=1;return "consumed";
         }
         for(int i=1;i<=2;++i){hr=t.step(index,"sample_update",i,false,[&]{return sample->Update(SSUPDATE_ASYNC,nullptr,nullptr,0);});if(SUCCEEDED(hr))break;}
@@ -348,17 +372,30 @@ static Mode parse_mode(const wchar_t* text,bool& ok) {
     ok=false;return MODE_GAME;
 }
 int wmain(int argc,wchar_t** argv) {
-    // argv: mode dwell_ms path1 path2 path3 ; stream 1 is the played/pumped one, 2 and 3 are restored (never pumped).
+    // argv: mode dwell_ms path1 path2 path3 [--dump-pcm <path>] [--dump-seconds <s>]
+    // stream 1 is the played/pumped one, 2 and 3 are restored (never pumped).
     // dwell_ms: loading-screen time after each construction and before play, spent pumping only (0..20000).
-    if(argc!=6)return 2;
+    if(argc<6)return 2;
     bool ok{};const Mode mode=parse_mode(argv[1],ok);if(!ok)return 2;
     const int dwell_ms=_wtoi(argv[2]);if(dwell_ms<0||dwell_ms>20000)return 2;
+    const wchar_t* dump_path=nullptr;int dump_seconds=60;
+    for(int i=6;i<argc;++i) {
+        if(!wcscmp(argv[i],L"--dump-pcm")&&i+1<argc)dump_path=argv[++i];
+        else if(!wcscmp(argv[i],L"--dump-seconds")&&i+1<argc){dump_seconds=_wtoi(argv[++i]);if(dump_seconds<1||dump_seconds>600)return 2;}
+        else return 2;
+    }
+    FILE* dump=nullptr;
+    if(dump_path) {
+        dump=_wfopen(dump_path,L"ab");  // append: one file per run, the runner picks the path
+        if(!dump){std::printf("REPLICA_ABORT stage=dump_open\n");return 5;}
+    }
     const int streams=mode==MODE_SINGLE?1:3;
     setvbuf(stdout,nullptr,_IONBF,0);owner_thread=GetCurrentThreadId();QueryPerformanceFrequency(&frequency);
     watchdog_stop=CreateEventW(nullptr,TRUE,FALSE,nullptr);HANDLE watcher=CreateThread(nullptr,0,watchdog,nullptr,0,nullptr);
     if(!watchdog_stop||!watcher)return 3;
     char mode_text[24];std::snprintf(mode_text,sizeof mode_text,"%ls",argv[1]);
     std::printf("REPLICA_HEADER schema=1 mode=%s streams=%d dwell_ms=%d watchdog_ms=%lu thread=%lu audible=0\n",mode_text,streams,dwell_ms,static_cast<unsigned long>(WATCHDOG_MS),static_cast<unsigned long>(owner_thread));
+    if(dump){std::printf("REPLICA_PCM_HEADER dump=1 dump_seconds=%d\n",dump_seconds);std::fflush(stdout);}
     Trace t;
     if(mode==MODE_GAME_DMO_HOOK) {
         // Production install path: the gate variable, the replica site, engine_patch claim, stub chained.
@@ -436,7 +473,7 @@ int wmain(int argc,wchar_t** argv) {
     // asset loaders do between 00498370 visits.
     for(int n=1;n<=streams;++n) {
         const int index=streams==1?1:(n==streams?1:n+1);
-        Stream* s=new Stream(t,index,mode);all.push_back(s);
+        Stream* s=new Stream(t,index,mode);if(index==1)s->dump=dump;all.push_back(s);
         t.step(index,"pump",1,true,[&]{pump();return S_OK;});
         const bool made=s->create(argv[2+index],sound);
         std::printf("REPLICA_STREAM stream=%d created=%d role=%s fatal=%s hr=%08lx duration=%.3f early_update_hr=%08lx\n",index,made,index==1?"played":"restored",s->fatal,static_cast<unsigned long>(s->fatal_hr),s->duration,static_cast<unsigned long>(s->early_update_hr));
@@ -449,8 +486,12 @@ int wmain(int argc,wchar_t** argv) {
         if(SUCCEEDED(run)) {
             const DWORD begin=GetTickCount();int cycles=0,completed=0,queued=0,pending_polls=0,errors=0,eos=0,stuck=0;std::uint64_t bytes=0;
             const char* last="";HRESULT hr=S_OK;
-            while(DWORD(GetTickCount()-begin)<30000&&completed<5&&!eos&&!stuck&&errors<4&&!hung.load()) {
+            // Without a dump the game-shaped budget stands (five application samples, 30 s);
+            // under --dump-pcm the run consumes until --dump-seconds, end of stream or an error.
+            const DWORD budget_ms=dump?DWORD(dump_seconds)*1000u:30000u;
+            while(DWORD(GetTickCount()-begin)<budget_ms&&(dump||completed<5)&&!eos&&!stuck&&errors<4&&!hung.load()) {
                 t.step(1,"pump",1,false,[&]{pump();return S_OK;});
+                played->cycle=cycles+1;
                 DWORD got{};const char* outcome=played->poll(hr,got);++cycles;
                 if(!std::strcmp(outcome,"consumed")){++completed;bytes+=got;}
                 else if(!std::strcmp(outcome,"queued"))++queued;
@@ -465,6 +506,7 @@ int wmain(int argc,wchar_t** argv) {
         } else std::printf("REPLICA_PLAY stream=1 cycles=0 completed=0 queued=0 pending_polls=0 eos=0 stuck=0 errors=1 bytes=0 elapsed_ms=0\n");
         std::fflush(stdout);
     }
+    const std::uint64_t dumped_total=played?played->dumped:0;
     for(auto it=all.rbegin();it!=all.rend();++it){(*it)->cleanup();delete *it;}
     // 004de3b0: restore the primary volume, drop the listener and primary buffer, then the device.
     if(primary&&volume_read)t.step(0,"primary_set_volume",1,true,[&]{return primary->SetVolume(primary_volume);});
@@ -472,6 +514,7 @@ int wmain(int argc,wchar_t** argv) {
     t.release(0,"release_directsound",sound);if(window)DestroyWindow(window);
     t.step(0,"co_uninitialize",1,true,[]{CoUninitialize();return S_OK;});
     SetEvent(watchdog_stop);WaitForSingleObject(watcher,1000);CloseHandle(watcher);CloseHandle(watchdog_stop);
+    if(dump){std::fflush(dump);std::printf("REPLICA_PCM_TOTAL bytes=%llu\n",static_cast<unsigned long long>(dumped_total));std::fclose(dump);}
     std::printf("REPLICA_COMPLETE streams=%d audible=0\n",streams);
     return 0;
 }

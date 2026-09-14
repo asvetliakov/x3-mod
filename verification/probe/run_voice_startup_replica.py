@@ -16,8 +16,35 @@ MODES=('game','nopause','early_update','single','explicit','game-ds','game-ds-st
 GAME_DS_MODES=('game-ds','game-ds-stereo','game-dmo','game-dmo-fallback','game-dmo-skip','game-dmo-hook')  # section-10 DirectSound init, visible window, 004d1d40 teardown
 KEY_STEPS=('dmo_wrapper_init','dmo_wrapper_init_fallback','dmo_wrapper_init_hooked','dmo_wrapper_skip','dmo_wrapper_add','remove_dmo_wrapper','release_graph','open_file','stream_run','control_pause','control_run','buffer_stop','control_stop','stream_stop','primary_create','primary_play','primary_set_format')
 MEDIA_IDS=(144,244,144)  # stream 1 (played), 2 and 3 (restored, never pumped)
+VOICE_IDS=(144,244)  # the two real voice archives; --played-id selects which one stream 1 plays
 PLUGIN_KEYS=('GST_PLUGIN_PATH_1_0','GST_REGISTRY_1_0')
 EXE_NAME='voice_startup_replica.exe'
+
+
+def pcm_record(rows):
+    """Summary of the --dump-pcm lines: negotiated format, per-buffer byte counts and
+    timestamps, never the PCM itself. None when the run did not dump."""
+    header=[r for k,r in rows if k=='REPLICA_PCM_HEADER']
+    fmt=[r for k,r in rows if k=='REPLICA_PCM_FORMAT']
+    buffers=[r for k,r in rows if k=='REPLICA_PCM']
+    total=[r for k,r in rows if k=='REPLICA_PCM_TOTAL']
+    if not header:
+        assert not fmt and not buffers and not total,'PCM rows without a dump header'
+        return None
+    assert len(header)==1 and len(fmt)<=1 and len(total)<=1
+    record=dict(dump_seconds=int(header[0]['dump_seconds']),buffers=len(buffers),bytes=sum(int(r['bytes']) for r in buffers),
+                format=None,total_bytes=int(total[0]['bytes']) if total else None,time_sources=sorted({r['src'] for r in buffers}))
+    if fmt:
+        f=fmt[0];record['format']=dict(tag=int(f['tag']),channels=int(f['ch']),rate=int(f['rate']),bits=int(f['bits']))
+    for r in buffers:
+        assert int(r['bytes'])>0 and int(r['written'])==int(r['bytes']),'short write to the PCM dump'
+        assert int(r['t_end'])>=int(r['t_start']) and int(r['cycle'])>0
+    offsets=[int(r['offset']) for r in buffers]
+    assert offsets==sorted(offsets) and len(set(offsets))==len(offsets),'dump offsets must advance'
+    if buffers and record['total_bytes'] is not None:assert record['total_bytes']==record['bytes']
+    record['first_t_start']=int(buffers[0]['t_start']) if buffers else None
+    record['last_t_end']=int(buffers[-1]['t_end']) if buffers else None
+    return record
 
 
 def validate(text):
@@ -54,11 +81,12 @@ def validate(text):
     assert [int(r['stream']) for r in created]==([1] if streams==1 else [2,3,1])[:len(created)]
     plays=[r for k,r in rows if k=='REPLICA_PLAY'];assert len(plays)<=1
     polls=[r for k,r in rows if k=='REPLICA_POLL']
+    pcm=pcm_record(rows)
     hook=[r for k,r in rows if k=='REPLICA_HOOK'];sites=[r for k,r in rows if k=='REPLICA_SITE']
     if header['mode']=='game-dmo-hook':assert len(hook)==1 and hook[0]['installed']=='1' and hook[0]['patched']=='1'
     else:assert not hook and not sites
     hook_lines=[line for line in text.splitlines() if line.startswith('voice_dmo_fallback')]
-    result=dict(mode=header['mode'],hook=hook[0] if hook else None,sites=sites,hook_lines=hook_lines,dwell_ms=int(header['dwell_ms']),streams=streams,created=sum(r['created']=='1' for r in created),stream_rows=created,
+    result=dict(pcm=pcm,mode=header['mode'],hook=hook[0] if hook else None,sites=sites,hook_lines=hook_lines,dwell_ms=int(header['dwell_ms']),streams=streams,created=sum(r['created']=='1' for r in created),stream_rows=created,
                 startup=startup[0],primary=primary[0] if primary else None,stages=stages,polls=polls,play=plays[0] if plays else None,completed=False,hung_step=None,
                 key_steps=[dict(stream=int(r['stream']),name=r['name'],attempt=int(r['attempt']),hr=r['hr'],wall_ms=float(r['wall_ms'])) for r in stages if r['name'] in KEY_STEPS])
     if hungs:
@@ -80,7 +108,9 @@ def validate(text):
     if played and played[0]['created']=='1':
         assert len(plays)==1;p=plays[0]
         for k in ('cycles','completed','queued','pending_polls','eos','stuck','errors','bytes','elapsed_ms'):assert int(p[k])>=0
-        assert int(p['completed'])<=5 and int(p['elapsed_ms'])<=31000
+        # The five-sample / 30 s budget holds unless --dump-pcm lifted it to --dump-seconds.
+        if pcm:assert int(p['elapsed_ms'])<=(pcm['dump_seconds']+10)*1000
+        else:assert int(p['completed'])<=5 and int(p['elapsed_ms'])<=31000
         assert int(p['cycles'])>=int(p['completed'])+int(p['queued'])
         if int(p['cycles']):assert polls
     else:assert not plays and not polls
@@ -206,17 +236,28 @@ def main():
     ap.add_argument('--exe',type=Path,required=True);ap.add_argument('--exe-sha256',required=True);ap.add_argument('--output',type=Path,required=True)
     ap.add_argument('--mode',choices=MODES,default='game');ap.add_argument('--dwell-ms',type=int,default=0);ap.add_argument('--timeout',type=float,default=150.0)
     ap.add_argument('--sample-seconds',type=int,default=3);ap.add_argument('--label',default=None);ap.add_argument('--record',type=Path,default=None)
+    ap.add_argument('--played-id',type=int,choices=VOICE_IDS,default=VOICE_IDS[0],help='voice archive stream 1 plays')
+    ap.add_argument('--dump-pcm',type=Path,default=None,help='append the consumed decoded PCM here (keep it under /tmp; untracked)')
+    ap.add_argument('--dump-seconds',type=int,default=60,help='play budget under --dump-pcm')
     a=ap.parse_args()
     assert bottle.BOTTLE=='X3' and not game_running()
     exe=a.exe.resolve();assert exe.name==EXE_NAME and digest(exe)==a.exe_sha256,'retained EXE mismatch; no rebuild'
     assert not pids_for(EXE_NAME),'a replica process is already running'
     a.output.mkdir(parents=True,exist_ok=False)
-    media=[bottle.game_dir()/f'addon/mov/{sid:05d}.dat' for sid in MEDIA_IDS]
+    other=[i for i in VOICE_IDS if i!=a.played_id][0]
+    ids=MEDIA_IDS if a.played_id==MEDIA_IDS[0] else (a.played_id,other,a.played_id)
+    media=[bottle.game_dir()/f'addon/mov/{sid:05d}.dat' for sid in ids]
     identities=[dict(path=str(p),bytes=p.stat().st_size,sha256=digest(p)) for p in media]
     env=os.environ.copy();env.setdefault('WINEDEBUG','-all,+winediag')
     plugin={k:env[k] for k in PLUGIN_KEYS if k in env}
     command=[bottle.WINE,*bottle.wine_args(),str(exe),a.mode,str(a.dwell_ms),*['Z:'+str(p).replace('/','\\') for p in media]]
-    report=dict(schema=1,label=a.label,mode=a.mode,dwell_ms=a.dwell_ms,completed=False,hung_step=None,exe_sha256=a.exe_sha256,media=identities,bottle=bottle.describe(),
+    dump=None
+    if a.dump_pcm:
+        dump=a.dump_pcm.resolve();dump.parent.mkdir(parents=True,exist_ok=True)
+        assert not dump.exists(),'PCM dump path exists; the probe appends'
+        command+=['--dump-pcm','Z:'+str(dump).replace('/','\\'),'--dump-seconds',str(a.dump_seconds)]
+    report=dict(schema=1,label=a.label,mode=a.mode,dwell_ms=a.dwell_ms,played_id=a.played_id,media_ids=list(ids),
+                dump_pcm=str(dump) if dump else None,dump_seconds=a.dump_seconds if dump else None,completed=False,hung_step=None,exe_sha256=a.exe_sha256,media=identities,bottle=bottle.describe(),
                 plugin_env=plugin,plugin_present=len(plugin)==len(PLUGIN_KEYS),gst_debug=env.get('GST_DEBUG'),gst_debug_file=env.get('GST_DEBUG_FILE'),wine_debug=env['WINEDEBUG'])
     start=time.monotonic();samples=[];abort=None;kill=dict(killed_pids=[],survivors=[])
     with (a.output/'stdout.txt').open('wb') as stdout,(a.output/'stderr.txt').open('wb') as stderr:
@@ -233,6 +274,7 @@ def main():
     report['process_wall_seconds']=time.monotonic()-start
     report['samples']=samples
     report['stderr_bytes']=(a.output/'stderr.txt').stat().st_size
+    if dump:report['dump_bytes']=dump.stat().st_size if dump.is_file() else 0
     for p in (a.output/'gst.log',):
         if p.is_file():report['gst_log_bytes']=p.stat().st_size;report['gst_log_tail']=tail(p,4096).splitlines()[-12:]
     try:
@@ -250,6 +292,7 @@ def main():
         compact={k:report.get(k) for k in ('label','mode','dwell_ms','outcome','completed','hung_step','hung_stream','hung_elapsed_ms','hung_after_stages','created','exit_code','killed_pids','survivors','process_wall_seconds','plugin_present','plugin_env','gst_debug','exe_sha256','abort')}
         compact['bottle']=report['bottle'];compact['media_sha256']=[m['sha256'] for m in identities]
         compact['play']=report.get('play');compact['output']=str(a.output)
+        for k in ('played_id','media_ids','dump_pcm','dump_seconds','dump_bytes','pcm'):compact[k]=report.get(k)
         compact['hook']=report.get('hook');compact['sites']=report.get('sites');compact['hook_lines']=report.get('hook_lines')
         for k in ('startup','primary','key_steps','stream_rows'):compact[k]=report.get(k)
         compact['sample_threads']=[dict(pid=s['pid'],threads=[dict(thread=t['thread'],top=t['frames'][:6]) for t in s.get('threads',[])]) for s in samples]
@@ -257,7 +300,7 @@ def main():
         record=json.loads(a.record.read_text()) if a.record.is_file() else dict(schema=1,runs={})
         record['runs'][a.label or a.output.name]=compact
         a.record.parent.mkdir(parents=True,exist_ok=True);a.record.write_text(json.dumps(record,indent=2)+'\n')
-    print(json.dumps({k:report[k] for k in ('outcome','completed','hung_step','created','exit_code','killed_pids','survivors','process_wall_seconds','abort') if k in report}))
+    print(json.dumps({k:report[k] for k in ('outcome','completed','hung_step','created','exit_code','killed_pids','survivors','process_wall_seconds','dump_pcm','dump_bytes','pcm','abort') if k in report}))
     return 0 if report['completed'] else 3 if report['hung_step'] else 1
 
 if __name__=='__main__':raise SystemExit(main())
