@@ -13,17 +13,17 @@
   },
   "scope": "Selected console-fixture cases under CrossOver Preview: 17 D3D9 exports, forwarded entry points and ret-N fallbacks; the readonly case additionally checks the %LOCALAPPDATA% session-log fallback. Not a native-Windows run.",
   "selected_case": "writable",
-  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/source/build/d3d9.dll",
+  "dll_path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/source/build/d3d9.dll",
   "cases": {
     "writable": {
       "exit": 0,
       "checks": 8,
       "failures": 0,
       "readonly": false,
-      "directory": "verification/probe/build/d3d9-exports-writable-20260914-072705-342760",
-      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260914-072705-342760/x3-modern-captures/session-20260914-072709-204.log",
-      "trace_sha256": "2f06cdc348d30e746fa453fb3fa2950669b15516838806eeb123bb29ec61d5ba",
-      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260914-072705-342760\\x3-modern-captures",
+      "directory": "verification/probe/build/d3d9-exports-writable-20260914-104923-810311",
+      "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260914-104923-810311/x3-modern-captures/session-20260914-104925-208.log",
+      "trace_sha256": "238f29f972b89da564b5082355188d138e576e3b7dfbde49b40a79fe97febb0f",
+      "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260914-104923-810311\\x3-modern-captures",
       "source": "game",
       "localappdata": "C:\\users\\crossover\\AppData\\Local",
       "userprofile": "C:\\users\\crossover",
@@ -66,17 +66,17 @@
       },
       "on12_forwarded": true,
       "on12ex_forwarded": false,
-      "dll_sha256": "4022a3a46f254a75dc58f009264b10634acaee8f2230245b942c3233e336c6da",
-      "exe_sha256": "c308b5f5f565cf7876033963141c6c3d29c39de84c7895721bdc789eda3bd72c",
+      "dll_sha256": "2bbe790431d571f3406030c4b605d70b3f7ccb552f247323cba705fa188ddb01",
+      "exe_sha256": "847fc622bc20877b1a04d16869a28e70d4706d8b1277a1e07fb3dbe118ee0af9",
       "env_lines": [
         "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
         "ENV USERPROFILE=C:\\users\\crossover"
       ]
     }
   },
-  "dll_sha256": "4022a3a46f254a75dc58f009264b10634acaee8f2230245b942c3233e336c6da",
+  "dll_sha256": "2bbe790431d571f3406030c4b605d70b3f7ccb552f247323cba705fa188ddb01",
   "export_directory": {
-    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/source/build/d3d9.dll",
+    "path": "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/source/build/d3d9.dll",
     "machine": "0x014c",
     "image_base": "0x6fb40000",
     "dll_name": "d3d9.dll",
@@ -231,13 +231,13 @@
     "tools/analysis/pe_exports.py": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea"
   },
   "binaries": {
-    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "c308b5f5f565cf7876033963141c6c3d29c39de84c7895721bdc789eda3bd72c",
-    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/source/build/d3d9.dll": "4022a3a46f254a75dc58f009264b10634acaee8f2230245b942c3233e336c6da"
+    "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "847fc622bc20877b1a04d16869a28e70d4706d8b1277a1e07fb3dbe118ee0af9",
+    "/private/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/source/build/d3d9.dll": "2bbe790431d571f3406030c4b605d70b3f7ccb552f247323cba705fa188ddb01"
   },
   "limits": [
     "Wine backend: three of the four naked forwarders reach Wine spec stubs and are resolved but not called; Direct3D9EnableMaximizedWindowedModeShim exercises the fallback path.",
     "The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.",
     "Windows is cross-compiled, not verified."
   ],
-  "report_sha256": "38b21889f9257136a46276c81c0ee58f656906526422cf5b0a75088cb3494f0f"
+  "report_sha256": "278da97dc15bc397e3c07badba4a832a163c781457a9cfa003266650c95dbc52"
 }

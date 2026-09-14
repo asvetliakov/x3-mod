@@ -1,0 +1,138 @@
+{
+  "source_commit": "f56a393",
+  "base": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr",
+  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/source",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/source/build/d3d9.dll",
+  "build_seconds": 9.351843118667603,
+  "dll_sha256": "2bbe790431d571f3406030c4b605d70b3f7ccb552f247323cba705fa188ddb01",
+  "dll_bytes": 13723818,
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "seh_clang": "/usr/bin/clang",
+  "build": "git worktree add --detach (clean export of f56a393, worktree clean); cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build -j4",
+  "installed": true,
+  "game_launched": false,
+  "native_windows_verified": false,
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "preserved_files": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "preserved_files_note": "Hashes taken before install; both unchanged from the 3f06979 install record. The main session rechecks them after install.",
+  "rollback": {
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/rollback-d3d9.dll",
+    "dll_sha256": "4022a3a46f254a75dc58f009264b10634acaee8f2230245b942c3233e336c6da",
+    "source_commit": "3f069796ed8bad22648e8742e7862ebeb565b0c1",
+    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/rollback-x3-modern-install.json",
+    "project_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/rollback-project-record.json",
+    "note": "Currently installed d3d9.dll verified at 4022a3a4... before this candidate was built; the main session copies it aside at install time and fills the three null paths."
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 224,
+    "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/no-x87.json"
+  },
+  "load": {
+    "passed": true,
+    "case": "writable",
+    "checks": 8,
+    "exports": 17,
+    "failures": 0,
+    "lock_wait_seconds": 3.374999999999906e-06,
+    "child_elapsed_seconds": 9.326584,
+    "result": "verification/results/bottle-X3/d3d9-exports-summary.json"
+  },
+  "host_tests": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p <pattern>",
+    "test_fade_region.py": 5,
+    "test_linear_distance_fade*.py": 32,
+    "test_shimmer_trace.py": 7,
+    "test_voice_dmo_fallback.py": 15,
+    "test_voice_decoder_launch.py": 5,
+    "test_game_phase_sites*.py": 19,
+    "test_game_phase_install.py": 9,
+    "test_linear_material_live.py": 11,
+    "total": 103,
+    "failures": 0
+  },
+  "site_verifiers": {
+    "verify_voice_dmo_site.py": {
+      "result": "PASS",
+      "checks": 10,
+      "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/voice-dmo-site.json",
+      "note": "speech CLSID, audio decoder category, no direct edges to the site, EXE identity all true"
+    },
+    "verify_game_phase_sites.py": {
+      "result": "PASS",
+      "report": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-station-voice-candidate-3Rszg5Zr/game-phase-sites.json",
+      "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+      "note": "47 markers; publisher mode-3 switch, mov command-6 switch, Present indirect call, EXE identity all true"
+    }
+  },
+  "change": "Voice DMO fallback hook (only under --voice-decoder), station docking-port source-over draws admitted to the linear fade route with the refused-rect capture diagnostic, opt-in --shimmer-trace, host-test harness repairs; all default-off",
+  "changed_dependencies": "git diff --stat 3f06979..f56a393 -- src/ tools/: 12 files, +478/-47 (voice_dmo_fallback.{cpp,h}, fade_region*.{cpp,h}, motion_output.{cpp,h}, capture.cpp, linear_material.{cpp,h}, linear_distance_fade.h, manage.py)",
+  "qualification": {
+    "station_source_over": "docs/architecture/linear-station-source-over.md",
+    "station_gpu": "verification/results/bottle-X3/linear-distance-fade-gpu-station1.json",
+    "station_gpu_cases": 78,
+    "station_gpu_inplace_brackets": 300,
+    "station_gpu_inplace_exact_comparisons": 600,
+    "station_gpu_region_violations": 0,
+    "station_gpu_capability_refusals": 4,
+    "station_gpu_reset": true,
+    "station_live": "verification/results/bottle-X3/linear-distance-fade-live-station1.json",
+    "station_live_new_processes": 34,
+    "station_live_retained_processes": 0,
+    "station_live_functional_frames": 165,
+    "station_live_witness_frames": 99,
+    "station_live_witness_outside_pixels": 0,
+    "station_live_witness_control_expected_failure": true,
+    "voice_dmo_fallback": "docs/architecture/voice-decoder-adapter.md",
+    "voice_replica": "verification/results/bottle-X3/voice-startup-replica.json",
+    "voice_replica_runs": {
+      "plugin-v3-game-dmo-fallback": {
+        "outcome": "completed",
+        "created": 3,
+        "exit_code": 0,
+        "process_wall_seconds": 6.637064459
+      },
+      "control-game-dmo-fallback": {
+        "outcome": "completed",
+        "created": 0,
+        "exit_code": 0,
+        "process_wall_seconds": 5.603317916
+      }
+    },
+    "voice_replica_note": "Unhooked game-dmo runs hang at remove_filters (stream 2, 15 s); both fallback runs complete.",
+    "fade_region_gameplay": "User run 11 on 3f06979, snapshot /tmp/x3-bottleX3-run36/: 543 fade_witness lines, 196 sampled, 0 covered pixels outside the derived rectangles, 2087 region lines, 0 full-viewport fallbacks (docs/status.md)",
+    "cutout_live": "/Users/asvetl/x3-mod-resume-2026-09-14/artifacts/linear-cutout-live.json",
+    "cutout_live_tracked": false,
+    "cutout_live_cases": 13,
+    "cutout_live_frames": 531,
+    "cutout_live_checks": 2111274,
+    "reused_not_rerun": [
+      "station_gpu",
+      "station_live",
+      "voice_replica",
+      "fade_region_gameplay",
+      "cutout_live"
+    ]
+  },
+  "qualification_status": "passed-reviewed-installed",
+  "launch_dry_run": {
+    "passed": true,
+    "game_launched": false,
+    "result": "/tmp/x3-run13-dryrun.json",
+    "scope": "run 13 command after install; run 14 validated pre-install by the builder"
+  },
+  "installed_sha256_verified": true,
+  "installed_at": "2026-09-14T10:54:17"
+}

@@ -25,8 +25,8 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
 | 11 | Fade region route and alpha-tested cutout, combined | 1 | Completed as user run 11, snapshot run36 |
 | 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
-| 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Pending candidate |
-| 14 | Station source-over linear route, fade region and shimmer trace, combined | 1 | Pending candidate |
+| 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Ready (candidate `f56a393` installed) |
+| 14 | Station source-over linear route, fade region and shimmer trace, combined | 1 | Ready (candidate `f56a393` installed) |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
@@ -61,10 +61,10 @@ prints, and the size of `/tmp/x3-witness-quartz.log.z`. Analysis greps that
 trace for the failing stream's graph composition and the filter that returned
 `80004005`; the log is never read whole.
 
-## 13. Target-name speech with the decoder plugin and the DMO fallback hook — Pending candidate
+## 13. Target-name speech with the decoder plugin and the DMO fallback hook — Ready
 
-Needs the next candidate (voice DMO fallback hook `d1de1b9`); do not start until
-this entry says Ready. The hook acts only when the game's speech-decoder `Init`
+The candidate `f56a393` (DLL `2bbe7904…`, record
+`verification/results/station-voice-install.json`) is installed; run 13 first, then 14. The hook acts only when the game's speech-decoder `Init`
 fails with class-not-registered, so the load hang of runs 29–36 should be gone
 (`docs/architecture/voice-decoder-adapter.md`, "DMO fallback hook"). Keep the
 run short: load the usual save, select five or six different targets (ships and
@@ -86,7 +86,7 @@ word), selection pauses, comm video/audio, and the session path. Analysis reads
 the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
 the selection timing.
 
-## 14. Station source-over linear route, fade region and shimmer trace, combined — Pending candidate
+## 14. Station source-over linear route, fade region and shimmer trace, combined — Ready
 
 Same candidate as run 13, no decoder. Adds the station docking-port draws to the
 linear fade route (`docs/architecture/linear-station-source-over.md`) and the

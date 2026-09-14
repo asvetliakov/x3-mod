@@ -49,8 +49,9 @@ DMO; the replica then runs, decodes and tears down cleanly. Not installed; needs
 The station docking-port source-over route (`docs/architecture/linear-station-source-over.md`,
 reviewed, merged `f56a393`: seventh fade pair, read-only refused-rect diagnostic, 78 detached
 cases / 300 bit-exact twins / 34 live processes, station windows ≈0.2 ms per draw) and the
-host-test harness repairs (`93f359c`) are merged. A candidate from `f56a393` is being built
-for user runs 13 (voice) and 14 (station, fade, shimmer trace).
+host-test harness repairs (`93f359c`) are merged. The candidate from `f56a393` is installed
+(DLL `2bbe7904…`, record `verification/results/station-voice-install.json`); user runs 13 (voice)
+and 14 (station, fade, shimmer trace) are ready.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
@@ -59,7 +60,7 @@ Merged agent worktrees and the two merged cutout worktrees are pruned.
 The opt-in per-frame shimmer trace (`--shimmer-trace`, reviewed, merged `09e62bb`) is ready to
 ride the next candidate for the distant-shimmer report; not installed.
 
-The installed gameplay build is checkpoint `3f06979` (previous `8442f43` retained for
+The installed gameplay build is checkpoint `f56a393` (previous `3f06979` retained for
 rollback). Its scoped integration checks pass; the new options are default-off. Run 28 confirms stronger visible glow and reproduces distance-dependent
 dark material on a docking port. Selection pauses are isolated to voice-stream
 creation; the user confirms missing target-name speech.
@@ -67,8 +68,8 @@ creation; the user confirms missing target-name speech.
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`4022a3a46f254a75dc58f009264b10634acaee8f2230245b942c3233e336c6da` (13,661,357 bytes). The
-[install record](../verification/results/fade-region-cutout-install.json) binds its source, scoped verification,
+`2bbe790431d571f3406030c4b605d70b3f7ccb552f247323cba705fa188ddb01` (13,723,818 bytes). The
+[install record](../verification/results/station-voice-install.json) binds its source, scoped verification,
 load check, and rollback DLL.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,
