@@ -478,6 +478,57 @@ full-scale wrap (`docs/verification/voice-decoder.md`). Selection latency (phase
 decoder. Per-frame proxy from `frame_end` windows: run 46 29.4 ms, run 41 27.1 ms (both with the site
 trace and phase telemetry on); no per-frame regression from the plugin.
 
+## 22. LOD scale 2×, fade-band trembling fix, docking-port screenshot pair — Completed
+
+Completed as user run 22, snapshot `/tmp/x3-bottleX3-run51/`, log
+`session-20260915-030036-468.log` (large; queried, never read whole), installed DLL
+`53a0d8a7…` (`509a273`, record `verification/results/run22-candidate-install.json`). User
+report: no trembling anywhere, station or asteroids, near or far — the run-21 hangar/dock
+symptom is gone and accepted; the LOD detail is "slightly better" at 2× and the user asks for
+3×; the docking module still darkens at range. Per-question analysis is in the owning ledgers —
+[motion-output](../verification/motion-output.md) ("User run 22": 507 `linear_material_frame`
+lines, `fade_routed` 860, `fade_refused` 7, `fade_held` 0, `unjittered_depth_writers=0`
+throughout; the frame-time difference against run 49 is confounded by a different route),
+[lod-scale](../architecture/lod-scale.md) ("In game (run 22)": `applied=2` from one
+`lod_scale_value` line, the LOD-share table) and
+[station-material-distance](../reverse-engineering/station-material-distance.md) ("Run 22":
+the module darkening is owned by the per-node point-light range cull, witnessed). Run 23
+repeats the run-49 route at 3× for a controlled before/after. The instructions as issued follow.
+
+One run on the installed candidate `53a0d8a7…` (`509a273`, record `verification/results/run22-candidate-install.json`): `--lod-scale 2` (the
+engine's LOD switch distances doubled by the byte-verified patch,
+[lod-scale.md](../architecture/lod-scale.md)) and the fade-band trembling fix
+([asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md), "Run 49"). Load the
+usual save.
+
+1. **Docking port, what you see**: pick one Argon station port. When it looks fine near, take a
+   normal screenshot (save it as `screenshots/port-near.png`) and press F8. Fly away until it has
+   gone black, take a screenshot (`screenshots/port-far.png`) and press F8 again. Say the target
+   distance readout at each. Analysis: the two capture groups against the screenshots, the draws
+   under the screenshot region, and the LOD of the node at each.
+2. **LOD scale**: say whether stations and ships keep their detail noticeably farther than before
+   (docking bays, greebles) and whether the frame rate suffers in a busy sector. Analysis:
+   `lod_scale requested=2 patched=1 write=plain`, then `lod_scale_value … applied=2` on the frame
+   lines; `object_context lod=` distribution vs run 21; `frame_end dt_ms` windows vs run 21.
+3. **Trembling**: view a station at 3–5 km in chase view with asteroids or other fading objects
+   around; say whether any part still trembles. Analysis: fade regions of reviewed pairs now
+   `routed=1` with the mask excluded above the threshold; `unjittered_depth_writers=0`.
+4. Anything else, including loading time by feel.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission \
+  --lod-scale 2 \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+Report: the session path, the two screenshots with their distances, the LOD and trembling
+observations.
+
 ## 21. AO appearance at radius 100, bullet witness on firing frames, vanilla port approach — Completed (session A)
 
 Completed as user run 21 session A, snapshot `/tmp/x3-bottleX3-run49/`, log

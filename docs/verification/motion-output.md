@@ -1057,6 +1057,43 @@ Diagnosis is in progress on Fable; it will name and own the note where the
 mechanism is written up.
 
 
+## User run 22 (run51): the trembling is gone (2026-09-15)
+
+User run 22 (snapshot `/tmp/x3-bottleX3-run51/`, log
+`session-20260915-030036-468.log`, large; queried, never read whole; installed
+DLL `53a0d8a7…` from `509a273`, record
+`verification/results/run22-candidate-install.json`). This is the first gameplay
+run of the fade-band motion arm.
+
+**The user reports no trembling anywhere** — the station hangar/dock section
+that moved up and down at ~4.7 km in run 21 (`screenshots/jitter1.png`) is
+steady on this build, near and far. The symptom tracked in
+[asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md),
+"Run 49", is therefore **fixed and accepted in game**.
+
+| Measure | Run 22 (run51) | Run 21 (run49) |
+| --- | --- | --- |
+| `linear_material_frame` lines | 507 | — |
+| `fade_routed` | sums to 860 (0–5 per frame) | route absent (masked) |
+| `fade_refused` / `fade_held` | 7 / 0 on every line | — |
+| `motion_output_frame` `unjittered_depth_writers` | 0 on all 507 lines | 0 on all six frames |
+| `camera_state` reason | 493×`0`, 14×`1` | `{0: 24190, 1: 529, …}` |
+| `taa_invalidate` sites | `not_resolved` 823 only | `not_resolved` only |
+| draws per frame | mean 179.1, max 1216 | mean 165.1 |
+
+So the arm ran on every frame it was meant to: a small number of fading draws
+per frame took the routed path, seven estimates were refused (camera invalid),
+the hysteresis never had to hold a node, and nothing in the route wrote depth
+unjittered.
+
+Frame cost is **not** decided by this run. `frame_end` steady state is about
+15.9 ms/frame against 9.0 ms in run 49, but the user flew a different route with
+more draws per frame (179.1 vs 165.1, peaks to 1216), and the build also carries
+the LOD scale at 2×. The difference is confounded and is not attributable to the
+LOD scale; run 23 repeats the run-49 route for a controlled before/after
+([lod-scale.md](../architecture/lod-scale.md), "In game (run 22)").
+
+
 ## 2026-09-15 — fade-band arm: live cases repaired, hysteresis, sentinel and hover scripts
 
 The merged fade-band arm (6a895ee) failed its own live case for harness
