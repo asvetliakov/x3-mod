@@ -345,3 +345,15 @@ executes that restore. Normal callback logging is unchanged. Selected paired EVE
 measurements will report total CPU/GPU submission completion cost separately
 from setup/readback and from gameplay FPS. Nonzero mip bias remains an explicit
 initial refusal, pending its own native-coverage qualification.
+
+## Gameplay evaluation, user run 11
+
+Snapshot `/tmp/x3-bottleX3-run36/` on installed checkpoint `3f06979`:
+`cutout_caps=1` throughout (277 windows), `cutout_device verdict=1
+result=00000000 mrt=4`, 7827 routed draws. `cutout_missed` and
+`cutout_unavailable` each reached 1 only in the windows covering frames
+10500–16200 and were 0 during both F8 bursts. The docking-port pair
+`vs=4944d81dfe531b37 ps=64bac8bb307eb896` stays on the native path
+(`motion_route gate=4 routed=0 matched=0`) in all five capture frames and is
+unchanged. No reported visual regression is attributed to this runtime by the
+evidence.

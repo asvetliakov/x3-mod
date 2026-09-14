@@ -27,11 +27,11 @@ the isolated WMA decoder adapter
 ([note](architecture/voice-decoder-adapter.md)) is built, evidence-reviewed and
 decodes both real voice files through the null-event contract with exact cue
 timestamps in build v3 (`6a2c763`), but gameplay launches hang on the loading
-screen (runs 29–36): the witness run shows `SetState(RUN)` returning `E_FAIL`
+screen (runs 29–35 and the witness attempt, which produced no snapshot): the witness run shows `SetState(RUN)` returning `E_FAIL`
 followed by a COM teardown wait; root cause open (see the handoff). The WMP11
 bottle experiment was reverted byte-identically (`2e64c4d`).
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
---fade-witness`) is queued and the candidate built from `3f06979` is installed (record
+--fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
 with the game's DirectSound setup (`877317b`) still does not reproduce the `SetState(RUN)` failure.
 Merged agent worktrees and the two merged cutout worktrees are pruned.
@@ -59,8 +59,21 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Latest gameplay evidence
 
-[Run 28](verification/run28-glow-materials.md), user run 9, is saved in
-`/tmp/x3-bottleX3-run28/` on installed source `d9413fc`. Screenshots show substantial
+User run 11 is the latest gameplay evidence: snapshot `/tmp/x3-bottleX3-run36/`
+on installed checkpoint `3f06979`, with the fade region route and the armed
+cutout runtime. The witness is clean — 543 `fade_witness` lines, 196 sampled,
+zero covered pixels outside the derived rectangles in every sampled frame, no
+`rects_unprepared`/`overflow`/truncation, 2087 region lines with 0
+full-viewport fallbacks, and only shallow fades (`f_hist` 1962, 98, 11, 0, 0,
+0, 0, 0). The cutout runtime stayed available (`cutout_caps=1`, 7827 routed
+draws) and the docking port remained on the native path, still darkening on
+approach; frame-time medians equal run 28 (4097 µs against 4104 µs). Details
+are in the [completed-run archive](archive/user-runs-completed.md), the
+[region note](architecture/linear-distance-fade-region.md) and the
+[cutout note](architecture/alpha-tested-materials.md).
+
+The previous gameplay evidence, [run 28](verification/run28-glow-materials.md),
+user run 9, is saved in `/tmp/x3-bottleX3-run28/` on installed source `d9413fc`. Screenshots show substantial
 colored halos at gain 0.35. The user approved a slightly tighter, stronger core;
 the installed correction uses gain 0.375/scatter 0.65, calibrated against saved
 resolved-TAA inputs. Auto still mostly reaches its accepted +1.5-EV ceiling.
@@ -127,6 +140,11 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   Windows Media Audio 2 decoder, against `E_FAIL 0x80004005` for both before it. Decoder
   availability is not restored speech; see the
   [adapter note](architecture/voice-decoder-adapter.md).
+- **Distant shimmer reported in run 11:** distant asteroids and stations appear to
+  shimmer in motion, described as parts of geometry disappearing; the user is unsure
+  whether it is new. The fade-region witness is clean, so the evidence does not
+  implicate the region route; the cause is unidentified and the report is carried as
+  part of the open TAA distant-shimmer item.
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
   The [normal/specular study](reverse-engineering/asteroid-specular-minification.md) identifies an independent
@@ -176,8 +194,8 @@ capabilities; neither has native-Windows runtime qualification.
 
 ## Next user action
 
-No new enhanced run is requested. Run 9 is complete as run 28; analyze its
-evidence and combine the next changes before another session. The optional
+No new enhanced run is requested. User run 11 is complete (snapshot run36); the
+distant-shimmer report needs a per-frame diagnostic before another run is queued. The optional
 vanilla cursor comparison remains available in the [run queue](verification/user-runs.md).
 
 ## Stable foundation and later scope

@@ -736,3 +736,21 @@ user's capture (`fade_region_frame`, `linear_composition_frame`); a fade
 composite fault now removes the object from the frame (exact recovery)
 instead of showing it natively, which the game never exercises unless a
 scissored quad draw fails.
+
+## User run 11 — 2026-09-14
+
+Gameplay evidence from snapshot `/tmp/x3-bottleX3-run36/` on installed
+checkpoint `3f06979` (`--linear-distance-fade --fade-witness`). 543
+`fade_witness` lines: 196 sampled (`sampled=1`), 347 unsampled all
+`reason=no_fade`; covered pixels outside the rectangles 0 in every sampled
+frame (max 0); `rects_unprepared`, `overflow`, `lines_truncated` all 0. The
+risk accepted at step 3 — that the step-1 rectangle is conservative — held,
+with zero outside pixels over 196 sampled frames. Aggregated `f_hist` 1962, 98,
+11, 0, 0, 0, 0, 0 and max `f_permille` 24: the run exercised only shallow fades
+(≤ 5 %). Regions: 2087 per-DIP lines, 100 frame summaries, 0 full-viewport
+fallbacks (`full=0`, all `status=bound`); area mean 3367 px², median 2352 px²,
+max 24150 px² against a 983040 px² viewport (≈0.3 % typical, 2.5 % max). Frame
+time (`frame_end dt_ms`, 60-frame samples) n=59 median 4097 µs, p95 10104 µs,
+max 27040 µs against run 28 n=99 median 4104 µs, p95 8824 µs, max 26467 µs:
+equal medians, and the run-11 tail is a smaller sample with no fade-cost field,
+so it is not attributable. No poisoned or evicted regions, no reset/recovery.

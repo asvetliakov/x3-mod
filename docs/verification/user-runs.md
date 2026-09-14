@@ -5,7 +5,7 @@ left-centre-right diagnostic are complete and are not in this queue. The agent
 never launches the game. The installed build is described in [status](../status.md).
 From the repository root, paste a `./x3run` command below. The executable
 [launcher script](../../x3run) handles the shared lock and log snapshots; no shell
-function setup is needed. Runs 1, 3, 5, 6, 7, 8 and 9 are complete; reader/DAT/adjacency
+function setup is needed. Runs 1, 3, 5, 6, 7, 8, 9 and 11 are complete; reader/DAT/adjacency
 fast co-activation passed as run 19. Run 9 is saved as run 28; its reported issues are being investigated.
 Close X3 between runs and report completed numbers. After exit, the helper prints
 a fresh `/tmp/x3-bottleX3-run<N>/` path containing that session’s log and referenced
@@ -23,7 +23,7 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 8 | Restored glow, milder exposure and native selection-stutter trace | 0 | Completed as run 27 |
 | 9 | Stronger glow and selection/voice timing | 0 | Completed as run 28 on source `d9413fc` |
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
-| 11 | Fade region route and alpha-tested cutout, combined | 1 | Ready (candidate `3f06979` installed) |
+| 11 | Fade region route and alpha-tested cutout, combined | 1 | Completed as user run 11, snapshot run36 |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
@@ -74,49 +74,8 @@ including repeats of the same name). Report:
 No F8 capture is needed. If the game fails to start, rerun the same command
 without `--voice-decoder` and report which of the two failed.
 
-The distance-fade capture that was noted here is now run 11 below.
-
-## 11. Fade region route and alpha-tested cutout, combined — Ready
-
-The candidate built from `3f06979` is installed (DLL `4022a3a4…`, record
-`verification/results/fade-region-cutout-install.json`); the previous `8442f43`
-DLL is retained for rollback. The command adds the distance-fade region route and its witness to the
-run-10 enhanced set (no `--voice-decoder`). The alpha-tested cutout runtime has
-no flag of its own: it arms whenever linear materials are requested, the cutout
-capability is Ready, HDR is enabled and the mip bias is zero
-([alpha-tested materials](../architecture/alpha-tested-materials.md)), which is
-why `--taa-mip-bias` must not be added here.
-
-```sh
-./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
-  --motion-output --taa --telemetry --camera-log 1 \
-  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
-  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
-  --linear-distance-fade --fade-witness \
-  --capture-start 999999 --capture-frames 1
-```
-
-`--linear-distance-fade` composes admitted distance-fade draws through an
-in-place region bracket; `--fade-witness` (K=30) reads the M coverage target
-back every 30th frame and logs `fade_witness` lines counting covered pixels
-outside the derived rectangles. Emission stays off.
-
-Load the usual save, fly near asteroids and distant objects, then approach an
-Argon station. Report:
-
-1. any visual difference on fading asteroids and distant objects, and whether
-   the frame rate is acceptable;
-2. one F8 capture during the Argon station approach with the docking port in
-   view;
-3. whether the docking-port darkening seen in run 28 changes (the cutout
-   runtime is not expected to fix it);
-4. the session log path printed by `./x3run`.
-
-Acceptance needs zero outside pixels in every `fade_witness` line; analysis
-reads those lines and the fade `f` histogram with
-`verification/probe/run_linear_distance_fade_live.py`
-([region note](../architecture/linear-distance-fade-region.md)) before any
-acceptance claim.
+The distance-fade capture that was noted here is completed run 11; its command and
+instructions are in [the completed-run archive](../archive/user-runs-completed.md).
 
 ## 4. Vanilla window/cursor comparison — Ready after any enhanced run
 

@@ -295,3 +295,79 @@ it is a visual comparison, not a zero-filter-cost performance baseline. F8
 captures precede final bloom, so screenshots are the useful final-glow evidence.
 A successful log must show actual bloom preparation/commit and correct exposure
 mode transitions; a fallback or unavailable panel is not acceptance.
+
+## 11. Fade region route and alpha-tested cutout, combined — Completed
+
+Completed as user run 11, snapshot `/tmp/x3-bottleX3-run36/` (the launcher
+numbered the session 36), on installed checkpoint `3f06979`. The command and
+steps below are provenance, not a rerun request.
+
+**Result.** The witness logged 543 `fade_witness` lines: 196 sampled
+(`sampled=1`) and 347 unsampled, all `reason=no_fade`. Covered pixels outside
+the derived rectangles were 0 in every sampled frame (max 0), with
+`rects_unprepared`, `overflow` and `lines_truncated` all 0; the aggregated
+`f_hist` is 1962, 98, 11, 0, 0, 0, 0, 0, so every admitted fade was at most 5 %
+(max `f_permille` 24). The region route logged 2087 per-DIP lines and 100 frame
+summaries with 0 full-viewport fallbacks (`full=0`, all `status=bound`);
+rectangle area was mean 3367 px², median 2352 px², max 24150 px² against a
+983040 px² viewport (≈0.3 % typical, 2.5 % max). The cutout runtime reported
+`cutout_caps=1` throughout (277 windows) and `cutout_device verdict=1
+result=00000000 mrt=4`, with 7827 routed draws; `cutout_missed` and
+`cutout_unavailable` each reached 1 only in the windows covering frames
+10500–16200 and were 0 during both F8 bursts. Frame time (`frame_end dt_ms`,
+60-frame samples) was n=59 median 4097 µs, p95 10104 µs, max 27040 µs against
+run 28 (`/tmp/x3-bottleX3-run28/`) n=99 median 4104 µs, p95 8824 µs, max
+26467 µs; the medians are equal and the run-11 tail comes from a smaller sample
+with no fade-cost field, so it is not attributable. Five F8 bursts landed on
+frames 1476, 1699, 1917, 13681 and 14601, each with `hdr_1_*`, `depth_1_*` and
+`motion_1_*` files; the docking-port pair `vs=4944d81dfe531b37
+ps=64bac8bb307eb896` ([station material distance](../reverse-engineering/station-material-distance.md))
+appears in all five with `motion_route gate=4 routed=0 matched=0`, i.e. it stays
+on the native path, so the run-28 finding stands and neither new feature touches
+it. No poisoned or evicted regions and no reset/recovery events occurred. The
+user reports the docking port still darkening on approach (expected) and
+distant asteroids and stations shimmering in motion "like parts of geometry
+disappearing", unsure whether it is new; two zoom-view and one normal-view
+screenshot were supplied and are not stored in the repository. The witness
+evidence does not implicate the region route, so the shimmer is carried as the
+open TAA distant-shimmer item with the cause unidentified.
+
+The candidate built from `3f06979` is installed (DLL `4022a3a4…`, record
+`verification/results/fade-region-cutout-install.json`); the previous `8442f43`
+DLL is retained for rollback. The command adds the distance-fade region route and its witness to the
+run-10 enhanced set (no `--voice-decoder`). The alpha-tested cutout runtime has
+no flag of its own: it arms whenever linear materials are requested, the cutout
+capability is Ready, HDR is enabled and the mip bias is zero
+([alpha-tested materials](../architecture/alpha-tested-materials.md)), which is
+why `--taa-mip-bias` must not be added here.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --linear-distance-fade --fade-witness \
+  --capture-start 999999 --capture-frames 1
+```
+
+`--linear-distance-fade` composes admitted distance-fade draws through an
+in-place region bracket; `--fade-witness` (K=30) reads the M coverage target
+back every 30th frame and logs `fade_witness` lines counting covered pixels
+outside the derived rectangles. Emission stays off.
+
+Load the usual save, fly near asteroids and distant objects, then approach an
+Argon station. Report:
+
+1. any visual difference on fading asteroids and distant objects, and whether
+   the frame rate is acceptable;
+2. one F8 capture during the Argon station approach with the docking port in
+   view;
+3. whether the docking-port darkening seen in run 28 changes (the cutout
+   runtime is not expected to fix it);
+4. the session log path printed by `./x3run`.
+
+Acceptance needs zero outside pixels in every `fade_witness` line; analysis
+reads those lines and the fade `f` histogram with
+`verification/probe/run_linear_distance_fade_live.py`
+([region note](../architecture/linear-distance-fade-region.md)) before any
+acceptance claim.
