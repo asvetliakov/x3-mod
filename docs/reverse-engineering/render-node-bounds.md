@@ -122,7 +122,10 @@ not bound the box; do not use it as a Euclidean radius.
 ### Units line up exactly with the submitted world matrix
 
 Mesh vertices are written to the vertex buffer as `int16 × 1/16384`
-(`0x004bbb10`, `0x004bc1c0`, constant `0x005655d4`). `0x004bdee0` builds the
+(`0x004bc1c0`, constant `0x005655d4` = `2^-14`), as float32; the load-time
+`CloneMesh` at `0x004bcb60` may re-encode POSITION0 as FLOAT16_4
+(see [mesh-buffer-rewrite.md](mesh-buffer-rewrite.md) §5), which changes the
+storage format but not the scale. `0x004bdee0` builds the
 world matrix with row scale `((node+0x70 × node+0x80..) >> 16) × s` and basis
 rows `/65536`. The bound path multiplies its `4 × int16` values by
 `node+0x70 >> 16` and `node+0x8x / 65536`. The two chains differ by exactly
@@ -216,7 +219,7 @@ Stability of the bound:
 | Vertex-shader displacement | Excluded for the six Asteroid pairs. `rigid-position-profiles.md` proves `clip = WVP · (POSITION0, 1)` with no offset, deformation, W dependency, saturation or divide for `167eb2d5629ab9d3` and `b0602757fce6e870`; `asteroid-fog-temporal.md` shows the fade only writes `COLOR0.a`. Not proved for the four toggle VS of those pairs beyond their membership in the reviewed row-dot set. |
 | Billboards / direct-clip shaders | The particle billboard VS and the three direct-clip bloom VS expand or bypass position. They are not on this material path and must be excluded by shader identity, not assumed absent. |
 | Skinning | No `BLENDWEIGHT`/`BLENDINDICES` appears in the declared inputs of the reviewed programs (P, T, N, B, G, C). No skinning path was found on this route; this is absence of evidence at the reviewed scope. |
-| Dynamic vertex writes | Meshes are created `D3DXMESH` `0x990/0x991` (+`0x18000`) = SYSTEMMEM + DYNAMIC for both buffers (`0x004bb470`, matching `mesh-dynamic-contract.md`). Positions are filled once at load by `0x004bbb10`/`0x004bc1c0`; **whether the game ever relocks and rewrites positions afterwards is not established here.** Gate on the proxy's existing per-allocation write revision and invalidate the bound on any write. |
+| Dynamic vertex writes | Meshes are created `D3DXMESH` `0x990/0x991` (+`0x18000`) = SYSTEMMEM + DYNAMIC for both buffers (`0x004bb470`, matching `mesh-dynamic-contract.md`). Positions are filled once at load by `0x004bc1c0` (`0x004bbb10` writes only the tangent/binormal floats). **Settled in [mesh-buffer-rewrite.md](mesh-buffer-rewrite.md): no post-load rewrite exists on this path**, and the final drawn buffers are `CloneMesh` output whose POSITION0 may be FLOAT16_4. Keep the per-allocation write-revision gate, sampled at first draw. |
 | HUD/selection radii | `node+0x1b0` (angular size at `0x0047e402`) and `part+0x30` (L∞) are *not* raster bounds. `node+0xa0`/`+0xa4` are real world radii but node-level and LOD-0 derived. Do not substitute any of them for the part AABB. |
 | Rasterisation margin | The AABB bounds vertex positions, not rasterised samples. A conservative screen rectangle must still be expanded by at least half a pixel per edge, plus any line/point or wide-primitive state, and clamped to the viewport. |
 | Clipping | The projected AABB is valid in clip space; a rectangle must be derived with correct handling of corners with `w <= 0` (fall back to the whole viewport) rather than by naive per-corner divide. |
@@ -238,10 +241,9 @@ submitted WVP (`c24`–`c27`) consumes, so the eight corners projected through t
 submitted WVP and the submitted viewport give a conservative screen rectangle
 without any engine-side projection.
 
-What remains unproved: that the game never rewrites those vertex buffers after
-load; that the four Asteroid toggle VS have the same position path as their
-bases; and that the fields are correct for bodies loaded through the alternate
-`0x10000000` container branch, where the six values are read from the file
+What remains unproved: that the four Asteroid toggle VS have the same position
+path as their bases; and that the fields are correct for bodies loaded through
+the alternate `0x10000000` container branch, where the six values are read from the file
 rather than recomputed from vertices. None of these has been observed at
 runtime — this note is static analysis only, and no capture has yet compared a
 projected part AABB against the actual drawn pixels.

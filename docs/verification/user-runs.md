@@ -24,7 +24,13 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 9 | Stronger glow and selection/voice timing | 0 | Completed as run 28 on source `d9413fc` |
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | Ready |
 
-**Run 10 is open**: the first gameplay test of the opt-in WMA decoder. Run 28
+**Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
+`--voice-decoder` the game stops on the loading screen at session frame 3 with no
+sound; the same command without the option loads. Run 31 captured a GStreamer log
+(`/tmp/x3-gst-run31.log`: plugin loaded, third ASF stream connected the decoder,
+last event an unhandled `convert` query) and a process sample
+(`/tmp/x3-run31-sample-game.txt`); triage is in progress. Do not repeat run 10
+until the adapter note records a fix. Run 28
 analysis and the next combined changes are underway. Run 4 remains the optional vanilla cursor comparison.
 Emission stays off for this comparison; its twenty-pair live route is qualified,
 but gameplay appearance and cost will need separate acceptance.

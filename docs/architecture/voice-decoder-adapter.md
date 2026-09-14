@@ -167,3 +167,14 @@ opt-in UX, install candidate or launcher change exists. No codec pack is
 redistributed and no patent assurance is implied; FFmpeg and gst-libav are
 LGPL-2.1-or-later, dynamically linked, with corresponding sources and the exact
 configuration retained under `/tmp/x3-wma-plugin/src` and `logs/`.
+
+## Gameplay attempt 2026-09-14: load hang
+
+Runs 29–31 with `--voice-decoder /tmp/x3-wma-plugin` stop on the loading screen
+at session frame 3 with no sound; the control launch without the option loads.
+The run 31 `GST_DEBUG=3` log shows the plugin loading, three ASF streams being
+built, the libav decoder connecting on the third at 3.04 s, then an unhandled
+`convert` query and silence. The frozen-process sample is being triaged; the
+adapter is not usable in the game until the cause is fixed and this section is
+updated.
+
