@@ -25,8 +25,8 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
 | 11 | Fade region route and alpha-tested cutout, combined | 1 | Completed as user run 11, snapshot run36 |
 | 12 | Voice load-hang Wine trace witness (no new build) | 0 | Completed as user run 12, snapshot run37 (trace `/tmp/x3-witness-quartz.log.z`, 5.0 GB) |
-| 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Ready (candidate `76d7750` installed) |
-| 14 | Station source-over linear route, fade region and shimmer trace, combined | 1 | Ready (candidate `76d7750` installed) |
+| 13 | Target-name speech with the decoder plugin and the DMO fallback hook | 1 | Attempted as run 38: execute-access fault at the loading screen; hook fix in progress |
+| 14 | Station source-over linear route, fade region and shimmer trace, combined | 0 | Completed as user run 14, snapshot run39 (witness clean, port composed, darkening persists) |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 1 | Ready (candidate `76d7750` installed) |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
@@ -86,31 +86,6 @@ Report: hang or not, speech heard or not (and whether it starts at the right
 word), selection pauses, comm video/audio, and the session path. Analysis reads
 the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
 the selection timing.
-
-## 14. Station source-over linear route, fade region and shimmer trace, combined — Ready
-
-Same candidate as run 13, no decoder. Adds the station docking-port draws to the
-linear fade route (`docs/architecture/linear-station-source-over.md`) and the
-per-frame shimmer trace. Fly the run-11 path: asteroids and distant objects in
-normal and zoom view (use zoom on a shimmering asteroid for a few seconds), then
-the Argon station approach with the docking port in view; press F8 once at
-distance and once close to the port, and once while zoomed on a shimmering
-asteroid.
-
-```sh
-./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
-  --motion-output --taa --telemetry --camera-log 1 \
-  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
-  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
-  --linear-distance-fade --fade-witness --shimmer-trace \
-  --capture-start 999999 --capture-frames 1
-```
-
-Report: whether the docking port still darkens or brightens with distance, any
-change on the fading asteroids, frame rate, and the session path. Analysis reads
-the witness lines (zero outside pixels required), the `fade_refused_rect` lines
-against the HDR captures for the pixel proof, and the shimmer trace around the
-zoom frames.
 
 ## 15. Screen emission on bullets — Ready
 

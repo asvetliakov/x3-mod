@@ -371,3 +371,29 @@ reads those lines and the fade `f` histogram with
 `verification/probe/run_linear_distance_fade_live.py`
 ([region note](../architecture/linear-distance-fade-region.md)) before any
 acceptance claim.
+
+## 14. Station source-over linear route, fade region and shimmer trace, combined — Completed
+
+Completed as user run 14, snapshot `/tmp/x3-bottleX3-run39/` (74 referenced files: five F8 captures
+at frames 1812, 2071, 2316 on the station approach and 9163, 11940 later; zoom was unavailable, so no
+zoom frames), on the installed candidate `76d7750`, run-14 command of the run queue. User report: the
+docking port still darkens then brightens with distance.
+
+Analysis (log queried, never read whole): `fade_witness` 407 lines / 238 sampled, zero covered pixels
+outside the derived rectangles in every sampled frame, no `rects_unprepared`/`overflow`/truncation;
+`fade_region` 2347 lines, all `status=bound`, 0 full-viewport fallbacks; `f_hist` 2267/53/0/0/0/0/0/0.
+The docking-port pair (`4944d81dfe531b37`/`64bac8bb307eb896`, exact source-over) was admitted and
+composed on the linear route in all five capture frames (`fade_eligible = fade_prepared = fade_linear`
+in all 208 `linear_composition_frame` lines, 1179 draws; `fade_refused_rect` wrote no line because no
+draw was refused). The coexisting-lighting split is therefore no longer present, and the darkening
+persists: across the three approach captures every logged port input (node, model, lod, seven texture
+identities, blend/Z/test/mask, fog state and b0, `alpha13c`, every PS constant) is byte-identical; only
+the world and view matrix registers change. Depth-masked port luminance moves 5–8 % over 115–3000
+pixels, within TAA/dither noise. The evidence supports unchanged-state minification (the mechanism of
+`reverse-engineering/asteroid-specular-minification.md`), not a state, fog, material or LOD change; the
+magnitude the user sees is not established by the captures. Shimmer trace: armed (12,209 `shimmer_frame`,
+131,615 `shimmer_draw` lines) but it never logs the station pair, and no zoom frames exist. `motion_route`
+gates: 2346 matched, 104 pair, 165 draw-state; top draw-state signatures: exact source-over 84, alpha-tested
+opaque 69. Frame time (45 `frame_end` samples): median 5196 µs, p95 10484 µs, versus 4097 µs in run 11;
+no rank correlation with `shimmer_draw` count (0.07) or fade draws (0.04); frames with 0 fade draws
+median 2787 µs. The cross-run comparison is confounded by the new shimmer trace and the low sample count.
