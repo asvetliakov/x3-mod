@@ -37,3 +37,44 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 19 | Combined: AO off/on (Ctrl+Shift+F11), bullets at gain 1, cutout shimmer fix, same-port far/near pair | 0 | Completed as user run 19, snapshot run47: cutout exemption holds (`reason=3` 0.01 %), bolts accepted at gain 1; AO runs but is invisible at 2 m, port darkening and asteroid triangle dropout still open |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 | 20 | Step D, loading markers, AO radius/debug, asteroid diagnostic, port far/near retry | 1 | Pending the next candidate |
+
+## 20. Step D bullets, asteroid prepass jitter, loading markers, AO radius 20, port and ship far/near — Pending the candidate
+
+One run on the next candidate (built from main after the z_only prepass jitter, step D and the
+`loading_phase` markers; hash recorded in status once installed). Load the usual save.
+
+1. **Asteroids**: zoom on a distant asteroid field as in run 19 and say whether triangles still
+   vanish and reappear. While zoomed and at rest on a far asteroid, press F8 once (this launch
+   captures 8 consecutive frames). Analysis: `unjittered_depth_writers=0` on every
+   `motion_output_frame` line, no jitter-side holes in the 8 pre-resolve frames.
+2. **Docking port and ship**: pick one Argon docking port; fly out until the port is clearly small
+   (about a thumbnail, under ~30 px), F8; fly back until it fills about a third of the screen, F8.
+   Do the same far/near F8 pair on one ship. Say whether each darkens. Analysis: the per-draw path
+   and the HDR captures of each pair (`docs/reverse-engineering/station-material-distance.md`).
+3. **Bullets**: fire at a target for a few seconds, F8 once while firing. Say whether the bolts
+   look like run 19. Analysis: `hull_px`/`aabb_px`, `window_end_scans`/`scans`, `sentinel_us`,
+   brackets no longer near-fullscreen (`docs/verification/screen-emission.md`).
+4. **Ambient occlusion at radius 20 m**: near a station and near an asteroid press Ctrl+Shift+F11 a
+   few times; say whether the darkening in creases and contact areas is visible now, and whether
+   it looks wrong anywhere (halos, crawling, HUD), and the frame rate on versus off if you
+   notice it. Analysis: `ambient_occlusion_frame cpu_us`, `radius_px`, the on/off captures.
+   Optional second short session (B, below): the same launch with `--ao-debug` replaces the
+   image by the gray occlusion factor whenever AO is on; load the save, look at a station and
+   an asteroid, quit, and say whether the gray view shows creases and contact darkening.
+5. **Loading**: nothing to do; the log now carries `loading_phase` markers for menu-shown and
+   save-load; report roughly how long the menu and the save load took by feel.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness --screen-emission --screen-emission-timing \
+  --ambient-occlusion --ao-timing --ao-radius 20 --ao-debug \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+Report: the session path, and the five observations above. Frame rate on versus off for AO is
+still useful if you notice it.
+
