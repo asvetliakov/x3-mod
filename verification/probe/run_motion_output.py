@@ -1133,6 +1133,12 @@ def validate_msaa(name, text, trace, samples=2):
 
 
 ZONLY_FRAMES, ZONLY_CONTROL_FRAMES, ZONLY_VS = 9, {2, 4, 6}, 'c78b4c68a87fce74'
+# The capture window opens at X3M_CAPTURE_START=1 and the script's Reset after frame 3 closes it for good
+# (capture.cpp Device::Reset clears `capture`/`remaining`, and the start frame has already passed), so the
+# per-draw motion_route records and the two readbacks exist on frames 1-3 only. The prepass invariants
+# themselves (unjittered_depth_writers, jittered, holes) are asserted on all nine frames from the frame
+# lines and the fixture's own oracle.
+ZONLY_CAPTURE_FRAMES = (1, 2, 3)
 
 
 def validate_zonly(name, text, trace):
@@ -1142,7 +1148,8 @@ def validate_zonly(name, text, trace):
     test against the prepass depth passes everywhere) and the coverage oracle agrees. Control frames (jx > 0): the
     prepass is pre-shifted so the route's jitter cancels; the material draw must then lose more than half its interior.
     Every frame line reports unjittered_depth_writers=0 with both scene draws jittered and none routed; the capture
-    frames' route records show the prepass at gate 3 (no pair) and the material draw at gate 4, both jittered."""
+    frames' route records show the prepass at gate 3 (no pair) and the material draw at gate 4, both jittered
+    (the capture window is frames 1-3: the Reset after frame 3 closes it)."""
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -1175,9 +1182,11 @@ def validate_zonly(name, text, trace):
         assert (summary['draws'], summary['routed'], summary['jittered'], summary['unjittered_depth_writers']) == ('3', '0', '2', '0'), (name, frame, summary)
         assert (summary['gate3'], summary['gate4']) == ('1', '1'), (name, frame, summary)
         assert summary['apply_failures'] == summary['restore_failures'] == '0', (name, frame, summary)
+        assert int(summary['readbacks']) == (2 if frame in ZONLY_CAPTURE_FRAMES else 0), (name, frame, summary)
     routes = [fields(l) for l in tl if l.startswith('motion_route ')]
-    expects = [fields(l) for l in lines if l.startswith('EXPECT ') and 1 <= int(fields(l)['frame']) <= 8]
-    assert len(expects) == 16 and {(r['frame'], r['index']) for r in routes} == {(e['frame'], e['index']) for e in expects}, (name, len(routes), len(expects))
+    expects = [fields(l) for l in lines if l.startswith('EXPECT ') and int(fields(l)['frame']) in ZONLY_CAPTURE_FRAMES]
+    assert len(expects) == 2 * len(ZONLY_CAPTURE_FRAMES), (name, len(expects))
+    assert {(r['frame'], r['index']) for r in routes} == {(e['frame'], e['index']) for e in expects}, (name, len(routes), len(expects))
     for e in expects:
         match = [r for r in routes if r['frame'] == e['frame'] and r['index'] == e['index']]
         assert len(match) == 1 and match[0]['routed'] == '0' and match[0]['jittered'] == e['jittered'] == '1' and match[0]['result'] == '00000000', (name, e, match)
@@ -1187,7 +1196,7 @@ def validate_zonly(name, text, trace):
     assert not any(l.startswith(('motion_output_apply_failed', 'motion_output_restore_failed')) for l in tl), name
     return {'mode': 'zonly', 'frames': ZONLY_FRAMES, 'checks': int(terminal['checks']), 'restorations': int(terminal['restorations']),
             'holes': holes, 'control_frames': sorted(ZONLY_CONTROL_FRAMES), 'unjittered_depth_writers': {f: int(v['unjittered_depth_writers']) for f, v in frames.items()},
-            'routes': len(routes)}
+            'capture_frames': list(ZONLY_CAPTURE_FRAMES), 'routes': len(routes)}
 
 
 def validate_hdr(name, trace, directory, hdr, hdr_fault, frames, capture_frames, end, taa, ends=None, redirected=None, width=64, height=64):
