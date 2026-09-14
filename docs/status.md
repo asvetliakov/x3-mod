@@ -208,6 +208,7 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   installed pairs (168 pairs / 137 originals total), preserving native gloss/Fresnel.
   Host, detached GPU (254 cases / 2,286 samples) and focused live routing
   (216 frames / 4,258,208 checks) pass. Gameplay acceptance remains pending.
+- **Exposure meter under `X3M_HDR_DECODE=none`:** the motion-output suite repair (2026-09-14 evening) found the HDR meter self-test's GPU level-0 value disagrees with the CPU reference beyond 1e-4 only in that decode mode, so the pass refuses the meter (`meter_reason=self_test`) and Auto exposure is off there; every other decode gives `ok`. Not a default configuration; open, not yet owned.
 - **Bloom/exposure:** the approved tighter-core correction uses gain 0.375/scatter 0.65;
   source/reference review and 27 affected host tests pass, and it is installed.
   +1.5 EV appearance is accepted and selected as the installed Auto default. The meter
