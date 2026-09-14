@@ -194,3 +194,11 @@ section-4 calibration assumed S ≈ 1.26e5; the fixture's frame has S ≈ 2.4e5)
 outside the viewport in every measured case, so the cap has not been observed to matter; it is a bound to
 revisit with run-20 `pad=` values. Native Windows: the sentinel is a 25–147 KB streaming store into
 write-combined memory per lock and the scan an uncached read of the written prefix; both unmeasured.
+
+Second-review notes (2026-09-14, non-blocking, tracked for run 20): the previous-prefix-only sentinel
+optimisation assumes the DISCARD mapping returns the same memory as the last lock; on a renaming backend
+a count increase after an exact scan forces a window-end scan plus a whole-window fill (≈30 µs per lock
+here, an uncached 147 KB write-combined read on native Windows); `window_end_scans/scans` on the frame
+line decides the regime in game. The 369 µs first-draw outlier is unexplained (likely a once-per-process
+JIT cost, not per buffer); the RE note says one lock per part batch per frame, this note says two for
+the player buffers — either is handled.
