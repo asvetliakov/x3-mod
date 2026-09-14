@@ -1251,6 +1251,13 @@ LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, s
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     return linear_material_sampler_mask(vertex,pixel)!=0;
 }
+bool linear_material_asteroid_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    bool listed=false;
+    for (const auto& pair:pairs) if (pair.vertex==vertex && pair.pixel==pixel) { listed=true; break; }
+    if (!listed) return false;
+    for (const auto& p:pixels) if (p.hash==pixel) return p.asteroid_layout!=0;
+    return false;
+}
 LinearMaterialResult linear_material_vertex_variant(const Word* original, std::size_t words,
     const LinearMaterialConfig& config, Words& output, bool current_depth) noexcept {
     if (original && words==768 && material_motion_fingerprint(original,words)==xt_bump_vs)

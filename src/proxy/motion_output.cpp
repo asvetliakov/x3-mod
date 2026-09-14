@@ -293,7 +293,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
     drop_redirect();
@@ -313,7 +313,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     history_.invalidate();
     fill_pending_ = false;
     // Final retirement already owns the full logging/CPU-state boundary; do
@@ -525,6 +525,10 @@ void MotionOutput::configure_linear_distance_fade(bool requested) noexcept {
 void MotionOutput::configure_fade_witness(unsigned frames) noexcept {
     if (device_) return;
     fade_witness_interval_ = distance_fade_requested_ ? frames : 0u;
+}
+void MotionOutput::configure_shimmer_trace(bool requested) noexcept {
+    if (device_) return;
+    shimmer_trace_ = requested;
 }
 
 void MotionOutput::configure_mip_bias(float bias) noexcept {
@@ -1871,7 +1875,7 @@ void MotionOutput::before_reset() noexcept {
     cutout_probe_frame_known_ = false; cutout_reset_pending_ = true;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
     // D3DPOOL_DEFAULT objects must not exist across Reset; shaders survive it.
@@ -1919,7 +1923,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     if (shader && shadow_.vs == shader) {
         shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
         shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
         shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
@@ -2012,7 +2016,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     if (shader && shadow_.ps == shader) {
         shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr;
         shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.ps_xt_default_ordinary = nullptr;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
@@ -2111,7 +2115,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.vs = shader; shadow_.vs_hash = 0; shadow_.vs_variant = nullptr; shadow_.vs_material_variant = nullptr; shadow_.vs_row = nullptr;
@@ -2133,7 +2137,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.material_contract = {};
-    shadow_.cutout_pair = false;
+    shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.ps_xt_default_ordinary = nullptr;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
@@ -2350,6 +2354,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
         w.count = w.prepared_count = w.logged = 0; w.last = FadeWitness::rect_capacity; w.overflow = false;
         std::memset(w.f_hist, 0, sizeof w.f_hist);
     }
+    shimmer_count_ = 0;
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
     displacements_.clear();
@@ -2947,6 +2952,9 @@ void MotionOutput::refresh_linear_material_contract() noexcept {
         ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
     shadow_.material_contract = contract;
     shadow_.cutout_pair = linear_material_requested_ && cutout::pair(shadow_.vs_hash, shadow_.ps_hash);
+    // Diagnostic only, and only while the trace is on: integer table lookup at
+    // the shader setter, never at a draw.
+    shadow_.asteroid_pair = shimmer_trace_ && renderer::linear_material_asteroid_pair(shadow_.vs_hash, shadow_.ps_hash);
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready && !xt_default_unavailable_.seen) {
         // Called by lightweight shader hooks: even integer-only printf formats
         // can reach the CRT's x87 formatter. Keep this path integer-only.
@@ -3255,6 +3263,7 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     const std::uint64_t whole = of_viewport ? std::uint64_t(viewport.width) * viewport.height : area(target);
     const unsigned permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
     counts.region_permille_sum += permille;
+    route.fade_region_permille = permille;
     if (region.bound) ++counts.region_bound; else ++counts.region_full;
     const bool witness_frame = this->witness_frame();
     bool witness_line = false;
@@ -3303,6 +3312,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     }
     if (route.jittered && !composition_state_lost_) restore_jitter(route);
     if (pending_valid_) { pending_valid_ = false; observe(pending_, result); }
+    if (shimmer_trace_ && route.scene && shadow_.asteroid_pair) record_shimmer_draw(route);
     if (capture_ && route.scene) {
         const auto& k = route.key;
         log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u pass=%lu rows_hash=%016llx result=%08lx",
@@ -3833,6 +3843,72 @@ void MotionOutput::release_fade_witness() noexcept {
     release(w.copy); w.copy = nullptr; w.copy_width = w.copy_height = 0;
     delete[] w.row; w.row = nullptr; w.row_width = 0;
 }
+// Distant-shimmer trace (X3M_SHIMMER_TRACE=1, docs/architecture/
+// linear-distance-fade-region.md, "Shimmer trace (diagnostic)"): the draw
+// hook copies integers into a fixed per-frame array (no formatting, no
+// allocation, no locking, no floating point); the whole frame is formatted
+// once after Present, where the full CPU boundary already holds.
+void MotionOutput::record_shimmer_draw(const MotionRoute& route) noexcept {
+    const unsigned slot = shimmer_count_++;
+    if (slot >= shimmer_draw_capacity) return;   // beyond the capacity the frame only counts
+    auto& r = shimmer_draws_[slot];
+    const auto& k = route.key;
+    r.node = k.node;
+    r.index = std::uint32_t(counters_.draws);
+    r.model = std::uint32_t(k.model); r.lod = std::uint32_t(k.lod);
+    r.vertex_count = std::uint32_t(k.vertex_count); r.primitives = std::uint32_t(k.primitives);
+    r.topology = std::uint32_t(k.topology);
+    r.vertex_buffer = k.vertex_buffer; r.index_buffer = k.index_buffer;
+    r.gate = std::uint8_t(route.gate);
+    r.routed = route.routed; r.composition = route.composition; r.indexed = k.indexed != 0;
+    r.f_permille = route.fade_region_evaluated ? std::int32_t(route.fade_region_permille) : -1;
+    r.region_known = route.fade_region_evaluated && route.fade_region.bound;
+    r.rect[0] = route.fade_region.rect.left; r.rect[1] = route.fade_region.rect.top;
+    r.rect[2] = route.fade_region.rect.right; r.rect[3] = route.fade_region.rect.bottom;
+}
+namespace {
+// Indices a D3D9 primitive count consumes; 0 for a non-indexed draw.
+unsigned shimmer_index_count(unsigned topology, unsigned primitives) noexcept {
+    switch (topology) {
+    case D3DPT_POINTLIST: return primitives;
+    case D3DPT_LINELIST: return primitives * 2u;
+    case D3DPT_LINESTRIP: return primitives + 1u;
+    case D3DPT_TRIANGLELIST: return primitives * 3u;
+    case D3DPT_TRIANGLESTRIP:
+    case D3DPT_TRIANGLEFAN: return primitives + 2u;
+    default: return 0u;
+    }
+}
+} // namespace
+void MotionOutput::log_shimmer_frame(unsigned history_previous, unsigned history_current, unsigned committed) noexcept {
+    const auto& t = counters_.taa;
+    const auto& c = camera_scene_;
+    // Scaled integers, never a formatted float. float*float and the 32-bit
+    // truncation are SSE (cvttss2si); a 64-bit truncation would be x87 here.
+    const long p00 = c.valid ? long(std::int32_t(c.m00 * 10000.f)) : 0l;
+    const long p11 = c.valid ? long(std::int32_t(c.m11 * 10000.f)) : 0l;
+    const unsigned logged = shimmer_count_ < shimmer_draw_capacity ? shimmer_count_ : shimmer_draw_capacity;
+    log("shimmer_frame device=%llu frame=%llu draws=%lu asteroid=%u logged=%u truncated=%u taa=%u taa_attempted=%u"
+        " taa_resolved=%u taa_history=%u taa_skip=%lu cut=%u camera_cut=%u jitter=%u jitter_index=%u"
+        " history_previous=%u history_current=%u committed=%u camera_valid=%u p00_e4=%ld p11_e4=%ld",
+        id_, frame_, static_cast<unsigned long>(counters_.draws), shimmer_count_, logged, shimmer_count_ - logged,
+        taa_enabled_, t.attempted, t.resolved, t.used_history, static_cast<unsigned long>(t.skip),
+        counters_.cut, t.camera_cut, counters_.jitter_active, counters_.jitter_index,
+        history_previous, history_current, committed, c.valid, p00, p11);
+    for (unsigned i = 0; i < logged; ++i) {
+        const auto& r = shimmer_draws_[i];
+        log("shimmer_draw device=%llu frame=%llu index=%lu gate=%u routed=%u composition=%u node=%llu model=%08lx lod=%08lx"
+            " vb=%llu ib=%llu topology=%u indexed=%u vertex_count=%lu index_count=%lu primitives=%lu f_permille=%ld"
+            " region=%u rect=%ld,%ld,%ld,%ld",
+            id_, frame_, static_cast<unsigned long>(r.index), unsigned(r.gate), unsigned(r.routed), unsigned(r.composition),
+            r.node, static_cast<unsigned long>(r.model), static_cast<unsigned long>(r.lod),
+            r.vertex_buffer, r.index_buffer, r.topology, unsigned(r.indexed),
+            static_cast<unsigned long>(r.vertex_count),
+            static_cast<unsigned long>(r.indexed ? shimmer_index_count(r.topology, r.primitives) : 0u),
+            static_cast<unsigned long>(r.primitives), static_cast<long>(r.f_permille), unsigned(r.region_known),
+            long(r.rect[0]), long(r.rect[1]), long(r.rect[2]), long(r.rect[3]));
+    }
+}
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
     report_mip_bias_game_write_failure();
@@ -3841,6 +3917,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (FAILED(result)) invalidate_taa();
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
+    if (shimmer_trace_) log_shimmer_frame(unsigned(stats.previous), unsigned(stats.current), unsigned(committed));
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):
         // counts are exact, the *_us totals are CPU-side QPC wall clock with
