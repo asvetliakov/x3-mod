@@ -12,9 +12,10 @@ and the persistent backup) is recorded in
 Checkpoints since: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
 with the [per-part AABB finding](reverse-engineering/render-node-bounds.md) and the
 ratified [in-place region composition design](architecture/linear-distance-fade-region.md)
-(`67baa55`; step 1, bound extraction with a conservativeness fixture, in progress); the cutout runtime is ported to branch
-`qualification/linear-cutout-main` (`34593a4`, worktree `/tmp/x3-cutout-main`) under
-escalated review and its first live fixture run; the isolated WMA decoder adapter
+(`67baa55`; step 1, bound extraction with a conservativeness fixture, in progress); the two-pair alpha-tested [cutout runtime](architecture/alpha-tested-materials.md)
+is merged (`b9ae8dd`; two reviews, x87 audit PASS at 223 reachable functions, live
+X3 13 processes / 531 frames / 2,111,274 checks PASS, not installed);
+the isolated WMA decoder adapter
 ([note](architecture/voice-decoder-adapter.md)) is built, evidence-reviewed and
 decodes both real voice files through the null-event contract with exact cue
 timestamps in build v3 (`6a2c763`), but its first gameplay launch hangs on the
