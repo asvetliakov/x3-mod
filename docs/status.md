@@ -34,9 +34,15 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Next user action
 
-Run 20 on the installed `39b090d0…` candidate: asteroid prepass-jitter fix,
-port and ship far/near pairs, step D bullets, AO at radius 20 m, loading
-markers; command and report items in the [run queue](verification/user-runs.md). Run 19
+Run 20 (snapshot run48) is complete on the installed `39b090d0…` build:
+asteroid triangle dropout fixed and accepted; step D bullets accepted (no
+fullscreen bracket in 50,654 frames); loading markers read menu 12.9 s and a
+21.7 s save-load stall; the far port was captured (37 px) and its radiance
+moves only 6 % between far and near; AO ran in the debug factor view for the
+whole session and is a few pixels wide at gameplay distances. Run 21 is being
+queued (AO per the pending scale note, witness on firing frames, a vanilla
+eyeball approach to the same port). Details in the
+[completed-run archive](archive/user-runs-completed.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
 but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
 but is invisible at the 2 m radius; the port pair was captured at one distance
@@ -89,20 +95,30 @@ darkening on a ship. Details in the
   station is one merged opaque subset, nearer the port is its own source-over draw
   over a dark interior. Normal-map minification is refuted. The design note
   [docking-port-lod-consistency.md](architecture/docking-port-lod-consistency.md)
-  is **not ratified**: native parity for the near port versus the slightly
-  brighter linear rule is a user decision after run 19. Measurements in
+  is **not ratified**. Run 20 captured the far port (37 px) and the near port
+  (181–238 px): the port radiance differs by only 6 %, so the perceived darkening
+  is not a radiance step in the port; the user also sees it on ships. Next
+  discriminator: the user compares the same approach in vanilla (run 21).
+  Measurements in
   [station-material-distance.md](reverse-engineering/station-material-distance.md).
 - **Bullets / screen emission:** step E (publication-time decode, parity within
   one FP16 code) and step D (per-draw vertex hull, fan batch 1.2 % of the viewport
   vs 89.6 % for the box; derive 1.7–27 µs per draw, sentinel fill 17 µs per lock)
-  are merged; step E is installed, step D rides the candidate after run 19.
-  Gameplay parity pending runs 19/20. Ledger
+  are installed; run 19 accepted the bolts at gain 1 and run 20 showed step D
+  working (hull a third of the box on firing frames, no fullscreen bracket).
+  Open: a possible slight dimming (peaks match run 19; the witness never sampled
+  a firing frame, run 21 samples every frame). Ledger
   [screen-emission.md](verification/screen-emission.md), design
   [screen-emission-bullet-bound.md](architecture/screen-emission-bullet-bound.md).
-- **Ambient occlusion:** step 2 is merged and installed behind
-  `--ambient-occlusion` (Ctrl+Shift+F11 toggle, `--ao-timing`, live fixture 7
-  twins, two reviews); an off/on gameplay run is pending run 19. Design
-  [ambient-occlusion.md](architecture/ambient-occlusion.md).
+- **Ambient occlusion:** step 2 is installed behind `--ambient-occlusion`
+  (Ctrl+Shift+F11 toggle, ≈210 µs CPU per frame). Runs 19/20: the pass runs but
+  the term is invisible at gameplay distance because the radius is a few
+  half-res pixels (`radius_px = 256·radius_m/distance_m` at 1280×768, cap 64;
+  20 m gives 10 px at 500 m and 2.6 px at 2 km); run 20 also ran the gray debug
+  view all session. Scale decision (radius rule, strength, keep or drop) pending
+  the design note `docs/architecture/ambient-occlusion-scale.md`; design
+  [ambient-occlusion.md](architecture/ambient-occlusion.md), ledger
+  [ambient-occlusion.md](verification/ambient-occlusion.md).
 - **Distance fade:** default-on in the installed build; the witness stayed clean
   in runs 11/14/15 (0 covered pixels outside the derived rectangles, 0
   full-viewport fallbacks). Gameplay acceptance of the default rides run 19.
@@ -141,4 +157,6 @@ note instead of expanding this handoff. Remaining scope: [roadmap](architecture/
   34–38 s figure cannot be re-measured directly; the `frame_end elapsed_ms` at frame 600 is 40–45 s in
   runs 11/14/16/17, with one 23–32 s stall in the first 600 frames of which the instrumented reader/inflate
   path explains 10–11 s and the rest is unattributed. Next: a `loading_phase` marker at menu-shown and
-  save-load-complete, then attribution of the remaining stall; not started.
+  save-load-complete: installed and read in run 20 (menu_shown 12.9 s, save load
+  19.2–40.9 s with a 21.7 s stall); next is attribution of that stall
+  ([loading-observations.md](reverse-engineering/loading-observations.md), "Phase markers").
