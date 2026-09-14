@@ -345,3 +345,116 @@ The other unjittered scene programs in run 47 (`d5e1c75351ed3f04`,
 `5e484a06672e28fb`, `36f98d151fd6b0c6`) were seen with ZWRITEENABLE 0 where
 checked (frame 18555 indices 34/35) and are a lesser, sub-pixel-offset
 concern, not this symptom.
+
+## Run 49: a station section trembles at distance
+
+Read-only diagnosis (no build, no Wine, no launch) on the run-49 snapshot
+`/tmp/x3-bottleX3-run49` (`session-20260915-010311-212.log`, 495 MB, queried
+with grep/Python only) and the user screenshot `screenshots/jitter1.png`.
+Capture group 11940–11947 is the screenshot view (same station pose; the circled
+region is x 490–640, y 210–360 at 1280×768). Scratch scripts stayed under the
+session scratchpad; nothing here needs a fixture rerun.
+
+### Mechanism (witnessed): the fade-band asteroid behind the hangar gap resolves current-only
+
+The trembling content is not a station draw. It is asteroid node 53195 (model
+`4fee`, 1712 triangles, pair `167eb2d5629ab9d3`/`d44db87778a43b61`) in its
+linear-distance-fade band, seen through the open hangar section. Per frame it
+is drawn twice: the engine's depth-only prepass (`c78b4c68a87fce74`, index 6,
+gate 3, `jittered=1`) and the colour pass (index 20) with alpha blend on, which
+the route refuses at gate 4 (DrawState) but still jitters. So its raster moves
+with the scene, but its pixels carry no motion rows: RT1 alpha −1, RT2 −1.
+
+The fade route binds the draw as a fade region every frame from 11615 to 12898:
+`fade_region … index=20 status=bound jittered=1 rect=542,247,626,332
+f_permille=7` (`f_permille` is the rect's share of the viewport, 7140 px of
+983040), and the composition frame at 11940 reports `prepared=1 fade_prepared=1
+mask_valid=1 in_place=1 region_pixels=7140` with `fade_witness … rects=1
+covered=3055 union=7140`. That coverage is the reactive mask M
+(`motion_output.cpp` 1189–1197: `in.reactive = composition_mask`,
+`SupplementalMaskWithDepthSentinel`; `temporal_pass.cpp` 250–252 → resolve
+`options.y`), and the resolve returns the current sample wherever M is set
+(`resolve.hlsl` 156–157, and 95–97/`reactive` for history taps). This is the
+documented contract ("M rejects their history (current-only TAA, possible edge
+aliasing) — the asteroid contract", linear-station-source-over.md), but with
+uniform jitter a current-only pixel of a *jittered* draw shows the raw jitter:
+the section moves by Δjitter every frame (up to 0.81 px in x, 0.94 px in y for
+the 8-sample Halton set) while the routed station around it is reprojected and
+stable. It stops closer because the asteroid leaves the gap: at 12213 the
+region is still bound (`rect=640,285,726,369 covered=2944`), at 13181 the
+frame's only fade region is another draw (index 433) and `covered=0`.
+
+Witness, raw FP16 captures (`hdr_1_11940..11947`, the pre-resolve scene target;
+`hdr_writeback` reads `hdr_->target()` before the resolve writes `out.color`):
+a per-tile Lucas–Kanade shift (16-px tiles, 3 iterations, log-luminance)
+between consecutive frames, projected onto the logged Δjitter (f = 1 means the
+tile moved exactly by the jitter delta):
+
+| pair | Δjitter px | inside rect 542–626 × 247–332 | tower (control) | body (control) |
+|---|---|---|---|---|
+| 11940→41 | (−0.250, −0.556) | (−0.274, −0.566) f=1.03 | f=1.14 | f=0.90 |
+| 11941→42 | (+0.500, +0.333) | (+0.475, +0.279) f=0.91 | f=1.04 | f=0.86 |
+| 11942→43 | (−0.812, +0.333) | (−0.724, +0.390) f=0.93 | f=0.85 | f=0.87 |
+| 11943→44 | (+0.438, −0.556) | (+0.364, −0.536) f=0.91 | f=0.80 | f=0.97 |
+| 11944→45 | (−0.250, +0.333) | (−0.262, +0.265) f=0.89 | f=0.75 | f=1.05 |
+| 11945→46 | (+0.500, −0.556) | (+0.402, −0.603) f=0.96 | f=0.81 | f=0.90 |
+| 11946→47 | (−0.625, +0.333) | (−0.608, +0.318) f=0.97 | f=0.95 | f=1.05 |
+
+So the raw raster inside the rect is jittered exactly like the station (the
+camera is static: HUD 0 m/s, `camera_state … rotation_deg=0.0000 policy=2`).
+The routed station is stable after the resolve because its motion rows are
+exact: for every routed pixel of frame 11940, `motion.xy + jitter − uv` has a
+median of 0.001 px (p90 0.002 px) in the circle, tower, body, arm and ship
+regions, and `motion.z` equals the RT2 depth bit for bit. The only pixels the
+resolve cannot stabilise in the circle are the mask-covered asteroid pixels
+(and their 3×3 expansion), which is where the RT2 map shows the unrouted
+share of 10–50 % per tile (rows 16–19, cols 30–36) that the routed station
+does not cover: the gap.
+
+### What the triage's unrouted rows are (not this symptom)
+
+- Nodes 58844–58851 and 58872 (`4944d81dfe531b37` with `0c1f3f0f…`/`ca6bfa4a…`/
+  `c30104cb…`) are children of 58843 and project to screen (640, 557) at
+  w = 148 on all six capture frames: the player's ship in chase view, not the
+  station. 58854 (`d5e1c75351ed3f04`/`8360f422de08b5bd`, 360 triangles, gate 3,
+  `jittered=0`, Z-write off, ONE/INVSRCCOLOR) is its engine effect at (640, 657).
+- `motion_route … gate=3 jittered=0 node=00000000`: the effects draw above plus
+  the particle billboards (`36f98d151fd6b0c6`/`222bee0defcb1852`, 2–180
+  primitives) and the stardust batch (`5e484a06672e28fb`/`0a523f33ac47ae05`,
+  ≈1000 primitives), all Z-write off and blended; the view-only VS has no table
+  row so `apply_jitter` skips them (motion_output.cpp 3568). Sub-pixel, no
+  depth, as recorded for run 47.
+- Handles never in `motion_route`: 58245/58246 are the background dome/planet
+  (indices 1–5, camera 60312, drawn before the scene is bound, gate 2 =
+  `MotionGate::Scene`); 60278–60280, 51946–51948, 58875, 58877 are two-triangle
+  quads drawn after the scene-end signal (gate 2, overlays). Gate 2 draws get no
+  route row by design; `gate2=20` = 5 + 15 on every capture frame.
+- `unjittered_depth_writers=0` is correct: every depth writer in the scene phase
+  is jittered, including the asteroid's prepass.
+
+### Fix direction and cost
+
+Route the fade-band draw instead of masking it. The colour pass is a reviewed
+opaque pair (gate 0 at frame 4900 when the same asteroid was closer and not
+fading) refused only for `ALPHABLENDENABLE` inside the fade band, and its depth
+is already the jittered prepass depth. Admitting a fade-region draw of a
+reviewed pair to the route (write RT1/RT2 from its own rows, treat it as opaque
+for the sentinel, and keep it out of M while the fade factor is above a
+threshold, e.g. ≥ 0.5) gives the resolve exact per-object motion; the
+neighbourhood clip absorbs the slow alpha change. Cost: one routed draw per
+fading object (frame 11940: 1 of 51 gate-4 draws; run 36 measured 1–3 fade
+draws per frame), the same constant upload and MRT as any routed draw, no extra
+pass. Risk: history of a blended surface mixes the background behind it near
+the transparent end of the band (hence the threshold), and a moving fading
+object with wrong rows would ghost instead of tremble, so the admission must
+keep gates 5–6 (scope/history) intact. The cheaper alternative, dropping M for
+covered pixels whose 3×3 has no closer routed neighbour and letting policy 2
+reproject them at the far plane, is exact only for a static camera and ghosts
+on turns; not recommended.
+
+Fixture: `run_linear_distance_fade.py` (fade region + composition mask) plus a
+`run_motion_output.py` case in the `production`/`seam` family that draws a
+reviewed pair with blend on inside a bound fade region across the 8 jitter
+phases and checks the route record (`gate=0 routed=1 jittered=1`, RT1 alpha 1
+on covered pixels, M clear there) and a resolved readback whose per-tile shift
+is 0 while the raw shift equals Δjitter.
