@@ -58,6 +58,9 @@ static_assert(sizeof(Case) == 240, "binary case ABI");
 // O/detail data, 2048 requested FLAT, 4096/8192 O.r=.50/.51 (default .49),
 // 16384 alternate secondary UV, 32768 FLOAT2 UV, 65536 near-plane clipping.
 constexpr unsigned xt_first_pair = 148;
+// Standard BUMPMAP hull pair 4944d81dfe531b37/64bac8bb307eb896: the seventh
+// distance-fade producer (docs/architecture/linear-station-source-over.md).
+constexpr unsigned station_fade_pair = 51;
 constexpr unsigned glass_first_pair = 162;
 bool is_glass(const Case& c) { return c.pair >= glass_first_pair; }
 bool is_xt(const Case& c) { return c.pair >= xt_first_pair && c.pair < glass_first_pair; }
@@ -296,7 +299,7 @@ struct Shaders {
     LinearMaterialConfig config{c.f[0], c.f[1], c.f[2]};
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     if (mode == 3) {
-      require(c.pair>=110 && c.pair<116,"six exact fade pairs only");
+      require((c.pair>=110 && c.pair<116) || c.pair==station_fade_pair,"seven exact fade pairs only");
       require((pixel ? linear_distance_fade_pixel_variant(original.data(),original.size(),config,output)
                      : linear_distance_fade_vertex_variant(original.data(),original.size(),config,output)) ==
                   LinearMaterialResult::Applied,"distance fade transform");

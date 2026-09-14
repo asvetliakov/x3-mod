@@ -7,6 +7,7 @@ import struct
 import tempfile
 import unittest
 
+import fade_refused_rect
 import run_linear_distance_fade_live as live
 
 
@@ -52,13 +53,14 @@ def timing_trace(fade=1,width=1280,height=768,rect=None):
 
 def report(fade=1,emission=1,lazy=1,rect=None):
     required=emission+2*fade
-    out=['RESULT PASS frames=30 checks=123 restorations=35 taa_reference_frames=28 taa_skipped_frames=2',
+    out=[f'RESULT PASS frames={live.FRAMES} checks=123 restorations=35 taa_reference_frames={live.FRAMES-2} taa_skipped_frames=2',
          'FADE_OPAQUE_RETURN frame=13 matched=1']
-    for f in (26,29):out += ['RESET PASS',line('FADE_RESET',frame=f,refs=3+bin(required).count('1') if required else 0,allocations=4 if required else 0,quarantine=int(bool(required) and f==29),state_lost=0)]
+    for f in live.RESET_FRAMES:out += ['RESET PASS',line('FADE_RESET',frame=f,refs=3+bin(required).count('1') if required else 0,allocations=4 if required else 0,quarantine=int(bool(required) and f==live.RESET_FRAMES[1]),state_lost=0)]
     out += [line('FADE_REJECTED',frame=f,source_failed=1,taa=0,history_seeded=0,copy_exact=1) for f in live.FAILED_SOURCES]
-    out += [line('FADE_EXPORT',frame=29,quarantine=int(bool(required)),state_lost=0)]
-    native={i:(.95,.94,.96,1.) for i in range(6)}
-    out += [line('FADE_NATIVE',pair=i,before='1,1,1,1',after=','.join(map(str,native[i]))) for i in range(6)]
+    out += [line('FADE_EXPORT',frame=live.RESET_FRAMES[1],quarantine=int(bool(required)),state_lost=0)]
+    native={i:(.95,.94,.96,1.) for i in range(7)}
+    out += [line('FADE_NATIVE',pair=i,before='1,1,1,1',after=','.join(map(str,native[i]))) for i in range(7)]
+    survivors={}
     trace=['motion_output_release held=123 released=1']
     for f in range(live.FRAMES):
         sources,stopped=live.expected_sources(f,fade,emission)
@@ -67,7 +69,7 @@ def report(fade=1,emission=1,lazy=1,rect=None):
         for index,key in ((4,'prepared'),(5,'linear'),(6,'native'),(7,'incomplete')):
             s[index]=sum(r[key] for r in sources)
         completed=[r['hr'] for r in sources if r['prepared']]
-        s[11]=completed[-1] if completed else 1;s[12]=len(sources)
+        s[11]=completed[-1] if completed else 1;s[12]=len(sources)+live.routed_station_draws(f)
         s[13]=sum(r['kind']=='fade' for r in sources)*bool(fade)
         s[14]=sum(r['prepared'] for r in sources if r['kind']=='fade')
         s[15]=sum(r['linear'] for r in sources if r['kind']=='fade')
@@ -77,98 +79,167 @@ def report(fade=1,emission=1,lazy=1,rect=None):
         out.append(line('FADE_LIVE',frame=f,fade=fade,emission=emission,draws=len(sources),**{f's{i}':v for i,v in enumerate(s)},hash_alpha='a',hash_motion='m',hash_depth='d',hash_mask='mask'))
         prior=int(bool(required))
         for i,r in enumerate(sources):
-            alpha=(.25 if i>=2 else .125) if r['kind']=='emission' else (0. if f==1 else .078125)
-            out.append(line('FADE_SOURCE',frame=f,source=i,kind=r['kind'],pair=r['pair'],alpha=alpha,overlap=2 if f==15 else 1,fault=r['fault'],hr=f'{r["hr"]:08x}',original_calls=1,prepared=r['prepared'],linear=r['linear'],native=r['native'],mask_before=prior,mask_after=int(r['mask_valid']),hash_mask_before='mask',hash_mask_after='mask'))
+            alpha=(.25 if i>=2 else .125) if r['kind']=='emission' else (0. if f==1 else live.fade_alpha(r['pair']))
+            out.append(line('FADE_SOURCE',frame=f,source=i,kind=r['kind'],pair=r['pair'],alpha=alpha,overlap=2 if f==18 else 1,fault=r['fault'],hr=f'{r["hr"]:08x}',original_calls=1,prepared=r['prepared'],linear=r['linear'],native=r['native'],mask_before=prior,mask_after=int(r['mask_valid']),hash_mask_before='mask',hash_mask_after='mask'))
             prior=int(r['mask_valid'])
-        if f in (1,*live.PRESENT_FRAMES,15,16,17,18):
-            before=(1.,1.,1.,.5)
+        if f in (1,*live.PRESENT_FRAMES,*live.STATION_FRAMES,*live.MIXED_FRAMES):
+            before=(.9,.8,.7,.25) if f==14 else (1.,1.,1.,.5) # frame 14 composes over the native opaque sibling
             for source,(kind,pair,_,_) in enumerate(live.source_plan(f)):
-                overlap=2 if f==15 else 1
+                overlap=2 if f==18 else 1
                 if f==1:after=before
                 elif kind=='emission':after=live.expected_emission(before,emission)
                 elif fade:after=live.expected_composite(before,pair,overlap=overlap)
                 elif f in live.PRESENT_FRAMES:after=native[pair][:3]+(before[3],)
                 else:
-                    alpha=.078125;original=[(v-(1-alpha))/alpha for v in native[pair][:3]];after=before
+                    alpha=live.fade_alpha(pair);original=[(v-(1-alpha))/alpha for v in native[pair][:3]];after=before
                     for _ in range(overlap):after=tuple(live.component.fp16_rt_store(alpha*v+(1-alpha)*a) for a,v in zip(after,original))+(before[3],)
                 for x in ((16,32) if f in (1,*live.PRESENT_FRAMES) else (32,)):
-                    out.append(line('FADE_SAMPLE',frame=f,source=source,pair=pair,x=x,y=32,kind=kind,overlap=overlap,alpha=.125 if kind=='emission' else 0 if f==1 else .078125,before=','.join(map(str,before)),after=','.join(map(str,after))))
+                    out.append(line('FADE_SAMPLE',frame=f,source=source,pair=pair,x=x,y=32,kind=kind,overlap=overlap,alpha=.125 if kind=='emission' else 0 if f==1 else live.fade_alpha(pair),before=','.join(map(str,before)),after=','.join(map(str,after))))
+                if source==0:survivors[f]=after
                 before=after
+        for kind,box,routed in live.station_opaque_draws(f):
+            survivor=survivors.get(f,(.9,.8,.7,.25)) if kind=='overwrite' else (1.,1.,1.,.5)
+            out.append(line('FADE_STATION',frame=f,kind=kind,rect=','.join(map(str,box)),native=1,routed=routed,draw_index=3,hr='00000000',changed=0 if routed else (box[2]-box[0])*(box[3]-box[1]),outside_changed=0,
+                            survivor_x=32,survivor_y=32,survivor_exact=1,survivor=','.join(map(str,survivor))))
+
         out.append(line('FADE_GEOMETRY',frame=f,ordinary_t=.03125*(f%3)))
         out.append(line('FADE_CAMERA',frame=f,view_translation=f'{.125*(f%5)},0,0'))
-        trace.append(line('motion_output_frame',frame=f,rt_mode='lazy' if lazy else 'perdraw',apply_failures=0,restore_failures=0,taa_resolved=int(f not in live.FAILED_SOURCES),taa_history=int(f not in (0,22,23,27,29))))
+        routed=live.routed_station_draws(f);opaque=live.native_station_draws(f)
+        trace.append(line('motion_output_frame',frame=f,rt_mode='lazy' if lazy else 'perdraw',draws=2+len(sources)+routed+opaque,routed=1+routed,gate4=opaque+sum(r['kind']=='fade' for r in sources),gate5=routed,apply_failures=0,restore_failures=0,taa_resolved=int(f not in live.FAILED_SOURCES),taa_history=int(f not in (0,25,26,30,32))))
+        trace.append(line('linear_material_frame',device=1,frame=f,routed=1+routed,bump_routed=routed,refused=0))
         if f not in live.FAILED_SOURCES:trace.append(line('motion_output_taa_readback',frame=f,result='00000000'))
-    out.append(line('FADE_CHECKS',frames=30,submissions=sum(len(live.source_plan(f)) for f in range(30)),qualified=1,benchmark=0))
+        if fade:
+            # Composition frame/refusal lines (capture on): the station sources
+            # are eligible, prepared and linear; the sibling/overwrite frames
+            # refuse exactly one more non-producer pair draw.
+            fades=[r for r in sources if r['kind']=='fade']
+            trace.append(line('linear_composition_frame',device=1,frame=f,prepared=s[4],linear=s[5],native=s[6],incomplete=s[7],refused=3,suppressed=0,exports=0,quarantine=0,state_lost=0,mask_valid=1,
+                              fade_eligible=len(fades),fade_prepared=sum(r['prepared'] for r in fades),fade_linear=sum(r['linear'] for r in fades),pool_traffic_estimate_bytes=0,in_place=s[27],in_place_linear=s[28],in_place_incomplete=0,region_pixels=s[29]))
+            trace.append(line('linear_composition_refusals',device=1,frame=f,pair=1+live.native_station_draws(f)+(0 if emission else sum(r['kind']=='emission' for r in sources)),permission_scene=0,readiness=0,readers=0,frame_stop=0,preparation=0,prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0,recovery_failures=0,
+                              last_prepare='00000000',last_prepare_restore='00000001',last_source='00000000',last_composition='00000000',last_restore='00000000',last_exchange='00000001',last_ack='00000001',last_recovery='00000001'))
+    out.append(line('FADE_CHECKS',frames=live.FRAMES,submissions=sum(len(live.source_plan(f)) for f in range(live.FRAMES)),qualified=1,benchmark=0))
     return '\n'.join(out),'\n'.join(trace)
 
 
 class FadeLiveReportTests(unittest.TestCase):
     def test_scope_and_source_order(self):
-        self.assertEqual(len(live.FADE_PAIRS),6)
-        self.assertEqual(len(live.PROGRAMS),14)
-        self.assertEqual(sum(len(live.source_plan(f)) for f in range(30)),38)
+        self.assertEqual(len(live.FADE_PAIRS),7)
+        self.assertEqual(live.FADE_PAIRS[6],('4944d81dfe531b37','64bac8bb307eb896'))
+        self.assertEqual(len(live.PROGRAMS),17)
+        self.assertEqual(sum(len(live.source_plan(f)) for f in range(live.FRAMES)),44)
+        self.assertEqual([live.source_plan(f) for f in live.STATION_FRAMES],
+                         [[('fade',6,0,False)],[('fade',6,0,False)],[('emission',0,0,False),('fade',6,0,False)],[('fade',6,0,False),('emission',0,0,False)]])
         for fade in (0,1):
             for emission in (0,1):
                 for lazy in (0,1):
                     result=live.validate_functional(*report(fade,emission,lazy),fade,emission,lazy)
-                    self.assertEqual((result['frames'],result['sources'],result['samples']),(30,38,21))
+                    self.assertEqual((result['frames'],result['sources'],result['samples']),(33,44,27))
+                    station=result['station']
+                    self.assertEqual([(d['kind'],d['routed']) for d in station['opaque_draws']],[('routed_sibling',1),('sibling',0),('overwrite',0)])
+                    if fade:
+                        self.assertEqual(station['admitted_sources'],4)
+                        self.assertEqual({f:h['pair'] for f,h in station['refusal_histogram'].items()},{14:2,15:2,16:1,17:1} if emission else {14:2,15:2,16:2,17:2})
+                        self.assertEqual(station['pair_refusal_baseline'],1)
+                    else:self.assertNotIn('refusal_histogram',station)
+
+    def test_station_witness_mutations_are_rejected(self):
+        output,trace=report(1,0)
+        for old,new in (('FADE_STATION frame=14 kind=sibling rect=8,16,40,48 native=1 routed=0 draw_index=3 hr=00000000 changed=1024 outside_changed=0','FADE_STATION frame=14 kind=sibling rect=8,16,40,48 native=1 routed=0 draw_index=3 hr=00000000 changed=1024 outside_changed=1'),
+                        ('changed=512 outside_changed=0','changed=0 outside_changed=0'),('kind=overwrite','kind=sibling'),('kind=sibling','kind=routed_sibling'),
+                        ('kind=routed_sibling rect=8,16,40,48 native=1 routed=1 draw_index=3 hr=00000000 changed=0','kind=routed_sibling rect=8,16,40,48 native=1 routed=1 draw_index=3 hr=00000000 changed=7')):
+            with self.subTest(field=old):
+                self.assertIn(old,output)
+                with self.assertRaises(AssertionError):live.validate_functional(output.replace(old,new,1),trace,1,0,1)
+        with self.assertRaises(AssertionError):live.validate_functional('\n'.join(r for r in output.splitlines() if not r.startswith('FADE_STATION frame=15 ')),trace,1,0,1)
+        # The surviving composed pixel must be bit-exact and equal the oracle-checked sample.
+        overwrite=next(r for r in output.splitlines() if r.startswith('FADE_STATION frame=15 kind=overwrite '))
+        self.assertIn('survivor_exact=1 survivor=',overwrite)
+        survivor=live.fields(overwrite)['survivor']
+        for changed in (overwrite.replace('survivor_exact=1','survivor_exact=0'),overwrite.replace('survivor='+survivor,'survivor=1,1,1,0.5')):
+            with self.assertRaises(AssertionError):live.validate_functional(output.replace(overwrite,changed),trace,1,0,1)
+        frame14=next(r for r in trace.splitlines() if r.startswith('motion_output_frame frame=14 '))
+        for old,new in (('routed=2','routed=1'),('gate5=1','gate5=0'),('gate4=2','gate4=1')):
+            with self.subTest(field=old):
+                self.assertIn(old,frame14)
+                with self.assertRaises(AssertionError):live.validate_functional(output,trace.replace(frame14,frame14.replace(old,new)),1,0,1)
+        material14=next(r for r in trace.splitlines() if r.startswith('linear_material_frame device=1 frame=14 '))
+        with self.assertRaises(AssertionError):live.validate_functional(output,trace.replace(material14,material14.replace('bump_routed=1','bump_routed=0')),1,0,1)
+        with self.assertRaises(AssertionError):live.validate_functional(output,trace+'\nfade_refused_rect device=1 frame=14 index=3 refusal=2',1,0,1)
+        self.assertEqual(live.native_station_draws(14),1)
+        station14=next(r for r in trace.splitlines() if r.startswith('linear_composition_frame device=1 frame=14 '))
+        station16=next(r for r in trace.splitlines() if r.startswith('linear_composition_refusals device=1 frame=16 '))
+        for base,old,new in ((station14,'fade_prepared=1','fade_prepared=0'),(station14,'fade_linear=1','fade_linear=0'),(station16,'readiness=0','readiness=1'),(station16,'pair=2 ','pair=3 '),(station16,'frame_stop=0','frame_stop=1')):
+            with self.subTest(field=old):
+                self.assertIn(old,base)
+                with self.assertRaises(AssertionError):live.validate_functional(output,trace.replace(base,base.replace(old,new,1)),1,0,1)
+        # The station sample composes over the sibling, never the unit background.
+        sample=next(r for r in output.splitlines() if r.startswith('FADE_SAMPLE frame=14 '))
+        with self.assertRaises(AssertionError):live.validate_functional(output.replace(sample,sample.replace('before=0.9,0.8,0.7,0.25','before=1.0,1.0,1.0,0.25')),trace,1,0,1)
+        self.assertEqual(live.fade_alpha(6),.068359375)
+        self.assertEqual(live.expected_composite((1.,1.,1.,.5),6)[3],.5)
 
     def test_missing_duplicate_or_corrupt_rows_refused(self):
         output,trace=report()
-        for prefix in ('FADE_LIVE frame=0 ','FADE_SOURCE frame=19 source=2 ', 'FADE_SAMPLE frame=12 source=0 pair=5 x=16 ', 'FADE_GEOMETRY frame=13 ', 'FADE_CAMERA frame=4 ', 'FADE_OPAQUE_RETURN ', 'FADE_REJECTED ', 'FADE_RESET ', 'FADE_CHECKS ', 'FADE_NATIVE pair=5 ', 'RESET PASS'):
+        for prefix in ('FADE_LIVE frame=0 ','FADE_SOURCE frame=22 source=2 ', 'FADE_SAMPLE frame=12 source=0 pair=5 x=16 ', 'FADE_SAMPLE frame=15 source=0 pair=6 x=32 ', 'FADE_GEOMETRY frame=13 ', 'FADE_CAMERA frame=4 ', 'FADE_OPAQUE_RETURN ', 'FADE_REJECTED ', 'FADE_RESET ', 'FADE_CHECKS ', 'FADE_NATIVE pair=6 ', 'FADE_STATION ', 'RESET PASS'):
             with self.subTest(prefix=prefix),self.assertRaises(AssertionError):
                 live.validate_functional('\n'.join(r for r in output.splitlines() if not r.startswith(prefix)),trace,1,1,1)
-        for prefix in ('FADE_LIVE frame=0 ','FADE_SOURCE frame=19 source=2 ','FADE_SAMPLE frame=12 source=0 pair=5 x=16 '):
+        for prefix in ('FADE_LIVE frame=0 ','FADE_SOURCE frame=22 source=2 ','FADE_SAMPLE frame=12 source=0 pair=5 x=16 '):
             row=next(r for r in output.splitlines() if r.startswith(prefix))
             with self.subTest(duplicate=prefix),self.assertRaises(AssertionError):live.validate_functional(output+'\n'+row,trace,1,1,1)
         for old,new in (('s20=9','s20=10'),('s21=4','s21=8'),('original_calls=1','original_calls=2'),('s16=3','s16=1'),('s16=3','s16=7'),('s18=7','s18=3'),('s19=7','s19=3'),('ordinary_t=0.03125','ordinary_t=0'),('matched=1','matched=0'),('overlap=2','overlap=1'),('hr=8876086c','hr=00000000'),('mask_after=0','mask_after=1')):
             with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_functional(output.replace(old,new,1),trace,1,1,1)
         # In place: fade never exchanges, every prepared fade source composes in
         # place, and the region pixels are the scissor-clipped rectangles.
-        base=next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=16 '))
+        base=next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=19 '))
         for old,new in (('s10=0 ','s10=2 '),('s27=2 ','s27=1 '),('s28=2 ','s28=1 '),('s29=2048 ','s29=4096 ')):
             with self.subTest(field=old):
                 self.assertIn(old,base)
                 with self.assertRaises(AssertionError):live.validate_functional(output.replace(base,base.replace(old,new,1)),trace,1,1,1)
-        boxed=next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=17 '))
+        boxed=next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=20 '))
         self.assertIn('s10=1 ',boxed);self.assertIn('s29=1024 ',boxed)
         control_output,control_trace=report(1,0,1,rect=live.WITNESS_CONTROL_RECT)
-        self.assertIn('s29=1536 ',next(r for r in control_output.splitlines() if r.startswith('FADE_LIVE frame=16 ')))
-        self.assertEqual(live.validate_functional(control_output,control_trace,1,0,1,live.WITNESS_CONTROL_RECT)['frames'],30)
+        self.assertIn('s29=1536 ',next(r for r in control_output.splitlines() if r.startswith('FADE_LIVE frame=19 ')))
+        self.assertEqual(live.validate_functional(control_output,control_trace,1,0,1,live.WITNESS_CONTROL_RECT)['frames'],33)
         with self.assertRaises(AssertionError):live.validate_functional(control_output,control_trace,1,0,1)
         with self.assertRaises(AssertionError):live.validate_functional(output,trace.replace('taa_resolved=0','taa_resolved=1',1),1,1,1)
 
     def test_quarantine_export_and_reset_persist(self):
         output,trace=report(1,1)
-        for old,new in (('FADE_EXPORT frame=29 quarantine=1','FADE_EXPORT frame=29 quarantine=0'),
-                        ('FADE_RESET frame=29 refs=5 allocations=4 quarantine=1','FADE_RESET frame=29 refs=5 allocations=4 quarantine=0'),
-                        ('FADE_RESET frame=29 refs=5','FADE_RESET frame=29 refs=9')):
+        for old,new in (('FADE_EXPORT frame=32 quarantine=1','FADE_EXPORT frame=32 quarantine=0'),
+                        ('FADE_RESET frame=32 refs=5 allocations=4 quarantine=1','FADE_RESET frame=32 refs=5 allocations=4 quarantine=0'),
+                        ('FADE_RESET frame=32 refs=5','FADE_RESET frame=32 refs=9')):
             with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_functional(output.replace(old,new,1),trace,1,1,1)
 
     def test_unprepared_hresult_is_s_false(self):
         output,trace=report(0,0)
-        self.assertEqual(live.validate_functional(output,trace,0,0,1)['frames'],30)
+        self.assertEqual(live.validate_functional(output,trace,0,0,1)['frames'],33)
         with self.assertRaises(AssertionError):live.validate_functional(output.replace('s11=1','s11=0',1),trace,0,0,1)
         output,trace=report(1,1)
         self.assertIn('s11=1',next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=0 ')))
         self.assertIn('s11=0',next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=1 ')))
 
     def test_no_healing_and_failed_source_contract(self):
-        for frame in (19,20,24):
+        for frame in (22,23,27):
             rows,stopped=live.expected_sources(frame,1,1)
             self.assertTrue(stopped)
             self.assertEqual(rows[-1]['prepared'],0)
             self.assertFalse(rows[-1]['mask_valid'])
         # A composite fault on the in-place fade recovers A|R and blocks the
         # frame (Incomplete), never a certified native publication.
-        rows,stopped=live.expected_sources(21,1,1)
+        rows,stopped=live.expected_sources(24,1,1)
         self.assertEqual((rows[0]['prepared'],rows[0]['native'],rows[0]['linear'],rows[0]['incomplete']),(1,0,0,1))
         self.assertFalse(rows[0]['mask_valid']);self.assertTrue(stopped)
-        self.assertEqual(live.expected_region_pixels(21,1,1),1024)
-        self.assertEqual(live.expected_region_pixels(16,1,0,live.WITNESS_CONTROL_RECT),1536)
-        self.assertEqual(live.expected_region_pixels(22,1,1),1024)
+        self.assertEqual(live.expected_region_pixels(24,1,1),1024)
+        self.assertEqual(live.expected_region_pixels(19,1,0,live.WITNESS_CONTROL_RECT),1536)
+        self.assertEqual(live.expected_region_pixels(25,1,1),1024)
+        # Station frames: every station source is prepared and composes in place.
+        for frame in live.STATION_FRAMES:
+            rows,stopped=live.expected_sources(frame,1,1)
+            self.assertFalse(stopped)
+            self.assertTrue(all(r['prepared'] and r['linear'] for r in rows if r['kind']=='fade'))
+        self.assertEqual(live.expected_region_pixels(16,1,1),1024)
         for fade in (0,1):
-            rows,_=live.expected_sources(22,fade,1)
+            rows,_=live.expected_sources(25,fade,1)
             self.assertEqual(rows[0]['hr'],0x8876086c)
             self.assertEqual(rows[0]['incomplete'],fade)
             self.assertEqual(rows[1]['prepared'],0)
@@ -195,7 +266,7 @@ class FadeLiveReportTests(unittest.TestCase):
     def test_raw_temporal_and_mask_corruption_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             work=Path(tmp);(work/'x3-modern-captures').mkdir()
-            for frame in range(30):
+            for frame in range(live.FRAMES):
                 if frame not in live.FAILED_SOURCES:
                     for path in (work/f'reference_taa_{frame}.rgba16f',work/'x3-modern-captures'/f'taa_1_{frame}.rgba16f'):path.write_bytes(bytes(64*64*8))
                 (work/f'distance_fade_color_{frame}.rgba32f').write_bytes(struct.pack('<4f',1.,1.,1.,.5)*(64*64))
@@ -230,7 +301,7 @@ class FadeLiveReportTests(unittest.TestCase):
     def test_timing_only_same_fenced_windows(self):
         out=['RESULT PASS frames=18 checks=1','FADE_CHECKS frames=18 submissions=126 benchmark=1']
         for count in live.COUNTS:
-            for sample in range(4):out.append(line('FADE_TIMING',width=1280,height=768,count=count,sample=sample,fade=1,emission=0,source_ms=1.,terminal_ms=2.,total_ms=3.))
+            for sample in range(4):out.append(line('FADE_TIMING',width=1280,height=768,count=count,sample=sample,fade=1,emission=0,pair=0,source_ms=1.,terminal_ms=2.,total_ms=3.))
         text='\n'.join(out);trace=timing_trace()
         result=live.validate_timing(text,trace,1,1280,768)
         self.assertEqual(set(result['counts']),{'1','4','16'})
@@ -252,12 +323,18 @@ class FadeLiveReportTests(unittest.TestCase):
             self.assertAlmostEqual(boxed['region_fraction'],float(fraction),delta=.0005)
         self.assertEqual(live.timing_name(1920,1080,1,1,'0.06'),'timing-1920x1080-pair1-fade1-f0.06')
         self.assertEqual(live.timing_name(1920,1080,1,0),'timing-1920x1080-pair1-fade0')
+        self.assertEqual(live.timing_name(1280,768,0,1,producer=6),'timing-1280x768-station-pair0-fade1')
+        # The station producer's windows are labelled and validated by pair.
+        station=live.validate_timing(text.replace('pair=0','pair=6'),trace,1,1280,768,pair=6)
+        self.assertEqual(station['pair'],6)
+        with self.assertRaises(AssertionError):live.validate_timing(text,trace,1,1280,768,pair=6)
 
     def test_witness_control_native_strip_changes_only_the_composed_color(self):
-        base=dict(temporal_sha256=[None if f in live.FAILED_SOURCES else f'h{f}' for f in range(30)],alpha_sha256=['a']*30,covered_pixels=[1]*30,frames_detail=['d']*30)
+        n=live.FRAMES
+        base=dict(temporal_sha256=[None if f in live.FAILED_SOURCES else f'h{f}' for f in range(n)],alpha_sha256=['a']*n,covered_pixels=[1]*n,frames_detail=['d']*n)
         cases={name:copy.deepcopy(base) for name in ('lazy1-fade1-emission0','witness-full','witness-rect','witness-control')}
         with self.assertRaises(AssertionError):live.compare_witness(cases)
-        for f in range(min(live.WITNESS_CONTROL_VIOLATIONS),30):
+        for f in range(min(live.WITNESS_CONTROL_VIOLATIONS),n):
             if f not in live.FAILED_SOURCES:cases['witness-control']['temporal_sha256'][f]=f'native{f}'
         live.compare_witness(cases)
         broken=copy.deepcopy(cases);broken['witness-control']['temporal_sha256'][2]='native2'
@@ -270,16 +347,16 @@ class FadeLiveReportTests(unittest.TestCase):
     def test_witness_positive_histogram_and_revisions(self):
         result=live.validate_witness(witness_trace(),1,0)
         self.assertEqual(result['outside_pixels'],0)
-        self.assertEqual(set(result['sampled_frames']),{f for f in range(30) if live.expected_witness(f,1,0)['reason']=='sampled'})
-        self.assertEqual(result['skipped'],{'no_fade':8,'mask_invalid':4})
-        self.assertEqual(sum(result['f_histogram'].values()),len(result['sampled_frames'])+sum(1 for f in (16,20,24)))
+        self.assertEqual(set(result['sampled_frames']),{f for f in range(live.FRAMES) if live.expected_witness(f,1,0)['reason']=='sampled'})
+        self.assertEqual(result['skipped'],{'no_fade':7,'mask_invalid':4}) # frame 14 now derives a station rectangle
+        self.assertEqual(sum(result['f_histogram'].values()),len(result['sampled_frames'])+sum(1 for f in (19,23,27)))
         self.assertEqual(result['f_histogram']['f=1'],sum(result['f_histogram'].values()))
         self.assertEqual(result['revisions_per_vb'],{'7':{'3':result['region_lines']}})
         boxed=live.validate_witness(witness_trace(rect=live.WITNESS_RECT),1,0,rect=live.WITNESS_RECT)
         self.assertEqual(boxed['union_area'],1536*len(boxed['sampled_frames']))
         self.assertEqual(boxed['f_histogram']['f<=0.5'],sum(boxed['f_histogram'].values()))
         second=lambda f:any(i>=1 and s['kind']=='fade' and s['prepared'] for i,s in enumerate(live.expected_sources(f,1,0)[0]))
-        self.assertEqual({f for f in range(30) if second(f) and live.expected_witness(f,1,0)['reason']=='sampled'},set(live.WITNESS_CONTROL_VIOLATIONS))
+        self.assertEqual({f for f in range(live.FRAMES) if second(f) and live.expected_witness(f,1,0)['reason']=='sampled'},set(live.WITNESS_CONTROL_VIOLATIONS))
 
     def test_witness_control_fails_for_outside_pixels_only(self):
         trace=witness_trace(rect=live.WITNESS_CONTROL_RECT,outside=live.WITNESS_CONTROL_VIOLATIONS)
@@ -303,6 +380,35 @@ class FadeLiveReportTests(unittest.TestCase):
         with self.assertRaises(AssertionError):live.validate_witness('\n'.join(r for r in trace.splitlines() if r!=base),1,0,rect=live.WITNESS_RECT)
         with self.assertRaises(AssertionError):live.validate_witness('\n'.join(r for r in trace.splitlines() if not r.startswith('fade_region device=1 frame=2 ')),1,0,rect=live.WITNESS_RECT)
         with self.assertRaises(AssertionError):live.validate_witness(witness_trace(emission=1),1,0)
+
+    def test_fade_refused_rect_lines_parse(self):
+        # The exact capture-only line src/proxy/motion_output.cpp writes after
+        # Present for a recognised source-over draw that admission refused
+        # (docs/architecture/linear-station-source-over.md, section 4).
+        def rect_line(frame,index,refusal=4,rect='412,236,701,455',bound=1,reason=0,status='bound',permille=64,f_of='viewport',total=1,node=1497592832,model='00001538',lod='00000002'):
+            return (f'fade_refused_rect device=1 frame={frame} index={index} refusal={refusal} vs=4944d81dfe531b37 ps=64bac8bb307eb896'
+                    f' node={node} model={model} lod={lod} bound={bound} reason={reason} status={status} rect={rect} f_permille={permille} f_of={f_of} refused_total={total}')
+        lines=['fade_region device=1 frame=13681 index=40 bound=1',rect_line(13681,44),rect_line(13681,51,refusal=2,rect='0,0,1280,768',bound=0,reason=3,status='no_record',permille=1000,total=2),
+               'motion_route device=1 frame=13681 index=44 gate=4 routed=0',rect_line(14601,17,total=1)]
+        records=fade_refused_rect.parse(lines)
+        self.assertEqual([(r.frame,r.index,r.refusal_name,r.rect,r.area) for r in records],
+                         [(13681,44,'frame_stop',(412,236,701,455),289*219),(13681,51,'readiness',(0,0,1280,768),1280*768),(14601,17,'frame_stop',(412,236,701,455),289*219)])
+        first=records[0]
+        self.assertEqual((first.vs,first.ps,first.node,first.model,first.lod,first.bound,first.reason,first.status,first.f_permille,first.f_of,first.refused_total),
+                         ('4944d81dfe531b37','64bac8bb307eb896',1497592832,0x1538,2,True,0,'bound',64,'viewport',1))
+        self.assertFalse(records[1].bound)
+        self.assertEqual(sorted(fade_refused_rect.by_frame(records)),[(1,13681),(1,14601)])
+        self.assertEqual(len(fade_refused_rect.by_frame(records)[(1,13681)]),2)
+        self.assertEqual(fade_refused_rect.parse(['shimmer_draw device=1 frame=3 index=1']),[])
+        for bad in (rect_line(1,2,rect='10,10,10,20'),rect_line(1,2,rect='1,2,3'),rect_line(1,2,refusal=6),rect_line(1,2,f_of='screen'),rect_line(1,2,permille=1001)):
+            with self.subTest(line=bad),self.assertRaises(ValueError):fade_refused_rect.parse([bad])
+        with self.assertRaises(KeyError):fade_refused_rect.parse([rect_line(1,2).replace(' rect=412,236,701,455','')])
+        # The production format string names every field the parser reads, in this order.
+        source=(Path(__file__).resolve().parents[2]/'src/proxy/motion_output.cpp').read_text()
+        self.assertIn('fade_refused_rect device=%llu frame=%llu index=%lu refusal=%u vs=%016llx ps=%016llx node=%llu model=%08lx lod=%08lx',source)
+        self.assertIn(' bound=%u reason=%u status=%s rect=%ld,%ld,%ld,%ld f_permille=%lu f_of=%s refused_total=%u',source)
+        self.assertIn('if (fade && capture_) record_fade_refused(route, refusal);',source)
+        self.assertIn('if (fade_refused_count_) log_fade_refused();',source)
 
     def test_admission_refuses_false_availability(self):
         out=['RESULT PASS frames=4 checks=1']

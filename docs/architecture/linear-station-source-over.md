@@ -4,7 +4,7 @@ Design note, 2026-09-14, for ratification; owns the decision for source-over dra
 already-converted standard-lighting pairs. [linear-distance-fade.md](linear-distance-fade.md)
 owns the fade route, [linear-distance-fade-region.md](linear-distance-fade-region.md) the
 in-place bracket and bound, [station-material-distance.md](../reverse-engineering/station-material-distance.md)
-the native producer. Not implemented; no Wine, build or game was run.
+the native producer. Implemented on 2026-09-14 (section "Step 1 — implemented"); the game was not run.
 
 ## Decision
 
@@ -51,8 +51,9 @@ whether a composed port still darkens with distance is a separate question (nati
 
 ## 2. Source alpha and the dual PS output
 
-Native: `a = interp(AlphaValue * (b0 ? sat(c41.x − c41.y·d) : 1)) * lrp(EnableGlow, Diffuse.a,
-LightMap.a)`, all `_pp`, one alpha write. With `b0 = 0` and `alpha13c = 0` the vertex factor is
+Native: `a = interp(AlphaValue * (b0 ? sat(c41.x − c41.y·d) : 1)) * (EnableGlow·LightMap.a +
+(1 − EnableGlow)·Diffuse.a)` (the `lrp` selects the lightmap alpha as EnableGlow rises, as the
+oracle `expected_alpha` does), all `_pp`, one alpha write. With `b0 = 0` and `alpha13c = 0` the vertex factor is
 `c39.x` (its captured value and `c3.x` EnableGlow are unread; the run-27 constants reduction
 settles both) and the texture alpha drives `a`. Pool outputs: A/B the untouched native `oC0`
 (RGB source-over, alpha unwritten under mask 7); E `(L, a)` with `L` the standard BUMPMAP linear
@@ -85,12 +86,31 @@ station; 1024 slots, 32-slot windows, eviction counted); `--fade-witness` remain
   converted sibling with the same rows, before an opaque draw that overwrites part of it
   (Z-write on), and as the frame's last draw; exact destination alpha, source-once, mixed
   fade/emission order, `refusal[]` histogram, paired windows at 1/4/16 DIPs.
-- Pixel proof of the split, before implementing: a capture-only diagnostic that runs the step-1
+- Pixel proof of the split: a capture-only diagnostic that runs the step-1
   rectangle for *refused* recognised source-over draws and logs `rect` (no composition). Decode
   that rectangle from `hdr_1_13681.rgba16f` / `hdr_1_14601.rgba16f` (1280×768 RGBA16F, 8 B/px)
   and a routed sibling's rectangle on the same model; compare decoded gamma-2.2 luminance of the
   port pixels with the sibling's under the same lights. Acceptance is a decoded ratio outside
   FP16/texture noise. Without it the change is a consistency fix, not a demonstrated repair.
+  Line (capture frames only, `record_fade_refused` / `log_fade_refused` in `motion_output.cpp`;
+  integers recorded at the draw, formatted after Present; parser
+  `verification/probe/fade_refused_rect.py`):
+  `fade_refused_rect device=D frame=F index=I refusal=R vs=VVVV ps=PPPP node=N model=MMMMMMMM
+  lod=LLLLLLLL bound=B reason=E status=S rect=l,t,r,b f_permille=Q f_of=viewport|target
+  refused_total=T` — `index` the draw index within the frame, `refusal` the admission refusal
+  1–5 (permission/scene, readiness, readers, frame stop, prepare failure; 0 never occurs, the
+  draw is a fade pair in fade state), `node/model/lod` the object context read once at the draw
+  without the lifetime lookup (zero when no scope), `bound/reason/status/rect/f_permille/f_of`
+  exactly the `fade_region` fields, derived through the read-only `BoundTable::peek` (a hit is
+  served from the entry, a miss performs the same validated reads into a local; no insert,
+  stamp, poison or eviction, so `table_used/table_poisoned` never change on a refused draw),
+  `refused_total` the frame's refused count including draws past the 16-record capacity (which
+  have no line). At most 16 lines per frame. An opaque draw of a fade pair (blend known off)
+  is not a candidate: it skips the nine-state check and takes the ordinary route, so an unknown
+  unrelated state cannot stop the frame.
+- Station variants not in the producer set: jitter is exercised only by the region jitter cases
+  (`jitter_1..8`, Asteroid base case), and the fixture textures are single-level, so mip
+  selection is not exercised for any producer.
 
 ## 5. Risks and cost
 
@@ -123,3 +143,40 @@ set is the pair alone) or per-draw override that can also present the pair opaqu
 Unknowns, each settled by the item named above and none by a game launch: `c39.x`/`c3.x` for
 the port draws; dual-PS slot count; station bound hit rate; ZENABLE/dither/separate-alpha rows;
 whether the composed port stops darkening (native alpha is unchanged, so it may not).
+
+## Step 1 — implemented
+
+2026-09-14, worktree build of this branch (not an install candidate). Feasibility: the dual PS of
+the 1,392-DWORD original applies with 208 weighted slots, 14 temporaries, 5 samplers (VS 772
+DWORDs: 127 slots, 10 temporaries); the six Asteroid maxima stay 131/152. Admission:
+`linear_distance_fade_pair` (seven pairs, mask `0x1f` for the station pair) beside the unchanged
+six-pair `linear_material_asteroid_pair`; the sampler-sRGB refusal loop now covers the whole mask
+(stage 4). Host: `test_linear_distance_fade*` 32 OK, `test_shimmer_trace` 7 OK;
+`test_linear_material*` 201 with 2 failures that reproduce with `HEAD`'s `motion_output.cpp`
+(`test_production_control_flow` stub lacks `fill_mode`; the checked-in profile JSON's
+`motion_inventory_sha256` is stale). Detached (`linear-distance-fade-gpu-station1.json`, bottle
+X3, 9.1 s): 78 cases (six station variants 60–65 plus the reset twin), 264 source calls, 596,736
+channels at max tolerance fraction 7.19e-5, 187,776 exact raw and 198,912/198,912 exact energy
+channels, 29 region cases with 0 violations, 300 in-place twins bit-exact (600 comparisons).
+Live (`linear-distance-fade-live-station1.json`, bottle X3, 34 processes, 61 s): 33 frames, 44
+sources, 27 samples per functional process; station frames 14–17 admitted (`fade_eligible =
+fade_prepared = fade_linear = 1` each, refusal histogram readiness/frame-stop/preparation 0, pair
+refusals = baseline 1 + the native sibling/overwrite draw), exact destination alpha and
+source-once on every source, lazy/per-draw twins bit-exact, witness 22 sampled frames 0 outside,
+control fails exactly on 16/19/21/23/27/31. Station paired windows (median delta on/off, source
+window): 1280×768 1/4/16 DIPs 0.22–0.24 / 0.80–0.82 / 2.12–2.14 ms; 1920×1080 0.27–0.37 /
+1.04–1.15 / 0.48–0.96 ms (the 16-DIP 1080p terminal window is noisy, −1.7 to −2.4 ms).
+`check_no_x87.py build/d3d9.dll` PASS, 224 reachable functions, no violations.
+
+Review fixes (same day, reruns of every check above): the refused-draw diagnostic derives its
+rectangle through the read-only `BoundTable::peek` (host `test_fade_region` 5 OK with five peek
+scenarios: no insert, no poison, no eviction, same box as the learn); a fade pair whose blend
+state is known off skips the nine-state check (ordinary route, no refusal); refusal 5 also
+records the rectangle. Live rerun (34 processes, 57 s): frame 14 adds a *routed* opaque station
+sibling (indexed VB, z row +.8, depth-rejected everywhere: `motion_output_frame` routed/gate5 and
+`linear_material_frame` routed/bump_routed each one above frame 13, gate 4 counts the native
+sibling and the blended sources, no `fade_refused_rect`), and frame 15 checks the composed
+pixel outside the overwrite survives bit for bit as the oracle-checked sample. Station paired
+windows (source window): 1280×768 0.15–0.24 / 0.78–0.80 / 2.10–2.12 ms; 1920×1080 0.36–0.37 /
+1.12–1.17 / 0.51–1.23 ms. Detached rerun unchanged (78 cases, 8.5 s).
+

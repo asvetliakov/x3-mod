@@ -26,7 +26,7 @@ def witness(raw):
             write(raw/f"fade_{c['id']}_0_initial.rgba32f",current)
             union=[False]*256
             for step in range(count):
-                cc=run.step_case(c,step);L=run.material.expected(cc).linear_rgb;a=run.source_alpha(cc)
+                cc=run.step_case(c,step);L=run.material.expected(run.oracle_case(cc)).linear_rgb;a=run.source_alpha(cc)
                 energy=[];mask=[];output=[];original=[]
                 for n,old in enumerate(current):
                     inside=run.covered(c,step,n%16,n//16);union[n]|=inside
@@ -74,7 +74,7 @@ def witness(raw):
                     for i in range(run.TIMING_ITERATIONS):
                         lines.append(f"FADE_TIMING width={w} height={h} policy={policy} f={f:.4f} rect=0,0,{w},{h} dips={dips} iteration={i} completed_ms={.5*dips+i*.01:.6f}")
     lines.append('FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=8')
-    lines+=['FADE_RESULT PASS reset=1 partial_vs_failures=2','RESULT PASS cases=65']
+    lines+=['FADE_RESULT PASS reset=1 partial_vs_failures=2','RESULT PASS cases=71']
     return '\n'.join(lines),source
 
 class DistanceFadeReport(unittest.TestCase):
@@ -97,14 +97,14 @@ class DistanceFadeReport(unittest.TestCase):
 
     def test_complete_witness_and_exact_counts(self):
         result=self.validate()
-        self.assertEqual((result['cases'],result['source_calls'],result['fault_cases']),(71,257,5))
+        self.assertEqual((result['cases'],result['source_calls'],result['fault_cases']),(78,264,5))
         self.assertGreater(result['exact_raw_channels'],150000)
         self.assertLess(result['max_tolerance_fraction'],.0001)
-        self.assertEqual(result['energy_channels'],193536)
-        self.assertEqual(result['exact_energy_channels'],193536)
-        # Step 2: 252 non-fault steps (246 first batch, 6 after Reset) plus 29
+        self.assertEqual(result['energy_channels'],198912)
+        self.assertEqual(result['exact_energy_channels'],198912)
+        # Step 2: 259 non-fault steps (252 first batch, 7 after Reset) plus 29
         # region, 11 rectangle and 1 fallback twins, each compared twice (A, M).
-        self.assertEqual((result['inplace_cases'],result['inplace_brackets'],result['inplace_exact_comparisons']),(104,293,586))
+        self.assertEqual((result['inplace_cases'],result['inplace_brackets'],result['inplace_exact_comparisons']),(111,300,600))
         self.assertEqual((result['inplace_rectangle_cases'],result['inplace_ladder_stages'],result['inplace_capability_refusals'],result['inplace_reset']),(8,9,1,True))
         self.assertEqual(len(result['timing']),36)
         self.assertEqual(result['timing'][0]['median_ms'],.5+4*.01)
@@ -124,8 +124,8 @@ class DistanceFadeReport(unittest.TestCase):
             ('FADE_INPLACE id=6005 label=disjoint brackets=2 exact=1','FADE_INPLACE id=6005 label=disjoint brackets=1 exact=1'),
             ('label=overlapping brackets=2 exact=1','label=overlapping brackets=2 exact=0'),
             ('FADE_INPLACE_REGION id=5020 label=scissor rect=1,1,15,15 exact=1','FADE_INPLACE_REGION id=5020 label=scissor rect=1,1,15,15 exact=0'),
-            ('FADE_INPLACE_BATCH reset=0 cases=98 brackets=287 native=287 exact_a=287 exact_m=287','FADE_INPLACE_BATCH reset=0 cases=98 brackets=287 native=288 exact_a=287 exact_m=287'),
-            ('FADE_INPLACE_BATCH reset=1 cases=6 brackets=6 native=6 exact_a=6 exact_m=6','FADE_INPLACE_BATCH reset=1 cases=6 brackets=6 native=6 exact_a=5 exact_m=6'),
+            ('FADE_INPLACE_BATCH reset=0 cases=104 brackets=293 native=293 exact_a=293 exact_m=293','FADE_INPLACE_BATCH reset=0 cases=104 brackets=293 native=294 exact_a=293 exact_m=293'),
+            ('FADE_INPLACE_BATCH reset=1 cases=7 brackets=7 native=7 exact_a=7 exact_m=7','FADE_INPLACE_BATCH reset=1 cases=7 brackets=7 native=7 exact_a=6 exact_m=7'),
             ('FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=8','FADE_TIMING_RESULT sizes=2 fractions=3 policies=2 dips=3 iterations=7'),
             ('partial_vs_failures=2','partial_vs_failures=1')):
             with self.subTest(before=before):
@@ -136,7 +136,7 @@ class DistanceFadeReport(unittest.TestCase):
     def test_hostile_report_mutations_are_rejected(self):
         for before,after in (
             ('FADE_CAPS refused=4','FADE_CAPS refused=3'),('FADE_STATE refused=3','FADE_STATE refused=2'),
-            ('restored=251','restored=250'),('refs_after=10','refs_after=11'),
+            ('restored=257','restored=256'),('refs_after=10','refs_after=11'),
             ('partial_vs_failures=2','partial_vs_failures=0'),
             ('first=8876086c','first=80004005'),
             ('id=101 stage=1 native=1','id=101 stage=1 native=2'),

@@ -7,4 +7,5 @@
 namespace x3m::fade_region {
 const Environment& production_environment() noexcept;
 Result resolve(BoundTable& table, const Query& query) noexcept;
+Result peek(const BoundTable& table, const Query& query) noexcept; // read-only twin (diagnostics)
 }

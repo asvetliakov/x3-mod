@@ -150,13 +150,23 @@ class FadeRegion(unittest.TestCase):
                 'poisoned_stays':('poisoned',1,0,0),'wrapper_learn':('bound',0,0,5),'wrapper_mismatch':('poisoned',1,1,0),'out_of_domain':('invalid',0,0,3),'ib_mismatch_new':('bound',0,0,5),'ib_mismatch_hit':('poisoned',1,1,0),
                 'content_unknown':('content_unknown',0,0,5),'descriptor_mismatch':('bound',0,0,5),'descriptor_poison':('poisoned',1,1,0),
                 'read_failed':('read_failed',0,0,2),'window_full':('bound',0,0,5),'evicted_relearn':('bound',0,0,5),
-                'poisoned_kept':('poisoned',1,0,0),'failed_read_no_evict':('read_failed',0,0,2),'cleared':('no_table',0,0,0)}
+                'poisoned_kept':('poisoned',1,0,0),'failed_read_no_evict':('read_failed',0,0,2),'cleared':('no_table',0,0,0),
+                'peek_miss':('bound',0,0,5),'peek_hit':('bound',1,0,0),'peek_invalid':('poisoned',1,0,0),'peek_poisoned':('poisoned',1,0,0),'peek_window_full':('bound',0,0,5)}
         self.assertEqual(set(rows),set(expect))
         for label,(name,hit,poisoned_now,reads) in expect.items():
             r=rows[label]
             self.assertEqual((r['name'],int(r['hit']),int(r['poisoned_now'])),(name,hit,poisoned_now),label)
-            if label!='window_full':self.assertEqual(int(r['reads']),reads,(label,'game reads'))
-        self.assertEqual(rows['window_full']['reads'],str(32*5+5),'32 learns then the evicting learn')
+            if label not in ('window_full','peek_window_full'):self.assertEqual(int(r['reads']),reads,(label,'game reads'))
+        self.assertEqual(rows['peek_window_full']['reads'],str(32*5+5),'32 learns then the read-only derivation')
+        self.assertEqual(rows['window_full']['reads'],'5','the evicting learn')
+        # peek never changes the table: no insert on a miss, no poison on an
+        # invalid hit, no eviction on a full window, same box as the learn.
+        self.assertEqual((rows['peek_miss']['used'],rows['peek_miss']['evicted'],rows['miss_learn']['used']),('0','0','1'))
+        self.assertEqual((rows['peek_miss']['aabb'],rows['peek_hit']['aabb']),(rows['miss_learn']['aabb'],rows['hit']['aabb']))
+        self.assertEqual(rows['peek_invalid']['poisoned'],rows['no_record']['poisoned'],'peek reports Poisoned without poisoning')
+        self.assertEqual(int(rows['poison_revision']['poisoned']),int(rows['peek_invalid']['poisoned'])+1)
+        self.assertEqual((rows['peek_window_full']['used'],rows['peek_window_full']['evictions'],rows['peek_window_full']['evicted']),('32','0','0'))
+        self.assertEqual(rows['peek_window_full']['aabb'],rows['window_full']['aabb'])
         self.assertEqual((rows['window_full']['evicted'],rows['evicted_relearn']['evicted'],rows['failed_read_no_evict']['evicted']),('1','1','0'))
         self.assertEqual((rows['window_full']['used'],rows['window_full']['evictions'],rows['poisoned_kept']['poisoned']),('32','1','1'))
         self.assertEqual(rows['descriptor_poison']['poisoned'],'4')

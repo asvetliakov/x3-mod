@@ -35,5 +35,11 @@ Result resolve(BoundTable& table, const Query& query) noexcept {
     SetLastError(error);
     return out;
 }
+Result peek(const BoundTable& table, const Query& query) noexcept {
+    const DWORD error = GetLastError();
+    const Result out = table.peek(query, production);
+    SetLastError(error);
+    return out;
+}
 
 } // namespace x3m::fade_region

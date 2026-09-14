@@ -2354,7 +2354,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
         w.count = w.prepared_count = w.logged = 0; w.last = FadeWitness::rect_capacity; w.overflow = false;
         std::memset(w.f_hist, 0, sizeof w.f_hist);
     }
-    shimmer_count_ = 0;
+    shimmer_count_ = 0; fade_refused_count_ = 0;
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
     displacements_.clear();
@@ -2784,7 +2784,11 @@ void MotionOutput::begin_composition_frame() noexcept {
 }
 void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& route) noexcept {
     if (!composition_requested()) return;
-    const bool fade_pair = shadow_.fade_sampler_mask != 0;
+    // A fade pair whose blend state is known off is an ordinary opaque draw
+    // (the station hull pair is mostly drawn opaque): it never enters the
+    // nine-state check, so an unknown other state cannot stop the frame. A
+    // blended or unknown-blend draw is checked as before (fail closed).
+    const bool fade_pair = shadow_.fade_sampler_mask != 0 && !(shadow_.states_known[3] && !shadow_.states[3]);
     bool fade = false;
     if (fade_pair) {
         bool known = true;
@@ -2820,7 +2824,8 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     else if (!composition_readers_known_ || composition_main_sampler_mask_) refusal = 3;
     else if (composition_frame_stopped_ || composition_quarantined_) refusal = 4;
     if (refusal == 6 && fade) {
-        for (unsigned stage = 0; stage < 4; ++stage)
+        // Every sampler the mask names (Asteroid s0-s3, hull BUMPMAP s0-s4).
+        for (unsigned stage = 0; stage < 8; ++stage)
             if ((shadow_.fade_sampler_mask & (1u << stage)) && (!samplers_[stage].srgb_known || samplers_[stage].srgb)) refusal = 2;
         const auto* row = shadow_.vs_row;
         if (!row || (row->light_loop_bound_required && (!shadow_.integer0_known || shadow_.integer0[0] < 0 || shadow_.integer0[0] > int(row->light_loop_max_count)))) refusal = 2;
@@ -2830,6 +2835,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         // Only missing required scene-source coverage poisons this frame.
         // Unrelated draws and permanently unsupported policies stay native.
         if (required && route.scene) { composition_frame_stopped_ = true; invalidate_taa(); }
+        if (fade && capture_) record_fade_refused(route, refusal);
         return;
     }
     if (fade) derive_fade_region(route);
@@ -2861,6 +2867,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         return;
     }
     composition_busy_ = false; ++composition_counts_.refused; ++composition_counts_.refusal[5]; ++composition_counts_.prepare_failures;
+    if (fade && capture_) record_fade_refused(route, 5);
     if (required) { composition_frame_stopped_ = true; invalidate_taa(); }
     if (!prepared.state_preserved) {
         composition_state_lost_ = true; composition_frame_stopped_ = true; route.submit = false;
@@ -3224,16 +3231,13 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 // Get, no float formatting (the per-draw line carries the fraction as an
 // integer per mille of the viewport area, or of the target area when the
 // viewport is unknown).
-void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
+fade_region::Region MotionOutput::fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only) noexcept {
     using namespace fade_region;
-    route.fade_region_evaluated = true;
     const Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity};
-    const Result bound = fade_region::resolve(fade_bounds_, query);
-    auto& counts = composition_counts_;
-    ++counts.region_status[unsigned(bound.status) < unsigned(Status::Count) ? unsigned(bound.status) : 0u];
-    if (bound.hit) ++counts.region_hit; else if (bound.status == Status::Bound) ++counts.region_miss;
-    if (bound.poisoned_now) ++counts.region_poisoned;
-    if (bound.evicted) ++counts.region_evicted;
+    // The admitted route learns (resolve); the capture-only diagnostic only
+    // peeks: the table's entries, stamps and counters are never touched by a
+    // draw the route did not admit.
+    bound = read_only ? fade_region::peek(fade_bounds_, query) : fade_region::resolve(fade_bounds_, query);
     const auto& v = shadow_.viewport;
     const Viewport viewport{v.x, v.y, v.known ? v.width : 0u, v.known ? v.height : 0u};
     const float* rows = nullptr;
@@ -3255,13 +3259,27 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     // Never beyond the owning target, on every path; empty -> 1x1 at its origin.
     region.rect = intersect(region.rect, target);
     if (empty(region.rect)) region.rect = {target.left, target.top, target.left + 1, target.top + 1};
-    route.fade_region = region;
-    ++counts.region_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
     // One denominator: the viewport area; the target area only while the
     // viewport is unknown (the log names which one).
-    const bool of_viewport = region.reason != Reason::Viewport;
+    of_viewport = region.reason != Reason::Viewport;
     const std::uint64_t whole = of_viewport ? std::uint64_t(viewport.width) * viewport.height : area(target);
-    const unsigned permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
+    permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
+    return region;
+}
+void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
+    using namespace fade_region;
+    route.fade_region_evaluated = true;
+    Result bound{};
+    bool of_viewport = false;
+    unsigned permille = 0;
+    const Region region = fade_rectangle(route, bound, of_viewport, permille, false);
+    auto& counts = composition_counts_;
+    ++counts.region_status[unsigned(bound.status) < unsigned(Status::Count) ? unsigned(bound.status) : 0u];
+    if (bound.hit) ++counts.region_hit; else if (bound.status == Status::Bound) ++counts.region_miss;
+    if (bound.poisoned_now) ++counts.region_poisoned;
+    if (bound.evicted) ++counts.region_evicted;
+    route.fade_region = region;
+    ++counts.region_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
     counts.region_permille_sum += permille;
     route.fade_region_permille = permille;
     if (region.bound) ++counts.region_bound; else ++counts.region_full;
@@ -3288,6 +3306,53 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
             shadow_.stream0, shadow_.indices, bound.vb_revision, bound.ib_revision, route.jittered,
             long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target",
             fade_bounds_.used(), fade_bounds_.poisoned());
+}
+
+// Capture frames only. The draw was recognised (fade pair in the exact
+// source-over state) and refused by admission (1-5); the step-1 rectangle is
+// derived as for an admitted draw but through the read-only bound lookup
+// (no insert, stamp, poison or eviction) and kept as integers. Nothing is
+// composed and no composition counter, table counter, witness slot or route
+// field changes.
+void MotionOutput::record_fade_refused(const MotionRoute& route, unsigned refusal) noexcept {
+    const unsigned slot = fade_refused_count_++;
+    if (slot >= fade_refused_capacity) return;
+    fade_region::Result bound{};
+    bool of_viewport = false;
+    unsigned permille = 0;
+    const auto region = fade_rectangle(route, bound, of_viewport, permille, true);
+    auto& r = fade_refused_[slot];
+    r.vs = shadow_.vs_hash; r.ps = shadow_.ps_hash;
+    r.index = std::uint32_t(counters_.draws);
+    r.refusal = std::uint8_t(refusal);
+    // Gate 4 refused the draw before scope sampling filled the key: read the
+    // object context once, without the lifetime lookup (identity only).
+    r.node = 0; r.model = 0; r.lod = 0;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (fixture_configured_) {
+        if (fixture_.scope.known) { r.node = fixture_.scope.node; r.model = std::uint32_t(fixture_.scope.model); r.lod = std::uint32_t(fixture_.scope.lod); }
+    } else
+#endif
+    {
+        object_trace::Snapshot scope{};
+        if (object_trace::current(&scope, false) && (scope.valid & object_trace::Node)) { r.node = scope.node; r.model = scope.model; r.lod = scope.lod; }
+    }
+    r.rect[0] = region.rect.left; r.rect[1] = region.rect.top; r.rect[2] = region.rect.right; r.rect[3] = region.rect.bottom;
+    r.permille = permille; r.reason = std::uint8_t(region.reason); r.status = std::uint8_t(bound.status);
+    r.bound = region.bound; r.of_viewport = of_viewport;
+}
+void MotionOutput::log_fade_refused() noexcept {
+    const unsigned logged = fade_refused_count_ < fade_refused_capacity ? fade_refused_count_ : fade_refused_capacity;
+    for (unsigned i = 0; i < logged; ++i) {
+        const auto& r = fade_refused_[i];
+        log("fade_refused_rect device=%llu frame=%llu index=%lu refusal=%u vs=%016llx ps=%016llx node=%llu model=%08lx lod=%08lx"
+            " bound=%u reason=%u status=%s rect=%ld,%ld,%ld,%ld f_permille=%lu f_of=%s refused_total=%u",
+            id_, frame_, static_cast<unsigned long>(r.index), unsigned(r.refusal), r.vs, r.ps, r.node,
+            static_cast<unsigned long>(r.model), static_cast<unsigned long>(r.lod), unsigned(r.bound), unsigned(r.reason),
+            fade_region::status_name(fade_region::Status(r.status)), long(r.rect[0]), long(r.rect[1]), long(r.rect[2]), long(r.rect[3]),
+            static_cast<unsigned long>(r.permille), r.of_viewport ? "viewport" : "target", fade_refused_count_);
+    }
+    fade_refused_count_ = 0;
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
@@ -3918,6 +3983,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     const bool committed = history_.commit(SUCCEEDED(result) && counters_.filled);
     const auto stats = history_.stats();
     if (shimmer_trace_) log_shimmer_frame(unsigned(stats.previous), unsigned(stats.current), unsigned(committed));
+    if (fade_refused_count_) log_fade_refused();
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):
         // counts are exact, the *_us totals are CPU-side QPC wall clock with
