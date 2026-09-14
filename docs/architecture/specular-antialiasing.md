@@ -1,10 +1,20 @@
 # Specular anti-aliasing for the converted linear material shaders
 
 
-Status (2026-09-14 evening): NOT ratified. The simulation in this note finds the uncorrected shader
-brightens lit geometry with distance (+11 % at 4×) and darkens only off-peak geometry (≈1 %), which
-contradicts the sign argument of the RE note; the detached fixture below (real pair, real textures, 1×/2×/4×)
-decides the mechanism before any correction is implemented.
+Status (2026-09-14 evening): NOT ratified — the sign question is settled, the correction is not.
+The detached fixture (real pair, real textures, captured constants and sampler state, 1×/2×/4×;
+`verification/probe/run_port_distance.py`, record `verification/results/bottle-X3/port-distance1.json`,
+"Detached measurement" in [station-material-distance.md](../reverse-engineering/station-material-distance.md))
+**confirms this note's simulation and refutes the RE note's darkening argument**: at 4× distance the
+uncorrected pair measures 1.077 head-on, 1.153 at the mirror and 0.940 off-peak, against the simulated
+1.069 / 1.115 / 0.989 — same sign in every configuration. Two findings qualify the design below and
+must be answered before ratification. (a) With a flat-normal control the lit configurations still
+brighten (1.033 / 1.099 at 4×), so the normal map's own contribution is only +4.2 % / +4.9 % / −3.6 %
+and the larger part of the mirror case is the discarded `m`–`A` covariance, which Toksvig does not
+touch. (b) Mean and peak move in opposite directions (max luma 0.773 head-on and 0.353 off-peak at 4×
+while the means rise), so the acceptance below, stated on the mean alone, does not by itself show the
+highlight is preserved. The measured alpha falls only 2.0 % at 4× and is normal-independent, as
+assumed here.
 
 Design note, 2026-09-14 (read-only: no game, no Wine, no source edits). How the converted
 bump-family pixel shaders (goal 6, [scene-linear-materials.md](scene-linear-materials.md))
