@@ -24,6 +24,7 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 9 | Stronger glow and selection/voice timing | 0 | Completed as run 28 on source `d9413fc` |
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
 | 11 | Fade region route and alpha-tested cutout, combined | 1 | Completed as user run 11, snapshot run36 |
+| 12 | Voice load-hang Wine trace witness (no new build) | 1 | Ready |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
@@ -35,6 +36,28 @@ until the [decoder adapter note](../architecture/voice-decoder-adapter.md) recor
 analysis and the next combined changes are underway. Run 4 remains the optional vanilla cursor comparison.
 Emission stays off for this comparison; its twenty-pair live route is qualified,
 but gameplay appearance and cost will need separate acceptance.
+
+## 12. Voice load-hang Wine trace witness — Ready
+
+Purpose: capture CrossOver's own quartz/amstream trace of the loading-screen
+hang with the decoder plugin, to see which filter fails `Pause`/`Run` inside
+`SetState(RUN)` (`docs/reverse-engineering/voice-startup-sequence.md` §11). The
+installed build already contains the default-off witness sites; no new DLL.
+The game is expected to hang on the loading screen: wait about 30 s after the
+loading screen stops progressing, then force-quit X3 (Cmd-Option-Esc). Do not
+load a save if the main menu does appear; just quit and report.
+
+```sh
+CX_LOG=/tmp/x3-witness-quartz.log.z \
+CX_DEBUGMSG='-all,trace+quartz,trace+amstream,warn+winegstreamer,+timestamp,+loaddll' \
+./x3run --direct --telemetry --game-phases --audio-sites \
+  --voice-decoder /tmp/x3-wma-plugin-v3
+```
+
+Report: whether it hung or reached the menu, the session path the launcher
+prints, and the size of `/tmp/x3-witness-quartz.log.z`. Analysis greps that
+trace for the failing stream's graph composition and the filter that returned
+`80004005`; the log is never read whole.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,

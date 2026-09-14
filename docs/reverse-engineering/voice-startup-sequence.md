@@ -477,3 +477,71 @@ teardown completes in under 2 ms per stream on both the success and the
 Unknown: which constructor route voice takes (hence `nChannels` 1 vs 2), whether
 `004b7400` rewrites `0x608afc`, and whether `DAT_00606f34+0x100 & 0x4000`
 (`004cf5a4`) is set at load. None of these is settled without a run.
+
+## 11. Every `SetState(RUN)` → `E_FAIL` path in the Wine source (2026-09-14)
+
+Source `wine-11.15` (`/tmp/x3-wine-src/wine`, untracked). CrossOver Preview
+27.0.0.40921 (`cxpreview-20260821-rc2`) ships builtin DLLs versioned `11.15`; the
+bottle's `syswow64\amstream.dll` is byte-identical to the app's `i386-windows`
+copy, and the installed `quartz`/`qasf`/`amstream` carry the upstream trace
+strings quoted below. The preview source is not published (403).
+
+**Call chain.** `amstream/multimedia.c:multimedia_stream_SetState` →
+`IMediaControl::Run`; the following `GetState(INFINITE)` result is overwritten
+with `S_OK`. `quartz/filtergraph.c:MediaControl_Run` returns only the first
+failing `IBaseFilter::Pause` of the Stopped→Paused loop (`WARN "Failed to
+pause"`, before `graph->state` changes) or the first failing `IBaseFilter::Run`
+in `graph_start` (`WARN "Failed to start stream"`); clock, `GetStopPosition`,
+`GetState` and `sort_filters` results are discarded. The graph is
+`CLSID_FilterGraph` regardless of `AMMSF_NOGRAPHTHREAD` (`create_graph` l. 231);
+its MTA message thread only binds monikers; every class involved is
+`ThreadingModel=Both` in `system.reg`, so no proxy, apartment wait,
+`OpenFile`→`SetState` delay or other graph is on the path.
+
+| E_FAIL producer | Where | On the path? |
+| --- | --- | --- |
+| `MediaFilter_GetState` filter state ≠ graph state | `filtergraph.c:5246` | reached, **discarded** by amstream |
+| `autoplug*`, `wg_parser_connect` | `filtergraph.c:1108–1169`, `wg_parser.c:1791` | `OpenFile` only |
+| `dmo_wrapper_init_stream` (`!filter->dmo`, DMO `AllocateStreamingResources`) | `qasf/dmowrapper.c:721,749` | only with a DMO Wrapper in the graph |
+| `asf_reader_init_stream`, `file_source_Load` | `qasf/asfreader.c:676,~700` | only with the WM ASF Reader; `.dat` maps to the Async reader (`Source Filter` = `{e436ebb5…}` for every byte pattern) |
+| `transform_init_stream` (`wg_transform_create_quartz`) | `winegstreamer/quartz_transform.c:115` | only with a winegstreamer transform filter |
+| `filter_WaitUntil` (no clock) | `amstream/filter.c:738` | not reached from `Run` |
+
+For the graph the game's route builds — **MediaStreamFilter, Source (Async
+reader), GStreamer splitter filter** — no failure exists: the Async reader has
+no state ops, `parser_init_stream` (`quartz_parser.c:1634`) returns `S_OK`
+unconditionally (`amt_to_wg_format` is an `assert`, `IMemAllocator_Commit` only
+logs), `amstream/filter.c:filter_Pause/filter_Run` return `S_OK`. Replica trace
+(run `plugin-v3-game-ds-quartz-trace-cxlog`, `/tmp/x3-voice-startup-trace2-cx.log`,
+5.4 MB): every graph is exactly those three filters ("MPEG-I Stream Splitter",
+128 ms, and "AVI Splitter", 1 ms, are tried and removed first — the MPEG-I
+splitter is a second `wg_parser`, hence three `asfdemux` per `OpenFile`); every
+`MediaControl_Run Filter … returned 0` and `graph_start Filter … returned 0`;
+`SetState(RUN)` 39–44 ms, 43 ms of it the splitter's `Pause`.
+
+**Ranking.** (1) The game's graph holds a fourth filter whose `Pause` fails
+(only qasf's DMO Wrapper/WM ASF Reader and winegstreamer's transform filter
+can): `qasf`, `wmvcore`, `mf`, `mfplat`, `devenum` are loaded in the witness
+process, though the intro video graph would load them too; consistent with the
+quick `E_FAIL` (Pause loop exits before `graph_start`), the busy decode thread
+(`wg_parser_connect` leaves streams enabled, so the pipeline prerolls into
+`sink_chain_cb` whether or not the graph runs — the replica's never-pumped
+streams show the same) and the parked mixer. (2) A CrossOver-private change in
+`quartz`/`amstream`. Excluded: timing, apartments, other graphs, the witness
+hook (EAX comes from the `PUSHAD` frame at the byte-verified `4d03f7`, and the
+game itself took the `JL`). Not reproduced by the replica.
+
+**Witness (no DLL build).** CrossOver's `bin/wine` forces `WINEDEBUG=-all`
+unless `CX_LOG` is set (perl l. 228–231; `CX_DEBUGMSG` then gets
+`+timestamp,+pid,+seh,+unwind,+process,+module,+loaddll,+threadname` prefixed,
+l. 240) — a plain `WINEDEBUG` run (`plugin-v3-game-ds-quartz-trace`) logged
+nothing. `tools/manage.py launch` copies the environment and pops only `X3M_*`:
+`CX_LOG=/tmp/x3-witness-quartz.log.z CX_DEBUGMSG='-all,trace+quartz,trace+amstream,warn+winegstreamer,+timestamp,+loaddll' python3 tools/manage.py launch --direct --telemetry --game-phases --audio-sites --voice-decoder /tmp/x3-wma-plugin-v3`.
+Grep only: `FilterGraph2_AddFilter graph G, filter F, name L"…"` (composition
+of the failing stream's graph), `MediaControl_Run Filter F returned 80004005`
+or `graph_start Filter F returned 80004005`, the `Failed to pause` / `Failed
+to start stream` warns, `filter_Pause filter F L"name"`. If the intro video
+makes the log unmanageable, `-all,warn+quartz,trace+amstream,+loaddll` still
+separates Pause from Run failure. A DLL witness, if ever needed, reads
+`[EBX+0x78]` at `4d03f7` and logs `EnumFilters`/`QueryFilterInfo` names with
+per-filter `GetState(0)`.
