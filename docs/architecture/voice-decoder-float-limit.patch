@@ -1,0 +1,110 @@
+--- a/ext/libav/gstavauddec.c
++++ b/ext/libav/gstavauddec.c
+@@ -89,6 +89,35 @@
+  */
+ #define GST_FFMPEGAUDDEC_TIMESTAMP_TOLERANCE (500 * GST_MSECOND)
+ 
++/* Third local modification (X3 voice crackle, not upstream).
++ *
++ * ffmpeg's wmav2 decoder emits FLTP and does not limit its output to
++ * [-1, 1]: measured on the game's 00144.dat/00244.dat, about 50 samples per
++ * second of speech exceed full scale, by up to ~0.5 %. This element pushes
++ * those floats downstream unchanged (F32LE, non-interleaved), and the stock
++ * audioconvert that winegstreamer puts in front of the game converts them
++ * F32 -> F64 -> S32 (audio_orc_double_to_s32, multiply by 2^31 and convert)
++ * and then quantizes S32 -> S16. On this host that conversion is modular, not
++ * saturating: a sample of 1.0044 becomes 2156986363, which wraps to
++ * -2137980933 and is packed as -32623 where the correct output is +32767.
++ * A near-full-scale sign inversion every ~20 ms is exactly the reported voice
++ * crackle.
++ *
++ * We cannot change the converter (it is CrossOver's shipped GStreamer), so
++ * the decoder limits its own float output instead, which is also what every
++ * saturating float->int conversion would produce.
++ *
++ * The limit is 1 - 2^-14 of full scale rather than 1.0 because the quantizer
++ * that follows adds TPDF dither plus the rounding bias to the S32 value with
++ * a wrapping add: up to (1 << 15) + 2 * ((1 << 15) - 1) = 98302 counts. Any
++ * value left within that distance of INT32_MAX would wrap there instead.
++ * 2^-14 of full scale is 131072 counts, which covers it with margin, costs
++ * 0.0005 dB (peak 32766 instead of 32767 on samples that were clipping
++ * anyway) and is inaudible. Non-finite samples are mapped to silence, since
++ * the same conversion turns them into arbitrary noise.
++ */
++#define GST_FFMPEGAUDDEC_FLOAT_LIMIT (1.0 - 1.0 / 16384.0)
++
+ /* A number of function prototypes are given so we can refer to them later. */
+ static void gst_ffmpegauddec_base_init (GstFFMpegAudDecClass * klass);
+ static void gst_ffmpegauddec_class_init (GstFFMpegAudDecClass * klass);
+@@ -492,7 +521,60 @@
+     memset (&ffmpegdec->info, 0, sizeof (ffmpegdec->info));
+ 
+     return FALSE;
++  }
++}
++
++/* See GST_FFMPEGAUDDEC_FLOAT_LIMIT: limit a decoded float buffer in place.
++ * One pass over the samples of the frame just copied (44100 floats/s on this
++ * path); integer formats and the non-mappable case return immediately. */
++static void
++gst_ffmpegauddec_limit_float (GstFFMpegAudDec * ffmpegdec, GstBuffer * outbuf)
++{
++  GstAudioFormat format = GST_AUDIO_INFO_FORMAT (&ffmpegdec->info);
++  GstMapInfo map;
++  gsize i, n;
++
++  if (format != GST_AUDIO_FORMAT_F32 && format != GST_AUDIO_FORMAT_F64)
++    return;
++
++  if (G_UNLIKELY (!gst_buffer_map (outbuf, &map, GST_MAP_READWRITE))) {
++    GST_WARNING_OBJECT (ffmpegdec, "could not map the output buffer writable");
++    return;
++  }
++
++  if (format == GST_AUDIO_FORMAT_F32) {
++    const gfloat limit = (gfloat) GST_FFMPEGAUDDEC_FLOAT_LIMIT;
++    gfloat *s = (gfloat *) map.data;
++
++    n = map.size / sizeof (gfloat);
++    for (i = 0; i < n; i++) {
++      gfloat v = s[i];
++
++      if (v > limit)
++        s[i] = limit;
++      else if (v < -limit)
++        s[i] = -limit;
++      else if (G_UNLIKELY (v != v))
++        s[i] = 0.0f;
++    }
++  } else {
++    const gdouble limit = GST_FFMPEGAUDDEC_FLOAT_LIMIT;
++    gdouble *s = (gdouble *) map.data;
++
++    n = map.size / sizeof (gdouble);
++    for (i = 0; i < n; i++) {
++      gdouble v = s[i];
++
++      if (v > limit)
++        s[i] = limit;
++      else if (v < -limit)
++        s[i] = -limit;
++      else if (G_UNLIKELY (v != v))
++        s[i] = 0.0;
++    }
+   }
++
++  gst_buffer_unmap (outbuf, &map);
+ }
+ 
+ static void
+@@ -566,6 +648,10 @@
+     GST_DEBUG_OBJECT (ffmpegdec, "Buffer created. Size: %" G_GSIZE_FORMAT,
+         output_size);
+ 
++    /* See GST_FFMPEGAUDDEC_FLOAT_LIMIT: the conversion downstream is modular,
++     * so over-full-scale decoder output must be limited here. */
++    gst_ffmpegauddec_limit_float (ffmpegdec, *outbuf);
++
+     /* Reorder channels to the GStreamer channel order */
+     if (ffmpegdec->needs_reorder) {
+       *outbuf = gst_buffer_make_writable (*outbuf);
