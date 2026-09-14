@@ -59,7 +59,10 @@ including repeats of the same name). Report:
 1. whether target-name speech is heard at all, and for which selections;
 2. whether the pause on selection changed compared with run 28 (longer, shorter
    or the same);
-3. whether spoken lines sound cut short at the end.
+3. whether spoken lines start clipped (first syllable missing) or run into
+   the start of the following line; the [cue-timing note](../reverse-engineering/voice-cue-timing.md)
+   predicts an onset error of up to about 0.7 s from the decoder's sample
+   timestamps, so this run tests restored speech, not cue timing.
 
 No F8 capture is needed. If the game fails to start, rerun the same command
 without `--voice-decoder` and report which of the two failed.
