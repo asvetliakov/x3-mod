@@ -283,7 +283,7 @@ std::uint64_t loading_frequency=0;
 constexpr const char* loading_phase_names[detail::LoadingPhases::NameCount]={"menu_shown","save_load_begin","save_load_complete"};
 constexpr unsigned loading_stall_seconds=3; // splash gaps stay under 2 s, load stalls above 5 s (runs 39-46)
 }
-void loading_phase_present(std::uint64_t device,std::uint64_t frame) noexcept {
+void loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_t frame) noexcept {
     if(loading_phases.emitted==(1u<<detail::LoadingPhases::NameCount)-1)return; // all markers written: no clock
     ErrorGuard error;
     if(!loading_frequency){
@@ -293,7 +293,7 @@ void loading_phase_present(std::uint64_t device,std::uint64_t frame) noexcept {
     }
     const auto now=qpc();if(!now)return;
     detail::LoadingPhases::Marker markers[2];
-    const unsigned count=loading_phases.present(device,frame,now,markers);
+    const unsigned count=loading_phases.present(device,reset,frame,now,markers);
     for(unsigned i=0;i<count;++i){
         const auto& m=markers[i];
         const auto origin=static_cast<std::uint64_t>(dll_load_qpc);

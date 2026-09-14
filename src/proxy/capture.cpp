@@ -983,7 +983,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             ctx.id,ctx.frame,scene_confirmed,motion_committed,hr);
     const auto end=telemetry::now();
     game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d),ctx.id,ctx.reset_generation,ctx.frame,ctx.capture,end,static_cast<std::uint32_t>(hr));
-    game_phases::loading_phase_present(ctx.id,ctx.frame); // cadence-derived loading_phase lines, every mode
+    game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame); // cadence-derived loading_phase lines, every mode
     voice_dmo_fallback::report(); // one atomic load per Present; lines only after an activation
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(telemetry::enabled()&&(!ctx.stats.present_override_known||ctx.stats.present_override!=w)){

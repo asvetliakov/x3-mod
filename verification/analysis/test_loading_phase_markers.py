@@ -27,7 +27,8 @@ class LoadingPhaseMarkers(unittest.TestCase):
         self.assertEqual(extract_loading_phases('')['markers'],[])
     def test_duplicate_unknown_and_malformed_rejected(self):
         text=marker('menu_shown',5,100)+marker('menu_shown',6,200)+marker('other',1,2)+'loading_phase name=save_load_begin frame=x elapsed_ms=3\n'
+        text+='loading_phase name=save_load_complete frame=9 elapsed_ms=10 stall_ms=-4\n'
         result=extract_loading_phases(text)
         self.assertEqual(result['menu_ms'],100);self.assertEqual(len(result['markers']),1)
-        self.assertEqual([r['line'] for r in result['rejected']],[2,3,4])
+        self.assertEqual([r['line'] for r in result['rejected']],[2,3,4,5])
 if __name__=='__main__':unittest.main()

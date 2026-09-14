@@ -52,7 +52,7 @@ def extract_loading_phases(text):
             marker = dict(name=name, frame=int(values['frame']), elapsed_ms=int(values['elapsed_ms']),
                           stall_ms=int(values['stall_ms']) if 'stall_ms' in values else None,
                           line=line_number)
-            if marker['elapsed_ms'] < 0 or marker['frame'] < 0:
+            if marker['elapsed_ms'] < 0 or marker['frame'] < 0 or (marker['stall_ms'] is not None and marker['stall_ms'] < 0):
                 raise ValueError('negative loading_phase field')
         except (KeyError, ValueError) as error:
             rejected.append(dict(line=line_number, reason=str(error)))
