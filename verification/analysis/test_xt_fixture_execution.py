@@ -19,11 +19,15 @@ class XtFixtureExecutionTests(unittest.TestCase):
 
     def test_appended_case_sample_equations(self):
         count=0
-        for case in fixture_cases()[3549:]:
+        for case in fixture_cases():
+            # The XT pairs only; the glass fixture appends further pairs above
+            # this range and carries its own reference.
+            if not fixture.START<=case['pair']<fixture.START+len(fixture.PAIRS):
+                continue
             gains=case['gains']
             if len(set(gains))!=1 or gains[0] not in (0,1,4,16):
                 continue
-            identity=fixture.PAIRS[case['pair']-148][1]
+            identity=fixture.PAIRS[case['pair']-fixture.START][1]
             contract=fixture.xt.CONTRACTS[identity]
             for sample in ((4,4),(12,12)):
                 for linear in (False,True):
