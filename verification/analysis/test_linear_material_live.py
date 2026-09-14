@@ -58,6 +58,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
         self.assertIsNotNone(compiler)
         source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         signatures = [
+            'constexpr unsigned composition_blend_index(D3DRENDERSTATETYPE state) noexcept',
             'constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept',
             'void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexcept',
             'unsigned MotionOutput::device_references() const noexcept',

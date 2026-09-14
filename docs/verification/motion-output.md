@@ -194,6 +194,30 @@ with it off every query is a native read (`rs_hits = 0`). In the burst
 script the per-draw evaluation's 47 (per-draw) or 43 (lazy: the write masks
 are saved at the three binds, not per draw) queries per frame all hit.
 
+#### `motion_route` draw state (capture frames only)
+
+Every `motion_route` line ends with the draw's state signature, appended after
+`result=` so a capture frame shows why a draw was refused at gate 4
+(`DrawState`) without a new run: `zwrite=` (`ZWRITEENABLE`), `blend=`
+(`ALPHABLENDENABLE`), `src=`/`dst=` (`SRCBLEND`/`DESTBLEND`), `atest=`
+(`ALPHATESTENABLE`), `mask=` (`COLORWRITEENABLE`), `sepalpha=`
+(`SEPARATEALPHABLENDENABLE`) and `fog=` (`FOGENABLE`). The values are the raw
+D3D9 integers; a source-over draw is `blend=1 src=5 dst=6`.
+
+They are read from the render-state shadow only - no `GetRenderState`, so the
+line adds no device call and cannot move the `rs_queries`/`rs_hits`/`rs_gets`
+counters a fixture checks - and a state the shadow has not seen is logged as
+`-1`. `src`, `dst` and `sepalpha` live in the composition blend shadow, which
+is maintained only while a composition producer is requested (linear emission
+or distance fade); with neither requested they are `-1`. The shader-side b0 fog
+enable and `AlphaValue` are *not* logged: the proxy tracks no boolean or
+material float constants, and adding that tracking would be a new per-draw
+read. `verification/probe/motion_route.py` parses the line (unknown state ->
+`None`, older lines without the fields parse with every state unknown) and
+`census()` groups gate-4 refusals by pair and signature;
+`verification/analysis/test_motion_route_parse.py` covers both and checks the
+DLL's format string against the parser's field list.
+
 ### Mip LOD bias (`X3M_TAA_MIP_BIAS`)
 
 The `mipbias` script and the regular-script twins with the bias on are

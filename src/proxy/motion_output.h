@@ -670,8 +670,11 @@ private:
         bool recording = false;
         DWORD states[motion_shadow_state_count]{};      // application render states (shadow_states order)
         bool states_known[motion_shadow_state_count]{};
-        DWORD composition_blend[3]{}; // SRCBLEND, DESTBLEND, BLENDOP
-        bool composition_blend_known[3]{};
+        // SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHABLENDENABLE. The first
+        // three are the nine-state fade check's blend triple; the fourth is
+        // logged by the capture-only motion_route line and is not part of it.
+        DWORD composition_blend[4]{};
+        bool composition_blend_known[4]{};
     };
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
@@ -710,6 +713,11 @@ private:
     // stay in derive_fade_region. Shared by the admitted route and the
     // capture-only refused-draw diagnostic.
     fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille, bool read_only) noexcept;
+    // Shadowed application render state for the capture-only motion_route
+    // line: the last value the shadow saw, or -1 when it is unknown. Reads no
+    // device state, so a capture frame costs no extra GetRenderState.
+    long shadow_state_field(D3DRENDERSTATETYPE state) const noexcept;
+    long composition_blend_field(unsigned index) const noexcept;
     void record_fade_refused(const MotionRoute& route, unsigned refusal) noexcept;
     void log_fade_refused() noexcept;
     void witness_readback() noexcept;       // Present boundary, every k-th frame, one bounded readback
