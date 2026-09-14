@@ -433,3 +433,34 @@ window totals in ms, not per-frame microseconds; a 4097 ms window over 300 frame
 figures must divide by the actual frame delta between consecutive lines. Recomputed that way: run 14
 median 18.2 ms/frame (p95 52.6, shimmer trace on); run 16 median 27.1 ms/frame (p95 84.7, `--voice-decoder
 --game-phases --audio-sites`, windows include loading). Diagnostic timings are not game FPS.
+
+## 16. Run 13 retry: speech with the decoder plugin and the fixed DMO fallback hook — Completed
+
+Completed as user run 16, snapshot `/tmp/x3-bottleX3-run41/`, installed candidate `5b92484a…`
+(`066e18f`). User report: the game loads and target-name speech works; the voice crackles on some
+words or vowels. Log (16,805 lines): hook install line with arena `01d70000`, stub/tail/dispatcher in the
+arena and `enter=793e4740` in the DLL image; 6 activations, all `qi_hr=0 init_hr=0`, `retries_ok` up to 6,
+no `voice_dmo_fallback_fault` line; `game_phase_audio` monotonic (loops 5107, cue_play 78). No audio-path
+telemetry exists in the build, so the crackle is not attributable from the log; the offline replica PCM
+dump and scan (`docs/verification/voice-decoder.md`) is the next evidence. Seven `motion_output_frame
+hook_outside_scene` frames are menu/loading frames, benign. `frame_end` windows recomputed per frame:
+median 27.1 ms, p95 84.7 ms with `--voice-decoder --game-phases --audio-sites` and loading windows
+included (run 14 recomputed: 18.2 ms / 52.6 ms with the shimmer trace); diagnostic, not game FPS.
+
+## 17. Bullet bound after near-plane clipping, packed_sample brightness — Completed
+
+Completed as user run 17, snapshot `/tmp/x3-bottleX3-run42/` (75 referenced files), same candidate,
+`--screen-emission --fade-witness`, fade route default-on. User report: bullets look overall, perhaps
+consistently, dimmer. `locked_prefix_frame` (198 lines): draws 500, bound 500, refused 0, clipped 262,
+every refusal reason 0 (run 15: 800 / 400 / 400 `reason_w`); bound rate 100 % while firing (382/382).
+Admitted rect `f_permille` at capture frames: median 472 ‰, p95/max 1000 ‰ (6 of 26 rows are clipped
+boxes touching the camera, full viewport, as the step D note predicts). `packed_region_pixels` up to
+3.9 M px per firing frame. `packed_incomplete`, `packed_unbounded_refused`, `packed_caps_refused`,
+`packed_sample_skipped` all 0 over 208 frame lines. `fade_witness` 403 lines, `outside=0` everywhere;
+`fade_region_frame` 86 lines, bound 88, no misses or poison. `packed_sample`: 20 of 20 lines have
+`post` bit-identical to `pre` at the rect centre (both S_OK), and the HDR captures match `post` at
+those points with a maximum channel of 0.59; because the centre of a near-fullscreen box is rarely a
+bullet pixel, this does not yet prove a no-op composite. The diagnostic is being extended to report
+whole-rect change counts and max/argmax pre/post, plus a per-frame timing line, for run 18. Frame
+time is not resolvable per firing frame from the 300-frame `frame_end` windows (≈ 9.9 ms/frame average
+over one 83-frame window).
