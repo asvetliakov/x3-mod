@@ -14,6 +14,7 @@ namespace x3m {
 bool screen_emission_route_enabled() noexcept;
 void initialize_log(HMODULE module);
 void log(const char* format, ...);
+void log_flush(); // for a line that must reach the file before the process dies
 void hook_direct3d(IDirect3D9* object);
 // Capture output directory (wide path, no trailing separator). Valid after initialize_log.
 const wchar_t* capture_directory();

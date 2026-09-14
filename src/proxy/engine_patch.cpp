@@ -63,6 +63,7 @@ bool verify_bytes(uintptr_t address,const unsigned char* expected,unsigned lengt
     return length>=5&&length<=max_prologue&&read_code(address,actual,length)&&!std::memcmp(actual,expected,length);
 }
 unsigned arena_used(){return arena_cursor;}
+const void* arena_base(){return arena;}
 unsigned arena_capacity(){return arena_size;}
 
 Emitter::Emitter(unsigned reserve):reserve_(reserve) {

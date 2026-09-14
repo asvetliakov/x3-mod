@@ -13,4 +13,12 @@
 namespace x3m::voice_dmo_fallback {
 bool initialize(); // capture initialize_log only, after game_phases::initialize
 void report();     // Present time: formats one line per activation recorded by the hook
+#ifdef X3M_VOICE_DMO_FIXTURE
+// Fixture builds only (voice_startup_replica.cpp, mode game-dmo-hook): the site
+// address is a replica function carrying the game's eight bytes; the expected
+// bytes, length and register contract stay the production ones.
+bool fixture_site(std::uintptr_t address); // before initialize()
+const void* fixture_stub();
+const void* fixture_tail();
+#endif
 }

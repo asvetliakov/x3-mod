@@ -2148,6 +2148,10 @@ void log(const char* format,...) {
     if(!logfile) return;
     va_list args; va_start(args,format); vfprintf(logfile,format,args); va_end(args); fputc('\n',logfile);
 }
+void log_flush() {
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    if(logfile) fflush(logfile);
+}
 void hook_direct3d(IDirect3D9* d) {
     std::lock_guard<std::recursive_mutex> lock(mutex);
     if(factories.count(d)) return;

@@ -6,6 +6,10 @@ independent ledger, and (when the installed EXE is present) the read-only
 instruction/ABI qualification of the site. No Wine, no game.
 """
 import json
+import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -14,6 +18,12 @@ from verification.analysis.test_voice_decoder_launch import VoiceDecoderLaunchOp
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = (ROOT / 'src/proxy/voice_dmo_fallback.cpp').read_text()
+REPLICA = (ROOT / 'verification/probe/voice_startup_replica.cpp').read_text()
+CXX = 'i686-w64-mingw32-g++'
+OBJDUMP = 'i686-w64-mingw32-objdump'
+# The production compile flags (CMakeLists.txt) that matter for code generation.
+FLAGS = ('-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-msse2', '-mfpmath=sse', '-mstackrealign',
+         '-mincoming-stack-boundary=2', '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX')
 GUID_RE = '{0x%s,0x%s,0x%s,{%s}}'
 
 
@@ -45,10 +55,55 @@ class Constants(unittest.TestCase):
 
     def test_env_gate_and_install_guards(self):
         self.assertIn('L"X3M_VOICE_DMO_FALLBACK"', SOURCE)
-        for guard in ('install_window_open()', 'executable_verified()', 'verify_bytes(kSite.address', 'engine_patch::restore(patch)'):
+        for guard in ('install_window_open()', 'executable_verified()', 'verify_bytes(spec.address', 'engine_patch::restore(patch)'):
             self.assertIn(guard, SOURCE)
         self.assertIn('x3m::PreserveCpuState cpu;', SOURCE)
         self.assertIn('force_align_arg_pointer', SOURCE)
+
+
+class CallBinding(unittest.TestCase):
+    """Run 13's crash: a local abstract class for IDMOWrapperFilter let GCC devirtualise
+    Init to __cxa_pure_virtual, which the DLL resolved to a call into nothing."""
+
+    def test_interface_is_an_explicit_vtable_not_a_local_abstract_class(self):
+        self.assertIsNone(re.search(r'\bvirtual\b', SOURCE), 'no C++ virtual interface in the hook')
+        self.assertIn('struct IDMOWrapperFilterLocal { const IDMOWrapperFilterVtbl* vtbl; };', SOURCE)
+        self.assertIn('HRESULT (STDMETHODCALLTYPE* Init)(void*,REFCLSID,REFCLSID);', SOURCE)
+        self.assertIn('view->vtbl->Init(view,kCLSID_CWMADecMediaObject,kDMOCATEGORY_AUDIO_DECODER)', SOURCE)
+        self.assertIn('view->vtbl->Release(view);', SOURCE)
+        self.assertIn('AddVectoredExceptionHandler(1,&fault_witness)', SOURCE)
+
+    @unittest.skipUnless(shutil.which(CXX) and shutil.which(OBJDUMP), 'MinGW i686 toolchain unavailable')
+    def test_compiled_object_has_no_pure_virtual_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            obj = Path(directory) / 'voice_dmo_fallback.o'
+            subprocess.run([CXX, *FLAGS, '-c', str(ROOT / 'src/proxy/voice_dmo_fallback.cpp'), '-o', str(obj)],
+                           check=True, cwd=ROOT, capture_output=True, text=True, timeout=120)
+            # The devirtualised build carried a weak undefined __cxa_pure_virtual and a
+            # DISP32 relocation against it for the Init call (the DLL's `call 0`).
+            symbols = subprocess.run([OBJDUMP, '-t', str(obj)], check=True, capture_output=True, text=True, timeout=60).stdout
+            self.assertNotIn('__cxa_pure_virtual', symbols)
+            relocations = subprocess.run([OBJDUMP, '-r', str(obj)], check=True, capture_output=True, text=True, timeout=60).stdout
+            self.assertNotIn('pure_virtual', relocations)
+            listing = subprocess.run([OBJDUMP, '-d', '-Mintel', str(obj)], check=True, capture_output=True, text=True, timeout=60).stdout
+            enter = listing.split('<_x3m_voice_dmo_fallback_enter>:', 1)[1].split('\n\n', 1)[0]
+            calls = [line.split('call', 1)[1].strip() for line in enter.splitlines() if '\tcall ' in line]
+            # Init and Release reach the wrapper only through its vtable: indirect calls, no
+            # direct call except the relocated ones to this module's own functions.
+            direct = [c for c in calls if not (c.startswith('DWORD PTR') or c in ('eax', 'ecx', 'edx'))]
+            self.assertTrue(all('_x3m_voice_dmo_fallback_enter' in c for c in direct), calls)
+            self.assertGreaterEqual(sum(c.startswith('DWORD PTR [') or c in ('eax', 'ecx', 'edx') for c in calls), 3, calls)
+
+
+class ReplicaCoverage(unittest.TestCase):
+    def test_replica_site_carries_the_game_bytes_and_the_hook_install_path(self):
+        self.assertIn('.byte 0x8b,0xf0,0x81,0xfe,0x0e,0x00,0x07,0x80', REPLICA)
+        self.assertIn('x3m::voice_dmo_fallback::fixture_site(site)&&x3m::voice_dmo_fallback::initialize()', REPLICA)
+        self.assertIn('-DX3M_VOICE_DMO_FIXTURE', (ROOT / 'verification/probe/build_voice_startup_replica.sh').read_text())
+        import run_voice_startup_replica as runner
+        self.assertIn('game-dmo-hook', runner.MODES)
+        self.assertIn('game-dmo-hook', runner.GAME_DS_MODES)
+        self.assertIn('dmo_wrapper_init_hooked', runner.KEY_STEPS)
 
 
 class LauncherGate(VoiceDecoderLaunchOption):

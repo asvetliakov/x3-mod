@@ -37,11 +37,18 @@
 #include <dsound.h>
 #include <atomic>
 #include <cstdint>
+#include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include "../../src/proxy/voice_dmo_fallback.h"
 
 static_assert(sizeof(void*)==4,"probe must use the game's x86 COM ABI");
+// Fixture-side definitions of the proxy symbols the production hook links
+// against: its log lines go to stdout (the runner keeps every
+// voice_dmo_fallback* line), the executable identity check is the fixture's.
+namespace x3m { void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');std::fflush(stdout);} void log_flush(){std::fflush(stdout);} }
+namespace x3m::object_trace { bool executable_verified(){return true;} }
 // dmodshow.h/dmoreg.h/wmcodecdsp.h are not in this MinGW; documented GUIDs, local names.
 DEFINE_GUID(CLSID_DMOWrapperFilter_local,0x94297043,0xbd82,0x4dfd,0xb0,0xde,0x81,0x77,0x73,0x9c,0x6d,0x20);
 DEFINE_GUID(IID_IDMOWrapperFilter_local,0x52d6f586,0x9f0f,0x4824,0x8f,0xc8,0xe3,0x2c,0xa0,0x49,0x30,0xc2);
@@ -49,6 +56,43 @@ DEFINE_GUID(CLSID_CWMSPDecMediaObject_local,0x874131cb,0x4ecc,0x443b,0x89,0x48,0
 DEFINE_GUID(CLSID_CWMADecMediaObject_local,0x2eeb4adf,0x4578,0x4d10,0xbc,0xa7,0xbb,0x95,0x5f,0x56,0x32,0x0a);
 DEFINE_GUID(DMOCATEGORY_AUDIO_DECODER_local,0x57f2db8b,0xe6bb,0x4513,0x9d,0x43,0xdc,0xd2,0xa6,0x59,0x31,0x25);
 struct IDMOWrapperFilterLocal : public IUnknown { virtual HRESULT STDMETHODCALLTYPE Init(REFCLSID clsid,REFCLSID category)=0; };
+// Mode game-dmo-hook: the constructor's Init loop 004cfd0e..004cfd7c as
+// machine code with the game's register contract (EBX = media object whose
+// +0x9c holds the wrapper, EDI = 0, [ESP+0x14] = the IDMOWrapperFilter view,
+// [ESP+0x10] = attempt counter, EAX = Init's HRESULT at the site) so the
+// production hook (src/proxy/voice_dmo_fallback.cpp) is installed through
+// engine_patch on `replica_init_site`, which carries the site's eight bytes
+// `8b f0 81 fe 0e 00 07 80` exactly, and its emitted stub, dispatcher and tail
+// execute as in the game. `replica_out_of_memory` stands in for 004b8b60 (an
+// E_OUTOFMEMORY report the fixture never reaches). The witness records what
+// the game code after the site would consume: ESI (the HRESULT it tests),
+// EDI, EBX and ESP at the return.
+extern "C" {
+HRESULT replica_media_init(void* object);
+extern unsigned char replica_init_site[];
+void replica_out_of_memory(){}
+std::uint32_t replica_site_witness[4];
+extern const GUID replica_iid_wrapper=IID_IDMOWrapperFilter_local;
+extern const GUID replica_clsid_speech=CLSID_CWMSPDecMediaObject_local;
+extern const GUID replica_category_audio=DMOCATEGORY_AUDIO_DECODER_local;
+}
+asm(".text\n.globl _replica_media_init\n_replica_media_init:\n"
+"pushl %ebx\n pushl %esi\n pushl %edi\n pushl %ebp\n subl $0x20,%esp\n"
+"movl 0x34(%esp),%ebx\n xorl %edi,%edi\n movl %edi,0x14(%esp)\n"
+// 004cfd0e..004cfd29: QueryInterface([EBX+0x9c], IID_IDMOWrapperFilter, &[ESP+0x14]); jl done
+"movl 0x9c(%ebx),%eax\n movl (%eax),%ecx\n leal 0x14(%esp),%edx\n pushl %edx\n pushl $_replica_iid_wrapper\n pushl %eax\n movl (%ecx),%eax\n call *%eax\n"
+"cmpl %edi,%eax\n jl 1f\n movl %edi,0x10(%esp)\n"
+// 004cfd30..004cfd44: Init(view, CLSID speech, DMOCATEGORY_AUDIO_DECODER) via vtable+0x0c
+"2: movl 0x14(%esp),%eax\n movl (%eax),%ecx\n movl 0xc(%ecx),%edx\n pushl $_replica_category_audio\n pushl $_replica_clsid_speech\n pushl %eax\n call *%edx\n"
+// 004cfd46: the site, mov esi,eax / cmp esi,0x8007000e (the exact encoding the game uses)
+".globl _replica_init_site\n_replica_init_site:\n .byte 0x8b,0xf0,0x81,0xfe,0x0e,0x00,0x07,0x80\n"
+"jne 3f\n call _replica_out_of_memory\n"
+"3: movl $1,%eax\n addl %eax,0x10(%esp)\n cmpl %edi,%esi\n jge 4f\n cmpl %eax,0x10(%esp)\n jbe 2b\n jmp 4f\n"
+"1: movl %eax,%esi\n"
+// 004cfd68..004cfd7c: Release the view when present
+"4: movl 0x14(%esp),%eax\n cmpl %edi,%eax\n je 5f\n movl (%eax),%ecx\n movl 0x8(%ecx),%edx\n pushl %eax\n call *%edx\n movl %edi,0x14(%esp)\n"
+"5: movl %esi,_replica_site_witness\n movl %edi,_replica_site_witness+4\n movl %ebx,_replica_site_witness+8\n movl %esp,_replica_site_witness+12\n"
+"movl %esi,%eax\n addl $0x20,%esp\n popl %ebp\n popl %edi\n popl %esi\n popl %ebx\n ret\n");
 static_assert((DSBCAPS_LOCSOFTWARE|DSBCAPS_CTRLVOLUME|DSBCAPS_GETCURRENTPOSITION2)==0x10088,"SDK DirectSound flags required");
 static const DWORD WATCHDOG_MS=15000;
 static LARGE_INTEGER frequency;
@@ -106,8 +150,8 @@ struct Trace {
         if(p){step(stream,name,1,true,[&]{p->Release();return S_OK;});p=nullptr;}
     }
 };
-enum Mode { MODE_GAME, MODE_NOPAUSE, MODE_EARLY_UPDATE, MODE_SINGLE, MODE_EXPLICIT, MODE_GAME_DS, MODE_GAME_DS_STEREO, MODE_GAME_DMO, MODE_GAME_DMO_FALLBACK, MODE_GAME_DMO_SKIP };
-static bool game_dmo(Mode m){return m==MODE_GAME_DMO||m==MODE_GAME_DMO_FALLBACK||m==MODE_GAME_DMO_SKIP;}
+enum Mode { MODE_GAME, MODE_NOPAUSE, MODE_EARLY_UPDATE, MODE_SINGLE, MODE_EXPLICIT, MODE_GAME_DS, MODE_GAME_DS_STEREO, MODE_GAME_DMO, MODE_GAME_DMO_FALLBACK, MODE_GAME_DMO_SKIP, MODE_GAME_DMO_HOOK };
+static bool game_dmo(Mode m){return m==MODE_GAME_DMO||m==MODE_GAME_DMO_FALLBACK||m==MODE_GAME_DMO_SKIP||m==MODE_GAME_DMO_HOOK;}
 static bool game_ds(Mode m){return m==MODE_GAME_DS||m==MODE_GAME_DS_STEREO||game_dmo(m);}
 static const DWORD PRIMARY_RATE=44100; // 0x608afc as initialised by 004b8740 (004b7400 config override not modelled)
 struct Stream {
@@ -143,7 +187,21 @@ struct Stream {
             // 004cfcd0..004cfe18 (section 12): DMO wrapper created (CLSCTX 3) and Init'd with the WM Speech decoder
             // DMO (not registered in the bottle), two attempts, then AddFilter with a NULL name whatever Init returned.
             HRESULT made=t.twice(index,"dmo_wrapper_create",[&]{return CoCreateInstance(CLSID_DMOWrapperFilter_local,nullptr,CLSCTX_INPROC_SERVER|CLSCTX_INPROC_HANDLER,IID_IBaseFilter,reinterpret_cast<void**>(&wrapper));});
-            if(SUCCEEDED(made)) {
+            if(SUCCEEDED(made)&&mode==MODE_GAME_DMO_HOOK) {
+                // The game's Init loop in machine code with the production hook on its site: the
+                // object is a replica of the media object with the wrapper in its +0x9c slot.
+                std::vector<std::uint32_t> object(0x40,0);object[0x9c/4]=reinterpret_cast<std::uint32_t>(wrapper);
+                const std::uint32_t esp_before=[]{std::uint32_t v;asm volatile("movl %%esp,%0":"=r"(v));return v;}();
+                const HRESULT inited=t.step(index,"dmo_wrapper_init_hooked",1,true,[&]{return replica_media_init(object.data());});
+                const std::uint32_t esp_after=[]{std::uint32_t v;asm volatile("movl %%esp,%0":"=r"(v));return v;}();
+                x3m::voice_dmo_fallback::report();
+                std::printf("REPLICA_SITE stream=%d hr=%08lx esi=%08lx edi=%08lx ebx_ok=%d esp_ok=%d object=%08lx wrapper=%08lx\n",index,static_cast<unsigned long>(inited),
+                    static_cast<unsigned long>(replica_site_witness[0]),static_cast<unsigned long>(replica_site_witness[1]),
+                    replica_site_witness[2]==reinterpret_cast<std::uint32_t>(object.data()),esp_before==esp_after,
+                    reinterpret_cast<unsigned long>(object.data()),reinterpret_cast<unsigned long>(wrapper));
+                std::fflush(stdout);
+                if(wrapper)t.step(index,"dmo_wrapper_add",1,true,[&]{return graph->AddFilter(wrapper,nullptr);});
+            } else if(SUCCEEDED(made)) {
                 IDMOWrapperFilterLocal* init{};HRESULT inited=E_FAIL;
                 if(SUCCEEDED(t.step(index,"dmo_wrapper_qi",1,true,[&]{return wrapper->QueryInterface(IID_IDMOWrapperFilter_local,reinterpret_cast<void**>(&init));}))) {
                     for(int i=1;i<=2;++i) {
@@ -286,6 +344,7 @@ static Mode parse_mode(const wchar_t* text,bool& ok) {
     if(!wcscmp(text,L"game-dmo"))return MODE_GAME_DMO;
     if(!wcscmp(text,L"game-dmo-fallback"))return MODE_GAME_DMO_FALLBACK;
     if(!wcscmp(text,L"game-dmo-skip"))return MODE_GAME_DMO_SKIP;
+    if(!wcscmp(text,L"game-dmo-hook"))return MODE_GAME_DMO_HOOK;
     ok=false;return MODE_GAME;
 }
 int wmain(int argc,wchar_t** argv) {
@@ -301,6 +360,24 @@ int wmain(int argc,wchar_t** argv) {
     char mode_text[24];std::snprintf(mode_text,sizeof mode_text,"%ls",argv[1]);
     std::printf("REPLICA_HEADER schema=1 mode=%s streams=%d dwell_ms=%d watchdog_ms=%lu thread=%lu audible=0\n",mode_text,streams,dwell_ms,static_cast<unsigned long>(WATCHDOG_MS),static_cast<unsigned long>(owner_thread));
     Trace t;
+    if(mode==MODE_GAME_DMO_HOOK) {
+        // Production install path: the gate variable, the replica site, engine_patch claim, stub chained.
+        SetEnvironmentVariableW(L"X3M_VOICE_DMO_FALLBACK",L"1");
+        const auto site=reinterpret_cast<std::uintptr_t>(replica_init_site);
+        const bool installed=x3m::voice_dmo_fallback::fixture_site(site)&&x3m::voice_dmo_fallback::initialize();
+        unsigned char now[8]{};std::memcpy(now,replica_init_site,8);
+        std::printf("REPLICA_HOOK installed=%d site=%08lx patched=%d stub=%08lx tail=%08lx\n",installed,static_cast<unsigned long>(site),now[0]==0xe9,
+            reinterpret_cast<unsigned long>(x3m::voice_dmo_fallback::fixture_stub()),reinterpret_cast<unsigned long>(x3m::voice_dmo_fallback::fixture_tail()));
+        if(installed) {
+            // The emitted bytes, for objdump: stub up to and including its jmp [next] slot, then the tail block.
+            const auto* stub=static_cast<const unsigned char*>(x3m::voice_dmo_fallback::fixture_stub());
+            const auto* tail=static_cast<const unsigned char*>(x3m::voice_dmo_fallback::fixture_tail());
+            std::printf("REPLICA_STUB_BYTES kind=stub base=%08lx hex=",reinterpret_cast<unsigned long>(stub));for(unsigned i=0;i<144;++i)std::printf("%02x",stub[i]);std::putchar('\n');
+            std::printf("REPLICA_STUB_BYTES kind=tail base=%08lx hex=",reinterpret_cast<unsigned long>(tail));for(unsigned i=0;i<32;++i)std::printf("%02x",tail[i]);std::putchar('\n');
+        }
+        std::fflush(stdout);
+        if(!installed){std::printf("REPLICA_ABORT stage=hook_install\n");return 4;}
+    }
     HRESULT init=t.step(0,"co_initialize",1,true,[]{return CoInitialize(nullptr);});
     if(FAILED(init)){std::printf("REPLICA_ABORT stage=co_initialize hr=%08lx\n",static_cast<unsigned long>(init));return 0;}
     HWND window{};

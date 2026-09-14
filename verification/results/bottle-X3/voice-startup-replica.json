@@ -3947,6 +3947,479 @@
         }
       ],
       "gst_log_tail": null
+    },
+    "plugin-v3-game-dmo-hook-unfixed": {
+      "label": "plugin-v3-game-dmo-hook-unfixed",
+      "mode": "game-dmo-hook",
+      "dwell_ms": 0,
+      "outcome": "inconclusive: invalid diagnostic: unterminated step without a watchdog report",
+      "completed": false,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": null,
+      "exit_code": 5,
+      "killed_pids": [],
+      "survivors": [],
+      "process_wall_seconds": 6.5615865,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": null,
+      "exe_sha256": "1257cf198dc03c40e754b888812eb3da124b5c8b0c6d07186ea42268ced00d75",
+      "abort": "invalid diagnostic: unterminated step without a watchdog report",
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": null,
+      "output": "/tmp/x3-voice-startup-hook1",
+      "hook": null,
+      "sites": null,
+      "hook_lines": null,
+      "startup": null,
+      "primary": null,
+      "key_steps": null,
+      "stream_rows": null,
+      "sample_threads": [],
+      "gst_log_tail": null
+    },
+    "plugin-v3-game-dmo-hook": {
+      "label": "plugin-v3-game-dmo-hook",
+      "mode": "game-dmo-hook",
+      "dwell_ms": 0,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 3,
+      "exit_code": 0,
+      "killed_pids": [],
+      "survivors": [],
+      "process_wall_seconds": 7.065048166,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": null,
+      "exe_sha256": "71b6a942b58288b4ac633b7200c2752654c7988ebdd87503db948fee03109b73",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": {
+        "stream": "1",
+        "cycles": "15",
+        "completed": "5",
+        "queued": "5",
+        "pending_polls": "0",
+        "eos": "0",
+        "stuck": "0",
+        "errors": "0",
+        "bytes": "882000",
+        "elapsed_ms": "86"
+      },
+      "output": "/tmp/x3-voice-startup-hook2",
+      "hook": {
+        "installed": "1",
+        "site": "004014f6",
+        "patched": "1",
+        "stub": "0113001c",
+        "tail": "01130000"
+      },
+      "sites": [
+        {
+          "stream": "2",
+          "hr": "00000000",
+          "esi": "00000000",
+          "edi": "00000000",
+          "ebx_ok": "1",
+          "esp_ok": "1",
+          "object": "00d51448",
+          "wrapper": "003f3580"
+        },
+        {
+          "stream": "3",
+          "hr": "00000000",
+          "esi": "00000000",
+          "edi": "00000000",
+          "ebx_ok": "1",
+          "esp_ok": "1",
+          "object": "00e05a48",
+          "wrapper": "003f4a80"
+        },
+        {
+          "stream": "1",
+          "hr": "00000000",
+          "esi": "00000000",
+          "edi": "00000000",
+          "ebx_ok": "1",
+          "esp_ok": "1",
+          "object": "00e076e8",
+          "wrapper": "003f5b38"
+        }
+      ],
+      "hook_lines": [
+        "voice_dmo_fallback requested=1 installed=1 status=ok site=004014f6 length=8 patched=1 site_status=active condition=80040154 retry_clsid=2eeb4adf-4578-4d10-bca7-bb955f56320a arena=01130000 arena_size=16384 arena_used=152 stub=0113001c tail=01130000 dispatcher=01130014 entry_slot=01130010 enter=00401560 fault_witness=1",
+        "voice_dmo_fallback activation=1 object=00d51448 filter=003f3580 qi_hr=00000000 init_hr=00000000 hits=1 activations=1 retries_ok=1 retries_failed=0 skipped=0",
+        "voice_dmo_fallback activation=2 object=00e05a48 filter=003f4a80 qi_hr=00000000 init_hr=00000000 hits=2 activations=2 retries_ok=2 retries_failed=0 skipped=0",
+        "voice_dmo_fallback activation=3 object=00e076e8 filter=003f5b38 qi_hr=00000000 init_hr=00000000 hits=3 activations=3 retries_ok=3 retries_failed=0 skipped=0"
+      ],
+      "startup": {
+        "ds_hr": "00000000",
+        "coop_hr": "00000000",
+        "ds_present": "1",
+        "window": "1"
+      },
+      "primary": {
+        "flags": "d1",
+        "create_hr": "00000000",
+        "play_hr": "00000000",
+        "format_hr": "00000000",
+        "volume": "0",
+        "listener": "1",
+        "commit_hr": "00000000"
+      },
+      "key_steps": [
+        {
+          "stream": 0,
+          "name": "primary_create",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.227
+        },
+        {
+          "stream": 0,
+          "name": "primary_play",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.014
+        },
+        {
+          "stream": 0,
+          "name": "primary_set_format",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.114
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init_hooked",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 161.916
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.409
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 936.606
+        },
+        {
+          "stream": 2,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 51.644
+        },
+        {
+          "stream": 2,
+          "name": "control_pause",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.113
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init_hooked",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 1.067
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.011
+        },
+        {
+          "stream": 3,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 211.723
+        },
+        {
+          "stream": 3,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 46.349
+        },
+        {
+          "stream": 3,
+          "name": "control_pause",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.019
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init_hooked",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.708
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 1,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 206.321
+        },
+        {
+          "stream": 1,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 44.586
+        },
+        {
+          "stream": 1,
+          "name": "control_pause",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.017
+        },
+        {
+          "stream": 1,
+          "name": "control_run",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.007
+        },
+        {
+          "stream": 1,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.03
+        },
+        {
+          "stream": 1,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 1.399
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 1,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.01
+        },
+        {
+          "stream": 1,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 1,
+          "name": "buffer_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 3,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 3,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.346
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 3,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 3,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "buffer_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.001
+        },
+        {
+          "stream": 2,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.366
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 2,
+          "name": "release_graph",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        }
+      ],
+      "stream_rows": [
+        {
+          "stream": "2",
+          "created": "1",
+          "role": "restored",
+          "fatal": "none",
+          "hr": "00000000",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "3",
+          "created": "1",
+          "role": "restored",
+          "fatal": "none",
+          "hr": "00000000",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "1",
+          "created": "1",
+          "role": "played",
+          "fatal": "none",
+          "hr": "00000000",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        }
+      ],
+      "sample_threads": [],
+      "gst_log_tail": null
     }
   }
 }
