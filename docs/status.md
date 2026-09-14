@@ -194,9 +194,12 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
   gate, dropping the whole frame's history (23/23 sampled cluster frames in run 14, 40 in
   run 11, none in run 15). Orchestrator decision 2026-09-14 evening: known-blended draws
   no longer count as a cutout miss (ordinary native colour path); a bounded reactive
-  rectangle is the follow-up if ghosting appears. The motion-output live suite (failing
-  since the cutout-arm merge, harness drift) is being repaired first; the policy change
-  follows with that suite as acceptance. The fade route is not implicated (witness clean).
+  rectangle is the follow-up if ghosting appears. Implemented (worktree, unmerged):
+  `mark_cutout_candidate` / `cutout::missed` exempt a known blend; live cases
+  `seam-taa-cutout-blended` (history retained, no `cutout_missed`) and
+  `seam-taa-cutout-opaque` (miss every frame) in `run_motion_output.py`; ledger row in
+  [verification/motion-output.md](verification/motion-output.md). Not yet installed or
+  user-verified. The fade route is not implicated (witness clean).
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
   The [normal/specular study](reverse-engineering/asteroid-specular-minification.md) identifies an independent

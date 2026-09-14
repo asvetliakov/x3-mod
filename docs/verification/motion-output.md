@@ -904,3 +904,30 @@ Open: under `X3M_HDR_DECODE=none` the HDR meter self-test's GPU level-0 value
 disagrees with `meter_level0()` by more than 1e-4 and the pass refuses the meter
 (`meter_reason=self_test`); every other decode passes. Auto exposure would be
 off in that configuration. Production question, not a harness one.
+
+## Blended cutout pass is not a coverage miss (2026-09-14, worktree)
+
+Root cause of the run 11/14 distant shimmer (finding above): the game's
+source-over pass of the cutout pair (`blend=1 src=5 dst=6 atest=1 mask=7
+zwrite=0`), refused at gate 4 every frame the object is in view, counted as
+`cutout::missed` and dropped the frame's TAA history (11–15 % of frames).
+Decision implemented: `mark_cutout_candidate` reads the warm ALPHABLENDENABLE
+shadow slot (no new native query; the gate already read it) and a known-blended
+pair is not a candidate; `cutout::missed` carries `blend_known, blend` and
+treats an unknown blend state as conservative. The opaque miss rule is
+unchanged. The reactive-rectangle follow-up stays open
+([alpha-tested-materials.md](../architecture/alpha-tested-materials.md)).
+
+Fixture: `X3M_FIXTURE_CUTOUT_SCRIPT=blended|opaque` in
+`motion_output_cutout_inc.h` (twelve static frames, pair 0, one refused draw
+per frame; frame 0 is arm-inactive because the capability verdict lands at the
+frame's HDR latch, after the `begin_frame` latch). Plan 35 of the 70-plan
+cutout suite (`wrong=3`, ALPHABLENDENABLE on) is now expected not to miss in
+both the fixture and `run_linear_cutout_live.py`; that suite was not rerun.
+
+| Check | Result |
+| --- | --- |
+| Before (HEAD production, new fixture script) `run_motion_output.py seam-taa-cutout-blended seam-taa-cutout-opaque` | blended fixture aborts at frame 1: `CHECK cutout actual routing counters FAIL` (`missed_delta` 1 where the script expects 0) |
+| After, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py` | PASS, 100 cases + 26 bench, 109,010 checks; `seam-taa-cutout-blended` 49,624 checks, history on 10 of 12 frames (frame 0 and the scripted cut current-only), `invalidate_sites {}`, 1,536 accepted pixels, `routed_delta=0 missed_delta=0` every frame; `seam-taa-cutout-opaque` 49,612 checks, history 0 of 12, `cutout_missed` on frames 1–11, `unavailable=1` (`build/d3d9.dll` 6b0a2205..., seam 48ab1ec5..., fixture ed87f1cb...) |
+| `python3 verification/probe/check_no_x87.py build/d3d9.dll` | PASS, 224 reachable functions, no violations |
+| Host tests `test_motion_output_runner`, `test_motion_route_parse`, `test_linear_cutout_contract` | 19 tests OK (contract 41 scenarios, 278 checks: known-blended not a candidate / not a miss, blend-off still misses, unknown blend conservative) |

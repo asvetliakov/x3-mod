@@ -114,3 +114,5 @@ msync: up and running.
 ==== seam-msaa
 ==== bench-1280x768-hdr-tonemap-taa-sharpen-on
 ==== bench-5120x1440-hdr-tonemap-taa-sharpen-on
+==== seam-taa-cutout-blended
+==== seam-taa-cutout-opaque

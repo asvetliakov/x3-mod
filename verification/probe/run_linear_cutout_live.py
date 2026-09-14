@@ -72,7 +72,10 @@ def arm_active(frame,bias=0,mixed=False):
 
 
 def missed(frame,material=True,bias=0,mixed=False):
-    return int(material and not plan(frame,material,bias,mixed)['routed'] and arm_active(frame,bias,mixed))
+    # A known-blended refusal (wrong 3: ALPHABLENDENABLE on) is an ordinary
+    # native colour draw, never a coverage miss.
+    p=plan(frame,material,bias,mixed)
+    return int(material and not p['routed'] and arm_active(frame,bias,mixed) and p['wrong']!=3)
 
 
 def rows(output,prefix):

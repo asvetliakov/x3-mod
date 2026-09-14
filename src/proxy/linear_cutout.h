@@ -25,17 +25,22 @@ constexpr bool state(const std::array<std::uint32_t, 8>& actual) noexcept {
 }
 // Successful native forwarding can have written foreground color without
 // same-draw motion. Known no-color/NEVER draws and suppressed/failed submits do
-// not poison the frame. Unknown state is conservative, confined to an exact
+// not poison the frame. A known-blended draw (ALPHABLENDENABLE on: the game's
+// source-over cutout pass, blend=1 src=5 dst=6 zwrite=0) is not a miss either:
+// it takes the ordinary native colour path with camera reprojection only, the
+// frame keeps its history. Unknown state is conservative, confined to an exact
 // requested scene cutout; visibility is not guessed from object identity.
 constexpr bool missed(bool candidate, bool submitted, bool success, bool routed,
                       bool test_known, std::uint32_t test,
                       bool color_known, std::uint32_t color,
                       bool alpha_known, std::uint32_t alpha,
                       bool z_known, std::uint32_t z,
-                      bool zfunc_known, std::uint32_t zfunc) noexcept {
+                      bool zfunc_known, std::uint32_t zfunc,
+                      bool blend_known = false, std::uint32_t blend = 0) noexcept {
     return candidate && submitted && success && !routed && (!test_known || test!=0)
         && (!color_known || (color & 7u)!=0) && (!alpha_known || alpha!=1)
-        && (!z_known || !z || !zfunc_known || zfunc!=1);
+        && (!z_known || !z || !zfunc_known || zfunc!=1)
+        && (!blend_known || blend==0);
 }
 // A valid supplemental fade mask cannot repair missing cutout correspondence.
 constexpr bool unavailable(bool missed_cutout, bool composition_required,

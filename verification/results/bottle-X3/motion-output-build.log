@@ -1,11 +1,11 @@
 -- Configuring done (0.1s)
 -- Generating done (0.0s)
--- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a0b05dc7f1359f1ca/build
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a963fee59130feff1/build
 [  3%] Building compositor CPU boundary
 [  3%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
-/Users/asvetl/x3-mod/.claude/worktrees/agent-a0b05dc7f1359f1ca/build/compositor_bridge
-[  8%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
-[  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
+/Users/asvetl/x3-mod/.claude/worktrees/agent-a963fee59130feff1/build/compositor_bridge
+[  6%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
+[  6%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
 [  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [ 11%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj

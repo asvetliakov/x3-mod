@@ -298,14 +298,25 @@ without owned motion, but only while the cutout arm is configured active:
 feature requested, capability verdict Ready, HDR enabled by configuration and
 zero configured mip bias, latched at frame start (refreshed by a capability
 verdict) and held for the frame regardless of transient HDR state. With
-the arm active, an exact pair drawn before the frame's HDR latch, after a
-mid-frame Suspend or otherwise refused by the per-draw gate or failed to route
-is a miss (frame Unavailable, no seed). Only a wholly inactive configuration
+the arm active, an opaque exact pair (ALPHABLENDENABLE known off) drawn before
+the frame's HDR latch, after a mid-frame Suspend or otherwise refused by the
+per-draw gate or failed to route is a miss (frame Unavailable, no seed). A
+known-blended pair is not: the game draws the same cutout programs as a
+source-over pass (`blend=1 src=5 dst=6 atest=1 mask=7 zwrite=0`, refused at
+gate 4 every frame the object is in view; runs 11 and 14 lost history on
+11–15 % of frames to it) and that draw takes the ordinary native colour path,
+camera reprojection only, no motion vectors, history retained (decision
+2026-09-14; `mark_cutout_candidate` reads the warm ALPHABLENDENABLE shadow
+slot, `cutout::missed` carries the state and treats an unknown blend state as
+conservative). Only a wholly inactive configuration
 (disabled, Unsupported, Retry pending, HDR off, nonzero bias) forwards a
 refused pair as the ordinary native color plus motion fallback with
 trustworthy history retained and no reactive Unavailable. Known alpha-test off, no RGB writes, NEVER alpha/depth
 rejection, failed native draws and suppressed submissions do not trigger this
-new rule either. The conservative decision does not claim to know pixel occlusion for
+new rule either. Marking the blended draw's rectangle reactive (current-only)
+is an open follow-up: the fade rectangle derivation is bound to the composed
+fade route's scan and the reactive mask is written by composition draws, so a
+rectangle for a native-forwarded draw would be new mask GPU work, not a reuse. The conservative decision does not claim to know pixel occlusion for
 a refused draw. It unions with distance-fade composition availability after the
 shared mask is resolved: a valid fade mask cannot hide missing cutout motion.
 Unavailable frames still resolve current color, but neither reuse nor seed TAA
