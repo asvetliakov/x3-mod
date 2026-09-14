@@ -197,6 +197,12 @@ constexpr D3DRENDERSTATETYPE shadow_states[motion_shadow_state_count] = {
     D3DRS_WRAP8, D3DRS_WRAP9, D3DRS_WRAP10, D3DRS_WRAP11, D3DRS_WRAP12, D3DRS_WRAP13, D3DRS_WRAP14, D3DRS_WRAP15,
     D3DRS_ALPHAFUNC, D3DRS_ALPHAREF, D3DRS_ZFUNC, D3DRS_FOGENABLE, D3DRS_DITHERENABLE,
     D3DRS_STENCILENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE};
+// Blend states kept outside the indexed shadow: the nine-state fade check's
+// triple plus SEPARATEALPHABLENDENABLE, which only the capture log reads.
+constexpr unsigned composition_blend_index(D3DRENDERSTATETYPE state) noexcept {
+    return state == D3DRS_SRCBLEND ? 0u : state == D3DRS_DESTBLEND ? 1u : state == D3DRS_BLENDOP ? 2u
+         : state == D3DRS_SEPARATEALPHABLENDENABLE ? 3u : 4u;
+}
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept {
     // WRAP8 starts a second, non-contiguous D3DRENDERSTATETYPE range.
     if (state >= D3DRS_WRAP0 && state <= D3DRS_WRAP7) return 8u + unsigned(state - D3DRS_WRAP0);
@@ -812,17 +818,27 @@ void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexc
     const unsigned i = shadow_index(state);
     if (i < motion_shadow_state_count) { shadow_.states[i] = value; shadow_.states_known[i] = true; }
     if (composition_requested()) {
-        const unsigned blend = state == D3DRS_SRCBLEND ? 0u : state == D3DRS_DESTBLEND ? 1u : state == D3DRS_BLENDOP ? 2u : 3u;
-        if (blend < 3) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
+        const unsigned blend = composition_blend_index(state);
+        if (blend < 4) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
         if (state == D3DRS_FILLMODE) { shadow_.fill_mode = value; shadow_.fill_mode_known = true; }
     }
+}
+// Capture-log accessors: the shadowed application value or -1 when unknown.
+// Pure shadow reads (no GetRenderState, no query counters), so the capture
+// line cannot perturb the render-state counter invariants a fixture checks.
+long MotionOutput::shadow_state_field(D3DRENDERSTATETYPE state) const noexcept {
+    const unsigned i = shadow_index(state);
+    return i < motion_shadow_state_count && shadow_.states_known[i] ? long(shadow_.states[i]) : -1;
+}
+long MotionOutput::composition_blend_field(unsigned index) const noexcept {
+    return index < 4 && shadow_.composition_blend_known[index] ? long(shadow_.composition_blend[index]) : -1;
 }
 void MotionOutput::render_state_failed(D3DRENDERSTATETYPE state) noexcept {
     if (!enabled_ || shadow_.recording) return;
     const unsigned i=shadow_index(state);
     if (i<motion_shadow_state_count) { shadow_.states_known[i]=false; ++counters_.rs_invalidations; }
-    const unsigned blend=state==D3DRS_SRCBLEND ? 0u : state==D3DRS_DESTBLEND ? 1u : state==D3DRS_BLENDOP ? 2u : 3u;
-    if (blend<3) shadow_.composition_blend_known[blend]=false;
+    const unsigned blend=composition_blend_index(state);
+    if (blend<4) shadow_.composition_blend_known[blend]=false;
 }
 void MotionOutput::before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept {
     if (!enabled_ || shadow_.recording || stage >= sampler_stage_count
@@ -2295,8 +2311,8 @@ void MotionOutput::resync_shadow() noexcept {
         // even with the ordinary motion state-shadow experiment disabled.
         for (unsigned i = 0; i < 6; ++i)
             shadow_.states_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, shadow_states[i], &shadow_.states[i]));
-        const D3DRENDERSTATETYPE blend[] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP};
-        for (unsigned i = 0; i < 3; ++i)
+        const D3DRENDERSTATETYPE blend[] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE};
+        for (unsigned i = 0; i < 4; ++i)
             shadow_.composition_blend_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, blend[i], &shadow_.composition_blend[i]));
         shadow_.fill_mode_known = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_FILLMODE, &shadow_.fill_mode));
     }
@@ -2793,7 +2809,7 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     if (fade_pair) {
         bool known = true;
         for (unsigned i = 0; i < 6; ++i) known = known && shadow_.states_known[i];
-        for (bool v : shadow_.composition_blend_known) known = known && v;
+        for (unsigned i = 0; i < 3; ++i) known = known && shadow_.composition_blend_known[i]; // the blend triple only
         if (!known) {
             if (composition_required_producers_ & 2u) { composition_frame_stopped_ = true; invalidate_taa(); }
             ++composition_counts_.refused; ++composition_counts_.refusal[2]; return;
@@ -3380,13 +3396,18 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if (shimmer_trace_ && route.scene && shadow_.asteroid_pair) record_shimmer_draw(route);
     if (capture_ && route.scene) {
         const auto& k = route.key;
-        log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u pass=%lu rows_hash=%016llx result=%08lx",
+        log("motion_route device=%llu frame=%llu index=%lu gate=%u routed=%u matched=%u depth=%u jittered=%u vs=%016llx ps=%016llx node=%p camera=%p node_handle=%lu camera_handle=%lu node_serial=%llu camera_serial=%llu load_epoch=%llu registry_epoch=%llu model=%08lx lod=%08lx vb=%llu ib=%llu declaration=%016llx offset=%u stride=%u position_offset=%u position_type=%u topology=%u first=%u primitives=%u base_vertex=%d min_vertex=%u vertex_count=%u indexed=%u pass=%lu rows_hash=%016llx result=%08lx"
+            " zwrite=%ld blend=%ld src=%ld dst=%ld atest=%ld mask=%ld sepalpha=%ld fog=%ld",
             id_, frame_, counters_.draws, unsigned(route.gate), route.routed, route.matched, route.routed && route.depth, jittered, shadow_.vs_hash, shadow_.ps_hash,
             reinterpret_cast<void*>(k.node), reinterpret_cast<void*>(k.camera), static_cast<unsigned long>(k.node_handle),
             static_cast<unsigned long>(k.camera_handle), k.object_lifetime, k.camera_lifetime, route.load_epoch, route.registry_epoch,
             static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod), k.vertex_buffer, k.index_buffer, k.declaration,
             k.stream_offset, k.stride, k.position_offset, k.position_type, k.topology, k.first, k.primitives, k.base_vertex,
-            k.min_vertex, k.vertex_count, k.indexed, static_cast<unsigned long>(k.pass), route.rows_hash, result);
+            k.min_vertex, k.vertex_count, k.indexed, static_cast<unsigned long>(k.pass), route.rows_hash, result,
+            shadow_state_field(D3DRS_ZWRITEENABLE), shadow_state_field(D3DRS_ALPHABLENDENABLE),
+            composition_blend_field(0), composition_blend_field(1),
+            shadow_state_field(D3DRS_ALPHATESTENABLE), shadow_state_field(D3DRS_COLORWRITEENABLE),
+            composition_blend_field(3), shadow_state_field(D3DRS_FOGENABLE));
     }
 }
 
