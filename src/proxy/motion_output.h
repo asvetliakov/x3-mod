@@ -34,6 +34,7 @@
 #include "../renderer/linear_emission.h"
 #include "../renderer/linear_emission_pass.h"
 #include "../renderer/linear_distance_fade.h"
+#include "fade_region.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
@@ -83,6 +84,11 @@ struct MotionRoute {
     std::uint64_t rows_hash = 0;
     std::uint64_t load_epoch = 0, registry_epoch = 0;
     std::uint64_t ticks = 0;  // CPU ticks of apply (before_draw) plus undo (after_draw); telemetry only.
+    // Conservative screen rectangle of an admitted distance-fade draw
+    // (docs/architecture/linear-distance-fade-region.md, step 1): derived
+    // after admission, logged and counted; the bracket does not consume it yet.
+    fade_region::Region fade_region{};
+    bool fade_region_evaluated = false;
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -617,6 +623,13 @@ private:
         bool integer0_known = false;
         std::uint64_t stream0 = 0, indices = 0, declaration = 0;
         UINT stream0_offset = 0, stream0_stride = 0;
+        // The application buffer identities of SetStreamSource/SetIndices (the
+        // public ownership wrappers the capture hooks observe; never
+        // dereferenced here): the fade bound table proves a subset record
+        // holds exactly these.
+        std::uintptr_t stream0_identity = 0, indices_identity = 0;
+        DWORD fill_mode = 0;          // D3DRS_FILLMODE, kept only with composition requested
+        bool fill_mode_known = false;
         std::uint32_t position_offset = 0, position_type = 0;
         renderer::Surface rt0, depth;
         bool extra_rt[4]{};
@@ -652,6 +665,7 @@ private:
     void report_xt_default_unavailable() noexcept;
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
+    void derive_fade_region(MotionRoute&) noexcept;
     void finish_composition(HRESULT, renderer::LinearCompositionPolicy) noexcept;
     bool publish_composition() noexcept;
     void begin_composition_frame() noexcept;
@@ -775,7 +789,16 @@ private:
         HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE, restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
         unsigned refusal[6]{}; // pair, permission/scene, readiness, readers, frame stop, prepare failure
         unsigned prepare_failures = 0, composition_failures = 0, restore_failures = 0, exchange_failures = 0, ack_failures = 0;
+        // Fade region derivation (step 1): admitted fade draws with a
+        // box-derived rectangle versus the full viewport, bound-table outcome
+        // and the sum of area fractions (region_fraction_sum / (bound + full)
+        // is the mean f of the frame).
+        unsigned region_bound = 0, region_full = 0, region_hit = 0, region_miss = 0, region_poisoned = 0, region_evicted = 0;
+        unsigned region_reason[unsigned(fade_region::Reason::Count)]{};
+        unsigned region_status[unsigned(fade_region::Status::Count)]{};
+        std::uint64_t region_permille_sum = 0; // integer per-mille fractions; formatted only at the Present boundary
     } composition_counts_;
+    fade_region::BoundTable fade_bounds_; // reserved with the composition pass, dropped at Reset/teardown
     unsigned material_refusals_logged_ = 0;
     // Lightweight shader setters capture integers only. Formatting is deferred
     // to the existing full CPU-state boundary around Present, once per lifetime.
