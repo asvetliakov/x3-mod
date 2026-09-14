@@ -34,7 +34,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 16 | Run 13 retry: target-name speech with the decoder plugin and the fixed DMO fallback hook | 0 | Completed as user run 16, snapshot run41: loads, speech works, crackle under investigation |
 | 17 | Bullet bound after near-plane clipping, packed_sample brightness | 0 | Completed as user run 17, snapshot run42: 100 % bound, witness clean, dimmer unresolved (centre sample) |
 | 18 | Voice crackle fix: decoder plugin v4 (no new DLL) | 0 | Completed as user run 18, snapshot run46: no crackle, voice fine |
-| 19 | Combined: AO off/on (Ctrl+Shift+F11), bullets at gain 1, cutout shimmer fix, same-port far/near pair | 1 | Pending candidate (build in progress) |
+| 19 | Combined: AO off/on (Ctrl+Shift+F11), bullets at gain 1, cutout shimmer fix, same-port far/near pair | 1 | Ready (candidate `ab6e17ba…` from `5d06316` installed) |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
@@ -95,9 +95,9 @@ word), selection pauses, comm video/audio, and the session path. Analysis reads
 the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
 the selection timing.
 
-## 19. Combined: AO off/on, bullets at gain 1, cutout shimmer fix, same-port far/near pair — Pending candidate
+## 19. Combined: AO off/on, bullets at gain 1, cutout shimmer fix, same-port far/near pair — Ready
 
-One run covers four questions on the next candidate (AO step 2, screen emission step E, the
+One run covers four questions on the installed candidate `ab6e17ba…` (`5d06316`, record `verification/results/ao-stepe-install.json`) (AO step 2, screen emission step E, the
 cutout-miss exemption, the w-scaled pad; fade route default-on; plugin v4 for voice):
 
 1. **Distant shimmer**: fly the run-11 asteroid path in normal view; say whether distant asteroids
