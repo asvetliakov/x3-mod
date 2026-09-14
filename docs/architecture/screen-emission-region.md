@@ -269,19 +269,44 @@ Grammar: `locked_prefix ... reason=%u clipped=%u ...` per draw on capture frames
 box was cut). Capture frames only, zero cost otherwise (one bool per admitted packed draw):
 `packed_sample device= frame= index= rect=l,t,r,b clipped=n composed=l,t,r,b centre=x,y
 format=<D3DFORMAT> pre=r,g,b,a pre_y=<Rec.709 luminance> post=r,g,b,a post_y=
-pre_result=%08lx post_result=%08lx` — the HDR target A sampled at the centre of the bound
+pre_result=%08lx post_result=%08lx scan_result=%08lx scan_px= changed_px= max_pre_y=
+max_post_y= sum_pre_y= sum_post_y= argmax=x,y argmax_pre=r,g,b argmax_post=r,g,b` — the HDR
+target A sampled at the centre of the bound
 rectangle after `prepare` (A|R copied to B|R, A untouched) and after the composite, one
 documented `GetRenderTargetData` (whole surface: the destination must match the source's
-size) into one retained system-memory surface of A's size and format plus a 1×1 `LockRect`
+size) into two retained system-memory surfaces of A's size and format (pre and post) plus a
+1×1 `LockRect`
 each (A16B16G16R16F, A32B32G32R32F, A8R8G8B8/X8R8G8B8 decoded; other formats fail closed
 with `D3DERR_NOTAVAILABLE`). Cap: the first `packed_sample_cap` = 4 admitted packed draws
 of a capture frame are sampled, the rest are counted in `packed_sample_skipped=` on the
 `linear_composition_frame` line (a run-15 frame with 400 admitted draws costs 8 copies, not
-800). The retained surface is allocated once per size/format, counted by
+800). The retained surfaces are allocated once per size/format, counted by
 `device_references()`, released with the witness copy at Reset and teardown; the pending
 `pre` is cleared in `begin_frame`, so an unmatched pre never pairs with a later frame's
-post. `pre_y`/`post_y` per admitted bullet against the native run is the "dimmer"
-comparison run 16 needs.
+post.
+
+The bracket around a thin beam spans up to the viewport, so its centre is usually not a
+bullet pixel (run 17: 20 lines with bit-identical `pre`/`post` centres). The post sample
+therefore also scans the whole rectangle, clipped to the copies' extent, out of the two
+retained images (`scan_px` scanned pixels, `scan_result` the scan's HRESULT; the scan is
+skipped with its result when either readback failed): `changed_px` counts pixels whose RGB
+bits differ, `max_pre_y`/`max_post_y` and `sum_pre_y`/`sum_post_y` are the Rec.709
+luminance maxima and sums, and `argmax=x,y` with `argmax_pre`/`argmax_post` is the post
+maximum's location and its two colours — a bullet pixel, so `argmax_post` against the
+native run is the "dimmer" verdict the next user run needs, and `sum_post_y - sum_pre_y` is the
+bracket's total contribution. One pass per rectangle, no allocation and no D3D call beyond
+the two `LockRect`s; a full-viewport FP16 bracket is ~1 M pixels, and at most four
+rectangles are scanned per capture frame.
+
+Per-frame timing is a separate opt-in, so the option itself stays free of per-frame
+logging: `--screen-emission-timing` (`X3M_SCREEN_EMISSION_TIMING=1`, requires the enabled
+`--screen-emission`) logs one
+`screen_emission_frame device= frame= packed_admitted= brackets_px= cpu_us=` line per
+Present, where `packed_admitted`/`brackets_px` are that frame's composition counters and
+`cpu_us` is the `QueryPerformanceCounter` delta since the previous Present (the wall-clock
+frame time; 0 on the first one). One QPC and one log call per Present, one predicate when
+off. Parsed by `validate_screen_emission_frames` in
+`verification/probe/run_linear_distance_fade_live.py`.
 
 Evidence: host `test_fade_region.py` (8 tests: `--near` 600 random straddling cases, 0
 failures, 0 outside points; hand cases straddle/exact/behind/beam equal to a Python

@@ -48,6 +48,12 @@ def launch(directory,*args):
 def rgba(v):return ','.join(repr(float(x)) for x in v)
 
 
+def scan_changed(pixels):
+    """Synthetic changed-pixel count of a composed bracket: a thin beam, so
+    well under the rectangle the centre sample sits in."""
+    return max(1,pixels//4)
+
+
 # Bound rectangles of the synthetic packed brackets per kind: the functional
 # quad's (441 px) and the near-plane kinds' clipped rectangles (n 891, x 1155,
 # b 1462 px), each covering its footprint.
@@ -93,8 +99,11 @@ def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441):
                 trace.append(line('packed_region',device=1,frame=f,index=i+2,vs=live.SCREEN_PAIR[0],ps=live.SCREEN_PAIR[1],vb=7,rect=','.join(map(str,kind_region(kind))),f_permille=kind_pixels(kind)*1000//4096))
             if r['packed_admitted'] and f in live.SCREEN_CAPTURE_FRAMES:
                 l,tp,rr,b=kind_region(kind);post='0.72,0.61,0.55,0.69' if r['linear'] else '1,1,1,0.39'
+                area=live.rect_area(kind_region(kind));changed_px=scan_changed(area) if r['linear'] else 0
                 trace.append(line('packed_sample',device=1,frame=f,index=i+2,rect=','.join(map(str,kind_region(kind))),clipped=4 if kind!='s' else 0,composed=','.join(map(str,kind_region(kind))),
-                                  centre=f'{l+(rr-l)//2},{tp+(b-tp)//2}',format=113,pre='1,1,1,0.39',pre_y=1,post=post,post_y='0.7' if r['linear'] else 1,pre_result='00000000',post_result='00000000'))
+                                  centre=f'{l+(rr-l)//2},{tp+(b-tp)//2}',format=113,pre='1,1,1,0.39',pre_y=1,post=post,post_y='0.7' if r['linear'] else 1,pre_result='00000000',post_result='00000000',
+                                  scan_result='00000000',scan_px=area,changed_px=changed_px,max_pre_y=1,max_post_y=2.5 if r['linear'] else 1,sum_pre_y=area*0.5,sum_post_y=area*0.5+changed_px,
+                                  argmax=f'{l+1},{tp+2}',argmax_pre='1,1,1',argmax_post='2.5,2.5,2.5' if r['linear'] else '1,1,1'))
             submissions+=1
         total_pixels+=s[29]
         trace.append(line('linear_composition_frame',device=1,frame=f,prepared=s[4],linear=s[5],native=0,incomplete=s[7],refused=1,region_pixels=s[29],packed_eligible=s[40],packed_admitted=s[41],packed_linear=s[42],packed_incomplete=s[43],packed_unbounded_refused=s[44],packed_caps_refused=s[45],packed_sample_skipped=0,packed_region_pixels=s[46]))
@@ -181,7 +190,12 @@ class RunnerParser(unittest.TestCase):
         self.assertEqual(case['totals'],dict(packed_eligible=19,packed_admitted=13,packed_linear=12,packed_incomplete=1,packed_unbounded=3,packed_caps=0,packed_region_pixels=4410+891+1155+1462))
         self.assertEqual(case['bracket_pixels'],{'s':441,'n':891,'x':1155,'b':1462})
         self.assertEqual({k:v['rect'] for k,v in case['near_rects'].items()},{k:KIND_REGION[k] for k in 'nxb'})
-        self.assertEqual(case['packed_samples'],dict(lines=7,luminance_changed=6),'one packed_sample per admitted draw of frames 2-9; the composite fault of frame 9 leaves the centre unchanged')
+        sampled=[r for f in live.SCREEN_CAPTURE_FRAMES for r in live.screen_expected_sources(f)[0] if r['packed_admitted']]
+        areas=[live.rect_area(KIND_REGION[r['kind']]) for r in sampled]
+        self.assertEqual(case['packed_samples'],dict(lines=7,luminance_changed=6,changed_lines=6,
+                                                     changed_pixels=sum(scan_changed(a) for a,r in zip(areas,sampled) if r['linear']),
+                                                     scanned_pixels=sum(areas)),
+                         'one packed_sample per admitted draw of frames 2-9, each scanned over its rectangle; the composite fault of frame 9 leaves the centre and the pixels unchanged')
         near={f:live.screen_expected_sources(f)[0][0] for f in (17,18,19,20)}
         self.assertEqual([(g['kind'],g['packed_eligible'],g['packed_unbounded'],g['packed_admitted'],g['prefix_bound'],g['prefix_refused']) for g in near.values()],
                          [('n',1,0,1,1,0),('x',1,0,1,1,0),('h',1,1,0,0,1),('b',1,0,1,1,0)],'straddling, exact and beam admitted; the prefix behind the near plane refused')
@@ -205,6 +219,29 @@ class RunnerParser(unittest.TestCase):
             with self.assertRaises(AssertionError,msg=old):live.validate_screen_functional(output.replace(old,new,1),trace.replace(old,new,1))
         trace_mutated=trace.replace('preparation=1','preparation=0',1)
         with self.assertRaises(AssertionError):live.validate_screen_functional(output,trace_mutated)
+
+    def test_changed_pixels_and_argmax_are_checked(self):
+        output,trace=screen_report()
+        changed=f'changed_px={scan_changed(live.rect_area(KIND_REGION["s"]))}'
+        for old,new in ((changed,'changed_px=0'),('scan_result=00000000','scan_result=8876086c'),('argmax=32,25','argmax=2,2')):
+            self.assertIn(old,trace,old)
+            with self.assertRaises(AssertionError,msg=old):live.validate_screen_functional(output,trace.replace(old,new,1))
+
+    def test_screen_emission_timing_parser(self):
+        # --screen-emission-timing: one line per Present, cpu_us the QPC delta
+        # since the previous one (0 on the first), counters equal to the frame line.
+        trace=[]
+        for f in range(6):
+            trace.append(line('linear_composition_frame',device=1,frame=f,packed_admitted=f%3,packed_region_pixels=441*(f%3)))
+            trace.append(line('screen_emission_frame',device=1,frame=f,packed_admitted=f%3,brackets_px=441*(f%3),cpu_us=0 if f==0 else 16000+f))
+        summary=live.validate_screen_emission_frames(trace,frames=range(6))
+        self.assertEqual((summary['lines'],summary['packed_admitted'],summary['brackets_px']),(6,6,2646))
+        self.assertEqual(summary['cpu_us_total'],sum(16000+f for f in range(1,6)));self.assertEqual(summary['cpu_us_mean'],16003)
+        for old,new in (('cpu_us=16001','cpu_us=0'),('frame=3 packed_admitted=0 brackets_px=0','frame=1 packed_admitted=0 brackets_px=0'),
+                        ('screen_emission_frame device=1 frame=2 packed_admitted=2','screen_emission_frame device=1 frame=2 packed_admitted=1')):
+            mutated=[l.replace(old,new) for l in trace]
+            self.assertNotEqual(mutated,trace,old)
+            with self.assertRaises(AssertionError,msg=old):live.validate_screen_emission_frames(mutated,frames=range(6))
 
     def test_witness_union_counts_packed_rectangles_and_the_straddle_fires(self):
         _,trace=screen_report()

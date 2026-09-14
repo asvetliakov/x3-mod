@@ -449,6 +449,11 @@ public:
     // a fixed per-frame array and logs them plus the frame's TAA state after
     // Present. Off costs one predicate per draw and nothing else.
     void configure_shimmer_trace(bool requested) noexcept;
+    // X3M_SCREEN_EMISSION_TIMING=1 with the screen-emission route: one
+    // screen_emission_frame diagnostic line per Present (packed admissions,
+    // bracket pixels and the wall-clock frame time). Off costs one predicate
+    // per Present; on, one QPC and one log call.
+    void configure_screen_emission_timing(bool requested) noexcept;
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
@@ -737,15 +742,27 @@ private:
     // logged per draw in capture frames; nothing consumes it before step C.
     void derive_prefix_region(const MotionDrawCall&, MotionRoute&) noexcept;
     // Capture-only packed-bracket luminance sample (packed_sample line).
-    HRESULT sample_target_pixel(IDirect3DSurface9*, const renderer::Surface&, std::int32_t x, std::int32_t y, float out[4]) noexcept;
+    // `pre` selects the retained copy the readback fills: the pre copy is kept
+    // whole until the post readback, so the rectangle can be compared.
+    HRESULT sample_target_pixel(IDirect3DSurface9*, const renderer::Surface&, bool pre, std::int32_t x, std::int32_t y, float out[4]) noexcept;
     void sample_packed_pre(const MotionRoute&) noexcept;
     void sample_packed_post(const RECT& composed) noexcept;
     void release_packed_sample() noexcept;
     static constexpr unsigned packed_sample_cap = 4; // admitted packed draws sampled per capture frame
+    // Whole-rectangle pre/post comparison of the two retained copies.
+    struct PackedScan {
+        HRESULT result = D3DERR_NOTFOUND;
+        unsigned long pixels = 0, changed = 0; // scanned pixels (rectangle clipped to the target) and RGB-changed ones
+        double max_pre = 0.0, max_post = 0.0, sum_pre = 0.0, sum_post = 0.0; // Rec.709 luminance
+        std::int32_t argmax_x = 0, argmax_y = 0; // location of the post maximum
+        float argmax_pre[3]{}, argmax_post[3]{};
+    };
+    HRESULT scan_packed_rect(const fade_region::Rect&, PackedScan&) noexcept;
     struct PackedSample {
         bool valid = false;
         unsigned sampled = 0; // this frame's samples (reset in begin_frame)
-        IDirect3DSurface9* copy = nullptr; // retained system-memory readback surface, one per size/format
+        IDirect3DSurface9* copy = nullptr; // retained system-memory readback surface (post), one per size/format
+        IDirect3DSurface9* pre_copy = nullptr; // the same for the pre image, held until the post scan
         std::uint32_t copy_width = 0, copy_height = 0, copy_format = 0;
         fade_region::Rect rect{};
         unsigned clipped = 0;
@@ -952,6 +969,9 @@ private:
     // Shimmer trace: integer-only per-draw records, formatted once after
     // Present. No allocation, formatting or locking on the draw path.
     bool shimmer_trace_ = false;
+    bool screen_emission_timing_ = false;
+    std::uint64_t present_qpc_ = 0, qpc_frequency_ = 0; // previous Present's stamp for screen_emission_frame
+    void log_screen_emission_frame() noexcept;
     struct ShimmerDraw {
         std::uint64_t node = 0;
         std::uint32_t index = 0;          // draw index within the frame

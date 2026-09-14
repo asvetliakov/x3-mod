@@ -283,6 +283,24 @@ class LinearMaterialLiveTests(unittest.TestCase):
         self.assertEqual(status, 0, error)
         self.assertIn('"X3M_LINEAR_DISTANCE_FADE": "0"', output)
 
+    def test_screen_emission_timing_requires_the_option_and_stays_off_by_default(self):
+        # --screen-emission-timing is the option's opt-in per-frame diagnostic:
+        # the option itself must not enable it, and it is refused alone.
+        status, output, error = self.launch(*self.PREREQUISITES, '--screen-emission')
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_SCREEN_EMISSION": "1"', output)
+        self.assertIn('"X3M_SCREEN_EMISSION_TIMING": "0"', output)
+        status, output, error = self.launch(*self.PREREQUISITES, '--screen-emission', '--screen-emission-timing')
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_SCREEN_EMISSION_TIMING": "1"', output)
+        status, _, message = self.launch(*self.PREREQUISITES, '--screen-emission-timing')
+        self.assertEqual(status, 2)
+        self.assertIn('--screen-emission-timing', message)
+        # A stale shell value cannot enable it.
+        status, output, error = self.launch(environment={'X3M_SCREEN_EMISSION_TIMING': '1'})
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_SCREEN_EMISSION_TIMING": "0"', output)
+
     def test_emission_cli_default_off_clears_inherited_values(self):
         status, output, error = self.launch(environment={'X3M_LINEAR_EMISSIONS': '1', 'X3M_EMISSION_GAIN': '16'})
         self.assertEqual(status, 0, error)
