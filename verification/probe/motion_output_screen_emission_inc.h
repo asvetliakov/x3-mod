@@ -47,6 +47,17 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     // bench: a small centred quad (+-.05: 96x54 px at 1080p, 64x38 at 1280x768).
     const float qx0=f.screenemission_bench?-.05f:0.f,qx1=f.screenemission_bench?.05f:.5f,qy0=f.screenemission_bench?-.05f:-.25f,qy1=f.screenemission_bench?.05f:.25f,qz=.1f;
     const RECT quad_rect{LONG(std::lround((qx0+1)*f.W/2.)),LONG(std::lround((1-qy1)*f.H/2.)),LONG(std::lround((qx1+1)*f.W/2.)),LONG(std::lround((1-qy0)*f.H/2.))};
+    // Step E overlap chain (kind c): `chain_quads` copies of the functional
+    // quad in ONE non-indexed DIP, each shifted `chain_step_px` pixels along
+    // x from `chain_origin` (inside the fade scissor, whose Asteroid draw in
+    // the same frame leaves a non-white A under the chain: the screen blend
+    // onto white is white) and textured with a soft sprite (uv corners 0..1
+    // over the quad), so a pixel of the chain accumulates up to eight dim
+    // fragments exactly as a run-17 bolt does; the raw before/after images
+    // of the chain draw are written for the runner's native-twin comparison.
+    constexpr unsigned chain_quads=8,chain_step_px=2,sprite_size=16;
+    const float chain_step=chain_step_px*2.f/float(f.W),chain_origin=-.75f;
+    const RECT chain_rect{LONG(std::lround((chain_origin+1)*f.W/2.)),quad_rect.top,LONG(std::lround((chain_origin+1)*f.W/2.))+(quad_rect.right-quad_rect.left)+LONG(chain_step_px*(chain_quads-1)),quad_rect.bottom};
     // Near-plane kinds (screen-emission-region.md, step B): rows x' = x,
     // y' = y, z' = .1 (z - 1), w = z put the D3D near plane at w = 1; the
     // vertices below are clip-space (x, y, w) triples. n: one triangle with a
@@ -68,6 +79,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     const auto kind_rect=[&](char kind) {
         if(kind=='n')return RECT{LONG(f.W/2),LONG(std::lround(.625*f.H/2.)),LONG(std::lround(1.75*f.W/2.)),LONG(std::lround(.75*f.H/2.))};
         if(kind=='h')return RECT{0,0,0,0};
+        if(kind=='c')return chain_rect;
         return quad_rect;
     };
     // Whether the source of `kind` rasterises pixel (x, y): the n trapezoid
@@ -87,9 +99,12 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         void* data=nullptr;api(bullets->Lock(0,buffer_bytes,&data,D3DLOCK_DISCARD),"bullet discard lock");
         auto* words=static_cast<float*>(data);for(unsigned n=0;n<buffer_bytes/4;++n)words[n]=0.f;
         const float corners[6][2]={{qx0,qy0},{qx1,qy0},{qx0,qy1},{qx1,qy0},{qx1,qy1},{qx0,qy1}};
+        if(kind=='c')quads=chain_quads;
         for(unsigned q=0;q<quads;++q)for(unsigned k=0;k<6;++k) {
             auto* v=static_cast<unsigned char*>(data)+(q*6+k)*stride;
-            const float position[3]={corners[k][0],corners[k][1],qz},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu; // h = COLOR0.w = 1
+            const float shift=kind=='c'?chain_origin-qx0+chain_step*float(q):0.f;
+            const float position[3]={corners[k][0]+shift,corners[k][1],qz};
+            const float uv[2]={kind=='c'?(corners[k][0]==qx1?1.f:0.f):.5f,kind=='c'?(corners[k][1]==qy0?1.f:0.f):.5f};const DWORD colour=0xffffffffu; // h = COLOR0.w = 1
             if(near_kind(kind))std::memcpy(v,near_vertices[near_index(kind)][k],12);else std::memcpy(v,position,12);
             std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);
         }
@@ -105,6 +120,22 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         D3DLOCKED_RECT lock{};api(out->LockRect(0,&lock,nullptr,0),"screen texture lock");std::memcpy(lock.pBits,value,16);api(out->UnlockRect(0),"screen texture unlock");
     };
     texel(bullet_texel,bullet_texture);for(unsigned i=0;i<6;++i)texel(texels[i],textures[i]);
+    // The soft sprite of the chain: tint (.55, 1, .45) times a Gaussian of
+    // sigma 3 px about the sprite centre, opaque alpha (the native alpha test
+    // passes everywhere, so the chain footprint is the whole union).
+    Com<IDirect3DTexture9> chain_texture;
+    {
+        api(f.d->CreateTexture(sprite_size,sprite_size,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&chain_texture.p,nullptr),"chain sprite texture");
+        D3DLOCKED_RECT lock{};api(chain_texture->LockRect(0,&lock,nullptr,0),"chain sprite lock");
+        const float tint[3]={.55f,1.f,.45f},sigma=3.f,centre=(sprite_size-1)/2.f;
+        for(unsigned y=0;y<sprite_size;++y)for(unsigned x=0;x<sprite_size;++x) {
+            const float dx=float(x)-centre,dy=float(y)-centre,g=std::exp(-(dx*dx+dy*dy)/(2*sigma*sigma));
+            float* t=reinterpret_cast<float*>(static_cast<unsigned char*>(lock.pBits)+y*lock.Pitch)+4*x;
+            for(unsigned c=0;c<3;++c)t[c]=tint[c]*g;
+            t[3]=1.f;
+        }
+        api(chain_texture->UnlockRect(0),"chain sprite unlock");
+    }
     // The fade/emission quad and indices of the fade fixture.
     struct SourceVertex {float p[3],uv[2],n[3],b[3],t[3];};
     const float l=-1-1.f/f.W,r=1-1.f/f.W,t=1+1.f/f.H,b=-1+1.f/f.H;
@@ -154,7 +185,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         api(f.d->SetStreamSourceFreq(0,1),"bullet frequency");api(f.d->SetIndices(nullptr),"bullet no indices");
         api(f.d->SetVertexShader(bullet_vs.p),"bullet VS bind");api(f.d->SetPixelShader(bullet_ps.p),"bullet PS bind");
         const float rows[16]={1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};api(f.d->SetVertexShaderConstantF(0,near_kind(kind)?near_rows:rows,4),"bullet g_mViewProjection");
-        for(unsigned stage=0;stage<7;++stage){api(f.d->SetTexture(stage,stage?nullptr:static_cast<IDirect3DBaseTexture9*>(bullet_texture.p)),"bullet diffuse");common_sampler(stage);}
+        for(unsigned stage=0;stage<7;++stage){api(f.d->SetTexture(stage,stage?nullptr:static_cast<IDirect3DBaseTexture9*>(kind=='c'?chain_texture.p:bullet_texture.p)),"bullet diffuse");common_sampler(stage);}
         api(f.d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,kind=='g'?TRUE:FALSE),"bullet sampler 0 srgb");
         api(f.d->SetRenderState(D3DRS_DITHERENABLE,kind=='d'?TRUE:FALSE),"bullet dither");
         api(f.d->SetTextureStageState(0,D3DTSS_TEXTURETRANSFORMFLAGS,projected?D3DTTFF_PROJECTED|D3DTTFF_COUNT3:D3DTTFF_DISABLE),"bullet stage 0 transform");
@@ -219,8 +250,9 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     struct Plan {const char* kinds;unsigned overlap;unsigned fault;};
     // Frames 14-16: the readiness refusals (PROJECTED, sRGB sampler) and the
     // dither state, each bound and native. Frames 17-20: the near-plane
-    // kinds (n straddling, x exact, h behind, b beam).
-    const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0},{"p",1,0},{"g",1,0},{"d",1,0},{"n",1,0},{"x",1,0},{"h",1,0},{"b",1,0}};
+    // kinds (n straddling, x exact, h behind, b beam). Frame 21: the fade
+    // source, then the step E overlap chain (c) over its darkened rectangle.
+    const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0},{"p",1,0},{"g",1,0},{"d",1,0},{"n",1,0},{"x",1,0},{"h",1,0},{"b",1,0},{"fc",1,0}};
     const Plan control[]={{"",1,0},{"s",1,0},{"s",1,0}};
     const unsigned frames=f.screenemission_bench?18:qualified?unsigned(sizeof plans/sizeof plans[0]):unsigned(sizeof control/sizeof control[0]);
     unsigned submissions=0;
@@ -248,8 +280,8 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         auto before=scene();
         for(unsigned source=0;p.kinds[source];++source) {
             const char kind=p.kinds[source];
-            const bool screen=kind=='s'||kind=='p'||kind=='g'||kind=='d'||near_kind(kind),emission=kind=='e';
-            const unsigned overlap=screen?p.overlap:1;
+            const bool screen=kind=='s'||kind=='p'||kind=='g'||kind=='d'||kind=='c'||near_kind(kind),emission=kind=='e';
+            const unsigned overlap=kind=='c'?chain_quads:screen?p.overlap:1;
             unsigned fault=screen?p.fault:0;
             if(screen)write_bullets(overlap,kind);
             const RECT rect=screen?bind_bullets(kind):bind_source(emission);
@@ -264,6 +296,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             if(!(screen?f.screen_enabled&&!caps_fault:emission?required&1u:required&2u))fault=0;
             if(fault)f.emission_fault(f.d.p,fault,1);
             const HRESULT hr=screen?f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2*overlap):f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2);
+            if(kind=='c')write_raw("chain_before",before);
             ++submissions;++f.draw_index;
             require(SUCCEEDED(hr),"screen original source HRESULT");
             f.compare(state,f.snapshot(),"screen source restoration");
@@ -277,6 +310,10 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             require(motion_before==motion_after&&depth_before==depth_after,"screen source preserves ordinary RT1 RT2 exactly");
             const bool packed=screen&&delta[41]==1,recovered=packed&&delta[43]==1;
             const RECT composed=packed&&injected?injected_rect:rect;
+            if(kind=='c') {
+                write_raw("chain_after",after);
+                std::printf("SCREEN_CHAIN frame=%llu source=%u quads=%u step_px=%u sprite=%u sigma=3 rect=%ld,%ld,%ld,%ld packed=%u composed=%ld,%ld,%ld,%ld\n",f.frame,source,chain_quads,chain_step_px,sprite_size,rect.left,rect.top,rect.right,rect.bottom,unsigned(packed),composed.left,composed.top,composed.right,composed.bottom);
+            }
             for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x) {
                 const unsigned i=(y*f.W+x)*4;const bool covered=covered_source(kind,rect,x,y)&&(!packed||covered_by(composed,x,y));
                 for(unsigned k=0;k<4;++k)require_quiet(std::isfinite(after[i+k]),"screen finite actual scene");

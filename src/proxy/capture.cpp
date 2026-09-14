@@ -89,6 +89,7 @@ bool linear_emission_requested = false;
 bool linear_distance_fade_requested = false;
 bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step C)
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
+float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
 // X3M_AMBIENT_OCCLUSION=1 (default off; requires X3M_MOTION_OUTPUT=1 and
@@ -1829,7 +1830,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_materials(linear_material_requested,linear_material_config);
     hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
-    hooked.motion_output.configure_screen_emission(screen_emission_requested);
+    hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
@@ -2086,7 +2087,15 @@ void initialize_log(HMODULE module) {
     // route (the pass composes into the AgX FP16 scene). Default off.
     {const bool asked=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION",setting,32)==1 && setting[0]==L'1';
      screen_emission_requested=asked && linear_material_requested && taa_requested;
-     if(asked)log("screen_emission_mode requested=1 enabled=%u materials=%u taa=%u policy=8",screen_emission_requested,linear_material_requested,taa_requested);}
+     // X3M_SCREEN_EMISSION_GAIN: the step E gain g (default 1, native by
+     // construction); unparsable or outside [0.5, 8] keeps 1 and logs.
+     screen_emission_gain=1.f;bool gain_valid=true;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_GAIN",setting,32);
+     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
+         wchar_t* end=nullptr;const float value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
+         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=.5f&&value<=8.f)screen_emission_gain=value;else gain_valid=false;}
+     if(asked)log("screen_emission_mode requested=1 enabled=%u materials=%u taa=%u policy=8 gain=%g gain_valid=%u",screen_emission_requested,linear_material_requested,taa_requested,double(screen_emission_gain),unsigned(gain_valid));}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.

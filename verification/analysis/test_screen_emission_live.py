@@ -1,14 +1,18 @@
-"""Step C of docs/architecture/screen-emission-region.md, host side: the
-launcher option, the shared admission table (nine SM1 pairs, the bullet
-scan allowlist), the live runner's counter/sample parser and the witness
-union with packed rectangles. Never executes Wine or rebuilds DLLs."""
+"""Steps C and E of docs/architecture/screen-emission-region.md, host side:
+the launcher options (--screen-emission, --screen-emission-gain), the shared
+admission table (nine SM1 pairs, the bullet scan allowlist), the live
+runner's counter/sample parser with the step E law, the overlap-chain twin
+comparison and the witness union with packed rectangles. Never executes
+Wine or rebuilds DLLs."""
 import contextlib
 import importlib.util
 import io
 import json
+import math
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -57,19 +61,21 @@ def scan_changed(pixels):
 # Bound rectangles of the synthetic packed brackets per kind: the functional
 # quad's (441 px) and the near-plane kinds' clipped rectangles (n 891, x 1155,
 # b 1462 px), each covering its footprint.
-KIND_REGION={'s':(31,23,52,44),'n':(31,7,64,34),'x':(31,7,64,42),'b':(30,0,64,43)}
+KIND_REGION={'s':(31,23,52,44),'n':(31,7,64,34),'x':(31,7,64,42),'b':(30,0,64,43),'c':(7,23,39,41)}
 def bucket(pixels):
     f=pixels/4096
     return 0 if f<=.01 else 1 if f<=.02 else 2 if f<=.05 else 3 if f<=.1 else 4 if f<=.25 else 5 if f<=.5 else 6 if f<1 else 7
 
 
-def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441):
+def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441,gain=1.):
     """Synthetic fixture output and session log of one functional process,
     consistent with the runner's expectation model and laws."""
     out=[];trace=['motion_output_release device=1 held=54 count=56 released=1']
     def kind_region(kind):return injected if injected else KIND_REGION[kind]
     def kind_pixels(kind):return live.rect_area(kind_region(kind)) if kind!='s' or injected else region
-    if screen:trace.append(line('screen_emission_variant',device=1,original=live.SCREEN_PAIR[1],transform=0,create='00000000',words=191,gain=1,outputs='packed'))
+    if screen:
+        trace.append(line('screen_emission_mode',requested=1,enabled=1,materials=1,taa=1,policy=8,gain=f'{gain:g}',gain_valid=1))
+        trace.append(line('screen_emission_variant',device=1,original=live.SCREEN_PAIR[1],transform=0,create='00000000',words=153,gain=1,outputs='packed'))
     policies=(3|live.IN_PLACE_POLICY)|(8 if screen and caps else 0);submissions=0;total_pixels=0
     for f in range(live.SCREEN_FRAMES):
         sources,stopped=live.screen_expected_sources(f,screen,fade,emission,caps)
@@ -87,11 +93,14 @@ def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441):
             for x in live.SCREEN_SAMPLE_X:
                 covered=int(rect[0]<=x<rect[2] and rect[1]<=32<rect[3]);packed=r['packed_admitted']
                 row=dict(frame=f,source=i,kind=kind,overlap=r['overlap'],x=x,y=32,covered=covered,bracket=int(bool(packed)),packed=int(bool(packed) and (not injected or injected[0]<=x<injected[2])),q='0.5,0.25,0.125',a=0.5,before=rgba(before),after='')
-                wanted=live.screen_sample_expectation({k:str(v) for k,v in row.items()},sources,fade,emission) or before
+                wanted=live.screen_sample_expectation({k:str(v) for k,v in row.items()},sources,fade,emission,gain) or before
                 row['after']=rgba(wanted);out.append(line('SCREEN_SAMPLE',**row))
                 if x==36:after36=wanted
             before=after36
             pixels=kind_pixels(kind) if r['packed_admitted'] else 0
+            if kind=='c':
+                composed=injected if injected and r['packed_admitted'] else rect
+                out.append(line('SCREEN_CHAIN',frame=f,source=i,quads=live.SCREEN_CHAIN_QUADS,step_px=live.SCREEN_CHAIN_STEP_PX,sprite=live.SCREEN_CHAIN_SPRITE,sigma=3,rect=','.join(map(str,rect)),packed=r['packed_admitted'],composed=','.join(map(str,composed))))
             out.append(line('SCREEN_SOURCE',frame=f,source=i,kind=kind,overlap=r['overlap'],fault=r['fault'],hr='00000000',original_calls=1,prepared=r['prepared'],linear=r['linear'],native=0,incomplete=r['incomplete'],refused=r['refused'],
                             packed_eligible=r['packed_eligible'],packed_admitted=r['packed_admitted'],packed_linear=r['packed_linear'],packed_incomplete=r['packed_incomplete'],packed_unbounded=r['packed_unbounded'],packed_caps=r['packed_caps'],
                             packed_region_pixels=pixels,prefix_bound=r['prefix_bound'],prefix_refused=r['prefix_refused'],rect=','.join(map(str,rect)),mask_before=1,mask_after=int(r['mask_valid']),hash_mask_before='m0',hash_mask_after='m1' if r['prepared'] or r['fault']==5 else 'm0',hash_red_before='r0',hash_red_after='r1' if r['prepared'] else 'r0'))
@@ -186,9 +195,15 @@ class RunnerParser(unittest.TestCase):
     def test_functional_report_and_laws(self):
         output,trace=screen_report()
         case=live.validate_screen_functional(output,trace)
-        self.assertEqual((case['frames'],case['sources'],case['region_pixels_per_bracket']),(21,26,441))
-        self.assertEqual(case['totals'],dict(packed_eligible=19,packed_admitted=13,packed_linear=12,packed_incomplete=1,packed_unbounded=3,packed_caps=0,packed_region_pixels=4410+891+1155+1462))
-        self.assertEqual(case['bracket_pixels'],{'s':441,'n':891,'x':1155,'b':1462})
+        self.assertEqual((case['frames'],case['sources'],case['region_pixels_per_bracket']),(22,28,441))
+        self.assertEqual(case['totals'],dict(packed_eligible=20,packed_admitted=14,packed_linear=13,packed_incomplete=1,packed_unbounded=3,packed_caps=0,packed_region_pixels=4410+891+1155+1462+576))
+        self.assertEqual(case['bracket_pixels'],{'s':441,'n':891,'x':1155,'b':1462,'c':576})
+        chain=live.screen_expected_sources(live.SCREEN_CHAIN_FRAME)[0]
+        self.assertEqual([(g['kind'],g['overlap'],g['packed_eligible'],g['packed_admitted'],g['packed_linear']) for g in chain],[('f',1,0,0,0),('c',8,1,1,1)])
+        self.assertEqual(live.SCREEN_CHAIN_RECT,(8,24,38,40))
+        gain2=live.validate_screen_functional(*screen_report(gain=2.),gain=2.)
+        self.assertLessEqual(gain2['max_tolerance_fraction'],1e-9)
+        with self.assertRaises(AssertionError):live.validate_screen_functional(*screen_report(gain=2.))
         self.assertEqual({k:v['rect'] for k,v in case['near_rects'].items()},{k:KIND_REGION[k] for k in 'nxb'})
         sampled=[r for f in live.SCREEN_CAPTURE_FRAMES for r in live.screen_expected_sources(f)[0] if r['packed_admitted']]
         areas=[live.rect_area(KIND_REGION[r['kind']]) for r in sampled]
@@ -205,11 +220,68 @@ class RunnerParser(unittest.TestCase):
         self.assertLessEqual(case['max_tolerance_fraction'],1e-9);self.assertGreaterEqual(case['alpha_pairs'],1)
         self.assertEqual(live.validate_screen_functional(*screen_report(screen=0),screen=0)['totals']['packed_eligible'],0)
         caps=live.validate_screen_functional(*screen_report(caps=0),caps=0)
-        self.assertEqual((caps['totals']['packed_caps'],caps['totals']['packed_admitted']),(16,0))
+        self.assertEqual((caps['totals']['packed_caps'],caps['totals']['packed_admitted']),(17,0))
         straddle=live.validate_screen_functional(*screen_report(injected=live.SCREEN_STRADDLE_RECT),injected=live.SCREEN_STRADDLE_RECT)
         self.assertEqual(straddle['region_pixels_per_bracket'],128)
-        self.assertAlmostEqual(live.screen_law((1.,1.,1.,1.),live.SCREEN_TEXEL,1.,1)[0],(.5**2.2+.5)**(1/2.2))
+        # Step E law: native at gain 1 for every overlap, the bolt's own decoded contribution scaled otherwise.
+        before=(.25,.5,.75,.39)
+        for overlap in (1,2,8):
+            for a,b in zip(live.screen_law(before,live.SCREEN_TEXEL,1.,overlap),live.screen_native(before,live.SCREEN_TEXEL,1.,overlap)):self.assertAlmostEqual(a,b,places=12)
+        native=live.screen_native(before,live.SCREEN_TEXEL,1.,2)
+        self.assertAlmostEqual(live.screen_law(before,live.SCREEN_TEXEL,1.,2,2.)[0],(.25**2.2+2*(native[0]**2.2-.25**2.2))**(1/2.2))
+        self.assertEqual(live.screen_law(before,live.SCREEN_TEXEL,1.,2,2.)[3],native[3])
         self.assertEqual(live.screen_native((1.,1.,1.,.39),live.SCREEN_TEXEL,1.,1),(1.,1.,1.,.5+.5*.39))
+
+    def test_chain_twin_comparison(self):
+        """validate_screen_chain on synthetic raw images: the native twin
+        accumulates the fixture's sprite chain, the composed run matches it
+        within one FP16 code, the gain run follows the law; a per-fragment
+        (withdrawn) composition or a two-code deviation is refused."""
+        width=height=64;frame=live.SCREEN_CHAIN_FRAME
+        half=lambda v:struct.unpack('<e',struct.pack('<e',v))[0]
+        background=(.2,.22,.16,.39)
+        def images(gain,perturb=None,withdrawn=False):
+            before=[background]*(width*height);after=list(before);composed=list(before)
+            for y in range(height):
+                for x in range(width):
+                    fragments=live.screen_chain_fragments(x,y)
+                    if not fragments:continue
+                    n=list(background[:3]);light=[live.screen_decode(v) for v in background[:3]]
+                    for q in fragments:
+                        n=[half(q[c]+(1-q[c])*n[c]) for c in range(3)]
+                        light=[q[c]**2.2+(1-q[c])*light[c] for c in range(3)]
+                    after[y*width+x]=(*n,1.)
+                    if withdrawn:composed[y*width+x]=(*[half(live.screen_encode(v)) for v in light],1.)
+                    else:composed[y*width+x]=(*[half(live.screen_encode(live.screen_decode(background[c])+gain*(live.screen_decode(n[c])-live.screen_decode(background[c])))) for c in range(3)],1.)
+            if perturb:
+                x,y,codes=perturb;i=y*width+x;v=list(composed[i]);v[1]=struct.unpack('<e',struct.pack('<H',live.fp16_code(v[1])+codes))[0];composed[i]=tuple(v)
+            return before,after,composed
+        def write(work,before,after):
+            work.mkdir(parents=True,exist_ok=True)
+            (work/f'screen_emission_chain_before_{frame}.rgba32f').write_bytes(b''.join(struct.pack('<4f',*p) for p in before))
+            (work/f'screen_emission_chain_after_{frame}.rgba32f').write_bytes(b''.join(struct.pack('<4f',*p) for p in after))
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            before,native,composed=images(1.,perturb=(20,32,-1));write(root/'off',before,native);write(root/'on',before,composed)
+            _,_,gain2=images(2.);write(root/'gain2',before,gain2)
+            result=live.validate_screen_chain(root/'on',root/'off',root/'gain2')
+            self.assertEqual((result['max_layers'],result['max_codes'],result['alpha_exact'],result['pixels']),(8,1,True,30*16))
+            self.assertGreater(result['withdrawn_law_max_delta'],.05);self.assertGreater(result['bolt_channels'],0)
+            self.assertLessEqual(result['gain_max_tolerance_fraction'],.2)
+            for bad in (dict(perturb=(20,32,2)),dict(withdrawn=True)):
+                _,_,wrong=images(1.,**bad);write(root/'bad',before,wrong)
+                with self.assertRaises(AssertionError):live.validate_screen_chain(root/'bad',root/'off',root/'gain2')
+            _,_,unscaled=images(1.);write(root/'gain1',before,unscaled)
+            with self.assertRaises(AssertionError):live.validate_screen_chain(root/'on',root/'off',root/'gain1')
+
+    def test_gain_option(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code,output,error=launch(directory,*PREREQUISITES,'--screen-emission');self.assertEqual(code,0,error)
+            self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_GAIN'],'1.0')
+            code,output,error=launch(directory,*PREREQUISITES,'--screen-emission','--screen-emission-gain','2');self.assertEqual(code,0,error)
+            self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_GAIN'],'2.0')
+            for bad in (('--screen-emission-gain','2'),('--screen-emission','--screen-emission-gain','0.25'),('--screen-emission','--screen-emission-gain','9'),('--screen-emission','--screen-emission-gain','nan')):
+                code,_,error=launch(directory,*PREREQUISITES,*bad);self.assertEqual(code,2,bad);self.assertIn('--screen-emission-gain',error)
 
     def test_mutations_are_refused(self):
         output,trace=screen_report()
@@ -246,9 +318,9 @@ class RunnerParser(unittest.TestCase):
     def test_witness_union_counts_packed_rectangles_and_the_straddle_fires(self):
         _,trace=screen_report()
         witness=live.validate_screen_witness(trace)
-        self.assertEqual(witness['sampled_frames'],[2,4,5,7,8,10,12,17,18,20]);self.assertEqual(witness['outside_pixels'],0)
+        self.assertEqual(witness['sampled_frames'],[2,4,5,7,8,10,12,17,18,20,21]);self.assertEqual(witness['outside_pixels'],0)
         self.assertEqual(witness['skipped'],{'no_fade':7,'emission':3,'mask_invalid':1})
-        self.assertEqual(witness['f_histogram']['f<=0.25'],8);self.assertEqual(witness['f_histogram']['f<=0.5'],2);self.assertEqual(witness['f_histogram']['f=1'],2)
+        self.assertEqual(witness['f_histogram']['f<=0.25'],9);self.assertEqual(witness['f_histogram']['f<=0.5'],2);self.assertEqual(witness['f_histogram']['f=1'],3)
         _,straddle=screen_report(injected=live.SCREEN_STRADDLE_RECT)
         with self.assertRaises(live.WitnessViolation) as raised:live.validate_screen_witness(straddle,injected=live.SCREEN_STRADDLE_RECT)
         self.assertEqual(raised.exception.violations,live.screen_straddle_violations());self.assertEqual(live.screen_straddle_violations(),{2:128,7:128,10:128,12:128,17:84,18:128,20:128})

@@ -1,6 +1,7 @@
 #include "linear_emission_pass.h"
 #include "quad_vertex_program.h"
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <iterator>
 #include <new>
@@ -170,13 +171,29 @@ constexpr DWORD source_over_words[] = {
 // Packed screen policy (docs/architecture/screen-emission-region.md): the
 // qualified prototype's plane initialization and C assembly, ps_3_0 ports of
 // the ps_2_0 helpers of linear_emission_sm1_packed_fixture.cpp with identical
-// arithmetic (tools/shaders/generate_screen_emission_programs.py).
+// arithmetic (tools/shaders/generate_screen_emission_programs.py). The
+// composite is authored at gain 1; its `def c1` = (g, 1 - g, 2.2, 1e-10) is
+// patched at attach from the configured gain (step E).
 constexpr DWORD plane_init_words[] = {
 #include "linear_screen_plane_init_inc.h"
 };
 constexpr DWORD packed_composite_words[] = {
 #include "linear_screen_composite_inc.h"
 };
+constexpr DWORD def_c1_token = 0x05000051u, def_c1_register = 0xa00f0001u;
+// Copies the composite and patches the gain lanes; false when the program
+// does not carry exactly one `def c1` (the policy is then withheld).
+bool patched_packed_composite(float gain, DWORD (&out)[std::size(packed_composite_words)]) noexcept {
+  unsigned found = 0, at = 0;
+  for (unsigned i = 0; i + 5 < std::size(packed_composite_words); ++i)
+    if (packed_composite_words[i] == def_c1_token && packed_composite_words[i + 1] == def_c1_register) { ++found; at = i; }
+  if (found != 1) return false;
+  for (unsigned i = 0; i < std::size(packed_composite_words); ++i) out[i] = packed_composite_words[i];
+  const float lanes[2] = {gain, 1.f - gain};
+  static_assert(sizeof(float) == sizeof(DWORD), "lane width");
+  std::memcpy(&out[at + 2], lanes, sizeof lanes);
+  return true;
+}
 // Sampler stages a bracket saves, detaches and restores: s0..s2 for the
 // exchange/fade programs, s0..s4 for a packed bracket (its composite reads
 // five stages). The count is bracket-local so policies 1-4 keep their
@@ -670,6 +687,12 @@ const LinearEmissionPassCaps &LinearEmissionPass::caps() const noexcept {
   static const LinearEmissionPassCaps off{};
   return impl_ ? impl_->caps : off;
 }
+bool LinearEmissionPass::configure_packed_gain(float gain) noexcept {
+  if (!std::isfinite(gain) || gain < 0.f || gain > 16.f) return false;
+  if (impl_) return packed_gain_ == gain; // attached: only the applied value is accepted
+  packed_gain_ = gain;
+  return true;
+}
 HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
                                    void *const *native, const D3DCAPS9 &caps9,
                                    D3DFORMAT format, D3DFORMAT depth,
@@ -774,10 +797,12 @@ HRESULT LinearEmissionPass::attach(IDirect3DDevice9 *device,
   }
   if (base && (supported & 8u)) {
     // Policy 8 owns two programs; both must exist before the policy and its
-    // five-stage save/restore inventory are offered.
+    // five-stage save/restore inventory are offered. The composite carries
+    // the configured gain as a patched literal.
+    DWORD composite[std::size(packed_composite_words)];
     IDirect3DPixelShader9 **programs[] = {&p.plane_init, &p.packed_composite};
-    const DWORD *const words[] = {plane_init_words, packed_composite_words};
-    hr = S_OK;
+    const DWORD *const words[] = {plane_init_words, composite};
+    hr = patched_packed_composite(packed_gain_, composite) ? S_OK : E_FAIL;
     for (unsigned i = 0; i < 2 && SUCCEEDED(hr); ++i) {
       hr = p.call(CreatePs, words[i], programs[i]);
       if (SUCCEEDED(hr) && !*programs[i]) hr = E_FAIL;
@@ -932,13 +957,15 @@ LinearEmissionPass::prepare(const LinearEmissionBoundary &boundary) noexcept {
   if (SUCCEEDED(out.operation) && p.packed) {
     // Plane init under the same scissor: P_c|R = (A_c, decode(A)_c, 0) and
     // M.alpha|R = A.alpha (red masked off). A is only sampled here; the
-    // source then writes M and the planes, never A (section 3 of the note).
+    // source then writes M and the red|blue plane lanes (mask 5), never A
+    // (section 3 of the note): the green lane keeps decode(A), the
+    // pre-draw decoded value the step E composite subtracts.
     out.operation = p.draw(Impl::Program::PlaneInit, p.m, boundary.scene, &p.region);
     if (SUCCEEDED(out.operation)) out.operation = p.restore(p.m);
     if (SUCCEEDED(out.operation)) out.operation = p.attach_planes();
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_COLORWRITEENABLE, DWORD(9));
     for (unsigned i = 1; i < 4 && SUCCEEDED(out.operation); ++i)
-      out.operation = p.call(SetRs, D3DRENDERSTATETYPE(i == 1 ? D3DRS_COLORWRITEENABLE1 : i == 2 ? D3DRS_COLORWRITEENABLE2 : D3DRS_COLORWRITEENABLE3), DWORD(7));
+      out.operation = p.call(SetRs, D3DRENDERSTATETYPE(i == 1 ? D3DRS_COLORWRITEENABLE1 : i == 2 ? D3DRS_COLORWRITEENABLE2 : D3DRS_COLORWRITEENABLE3), DWORD(5));
     // The native INVSRCCOLOR becomes INVSRCALPHA: every plane attenuates by
     // its own oCi.a = q_c and M by the native alpha (the prototype's blend).
     if (SUCCEEDED(out.operation)) out.operation = p.call(SetRs, D3DRS_DESTBLEND, DWORD(D3DBLEND_INVSRCALPHA));

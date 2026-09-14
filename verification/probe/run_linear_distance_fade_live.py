@@ -697,9 +697,14 @@ SCREEN_PROGRAMS=tuple(dict.fromkeys(BOOTSTRAP+(f'vs_{FADE_PAIRS[0][0]}.bin',f'ps
 # (0,.375)), x the quad with its near edge exactly on the plane, h the quad
 # entirely behind (refused BehindNear, nothing rasterised), b a beam from the
 # near plane to w = 1000; n, x and b are admitted in the screen state.
-SCREEN_PLAN=('','s','s','es','sf','fs','esf','s','s','s','s','s','s','se','p','g','d','n','x','h','b')
-SCREEN_KINDS='spgdnxhb'
-SCREEN_ADMITTED_KINDS='snxb'   # the screen state with a bound: admitted when caps and readiness allow
+# c (frame 21, after the fade source that darkens its rectangle): the step E
+# overlap chain, eight copies of the quad shifted 2 px along x from pixel 8
+# in ONE DIP with a soft sprite (opaque alpha): the composed rectangle must
+# equal the native twin (the off run) within one FP16 code at gain 1 and
+# scale with the gain (screen-gain2 run).
+SCREEN_PLAN=('','s','s','es','sf','fs','esf','s','s','s','s','s','s','se','p','g','d','n','x','h','b','fc')
+SCREEN_KINDS='spgdnxhbc'
+SCREEN_ADMITTED_KINDS='snxbc'  # the screen state with a bound: admitted when caps and readiness allow
 SCREEN_NEAR_KINDS='nxhb'
 SCREEN_FRAMES=len(SCREEN_PLAN)
 SCREEN_CAPTURE_FRAMES=range(2,10) # X3M_CAPTURE_START=2, X3M_CAPTURE_FRAMES=8: the packed_sample diagnostic frames
@@ -710,7 +715,12 @@ SCREEN_RESET_FRAME=10
 SCREEN_STATUS_KEYS=50
 SCREEN_QUAD=(32,24,48,40)           # pixels of the functional quad (64x64)
 SCREEN_NEAR_TRAPEZOID=(32,20,56,24) # bounding box of the n footprint (84 pixels: rows 20-23, x from 32 below 48 + 2 (24 - y))
-SCREEN_KIND_RECT={'n':SCREEN_NEAR_TRAPEZOID,'h':(0,0,0,0)} # the SCREEN_SOURCE rect of the other kinds is SCREEN_QUAD
+SCREEN_CHAIN_FRAME=21
+SCREEN_CHAIN_QUADS=8;SCREEN_CHAIN_STEP_PX=2;SCREEN_CHAIN_SPRITE=16;SCREEN_CHAIN_SIGMA=3.;SCREEN_CHAIN_TINT=(.55,1.,.45)
+SCREEN_CHAIN_ORIGIN=8
+SCREEN_CHAIN_RECT=(SCREEN_CHAIN_ORIGIN,SCREEN_QUAD[1],SCREEN_CHAIN_ORIGIN+SCREEN_QUAD[2]-SCREEN_QUAD[0]+SCREEN_CHAIN_STEP_PX*(SCREEN_CHAIN_QUADS-1),SCREEN_QUAD[3])
+SCREEN_KIND_RECT={'n':SCREEN_NEAR_TRAPEZOID,'h':(0,0,0,0),'c':SCREEN_CHAIN_RECT} # the SCREEN_SOURCE rect of the other kinds is SCREEN_QUAD
+SCREEN_GAIN_RUN=2.
 SCREEN_STRADDLE_RECT=(32,24,40,40)  # injected bound: the right half of the quad stays native
 SCREEN_TEXEL=(.5,.25,.125,.5)       # bullet diffuse texel: q = rgb * h (h = 1), a = .5
 SCREEN_GAIN=1.
@@ -728,7 +738,7 @@ def screen_expected_sources(frame,screen=1,fade=1,emission=1,caps=1):
         fault=SCREEN_FAULT.get(frame,0) if kind=='s' else 0
         active=bool(screen if bullet else fade if kind=='f' else emission)
         applied=fault if active and (kind!='s' or caps) else 0 # the caps case queues no pass fault for a draw that never reaches the pass
-        eligible=int(kind in 'spg'+SCREEN_NEAR_KINDS and active) # d: dither on is a different state (pair refusal), never eligible
+        eligible=int(kind in 'spgc'+SCREEN_NEAR_KINDS and active) # d: dither on is a different state (pair refusal), never eligible
         unbounded=int(eligible and (frame in SCREEN_UNBOUNDED_FRAMES or kind=='h')) # h: the whole prefix behind the near plane
         caps_refused=int(eligible and not unbounded and not caps)
         readiness=int(eligible and not unbounded and not caps_refused and kind in 'pg') # PROJECTED stage / sRGB sampler
@@ -742,7 +752,7 @@ def screen_expected_sources(frame,screen=1,fade=1,emission=1,caps=1):
         refused=int((admissible and not prepared) or (bullet and (not active or kind=='d')))
         if incomplete:stopped=True
         admitted_kind=kind in SCREEN_ADMITTED_KINDS
-        result.append(dict(kind=kind,fault=applied,overlap=SCREEN_OVERLAP.get(frame,1) if kind=='s' else 1,prepared=prepared,linear=linear,native=0,incomplete=incomplete,refused=refused,readiness=readiness,
+        result.append(dict(kind=kind,fault=applied,overlap=SCREEN_OVERLAP.get(frame,1) if kind=='s' else SCREEN_CHAIN_QUADS if kind=='c' else 1,prepared=prepared,linear=linear,native=0,incomplete=incomplete,refused=refused,readiness=readiness,
                            packed_eligible=eligible,packed_admitted=int(admitted_kind and prepared),packed_linear=int(admitted_kind and linear),packed_incomplete=int(admitted_kind and incomplete),
                            packed_unbounded=unbounded,packed_caps=caps_refused,prefix_bound=int(bullet and screen and not unbounded),prefix_refused=unbounded,
                            witnessed=int(eligible and not unbounded and not caps_refused and not readiness), # reached the bracket's witness record
@@ -761,16 +771,19 @@ def screen_expected_witness(frame,screen=1,fade=1,emission=1,caps=1):
     return dict(reason=reason,rects=rects,fade_prepared=fade_prepared,emission_prepared=emission_prepared,packed_prepared=packed)
 
 
+def screen_decode(x):return max(x,1e-10)**2.2
+def screen_encode(x):return max(x,0.)**(1/2.2) if x>0 else 0.
+
+
 def screen_law(before,texel,h,overlap,gain=SCREEN_GAIN):
-    """The packed screen law of the note (section 1) for `overlap` identical
-    fragments: L' = E + (1 - q) L on the decoded plane, encoded at the
-    composite; E = decode(T) * h * gain, q = T * h; alpha is the native
-    a + (1 - a) A.alpha. Float64 restatement; FP16 storage is the tolerance."""
-    q=[texel[c]*h for c in range(3)];e=[max(texel[c],0.)**2.2*h*gain for c in range(3)];a=texel[3]
-    light=[max(before[c],1e-10)**2.2 for c in range(3)];alpha=before[3]
-    for _ in range(overlap):
-        light=[e[c]+(1-q[c])*light[c] for c in range(3)];alpha=a+(1-a)*alpha
-    return tuple(max(x,0.)**(1/2.2) if x>0 else 0. for x in light)+(alpha,)
+    """The step E composition of the note for `overlap` identical fragments:
+    the native encoded value accumulates exactly as the game's blend does,
+    is decoded ONCE at publication and the bolt's own contribution is scaled,
+    C = encode(decode(A) + gain (decode(B_native) - decode(A))); alpha is the
+    native a + (1 - a) A.alpha. Float64 restatement; FP16 storage is the
+    tolerance. At gain 1 this is screen_native."""
+    b=screen_native(before,texel,h,overlap)
+    return tuple(screen_encode(screen_decode(before[c])+gain*(screen_decode(b[c])-screen_decode(before[c]))) for c in range(3))+(b[3],)
 
 
 def screen_native(before,texel,h,overlap):
@@ -780,7 +793,7 @@ def screen_native(before,texel,h,overlap):
     return tuple(rgb)+(alpha,)
 
 
-def screen_sample_expectation(row,sources,fade,emission):
+def screen_sample_expectation(row,sources,fade,emission,gain=SCREEN_GAIN):
     kind=row['kind'];source=int(row['source']);before=rgba(row['before']);wanted=sources[source]
     if kind in SCREEN_KINDS:
         texel=tuple(map(float,row['q'].split(',')))+(float(row['a']),)
@@ -788,8 +801,9 @@ def screen_sample_expectation(row,sources,fade,emission):
         assert not int(row['packed']) or kind in SCREEN_ADMITTED_KINDS,(row['frame'],'only the admitted state composes')
         if not int(row['covered']):return before
         if kind=='p':return None # projected coordinates: the native sample is undefined for the 1x1 texel too
+        if kind=='c':return None # the soft sprite chain: the raw rectangle against the native twin is the oracle (validate_screen_chain)
         if wanted['incomplete']:return before # A|R recovered exactly
-        if int(row['packed']):return screen_law(before,texel,1.,int(row['overlap']))
+        if int(row['packed']):return screen_law(before,texel,1.,int(row['overlap']),gain)
         # A packed bracket composes only inside its rectangle: with the injected
         # straddling bound the quad outside it is missing, never native (the
         # C-shape failure of the note; the witness is the detector).
@@ -800,7 +814,7 @@ def screen_sample_expectation(row,sources,fade,emission):
     return expected_composite(before,0) if fade else None
 
 
-def validate_screen_samples(rows,expected_by_frame,fade,emission):
+def validate_screen_samples(rows,expected_by_frame,fade,emission,gain=SCREEN_GAIN):
     """SCREEN_SAMPLE rows against the laws; native and packed screen alphas of
     the same destination alpha must agree bit for bit (the composite carries
     M.alpha, the native blend result)."""
@@ -811,7 +825,7 @@ def validate_screen_samples(rows,expected_by_frame,fade,emission):
         sources,_=expected_by_frame[frame]
         assert row['kind']==sources[source]['kind'] and int(row['overlap'])==sources[source]['overlap']
         before,after=rgba(row['before']),rgba(row['after'])
-        wanted=screen_sample_expectation(row,sources,fade,emission)
+        wanted=screen_sample_expectation(row,sources,fade,emission,gain)
         if wanted is None:continue # fade off / projected stage: no CPU oracle
         for a,b in zip(after,wanted):
             fraction=abs(a-b)/(.006*abs(b)+.00002);maximum=max(maximum,fraction)
@@ -826,7 +840,7 @@ def validate_screen_samples(rows,expected_by_frame,fade,emission):
     return dict(samples=count,max_tolerance_fraction=maximum,alpha_pairs=sum(alpha in native_alpha for alpha in packed_alpha))
 
 
-def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,injected=None):
+def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,injected=None,gain=SCREEN_GAIN):
     lines=output.splitlines();traces=trace.splitlines()
     terminal=[fields(line) for line in lines if line.startswith('RESULT PASS ')]
     assert len(terminal)==1 and not any(line.startswith('RESULT FAIL') for line in lines)
@@ -902,6 +916,11 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
         assert int(ref['readers'])==0,(frame,'no reader refusal',ref)
     variants=[fields(line) for line in traces if line.startswith('screen_emission_variant ')]
     assert [(v['original'],int(v['transform']),int(v['create'],16)) for v in variants]==([(SCREEN_PAIR[1],0,0)] if screen else []),'the packed producer is created once for the row-19 PS, only with the option'
+    modes=[fields(line) for line in traces if line.startswith('screen_emission_mode ')]
+    assert [(int(m['enabled']),float(m['gain']),int(m['gain_valid'])) for m in modes]==([(1,gain,1)] if screen else []),('the configured step E gain is read once',modes)
+    chains=[fields(line) for line in lines if line.startswith('SCREEN_CHAIN ')]
+    assert [(int(c['frame']),int(c['quads']),int(c['step_px']),int(c['sprite']),tuple(map(int,c['rect'].split(','))),int(c['packed'])) for c in chains]==[(SCREEN_CHAIN_FRAME,SCREEN_CHAIN_QUADS,SCREEN_CHAIN_STEP_PX,SCREEN_CHAIN_SPRITE,SCREEN_CHAIN_RECT,int(bool(screen and caps)))],('one eight-quad chain draw',chains)
+    if injected:assert tuple(map(int,chains[0]['composed'].split(',')))==injected
     packed_regions=[fields(line) for line in traces if line.startswith('packed_region ')]
     # One line per screen draw that reached the bracket's witness record: eligible, bounded, caps present (prepared or refused there).
     witnessed=[(f,s['kind']) for f in range(SCREEN_FRAMES) for s in expected_by_frame[f][0] if s['witnessed']]
@@ -916,7 +935,7 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
             assert rect[0]<=footprint[0] and rect[1]<=footprint[1] and rect[2]>=footprint[2] and rect[3]>=footprint[3],(frame,kind,'the bound rectangle covers the visible footprint',rect,footprint)
             if kind in SCREEN_NEAR_KINDS:near_rects[kind]=dict(rect=rect,f_permille=int(r['f_permille']))
     if screen and caps and not injected:assert set(near_rects)=={'n','x','b'},('near-plane kinds bounded and witnessed',near_rects)
-    sample_result=validate_screen_samples([fields(line) for line in lines if line.startswith('SCREEN_SAMPLE ')],expected_by_frame,fade,emission)
+    sample_result=validate_screen_samples([fields(line) for line in lines if line.startswith('SCREEN_SAMPLE ')],expected_by_frame,fade,emission,gain)
     packed_samples=validate_packed_samples(traces,expected_by_frame,injected)
     return dict(frames=SCREEN_FRAMES,sources=total_sources,region_pixels_per_bracket=bracket_pixels.get('s'),bracket_pixels=bracket_pixels,near_rects=near_rects,totals=totals,held_references=int(releases[0]['held']),packed_samples=packed_samples,**sample_result)
 
@@ -990,6 +1009,80 @@ def validate_screen_emission_frames(traces,frames=None):
     return dict(lines=len(rows),devices=len(devices),frames=numbers[0] if len(numbers)==1 else numbers,
                 packed_admitted=total_admitted,brackets_px=total_px,measured=measured,
                 cpu_us_total=total_us,cpu_us_mean=total_us//max(1,measured))
+
+
+def screen_chain_sprite(x,y):
+    """The fixture's soft sprite texel (tint times a Gaussian of sigma 3 px
+    about the sprite centre; float32 in the fixture, float64 here)."""
+    centre=(SCREEN_CHAIN_SPRITE-1)/2;g=math.exp(-((x-centre)**2+(y-centre)**2)/(2*SCREEN_CHAIN_SIGMA**2))
+    return tuple(t*g for t in SCREEN_CHAIN_TINT)
+
+
+def screen_chain_fragments(x,y):
+    """Sprite texels of the chain quads covering pixel (x, y) in draw order."""
+    l,t,_,b=SCREEN_CHAIN_RECT;result=[]
+    if not t<=y<b:return result
+    for q in range(SCREEN_CHAIN_QUADS):
+        left=l+q*SCREEN_CHAIN_STEP_PX
+        if left<=x<left+SCREEN_CHAIN_SPRITE:result.append(screen_chain_sprite(x-left,y-t))
+    return result
+
+
+def fp16_code(value):
+    return struct.unpack('<H',struct.pack('<e',value))[0]
+
+
+def read_rgba32f(path,width=64,height=64):
+    data=path.read_bytes();assert len(data)==width*height*16,(path,len(data))
+    return list(struct.iter_unpack('<4f',data))
+
+
+def validate_screen_chain(functional,native,gain_run,gain=SCREEN_GAIN_RUN,width=64,height=64):
+    """Step E acceptance on the overlap chain (frame SCREEN_CHAIN_FRAME):
+    `functional` and `native` (the off run: the same chain drawn natively)
+    and `gain_run` (X3M_SCREEN_EMISSION_GAIN=gain) are work directories. The
+    before images agree exactly; inside the chain rectangle the composed
+    result equals the native twin within one FP16 code per channel with the
+    alpha exact; outside it every run leaves A untouched; the gain run
+    follows encode(decode(A) + gain (decode(B) - decode(A))) on the native
+    twin within the FP16 tolerance and is brighter than native on every bolt
+    channel. The withdrawn per-fragment law is shown to differ from native."""
+    frame=SCREEN_CHAIN_FRAME
+    images={}
+    for name,work in (('functional',functional),('native',native),('gain',gain_run)):
+        for stage in ('before','after'):images[name,stage]=read_rgba32f(work/f'screen_emission_chain_{stage}_{frame}.rgba32f',width,height)
+    before=images['native','before']
+    assert images['functional','before']==before and images['gain','before']==before,'the chain frame starts from the same A in every run'
+    l,t,r,b=SCREEN_CHAIN_RECT;inside=[(x,y) for y in range(t,b) for x in range(l,r)]
+    max_codes=0;alpha_exact=True;bolt=0;lifted=0;max_fraction=0.;withdrawn_max=0.;native_changed=0;max_layers=0
+    for y in range(height):
+        for x in range(width):
+            i=y*width+x;n=images['native','after'][i];f=images['functional','after'][i];g=images['gain','after'][i];a=before[i]
+            if not (l<=x<r and t<=y<b):
+                assert f==a and n==a and g==a,(x,y,'A outside the chain rectangle untouched')
+                continue
+            for c in range(3):
+                codes=abs(fp16_code(f[c])-fp16_code(n[c]));max_codes=max(max_codes,codes)
+                assert codes<=1,(x,y,c,'composed chain within one FP16 code of the native twin',f[c],n[c])
+            alpha_exact=alpha_exact and f[3]==n[3]
+            if n[:3]!=a[:3]:native_changed+=1
+            fragments=screen_chain_fragments(x,y);max_layers=max(max_layers,len(fragments))
+            # The withdrawn step C law on the same fragments (float64 model).
+            light=[screen_decode(a[c]) for c in range(3)]
+            for q in fragments:light=[q[c]**2.2+(1-q[c])*light[c] for c in range(3)]
+            withdrawn_max=max(withdrawn_max,max(abs(screen_encode(light[c])-n[c]) for c in range(3)))
+            for c in range(3):
+                wanted=screen_encode(screen_decode(a[c])+gain*(screen_decode(n[c])-screen_decode(a[c])))
+                fraction=abs(g[c]-wanted)/(.006*abs(wanted)+.00002);max_fraction=max(max_fraction,fraction)
+                assert fraction<=1,(x,y,c,'gain run follows the step E law on the native twin',g[c],wanted,fraction)
+                if screen_decode(n[c])-screen_decode(a[c])>1e-3:
+                    bolt+=1;lifted+=g[c]>n[c]
+    assert alpha_exact,'chain alpha equals the native blend'
+    assert native_changed>=len(inside)//2,('the chain touches its rectangle',native_changed)
+    assert max_layers==SCREEN_CHAIN_QUADS,('eight overlapping fragments',max_layers)
+    assert bolt>0 and lifted==bolt,('every bolt channel is lifted by the gain',bolt,lifted)
+    assert withdrawn_max>.05,('the withdrawn per-fragment law would differ from native',withdrawn_max)
+    return dict(frame=frame,rect=SCREEN_CHAIN_RECT,pixels=len(inside),native_changed=native_changed,max_layers=max_layers,max_codes=max_codes,alpha_exact=alpha_exact,gain=gain,gain_max_tolerance_fraction=max_fraction,bolt_channels=bolt,withdrawn_law_max_delta=withdrawn_max)
 
 
 def screen_footprint(kind,x,y,width=64,height=64):
@@ -1127,7 +1220,7 @@ SCREEN_SCOPE=('Actual capture DrawPrimitive / MotionOutput admission / packed sc
               'The row-19 bullet pair, one exact Asteroid fade pair, one additive emission pair and two bootstrap programs.')
 SCREEN_LIMITATIONS=[
     'The bullet rows are the identity (positions are clip coordinates): the projection of the locked-prefix box is exercised, not a perspective camera; the fixture quad is axis-aligned.',
-    'The packed-law oracle is a float64 restatement of the note with the FP16 store as tolerance (fraction <= 1 of .006|b|+.00002); the detached step-A fixture holds the bit-exact prototype comparison.',
+    'The packed-law oracle is a float64 restatement of the step E law with the FP16 store as tolerance (fraction <= 1 of .006|b|+.00002); the overlap chain is compared with its native twin from a separate process (the off run) within one FP16 code, and the gain run against the law on that twin; the detached packed corpus holds the bit-exact prototype comparison.',
     'Caps refusal is produced by withholding policy 8 from the attach request (seam only), the same route decision as a device without four targets or INVSRCALPHA.',
     'Timing pairs toggle the screen option (and with it the step B scan) with the same material/TAA/HDR settings; EVENT-fenced windows, not GPU timestamps or game FPS.',
     'Native Windows, installation and gameplay appearance remain unverified.',
@@ -1144,6 +1237,7 @@ def main_screen(args):
           # The option's opt-in per-frame timing line on real Presents; the
           # functional laws must hold unchanged with the diagnostic on.
           dict(name='screen-timing-line',screen=1,witness=True,emission_timing=True),
+          dict(name='screen-gain2',screen=1,witness=True,gain=SCREEN_GAIN_RUN),
           dict(name='screen-straddle',screen=1,witness=True,rect=SCREEN_STRADDLE_RECT,expect_violations=screen_straddle_violations()),
           dict(name='screen-caps',screen=1,witness=True,caps=0)]
     for width,height in RESOLUTIONS:
@@ -1160,7 +1254,7 @@ def main_screen(args):
                        X3M_HDR_EXPOSURE='manual',X3M_HDR_EV_MANUAL='0',X3M_HDR_CLAMP='0',X3M_HDR_BLOOM='0',
                        X3M_LINEAR_MATERIALS='1',X3M_MATERIAL_DIRECT_GAIN='1',X3M_MATERIAL_EMISSIVE_GAIN='1',X3M_LIGHTMAP_EMISSIVE_GAIN='1',
                        X3M_LINEAR_DISTANCE_FADE='1',X3M_LINEAR_EMISSIONS='1',X3M_EMISSION_GAIN='1',
-                       X3M_SCREEN_EMISSION=str(run['screen']),X3M_SCREEN_EMISSION_BOUND=str(run['screen']),
+                       X3M_SCREEN_EMISSION=str(run['screen']),X3M_SCREEN_EMISSION_BOUND=str(run['screen']),X3M_SCREEN_EMISSION_GAIN=repr(run.get('gain',SCREEN_GAIN)),
                        X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5',
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
@@ -1181,7 +1275,7 @@ def main_screen(args):
             caps=run.get('caps',1)
             if run.get('timing'):case=validate_screen_timing(output,trace,run['screen'],run['width'],run['height'])
             else:
-                case=validate_screen_functional(output,trace,run['screen'],1,1,caps,run.get('rect'))
+                case=validate_screen_functional(output,trace,run['screen'],1,1,caps,run.get('rect'),run.get('gain',SCREEN_GAIN))
                 case.update(validate_screen_pixels(work,run['screen'],1,1,caps))
                 try:
                     case['witness']=validate_screen_witness(trace,run['screen'],1,1,caps,WITNESS_K,run.get('rect'))
@@ -1194,6 +1288,8 @@ def main_screen(args):
             case['seconds']=round(time.monotonic()-start,3);case['raw']=str(work)
             result['cases'][run['name']]=case
         result['paired_cost']=screen_paired_cost(result['cases'])
+        # Step E: the composed chain against its native twin (off run) and the gain run.
+        result['chain']=validate_screen_chain(Path(result['cases']['screen-functional']['raw']),Path(result['cases']['screen-off']['raw']),Path(result['cases']['screen-gain2']['raw']))
         # The straddling and caps runs leave the sampled unaffected frames and
         # the native/fade/emission samples exactly as the functional run.
         functional=result['cases']['screen-functional']

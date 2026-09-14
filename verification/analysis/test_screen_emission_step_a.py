@@ -1,6 +1,7 @@
 """Step A of the packed screen policy: policy table, plane layout, programs and
 the step-A report parser (docs/architecture/screen-emission-region.md)."""
 import re
+import struct
 import shutil
 import subprocess
 import tempfile
@@ -163,6 +164,13 @@ class StepAProgramTests(unittest.TestCase):
             self.assertEqual(words[2],0x80000005);self.assertEqual(words[3],gen.dst(1,0,3))
             self.assertTrue(all(words[i]==gen.src(1,0) for i in differing if i>3))
         init=gen.screen_ps(0,True);composite=gen.screen_ps(2,True)
+        # Step E: the gain literal sits where the pass host test expects it, authored at g = 1.
+        index=gen.gain_literal_index(composite)
+        self.assertEqual(index,gen.gain_literal_index(gen.screen_ps(2,False)))
+        host=(ROOT/'verification/probe/linear_emission_pass_host.cpp').read_text()
+        self.assertEqual(int(re.search(r'constexpr unsigned gain_literal_index = (\d+);',host).group(1)),index)
+        self.assertEqual(composite[index+2:index+6],list(struct.unpack('<4I',struct.pack('<4f',*gen.gain_literal(1.0)))))
+        self.assertEqual(gen.gain_literal(1.0)[:2],(1.0,0.0))
         self.assertEqual(sum(1 for w in init if w==0x90000000),1);self.assertEqual(sum(1 for w in composite if w==0x90000000),5)
 
 

@@ -2,7 +2,10 @@
 // These scripted public interfaces neither execute shaders nor prove x86 ABI.
 #include "../../src/renderer/linear_emission_pass.h"
 #include <array>
+#include <cmath>
 #include <cstdlib>
+#include <cstring>
+#include <limits>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -17,8 +20,11 @@ void check(bool ok, const char *message) {
     std::exit(1);
   }
 }
+// DWORD index of the composite's `def c1` token (generate_screen_emission_programs.gain_literal_index).
+constexpr unsigned gain_literal_index = 25;
 struct Device : IDirect3DDevice9 {
   void *slots[119]{};
+  std::vector<std::vector<DWORD>> created_ps; // every CreatePixelShader payload, in order
   D3DCAPS9 caps{};
   IDirect3D9 factory;
   std::vector<std::unique_ptr<IUnknown>> objects;
@@ -321,8 +327,11 @@ struct Device : IDirect3DDevice9 {
       return S_OK;
     });
     slot(106,
-         [](IDirect3DDevice9 *p, const DWORD *,
+         [](IDirect3DDevice9 *p, const DWORD *words,
             IDirect3DPixelShader9 **o) -> HRESULT {
+           std::vector<DWORD> copy;
+           for (const DWORD *w = words; ; ++w) { copy.push_back(*w); if (*w == 0x0000ffffu) break; }
+           d(p).created_ps.push_back(std::move(copy));
            return d(p).output(106, d(p).make<IDirect3DPixelShader9>(), o);
          });
     slot(107, [](IDirect3DDevice9 *p, IDirect3DPixelShader9 *v) -> HRESULT {
@@ -917,7 +926,29 @@ void packed_policy() {
                 !alone.caps().enabled && alone.references() == 0 && std::string(alone.caps().reason) == "packed caps",
             "packed-only capability refusal");
     }
+    // Step E gain: finite 0..16 before attach only; the default is 1.
+    check(p.packed_gain() == 1.f && p.configure_packed_gain(2.f) && p.packed_gain() == 2.f, "packed gain configured before attach");
+    check(!p.configure_packed_gain(-1.f) && !p.configure_packed_gain(17.f) && !p.configure_packed_gain(std::nanf("")) &&
+              !p.configure_packed_gain(std::numeric_limits<float>::infinity()) && p.packed_gain() == 2.f,
+          "packed gain domain refusals keep the configured value");
+    check(p.configure_packed_gain(mode == 0 ? 2.f : 1.f), "packed gain reconfigured");
     check(p.attach(&d, d.slots, d.caps, D3DFMT_A8R8G8B8, D3DFMT_D24S8, 15) == S_OK, "attach with policy 8 requested");
+    check(!p.configure_packed_gain(mode == 0 ? 1.f : 2.f) && p.configure_packed_gain(mode == 0 ? 2.f : 1.f) && p.packed_gain() == (mode == 0 ? 2.f : 1.f),
+          "packed gain frozen after attach; the applied value is accepted again (re-attach)");
+    if (mode == 0) {
+      // The created composite carries the patched literal: exactly one
+      // `def c1` (0x05000051, 0xa00f0001) at the generator's index
+      // (gain_literal_index in generate_screen_emission_programs.py) with
+      // g and 1 - g in the two following lanes.
+      const auto &words = d.created_ps.back();
+      unsigned found = 0, at = 0;
+      for (unsigned i = 0; i + 5 < words.size(); ++i)
+        if (words[i] == 0x05000051u && words[i + 1] == 0xa00f0001u) { ++found; at = i; }
+      float lanes[2]{};
+      if (found == 1) std::memcpy(lanes, &words[at + 2], sizeof lanes);
+      check(found == 1 && at == gain_literal_index && lanes[0] == 2.f && lanes[1] == -1.f,
+            "packed composite carries the patched gain literal at the generator's index");
+    }
     const unsigned expected = mode == 0 ? 15u : mode == 3 ? 1u : 7u;
     check(p.caps().supported_policies == expected && p.caps().available_policies == expected, "policy-8 capability gate");
     check(p.ensure_targets(17, 11) == S_OK, "pool");
@@ -948,9 +979,9 @@ void packed_policy() {
                 d.rt[2] != d.rt[1] && d.rt[2] != d.rt[3],
             "packed source targets: M, P_r = E, P_g, P_b");
       check(d.rs[D3DRS_DESTBLEND] == D3DBLEND_INVSRCALPHA && d.rs[D3DRS_COLORWRITEENABLE] == 9 &&
-                d.rs[D3DRS_COLORWRITEENABLE1] == 7 && d.rs[D3DRS_COLORWRITEENABLE2] == 7 && d.rs[D3DRS_COLORWRITEENABLE3] == 7 &&
+                d.rs[D3DRS_COLORWRITEENABLE1] == 5 && d.rs[D3DRS_COLORWRITEENABLE2] == 5 && d.rs[D3DRS_COLORWRITEENABLE3] == 5 &&
                 d.ps == ps && d.vs == nullptr,
-            "packed source blend, masks and untouched VS");
+            "packed source blend, red|blue plane masks (step E) and untouched VS");
       check(d.stage_gets > gets, "packed bracket saves five stages");
       auto done = p.finish(S_OK);
       check(done.image == LinearEmissionImage::Linear && !done.candidate_bound && !p.owning_candidate() && p.coverage_valid(),

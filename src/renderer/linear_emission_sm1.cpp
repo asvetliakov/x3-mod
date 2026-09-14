@@ -71,7 +71,7 @@ void sanitize(Words& words) {
     emit(words,maximum,{dst(temporary,2),src(temporary,2),lane(constant,30,1)});
     emit(words,minimum,{dst(temporary,2),src(temporary,2),lane(constant,30,2)});
 }
-void energy(Words& words,bool scalar,bool write_output=true) {
+void energy(Words& words,bool scalar) {
     // Same established safe source decode, decoded cap BEFORE h/gain, then S.
     emit(words,mov,{dst(temporary,2),src(temporary,1)});
     sanitize(words);
@@ -84,22 +84,26 @@ void energy(Words& words,bool scalar,bool write_output=true) {
     emit(words,mul,{dst(temporary,2),src(temporary,2),lane(constant,31,0)});
     sanitize(words);
     emit(words,mov,{dst(temporary,2,8),lane(constant,30,1)});
-    if(write_output) emit(words,mov,{dst(output,1,15),src(temporary,2)});
+    emit(words,mov,{dst(output,1,15),src(temporary,2)});
 }
-// Whole channel planes retain both native and linear ordered recurrences.
-// r0=q/a and r2=E survive until the final plane. r1's native sample is dead.
-// Treat signed nonzero q as modified too: never clamp native q to fit a domain.
+// Step E (screen-emission-region.md): M = (1, 0, 0, a) and each channel plane
+// P_c = (q_c, q_c, q_c, q_c). Under ONE/INVSRCALPHA the red lane accumulates the
+// native encoded value exactly as the game does and the blue lane q + (1 - q)
+// old is the modified flag (nonzero once any fragment had q_c != 0 in domain);
+// the green lane is masked off by the pass and keeps decode(A) from the plane
+// initialization. No per-fragment decode: the pass decodes once at publication.
+// Out-of-domain q (signed, > 1, HDR) is not clamped: the red lane must stay the
+// native value, and a clamped copy for the blue lane would cost two more
+// instructions per plane against constants; such fragments may cancel the flag
+// to exactly 0 or overflow it to non-finite, and the publication then copies A
+// or writes the non-finite encode. The bracket never refuses on it; the packed
+// corpus keeps these as boundary rows outside qualification.
 void packed_screen(Words& words) {
-    emit(words,cmp,{dst(temporary,3),src(temporary,0,0xe4,1),lane(constant,31,2),lane(constant,31,1)});
-    emit(words,cmp,{dst(temporary,3),src(temporary,0),src(temporary,3),lane(constant,31,1)});
-    emit(words,cmp,{dst(temporary,3),src(temporary,2,0xe4,1),src(temporary,3),lane(constant,31,1)});
     emit(words,mov,{dst(temporary,1),src(constant,31,0xe9)}); // (1,0,0)
     emit(words,mov,{dst(temporary,1,8),lane(temporary,0,3)});
     emit(words,mov,{dst(output,0,15),src(temporary,1)});
     for(unsigned c=0;c<3;++c) {
-        emit(words,mov,{dst(temporary,1,9),lane(temporary,0,c)});
-        emit(words,mov,{dst(temporary,1,2),lane(temporary,2,c)});
-        emit(words,mov,{dst(temporary,1,4),lane(temporary,3,c)});
+        emit(words,mov,{dst(temporary,1,15),lane(temporary,0,c)});
         emit(words,mov,{dst(output,c+1,15),src(temporary,1)});
     }
 }
@@ -210,7 +214,7 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
         emit(result,mul,{dst(temporary,0)|precision,src(temporary,1),profile->scalar?src(temporary,0):lane(color,0,3)});
         emit(result,mov,{dst(temporary,0,8)|precision,lane(temporary,1,3)});
         if(outputs!=4) emit(result,mov,{dst(output,0,15),src(temporary,0)});
-        if(outputs>1) energy(result,profile->scalar,outputs!=4);
+        if(outputs>1 && outputs!=4) energy(result,profile->scalar);
         if(outputs==4) packed_screen(result);
         if(outputs==3) {
             emit(result,mov,{dst(temporary,3,15),lane(constant,31,1)});
@@ -218,7 +222,7 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
         }
         result.push_back(end);
         Budget budget;
-        const unsigned expected=outputs==4?(profile->scalar?42u:41u):
+        const unsigned expected=outputs==4?(profile->scalar?12u:11u):
             (profile->scalar?4u:3u)+(outputs>1?22u:0u)+(outputs==3?2u:0u);
         if(!generated_shape(result,budget,outputs) || budget.arithmetic!=expected) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);return LinearEmissionResult::Applied;

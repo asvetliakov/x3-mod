@@ -126,6 +126,7 @@ struct LinearEmissionPass {
  LinearEmissionPreparation preparation{},begin{};LinearEmissionCompletion completion{},recovery{LinearEmissionImage::Native,S_OK,S_OK,S_OK,true};
  IDirect3DSurface9 candidate_storage,*candidate=&candidate_storage;LinearEmissionBoundary boundary{};std::vector<bool> exchanges;
  template<class A,class B,class C>HRESULT attach(A,B,C,D3DFORMAT adapter,D3DFORMAT,unsigned policies){++attaches;attached_adapter_format=adapter;requested_policies=policies;return attach_result;}
+ float gain=1;bool configure_packed_gain(float g){if(!(g>=0&&g<=16))return false;gain=g;return true;}float packed_gain()const{return gain;}
  const Caps&caps()const{return cap;}unsigned references()const{return held;}bool reference_accounting_busy()const{return busy;}
  HRESULT ensure_targets(UINT,UINT){++ensures;return ensure_result;}
  LinearEmissionPreparation begin_frame(std::uint64_t frame){++begins;if(frame!=last_frame){++clears;mask_bytes.fill(0);last_frame=frame;}coverage=begin.ready;return begin;}
@@ -298,7 +299,7 @@ public:
  unsigned cutout_probes_=0;void probe_cutout_caps(bool=false)noexcept{++cutout_probes_;}
  bool distance_fade_requested_=false;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
- bool screen_emission_requested_=false,screen_emission_bound_=false;unsigned prefix_regions_derived_=0;
+ bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  // Step B's bound derivation is a separate seam; here it only records the call.
  void derive_prefix_region(const MotionDrawCall&,MotionRoute&)noexcept{++prefix_regions_derived_;}
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
