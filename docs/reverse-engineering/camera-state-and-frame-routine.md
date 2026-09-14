@@ -470,3 +470,96 @@ displacement, `txt:` every instruction whose text contains a string,
   static observations; neither has been correlated with a capture.
 - No claim is made that jittering `P[8]`/`P[9]` is visually correct; it is the
   algebraically consistent injection point for the documented layout.
+
+## Ambient occlusion inputs (2026-09-14)
+
+Static answers to `../architecture/ambient-occlusion.md` §8, with two cross-checks
+from existing captures. No launch, no Wine; raw Ghidra output stays in
+`/tmp/x3-ao-re/` (`X3CameraState.java`, specs `dec:00424e00 dec:004bdee0
+dec:00488c70 dec:00479d10 dec:00493b40 ins:004c0150 ins:004c4fc0 txt:0x360]`).
+
+**View-unit scale: 1 view unit = 0.2 m (1 m = 5 units).** (1) The HUD target
+readout `FUN_00424e00` formats the distance helper result (`0x0042f850`, called at
+`0x00424e7b..0x00424e87`) as `d/500` with a metre suffix, `(d/500)*0.001` as "K"
+(double `0x00565500`) and `*1e-6` as "M" (`0x00565758`) — **500 native units = 1
+m**. (2) The view translation is `-p·B * s` (§2) and the world translation is
+`node[+0xb0/b4/b8] * s` (`0x004be38b..0x004be3a9`, `s = *(float*)(context+0x2c)`),
+while the 3×3 carries only `basis/65536` × the per-node scale
+(`0x004be000..0x004be069`) — **no `s`** — so object-space `POSITION0` is already in
+view units and view distance = native · s. (3) `s = 0.01`: the "Cockpit Scene"
+constant `0x00565640 = 0x3c23d70a`, and every gameplay camera in the run-28/36
+`object_fade` rows reports `scale_bits=0x3c23d708`; only the background/nebula view
+(`+0x270 & 0x400000`) uses ~1e-5. So near 6 = 1.2 m, far 2·10⁶ = 400 km, and the
+captured sector fog pair `+0x36c/+0x370` of 25e6/30e6 and 50e6/55e6 native reads as
+50/60 km and 100/110 km. An AO radius of `R` metres is `5·R` view units.
+
+**`view[0x270] & 0x800000` is the ordinary gameplay regime.** Re-read of
+`0x004c5093..0x004c5145`: `zn = 6.0 + (fov < 0x2147 ? 100·(1 − 4·fov/65536) : 0)`
+(`100.0` at `0x00565734`, `4.0` at `0x005656b0`), `zf = max((unsigned)cam[0x360]·s,
+2e6)`, then `m22 = zf/(zf−zn)`, `m32 = −m22·zn`; the `fov < 0xccc` / `400.0`
+(`0x0056576c`) arm at `0x004c50d8` is **dead**, reached only when `fov ≥ 0x2147`.
+*Writers*: nothing ORs `0x800000` into a `+0x270` displacement — the flags dword is
+assigned wholesale by the script/graph command dispatcher `0x00493b40` case `0x3b`
+(store `0x00494f13`; `0x3a` reads it back) and loaded from the scene stream by
+`0x00479d10` (`_Dst[0x9c]`), while `0x00489bf0` only ORs bit `0x1` and
+`0x004891e0`/`0x0042157c`/`0x004215a0`/`0x00494232` only touch `0x10000` beside the
+fog pair. It is authored scene state: the run-28/36 rows show the main sector camera
+at `flags270=0x0085492d` in ordinary flight and on the station approach, not a
+menu/cutscene branch. *Value*: `cam+0x360` has no writer — allocator `0x00488c70`
+memsets `0x790`, loader `0x00479d10` writes `_Dst[0xda..0xdd]` (`+0x368..+0x374`)
+but skips `_Dst[0xd8]`, and the only non-`ESP` `0x360` displacements in the image
+are the reads at `0x004c50f4`/`0x004c50fa`. With `+0x360 = 0` and the allocator's
+default `+0x298 = 0x4000` (90°, settling §3 in favour of reading (A)) the regime
+yields exactly `zf = 2e6`, `zn = 6` — the default pair, as every captured projection
+shows (`camera-numerics.md`). Cockpit zoom (`INS_CockpitSetZooming`, FOV to
+`0x106`) does cross `0x2147` and steps `zn` from 6 to ~54 and on to ~104 units
+(20.9 m), so the AO pass must derive `zn`/`zf` per frame from the view (`+0x270`,
+`+0x298`, `+0x360`, `s`) instead of hard-coding them; `m22`/`m32` in `*0x00608a38`
+stay per-submission scratch.
+
+**`LightDir_Dir0` is world space and per draw.** Handle cache in `0x004c0150`
+(`0x004c1a3e..0x004c1a9d`, each store following the *next* push): `+0x54`
+`LightDir_Dir0`, `+0x58` `LightDir_Color0`, `+0x5c` `LightDir_Dir1`, `+0x60`
+`LightDir_Color1`, `+0x64` `g_LightAmbientIntensity` (`+0x50` is `g_mViewInverse`).
+Write site `0x004c234d..0x004c245e`: the vector is `light[+0xb0/b4/b8] −
+node[+0xb0/b4/b8]`, both raw render-domain ints with the *submitted* node (param 2,
+`[EBP+0xc]`) as origin, normalized through `FSQRT` and the double `2^-16` at
+`0x00565510`, rounded by `0x0052b5d0` to ×65536 fixed point, reloaded ×`1/65536`
+and set as a float4 with `w = 0` via effect vtable `+0x88`. So: world space,
+object→light, recomputed **per submitted node** — never view space, never per frame
+— zeroed when the light is absent (`0x004c24bb`, `0x004c2674`). The two lights are
+chosen per submission batch by `0x004c4fc0` (`0x004c5030..0x004c508f`): walk
+`*0x00608518 + 0x628c` (stride 12, count `+0x6288`, initialised to 8 at
+`0x004b9bbb`) into the object array `+0x5e8c`, admit on node `+0x12c & 0x800000` or
+`+0x158 > 0x256250`, pass first/second as params 5/6. The sun is therefore readable
+from globals without a hook: world position `+0xb0/b4/b8`, colour floats at
+`light[+0x16c] + 0x04/0x08/0x0c`, record maintained by `0x004bdda0`.
+
+**`g_LightAmbientIntensity` has no writer and no consumer.** Its handle is cached at
+descriptor `+0x64` (`0x004c1a9d`) and never read — no `[EDI+0x64]` load exists in
+`0x004c0150`, the only resolver (the string `0x005630d8`'s other reference,
+`0x004ba652`, is the effect-name validator `FUN_004ba500`). No shader declares it:
+zero hits across the 751-program archive sweep
+(`verification/results/shader-sweep-inventory.json`) and the 47-program CTAB set
+(`shader-registers.json`), where `LightDir_Dir0` appears in 17 of 47. AO v2 cannot
+weight by a true ambient share. Nor is there a per-sector ambient colour: the
+material path's colour inputs are the two directional lights and the point array
+(`g_LightPoint`/`g_nNumLightPoint`), and D0/D1 come from the light object's node
+words `+0x150/+0x152/+0x154` × 1/256 (`material-color-inputs.md`), so the ambient
+estimate must still be derived from D1 as the design assumes.
+
+**Cockpit/HUD marker: per view, not per draw.** No per-draw flag was found. The
+cockpit HUD scene camera is created with `+0x270 |= 0x24` at `0x004202a7`
+(`FUN_00420260`); the sector camera also carries `0x10000` (fog: `0x004891e0`,
+`0x0042157c`, `0x004215a0`) and `0x8000` (`0x0042d571`). Captured values separate
+them — sector `0x0085492d` versus cockpit-scene `0x25`, `0x2025`, `0x1` — so a hook
+can test `+0x270 & 0x810000` for the sector view. Crosshair and target indicator
+attach to `cockpit+4`, the cockpit HUD scene (`chase-target-indicator.md`), a
+separate view activation rather than a late draw inside the sector view; whether any
+Z-test-off draw still precedes the sector scene end stays the open run-14 question.
+
+*Uncertainty*: all static except the `object_fade` and projection cross-checks, from
+the run-28/run-36 captures on installed `3f06979`. "No writer for `cam+0x360`" is a
+displacement sweep — an aliased-base write is not excluded, and one Clear-hook read
+would close it. Bits of `0x0085492d` beyond `0x800000/0x40000/0x10000/0x4000` are
+unattributed.
