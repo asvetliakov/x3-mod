@@ -59,7 +59,8 @@ The full host suite is green again after the fixture-harness repairs (`93f359c`,
 Screen emission (goal 3): the region-bracketed design `docs/architecture/screen-emission-region.md`
 is ratified; step B (bullet bound from Unlock-time extrema checkpoints, draw-learned allowlist,
 reviewed, `2c15609`) is merged and step A (packed screen policy 8 in the pass, 540/540 rows
-bit-exact, 0.13 ms per bracket) is under review; step C (runtime admission) follows.
+bit-exact, 0.13 ms per bracket, reviewed, merged `2c12f33`) are merged; step C (runtime
+admission and the SM1 live registration) is in progress.
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
 --fade-witness`) is complete on the candidate built from `3f06979`, which is installed (record
 `verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
