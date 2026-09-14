@@ -126,7 +126,7 @@ MotionOutput::~MotionOutput() = default;
 void MotionOutput::record_deferred() noexcept { active->calls.push_back(4); }
 void MotionOutput::restore_bindings() noexcept { active->calls.push_back(5); }
 void MotionOutput::finish_cut_detector() noexcept { active->calls.push_back(6); cut_finished_ = true; }
-void MotionOutput::invalidate_taa() noexcept { active->calls.push_back(7); }
+void MotionOutput::invalidate_taa(TaaInvalidateSite) noexcept { active->calls.push_back(7); }
 bool MotionOutput::ensure_taa() noexcept { active->calls.push_back(8); return active->scenario != Case::TaaInitialize; }
 std::uint64_t MotionOutput::stamp() const noexcept { return 0; }
 void MotionOutput::record(unsigned, std::uint64_t, bool, std::uint64_t) noexcept {}

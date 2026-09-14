@@ -60,6 +60,9 @@ HRESULT set_ps(Device*d,void*p){++d->ps_sets;if(p==d->fail_shader)return E_FAIL;
 HRESULT set_constants(Device*,unsigned,const float*,unsigned){return S_OK;}
 template<class...A>void log(const char*,A...){ }
 struct Pass {void after_reset(HRESULT){};};
+// Mirrors src/proxy/motion_output.h's TaaInvalidateSite; this double only
+// counts the calls, so the names exist for the extracted code to compile.
+enum class TaaInvalidateSite:unsigned{RestoreFailed=0,StateLost=1,Skip=2,Target=3,Container=4,ResolveFailed=5,NotResolved=6,PresentFailed=7,Reset=8,ComparisonExposure=9,ComparisonStateFailed=10,CompositionStateLost=11,CompositionReaders=12,CompositionExport=13,CompositionAttach=14,CompositionBegin=15,CompositionRefused=16,CompositionPrepare=17,CompositionIncomplete=18,CutoutMissed=19,Count=20};
 class MotionOutput {
 public:
  Device*device_;bool enabled_=true,state_shadow_=true,motion_state_lost_=false,scene_open_=false;
@@ -81,7 +84,7 @@ public:
  bool cutout_reset_pending_=false; void probe_cutout_caps(bool){}
  bool composition_requested()const{return false;}
  bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam
- void invalidate_taa(){++taa_invalidations;}
+ void invalidate_taa(TaaInvalidateSite){++taa_invalidations;}
  void resync_shadow(){invalidate_render_states();}
  void begin_frame(unsigned,bool){++frames;}
  void set_render_state(D3DRENDERSTATETYPE,DWORD) noexcept;

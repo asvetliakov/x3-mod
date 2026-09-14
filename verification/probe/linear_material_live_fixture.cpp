@@ -155,6 +155,9 @@ inline bool admitted_pixel_shader(std::uint64_t ps)noexcept{++pixel_lookups;retu
 }
 namespace cutout {enum class Capability:std::uint8_t{Pending,Ready,Unsupported,Retry};
 unsigned pair_lookups=0;constexpr bool pair(std::uint64_t,std::uint64_t) noexcept {return false;}}
+// Mirrors src/proxy/motion_output.h's TaaInvalidateSite; the extracted code
+// names sites, and this double only counts the calls.
+enum class TaaInvalidateSite:unsigned{RestoreFailed=0,StateLost=1,Skip=2,Target=3,Container=4,ResolveFailed=5,NotResolved=6,PresentFailed=7,Reset=8,ComparisonExposure=9,ComparisonStateFailed=10,CompositionStateLost=11,CompositionReaders=12,CompositionExport=13,CompositionAttach=14,CompositionBegin=15,CompositionRefused=16,CompositionPrepare=17,CompositionIncomplete=18,CutoutMissed=19,Count=20};
 enum class MotionGate{Feature=1};
 struct MotionDrawCall{bool indexed=true,user_memory=false;unsigned primitives=3;bool composition_permission=true;};
 namespace telemetry{enum class Metric{RouteGate,RouteSetRenderTarget,RouteLazyFlush};bool draw_enabled(){return false;}}
@@ -267,7 +270,7 @@ public:
  std::uint32_t composition_main_sampler_mask_=0,composition_reader_known_mask_=0;IDirect3DBaseTexture9*composition_textures_[21]{};
  struct{unsigned eligible_fade=0,prepared_fade=0,linear_fade=0;std::uint64_t pool_traffic_bytes=0;unsigned refused=0,prepared=0,suppressed=0,incomplete=0,linear=0,native=0,exports=0,exchanged=0;HRESULT source=S_OK,prepare=S_OK,prepare_restore=S_OK,composition=S_OK,restore=S_OK,exchange=S_OK,ack=S_OK;unsigned refusal[6]{},prepare_failures=0,composition_failures=0,restore_failures=0,exchange_failures=0,ack_failures=0;unsigned in_place=0,in_place_linear=0,in_place_incomplete=0,recovery_failures=0;std::uint64_t region_pixels=0;unsigned packed_eligible=0,packed_unbounded_refused=0,packed_caps_refused=0,packed_admitted=0,packed_linear=0,packed_incomplete=0;std::uint64_t packed_region_pixels=0;HRESULT recovery=S_FALSE;}composition_counts_;
  unsigned composition_adapter_format_=1,composition_depth_format_=2;bool composition_attach_attempted_=true,composition_effective_=false,composition_identity_known_=true;void*native_=nullptr;struct{struct{unsigned format=2;}depth;}pending_;
- bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;
+ bool taa_enabled_=true,hdr_dirty_=false,bound_scene=true;IUnknown*hdr_resolved_=nullptr;unsigned active_queries_=0,taa_invalidations=0;std::uint32_t taa_invalidate_pending_=0;
  unsigned mip_bias_logged_game_writes_=0;DWORD lazy_write1_=15,lazy_write2_=15;unsigned deferred_flushes_=0;std::uint64_t deferred_flush_ticks_=0;HRESULT deferred_flush_result_=S_OK;bool lazy_rt1_=false,lazy_rt2_=false,lazy_mode_=false;
  struct FadeBounds{bool storage=false,fail_reserve=false;unsigned clears=0,reserves=0;
   bool reserve(){++reserves;if(fail_reserve)return false;storage=true;return true;}
@@ -343,7 +346,7 @@ public:
  unsigned evaluations=0;bool route_on_evaluation=false,recovery_reads_fail=false;
  HRESULT get_render_state_native(unsigned,DWORD*out){*out=0;return recovery_reads_fail?E_FAIL:S_OK;}
  MotionRoute before_draw(const MotionDrawCall&)noexcept;void evaluate_draw(const MotionDrawCall&,MotionRoute&r){++evaluations;if(route_on_evaluation)r.routed=true;}void log_mip_bias_game_write(){}void record(unsigned,std::uint64_t,bool=false){}
- bool scene_bound()const{return bound_scene;}void invalidate_taa(){++taa_invalidations;}
+ bool scene_bound()const{return bound_scene;}void invalidate_taa(TaaInvalidateSite){++taa_invalidations;}
  bool reference_accounting_busy()const{return releasing_||taa_busy_||composition_busy_||(composition_&&composition_->reference_accounting_busy());}void before_reset()noexcept;
  void drop_redirect(){release_composition_identity();} void release_target(){release(target_surface_);release(depth_surface_);}
  template<class F>void taa_call(F&&f){f();}void invalidate_render_states(){states_invalidated=true;}
@@ -375,7 +378,7 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
 }
 namespace x3m {namespace renderer=::renderer;}
 unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emission_timing_requested=false;
-bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;
+bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
 renderer::LinearMaterialConfig linear_material_config;
 renderer::HdrConfig hdr_config;
 #include "linear_material_live_under_test_inc.h"

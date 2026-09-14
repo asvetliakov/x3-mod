@@ -136,7 +136,7 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('if (caps_.meter) ensure_chain(width, height)', hdr)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         toggle = extract_function(motion, 'bool MotionOutput::comparison_toggle_exposure(')
-        self.assertIn('invalidate_taa()', toggle)
+        self.assertIn('invalidate_taa(TaaInvalidateSite::ComparisonExposure)', toggle)
         failure = extract_function(motion, 'void MotionOutput::comparison_state_failed(')
         self.assertIn('FAILED(result) && !motion_state_lost_', failure)
         self.assertIn('motion_state_lost_ = true; motion_state_error_ = result', failure)
