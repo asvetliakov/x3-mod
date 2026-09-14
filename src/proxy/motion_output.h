@@ -736,6 +736,19 @@ private:
     // Step B locked-prefix rectangle (screen-emission-region.md): counted and
     // logged per draw in capture frames; nothing consumes it before step C.
     void derive_prefix_region(const MotionDrawCall&, MotionRoute&) noexcept;
+    // Capture-only packed-bracket luminance sample (packed_sample line).
+    HRESULT sample_target_pixel(IDirect3DSurface9*, const renderer::Surface&, std::int32_t x, std::int32_t y, float out[4]) noexcept;
+    void sample_packed_pre(const MotionRoute&) noexcept;
+    void sample_packed_post(const RECT& composed) noexcept;
+    struct PackedSample {
+        bool valid = false;
+        fade_region::Rect rect{};
+        unsigned clipped = 0;
+        std::uint64_t index = 0;
+        std::int32_t x = 0, y = 0;
+        float pre[4]{};
+        HRESULT pre_result = S_FALSE;
+    } packed_sample_;
     // Shadowed application render state for the capture-only motion_route
     // line: the last value the shadow saw, or -1 when it is unknown. Reads no
     // device state, so a capture frame costs no extra GetRenderState.
@@ -902,7 +915,7 @@ private:
         // Step B locked-prefix bounds: qualifying draws (non-indexed
         // TRIANGLELIST, StartVertex 0, stride-24 FLOAT3 stream), those bound,
         // the lookup outcome and the sum of bound area fractions.
-        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0, prefix_instanced = 0;
+        unsigned prefix_draws = 0, prefix_bound = 0, prefix_refused = 0, prefix_instanced = 0, prefix_clipped = 0; // clipped: bound after a near-plane cut
         unsigned prefix_reason[unsigned(fade_region::Reason::Count)]{};
         unsigned prefix_lookup[unsigned(fade_region::prefix::Lookup::Count)]{};
         std::uint64_t prefix_permille_sum = 0;

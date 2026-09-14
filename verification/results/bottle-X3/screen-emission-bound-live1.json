@@ -10,7 +10,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "game_launched": false,
-  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ftj_vwx7",
+  "raw": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-vx1f35sr",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -19,14 +19,14 @@
     "--dll",
     "d3d9=n,b",
     "--workdir",
-    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ftj_vwx7",
-    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-ftj_vwx7/fixture.exe",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-vx1f35sr",
+    "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-locked-prefix-live-vx1f35sr/fixture.exe",
     "Z:/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin",
     "Z:/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin"
   ],
   "input_sha256": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/verification/probe/build/locked_prefix_live_fixture.exe": "bfd8433369203ad69cf3b48e87a7bc6f035e52d4c81f09613a028b3bdf5d3f58",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-afa1be0d663195ab2/build/d3d9.dll": "85342db6300af6e53f2bda4d7472014fdb4bd9a5119f50d1e7b23bf0c1b8a393",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-ada6d2c590ea6088f/verification/probe/build/locked_prefix_live_fixture.exe": "948f590e609afe1336d7dda7981bede7ceac973ab479d944a6d3a21ec32aed6b",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-ada6d2c590ea6088f/build/d3d9.dll": "d9b9744487d2dfc5fe21e6dd0fd1c3f73d5932bdfc8c4d11e78e7446bc99c692",
     "/private/tmp/x3-shader-sweep/programs/vs_5e484a06672e28fb.bin": "2c5815b04b4797d6a9e2feb9192a140ab3a95843f2c438a7da8e5350ff16379f",
     "/private/tmp/x3-shader-sweep/programs/ps_0a523f33ac47ae05.bin": "44e6cd4c2a446bb968204c86369a62280a55004d8a35c231359bc8651c3ea082"
   },
@@ -43,29 +43,94 @@
     "WINEDLLOVERRIDES": "d3d9=n,b"
   },
   "exit_code": 0,
-  "wall_seconds": 3.537,
-  "frames": 13,
+  "wall_seconds": 5.351,
+  "frames": 15,
   "captured_draw_lines": 8,
-  "bound_frames": 8,
-  "refused_frames": 5,
+  "bound_frames": 9,
+  "refused_frames": 6,
   "lookups": {
     "unknown": 2,
-    "bound": 9,
+    "bound": 11,
     "nonfinite": 1,
     "invalid": 1
   },
   "instanced_refusals": 1,
   "marks": 2,
-  "scans": 9,
-  "locks": 11,
-  "scan_us_total": 204.2,
-  "scan_us_per_scan": 22.688888888888886,
+  "scans": 11,
+  "locks": 13,
+  "scan_us_total": 263.5,
+  "scan_us_per_scan": 23.954545454545453,
   "rect_fractions": [
     0.081,
-    0.081,
-    0.081,
-    0.079,
-    0.081
+    0.222,
+    0.287,
+    0.341,
+    0.079
   ],
+  "near_plane": {
+    "near_straddle": {
+      "reason": 0,
+      "clipped": 4,
+      "rect": [
+        46,
+        10,
+        96,
+        51
+      ],
+      "f_permille": 222,
+      "footprint": [
+        48,
+        30,
+        84,
+        36
+      ]
+    },
+    "near_exact": {
+      "reason": 0,
+      "clipped": 4,
+      "rect": [
+        46,
+        10,
+        96,
+        63
+      ],
+      "f_permille": 287,
+      "footprint": [
+        48,
+        36,
+        72,
+        60
+      ]
+    },
+    "near_behind": {
+      "reason": 7,
+      "clipped": 8,
+      "rect": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "f_permille": 0,
+      "footprint": null
+    },
+    "near_beam": {
+      "reason": 0,
+      "clipped": 4,
+      "rect": [
+        46,
+        0,
+        96,
+        63
+      ],
+      "f_permille": 341,
+      "footprint": [
+        48,
+        36,
+        72,
+        60
+      ]
+    }
+  },
   "scope": "Proxy DLL path: MotionOutput::derive_prefix_region and the ownership Unlock scan executed under the game bullet VS/PS; no composition"
 }

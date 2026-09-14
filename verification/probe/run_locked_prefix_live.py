@@ -24,17 +24,27 @@ ROOT=Path(__file__).resolve().parents[2]
 PROGRAMS=('vs_5e484a06672e28fb.bin','ps_0a523f33ac47ae05.bin')
 CAPTURE_FRAMES=8 # the proxy's capture window cap; per-draw lines for frames 1-8
 # Fixture frame script (locked_prefix_live_fixture.cpp): label, vertices, bound flag, lookup name.
-FRAMES=(('first_draw_unknown',102,0,'unknown'),('bound',102,1,'bound'),('bound',102,1,'bound'),('bound',102,1,'bound'),
+FRAMES=(('first_draw_unknown',102,0,'unknown'),('bound',102,1,'bound'),
+        ('near_straddle',96,1,'bound'),('near_exact',96,1,'bound'),('near_behind',96,0,'bound'),('near_beam',96,1,'bound'),
         ('bound_exact_checkpoint',96,1,'bound'),('nan_tail_refused',102,0,'nonfinite'),('nested_lock_invalid',102,0,'invalid'),
         ('instanced_refused',102,0,'bound'),('bound_after_instanced',102,1,'bound'),('full_buffer',6144,1,'bound'),
         ('no_relock_same_revision',6144,1,'bound'),('after_reset_unknown',102,0,'unknown'),('after_reset_bound',102,1,'bound'))
+# Near-plane cases (screen-emission-region.md, step B; rows x' = x, y' = y,
+# z' = .1 (z - 1), w = z on the 96x96 viewport): reason, corners cut by the
+# near plane (the half-float expansion puts corners on the plane 2^-10 behind
+# it), the pixel footprint the rasteriser can touch (the rectangle must
+# contain it) and the largest admissible area fraction in per mille.
+NEAR={'near_straddle':dict(reason=0,clipped=4,footprint=(48,30,84,36),max_permille=999),
+      'near_exact':dict(reason=0,clipped=4,footprint=(48,36,72,60),max_permille=999),
+      'near_behind':dict(reason=7,clipped=8,footprint=None,max_permille=0),
+      'near_beam':dict(reason=0,clipped=4,footprint=(48,36,72,60),max_permille=500)}
 
 def fields(line):return dict(re.findall(r'(\w+)=([^\s]+)',line))
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def validate(output,trace):
     frames=[fields(l) for l in output.splitlines() if l.startswith('FRAME ')]
-    assert [f['label'] for f in frames]==[f[0] for f in FRAMES] and re.search(r'^RESULT PASS frames=13 device_refs=0$',output,re.M),'fixture frame script'
+    assert [f['label'] for f in frames]==[f[0] for f in FRAMES] and re.search(r'^RESULT PASS frames=15 device_refs=0$',output,re.M),'fixture frame script'
     assert all(int(f['draw'],16)==0 for f in frames if f['label']!='instanced_refused'),'every non-instanced draw succeeded'
     # Per-draw lines exist in capture frames (X3M_CAPTURE_START=1 and the
     # X3M_CAPTURE_FRAMES cap of 8: proxy frames 1-8, the fixture's frames
@@ -45,10 +55,13 @@ def validate(output,trace):
     assert len(rows)==CAPTURE_FRAMES,('one locked_prefix line per captured draw',len(rows))
     assert len(summaries)==len(FRAMES),('one locked_prefix_frame line per frame',len(summaries))
     assert [int(s['frame']) for s in summaries]==list(range(len(FRAMES))) and [int(r['frame']) for r in rows]==list(range(1,CAPTURE_FRAMES+1)),'frame numbering'
-    revisions=[];fractions=[]
+    revisions=[];fractions=[];near_cases={}
     for index,((label,vertices,bound,lookup),summary) in enumerate(zip(FRAMES,summaries)):
         assert int(summary['draws'])==1 and int(summary['bound'])==bound and int(summary['refused'])==1-bound,(label,summary)
         assert int(summary['instanced'])==int(label=='instanced_refused'),(label,'instanced counter',summary)
+        near=NEAR.get(label)
+        assert int(summary['clipped'])==int(bool(near and near['clipped'] and bound)),(label,'clipped counter',summary)
+        assert int(summary['reason_near'])==int(bool(near and near['reason']==7)),(label,'reason_near counter',summary)
         refusals=sum(int(summary['lookup_'+name]) for name in ('unknown','pending','invalid','empty','beyond','nonfinite'))
         assert refusals==(0 if lookup=='bound' else 1) and (lookup=='bound' or int(summary['lookup_'+lookup])==1),(label,'lookup counters',summary)
         assert int(summary['table_used'])==1,(label,'one marked buffer',summary)
@@ -61,21 +74,29 @@ def validate(output,trace):
             assert 0<=l<r<=96 and 0<=t<b<=96 and int(row['reason'])==0 and int(row['f_permille'])<1000,(label,'rectangle',row)
             fractions.append(int(row['f_permille'])/1000)
         else:assert (l,t,r,b)==(0,0,0,0),(label,'refused draws have no rectangle',row)
+        if near:
+            assert int(row['reason'])==near['reason'] and int(row['clipped'])==near['clipped'],(label,'near-plane reason/clipped',row)
+            fp=near['footprint']
+            if fp:assert l<=fp[0] and t<=fp[1] and r>=fp[2] and b>=fp[3],(label,'the clipped rectangle covers the visible footprint',row,fp)
+            assert int(row['f_permille'])<=near['max_permille'],(label,'area fraction',row)
+            near_cases[label]=dict(reason=int(row['reason']),clipped=int(row['clipped']),rect=(l,t,r,b),f_permille=int(row['f_permille']),footprint=fp)
+        elif int(row['clipped'])!=0:raise AssertionError((label,'only near-plane cases are clipped',row))
         revisions.append(int(row['rev']))
     # The first lock of the buffer precedes its mark (unrecorded, frame 0);
     # the nested frame locks twice (invalid); the instanced frame's lookup is
     # bound but the draw is refused.
-    assert revisions==[1,2,3,4,5,7,8,9],('revisions',revisions)
+    assert revisions==[1,2,3,4,5,6,7,9],('revisions',revisions)
+    assert set(near_cases)==set(NEAR),('every near-plane case captured',sorted(near_cases))
     last=summaries[-1]
-    # 11 recorded locks: 9 published, the nested pair (2, invalid); the two
-    # pre-mark locks are not recorded. 9 scans of the whole 6144-vertex window.
-    assert int(last['marks'])==2 and int(last['scans'])==9 and int(last['locks'])==11,('marks/scans/locks',last)
-    assert int(last['scanned_vertices'])==9*6144,('whole window per scan',last)
+    # 13 recorded locks: 11 published, the nested pair (2, invalid); the two
+    # pre-mark locks are not recorded. 11 scans of the whole 6144-vertex window.
+    assert int(last['marks'])==2 and int(last['scans'])==11 and int(last['locks'])==13,('marks/scans/locks',last)
+    assert int(last['scanned_vertices'])==11*6144,('whole window per scan',last)
     scan_us=float(last['scan_us'])
     return dict(frames=len(summaries),captured_draw_lines=len(rows),bound_frames=sum(f[2] for f in FRAMES),refused_frames=sum(1-f[2] for f in FRAMES),
                 lookups={name:sum(1 for f in FRAMES if f[3]==name) for name in ('unknown','bound','nonfinite','invalid')},
                 instanced_refusals=1,marks=int(last['marks']),scans=int(last['scans']),locks=int(last['locks']),
-                scan_us_total=scan_us,scan_us_per_scan=scan_us/int(last['scans']),rect_fractions=fractions,
+                scan_us_total=scan_us,scan_us_per_scan=scan_us/int(last['scans']),rect_fractions=fractions,near_plane=near_cases,
                 scope='Proxy DLL path: MotionOutput::derive_prefix_region and the ownership Unlock scan executed under the game bullet VS/PS; no composition')
 
 def main():

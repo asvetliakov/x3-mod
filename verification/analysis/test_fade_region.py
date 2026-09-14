@@ -47,6 +47,37 @@ def reference_rect(rows,centre,half,viewport,jitter=None):
     if r<=l or b<=t:return (X,Y,X+1,Y+1)
     return (l,t,r,b)
 
+# Near-plane rows of the screen-emission fixtures: x' = x, y' = y,
+# z' = .1 (z - 1), w = z; the D3D near plane z' = 0 sits at w = 1.
+NEAR_ROWS=[1,0,0,0, 0,1,0,0, 0,0,.1,-.1, 0,0,1,0]
+
+def reference_clip_rect(rows,centre,half,viewport):
+    """Python restatement of the near cut (screen-emission-region.md, step B):
+    corners with clip z >= 0 plus the crossings of the box edges with z = 0,
+    projected; None when every corner is behind."""
+    rows=[float(v) for v in rows];X,Y,W,H=viewport
+    corners=[]
+    for corner in range(8):
+        p=[centre[a]+((half[a]+EXPANSION) if corner>>a&1 else -(half[a]+EXPANSION)) for a in range(3)]
+        corners.append([rows[4*k]*p[0]+rows[4*k+1]*p[1]+rows[4*k+2]*p[2]+rows[4*k+3] for k in range(4)])
+    points=[c for c in corners if c[2]>=0]
+    if not points:return None,8
+    for a in range(8):
+        for axis in range(3):
+            b=a^(1<<axis)
+            if b<a or (corners[a][2]<0)==(corners[b][2]<0):continue
+            t=corners[a][2]/(corners[a][2]-corners[b][2])
+            points.append([corners[a][k]+t*(corners[b][k]-corners[a][k]) for k in range(4)])
+    xs=[X+(c[0]/c[3]+1)*W/2 for c in points];ys=[Y+(1-c[1]/c[3])*H/2 for c in points]
+    clamp=lambda v:max(-1e9,min(1e9,v))
+    l,t=math.floor(clamp(min(xs)))-1,math.floor(clamp(min(ys)))-1;r,b=math.ceil(clamp(max(xs)))+2,math.ceil(clamp(max(ys)))+2
+    l,t,r,b=max(l,X),max(t,Y),min(r,X+W),min(b,Y+H)
+    if r<=l or b<=t:return (X,Y,X+1,Y+1),8-len([c for c in corners if c[2]>=0])
+    return (l,t,r,b),8-len([c for c in corners if c[2]>=0])
+
+def box_of(lo,hi):
+    return [(a+b)/2 for a,b in zip(lo,hi)],[(b-a)/2 for a,b in zip(lo,hi)]
+
 class FadeRegion(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -81,6 +112,65 @@ class FadeRegion(unittest.TestCase):
         self.assertTrue(any(r['jitter']=='1' for r in bound))
         self.assertTrue(any(r['kind']=='5' for r in bound),'maximal |p| = 2 box bounded')
         self.assertTrue(any(r['kind']=='4' for r in bound),'zero-extent box bounded')
+
+    def near_case(self,rows,centre,half,viewport):
+        args=[str(self.driver),'--near-case']+[str(v) for v in rows+list(centre)+list(half)+list(viewport)]
+        f=fields(subprocess.check_output(args,text=True).strip())
+        return int(f['bound']),int(f['reason']),int(f['clipped']),rect_of(f['rect']),float(f['f'])
+
+    def test_near_clip_random_points_inside_and_behind_refused(self):
+        out=subprocess.run([str(self.driver),'--near','20260914','600','4000'],capture_output=True,text=True)
+        self.assertEqual(out.returncode,0,out.stdout[-500:])
+        rows=[fields(l) for l in out.stdout.splitlines() if l.startswith('NEAR ')]
+        self.assertEqual(len(rows),600);self.assertEqual(sum(int(r['fail']) for r in rows),0)
+        self.assertEqual(sum(int(r['outside']) for r in rows),0)
+        behind=[r for r in rows if r['reason']=='7'];cut=[r for r in rows if r['reason']=='0' and r['clipped']!='0'];plain=[r for r in rows if r['reason']=='0' and r['clipped']=='0']
+        self.assertGreaterEqual(len(behind),40);self.assertGreaterEqual(len(cut),80);self.assertGreaterEqual(len(plain),80)
+        self.assertTrue(all(r['behind']=='8' for r in behind))
+        # The plain projection would have refused every cut box (a corner at w <= 0) that the cut bounds.
+        self.assertTrue(all(r['plain_reason'] in ('0','4') for r in cut))
+        self.assertGreaterEqual(sum(r['plain_reason']=='4' for r in cut),40,'straddling boxes are now bounded instead of refused')
+        for r in cut:self.assertGreater(int(r['inside'])+int(r['clipped_points']),0,r)
+
+    def test_near_clip_hand_cases(self):
+        v=(0,0,64,64);quad=(32,24,48,40)
+        def contains(rect,inner):return rect[0]<=inner[0] and rect[1]<=inner[1] and rect[2]>=inner[2] and rect[3]>=inner[3]
+        # Straddling: the step-C 'n' triangle (behind vertex at w = -1, far edge at w = 3) plus the zero tail.
+        centre,half=box_of((0,0,-1),(1.5,.75,3))
+        bound,reason,clipped,rect,f=self.near_case(NEAR_ROWS,centre,half,v)
+        self.assertEqual((bound,reason,clipped),(1,0,4));self.assertEqual(rect,reference_clip_rect(NEAR_ROWS,centre,half,v)[0])
+        self.assertTrue(contains(rect,(32,20,55,24)),rect);self.assertLess(f,.5)
+        self.assertEqual(self.case(NEAR_ROWS,centre,half,v)[:2],(0,4),'the plain projection refuses the same box')
+        # Ending exactly on the near plane (w = 1): the half-float expansion puts the near corners 2^-10 behind it.
+        centre,half=box_of((0,-.25,1),(1.5,.75,3))
+        bound,reason,clipped,rect,f=self.near_case(NEAR_ROWS,centre,half,v)
+        self.assertEqual((bound,reason,clipped),(1,0,4));self.assertEqual(rect,reference_clip_rect(NEAR_ROWS,centre,half,v)[0])
+        self.assertTrue(contains(rect,quad),rect)
+        # Without the expansion the corners sit on the plane and nothing is cut.
+        exact=self.near_case(NEAR_ROWS,[c for c in centre],[h-EXPANSION for h in half],v)
+        self.assertEqual(exact[:3],(1,0,0));self.assertEqual(exact[3],self.case(NEAR_ROWS,centre,[h-EXPANSION for h in half],v)[2])
+        # Entirely behind: refused as BehindNear (7), the caller's fallback is the full viewport.
+        centre,half=box_of((0,-.25,-3),(1.5,.75,-1))
+        self.assertEqual(self.near_case(NEAR_ROWS,centre,half,v)[:4],(0,7,8,(0,0,64,64)))
+        self.assertIsNone(reference_clip_rect(NEAR_ROWS,centre,half,v)[0])
+        # Long beam from the near plane to w = 1000: bounded well below the viewport and covering the quad.
+        centre,half=box_of((0,-.25,1),(500,250,1000))
+        bound,reason,clipped,rect,f=self.near_case(NEAR_ROWS,centre,half,v)
+        self.assertEqual((bound,reason,clipped),(1,0,4));self.assertEqual(rect,reference_clip_rect(NEAR_ROWS,centre,half,v)[0])
+        self.assertTrue(contains(rect,quad),rect);self.assertLess(f,.5);self.assertEqual(rect,(30,0,64,43))
+        # A box in front of the plane: the cut changes nothing.
+        for rows in (IDENTITY,perspective(1,2)):
+            self.assertEqual(self.near_case(rows,[0,0,0],[.5,.5,.5],v)[3],self.case(rows,[0,0,0],[.5,.5,.5],v)[2])
+        # Random straddling boxes agree with the Python restatement exactly.
+        rng=random.Random(11);cut=0
+        for _ in range(60):
+            lo=[rng.uniform(-3,3) for _ in range(3)];hi=[l+rng.uniform(0,4) for l in lo]
+            centre,half=box_of(lo,hi)
+            bound,reason,clipped,rect,_=self.near_case(NEAR_ROWS,centre,half,v)
+            expected,behind=reference_clip_rect(NEAR_ROWS,centre,half,v)
+            if expected is None:self.assertEqual((bound,reason,clipped),(0,7,8))
+            else:self.assertEqual((bound,reason,clipped,rect),(1,0,behind,expected));cut+=clipped>0
+        self.assertGreater(cut,10)
 
     def test_python_reprojection_agrees_and_contains_points(self):
         rng=random.Random(7);checked=0

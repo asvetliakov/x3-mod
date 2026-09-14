@@ -231,6 +231,66 @@ Release, clear at Reset); proxy-loaded `run_locked_prefix_live.py` 13 frames und
 bullet VS/PS (8 bound, 5 refused); x87 audit PASS (`check_no_x87.py`, 224 reachable
 functions, no violation; the scan is integer/SSE scalar). Nothing consumes the rectangle yet.
 
+### Step B near-plane clipping (2026-09-14, run 15 diagnosis)
+
+Run 15 (`session-20260914-163102-212.log`, five firing F8 captures) showed the bound
+refusing half of the bullet draws and bounding the other half with 58–90 % rectangles:
+`locked_prefix_frame` totals draws=800 bound=400 refused=400, every refusal `reason_w`
+(NonPositiveW). Projecting the logged boxes through the `camera_state` view of each frame
+(v·View convention) gives the cause: the player's own bullet batches (432–486 vertices)
+straddle the camera plane with view depth from −320 to +7726 (a corner at w ≤ 0 refused the
+whole box, drawn native), the 3200–3300-vertex batches lie 76–96 km behind the camera (all
+w < 0, nothing visible, refused for the wrong reason), and the admitted 1056-vertex batches
+sit 128–2122 units in front of it, where a 1000-unit AABB legitimately projects to most of
+the viewport. The native half beside the packed half explains a mixed, dimmer look; whether
+the packed composite itself is dimmer is what the diagnostic below measures.
+
+Fix (`fade_region_math.h`, `project_box(..., NearClip*)`, `derive(..., near_clip)`; the
+locked-prefix source only, the part-bound fade route keeps NonPositiveW → full viewport):
+the box is cut against the D3D near plane in clip space before the divide. D3D rasterises
+only 0 ≤ z ≤ w, so the plane is clip z = 0 (the game's zn, 6 in gameplay, is wherever the
+c0–3 rows put it; nothing is hard-coded and the fixture rows put it at w = 1). The polytope
+box ∩ {z ≥ 0} is convex; its vertices are the corners with z ≥ 0 plus the exact crossings
+(z is affine along an edge, t = za/(za − zb)) of the 12 box edges, and with w > 0 at each of
+them the rectangle is the hull of their projections, padded and intersected with the
+viewport as before. Every corner behind → `Reason::BehindNear` (7), refused to native as a
+distinct reason (`reason_near`); a remaining vertex with w ≤ 0 (non-perspective rows) stays
+NonPositiveW. `Region::clipped` carries the number of corners cut; the half-float expansion
+puts a box whose near face lies exactly on the plane 2⁻¹⁰ behind it (clipped=4, same
+rectangle; the functional fixture's identity-row quad shows the same clipped=4 because its
+zero stale tail sits on z = 0). A straddling box is still bounded by its visible part only; a batch that starts
+just in front of the camera keeps a large rectangle by geometry (an AABB touching the
+camera fills the view) — that is the cost of the AABB checkpoints, not a bound defect.
+
+Grammar: `locked_prefix ... reason=%u clipped=%u ...` per draw on capture frames;
+`locked_prefix_frame ... clipped=%u ... reason_near=%u` (clipped counts bound draws whose
+box was cut). Capture frames only, zero cost otherwise (one bool per admitted packed draw):
+`packed_sample device= frame= index= rect=l,t,r,b clipped=n composed=l,t,r,b centre=x,y
+format=<D3DFORMAT> pre=r,g,b,a pre_y=<Rec.709 luminance> post=r,g,b,a post_y=
+pre_result=%08lx post_result=%08lx` — the HDR target A sampled at the centre of the bound
+rectangle after `prepare` (A|R copied to B|R, A untouched) and after the composite, one
+documented `GetRenderTargetData` into a system-memory surface of A's size and format plus a
+1×1 `LockRect` each (A16B16G16R16F, A32B32G32R32F, A8R8G8B8/X8R8G8B8 decoded; other
+formats fail closed with `D3DERR_NOTAVAILABLE`); the surface is created and released per
+sample, so Reset has nothing to drop. `pre_y`/`post_y` per admitted bullet against the
+native run is the "dimmer" comparison run 16 needs.
+
+Evidence: host `test_fade_region.py` (8 tests: `--near` 600 random straddling cases, 0
+failures, 0 outside points; hand cases straddle/exact/behind/beam equal to a Python
+restatement, beam rect (30,0,64,43) = 34 % of 64×64); `run_locked_prefix_live.py` 15 frames
+(9 bound, 6 refused; near_straddle clipped=4 rect (46,10,96,51) f=222‰, near_exact
+clipped=4 (46,10,96,63), near_behind reason 7 clipped=8 refused, near_beam (46,0,96,63)
+f=341‰, all covering their footprints; 11 scans, 24.0 µs/scan); `run_linear_distance_fade_live.py
+--screen-emission` (`screen-emission-live1.json`, 12 processes) with kinds n/x/h/b at frames
+17–20: 21 frames, 26 sources, 19 eligible / 13 admitted / 12 linear / 3 unbounded (first
+draws and the behind-plane h), bound rectangles n (30,6,64,35) 24 %, x (30,6,64,43) 31 %,
+b (30,0,64,43) 36 % of 64×64, each covering its footprint, fade witness outside=0 on all ten
+sampled frames (17, 18, 20 included), injected straddle violations {…, 17: 84, 18: 128,
+20: 128}, seven `packed_sample` lines over capture frames 2–9 (six with a changed centre
+luminance, the composite-fault frame unchanged), Reset and caps runs unchanged (see the
+ledger [screen-emission.md](../verification/screen-emission.md)); x87 audit PASS (224
+reachable functions).
+
 ## Step C — implemented (2026-09-14)
 
 Runtime admission behind `--screen-emission` (`X3M_SCREEN_EMISSION=1`, which sets and implies
