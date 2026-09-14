@@ -34,6 +34,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 16 | Run 13 retry: target-name speech with the decoder plugin and the fixed DMO fallback hook | 0 | Completed as user run 16, snapshot run41: loads, speech works, crackle under investigation |
 | 17 | Bullet bound after near-plane clipping, packed_sample brightness | 0 | Completed as user run 17, snapshot run42: 100 % bound, witness clean, dimmer unresolved (centre sample) |
 | 18 | Voice crackle fix: decoder plugin v4 (no new DLL) | 0 | Completed as user run 18, snapshot run46: no crackle, voice fine |
+| 19 | Combined: AO off/on (Ctrl+Shift+F11), bullets at gain 1, cutout shimmer fix, same-port far/near pair | 1 | Pending candidate (build in progress) |
 | 15 | Screen emission on bullets (packed policy 8 in the region bracket) | 0 | Completed as user run 15, snapshot run40: witness clean, 50 % of bullet draws refused (w ≤ 0), near-fullscreen brackets; bound fix in progress |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
@@ -93,6 +94,41 @@ Report: hang or not, speech heard or not (and whether it starts at the right
 word), selection pauses, comm video/audio, and the session path. Analysis reads
 the `voice_dmo_fallback` activation lines, the `game_phase_audio` counters and
 the selection timing.
+
+## 19. Combined: AO off/on, bullets at gain 1, cutout shimmer fix, same-port far/near pair — Pending candidate
+
+One run covers four questions on the next candidate (AO step 2, screen emission step E, the
+cutout-miss exemption, the w-scaled pad; fade route default-on; plugin v4 for voice):
+
+1. **Distant shimmer**: fly the run-11 asteroid path in normal view; say whether distant asteroids
+   and stations still shimmer or vanish in parts. Analysis: `camera_state reason=3` rate (was
+   11–15 %; expected ≈0 outside real cuts), `taa_invalidate site=` lines.
+2. **Docking port**: approach an Argon station docking port and press F8 twice on the *same* port,
+   once far (the port small on screen) and once near (four times closer or more). Say whether it
+   still darkens/brightens. Analysis: per-draw inputs, `packed`/fade rects and the HDR captures
+   of the two frames (the first same-node distance pair).
+3. **Bullets**: fire at a target for a few seconds, F8 once while firing. Say whether the bolts
+   look like run 14 (they should: gain 1 is native parity) and nothing else changed.
+   Analysis: `packed_sample` `changed_px`/`max_post_y` vs `max_pre_y` on bolt pixels,
+   `screen_emission_frame` firing vs not.
+4. **Ambient occlusion**: near a station and near an asteroid, press Ctrl+Shift+F11 a few times to
+   toggle AO off/on, F8 once with AO on and once off in the same spot. Say whether the effect is
+   visible, where it looks right or wrong (dark halos, crawling, HUD affected), and the frame
+   rate on vs off. Analysis: `ambient_occlusion_frame cpu_us` on vs off, `ambient_occlusion_toggle`.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness --screen-emission --screen-emission-timing \
+  --ambient-occlusion --ao-timing \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 1
+```
+
+Optional second short run for the bolt HDR look: the same command plus `--screen-emission-gain 2`,
+fire a few seconds, F8 once, and say whether the brighter bolts with bloom look right.
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
