@@ -95,6 +95,32 @@ differs from CrossOver's in `GST_DISABLE_CAST_CHECKS` and had
 `GST_DISABLE_PARSE` corrected by hand, so it is not a byte-identical CrossOver
 SDK; neither symbol is used by gst-libav.
 
+### Patched builds v2-v4
+
+Each later build is a copy of the previous tree with one more patch on the
+private gst-libav source; the FFmpeg closure, the build-only SDK, the packaging
+and the audit are unchanged, so the four `libx3wma-*.dylib` stay bit-identical
+to v1 in every build. The build command differs only in the tree it is run from
+and the source directory: `meson setup build/gstlibav src/gst-libav ...`
+(v1 used `src/gstreamer/subprojects/gst-libav`), same flags,
+`PKG_CONFIG_PATH=/tmp/x3-wma-plugin/pcshim:/tmp/x3-wma-plugin/ffmpeg/lib/pkgconfig`,
+`PATH=/tmp/x3-wma-plugin/tools/venv/bin:$PATH`.
+
+| Build | Patches on `ext/libav/gstavauddec.c` | `libgstlibav.dylib` SHA256 | Build record |
+| --- | --- | --- | --- |
+| v1 `/tmp/x3-wma-plugin` | none | `2817e175…` | `build-record.md` in the tree |
+| v2 `/tmp/x3-wma-plugin-v2` | `gst-libav-subbuffer.patch` (cap only) | `9a851c70…` | same |
+| v3 `/tmp/x3-wma-plugin-v3` | `gst-libav-subbuffer.patch` (cap + 500 ms tolerance) | `55f4f87b45b4a2554998b71ba5b6393046cb9f04c0f0cb5c7e71492ea618299f` | same |
+| v4 `/tmp/x3-wma-plugin-v4` | v3 patch + `gst-libav-float-limit.patch` | `98334d763a296ff10d57a88753e23c1432a4d61766654f0972459d5c3b879a77` | same |
+
+v4's patched source `ext/libav/gstavauddec.c` is
+`f5ade4b3f324d74f2cc84630124361398ed1e4f6e7133b12ebcacd4d260908db`, the patch
+itself `1ee93bc47efbc5e27e303525b0d8c90a0beeb867b74dc58d583f3e6d0a0172c8`
+(repository copy `voice-decoder-float-limit.patch`). Its undefined-symbol set is
+identical to v3's, so it adds no import. Backups follow the existing
+convention: `artifacts/wma-plugin-v3` and `artifacts/wma-plugin-v4` in the
+resume directory.
+
 Two review findings constrain reuse: the plugin's single `LC_RPATH` is the
 **absolute** `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64`,
 so the artifacts resolve only under that exact application install (another
@@ -297,6 +323,41 @@ tolerance; the native probe then reports anchor errors within 0.02 ms and
 1000 ms spans within 0.02 ms (`verification/results/bottle-X3/voice-native-actual-v3.json`,
 v1 error up to 701 ms, v2 47 ms). v3 is the gameplay candidate once the load
 hang above is fixed; v1 and v2 stay for rollback.
+
+## Float limit build v4 (2026-09-14)
+
+The voice crackle is decoder-side clipping distortion, not a handover problem.
+`avdec_wmav2` negotiates `audio/x-raw, format=F32LE, layout=non-interleaved,
+rate=44100, channels=1` and pushes ffmpeg's FLTP samples through unchanged; the
+stock audioconvert in winegstreamer's transform converts them to `S16LE,
+interleaved` with `unpack F32LE to F64LE` -> `convert F64 to S32`
+(`audio_orc_double_to_s32`) -> `quantize to 16 bits, dither 2, ns 0` ->
+`pack S32LE to S16LE` (observed under
+`GST_DEBUG=libav:5,audioconvert:6,audio-converter:6,GST_CAPS:4`). ffmpeg's
+wmav2 output is not limited to [-1, 1] and that S32 step is modular rather than
+saturating, so an over-full-scale sample wraps sign: 1.0044 -> 2156986363 ->
+-2137980933 -> `-32623` where `+32767` is correct, about 50 times per second of
+speech.
+
+CrossOver's GStreamer is not ours to change, so v4 (`/tmp/x3-wma-plugin-v4`,
+backup `artifacts/wma-plugin-v4`) limits the decoder's own float output in
+`gst_ffmpegauddec_audio_frame`, right after the frame is copied into the output
+buffer, to `1 - 2^-14` of full scale (`gst-libav-float-limit.patch`). The
+headroom below 1.0 is required, not cosmetic: the quantizer that follows adds
+TPDF dither plus the rounding bias to the S32 value with a wrapping add, up to
+98302 counts, so a value left at `INT32_MAX` would wrap there instead; 2^-14 of
+full scale is 131072 counts and costs 0.0005 dB on samples that were already
+clipping. Non-finite samples become silence. Integer output formats return
+immediately, so nothing else the plugin can decode is affected.
+
+Measured against a host ffmpeg decode of the same archives (constant
+-4096-sample delay): samples differing by more than 30 % of full scale fall
+from 290387 / 168094 to **0 / 0**, mean |diff| from 72.64 / 74.61 to 0.32 /
+0.33 LSB, max |diff| from 65535 to 3, dump peak 32768 -> 32767, dropouts and
+timestamp gaps still 0, and the DMO-fallback hook replica still completes with
+3 activations on the v4 plugin path (ledger `docs/verification/voice-decoder.md`).
+v4 is the gameplay candidate; v3 stays installed until the user's next run and
+is the rollback target.
 
 
 ## Alternative: native WMP10 codecs in the bottle
