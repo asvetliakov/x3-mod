@@ -545,3 +545,64 @@ makes the log unmanageable, `-all,warn+quartz,trace+amstream,+loaddll` still
 separates Pause from Run failure. A DLL witness, if ever needed, reads
 `[EBX+0x78]` at `4d03f7` and logs `EnumFilters`/`QueryFilterInfo` names with
 per-filter `GetState(0)`.
+
+## 13. The DMO wrapper the game adds, and why it fails and spins (2026-09-14)
+
+(Section 12, the `0x004d1c20` / DMO-creation disassembly, is written separately.)
+User run 12's `CX_LOG` trace (`/tmp/x3-witness-quartz.log.z`, thread `00d8`)
+and the `wine-11.15` tree settle §11's ranking (1):
+
+**Who adds it.** The game. Between `GetFilterGraph` and `OpenFile` the game's
+own thread calls `DllGetClassObject {94297043…}` (`CLSID_DMOWrapperFilter`,
+`outer 00000000`), QIs `IDMOWrapperFilter {52d6f586…}`, calls
+`Init(CLSID_CWMSPDecMediaObject {874131cb-4ecc-443b-8948-746b89595d20},
+DMOCATEGORY_AUDIO_DECODER {57f2db8b…})` twice (two attempts) and then
+`AddFilter(wrapper, NULL)` (joins as `L"0001"`). amstream never adds a decoder
+before the source, and quartz creates filters only through `create_filter` on
+its message thread. The CLSID is the **Windows Media Speech decoder**
+(`wmspdmod.dll`), not the WMA decoder `{2eeb4adf…}` (`wmadmod.dll`, registered
+in the bottle). `{874131cb…}` has no `CLSID` key in `system.reg`, so
+`qasf/dmowrapper.c:599` `CoCreateInstance` fails `REGDB_E_CLASSNOTREG`
+(`0x80040154`) and `filter->dmo` stays NULL; the game adds the filter anyway.
+
+**Why `Pause` fails.** `MediaControl_Run` (graph Stopped) pauses every filter;
+`dmo_wrapper_init_stream` returns `E_FAIL` at `dmowrapper.c:721` (`!filter->dmo`)
+before `AllocateStreamingResources` (l. 749) or any pin is involved — the
+wrapper has no pins at all. `MediaControl_Run` returns that `E_FAIL` with the
+MediaStreamFilter and (after the loop continues) the splitter left **Paused**
+and `graph->state` still Stopped. On native Windows the class is registered,
+`Init` succeeds and the `!dmo` branch never arises; the fatal step is the
+missing speech DMO plus Wine's `E_FAIL` for a wrapper without a DMO.
+
+**Why the teardown spins.** `MediaFilter_Stop` (`filtergraph.c:5082`) returns
+`S_OK` immediately because `graph->state == State_Stopped`, so nothing stops
+the paused splitter. The game's `004d1d40`/`004d1c20` teardown removes `"0001"`
+(pin-less, succeeds) and then `RemoveFilter(MediaStreamFilter)`:
+`FilterGraph2_RemoveFilter` (l. 678) disconnects the sink's peer first,
+strmbase `source_Disconnect` (`pin.c:579`) returns `VFW_E_NOT_STOPPED`
+(`0x80040224`) because the splitter is Paused, `RemoveFilter` returns it with
+the filter still listed, and the game retries: 3,802,638 `Removing filter
+L"MediaStreamFilter"` lines in run 12, 1,086,051 in the replica's 15 s.
+
+**Replica reproduction** (mode `game-dmo`, EXE `575cbd48…`,
+`verification/results/bottle-X3/voice-startup-replica.json`):
+
+| Run | `dmo_wrapper_init` | `open_file` | `stream_run` | teardown |
+| --- | --- | --- | --- | --- |
+| `plugin-v3-game-dmo` | `80040154` ×2, `dmo_wrapper_add` `S_OK` | `S_OK` 1580 ms | **`80004005`** 44 ms | `remove_dmo_wrapper` `S_OK`; `remove_filters` first `RemoveFilter` `80040224`, **`REPLICA_HUNG step=remove_filters`** at 15 s (`/tmp/x3-voice-startup-dmo1`, trace `/tmp/x3-voice-startup-dmo1-cx.log`) |
+| `control-game-dmo` (no plugin) | `80040154` ×2 | `80040217` ×2 | not reached | `remove_filters` 3 iterations, clean, 5.6 s |
+
+**Fixes on our side, ranked.** (b) Process-local, behind the CrossOver
+capability boundary and inert on Windows: when the game's `Init` fails with
+`REGDB_E_CLASSNOTREG`, retry it with the registered WMA decoder
+`{2eeb4adf…}` (winegstreamer `wma_decoder`, `AllocateStreamingResources`
+`S_OK`) so the wrapper carries a DMO, stays unconnected and pauses/runs; the
+game's later `Stop` then stops every filter and `RemoveFilter` succeeds. Site:
+the game's `Init` call (§12) or the qasf vtable slot. Proof before a game run:
+a replica mode doing the same retry must show `stream_run` `S_OK` and a clean
+`remove_filters`. (c) Fail-early fallback: bound the `004d1c20` retry (or stop
+the paused filters individually before `RemoveFilter`), which ends the hang
+but leaves voice absent. (a) Steering the splitter to compressed WMA cannot
+help: the wrapper has no DMO and no pins, and the game asked for the speech
+decoder. (d) Making `CoCreateInstance(CLSID_DMOWrapperFilter)` fail depends on
+the game's untested branch after that failure (§12).

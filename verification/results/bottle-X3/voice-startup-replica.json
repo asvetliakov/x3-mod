@@ -1565,6 +1565,764 @@
         "0:00:00.988476875      94740      0x174ed7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x175f91f30, message type state-changed.",
         "0:00:00.988507958      94740      0x174ed7000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"sink\" found."
       ]
+    },
+    "plugin-v3-game-dmo": {
+      "label": "plugin-v3-game-dmo",
+      "mode": "game-dmo",
+      "dwell_ms": 0,
+      "outcome": "hung at remove_filters (stream 2)",
+      "completed": false,
+      "hung_step": "remove_filters",
+      "hung_stream": 2,
+      "hung_elapsed_ms": 15079,
+      "hung_after_stages": 50,
+      "created": 0,
+      "exit_code": -15,
+      "process_wall_seconds": 39.099347417000004,
+      "plugin_present": true,
+      "plugin_env": {
+        "GST_PLUGIN_PATH_1_0": "/tmp/x3-wma-plugin-v3/runtime/plugins",
+        "GST_REGISTRY_1_0": "/tmp/x3-wma-plugin-v3/registry/x3-arm64.bin"
+      },
+      "gst_debug": "3,WINE:5,decodebin:4",
+      "exe_sha256": "575cbd48a21cc79a7e51e14f52baa0ddeafcf5cf129198b2b474d9603bfd2296",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": null,
+      "output": "/tmp/x3-voice-startup-dmo1",
+      "startup": {
+        "ds_hr": "00000000",
+        "coop_hr": "00000000",
+        "ds_present": "1",
+        "window": "1"
+      },
+      "primary": {
+        "flags": "d1",
+        "create_hr": "00000000",
+        "play_hr": "00000000",
+        "format_hr": "00000000",
+        "volume": "0",
+        "listener": "1",
+        "commit_hr": "00000000"
+      },
+      "key_steps": [
+        {
+          "stream": 0,
+          "name": "primary_create",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.2
+        },
+        {
+          "stream": 0,
+          "name": "primary_play",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.011
+        },
+        {
+          "stream": 0,
+          "name": "primary_set_format",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.077
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.131
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.033
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.818
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 1580.018
+        },
+        {
+          "stream": 2,
+          "name": "stream_run",
+          "attempt": 1,
+          "hr": "80004005",
+          "wall_ms": 43.98
+        },
+        {
+          "stream": 2,
+          "name": "buffer_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.03
+        },
+        {
+          "stream": 2,
+          "name": "control_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.059
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.007
+        },
+        {
+          "stream": 2,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.03
+        }
+      ],
+      "stream_rows": [],
+      "sample_threads": [
+        {
+          "pid": 36126,
+          "threads": [
+            {
+              "thread": "Thread_27474668",
+              "top": [
+                "start (dyld)",
+                "??? (wine)",
+                "__wine_main (ntdll.so)",
+                "CFRunLoopRun (CoreFoundation)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27474669",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27474816",
+              "top": [
+                "start_wqthread (libsystem_pthread.dylib)",
+                "_pthread_wqthread (libsystem_pthread.dylib)",
+                "__workq_kernreturn (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27474823",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            }
+          ]
+        },
+        {
+          "pid": 36150,
+          "threads": [
+            {
+              "thread": "Thread_27474821",
+              "top": [
+                "start (dyld)",
+                "??? (wine)",
+                "__wine_main (ntdll.so)",
+                "CFRunLoopRun (CoreFoundation)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27474822",
+              "top": [
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "write (libsystem_kernel.dylib)",
+                "DYLD-STUB$$write (ntdll.so)",
+                "??? (wine)",
+                "??? (wine)"
+              ]
+            },
+            {
+              "thread": "Thread_27474833",
+              "top": [
+                "start_wqthread (libsystem_pthread.dylib)",
+                "_pthread_wqthread (libsystem_pthread.dylib)",
+                "_dispatch_worker_thread2 (libdispatch.dylib)",
+                "_dispatch_root_queue_drain (libdispatch.dylib)",
+                "<deduplicated_symbol> (libdispatch.dylib)",
+                "_dispatch_client_callout (libdispatch.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27474835",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27474988",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "_NSEventThread (AppKit)",
+                "_CFRunLoopRunSpecificWithOptions (CoreFoundation)",
+                "__CFRunLoopRun (CoreFoundation)",
+                "__CFRunLoopServiceMachPort (CoreFoundation)"
+              ]
+            },
+            {
+              "thread": "Thread_27475063",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475064",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475267",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "caulk::thread_proxy<std::tuple<caulk::thread::attributes, void (caulk: (caulk)",
+                "caulk::concurrent::details::worker_thread::run() (caulk)",
+                "caulk::semaphore::timed_wait(double) (caulk)",
+                "semaphore_wait_trap (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475268",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "HALC_IOThread::Entry(void*) (CoreAudio)",
+                "invocation function for block in HALC_ProxyIOContext::HALC_ProxyIOCont (CoreAudio)",
+                "HALC_ProxyIOContext::IOWorkLoop() (CoreAudio)",
+                "caulk::mach::semaphore::wait_signal_or_error(caulk::mach::semaphore&) (caulk)"
+              ]
+            },
+            {
+              "thread": "Thread_27475345",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (ntdll.so)",
+                "??? (winecoreaudio.so)",
+                "NtDelayExecution (ntdll.so)",
+                "__select (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475346",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)",
+                "??? (<unknown binary>)"
+              ]
+            },
+            {
+              "thread": "Thread_27475371",
+              "top": [
+                "??? (ntdll.so)",
+                "NtUserGetMessage (win32u.so)",
+                "??? (win32u.so)",
+                "NtWaitForMultipleObjects (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27475378",
+              "top": [
+                "??? (ntdll.so)",
+                "NtRemoveIoCompletion (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27475379",
+              "top": [
+                "??? (ntdll.so)",
+                "NtNotifyChangeKey (ntdll.so)",
+                "NtNotifyChangeMultipleKeys (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)"
+              ]
+            },
+            {
+              "thread": "Thread_27475380",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "CADeprecated::CAPThread::Entry(void*) (CoreMIDI)",
+                "CADeprecated::XThread::RunHelper(void*) (CoreMIDI)",
+                "MIDIProcess::MIDIInPortThread::Run() (CoreMIDI)",
+                "XServerMachPort::ReceiveMessage(int&, void*, int&) (CoreMIDI)"
+              ]
+            },
+            {
+              "thread": "Thread_27475394",
+              "top": [
+                "??? (ntdll.so)",
+                "??? (winecoreaudio.so)",
+                "_pthread_cond_wait (libsystem_pthread.dylib)",
+                "__psynch_cvwait (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475397",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "g_cond_wait (libglib-2.0.0.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475398",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "??? (libgstcoreelements.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475399",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "g_cond_wait (libglib-2.0.0.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475400",
+              "top": [
+                "thread_start (libsystem_pthread.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libglib-2.0.0.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)",
+                "??? (libgstasf.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475402",
+              "top": [
+                "??? (ntdll.so)",
+                "??? (winegstreamer.so)",
+                "_pthread_cond_wait (libsystem_pthread.dylib)",
+                "__psynch_cvwait (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475403",
+              "top": [
+                "??? (ntdll.so)",
+                "NtWaitForSingleObject (ntdll.so)",
+                "??? (ntdll.so)",
+                "??? (ntdll.so)",
+                "__ulock_wait2 (libsystem_kernel.dylib)"
+              ]
+            },
+            {
+              "thread": "Thread_27475437",
+              "top": [
+                "start_wqthread (libsystem_pthread.dylib)",
+                "_pthread_wqthread (libsystem_pthread.dylib)",
+                "__workq_kernreturn (libsystem_kernel.dylib)",
+                "_pthread_start (libsystem_pthread.dylib)",
+                "thread_start (libsystem_pthread.dylib)",
+                "??? (libgstreamer-1.0.0.dylib)"
+              ]
+            }
+          ]
+        }
+      ],
+      "gst_log_tail": [
+        "0:00:00.363466125      36150      0x351d49000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x176469000, message type state-changed.",
+        "0:00:00.363474084      36150      0x351d49000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x176469000, message type state-changed.",
+        "0:00:00.363477917      36150      0x351d49000 DEBUG                   WINE unixlib.c:177:append_element: Linked audioconvert0 element 0x1768bdad0.",
+        "0:00:00.363538042      36150      0x351d49000 INFO               decodebin gstdecodebin2.c:4847:gst_decode_bin_expose:<decodebin3:src_0> added new decoded pad",
+        "0:00:00.363542084      36150      0x351d49000 DEBUG                   WINE wg_parser.c:982:stream_decodebin_no_more_pads_cb: stream 0x30ff9cfe0, parser 0x176469000, element 0x30ff9ca90.",
+        "0:00:00.363547417      36150      0x351d49000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x176469000, message type state-changed.",
+        "0:00:00.363551792      36150      0x351d49000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x176469000, message type state-changed.",
+        "0:00:00.363554500      36150      0x351d49000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x176469000, message type async-done.",
+        "0:00:00.363572125      36150      0x351d49000 WARN                    WINE wg_parser.c:710:sink_event_cb: Ignoring \"stream-start\" event.",
+        "0:00:00.363664375      36150      0x351d49000 WARN                    WINE wg_parser.c:1318:src_query_cb: Unhandled query type latency.",
+        "0:00:00.387622042      36150      0x351d49000 DEBUG                   WINE wg_parser.c:748:sink_chain_cb: Stream is flushing; discarding buffer.",
+        "0:00:00.387662084      36150      0x1761e6000 WARN                    WINE wg_parser.c:1318:src_query_cb: Unhandled query type convert."
+      ]
+    },
+    "control-game-dmo": {
+      "label": "control-game-dmo",
+      "mode": "game-dmo",
+      "dwell_ms": 0,
+      "outcome": "completed",
+      "completed": true,
+      "hung_step": null,
+      "hung_stream": null,
+      "hung_elapsed_ms": null,
+      "hung_after_stages": null,
+      "created": 0,
+      "exit_code": 0,
+      "process_wall_seconds": 5.608465542,
+      "plugin_present": false,
+      "plugin_env": {},
+      "gst_debug": "3,WINE:5,decodebin:4",
+      "exe_sha256": "575cbd48a21cc79a7e51e14f52baa0ddeafcf5cf129198b2b474d9603bfd2296",
+      "abort": null,
+      "bottle": {
+        "name": "X3",
+        "wine_arch": "arm64",
+        "environment": {
+          "FEX_X87REDUCEDPRECISION": "1",
+          "WINEMSYNC": "1"
+        },
+        "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+      },
+      "media_sha256": [
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816",
+        "fc6c2ce346cc11f293aaadbc42a3e674407db4c80c04946a2ee4b261d28008b7",
+        "126b84b3fc08ea215c3072d63c1c5c3e0ce2591e000857fa0b4d11dd90e5c816"
+      ],
+      "play": null,
+      "output": "/tmp/x3-voice-startup-dmo2",
+      "startup": {
+        "ds_hr": "00000000",
+        "coop_hr": "00000000",
+        "ds_present": "1",
+        "window": "1"
+      },
+      "primary": {
+        "flags": "d1",
+        "create_hr": "00000000",
+        "play_hr": "00000000",
+        "format_hr": "00000000",
+        "volume": "0",
+        "listener": "1",
+        "commit_hr": "00000000"
+      },
+      "key_steps": [
+        {
+          "stream": 0,
+          "name": "primary_create",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.2
+        },
+        {
+          "stream": 0,
+          "name": "primary_play",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.01
+        },
+        {
+          "stream": 0,
+          "name": "primary_set_format",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.088
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.109
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.02
+        },
+        {
+          "stream": 2,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.765
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "80040217",
+          "wall_ms": 1161.813
+        },
+        {
+          "stream": 2,
+          "name": "open_file",
+          "attempt": 2,
+          "hr": "80040217",
+          "wall_ms": 176.072
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.067
+        },
+        {
+          "stream": 2,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 2,
+          "name": "remove_filters",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.132
+        },
+        {
+          "stream": 2,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.025
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.025
+        },
+        {
+          "stream": 3,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 3,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "80040217",
+          "wall_ms": 116.064
+        },
+        {
+          "stream": 3,
+          "name": "open_file",
+          "attempt": 2,
+          "hr": "80040217",
+          "wall_ms": 136.527
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.002
+        },
+        {
+          "stream": 3,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 3,
+          "name": "remove_filters",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.098
+        },
+        {
+          "stream": 3,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init",
+          "attempt": 1,
+          "hr": "80040154",
+          "wall_ms": 0.018
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_init",
+          "attempt": 2,
+          "hr": "80040154",
+          "wall_ms": 0.019
+        },
+        {
+          "stream": 1,
+          "name": "dmo_wrapper_add",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.004
+        },
+        {
+          "stream": 1,
+          "name": "open_file",
+          "attempt": 1,
+          "hr": "80040217",
+          "wall_ms": 143.477
+        },
+        {
+          "stream": 1,
+          "name": "open_file",
+          "attempt": 2,
+          "hr": "80040217",
+          "wall_ms": 143.256
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.003
+        },
+        {
+          "stream": 1,
+          "name": "remove_dmo_wrapper",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.007
+        },
+        {
+          "stream": 1,
+          "name": "remove_filters",
+          "attempt": 1,
+          "hr": "00000000",
+          "wall_ms": 0.077
+        },
+        {
+          "stream": 1,
+          "name": "stream_stop",
+          "attempt": 2,
+          "hr": "00000000",
+          "wall_ms": 0.0
+        }
+      ],
+      "stream_rows": [
+        {
+          "stream": "2",
+          "created": "0",
+          "role": "restored",
+          "fatal": "open_file",
+          "hr": "80040217",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "3",
+          "created": "0",
+          "role": "restored",
+          "fatal": "open_file",
+          "hr": "80040217",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        },
+        {
+          "stream": "1",
+          "created": "0",
+          "role": "played",
+          "fatal": "open_file",
+          "hr": "80040217",
+          "duration": "0.000",
+          "early_update_hr": "8000000a"
+        }
+      ],
+      "sample_threads": [],
+      "gst_log_tail": [
+        "0:00:00.907776458      36716      0x349c84000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type stream-status.",
+        "0:00:00.907788667      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907793667      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907797625      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907801167      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907805667      36716      0x1799d7000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"src_0\" found.",
+        "0:00:00.907821000      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907825042      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907828208      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907833208      36716      0x1799d7000 DEBUG                   WINE wg_parser.c:1424:bus_handler_cb: parser 0x315ad06b0, message type state-changed.",
+        "0:00:00.907851375      36716      0x1799d7000 WARN                    WINE wg_parser.c:1101:pad_removed_cb: No pin matching pad \"sink\" found.",
+        "0:00:00.908548042      36716      0x3327fd000 DEBUG                   WINE wg_parser.c:1886:wg_parser_create: Created winegstreamer parser 0x17f06e080."
+      ]
     }
   }
 }

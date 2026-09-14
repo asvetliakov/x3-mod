@@ -12,9 +12,9 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT / "verification/probe"))
 from run_voice_stream_probe import fields,hr,digest,bottle,game_running
-MODES=('game','nopause','early_update','single','explicit','game-ds','game-ds-stereo')
-GAME_DS_MODES=('game-ds','game-ds-stereo')  # section-10 DirectSound init, visible window, 004d1d40 teardown
-KEY_STEPS=('open_file','stream_run','control_pause','control_run','buffer_stop','control_stop','stream_stop','primary_create','primary_play','primary_set_format')
+MODES=('game','nopause','early_update','single','explicit','game-ds','game-ds-stereo','game-dmo')
+GAME_DS_MODES=('game-ds','game-ds-stereo','game-dmo')  # section-10 DirectSound init, visible window, 004d1d40 teardown
+KEY_STEPS=('dmo_wrapper_init','dmo_wrapper_add','remove_dmo_wrapper','remove_filters','open_file','stream_run','control_pause','control_run','buffer_stop','control_stop','stream_stop','primary_create','primary_play','primary_set_format')
 MEDIA_IDS=(144,244,144)  # stream 1 (played), 2 and 3 (restored, never pumped)
 PLUGIN_KEYS=('GST_PLUGIN_PATH_1_0','GST_REGISTRY_1_0')
 EXE_NAME='voice_startup_replica.exe'

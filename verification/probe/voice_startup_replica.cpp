@@ -13,6 +13,12 @@
 // listener), the game's visible 640x480 window, the route-dependent pre-OpenFile
 // SetFormat channel count, no get_Duration, and the synchronous 004d1d40
 // destructor order (Stop / Stop / SetState(STOP) issued twice) on every path.
+// Mode game-dmo adds what user run 12's CX_LOG trace shows the game doing
+// between GetFilterGraph and OpenFile: CoCreateInstance(CLSID_DMOWrapperFilter),
+// IDMOWrapperFilter::Init(CLSID_CWMSPDecMediaObject, DMOCATEGORY_AUDIO_DECODER)
+// (two attempts) and AddFilter(NULL name) whatever Init returned; its teardown
+// removes the wrapper, then models 004d1c20 as an EnumFilters/RemoveFilter loop
+// that retries while RemoveFilter fails (section 13 of the startup note).
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -29,6 +35,12 @@
 #include <vector>
 
 static_assert(sizeof(void*)==4,"probe must use the game's x86 COM ABI");
+// dmodshow.h/dmoreg.h/wmcodecdsp.h are not in this MinGW; documented GUIDs, local names.
+DEFINE_GUID(CLSID_DMOWrapperFilter_local,0x94297043,0xbd82,0x4dfd,0xb0,0xde,0x81,0x77,0x73,0x9c,0x6d,0x20);
+DEFINE_GUID(IID_IDMOWrapperFilter_local,0x52d6f586,0x9f0f,0x4824,0x8f,0xc8,0xe3,0x2c,0xa0,0x49,0x30,0xc2);
+DEFINE_GUID(CLSID_CWMSPDecMediaObject_local,0x874131cb,0x4ecc,0x443b,0x89,0x48,0x74,0x6b,0x89,0x59,0x5d,0x20);
+DEFINE_GUID(DMOCATEGORY_AUDIO_DECODER_local,0x57f2db8b,0xe6bb,0x4513,0x9d,0x43,0xdc,0xd2,0xa6,0x59,0x31,0x25);
+struct IDMOWrapperFilterLocal : public IUnknown { virtual HRESULT STDMETHODCALLTYPE Init(REFCLSID clsid,REFCLSID category)=0; };
 static_assert((DSBCAPS_LOCSOFTWARE|DSBCAPS_CTRLVOLUME|DSBCAPS_GETCURRENTPOSITION2)==0x10088,"SDK DirectSound flags required");
 static const DWORD WATCHDOG_MS=15000;
 static LARGE_INTEGER frequency;
@@ -86,13 +98,13 @@ struct Trace {
         if(p){step(stream,name,1,true,[&]{p->Release();return S_OK;});p=nullptr;}
     }
 };
-enum Mode { MODE_GAME, MODE_NOPAUSE, MODE_EARLY_UPDATE, MODE_SINGLE, MODE_EXPLICIT, MODE_GAME_DS, MODE_GAME_DS_STEREO };
-static bool game_ds(Mode m){return m==MODE_GAME_DS||m==MODE_GAME_DS_STEREO;}
+enum Mode { MODE_GAME, MODE_NOPAUSE, MODE_EARLY_UPDATE, MODE_SINGLE, MODE_EXPLICIT, MODE_GAME_DS, MODE_GAME_DS_STEREO, MODE_GAME_DMO };
+static bool game_ds(Mode m){return m==MODE_GAME_DS||m==MODE_GAME_DS_STEREO||m==MODE_GAME_DMO;}
 static const DWORD PRIMARY_RATE=44100; // 0x608afc as initialised by 004b8740 (004b7400 config override not modelled)
 struct Stream {
     Trace& t;int index;IAMMultiMediaStream* multi{};IMediaStream* media{};IAudioMediaStream* audio{};
     IGraphBuilder* graph{};IBaseFilter* source{};IAudioData* data{};IAudioStreamSample* sample{};IDirectSoundBuffer* buffer{};
-    IMediaPosition* position{};IMediaControl* control{};std::vector<BYTE> pcm;WAVEFORMATEX format{};
+    IMediaPosition* position{};IMediaControl* control{};IBaseFilter* wrapper{};std::vector<BYTE> pcm;WAVEFORMATEX format{};
     double duration{};const char* fatal="none";HRESULT fatal_hr=S_OK;bool created{};HRESULT early_update_hr=E_PENDING;
     int state{1};bool pending{};Mode mode{MODE_GAME};
     Stream(Trace& x,int i,Mode m):t(x),index(i),mode(m){}
@@ -118,6 +130,19 @@ struct Stream {
         WAVEFORMATEX wanted{WAVE_FORMAT_PCM,channels,PRIMARY_RATE,PRIMARY_RATE*channels*2u,static_cast<WORD>(channels*2),16,0};
         NEED("set_pcm",audio->SetFormat(&wanted));
         NEED("get_graph",multi->GetFilterGraph(&graph));
+        if(mode==MODE_GAME_DMO) {
+            // Run 12 trace, thread 00d8: DMO wrapper created and Init'd with the WM Speech decoder DMO (not
+            // registered in the bottle), then AddFilter with a NULL name regardless of the Init result.
+            HRESULT made=t.step(index,"dmo_wrapper_create",1,true,[&]{return CoCreateInstance(CLSID_DMOWrapperFilter_local,nullptr,CLSCTX_INPROC_SERVER,IID_IBaseFilter,reinterpret_cast<void**>(&wrapper));});
+            if(SUCCEEDED(made)) {
+                IDMOWrapperFilterLocal* init{};
+                if(SUCCEEDED(t.step(index,"dmo_wrapper_qi",1,true,[&]{return wrapper->QueryInterface(IID_IDMOWrapperFilter_local,reinterpret_cast<void**>(&init));}))) {
+                    t.twice(index,"dmo_wrapper_init",[&]{return init->Init(CLSID_CWMSPDecMediaObject_local,DMOCATEGORY_AUDIO_DECODER_local);});
+                    init->Release();
+                }
+                t.step(index,"dmo_wrapper_add",1,true,[&]{return graph->AddFilter(wrapper,nullptr);});
+            }
+        }
         HRESULT opened=E_FAIL;
         if(mode==MODE_EXPLICIT) {
             // 004d00f5 alternative under DAT_00606f34+0x100 & 0x4000: AddSourceFilter, FindPin("Output"),
@@ -210,6 +235,19 @@ struct Stream {
     // (assumed to drop +0x18/+0x1c), Release graph +0x78, then 004d1a40 repeats Stop/Stop/SetState(STOP) on what is still
     // held, frees the PCM buffer and releases +0x44/+0x6c/+0x58/+0x54; 004d1b70 releases +0x04. No sample cancel: the game
     // relies on the STOP transitions alone, so a pending async Update is left to them.
+    // 004d1c20 model (assumption until section 12 settles it): enumerate the graph and RemoveFilter each
+    // filter, retrying while RemoveFilter fails. Run 12 shows RemoveFilter(MediaStreamFilter) repeated 3.8 M
+    // times; the watchdog reports this step if it does not return. First HRESULT of each kind is printed.
+    HRESULT remove_filters() {
+        HRESULT last=S_OK;unsigned long iterations=0;
+        for(;;) {
+            IEnumFilters* e{};HRESULT hr=graph->EnumFilters(&e);if(FAILED(hr))return hr;
+            IBaseFilter* f{};const HRESULT next=e->Next(1,&f,nullptr);e->Release();
+            if(next!=S_OK){std::printf("REPLICA_REMOVE stream=%d iterations=%lu final=1\n",index,iterations);std::fflush(stdout);return S_OK;}
+            hr=graph->RemoveFilter(f);f->Release();++iterations;
+            if(hr!=last){std::printf("REPLICA_REMOVE stream=%d iterations=%lu hr=%08lx\n",index,iterations,static_cast<unsigned long>(hr));std::fflush(stdout);last=hr;}
+        }
+    }
     void cleanup_game() {
         for(int round=1;round<=2;++round) {
             if(buffer)t.step(index,"buffer_stop",round,true,[&]{return buffer->Stop();});
@@ -218,8 +256,12 @@ struct Stream {
             if(round==1) {
                 t.release(index,"release_position",position);t.release(index,"release_control",control);
                 t.release(index,"release_audio",audio);t.release(index,"release_media",media);
+                if(graph&&wrapper)t.step(index,"remove_dmo_wrapper",1,true,[&]{return graph->RemoveFilter(wrapper);});
+                t.release(index,"release_dmo_wrapper",wrapper);
                 if(graph&&source)t.step(index,"remove_source",1,true,[&]{return graph->RemoveFilter(source);});
-                t.release(index,"release_source",source);t.release(index,"release_graph",graph);
+                t.release(index,"release_source",source);
+                if(graph&&mode==MODE_GAME_DMO)t.step(index,"remove_filters",1,true,[&]{return remove_filters();});
+                t.release(index,"release_graph",graph);
             }
         }
         pcm.clear();pending=false;
@@ -237,6 +279,7 @@ static Mode parse_mode(const wchar_t* text,bool& ok) {
     if(!wcscmp(text,L"explicit"))return MODE_EXPLICIT;
     if(!wcscmp(text,L"game-ds"))return MODE_GAME_DS;
     if(!wcscmp(text,L"game-ds-stereo"))return MODE_GAME_DS_STEREO;
+    if(!wcscmp(text,L"game-dmo"))return MODE_GAME_DMO;
     ok=false;return MODE_GAME;
 }
 int wmain(int argc,wchar_t** argv) {
