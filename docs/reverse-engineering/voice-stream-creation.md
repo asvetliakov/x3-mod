@@ -292,7 +292,8 @@ bounded-memory and cold/seek-cost qualification. Whole-file PCM would cost about
 seeks on the retained source-ID stream. No global codec installation, blind COM
 route or permanent negative cache is planned. Exact sample timestamps matter:
 the game uses their start/end values to trim cue data, so the observed 95.1304 ms
-interval cannot be dismissed as a cosmetic discrepancy.
+interval cannot be dismissed as a cosmetic discrepancy. The cue definition, seek,
+trim and cue-end path is now resolved in [voice-cue-timing.md](voice-cue-timing.md).
 [FFmpeg Windows support](https://ffmpeg.org/platform.html#Windows),
 [licensing/build obligations](https://ffmpeg.org/legal.html).
 
