@@ -10,6 +10,8 @@ bullet-bound feasibility (step B): unbounded draws refuse to native, never full
 viewport; the first action is the capture query for the row-19 vertex buffer's lock
 flags and position layout, then the disassembly brief of section 6 only if the
 captures cannot answer it.
+Step D (the per-draw vertex hull that replaces the AABB checkpoints for the bullet bound) is
+designed in [screen-emission-bullet-bound.md](screen-emission-bullet-bound.md).
 ## Decision
 
 **Yes, as policy `PackedScreenInPlace = 8` reusing the fade bracket's shape verbatim — backup A|R →
