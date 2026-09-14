@@ -260,7 +260,12 @@ RAMP_CASES = {'seam-hdr-ramp-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0'),
               'seam-hdr-ramp-identity': dict(X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0')}  # tonemap off: the stage-1 conversion on the same ramp
 CASES += [case(name, 'hdrramp', hdr=True, hdr_env=env) for name, env in RAMP_CASES.items()]
 EXPOSURE_CASES = {'seam-hdr-exposure': dict(AGX_AUTO, X3M_HDR_DT_MS='16'),
-                  'seam-hdr-exposure-offset': dict(AGX_AUTO, X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
+                  # The offset script's level stimulus is designed around a
+                  # +2 EV ceiling: with the +1 EV offset and the DLL's own
+                  # ev_max default of 1.5 (75dbbed) levels A..C clamp onto the
+                  # grey target and the script stops exercising the dead band,
+                  # so the case pins the ceiling it was written for.
+                  'seam-hdr-exposure-offset': dict(AGX_AUTO, X3M_HDR_DT_MS='33', X3M_HDR_EV='1', X3M_HDR_EV_MAX='2', X3M_HDR_ADAPT_UP='0.2', X3M_HDR_ADAPT_DOWN='0.6', X3M_HDR_LOOK='golden')}
 CASES += [case(name, 'hdrexposure', hdr=True, hdr_env=env) for name, env in EXPOSURE_CASES.items()]
 # The meter chain's level surfaces and readback surfaces through the ownership wrapper (reference accounting at teardown).
 CASES += [case('seam-ownership-hdr-exposure', 'hdrexposure', 'ownership', hdr=True, hdr_env=EXPOSURE_CASES['seam-hdr-exposure'])]
@@ -705,6 +710,11 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     expected_checks = 31 + 12 + (60 if live else 0)
     if taa:
         expected_checks += 12 * 2 + (12 - len(history_frames) if live else 12) + 4 + skipped + (1 + 2 * (12 - skipped) + 2 if live else 0) + (12 if camera else 0)
+    # A live mip bias adds one check per frame at the bloom copy (39b31d5:
+    # the copy is a restore point, so every stage must hold the application's
+    # own bias again). The copy only runs in the TAA script.
+    if taa and enabled and float(mip_bias or 0) != 0:
+        expected_checks += 12
     # Stage 3 with the AgX write-back: the coverage oracle reads raster
     # colours and is skipped on tonemapped frames (two checks per frame).
     agx = any(l.startswith('hdr_tonemap ') and fields(l).get('tonemap') == '1' for l in trace.splitlines())
@@ -1361,6 +1371,13 @@ def bgra8(data, index):
     return r, g, b, a
 
 
+# The DLL's own auto-exposure ceiling (capture.cpp, "the milder AUTO
+# appearance" of 75dbbed) is below the reference module's EV_MAX; the runner
+# must use the DLL default when X3M_HDR_EV_MAX is unset, because the reference
+# adaptation clamps with it.
+HDR_EV_MAX_DEFAULT = 1.5
+
+
 def hdr_env_params(hdr_env):
     """The reference's arguments from the run's X3M_HDR_* environment."""
     decode = hdr_env.get('X3M_HDR_DECODE', 'gamma2.2')
@@ -1370,7 +1387,7 @@ def hdr_env_params(hdr_env):
                 ev_offset=float(hdr_env.get('X3M_HDR_EV', hdr_env.get('X3M_HDR_EV_OFFSET', '0'))),
                 tau_up=float(hdr_env.get('X3M_HDR_ADAPT_UP', exposure_ref.TAU_UP)), tau_down=float(hdr_env.get('X3M_HDR_ADAPT_DOWN', exposure_ref.TAU_DOWN)),
                 key=float(hdr_env.get('X3M_HDR_KEY', exposure_ref.KEY)), dt=float(hdr_env.get('X3M_HDR_DT_MS', '0')) / 1000.0,
-                ev_min=float(hdr_env.get('X3M_HDR_EV_MIN', exposure_ref.EV_MIN)), ev_max=float(hdr_env.get('X3M_HDR_EV_MAX', exposure_ref.EV_MAX)),
+                ev_min=float(hdr_env.get('X3M_HDR_EV_MIN', exposure_ref.EV_MIN)), ev_max=float(hdr_env.get('X3M_HDR_EV_MAX', HDR_EV_MAX_DEFAULT)),
                 meter_bg=float(hdr_env.get('X3M_HDR_METER_BG', exposure_ref.METER_BG)), meter_min_lit=float(hdr_env.get('X3M_HDR_METER_MIN_LIT', exposure_ref.METER_MIN_LIT)),
                 white_target=float(hdr_env.get('X3M_HDR_WHITE_TARGET', exposure_ref.WHITE_TARGET)), key_pull=float(hdr_env.get('X3M_HDR_KEY_PULL', exposure_ref.KEY_PULL)),
                 ev_deadband=float(hdr_env.get('X3M_HDR_EV_DEADBAND', exposure_ref.EV_DEADBAND)), edge_weight=float(hdr_env.get('X3M_HDR_METER_EDGE_WEIGHT', exposure_ref.EDGE_WEIGHT)))
@@ -1417,7 +1434,18 @@ def validate_hdrramp(name, text, trace, directory, hdr_env, hdr_fault=None):
     assert len(s2['device']) == 1 and s2['device'][0]['enabled'] == '1' and len(s2['tonemap']) == 1, (name, s2['device'], s2['tonemap'])
     tm = s2['tonemap'][0]
     assert tm['tonemap'] == str(int(params['agx'])) and tm['exposure'] == 'manual' and float(tm['ev_manual']) == ev, (name, tm)
-    assert tm['tonemap_reason'] == ('ok' if params['agx'] else 'off') and tm['meter'] == '0' and tm['look'] == params['look'] and tm['decode'] == params['decode'], (name, tm)
+    # The ramp scripts run with a manual EV, but since 75dbbed the DLL sets
+    # HdrConfig::allow_auto_toggle unconditionally, so meter_requested() holds
+    # in fixed mode too and the meter capability is prepared whenever the
+    # tonemap program exists; it stays unused (exposure=manual, stepped=0 below).
+    # Without the tonemap (the identity script) no meter is prepared at all.
+    assert tm['tonemap_reason'] == ('ok' if params['agx'] else 'off') and tm['look'] == params['look'] and tm['decode'] == params['decode'], (name, tm)
+    # Prepared with the tonemap, except under decode=none: there the meter
+    # self-test's GPU level-0 value disagrees with meter_level0() beyond 1e-4
+    # and the pass refuses the meter (fail closed). The ramp scripts never use
+    # it (manual EV, stepped=0 below), so the verdict is recorded, not required.
+    meter_expected = ('0', 'off') if not params['agx'] else ('0', 'self_test') if params['decode'] == 'none' else ('1', 'ok')
+    assert (tm['meter'], tm['meter_reason']) == meter_expected, (name, tm, meter_expected)
     assert sorted(s2['frames']) == [0, 1, 2] and not s2['unwinds'], (name, sorted(s2['frames']), s2['unwinds'])
     for frame, h in s2['frames'].items():
         assert (h['redirected'], h['unwind'], h['writeback_source'], h['tonemap'], h['exposure'], h['fallback']) == ('1', '0', 'shader', 'agx' if params['agx'] else 'identity', 'manual', '0'), (name, frame, h)
@@ -2922,8 +2950,12 @@ def main(argv=None):
         for on_name, twin in MIPBIAS_TWINS.items():
             a, b = result['cases'][on_name], result['cases'][twin]
             assert a['color_hashes'] == b['color_hashes'], f'{on_name}: colour differs from {twin}'
-            assert (a['checks'], a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
-                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (on_name, twin)
+            # The biased twin runs the extra per-frame bias check at the bloom
+            # copy (39b31d5); everything else has to match its unbiased twin.
+            on_case = next(c for c in CASES if c['name'] == on_name)
+            bias_checks = 12 if on_case['taa'] and float(on_case['mip_bias'] or 0) != 0 else 0
+            assert (a['checks'] - bias_checks, a['restorations'], a['motion_pixels'], a['matched_pixels'], a['depth_written_pixels']) == \
+                   (b['checks'], b['restorations'], b['motion_pixels'], b['matched_pixels'], b['depth_written_pixels']), (on_name, twin, bias_checks)
             if 'color_hashes_before_boundary' in b:
                 assert a['color_hashes_before_boundary'] == b['color_hashes_before_boundary'], (on_name, twin)
             files_a, files_b = readback_files(on_name), readback_files(twin)
