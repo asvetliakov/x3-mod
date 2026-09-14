@@ -81,6 +81,33 @@ is integer-truncated and the record values were not read, so a small record
 that level is never selectable, collapsing the node to LOD 0. Raise the cap
 only after the record values are known.
 
+## In game (run 22)
+
+First gameplay run of the patch (snapshot `/tmp/x3-bottleX3-run51/`, log
+`session-20260915-030036-468.log`, installed DLL `53a0d8a7…` from `509a273`).
+The install line is
+`lod_scale requested=2.0 applied=0 game_value=0 proxy_value=0 patched=1 reason=game_value_pending write=plain`,
+the expected pending form, followed by exactly one
+`lod_scale_value game_value=1 proxy_value=0.5 applied=2`: the bring-up wrote
+1.0, the mirror took `1/2` and the scale stayed applied for the rest of the
+session. The ordering above is therefore what the game does.
+
+`object_context` LOD shares, run 51 (n=5,699) against run 49 (n=23,737, the
+unscaled build):
+
+| LOD | Run 51 (2×) | Run 49 (1×) |
+| ---: | ---: | ---: |
+| 0 | 94.9 % | 87.4 % |
+| 1 | 0 % | 5.5 % |
+| 2 | 4.8 % | 6.4 % |
+| 3 | 0.28 % | 0.64 % |
+
+The shift is in the expected direction, but the two sessions flew different
+scenes, so this is not a controlled comparison. The user calls the detail
+"slightly better" and asks for 3×; run 23 repeats the run-49 route at
+`--lod-scale 3` for a before/after on one route, with the frame cost
+([motion-output.md](../verification/motion-output.md), "User run 22").
+
 ## Portability
 
 A memory patch of the same non-relocatable EXE with `VirtualProtect`,
