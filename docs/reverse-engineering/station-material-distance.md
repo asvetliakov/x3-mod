@@ -649,6 +649,10 @@ quality float at `*(0x606f34)+0x760` were not resolved, so the thresholds are st
 brackets rather than in absolute view units, and `node+0xa0` is not captured. No hook is
 proposed by this study.
 
+The quality float at `*(0x606f34)+0x760`, the `VideoViewDistance` setting behind `+0x768` and
+the options for moving the whole ladder out by 2–3× are resolved in
+[lod-selection.md](lod-selection.md); `LODrec[+0x34]` itself remains unread.
+
 ## Run 19 (run47): the first same-port pair, and why it still does not decide
 
 User run 19 (snapshot `/tmp/x3-bottleX3-run47/`, log
