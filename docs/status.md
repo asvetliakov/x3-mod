@@ -39,9 +39,13 @@ asteroid triangle dropout fixed and accepted; step D bullets accepted (no
 fullscreen bracket in 50,654 frames); loading markers read menu 12.9 s and a
 21.7 s save-load stall; the far port was captured (37 px) and its radiance
 moves only 6 % between far and near; AO ran in the debug factor view for the
-whole session and is a few pixels wide at gameplay distances. Run 21 is queued (no new
-DLL): AO appearance at radius 100 (the option's cap) as the footprint proxy, bullet witness on
-every frame, and a vanilla approach to the same port and a ship. Details in the
+whole session and is a few pixels wide at gameplay distances. Run 21 session A
+(snapshot run49) is complete: AO invisible at radius 100 and closed as default-off
+(zero cost when off); the bullet dimming is refuted (witness every frame, zero
+pixels outside the hull, peak higher than runs 19/20); a new symptom, one station
+section trembling at 4.7 km, is under diagnosis. Session B (vanilla far/near
+approach to the port and a ship) is not reported yet. No run is queued until the
+trembling diagnosis and the directional-shadows note land. Details in the
 [completed-run archive](archive/user-runs-completed.md). Run 19
 (snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
 but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
@@ -77,6 +81,11 @@ darkening on a ship. Details in the
 - **Selection pause (resolved):** no target publication over 10 ms in runs 16/18
   against run 28's median 463 ms. Other unexplained slow-frame residuals remain
   open; see the [33-site trace](reverse-engineering/selection-native-vm.md).
+- **Station section trembling (new, run 21):** one hangar/dock section of a
+  station at ≈4.7 km trembles vertically each frame and stops closer
+  (`screenshots/jitter1.png`); routed station subsets are all jittered, so the
+  candidate is an uncovered program drawn without routing or jitter; diagnosis
+  on Fable in progress, ledger [motion-output.md](verification/motion-output.md).
 - **Distant shimmer:** root cause named — `cutout::missed` on a source-over
   *blended* alpha-tested cutout draw refused at the motion gate drops the whole
   frame's TAA history (15 % of frames in runs 11/14, none in run 15). The
@@ -105,22 +114,19 @@ darkening on a ship. Details in the
   one FP16 code) and step D (per-draw vertex hull, fan batch 1.2 % of the viewport
   vs 89.6 % for the box; derive 1.7–27 µs per draw, sentinel fill 17 µs per lock)
   are installed; run 19 accepted the bolts at gain 1 and run 20 showed step D
-  working (hull a third of the box on firing frames, no fullscreen bracket).
-  Open: a possible slight dimming (peaks match run 19; the witness never sampled
-  a firing frame, run 21 samples every frame). Ledger
+  working (hull a third of the box on firing frames, no fullscreen bracket); run
+  21 refuted the dimming (witness every frame, zero pixels outside the hull).
+  Step D accepted in game. Ledger
   [screen-emission.md](verification/screen-emission.md), design
   [screen-emission-bullet-bound.md](architecture/screen-emission-bullet-bound.md).
-- **Ambient occlusion:** step 2 is installed behind `--ambient-occlusion`
-  (Ctrl+Shift+F11 toggle, ≈210 µs CPU per frame). Runs 19/20: the pass runs but
-  the term is invisible at gameplay distance because the radius is a few
-  half-res pixels (`radius_px = 256·radius_m/distance_m` at 1280×768, cap 64;
-  20 m gives 10 px at 500 m and 2.6 px at 2 km); run 20 also ran the gray debug
-  view all session. Scale decision
-  [ambient-occlusion-scale.md](architecture/ambient-occlusion-scale.md) is
-  ratified with the run-21 amendment: appearance is judged first at
-  `--ao-radius 100`; the constant-footprint rule is implemented only if kept;
-  X3's BUMPMAP is already tangent-space normal mapping, no height map exists,
-  parallax has negative cost/benefit. Design
+- **Ambient occlusion (closed 2026-09-15):** step 2 stays installed and
+  default-off behind `--ambient-occlusion`. Runs 19–21 showed the term invisible
+  at gameplay distance at 2, 20 and 100 m (`radius_px = 256·radius_m/distance_m`,
+  cap 64); the user decided AO stays off (open-space games do not read by AO
+  either) and no sun-weighted AO v2 follows. Cost when off is zero (never called
+  without the option; one early return when toggled off). The chain remains only
+  as a base if the directional-shadows design chooses screen-space shadows.
+  [ambient-occlusion-scale.md](architecture/ambient-occlusion-scale.md); design
   [ambient-occlusion.md](architecture/ambient-occlusion.md), ledger
   [ambient-occlusion.md](verification/ambient-occlusion.md).
 - **Distance fade:** default-on in the installed build; the witness stayed clean
