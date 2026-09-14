@@ -85,6 +85,7 @@ bool hdr_requested = false;
 bool linear_emission_requested = false;
 bool linear_distance_fade_requested = false;
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
+bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
 float emission_gain = 1.f;
 bool linear_material_requested = false;
 x3m::renderer::LinearMaterialConfig linear_material_config{};
@@ -1794,6 +1795,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
+    hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
@@ -2048,6 +2050,11 @@ void initialize_log(HMODULE module) {
         const unsigned long n=digits?wcstoul(setting,nullptr,10):0ul;if(digits&&n>=1&&n<=100000)fade_witness_frames=unsigned(n);
         log("fade_witness_mode requested=%lu digits=%u enabled=%u fade=%u",n,digits,fade_witness_frames&&linear_distance_fade_requested,linear_distance_fade_requested);}
      else if(length)log("fade_witness_mode requested=overlong enabled=0 fade=%u",linear_distance_fade_requested);}
+    // X3M_SHIMMER_TRACE=1: per-frame distant-shimmer diagnostic (off by
+    // default; needs the motion route and TAA; no other behaviour changes).
+    {const bool asked=GetEnvironmentVariableW(L"X3M_SHIMMER_TRACE",setting,32)==1 && setting[0]==L'1';
+     shimmer_trace_requested=asked && motion_output_requested && taa_requested;
+     if(asked)log("shimmer_trace_mode requested=1 enabled=%u motion_output=%u taa=%u",shimmer_trace_requested,motion_output_requested,taa_requested);}
     bloom_requested=GetEnvironmentVariableW(L"X3M_HDR_BLOOM",setting,32)==1 && setting[0]==L'1';
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");

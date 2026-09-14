@@ -59,6 +59,11 @@ LinearMaterialPairContract linear_material_pair_contract(std::uint64_t vertex, s
 // identifies required disabled-sRGB samplers; it establishes no dynamic gates.
 std::uint32_t linear_material_sampler_mask(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 bool linear_material_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
+// True for the Asteroid-family pairs of the same tables: the reviewed pairs
+// whose pixel row carries an asteroid base/detail layout, which includes the
+// six distance-fade pairs of linear_distance_fade.h. Identity only: it admits
+// nothing and reads no draw state. Diagnostic classification (shimmer trace).
+bool linear_material_asteroid_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept;
 
 // Pure create-time combined material + same-draw motion/depth transformations.
 // Inputs are complete ORIGINAL programs. Original fingerprint/count, material

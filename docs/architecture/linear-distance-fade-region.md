@@ -754,3 +754,26 @@ time (`frame_end dt_ms`, 60-frame samples) n=59 median 4097 µs, p95 10104 µs,
 max 27040 µs against run 28 n=99 median 4104 µs, p95 8824 µs, max 26467 µs:
 equal medians, and the run-11 tail is a smaller sample with no fade-cost field,
 so it is not attributable. No poisoned or evicted regions, no reset/recovery.
+
+### Shimmer trace (diagnostic)
+
+`--shimmer-trace` (`X3M_SHIMMER_TRACE=1`, requires `--motion-output --taa`,
+default off) answers whether the reported distant-asteroid shimmer is a
+per-frame LOD/part change, a TAA history event, or neither. Every frame logs
+
+```
+shimmer_frame device= frame= draws= asteroid= logged= truncated= taa= taa_attempted= taa_resolved= taa_history= taa_skip= cut= camera_cut= jitter= jitter_index= history_previous= history_current= committed= camera_valid= p00_e4= p11_e4=
+shimmer_draw device= frame= index= gate= routed= composition= node= model= lod= vb= ib= topology= indexed= vertex_count= index_count= primitives= f_permille= region= rect=
+```
+
+up to 32 `shimmer_draw` lines per frame (`truncated` counts the rest) for the
+scene draws of the six Asteroid pairs (`linear_material_asteroid_pair`); at
+run-11 rates (≈20 admitted fade draws per frame) that is roughly 20-30 lines
+per frame, so a session log grows by some megabytes per minute — trace only
+the flight that reproduces the shimmer.
+`f_permille` is the admitted draw's fade-region fraction, −1 when the draw was
+not fade-admitted, and `rect` reuses the step-1 region derivation (`region=1`
+when its bound was known). Projection terms are integers scaled by 1e4; the
+draw hooks only fill a fixed integer array and the whole frame is formatted
+after Present. Parser and checks: `verification/probe/shimmer_trace.py`,
+`verification/analysis/test_shimmer_trace.py`.

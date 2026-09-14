@@ -93,6 +93,9 @@ struct MotionRoute {
     // after admission, logged and counted; the bracket does not consume it yet.
     fade_region::Region fade_region{};
     bool fade_region_evaluated = false;
+    // Rectangle area per mille of its denominator, exactly the f_permille the
+    // fade_region line reports; only meaningful with fade_region_evaluated.
+    unsigned fade_region_permille = 0;
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -427,6 +430,12 @@ public:
     // against the union of that frame's derived rectangles. Off (0) costs
     // nothing per draw or per frame.
     void configure_fade_witness(unsigned frames) noexcept;
+    // Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1, off by default;
+    // docs/architecture/linear-distance-fade-region.md, "Shimmer trace"):
+    // every frame records the identity of the Asteroid-class scene draws into
+    // a fixed per-frame array and logs them plus the frame's TAA state after
+    // Present. Off costs one predicate per draw and nothing else.
+    void configure_shimmer_trace(bool requested) noexcept;
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
@@ -632,6 +641,10 @@ private:
         // validate the four objects. An incomplete pair stays native-forward.
         bool xt_default_pair = false, xt_default_ready = false;
         bool cutout_pair = false; // identity independent of variant/capability availability
+        // Asteroid-family pair identity for the shimmer trace only (the six
+        // distance-fade pairs of the material tables). Refreshed with the
+        // other pair identities, never at a draw, and only while the trace is on.
+        bool asteroid_pair = false;
         const renderer::MotionOutputProfile* vs_row = nullptr;
         float rows[motion_matrix_windows_max][16]{}; // Each window's four rows as submitted
         bool rows_known[motion_matrix_windows_max]{};
@@ -863,6 +876,25 @@ private:
         unsigned char* row = nullptr;
         UINT row_width = 0;
     } fade_witness_;
+    // Shimmer trace: integer-only per-draw records, formatted once after
+    // Present. No allocation, formatting or locking on the draw path.
+    bool shimmer_trace_ = false;
+    struct ShimmerDraw {
+        std::uint64_t node = 0;
+        std::uint32_t index = 0;          // draw index within the frame
+        std::uint32_t model = 0, lod = 0;
+        std::uint32_t vertex_count = 0, primitives = 0, topology = 0;
+        std::uint64_t vertex_buffer = 0, index_buffer = 0;
+        std::int32_t f_permille = -1;     // -1: not fade-admitted (no region derived)
+        std::int32_t rect[4]{};           // fade_region rectangle; valid with region_known
+        std::uint8_t gate = 0;
+        bool routed = false, composition = false, region_known = false, indexed = false;
+    };
+    static constexpr unsigned shimmer_draw_capacity = 32;
+    ShimmerDraw shimmer_draws_[shimmer_draw_capacity]{};
+    unsigned shimmer_count_ = 0;   // qualifying draws this frame; beyond the capacity only counted
+    void record_shimmer_draw(const MotionRoute& route) noexcept;
+    void log_shimmer_frame(unsigned history_previous, unsigned history_current, unsigned committed) noexcept;
     unsigned material_refusals_logged_ = 0;
     // Lightweight shader setters capture integers only. Formatting is deferred
     // to the existing full CPU-state boundary around Present, once per lifetime.
