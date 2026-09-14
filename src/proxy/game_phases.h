@@ -8,6 +8,10 @@ bool initialize(); // initialize_log only, while engine_patch install window is 
 void present_endpoint(std::uintptr_t raw,std::uint64_t device,std::uint64_t reset,
                       std::uint64_t frame,bool captured,std::uint64_t qpc,std::uint32_t result) noexcept;
 void invalidate_device() noexcept; // every Reset attempt and final Release, any thread
+// Present-cadence loading markers, every mode (no X3M_GAME_PHASES, no engine
+// site): one `loading_phase` line per transition per process. Present path
+// only, under the capture mutex; one QueryPerformanceCounter per call.
+void loading_phase_present(std::uint64_t device,std::uint64_t frame) noexcept;
 void report(std::uint64_t reporting_frame); // existing periodic report, owner thread only
 // Audio-path witnesses (X3M_AUDIO_SITES=1 with X3M_GAME_PHASES=1): counters
 // only, readable from any thread; the line is written by report() per window

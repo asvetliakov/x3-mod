@@ -159,5 +159,20 @@ int main(){
     check(core.slow_calls.count==2&&core.slow_calls.first[1].phase==4);
     core.target_begin(5,at(base+55000),{},playback);
     core.boundary(0,at(base+56000));check(!core.depth&&core.order_errors==1); // escaped native call revoked
+    // Present-cadence loading markers: 1 kHz clock, 3 s stall threshold.
+    LoadingPhases lp;lp.stall_ticks=3000;LoadingPhases::Marker m[2];
+    check(lp.present(1,0,1000,m)==0);check(lp.present(1,1,2800,m)==0); // splash gap under threshold
+    check(lp.present(1,2,4500,m)==0);check(lp.present(1,3,7499,m)==0); // 2999 ticks: not a stall
+    check(lp.present(1,4,13000,m)==1&&m[0].name==LoadingPhases::MenuShown&&m[0].frame==4&&m[0].qpc==13000&&m[0].stall==5501);
+    for(unsigned f=5;f<60;++f)check(lp.present(1,f,13000+(f-4)*20,m)==0); // menu cadence
+    check(lp.present(1,60,13000+56*20,m)==0);
+    check(lp.present(2,0,13000+56*20+9000,m)==0);check(lp.last_device==2); // device change is not a stall
+    check(lp.present(2,1,23140,m)==0);check(lp.present(2,2,23160,m)==0);
+    check(lp.present(2,3,44140,m)==2);
+    check(m[0].name==LoadingPhases::SaveLoadBegin&&m[0].frame==2&&m[0].qpc==23160&&m[0].stall==0);
+    check(m[1].name==LoadingPhases::SaveLoadComplete&&m[1].frame==3&&m[1].qpc==44140&&m[1].stall==20980);
+    check(lp.emitted==7);check(lp.present(2,4,70000,m)==0); // later stalls (sector change) never re-emit
+    check(lp.present(2,5,60000,m)==0); // clock going backwards re-anchors without a marker
+    LoadingPhases unset;check(unset.present(1,0,0,m)==0&&unset.present(1,1,1u<<30,m)==0); // no threshold, no markers
     std::printf("game_phases_host checks=%u failures=0 core_bytes=%zu\n",checks,sizeof(Core));
 }
