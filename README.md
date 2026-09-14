@@ -174,6 +174,8 @@ research proxy for this specific game, not a universal D3D9 compatibility layer.
 - [Current status and next implementation tasks](docs/status.md)
 
 - [Platform and HDR/backend constraints](docs/architecture/platform.md)
+- [Optional process-local WMA decoder adapter](docs/architecture/voice-decoder-adapter.md)
+  and its [build recipe](docs/architecture/voice-decoder-recipe.md)
 - [Implementation roadmap](docs/architecture/roadmap.md)
 - Static findings: `docs/reverse-engineering/`
 - Independent probes, tests and results: `verification/`

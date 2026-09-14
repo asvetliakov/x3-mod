@@ -100,6 +100,11 @@ stutter behavior fixes. See [provenance](reverse-engineering/chase-view-transiti
 - **Selection stalls:** Run 28 isolates synchronous voice-stream creation inside target
   publication; target speech is absent. Investigate creation failure and lifecycle,
   retaining other unexplained slow-frame residuals rather than assigning all pauses to audio.
+  The optional process-local WMA decoder adapter is built and, in the synchronous voice probe,
+  both voice DATs now open (`open_hr 00000000`, PCM tag 1, mono 44100/16) via the libav
+  Windows Media Audio 2 decoder, against `E_FAIL 0x80004005` for both before it. Decoder
+  availability is not restored speech; see the
+  [adapter note](architecture/voice-decoder-adapter.md).
 - **Shimmer/temporal:** preserve the asteroid's far alpha/background mixture. Do not force opaque depth or infer
   a LOD change. Bound diffuse alpha, pixel overlap/order, and exact selected-target-to-node identity remain open.
   The [normal/specular study](reverse-engineering/asteroid-specular-minification.md) identifies an independent
