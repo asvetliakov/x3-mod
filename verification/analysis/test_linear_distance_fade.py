@@ -235,8 +235,9 @@ class DistanceFadeProducer(unittest.TestCase):
         body=(ROOT/'src/renderer/linear_emission_pass.cpp').read_text()
         for forbidden in ('GetProcAddress','LoadLibrary','GetModuleHandle'):
             self.assertNotIn(forbidden,body)
-        # No third composite program: the in-place composite is prototype 1's.
-        self.assertEqual(body.count('call(CreatePs,'),3,'copy (fixture twin and production) and the shared policy loop only')
+        # No third fade program: the in-place composite is prototype 1's. The
+        # fourth CreatePs site is the packed screen policy's own pair (step A).
+        self.assertEqual(body.count('call(CreatePs,'),4,'copy (fixture twin and production), the shared policy loop and the packed pair only')
         # The fixture twin runs the exchange and in-place brackets on the same
         # inputs and requires bit-exact equality of A/C and of the two M targets.
         fixture=(ROOT/'verification/probe/linear_distance_fade_fixture_inc.h').read_text()
