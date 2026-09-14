@@ -29,7 +29,7 @@ SCOPE=('src/renderer/linear_material.cpp','src/renderer/linear_distance_fade.h',
        'verification/probe/linear_alpha_test_fixture_inc.h',
        'verification/probe/linear_distance_fade_fixture_inc.h',
        'verification/probe/linear_distance_fade_composite_inc.h',
-       'src/proxy/fade_region_math.h',
+       'src/proxy/fade_region_math.h','src/proxy/fade_region_core.h',
        'verification/probe/run_linear_distance_fade.py',
        'verification/probe/linear_material_reference.py','verification/probe/run_linear_material.py')
 BAD_BACKGROUND=0x100000

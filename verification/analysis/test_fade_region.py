@@ -147,7 +147,7 @@ class FadeRegion(unittest.TestCase):
         rows={l.split()[1]:fields(l) for l in out.stdout.splitlines() if l.startswith('TABLE ')}
         expect={'no_table':('no_table',0,0,0),'no_scope':('no_scope',0,0,0),'miss_learn':('bound',0,0,5),'hit':('bound',1,0,0),
                 'back_link':('back_link',0,0,3),'no_record':('no_record',0,0,5),'poison_revision':('poisoned',1,1,0),
-                'poisoned_stays':('poisoned',1,0,0),'ib_mismatch_new':('bound',0,0,5),'ib_mismatch_hit':('poisoned',1,1,0),
+                'poisoned_stays':('poisoned',1,0,0),'wrapper_learn':('bound',0,0,5),'wrapper_mismatch':('poisoned',1,1,0),'out_of_domain':('invalid',0,0,3),'ib_mismatch_new':('bound',0,0,5),'ib_mismatch_hit':('poisoned',1,1,0),
                 'content_unknown':('content_unknown',0,0,5),'descriptor_mismatch':('bound',0,0,5),'descriptor_poison':('poisoned',1,1,0),
                 'read_failed':('read_failed',0,0,2),'window_full':('bound',0,0,5),'evicted_relearn':('bound',0,0,5),
                 'poisoned_kept':('poisoned',1,0,0),'failed_read_no_evict':('read_failed',0,0,2),'cleared':('no_table',0,0,0)}
@@ -159,7 +159,7 @@ class FadeRegion(unittest.TestCase):
         self.assertEqual(rows['window_full']['reads'],str(32*5+5),'32 learns then the evicting learn')
         self.assertEqual((rows['window_full']['evicted'],rows['evicted_relearn']['evicted'],rows['failed_read_no_evict']['evicted']),('1','1','0'))
         self.assertEqual((rows['window_full']['used'],rows['window_full']['evictions'],rows['poisoned_kept']['poisoned']),('32','1','1'))
-        self.assertEqual(rows['descriptor_poison']['poisoned'],'3')
+        self.assertEqual(rows['descriptor_poison']['poisoned'],'4')
         self.assertEqual(rows['miss_learn']['aabb'],'400,-800,200,1200,600,300')
         self.assertEqual(rows['hit']['centre'],'%.6f,%.6f,%.6f'%(400/65536,-800/65536,200/65536))
         self.assertEqual(rows['hit']['half'],'%.6f,%.6f,%.6f'%(1200/65536,600/65536,300/65536))

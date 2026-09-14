@@ -366,13 +366,16 @@ Acceptance (after review fixes, main merged at c978089):
   (5 reads, revisions 7/3, AABB `400,-800,200,1200,600,300` → centre
   `400/65536…`), hit (0 reads), back-link mismatch (3 reads), no record
   (5 reads), revision advance → poison, poison persists, IB-id and
-  descriptor mismatch → poison, content unknown, read refused, 32-entry
+  descriptor mismatch → poison, matching ids with other wrapper identities →
+  poison (never a hit), box outside the `|p| ≤ 2` domain → invalid (full
+  viewport), content unknown, read refused, 32-entry
   window full → eviction of the oldest unpoisoned entry (poisoned kept),
   refused read evicts nothing, clear.
 - DLL: `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
   -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build build -j8` — zero
   warnings; `python3 verification/probe/check_no_x87.py build/d3d9.dll` —
-  PASS, 219 reachable functions, no violations. Not an install candidate.
+  PASS, 223 reachable functions, no violations (fresh build after the merge
+  with main 03a660c and the review fixes). Not an install candidate.
 - Wine fixture (`linear-distance-fade-gpu-region1c.json`, bottle X3, 4.9 s, after the merge with main 03a660c):
   the 71 existing cases unchanged (257 source calls, 580,608 numerical
   channels, 183,264 exact raw and 193,536 exact energy channels, max

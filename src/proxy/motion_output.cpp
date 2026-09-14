@@ -3142,9 +3142,12 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
 // application viewport and the owning target. Every doubt selects the full
 // viewport (an unknown viewport selects the whole target); nothing here
 // changes the bracket yet. Per draw: one table probe, on a hit two content
-// views (each one ownership mutex, one map find, one metadata read), eight
-// corner projections; no allocation, no native Get, no float formatting (the
-// per-draw line carries the fraction as an integer per mille).
+// views (each one recursive registry_mutex take, one map find and one native
+// GetPrivateData on the backend buffer: two native calls and two mutex takes
+// per admitted fade draw), eight corner projections; no allocation, no device
+// Get, no float formatting (the per-draw line carries the fraction as an
+// integer per mille of the viewport area, or of the target area when the
+// viewport is unknown).
 void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     using namespace fade_region;
     route.fade_region_evaluated = true;
@@ -3170,23 +3173,25 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     const bool fill_solid = shadow_.fill_mode_known && shadow_.fill_mode == D3DFILL_SOLID;
     const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : 0u), std::int32_t(hdr_ ? hdr_->height() : 0u)};
     Region region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target);
-    if (region.reason != Reason::Viewport) {
-        region.rect = intersect(region.rect, target);
-        if (empty(region.rect)) region.rect = {target.left, target.top, target.left + 1, target.top + 1};
-    }
+    // Never beyond the owning target, on every path; empty -> 1x1 at its origin.
+    region.rect = intersect(region.rect, target);
+    if (empty(region.rect)) region.rect = {target.left, target.top, target.left + 1, target.top + 1};
     route.fade_region = region;
     ++counts.region_reason[unsigned(region.reason) < unsigned(Reason::Count) ? unsigned(region.reason) : 0u];
-    const std::uint64_t whole = region.reason == Reason::Viewport ? area(target) : std::uint64_t(viewport.width) * viewport.height;
+    // One denominator: the viewport area; the target area only while the
+    // viewport is unknown (the log names which one).
+    const bool of_viewport = region.reason != Reason::Viewport;
+    const std::uint64_t whole = of_viewport ? std::uint64_t(viewport.width) * viewport.height : area(target);
     const unsigned permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
     counts.region_permille_sum += permille;
     if (region.bound) ++counts.region_bound; else ++counts.region_full;
     if (capture_)
-        log("fade_region device=%llu frame=%llu index=%lu bound=%u reason=%u status=%s hit=%u poisoned=%u evicted=%u depth=%lu descriptor=%p part=%p aabb=%ld,%ld,%ld,%ld,%ld,%ld vb=%llu ib=%llu vb_rev=%llu ib_rev=%llu jittered=%u rect=%ld,%ld,%ld,%ld f_permille=%u table_used=%u table_poisoned=%u",
+        log("fade_region device=%llu frame=%llu index=%lu bound=%u reason=%u status=%s hit=%u poisoned=%u evicted=%u depth=%lu descriptor=%p part=%p aabb=%ld,%ld,%ld,%ld,%ld,%ld vb=%llu ib=%llu vb_rev=%llu ib_rev=%llu jittered=%u rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s table_used=%u table_poisoned=%u",
             id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), status_name(bound.status), bound.hit, bound.poisoned_now, bound.evicted,
             static_cast<unsigned long>(bound.depth), reinterpret_cast<void*>(bound.descriptor), reinterpret_cast<void*>(bound.part),
             long(bound.aabb[0]), long(bound.aabb[1]), long(bound.aabb[2]), long(bound.aabb[3]), long(bound.aabb[4]), long(bound.aabb[5]),
             shadow_.stream0, shadow_.indices, bound.vb_revision, bound.ib_revision, route.jittered,
-            long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille,
+            long(region.rect.left), long(region.rect.top), long(region.rect.right), long(region.rect.bottom), permille, of_viewport ? "viewport" : "target",
             fade_bounds_.used(), fade_bounds_.poisoned());
 }
 

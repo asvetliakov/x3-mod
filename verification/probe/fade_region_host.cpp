@@ -157,6 +157,12 @@ int run() {
     reset_memory();
     print("miss_learn", t.resolve(query, env), t);   // reads: head, aabb, back, record0, record1
     print("hit", t.resolve(query, env), t);           // no reads
+    print("wrapper_learn", t.resolve(Query{109, 209, vb, ib}, env), t);
+    print("wrapper_mismatch", t.resolve(Query{109, 209, other_vb, other_ib}, env), t); // same ids, other identities: poison, never a hit
+    reset_memory();
+    put32(part_bytes + 0x40, std::uint32_t(4 * 33000)); // centre 2.01 > 2: outside the |p| <= 2 domain
+    print("out_of_domain", t.resolve(Query{108, 202, vb, ib}, env), t);
+    reset_memory();
     reset_memory(3, part + 4);                         // back-link mismatch on a different VB id
     print("back_link", t.resolve(Query{102, 202, vb, ib}, env), t);
     reset_memory(2, descriptor, other_vb, other_ib);   // no record holds the bound pair

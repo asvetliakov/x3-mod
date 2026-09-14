@@ -37,7 +37,7 @@ enum class Status : unsigned {
     ReadFailed = 5,     // an engine read was refused
     BackLink = 6,       // part+0x64 != descriptor or null part
     NoRecord = 7,       // no subset record holds the bound VB/IB
-    Invalid = 8,        // negative half-extent
+    Invalid = 8,        // negative half-extent or box outside the |p| <= 2 domain
     Count = 9
 };
 inline const char* status_name(Status status) noexcept {
@@ -80,6 +80,7 @@ constexpr std::uintptr_t record_stride = 0x1a8;
 constexpr std::uintptr_t record_buffers = 0x0c;     // VB at +0x0c, IB at +0x10
 constexpr unsigned record_cap = 16;
 constexpr double units = 1.0 / 65536.0;             // 4 x int16 / 16384: POSITION0 units
+constexpr std::int64_t domain = 2 * 65536;          // |centre| + half must stay within |p| <= 2
 }
 
 class BoundTable {
@@ -184,7 +185,13 @@ private:
         if (back != descriptor) { out.status = Status::BackLink; return false; }
         out.aabb[0] = fields[0]; out.aabb[1] = fields[1]; out.aabb[2] = fields[2];
         out.aabb[3] = fields[4]; out.aabb[4] = fields[5]; out.aabb[5] = fields[6];
-        if (fields[4] < 0 || fields[5] < 0 || fields[6] < 0) { out.status = Status::Invalid; return false; }
+        // Negative extents, or a box outside the |p| <= 2 POSITION0 domain
+        // (int16/16384 encoding limit, 2 x 65536 in these units) that the
+        // 2^-10 half-float expansion is justified for, are not a bound.
+        for (unsigned a = 0; a < 3; ++a) {
+            const std::int64_t centre = fields[a], half = fields[4 + a];
+            if (half < 0 || (centre < 0 ? -centre : centre) + half > layout::domain) { out.status = Status::Invalid; return false; }
+        }
         const unsigned count = head[2] & 0xffffu;
         const std::uintptr_t records = head[3];
         if (!count || !records) { out.status = Status::NoRecord; return false; }
