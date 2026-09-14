@@ -104,10 +104,13 @@ darkening on a ship. Details in the
   station is one merged opaque subset, nearer the port is its own source-over draw
   over a dark interior. Normal-map minification is refuted. The design note
   [docking-port-lod-consistency.md](architecture/docking-port-lod-consistency.md)
-  is **not ratified**. Run 20 captured the far port (37 px) and the near port
-  (181–238 px): the port radiance differs by only 6 %, so the perceived darkening
-  is not a radiance step in the port; the user also sees it on ships. Next
-  discriminator: the user compares the same approach in vanilla (run 21).
+  recommends native parity (blend-domain composite for the port pair) and is
+  **ratified 2026-09-15** as a low-priority item for a later candidate. Run 21
+  session B settled the owner: the blackening happens in vanilla too, so it is
+  the asset's LOD content step (LOD 3 shows hull texture where LOD 2 draws the
+  lattice over a dark interior), not the renderer. The only lever that moves the
+  flip is the game's own detail/quality setting; a lit-interior enhancement of the
+  near LOD would be artistic work, not parity.
   Measurements in
   [station-material-distance.md](reverse-engineering/station-material-distance.md).
 - **Bullets / screen emission:** step E (publication-time decode, parity within

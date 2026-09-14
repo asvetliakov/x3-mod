@@ -15,6 +15,8 @@ current route in [linear-station-source-over.md](linear-station-source-over.md),
 contract in [linear-distance-fade.md](linear-distance-fade.md). Read-only: no build, no game,
 no Wine; the run-36/39 logs and the untracked DDS were queried with bounded scripts.
 
+**Ratified 2026-09-15** (orchestrator) after run 21 session B confirmed the step in vanilla: implement the native-parity blend-domain composite for the port pair in a later candidate (low priority; it removes the renderer's +16 % near-side excess, not the asset's LOD step).
+
 ## Decision
 
 Leave the engine's LOD selection alone and keep the port on the fade route, but compose this

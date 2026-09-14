@@ -708,3 +708,8 @@ names the target, and the 23902 group has no dominant model.
 The user still perceives the darkening on approach. Since the logged radiance
 does not move, the next discriminator is not another instrumented run but a
 vanilla eyeball comparison of the same approach.
+
+## Run 21 session B (vanilla, eyes only, 2026-09-15)
+
+The user repeated the far/near approach with `./x3run --direct --vanilla` and confirms the docking-port blackening happens in vanilla too. Combined with run 20 (the port radiance moves 6 % between the far LOD 3 hull-textured area and the near LOD 2 lattice draw), the darkening is the asset's LOD content step: LOD 3 has no port geometry and shows hull texture, LOD 2 draws the lattice over the authored dark interior. It is not renderer-introduced. The renderer-side residual is the +16 % near-side excess of the linear rule ([design note](../architecture/docking-port-lod-consistency.md), native-parity composite), which does not cause the step.
+
