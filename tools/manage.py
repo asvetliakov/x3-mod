@@ -68,6 +68,7 @@ def main():
     parser.add_argument('--hdr', action='store_true', help='FP16 HDR scene path (X3M_HDR=1; requires --motion-output): the scene renders into an owned A16B16G16R16F target bound as RT0 at the latching Clear and is written back into the game\'s 8-bit main target at the scene end (--scene-hook, else the bloom copy, else EndScene/Present); fails closed on the capability gate and self test. Without --hdr-tonemap the write-back is the stage-1 identity copy and presented frames equal the non-HDR frames to within one 8-bit code (docs/architecture/hdr-scene-path.md, "Stage 1 implementation")')
     parser.add_argument('--hdr-tonemap', action='store_true', help='AgX write-back of the FP16 scene (X3M_HDR_TONEMAP=agx; requires --hdr), Auto capped at +1.5 EV by default; --hdr-exposure fixed disables frame metering. Ctrl+Shift+F9 compares AUTO and fixed EV0 during play. Default off: identity write-back.')
     parser.add_argument('--linear-distance-fade', action='store_true', help='Qualify six Asteroid source-over materials in linear light (requires --linear-materials --taa; default off; full-size composition cost per draw)')
+    parser.add_argument('--fade-witness', type=int, nargs='?', const=30, default=None, metavar='K', help='Diagnostic fade-region witness (X3M_FADE_WITNESS=K; requires --linear-distance-fade; default off; "--fade-witness" alone means 30): every K-th frame without an admitted emission draw the M coverage target is read back once (GetRenderTargetData to a retained system-memory copy) and the covered pixels outside the union of that frame\'s derived fade rectangles are counted; one fade_witness line per K-th frame plus that frame\'s per-DIP fade_region lines (first 64, with a truncated count) in the session log, validated by verification/probe/run_linear_distance_fade_live.py (docs/architecture/linear-distance-fade-region.md, step 1)')
     parser.add_argument('--linear-emissions', action='store_true', help='Compose reviewed additive scene emissions in linear light (requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--emission-gain', type=float, default=None, help='Linear emission gain, finite 0..16, default 1 (requires --linear-emissions)')
     parser.add_argument('--linear-materials', action='store_true', help='Evaluate the reviewed hull-material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
@@ -164,6 +165,10 @@ def main():
         parser.error('--hdr-tonemap requires --hdr.')
     if args.linear_distance_fade and (not args.linear_materials or not args.taa):
         parser.error('--linear-distance-fade requires --linear-materials --taa (and material HDR/motion prerequisites).')
+    if args.fade_witness is not None and not args.linear_distance_fade:
+        parser.error('--fade-witness requires --linear-distance-fade.')
+    if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
+        parser.error('--fade-witness must be within [1,100000].')
     if args.linear_emissions and (not args.motion_output or not args.taa or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
         parser.error('--linear-emissions requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode.')
     if args.emission_gain is not None and not args.linear_emissions:
@@ -293,6 +298,8 @@ def main():
         env['X3M_HDR'] = '1' if args.hdr else '0'
         env['X3M_LINEAR_EMISSIONS'] = '1' if args.linear_emissions else '0'
         env['X3M_LINEAR_DISTANCE_FADE'] = '1' if args.linear_distance_fade else '0'
+        if args.fade_witness is not None:
+            env['X3M_FADE_WITNESS'] = str(args.fade_witness)
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
         env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
         for name, value in material_gains.items():

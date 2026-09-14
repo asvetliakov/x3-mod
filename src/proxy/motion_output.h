@@ -421,6 +421,12 @@ public:
     void configure_linear_emissions(bool requested, float gain) noexcept;
     bool linear_emissions_requested() const noexcept { return linear_emission_requested_; }
     void configure_linear_distance_fade(bool requested) noexcept;
+    // Diagnostic fade-region witness (X3M_FADE_WITNESS=<k>, note section 7,
+    // step 1): every k-th frame without an admitted emission draw the M
+    // coverage target is read back once and its covered pixels counted
+    // against the union of that frame's derived rectangles. Off (0) costs
+    // nothing per draw or per frame.
+    void configure_fade_witness(unsigned frames) noexcept;
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
@@ -686,6 +692,8 @@ private:
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
+    void witness_readback() noexcept;       // Present boundary, every k-th frame, one bounded readback
+    void release_fade_witness() noexcept;   // Reset and retirement drop the system-memory copy
     void finish_composition(HRESULT, renderer::LinearCompositionPolicy) noexcept;
     bool publish_composition() noexcept;
     void begin_composition_frame() noexcept;
@@ -825,6 +833,27 @@ private:
         std::uint64_t region_permille_sum = 0; // integer per-mille fractions; formatted only at the Present boundary
     } composition_counts_;
     fade_region::BoundTable fade_bounds_; // reserved with the composition pass, dropped at Reset/teardown
+    // Fade-region witness state: this frame's derived rectangles with their
+    // prepared flag (the union takes prepared draws only; past the capacity
+    // the frame counts on, is flagged overflow and its union is the whole
+    // target, which can never produce a false violation), the per-frame f
+    // histogram (integer per-mille buckets), the per-DIP line budget, and
+    // the retained system-memory copy plus one row of union flags, both
+    // sized to the M target.
+    unsigned fade_witness_interval_ = 0;
+    bool witness_frame() const noexcept { return fade_witness_interval_ && frame_ % fade_witness_interval_ == 0; }
+    struct FadeWitness {
+        static constexpr unsigned rect_capacity = 1024, buckets = 8, line_budget = 64;
+        fade_region::Rect rects[rect_capacity]{};
+        bool prepared[rect_capacity]{};
+        unsigned count = 0, prepared_count = 0, last = rect_capacity, logged = 0;
+        bool overflow = false;
+        unsigned f_hist[buckets]{};
+        IDirect3DSurface9* copy = nullptr;
+        UINT copy_width = 0, copy_height = 0;
+        unsigned char* row = nullptr;
+        UINT row_width = 0;
+    } fade_witness_;
     unsigned material_refusals_logged_ = 0;
     // Lightweight shader setters capture integers only. Formatting is deferred
     // to the existing full CPU-state boundary around Present, once per lifetime.
@@ -980,6 +1009,12 @@ private:
     MotionOutputFixtureConfig fixture_{};
     bool fixture_configured_ = false, fixture_abi_known_ = false;
     bool fixture_stretch_fault_ = false; // X3M_FIXTURE_STRETCH_FAULT=1: the round-trip self test "fails" (taa_copy=draw)
+    // X3M_FIXTURE_FADE_RECT=l,t,r,b (fixture seam only): every admitted fade
+    // draw reports this rectangle as its bound-derived region, so the witness
+    // sees a sub-viewport rectangle (and a deliberately wrong one) although the
+    // fixture has no seam scope. Never compiled into production.
+    bool fixture_fade_rect_set_ = false;
+    fade_region::Rect fixture_fade_rect_{};
     float fixture_last_pixel_abi_[8]{};
     unsigned fixture_emission_exchange_fault_ = 0;
     unsigned fixture_cutout_cap_fault_ = 0, fixture_cutout_vs_fault_ = 0, fixture_cutout_ps_fault_ = 0;

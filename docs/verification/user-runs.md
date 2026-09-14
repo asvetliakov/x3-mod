@@ -73,6 +73,12 @@ including repeats of the same name). Report:
 No F8 capture is needed. If the game fails to start, rerun the same command
 without `--voice-decoder` and report which of the two failed.
 
+Next distance-fade capture (same enhanced command, no new run number): add
+`--linear-distance-fade --fade-witness` (every 30th frame reads the fade
+coverage target back once and logs `fade_witness` plus that frame's
+`fade_region` lines; emission stays off). Validation of the session log:
+`docs/architecture/linear-distance-fade-region.md`, step 1 "Live witness".
+
 ## 4. Vanilla window/cursor comparison — Ready after any enhanced run
 
 ```sh
