@@ -42,3 +42,42 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
+
+| 22 | LOD scale 2×, fade-band trembling fix, docking-port screenshot pair | 1 | Pending the next candidate |
+
+## 22. LOD scale 2×, fade-band trembling fix, docking-port screenshot pair — Pending the candidate
+
+One run on the next candidate (hash recorded in status once installed): `--lod-scale 2` (the
+engine's LOD switch distances doubled by the byte-verified patch,
+[lod-scale.md](../architecture/lod-scale.md)) and the fade-band trembling fix
+([asteroid-fog-temporal.md](../reverse-engineering/asteroid-fog-temporal.md), "Run 49"). Load the
+usual save.
+
+1. **Docking port, what you see**: pick one Argon station port. When it looks fine near, take a
+   normal screenshot (save it as `screenshots/port-near.png`) and press F8. Fly away until it has
+   gone black, take a screenshot (`screenshots/port-far.png`) and press F8 again. Say the target
+   distance readout at each. Analysis: the two capture groups against the screenshots, the draws
+   under the screenshot region, and the LOD of the node at each.
+2. **LOD scale**: say whether stations and ships keep their detail noticeably farther than before
+   (docking bays, greebles) and whether the frame rate suffers in a busy sector. Analysis:
+   `lod_scale requested=2 patched=1 write=plain`, then `lod_scale_value … applied=2` on the frame
+   lines; `object_context lod=` distribution vs run 21; `frame_end dt_ms` windows vs run 21.
+3. **Trembling**: view a station at 3–5 km in chase view with asteroids or other fading objects
+   around; say whether any part still trembles. Analysis: fade regions of reviewed pairs now
+   `routed=1` with the mask excluded above the threshold; `unjittered_depth_writers=0`.
+4. Anything else, including loading time by feel.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-exposure fixed --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission \
+  --lod-scale 2 \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+Report: the session path, the two screenshots with their distances, the LOD and trembling
+observations.
+
