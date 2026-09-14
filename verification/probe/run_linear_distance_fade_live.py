@@ -35,6 +35,19 @@ FAILED_SOURCES=(22,29)
 PRESENT_FRAMES=tuple(range(2,14,2))
 RESOLUTIONS=((1280,768),(1920,1080))
 COUNTS=(1,4,16)
+# Step 3 (docs/architecture/linear-distance-fade-region.md): admitted fade
+# draws compose in place (policy 4) whenever the device reports
+# D3DPRASTERCAPS_SCISSORTEST; emission keeps the exchange. The fixture's fade
+# sources draw under an application scissor of a quarter of the viewport
+# ([W/8,5W/8) x [H/4,3H/4) for the first source, shifted by W/4 for later
+# ones), and the pass intersects the derived rectangle with it, so the region
+# the pass actually backs up and composes is never larger than that scissor.
+# Timing variants inject a bound-derived rectangle inside the scissor through
+# the seam-only X3M_FIXTURE_FADE_RECT: side fractions of the viewport give the
+# requested area fractions f (1 = no injection, the derived full viewport).
+IN_PLACE_POLICY=4
+TIMING_FRACTIONS=(('1',None),('0.06',.245),('0.01',.1))
+STATUS_KEYS=30
 # Fade-region witness (docs/architecture/linear-distance-fade-region.md, step 1):
 # X3M_FADE_WITNESS=1 samples every fixture frame. The fixture has no seam scope,
 # so its derived rectangles are the full viewport; X3M_FIXTURE_FADE_RECT (seam
@@ -58,6 +71,7 @@ LIMITATIONS=[
     'Current/previous reactive coverage rejects invalid blended history; it does not implement layered transparent temporal accumulation or establish a shimmer fix.',
     'Real invalid-index-buffer sources establish exact native failure and no completed history. A failure before enhancement recovers next frame; earlier enhancement followed by rejected publication explicitly quarantines composition through Reset. Partial driver submission retains existing host/component evidence.',
     'Timing toggles only fade, with the same material/motion/TAA/emission settings. EVENT-fenced source and terminal windows exclude setup, the frame-level M clear, and readbacks; paired processes identify order effects but are not GPU timestamps or game FPS.',
+    'The fixture has no seam scope: its derived rectangles are the full viewport and the in-place region is the source\'s quarter-viewport application scissor; the smaller timing fractions come from the seam-only rectangle injection, not from the bound table, and the source raster is the same at every fraction.',
     'Native Windows, installation, gameplay appearance and docking-port distance-transition causality remain unverified.',
 ]
 
@@ -187,14 +201,39 @@ def expected_sources(frame,fade,emission):
         applied_fault=fault if active else 0
         prepared=active and not stopped and not scene_failed and applied_fault!=3
         linear=prepared and not (failed or applied_fault in (6,7))
-        native=prepared and applied_fault==6 and not failed
-        incomplete=prepared and (failed or applied_fault==7)
+        # A composite fault after a successful source certifies the exchanged
+        # native B for emission; the in-place fade recovers A|R from B|R
+        # instead and is Incomplete (blocked), never Native.
+        native=prepared and applied_fault==6 and not failed and kind=='emission'
+        incomplete=prepared and (failed or applied_fault==7 or (applied_fault==6 and kind=='fade'))
         if active and (applied_fault==3 or incomplete):stopped=True
         scene_failed=scene_failed or failed
         result.append(dict(kind=kind,pair=pair,fault=applied_fault,hr=0x8876086c if failed else 0,
                            original_calls=1,prepared=int(prepared),linear=int(linear),native=int(native),
                            incomplete=int(incomplete),mask_valid=bool((fade or emission) and not stopped)))
     return result,stopped
+
+
+def source_scissor(index,width=64,height=64):
+    """Application scissor of the fixture's index-th producer source."""
+    return ((3 if index else 1)*width//8,height//4,(7 if index else 5)*width//8,3*height//4)
+
+
+def rect_area(rect):
+    return max(0,rect[2]-rect[0])*max(0,rect[3]-rect[1])
+
+
+def intersect(a,b):
+    return (max(a[0],b[0]),max(a[1],b[1]),min(a[2],b[2]),min(a[3],b[3]))
+
+
+def expected_region_pixels(frame,fade,emission,rect=None,width=64,height=64):
+    """Sum of the rectangles the in-place brackets of one frame actually back
+    up and compose: the derived (or injected) rectangle intersected with the
+    source's application scissor, over every prepared fade source."""
+    sources,_=expected_sources(frame,fade,emission)
+    full=(0,0,width,height)
+    return sum(rect_area(intersect(rect or full,source_scissor(i,width,height))) for i,s in enumerate(sources) if s['kind']=='fade' and s['prepared'])
 
 
 class WitnessViolation(AssertionError):
@@ -271,12 +310,24 @@ def validate_witness(trace,fade,emission,k=WITNESS_K,rect=None):
 
 
 def compare_witness(cases):
-    """The witness readback is read-only: every witness process reproduces the
-    fade-on/emission-off baseline images and counters bit for bit."""
+    """The witness readback is read-only: the full and the containing rectangle
+    reproduce the fade-on/emission-off baseline images and counters bit for
+    bit. The control rectangle excludes the second footprint, which the
+    in-place bracket therefore leaves native in A: alpha, M and the ordinary
+    attachments are unchanged, the composed color differs on exactly the
+    frames with covered pixels outside the union (and, through the TAA
+    history, may differ afterwards), never before the first violation."""
     baseline=cases['lazy1-fade1-emission0']
-    for name in ('witness-full','witness-rect','witness-control'):
+    for name in ('witness-full','witness-rect'):
         for key in ('temporal_sha256','alpha_sha256','covered_pixels','frames_detail'):
             assert cases[name][key]==baseline[key],(name,'witness changed the composed result',key)
+    control=cases['witness-control']
+    for key in ('alpha_sha256','covered_pixels','frames_detail'):
+        assert control[key]==baseline[key],('witness-control','native strip changed alpha, coverage or counters',key)
+    first=min(WITNESS_CONTROL_VIOLATIONS)
+    for frame,(a,b) in enumerate(zip(baseline['temporal_sha256'],control['temporal_sha256'])):
+        if frame<first:assert a==b,(frame,'control differs before its first violation')
+        elif frame in WITNESS_CONTROL_VIOLATIONS:assert a!=b,(frame,'the excluded footprint must stay native in A')
 
 
 def indexed(lines,prefix,key):
@@ -285,7 +336,7 @@ def indexed(lines,prefix,key):
     return {int(r[key]):r for r in rows}
 
 
-def validate_functional(output,trace,fade,emission,lazy):
+def validate_functional(output,trace,fade,emission,lazy,rect=None):
     lines=output.splitlines();traces=trace.splitlines()
     terminal=[fields(line) for line in lines if line.startswith('RESULT PASS ')]
     assert len(terminal)==1 and not any(line.startswith('RESULT FAIL') for line in lines)
@@ -302,10 +353,11 @@ def validate_functional(output,trace,fade,emission,lazy):
     details=[]
     for frame,row in live.items():
         assert int(row['fade'])==fade and int(row['emission'])==emission
-        status=[int(row[f's{i}']) for i in range(22)]
+        status=[int(row[f's{i}']) for i in range(STATUS_KEYS)]
         expected,stopped=expected_sources(frame,fade,emission)
         assert status[0]==bool(required) and status[1]==bool(required and not stopped)
-        assert status[16]==status[18]==status[19]==required
+        assert status[16]==required,'required producers are the producer bits only'
+        assert status[18]==status[19]==required|(IN_PLACE_POLICY*bool(fade)),'fade attaches the in-place policy beside the exchange fade'
         assert status[20]==(7+bin(required).count('1') if required else 0)
         assert status[21]==(4 if required else 0), 'one shared four-target pool per attach'
         assert status[2]==status[3]==status[9]==0,'recoverable controls must not retain lost/quarantined/suppressed state'
@@ -313,7 +365,10 @@ def validate_functional(output,trace,fade,emission,lazy):
         assert status[5]==sum(s['linear'] for s in expected)
         assert status[6]==sum(s['native'] for s in expected)
         assert status[7]==sum(s['incomplete'] for s in expected)
-        assert status[10]==status[4],'all prepared controls publish linear or recovered B'
+        assert status[27]==status[14],'every prepared fade source composes in place'
+        assert status[10]==status[4]-status[27],'exchanged controls are the emission ones; in-place fade never exchanges'
+        assert status[28]==status[15],'in-place Linear completions are the fade linear ones'
+        assert status[29]==expected_region_pixels(frame,fade,emission,rect),(frame,'region pixels actually composed',status[29])
         assert status[12]==int(row['draws'])==len(expected),'each original source DIP is submitted once'
         assert status[13]==sum(s['kind']=='fade' for s in expected)*bool(fade)
         completed=[s['hr'] for s in expected if s['prepared']]
@@ -426,11 +481,35 @@ def validate_admission(output,trace,taa,hdr):
     return dict(frames=4,checks=int(terminal[0]['checks']),taa=taa,hdr=hdr,sources=3,held_references=int(releases[0]['held']))
 
 
-def validate_timing(output,fade,width,height):
+def timing_rect(width,height,side):
+    """Injected rectangle of side fraction `side`, centred on the timed
+    source's footprint and inside its application scissor."""
+    if side is None:return None
+    w=round(width*side);h=round(height*side);cx=3*width//8;cy=height//2
+    rect=(cx-w//2,cy-h//2,cx-w//2+w,cy-h//2+h)
+    assert intersect(rect,source_scissor(0,width,height))==rect
+    return rect
+
+
+def timing_count(frame):
+    return 1 if frame<6 else 4 if frame<12 else 16
+
+
+def validate_timing(output,trace,fade,width,height,rect=None):
     lines=output.splitlines()
     terminal=[fields(line) for line in lines if line.startswith('RESULT PASS ')]
     assert len(terminal)==1 and not any(line.startswith('RESULT FAIL') for line in lines)
     assert int(terminal[0]['frames'])==18
+    frames=indexed(trace.splitlines(),'linear_composition_frame ','frame')
+    region=rect_area(intersect(rect or (0,0,width,height),source_scissor(0,width,height)))
+    if fade:
+        assert set(frames)==set(range(18)),'one composition frame line per timed frame'
+        for frame,row in frames.items():
+            count=timing_count(frame)
+            assert int(row['prepared'])==int(row['in_place'])==int(row['in_place_linear'])==int(row['linear'])==count,(frame,'every timed source composes in place')
+            assert int(row['in_place_incomplete'])==int(row['incomplete'])==int(row['native'])==0
+            assert int(row['region_pixels'])==count*region,(frame,'region pixels',row['region_pixels'],count*region)
+    else:assert not frames,'no composition producer requested'
     rows=[fields(line) for line in lines if line.startswith('FADE_TIMING ')]
     assert [(int(r['count']),int(r['sample'])) for r in rows]==[(c,s) for c in COUNTS for s in range(4)]
     result={}
@@ -444,7 +523,8 @@ def validate_timing(output,fade,width,height):
     checks=[fields(line) for line in lines if line.startswith('FADE_CHECKS ')]
     assert len(checks)==1 and int(checks[0]['frames'])==18 and int(checks[0]['benchmark'])==1
     assert int(checks[0]['submissions'])==6*sum(COUNTS)
-    return dict(frames=18,warmups_per_count=2,samples_per_count=4,counts=result)
+    return dict(frames=18,warmups_per_count=2,samples_per_count=4,counts=result,rect=rect,
+                region_pixels_per_bracket=region if fade else 0,region_fraction=region/(width*height) if fade else 0.)
 
 
 def compare_functional(cases):
@@ -458,19 +538,27 @@ def compare_functional(cases):
             assert a['motion']==b['motion'] and a['depth']==b['depth'],'fade changed ordinary temporal attachments'
 
 
+def timing_name(width,height,pair,fade,fraction='1'):
+    return f'timing-{width}x{height}-pair{pair}-fade{fade}'+('' if fraction=='1' else f'-f{fraction}')
+
+
 def paired_cost(cases):
     result=[]
     for width,height in RESOLUTIONS:
-        for count in COUNTS:
-            pairs=[]
-            for pair in (0,1):
-                off,on=(cases[f'timing-{width}x{height}-pair{pair}-fade{fade}']['counts'][str(count)] for fade in (0,1))
-                deltas={k:[b[k]-a[k] for a,b in zip(off,on)] for k in ('source','terminal','total')}
-                pairs.append(dict(order='off/on' if pair==0 else 'on/off',
-                                  off_median_ms={k:statistics.median(r[k] for r in off) for k in deltas},
-                                  on_median_ms={k:statistics.median(r[k] for r in on) for k in deltas},
-                                  paired_window_median_delta_ms={k:statistics.median(v) for k,v in deltas.items()}))
-            result.append(dict(width=width,height=height,ordered_dips=count,pairs=pairs))
+        for fraction,_ in TIMING_FRACTIONS:
+            for count in COUNTS:
+                pairs=[]
+                for pair in (0,1):
+                    off=cases[timing_name(width,height,pair,0)]['counts'][str(count)]
+                    on_case=cases[timing_name(width,height,pair,1,fraction)];on=on_case['counts'][str(count)]
+                    deltas={k:[b[k]-a[k] for a,b in zip(off,on)] for k in ('source','terminal','total')}
+                    pairs.append(dict(order='off/on' if pair==0 else 'on/off',
+                                      off_median_ms={k:statistics.median(r[k] for r in off) for k in deltas},
+                                      on_median_ms={k:statistics.median(r[k] for r in on) for k in deltas},
+                                      paired_window_median_delta_ms={k:statistics.median(v) for k,v in deltas.items()}))
+                result.append(dict(width=width,height=height,requested_fraction=fraction,rect=on_case['rect'],
+                                   region_fraction=on_case['region_fraction'],region_pixels_per_bracket=on_case['region_pixels_per_bracket'],
+                                   ordered_dips=count,pairs=pairs))
     return result
 
 
@@ -506,9 +594,15 @@ def main():
     runs=[dict(name=f'lazy1-fade{fade}-emission{emission}',fade=fade,emission=emission,lazy=1,taa=1,hdr=1) for fade in (0,1) for emission in (0,1)]
     runs.append(dict(name='lazy0-fade1-emission1',fade=1,emission=1,lazy=0,taa=1,hdr=1))
     runs += [dict(name=f'admission-taa{taa}-hdr{hdr}',fade=1,emission=1,lazy=1,taa=taa,hdr=hdr,admission=True) for taa,hdr in ((0,1),(1,0))]
+    # Per resolution and pair order: fade off, then fade on at every requested
+    # region fraction (pair 1 reverses the order), so each on-variant has an
+    # off baseline in both orders.
     for width,height in RESOLUTIONS:
-        for pair,order in enumerate(((0,1),(1,0))):
-            for fade in order:runs.append(dict(name=f'timing-{width}x{height}-pair{pair}-fade{fade}',fade=fade,emission=0,lazy=1,taa=1,hdr=1,timing=True,width=width,height=height))
+        for pair in (0,1):
+            variants=[('0','1',None)]+[('1',fraction,side) for fraction,side in TIMING_FRACTIONS]
+            for fade,fraction,side in (variants if pair==0 else variants[::-1]):
+                runs.append(dict(name=timing_name(width,height,pair,int(fade),fraction),fade=int(fade),emission=0,lazy=1,taa=1,hdr=1,timing=True,
+                                 width=width,height=height,rect=timing_rect(width,height,side)))
     runs.append(dict(name='witness-full',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True))
     runs.append(dict(name='witness-rect',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True,rect=WITNESS_RECT))
     runs.append(dict(name='witness-control',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True,rect=WITNESS_CONTROL_RECT,expect_violations=WITNESS_CONTROL_VIOLATIONS))
@@ -529,9 +623,8 @@ def main():
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy' if run['lazy'] else 'perdraw',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
                        X3M_CAPTURE_START='1000000' if run.get('timing') else '1',X3M_CAPTURE_FRAMES='0',WINEDLLOVERRIDES='d3d9=n,b')
-            if run.get('witness'):
-                env['X3M_FADE_WITNESS']=str(WITNESS_K)
-                if run.get('rect'):env['X3M_FIXTURE_FADE_RECT']=','.join(map(str,run['rect']))
+            if run.get('witness'):env['X3M_FADE_WITNESS']=str(WITNESS_K)
+            if run.get('rect'):env['X3M_FIXTURE_FADE_RECT']=','.join(map(str,run['rect']))
             mode='distancefadebench' if run.get('timing') else 'distancefade'
             command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=n,b','--workdir',str(work),str(work/'fixture.exe'),'Z:'+str(inputs[2]),'Z:'+str(inputs[3]),mode]
             if run.get('timing'):command.append(f"{run['width']}x{run['height']}")
@@ -542,10 +635,10 @@ def main():
                 assert child.returncode==0,f"{run['name']}: fixture failed; {work}"
             logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()
-            if run.get('timing'):case=validate_timing(output,run['fade'],run['width'],run['height'])
+            if run.get('timing'):case=validate_timing(output,trace,run['fade'],run['width'],run['height'],run.get('rect'))
             elif run.get('admission'):case=validate_admission(output,trace,run['taa'],run['hdr'])
             else:
-                case=validate_functional(output,trace,run['fade'],run['emission'],run['lazy'])
+                case=validate_functional(output,trace,run['fade'],run['emission'],run['lazy'],run.get('rect'))
                 case.update(validate_pixels(work,run['fade'],run['emission']))
             if run.get('witness'):
                 try:
@@ -562,8 +655,9 @@ def main():
         compare_witness(result['cases'])
         result['paired_completion_cost']=paired_cost(result['cases'])
         assert hashes=={str(p):sha(p) for p in inputs},'prebuilt qualification inputs changed'
-        result['functional_frames']=150;result['admission_frames']=8;result['timing_frames']=144;result['witness_frames']=90
-        result['new_processes']=17 if native_reuse else 18
+        timing_runs=len(RESOLUTIONS)*2*(1+len(TIMING_FRACTIONS))
+        result['functional_frames']=150;result['admission_frames']=8;result['timing_frames']=18*timing_runs;result['witness_frames']=90
+        result['new_processes']=len(runs)-int(native_reuse is not None)
         result['retained_processes']=int(native_reuse is not None)
         result['passed']=True
     finally:

@@ -818,7 +818,16 @@ private:
     bool composition_terminal_export_ = false, composition_diagnostic_export_ = false, composition_published_ = false;
     struct CompositionCounters {
         unsigned eligible_fade = 0, prepared_fade = 0, linear_fade = 0;
-        std::uint64_t pool_traffic_bytes = 0; // logical full-size copy/compose traffic; excludes source raster
+        // Logical copy/compose traffic: 56 bytes per target pixel per exchanged
+        // bracket, 48 bytes per region pixel per in-place bracket; no source raster.
+        std::uint64_t pool_traffic_bytes = 0;
+        // In-place fade brackets (policy 4, step 3): prepared, completed Linear,
+        // completed Incomplete (source, composite or restore failure; A|R
+        // recovered from B|R unless recovery itself failed), recovery failures,
+        // and the sum of the rectangles the pass actually backed up and composed.
+        unsigned in_place = 0, in_place_linear = 0, in_place_incomplete = 0, recovery_failures = 0;
+        std::uint64_t region_pixels = 0;
+        HRESULT recovery = S_FALSE;
         unsigned prepared = 0, linear = 0, native = 0, incomplete = 0, refused = 0, suppressed = 0, exports = 0, exchanged = 0;
         HRESULT source = S_FALSE, prepare = S_FALSE, prepare_restore = S_FALSE, composition = S_FALSE, restore = S_FALSE, exchange = S_FALSE, ack = S_FALSE;
         unsigned refusal[6]{}; // pair, permission/scene, readiness, readers, frame stop, prepare failure

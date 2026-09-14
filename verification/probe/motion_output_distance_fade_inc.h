@@ -264,7 +264,7 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
         for(std::size_t i=0;i<alpha.size();++i)alpha[i]=f.emission_reference_color[4*i+3];
         raw(1,motion);raw(2,depth);
         std::printf("FADE_LIVE frame=%llu fade=%u emission=%u draws=%u",f.frame,f.distancefade_enabled,f.distancefade_emissions_enabled,issued);
-        for(unsigned i=0;i<22;++i)std::printf(" s%u=%u",i,f.emission_status(f.d.p,i));
+        for(unsigned i=0;i<30;++i)std::printf(" s%u=%u",i,f.emission_status(f.d.p,i));
         std::printf(" hash_alpha=%016llx hash_motion=%016llx hash_depth=%016llx hash_mask=%016llx\n",static_cast<unsigned long long>(hash(alpha)),static_cast<unsigned long long>(hash(motion)),static_cast<unsigned long long>(hash(depth)),static_cast<unsigned long long>(hash(f.emission_reference_mask)));
         if(!qualified) {
             require(f.emission_status(f.d.p,15)==0,"fade missing prerequisite never enhances");

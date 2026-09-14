@@ -871,6 +871,7 @@ LinearEmissionCompletion LinearEmissionPass::finish(HRESULT source) noexcept {
   p.completion = {};
   p.completion.source = source;
   if (p.in_place) {
+    p.completion.region = p.region;
     // Composite R of A from B (s0, the pre-draw copy) and E (s1) under the
     // scissor, then restore. Nothing is exchanged or acknowledged: A holds
     // the result and the bracket is over. After a failed source or composite

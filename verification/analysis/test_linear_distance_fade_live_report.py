@@ -42,7 +42,15 @@ def witness_trace(fade=1,emission=0,rect=None,outside=None,k=live.WITNESS_K):
     return '\n'.join(trace)
 
 
-def report(fade=1,emission=1,lazy=1):
+def timing_trace(fade=1,width=1280,height=768,rect=None):
+    """Per-frame linear_composition_frame lines of one timing process."""
+    if not fade:return ''
+    region=live.rect_area(live.intersect(rect or (0,0,width,height),live.source_scissor(0,width,height)))
+    return '\n'.join(line('linear_composition_frame',device=1,frame=f,prepared=live.timing_count(f),linear=live.timing_count(f),native=0,incomplete=0,refused=0,
+                          in_place=live.timing_count(f),in_place_linear=live.timing_count(f),in_place_incomplete=0,region_pixels=live.timing_count(f)*region) for f in range(18))
+
+
+def report(fade=1,emission=1,lazy=1,rect=None):
     required=emission+2*fade
     out=['RESULT PASS frames=30 checks=123 restorations=35 taa_reference_frames=28 taa_skipped_frames=2',
          'FADE_OPAQUE_RETURN frame=13 matched=1']
@@ -54,17 +62,18 @@ def report(fade=1,emission=1,lazy=1):
     trace=['motion_output_release held=123 released=1']
     for f in range(live.FRAMES):
         sources,stopped=live.expected_sources(f,fade,emission)
-        s=[0]*22
+        s=[0]*live.STATUS_KEYS
         s[0]=int(bool(required));s[1]=int(bool(required and not stopped))
         for index,key in ((4,'prepared'),(5,'linear'),(6,'native'),(7,'incomplete')):
             s[index]=sum(r[key] for r in sources)
-        s[10]=s[4];completed=[r['hr'] for r in sources if r['prepared']]
+        completed=[r['hr'] for r in sources if r['prepared']]
         s[11]=completed[-1] if completed else 1;s[12]=len(sources)
         s[13]=sum(r['kind']=='fade' for r in sources)*bool(fade)
         s[14]=sum(r['prepared'] for r in sources if r['kind']=='fade')
         s[15]=sum(r['linear'] for r in sources if r['kind']=='fade')
-        s[16]=s[18]=s[19]=required;s[17]=int(stopped)
+        s[16]=required;s[18]=s[19]=required|(live.IN_PLACE_POLICY*bool(fade));s[17]=int(stopped)
         s[20]=7+bin(required).count('1') if required else 0;s[21]=4 if required else 0
+        s[27]=s[14];s[28]=s[15];s[10]=s[4]-s[27];s[29]=live.expected_region_pixels(f,fade,emission,rect)
         out.append(line('FADE_LIVE',frame=f,fade=fade,emission=emission,draws=len(sources),**{f's{i}':v for i,v in enumerate(s)},hash_alpha='a',hash_motion='m',hash_depth='d',hash_mask='mask'))
         prior=int(bool(required))
         for i,r in enumerate(sources):
@@ -112,8 +121,21 @@ class FadeLiveReportTests(unittest.TestCase):
         for prefix in ('FADE_LIVE frame=0 ','FADE_SOURCE frame=19 source=2 ','FADE_SAMPLE frame=12 source=0 pair=5 x=16 '):
             row=next(r for r in output.splitlines() if r.startswith(prefix))
             with self.subTest(duplicate=prefix),self.assertRaises(AssertionError):live.validate_functional(output+'\n'+row,trace,1,1,1)
-        for old,new in (('s20=9','s20=10'),('s21=4','s21=8'),('original_calls=1','original_calls=2'),('s16=3','s16=1'),('s18=3','s18=1'),('ordinary_t=0.03125','ordinary_t=0'),('matched=1','matched=0'),('overlap=2','overlap=1'),('hr=8876086c','hr=00000000'),('mask_after=0','mask_after=1')):
+        for old,new in (('s20=9','s20=10'),('s21=4','s21=8'),('original_calls=1','original_calls=2'),('s16=3','s16=1'),('s16=3','s16=7'),('s18=7','s18=3'),('s19=7','s19=3'),('ordinary_t=0.03125','ordinary_t=0'),('matched=1','matched=0'),('overlap=2','overlap=1'),('hr=8876086c','hr=00000000'),('mask_after=0','mask_after=1')):
             with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_functional(output.replace(old,new,1),trace,1,1,1)
+        # In place: fade never exchanges, every prepared fade source composes in
+        # place, and the region pixels are the scissor-clipped rectangles.
+        base=next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=16 '))
+        for old,new in (('s10=0 ','s10=2 '),('s27=2 ','s27=1 '),('s28=2 ','s28=1 '),('s29=2048 ','s29=4096 ')):
+            with self.subTest(field=old):
+                self.assertIn(old,base)
+                with self.assertRaises(AssertionError):live.validate_functional(output.replace(base,base.replace(old,new,1)),trace,1,1,1)
+        boxed=next(r for r in output.splitlines() if r.startswith('FADE_LIVE frame=17 '))
+        self.assertIn('s10=1 ',boxed);self.assertIn('s29=1024 ',boxed)
+        control_output,control_trace=report(1,0,1,rect=live.WITNESS_CONTROL_RECT)
+        self.assertIn('s29=1536 ',next(r for r in control_output.splitlines() if r.startswith('FADE_LIVE frame=16 ')))
+        self.assertEqual(live.validate_functional(control_output,control_trace,1,0,1,live.WITNESS_CONTROL_RECT)['frames'],30)
+        with self.assertRaises(AssertionError):live.validate_functional(control_output,control_trace,1,0,1)
         with self.assertRaises(AssertionError):live.validate_functional(output,trace.replace('taa_resolved=0','taa_resolved=1',1),1,1,1)
 
     def test_quarantine_export_and_reset_persist(self):
@@ -137,9 +159,14 @@ class FadeLiveReportTests(unittest.TestCase):
             self.assertTrue(stopped)
             self.assertEqual(rows[-1]['prepared'],0)
             self.assertFalse(rows[-1]['mask_valid'])
-        rows,_=live.expected_sources(21,1,1)
-        self.assertEqual((rows[0]['prepared'],rows[0]['native'],rows[0]['linear']),(1,1,0))
-        self.assertTrue(rows[0]['mask_valid'])
+        # A composite fault on the in-place fade recovers A|R and blocks the
+        # frame (Incomplete), never a certified native publication.
+        rows,stopped=live.expected_sources(21,1,1)
+        self.assertEqual((rows[0]['prepared'],rows[0]['native'],rows[0]['linear'],rows[0]['incomplete']),(1,0,0,1))
+        self.assertFalse(rows[0]['mask_valid']);self.assertTrue(stopped)
+        self.assertEqual(live.expected_region_pixels(21,1,1),1024)
+        self.assertEqual(live.expected_region_pixels(16,1,0,live.WITNESS_CONTROL_RECT),1536)
+        self.assertEqual(live.expected_region_pixels(22,1,1),1024)
         for fade in (0,1):
             rows,_=live.expected_sources(22,fade,1)
             self.assertEqual(rows[0]['hr'],0x8876086c)
@@ -204,16 +231,47 @@ class FadeLiveReportTests(unittest.TestCase):
         out=['RESULT PASS frames=18 checks=1','FADE_CHECKS frames=18 submissions=126 benchmark=1']
         for count in live.COUNTS:
             for sample in range(4):out.append(line('FADE_TIMING',width=1280,height=768,count=count,sample=sample,fade=1,emission=0,source_ms=1.,terminal_ms=2.,total_ms=3.))
-        text='\n'.join(out)
-        self.assertEqual(set(live.validate_timing(text,1,1280,768)['counts']),{'1','4','16'})
+        text='\n'.join(out);trace=timing_trace()
+        result=live.validate_timing(text,trace,1,1280,768)
+        self.assertEqual(set(result['counts']),{'1','4','16'})
+        self.assertEqual((result['region_pixels_per_bracket'],result['region_fraction']),(640*384,.25))
         for old,new in (('total_ms=3.0','total_ms=4.0'),('source_ms=1.0','source_ms=nan'),('emission=0','emission=1'),('count=16','count=8'),('sample=0','sample=1')):
-            with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_timing(text.replace(old,new,1),1,1280,768)
+            with self.subTest(field=old),self.assertRaises(AssertionError):live.validate_timing(text.replace(old,new,1),trace,1,1280,768)
+        for old,new in (('in_place=16','in_place=15'),('in_place_linear=4','in_place_linear=3'),('in_place_incomplete=0','in_place_incomplete=1'),('region_pixels=245760','region_pixels=245761'),('frame=17','frame=18')):
+            with self.subTest(field=old):
+                self.assertIn(old,trace)
+                with self.assertRaises(AssertionError):live.validate_timing(text,trace.replace(old,new,1),1,1280,768)
+        with self.assertRaises(AssertionError):live.validate_timing(text,'',1,1280,768)
+        with self.assertRaises(AssertionError):live.validate_timing(text.replace('fade=1','fade=0'),trace,0,1280,768)
+        self.assertEqual(live.validate_timing(text.replace('fade=1','fade=0'),'',0,1280,768)['region_fraction'],0.)
+        # Injected fractions stay inside the timed source's scissor and hit the requested area.
+        for (fraction,side),(w,h) in zip(live.TIMING_FRACTIONS,((1280,768),(1920,1080))):
+            rect=live.timing_rect(w,h,side)
+            if side is None:self.assertIsNone(rect);continue
+            boxed=live.validate_timing(text.replace('1280','1920').replace('768','1080') if w==1920 else text,timing_trace(1,w,h,rect),1,w,h,rect)
+            self.assertAlmostEqual(boxed['region_fraction'],float(fraction),delta=.0005)
+        self.assertEqual(live.timing_name(1920,1080,1,1,'0.06'),'timing-1920x1080-pair1-fade1-f0.06')
+        self.assertEqual(live.timing_name(1920,1080,1,0),'timing-1920x1080-pair1-fade0')
+
+    def test_witness_control_native_strip_changes_only_the_composed_color(self):
+        base=dict(temporal_sha256=[None if f in live.FAILED_SOURCES else f'h{f}' for f in range(30)],alpha_sha256=['a']*30,covered_pixels=[1]*30,frames_detail=['d']*30)
+        cases={name:copy.deepcopy(base) for name in ('lazy1-fade1-emission0','witness-full','witness-rect','witness-control')}
+        with self.assertRaises(AssertionError):live.compare_witness(cases)
+        for f in range(min(live.WITNESS_CONTROL_VIOLATIONS),30):
+            if f not in live.FAILED_SOURCES:cases['witness-control']['temporal_sha256'][f]=f'native{f}'
+        live.compare_witness(cases)
+        broken=copy.deepcopy(cases);broken['witness-control']['temporal_sha256'][2]='native2'
+        with self.assertRaises(AssertionError):live.compare_witness(broken)
+        broken=copy.deepcopy(cases);broken['witness-control']['alpha_sha256'][16]='changed'
+        with self.assertRaises(AssertionError):live.compare_witness(broken)
+        broken=copy.deepcopy(cases);broken['witness-rect']['temporal_sha256'][16]='changed'
+        with self.assertRaises(AssertionError):live.compare_witness(broken)
 
     def test_witness_positive_histogram_and_revisions(self):
         result=live.validate_witness(witness_trace(),1,0)
         self.assertEqual(result['outside_pixels'],0)
         self.assertEqual(set(result['sampled_frames']),{f for f in range(30) if live.expected_witness(f,1,0)['reason']=='sampled'})
-        self.assertEqual(result['skipped'],{'no_fade':8,'mask_invalid':3})
+        self.assertEqual(result['skipped'],{'no_fade':8,'mask_invalid':4})
         self.assertEqual(sum(result['f_histogram'].values()),len(result['sampled_frames'])+sum(1 for f in (16,20,24)))
         self.assertEqual(result['f_histogram']['f=1'],sum(result['f_histogram'].values()))
         self.assertEqual(result['revisions_per_vb'],{'7':{'3':result['region_lines']}})

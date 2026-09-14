@@ -33,6 +33,10 @@ struct LinearEmissionCompletion {
   // In-place policy only: after a failed source or composite the rectangle of
   // A is recovered from its pre-draw backup (exact copy); S_FALSE when unused.
   HRESULT recovery = S_FALSE;
+  // In-place policy only: the rectangle actually backed up and composed
+  // (the boundary region after the target/viewport/scissor intersection);
+  // empty for the exchange policies. Diagnostic: per-frame region pixels.
+  RECT region{};
 };
 struct LinearEmissionBoundary {
   // Exact borrowed HdrPass owning-slot value A. GetRT0 may be a canonical

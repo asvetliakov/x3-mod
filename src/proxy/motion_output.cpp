@@ -2702,7 +2702,11 @@ void MotionOutput::begin_composition_frame() noexcept {
         || !hdr_enabled_ || !hdr_ || !hdr_->tonemap_active()
         || hdr_config_.tonemap != renderer::HdrTonemap::Agx || hdr_config_.decode != x3::temporal::AgxDecode::gamma22) return;
     composition_busy_ = true;
-    const unsigned requested = (linear_emission_requested_ ? 1u : 0u) | (distance_fade_requested_ ? 2u : 0u);
+    // Producer bits 1|2 name the required coverage; bit 4 asks for the in-place
+    // fade bracket beside the exchange fade (policy 2 stays the fallback when the
+    // device lacks D3DPRASTERCAPS_SCISSORTEST: the pass then reports 4 unsupported).
+    const unsigned producers = (linear_emission_requested_ ? 1u : 0u) | (distance_fade_requested_ ? 2u : 0u);
+    const unsigned requested = producers | (distance_fade_requested_ ? 4u : 0u);
     if (composition_adapter_format_ == D3DFMT_UNKNOWN) {
         // An unanswered capability query is not proof of immutable exclusion.
         // Retry only at the frame latch; this frame must not seed ordinary TAA
@@ -2714,7 +2718,7 @@ void MotionOutput::begin_composition_frame() noexcept {
             if (failure != composition_attach_result_)
                 log("linear_composition_device device=%llu result=%08lx requested=%u supported=0 available=0 reason=adapter_query", id_, failure, requested);
             composition_attach_result_ = failure;
-            composition_required_producers_ = requested;
+            composition_required_producers_ = producers;
             composition_busy_ = false;
             invalidate_taa();
             return;
@@ -2742,9 +2746,9 @@ void MotionOutput::begin_composition_frame() noexcept {
     }
     // Capability support fixes the frame producer set. Allocation/program
     // failures cannot silently remove a source class from required coverage.
-    composition_required_producers_ = composition_ ? composition_->caps().supported_policies : requested;
+    composition_required_producers_ = (composition_ ? composition_->caps().supported_policies : producers) & 3u;
     if (!composition_required_producers_ && composition_attach_result_ == E_OUTOFMEMORY)
-        composition_required_producers_ = requested; // Impl allocation failed before caps could be retained.
+        composition_required_producers_ = producers; // Impl allocation failed before caps could be retained.
     composition_effective_ = composition_effective_ || (composition_ && composition_->caps().supported_policies != 0);
     if (!composition_ || !composition_->caps().enabled ||
         (composition_->caps().available_policies & composition_required_producers_) != composition_required_producers_) {
@@ -2794,7 +2798,12 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     if (!fade && !emitter) { ++composition_counts_.refused; ++composition_counts_.refusal[0]; return; }
     if (fade) ++composition_counts_.eligible_fade;
     const unsigned producer = fade ? 2u : 1u;
-    const auto policy = fade ? renderer::LinearCompositionPolicy::DistanceFade : renderer::LinearCompositionPolicy::AdditiveEmission;
+    // Fade composes in place (section 3 of linear-distance-fade-region.md) when
+    // the pass offers policy 4; otherwise the exchange policy 2 remains the
+    // route. Emission keeps its exchange bracket in either case.
+    const bool in_place = fade && composition_ && composition_->caps().supports(renderer::LinearCompositionPolicy::DistanceFadeInPlace);
+    const auto policy = in_place ? renderer::LinearCompositionPolicy::DistanceFadeInPlace
+        : fade ? renderer::LinearCompositionPolicy::DistanceFade : renderer::LinearCompositionPolicy::AdditiveEmission;
     const bool required = (composition_required_producers_ & producer) != 0;
     unsigned refusal = 6;
     if (!call.composition_permission || !call.indexed || call.user_memory || !call.primitives
@@ -2823,6 +2832,15 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
     renderer::LinearEmissionBoundary boundary{hdr_->target(), fade ? shadow_.ps_fade_variant : shadow_.emission_eligible_variant, frame_, true};
     boundary.policy = policy;
     boundary.augmented_vertex = fade ? shadow_.vs_fade_variant : nullptr;
+    if (in_place) {
+        // derive_fade_region always yields a rectangle: the box projection or,
+        // on every doubt, the full viewport (whole target while the viewport is
+        // unknown), already clipped to the owning target. The pass intersects
+        // it further with the saved viewport and an enabled application scissor.
+        const auto& r = route.fade_region.rect;
+        boundary.region = RECT{r.left, r.top, r.right, r.bottom};
+        boundary.region_known = true;
+    }
     const auto prepared = composition_->prepare(boundary);
     composition_counts_.prepare = FAILED(prepared.saved) ? prepared.saved : prepared.operation;
     composition_counts_.prepare_restore = prepared.restore;
@@ -2833,7 +2851,8 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         if (fade && witness_frame() && fade_witness_.last < FadeWitness::rect_capacity) {
             fade_witness_.prepared[fade_witness_.last] = true; ++fade_witness_.prepared_count;
         }
-        composition_counts_.pool_traffic_bytes += std::uint64_t(hdr_->width()) * hdr_->height() * 56u;
+        if (in_place) ++composition_counts_.in_place; // traffic and region pixels are added at finish from the pass's rectangle
+        else composition_counts_.pool_traffic_bytes += std::uint64_t(hdr_->width()) * hdr_->height() * 56u;
         return;
     }
     composition_busy_ = false; ++composition_counts_.refused; ++composition_counts_.refusal[5]; ++composition_counts_.prepare_failures;
@@ -2871,6 +2890,34 @@ void MotionOutput::finish_composition(HRESULT source, renderer::LinearCompositio
     composition_counts_.composition = completed.composition; composition_counts_.restore = completed.restore;
     if (FAILED(completed.composition)) ++composition_counts_.composition_failures;
     if (FAILED(completed.restore)) ++composition_counts_.restore_failures;
+    if (policy == renderer::LinearCompositionPolicy::DistanceFadeInPlace) {
+        // No candidate, exchange or acknowledgement: finish() composed A|R in
+        // place from B|R and E|R and returned the pass to idle. Linear means A
+        // holds the composed rectangle and the frame's M stays valid. Anything
+        // else is Incomplete: the pass recovered A|R exactly from B|R (the
+        // object is absent from the frame, recovery S_OK) or could not
+        // (partial source writes remain, recovery failed); both stop the frame,
+        // select the Unavailable reactive policy with a null mask and drop the
+        // history, never a native publication. A failed restore leaves the
+        // device state unknown, as a failed exchange acknowledgement does.
+        const auto& r = completed.region;
+        const std::uint64_t pixels = r.right > r.left && r.bottom > r.top
+            ? std::uint64_t(r.right - r.left) * std::uint64_t(r.bottom - r.top) : 0u;
+        composition_counts_.region_pixels += pixels;
+        composition_counts_.pool_traffic_bytes += pixels * 48u;
+        composition_counts_.recovery = completed.recovery;
+        if (FAILED(completed.recovery)) ++composition_counts_.recovery_failures;
+        if (FAILED(completed.restore)) composition_state_lost_ = true;
+        composition_busy_ = false;
+        if (FAILED(source) || completed.image != renderer::LinearEmissionImage::Linear || composition_state_lost_ || !composition_->coverage_valid()) {
+            ++composition_counts_.incomplete; ++composition_counts_.in_place_incomplete;
+            composition_frame_stopped_ = true; invalidate_taa();
+        } else {
+            ++composition_counts_.linear; ++composition_counts_.linear_fade; ++composition_counts_.in_place_linear;
+            composition_enhanced_ = true;
+        }
+        return;
+    }
     bool published = publish_composition();
     if (!published && !composition_state_lost_) {
         completed = composition_->recover_native();
@@ -3800,11 +3847,12 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         // telemetry on (timing=cpu_qpc) and zero otherwise (timing=off).
         const auto& c = counters_;
         if (composition_requested())
-            log("%s_frame device=%llu frame=%llu prepared=%u linear=%u native=%u incomplete=%u refused=%u suppressed=%u exports=%u quarantine=%u state_lost=%u mask_valid=%u fade_eligible=%u fade_prepared=%u fade_linear=%u pool_traffic_estimate_bytes=%llu",
+            log("%s_frame device=%llu frame=%llu prepared=%u linear=%u native=%u incomplete=%u refused=%u suppressed=%u exports=%u quarantine=%u state_lost=%u mask_valid=%u fade_eligible=%u fade_prepared=%u fade_linear=%u pool_traffic_estimate_bytes=%llu in_place=%u in_place_linear=%u in_place_incomplete=%u region_pixels=%llu",
                 distance_fade_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.prepared, composition_counts_.linear, composition_counts_.native, composition_counts_.incomplete,
                 composition_counts_.refused, composition_counts_.suppressed, composition_counts_.exports, composition_quarantined_, composition_state_lost_,
                 composition_ && composition_->coverage_valid() && !composition_frame_stopped_ && !composition_quarantined_,
-                composition_counts_.eligible_fade, composition_counts_.prepared_fade, composition_counts_.linear_fade, composition_counts_.pool_traffic_bytes);
+                composition_counts_.eligible_fade, composition_counts_.prepared_fade, composition_counts_.linear_fade, composition_counts_.pool_traffic_bytes,
+                composition_counts_.in_place, composition_counts_.in_place_linear, composition_counts_.in_place_incomplete, composition_counts_.region_pixels);
         if (distance_fade_requested_ && (composition_counts_.region_bound || composition_counts_.region_full))
             log("fade_region_frame device=%llu frame=%llu bound=%u full=%u hit=%u miss=%u poisoned=%u evicted=%u f_mean=%.4f reason_viewport=%u reason_rows=%u reason_unknown=%u reason_w=%u reason_nonfinite=%u reason_fill=%u status_no_table=%u status_no_scope=%u status_content=%u status_poisoned=%u status_read=%u status_back_link=%u status_no_record=%u status_invalid=%u table_used=%u table_poisoned=%u table_evictions=%u",
                 id_, frame_, composition_counts_.region_bound, composition_counts_.region_full, composition_counts_.region_hit, composition_counts_.region_miss, composition_counts_.region_poisoned, composition_counts_.region_evicted,
@@ -3814,10 +3862,10 @@ void MotionOutput::after_present(HRESULT result) noexcept {
                 composition_counts_.region_status[4], composition_counts_.region_status[5], composition_counts_.region_status[6], composition_counts_.region_status[7], composition_counts_.region_status[8],
                 fade_bounds_.used(), fade_bounds_.poisoned(), fade_bounds_.evictions());
         if (composition_requested())
-            log("%s_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx",
+            log("%s_refusals device=%llu frame=%llu pair=%u permission_scene=%u readiness=%u readers=%u frame_stop=%u preparation=%u prepare_failures=%u composition_failures=%u restore_failures=%u exchange_failures=%u ack_failures=%u recovery_failures=%u last_prepare=%08lx last_prepare_restore=%08lx last_source=%08lx last_composition=%08lx last_restore=%08lx last_exchange=%08lx last_ack=%08lx last_recovery=%08lx",
                 distance_fade_requested_ ? "linear_composition" : "linear_emission", id_, frame_, composition_counts_.refusal[0], composition_counts_.refusal[1], composition_counts_.refusal[2], composition_counts_.refusal[3], composition_counts_.refusal[4], composition_counts_.refusal[5],
-                composition_counts_.prepare_failures, composition_counts_.composition_failures, composition_counts_.restore_failures, composition_counts_.exchange_failures, composition_counts_.ack_failures,
-                composition_counts_.prepare, composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition, composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack);
+                composition_counts_.prepare_failures, composition_counts_.composition_failures, composition_counts_.restore_failures, composition_counts_.exchange_failures, composition_counts_.ack_failures, composition_counts_.recovery_failures,
+                composition_counts_.prepare, composition_counts_.prepare_restore, composition_counts_.source, composition_counts_.composition, composition_counts_.restore, composition_counts_.exchange, composition_counts_.ack, composition_counts_.recovery);
         if (linear_material_requested_)
             log("linear_material_frame device=%llu frame=%llu routed=%lu bump_routed=%lu refused=%lu bind_failures=%lu cutout_routed=%lu cutout_missed=%lu cutout_unavailable=%u cutout_caps=%u",
                 id_, frame_, static_cast<unsigned long>(c.material_routed), static_cast<unsigned long>(c.material_bump_routed), static_cast<unsigned long>(c.material_refused),
@@ -3908,6 +3956,9 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 24: return composition_counts_.region_hit;
     case 25: return composition_counts_.region_poisoned;
     case 26: return fade_bounds_.reserved();
+    case 27: return composition_counts_.in_place;
+    case 28: return composition_counts_.in_place_linear;
+    case 29: return unsigned(composition_counts_.region_pixels);
     case 30: return unsigned(cutout_caps_);
     case 31: return cutout_cap_queries_;
     case 32: return cutout_coverage_missed_;

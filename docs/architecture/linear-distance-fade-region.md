@@ -579,3 +579,160 @@ Not done here: the runtime route (`motion_output.cpp` still requests and
 publishes policies 1–2 only; `finish_composition` must treat an in-place
 completion as published and skip `publish_composition`), the live timings and
 per-frame region counters (step 3).
+
+## Step 3 — implemented 2026-09-14 (runtime route, live witness and timings)
+
+Code: `src/proxy/motion_output.{h,cpp}`. At the HDR latch the pass is attached
+with the producer bits plus bit 4 whenever distance fade is requested
+(`requested = producers | 4`); `composition_required_producers_` stays the
+producer bits (`supported_policies & 3`), so required coverage, the
+availability check, the `linear_composition_device` line (`requested=6/7`,
+`supported`/`available` carry bit 4 only when the device reports
+`D3DPRASTERCAPS_SCISSORTEST`) and fixture key 16 keep their meaning.
+`prepare_composition` selects `DistanceFadeInPlace` for an admitted fade draw
+when `caps().supports(4)`, else the exchange policy 2 (the fail-closed
+fallback; emission always keeps policy 1). The boundary carries the step-1
+rectangle (`route.fade_region.rect`, already the full viewport on every doubt
+and clipped to the owning target) with `region_known = true`; the pass
+intersects it with the saved viewport and an enabled application scissor. No
+per-draw allocation or lookup was added: the rectangle is the one step 1
+already derived. `LinearEmissionCompletion` gained `RECT region` (the
+rectangle actually backed up and composed) so the runtime counts real region
+pixels without a second `select_region`.
+
+`finish_composition`, in-place branch (the exchange path is unchanged and not
+reached; `publish_composition` is never called for policy 4): the completion's
+region area goes to `region_pixels` and to `pool_traffic_estimate_bytes` at
+48 bytes per region pixel (exchange brackets still add 56 bytes per target
+pixel at prepare). **Certified native recovery for the in-place policy**:
+`Linear` with a successful restore and valid coverage counts `linear`,
+`linear_fade`, `in_place_linear` and marks the frame enhanced — A holds the
+composed rectangle, no exchange. Anything else (failed source, composite or
+composite scissor, restore failure) is `incomplete` + `in_place_incomplete`,
+stops the frame (`composition_frame_stopped_`, `invalidate_taa`): the reactive
+policy becomes `Unavailable` with a null mask and no history is published. The
+two sub-cases differ only in what A|R holds: a successful recovery
+(`recovery = S_OK`) leaves the exact pre-draw bits (the object is absent from
+the frame, A is native everywhere), a failed recovery (`recovery_failures`,
+`last_recovery`) leaves the partial source writes; neither reaches the
+exchange path's "certified native fallback", which for the in-place policy is
+unreachable by construction. A failed restore additionally sets
+`composition_state_lost_` (device state unknown), exactly like a failed
+exchange acknowledgement. Mixed frames: an emission bracket after an in-place
+fade bracket copies A into the whole of B and clears E in the same full-size
+rasterization, so stale B/E regions left by the in-place bracket are never
+read; the emission exchange changes only the owning slot and `c`, which the
+in-place bracket never touches, and the next in-place bracket reads
+`hdr_->target()` afresh. M is cleared once per frame by `begin_frame` and only
+accumulates (fixture frames 17–20, 22–25, 27–29 mix both orders).
+
+Present-boundary lines: `linear_composition_frame` gained `in_place`,
+`in_place_linear`, `in_place_incomplete`, `region_pixels`; the refusals line
+gained `recovery_failures` and `last_recovery`. Fixture status keys 27
+(in-place prepared), 28 (in-place Linear), 29 (region pixels, low 32 bits);
+`FADE_LIVE` prints keys 0–29.
+
+Runner (`run_linear_distance_fade_live.py`): `expected_sources` models a
+composite fault on a fade source as Incomplete (frame 21 is now stopped;
+emission keeps Native), `validate_functional` requires `s16 = producers`,
+`s18 = s19 = producers | 4·fade`, `s27 = s14`, `s28 = s15`,
+`s10 = s4 − s27` (only emission exchanges) and `s29` equal to the sum over
+prepared fade sources of the derived (or injected) rectangle intersected with
+that source's application scissor. `compare_witness` requires `witness-full`
+and `witness-rect` bit-exact with the baseline; `witness-control` must keep
+alpha, coverage and counters and differ in the composed color on its violation
+frames (the excluded strip is native in A now, which the exchange path hid).
+Timing runs per resolution and pair order: fade off, then fade on at
+`f ∈ {1, 0.06, 0.01}` (pair 1 reversed); the sub-viewport fractions come from
+`X3M_FIXTURE_FADE_RECT` (seam only) centred on the timed source inside its
+scissor. `validate_timing` reads the per-frame `linear_composition_frame`
+lines and requires `prepared = in_place = in_place_linear = linear` equal to
+the frame's DIP count and `region_pixels = count × region`.
+
+Acceptance (worktree of a57ebc4):
+
+- Host: `PYTHONPATH=verification/probe python3 -m unittest
+  verification.analysis.test_linear_distance_fade
+  verification.analysis.test_linear_distance_fade_report
+  verification.analysis.test_fade_region
+  verification.analysis.test_linear_distance_fade_live_report
+  verification.analysis.test_linear_emission_pass_host
+  verification.analysis.test_linear_cutout_contract
+  verification.analysis.test_motion_output_runner` — 48 tests OK (host pass
+  fixture 72 scenarios / 1750 checks, cutout 41 scenarios / 274 checks).
+- DLL: RelWithDebInfo build zero warnings; `check_no_x87.py build/d3d9.dll`
+  PASS, 223 reachable functions, no violations. Not an install candidate.
+- Live (`verification/results/bottle-X3/linear-distance-fade-live-region3.json`,
+  bottle X3, lock holder `fade-region3`, lock wait 0 s, 48.8 s, 26 processes,
+  536 frames, 224 TAA readbacks = the 140 of the 5 functional processes plus
+  84 of the 3 witness processes): the 5 functional and 2 admission processes
+  keep 30/30/30/30/30/4/4 frames, 38 sources and 21 samples each, exact
+  native destination alpha and source-once for all six fade producers and the
+  mixed fade/emission orderings (the fixture's per-source checks), and the
+  lazy/per-draw twins agree bit for bit. Check counts: fade-off processes
+  unchanged (779,890 / 900,854 / 61,597 / 60,565); each fade-on process has
+  4,097 fewer (897,782 / 894,708 / 894,708 versus 901,879 / 898,805 /
+  898,805 in the witness run): 4,096 from frame 21's `emission_mask_valid`-
+  gated mask-union comparison, which no longer runs, plus 1 check most likely
+  from the frame's history expectation — its fade source now takes the
+  in-place composite fault as Incomplete (`in_place_incomplete=1`,
+  `recovery_failures=0`, `last_composition=80004005`, `mask_valid=0`) where
+  prototype 1 published a certified native B. Every prepared fade source
+  composed in place (`s27 = s14`, `s10 = s4 − s27` on all frames); region
+  pixels per frame are 1,024 per prepared fade source (the 32×32 scissor
+  intersection of the full 64×64 derived rectangle), 1,536 on the control's
+  two-source frames. Witness: `witness-full` and `witness-rect` 18 sampled
+  frames each (frame 21 is now `mask_invalid`: skipped `no_fade` 8,
+  `mask_invalid` 4), 19,968 covered pixels, union 73,728 / 27,648,
+  **0 outside**, 26 `fade_region` lines (21 sampled, all `f=1` / all
+  `f≤0.5`), bit-exact with the baseline; `witness-control` fails exactly on
+  frames 16, 18, 20, 24, 28 with 512 outside pixels each and differs from the
+  baseline in the composed color on each of those frames and nowhere before
+  frame 16 (alpha, coverage and counters equal on every frame). The witness
+  comparison is bit-exact within this run; against earlier runs frame 21's
+  TAA image legitimately differs because history is now dropped on
+  Incomplete.
+- Timing (live fixture, EVENT-fenced source windows, median of 4 samples per
+  count after 2 warm-ups, both pair orders; the fixture's fade sources draw
+  under a quarter-viewport application scissor, so the derived full viewport
+  composes an actual region of `f = 0.25`, and the injected rectangles
+  compose exactly 0.0601 / 0.0100 of the viewport; the source raster is the
+  same at every fraction; not game FPS):
+
+  | Size | requested f (actual) | region px | 1 DIP | 4 DIPs | 16 DIPs |
+  |---|---|---:|---:|---:|---:|
+  | 1280×768 | 1 (0.25) | 245,760 | 0.556 / 0.674 | 1.371 / 1.278 | 2.747 / 2.808 |
+  | 1280×768 | 0.06 (0.0601) | 59,032 | 0.474 / 0.497 | 1.113 / 1.099 | 2.613 / 2.611 |
+  | 1280×768 | 0.01 (0.0100) | 9,856 | 0.790 / 0.812 | 1.045 / 1.123 | 2.450 / 2.656 |
+  | 1920×1080 | 1 (0.25) | 518,400 | 0.676 / 0.688 | 1.247 / 1.738 | 2.745 / 2.717 |
+  | 1920×1080 | 0.06 (0.0601) | 124,550 | 0.562 / 0.594 | 1.459 / 1.476 | 2.445 / 3.119 |
+  | 1920×1080 | 0.01 (0.0100) | 20,736 | 0.882 / 0.590 | 1.364 / 1.401 | 3.336 / 2.518 |
+
+  Fade-off windows in the same processes: 1280×768 0.738/0.338, 0.449/0.561,
+  0.824/0.914 ms; 1920×1080 0.336/0.590, 0.351/0.566, 0.825/1.301 ms. The
+  prototype-1 exchange route measured in the witness run (same fixture, same
+  windows): 1280×768 0.742/0.868, 1.881/1.870, 5.097/3.845 ms; 1920×1080
+  1.064/1.028, 3.106/3.181, 8.037/8.211 ms (the brief's earlier live figures
+  0.476–0.656 / 2.501–2.570 / 6.608–7.107 ms at 1080p). In place, the
+  16-DIP window at 1080p is 2.7 ms against 6.6–8.2 ms and no longer depends
+  on the resolution or on the region fraction: the 16-DIP rows give
+  0.10–0.16 ms per bracket at every size and `f`, the 4-DIP rows 0.12–0.28 ms
+  and the 1-DIP rows −0.19…+0.55 ms (within the window noise), which is the
+  fixed CPU-side state traffic (65 getters, 285 setters per bracket) that
+  section 6 named as the next target. The sub-viewport fractions show no
+  further gain at this fixture because the region traffic at `f = 0.25` is
+  already below the per-bracket floor.
+
+Risk accepted: in-place correctness depends on the step-1 rectangle being
+conservative — a pixel the source touches outside it stays native in A and
+only M records it; the fixture witness and the `--fade-witness` user capture
+are the only detectors, which is why the user run must carry
+`--fade-witness`.
+
+Open from step 3: native Windows execution of the in-place route is
+cross-compiled but unverified (`platform-portability.md`); the in-game
+`f` distribution and the bound *hit* path are still only witnessed by the
+user's capture (`fade_region_frame`, `linear_composition_frame`); a fade
+composite fault now removes the object from the frame (exact recovery)
+instead of showing it natively, which the game never exercises unless a
+scissored quad draw fails.
