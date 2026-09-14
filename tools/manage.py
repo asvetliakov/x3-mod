@@ -115,6 +115,7 @@ def main():
     parser.add_argument('--chase-combat-tightness', type=float, default=None, help='0..1: while the cockpit reports a target lock (+0x1e4 tracking mode 1/4 with a tracked object; unverified in game) both spring time constants are scaled by (1 - tightness) (X3M_CHASE_COMBAT_TIGHTNESS; default 0 = off)')
     parser.add_argument('--chase-scene-fix', action='store_true', help='Also re-express the layer-0 cockpit-scene camera through the smoothed view each applied frame (X3M_CHASE_SCENE_FIX=1; default off until the first run shows an external-view HUD element rendered there; review 31 A5)')
     parser.add_argument('--voice-decoder', type=Path, default=None, metavar='DIR', help='launch only, opt-in, default off: deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing. Also sets X3M_VOICE_DMO_FALLBACK=1 so the proxy re-initialises the DMO wrapper the game creates with the registered WMA decoder DMO when the speech decoder class is unregistered (byte-verified hook at 0x004cfd46, inert where Init succeeds; docs/architecture/voice-decoder-adapter.md)')
+    parser.add_argument('--lod-scale', type=float, default=None, metavar='FACTOR', help='Push the engine\'s mesh LOD switch distances out by FACTOR, 1..4 (X3M_LOD_SCALE; default absent = vanilla; no other option needed): the LOD threshold multiplier read at 0x0047d44b is replaced by a proxy-owned mirror holding the game\'s value divided by FACTOR (same-length instruction, exact executable and bytes only, otherwise fails closed to vanilla; one lod_scale line in the session log). Cost: about 4-7x the triangles and 13-15x the draw calls per distant station body at 2-3x; the cap of 4 keeps the integer-truncated thresholds away from collapse (docs/architecture/lod-scale.md)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -251,6 +252,8 @@ def main():
         low, high, low_inclusive = chase_ranges[name]
         if value is not None and not ((low <= value if low_inclusive else low < value) and value <= high):
             parser.error(f'{name} out of range: {value} (expected {"[" if low_inclusive else "("}{low}, {high}])')
+    if args.lod_scale is not None and not (math.isfinite(args.lod_scale) and 1.0 <= args.lod_scale <= 4.0):
+        parser.error(f'--lod-scale out of range: {args.lod_scale} (expected [1.0, 4.0])')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
@@ -389,6 +392,12 @@ def main():
             else:
                 env.pop(name, None)
         env['X3M_CAMERA'] = args.camera  # chase installs the trampoline; vanilla (or unset) patches nothing
+        # LOD scale: set only when requested and dropped otherwise, so a stale
+        # shell value cannot patch the threshold read (docs/architecture/lod-scale.md).
+        if args.lod_scale is not None:
+            env['X3M_LOD_SCALE'] = repr(args.lod_scale)
+        else:
+            env.pop('X3M_LOD_SCALE', None)
         for name, value in chase_tunables.items():
             if value is not None:
                 env[name] = repr(value)

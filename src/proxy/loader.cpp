@@ -1,5 +1,6 @@
 #include "capture.h"
 #include "voice_dmo_fallback.h"
+#include "lod_scale.h"
 #include "telemetry.h"
 #include "object_trace.h"
 #include "camera_state.h"
@@ -328,6 +329,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID) {
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
     } else if (reason == DLL_PROCESS_DETACH) {
         x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
+        x3m::lod_scale::shutdown(); // six original bytes back (VirtualProtect/FlushInstructionCache only); refuses bytes it does not own
     }
     return TRUE;
 }
