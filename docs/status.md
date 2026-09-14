@@ -9,8 +9,8 @@ Work resumed 2026-09-14 under the Claude Code routing in `CLAUDE.md`. Unfinished
 work from the pause (cutout source, reviewed fade results, decoder build plans
 and the persistent backup) is recorded in
 [the September 14 morning handoff](archive/handoff-2026-09-14.md); the current
-handoff is [handoff-2026-09-14c.md](handoff-2026-09-14c.md), written after the autonomous
-afternoon session (the evening one is archived). Nothing merged today is installed.
+handoff is [handoff-2026-09-14d.md](handoff-2026-09-14d.md), written after the late-evening autonomous
+session (the afternoon one is archived). Nothing merged today is installed.
 Checkpoints today: fade prototypes 1 and 1b committed (`d8e189b`, `3c3479a`),
 with the [per-part AABB finding](reverse-engineering/render-node-bounds.md) and the
 ratified [in-place region composition design](architecture/linear-distance-fade-region.md)
