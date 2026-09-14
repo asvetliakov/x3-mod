@@ -131,6 +131,9 @@ bool MotionOutput::ensure_taa() noexcept { active->calls.push_back(8); return ac
 std::uint64_t MotionOutput::stamp() const noexcept { return 0; }
 void MotionOutput::record(unsigned, std::uint64_t, bool, std::uint64_t) noexcept {}
 void MotionOutput::invalidate_render_states() noexcept { active->calls.push_back(9); }
+// Ambient occlusion (AO step 2, 8b0a7c1) is never requested in these scenarios:
+// the scene-end hook reaches the call only under ao_requested_.
+void MotionOutput::run_ambient_occlusion() noexcept { active->calls.push_back(10); }
 // Inert doubles for composition identity/export bookkeeping the fixture does
 // not script; the handoff paths under test only reach them on teardown.
 void MotionOutput::composition_export() noexcept {}
@@ -138,6 +141,7 @@ void MotionOutput::release_composition_identity() noexcept {}
 // The composition pass itself is never constructed here; these satisfy the
 // unique_ptr<LinearEmissionPass> member and the busy query on that path.
 renderer::LinearEmissionPass::~LinearEmissionPass() = default;
+renderer::AmbientOcclusionPass::~AmbientOcclusionPass() = default;
 bool renderer::LinearEmissionPass::reference_accounting_busy() const noexcept { return false; }
 HRESULT MotionOutput::readback_surface(IDirect3DSurface9*, D3DFORMAT, unsigned, const wchar_t*,
                                      const wchar_t*, const char*, const char*, UINT, UINT) noexcept {

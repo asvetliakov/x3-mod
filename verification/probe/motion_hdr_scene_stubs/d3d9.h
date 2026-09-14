@@ -28,6 +28,8 @@ struct IDirect3DVertexBuffer9 {};
 struct IDirect3DIndexBuffer9 {};
 struct IDirect3DVertexDeclaration9 {};
 struct IDirect3DDevice9 {};
+struct IDirect3DStateBlock9 {};
+struct IDirect3DQuery9 {};
 constexpr int IID_IDirect3DTexture9 = 1;
 struct IDirect3DTexture9 {
     unsigned refs = 1, adds = 0, releases = 0;
