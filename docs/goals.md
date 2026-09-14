@@ -1,6 +1,6 @@
 # Current goals and acceptance state
 
-Reconciled 2026-09-14 against the [handoff](handoff-2026-09-13.md), the
+Reconciled 2026-09-14 against the [handoff](archive/handoff-2026-09-13.md), the
 [original objective](user-objective.md) and the recorded game runs. This is the
 current checklist; older plans and status entries describe earlier checkpoints.
 The overall objective remains incomplete. Native Windows/Direct3D and CrossOver

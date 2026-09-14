@@ -119,7 +119,7 @@ then failed on a reserved zsh variable assignment, after unittest had reported
 OK. No production test failed and no rerun was needed for that shell-only error.
 
 The camera remains opt-in and gameplay-unverified. First-user acceptance is the
-[controlled run plan](next-runs-2026-09-13.md#7-modern-chase-camera),
+[controlled run plan](../archive/next-runs-2026-09-13.md#7-modern-chase-camera),
 including a same-build vanilla baseline and per-frame camera logging in the
 separate TAA diagnostic run.
 

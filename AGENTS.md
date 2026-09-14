@@ -61,16 +61,16 @@ User preferences recorded 2026-09-10:
   Newer SIMD requires verified runtime support and a measured benefit; do not
   enable fast-math globally.
 - Subagents may be used when helpful for independent research/context management.
-- Agent model allocation (user preference, 2026-09-13): use `gpt-5.6-sol`
-  with `high` reasoning for bounded log analysis, documentation, routine
-  verification and artifact checks. Use `gpt-5.6-sol` with `high` for
-  independent reviews, including code/correctness (user update, 2026-09-13:
-  `xhigh` takes too long). Do not default reviews to `xhigh`; escalate difficult
-  or consequential findings to the Astra orchestrator. Use `gpt-6-astra`
-  for implementation, planning, architecture and difficult debugging.
-  Apply this split to new agents; do not interrupt a useful in-flight run
-  just to change models. Give secondary agents a focused task and the needed
-  files/evidence instead of duplicating the entire conversation history.
+- Agent model allocation (user preference, 2026-09-13; tool-specific tables
+  2026-09-14): the orchestrator keeps architecture, planning and install
+  decisions; secondary agents get a focused task with the needed files and
+  evidence, never the whole conversation. Codex: `gpt-5.6-sol` with `high`
+  for bounded log analysis, documentation, routine verification, artifact
+  checks and independent reviews (`xhigh` takes too long; escalate difficult
+  findings to the Astra orchestrator); `gpt-6-astra` for implementation,
+  planning, architecture and difficult debugging. Claude Code: the routing
+  table and agent definitions in `CLAUDE.md` and `.claude/agents/`. Apply the
+  split to new agents; do not interrupt a useful in-flight run to change models.
 - Close unused launcher menus promptly: they sit above other windows.
 - Never launch the game, including menu-only tests (user clarification,
   2026-09-13). Tell the user what is needed and let them launch/load the scene.
@@ -139,6 +139,11 @@ Proportional verification and evidence (user-requested workflow simplification,
   Update `docs/goals.md` when goal/acceptance state changes, not for each test.
   Update the owning architecture/verification note instead of mirroring the same
   hash and prose across status, goals, roadmap, handoff and several new reviews.
+- One verification ledger per feature under `docs/verification/`: append review
+  and qualification outcomes to it. The numbered `review-NN` and `iteration-NN`
+  series is closed (2026-09-14); do not add files to it. Superseded handoffs,
+  pause snapshots, status archives and completed user-run instructions live in
+  `docs/archive/`.
 - Keep one Wine queue/lease owner. A focused agent returns findings and paths;
   it must not create a parallel global qualification or rebuild shared artifacts
   owned by another task. Record simple command/lock timings when available; do

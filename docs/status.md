@@ -1,7 +1,7 @@
 # Project status
 
 Updated 2026-09-14. This is the current handoff. Earlier checkpoints are in
-[status history](status-history-2026-09-13.md); read them only for a relevant unresolved question. The
+[status history](archive/status-history-2026-09-13.md); read them only for a relevant unresolved question. The
 [goal checklist](goals.md), [run queue](verification/user-runs.md), and [original objective](user-objective.md)
 retain the full scope.
 

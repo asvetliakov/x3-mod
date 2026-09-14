@@ -1,7 +1,7 @@
 # Historical status snapshot
 
 Snapshot before workflow simplification (2026-09-13). This is historical;
-[docs/status.md](status.md) is the current handoff. Original content follows.
+[docs/status.md](../status.md) is the current handoff. Original content follows.
 
 # Project status
 
@@ -10,18 +10,18 @@ game's own material draws through transformed shader variants writing a second
 render target, not from deferred geometry replay.** The replay, admission,
 execution-scope and geometry-lease modules stay in the tree as a numerical
 reference and are no longer a prerequisite for any visual feature. See the
-[live motion route](architecture/live-motion-route.md).
+[live motion route](../architecture/live-motion-route.md).
 **TAA is done and verified in game**, including sharpen/mip-bias testing.
 AgX is implemented, was seen at fixed exposure, and is retained. FP16 scene
 redirection exists, but the lighting is still the game's gamma-space output
 decoded into FP16: scene-referred HDR and HDR display output are not complete.
 The whole-scene auto-exposure meter is wrong for space; its replacement has
 passed review, is integrated and installed, and awaits game validation. Loading is down from 87 s to about
-34–38 s in the recorded X3 runs. See the reconciled [goal checklist](goals.md),
-[full user objective](user-objective.md) and [roadmap](architecture/roadmap.md).
+34–38 s in the recorded X3 runs. See the reconciled [goal checklist](../goals.md),
+[full user objective](../user-objective.md) and [roadmap](../architecture/roadmap.md).
 Native Windows/Direct3D remains a required target alongside CrossOver Preview;
 tests still run only on CrossOver. See
-[portability requirements and gaps](architecture/platform-portability.md).
+[portability requirements and gaps](../architecture/platform-portability.md).
 
 **Current install:** source checkpoint `dac2994`, DLL SHA-256
 `2981bf032be8c7e91013e1de7f355d83fb49f4b2ba778b2b5917787f48a9297c`
@@ -31,12 +31,12 @@ tests, 67 focused camera/site tests, six X3 aim-fixture cases / 124 checks,
 X3 camera-math controls and two DLL-load cases / 16 checks. The 42-object
 candidate retains 17 D3D9 exports; the sole new import is public UCRT `hypot`.
 Both callback CPU-state audits and 211 light-boundary no-x87 checks pass.
-See [review 49](verification/review-49-chase-aim-trace.md), the
-[host/build](../verification/results/chase-elevated-host-build-summary.json),
-[runtime](../verification/results/chase-elevated-runtime-summary.json) and
-[installation](../verification/results/chase-elevated-install.json) records.
+See [review 49](../verification/review-49-chase-aim-trace.md), the
+[host/build](../../verification/results/chase-elevated-host-build-summary.json),
+[runtime](../../verification/results/chase-elevated-runtime-summary.json) and
+[installation](../../verification/results/chase-elevated-install.json) records.
 
-The [second user flight](verification/chase-second-run.md) reports **no trembling**
+The [second user flight](../verification/chase-second-run.md) reports **no trembling**
 with the earlier `0c642df` anchor-correction build. All 12,615 applied samples use the native
 base anchor; the logged handler averages 23.841 microseconds in fully applied
 windows (excludes stub/state preservation, not FPS). The user requests an
@@ -50,7 +50,7 @@ New framing/feel and the straight-fire cause need the next user flight; no
 mouse-fire behavior fix or native-Windows execution is claimed.
 
 The camera is vanilla by default; only `--camera chase` enables it. The
-[first user flight](verification/chase-first-run.md) confirms the hook applied
+[first user flight](../verification/chase-first-run.md) confirms the hook applied
 5,871 frames, but the user reports subtle placement and trembling in flight.
 Telemetry and TAA were off. The installed correction follows the game's native
 position selection, lowers default framing to `offset_y=0.45`, corrects the
@@ -58,7 +58,7 @@ optional scene adjustment and adds bounded domain/clamp diagnostics. Visual
 acceptance remains pending, alongside menu behavior, aim alignment,
 view-transition/TAA cuts, resolution changes and frame cost. Aggregate handler
 timing is available with telemetry; it is not a measured FPS result.
-The user's [controlled run plan](verification/next-runs-2026-09-13.md) includes
+The user's [controlled run plan](next-runs-2026-09-13.md) includes
 the thirteen camera checks. Reader 2a remains the next loading test after
 accepted crypto run 17; reader, adjacency and exposure game acceptance remain
 pending. The agent never launches the game. Native Windows remains untested.
@@ -67,10 +67,10 @@ Installation matches the qualified DLL and app-local manifest. X3AP.exe and
 cxbottle.conf are unchanged; the chase and vanilla telemetry launch variants
 passed post-install `--dry-run`. The previous DLL `16d016d2…de01` and manifest
 are retained for rollback in the local directory recorded by
-[chase-elevated-install.json](../verification/results/chase-elevated-install.json).
+[chase-elevated-install.json](../../verification/results/chase-elevated-install.json).
 Older entries below are historical and do not override this installed state.
 
-The [run-16 offline comparison](verification/run16-exposure-baseline.md) recovers
+The [run-16 offline comparison](../verification/run16-exposure-baseline.md) recovers
 seven unresolved HDR inputs. Applying the candidate policy to them yields +2 EV
 in every case because of its cap, versus +5.66…+8 for the old rule. Actual
 post-TAA meter inputs and presented images are absent, so this is a scoped
@@ -78,7 +78,7 @@ counterfactual, not game acceptance of the new meter or its appearance.
 
 ## Workflow audit (2026-09-13)
 
-A [cross-workstream audit](verification/workflow-audit-2026-09-13.md) covers
+A [cross-workstream audit](../verification/workflow-audit-2026-09-13.md) covers
 camera, loading, bloom and motion/TAA. It recommends focused checks and one
 candidate record, reducing repeated manifests, copies, unrelated fixture chains
 and mirrored prose. User-required review, performance, portability, Wine locking
@@ -101,7 +101,7 @@ orchestrator. Useful in-flight reviews may finish; new reviews use high.
 
 ## Shader provenance correction (2026-09-13)
 
-[Review 36](verification/review-36-shader-provenance.md) corrects an offline
+[Review 36](../verification/review-36-shader-provenance.md) corrects an offline
 manifest bug that recorded an include hash as the compiler DLL identity in the
 two sharpen programs. All ten programs were recompiled; bytecode and generated
 headers are unchanged. The regression and independent review passed. This is a
@@ -110,20 +110,20 @@ provenance correction only; the installed camera build above remains unchanged.
 ## Bloom preparation checkpoint (2026-09-13)
 
 Targeted disassembly and independent review produced the
-[compositor replacement contract](reverse-engineering/bloom-compositor-skip.md)
-and [late-view state analysis](reverse-engineering/bloom-late-view-state.md).
+[compositor replacement contract](../reverse-engineering/bloom-compositor-skip.md)
+and [late-view state analysis](../reverse-engineering/bloom-late-view-state.md).
 A glow-setting test alone cannot authorize skipping the original compositor:
 replacement output, exact device ownership, engine state/cache restoration and
 failure recovery must be established. Pure render states are memoized; the
 older constant-upload note is corrected. The first captured GUI draw only
 narrows the inherited-state problem; actual boundary alpha-test state and
 arbitrary later materials remain unqualified. The selected initial
-[integration design](architecture/hdr-bloom-boundary.md) avoids that bypass gap:
+[integration design](../architecture/hdr-bloom-boundary.md) avoids that bypass gap:
 run the original fully, then replace RGB from retained pre-original inputs while
 preserving original alpha/state/resources. It includes recovery from a GPU copy
 of the finished original image. Independent review closed preparation, Reset,
 SEH, ownership and restoration gaps; the retained old passes and added memory
-must be measured. The [filter numerical core](verification/hdr-bloom-filter.md) is now reviewed:
+must be measured. The [filter numerical core](../verification/hdr-bloom-filter.md) is now reviewed:
 seventeen numerical host tests, three static-budget controls and eight native
 shader compilations pass. Compile-time extraction variants reduce the largest
 program to 362 of the 512-slot SM3 minimum. The first standalone GPU run completed 40 cases and Reset (540 stage
@@ -131,9 +131,9 @@ readbacks), but 38 reconstruction readbacks failed the fixed numerical
 tolerance. That rejection remains recorded. Independent sampler/store controls
 now qualify the retained 40 cases on the tested Steam backend: all 421,446
 modeled one-dimensional channels match exactly, and every unmodeled/2D image
-passes the recomputed original oracle. See [review 41](verification/review-41-bloom-precision.md).
+passes the recomputed original oracle. See [review 41](../verification/review-41-bloom-precision.md).
 This is scoped numerical qualification, not a new GPU run or native-Windows
-validation. The [production executor and standalone fixture](verification/review-44-bloom-pass.md)
+validation. The [production executor and standalone fixture](../verification/review-44-bloom-pass.md)
 are now reviewed and cross-compiled, with inherited tessellation and unnecessary
 rollback-write findings fixed. Five fixture host controls pass. The combined
 GPU/state/recovery fixture now passes on Steam and X3: 16 controls, 40
@@ -141,28 +141,28 @@ iterations, real Reset, and 25 images with maximum RGB error one code. All
 206 retained readbacks match between bottles. The first rejected attempt
 remains preserved; the corrected fixture compares recovery with the actual
 original image and retains an independent neutral-fill check. See
-[review 45](verification/review-45-bloom-pass-runtime.md). Renderer integration,
+[review 45](../verification/review-45-bloom-pass-runtime.md). Renderer integration,
 game acceptance and native-Windows execution remain pending.
-The separate [CPU return-bridge prototype](verification/review-39-bloom-return-bridge.md)
+The separate [CPU return-bridge prototype](../verification/review-39-bloom-return-bridge.md)
 passed independent review and 240 checks each on Steam and X3/FEX, including
 exception cleanup and CPU-state transport. It is not integrated into the game
 hook; production packaging, ownership/Reset and GPU recovery remain.
-The subsequent [production CPU/SEH bridge](verification/review-43-compositor-bridge.md)
+The subsequent [production CPU/SEH bridge](../verification/review-43-compositor-bridge.md)
 is reviewed and passes 393 checks on each bottle with identical frozen inputs.
 Its isolated packaging keeps CRT imports narrow and makes the current GNU
 no-SafeSEH policy explicit; final proxy linking and live callsite integration
 remain pending.
-The [bloom/AgX composition shader](verification/review-40-bloom-composition.md)
+The [bloom/AgX composition shader](../verification/review-40-bloom-composition.md)
 is also reviewed and compiler-qualified (108 SM3 slots). All ten existing
 shader binaries remain unchanged after exposing the shared AgX tail. The
 selected sharpen design uses display FP16 staging; the combined fixture now
 checks its precision and state restoration on both bottles. Runtime cost and
 game integration remain unverified.
-The isolated [compositor owner helper and normal-call ABI study](verification/review-42-compositor-owner.md)
+The isolated [compositor owner helper and normal-call ABI study](../verification/review-42-compositor-owner.md)
 passed review, 24 hostile host checks and x86 compilation. Exact device lookup
 is ready for integration; ResetEx, reference accounting, cross-thread retirement
 and exception-safe invocation cleanup remain implementation/qualification work.
-The [embedded production shader bundle](verification/review-47-bloom-programs.md)
+The [embedded production shader bundle](../verification/review-47-bloom-programs.md)
 is also reviewed and reproduced by a native nine-program `--check`: 28,188
 bytes, maximum 362 SM3 slots, with all 50 watched inputs unchanged. The rejected
 597-slot fused diagnostic is excluded. The bundle remains unlinked.
@@ -171,7 +171,7 @@ above contains no integrated bloom.
 
 ## Run 17: crypto loading accepted on X3 (2026-09-13)
 
-[Run 17](verification/run17-crypto-loading.md) confirms provider/key reuse with
+[Run 17](../verification/run17-crypto-loading.md) confirms provider/key reuse with
 native hashing and signature verification intact: the 844-check bulk recorded
 844 provider and import hits, no verification failures, and 0.1353276 s in the
 signature probe versus the earlier 12.835 s. The heuristic save gap was 27.574 s
@@ -193,11 +193,11 @@ is [handoff-2026-09-13.md](handoff-2026-09-13.md). Unmerged branches:
 ## Crypto cache checkpoint (2026-09-13; merged, not installed)
 
 Reviewed branch `8794a5d` passed **572 checks on each bottle**, six host tests
-and its 210-function no-x87 audit. [Review 33](verification/review-33-crypt-cache.md)
+and its 210-function no-x87 audit. [Review 33](../verification/review-33-crypt-cache.md)
 closes partial hook installation, call-site/lifetime/concurrency and loader-lock
 cleanup findings. The cache is opt-in; hashing and signature verification still
 run through CryptoAPI. Its bounded retained handles and named scratch-container
-lifetime are documented in [crypt-cache.md](verification/crypt-cache.md).
+lifetime are documented in [crypt-cache.md](../verification/crypt-cache.md).
 
 Root's merge review preserved the newer normalizer, reader initialization and
 review-30 log/ABI fixes. Older branch loading reports were not substituted for
@@ -211,7 +211,7 @@ approximately 4× signature-fixture speedup is not a measured game load saving.
 
 Frozen source `ae03d9a` produced installed DLL SHA-256
 `ae2482fd5146c62898fbe20c45441d9d14183d705c50e3d03872094ec635b193`.
-[Review 34](verification/review-34-integration.md) records eleven validated
+[Review 34](../verification/review-34-integration.md) records eleven validated
 selected motion/HDR cases (not a full-suite pass), all ten shader checks,
 211 no-x87 boundary functions, 17 exports and matching object/source maps.
 The final merged X3 CryptoAPI suite passed 572 checks across twelve processes.
@@ -220,7 +220,7 @@ No game was launched, and no native-Windows runtime result is claimed.
 
 ## Reader and adjacency checkpoint (2026-09-13; reviewed, not installed)
 
-[Review 31](verification/review-31-adjacency-reader.md) is closed for its
+[Review 31](../verification/review-31-adjacency-reader.md) is closed for its
 scoped fixes. Reader verifies the short-record cursor, checks rewind failure
 before publishing a buffer, preserves LastError and repairs shifted diagnostic
 fields; its X3 fixture passes 4,721 checks. Adjacency now refuses unsupported
@@ -244,7 +244,7 @@ the installed game DLL remains review 30.
 
 ## Space-aware exposure checkpoint (2026-09-13; merged, not installed)
 
-Branch `e897011` passed [review 32](verification/review-32-exposure.md):
+Branch `e897011` passed [review 32](../verification/review-32-exposure.md):
 98 motion/HDR cases on each bottle, supporting temporal/scene/ownership suites,
 strict configuration and readback-failure controls. The meter uses a lit-tile
 statistic, a highlight limit, target dead band and −3…+2 EV bounds. Its visual
@@ -258,16 +258,16 @@ The branch's numerical-helper hashes were recorded after its runs, with that
 limitation explicit; final integration expands the before/after source manifest
 and reruns selected combined paths. Root review also fixed selected-mode's
 early return so it checks source stability before publishing its partial result;
-four host controls passed. See [review 34](verification/review-34-integration.md).
+four host controls passed. See [review 34](../verification/review-34-integration.md).
 This checkpoint does not change the installed review-30 DLL.
 
 ## Review 29 record — loading branch, adjacency parity and present readback merged (2026-09-12 night)
 
-Reviews: [review-25.md](verification/review-25.md) (fast adjacency, engine
-reads, gz buffer; three low findings fixed), [review-27.md](verification/review-27.md)
-(loading branch, merged as `c152860`), [review-28.md](verification/review-28.md)
+Reviews: [review-25.md](../verification/review-25.md) (fast adjacency, engine
+reads, gz buffer; three low findings fixed), [review-27.md](../verification/review-27.md)
+(loading branch, merged as `c152860`), [review-28.md](../verification/review-28.md)
 (GenerateAdjacency parity rewrite, `a839bc9`) and
-[review-29.md](verification/review-29.md) (integration of the three on main
+[review-29.md](../verification/review-29.md) (integration of the three on main
 after the merges `c152860` and `0a32f33`: hook-table/gate/install-order
 checks, `--dry-run` of the planned commands, full suite chain green after a
 clean rebuild; the build hash to install next is recorded there). Nothing in
@@ -275,7 +275,7 @@ this checkpoint is gameplay-verified yet; the next user runs below are the
 acceptance tests. The game and `tools/manage.py` default to the CrossOver
 bottle **X3** (arm64 Wine + FEX); fixtures default to Steam
 (`X3M_FIXTURE_BOTTLE=X3` switches them, see
-[bottles.md](verification/bottles.md)). Every Wine-executing command now runs
+[bottles.md](../verification/bottles.md)). Every Wine-executing command now runs
 under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
 
 - **Resource reader run C → cursor parity fix (2026-09-13, uncommitted)**: run
@@ -289,12 +289,12 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   `resource_reader_metric` gains `cursor_short=` and the phase split
   `fast_read_us/scan/alloc/inflate`. Fixture: `RR_CASE name=cursor` (20
   sources, remainders 0…9 at 1 and 3 chunks, last-record `.dat`, pooled
-  sequence). Docs: [resource-reader.md](reverse-engineering/resource-reader.md)
-  "Record cursor after the chunk loop", [verification](verification/resource-reader.md)
+  sequence). Docs: [resource-reader.md](../reverse-engineering/resource-reader.md)
+  "Record cursor after the chunk loop", [verification](../verification/resource-reader.md)
   "Run C". Next: rerun verify (expect `verify_mismatched=0 cursor_short≈20`),
   then `fast`.
 - **Fast exact-match GenerateAdjacency** (`X3M_MESH_ADJACENCY=native|verify|fast`,
-  `--mesh-adjacency`; [mesh-adjacency-fast.md](verification/mesh-adjacency-fast.md)).
+  `--mesh-adjacency`; [mesh-adjacency-fast.md](../verification/mesh-adjacency-fast.md)).
   Byte-identical to d3dx9_37 on 35/35 computable fixture meshes (welding with
   signed zero, head-insertion tie-breaks, degenerate rules, no double
   adjacency); 111–447× faster in the Wine fixture; MXCSR pinned to 0x1f80 and
@@ -305,9 +305,9 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   `verify_mismatched=167` of 7,715 meshes): the six D3DX rules the module got
   wrong were decompiled from the game's d3dx9_37 and the module, its Python
   port and the fixture rewritten to them
-  ([d3dx-generate-adjacency.md](reverse-engineering/d3dx-generate-adjacency.md),
-  [handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md), resolved;
-  reviewed in [review-28.md](verification/review-28.md), three gate/contract
+  ([d3dx-generate-adjacency.md](../reverse-engineering/d3dx-generate-adjacency.md),
+  [handoff-adjacency-parity.md](../verification/handoff-adjacency-parity.md), resolved;
+  reviewed in [review-28.md](../verification/review-28.md), three gate/contract
   findings fixed, committed as `a839bc9`).
   Fixture evidence on both bottles (Steam/Rosetta and X3/FEX): 51/51 computable
   named cases and a 2,000-mesh random differential sweep byte-identical to
@@ -319,7 +319,7 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   `tools/analysis/replay_mesh_adjacency.py --wine` first).**
   The thread-local arena retains ≤16 MB per loader thread for the process lifetime.
 - **Direct engine reads** (`X3M_ENGINE_READS=rpm` restores ReadProcessMemory;
-  [route-cost-run1.md](verification/route-cost-run1.md)). Reads are validated
+  [route-cost-run1.md](../verification/route-cost-run1.md)). Reads are validated
   against a 32-entry VirtualQuery region cache (trusted per frame or 100 ms),
   copied with `rep movsb` from a translation unit compiled without SSE/MMX
   (0 xmm/x87 references), so the engine-thread wrappers stay state-clean.
@@ -329,8 +329,8 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   route at 31% of the FEX frame with the old path (`route_gate` ×1.19 slower
   under FEX), so this is the main frame-time lever for the next run.
 - **gz read-ahead buffer** (`X3M_GZ_BUFFER=1`, `X3M_GZ_BUFFER_KB`, `--gz-buffer`;
-  [gz-buffer.md](verification/gz-buffer.md),
-  [savegame-gz-stream.md](reverse-engineering/savegame-gz-stream.md)).
+  [gz-buffer.md](../verification/gz-buffer.md),
+  [savegame-gz-stream.md](../reverse-engineering/savegame-gz-stream.md)).
   Serves the savegame reader's ~3-byte `gzread` calls from a 256 KB buffer
   with zlib 1.2.3 semantics (735,871 fixture checks against the bottle's real
   zlib1.dll). Key finding: the 0.66 µs/call "zlib" cost in the profile was our
@@ -339,9 +339,9 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   game gains ~0.5 s. The true X3 save-load time without telemetry is unknown —
   run 1 below measures it.
 - **Light loading hooks, probe batch 2, fast resource reader** (loading
-  branch, reviewed in [review-27.md](verification/review-27.md), merged into
-  main as `c152860`; [loading-probes.md](verification/loading-probes.md),
-  [resource-reader.md](verification/resource-reader.md)). The counting/timing
+  branch, reviewed in [review-27.md](../verification/review-27.md), merged into
+  main as `c152860`; [loading-probes.md](../verification/loading-probes.md),
+  [resource-reader.md](../verification/resource-reader.md)). The counting/timing
   import rows moved to a no-SSE unit without `CpuCallBoundary` (objdump: 0
   xmm/x87 references; envelope 355 ns vs 1,215 ns under FEX, gz fixture);
   `--loading-probes` adds 18 light import rows and 12 byte-verified
@@ -355,7 +355,7 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   run in the game — the acceptance runs are listed in the two documents and
   in runs 6–7 below. A plain `--direct` run patches nothing (review 29
   checked the gates): only the `frame_end` stamps differ from the review-26 build.
-- **Bottle X3 validation** ([bottles.md](verification/bottles.md)): four of
+- **Bottle X3 validation** ([bottles.md](../verification/bottles.md)): four of
   five suites pass on X3 with comparable numbers; the sampling profiler cannot
   attribute samples under FEX (`GetThreadContext` returns creation-time
   context, also seen once on Rosetta), and the FEX CRT prints NaN/Inf as huge
@@ -363,14 +363,14 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   on X3 therefore relies on hook/trampoline counters.
 - **Presented-image readback and the iteration-12 tool** (readback branch,
   merged into main as `0a32f33`; fixture evidence in
-  [taa-sharpen.md](verification/taa-sharpen.md) and
-  [iteration-12.md](verification/iteration-12.md), integration checked in
+  [taa-sharpen.md](../verification/taa-sharpen.md) and
+  [iteration-12.md](../verification/iteration-12.md), integration checked in
   review 29). `--taa-debug` capture frames now also write
   `present_<device>_<frame>.bgra8`, the game's main target after the RCAS
   sharpen draw / copy-back (8-bit route) or after the HDR write-back — the
   `taa_*` readback is the unsharpened history input, so until now no run
   could measure the sharpen in game
-  ([capture-format.md](architecture/capture-format.md), [taa-sharpen.md](verification/taa-sharpen.md)).
+  ([capture-format.md](../architecture/capture-format.md), [taa-sharpen.md](../verification/taa-sharpen.md)).
   Fixture: byte-identical to the presented frame on 25 TAA cases, RCAS
   reference within 0.50 code, 0 outside the 3x3 bound; motion-output 94
   cases, temporal pass 386/228/2, scene capture, ownership 27, x87 PASS, 786
@@ -379,29 +379,29 @@ under `verification/probe/wine_lock.py` (machine-wide lock; AGENTS.md).
   §2.4: RCAS model of run 10's stationary/slow bursts — 0 of 47.2 M channels
   outside the 3x3 neighbourhood, interior gradient energy ×1.04–1.07, edge
   rise −0.03 to −0.20 px, halo excursion +0.02–0.06 of edge contrast, flicker
-  energy +3–7 % evenly across classes ([iteration-12.md](verification/iteration-12.md),
+  energy +3–7 % evenly across classes ([iteration-12.md](../verification/iteration-12.md),
   complete). Fixed: `analyze_iteration09_run2.py` burst grouping (readback
   frames only) and its `--text` crash without mesh-cache lines. The
   `struct ID3DXMesh;` forward declaration in `loading_trace.h` (the `b10d129`
   checkpoint did not compile without it) is on main since `a839bc9`; the
   merge kept one copy.
-- **Analyses**: [iteration-10.md](verification/iteration-10.md) (FEX health
+- **Analyses**: [iteration-10.md](../verification/iteration-10.md) (FEX health
   clean, TAA no regression, frame time 24.1 → 8.4 ms route off, 34.2 → 16.9 ms
   route on; hook agrees 214/214, `rs_resyncs` 24 on a latch-only screen);
-  [iteration-11.md](verification/iteration-11.md) (review-25 run 9: attributed
+  [iteration-11.md](../verification/iteration-11.md) (review-25 run 9: attributed
   route cost 34.4 → 11.9 µs/draw, 12.10 vs 16.91 ms at matched draw counts,
   hook Agree 162/162 with 0 disagreements and `rs_resyncs` 0, history match
   99.83 %, gz buffer 14.46 M calls → 175 real reads; per-draw stamps off, so
   the route's own cost is no longer measurable and the readback row-pair,
   temporal and depth-agreement checks were unavailable);
-  [script-xml-load-stall.md](reverse-engineering/script-xml-load-stall.md)
+  [script-xml-load-stall.md](../reverse-engineering/script-xml-load-stall.md)
   (the second save-load stall is a mixed asset phase: per-resource re-opens of
   the catalogue `.dat`, a redundant 22.5 MB memset, 1 KiB inflate chunks with a
   byte XOR, locked `fgetc` header parsing, and an unhooked CryptoAPI signature
   check at 0x004cabc0; CRT is static, so fixes are engine trampolines);
-  [sampler-states-and-mips.md](reverse-engineering/sampler-states-and-mips.md)
+  [sampler-states-and-mips.md](../reverse-engineering/sampler-states-and-mips.md)
   (the game shadows sampler state and never sets a mip bias);
-  [native-windows-audit-2026-09-12.md](architecture/native-windows-audit-2026-09-12.md)
+  [native-windows-audit-2026-09-12.md](../architecture/native-windows-audit-2026-09-12.md)
   (D1 format-converting StretchRect in-scene, D2 ps_3_0 with fixed-function
   VS, D3 MSAA mismatch on RT1/RT2, W1 missing d3d9 exports, W3 log path).
 **Installed (2026-09-12 night, after review 26, bottle X3):** `build/d3d9.dll`
@@ -416,8 +416,8 @@ the stage-2 build `db63e120…`).
 
 - **Merged from the worktrees, reviewed in review 26 (2026-09-12)**:
   - Post-resolve RCAS-style sharpen
-    ([design](architecture/temporal-integration.md#post-resolve-sharpen-2026-09-12),
-    [record](verification/taa-sharpen.md)): `X3M_TAA_SHARPEN=<0..1>`
+    ([design](../architecture/temporal-integration.md#post-resolve-sharpen-2026-09-12),
+    [record](../verification/taa-sharpen.md)): `X3M_TAA_SHARPEN=<0..1>`
     (`--taa-sharpen`, requires `--taa`) applies RCAS (our HLSL reimplementation
     of AMD's published FSR 1.0 RCAS, guarded and clamped to the 3×3 min/max)
     to the display image only — never to the history — on both routes: the
@@ -434,7 +434,7 @@ the stage-2 build `db63e120…`).
     the mip-mapped stages of routed material draws while the jitter is on and
     restores before every other draw, at the scene end and before Reset;
     capture now logs `MIPMAPLODBIAS`/`MAXMIPLEVEL`. Fixture evidence in
-    [taa-mip-bias.md](verification/taa-mip-bias.md); not yet seen in game.
+    [taa-mip-bias.md](../verification/taa-mip-bias.md); not yet seen in game.
 
 **Installed (2026-09-12 night, after review 29, bottle X3):** `build/d3d9.dll`
 from commit `a34c389` (adjacency parity, loading branch, present readback),
@@ -445,10 +445,10 @@ merged but not installed until review 30 passes.
 ## Checkpoint: review 30 complete — native-Windows fixes D1–D3, W1, W3 (2026-09-13; installed)
 
 Implements every item of the paused
-[handoff](verification/handoff-windows-fixes.md) against the
-[native-Windows audit](architecture/native-windows-audit-2026-09-12.md);
+[handoff](../verification/handoff-windows-fixes.md) against the
+[native-Windows audit](../architecture/native-windows-audit-2026-09-12.md);
 status per item in that document's new table, gaps in
-[platform-portability.md](architecture/platform-portability.md). Nothing here
+[platform-portability.md](../architecture/platform-portability.md). Nothing here
 is a native-Windows run: it is Windows-compatible source verified on
 CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
 
@@ -479,10 +479,10 @@ CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
 - **Diagnostics.** `engine_memory phase=create|summary ...` line (integers);
   the exposure fixture prints non-finite values as IEEE bits and the runner
   decodes them, so the `hdrexposure` cases pass on the X3/FEX bottle
-  ([bottles.md](verification/bottles.md) limitation 2 closed for the fixtures).
+  ([bottles.md](../verification/bottles.md) limitation 2 closed for the fixtures).
 - Merge note: main's `b10d129` did not compile (`loading_trace.h` used
   `ID3DXMesh` without a declaration); a forward declaration fixes it.
-- **Completed verification:** [review 30](verification/review-30.md) binds
+- **Completed verification:** [review 30](../verification/review-30.md) binds
   reused current-source evidence and fresh runs separately. Steam and X3 motion
   both pass 97 cases and 26 benches, with identical quad/copy twins and MSAA
   refusal. Temporal pass: 508 numerical / 278 state checks; temporal resolve:
@@ -501,7 +501,7 @@ CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
   native-Windows runtime result.
 - **Separate review 31 remains open:** known SSE2 competing-normal adjacency
   differences, registry type and FP-domain admission; reader diagnostic format,
-  failed final rewind and LastError transport. See [review 31](verification/review-31-adjacency-reader.md).
+  failed final rewind and LastError transport. See [review 31](../verification/review-31-adjacency-reader.md).
   These optional paths are not approved for fast gameplay by review 30. The
   final run plan requires their fixes and meaningful verify coverage first.
 - Install verification: the app-local DLL and ownership manifest match the
@@ -514,7 +514,7 @@ CrossOver Preview (Steam bottle, plus one X3/FEX rerun of the motion suite).
 
 Evidence at this checkpoint (details in the linked documents):
 
-- **TAA rerun ([iteration 8](verification/iteration-08.md))** with the corrected
+- **TAA rerun ([iteration 8](../verification/iteration-08.md))** with the corrected
   history convention: all six stationary frame pairs are `stable` (iteration 7:
   all tracked the jitter); the resolved image moves 0.14–0.31× the raw colour
   shift, and 0.05–0.11 px on a fully routed tile, i.e. at the (1−w) bound.
@@ -525,8 +525,8 @@ Evidence at this checkpoint (details in the linked documents):
   29.9 vs 29.9 ms and 63.9 vs 64.0 ms per regime; the iteration-7 "2.6×
   regression" was regime occupancy, and is retracted. Attributable cost is
   about 70 µs per frame at 1280×768.
-- **Resolve quality pass** ([design](architecture/temporal-integration.md)
-  "Resolve quality", [verification](verification/temporal-resolve.md)):
+- **Resolve quality pass** ([design](../architecture/temporal-integration.md)
+  "Resolve quality", [verification](../verification/temporal-resolve.md)):
   neighbourhood variance clip (mean ± 1.25σ ∩ min/max box) replaces the hard
   depth equality; the depth test is a one-sided disocclusion test with
   NaN-safe comparisons; closest-depth 3×3 dilation; 16-tap Catmull-Rom
@@ -537,15 +537,15 @@ Evidence at this checkpoint (details in the linked documents):
   (bilinear model 0.712). Program 1,695 → 3,794 words with no boundary-cost
   regression (resolve 0.32 ms at 1280×768, 1.62 ms at 5120×1440).
 - **Route cost telemetry and lazy MRT binding**
-  ([telemetry](verification/telemetry.md) "Route and boundary cost",
-  [motion output](verification/motion-output.md)): per-frame CPU-inclusive
+  ([telemetry](../verification/telemetry.md) "Route and boundary cost",
+  [motion output](../verification/motion-output.md)): per-frame CPU-inclusive
   metrics for gate, apply/undo, render-target sets, jitter writes, fills, the
   five resolve phases, copy-back and readbacks (ticks only under
   `X3M_TELEMETRY=1`); `X3M_MOTION_RT_MODE=lazy` keeps RT1/RT2 bound across
   routed draws and restores before every other device operation, with
   identical colour/motion/depth hashes in all fixture modes and 20 → 12
   render-target sets per fixture frame. Default stays `perdraw`.
-- **Loading attribution ([iteration-8 loading](reverse-engineering/iteration08-loading.md))**:
+- **Loading attribution ([iteration-8 loading](../reverse-engineering/iteration08-loading.md))**:
   menu load 30.1 s (8.4 s instrumented, **21.7 s unexplained**), save load
   106.7 s (33.3 s instrumented, **73.4 s unexplained**); the two same-build
   runs agree on the unexplained remainder within 0.4 s, so it is deterministic
@@ -553,7 +553,7 @@ Evidence at this checkpoint (details in the linked documents):
   every return (1,017 adjacency calls, 298 MB re-submitted). The mesh
   adjacency cache was `enabled=0` in both runs (bounded upside 14.5 s per run).
   The savegame is read through 13.9 M `gzread` calls of 3 bytes each.
-- **Loading orchestration ([disassembly](reverse-engineering/loading-orchestration.md))**:
+- **Loading orchestration ([disassembly](../reverse-engineering/loading-orchestration.md))**:
   the resource resolver runs an uninstrumented `FindFirstFileA` directory
   enumeration per lookup with no negative or positive cache (at most one
   `CreateFileA` per resource; CAT lookup is a `bsearch`); the script VM at
@@ -562,7 +562,7 @@ Evidence at this checkpoint (details in the linked documents):
   reruns on every new game/save load; no sleeps or CRC passes on the load path.
   The loading tracer now hooks `FindFirstFileA`/`FindNextFileA`/`FindClose`
   (19 boundaries, fixture 85/85).
-- **In-process sampling profiler** ([verification](verification/sampling-profiler.md)),
+- **In-process sampling profiler** ([verification](../verification/sampling-profiler.md)),
   `X3M_PROFILE=1` / `tools/manage.py launch --profile`: a sampler thread
   suspends each game thread at 2 ms intervals, records EIP, the EBP chain and a
   conservative return-address scan, and reports per-thread module splits, top
@@ -572,12 +572,12 @@ Evidence at this checkpoint (details in the linked documents):
   and file use, overhead within 1.5% (tick cost ≈150 µs per thread under
   Wine). `tools/analysis/summarize_profile.py` and `X3ProfileSymbols.java`
   map windows to functions. Not yet run in the game.
-- **Architecture reassessment ([assessment](architecture/assessment-2026-09-12.md))**:
+- **Architecture reassessment ([assessment](../architecture/assessment-2026-09-12.md))**:
   keep the proxy architecture; add a `SetRenderState` shadow, an engine
   frame-routine boundary hook (the scene-end callsite `0x004721b1` is not
   glow-gated, so hooking it frees TAA from the bloom option), live camera
   globals, and enable the adjacency cache.
-- **Camera state ([disassembly](reverse-engineering/camera-state-and-frame-routine.md))**:
+- **Camera state ([disassembly](../reverse-engineering/camera-state-and-frame-routine.md))**:
   `*0x00608a38` projection, `*0x00608a40` view (row-vector, left-handed, same
   context scale as world matrices), final at the per-view Clear the proxy
   already hooks; projection uses `zn = 6`, `zf = 2,000,000`, half-FOV from a
@@ -586,14 +586,14 @@ Evidence at this checkpoint (details in the linked documents):
   that must be excluded from motion history. `DrawIndexedPrimitive` has no
   direct engine callsite, so return-address bucketing cannot label the main
   pass.
-- [Review 18](verification/review-18.md) (NaN fail-open sentinel test fixed,
+- [Review 18](../verification/review-18.md) (NaN fail-open sentinel test fixed,
   shared game-running guard that ignores Ghidra jobs, doc/manifest fixes) and
-  [review 19](verification/review-19.md) (profiler). Suites: motion output 34
+  [review 19](../verification/review-19.md) (profiler). Suites: motion output 34
   runs, ownership 26, fallback, temporal pass 318/164, temporal 78/78, scene
   capture 4,908 checks, no-x87, 503 analysis tests.
 
-- **Camera reprojection for sentinel pixels** ([design](architecture/temporal-integration.md)
-  "Camera reprojection for sentinel pixels", [review 20](verification/review-20.md)):
+- **Camera reprojection for sentinel pixels** ([design](../architecture/temporal-integration.md)
+  "Camera reprojection for sentinel pixels", [review 20](../verification/review-20.md)):
   the route reads the engine's projection and view buffers at the scene's
   depth Clear behind the verified-executable gate, builds the far-plane
   transform (rotation only, translation ignored) once per frame and runs
@@ -611,8 +611,8 @@ Evidence at this checkpoint (details in the linked documents):
   sampled attribution by function, symbolized through Ghidra); dry run on the
   iteration-8 log reproduces the gap figures in 1.6 s.
 
-- **Engine boundaries and render-state shadow** ([design](architecture/live-motion-route.md)
-  "Engine boundaries and state shadow", [review 21](verification/review-21.md)):
+- **Engine boundaries and render-state shadow** ([design](../architecture/live-motion-route.md)
+  "Engine boundaries and state shadow", [review 21](../verification/review-21.md)):
   `X3M_STATE_SHADOW` (default on) hooks `SetRenderState` and answers the
   route's per-draw state queries from an eight-state shadow (native
   `GetRenderState` calls per fixture frame 295 → 144, 423 → 126 in bursts),
@@ -627,12 +627,12 @@ Evidence at this checkpoint (details in the linked documents):
   without changing any match. Review 21 found the hook's signal ran under the
   light CPU boundary although the resolve reaches x87 code; it now preserves
   the full state once per frame.
-- **Compositor and glow ([disassembly](reverse-engineering/compositor-and-glow.md))**:
+- **Compositor and glow ([disassembly](../reverse-engineering/compositor-and-glow.md))**:
   the compositor returns at once unless the registry bit `VideoD3DFlags2`
   bit 7 ("Glow enabled") is set; with glow on it reads RT0 only through the
   bloom `StretchRect` and the final additive blend; HUD and text draw after it
   straight to the back buffer; no readback of RT0 in normal frames.
-- **FP16 HDR scene path design ([design](architecture/hdr-scene-path.md))**:
+- **FP16 HDR scene path design ([design](../architecture/hdr-scene-path.md))**:
   redirect RT0 to an owned A16B16G16R16F target at the latching Clear, keep the
   game's depth and the motion/depth MRTs, run TAA on HDR before tonemapping
   (reversible luminance weighting), AgX + adapted exposure at the scene-end
@@ -640,8 +640,8 @@ Evidence at this checkpoint (details in the linked documents):
   in stage 1. The game is a gamma-space renderer (no sRGB state observed on
   762 draws), so decoding is a documented approximation.
 
-- **FP16 HDR scene path, stage 1 ([design and implementation](architecture/hdr-scene-path.md),
-  [verification](verification/hdr-scene-path.md), [review 22](verification/review-22.md))**:
+- **FP16 HDR scene path, stage 1 ([design and implementation](../architecture/hdr-scene-path.md),
+  [verification](../verification/hdr-scene-path.md), [review 22](../verification/review-22.md))**:
   behind `X3M_HDR=1` (`--hdr`, default off) the route redirects the game's RT0
   to an owned A16B16G16R16F target at the latching Clear (caps gate plus a 4×4
   MRT and copy self test), keeps the game's depth and the motion/depth MRTs,
@@ -665,9 +665,9 @@ Evidence at this checkpoint (details in the linked documents):
   model (`exposure_reference.py`), `src/temporal/agx.hlsl` + `agx.h` (constants
   c8–c21), 32 tests; not compiled or wired.
 
-- **FP16 HDR scene path, stage 2 ([implementation](architecture/hdr-scene-path.md)
-  "Stage 2 implementation", [verification](verification/hdr-scene-path.md),
-  [review 23](verification/review-23.md))**: `X3M_HDR_TONEMAP=agx`
+- **FP16 HDR scene path, stage 2 ([implementation](../architecture/hdr-scene-path.md)
+  "Stage 2 implementation", [verification](../verification/hdr-scene-path.md),
+  [review 23](../verification/review-23.md))**: `X3M_HDR_TONEMAP=agx`
   (`--hdr-tonemap`, default off = stage-1 identity) writes the FP16 scene back
   through AgX (looks none/golden/punchy, decode gamma2.2/sRGB/none, optional
   clamp, alpha carried) with automatic exposure from a GPU log-luminance meter
@@ -715,9 +715,9 @@ serials plus buffer identity and draw range, and restore all touched state
 after each draw. The motion target is filled with the invalid sentinel at the
 frame's latching Clear, released before Reset and on device release, and read
 back in requested capture frames as `motion_<device>_<frame>.rgba32f`. See the
-[implementation section](architecture/live-motion-route.md) for the exact
+[implementation section](../architecture/live-motion-route.md) for the exact
 hooked slots, gates, restoration list and failure behavior, and
-[motion output verification](verification/motion-output.md).
+[motion output verification](../verification/motion-output.md).
 
 Evidence at this checkpoint:
 
@@ -729,7 +729,7 @@ Evidence at this checkpoint:
 - History key validation on the 24 iteration-5 gameplay frames: the full key
   matches 99.97% of keyable scene draws across 18 adjacent frame pairs with no
   in-frame duplicates; dropping buffer identity leaves 174 ambiguous sub-mesh
-  splits. See [motion history key](reverse-engineering/motion-history-key.md).
+  splits. See [motion history key](../reverse-engineering/motion-history-key.md).
 - Shader coverage is archive-wide: all 3,480 effect files were parsed for
   their 817 VS/PS pairings, and the transformer table now holds 169 of the
   180 SM3 pairs (56 class A, 101 B, 12 C, including asteroid, moon and planet
@@ -739,11 +739,11 @@ Evidence at this checkpoint:
   identical. Of 466 SM2 pairs, 115 could host a ps_2_0 fragment and 267 a
   ps_2_x one; SM1 has no MRT. Pair lookup is a binary search over sorted
   index tables; the constant shadow captures every matrix window the table
-  names. See [motion output profiles](reverse-engineering/motion-output-profiles.md),
-  [material motion](verification/material-motion.md) and reviews
-  [13](verification/review-13.md), [14](verification/review-14.md),
-  [15](verification/review-15.md).
-- **First gameplay run ([iteration 6](verification/iteration-06.md))**: across
+  names. See [motion output profiles](../reverse-engineering/motion-output-profiles.md),
+  [material motion](../verification/material-motion.md) and reviews
+  [13](../verification/review-13.md), [14](../verification/review-14.md),
+  [15](../verification/review-15.md).
+- **First gameplay run ([iteration 6](../verification/iteration-06.md))**: across
   several sectors and a ship kill, 17,390 routed draws with 99.5% matched
   history, zero apply/restore/fill/Reset failures, lock time 0.34% of wall.
   All 1,022,880 valid readback pixels are explained by the stored row pairs
@@ -757,7 +757,7 @@ Evidence at this checkpoint:
   not advance across sector changes, so the temporal design gained a
   displacement-based cut detector.
 - **Temporal integration steps 1 and 2 are implemented in source
-  ([design](architecture/temporal-integration.md)).** Step 1: every one of the
+  ([design](../architecture/temporal-integration.md)).** Step 1: every one of the
   169 rows also writes current device depth to an owned R32F third target
   (exact against ZFUNC-EQUAL replay over 7.76 M pixels, max z/w error
   2.6e-6), sentinel-filled with RT1; per-draw Halton jitter behind
@@ -777,7 +777,7 @@ Evidence at this checkpoint:
   standalone reference resolve byte for byte, history frames accumulate
   exactly as scripted, and failures leave the main target untouched. Measured
   boundary cost (CPU-inclusive, Preview): 0.67 ms at 1280×768 and 2.04 ms at
-  5120×1440. [Review 16](verification/review-16.md) fixed a fixed-function
+  5120×1440. [Review 16](../verification/review-16.md) fixed a fixed-function
   texture-stage leak into the resolve and added format-conversion gating;
   verdict GO for a gameplay run. The first TAA run showed stationary
   objects trembling and blurring: the resolve read history at the previous
@@ -786,8 +786,8 @@ Evidence at this checkpoint:
   unjittered position plus the current jitter; a stationary fixture shows
   0.000 px drift and bit-stable interiors across jitter phases where the old
   shader drifted 0.46 px, and three automated negative controls reproduce the
-  regression. See [review 17](verification/review-17.md) and the
-  [run analysis](verification/iteration-07.md): the resolved image moved by
+  regression. See [review 17](../verification/review-17.md) and the
+  [run analysis](../verification/iteration-07.md): the resolved image moved by
   exactly the logged jitter each frame (0.013 px residual), 44% of
   high-frequency detail was lost, all 118 scene frames resolved and 99.8% of
   routed draws matched history. Scene time averaged 38.5 ms versus 16.1 ms in
@@ -800,22 +800,22 @@ Evidence at this checkpoint:
 - The motion-output fixture now runs in 18 environments including the
   ownership wrapper, depth copy and admission, which the gameplay run needs.
   That coverage found and fixed a refcount defect that would have leaked the
-  device under the wrapper. See [motion output](verification/motion-output.md).
-- [Motion readback analyzer](verification/motion-readback.md) checks capture
+  device under the wrapper. See [motion output](../verification/motion-output.md).
+- [Motion readback analyzer](../verification/motion-readback.md) checks capture
   readbacks without geometry: integrity, static consistency, row-pair
   consistency (3,402/3,402 fixture pixels explained at 0.0018 px), displacement
   statistics and temporal cross-checks. The depth comparison stays unavailable
   until the route writes a depth image.
-- [Temporal integration design](architecture/temporal-integration.md): resolve
+- [Temporal integration design](../architecture/temporal-integration.md): resolve
   at the pre-bloom copy point, current depth from a third R32F target written by
   the variants, reactive coverage derived from its sentinel, per-draw explicit
   jitter because the game's state manager skips repeated uploads.
-- [Constant upload disassembly](reverse-engineering/constant-uploads.md): all
+- [Constant upload disassembly](../reverse-engineering/constant-uploads.md): all
   game shader/constant setters come from its two D3DX effect state managers in
   BeginPass; no game code writes the reserved constant ranges; the pure-device
   manager memoizes the last shader pointer, so restoring VS/PS after a routed
   draw is mandatory.
-- [Review 12](verification/review-12.md) fixed a possible terminate in a
+- [Review 12](../verification/review-12.md) fixed a possible terminate in a
   noexcept readback path, hook installation for refused devices and heavy
   FP-state saving on every constant setter; a new static checker proves the
   light hook path reaches no x87 instruction. Existing suites still pass:
@@ -832,7 +832,7 @@ commit `66d91a4`, SHA256
 iteration-5 DLL (`ed19a7ab…`) is preserved as
 `artifacts/rollback/d3d9-iteration05.dll`. The route is off unless the launcher
 passes `--motion-output`; see the run command in
-[motion output](verification/motion-output.md). The installed build predates the
+[motion output](../verification/motion-output.md). The installed build predates the
 archive-wide table and the selector correction.
 
 ## Session handoff (2026-09-12, before orchestrator compaction; completed, kept for provenance)
@@ -892,10 +892,10 @@ Today's runs (snapshots under /tmp, never committed): old bottle
 +taa-debug, run 3 route off, run 4 +hdr identity); new bottle
 `/tmp/x3-bottleX3-run5/` (route off) and `/tmp/x3-bottleX3-run6/` (route +
 profile + hook; path: other save → menu → new game → dock → usual flight).
-Findings so far: [iteration 9](verification/iteration-09.md),
-[run 2](verification/iteration-09-run2.md), [run 4](verification/iteration-09-run4.md),
-[cost](verification/iteration-09-cost.md), [route cost](verification/route-cost-run1.md),
-[loading profile](reverse-engineering/loading-profile-run1.md). New bottle,
+Findings so far: [iteration 9](../verification/iteration-09.md),
+[run 2](../verification/iteration-09-run2.md), [run 4](../verification/iteration-09-run4.md),
+[cost](../verification/iteration-09-cost.md), [route cost](../verification/route-cost-run1.md),
+[loading profile](../reverse-engineering/loading-profile-run1.md). New bottle,
 route off: menu 9.7 s, save 65.5 s (39.5 s unexplained), sector 8–9 s.
 
 In flight (uncommitted, owned by agents; if their reports were lost, inspect
@@ -936,11 +936,11 @@ account switch"); installed in bottle X3 = review-26 build `8864bff0…`
 Game runs today on X3 (snapshots under /tmp only): run 7 `/tmp/x3-bottleX3-run7/`
 (plain `--direct`, no stamps; user stopwatch ≈40 s save load), run 8
 `/tmp/x3-bottleX3-run8/` (`--telemetry --mesh-adjacency verify --gz-buffer`;
-[loading-x3-run8.md](verification/loading-x3-run8.md): save 65 → 33 s, gz
+[loading-x3-run8.md](../verification/loading-x3-run8.md): save 65 → 33 s, gz
 buffer covers the whole savegame, `inflate` 774k calls/12 s is now the largest
 hooked item; adjacency verify **167/7,715 meshes mismatch**, tie-break
 related — fast mode blocked), run 9 `/tmp/x3-bottleX3-run9/` (route + TAA +
-hook + gz buffer; [iteration-11.md](verification/iteration-11.md): route-on
+hook + gz buffer; [iteration-11.md](../verification/iteration-11.md): route-on
 frame 16.9 → 12.1 ms with direct engine reads, hook 162/162 agree, 0
 resyncs, TAA 99.83% history match, loads menu 8.4 / save 35.7 / sector 5.9 s),
 run 10 `/tmp/x3-bottleX3-run10/` (review-26 build, `--taa-sharpen 0.5
@@ -982,7 +982,7 @@ under its "handoff" message; the review-25 commit finishes them.
 
 Completed since the evening handoff:
 
-- **Review 24 (HDR stage 3) passed** — [review-24.md](verification/review-24.md).
+- **Review 24 (HDR stage 3) passed** — [review-24.md](../verification/review-24.md).
   Findings fixed: negative-luma weight poisoning the 3×3 stats (luma floored at
   0 both ways, resolve program 4,487 words), `X3M_TAA_K` parse check,
   identity twins assert `k=0`, runner exports `X3M_TELEMETRY_DRAW=1`. Suites:
@@ -992,7 +992,7 @@ Completed since the evening handoff:
   TAA 1.935 ms vs 8-bit 2.317 ms at 5120×1440. Verdict: go, `--taa-k` unset
   by default; not yet seen in game.
 - **New-bottle loading profile** —
-  [loading-profile-bottle-x3.md](reverse-engineering/loading-profile-bottle-x3.md).
+  [loading-profile-bottle-x3.md](../reverse-engineering/loading-profile-bottle-x3.md).
   FEX removed the adjacency bottleneck (GenerateAdjacency 69.15 s → 3.13 s per
   run; the fast replacement is now a worst-case-tail fix, not the loading
   fix). Save load on X3 = 65.5 s: a 25.3 s savegame-decode stall (13.9 M
@@ -1030,7 +1030,7 @@ default resolve point.
 All runs on the X3 bottle with the installed build (see "Installed" below;
 the currently installed review-26 build `8864bff0…` predates the loading
 branch, the adjacency parity fix and the present readback — install the
-review-29 build first, hash in [review-29.md](verification/review-29.md),
+review-29 build first, hash in [review-29.md](../verification/review-29.md),
 otherwise runs 2, 4, 6 and 7 cannot show the new lines);
 logs land in the game's `x3-modern-captures` folder as
 `session-<date>-<pid>.log`. Tell the orchestrator after each run; it snapshots
@@ -1064,12 +1064,12 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    (optionally `--hdr-look golden`, `--hdr-ev -1`). Report what looks wrong;
    the orchestrator reads the `hdr_frame` ev/luma fields and `hdr_tonemap`.
 6. **Run 6 — loading stall decomposition**: `python3 tools/manage.py launch
-   --direct --telemetry --loading-probes` ([loading-probes.md](verification/loading-probes.md));
+   --direct --telemetry --loading-probes` ([loading-probes.md](../verification/loading-probes.md));
    `loading_probe_site … status=late_claim` in the log would mean an
    install-order regression.
 7. **Run 7 — resource reader**: `python3 tools/manage.py launch --direct
    --telemetry --resource-read verify --dat-handles`
-   ([resource-reader.md](verification/resource-reader.md)); `fast` only after
+   ([resource-reader.md](../verification/resource-reader.md)); `fast` only after
    verify reports no difference.
 
 * 2026-09-13 (adjacency parity, uncommitted, paused): run 11 (bottle X3, review-29
@@ -1080,7 +1080,7 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
   reproduces both (`Policy::normalize`, the service mirrors the dispatch): replay of the
   37 dumps is 37/37 on X3; Steam keeps a 4/37 Rosetta-only residual under study. Suites
   not rerun yet; fast mode stays blocked until the next in-game verify run shows
-  `verify_mismatched=0`. See [handoff-adjacency-parity.md](verification/handoff-adjacency-parity.md).
+  `verify_mismatched=0`. See [handoff-adjacency-parity.md](../verification/handoff-adjacency-parity.md).
 
 ## Concrete next work
 
@@ -1094,20 +1094,20 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
 3. From the profile: attribute the unexplained loading seconds to engine
    functions with `X3ProfileSymbols.java`, then choose between the negative
    lookup cache, adjacency replacement, catalogue handle retention and engine
-   patches per [loading orchestration](reverse-engineering/loading-orchestration.md).
+   patches per [loading orchestration](../reverse-engineering/loading-orchestration.md).
 4. Done in iteration 10 and review 26: the scene-end hook is confirmed in
    gameplay (214/214 agree, `draws_after_hook` max 0) and is the default
    resolve point (`--scene-hook off` restores the copy/selector boundary).
 5. HDR stage 3 (TAA on HDR with luminance weighting), stage 4 (radiance
    clamp removal), stage 5 (HDR bloom) per the
-   [design](architecture/hdr-scene-path.md); re-measure the 5120×1440 stage-2
+   [design](../architecture/hdr-scene-path.md); re-measure the 5120×1440 stage-2
    cost; continue the roadmap.
 6. Loading-time gap and alt-tab cursor remain tracked.
 7. **Crypt cache (2026-09-13, merged, not yet installed):** run B's stall-B
    decomposition put 12.835 of 16.758 s in the script signature check
    `0x004cabc0`, 10.346 s of it in the three `CryptAcquireContextA` container
    delete/create/delete calls per script (4.086 ms each). Decompiled in
-   [script-signature-check.md](reverse-engineering/script-signature-check.md);
+   [script-signature-check.md](../reverse-engineering/script-signature-check.md);
    `X3M_CRYPT_CACHE=1` / `launch --crypt-cache` (`src/proxy/crypt_cache.cpp`,
    no-SSE unit, no telemetry needed) caches the provider handle and the
    imported RSA-2048 key, emulates the two ignored deletes with the recorded
@@ -1118,15 +1118,15 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
    container can persist until the next startup delete. Corrected-source tests
    pass 572 checks on each bottle; the 200-sequence real-CSP differential measures
    approximately 4.0× (Steam) / 4.14× (X3) per check, excluding the probe envelope
-   ([crypt-cache.md](verification/crypt-cache.md)). The 11–13 s loading estimate
+   ([crypt-cache.md](../verification/crypt-cache.md)). The 11–13 s loading estimate
    remains a hypothesis for the user's reviewed `--crypt-cache` run.
 8. **Chase camera (2026-09-13, worktree branch, reviewed, not run):**
    `X3M_CAMERA=chase` / `launch --camera chase` replaces the external back
    view with a critically damped follow camera written into the engine's
    sector camera at the byte-verified cockpit-update site `0x00420e06`
-   ([design](architecture/chase-camera.md), [study](reverse-engineering/external-camera.md),
-   [review 31a](verification/review-31-chase-camera-architecture.md) /
-   [31b](verification/review-31-chase-camera-implementation.md) applied):
+   ([design](../architecture/chase-camera.md), [study](../reverse-engineering/external-camera.md),
+   [review 31a](../verification/review-31-chase-camera-architecture.md) /
+   [31b](../verification/review-31-chase-camera-implementation.md) applied):
    scene, HUD overlay and the mouse-aim ray (which uses cockpit `+0xf0`, also
    rewritten) stay one camera. Review fixes: the handler acts only on the
    active control cockpit (`+0x10 == +0xc`), verbatim-basis frames (connect 3,
@@ -1147,7 +1147,7 @@ the log to /tmp and analyses it. Same save and flight path as the earlier runs.
 ## Replay/admission line (reference only, superseded 2026-09-12)
 
 
-The detached [same-draw material prototype](verification/material-motion.md)
+The detached [same-draw material prototype](../verification/material-motion.md)
 now writes color and motion correspondence together for one common opaque SM3
 pair. Its 82 configurations pass 1,182 checks, 2,952 numerical motion samples
 and 164 bilateral depth cases. All compared color components are unchanged, and
@@ -1158,14 +1158,14 @@ Both the game's A8R8G8B8 color format plus RGBA32F motion and an equal-format
 control pass. Host optimized/ASan/UBSan checks also preserve the original
 programs and reject 57,152 input mutations. The transformer is **not linked into
 the proxy or installed**. Live history, binding and broader material coverage
-remain next work; see the [module contract](architecture/material-motion-prototype.md).
+remain next work; see the [module contract](../architecture/material-motion-prototype.md).
 
 The portable geometry path removes DLL-version allowlists, private Wine buffer
 layouts and native method RVAs. Eligible managed WRITEONLY buffers receive
 readable native backing, preserving application-visible Usage and observing only
 existing Lock/Unlock uploads. The loading cache likewise replaces DLL fingerprints
 and private method addresses with public COM contracts. The
-[dependency audit](architecture/runtime-dependencies.md) documents the proxy
+[dependency audit](../architecture/runtime-dependencies.md) documents the proxy
 mechanisms and remaining platform gaps. Game EXE/DLL patches, private structures
 and disassembly remain explicitly allowed.
 
@@ -1175,15 +1175,15 @@ many-buffer leases fell from 11.407 ms to 2.537 ms combined; the shared-buffer
 control remained near 2.44 ms. The index passes 552 observer checks, 421 geometry
 checks and 84 benchmark samples. This is CPU evidence, not game FPS
 or proof that complete live replay is affordable. See
-[sidecar index verification](verification/finite-sidecar-index.md),
-[performance measurements](verification/geometry-performance.md) and
-[review 10](verification/review-10.md). The installed DLL remains unchanged.
+[sidecar index verification](../verification/finite-sidecar-index.md),
+[performance measurements](../verification/geometry-performance.md) and
+[review 10](../verification/review-10.md). The installed DLL remains unchanged.
 
-The [application admission core](verification/application-admission.md)
+The [application admission core](../verification/application-admission.md)
 passes 4,865 checks in each of four standalone builds, including ASan/UBSan,
 ThreadSanitizer and a CPU-only x86 Preview run. Independent review accepted its
 root counting, nesting, permanent vetoes and nonblocking replay promotion.
-The standalone x86 [ABI adapter](architecture/application-admission-abi.md)
+The standalone x86 [ABI adapter](../architecture/application-admission-abi.md)
 passed 130 CPU-state/behavior checks and 21 timing samples at `127c3da`. Its emitted
 code removes compiler exception bookends from the adapter. CMake disables
 exceptions for that source file; generated ownership entry definitions use a
@@ -1193,23 +1193,23 @@ Both modules are now linked into production behind the off-by-default
 `X3M_ADMISSION=1` option. All 297 generated ownership entries, eleven loader
 exports, thirty capture bodies, sixteen loading IAT roots and twenty-four bounded
 mesh thunks enter the same process monitor before their work. The
-[ownership fixture](verification/ownership-admission.md) passes 147 checks in
+[ownership fixture](../verification/ownership-admission.md) passes 147 checks in
 twelve modes, including actual callback registration and final child/parent
-release. [Process configuration](verification/process-admission.md) preserves
+release. [Process configuration](../verification/process-admission.md) preserves
 CPU state and publishes one immutable mode. These are ordinary entry boundaries;
 complete callback/window coverage, trusted native-helper authority, mapping
 validation and the exclusive GPU segment still gate live replay. See
-[proxy integration](verification/proxy-application-admission.md). The
-[game callback disassembly](reverse-engineering/game-callback-registration.md)
+[proxy integration](../verification/proxy-application-admission.md). The
+[game callback disassembly](../reverse-engineering/game-callback-registration.md)
 identifies D3DX device routes, effect-state callbacks and window-message hazards.
 
-The [actual-DLL cost comparison](verification/hook-admission-performance.md)
+The [actual-DLL cost comparison](../verification/hook-admission-performance.md)
 passes seven cases and 196 timing samples. Admission adds about 134–154 ns to
 the tested single-boundary calls and 285–316 ns to capture-plus-ownership calls.
 These are synthetic CPU timings including their native operation, not replay
 GPU cost or game frame time. Loading/cache verification passes sixteen explicit
 off/on cases with balanced admission retirement. See
-[review 11](verification/review-11.md).
+[review 11](../verification/review-11.md).
 
 A private motion producer now connects main-scene draw observations to
 bounded native geometry leases, CPU storage correspondence and an actual
@@ -1219,10 +1219,10 @@ is refused until buffer-write/replay exclusion is implemented**: the capture
 mutex alone does not serialize worker VB/IB mappings. Only a successful Clear, surviving scene selection and
 successful Present can commit CPU matrix history. Camera-cut continuity and
 complete scene-color coverage remain explicitly unknown; no temporal-color
-consumer is enabled. See [motion capture](verification/motion-capture.md),
-[geometry leases](verification/geometry-leases.md),
-[execution scopes](verification/execution-state.md) and
-[review 7](verification/review-07.md). The combined DLL and forced native fallback verification pass;
+consumer is enabled. See [motion capture](../verification/motion-capture.md),
+[geometry leases](../verification/geometry-leases.md),
+[execution scopes](../verification/execution-state.md) and
+[review 7](../verification/review-07.md). The combined DLL and forced native fallback verification pass;
 the installed iteration-5 DLL remains unchanged.
 
 The finite-position source path includes the reviewed compact classification
@@ -1231,17 +1231,17 @@ observer. It obtains finite XYZ and actual index bounds from existing writes,
 with no extra buffer Lock or game-pixel readback. The new reader can acquire a
 native geometry lease while the actual getter references remain alive, then
 revalidate the immutable requests at replay. See
-[finite upload evidence](verification/finite-upload-observer.md) and
-[draw inputs](verification/draw-input.md).
+[finite upload evidence](../verification/finite-upload-observer.md) and
+[draw inputs](../verification/draw-input.md).
 
 CPU correspondence now distinguishes diagnostic storage pairs from temporal
 continuity; its 3,404 checks pass. The embedded motion PS is compiled from our
 original HLSL and needs no runtime compiler. Detached numerical verification
 also feeds the production temporal resolve, but the live diagnostic output is
-not consumed by that resolve. See [motion history](verification/motion-history.md)
-and [GPU motion](verification/rigid-motion.md).
+not consumed by that resolve. See [motion history](../verification/motion-history.md)
+and [GPU motion](../verification/rigid-motion.md).
 
-The [archive position review](reverse-engineering/archive-position-paths.md)
+The [archive position review](../reverse-engineering/archive-position-paths.md)
 accounts for all 256 VS: 234 homogeneous row-dot paths, 18 direct-clip bloom paths,
 two direct-position GUI/effect paths and two particle billboards. The production
 registry now contains all 234 row-dot programs, with separate lookup for the other
@@ -1250,7 +1250,7 @@ The reviewed registry passes 751 actual-program lookups and rejects 547,927
 single-word mutation controls. The other five captured
 programs require explicit separate handling; they are not excluded from final
 TAA/composition scope. Particle RGB blending and missing prior particle identity
-are documented in [particle inputs](reverse-engineering/particle-motion-inputs.md).
+are documented in [particle inputs](../reverse-engineering/particle-motion-inputs.md).
 The full Python analysis suite passes **289 tests**.
 The post-install source registry also retains original shader model, constructor
 and position-write order, independently verified for all 234 row-dot profiles.
@@ -1261,7 +1261,7 @@ component comparisons and 134 bilateral raster/depth cases; independent review
 checks its evidence limits. These source changes have not replaced the installed
 iteration-5 DLL.
 
-The [live draw-input reader](verification/draw-input.md) passes 260 checks,
+The [live draw-input reader](../verification/draw-input.md) passes 260 checks,
 74 caller-state comparisons and seven failed-getter controls. It reads exact
 submitted rows and actual layouts/revisions, distinguishes nonindexed draws from
 an unused bound IB, and keeps lifetime, source qualification and finite-payload
@@ -1269,28 +1269,28 @@ gates independent. Proxy
 capture wiring now records these inputs and composes lifetime evidence around the
 native draw. The combined fixture checks record scope and failed submission gates.
 
-[Reactive history](verification/reactive-history.md) now owns current/prior mask
+[Reactive history](../verification/reactive-history.md) now owns current/prior mask
 snapshots and rejects contaminated RGB independently of alpha. Actual synthetic
 particle birth, disappearance, movement, reordering and occlusion pass, along with
 policy/reset/failure handling: 98 numeric checks and 102 state comparisons. The
 58-sample resolve and 102-sample rigid-motion regressions still pass. Producing
 these masks for live game draws remains unfinished.
 
-[Lifecycle disassembly](reverse-engineering/object-lifetimes.md) now covers the
+[Lifecycle disassembly](../reverse-engineering/object-lifetimes.md) now covers the
 reviewed central insertion, removal, bulk destruction and renderer-load paths.
-The opt-in [observer](verification/object-lifetime-observer.md) passes 533 checks
+The opt-in [observer](../verification/object-lifetime-observer.md) passes 533 checks
 and 72 original backend calls, including baseline adoption, reuse, foreign
 unwind, hook ownership loss and retirement. Six runner-provenance tests pass.
 The completed iteration-5 run verifies consistent lifetimes for all 12,753 scoped
 draws out of 12,957 successful draws. The observer started without an installation
 baseline, then obtained useful identities from observed insertions. Load epoch
 1→2 distinguishes 17 handles reused with different storage and serials.
-Camera cuts remain a separate policy; see [live lifetime evidence](reverse-engineering/iteration05-lifetimes.md).
+Camera cuts remain a separate policy; see [live lifetime evidence](../reverse-engineering/iteration05-lifetimes.md).
 
 The installed iteration-5 DLL passed all 15 integration cases and the forced native
 fallback with its 15 compiled proxy/renderer objects. Its installed hash is:
 SHA256 `ed19a7abf54ae2b9debf912f3d343a0c9217038a2162cb6a9eb174fc8050bbd5`.
-The [installation record](../verification/results/iteration-05-install.json) verifies
+The [installation record](../../verification/results/iteration-05-install.json) verifies
 unchanged game EXE and bottle configuration. The prior 0.4 DLL is preserved in
 `artifacts/rollback/d3d9-iteration04.dll`; the older 0.3 rollback also remains intact.
 The latest combined source DLL passes 26 actual-DLL integration cases, including
@@ -1299,16 +1299,16 @@ Clear CPU-state witnesses. Unsafe live motion dispatch remains explicitly refuse
 Its SHA256 is
 `5a5f8a78d7c9a802d844368c7a68572c009edd1272b03e8dab306e6bcda39007`; it is
 **not installed**. The production link contains 23 objects; the 20-object forced
-native fallback also passes. See [review 11](verification/review-11.md).
+native fallback also passes. See [review 11](../verification/review-11.md).
 The earlier `aa61e7ff` build is retained for the hook-cost comparison and described
-in [review 10](verification/review-10.md). Earlier source evidence remains in
-[review 8](verification/review-08.md) at `5196f31`,
-[review 7](verification/review-07.md) at `0ce0814`,
-[review 6](verification/review-06.md) at `c4f3d45` and
-[review 5](verification/review-05.md) at `437e95b`. Shared result paths now refer
+in [review 10](../verification/review-10.md). Earlier source evidence remains in
+[review 8](../verification/review-08.md) at `5196f31`,
+[review 7](../verification/review-07.md) at `0ce0814`,
+[review 6](../verification/review-06.md) at `c4f3d45` and
+[review 5](../verification/review-05.md) at `437e95b`. Shared result paths now refer
 to the latest verified source; historical commits preserve their prior reports.
 
-The [detached adjacency cache](verification/mesh-adjacency-cache.md) passes
+The [detached adjacency cache](../verification/mesh-adjacency-cache.md) passes
 741 checks using real native mesh acquisition, exact byte keys, bounded storage,
 native downstream cleaning/optimization and computational FP-state parity.
 Repeated original synthetic meshes show a large hit-time reduction including
@@ -1321,7 +1321,7 @@ DLL fingerprints/private method RVAs are removed, and incoming LastError is part
 of the exact cache key.
 It is a source change, not an installed game speedup.
 The cache remains behind an off-by-default switch. Independently reviewed
-[native/wrapped hook integration](verification/mesh-cache-hook.md) exercises
+[native/wrapped hook integration](../verification/mesh-cache-hook.md) exercises
 all four game option variants across six cases.
 Known wrapper state stays truthful to the actual cache/native lock path; existing
 uncertainty never becomes known through a cache hit. Acquisition
@@ -1339,19 +1339,19 @@ corrections now report successful pre-clear copies and confirmed
 boundaries in all 24 captured iteration-5 gameplay frames, including the different
 planet save; the four menu frames remain rejected. This is live copy/epoch/boundary
 evidence, not numerical readback of the game depth texture. The
-[depth/motion audit](reverse-engineering/iteration05-depth-motion.md) finds 7,202
+[depth/motion audit](../reverse-engineering/iteration05-depth-motion.md) finds 7,202
 gameplay draws pass the current local input checks, all before the selected Clear;
 finite vertex payload, replay stability and complete scene coverage remain unproved.
 
-New [camera/object evidence](reverse-engineering/iteration04-camera-motion.md)
+New [camera/object evidence](../reverse-engineering/iteration04-camera-motion.md)
 shows independent object motion with a stationary camera; camera-only history is
 insufficient. Four changing unscoped vertex buffers require separate handling.
-[Active one-/two-light inputs](reverse-engineering/iteration04-lights.md) are now
-observed. [Loading analysis](reverse-engineering/iteration04-loading.md) finds
+[Active one-/two-light inputs](../reverse-engineering/iteration04-lights.md) are now
+observed. [Loading analysis](../reverse-engineering/iteration04-loading.md) finds
 21.287 seconds of adjacency work and recurring activity, without proving exact
 mesh reuse or explaining the entire 87-second presentation gap.
 
-The [full shader sweep](reverse-engineering/shader-sweep.md) covers 751 programs
+The [full shader sweep](../reverse-engineering/shader-sweep.md) covers 751 programs
 across all 3,480 effect files; all disassemble and all 57 runtime-dumped programs
 match archive bytes. Static review retains unknowns and does not prove runtime
 coverage. A detached, reviewed material transformer preserves HDR RGB for five
@@ -1359,9 +1359,9 @@ exact profiles; 42 structural checks and 192 GPU samples pass. It remains
 disconnected from game rendering and needs the FP16 scene path.
 
 Our arithmetic uses SSE2 with explicit four-byte incoming stack alignment;
-[ABI verification](verification/sse2-abi.md) and object/temporal/material
+[ABI verification](../verification/sse2-abi.md) and object/temporal/material
 regressions pass. This leaves ABI-required ST0 transfers intact.
-[HDR transfer investigation](architecture/hdr-transfer.md) rejects stock
+[HDR transfer investigation](../architecture/hdr-transfer.md) rejects stock
 WineD3D-to-DXMT shared handles as a pixel-sharing route, while a native FP16
 IOSurface GPU proof preserves values above one. Wine integration, EDR
 presentation and the requested visual features remain unfinished.
@@ -1410,7 +1410,7 @@ presentation and the requested visual features remain unfinished.
 ### Superseded next-work list (2026-09-11)
 
 1. Prepare limited live routing for the verified
-   [motion output alongside color](architecture/motion-output-strategy.md).
+   [motion output alongside color](../architecture/motion-output-strategy.md).
    Connect existing object/transform history, define shader/constants/MRT binding
    ownership and failure handling, and invalidate motion for unsupported
    contributors. Broaden profiles only with their own register/coverage review.
@@ -1470,25 +1470,25 @@ observations are zero. Camera reconstruction error remains below 1.41e-7.
 Texture helpers took 16.382 seconds and inflate 7.109 seconds in observed flushed
 totals. An 89.092-second presentation gap remains incompletely attributed;
 sampling/disassembly identifies an uncovered mesh adjacency/cleaning/optimization
-path. See [loading observations](reverse-engineering/loading-observations.md).
+path. See [loading observations](../reverse-engineering/loading-observations.md).
 No loading speedup is enabled in the game.
 
 The user confirmed a game cursor and macOS arrow at different positions, persisting
 after focus changes. Win32 focus/clipping/hiding restore in the trace, but native
-cursor state was not sampled. See [cursor observations](reverse-engineering/cursor-observations.md)
+cursor state was not sampled. See [cursor observations](../reverse-engineering/cursor-observations.md)
 for a scoped synthetic investigation; no cursor fix is deployed.
 
 An independent canonical D3D9 ownership layer passes 370 baseline / 431 wrapped
 fixture checks with matching shared HRESULTs and output mutations. It releases
 renderer-owned resources before Reset and native device teardown. It is not yet
-enabled by default; opt-in 0.4 produced 13,431 successful captured draws, without a terminal teardown summary in that log. See [ownership source](../src/ownership/README.md)
-and [verification](../verification/probe/ownership.md). Generated fragments use
+enabled by default; opt-in 0.4 produced 13,431 successful captured draws, without a terminal teardown summary in that log. See [ownership source](../../src/ownership/README.md)
+and [verification](../../verification/probe/ownership.md). Generated fragments use
 `*_inc.h` per the user's editor preference.
 
 The original shader interpolation fixture passes 96/96 numeric samples across
 32 cases and Reset. On this backend SM3 COLOR0 preserves values above one into
 FP16; SM2 COLOR0 clips before interpolation. Explicit pixel-shader saturation
-still clips both paths. See [HDR varying verification](verification/vertex-color-hdr.md).
+still clips both paths. See [HDR varying verification](../verification/vertex-color-hdr.md).
 This supports targeted SM3 material changes once the FP16 scene path exists;
 it is not a game HDR implementation.
 
@@ -1499,36 +1499,36 @@ separate `build-ownership/` build. All 15 actual-DLL integration cases and a for
 adoption-failure fallback pass. Child-induced final device/factory releases now
 reach the capture hooks; repeated device address reuse leaves no stale contexts.
 Stencil states and depth selection status are included in consolidated capture
-diagnostics. See [integration verification](../verification/probe/ownership_integration.md).
+diagnostics. See [integration verification](../../verification/probe/ownership_integration.md).
 
 The incompatible D24X8-to-INTZ substitution experiment has been removed. The
 replacement preserves the original application surface and explicitly copies it
 to native D24X8 storage through RESZ. The installed binary investigation and
 numeric positive/negative controls establish why D24X8-to-INTZ fails despite a
-successful trigger HRESULT. See [RESZ verification](verification/depth-resolve.md)
-and [backend investigation](reverse-engineering/depth-resolve-backend.md).
+successful trigger HRESULT. See [RESZ verification](../verification/depth-resolve.md)
+and [backend investigation](../reverse-engineering/depth-resolve-backend.md).
 The opt-in `X3M_DEPTH_COPY=1` switch allocates storage and reports diagnostics;
 the optional scene adapter invokes the explicit copy before a recognized destructive clear in requested capture frames. The installed rules rejected this game session; successful game depth preservation remains pending. See
-[copy verification](verification/copied-depth.md): 634 checks / 32 samples pass,
+[copy verification](../verification/copied-depth.md): 634 checks / 32 samples pass,
 with 357 additional loss-regression checks across 33 cases.
 
 The bounded original mesh-adjacency reuse fixture passes 1,218 checks and complete
 downstream mesh parity. It demonstrates a synthetic speed benefit for repeated
 identical meshes, not a game loading improvement; actual repetition/cost remains
-unmeasured. See [mesh preparation](verification/mesh-preparation.md).
+unmeasured. See [mesh preparation](../verification/mesh-preparation.md).
 
 A standalone temporal resolve shader now passes 58 numeric GPU checks including
 camera/object reprojection, disocclusion, HDR preservation, actual jittered
 history accumulation and Reset. Independent review caught and corrected a raw
 D3D9 viewport half-texel error using a rasterized-geometry regression. See
-[temporal resolve](verification/temporal-resolve.md). Camera/object-motion routing,
+[temporal resolve](../verification/temporal-resolve.md). Camera/object-motion routing,
 scene-boundary integration and gameplay TAA remain incomplete.
 
 The native D24X8 snapshot exposes shadow comparisons rather than raw depth. A
 separate GPU decoder reconstructs R32F device depth with 26 comparisons per pixel;
-precision and cost limits are recorded in [decoder verification](verification/depth-decode.md).
+precision and cost limits are recorded in [decoder verification](../verification/depth-decode.md).
 Its isolated timings do not establish frame cost at the user's full resolution.
-Independent [code review findings and fixes](verification/review-04.md) are
+Independent [code review findings and fixes](../verification/review-04.md) are
 recorded with the checkpoint evidence.
 
 The consolidated 0.4 diagnostic build was verified and installed for that run, with SHA256
@@ -1538,8 +1538,8 @@ preservation during requested captures, and mesh loading timings. The standalone
 scene adapter passes 20 scenarios / 2,228 checks / eight samples; buffer tracking
 passes 530 checks, and mesh timing passes 68 ABI plus 123 native mesh checks.
 Independent reviews found and fixed post-clear query confirmation and hook
-recovery/foreign-chain defects. See [review](verification/review-04.md) and the
-[completed coordinated run](verification/iteration-04.md).
+recovery/foreign-chain defects. See [review](../verification/review-04.md) and the
+[completed coordinated run](../verification/iteration-04.md).
 
 The detached production temporal runtime has paired FP16 color/R32F depth history,
 explicit motion policy, failure-safe publication and caller-state restoration;
@@ -1560,23 +1560,23 @@ Archived from status.md after checkpoint cc657f1; statements below are historica
 
 Updated 2026-09-13. This is the current handoff; detailed prior checkpoints are
 preserved in [status history](status-history-2026-09-13.md). Read history only
-for a relevant unresolved question. The [goal checklist](goals.md) retains the
-full scope; the [original objective](user-objective.md) is unchanged.
+for a relevant unresolved question. The [goal checklist](../goals.md) retains the
+full scope; the [original objective](../user-objective.md) is unchanged.
 
 Work resumed on the user's instruction after the account switch. The
 [pause handoff](pause-handoff-2026-09-13.md) preserves the unfinished emission
 qualification, material expansion and camera implementation context.
 
 Run 7 is complete. No enhanced gameplay run is currently ready; the
-[run queue](verification/user-runs.md) now consistently records that state.
+[run queue](../verification/user-runs.md) now consistently records that state.
 The next combined candidate is being prepared for emitter-glow correction,
 broader selection-stutter diagnostics and qualified material expansion.
-The [complete SM2 effects/engine source batch](architecture/linear-emission-composition.md#complete-sm2-effectsengine-extension)
+The [complete SM2 effects/engine source batch](../architecture/linear-emission-composition.md#complete-sm2-effectsengine-extension)
 adds all 15 remaining SM2 pairs, reaching 20 exact emission pairs. Source and
 host verification pass independent review; all 20 pairs now also pass detached
 GPU coverage/composition checks, with live qualification pending. This does not enable emission integration by default or change the
 installed build.
-The [authored-glow correction](architecture/bloom-authored-glow.md) is now
+The [authored-glow correction](../architecture/bloom-authored-glow.md) is now
 reviewed and source-integrated with its GPU-qualified embedded shader bundle:
 36 image cases and 16 controls pass, with at most one display code of error
 and exact destination alpha, including Reset. Bounded paired timing is recorded
@@ -1586,7 +1586,7 @@ in the owning note; gameplay cost and appearance still need the next build.
 
 Bottle **X3**, **CrossOver Preview.app**. Installed source checkpoint `75dbbed`:
 DLL SHA-256 `3cbb350c3148e3e703677182cb9fb7b85e28af048f5b19c0dbe29b570ef9e42a`,
-13,030,325 bytes. The [install record](../verification/results/linear-material-install.json)
+13,030,325 bytes. The [install record](../../verification/results/linear-material-install.json)
 binds the reviewed clean candidate, load check and previous build rollback
 pair; EXE/configuration are unchanged. The new candidate passes 2,064 live material
 frames / 25,988 checks, 48 fused-emission functional frames / 545,448 checks,
@@ -1594,13 +1594,13 @@ and three selected WRAP/automatic-exposure cases / 435 checks. The 215-function
 x87 audit and retained-DLL load check pass. Two new imports are ordinary
 `GetTickCount64` and `strncpy`. Fixed EV 0 is now the production default;
 Ctrl+Shift+F9 compares AUTO/fixed and Ctrl+Shift+F10 compares bloom contribution.
-[Run 7](verification/user-runs.md#7-same-run-exposurebloom-and-chase-hud--complete)
-is complete as [run 26](verification/run26-comparison.md): bloom executes but
+[Run 7](../verification/user-runs.md#7-same-run-exposurebloom-and-chase-hud--complete)
+is complete as [run 26](../verification/run26-comparison.md): bloom executes but
 loses native emitter glow, selection stutter remains, and the user prefers
-a brighter exposure baseline. Corrected bloom extraction is the immediate priority; no game was launched during installation. [Review 50](verification/review-50-hdr-bloom-live-integration.md)
-records the bloom integration's scoped verification. The material candidate passes the light-hook x87 audit. The [BUMPMAP runtime review](architecture/linear-bump-materials.md#runtime-review-verdict)
+a brighter exposure baseline. Corrected bloom extraction is the immediate priority; no game was launched during installation. [Review 50](../verification/review-50-hdr-bloom-live-integration.md)
+records the bloom integration's scoped verification. The material candidate passes the light-hook x87 audit. The [BUMPMAP runtime review](../architecture/linear-bump-materials.md#runtime-review-verdict)
 approves the expanded implementation and its structural/GPU/live evidence. The
-[temporal qualification](architecture/linear-emission-composition.md#supplemental-consumer-qualification)
+[temporal qualification](../architecture/linear-emission-composition.md#supplemental-consumer-qualification)
 closes the shared shader's static-budget issue: 507 slots, exact paired images
 and Reset coverage. The embedded bytes match the qualified program; the fresh
 build and explicit-DLL load check pass. Native Windows
@@ -1619,19 +1619,19 @@ no trembling or other visible camera problem was noticed. The user requested
 0.9 distance and a smoother response; revised defaults 0.28/0.38 s pass review
 and 56 focused checks and are now installed. Run 20 confirms the predictive aim indicator is visible
 in chase; sector travel still needs the transition diagnostics assessed.
-Docking behavior is not yet tested. The [lead-marker study](reverse-engineering/chase-lead-reticle.md)
+Docking behavior is not yet tested. The [lead-marker study](../reverse-engineering/chase-lead-reticle.md)
 establishes a separate view gate and gun-origin projection. The
-[lead-marker correction](architecture/chase-lead-marker.md) is implemented and
+[lead-marker correction](../architecture/chase-lead-marker.md) is implemented and
 independently reviewed, with 76 focused host/site tests and 216 X3 CPU-state
 checks passing. Installation is complete; run 20 confirms visibility, with precise alignment
 still an acceptance item.
-The [transition study](reverse-engineering/chase-view-transition.md) identifies
+The [transition study](../reverse-engineering/chase-view-transition.md) identifies
 both script and save-deserialization mode writers. Consolidated diagnostics are
 implemented with the lead correction to distinguish the actual reset source;
 view restoration still awaits that evidence.
-The [earlier diagnostic](verification/chase-third-run.md) and
-[admission-branch study](reverse-engineering/chase-mouse-fire.md)
-retain the firing correction's evidence. [Run 18](verification/run18-camera-loading.md)
+The [earlier diagnostic](../verification/chase-third-run.md) and
+[admission-branch study](../reverse-engineering/chase-mouse-fire.md)
+retain the firing correction's evidence. [Run 18](../verification/run18-camera-loading.md)
 accepts reader/adjacency verification and admits the fast-mode co-activation
 check. No adjacency mismatch dumps were written; verification/capture overhead
 is a plausible contributor to pauses, not a proven cause of individual stutters.
@@ -1642,17 +1642,17 @@ accepted camera placement; retain 13° / distance 0.9 / response 0.28/0.38 s.
 The user reports a stutter at selection and again 1–2 seconds later, distant
 star-lit asteroid shimmer that disappears closer, and a separate first-person
 selected-object distance/crosshair missing in chase. The user confirms this
-last graphic stays near screen centre; the [central HUD study](reverse-engineering/chase-target-indicator.md)
+last graphic stays near screen centre; the [central HUD study](../reverse-engineering/chase-target-indicator.md)
 finds a separate native view gate, with a scoped correction now independently reviewed and source-integrated.
-The [central HUD implementation](architecture/chase-central-hud.md) also adds
+The [central HUD implementation](../architecture/chase-central-hud.md) also adds
 consolidated selection solver/distance timing; 18 X3 CPU stubs pass 353 checks
 with zero failures. The correction is installed; gameplay remains pending.
-[Run 20 analysis](verification/run20-material-baseline.md) records a 20.685 s
+[Run 20 analysis](../verification/run20-material-baseline.md) records a 20.685 s
 save gap and fault-free loading paths. Selection windows contain 0.44–0.46 s
 frame maxima, unexplained by measured renderer calls; capture work and late
 shader creation do not overlap them. Native solver/HUD timing remains needed. A is not a material or automatic-exposure test.
 Comparison B is complete: run 21 froze docked after alt-tab/back (unknown cause),
-run 22 completed without captures, and [run 23](verification/run23-material-comparison.md) captured the selected asteroid
+run 22 completed without captures, and [run 23](../verification/run23-material-comparison.md) captured the selected asteroid
 before/after approaching until shimmer disappeared. The user still sees selection
 stutters, brighter converted surfaces, partial material coverage and less gloss.
 The captured eligible motion draws use linear materials on 4,420 of 5,800 draws
@@ -1664,32 +1664,32 @@ B as `/tmp/x3-bottleX3-run25/` (174 artifacts), with no snapshot issues. Selecti
 stutter also occurs with chase disabled. The user reports bright backgrounds
 without the earlier severe overexposure and no obvious exposure adaptation or
 bloom difference. A's log proves adaptation active but nearly always capped at
-+2 EV; every F8 burst is at that cap. [A's analysis](verification/run24-exposure-baseline.md)
-records the limited adaptation and persistent stutters. [B's analysis](verification/run25-bloom-comparison.md)
++2 EV; every F8 burst is at that cap. [A's analysis](../verification/run24-exposure-baseline.md)
+records the limited adaptation and persistent stutters. [B's analysis](../verification/run25-bloom-comparison.md)
 proves bloom never executed: the game's pure-device flag caused attachment to
-fail. The reviewed [device-creation correction](architecture/renderer-device-creation.md)
+fail. The reviewed [device-creation correction](../architecture/renderer-device-creation.md)
 now removes that optional flag when the enhanced renderer needs state reads,
 preserving hardware vertex processing and every other flag. Creation tests
 pass 18 scenarios / 218 assertions and strict x86 compilation passes; a new
 DLL is now installed; actual game bloom execution remains pending.
 The user requested separate runtime exposure and bloom toggles for same-run
-comparisons; the [reviewed controls](architecture/comparison-hotkeys.md) are now
+comparisons; the [reviewed controls](../architecture/comparison-hotkeys.md) are now
 source-integrated with visible state and logging. Ctrl+Shift+F9 switches exposure
 and Ctrl+Shift+F10 switches enhanced bloom contribution. The combined build is installed; run 7 combines their visual acceptance. The user additionally requested an outdoor-space
-exposure evaluation against other modern space games, then adjustment. The independently reviewed [comparison and capture study](architecture/space-exposure-policy.md)
+exposure evaluation against other modern space games, then adjustment. The independently reviewed [comparison and capture study](../architecture/space-exposure-policy.md)
 favors fixed EV 0: all nine sampled frames request the old +2 EV ceiling,
 and sparse sky can trigger discontinuous targets. Fixed 0 is selected as the
 next production default, preserving AgX/bloom and optional Auto comparison.
 The default/control source is reviewed, qualified and installed; visual
 acceptance remains pending. Run 7 now combines the HUD/stutter and comparison checks.
-The [asteroid fog study](reverse-engineering/asteroid-fog-temporal.md) establishes
+The [asteroid fog study](../reverse-engineering/asteroid-fog-temporal.md) establishes
 the native distance-based blend/depth switch and its alpha calculation. Far
 geometry genuinely composites with the background; temporal coverage must
 preserve that mixture rather than force opaque depth. The bloom lifetime host
 fixture's emission Reset model is repaired and independently reviewed
 (33 scenarios / 139 checks); this checkpoint changes no installed code.
-The [motion/depth WRAP correction](architecture/motion-varying-wrap.md) and
-[116-pair Asteroid/COLOR1 source](architecture/linear-asteroid-materials.md) are
+The [motion/depth WRAP correction](../architecture/motion-varying-wrap.md) and
+[116-pair Asteroid/COLOR1 source](../architecture/linear-asteroid-materials.md) are
 reviewed, GPU/live-qualified and installed. The next material expansion adds 32 Boron/Paranid pairs. The reviewed pure
 conversion and scalar WRAP source packages are integrated in main with six focused
 integration tests passing (including 34,773 WRAP assertions and the exposure
@@ -1698,11 +1698,11 @@ handoff). The two affected proxy translation units compile for x86/SSE2. The
 Its reviewed detached fixture now passes 3,549 X3 GPU cases, including eight
 perspective-interpolation checks, with the previous 2,757 cases preserved exactly.
 The expanded live-route fixture is reviewed and source-integrated; its GPU run
-and 148-pair installation remain pending. The remaining [14 XT pairs](architecture/xt-materials.md)
+and 148-pair installation remain pending. The remaining [14 XT pairs](../architecture/xt-materials.md)
 have an independently reviewed design: ten native-compatible BUMP/LOW conversions
 and four explicit DEFAULT producer repairs. Their implementation remains ahead.
 
-Use the [brief user run queue](verification/user-runs.md) for remaining acceptance,
+Use the [brief user run queue](../verification/user-runs.md) for remaining acceptance,
 including other views, aiming, TAA cuts, menus and resolution changes. The agent
 never launches the game. New Wine fixtures use X3 only and the shared lock.
 
@@ -1719,48 +1719,48 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   policy decision selects fixed EV 0 by default; reviewed source is integrated
   with same-run comparison controls, now installed; visual acceptance remains.
 - **Bloom live integration is installed and awaits gameplay acceptance.** The
-  [compositor boundary](architecture/hdr-bloom-boundary.md) passes 714 combined
+  [compositor boundary](../architecture/hdr-bloom-boundary.md) passes 714 combined
   X3 checks across both reference models, including Reset/ResetEx and original
   exception cleanup. Review 50 has no open findings. The scene handoff retains
   exact display parameters and adds no resolve or exposure-meter pass. Existing
   component image/state/recovery evidence remains linked from the design.
-  Run 3 in the [brief queue](verification/user-runs.md) is complete and exposed
+  Run 3 in the [brief queue](../verification/user-runs.md) is complete and exposed
   the pure-device attachment failure; corrected live bloom acceptance remains pending.
-- Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](verification/run17-crypto-loading.md)
-  accepts crypto reuse; [run 18](verification/run18-camera-loading.md) verifies
+- Loading fell from 87 s to roughly 34–38 s in recorded X3 runs. [Run 17](../verification/run17-crypto-loading.md)
+  accepts crypto reuse; [run 18](../verification/run18-camera-loading.md) verifies
   6,958 reader outputs and 15,354 meshes exactly with zero mismatches or faults.
-  [Run 19](verification/run19-fast-loading.md) accepts fast-mode co-activation:
+  [Run 19](../verification/run19-fast-loading.md) accepts fast-mode co-activation:
   4,096 compressed resources, 7,642 meshes and 3,516 DAT reuses, no faults or
   reported stutters. Save loading was 41.571 s with crypto cache off, not a
   controlled speed comparison. Run 6 combines the reviewed loading switches.
-- [Damage-branch motion output](architecture/damage-motion.md) is reviewed and
+- [Damage-branch motion output](../architecture/damage-motion.md) is reviewed and
   source-integrated: 192 X3 GPU cases / 576 configurations preserve native
   branch/color behavior while adding motion and depth. The 41 affected contract
   and profile tests pass after integration. The combined build is installed; gameplay remains pending. Detached
   completion timings are not game FPS.
-- [Linear materials](architecture/scene-linear-materials.md) are installed with
+- [Linear materials](../architecture/scene-linear-materials.md) are installed with
   **83 original shaders / 116 pairs**, including Argon/shared/Split/Terran hulls
   and standard-lighting DEFAULT/BUMPMAP/LOW. The
-  [whole-group qualification](architecture/linear-hull-materials.md) passes
-  independent review; the [Asteroid extension](architecture/linear-asteroid-materials.md)
+  [whole-group qualification](../architecture/linear-hull-materials.md) passes
+  independent review; the [Asteroid extension](../architecture/linear-asteroid-materials.md)
   raises qualification to 2,757 detached GPU cases and 25,988 live-route checks
   across 2,064 frames, preserving alpha/motion/depth, ownership, Reset and
   shader retirement. The retained build passes compilation, the 215-function
   x87 audit and an explicit-DLL load check. The feature stays opt-in; run 6
   supplied initial feedback and run 7 covers the installed extension. The
-  [coverage ledger](architecture/material-coverage.md) retains all 817 archive
-  pass identities; [46 SM3 opaque pairs](reverse-engineering/remaining-sm3-opaque-materials.md)
+  [coverage ledger](../architecture/material-coverage.md) retains all 817 archive
+  pass identities; [46 SM3 opaque pairs](../reverse-engineering/remaining-sm3-opaque-materials.md)
   and older-profile variants remain, alongside other scene writers. The six-pair
   Asteroid candidate and separate COLOR1 transport pass source review and
   2,757 detached GPU cases; the 64-case interpolation qualification preserves
   native alpha/temporal outputs and independently matches RGB. X3 treats
   programmable COLOR as Gouraud even when FLAT is requested; that backend
   limitation is explicitly separated from candidate parity. Combined live
-  qualification passes 8 cells / 2,064 frames / 25,988 checks; installation is complete. The [Boron/Paranid contract](reverse-engineering/boron-paranid-materials.md)
+  qualification passes 8 cells / 2,064 frames / 25,988 checks; installation is complete. The [Boron/Paranid contract](../reverse-engineering/boron-paranid-materials.md)
   covers all 32 remaining pairs. Their pure conversion and scalar WRAP
   integration are reviewed and source-integrated; detached/live GPU
   qualification remains before any 148-pair install.
-  [Blended emission work](architecture/linear-emission-composition.md) now has
+  [Blended emission work](../architecture/linear-emission-composition.md) now has
   independently qualified original-shader augmentation, same-draw native color
   and supplemental coverage, and a temporal consumer. The latest producer run
   passes 81 X3 cases; 30 paired temporal frames are pixel-exact after reducing
@@ -1784,23 +1784,23 @@ never launches the game. New Wine fixtures use X3 only and the shared lock.
   48 functional frames and is installed. Its current unpaired 1080p
   completion difference is +0.6981 ms for the tested sequence, not game FPS. Copy/composition cost remains a concern,
   and historical adjacent draws do not yet qualify batching. The
-  [background study](reverse-engineering/background-temporal-coverage.md) retains
+  [background study](../reverse-engineering/background-temporal-coverage.md) retains
   the existing native temporal limitations; global writer classification is not
   a prerequisite for supplemental coverage of enhanced emissions.
-  The [sun resource study](reverse-engineering/sun-material-identity.md) identifies
+  The [sun resource study](../reverse-engineering/sun-material-identity.md) identifies
   the late TSuns lens-flare path; a pre-bloom sun material remains unproved.
   Targeted disassembly established native color/emissive scaling. Covered
   materials evaluate in linear light and compatibility-encode into the existing
   FP16 target; this is not whole-scene linear blending or HDR display support.
   Materials and lighting replacement precede real HDR/clustered lighting. AO,
   shadows, reflections, particles, volumetrics and lens effects remain on the
-  [roadmap](architecture/roadmap.md). The macOS menu bar and double cursor remain
+  [roadmap](../architecture/roadmap.md). The macOS menu bar and double cursor remain
   open. Native Windows/D3D feature support is required; see
-  [portability](architecture/platform-portability.md).
+  [portability](../architecture/platform-portability.md).
 
 ## Workflow
 
-The [cross-workstream audit](verification/workflow-audit-2026-09-13.md) is complete.
+The [cross-workstream audit](../verification/workflow-audit-2026-09-13.md) is complete.
 `AGENTS.md` now specifies proportional checks, one candidate owner/record,
 focused agent briefs and short current status. The Wine lock provides a shared
 preflight and optional timings; the export runner consumes an explicit DLL
@@ -1808,11 +1808,11 @@ without rebuilding production. Both review findings were fixed and affected
 host checks pass; see the audit's adoption record. Review, relevant failure/performance checks, Wine serialization
 and reversible installation remain; no historical results or commits were deleted.
 
-The executable [x3run](../x3run) launches with the shared Wine lock and preserves
+The executable [x3run](../../x3run) launches with the shared Wine lock and preserves
 each new session and only its referenced captures after exit, before the next
-comparison launch. The [run queue](verification/user-runs.md) uses `./x3run`
+comparison launch. The [run queue](../verification/user-runs.md) uses `./x3run`
 directly; no shell function setup is needed.
-The [streaming snapshot helper](../tools/analysis/snapshot_x3_run.py) uses a fresh
+The [streaming snapshot helper](../../tools/analysis/snapshot_x3_run.py) uses a fresh
 numbered `/tmp` directory, reports stale/missing files and preserves the game
 exit status. Independent review found no blocker; 13 focused host tests pass.
 No additional manifest, gameplay step or production DLL change is involved.
