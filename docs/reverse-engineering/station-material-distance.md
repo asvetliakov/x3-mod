@@ -535,3 +535,116 @@ about. The originally reported darkening of receding ports is not explained by
 this material's colour response, and needs another owner — the candidates left
 untouched here are the cube term, the vertex/fog path and the LOD or subset
 change at range.
+
+### LOD and subset at range
+
+Read-only study, 2026-09-14: Ghidra 12.1.3 on the existing `/tmp/x3-ghidra-research/X3Render`
+project (installed X3AP.exe SHA-256 `fdbf3418…`), plus bounded queries of the run-39 and
+run-36 capture logs and of the game archives. No game launch, no Wine command; the bottle
+was read only. Raw decompiler/instruction output stays in `/tmp/x3-port-lod/` and the
+archive scripts in `/tmp/x3-port-tex/` (both untracked).
+
+**A LOD switch exists and it removes the port material entirely.** Node `2afb76f0`
+(model key `5427`) is captured on both sides of one in the run-36 log
+(`/tmp/x3-bottleX3-run36/session-20260914-073123-212.log`):
+
+| frame | LOD | draws for that node | pairs |
+|---|---|---|---|
+| 1476, 1699 | 3 | **1** | `53a0a641107ed76c/8759c7838bbc86c2`, 2592 tri, gate 0, **routed** (run 36 logs no per-draw state fields; the equivalent LOD-3 draw of model `5436` in run 39 is Z-write on, blend off, ONE/ZERO, mask 15) |
+| 1917 | 2 | **14** | 7× `4944d81d…/5e0a10fe…` (940 tri), 5× `4944d81d…/ca6bfa4a…` (10 015 tri), 1× `53a0a641…/8759c783…` (6 tri), 1× the source-over port pair `4944d81d…/64bac8bb…`, **refused, gate 4** |
+
+So the coarsest LOD submits the whole station body as a single opaque DEFAULT subset; the
+`metal_argon_lattice_windowedgrid` source-over pair — with its `MPF_ALPHABLEND` material and
+descriptor `+0x1a4 == 1` — **does not exist at LOD 3**. The same collapse is visible on model
+`5436`: 13 draws at LOD 2 (run 36, frame 13681, including exactly one `64bac8bb…` port draw)
+against 1 draw of 3002 triangles / 6805 vertices at LOD 3 (run 39, frames 9163 and 11940).
+For this mod the consequence is a **source-domain flip at the LOD boundary**: the port surface
+is part of a routed, converted-lighting merged material at LOD 3 and becomes a refused,
+natively lit source-over draw at LOD 2.
+
+**Selection (`0x0047cfe0`, writes node `+0x14c`).** Per node, per frame, after the
+behind-eye, distance and frustum rejections documented in
+[render-node-bounds.md](render-node-bounds.md):
+
+| site | contract |
+|---|---|
+| `0047d1b5..0047d1bb` | `D = FUN_00469ab0(node+0xf0)` = signed max of the three camera-relative coordinates `+0xf0/+0xf4/+0xf8` (`00469ab0` is a three-way max, no absolute value). |
+| `0047d1c2..0047d1eb` | if `D < 0x0fffffff`, `D = D * camera[+0x298] / 0x4000`. This is the per-view scale for the metric; the `*(camera+0x1c)+0x2c` context scale is used by the frustum test, not here. |
+| `0047d1ef..0047d21a` | small-object measure `ESI = FUN_00469a30(node+0xa0, *(0x608518)+0x5c, D)` = `r·W/D` (`00469a30` is `(a*b)/c`, 0 when `c == 0`), or `0x7000000` when `D < W` or `node+0x12c & 0x400`. |
+| `0047d221..0047d250` | **the LOD metric** `s = FUN_00469a30(node+0xa0, 0x280, D)` = `r·640/D`, clamped to ≥1, or `0x7000000` when `D < 0x280`. The reference is the constant 640, not the viewport. |
+| `0047d258..0047d29b` | `ESI` versus node `+0x1dc` and versus 20 sets node `+0x130 \| 0x100000 / 0x180000`; `camera+0x270 & 0x1000000` forces `0x180000` and drops nodes with `ESI < 20`. |
+| `0047d2a2..0047d2cf` | `ESI` versus `max(node+0x1d8, parent+0x1d8)` clears the renderable bit `+0x12c & 2`. |
+| `0047d321..0047d35e` | `EBP = model[+0x10] - 1` (LOD count − 1). If `*(0x606f34)+0xfc & 0x800000` and `s < 0x20`, `s = s*(*(0x606f34)+0x748 + 10)/110`. |
+| `0047d429..0047d46e` | **the loop**: for `i = EBP` down to 1, `T_i = (int)((float)LODrec_i[+0x34] * float[*(0x606f34)+0x760])`; the first `i` with `s < T_i` is stored in `+0x14c`, else 0. Thresholds therefore rise toward LOD 0. |
+| `0047d472..0047d4d1` | `camera+0x270 & 0x1000000` → `+1`; else `*(0x606f34)+0x768 >= 3` → `−1`; `> 3` → forced 0; then clamped to `[0, EBP]`. |
+| `0047d4d7..0047d51e` | LOD `== EBP` together with `+0x12c & 0x8000` clears the renderable bit; LOD ≥ 3 sets `+0x130 \| 0x100000`. |
+| `0047d528..0047d546` | recursion over `node+0xc`, propagating the third argument, so the whole subtree uses the same branch. |
+
+**There is no hysteresis.** `+0x14c` is cleared at entry and recomputed from `s` every frame
+with strict `<` comparisons; the only stabilisers are the asset thresholds themselves and the
+quality adjustments above. The alternative branch taken for a parentless node with
+`+0x12c & 0x80000000` (`0047d36d..0047d3fb`) does not use `s` at all: it compares
+`D − FUN_00488170(node)` against the fixed 7 000 000 / 15 500 000 / 21 000 000 / 28 500 000
+(`0x6acfc0`, `0xec82e0`, `0x1406f40`, `0x1b2e020`) and then applies two asset guards
+(`LODrec[+0x34] < 2`, and coarse `LODrec[0] < finer[0]/3`) that step one level back.
+
+**Where the boundary sits for this body.** `node+0xa0` is not in the capture, so `T_i` cannot
+be converted to absolute view units; the boundary is given in `D` (engine units, before the
+`camera+0x298/0x4000` scale), recovered from the logged world and view matrices:
+
+| model | `D` at LOD 3 | `D` at LOD 2 | Euclidean distance |
+|---|---|---|---|
+| `5427`, node `2afb76f0` (run 36) | 128 854, 129 090 | 118 833 | 156 665 / 156 393 / **156 108** |
+| `5427`, node `2af395e8` (run 39) | — | 110 967 / 114 400 / 114 145 | 156 529 / 156 383 / 156 112 |
+
+The LOD 2/3 boundary for model `5427` is thus `D ∈ (118 833, 129 090]`. The Euclidean range is
+**unchanged to 0.18 %** across the transition: the metric is a max-norm of camera-space
+coordinates, so the switch is driven as much by camera orientation as by range. (The
+world-axis reading of `+0xf0/+0xf4/+0xf8` gives 118 471 / 118 145 / 117 780 and would bracket
+the same transition monotonically; `0x0047cfe0`'s behind-eye test `node+0xf8 + node+0xa0 < 0`
+argues for the camera-space reading, and this capture cannot separate the two because the node
+is nearly ahead of the camera.)
+
+**On-screen size at the switch.** `fade_region` gives the port part's projected rect. For
+model `5427` at `D = 110 967` (run 39, frame 1812, draw 267) it is 61×36 px; the boundary is
+1.07–1.16× farther, so the port pair stops being submitted at roughly a **52–57 px port
+width** on that body. The size is not universal: model `5471` (node `2162b570`) is still at
+LOD 2 at `D = 443 450` with a 17×13 px port, and model `543f` (node `1ae7e1b0`) is at LOD 2
+at `D = 64 687` with a 170×73 px port. All eleven port-pair draws of run 39, on five station
+models and over `D = 64.7 k … 445 k`, are at **LOD 2 with identical `flags12c = 0x01001002`,
+`flags130 = 0x40` and identical state** — so within the captured range the port darkening is
+not a LOD or subset change; the change is a step at the LOD 2/3 boundary, which run 39 never
+crosses on a port node.
+
+**No fog or `b0` path at the far LOD.** At frames 9163 and 11940 the merged LOD-3 station draw
+(`53a0a641…/8759c783…`) and the LOD-2 port draws (`64bac8bb…`) all have VS `b0 = 0` and
+`D3DRS_FOGENABLE = 0`. The far draw is opaque (Z-write on, blend off, ONE/ZERO, mask 15,
+routed) and the port draw keeps the source-over state. The `+0x1a4` words do differ across the
+switch, but as material identity — LOD 3's material has no `MPF_*` blend bit and so takes
+`4c1897` with `+0x1a4 = 0`, while the port material takes `4c1827` with `+0x1a4 = 1` — not as
+any per-draw override.
+
+**Asset side.** BOB1 bodies store the LOD count as a big-endian `u16` immediately after the
+`BODY` tag, followed by the `u32` body size, then one `POIN`/`PART` pair per level. The five
+Argon shipyard bodies each declare **4 levels**:
+
+| body | materials | points per LOD 0/1/2/3 |
+|---|---|---|
+| `argon_symain.pbb` | 52 | 44 397 / 21 481 / 7 132 / 2 772 |
+| `argon_syarm.pbb` | 52 | 33 862 / 20 425 / 5 771 / 1 070 |
+| `argon_sylow.pbb` | 53 | 26 515 / 11 863 / 3 938 / 1 059 |
+| `argon_syhigh.pbb` | 52 | 12 543 / 6 921 / 2 035 / 1 826 |
+| `argon_sytop.pbb` | 52 | 12 766 / 5 542 / 1 641 / 422 |
+
+(`m6dockcarrier_quicklaunch_body.pbb` has 4 levels and 6 materials; `m6dockcarrier_scene_dummy.pbb`
+has 1.) A LOD-3 point count of 2 772 is consistent with the 6 805-vertex, 3 002-triangle merged
+draw of model `5436`, but the model-key-to-file mapping is not proved.
+
+Unknown. The per-LOD material lists were **not** read from the assets: the `PART` chunk's group
+header (`u32 flags 0x10000001`, `u16 group count`, then `u32 material`, `u32 face count` per
+group — validated against `m6dockcarrier_scene_dummy.pbd`, whose 336 faces split 282/54 over
+materials 0/1) is understood, but the face record stride is not, so groups beyond the first
+cannot be walked. The per-LOD threshold values `LODrec[+0x34]`, their loader provenance and the
+quality float at `*(0x606f34)+0x760` were not resolved, so the thresholds are stated as `D`
+brackets rather than in absolute view units, and `node+0xa0` is not captured. No hook is
+proposed by this study.
