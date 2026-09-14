@@ -18,7 +18,10 @@ PAIRS=(('b0602757fce6e870','517540ae6d5e5410'),
        ('233d17d26ce0c1fc','7a0c3388065bb08d'),
        ('167eb2d5629ab9d3','d44db87778a43b61'),
        ('330ceb9dd874ede2','550c2a4d4d3ed70f'),
-       ('12b8a13f13fe8cfe','550c2a4d4d3ed70f'))
+       ('12b8a13f13fe8cfe','550c2a4d4d3ed70f'),
+       ('4944d81dfe531b37','64bac8bb307eb896'))  # station BUMPMAP hull pair, mask 0x1f
+ASTEROID=PAIRS[:6]
+STATION=PAIRS[6]
 IDS=sorted({f'{stage}_{pair[i]}' for pair in PAIRS for i,stage in enumerate(('vs','ps'))})
 
 def parse(data):
@@ -86,13 +89,20 @@ class DistanceFadeProducer(unittest.TestCase):
         return int(result.stdout.split()[0]),output.read_bytes()
 
     def test_exact_pair_sampler_contract(self):
-        expected = {pair: 7 if index < 3 else 15 for index, pair in enumerate(PAIRS)}
+        expected = {pair: 7 if index < 3 else 15 if index < 6 else 31 for index, pair in enumerate(PAIRS)}
         vertices = [pair[0] for pair in PAIRS] + ['0', '836022c003f4cf37']
-        pixels = sorted({pair[1] for pair in PAIRS}) + ['0', 'a66fb1981ba755b2']
+        # The station VS is shared with five other BUMPMAP PS; none of them is admitted.
+        pixels = sorted({pair[1] for pair in PAIRS}) + ['0', 'a66fb1981ba755b2', '0c1f3f0f440e4a0c', '5e0a10fe752b6140', 'ca6bfa4a6cca7e2a']
         for vs in vertices:
             for ps in pixels:
                 actual = subprocess.check_output([str(self.driver), '--pair-mask', vs, ps], text=True)
                 self.assertEqual(int(actual), expected.get((vs, ps), 0), (vs, ps))
+                fade_pair = subprocess.check_output([str(self.driver), '--fade-pair', vs, ps], text=True)
+                self.assertEqual(int(fade_pair), int((vs, ps) in expected), (vs, ps))
+        # linear_material_asteroid_pair stays the six-pair Asteroid classifier.
+        for vs, ps in PAIRS:
+            asteroid = subprocess.check_output([str(self.driver), '--asteroid-pair', vs, ps], text=True)
+            self.assertEqual(int(asteroid), int((vs, ps) in ASTEROID), (vs, ps))
 
     def test_native_body_and_direct_pp_alpha_are_exact(self):
         for name,generated in self.generated.items():
@@ -129,8 +139,9 @@ class DistanceFadeProducer(unittest.TestCase):
             for stage,data in enumerate((v,p)):
                 slots,temps,samplers=stats(data)
                 self.assertLessEqual(slots,512);self.assertLessEqual(temps,32)
-                self.assertLessEqual(samplers,4)
+                self.assertLessEqual(samplers,5 if (vs,ps)==STATION else 4)
                 maxima[stage]=max(maxima[stage],slots)
+                if (vs,ps)==STATION:print('Station dual',('VS','PS')[stage],'weighted slots/temporaries/samplers:',slots,temps,samplers)
             for kind,data in ((6,v),(1,p)):
                 original=(self.programs/(('vs_'+vs if kind==6 else 'ps_'+ps)+'.bin')).read_bytes()
                 self.assertEqual(set(declarations(data,kind))-set(declarations(original,kind)),{(10,1)})

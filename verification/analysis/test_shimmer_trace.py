@@ -6,7 +6,8 @@ count, the scaled projection terms, and the per-frame LOD change / vanished
 identity a zoomed asteroid frame must expose
 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)").
 Plus the table invariant the trace classification rests on: exactly the six
-distance-fade pairs of src/renderer/linear_material.cpp are Asteroid-class
+Asteroid pairs of src/renderer/linear_material.cpp are Asteroid-class, and the
+fade admission set is those six plus the station BUMPMAP pair
 (driver verification/probe/asteroid_pair_table.cpp). No device, no Wine.
 """
 from pathlib import Path
@@ -25,6 +26,9 @@ FADE_PAIRS = {('b0602757fce6e870', '517540ae6d5e5410'),
               ('167eb2d5629ab9d3', 'd44db87778a43b61'),
               ('330ceb9dd874ede2', '550c2a4d4d3ed70f'),
               ('12b8a13f13fe8cfe', '550c2a4d4d3ed70f')}
+# Fade admission (linear_distance_fade_pair): the six plus the station hull pair
+# (docs/architecture/linear-station-source-over.md); never Asteroid-class.
+STATION_PAIR = ('4944d81dfe531b37', '64bac8bb307eb896')
 
 
 def frame_line(frame, *, asteroid=0, logged=0, truncated=0, taa_history=1, taa_skip=0,
@@ -127,7 +131,7 @@ class ShimmerTraceParser(unittest.TestCase):
 
 
 class AsteroidPairTable(unittest.TestCase):
-    """Exactly the six distance-fade pairs are Asteroid-class."""
+    """Exactly the six Asteroid pairs are Asteroid-class; fade admits them plus the station pair."""
 
     def table_pairs(self):
         source = (ROOT / 'src/renderer/linear_material.cpp').read_text()
@@ -160,7 +164,7 @@ class AsteroidPairTable(unittest.TestCase):
             if mask != 'fade=0':
                 fade.add((vs, ps))
         self.assertEqual(asteroid, FADE_PAIRS)
-        self.assertEqual(fade, FADE_PAIRS)
+        self.assertEqual(fade, FADE_PAIRS | {STATION_PAIR})
 
 
 if __name__ == '__main__':

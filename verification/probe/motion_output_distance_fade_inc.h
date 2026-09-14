@@ -1,6 +1,12 @@
 // Actual live source-over fade -> shared composition pool -> HDR/TAA exercise.
 // This fixture owns only original inputs, state/pixel witnesses and scheduling.
-// The detached 71-case oracle remains the owner of the full material equations.
+// The detached 78-case oracle remains the owner of the full material equations.
+// Pairs 0-5 are the six Asteroid producers; pair 6 is the station BUMPMAP hull
+// pair 4944d81dfe531b37/64bac8bb307eb896 (docs/architecture/linear-station-source-over.md),
+// drawn in the exact captured source-over state; its opaque sibling
+// 4944d81dfe531b37/0c1f3f0f440e4a0c is drawn natively (user-memory DIP: gate 4
+// refuses it, so the fixture's RT1/RT2 oracle stays untouched) with the same
+// rows and constants.
 void run_distance_fade_integration(Fixture& f,const char* original_path) {
     require(f.seam&&f.enabled&&f.emission_status&&f.emission_fault&&f.emission_readback,"distance fade live seam");
     const bool qualified=f.taa&&f.hdr&&f.hdr_agx;
@@ -9,18 +15,22 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
         require(slash!=std::string::npos,"distance fade original directory");
         return supplied.substr(0,slash+1)+stage+"_"+hash+".bin";
     };
-    const char* vertex_ids[]={"b0602757fce6e870","0c223ad11bce02d5","233d17d26ce0c1fc","167eb2d5629ab9d3","330ceb9dd874ede2","12b8a13f13fe8cfe","d5e1c75351ed3f04"};
-    const char* pixel_ids[]={"517540ae6d5e5410","7a0c3388065bb08d","d44db87778a43b61","550c2a4d4d3ed70f","8360f422de08b5bd"};
-    const unsigned pair_pixel[]={0,1,1,2,3,3};
-    Com<IDirect3DVertexShader9> vertex[7];Com<IDirect3DPixelShader9> pixel[5];
-    for(unsigned i=0;i<7;++i) {
-        if(f.distancefade_bench&&i!=0)continue;
+    const char* vertex_ids[]={"b0602757fce6e870","0c223ad11bce02d5","233d17d26ce0c1fc","167eb2d5629ab9d3","330ceb9dd874ede2","12b8a13f13fe8cfe","d5e1c75351ed3f04","4944d81dfe531b37"};
+    const char* pixel_ids[]={"517540ae6d5e5410","7a0c3388065bb08d","d44db87778a43b61","550c2a4d4d3ed70f","8360f422de08b5bd","64bac8bb307eb896","0c1f3f0f440e4a0c"};
+    constexpr unsigned station_pair=6,station_sibling_pixel=6,fade_pairs=7;
+    const unsigned pair_vertex[]={0,1,2,3,4,5,7},pair_pixel[]={0,1,1,2,3,3,5};
+    // X3M_FIXTURE_FADE_BENCH_PAIR=6 times the station producer; default pair 0.
+    char bench_setting[32]{};
+    const unsigned bench_pair=f.distancefade_bench&&GetEnvironmentVariableA("X3M_FIXTURE_FADE_BENCH_PAIR",bench_setting,sizeof bench_setting)==1&&bench_setting[0]=='6'?station_pair:0u;
+    Com<IDirect3DVertexShader9> vertex[8];Com<IDirect3DPixelShader9> pixel[7];
+    for(unsigned i=0;i<8;++i) {
+        if(f.distancefade_bench&&i!=pair_vertex[bench_pair])continue;
         const auto code=load(sibling("vs",vertex_ids[i]).c_str());
         require(fnv(code.data(),code.size()*4)==std::strtoull(vertex_ids[i],nullptr,16),"fade original VS identity");
         api(f.d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&vertex[i].p),"fade original VS");
     }
-    for(unsigned i=0;i<5;++i) {
-        if(f.distancefade_bench&&i!=0)continue;
+    for(unsigned i=0;i<7;++i) {
+        if(f.distancefade_bench&&i!=pair_pixel[bench_pair])continue;
         const auto code=load(sibling("ps",pixel_ids[i]).c_str());
         require(fnv(code.data(),code.size()*4)==std::strtoull(pixel_ids[i],nullptr,16),"fade original PS identity");
         api(f.d->CreatePixelShader(reinterpret_cast<const DWORD*>(code.data()),&pixel[i].p),"fade original PS");
@@ -38,17 +48,25 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
     const unsigned short triangles[]={0,1,2,2,1,3,0,1,2,2,1,3};
     api(f.d->CreateIndexBuffer(sizeof triangles,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"fade source indices");
     api(indices->Lock(0,0,&data,0),"fade index lock");std::memcpy(data,triangles,sizeof triangles);api(indices->Unlock(),"fade index unlock");
-    const float texels[][4]={{.5f,.25f,.75f,.5f},{.25f,.375f,.75f,.625f},{.25f,.875f,.125f,.75f},{.125f,.25f,.0625f,.25f},{.5f,.25f,.75f,0},{.5f,.25f,.125f,.125f},{.5f,.25f,.125f,.25f}};
-    Com<IDirect3DTexture9> textures[7];
-    for(unsigned i=0;i<7;++i) {
+    // [7] is the station specular mask (s2); the station cube (s4) is the
+    // constant run_linear_distance_fade cube texel on every face.
+    const float texels[][4]={{.5f,.25f,.75f,.5f},{.25f,.375f,.75f,.625f},{.25f,.875f,.125f,.75f},{.125f,.25f,.0625f,.25f},{.5f,.25f,.75f,0},{.5f,.25f,.125f,.125f},{.5f,.25f,.125f,.25f},{.25f,0,0,1}};
+    const float cube_texel[4]={.25f,.5f,.125f,1};
+    Com<IDirect3DTexture9> textures[8];Com<IDirect3DCubeTexture9> cube;
+    for(unsigned i=0;i<8;++i) {
         api(f.d->CreateTexture(1,1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&textures[i].p,nullptr),"fade source texture");
         D3DLOCKED_RECT lock{};api(textures[i]->LockRect(0,&lock,nullptr,0),"fade source texture lock");std::memcpy(lock.pBits,texels[i],16);api(textures[i]->UnlockRect(0),"fade source texture unlock");
     }
+    const auto make_cube=[&](IDirect3DDevice9* device,Com<IDirect3DCubeTexture9>& out) {
+        api(device->CreateCubeTexture(1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&out.p,nullptr),"fade station cube");
+        for(unsigned face=0;face<6;++face){D3DLOCKED_RECT lock{};api(out->LockRect(D3DCUBEMAP_FACES(face),0,&lock,nullptr,0),"fade station cube lock");std::memcpy(lock.pBits,cube_texel,16);api(out->UnlockRect(D3DCUBEMAP_FACES(face),0),"fade station cube unlock");}
+    };
+    make_cube(f.d.p,cube);
     // Native controls run on the existing unhooked system-D3D reference device.
     // They neither touch the live selector/counters nor seed temporal history.
-    Com<IDirect3DVertexShader9> native_vertex[6];Com<IDirect3DPixelShader9> native_pixel[4];
+    Com<IDirect3DVertexShader9> native_vertex[fade_pairs];Com<IDirect3DPixelShader9> native_pixel[6];
     Com<IDirect3DVertexDeclaration9> native_declaration;Com<IDirect3DVertexBuffer9> native_vertices;
-    Com<IDirect3DIndexBuffer9> native_indices;Com<IDirect3DTexture9> native_textures[7];
+    Com<IDirect3DIndexBuffer9> native_indices;Com<IDirect3DTexture9> native_textures[8];Com<IDirect3DCubeTexture9> native_cube;
     const auto raw=[&](unsigned target,std::vector<float>& image) {
         unsigned w=0,h=0;image.assign(std::size_t(f.W)*f.H*(target==2?1:4),0);
         const HRESULT hr=f.emission_readback(f.d.p,target,image.data(),unsigned(image.size()),&w,&h);
@@ -77,9 +95,9 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
             api(device->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE),"fade native control cull");api(device->SetRenderState(D3DRS_FILLMODE,D3DFILL_SOLID),"fade native control fill");
         }
         api(device->SetVertexDeclaration(native_control?native_declaration.p:declaration.p),"fade source declaration bind");api(device->SetStreamSource(0,native_control?native_vertices.p:vertices.p,0,sizeof(SourceVertex)),"fade source stream");api(device->SetStreamSourceFreq(0,1),"fade source frequency");api(device->SetIndices(failed?nullptr:native_control?native_indices.p:indices.p),"fade actual index binding");
-        api(device->SetVertexShader(native_control?native_vertex[pair].p:vertex[emission?6:pair].p),"fade source VS bind");api(device->SetPixelShader(native_control?native_pixel[pair_pixel[pair]].p:pixel[emission?4:pair_pixel[pair]].p),"fade source PS bind");
-        float vc[48][4]{},pc[8][4]{};
-        const bool fixed=pair==2||pair==5,bump=pair>=3;
+        api(device->SetVertexShader(native_control?native_vertex[pair].p:vertex[emission?6:pair_vertex[pair]].p),"fade source VS bind");api(device->SetPixelShader(native_control?native_pixel[pair_pixel[pair]].p:pixel[emission?4:pair_pixel[pair]].p),"fade source PS bind");
+        float vc[48][4]{},pc[12][4]{};
+        const bool fixed=pair==2||pair==5,bump=pair>=3,station=pair==station_pair;
         if(emission) {
             for(unsigned i=0;i<4;++i)vc[i][i]=1;
             vc[10][0]=vc[11][1]=1;vc[12][0]=.5f;
@@ -92,17 +110,35 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
             vc[alpha][0]=.625f;vc[emissive][0]=.25f;vc[emissive][1]=.125f;vc[emissive][2]=.0625f;
             vc[fixed?20:41][0]=.75f;vc[fixed?20:41][1]=.125f;
             vc[point][2]=2;vc[point+1][0]=.5f;vc[point+1][1]=.25f;vc[point+1][2]=.125f;vc[point+2][0]=2;vc[point+2][1]=.25f;vc[point+2][2]=.125f;
-            pc[0][2]=1;pc[1][0]=.375f;pc[1][1]=.25f;pc[1][2]=.5f;
-            const unsigned dirs=pair==0||pair==3?2:1;
-            if(dirs==2){pc[2][2]=-1;pc[3][0]=.125f;pc[3][1]=.5f;pc[3][2]=.25f;}
-            pc[2*dirs][0]=.5f;pc[2*dirs+1][0]=1;
+            if(station) {
+                // Standard BUMPMAP PS rows as run_linear_material's Draw: affine
+                // identity c0-c2, EnableGlow c3, two directional lights c4-c7,
+                // application coefficients c8-c11 (specular, power, reflection, diffuse).
+                pc[0][0]=pc[1][1]=pc[2][2]=1;pc[3][0]=.25f;
+                pc[4][2]=1;pc[5][0]=.375f;pc[5][1]=.25f;pc[5][2]=.5f;
+                pc[6][2]=-1;pc[7][0]=.125f;pc[7][1]=.5f;pc[7][2]=.25f;
+                pc[8][0]=.5f;pc[9][0]=.1875f;pc[10][0]=.0625f;pc[11][0]=1;
+            } else {
+                pc[0][2]=1;pc[1][0]=.375f;pc[1][1]=.25f;pc[1][2]=.5f;
+                const unsigned dirs=pair==0||pair==3?2:1;
+                if(dirs==2){pc[2][2]=-1;pc[3][0]=.125f;pc[3][1]=.5f;pc[3][2]=.25f;}
+                pc[2*dirs][0]=.5f;pc[2*dirs+1][0]=1;
+            }
         }
-        api(device->SetVertexShaderConstantF(0,vc[0],48),"fade native VS inputs");api(device->SetPixelShaderConstantF(0,pc[0],8),"fade native PS inputs");
+        api(device->SetVertexShaderConstantF(0,vc[0],48),"fade native VS inputs");api(device->SetPixelShaderConstantF(0,pc[0],12),"fade native PS inputs");
         const int count[4]={1,0,1,0};const BOOL fog=!emission;api(device->SetVertexShaderConstantI(0,count,1),"fade point count");api(device->SetVertexShaderConstantB(0,&fog,1),"fade original fog");
         auto* source_textures=native_control?native_textures:textures;
         for(unsigned stage=0;stage<7;++stage) {
             IDirect3DBaseTexture9* texture=nullptr;
             if(emission){if(stage==0)texture=source_textures[source>=2?6:5].p;}
+            else if(station) {
+                // Hull BUMPMAP roles: diffuse, normal, specular mask, lightmap, cube.
+                if(stage==0)texture=source_textures[zero?4:0].p;
+                else if(stage==1)texture=source_textures[1].p;
+                else if(stage==2)texture=source_textures[7].p;
+                else if(stage==3)texture=source_textures[3].p;
+                else if(stage==4)texture=native_control?native_cube.p:cube.p;
+            }
             else if(stage==0)texture=source_textures[zero?4:0].p;
             else if(stage==1)texture=source_textures[bump?1:2].p;
             else if(stage==2)texture=source_textures[bump?2:3].p;
@@ -124,20 +160,21 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
         Com<IDirect3DSurface9> saved_rt,saved_depth,target,staging;
         api(device->GetRenderTarget(0,&saved_rt.p),"fade native control original RT");
         const HRESULT depth_hr=device->GetDepthStencilSurface(&saved_depth.p);require(SUCCEEDED(depth_hr)||depth_hr==D3DERR_NOTFOUND,"fade native control original depth");
-        for(unsigned i=0;i<6;++i){const auto code=load(sibling("vs",vertex_ids[i]).c_str());api(device->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&native_vertex[i].p),"fade native control VS");}
-        for(unsigned i=0;i<4;++i){const auto code=load(sibling("ps",pixel_ids[i]).c_str());api(device->CreatePixelShader(reinterpret_cast<const DWORD*>(code.data()),&native_pixel[i].p),"fade native control PS");}
+        for(unsigned i=0;i<fade_pairs;++i){const auto code=load(sibling("vs",vertex_ids[pair_vertex[i]]).c_str());api(device->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&native_vertex[i].p),"fade native control VS");}
+        for(unsigned i=0;i<6;++i){if(i==4)continue;const auto code=load(sibling("ps",pixel_ids[i]).c_str());api(device->CreatePixelShader(reinterpret_cast<const DWORD*>(code.data()),&native_pixel[i].p),"fade native control PS");}
         api(device->CreateVertexDeclaration(elements,&native_declaration.p),"fade native control declaration");
         api(device->CreateVertexBuffer(sizeof quad,0,0,D3DPOOL_MANAGED,&native_vertices.p,nullptr),"fade native control VB");
         api(native_vertices->Lock(0,0,&data,0),"fade native control VB lock");std::memcpy(data,quad,sizeof quad);api(native_vertices->Unlock(),"fade native control VB unlock");
         api(device->CreateIndexBuffer(sizeof triangles,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&native_indices.p,nullptr),"fade native control IB");
         api(native_indices->Lock(0,0,&data,0),"fade native control IB lock");std::memcpy(data,triangles,sizeof triangles);api(native_indices->Unlock(),"fade native control IB unlock");
-        for(unsigned i=0;i<7;++i){api(device->CreateTexture(1,1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&native_textures[i].p,nullptr),"fade native control texture");D3DLOCKED_RECT lock{};api(native_textures[i]->LockRect(0,&lock,nullptr,0),"fade native control texture lock");std::memcpy(lock.pBits,texels[i],16);api(native_textures[i]->UnlockRect(0),"fade native control texture unlock");}
+        for(unsigned i=0;i<8;++i){api(device->CreateTexture(1,1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&native_textures[i].p,nullptr),"fade native control texture");D3DLOCKED_RECT lock{};api(native_textures[i]->LockRect(0,&lock,nullptr,0),"fade native control texture lock");std::memcpy(lock.pBits,texels[i],16);api(native_textures[i]->UnlockRect(0),"fade native control texture unlock");}
+        make_cube(device,native_cube);
         api(device->CreateRenderTarget(8,8,D3DFMT_A16B16G16R16F,D3DMULTISAMPLE_NONE,0,FALSE,&target.p,nullptr),"fade native control FP16 RT");
         api(device->CreateOffscreenPlainSurface(8,8,D3DFMT_A16B16G16R16F,D3DPOOL_SYSTEMMEM,&staging.p,nullptr),"fade native control readback");
         api(device->SetDepthStencilSurface(nullptr),"fade native control no depth");api(device->SetRenderTarget(0,target.p),"fade native control target bind");
         const D3DVIEWPORT9 viewport{0,0,8,8,0,1};api(device->SetViewport(&viewport),"fade native control viewport");
         api(device->BeginScene(),"fade native control BeginScene");
-        for(unsigned pair=0;pair<6;++pair) {
+        for(unsigned pair=0;pair<fade_pairs;++pair) {
             bind_source(pair,false,false,0,false,true);
             api(device->Clear(0,nullptr,D3DCLEAR_TARGET,0xffffffffu,1,0),"fade native control unit background");
             api(device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade native control original draw");
@@ -154,8 +191,32 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
     Com<IDirect3DQuery9> completion;LARGE_INTEGER frequency{};
     if(f.distancefade_bench){require(qualified,"fade benchmark complete activation");api(f.d->CreateQuery(D3DQUERYTYPE_EVENT,&completion.p),"fade benchmark EVENT");require(QueryPerformanceFrequency(&frequency),"fade benchmark QPC");}
     const auto fence=[&](){api(completion->Issue(D3DISSUE_END),"fade timed EVENT issue");f.wait(completion.p);};
-    const unsigned frames=f.distancefade_bench?18:qualified?30:4;
+    const unsigned frames=f.distancefade_bench?18:qualified?33:4;
     unsigned submissions=0;
+    // Station opaque sibling / overwrite: the same VS, rows, constants and
+    // textures as the station source, the opaque converted-sibling PS, blend
+    // off, Z-write on, colour mask 15, through a user-memory DIP (never
+    // routed). Counts the changed pixels inside its scissor and requires the
+    // rest of A untouched.
+    const auto station_opaque=[&](const char* kind,const RECT& rect) {
+        bind_source(station_pair,false,false,0,false);
+        api(f.d->SetPixelShader(pixel[station_sibling_pixel].p),"station sibling PS");
+        api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE),"station opaque blend off");api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"station opaque Z-write");
+        api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"station opaque mask");api(f.d->SetScissorRect(&rect),"station opaque scissor");
+        const auto before=scene();
+        const HRESULT hr=f.d->DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST,0,4,2,triangles,D3DFMT_INDEX16,quad,sizeof(SourceVertex));
+        ++f.draw_index;require(SUCCEEDED(hr),"station opaque draw");
+        const auto after=scene();
+        unsigned changed=0,outside_changed=0;
+        for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x) {
+            const unsigned i=(y*f.W+x)*4;const bool covered=LONG(x)>=rect.left&&LONG(x)<rect.right&&LONG(y)>=rect.top&&LONG(y)<rect.bottom;
+            const bool same=!std::memcmp(&before[i],&after[i],16);
+            if(covered)changed+=!same;else outside_changed+=!same;
+        }
+        std::printf("FADE_STATION frame=%llu kind=%s rect=%ld,%ld,%ld,%ld native=1 routed=0 hr=%08lx changed=%u outside_changed=%u\n",f.frame,kind,rect.left,rect.top,rect.right,rect.bottom,hr,changed,outside_changed);
+        require(changed>0&&outside_changed==0,"station opaque draw confined to its scissor");
+        api(f.d->SetIndices(nullptr),"station opaque index release");api(f.d->SetStreamSource(0,nullptr,0,0),"station opaque stream release");
+    };
     for(unsigned plan=0;plan<frames;++plan) {
         f.frame_begin();f.linear_material_inputs();f.write_reserved();
         if(qualified&&!f.distancefade_bench&&plan==13) {
@@ -176,36 +237,43 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
         f.emissions_enabled=required!=0;
         if(f.distancefade_bench) {
             const unsigned count=plan<6?1:plan<12?4:16,sample=plan%6;
-            bind_source(0,false,false,0,false);
+            bind_source(bench_pair,false,false,0,false);
             fence();LARGE_INTEGER begin,middle,end;QueryPerformanceCounter(&begin);
             for(unsigned i=0;i<count;++i){api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"timed original fade source");++submissions;}
             fence();QueryPerformanceCounter(&middle);
             api(f.d->SetDepthStencilSurface(nullptr),"fade timed terminal depth");api(f.d->StretchRect(f.back.p,nullptr,f.bloom_surface.p,nullptr,D3DTEXF_NONE),"fade timed TAA AgX publication");api(f.d->EndScene(),"fade timed EndScene");fence();QueryPerformanceCounter(&end);
-            if(sample>=2)std::printf("FADE_TIMING width=%u height=%u count=%u sample=%u fade=%u emission=%u source_ms=%.9f terminal_ms=%.9f total_ms=%.9f\n",f.W,f.H,count,sample-2,f.distancefade_enabled,f.distancefade_emissions_enabled,1000.*double(middle.QuadPart-begin.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-middle.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-begin.QuadPart)/frequency.QuadPart);
+            if(sample>=2)std::printf("FADE_TIMING width=%u height=%u count=%u sample=%u fade=%u emission=%u pair=%u source_ms=%.9f terminal_ms=%.9f total_ms=%.9f\n",f.W,f.H,count,sample-2,f.distancefade_enabled,f.distancefade_emissions_enabled,bench_pair,1000.*double(middle.QuadPart-begin.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-middle.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-begin.QuadPart)/frequency.QuadPart);
             api(f.d->SetDepthStencilSurface(f.depth.p),"fade benchmark depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"fade benchmark Present");++f.frame;++f.frames_since_reset;continue;
         }
         unsigned issued=0,pair=0;bool first_emission=false,second_emission=false;
         if(!qualified){issued=plan?1:0;first_emission=plan==2;}
         else if(plan==1)issued=1;
         else if(plan>=2&&plan<14){pair=(plan-2)/2;issued=plan%2==0;}
-        else if(plan==15||plan==21||plan==26)issued=1;
-        else if(plan==16||plan==17||plan==18||plan==19||plan==20||plan==22||plan==23||plan==24||plan==25||plan==27||plan==28||plan==29){issued=2;first_emission=plan==18||plan==19||plan==28;second_emission=plan==17||plan==20||plan==22||plan==23||plan==24||plan==25||plan==27||plan==29;}
-        if(qualified&&(plan==19||plan==20||plan==24||plan==29))issued=3;
+        // Station frames 14-17: after the opaque sibling (last draw of the
+        // frame), before an opaque overwrite, after an emission source, before
+        // one. The earlier Asteroid script follows three frames later.
+        else if(plan>=14&&plan<18){pair=station_pair;issued=plan>=16?2:1;first_emission=plan==16;second_emission=plan==17;}
+        else if(plan==18||plan==24||plan==29)issued=1;
+        else if(plan==19||plan==20||plan==21||plan==22||plan==23||plan==25||plan==26||plan==27||plan==28||plan==30||plan==31||plan==32){issued=2;first_emission=plan==21||plan==22||plan==31;second_emission=plan==20||plan==23||plan==25||plan==26||plan==27||plan==28||plan==30||plan==32;}
+        if(qualified&&(plan==22||plan==23||plan==27||plan==32))issued=3;
         // A first-source failure can recover at the next frame Clear. A failed
         // original after published enhancement must retain export quarantine.
-        const bool source_failure=qualified&&(plan==22||plan==29);
+        const bool source_failure=qualified&&(plan==25||plan==32);
         std::vector<float> expected_mask(std::size_t(f.W)*f.H*4,0);
+        const RECT station_rect{LONG(f.W/8),LONG(f.H/4),LONG(5*f.W/8),LONG(3*f.H/4)};
+        if(qualified&&plan==14)station_opaque("sibling",station_rect);
         auto before=scene();
         for(unsigned source=0;source<issued;++source) {
             const bool emission=source==1?second_emission:first_emission;
-            const bool failed=source_failure&&source==(plan==22?0u:2u),zero=plan==1;
+            const bool failed=source_failure&&source==(plan==25?0u:2u),zero=plan==1;
+            const double fade_alpha=pair==station_pair?.068359375:.078125; // AlphaValue .625 x fog .25 x lrp(EnableGlow, Diffuse.a, LightMap.a)
             // As in the qualified emission fixture, the second additive source
             // uses .25 so the FP16 destination sum remains exactly representable.
             const float emission_alpha=source>=2?.25f:.125f;
-            const unsigned overlap=qualified&&plan==15?2:1;
-            unsigned fault=qualified&&((plan==19||plan==20)&&source==1)?3:qualified&&plan==21?6:qualified&&plan==24&&source==1?7:0;
+            const unsigned overlap=qualified&&plan==18?2:1;
+            unsigned fault=qualified&&((plan==22||plan==23)&&source==1)?3:qualified&&plan==24?6:qualified&&plan==27&&source==1?7:0;
             const RECT rect=bind_source(pair,emission,zero,source,failed);
-            if(qualified&&plan==26) {
+            if(qualified&&plan==29) {
                 api(f.d->BeginStateBlock(),"fade BeginStateBlock");api(f.d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,TRUE),"fade recorded sampler");Com<IDirect3DStateBlock9> recorded;api(f.d->EndStateBlock(&recorded.p),"fade EndStateBlock");DWORD value=1;api(f.d->GetSamplerState(0,D3DSAMP_SRGBTEXTURE,&value),"fade record no immediate effect");require(value==FALSE,"fade recorded sampler remains unapplied");
                 Com<IDirect3DStateBlock9> all;api(f.d->CreateStateBlock(D3DSBT_ALL,&all.p),"fade capture stateblock");api(f.d->SetSamplerState(0,D3DSAMP_SRGBTEXTURE,TRUE),"fade transient sampler");api(all->Apply(),"fade stateblock Apply");
             }
@@ -243,18 +311,22 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
             // Small independent numerical witnesses; Python obtains L from the
             // existing Asteroid oracle, never from the composed output.
             const bool corpus_sample=!emission&&(plan==1||(plan>=2&&plan<14&&plan%2==0));
-            const bool mixed_sample=qualified&&plan>=15&&plan<=18;
+            const bool mixed_sample=qualified&&plan>=14&&plan<=21; // station frames and the mixed Asteroid orderings
             if(corpus_sample||mixed_sample) {
                 const unsigned sample_x[]={f.W/4,f.W/2};
                 for(unsigned sample=mixed_sample?1:0;sample<2;++sample) {
                     const unsigned x=sample_x[sample],y=f.H/2,i=(y*f.W+x)*4;
-                    if(source==0)for(unsigned k=0;k<3;++k)require(before[i+k]==1.f,"fade independent witness known unit background");
-                    std::printf("FADE_SAMPLE frame=%llu source=%u kind=%s overlap=%u pair=%u x=%u y=%u alpha=%.9g before=%.17g,%.17g,%.17g,%.17g after=%.17g,%.17g,%.17g,%.17g\n",f.frame,source,emission?"emission":"fade",overlap,pair,x,y,emission?double(emission_alpha):zero?0.:.078125,before[i],before[i+1],before[i+2],before[i+3],after[i],after[i+1],after[i+2],after[i+3]);
+                    if(source==0&&plan==14)require(before[i]!=1.f||before[i+1]!=1.f||before[i+2]!=1.f,"fade station witness composes over the native opaque sibling");
+                    else if(source==0)for(unsigned k=0;k<3;++k)require(before[i+k]==1.f,"fade independent witness known unit background");
+                    std::printf("FADE_SAMPLE frame=%llu source=%u kind=%s overlap=%u pair=%u x=%u y=%u alpha=%.9g before=%.17g,%.17g,%.17g,%.17g after=%.17g,%.17g,%.17g,%.17g\n",f.frame,source,emission?"emission":"fade",overlap,emission?0u:pair,x,y,emission?double(emission_alpha):zero?0.:fade_alpha,before[i],before[i+1],before[i+2],before[i+3],after[i],after[i+1],after[i+2],after[i+3]);
                 }
             }
-            std::printf("FADE_SOURCE frame=%llu source=%u kind=%s pair=%u alpha=%.9g overlap=%u fault=%u hr=%08lx original_calls=%u prepared=%u linear=%u native=%u mask_before=%u mask_after=%u hash_mask_before=%016llx hash_mask_after=%016llx\n",f.frame,source,emission?"emission":"fade",pair,emission?double(emission_alpha):zero?0.:.078125,overlap,fault,hr,actual_calls,prepared,linear,native,prior_mask,f.emission_status(f.d.p,1),static_cast<unsigned long long>(hash(mask_before)),static_cast<unsigned long long>(hash(mask_after)));
+            std::printf("FADE_SOURCE frame=%llu source=%u kind=%s pair=%u alpha=%.9g overlap=%u fault=%u hr=%08lx original_calls=%u prepared=%u linear=%u native=%u mask_before=%u mask_after=%u hash_mask_before=%016llx hash_mask_after=%016llx\n",f.frame,source,emission?"emission":"fade",emission?0u:pair,emission?double(emission_alpha):zero?0.:fade_alpha,overlap,fault,hr,actual_calls,prepared,linear,native,prior_mask,f.emission_status(f.d.p,1),static_cast<unsigned long long>(hash(mask_before)),static_cast<unsigned long long>(hash(mask_after)));
             before=std::move(after);
         }
+        // Frame 15: an opaque draw (Z-write on) overwrites the left half of the
+        // composed station source; M keeps the source footprint.
+        if(qualified&&plan==15)station_opaque("overwrite",RECT{station_rect.left,station_rect.top,LONG(3*f.W/8),station_rect.bottom});
         f.emission_reference_color=scene();
         raw(3,f.emission_reference_mask);
         f.emission_mask_valid=required&&f.emission_status(f.d.p,1);
@@ -277,17 +349,17 @@ void run_distance_fade_integration(Fixture& f,const char* original_path) {
             api(f.d->EndScene(),"fade rejected EndScene");f.verify_motion();api(f.d->SetDepthStencilSurface(f.depth.p),"fade rejected depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"fade rejected Present");++f.frame;++f.frames_since_reset;
             std::printf("FADE_REJECTED frame=%u source_failed=1 taa=0 history_seeded=0 copy_exact=1\n",plan);
         } else f.frame_end();
-        if(qualified&&plan==29) {
+        if(qualified&&plan==32) {
             const unsigned quarantine=f.emission_status(f.d.p,3),state_lost=f.emission_status(f.d.p,2);
             std::printf("FADE_EXPORT frame=%u quarantine=%u state_lost=%u\n",plan,quarantine,state_lost);
             require(quarantine==unsigned(required!=0)&&state_lost==0,"fade failed export quarantines earlier enhancement without state loss");
         }
-        if(qualified&&(plan==26||plan==29)) {
+        if(qualified&&(plan==29||plan==32)) {
             const unsigned refs_before=f.emission_status(f.d.p,20);
             f.reset();const unsigned refs_after=f.emission_status(f.d.p,20);
             std::printf("FADE_RESET frame=%u refs=%u allocations=%u quarantine=%u state_lost=%u\n",plan,refs_after,f.emission_status(f.d.p,21),f.emission_status(f.d.p,3),f.emission_status(f.d.p,2));
             require(refs_before>=4?refs_after==refs_before-4:refs_before==0&&refs_after==0,"fade Reset releases four targets and retains reusable programs");
-            require(f.emission_status(f.d.p,3)==unsigned(plan==29&&required!=0)&&f.emission_status(f.d.p,2)==0,"fade Reset clears state loss and preserves export quarantine");
+            require(f.emission_status(f.d.p,3)==unsigned(plan==32&&required!=0)&&f.emission_status(f.d.p,2)==0,"fade Reset clears state loss and preserves export quarantine");
         }
     }
     api(f.d->SetIndices(nullptr),"fade final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"fade final stream release");

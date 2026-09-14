@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Focused detached six-Asteroid fade qualification; consumes frozen EXE/CSO.
+"""Focused detached fade qualification (six Asteroid pairs plus the station
+BUMPMAP pair); consumes frozen EXE/CSO.
 
 Run through wine_lock.py with X3M_FIXTURE_BOTTLE=X3. No build, game launch,
 production registration or temporal-mask integration is performed here.
@@ -34,6 +35,13 @@ SCOPE=('src/renderer/linear_material.cpp','src/renderer/linear_distance_fade.h',
        'verification/probe/linear_material_reference.py','verification/probe/run_linear_material.py')
 BAD_BACKGROUND=0x100000
 OCCLUDER=0x200000
+# Seventh producer: the standard BUMPMAP hull pair 4944d81dfe531b37/64bac8bb307eb896
+# (docs/architecture/linear-station-source-over.md), run_linear_material.PAIRS[51].
+# Its material alpha stays the vertex AlphaValue (c39.x): .625 as in the ordinary
+# fixture, or 0 / 1 by these flags; the Asteroid producers overwrite it with one.
+STATION_PAIR=51
+STATION_ALPHA_ZERO=0x400000
+STATION_ALPHA_ONE=0x800000
 # Region case group (linear_distance_fade_fixture_inc.h region_cases, same
 # order): label, whether the production projection must yield a box-derived
 # rectangle, whether the source must rasterise at least one M pixel, and the
@@ -95,10 +103,34 @@ def cases():
             if index==8:
                 c.update(flags=material.FOG,camera=[0.,0.,1000000.],fog_clip=[1.0526316165924072,2.1052636611784692e-7])
             result.append(c)
+    # Station producer (ids 60-65): AlphaValue 0 / .625 / 1, EnableGlow 0 / 1 /
+    # .375 with asymmetric diffuse/lightmap alpha, fog off / on, and two
+    # overlapping primitives in one DIP over the depth occluder (Z-test on,
+    # Z-write off). The port's captured state has AlphaValue 1 and, at
+    # distance, the fog factor (station-material-distance.md).
+    station=(('station_alpha_0',dict(glow=0.),STATION_ALPHA_ZERO,0),
+             ('station_alpha_625_glow_0',dict(glow=0.),0,0),
+             ('station_alpha_1_glow_1',dict(glow=1.,lightmap=[.125,.25,.0625,.75]),STATION_ALPHA_ONE,0),
+             ('station_glow_375_asymmetric',dict(glow=.375,lightmap=[.125,.25,.0625,.875]),STATION_ALPHA_ONE,0),
+             ('station_captured_fog',dict(),material.FOG,0),
+             ('station_same_DIP_overlap_occluder',dict(),STATION_ALPHA_ONE|OCCLUDER,1))
+    for index,(name,fields,flags,reverse) in enumerate(station):
+        c=copy.deepcopy(base);c.update(fields);c.update(id=60+index,pair=STATION_PAIR,label=name,flags=flags,reverse=reverse)
+        result.append(c)
     for fault in range(1,6):
         c=copy.deepcopy(base);c.update(id=100+fault,pair=113,label='fault_'+str(fault),affine=fault)
         result.append(c)
     return result
+
+def station_alpha_value(c):
+    return 0. if c['flags']&STATION_ALPHA_ZERO else 1. if c['flags']&STATION_ALPHA_ONE else .625
+
+def oracle_case(c):
+    """Case handed to the ordinary oracle: the fade Draw never flips the winding
+    (reverse selects overlap modes here), so the station pair is lit front-facing."""
+    if c['pair']!=STATION_PAIR:return c
+    c=copy.deepcopy(c);c['reverse']=0
+    return c
 
 def expanded_cases(source):
     result=copy.deepcopy(source)
@@ -119,6 +151,10 @@ def steps(c):return 2 if c['reverse']==2 else 16 if c['reverse']==3 else 1
 def source_alpha(c):
     f32=lambda x:struct.unpack('<f',struct.pack('<f',x))[0]
     a=f32(c['diffuse'][3])
+    if c['pair']==STATION_PAIR:
+        # Native: AlphaValue * fog * lrp(EnableGlow, Diffuse.a, LightMap.a).
+        glow=f32(c['glow'])
+        a=f32(station_alpha_value(c))*(glow*f32(c['lightmap'][3])+(1-glow)*a)
     if c['flags']&material.FOG:
         a*=min(1.,max(0.,f32(c['fog_clip'][0])-f32(c['fog_clip'][1])*math.hypot(*(f32(x) for x in c['camera']))))
     return a
@@ -172,7 +208,7 @@ def validate_report(text,source,raw):
         assert int(row['coverage'])==int(fault not in (3,5))
     assert text.count('FADE_CAPS refused=4')==1 and text.count('FADE_STATE refused=3')==1,'capability and state refusal witnesses'
     assert re.search(r'^FADE_RESULT PASS reset=1 partial_vs_failures=2$',text,re.M),'actual partial setter failures (exchange and in-place ladders) and Reset'
-    assert re.search(r'^RESULT PASS cases=65$',text,re.M),'fixture terminal success'
+    assert re.search(r'^RESULT PASS cases=71$',text,re.M),'fixture terminal success'
     batches=[dict(re.findall(r'(\w+)=([^ ]+)',line)) for line in text.splitlines() if line.startswith('FADE_BATCH ')]
     assert len(batches)==2
     for reset,batch in enumerate(batches):
@@ -197,7 +233,7 @@ def validate_report(text,source,raw):
             energy=pixels(raw/f"fade_{c['id']}_{step}_E.rgba32f")
             mask=pixels(raw/f"fade_{c['id']}_{step}_M.rgba32f")
             output=pixels(raw/f"fade_{c['id']}_{step}_C.rgba32f")
-            radiance=material.expected(cc).linear_rgb
+            radiance=material.expected(oracle_case(cc)).linear_rgb
             alpha=source_alpha(cc)
             repeats=2 if c['reverse']==1 else 1
             for n,(a,e,m,out,src) in enumerate(zip(current,energy,mask,output,native_source)):
@@ -344,14 +380,14 @@ def main():
     args.raw_dir.mkdir(parents=True,exist_ok=False)
     source=cases();case_file=args.raw_dir/'cases.bin';case_file.write_bytes(material.binary_cases(source))
     input_files=[args.exe,args.composite,case_file]+[ROOT/name for name in SCOPE]
-    for vs,ps in material.ASTEROID_PAIRS:
+    for vs,ps in material.ASTEROID_PAIRS+(material.PAIRS[STATION_PAIR],):
         input_files += [args.programs/f'vs_{vs}.bin',args.programs/f'ps_{ps}.bin']
     hashes={str(path):sha(path) for path in input_files}
     report=args.raw_dir/'report.txt'
     command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=b',str(args.exe),
              'Z:'+str(args.programs),'Z:'+str(case_file),'--distance-fade','Z:'+str(args.composite)]
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,command=command,input_sha256=hashes,
-                raw_report=str(report),scope='Detached exact six-pair source-over prototype; no live route',
+                raw_report=str(report),scope='Detached exact seven-pair source-over prototype (six Asteroid, one station BUMPMAP); no live route',
                 tolerance=dict(relative=material.RGB_REL_TOL,absolute=material.RGB_ABS_TOL,
                                exact='native B, output alpha, native/E alpha, q, M, q0 raw A'),
                 composite_bytes=args.composite.stat().st_size)

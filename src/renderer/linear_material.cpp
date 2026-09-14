@@ -522,6 +522,13 @@ unsigned temporal_temporary_base(const Pixel& pixel) noexcept {
     if (pixel.asteroid_layout) return 5;
     return pixel.bump ? (pixel.light1 ? 7u : pixel.affine_end ? 6u : 5u) : 5u;
 }
+// Distance-fade producer eligibility: the six Asteroid programs plus the one
+// standard BUMPMAP hull pair captured only in source-over state (docs/architecture/
+// linear-station-source-over.md). The dual replay is generic; the row flag keeps
+// the producer closed to programs whose fade-state duals were never qualified.
+constexpr std::uint64_t station_fade_vs=0x4944d81dfe531b37ull, station_fade_ps=0x64bac8bb307eb896ull;
+bool fade_eligible(const Pixel& pixel) noexcept { return pixel.asteroid_layout!=0 || pixel.hash==station_fade_ps; }
+bool fade_eligible(const Vertex& vertex) noexcept { return vertex.asteroid_layout!=0 || vertex.hash==station_fade_vs; }
 unsigned point_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style || vertex.glass_fresnel) ? vertex.point : (vertex.loop ? 428u : 389u)+(vertex.bump ? 9u : 0u); }
 unsigned emissive_site(const Vertex& vertex) noexcept { return (vertex.asteroid_layout || vertex.palette_style || vertex.glass_fresnel) ? vertex.emissive : (vertex.loop ? 443u : 397u)+(vertex.bump ? 9u : 0u); }
 unsigned kind(Word token) noexcept { return ((token >> 28) & 7) | ((token >> 8) & 24); }
@@ -1018,7 +1025,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
     const auto* v=vertex?vertex_for(hash,words):nullptr;
     const auto* p=vertex?nullptr:pixel_for(hash,words);
     if ((!v && vertex) || (!p && !vertex)) return LinearMaterialResult::UnsupportedShader;
-    if (fade && !(vertex ? v->asteroid_layout : p->asteroid_layout))
+    if (fade && !(vertex ? fade_eligible(*v) : fade_eligible(*p)))
         return LinearMaterialResult::UnsupportedShader;
     const bool bump=vertex ? v->bump : p->bump;
     const auto* row=selected_row(vertex,hash);
@@ -1310,7 +1317,11 @@ std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs, std::uint64_t 
     case 0x167eb2d5629ab9d3ull: return ps == 0xd44db87778a43b61ull ? 15u : 0u;
     case 0x330ceb9dd874ede2ull:
     case 0x12b8a13f13fe8cfeull: return ps == 0x550c2a4d4d3ed70full ? 15u : 0u;
+    case station_fade_vs: return ps == station_fade_ps ? 0x1fu : 0u;
     default: return 0;
     }
+}
+bool linear_distance_fade_pair(std::uint64_t vs, std::uint64_t ps) noexcept {
+    return linear_distance_fade_sampler_mask(vs,ps)!=0;
 }
 } // namespace x3m::renderer

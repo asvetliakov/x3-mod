@@ -15,6 +15,17 @@ int main(int argc, char **argv) {
                                                   std::stoull(argv[3], nullptr, 16)) << '\n';
     return 0;
   }
+  // Seven-pair fade admission versus the six-pair Asteroid classifier.
+  if (argc == 4 && std::strcmp(argv[1], "--fade-pair") == 0) {
+    std::cout << int(linear_distance_fade_pair(std::stoull(argv[2], nullptr, 16),
+                                              std::stoull(argv[3], nullptr, 16))) << '\n';
+    return 0;
+  }
+  if (argc == 4 && std::strcmp(argv[1], "--asteroid-pair") == 0) {
+    std::cout << int(linear_material_asteroid_pair(std::stoull(argv[2], nullptr, 16),
+                                                  std::stoull(argv[3], nullptr, 16))) << '\n';
+    return 0;
+  }
 #endif
   if (argc == 3 && std::strcmp(argv[1], "--composite") == 0) {
     const auto words = distance_fade_composite::program();

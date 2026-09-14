@@ -705,6 +705,13 @@ private:
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
+    // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
+    // fill mode, clip to the owning target); the counters, witness and log
+    // stay in derive_fade_region. Shared by the admitted route and the
+    // capture-only refused-draw diagnostic.
+    fade_region::Region fade_rectangle(const MotionRoute& route, fade_region::Result& bound, bool& of_viewport, unsigned& permille) noexcept;
+    void record_fade_refused(const MotionRoute& route, unsigned refusal) noexcept;
+    void log_fade_refused() noexcept;
     void witness_readback() noexcept;       // Present boundary, every k-th frame, one bounded readback
     void release_fade_witness() noexcept;   // Reset and retirement drop the system-memory copy
     void finish_composition(HRESULT, renderer::LinearCompositionPolicy) noexcept;
@@ -895,6 +902,22 @@ private:
     unsigned shimmer_count_ = 0;   // qualifying draws this frame; beyond the capacity only counted
     void record_shimmer_draw(const MotionRoute& route) noexcept;
     void log_shimmer_frame(unsigned history_previous, unsigned history_current, unsigned committed) noexcept;
+    // Capture-only pixel proof of the station source-over split
+    // (docs/architecture/linear-station-source-over.md, section 4): a
+    // recognised source-over draw of a fade pair that admission refused gets
+    // the step-1 rectangle derived and recorded as integers here, formatted
+    // once after Present as one fade_refused_rect line. No composition.
+    struct FadeRefusedRect {
+        std::uint64_t vs = 0, ps = 0, node = 0;
+        std::uint32_t index = 0, model = 0, lod = 0;
+        std::int32_t rect[4]{};
+        std::uint32_t permille = 0;
+        std::uint8_t refusal = 0, reason = 0, status = 0;
+        bool bound = false, of_viewport = false;
+    };
+    static constexpr unsigned fade_refused_capacity = 16;
+    FadeRefusedRect fade_refused_[fade_refused_capacity]{};
+    unsigned fade_refused_count_ = 0; // this frame's refused recognised source-over draws; beyond the capacity only counted
     unsigned material_refusals_logged_ = 0;
     // Lightweight shader setters capture integers only. Formatting is deferred
     // to the existing full CPU-state boundary around Present, once per lifetime.

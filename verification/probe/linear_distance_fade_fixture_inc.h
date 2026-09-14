@@ -37,8 +37,8 @@ struct Snapshot {
   Com<IDirect3DIndexBuffer9> ib;
   Com<IDirect3DVertexDeclaration9> declaration;
   Com<IDirect3DSurface9> depth, extra[2];
-  Com<IDirect3DBaseTexture9> textures[4];
-  DWORD rs[std::size(watched)]{}, ss[4][std::size(samplers)]{};
+  Com<IDirect3DBaseTexture9> textures[5]; // s0-s3 Asteroid, s0-s4 station BUMPMAP
+  DWORD rs[std::size(watched)]{}, ss[5][std::size(samplers)]{};
   UINT offset = 0, stride = 0, frequency = 0;
   D3DVIEWPORT9 viewport{};
   RECT scissor{};
@@ -58,7 +58,7 @@ struct Snapshot {
     api(d->GetScissorRect(&scissor));
     for (unsigned i = 0; i < std::size(watched); ++i)
       api(d->GetRenderState(watched[i], &rs[i]));
-    for (unsigned i = 0; i < 4; ++i) {
+    for (unsigned i = 0; i < 5; ++i) {
       api(d->GetTexture(i, &textures[i].p));
       for (unsigned j = 0; j < std::size(samplers); ++j)
         api(d->GetSamplerState(i, samplers[j], &ss[i][j]));
@@ -81,7 +81,7 @@ struct Snapshot {
             "fade caller state restored");
     for (unsigned i = 0; i < 2; ++i)
       require(extra[i].p == now.extra[i].p, "fade extra RT restored");
-    for (unsigned i = 0; i < 4; ++i)
+    for (unsigned i = 0; i < 5; ++i)
       require(textures[i].p == now.textures[i].p, "fade samplers restored");
   }
 };
@@ -248,6 +248,12 @@ struct Upload {
     api(d->SetTexture(0, nullptr));
   }
 };
+// Station producer AlphaValue by case flags (run_linear_distance_fade.py
+// STATION_ALPHA_ZERO / STATION_ALPHA_ONE); otherwise the ordinary .625.
+constexpr unsigned station_alpha_zero_flag = 0x400000, station_alpha_one_flag = 0x800000;
+float station_alpha_value(const Case &c) {
+  return (c.flags & station_alpha_zero_flag) ? 0.f : (c.flags & station_alpha_one_flag) ? 1.f : .625f;
+}
 void source_state(Gpu &gpu, Case c, IDirect3DSurface9 *target,
                   IDirect3DSurface9 *depth, Draw &draw) {
   gpu.state(c, 0);
@@ -272,7 +278,10 @@ void source_state(Gpu &gpu, Case c, IDirect3DSurface9 *target,
   api(d->SetRenderState(D3DRS_COLORWRITEENABLE, 7));
   api(d->SetRenderState(D3DRS_COLORWRITEENABLE1, 3));
   api(d->SetRenderState(D3DRS_COLORWRITEENABLE2, 5));
-  const float alpha[4] = {1, 0, 0, 0};
+  // Asteroid producers overwrite the material alpha with one so the texture
+  // alpha alone drives the source; the station pair keeps its AlphaValue
+  // (c39.x: .625 as the ordinary fixture, 0 or 1 by the case flags).
+  const float alpha[4] = {c.pair == station_fade_pair ? station_alpha_value(c) : 1.f, 0, 0, 0};
   const unsigned vi = pair_v[c.pair];
   api(d->SetVertexShaderConstantF((vi == 9 || vi == 12) ? 18 : 39, alpha, 1));
   draw.bind();
@@ -562,7 +571,7 @@ void run(IDirect3DDevice9 *d, Shaders &shaders, const std::vector<Case> &cases,
     for (auto c : cases) {
       if (after_reset && (c.id % 10) != 0)
         continue;
-      require(c.pair >= 110 && c.pair < 116 && c.reverse <= 3 && c.affine <= 5,
+      require(((c.pair >= 110 && c.pair < 116) || c.pair == station_fade_pair) && c.reverse <= 3 && c.affine <= 5,
               "fade case contract");
       if (after_reset)
         c.id += 1000;

@@ -3,7 +3,8 @@
 
 Root owns the matching candidate seam DLL and the Wine lease. No builds or game
 launches are performed. The detached fixture owns the broad material equations;
-this script reuses its oracle for six bounded actual-route color witnesses.
+this script reuses its oracle for seven bounded actual-route color witnesses
+(six Asteroid pairs and the station BUMPMAP pair; linear-station-source-over.md).
 """
 import argparse
 import copy
@@ -27,12 +28,21 @@ import run_linear_material as material
 
 ROOT=Path(__file__).resolve().parents[2]
 BOOTSTRAP=('vs_53a0a641107ed76c.bin','ps_8759c7838bbc86c2.bin')
-FADE_PAIRS=tuple(material.PAIRS[110:116])
+# Fixture pairs 0-5: the six Asteroid producers; pair 6: the station BUMPMAP
+# hull pair (run_linear_material.PAIRS[51]) with its opaque sibling PS
+# 0c1f3f0f440e4a0c drawn natively beside it (frames 14 and 15).
+FADE_PAIRS=tuple(material.PAIRS[110:116])+(material.PAIRS[component.STATION_PAIR],)
+STATION_PAIR=6
+STATION_SIBLING_PS='0c1f3f0f440e4a0c'
+STATION_ALPHA=.068359375  # AlphaValue .625 x fog .25 x lrp(EnableGlow .25, Diffuse.a .5, LightMap.a .25)
+STATION_FRAMES=(14,15,16,17)
 EMISSION_PAIR=('d5e1c75351ed3f04','8360f422de08b5bd')
-PROGRAMS=tuple(dict.fromkeys(BOOTSTRAP+tuple(f'vs_{v}.bin' for v,_ in FADE_PAIRS)+tuple(f'ps_{p}.bin' for _,p in FADE_PAIRS)+(f'vs_{EMISSION_PAIR[0]}.bin',f'ps_{EMISSION_PAIR[1]}.bin')))
-FRAMES=30
-FAILED_SOURCES=(22,29)
+PROGRAMS=tuple(dict.fromkeys(BOOTSTRAP+tuple(f'vs_{v}.bin' for v,_ in FADE_PAIRS)+tuple(f'ps_{p}.bin' for _,p in FADE_PAIRS)+(f'ps_{STATION_SIBLING_PS}.bin',f'vs_{EMISSION_PAIR[0]}.bin',f'ps_{EMISSION_PAIR[1]}.bin')))
+FRAMES=33
+FAILED_SOURCES=(25,32)
+RESET_FRAMES=(29,32)
 PRESENT_FRAMES=tuple(range(2,14,2))
+MIXED_FRAMES=tuple(range(18,22))
 RESOLUTIONS=((1280,768),(1920,1080))
 COUNTS=(1,4,16)
 # Step 3 (docs/architecture/linear-distance-fade-region.md): admitted fade
@@ -59,15 +69,17 @@ STATUS_KEYS=30
 WITNESS_K=1
 WITNESS_RECT=(8,16,56,48)
 WITNESS_CONTROL_RECT=(8,16,40,48)
-WITNESS_CONTROL_VIOLATIONS={16:512,18:512,20:512,24:512,28:512}
+WITNESS_CONTROL_VIOLATIONS={16:512,19:512,21:512,23:512,27:512,31:512}
 WITNESS_REASONS=('sampled','no_pass','no_fade','emission','mask_invalid')
 WITNESS_BUCKETS=('f<=0.01','f<=0.02','f<=0.05','f<=0.1','f<=0.25','f<=0.5','f<1','f=1')
 SCOPE=('Actual capture DIP / MotionOutput / shared additive-and-fade composition pool / '
-       'Hdr owning exchange / supplemental TemporalPass. Six exact Asteroid pairs, one '
-       'existing additive pair, and two bootstrap programs; no broad detached equation rerun.')
+       'Hdr owning exchange / supplemental TemporalPass. Six exact Asteroid pairs, the station '
+       'BUMPMAP pair with its native opaque sibling, one existing additive pair, and two bootstrap '
+       'programs; no broad detached equation rerun.')
 LIMITATIONS=[
     'A fixture-only scene-owner admission seam replaces game owner-memory binding; actual capture, render-state admission, original DIP, HDR exchange, supplemental TAA and terminal publication remain exercised.',
-    'The six bounded linear-color witnesses reuse the detached Asteroid oracle and fixed observed X3 FP16 render-target round-toward-zero model. This store rule is not a native-Windows guarantee.',
+    'The seven bounded linear-color witnesses reuse the detached Asteroid/standard BUMPMAP oracle and fixed observed X3 FP16 render-target round-toward-zero model. This store rule is not a native-Windows guarantee.',
+    'The station opaque sibling and overwrite draws are native user-memory DIPs (gate 4 refuses them): the fixture RT1/RT2 oracle has no record for a routed sibling. Their rows, constants and textures are the station source\'s.',
     'Current/previous reactive coverage rejects invalid blended history; it does not implement layered transparent temporal accumulation or establish a shimmer fix.',
     'Real invalid-index-buffer sources establish exact native failure and no completed history. A failure before enhancement recovers next frame; earlier enhancement followed by rejected publication explicitly quarantines composition through Reset. Partial driver submission retains existing host/component evidence.',
     'Timing toggles only fade, with the same material/motion/TAA/emission settings. EVENT-fenced source and terminal windows exclude setup, the frame-level M clear, and readbacks; paired processes identify order effects but are not GPU timestamps or game FPS.',
@@ -91,18 +103,27 @@ def rgba(value):
 
 
 def sample_case(pair,zero=False):
-    case=copy.deepcopy(component.cases()[10*pair])
-    case.update(pair=110+pair,fp16=0,gains=[1.,1.,1.],flags=material.FOG)
+    if pair==STATION_PAIR:
+        # Detached case 61 (AlphaValue .625) with the live fixture's EnableGlow .25.
+        case=copy.deepcopy(component.cases()[61]);case.update(glow=.25)
+    else:case=copy.deepcopy(component.cases()[10*pair])
+    case.update(pair=component.STATION_PAIR if pair==STATION_PAIR else 110+pair,fp16=0,gains=[1.,1.,1.],flags=material.FOG)
     if zero:case['diffuse'][3]=0.
     return case
 
 
+def fade_alpha(pair):
+    return STATION_ALPHA if pair==STATION_PAIR else .078125
+
+
 def expected_composite(before,pair,zero=False,overlap=1):
     c=sample_case(pair,zero)
-    linear=material.expected(c).linear_rgb
-    # The live original retains material alpha .625; the detached source fixture
-    # deliberately overwrote it with one. All factors here are binary-exact.
-    alpha=.625*component.source_alpha(c)
+    linear=material.expected(component.oracle_case(c)).linear_rgb
+    # The live Asteroid originals retain material alpha .625; the detached source
+    # fixture deliberately overwrote it with one. The station case already carries
+    # its AlphaValue. All factors here are binary-exact.
+    alpha=(1. if pair==STATION_PAIR else .625)*component.source_alpha(c)
+    assert alpha==fade_alpha(pair) or zero
     q=0.;energy=[0.]*3
     for _ in range(overlap):
         q=component.fp16_rt_store(alpha+(1-alpha)*q)
@@ -111,7 +132,7 @@ def expected_composite(before,pair,zero=False,overlap=1):
 
 
 def native_baselines(rows):
-    assert [int(row['pair']) for row in rows]==list(range(6))
+    assert [int(row['pair']) for row in rows]==list(range(len(FADE_PAIRS)))
     result={}
     for row in rows:
         before,after=rgba(row['before']),rgba(row['after'])
@@ -132,18 +153,20 @@ def validate_samples(rows,fade,emission,native):
     seen=set();maximum=0.;previous={}
     singles=(1,*PRESENT_FRAMES)
     expected_keys={(f,0,x,32) for f in singles for x in (16,32)}
-    expected_keys|={(f,i,32,32) for f in range(15,19) for i in range(len(source_plan(f)))}
+    expected_keys|={(f,i,32,32) for f in STATION_FRAMES+MIXED_FRAMES for i in range(len(source_plan(f)))}
     for row in rows:
         frame,source,x,y=(int(row[k]) for k in ('frame','source','x','y'))
         key=(frame,source,x,y)
         assert key not in seen and key in expected_keys
         seen.add(key)
         kind,pair,_,_=source_plan(frame)[source]
-        overlap=2 if frame==15 else 1
+        overlap=2 if frame==18 else 1
         assert int(row['pair'])==pair and row['kind']==kind and int(row['overlap'])==overlap
-        assert float(row['alpha'])==(.125 if kind=='emission' else 0. if frame==1 else .078125)
+        assert float(row['alpha'])==(.125 if kind=='emission' else 0. if frame==1 else fade_alpha(pair))
         before,after=rgba(row['before']),rgba(row['after'])
-        if source==0:assert before[:3]==(1.,1.,1.),(key,'known ordinary background')
+        # Frame 14 composes over the native opaque sibling, never the unit background.
+        if source==0 and frame==14:assert before[:3]!=(1.,1.,1.) and before[3]!=1.,(key,'station sibling drawn first')
+        elif source==0:assert before[:3]==(1.,1.,1.),(key,'known ordinary background')
         else:assert before==previous[frame],(key,'ordered original source chain')
         previous[frame]=after
         if kind=='fade':assert before[3]==after[3],(key,'native target alpha')
@@ -159,7 +182,7 @@ def validate_samples(rows,fade,emission,native):
             # Only the native mixed/overlap recurrence uses this calibrated
             # original shader result. Linear L is always the independent CPU
             # oracle. One FP16 calibration store is covered by RGB tolerance.
-            alpha=.078125
+            alpha=fade_alpha(pair)
             original=[(v-(1-alpha))/alpha for v in native[pair][:3]]
             wanted=before
             for _ in range(overlap):wanted=tuple(component.fp16_rt_store(alpha*v+(1-alpha)*a) for a,v in zip(wanted,original))+(before[3],)
@@ -167,7 +190,7 @@ def validate_samples(rows,fade,emission,native):
             fraction=abs(a-b)/(.006*abs(b)+.00002)
             maximum=max(maximum,fraction)
             assert fraction<=1,(key,'actual source policy/order',a,b,fraction)
-    assert seen==expected_keys,'zero, six independent pair witnesses, and overlap/mixed order'
+    assert seen==expected_keys,'zero, seven independent pair witnesses, station orderings, and overlap/mixed order'
     return dict(samples=len(seen),max_tolerance_fraction=maximum)
 
 
@@ -175,23 +198,66 @@ def source_plan(frame):
     """Producer submissions; ordinary background/opaque draws are separate."""
     if frame==1:return [('fade',0,0,False)]
     if frame in PRESENT_FRAMES:return [('fade',(frame-2)//2,0,False)]
+    # Station frames 14-17: after the native opaque sibling (and the frame's
+    # last draw), before the opaque overwrite, after and before an emission source.
     plans={
-        15:[('fade',0,0,False)],16:[('fade',0,0,False),('fade',0,0,False)],
-        17:[('fade',0,0,False),('emission',0,0,False)],
-        18:[('emission',0,0,False),('fade',0,0,False)],
-        19:[('emission',0,0,False),('fade',0,3,False),('emission',0,0,False)],
-        20:[('fade',0,0,False),('emission',0,3,False),('fade',0,0,False)],
-        21:[('fade',0,6,False)],
-        22:[('fade',0,0,True),('emission',0,0,False)],
-        23:[('fade',0,0,False),('emission',0,0,False)],
-        24:[('fade',0,0,False),('emission',0,7,False),('fade',0,0,False)],
-        25:[('fade',0,0,False),('emission',0,0,False)],
-        26:[('fade',0,0,False)],
-        27:[('fade',0,0,False),('emission',0,0,False)],
-        28:[('emission',0,0,False),('fade',0,0,False)],
-        29:[('fade',0,0,False),('emission',0,0,False),('fade',0,0,True)],
+        14:[('fade',STATION_PAIR,0,False)],15:[('fade',STATION_PAIR,0,False)],
+        16:[('emission',0,0,False),('fade',STATION_PAIR,0,False)],
+        17:[('fade',STATION_PAIR,0,False),('emission',0,0,False)],
+        18:[('fade',0,0,False)],19:[('fade',0,0,False),('fade',0,0,False)],
+        20:[('fade',0,0,False),('emission',0,0,False)],
+        21:[('emission',0,0,False),('fade',0,0,False)],
+        22:[('emission',0,0,False),('fade',0,3,False),('emission',0,0,False)],
+        23:[('fade',0,0,False),('emission',0,3,False),('fade',0,0,False)],
+        24:[('fade',0,6,False)],
+        25:[('fade',0,0,True),('emission',0,0,False)],
+        26:[('fade',0,0,False),('emission',0,0,False)],
+        27:[('fade',0,0,False),('emission',0,7,False),('fade',0,0,False)],
+        28:[('fade',0,0,False),('emission',0,0,False)],
+        29:[('fade',0,0,False)],
+        30:[('fade',0,0,False),('emission',0,0,False)],
+        31:[('emission',0,0,False),('fade',0,0,False)],
+        32:[('fade',0,0,False),('emission',0,0,False),('fade',0,0,True)],
     }
     return plans.get(frame,[])
+
+
+def station_opaque_draws(frame):
+    """Native opaque station draws of a frame: the sibling before the source (14),
+    the overwrite of the left half after it (15)."""
+    return [('sibling',(8,16,40,48))] if frame==14 else [('overwrite',(8,16,24,48))] if frame==15 else []
+
+
+def validate_station(output,trace,fade,emission=1):
+    """FADE_STATION lines (native sibling/overwrite confined to their scissor) and,
+    with fade on, the per-frame composition refusal histogram of the station
+    frames: every station source is eligible and prepared (admitted), no
+    readiness/frame-stop/preparation refusal, and the pair (non-producer)
+    refusals are the frame's baseline (frame 18: one Asteroid source, nothing
+    else) plus the native opaque station draws plus, with emission off, the
+    frame's emission sources."""
+    rows=[fields(line) for line in output.splitlines() if line.startswith('FADE_STATION ')]
+    assert [(int(r['frame']),r['kind'],tuple(map(int,r['rect'].split(',')))) for r in rows]==[(f,k,rect) for f in STATION_FRAMES for k,rect in station_opaque_draws(f)],'station opaque draws'
+    for r in rows:
+        assert int(r['native'])==1 and int(r['routed'])==0 and int(r['hr'],16)==0
+        assert int(r['changed'])>0 and int(r['outside_changed'])==0,(r['frame'],'opaque station draw confined to its scissor')
+    result=dict(opaque_draws=[dict(frame=int(r['frame']),kind=r['kind'],rect=r['rect'],changed=int(r['changed'])) for r in rows])
+    if not fade:return result
+    frames=indexed(trace.splitlines(),'linear_composition_frame ','frame')
+    refusals=indexed(trace.splitlines(),'linear_composition_refusals ','frame')
+    histogram={}
+    for frame in STATION_FRAMES:
+        sources=[s for s in source_plan(frame) if s[0]=='fade']
+        row=frames[frame];ref=refusals[frame]
+        assert int(row['fade_eligible'])==int(row['fade_prepared'])==int(row['fade_linear'])==len(sources),(frame,'station source admitted and composed',row)
+        assert int(ref['readiness'])==int(ref['frame_stop'])==int(ref['preparation'])==0,(frame,'station refusal histogram',ref)
+        histogram[frame]={k:int(ref[k]) for k in ('pair','permission_scene','readiness','readers','frame_stop','preparation')}
+    baseline=int(refusals[18]['pair'])
+    for frame in STATION_FRAMES:
+        extra=len(station_opaque_draws(frame))+(0 if emission else sum(s[0]=='emission' for s in source_plan(frame)))
+        assert histogram[frame]['pair']==baseline+extra,(frame,'only the native opaque station draws (and unrequested emission sources) are refused as non-producer pairs',histogram[frame]['pair'],baseline,extra)
+    result.update(refusal_histogram=histogram,pair_refusal_baseline=baseline,admitted_sources=sum(len([s for s in source_plan(f) if s[0]=='fade']) for f in STATION_FRAMES))
+    return result
 
 
 def expected_sources(frame,fade,emission):
@@ -382,8 +448,8 @@ def validate_functional(output,trace,fade,emission,lazy,rect=None):
             assert int(actual['fault'])==wanted['fault'] and int(actual['hr'],16)==wanted['hr']
             assert int(actual['mask_before'])==prior_mask and int(actual['mask_after'])==wanted['mask_valid']
             prior_mask=wanted['mask_valid']
-            assert int(actual['overlap'])==(2 if frame==15 else 1)
-            alpha=(.25 if source>=2 else .125) if wanted['kind']=='emission' else (0. if frame==1 else .078125)
+            assert int(actual['overlap'])==(2 if frame==18 else 1)
+            alpha=(.25 if source>=2 else .125) if wanted['kind']=='emission' else (0. if frame==1 else fade_alpha(wanted['pair']))
             assert float(actual['alpha'])==alpha
             for key in ('original_calls','prepared','linear','native'):
                 assert int(actual[key])==wanted[key],(frame,source,key,actual[key],wanted[key])
@@ -400,17 +466,17 @@ def validate_functional(output,trace,fade,emission,lazy,rect=None):
     assert all(len(v)==3 and all(math.isfinite(x) for x in v) for v in translations) and len(set(translations))>2
     assert [fields(line) for line in lines if line.startswith('FADE_OPAQUE_RETURN ')]==[dict(frame='13',matched='1')]
     assert [fields(line) for line in lines if line.startswith('FADE_REJECTED ')]==[dict(frame=str(f),source_failed='1',taa='0',history_seeded='0',copy_exact='1') for f in FAILED_SOURCES]
-    assert [fields(line) for line in lines if line.startswith('FADE_EXPORT ')]==[dict(frame='29',quarantine=str(int(bool(required))),state_lost='0')]
+    assert [fields(line) for line in lines if line.startswith('FADE_EXPORT ')]==[dict(frame=str(RESET_FRAMES[1]),quarantine=str(int(bool(required))),state_lost='0')]
     checks=[fields(line) for line in lines if line.startswith('FADE_CHECKS ')]
     assert len(checks)==1 and int(checks[0]['frames'])==FRAMES and int(checks[0]['submissions'])==total_sources
     assert checks[0]['qualified']=='1' and checks[0]['benchmark']=='0'
     assert sum(line=='RESET PASS' for line in lines)==2
     resets=[fields(line) for line in lines if line.startswith('FADE_RESET ')]
-    assert [int(row['frame']) for row in resets]==[26,29]
+    assert [int(row['frame']) for row in resets]==list(RESET_FRAMES)
     for row in resets:
         assert int(row['refs'])==(3+bin(required).count('1') if required else 0)
         assert int(row['allocations'])==(4 if required else 0)
-        assert int(row['quarantine'])==int(bool(required) and int(row['frame'])==29)
+        assert int(row['quarantine'])==int(bool(required) and int(row['frame'])==RESET_FRAMES[1])
         assert int(row['state_lost'])==0
     releases=[fields(line) for line in traces if line.startswith('motion_output_release ')]
     assert len(releases)==1 and int(releases[0]['released'])==1
@@ -426,8 +492,9 @@ def validate_functional(output,trace,fade,emission,lazy,rect=None):
     assert all(row['result']=='00000000' for row in temporal.values())
     native=native_baselines([fields(line) for line in lines if line.startswith('FADE_NATIVE ')])
     sample_result=validate_samples([fields(line) for line in lines if line.startswith('FADE_SAMPLE ')],fade,emission,native)
+    station=validate_station(output,trace,fade,emission)
     return dict(frames=FRAMES,checks=int(summary['checks']),restorations=int(summary['restorations']),
-                sources=total_sources,held_references=int(releases[0]['held']),frames_detail=details,**sample_result)
+                sources=total_sources,held_references=int(releases[0]['held']),frames_detail=details,station=station,**sample_result)
 
 
 def validate_pixels(work,fade,emission):
@@ -495,7 +562,7 @@ def timing_count(frame):
     return 1 if frame<6 else 4 if frame<12 else 16
 
 
-def validate_timing(output,trace,fade,width,height,rect=None):
+def validate_timing(output,trace,fade,width,height,rect=None,pair=0):
     lines=output.splitlines()
     terminal=[fields(line) for line in lines if line.startswith('RESULT PASS ')]
     assert len(terminal)==1 and not any(line.startswith('RESULT FAIL') for line in lines)
@@ -515,7 +582,7 @@ def validate_timing(output,trace,fade,width,height,rect=None):
     result={}
     for row in rows:
         count=int(row['count'])
-        assert int(row['width'])==width and int(row['height'])==height and int(row['fade'])==fade and int(row['emission'])==0
+        assert int(row['width'])==width and int(row['height'])==height and int(row['fade'])==fade and int(row['emission'])==0 and int(row['pair'])==pair
         values={k:float(row[k+'_ms']) for k in ('source','terminal','total')}
         assert all(math.isfinite(v) and v>=0 for v in values.values())
         assert abs(values['total']-values['source']-values['terminal'])<=3e-9,'full cost must share the two fenced timestamps'
@@ -523,7 +590,7 @@ def validate_timing(output,trace,fade,width,height,rect=None):
     checks=[fields(line) for line in lines if line.startswith('FADE_CHECKS ')]
     assert len(checks)==1 and int(checks[0]['frames'])==18 and int(checks[0]['benchmark'])==1
     assert int(checks[0]['submissions'])==6*sum(COUNTS)
-    return dict(frames=18,warmups_per_count=2,samples_per_count=4,counts=result,rect=rect,
+    return dict(frames=18,warmups_per_count=2,samples_per_count=4,counts=result,rect=rect,pair=pair,
                 region_pixels_per_bracket=region if fade else 0,region_fraction=region/(width*height) if fade else 0.)
 
 
@@ -538,27 +605,28 @@ def compare_functional(cases):
             assert a['motion']==b['motion'] and a['depth']==b['depth'],'fade changed ordinary temporal attachments'
 
 
-def timing_name(width,height,pair,fade,fraction='1'):
-    return f'timing-{width}x{height}-pair{pair}-fade{fade}'+('' if fraction=='1' else f'-f{fraction}')
+def timing_name(width,height,pair,fade,fraction='1',producer=0):
+    return f'timing-{width}x{height}-'+('station-' if producer else '')+f'pair{pair}-fade{fade}'+('' if fraction=='1' else f'-f{fraction}')
 
 
 def paired_cost(cases):
     result=[]
     for width,height in RESOLUTIONS:
-        for fraction,_ in TIMING_FRACTIONS:
-            for count in COUNTS:
-                pairs=[]
-                for pair in (0,1):
-                    off=cases[timing_name(width,height,pair,0)]['counts'][str(count)]
-                    on_case=cases[timing_name(width,height,pair,1,fraction)];on=on_case['counts'][str(count)]
-                    deltas={k:[b[k]-a[k] for a,b in zip(off,on)] for k in ('source','terminal','total')}
-                    pairs.append(dict(order='off/on' if pair==0 else 'on/off',
-                                      off_median_ms={k:statistics.median(r[k] for r in off) for k in deltas},
-                                      on_median_ms={k:statistics.median(r[k] for r in on) for k in deltas},
-                                      paired_window_median_delta_ms={k:statistics.median(v) for k,v in deltas.items()}))
-                result.append(dict(width=width,height=height,requested_fraction=fraction,rect=on_case['rect'],
-                                   region_fraction=on_case['region_fraction'],region_pixels_per_bracket=on_case['region_pixels_per_bracket'],
-                                   ordered_dips=count,pairs=pairs))
+        for producer,fractions in ((0,TIMING_FRACTIONS),(STATION_PAIR,TIMING_FRACTIONS[:1])):
+            for fraction,_ in fractions:
+                for count in COUNTS:
+                    pairs=[]
+                    for pair in (0,1):
+                        off=cases[timing_name(width,height,pair,0,producer=producer)]['counts'][str(count)]
+                        on_case=cases[timing_name(width,height,pair,1,fraction,producer)];on=on_case['counts'][str(count)]
+                        deltas={k:[b[k]-a[k] for a,b in zip(off,on)] for k in ('source','terminal','total')}
+                        pairs.append(dict(order='off/on' if pair==0 else 'on/off',
+                                          off_median_ms={k:statistics.median(r[k] for r in off) for k in deltas},
+                                          on_median_ms={k:statistics.median(r[k] for r in on) for k in deltas},
+                                          paired_window_median_delta_ms={k:statistics.median(v) for k,v in deltas.items()}))
+                    result.append(dict(width=width,height=height,producer='station' if producer else 'asteroid',requested_fraction=fraction,rect=on_case['rect'],
+                                       region_fraction=on_case['region_fraction'],region_pixels_per_bracket=on_case['region_pixels_per_bracket'],
+                                       ordered_dips=count,pairs=pairs))
     return result
 
 
@@ -603,6 +671,11 @@ def main():
             for fade,fraction,side in (variants if pair==0 else variants[::-1]):
                 runs.append(dict(name=timing_name(width,height,pair,int(fade),fraction),fade=int(fade),emission=0,lazy=1,taa=1,hdr=1,timing=True,
                                  width=width,height=height,rect=timing_rect(width,height,side)))
+        # Station producer: paired windows at the derived full rectangle only.
+        for pair in (0,1):
+            for fade in ((0,1) if pair==0 else (1,0)):
+                runs.append(dict(name=timing_name(width,height,pair,fade,producer=STATION_PAIR),fade=fade,emission=0,lazy=1,taa=1,hdr=1,timing=True,
+                                 width=width,height=height,rect=None,producer=STATION_PAIR))
     runs.append(dict(name='witness-full',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True))
     runs.append(dict(name='witness-rect',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True,rect=WITNESS_RECT))
     runs.append(dict(name='witness-control',fade=1,emission=0,lazy=1,taa=1,hdr=1,witness=True,rect=WITNESS_CONTROL_RECT,expect_violations=WITNESS_CONTROL_VIOLATIONS))
@@ -625,6 +698,7 @@ def main():
                        X3M_CAPTURE_START='1000000' if run.get('timing') else '1',X3M_CAPTURE_FRAMES='0',WINEDLLOVERRIDES='d3d9=n,b')
             if run.get('witness'):env['X3M_FADE_WITNESS']=str(WITNESS_K)
             if run.get('rect'):env['X3M_FIXTURE_FADE_RECT']=','.join(map(str,run['rect']))
+            if run.get('producer'):env['X3M_FIXTURE_FADE_BENCH_PAIR']=str(run['producer'])
             mode='distancefadebench' if run.get('timing') else 'distancefade'
             command=[bottle.WINE,*bottle.wine_args(),'--dll','d3d9=n,b','--workdir',str(work),str(work/'fixture.exe'),'Z:'+str(inputs[2]),'Z:'+str(inputs[3]),mode]
             if run.get('timing'):command.append(f"{run['width']}x{run['height']}")
@@ -635,7 +709,7 @@ def main():
                 assert child.returncode==0,f"{run['name']}: fixture failed; {work}"
             logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()
-            if run.get('timing'):case=validate_timing(output,trace,run['fade'],run['width'],run['height'],run.get('rect'))
+            if run.get('timing'):case=validate_timing(output,trace,run['fade'],run['width'],run['height'],run.get('rect'),run.get('producer',0))
             elif run.get('admission'):case=validate_admission(output,trace,run['taa'],run['hdr'])
             else:
                 case=validate_functional(output,trace,run['fade'],run['emission'],run['lazy'],run.get('rect'))
@@ -655,14 +729,14 @@ def main():
         compare_witness(result['cases'])
         result['paired_completion_cost']=paired_cost(result['cases'])
         assert hashes=={str(p):sha(p) for p in inputs},'prebuilt qualification inputs changed'
-        timing_runs=len(RESOLUTIONS)*2*(1+len(TIMING_FRACTIONS))
-        result['functional_frames']=150;result['admission_frames']=8;result['timing_frames']=18*timing_runs;result['witness_frames']=90
+        timing_runs=len(RESOLUTIONS)*2*(1+len(TIMING_FRACTIONS)+2)
+        result['functional_frames']=5*FRAMES;result['admission_frames']=8;result['timing_frames']=18*timing_runs;result['witness_frames']=3*FRAMES
         result['new_processes']=len(runs)-int(native_reuse is not None)
         result['retained_processes']=int(native_reuse is not None)
         result['passed']=True
     finally:
         path=args.result if result['passed'] else raw/'failed-result.json';path.parent.mkdir(parents=True,exist_ok=True)
-        path.write_text(json.dumps(result,indent=2)+'\n')
+        path.write_text(json.dumps(result,indent=1)+'\n') # 34 processes: indent 1 keeps the tracked result under 200 KB
     print(f'PASS result={args.result}',flush=True)
 
 
