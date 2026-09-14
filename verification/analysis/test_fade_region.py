@@ -429,6 +429,62 @@ class FadeRegion(unittest.TestCase):
         bound,reason,rect,_=self.case(perspective(1,2,[0,0,1,0]),*box,v)
         self.assertEqual((bound,reason,rect),(1,0,(4,4,13,13)))
 
+    def fade_route(self,alpha,fog,fog_clip,rows,camera,threshold=500):
+        """--fade-route: distance of the rows' origin, the fraction and the admission (fade_route_core.h)."""
+        valid,m00,m11,m20,m21=camera
+        args=[str(self.driver),'--fade-route',str(alpha),str(int(fog)),str(fog_clip[0]),str(fog_clip[1])]+[str(v) for v in rows]
+        args+=[str(int(valid)),str(m00),str(m11),str(m20),str(m21),str(threshold)]
+        f=fields(subprocess.check_output(args,text=True).strip())
+        return int(f['ok']),float(f['distance']),float(f['fraction']),int(f['permille']),int(f['admit'])
+
+    def test_fade_band_arm_registers_state_and_fraction(self):
+        """Fade-band motion arm (fade_route_core.h): the seven fade vertex programs' g_AlphaValue /
+        g_FogClip registers, the exact fade-band state, and the fraction
+        COLOR0.a = alpha.x * saturate(fog.x - fog.y * distance(origin, camera)) with the
+        origin distance from the clip rows and the camera's projection scales."""
+        loop=('b0602757fce6e870','0c223ad11bce02d5','167eb2d5629ab9d3','330ceb9dd874ede2','4944d81dfe531b37')
+        fixed=('233d17d26ce0c1fc','12b8a13f13fe8cfe')
+        for vs,expect in [(v,(1,39,41)) for v in loop]+[(v,(1,18,20)) for v in fixed]+[('53a0a641107ed76c',(0,0,0)),('0',(0,0,0))]:
+            f=fields(subprocess.check_output([str(self.driver),'--fade-route-registers',vs],text=True).strip())
+            self.assertEqual((int(f['known']),int(f['alpha']),int(f['fog'])),expect,vs)
+        band=[1,0,0,1,7,0,5,6,1,0]  # ZENABLE, ZWRITE, ALPHATEST, ALPHABLEND, COLORWRITE, SRGBWRITE, SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHA
+        state=lambda v:int(fields(subprocess.check_output([str(self.driver),'--fade-route-state']+[str(x) for x in v],text=True).strip())['fade_band'])
+        self.assertEqual(state(band),1)
+        for index,wrong in ((0,0),(1,1),(2,1),(3,0),(4,15),(5,1),(6,2),(7,1),(8,2),(9,1)):
+            v=list(band);v[index]=wrong
+            self.assertEqual(state(v),0,(index,wrong))
+        camera=(1,.8,4/3,0,0)  # the fixture's fake projection; no camera: (0,...)
+        # The live fade fixture's inputs at the identity rows: distance 1, .625 * (.75 - .125) = .390625 -> 390, refused at 500.
+        self.assertEqual(self.fade_route(.625,1,(.75,.125),IDENTITY,camera),(1,1.,.390625,390,0))
+        self.assertEqual(self.fade_route(.625,1,(.75,.125),IDENTITY,camera,390),(1,1.,.390625,390,1))
+        # The routed script: alpha 1, fog clip (1, 0) -> 1; the arm off (1001) admits nothing.
+        self.assertEqual(self.fade_route(1,1,(1,0),IDENTITY,camera),(1,1.,1.,1000,1))
+        self.assertEqual(self.fade_route(1,1,(1,0),IDENTITY,camera,1001),(1,1.,1.,1000,0))
+        self.assertEqual(self.fade_route(1,1,(1,0),IDENTITY,camera,0)[4],1)
+        # Fog off: the alpha value alone; a threshold equal to the estimate admits, one above refuses.
+        ok,d,f,permille,admit=self.fade_route(.7,0,(.75,.125),IDENTITY,camera,700)
+        self.assertEqual((ok,d,permille,admit),(1,1.,700,1));self.assertAlmostEqual(f,.7,places=6)
+        self.assertEqual(self.fade_route(.7,0,(.75,.125),IDENTITY,camera,701)[4],0)
+        self.assertEqual(self.fade_route(.75,0,(.5,.5),IDENTITY,camera,750),(1,1.,.75,750,1))
+        # Origin off axis: clip (3, 4, ., 2) with m00 1.5 and m11 2 -> view (2, 2, 2), distance sqrt(12); without a camera the depth w = 2.
+        rows=[1,0,0,3, 0,1,0,4, 0,0,1,0, 0,0,0,2]
+        ok,d,f,_,_=self.fade_route(1,1,(1,.1),rows,(1,1.5,2,0,0))
+        self.assertEqual(ok,1);self.assertAlmostEqual(d,math.sqrt(12),places=5);self.assertAlmostEqual(f,1-.1*math.sqrt(12),places=5)
+        ok,d,f,_,_=self.fade_route(1,1,(1,.1),rows,(0,0,0,0,0))
+        self.assertEqual((ok,d),(1,2.));self.assertAlmostEqual(f,.8,places=6)
+        # An off-centre projection (m20, m21) cancels: x_c = w * m20 is the axis.
+        rows=[1,0,0,1, 0,1,0,-.5, 0,0,1,0, 0,0,0,2]
+        self.assertEqual(self.fade_route(1,1,(1,.25),rows,(1,1,1,.5,-.25))[1:3],(2.,.5))
+        # Behind the camera, at it, or nonfinite: never admitted; the fraction saturates at both ends.
+        for w in (0,-1,'nan','inf'):
+            rows=list(IDENTITY);rows[15]=w
+            self.assertEqual(self.fade_route(1,1,(1,0),rows,camera)[0],0,w)
+        self.assertEqual(self.fade_route('nan',1,(1,0),IDENTITY,camera)[2:],(0.,0,0))
+        self.assertEqual(self.fade_route(1,1,('inf',0),IDENTITY,camera)[2:],(0.,0,0))
+        self.assertEqual(self.fade_route(1,1,(.5,1),IDENTITY,camera)[2:],(0.,0,0))     # .5 - 1 < 0 -> 0
+        self.assertEqual(self.fade_route(.5,1,(4,1),IDENTITY,camera)[2:],(.5,500,1))   # saturate(3) = 1
+        self.assertEqual(self.fade_route(2,1,(1,0),IDENTITY,camera)[3:],(1000,1))      # alpha above one clamps the permille
+
     def test_bound_table_scenarios(self):
         """Fake descriptor/part/record memory and a fake buffer registry drive BoundTable::resolve."""
         out=subprocess.run([str(self.driver),'--table'],capture_output=True,text=True)

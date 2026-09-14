@@ -38,6 +38,7 @@
 #include "../renderer/linear_emission_pass.h"
 #include "../renderer/linear_distance_fade.h"
 #include "fade_region.h"
+#include "fade_route_core.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::telemetry { struct State; }
 namespace x3m {
@@ -106,6 +107,12 @@ struct MotionRoute {
     fade_region::Region prefix_region{};
     bool prefix_evaluated = false;
     unsigned prefix_region_permille = 0; // area per mille of the viewport (witness f histogram)
+    // Fade-band motion arm (fade_route_core.h): a reviewed pair in the exact
+    // fade-band state admitted by its fade fraction estimate (per mille). RT2
+    // is bound with its write mask cleared for such a draw; RT1 blends
+    // exactly (motion alpha 1 under SRCALPHA/INVSRCALPHA).
+    bool fade_arm = false;
+    unsigned fade_permille = 0;
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -220,6 +227,11 @@ struct MotionTaaCounters {
 struct MotionFrameCounters {
     std::uint32_t draws = 0, routed = 0, matched = 0, gates[7]{};
     std::uint32_t cutout_routed = 0, cutout_missed = 0;
+    // Fade-band arm: reviewed-pair draws in the exact fade-band state routed
+    // by the arm, and those recognised but refused (fraction below the
+    // threshold, unreadable constants, device not ready), which then take
+    // the fade bracket or the native path exactly as before.
+    std::uint32_t fade_routed = 0, fade_refused = 0;
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
     // while the jitter was active: every one breaks the "whole scene moves
@@ -501,6 +513,13 @@ public:
     // against the union of that frame's derived rectangles. Off (0) costs
     // nothing per draw or per frame.
     void configure_fade_witness(unsigned frames) noexcept;
+    // Fade-band motion arm threshold (X3M_FADE_ROUTE=<permille>, default
+    // 500; fade_route::threshold_off disables the arm): a reviewed pair drawn
+    // in the exact fade-band state routes (own RT1 motion, RT2 masked, no
+    // fade bracket, no M coverage) when its fade fraction estimate reaches
+    // the threshold. Configure before attach.
+    void configure_fade_route(unsigned threshold_permille) noexcept;
+    unsigned fade_route_threshold() const noexcept { return fade_route_threshold_; }
     // Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1, off by default;
     // docs/architecture/linear-distance-fade-region.md, "Shimmer trace"):
     // every frame records the identity of the Asteroid-class scene draws into
@@ -720,6 +739,11 @@ private:
         IDirect3DVertexShader9* vs_fade_variant = nullptr;
         IDirect3DPixelShader9* ps_fade_variant = nullptr;
         std::uint32_t fade_sampler_mask = 0; // exact six-pair contract, independent of creation readiness
+        // Fade-band arm identity: one of the seven fade pairs whose VS has a
+        // known g_AlphaValue/g_FogClip register pair (fade_route_core.h).
+        // Refreshed with the other pair identities, never at a draw.
+        bool fade_route_pair = false;
+        fade_route::Registers fade_route_registers{};
         bool emission_pair = false;
         // Only the original exact pair and created three-output PS qualify.
         // This is shader eligibility, not scene/blend/reader/pass admission.
@@ -802,6 +826,9 @@ private:
     bool cutout_arm_configured() const noexcept;
     void release_mip_bias_retry_bound() noexcept;
     bool cutout_draw_state() noexcept;
+    // Fade-band arm evaluation at gate 4 (the six shadowed states already
+    // read); true admits the draw as a routed fade-band draw.
+    bool fade_arm_admits(MotionRoute& route, const MotionDrawCall& call, DWORD z, DWORD z_write, std::size_t window, bool loop_bounded) noexcept;
     void mark_cutout_candidate(MotionRoute& route) noexcept;
     void report_xt_default_unavailable() noexcept;
     void report_mip_bias_game_write_failure() noexcept;
@@ -967,6 +994,7 @@ private:
     renderer::LinearMaterialConfig linear_material_config_{};
     bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
     float screen_emission_gain_ = 1.f;
+    unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
     unsigned composition_required_producers_ = 0;
     HRESULT composition_attach_result_ = S_FALSE;
     renderer::LinearEmissionConfig linear_emission_config_{1.f, true};

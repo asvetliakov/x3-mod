@@ -91,6 +91,7 @@ bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen 
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
+unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
 // X3M_AMBIENT_OCCLUSION=1 (default off; requires X3M_MOTION_OUTPUT=1 and
 // X3M_TAA=1): the half-resolution GTAO chain at the scene-end hook before the
@@ -1833,6 +1834,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
+    hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -2083,6 +2085,17 @@ void initialize_log(HMODULE module) {
     const bool fade_requested=GetEnvironmentVariableW(L"X3M_LINEAR_DISTANCE_FADE",setting,32)==1 && setting[0]==L'1';
     linear_distance_fade_requested=fade_requested && linear_material_requested && taa_requested;
     if(fade_requested)log("linear_distance_fade_mode requested=1 enabled=%u materials=%u taa=%u",linear_distance_fade_requested,linear_material_requested,taa_requested);
+    // X3M_FADE_ROUTE=<permille>|off (default 500): the fade-band motion arm
+    // threshold (docs/architecture/linear-distance-fade-region.md, "Fade-band
+    // route"). Needs the material route, TAA and HDR like the fade route; the
+    // route evaluates those at the draw. An unparsable value keeps the default.
+    fade_route_threshold=500;
+    {const DWORD length=GetEnvironmentVariableW(L"X3M_FADE_ROUTE",setting,32);
+     if(length>0&&length<32){
+        if(!wcscmp(setting,L"off"))fade_route_threshold=x3m::fade_route::threshold_off;
+        else{bool digits=true;for(DWORD i=0;i<length;++i)digits=digits&&setting[i]>=L'0'&&setting[i]<=L'9';
+             const unsigned long n=digits?wcstoul(setting,nullptr,10):1001ul;if(digits&&n<=1000ul)fade_route_threshold=unsigned(n);}
+        log("fade_route_mode requested=%ls threshold=%u enabled=%u",setting,fade_route_threshold,fade_route_threshold<=1000u&&linear_material_requested&&taa_requested&&hdr_requested);}}
     // X3M_SCREEN_EMISSION=1: the packed screen bracket (policy 8) for the
     // nine SM1 screen pairs; the same material/TAA prerequisites as the fade
     // route (the pass composes into the AgX FP16 scene). Default off.

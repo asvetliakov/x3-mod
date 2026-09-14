@@ -521,6 +521,15 @@ def validate_functional(output,trace,fade,emission,lazy,rect=None):
         assert int(row['apply_failures'])==int(row['restore_failures'])==0
         assert int(row['taa_resolved'])==int(frame not in FAILED_SOURCES)
         if frame in FAILED_SOURCES:assert int(row['taa_history'])==0
+    # The fade-band motion arm (fade_route_core.h) recognises every fade-band
+    # source of this script and refuses it by the fraction (390 permille of
+    # the default 500): none is routed, so the bracket composites stay the
+    # oracle's bit for bit.
+    materials=indexed(traces,'linear_material_frame ','frame')
+    assert set(materials)==set(range(FRAMES))
+    for frame,row in materials.items():
+        assert int(row['fade_routed'])==0,(frame,'a routed fade-band draw would bypass the bracket',row)
+        assert int(row['fade_route'])==500,(frame,'default fade-band arm threshold',row)
     temporal=indexed(traces,'motion_output_taa_readback ','frame')
     assert set(temporal)==set(range(FRAMES))-set(FAILED_SOURCES)
     assert all(row['result']=='00000000' for row in temporal.values())

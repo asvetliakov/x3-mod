@@ -106,7 +106,7 @@ def report(fade=1,emission=1,lazy=1,rect=None):
         out.append(line('FADE_CAMERA',frame=f,view_translation=f'{.125*(f%5)},0,0'))
         routed=live.routed_station_draws(f);opaque=live.native_station_draws(f)
         trace.append(line('motion_output_frame',frame=f,rt_mode='lazy' if lazy else 'perdraw',draws=2+len(sources)+routed+opaque,routed=1+routed,gate4=opaque+sum(r['kind']=='fade' for r in sources),gate5=routed,apply_failures=0,restore_failures=0,taa_resolved=int(f not in live.FAILED_SOURCES),taa_history=int(f not in (0,25,26,30,32))))
-        trace.append(line('linear_material_frame',device=1,frame=f,routed=1+routed,bump_routed=routed,refused=0))
+        trace.append(line('linear_material_frame',device=1,frame=f,routed=1+routed,bump_routed=routed,refused=0,fade_routed=0,fade_refused=sum(r['kind']=='fade' for r in sources),fade_route=500))
         if f not in live.FAILED_SOURCES:trace.append(line('motion_output_taa_readback',frame=f,result='00000000'))
         if fade:
             # Composition frame/refusal lines (capture on): the station sources
@@ -141,6 +141,18 @@ class FadeLiveReportTests(unittest.TestCase):
                         self.assertEqual({f:h['pair'] for f,h in station['refusal_histogram'].items()},{14:2,15:2,16:1,17:1} if emission else {14:2,15:2,16:2,17:2})
                         self.assertEqual(station['pair_refusal_baseline'],1)
                     else:self.assertNotIn('refusal_histogram',station)
+
+    def test_fade_band_arm_routes_no_live_source(self):
+        """The fade-band motion arm (fade_route_core.h) sees every fade-band source of this
+        script and refuses it by the fraction estimate (390 of 500 permille): the
+        linear_material_frame lines must report fade_routed=0 at the default threshold."""
+        output,trace=report(1,0)
+        material14=next(r for r in trace.splitlines() if r.startswith('linear_material_frame device=1 frame=14 '))
+        self.assertIn('fade_routed=0 fade_refused=1 fade_route=500',material14)
+        for old,new in (('fade_routed=0','fade_routed=1'),('fade_route=500','fade_route=1001'),(' fade_routed=0','')):
+            with self.subTest(field=old):
+                with self.assertRaises((AssertionError,KeyError)):live.validate_functional(output,trace.replace(material14,material14.replace(old,new,1)),1,0,1)
+        live.validate_functional(output,trace,1,0,1)
 
     def test_station_witness_mutations_are_rejected(self):
         output,trace=report(1,0)

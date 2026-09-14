@@ -444,7 +444,11 @@ threshold, e.g. ≥ 0.5) gives the resolve exact per-object motion; the
 neighbourhood clip absorbs the slow alpha change. Cost: one routed draw per
 fading object (frame 11940: 1 of 51 gate-4 draws; run 36 measured 1–3 fade
 draws per frame), the same constant upload and MRT as any routed draw, no extra
-pass. Risk: history of a blended surface mixes the background behind it near
+pass. **Implemented 2026-09-15** as the fade-band arm of gate 4
+(`src/proxy/fade_route_core.h`, `X3M_FADE_ROUTE`, default threshold 500
+permille of the program's own `g_AlphaValue · saturate(g_FogClip.x −
+g_FogClip.y · d)` at the origin distance; RT2 masked, RT1 blended exactly at
+alpha 1): linear-distance-fade-region.md, "Fade-band route". Risk: history of a blended surface mixes the background behind it near
 the transparent end of the band (hence the threshold), and a moving fading
 object with wrong rows would ghost instead of tremble, so the admission must
 keep gates 5–6 (scope/history) intact. The cheaper alternative, dropping M for

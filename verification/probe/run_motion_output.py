@@ -370,6 +370,37 @@ CUTOUT_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPO
                   X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0', X3M_FIXTURE_CUTOUT_MIXED='0', X3M_FIXTURE_CUTOUT_ORDINARY='0')
 CASES += [case(f'seam-taa-cutout-{script}', 'cutout', jitter=True, taa=True, lazy=True, hdr=True, cutout=script,
                hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT=script)) for script in ('blended', 'opaque')]
+# Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
+# docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
+# static frames over the eight jitter phases with the rotating camera (cut at
+# frame 7), the routed full-screen A plus two quads of the exact fade pair in
+# the engine's fade-band state (blend on, SRCALPHA/INVSRCALPHA, Z-write off,
+# mask 7). `routed`: fraction 1000 permille, the arm routes both quads (route
+# record gate 0, own RT1 rows with alpha 1, M clear, no bracket); the raw
+# per-frame shift of the ramp quad Q equals the jitter delta while the
+# resolved (presented) shift stays a fraction of it. `masked`: fraction 390
+# (below the default threshold 500), the fade bracket composes both quads
+# exactly as the live fade oracle predicts (bit-identical composite), M covers
+# them and the resolved shift equals the raw one (current-only: the run-49
+# trembling reproduced). The routed script runs in both RT binding modes.
+FADE_ROUTE_FRAMES = 12
+FADE_ROUTE_CUT_FRAME = 7
+FADE_ROUTE_CAPTURE = (2, 3, 4)
+FADE_ROUTE_THRESHOLD = 500
+FADE_ROUTE_PERMILLE = {'routed': 1000, 'masked': 390}
+FADE_ROUTE_PAIR = ('b0602757fce6e870', '517540ae6d5e5410')
+FADE_ROUTE_QUAD_PIXELS = 14 * 14          # interior pixels of one quad (columns/rows 9..22 or 41..54)
+FADE_ROUTE_WINDOW = (42, 54, 10, 22)      # Lucas-Kanade window inside quad Q (x0, x1, y0, y1; one-pixel gradient margin)
+FADE_ROUTE_SAMPLES = ((12, 12), (20, 20)) # composite oracle pixels inside quad P
+FADE_ROUTE_MIN_SHIFT = 0.2                # px: an axis whose jitter delta is smaller carries no shift evidence
+FADE_ROUTE_RAW_TOLERANCE = 0.12           # px: raw shift versus the jitter delta (FP16 raster, linear ramp)
+FADE_ROUTE_STABLE_FRACTION = 0.3          # routed: |resolved shift| <= fraction * |raw shift| + noise; masked: |resolved - raw| <= the same
+FADE_ROUTE_NOISE = 0.08                   # px: 8-bit AgX presented image
+FADE_ROUTE_MIN_EVIDENCE = 4               # (frame, axis) samples per image kind
+FADE_ROUTE_ENV = dict(CUTOUT_ENV, X3M_LINEAR_DISTANCE_FADE='1', X3M_CAPTURE_START=str(FADE_ROUTE_CAPTURE[0]), X3M_CAPTURE_FRAMES=str(len(FADE_ROUTE_CAPTURE)))
+FADE_ROUTE_CASES = (('routed', True), ('routed-perdraw', False), ('masked', True))
+CASES += [case(f'seam-taa-fade-route-{name}', 'faderoute', jitter=True, taa=True, lazy=lazy, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=name.split('-')[0])) for name, lazy in FADE_ROUTE_CASES]
 # Mip-bias script (motion_output_fixture.cpp run_mipbias): eight frames,
 # capture in frame 5 only (the capture diagnostics restore the bias before
 # every draw, so that frame re-sets it per routed draw), the frame line every
@@ -2556,6 +2587,149 @@ def validate_cutout(name, script, text, trace):
                 accepted_pixels=[int(live[f]['accepted']) for f in range(CUTOUT_FRAMES)])
 
 
+def read_f32(path, width, height, components):
+    data = path.read_bytes()
+    assert len(data) == width * height * components * 4, (path, len(data))
+    return struct.unpack('<%df' % (width * height * components), data)
+
+
+def fade_route_shift(previous, current, window, width):
+    """Displacement (dx, dy) in pixels of the content between two RGB images
+    (pixel -> (r, g, b) callables) over the window: one Lucas-Kanade step of
+    current(x) ~ previous(x - d), least squares over the pixels and channels
+    with the mean gradient of both images. Exact for a linear ramp."""
+    x0, x1, y0, y1 = window
+    a = b = c = 0.0; e = f = 0.0  # normal equations [[a, b], [b, c]] d = [e, f]
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            p, q = previous(x, y), current(x, y)
+            for k in range(3):
+                gx = (previous(x + 1, y)[k] - previous(x - 1, y)[k] + current(x + 1, y)[k] - current(x - 1, y)[k]) / 4
+                gy = (previous(x, y + 1)[k] - previous(x, y - 1)[k] + current(x, y + 1)[k] - current(x, y - 1)[k]) / 4
+                dv = q[k] - p[k]
+                a += gx * gx; b += gx * gy; c += gy * gy; e -= dv * gx; f -= dv * gy
+    det = a * c - b * b
+    assert det > 1e-12, 'fade route: the ramp window carries no gradient'
+    return ((c * e - b * f) / det, (a * f - b * e) / det)
+
+
+def fade_route_images(directory, frame, width=64, height=64):
+    """The raw FP16 scene after the quads (fade_route_color_<f>.f32, RGBA floats)
+    and the presented 8-bit frame, as (r, g, b) samplers."""
+    raw = read_f32(directory / f'fade_route_color_{frame}.f32', width, height, 4)
+    shown = read_presented(directory, frame, width, height)
+    return (lambda x, y: raw[4 * (y * width + x):4 * (y * width + x) + 3],
+            lambda x, y: (shown[4 * (y * width + x) + 2], shown[4 * (y * width + x) + 1], shown[4 * (y * width + x)]))
+
+
+def fade_route_fp16_ulp(value):
+    return math.ldexp(1, (math.frexp(abs(value))[1] - 1) - 10) if value else math.ldexp(1, -24)
+
+
+def validate_fade_route(name, script, lazy, text, trace, directory):
+    """Fade-band arm script (motion_output_fade_route_inc.h): the arm decision per
+    frame, the route records of the capture frames, the composite at the oracle
+    pixels of quad P, and the raw versus resolved shift of the ramp quad Q."""
+    import run_linear_distance_fade_live as live_fade  # the fade composite oracle (imports the material reference)
+    routed = script == 'routed'
+    lines = text.splitlines()
+    terminal = [fields(l) for l in lines if l.startswith('RESULT PASS ')]
+    assert len(terminal) == 1 and not any(l.startswith('RESULT FAIL') for l in lines), f'{name}: fixture did not complete'
+    assert int(terminal[0]['frames']) == FADE_ROUTE_FRAMES and int(terminal[0]['checks']) > 0, (name, terminal)
+    checks = [fields(l) for l in lines if l.startswith('FADE_ROUTE_CHECKS ')]
+    assert checks == [dict(frames=str(FADE_ROUTE_FRAMES), script=script, quads='2')], (name, checks)
+    live = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('FADE_ROUTE ')}
+    assert sorted(live) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(live))
+    for frame, row in live.items():
+        expected = dict(script=script, routed=str(int(routed)), matched=str(int(routed and frame > 0)), fade_routed=str(2 * int(routed)),
+                        fade_refused=str(2 * int(not routed)), prepared=str(2 * int(not routed)), own_motion=str(2 * FADE_ROUTE_QUAD_PIXELS * int(routed)),
+                        mask_set=str(2 * FADE_ROUTE_QUAD_PIXELS * int(not routed)), mask_valid='1', threshold=str(FADE_ROUTE_THRESHOLD), draws='2')
+        actual = {k: row[k] for k in expected}
+        assert actual == expected, (name, frame, actual, expected)
+        assert int(row['covered']) >= 2 * FADE_ROUTE_QUAD_PIXELS, (name, frame, 'both quads must write pixels', row['covered'])
+    taa = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('TAA ')}
+    assert sorted(taa) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(taa))
+    assert all(r['skipped'] == '0' for r in taa.values()), (name, 'every frame resolves')
+    history = {f: int(r['history']) for f, r in taa.items()}
+    assert history == {f: int(f not in (0, FADE_ROUTE_CUT_FRAME)) for f in range(FADE_ROUTE_FRAMES)}, (name, 'history on every frame but the first and the camera cut', history)
+    assert taa[FADE_ROUTE_CUT_FRAME]['cut'] == '1', (name, 'the camera cut frame')
+    # Composite oracle at the P samples, at the fade and material routes'
+    # qualified RGB tolerance (run_linear_distance_fade_live.validate_samples,
+    # run_linear_material RGB_REL_TOL/RGB_ABS_TOL): masked composes as the live
+    # fade oracle (pair 0, alpha .078125; the bracket itself is untouched, so
+    # its bytes are the pre-change ones); routed writes encode(L) itself (the
+    # oracle at alpha 1), its FP16-code error recorded as max_code_error; both
+    # keep the destination alpha.
+    samples = [fields(l) for l in lines if l.startswith('FADE_ROUTE_SAMPLE ')]
+    assert [(int(r['frame']), int(r['x']), int(r['y'])) for r in samples] == [(f, x, y) for f in range(FADE_ROUTE_FRAMES) for x, y in FADE_ROUTE_SAMPLES], (name, 'sample lines')
+    component, material = live_fade.component, live_fade.material
+    case = live_fade.sample_case(0)
+    case['diffuse'][3] = 1.
+    routed_linear = material.expected(component.oracle_case(case)).linear_rgb
+    max_code_error = max_tolerance_fraction = 0.0
+    for row in samples:
+        before, after = live_fade.rgba(row['before']), live_fade.rgba(row['after'])
+        assert after[3] == before[3], (name, row, 'RGB-masked draw keeps alpha')
+        expected = component.compose(before, [component.fp16_rt_store(x) for x in routed_linear], 1.) if routed else live_fade.expected_composite(before, 0)
+        for k in range(3):
+            fraction = abs(after[k] - expected[k]) / (.006 * abs(expected[k]) + .00002)
+            max_tolerance_fraction = max(max_tolerance_fraction, fraction)
+            assert fraction <= 1, (name, row, k, after[k], expected[k], 'routed fade draw equals the fade oracle at alpha 1' if routed else 'bracketed fade draw equals the fade oracle')
+            if routed:
+                max_code_error = max(max_code_error, abs(after[k] - expected[k]) / fade_route_fp16_ulp(expected[k]))
+    # Route records of the capture frames: A routed, the two fade draws routed
+    # by the arm (gate 0, fade_arm 1, permille 1000) or refused at gate 4 with
+    # the estimate 390 (fade_arm 0), all jittered, in the fade-band state.
+    routes = [fields(l) for l in trace.splitlines() if l.startswith('motion_route ')]
+    for frame in FADE_ROUTE_CAPTURE:
+        fade = [r for r in routes if int(r['frame']) == frame and r['vs'] == FADE_ROUTE_PAIR[0] and r['ps'] == FADE_ROUTE_PAIR[1]]
+        assert len(fade) == 2, (name, frame, 'two fade-pair route records', len(fade))
+        for r in fade:
+            expected = dict(gate='0' if routed else '4', routed=str(int(routed)), matched=str(int(routed)), depth=str(int(routed)), jittered='1',
+                            zwrite='0', blend='1', src='5', dst='6', atest='0', mask='7', sepalpha='0', fade_arm=str(int(routed)),
+                            fade_permille=str(FADE_ROUTE_PERMILLE[script]), result='00000000')
+            actual = {k: r[k] for k in expected}
+            assert actual == expected, (name, frame, actual, expected)
+    materials = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('linear_material_frame ')}
+    assert sorted(materials) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(materials))
+    for f, row in materials.items():
+        assert (row['fade_routed'], row['fade_refused'], row['fade_route']) == (str(2 * int(routed)), str(2 * int(not routed)), str(FADE_ROUTE_THRESHOLD)), (name, f, row)
+    frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
+    assert sorted(frames) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(frames))
+    for f, row in frames.items():
+        assert (row['draws'], row['routed'], row['taa_resolved'], row['apply_failures'], row['restore_failures'], row['rt_mode']) == ('4', '3' if routed else '1', '1', '0', '0', 'lazy' if lazy else 'perdraw'), (name, f, row)
+    # Shift of the ramp quad: raw (the FP16 scene after the quads) versus the
+    # jitter delta, resolved (presented) stable for the routed arm and equal to
+    # the raw shift for the masked bracket.
+    shifts = {}
+    raw_evidence = resolved_evidence = 0
+    worst_raw = worst_resolved = 0.0
+    for frame in range(1, FADE_ROUTE_FRAMES):
+        _, jx, jy = expected_jitter(frame); _, pjx, pjy = expected_jitter(frame - 1)
+        delta = (jx - pjx, jy - pjy)
+        raw_previous, shown_previous = fade_route_images(directory, frame - 1)
+        raw_current, shown_current = fade_route_images(directory, frame)
+        raw = fade_route_shift(raw_previous, raw_current, FADE_ROUTE_WINDOW, 64)
+        resolved = fade_route_shift(shown_previous, shown_current, FADE_ROUTE_WINDOW, 64)
+        shifts[frame] = dict(jitter_delta=delta, raw=raw, resolved=resolved, history=history[frame])
+        for axis in range(2):
+            if abs(delta[axis]) < FADE_ROUTE_MIN_SHIFT:
+                continue
+            raw_error = abs(raw[axis] - delta[axis]); worst_raw = max(worst_raw, raw_error); raw_evidence += 1
+            assert raw_error <= FADE_ROUTE_RAW_TOLERANCE, (name, frame, axis, 'raw shift equals the jitter delta', raw[axis], delta[axis])
+            if not history[frame] or not history[frame - 1]:
+                continue
+            bound = FADE_ROUTE_STABLE_FRACTION * abs(raw[axis]) + FADE_ROUTE_NOISE
+            residual = abs(resolved[axis]) if routed else abs(resolved[axis] - raw[axis])
+            worst_resolved = max(worst_resolved, residual); resolved_evidence += 1
+            assert residual <= bound, (name, frame, axis, 'resolved shift', resolved[axis], raw[axis], 'routed stays put' if routed else 'masked follows the raw jitter')
+    assert raw_evidence >= FADE_ROUTE_MIN_EVIDENCE and resolved_evidence >= FADE_ROUTE_MIN_EVIDENCE, (name, raw_evidence, resolved_evidence)
+    return dict(script=script, frames=FADE_ROUTE_FRAMES, checks=int(terminal[0]['checks']), history_frames=sum(history.values()),
+                max_code_error=max_code_error, max_tolerance_fraction=max_tolerance_fraction, raw_evidence=raw_evidence, resolved_evidence=resolved_evidence,
+                worst_raw_error_px=worst_raw, worst_resolved_residual_px=worst_resolved,
+                shifts={f: {k: (list(v) if isinstance(v, tuple) else v) for k, v in row.items()} for f, row in shifts.items()})
+
+
 def validate_hook(name, installed, text, trace, directory, hdr=False):
     """Hook script: the patch discipline (refusals, bytes, restore), the trampoline
     contract (one signal per call, before the compositor, registers preserved)
@@ -2705,7 +2879,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -2807,6 +2981,15 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} hook_status={case["hook_status"]} sources={case["sources"]}', flush=True)
+                continue
+            if mode == 'faderoute':
+                case = validate_fade_route(name, hdr_env['X3M_FIXTURE_FADE_SCRIPT'], lazy, text, trace, directory)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} history_frames={case["history_frames"]} worst_raw_error_px={case["worst_raw_error_px"]:.3f} worst_resolved_residual_px={case["worst_resolved_residual_px"]:.3f}', flush=True)
                 continue
             if cutout:
                 case = validate_cutout(name, cutout, text, trace)
