@@ -136,6 +136,20 @@ and no-audible-output checks. Result will land at
   bottle or global write and no change to CrossOver's unversioned GStreamer
   variables. Where the artifacts live for a non-`/tmp` opt-in, and how the
   absolute `LC_RPATH` is re-established for the user's install, are undecided.
+
+  `tools/manage.py launch --voice-decoder DIR` implements that delivery and is
+  off by default. It validates `DIR/runtime/plugins/libgstlibav.dylib` and
+  `DIR/runtime/lib`, creates `DIR/registry` if missing (the only write it
+  makes anywhere) and requires it to be a writable directory, then sets exactly
+  `GST_PLUGIN_PATH_1_0=DIR/runtime/plugins` and
+  `GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin` in the launched process
+  environment — never `DYLD_LIBRARY_PATH`, never the unversioned
+  `GST_PLUGIN_PATH`/`GST_REGISTRY`/`GST_PLUGIN_SYSTEM_PATH`, and nothing in the
+  application, bottle or global configuration. An invalid `DIR` is refused with
+  a message and a nonzero exit before anything is launched. `--dry-run` prints
+  both variables alongside the `X3M_*` environment; without the option the
+  launch command and environment are unchanged. Host coverage is
+  `verification/analysis/test_voice_decoder_launch.py`.
 - **Cue timing.** The synthetic control's sample timestamp interval is
   95.1304 ms for 100 ms of PCM, and the native game trims cues by start/end
   timestamps, so correct decoding does not by itself make cue timing correct.

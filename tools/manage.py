@@ -101,10 +101,13 @@ def main():
     parser.add_argument('--chase-pos-lag-clamp', type=float, default=None, help='Maximum boom lag as a fraction of the boom length, 0..1 (X3M_CHASE_POS_LAG_CLAMP; default 0.10)')
     parser.add_argument('--chase-combat-tightness', type=float, default=None, help='0..1: while the cockpit reports a target lock (+0x1e4 tracking mode 1/4 with a tracked object; unverified in game) both spring time constants are scaled by (1 - tightness) (X3M_CHASE_COMBAT_TIGHTNESS; default 0 = off)')
     parser.add_argument('--chase-scene-fix', action='store_true', help='Also re-express the layer-0 cockpit-scene camera through the smoothed view each applied frame (X3M_CHASE_SCENE_FIX=1; default off until the first run shows an external-view HUD element rendered there; review 31 A5)')
+    parser.add_argument('--voice-decoder', type=Path, default=None, metavar='DIR', help='launch only, opt-in, default off: deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing (docs/architecture/voice-decoder-adapter.md)')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
         parser.error('--dry-run applies to launch only.')
+    if args.voice_decoder is not None and args.action != 'launch':
+        parser.error('--voice-decoder applies to launch only.')
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
     if args.scene_depth_capture and not (args.ownership and args.depth_copy):
@@ -326,6 +329,28 @@ def main():
         # even when the shell retains values from an earlier experiment.
         env['X3M_CHASE_SCENE_FIX'] = '1' if args.chase_scene_fix else '0'
         env['X3M_CHASE_COMBAT_TIGHTNESS'] = repr(args.chase_combat_tightness or 0.0)
+        # Opt-in process-local WMA decoder: exactly the two versioned GStreamer
+        # variables reach the child, and only DIR/registry is ever created.
+        # CrossOver's unversioned GST_PLUGIN_PATH/GST_REGISTRY/
+        # GST_PLUGIN_SYSTEM_PATH and DYLD_LIBRARY_PATH stay untouched
+        # (docs/architecture/voice-decoder-adapter.md).
+        voice_env = {}
+        if args.voice_decoder is not None:
+            root = Path(os.path.abspath(args.voice_decoder.expanduser()))  # keep /tmp, do not follow symlinks
+            plugins, plugin = root / 'runtime/plugins', root / 'runtime/plugins/libgstlibav.dylib'
+            libs, registry = root / 'runtime/lib', root / 'registry'
+            if not plugin.is_file():
+                parser.error(f'--voice-decoder: {plugin} not found; build the plugin first (docs/architecture/voice-decoder-adapter.md).')
+            if not libs.is_dir():
+                parser.error(f'--voice-decoder: {libs} is not a directory; the private FFmpeg closure is missing.')
+            try:
+                registry.mkdir(parents=True, exist_ok=True)
+            except OSError as error:
+                parser.error(f'--voice-decoder: cannot create the registry directory {registry}: {error}')
+            if not registry.is_dir() or not os.access(registry, os.W_OK):
+                parser.error(f'--voice-decoder: {registry} must be a writable directory.')
+            voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin')}
+            env.update(voice_env)
         # --dll applies to this child only, preserving the user's other overrides.
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', 'd3d9=b' if args.vanilla else 'd3d9=n,b',
@@ -334,7 +359,7 @@ def main():
             command += ['-noabout', '-skipintro', '-runinbg']
         if args.dry_run:
             print(json.dumps({'command': command, 'cwd': str(game),
-                              'env': {k: env[k] for k in sorted(env) if k.startswith('X3M_')}}, indent=2))
+                              'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env}}, indent=2))
             return
         print('Launching X3AP through CrossOver Preview.', flush=True)
         raise SystemExit(subprocess.call(command, env=env, cwd=game))
