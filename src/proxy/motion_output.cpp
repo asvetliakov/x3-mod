@@ -22,6 +22,7 @@
 #include <cstring>
 #include <cwchar>
 #include <limits>
+#include <new>
 
 namespace x3m {
 namespace {
@@ -298,6 +299,7 @@ void MotionOutput::release_resources() noexcept {
     drop_redirect();
     if (composition_) { composition_->detach(); composition_.reset(); }
     fade_bounds_.clear();
+    release_fade_witness();
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
     // of this function must not probe a device that no longer exists.
@@ -519,6 +521,10 @@ void MotionOutput::configure_linear_emissions(bool requested, float gain) noexce
 void MotionOutput::configure_linear_distance_fade(bool requested) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
     distance_fade_requested_ = requested && linear_material_requested_;
+}
+void MotionOutput::configure_fade_witness(unsigned frames) noexcept {
+    if (device_) return;
+    fade_witness_interval_ = distance_fade_requested_ ? frames : 0u;
 }
 
 void MotionOutput::configure_mip_bias(float bias) noexcept {
@@ -1420,6 +1426,12 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     taa_copy_draw_ = false; std::snprintf(taa_stretch_test_, sizeof taa_stretch_test_, "off");
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { char setting[8]{}; fixture_stretch_fault_ = GetEnvironmentVariableA("X3M_FIXTURE_STRETCH_FAULT", setting, sizeof setting) == 1 && setting[0] == '1'; }
+    {
+        char setting[64]{}; long l = 0, t = 0, r = 0, b = 0;
+        fixture_fade_rect_set_ = GetEnvironmentVariableA("X3M_FIXTURE_FADE_RECT", setting, sizeof setting) > 0
+            && std::sscanf(setting, "%ld,%ld,%ld,%ld", &l, &t, &r, &b) == 4 && l < r && t < b;
+        if (fixture_fade_rect_set_) fixture_fade_rect_ = {std::int32_t(l), std::int32_t(t), std::int32_t(r), std::int32_t(b)};
+    }
 #endif
     if (caps.NumSimultaneousRTs < 2) reason = "mrt_count";
     else if (caps.MaxVertexShaderConst < 256) reason = "vs_constants";
@@ -1875,6 +1887,7 @@ void MotionOutput::before_reset() noexcept {
     release_target();
     if (composition_) { composition_busy_ = true; composition_->before_reset(); composition_busy_ = false; }
     fade_bounds_.clear(); // relearned after Reset; allocation ids never recur
+    release_fade_witness(); // the M target is recreated after Reset; the copy follows its size
     composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
     if (hdr_) hdr_->before_reset();
@@ -2332,6 +2345,11 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     cutout_coverage_missed_ = false; cutout_arm_active_ = cutout_arm_configured();
     composition_required_producers_ = 0;
     composition_counts_ = {}; composition_enhanced_ = false; composition_frame_stopped_ = false; composition_published_ = false;
+    if (fade_witness_interval_) {
+        auto& w = fade_witness_;
+        w.count = w.prepared_count = w.logged = 0; w.last = FadeWitness::rect_capacity; w.overflow = false;
+        std::memset(w.f_hist, 0, sizeof w.f_hist);
+    }
     counters_.cut_median_bound_px = cut_median_bound_; counters_.cut_missing_bound = cut_missing_bound_;
     sequence_ = 0; pending_valid_ = false; fill_pending_ = false; jitter_active_ = false; cut_finished_ = false;
     displacements_.clear();
@@ -2812,6 +2830,9 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
         route.composition = true; route.composition_policy = policy;
         ++composition_counts_.prepared;
         if (fade) ++composition_counts_.prepared_fade;
+        if (fade && witness_frame() && fade_witness_.last < FadeWitness::rect_capacity) {
+            fade_witness_.prepared[fade_witness_.last] = true; ++fade_witness_.prepared_count;
+        }
         composition_counts_.pool_traffic_bytes += std::uint64_t(hdr_->width()) * hdr_->height() * 56u;
         return;
     }
@@ -3173,6 +3194,9 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     const bool fill_solid = shadow_.fill_mode_known && shadow_.fill_mode == D3DFILL_SOLID;
     const Rect target{0, 0, std::int32_t(hdr_ ? hdr_->width() : 0u), std::int32_t(hdr_ ? hdr_->height() : 0u)};
     Region region = derive(rows, bound.status == Status::Bound, bound.box, viewport, fill_solid, target);
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    if (fixture_fade_rect_set_) { region.rect = fixture_fade_rect_; region.reason = Reason::Bound; region.bound = true; }
+#endif
     // Never beyond the owning target, on every path; empty -> 1x1 at its origin.
     region.rect = intersect(region.rect, target);
     if (empty(region.rect)) region.rect = {target.left, target.top, target.left + 1, target.top + 1};
@@ -3185,7 +3209,22 @@ void MotionOutput::derive_fade_region(MotionRoute& route) noexcept {
     const unsigned permille = whole ? unsigned(area(region.rect) * 1000u / whole) : 1000u;
     counts.region_permille_sum += permille;
     if (region.bound) ++counts.region_bound; else ++counts.region_full;
-    if (capture_)
+    const bool witness_frame = this->witness_frame();
+    bool witness_line = false;
+    if (witness_frame) {
+        auto& w = fade_witness_;
+        w.last = FadeWitness::rect_capacity;
+        if (w.count < FadeWitness::rect_capacity) { w.last = w.count; w.rects[w.count] = region.rect; w.prepared[w.count] = false; }
+        else w.overflow = true;
+        ++w.count;
+        witness_line = w.logged < FadeWitness::line_budget;
+        if (witness_line) ++w.logged;
+        // Buckets of the viewport-area fraction f (per mille): <=10, <=20, <=50, <=100, <=250, <=500, <1000, full.
+        const unsigned bucket = permille <= 10 ? 0u : permille <= 20 ? 1u : permille <= 50 ? 2u : permille <= 100 ? 3u
+            : permille <= 250 ? 4u : permille <= 500 ? 5u : permille < 1000 ? 6u : 7u;
+        ++w.f_hist[bucket];
+    }
+    if (capture_ || witness_line)
         log("fade_region device=%llu frame=%llu index=%lu bound=%u reason=%u status=%s hit=%u poisoned=%u evicted=%u depth=%lu descriptor=%p part=%p aabb=%ld,%ld,%ld,%ld,%ld,%ld vb=%llu ib=%llu vb_rev=%llu ib_rev=%llu jittered=%u rect=%ld,%ld,%ld,%ld f_permille=%u f_of=%s table_used=%u table_poisoned=%u",
             id_, frame_, static_cast<unsigned long>(counters_.draws), region.bound, unsigned(region.reason), status_name(bound.status), bound.hit, bound.poisoned_now, bound.evicted,
             static_cast<unsigned long>(bound.depth), reinterpret_cast<void*>(bound.descriptor), reinterpret_cast<void*>(bound.part),
@@ -3658,7 +3697,94 @@ void MotionOutput::before_present() noexcept {
         if (!t.attempted) t.skip = unsigned(main_msaa_ ? TaaSkip::Msaa : TaaSkip::NotReached);
         if (!t.resolved) invalidate_taa();
     } else t.skip = unsigned(TaaSkip::Disabled);
+    witness_readback();
     if (capture_) readback();
+}
+// Fade-region witness (X3M_FADE_WITNESS=k): on every k-th frame the M
+// coverage target (A16B16G16R16F, cleared once per frame by begin_frame and
+// written only by the admitted sources' raster) is copied once to system
+// memory through GetRenderTargetData and every covered pixel (any of x, y, z
+// positive) is tested against the union of this frame's derived rectangles
+// of prepared draws (an overflowing frame counts on and takes the whole
+// target as its union). Sampled only when the frame admitted fade draws and no emission draw, and
+// the coverage is valid (not stopped, not quarantined). The copy surface and
+// the row of union flags are retained between samples and dropped at Reset
+// and retirement; nothing here runs while the witness is off. Integers only
+// in the log line; the readback time goes into the frame's readback counters.
+void MotionOutput::witness_readback() noexcept {
+    if (!fade_witness_interval_ || frame_ % fade_witness_interval_ != 0) return;
+    auto& w = fade_witness_;
+    const auto& cc = composition_counts_;
+    const unsigned emission_prepared = cc.prepared - cc.prepared_fade;
+    IDirect3DSurface9* mask = composition_ ? composition_->coverage_target() : nullptr;
+    const char* reason = "sampled";
+    if (!distance_fade_requested_ || !composition_ || !mask) reason = "no_pass";
+    else if (!w.count) reason = "no_fade";
+    else if (emission_prepared) reason = "emission";
+    else if (composition_frame_stopped_ || composition_quarantined_ || composition_state_lost_ || !composition_->coverage_valid()) reason = "mask_invalid";
+    HRESULT hr = S_FALSE;
+    UINT width = 0, height = 0;
+    unsigned covered = 0, outside = 0;
+    std::uint64_t union_area = 0;
+    const bool sample = reason[0] == 's';
+    if (sample) {
+        const std::uint64_t begin = stamp();
+        D3DSURFACE_DESC desc{};
+        hr = mask->GetDesc(&desc);
+        if (SUCCEEDED(hr) && (desc.Format != D3DFMT_A16B16G16R16F || !desc.Width || !desc.Height)) hr = D3DERR_INVALIDCALL;
+        if (SUCCEEDED(hr)) {
+            width = desc.Width; height = desc.Height;
+            if (w.copy && (w.copy_width != width || w.copy_height != height)) release_fade_witness();
+            if (!w.copy) {
+                hr = native<CreateOffscreenFn>(CreateOffscreenPlainSurface)(device_, width, height, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &w.copy, nullptr);
+                if (SUCCEEDED(hr)) {
+                    w.copy_width = width; w.copy_height = height;
+                    w.row = new (std::nothrow) unsigned char[width]; w.row_width = w.row ? width : 0u;
+                    if (!w.row) { release_fade_witness(); hr = E_OUTOFMEMORY; }
+                } else { w.copy = nullptr; }
+            }
+        }
+        if (SUCCEEDED(hr)) hr = native<GetRtDataFn>(GetRenderTargetData)(device_, mask, w.copy);
+        D3DLOCKED_RECT lock{};
+        if (SUCCEEDED(hr)) hr = w.copy->LockRect(&lock, nullptr, D3DLOCK_READONLY);
+        if (SUCCEEDED(hr)) {
+            const unsigned stored = w.overflow ? FadeWitness::rect_capacity : w.count;
+            for (UINT y = 0; y < height; ++y) {
+                std::memset(w.row, w.overflow ? 1 : 0, width); // overflow: the whole target is the union
+                for (unsigned i = 0; i < stored && !w.overflow; ++i) {
+                    if (!w.prepared[i]) continue; // an unprepared draw wrote nothing through the pass
+                    const auto& r = w.rects[i];
+                    if (std::int32_t(y) < r.top || std::int32_t(y) >= r.bottom) continue;
+                    const std::int32_t left = r.left < 0 ? 0 : r.left, right = r.right > std::int32_t(width) ? std::int32_t(width) : r.right;
+                    if (left < right) std::memset(w.row + left, 1, std::size_t(right - left));
+                }
+                const auto* pixels = reinterpret_cast<const std::uint16_t*>(static_cast<const char*>(lock.pBits) + std::size_t(y) * lock.Pitch);
+                for (UINT x = 0; x < width; ++x) {
+                    union_area += w.row[x];
+                    const std::uint16_t* p = pixels + std::size_t(x) * 4;
+                    bool hit = false;
+                    for (unsigned c = 0; c < 3; ++c) hit = hit || (!(p[c] & 0x8000u) && (p[c] & 0x7fffu));
+                    if (!hit) continue;
+                    ++covered;
+                    if (!w.row[x]) ++outside;
+                }
+            }
+            w.copy->UnlockRect();
+        }
+        const std::uint64_t ticks = stamp() - begin;
+        ++counters_.readbacks; counters_.readback_ticks += ticks;
+        record(unsigned(telemetry::Metric::RouteReadback), ticks, FAILED(hr), std::uint64_t(width) * height * 8u);
+    }
+    log("fade_witness device=%llu frame=%llu k=%u sampled=%u reason=%s result=%08lx width=%u height=%u rects=%u rects_prepared=%u rects_unprepared=%u overflow=%u lines_truncated=%u covered=%u outside=%u union=%llu fade_prepared=%u emission_prepared=%u f_hist=%u,%u,%u,%u,%u,%u,%u,%u",
+        id_, frame_, fade_witness_interval_, unsigned(sample), reason, hr, unsigned(width), unsigned(height), w.count, w.prepared_count,
+        w.count - w.prepared_count, unsigned(w.overflow), w.count > w.logged ? w.count - w.logged : 0u, covered, outside,
+        static_cast<unsigned long long>(union_area), cc.prepared_fade, emission_prepared,
+        w.f_hist[0], w.f_hist[1], w.f_hist[2], w.f_hist[3], w.f_hist[4], w.f_hist[5], w.f_hist[6], w.f_hist[7]);
+}
+void MotionOutput::release_fade_witness() noexcept {
+    auto& w = fade_witness_;
+    release(w.copy); w.copy = nullptr; w.copy_width = w.copy_height = 0;
+    delete[] w.row; w.row = nullptr; w.row_width = 0;
 }
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();

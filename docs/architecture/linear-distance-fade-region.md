@@ -391,12 +391,61 @@ Acceptance (after review fixes, main merged at c978089):
   seam scope and no ownership registry, so the bound *hit* path is proven on
   the host only; at runtime the `fade_region_frame` counters (`bound` versus
   `full`, status histogram) show which path the user's capture took.
-- Live witness: the per-DIP and per-frame lines above are wired for the
-  user's next capture. The every-k-th-frame M readback with emission off and
-  its "pixels outside the union" validator are **not** wired: they need a
-  readback path in `MotionOutput` plus a validator in
-  `run_linear_distance_fade_live.py`; the live fixture has no seam scope, so
-  it would only exercise the full-viewport path. Not run.
+- Live witness (`X3M_FADE_WITNESS=<k>`, launcher `--fade-witness [K]`,
+  default off, `K` defaults to 30; requires `--linear-distance-fade`).
+  `MotionOutput::witness_readback` runs at the Present boundary of every
+  k-th frame: when the frame derived at least one fade rectangle, admitted
+  no emission draw and the coverage is valid (not stopped, quarantined or
+  state-lost), the M target is copied once through `GetRenderTargetData`
+  into a retained `D3DPOOL_SYSTEMMEM` surface (size from `GetDesc`, format
+  must be `A16B16G16R16F`; released at Reset and retirement, recreated on a
+  size change) and every covered pixel (any of x, y, z positive) is tested
+  against the union of the rectangles of the frame's *prepared* fade draws
+  (1024 stored per frame; past that the frame is flagged `overflow=1`, is
+  still sampled and takes the whole target as its union, which cannot
+  produce a false violation). One `fade_witness` line per k-th frame
+  (`sampled`, `reason` in `no_pass`/`no_fade`/`emission`/`mask_invalid`,
+  `rects`/`rects_prepared`/`rects_unprepared`, `covered`, `outside`,
+  `union`, the prepared counts and the eight-bucket `f` histogram: ≤1 %,
+  ≤2 %, ≤5 %, ≤10 %, ≤25 %, ≤50 %, <100 %, full), and the first 64 per-DIP
+  `fade_region` lines of those frames (`lines_truncated` counts the rest)
+  are also written outside capture frames. `X3M_FADE_WITNESS` must be
+  digits only and shorter than 32 characters, else off. Integers only; the
+  readback ticks go into the frame's `readbacks`/`readback_us`. Off, the
+  per-draw and per-frame paths do nothing. The validator
+  (`validate_witness` in `run_linear_distance_fade_live.py`) requires a
+  line per k-th frame, the expected reason per frame, `rects_prepared`
+  equal to `fade_prepared`, `rects` equal to the frame's `fade_region`
+  lines plus `lines_truncated`, a successful readback and **zero** outside
+  pixels on every sampled frame, and reports the `f` histogram and the
+  VB revision distribution; a violation raises `WitnessViolation` with the
+  per-frame counts. The seam DLL alone reads `X3M_FIXTURE_FADE_RECT=l,t,r,b`
+  (never compiled into production) and reports that rectangle as the
+  bound-derived region of every admitted fade draw, so the fixture, which
+  has no seam scope, exercises a sub-viewport rectangle.
+  Run (`linear-distance-fade-live-witness.json`, bottle X3, lock holder
+  `fade-witness2`, 18 processes): the 15 baseline processes / 302 frames /
+  140 TAA readbacks are unchanged (checks 4,502,395: the fixture gained one
+  check per resolved frame with the cutout commits after the 4,502,255
+  result of a85bcef; not a witness effect, the witness is off in those
+  processes and their logs carry no `fade_witness` line); three witness
+  processes of 30 frames each (2.6/2.5/2.2 s), all reproducing the
+  fade-on/emission-off images, alpha hashes and counters bit for bit.
+  `witness-full` (no rectangle: full 64×64 viewport, `reason=3`,
+  `status=no_scope`): 19 sampled frames, 8 skipped `no_fade`, 3 skipped
+  `mask_invalid`, 20,992 covered pixels, union 77,824, **0 outside**, 26
+  `fade_region` lines all at `f = 1` (22 on sampled frames, which is the
+  histogram total, 4 on skipped frames), VB 8 revision 0 on all 26.
+  `witness-rect` (`8,16,56,48`, both fixture footprints): same sampling,
+  union 29,184 (19 × 1536), 20,992 covered, **0 outside**,
+  `f_permille=375` on all 26 (histogram: 22 in the ≤50 % bucket). `witness-control`
+  (`8,16,40,48`, excludes the second footprint): the validator fails with
+  `WitnessViolation` on exactly frames 16, 18, 20, 24 and 28 with 512
+  outside pixels each (the 16×32 strip of the second fade source), which
+  the runner records as the expected failure and requires exactly. The
+  witness cost at game resolution is unmeasured: one readback of the
+  A16B16G16R16F M target per k frames (16.6 MB per sample at 1920×1080,
+  `k = 30` by default) plus the CPU pass over its pixels.
 
 Open from step 1: the per-draw cost of the two content views is not yet
 measured in the game; the half-conversion item above remains.
