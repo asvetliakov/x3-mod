@@ -23,7 +23,7 @@ captures, so later A/B runs cannot overwrite them. Vanilla/dry-run creates no sn
 | 8 | Restored glow, milder exposure and native selection-stutter trace | 0 | Completed as run 27 |
 | 9 | Stronger glow and selection/voice timing | 0 | Completed as run 28 on source `d9413fc` |
 | 10 | Target-name speech with the opt-in WMA decoder | 1 | On hold (load hang, root cause open) |
-| 11 | Fade region route and alpha-tested cutout, combined | 1 | Pending candidate |
+| 11 | Fade region route and alpha-tested cutout, combined | 1 | Ready (candidate `3f06979` installed) |
 
 **Run 10 attempted and failed to load** (runs 29–31, 2026-09-14): with
 `--voice-decoder` the game stops on the loading screen at session frame 3 with no
@@ -76,12 +76,11 @@ without `--voice-decoder` and report which of the two failed.
 
 The distance-fade capture that was noted here is now run 11 below.
 
-## 11. Fade region route and alpha-tested cutout, combined — Pending candidate
+## 11. Fade region route and alpha-tested cutout, combined — Ready
 
-This run needs a candidate DLL built from current `main` and installed by the
-orchestrator per `AGENTS.md`; the installed build `8442f43` does not contain
-these options, so do not start it until the queue says the candidate is in
-place. The command adds the distance-fade region route and its witness to the
+The candidate built from `3f06979` is installed (DLL `4022a3a4…`, record
+`verification/results/fade-region-cutout-install.json`); the previous `8442f43`
+DLL is retained for rollback. The command adds the distance-fade region route and its witness to the
 run-10 enhanced set (no `--voice-decoder`). The alpha-tested cutout runtime has
 no flag of its own: it arms whenever linear materials are requested, the cutout
 capability is Ready, HDR is enabled and the mip bias is zero

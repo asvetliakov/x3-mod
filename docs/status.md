@@ -31,19 +31,21 @@ screen (runs 29–36): the witness run shows `SetState(RUN)` returning `E_FAIL`
 followed by a COM teardown wait; root cause open (see the handoff). The WMP11
 bottle experiment was reverted byte-identically (`2e64c4d`).
 User run 11 (fade region route plus the armed cutout runtime, `--linear-distance-fade
---fade-witness`) is queued as "Pending candidate" in the run queue; run 10 is on hold.
+--fade-witness`) is queued and the candidate built from `3f06979` is installed (record
+`verification/results/fade-region-cutout-install.json`); run 10 is on hold. The replica
+with the game's DirectSound setup (`877317b`) still does not reproduce the `SetState(RUN)` failure.
 Merged agent worktrees and the two merged cutout worktrees are pruned.
 
-The installed gameplay build is checkpoint `8442f43`. Its scoped integration
-checks pass. Run 28 confirms stronger visible glow and reproduces distance-dependent
+The installed gameplay build is checkpoint `3f06979` (previous `8442f43` retained for
+rollback). Its scoped integration checks pass; the new options are default-off. Run 28 confirms stronger visible glow and reproduces distance-dependent
 dark material on a docking port. Selection pauses are isolated to voice-stream
 creation; the user confirms missing target-name speech.
 
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`1f6a473dd035894bb868adc113be8f76c7dfde4731157595def614d0411a42ba` (13,425,946 bytes). The
-[install record](../verification/results/linear-material-install.json) binds its source, scoped verification,
+`4022a3a46f254a75dc58f009264b10634acaee8f2230245b942c3233e336c6da` (13,661,357 bytes). The
+[install record](../verification/results/fade-region-cutout-install.json) binds its source, scoped verification,
 load check, and rollback DLL.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,

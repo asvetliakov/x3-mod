@@ -1,0 +1,97 @@
+{
+  "source_commit": "3f069796ed8bad22648e8742e7862ebeb565b0c1",
+  "base": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u",
+  "source": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/source",
+  "candidate": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/source/build/d3d9.dll",
+  "build_seconds": 10.738669157,
+  "dll_sha256": "4022a3a46f254a75dc58f009264b10634acaee8f2230245b942c3233e336c6da",
+  "dll_bytes": 13661357,
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "seh_clang": "/usr/bin/clang",
+  "build": "git worktree add --detach (clean export of 3f06979); cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build -j4",
+  "installed": true,
+  "game_launched": false,
+  "native_windows_verified": false,
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "preserved_files": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "preserved_files_note": "Both hashes identical before and after the install. cxbottle.conf differs from the 8442f43 record (cc5d6c00...); its mtime is 2026-09-14 06:42:59, before this candidate's worktree existed, so the change predates and is unrelated to this install.",
+  "rollback": {
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/rollback-d3d9.dll",
+    "dll_sha256": "1f6a473dd035894bb868adc113be8f76c7dfde4731157595def614d0411a42ba",
+    "source_commit": "8442f43dbcc1c529501ba551057ee5d811efdcbb",
+    "install_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/rollback-x3-modern-install.json",
+    "project_record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-fade-cutout-candidate-v0jox42u/rollback-project-install.json"
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 223,
+    "report": "/tmp/x3-fade-cutout-candidate-no-x87.json"
+  },
+  "load": {
+    "passed": true,
+    "case": "writable",
+    "checks": 8,
+    "exports": 17,
+    "lock_wait_seconds": 0.0,
+    "child_elapsed_seconds": 11.81,
+    "result": "verification/results/bottle-X3/d3d9-exports-summary.json"
+  },
+  "host_tests": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p <pattern>",
+    "test_fade_region.py": 5,
+    "test_linear_distance_fade*.py": 30,
+    "test_linear_cutout*.py": 13,
+    "test_game_phase_sites.py": 19,
+    "test_voice_decoder_launch.py": 5,
+    "total": 72,
+    "failures": 0
+  },
+  "change": "Fade region route (default-off --linear-distance-fade + --fade-witness composing admitted distance-fade draws through the in-place region bracket), two-pair alpha-tested cutout runtime (no flag; armed by linear materials + HDR + zero mip bias), voice load-hang witness (default-off), launcher --voice-decoder/--profile-raw/--audio-sites; no default behaviour changed.",
+  "changed_dependencies": "git diff --stat 8442f43..3f06979 -- src/ tools/: 21 files, +2040/-380 (fade_region*, linear_cutout.h, motion_output, linear_emission_pass, linear_distance_fade composite, game_phase_sites/game_phases, sampling_profiler, object_trace, capture, manage.py)",
+  "qualification": {
+    "fade_region": "docs/architecture/linear-distance-fade-region.md",
+    "fade_region_live": "verification/results/bottle-X3/linear-distance-fade-live-region3.json",
+    "fade_region_live_cases": 26,
+    "fade_region_live_frames": 536,
+    "fade_region_live_checks": 7183450,
+    "fade_region_live_witness_outside_pixels": 0,
+    "fade_witness_live": "verification/results/bottle-X3/linear-distance-fade-live-witness.json",
+    "fade_witness_live_cases": 18,
+    "fade_witness_live_frames": 392,
+    "fade_witness_live_checks": 7208032,
+    "fade_witness_live_outside_pixels": 0,
+    "cutout": "docs/architecture/alpha-tested-materials.md",
+    "cutout_live": "/Users/asvetl/x3-mod-resume-2026-09-14/artifacts/linear-cutout-live.json",
+    "cutout_live_tracked": false,
+    "cutout_live_cases": 13,
+    "cutout_live_frames": 531,
+    "cutout_live_checks": 2111274,
+    "cutout_live_paired_cost_qualified": true,
+    "voice_load_hang": "docs/architecture/voice-decoder-adapter.md",
+    "reused_not_rerun": [
+      "fade_region_live",
+      "fade_witness_live",
+      "cutout_live"
+    ]
+  },
+  "qualification_status": "passed-reviewed-installed",
+  "launch_dry_run": {
+    "passed": true,
+    "game_launched": false,
+    "result": "/tmp/x3-fade-cutout-dry-run.json",
+    "scope": "user-runs.md section 11 command (run-10 enhanced set + --linear-distance-fade --fade-witness); X3M_LINEAR_DISTANCE_FADE=1, X3M_FADE_WITNESS=30, no X3M_TAA_MIP_BIAS, no X3M_VOICE_DECODER; run after install against the installed candidate"
+  },
+  "cxbottle_note": "cxbottle.conf differed from the pre-experiment copy only by an uncommented WindowsVersion=win10 line written by the 06:42 winetricks attempt; restored from /tmp/x3-bottleX3-pre-wmp/cxbottle.conf after the install (sha cc5d6c00...)."
+}

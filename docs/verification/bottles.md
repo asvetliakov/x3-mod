@@ -264,3 +264,8 @@ Repeated after the full revert with the same results: `-r3` plain, both
 `open_hr=80004005`, `fatal=sync_open`, stderr 16422 bytes; `-r4` with the v3
 plugin, both `open_hr=00000000`, PCM 44100/1/16. The probe runs leave no
 registry key added or removed. The bottle is back to its pre-2026-09-14 state.
+
+Addendum (same day, after the fade/cutout candidate install): `cxbottle.conf` still
+differed from the pre-experiment copy by one line, `"WindowsVersion" = "win10"`
+uncommented by the winetricks attempt (registry and template already said win10).
+Restored from `/tmp/x3-bottleX3-pre-wmp/cxbottle.conf`; SHA-256 `cc5d6c00…` again.
