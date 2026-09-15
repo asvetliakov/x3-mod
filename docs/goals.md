@@ -3,7 +3,8 @@
 This file tracks acceptance state only, one row per goal, and changes only when
 that state changes; ordering, the installed build and the current handoff live
 in [status](status.md), the original scope in the
-[objective](user-objective.md). The material scope clarification of 2026-09-15
+[objective](user-objective.md). Status is one of Planned, Accepted (in game),
+Installed, In progress, Held, Closed or Rejected. The material scope clarification of 2026-09-15
 now lives in the [material allocation assessment](architecture/material-investment.md).
 
 | # | Goal | Status | Current state | Owning note |
