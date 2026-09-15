@@ -63,3 +63,23 @@ establish live receiver admission, composition exclusion or complete recovery.
 The separate qualification object build passed with zero warnings; its local
 record is `/tmp/x3-sun-runtime-fixture-build.json`. It is not an install candidate.
 Native Windows execution, gameplay coverage and GPU performance remain open.
+
+### Actual-renderer execution checkpoint
+
+The actual MotionOutput positive case passed 43,269 fixture checks and 18 state
+restorations across six frames, including Reset; all six TAA readbacks are byte
+identical to the R32 reference. The runner initially misparsed nested
+`detail=stage=...`; its corrected parser revalidated the retained output without
+a GPU rerun. Four early-failure cases (capability, dropped cutout, alpha-write
+mask, allocation) also passed, covering 24 additional frames.
+
+Qualification remains incomplete: the late-shader failure case stops at frame 2
+on a TAA-history expectation, and composition stops at frame 1 on an exchange
+publication expectation. These are open fixture/runtime diagnoses, not accepted
+fallback evidence. Later cases have not yet run. Small local witnesses:
+
+- Positive: `/tmp/x3-sun-live-positive-revalidation.json`.
+- Early passes and late-shader failure: `/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-zfrdwrrm/failed-result.json`.
+- Composition: `/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-sun-share-live-oarlm2ss/composition/stdout.txt`.
+
+No integration or install follows from this partial checkpoint.

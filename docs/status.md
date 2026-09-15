@@ -78,8 +78,9 @@ live shadow lane or replay is implemented yet. Sun-share extraction is now
 reviewed and host-qualified in source (432 variants; 1,388 legacy outputs unchanged
 at that extraction checkpoint).
 The isolated runtime implementation now has reviewed GPU extraction and temporal-copy
-evidence; actual renderer qualification, composition and fallback checks remain before
-integration ([ledger](verification/directional-shadows.md)).
+evidence. Actual-renderer positive and four early-failure cases pass; late-shader
+history and composition-publication expectations currently fail and are under
+investigation before integration ([ledger](verification/directional-shadows.md)).
 The inherited PS3 constant-read-port violation is repaired and reviewed in
 source: legacy/fill GPU reports and 1,162 fade readbacks match retained
 baselines exactly ([repair ledger](verification/linear-material-constant-port.md)).
