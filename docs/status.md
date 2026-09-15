@@ -171,8 +171,10 @@ further linear-hull processing is planned. Decisions this session:
   casters write full-quad depth, DEVICELOST mid-transaction convention.
 - Run 27 candidate `215d8fbe…` from `46dc822` is installed and
   [run 27](verification/user-runs.md) is queued; the original-program fill
-  (option C) is still in flight and rides the following candidate if the F8
-  baseline shows dark faces.
+  (`--original-fill K`, option C) is reviewed and merged (`d864246`: 108/108
+  programs, exact-power law, K=0 byte-identical, 92 GPU cases per K within one
+  FP16 code) and rides the following candidate if the F8 baseline shows dark
+  faces; its performance pass is the on/off `frame_end` delta in that run.
 - Shadows: [replay gates](architecture/shadow-replay-gates.md) ratified; the
   depth-replay fixture is not funded until a lane-independent caster-candidate
   counter (`--shadow-replay-candidates`, in flight) answers four predicates in
