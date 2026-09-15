@@ -268,6 +268,12 @@ Windows builds, CrossOver runtime tests and eventual native-Windows runtime test
 
 See the [runtime dependency and interception audit](runtime-dependencies.md) for
 concrete remaining gates, removal status and the separate depth-adapter gap.
+- The cascade-0 depth replay (`src/renderer/shadow_replay_pass.cpp`, `--shadow-replay-depth`, default
+  off, no consumer) uses documented D3D9 only: `CheckDeviceFormat`/`CheckDepthStencilMatch` for the
+  R32F map (X8R8G8B8 with colour writes off as the fallback) and its D24X8/D16 attachment, a
+  D3DSBT_ALL block, the application's own buffers and declaration under authored vs_3_0/ps_3_0
+  programs; verified on CrossOver only (R32F render targets, the depth match, state-block
+  capture/apply cost and the single-thread Lock assumption remain unverified natively).
 - The ambient occlusion pass (`src/renderer/ambient_occlusion_pass.cpp`, step 1, detached) uses
   documented D3D9 only: `CheckDeviceFormat` gates for the R32F/R16F render targets and post-pixel-shader
   blending on the owning format, blend-factor caps, `MaxPixelShader30InstructionSlots` against a

@@ -1855,12 +1855,21 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route
     // plus the ownership wrapper (loader.cpp enables the lock bookends on the
     // same switch); no TAA, HDR, linear-material or lane prerequisite.
+    // The one-cascade depth replay (same note, "Implemented: cascade-0 depth
+    // replay fixture") rides the counter with the same two prerequisites;
+    // X3M_SHADOW_REPLAY_SIZE (64..4096, default 1024) sizes the map.
     { wchar_t setting[4]{};
       const bool asked=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1';
+      const bool depth_asked=GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1';
       const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
-      const bool enabled=asked&&motion_output_requested&&wrapped;
-      if(asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
-      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr); }
+      const bool enabled=(asked||depth_asked)&&motion_output_requested&&wrapped;
+      if(asked||depth_asked)log("shadow_replay_candidates_mode requested=1 enabled=%u motion_output=%u ownership=%u",enabled,motion_output_requested,wrapped);
+      hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr);
+      if(depth_asked){
+          unsigned size=1024; wchar_t text[16]{};
+          if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_SIZE",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=64&&v<=4096)size=unsigned(v); }
+          log("shadow_replay_depth_mode requested=1 enabled=%u size=%u motion_output=%u ownership=%u",enabled,size,motion_output_requested,wrapped);
+          hooked.motion_output.configure_shadow_replay_depth(enabled,size); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
@@ -2416,6 +2425,14 @@ extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_last_pixel_ab
 }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_depth(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height) {
     return x3m_motion_output_fixture_readback_target(device,2,out,floats,width,height);
+}
+// Depth replay seam: the private sun-space map as floats plus the last
+// replayed frame's basis (16 floats; motion_output_shadow_replay_inc.h).
+extern "C" __declspec(dllexport) HRESULT x3m_shadow_replay_fixture_readback(IDirect3DDevice9* device,float* out,unsigned floats,unsigned* width,unsigned* height,float* params,unsigned param_floats) {
+    std::lock_guard<std::recursive_mutex> lock(x3m::mutex);
+    const auto it=x3m::devices.find(device);
+    if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
+    return it->second->motion_output.fixture_shadow_replay_readback(out,floats,width,height,params,param_floats);
 }
 // HDR seam: fault injection (renderer::HdrFault kinds, `count` firings; a null
 // device queues the fault for every hooked device and the next attach) and

@@ -27,536 +27,830 @@
       "X3M_ADMISSION": "1"
     }
   },
-  "consume_only": false,
+  "consume_only": true,
   "selected_cases": [
-    "seam-ownership-taa-camera-candidates-on"
+    "seam-ownership-shadow-replay-casters-2",
+    "seam-ownership-shadow-replay-casters-20",
+    "seam-ownership-shadow-replay-casters-8",
+    "seam-ownership-shadow-replay-off",
+    "seam-ownership-shadow-replay-on",
+    "seam-ownership-taa-shadow-replay-off",
+    "seam-ownership-taa-shadow-replay-on"
   ],
   "cases": {
-    "seam-ownership-taa-camera-candidates-on": {
-      "mode": "seam",
-      "enabled": true,
-      "jitter": true,
-      "taa": true,
-      "lazy": false,
-      "checks": 216,
-      "restorations": 51,
-      "frames": 12,
+    "seam-ownership-shadow-replay-on": {
+      "checks": 144,
+      "depth": true,
+      "casters": 2,
+      "taa": false,
       "color_hashes": {
-        "0": "7780633dafe6b5fa",
-        "1": "a2499c06b255363a",
-        "2": "47059dc8e751a751",
-        "3": "35942d847a659ef3",
-        "4": "403a1ff89ea0f8db",
-        "5": "0554c1e31f1e7738",
-        "6": "d8dbde26c9cf0b5d",
-        "7": "ae0b3498446c57df",
-        "8": "48e1c7ad26e4fdc1",
-        "9": "4fccb6c7391e6b2d",
-        "10": "332b6a65322718bb",
-        "11": "11fc8bcc9362dee9"
+        "0": "432a75d4edb538c6",
+        "1": "432a75d4edb538c6",
+        "2": "432a75d4edb538c6",
+        "3": "432a75d4edb538c6",
+        "4": "432a75d4edb538c6",
+        "5": "432a75d4edb538c6",
+        "6": "432a75d4edb538c6",
+        "7": "432a75d4edb538c6"
       },
-      "motion_pixels": 44279,
-      "matched_pixels": 10348,
-      "max_uv_error_pixels": 0.00191186365,
-      "max_previous_depth_error": 7.21407726e-08,
-      "depth_pixels": 44279,
-      "depth_written_pixels": 27293,
-      "max_current_depth_error": 3.74090846e-06,
-      "coverage_frames": 12,
-      "coverage_pixels": 48957,
-      "coverage_ambiguous_pixels": 195,
-      "taa_invalidate_sites": {
-        "9": [
-          "reset"
-        ]
+      "frames": 8,
+      "us": {
+        "frames": 5,
+        "min": 34.9,
+        "median": 40.8,
+        "max": 1582.2,
+        "per_draw_median": 20.4
       },
-      "taa_history_frames": [
-        1,
-        2,
-        4,
-        10,
-        11
+      "refusals": [
+        {
+          "device": "1",
+          "frame": "2",
+          "reason": "lease",
+          "detail": "bookends",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "5",
+          "reason": "state",
+          "detail": "no_sun",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "7",
+          "reason": "state",
+          "detail": "multistream",
+          "result": "00000000",
+          "stage": "0"
+        }
       ],
-      "camera_policy": {
-        "0": 1,
-        "1": 2,
-        "2": 2,
-        "3": 2,
-        "4": 2,
-        "5": 2,
-        "6": 2,
-        "7": 1,
-        "8": 2,
-        "9": 1,
-        "10": 2,
-        "11": 2
-      },
-      "taa_changed_pixels": {
-        "0": 0,
-        "1": 298,
-        "2": 0,
-        "3": 0,
-        "4": 237,
-        "5": 0,
-        "6": 0,
-        "7": 0,
-        "8": 0,
-        "9": 0,
-        "10": 347,
-        "11": 356
-      },
-      "color_hashes_before_boundary": {
-        "0": "7780633dafe6b5fa",
-        "1": "9d598f52bb65c0a6",
-        "2": "47059dc8e751a751",
-        "3": "35942d847a659ef3",
-        "4": "c9c5e220baccde15",
-        "5": "0554c1e31f1e7738",
-        "6": "d8dbde26c9cf0b5d",
-        "7": "ae0b3498446c57df",
-        "8": "48e1c7ad26e4fdc1",
-        "9": "4fccb6c7391e6b2d",
-        "10": "750cdfe97753849e",
-        "11": "245a6dd4042eff8d"
-      },
-      "hdr": {
-        "enabled": false
-      },
-      "taa_copy": "stretch",
-      "depth_readbacks": {
-        "1": {
-          "written": 2660,
-          "min": 0.4877398908138275,
-          "max": 0.6000000238418579
+      "targets": [
+        {
+          "device": 1,
+          "frame": 0,
+          "size": 256,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 1
         },
-        "2": {
-          "written": 2683,
-          "min": 0.4888249635696411,
-          "max": 0.6000000238418579
-        },
-        "3": {
-          "written": 2750,
-          "min": 0.5,
-          "max": 0.5
-        },
-        "4": {
-          "written": 2677,
-          "min": 0.4885537326335907,
-          "max": 0.6000000238418579
-        },
-        "5": {
-          "written": 2750,
-          "min": 0.5,
-          "max": 0.5
-        },
-        "6": {
-          "written": 2616,
-          "min": 0.4890962541103363,
-          "max": 0.6000000238418579
-        },
-        "7": {
-          "written": 190,
-          "min": 0.5,
-          "max": 0.5
-        },
-        "8": {
-          "written": 2731,
-          "min": 0.5,
-          "max": 0.6000000238418579
+        {
+          "device": 1,
+          "frame": 4,
+          "size": 256,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 2
         }
-      },
-      "camera_log": {
-        "0": {
-          "policy": 1,
-          "reason": 3,
-          "cut": 0,
-          "rotation_deg": 0.0
-        },
-        "1": {
-          "policy": 2,
-          "reason": 0,
-          "cut": 0,
-          "rotation_deg": 1.0
-        },
-        "2": {
-          "policy": 2,
-          "reason": 0,
-          "cut": 0,
-          "rotation_deg": 0.9999
-        },
-        "3": {
-          "policy": 2,
-          "reason": 0,
-          "cut": 0,
-          "rotation_deg": 1.0
-        },
-        "4": {
-          "policy": 2,
-          "reason": 0,
-          "cut": 0,
-          "rotation_deg": 1.0
-        },
-        "5": {
-          "policy": 2,
-          "reason": 0,
-          "cut": 0,
-          "rotation_deg": 0.9998
-        },
-        "6": {
-          "policy": 2,
-          "reason": 0,
-          "cut": 0,
-          "rotation_deg": 0.9999
-        },
-        "7": {
-          "policy": 1,
-          "reason": 4,
-          "cut": 1,
-          "rotation_deg": 31.0
-        },
-        "8": {
-          "policy": 2,
-          "reason": 0,
-          "cut": 0,
-          "rotation_deg": 0.9999
-        }
-      },
-      "taa_image": {
-        "differing_fraction": {
-          "1": 0.02783203125,
-          "2": 0.0,
-          "3": 0.0,
-          "4": 0.04931640625,
-          "5": 0.0,
-          "6": 0.0,
-          "7": 0.0,
-          "8": 0.0
-        },
-        "max_difference": {
-          "1": 0.18707658356311274,
-          "2": 0.00023360906862746056,
-          "3": 0.00023360906862746056,
-          "4": 0.44848249846813726,
-          "5": 0.00023360906862746056,
-          "6": 0.00023360906862746056,
-          "7": 0.0004844515931372584,
-          "8": 0.00023360906862746056
-        }
-      },
-      "present_readbacks": {
-        "1": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.4989013671875,
-          "mean_code_error_vs_resolved": 0.06813586503267288,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        },
-        "2": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.0595703125,
-          "mean_code_error_vs_resolved": 0.033986032009124756,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        },
-        "3": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.0595703125,
-          "mean_code_error_vs_resolved": 0.034821510314941406,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        },
-        "4": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.49847412109375,
-          "mean_code_error_vs_resolved": 0.09840629994869232,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        },
-        "5": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.0595703125,
-          "mean_code_error_vs_resolved": 0.034729957580566406,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        },
-        "6": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.0595703125,
-          "mean_code_error_vs_resolved": 0.03320789337158203,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        },
-        "7": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.12353515625,
-          "mean_code_error_vs_resolved": 0.07799148559570312,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        },
-        "8": {
-          "equals_presented": true,
-          "max_code_error_vs_resolved": 0.0595703125,
-          "mean_code_error_vs_resolved": 0.03466320037841797,
-          "alpha_max_error_vs_resolved": 0.0517578125
-        }
-      },
-      "variants": 4,
-      "frames_logged": 9,
-      "readbacks": 8,
-      "routes": 19,
-      "render_state": {
-        "0": {
-          "queries": 22,
-          "hits": 22,
-          "gets": 14,
-          "resyncs": 0,
-          "invalidations": 0
-        },
-        "1": {
-          "queries": 22,
-          "hits": 22,
-          "gets": 14,
-          "resyncs": 0,
-          "invalidations": 0
-        },
-        "2": {
-          "queries": 22,
-          "hits": 22,
-          "gets": 14,
-          "resyncs": 0,
-          "invalidations": 0
-        },
-        "3": {
-          "queries": 22,
-          "hits": 22,
-          "gets": 14,
-          "resyncs": 0,
-          "invalidations": 0
-        },
-        "4": {
-          "queries": 27,
-          "hits": 27,
-          "gets": 14,
-          "resyncs": 0,
-          "invalidations": 0
-        },
-        "5": {
-          "queries": 32,
-          "hits": 32,
-          "gets": 14,
-          "resyncs": 0,
-          "invalidations": 0
-        },
-        "6": {
-          "queries": 22,
-          "hits": 22,
-          "gets": 14,
-          "resyncs": 0,
-          "invalidations": 0
-        },
-        "7": {
-          "queries": 14,
-          "hits": 2,
-          "gets": 26,
-          "resyncs": 2,
-          "invalidations": 0
-        },
-        "8": {
-          "queries": 22,
-          "hits": 12,
-          "gets": 24,
-          "resyncs": 1,
-          "invalidations": 0
-        }
-      },
-      "route_decisions": [
-        [
-          "1",
-          "2",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "1",
-          "3",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "2",
-          "2",
-          "5",
-          "1",
-          "0"
-        ],
-        [
-          "2",
-          "3",
-          "5",
-          "1",
-          "0"
-        ],
-        [
-          "3",
-          "2",
-          "6",
-          "1",
-          "0"
-        ],
-        [
-          "3",
-          "3",
-          "6",
-          "1",
-          "0"
-        ],
-        [
-          "4",
-          "2",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "4",
-          "3",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "4",
-          "4",
-          "4",
-          "0",
-          "0"
-        ],
-        [
-          "4",
-          "5",
-          "3",
-          "0",
-          "0"
-        ],
-        [
-          "5",
-          "2",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "5",
-          "3",
-          "6",
-          "1",
-          "0"
-        ],
-        [
-          "5",
-          "4",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "6",
-          "2",
-          "6",
-          "1",
-          "0"
-        ],
-        [
-          "6",
-          "3",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "7",
-          "2",
-          "3",
-          "0",
-          "0"
-        ],
-        [
-          "7",
-          "3",
-          "0",
-          "1",
-          "1"
-        ],
-        [
-          "8",
-          "2",
-          "6",
-          "1",
-          "0"
-        ],
-        [
-          "8",
-          "3",
-          "0",
-          "1",
-          "1"
-        ]
       ],
-      "variant": "ownership",
-      "ownership": {
-        "wrapped": true,
-        "depth_copy": false,
-        "admission": {
-          "enabled": false,
-          "final_factories": 1,
-          "final_devices": 1,
-          "nested_factory_witnesses": 0,
-          "admitted_roots": 0,
-          "promotions": 0,
-          "final_vetoes": 0
-        },
-        "source_epochs": {
-          "1": 0,
-          "2": 0,
-          "3": 0,
-          "4": 0,
-          "5": 0,
-          "6": 0,
-          "7": 0,
-          "8": 0
-        }
-      },
-      "shadow_replay_candidates": {
-        "frames": 12,
-        "witnesses": {},
-        "checks": 39,
-        "summary": {
-          "frames": 12,
-          "devices": [
-            1
-          ],
-          "slice0_p50": 2,
-          "slice0_max": 3,
-          "routed_p50": 2,
-          "managed_equals_slice0_share": 1.0,
-          "quiet_equals_leased_share": 1.0,
-          "writable_after_total": 0,
-          "serial_changed_total": 0,
-          "cold_thread_total": 0,
-          "waiting_or_nested_frames": 0,
-          "overflow_frames": 0,
-          "unknown_total": 0,
-          "shadow_mismatch_total": 0,
-          "stale_total": 0,
-          "witnesses": {},
-          "predicates": {
-            "managed_boundary": false,
-            "lease_contract": true,
-            "single_thread": true,
-            "promotion_possible": true
+      "map": {
+        "size": 256,
+        "frames": {
+          "0": {
+            "size": 256,
+            "covered_cpu": 659,
+            "covered_gpu": 659,
+            "ambiguous": 69,
+            "compared": 630,
+            "coverage_disagreements": 0,
+            "max_depth_error": 8.716278478204664e-06,
+            "max_depth_error_codes16": 0.5712300263476209,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "1": {
+            "size": 256,
+            "covered_cpu": 650,
+            "covered_gpu": 650,
+            "ambiguous": 20,
+            "compared": 641,
+            "coverage_disagreements": 0,
+            "max_depth_error": 1.1863461540084774e-05,
+            "max_depth_error_codes16": 0.7774838154909958,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "2": {
+            "unchanged": true
+          },
+          "3": {
+            "size": 256,
+            "covered_cpu": 622,
+            "covered_gpu": 623,
+            "ambiguous": 21,
+            "compared": 614,
+            "coverage_disagreements": 0,
+            "max_depth_error": 9.106219048315989e-06,
+            "max_depth_error_codes16": 0.5967851715504366,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "4": {
+            "size": 256,
+            "covered_cpu": 618,
+            "covered_gpu": 618,
+            "ambiguous": 36,
+            "compared": 596,
+            "coverage_disagreements": 0,
+            "max_depth_error": 7.0710570098109216e-06,
+            "max_depth_error_codes16": 0.46340879219496856,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "5": {
+            "unchanged": true
+          },
+          "6": {
+            "size": 256,
+            "covered_cpu": 586,
+            "covered_gpu": 586,
+            "ambiguous": 19,
+            "compared": 577,
+            "coverage_disagreements": 0,
+            "max_depth_error": 8.793772265092148e-06,
+            "max_depth_error_codes16": 0.576308659165079,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "7": {
+            "unchanged": true
           }
-        }
+        },
+        "max_depth_error": 1.1863461540084774e-05,
+        "covered_texels": 3136
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-taa-camera-candidates-on-20260915-192853-774237",
-      "trace_sha256": "ef90b62d137faba5d1d57006fccccd77fd53d4202ab0fb945b6d11790b486978",
-      "dll_sha256": "de5ec257c5f202c598aa65b580a0c67ace274ede0f6d8fd59327b57f096bd1c2",
-      "exe_sha256": "b2f8e8a57040131bcf1e154f0f4d2edfbf5ef5e64bdbb5e668ce38ee112b5e38"
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-on-20260916-011401-137110",
+      "trace_sha256": "3bbf4846b394c1a9ae870e36775ff301b8318e08a6c55d67ae75d3ed620725b7",
+      "dll_sha256": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+      "exe_sha256": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e"
+    },
+    "seam-ownership-shadow-replay-off": {
+      "checks": 98,
+      "depth": false,
+      "casters": 2,
+      "taa": false,
+      "color_hashes": {
+        "0": "432a75d4edb538c6",
+        "1": "432a75d4edb538c6",
+        "2": "432a75d4edb538c6",
+        "3": "432a75d4edb538c6",
+        "4": "432a75d4edb538c6",
+        "5": "432a75d4edb538c6",
+        "6": "432a75d4edb538c6",
+        "7": "432a75d4edb538c6"
+      },
+      "frames": 8,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-off-20260916-011405-881574",
+      "trace_sha256": "dd70ec10ef8bbd01ad55ea4b0aa62d98d38c51abef1a2205b8efa47dc6856e84",
+      "dll_sha256": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+      "exe_sha256": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e"
+    },
+    "seam-ownership-taa-shadow-replay-on": {
+      "checks": 167,
+      "depth": true,
+      "casters": 2,
+      "taa": true,
+      "color_hashes": {
+        "0": "5885370fcd5286af",
+        "1": "75b1a7e390b08405",
+        "2": "7a155adbf320620e",
+        "3": "d89c8b26fe89f96f",
+        "4": "b50485f1468b983b",
+        "5": "0f17561db229202d",
+        "6": "410157942398478d",
+        "7": "b34353d93d518e70"
+      },
+      "frames": 8,
+      "us": {
+        "frames": 5,
+        "min": 37.3,
+        "median": 42.5,
+        "max": 1428.2,
+        "per_draw_median": 21.25
+      },
+      "refusals": [
+        {
+          "device": "1",
+          "frame": "2",
+          "reason": "lease",
+          "detail": "bookends",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "5",
+          "reason": "state",
+          "detail": "no_sun",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "7",
+          "reason": "state",
+          "detail": "multistream",
+          "result": "00000000",
+          "stage": "0"
+        }
+      ],
+      "targets": [
+        {
+          "device": 1,
+          "frame": 0,
+          "size": 256,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 1
+        },
+        {
+          "device": 1,
+          "frame": 4,
+          "size": 256,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 2
+        }
+      ],
+      "map": {
+        "size": 256,
+        "frames": {
+          "0": {
+            "size": 256,
+            "covered_cpu": 659,
+            "covered_gpu": 659,
+            "ambiguous": 69,
+            "compared": 630,
+            "coverage_disagreements": 0,
+            "max_depth_error": 8.716278478204664e-06,
+            "max_depth_error_codes16": 0.5712300263476209,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "1": {
+            "size": 256,
+            "covered_cpu": 650,
+            "covered_gpu": 650,
+            "ambiguous": 20,
+            "compared": 641,
+            "coverage_disagreements": 0,
+            "max_depth_error": 1.1863461540084774e-05,
+            "max_depth_error_codes16": 0.7774838154909958,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "2": {
+            "unchanged": true
+          },
+          "3": {
+            "size": 256,
+            "covered_cpu": 622,
+            "covered_gpu": 623,
+            "ambiguous": 21,
+            "compared": 614,
+            "coverage_disagreements": 0,
+            "max_depth_error": 9.106219048315989e-06,
+            "max_depth_error_codes16": 0.5967851715504366,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "4": {
+            "size": 256,
+            "covered_cpu": 618,
+            "covered_gpu": 618,
+            "ambiguous": 36,
+            "compared": 596,
+            "coverage_disagreements": 0,
+            "max_depth_error": 7.0710570098109216e-06,
+            "max_depth_error_codes16": 0.46340879219496856,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "5": {
+            "unchanged": true
+          },
+          "6": {
+            "size": 256,
+            "covered_cpu": 586,
+            "covered_gpu": 586,
+            "ambiguous": 19,
+            "compared": 577,
+            "coverage_disagreements": 0,
+            "max_depth_error": 8.793772265092148e-06,
+            "max_depth_error_codes16": 0.576308659165079,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "7": {
+            "unchanged": true
+          }
+        },
+        "max_depth_error": 1.1863461540084774e-05,
+        "covered_texels": 3136
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-taa-shadow-replay-on-20260916-011407-340862",
+      "trace_sha256": "bcd22eabc41e06f9dc88dba4bb7447e0ee84ab451b550e33fe3a985da01570b0",
+      "dll_sha256": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+      "exe_sha256": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e"
+    },
+    "seam-ownership-taa-shadow-replay-off": {
+      "checks": 121,
+      "depth": false,
+      "casters": 2,
+      "taa": true,
+      "color_hashes": {
+        "0": "5885370fcd5286af",
+        "1": "75b1a7e390b08405",
+        "2": "7a155adbf320620e",
+        "3": "d89c8b26fe89f96f",
+        "4": "b50485f1468b983b",
+        "5": "0f17561db229202d",
+        "6": "410157942398478d",
+        "7": "b34353d93d518e70"
+      },
+      "frames": 8,
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-taa-shadow-replay-off-20260916-011408-999383",
+      "trace_sha256": "35731e3ad19f0ec592107e913097922162c22d19f07a07906b1b57293c8e75c9",
+      "dll_sha256": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+      "exe_sha256": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e"
+    },
+    "seam-ownership-shadow-replay-casters-2": {
+      "checks": 144,
+      "depth": true,
+      "casters": 2,
+      "taa": false,
+      "color_hashes": {
+        "0": "432a75d4edb538c6",
+        "1": "432a75d4edb538c6",
+        "2": "432a75d4edb538c6",
+        "3": "432a75d4edb538c6",
+        "4": "432a75d4edb538c6",
+        "5": "432a75d4edb538c6",
+        "6": "432a75d4edb538c6",
+        "7": "432a75d4edb538c6"
+      },
+      "frames": 8,
+      "us": {
+        "frames": 5,
+        "min": 33.5,
+        "median": 40.7,
+        "max": 1379.1,
+        "per_draw_median": 20.35
+      },
+      "refusals": [
+        {
+          "device": "1",
+          "frame": "2",
+          "reason": "lease",
+          "detail": "bookends",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "5",
+          "reason": "state",
+          "detail": "no_sun",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "7",
+          "reason": "state",
+          "detail": "multistream",
+          "result": "00000000",
+          "stage": "0"
+        }
+      ],
+      "targets": [
+        {
+          "device": 1,
+          "frame": 0,
+          "size": 1024,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 1
+        },
+        {
+          "device": 1,
+          "frame": 4,
+          "size": 1024,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 2
+        }
+      ],
+      "map": {
+        "size": 1024,
+        "frames": {
+          "0": {
+            "size": 1024,
+            "covered_cpu": 10443,
+            "covered_gpu": 10444,
+            "ambiguous": 85,
+            "compared": 10403,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.0375014206107664e-06,
+            "max_depth_error_codes16": 0.1990656931011472,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "1": {
+            "size": 1024,
+            "covered_cpu": 10285,
+            "covered_gpu": 10285,
+            "ambiguous": 84,
+            "compared": 10244,
+            "coverage_disagreements": 0,
+            "max_depth_error": 2.7447414489012445e-06,
+            "max_depth_error_codes16": 0.17987937559519196,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "2": {
+            "unchanged": true
+          },
+          "3": {
+            "size": 1024,
+            "covered_cpu": 9947,
+            "covered_gpu": 9947,
+            "ambiguous": 85,
+            "compared": 9906,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.3182762366745777e-06,
+            "max_depth_error_codes16": 0.21746655144670513,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "4": {
+            "size": 1024,
+            "covered_cpu": 9797,
+            "covered_gpu": 9797,
+            "ambiguous": 76,
+            "compared": 9758,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.1895346220833787e-06,
+            "max_depth_error_codes16": 0.2090293409928563,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "5": {
+            "unchanged": true
+          },
+          "6": {
+            "size": 1024,
+            "covered_cpu": 9483,
+            "covered_gpu": 9483,
+            "ambiguous": 81,
+            "compared": 9443,
+            "coverage_disagreements": 0,
+            "max_depth_error": 1.9984739774714377e-06,
+            "max_depth_error_codes16": 0.13097199058756814,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "7": {
+            "unchanged": true
+          }
+        },
+        "max_depth_error": 3.3182762366745777e-06,
+        "covered_texels": 49956
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-casters-2-20260916-011410-586292",
+      "trace_sha256": "4a49df4c8dc50bccae3ae3be3643d93be29e76b84bc74dd08a83bb9260b18f13",
+      "dll_sha256": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+      "exe_sha256": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e"
+    },
+    "seam-ownership-shadow-replay-casters-8": {
+      "checks": 144,
+      "depth": true,
+      "casters": 8,
+      "taa": false,
+      "color_hashes": {
+        "0": "8c0852325938b28c",
+        "1": "8c0852325938b28c",
+        "2": "8c0852325938b28c",
+        "3": "8c0852325938b28c",
+        "4": "8c0852325938b28c",
+        "5": "8c0852325938b28c",
+        "6": "8c0852325938b28c",
+        "7": "8c0852325938b28c"
+      },
+      "frames": 8,
+      "us": {
+        "frames": 5,
+        "min": 46.1,
+        "median": 50.4,
+        "max": 1506.1,
+        "per_draw_median": 6.3
+      },
+      "refusals": [
+        {
+          "device": "1",
+          "frame": "2",
+          "reason": "lease",
+          "detail": "bookends",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "5",
+          "reason": "state",
+          "detail": "no_sun",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "7",
+          "reason": "state",
+          "detail": "multistream",
+          "result": "00000000",
+          "stage": "0"
+        }
+      ],
+      "targets": [
+        {
+          "device": 1,
+          "frame": 0,
+          "size": 1024,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 1
+        },
+        {
+          "device": 1,
+          "frame": 4,
+          "size": 1024,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 2
+        }
+      ],
+      "map": {
+        "size": 1024,
+        "frames": {
+          "0": {
+            "size": 1024,
+            "covered_cpu": 12768,
+            "covered_gpu": 12769,
+            "ambiguous": 339,
+            "compared": 12483,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.604495333986435e-06,
+            "max_depth_error_codes16": 0.236224206208135,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "1": {
+            "size": 1024,
+            "covered_cpu": 12531,
+            "covered_gpu": 12531,
+            "ambiguous": 552,
+            "compared": 12237,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.635435246895913e-06,
+            "max_depth_error_codes16": 0.23825188434057054,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "2": {
+            "unchanged": true
+          },
+          "3": {
+            "size": 1024,
+            "covered_cpu": 12184,
+            "covered_gpu": 12184,
+            "ambiguous": 532,
+            "compared": 11819,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.5884931018914656e-06,
+            "max_depth_error_codes16": 0.2351754839255591,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "4": {
+            "size": 1024,
+            "covered_cpu": 12018,
+            "covered_gpu": 12018,
+            "ambiguous": 560,
+            "compared": 11658,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.9437843570855335e-06,
+            "max_depth_error_codes16": 0.2584598516259575,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "5": {
+            "unchanged": true
+          },
+          "6": {
+            "size": 1024,
+            "covered_cpu": 11630,
+            "covered_gpu": 11630,
+            "ambiguous": 331,
+            "compared": 11349,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.873859082292874e-06,
+            "max_depth_error_codes16": 0.2538772288171458,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "7": {
+            "unchanged": true
+          }
+        },
+        "max_depth_error": 3.9437843570855335e-06,
+        "covered_texels": 61132
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-casters-8-20260916-011412-236964",
+      "trace_sha256": "863d4d1a084250b7f0c38b208d1dcebc4d0a8bffbf7672b97dfb298db0a00125",
+      "dll_sha256": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+      "exe_sha256": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e"
+    },
+    "seam-ownership-shadow-replay-casters-20": {
+      "checks": 144,
+      "depth": true,
+      "casters": 20,
+      "taa": false,
+      "color_hashes": {
+        "0": "8c0852325938b28c",
+        "1": "8c0852325938b28c",
+        "2": "8c0852325938b28c",
+        "3": "8c0852325938b28c",
+        "4": "8c0852325938b28c",
+        "5": "8c0852325938b28c",
+        "6": "8c0852325938b28c",
+        "7": "8c0852325938b28c"
+      },
+      "frames": 8,
+      "us": {
+        "frames": 5,
+        "min": 56.0,
+        "median": 65.8,
+        "max": 1463.4,
+        "per_draw_median": 3.29
+      },
+      "refusals": [
+        {
+          "device": "1",
+          "frame": "2",
+          "reason": "lease",
+          "detail": "bookends",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "5",
+          "reason": "state",
+          "detail": "no_sun",
+          "result": "00000000",
+          "stage": "0"
+        },
+        {
+          "device": "1",
+          "frame": "7",
+          "reason": "state",
+          "detail": "multistream",
+          "result": "00000000",
+          "stage": "0"
+        }
+      ],
+      "targets": [
+        {
+          "device": 1,
+          "frame": 0,
+          "size": 1024,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 1
+        },
+        {
+          "device": 1,
+          "frame": 4,
+          "size": 1024,
+          "map_format": 114,
+          "depth_format": 77,
+          "allocations": 2
+        }
+      ],
+      "map": {
+        "size": 1024,
+        "frames": {
+          "0": {
+            "size": 1024,
+            "covered_cpu": 17024,
+            "covered_gpu": 17025,
+            "ambiguous": 901,
+            "compared": 16219,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.604495333986435e-06,
+            "max_depth_error_codes16": 0.236224206208135,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "1": {
+            "size": 1024,
+            "covered_cpu": 16776,
+            "covered_gpu": 16777,
+            "ambiguous": 1049,
+            "compared": 15900,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.635435246895913e-06,
+            "max_depth_error_codes16": 0.23825188434057054,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "2": {
+            "unchanged": true
+          },
+          "3": {
+            "size": 1024,
+            "covered_cpu": 16281,
+            "covered_gpu": 16279,
+            "ambiguous": 1084,
+            "compared": 15407,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.5884931018914656e-06,
+            "max_depth_error_codes16": 0.2351754839255591,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "4": {
+            "size": 1024,
+            "covered_cpu": 16032,
+            "covered_gpu": 16032,
+            "ambiguous": 1283,
+            "compared": 15088,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.9437843570855335e-06,
+            "max_depth_error_codes16": 0.2584598516259575,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "5": {
+            "unchanged": true
+          },
+          "6": {
+            "size": 1024,
+            "covered_cpu": 15543,
+            "covered_gpu": 15543,
+            "ambiguous": 817,
+            "compared": 14785,
+            "coverage_disagreements": 0,
+            "max_depth_error": 3.873859082292874e-06,
+            "max_depth_error_codes16": 0.2538772288171458,
+            "tolerance": 0.0001,
+            "finite": true,
+            "ok": true
+          },
+          "7": {
+            "unchanged": true
+          }
+        },
+        "max_depth_error": 3.9437843570855335e-06,
+        "covered_texels": 81656
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-casters-20-20260916-011413-882183",
+      "trace_sha256": "03d917a0b5c82600d496a31cf045d04cab0fbfafde7ee44fe96a7821d135dccd",
+      "dll_sha256": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+      "exe_sha256": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e"
     }
   },
   "local_inputs": {
@@ -564,7 +858,7 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_before_build": {
-    "CMakeLists.txt": "5d3012ad14bc897a71527485c7d0b32e6456fb72e150eafc145f2428a0c7db42",
+    "CMakeLists.txt": "e0ec2fb48411306eea4d0965ef7e8f41b75255c8710443df442971a104852690",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -581,9 +875,9 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
+    "src/proxy/camera_state.cpp": "8687726e622f6543e04636be1375210b70e77eb4481f4803801f7d4f6282b4c9",
     "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
-    "src/proxy/capture.cpp": "27c9b3ad8041be5379fc89a19600ee3d18a06e9f9ef62cc1a8edb895e703eed2",
+    "src/proxy/capture.cpp": "c5fc6bbc8e935729e557c8629986aa9627ef5b0c8d4ddfeb44b46c51204c6faf",
     "src/proxy/capture.h": "6160992d0c312ee5373652e2053fba40774fb9a6bf858551cd2bf7ac0806465c",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -591,7 +885,7 @@
     "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
     "src/proxy/chase_camera.cpp": "934fe9da1525695d8100f5d0f90d72e64cc1f0fb8aac89df808c49c264bfe527",
     "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
-    "src/proxy/chase_camera_math.h": "5d4531a34f037999b6fef8ae02538d192c8cbd3b732262349ba3dd3d4c14ccab",
+    "src/proxy/chase_camera_math.h": "5922ceffc72a0ce25b81e23f0c5a6082d7a2a3ac87796e9acdf9a0abcf0de462",
     "src/proxy/chase_camera_native.h": "0f348abc94d1d44a57cf096a3fb095508f18daa86ce30d87f94951ddf3085c3d",
     "src/proxy/chase_fire.cpp": "a214c690d807e7b4c28ab706a99ad4638d16f8b0e4bd94c134bad7f8b15b4ae1",
     "src/proxy/chase_fire.h": "bf5798450448d5469af6741f712978d5dcda7381e5f30c5ec2fc1e80199e7df9",
@@ -599,11 +893,11 @@
     "src/proxy/chase_lead.h": "7de7705c884457b825b5ef062e537ed3cab1123f6c970b0d50a51b87dabd9685",
     "src/proxy/chase_lead_core.h": "3ced88dff0bf1a1654f7e6f49199ef46da77890f9c8d21584a50bf4ff8f244d2",
     "src/proxy/chase_native_timing_core.h": "7b93d8068465004e884e73c006a966f111fb4f391ba8aaa3db400f80cd5ed348",
-    "src/proxy/chase_transition.cpp": "c1204738bfb4e8e73736f9227a33b64c0cfde3299356335c57c530feb4796055",
+    "src/proxy/chase_transition.cpp": "1f3d3153fcc6b682786e68c4b5b59f557640fbe780773fc213cf24b6f9f7c2a9",
     "src/proxy/chase_transition.h": "d2fafbe68b6513779ccc1d47948c1574ea467213e7b54385e6bc9dc044db19c6",
     "src/proxy/chase_transition_core.h": "c9d527567ab24c4202115d8f866f22ba2e43cdb891f44ea91cf35dbc13055c8f",
     "src/proxy/chase_transition_identity_core.h": "ee0128afe7985afd252f387108d9b12ca6aa9fc9c985fb52fca3b598a6971bcb",
-    "src/proxy/chase_transition_restore_core.h": "712470cde7883036c1883da535e73f2f17139a141139779889c4b99bc230d0bc",
+    "src/proxy/chase_transition_restore_core.h": "f45f6dab42678aa970e221e27b044eaebb3564a61911c82d5b5d37b1a0249032",
     "src/proxy/comparison_controls.h": "a9127335c5cbfffbee7bdc0957cdc4aaabd281716f710e60513e9a2e1a372af7",
     "src/proxy/comparison_notice.cpp": "7368d22a4038451205fd5f498e6f1fb358bfd4d2b29a361d30eac8bee197ea69",
     "src/proxy/comparison_notice.h": "a967f16b63731a62bdbe24463e0f4006d79176ccdaff7e344cfada0e7ab075b8",
@@ -632,7 +926,7 @@
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
     "src/proxy/linear_cutout.h": "a913f958841e7e4c74e83eb577c922f9b280d4040771f32adb962c29ca36f905",
-    "src/proxy/loader.cpp": "56b3a6f1d8b3e7608d52a7a134baf27f2ad97b5d68a69e7921d55060a7910b13",
+    "src/proxy/loader.cpp": "2fb3f3e0d59390b77bf459f847a099320a48e0edc9fac018326aac59c550efa6",
     "src/proxy/loading_intervals_core.h": "a9254a0c1081ce4e95bbc2b31fbf472a7a7adfbae11b67a3fc755c44bbf91666",
     "src/proxy/loading_probes.cpp": "5ab9a604d03ebb82e80c67a0b98cce55cf6544252b07bf64db806b92a8969b77",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
@@ -650,13 +944,19 @@
     "src/proxy/mesh_adjacency_fast.h": "f3476d5343e30eebddf8053b16c119b31629b736d000e1ec59746bc2e604891f",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "91cc3b56a1dab5bec667b522068286f207ed43905c6389914b407c5d4b597ebe",
-    "src/proxy/motion_output.h": "da827d89b9cdf895964425434bc17fd16ac5368361c52407567f7996fd99eb8e",
+    "src/proxy/motion_output.cpp": "6c4dacc65b85057b5adb597a4a9489f174446f614ce01e06b3992dba66147a7f",
+    "src/proxy/motion_output.h": "6a7dde5699eb7525f7924fec1fbf79c7d6e08685233e0c3f15967cd18da2df29",
+    "src/proxy/motion_output_shadow_replay_inc.h": "cdb974d320d5b3b94d7afa72de355189d76342b4344c5ca2ee7f76944b8f553c",
     "src/proxy/object_capture.h": "397093b62033824cd3bd07697bbcd936313b475717490fe6ab642e5d474b7e3e",
     "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
     "src/proxy/object_trace.cpp": "e1a30a19038be21ea7a3061e41f14926d348479363c13679dd3c7edbe5eea79c",
     "src/proxy/object_trace.h": "91fdf715014c684ed521e9a56730fced743d9e2712b6463dde78e9d37088244f",
+    "src/proxy/point_light_admission.cpp": "ca87de0ce3040bacf326ea91e6f3d48581b087fa60fc24794409f7a185936e99",
+    "src/proxy/point_light_admission.h": "c47ab4ced8bc4f58f94c921b07bccc9bd6acf8a6b8136b46c4fafd9aee1a63ec",
+    "src/proxy/point_light_admission_core.h": "c5e92e3aa6a7ba73459ca812bb22ae87002aa09acf2f5dea300304d88e1e4e49",
+    "src/proxy/proxy_identity.cpp": "32cb930de75ad0691f6c785946466a7302126a6df169e7e8ce0cd6b54a6e4617",
+    "src/proxy/proxy_identity.h": "0a97969a898bcc0f8aa8c15b9a83c1428b8d68b15419d19e587926a0debf2e04",
     "src/proxy/resource_reader.cpp": "d62e5c3c444055a4f617f6c0e7fe74b187a5c9968fba9c6c751af1e927d3c61b",
     "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
     "src/proxy/resource_reader_core.cpp": "43eaf23f72236c569a4c5316ae06ab2d1ad186833453c43e84997882ca48437e",
@@ -668,6 +968,7 @@
     "src/proxy/scene_hook.h": "14dbfa77adcf6f208ad380071e940f4b2d4c145e9528380cc54199983e4ac41e",
     "src/proxy/screen_emission_admission.h": "09ee5e4b57913698e28594e89d9f4232113d6c53ed93ae5af272bc9900900ef5",
     "src/proxy/shadow_replay_candidates.h": "c81a116ff51273772133d8d069cdd0b94420f12bcfafdcd518e37e3b30192a54",
+    "src/proxy/shadow_replay_depth.h": "1f6a503ed74294544b406ab8b79d2675fb7cfe9aaf7daf690751947c983b2a0e",
     "src/proxy/sun_share_lane_inc.h": "08aee74af8d258a064fed31fd91e4991b6494ee032644bfca8f5ca5ccc628226",
     "src/proxy/telemetry.cpp": "79db179759b87149062fd0f1acd14b98540e84e4a66fbc47570c0511f8ce00a6",
     "src/proxy/telemetry.h": "d21acfa9e5a6faae2bab57a3d49689dad450a8907177de41c8770709c4c04ddc",
@@ -712,8 +1013,8 @@
     "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
     "src/renderer/linear_distance_fade.h": "9c27bf2c41e18dc115f2eb0c3f2edf6284617517556708861e24b4a779316d0b",
     "src/renderer/linear_distance_fade_composite_inc.h": "a2b69432cddaeed6217589e60ac31e236420b601969a611dab43605963e17179",
-    "src/renderer/linear_emission.cpp": "525c6091693a2a63838cbb1f5e048578322a028343d8e9679c17ac62760ef83a",
-    "src/renderer/linear_emission.h": "2dde88396f40c11f7c1a612c279d17bde9403e2d0f3095d1005d0fc3a8d442ef",
+    "src/renderer/linear_emission.cpp": "554559b74fe0b17a356f64117871187d8fe1a6a0e39c5f294341137424df3e9f",
+    "src/renderer/linear_emission.h": "3c4f9ddb5ac6d9c7f11f1c9fa509590bfcf585f08272d3727548a7cc8fd3f92d",
     "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
     "src/renderer/linear_emission_copy_clear_inc.h": "4e77b267085100ba905f214cc832d120e14b425845290a2a7e8e525d327cd7c4",
     "src/renderer/linear_emission_copy_inc.h": "73c2b18ec6bfc35f6f6c9eff72a95b189ee03b680f51464f5d2edb03f3dd5df2",
@@ -754,7 +1055,10 @@
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
-    "src/renderer/sun_share_frame.h": "cd7217e6fc761d7640d758cbe69f66b92d49e6d46d8bca3e104232363dcdf403",
+    "src/renderer/shadow_replay_pass.cpp": "38f0ddef6e8a1eabb583ac63d7a84356e806916019fd39b3fbb264eb0a0b335c",
+    "src/renderer/shadow_replay_pass.h": "3e88aa827928af9d9ce391e85a0319b96fea4d585fb98c7b365a3839795282c6",
+    "src/renderer/shadow_replay_projection.h": "c60856585d716f415171e3ab3755c392f2bc3a904d9cee933c58f5e7cbc9888f",
+    "src/renderer/sun_share_frame.h": "7463e63ce035b732b77a64b572133bb93cea5e97ce39023f707cb9675c1f0fe3",
     "src/renderer/taa_sharpen_program.h": "466529e19b24eefc0e7744510e0cc83c31dc3631f7fa02c6f6327cc9387c5cd3",
     "src/renderer/taa_sharpen_program_inc.h": "93b6cb01499fc4a5cad7789730f6fd5f757235a1a3ed995b0ee80e4d7174db40",
     "src/renderer/temporal_pass.cpp": "63be50cc67aef34d04607c40388b2a7ee16ab6246cfe592f6ba0941e3d8773e0",
@@ -798,55 +1102,112 @@
     "tools/analysis/summarize_capture.py": "9889f70f83659e35ee7312ce561a785c3170b06949e925576768c75ef742c11b",
     "verification/probe/abi_check.cpp": "ce9b3d58650932e70b74ea668835d188e7bf47b88421ec276dd1f8854307af46",
     "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
-    "verification/probe/build_motion_output.sh": "7e4942068f9c18894de80218a390d76ec927fe7941a85f5a737285ac3600b73c",
+    "verification/probe/build_motion_output.sh": "715e0365a1703b17833fdaffa70831834db6071a930060f50ab673af76c402e9",
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
-    "verification/probe/motion_output_fixture.cpp": "fb50b88557c11c9d26c4682e6ee490384f8a80c679878610a090311d03277dc5",
-    "verification/probe/run_motion_output.py": "d5a77dfe78d58f4c85945c5377df3e17a8d664a01628c0db9f12d6fb97789424",
+    "verification/probe/motion_output_fixture.cpp": "557f8b8b91574da9cba024e4753bb0e6d0f7e3ca7fac4362433f736aa08cb4ba",
+    "verification/probe/run_motion_output.py": "295e6531eb1fb2384bc29b42536d19ba8adcb68a0c56d180061fba17ae35b4c6",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",
     "verification/probe/wine_lock.py": "7406105cb53b0aecea4ce04dee5070b39df6befa2f35929019a6ed5b8fe2c484"
   },
-  "build_commands": [
-    [
-      "cmake",
-      "-S",
-      ".",
-      "-B",
-      "build",
-      "-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake",
-      "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-    ],
-    [
-      "cmake",
-      "--build",
-      "build",
-      "--clean-first",
-      "-j4"
-    ],
-    [
-      "i686-w64-mingw32-g++",
-      "-std=c++17",
-      "-Wall",
-      "-Wextra",
-      "-c",
-      "verification/probe/abi_check.cpp",
-      "-o",
-      "verification/probe/build/abi_check.o"
-    ],
-    [
-      "sh",
-      "verification/probe/build_motion_output.sh"
-    ]
-  ],
+  "build_commands": [],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "b2f8e8a57040131bcf1e154f0f4d2edfbf5ef5e64bdbb5e668ce38ee112b5e38",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "de5ec257c5f202c598aa65b580a0c67ace274ede0f6d8fd59327b57f096bd1c2",
-    "build/d3d9.dll": "1d375de25e211c86031164644b56d33f6ce885dea15cb428f59c999dad517805"
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a10b481cabb8fdfd3/verification/probe/build/motion_output_fixture.exe": "8087cb8db6376ad1e811c4cd4259fad9bd2a5bede3303ddc3291939a0f609f8e",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a10b481cabb8fdfd3/verification/probe/build/motion-output-seam/d3d9.dll": "a77045059ba691f07f59c9c62cde3f3beca8ccb6b312a3f16c32a9a4e3e72499",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a10b481cabb8fdfd3/build/d3d9.dll": "131c261e8703fa00c359460b3e69cdc7eb1b9b1bb760708d57c69a33391e8646"
   },
   "bench": {},
+  "shadow_replay_twins": {
+    "seam-ownership-shadow-replay-on": {
+      "twin": "seam-ownership-shadow-replay-off",
+      "presented": {
+        "twin": "seam-ownership-shadow-replay-off",
+        "frames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "pixels": 32768,
+        "exact": 32768,
+        "exact_fraction": 1.0,
+        "max_code_difference": 0,
+        "differing_frames": [],
+        "identical": true,
+        "classes": {
+          "background": {
+            "pixels": 11184,
+            "differing": 0
+          },
+          "flat": {
+            "pixels": 0,
+            "differing": 0
+          },
+          "material": {
+            "pixels": 21584,
+            "differing": 0
+          }
+        },
+        "differing_channels_bgra": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "color_hashes_identical": true
+    },
+    "seam-ownership-taa-shadow-replay-on": {
+      "twin": "seam-ownership-taa-shadow-replay-off",
+      "presented": {
+        "twin": "seam-ownership-taa-shadow-replay-off",
+        "frames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "pixels": 32768,
+        "exact": 32768,
+        "exact_fraction": 1.0,
+        "max_code_difference": 0,
+        "differing_frames": [],
+        "identical": true,
+        "classes": {
+          "background": {
+            "pixels": 11132,
+            "differing": 0
+          },
+          "flat": {
+            "pixels": 0,
+            "differing": 0
+          },
+          "material": {
+            "pixels": 21636,
+            "differing": 0
+          }
+        },
+        "differing_channels_bgra": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "color_hashes_identical": true
+    }
+  },
   "sources_after_run": {
-    "CMakeLists.txt": "5d3012ad14bc897a71527485c7d0b32e6456fb72e150eafc145f2428a0c7db42",
+    "CMakeLists.txt": "e0ec2fb48411306eea4d0965ef7e8f41b75255c8710443df442971a104852690",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
     "src/ownership/application_admission.h": "760e5ebea87691fd5545fd969b939ab301d0f760c8cdde2d234ed4bf75105f6d",
@@ -863,9 +1224,9 @@
     "src/ownership/finite_buffer_evidence.h": "3c2315014c635b8229b1a3b7e09c9bf1c01760c968fb758c0702c06276e87b3c",
     "src/ownership/portable_managed_upload.cpp": "e9e79e125422f8fbc79660f9b11ca08c83fe366590672d3b914eddfc01cf20a8",
     "src/ownership/portable_managed_upload.h": "c338d81b4c719106eb958e1a06a1829f017218d4c1a24a57d887810b1e42771c",
-    "src/proxy/camera_state.cpp": "393ebb75ccf89b6012329199c465dce9bf806980e7a1e4a77e1b1ea17e5dc3e3",
+    "src/proxy/camera_state.cpp": "8687726e622f6543e04636be1375210b70e77eb4481f4803801f7d4f6282b4c9",
     "src/proxy/camera_state.h": "b3d6c32f0f2258aebb3606280bae2e3f6d3f2c7a6708b4ebd000db010bbc9b3d",
-    "src/proxy/capture.cpp": "27c9b3ad8041be5379fc89a19600ee3d18a06e9f9ef62cc1a8edb895e703eed2",
+    "src/proxy/capture.cpp": "c5fc6bbc8e935729e557c8629986aa9627ef5b0c8d4ddfeb44b46c51204c6faf",
     "src/proxy/capture.h": "6160992d0c312ee5373652e2053fba40774fb9a6bf858551cd2bf7ac0806465c",
     "src/proxy/capture_state.cpp": "d431350736c7a2e3c16cea31f529fdf7f29eeb43461403d81c4d1afdb0adc211",
     "src/proxy/capture_state.h": "d3095758b92580bcc1029c8c6b1723de7423d98b73582f6e074c79f38cf73a1c",
@@ -873,7 +1234,7 @@
     "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
     "src/proxy/chase_camera.cpp": "934fe9da1525695d8100f5d0f90d72e64cc1f0fb8aac89df808c49c264bfe527",
     "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
-    "src/proxy/chase_camera_math.h": "5d4531a34f037999b6fef8ae02538d192c8cbd3b732262349ba3dd3d4c14ccab",
+    "src/proxy/chase_camera_math.h": "5922ceffc72a0ce25b81e23f0c5a6082d7a2a3ac87796e9acdf9a0abcf0de462",
     "src/proxy/chase_camera_native.h": "0f348abc94d1d44a57cf096a3fb095508f18daa86ce30d87f94951ddf3085c3d",
     "src/proxy/chase_fire.cpp": "a214c690d807e7b4c28ab706a99ad4638d16f8b0e4bd94c134bad7f8b15b4ae1",
     "src/proxy/chase_fire.h": "bf5798450448d5469af6741f712978d5dcda7381e5f30c5ec2fc1e80199e7df9",
@@ -881,11 +1242,11 @@
     "src/proxy/chase_lead.h": "7de7705c884457b825b5ef062e537ed3cab1123f6c970b0d50a51b87dabd9685",
     "src/proxy/chase_lead_core.h": "3ced88dff0bf1a1654f7e6f49199ef46da77890f9c8d21584a50bf4ff8f244d2",
     "src/proxy/chase_native_timing_core.h": "7b93d8068465004e884e73c006a966f111fb4f391ba8aaa3db400f80cd5ed348",
-    "src/proxy/chase_transition.cpp": "c1204738bfb4e8e73736f9227a33b64c0cfde3299356335c57c530feb4796055",
+    "src/proxy/chase_transition.cpp": "1f3d3153fcc6b682786e68c4b5b59f557640fbe780773fc213cf24b6f9f7c2a9",
     "src/proxy/chase_transition.h": "d2fafbe68b6513779ccc1d47948c1574ea467213e7b54385e6bc9dc044db19c6",
     "src/proxy/chase_transition_core.h": "c9d527567ab24c4202115d8f866f22ba2e43cdb891f44ea91cf35dbc13055c8f",
     "src/proxy/chase_transition_identity_core.h": "ee0128afe7985afd252f387108d9b12ca6aa9fc9c985fb52fca3b598a6971bcb",
-    "src/proxy/chase_transition_restore_core.h": "712470cde7883036c1883da535e73f2f17139a141139779889c4b99bc230d0bc",
+    "src/proxy/chase_transition_restore_core.h": "f45f6dab42678aa970e221e27b044eaebb3564a61911c82d5b5d37b1a0249032",
     "src/proxy/comparison_controls.h": "a9127335c5cbfffbee7bdc0957cdc4aaabd281716f710e60513e9a2e1a372af7",
     "src/proxy/comparison_notice.cpp": "7368d22a4038451205fd5f498e6f1fb358bfd4d2b29a361d30eac8bee197ea69",
     "src/proxy/comparison_notice.h": "a967f16b63731a62bdbe24463e0f4006d79176ccdaff7e344cfada0e7ab075b8",
@@ -914,7 +1275,7 @@
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
     "src/proxy/linear_cutout.h": "a913f958841e7e4c74e83eb577c922f9b280d4040771f32adb962c29ca36f905",
-    "src/proxy/loader.cpp": "56b3a6f1d8b3e7608d52a7a134baf27f2ad97b5d68a69e7921d55060a7910b13",
+    "src/proxy/loader.cpp": "2fb3f3e0d59390b77bf459f847a099320a48e0edc9fac018326aac59c550efa6",
     "src/proxy/loading_intervals_core.h": "a9254a0c1081ce4e95bbc2b31fbf472a7a7adfbae11b67a3fc755c44bbf91666",
     "src/proxy/loading_probes.cpp": "5ab9a604d03ebb82e80c67a0b98cce55cf6544252b07bf64db806b92a8969b77",
     "src/proxy/loading_probes.h": "92a4bf1383c6752e5d8a888231bd9b1873224603704b7354e0878d982ac2b482",
@@ -932,13 +1293,19 @@
     "src/proxy/mesh_adjacency_fast.h": "f3476d5343e30eebddf8053b16c119b31629b736d000e1ec59746bc2e604891f",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "91cc3b56a1dab5bec667b522068286f207ed43905c6389914b407c5d4b597ebe",
-    "src/proxy/motion_output.h": "da827d89b9cdf895964425434bc17fd16ac5368361c52407567f7996fd99eb8e",
+    "src/proxy/motion_output.cpp": "6c4dacc65b85057b5adb597a4a9489f174446f614ce01e06b3992dba66147a7f",
+    "src/proxy/motion_output.h": "6a7dde5699eb7525f7924fec1fbf79c7d6e08685233e0c3f15967cd18da2df29",
+    "src/proxy/motion_output_shadow_replay_inc.h": "cdb974d320d5b3b94d7afa72de355189d76342b4344c5ca2ee7f76944b8f553c",
     "src/proxy/object_capture.h": "397093b62033824cd3bd07697bbcd936313b475717490fe6ab642e5d474b7e3e",
     "src/proxy/object_lifetime.cpp": "4b14f47cc7b024274bd4c85ed7337092cb85dc5d3b6b5c148834256591747e07",
     "src/proxy/object_lifetime.h": "0c6e729704f633fd47dcfe5e5b3461cb4fafb519f32471853a22ccb663f132e0",
     "src/proxy/object_trace.cpp": "e1a30a19038be21ea7a3061e41f14926d348479363c13679dd3c7edbe5eea79c",
     "src/proxy/object_trace.h": "91fdf715014c684ed521e9a56730fced743d9e2712b6463dde78e9d37088244f",
+    "src/proxy/point_light_admission.cpp": "ca87de0ce3040bacf326ea91e6f3d48581b087fa60fc24794409f7a185936e99",
+    "src/proxy/point_light_admission.h": "c47ab4ced8bc4f58f94c921b07bccc9bd6acf8a6b8136b46c4fafd9aee1a63ec",
+    "src/proxy/point_light_admission_core.h": "c5e92e3aa6a7ba73459ca812bb22ae87002aa09acf2f5dea300304d88e1e4e49",
+    "src/proxy/proxy_identity.cpp": "32cb930de75ad0691f6c785946466a7302126a6df169e7e8ce0cd6b54a6e4617",
+    "src/proxy/proxy_identity.h": "0a97969a898bcc0f8aa8c15b9a83c1428b8d68b15419d19e587926a0debf2e04",
     "src/proxy/resource_reader.cpp": "d62e5c3c444055a4f617f6c0e7fe74b187a5c9968fba9c6c751af1e927d3c61b",
     "src/proxy/resource_reader.h": "873a3899269496d39cac43be32d376b3ea897a86dcc103d955545e9a85db6cb6",
     "src/proxy/resource_reader_core.cpp": "43eaf23f72236c569a4c5316ae06ab2d1ad186833453c43e84997882ca48437e",
@@ -950,6 +1317,7 @@
     "src/proxy/scene_hook.h": "14dbfa77adcf6f208ad380071e940f4b2d4c145e9528380cc54199983e4ac41e",
     "src/proxy/screen_emission_admission.h": "09ee5e4b57913698e28594e89d9f4232113d6c53ed93ae5af272bc9900900ef5",
     "src/proxy/shadow_replay_candidates.h": "c81a116ff51273772133d8d069cdd0b94420f12bcfafdcd518e37e3b30192a54",
+    "src/proxy/shadow_replay_depth.h": "1f6a503ed74294544b406ab8b79d2675fb7cfe9aaf7daf690751947c983b2a0e",
     "src/proxy/sun_share_lane_inc.h": "08aee74af8d258a064fed31fd91e4991b6494ee032644bfca8f5ca5ccc628226",
     "src/proxy/telemetry.cpp": "79db179759b87149062fd0f1acd14b98540e84e4a66fbc47570c0511f8ce00a6",
     "src/proxy/telemetry.h": "d21acfa9e5a6faae2bab57a3d49689dad450a8907177de41c8770709c4c04ddc",
@@ -994,8 +1362,8 @@
     "src/renderer/hdr_writeback_program_inc.h": "1719c1d7ba85da6cfa12f5662d6d4c33522a45c7fdb7cc1fcd2ae7f2fafb4146",
     "src/renderer/linear_distance_fade.h": "9c27bf2c41e18dc115f2eb0c3f2edf6284617517556708861e24b4a779316d0b",
     "src/renderer/linear_distance_fade_composite_inc.h": "a2b69432cddaeed6217589e60ac31e236420b601969a611dab43605963e17179",
-    "src/renderer/linear_emission.cpp": "525c6091693a2a63838cbb1f5e048578322a028343d8e9679c17ac62760ef83a",
-    "src/renderer/linear_emission.h": "2dde88396f40c11f7c1a612c279d17bde9403e2d0f3095d1005d0fc3a8d442ef",
+    "src/renderer/linear_emission.cpp": "554559b74fe0b17a356f64117871187d8fe1a6a0e39c5f294341137424df3e9f",
+    "src/renderer/linear_emission.h": "3c4f9ddb5ac6d9c7f11f1c9fa509590bfcf585f08272d3727548a7cc8fd3f92d",
     "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
     "src/renderer/linear_emission_copy_clear_inc.h": "4e77b267085100ba905f214cc832d120e14b425845290a2a7e8e525d327cd7c4",
     "src/renderer/linear_emission_copy_inc.h": "73c2b18ec6bfc35f6f6c9eff72a95b189ee03b680f51464f5d2edb03f3dd5df2",
@@ -1036,7 +1404,10 @@
     "src/renderer/rigid_replay_program.cpp": "0fd6437e7467c993f4f7c2d3fe0d4860350a74257583b528c2de24ef05a40573",
     "src/renderer/rigid_replay_program.h": "b26e61da17c3aa3237a4e738dd458dca331db223e62c61df78a5b7938acfce0f",
     "src/renderer/scene_boundary.h": "6d2504e4b568e6fc0d24d2bd6a0d9437a5ccd54fe9e003905dfb46535256303e",
-    "src/renderer/sun_share_frame.h": "cd7217e6fc761d7640d758cbe69f66b92d49e6d46d8bca3e104232363dcdf403",
+    "src/renderer/shadow_replay_pass.cpp": "38f0ddef6e8a1eabb583ac63d7a84356e806916019fd39b3fbb264eb0a0b335c",
+    "src/renderer/shadow_replay_pass.h": "3e88aa827928af9d9ce391e85a0319b96fea4d585fb98c7b365a3839795282c6",
+    "src/renderer/shadow_replay_projection.h": "c60856585d716f415171e3ab3755c392f2bc3a904d9cee933c58f5e7cbc9888f",
+    "src/renderer/sun_share_frame.h": "7463e63ce035b732b77a64b572133bb93cea5e97ce39023f707cb9675c1f0fe3",
     "src/renderer/taa_sharpen_program.h": "466529e19b24eefc0e7744510e0cc83c31dc3631f7fa02c6f6327cc9387c5cd3",
     "src/renderer/taa_sharpen_program_inc.h": "93b6cb01499fc4a5cad7789730f6fd5f757235a1a3ed995b0ee80e4d7174db40",
     "src/renderer/temporal_pass.cpp": "63be50cc67aef34d04607c40388b2a7ee16ab6246cfe592f6ba0941e3d8773e0",
@@ -1080,10 +1451,10 @@
     "tools/analysis/summarize_capture.py": "9889f70f83659e35ee7312ce561a785c3170b06949e925576768c75ef742c11b",
     "verification/probe/abi_check.cpp": "ce9b3d58650932e70b74ea668835d188e7bf47b88421ec276dd1f8854307af46",
     "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
-    "verification/probe/build_motion_output.sh": "7e4942068f9c18894de80218a390d76ec927fe7941a85f5a737285ac3600b73c",
+    "verification/probe/build_motion_output.sh": "715e0365a1703b17833fdaffa70831834db6071a930060f50ab673af76c402e9",
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
-    "verification/probe/motion_output_fixture.cpp": "fb50b88557c11c9d26c4682e6ee490384f8a80c679878610a090311d03277dc5",
-    "verification/probe/run_motion_output.py": "d5a77dfe78d58f4c85945c5377df3e17a8d664a01628c0db9f12d6fb97789424",
+    "verification/probe/motion_output_fixture.cpp": "557f8b8b91574da9cba024e4753bb0e6d0f7e3ca7fac4362433f736aa08cb4ba",
+    "verification/probe/run_motion_output.py": "295e6531eb1fb2384bc29b42536d19ba8adcb68a0c56d180061fba17ae35b4c6",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/verify_capture_state.py": "2a8e5a01ef5e012d0c0a49ed63f6b5c66c3f144917c6af494aca220a32e69ea1",
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",

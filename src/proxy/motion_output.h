@@ -41,6 +41,9 @@
 #include "fade_region.h"
 #include "fade_route_core.h"
 #include "shadow_replay_candidates.h"
+#include "shadow_replay_depth.h"
+#include "../renderer/shadow_replay_pass.h"
+#include "../renderer/shadow_replay_projection.h"
 namespace x3m::renderer { struct MotionOutputProfile; class TemporalPass; }
 namespace x3m::ownership { class AdmissionMonitor; }
 namespace x3m::telemetry { struct State; }
@@ -417,6 +420,13 @@ public:
     // scene end, at most 16 shadow_replay_lock_witness lines per device. Off: nothing.
     void configure_shadow_replay_candidates(bool requested, ownership::AdmissionMonitor* monitor) noexcept {
         candidates_requested_=requested; candidates_monitor_=requested?monitor:nullptr;
+    }
+    // One-cascade depth replay (shadow_replay_depth.h; X3M_SHADOW_REPLAY_DEPTH=1):
+    // the leased slice-0 candidates re-issued into a private sun-space map at
+    // the scene end, one shadow_replay_depth line per frame. Requires the
+    // counter above (the caller enables both). Off: nothing.
+    void configure_shadow_replay_depth(bool requested, unsigned size) noexcept {
+        depth_replay_requested_=requested&&candidates_requested_; depth_replay_size_=size; depth_cascade_.size=size;
     }
     bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
     // Diagnostic snapshot at scene end BEFORE AO/TAA; not a later color-owner lease.
@@ -911,6 +921,29 @@ private:
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
     void publish_shadow_replay_candidates() noexcept;
+    // Depth replay storage (motion_output_shadow_replay_inc.h): the geometry
+    // leases parallel to candidates_.records, the frame's sun constant as the
+    // slot-109 hook last saw it, the pass and its attach verdict.
+    bool depth_replay_requested_=false, depth_replay_attach_failed_=false;
+    unsigned depth_replay_size_=1024;
+    std::unique_ptr<renderer::ShadowReplayPass> depth_replay_;
+    HRESULT depth_replay_attach_result_=S_FALSE;
+    shadow_replay::DepthGeometry depth_geometry_[shadow_replay::record_capacity]{};
+    float depth_sun_constant_[4]{};
+    bool depth_sun_written_=false;
+    renderer::ShadowReplayCascade depth_cascade_{};
+    renderer::ShadowReplayBasis depth_basis_{}; // basis of the last replayed frame (seam readback)
+    unsigned depth_refusal_logs_[shadow_replay::depth_reason_count]{};
+    void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;
+    void release_depth_leases() noexcept;
+    bool ensure_shadow_replay_depth() noexcept;
+    void run_shadow_replay_depth(const bool* quiet) noexcept;
+    void log_depth_refusal(shadow_replay::DepthReason reason, const char* detail, HRESULT result, unsigned stage) noexcept;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+public:
+    HRESULT fixture_shadow_replay_readback(float* out, std::size_t floats, UINT* width, UINT* height, float* params, unsigned param_floats) noexcept;
+private:
+#endif
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;
     // The 4x4 StretchRect round trip of one 8-bit format through FP16 and
     // back (D1 of the native-Windows audit): exact 8-bit bytes, FP16 within

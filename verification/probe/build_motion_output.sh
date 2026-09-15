@@ -49,3 +49,4 @@ i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_came
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_scene_hook_fixture_install
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_hdr_fixture_fault
 i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_hdr_fixture_exposure
+i686-w64-mingw32-objdump -p build/motion-output-seam/d3d9.dll | grep -q x3m_shadow_replay_fixture_readback

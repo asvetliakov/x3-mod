@@ -345,6 +345,8 @@ void MotionOutput::release_resources() noexcept {
     if (hdr_) { hdr_->shutdown(); hdr_.reset(); hdr_enabled_ = false; }
     if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
     if (ao_ || ao_timing_created_) { taa_call([&] { ao_timing_release(); if (ao_) ao_->detach(); }); ao_.reset(); }
+    release_depth_leases();
+    if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
     release(sentinel_ps_);
     release(sentinel_mrt_ps_); release(sun_sentinel_ps_);
     release(quad_vs_); release(quad_declaration_);
@@ -1935,6 +1937,18 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     enabled_ = false; depth_enabled_ = false;
     sun_writer_count_ = sun_writer_overflow_ = 0; // signature cache is per device
     candidate_witnesses_ = 0; candidates_.reset(); candidate_pools_ = {}; candidates_published_frame_ = ~std::uint64_t(0); // witness cap, pool cache and frame serial are per device
+    release_depth_leases(); depth_sun_written_ = false; depth_replay_attach_failed_ = false; depth_basis_ = {}; // depth replay state is per device
+    for (unsigned& logged : depth_refusal_logs_) logged = 0;
+    depth_cascade_ = renderer::ShadowReplayCascade{}; depth_cascade_.size = depth_replay_size_;
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    { // Seam only: X3M_FIXTURE_SHADOW_EXTENT narrows cascade 0 (half-extent E,
+      // centred on the camera, depth +-2E) to the fixture's unit-size geometry.
+      char extent_text[16]{};
+      if (GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_EXTENT", extent_text, sizeof extent_text) > 0) {
+          const float value = std::strtof(extent_text, nullptr);
+          if (std::isfinite(value) && value > 0.f) { depth_cascade_.half_extent = value; depth_cascade_.forward_offset = 0.f; depth_cascade_.depth_half_range = 2.f * value; }
+      } }
+#endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     { // Seam only: X3M_FIXTURE_SLICE_NEAR moves the slice-0 near bound so the
       // fixture's unit-distance triangles are candidates; production keeps 6.
@@ -2447,6 +2461,7 @@ void MotionOutput::before_reset() noexcept {
     // timestamp queries are device objects and go with them (recreated lazily).
     if (ao_ || ao_timing_created_) taa_call([&] { ao_timing_release(); if (ao_) ao_->before_reset(); });
     ao_timing_failed_ = false; ao_timing_lost_ = false; ao_chain_failures_ = 0;
+    if (depth_replay_requested_) { release_depth_leases(); if (depth_replay_) taa_call([&] { depth_replay_->before_reset(); }); depth_replay_attach_failed_ = false; }
     ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
     // The re-attach hysteresis counts format alternation within one device
     // lifetime; a Reset starts a new one, so the first post-Reset frame must be
@@ -2465,6 +2480,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     ++generation_;
     if (taa_) taa_->after_reset(result);
     if (ao_) ao_->after_reset(result);
+    if (depth_replay_) depth_replay_->after_reset(result);
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
     if (!enabled_) return;
     // The interrupted frame continues after a successful Reset; capture is off.
@@ -2847,6 +2863,11 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
         std::memcpy(shadow_.ps_reserved + (lo - 216) * 4, data + (lo - start) * 4, (hi - lo) * 16);
         shadow_.ps_reserved_written = true;
     }
+    // Depth replay: the world sun direction (LightDir_Dir0, shadow_replay_depth.h) as last written.
+    if (depth_replay_requested_ && start <= shadow_replay::depth_sun_register && end > shadow_replay::depth_sun_register) {
+        std::memcpy(depth_sun_constant_, data + (shadow_replay::depth_sun_register - start) * 4, sizeof depth_sun_constant_);
+        depth_sun_written_ = true;
+    }
 }
 void MotionOutput::set_stream_source(UINT stream, IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride) noexcept {
     if (!enabled_ || shadow_.recording || stream) return;
@@ -3010,7 +3031,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {}; sun_frame_={}; sun_coverage_current_=sun_composition_completed_=false;
-    if (candidates_requested_) candidates_.reset(); // a frame that never reached a scene end keeps no records
+    if (candidates_requested_) { if (depth_replay_requested_) { release_depth_leases(); depth_sun_written_ = false; } candidates_.reset(); } // a frame that never reached a scene end keeps no records or leases; the sun is per frame
     // Keep failed-lane storage until the next scene latch can compare its
     // exact dimensions/generation before transactionally replacing it. The
     // reset frame snapshot above is unavailable; no stale lane is published.
@@ -5035,7 +5056,9 @@ void MotionOutput::readback() noexcept {
 // One read of the engine's projection and view buffers (camera_state.cpp:
 // two validated 64-byte copies) into the scene or the background slot.
 void MotionOutput::read_camera(bool scene) noexcept {
-    if (!taa_enabled_ || !camera_state::available()) return;
+    // The resolve's consumer, or the caster-candidate counter (its slice-0 test
+    // and the depth replay's cascade-0 projection need the scene latch, W1).
+    if (!(taa_enabled_ || candidates_requested_) || !camera_state::available()) return;
     camera_state::Sample sample{};
     const bool valid = camera_state::read(&sample);
     ++counters_.camera_reads;
@@ -5641,6 +5664,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     r.ib_view = static_cast<const ownership::BufferLockObservation&>(ib);
     r.vb_generation = vb.generation; r.ib_generation = ib.generation;
     ++candidates_.counts.leased;
+    if (depth_replay_requested_) note_depth_geometry(route, candidates_.record_count - 1);
 }
 void MotionOutput::publish_shadow_replay_candidates() noexcept {
     using shadow_replay::BufferVerdict;
@@ -5650,6 +5674,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     candidates_published_frame_ = frame_;
     auto& c = candidates_.counts;
     const std::uint32_t presenting = GetCurrentThreadId();
+    bool quiet_records[shadow_replay::record_capacity]{}; // per record: compared, not stale, every buffer quiet (depth replay admission)
     for (unsigned i = 0; i < candidates_.record_count; ++i) {
         const auto& r = candidates_.records[i];
         // Scene-end view of each recorded buffer. A buffer whose registry
@@ -5680,6 +5705,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         }
         c.serial_changed += serial; c.readonly_after += readonly && !writable; c.writable_after += writable;
         c.pending += pending; c.in_flight += in_flight; c.cold_thread += cold; c.quiet += quiet;
+        quiet_records[i] = quiet;
         for (unsigned b = 0; b < buffers && candidate_witnesses_ < shadow_replay::witness_capacity; ++b) {
             if (!present[b] || !verdicts[b].changed) continue;
             ++candidate_witnesses_;
@@ -5702,6 +5728,8 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         id_, frame_, c.routed, c.zwrite, c.slice0, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
         c.leased, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
         static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow);
+    if (depth_replay_requested_) run_shadow_replay_depth(quiet_records);
     candidates_.reset();
 }
+#include "motion_output_shadow_replay_inc.h"
 } // namespace x3m

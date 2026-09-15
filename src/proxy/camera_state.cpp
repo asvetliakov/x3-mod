@@ -38,8 +38,14 @@ bool initialize() {
     if(active)return true;
     const DWORD error=GetLastError();
     wchar_t setting[4]{};
-    const bool requested=GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT",setting,4)==1&&setting[0]==L'1'&&
-        GetEnvironmentVariableW(L"X3M_TAA",setting,4)==1&&setting[0]==L'1';
+    // The route's temporal consumer, or the shadow-replay counter/depth replay
+    // (docs/architecture/shadow-replay-gates.md, W1: the slice-0 test and the
+    // cascade-0 projection need the scene camera latch without TAA).
+    const bool motion=GetEnvironmentVariableW(L"X3M_MOTION_OUTPUT",setting,4)==1&&setting[0]==L'1';
+    const bool consumer=(GetEnvironmentVariableW(L"X3M_TAA",setting,4)==1&&setting[0]==L'1')||
+        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES",setting,4)==1&&setting[0]==L'1')||
+        (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH",setting,4)==1&&setting[0]==L'1');
+    const bool requested=motion&&consumer;
     if(!requested){state="disabled";SetLastError(error);return false;}
     if(!object_trace::executable_verified()){state="executable_mismatch";SetLastError(error);return false;}
     const uintptr_t base=0x400000;

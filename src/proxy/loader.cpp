@@ -40,7 +40,8 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     finite_positions_enabled = ownership_enabled && finite_requested;
     // Caster-candidate counter (shadow-replay-gates.md section 3): the lock
     // bookends ride the same switch; capture.cpp gates the route side.
-    const bool bookends_requested = GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 && setting[0] == L'1';
+    const bool bookends_requested = (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 && setting[0] == L'1')
+        || (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH", setting, 8) == 1 && setting[0] == L'1'); // the depth replay needs the same bookends
     lock_bookends_enabled = ownership_enabled && bookends_requested;
     // Step B locked-prefix bounds (screen-emission-region.md): the ownership
     // Unlock scan; MotionOutput reads the same switch for the draw side.
@@ -77,7 +78,7 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
         x3m::object_trace::initialize();
         x3m::log("object_trace active=%u status=%s recovery_required=%u",x3m::object_trace::active(),x3m::object_trace::status(),x3m::object_trace::recovery_required());
         x3m::object_lifetime::initialize();
-        x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 X3M_TAA=1; reads only, no patch
+        x3m::camera_state::initialize(); // X3M_MOTION_OUTPUT=1 with X3M_TAA=1 or the shadow-replay switches; reads only, no patch
         x3m::log("camera_state active=%u status=%s",x3m::camera_state::available(),x3m::camera_state::status());
         // X3M_SCENE_HOOK (default on with X3M_MOTION_OUTPUT=1, 0 off): the frame
         // routine's compositing callsite, exact executable and exact bytes

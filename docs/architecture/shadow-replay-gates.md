@@ -269,6 +269,139 @@ four predicates (`managed_boundary`, `lease_contract`, `single_thread`,
 the slice near bound through `X3M_FIXTURE_SLICE_NEAR` for the fixture's unit-distance
 triangles; production keeps 6). Evidence: [directional-shadows.md](../verification/directional-shadows.md).
 
+### Implemented: cascade-0 depth replay fixture (2026-09-16)
+
+Option `--shadow-replay-depth` (`X3M_SHADOW_REPLAY_DEPTH=1`; default off) with
+`--shadow-replay-size N` (`X3M_SHADOW_REPLAY_SIZE`, 64..4096, default 1024). It implies the
+counter above and shares its two prerequisites, `--motion-output --ownership`; no TAA, HDR,
+linear-material or lane prerequisite. Funded after user run 26 (`/tmp/x3-bottleX3-run65`)
+passed the four §3 predicates (slice0 p50 8, `managed == slice0` and `quiet == leased` on
+every frame, `writable_after`/`cold_thread`/`waiting`/`nested` 0). Nothing samples the map;
+no shading, no cascades beyond 0, and the hard live gate of §1 stays.
+
+Source: `src/renderer/shadow_replay_projection.h` (the cascade basis and the per-draw light
+rows, pure arithmetic), `src/renderer/shadow_replay_pass.{h,cpp}` (the map, its depth
+attachment, the two authored programs, the D3DSBT_ALL block and the transaction),
+`src/proxy/shadow_replay_depth.h` and `src/proxy/motion_output_shadow_replay_inc.h` (the
+geometry lease per counter record, admission, timing and the log lines, included by
+`motion_output.cpp`), the three route sites in `motion_output.cpp` (the sun copy in
+`set_pixel_constants_f`, the lease in `note_candidate_draw`, the call after the counter's
+frame line in `publish_shadow_replay_candidates`) plus lease release at frame begin, Reset
+and teardown; the switches in `capture.cpp` (`shadow_replay_depth_mode`) and `loader.cpp`
+(the bookends ride either switch); `camera_state.cpp` and `read_camera` now also latch the
+scene camera with the counter or depth switch on (W1; before, both were TAA-only, so the
+counter's slice-0 test without TAA always read 0).
+
+**Sun direction (W2, decided).** The pixel-shader constant `LightDir_Dir0` at register c4, the
+register the hull programs declare (153 of the 507 declaring programs, including the
+reviewed fixture pair `8759c7838bbc86c2` and the station material of
+[station-material-distance.md](../reverse-engineering/station-material-distance.md)):
+world space, object→light, normalized, recomputed per submitted node
+([camera-state-and-frame-routine.md](../reverse-engineering/camera-state-and-frame-routine.md)).
+The existing slot-109 hook copies 16 bytes when a write covers c4 (integer copy, no
+arithmetic in the light hook); each leased candidate records the value last written before
+its draw; at the scene end the first admitted record's value wins (the scene-wide spread is
+0.6°) after a finite/unit check (5 %). The light record `+0xb0` is not read (private layout).
+The sun-share lane carries no direction (it extracts a luminance fraction), so this register
+is the PS-constant source. Limitation: programs declaring `LightDir_Dir0` elsewhere (c1: 128,
+c22: 64, …) are not read; a per-pair CTAB column is the follow-up, and a frame whose
+candidates carry no valid c4 write is refused `state=sun`.
+
+**Projection.** As §2 with the seam able to narrow it: `SunView` looks along `−LightDir_Dir0`
+with up hint `(0,1,0)` (`(1,0,0)` within 8° of vertical), centred on the camera position
+plus forward × 128, half-extent 250 in sun-space x/y, z ±512, the centre snapped to the
+texel grid in sun space. Per draw one 4×4 in double from the application's own rows
+(`c24–27`, pre-jitter): `A` (clip → `(clip.x/m00, clip.y/m11, clip.w, 1)`), `W` (view →
+world from the latch, `Rᵀ`, `−t Rᵀ`) and `S` (world → sun NDC); the authored vs_3_0 program
+applies it as four `dp4` rows to `(v0.xyz, 1)` and passes the sun depth as `o1.x`, the
+ps_3_0 program writes it to `.r`. The vertex declaration, stream 0, indices, primitive
+arguments and cull mode are the application's (a sixth call per draw beyond the note's
+five: `SetRenderState(CULLMODE)`).
+
+**Lease and admission.** At the counter's record: native `AddRef` on the bound VB (and IB),
+the documented `GetVertexDeclaration` reference, the rows window and the sun copy;
+released after the scene end, at a frame begin without a scene end, before Reset and at
+teardown (under the capture mutex, so a final Release reenters safely). A declaration that
+references a stream other than 0, or an instanced stream 0 (`GetStreamSourceFreq(0) != 1`),
+is not leased (`skipped_state`, detail `multistream`): only stream 0 is leased, so nothing
+replays against whatever is bound at the scene end. The sun copy is per frame (cleared at
+the frame begin): a frame without a c4 write is refused `no_sun`. At the scene end
+the pass runs only when every record is quiet by the counter's verdict (bookends unchanged,
+not stale), leased, the camera latch is valid, a sun is known, no state block is recording,
+no query is active and no Reset is pending; any refusal refuses the whole frame and the
+map keeps its previous content. Targets: `R32F` render target, else `X8R8G8B8` with colour
+writes off (depth-only, unreadable); `D24X8`, else `D16`, via `CheckDeviceFormat` and
+`CheckDepthStencilMatch`; created lazily, released before Reset, recreated after. The
+transaction captures the block and the RT/DS/viewport/scissor bindings, unbinds the depth
+before the map becomes RT0 (the application's depth may be smaller), sets the depth-only
+state, Clears to far, replays, restores; a failed restore invalidates the render-state shadow.
+
+Grammar (per device; the frame line at every scene end):
+
+```
+shadow_replay_depth_mode requested=1 enabled=%u size=%u motion_output=%u ownership=%u
+shadow_replay_depth_device device=%llu attached=%u reason=%s result=%08lx size=%u map_format=%u depth_format=%u readable=%u adapter_format=%u
+shadow_replay_depth_target device=%llu frame=%llu size=%u map_format=%u depth_format=%u allocations=%u
+shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f
+shadow_replay_depth_refused device=%llu frame=%llu reason=%s detail=%s result=%08lx stage=%u
+```
+
+`draws` is the counter's `leased`; `replayed` is `draws` or 0; each `skipped_*` counts the
+records refused for that reason and is bounded by `draws`; a replayed frame skipped
+nothing. `us` is one QPC pair around the transaction (capture to restore). Refusal samples
+are capped at 8 per reason per device.
+
+**Fixture (`verification/probe/run_motion_output.py`, mode `shadowreplay`,
+`motion_output_shadow_replay_inc.h`).** The seam camera script with N managed casters at
+fixed rows (parallel planes) and a fixed world sun uploaded as c4, through the ownership
+wrapper, 8 frames: frame 2 issues a READONLY Lock/Unlock of caster 1 between its draw and
+the scene end, a Reset precedes frame 4, frame 5 writes no `LightDir_Dir0` (refused
+`state=no_sun`, every record counted), frame 7 draws caster 0 under a two-stream declaration
+(refused `state=multistream`, that record counted). The map is read back after every Present through
+`x3m_shadow_replay_fixture_readback` (seam only) with the basis, and
+`verification/probe/shadow_replay_depth.py` projects the same geometry through the same
+chain on the CPU and rasterizes it at the D3D9 sample positions (integer screen
+coordinates: measured, offset 0 gives zero coverage disagreements, offset 0.5 gives 31).
+The seam narrows the cascade to the fixture's unit-size geometry
+(`X3M_FIXTURE_SHADOW_EXTENT=8`: half-extent 8 centred on the camera, depth ±16).
+
+Measured (bottle X3, `verification/results/bottle-X3/motion-output-partial.json`,
+production DLL `131c261e8703…`, seam `a77045059ba6…`, fixture `8087cb8db637…`; checks 144/98/167/121/144/144/144):
+
+| case | draws | map | `us` min / median / first frame | max depth error (codes of 2⁻¹⁶) | covered texels |
+| --- | --- | --- | --- | --- | --- |
+| `seam-ownership-shadow-replay-on` | 2 | 256² | 34.9 / 40.8 / 1,582 | 1.2e-05 (0.8) | 3,136 |
+| `seam-ownership-taa-shadow-replay-on` | 2 | 256² | 37.3 / 42.5 / 1,428 | 1.2e-05 (0.8) | 3,136 |
+| `…-casters-2` | 2 | 1024² | 33.5 / 40.7 / 1,379 | 3.3e-06 (0.2) | 49,956 |
+| `…-casters-8` | 8 | 1024² | 46.1 / 50.4 / 1,506 | 3.9e-06 (0.3) | 61,132 |
+| `…-casters-20` | 20 | 1024² | 56.0 / 65.8 / 1,463 | 3.9e-06 (0.3) | 81,656 |
+
+Cost against the §2 model: ≈ 1.4 µs per draw (2 → 20 draws at 1024²: medians
+40.7 → 65.8 µs), inside the 2 µs estimate; the fixed part is ≈ 35 µs, not the ≈ 4 µs of
+"10 native calls", because the D3DSBT_ALL capture/apply on this backend dominates (the
+first frame's ≈ 1.5 ms creates the targets and the block; the first frame after Reset,
+71–102 µs, recreates the block). These are fixture wall times under Wine through the
+ownership wrapper, not game FPS. Coverage: 0 disagreements away from edges in every
+replayed frame (3,136–81,656 covered texels per case); the lease frame replayed 0 with
+`skipped_lease=1`, one `reason=lease detail=bookends` sample, and its map equal byte for
+byte to the previous frame's; `allocations=2` at frame 4 and every later frame replayed.
+Depth gate: the note's 1e-4 in normalized depth; measured 1.2e-05 at 256² with the 8-unit
+cascade (0.8 codes of 2⁻¹⁶: the rasterizer's sub-texel vertex snapping moves the
+interpolated depth by the per-texel gradient over its grid, magnified by the narrow cascade)
+and ≤ 3.9e-06 at 1024² (0.3 code). Presented frames with the option on are byte-identical
+to the option-off twin (32,768 pixels per twin, colour hashes equal) with TAA off and on;
+every watched state compares equal across the scene-end copy in both.
+
+Not exercised: the unreadable fallback formats (R32F and D24X8 are available here), the
+64-record cap, DYNAMIC/DEFAULT pools, a Lock held across the scene end (the counter's
+`pending` bucket refuses it by construction), a production-extent map in the game, native
+Windows ([platform-portability.md](platform-portability.md)). E1–E5 are unchanged.
+
+Open issues (review, 2026-09-16): ALPHATESTENABLE forced off makes alpha-tested casters
+write full-quad depth (revisit before any consumer); on DEVICELOST mid-transaction the
+private map may stay bound into the app's Reset (same convention as the AO pass; native
+behaviour unverified).
+
 ## 4. Non-goals and recommendation
 
 Non-goals: shadow application or any consumer of the map; cascades 1–2 and culling;

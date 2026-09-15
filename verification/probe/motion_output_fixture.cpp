@@ -395,6 +395,7 @@ struct Fixture {
     bool cutout = false, cutout_bench = false;
     bool sunlane = false, suncomposition = false;
     bool faderoute = false; // fade-band motion arm script (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT)
+    bool skip_c4 = false;   // shadowreplay script: material_state leaves PS c4 unwritten (a frame without a sun write)
     bool distancefade_enabled = false, distancefade_emissions_enabled = false;
     // Packed screen emission script (screen-emission-region.md step C): the
     // fade/emission transport plus the bullet pair; X3M_SCREEN_EMISSION as read.
@@ -563,7 +564,9 @@ struct Fixture {
         int count[4] = {1, 0, 1, 0}; api(d->SetVertexShaderConstantI(0, count, 1), "SetVertexShaderConstantI");
         BOOL fog = FALSE; api(d->SetVertexShaderConstantB(0, &fog, 1), "SetVertexShaderConstantB");
         float pixel[8][4]{}; pixel[0][0] = pixel[1][1] = pixel[2][2] = 1; pixel[3][0] = .25f; pixel[4][2] = 1; pixel[5][0] = .3f; pixel[5][1] = .2f; pixel[5][2] = .1f; pixel[6][0] = .5f; pixel[6][2] = .5f; pixel[7][0] = .1f; pixel[7][1] = .15f; pixel[7][2] = .2f;
-        api(d->SetPixelShaderConstantF(0, pixel[0], 8), "SetPixelShaderConstantF");
+        // The shadow-replay script's no-sun frame leaves c4 (LightDir_Dir0) unwritten this frame.
+        if (skip_c4) { api(d->SetPixelShaderConstantF(0, pixel[0], 4), "SetPixelShaderConstantF c0-3"); api(d->SetPixelShaderConstantF(5, pixel[5], 3), "SetPixelShaderConstantF c5-7"); }
+        else api(d->SetPixelShaderConstantF(0, pixel[0], 8), "SetPixelShaderConstantF");
         for (UINT i = 0; i < 4; ++i) {
             api(d->SetTexture(i, i == 3 ? static_cast<IDirect3DBaseTexture9*>(cube.p) : textures[i].p), "SetTexture");
             for (auto s : {D3DSAMP_MINFILTER, D3DSAMP_MAGFILTER}) api(d->SetSamplerState(i, s, D3DTEXF_POINT), "SetSamplerState");
@@ -3005,6 +3008,7 @@ struct Fixture {
 #include "motion_output_screen_emission_inc.h"
 #include "motion_output_cutout_inc.h"
 #include "motion_output_fade_route_inc.h"
+#include "motion_output_shadow_replay_inc.h"
 } // namespace
 // The glow pass stand-in: records the signal count at entry (the trampoline's
 // signal must precede it), then with glow the depth unbind and the bloom copy
@@ -3030,7 +3034,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|bench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute|shadowreplay [WxH|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -3090,7 +3094,7 @@ int main(int argc, char** argv) {
         f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
         f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.emissions || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.emissions || mode == "shadowreplay" || f.seam == (mode == "seam"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -3152,7 +3156,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if (f.sunlane) f.run_sun_lane(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

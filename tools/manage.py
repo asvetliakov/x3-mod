@@ -127,6 +127,8 @@ def main():
     parser.add_argument('--fade-witness', type=int, nargs='?', const=30, default=None, metavar='K', help='Diagnostic fade-region witness (X3M_FADE_WITNESS=K; requires --linear-distance-fade or --screen-emission; default off; "--fade-witness" alone means 30): every K-th frame without an admitted emission draw the M coverage target is read back once (GetRenderTargetData to a retained system-memory copy) and the covered pixels outside the union of that frame\'s derived fade rectangles are counted; one fade_witness line per K-th frame plus that frame\'s per-DIP fade_region lines (first 64, with a truncated count) in the session log, validated by verification/probe/run_linear_distance_fade_live.py (docs/architecture/linear-distance-fade-region.md, step 1)')
     parser.add_argument('--sun-shadow-lane', action='store_true', help='Diagnostic sun-share RT2 lane only; applies no shadows (default off; requires --motion-output --taa --hdr --linear-materials).')
     parser.add_argument('--shadow-replay-candidates', action='store_true', help='Lane-independent caster-candidate counter of the motion route (X3M_SHADOW_REPLAY_CANDIDATES=1; requires --motion-output --ownership only, works with original hull shading; default off): one shadow_replay_candidates line per scene end and at most 16 shadow_replay_lock_witness lines per device; integer bookkeeping per routed draw, no allocation, no shadows (docs/architecture/shadow-replay-gates.md, "Implemented")')
+    parser.add_argument('--shadow-replay-depth', action='store_true', help='One-cascade depth replay of the slice-0 caster candidates into a private sun-space map at every scene end (X3M_SHADOW_REPLAY_DEPTH=1; implies --shadow-replay-candidates and requires its prerequisites --motion-output --ownership only; default off): one shadow_replay_depth line per frame, nothing samples the map, no shadows are applied (docs/architecture/shadow-replay-gates.md, "Implemented: cascade-0 depth replay fixture")')
+    parser.add_argument('--shadow-replay-size', type=int, default=None, metavar='N', help='Side of the square depth replay map in texels, 64..4096, default 1024 (X3M_SHADOW_REPLAY_SIZE; requires --shadow-replay-depth)')
     parser.add_argument('--ambient-occlusion', action='store_true', help='Half-resolution GTAO at the scene-end hook, multiplied into the scene target before the temporal resolve (X3M_AMBIENT_OCCLUSION=1; requires --motion-output --taa; default off). Ctrl+Shift+F11 toggles the chain off/on during play for a same-scene comparison (one ambient_occlusion_toggle log line per press; the pass stays attached). docs/architecture/ambient-occlusion.md, "Step 2"')
     parser.add_argument('--ao-radius', type=float, default=None, metavar='METRES', help='Ambient occlusion world radius in metres, 0.1..100, default 2 (X3M_AO_RADIUS; requires --ambient-occlusion; view units are 0.2 m, the calibration is tunable because the view-unit check is inconclusive)')
     parser.add_argument('--ao-strength', type=float, default=None, help='Ambient occlusion strength s of the factor 1 - s (1 - ao), 0..1, default 0.5 (X3M_AO_STRENGTH; requires --ambient-occlusion)')
@@ -258,6 +260,12 @@ def main():
         parser.error('--sun-shadow-lane requires --motion-output --taa --hdr --linear-materials.')
     if args.shadow_replay_candidates and not (args.motion_output and args.ownership):
         parser.error('--shadow-replay-candidates requires --motion-output --ownership.')
+    if args.shadow_replay_depth and not (args.motion_output and args.ownership):
+        parser.error('--shadow-replay-depth requires --motion-output --ownership.')
+    if args.shadow_replay_size is not None and not args.shadow_replay_depth:
+        parser.error('--shadow-replay-size requires --shadow-replay-depth.')
+    if args.shadow_replay_size is not None and not 64 <= args.shadow_replay_size <= 4096:
+        parser.error('--shadow-replay-size must be within [64, 4096].')
     if args.ambient_occlusion and not (args.motion_output and args.taa):
         parser.error('--ambient-occlusion requires --motion-output --taa.')
     if not args.ambient_occlusion and (args.ao_radius is not None or args.ao_strength is not None or args.ao_debug or args.ao_timing):
@@ -444,7 +452,9 @@ def main():
             env['X3M_SHIMMER_TRACE'] = '1'
         # Ambient occlusion: every switch explicit so an inherited value cannot enable it.
         env['X3M_SUN_SHADOW_LANE'] = '1' if args.sun_shadow_lane else '0'
-        env['X3M_SHADOW_REPLAY_CANDIDATES'] = '1' if args.shadow_replay_candidates else '0'
+        env['X3M_SHADOW_REPLAY_CANDIDATES'] = '1' if (args.shadow_replay_candidates or args.shadow_replay_depth) else '0'
+        env['X3M_SHADOW_REPLAY_DEPTH'] = '1' if args.shadow_replay_depth else '0'
+        env['X3M_SHADOW_REPLAY_SIZE'] = str(args.shadow_replay_size if args.shadow_replay_size is not None else 1024)
         env['X3M_AMBIENT_OCCLUSION'] = '1' if args.ambient_occlusion else '0'
         env['X3M_AO_RADIUS'] = repr(args.ao_radius if args.ao_radius is not None else 2.0)
         env['X3M_AO_STRENGTH'] = repr(args.ao_strength if args.ao_strength is not None else 0.5)
