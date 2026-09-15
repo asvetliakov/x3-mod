@@ -1,0 +1,365 @@
+{
+  "passed": true,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "cases": {
+    "normal": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.725563292,
+      "checks": 10
+    },
+    "abandon": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.112869708,
+      "checks": 1
+    },
+    "threads": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.176362083000001,
+      "checks": 20
+    },
+    "allocation": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.159203250000001,
+      "checks": 5
+    },
+    "tls_alloc": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.117490458999999,
+      "checks": 5
+    },
+    "tls_set": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.101832334000001,
+      "checks": 5
+    },
+    "reuse": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.116191624999999,
+      "checks": 5
+    },
+    "forwarder": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.234395333000002,
+      "checks": 112
+    },
+    "bench_disabled-1-1-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.204284916999995
+    },
+    "bench_enabled-1-1-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.212684082999999
+    },
+    "bench_disabled-1-1-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.254326917
+    },
+    "bench_enabled-1-1-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.197006542000004
+    },
+    "bench_disabled-1-1-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.147428834000003
+    },
+    "bench_enabled-1-1-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.131702417
+    },
+    "bench_disabled-1-2-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.1624466669999975
+    },
+    "bench_enabled-1-2-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.236526749999996
+    },
+    "bench_disabled-1-2-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.163810334000004
+    },
+    "bench_enabled-1-2-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.194089542
+    },
+    "bench_disabled-1-2-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.137723417000004
+    },
+    "bench_enabled-1-2-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.147258625000006
+    },
+    "bench_disabled-4-1-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.150384834000008
+    },
+    "bench_enabled-4-1-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.184709499999997
+    },
+    "bench_disabled-4-1-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.134856292000009
+    },
+    "bench_enabled-4-1-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.22433525000001
+    },
+    "bench_disabled-4-1-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.144674041999991
+    },
+    "bench_enabled-4-1-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.138021041999991
+    },
+    "bench_disabled-4-2-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.199591082999973
+    },
+    "bench_enabled-4-2-0": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.687855082999988
+    },
+    "bench_disabled-4-2-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.15720804099999
+    },
+    "bench_enabled-4-2-1": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.500164250000012
+    },
+    "bench_disabled-4-2-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.222768583000004
+    },
+    "bench_enabled-4-2-2": {
+      "exit_code": 0,
+      "elapsed_seconds": 5.212371749999988
+    }
+  },
+  "benchmarks": [
+    {
+      "threads": 1,
+      "nesting": 1,
+      "pairs": [
+        {
+          "disabled_ns": 277.807,
+          "enabled_ns": 304.025,
+          "added_ns": 26.21799999999996
+        },
+        {
+          "disabled_ns": 281.508,
+          "enabled_ns": 297.49,
+          "added_ns": 15.982000000000028
+        },
+        {
+          "disabled_ns": 277.131,
+          "enabled_ns": 294.515,
+          "added_ns": 17.384000000000015
+        }
+      ],
+      "median_added_ns": 17.384000000000015,
+      "coarse_ceiling_ns": 13244.424,
+      "within_ceiling": true
+    },
+    {
+      "threads": 1,
+      "nesting": 2,
+      "pairs": [
+        {
+          "disabled_ns": 265.442,
+          "enabled_ns": 293.857,
+          "added_ns": 28.41500000000002
+        },
+        {
+          "disabled_ns": 265.656,
+          "enabled_ns": 291.656,
+          "added_ns": 26.0
+        },
+        {
+          "disabled_ns": 266.052,
+          "enabled_ns": 287.945,
+          "added_ns": 21.892999999999972
+        }
+      ],
+      "median_added_ns": 26.0,
+      "coarse_ceiling_ns": 13244.424,
+      "within_ceiling": true
+    },
+    {
+      "threads": 4,
+      "nesting": 1,
+      "pairs": [
+        {
+          "disabled_ns": 145.509,
+          "enabled_ns": 167.701,
+          "added_ns": 22.192000000000007
+        },
+        {
+          "disabled_ns": 146.836,
+          "enabled_ns": 167.725,
+          "added_ns": 20.88899999999998
+        },
+        {
+          "disabled_ns": 145.445,
+          "enabled_ns": 166.26,
+          "added_ns": 20.814999999999998
+        }
+      ],
+      "median_added_ns": 20.88899999999998,
+      "coarse_ceiling_ns": 13244.424,
+      "within_ceiling": true
+    },
+    {
+      "threads": 4,
+      "nesting": 2,
+      "pairs": [
+        {
+          "disabled_ns": 167.524,
+          "enabled_ns": 164.328,
+          "added_ns": -3.195999999999998
+        },
+        {
+          "disabled_ns": 146.278,
+          "enabled_ns": 165.717,
+          "added_ns": 19.43900000000002
+        },
+        {
+          "disabled_ns": 145.038,
+          "enabled_ns": 162.437,
+          "added_ns": 17.399
+        }
+      ],
+      "median_added_ns": 17.399,
+      "coarse_ceiling_ns": 13244.424,
+      "within_ceiling": true
+    }
+  ],
+  "binaries": {
+    "/private/tmp/x3-loading-intervals/verification/probe/build/loading_intervals/loading_intervals_fixture.exe": "aa900ef1a293a13ad786497fe9963d8a4ca2782d4d676a10a2bde3a51100b289",
+    "/private/tmp/x3-loading-intervals/verification/probe/build/loading_trace/loading_trace_fixture.exe": "cc838d97ec3d993b718b14d2af30480920546b2a50fd7f7f68aedfa9fd6697a1"
+  },
+  "artifact": {
+    "path": "/private/tmp/x3-loading-intervals/verification/probe/build/loading_trace/loading-intervals-204-11695837236472.bin",
+    "sha256": "346ea3dbfff68865267ac01887dab2e1bdabaa87c30a29978ede0365d6379233",
+    "summary": {
+      "schema": 1,
+      "frequency": 10000000,
+      "initialized_qpc": 11695837236472,
+      "begin_qpc": 11695837252062,
+      "end_qpc": 11695837434209,
+      "duration_ticks": 182147,
+      "device": 3,
+      "reset": 4,
+      "frame": 5,
+      "present_tid": 208,
+      "flags": 0,
+      "retained_records": 20040,
+      "complete": true,
+      "threads": [
+        {
+          "union_ticks": 108970,
+          "largest_gaps": [
+            [
+              11695837414850,
+              11695837433123
+            ],
+            [
+              11695837343016,
+              11695837345300
+            ],
+            [
+              11695837252062,
+              11695837254020
+            ],
+            [
+              11695837348983,
+              11695837350940
+            ],
+            [
+              11695837351995,
+              11695837352987
+            ],
+            [
+              11695837357075,
+              11695837357869
+            ],
+            [
+              11695837257029,
+              11695837257815
+            ],
+            [
+              11695837391123,
+              11695837391897
+            ]
+          ],
+          "tid": 208,
+          "generation": 1,
+          "records": 20040,
+          "completed": 20040,
+          "overwritten": 0,
+          "lost_envelope": [
+            0,
+            0
+          ],
+          "flags": 0,
+          "complete": true,
+          "presenting_tid_match": true
+        }
+      ],
+      "any_thread": {
+        "union_ticks": 108970,
+        "largest_gaps": [
+          [
+            11695837414850,
+            11695837433123
+          ],
+          [
+            11695837343016,
+            11695837345300
+          ],
+          [
+            11695837252062,
+            11695837254020
+          ],
+          [
+            11695837348983,
+            11695837350940
+          ],
+          [
+            11695837351995,
+            11695837352987
+          ],
+          [
+            11695837357075,
+            11695837357869
+          ],
+          [
+            11695837257029,
+            11695837257815
+          ],
+          [
+            11695837391123,
+            11695837391897
+          ]
+        ]
+      },
+      "gaps_meaning": "time with no retained admitted hooked activity",
+      "limits": "Wrapper occupancy includes waits; no critical-path or main-thread identity proof."
+    },
+    "export_ticks": 10698,
+    "frequency": 10000000
+  },
+  "limits": "CrossOver fixture cost, not game FPS/native Windows. Off/on delta excludes the disabled admission check; no old-build baseline. Exporter duration measured separately in the CPU forwarder fixture; game exporter cost remains unmeasured."
+}

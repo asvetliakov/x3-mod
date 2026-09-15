@@ -49,9 +49,101 @@ unsigned take_paths(PathRecord* out,unsigned capacity) noexcept {
     for(unsigned i=0;i<n&&copied<capacity;++i)out[copied++]=path_records[i];
     return copied;
 }
+// ---- bounded process-lifetime interval recorder ----
+namespace {
+struct Atomic32 {
+    volatile LONG value=0;
+    LONG read() noexcept {return InterlockedCompareExchange(&value,0,0);}
+    LONG exchange(LONG n) noexcept {return InterlockedExchange(&value,n);}
+    LONG increment() noexcept {return InterlockedIncrement(&value);}
+    LONG compare(LONG n,LONG expected) noexcept {return InterlockedCompareExchange(&value,n,expected);}
+    LONG decrement() noexcept {return InterlockedDecrement(&value);}
+};
+intervals::Gate<Atomic32> interval_gate;
+Atomic32 interval_phase,interval_next,interval_flags; // 1=recording, 2=frozen, 3=claimed
+DWORD interval_tls=TLS_OUT_OF_INDEXES;
+intervals::Record* interval_records=nullptr;
+intervals::Ring interval_rings[intervals::slot_limit];
+intervals::Header interval_header{};
+#ifdef X3M_LOADING_TRACE_FIXTURE
+unsigned interval_fixture_failures=0;
+#endif
+void interval_fault(LONG flag) noexcept {InterlockedOr(&interval_flags.value,flag);}
+intervals::Ring* interval_enter() noexcept {
+    if(!interval_gate.enter())return nullptr;
+    auto* slot=static_cast<intervals::Ring*>(TlsGetValue(interval_tls));
+    if(!slot){
+        if(GetLastError()!=ERROR_SUCCESS){interval_fault(intervals::Tls);interval_gate.leave();return nullptr;}
+        LONG index=interval_next.read();
+        for(;;){
+            if(index>=LONG(intervals::slot_limit)){interval_fault(intervals::Threads);interval_gate.leave();return nullptr;}
+            const LONG old=InterlockedCompareExchange(&interval_next.value,index+1,index);
+            if(old==index)break;
+            index=old;
+        }
+        slot=&interval_rings[index];slot->tid=GetCurrentThreadId();slot->generation=unsigned(index)+1;
+#ifdef X3M_LOADING_TRACE_FIXTURE
+        if(interval_fixture_failures&8)slot->tid=42;
+        if(interval_fixture_failures&4){interval_fault(intervals::Tls);interval_gate.leave();return nullptr;}
+#endif
+        if(!TlsSetValue(interval_tls,slot)){interval_fault(intervals::Tls);interval_gate.leave();return nullptr;}
+    }
+    return slot;
+}
+void interval_finish(intervals::Ring* slot,uint64_t begin,uint64_t end,unsigned op) noexcept {
+    if(!slot)return;
+    slot->append(interval_records+(slot-interval_rings)*intervals::capacity,intervals::capacity,begin,end,op);
+    interval_gate.leave();
+}
+}
+#ifdef X3M_LOADING_TRACE_FIXTURE
+void fixture_interval_failures(unsigned mask) noexcept {interval_fixture_failures=mask;}
+#endif
+unsigned intervals_initialize(bool requested,uint64_t frequency) noexcept {
+    if(!requested||interval_phase.read())return unsigned(interval_flags.read());
+    interval_header.schema=1;interval_header.header_bytes=sizeof(interval_header);
+    const char magic[8]={'X','3','M','I','N','T','0','1'};
+    for(unsigned i=0;i<8;++i)interval_header.magic[i]=magic[i];
+    interval_header.record_bytes=sizeof(intervals::Record);interval_header.slots=intervals::slot_limit;
+    interval_header.ring_capacity=intervals::capacity;interval_header.frequency=frequency;
+    interval_header.initialized=tick();
+    bool fail_allocation=false,fail_tls=false;
+#ifdef X3M_LOADING_TRACE_FIXTURE
+    fail_allocation=interval_fixture_failures&1;fail_tls=interval_fixture_failures&2;
+#endif
+    interval_records=fail_allocation?nullptr:static_cast<intervals::Record*>(VirtualAlloc(nullptr,intervals::slot_limit*intervals::capacity*sizeof(intervals::Record),MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE));
+    interval_tls=fail_tls?TLS_OUT_OF_INDEXES:TlsAlloc();
+    if(!interval_records)interval_fault(intervals::Allocation);
+    if(interval_tls==TLS_OUT_OF_INDEXES)interval_fault(intervals::Tls);
+    if(!interval_header.initialized||!frequency)interval_fault(intervals::Clock);
+    interval_phase.exchange(1);
+    if(!interval_flags.read())interval_gate.enabled.exchange(1);
+    return unsigned(interval_flags.read());
+}
+void intervals_freeze(uint64_t begin,uint64_t end,uint64_t device,uint64_t reset,uint64_t frame,DWORD tid) noexcept {
+    if(interval_phase.read()!=1)return;
+    // Called once by the capture-serialized marker producer; publication of
+    // phase=2 follows all metadata stores. Never wait under its capture lock.
+    interval_gate.close();
+    interval_header.begin=begin;interval_header.end=end;interval_header.device=device;
+    interval_header.reset=reset;interval_header.frame=frame;interval_header.present_tid=tid;
+    if(!begin||end<=begin||begin<interval_header.initialized)interval_fault(intervals::Clock);
+    interval_phase.exchange(2);
+}
+unsigned intervals_snapshot(const intervals::Header*& header,const intervals::Ring*& rings,const intervals::Record*& records,LONG& outstanding) noexcept {
+    const LONG phase=interval_phase.read();
+    if(!phase||phase==3)return 0;
+    if(phase==1)return 1;
+    outstanding=interval_gate.active.read();
+    if(!interval_gate.drained())return 2;
+    if(InterlockedCompareExchange(&interval_phase.value,3,2)!=2)return 0;
+    interval_header.flags=unsigned(interval_flags.read());interval_header.registered=unsigned(interval_next.read());
+    header=&interval_header;rings=interval_rings;records=interval_records;return 3;
+}
 // ---- span ----
 void Span::begin(unsigned operation) noexcept {
     caller_error=GetLastError();op=operation;children=0;
+    interval_token=interval_enter();
     begin_ticks=tick();
     if(span_slot!=TLS_OUT_OF_INDEXES){parent=static_cast<Span*>(TlsGetValue(span_slot));TlsSetValue(span_slot,this);}
     else parent=nullptr;
@@ -60,6 +152,7 @@ void Span::before_call() const noexcept { SetLastError(caller_error); }
 void Span::finish(bool failed,uint64_t bytes,bool pending,bool ambiguous) noexcept {
     const DWORD result_error=GetLastError();
     const uint64_t end=tick();
+    interval_finish(interval_token,begin_ticks,end,op);interval_token=nullptr;
     auto& r=rows[op<row_count?op:0];
     const uint64_t elapsed=end-begin_ticks;
     add64(&r.calls,1);

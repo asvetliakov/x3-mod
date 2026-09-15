@@ -17,6 +17,7 @@
 #include <atomic>
 #include <cstring>
 #include <type_traits>
+#include <cwchar>
 
 namespace x3m::loading_trace {
 namespace {
@@ -1070,6 +1071,10 @@ bool install(HMODULE target) {
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0)return false;
     for(auto& hook:hooks){const auto i=&hook-hooks;hook.slot=slots[i];hook.original=originals[i];light::set_original(unsigned(i),originals[i]);}
     const bool nesting=light::initialize();
+    wchar_t interval_setting[8]{};
+    const bool interval_requested=GetEnvironmentVariableW(L"X3M_LOADING_INTERVALS",interval_setting,8)==1&&interval_setting[0]==L'1';
+    const auto interval_flags=light::intervals_initialize(interval_requested&&trace,uint64_t(frequency.QuadPart));
+    if(interval_requested)log("loading_intervals_start requested=1 telemetry=%u slots=16 capacity=65536 record_bytes=24 payload_bytes=25165824 flags=%u requires=save_load_complete",trace,interval_flags);
     if(buffer) {
         gz_buffer::Originals real;
         real.open=trace?light::gz_open_traced:original<GzOpenFn>(Operation::GzOpen);
@@ -1152,6 +1157,48 @@ Snapshot take_snapshot() {
     for(unsigned i=0;i<count;++i)light::take(i,result[i]);
     return result;
 }
+void intervals_freeze(uint64_t begin,uint64_t end,uint64_t device,uint64_t reset,uint64_t frame,DWORD tid) noexcept {
+    light::intervals_freeze(begin,end,device,reset,frame,tid);
+}
+namespace {
+void intervals_report(bool final=false) {
+    const intervals::Header* header=nullptr;const intervals::Ring* rings=nullptr;const intervals::Record* records=nullptr;
+    LONG outstanding=0;
+    const auto state=light::intervals_snapshot(header,rings,records,outstanding);
+    if(state!=3){
+        if(state==1&&final)log("loading_intervals incomplete=missing_endpoint payload_read=0");
+        static std::atomic<bool> warned{false};
+        if(state==2&&!warned.exchange(true))log("loading_intervals incomplete=outstanding_tokens active=%ld payload_read=0",outstanding);
+        return;
+    }
+    const uint64_t start=tick();
+    wchar_t name[96]{},path[MAX_PATH]{};
+    std::swprintf(name,96,L"loading-intervals-%lu-%llu.bin",GetCurrentProcessId(),header->initialized);
+#ifdef X3M_LOADING_TRACE_FIXTURE
+    const wchar_t* directory=L".";
+#else
+    const wchar_t* directory=capture_directory();
+#endif
+    const int length=std::swprintf(path,MAX_PATH,L"%ls\\%ls",directory,name);
+    HANDLE file=length>0&&length<MAX_PATH?CreateFileW(path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr):INVALID_HANDLE_VALUE;
+    uint64_t bytes=0,rows=0,overwritten=0;unsigned thread_flags=0;
+    for(unsigned i=0;i<header->slots;++i){thread_flags|=rings[i].flags;overwritten+=uint64_t(rings[i].completed)-rings[i].count;}
+    auto put=[&](const void* data,DWORD size){
+        DWORD done=0;const bool ok=WriteFile(file,data,size,&done,nullptr)&&done==size;
+        bytes+=done;return ok;
+    };
+    bool written=file!=INVALID_HANDLE_VALUE;
+    if(written)written=put(header,sizeof(*header));
+    for(unsigned i=0;written&&i<header->slots;++i){
+        const auto& ring=rings[i];written=put(&ring,sizeof(ring));
+        if(written&&ring.count)written=put(records+i*intervals::capacity,ring.count*sizeof(intervals::Record));
+        rows+=ring.count;
+    }
+    if(file!=INVALID_HANDLE_VALUE){if(!CloseHandle(file))written=false;}
+    const auto duration=tick()-start;
+    log("loading_intervals_file schema=1 file=%ls written=%u bytes=%llu rows=%llu flags=%u thread_flags=%u overwritten=%llu begin=%llu end=%llu present_tid=%u device=%llu reset=%llu frame=%llu export_ticks=%llu frequency=%llu",name,written,bytes,rows,header->flags,thread_flags,overwritten,header->begin,header->end,header->present_tid,header->device,header->reset,header->frame,duration,header->frequency);
+}
+}
 void report() {
     if(!active())return;
     const DWORD error=GetLastError();const auto fp=computational_state();const auto data=take_snapshot();const auto end=tick();
@@ -1159,7 +1206,7 @@ void report() {
         log("loading_metric op=%s qpc=%llu count=%llu failures=%llu pending=%llu ambiguous=%llu bytes=%llu inclusive_ticks=%llu exclusive_ticks=%llu max_ticks=%llu wrapper_tail_ticks=%llu total_us=%.3f exclusive_us=%.3f max_us=%.3f wrapper_tail_us=%.3f",
             operation_name(i),end,s.count,s.failures,s.pending,s.ambiguous,s.bytes,s.inclusive_ticks,s.exclusive_ticks,s.maximum_ticks,s.overhead_ticks,
             double(s.inclusive_ticks)*1e6/clock_frequency,double(s.exclusive_ticks)*1e6/clock_frequency,double(s.maximum_ticks)*1e6/clock_frequency,double(s.overhead_ticks)*1e6/clock_frequency);
-    }cache_report();adjacency_report();loading_probes::report();resource_reader::report();crypt_cache_report("window");restore_computational_state(fp);SetLastError(error);
+    }intervals_report();cache_report();adjacency_report();loading_probes::report();resource_reader::report();crypt_cache_report("window");restore_computational_state(fp);SetLastError(error);
 }
 namespace {
 crypt_cache::Statistics crypt_reported; // the cumulative totals at the last window line
@@ -1188,6 +1235,7 @@ void crypt_cache_report(const char* scope) {
 bool crypt_cache_enabled(){return crypt_cache_active;}
 void shutdown() {
     const DWORD error=GetLastError();
+    {const auto fp=computational_state();intervals_report(true);restore_computational_state(fp);}
     if(crypt_cache_active){crypt_cache_report("session");log("crypt_cache_shutdown released=%u",unsigned(crypt_cache::shutdown()));}
     loading_probes::shutdown();
     cache_enabled.store(false,std::memory_order_release);

@@ -57,6 +57,8 @@ bool active();
 // Totals over the complete run are conserved, but a delta is not a transaction.
 Snapshot take_snapshot();
 void report();
+// Capture-serialized SaveLoadComplete only; closes admission without waiting.
+void intervals_freeze(uint64_t begin,uint64_t end,uint64_t device,uint64_t reset,uint64_t frame,DWORD tid) noexcept;
 // crypt_cache line: scope "window" (deltas since the previous window line, part
 // of report) or "session" (cumulative; capture.cpp logs it when the last device
 // is destroyed). No-op unless the cache is active.

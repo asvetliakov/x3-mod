@@ -1,5 +1,6 @@
 #pragma once
 #include "loading_trace.h"
+#include "loading_intervals_core.h"
 #include <windows.h>
 #include <wincrypt.h>
 #include <cstdint>
@@ -49,6 +50,14 @@ inline void max64(uint64_t* p,uint64_t value) noexcept {
     // Fields only grow between snapshots; a lost race here costs at most one maximum sample.
     if(*p<value)exchange64(p,value);
 }
+// Recorder setup/freeze/report accessors never free process-lifetime storage.
+unsigned intervals_initialize(bool requested,uint64_t frequency) noexcept;
+void intervals_freeze(uint64_t begin,uint64_t end,uint64_t device,uint64_t reset,uint64_t frame,DWORD tid) noexcept;
+// 0=off/already exported, 1=recording, 2=outstanding, 3=claimed immutable snapshot.
+unsigned intervals_snapshot(const intervals::Header*& header,const intervals::Ring*& rings,const intervals::Record*& records,LONG& outstanding) noexcept;
+#ifdef X3M_LOADING_TRACE_FIXTURE
+void fixture_interval_failures(unsigned mask) noexcept;
+#endif
 // ---- counter rows and the timing span -------------------------------------
 struct Row { uint64_t calls,failures,pending,ambiguous,bytes,inclusive,exclusive,maximum,overhead; };
 constexpr unsigned row_count=static_cast<unsigned>(Operation::Count);
@@ -67,6 +76,7 @@ uint64_t tick() noexcept;
 // loading_trace.cpp Span: inclusive, exclusive (minus nested hooked children),
 // maximum, and the wrapper tail measured after the callee returned.
 struct Span {
+    intervals::Ring* interval_token=nullptr;
     uint64_t begin_ticks=0,children=0; Span* parent=nullptr; DWORD caller_error=0; unsigned op=0;
     void begin(unsigned operation) noexcept;
     void before_call() const noexcept;

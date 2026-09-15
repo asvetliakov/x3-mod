@@ -11,8 +11,12 @@
 namespace phases=x3m::game_phases;
 namespace patch=x3m::engine_patch;
 namespace marker=x3m::game_phases::sites;
-namespace x3m { void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');} }
+namespace x3m::loading_trace {
+void intervals_freeze(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,DWORD) noexcept {}
+}
+namespace x3m { LONGLONG dll_load_qpc=0; void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);va_end(args);std::putchar('\n');} }
 namespace x3m::telemetry { bool enabled(){return true;} std::uint64_t frequency(){LARGE_INTEGER f{};return QueryPerformanceFrequency(&f)?std::uint64_t(f.QuadPart):0;} }
+namespace x3m::sampling_profiler { void set_periodic(void (*)(std::uint64_t),unsigned) {} }
 namespace x3m::object_trace { bool executable_verified(){return true;} }
 extern "C" {
 struct Snapshot { std::uint32_t regs[9];unsigned char xmm[128],x87[108];std::uint32_t mxcsr; };

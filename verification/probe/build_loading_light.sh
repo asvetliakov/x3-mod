@@ -12,7 +12,7 @@ out=$1; shift
 mkdir -p "$out"
 cxx=i686-w64-mingw32-g++
 common="-std=c++17 -O2 -Wall -Wextra -Werror -Wno-cast-function-type -DWIN32_LEAN_AND_MEAN -DNOMINMAX -mstackrealign -mincoming-stack-boundary=2"
-"$cxx" $common -mno-sse -mno-mmx -mfpmath=387 "$@" -c ../../src/proxy/loading_trace_light.cpp -o "$out/loading_trace_light.o"
+"$cxx" $common -mno-sse -mno-mmx -mfpmath=387 -fno-exceptions "$@" -c ../../src/proxy/loading_trace_light.cpp -o "$out/loading_trace_light.o"
 "$cxx" $common -mno-sse -mno-mmx -mfpmath=387 "$@" -c ../../src/proxy/resource_reader_core.cpp -o "$out/resource_reader_core.o"
 "$cxx" $common -mno-sse -mno-mmx -mfpmath=387 "$@" -c ../../src/proxy/crypt_cache.cpp -o "$out/crypt_cache.o"
 "$cxx" $common -msse2 -mfpmath=sse "$@" -c ../../src/proxy/engine_patch.cpp -o "$out/engine_patch.o"

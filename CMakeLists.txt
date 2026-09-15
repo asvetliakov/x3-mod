@@ -77,6 +77,9 @@ set_source_files_properties(src/proxy/engine_memory.cpp
 # objdump proof; check_no_x87.py walks the crypt cache entry points too).
 set_source_files_properties(src/proxy/loading_trace_light.cpp src/proxy/resource_reader_core.cpp src/proxy/crypt_cache.cpp
   PROPERTIES COMPILE_OPTIONS "-mno-sse;-mno-mmx;-mfpmath=387")
+# Light spans have no cleanup/catch obligations. SJLJ registration otherwise
+# reaches lazy pthread allocation before the saved caller LastError boundary.
+set_property(SOURCE src/proxy/loading_trace_light.cpp APPEND PROPERTY COMPILE_OPTIONS -fno-exceptions)
 target_compile_definitions(d3d9 PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 # Our arithmetic uses SSE2 while preserving the game's i686 Windows ABI.
 # Legacy callers provide four-byte stack alignment; align SIMD locals internally.

@@ -48,6 +48,7 @@ def main():
     parser.add_argument('--gz-buffer', action='store_true', help='Read-ahead buffer in front of the zlib gz imports of the savegame decoder (X3M_GZ_BUFFER=1; no --telemetry needed): the ~14 M three-byte gzread calls of a load are served from 256 KB chunks with zlib 1.2.3 semantics kept; one gz_buffer_file line per file in the session log (docs/verification/gz-buffer.md)')
     parser.add_argument('--gz-buffer-kb', type=int, default=256, help='Chunk size in KB of --gz-buffer (X3M_GZ_BUFFER_KB; 1..65536, default 256)')
     parser.add_argument('--crypt-cache', action='store_true', help='CryptoAPI context/key cache in front of the script signature check 0x004cabc0 (X3M_CRYPT_CACHE=1; no --telemetry needed): the per-script CryptAcquireContextA delete/create/delete of the X2EgosoftCSPContainer key container and the CryptImportKey of the constant public key are answered from one cached provider handle and key; hash and signature verification pass through unchanged; one crypt_cache line per telemetry window and at teardown (docs/verification/crypt-cache.md)')
+    parser.add_argument('--loading-intervals', action='store_true', help='Retain bounded per-thread loading call intervals until save_load_complete (requires --telemetry; 24 MiB payload)')
     parser.add_argument('--loading-probes', action='store_true', help='Probe batch 2 (X3M_LOADING_PROBES=1; requires --telemetry): light IAT rows on the CryptoAPI, inflateInit2_/inflateEnd, the write-side and per-open KERNEL32 imports, plus entry-counting trampolines on twelve engine loading functions (byte-verified, exact executable only); one loading_probe line per site per report window (docs/verification/loading-probes.md)')
     parser.add_argument('--resource-read', choices=['native', 'verify', 'fast'], default='native', help='Archive reader 0x004e8880 service (X3M_RESOURCE_READ; exact executable only): native leaves the game\'s reader alone; verify runs our whole-extent decode into a scratch buffer, then the original, and logs any difference; fast returns our decode (one fread, word XOR, one inflate, no memset) and falls back to the original on any deviation (docs/verification/resource-reader.md)')
     parser.add_argument('--dat-handles', action='store_true', help='Keep catalogue .dat file handles between resource opens instead of _fopen/_fclose per resource (X3M_DAT_HANDLES=1; exact executable only; docs/reverse-engineering/resource-reader.md)')
@@ -132,6 +133,8 @@ def main():
         parser.error('--object-lifetime requires --object-trace and --ownership.')
     if args.mesh_cache and not args.telemetry:
         parser.error('--mesh-cache requires --telemetry.')
+    if args.loading_intervals and not args.telemetry:
+        parser.error('--loading-intervals requires --telemetry (existing loading markers supply the endpoint).')
     if args.loading_probes and not args.telemetry:
         parser.error('--loading-probes requires --telemetry (the probe rows and trampolines are installed by the loading-trace initialization).')
     if args.game_phases and not args.telemetry:
@@ -264,6 +267,8 @@ def main():
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
         parser.error('--gz-buffer-kb requires --gz-buffer.')
+    if args.loading_intervals and not args.telemetry:
+        parser.error('--loading-intervals requires --telemetry (existing loading markers supply the endpoint).')
     if args.loading_probes and not args.telemetry:
         parser.error('--loading-probes requires --telemetry.')
     if not 1 <= args.gz_buffer_kb <= 65536:
@@ -385,6 +390,7 @@ def main():
         env['X3M_STATE_SHADOW'] = '1' if args.state_shadow == 'on' else '0'
         env['X3M_GZ_BUFFER'] = '1' if args.gz_buffer else '0'
         env['X3M_GZ_BUFFER_KB'] = str(args.gz_buffer_kb)
+        env['X3M_LOADING_INTERVALS'] = '1' if args.loading_intervals else '0'
         env['X3M_LOADING_PROBES'] = '1' if args.loading_probes else '0'
         env['X3M_CRYPT_CACHE'] = '1' if args.crypt_cache else '0'
         env['X3M_RESOURCE_READ'] = args.resource_read

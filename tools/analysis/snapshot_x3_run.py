@@ -102,7 +102,7 @@ def references(log):
     wanted, issues = {}, []
     for line in log:
         tag = line.split(' ', 1)[0]
-        if tag not in READBACKS and tag not in ('shader', 'mesh_adjacency_dump'):
+        if tag not in READBACKS and tag not in ('shader', 'mesh_adjacency_dump', 'loading_intervals_file'):
             continue
         row = dict(FIELDS.findall(line))
         try:
@@ -116,6 +116,16 @@ def references(log):
                     issues.append(f'{name}: writer did not report a successful readback')
                     continue
                 wanted[name] = {'size': int(row['bytes']), 'timed': True}
+            elif tag == 'loading_intervals_file':
+                name = row['file']
+                if not re.fullmatch(r'loading-intervals-\d+-\d+\.bin', name):
+                    raise ValueError('unsafe interval basename')
+                size = int(row['bytes'])
+                if row['written'] != '1' or not 864 <= size <= 25166688:
+                    wanted.pop(name, None)
+                    issues.append(f'{name}: interval export incomplete or invalid size')
+                    continue
+                wanted[name] = {'size': size, 'timed': True}
             elif tag == 'shader':
                 if row['kind'] not in ('vs', 'ps') or not re.fullmatch(r'[0-9a-f]{16}', row['id']):
                     raise ValueError('unsafe shader identity')

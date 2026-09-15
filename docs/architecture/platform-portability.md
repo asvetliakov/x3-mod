@@ -18,6 +18,11 @@ Recording runtime hashes in test reports remains useful provenance.
 
 ## Current gaps
 
+- The [loading interval recorder](../verification/loading-intervals.md) uses
+  documented Windows QPC, TLS, interlocked, allocation and file APIs. Its x86
+  build, CPU audit and CrossOver fixture qualification pass; native Windows
+  execution and actual game recorder/export overhead remain unverified.
+
 - The locked-prefix bullet bound (step D,
   [screen-emission-bullet-bound.md](screen-emission-bullet-bound.md)) writes a
   sentinel into the application's `D3DLOCK_DISCARD` mapping of a

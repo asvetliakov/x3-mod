@@ -134,6 +134,9 @@ int main(){
     check(read_slot&&VirtualQuery(read_slot,&before,sizeof before),"iat_page_before");
     SetEnvironmentVariableW(L"X3M_LOADING_PROBES",L"1"); // probe batch 2 rows the fixture imports (CloseHandle, WriteFile) install as light rows; the engine trampolines stay off (no verified executable)
     check(fixture_initialize(self)&&active(),"install_named_imports");
+    wchar_t interval_option[8]{};LARGE_INTEGER interval_begin{};
+    const bool interval_capture=GetEnvironmentVariableW(L"X3M_LOADING_INTERVALS",interval_option,8)==1&&interval_option[0]==L'1';
+    if(interval_capture)QueryPerformanceCounter(&interval_begin);
     check(VirtualQuery(read_slot,&after,sizeof after)&&before.Protect==after.Protect,"iat_protection_restored_after_install");
     // Complete module-lifetime setup before the exact steady counter window;
     // there is no file fingerprint or implementation version gate.
@@ -277,6 +280,11 @@ int main(){
     }
     if(server!=INVALID_HANDLE_VALUE)CloseHandle(server);
     if(ov.hEvent)CloseHandle(ov.hEvent);
+    if(interval_capture){
+        LARGE_INTEGER interval_end{};QueryPerformanceCounter(&interval_end);
+        intervals_freeze(uint64_t(interval_begin.QuadPart),uint64_t(interval_end.QuadPart),3,4,5,GetCurrentThreadId());
+        report();report(); // artifact is emitted exactly once; runner validates its bytes and reduction.
+    }
     // Simulate another module replacing one of our hooks before teardown.
     DWORD old_protection=0,discard=0;
     check(VirtualProtect(read_slot,sizeof(PVOID),PAGE_READWRITE,&old_protection),"third_party_slot_writable");

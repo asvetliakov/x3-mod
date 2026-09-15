@@ -1,3 +1,4 @@
+#include "loading_trace.h"
 #include "game_phases.h"
 #include "game_phases_core.h"
 #include "game_phase_sites.h"
@@ -296,6 +297,8 @@ void loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_
     const unsigned count=loading_phases.present(device,reset,frame,now,markers);
     for(unsigned i=0;i<count;++i){
         const auto& m=markers[i];
+        if(m.name==detail::LoadingPhases::SaveLoadComplete)
+            loading_trace::intervals_freeze(m.qpc-m.stall,m.qpc,device,reset,m.frame,GetCurrentThreadId());
         const auto origin=static_cast<std::uint64_t>(dll_load_qpc);
         log("loading_phase name=%s frame=%llu elapsed_ms=%llu stall_ms=%llu device=%llu qpc=%llu",loading_phase_names[m.name],m.frame,
             m.qpc>=origin?(m.qpc-origin)*1000ull/loading_frequency:0,m.stall*1000ull/loading_frequency,device,m.qpc);

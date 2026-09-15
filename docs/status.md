@@ -88,7 +88,10 @@ Native Windows runtime remains unverified; this repair is not yet installed. Rep
 feasibility boundary, with complete entry coverage and concurrency proof still
 required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
-exact wall-time attribution open ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
+exact wall-time attribution open. The bounded interval recorder is now independently
+reviewed and qualified in source (163 X3 CPU checks); it awaits the consolidated
+candidate and game capture ([verification](verification/loading-intervals.md)). The
+existing counter analysis remains limited by overlap ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.
 
 ## User decisions (2026-09-14)

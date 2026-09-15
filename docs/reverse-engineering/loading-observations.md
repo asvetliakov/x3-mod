@@ -129,3 +129,74 @@ Reproducer and validated compact result are local:
 `run48_attribution.json` (input SHA-256 `dc3191c3…2369a87b`; 10 fully enclosed
 and 12 intersecting counter windows). The script streams the snapshot and checks
 newline completion, phase QPCs and boundary rules; it makes no residual claim.
+
+### Bounded interval recorder for the next consolidated diagnostic (2026-09-15)
+
+`--loading-intervals` / `X3M_LOADING_INTERVALS=1` opts into the existing loading
+telemetry and cadence-derived `save_load_complete` marker. It adds no engine
+patch. Run 48's 32,771 calls in intersecting windows and zero `profile_*` /
+`game_phase_window` records cannot be reconstructed retroactively by this code.
+The next diagnostic retains all completed `loading_trace::light::Span` intervals,
+including nested calls, from initialization until the first save completion.
+Resource-reader outer fast-path aggregates remain separate; these intervals do
+not establish complete resource, CPU, wait or main-loop coverage.
+
+The process-lifetime allocation contains 16 rings × 65,536 × 24-byte records
+(**25,165,824 bytes**); slot/control metadata is additional. Each Windows TLS
+registration gets a never-reused slot generation plus its Windows TID. Recycled
+TIDs therefore remain distinct. No allocation, formatting, file access or extra
+clock read occurs per span. An admitted span increments the 32-bit active-token
+counter and rechecks admission **before** the existing begin-QPC read. This
+prevents freeze from silently rejecting a previously sampled begin. Admission
+cost is outside the measured interval; the callee-end QPC is unchanged and ring
+publication is inside the existing measured wrapper tail. Disabled calls still
+pay the admission check. Shared interlocked operations and cold TLS registration
+need actual runtime measurement; host atomic timings do not predict FEX cost.
+
+The capture-serialized completion marker closes admission, stores exact
+begin/end QPC, device, Reset generation, frame and presenting TID, then returns
+without waiting. Previously accepted calls finish and publish after closure.
+Only an existing loading report opportunity observing closed admission and zero
+active tokens may claim/read the payload. An admission race rejected after
+closure cannot touch it. Report/export is independent of the marker function's
+all-markers-written early return. Sequence saturation and a saturated active
+counter fail closed. Calls that unwind past explicit `finish`, terminate their
+thread or never return retain active tokens: a bounded incomplete status is
+logged and no payload is read. Storage/TLS stay allocated until process exit;
+there is no cleanup wait in DllMain, capture, proxy or resource locks. Reset or
+device changes do not reclaim rings; the existing marker core rejects gaps
+across those changes. This does not change graphics state or resource ownership.
+
+One successful export uses documented Windows file APIs and a fresh
+`loading-intervals-<pid>-<initial-qpc>.bin` basename in the capture directory.
+It acquires no application or D3D resources and logs exporter ticks separately.
+Failures are not retried; partial files are rejected by snapshot collection.
+The version-1 little-endian layout is a 96-byte `Header`, followed by 16
+48-byte `Ring` metadata blocks, each immediately followed by its retained
+24-byte `(begin,end,operation,reserved)` records in physical ring order. Ordinary
+counter snapshots never clear these rings. The analyzer validates schema,
+counts, generations, operation range, marker bounds, clock and retention data
+before merging clipped intervals per thread and across threads; it reports at
+most eight largest gaps per result. Global allocation/TLS/thread/clock flags,
+per-slot clock/sequence flags and an overwritten-interval envelope prevent a
+complete claim when evidence is missing across the requested interval.
+
+Even complete unions measure retained admitted wrapper occupancy, including
+blocked time. Their complement is only “time with no retained admitted hooked
+activity”, never a causal residual. A presenting-TID match does not prove engine
+main-thread identity. Each TID-reuse generation remains separate. The exporter
+and analyzer are diagnostic evidence, not a loading optimization.
+
+The light unit now also uses source-specific `-fno-exceptions`. Its previous
+MinGW SJLJ `Span::begin` entry reached exception registration, pthread lazy setup
+and allocation before the saved LastError boundary; the unchanged `ac72cfd`
+source reproduced that path. This unit has no catches, destructors or cleanup
+obligations. Removing those compiler bookends leaves the existing explicit
+caller/callee LastError transport and integer-only span logic intact; exceptions
+or abandoned calls do not manufacture completed intervals. The linked strict
+CPU audit checks all three Span entry points and their reachable direct calls
+for XMM/MMX/x87 and hidden allocation/formatting/EH paths. Heavy CPU boundaries
+and IAT rollback behavior remain unchanged.
+
+Checks and remaining runtime/native evidence are in
+[the interval verification ledger](../verification/loading-intervals.md).
