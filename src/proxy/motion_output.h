@@ -82,6 +82,11 @@ struct MotionRoute {
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     bool sun_receiver = false, sun_color_writer = false;
+    // Sun-lane refusal diagnostics (sun_share_frame.h): the gate reason
+    // recorded while the lane is on, and the z/z-write states the selector
+    // read (bit0 z, bit1 z write, bit2 both known). Never consulted by
+    // eligibility or availability.
+    std::uint8_t sun_refusal = 0, sun_z_state = 0;
     bool depth = false, rt2_set = false, write2_set = false;   // RT2 bound for this draw (row has depth_output).
     bool jittered = false;                                     // Jittered rows written; restore after the draw.
     UINT jitter_register = 0;                                  // The VS row's clip-row window base.
@@ -832,6 +837,15 @@ private:
         return false;
     }
     renderer::SunShareFrame sun_frame_{};
+    // Capped per-device cache of distinct untracked-writer signatures, each
+    // logged once (sun_shadow_lane_writer); overflow counts the rest. Fixed
+    // storage cleared at attach and before Reset; a linear scan of at most 64
+    // entries per draw already counted untracked (lane on only).
+    struct SunWriterSignature { std::uint64_t vs, ps, declaration; std::uint32_t stride; std::uint8_t reason, z_state, registered; };
+    static constexpr unsigned sun_writer_capacity = 64;
+    SunWriterSignature sun_writers_[sun_writer_capacity]{};
+    unsigned sun_writer_count_ = 0, sun_writer_overflow_ = 0;
+    void note_sun_untracked_writer(const MotionRoute& route, renderer::SunUntrackedReason reason) noexcept;
     bool sun_coverage_current_=false, sun_composition_completed_=false;
     IDirect3DPixelShader9* sun_sentinel_ps_=nullptr;
     bool self_test(bool with_depth, char* reason, std::size_t reason_size) noexcept;
