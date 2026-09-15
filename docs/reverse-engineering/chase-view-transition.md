@@ -534,6 +534,12 @@ observations; jumpdrive remains unverified without a separate request now.
 
 ## 2026-09-15 run25 identity and restoration boundary (snapshot run60)
 
+**Ratified 2026-09-15 (orchestrator):** the contract below (script-assignment
+mutation at `4a3ffd`, seven spans, arm/pending/consume state machine and the
+cancellation set) is the implementation contract for `--chase-view-restore`.
+`/tmp/x3-run60-gate/verify.py` passes against the current EXE and log.
+Jumpdrive stays gameplay-unverified; no further telemetry-only run is required.
+
 The 12,909,476-byte log in `/tmp/x3-bottleX3-run60/`,
 `session-20260915-070402-216.log`, has SHA-256
 `6e899e03a2797f0338a395c6b1d7e1206410799474c5982e021d7a0ddc6647a2`.
