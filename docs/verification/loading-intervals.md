@@ -88,3 +88,21 @@ loading speed, native Windows behavior or an old-build comparison.
 The separate game-marker CPU fixture was built and audited, not executed; its
 freeze bridge is stubbed. Actual marker-to-recorder integration, real retention
 completeness and game export overhead await the consolidated user capture.
+
+## Run 25 / snapshot run60 — complete game retention
+
+The [compact run60 observations](../../verification/results/run60-observations.json)
+bind the local log and interval binary by SHA-256. The save-load markers span
+7.2794795 s. All 11,867 records are retained and completed on TID 220,
+generation 1, with zero overwrite/loss flags. This establishes real marker and
+recorder integration for this capture. The presenting TID matches; that alone
+does not establish engine main-thread identity.
+
+The exact clipped wrapper union is 1.6703689 s (22.95% of the marker interval),
+and the largest interval with no retained hooked activity is 0.8344746 s.
+These are occupancy measurements, including time blocked inside wrappers.
+They do not assign CPU or wait causes to the remaining interval. Run48's
+21.702 s load is a different session/loading sequence, so this is neither a
+measured optimization nor an attribution of the earlier stall. Raw artifacts
+and the analyzer reduction remain in `/tmp/x3-bottleX3-run60` and
+`/tmp/x3-run60-analysis`; no additional fixture execution was needed.

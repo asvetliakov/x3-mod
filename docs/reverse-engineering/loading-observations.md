@@ -200,3 +200,15 @@ and IAT rollback behavior remain unchanged.
 
 Checks and remaining runtime/native evidence are in
 [the interval verification ledger](../verification/loading-intervals.md).
+
+### Run60: first complete retained game interval
+
+Run25's snapshot `/tmp/x3-bottleX3-run60` provides complete interval retention:
+11,867 records, one TID/generation, no loss. Its 7.2794795 s save-load marker
+contains 1.6703689 s of admitted wrapper activity; the largest no-hook gap is
+0.8344746 s. Exact identities and limits are in the
+[verification ledger](../verification/loading-intervals.md#run-25--snapshot-run60--complete-game-retention).
+The marker-to-recorder integration is now witnessed in gameplay. The existing
+wrappers still cover only a minority of this load, so unhooked resource paths,
+engine work and waits need attribution. The different run48 load cannot be
+retrospectively partitioned using run60; its 21.702 s attribution remains open.

@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (EV ceiling 1.0 and fill 0.03 reviewed; launcher defaults active). This is the short current handoff; the current
+Updated 2026-09-15 (run60 loading retention and sun-lane coverage analysed). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -40,8 +40,9 @@ and lag limits 8°/0.10. Vanilla camera remains the default.
 **Run 25 is received** as `/tmp/x3-bottleX3-run60` (60 referenced files). The
 user confirms forward HUD alignment but prefers **centre as the default**;
 forward remains opt-in for future camera tuning. The gate still resets the
-view, as restoration is not implemented. Gate identity, loading intervals and
-sun-lane evidence are under analysis; no repeat is requested yet.
+view, as restoration is not implemented. Gate identity reconstruction continues. Loading retention is complete, while
+every emitted sun-lane frame is refused by untracked-writer coverage; bounded
+reason diagnostics are being added. No repeat is requested yet.
 
 **Run 23 is complete**, preserved at `/tmp/x3-bottleX3-run54` (153 referenced
 files), with four EV0/+1.5 far/near screenshots. The user reports brighter hulls
@@ -84,7 +85,7 @@ the static warp path but remains gameplay-unverified.
 
 The chase HUD anchor (`centre` default) is now implemented and independently
 reviewed in source, and installed in the consolidated candidate ([ledger](verification/chase-hud-anchor.md));
-81 host tests pass, with gameplay glyph calibration pending. The gate trace above now drives the view-restoration prerequisite. Shadows follow the ratified
+81 host tests pass; run60 confirms alignment at the current camera settings. The gate trace above now drives the view-restoration prerequisite. Shadows follow the ratified
 route-B order: sun-lit-share lane, replay feasibility without shading, then cascades;
 screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
 now covers all 108 pixel originals; the receiver/capability boundary is ratified
@@ -92,7 +93,8 @@ in the shadow note. The default-off sun-share runtime lane is now integrated and
 independently reviewed: 216 extraction GPU cases, portable depth-history copying,
 and 11 actual-renderer cases / 66 byte-exact TAA frames pass. Composition
 exclusions, fallback and Reset are qualified within the recorded boundaries;
-missing shader variants remain unavailable through Reset. It is installed for the diagnostic run; shadow replay and cascades remain unimplemented
+missing shader variants remain unavailable through Reset. Run60 refuses all 8,950 emitted frames due to untracked writers; identifying
+those populations is the next coverage step. Shadow replay and cascades remain unimplemented
 ([ledger](verification/directional-shadows.md)).
 The inherited PS3 constant-read-port violation is repaired and reviewed in
 source: legacy/fill GPU reports and 1,162 fade readbacks match retained
@@ -102,7 +104,9 @@ feasibility boundary, with complete entry coverage and concurrency proof still
 required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
 exact wall-time attribution open. The bounded interval recorder is now independently
-reviewed and qualified in source (163 X3 CPU checks); it is installed and is being analysed against run60 ([verification](verification/loading-intervals.md)). The
+reviewed and qualified in source (163 X3 CPU checks); run60 retains all 11,867 records over a 7.279 s load, with a 1.670 s wrapper
+union. This different loading sequence does not explain run48
+([verification](verification/loading-intervals.md)). The
 existing counter analysis remains limited by overlap ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.
 
@@ -170,7 +174,7 @@ existing counter analysis remains limited by overlap ([analysis](reverse-enginee
   ratio 1.29 near/far, dark fraction 0.25 → 0.02). Native behaviour, hence vanilla.
   Earlier LOD-step and fade explanations are withdrawn. Fix direction: an
   ambient/fill term in the converted materials (one MAD per pixel, also lights
-  black bays and night sides), ratified and merged; GPU qualification is pending.
+  black bays and night sides), ratified, merged and GPU-qualified (see the fill ledger above).
   Widening point-light range is rejected; optional root-object admission follows
   the fill verdict and starts with disassembly.
   [station-material-distance.md](reverse-engineering/station-material-distance.md),
@@ -209,7 +213,7 @@ existing counter analysis remains limited by overlap ([analysis](reverse-enginee
   there; every other decode gives `ok`. Not a default configuration; open, not
   yet owned.
 - **Bloom/exposure:** the installed correction uses gain 0.375/scatter 0.65 and
-  the +1.5 EV Auto ceiling is the accepted default. The meter still mostly
+  the +1.0 EV Auto ceiling is the current user-selected default. The meter still mostly
   reaches its ceiling; physically informed adaptation remains unproved.
 - **Material appearance and coverage:** exclude accidental loss of native gloss
   terms before artistic tuning. The [coverage ledger](architecture/material-coverage.md)

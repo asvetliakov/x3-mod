@@ -1,0 +1,159 @@
+{
+  "snapshot": {
+    "path": "/tmp/x3-bottleX3-run60",
+    "log": {
+      "path": "/tmp/x3-bottleX3-run60/session-20260915-070402-216.log",
+      "sha256": "6e899e03a2797f0338a395c6b1d7e1206410799474c5982e021d7a0ddc6647a2",
+      "bytes": 12909476
+    },
+    "interval_binary": {
+      "path": "/tmp/x3-bottleX3-run60/loading-intervals-216-11708823165925.bin",
+      "sha256": "de55934bfb7ab2f87ca21cfe918db399a8e2815cc1be230f4f6d12bdc0a15a58",
+      "bytes": 285672
+    },
+    "referenced_artifacts": 60,
+    "log_files": 1
+  },
+  "loading": {
+    "marker_identity": {
+      "schema": 1,
+      "frequency": 10000000,
+      "initialized_qpc": 11708823165925,
+      "begin_qpc": 11708903921680,
+      "end_qpc": 11708976716475,
+      "device": 1,
+      "reset": 0,
+      "frame": 4
+    },
+    "duration_seconds": 7.2794795,
+    "retained_records": 11867,
+    "complete": true,
+    "flags": 0,
+    "thread": {
+      "union_ticks": 16703689,
+      "largest_gaps": [
+        [
+          11708921867901,
+          11708930212647
+        ],
+        [
+          11708905608461,
+          11708910321341
+        ],
+        [
+          11708910323878,
+          11708914305702
+        ],
+        [
+          11708914312619,
+          11708917593190
+        ],
+        [
+          11708919301922,
+          11708921812605
+        ],
+        [
+          11708958637752,
+          11708959364334
+        ],
+        [
+          11708954449783,
+          11708955110872
+        ],
+        [
+          11708905003788,
+          11708905606119
+        ]
+      ],
+      "tid": 220,
+      "generation": 1,
+      "records": 11867,
+      "completed": 11867,
+      "overwritten": 0,
+      "lost_envelope": [
+        0,
+        0
+      ],
+      "flags": 0,
+      "complete": true,
+      "presenting_tid_match": true
+    },
+    "limitations": "Wrapper occupancy includes waits; no critical-path or main-thread identity proof."
+  },
+  "sun_lane": {
+    "frames": 8950,
+    "available_values": [
+      "0"
+    ],
+    "covered_draws_values": [
+      "0",
+      "2",
+      "4"
+    ],
+    "failed_values": [
+      "1"
+    ],
+    "untracked_writers_min": 3,
+    "untracked_writers_max": 99,
+    "covered_nonzero_frames": 1138,
+    "available_frames": 0,
+    "failed_zero_frames": 0,
+    "interpretation": "all recorded lane frames unavailable and failed; shadows=0"
+  },
+  "sun_lane_diagnosis": {
+    "first_emitted_frame": {
+      "frame": 1228,
+      "log_line": 6207,
+      "format": 115,
+      "available": 0,
+      "receiver_draws": 238,
+      "covered_draws": 0,
+      "untracked_writers": 10,
+      "failed": 1,
+      "owner": 1,
+      "exclusion_required": 0,
+      "exclusion_valid": 0
+    },
+    "all_emitted_frames": 8950,
+    "variant_records": 26,
+    "variant_extraction_or_create_failures": 0,
+    "per_frame_sufficient_cause": "SunShareFrame::draw increments untracked and sets failed when a successful scene color writer follows a receiver without receiver admission, conservative M coverage, or depth update.",
+    "not_established": [
+      "whether sun_lane_failed_ was independently set before frame 1228",
+      "the hashes/effects of the 10 first-frame untracked writers",
+      "pixel population or neutral/overlay classification"
+    ],
+    "source_locations": {
+      "frame_logic": "src/renderer/sun_share_frame.h:10",
+      "draw_call": "src/proxy/motion_output.cpp:4328",
+      "publication": "src/proxy/motion_output.cpp:1541",
+      "receiver_selection": "src/proxy/motion_output.cpp:3676",
+      "creation": "src/proxy/motion_output.cpp:2588"
+    },
+    "minimal_diagnostic": "bounded per-frame reason buckets at sun_color_writer: admitted receiver; completed M coverage; non-depth writer; depth-updated invalid/unsupported share; route/gate refusal; plus fixed-cap hash/effect witnesses for the first category that makes frame unavailable. Record an independent sticky sun_lane_failed_ reason at its write site."
+  },
+  "taa": {
+    "periodic_attempted_and_resolved_rows": 149,
+    "gate_window_frames": [
+      7020,
+      7080,
+      7140,
+      7200,
+      7260,
+      7320,
+      7380,
+      7440,
+      7500,
+      7560,
+      7620,
+      7680
+    ],
+    "all_reported_attempted_and_resolved": 1,
+    "limitation": "periodic diagnostic rows establish those sampled rows only; they do not establish visual pixel continuity"
+  },
+  "limits": [
+    "Run60 and run48 are different loading sequences; no speedup or causal attribution is established.",
+    "Sun-lane aggregate rows cannot identify refused draw hashes or exclude an independent earlier sticky failure.",
+    "No raster captures; sampled TAA diagnostics do not prove visual continuity."
+  ]
+}

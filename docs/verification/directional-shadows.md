@@ -113,3 +113,20 @@ positive/early-failure slices avoid unnecessary reruns. Earlier shader extractio
 and temporal-copy qualification remain as recorded above. Native Windows,
 gameplay coverage and GPU performance remain open; composition evidence here
 is the additive exchange route. No shadow replay, cascades or install is claimed.
+
+## Run25 / snapshot run60 — gameplay coverage refuses every frame
+
+All 8,950 emitted sun-lane frames are unavailable. Each has an untracked-writer
+coverage veto (3–99 draws per frame); 1,138 frames also have nonzero completed
+exclusion coverage, which is insufficient to remove the veto. The first emitted
+witness, frame 1228, has 238 receivers and ten untracked writers with owner
+valid and G32R32F active. All 26 variant records report successful extraction
+and creation. The [compact observations](../../verification/results/run60-observations.json)
+retain identities, counts and source locations.
+
+This is a gameplay coverage blocker, not useful shadow-lane acceptance. The
+aggregate cannot identify the refused draw populations or exclude an independent
+earlier sticky failure. Next work adds bounded reason buckets and capped cached
+draw signatures before changing eligibility or availability. TAA resolves in all
+149 sampled periodic records, including the gate window; there are no raster
+captures to establish visual continuity. No shadows are applied.
