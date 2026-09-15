@@ -508,3 +508,13 @@ Milestone 1 create-time variants are implemented and independently reviewed;
 the [feature ledger](../verification/material-exposure.md) distinguishes host
 source/tail proof from pending whole-program GPU and runtime qualification.
 No live selective-exposure mode is enabled by this checkpoint.
+
+## 2026-09-15 allocation gate after independent critique
+
+The source checkpoint remains retained and the feature contract stays ratified.
+Further GPU/runtime integration is held for a matched original/linear appearance
+comparison, per the [material investment assessment](material-investment.md).
+If converted hulls are disliked at EV0, pinning their base to EV0 cannot restore
+the original shading; establish the desired base before spending on the meter,
+history and composition changes. This does not cancel shadow prerequisites or
+targeted emission improvements.

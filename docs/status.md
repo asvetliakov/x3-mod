@@ -56,7 +56,10 @@ scene effects still exposed. The [selective-exposure contract](architecture/mate
 is ratified: background-driven Auto, one compensated scene and one exposed-linear
 TAA history. Create-time material variants are now independently reviewed and
 host-qualified for all 137 covered stages; whole-program GPU and live integration
-remain pending ([ledger](verification/material-exposure.md)).
+remain pending ([ledger](verification/material-exposure.md)). Following the
+user-requested independent critique, further material runtime/coverage expansion
+is held for a matched appearance comparison; the reviewed shader checkpoint is
+retained ([allocation assessment](architecture/material-investment.md)).
 See the [fill ledger](verification/fill-light.md) for numbers and limitations.
 The [run queue](verification/user-runs.md) records the remaining telemetry request. K=0 qualified
 4,177 cases with every recorded baseline row bit-identical; live qualification
