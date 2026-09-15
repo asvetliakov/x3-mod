@@ -5,10 +5,12 @@
 #include <cstdio>
 // log() must never run under the chase SRW lock (present() holds capture's
 // mutex while report() takes this lock); count seam lines and violations.
-static unsigned log_under_lock=0,seam_lines=0;
+static unsigned log_under_lock=0,seam_lines=0,arm_refused_lines=0,transfer_refused_lines=0;
 namespace x3m { void log(const char* format,...) {
  if(TryAcquireSRWLockExclusive(&x3m::chase_transition::lock))ReleaseSRWLockExclusive(&x3m::chase_transition::lock);else ++log_under_lock;
  if(!std::strncmp(format,"chase_view_restore_seam ",24))++seam_lines;
+ if(!std::strncmp(format,"chase_view_restore_arm_refused ",31))++arm_refused_lines;
+ if(!std::strncmp(format,"chase_view_restore_transfer_refused ",36))++transfer_refused_lines;
 } }
 namespace x3m::telemetry { bool enabled(){return true;} }
 namespace x3m::object_trace { bool executable_verified(){return true;} }
@@ -336,9 +338,38 @@ void scenarios(){
  // Arm refusals: mode 1, connect nonzero, native/script mismatch, unarmed update re-attempt only on mode change.
  reset_state();lifetime();put(W(o_cockpit+0x150),1u);update();check(!restore.armed&&restore.arms==0,"internal view never arms");
  put(W(o_cockpit+0x150),restore_rear_mode);update();check(restore.armed&&restore.arms==1,"return to rear view arms once");update();check(restore.arms==1,"armed updates perform no further identity walks");
- reset_state();lifetime();put(W(o_ship+0x94),controller_id);update();check(!restore.armed&&restore.arm_refusals==1,"native +94 != global9 refuses arming");put(W(o_ship+0x94),player_id);
- update();check(!restore.armed&&restore.arm_refusals==1,"refused arm is not retried every update");
- reset_state();lifetime();put(W(o_cockpit+0x1c0),2u);update();check(!restore.armed,"connect mode nonzero refuses arming");put(W(o_cockpit+0x1c0),0u);
+ reset_state();lifetime();put(W(o_ship+0x94),controller_id);update();check(!restore.armed&&restore.arm_refusals==1&&restore.arm_refusal_reasons[arm_identity]==1,"native +94 != global9 refuses arming");put(W(o_ship+0x94),player_id);
+ update();check(!restore.armed&&restore.arm_refusals==1,"identity refusal is not retried every update");
+ reset_state();lifetime();put(W(o_cockpit+0x1c0),2u);update();check(!restore.armed&&restore.arm_refusal_reasons[arm_connect]==1,"connect mode nonzero refuses arming");put(W(o_cockpit+0x1c0),0u);
+ update();check(restore.armed,"connect precondition is re-checked on the next rear update");
+ // run68: a fresh generation's first updates carry view 0; the precondition must retry, then the gate must transfer and consume.
+ check(arm_pending(),"arm/pending for run68 regeneration");
+ {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_monitor));run(0,f);check(restore.consumed==1&&payload()==restore_rear_mode,"consume before regeneration");}
+ lifetime();put(W(o_cockpit+0x10),0u);update();update();
+ check(!restore.armed&&restore.arm_refusal_reasons[arm_view_not_ready]==2&&restore.arms==1,"view 0 on the new generation refuses without recording an attempt");
+ put(W(o_cockpit+0x10),W(o_ship));update();check(restore.armed&&restore.arms==2&&restore.arm_generation==state.generation(W(o_cockpit)),"later update with view set re-arms on the new generation");
+ build_warp_stack();destroy();build_seam_stack(W(o_stack_base));check(restore.pending&&restore.transfers==2,"re-armed generation transfers at the next destructor");
+ {FrameCall f=seam_frame(restore_mode_pc,seam_source(W(o_stack_base)),0,W(o_monitor));run(0,f);check(restore.consumed==2&&payload()==restore_rear_mode,"second gate consumes once more");}
+ build_seam_stack(W(o_stack_base));
+ // Sample lines: once per reason for arm and transfer refusals, emitted outside the lock.
+ check(arm_refused_lines==3,"one arm-refusal sample per reason (identity, connect, view)");
+ reset_state();lifetime();put(W(o_ship+0x94),controller_id);update();put(W(o_ship+0x94),player_id);check(arm_refused_lines==4,"a fresh install state samples the reason again once");
+ // No active registry handle: refused per update (reason 3), no attempt recorded, arms once the row points at the cockpit.
+ reset_state();lifetime();put(W(o_cockpit_row+8),0u);update();update();
+ check(!restore.armed&&restore.arm_refusal_reasons[arm_no_handle]==2&&arm_refused_lines==5,"missing active handle refuses each update and samples once");
+ put(W(o_cockpit_row+8),W(o_cockpit));update();check(restore.armed,"handle restored arms");
+ // Unreadable CODE base after a valid identity: reason 5, attempt recorded.
+ reset_state();lifetime();put(W(o_vm+8),0u);update();update();
+ check(!restore.armed&&restore.arm_refusal_reasons[arm_code]==1&&restore.arm_refusals==1&&arm_refused_lines==6,"zero CODE base refuses once and records the attempt");
+ put(W(o_vm+8),code_at(0));update();check(!restore.armed,"recorded attempt is not retried until the mode changes");
+ // Retry cap: a persistent view 0 stops costing after restore_arm_retry_cap updates.
+ reset_state();lifetime();put(W(o_cockpit+0x10),0u);for(unsigned i=0;i<restore_arm_retry_cap+8;++i)update();
+ check(restore.arm_refusal_reasons[arm_view_not_ready]==restore_arm_retry_cap&&restore.arm_refusal_reasons[arm_retry_exhausted]==1&&restore.arm_refusals==restore_arm_retry_cap+1&&arm_refused_lines==8,"retry cap records the attempt once and samples retry_exhausted");
+ put(W(o_cockpit+0x10),W(o_ship));update();check(!restore.armed,"exhausted generation does not re-arm on a later update");
+ put(W(o_cockpit+0x150),1u);update();put(W(o_cockpit+0x150),restore_rear_mode);update();check(restore.armed,"mode re-entry resets the attempt and arms");
+ {const auto before=transfer_refused_lines;check(arm(),"arm for transfer sample");build_warp_stack();put(W(o_stack_base)-45+10+1,0xedba1u);destroy();
+  check(transfer_refused_lines==before+1&&restore.last_refusal==refuse_prefix,"transfer refusal emits one sample");
+  lifetime();update();check(restore.armed,"re-arm for repeated transfer refusal");build_warp_stack();put(W(o_stack_base)-45+10+1,0xedba1u);destroy();check(transfer_refused_lines==before+1,"repeated transfer refusal reason is sampled once");}
  check(arm(),"arm for mode-left");put(W(o_cockpit+0x150),1u);update();check(!restore.armed&&restore.cancels[cancel_mode_left]==1,"leaving mode 258 disarms");put(W(o_cockpit+0x150),restore_rear_mode);
  // Armed prefilter: unrelated operand addresses never reach the handler.
  check(arm(),"arm for prefilter");{FrameCall f=seam_frame(0x2000,seam_source(W(o_stack_base)),0,W(o_monitor));run(0,f);check(restore.seam_calls==0&&restore.armed,"armed prefilter skips unrelated member stores");}

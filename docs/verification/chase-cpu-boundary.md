@@ -190,3 +190,53 @@ the seam lines are emitted.
 
 Still unmeasured in game: the cell17 tag, the literal source cell and the
 `edc91,16724,0` prefix; the next gate run's seam lines settle them.
+
+### 2026-09-16 run68 correction: arm preconditions retry, refusal samples
+
+Run 27 (`/tmp/x3-bottleX3-run68`, installed `46dc822`, four transits; grep
+only): consumes were transits 1 and 3 (seam lines 2141468 and 2152278, both
+`refusal=0`, followed by `kind=6 requested=258` on generations 2 and 4 and
+updates at 258), so consume did restore and no later mode-1 writer exists.
+Transits 2 and 4 reset because no arm existed at their destructors: the fresh
+generation's first updates (events 29/30, 62/63) carry `view=0` with `ship`
+set, the `view == ship` precondition refused (`arm_refusals` 1 and 2 exactly at
+generations 2 and 4) and the recorded attempt blocked every later update
+although `view == ship` held from events 33/66 on. All four destructor
+prefixes were identical; no transfer predicate failed (`refusals` all zero).
+
+Fix: connect/view/handle preconditions are re-checked on rear updates (mode
+read plus up to three `field` reads per update, one engine_memory read each;
+the registry walk only after connect/view pass), capped at 64 retries per
+generation (`arm_retry_exhausted` records the attempt); only the identity
+walk records the per-lifetime attempt. `arm_refusals` is now counted per
+refused update, not per lifetime; `arm_refusal_reasons=` splits it.
+Refusals are counted per reason (`arm_refusal_reasons=` in the state line)
+and sampled once per reason per state as `chase_view_restore_arm_refused` and
+`chase_view_restore_transfer_refused`, captured under the Guard and emitted
+by `handle()` after release.
+
+- `python3 verification/probe/build_chase_transition_cpu.py` then
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_chase_transition_cpu.py` →
+  `stubs=18 restore_stubs=7 checks=759 failures=0`; record regenerated at
+  `verification/results/chase-restore-cpu.json` (seam idle prefilter within
+  noise, full stub 0.55 µs). New cases: arm → consume → new generation with
+  `view=0` refused twice without recording an attempt → later update with
+  `view == ship` re-arms on the new generation → next destructor transfers →
+  second consume; connect precondition retried on the next update; identity
+  refusal still recorded once; one arm-refusal sample per reason (identity,
+  connect, view, no handle, CODE base, retry exhausted), one transfer-refusal
+  sample per reason (repeat not re-sampled); missing registry handle refused
+  per update; zero CODE base recorded once; 64-retry cap records the attempt
+  once and a later mode re-entry resets the budget; no log call under the SRW
+  lock. Arm-refused samples carry `readable=` (connect/ship/view field reads)
+  and the armed flag. The "later mode-1 writer after
+  consume" case was not added because the log shows no such writer.
+- Host: `test_chase_transition`, `test_chase_transition_sites`,
+  `test_chase_restore_sites`, `test_chase_camera.ChaseCameraLaunchOptions` →
+  24 tests OK; `verify_chase_restore_sites.py` → PASS.
+- Clean DLL (`cmake --build build --clean-first -j4`) then
+  `check_no_x87.py build/d3d9.dll` → PASS, 64 roots, 230 functions, 0
+  violations; worktree DLL SHA-256
+  `05ebd272edcc24a4c470a78bbf9f3c61058d24c59768f4a32b9b69c265b0b5e9` (evidence
+  only).

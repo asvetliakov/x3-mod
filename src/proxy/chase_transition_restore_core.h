@@ -29,14 +29,20 @@ enum RestoreRefusal : unsigned {
     refuse_globals=11, refuse_warp=12, refuse_source=13, refuse_stack=14, refuse_writable=15, refuse_write=16,
     refuse_epoch=17, refuse_provenance=18, refuse_prefix=19, refuse_identity=20, refuse_ref_tag=21, refuse_monitor_number=22, refuse_count=23
 };
+// Arm refusal reasons. Preconditions (1..3) are re-checked on every rear
+// update at field-read cost (run68: a fresh generation's first updates carry
+// view 0); an identity refusal (4) or unreadable CODE (5) records the attempt.
+enum RestoreArmRefusal : unsigned { arm_ok=0, arm_connect=1, arm_view_not_ready=2, arm_no_handle=3, arm_identity=4, arm_code=5, arm_retry_exhausted=6, arm_refusal_count=7 };
+constexpr unsigned restore_arm_retry_cap=64; // precondition retries per cockpit generation
 struct RestoreState {
     bool armed=false, pending=false;
     std::uint32_t arm_cockpit=0, arm_player=0, arm_controller=0, arm_native_script=0, arm_epoch=0, arm_code=0;
     std::uint64_t arm_generation=0;
     std::uint32_t pending_monitor=0, pending_task=0, pending_task_id=0, pending_thread=0, pending_epoch=0;
-    std::uint64_t attempt_generation=0; std::uint32_t attempt_mode=0, pending_updates=0;
+    std::uint64_t attempt_generation=0, retry_generation=0; std::uint32_t attempt_mode=0, pending_updates=0, retries=0;
     std::uint64_t arms=0, arm_refusals=0, transfers=0, consumed=0, writes_failed=0, seam_calls=0;
-    std::uint64_t cancels[cancel_count]{}, refusals[refuse_count]{};
+    std::uint64_t cancels[cancel_count]{}, refusals[refuse_count]{}, arm_refusal_reasons[arm_refusal_count]{};
+    std::uint32_t arm_sample_logged=0, transfer_sample_logged=0; // once-per-reason sample line masks
     unsigned last_refusal=0;
     void clear_arm(unsigned reason) noexcept { if(armed)++cancels[reason]; armed=false;arm_cockpit=0;arm_generation=0;arm_player=0;arm_controller=0;arm_native_script=0;arm_code=0; }
     void clear_pending(unsigned reason) noexcept { if(pending)++cancels[reason]; take_pending(); }
@@ -46,6 +52,8 @@ struct RestoreState {
     }
     void clear_all(unsigned reason) noexcept { clear_arm(reason);clear_pending(reason); }
     void refuse(unsigned why) noexcept { last_refusal=why;++refusals[why]; }
+    // A selection/cancellation invalidates the recorded attempt and its retry budget.
+    void reset_attempt() noexcept { attempt_mode=0;retries=0; }
     // 0 idle, 1 armed (operand-address prefilter), 2 pending (every store).
     std::uint32_t filter_mode() const noexcept { return pending?2u:armed?1u:0u; }
 };
