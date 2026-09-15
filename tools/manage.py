@@ -93,6 +93,7 @@ def main():
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
+    parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
     parser.add_argument('--audio-sites', action='store_true', help='Load hang witness: add the fourteen byte-verified audio-path markers (media create SetState/Pause returns, message pump entry and drain iterations, the six 0x00498370 manager-update call sites, refill entry, CompletionStatus poll with its HRESULT bucket, Update return, cue play) to the game-phase group (X3M_AUDIO_SITES=1; requires --game-phases); one game_phase_audio line per telemetry window and, with --profile, every 2 s from the sampler thread so the counters stay visible while frames are stopped (docs/architecture/voice-decoder-adapter.md, "Load hang witness build")')
     parser.add_argument('--ownership', action='store_true', help='Enable the experimental normal-D3D9 ownership wrapper')
@@ -207,6 +208,8 @@ def main():
         parser.error('--loading-probes requires --telemetry (the probe rows and trampolines are installed by the loading-trace initialization).')
     if args.game_phases and not args.telemetry:
         parser.error('--game-phases requires --telemetry.')
+    if args.frame_timing and not args.telemetry:
+        parser.error('--frame-timing requires --telemetry.')
     if args.audio_sites and not args.game_phases:
         parser.error('--audio-sites requires --game-phases.')
     if args.profile_raw and not args.profile:
@@ -376,6 +379,8 @@ def main():
         parser.error('--loading-intervals requires --telemetry (existing loading markers supply the endpoint).')
     if args.loading_probes and not args.telemetry:
         parser.error('--loading-probes requires --telemetry.')
+    if args.frame_timing and not args.telemetry:
+        parser.error('--frame-timing requires --telemetry.')
     if not 1 <= args.gz_buffer_kb <= 65536:
         parser.error('--gz-buffer-kb must be between 1 and 65536.')
     if args.taa:
@@ -430,6 +435,7 @@ def main():
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
         env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
         env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
+        env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'
         env['X3M_SCENE_DEPTH_CAPTURE'] = '1' if args.scene_depth_capture else '0'

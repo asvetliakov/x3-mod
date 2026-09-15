@@ -280,3 +280,46 @@ same command works on the iteration-08 logs. Unit tests:
 `verification/analysis/test_loading_profile.py` (11 synthetic tests: profile
 windows inside a gap, function aggregation, a block straddling the gap end,
 stall sub-intervals, missing profile lines, label rules, the Ghidra command).
+
+## Frame timing diagnostic (`X3M_FRAME_TIMING=1`)
+
+The profiler answers *which code* is running; this companion option answers
+*which frames* were slow. `frame_end` is written only every 300 frames, so a
+slow window inside that cadence cannot be located. `--frame-timing` (launcher
+`tools/manage.py`, requires `--telemetry`; `X3M_FRAME_TIMING=1`) collects one
+sample per Present into fixed 300-entry arrays (`src/proxy/frame_timing.h`,
+no allocation after attach) and reduces them at the window boundary with
+`std::nth_element`. Off, the cost is one branch on a process-global bool per
+frame and per draw. Per window one line, in microseconds, with the wrapper
+frame index of the last frame of the window:
+
+```
+frame_timing frame=N frames=300 dt_p50_us= dt_p95_us= dt_max_us= draws_p50= draws_max= present_p50_us= present_p95_us= present_max_us= slow=
+```
+
+followed by up to four witnesses for the slowest frames of that window
+(slowest first, a four-slot ring ordered by `dt_us`):
+
+```
+frame_timing_slow frame=F dt_us= draws= present_us= prims=
+```
+
+* `dt_us` is the Present-to-Present interval measured by the wrapper at the
+  `frame_end` site (`QueryPerformanceCounter`); the first observed frame only
+  starts the interval and is not sampled.
+* `present_us` is the wall time inside the forwarded native `Present`
+  (`QueryPerformanceCounter` immediately around the original call), so a window
+  where `present_us` approaches `dt_us` is GPU- or vsync-bound, and one where
+  it does not is CPU-bound ahead of Present.
+* `draws` is the wrapper's per-frame draw count (the same counter `frame_end`
+  reports) and `prims` the primitive count summed over that frame's draws; both
+  come from the existing central draw path, so a many-object scene can be tied
+  to its draw and primitive counts.
+* percentiles are nearest-rank over the samples of the window, index
+  `min(count-1, count*p/100)` of the ascending order; `slow` counts the frames
+  of the window whose `dt_us` exceeds twice the window's `dt_p50`.
+
+These are diagnostic timings taken inside the proxy, not game FPS. Host tests:
+`verification/analysis/test_frame_timing.py` with
+`verification/probe/frame_timing_host.cpp` (window statistics, slow count, the
+four-slot ring, partial and over-long windows, no allocation while sampling).

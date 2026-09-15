@@ -5,6 +5,7 @@
 #include "game_phases.h"
 #include "voice_dmo_fallback.h"
 #include "lod_scale.h"
+#include "frame_timing.h"
 #include "point_light_admission.h"
 #include "loading_trace.h"
 #include "gz_buffer.h"
@@ -495,6 +496,7 @@ void object_context(Device& ctx) {
 void snapshot(IDirect3DDevice9* d, const char* kind, D3DPRIMITIVETYPE type, UINT primitives, bool user_memory=false) {
     auto& ctx = *devices.at(d);
     ++ctx.draws;
+    frame_timing::draw(primitives); // X3M_FRAME_TIMING only: one branch, one add
     if (!ctx.capture) return;
     telemetry::Scope timed(ctx.stats,telemetry::Metric::Snapshot);
     capture_event(ctx,"draw_begin",S_OK,true);
@@ -984,8 +986,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         }
     }
     const auto begin=telemetry::now();
+    frame_timing::present_begin(); // ahead of before_original: pre-call instrumentation must not alter the native input state (cpu_state.h)
     cpu.before_original();
     const HRESULT hr=fn(d,a,b,w,r);cpu.after_original();
+    frame_timing::present_end();
     ctx.motion_output.after_present(hr);
     const bool scene_confirmed=ctx.scene_depth.end_frame(hr);
     const bool motion_committed=ctx.motion.end_frame(scene_confirmed,hr);
@@ -1007,6 +1011,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     // engine_patch claim belongs to initialize_log (before the device existed);
     // a later claim would write over code the loading threads may be executing.
     if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
+    frame_timing::frame(ctx.frame,ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
     if (ctx.capture || ctx.frame%300==0) {
         // One QPC per logged line (every 300 frames or a capture frame), in every
         // mode: elapsed_ms since DllMain and dt_ms since the previous frame_end
@@ -2294,6 +2299,7 @@ void initialize_log(HMODULE module) {
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present
     voice_dmo_fallback::initialize(); // X3M_VOICE_DMO_FALLBACK=1 only; one claim, same window
+    frame_timing::initialize(); // X3M_FRAME_TIMING=1 only; one environment read, no allocation afterwards
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone
