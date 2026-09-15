@@ -74,7 +74,7 @@ def screen_report(screen=1,fade=1,emission=1,caps=1,injected=None,region=441,gai
     def kind_region(kind):return injected if injected else KIND_REGION[kind]
     def kind_pixels(kind):return live.rect_area(kind_region(kind)) if kind!='s' or injected else region
     if screen:
-        trace.append(line('screen_emission_mode',requested=1,enabled=1,materials=1,taa=1,policy=8,gain=f'{gain:g}',gain_valid=1))
+        trace.append(line('screen_emission_mode',requested=1,enabled=1,hdr=1,taa=1,ownership=1,materials=fade,policy=8,gain=f'{gain:g}',gain_valid=1))
         trace.append(line('screen_emission_variant',device=1,original=live.SCREEN_PAIR[1],transform=0,create='00000000',words=153,gain=1,outputs='packed'))
     policies=(3|live.IN_PLACE_POLICY)|(8 if screen and caps else 0);submissions=0;total_pixels=0
     for f in range(live.SCREEN_FRAMES):
@@ -161,11 +161,39 @@ class LauncherOption(unittest.TestCase):
 
     def test_prerequisites_are_required(self):
         with tempfile.TemporaryDirectory() as directory:
-            for missing in ('--ownership','--linear-materials','--taa'):
+            for missing in ('--ownership','--hdr-tonemap','--taa'):
                 args=[a for a in PREREQUISITES if a!=missing]
                 if missing=='--taa':args=[a for a in args if a not in ('--object-trace','--object-lifetime')]
                 code,_,error=launch(directory,*args,'--screen-emission')
                 self.assertEqual(code,2,missing);self.assertIn('--screen-emission',error)
+            code,_,error=launch(directory,*[a for a in PREREQUISITES if a!='--hdr-tonemap'],'--screen-emission','--hdr-tonemap','--hdr-decode','srgb')
+            self.assertEqual(code,2,'gamma2.2 decode');self.assertIn('--screen-emission',error)
+
+    def test_linear_materials_are_not_required(self):
+        # docs/architecture/linear-material-decoupling.md: the packed route
+        # composes on the native-encoded FP16 scene with or without linear hulls.
+        with tempfile.TemporaryDirectory() as directory:
+            args=[a for a in PREREQUISITES if a!='--linear-materials']
+            code,output,error=launch(directory,*args,'--screen-emission');self.assertEqual(code,0,error)
+            env=json.loads(output)['env']
+            self.assertEqual((env['X3M_SCREEN_EMISSION'],env['X3M_SCREEN_EMISSION_BOUND'],env['X3M_LINEAR_MATERIALS'],env['X3M_LINEAR_DISTANCE_FADE']),('1','1','0','0'))
+
+
+class DllGate(unittest.TestCase):
+    def test_dll_gate_names_every_launcher_prerequisite(self):
+        # capture.cpp computes the option once; the raw-environment gate must
+        # match the launcher's: TAA, motion output, HDR AgX gamma2.2 and the
+        # ownership Unlock scan (the bound), never linear materials.
+        source=(ROOT/'src/proxy/capture.cpp').read_text()
+        block=source[source.index('X3M_SCREEN_EMISSION",setting'):source.index('screen_emission_mode requested=1')]
+        self.assertIn('screen_emission_requested=asked && screen_hdr && taa_requested && screen_ownership;',block)
+        self.assertIn('GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1',block)
+        for name in ('material_decode_valid','material_tonemap_valid','motion_output_requested','hdr_requested','HdrTonemap::Agx','AgxDecode::gamma22'):self.assertIn(name,block)
+        self.assertNotIn('linear_material_requested &&',block)
+        self.assertIn('ownership=%u',source[source.index('screen_emission_mode requested=1'):][:200])
+        with tempfile.TemporaryDirectory() as directory:
+            code,output,error=launch(directory,*[a for a in PREREQUISITES if a!='--linear-materials'],'--screen-emission');self.assertEqual(code,0,error)
+            self.assertEqual(json.loads(output)['env']['X3M_OWNERSHIP'],'1')
 
 
 class AdmissionTable(unittest.TestCase):

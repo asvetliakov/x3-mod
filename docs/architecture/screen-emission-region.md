@@ -332,7 +332,7 @@ reachable functions).
 ## Step C — implemented (2026-09-14)
 
 Runtime admission behind `--screen-emission` (`X3M_SCREEN_EMISSION=1`, which sets and implies
-`X3M_SCREEN_EMISSION_BOUND=1`; requires `--linear-materials --taa --motion-output --ownership`; default
+`X3M_SCREEN_EMISSION_BOUND=1`; requires `--taa --motion-output --ownership --hdr --hdr-tonemap` and gamma2.2 decode, with or without `--linear-materials` since 2026-09-15 ([linear-material-decoupling.md](linear-material-decoupling.md)); default
 off). `screen_emission_admission.h` is the one table for step B's scan allowlist and this admission: the nine
 SM1 pairs (row 19 first), the three INSTANCE_BULLETS vertex shaders flagged bound-capable (one body, c0-3 =
 g_mViewProjection); the six DEFAULT/INSTANCE bodies register their promoted producer but have no bound

@@ -759,7 +759,9 @@ def screen_expected_sources(frame,screen=1,fade=1,emission=1,caps=1):
         # Without the option the bullet pair is an ordinary non-producer pair
         # (histogram bit 0), as is the dither state with it; unbounded and
         # caps refusals are outside the histogram.
-        refused=int((admissible and not prepared) or (bullet and (not active or kind=='d')))
+        # An inactive fade/emission source (its route off: linear materials
+        # off disables the distance fade) is the same non-producer pair.
+        refused=int((admissible and not prepared) or (bullet and (not active or kind=='d')) or (not bullet and not active))
         if incomplete:stopped=True
         admitted_kind=kind in SCREEN_ADMITTED_KINDS
         result.append(dict(kind=kind,fault=applied,overlap=SCREEN_OVERLAP.get(frame,1) if kind=='s' else SCREEN_CHAIN_QUADS if kind=='c' else 1,prepared=prepared,linear=linear,native=0,incomplete=incomplete,refused=refused,readiness=readiness,
@@ -863,7 +865,10 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
     by_frame={f:[] for f in range(SCREEN_FRAMES)}
     for row in source_rows:by_frame[int(row['frame'])].append(row)
     expected_by_frame={f:screen_expected_sources(f,screen,fade,emission,caps) for f in range(SCREEN_FRAMES)}
-    policies=(3|IN_PLACE_POLICY)|(8 if screen and caps else 0)
+    # The required producers are the active fade/emission routes; the in-place
+    # fade policy attaches with the fade route, policy 8 with the option and the caps.
+    required_bits=(1 if emission else 0)|(2 if fade else 0)
+    policies=required_bits|(IN_PLACE_POLICY if fade else 0)|(8 if screen and caps else 0)
     totals=dict(packed_eligible=0,packed_admitted=0,packed_linear=0,packed_incomplete=0,packed_unbounded=0,packed_caps=0,packed_region_pixels=0)
     bracket_pixels={};total_sources=0 # kind -> region pixels of one packed bracket (one bound rectangle per kind)
     for frame,row in live.items():
@@ -871,7 +876,7 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
         status=[int(row[f's{i}']) for i in range(SCREEN_STATUS_KEYS)]
         expected,stopped=expected_by_frame[frame]
         assert int(row['draws'])==len(expected)
-        assert status[16]==3,'required producers stay the fade/emission bits: policy 8 is never required'
+        assert status[16]==required_bits,(frame,'required producers are the active fade/emission bits: policy 8 is never required',status[16])
         assert status[18]==status[19]==policies,(frame,'policy 8 attaches beside fade and emission only with the option and the caps',status[18])
         assert status[21]==(5 if screen and caps else 4),'one shared pool: five targets with the packed plane, four without'
         assert status[2]==status[3]==status[9]==0,'no lost/quarantined/suppressed state'
@@ -913,8 +918,11 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
     assert int(resets[0]['refs_before'])-int(resets[0]['refs_after'])==int(resets[0]['allocations']) and resets[0]['quarantine']=='0' and resets[0]['state_lost']=='0'
     releases=[fields(line) for line in traces if line.startswith('motion_output_release ')]
     assert len(releases)==1 and int(releases[0]['released'])==1,'every route object released at the final device Release'
-    frames=indexed(traces,'linear_composition_frame ','frame');refusals=indexed(traces,'linear_composition_refusals ','frame')
-    assert set(frames)==set(refusals)==set(range(SCREEN_FRAMES))
+    # The frame/refusal lines carry the composition name while the fade or
+    # screen route is requested and the emission name otherwise (same fields).
+    prefix='linear_composition' if fade or screen else 'linear_emission'
+    frames=indexed(traces,prefix+'_frame ','frame');refusals=indexed(traces,prefix+'_refusals ','frame')
+    assert set(frames)==set(refusals)==set(range(SCREEN_FRAMES)),(prefix,sorted(frames),sorted(refusals))
     for frame,row in frames.items():
         expected,_=expected_by_frame[frame];status=[int(live[frame][f's{i}']) for i in range(SCREEN_STATUS_KEYS)]
         for key,index in (('packed_eligible',40),('packed_admitted',41),('packed_linear',42),('packed_incomplete',43),('packed_unbounded_refused',44),('packed_caps_refused',45),('packed_region_pixels',46)):
@@ -927,7 +935,7 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
     variants=[fields(line) for line in traces if line.startswith('screen_emission_variant ')]
     assert [(v['original'],int(v['transform']),int(v['create'],16)) for v in variants]==([(SCREEN_PAIR[1],0,0)] if screen else []),'the packed producer is created once for the row-19 PS, only with the option'
     modes=[fields(line) for line in traces if line.startswith('screen_emission_mode ')]
-    assert [(int(m['enabled']),float(m['gain']),int(m['gain_valid'])) for m in modes]==([(1,gain,1)] if screen else []),('the configured step E gain is read once',modes)
+    assert [(int(m['enabled']),int(m['hdr']),int(m['taa']),int(m['ownership']),int(m['materials']),float(m['gain']),int(m['gain_valid'])) for m in modes]==([(1,1,1,1,fade,gain,1)] if screen else []),('the option gate names its prerequisites and the step E gain once',modes)
     chains=[fields(line) for line in lines if line.startswith('SCREEN_CHAIN ')]
     assert [(int(c['frame']),int(c['quads']),int(c['step_px']),int(c['sprite']),tuple(map(int,c['rect'].split(','))),int(c['packed'])) for c in chains]==[(SCREEN_CHAIN_FRAME,SCREEN_CHAIN_QUADS,SCREEN_CHAIN_STEP_PX,SCREEN_CHAIN_SPRITE,SCREEN_CHAIN_RECT,int(bool(screen and caps)))],('one eight-quad chain draw',chains)
     if injected:assert tuple(map(int,chains[0]['composed'].split(',')))==injected
@@ -946,11 +954,11 @@ def validate_screen_functional(output,trace,screen=1,fade=1,emission=1,caps=1,in
             if kind in SCREEN_NEAR_KINDS:near_rects[kind]=dict(rect=rect,f_permille=int(r['f_permille']))
     if screen and caps and not injected:assert set(near_rects)=={'n','x','b'},('near-plane kinds bounded and witnessed',near_rects)
     sample_result=validate_screen_samples([fields(line) for line in lines if line.startswith('SCREEN_SAMPLE ')],expected_by_frame,fade,emission,gain)
-    packed_samples=validate_packed_samples(traces,expected_by_frame,injected)
+    packed_samples=validate_packed_samples(traces,expected_by_frame,injected,prefix)
     return dict(frames=SCREEN_FRAMES,sources=total_sources,region_pixels_per_bracket=bracket_pixels.get('s'),bracket_pixels=bracket_pixels,near_rects=near_rects,totals=totals,held_references=int(releases[0]['held']),packed_samples=packed_samples,**sample_result)
 
 
-def validate_packed_samples(traces,expected_by_frame,injected=None):
+def validate_packed_samples(traces,expected_by_frame,injected=None,prefix='linear_composition'):
     """packed_sample lines (capture frames only, screen-emission-region.md
     step B grammar): one per admitted packed draw of a captured frame with
     both readbacks S_OK, finite values and the centre inside the rectangle;
@@ -961,7 +969,7 @@ def validate_packed_samples(traces,expected_by_frame,injected=None):
     rows=[fields(line) for line in traces if line.startswith('packed_sample ')]
     expected=[f for f in SCREEN_CAPTURE_FRAMES for s in expected_by_frame[f][0] if s['packed_admitted']]
     assert [int(r['frame']) for r in rows]==expected,('one packed_sample per admitted packed draw of a capture frame',[int(r['frame']) for r in rows],expected)
-    frames=indexed(traces,'linear_composition_frame ','frame')
+    frames=indexed(traces,prefix+'_frame ','frame')
     assert all(int(frames[f]['packed_sample_skipped'])==0 for f in frames),'no capture frame exceeds the packed_sample cap (at most two admitted packed draws per frame)'
     changed=0;changed_lines=0;changed_pixels=0;scanned=0
     for r in rows:
@@ -1145,7 +1153,11 @@ def validate_screen_witness(trace,screen=1,fade=1,emission=1,caps=1,k=WITNESS_K,
     pixels outside on every sampled frame, or (injected straddling
     rectangle) violations on exactly the packed frames."""
     lines=trace.splitlines();rows=indexed(lines,'fade_witness ','frame')
-    assert set(rows)=={f for f in range(SCREEN_FRAMES) if f%k==0}
+    if not fade and not screen:
+        # The witness is configured by the fade or the screen route only.
+        assert not rows,('no witness without either route',sorted(rows))
+        return dict(k=k,configured=False,sampled_frames=[],skipped={},covered_pixels=0,union_area=0,outside_pixels=0)
+    assert set(rows)=={f for f in range(SCREEN_FRAMES) if f%k==0},(sorted(rows),k)
     sampled=[];skipped={};hist=[0]*8;covered=union=0;violations=[]
     for frame,row in sorted(rows.items()):
         wanted=screen_expected_witness(frame,screen,fade,emission,caps)
@@ -1184,7 +1196,7 @@ def screen_straddle_violations(width=64,height=64):
     return result
 
 
-def validate_screen_timing(output,trace,screen,width,height):
+def validate_screen_timing(output,trace,screen,width,height,fade=1):
     rows=[fields(line) for line in output.splitlines() if line.startswith('SCREEN_TIMING ')]
     assert [(int(r['count']),int(r['sample'])) for r in rows]==[(c,s) for c in COUNTS for s in range(SCREEN_TIMING_SAMPLES)]
     quad=None;per_bracket=None;counts={}
@@ -1200,13 +1212,19 @@ def validate_screen_timing(output,trace,screen,width,height):
         counts.setdefault(str(count),[]).append({k:float(r[f'{k}_ms']) for k in ('source','terminal','total')})
     checks=[fields(line) for line in output.splitlines() if line.startswith('SCREEN_CHECKS ')]
     assert len(checks)==1 and checks[0]['benchmark']=='1' and int(checks[0]['submissions'])==6*sum(COUNTS)
-    frames=indexed(trace.splitlines(),'linear_composition_frame ','frame')
-    assert all(int(row['packed_incomplete'])==0 and int(row['packed_caps_refused'])==0 for row in frames.values())
+    frames=indexed(trace.splitlines(),('linear_composition' if fade or screen else 'linear_emission')+'_frame ','frame')
+    assert frames and all(int(row['packed_incomplete'])==0 and int(row['packed_caps_refused'])==0 for row in frames.values())
     return dict(width=width,height=height,screen=screen,quad=quad,region_pixels_per_bracket=per_bracket,counts=counts)
 
 
-def screen_timing_name(width,height,pair,screen):
-    return f'screen-timing-{width}x{height}-pair{pair}-screen{screen}'
+def screen_timing_name(width,height,pair,screen,materials=1):
+    return f'screen-timing-{width}x{height}-pair{pair}-screen{screen}'+('' if materials else '-nomaterials')
+
+
+def screen_paired_window(off,on):
+    deltas={k:[b[k]-a[k] for a,b in zip(off,on)] for k in ('source','terminal','total')}
+    return dict(off_median_ms={k:statistics.median(r[k] for r in off) for k in deltas},
+                on_median_ms={k:statistics.median(r[k] for r in on) for k in deltas},paired_window_median_delta_ms={k:statistics.median(v) for k,v in deltas.items()})
 
 
 def screen_paired_cost(cases):
@@ -1216,12 +1234,17 @@ def screen_paired_cost(cases):
             pairs=[]
             for pair in (0,1):
                 off=cases[screen_timing_name(width,height,pair,0)]['counts'][str(count)];on_case=cases[screen_timing_name(width,height,pair,1)];on=on_case['counts'][str(count)]
-                deltas={k:[b[k]-a[k] for a,b in zip(off,on)] for k in ('source','terminal','total')}
-                pairs.append(dict(order='off/on' if pair==0 else 'on/off',off_median_ms={k:statistics.median(r[k] for r in off) for k in deltas},
-                                  on_median_ms={k:statistics.median(r[k] for r in on) for k in deltas},paired_window_median_delta_ms={k:statistics.median(v) for k,v in deltas.items()}))
+                pairs.append(dict(order='off/on' if pair==0 else 'on/off',**screen_paired_window(off,on)))
             on_case=cases[screen_timing_name(width,height,0,1)]
-            result.append(dict(width=width,height=height,quad=on_case['quad'],region_pixels_per_bracket=on_case['region_pixels_per_bracket'],ordered_dips=count,
-                               per_bracket_source_delta_ms=[round(p['paired_window_median_delta_ms']['source']/count,4) for p in pairs],pairs=pairs))
+            row=dict(width=width,height=height,quad=on_case['quad'],region_pixels_per_bracket=on_case['region_pixels_per_bracket'],ordered_dips=count,
+                     per_bracket_source_delta_ms=[round(p['paired_window_median_delta_ms']['source']/count,4) for p in pairs],pairs=pairs)
+            # The user's configuration: no linear materials and no mip bias, so
+            # the sampler-state hook is installed by the option alone (off/on order).
+            if screen_timing_name(width,height,0,1,0) in cases:
+                off=cases[screen_timing_name(width,height,0,0,0)]['counts'][str(count)];on=cases[screen_timing_name(width,height,0,1,0)]['counts'][str(count)]
+                window=screen_paired_window(off,on)
+                row['nomaterials']=dict(order='off/on',per_bracket_source_delta_ms=round(window['paired_window_median_delta_ms']['source']/count,4),**window)
+            result.append(row)
     return result
 
 
@@ -1232,7 +1255,8 @@ SCREEN_LIMITATIONS=[
     'The bullet rows are the identity (positions are clip coordinates): the projection of the locked-prefix box is exercised, not a perspective camera; the fixture quad is axis-aligned.',
     'The packed-law oracle is a float64 restatement of the step E law with the FP16 store as tolerance (fraction <= 1 of .006|b|+.00002); the overlap chain is compared with its native twin from a separate process (the off run) within one FP16 code, and the gain run against the law on that twin; the detached packed corpus holds the bit-exact prototype comparison.',
     'Caps refusal is produced by withholding policy 8 from the attach request (seam only), the same route decision as a device without four targets or INVSRCALPHA.',
-    'Timing pairs toggle the screen option (and with it the step B scan) with the same material/TAA/HDR settings; EVENT-fenced windows, not GPU timestamps or game FPS.',
+    'Timing pairs toggle the screen option (and with it the step B scan) with the same material/TAA/HDR settings; one extra off/on pair at the first resolution runs with linear materials off and mip bias 0 (the sampler-state hook installed by the option alone); EVENT-fenced windows, not GPU timestamps or game FPS.',
+    'The no-materials trio (X3M_LINEAR_MATERIALS=0, distance fade off by construction, mip bias 0 so the sampler hook owes its installation to the option) proves the packed route on the native-encoded FP16 scene without linear hulls; the additive emission route stays on so the pool keeps a required producer.',
     'Native Windows, installation and gameplay appearance remain unverified.',
 ]
 
@@ -1249,23 +1273,34 @@ def main_screen(args):
           dict(name='screen-timing-line',screen=1,witness=True,emission_timing=True),
           dict(name='screen-gain2',screen=1,witness=True,gain=SCREEN_GAIN_RUN),
           dict(name='screen-straddle',screen=1,witness=True,rect=SCREEN_STRADDLE_RECT,expect_violations=screen_straddle_violations()),
-          dict(name='screen-caps',screen=1,witness=True,caps=0)]
+          dict(name='screen-caps',screen=1,witness=True,caps=0),
+          # Linear materials off (docs/architecture/linear-material-decoupling.md):
+          # the same functional/off/gain trio, so the step E chain has its
+          # native twin and the gain law in this configuration too.
+          dict(name='screen-nomaterials-functional',screen=1,witness=True,materials=0),
+          dict(name='screen-nomaterials-off',screen=0,witness=True,materials=0),
+          dict(name='screen-nomaterials-gain2',screen=1,witness=True,materials=0,gain=SCREEN_GAIN_RUN)]
     for width,height in RESOLUTIONS:
         for pair in (0,1):
             for screen in ((0,1) if pair==0 else (1,0)):
                 runs.append(dict(name=screen_timing_name(width,height,pair,screen),screen=screen,timing=True,width=width,height=height))
+    # One paired timing run in the user's configuration (linear materials off,
+    # mip bias 0: the sampler-state hook is newly installed by the option).
+    for screen in (0,1):
+        runs.append(dict(name=screen_timing_name(*RESOLUTIONS[0],0,screen,0),screen=screen,timing=True,width=RESOLUTIONS[0][0],height=RESOLUTIONS[0][1],materials=0))
     try:
         for run in runs:
             assert not game_running(),'game running; no fixture launch'
             work=raw/run['name'];work.mkdir()
             shutil.copy2(inputs[0],work/'fixture.exe');shutil.copy2(inputs[1],work/'d3d9.dll')
             env={k:v for k,v in os.environ.items() if not k.startswith('X3M_')}
+            materials=run.get('materials',1)
             env.update(X3M_MOTION_OUTPUT='1',X3M_HDR='1',X3M_HDR_TONEMAP='agx',X3M_HDR_DECODE='gamma2.2',
                        X3M_HDR_EXPOSURE='manual',X3M_HDR_EV_MANUAL='0',X3M_HDR_CLAMP='0',X3M_HDR_BLOOM='0',
-                       X3M_LINEAR_MATERIALS='1',X3M_MATERIAL_DIRECT_GAIN='1',X3M_MATERIAL_EMISSIVE_GAIN='1',X3M_LIGHTMAP_EMISSIVE_GAIN='1',
-                       X3M_LINEAR_DISTANCE_FADE='1',X3M_LINEAR_EMISSIONS='1',X3M_EMISSION_GAIN='1',
+                       X3M_LINEAR_MATERIALS=str(materials),X3M_MATERIAL_DIRECT_GAIN='1',X3M_MATERIAL_EMISSIVE_GAIN='1',X3M_LIGHTMAP_EMISSIVE_GAIN='1',
+                       X3M_LINEAR_DISTANCE_FADE=str(materials),X3M_LINEAR_EMISSIONS='1',X3M_EMISSION_GAIN='1',
                        X3M_SCREEN_EMISSION=str(run['screen']),X3M_SCREEN_EMISSION_BOUND=str(run['screen']),X3M_SCREEN_EMISSION_GAIN=repr(run.get('gain',SCREEN_GAIN)),
-                       X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5',
+                       X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5' if materials else '0',
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
                        X3M_CAPTURE_START='1000000' if run.get('timing') else str(SCREEN_CAPTURE_FRAMES.start),X3M_CAPTURE_FRAMES='0' if run.get('timing') else str(len(SCREEN_CAPTURE_FRAMES)),WINEDLLOVERRIDES='d3d9=n,b')
@@ -1282,13 +1317,13 @@ def main_screen(args):
             assert child.returncode==0,f"{run['name']}: fixture failed; {work}"
             logs=list((work/'x3-modern-captures').glob('session-*.log'));assert len(logs)==1
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()
-            caps=run.get('caps',1)
-            if run.get('timing'):case=validate_screen_timing(output,trace,run['screen'],run['width'],run['height'])
+            caps=run.get('caps',1);fade=materials # the distance fade needs the linear-material route
+            if run.get('timing'):case=validate_screen_timing(output,trace,run['screen'],run['width'],run['height'],fade)
             else:
-                case=validate_screen_functional(output,trace,run['screen'],1,1,caps,run.get('rect'),run.get('gain',SCREEN_GAIN))
-                case.update(validate_screen_pixels(work,run['screen'],1,1,caps))
+                case=validate_screen_functional(output,trace,run['screen'],fade,1,caps,run.get('rect'),run.get('gain',SCREEN_GAIN))
+                case.update(validate_screen_pixels(work,run['screen'],fade,1,caps))
                 try:
-                    case['witness']=validate_screen_witness(trace,run['screen'],1,1,caps,WITNESS_K,run.get('rect'))
+                    case['witness']=validate_screen_witness(trace,run['screen'],fade,1,caps,WITNESS_K,run.get('rect'))
                     assert not run.get('expect_violations'),f"{run['name']}: the straddling rectangle must fail the witness"
                 except WitnessViolation as violation:
                     assert violation.violations==run.get('expect_violations'),(run['name'],'unexpected witness violations',violation.violations,run.get('expect_violations'))
@@ -1310,6 +1345,13 @@ def main_screen(args):
         assert timing_line['totals']==functional['totals'],('the timing flag changes no composition counter',timing_line['totals'],functional['totals'])
         assert timing_line['packed_samples']==functional['packed_samples'],('the timing flag changes no packed sample',timing_line['packed_samples'])
         assert result['cases']['screen-caps']['totals']['packed_caps']==sum(s['packed_caps'] for f in range(SCREEN_FRAMES) for s in screen_expected_sources(f,1,1,1,0)[0])==functional['totals']['packed_eligible']-functional['totals']['packed_unbounded']
+        # Linear materials off: the packed accounting, the step E chain against
+        # its own native twin and the witness hold exactly as with them on.
+        nomaterials=result['cases']['screen-nomaterials-functional']
+        assert nomaterials['totals']==functional['totals'],('the packed route does not depend on the linear-material route',nomaterials['totals'],functional['totals'])
+        assert nomaterials['witness']['outside_pixels']==0 and nomaterials['witness']['sampled_frames'],('witness without linear materials',nomaterials['witness'])
+        assert result['cases']['screen-nomaterials-off']['totals']['packed_eligible']==0
+        result['chain_nomaterials']=validate_screen_chain(Path(nomaterials['raw']),Path(result['cases']['screen-nomaterials-off']['raw']),Path(result['cases']['screen-nomaterials-gain2']['raw']))
         result['passed']=True
     except Exception as error:
         result['error']=f'{type(error).__name__}: {error}'

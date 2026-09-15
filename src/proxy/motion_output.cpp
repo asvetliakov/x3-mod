@@ -564,7 +564,11 @@ void MotionOutput::configure_linear_distance_fade(bool requested) noexcept {
 }
 void MotionOutput::configure_screen_emission(bool requested, float gain) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
-    screen_emission_requested_ = requested && linear_material_requested_;
+    // No linear-material prerequisite: the packed producer is an SM1 emitter
+    // promotion and the bracket composes on the HDR scene the AgX gamma2.2
+    // pass owns (TAA/HDR are gated per frame and per draw). Only the stage-0
+    // sRGB shadow the readiness gate reads is fed for this route below.
+    screen_emission_requested_ = requested && taa_requested_;
     screen_emission_gain_ = gain;
 }
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
@@ -721,7 +725,8 @@ void MotionOutput::resync_samplers() noexcept {
     for (unsigned stage = 0; stage < sampler_stage_count; ++stage) {
         auto& s = samplers_[stage];
         s = SamplerShadow{};
-        if (linear_material_requested_ && stage < 6)
+        // The packed screen readiness gate reads stage 0 only (the diffuse sampler).
+        if ((linear_material_requested_ && stage < 6) || (screen_emission_requested_ && stage == 0))
             s.srgb_known = SUCCEEDED(native<GetSamplerStateFn>(GetSamplerState)(device_, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
         if (!mip_bias_bits_ && !composition_requested()) continue;
         IDirect3DBaseTexture9* texture = nullptr;
