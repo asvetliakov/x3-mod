@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (run60 loading retention and sun-lane coverage analysed). This is the short current handoff; the current
+Updated 2026-09-15 evening (run26 candidate installed; run 26 queued). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,21 +13,29 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`4c3ac81ee2193dd366c098635c78bf763ff3d19121d945062afc3b11882173d2`
-(14,729,266 bytes), built once on Sol from reviewed clean source `155ac54`.
-The [install record](../verification/results/run25-candidate-install.json) binds
-the clean build (11.46 s, zero warnings), 225-function no-x87 audit, exact 17
-exports, eight-check X3 DLL load, scoped source/GPU evidence and installed-byte
-verification. Previous `f6cf181b…` DLL and manifest are retained together in
-`/tmp/x3-consolidated-candidate-XTH71F/rollback`. EXE and bottle configuration
-hashes are unchanged. Run25's affected launch passed `--dry-run`; no game launched.
+`5726a37b702cb808ebdb8106f884e9cedca32066c02cfbcff1c413d9e3122c59`
+(15,034,835 bytes), built once on Opus from clean committed main `f2b7406`
+(2026-09-15 evening). The [build record](../verification/results/run26-candidate-build.json)
+binds the clean build (10.84 s, zero warnings), 225-function no-x87 audit, exact
+17 exports and the eight-check X3 DLL load; the
+[install record](../verification/results/run26-candidate-install.json) binds the
+installed bytes, the unchanged EXE/bottle hashes and the rollback. Rollback DLL and
+manifest are in `/tmp/x3-candidate-QkAfwa/rollback`. Run 26's launch passed `--dry-run`;
+no game launched.
 
-This build adds the reviewed native constant-port repair, `--chase-hud-anchor`
-(`centre` default), gate identity/provenance/geometry diagnostics, optional
-`--loading-intervals`, and default-off `--sun-shadow-lane` diagnostics. It applies
-no shadows and does not contain selective material exposure or chase restoration.
-Auto exposure now defaults to a **+1.0 EV ceiling**, fill to **0.03** with linear
-materials, including direct DLL fallback.
+**Provenance caveat:** before this install the bottle held DLL `3f1b9941…`
+(14,905,020 bytes, installed 17:00 local), not the `4c3ac81e…` run25 build this
+file previously recorded; a `/tmp/x3-candidate-run26/` candidate (`6df394fe…`,
+09:06) and snapshots run61–run64 also exist without repo records. Their provenance
+is under triage; the `3f1b9941…` DLL is retained as the rollback.
+
+This build adds, all default-off unless stated: `--chase-view-restore`,
+`--emission-source-gain G`, `--screen-emission-additive G`, `--shadow-replay-candidates`,
+sun-lane refusal buckets inside `--sun-shadow-lane`, and `--screen-emission` no
+longer requiring `--linear-materials`. It keeps the run25 features (native
+constant-port repair, `--chase-hud-anchor centre` default, gate diagnostics,
+`--loading-intervals`). It applies no shadows. Auto exposure ceiling +1.0 EV and
+fill 0.03 (fill only with linear materials) remain.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
@@ -160,8 +168,10 @@ further linear-hull processing is planned. Decisions this session:
 - Pre-existing host failure: `test_linear_material_live.test_production_control_flow`
   fails to compile its mock on `main` (missing sun-lane fields); tracked, unowned.
 
-No build, install or user run is queued yet; the next candidate batches the
-decoupling, restore option and refusal diagnostics.
+The run26 candidate is installed (see above) and
+[run 26](verification/user-runs.md) is queued: session A with original hulls,
+both gains at 2, chase restore, replay candidates and loading intervals; optional
+session B with linear materials for the sun-lane buckets.
 
 ## Usage-limit checkpoint (earlier 2026-09-15)
 

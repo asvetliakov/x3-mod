@@ -1,0 +1,145 @@
+{
+  "recorded_utc": "2026-09-15T15:32:20Z",
+  "candidate": {
+    "path": "/tmp/x3-candidate-QkAfwa/candidate/d3d9.dll",
+    "sha256": "5726a37b702cb808ebdb8106f884e9cedca32066c02cfbcff1c413d9e3122c59",
+    "bytes": 15034835,
+    "retained_first_build": true,
+    "candidate_directory_file_count": 1
+  },
+  "source": {
+    "worktree": "/tmp/x3-candidate-QkAfwa/source",
+    "commit": "f2b7406828c044de6b361ec1c78be41753361e93",
+    "detached": true,
+    "status_before_configure": "clean",
+    "status_after_build": "clean"
+  },
+  "toolchain": {
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "cmake": "4.4.3",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "objdump": "GNU Binutils 2.47.20260726",
+    "target": "32-bit Windows PE",
+    "native_windows_execution": "not performed"
+  },
+  "configure": {
+    "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build",
+    "elapsed_seconds": 2.37,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-QkAfwa/configure.log"
+  },
+  "build": {
+    "command": "cmake --build build -j4",
+    "invocations": 1,
+    "elapsed_seconds": 10.84,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-QkAfwa/build.log"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-QkAfwa/candidate/d3d9.dll",
+      "result": "PASS",
+      "reachable_functions": 225,
+      "violations": 0
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-QkAfwa/candidate/d3d9.dll",
+      "result": "PASS",
+      "machine": "0x014c",
+      "count": 17,
+      "names": [
+        "D3DPERF_BeginEvent",
+        "D3DPERF_EndEvent",
+        "D3DPERF_GetStatus",
+        "D3DPERF_QueryRepeatFrame",
+        "D3DPERF_SetMarker",
+        "D3DPERF_SetOptions",
+        "D3DPERF_SetRegion",
+        "DebugSetLevel",
+        "DebugSetMute",
+        "Direct3D9EnableMaximizedWindowedModeShim",
+        "Direct3DCreate9",
+        "Direct3DCreate9Ex",
+        "Direct3DCreate9On12",
+        "Direct3DCreate9On12Ex",
+        "Direct3DShaderValidatorCreate9",
+        "PSGPError",
+        "PSGPSampleTexture"
+      ],
+      "matches_run25_names": true,
+      "report": "/tmp/x3-candidate-QkAfwa/pe-exports.json"
+    }
+  },
+  "load": {
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll /tmp/x3-candidate-QkAfwa/candidate/d3d9.dll --case writable",
+    "result": "PASS",
+    "passed": true,
+    "status": "PASS",
+    "game_launched": false,
+    "bottle": "X3",
+    "selected_case": "writable",
+    "checks": 8,
+    "failures": 0,
+    "exit": 0,
+    "source": "game",
+    "on12_forwarded": true,
+    "exports_resolved": 17,
+    "elapsed_seconds": 9.91,
+    "owner_log": "/tmp/x3-candidate-QkAfwa/load-owner.log",
+    "summary": "verification/results/bottle-X3/d3d9-exports-summary.json",
+    "scope": "Eight-check X3 DLL load smoke under CrossOver Preview (writable case): 17 D3D9 exports, forwarded entry points and ret-N fallbacks. Not a native-Windows run."
+  },
+  "dry_run": {
+    "command": "./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --shadow-replay-candidates --loading-intervals --capture-start 999999 --capture-frames 8 --dry-run",
+    "passed": true,
+    "exit_code": 0,
+    "path": "/tmp/x3-candidate-QkAfwa/dry-run.txt",
+    "corrections": "none; accepted as given",
+    "env_checked": {
+      "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+      "X3M_SCREEN_EMISSION": "0",
+      "X3M_EMISSION_SOURCE_GAIN": "2.0",
+      "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+      "X3M_CHASE_VIEW_RESTORE": "1",
+      "X3M_HDR_EXPOSURE": "auto",
+      "X3M_LOADING_INTERVALS": "1",
+      "X3M_MOTION_OUTPUT": "1",
+      "X3M_TAA": "1",
+      "X3M_OWNERSHIP": "1"
+    },
+    "dll_override": "d3d9=n,b"
+  },
+  "qualification_ledgers": [
+    {
+      "path": "docs/verification/screen-emission.md",
+      "rows": [
+        "2026-09-15 \u2014 `--screen-emission` decoupled from `--linear-materials` (live passed, 17 cases)",
+        "2026-09-15 \u2014 decoupling review follow-ups: DLL gate requires X3M_OWNERSHIP=1 (live passed, 19 cases)",
+        "2026-09-15 \u2014 `--emission-source-gain G` (80 GPU cases, 400 draws, exact)",
+        "2026-09-15 \u2014 additive option `--screen-emission-additive G` (screen-additive-gain2, 20 cases)"
+      ]
+    },
+    {
+      "path": "docs/verification/chase-cpu-boundary.md",
+      "rows": [
+        "2026-09-15 chase view restore (X3M_CHASE_VIEW_RESTORE) CPU boundary"
+      ]
+    },
+    {
+      "path": "docs/verification/directional-shadows.md",
+      "rows": [
+        "Refusal-reason diagnostics for the untracked-writer veto (worktree, reviewed once)",
+        "Caster-candidate counter (`--shadow-replay-candidates`, lane-independent)"
+      ]
+    }
+  ],
+  "full_fixture_chain_rerun": false,
+  "native_windows_verified": false,
+  "limitations": [
+    "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+    "Changed-dependency qualification is reused from the worktree builds recorded in qualification_ledgers; the full fixture chain was not rerun on this candidate.",
+    "Installation and game launch are owned by the main session; nothing was installed here."
+  ]
+}
