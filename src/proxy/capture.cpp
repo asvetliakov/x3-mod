@@ -95,7 +95,8 @@ bool linear_distance_fade_requested = false;
 bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step C)
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
-float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
+float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the engine-glow family of the twenty additive pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
+float effect_source_gain = 1.f;         // X3M_EFFECT_SOURCE_GAIN: the same gain for the effect family (weapon impact / muzzle / explosion sprites), finite 1..8, 1 = off (same gate)
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
@@ -1848,7 +1849,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
-    hooked.motion_output.configure_emission_source_gain(emission_source_gain);
+    hooked.motion_output.configure_emission_source_gain(emission_source_gain,effect_source_gain);
     hooked.motion_output.configure_original_fill(original_fill);
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
@@ -2175,25 +2176,33 @@ void initialize_log(HMODULE module) {
          wchar_t* end=nullptr;const float value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=.5f&&value<=8.f)screen_emission_gain=value;else gain_valid=false;}
      if(asked)log("screen_emission_mode requested=1 enabled=%u hdr=%u taa=%u ownership=%u materials=%u policy=8 gain=%g gain_valid=%u",screen_emission_requested,screen_hdr,taa_requested,screen_ownership,linear_material_requested,double(screen_emission_gain),unsigned(gain_valid));}
-    // X3M_EMISSION_SOURCE_GAIN=<g>: source-only encoded gain of the twenty
-    // additive PS2 emission pairs (docs/architecture/linear-emission-cost.md,
-    // "Implemented"): finite 1..8, 1 (the launcher default) is off. Needs the
-    // FP16 scene (X3M_HDR=1, which itself needs X3M_MOTION_OUTPUT=1: the
-    // shader registration and state shadow live there); no linear-material,
-    // linear-emission, TAA or ownership prerequisite. Unparsable or out of
-    // range keeps 1 and logs.
-    {emission_source_gain=1.f;bool gain_valid=true;float value=1.f;
+    // X3M_EMISSION_SOURCE_GAIN=<g>: source-only encoded gain of the engine
+    // family of the twenty additive PS2 emission pairs, and
+    // X3M_EFFECT_SOURCE_GAIN=<g> the same for the effect family (impact,
+    // muzzle and explosion sprites; docs/architecture/linear-emission-cost.md,
+    // "Implemented" and "Family split"): each finite 1..8, 1 (the launcher
+    // default) is off for that family. Needs the FP16 scene (X3M_HDR=1, which
+    // itself needs X3M_MOTION_OUTPUT=1: the shader registration and state
+    // shadow live there); no linear-material, linear-emission, TAA or
+    // ownership prerequisite. Unparsable or out of range keeps 1 and logs.
+    {emission_source_gain=1.f;effect_source_gain=1.f;bool gain_valid=true,effect_valid=true;float value=1.f,effect_value=1.f;
      SetLastError(ERROR_SUCCESS);
      const DWORD gain_length=GetEnvironmentVariableW(L"X3M_EMISSION_SOURCE_GAIN",setting,32);
      if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)emission_source_gain=value;else gain_valid=false;}
+     SetLastError(ERROR_SUCCESS);
+     const DWORD effect_length=GetEnvironmentVariableW(L"X3M_EFFECT_SOURCE_GAIN",setting,32);
+     if(effect_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
+         wchar_t* end=nullptr;effect_value=effect_length&&effect_length<32?wcstof(setting,&end):0.f;
+         if(effect_length&&effect_length<32&&end!=setting&&!*end&&std::isfinite(effect_value)&&effect_value>=1.f&&effect_value<=8.f)effect_source_gain=effect_value;else effect_valid=false;}
      // Exclusive with the linear emission route: its bracket carries its own
      // gain (X3M_EMISSION_GAIN) for the same pairs; the launcher rejects the
      // pair of options, the DLL refuses with the reason logged.
      const bool excluded=linear_emission_requested;
      if(!hdr_requested||excluded)emission_source_gain=1.f;
-     if(!gain_valid||value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",emission_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),excluded?" refused=linear_emissions":"");}
+     if(!hdr_requested||excluded)effect_source_gain=1.f;
+     if(!gain_valid||!effect_valid||value!=1.f||effect_value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u effect_gain=%g effect_gain_valid=%u%s",emission_source_gain!=1.f||effect_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),double(effect_source_gain),unsigned(effect_valid),excluded?" refused=linear_emissions":"");}
     // X3M_ORIGINAL_FILL=<k>: fill in linear light inside the ORIGINAL hull
     // pixel programs (docs/architecture/original-shading-critique.md 1a,
     // option C): finite 0..0.5, 0 (the launcher default) is off. The variant

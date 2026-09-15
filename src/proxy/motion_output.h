@@ -545,7 +545,7 @@ public:
     // ADD/ONE/ONE state while the FP16 scene target is active. No bracket,
     // no composition, no per-draw work beyond two native SetPixelShader
     // calls. Gain 1 is off (no variant is created). Configure before attach.
-    void configure_emission_source_gain(float gain) noexcept;
+    void configure_emission_source_gain(float engine_gain, float effect_gain) noexcept; // per family (linear-emission-cost.md, "Family split")
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
     // Option C (docs/architecture/original-shading-critique.md 1a): fill in
     // linear light inside the original hull pixel programs, finite 0..0.5, 0
@@ -792,7 +792,7 @@ private:
                          IUnknown* xt_default_ordinary_variant = nullptr;
                          IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
-                         IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant (PS only; the VS stays original)
+                         IDirect3DPixelShader9* source_gain_variant[2]{}; // colour-MUL variant per family gain [engine, effect] (PS only; the VS stays original)
                          IDirect3DPixelShader9* original_fill_variant = nullptr; // motion variant plus the option C fill block (PS only)
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
@@ -812,10 +812,13 @@ private:
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
-        IDirect3DPixelShader9* ps_source_gain_variant = nullptr;
-        // The bound PS's source-gain variant when the bound VS/PS is one of
-        // the twenty reviewed pairs; null otherwise (one pointer test per draw).
+        IDirect3DPixelShader9* ps_source_gain_variant[2]{};
+        // The bound PS's source-gain variant of the bound pair's family when
+        // the bound VS/PS is one of the twenty reviewed pairs and that
+        // family's gain is not 1; null otherwise (one pointer test per draw).
         IDirect3DPixelShader9* source_gain_eligible_variant = nullptr;
+        renderer::LinearEmissionFamily source_gain_family = renderer::LinearEmissionFamily::None;
+        unsigned source_gain_pair = renderer::linear_emission_pair_count; // registry index of the bound pair (first-admission log)
         // Original fill: the bound PS's fill variant and whether the bound
         // VS/PS is a reviewed linear-material pair with both motion variants
         // (refreshed with the pair identities, never at a draw).
@@ -1157,12 +1160,13 @@ private:
     bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
     float screen_emission_gain_ = 1.f;
     bool emission_source_gain_requested_ = false;
-    float emission_source_gain_ = 1.f;
-    // Source-gain draw accounting (capture frame line only): admitted draws,
-    // refusals by blend state, by unknown state, by device state, bind failures.
-    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
-    // Per-device sample caps, one per logged reason: blend, screen_blend, bind_failed.
-    std::uint32_t source_gain_logged_[3]{};
+    float emission_source_gain_[2]{1.f, 1.f}; // [engine, effect] (LinearEmissionFamily - 1); 1 = that family stays native
+    // Source-gain draw accounting (per-frame line): admitted draws (total and
+    // per family), refusals by blend state, by unknown state, by device state, bind failures.
+    struct { std::uint32_t admitted = 0, admitted_engine = 0, admitted_effect = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
+    // Per-device sample caps, one per logged reason: blend, screen_blend, bind_failed, state.
+    std::uint32_t source_gain_logged_[4]{};
+    std::uint32_t source_gain_pair_logged_ = 0; // bit per registry pair: first admission logged this device epoch (at most 20 lines)
     bool original_fill_requested_ = false; // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials
     float original_fill_ = 0.f;
     std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)

@@ -22,6 +22,17 @@ bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept;
 // pairs. This establishes no ownership, blend, sampler, alpha, MRT, query or
 // other live admission gate; technique names and shared bodies never admit a pair.
 bool linear_emission_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) noexcept;
+// Family of a reviewed pair for the split source gain (linear-emission-cost.md,
+// "Family split"): Engine = engine-glow archive pairs (`--emission-source-gain`),
+// Effect = effects archive pairs (weapon impact / muzzle / explosion sprites,
+// `--effect-source-gain`). Every reviewed pair has exactly one family; an
+// unreviewed pair is None with index linear_emission_pair_count. The linear
+// route and the blend law ignore the family: it selects the gain only.
+enum class LinearEmissionFamily : std::uint8_t { None = 0, Engine = 1, Effect = 2 };
+constexpr unsigned linear_emission_pair_count = 20;
+struct LinearEmissionPairInfo { unsigned index = linear_emission_pair_count; LinearEmissionFamily family = LinearEmissionFamily::None; };
+LinearEmissionPairInfo linear_emission_pair_info(std::uint64_t vertex, std::uint64_t pixel) noexcept;
+const char* linear_emission_family_name(LinearEmissionFamily family) noexcept; // "engine" / "effect" / "none"
 
 // Pure creation-time PS2 augmentation; the original VS2 is never transformed.
 // Preserve every original word, including comments, native PP oC0 and raw alpha.

@@ -78,7 +78,12 @@ struct LinearEmissionConfig {float gain=1;bool coverage=false;};
 enum class LinearEmissionResult {Applied,UnsupportedShader,AllocationFailure};
 bool linear_emission_config_valid(const LinearEmissionConfig& c){return std::isfinite(c.gain)&&c.gain>=0&&c.gain<=16;}
 unsigned emission_transforms=0,emission_lookups=0;float emission_gain=0;bool emission_reject=false,emission_throw=false;
-bool linear_emission_pair_reviewed(std::uint64_t vs,std::uint64_t ps){++emission_lookups;return (vs==50&&(ps==60||ps==61))||(vs==52&&ps==60);}
+enum class LinearEmissionFamily : std::uint8_t {None=0,Engine=1,Effect=2};constexpr unsigned linear_emission_pair_count=20;
+struct LinearEmissionPairInfo {unsigned index=linear_emission_pair_count;LinearEmissionFamily family=LinearEmissionFamily::None;};
+// Synthetic families: (50,60) engine pair 0, (50,61) effect pair 1, (52,60) effect pair 2 (the shared PS 60 serves both families, as 8360f422 does).
+LinearEmissionPairInfo linear_emission_pair_info(std::uint64_t vs,std::uint64_t ps){++emission_lookups;if(vs==50&&ps==60)return {0,LinearEmissionFamily::Engine};if(vs==50&&ps==61)return {1,LinearEmissionFamily::Effect};if(vs==52&&ps==60)return {2,LinearEmissionFamily::Effect};return {};}
+bool linear_emission_pair_reviewed(std::uint64_t vs,std::uint64_t ps){return linear_emission_pair_info(vs,ps).family!=LinearEmissionFamily::None;}
+const char* linear_emission_family_name(LinearEmissionFamily f){return f==LinearEmissionFamily::Engine?"engine":f==LinearEmissionFamily::Effect?"effect":"none";}
 LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t*p,std::size_t,const LinearEmissionConfig& c,std::vector<std::uint32_t>& words){++emission_transforms;CHECK(c.coverage);emission_gain=c.gain;if(emission_throw)throw std::bad_alloc();if(emission_reject)return LinearEmissionResult::AllocationFailure;if(*p!=60&&*p!=61)return LinearEmissionResult::UnsupportedShader;words={*p+300};return LinearEmissionResult::Applied;}
 // Step C promotion double: outcomes and the requested output set only; the
 // real PackedScreen transform is checked by the pure SM1 transformer fixture.
@@ -286,14 +291,14 @@ HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept;
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant=nullptr,*screen_variant=nullptr,*screen_additive_variant=nullptr;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*source_gain_variant[2]{},*screen_variant=nullptr,*screen_additive_variant=nullptr;IDirect3DPixelShader9*sun_motion_variant=nullptr,*sun_material_variant=nullptr,*sun_xt_variant=nullptr;bool sun_extraction=false;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  IDirect3DPixelShader9*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
- IDirect3DPixelShader9*ps_source_gain_variant=nullptr,*source_gain_eligible_variant=nullptr;
+ IDirect3DPixelShader9*ps_source_gain_variant[2]{},*source_gain_eligible_variant=nullptr;renderer::LinearEmissionFamily source_gain_family=renderer::LinearEmissionFamily::None;unsigned source_gain_pair=renderer::linear_emission_pair_count;
  bool screen_additive_pair=false;IDirect3DPixelShader9*ps_screen_additive_variant=nullptr;
  bool screen_pair=false;IDirect3DPixelShader9*ps_screen_variant=nullptr,*screen_eligible_variant=nullptr;std::uint64_t stream0=0;
  std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr,*vs_prepass=nullptr;
@@ -356,13 +361,13 @@ public:
  bool distance_fade_requested_=false;unsigned fade_route_threshold_=500;fade_route::Hysteresis fade_hysteresis_;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
- bool emission_source_gain_requested_=false;float emission_source_gain_=1;
+ bool emission_source_gain_requested_=false;float emission_source_gain_[2]{1,1};
  bool screen_additive_requested_=false;float screen_additive_gain_=1;
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  renderer::SunShareFrame sun_frame_{};unsigned sun_writer_count_=0,sun_writer_overflow_=0;
  bool sun_coverage_current_=false,sun_composition_completed_=false;
  unsigned sun_qualifications_=0;void qualify_sun_lane()noexcept{++sun_qualifications_;sun_lane_qualified_=sun_lane_requested_;}
- std::uint32_t source_gain_logged_=0;
+ std::uint32_t source_gain_logged_[4]{};std::uint32_t source_gain_pair_logged_=0;
  unsigned source_gain_prepares_=0,screen_additive_prepares_=0;
  void prepare_source_gain(const MotionDrawCall&,MotionRoute&)noexcept{++source_gain_prepares_;}
  void prepare_screen_additive(const MotionDrawCall&,MotionRoute&)noexcept{++screen_additive_prepares_;}
@@ -447,7 +452,7 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
 namespace x3m {namespace renderer=::renderer;namespace fade_route=::fade_route;}
 unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emission_timing_requested=false;
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
-float emission_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN, parsed by the same extracted setting reader
+float emission_source_gain=1.f,effect_source_gain=1.f; // X3M_EMISSION_SOURCE_GAIN / X3M_EFFECT_SOURCE_GAIN, parsed by the same extracted setting reader
 bool screen_emission_additive_requested=false;float screen_emission_additive_gain=1.f; // X3M_SCREEN_EMISSION_ADDITIVE=G
 unsigned fade_route_threshold=500;
 renderer::LinearMaterialConfig linear_material_config;

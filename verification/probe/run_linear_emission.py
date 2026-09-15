@@ -441,6 +441,12 @@ ORIGINAL_VS = ('d5e1c75351ed3f04','32e75459998d0388','089091aab2d5eb13',
     '5b7a3ccd9e7df00a','6435a84d8ac5908e','89193868c61c3846','a520be365951c9dc','cfb2c31707d545bc')
 ORIGINAL_GAINS = (0.,.25,1.,4.,16.)
 SOURCE_GAINS = (1.,2.,3.5,8.)  # source-only encoded gain variants (gain 1 = original bytes)
+# Family split (linear-emission-cost.md, "Family split"): registry family per
+# ORIGINAL_PAIRS index; engine = the four engine_0000/0001 pairs and the base
+# DEFAULT pair, effect = the rest (verified against the fixture's
+# linear_emission_pair_info readback per case).
+ENGINE_PAIRS = frozenset((0,1,2,5,6))
+SPLIT_CONFIGURATIONS = ((2.,1.),(1.,2.),(8.,1.),(1.,8.))  # (engine gain, effect gain) per variant slot of a split case
 
 
 # Pair index is carried in the existing high flag bits. The first five values
@@ -796,14 +802,19 @@ def source_gain_cases():
     draws each; then per pair and background the textured source with
     separate alpha blending on (alpha 2 = SRCALPHA/INVSRCALPHA alpha factors,
     ONE/ONE colour: admitted, 40 cases) and with the screen colour blend
-    (op kind 2 = ONE/INVSRCCOLOR: refused `screen_blend`, native, 40 cases)."""
+    (op kind 2 = ONE/INVSRCCOLOR: refused `screen_blend`, native, 40 cases);
+    then the family split (flag 8192, 40 cases): the four variant slots run
+    the (engine, effect) gain configurations SPLIT_CONFIGURATIONS, so an
+    engine pair is gained in slots 1 and 3 and byte-native in 2 and 4, an
+    effect pair the other way round."""
     cases=[]
     sources=(op(rect=(0,0,.75,.75),color=(.5,.25,.125,.125),fade=.75,gain=1.),
              op(rect=(0,0,1,1),color=(.125,.375,.5,.5),fade=.5,gain=1.))
-    def add(profile,source,textured,background,alpha=0,kind=1,label='source_gain'):
+    def add(profile,source,textured,background,alpha=0,kind=1,label='source_gain',split=0):
         c=dict(id=len(cases),label=label,mode=1,mask=0,alpha=alpha,write=15,fault=0,pattern=0,
-               flags=32|(profile<<16)|(64 if ORIGINAL_PAIRS[profile][0] in NO_FADE_VS else 0)|(4 if textured else 0)|(32768 if background else 0),
-               actual_profile=profile,background=background,separate_alpha=int(alpha!=0),screen=int(kind==2),ops=[copy.deepcopy(source)])
+               flags=32|(profile<<16)|(64 if ORIGINAL_PAIRS[profile][0] in NO_FADE_VS else 0)|(4 if textured else 0)|(32768 if background else 0)|(8192 if split else 0),
+               actual_profile=profile,background=background,separate_alpha=int(alpha!=0),screen=int(kind==2),split=split,
+               family='engine' if profile in ENGINE_PAIRS else 'effect',ops=[copy.deepcopy(source)])
         for o in c['ops']:o['affine']=int(ORIGINAL_PAIRS[profile][1] in AFFINE_PS);o['kind']=kind
         cases.append(c)
     for profile in range(20):
@@ -816,7 +827,17 @@ def source_gain_cases():
     for profile in range(20):
         for background in (0,1):
             add(profile,sources[1],1,background,kind=2,label='source_gain_screen')
+    for profile in range(20):
+        for background in (0,1):
+            add(profile,sources[1],1,background,split=1,label='source_gain_family')
     return cases
+
+
+def effective_gains(c):
+    """The gain each variant slot of a case draws with: the four SOURCE_GAINS,
+    or for a family-split case the pair family's side of each configuration."""
+    if not c['split']:return list(SOURCE_GAINS)
+    return [configuration[0 if c['family']=='engine' else 1] for configuration in SPLIT_CONFIGURATIONS]
 
 
 def half_bits(value):
@@ -850,6 +871,11 @@ def validate_source_gain_report(text,data,cases):
         assert (int(r['src']),int(r['dst']))==(2,4 if c['screen'] else 2),(c['id'],r['src'],r['dst'])
         assert int(r['sepalpha'])==c['separate_alpha'],(c['id'],r['sepalpha'])
         if c['separate_alpha']:assert (int(r['srcalpha']),int(r['dstalpha']))==(5,6),(c['id'],r['srcalpha'],r['dstalpha'])
+        # The fixture reads the family back from the registry over the original
+        # fingerprints; the runner's ENGINE_PAIRS table must agree, and the
+        # effective gains it reports must be the family's side of each configuration.
+        assert r['family']==c['family'] and int(r['split'])==c['split'],(c['id'],r['family'],r['split'])
+        assert [float(v) for v in r['effective'].split(',')]==effective_gains(c),(c['id'],r['effective'])
     assert any(line.startswith('SOURCE_GAIN_RESULT pass') for line in lines),'fixture result line'
     n=WIDTH*HEIGHT*4;record=4+4*n*6
     assert len(data)==record*len(cases),'raw record size'
@@ -857,13 +883,19 @@ def validate_source_gain_report(text,data,cases):
     identity_channels=alpha_channels=covered_total=0
     separate=dict(cases=0,colour_channels=0,exact=0,alpha_channels_exact=0,alpha_blended_pixels=0)
     screen=dict(cases=0,channels_native=0,darkened_pixels=0)
+    family_split=dict(cases=0,engine_cases=0,effect_cases=0,native_slots=0,native_channels=0,gained_slots=0,gained_channels_exact=0)
     for i,c in enumerate(cases):
         base=i*record;(cid,)=struct.unpack_from('<I',data,base);assert cid==c['id']
         images=[struct.unpack_from(f'<{n}f',data,base+4+4*n*k) for k in range(6)]
         cleared,native,identity,*gained=images
         assert all(math.isfinite(v) for v in native),(c['id'],'finite native')
-        assert struct.pack(f'<{n}f',*identity)==struct.pack(f'<{n}f',*native),(c['id'],'gain 1 variant is not the native image')
-        identity_channels+=n
+        if c['split']:
+            # The four slots are the split configurations: no fixed gain-1 slot.
+            slots=list(zip(effective_gains(c),images[2:]))
+        else:
+            assert struct.pack(f'<{n}f',*identity)==struct.pack(f'<{n}f',*native),(c['id'],'gain 1 variant is not the native image')
+            identity_channels+=n
+            slots=list(zip(SOURCE_GAINS[1:],gained))
         covered=[p for p in range(WIDTH*HEIGHT) if any(native[4*p+k]!=cleared[4*p+k] for k in range(3))]
         assert covered,(c['id'],'native draw covered no pixel')
         covered_total+=len(covered)
@@ -881,7 +913,16 @@ def validate_source_gain_report(text,data,cases):
         if c['separate_alpha']:
             separate['cases']+=1
             separate['alpha_blended_pixels']+=sum(1 for p in covered if native[4*p+3]!=cleared[4*p+3])
-        for g,image in zip(SOURCE_GAINS[1:],gained):
+        if c['split']:
+            family_split['cases']+=1;family_split[c['family']+'_cases']+=1
+        for g,image in slots:
+            if c['split'] and g==1:
+                # The other family's configuration: nothing bound, the image is
+                # the native draw bit for bit (the proxy keeps that family native).
+                assert struct.pack(f'<{n}f',*image)==struct.pack(f'<{n}f',*native),(c['id'],'split native slot is not the native image')
+                family_split['native_slots']+=1;family_split['native_channels']+=n
+                continue
+            if c['split']:family_split['gained_slots']+=1
             stat=per_gain[g]
             for p in range(WIDTH*HEIGHT):
                 assert image[4*p+3]==native[4*p+3],(c['id'],g,p,'alpha changed')
@@ -898,6 +939,7 @@ def validate_source_gain_report(text,data,cases):
                         codes=0 if low<=v<=high else min(abs(half_bits(v)-half_bits(low)),abs(half_bits(v)-half_bits(high)))
                         assert codes<=1,(c['id'],g,p,k,v,(low,high),codes)
                     stat['channels']+=1;stat['exact']+=codes==0;stat['within_one']+=codes<=1;stat['max_codes']=max(stat['max_codes'],codes)
+                    if c['split']:family_split['gained_channels_exact']+=codes==0
                     stat['max_value']=max(stat['max_value'],v)
                     if s>bg:
                         assert v>s,(c['id'],g,p,k,'not brighter');stat['brighter']+=1
@@ -908,10 +950,14 @@ def validate_source_gain_report(text,data,cases):
     assert separate['cases']==sum(c['separate_alpha'] for c in cases) and screen['cases']==sum(c['screen'] for c in cases)
     assert separate['alpha_blended_pixels']>0,'separate alpha cases never blended alpha'
     assert screen['darkened_pixels']==0,'screen blend darkened a covered pixel'
+    assert family_split['cases']==sum(c['split'] for c in cases) and family_split['native_slots']==family_split['gained_slots']==2*family_split['cases'],'split slots'
+    assert (family_split['engine_cases'],family_split['effect_cases'])==(2*len(ENGINE_PAIRS),2*(20-len(ENGINE_PAIRS))),'family case split'
     return dict(cases=len(cases),reviewed_pairs=20,source_gains=list(SOURCE_GAINS),identity_channels=identity_channels,alpha_channels_exact=alpha_channels,
                 covered_pixels=covered_total,per_gain={str(g):v for g,v in per_gain.items()},separate_alpha=separate,screen_refused=screen,
+                family_split=dict(family_split,engine_pairs=sorted(ENGINE_PAIRS),configurations=[list(x) for x in SPLIT_CONFIGURATIONS]),
                 law='gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native; '
-                    'separate alpha blend admitted (rgb-only law), screen ONE/INVSRCCOLOR refused as screen_blend and native')
+                    'separate alpha blend admitted (rgb-only law), screen ONE/INVSRCCOLOR refused as screen_blend and native; '
+                    'family split: the pair family selects its gain, the other family draws the native bytes')
 
 
 def validate_original_report(text,data,cases,coverage=False,component=False,fused_comparison=False):
@@ -1072,7 +1118,7 @@ def main():
                 'Only shared ADD/ONE/ONE with full RGBA writes; inherited alpha tests are feasibility boundaries, not live admission',
                 'No source submission failure recovery, device-loss or HdrPass integration qualification'])
     if args.mode=='source-gain':
-        result.update(scope='Detached source-only encoded gain of the twenty reviewed pairs: native ADD/ONE/ONE draw versus the colour-MUL PS variant in the same state over zero and non-zero FP16 backgrounds; no live route, bloom or native Windows runtime proof',
+        result.update(scope='Detached source-only encoded gain of the twenty reviewed pairs: native ADD/ONE/ONE draw versus the colour-MUL PS variant in the same state over zero and non-zero FP16 backgrounds, plus the engine/effect family split (each family gained while the other draws native bytes); no live route, bloom or native Windows runtime proof',
             targets=dict(A='FP16 scene target (cleared background, native and gained images)',depth='D24S8',msaa=False,srgb=False),
             tolerance=dict(zero_background='G x native within one FP16 code',nonzero_background='native half-ULP interval propagated through bg + G (native - bg), widened by one code',alpha='exact binary16',gain_1='exact image'),
             timing_scope='No timing pass: the option adds one MUL per fragment and two native SetPixelShader calls per admitted draw',
