@@ -568,6 +568,20 @@ Update current_update(std::uintptr_t cockpit) noexcept {
     const DWORD error=GetLastError();Update result;
     {Guard guard;result=state.current(cockpit,GetCurrentThreadId());}SetLastError(error);return result;
 }
+bool active_control_cockpit(std::uintptr_t cockpit) noexcept {
+    if(!installed()||!cockpit||(cockpit&3))return false;
+    const DWORD error=GetLastError();std::uint64_t gen=0;std::uint32_t handle=0;
+    // The generation is sampled under the lock; the bounded registry walk then
+    // runs unlocked (checked engine reads only). A destroy between the two is
+    // excluded only because both run on the game thread, inside the cockpit
+    // update whose lifetime witness produced the generation.
+    {Guard guard;gen=state.generation(cockpit);}
+    // handle != 0: a registry with no active control (slot +0x10 zero) must not
+    // match a stale row whose id is 0. chase_fire::active_cockpit keeps its
+    // older walk without this guard; noted, not changed here.
+    const bool result=gen!=0&&active_handle(cockpit,handle)&&handle!=0;
+    SetLastError(error);return result;
+}
 void report(std::uint64_t frame) {
     if(!installed())return;
     detail::Window<Event> out;std::uint64_t over=0,threads=0,failed=0,skipped=0;

@@ -367,6 +367,31 @@ void scenarios(){
  check(restore.arm_refusal_reasons[arm_view_not_ready]==restore_arm_retry_cap&&restore.arm_refusal_reasons[arm_retry_exhausted]==1&&restore.arm_refusals==restore_arm_retry_cap+1&&arm_refused_lines==8,"retry cap records the attempt once and samples retry_exhausted");
  put(W(o_cockpit+0x10),W(o_ship));update();check(!restore.armed,"exhausted generation does not re-arm on a later update");
  put(W(o_cockpit+0x150),1u);update();put(W(o_cockpit+0x150),restore_rear_mode);update();check(restore.armed,"mode re-entry resets the attempt and arms");
+ // Run78 pose gap: the fresh generation's first updates carry view 0 (36 and 12
+ // updates in run78) while the engine renders the rear view from the cockpit.
+ // The old pose admission (view != 0 && view == ref) refused every one of them;
+ // the registry active-control proof admits the first update of a complete
+ // lifetime and refuses partial, destroyed, foreign or rebound cockpits.
+ reset_state();state.construct(W(o_cockpit),thread());put(W(o_cockpit+0x10),0u);
+ {const auto old_logic=[](std::uint32_t ref,std::uint32_t view){return view!=0&&view==ref;};
+  check(!old_logic(W(o_ship),0u)&&!x3m::chase_camera::admits_pose(W(o_ship),0u,false),"run78: view 0 refused the pose under the old admission");
+  check(!transition::active_control_cockpit(W(o_cockpit)),"run78: partial lifetime is not the proven control cockpit");
+  state.complete(W(o_cockpit),thread());update();
+  check(transition::active_control_cockpit(W(o_cockpit))&&x3m::chase_camera::admits_pose(W(o_ship),0u,transition::active_control_cockpit(W(o_cockpit))),"run78: first update of the complete generation admits the pose with view 0");
+  check(!restore.armed&&restore.arm_refusal_reasons[arm_view_not_ready]==1,"run78: the restore arm still waits for view == ship");
+  put(W(o_cockpit_row+8),0u);check(!transition::active_control_cockpit(W(o_cockpit)),"run78: active handle mapping elsewhere refuses");put(W(o_cockpit_row+8),W(o_cockpit));
+  put(W(o_cockpit_registry+0x10),8u);check(!transition::active_control_cockpit(W(o_cockpit)),"run78: another active handle refuses");put(W(o_cockpit_registry+0x10),7u);
+  check(!transition::active_control_cockpit(W(o_cockpit)+2),"run78: misaligned cockpit refuses");
+  check(!transition::active_control_cockpit(W(o_cockpit)+4)&&!transition::active_control_cockpit(0),"run78: unseen or null cockpit refuses");
+  // Handle 0 indexes bucket slot 0: place the zero-id row there so the walk reaches it and only the handle != 0 guard refuses.
+  put(W(o_cockpit_registry+0x10),0u);put(W(o_cockpit_row+4),0u);put(W(o_cockpit_bucket),W(o_cockpit_row));
+  check(!transition::active_control_cockpit(W(o_cockpit)),"run78: no active control (handle 0) never matches a reachable zero-id row");
+  put(W(o_cockpit_bucket),0u);put(W(o_cockpit_registry+0x10),7u);put(W(o_cockpit_row+4),7u);
+  check(!x3m::chase_camera::admits_pose(W(o_ship),W(o_ship)+0x100,true),"run78: a view object other than the ref object refuses even with the proof");
+  check(x3m::chase_camera::admits_pose(W(o_ship),W(o_ship),false)&&!x3m::chase_camera::admits_pose(0u,0u,true),"run78: bound predicate needs no proof; null ref refuses");
+  std::uint32_t regs[9]{};std::uint32_t frame[4]{};frame[0]=0x41ccfbu;frame[1]=W(o_cockpit);regs[3]=std::uint32_t(reinterpret_cast<std::uintptr_t>(frame))-4;regs[2]=W(o_destructor_frame);handle(2,regs);
+  check(!transition::active_control_cockpit(W(o_cockpit)),"run78: destroyed lifetime refuses");
+  put(W(o_cockpit+0x10),W(o_ship));}
  {const auto before=transfer_refused_lines;check(arm(),"arm for transfer sample");build_warp_stack();put(W(o_stack_base)-45+10+1,0xedba1u);destroy();
   check(transfer_refused_lines==before+1&&restore.last_refusal==refuse_prefix,"transfer refusal emits one sample");
   lifetime();update();check(restore.armed,"re-arm for repeated transfer refusal");build_warp_stack();put(W(o_stack_base)-45+10+1,0xedba1u);destroy();check(transfer_refused_lines==before+1,"repeated transfer refusal reason is sampled once");}

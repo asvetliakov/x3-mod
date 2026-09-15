@@ -4,6 +4,7 @@
 #include "chase_lead.h"
 #include "chase_camera_math.h"
 #include "chase_camera_native.h"
+#include "chase_transition.h"
 #include "engine_patch.h"
 #include "engine_memory.h"
 #include "object_trace.h"
@@ -133,10 +134,17 @@ void handle(uint32_t* regs) {
     // the pipeline; every other visit counts and returns before the clock,
     // the state or the frame counters are touched.
     const uintptr_t ref_object = u32(cockpit_bytes, cockpit_ref_object), view_object = u32(cockpit_bytes, cockpit_view_object);
-    const bool active = view_object != 0 && view_object == ref_object;
+    const bool bound = view_object != 0 && view_object == ref_object;
+    // Run78 pose gap: a fresh generation's +0x10 stays 0 for tens of updates
+    // while the engine renders its rear view from this cockpit. Admit that
+    // unbound phase only on the registry active-control proof (complete
+    // lifetime, handle row maps to this cockpit); the bounded walk runs only
+    // for +0x10 == 0 visits. Fire, lead and aim contexts stay on `bound`.
+    const bool active = admits_pose(ref_object, view_object, view_object == 0 && chase_transition::active_control_cockpit(cockpit));
     AcquireSRWLockExclusive(&stats_lock);
     note_cockpit_seen(cockpit);
     if (!active) ++stats_.inactive;
+    else if (!bound) ++stats_.unbound;
     ReleaseSRWLockExclusive(&stats_lock);
     if (!active) { chase_fire::invalidate_camera(cockpit); return; }
     // Defence in depth behind the predicate: if the active cockpit pointer
@@ -274,10 +282,13 @@ void handle(uint32_t* regs) {
     }
     const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
-    chase_lead::camera_context(cockpit, ref_object, camera, written, written ? &pose.basis : nullptr,
-                               written ? &pose.view_rel : nullptr);
-    chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, written, now);
-    chase_aim_trace::camera_context(cockpit, ref_object, camera, in.view_mode, written, handler_frame);
+    // Cursor fire, lead and aim keep the fire control's own predicate: an
+    // unbound visit hands them an invalidated context, as a refusal would.
+    const bool context_ok = written && bound;
+    chase_lead::camera_context(cockpit, ref_object, camera, context_ok, context_ok ? &pose.basis : nullptr,
+                               context_ok ? &pose.view_rel : nullptr);
+    chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, context_ok, now);
+    chase_aim_trace::camera_context(cockpit, ref_object, camera, in.view_mode, context_ok, handler_frame);
 }
 // Unlike telemetry::State, this state is protected by the camera's own lock:
 // the engine update runs outside capture.cpp's mutex. Only aggregate handler
@@ -453,10 +464,10 @@ void report(std::uint64_t frame) {
         deviation, s.render_basis_deviation, s.rotation_clamps, s.position_clamps,
         s.window_applied ? s.rotation_lag_min : 0.0, s.window_applied ? s.rotation_lag_max : 0.0,
         s.window_applied ? s.position_lag_min : 0.0, s.window_applied ? s.position_lag_max : 0.0);
-    log("chase_camera frame=%llu status=%s frames=%llu applied=%llu refused=%llu refused_inactive=%llu cockpits_seen=%u snaps=%llu coalesced=%llu clamps=%llu write_refused=%llu "
+    log("chase_camera frame=%llu status=%s frames=%llu applied=%llu refused=%llu refused_inactive=%llu admitted_unbound=%llu cockpits_seen=%u snaps=%llu coalesced=%llu clamps=%llu write_refused=%llu "
         "verdict=%lu snap_reason=%lu mode=%lu connect=%lu flags_1a0=0x%lx tracking=%lu locked=%u locked_frames=%llu lag_deg=%.3f pos_lag=%.1f distance=%.1f dt_ms=%.3f "
         "basis_dev_deg=%.3f half_vfov_tan=%.4f boom_local=%.1f,%.1f,%.1f scene_fixed=%llu scene_fix_deg=%.3f",
-        frame, s.status, s.frames, s.applied, s.refused, s.inactive, s.cockpits_seen, s.snaps, s.coalesced, s.clamps, s.write_refused,
+        frame, s.status, s.frames, s.applied, s.refused, s.inactive, s.unbound, s.cockpits_seen, s.snaps, s.coalesced, s.clamps, s.write_refused,
         static_cast<unsigned long>(s.last_verdict), static_cast<unsigned long>(s.last_snap_reason), static_cast<unsigned long>(s.view_mode), static_cast<unsigned long>(s.connect_mode),
         static_cast<unsigned long>(s.flags_1a0), static_cast<unsigned long>(s.tracking_mode), unsigned(s.target_locked), s.locked_frames, s.lag_deg, s.pos_lag, s.distance, s.dt_ms,
         deviation, s.half_vfov_tan, s.boom_local[0], s.boom_local[1], s.boom_local[2], s.scene_fixed, s.scene_fix_deg);

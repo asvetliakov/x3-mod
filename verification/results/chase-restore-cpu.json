@@ -4,21 +4,21 @@
  "elapsed_s": 5.8,
  "stubs": 18,
  "restore_stubs": 7,
- "checks": 759,
+ "checks": 771,
  "failures": 0,
  "failure_lines": [],
  "seam_idle_prefilter": {
-  "baseline_mean_us": 1.072021,
-  "stub_mean_us": 1.080436,
-  "delta_mean_us": 0.008415,
-  "delta_best_trial_us": 0.005469,
+  "baseline_mean_us": 1.023267,
+  "stub_mean_us": 1.029924,
+  "delta_mean_us": 0.006657,
+  "delta_best_trial_us": -0.014136,
   "scope": "seam_idle_prefilter_skip"
  },
  "full_stub_reference": {
-  "baseline_mean_us": 1.150635,
-  "stub_mean_us": 1.709139,
-  "delta_mean_us": 0.558504,
-  "delta_best_trial_us": 0.54585,
+  "baseline_mean_us": 1.083122,
+  "stub_mean_us": 1.634863,
+  "delta_mean_us": 0.551742,
+  "delta_best_trial_us": 0.544849,
   "scope": "full_stub_disabled_callback"
  },
  "bottle": {
