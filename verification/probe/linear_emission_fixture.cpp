@@ -1762,7 +1762,13 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
 // FP16 target over a cleared background), then with each source-gain variant
 // bound in the same state. Raw per case: cleared target, native, then the
 // four variant images (gain 1 must equal native bit for bit); the runner
-// owns the law `bg + G (native - bg)` and its FP16 tolerance.
+// owns the law `bg + G (native - bg)` and its FP16 tolerance. The blend
+// verdict is the shared renderer law over the device's real state (read back
+// after the source state is set, as the proxy reads its shadow): header
+// alpha 2 turns SEPARATEALPHABLENDENABLE on with SRCALPHA/INVSRCALPHA alpha
+// factors (admitted: colour law unchanged, alpha native); an op of kind 2
+// sets DESTBLEND INVSRCCOLOR (refused `screen_blend`: the variant is never
+// bound, every image must equal native).
 void source_gain_experiment(IDirect3DDevice9 *device,
                             const std::vector<Case> &cases, const char *path,
                             IDirect3DSurface9 *back, const char *programs,
@@ -1794,18 +1800,39 @@ void source_gain_experiment(IDirect3DDevice9 *device,
     clear_target();
     capture(image);
     raw.write(reinterpret_cast<const char *>(image.data()), image.size() * 4);
+    using x3m::renderer::SourceGainBlend;
+    SourceGainBlend verdict = SourceGainBlend::Blend;
+    DWORD state[8]{};
     for (unsigned v = 0; v < 5; ++v) {
       api(device->BeginScene());
       clear_target();
       f.source_state(cs, 0, *f.a, false);
-      if (v) api(device->SetPixelShader(f.source_gain_variants[pixel][v - 1].p));
+      if (cs.ops[0].kind == 2) f.rs(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+      const D3DRENDERSTATETYPE read[8] = {
+          D3DRS_ALPHABLENDENABLE, D3DRS_SRGBWRITEENABLE, D3DRS_SRCBLEND,
+          D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE,
+          D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA};
+      for (unsigned i = 0; i < 8; ++i) api(device->GetRenderState(read[i], &state[i]));
+      const SourceGainBlend now = x3m::renderer::linear_emission_source_gain_blend(
+          state[0], state[1], state[2], state[3], state[4]);
+      need(v == 0 || now == verdict, "source-gain verdict stable across the case");
+      verdict = now;
+      if (v && verdict == SourceGainBlend::Admit)
+        api(device->SetPixelShader(f.source_gain_variants[pixel][v - 1].p));
       f.quad(cs.ops[0], cs.h.flags);
       ++draws;
       capture(image);
       raw.write(reinterpret_cast<const char *>(image.data()), image.size() * 4);
     }
-    std::printf("SOURCE_GAIN_CASE id=%u pair=%u pixel=%u background=%u draws=5\n",
-                cs.h.id, pair, pixel, dark ? 0u : 1u);
+    need((cs.ops[0].kind == 2) == (verdict == SourceGainBlend::Screen), "screen op refused as screen_blend");
+    need((cs.ops[0].kind != 2) == (verdict == SourceGainBlend::Admit), "additive op admitted");
+    need((cs.h.alpha != 0) == (state[5] != 0), "separate alpha state as authored");
+    std::printf("SOURCE_GAIN_CASE id=%u pair=%u pixel=%u background=%u draws=5 admission=%s "
+                "src=%lu dst=%lu sepalpha=%lu srcalpha=%lu dstalpha=%lu\n",
+                cs.h.id, pair, pixel, dark ? 0u : 1u,
+                verdict == SourceGainBlend::Admit ? "admit" : verdict == SourceGainBlend::Screen ? "screen_blend" : "blend",
+                static_cast<unsigned long>(state[2]), static_cast<unsigned long>(state[3]), static_cast<unsigned long>(state[5]),
+                static_cast<unsigned long>(state[6]), static_cast<unsigned long>(state[7]));
   }
   need(bool(raw), "source-gain raw write");
   f.single(f.scene);

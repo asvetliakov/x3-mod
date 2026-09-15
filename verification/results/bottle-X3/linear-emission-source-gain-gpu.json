@@ -30,9 +30,9 @@
     "Native Windows untested; the variant is documented PS 2.0 bytecode"
   ],
   "code_sha256": {
-    "verification/probe/linear_emission_fixture.cpp": "0a107a5ee5565fc86382c1bacd096fd4d53a7e94c44ac030b19ae951743d9451",
+    "verification/probe/linear_emission_fixture.cpp": "bf0c617cea8e7a3673b37cd5f24f533bc34042f2d8851e03034a67ecad658f12",
     "verification/probe/build_linear_emission.sh": "a009637c105925829ee02e9bbe143545cddf7884471d4e1a8524a1624eee484e",
-    "verification/probe/run_linear_emission.py": "4e341672d799056f8d542814b84d502e7cf40a4acb8171209c72ea3857400653",
+    "verification/probe/run_linear_emission.py": "b95641751335ef39fe50bd7a0cd67465cf0170c7c14e375561191cc2535ab859",
     "verification/analysis/test_linear_emission_report.py": "afca46caba3639fdae20d07582c839b8c4dcbf179bc0bdcdc52e7867123f7a0f",
     "verification/analysis/test_linear_emission_mrt_report.py": "03930edeace530259c304640e7267e809d79c6bebfaf398523a84b035ffb8a7b",
     "verification/analysis/test_linear_emission_original_report.py": "a7853fa8a5cba891cf18defbe3a7d2aefd62628f54dc0eb3f9c105b2b166727e",
@@ -51,12 +51,12 @@
     "src/renderer/linear_emission_composite_inc.h": "b996ddb01a707660cd030a80eed476929cfdefaaa5e301f89904b53e356dbbfa",
     "src/renderer/quad_vertex_program.h": "1dcea0512fb3fbd1ba33a28ff1f7584ea6ec3feccb0d5699277ca023e24bb76f",
     "src/renderer/quad_vertex_program_inc.h": "aa48c154ceffff22f745a1ef8cb4078b1fb4012a145df1666f833b243aa70eb2",
-    "src/renderer/linear_emission.h": "2dde88396f40c11f7c1a612c279d17bde9403e2d0f3095d1005d0fc3a8d442ef",
-    "src/renderer/linear_emission.cpp": "525c6091693a2a63838cbb1f5e048578322a028343d8e9679c17ac62760ef83a"
+    "src/renderer/linear_emission.h": "1be133241246e6b99842760c75c297acd36ff7d28270d2559a91ce0143c405e2",
+    "src/renderer/linear_emission.cpp": "554559b74fe0b17a356f64117871187d8fe1a6a0e39c5f294341137424df3e9f"
   },
-  "executable_sha256": "d888a180297a2d22cb8edf9b15e135223d2eb2993b2594d2d0fb513f3be2a898",
-  "cases_sha256": "59ca59d17fb8c359aa4e74433360834fbed2b7f732899510ab3f107ef2a14918",
-  "raw_dir": "/private/tmp/claude-501/-Users-asvetl-x3-mod/77d6468d-b9c8-46ee-8005-c3ebf5171bf6/scratchpad/source-gain-gpu",
+  "executable_sha256": "c23d8410038d289b62a7a4846934d75156b468629f01fb540ed31e1610c2559e",
+  "cases_sha256": "e1ed1d3cd74f6c5959bc6b91101d8daf755c50b57d53113895e103b84d7810fb",
+  "raw_dir": "/tmp/x3-linear-emission-gpu-source-gain",
   "original_sha256": {
     "vs_d5e1c75351ed3f04.bin": "a1db7ff10b8a6c81a830a095417133e37571a055674914df09136cc91f454114",
     "vs_32e75459998d0388.bin": "9ae32f514a79ca8675fe876731b72207f4449d4e34d89529114e9bacb62c3798",
@@ -87,14 +87,14 @@
     "--dll",
     "d3d9=b",
     "verification/probe/build/linear-emission/linear_emission_fixture.exe",
-    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/77d6468d-b9c8-46ee-8005-c3ebf5171bf6/scratchpad/source-gain-gpu/cases.bin",
-    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/77d6468d-b9c8-46ee-8005-c3ebf5171bf6/scratchpad/source-gain-gpu/pixels.bin",
+    "Z:/tmp/x3-linear-emission-gpu-source-gain/cases.bin",
+    "Z:/tmp/x3-linear-emission-gpu-source-gain/pixels.bin",
     "--source-gain",
     "Z:/private/tmp/x3-shader-sweep/programs",
-    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/77d6468d-b9c8-46ee-8005-c3ebf5171bf6/scratchpad/source-gain-gpu/variants"
+    "Z:/private/tmp/x3-linear-emission-gpu-source-gain/variants"
   ],
   "exit_code": 0,
-  "cases": 80,
+  "cases": 160,
   "reviewed_pairs": 20,
   "source_gains": [
     1.0,
@@ -102,36 +102,48 @@
     3.5,
     8.0
   ],
-  "identity_channels": 81920,
-  "alpha_channels_exact": 61440,
-  "covered_pixels": 16000,
+  "identity_channels": 163840,
+  "alpha_channels_exact": 92160,
+  "covered_pixels": 36480,
   "per_gain": {
     "2.0": {
-      "channels": 61440,
-      "exact": 61440,
-      "within_one": 61440,
+      "channels": 92160,
+      "exact": 92160,
+      "within_one": 92160,
       "max_codes": 0,
-      "brighter": 48000,
+      "brighter": 78720,
       "max_value": 1.7529296875
     },
     "3.5": {
-      "channels": 61440,
-      "exact": 61440,
-      "within_one": 61440,
+      "channels": 92160,
+      "exact": 92160,
+      "within_one": 92160,
       "max_codes": 0,
-      "brighter": 48000,
+      "brighter": 78720,
       "max_value": 2.501953125
     },
     "8.0": {
-      "channels": 61440,
-      "exact": 61440,
-      "within_one": 61440,
+      "channels": 92160,
+      "exact": 92160,
+      "within_one": 92160,
       "max_codes": 0,
-      "brighter": 48000,
+      "brighter": 78720,
       "max_value": 4.75
     }
   },
-  "law": "gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native",
+  "separate_alpha": {
+    "cases": 40,
+    "colour_channels": 92160,
+    "exact": 92160,
+    "alpha_channels_exact": 30720,
+    "alpha_blended_pixels": 7680
+  },
+  "screen_refused": {
+    "cases": 40,
+    "channels_native": 122880,
+    "darkened_pixels": 0
+  },
+  "law": "gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native; separate alpha blend admitted (rgb-only law), screen ONE/INVSRCCOLOR refused as screen_blend and native",
   "transformed_sha256": {
     "ps_8360f422de08b5bd-0.bin": "d181ff936913172aba9fd4ac5f3c45cbeabf92c975a1091ef6dfb3c7d808678e",
     "ps_8360f422de08b5bd-1.bin": "bcffa23679bb083654e2c57b37e091569f9be638a6591132a5a6dd3523ae5f5c",

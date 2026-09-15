@@ -868,8 +868,10 @@ private:
         // SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHABLENDENABLE. The first
         // three are the nine-state fade check's blend triple; the fourth is
         // logged by the capture-only motion_route line and is not part of it.
-        DWORD composition_blend[4]{};
-        bool composition_blend_known[4]{};
+        // SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHABLENDENABLE, then
+        // SRCBLENDALPHA, DESTBLENDALPHA, BLENDOPALPHA (composition_blend_index).
+        DWORD composition_blend[7]{};
+        bool composition_blend_known[7]{};
     };
     struct SavedState;
     template<typename Fn> Fn native(unsigned slot) const noexcept { return reinterpret_cast<Fn>(native_[slot]); }
@@ -1110,8 +1112,9 @@ private:
     float emission_source_gain_ = 1.f;
     // Source-gain draw accounting (capture frame line only): admitted draws,
     // refusals by blend state, by unknown state, by device state, bind failures.
-    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
-    std::uint32_t source_gain_logged_ = 0;
+    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
+    // Per-device sample caps, one per logged reason: blend, screen_blend, bind_failed.
+    std::uint32_t source_gain_logged_[3]{};
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
     float screen_additive_gain_ = 1.f;
     // Additive draws: admitted (DESTBLEND ONE around the native draw), refused

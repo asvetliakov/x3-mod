@@ -214,6 +214,14 @@ bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept {
 bool linear_emission_source_gain_valid(float gain) noexcept {
     return std::isfinite(gain) && gain>=1 && gain<=8;
 }
+SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable,std::uint32_t srgb_write,
+    std::uint32_t src,std::uint32_t dst,std::uint32_t op) noexcept {
+    constexpr std::uint32_t blend_one=2, blend_inv_src_color=4, op_add=1; // D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD
+    if (!blend_enable || src!=blend_one || op!=op_add) return SourceGainBlend::Blend;
+    if (dst==blend_inv_src_color) return SourceGainBlend::Screen;
+    if (dst!=blend_one || srgb_write) return SourceGainBlend::Blend;
+    return SourceGainBlend::Admit;
+}
 bool linear_emission_pair_reviewed(std::uint64_t vertex,std::uint64_t pixel) noexcept {
     for (const auto& pair:pairs) if (pair.vertex==vertex && pair.pixel==pixel) return true;
     return false;

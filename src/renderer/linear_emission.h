@@ -49,4 +49,16 @@ LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t* original
 bool linear_emission_source_gain_valid(float gain) noexcept;
 LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* original,
     std::size_t words, float gain, std::vector<std::uint32_t>& output) noexcept;
+// Colour blend admission of the source-gain draw, shared by the proxy and the
+// GPU fixture. Inputs are the D3DRS_ALPHABLENDENABLE / SRGBWRITEENABLE values
+// and the colour triple SRCBLEND / DESTBLEND / BLENDOP (raw D3DBLEND and
+// D3DBLENDOP codes: ONE = 2, INVSRCCOLOR = 4, ADD = 1). The separate alpha
+// factors are not inputs: the variant multiplies only rgb, so the ONE/ONE/ADD
+// colour law holds whatever SEPARATEALPHABLENDENABLE and the alpha triple are.
+// Screen (ONE/INVSRCCOLOR/ADD) is not additive: `bg + s - s*bg` gained would
+// darken where bg > 0, so it is a distinct refusal; everything else (blend
+// off, sRGB write, other factors or ops) is the generic blend refusal.
+enum class SourceGainBlend : std::uint8_t { Admit = 0, Blend = 1, Screen = 2 };
+SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable, std::uint32_t srgb_write,
+    std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept;
 } // namespace x3m::renderer
