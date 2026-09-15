@@ -818,9 +818,13 @@ fade effect: none of those inputs differ between the frames.
   around the game's range field (node `+0x158`), which a bounded RE of the light-admission site
   could instead read and widen.
 
-**Open.** The light-admission site (which function compares node distance/radius against the
-light's range and writes `g_nNumLightPoint`) is not identified in the RE notes; node `+0x158`
-supplies the range (`material-color-inputs.md`). The same model key `35b42b44` draws with BUMP
+**Open.** The light-admission site is now identified: `0x004c26af`-`0x004c2a34` in
+`0x004c0150`, comparison at `0x004c27a1`-`0x004c27af`, admitted iff
+`round(|node-light|) <= light+0x158 + node+0x70`, with the headlight's range authored as
+100 000 native (1 000 world units) at `0x0044ae6a`. That formula reproduces all 22 per-node
+`i0.x` outcomes of the table above; see
+[camera-and-lights.md](camera-and-lights.md) "Point-light admission site" for the byte spans,
+the parent link `node+0x18` and the hook-site ABI. The same model key `35b42b44` draws with BUMP
 `4944d81d/ca6bfa4a` (s1 normal `1269` bound) at 300 m and with DEFAULT `53a0a641/8759c783`
 (no normal map, cube `1256` in s3) at 16 km on the outpost — a distance-driven technique switch
 at LOD 0 that earlier sections attributed to mesh LOD; worth its own bounded study. The
