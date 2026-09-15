@@ -20,6 +20,9 @@ import bottle
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES = ('positive', 'caps', 'cutout_drop', 'alpha_mask', 'allocation', 'late_shader', 'bind', 'untracked', 'composition', 'composition_missing', 'composition_failed')
+# Bucket names of the sun_shadow_lane_refusals line (src/renderer/sun_share_frame.h, SunUntrackedReason order).
+REASONS = ('unknown', 'feature', 'scene', 'unregistered', 'pair', 'no_zwrite', 'blended', 'state', 'rows',
+           'geometry', 'no_depth', 'fade_arm', 'apply_failed', 'scope', 'history', 'read_failed')
 
 def fields(line):
     return dict(re.findall(r'(\w+)=([^\s=]+)(?=\s|$)', line))
@@ -96,6 +99,29 @@ def validate(text, trace, work, case):
             assert int(row['untracked_writers']) > 0 and int(row['receiver_draws']) > 0
         if late and i == 2:
             assert row['failed'] == '1' and int(row['receiver_draws']) > 0
+    # Refusal diagnostics: exactly one bucket line per frame with untracked
+    # writers, buckets summing to the total, and the fixture's writer (an
+    # unreviewed PS alteration drawn with z write off) identified by the
+    # first refusing gate (pair) and by a cached signature line that still
+    # carries the z-write state.
+    refusals = {int(r['frame']): r for r in (fields(line) for line in trace.splitlines() if line.startswith('sun_shadow_lane_refusals '))}
+    writers = [fields(line) for line in trace.splitlines() if line.startswith('sun_shadow_lane_writer ')]
+    refused = {int(r['frame']) for r in publications if int(r['untracked_writers'])}
+    assert set(refusals) == refused, (sorted(refusals), sorted(refused))
+    assert {int(w['frame']) for w in writers} <= refused, 'writer signature outside a refusal frame'
+    for frame, row in refusals.items():
+        untracked = int(row['untracked'])
+        assert untracked == int(next(p['untracked_writers'] for p in publications if int(p['frame']) == frame))
+        assert all(name in row for name in REASONS), ('truncated refusal line', row)
+        assert sum(int(row[name]) for name in REASONS) == untracked, row
+        assert int(row['signatures']) + int(row['overflow']) >= 1 and int(row['signatures']) <= 64
+    if case == 'untracked':
+        assert refused == {2} and int(refusals[2]['pair']) == int(refusals[2]['untracked']) > 0
+        assert any(w['reason'] == 'pair' and w['gate'] == '3' and w['registered'] == '1' and w['zwrite'] == '0' and w['z_known'] == '1' and int(w['frame']) == 2 for w in writers), writers
+    elif not refused:
+        assert not writers
+    signatures = {(w['vs'], w['ps'], w['reason'], w['declaration'], w['stride'], w['z'], w['zwrite'], w['registered']) for w in writers}
+    assert len(signatures) == len(writers), 'signature logged twice'
     for row in readbacks:
         frame = int(row['frame'])
         assert row['result'] == '00000000' and (int(row['width']), int(row['height'])) == (64, 64)
@@ -106,6 +132,7 @@ def validate(text, trace, work, case):
         assert all(all(math.isfinite(v) for v in pixel) for pixel in values)
         assert sum(any(v > 0 for v in pixel[:3]) for pixel in values) > 3600
     return dict(frames=6, histories=2 if failed_coverage else 4, resets=1, exact_taa_frames=6,
+                refusal_frames=len(refusals), writer_signatures=len(writers),
                 composition_frames=len(masks), mask_union_pixels=sum(int(r['excluded']) for r in masks),
                 positive_frames=sum(int(r['positive']) > 0 for r in rows),
                 zero_frames=sum(int(r['zero']) > 0 for r in rows),

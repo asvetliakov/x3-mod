@@ -19,7 +19,7 @@ class SunShareLane(unittest.TestCase):
                             str(ROOT/'verification/probe/sun_share_host.cpp'),
                             str(ROOT/'src/renderer/material_motion.cpp'), '-o', str(exe)], check=True)
             result = subprocess.run([str(exe)], text=True, capture_output=True, check=True)
-            self.assertIn('PASS checks=24 ', result.stdout)
+            self.assertIn('PASS checks=30 ', result.stdout)
             print(result.stdout.strip())
 
     def test_depth_stride(self):
@@ -56,6 +56,53 @@ class SunShareLane(unittest.TestCase):
                 row = analyze(log, root)['frames'][0]
                 self.assertFalse(row['available'])
                 self.assertEqual(row['eligible_pixels'], 0)
+
+    def test_refusal_diagnostics_grammar(self):
+        """Bucket line and capped writer signatures of the untracked-writer veto (diagnostics only)."""
+        from tools.analysis.analyze_sun_share_lane import analyze, REASONS
+        self.assertEqual(len(REASONS), 16)
+        header = (ROOT/'src/renderer/sun_share_frame.h').read_text()
+        self.assertIn(f'sun_untracked_reason_count = {len(REASONS)};', header)
+        for index, name in enumerate(REASONS):
+            self.assertIn(f'case {index}: return "{name}"' if index else 'default: return "unknown"', header)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            publication = 'sun_shadow_lane_frame device=1 frame=7 available=0 receiver_draws=2 untracked_writers=5 failed=1\n'
+            refusals = ('sun_shadow_lane_refusals device=1 frame=7 untracked=5 unknown=0 feature=0 scene=0 unregistered=2 pair=0'
+                        ' no_zwrite=1 blended=2 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=3 overflow=0\n')
+            writer = ('sun_shadow_lane_writer device=1 frame=7 index=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 reason=blended gate=4'
+                      ' registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000123 stride=24\n')
+            log = root/'capture.log'
+            log.write_text(publication+refusals+writer)
+            report = analyze(log, root)
+            row = report['frames'][0]
+            self.assertEqual(row['untracked_writers'], 5)
+            self.assertEqual(row['untracked_reasons'], dict(zip(REASONS, (0,0,0,2,0,1,2,0,0,0,0,0,0,0,0,0))))
+            self.assertEqual((row['writer_signatures'], row['writer_overflow']), (3, 0))
+            self.assertIsNone(row['diagnostics_malformed'])
+            self.assertEqual(report['refusal_frames'], 1)
+            self.assertEqual(report['untracked_reason_totals']['blended'], 2)
+            self.assertEqual(report['writers'], [dict(device=1, frame=7, vs='53a0a641107ed76c', ps='8759c7838bbc86c2', reason='blended',
+                                                      gate=4, registered=1, z=1, zwrite=1, z_known=1, declaration='0000000000000123', stride=24)])
+            for head, bad, flag in ((publication, refusals.replace('blended=2', 'blended=1'), 'refusal_buckets_mismatch'),
+                                    (publication.replace('untracked_writers=5', 'untracked_writers=6'), refusals, 'refusal_total_mismatch'),
+                                    (publication, refusals.split(' rows=')[0]+'\n', 'refusal_line_truncated')):
+                log.write_text(head+bad+writer)
+                row = analyze(log, root)['frames'][0]
+                self.assertEqual(row['diagnostics_malformed'], flag)
+                self.assertNotIn('untracked_reasons', row)
+                self.assertEqual(row['reason'], 'frame_unavailable')
+            # A malformed diagnostics line never drops the substantive analysis of an available frame.
+            (root/'depth.rg32f').write_bytes(struct.pack('<4f', .5,0, .5,.75))
+            available = publication.replace('available=0', 'available=1')
+            depth = 'motion_output_depth_readback device=1 frame=7 file=depth.rg32f format=rg32f_row_major result=00000000 width=2 height=1\n'
+            log.write_text(available+refusals.split(' rows=')[0]+'\n'+depth)
+            row = analyze(log, root)['frames'][0]
+            self.assertEqual((row['diagnostics_malformed'], row['available'], row['eligible_pixels'], row['zero_sun_pixels']), ('refusal_line_truncated', True, 2, 1))
+            log.write_text(publication)
+            row = analyze(log, root)['frames'][0]
+            self.assertIsNone(row['untracked_reasons'])
+            self.assertIsNone(row['diagnostics_malformed'])
 
     def test_corpus_invalid_exports(self):
         import os
@@ -159,6 +206,9 @@ class SunShareLane(unittest.TestCase):
                 data=struct.pack('<4e', .5,.25,.75,1)*4096
                 (work/f'reference_taa_{i}.rgba16f').write_bytes(data)
                 (work/'x3-modern-captures'/f'taa_{i}.rgba16f').write_bytes(data)
+            if case=='untracked':
+                publications.append('sun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=1 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0')
+                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=0 z_known=1 declaration=0000000000000001 stride=24')
             qualifications=[f'sun_shadow_lane_device qualified={int(not early)} reason=ok']*2
             if case=='late_shader': qualifications[1]='sun_shadow_lane_device qualified=0 reason=shader_cache'
             depth=f'sun_shadow_lane_depth qualified={int(not early)} detail=stage={"cutout_pass" if early else "history_r"} result={"80004005" if early else "00000000"} restore=00000000 checks={4 if early else 18}'
@@ -185,6 +235,18 @@ class SunShareLane(unittest.TestCase):
                         with self.assertRaises(AssertionError): validate(text,trace.replace('qualified=1 reason=ok','qualified=0 reason=shader_cache',1),work,case)
                 if case=='untracked':
                     with self.assertRaises(AssertionError): validate(text,trace.replace('untracked_writers=1','untracked_writers=0'),work,case)
+                    # Refusal diagnostics: the bucket line, its sum, the identifying bucket and one signature line are all required.
+                    refusal_line=next(l for l in trace.splitlines() if l.startswith('sun_shadow_lane_refusals '))
+                    writer_line=next(l for l in trace.splitlines() if l.startswith('sun_shadow_lane_writer '))
+                    for badtrace in (trace.replace(refusal_line+'\n',''), trace.replace('pair=1 no_zwrite=0','pair=0 no_zwrite=1'),
+                                     trace.replace('pair=1 no_zwrite=0','pair=1 no_zwrite=1'), trace.replace(writer_line+'\n',''),
+                                     trace.replace('reason=pair gate=3','reason=no_zwrite gate=4'), trace.replace('zwrite=0 z_known=1','zwrite=1 z_known=1'),
+                                     trace.replace(writer_line,writer_line+'\n'+writer_line.replace('frame=2','frame=1').replace('ps=3874adb0f396a660','ps=0000000000000042')),
+                                     trace.replace(' scope=0 history=0 read_failed=0',''),
+                                     trace.replace(writer_line,writer_line+'\n'+writer_line), trace.replace('frame=2 untracked=1','frame=1 untracked=1')):
+                        with self.assertRaises(AssertionError): validate(text,badtrace,work,case)
+                elif case=='positive':
+                    with self.assertRaises(AssertionError): validate(text,trace+'\nsun_shadow_lane_refusals frame=2 untracked=1 unknown=1 feature=0 scene=0 unregistered=0 pair=0 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0',work,case)
                 if case.startswith('composition'):
                     for before,after in (('excluded=768','excluded=0'),('eligible=2064','eligible=3600'),('interleaved=1','interleaved=0'),('exchanged=2','exchanged=0')):
                         with self.assertRaises(AssertionError): validate(text.replace(before,after),trace,work,case)

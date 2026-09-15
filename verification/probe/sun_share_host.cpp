@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <new>
 static bool fail_allocation=false;
 void* operator new(std::size_t n){if(fail_allocation)throw std::bad_alloc();if(void* p=std::malloc(n))return p;throw std::bad_alloc();}
@@ -33,6 +34,13 @@ int main(){
     f.draw(true,false,false,true);check(f.publish(true,true,false)); // Nonreceiver depth writes -1 share.
     f.draw(true,false,true);check(!f.publish(true,true,false));check(f.publish(true,true,true));
     f.draw(true,false,false);check(!f.publish(true,true,true)&&f.untracked==1); // Native blend after receiver.
+    check(f.reasons[0]==1); // Reason buckets: default folds to unknown.
+    check(f.draw(true,false,false,false,SunUntrackedReason::Blended)&&f.untracked==2&&f.reasons[6]==1);
+    check(!f.draw(true,false,false,true,SunUntrackedReason::Blended)&&f.reasons[6]==1); // A depth writer is never untracked.
+    check(!f.draw(false,false,false,false,SunUntrackedReason::Blended)&&f.untracked==2); // Failed native call.
+    check(f.draw(true,false,false,false,SunUntrackedReason(200))&&f.untracked==3&&f.reasons[0]==2); // Out-of-range folds to unknown.
+    check(std::strcmp(sun_untracked_reason_name(unsigned(SunUntrackedReason::Blended)),"blended")==0&&std::strcmp(sun_untracked_reason_name(unsigned(SunUntrackedReason::ReadFailed)),"read_failed")==0
+          &&sun_untracked_reason_count==16&&std::strcmp(sun_untracked_reason_name(sun_untracked_reason_count),"unknown")==0);
     f={};f.draw(true,false,false);f.draw(true,true,false);check(f.publish(true,true,false)); // Earlier background.
     check(!f.publish(false,true,true));check(!f.publish(true,false,true));
     f.failed=true;check(!f.publish(true,true,true)); // Late creation/bind failure poisons only lane frame.

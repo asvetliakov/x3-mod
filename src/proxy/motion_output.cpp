@@ -1551,6 +1551,36 @@ void MotionOutput::publish_sun_lane(const char* source) noexcept {
     const bool available=sun_frame_.publish(sun_lane_active_&&depth_surface_,owner,coverage);
     log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=0",
         id_,frame_,source,unsigned(sun_lane_active_?D3DFMT_G32R32F:D3DFMT_R32F),available,sun_frame_.receivers,sun_frame_.covered,sun_frame_.untracked,sun_frame_.failed,owner,sun_frame_.coverage_required,coverage);
+    // Refusal buckets for the untracked-writer veto: one line per frame with
+    // untracked writers, never per draw (docs/verification/directional-shadows.md).
+    if(!sun_frame_.untracked)return;
+    char buckets[320]; int used=0;
+    for(unsigned i=0;i<renderer::sun_untracked_reason_count&&used>=0&&std::size_t(used)<sizeof buckets;++i){
+        const int n=std::snprintf(buckets+used,sizeof buckets-std::size_t(used)," %s=%lu",renderer::sun_untracked_reason_name(i),static_cast<unsigned long>(sun_frame_.reasons[i]));
+        used=n<0?-1:used+n;
+    }
+    if(used<0||std::size_t(used)>=sizeof buckets)buckets[0]='\0';
+    log("sun_shadow_lane_refusals device=%llu frame=%llu untracked=%lu%s signatures=%u overflow=%u",
+        id_,frame_,static_cast<unsigned long>(sun_frame_.untracked),buckets,sun_writer_count_,sun_writer_overflow_);
+}
+// Distinct untracked-writer identity (program pair, refusal reason, z state,
+// declaration and stride): logged once per signature per device, at most
+// sun_writer_capacity entries; the rest only increment the overflow counter.
+// Reached only for a draw the frame already counted untracked (lane on).
+void MotionOutput::note_sun_untracked_writer(const MotionRoute& route, renderer::SunUntrackedReason reason) noexcept {
+    const SunWriterSignature signature{shadow_.vs_hash,shadow_.ps_hash,shadow_.declaration,
+        std::uint32_t(shadow_.stream0_stride),std::uint8_t(reason),route.sun_z_state,std::uint8_t(shadow_.ps_registered?1u:0u)};
+    for(unsigned i=0;i<sun_writer_count_;++i){
+        const auto& s=sun_writers_[i];
+        if(s.vs==signature.vs&&s.ps==signature.ps&&s.declaration==signature.declaration&&s.stride==signature.stride&&
+           s.reason==signature.reason&&s.z_state==signature.z_state&&s.registered==signature.registered)return;
+    }
+    if(sun_writer_count_>=sun_writer_capacity){++sun_writer_overflow_;return;}
+    sun_writers_[sun_writer_count_++]=signature;
+    log("sun_shadow_lane_writer device=%llu frame=%llu index=%u vs=%016llx ps=%016llx reason=%s gate=%u registered=%u z=%u zwrite=%u z_known=%u declaration=%016llx stride=%lu",
+        id_,frame_,sun_writer_count_,signature.vs,signature.ps,renderer::sun_untracked_reason_name(unsigned(reason)),unsigned(route.gate),unsigned(signature.registered),
+        unsigned(signature.z_state&1u),unsigned((signature.z_state>>1)&1u),unsigned((signature.z_state>>2)&1u),
+        signature.declaration,static_cast<unsigned long>(signature.stride));
 }
 
 // ---- ambient occlusion at the scene end (ambient-occlusion.md, step 2) ------
@@ -1871,6 +1901,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     device_ = device; native_ = native_table; id_ = device_id; caps_ = caps; requested_ = requested;
     stats_ = stats; lazy_rt1_ = lazy_rt2_ = false;
     enabled_ = false; depth_enabled_ = false;
+    sun_writer_count_ = sun_writer_overflow_ = 0; // signature cache is per device
     if (!requested) return;
     probe_cutout_caps(true);
     history_ = renderer::MotionRowHistory(4096); // Reserves both tables once; ready() false on failure.
@@ -2340,6 +2371,7 @@ void MotionOutput::fill_sentinel() noexcept {
 }
 
 void MotionOutput::before_reset() noexcept {
+    sun_writer_count_ = sun_writer_overflow_ = 0; // declaration ids may be recycled across Reset
     cutout_caps_ = cutout::Capability::Pending; cutout_cap_result_ = S_FALSE;
     cutout_probe_frame_known_ = false; cutout_reset_pending_ = true;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -3729,6 +3761,8 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         pending_.z_enable = z; pending_.z_write = write;
         pending_.draw_state_known = SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && pending_.vs && pending_.ps &&
                                     shadow_.rt0.known && shadow_.depth.known && shadow_.viewport.known;
+        if (route.sun_color_writer) // diagnostics only: the states already read for the selector
+            route.sun_z_state = std::uint8_t((z == 1 ? 1u : 0u) | (write == 1 ? 2u : 0u) | (SUCCEEDED(z_hr) && SUCCEEDED(write_hr) ? 4u : 0u));
     }
     pending_valid_ = true;
     if (fill_pending_) fill_sentinel();
@@ -3737,14 +3771,14 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // for the cross-check (a disagreement when the bloom copy follows it).
     if (counters_.hook_scene_end && state == renderer::BoundaryState::Scene && !counters_.bloom_copy_seen) ++counters_.draws_after_hook;
     // Gate 1: feature/capability, target owned, not recording a state block.
-    if (!target_surface_ || shadow_.recording || main_msaa_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; return; }
+    if (!target_surface_ || shadow_.recording || main_msaa_) { route.gate = MotionGate::Feature; ++counters_.gates[1]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Feature); return; }
     // Gate 2: scene phase with the latched main color/depth bound.
-    if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; return; }
+    if (!scene_bound()) { route.gate = MotionGate::Scene; ++counters_.gates[2]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scene); return; }
     route.scene = true;
     // Unavailable repair is feature refusal, not an enhanced fallback through
     // the malformed original linkage. Preserve the original bindings and rows.
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) {
-        route.gate = MotionGate::Pair; ++counters_.gates[3]; return;
+        route.gate = MotionGate::Pair; ++counters_.gates[3]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Pair); return;
     }
     // Every scene draw whose VS has a table row or is a reviewed depth-only
     // prepass program is jittered, routed or not, so the rasterized coverage
@@ -3759,7 +3793,12 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     const renderer::MotionOutputProfile* pair = shadow_.vs_variant && shadow_.ps_variant && shadow_.vs_row
         ? renderer::material_motion_profile(shadow_.vs_hash, shadow_.ps_hash) : nullptr;
     if (!pair || !renderer::material_motion_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash)) {
-        route.gate = MotionGate::Pair; ++counters_.gates[3]; return;
+        route.gate = MotionGate::Pair; ++counters_.gates[3];
+        // Diagnostics: a program outside the registry (unknown PS, VS without
+        // a profile row) versus a registered row without a reviewed pair.
+        route.sun_refusal = std::uint8_t(!shadow_.ps_hash || !shadow_.ps_registered || !shadow_.vs_row
+            ? renderer::SunUntrackedReason::Unregistered : renderer::SunUntrackedReason::Pair);
+        return;
     }
     route.depth = depth_enabled_ && renderer::material_motion_pixel_writes_depth(*pair, depth_enabled_);
     // Gate 4: opaque state or the separately qualified exact cutout arm,
@@ -3771,13 +3810,18 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     const bool loop_bounded = !profile.light_loop_bound_required ||
         (shadow_.integer0_known && shadow_.integer0[0] >= 0 && shadow_.integer0[0] <= int(profile.light_loop_max_count));
     DWORD blend = 1, test = 1, srgb = 1, color = 0; UINT frequency = 0;
+    // read_failed / cutout_ok exist for the sun-lane refusal buckets only: the
+    // chain below is unchanged in order and in the getters it calls.
+    bool read_failed = false, cutout_ok = true;
+    const auto read = [&](D3DRENDERSTATETYPE state, DWORD* value) noexcept { const bool ok = SUCCEEDED(render_state(state, value)); read_failed |= !ok; return ok; };
+    const auto read_frequency = [&]() noexcept { const bool ok = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)); read_failed |= !ok; return ok; };
     const bool draw_state_ok = !call.user_memory && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1 &&
-        SUCCEEDED(render_state(D3DRS_ALPHABLENDENABLE, &blend)) && !blend &&
-        SUCCEEDED(render_state(D3DRS_ALPHATESTENABLE, &test)) &&
-        SUCCEEDED(render_state(D3DRS_SRGBWRITEENABLE, &srgb)) && !srgb &&
-        SUCCEEDED(render_state(D3DRS_COLORWRITEENABLE, &color)) &&
-        ((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && cutout_draw_state())) &&
-        SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)) &&
+        read(D3DRS_ALPHABLENDENABLE, &blend) && !blend &&
+        read(D3DRS_ALPHATESTENABLE, &test) &&
+        read(D3DRS_SRGBWRITEENABLE, &srgb) && !srgb &&
+        read(D3DRS_COLORWRITEENABLE, &color) &&
+        ((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && (cutout_ok = cutout_draw_state()))) &&
+        read_frequency() &&
         !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) && (frequency & 0x3fffffffu) <= 1 &&
         shadow_.rows_known[window] && loop_bounded &&
         shadow_.stream0 && shadow_.stream0_stride && shadow_.declaration && call.primitives &&
@@ -3786,7 +3830,26 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // exact fade-band state whose fade fraction estimate reaches the
     // threshold routes like an opaque draw (RT1 from its own rows, RT2
     // masked); every other refusal stays gate 4.
-    if (!draw_state_ok && !fade_arm_admits(route, call, z, write, window, loop_bounded)) { route.gate = MotionGate::DrawState; ++counters_.gates[4]; return; }
+    if (!draw_state_ok && !fade_arm_admits(route, call, z, write, window, loop_bounded)) {
+        route.gate = MotionGate::DrawState; ++counters_.gates[4];
+        // Diagnostics only (lane on): the first failing check in the chain's
+        // order, using the values the chain read (a failed getter is its own
+        // bucket; the cutout verdict is the one the chain computed). No
+        // getter is repeated.
+        if (route.sun_color_writer) {
+            using renderer::SunUntrackedReason;
+            route.sun_refusal = std::uint8_t(
+                call.user_memory ? SunUntrackedReason::Geometry
+                : (read_failed || FAILED(z_hr) || FAILED(write_hr)) ? SunUntrackedReason::ReadFailed
+                : !(z == 1 && write == 1) ? SunUntrackedReason::NoZWrite
+                : blend ? SunUntrackedReason::Blended
+                : (srgb || !((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && cutout_ok))) ? SunUntrackedReason::State
+                : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1) ? SunUntrackedReason::Geometry
+                : (!shadow_.rows_known[window] || !loop_bounded) ? SunUntrackedReason::Rows
+                : SunUntrackedReason::Geometry); // stream, declaration, primitives or indices
+        }
+        return;
+    }
     route.cutout = !route.fade_arm && test != 0;
     // Key geometry fields come from the shadowed bindings and draw arguments.
     auto& key = route.key;
@@ -3805,8 +3868,8 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // Gate 5: verified object/camera scope. Failure still routes with mode 0 so
     // covered pixels of this material carry the sentinel, never stale history.
     bool matched = false;
-    if (!sample_scope(route)) { route.gate = MotionGate::Scope; ++counters_.gates[5]; }
-    else if (!history_.lookup_and_record(key, rows, previous)) { route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; }
+    if (!sample_scope(route)) { route.gate = MotionGate::Scope; ++counters_.gates[5]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scope); }
+    else if (!history_.lookup_and_record(key, rows, previous)) { route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::History); }
     else { matched = true; route.gate = MotionGate::None; ++counters_.gates[0]; ++counters_.keyed; }
     if (matched) {
         // Cut detector sample: screen displacement of the projected object
@@ -3878,6 +3941,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         // A native fallback is safe only after the complete rollback succeeds.
         rollback_route(route);
         ++counters_.apply_failures;
+        route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::ApplyFailed);
         if (logged_failures_ < failure_log_limit) {
             ++logged_failures_;
             log("motion_output_apply_failed device=%llu frame=%llu index=%lu result=%08lx first_prepare=%08lx", id_, frame_, counters_.draws, hr, route.preparation_error);
@@ -4328,7 +4392,13 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     if(sun_lane_active_&&route.sun_color_writer){
         const bool coverage=route.composition&&sun_composition_completed_&&sun_coverage_current_&&composition_&&composition_->coverage_valid()&&
             !composition_frame_stopped_&&!composition_state_lost_&&!composition_quarantined_;
-        sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,route.routed&&route.depth&&!route.fade_arm);
+        // Diagnostics only: the refusal reason travels with the draw; the
+        // bookkeeping decides untracked exactly as before.
+        const auto reason=route.routed
+            ?(route.fade_arm?renderer::SunUntrackedReason::FadeArm:!route.depth?renderer::SunUntrackedReason::NoDepth:renderer::SunUntrackedReason(route.sun_refusal))
+            :renderer::SunUntrackedReason(route.sun_refusal);
+        if(sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,route.routed&&route.depth&&!route.fade_arm,reason))
+            note_sun_untracked_writer(route,reason);
     }
     if (cutout::missed(route.cutout_candidate, route.submit, SUCCEEDED(result), route.routed || route.composition,
             route.cutout_test_known, route.cutout_test, route.cutout_color_known, route.cutout_color,

@@ -11,10 +11,29 @@ from pathlib import Path
 import struct
 
 
+REASONS = ('unknown', 'feature', 'scene', 'unregistered', 'pair', 'no_zwrite', 'blended', 'state', 'rows',
+           'geometry', 'no_depth', 'fade_arm', 'apply_failed', 'scope', 'history', 'read_failed')
+WRITER_FIELDS = ('vs', 'ps', 'reason', 'gate', 'registered', 'z', 'zwrite', 'z_known', 'declaration', 'stride')
+
+
+def refusals(fields):
+    """Bucket counts of one sun_shadow_lane_refusals line, checked against its untracked total."""
+    if any(name not in fields for name in REASONS) or 'untracked' not in fields:
+        raise ValueError('refusal_line_truncated')
+    buckets = {name: int(fields[name]) for name in REASONS}
+    total = int(fields['untracked'])
+    if sum(buckets.values()) != total:
+        raise ValueError('refusal_buckets_mismatch')
+    return dict(untracked=total, buckets=buckets, signatures=int(fields.get('signatures', 0)),
+                overflow=int(fields.get('overflow', 0)))
+
+
 def analyze(log, directory):
     frames = {}
+    writers = []
     tags = {'sun_shadow_lane_frame': 'publication', 'motion_output_depth_readback': 'depth',
-            'sun_shadow_lane_coverage_readback': 'coverage'}
+            'sun_shadow_lane_coverage_readback': 'coverage', 'sun_shadow_lane_refusals': 'refusals',
+            'sun_shadow_lane_writer': 'writer'}
     with Path(log).open(errors='replace') as stream:
         for line in stream:
             parts = line.split()
@@ -22,6 +41,12 @@ def analyze(log, directory):
             if index is None:
                 continue
             fields = dict(part.split('=', 1) for part in parts[index+1:] if '=' in part)
+            if tags[parts[index]] == 'writer':
+                if all(name in fields for name in WRITER_FIELDS) and 'device' in fields and 'frame' in fields:
+                    writers.append(dict(device=int(fields['device']), frame=int(fields['frame']),
+                                        **{name: fields[name] if name in ('vs', 'ps', 'declaration', 'reason') else int(fields[name])
+                                           for name in WRITER_FIELDS}))
+                continue
             if 'device' in fields and 'frame' in fields:
                 frames.setdefault((fields['device'], fields['frame']), {})[tags[parts[index]]] = fields
     output = []
@@ -30,8 +55,25 @@ def analyze(log, directory):
         if not publication:
             continue
         row = dict(device=int(device), frame=int(frame), available=False, eligible_pixels=0,
-                   receiver_draws=int(publication.get('receiver_draws', 0)), reason='frame_unavailable')
+                   receiver_draws=int(publication.get('receiver_draws', 0)),
+                   untracked_writers=int(publication.get('untracked_writers', 0)), reason='frame_unavailable',
+                   diagnostics_malformed=None)
         output.append(row)
+        # Diagnostics are attached beside the substantive analysis and never
+        # replace it: a malformed bucket line flags the frame and the
+        # readback/eligibility rows below are still produced.
+        try:
+            refused = records.get('refusals')
+            if refused:
+                refused = refusals(refused)
+                if refused['untracked'] != row['untracked_writers']:
+                    raise ValueError('refusal_total_mismatch')
+                row.update(untracked_reasons=refused['buckets'], writer_signatures=refused['signatures'],
+                           writer_overflow=refused['overflow'])
+            elif row['untracked_writers']:
+                row['untracked_reasons'] = None  # older build without the refusals line
+        except (ValueError, KeyError) as error:
+            row['diagnostics_malformed'] = str(error)
         if publication.get('available') != '1':
             continue
         try:
@@ -73,7 +115,10 @@ def analyze(log, directory):
                        excluded_pixels=excluded, invalid_share_pixels=invalid)
         except (OSError, ValueError, KeyError, struct.error) as error:
             row['reason'] = str(error)
-    return dict(frames=output, shadow_application=False)
+    totals = {name: sum(row['untracked_reasons'][name] for row in output if row.get('untracked_reasons')) for name in REASONS}
+    return dict(frames=output, untracked_reason_totals=totals,
+                refusal_frames=sum(1 for row in output if row.get('untracked_reasons')),
+                writers=writers, shadow_application=False)
 
 
 def main():

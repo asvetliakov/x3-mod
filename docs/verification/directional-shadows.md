@@ -130,3 +130,64 @@ earlier sticky failure. Next work adds bounded reason buckets and capped cached
 draw signatures before changing eligibility or availability. TAA resolves in all
 149 sampled periodic records, including the gate window; there are no raster
 captures to establish visual continuity. No shadows are applied.
+
+## Refusal-reason diagnostics for the untracked-writer veto (worktree, reviewed once)
+
+Diagnostics only; eligibility, availability and composition are unchanged
+(`SunShareFrame::draw` decides untracked exactly as before and now also returns
+that verdict and increments a reason bucket). Reasons are the first refusing
+gate of the motion route, in chain order (`sun_share_frame.h`,
+`SunUntrackedReason`): `unknown feature scene unregistered pair no_zwrite
+blended state rows geometry no_depth fade_arm apply_failed scope history
+read_failed`. `unknown` means only that no gate was recorded. `unregistered` is
+a PS outside the registry (unknown or not yet registered) or a VS without a
+profile row; `pair` a registered row without a reviewed pair (or the xt pair not
+ready); `read_failed` any failed state getter in gate 4 (z, z write, blend,
+test, sRGB, color mask, stream frequency), reported before any value-based
+bucket; the remaining gate-4 buckets are the first failing check in the chain's
+order, using the values and the cutout verdict the chain itself computed (no
+getter is repeated; a draw failing only the cutout arm's exact-state check is
+`state`); `scope`/`history` are gates 5/6 (they still route, so they can only
+surface as untracked through `no_depth`/`fade_arm` mapping or not at all);
+`no_depth`/`fade_arm` are routed draws whose profile writes no depth or that
+took the fade arm; `apply_failed` a rolled-back apply.
+
+Cost: with the lane off the refusal path gains three unconditional byte stores
+on the route (gate id, z state) and nothing else: no allocation, hashing,
+getter or log. With the lane on, each draw already counted untracked runs a
+linear scan of the at most 64 cached signatures; the bucket line is formatted
+once per frame with untracked writers at scene end.
+
+Grammar:
+
+- `sun_shadow_lane_refusals device=%llu frame=%llu untracked=%lu unknown=%lu
+  feature=%lu scene=%lu unregistered=%lu pair=%lu no_zwrite=%lu blended=%lu
+  state=%lu rows=%lu geometry=%lu no_depth=%lu fade_arm=%lu apply_failed=%lu
+  scope=%lu history=%lu read_failed=%lu signatures=%u overflow=%u`: once per
+  frame, after `sun_shadow_lane_frame`, only when `untracked_writers` > 0;
+  buckets sum to `untracked`.
+- `sun_shadow_lane_writer device=%llu frame=%llu index=%u vs=%016llx ps=%016llx
+  reason=%s gate=%u registered=%u z=%u zwrite=%u z_known=%u
+  declaration=%016llx stride=%lu`: once per distinct signature (vs, ps, reason,
+  declaration id, stride, z/zwrite state, registered) per device, at most 64
+  per device; the cache is cleared at attach and before Reset (declaration ids
+  may be recycled); further distinct signatures increment `overflow` on the
+  refusals line. `gate` is the `MotionGate` value. Every writer frame is a
+  refusal frame.
+
+`tools/analysis/analyze_sun_share_lane.py` attaches `untracked_reasons`,
+`writer_signatures`, `writer_overflow` per frame plus `untracked_reason_totals`,
+`refusal_frames` and `writers`. A malformed bucket line sets the frame's
+`diagnostics_malformed` (`refusal_line_truncated`, `refusal_buckets_mismatch`,
+`refusal_total_mismatch`) and never drops the readback/eligibility analysis.
+
+Evidence (2026-09-15, worktree `worktree-agent-a8311c34c14d25910`, bottle X3,
+WineArch arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), after the review
+fixes (gate 5/6 and read-failure buckets, exact cutout verdict, Reset clearing,
+malformed-line handling, writer-frame check):
+
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane verification.analysis.test_linear_sun_share`: 19 tests OK; sun-share host `PASS checks=30` (was 24).
+- Clean CMake build: zero warnings, `build/d3d9.dll` sha256 `beb33aa9…6a867`; `check_no_x87.py build/d3d9.dll`: 225 reachable functions, no violations. Strict `-Wall -Wextra -Werror` compile of `motion_output.cpp`: clean.
+- `run_sun_share_live.py` (fixture `verification/probe/build/motion_output_fixture.exe`, seam `verification/probe/build/motion-output-seam/d3d9.dll`, both rebuilt in the worktree): all 11 cases pass, 22.7 s total; positive `checks=43269 restorations=18`, untracked `checks=43272 restorations=19`. Before the review fixes the same run reported positive `checks=43272 restorations=19` and untracked `checks=43269 restorations=18`, byte-identical to a HEAD-baseline seam linked from the unchanged sources (only the new lines differ); per-case frames/histories/resets/TAA/composition counts unchanged. Across the three runs of this session (HEAD baseline, first build, reviewed build) the positive and untracked cases each reported either `43269/18` or `43272/19`, swapping between runs: a pre-existing run-to-run variation of three checks and one restoration in the fixture, not a function of the diagnostics change.
+- The `untracked` case (an unreviewed PS alteration drawn with z write off) reports `untracked=1 pair=1 signatures=1 overflow=0` and one writer line `reason=pair gate=3 registered=1 z=1 zwrite=0 z_known=1`; the two failed-composition cases report their frame-2 emission writer as `unregistered=1` (VS without a profile row). The validator requires the bucket line, its completeness and sum, the `pair` bucket and the signature line for that case, refuses duplicate signatures and writer lines outside refusal frames.
+- Run60 ran without this build; the next gameplay run with `--sun-shadow-lane` produces the bucket and signature lines directly.
