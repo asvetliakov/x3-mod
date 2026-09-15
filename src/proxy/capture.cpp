@@ -92,6 +92,8 @@ bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen 
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
+bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
+float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
@@ -1839,6 +1841,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
     hooked.motion_output.configure_emission_source_gain(emission_source_gain);
+    hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
@@ -1876,7 +1879,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         if(hooked.motion_output.mip_bias_active()||hooked.motion_output.composition_requested())hooked.set(65,set_texture);
         // The packed screen bracket reads the stage-0 sRGB decode shadow at its
         // readiness gate, so it needs the sampler hook without linear materials.
-        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested()||hooked.motion_output.screen_emission_requested())hooked.set(69,set_sampler_state);
+        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested()||hooked.motion_output.screen_emission_requested()||hooked.motion_output.screen_emission_additive_requested())hooked.set(69,set_sampler_state);
         // Lazy binding: the application's target and write-mask getters restore first.
         if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
         // HDR redirect: the application's GetRenderTarget(0) and its reads of
@@ -2154,6 +2157,24 @@ void initialize_log(HMODULE module) {
      const bool excluded=linear_emission_requested;
      if(!hdr_requested||excluded)emission_source_gain=1.f;
      if(!gain_valid||value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",emission_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),excluded?" refused=linear_emissions":"");}
+    // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8; unset, 0 or invalid = off):
+    // the additive option of the same nine screen pairs, drawn in place with
+    // DESTBLEND ONE and a colour gain G into the FP16 target. Needs the
+    // motion-output hooks and X3M_HDR=1 only (no TAA, ownership or linear
+    // materials: no bound, no bracket); exclusive with X3M_SCREEN_EMISSION=1,
+    // which wins here as the launcher already refuses the combination.
+    {screen_emission_additive_requested=false;screen_emission_additive_gain=1.f;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD length=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_ADDITIVE",setting,32);
+     wchar_t* end=nullptr;const float value=length&&length<32?wcstof(setting,&end):0.f;
+     const bool parsed=length&&length<32&&end!=setting&&!*end;
+     if(length&&length<32&&!(parsed&&value==0.f)){ // "0" / "0.0" is the explicit off value: silent
+         const bool valid=parsed&&std::isfinite(value)&&value>=1.f&&value<=8.f;
+         const bool conflict=screen_emission_requested;
+         screen_emission_additive_requested=valid&&motion_output_requested&&hdr_requested&&!conflict;
+         if(valid)screen_emission_additive_gain=value;
+         log("screen_emission_additive_mode requested=1 enabled=%u gain=%g gain_valid=%u motion=%u hdr=%u packed_conflict=%u",
+             screen_emission_additive_requested,double(screen_emission_additive_gain),unsigned(valid),motion_output_requested,hdr_requested,unsigned(conflict));}}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.

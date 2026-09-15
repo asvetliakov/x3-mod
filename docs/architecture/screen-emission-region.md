@@ -451,3 +451,47 @@ samples differ in alpha only), whereas the step C law changed the centre's lumin
 column equals native at every distance and background (tail/core 0.259 = native; gain 2 → 0.343, gain
 4 → 0.441 with the core lifted to 0.868 / 0.930). Host: x87 audit PASS (224 reachable). Native Windows
 behaviour remains unverified.
+
+## Additive option (2026-09-15)
+
+`--screen-emission-additive G` (`X3M_SCREEN_EMISSION_ADDITIVE=G`, finite 1..8, default off;
+mutually exclusive with `--screen-emission`, the launcher refuses both and the DLL keeps the
+packed route on a conflict). User decision: cost over exact blend law; native parity is not a
+goal of this option.
+
+**Law.** The same nine SM1 pairs (`screen_emission_admission.h`), admitted by the same exact
+native screen state as step C (ALPHABLENDENABLE, ADD, ONE/INVSRCCOLOR, mask 15, separate alpha
+off, Z-write off, sRGB write off; alpha test and Z test any; stage 0 not PROJECTED, one
+documented `GetTextureStageState` per bullet draw; the packed route's other guards too: dither off,
+sampler 0 not sRGB, non-indexed from device memory, open bound scene, no active query, no recording
+block, no MSAA; each refusal reason logged once per device), draw **in place** with `DESTBLEND = ONE`
+for the draw and, for `G != 1`, the pair's `AdditiveGain` PS2 variant (`linear_emission_sm1.cpp`:
+the native path with `mul r0.rgb, r0, c31.x` before the output MOV; alpha unchanged, so the alpha
+test is native; `G = 1` binds the original). The FP16 scene then accumulates
+`D' = G q + D` (alpha `a + D.a`) instead of the saturating `q + (1 - q) D`, so bolts exceed 1.0
+and the AgX exposure/bloom pass sees them. Unknown or different state, a recording state block,
+no FP16 redirect (`hdr_state_ != Active`) or a missing variant refuse to native; a failed
+`SetPixelShader` rolls the blend back; a failed restore after the draw sets `motion_state_lost_`
+exactly as a failed route undo does (`prepare_screen_additive` / `finish_screen_additive`).
+
+**Prerequisites (real minimum).** `--motion-output` (the shader/state hooks that identify the
+pair) and `--hdr` (the FP16 target). No TAA, ownership, bound, linear-material or tonemap
+dependency: the draw stays where it is, ordinary TAA motion handling of the (unrouted) bullet draw
+is unchanged, and no bracket, copy, hull scan, sentinel or temporal publication exists. The live
+fixture keeps TAA on only because its frame verifier does.
+
+**Cost.** Off: nothing (`screen_additive_pair` is never set). On: one pair-identity boolean per
+draw; per admitted bullet draw one `GetTextureStageState`, one `SetRenderState(DESTBLEND)` before
+and one after, plus `SetPixelShader` twice when `G != 1`. The blend shadow (`composition_blend`)
+and the stage-0 sRGB sampler shadow (the `SetSamplerState` hook, installed by this option as by the
+packed route) are fed for this option as for the composition routes. No allocations, no per-frame work, no log
+lines per frame (`screen_emission_additive_mode` once, `screen_emission_additive_variant` per
+created variant).
+
+**What it gives up.** The native screen law: overlapping sprite chains now add instead of
+saturating (a bolt over a bright background brightens further), destination alpha accumulates
+(`a + D.a`), and the presented bolt is not native at any `G` (step E's `g = 1` parity does not
+apply). Nothing of step C–E is consumed: no bound, region, witness, `packed_*` counters or
+`--screen-emission-gain`. Fixture keys 60–62 (`additive_admitted`, `additive_refused`,
+`additive_failures`); live case `screen-additive-gain2` of `run_linear_distance_fade_live.py
+--screen-emission` (ledger: [screen-emission.md](../verification/screen-emission.md)).

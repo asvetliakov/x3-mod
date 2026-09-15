@@ -189,8 +189,12 @@ bool linear_emission_sm1_pair_reviewed(std::uint64_t vertex,std::uint64_t pixel)
 LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std::size_t count,
     const LinearEmissionSm1Config& config,Words& output_words) noexcept {
     if(!original || count<2) return LinearEmissionResult::InvalidInput;
-    const unsigned outputs=static_cast<unsigned>(config.outputs);
+    // AdditiveGain authors the one-output native path with a colour gain
+    // (validated as one output below); its gain must be finite in [1, 8].
+    const bool additive=config.outputs==LinearEmissionSm1Outputs::AdditiveGain;
+    const unsigned outputs=additive?1u:static_cast<unsigned>(config.outputs);
     if(!std::isfinite(config.gain) || config.gain<0 || config.gain>16 || outputs<1 || outputs>4 || (outputs==4 && config.native_partial_precision)) return LinearEmissionResult::InvalidConfig;
+    if(additive && (config.gain<1 || config.gain>8 || config.native_partial_precision)) return LinearEmissionResult::InvalidConfig;
     if(count>59) return LinearEmissionResult::UnsupportedShader;
     const auto hash=fingerprint(original,count);const Profile* profile=nullptr;
     for(const auto& p:profiles) if(p.hash==hash && p.count==count) { profile=&p;break; }
@@ -205,6 +209,7 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
             emit(result,def,{dst(constant,30,15),bits(2.2f),bits(0),bits(65504),bits(1e-10f)});
             emit(result,def,{dst(constant,31,15),bits(config.gain==0?0:config.gain),bits(1),bits(0),bits(0)});
         }
+        if(additive) emit(result,def,{dst(constant,31,15),bits(config.gain),bits(1),bits(0),bits(0)});
         emit(result,dcl,{0x80000000u,dst(coordinate,0,3)});
         emit(result,dcl,{0x80000000u,dst(color,0,profile->scalar?7:8)});
         emit(result,dcl,{0x90000000u,dst(sampler,0,15)});
@@ -213,6 +218,7 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
         if(profile->scalar) emit(result,dp3,{dst(temporary,0)|precision,src(constant,0),src(color,0)});
         emit(result,mul,{dst(temporary,0)|precision,src(temporary,1),profile->scalar?src(temporary,0):lane(color,0,3)});
         emit(result,mov,{dst(temporary,0,8)|precision,lane(temporary,1,3)});
+        if(additive) emit(result,mul,{dst(temporary,0),src(temporary,0),lane(constant,31,0)}); // colour lanes only
         if(outputs!=4) emit(result,mov,{dst(output,0,15),src(temporary,0)});
         if(outputs>1 && outputs!=4) energy(result,profile->scalar);
         if(outputs==4) packed_screen(result);
@@ -223,7 +229,7 @@ LinearEmissionResult linear_emission_sm1_pixel_variant(const Word* original,std:
         result.push_back(end);
         Budget budget;
         const unsigned expected=outputs==4?(profile->scalar?12u:11u):
-            (profile->scalar?4u:3u)+(outputs>1?22u:0u)+(outputs==3?2u:0u);
+            (profile->scalar?4u:3u)+(outputs>1?22u:0u)+(outputs==3?2u:0u)+(additive?1u:0u);
         if(!generated_shape(result,budget,outputs) || budget.arithmetic!=expected) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);return LinearEmissionResult::Applied;
     } catch(...) { return LinearEmissionResult::AllocationFailure; }

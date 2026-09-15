@@ -45,6 +45,16 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     // Quad footprint in clip space (rows = identity): functional script
     // x in [0,.5], y in [-.25,.25] -> pixels [W/2,3W/4) x [3H/8,5H/8);
     // bench: a small centred quad (+-.05: 96x54 px at 1080p, 64x38 at 1280x768).
+    // X3M_SCREEN_EMISSION_ADDITIVE=G (the DLL's own switch; the packed option
+    // off): the additive script, frames "" / ks / s / p. k is the bullet pair
+    // drawn opaque (blend off: a different state, refused) with a near-black
+    // texel, so the bolt of frame 1 lands on a dark quad; the bolt of frame 2
+    // lands on the white scene (bright, > .8); the PROJECTED kind refuses to
+    // native. The raw before/after images of every additive bolt are written
+    // for the runner's G q + D law.
+    char additive_setting[32]{};
+    const float additive_gain=GetEnvironmentVariableA("X3M_SCREEN_EMISSION_ADDITIVE",additive_setting,sizeof additive_setting)>0?float(std::atof(additive_setting)):0.f;
+    const bool additive=additive_gain>=1.f&&!f.screen_enabled; // the DLL's domain (1..8)
     const float qx0=f.screenemission_bench?-.05f:0.f,qx1=f.screenemission_bench?.05f:.5f,qy0=f.screenemission_bench?-.05f:-.25f,qy1=f.screenemission_bench?.05f:.25f,qz=.1f;
     const RECT quad_rect{LONG(std::lround((qx0+1)*f.W/2.)),LONG(std::lround((1-qy1)*f.H/2.)),LONG(std::lround((qx1+1)*f.W/2.)),LONG(std::lround((1-qy0)*f.H/2.))};
     // Step E overlap chain (kind c): `chain_quads` copies of the functional
@@ -112,14 +122,14 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     };
     // Textures: the bullet texel (q = T * h, native alpha a = T.a), the
     // Asteroid pair-0 texels and the emission texel of the fade fixture.
-    const float bullet_texel[4]={.5f,.25f,.125f,.5f};
+    const float bullet_texel[4]={.5f,.25f,.125f,.5f},dark_texel[4]={.05f,.05f,.05f,.5f}; // dark: the opaque k draw of the additive script
     const float texels[][4]={{.5f,.25f,.75f,.5f},{.25f,.375f,.75f,.625f},{.25f,.875f,.125f,.75f},{.125f,.25f,.0625f,.25f},{.5f,.25f,.75f,0},{.5f,.25f,.125f,.125f}};
-    Com<IDirect3DTexture9> bullet_texture,textures[6];
+    Com<IDirect3DTexture9> bullet_texture,dark_texture,textures[6];
     const auto texel=[&](const float* value,Com<IDirect3DTexture9>& out) {
         api(f.d->CreateTexture(1,1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&out.p,nullptr),"screen source texture");
         D3DLOCKED_RECT lock{};api(out->LockRect(0,&lock,nullptr,0),"screen texture lock");std::memcpy(lock.pBits,value,16);api(out->UnlockRect(0),"screen texture unlock");
     };
-    texel(bullet_texel,bullet_texture);for(unsigned i=0;i<6;++i)texel(texels[i],textures[i]);
+    texel(bullet_texel,bullet_texture);texel(dark_texel,dark_texture);for(unsigned i=0;i<6;++i)texel(texels[i],textures[i]);
     // The soft sprite of the chain: tint (.55, 1, .45) times a Gaussian of
     // sigma 3 px about the sprite centre, opaque alpha (the native alpha test
     // passes everywhere, so the chain footprint is the whole union).
@@ -194,6 +204,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"bullet mask 15");api(f.d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"bullet alpha test");
         api(f.d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"bullet alpha func");api(f.d->SetRenderState(D3DRS_ALPHAREF,1),"bullet alpha ref");
         api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,FALSE),"bullet no scissor");
+        if(kind=='k'){api(f.d->SetTexture(0,dark_texture.p),"dark bullet texel");api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE),"dark bullet opaque");}
         return kind_rect(kind);
     };
     // The fade fixture's Asteroid pair 0 (run_linear_distance_fade case 0 inputs)
@@ -254,7 +265,8 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     // source, then the step E overlap chain (c) over its darkened rectangle.
     const Plan plans[]={{"",1,0},{"s",1,0},{"s",1,0},{"es",1,0},{"sf",1,0},{"fs",1,0},{"esf",1,0},{"s",2,0},{"s",1,5},{"s",1,6},{"s",1,0},{"s",1,0},{"s",1,0},{"se",1,0},{"p",1,0},{"g",1,0},{"d",1,0},{"n",1,0},{"x",1,0},{"h",1,0},{"b",1,0},{"fc",1,0}};
     const Plan control[]={{"",1,0},{"s",1,0},{"s",1,0}};
-    const unsigned frames=f.screenemission_bench?18:qualified?unsigned(sizeof plans/sizeof plans[0]):unsigned(sizeof control/sizeof control[0]);
+    const Plan additive_plans[]={{"",1,0},{"ks",1,0},{"s",1,0},{"p",1,0}};
+    const unsigned frames=f.screenemission_bench?18:additive?unsigned(sizeof additive_plans/sizeof additive_plans[0]):qualified?unsigned(sizeof plans/sizeof plans[0]):unsigned(sizeof control/sizeof control[0]);
     unsigned submissions=0;
     const auto covered_by=[](const RECT& rect,unsigned x,unsigned y){return LONG(x)>=rect.left&&LONG(x)<rect.right&&LONG(y)>=rect.top&&LONG(y)<rect.bottom;};
     for(unsigned plan=0;plan<frames;++plan) {
@@ -275,12 +287,12 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             if(sample>=2)std::printf("SCREEN_TIMING width=%u height=%u count=%u sample=%u screen=%u admitted=%u unbounded=%u region_pixels=%u quad=%ld,%ld,%ld,%ld source_ms=%.9f terminal_ms=%.9f total_ms=%.9f\n",f.W,f.H,count,sample-2,f.screen_enabled,admitted,unbounded,pixels,quad_rect.left,quad_rect.top,quad_rect.right,quad_rect.bottom,1000.*double(middle.QuadPart-begin.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-middle.QuadPart)/frequency.QuadPart,1000.*double(end.QuadPart-begin.QuadPart)/frequency.QuadPart);
             api(f.d->SetDepthStencilSurface(f.depth.p),"screen benchmark depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"screen benchmark Present");++f.frame;++f.frames_since_reset;continue;
         }
-        const Plan& p=qualified?plans[plan]:control[plan];
+        const Plan& p=additive?additive_plans[plan]:qualified?plans[plan]:control[plan];
         std::vector<float> expected_mask(std::size_t(f.W)*f.H*4,0);
         auto before=scene();
         for(unsigned source=0;p.kinds[source];++source) {
             const char kind=p.kinds[source];
-            const bool screen=kind=='s'||kind=='p'||kind=='g'||kind=='d'||kind=='c'||near_kind(kind),emission=kind=='e';
+            const bool screen=kind=='s'||kind=='p'||kind=='g'||kind=='d'||kind=='c'||kind=='k'||near_kind(kind),emission=kind=='e';
             const unsigned overlap=kind=='c'?chain_quads:screen?p.overlap:1;
             unsigned fault=screen?p.fault:0;
             if(screen)write_bullets(overlap,kind);
@@ -292,7 +304,8 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             DWORD blend_before[11]{};for(unsigned i=0;i<11;++i)api(f.d->GetRenderState(blend_states[i],&blend_before[i]),"screen caller blend snapshot");
             std::vector<float> motion_before,depth_before,mask_before;
             raw(1,motion_before);raw(2,depth_before);const HRESULT mask_hr_before=raw(3,mask_before);
-            unsigned prior[50];for(unsigned k=0;k<50;++k)prior[k]=f.emission_status(f.d.p,k);
+            constexpr unsigned status_keys=63; // 0-53 composition and fade route, 60-62 the additive option
+            unsigned prior[status_keys];for(unsigned k=0;k<status_keys;++k)prior[k]=f.emission_status(f.d.p,k);
             if(!(screen?f.screen_enabled&&!caps_fault:emission?required&1u:required&2u))fault=0;
             if(fault)f.emission_fault(f.d.p,fault,1);
             const HRESULT hr=screen?f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,2*overlap):f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2);
@@ -302,14 +315,22 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
             f.compare(state,f.snapshot(),"screen source restoration");
             float restored_vs[48][4]{};api(f.d->GetVertexShaderConstantF(0,restored_vs[0],48),"screen native VS constant readback");require(!std::memcmp(native_vs,restored_vs,sizeof native_vs),"screen native VS constants restored");
             for(unsigned i=0;i<11;++i){DWORD value=0;api(f.d->GetRenderState(blend_states[i],&value),"screen caller blend readback");require(value==blend_before[i],"screen exact caller blend/mask restoration");}
-            unsigned delta[50];for(unsigned k=0;k<50;++k)delta[k]=f.emission_status(f.d.p,k)-prior[k];
+            unsigned delta[status_keys];for(unsigned k=0;k<status_keys;++k)delta[k]=f.emission_status(f.d.p,k)-prior[k];
             require((screen?delta[49]:delta[12])==1,"screen actual native source once");
+            if(additive){
+                require(delta[60]==(kind=='s'?1u:0u)&&delta[61]==(kind=='p'||kind=='k'?1u:0u)&&delta[62]==0,"additive admission: the screen state admits, PROJECTED and the opaque state refuse, nothing fails");
+                require(delta[41]==0&&delta[40]==0&&delta[4]==0,"additive never enters the packed or composition route");
+            } else require(delta[60]==0&&delta[61]==0&&delta[62]==0,"the additive option is off");
             auto after=scene();
             std::vector<float> motion_after,depth_after,mask_after;
             raw(1,motion_after);raw(2,depth_after);const HRESULT mask_hr_after=raw(3,mask_after);
             require(motion_before==motion_after&&depth_before==depth_after,"screen source preserves ordinary RT1 RT2 exactly");
             const bool packed=screen&&delta[41]==1,recovered=packed&&delta[43]==1;
             const RECT composed=packed&&injected?injected_rect:rect;
+            if(additive&&screen){
+                char name[32];std::snprintf(name,sizeof name,"additive_before_%u",source);write_raw(name,before);
+                std::snprintf(name,sizeof name,"additive_after_%u",source);write_raw(name,after);
+            }
             if(kind=='c') {
                 write_raw("chain_after",after);
                 std::printf("SCREEN_CHAIN frame=%llu source=%u quads=%u step_px=%u sprite=%u sigma=3 rect=%ld,%ld,%ld,%ld packed=%u composed=%ld,%ld,%ld,%ld\n",f.frame,source,chain_quads,chain_step_px,sprite_size,rect.left,rect.top,rect.right,rect.bottom,unsigned(packed),composed.left,composed.top,composed.right,composed.bottom);
@@ -332,8 +353,8 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
                 std::printf("SCREEN_SAMPLE frame=%llu source=%u kind=%c overlap=%u x=%u y=%u covered=%u bracket=%u packed=%u q=%.9g,%.9g,%.9g a=%.9g before=%.17g,%.17g,%.17g,%.17g after=%.17g,%.17g,%.17g,%.17g\n",f.frame,source,kind,overlap,x,y,unsigned(covered_source(kind,rect,x,y)),unsigned(packed),unsigned(packed&&covered_by(composed,x,y)),
                             double(bullet_texel[0]),double(bullet_texel[1]),double(bullet_texel[2]),double(bullet_texel[3]),before[i],before[i+1],before[i+2],before[i+3],after[i],after[i+1],after[i+2],after[i+3]);
             }
-            std::printf("SCREEN_SOURCE frame=%llu source=%u kind=%c overlap=%u fault=%u hr=%08lx original_calls=%u prepared=%u linear=%u native=%u incomplete=%u refused=%u packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded=%u packed_caps=%u packed_region_pixels=%u prefix_bound=%u prefix_refused=%u rect=%ld,%ld,%ld,%ld mask_before=%u mask_after=%u hash_mask_before=%016llx hash_mask_after=%016llx hash_red_before=%016llx hash_red_after=%016llx\n",
-                        f.frame,source,kind,overlap,fault,hr,screen?delta[49]:delta[12],delta[4],delta[5],delta[6],delta[7],delta[8],delta[40],delta[41],delta[42],delta[43],delta[44],delta[45],delta[46],delta[47],delta[48],rect.left,rect.top,rect.right,rect.bottom,prior[1],f.emission_status(f.d.p,1),static_cast<unsigned long long>(hash(mask_before)),static_cast<unsigned long long>(hash(mask_after)),static_cast<unsigned long long>(hash_red(mask_before)),static_cast<unsigned long long>(hash_red(mask_after)));
+            std::printf("SCREEN_SOURCE frame=%llu source=%u kind=%c overlap=%u fault=%u hr=%08lx original_calls=%u prepared=%u linear=%u native=%u incomplete=%u refused=%u packed_eligible=%u packed_admitted=%u packed_linear=%u packed_incomplete=%u packed_unbounded=%u packed_caps=%u packed_region_pixels=%u prefix_bound=%u prefix_refused=%u rect=%ld,%ld,%ld,%ld mask_before=%u mask_after=%u hash_mask_before=%016llx hash_mask_after=%016llx hash_red_before=%016llx hash_red_after=%016llx additive_admitted=%u additive_refused=%u additive_failures=%u\n",
+                        f.frame,source,kind,overlap,fault,hr,screen?delta[49]:delta[12],delta[4],delta[5],delta[6],delta[7],delta[8],delta[40],delta[41],delta[42],delta[43],delta[44],delta[45],delta[46],delta[47],delta[48],rect.left,rect.top,rect.right,rect.bottom,prior[1],f.emission_status(f.d.p,1),static_cast<unsigned long long>(hash(mask_before)),static_cast<unsigned long long>(hash(mask_after)),static_cast<unsigned long long>(hash_red(mask_before)),static_cast<unsigned long long>(hash_red(mask_after)),delta[60],delta[61],delta[62]);
             before=std::move(after);
         }
         f.emission_reference_color=scene();
@@ -345,7 +366,7 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         for(std::size_t i=0;i<alpha.size();++i)alpha[i]=f.emission_reference_color[4*i+3];
         raw(1,motion);raw(2,depth);
         std::printf("SCREEN_LIVE frame=%llu screen=%u fade=%u emission=%u draws=%u",f.frame,f.screen_enabled,f.distancefade_enabled,f.distancefade_emissions_enabled,unsigned(std::strlen(p.kinds)));
-        for(unsigned i=0;i<50;++i)std::printf(" s%u=%u",i,f.emission_status(f.d.p,i));
+        for(unsigned i=0;i<63;++i)std::printf(" s%u=%u",i,f.emission_status(f.d.p,i));
         std::printf(" hash_alpha=%016llx hash_motion=%016llx hash_depth=%016llx hash_mask=%016llx\n",static_cast<unsigned long long>(hash(alpha)),static_cast<unsigned long long>(hash(motion)),static_cast<unsigned long long>(hash(depth)),static_cast<unsigned long long>(hash(f.emission_reference_mask)));
         if(!qualified) {
             require(f.emission_status(f.d.p,41)==0,"screen missing prerequisite never admits");
@@ -364,5 +385,5 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
         }
     }
     api(f.d->SetIndices(nullptr),"screen final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"screen final stream release");
-    std::printf("SCREEN_CHECKS frames=%u submissions=%u qualified=%u benchmark=%u quad=%ld,%ld,%ld,%ld injected=%u\n",frames,submissions,qualified,f.screenemission_bench,quad_rect.left,quad_rect.top,quad_rect.right,quad_rect.bottom,unsigned(injected));
+    std::printf("SCREEN_CHECKS frames=%u submissions=%u qualified=%u benchmark=%u quad=%ld,%ld,%ld,%ld injected=%u additive=%g\n",frames,submissions,qualified,f.screenemission_bench,quad_rect.left,quad_rect.top,quad_rect.right,quad_rect.bottom,unsigned(injected),double(additive?additive_gain:0.f));
 }

@@ -196,6 +196,56 @@ class DllGate(unittest.TestCase):
             self.assertEqual(json.loads(output)['env']['X3M_OWNERSHIP'],'1')
 
 
+class AdditiveOption(unittest.TestCase):
+    """--screen-emission-additive G (docs/architecture/screen-emission-region.md,
+    "Additive option"): --motion-output --hdr only, exclusive with the packed
+    route, G finite in [1, 8], an explicit off value otherwise."""
+    MINIMUM=['--motion-output','--hdr']
+
+    def test_option_needs_motion_output_and_hdr_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code,output,error=launch(directory,*self.MINIMUM);self.assertEqual(code,0,error)
+            baseline=json.loads(output)['env'];self.assertEqual(baseline['X3M_SCREEN_EMISSION_ADDITIVE'],'0')
+            code,output,error=launch(directory,*self.MINIMUM,'--screen-emission-additive','2');self.assertEqual(code,0,error)
+            env=json.loads(output)['env']
+            self.assertEqual((env['X3M_SCREEN_EMISSION_ADDITIVE'],env['X3M_SCREEN_EMISSION'],env['X3M_SCREEN_EMISSION_BOUND'],env['X3M_LINEAR_MATERIALS'],env['X3M_TAA']),('2.0','0','0','0','0'))
+            self.assertEqual({k:v for k,v in env.items() if k!='X3M_SCREEN_EMISSION_ADDITIVE'},{k:v for k,v in baseline.items() if k!='X3M_SCREEN_EMISSION_ADDITIVE'})
+            for missing in self.MINIMUM:
+                code,_,error=launch(directory,*[a for a in self.MINIMUM if a!=missing],'--screen-emission-additive','2')
+                self.assertEqual(code,2,missing);self.assertIn('--screen-emission-additive',error) if missing=='--hdr' else None
+            code,output,error=launch(directory,*[a for a in PREREQUISITES if a!='--linear-materials'],'--screen-emission-additive','1');self.assertEqual(code,0,error)
+            self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_ADDITIVE'],'1.0')
+
+    def test_exclusive_with_the_packed_route(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code,_,error=launch(directory,*PREREQUISITES,'--screen-emission','--screen-emission-additive','2')
+            self.assertEqual(code,2);self.assertIn('--screen-emission-additive',error);self.assertIn('mutually exclusive',error)
+            code,_,error=launch(directory,*PREREQUISITES,'--screen-emission-additive','2','--screen-emission-gain','2')
+            self.assertEqual(code,2);self.assertIn('--screen-emission-gain requires --screen-emission',error)
+
+    def test_gain_range(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for bad in ('0.5','0','9','nan','inf','-1'):
+                code,_,error=launch(directory,*self.MINIMUM,'--screen-emission-additive',bad)
+                self.assertEqual(code,2,bad);self.assertIn('--screen-emission-additive',error)
+            for good,value in (('1','1.0'),('8','8.0'),('2.5','2.5')):
+                code,output,error=launch(directory,*self.MINIMUM,'--screen-emission-additive',good);self.assertEqual(code,0,error)
+                self.assertEqual(json.loads(output)['env']['X3M_SCREEN_EMISSION_ADDITIVE'],value)
+
+    def test_dll_gate_matches_the_launcher(self):
+        # capture.cpp: motion output and HDR only, the packed option wins a
+        # conflict, no TAA/ownership/linear-material prerequisite.
+        source=(ROOT/'src/proxy/capture.cpp').read_text()
+        block=source[source.index('X3M_SCREEN_EMISSION_ADDITIVE",setting'):source.index('screen_emission_additive_mode requested=1')]
+        self.assertIn('screen_emission_additive_requested=valid&&motion_output_requested&&hdr_requested&&!conflict;',block)
+        self.assertIn('const bool conflict=screen_emission_requested;',block)
+        self.assertIn('value>=1.f&&value<=8.f',block)
+        for name in ('taa_requested','screen_ownership','linear_material_requested','material_decode_valid'):self.assertNotIn(name,block)
+        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        self.assertIn('screen_additive_requested_ = requested && valid && !screen_emission_requested_;',motion)
+        self.assertIn('renderer::LinearEmissionSm1Outputs::AdditiveGain',motion)
+
+
 class AdmissionTable(unittest.TestCase):
     def test_nine_pairs_shared_with_the_sm1_emitter_and_the_bullet_allowlist(self):
         header=(ROOT/'src/proxy/screen_emission_admission.h').read_text()
@@ -259,6 +309,62 @@ class RunnerParser(unittest.TestCase):
         self.assertAlmostEqual(live.screen_law(before,live.SCREEN_TEXEL,1.,2,2.)[0],(.25**2.2+2*(native[0]**2.2-.25**2.2))**(1/2.2))
         self.assertEqual(live.screen_law(before,live.SCREEN_TEXEL,1.,2,2.)[3],native[3])
         self.assertEqual(live.screen_native((1.,1.,1.,.39),live.SCREEN_TEXEL,1.,1),(1.,1.,1.,.5+.5*.39))
+
+    def test_additive_parser_and_law(self):
+        """validate_screen_additive on a synthetic additive run: the counters
+        per kind, the G q + D law within one FP16 code on every quad pixel,
+        the dark and bright backgrounds, values above 1.0, the native law of
+        the refused PROJECTED kind; a two-code deviation, a saturating (native)
+        bolt or a stray admission is refused."""
+        width=height=64;gain=live.SCREEN_ADDITIVE_GAIN_RUN;q=live.SCREEN_TEXEL;x0,y0,x1,y1=live.SCREEN_ADDITIVE_QUAD
+        half=lambda v:struct.unpack('<e',struct.pack('<e',v))[0]
+        inside=lambda x,y:x0<=x<x1 and y0<=y<y1
+        def bolt(background,native=False,perturb=None):
+            before=[background]*(width*height);after=list(before)
+            for y in range(height):
+                for x in range(width):
+                    if not inside(x,y):continue
+                    b=before[y*width+x]
+                    after[y*width+x]=tuple(half(v) for v in (live.screen_native(b,q,1.,1) if native else tuple(b[c]+gain*q[c] for c in range(3))+(b[3]+q[3],)))
+            if perturb:
+                x,y,codes=perturb;i=y*width+x;v=list(after[i]);v[0]=struct.unpack('<e',struct.pack('<H',live.fp16_code(v[0])+codes))[0];after[i]=tuple(v)
+            return before,after
+        def source(frame,i,kind,admitted,refused):
+            return line('SCREEN_SOURCE',frame=frame,source=i,kind=kind,overlap=1,fault=0,hr='00000000',original_calls=1,prepared=0,linear=0,native=0,incomplete=0,refused=0,
+                        packed_eligible=0,packed_admitted=0,packed_linear=0,packed_incomplete=0,packed_unbounded=0,packed_caps=0,packed_region_pixels=0,prefix_bound=0,prefix_refused=0,
+                        rect=','.join(map(str,live.SCREEN_QUAD)),mask_before=0,mask_after=0,hash_mask_before='0'*16,hash_mask_after='0'*16,hash_red_before='0'*16,hash_red_after='0'*16,
+                        additive_admitted=admitted,additive_refused=refused,additive_failures=0)
+        white=(1.,1.,1.,1.);dark=(.05,.05,.05,.5)
+        def report(counters=None,samples_native=True):
+            counters=counters or {('k',):(0,1),('s',):(1,0),('p',):(0,1)}
+            lines=['CHECK x PASS',line('SCREEN_CHECKS',frames=4,submissions=4,qualified=1,benchmark=0,quad=','.join(map(str,live.SCREEN_QUAD)),injected=0,additive=gain)]
+            for frame,plan in enumerate(live.SCREEN_ADDITIVE_PLAN):
+                for i,kind in enumerate(plan):
+                    lines.append(source(frame,i,kind,*counters[(kind,)]))
+                    if kind=='p':
+                        for x in live.SCREEN_ADDITIVE_SAMPLE_X:
+                            after=live.screen_native(white,q,1.,1) if samples_native else tuple(white[c]+gain*q[c] for c in range(4))
+                            lines.append(line('SCREEN_SAMPLE',frame=frame,source=i,kind=kind,overlap=1,x=x,y=32,covered=1,bracket=0,packed=0,q=rgba(q[:3]),a=q[3],before=rgba(white),after=rgba(after)))
+            lines.append('RESULT PASS checks=1')
+            trace=[line('screen_emission_additive_mode',requested=1,enabled=1,gain=gain,gain_valid=1,motion=1,hdr=1,packed_conflict=0),
+                   line('screen_emission_additive_variant',device=1,original=live.SCREEN_PAIR[1],transform=0,create='00000000',words=73,gain=gain)]
+            return '\n'.join(lines)+'\n','\n'.join(trace)+'\n'
+        def write(work,frame,i,before,after):
+            work.mkdir(parents=True,exist_ok=True)
+            (work/f'screen_emission_additive_before_{i}_{frame}.rgba32f').write_bytes(b''.join(struct.pack('<4f',*p) for p in before))
+            (work/f'screen_emission_additive_after_{i}_{frame}.rgba32f').write_bytes(b''.join(struct.pack('<4f',*p) for p in after))
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory)/'run';output,trace=report()
+            write(work,1,1,*bolt(dark,perturb=(x0+3,y0+2,1)));write(work,2,0,*bolt(white))
+            result=live.validate_screen_additive(work,output,trace,gain)
+            self.assertEqual((result['admitted'],result['refused'],result['above_one_pixels'],result['max_codes_apart']),(2,2,2*(x1-x0)*(y1-y0),1))
+            self.assertAlmostEqual(result['max_after'],2.);self.assertLess(result['bolts'][0]['background_max'],.5)
+            for bad in (dict(bolt1=bolt(dark,perturb=(x0+3,y0+2,2))),dict(bolt1=bolt(dark,native=True)),dict(bolt2=bolt(dark)),
+                        dict(report=report(counters={('k',):(0,0),('s',):(1,0),('p',):(0,1)})),dict(report=report(counters={('k',):(0,1),('s',):(1,0),('p',):(1,0)})),dict(report=report(samples_native=False))):
+                work=Path(directory)/'bad';shutil.rmtree(work,ignore_errors=True)
+                write(work,1,1,*bad.get('bolt1',bolt(dark)));write(work,2,0,*bad.get('bolt2',bolt(white)))
+                o,t=bad.get('report',(output,trace))
+                with self.assertRaises(AssertionError):live.validate_screen_additive(work,o,t,gain)
 
     def test_chain_twin_comparison(self):
         """validate_screen_chain on synthetic raw images: the native twin

@@ -6,7 +6,11 @@ namespace x3m::renderer {
 enum class LinearEmissionSm1Outputs { Native = 1, Emission = 2, Coverage = 3,
     // Separate mathematical prototype: M and three packed channel planes,
     // not native B/E/coverage outputs. Full precision only; no live admission.
-    PackedScreen = 4 };
+    PackedScreen = 4,
+    // Additive option (screen-emission-region.md, "Additive option"): the
+    // native PS2 path with the colour lanes multiplied by config.gain before
+    // the output MOV; alpha stays the original's. One output, no coverage.
+    AdditiveGain = 5 };
 struct LinearEmissionSm1Config {
     float gain = 1.0f;
     LinearEmissionSm1Outputs outputs = LinearEmissionSm1Outputs::Coverage;

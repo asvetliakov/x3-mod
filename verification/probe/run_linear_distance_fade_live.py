@@ -736,6 +736,16 @@ SCREEN_TEXEL=(.5,.25,.125,.5)       # bullet diffuse texel: q = rgb * h (h = 1),
 SCREEN_GAIN=1.
 SCREEN_SAMPLE_X=(36,44)             # inside the quad and the fade/emission scissor; inside the quad only
 SCREEN_TIMING_SAMPLES=4
+# Additive option (screen-emission-region.md, "Additive option"): the packed
+# route off, X3M_SCREEN_EMISSION_ADDITIVE=G, no emission/fade/material route.
+# Frame 1: k, the bullet pair drawn opaque (blend off: a different state,
+# refused native) with a near-black texel, darkens the quad, then one bolt on
+# it; frame 2: one bolt on the white scene (bright, > .8); frame 3: the
+# PROJECTED kind refuses to native (native saturating law at the samples).
+SCREEN_ADDITIVE_PLAN=('','ks','s','p')
+SCREEN_ADDITIVE_QUAD=SCREEN_QUAD
+SCREEN_ADDITIVE_SAMPLE_X=SCREEN_SAMPLE_X
+SCREEN_ADDITIVE_GAIN_RUN=2.
 
 
 def screen_expected_sources(frame,screen=1,fade=1,emission=1,caps=1):
@@ -1103,6 +1113,76 @@ def validate_screen_chain(functional,native,gain_run,gain=SCREEN_GAIN_RUN,width=
     return dict(frame=frame,rect=SCREEN_CHAIN_RECT,pixels=len(inside),native_changed=native_changed,max_layers=max_layers,max_codes=max_codes,alpha_exact=alpha_exact,gain=gain,gain_max_tolerance_fraction=max_fraction,bolt_channels=bolt,withdrawn_law_max_delta=withdrawn_max)
 
 
+def fp16_codes_apart(actual,expected):
+    """Distance in FP16 codes between a value read back from the FP16 target
+    and the float64 expectation rounded to FP16 (both non-negative here)."""
+    return abs(fp16_code(actual)-fp16_code(expected))
+
+
+def validate_screen_additive(work,output,trace,gain=SCREEN_ADDITIVE_GAIN_RUN,width=64,height=64):
+    """The additive law D' = G q + D (alpha a + D.a) on every quad pixel of
+    every admitted bolt within one FP16 code, the dark/bright backgrounds,
+    values above 1.0 in the FP16 target, the PROJECTED refusal (native law
+    at the samples) and the option's counters; the fixture itself requires
+    the exact blend/mask and shader restoration after each draw."""
+    lines=output.splitlines();traces=trace.splitlines()
+    assert any(line.startswith('RESULT PASS ') for line in lines) and not any(line.startswith('RESULT FAIL') for line in lines)
+    checks=[fields(line) for line in lines if line.startswith('SCREEN_CHECKS ')]
+    assert len(checks)==1 and int(checks[0]['frames'])==len(SCREEN_ADDITIVE_PLAN) and checks[0]['qualified']=='1' and checks[0]['benchmark']=='0'
+    assert float(checks[0]['additive'])==gain and tuple(map(int,checks[0]['quad'].split(',')))==SCREEN_ADDITIVE_QUAD
+    modes=[fields(line) for line in traces if line.startswith('screen_emission_additive_mode ')]
+    assert modes and all(m['enabled']=='1' and float(m['gain'])==gain and m['gain_valid']=='1' and m['packed_conflict']=='0' for m in modes),modes
+    assert not any(line.startswith('screen_emission_mode ') for line in traces),'the packed option stays off'
+    variants=[fields(line) for line in traces if line.startswith('screen_emission_additive_variant ')]
+    assert variants and all(v['transform']=='0' and int(v['create'],16)==0 and float(v['gain'])==gain for v in variants),variants
+    assert {v['original'] for v in variants}=={SCREEN_PAIR[1]},'the bullet PS gets its gained variant'
+    assert not any(line.startswith(('linear_composition_frame ','linear_emission_frame ')) for line in traces),'no composition route is requested'
+    rows=[fields(line) for line in lines if line.startswith('SCREEN_SOURCE ')]
+    assert [(int(r['frame']),int(r['source']),r['kind']) for r in rows]==[(f,i,k) for f,plan in enumerate(SCREEN_ADDITIVE_PLAN) for i,k in enumerate(plan)]
+    samples={(int(r['frame']),int(r['source']),int(r['x'])):r for r in (fields(line) for line in lines if line.startswith('SCREEN_SAMPLE '))}
+    q=[c*1. for c in SCREEN_TEXEL[:3]];a=SCREEN_TEXEL[3]
+    x0,y0,x1,y1=SCREEN_ADDITIVE_QUAD
+    result=dict(gain=gain,admitted=0,refused=0,bolts=[],above_one_pixels=0,max_after=0.,max_codes_apart=0)
+    for r in rows:
+        frame,source,kind=int(r['frame']),int(r['source']),r['kind']
+        assert int(r['hr'],16)==0 and int(r['original_calls'])==1,(frame,source)
+        for key in ('prepared','refused','packed_eligible','packed_admitted','packed_unbounded','packed_caps','prefix_bound','prefix_refused'):assert int(r[key])==0,(frame,source,key,r[key])
+        assert int(r['additive_failures'])==0,(frame,source)
+        assert (int(r['additive_admitted']),int(r['additive_refused']))=={'s':(1,0),'p':(0,1),'k':(0,1)}.get(kind,(0,0)),(frame,source,kind)
+        result['admitted']+=int(r['additive_admitted']);result['refused']+=int(r['additive_refused'])
+        if kind=='k':continue # the opaque dark draw (refused, native): its result is the next bolt's dark background
+        if kind=='p':
+            # PROJECTED stage 0 refuses before any state change: the native saturating law at the samples.
+            for x in SCREEN_ADDITIVE_SAMPLE_X:
+                row=samples[frame,source,x];before=tuple(map(float,row['before'].split(',')));after=tuple(map(float,row['after'].split(',')))
+                native=screen_native(before,SCREEN_TEXEL,1.,1)
+                assert all(fp16_codes_apart(after[c],native[c])<=1 for c in range(4)),(frame,source,x,'refused bolt is native',before,after,native)
+            continue
+        before=read_rgba32f(work/f'screen_emission_additive_before_{source}_{frame}.rgba32f',width,height)
+        after=read_rgba32f(work/f'screen_emission_additive_after_{source}_{frame}.rgba32f',width,height)
+        bolt=dict(frame=frame,source=source,background_max=0.,background_min_red=1e9,above_one=0,max_codes_apart=0,max_after=0.)
+        for y in range(y0,y1):
+            for x in range(x0,x1):
+                b=before[y*width+x];d=after[y*width+x]
+                expected=tuple(b[c]+gain*q[c] for c in range(3))+(b[3]+a,)
+                apart=max(fp16_codes_apart(d[c],expected[c]) for c in range(4))
+                assert apart<=1,(frame,source,x,y,'G q + D within one FP16 code',b,d,expected)
+                bolt['max_codes_apart']=max(bolt['max_codes_apart'],apart)
+                bolt['background_max']=max(bolt['background_max'],*b[:3]);bolt['background_min_red']=min(bolt['background_min_red'],b[0])
+                bolt['above_one']+=int(max(d[:3])>1.);bolt['max_after']=max(bolt['max_after'],*d[:3])
+        for y in range(height):
+            for x in range(width):
+                if not(x0<=x<x1 and y0<=y<y1):assert before[y*width+x]==after[y*width+x],(frame,source,x,y,'outside the bolt unchanged')
+        if (frame,source)==(1,1):assert bolt['background_max']<.5,('dark background: the opaque k draw',bolt)
+        if (frame,source)==(2,0):
+            assert bolt['background_min_red']>=.8,('bright background: the white scene',bolt)
+            assert bolt['above_one']==(x1-x0)*(y1-y0),('every bolt pixel above 1.0 in the FP16 target',bolt)
+        result['bolts'].append(bolt);result['above_one_pixels']+=bolt['above_one']
+        result['max_after']=max(result['max_after'],bolt['max_after']);result['max_codes_apart']=max(result['max_codes_apart'],bolt['max_codes_apart'])
+    assert result['admitted']==2 and result['refused']==2 and result['max_after']>1.,result
+    return result
+
+
 def screen_footprint(kind,x,y,width=64,height=64):
     """Whether the bullet source of `kind` rasterises pixel (x, y): the n
     trapezoid under the D3D9 convention (integer pixel centres, top-left fill
@@ -1279,7 +1359,10 @@ def main_screen(args):
           # native twin and the gain law in this configuration too.
           dict(name='screen-nomaterials-functional',screen=1,witness=True,materials=0),
           dict(name='screen-nomaterials-off',screen=0,witness=True,materials=0),
-          dict(name='screen-nomaterials-gain2',screen=1,witness=True,materials=0,gain=SCREEN_GAIN_RUN)]
+          dict(name='screen-nomaterials-gain2',screen=1,witness=True,materials=0,gain=SCREEN_GAIN_RUN),
+          # The additive option alone (no packed route, no emission/fade/material
+          # route): G q + D in place, above 1.0, blend and shader restored.
+          dict(name='screen-additive-gain2',screen=0,materials=0,additive=SCREEN_ADDITIVE_GAIN_RUN)]
     for width,height in RESOLUTIONS:
         for pair in (0,1):
             for screen in ((0,1) if pair==0 else (1,0)):
@@ -1298,8 +1381,9 @@ def main_screen(args):
             env.update(X3M_MOTION_OUTPUT='1',X3M_HDR='1',X3M_HDR_TONEMAP='agx',X3M_HDR_DECODE='gamma2.2',
                        X3M_HDR_EXPOSURE='manual',X3M_HDR_EV_MANUAL='0',X3M_HDR_CLAMP='0',X3M_HDR_BLOOM='0',
                        X3M_LINEAR_MATERIALS=str(materials),X3M_MATERIAL_DIRECT_GAIN='1',X3M_MATERIAL_EMISSIVE_GAIN='1',X3M_LIGHTMAP_EMISSIVE_GAIN='1',
-                       X3M_LINEAR_DISTANCE_FADE=str(materials),X3M_LINEAR_EMISSIONS='1',X3M_EMISSION_GAIN='1',
+                       X3M_LINEAR_DISTANCE_FADE=str(materials),X3M_LINEAR_EMISSIONS='0' if run.get('additive') else '1',X3M_EMISSION_GAIN='1',
                        X3M_SCREEN_EMISSION=str(run['screen']),X3M_SCREEN_EMISSION_BOUND=str(run['screen']),X3M_SCREEN_EMISSION_GAIN=repr(run.get('gain',SCREEN_GAIN)),
+                       X3M_SCREEN_EMISSION_ADDITIVE=repr(run.get('additive',0.)),
                        X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5' if materials else '0',
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
@@ -1319,6 +1403,7 @@ def main_screen(args):
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()
             caps=run.get('caps',1);fade=materials # the distance fade needs the linear-material route
             if run.get('timing'):case=validate_screen_timing(output,trace,run['screen'],run['width'],run['height'],fade)
+            elif run.get('additive'):case=validate_screen_additive(work,output,trace,run['additive'])
             else:
                 case=validate_screen_functional(output,trace,run['screen'],fade,1,caps,run.get('rect'),run.get('gain',SCREEN_GAIN))
                 case.update(validate_screen_pixels(work,run['screen'],fade,1,caps))

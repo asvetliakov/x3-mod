@@ -122,6 +122,9 @@ struct MotionRoute {
     bool fade_arm = false;
     bool fade_held = false; // admitted below the threshold by the hysteresis band only
     unsigned fade_permille = 0;
+    // Additive option: DESTBLEND ONE applied for this draw (restored to the
+    // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
+    bool screen_additive = false, screen_additive_ps = false;
 };
 // Why the temporal resolve did not run at this frame's bloom copy (X3M_TAA=1).
 // None: it ran (see taa_result/taa_copy). NotReached: the selector never
@@ -532,6 +535,15 @@ public:
     void configure_screen_emission(bool requested, float gain = 1.f) noexcept;
     bool screen_emission_requested() const noexcept { return screen_emission_requested_; }
     float screen_emission_gain() const noexcept { return screen_emission_gain_; }
+    // Additive option (screen-emission-region.md, "Additive option"): the same
+    // nine pairs in the same exact native screen state draw in place with
+    // DESTBLEND ONE (ADD/ONE/ONE) and, for gain != 1, a colour-gained PS2
+    // variant created at registration; no bracket, no copies, no bound. Needs
+    // the FP16 redirect (X3M_HDR) and the motion-output hooks; exclusive with
+    // the packed route (the caller refuses both; whichever of the two
+    // configure calls runs second, the packed route wins). `gain` finite 1..8.
+    void configure_screen_emission_additive(bool requested, float gain) noexcept;
+    bool screen_emission_additive_requested() const noexcept { return screen_additive_requested_; }
     // Diagnostic fade-region witness (X3M_FADE_WITNESS=<k>, note section 7,
     // step 1): every k-th frame without an admitted emission draw the M
     // coverage target is read back once and its covered pixels counted
@@ -559,7 +571,7 @@ public:
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
     // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
     // for the composition producers and for the source-gain admission.
-    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_; }
+    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_ || screen_additive_requested_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
@@ -752,6 +764,7 @@ private:
                          IDirect3DPixelShader9* emission_variant = nullptr;
                          IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant (PS only; the VS stays original)
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
+                         IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
                          IUnknown* distance_fade_variant = nullptr;
                          bool registered = false; // Valid original, independent of motion support.
                          const renderer::MotionOutputProfile* row = nullptr;
@@ -777,6 +790,10 @@ private:
         // packed producer; shader eligibility only, admission is per draw.
         bool screen_pair = false;
         IDirect3DPixelShader9* screen_eligible_variant = nullptr;
+        // Additive option: the same pair identity keyed on its own request
+        // (never joins the packed route's counters) and its gained PS.
+        bool screen_additive_pair = false;
+        IDirect3DPixelShader9* ps_screen_additive_variant = nullptr;
         IDirect3DVertexShader9* vs_fade_variant = nullptr;
         IDirect3DPixelShader9* ps_fade_variant = nullptr;
         std::uint32_t fade_sampler_mask = 0; // exact six-pair contract, independent of creation readiness
@@ -899,6 +916,10 @@ private:
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
     void prepare_source_gain(const MotionDrawCall&, MotionRoute&) noexcept;
+    // Additive option: the exact-state admission, the DESTBLEND/PS apply
+    // (rolled back on a failed second step) and the restore after the draw.
+    void prepare_screen_additive(const MotionDrawCall&, MotionRoute&) noexcept;
+    void finish_screen_additive(MotionRoute&) noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
     // fill mode, clip to the owning target); the counters, witness and log
@@ -1065,6 +1086,13 @@ private:
     // refusals by blend state, by unknown state, by device state, bind failures.
     struct { std::uint32_t admitted = 0, refused_blend = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
     std::uint32_t source_gain_logged_ = 0;
+    bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
+    float screen_additive_gain_ = 1.f;
+    // Additive draws: admitted (DESTBLEND ONE around the native draw), refused
+    // (unknown/different state, PROJECTED stage 0, recording, no FP16 target,
+    // missing variant) and failed applies; fixture keys 60-62.
+    unsigned screen_additive_admitted_ = 0, screen_additive_refused_ = 0, screen_additive_failures_ = 0;
+    unsigned screen_additive_refusal_logged_ = 0; // bit per refusal reason already logged (one line each per device)
     unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
     fade_route::Hysteresis fade_hysteresis_; // per node identity; cleared at Reset
     unsigned composition_required_producers_ = 0;
