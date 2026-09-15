@@ -171,7 +171,8 @@ Claude Code retains its model routing in `CLAUDE.md`.
 | Independent bounded source/evidence review | `review` | gpt-5.6-sol / high |
 | Consequential hook/ABI review | `review_deep` | gpt-6-astra / high |
 | Hard design decision or cross-system diagnosis | `design` | gpt-6-astra / high |
-| Targeted disassembly with a precise question | `disassemble` | gpt-5.6-sol / high |
+| Targeted disassembly and unfamiliar engine/shader behavior | `disassemble` | gpt-6-astra / medium |
+| Uncertain ABI, lifetime or hook-safety reconstruction | `disassemble_deep` | gpt-6-astra / high |
 | Log/capture triage and evidence comparisons | `triage` | gpt-5.6-terra / medium |
 | Named checks, hashes and counts | `verify` | gpt-5.6-terra / medium |
 | File discovery and factual documentation updates | `support` | gpt-5.6-terra / medium |
@@ -180,6 +181,9 @@ Route by uncertainty and consequence: an understood mechanical GPU edit can use
 `implement`; discovering or validating difficult invariants uses `implement_deep`.
 Use Sol/high for deeper tracing of an understood task; use Astra/medium or high
 when the explanation fails, assumptions conflict or the question crosses systems.
+Use `disassemble_deep` upfront when establishing uncertain ABI/lifetime contracts
+or injection safety. Custom-role model/effort settings take precedence over spawn
+overrides; select the deep role rather than overriding `disassemble`.
 Start clearly difficult work on Astra/high instead of trying every tier. Reserve
 xhigh/max for a specific unresolved question with evidence that more reasoning
 helps; missing evidence requires inspection or a fixture. Fast mode is opt-in

@@ -428,3 +428,18 @@ briefs must not cause the deep implementation agent to edit. User feedback raise
 support and verification to Terra/medium for evidence reconciliation and
 reliable failure interpretation. All nine role model/effort settings
 were checked against the routing table after these changes.
+
+
+### Disassembly routing refinement
+
+The user approved Astra/medium for `disassemble`, replacing Sol/high: targeted
+questions can still require substantial interpretation of undocumented engine
+behavior. `disassemble_deep` uses Astra/high for uncertain ABI, lifetime and
+hook-safety contracts. A separate role is needed because custom-role model/effort
+settings override explicit spawn values. Both roles remain analysis-only with
+findings in the owning RE note; neither patches production code. This is a
+workload-based policy change, not a measured performance claim.
+
+Validation: all eleven TOML files parse with `pip._vendor.tomli`; all ten role
+names, required fields and model/effort settings match the routing table.
+The scoped diff and `git diff --check` pass. No build or Wine run is needed.
