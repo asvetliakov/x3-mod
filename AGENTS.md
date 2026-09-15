@@ -9,9 +9,9 @@ Superseded rules and their history are in `docs/archive/` and
 
 The orchestrator reads `docs/status.md`, `docs/goals.md`,
 `docs/user-objective.md` and the owning architecture or reverse-engineering
-note for the task at hand. A secondary agent reads this file, the short current
-status and the files named in its brief; the brief carries the objective. Do not
-load historical archives or the whole conversation for a bounded subtask unless
+note for the task at hand. A secondary agent reads this file and the files named
+in its brief; the brief carries the objective and relevant current status facts.
+Do not load historical archives or the whole conversation for a bounded subtask unless
 a specific unresolved question requires it.
 
 ## Target and environment
@@ -158,8 +158,62 @@ settings.
 
 ## Codex model allocation
 
-`gpt-5.6-sol` with `high` reasoning for bounded log analysis, documentation,
-routine verification, artifact checks and independent reviews (`xhigh` takes
-too long; escalate difficult findings to the orchestrator). `gpt-6-astra` for
-implementation, planning, architecture and difficult debugging. Claude Code
-uses the table in `CLAUDE.md`.
+Project defaults live in `.codex/config.toml`; specialist definitions live in
+`.codex/agents/`. Main session: **gpt-6-astra / medium**, Standard processing.
+Keep the main model/effort stable during routine orchestration. The main session
+owns architecture decisions, integration, the install candidate and Wine queue.
+Claude Code retains its model routing in `CLAUDE.md`.
+
+| Task | Codex agent | Model / effort |
+| --- | --- | --- |
+| Understood implementation with a meaningful acceptance check | `implement` | gpt-5.6-sol / medium |
+| Uncertain hooks, ABI, lifetime, GPU recovery or difficult debugging | `implement_deep` | gpt-6-astra / high |
+| Independent bounded source/evidence review | `review` | gpt-5.6-sol / high |
+| Consequential hook/ABI review | `review_deep` | gpt-6-astra / high |
+| Hard design decision or cross-system diagnosis | `design` | gpt-6-astra / high |
+| Targeted disassembly with a precise question | `disassemble` | gpt-5.6-sol / high |
+| Log/capture triage and evidence comparisons | `triage` | gpt-5.6-terra / medium |
+| Named checks, hashes and counts | `verify` | gpt-5.6-terra / medium |
+| File discovery and factual documentation updates | `support` | gpt-5.6-terra / medium |
+
+Route by uncertainty and consequence: an understood mechanical GPU edit can use
+`implement`; discovering or validating difficult invariants uses `implement_deep`.
+Use Sol/high for deeper tracing of an understood task; use Astra/medium or high
+when the explanation fails, assumptions conflict or the question crosses systems.
+Start clearly difficult work on Astra/high instead of trying every tier. Reserve
+xhigh/max for a specific unresolved question with evidence that more reasoning
+helps; missing evidence requires inspection or a fixture. Fast mode is opt-in
+when model latency is the bottleneck, never a default for waiting on fixtures.
+
+## Codex delegation and reporting
+
+- Delegate independent substantial work to the roles above when it reduces
+  elapsed time or keeps bulk evidence out of the main context. Do short dependent
+  operations locally. At most three concurrent children; children do not spawn
+  agents. Keep one writer per file set and one Wine/install owner.
+- Brief each agent with the goal, relevant current facts, exact files, constraints,
+  acceptance command and observable result. Start bounded work and independent
+  reviews with fresh context, not a full-history fork. Supply model and effort
+  explicitly when using direct collaboration tools without custom-role selection.
+- Source-editing agents use an isolated checkout when concurrent writes could
+  conflict. Worktree isolation is not implicit in a spawn. Build/fixture work
+  stays with the main checkout's queue owner; do not replicate raw result trees.
+- Resume the same agent for local corrections and review fixes. With the current
+  collaboration tools, `send_message` steers running work; `followup_task` also
+  starts an idle agent. Escalate a failed explanation or repeated substantive
+  failure with a compact witness; a typo/setup failure alone does not require a
+  fresh stronger agent. Do not interrupt useful work merely to switch models.
+- Choose reviewer depth upfront. A clean review alone does not trigger a second
+  review. Review source and evidence together under the proportional rules above.
+- Reports use **Outcome**, **Evidence**, **Files changed**, **Open issues**, at
+  most 25 lines. Include commands, counts, paths and material limitations. Put
+  longer findings in the owning note; never omit a material finding to meet the
+  limit. Distinguish measured facts from inference. No pasted logs or task recap.
+- Agents run affected checks and fix in-scope defects; broaden only for changed
+  code, a failure or an unresolved concern. They do not commit, install, rebuild
+  a frozen DLL or run Wine unless the owner explicitly assigns that operation.
+- Compare routing over real checkpoints using available usage, elapsed time,
+  retries and substantive review fixes through accepted completion. Include
+  child work; distinguish model time from tool/lock/user waits. Do not add Wine
+  runs or an accounting framework just to benchmark models. No task-cost savings
+  are established yet.

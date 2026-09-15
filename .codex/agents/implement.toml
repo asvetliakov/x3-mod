@@ -1,0 +1,9 @@
+name = "implement"
+description = "Implement an understood bounded change with a meaningful acceptance check."
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
+developer_instructions = """
+Read AGENTS.md and the files named in the brief; the brief supplies the objective and current facts. Follow its project constraints, delegation and report contract. Do not spawn agents or commit. Never launch the game.
+
+Own only the assigned files. Make the requested change and run affected checks. Preserve scope and existing conventions; report unrelated defects. A settled GPU edit may fit here; escalate uncertain invariants to the parent.
+"""

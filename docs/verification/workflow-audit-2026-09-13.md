@@ -391,3 +391,40 @@ review pass. Removing those success lines from the retained sample predicts
 not a measured runtime improvement. No GPU assertions or acceptance bounds were
 removed, no Wine matrix was repeated for this logging-only change, and the
 installed renderer and retained qualification binaries are unchanged.
+
+
+## 2026-09-15: Codex model and effort routing
+
+User-approved balanced routing is now defined in `AGENTS.md` and project-local
+`.codex/config.toml` / `.codex/agents/*.toml`: Astra/medium main session,
+Sol/medium understood implementation, Sol/high bounded review and disassembly,
+Astra/high difficult implementation/design/review, and Terra/medium for
+triage, support and mechanical checks. Three concurrent children maximum, no
+recursive delegation, one Wine/install owner. Briefs carry relevant current
+facts, resolving the previous shared-contract/Claude status-reading conflict.
+Claude model settings and renderer acceptance state are unchanged.
+
+The defaults use Standard processing; explicit session overrides can supersede
+them. Start a new trusted project session to load the configuration. Direct
+collaboration calls without custom-role selection must pass model and effort
+explicitly from the routing table. No claim of task-cost or speed improvement is
+made: compare available usage and elapsed time through accepted completion,
+including child work and review fixes, on real checkpoints without extra Wine runs.
+
+Configuration shape and precedence were checked against the official
+[custom-agent documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents#custom-agents)
+and [config precedence](https://learn.chatgpt.com/docs/config-file/config-basic#configuration-precedence).
+Validation: Python's installed `pip._vendor.tomli` parsed all ten TOML files;
+the nine role files have matching names and all required fields.
+`git diff --check` passed. Codex CLI 0.154.0 `doctor --summary --ascii --no-color`
+reported configuration loaded; its overall exit 1 was due to the noninteractive
+`TERM=dumb` terminal, with unrelated optional MCP notes. This is syntax/config
+loading evidence, not a live execution of each custom role. No production build,
+test suite, Wine or game execution was needed for this configuration change.
+
+Independent Sol/high review identified two scope ambiguities, both corrected:
+design proposals must be marked pending parent ratification, and diagnosis-only
+briefs must not cause the deep implementation agent to edit. User feedback raised
+support and verification to Terra/medium for evidence reconciliation and
+reliable failure interpretation. All nine role model/effort settings
+were checked against the routing table after these changes.
