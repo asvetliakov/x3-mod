@@ -44,7 +44,9 @@ DLL fallbacks await the next consolidated candidate. The run54 brightness thresh
 unmatched colour/reprojection evidence limits acceptance and does not establish
 a measured 0.03 comparison. The user also approved a selective-exposure
 feature: base hull shading at EV0, with reflections/specular/emission and other
-scene effects still exposed. Its implementation design is in progress.
+scene effects still exposed. The [selective-exposure contract](architecture/material-selective-exposure.md)
+is ratified: background-driven Auto, one compensated scene and one exposed-linear
+TAA history. Material-family source proof and implementation remain pending.
 See the [fill ledger](verification/fill-light.md) for numbers and limitations.
 The [run queue](verification/user-runs.md) records the remaining telemetry request. K=0 qualified
 4,177 cases with every recorded baseline row bit-identical; live qualification

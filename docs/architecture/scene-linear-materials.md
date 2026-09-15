@@ -437,3 +437,11 @@ intended frames, Split retains ordinary motion, alpha/RT1/RT2 remain exact,
 attach/Reset and state blocks recover, and the three extra combined shader
 references retire to zero. Final review and installation are complete; gameplay acceptance is pending. The existing brief material run will cover the expanded candidate;
 no separate gameplay session is being requested for each family.
+
+## Selective exposure extension
+
+The user-approved base-at-EV0 behavior is governed by the
+[selective material exposure contract](material-selective-exposure.md). It keeps
+base diffuse/point/fill fixed while exposing specular, reflections and emission.
+The contract is ratified; implementation and GPU qualification remain pending.
+Ordinary exposure remains a comparison mode.
