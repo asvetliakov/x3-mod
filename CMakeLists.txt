@@ -15,6 +15,33 @@ if(DEFINED ENV{X3M_SEH_CLANG} AND NOT DEFINED X3M_SEH_CLANG)
   set(X3M_SEH_CLANG "$ENV{X3M_SEH_CLANG}" CACHE FILEPATH "Clang with i686-pc-windows-msvc support")
 endif()
 find_program(X3M_SEH_CLANG NAMES clang REQUIRED)
+# Compiled-in source commit for the session log's proxy_identity line. The
+# script rewrites the generated fragment only when the value changes, so an
+# unchanged tree never relinks; it runs once here (the header must exist for the
+# first configure) and again on every build through x3m_source_commit.
+set(X3M_SOURCE_COMMIT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/x3m_source_commit_inc.h")
+set(X3M_SOURCE_COMMIT_TOOL "${CMAKE_CURRENT_SOURCE_DIR}/tools/build/write_source_commit.py")
+execute_process(COMMAND "${Python3_EXECUTABLE}" "${X3M_SOURCE_COMMIT_TOOL}"
+  --root "${CMAKE_CURRENT_SOURCE_DIR}" --output "${X3M_SOURCE_COMMIT_HEADER}"
+  RESULT_VARIABLE X3M_SOURCE_COMMIT_STATUS)
+if(NOT X3M_SOURCE_COMMIT_STATUS EQUAL 0)
+  message(FATAL_ERROR "Failed to generate ${X3M_SOURCE_COMMIT_HEADER}")
+endif()
+# Reconfigure when HEAD moves or the index changes; the build-time target keeps
+# the header current for working-tree edits between configures.
+foreach(X3M_GIT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/.git/HEAD" "${CMAKE_CURRENT_SOURCE_DIR}/.git/index")
+  if(EXISTS "${X3M_GIT_FILE}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${X3M_GIT_FILE}")
+    list(APPEND X3M_GIT_DEPENDS "${X3M_GIT_FILE}")
+  endif()
+endforeach()
+add_custom_target(x3m_source_commit ALL
+  COMMAND "${Python3_EXECUTABLE}" "${X3M_SOURCE_COMMIT_TOOL}"
+    --root "${CMAKE_CURRENT_SOURCE_DIR}" --output "${X3M_SOURCE_COMMIT_HEADER}"
+  DEPENDS "${X3M_SOURCE_COMMIT_TOOL}" ${X3M_GIT_DEPENDS}
+  BYPRODUCTS "${X3M_SOURCE_COMMIT_HEADER}"
+  COMMENT "Refreshing compiled-in source commit" VERBATIM)
+set_source_files_properties("${X3M_SOURCE_COMMIT_HEADER}" PROPERTIES GENERATED TRUE)
 set(X3M_COMPOSITOR_BUILD "${CMAKE_CURRENT_BINARY_DIR}/compositor_bridge")
 set(X3M_COMPOSITOR_ASM "${X3M_COMPOSITOR_BUILD}/compositor_bridge.o")
 set(X3M_COMPOSITOR_SEH "${X3M_COMPOSITOR_BUILD}/compositor_bridge_seh_gnu.obj")
@@ -44,7 +71,7 @@ set_source_files_properties("${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
 add_library(d3d9 SHARED
   "${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
   src/proxy/compositor_owner.cpp src/renderer/bloom_pass.cpp
-  src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/capture_state.cpp src/proxy/comparison_notice.cpp
+  src/proxy/loader.cpp src/proxy/capture.cpp src/proxy/proxy_identity.cpp src/proxy/capture_state.cpp src/proxy/comparison_notice.cpp
   src/proxy/motion_capture.cpp src/ownership/execution_state.cpp
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp src/proxy/fade_region.cpp
@@ -59,6 +86,8 @@ add_library(d3d9 SHARED
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
+target_include_directories(d3d9 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+add_dependencies(d3d9 x3m_source_commit)
 # Keep compiler EH bookends out of injected CPU-state boundaries: MinGW SJLJ
 # registration otherwise runs before capture and unregistration after restore.
 # These adapters do not throw; the remaining sources retain their EH policy.

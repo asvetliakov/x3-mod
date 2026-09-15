@@ -23,6 +23,54 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+MARKER = b'X3M_SOURCE_COMMIT='
+
+
+def dll_source_commit(path):
+    """The commit compiled into a built DLL, read from the byte marker
+    proxy_identity.cpp embeds; None when the DLL has no marker (an older build)
+    or cannot be read."""
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return None
+    at = data.find(MARKER)
+    if at < 0:
+        return None
+    value = data[at + len(MARKER):data.find(b'\0', at + len(MARKER))]
+    try:
+        commit = value.decode('ascii')
+    except UnicodeDecodeError:
+        return None
+    return commit or None
+
+
+def repository_source_commit():
+    """Fallback provenance: the repository manage.py itself lives in, HEAD with
+    a -dirty suffix when any tracked or untracked build input differs."""
+    repository = Path(__file__).resolve().parents[1]
+
+    def query(*arguments):
+        return subprocess.run(['git', *arguments], cwd=repository, capture_output=True, text=True, check=True).stdout.strip()
+    try:
+        head = query('rev-parse', 'HEAD')
+        if not head:
+            return 'unknown'
+        dirty = query('status', '--porcelain', '--untracked-files=normal', '--', 'src', 'cmake', 'tools', 'CMakeLists.txt')
+        return head + ('-dirty' if dirty else '')
+    except (OSError, subprocess.CalledProcessError):
+        return 'unknown'
+
+
+def source_commit(dll):
+    """(commit, origin) for the manifest: the DLL's own compiled-in commit when
+    it carries the marker, else this repository's HEAD marked as 'launcher'."""
+    commit = dll_source_commit(dll)
+    if commit:
+        return commit, 'dll'
+    return repository_source_commit(), 'launcher'
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['install', 'uninstall', 'launch', 'status'])
@@ -322,11 +370,13 @@ def main():
             parser.error('Build the DLL first (see README.md).')
         if dll.exists() and (not owned or digest(dll) != owned['sha256']):
             parser.error('Existing d3d9.dll is unowned or changed; refusing to overwrite it.')
+        commit, origin = source_commit(source)
         temp = game / 'x3-modern-install.tmp'
         shutil.copy2(source, temp)
         os.replace(temp, dll)
         manifest.write_text(json.dumps({'project': 'x3-modern-renderer', 'sha256': digest(dll),
-                                        'source': str(source)}, indent=2) + '\n')
+                                        'source': str(source), 'source_commit': commit,
+                                        'manifest_source': origin}, indent=2) + '\n')
         print(f'Installed {dll}; bottle configuration unchanged.')
     elif args.action == 'uninstall':
         if not owned:

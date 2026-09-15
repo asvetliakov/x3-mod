@@ -25,7 +25,7 @@ bool lock_bookends_enabled = false;
 bool locked_prefix_enabled = false;
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
-    x3m::initialize_log(self_module);
+    x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
     const bool admission_requested=x3m::ownership::process_admission_monitor()!=nullptr;
     x3m::log("application_admission_mode requested=%u enabled=%u live_replay=0 coverage_complete=0",
         admission_requested,admission_requested);

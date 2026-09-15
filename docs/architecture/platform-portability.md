@@ -16,6 +16,40 @@ libraries and bundled game DLLs. Replace the private-layout dependency itself. R
 its hash checks while retaining private-offset reads would not satisfy this.
 Recording runtime hashes in test reports remains useful provenance.
 
+## Session identity
+
+Every session log opens with two lines written once by `capture.cpp`
+`initialize_log` (implementation in `src/proxy/proxy_identity.cpp`), ahead of
+every derived `*_mode` line, so a gameplay log can never lose its provenance:
+
+    proxy_identity sha256=<64 hex|unavailable> bytes=<n> path=<dll path> manifest_sha256=<64 hex|none> source_commit=<commit[-dirty]|unknown> attach_us=<n>
+    proxy_options [NAME=VALUE ...]
+
+`manifest_sha256` is the `sha256` value recorded in the `x3-modern-install.json`
+next to the DLL (`none` without a readable manifest); `proxy_options` lists every
+`X3M_*` variable of the process environment, sorted, and nothing else. The digest
+is the SHA-256 of the loaded module's own file, computed at attach through
+documented Win32 (`GetModuleFileNameW`, `CreateFileW`/`ReadFile` with
+`FILE_FLAG_SEQUENTIAL_SCAN`, CryptoAPI `PROV_RSA_AES`/`CALG_SHA_256`,
+`GetEnvironmentStringsW`); nothing runs per frame, `GetLastError` is restored and
+no exception escapes (a failure yields `sha256=unavailable`). `attach_us` is what
+the header itself cost, measured with QPC: ~122 ms for a 15.8 MB DLL under
+CrossOver/FEX, all of it the emulated SHA-256, once per process. Any character
+outside printable ASCII in a path or option value becomes `_` so the
+space-separated grammar cannot split.
+
+`tools/build/write_source_commit.py` resolves `source_commit` into
+`build/generated/x3m_source_commit_inc.h` at configure time and again on every
+build (target `x3m_source_commit`), rewriting the header only when the value
+changes; the dirty check covers tracked and untracked files under `src`, `cmake`,
+`tools` and `CMakeLists.txt`. The same string is embedded in the DLL as the byte
+marker `X3M_SOURCE_COMMIT=<commit>`, so `tools/manage.py install` records the
+commit of the DLL being installed (`source_commit`, with `manifest_source=dll`)
+and falls back to the launcher repository's HEAD (`manifest_source=launcher`) for
+a DLL without the marker. The host parser is `tools/analysis/proxy_identity.py`;
+its `scan`/`scan_log` never raise on log content and report unparsable lines in
+`malformed` (`verification/analysis/test_proxy_identity.py`).
+
 ## Current gaps
 
 - The [loading interval recorder](../verification/loading-intervals.md) uses

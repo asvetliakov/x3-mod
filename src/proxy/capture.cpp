@@ -1,5 +1,6 @@
 #include "capture.h"
 #include "capture_state.h"
+#include "proxy_identity.h"
 #include "telemetry.h"
 #include "game_phases.h"
 #include "voice_dmo_fallback.h"
@@ -1987,6 +1988,11 @@ void initialize_log(HMODULE module) {
         else utf8.clear();
         log("capture_dir=%s source=%s",utf8.c_str(),source);
     }
+    // Session identity ahead of every derived *_mode line, so that a gameplay
+    // log always names the DLL and the options it came from (docs/architecture/
+    // platform-portability.md, "Session identity"). Attach only: one file hash
+    // and one environment scan, never on the render path.
+    proxy_identity::log_identity(module);
     wchar_t setting[32]{};
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
