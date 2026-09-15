@@ -1,6 +1,7 @@
 #include "capture.h"
 #include "voice_dmo_fallback.h"
 #include "lod_scale.h"
+#include "point_light_admission.h"
 #include "telemetry.h"
 #include "object_trace.h"
 #include "camera_state.h"
@@ -343,6 +344,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         // process exit (reserved != NULL) the threads are already gone and no
         // code is rewritten (docs/architecture/lod-scale.md, "Lifetime").
         if (reserved == nullptr) x3m::lod_scale::shutdown();
+        if (reserved == nullptr) x3m::point_light_admission::shutdown(); // same rule: six bytes back only on FreeLibrary
     }
     return TRUE;
 }

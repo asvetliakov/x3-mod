@@ -46,7 +46,10 @@ LIGHT_LOADING_ROWS = ['file_open', 'file_read', 'file_seek', 'cursor_set', 'curs
                       'crypt_get_hash_param', 'crypt_destroy_hash', 'crypt_destroy_key', 'create_directory', 'delete_file',
                       'move_file', 'move_file_ex', 'write_file', 'get_file_type', 'close_handle']
 LIGHT_NAMESPACE = '__ZN3x3m13loading_trace5light'   # x3m::loading_trace::light::<name> (i386 PE: leading underscore)
-EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose']
+# The point-light root-admission handler (src/proxy/point_light_admission.cpp)
+# runs on the engine's submission thread with no boundary: walked too.
+EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry', '_x3m_pool_fopen', '_x3m_pool_fclose',
+                '_x3m_point_light_root_admits']
 ALLOWED = {'fnsave', 'frstor', 'stmxcsr', 'ldmxcsr', 'fwait'}
 FUNCTION = re.compile(r'^([0-9a-f]+) <(.+)>:$')
 INSTRUCTION = re.compile(r'^\s*[0-9a-f]+:\s+(?:[0-9a-f]{2} )+\s*([a-z][a-z0-9]*)\s*(.*)$')

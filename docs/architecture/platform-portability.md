@@ -52,6 +52,15 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
 
 ## Current gaps
 
+- The point-light root-admission patch (`--point-light-root-admission`,
+  [camera-and-lights.md](../reverse-engineering/camera-and-lights.md)
+  "Implementation") is documented Win32 only: `VirtualProtect`,
+  `FlushInstructionCache`, `VirtualQuery` through the engine-memory reader,
+  `GetModuleHandleExW` pin, `Get/SetLastError`; the retargeted `jg` and the
+  integer-only detour are process-local and the EXE is non-relocatable and
+  hash-gated. Cross-compiled and fixture-qualified under CrossOver; native
+  Windows execution unverified like the other engine patches.
+
 - The [loading interval recorder](../verification/loading-intervals.md) uses
   documented Windows QPC, TLS, interlocked, allocation and file APIs. Its x86
   build, CPU audit and CrossOver fixture qualification pass; native Windows

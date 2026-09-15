@@ -62,7 +62,9 @@ matrix factorization and the three camera coordinate regimes in the flight logs.
 
 ## Point-light admission site
 
-**Ratified 2026-09-15 (orchestrator):** no engine patch now. Note that the fill
+**Ratified 2026-09-16 (orchestrator, critique Q3):** root-object admission at
+`0x004c27af` implemented bounded and default-off; see "Implementation" below.
+Earlier ruling, 2026-09-15: no engine patch now. Note that the fill
 term only exists inside converted (linear) materials, which the user no longer
 uses; with original hull shading the per-node cull is native behaviour. If the
 docking-module cliff is reported again under original shading, root-object
@@ -109,8 +111,12 @@ The comparison, with bytes:
 So the admitted predicate is
 
 ```
-round(|node[+0xb0..] − light[+0xb0..]|) <= light[+0x158] + node[+0x70]
+trunc(|node[+0xb0..] − light[+0xb0..]|) <= light[+0x158] + node[+0x70]
 ```
+
+(`0x0052b5d0` truncates with `CVTTSD2SI`; the earlier reading "round" was
+imprecise). With `T = light[+0x158] + node[+0x70]` that is `d < T + 1` on the
+real distance `d`, i.e. `d² < (T+1)²`.
 
 entirely in raw render-domain integers: **node origin distance**, not a bounding
 sphere and not a projected size. The "radius" term is the submitted node's
@@ -244,3 +250,71 @@ capture table; no new capture was taken. The run-22 "world scale" column is read
 `node+0x70 × contextScale`, which matches the world-matrix row scale but was not
 re-derived here. Whether `0x0044ad90`'s object is the player ship specifically is
 inferred from the constants matching light 0 of run 22, not from a live read.
+
+### Implementation
+
+Built 2026-09-16 as the default-off `--point-light-root-admission`
+(`X3M_POINT_LIGHT_ROOT_ADMISSION=1`), `src/proxy/point_light_admission.cpp` with
+the portable core `point_light_admission_core.h`; ledger
+[point-light-admission.md](../verification/point-light-admission.md).
+
+- **Site write.** The six bytes at `0x004c27af` keep their `JG rel32` opcode and
+  get the detour as target (`0f 8f <detour − 0x004c27b5>`), so a node that passes
+  the per-node test runs the native instruction stream unchanged: the same
+  not-taken branch, no added instruction, no memory access. Only a rejected
+  node (`EAX > 0`) enters the detour. The write is one plain six-byte copy
+  (the span straddles an 8-byte word, so `write_code` cannot use `cmpxchg8b`),
+  made inside the `engine_patch` install window after `executable_verified()`,
+  the 28-byte window `0x004c27a1..0x004c27bc` and the reject target's first
+  instruction (`8b 44 24 5c`) are byte-verified, with this DLL pinned; read-back
+  compare, protection restored, rollback on any failure; `shutdown()` puts the
+  original bytes back on a dynamic unload only.
+- **Detour** (25 bytes in the patch arena): `push esi; push [ebp+0xc];
+  call handler; add esp,8; test eax,eax; jnz 0x004c27b5; jmp 0x004c29f5`. It
+  relies on the site facts above: `EAX`/`EFLAGS` dead-out, `ECX`/`EDX` scratch,
+  the cdecl handler preserving `EBX`/`ESI`/`EDI`/`EBP`, the ESP locals above the
+  pushes, and the empty x87 stack (the handler unit is built without SSE/MMX
+  and contains no floating point; `check_no_x87.py` walks it).
+- **Handler** `x3m_point_light_root_admits(node, light)`: saves LastError, walks
+  `node+0x18` through `engine_memory::read` (bounds-checked, at most 8 reads;
+  null ends the walk; a link back to the node or to itself, an unreadable link
+  or an exhausted bound fail closed), then applies the same predicate to the
+  root: `|root+0xb0.. − light+0xb0..|² ≤ (light+0x158 + root+0x70)²` in 64-bit
+  integers with the engine's 32-bit wrapped deltas (no sqrt, no float). The
+  handler's rule is exactly `d_root² ≤ T_root²` with
+  `T_root = light[+0x158] + root[+0x70]` (reject when `T_root < 0`); the engine's
+  per-node rule is `d² < (T+1)²`, so for the same inputs the handler is stricter
+  by under one raw unit (it rejects `T ≤ d < T+1`, which the engine admits) and
+  never looser. A node that is itself a root keeps the native rejection without
+  re-evaluation. Nine outcome counters are kept for the summary; nothing is
+  logged on the hot path.
+- **Memo.** The reject path runs per submitted mesh part per populated light
+  slot per view, and every part of one node repeats the same (node, light)
+  test, so the handler memoises the root verdict in a 256-entry direct-mapped
+  table keyed by (node pointer, light pointer) and valid for one frame serial;
+  `next_frame()` bumps the serial at Present and at Reset (one relaxed
+  increment). No allocation, written only by the submission thread; a collision
+  or a stale entry costs one walk. The fixture proves a same-frame repeat does
+  not walk, that another node or light does, that a new frame re-walks and
+  observes a moved root, and that rejections are memoised too.
+- **Cost.** Per-node admit: identical to native (the fixture measures 22.1 ns
+  native vs 21.9 ns patched per harness call, i.e. noise). Per-node reject,
+  first test of a (node, light) in a frame: the taken `JG`, two pushes, the
+  call, the memo probe, `Get/SetLastError`, `hops+1` parent reads plus four
+  field reads through the region cache (a spin lock and a scan of up to 32
+  cached regions each; one `VirtualQuery` per new region per frame), the 64-bit
+  compare, two relaxed counter increments, the memo store and the return jump:
+  87.8 ns vs 21.9 ns native at chain depth 1. Every further test of the same
+  (node, light) in the frame: the taken `JG`, two pushes, the call, the memo
+  probe hit, one relaxed increment and the return jump: 22.7 ns, i.e. within a
+  nanosecond of native (Wine/FEX, harness included, not game FPS). Per-part
+  model at run-22 counts, about 5 700 parts × 2 populated slots per frame,
+  worst case all rejected: without the memo ≈ 11 400 walks × 66 ns ≈ 0.75 ms
+  per frame plus `VirtualQuery` churn when the parts' nodes span more than the
+  32 cached regions; with the memo the walks are bounded by the distinct
+  (node, light) pairs per frame (hundreds, not thousands: ≈ 0.03 ms at 400
+  pairs) and the remaining ≈ 11 000 tests add ≈ 1 ns each (≈ 0.01 ms).
+  Cross-view repeats (sector, background, cockpit scene) hit the memo as well.
+- **Acceptance evidence** for the game itself (the `i0.x` table and the far→near
+  median gain of the critique's verification item 2) is still pending a user
+  run; the static and fixture evidence is in the ledger.

@@ -1,0 +1,40 @@
+{
+ "fixture": "build/verification/point-light-admission/point_light_admission_fixture.exe",
+ "exit_status": 0,
+ "elapsed_s": 5.6,
+ "checks": 134,
+ "failures": 0,
+ "failure_lines": [],
+ "bench_us": {
+  "native_admit": 0.0221,
+  "native_reject": 0.0219,
+  "patched_admit": 0.0219,
+  "patched_root_walk": 0.0878,
+  "patched_memo_hit": 0.0227
+ },
+ "outcomes": {
+  "admitted": "11",
+  "node_is_root": "1",
+  "chain_unreadable": "2",
+  "chain_too_deep": "1",
+  "chain_cycle": "3",
+  "root_unreadable": "1",
+  "light_unreadable": "0",
+  "reach_negative": "1",
+  "root_rejected": "3"
+ },
+ "install_lines": [
+  "point_light_root_admission requested=0 patched=0 reason=disabled write=none site=0x004c27af detour=0x00000000 handler=0x00401b80",
+  "point_light_root_admission requested=1 patched=0 reason=bytes_mismatch write=none site=0x004c27af detour=0x00000000 handler=0x00401b80"
+ ],
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "note": "harness-inclusive per-call estimates, not game FPS"
+}
