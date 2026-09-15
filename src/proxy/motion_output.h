@@ -76,7 +76,8 @@ struct MotionRoute {
     HRESULT submission_error = D3DERR_INVALIDCALL;
     HRESULT preparation_error = S_OK; // First internal failure; never replaces the native draw result.
     renderer::LinearCompositionPolicy composition_policy = renderer::LinearCompositionPolicy::AdditiveEmission;
-    bool cutout_candidate = false, cutout = false; // requested exact scene pair; admitted alpha-test arm
+    bool cutout_candidate = false, cutout = false; // requested exact scene pair; admitted exact cutout arm (cutout pair)
+    bool alpha_tested = false; // admitted with alpha test on (cutout arm or tested-opaque arm); excluded from replay candidates (W3)
     bool cutout_test_known = false, cutout_color_known = false, cutout_alpha_known = false, cutout_z_known = false, cutout_zfunc_known = false;
     bool cutout_blend_known = false, cutout_source_over = false; // exact observed source-over triple: not a miss
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;

@@ -221,3 +221,79 @@ geometry (fixable in the registry/state gate); the effects population is a
 structural exclusion that must not veto if it does not write depth. Next: make
 the three XT signatures pass the state gate and confirm that non-depth-writing
 draws never count as untracked writers.
+
+## Run26 session B follow-up: XT state gate and non-depth writers (2026-09-16)
+
+Worktree `worktree-agent-a8f56079c839edc2f`, bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. No composition or shadow
+application change (`shadows=0` still).
+
+**Failing term.** The run66 `sun_shadow_lane_writer` lines carry no state
+fields (`reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1` for all
+three XT signatures), so the term was resolved from the gate chain and the
+captured per-draw states in `verification/results/game-flight-capture-summary.json`:
+`37c34a7478544c14/f1b0e820c7b488c3` (26 captured draws) is ZENABLE 1,
+ZWRITEENABLE 1, ZFUNC LESSEQUAL, ALPHABLENDENABLE 0, SRGBWRITEENABLE 0,
+**ALPHATESTENABLE 1, ALPHAREF 1, ALPHAFUNC GREATEREQUAL, COLORWRITEENABLE 7**.
+The gate's `state` bucket is `srgb || !(opaque arm || cutout arm)`; the opaque
+arm needs alpha test off and mask 15, the cutout arm needs `cutout::pair`
+(only `53a0a641107ed76c/63f96eba9eea7880` and `4944d81dfe531b37/5e0a10fe752b6140`)
+plus the exact cutout device state. The XT pairs are not cutout pairs, so a
+draw with alpha test on (or with mask 7 and test off) fails the term
+`(test == 1 && color == 7 && cutout_pair)`: the exact-arm pair membership, not
+sRGB, not blending, not an unknown state. The proxy never sets
+SRGBWRITEENABLE (reads only). The two captured `494fe349b8bc12ec/e6794b6ec37ff71a`
+draws are opaque (test 0, mask 15); their run66 refusal is inferred to be the
+same alpha-test/mask-7 state of the damage-decal pass (not captured with
+state fields; the next lane run answers it directly).
+
+**Depth semantics.** Alpha test discards a fragment before the depth write and
+before every render-target write, so with the variant's `oC0.a` equal to the
+original's (material_motion colour-channel identity; `test_linear_sun_share`
+`oC0` identity) the fragments that write depth are exactly the fragments that
+write RT2: alpha test is a legitimate receiver state for depth tracking.
+COLORWRITEENABLE masks RT0 only (RT1/RT2 masks are set to 15 by the route).
+Blending is not colour-only in D3D9 (it blends every bound target, including
+the lane values) and stays refused as `blended`.
+
+**Change (sun-lane classification only; lane off patches nothing new).**
+Gate 4 gains the tested-opaque arm, active only when the sun lane is latched
+on the frame (`sun_lane_active_`) with its linear-material prerequisite
+(`linear_material_requested_`): registered pair that is not a cutout pair by
+identity (`cutout::pair`, independent of the linear-material flag), z and z
+write on, blend off, sRGB off, any nonzero RT0 mask, alpha test on or off
+(`src/proxy/motion_output.cpp`). With `--sun-shadow-lane` off every
+alpha-tested or partial-mask pair routes exactly as before this change (gate-4
+refusal). The arm checks no device capability for alpha-tested draws: it relies
+only on the documented D3D9 order (alpha test before depth and target writes),
+the ordinary route's RT1/RT2 masks (15) and formats, and the variant's `oC0.a`
+identity; it does not check or need MRT post-pixel-shader blending or
+independent write masks because blending stays refused, and it does not check
+ALPHAFUNC/ALPHAREF because any test gates depth and lane identically. The two
+cutout pairs never enter it: with linear materials on they take the exact
+cutout arm (`cutout_draw_state()`), with it off they stay refused as before.
+`route.cutout` (and `cutout_routed`) stays cutout-pair-only; a new
+`route.alpha_tested` feeds the replay-candidate W3 exclusion.
+`SunShareFrame::draw` takes `depth_writer`: a colour writer after the first
+receiver that wrote no depth is counted `non_writers`, reported as
+`non_depth_writers=` on `sun_shadow_lane_frame`, and never vetoes. The writer
+verdict is fail closed: any non-FALSE ZENABLE (`D3DZB_TRUE` or `D3DZB_USEW`)
+with ZWRITEENABLE on is a depth writer, and an unreadable z state stays a
+writer. Previously every such draw (run66 `no_zwrite` 13,993 and the
+z-write-off part of `fade_arm` 5,644 and `unregistered` 16,287) vetoed. The
+`state` bucket now means sRGB write on or a cutout pair outside its exact
+state; `no_zwrite` is structurally empty. `analyze_sun_share_lane.py` requires
+`non_depth_writers` for the new grammar and reports `grammar_old=true` (value
+`null`) for a line without it instead of reading zero.
+
+**Evidence.**
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane verification.analysis.test_linear_sun_share`: 19 tests OK; sun-share host `PASS checks=35` (was 30: non-writer counted not vetoing, non-writer alone keeps the frame available, unknown z stays a writer, nothing counted before the first receiver).
+- Clean CMake build (`--clean-first`) in the worktree after the review fixes: zero warnings; `build/d3d9.dll` sha256 `c46cdcaf…8433c71`; `check_no_x87.py build/d3d9.dll`: 225 reachable functions, no violations; `build_motion_output.sh` (strict `-Wall -Wextra -Werror` seam compile): clean.
+- `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture … --dll …`: all 15 cases pass, 27.8 s; `verification/results/bottle-X3/sun-share-live.json`. (The first post-review run failed only in the validator: with nothing routed the cut detector has no sample, so `fixture_cut=0` on every lane-off frame; fixed and rerun.)
+  - `xt_state` (new): the receiver drawn on all six frames with alpha test on, ALPHAREF 1, GREATEREQUAL, mask 7 (`SUN_XT_STATE` ×6): every frame `available=1 receiver_draws=1 untracked_writers=0 non_depth_writers=0`, no refusal or writer line, interior depth 0.5 on 3600 pixels, `checks=43269 restorations=18`.
+  - `effects` (new): an additive-blended, z-write-off unregistered draw over the receiver on frame 2 (`SUN_EFFECTS frame=2 depth_write=0 blend=1`, owning colour really changed, lane bytes intact): frame 2 `available=1 untracked_writers=0 non_depth_writers=1`, no refusal line, `checks=43272 restorations=19`.
+  - `untracked` (expectation corrected by construction): the unreviewed PS alteration is now drawn with z write **on** (an actual depth writer at the receiver's depth); frame 2 `available=0 untracked_writers=1`, bucket `pair=1`, writer `reason=pair gate=3 registered=1 z=1 zwrite=1 z_known=1`. With z write off it would no longer veto, which is the intended behaviour, not a witness of the veto.
+  - `xt_state_lane_off` (new): the same XT-state draws with `X3M_SUN_SHADOW_LANE=0`: no `sun_shadow_lane_*` line at all, every frame `motion_output_frame routed=0 gate4=1` and the fixture's per-draw counters (`SUN_XT_STATE lane=0 routed=0 gate4=1` ×6, status codes 89/99), the pre-change routing; TAA output byte-equal to the reference on 6 frames; `checks=63 restorations=18`. `xt_state` with the lane on reports `routed=1 gate4=0` on the same frames (`checks=43275 restorations=18`).
+  - `cutout_pair` (new): the cutout pair `53a0a641107ed76c/63f96eba9eea7880` drawn after the receiver on frame 2 with mask 7 and alpha test off (a state only the tested-opaque arm would admit), lane on: gate-4 refusal (`SUN_CUTOUT_PAIR gate4=1`), frame 2 `available=0 receiver_draws=1 untracked_writers=1 non_depth_writers=0`, bucket `state=1`, writer `reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1`; `checks=43273 restorations=19`.
+  - `composition_missing` / `composition_failed`: the frame-2 emitter (blend on, z write off, coverage failed) is now `non_depth_writers=1` instead of `unregistered=1`; the frame stays unavailable through `owner=0` (`exclusion_required=1 exclusion_valid=0` for missing). Validator and synthetic witness updated accordingly. All other cases `non_depth_writers=0`.
+- Not exercised live: `D3DZB_USEW` (w-buffer support is not assumed under the fixture backend; the rule is the `z != 0` mapping in `evaluate_draw`), an XT pair itself (the fixture's authored pair stands in for the state; the XT programs are game bytes), and the run66 state of `e6794b6ec37ff71a` (inferred above). The next `--sun-shadow-lane` gameplay run shows `state` falling to the cutout-pair residue and `non_depth_writers` absorbing the effects population.

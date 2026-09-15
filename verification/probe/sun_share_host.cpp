@@ -39,6 +39,13 @@ int main(){
     check(!f.draw(true,false,false,true,SunUntrackedReason::Blended)&&f.reasons[6]==1); // A depth writer is never untracked.
     check(!f.draw(false,false,false,false,SunUntrackedReason::Blended)&&f.untracked==2); // Failed native call.
     check(f.draw(true,false,false,false,SunUntrackedReason(200))&&f.untracked==3&&f.reasons[0]==2); // Out-of-range folds to unknown.
+    // A color writer that wrote no depth (z test or z write off) is never an
+    // untracked writer: it is counted non_writers, never a reason bucket.
+    check(!f.draw(true,false,false,false,SunUntrackedReason::NoZWrite,false)&&f.untracked==3&&f.non_writers==1&&f.reasons[5]==0);
+    check(!f.draw(true,false,false,false,SunUntrackedReason::Blended,false)&&f.non_writers==2&&f.reasons[6]==1);
+    f={};f.draw(true,true,false);check(!f.draw(true,false,false,false,SunUntrackedReason::Unregistered,false)&&f.publish(true,true,false)&&f.non_writers==1&&!f.untracked); // Non-writers alone keep the frame available.
+    check(f.draw(true,false,false,false,SunUntrackedReason::ReadFailed,true)&&!f.publish(true,true,false)); // Unknown z state stays a writer (fail closed).
+    f={};check(!f.draw(true,false,false,false,SunUntrackedReason::Unknown,false)&&!f.non_writers&&!f.untracked); // Before the first receiver nothing is counted.
     check(std::strcmp(sun_untracked_reason_name(unsigned(SunUntrackedReason::Blended)),"blended")==0&&std::strcmp(sun_untracked_reason_name(unsigned(SunUntrackedReason::ReadFailed)),"read_failed")==0
           &&sun_untracked_reason_count==16&&std::strcmp(sun_untracked_reason_name(sun_untracked_reason_count),"unknown")==0);
     f={};f.draw(true,false,false);f.draw(true,true,false);check(f.publish(true,true,false)); // Earlier background.

@@ -10,13 +10,32 @@ void run_sun_lane(const char* bootstrap_vertex) {
     const bool allocation=!std::strcmp(mode,"allocation");
     const bool fallback=refused||allocation;
     const bool missing=!std::strcmp(mode,"composition_missing"),failed_m=!std::strcmp(mode,"composition_failed");
+    // xt_state: the receiver draws in the XT class-C hull/station material
+    // state of run 26 (alpha test on, ALPHAREF 1, GREATEREQUAL, RT0 mask 7;
+    // z, z write on; blend, sRGB off) and must be tracked on every frame.
+    // effects: a blended particle-like draw with z write off follows the
+    // receiver on frame 2 and must not veto availability.
+    // xt_state_lane_off: the same XT-state draws with X3M_SUN_SHADOW_LANE=0
+    // must route exactly as before the tested-opaque arm existed: gate-4
+    // refusal, nothing routed (the arm is lane-only). cutout_pair: a cutout
+    // pair by identity (53a0a641107ed76c/63f96eba9eea7880) drawn with mask 7
+    // and alpha test off, a state only the tested-opaque arm would admit, must
+    // stay refused (state) with the lane on and veto as an untracked writer.
+    const bool lane_off=!std::strcmp(mode,"xt_state_lane_off"),cutout_pair=!std::strcmp(mode,"cutout_pair");
+    const bool xt_state=!std::strcmp(mode,"xt_state")||lane_off,effects=!std::strcmp(mode,"effects");
+    const std::string bootstrap_path(bootstrap_vertex);const auto bootstrap_slash=bootstrap_path.find_last_of("/\\");
+    const auto folder=bootstrap_slash==std::string::npos?std::string{}:bootstrap_path.substr(0,bootstrap_slash+1);
+    Com<IDirect3DPixelShader9> cutout_ps;
+    if(cutout_pair){
+        const auto p=load((folder+"ps_63f96eba9eea7880.bin").c_str());
+        require(fnv(p.data(),p.size()*4)==0x63f96eba9eea7880ull,"cutout pair original PS");
+        api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(p.data()),&cutout_ps.p),"cutout pair PS");
+    }
     Com<IDirect3DVertexShader9> emitter_vs;Com<IDirect3DPixelShader9> emitter_ps;
     Com<IDirect3DVertexDeclaration9> emitter_decl;Com<IDirect3DVertexBuffer9> emitter_vb;Com<IDirect3DIndexBuffer9> emitter_ib;
     Com<IDirect3DTexture9> emitter_texture;
     if(suncomposition){
         require(emission_fault&&emissions_enabled,"sun composition uses enabled real emission pass");
-        const std::string path(bootstrap_vertex);const auto slash=path.find_last_of("/\\");
-        const auto folder=slash==std::string::npos?std::string{}:path.substr(0,slash+1);
         const auto v=load((folder+"vs_089091aab2d5eb13.bin").c_str()),p=load((folder+"ps_8559522220507d5e.bin").c_str());
         require(fnv(v.data(),v.size()*4)==0x089091aab2d5eb13ull&&fnv(p.data(),p.size()*4)==0x8559522220507d5eull,"sun original unfaded additive pair");
         api(d->CreateVertexShader(reinterpret_cast<const DWORD*>(v.data()),&emitter_vs.p),"sun emitter VS");
@@ -52,10 +71,22 @@ void run_sun_lane(const char* bootstrap_vertex) {
         // failure has a complete cache and can requalify; creation failure stays
         // fail-closed until that cache is replaced or the device is destroyed.
         const bool missing_cache=!std::strcmp(mode,"late_shader")&&step>=4;
-        const bool expected_lane=!fallback&&!(late&&step==3)&&!missing_cache;
-        require(emission_status(d.p,90)==unsigned(!refused&&!missing_cache),"sun exact capability qualification");
+        const bool expected_lane=!fallback&&!(late&&step==3)&&!missing_cache&&!lane_off;
+        if(!lane_off)require(emission_status(d.p,90)==unsigned(!refused&&!missing_cache),"sun exact capability qualification");
         require(emission_status(d.p,91)==unsigned(expected_lane),"sun format selected only at frame latch");
-        draw(a,0,0,0,true,true,frames_since_reset!=0);
+        const unsigned routed_before=emission_status(d.p,89),gate4_before=emission_status(d.p,99);
+        if(xt_state){
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"xt alpha test on");api(d->SetRenderState(D3DRS_ALPHAREF,1),"xt alpha reference 1");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"xt alpha GREATEREQUAL");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"xt RT0 mask 7");
+        }
+        draw(a,0,0,0,true,!lane_off,frames_since_reset!=0&&!lane_off);
+        if(xt_state){
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"xt alpha test off");api(d->SetRenderState(D3DRS_ALPHAREF,0),"xt alpha reference default");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_ALWAYS),"xt alpha func default");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"xt RT0 mask restore");
+            const unsigned routed=emission_status(d.p,89)-routed_before,gate4=emission_status(d.p,99)-gate4_before;
+            require(routed==unsigned(!lane_off)&&gate4==unsigned(lane_off),"XT-state receiver routes with the lane on and is refused at gate 4 with it off");
+            std::printf("SUN_XT_STATE frame=%llu test=1 ref=1 func=%u mask=7 lane=%u routed=%u gate4=%u\n",frame,unsigned(D3DCMP_GREATEREQUAL),unsigned(!lane_off),routed,gate4);
+        }
         if((late||suncomposition)&&!(late&&step==2)&&!(suncomposition&&step==3))
             draw(b,0,0,0,true,true,frames_since_reset!=0);
         auto lane_read=[&](){
@@ -65,7 +96,8 @@ void run_sun_lane(const char* bootstrap_vertex) {
         };
         auto lane=lane_read();
         unsigned drawn=0,positive=0,zeros=0;
-        for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x){
+        // Lane off: the receiver was refused, so RT2 holds no receiver depth.
+        for(unsigned y=2;y+2<H&&!lane_off;++y)for(unsigned x=2;x+2<W;++x){
             const unsigned pixel=y*W+x;const float depth_value=lane[pixel*(expected_lane?2:1)];
             // Interior coverage is fixed by the authored full-screen triangle,
             // not inferred from clear values or the share being tested.
@@ -75,7 +107,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
                 positive+=share>0;zeros+=share==0;
             }
         }
-        require(drawn==(W-4)*(H-4),"sun receiver coverage positive control");
+        require(lane_off||drawn==(W-4)*(H-4),"sun receiver coverage positive control");
         if(expected_lane){require(step==1?zeros==drawn:positive==drawn,"drawn positive and zero-sun controls");positive_frames+=positive>0;zero_frames+=zeros>0;}
         Com<IDirect3DPixelShader9> late_ps;
         if(late&&step==2){
@@ -91,12 +123,37 @@ void run_sun_lane(const char* bootstrap_vertex) {
             lane=lane_read();
         }
         if(untracked&&step==2){
-            api(d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"untracked writer depth off");
+            // An unreviewed PS drawn with z write ON at the receiver's depth
+            // (LESSEQUAL): an actual depth writer the lane did not track.
             draw(a,0,0,0,false,false,false,Alter::Hdr2);
-            api(d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"restore untracked depth state");
             unsigned w=0,h=0;const auto rgb=hdr_image(&w,&h);
             require(rgb[(std::size_t(H/2)*W+W/2)*4]==2,"untracked writer really replaced owning scene color");
-            require(lane_read()==lane,"untracked color write retains stale positive share bytes");
+            require(lane_read()==lane,"untracked depth write retains stale positive share bytes");
+        }
+        if(cutout_pair&&step==2){
+            // Mask 7 with alpha test off on a cutout pair: neither the opaque
+            // arm (mask 15) nor the exact cutout arm (alpha test on) admits it,
+            // and the tested-opaque arm must not either.
+            const unsigned refusals_before=emission_status(d.p,99);
+            std::swap(ps.p,cutout_ps.p);
+            api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"cutout pair RT0 mask 7");
+            draw(a,0,0,0,false,false,false);
+            api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"cutout pair RT0 mask restore");
+            std::swap(ps.p,cutout_ps.p);api(d->SetPixelShader(ps.p),"retire cutout pair binding");
+            require(emission_status(d.p,99)==refusals_before+1,"cutout pair never takes the tested-opaque arm");
+            require(lane_read()==lane,"refused cutout pair leaves receiver depth/share bytes");
+            std::printf("SUN_CUTOUT_PAIR frame=%llu ps=63f96eba9eea7880 test=0 mask=7 gate4=1\n",frame);
+        }
+        if(effects&&step==2){
+            // Additive blend, z test on, z write off: color-only over the
+            // receiver, so the tracked depth is intact and nothing vetoes.
+            api(d->SetRenderState(D3DRS_ZWRITEENABLE,FALSE),"effects depth write off");
+            draw(a,0,0,0,false,false,false,Alter::Hdr8Additive);
+            api(d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"restore effects depth state");
+            unsigned w=0,h=0;const auto rgb=hdr_image(&w,&h);
+            require(rgb[(std::size_t(H/2)*W+W/2)*4]>=8,"effects draw really added to owning scene color");
+            require(lane_read()==lane,"non-depth effects draw leaves receiver depth/share bytes");
+            std::printf("SUN_EFFECTS frame=%llu depth_write=0 blend=1\n",frame);
         }
         const bool bad_mask=(missing||failed_m)&&step==2;
         unsigned mask_pixels=0,eligible_pixels=0,composition_draws=0;
@@ -171,7 +228,7 @@ void run_sun_lane(const char* bootstrap_vertex) {
         const auto before=snapshot();
         api(d->StretchRect(back.p,nullptr,bloom_surface.p,nullptr,D3DTEXF_NONE),"sun scene-end publication and TAA");
         compare(before,snapshot(),"sun boundary");
-        const bool available=expected_lane&&!(step==2&&(late||untracked))&&!bad_mask;
+        const bool available=expected_lane&&!(step==2&&(late||untracked||cutout_pair))&&!bad_mask;
         require(emission_status(d.p,92)==unsigned(available),"sun publication follows actual writers and faults");
         require(emission_status(d.p,97)==1,"sun unavailable frame still resolves TAA");
         std::vector<DWORD> image;std::vector<unsigned char> expected;

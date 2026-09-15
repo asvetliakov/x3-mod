@@ -56,7 +56,11 @@ def analyze(log, directory):
             continue
         row = dict(device=int(device), frame=int(frame), available=False, eligible_pixels=0,
                    receiver_draws=int(publication.get('receiver_draws', 0)),
-                   untracked_writers=int(publication.get('untracked_writers', 0)), reason='frame_unavailable',
+                   untracked_writers=int(publication.get('untracked_writers', 0)),
+                   # Grammar with the non-writer counter (only depth writers veto); an
+                   # older build's line is flagged rather than read as zero.
+                   non_depth_writers=int(publication['non_depth_writers']) if 'non_depth_writers' in publication else None,
+                   grammar_old='non_depth_writers' not in publication, reason='frame_unavailable',
                    diagnostics_malformed=None)
         output.append(row)
         # Diagnostics are attached beside the substantive analysis and never

@@ -1581,8 +1581,8 @@ void MotionOutput::publish_sun_lane(const char* source) noexcept {
         !composition_quarantined_&&!composition_busy_&&!cutout_coverage_missed_;
     sun_frame_.failed=sun_frame_.failed||sun_lane_failed_;
     const bool available=sun_frame_.publish(sun_lane_active_&&depth_surface_,owner,coverage);
-    log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=0",
-        id_,frame_,source,unsigned(sun_lane_active_?D3DFMT_G32R32F:D3DFMT_R32F),available,sun_frame_.receivers,sun_frame_.covered,sun_frame_.untracked,sun_frame_.failed,owner,sun_frame_.coverage_required,coverage);
+    log("sun_shadow_lane_frame device=%llu frame=%llu source=%s format=%u available=%u receiver_draws=%u covered_draws=%u untracked_writers=%u non_depth_writers=%u failed=%u owner=%u exclusion_required=%u exclusion_valid=%u shadows=0",
+        id_,frame_,source,unsigned(sun_lane_active_?D3DFMT_G32R32F:D3DFMT_R32F),available,sun_frame_.receivers,sun_frame_.covered,sun_frame_.untracked,sun_frame_.non_writers,sun_frame_.failed,owner,sun_frame_.coverage_required,coverage);
     // Refusal buckets for the untracked-writer veto: one line per frame with
     // untracked writers, never per draw (docs/verification/directional-shadows.md).
     if(!sun_frame_.untracked)return;
@@ -3988,8 +3988,11 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         pending_.z_enable = z; pending_.z_write = write;
         pending_.draw_state_known = SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && pending_.vs && pending_.ps &&
                                     shadow_.rt0.known && shadow_.depth.known && shadow_.viewport.known;
-        if (route.sun_color_writer) // diagnostics only: the states already read for the selector
-            route.sun_z_state = std::uint8_t((z == 1 ? 1u : 0u) | (write == 1 ? 2u : 0u) | (SUCCEEDED(z_hr) && SUCCEEDED(write_hr) ? 4u : 0u));
+        // Diagnostics and the non-writer verdict: bit0 is any depth test
+        // (D3DZB_TRUE or D3DZB_USEW: both write depth with z write on, so
+        // USEW is a writer, fail closed), bit1 z write on, bit2 both read.
+        if (route.sun_color_writer)
+            route.sun_z_state = std::uint8_t((z != 0 ? 1u : 0u) | (write != 0 ? 2u : 0u) | (SUCCEEDED(z_hr) && SUCCEEDED(write_hr) ? 4u : 0u));
     }
     pending_valid_ = true;
     if (fill_pending_) fill_sentinel();
@@ -4028,10 +4031,31 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     route.depth = depth_enabled_ && renderer::material_motion_pixel_writes_depth(*pair, depth_enabled_);
-    // Gate 4: opaque state or the separately qualified exact cutout arm,
-    // known rows in the VS row's clip-row
+    // Gate 4: opaque state, the separately qualified exact cutout arm, or the
+    // tested-opaque arm; known rows in the VS row's clip-row
     // window, the row's light-loop bound where it reads constants relatively,
     // no user-memory geometry, no instancing, known declaration/stream identity.
+    // Color-only state never decides depth tracking: COLORWRITEENABLE masks
+    // RT0 alone (RT1/RT2 carry their own masks, set to 15 for the draw), and
+    // alpha test discards a fragment before the depth write and before every
+    // target write, so the fragments that write depth are exactly the ones
+    // that write the lane, as long as the variant's oC0.a is the original's
+    // (material_motion / linear_sun_share alpha identity). The tested-opaque
+    // arm therefore admits z on, z write on, blend off, sRGB off, any nonzero
+    // RT0 mask, alpha test on or off, for a registered pair that is not a
+    // cutout pair by identity (cutout::pair, independent of the linear-material
+    // flag: the two cutout pairs keep their exact arm, or the refusal they had
+    // with linear materials off; their source-over pass and coverage semantics
+    // live in linear_cutout.h). The arm exists only for the sun lane: it is
+    // active only with the lane latched on this frame (sun_lane_active_) and
+    // the lane's linear-material prerequisite, so with --sun-shadow-lane off
+    // every alpha-tested or partial-mask pair routes exactly as before. It
+    // checks no capability: the RT1/RT2 masks and formats are the ordinary
+    // route's, and no MRT blending or independent-mask caps are needed because
+    // blending stays refused. Blending: D3D9 blends every bound target, which
+    // would blend the lane's depth/share too. The XT class-C hull/station materials
+    // (37c34a7478544c14/f1b0e820c7b488c3 and siblings) draw with alpha test
+    // on, ALPHAREF 1 GREATEREQUAL and mask 7 (docs/verification/directional-shadows.md).
     const auto& profile = *shadow_.vs_row;
     const std::size_t window = window_of(profile.matrix_register);
     const bool loop_bounded = !profile.light_loop_bound_required ||
@@ -4047,7 +4071,8 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         read(D3DRS_ALPHATESTENABLE, &test) &&
         read(D3DRS_SRGBWRITEENABLE, &srgb) && !srgb &&
         read(D3DRS_COLORWRITEENABLE, &color) &&
-        ((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && (cutout_ok = cutout_draw_state()))) &&
+        ((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && (cutout_ok = cutout_draw_state()))
+         || (sun_lane_active_ && linear_material_requested_ && !cutout::pair(shadow_.vs_hash, shadow_.ps_hash) && test <= 1 && color != 0)) &&
         read_frequency() &&
         !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) && (frequency & 0x3fffffffu) <= 1 &&
         shadow_.rows_known[window] && loop_bounded &&
@@ -4070,14 +4095,16 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
                 : (read_failed || FAILED(z_hr) || FAILED(write_hr)) ? SunUntrackedReason::ReadFailed
                 : !(z == 1 && write == 1) ? SunUntrackedReason::NoZWrite
                 : blend ? SunUntrackedReason::Blended
-                : (srgb || !((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && cutout_ok))) ? SunUntrackedReason::State
+                : (srgb || !((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && cutout_ok)
+                             || (sun_lane_active_ && linear_material_requested_ && !cutout::pair(shadow_.vs_hash, shadow_.ps_hash) && test <= 1 && color != 0))) ? SunUntrackedReason::State
                 : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1) ? SunUntrackedReason::Geometry
                 : (!shadow_.rows_known[window] || !loop_bounded) ? SunUntrackedReason::Rows
                 : SunUntrackedReason::Geometry); // stream, declaration, primitives or indices
         }
         return;
     }
-    route.cutout = !route.fade_arm && test != 0;
+    route.alpha_tested = !route.fade_arm && test != 0;
+    route.cutout = route.alpha_tested && shadow_.cutout_pair; // the exact cutout arm only (cutout_routed, fixture faults)
     // Key geometry fields come from the shadowed bindings and draw arguments.
     auto& key = route.key;
     key.vertex_buffer = shadow_.stream0; key.stream_offset = shadow_.stream0_offset; key.stride = shadow_.stream0_stride;
@@ -4626,7 +4653,9 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         const auto reason=route.routed
             ?(route.fade_arm?renderer::SunUntrackedReason::FadeArm:!route.depth?renderer::SunUntrackedReason::NoDepth:renderer::SunUntrackedReason(route.sun_refusal))
             :renderer::SunUntrackedReason(route.sun_refusal);
-        if(sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,route.routed&&route.depth&&!route.fade_arm,reason))
+        // Only an actual depth writer (z test and z write on, both read) can
+        // veto: a color-only draw leaves the tracked depth intact.
+        if(sun_frame_.draw(route.submit&&SUCCEEDED(result),route.routed&&route.depth&&!route.fade_arm&&route.sun_receiver,coverage,route.routed&&route.depth&&!route.fade_arm,reason,(route.sun_z_state&7u)==7u))
             note_sun_untracked_writer(route,reason);
     }
     if (cutout::missed(route.cutout_candidate, route.submit, SUCCEEDED(result), route.routed || route.composition,
@@ -5455,6 +5484,8 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 33: return counters_.cutout_routed;
     case 34: return counters_.cutout_missed;
     case 35: return static_cast<unsigned>(cutout_cap_result_);
+    case 89: return counters_.routed;   // fixture: routed draws this frame
+    case 99: return counters_.gates[4]; // fixture: gate-4 (draw state) refusals this frame
     case 40: return composition_counts_.packed_eligible;
     case 41: return composition_counts_.packed_admitted;
     case 42: return composition_counts_.packed_linear;
@@ -5585,15 +5616,15 @@ void MotionOutput::note_candidate_distance(MotionRoute& route, const float* rows
 }
 void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     // Gate 4 required ZENABLE=1 and ZWRITEENABLE=1 for every routed draw except
-    // the fade-band arm (fade_route::state); the alpha-test (cutout) arm is
-    // excluded by W3. Slice 0 is the own-ship distance window of the rows'
+    // the fade-band arm (fade_route::state); alpha-tested draws (the exact
+    // cutout arm and the tested-opaque arm) are excluded by W3. Slice 0 is the own-ship distance window of the rows'
     // origin (W1: no camera latch, no slice); pools come from the setter cache.
     const bool zwrite = !route.fade_arm;
     const bool in_slice = route.candidate_distance >= candidate_slice_near_ && route.candidate_distance <= shadow_replay::slice0_far;
     // The pool class and the bookend identities are the shadow's; they are
     // attributed only when the shadowed binding ids are the route key's.
     const bool shadow_ok = shadow_.stream0 == route.key.vertex_buffer && (!route.key.indexed || shadow_.indices == route.key.index_buffer);
-    if (!candidates_.draw(zwrite, in_slice, route.cutout, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed)) return;
+    if (!candidates_.draw(zwrite, in_slice, route.alpha_tested, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed)) return;
     // Bookend view at the draw: registry snapshot keyed by the wrapper identity
     // (never dereferenced). A managed candidate without a known view for
     // every buffer it uses is counted managed but not leased.

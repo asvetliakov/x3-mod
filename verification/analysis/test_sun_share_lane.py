@@ -19,7 +19,7 @@ class SunShareLane(unittest.TestCase):
                             str(ROOT/'verification/probe/sun_share_host.cpp'),
                             str(ROOT/'src/renderer/material_motion.cpp'), '-o', str(exe)], check=True)
             result = subprocess.run([str(exe)], text=True, capture_output=True, check=True)
-            self.assertIn('PASS checks=30 ', result.stdout)
+            self.assertIn('PASS checks=35 ', result.stdout)
             print(result.stdout.strip())
 
     def test_depth_stride(self):
@@ -67,7 +67,7 @@ class SunShareLane(unittest.TestCase):
             self.assertIn(f'case {index}: return "{name}"' if index else 'default: return "unknown"', header)
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            publication = 'sun_shadow_lane_frame device=1 frame=7 available=0 receiver_draws=2 untracked_writers=5 failed=1\n'
+            publication = 'sun_shadow_lane_frame device=1 frame=7 available=0 receiver_draws=2 untracked_writers=5 non_depth_writers=3 failed=1\n'
             refusals = ('sun_shadow_lane_refusals device=1 frame=7 untracked=5 unknown=0 feature=0 scene=0 unregistered=2 pair=0'
                         ' no_zwrite=1 blended=2 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=3 overflow=0\n')
             writer = ('sun_shadow_lane_writer device=1 frame=7 index=1 vs=53a0a641107ed76c ps=8759c7838bbc86c2 reason=blended gate=4'
@@ -76,7 +76,11 @@ class SunShareLane(unittest.TestCase):
             log.write_text(publication+refusals+writer)
             report = analyze(log, root)
             row = report['frames'][0]
-            self.assertEqual(row['untracked_writers'], 5)
+            self.assertEqual((row['untracked_writers'], row['non_depth_writers'], row['grammar_old']), (5, 3, False))
+            log.write_text(publication.replace(' non_depth_writers=3', '')+refusals+writer)
+            old = analyze(log, root)['frames'][0]
+            self.assertEqual((old['non_depth_writers'], old['grammar_old'], old['untracked_writers']), (None, True, 5))
+            log.write_text(publication+refusals+writer)
             self.assertEqual(row['untracked_reasons'], dict(zip(REASONS, (0,0,0,2,0,1,2,0,0,0,0,0,0,0,0,0))))
             self.assertEqual((row['writer_signatures'], row['writer_overflow']), (3, 0))
             self.assertIsNone(row['diagnostics_malformed'])
@@ -185,42 +189,55 @@ class SunShareLane(unittest.TestCase):
         from run_sun_share_live import validate
         import json
         def witness(work, case):
-            rows=[]; publications=[]; readbacks=[]; masks=[]; histories=[]
+            rows=[]; publications=[]; readbacks=[]; masks=[]; histories=[]; frames=[]
             early=case in ('cutout_drop','alpha_mask')
+            lane_off=case=='xt_state_lane_off'
             late=case in ('late_shader','bind')
             composition=case.startswith('composition');failed_coverage=case in ('composition_missing','composition_failed')
             for i in range(6):
-                lane=not early and not (late and i==3) and not (case=='late_shader' and i>=4)
-                available=lane and not (i==2 and (late or case=='untracked' or failed_coverage))
+                lane=not early and not lane_off and not (late and i==3) and not (case=='late_shader' and i>=4)
+                available=lane and not (i==2 and (late or case in ('untracked','cutout_pair') or failed_coverage))
+                non_writers=int((case=='effects' or failed_coverage) and i==2)
                 expected_history=int(i not in ((0,2,3,4) if failed_coverage else (0,4)))
-                histories.append(f'SUN_HISTORY frame={i} expected={expected_history} reference={expected_history} actual={expected_history} fixture_cut={int(i in (0,4))}')
+                histories.append(f'SUN_HISTORY frame={i} expected={expected_history} reference={expected_history} actual={expected_history} fixture_cut={int(i in (0,4) and not lane_off)}')
                 bad=failed_coverage and i==2
                 draws=(0,1,1 if case=='composition_missing' else 2,2,0,1)[i]
                 excluded=0 if bad else (0,768,1536,1536,0,768)[i]
                 required=int(composition and draws>0 and not (bad and case=='composition_missing'))
                 if composition:
                     masks.append(f'SUN_M frame={i} draws={draws} valid={int(not bad)} required={required} excluded={excluded} eligible={0 if bad else 3600-excluded} linear={1 if bad and case=="composition_failed" else 0 if bad else draws} exchanged={2 if bad and case=="composition_failed" else 0 if bad else draws} incomplete={int(bad and case=="composition_failed")} stopped={int(bad)} interleaved={int(i==3)}')
-                rows.append(f'SUN_LIVE frame={i} step={i} lane={int(lane)} available={int(available)} drawn=3600 positive={3600 if lane and i!=1 else 0} zero={3600 if lane and i==1 else 0} fault={int(late and i==2)} history={int(i not in ((0,2,3,4) if failed_coverage else (0,4)))}')
-                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int(late and i==2)} receiver_draws={int(lane)} untracked_writers={int(case=="untracked" and i==2)}')
+                rows.append(f'SUN_LIVE frame={i} step={i} lane={int(lane)} available={int(available)} drawn={0 if lane_off else 3600} positive={3600 if lane and i!=1 else 0} zero={3600 if lane and i==1 else 0} fault={int(late and i==2)} history={int(i not in ((0,2,3,4) if failed_coverage else (0,4)))}')
+                publications.append(f'sun_shadow_lane_frame frame={i} available={int(available)} owner={int(not bad)} exclusion_required={required} exclusion_valid={int(not bad)} failed={int(late and i==2)} receiver_draws={int(lane)} untracked_writers={int(case in ("untracked","cutout_pair") and i==2)} non_depth_writers={non_writers}')
+                frames.append(f'motion_output_frame frame={i} routed={int(not lane_off)} gate4={int(lane_off)}')
                 readbacks.append(f'motion_output_taa_readback frame={i} file=taa_{i}.rgba16f width=64 height=64 result=00000000')
                 data=struct.pack('<4e', .5,.25,.75,1)*4096
                 (work/f'reference_taa_{i}.rgba16f').write_bytes(data)
                 (work/'x3-modern-captures'/f'taa_{i}.rgba16f').write_bytes(data)
             if case=='untracked':
                 publications.append('sun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=1 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0')
-                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=0 z_known=1 declaration=0000000000000001 stride=24')
+                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=3874adb0f396a660 reason=pair gate=3 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24')
+            if case in ('xt_state','xt_state_lane_off'): rows.extend(f'SUN_XT_STATE frame={i} test=1 ref=1 func=7 mask=7 lane={int(not lane_off)} routed={int(not lane_off)} gate4={int(lane_off)}' for i in range(6))
+            if case=='effects': rows.append('SUN_EFFECTS frame=2 depth_write=0 blend=1')
+            if case=='cutout_pair':
+                rows.append('SUN_CUTOUT_PAIR frame=2 ps=63f96eba9eea7880 test=0 mask=7 gate4=1')
+                publications.append('sun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=0 no_zwrite=0 blended=0 state=1 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0')
+                publications.append('sun_shadow_lane_writer frame=2 index=1 vs=53a0a641107ed76c ps=63f96eba9eea7880 reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1 declaration=0000000000000001 stride=24')
+            if lane_off:
+                text='\n'.join(rows+histories+['RESET PASS','SUN_LIVE_PASS frames=6','RESULT PASS checks=1'])
+                return text,'\n'.join(frames+readbacks)
             qualifications=[f'sun_shadow_lane_device qualified={int(not early)} reason=ok']*2
             if case=='late_shader': qualifications[1]='sun_shadow_lane_device qualified=0 reason=shader_cache'
             depth=f'sun_shadow_lane_depth qualified={int(not early)} detail=stage={"cutout_pass" if early else "history_r"} result={"80004005" if early else "00000000"} restore=00000000 checks={4 if early else 18}'
             text='\n'.join(rows+masks+histories+['RESET PASS','SUN_LIVE_PASS frames=6','RESULT PASS checks=1'])
-            return text,'\n'.join(qualifications+[depth]*(1 if case=='late_shader' else 2)+publications+readbacks)
+            return text,'\n'.join(qualifications+[depth]*(1 if case=='late_shader' else 2)+publications+readbacks+frames)
         with tempfile.TemporaryDirectory() as folder:
             work=Path(folder);(work/'x3-modern-captures').mkdir()
-            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed'):
+            for case in ('positive','cutout_drop','alpha_mask','late_shader','bind','untracked','composition','composition_missing','composition_failed','xt_state','effects','xt_state_lane_off','cutout_pair'):
                 text,trace=witness(work,case)
                 json.dumps(validate(text,trace,work,case),allow_nan=False)
-                for badtext,badtrace in ((text.replace('drawn=3600','drawn=0',1),trace),
-                                         (text.replace('positive=3600','positive=0',1),trace) if case not in ('cutout_drop','alpha_mask') else (text,trace.replace('stage=cutout_pass','stage=history_r'))):
+                for badtext,badtrace in (((text.replace('drawn=0','drawn=3600',1),trace),(text.replace('lane=0 available=0','lane=1 available=1',1),trace)) if case=='xt_state_lane_off' else
+                                         ((text.replace('drawn=3600','drawn=0',1),trace),
+                                          (text.replace('positive=3600','positive=0',1),trace) if case not in ('cutout_drop','alpha_mask') else (text,trace.replace('stage=cutout_pass','stage=history_r')))):
                     with self.assertRaises(AssertionError): validate(badtext,badtrace,work,case)
                 if case in ('cutout_drop','alpha_mask'):
                     with self.assertRaises(AssertionError): validate(text,trace.replace('result=80004005','result=00000000'),work,case)
@@ -240,11 +257,35 @@ class SunShareLane(unittest.TestCase):
                     writer_line=next(l for l in trace.splitlines() if l.startswith('sun_shadow_lane_writer '))
                     for badtrace in (trace.replace(refusal_line+'\n',''), trace.replace('pair=1 no_zwrite=0','pair=0 no_zwrite=1'),
                                      trace.replace('pair=1 no_zwrite=0','pair=1 no_zwrite=1'), trace.replace(writer_line+'\n',''),
-                                     trace.replace('reason=pair gate=3','reason=no_zwrite gate=4'), trace.replace('zwrite=0 z_known=1','zwrite=1 z_known=1'),
+                                     trace.replace('reason=pair gate=3','reason=no_zwrite gate=4'), trace.replace('zwrite=1 z_known=1','zwrite=0 z_known=1'),
+                                     trace.replace('untracked_writers=1 non_depth_writers=0','untracked_writers=1 non_depth_writers=1'),
                                      trace.replace(writer_line,writer_line+'\n'+writer_line.replace('frame=2','frame=1').replace('ps=3874adb0f396a660','ps=0000000000000042')),
                                      trace.replace(' scope=0 history=0 read_failed=0',''),
                                      trace.replace(writer_line,writer_line+'\n'+writer_line), trace.replace('frame=2 untracked=1','frame=1 untracked=1')):
                         with self.assertRaises(AssertionError): validate(text,badtrace,work,case)
+                elif case=='xt_state':
+                    # The XT-state receiver must be tracked: any refusal line, a missing receiver or an old build without the non-writer field fails.
+                    for badtrace in (trace+'\nsun_shadow_lane_refusals frame=2 untracked=1 unknown=0 feature=0 scene=0 unregistered=0 pair=0 no_zwrite=0 blended=0 state=1 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0',
+                                     trace.replace('receiver_draws=1','receiver_draws=0',1), trace.replace(' non_depth_writers=0','',1)):
+                        with self.assertRaises(AssertionError): validate(text,badtrace,work,case)
+                    with self.assertRaises(AssertionError): validate(text.replace('SUN_XT_STATE frame=2 test=1','SUN_XT_STATE frame=2 test=0'),trace,work,case)
+                elif case=='xt_state_lane_off':
+                    # Lane off: the same draws must not route (routed=0, gate4=1) and no lane line may appear.
+                    for badtrace in (trace.replace('routed=0 gate4=1','routed=1 gate4=0',1), trace+'\nsun_shadow_lane_frame frame=2 available=0 receiver_draws=0 untracked_writers=0 non_depth_writers=0 failed=0 owner=1 exclusion_required=0 exclusion_valid=0'):
+                        with self.assertRaises(AssertionError): validate(text,badtrace,work,case)
+                    with self.assertRaises(AssertionError): validate(text.replace('lane=0 routed=0 gate4=1','lane=0 routed=1 gate4=0',1),trace,work,case)
+                elif case=='cutout_pair':
+                    # The cutout pair must stay a state refusal at gate 4; an admitted pair (no refusal) or another bucket fails.
+                    refusal_line=next(l for l in trace.splitlines() if l.startswith('sun_shadow_lane_refusals '))
+                    for badtrace in (trace.replace(refusal_line+'\n','').replace('untracked_writers=1','untracked_writers=0'), trace.replace('state=1','state=0').replace('pair=0 no_zwrite','pair=1 no_zwrite'),
+                                     trace.replace('reason=state gate=4','reason=pair gate=3')):
+                        with self.assertRaises(AssertionError): validate(text,badtrace,work,case)
+                elif case=='effects':
+                    # The non-depth effects draw must be counted without a veto: dropping the count or a refusal line for it fails.
+                    for badtrace in (trace.replace('non_depth_writers=1','non_depth_writers=0'),
+                                     trace.replace('untracked_writers=0 non_depth_writers=1','untracked_writers=1 non_depth_writers=1')):
+                        with self.assertRaises(AssertionError): validate(text,badtrace,work,case)
+                    with self.assertRaises(AssertionError): validate(text.replace('SUN_EFFECTS frame=2 depth_write=0','SUN_EFFECTS frame=2 depth_write=1'),trace,work,case)
                 elif case=='positive':
                     with self.assertRaises(AssertionError): validate(text,trace+'\nsun_shadow_lane_refusals frame=2 untracked=1 unknown=1 feature=0 scene=0 unregistered=0 pair=0 no_zwrite=0 blended=0 state=0 rows=0 geometry=0 no_depth=0 fade_arm=0 apply_failed=0 scope=0 history=0 read_failed=0 signatures=1 overflow=0',work,case)
                 if case.startswith('composition'):
