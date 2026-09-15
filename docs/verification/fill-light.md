@@ -149,3 +149,25 @@ Windows, and the performance pass, deferred to that run. Run acceptance adds to 
 criteria: the `frame_end` median delta with `--original-fill 0.05` on versus off in the same sector
 (9 POW per pixel on every routed opaque hull draw) must be reported and acceptable to the user. `test_linear_material_live.test_production_control_flow` fails to compile its extracted
 `composition_blend_count` snippet identically on the pristine base `444478a`; unrelated to this change.
+
+### Run 28 original-fill A/B, 2026-09-16
+
+Installed candidate `2b0969e5…` from `a26eb9b`. Snapshots run78 (`X3M_ORIGINAL_FILL=0.0`),
+run79 (`0.05`) and run80 (`0.02`); run79/80 log
+`original_fill_mode requested=1 enabled=1 hdr=1 linear_materials=0 fill_valid=1`.
+
+Appearance: the user reports the option works visually. Screenshots
+[`original_fill_0.png`](../../screenshots/original_fill_0.png),
+[`original_fill_05.png`](../../screenshots/original_fill_05.png),
+[`original_fill_02.png`](../../screenshots/original_fill_02.png); the orchestrator's read is that
+K=0.05 makes the unlit docking modules and the asteroid legible at the cost of a mild flattening of
+hull contrast, and that K=0.02 buys little.
+
+Cost: **not measured**. The three sessions are not like-for-like — run78 ran ~9,300 frames including
+two sector transits, run79 ~2,100 frames with an 8-frame F8 capture that stalls 400–800 ms on each
+captured frame, run80 ~5,100 frames clean (steady 15.9–18.3 ms/frame over its 300-frame windows) —
+and `frame_end` is emitted only every 300 frames, so no per-frame series exists. The critique's 1a
+acceptance criterion (median `frame_end` delta with 0.05 on versus off in the same sector) stays open
+and will be measured over a like-for-like window with `--frame-timing`
+([sampling-profiler.md](sampling-profiler.md), commit `8954cff`), which reports per-window frame and
+Present time with the slowest frames.

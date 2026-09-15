@@ -1,0 +1,125 @@
+{
+  "recorded_utc": "2026-09-15T23:47:20Z",
+  "run": 29,
+  "candidate": {
+    "path": "/tmp/x3-candidate-owVYe6/candidate/d3d9.dll",
+    "sha256": "7f296d535860ca6a650d5ec06e5d5f67caab2af2de49db32da81795ae13d038f",
+    "bytes": 15933651,
+    "retained_first_build": true,
+    "candidate_directory_file_count": 1
+  },
+  "source": {
+    "worktree": "/Users/asvetl/x3-mod",
+    "commit": "dd297705dc078e83692cd59d131d1cd85843e525",
+    "commit_short": "dd29770",
+    "detached": false,
+    "status_before_configure": "clean",
+    "status_after_build": "two tracked documentation files modified concurrently by the main session (docs/verification/user-runs.md, docs/archive/user-runs-completed.md); no production source, CMake or toolchain file changed, and the embedded marker carries no -dirty suffix"
+  },
+  "source_commit_marker": {
+    "command": "strings /tmp/x3-candidate-owVYe6/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=dd297705dc078e83692cd59d131d1cd85843e525",
+    "dirty_suffix": false,
+    "matches_worktree_head": true
+  },
+  "toolchain": {
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "cmake": "4.4.3",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "objdump": "GNU Binutils 2.47.20260726",
+    "target": "32-bit Windows PE",
+    "native_windows_execution": "not performed"
+  },
+  "configure": {
+    "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B /tmp/x3-candidate-owVYe6/build",
+    "elapsed_seconds": 2.72,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-owVYe6/configure.log"
+  },
+  "build": {
+    "command": "cmake --build /tmp/x3-candidate-owVYe6/build -j4",
+    "invocations": 1,
+    "elapsed_seconds": 12.33,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-owVYe6/build.log",
+    "note": "fresh empty build directory outside the checkout; the pre-existing ./build tree was not used or modified"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-owVYe6/candidate/d3d9.dll",
+      "result": "PASS",
+      "roots": 64,
+      "reachable_functions": 230,
+      "violations": 0,
+      "run28_reachable_functions": 230,
+      "delta_note": "identical root set and reachable count vs the run 28 candidate",
+      "report": "/tmp/x3-candidate-owVYe6/no-x87.json"
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-owVYe6/candidate/d3d9.dll",
+      "result": "PASS",
+      "machine": "0x014c",
+      "count": 17,
+      "names": [
+        "D3DPERF_BeginEvent",
+        "D3DPERF_EndEvent",
+        "D3DPERF_GetStatus",
+        "D3DPERF_QueryRepeatFrame",
+        "D3DPERF_SetMarker",
+        "D3DPERF_SetOptions",
+        "D3DPERF_SetRegion",
+        "DebugSetLevel",
+        "DebugSetMute",
+        "Direct3D9EnableMaximizedWindowedModeShim",
+        "Direct3DCreate9",
+        "Direct3DCreate9Ex",
+        "Direct3DCreate9On12",
+        "Direct3DCreate9On12Ex",
+        "Direct3DShaderValidatorCreate9",
+        "PSGPError",
+        "PSGPSampleTexture"
+      ],
+      "matches_run28_names": true,
+      "report": "/tmp/x3-candidate-owVYe6/pe-exports.json"
+    }
+  },
+  "load": {
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll /tmp/x3-candidate-owVYe6/candidate/d3d9.dll --case writable",
+    "result": "PASS",
+    "passed": true,
+    "status": "PASS",
+    "game_launched": false,
+    "bottle": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "selected_case": "writable",
+    "checks": 8,
+    "failures": 0,
+    "exit": 0,
+    "source": "game",
+    "on12_forwarded": true,
+    "exports_resolved": 17,
+    "elapsed_seconds": 11.12,
+    "owner_log": "/tmp/x3-candidate-owVYe6/load-owner.log",
+    "summary": "verification/results/bottle-X3/d3d9-exports-summary.json",
+    "summary_dll_sha256": "7f296d535860ca6a650d5ec06e5d5f67caab2af2de49db32da81795ae13d038f",
+    "scope": "Eight-check X3 DLL load smoke under CrossOver Preview (writable case): 17 D3D9 exports, forwarded entry points and ret-N fallbacks. Not a native-Windows run."
+  },
+  "dry_run": {
+    "performed": false,
+    "note": "not part of this build task; owned by the main session before install"
+  },
+  "full_fixture_chain_rerun": false,
+  "native_windows_verified": false,
+  "installed": false,
+  "limitations": [
+    "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+    "Only the marker, no-x87, export-list and X3 load checks were run on this candidate; the full fixture chain and launcher dry runs were not rerun here.",
+    "Installation and game launch are owned by the main session; nothing was installed here."
+  ]
+}

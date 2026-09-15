@@ -379,6 +379,12 @@ signature (not part of the key). Cost: the gate term replaces
 integer compares per read, four reads per draw); the writer fields cost only on
 a new signature (at most 64 per device).
 
+**Depth replay in the same run.** `shadow_replay_depth` over the 2123 frames: median
+42.3 µs, p95 49.0 µs, `skipped_lease=0 skipped_state=0 skipped_caps=0` (no candidate was
+skipped for those reasons). `shadow_replay_candidates` is stable across sampled frames at
+`routed=204 zwrite=203 slice0=6 managed=6 leased=6 quiet=6`: 6 candidates pass the
+replay-candidate predicate on live geometry, against the fixture's 2.
+
 **Evidence.**
 - New live case `cutout_pair_bias` (`X3M_TAA_MIP_BIAS=-0.5`, cutout pair drawn on
   frame 2 after the receiver with alpha test on, ALPHAREF 1, GREATEREQUAL, mask 7,

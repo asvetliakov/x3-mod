@@ -13,32 +13,72 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`2b0969e577e6f382a589b181a714f38c6a1eeda99f0c5ba4fe701367c4c4e7eb`
-(15,850,445 bytes), built once on Opus from clean committed main `a26eb9b`
-(2026-09-16; marker `X3M_SOURCE_COMMIT=a26eb9b…`, no `-dirty`; the install
-manifest records that commit). The
-[build record](../verification/results/run28-candidate-build.json) binds the
-clean build (13.34 s, zero warnings), 230-function no-x87 audit, exact 17
-exports and the eight-check X3 DLL load; the
-[install record](../verification/results/run28-candidate-install.json) binds the
+`7f296d535860ca6a650d5ec06e5d5f67caab2af2de49db32da81795ae13d038f`
+(15,933,651 bytes), built once on Opus from clean committed main `dd29770`
+(2026-09-16; marker `X3M_SOURCE_COMMIT=dd29770…`, no `-dirty`). The
+[build record](../verification/results/run29-candidate-build.json) binds the
+clean build (12.33 s, zero warnings), the 230-function no-x87 audit, the exact
+17 exports and the eight-check X3 DLL load; the
+[install record](../verification/results/run29-candidate-install.json) binds the
 installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run27 DLL `215d8fbe…` and manifest are in `/tmp/x3-candidate-apjzhF/rollback`.
-Run 28's session A and fill launches passed `--dry-run`; no game launched.
+run28 DLL `2b0969e5…` and manifest are in `/tmp/x3-candidate-owVYe6/rollback`.
+Run 29's session A command passed `--dry-run`; no game launched.
 
-This build adds, default-off unless stated: the restore re-arm fix (bounded
-precondition retry, refusal samples), the emitter family split (`--emission-source-gain`
-on the 5 engine pairs, new `--effect-source-gain` on the 15 effect pairs,
-default 1), `--original-fill K`, point-light admission telemetry, and the new
-TAA defaults mip bias -0.5 / sharpen 0.75. It keeps run27's restore proof,
-`--point-light-root-admission`, `--shadow-replay-depth`, the lane-only sun-lane
-fix and session identity logging. New defaults: camera 0.5°/0.50, EV ceiling
-+1.3, fill 0.05 (linear only), mip bias -0.5, sharpen 0.75. No shadows applied.
+This build adds, on top of run28's: the chase pose admitted during the unbound
+view phase after a transit (`e4fd22a`, removes the centre-then-jump), the three
+emitter hotkeys Ctrl+Shift+F5 (bolts) / F6 (engine gain) / F4 (effect gain)
+with per-frame additive telemetry and `--screen-emission-additive-alpha K`
+(`6c8a375`, bolt-only bloom reduction), the sun-lane cutout admission under the
+mip-bias default (`e62722a`) and the `--frame-timing` diagnostic (`8954cff`).
+Defaults unchanged: camera 0.5°/0.50, EV ceiling +1.3, mip bias -0.5, sharpen
+0.75, fill 0.05 (linear only); original hull shading. No shadows applied.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
 137 original programs; bloom, linear materials and linear emissions remain opt-in.
 Chase defaults: 0.5° pitch, offset 0.50, distance 0.9, responses 0.28/0.38 s,
 lag limits 8°/0.10. Vanilla camera remains the default.
+
+## Session 2026-09-16 (resumed): run 28 received, run 29 candidate
+
+Run 28 came back as `/tmp/x3-bottleX3-run74`–`run80` (session A) and `run81`
+(session B); the [handoff](handoff-2026-09-16.md) lists the open questions.
+Outcomes and decisions:
+
+- **Halo:** persists at EV 1.0 and without sharpen/mip bias, gone only with
+  bloom off; it is bloom of the >1.0 bolts over black. The 21 vs 13 MB bloom
+  working set is the sharpen stage buffer. Ratified
+  [bloom-per-source-attenuation.md](architecture/bloom-per-source-attenuation.md):
+  the additive draw writes `K·a + D.a` to scene alpha so the authored-glow
+  term no longer selects the bolts (`--screen-emission-additive-alpha 0`
+  first; GPU fixture 22 cases, alpha exact, colour within one FP16 code).
+- **Chase:** both run78 transits restored; the 0.4–1.1 s centre-then-jump was
+  the camera hook refusing the fresh cockpit while its ref view object was
+  unbound (12–36 updates). Fixed on the registry active-control proof, CPU
+  fixture 771/0, two reviews
+  ([note](reverse-engineering/chase-view-transition.md), "Run 28 (run78) pose gap").
+- **Original fill:** works visually (screenshots `original_fill_*.png`); 0.05
+  lifts the black modules with mild flattening, 0.02 buys little. No clean
+  cost A/B yet; the next run's `--frame-timing` windows give it
+  ([fill ledger](verification/fill-light.md)).
+- **Emitters:** engine gain admitted 162–13,287 draws per run; effect gain was 1
+  (no variant); the additive option had no per-draw telemetry. Hotkeys F5/F6/F4
+  and the `screen_emission_additive_frame` line let the user attribute each.
+- **Session B:** sun lane 0/2,123 frames available: the mip-bias default leaves
+  the exact cutout arm unconfigured and the two cutout pairs vetoed as state
+  writers; fixed lane-only with native sampler bias on those draws
+  ([ledger](verification/directional-shadows.md), "Run 28 session B (run81)").
+  Depth replay 42 µs median, no skips. Ratified
+  [legacy-sun-application.md](architecture/legacy-sun-application.md): per-seed
+  sun-constant scaling (exact on all 108 programs), lane share to `oC2.g`, one
+  scene-end multiply; implementation waits for lane availability under
+  original shading.
+- **FPS with many objects (user report):** `--frame-timing` (per-300-frame dt,
+  Present and draw percentiles, four slowest frames) rides this build; run 29
+  pairs it with the sampling profiler in a busy scene
+  ([schema](verification/sampling-profiler.md)).
+
+[Run 29](verification/user-runs.md) is queued.
 
 ## Next user action
 

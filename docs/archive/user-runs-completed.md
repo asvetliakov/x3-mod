@@ -896,3 +896,34 @@ Analysis: compare script IDs/native lifetimes, destructor ancestry, persistent
 mode and geometry across the gate; validate loading interval completeness and
 report per-thread/combined occupancy and uncovered intervals without assigning
 a causal residual; check sun-lane admitted coverage/refusals and TAA continuity.
+
+## 28. Restore re-arm, emitter split and original fill — completed as run74–run81
+
+Installed: DLL `2b0969e5…` from `a26eb9b`. Mip bias -0.5 and sharpen 0.75 are now defaults, as
+are the raised camera and the 1.3 EV ceiling; the point-light option stays out
+unless you want it compared again.
+
+**Session A** (from the repository root):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+1. Halo isolation, two short relaunches firing in empty space: (a) the command
+   plus `--hdr-ev-max 1.0`; (b) the command plus `--taa-sharpen 0
+   --taa-mip-bias 0`. Report which one removes the halo (run65 had EV 1.0, no
+   sharpen, no mip bias; run68 had all three). If neither does, note the window
+   resolution of both sessions: run68's bloom working set was 21 MB against
+   run65's 13 MB and nothing logged explains it. Engines stay under
+   `--emission-source-gain 2`; effect sprites are at gain 1 in this build.
+2. Rear chase, through a gate and back through the same gate, twice: the view
+   should stay in rear chase on every transit now.
+3. Original fill A/B at the run-22 station: one F8 at about 1.2 km facing the
+   docking modules in this session, then quit and run the same command plus
+   `--original-fill 0.05`, same spot, one F8. Say whether the unlit sides read
+   better and whether anything else looks lifted. The frame-time delta comes
+   from the logs.
+
+**Session B (optional, linear materials, diagnostics only):** the same command
+plus `--linear-materials --linear-distance-fade --sun-shadow-lane`, a minute
+near a station: sun-lane frames should now report `available=1`.
