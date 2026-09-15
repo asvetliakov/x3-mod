@@ -804,8 +804,18 @@ Deviations and assumptions, with reasons:
 - Bounded expiry: pending is cancelled after 600 cockpit updates (about ten
   seconds at 60 fps) as a cancellation-only bound; the run60 gate needed no
   update between destructor and reset.
-- Arm re-attempts: one identity walk per cockpit lifetime and per re-entry
-  into mode 258 (a seam cancellation resets the attempt), never per frame.
+- Arm re-attempts: the cheap preconditions (connect 0, view == ref ship,
+  active handle) are re-checked on every rear update at field-read cost; the
+  identity walk runs once per cockpit lifetime and per re-entry into mode 258
+  (a seam cancellation resets the attempt), never per frame; precondition
+  retries are capped at 64 per generation (`arm_retry_exhausted` then records
+  the attempt). `arm_refusals` therefore counts refused updates, not
+  lifetimes. Per-update cost on the retry path: the mode read plus up to three
+  `field` reads (one engine_memory read each; rpm mode is one
+  NtReadVirtualMemory each) before the bounded registry walk. Refusals are
+  counted per reason and sampled once per reason as
+  `chase_view_restore_arm_refused`; transfer refusals as
+  `chase_view_restore_transfer_refused`.
 - Task termination with an unreadable task argument clears pending
   conservatively; killed stores at the two PCs cancel unless they are a
   well-formed zero store (`94`, index 6, ESI 30, current object == class-96
@@ -828,9 +838,24 @@ it is released (`log()` takes the capture mutex that `present()` holds while
 calling `report()`), so the next gate run measures the cell17 tag, the
 literal source and the `edc91,16724,0` prefix, which remain unmeasured in game.
 
+Run68 (run 27, four transits, installed `46dc822`), explained: the two
+consumes were transits 1 and 3, each followed by the engine building the new
+cockpit at 258 (`kind=6 requested=258` at generations 2 and 4, updates at
+258); no later mode-1 writer follows a consume, so no second seam is needed.
+Transits 2 and 4 reset because they were never armed: the fresh generation's
+first updates (events 29/30 and 62/63) carry `view=0x00000000` while `ship`
+is set, the arm precondition `view == ship` refused (`arm_refusals` 1 and 2
+exactly at generations 2 and 4), and the attempt dedupe then blocked every
+later update of that lifetime although `view == ship` held from the next
+recorded update (33, 66). The destructor prefixes and identities were
+identical on all four transits (`efbff,edba0,edbe3,1661c,0`), so no transfer
+predicate failed; `arms` only advanced again after the user's manual
+re-selection (generations 3 and 5). Preconditions are now re-checked every
+rear update and only the identity walk records an attempt.
+
 Gameplay acceptance (a gate run with the option on, reading the
-`chase_view_restore_state` counters and the seam lines) and native Windows
-execution remain unverified.
+`chase_view_restore_state` counters, the seam lines and the refusal samples)
+and native Windows execution remain unverified.
 
 ### Run65: consume refusal on the ref cell
 

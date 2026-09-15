@@ -164,6 +164,34 @@ std::atomic<std::uint32_t> restore_filter[1+detail::restore_filter_count]{};
 std::atomic<std::uint64_t> restore_eh_bumps{0};
 detail::HandlerTiming restore_timing[restore_site_count]{};
 constexpr unsigned restore_pending_update_expiry=600;
+// Once-per-reason arm/transfer refusal samples, captured under the lock and
+// emitted by handle() after it is released (log() must not run under the Guard).
+struct RestoreSample { bool wanted=false,armed=false;unsigned kind=0,reason=0,readable=0;std::uint32_t cockpit=0,mode=0,connect=0,ship=0,view=0,handle=0,valid=0,refused=0,native_script=0,player=0;std::uint64_t generation=0; };
+RestoreSample restore_sample;
+// readable: bit0 connect, bit1 ship, bit2 view field reads succeeded (a real 0 is distinguishable from an unreadable field).
+void restore_sample_arm(unsigned reason,std::uintptr_t cockpit,std::uint64_t gen,std::uint32_t mode,unsigned readable,std::uint32_t connect,std::uint32_t ship,std::uint32_t view,std::uint32_t handle,const detail::Identity* id) {
+    if(reason>=detail::arm_refusal_count)reason=0;
+    ++restore.arm_refusal_reasons[reason];
+    const std::uint32_t bit=1u<<reason;if(restore.arm_sample_logged&bit)return;restore.arm_sample_logged|=bit;
+    restore_sample={};restore_sample.wanted=true;restore_sample.kind=0;restore_sample.reason=reason;restore_sample.readable=readable;restore_sample.armed=restore.armed;
+    restore_sample.cockpit=std::uint32_t(cockpit);restore_sample.generation=gen;
+    restore_sample.mode=mode;restore_sample.connect=connect;restore_sample.ship=ship;restore_sample.view=view;restore_sample.handle=handle;
+    if(id){restore_sample.valid=id->valid;restore_sample.refused=id->refused;restore_sample.native_script=id->native_script;restore_sample.player=id->player;}
+}
+void restore_sample_transfer(unsigned reason,std::uintptr_t cockpit,std::uint64_t gen,const Origin& o) {
+    if(reason>=detail::refuse_count)reason=0;
+    const std::uint32_t bit=1u<<reason;if(restore.transfer_sample_logged&bit)return;restore.transfer_sample_logged|=bit;
+    restore_sample={};restore_sample.wanted=true;restore_sample.kind=1;restore_sample.armed=restore.armed;restore_sample.reason=reason;restore_sample.cockpit=std::uint32_t(cockpit);restore_sample.generation=gen;
+    restore_sample.valid=o.valid;restore_sample.refused=o.flags;restore_sample.handle=o.count;restore_sample.ship=o.task;restore_sample.view=o.context;
+}
+RestoreSample restore_take_sample(){RestoreSample s=restore_sample;restore_sample.wanted=false;return s;}
+void restore_emit_sample(const RestoreSample& s) {
+    if(s.kind==0)log("chase_view_restore_arm_refused reason=%u cockpit=0x%08lx generation=%llu mode=%lu readable=%u connect=%lu ship=0x%08lx view=0x%08lx handle=%lu identity_valid=%lu identity_refused=%lu native_script=0x%08lx player=0x%08lx armed=%u",
+        s.reason,static_cast<unsigned long>(s.cockpit),s.generation,static_cast<unsigned long>(s.mode),s.readable,static_cast<unsigned long>(s.connect),static_cast<unsigned long>(s.ship),static_cast<unsigned long>(s.view),
+        static_cast<unsigned long>(s.handle),static_cast<unsigned long>(s.valid),static_cast<unsigned long>(s.refused),static_cast<unsigned long>(s.native_script),static_cast<unsigned long>(s.player),unsigned(s.armed));
+    else log("chase_view_restore_transfer_refused reason=%u cockpit=0x%08lx generation=%llu origin_valid=%lu origin_flags=%lu context_return_count=%lu task=0x%08lx context=0x%08lx",
+        s.reason,static_cast<unsigned long>(s.cockpit),s.generation,static_cast<unsigned long>(s.valid),static_cast<unsigned long>(s.refused),static_cast<unsigned long>(s.handle),static_cast<unsigned long>(s.ship),static_cast<unsigned long>(s.view));
+}
 void restore_filter_publish() {
     const std::uint32_t pcs[detail::restore_filter_count]={detail::restore_mode_pc,detail::restore_player_pc,
         detail::restore_controller_pc,detail::restore_killed_pcs[0],detail::restore_killed_pcs[1]};
@@ -174,8 +202,8 @@ void restore_filter_publish() {
 bool restore_epoch_ok() {
     const auto e=restore_epoch.load(std::memory_order_acquire);
     // An epoch cancellation (EH adapter) must let a later admitted rear update re-arm.
-    if(restore.armed&&restore.arm_epoch!=e){restore.clear_arm(detail::cancel_epoch);restore.attempt_mode=0;}
-    if(restore.pending&&restore.pending_epoch!=e){restore.clear_pending(detail::cancel_epoch);restore.attempt_mode=0;}
+    if(restore.armed&&restore.arm_epoch!=e){restore.clear_arm(detail::cancel_epoch);restore.reset_attempt();}
+    if(restore.pending&&restore.pending_epoch!=e){restore.clear_pending(detail::cancel_epoch);restore.reset_attempt();}
     return restore.armed||restore.pending;
 }
 bool writable_span(std::uintptr_t at,unsigned n) {
@@ -204,20 +232,40 @@ void restore_on_update(std::uintptr_t cockpit,std::uint32_t thread) {
     }
     if(restore.armed){
         if(restore.arm_cockpit==cockpit&&restore.arm_generation==gen&&mode!=detail::restore_rear_mode){
-            restore.clear_arm(detail::cancel_mode_left);restore.attempt_generation=gen;restore.attempt_mode=mode;restore_filter_publish();}
+            restore.clear_arm(detail::cancel_mode_left);restore.attempt_generation=gen;restore.attempt_mode=mode;restore.retries=0;restore_filter_publish();}
         return;
     }
     if(restore.attempt_generation==gen&&restore.attempt_mode==mode)return;
+    if(mode!=detail::restore_rear_mode){restore.attempt_generation=gen;restore.attempt_mode=mode;restore.retries=0;return;}
+    // Preconditions are re-checked on rear updates (run68: a fresh generation's
+    // first updates carry view 0). Per-update cost on this path: the mode read
+    // above plus up to three `field` reads (each one engine_memory read: a
+    // cached VirtualQuery region check and copy in direct mode, one
+    // NtReadVirtualMemory in rpm mode); active_handle's bounded registry walk
+    // runs only once connect and view pass. Retries are capped per cockpit
+    // generation; exhaustion records the attempt so a persistent refusal costs
+    // nothing further for that lifetime and mode.
+    if(restore.retry_generation!=gen){restore.retry_generation=gen;restore.retries=0;}
+    if(restore.retries>=detail::restore_arm_retry_cap){
+        restore.attempt_generation=gen;restore.attempt_mode=mode;++restore.arm_refusals;
+        restore_sample_arm(detail::arm_retry_exhausted,cockpit,gen,mode,0,0,0,0,0,nullptr);return;
+    }
+    ++restore.retries;
+    std::uint32_t connect=0,ship=0,view=0,handle=0,code=0;unsigned readable=0;
+    if(field(cockpit,0x1c0,connect))readable|=1;
+    if(!(readable&1)||connect){++restore.arm_refusals;restore_sample_arm(detail::arm_connect,cockpit,gen,mode,readable,connect,0,0,0,nullptr);return;}
+    if(field(cockpit,0xc,ship))readable|=2;
+    if(field(cockpit,0x10,view))readable|=4;
+    if(readable!=7||!ship||(ship&3)||view!=ship){++restore.arm_refusals;restore_sample_arm(detail::arm_view_not_ready,cockpit,gen,mode,readable,connect,ship,view,0,nullptr);return;}
+    if(!active_handle(cockpit,handle)){++restore.arm_refusals;restore_sample_arm(detail::arm_no_handle,cockpit,gen,mode,readable,connect,ship,view,handle,nullptr);return;}
+    // The identity walk is the expensive step: one attempt per lifetime and mode entry.
     restore.attempt_generation=gen;restore.attempt_mode=mode;
-    if(mode!=detail::restore_rear_mode)return;
-    std::uint32_t connect=0,ship=0,view=0,handle=0,code=0;
-    if(!field(cockpit,0x1c0,connect)||connect||!field(cockpit,0xc,ship)||!field(cockpit,0x10,view)||
-       !ship||(ship&3)||view!=ship||!active_handle(cockpit,handle)){++restore.arm_refusals;return;}
     detail::IdentityReader<decltype(&bytes)> reader{&bytes};reader.vm_root=vm_root;reader.registry_root=native_registry_root;
     detail::Identity id;reader.capture(ship,0,id);
     using I=detail::Identity;
     constexpr std::uint32_t need=I::vm_bit|I::native_bit|I::player_bit|I::controller_bit|I::warp_bit|I::killed_bit;
-    if((id.valid&need)!=need||!id.player||id.native_script!=id.player||id.killed||!field(id.vm,8,code)||!code){++restore.arm_refusals;return;}
+    if((id.valid&need)!=need||!id.player||id.native_script!=id.player||id.killed){++restore.arm_refusals;restore_sample_arm(detail::arm_identity,cockpit,gen,mode,readable,connect,ship,view,handle,&id);return;}
+    if(!field(id.vm,8,code)||!code){++restore.arm_refusals;restore_sample_arm(detail::arm_code,cockpit,gen,mode,readable,connect,ship,view,handle,&id);return;}
     restore.armed=true;restore.arm_cockpit=std::uint32_t(cockpit);restore.arm_generation=gen;restore.arm_player=id.player;
     restore.arm_controller=id.controller;restore.arm_native_script=id.native_script;restore.arm_code=code;
     restore.arm_epoch=restore_epoch.load(std::memory_order_acquire);++restore.arms;
@@ -233,11 +281,11 @@ void restore_on_destroy(std::uintptr_t cockpit,std::uint32_t caller,std::uint32_
     const auto* life=state.find(cockpit);
     const std::uint64_t gen=life?life->generation:0;
     if(cockpit!=restore.arm_cockpit||gen!=restore.arm_generation||caller!=detail::restore_destructor_caller){
-        restore.clear_arm(detail::cancel_destructor);restore.attempt_mode=0;restore_filter_publish();return;}
+        restore.clear_arm(detail::cancel_destructor);restore.reset_attempt();restore_filter_publish();return;}
     Origin o;detail::destructor_provenance(caller,ebp,o,bytes,code_address,vm_root);
     std::uint32_t monitor=0,task_id=0;
     const unsigned why=detail::transfer_proof(restore,o,bytes,vm_root,monitor,task_id);
-    if(why){restore.refuse(why);restore.clear_arm(detail::cancel_destructor);restore.attempt_mode=0;restore_filter_publish();return;}
+    if(why){restore.refuse(why);restore_sample_transfer(why,cockpit,gen,o);restore.clear_arm(detail::cancel_destructor);restore.reset_attempt();restore_filter_publish();return;}
     restore.transfer(monitor,o.task,task_id,thread,restore_epoch.load(std::memory_order_acquire));
     restore_filter_publish();
 }
@@ -288,7 +336,7 @@ void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread
     if(!restore_epoch_ok()){restore_filter_publish();return;}
     detail::SeamRegs s;s.eax=regs[7];s.ebx=regs[4];s.esi=regs[1];s.edi=regs[0];s.ebp=regs[2];s.esp=esp;s.thread=thread;
     detail::SeamDecode d;
-    if(!detail::seam_decode(s,bytes,code_address,vm_root,d)){restore.refuse(detail::refuse_opcode);restore.clear_all(detail::cancel_seam_unreadable);restore.attempt_mode=0;restore_filter_publish();return;}
+    if(!detail::seam_decode(s,bytes,code_address,vm_root,d)){restore.refuse(detail::refuse_opcode);restore.clear_all(detail::cancel_seam_unreadable);restore.reset_attempt();restore_filter_publish();return;}
     if(d.pc==detail::restore_mode_pc){
         bool malformed=false;
         const bool ours=restore_store_is_ours(esp,s.eax,malformed);
@@ -305,12 +353,12 @@ void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread
             else{++restore.writes_failed;restore.refuse(detail::refuse_write);}
             return;
         }
-        restore.clear_arm(detail::cancel_selection);restore.attempt_mode=0;restore_filter_publish();return;
+        restore.clear_arm(detail::cancel_selection);restore.reset_attempt();restore_filter_publish();return;
     }
     if(d.pc==detail::restore_player_pc||d.pc==detail::restore_controller_pc){
-        restore.clear_all(detail::cancel_identity_store);restore.attempt_mode=0;restore_filter_publish();return;}
+        restore.clear_all(detail::cancel_identity_store);restore.reset_attempt();restore_filter_publish();return;}
     if(d.pc==detail::restore_killed_pcs[0]||d.pc==detail::restore_killed_pcs[1]){
-        if(!detail::killed_store_is_zero(s,d,bytes,vm_root)){restore.clear_all(detail::cancel_killed_store);restore.attempt_mode=0;restore_filter_publish();}
+        if(!detail::killed_store_is_zero(s,d,bytes,vm_root)){restore.clear_all(detail::cancel_killed_store);restore.reset_attempt();restore_filter_publish();}
         return;
     }
     if(restore.pending)restore_capture_seam(s,d,false,0,seam_log);
@@ -322,7 +370,7 @@ void restore_on_task(unsigned kind,std::uint32_t task) {
 }
 void restore_on_vm() {
     restore_epoch.fetch_add(1,std::memory_order_acq_rel);
-    restore.clear_all(detail::cancel_epoch);restore.attempt_generation=0;restore.attempt_mode=0;restore_filter_publish();
+    restore.clear_all(detail::cancel_epoch);restore.attempt_generation=0;restore.reset_attempt();restore_filter_publish();
 }
 // Deserialization kind7 (the existing mode-load observer, 0x419e06) is an
 // additional cancel: same epoch advance as the VM boundaries, no new site.
@@ -359,6 +407,7 @@ void handle(unsigned kind,std::uint32_t* regs) {
     const auto thread=GetCurrentThreadId();
     const auto esp=regs[3]+4; // PUSHFD precedes PUSHAD's saved ESP.
     std::uint32_t cockpit=0,caller=0;
+    RestoreSample sample;
     {
     Guard guard;
     switch(kind){
@@ -380,7 +429,9 @@ void handle(unsigned kind,std::uint32_t* regs) {
     case 7:record(7,regs[2],thread,0x419e06,regs[5]);restore_on_load();break;
     case 8:field(esp,0,caller);record(8,regs[1],thread,caller,regs[7]);break;
     }
+    sample=restore_take_sample();
     }
+    if(sample.wanted)restore_emit_sample(sample); // never under the Guard
     // Include the handler lock acquisition/release and checked reads. The
     // second lock only aggregates this sample and lies outside its interval.
     if(timing){const auto end=now();Guard guard;handler_timing[kind].add(start,end);}
@@ -532,8 +583,8 @@ void report(std::uint64_t frame) {
     if(restore_installed()){
         detail::RestoreState r;detail::HandlerTiming rt[restore_site_count]{};
         {Guard guard;r=restore;for(unsigned i=0;i<restore_site_count;++i){rt[i]=restore_timing[i];restore_timing[i]={};}}
-        log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu",
-            frame,unsigned(r.armed),unsigned(r.pending),r.arms,r.arm_refusals,r.transfers,r.consumed,r.writes_failed,r.seam_calls,restore_eh_bumps.load(std::memory_order_relaxed),
+        log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu arm_refusal_reasons=%llu,%llu,%llu,%llu,%llu,%llu,%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu",
+            frame,unsigned(r.armed),unsigned(r.pending),r.arms,r.arm_refusals,r.arm_refusal_reasons[0],r.arm_refusal_reasons[1],r.arm_refusal_reasons[2],r.arm_refusal_reasons[3],r.arm_refusal_reasons[4],r.arm_refusal_reasons[5],r.arm_refusal_reasons[6],r.transfers,r.consumed,r.writes_failed,r.seam_calls,restore_eh_bumps.load(std::memory_order_relaxed),
             static_cast<unsigned long>(restore_epoch.load(std::memory_order_relaxed)),r.last_refusal,
             r.cancels[0],r.cancels[1],r.cancels[2],r.cancels[3],r.cancels[4],r.cancels[5],r.cancels[6],r.cancels[7],r.cancels[8],r.cancels[9],r.cancels[10],r.cancels[11],r.cancels[12],r.cancels[13],r.cancels[14],
             r.refusals[0],r.refusals[1],r.refusals[2],r.refusals[3],r.refusals[4],r.refusals[5],r.refusals[6],r.refusals[7],r.refusals[8],r.refusals[9],r.refusals[10],r.refusals[11],r.refusals[12],r.refusals[13],r.refusals[14],r.refusals[15],r.refusals[16],r.refusals[17],r.refusals[18],r.refusals[19],r.refusals[20],r.refusals[21],r.refusals[22]);
