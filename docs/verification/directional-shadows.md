@@ -2,7 +2,7 @@
 
 2026-09-15 source-artifact checkpoint. Independent deep review: **ACCEPT**.
 The new off-by-default extraction API has no live-renderer caller, configuration
-change or resource allocation. Its source checkpoint awaits the main commit;
+change or resource allocation. Its source checkpoint was committed as `0234178`;
 this ledger makes no installed-build claim. Current installation state is in
 [status](../status.md).
 
@@ -29,7 +29,7 @@ ran. It also does not establish native-Windows shader creation or raster
 semantics. The extraction contract and family-specific evidence are in
 [sun-share-material-contract.md](../reverse-engineering/sun-share-material-contract.md).
 
-## Native bytecode blocker
+## Native bytecode blocker at the original checkpoint
 
 Native ps_3_0 validity is currently blocked by an inherited ordinary-material
 sanitizer instruction: it reads two distinct float constants in one `MAX` (for
@@ -37,5 +37,29 @@ example, `c5` and `c212.y`). All 108 ordinary PS programs have this violation.
 The documented ps_3_0 float-constant register limit is one read port per
 instruction ([Microsoft register reference](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-registers-ps-3-0)).
 The new sun-share instructions comply, but cannot make the containing programs
-valid. A Sol repair in an isolated checkout is underway; no live or installed
-change follows from this ledger.
+valid. The repair subsequently landed as `5b3b5c3`, with legacy/fill/fade GPU parity
+([repair evidence](linear-material-constant-port.md)). Native Windows runtime
+verification remains open.
+
+## 2026-09-15 runtime integration qualification in progress
+
+The isolated runtime implementation at `/tmp/x3-sun-share-runtime` is not yet
+integrated. Independent review accepted the corrected cutout positive control;
+actual MotionOutput execution and composition coverage remain acceptance gates.
+The following retained X3 GPU results were revalidated by that reviewer:
+
+- Material extraction: 216 cases, 55,296 valid drawn pixels (27,648 positive
+  and 27,648 zero sun share), 256 empty controls, no invalid pixels; maximum
+  subtraction error 0.000686797113. Raw report:
+  `/tmp/x3-sun-share-material-gpu/report.txt`.
+- Temporal channel copying: eight history twins, four copy failures, two sizes
+  across two generations, and 24 hostile-state restorations. Summary:
+  `/tmp/x3-sun-share-runtime/verification/results/bottle-X3/sun-share-temporal-summary.json`.
+
+Both executions used the single Wine lock, bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1` and `WINEMSYNC=1`. These fixtures do not execute
+the actual MotionOutput qualification/publication path. They therefore do not
+establish live receiver admission, composition exclusion or complete recovery.
+The separate qualification object build passed with zero warnings; its local
+record is `/tmp/x3-sun-runtime-fixture-build.json`. It is not an install candidate.
+Native Windows execution, gameplay coverage and GPU performance remain open.
