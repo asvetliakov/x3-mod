@@ -4,7 +4,12 @@ Transformer: gain 1 is byte-identical to the original; gain G adds exactly one
 `def c31 = (G, 0, 0, 0)` and one `mul r0.xyz, r0, c31.x` immediately before
 the untouched native `mov oC0, r0`; every original instruction, the native
 output and raw alpha are retained (docs/architecture/linear-emission-cost.md,
-"Implemented"). Launcher gate: requires --hdr only. No game assets bundled.
+"Implemented"). Launcher gate: requires --hdr only. Blend law
+(`linear_emission_source_gain_blend`, shared with the GPU fixture): ONE/ONE/ADD
+admits whatever the separate alpha states are (run 26 refused every engine
+draw on sepalpha=1), ONE/INVSRCCOLOR refuses as `screen_blend`, the rest as
+`blend`. Log grammar: per-frame totals and per-reason samples. No game assets
+bundled.
 """
 import contextlib
 import importlib.util
@@ -12,6 +17,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import struct
 import subprocess
@@ -156,10 +162,106 @@ class LauncherGateTests(unittest.TestCase):
         for absent in ('linear_material_requested', 'taa_requested', 'screen_ownership'):
             self.assertNotIn(absent, block)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        admission = motion[motion.index('void MotionOutput::prepare_source_gain'):][:2600]
-        for required in ('hdr_state_ != HdrState::Active', 'D3DBLEND_ONE', 'D3DBLENDOP_ADD', 'reason=blend', 'shadow_.composition_blend[3]'):
+        admission = motion[motion.index('void MotionOutput::prepare_source_gain'):][:3200]
+        for required in ('hdr_state_ != HdrState::Active', 'renderer::linear_emission_source_gain_blend(shadow_.states[3], shadow_.states[5]',
+                         'shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2])',
+                         'SourceGainBlend::Screen', '"screen_blend" : "blend"', 'refused_screen', 'source_gain_logged_[screen ? 1 : 0]'):
             self.assertIn(required, admission)
+        # The separate alpha states are shadowed (no per-draw getter) and logged, never gated.
+        self.assertIn('D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA};', motion)
+        self.assertIn('for (unsigned i = 0; i < 3; ++i) known = known && shadow_.composition_blend_known[i]; // the colour triple gates', admission)
+        self.assertNotIn('composition_blend[3]', admission[:admission.index('log(')])
+        self.assertNotIn('GetRenderState', admission)
         self.assertIn('emission_source_gain_requested_ = renderer::linear_emission_source_gain_valid(gain) && gain != 1.f;', motion)
+
+
+REFUSED = re.compile(r'^emission_source_gain_refused device=(\d+) frame=(\d+) vs=([0-9a-f]{16}) ps=([0-9a-f]{16}) reason=(blend|screen_blend) '
+                     r'blend=(\d+) src=(\d+) dst=(\d+) op=(\d+) sepalpha=(-1|\d+) srcalpha=(-1|\d+) dstalpha=(-1|\d+) opalpha=(-1|\d+) srgb=(\d+)$')
+FRAME = re.compile(r'^emission_source_gain_frame device=(\d+) frame=(\d+) gain=(\S+) admitted=(\d+) refused_blend=(\d+) refused_screen=(\d+) '
+                   r'refused_other=(\d+) refused_unknown=(\d+) refused_state=(\d+) bind_failures=(\d+)$')
+
+
+def rendered(fmt, *values):
+    """printf-style rendering of a log format literal extracted from the source."""
+    values_iter = iter(values)
+    return re.sub(r'%(?:0?16)?(?:ll|l)?[xudsg]', lambda m: str(next(values_iter)), fmt)
+
+
+class LogGrammarTests(unittest.TestCase):
+    """The frame-totals and per-reason sample lines as the source formats them."""
+    @classmethod
+    def setUpClass(cls):
+        cls.motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+
+    def literal(self, prefix):
+        match = re.search(r'log\("(' + prefix + r'[^"]*)"', self.motion)
+        self.assertIsNotNone(match, prefix)
+        return match.group(1)
+
+    def test_refused_sample_line_carries_the_reason_and_alpha_triple(self):
+        fmt = self.literal('emission_source_gain_refused ')
+        self.assertEqual(fmt.count('%'), 14)
+        line = rendered(fmt, 1, 1501, 'd5e1c75351ed3f04', '8360f422de08b5bd', 'blend', 1, 2, 2, 1, 1, 5, 6, 1, 0)
+        match = REFUSED.match(line); self.assertIsNotNone(match, line)
+        self.assertEqual(match.group(5), 'blend')
+        line = rendered(fmt, 1, 1501, 'd5e1c75351ed3f04', '8360f422de08b5bd', 'screen_blend', 1, 2, 4, 1, -1, -1, -1, -1, 0)
+        self.assertIsNotNone(REFUSED.match(line), line)
+
+    def test_frame_totals_line_and_its_gate(self):
+        fmt = self.literal('emission_source_gain_frame ')
+        self.assertEqual(fmt.count('%'), 10)
+        line = rendered(fmt, 1, 1501, '2', 7, 3, 2, 1, 1, 0, 0)
+        match = FRAME.match(line); self.assertIsNotNone(match, line)
+        self.assertEqual([int(match.group(i)) for i in range(4, 8)], [7, 3, 2, 1])
+        block = self.motion[self.motion.index('// One line per frame that saw at least one candidate draw'):][:1200]
+        self.assertIn('if (g.admitted || g.refused_blend || g.refused_screen || other)', block)
+        self.assertIn('const std::uint32_t other = g.refused_unknown + g.refused_state + g.bind_failures;', block)
+        self.assertNotIn('if (capture_)', block)
+        self.assertIn('source_gain_counts_ = {};', block)
+
+    def test_sample_cap_is_per_reason_and_per_device_epoch(self):
+        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        self.assertIn('std::uint32_t source_gain_logged_[3]{};', header)
+        self.assertIn('refused_screen = 0', header)
+        self.assertIn('for (auto& logged : source_gain_logged_) logged = 0;', self.motion)
+        self.assertIn('source_gain_logged_[2] < failure_log_limit', self.motion)
+        self.assertIn('constexpr unsigned failure_log_limit = 16;', self.motion)
+
+
+class BlendLawTests(unittest.TestCase):
+    """Truth table of the shared blend admission, compiled from the renderer source."""
+    ONE, INVSRCCOLOR, SRCALPHA, INVSRCALPHA, ZERO, ADD, SUBTRACT = 2, 4, 5, 6, 1, 1, 2
+    CASES = [  # (blend_enable, srgb, src, dst, op) -> verdict (0 admit, 1 blend, 2 screen)
+        ((1, 0, 2, 2, 1), 0), ((1, 0, 2, 4, 1), 2), ((0, 0, 2, 2, 1), 1), ((1, 1, 2, 2, 1), 1),
+        ((1, 0, 5, 6, 1), 1), ((1, 0, 2, 2, 2), 1), ((1, 0, 2, 4, 2), 1), ((1, 0, 1, 4, 1), 1),
+        ((1, 0, 2, 1, 1), 1), ((1, 1, 2, 4, 1), 2), ((7, 0, 2, 2, 1), 0), ((1, 0, 2, 3, 1), 1)]
+
+    def test_truth_table(self):
+        compiler = shutil.which('clang++') or shutil.which('c++')
+        if not compiler:
+            raise unittest.SkipTest('host C++ compiler required')
+        driver = '#include "%s"\n#include <cstdio>\nint main(){using namespace x3m::renderer;' % (ROOT / 'src/renderer/linear_emission.cpp')
+        driver += ''.join('std::printf("%%d ",int(linear_emission_source_gain_blend(%d,%d,%d,%d,%d)));' % inputs for inputs, _ in self.CASES)
+        driver += 'return 0;}\n'
+        with tempfile.TemporaryDirectory(prefix='x3-source-gain-blend-') as directory:
+            source = Path(directory) / 'blend.cpp'; source.write_text(driver)
+            build = subprocess.run([compiler, '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', str(source), '-o', str(Path(directory) / 'blend')],
+                                   capture_output=True, text=True)
+            self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
+            run = subprocess.run([str(Path(directory) / 'blend')], capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual([int(v) for v in run.stdout.split()], [verdict for _, verdict in self.CASES])
+
+    def test_fixture_and_runner_exercise_both_gate_cases(self):
+        fixture = (ROOT / 'verification/probe/linear_emission_fixture.cpp').read_text()
+        experiment = fixture[fixture.index('void source_gain_experiment'):][:4200]
+        for required in ('linear_emission_source_gain_blend(', 'if (cs.ops[0].kind == 2) f.rs(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);',
+                         'if (v && verdict == SourceGainBlend::Admit)', '"screen op refused as screen_blend"', 'admission=%s'):
+            self.assertIn(required, experiment)
+        runner = (ROOT / 'verification/probe/run_linear_emission.py').read_text()
+        for required in ("label='source_gain_separate_alpha'", "label='source_gain_screen'", "alpha=2", "kind=2",
+                         "r['admission']==('screen_blend' if c['screen'] else 'admit')", "(5,6)", "'refused screen case not native'"):
+            self.assertIn(required, runner)
 
 
 if __name__ == '__main__':

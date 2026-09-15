@@ -218,10 +218,15 @@ constexpr D3DRENDERSTATETYPE shadow_states[motion_shadow_state_count] = {
     D3DRS_ALPHAFUNC, D3DRS_ALPHAREF, D3DRS_ZFUNC, D3DRS_FOGENABLE, D3DRS_DITHERENABLE,
     D3DRS_STENCILENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE};
 // Blend states kept outside the indexed shadow: the nine-state fade check's
-// triple plus SEPARATEALPHABLENDENABLE, which only the capture log reads.
+// triple plus SEPARATEALPHABLENDENABLE, then the separate alpha triple that
+// only the source-gain refusal lines read (never a gate).
+constexpr unsigned composition_blend_count = 7;
+constexpr D3DRENDERSTATETYPE composition_blend_states[composition_blend_count] = {
+    D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE,
+    D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA};
 constexpr unsigned composition_blend_index(D3DRENDERSTATETYPE state) noexcept {
-    return state == D3DRS_SRCBLEND ? 0u : state == D3DRS_DESTBLEND ? 1u : state == D3DRS_BLENDOP ? 2u
-         : state == D3DRS_SEPARATEALPHABLENDENABLE ? 3u : 4u;
+    for (unsigned i = 0; i < composition_blend_count; ++i) if (composition_blend_states[i] == state) return i;
+    return composition_blend_count;
 }
 constexpr unsigned shadow_index(D3DRENDERSTATETYPE state) noexcept {
     // WRAP8 starts a second, non-contiguous D3DRENDERSTATETYPE range.
@@ -970,7 +975,7 @@ void MotionOutput::set_render_state(D3DRENDERSTATETYPE state, DWORD value) noexc
     if (i < motion_shadow_state_count) { shadow_.states[i] = value; shadow_.states_known[i] = true; }
     if (blend_shadow_requested()) {
         const unsigned blend = composition_blend_index(state);
-        if (blend < 4) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
+        if (blend < composition_blend_count) { shadow_.composition_blend[blend] = value; shadow_.composition_blend_known[blend] = true; }
     }
     if ((composition_requested() || screen_emission_bound_) && state == D3DRS_FILLMODE) { shadow_.fill_mode = value; shadow_.fill_mode_known = true; }
 }
@@ -982,14 +987,14 @@ long MotionOutput::shadow_state_field(D3DRENDERSTATETYPE state) const noexcept {
     return i < motion_shadow_state_count && shadow_.states_known[i] ? long(shadow_.states[i]) : -1;
 }
 long MotionOutput::composition_blend_field(unsigned index) const noexcept {
-    return index < 4 && shadow_.composition_blend_known[index] ? long(shadow_.composition_blend[index]) : -1;
+    return index < composition_blend_count && shadow_.composition_blend_known[index] ? long(shadow_.composition_blend[index]) : -1;
 }
 void MotionOutput::render_state_failed(D3DRENDERSTATETYPE state) noexcept {
     if (!enabled_ || shadow_.recording) return;
     const unsigned i=shadow_index(state);
     if (i<motion_shadow_state_count) { shadow_.states_known[i]=false; ++counters_.rs_invalidations; }
     const unsigned blend=composition_blend_index(state);
-    if (blend<4) shadow_.composition_blend_known[blend]=false;
+    if (blend<composition_blend_count) shadow_.composition_blend_known[blend]=false;
 }
 void MotionOutput::before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept {
     if (!enabled_ || shadow_.recording || stage >= sampler_stage_count
@@ -2411,7 +2416,7 @@ void MotionOutput::before_reset() noexcept {
     sun_writer_count_ = sun_writer_overflow_ = 0; // declaration ids may be recycled across Reset
     cutout_caps_ = cutout::Capability::Pending; cutout_cap_result_ = S_FALSE;
     cutout_probe_frame_known_ = false; cutout_reset_pending_ = true;
-    source_gain_logged_ = 0; // a new device epoch may log its blend refusals again (same 8-per-epoch cap)
+    for (auto& logged : source_gain_logged_) logged = 0; // a new device epoch may log its refusal samples again (same per-reason cap)
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
@@ -2952,9 +2957,8 @@ void MotionOutput::resync_shadow() noexcept {
         // even with the ordinary motion state-shadow experiment disabled.
         for (unsigned i = 0; i < 6; ++i)
             shadow_.states_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, shadow_states[i], &shadow_.states[i]));
-        const D3DRENDERSTATETYPE blend[] = {D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE};
-        for (unsigned i = 0; i < 4; ++i)
-            shadow_.composition_blend_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, blend[i], &shadow_.composition_blend[i]));
+        for (unsigned i = 0; i < composition_blend_count; ++i)
+            shadow_.composition_blend_known[i] = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, composition_blend_states[i], &shadow_.composition_blend[i]));
     }
     if (composition_requested() || screen_emission_bound_)
         shadow_.fill_mode_known = SUCCEEDED(native<GetRenderStateFn>(GetRenderState)(device_, D3DRS_FILLMODE, &shadow_.fill_mode));
@@ -3915,27 +3919,33 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
 // Source-only encoded gain admission (linear-emission-cost.md, "Implemented").
 // The variant scales the colour lanes the game blends with ADD/ONE/ONE, so it
 // is exactly a brightness change only under that blend into the FP16 scene
-// target (values above 1 survive there). Any other blend (SRCALPHA, screen,
-// separate alpha), sRGB write, an unknown state, an inactive redirect or a
-// state block being recorded keeps the native program: fail closed, counted,
-// the blend refusal logged with its reason (first failure_log_limit).
+// target (values above 1 survive there). The colour law is the shared
+// renderer::linear_emission_source_gain_blend: ONE/ONE/ADD admits whatever
+// SEPARATEALPHABLENDENABLE and the alpha triple say (the variant multiplies
+// rgb only; run 26 refused every engine draw on sepalpha=1 before this),
+// screen ONE/INVSRCCOLOR refuses as `screen_blend`, any other blend, sRGB
+// write, an unknown state, an inactive redirect or a state block being
+// recorded keeps the native program: fail closed, counted per reason, the
+// first failure_log_limit samples of each reason logged per device epoch
+// with the alpha triple for the record (-1 = not shadowed).
 void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& route) noexcept {
     if (hdr_state_ != HdrState::Active || !route.scene || !scene_open_ || shadow_.recording || !call.primitives || main_msaa_) {
         ++source_gain_counts_.refused_state; return;
     }
     bool known = shadow_.states_known[3] && shadow_.states_known[5];
-    for (unsigned i = 0; i < 4; ++i) known = known && shadow_.composition_blend_known[i];
+    for (unsigned i = 0; i < 3; ++i) known = known && shadow_.composition_blend_known[i]; // the colour triple gates; sepalpha and the alpha triple are logged only
     if (!known) { ++source_gain_counts_.refused_unknown; return; }
-    const bool additive = shadow_.states[3] && !shadow_.states[5]
-        && shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_ONE
-        && shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3];
-    if (!additive) {
-        ++source_gain_counts_.refused_blend;
-        if (source_gain_logged_ < failure_log_limit) {
-            ++source_gain_logged_;
-            log("emission_source_gain_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=blend blend=%lu src=%lu dst=%lu op=%lu sepalpha=%lu srgb=%lu",
-                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, shadow_.states[3], shadow_.composition_blend[0], shadow_.composition_blend[1],
-                shadow_.composition_blend[2], shadow_.composition_blend[3], shadow_.states[5]);
+    const auto verdict = renderer::linear_emission_source_gain_blend(shadow_.states[3], shadow_.states[5],
+        shadow_.composition_blend[0], shadow_.composition_blend[1], shadow_.composition_blend[2]);
+    if (verdict != renderer::SourceGainBlend::Admit) {
+        const bool screen = verdict == renderer::SourceGainBlend::Screen;
+        if (screen) ++source_gain_counts_.refused_screen; else ++source_gain_counts_.refused_blend;
+        std::uint32_t& logged = source_gain_logged_[screen ? 1 : 0];
+        if (logged < failure_log_limit) {
+            ++logged;
+            log("emission_source_gain_refused device=%llu frame=%llu vs=%016llx ps=%016llx reason=%s blend=%lu src=%lu dst=%lu op=%lu sepalpha=%ld srcalpha=%ld dstalpha=%ld opalpha=%ld srgb=%lu",
+                id_, frame_, shadow_.vs_hash, shadow_.ps_hash, screen ? "screen_blend" : "blend", shadow_.states[3], shadow_.composition_blend[0], shadow_.composition_blend[1],
+                shadow_.composition_blend[2], composition_blend_field(3), composition_blend_field(4), composition_blend_field(5), composition_blend_field(6), shadow_.states[5]);
         }
         return;
     }
@@ -3951,8 +3961,8 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
             route.submit = false; route.submission_error = motion_state_error_;
             ++counters_.restore_failures; invalidate_taa(TaaInvalidateSite::RestoreFailed);
         }
-        if (source_gain_logged_ < failure_log_limit) {
-            ++source_gain_logged_;
+        if (source_gain_logged_[2] < failure_log_limit) {
+            ++source_gain_logged_[2];
             log("emission_source_gain_bind_failed device=%llu frame=%llu ps=%016llx result=%08lx restore=%08lx", id_, frame_, shadow_.ps_hash, hr, restored);
         }
         return;
@@ -5282,10 +5292,14 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (screen_emission_timing_) log_screen_emission_frame();
     if (fade_refused_count_) log_fade_refused();
     if (emission_source_gain_requested_) {
+        // One line per frame that saw at least one candidate draw (an eligible
+        // pair reaching prepare_source_gain), capture or not: run 26's 16-line
+        // sample cap hid the totals. refused_other = unknown + state + bind.
         const auto& g = source_gain_counts_;
-        if (capture_)
-            log("emission_source_gain_frame device=%llu frame=%llu gain=%g admitted=%u refused_blend=%u refused_unknown=%u refused_state=%u bind_failures=%u",
-                id_, frame_, double(emission_source_gain_), g.admitted, g.refused_blend, g.refused_unknown, g.refused_state, g.bind_failures);
+        const std::uint32_t other = g.refused_unknown + g.refused_state + g.bind_failures;
+        if (g.admitted || g.refused_blend || g.refused_screen || other)
+            log("emission_source_gain_frame device=%llu frame=%llu gain=%g admitted=%u refused_blend=%u refused_screen=%u refused_other=%u refused_unknown=%u refused_state=%u bind_failures=%u",
+                id_, frame_, double(emission_source_gain_), g.admitted, g.refused_blend, g.refused_screen, other, g.refused_unknown, g.refused_state, g.bind_failures);
         source_gain_counts_ = {}; // this frame only, logged or not
     }
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {

@@ -792,18 +792,30 @@ def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=
 
 def source_gain_cases():
     """Every reviewed pair, a flat and a 2x2-textured source, over a zero and a
-    non-zero background: 80 cases, one native draw plus four variant draws each."""
+    non-zero background: 80 additive cases, one native draw plus four variant
+    draws each; then per pair and background the textured source with
+    separate alpha blending on (alpha 2 = SRCALPHA/INVSRCALPHA alpha factors,
+    ONE/ONE colour: admitted, 40 cases) and with the screen colour blend
+    (op kind 2 = ONE/INVSRCCOLOR: refused `screen_blend`, native, 40 cases)."""
     cases=[]
     sources=(op(rect=(0,0,.75,.75),color=(.5,.25,.125,.125),fade=.75,gain=1.),
              op(rect=(0,0,1,1),color=(.125,.375,.5,.5),fade=.5,gain=1.))
+    def add(profile,source,textured,background,alpha=0,kind=1,label='source_gain'):
+        c=dict(id=len(cases),label=label,mode=1,mask=0,alpha=alpha,write=15,fault=0,pattern=0,
+               flags=32|(profile<<16)|(64 if ORIGINAL_PAIRS[profile][0] in NO_FADE_VS else 0)|(4 if textured else 0)|(32768 if background else 0),
+               actual_profile=profile,background=background,separate_alpha=int(alpha!=0),screen=int(kind==2),ops=[copy.deepcopy(source)])
+        for o in c['ops']:o['affine']=int(ORIGINAL_PAIRS[profile][1] in AFFINE_PS);o['kind']=kind
+        cases.append(c)
     for profile in range(20):
         for textured,source in enumerate(sources):
             for background in (0,1):
-                c=dict(id=len(cases),label='source_gain',mode=1,mask=0,alpha=0,write=15,fault=0,pattern=0,
-                       flags=32|(profile<<16)|(64 if ORIGINAL_PAIRS[profile][0] in NO_FADE_VS else 0)|(4 if textured else 0)|(32768 if background else 0),
-                       actual_profile=profile,background=background,ops=[copy.deepcopy(source)])
-                for o in c['ops']:o['affine']=int(ORIGINAL_PAIRS[profile][1] in AFFINE_PS)
-                cases.append(c)
+                add(profile,source,textured,background)
+    for profile in range(20):
+        for background in (0,1):
+            add(profile,sources[1],1,background,alpha=2,label='source_gain_separate_alpha')
+    for profile in range(20):
+        for background in (0,1):
+            add(profile,sources[1],1,background,kind=2,label='source_gain_screen')
     return cases
 
 
@@ -830,11 +842,21 @@ def validate_source_gain_report(text,data,cases):
     rows=[dict(item.split('=',1) for item in line.split()[1:]) for line in lines if line.startswith('SOURCE_GAIN_CASE ')]
     assert [int(r['id']) for r in rows]==[c['id'] for c in cases],'complete case list'
     assert all(int(r['pair'])==c['actual_profile'] and int(r['background'])==c['background'] and r['draws']=='5' for r,c in zip(rows,cases))
+    # Blend verdict of the shared law over the device's real state: screen
+    # cases refuse as screen_blend, everything else (separate alpha on or
+    # off) admits; the separate-alpha cases carry SRCALPHA/INVSRCALPHA (5/6).
+    for r,c in zip(rows,cases):
+        assert r['admission']==('screen_blend' if c['screen'] else 'admit'),(c['id'],r['admission'])
+        assert (int(r['src']),int(r['dst']))==(2,4 if c['screen'] else 2),(c['id'],r['src'],r['dst'])
+        assert int(r['sepalpha'])==c['separate_alpha'],(c['id'],r['sepalpha'])
+        if c['separate_alpha']:assert (int(r['srcalpha']),int(r['dstalpha']))==(5,6),(c['id'],r['srcalpha'],r['dstalpha'])
     assert any(line.startswith('SOURCE_GAIN_RESULT pass') for line in lines),'fixture result line'
     n=WIDTH*HEIGHT*4;record=4+4*n*6
     assert len(data)==record*len(cases),'raw record size'
     per_gain={g:dict(channels=0,exact=0,within_one=0,max_codes=0,brighter=0,max_value=0.) for g in SOURCE_GAINS[1:]}
     identity_channels=alpha_channels=covered_total=0
+    separate=dict(cases=0,colour_channels=0,exact=0,alpha_channels_exact=0,alpha_blended_pixels=0)
+    screen=dict(cases=0,channels_native=0,darkened_pixels=0)
     for i,c in enumerate(cases):
         base=i*record;(cid,)=struct.unpack_from('<I',data,base);assert cid==c['id']
         images=[struct.unpack_from(f'<{n}f',data,base+4+4*n*k) for k in range(6)]
@@ -845,6 +867,20 @@ def validate_source_gain_report(text,data,cases):
         covered=[p for p in range(WIDTH*HEIGHT) if any(native[4*p+k]!=cleared[4*p+k] for k in range(3))]
         assert covered,(c['id'],'native draw covered no pixel')
         covered_total+=len(covered)
+        if c['screen']:
+            # Refused: the variant was never bound, so every image is the native
+            # screen-blended draw, which darkens nothing but is not additive
+            # (bg + s - s*bg < bg + s wherever both are positive).
+            screen['cases']+=1
+            for image in gained:
+                assert struct.pack(f'<{n}f',*image)==struct.pack(f'<{n}f',*native),(c['id'],'refused screen case not native')
+                screen['channels_native']+=n
+            if c['background']:
+                screen['darkened_pixels']+=sum(1 for p in covered if any(native[4*p+k]<cleared[4*p+k] for k in range(3)))
+            continue
+        if c['separate_alpha']:
+            separate['cases']+=1
+            separate['alpha_blended_pixels']+=sum(1 for p in covered if native[4*p+3]!=cleared[4*p+3])
         for g,image in zip(SOURCE_GAINS[1:],gained):
             stat=per_gain[g]
             for p in range(WIDTH*HEIGHT):
@@ -867,9 +903,15 @@ def validate_source_gain_report(text,data,cases):
                         assert v>s,(c['id'],g,p,k,'not brighter');stat['brighter']+=1
                     elif s==bg:
                         assert v==s,(c['id'],g,p,k,'uncovered channel changed')
+                    if c['separate_alpha']:separate['colour_channels']+=1;separate['exact']+=codes==0
+                if c['separate_alpha']:separate['alpha_channels_exact']+=1
+    assert separate['cases']==sum(c['separate_alpha'] for c in cases) and screen['cases']==sum(c['screen'] for c in cases)
+    assert separate['alpha_blended_pixels']>0,'separate alpha cases never blended alpha'
+    assert screen['darkened_pixels']==0,'screen blend darkened a covered pixel'
     return dict(cases=len(cases),reviewed_pairs=20,source_gains=list(SOURCE_GAINS),identity_channels=identity_channels,alpha_channels_exact=alpha_channels,
-                covered_pixels=covered_total,per_gain={str(g):v for g,v in per_gain.items()},
-                law='gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native')
+                covered_pixels=covered_total,per_gain={str(g):v for g,v in per_gain.items()},separate_alpha=separate,screen_refused=screen,
+                law='gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native; '
+                    'separate alpha blend admitted (rgb-only law), screen ONE/INVSRCCOLOR refused as screen_blend and native')
 
 
 def validate_original_report(text,data,cases,coverage=False,component=False,fused_comparison=False):

@@ -151,18 +151,31 @@ not linear composition and is never labelled so.
   the pair is identified at `SetVertexShader`/`SetPixelShader` by the existing
   `linear_emission_pair_reviewed` lookup (one lookup per setter, cached as
   `shadow_.source_gain_eligible_variant`), and `prepare_source_gain` binds the
-  variant natively for one draw when the shadowed state is exactly
-  ALPHABLENDENABLE on, SRCBLEND ONE, DESTBLEND ONE, BLENDOP ADD, separate
-  alpha off, SRGBWRITEENABLE off, the FP16 redirect is active and the scene
-  is bound; `after_draw` restores the application's program. Any other blend
-  (SRCALPHA, screen ONE/INVSRCCOLOR, separate alpha) refuses with an
-  `emission_source_gain_refused ... reason=blend` line (first 8), unknown state
+  variant natively for one draw when the shared colour law
+  `renderer::linear_emission_source_gain_blend` admits the shadowed state:
+  ALPHABLENDENABLE on, SRCBLEND ONE, DESTBLEND ONE, BLENDOP ADD,
+  SRGBWRITEENABLE off, with the FP16 redirect active and the scene bound;
+  `after_draw` restores the application's program. SEPARATEALPHABLENDENABLE
+  and the alpha triple (SRCBLENDALPHA/DESTBLENDALPHA/BLENDOPALPHA, shadowed
+  in `composition_blend[3..6]` by the same setter hook and resync, no per-draw
+  getter) never gate: the variant multiplies rgb only, so the additive colour
+  law holds whatever the alpha blend does. Run 26 (run65) showed why: every
+  engine candidate came with `sepalpha=1` (ONE/ONE/ADD colour, 11 of the 16
+  logged samples) or the screen blend ONE/INVSRCCOLOR (5), so the original
+  "separate alpha off" gate admitted zero draws. Screen refuses with the
+  distinct reason `screen_blend` (gaining `s` under `bg + s - s*bg` is not the
+  law); every other blend, sRGB write or op refuses as `blend`; unknown state
   and inactive redirect refuse silently (counted); the bracket routes
   (`--linear-emissions`, fade, screen) take precedence for a draw they admit.
   A failed bind restores at once; a failed restore is the existing
-  `motion_state_lost_` condition. Capture frames log
-  `emission_source_gain_frame ... admitted= refused_blend= refused_unknown=
-  refused_state= bind_failures=`.
+  `motion_state_lost_` condition. Observability without capture: one
+  `emission_source_gain_frame device= frame= gain= admitted= refused_blend=
+  refused_screen= refused_other= refused_unknown= refused_state= bind_failures=`
+  line per frame that saw at least one candidate draw
+  (`refused_other = unknown + state + bind`), and
+  `emission_source_gain_refused ... reason=blend|screen_blend blend= src= dst=
+  op= sepalpha= srcalpha= dstalpha= opalpha= srgb=` samples capped at 16 per
+  reason per device epoch (-1 = state not shadowed).
 - Actual prerequisite: `--hdr` (FP16 scene target so values above 1 survive
   for bloom/exposure). `--hdr` itself requires `--motion-output`, which owns
   the shader registration, the pair identification and the render-state
