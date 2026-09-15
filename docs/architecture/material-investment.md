@@ -8,6 +8,21 @@ reflection goals. Existing shadow prerequisites and targeted emission work
 remain the next priorities. Current installation is described only in
 [status](../status.md).
 
+## User scope clarification — 2026-09-15
+
+“Consistent addition of multiple lights” means evaluating the existing sun and
+point-light contributions in linear light. It adds no lights, changes no model,
+and does not extend admission or falloff ranges. Dynamic light creation is a
+separate feature and is not implied by this benefit.
+
+The user excludes physically calibrated roughness/metalness requiring individual
+material art review. A PBR conversion is **not planned** with the current assets;
+no texture overhaul is available. A possible approximation derived from existing
+textures/materials is only an unevaluated proposal, requiring a bounded automatic
+prototype and demonstrated visual benefit before any commitment. Existing
+normal/specular/cubemap response can still be calibrated globally or by family
+without describing it as recovered PBR properties.
+
 ## Recommendation
 
 Do **not** spend the next implementation budget converting every older hull family on the expectation of automatic visual improvement. First do one bounded, matched comparison of original hull shading and the current linear mode using existing controls. Keep the conversion available as an option. In priority order, spend subsequent effort on the user's brighter engine/weapon/light sources and geometric sun shadows; defer SSR and a replacement BRDF until a close/medium-distance witness makes their value concrete. Finish selective exposure only if this comparison supports keeping converted base shading or establishes a distinct user-valued exposure requirement. Its already reviewed shader work is no reason by itself to fund runtime integration. **Recommendation now: hold selective runtime/GPU integration until the matched A/B, retaining the reviewed source checkpoint.** The orchestrator adopts this comparison gate while retaining the earlier feature contract. Background metering, exposed-history units, packed-screen composition and finite-domain recovery are substantial integration obligations; the present evidence does not justify paying them merely to discover whether the converted base is preferred.

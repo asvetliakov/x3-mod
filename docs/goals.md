@@ -77,3 +77,11 @@ more loading instrumentation. The remaining original goals stay on the
 suggestions in the original objective—anisotropic filtering/LOD/draw-distance
 tuning, color-managed UI and a texture overhaul—remain unevaluated candidates,
 not new implementation commitments.
+
+## Material scope clarification — 2026-09-15
+
+The user excludes roughness/metalness authoring that requires individual material
+art review. PBR is not planned without a texture overhaul; automatically deriving
+a useful approximation from existing assets remains unevaluated, not committed
+work. Existing-light arithmetic is separate from adding lights or changing models.
+See the [material allocation assessment](architecture/material-investment.md).

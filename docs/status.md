@@ -61,6 +61,8 @@ remain pending ([ledger](verification/material-exposure.md)). Following the
 user-requested independent critique, further material runtime/coverage expansion
 is held for a matched appearance comparison; the reviewed shader checkpoint is
 retained ([allocation assessment](architecture/material-investment.md)).
+The user excludes per-material roughness/metalness art review and has no planned
+PBR/texture overhaul; automatic approximations remain unevaluated proposals.
 See the [fill ledger](verification/fill-light.md) for numbers and limitations.
 The [run queue](verification/user-runs.md) records the remaining telemetry request. K=0 qualified
 4,177 cases with every recorded baseline row bit-identical; live qualification
