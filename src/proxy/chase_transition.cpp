@@ -243,17 +243,47 @@ void restore_on_destroy(std::uintptr_t cockpit,std::uint32_t caller,std::uint32_
 }
 // Whether a SelectMode assignment belongs to the armed/pending main monitor.
 // Pending admits only the fresh monitor identity captured at the destructor
-// prefix; armed admits the monitor whose variable11 is the player. A validated
-// foreign monitor is ignored; a malformed context cancels.
+// prefix; armed admits the monitor whose ref cell17 is the player (run65:
+// cell11 is a camera priority). A validated foreign monitor, including one
+// whose cell17 is unset/unreadable (side monitors never set it), is ignored;
+// only an unreadable/foreign-class context itself is malformed and cancels.
 bool restore_store_is_ours(std::uint32_t esp,std::uint32_t eax,bool& malformed) {
-    std::uint32_t context=0,id=0,ref=0,desc[14]{};
+    std::uint32_t context=0,id=0,ref=0,tag=0,g9_tag=0,desc[14]{};
     detail::IdentityReader<decltype(&bytes)> r{&bytes};r.vm_root=vm_root;r.registry_root=native_registry_root;
-    malformed=!field(esp,0x20,context)||context!=eax||!r.root()||!detail::borrowed_context(r,context,detail::restore_monitor_class,id,desc)||
-        !detail::integer_cell(r,context,desc,11,ref);
+    malformed=!field(esp,0x20,context)||context!=eax||!r.root()||!detail::borrowed_context(r,context,detail::restore_monitor_class,id,desc);
     if(malformed)return true;
-    return restore.pending?id==restore.pending_monitor:ref==restore.arm_player;
+    if(restore.pending)return id==restore.pending_monitor;
+    return detail::global9_tag(r,g9_tag)&&detail::raw_cell(r,context,desc,17,tag,ref)&&detail::ref_tag_ok(tag,g9_tag)&&ref==restore.arm_player;
 }
-void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread) {
+// One bounded record per seam call while pending (rare: between the warp
+// destructor and the reset), so the next run measures every proof input.
+// Captured under the lock, emitted by restore_handle after the lock is
+// released: log() takes capture's mutex, which present() holds while calling
+// report() under this same lock.
+struct SeamLog {
+    bool wanted=false,ours=false,ctx=false,src=false,prefix=false;unsigned readable=0,why=0;
+    std::uint32_t pc=0,opcode=0,index=0,esi=0,context=0,id=0,pending_monitor=0,v[4]{},t[4]{},requested=0,epoch=0;unsigned char source_tag=0;
+};
+void restore_capture_seam(const detail::SeamRegs& s,const detail::SeamDecode& d,bool ours,unsigned why,SeamLog& out) {
+    std::uint32_t desc[14]{};unsigned char source[5]{};
+    detail::IdentityReader<decltype(&bytes)> r{&bytes};r.vm_root=vm_root;r.registry_root=native_registry_root;
+    out.wanted=true;out.ours=ours;out.why=why;out.pc=d.pc;out.opcode=d.opcode;out.index=d.index;out.esi=s.esi;out.pending_monitor=restore.pending_monitor;
+    out.ctx=field(s.esp,0x20,out.context)&&r.root()&&detail::borrowed_context(r,out.context,detail::restore_monitor_class,out.id,desc);
+    const unsigned index[4]={0,1,16,17};
+    if(out.ctx)for(unsigned i=0;i<4;++i)if(detail::raw_cell(r,out.context,desc,index[i],out.t[i],out.v[i]))out.readable|=1u<<i;
+    out.src=bytes(s.ebx,0,source,5);if(out.src){out.source_tag=source[0];std::memcpy(&out.requested,source+1,4);}
+    out.prefix=d.task&&detail::live_stack_prefix(d.task,s.ebx,d.code,bytes,code_address,detail::restore_reset_prefix,3);
+    out.epoch=restore_epoch.load(std::memory_order_relaxed);
+}
+void restore_emit_seam(const SeamLog& o) {
+    log("chase_view_restore_seam pc=0x%lx opcode=0x%lx index=%lu esi=%lu context=0x%08lx monitor=0x%08lx pending_monitor=0x%08lx ours=%u cells_readable=%u cell0=%lu cell1=%lu cell16=%lu cell17_tag=%lu cell17=0x%08lx cell0_tag=%lu cell1_tag=%lu cell16_tag=%lu source_readable=%u source_tag=%u source=%lu prefix_ok=%u refusal=%u epoch=%lu",
+        static_cast<unsigned long>(o.pc),static_cast<unsigned long>(o.opcode),static_cast<unsigned long>(o.index),static_cast<unsigned long>(o.esi),
+        static_cast<unsigned long>(o.context),static_cast<unsigned long>(o.id),static_cast<unsigned long>(o.pending_monitor),unsigned(o.ours),o.readable,
+        static_cast<unsigned long>(o.v[0]),static_cast<unsigned long>(o.v[1]),static_cast<unsigned long>(o.v[2]),static_cast<unsigned long>(o.t[3]),static_cast<unsigned long>(o.v[3]),
+        static_cast<unsigned long>(o.t[0]),static_cast<unsigned long>(o.t[1]),static_cast<unsigned long>(o.t[2]),unsigned(o.src),unsigned(o.source_tag),static_cast<unsigned long>(o.requested),
+        unsigned(o.prefix),o.why,static_cast<unsigned long>(o.epoch));
+}
+void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread,SeamLog& seam_log) {
     ++restore.seam_calls;
     if(!restore_epoch_ok()){restore_filter_publish();return;}
     detail::SeamRegs s;s.eax=regs[7];s.ebx=regs[4];s.esi=regs[1];s.edi=regs[0];s.ebp=regs[2];s.esp=esp;s.thread=thread;
@@ -261,10 +291,13 @@ void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread
     if(!detail::seam_decode(s,bytes,code_address,vm_root,d)){restore.refuse(detail::refuse_opcode);restore.clear_all(detail::cancel_seam_unreadable);restore.attempt_mode=0;restore_filter_publish();return;}
     if(d.pc==detail::restore_mode_pc){
         bool malformed=false;
-        if(!restore_store_is_ours(esp,s.eax,malformed))return;
+        const bool ours=restore_store_is_ours(esp,s.eax,malformed);
+        if(restore.pending&&!ours){restore_capture_seam(s,d,false,0,seam_log);return;}
+        if(!ours)return;
         if(restore.pending){
             unsigned why=detail::seam_consume_proof(restore,s,d,restore_epoch.load(std::memory_order_acquire),bytes,code_address,vm_root);
             if(!why&&!writable_span(s.ebx+1,4))why=detail::refuse_writable;
+            restore_capture_seam(s,d,true,why,seam_log);
             if(why){restore.refuse(why);restore.clear_pending(detail::cancel_proof);restore_filter_publish();return;}
             // Clear pending immediately before the single source-payload write.
             restore.take_pending();restore_filter_publish();
@@ -280,6 +313,7 @@ void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread
         if(!detail::killed_store_is_zero(s,d,bytes,vm_root)){restore.clear_all(detail::cancel_killed_store);restore.attempt_mode=0;restore_filter_publish();}
         return;
     }
+    if(restore.pending)restore_capture_seam(s,d,false,0,seam_log);
     if(restore.pending&&d.opcode==0x93&&(s.esi==40||s.esi==45)){restore.clear_pending(detail::cancel_global_slot);restore_filter_publish();}
 }
 void restore_on_task(unsigned kind,std::uint32_t task) {
@@ -306,14 +340,16 @@ void restore_handle(unsigned kind,std::uint32_t* regs) {
     const auto start=timing?now():0;
     const auto thread=GetCurrentThreadId();
     const auto esp=regs[3]+4;
+    SeamLog seam_log;
     {
     Guard guard;
     switch(kind){
-    case 0:restore_on_store(regs,esp,thread);break;
+    case 0:restore_on_store(regs,esp,thread,seam_log);break;
     case 1:case 2:{std::uint32_t task=0;field(esp,8,task);restore_on_task(kind,task);}break;
     case 3:case 4:case 5:restore_on_vm();break;
     }
     }
+    if(seam_log.wanted)restore_emit_seam(seam_log); // never under the Guard
     if(timing){const auto end=now();Guard guard;restore_timing[kind].add(start,end);}
 }
 void handle(unsigned kind,std::uint32_t* regs) {
@@ -496,11 +532,11 @@ void report(std::uint64_t frame) {
     if(restore_installed()){
         detail::RestoreState r;detail::HandlerTiming rt[restore_site_count]{};
         {Guard guard;r=restore;for(unsigned i=0;i<restore_site_count;++i){rt[i]=restore_timing[i];restore_timing[i]={};}}
-        log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu",
+        log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu",
             frame,unsigned(r.armed),unsigned(r.pending),r.arms,r.arm_refusals,r.transfers,r.consumed,r.writes_failed,r.seam_calls,restore_eh_bumps.load(std::memory_order_relaxed),
             static_cast<unsigned long>(restore_epoch.load(std::memory_order_relaxed)),r.last_refusal,
             r.cancels[0],r.cancels[1],r.cancels[2],r.cancels[3],r.cancels[4],r.cancels[5],r.cancels[6],r.cancels[7],r.cancels[8],r.cancels[9],r.cancels[10],r.cancels[11],r.cancels[12],r.cancels[13],r.cancels[14],
-            r.refusals[0],r.refusals[1],r.refusals[2],r.refusals[3],r.refusals[4],r.refusals[5],r.refusals[6],r.refusals[7],r.refusals[8],r.refusals[9],r.refusals[10],r.refusals[11],r.refusals[12],r.refusals[13],r.refusals[14],r.refusals[15],r.refusals[16],r.refusals[17],r.refusals[18],r.refusals[19],r.refusals[20]);
+            r.refusals[0],r.refusals[1],r.refusals[2],r.refusals[3],r.refusals[4],r.refusals[5],r.refusals[6],r.refusals[7],r.refusals[8],r.refusals[9],r.refusals[10],r.refusals[11],r.refusals[12],r.refusals[13],r.refusals[14],r.refusals[15],r.refusals[16],r.refusals[17],r.refusals[18],r.refusals[19],r.refusals[20],r.refusals[21],r.refusals[22]);
         if(timing)for(unsigned i=0;i<restore_site_count;++i)if(rt[i].calls)
             log("chase_view_restore_timing frame=%llu kind=%u calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=handler_after_prefilter native_work=excluded",
                 frame,i,rt[i].calls,rt[i].samples,rt[i].invalid,as_double(rt[i].ticks)*micros,as_double(rt[i].max_ticks)*micros);

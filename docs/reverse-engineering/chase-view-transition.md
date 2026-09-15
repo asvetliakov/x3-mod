@@ -765,8 +765,11 @@ only at the `42d402` destructor with the exact `efbff,edba0,edbe3,1661c,0`
 prefix, matching arm cockpit/generation, player/controller scalars, warp 1,
 killed 0 and a borrowed current context of class `25e`; consume at `f0c4b`
 only for the same thread/task pointer/task ID/epoch, `[ESP+20] == EAX ==
-task+3c`, opcode `94` index 0 discard `24`, same monitor ID, cells 0/1/11 =
-258/0/player, unchanged globals, warp 1/killed 0, source tag 1 payload 1,
+task+3c`, opcode `94` index 0 discard `24`, same monitor ID, cells 0/1 =
+258/0, unchanged globals, warp 1/killed 0, cell16 == 0 (main monitor number,
+`refuse_monitor_number`), cell17 tag equal to global cell9's tag
+(`refuse_ref_tag`, tag reported) with payload == the validated global cell9
+(`refuse_ref_cell`), source tag 1 payload 1,
 live stack prefix `edc91,16724,0` walked from EBX (64-cell bound, five-byte
 alignment, capacity), then a VirtualQuery-writable check; pending is cleared
 before the single 4-byte write of 258 into `[EBX+1]`. The displaced
@@ -787,7 +790,8 @@ Deviations and assumptions, with reasons:
   EDI, the prefilter never admits a store, nothing is written, and the
   `chase_view_restore_state` line shows `arms` advancing with `seam_calls==0`.
 - Foreign monitors: while armed, a SelectMode assignment whose current
-  context validates as class `25e` with variable11 != player is ignored;
+  context validates as class `25e` with ref cell17 != player, unset or
+  unreadable is ignored (side monitors never set cell17);
   while pending, admission is by monitor ID only (the identity captured at
   the destructor prefix), so a secondary monitor viewing the player cannot
   reach the consume proof. `RestartAllMonitors` visiting other monitors first
@@ -810,9 +814,23 @@ Deviations and assumptions, with reasons:
   as parameters (defaults unchanged) so the fixture can alias them; production
   values are the same globals as before.
 
+Run65 (run 26) refusal, explained: the first implementation tested
+`cell11 == player`, following the contract's "monitor-ref variable11" wording;
+the static decode above shows cell11 is the camera-priority constant 20, so the
+proof refused at `refuse_ref_cell` (10) on both gates after every earlier check
+had passed. The predicate now reads cell16 (main-monitor number, must be 0)
+and cell17 (the ref `StartMainMonitor` copies from global cell9), in the same
+position of the ordered proof, with the source-cell and live-stack checks still
+after it. While pending, every seam call logs one `chase_view_restore_seam`
+line (`cell0`, `cell1`, `cell16`, `cell17_tag`, `cell17`, source tag/payload,
+`prefix_ok`, `refusal`), captured under the observer lock and emitted after
+it is released (`log()` takes the capture mutex that `present()` holds while
+calling `report()`), so the next gate run measures the cell17 tag, the
+literal source and the `edc91,16724,0` prefix, which remain unmeasured in game.
+
 Gameplay acceptance (a gate run with the option on, reading the
-`chase_view_restore_state` counters) and native Windows execution remain
-unverified.
+`chase_view_restore_state` counters and the seam lines) and native Windows
+execution remain unverified.
 
 ### Run65: consume refusal on the ref cell
 

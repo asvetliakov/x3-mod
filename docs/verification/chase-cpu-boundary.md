@@ -147,3 +147,46 @@ candidate.
 Not verified: live game behaviour (gameplay acceptance is a separate user run)
 and native Windows execution (documented Win32 only: VirtualQuery,
 WriteProcessMemory, GetEnvironmentVariableW, SRW lock, atomics).
+
+### 2026-09-16 run65 correction: cell16/cell17 consume predicate
+
+Run 26 (`/tmp/x3-bottleX3-run65`) armed 3×, transferred 2×, reached the seam
+2× and refused both with `refuse_ref_cell` (10): the contract's "variable11"
+is the camera-priority constant 20, not the player ref (RE note, "Run65:
+consume refusal on the ref cell"). The consume proof now tests cell16 == 0
+(`refuse_monitor_number`, 22) and cell17 tag equal to global cell9's tag
+(`refuse_ref_tag`, 21, tag reported) with payload == validated global cell9
+(`refuse_ref_cell`, 10), in the same ordered position; source-cell and
+live-stack checks stay after it. While pending every seam call logs one
+`chase_view_restore_seam` line with cell0/cell1/cell16/cell17_tag/cell17,
+source tag/payload, `prefix_ok` and `refusal` (no per-draw cost). The record
+is captured under the SRW lock and emitted after release; the CPU fixture's
+`log()` stub asserts no call arrives while the chase lock is held and that
+the seam lines are emitted.
+
+- `python3 verification/probe/build_chase_transition_cpu.py` then
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_chase_transition_cpu.py` →
+  `stubs=18 restore_stubs=7 checks=739 failures=0`, record regenerated at
+  `verification/results/chase-restore-cpu.json` (seam idle prefilter 0.007 µs
+  mean, within noise; full stub 0.54 µs). New cases: cell17 tag 2 and tag 0
+  refuse under `refuse_ref_tag`; cell17 payload != global9 refuses
+  (`refuse_ref_cell`); cell16 == 1 refuses (`refuse_monitor_number`); cell11
+  set to the player is never consulted; cell17 tag 8 (differing from global
+  cell9's tag 1) refuses; a side monitor with unset cell17 (tag 0) issuing
+  SelectMode(0) while armed and while pending leaves the ticket untouched and
+  the main monitor then consumes once; the happy path consumes once. Synthetic monitor
+  layout updated (41 variables, cell11 = 20, cell16 = 0, cell17 = player).
+- Host: `test_chase_transition`, `test_chase_transition_sites`,
+  `test_chase_restore_sites`, `test_chase_camera.ChaseCameraLaunchOptions` →
+  24 tests OK (restore-core host 37 checks, including cell17 beyond the class
+  variable count refusing);
+  `verify_chase_restore_sites.py` → PASS.
+- Clean DLL (`cmake --build build --clean-first -j4`) then
+  `check_no_x87.py build/d3d9.dll` → PASS, 63 roots, 225 functions, 0
+  violations; worktree DLL SHA-256
+  `9569e4d0c7683f17250f4600df64913b8272d4ed214c99985eb4752e09ac3532` (evidence
+  only).
+
+Still unmeasured in game: the cell17 tag, the literal source cell and the
+`edc91,16724,0` prefix; the next gate run's seam lines settle them.

@@ -27,7 +27,7 @@ enum RestoreRefusal : unsigned {
     refuse_none=0, refuse_thread=1, refuse_task=2, refuse_task_id=3, refuse_context=4, refuse_opcode=5,
     refuse_monitor_identity=6, refuse_monitor_class=7, refuse_mode_cell=8, refuse_handle_cell=9, refuse_ref_cell=10,
     refuse_globals=11, refuse_warp=12, refuse_source=13, refuse_stack=14, refuse_writable=15, refuse_write=16,
-    refuse_epoch=17, refuse_provenance=18, refuse_prefix=19, refuse_identity=20, refuse_count=21
+    refuse_epoch=17, refuse_provenance=18, refuse_prefix=19, refuse_identity=20, refuse_ref_tag=21, refuse_monitor_number=22, refuse_count=23
 };
 struct RestoreState {
     bool armed=false, pending=false;
@@ -87,6 +87,21 @@ template<class Reader>
 bool integer_cell(IdentityReader<Reader>& r,std::uint32_t context,const std::uint32_t (&desc)[14],unsigned index,std::uint32_t& value) {
     std::uint32_t tag=0;return r.cell(context,desc,index,tag,value)&&tag==1;
 }
+// Raw tagged cell (bounds and readability checked; the tag is reported, never coerced).
+template<class Reader>
+bool raw_cell(IdentityReader<Reader>& r,std::uint32_t context,const std::uint32_t (&desc)[14],unsigned index,std::uint32_t& tag,std::uint32_t& value) {
+    std::uint32_t cells=0;unsigned char raw[5]{};
+    if(index>=desc[7]||!r.field(context,0xc,cells)||!r.read(cells,5*index,raw,5))return false;
+    tag=raw[0];std::memcpy(&value,raw+1,4);return true;
+}
+// cell17 is a verbatim copy of global cell9 (StartMainMonitor), so its tag
+// must equal the tag global cell9 carries now; the observed tag is reported.
+constexpr bool ref_tag_ok(std::uint32_t tag,std::uint32_t global9_tag){return tag==global9_tag;}
+template<class Reader>
+bool global9_tag(IdentityReader<Reader>& r,std::uint32_t& tag){
+    std::uint32_t global[14]{},value=0;
+    return r.descriptor(r.classes,global)&&global[0]==0&&raw_cell(r,r.classes,global,9,tag,value);
+}
 // Global player/controller and warp/killed scalars from the class table.
 template<class Reader>
 bool global_scalars(IdentityReader<Reader>& r,std::uint32_t& player,std::uint32_t& controller,std::uint32_t& warp,std::uint32_t& killed) {
@@ -136,7 +151,13 @@ unsigned seam_consume_proof(const RestoreState& st,const SeamRegs& s,const SeamD
     std::uint32_t player=0,controller=0,warp=0,killed=0;
     if(!global_scalars(r,player,controller,warp,killed)||player!=st.arm_player||controller!=st.arm_controller||!player)return refuse_globals;
     if(warp!=1||killed!=0)return refuse_warp;
-    if(!integer_cell(r,context,desc,11,ref)||ref!=player)return refuse_ref_cell;
+    // run65: cell11 is a camera priority (20), never the player. cell16 is the
+    // main-monitor number (0 from Create); cell17 is the player ref bound by
+    // StartMainMonitor from the same global cell9 validated above.
+    std::uint32_t number=0,ref_tag=0,g9_tag=0;
+    if(!integer_cell(r,context,desc,16,number)||number!=0)return refuse_monitor_number;
+    if(!global9_tag(r,g9_tag)||!raw_cell(r,context,desc,17,ref_tag,ref)||!ref_tag_ok(ref_tag,g9_tag))return refuse_ref_tag;
+    if(ref!=player)return refuse_ref_cell;
     unsigned char source[5]{};std::uint32_t requested=0;
     if(!bytes(s.ebx,0,source,5))return refuse_source;
     std::memcpy(&requested,source+1,4);

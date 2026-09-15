@@ -23,9 +23,9 @@ struct Memory {
  void init(){
   data.fill(0);refused=0;put(0x1000,0x2000u);put(0x2008,0x20000u);put(0x201c,3u);put(0x2020,0x3000u);
   const std::uint32_t ids[3]={0,0x96,0x25e},cells[3]={0x3100,0x3200,0};
-  for(unsigned i=0;i<3;++i){put(0x3000+i*0x38,ids[i]);put(0x3008+i*0x38,0x3000u+i*0x38);put(0x300c+i*0x38,cells[i]);put(0x301c+i*0x38,12u);}
+  for(unsigned i=0;i<3;++i){put(0x3000+i*0x38,ids[i]);put(0x3008+i*0x38,0x3000u+i*0x38);put(0x300c+i*0x38,cells[i]);put(0x301c+i*0x38,i==2?41u:12u);}
   cell(0x3100+45,0xfffefa78u);cell(0x3100+40,0xffff6eafu);cell(0x3200+15,1);cell(0x3200+30,0);
-  put(0x6000,0xffff6eaeu);put(0x6008,0x3070u);put(0x600c,0x6100u);cell(0x6100,258);cell(0x6105,0);cell(0x6100+55,0xfffefa78u);
+  put(0x6000,0xffff6eaeu);put(0x6008,0x3070u);put(0x600c,0x6100u);cell(0x6100,258);cell(0x6105,0);cell(0x6100+55,20);cell(0x6100+80,0);cell(0x6100+85,0xfffefa78u);
   put(0x5008,0x1234u);put(0x5010,128u);put(0x5014,0x5400u);put(0x503c,0x6000u);put(0x7008,0x5000u);
   put(0x7118,0x2000u);put(0x7120,0x6000u); // seam frame: [esp+18]=vm, [esp+20]=context
   const unsigned char store[4]={0x94,0,0,0x24};std::memcpy(data.data()+0x20000+0xf0c4b,store,4);
@@ -53,7 +53,12 @@ int main(){
  m.init();m.put(0x6000,0xffff6eadu);check(m.proof()==refuse_monitor_identity,"different current monitor refuses");
  m.init();m.cell(0x6100,1);check(m.proof()==refuse_mode_cell,"persistent mode 1 refuses");
  m.init();m.cell(0x6105,0x77);check(m.proof()==refuse_handle_cell,"live native handle refuses");
- m.init();m.cell(0x6100+55,0xfffefa79u);check(m.proof()==refuse_ref_cell,"monitor ref not player refuses");
+ m.init();m.cell(0x6100+85,0xfffefa79u);check(m.proof()==refuse_ref_cell,"cell17 ref not player refuses");
+ m.init();m.cell(0x6100+85,0xfffefa78u,2);check(m.proof()==refuse_ref_tag,"cell17 string tag refuses under its own code");
+ m.init();m.cell(0x6100+85,0xfffefa78u,9);check(m.proof()==refuse_ref_tag,"cell17 tag differing from global cell9 refuses");
+ m.init();m.cell(0x6100+80,2);check(m.proof()==refuse_monitor_number,"cell16 side monitor refuses");
+ m.init();m.put(0x301c+2*0x38,17u);check(m.proof()==refuse_ref_tag,"cell17 beyond the class variable count refuses");
+ m.init();m.cell(0x6100+55,0xfffefa78u);m.cell(0x6100+85,0xfffefa79u);check(m.proof()==refuse_ref_cell,"cell11 priority is never consulted");
  m.init();m.cell(0x3100+45,0xfffefa79u);check(m.proof()==refuse_globals,"changed global player refuses");
  m.init();m.cell(0x3200+15,0);check(m.proof()==refuse_warp,"warp 0 refuses");
  m.init();m.cell(0x3200+30,1);check(m.proof()==refuse_warp,"killed refuses");
