@@ -3,7 +3,10 @@
 **Ratified 2026-09-15 (orchestrator):** no code change. The next user run tries
 `--chase-pitch-down-deg 0.5 --chase-offset-y 0.50` with the default `centre`
 anchor as the first row, then the 5°/0.50/`forward` compromise if the top view
-is missed; `--chase-lag-clamp-deg 4` only with `forward`. Other-title claims are
+is missed; `--chase-lag-clamp-deg 4` only with `forward`.
+**2026-09-16:** run 26 accepted that row and the user made it the default:
+pitch-down 0.5° and `offset_y` 0.50 are now the compiled and launcher defaults
+(`src/proxy/chase_camera_math.h`, `tools/manage.py`), with `centre` unchanged. Other-title claims are
 recalled, not verified; the recommendation rests on measured mod geometry.
 
 Design note, 2026-09-15. Question: the installed chase camera (13° pitch-down,
@@ -129,7 +132,7 @@ Parameter table (768 rows, `half_vfov_tan` 0.75, formulas above):
 | 8 | 0.45 | 72 px | 26.6° | 72.5 % | forward |
 | 5 | 0.50 | 45 px | 25.6° | 75 % | forward (compromise) |
 | 3 | 0.55 | 27 px | 25.4° | 77.5 % | forward or centre (27 px error) |
-| 0.5 | 0.50 | 4.5 px | 21.1° | 75 % | **centre** (preferred) |
+| 0.5 | 0.50 | 4.5 px | 21.1° | 75 % | **centre** (default since 2026-09-16) |
 | 0.5 | 0.60 | 4.5 px | 24.7° | 80 % | centre, more top view |
 
 Finite-range convergence at 0.5°/0.50: the forward ray passes the ship's nose at
@@ -138,9 +141,9 @@ the anchor (−192 px), −93 px at one boom length ahead, about −10 px at 500
 bolt streams visibly converge on the crosshair from the ship's nose, which is
 the cue group-A games rely on.
 
-Do not change the compiled defaults until one run accepts a row; then the
-defaults change is a constants edit in `chase_camera_math.h` and `manage.py`
-help text, covered by the existing geometry oracles.
+Run 26 accepted the preferred row, and the constants edit in
+`chase_camera_math.h` and `manage.py` (with the help text) landed on 2026-09-16,
+covered by the existing geometry oracles.
 
 ## Verification
 

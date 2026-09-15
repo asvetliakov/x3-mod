@@ -6,7 +6,7 @@ Design note, 2026-09-15. Decision for the orchestrator; implemented as documente
 "Ambient occlusion inputs", the converted-material notes, the exposure, shadow and AO notes, and
 one new reduction of the run-51 captures (below; no Wine, no launch).
 
-**Ratified 2026-09-15 (orchestrator):** implement as designed; amendment after review: the glass pairs take the fill on their albedo term too (their Fresnel/gloss law is unchanged), so all 108 converted programs carry it, initially default 0 (off, byte-identical shaders), `--material-fill K`; first user run at 0.06 with 0.04 and 0.10 as brackets at the run-51 spot. The point-light-range patch (option C) is rejected. After that run, the user selected **0.03 as the production default when linear materials are enabled**. Explicit 0 remains the exact off/parity setting; the transformer's generic config default remains zero.
+**Ratified 2026-09-15 (orchestrator):** implement as designed; amendment after review: the glass pairs take the fill on their albedo term too (their Fresnel/gloss law is unchanged), so all 108 converted programs carry it, initially default 0 (off, byte-identical shaders), `--material-fill K`; first user run at 0.06 with 0.04 and 0.10 as brackets at the run-51 spot. The point-light-range patch (option C) is rejected. After that run, the user selected 0.03 as the production default when linear materials are enabled, raised to **0.05** on 2026-09-16. Explicit 0 remains the exact off/parity setting; the transformer's generic config default remains zero.
 
 ## Decision
 
@@ -18,7 +18,7 @@ L = A · (P + M + D + k_fill · decode(LightDir_Color0) · g_direct) + R + E
 ```
 
 `k_fill` is one scalar, launcher `--material-fill K` (`X3M_MATERIAL_FILL`, requires
-`--linear-materials`, finite 0..0.5, **production default 0.03**). Explicit 0 keeps
+`--linear-materials`, finite 0..0.5, **production default 0.05**, raised from 0.03 by user decision 2026-09-16). Explicit 0 keeps
 the transformed programs byte-identical to the fill-less artifacts and preserves the frozen hash.
 The completed acceptance run used **0.06**, bracketed by 0.04 and 0.10. It is one `mad` per converted pixel on all 168
 DEFAULT/BUMPMAP/BUMPMAP_LOW pairs (hull families, asteroid, XT); glass keeps its own law; native
@@ -165,7 +165,7 @@ compares the law within one FP16 ulp.
 
 Implemented 2026-09-15 in the transformer (`src/renderer/linear_material.cpp`,
 `linear_xt_material_inc.h`), launcher option `--material-fill K` /
-`X3M_MATERIAL_FILL`, finite 0..0.5. Production initialization selects 0.03 when
+`X3M_MATERIAL_FILL`, finite 0..0.5. Production initialization selects 0.05 when
 linear materials are enabled; explicit 0 disables the term. The generic
 `LinearMaterialConfig` default remains zero so explicit K=0 artifacts retain
 their byte-identical contract.

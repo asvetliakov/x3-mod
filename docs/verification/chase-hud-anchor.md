@@ -35,3 +35,20 @@ may revisit forward anchoring after camera tuning. `centre` remains the default;
 not a measured glyph calibration across all camera settings. No code/default
 change is required. The concurrent gate-view reset concerns restoration, a
 separate feature not implemented in this diagnostic build.
+
+## 2026-09-16 camera framing defaults (pitch 0.5°, offset_y 0.50)
+
+After run 26 accepted the raised camera, the user made the near-parallel
+elevated row of [chase-hud-reticle-survey.md](../architecture/chase-hud-reticle-survey.md)
+the default in both the DLL fallback (`src/proxy/chase_camera_math.h`) and the
+launcher (`tools/manage.py`, which now always forwards the two framing
+constants in chase mode). The `chase_lead` geometry oracle pins the forward
+vanishing point at 0.5°: −tan(0.5°)·512 rows = −4.47, expectation `(0,−4)`
+within the existing 1 px tolerance, i.e. inside the centre crosshair glyph, so
+the default `centre` anchor is now a true boresight cue. `forward` is unchanged
+and still opt-in. Host-only evidence; no game or Wine run.
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_chase_camera verification.analysis.test_chase_lead   # 53 tests OK; chase_lead_host scenarios=69 checks=268 failures=0
+./x3run --camera chase --motion-output --hdr --hdr-tonemap --dry-run            # X3M_CHASE_PITCH_DOWN_DEG=0.5, X3M_CHASE_OFFSET_Y=0.5
+```

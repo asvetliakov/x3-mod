@@ -707,7 +707,9 @@ static core::Projection anchor_projection(double pitch_deg) {
 static void hud_anchor_projection_geometry() {
     ++scenarios; World world;
     const std::int32_t forward[3] = {0, 0, 65536};
-    for (const auto expected : {std::pair<double, std::int32_t>{13, -118}, {5, -44}, {21, -196}}) {
+    // 0.5 is the production default (2026-09-16): -tan(0.5 deg) * 512 rows =
+    // -4.47, the 4-5 px above centre the reticle survey predicts.
+    for (const auto expected : {std::pair<double, std::int32_t>{0.5, -4}, {13, -118}, {5, -44}, {21, -196}}) {
         const auto p = anchor_projection(expected.first);
         core::Pixel direction{}, distant{};
         const std::int32_t point[3] = {0, 0, 10000000};

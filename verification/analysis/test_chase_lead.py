@@ -52,7 +52,7 @@ class ChaseLeadHostTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'chase_lead_host scenarios=69 checks=264 failures=0\n')
+            self.assertEqual(run.stdout, 'chase_lead_host scenarios=69 checks=268 failures=0\n')
             self.assertEqual(run.stderr, '')
 
 

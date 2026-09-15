@@ -224,7 +224,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
                 self.assertIn(f'"X3M_MATERIAL_FILL": "{float(value)}"', output)
         status, output, error = self.launch(*valid)
         self.assertEqual(status, 0, error)
-        self.assertIn('"X3M_MATERIAL_FILL": "0.03"', output)
+        self.assertIn('"X3M_MATERIAL_FILL": "0.05"', output)
         status, output, error = self.launch(
             environment={'X3M_MATERIAL_FILL': '0.5', 'X3M_LINEAR_MATERIALS': '1'})
         self.assertEqual(status, 0, error)
@@ -232,7 +232,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
         self.assertIn('"X3M_LINEAR_MATERIALS": "0"', output)
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         defaults = capture.split('linear_material_config=x3m::renderer::LinearMaterialConfig{};', 1)[1].split('const auto material_gain', 1)[0]
-        self.assertIn('linear_material_config.fill=0.03f;', defaults)
+        self.assertIn('linear_material_config.fill=0.05f;', defaults)
         self.assertIn('material_gain(L"X3M_MATERIAL_FILL",linear_material_config.fill,0.5f);', capture)
 
     def test_emission_cli_dependencies_and_gain_bounds(self):

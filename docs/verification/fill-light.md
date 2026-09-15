@@ -103,3 +103,21 @@ The current launcher applies these defaults to the existing DLL; its direct
 initialization defaults update with the next candidate. Explicit fill 0 and
 EV ceiling 1.5 remain supported. This preference choice does not establish
 new 0.03 image/GPU acceptance or change the retained 0.06 law oracle.
+
+### 2026-09-16 raised defaults (fill 0.05, Auto ceiling +1.3 EV)
+
+The user raised the two appearance defaults: `X3M_MATERIAL_FILL` 0.03 → 0.05
+and `X3M_HDR_EV_MAX` 1.0 → 1.3, in the launcher and in the DLL's direct
+fallback (`src/proxy/capture.cpp`). Explicit `--material-fill 0` still disables
+the term and keeps byte-identical programs; fill still requires
+`--linear-materials`. The motion-output runner's mirror of the DLL ceiling
+(`HDR_EV_MAX_DEFAULT`) moved with it so the reference adaptation still clamps
+like the DLL. Host/default evidence only; this does not establish new image or
+GPU acceptance at 0.05/+1.3.
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_linear_material_fill verification.analysis.test_linear_material_live verification.analysis.test_comparison_hotkeys verification.analysis.test_motion_output_runner verification.analysis.test_screen_emission_live   # OK
+cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build && cmake --build build -j4   # 0 warnings
+python3 verification/probe/check_no_x87.py build/d3d9.dll                        # result PASS, reachable_functions=225, violations {}
+./x3run --camera chase --motion-output --object-trace --ownership --object-lifetime --taa --hdr --hdr-tonemap --linear-materials --dry-run   # X3M_HDR_EV_MAX=1.3, X3M_MATERIAL_FILL=0.05
+```

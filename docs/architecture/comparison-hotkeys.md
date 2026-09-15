@@ -3,7 +3,7 @@
 Controls were installed in candidate `75dbbed`; runs 26/27 exercise their notices
 and toggles in game. Native Windows remains unverified. The 2026-09-14
 [exposure decision](space-exposure-policy.md), updated 2026-09-15, selects the
-current production source default: Auto capped at +1.0 EV. Run 27 exercised the
+current production source default: Auto capped at +1.3 EV. Run 27 exercised the
 earlier explicit +1.5-EV cap. The control protocol and meter equations are unchanged;
 installation state is recorded in [status](../status.md).
 
@@ -12,7 +12,7 @@ installation state is recorded in [status](../status.md).
 Launch with `--motion-output --hdr --hdr-tonemap --hdr-bloom` to prepare the
 features. Keep the game's Glow setting enabled: the recovered compositor
 boundary depends on it. Existing launch commands keep HDR, AgX and enhanced
-bloom opt-in. AgX production initialization uses Auto capped at +1.0 EV;
+bloom opt-in. AgX production initialization uses Auto capped at +1.3 EV;
 `--hdr-exposure fixed` selects fixed EV 0, multiplier 1. `--hdr-exposure fixed|auto`
 requires `--hdr-tonemap` when explicitly supplied. The launcher always writes
 `X3M_HDR_EXPOSURE`, overriding a stale inherited policy, and clears stale

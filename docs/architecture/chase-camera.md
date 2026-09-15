@@ -194,14 +194,21 @@ defaults are 0.28 s rotation / 0.38 s position; lag limits remain 8 degrees /
 sustained turns retain the same clamp bounds. See the
 [elevated framing iteration](elevated-chase-camera.md) for geometry, legacy
 compatibility and verification; these new defaults await game acceptance.
+Framing defaults changed on 2026-09-16 after run 26 accepted the raised camera:
+pitch-down 13° → 0.5° and `offset_y` 0.45 → 0.50, the near-parallel elevated
+camera of [chase-hud-reticle-survey.md](chase-hud-reticle-survey.md) (ship at
+75 % of screen height, forward vanishing point ~4.5 px above centre, so the
+default `centre` HUD anchor is a true boresight cue). A non-zero 0.5 keeps the
+elevated construction; only an explicit 0 selects legacy framing. The launcher
+forwards both constants explicitly in chase mode.
 
 | Variable | Flag | Default | Range | Meaning |
 | --- | --- | --- | --- | --- |
 | `X3M_CAMERA` | `--camera chase` | vanilla | `chase` | install the hook |
 | `X3M_CHASE_ROT_TAU` | `--chase-rot-tau` | 0.28 s | (0, 10] | orientation spring time constant (for the critically damped form 63 % of a step is done in ~2.15τ and 95 % in ~4.75τ) |
 | `X3M_CHASE_POS_TAU` | `--chase-pos-tau` | 0.38 s | (0, 10] | boom spring time constant |
-| `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.45 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); 0.45 projects the settled anchor at 72.5% of screen height in elevated mode; silhouette and lag can shift the visible center |
-| `X3M_CHASE_PITCH_DOWN_DEG` | `--chase-pitch-down-deg` | 13° | [0, 30] | downward look in the ship-up/native-yaw frame; zero restores legacy framing geometry |
+| `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.50 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); 0.50 projects the settled anchor at 75% of screen height in elevated mode; silhouette and lag can shift the visible center |
+| `X3M_CHASE_PITCH_DOWN_DEG` | `--chase-pitch-down-deg` | 0.5° | [0, 30] | downward look in the ship-up/native-yaw frame; zero restores legacy framing geometry |
 | `X3M_CHASE_DISTANCE_SCALE` | `--chase-distance-scale` | 0.90 | (0, 10] | multiplies the vanilla boom (the scripts already size it per ship class) |
 | `X3M_CHASE_LAG_CLAMP_DEG` | `--chase-lag-clamp-deg` | 8° | [0, 90] | orientation lag clamp = the screen window |
 | `X3M_CHASE_POS_LAG_CLAMP` | `--chase-pos-lag-clamp` | 0.10 | [0, 1] | boom lag clamp as a fraction of the boom |

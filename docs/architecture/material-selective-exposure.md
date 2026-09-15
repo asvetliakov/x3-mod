@@ -25,8 +25,9 @@ D = e*Q = B + e*H                   exposed linear input to TAA / bloom / AgX
 ```
 
 The user-facing mode is separate from Auto/manual exposure. Keep ordinary exposure mode
-unchanged and retain **Auto ceiling +1.0 EV / fill .03**. Initial selective range is the
-selected existing Auto range (default minimum -3, maximum +1) and manual EV0. A mode switch
+unchanged and retain the production **Auto ceiling / fill** defaults (+1.3 EV / .05 since
+2026-09-16). Initial selective range is the selected existing Auto range (default minimum
+-3, maximum the production ceiling) and manual EV0. A mode switch
 at a closed frame boundary clears pending meter results, resets exposure to the defined
 startup EV0 and invalidates/reseeds the single history. It need not preserve instant ordinary
 same-frame rollback or the prior mode's Auto statistic/history.
