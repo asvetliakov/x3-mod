@@ -14,13 +14,30 @@ variable is exactly `1`, the executable hash matches and the window bytes verify
 | 2026-09-16 | Clean DLL build and the no-x87 walk including the handler | `cmake --build build --clean-first -j4`; `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings; PASS, 229 reachable functions, `_x3m_point_light_root_admits` walked, no violations; `build/d3d9.dll` sha256 `7085449d9f23a9cf49e65e1af4f6522af3a641ce2228a41b940bfebf1aa8402e` (worktree build, not a candidate) |
 | 2026-09-16 | Launcher dry run | `./x3run --camera chase --point-light-root-admission --dry-run` | env carries `X3M_POINT_LIGHT_ROOT_ADMISSION=1`, `X3M_CAMERA=chase`; no launch |
 
+| 2026-09-16 | Frame/node telemetry: `point_light_admission_frame` line per frame and `point_light_node` samples on capture frames (first 64 walked nodes); site becomes `jmp detour; nop` with the counted admit branch. Host tests add the two parsers (sums checked) and the 43-byte detour encoding; fixture adds a frame case (7 tests = 3 fast admits + 4 rejects; 4 rejects = 3 walks + 1 memo hit; walks = 2 root_admit + 1 node_is_root), the node lines' fields (clamp: root, depth 1, dist 1232, reach 1200, root_dist 3461, root_reach 20536, scales 200/19536; root node: no root), the 64-of-70 sample bound, no node lines on a plain frame, counters reset by present, nothing logged while not live | `python3 verification/probe/build_point_light_admission.py`; `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_point_light_admission.py`; `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_point_light_admission.py'`; `cmake --build build --clean-first -j4`; `python3 verification/probe/check_no_x87.py build/d3d9.dll`; `PYTHONPATH=verification/probe python3 verification/probe/verify_point_light_site.py` | 168 checks, 0 failures, bench native admit 21.7 ns / patched admit 21.9 ns / walk 87.7 ns / memo hit 23.2 ns; 10 host tests OK; 0 warnings, no-x87 PASS 230 reachable, handler walked; DLL sha256 `da75d984ebf33901d153978dc9c1dd5f1a2579c86f238bb2a74a88b00ecec926` (rebased on `563cb7d`) (worktree build); verifier PASS 11/11 |
+
+## Run 27 (2026-09-16, option on, no attribution)
+
+The user reports docking modules still partly dark ("not the whole structure,
+only some parts"); the installed build logged only the install line, so the
+per-frame and per-node telemetry above was added. The next run's F8 pair at the
+station gives, per walked module node, `verdict` and the root/dist/reach
+numbers to attribute each dark part to one of: root too far (`root_reject`,
+`root_dist > root_reach`), root scale small (`root_scale` well below the body
+scale), chain ended at a non-body root (`root` not the body node, or
+`node_is_root`/`chain_*`), or the part never reached the walk (a memo hit of an
+earlier rejection, or `i0.x = 0` with no sample line because more than 64 nodes
+walked first).
+
 ## Acceptance criteria for the user run (open)
 
 Not installed; waits for a run with `--point-light-root-admission` after the
 user confirms the docking-module cliff under the accepted look.
 
 1. One `point_light_root_admission requested=1 patched=1 reason=ok write=plain`
-   line in the session log.
+   line in the session log, `point_light_admission_frame` lines with the sums
+   holding (`parse_frame_line` `sums_ok`), and `point_light_node` lines on the
+   F8 frames.
 2. F8 pair at the run-51 spot (≈350 m / ≈210 m): `i0.x = 1` on all ten clamp
    nodes in both frames, the body admitted, the 16 km outpost rejected. This
    table is also the positive witness for the **root-class assumption**: that

@@ -258,19 +258,23 @@ Built 2026-09-16 as the default-off `--point-light-root-admission`
 the portable core `point_light_admission_core.h`; ledger
 [point-light-admission.md](../verification/point-light-admission.md).
 
-- **Site write.** The six bytes at `0x004c27af` keep their `JG rel32` opcode and
-  get the detour as target (`0f 8f <detour − 0x004c27b5>`), so a node that passes
-  the per-node test runs the native instruction stream unchanged: the same
-  not-taken branch, no added instruction, no memory access. Only a rejected
-  node (`EAX > 0`) enters the detour. The write is one plain six-byte copy
+- **Site write.** The six bytes at `0x004c27af` become `jmp detour; nop`
+  (`e9 <detour − 0x004c27b4> 90`); both outcomes enter the detour, which reads
+  the engine's `TEST` flags first: a node that passes the per-node test takes
+  one `JLE`, one in-place `inc dword [fast_admit]` and the jump back to
+  `0x004c27b5` (the per-frame telemetry needs that count; run 27 showed that a
+  build without it cannot attribute a dark module). The write is one plain six-byte copy
   (the span straddles an 8-byte word, so `write_code` cannot use `cmpxchg8b`),
   made inside the `engine_patch` install window after `executable_verified()`,
   the 28-byte window `0x004c27a1..0x004c27bc` and the reject target's first
   instruction (`8b 44 24 5c`) are byte-verified, with this DLL pinned; read-back
   compare, protection restored, rollback on any failure; `shutdown()` puts the
   original bytes back on a dynamic unload only.
-- **Detour** (25 bytes in the patch arena): `push esi; push [ebp+0xc];
-  call handler; add esp,8; test eax,eax; jnz 0x004c27b5; jmp 0x004c29f5`. It
+- **Detour** (43 bytes in the patch arena): `jle counted; push eax; push esi;
+  push [ebp+0xc]; call handler; add esp,12; test eax,eax; jnz 0x004c27b5;
+  jmp 0x004c29f5; counted: inc dword [fast_admit]; jmp 0x004c27b5` (`EAX` is the
+  engine's remainder `d − range − node scale`, passed so the sample can report
+  the node's distance). It
   relies on the site facts above: `EAX`/`EFLAGS` dead-out, `ECX`/`EDX` scratch,
   the cdecl handler preserving `EBX`/`ESI`/`EDI`/`EBP`, the ESP locals above the
   pushes, and the empty x87 stack (the handler unit is built without SSE/MMX
@@ -297,24 +301,46 @@ the portable core `point_light_admission_core.h`; ledger
   or a stale entry costs one walk. The fixture proves a same-frame repeat does
   not walk, that another node or light does, that a new frame re-walks and
   observes a moved root, and that rejections are memoised too.
-- **Cost.** Per-node admit: identical to native (the fixture measures 22.1 ns
-  native vs 21.9 ns patched per harness call, i.e. noise). Per-node reject,
-  first test of a (node, light) in a frame: the taken `JG`, two pushes, the
-  call, the memo probe, `Get/SetLastError`, `hops+1` parent reads plus four
-  field reads through the region cache (a spin lock and a scan of up to 32
-  cached regions each; one `VirtualQuery` per new region per frame), the 64-bit
-  compare, two relaxed counter increments, the memo store and the return jump:
-  87.8 ns vs 21.9 ns native at chain depth 1. Every further test of the same
-  (node, light) in the frame: the taken `JG`, two pushes, the call, the memo
-  probe hit, one relaxed increment and the return jump: 22.7 ns, i.e. within a
-  nanosecond of native (Wine/FEX, harness included, not game FPS). Per-part
+- **Telemetry** (only while the patch is live). `present()` logs one
+  `point_light_admission_frame device= frame= tests= fast_admit= reject= walks=
+  memo_hits= root_admit= root_reject= chain_unreadable= chain_too_deep=
+  chain_cycle= node_is_root= root_unreadable= light_unreadable= reach_negative=
+  samples=` line per frame from the frame's counters (`tests = fast_admit +
+  reject`, `reject = walks + memo_hits`, `walks =` the sum of the nine
+  outcomes) and resets them; on a capture frame (`begin_frame(true)`, the F8 /
+  `capture_start` mechanism of the motion route) the first 64 walked nodes are
+  sampled into fixed storage and logged as `point_light_node device= frame=
+  node= root= depth= dist= reach= root_dist= root_reach= verdict= node_scale=
+  root_scale=` (`dist` is the engine's `trunc(sqrt)` value reconstructed from
+  the remainder, `reach = range + node scale`, `root_dist` an integer square
+  root of the walk's 64-bit sum, `verdict` one of the outcome names). Memo hits
+  are not sampled. Parsers: `verify_point_light_site.py`
+  `parse_frame_line`/`parse_node_line`.
+- **Cost.** Per-node admit: the taken `JMP`, the taken `JLE`, one memory
+  increment and the taken jump back (the fixture measures 21.7 ns native vs
+  21.9 ns patched per harness call, within noise). Per-node reject,
+  first test of a (node, light) in a frame: the `JMP`, the not-taken `JLE`,
+  three pushes, the call, the memo probe, `Get/SetLastError`, `hops+1` parent
+  reads plus four field reads through the region cache (a spin lock and a scan
+  of up to 32 cached regions each; one `VirtualQuery` per new region per
+  frame), the 64-bit compare, two relaxed counter increments, the memo store
+  and the return jump (plus two more reads on a capture frame while the sample
+  has room): 87.7 ns vs 21.7 ns native at chain depth 1. Every further test of
+  the same (node, light) in the frame: the `JMP`, three pushes, the call, the
+  memo probe hit, one relaxed increment and the return jump: 23.2 ns
+  (Wine/FEX, harness included, not game FPS). Per-part
   model at run-22 counts, about 5 700 parts × 2 populated slots per frame,
   worst case all rejected: without the memo ≈ 11 400 walks × 66 ns ≈ 0.75 ms
   per frame plus `VirtualQuery` churn when the parts' nodes span more than the
   32 cached regions; with the memo the walks are bounded by the distinct
   (node, light) pairs per frame (hundreds, not thousands: ≈ 0.03 ms at 400
-  pairs) and the remaining ≈ 11 000 tests add ≈ 1 ns each (≈ 0.01 ms).
+  pairs) and the remaining ≈ 11 000 tests add ≈ 1.5 ns each (≈ 0.02 ms).
   Cross-view repeats (sector, background, cockpit scene) hit the memo as well.
+  The frame line is one `log()` per Present.
 - **Acceptance evidence** for the game itself (the `i0.x` table and the far→near
-  median gain of the critique's verification item 2) is still pending a user
-  run; the static and fixture evidence is in the ledger.
+  median gain of the critique's verification item 2) is still pending: run 27
+  had the option on and the user saw some docking-module parts still dark, but
+  that build logged nothing per frame or per node; the next capture's
+  `point_light_node` lines say per module whether its root was too far, its
+  root scale small, or its chain ended at a non-body root. Static and fixture
+  evidence is in the ledger.

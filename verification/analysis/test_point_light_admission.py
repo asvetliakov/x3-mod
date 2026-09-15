@@ -28,6 +28,7 @@ from verification.analysis.test_chase_aim_sites import synthetic_image  # noqa: 
 HARNESS = r'''
 #include "point_light_admission_core.h"
 #include <cstdio>
+#include <cstring>
 #include <map>
 #include <vector>
 using namespace x3m::point_light_admission::core;
@@ -91,14 +92,22 @@ int main() {
       m.node(0x7000, 0, 500, 0, 0, 0); m.bytes.erase(L + range_offset); check(root_admission(N, L, reader(m)) == Outcome::light_unreadable, "unreadable light"); }
     unsigned char site[site_length]; encode_site_patch(0x004c27af, 0x10000000, site);
     std::uint32_t rel = 0;
-    std::memcpy(&rel, site + 2, 4); check(site[0] == 0x0f && site[1] == 0x8f && 0x004c27b5 + rel == 0x10000000, "site patch encoding: JG rel32 = detour - (site + 6)");
-    check(site[0] == expected_site[0] && site[1] == expected_site[1], "site patch keeps the JG opcode");
-    unsigned char d[detour_length]; encode_detour(0x10000000, 0x20000000, admit_va, reject_va, d);
-    check(d[0] == 0x56 && d[1] == 0xff && d[2] == 0x75 && d[3] == 0x0c, "push esi; push [ebp+0xc]");
-    std::memcpy(&rel, d + 5, 4); check(d[4] == 0xe8 && 0x10000009 + rel == 0x20000000, "call handler");
-    check(d[9] == 0x83 && d[10] == 0xc4 && d[11] == 0x08 && d[12] == 0x85 && d[13] == 0xc0, "add esp,8; test eax,eax");
-    std::memcpy(&rel, d + 16, 4); check(d[14] == 0x0f && d[15] == 0x85 && 0x10000014 + rel == admit_va, "JNZ admit");
-    std::memcpy(&rel, d + 21, 4); check(d[20] == 0xe9 && 0x10000019 + rel == reject_va, "JMP reject");
+    std::memcpy(&rel, site + 1, 4); check(site[0] == 0xe9 && site[5] == 0x90 && 0x004c27b4 + rel == 0x10000000, "site patch encoding: JMP rel32 = detour - (site + 5); NOP");
+    unsigned char d[detour_length]; encode_detour(0x10000000, 0x20000000, admit_va, reject_va, 0x30000000, d);
+    std::memcpy(&rel, d + 2, 4); check(d[0] == 0x0f && d[1] == 0x8e && 0x10000006 + rel == 0x10000000 + detour_counted_offset, "JLE counted");
+    check(d[6] == 0x50 && d[7] == 0x56 && d[8] == 0xff && d[9] == 0x75 && d[10] == 0x0c, "push eax; push esi; push [ebp+0xc]");
+    std::memcpy(&rel, d + 12, 4); check(d[11] == 0xe8 && 0x10000010 + rel == 0x20000000, "call handler");
+    check(d[16] == 0x83 && d[17] == 0xc4 && d[18] == 0x0c && d[19] == 0x85 && d[20] == 0xc0, "add esp,12; test eax,eax");
+    std::memcpy(&rel, d + 23, 4); check(d[21] == 0x0f && d[22] == 0x85 && 0x1000001b + rel == admit_va, "JNZ admit");
+    std::memcpy(&rel, d + 28, 4); check(d[27] == 0xe9 && 0x10000020 + rel == reject_va, "JMP reject");
+    std::memcpy(&rel, d + 34, 4); check(d[32] == 0xff && d[33] == 0x05 && rel == 0x30000000, "inc dword [counter]");
+    std::memcpy(&rel, d + 39, 4); check(d[38] == 0xe9 && 0x1000002b + rel == admit_va, "JMP admit after the count");
+    check(isqrt64(0) == 0 && isqrt64(1) == 1 && isqrt64(3) == 1 && isqrt64(4) == 2 && isqrt64(3461ull * 3461ull) == 3461 && isqrt64(3461ull * 3461ull + 6921) == 3461 && isqrt64(3461ull * 3461ull + 6923) == 3462 && isqrt64(~0ull) == 0xffffffffu, "isqrt64");
+    { Memory m; Detail det; m.light(L, 1000, 0, 0, 0); m.node(R, 0, 19536, 3461, 0, 0); m.node(N, R, 200, 1232, 0, 0);
+      check(root_admission(N, L, reader(m), &det) == Outcome::admitted && det.root == R && det.depth == 1 && det.root_scale == 19536 && det.root_reach == 20536 && det.root_dist_sq == 3461ull * 3461ull, "detail of a walk");
+      m.node(N, 0, 200, 1232, 0, 0);
+      check(root_admission(N, L, reader(m), &det) == Outcome::node_is_root && det.root == 0 && det.depth == 0 && det.root_reach == 0, "detail of a root node is zero"); }
+    check(std::strcmp(outcome_name(Outcome::admitted), "root_admit") == 0 && std::strcmp(outcome_name(Outcome::root_rejected), "root_reject") == 0 && std::strcmp(outcome_name(Outcome::chain_too_deep), "chain_too_deep") == 0, "outcome names");
     check(site_va + site_length == admit_va && admit_va + site_rel32 == reject_va && window_va + site_offset == site_va, "address relations");
     check(std::memcmp(expected_window + site_offset, expected_site, site_length) == 0, "site bytes inside the window");
     std::printf("point_light_admission_core checks_failed=%u\n", failures);
@@ -161,16 +170,37 @@ class PointLightSite(unittest.TestCase):
         self.assertEqual(struct.unpack('<i', probe.SITE[2:])[0], probe.REJECT_VA - (probe.SITE_VA + 6))
 
     def test_encoders(self):
-        self.assertEqual(probe.encode_site_patch(probe.SITE_VA, probe.SITE_VA + 6), b'\x0f\x8f\x00\x00\x00\x00')
-        self.assertEqual(probe.encode_site_patch(probe.SITE_VA, probe.REJECT_VA), probe.SITE)  # the native target reproduces the native bytes
-        detour = probe.encode_detour(0x10000000, 0x20000000, probe.ADMIT_VA, probe.REJECT_VA)
-        self.assertEqual(len(detour), 25)
-        self.assertEqual(detour[:4], b'\x56\xff\x75\x0c')
-        self.assertEqual(struct.unpack('<I', detour[5:9])[0], (0x20000000 - 0x10000009) & 0xffffffff)
-        self.assertEqual(struct.unpack('<I', detour[16:20])[0], (probe.ADMIT_VA - 0x10000014) & 0xffffffff)
-        self.assertEqual(struct.unpack('<I', detour[21:25])[0], (probe.REJECT_VA - 0x10000019) & 0xffffffff)
+        self.assertEqual(probe.encode_site_patch(probe.SITE_VA, probe.SITE_VA + 5), b'\xe9\x00\x00\x00\x00\x90')
+        detour = probe.encode_detour(0x10000000, 0x20000000, probe.ADMIT_VA, probe.REJECT_VA, 0x30000000)
+        self.assertEqual(len(detour), 43)
+        self.assertEqual(detour[:2], b'\x0f\x8e')
+        self.assertEqual(struct.unpack('<I', detour[2:6])[0], 32 - 6)                      # JLE to the counted branch at +32
+        self.assertEqual(detour[6:11], b'\x50\x56\xff\x75\x0c')
+        self.assertEqual(struct.unpack('<I', detour[12:16])[0], (0x20000000 - 0x10000010) & 0xffffffff)
+        self.assertEqual(detour[16:21], b'\x83\xc4\x0c\x85\xc0')
+        self.assertEqual(struct.unpack('<I', detour[23:27])[0], (probe.ADMIT_VA - 0x1000001b) & 0xffffffff)
+        self.assertEqual(struct.unpack('<I', detour[28:32])[0], (probe.REJECT_VA - 0x10000020) & 0xffffffff)
+        self.assertEqual(detour[32:34], b'\xff\x05')
+        self.assertEqual(struct.unpack('<I', detour[34:38])[0], 0x30000000)
+        self.assertEqual(struct.unpack('<I', detour[39:43])[0], (probe.ADMIT_VA - 0x1000002b) & 0xffffffff)
         with self.assertRaises(ValueError):
             probe.encode_site_patch(1 << 32, 0)
+
+    def test_frame_and_node_line_parsers(self):
+        line = ('12:00:00.000 point_light_admission_frame device=1 frame=5100 tests=11400 fast_admit=4200 reject=7200 walks=310 memo_hits=6890 '
+                'root_admit=250 root_reject=40 chain_unreadable=0 chain_too_deep=0 chain_cycle=0 node_is_root=20 root_unreadable=0 light_unreadable=0 reach_negative=0 samples=64')
+        row = probe.parse_frame_line(line)
+        self.assertEqual((row['device'], row['frame'], row['tests'], row['fast_admit'], row['reject'], row['walks'], row['memo_hits'], row['samples']), (1, 5100, 11400, 4200, 7200, 310, 6890, 64))
+        self.assertTrue(row['sums_ok'])
+        self.assertFalse(probe.parse_frame_line(line.replace('walks=310', 'walks=311'))['sums_ok'])
+        self.assertFalse(probe.parse_frame_line(line.replace('tests=11400', 'tests=11401'))['sums_ok'])
+        self.assertIsNone(probe.parse_frame_line(line.replace(' samples=64', '')))
+        node = probe.parse_node_line('point_light_node device=1 frame=5100 node=0f1a2b30 root=0f000010 depth=2 dist=1232 reach=1200 root_dist=3461 root_reach=20536 verdict=root_admit node_scale=200 root_scale=19536')
+        self.assertEqual(node, {'device': 1, 'frame': 5100, 'node': 0x0f1a2b30, 'root': 0x0f000010, 'depth': 2, 'dist': 1232, 'reach': 1200, 'root_dist': 3461,
+                                'root_reach': 20536, 'verdict': 'root_admit', 'node_scale': 200, 'root_scale': 19536})
+        node = probe.parse_node_line('point_light_node device=1 frame=5100 node=0f1a2b30 root=00000000 depth=0 dist=5000 reach=1300 root_dist=0 root_reach=0 verdict=node_is_root node_scale=300 root_scale=0')
+        self.assertEqual((node['root'], node['depth'], node['verdict']), (0, 0, 'node_is_root'))
+        self.assertIsNone(probe.parse_node_line('point_light_admission_frame device=1 frame=5100'))
 
     def test_log_line_parser(self):
         row = probe.parse_log_line('00:00:01.234 point_light_root_admission requested=1 patched=1 reason=ok write=plain site=0x004c27af detour=0x0a1b2c3d handler=0x6a001234')
