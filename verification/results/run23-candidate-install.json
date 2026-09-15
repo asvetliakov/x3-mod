@@ -1,0 +1,140 @@
+{
+  "source_commit": "a53cf8fa879b8312417188a4191de7b2b43d6211",
+  "change": "Material fill and reviewed fade reporting fixups; default0, run23 explicit0.06. Chase HUD source checkpoint da2f17b is separate from this candidate.",
+  "candidate": {
+    "path": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run23-candidate-kymx6qbj/candidate/d3d9.dll",
+    "sha256": "f6cf181bf20e3fa15c2b29a5c0ffe867979d6d0d8e978e0e8477ddf8d1c52857",
+    "bytes": 14321844,
+    "dll_count_in_candidate_directory": 1
+  },
+  "build": {
+    "configure_command": "cmake -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build",
+    "configure_seconds": 2.6,
+    "build_command": "cmake --build build -j4",
+    "build_seconds": 12.09,
+    "warning_count": 0,
+    "result": "PASS"
+  },
+  "builder_role": "implement / gpt-5.6-sol",
+  "toolchain": {
+    "file": "cmake/mingw-i686.cmake",
+    "sha256": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
+    "cmake": "4.4.3",
+    "cxx": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "generator": "Unix Makefiles",
+    "build_type": "RelWithDebInfo"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py <candidate>",
+      "result": "PASS",
+      "reachable_functions": 225,
+      "violations": 0
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py <candidate>",
+      "result": "PASS",
+      "machine": "0x014c",
+      "exports": 17
+    }
+  },
+  "review": "Independent source-and-evidence PASS after documented fixes; docs/verification/fill-light.md",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "qualification": {
+    "ledger": "docs/verification/fill-light.md",
+    "k0": {
+      "passed": true,
+      "cases": 4177,
+      "samples": 37593,
+      "baseline_shared_rows": 42596,
+      "different": 0,
+      "missing": 0,
+      "additional_glass_cases": 254,
+      "result": "verification/results/bottle-X3/linear-material-fill-k0-gpu.json"
+    },
+    "fill006": {
+      "passed": true,
+      "cases": 23,
+      "fp16_samples": 207,
+      "rgba32f_twins": 207,
+      "pre_rt_luma_max_fp16_code_error": 0,
+      "encoded_rgb_max_fp16_code_error": 1,
+      "reconstructed_fp16_image_luma_max_codes": 3,
+      "result": "verification/results/bottle-X3/linear-material-fill-gpu.json",
+      "post_validation_record": "/tmp/x3-linear-material-fill-gpu-corrected/post-validation-2026-09-15.json",
+      "post_validation_record_sha256": "a74068b309fe1463c64b12fdfec6d8865baab61cca00e6b5b9259a6b60765d14"
+    },
+    "live": {
+      "passed": true,
+      "cases": 8,
+      "checks": 32516,
+      "result": "verification/results/bottle-X3/linear-material-fill-live.json"
+    },
+    "host": "fill/live21; fade8; reference/report115; affected review-fix reruns live17/20495checks and targeted validator1. Counts overlap; not summed.",
+    "reuse": "Unchanged motion/TAA/fade GPU and hook evidence reused; no unrelated broad suite.",
+    "limitations": [
+      "Representative fill slice excludes coupled XT terraformer.",
+      "RGBA32F twin proves law before target quantization; encodedFP16 and reconstructedFP16 luma errors are distinct.",
+      "Native Windows runtime and gameplay appearance/performance unverified."
+    ]
+  },
+  "load": {
+    "passed": true,
+    "case": "writable",
+    "checks": 8,
+    "exports_resolved": 17,
+    "log": "/tmp/x3-run23-load.log",
+    "summary": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run23-candidate-kymx6qbj/load-summary.json"
+  },
+  "timings": {
+    "k0": {
+      "lock_wait_seconds": 2.999999999999531e-06,
+      "child_elapsed_seconds": 28.184145750000003,
+      "exit_code": 0
+    },
+    "fill006": {
+      "lock_wait_seconds": 3.790999999999517e-06,
+      "child_elapsed_seconds": 5.969913249999999,
+      "exit_code": 0
+    },
+    "load": {
+      "lock_wait_seconds": 3.4169999999986156e-06,
+      "child_elapsed_seconds": 13.308536083000002,
+      "exit_code": 0
+    },
+    "install": {
+      "lock_wait_seconds": 5.833999999996231e-06,
+      "child_elapsed_seconds": 0.077509416,
+      "exit_code": 0
+    }
+  },
+  "rollback": {
+    "dll": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run23-candidate-kymx6qbj/rollback-d3d9.dll",
+    "sha256": "53a0d8a7f76e89836a66068ce166af095058fd3e10b6cbb5693a2b0027d35c5b",
+    "manifest": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run23-candidate-kymx6qbj/rollback-manifest.json"
+  },
+  "installed": true,
+  "installed_utc": "2026-09-15T01:08:33.986954+00:00",
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "installed_sha256_verified": "f6cf181bf20e3fa15c2b29a5c0ffe867979d6d0d8e978e0e8477ddf8d1c52857",
+  "exe_sha256_unchanged": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "bottle_configuration_sha256_unchanged": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+  "launch_dry_run": {
+    "passed": true,
+    "record": "/var/folders/l6/0sdq5b49401b_4m_26gsl1f00000gn/T/x3-run23-candidate-kymx6qbj/launch-dry-run.txt",
+    "material_fill": "0.06",
+    "exposure": "auto",
+    "ev_max": "1.5",
+    "game_launched": false
+  },
+  "game_launched": false,
+  "native_windows_verified": false
+}

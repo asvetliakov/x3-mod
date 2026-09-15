@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (resumed orchestration; fill qualification in progress). This is the short current handoff; the current
+Updated 2026-09-15 (fill candidate installed; runs 23/24 ready). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,16 +13,15 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`53a0d8a7f76e89836a66068ce166af095058fd3e10b6cbb5693a2b0027d35c5b` (14,299,619 bytes), a clean
-build of `509a273` (installed 2026-09-15 morning): the fade-band motion arm with hysteresis (fading
-reviewed pairs routed through TAA instead of masked current-only; the run-21 trembling fix) and
-`--lod-scale` (default-off, same-length EXE memory patch at `0x0047d44b`, cap 4), on top of the
-run-20 build (step D, loading markers, z_only prepass jitter). The
-[install record](../verification/results/run22-candidate-install.json) binds its source, audits
-(no-x87 225 functions, 17 exports, load check, both site verifiers), scoped qualification
-(motion-output 123 case runs / 107 names PASS, fade live 34 PASS at `509a273`, host tests 54) and
-the rollback DLL `39b090d0…` (`77a649b`) kept with its manifest in the candidate directory. EXE
-and `cxbottle.conf` unchanged.
+`f6cf181bf20e3fa15c2b29a5c0ffe867979d6d0d8e978e0e8477ddf8d1c52857`
+(14,321,844 bytes), built once on Sol from reviewed clean source `a53cf8f`.
+It adds `--material-fill` (default 0) and fill-refusal diagnostics to the previous
+feature set. The [install record](../verification/results/run23-candidate-install.json)
+binds the clean build (12.09 s, zero warnings), 225-function no-x87 audit,
+17 exports, X3 load check, scoped GPU/host qualification and verified installed
+bytes. The previous `53a0d8a7…` DLL and manifest are retained together for rollback.
+EXE and bottle configuration hashes are unchanged. The affected run23 launch
+passed one `--dry-run`; no game was launched.
 
 The installed renderer includes verified TAA, an FP16 scene target, AgX SDR writeback, Auto capped at +1.5 EV by default,
 and a fixed EV 0 comparison through Ctrl+Shift+F9. Ctrl+Shift+F10 switches bloom contribution. Bloom, linear materials, and linear
@@ -35,16 +34,16 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Next user action
 
-No new game run yet. Material fill (`294c155`) now has passing K=0 GPU qualification
-(4,177 cases; every recorded baseline sample/invariant row bit-identical), the K=0.06
-oracle (23 cases / 207 samples with a float32-output twin; scene-linear luma
-max 0 FP16 codes), and live qualification (8 cases / 32,516 checks). Stored FP16
-RGB is within 1 code; reconstructed FP16-image luma is separately measured at
-3 codes. Final source/evidence review passed; the clean Sol candidate build is next;
-[fill ledger](verification/fill-light.md) records scope and limitations. The installed
-DLL, EXE and bottle configuration still match the handoff. Run 23 is drafted for the
-run-51 station spot (`--material-fill 0.06`, brackets 0.04/0.10), pending installation.
-The fill default remains 0 pending the user's appearance verdict.
+**Run 23 is ready** at the run-51 station spot (`--material-fill 0.06`, brackets
+0.04/0.10); command and capture instructions are in the [run queue](verification/user-runs.md#23-material-fill-at-the-run-51-station--ready).
+The fill default stays 0 until the user's appearance verdict. K=0 qualified
+4,177 cases with every recorded baseline row bit-identical; live qualification
+passed 8 cases / 32,516 checks. The 23-case fill oracle has pre-target scene-linear
+luma error 0 FP16 codes, encoded FP16 RGB error ≤1 code, and reconstructed
+FP16-image luma error ≤3 codes ([ledger](verification/fill-light.md)).
+
+Run 24's gate jump and jumpdrive telemetry can share the same session **after**
+the station captures; it is the prerequisite for view-restoration implementation.
 
 The chase HUD anchor (`centre` default) is now implemented and independently
 reviewed in source, separately from the fill candidate ([ledger](verification/chase-hud-anchor.md));

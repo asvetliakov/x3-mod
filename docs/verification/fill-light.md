@@ -61,3 +61,12 @@ Gameplay appearance, gameplay performance, and native Windows runtime remain
 unverified. The candidate awaits a clean Sol build and has not been installed.
 The change adds no per-draw work; this evidence includes no benchmark or FPS
 claim.
+
+
+### Candidate handoff
+
+The clean reviewed candidate has passed its host audits and X3 load check and
+was installed by the main session. [Status](../status.md) is the authoritative
+installed-build description; [the compact install record](../../verification/results/run23-candidate-install.json)
+binds source, toolchain, hash, scoped results and rollback. Run23 is ready; no
+game was launched and the fill default remains 0 pending the user's verdict.
