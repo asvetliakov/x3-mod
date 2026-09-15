@@ -1621,10 +1621,19 @@ void MotionOutput::note_sun_untracked_writer(const MotionRoute& route, renderer:
     }
     if(sun_writer_count_>=sun_writer_capacity){++sun_writer_overflow_;return;}
     sun_writers_[sun_writer_count_++]=signature;
-    log("sun_shadow_lane_writer device=%llu frame=%llu index=%u vs=%016llx ps=%016llx reason=%s gate=%u registered=%u z=%u zwrite=%u z_known=%u declaration=%016llx stride=%lu",
+    // The gate-4 states the chain read for this draw at the first sighting (-1
+    // when the chain did not read them; not part of the signature key): alpha
+    // test, RT0 mask, sRGB write, plus cutout-pair identity and whether the
+    // exact cutout arm was configured on the frame, so a `state` refusal names
+    // its failing term (run 28 session B: the two cutout pairs refused on every
+    // frame under a nonzero mip bias, arm=0).
+    const unsigned s=route.sun_draw_state;
+    log("sun_shadow_lane_writer device=%llu frame=%llu index=%u vs=%016llx ps=%016llx reason=%s gate=%u registered=%u z=%u zwrite=%u z_known=%u declaration=%016llx stride=%lu test=%d mask=%d srgb=%d cutout_pair=%u arm=%u",
         id_,frame_,sun_writer_count_,signature.vs,signature.ps,renderer::sun_untracked_reason_name(unsigned(reason)),unsigned(route.gate),unsigned(signature.registered),
         unsigned(signature.z_state&1u),unsigned((signature.z_state>>1)&1u),unsigned((signature.z_state>>2)&1u),
-        signature.declaration,static_cast<unsigned long>(signature.stride));
+        signature.declaration,static_cast<unsigned long>(signature.stride),
+        (s&(1u<<7))?int((s>>4)&1u):-1,(s&(1u<<6))?int(s&15u):-1,(s&(1u<<8))?int((s>>5)&1u):-1,
+        unsigned(shadow_.cutout_pair),unsigned(cutout_arm_active_));
 }
 
 // ---- ambient occlusion at the scene end (ambient-occlusion.md, step 2) ------
@@ -4141,11 +4150,16 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // that write the lane, as long as the variant's oC0.a is the original's
     // (material_motion / linear_sun_share alpha identity). The tested-opaque
     // arm therefore admits z on, z write on, blend off, sRGB off, any nonzero
-    // RT0 mask, alpha test on or off, for a registered pair that is not a
-    // cutout pair by identity (cutout::pair, independent of the linear-material
-    // flag: the two cutout pairs keep their exact arm, or the refusal they had
-    // with linear materials off; their source-over pass and coverage semantics
-    // live in linear_cutout.h). The arm exists only for the sun lane: it is
+    // RT0 mask, alpha test on or off, for a registered pair; the two cutout
+    // pairs (shadow_.cutout_pair, cutout::pair by identity) enter it only on
+    // a frame whose exact cutout arm is not configured (cutout_arm_active_:
+    // off under a nonzero configured mip bias, an Unsupported/Retry verdict
+    // or HDR off). With the exact arm configured they keep that arm, or the
+    // gate-4 state refusal outside its exact state; their coverage semantics
+    // (mark_cutout_candidate, cutout::missed, linear_cutout.h) key on the
+    // same latch, so a pair the tested-opaque arm admits is never a cutout
+    // candidate and route.cutout stays exact-arm-only. The arm exists only
+    // for the sun lane: it is
     // active only with the lane latched on this frame (sun_lane_active_) and
     // the lane's linear-material prerequisite, so with --sun-shadow-lane off
     // every alpha-tested or partial-mask pair routes exactly as before. It
@@ -4163,7 +4177,14 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // read_failed / cutout_ok exist for the sun-lane refusal buckets only: the
     // chain below is unchanged in order and in the getters it calls.
     bool read_failed = false, cutout_ok = true;
-    const auto read = [&](D3DRENDERSTATETYPE state, DWORD* value) noexcept { const bool ok = SUCCEEDED(render_state(state, value)); read_failed |= !ok; return ok; };
+    // read_ok (three compares per read, four reads per draw) records which of
+    // the test/mask/sRGB values were actually read, for the writer line only.
+    std::uint32_t read_ok = 0;
+    const auto read = [&](D3DRENDERSTATETYPE state, DWORD* value) noexcept {
+        const bool ok = SUCCEEDED(render_state(state, value)); read_failed |= !ok;
+        if (ok) read_ok |= state == D3DRS_ALPHATESTENABLE ? 1u : state == D3DRS_COLORWRITEENABLE ? 2u : state == D3DRS_SRGBWRITEENABLE ? 4u : 0u;
+        return ok;
+    };
     const auto read_frequency = [&]() noexcept { const bool ok = SUCCEEDED(native<GetStreamFreqFn>(GetStreamSourceFreq)(device_, 0, &frequency)); read_failed |= !ok; return ok; };
     const bool draw_state_ok = !call.user_memory && SUCCEEDED(z_hr) && SUCCEEDED(write_hr) && z == 1 && write == 1 &&
         read(D3DRS_ALPHABLENDENABLE, &blend) && !blend &&
@@ -4171,7 +4192,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         read(D3DRS_SRGBWRITEENABLE, &srgb) && !srgb &&
         read(D3DRS_COLORWRITEENABLE, &color) &&
         ((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && (cutout_ok = cutout_draw_state()))
-         || (sun_lane_active_ && linear_material_requested_ && !cutout::pair(shadow_.vs_hash, shadow_.ps_hash) && test <= 1 && color != 0)) &&
+         || (sun_lane_active_ && linear_material_requested_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0)) &&
         read_frequency() &&
         !(frequency & D3DSTREAMSOURCE_INDEXEDDATA) && (frequency & 0x3fffffffu) <= 1 &&
         shadow_.rows_known[window] && loop_bounded &&
@@ -4189,13 +4210,14 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         // getter is repeated.
         if (route.sun_color_writer) {
             using renderer::SunUntrackedReason;
+            route.sun_draw_state = std::uint16_t((color & 15u) | (test ? 16u : 0u) | (srgb ? 32u : 0u) | ((read_ok & 7u) << 6));
             route.sun_refusal = std::uint8_t(
                 call.user_memory ? SunUntrackedReason::Geometry
                 : (read_failed || FAILED(z_hr) || FAILED(write_hr)) ? SunUntrackedReason::ReadFailed
                 : !(z == 1 && write == 1) ? SunUntrackedReason::NoZWrite
                 : blend ? SunUntrackedReason::Blended
                 : (srgb || !((!test && color == 15) || (test == 1 && color == 7 && shadow_.cutout_pair && cutout_ok)
-                             || (sun_lane_active_ && linear_material_requested_ && !cutout::pair(shadow_.vs_hash, shadow_.ps_hash) && test <= 1 && color != 0))) ? SunUntrackedReason::State
+                             || (sun_lane_active_ && linear_material_requested_ && !(shadow_.cutout_pair && cutout_arm_active_) && test <= 1 && color != 0))) ? SunUntrackedReason::State
                 : ((frequency & D3DSTREAMSOURCE_INDEXEDDATA) || (frequency & 0x3fffffffu) > 1) ? SunUntrackedReason::Geometry
                 : (!shadow_.rows_known[window] || !loop_bounded) ? SunUntrackedReason::Rows
                 : SunUntrackedReason::Geometry); // stream, declaration, primitives or indices
@@ -4203,7 +4225,12 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     route.alpha_tested = !route.fade_arm && test != 0;
-    route.cutout = route.alpha_tested && shadow_.cutout_pair; // the exact cutout arm only (cutout_routed, fixture faults)
+    // Under a configured bias an alpha-tested cutout pair can only be here through
+    // the tested-opaque arm (cutout_draw_state refuses a nonzero bias): it keeps
+    // its native LOD bias so the alpha source, and with it the alpha-tested
+    // coverage, is the native draw's.
+    route.native_mip_bias = route.alpha_tested && shadow_.cutout_pair;
+    route.cutout = route.alpha_tested && shadow_.cutout_pair && cutout_arm_active_; // the exact cutout arm only (cutout_routed, fixture faults); never the tested-opaque arm
     // Key geometry fields come from the shadowed bindings and draw arguments.
     auto& key = route.key;
     key.vertex_buffer = shadow_.stream0; key.stream_offset = shadow_.stream0_offset; key.stride = shadow_.stream0_stride;
@@ -4311,7 +4338,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     ++counters_.routed; if (matched) ++counters_.matched; if (route.depth) ++counters_.depth_routed;
     // The mip LOD bias of the routed material stages, while the jitter is on
     // (a failed sampler call is counted and logged; the draw still routes).
-    if (mip_bias_bits_ && jitter_active_) apply_mip_bias();
+    // A cutout pair on the tested-opaque arm instead restores any stage still
+    // holding the route's bias (one SetSamplerState per biased stage, none when
+    // no stage is biased; the next ordinary routed draw re-applies it).
+    if (mip_bias_bits_ && jitter_active_) { if (route.native_mip_bias) restore_mip_bias(); else apply_mip_bias(); }
 }
 
 // Step 1 of the region design: the rectangle for an admitted fade draw, from

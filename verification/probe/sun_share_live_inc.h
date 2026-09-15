@@ -21,12 +21,19 @@ void run_sun_lane(const char* bootstrap_vertex) {
     // pair by identity (53a0a641107ed76c/63f96eba9eea7880) drawn with mask 7
     // and alpha test off, a state only the tested-opaque arm would admit, must
     // stay refused (state) with the lane on and veto as an untracked writer.
-    const bool lane_off=!std::strcmp(mode,"xt_state_lane_off"),cutout_pair=!std::strcmp(mode,"cutout_pair");
+    // cutout_pair_bias: run 28 session B (run81): the same cutout pair drawn
+    // in its exact cutout state (alpha test on, ALPHAREF 1, GREATEREQUAL,
+    // mask 7, z write on) under a nonzero configured mip bias
+    // (X3M_TAA_MIP_BIAS=-0.5), which leaves the exact cutout arm unconfigured
+    // for the frame; the lane must track it through the tested-opaque arm
+    // (routed, no gate-4 refusal, frame available) instead of vetoing.
+    const bool lane_off=!std::strcmp(mode,"xt_state_lane_off"),cutout_pair=!std::strcmp(mode,"cutout_pair"),cutout_bias=!std::strcmp(mode,"cutout_pair_bias");
     const bool xt_state=!std::strcmp(mode,"xt_state")||lane_off,effects=!std::strcmp(mode,"effects");
+    if(cutout_bias)require(mip_bias!=0,"cutout_pair_bias needs the configured nonzero mip bias");
     const std::string bootstrap_path(bootstrap_vertex);const auto bootstrap_slash=bootstrap_path.find_last_of("/\\");
     const auto folder=bootstrap_slash==std::string::npos?std::string{}:bootstrap_path.substr(0,bootstrap_slash+1);
     Com<IDirect3DPixelShader9> cutout_ps;
-    if(cutout_pair){
+    if(cutout_pair||cutout_bias){
         const auto p=load((folder+"ps_63f96eba9eea7880.bin").c_str());
         require(fnv(p.data(),p.size()*4)==0x63f96eba9eea7880ull,"cutout pair original PS");
         api(d->CreatePixelShader(reinterpret_cast<const DWORD*>(p.data()),&cutout_ps.p),"cutout pair PS");
@@ -79,7 +86,17 @@ void run_sun_lane(const char* bootstrap_vertex) {
             api(d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"xt alpha test on");api(d->SetRenderState(D3DRS_ALPHAREF,1),"xt alpha reference 1");
             api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"xt alpha GREATEREQUAL");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"xt RT0 mask 7");
         }
-        draw(a,0,0,0,true,!lane_off,frames_since_reset!=0&&!lane_off);
+        // cutout_pair_bias, frame 2: a full mip chain on an otherwise unused
+        // stage makes the route's bias observable (the material textures are
+        // single-level): the routed receiver leaves -0.5 on stage 6 and the
+        // admitted cutout pair must draw with the native value back.
+        DWORD stage6_filter=0;
+        if(cutout_bias&&step==2){
+            api(d->GetSamplerState(6,D3DSAMP_MIPFILTER,&stage6_filter),"stage 6 native mip filter");
+            api(d->SetTexture(6,ramp.p),"ramp on stage 6");api(d->SetSamplerState(6,D3DSAMP_MIPFILTER,D3DTEXF_LINEAR),"stage 6 mip linear");
+        }
+        draw(a,0,0,0,true,!lane_off,frames_since_reset!=0&&!lane_off,Alter::None,!(cutout_bias&&step==2));
+        if(cutout_bias&&step==2)require(sampler_bias(6)==float_bits(mip_bias),"routed receiver applied the route's bias to the mip-chain stage");
         if(xt_state){
             api(d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"xt alpha test off");api(d->SetRenderState(D3DRS_ALPHAREF,0),"xt alpha reference default");
             api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_ALWAYS),"xt alpha func default");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"xt RT0 mask restore");
@@ -143,6 +160,28 @@ void run_sun_lane(const char* bootstrap_vertex) {
             require(emission_status(d.p,99)==refusals_before+1,"cutout pair never takes the tested-opaque arm");
             require(lane_read()==lane,"refused cutout pair leaves receiver depth/share bytes");
             std::printf("SUN_CUTOUT_PAIR frame=%llu ps=63f96eba9eea7880 test=0 mask=7 gate4=1\n",frame);
+        }
+        if(cutout_bias&&step==2){
+            // The exact cutout state under a nonzero mip bias: the exact arm is
+            // unconfigured for the frame, so the tested-opaque arm must track
+            // the pair (routed, mode 0: scope unverified) and nothing vetoes.
+            const unsigned routed_before_c=emission_status(d.p,89),gate4_before_c=emission_status(d.p,99);
+            std::swap(ps.p,cutout_ps.p);
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"cutout bias alpha test on");api(d->SetRenderState(D3DRS_ALPHAREF,1),"cutout bias alpha reference 1");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"cutout bias alpha GREATEREQUAL");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"cutout bias RT0 mask 7");
+            draw(a,0,0,0,false,true,false,Alter::None,false);
+            const DWORD bias_after=sampler_bias(6);
+            api(d->SetRenderState(D3DRS_ALPHATESTENABLE,FALSE),"cutout bias alpha test off");api(d->SetRenderState(D3DRS_ALPHAREF,0),"cutout bias alpha reference default");
+            api(d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_ALWAYS),"cutout bias alpha func default");api(d->SetRenderState(D3DRS_COLORWRITEENABLE,15),"cutout bias RT0 mask restore");
+            std::swap(ps.p,cutout_ps.p);api(d->SetPixelShader(ps.p),"retire cutout bias binding");
+            const unsigned routed_c=emission_status(d.p,89)-routed_before_c,gate4_c=emission_status(d.p,99)-gate4_before_c;
+            api(d->SetTexture(6,nullptr),"ramp off stage 6");api(d->SetSamplerState(6,D3DSAMP_MIPFILTER,stage6_filter),"stage 6 native mip filter restored");
+            std::printf("SUN_CUTOUT_BIAS frame=%llu ps=63f96eba9eea7880 test=1 ref=1 mask=7 bias=%g routed=%u gate4=%u untracked=%u stage_bias=%08lx\n",frame,double(mip_bias),routed_c,gate4_c,emission_status(d.p,94),static_cast<unsigned long>(bias_after));
+            require(routed_c==1&&gate4_c==0,"cutout pair under a nonzero mip bias takes the tested-opaque arm");
+            require(bias_after==0,"admitted cutout pair drew with the native LOD bias on the mip-chain stage");
+            require(emission_status(d.p,94)==0,"tracked cutout pair is not an untracked writer");
+            lane=lane_read();
+            for(unsigned y=2;y+2<H;++y)for(unsigned x=2;x+2<W;++x)require_quiet(lane[(y*W+x)*2]==.5f,"tracked cutout pair rewrote the interior depth exactly");
         }
         if(effects&&step==2){
             // Additive blend, z test on, z write off: color-only over the

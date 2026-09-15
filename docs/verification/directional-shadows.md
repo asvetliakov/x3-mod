@@ -270,10 +270,14 @@ the ordinary route's RT1/RT2 masks (15) and formats, and the variant's `oC0.a`
 identity; it does not check or need MRT post-pixel-shader blending or
 independent write masks because blending stays refused, and it does not check
 ALPHAFUNC/ALPHAREF because any test gates depth and lane identically. The two
-cutout pairs never enter it: with linear materials on they take the exact
-cutout arm (`cutout_draw_state()`), with it off they stay refused as before.
-`route.cutout` (and `cutout_routed`) stays cutout-pair-only; a new
-`route.alpha_tested` feeds the replay-candidate W3 exclusion.
+cutout pairs take the exact cutout arm (`cutout_draw_state()`) while that arm
+is configured for the frame and stay refused outside its exact state; on a
+frame whose exact arm is unconfigured (nonzero configured mip bias, Unsupported
+or Retry verdict, HDR off) they enter the tested-opaque arm like any other
+registered pair, drawn with their native LOD bias (run 28 session B below;
+this superseded the original "never enter it" rule). `route.cutout` (and
+`cutout_routed`) stays exact-arm-only; a new `route.alpha_tested` feeds the
+replay-candidate W3 exclusion.
 `SunShareFrame::draw` takes `depth_writer`: a colour writer after the first
 receiver that wrote no depth is counted `non_writers`, reported as
 `non_depth_writers=` on `sun_shadow_lane_frame`, and never vetoes. The writer
@@ -281,8 +285,10 @@ verdict is fail closed: any non-FALSE ZENABLE (`D3DZB_TRUE` or `D3DZB_USEW`)
 with ZWRITEENABLE on is a depth writer, and an unreadable z state stays a
 writer. Previously every such draw (run66 `no_zwrite` 13,993 and the
 z-write-off part of `fade_arm` 5,644 and `unregistered` 16,287) vetoed. The
-`state` bucket now means sRGB write on or a cutout pair outside its exact
-state; `no_zwrite` is structurally empty. `analyze_sun_share_lane.py` requires
+`state` bucket now means sRGB write on, or a cutout pair outside its exact
+state on a frame whose exact cutout arm is configured (since run 28 session B;
+before that fix it also held every cutout-pair draw of a frame whose exact arm
+was unconfigured); `no_zwrite` is structurally empty. `analyze_sun_share_lane.py` requires
 `non_depth_writers` for the new grammar and reports `grammar_old=true` (value
 `null`) for a line without it instead of reading zero.
 
@@ -310,3 +316,89 @@ Implementation of [shadow-replay-gates.md](../architecture/shadow-replay-gates.m
 - `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py --dll build/d3d9.dll --seam verification/probe/build/motion-output-seam/d3d9.dll --fixture verification/probe/build/motion_output_fixture.exe seam-ownership-shadow-replay-on seam-ownership-shadow-replay-off seam-ownership-taa-shadow-replay-on seam-ownership-taa-shadow-replay-off seam-ownership-shadow-replay-casters-2 seam-ownership-shadow-replay-casters-8 seam-ownership-shadow-replay-casters-20`: exit 0, checks 144/98/167/121/144/144/144. Map versus the CPU projection: 0 coverage disagreements, max depth error 1.2e-05 (256², 8-unit cascade) and ≤ 3.9e-06 (1024²) against the 1e-4 gate, 3,136–81,656 covered texels per case; lease frame `replayed=0 skipped_lease=1`, no-sun frame `skipped_state=draws` (`no_sun`), two-stream frame `skipped_state=1` (`multistream`), the map unchanged on all three; Reset: `allocations=2` at frame 4, replay resumes. Transaction `us` medians 40.8 (2 draws, 256²), 40.7 / 50.4 / 65.8 (2 / 8 / 20 draws, 1024²): ≈ 35 µs fixed plus ≈ 1.4 µs per draw. Presented frames byte-identical to the option-off twins with TAA off and on (32,768 pixels each, colour hashes equal). Record `verification/results/bottle-X3/motion-output-partial.json` (production `131c261e8703…`, seam `a77045059ba6…`, fixture `8087cb8db637…`).
 - Sun direction: PS register c4 (`LightDir_Dir0` of the hull programs), decided in the note; the light record is not read.
 - Not exercised: the depth-only fallback formats, the 64-record cap, a production-extent map in the game, native Windows.
+
+## Run 28 session B (run81): the cutout pairs veto every frame under a nonzero mip bias (2026-09-16)
+
+Worktree `agent-a5d92fbad60a80421`, bottle X3, WineArch arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`. Log `/tmp/x3-bottleX3-run81/session-20260916-023735-216.log`
+(2123 frames, DLL 2b0969e5 from a26eb9b, `--linear-materials --linear-distance-fade --sun-shadow-lane`,
+`proxy_options … X3M_TAA_MIP_BIAS=-0.5`).
+
+**Finding.** `sun_shadow_lane_writer` holds exactly two signatures for the whole
+session (`signatures=2` on every refusal line, 4246 = 2 × 2123): the two cutout
+pairs `4944d81dfe531b37/5e0a10fe752b6140` and `53a0a641107ed76c/63f96eba9eea7880`,
+both `reason=state gate=4 registered=1 z=1 zwrite=1 z_known=1`. `untracked` equals
+`state` on every frame because those are the only untracked writers (2–33 per
+frame); nothing is counted twice. `linear_material_frame` sums to
+`cutout_routed=0 cutout_missed=0` over the run, whereas run66 (same feature set,
+mip bias 0) routed 2509 cutout draws and refused no cutout pair. Cause: run 28
+was launched with `--taa-mip-bias -0.5`; `cutout_arm_configured()` requires a
+zero configured mip bias (alpha-tested-materials.md, "explicit initial refusal,
+pending its own native-coverage qualification"), so the exact cutout arm was
+unconfigured on every frame, and the 444478a tested-opaque arm excluded the
+cutout pairs by identity. Every cutout-pair draw (z write on, blend off, alpha
+test on) therefore failed gate 4 as `state` and vetoed the lane as an untracked
+depth writer. The captured per-draw states of those pairs are not in the run81
+log (inference from the run66 comparison and the fixture reproduction below);
+the writer line now carries them.
+
+**Change (lane only).** The tested-opaque arm admits a cutout pair when the
+exact cutout arm is not configured for the frame (`cutout_arm_active_` false:
+nonzero mip bias, Unsupported/Retry verdict, HDR off), in any state that passes
+the rest of gate 4 (z and z write on, blend and sRGB off, nonzero RT0 mask,
+alpha test on or off): fixed-function fog, stencil, cull mode, fill mode,
+ALPHAFUNC/ALPHAREF and a mask other than 7 are not conditions, because alpha
+test rejects a fragment before the depth write and before every target write,
+so the fragments that write depth are exactly the fragments that write the lane
+whatever the test function, reference or the other pipeline states; none of
+those states changes which fragments reach the depth and lane writes. With the
+arm configured the pairs keep the exact arm or their `state` refusal outside
+its exact state (the `cutout_pair` fixture case is unchanged). `route.cutout`
+(`cutout_routed`, fixture faults) is exact-arm-only, and
+`mark_cutout_candidate`/`cutout::missed` key on the same latch, so no
+composition exclusion changes. With the lane off nothing changes.
+
+Native coverage under bias: a routed draw normally applies the route's
+`D3DSAMP_MIPMAPLODBIAS` to its mip-chain stages, which would sample the cutout
+alpha at a different level than the native draw and move the alpha-tested
+coverage (the reason the exact arm refuses a nonzero bias). An alpha-tested
+cutout pair on the tested-opaque arm (`route.native_mip_bias`) therefore
+restores instead of applies: any stage still holding the route's bias from an
+earlier routed draw gets its native value back before the draw
+(`restore_mip_bias`, one `SetSamplerState` per biased stage, nothing when no
+stage is biased; the next ordinary routed draw re-applies the bias as before).
+Per-draw cost of the skip: one bool test on the route; the restore itself is the
+existing restore-point path.
+
+`sun_shadow_lane_writer` gains `test= mask= srgb=` (the values gate 4 actually
+read for that draw, -1 when the chain did not read them, packed in
+`route.sun_draw_state`), `cutout_pair=` and `arm=` at the first sighting of a
+signature (not part of the key). Cost: the gate term replaces
+`cutout::pair(vs, ps)` by the shadowed `shadow_.cutout_pair && cutout_arm_active_`
+(two bools); the read lambda records which of the three states it read (three
+integer compares per read, four reads per draw); the writer fields cost only on
+a new signature (at most 64 per device).
+
+**Evidence.**
+- New live case `cutout_pair_bias` (`X3M_TAA_MIP_BIAS=-0.5`, cutout pair drawn on
+  frame 2 after the receiver with alpha test on, ALPHAREF 1, GREATEREQUAL, mask 7,
+  z write on; the full-mip-chain ramp bound on the otherwise unused stage 6 so the
+  route's bias is observable). Old seam (HEAD 8954cff, same fixture): `SUN_CUTOUT_BIAS
+  frame=2 … routed=0 gate4=1 untracked=1`, writer `reason=state gate=4 … z=1 zwrite=1`
+  on `63f96eba9eea7880`, fixture exit 1 (the run81 pattern). New seam: the routed
+  receiver leaves `bf000000` (-0.5) on stage 6, the admitted cutout draw reads
+  `stage_bias=00000000` afterwards (native), `routed=1 gate4=0 untracked=0`, frame 2
+  `available=1 receiver_draws=2 untracked_writers=0`, `cutout_routed=0`, interior
+  depth 0.5 on 3600 pixels, `checks=46876 restorations=17`.
+  The existing `cutout_pair` case (arm configured, test off, mask 7) still refuses:
+  writer line `test=0 mask=7 srgb=0 cutout_pair=1 arm=1`; the `untracked` case's
+  gate-3 writer reports `test=-1 mask=-1 srgb=-1 cutout_pair=0 arm=1`; the runner
+  asserts these fields on every writer line.
+- `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_share_live.py --fixture verification/probe/build/motion_output_fixture.exe --dll verification/probe/build/motion-output-seam/d3d9.dll`:
+  all 16 cases pass (96 byte-exact TAA frames, 60 history frames, 16 Resets);
+  `verification/results/bottle-X3/sun-share-live.json`.
+- `… run_linear_material.py --exe verification/probe/build/linear_material_fixture.exe --sun-share`: 216 cases, 55,296 valid pixels (27,648 positive, 27,648 zero), 256 clear controls, max subtraction error 0.000686797113 (unchanged); `verification/results/bottle-X3/sun-share-material-gpu.json`.
+- `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane verification.analysis.test_linear_sun_share`: 19 tests OK (host `PASS checks=35`, synthetic witness with the run81 twin refused); with the review fixes the seven modules run together: 45 tests OK.
+  `… test_linear_material_live test_motion_wrap_states test_capture_bloom_lifetime test_motion_hdr_scene test_linear_cutout_contract`: 26 tests OK (HDR-scene mock mirrors the three render-state enums and an inert `shadow_state_field`).
+- Clean CMake build (`--clean-first`, mingw-i686, RelWithDebInfo): zero warnings, `build/d3d9.dll` sha256 `c33f3d8e6623fa4c…`; `check_no_x87.py`: 230 reachable functions, no violations; strict seam compile clean.
+- Not exercised: the game's actual cutout-pair states in run81 (the new writer fields answer this on the next `--sun-shadow-lane` run), a cutout pair routed with an actually biased mip-chain stage (fixture textures are single-level), native Windows.

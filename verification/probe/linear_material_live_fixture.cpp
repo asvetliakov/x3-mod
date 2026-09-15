@@ -238,7 +238,7 @@ struct MotionRoute {
  struct Region {RECT rect{};unsigned reason=0;bool bound=false;};
  Region fade_region{};bool fade_region_evaluated=false;unsigned fade_region_permille=0;
  Region prefix_region{};bool prefix_evaluated=false;unsigned prefix_region_permille=0;
- bool sun_color_writer=false,sun_receiver=false;std::uint8_t sun_z_state=0,sun_refusal=0;
+ bool sun_color_writer=false,sun_receiver=false;std::uint8_t sun_z_state=0,sun_refusal=0;std::uint16_t sun_draw_state=0;bool native_mip_bias=false;
  bool original_fill=false; // the fill variant the bind path selected for this route
 };
 struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
