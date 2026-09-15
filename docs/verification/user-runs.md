@@ -40,7 +40,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 21 | AO appearance at a readable footprint (`--ao-radius 100`, no debug view), bullet witness every frame, vanilla port approach | 1 | Completed as user run 21, snapshot run49 (session A only): the fade witness is clean on the firing frames and the bolts are accepted, AO is invisible at radius 100 and is now default-off, a new station-section jitter at ~4.7 km is under diagnosis; session B (vanilla port approach) has not been reported |
 | 22 | LOD scale 2×, fade-band trembling fix, docking-port screenshot pair | 0 | Completed as user run 22, snapshot run51: trembling gone, LOD 2× applied, module darkening owned by point-light range |
 | 23 | Material fill 0.06 at the run-51 station | 0 | Completed as snapshot run54; threshold evidence supports 0.06 provisionally, default remains 0; 0.04 is an optional preference bracket |
-| 24 | Chase reset-writer telemetry: gate jump and jumpdrive | 1 | Still pending: run54 has zero reset-writer rows and no confirmed jumps; prerequisite to view-restoration implementation |
+| 24 | Chase reset-writer telemetry: gate jump and jumpdrive | 0 | Gate portion completed as run56; user confirms reset. Jumpdrive not run (no suitable save); lifetime/identity analysis in progress |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
@@ -56,10 +56,13 @@ repeat. Full instructions are preserved under
 
 ## 24. Chase reset-writer telemetry — after the fill captures
 
-Run54 contains zero reset-writer rows and no confirmed gate-jump or jumpdrive
-sequence, so this prerequisite remains pending.
+Gate portion completed as `/tmp/x3-bottleX3-run56`; the user confirms a camera
+reset. Jumpdrive was not run because no suitable save is available. The trace
+recreates the cockpit, so the proposed same-lifetime restore would cancel.
+Analysis of a safe cross-recreation identity is in progress. Instructions below
+are retained as provenance; no repeat is currently requested.
 
-Start a new session with the retained Run 23 flags:
+The recorded diagnostic command is:
 
 ```sh
 ./x3run --direct --camera chase --ownership --object-trace --object-lifetime \

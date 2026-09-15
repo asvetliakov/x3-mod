@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (run23 analysed as run54; 0.06 retained provisionally). This is the short current handoff; the current
+Updated 2026-09-15 (run24 gate trace received; restore lifetime assumption contradicted). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -45,14 +45,17 @@ passed 8 cases / 32,516 checks. The 23-case fill oracle has pre-target scene-lin
 luma error 0 FP16 codes, encoded FP16 RGB error ≤1 code, and reconstructed
 FP16-image luma error ≤3 codes ([ledger](verification/fill-light.md)).
 
-Run24's gate jump and jumpdrive telemetry remains pending: run54 contains no
-reset-writer rows or confirmed pair of jumps. This evidence is the prerequisite
-for view-restoration implementation.
+Run24's gate portion is received as `/tmp/x3-bottleX3-run56`: the user confirms
+a reset and did not use jumpdrive (no suitable save). The trace destroys the
+old cockpit, creates generation 2 with a different ship pointer, then requests
+mode 1 at script PC `0x000f0794` before the new sector is visible. The ratified
+same-lifetime restore predicate would cancel; targeted reconstruction must
+establish safe cross-recreation identity before implementation. Jumpdrive
+remains gameplay-unverified.
 
 The chase HUD anchor (`centre` default) is now implemented and independently
 reviewed in source, separately from the fill candidate ([ledger](verification/chase-hud-anchor.md));
-81 host tests pass, with gameplay glyph calibration pending. A gate-jump and
-jumpdrive telemetry run must precede view-restoration implementation. Shadows follow the ratified
+81 host tests pass, with gameplay glyph calibration pending. The gate trace above now drives the view-restoration prerequisite. Shadows follow the ratified
 route-B order: sun-lit-share lane, replay feasibility without shading, then cascades;
 screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
 now covers all 108 pixel originals; the receiver/capability boundary is ratified
