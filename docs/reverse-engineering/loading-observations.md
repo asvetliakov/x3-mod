@@ -212,3 +212,22 @@ The marker-to-recorder integration is now witnessed in gameplay. The existing
 wrappers still cover only a minority of this load, so unhooked resource paths,
 engine work and waits need attribution. The different run48 load cannot be
 retrospectively partitioned using run60; its 21.702 s attribution remains open.
+
+
+## Run 65 — interval attribution of a 21.5 s save load (2026-09-16)
+
+`loading_phase save_load_complete elapsed_ms=40607 stall_ms=21512`; 44,765
+retained interval records, loading-thread union 8.817 s. The remaining 12.7 s
+is not one native phase: 32,685 gaps, of which only 17 exceed 100 ms (2.77 s
+total, all around `FileRead` before `FindFirst`/`GzRead`/`XmlRead`, largest
+282 ms `FindClose`→`FindFirst`); 32,668 gaps under 100 ms sum to 9.93 s.
+Inclusive wrapper totals: FileOpen 3,600 ms / 752 calls (mean 4.79 ms),
+Texture 1,317 / 1,126, MeshOptimize 1,012 / 4,359, MeshCreate 975 / 4,359,
+FindFirst 896 / 3,682, MeshAdjacency 710 / 4,359, MeshClean 706 / 4,366,
+FileRead 630 / 6,297, Effect 324 / 16, XmlRead 268 / 792 (sum 10.9 s exceeds
+the union: nested spans; exclusive partition not established). Versus run60
+(7.28 s, 11,867 records): FileOpen 752 vs 50 (15×), meshes 4,359 vs 1,008
+(4.3×), FindFirst 3,682 vs 1,301, Texture 1,126 vs 467. Inflate/MeshPointReps
+probes were not enabled. Reading: the stall is per-item overhead on a larger
+save (many small gaps between wrapped calls, and 4.8 ms per FileOpen), not a
+single blocking phase.

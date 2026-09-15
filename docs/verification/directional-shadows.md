@@ -205,3 +205,19 @@ WineArch arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`):
 - Review fixes applied (diagnostic path only): scene-end views must match the draw-time `allocation_id` and `BufferLockView::generation` (else `stale`, no comparison, no witness); the shadowed binding ids must equal the route key's before pool class and bookends are attributed (else `shadow_mismatch`, no record); a frame serial emits the frame line at most once per frame.
 - `./x3run --motion-output --ownership --object-trace --object-lifetime --shadow-replay-candidates --dry-run`: env `X3M_SHADOW_REPLAY_CANDIDATES=1`, `X3M_OWNERSHIP=1`, `X3M_MOTION_OUTPUT=1`, `X3M_LINEAR_MATERIALS=0`, `X3M_TAA=0`, `X3M_SUN_SHADOW_LANE=0`; without `--ownership` the launcher refuses.
 - Not exercised live: a Lock between draw and scene end (witness line, `serial_changed`), DYNAMIC/DEFAULT pools, the cutout exclusion and the 64-record overflow; the parser and identities cover their fields synthetically. The next gameplay run with the option answers the four §3 predicates through `tools/analysis/shadow_replay_candidates.py <session log>`.
+
+## Run26 session B / snapshot run66 — refusal buckets on original+linear flight
+
+`/tmp/x3-bottleX3-run66/` (55 files; `--linear-materials --linear-distance-fade
+--sun-shadow-lane`, one minute near a station). 5,138 lane frames emitted,
+0 available. Bucket totals: `state` 53,712 (rank 1, from three signatures: the
+XT class-C "Standard"/"Standard+damage" station/ship material shaders
+`f1b0e820c7b488c3`, `64bac8bb307eb896`, `e6794b6ec37ff71a`, registered pairs
+failing the gate-4 cutout exact-state check), `unregistered` 16,287 and
+`no_zwrite` 13,993 (particles/effects/GUI/stardust families, non-scene),
+`fade_arm` 5,644, all other buckets 0. Eleven distinct writer signatures,
+`overflow=0`. Verdict: the dominant blocker is a state-match gap on real scene
+geometry (fixable in the registry/state gate); the effects population is a
+structural exclusion that must not veto if it does not write depth. Next: make
+the three XT signatures pass the state gate and confirm that non-depth-writing
+draws never count as untracked writers.
