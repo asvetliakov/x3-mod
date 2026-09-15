@@ -1872,7 +1872,9 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         // Texture levels are needed only for mip bias. Material admission also
         // needs successful sampler-state writes when mip bias is disabled.
         if(hooked.motion_output.mip_bias_active()||hooked.motion_output.composition_requested())hooked.set(65,set_texture);
-        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested())hooked.set(69,set_sampler_state);
+        // The packed screen bracket reads the stage-0 sRGB decode shadow at its
+        // readiness gate, so it needs the sampler hook without linear materials.
+        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.linear_materials_requested()||hooked.motion_output.screen_emission_requested())hooked.set(69,set_sampler_state);
         // Lazy binding: the application's target and write-mask getters restore first.
         if(hooked.motion_output.lazy_rt_mode()){hooked.set(38,get_rt);hooked.set(32,get_rt_data);hooked.set(58,get_render_state);}
         // HDR redirect: the application's GetRenderTarget(0) and its reads of
@@ -2110,10 +2112,18 @@ void initialize_log(HMODULE module) {
              const unsigned long n=digits?wcstoul(setting,nullptr,10):1001ul;if(digits&&n<=1000ul)fade_route_threshold=unsigned(n);}
         log("fade_route_mode requested=%ls threshold=%u enabled=%u",setting,fade_route_threshold,fade_route_threshold<=1000u&&linear_material_requested&&taa_requested&&hdr_requested);}}
     // X3M_SCREEN_EMISSION=1: the packed screen bracket (policy 8) for the
-    // nine SM1 screen pairs; the same material/TAA prerequisites as the fade
-    // route (the pass composes into the AgX FP16 scene). Default off.
+    // nine SM1 screen pairs; the same HDR/TAA prerequisites as the additive
+    // emission route (the pass composes into the AgX FP16 scene, whose
+    // encoding is the native one with or without linear hulls:
+    // docs/architecture/linear-material-decoupling.md). Default off.
     {const bool asked=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION",setting,32)==1 && setting[0]==L'1';
-     screen_emission_requested=asked && linear_material_requested && taa_requested;
+     const bool screen_hdr=material_decode_valid && material_tonemap_valid && motion_output_requested && hdr_requested
+        && hdr_config.tonemap==x3m::renderer::HdrTonemap::Agx && hdr_config.decode==x3::temporal::AgxDecode::gamma22;
+     // The bound comes from the ownership Unlock scan (loader.cpp): without
+     // X3M_OWNERSHIP=1 there is no locked prefix, so the option is refused
+     // here like its other prerequisites instead of admitting nothing silently.
+     const bool screen_ownership=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1 && setting[0]==L'1';
+     screen_emission_requested=asked && screen_hdr && taa_requested && screen_ownership;
      // X3M_SCREEN_EMISSION_GAIN: the step E gain g (default 1, native by
      // construction); unparsable or outside [0.5, 8] keeps 1 and logs.
      screen_emission_gain=1.f;bool gain_valid=true;
@@ -2122,7 +2132,7 @@ void initialize_log(HMODULE module) {
      if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
          wchar_t* end=nullptr;const float value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=.5f&&value<=8.f)screen_emission_gain=value;else gain_valid=false;}
-     if(asked)log("screen_emission_mode requested=1 enabled=%u materials=%u taa=%u policy=8 gain=%g gain_valid=%u",screen_emission_requested,linear_material_requested,taa_requested,double(screen_emission_gain),unsigned(gain_valid));}
+     if(asked)log("screen_emission_mode requested=1 enabled=%u hdr=%u taa=%u ownership=%u materials=%u policy=8 gain=%g gain_valid=%u",screen_emission_requested,screen_hdr,taa_requested,screen_ownership,linear_material_requested,double(screen_emission_gain),unsigned(gain_valid));}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.
