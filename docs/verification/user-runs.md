@@ -39,10 +39,60 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 20 | Asteroid prepass jitter, port and ship far/near pairs, step D bullets, AO radius 20, loading markers | 0 | Completed as user run 20, snapshot run48: asteroid triangle dropout fixed and accepted, step-D brackets no longer fullscreen, loading markers fired; AO ran in debug view only, port darkening still open |
 | 21 | AO appearance at a readable footprint (`--ao-radius 100`, no debug view), bullet witness every frame, vanilla port approach | 1 | Completed as user run 21, snapshot run49 (session A only): the fade witness is clean on the firing frames and the bolts are accepted, AO is invisible at radius 100 and is now default-off, a new station-section jitter at ~4.7 km is under diagnosis; session B (vanilla port approach) has not been reported |
 | 22 | LOD scale 2×, fade-band trembling fix, docking-port screenshot pair | 0 | Completed as user run 22, snapshot run51: trembling gone, LOD 2× applied, module darkening owned by point-light range |
-| 23 | LOD scale 3× on the run-49 route, frame cost | 0 | Withdrawn 2026-09-15: the user compared `--lod-scale 3` and `1` on the installed build and saw no visual difference; the option stays default-off (no patch without the option) |
+| 23 | Material fill 0.06 at the run-51 station | 1, optional brackets | Candidate pending; replaces the withdrawn LOD comparison (no visible LOD difference; default-off retained) |
+| 24 | Chase reset-writer telemetry: gate jump and jumpdrive | Can share run23 | Queued after fill captures; prerequisite to view-restoration implementation |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
-No run is open. The next candidate (fill light, if ratified) gets its own entry.
+## 23. Material fill at the run-51 station — candidate pending
+
+This reuses the withdrawn LOD comparison number for the requested fill run.
+**Wait for the candidate installation checkpoint before running this command.**
+Fill stays default-off; this run selects 0.06 explicitly. Keep AO off and use the
+same save, station, approach and sun direction as snapshot run51.
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-bloom --linear-materials --material-fill 0.06 \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+1. At the run-51 docking ring, take a screenshot and press F8 at about **350 m**
+   (far, sun-averted clamps), then again at about **210 m**. Report both distances.
+2. Say whether the far arm tips now read as surfaces, the cylinder's night side
+   stays dark, and any adjacent material looks conspicuously different.
+3. Auto exposure keeps its +1.5 EV ceiling. Run51 actually used **fixed EV 0**;
+   for an appearance comparison at the same spot, Ctrl+Shift+F9 selects fixed
+   EV 0, then capture once more. Tell us which screenshot uses fixed exposure.
+4. If 0.06 is clearly too weak or too strong, close X3 and repeat the same
+   far/near pair with only `--material-fill` changed to **0.04** or **0.10**.
+   Report the snapshot path and the value for each session.
+
+Analysis follows [fill acceptance](../architecture/fill-light.md#5-acceptance-run):
+startup fill and routed-pair evidence; far-module dark fraction ≤0.10 and p10
+≥0.045; cylinder mean ≤0.165; chroma difference ≤0.03; matched far-dark points'
+near/far gain ≤2.0. Scene-linear readbacks precede exposure. Auto exposure must
+be evaluated separately from the fixed-EV run51 baseline; no auto-EV difference
+against that baseline is an adaptation measurement. The result informs the fill
+default decision; it does not change the default automatically.
+
+## 24. Chase reset-writer telemetry — after the fill captures
+
+Can share run23's session **after** both station captures: start in rear chase
+view, make one gate jump, reselect rear chase if it resets, then make one
+jumpdrive jump. Do not press a view key during either transition. After each
+arrival wait a few seconds, report whether it reset, then verify the normal view
+keys still work. Report the snapshot path and the order of the two jumps.
+The run23 command already enables the required transition telemetry; no view
+restoration option is enabled.
+
+Analysis: identify the mode-1 writer's `next_pc`, the update ordering against
+cockpit `+0x1fc`, lifetime changes, and deltas in `+0x130`, `+0x160`, `+0xa8`
+and `+0x1c0`. [The ratified restore policy](../architecture/chase-view-restore-and-hud-anchor.md)
+is implemented only after these observations settle its prerequisite.

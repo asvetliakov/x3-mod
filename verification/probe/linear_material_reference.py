@@ -98,6 +98,13 @@ def _gain(value, name):
     return value
 
 
+def _fill(value):
+    value = _real(value, "fill")
+    if not math.isfinite(value) or not 0.0 <= value <= 0.5:
+        raise ValueError("fill must be finite and in [0, 0.5]")
+    return value
+
+
 def _dot(a, b):
     return sum(x * y for x, y in zip(a, b))
 
@@ -372,6 +379,7 @@ def bump_geometry(normal_sample, tangent, binormal, geometric_normal, view, *,
 def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
           lightmap, cubemap, directions: Sequence[DirectionalLight], *,
           affine=IDENTITY_AFFINE, face=1.0, glow=0.0, gains=Gains(),
+          fill=0.0,
           half_source=False, half_target=False, normal_sample=None,
           tangent=None, binormal=None, coefficients=None) -> PixelResult:
     """Evaluate one PS sample using explicit sampled inputs and VS varyings.
@@ -390,6 +398,7 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
         raise ValueError("unknown pixel profile")
     if not isinstance(varying, VertexResult) or not isinstance(gains, Gains):
         raise TypeError("expected VertexResult and Gains")
+    fill = _fill(fill)
     if not isinstance(half_source, bool) or not isinstance(half_target, bool):
         raise TypeError("quantization switches must be boolean")
     contract = PROFILES[profile]
@@ -451,6 +460,8 @@ def pixel(profile: str, varying: VertexResult, diffuse, specular_mask,
         lobe = diffuse_strength * cosine + specular_strength * mask * _sat(3.0 * cosine) * highlight
         for i in range(3):
             directional[i] += lobe * decode(light.color[i]) * gains.direct
+    for i in range(3):
+        directional[i] += fill * decode(directions[0].color[i]) * gains.direct
     vertex_rgb = _vector(varying.linear_rgb, 3, "linear vertex RGB")
     radiance = tuple(sanitize(albedo[i] * (vertex_rgb[i] + directional[i])
                               + decode(cubemap[i]) * mask * albedo[i] * reflection_strength
@@ -498,7 +509,7 @@ class AsteroidWeights:
 
 
 def asteroid_pixel(profile, varying, base, detail, specular_mask, directions, *,
-                   weights=AsteroidWeights(), gains=Gains(), half_source=False,
+                   weights=AsteroidWeights(), gains=Gains(), fill=0.0, half_source=False,
                    half_target=False, normal_sample=None, tangent=None, binormal=None) -> PixelResult:
     """Asteroid DEFAULT/BUMPMAP, from independently sampled base/detail RGBA.
 
@@ -516,6 +527,7 @@ def asteroid_pixel(profile, varying, base, detail, specular_mask, directions, *,
         raise ValueError("unknown asteroid pixel profile")
     if not isinstance(varying, VertexResult) or not isinstance(weights, AsteroidWeights) or not isinstance(gains, Gains):
         raise TypeError("expected VertexResult, AsteroidWeights and Gains")
+    fill = _fill(fill)
     if not isinstance(half_source, bool) or not isinstance(half_target, bool):
         raise TypeError("quantization switches must be boolean")
     contract = ASTEROID_PROFILES[profile]
@@ -546,6 +558,8 @@ def asteroid_pixel(profile, varying, base, detail, specular_mask, directions, *,
         lobe = cosine + mask * _sat(3.0 * cosine) * highlight
         for i in range(3):
             directional[i] += lobe * decode(light.color[i]) * gains.direct
+    for i in range(3):
+        directional[i] += fill * decode(directions[0].color[i]) * gains.direct
     vertex_rgb = _vector(varying.linear_rgb, 3, "linear vertex RGB")
     albedo = tuple(weights.base * decode(base[i]) + weights.detail * decode(detail[i]) for i in range(3))
     radiance = tuple(sanitize(albedo[i] * (vertex_rgb[i] + directional[i])) for i in range(3))
@@ -685,7 +699,7 @@ def palette_vertex(profile, world_position, world_normal, camera_position, mater
 
 def palette_pixel(profile, varying, diffuse, specular_mask, lightmap, cubemap,
                   directions: Sequence[DirectionalLight], *, affine=IDENTITY_AFFINE,
-                  face=1.0, glow=0.0, gains=Gains(), half_source=False, half_target=False,
+                  face=1.0, glow=0.0, gains=Gains(), fill=0.0, half_source=False, half_target=False,
                   normal_sample=None, tangent=None, binormal=None) -> PixelResult:
     """Full native palette terms with independent color conversion boundaries.
 
@@ -701,6 +715,7 @@ def palette_pixel(profile, varying, diffuse, specular_mask, lightmap, cubemap,
         raise ValueError('unknown palette pixel profile')
     if not isinstance(varying,PaletteVertexResult) or not isinstance(gains,Gains):
         raise TypeError('expected PaletteVertexResult and Gains')
+    fill=_fill(fill)
     if not isinstance(half_source,bool) or not isinstance(half_target,bool):
         raise TypeError('quantization switches must be boolean')
     if not callable(cubemap):
@@ -773,6 +788,7 @@ def palette_pixel(profile, varying, diffuse, specular_mask, lightmap, cubemap,
         highlight=_sat(_dot(view,reflected))**10
         lobe=diffuse_coefficient*cosine+specular_scale*mask*_sat(3*cosine)*highlight
         for i in range(3):directional[i]+=lobe*decode(light.color[i])*gains.direct
+    for i in range(3):directional[i]+=fill*decode(directions[0].color[i])*gains.direct
     j=quantize(_real(varying.reflection_weight,'reflection weight'))
     if not math.isfinite(j):raise ValueError('reflection weight must be finite')
     reflection_rgb=tuple(decode(c)*mask*d*j for c,d in zip(cube,albedo))
@@ -835,7 +851,7 @@ def glass_vertex(world_position, world_normal, camera_position, material_emissiv
 
 
 def glass_pixel(profile, varying, diffuse, specular_mask, cubemap, directions, *,
-                face=1., gains=Gains(), half_source=False, half_target=True, linear=True):
+                face=1., gains=Gains(), fill=0.0, half_source=False, half_target=True, linear=True):
     """Preserve diffuse-tinted q^6 gloss and a separately added S*F*cube term.
 
     Native COLOR0 RGB is explicitly saturated; only its converted linear RGB
@@ -843,6 +859,7 @@ def glass_pixel(profile, varying, diffuse, specular_mask, cubemap, directions, *
     The float64/binary16 source envelope does not emulate every PP instruction.
     """
     contract = GLASS_PROFILES[profile]
+    fill = _fill(fill)
     if len(directions) != contract.directions: raise ValueError('glass directional count')
     quantize = half if half_source else float
     source = lambda v: tuple(quantize(x) for x in v)
@@ -862,6 +879,8 @@ def glass_pixel(profile, varying, diffuse, specular_mask, cubemap, directions, *
         q = _sat(_dot(view,reflected))
         lobe = .5*cosine + 3.*mask*q**6*_sat(3.*cosine)
         for i in range(3): lighting[i] += transfer(light.color[i])*lobe*(gains.direct if linear else 1.)
+    if linear:
+        for i in range(3): lighting[i] += fill*decode(directions[0].color[i])*gains.direct
     rgb = tuple(transfer(diffuse[i])*lighting[i] + contract.cube_coefficient*mask*fresnel*transfer(cube[i]) for i in range(3))
     if linear: rgb = tuple(sanitize(v) for v in rgb)
     alpha = diffuse[3]*quantize(varying.alpha)

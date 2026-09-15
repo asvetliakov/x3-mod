@@ -11,6 +11,7 @@ from linear_material_reference import (
     ASTEROID_PROFILES, AsteroidWeights, asteroid_pixel,
     PALETTE_PROFILES, PALETTE_VERTEX_PROFILES, PALETTE_COLORS, PALETTE_LINEAR_COLORS,
     PALETTE_DECODE_EXPONENT, PALETTE_VIEW_POWER, PALETTE_VIEW_OFFSET, palette_vertex, palette_pixel,
+    glass_vertex, glass_pixel,
 )
 
 
@@ -113,6 +114,46 @@ class MaterialTests(unittest.TestCase):
                 sample = options['cubemap']
                 options['cubemap'] = lambda direction: sample
         return pixel(profile, varying, **options)
+
+    def test_constant_fill_zero_tuned_and_upper_bound(self):
+        sun = (0.375, 0.25, 0.5)
+        albedo = (0.5, 0.25, 0.75)
+        directions = [DirectionalLight((0, 0, 1), sun)] * 2
+        varying = vertex((0, 0, 0), (0, 0, -1), (0, 0, -4), (0, 0, 0))
+        for fill in (0.0, 0.06, 0.5):
+            result = pixel('8759c7838bbc86c2', varying, (*albedo, 1), 0,
+                           (0, 0, 0, 0), (0, 0, 0), directions,
+                           gains=Gains(direct=2), fill=fill)
+            self.assertRGB(result.linear_rgb,
+                           tuple(decode(a) * fill * decode(s) * 2 for a, s in zip(albedo, sun)))
+
+    def test_fill_is_shared_by_asteroid_palette_and_glass_laws(self):
+        sun = (0.375, 0.25, 0.5)
+        directions = (DirectionalLight((0, 0, 1), sun),)
+        varying = vertex((0, 0, 0), (0, 0, -1), (0, 0, -4), (0, 0, 0))
+        asteroid = asteroid_pixel('7a0c3388065bb08d', varying, (0.5, 0.25, 0.75, 1),
+                                  (0, 0, 0, 1), 0, directions, fill=0.06)
+        self.assertTrue(all(v > 0 for v in asteroid.linear_rgb))
+        glass_varying = glass_vertex((0, 0, 0), (0, 0, -1), (0, 0, -4), (0, 0, 0))
+        glass = glass_pixel('f31c9e2701c8eee4', glass_varying, (0.5, 0.25, 0.75, 1),
+                            0, lambda _: (0, 0, 0), directions, fill=0.06,
+                            half_target=False)
+        self.assertRGB(glass.linear_rgb, asteroid.linear_rgb)
+        palette_varying = palette_vertex('37e6956afd8b8d76', (0, 0, 0), (0, 0, -1),
+                                         (0, 0, -4), (0, 0, 0))
+        palette = palette_pixel('9d27e7ba242f3831', palette_varying,
+                                (0.5, 0.25, 0.75, 1), 0, (0, 0, 0, 0),
+                                lambda _: (0, 0, 0), directions, fill=0.06)
+        self.assertTrue(all(v > 0 for v in palette.linear_rgb))
+
+    def test_fill_domain_rejects_bad_values(self):
+        varying = self.make_vertex()
+        directions = [DirectionalLight((0, 0, 1), (1, 1, 1))] * 2
+        for value in (-0.01, 0.5001, math.inf, math.nan):
+            with self.assertRaises(ValueError):
+                self.sample(varying, directions=directions, fill=value)
+        with self.assertRaises(TypeError):
+            self.sample(varying, directions=directions, fill=True)
 
     def test_all_contracts_retain_black_and_alpha(self):
         for profile in PROFILES:

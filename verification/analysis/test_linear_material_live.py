@@ -207,6 +207,27 @@ class LinearMaterialLiveTests(unittest.TestCase):
         code, _, error = self.launch(*valid, '--hdr-decode', 'pow22')
         self.assertEqual(code, 0, error)
 
+    def test_material_fill_cli_dependency_bounds_and_default(self):
+        valid = ('--motion-output', '--hdr', '--hdr-tonemap', '--linear-materials')
+        status, _, message = self.launch('--material-fill', '0.06')
+        self.assertEqual(status, 2)
+        self.assertIn('--material-fill requires --linear-materials', message)
+        for value in ('-0.01', '0.5001', 'nan', 'inf', '-inf'):
+            with self.subTest(value=value):
+                status, _, message = self.launch(*valid, f'--material-fill={value}')
+                self.assertEqual(status, 2)
+                self.assertIn('--material-fill must be finite and within [0, 0.5]', message)
+        for value in ('0', '0.06', '0.5'):
+            with self.subTest(value=value):
+                status, output, error = self.launch(*valid, '--material-fill', value)
+                self.assertEqual(status, 0, error)
+                self.assertIn(f'"X3M_MATERIAL_FILL": "{float(value)}"', output)
+        status, output, error = self.launch(
+            environment={'X3M_MATERIAL_FILL': '0.5', 'X3M_LINEAR_MATERIALS': '1'})
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_MATERIAL_FILL": "0.0"', output)
+        self.assertIn('"X3M_LINEAR_MATERIALS": "0"', output)
+
     def test_emission_cli_dependencies_and_gain_bounds(self):
         valid = ('--motion-output', '--taa', '--object-trace', '--object-lifetime', '--ownership', '--hdr', '--hdr-tonemap', '--linear-emissions')
         rejected = [tuple(item for item in valid if item != missing)

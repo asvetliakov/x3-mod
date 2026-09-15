@@ -23,5 +23,8 @@ LinearMaterialResult
 linear_distance_fade_pixel_variant(const std::uint32_t *original,
                                    std::size_t words,
                                    const LinearMaterialConfig &config,
-                                   std::vector<std::uint32_t> &output) noexcept;
+                                   std::vector<std::uint32_t> &output,
+                                   // Written on every return when supplied;
+                                   // false exposes a fail-closed fill refusal.
+                                   bool *fill_applied = nullptr) noexcept;
 } // namespace x3m::renderer

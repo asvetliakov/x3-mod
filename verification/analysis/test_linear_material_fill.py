@@ -147,6 +147,8 @@ class LinearMaterialFillTests(unittest.TestCase):
         variant_log = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         self.assertIn('kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u fill_applied=%u',
                       variant_log)
+        self.assertIn('kind=pixel original=%016llx transform=%u create=%08lx words=%u fill_applied=%u',
+                      variant_log)
         self.assertIn('fill=%g', (ROOT / 'src/proxy/capture.cpp').read_text())
 
 

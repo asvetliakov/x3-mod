@@ -6,6 +6,7 @@ Invoke under wine_lock.py with X3M_FIXTURE_BOTTLE=X3. Raw output/cases stay in
 """
 from pathlib import Path
 import argparse
+from collections import Counter
 import copy
 import hashlib
 import json
@@ -542,6 +543,31 @@ def fixture_cases():
     return glass_fixture.append_cases(xt_fixture.append_cases(cases))
 
 
+FILL = 0.06
+FILL_PAIRS = (0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+              110, 113, 116, 122, 128, 138, 148, 150, 152, 154, 162, 164)
+
+
+def fill_cases():
+    """Small sun-averted oracle slice; the ordinary case bank stays frozen."""
+    full = fixture_cases()
+    result = []
+    for pair in FILL_PAIRS:
+        c = copy.deepcopy(next(row for row in full if row['pair'] == pair))
+        fixed = PAIRS[pair][0] in FIXED_VERTICES
+        c.update(id=len(result), label='fill_oracle', depth=len(result) & 1,
+                 lights=1 if fixed else 0, reverse=0, affine=0, valid=1,
+                 fp16=1, flags=0, gains=[2., 1., 1.],
+                 diffuse=[.5, .25, .75, .75], lightmap=[0., 0., 0., .25],
+                 cube=[0., 0., 0., 1.], mask=0., material=[0., 0., 0.],
+                 point=[0., 0., 0.], dir0=[.375, .25, .5],
+                 dir1=[0., 0., 0.], normal=[0., 0., -1.], glow=0.,
+                 normal_sample=[.5, .5, 1., .5], binormal=[0., 1., 0.],
+                 tangent=[1., 0., 0.], camera=[0., 0., -4.])
+        result.append(c)
+    return result
+
+
 def fields(c):
     return (c['gains'] + c['diffuse'] + c['lightmap'] + c['cube'] + [c['mask']] +
             c['material'] + c['point'] + c['dir0'] + c['dir1'] + c['normal'] + [c['glow']] + c['normal_sample'] + c['binormal'] +
@@ -598,13 +624,34 @@ def palette_varying(c, sample=(8,8)):
                    vertex_palette_rgb=blend('vertex_palette_rgb') if a.vertex_palette_rgb is not None else None)
 
 
-def expected(c, half_source=False, sample=(8,8), flat_effective=False):
+def expected(c, half_source=False, sample=(8,8), flat_effective=False, fill=0.0):
     if c['pair'] >= 162:
-        return glass_fixture.expected(c,half_source,sample,cube_sampler=cube_sample,
-                                      flat_color=flat_effective and bool(c['flags'] & 2048))
+        baseline = glass_fixture.expected(c,half_source,sample,cube_sampler=cube_sample,
+                                          flat_color=flat_effective and bool(c['flags'] & 2048))
+        if not fill:
+            return baseline
+        quantize = ref.half if half_source else float
+        added = tuple(ref.decode(quantize(c['diffuse'][i])) * fill * ref.decode(c['dir0'][i]) * c['gains'][0]
+                      for i in range(3))
+        linear = tuple(ref.sanitize(a + b) for a, b in zip(baseline.linear_rgb, added))
+        rgba = tuple(ref.encode(v) for v in linear) + (baseline.encoded_rgba[3],)
+        return ref.PixelResult(linear, tuple(ref.half(v) for v in rgba) if c['fp16'] else rgba)
     if c['pair'] >= 148:
-        return xt_fixture.expected(c,half_source,sample,cube_sampler=cube_sample,
-                                   flat_color=flat_effective and bool(c['flags'] & xt_fixture.FLAT))
+        baseline = xt_fixture.expected(c,half_source,sample,cube_sampler=cube_sample,
+                                       flat_color=flat_effective and bool(c['flags'] & xt_fixture.FLAT))
+        if not fill:
+            return baseline
+        values = xt_fixture.inputs(c, sample, linear=True, half_source=half_source,
+                                   flat_color=flat_effective and bool(c['flags'] & xt_fixture.FLAT),
+                                   cube_sampler=cube_sample)
+        evaluated = xt_fixture.xt.linear_pixel(PAIRS[c['pair']][1], values)
+        # The fill-mode fixture neutralizes XT's downstream occurrence to one,
+        # leaving the requested k*decode(sun)*albedo term in isolation.
+        added = tuple(evaluated.base_working[i] * fill * ref.decode(c['dir0'][i]) * c['gains'][0]
+                      for i in range(3))
+        linear = tuple(ref.sanitize(a + b) for a, b in zip(baseline.linear_rgb, added))
+        rgba = tuple(ref.encode(v) for v in linear) + (baseline.encoded_rgba[3],)
+        return ref.PixelResult(linear, tuple(ref.half(v) for v in rgba) if c['fp16'] else rgba)
     if c['flags'] & BOUNDARY:
         raise ValueError('operational BUMP boundary case excludes float64 RGB equivalence')
     # Inputs are uploaded as binary32, including .6/.8 angular control values.
@@ -625,7 +672,7 @@ def expected(c, half_source=False, sample=(8,8), flat_effective=False):
     if 110 <= c['pair'] < 116:
         return ref.asteroid_pixel(profile,varying,vector('diffuse'),tuple(f32(v) for v in detail_sample(c)),
             f32(c['mask']),directions,weights=ref.AsteroidWeights(*vector('coefficients')[:2]),
-            gains=gains,half_source=half_source,half_target=bool(c['fp16']),
+            gains=gains,fill=fill,half_source=half_source,half_target=bool(c['fp16']),
             normal_sample=vector('normal_sample'),tangent=vector('tangent'),binormal=vector('binormal'))
     if c['pair'] >= 116:
         varying=palette_varying(c,sample)
@@ -633,12 +680,13 @@ def expected(c, half_source=False, sample=(8,8), flat_effective=False):
         return ref.palette_pixel(profile,varying,diffuse,f32(c['mask']),vector('lightmap'),
             cube_sample if c['flags']&CUBE_PATTERN else lambda _:vector('cube')[:3],directions,
             affine=AFFINE if c['affine'] else ref.IDENTITY_AFFINE,face=-1 if c['reverse'] else 1,
-            glow=f32(c['glow']),gains=gains,half_source=half_source,half_target=bool(c['fp16']),
+            glow=f32(c['glow']),gains=gains,fill=fill,half_source=half_source,half_target=bool(c['fp16']),
             normal_sample=vector('normal_sample'),tangent=vector('tangent'),binormal=vector('binormal'))
     return ref.pixel(profile, varying, vector('diffuse'), f32(c['mask']), vector('lightmap'),
                      (cube_sample if c['flags'] & CUBE_PATTERN else lambda _:vector('cube')[:3])
                      if ref.PROFILES[profile].bump_map else vector('cube')[:3], directions, affine=AFFINE if c['affine'] else ref.IDENTITY_AFFINE,
                      face=-1 if c['reverse'] else 1, glow=f32(c['glow']), gains=gains,
+                     fill=fill,
                      half_source=half_source, half_target=bool(c['fp16']), normal_sample=vector('normal_sample'),
                      tangent=vector('tangent'), binormal=vector('binormal'),
                      coefficients=ref.LightingCoefficients(*vector('coefficients'))
@@ -804,6 +852,100 @@ def validate_report(text, cases=None):
                 create_total_ms=sum(float(r[4]) for r in creates))
 
 
+def _half_code(value):
+    return struct.unpack('<H', struct.pack('<e', value))[0]
+
+
+def _linear_luma(rgb):
+    return sum(weight * value for weight, value in zip((0.2126, 0.7152, 0.0722), rgb))
+
+
+def validate_fill_report(text, cases=None):
+    """Require the isolated K=.06 result within one binary16 code."""
+    cases = fill_cases() if cases is None else cases
+    assert cases == fill_cases(), 'fill case contract changed'
+    lines = text.splitlines()
+    assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}'
+    assert not any('FAIL' in line for line in lines)
+    assert len(re.findall(r'^CAPS ', text, re.M)) == 1
+    assert len(re.findall(r'^FLAT ', text, re.M)) == 1
+    invariants = re.findall(r'^INVARIANT id=(\d+) pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0 rgb_bad=0$', text, re.M)
+    assert list(map(int, invariants)) == list(range(len(cases)))
+    samples = re.findall(r'^SAMPLE id=(\d+) x=(\d+) y=(\d+) rgba=(\S+)$', text, re.M)
+    assert len(samples) == 9 * len(cases)
+    maximum_codes = 0
+    fp16_luma_codes = 0
+    seen = set()
+    for cid, x, y, rgba in samples:
+        cid, x, y = int(cid), int(x), int(y)
+        assert (cid, x, y) not in seen and x in (4, 8, 12) and y in (4, 8, 12)
+        seen.add((cid, x, y))
+        actual = tuple(map(float, rgba.split(',')))
+        wanted = expected(cases[cid], sample=(x, y), fill=FILL).encoded_rgba
+        assert len(actual) == 4 and all(map(math.isfinite, actual))
+        assert actual[3] == wanted[3]
+        for got, want in zip(actual[:3], wanted[:3]):
+            codes = abs(_half_code(got) - _half_code(want))
+            maximum_codes = max(maximum_codes, codes)
+            assert codes <= 1, (cid, x, y, got, want, codes)
+        reconstructed = tuple(ref.decode(v) for v in actual[:3])
+        luma_codes = abs(_half_code(_linear_luma(reconstructed)) -
+                         _half_code(_linear_luma(expected(cases[cid], sample=(x, y), fill=FILL).linear_rgb)))
+        fp16_luma_codes = max(fp16_luma_codes, luma_codes)
+        assert luma_codes <= 3, (cid, x, y, 'FP16 reconstructed luma', luma_codes)
+    samples32 = re.findall(r'^SAMPLE32 id=(\d+) x=(\d+) y=(\d+) rgba=(\S+)$', text, re.M)
+    lumas = re.findall(r'^LUMA id=(\d+) x=(\d+) y=(\d+) value=(\S+)$', text, re.M)
+    required_samples = {(c['id'], x, y) for c in cases for x in (4, 8, 12) for y in (4, 8, 12)}
+    sample32_keys = [(int(cid), int(x), int(y)) for cid, x, y, _ in samples32]
+    luma_keys = [(int(cid), int(x), int(y)) for cid, x, y, _ in lumas]
+    assert len(samples32) == len(required_samples) and len(set(sample32_keys)) == len(samples32)
+    assert len(lumas) == len(required_samples) and len(set(luma_keys)) == len(lumas)
+    assert set(sample32_keys) == required_samples and set(luma_keys) == required_samples
+    luma_values = {(int(cid), int(x), int(y)): float(value) for cid, x, y, value in lumas}
+    pre_rt_luma_codes = 0
+    for cid, x, y, rgba in samples32:
+        cid, x, y = int(cid), int(x), int(y)
+        actual = tuple(map(float, rgba.split(',')))
+        assert len(actual) == 4 and all(math.isfinite(v) and v >= 0 for v in actual)
+        wanted = expected(cases[cid], sample=(x, y), fill=FILL)
+        decoded_luma = _linear_luma(tuple(ref.decode(v) for v in actual[:3]))
+        reported_luma = luma_values[(cid, x, y)]
+        assert math.isfinite(reported_luma) and reported_luma >= 0
+        assert abs(reported_luma - decoded_luma) <= 2e-7 * max(1.0, decoded_luma)
+        codes = abs(_half_code(reported_luma) - _half_code(_linear_luma(wanted.linear_rgb)))
+        pre_rt_luma_codes = max(pre_rt_luma_codes, codes)
+        assert codes <= 1, (cid, x, y, reported_luma, _linear_luma(wanted.linear_rgb), codes)
+    creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
+    assert creates and len(creates) == len([line for line in lines if line.startswith('CREATE ')])
+    filled_ps = [key for stage, key, *_ in creates
+                 if stage == 'ps' and '_2_' in key and '_fill_' in key]
+    required_filled_ps = set()
+    for c in cases:
+        suffix = '_xt_repaired' if c['pair'] in (148, 149, 156, 157) else ''
+        required_filled_ps.add(f'{PAIRS[c["pair"]][1]}_2_{c["depth"]}_2_1_1_fill_0.0599999987{suffix}')
+    assert len(filled_ps) == 23 and Counter(filled_ps) == Counter({key: 1 for key in required_filled_ps}), \
+        'missing, duplicate or unexpected filled PS creation'
+    baselines = re.findall(r'^BASELINE id=(\d+) x=(\d+) y=(\d+) rgba=(\S+)$', text, re.M)
+    required_baselines = {(c['id'], x, y) for c in cases if c['pair'] >= 148
+                          for x in (4, 8, 12) for y in (4, 8, 12)}
+    assert {(int(cid), int(x), int(y)) for cid, x, y, _ in baselines} == required_baselines
+    for cid, _, _, rgba in baselines:
+        actual = tuple(map(float, rgba.split(',')))
+        assert actual[:3] == (0.0, 0.0, 0.0), (cid, 'non-fill contribution in isolated baseline')
+        assert actual[3] == expected_alpha(cases[int(cid)])
+    allowed = ('CAPS ', 'FLAT ', 'CREATE ', 'INVARIANT ', 'SAMPLE ', 'SAMPLE32 ',
+               'LUMA ', 'BASELINE ', 'RESULT PASS ')
+    assert all(line.startswith(allowed) for line in lines), 'unexpected fill output row'
+    return dict(cases=len(cases), pairs=len({c['pair'] for c in cases}), samples=len(samples),
+                ordinary_black_samples=len(baselines),
+                fp16_code_tolerance=1, max_fp16_code_error=maximum_codes,
+                pre_rt_luma_fp16_code_tolerance=1,
+                pre_rt_luma_max_fp16_code_error=pre_rt_luma_codes,
+                fp16_image_reconstructed_luma_max_fp16_code_error=fp16_luma_codes,
+                luma_contract='Rec.709 scene-linear luma decoded from RGBA32F compatibility output; pre-RT-quantization law',
+                families=sorted({family_name(c['pair']) for c in cases}))
+
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -947,6 +1089,7 @@ def parse_arguments(argv=None):
     selection=parser.add_mutually_exclusive_group()
     selection.add_argument('--alpha-test-cutout',action='store_true',help='Only the two selected native cutout pairs; actual alpha/depth/stencil MRT twins')
     selection.add_argument('--glass-only', action='store_true', help='Run only new glass cases, retaining their original case IDs; skip unrelated timing passes')
+    selection.add_argument('--fill', action='store_true', help='Run the bounded K=0.06 sun-averted fill oracle slice')
     return parser.parse_args(argv)
 
 
@@ -954,13 +1097,13 @@ def main():
     args = parse_arguments()
     assert bottle.BOTTLE == 'X3', 'new fixtures require X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(), 'game running; fixture refused'
-    cases = alpha_cutout_cases() if args.alpha_test_cutout else fixture_cases()
+    cases = alpha_cutout_cases() if args.alpha_test_cutout else fill_cases() if args.fill else fixture_cases()
     if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)
     case_file = args.raw_dir/'cases.bin'
     case_file.write_bytes(binary_cases(cases))
     report = args.raw_dir/'report.txt'
-    result_path = bottle.results_dir(ROOT)/('linear-alpha-test-gpu.json' if args.alpha_test_cutout else 'linear-glass-gpu.json' if args.glass_only else 'linear-material-gpu.json')
+    result_path = bottle.results_dir(ROOT)/('linear-alpha-test-gpu.json' if args.alpha_test_cutout else 'linear-material-fill-gpu.json' if args.fill else 'linear-glass-gpu.json' if args.glass_only else 'linear-material-gpu.json')
     inputs = original_provenance(cases, args.programs)
     result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
                   render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
@@ -969,6 +1112,11 @@ def main():
                   tolerance=dict(rgb_relative=RGB_REL_TOL,rgb_absolute=RGB_ABS_TOL,tiny_rgb_absolute=1e-12,retained_sample_precision='float32/binary16 reference envelope',alpha='exact'),
                   original_sha256=inputs, executable_sha256=sha(args.exe), raw_report=str(report),
                   code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS})
+    if args.fill:
+        result.update(fill=FILL,
+          scope='23 sun-averted FP16 cases across 17 hull/asteroid/palette families, four XT standard/damage techniques and glass; point/material/reflection/lightmap/specular inputs zero. One-FP16-code oracle. No terraformer case because its occlusion RGB is also an additive emission source; no exhaustive program, live route or native Windows proof.',
+          timing_scope='No benchmark in the bounded fill correctness slice.',
+          tolerance=dict(fp16_code_distance=1, alpha='exact'))
     if args.alpha_test_cutout:
         result['scope']='Two captured Argon pairs, GE/ref1, mask7, blend off. Detached native/motion/combined coverage, retained alpha, hardware depth/stencil and poisoned MRT twins. No production gate/live TAA/native Windows qualification.'
         result['timing_scope']='No benchmark in this detached correctness mode; runtime route cost remains unmeasured.'
@@ -977,12 +1125,14 @@ def main():
     wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
     command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file)]
     if args.alpha_test_cutout: command.append('--alpha-test-cutout')
+    if args.fill: command.extend(('--fill', str(FILL)))
     try:
         with report.open('w') as out,(args.raw_dir/'wine.log').open('w') as err:
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1200)
         result['exit_code']=process.returncode
         assert process.returncode==0, 'fixture failed; see '+str(report)
-        result.update((validate_cutout_report if args.alpha_test_cutout else validate_report)(report.read_text(),cases))
+        validator = validate_cutout_report if args.alpha_test_cutout else validate_fill_report if args.fill else validate_report
+        result.update(validator(report.read_text(),cases))
         assert sha(args.exe)==result['executable_sha256'], 'executable changed'
         assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'
         assert all(sha(args.programs/name)==value for name,value in inputs.items()), 'original changed'

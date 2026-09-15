@@ -85,8 +85,8 @@ insertion is skipped, not emitted with a zero constant.
 
 ## 3. Cost and interactions
 
-- **Hot path.** PS weighted slots DEFAULT 168 → ≤ 170, BUMP 180 → ≤ 182 of 512; zero per-draw host
-  work, zero bandwidth, no new resource, no state. Variant creation is the existing create-time
+- **Hot path.** PS weighted slots DEFAULT 178 → 179, BUMP 190 → 191 of 512 (measured with
+  depth export on); zero per-draw host work, zero bandwidth, no new resource, no state. Variant creation is the existing create-time
   path (17 µs per program on the host). A fill-off launch is byte-identical to today.
 - **Exposure.** The meter reads the composed HDR target, so the fill is seen: the sun-lit hull
   tiles that set the lit median rise by `k_fill·A·D0 ≈ 0.02` (0.13 → 0.15), `ev_key` +0.50 → +0.27,
@@ -136,20 +136,25 @@ insertion is skipped, not emitted with a zero constant.
 
 ## 5. Acceptance run
 
-Switches: the installed set plus `--material-fill 0.06` (AO off, exposure Auto +1.5 as installed,
-LOD scale as the run-23 plan). Spot: the run-51 docking ring with its clamp arms, sun about 45° in
-front, F8 at **≈ 350 m** (clamp nodes with `i0 = 0`) and **≈ 210 m**. Proof, on the same reductions
-as above:
+Switches: the installed set plus `--material-fill 0.06` (AO off; default Auto exposure capped at
++1.5 EV). Spot: the run-51 docking ring with its clamp arms, sun about 45° in front, F8 at
+**≈ 350 m** (clamp nodes with `i0 = 0`) and **≈ 210 m**. Capture the far/near appearance first in
+Auto, then toggle Ctrl+Shift+F9 at the same spot for a fixed-EV0 comparison with run 51, which used
+manual EV0. Proof, on the same reductions as above:
 
 1. Session log: `linear_material_mode … fill=0.06` (startup echo; a shader `def` has no per-frame
    state, so no `fill` field on `linear_material_frame` — its `routed`/`bump_routed` counts on the
    capture frames prove the pairs ran).
-2. Far frame, module surface: `frac < 0.05` from 0.254 to ≤ 0.10 and p10 ≥ 0.045; cylinder mean
-   rises by ≤ 0.03 (0.1345 → ≤ 0.165); module chroma within 0.03 of (0.226, 0.421, 0.346).
+2. Scene-linear readbacks, before exposure: far-frame module `frac < 0.05` from 0.254 to ≤ 0.10
+   and p10 ≥ 0.045; cylinder mean rises by ≤ 0.03 (0.1345 → ≤ 0.165); module chroma within 0.03
+   of (0.226, 0.421, 0.346).
 3. Same-surface reprojection (the run-51 method): the far-dark points' near/far median gain from
    2.8 to ≤ 2.0.
-4. Exposure lines within 0.3 EV of run 51 at the same spot; no bloom change.
-5. Eyes: the arm tips at 350 m read as surfaces; the night side of the cylinder is still dark.
+4. Default-Auto appearance and exposure lines are evaluated on their own. They are not an
+   adaptation comparison against run 51's fixed-EV0 baseline. Use the F9 fixed-EV0 capture for
+   the controlled appearance comparison with run 51; no bloom change.
+5. In both exposure views, the arm tips at 350 m read as surfaces and the cylinder's night side
+   stays dark.
 
 Host proof before the run: `linear_material_reference.py` gains a `fill` term and the numerical
 tests cover 0 / 0.06 / 0.5; the transformer test keeps the frozen hash at fill 0 and checks the

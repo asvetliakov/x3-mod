@@ -2474,8 +2474,9 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         if (!enabled_ || !code || !bytes || bytes % 4) return;
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
+            bool fill_applied = false;
             const auto transformed = renderer::linear_distance_fade_pixel_variant(
-                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words);
+                reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, &fill_applied);
             IDirect3DPixelShader9* variant = nullptr;
             HRESULT hr = E_FAIL;
             if (transformed == renderer::LinearMaterialResult::Applied)
@@ -2483,7 +2484,8 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
             if (SUCCEEDED(hr) && variant) entry.distance_fade_variant = variant;
             else release(variant);
             if (transformed != renderer::LinearMaterialResult::UnsupportedShader)
-                log("linear_distance_fade_variant device=%llu kind=pixel original=%016llx transform=%u create=%08lx words=%u", id_, hash, unsigned(transformed), hr, unsigned(words.size()));
+                log("linear_distance_fade_variant device=%llu kind=pixel original=%016llx transform=%u create=%08lx words=%u fill_applied=%u",
+                    id_, hash, unsigned(transformed), hr, unsigned(words.size()), unsigned(fill_applied));
         }
         // PS2 emission sources have no motion-profile row. Their augmentation
         // must complete independently, retaining the original VS and native oC0.

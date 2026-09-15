@@ -34,6 +34,16 @@ Words program(std::initializer_list<unsigned> sums, bool output_form = false) {
     words.push_back(0xffffu);
     return words;
 }
+Words composite_program(unsigned composite_lanes = 7) {
+    Words words{0xffff0300u};
+    emit(words, 2, {dst(temp, 2) | pp, src(temp, 4), src(temp, 5)});
+    emit(words, 1, {dst(temp, 6, composite_lanes) | pp, src(temp, 3)});
+    albedo_multiply(words, 2);
+    // Replace the direct albedo operand with the one-step composite r6.
+    words[words.size()-2] = src(temp, 6);
+    words.push_back(0xffffu);
+    return words;
+}
 unsigned failures = 0;
 void check(bool condition, const char* what) {
     if (!condition) { std::cerr << "FAIL " << what << '\n'; ++failures; }
@@ -56,6 +66,9 @@ int main() {
     const auto one_output = program({2}, true);
     check(linear_material_fill_sum(one_output.data(), one_output.size(), 3, sum, at) && sum == 2,
           "output form resolves");
+    const auto composite = composite_program();
+    check(linear_material_fill_sum(composite.data(), composite.size(), 3, sum, at) && sum == 2,
+          "one-step albedo composite resolves");
     // No albedo multiply at all, and a program that is not a program.
     const auto none = program({});
     check(!linear_material_fill_sum(none.data(), none.size(), 3, sum, at), "absent lobe sum refuses");
@@ -64,6 +77,25 @@ int main() {
     // A multiplier that is neither the albedo nor a one-step composite of it.
     const auto foreign = program({2});
     check(!linear_material_fill_sum(foreign.data(), foreign.size(), 6, sum, at), "foreign multiplier refuses");
+    auto aliased = one;
+    aliased[8] = aliased[7];
+    check(!linear_material_fill_sum(aliased.data(), aliased.size(), 3, sum, at),
+          "aliased sum and albedo refuse");
+    auto swizzled = one;
+    swizzled[7] &= ~(0xffu << 16);
+    check(!linear_material_fill_sum(swizzled.data(), swizzled.size(), 3, sum, at),
+          "swizzled sum read refuses");
+    auto wrong_destination = one;
+    wrong_destination[6] = dst(temp, 0) | pp;
+    check(!linear_material_fill_sum(wrong_destination.data(), wrong_destination.size(), 3, sum, at),
+          "unreviewed destination refuses");
+    const auto partial_composite = composite_program(1);
+    check(!linear_material_fill_sum(partial_composite.data(), partial_composite.size(), 3, sum, at),
+          "partial albedo composite refuses");
+    auto malformed = one;
+    malformed[5] = (15u << 24) | 4u;
+    check(!linear_material_fill_sum(malformed.data(), malformed.size(), 3, sum, at),
+          "malformed instruction length refuses");
     std::cout << "{\"failures\":" << failures << "}\n";
     return failures ? 1 : 0;
 }

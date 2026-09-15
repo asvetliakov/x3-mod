@@ -59,13 +59,17 @@ int main(int argc, char **argv) {
 #ifdef X3M_FADE_BASELINE
     return 4;
 #else
-    const auto fn = vertex ? linear_distance_fade_vertex_variant
-                           : linear_distance_fade_pixel_variant;
     if (mode == 2) {
       output = original;
-      result = fn(output.data(), output.size(), config, output);
+      result = vertex ? linear_distance_fade_vertex_variant(
+                            output.data(), output.size(), config, output)
+                      : linear_distance_fade_pixel_variant(
+                            output.data(), output.size(), config, output);
     } else
-      result = fn(original.data(), original.size(), config, output);
+      result = vertex ? linear_distance_fade_vertex_variant(
+                            original.data(), original.size(), config, output)
+                      : linear_distance_fade_pixel_variant(
+                            original.data(), original.size(), config, output);
 #endif
   }
   if (original != saved)

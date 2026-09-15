@@ -12,6 +12,7 @@
 #include "../../src/renderer/material_motion.h"
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <d3d9.h>
@@ -258,12 +259,14 @@ struct Pixel {
 };
 struct Shaders {
   IDirect3DDevice9 *d;
+  float fill;
   D3DCAPS9 caps;
   Words originals[2][108];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path,
-          const std::vector<Case>& cases) : d(device) {
+          const std::vector<Case>& cases, float fill_value = 0.0f)
+      : d(device), fill(fill_value) {
     api(d->GetDeviceCaps(&caps));
     // Scoped runs require only their selected originals. Load each once, after
     // validating the case index; variant creation remains lazy in bind().
@@ -289,20 +292,28 @@ struct Shaders {
     std::snprintf(buffer, sizeof buffer, "%s_%u_%u_%.9g_%.9g_%.9g", id, mode,
                   (mode || xt_default(c)) ? c.depth : 0, mode >= 2 ? c.f[0] : 0,
                   mode >= 2 ? c.f[1] : 0, mode >= 2 ? c.f[2] : 0);
-    return std::string(buffer) + (xt_default(c) ? "_xt_repaired" : "");
+    std::string result = buffer;
+    if (mode >= 2 && pixel && fill > 0.0f) {
+      char suffix[40];
+      std::snprintf(suffix, sizeof suffix, "_fill_%.9g", fill);
+      result += suffix;
+    }
+    return result + (xt_default(c) ? "_xt_repaired" : "");
   }
   Words transform(const Case &c, unsigned mode, bool pixel) {
     const auto &original =
         originals[pixel][pixel ? pair_p[c.pair] : pair_v[c.pair]];
     const auto before = original;
     Words output = {0xdeadbeef};
-    LinearMaterialConfig config{c.f[0], c.f[1], c.f[2]};
+    LinearMaterialConfig config{c.f[0], c.f[1], c.f[2], fill};
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     if (mode == 3) {
       require((c.pair>=110 && c.pair<116) || c.pair==station_fade_pair,"seven exact fade pairs only");
-      require((pixel ? linear_distance_fade_pixel_variant(original.data(),original.size(),config,output)
+      bool fill_applied=false;
+      require((pixel ? linear_distance_fade_pixel_variant(original.data(),original.size(),config,output,&fill_applied)
                      : linear_distance_fade_vertex_variant(original.data(),original.size(),config,output)) ==
                   LinearMaterialResult::Applied,"distance fade transform");
+      require(fill_applied==(pixel && fill>0.0f),"distance fade fill report");
     } else
 #endif
     if (xt_default(c)) {
@@ -342,6 +353,14 @@ struct Shaders {
                            c.depth)) == LinearMaterialResult::InvalidConfig &&
                   sentinel == preserved,
               "invalid config publication");
+      invalid = config;
+      invalid.fill = 0.5001f;
+      require((pixel ? linear_material_pixel_variant(original.data(), original.size(), invalid,
+                                                     sentinel, c.depth)
+                     : linear_material_vertex_variant(original.data(), original.size(), invalid,
+                                                      sentinel, c.depth)) ==
+                  LinearMaterialResult::InvalidConfig && sentinel == preserved,
+              "invalid fill config publication");
       Words damaged = original;
       damaged.back() = 0;
       require(
@@ -541,7 +560,8 @@ struct Gpu {
             if (!which) {
               value[0]=threshold; value[1]=.35f;
               value[2]=(c.flags & 1024 ? .2f : .6f) + float(x)/32.f;
-              value[3]=(c.flags & 1024 ? .4f : .8f) - float(y)/32.f;
+              value[3]=shaders.fill > 0.0f ? 1.0f :
+                  (c.flags & 1024 ? .4f : .8f) - float(y)/32.f;
             } else {
               value[0]=(c.flags & 1024 ? .65f : .55f) + float(x)/64.f;
               value[1]=(c.flags & 1024 ? .35f : .45f) + float(y)/64.f;
@@ -839,6 +859,27 @@ struct Gpu {
         std::printf("SAMPLE id=%u x=%u y=%u rgba=%.9g,%.9g,%.9g,%.9g\n", c.id,
                     x, y, p.f[0], p.f[1], p.f[2], p.f[3]);
       }
+    if (shaders.fill > 0.0f) {
+      // Identical combined shader and material state, with only RT0 changed to
+      // RGBA32F. This isolates the pre-RT-quantization law from the final FP16
+      // image store; c.fp16 is not part of a key, constant or shader transform.
+      Case c32=c;
+      c32.fp16=0;
+      state(c32,2);
+      api(d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));
+      draw(c32);
+      const auto wide=read(color[0].p,D3DFMT_A32B32G32R32F);
+      for (unsigned y : {width/4,width/2,3*width/4})
+        for (unsigned x : {width/4,width/2,3*width/4}) {
+          const auto& p=wide[y*width+x];
+          std::printf("SAMPLE32 id=%u x=%u y=%u rgba=%.9g,%.9g,%.9g,%.9g\n",
+                      c.id,x,y,p.f[0],p.f[1],p.f[2],p.f[3]);
+          const float r=std::pow(p.f[0],2.2f), g=std::pow(p.f[1],2.2f),
+                      b=std::pow(p.f[2],2.2f);
+          std::printf("LUMA id=%u x=%u y=%u value=%.9g\n",c.id,x,y,
+                      .2126f*r+.7152f*g+.0722f*b);
+        }
+    }
   }
   void classify_flat() {
     // Independent color-ramp sentinel: distinguish effective flat COLOR
@@ -976,11 +1017,16 @@ int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   try {
     const bool cutout_mode=argc==4 && std::strcmp(argv[3],"--alpha-test-cutout")==0;
+    const bool fill_mode=argc==5 && std::strcmp(argv[3],"--fill")==0;
+    char* fill_end=nullptr;
+    const float fill=fill_mode ? std::strtof(argv[4],&fill_end) : 0.0f;
+    require(!fill_mode || (fill_end && *fill_end=='\0' && std::isfinite(fill) && fill>0.0f && fill<=0.5f),
+            "fill must be finite and in (0,0.5]");
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
-    require(argc==3 || fade_mode || cutout_mode,"args: programs cases [--distance-fade composite.bin]");
+    require(argc==3 || fade_mode || cutout_mode || fill_mode,"args: programs cases [--distance-fade composite.bin] [--fill K]");
 #else
-    require(argc == 3 || cutout_mode, "args: programs cases [--alpha-test-cutout]");
+    require(argc == 3 || cutout_mode || fill_mode, "args: programs cases [--alpha-test-cutout] [--fill K]");
 #endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
@@ -1019,7 +1065,7 @@ int main(int argc, char **argv) {
       api(factory->CreateDevice(0, D3DDEVTYPE_HAL, window,
                                 D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp,
                                 &device.p));
-      Shaders shaders(device.p, argv[1], cases);
+      Shaders shaders(device.p, argv[1], cases, fill);
       std::printf("CAPS mrt=%lu vs_slots=%lu ps_slots=%lu\n",
                   shaders.caps.NumSimultaneousRTs,
                   shaders.caps.MaxVertexShader30InstructionSlots,
@@ -1041,7 +1087,7 @@ int main(int argc, char **argv) {
           gpu.test(c);
         }
       }
-      {
+      if (!fill_mode) {
         Gpu gpu(device.p, shaders, 256);
         for (unsigned pair : {0u, 10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u, 110u, 113u, 116u, 122u, 128u, 138u, 162u}) {
           bool selected=false;

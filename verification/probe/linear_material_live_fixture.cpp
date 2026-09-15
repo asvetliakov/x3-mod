@@ -71,13 +71,21 @@ struct LinearMaterialConfig {float direct_gain=1,material_emissive_gain=1,lightm
 enum class LinearMaterialResult{Applied,UnsupportedShader};
 unsigned fade_transforms=0,fade_lookups=0;bool fade_reject=false,fade_throw=false;
 std::uint32_t linear_distance_fade_sampler_mask(std::uint64_t vs,std::uint64_t ps){++fade_lookups;return vs>=70&&vs<76&&ps==80+(vs-70)%4?15:0;}
+bool linear_distance_fade_pair(std::uint64_t vs,std::uint64_t ps){return vs>=70&&vs<76&&ps==80+(vs-70)%4;}
 LinearMaterialResult fade_variant(const std::uint32_t*p,std::vector<std::uint32_t>&o,bool vertex){++fade_transforms;if(fade_throw)throw std::bad_alloc();if(fade_reject||*p<(vertex?70u:80u)||*p>=(vertex?76u:84u))return LinearMaterialResult::UnsupportedShader;o={*p+600};return LinearMaterialResult::Applied;}
 LinearMaterialResult linear_distance_fade_vertex_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o){return fade_variant(p,o,true);}
-LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&,std::vector<std::uint32_t>&o){return fade_variant(p,o,false);}
+LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t*p,std::size_t,const LinearMaterialConfig&c,std::vector<std::uint32_t>&o,bool*fill_applied=nullptr){
+ if(fill_applied)*fill_applied=false;
+ const auto result=fade_variant(p,o,false);
+ if(fill_applied&&result==LinearMaterialResult::Applied&&c.fill>0)*fill_applied=true;
+ return result;
+}
 enum class MaterialMotionResult{Applied,UnsupportedShader};
 enum class HdrTonemap{Agx,Identity};
 struct MaterialMotionAbi{static constexpr UINT previous_vertex_constant=252,pixel_coordinates_constant=216;};
-struct MotionOutputProfile{bool light_loop_bound_required=false;unsigned light_loop_max_count=8;}; MotionOutputProfile row;
+struct MotionOutputProfile{bool light_loop_bound_required=false;unsigned light_loop_max_count=8,matrix_register=0;}; MotionOutputProfile row;
+using DepthPrepassProfile=MotionOutputProfile;
+const DepthPrepassProfile* depth_prepass_vertex_row(std::uint64_t,std::size_t,std::uint32_t){return nullptr;}
 struct HdrConfig{HdrTonemap tonemap=HdrTonemap::Agx;x3::temporal::AgxDecode decode=x3::temporal::AgxDecode::gamma22;};
 bool linear_material_config_valid(const LinearMaterialConfig&c){return std::isfinite(c.direct_gain)&&c.direct_gain>=0&&c.direct_gain<=16;}
 unsigned contract_lookups=0;
@@ -156,6 +164,12 @@ inline bool admitted_pixel_shader(std::uint64_t ps)noexcept{++pixel_lookups;retu
 }
 namespace cutout {enum class Capability:std::uint8_t{Pending,Ready,Unsupported,Retry};
 unsigned pair_lookups=0;constexpr bool pair(std::uint64_t,std::uint64_t) noexcept {return false;}}
+namespace fade_route {
+struct Registers{std::uint8_t alpha=0,fog=0;};
+bool registers(std::uint64_t vs,Registers&out){if(vs<70||vs>=76)return false;out={39,41};return true;}
+constexpr unsigned threshold_off=1001;
+struct Hysteresis{void clear()noexcept{}};
+}
 // Mirrors src/proxy/motion_output.h's TaaInvalidateSite; the extracted code
 // names sites, and this double only counts the calls.
 enum class TaaInvalidateSite:unsigned{RestoreFailed=0,StateLost=1,Skip=2,Target=3,Container=4,ResolveFailed=5,NotResolved=6,PresentFailed=7,Reset=8,ComparisonExposure=9,ComparisonStateFailed=10,CompositionStateLost=11,CompositionReaders=12,CompositionExport=13,CompositionAttach=14,CompositionBegin=15,CompositionRefused=16,CompositionPrepare=17,CompositionIncomplete=18,CutoutMissed=19,Count=20};
@@ -166,7 +180,7 @@ std::uint64_t draw_stamp(){return 0;}
 struct MotionRoute {
  renderer::LinearCompositionPolicy composition_policy=renderer::LinearCompositionPolicy::AdditiveEmission;
  MotionGate gate=MotionGate::Feature;bool routed=false,composition=false,scene=true,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL,preparation_error=S_OK;std::uint64_t ticks=0;
- bool depth=false,linear_material=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
+ bool depth=false,linear_material=false,fade_arm=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
  bool vs_constants_set=false,ps_constants_set=false,jittered=true;
  DWORD saved_write1=15,saved_write2=15;
  struct Region {RECT rect{};unsigned reason=0;bool bound=false;};
@@ -238,15 +252,16 @@ HRESULT get_stage(D d,DWORD stage,unsigned type,DWORD*out){CHECK(stage==0&&type=
 HRESULT get_viewport(D,D3DVIEWPORT9*){return S_OK;}
 class MotionOutput {
 public:
- struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*screen_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr;};
+ struct ShaderEntry {std::uint64_t hash=0;IUnknown*variant=nullptr,*material_variant=nullptr,*xt_default_ordinary_variant=nullptr,*distance_fade_variant=nullptr;IDirect3DVertexShader9*xt_default_linear_variant=nullptr;IDirect3DPixelShader9*emission_variant=nullptr,*screen_variant=nullptr;bool registered=false;const renderer::MotionOutputProfile*row=nullptr,*prepass=nullptr;};
  struct Shadow {
  IDirect3DVertexShader9*vs=nullptr,*vs_variant=nullptr,*vs_material_variant=nullptr;
  IDirect3DPixelShader9*ps=nullptr,*ps_variant=nullptr,*ps_material_variant=nullptr;
  bool emission_pair=false;std::uint32_t fade_sampler_mask=0;IDirect3DVertexShader9*vs_fade_variant=nullptr;IDirect3DPixelShader9*ps_fade_variant=nullptr;
  bool vs_registered=false,ps_registered=false;IDirect3DPixelShader9*ps_emission_variant=nullptr,*emission_eligible_variant=nullptr;
  bool screen_pair=false;IDirect3DPixelShader9*ps_screen_variant=nullptr,*screen_eligible_variant=nullptr;std::uint64_t stream0=0;
- std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr;
- bool xt_default_pair=false,xt_default_ready=false,cutout_pair=false,asteroid_pair=false;
+ std::uint64_t vs_hash=0,ps_hash=0;const renderer::MotionOutputProfile*vs_row=nullptr,*vs_prepass=nullptr;
+ bool xt_default_pair=false,xt_default_ready=false,cutout_pair=false,asteroid_pair=false,fade_route_pair=false;
+ fade_route::Registers fade_route_registers{};
  DWORD fill_mode=0;bool fill_mode_known=false;
  IDirect3DVertexShader9*vs_xt_default_ordinary=nullptr,*vs_xt_default_linear=nullptr;IDirect3DPixelShader9*ps_xt_default_ordinary=nullptr;
  DWORD composition_blend[4]{};bool composition_blend_known[4]{};
@@ -301,7 +316,7 @@ public:
  cutout::Capability cutout_caps_=cutout::Capability::Pending;HRESULT cutout_cap_result_=S_FALSE;
  bool cutout_probe_frame_known_=false,cutout_reset_pending_=false,shimmer_trace_=false;
  unsigned cutout_probes_=0;void probe_cutout_caps(bool=false)noexcept{++cutout_probes_;}
- bool distance_fade_requested_=false;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
+ bool distance_fade_requested_=false;unsigned fade_route_threshold_=500;fade_route::Hysteresis fade_hysteresis_;unsigned composition_required_producers_=0;HRESULT composition_attach_result_=S_FALSE;
  bool linear_emission_requested_=false;renderer::LinearEmissionConfig linear_emission_config_{1,true};
  bool screen_emission_requested_=false,screen_emission_bound_=false;float screen_emission_gain_=1;unsigned prefix_regions_derived_=0;
  // Step B's bound derivation is a separate seam; here it only records the call.
@@ -377,9 +392,10 @@ DWORD GetEnvironmentVariableW(const wchar_t*name,wchar_t*out,DWORD size){
  if(it->second.size()>=size)return DWORD(it->second.size()+1);
  std::wmemcpy(out,it->second.c_str(),it->second.size()+1);return DWORD(it->second.size());
 }
-namespace x3m {namespace renderer=::renderer;}
+namespace x3m {namespace renderer=::renderer;namespace fade_route=::fade_route;}
 unsigned fade_witness_frames=0;bool shimmer_trace_requested=false,screen_emission_timing_requested=false;
 bool linear_material_requested=false,motion_output_requested=true,hdr_requested=true,taa_requested=true,linear_distance_fade_requested=false,linear_emission_requested=false,screen_emission_requested=false;float emission_gain=1;float screen_emission_gain=1.f; // step E composition gain g, parsed by the extracted setting reader
+unsigned fade_route_threshold=500;
 renderer::LinearMaterialConfig linear_material_config;
 renderer::HdrConfig hdr_config;
 #include "linear_material_live_under_test_inc.h"
@@ -617,6 +633,14 @@ void emission_instance_cache_cases(){
 // owns real bytecode identity and six-pair shader correctness.
 void distance_fade_cache_cases(){
  const unsigned before=checks;Device device;DWORD v=70,p=80;IDirect3DVertexShader9 vs;IDirect3DPixelShader9 ps;
+ // The reporting out-parameter is false on every non-applied path, including
+ // an exception caught by the production registration boundary.
+ {std::vector<std::uint32_t> output;renderer::LinearMaterialConfig config{};config.fill=.06f;bool applied=true;
+  renderer::fade_reject=true;CHECK(renderer::linear_distance_fade_pixel_variant(&p,1,config,output,&applied)==renderer::LinearMaterialResult::UnsupportedShader&&!applied);renderer::fade_reject=false;
+  DWORD unknown=99;applied=true;CHECK(renderer::linear_distance_fade_pixel_variant(&unknown,1,config,output,&applied)==renderer::LinearMaterialResult::UnsupportedShader&&!applied);
+  config.fill=0;applied=true;CHECK(renderer::linear_distance_fade_pixel_variant(&p,1,config,output,&applied)==renderer::LinearMaterialResult::Applied&&!applied);
+  config.fill=.06f;CHECK(renderer::linear_distance_fade_pixel_variant(&p,1,config,output,&applied)==renderer::LinearMaterialResult::Applied&&applied);
+  applied=true;renderer::fade_throw=true;try{renderer::linear_distance_fade_pixel_variant(&p,1,config,output,&applied);CHECK(false);}catch(const std::bad_alloc&){CHECK(!applied);}renderer::fade_throw=false;}
  const auto transforms=renderer::fade_transforms,lookups=renderer::fade_lookups;
  {MotionOutput m;m.device_=&device;m.register_vertex_shader(&vs,&v,4,v);m.register_pixel_shader(&ps,&p,4,p);m.set_vertex_shader(&vs);m.set_pixel_shader(&ps);
   CHECK(renderer::fade_transforms==transforms&&renderer::fade_lookups==lookups&&!m.shadow_.fade_sampler_mask);m.release_resources();}

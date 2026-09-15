@@ -11,7 +11,7 @@ from unittest.mock import patch
 import linear_material_reference as ref
 import linear_xt_fixture_reference as xt_fixture
 import linear_glass_fixture_reference as glass_fixture
-from run_linear_material import BOUNDARY, CUBE_PATTERN, cube_sample, cube_location, expected_alpha, PALETTE_GRADIENT, PALETTE_PERSPECTIVE, DIFFUSE_PATTERN, palette_varying, pattern_diffuse, DETAIL_PATTERN, detail_sample, FIXED_VERTICES, PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, fixture_cases, binary_cases, expected, validate_report
+from run_linear_material import BOUNDARY, CUBE_PATTERN, cube_sample, cube_location, expected_alpha, PALETTE_GRADIENT, PALETTE_PERSPECTIVE, DIFFUSE_PATTERN, palette_varying, pattern_diffuse, DETAIL_PATTERN, detail_sample, FIXED_VERTICES, PAIRS, TIMING_PAIRS, RGB_REL_TOL, RGB_ABS_TOL, FILL, FILL_PAIRS, fixture_cases, fill_cases, binary_cases, expected, validate_report, validate_fill_report
 
 
 def report(cases=None):
@@ -49,6 +49,32 @@ def report(cases=None):
                 for i in range(18):
                     mode=2-i%3 if (i//3)%2 else i%3
                     lines.append(f'TIMING pair={pair} lights={lights} mode={mode} iteration={i} draws=4 vertices=98304 width=256 completed_ms=1.5 palette={palette} repaired={int(pair==148)}')
+    lines.append(f'RESULT PASS cases={len(cases)}')
+    return '\n'.join(lines)
+
+
+def fill_report():
+    cases = fill_cases()
+    lines = ['CAPS mrt=4 vs_slots=512 ps_slots=512',
+             'FLAT effective=0 gouraud=.25 requested_flat=.25']
+    for index, pair in enumerate(FILL_PAIRS):
+        shader = PAIRS[pair][1]
+        repaired = '_xt_repaired' if pair in (148, 149, 156, 157) else ''
+        lines.append(f'CREATE stage=ps key={shader}_2_{index & 1}_2_1_1_fill_0.0599999987{repaired} instructions=101 words=601 completed_ms=.1')
+    for c in cases:
+        lines.append(f'INVARIANT id={c["id"]} pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0 rgb_bad=0')
+        for y in (4, 8, 12):
+            for x in (4, 8, 12):
+                if c['pair'] >= 148:
+                    lines.append(f'BASELINE id={c["id"]} x={x} y={y} rgba=0,0,0,{expected_alpha(c):.17g}')
+                result = expected(c, sample=(x, y), fill=FILL)
+                rgba = ','.join(format(v, '.17g') for v in result.encoded_rgba)
+                lines.append(f'SAMPLE id={c["id"]} x={x} y={y} rgba={rgba}')
+                rgba32 = ','.join(format(v, '.17g') for v in
+                                  tuple(ref.encode(v) for v in result.linear_rgb) + (result.encoded_rgba[3],))
+                lines.append(f'SAMPLE32 id={c["id"]} x={x} y={y} rgba={rgba32}')
+                luma = sum(w*v for w,v in zip((.2126,.7152,.0722),result.linear_rgb))
+                lines.append(f'LUMA id={c["id"]} x={x} y={y} value={luma:.17g}')
     lines.append(f'RESULT PASS cases={len(cases)}')
     return '\n'.join(lines)
 
@@ -91,6 +117,47 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(result['unique_originals'], 137)
         self.assertGreater(result['hdr_channels'], 0)
         self.assertGreater(result['exact_black_channels'], 0)
+
+    def test_fill_slice_is_distinct_bounded_and_one_half_code(self):
+        from run_linear_material import parse_arguments
+        args = parse_arguments(['--exe', 'retained.exe', '--fill'])
+        self.assertTrue(args.fill)
+        self.assertEqual(len(fill_cases()), 23)
+        self.assertEqual(len(binary_cases(fill_cases())), 4 + 23 * 240)
+        result = validate_fill_report(fill_report())
+        self.assertEqual((result['pairs'], result['samples'], result['fp16_code_tolerance']),
+                         (23, 23 * 9, 1))
+        self.assertEqual(result['pre_rt_luma_max_fp16_code_error'], 0)
+        self.assertIn('XT standard LOW', result['families'])
+        self.assertIn('Glass', result['families'])
+        lines = fill_report().splitlines()
+        i = next(i for i, line in enumerate(lines) if line.startswith('SAMPLE '))
+        head, rgba = lines[i].split('rgba=')
+        values = rgba.split(',')
+        code = struct.unpack('<H', struct.pack('<e', float(values[0])))[0]
+        values[0] = str(struct.unpack('<e', struct.pack('<H', code + 2))[0])
+        lines[i] = head + 'rgba=' + ','.join(values)
+        with self.assertRaises(AssertionError):
+            validate_fill_report('\n'.join(lines))
+        for prefix in ('SAMPLE32 ', 'LUMA ', 'CREATE stage=ps '):
+            lines = fill_report().splitlines()
+            duplicate = next(line for line in lines
+                             if line.startswith(prefix) and (prefix != 'CREATE stage=ps ' or '_fill_' in line))
+            lines.insert(-1, duplicate)
+            with self.subTest(duplicate=prefix), self.assertRaises(AssertionError):
+                validate_fill_report('\n'.join(lines))
+        lines = fill_report().splitlines()
+        del lines[next(i for i, line in enumerate(lines)
+                       if line.startswith('CREATE stage=ps ') and '_fill_' in line)]
+        with self.assertRaises(AssertionError):
+            validate_fill_report('\n'.join(lines))
+        lines = fill_report().splitlines()
+        i = next(i for i, line in enumerate(lines) if line.startswith('LUMA '))
+        head, value = lines[i].split('value=')
+        code = struct.unpack('<H', struct.pack('<e', float(value)))[0]
+        lines[i] = head + 'value=' + str(struct.unpack('<e', struct.pack('<H', code + 2))[0])
+        with self.assertRaises(AssertionError):
+            validate_fill_report('\n'.join(lines))
 
     def test_inventory_and_binary_abi(self):
         cases = fixture_cases()

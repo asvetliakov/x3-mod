@@ -35,12 +35,15 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Next user action
 
-No new game run yet. Material fill is merged (`294c155`); the follow-up review fixes
-and K=0.06 detached oracle are in progress, with K=0 GPU parity and live qualification
-next. The installed DLL, EXE and bottle configuration hashes were checked against the
-handoff and match. Shader artifacts are present (751 programs). After reviewed
-qualification, a clean Sol-built candidate will be installed with rollback retained and
-run 23 queued at the run-51 station spot (`--material-fill 0.06`, brackets 0.04/0.10).
+No new game run yet. Material fill (`294c155`) now has passing K=0 GPU qualification
+(4,177 cases; every recorded baseline sample/invariant row bit-identical), the K=0.06
+oracle (23 cases / 207 samples with a float32-output twin; scene-linear luma
+max 0 FP16 codes), and live qualification (8 cases / 32,516 checks). Stored FP16
+RGB is within 1 code; reconstructed FP16-image luma is separately measured at
+3 codes. Final source/evidence review passed; the clean Sol candidate build is next;
+[fill ledger](verification/fill-light.md) records scope and limitations. The installed
+DLL, EXE and bottle configuration still match the handoff. Run 23 is drafted for the
+run-51 station spot (`--material-fill 0.06`, brackets 0.04/0.10), pending installation.
 The fill default remains 0 pending the user's appearance verdict.
 
 Next: the ratified chase HUD anchor (`centre` default); a gate-jump and jumpdrive

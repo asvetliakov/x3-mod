@@ -557,7 +557,8 @@ void definitions(Words& out, bool vertex, const LinearMaterialConfig& config) {
 // Shader-local fill constant. c212/c213 are the sanitizer/gain DEFs, c214
 // belongs to the detached fade producer and c216-c220 to motion/depth; c215 is
 // in no CTAB, so the engine never writes it (linear-material-profiles.json
-// records it free in every converted program).
+// records it free in all 115 profiled hull pixel programs; the glass and XT
+// transformers validate the same reservation directly).
 constexpr unsigned fill_constant = 215;
 void fill_definition(Words& out, const LinearMaterialConfig& config) {
     emit(out, def, {dst(constant,fill_constant,xyzw),bits(config.fill),0,0,0});
@@ -1394,8 +1395,8 @@ LinearMaterialResult linear_distance_fade_vertex_variant(const std::uint32_t* or
 }
 LinearMaterialResult linear_distance_fade_pixel_variant(const std::uint32_t* original,
     std::size_t words, const LinearMaterialConfig& config,
-    std::vector<std::uint32_t>& output) noexcept {
-    return transform(original,words,config,output,false,false,true);
+    std::vector<std::uint32_t>& output, bool* fill_applied) noexcept {
+    return transform(original,words,config,output,false,false,true,fill_applied);
 }
 } // namespace x3m::renderer
 
