@@ -20,6 +20,8 @@ struct Identity {
 // No registry walk, borrowed pointer or C++ lock survives the callback.
 template<class Reader> struct IdentityReader {
     Reader bytes;
+    // Process roots (VM pointer, native body registry); fixtures may alias them.
+    std::uint32_t vm_root=0x6085e4,registry_root=0x60850c;
     std::uint32_t vm=0,classes=0,count=0;
     static bool pointer(std::uint32_t p){return p && !(p&3);}
     bool read(std::uint32_t p,unsigned off,void* out,unsigned n){
@@ -27,7 +29,7 @@ template<class Reader> struct IdentityReader {
     }
     template<class T> bool field(std::uint32_t p,unsigned off,T& out){return read(p,off,&out,sizeof out);}
     bool root(){
-        return field(0x6085e4,0,vm)&&pointer(vm)&&field(vm,0x1c,count)&&count&&count<=4096&&
+        return field(vm_root,0,vm)&&pointer(vm)&&field(vm,0x1c,count)&&count&&count<=4096&&
             field(vm,0x20,classes)&&pointer(classes)&&count<=(UINT32_MAX-classes)/0x38;
     }
     bool descriptor(std::uint32_t p,std::uint32_t (&row)[14]){
@@ -82,7 +84,7 @@ template<class Reader> struct IdentityReader {
         // SA_GetEventObject 4607f4 reads +94 only after native ID lookup.
         if(ship){
             std::uint32_t registry=0,table=0,live=0;
-            const bool ok=pointer(ship)&&field(ship,8,out.native_id)&&field(0x60850c,0,registry)&&
+            const bool ok=pointer(ship)&&field(ship,8,out.native_id)&&field(registry_root,0,registry)&&
                 pointer(registry)&&field(registry,0x14,table)&&hash(table,out.native_id,live)&&live==ship&&
                 field(ship,0x94,out.native_script);
             mark(I::native_bit,ok);

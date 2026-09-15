@@ -12,6 +12,9 @@ struct Update {
 bool initialize();
 bool installed();
 bool diagnostics_active();
+// X3M_CHASE_VIEW_RESTORE=1: the one-use rear-chase restore ticket's seven
+// sites are claimed (default off: nothing patched, no operand touched).
+bool restore_installed();
 std::uint64_t generation(std::uintptr_t cockpit) noexcept;
 // A nested/new updater permanently revokes the previous token on that thread.
 // The caller still validates active registry, ship, camera and view identities.

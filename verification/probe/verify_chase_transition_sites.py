@@ -27,8 +27,12 @@ def decode(exe):
         result[(start,end)]=common.parse_objdump(run.stdout,start,end)
     return result
 
+def spec_table(text,name='specs'):
+    """The one named SiteSpec table: the source holds the nine transition rows and the seven restore rows."""
+    start=text.index('constexpr engine_patch::SiteSpec '+name+'[]');return text[start:text.index('};',start)]
+
 def verify(exe=common.DEFAULT_EXE,source=SOURCE):
-    return common.verify(Path(exe).read_bytes(),decode(exe),Path(source).read_text(),specs=SITES)
+    return common.verify(Path(exe).read_bytes(),decode(exe),spec_table(Path(source).read_text()),specs=SITES)
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--exe',type=Path,default=common.DEFAULT_EXE);p.add_argument('--json',action='store_true');a=p.parse_args()

@@ -737,3 +737,79 @@ local directory. The current log cannot retrospectively reveal failed dynamic
 lookup subchecks; the borrowed current-context contract above avoids inventing
 those readings. No production source, Wine/game execution, build or install was
 performed in this reconstruction.
+
+### Implementation (2026-09-15, `--chase-view-restore`, default off)
+
+Source: `src/proxy/chase_transition_restore_core.h` (portable state machine,
+seam decode, consume/transfer proofs, bounded live-stack walk),
+`src/proxy/chase_transition.cpp` (the seven `restore_specs` sites, prefilter
+stub, handlers, install/rollback, report), launcher `--chase-view-restore`
+(`X3M_CHASE_VIEW_RESTORE=1`). Verification is in
+`docs/verification/chase-cpu-boundary.md`.
+
+Site table state: all seven spans of the lifecycle table are claimed as plain
+whole-instruction copies only when the option is on and the base transition
+set installed; a refused or failed site rolls the earlier ones back, and the
+late window refuses. `verify_chase_restore_sites.py` also proves no direct
+branch in `.text` targets a span interior and the `4a4027 → jmp 4a3ffd` /
+`4a3ff0` fall-through convergence. The nine diagnostic sites are unchanged.
+Kinds: 0 store `4a3ffd`, 1 complete `4a2260`, 2 abort `4a2420`, 3 VM
+construct `49c9a0`, 4 VM clear `49ea80`, 5 VM load `4a0880`, 6 EH adapter
+`52f298` (lock-free atomic epoch bump only, then the original MOV/tail path).
+
+Mechanics as ratified: arm from an admitted rear-chase update (mode 258,
+connect 0, view == ref ship, active registry handle, native body registry
+membership, native `+94 == global9`, valid controller/warp/killed scalars;
+dynamic-membership bits are not required, as measured); transfer to pending
+only at the `42d402` destructor with the exact `efbff,edba0,edbe3,1661c,0`
+prefix, matching arm cockpit/generation, player/controller scalars, warp 1,
+killed 0 and a borrowed current context of class `25e`; consume at `f0c4b`
+only for the same thread/task pointer/task ID/epoch, `[ESP+20] == EAX ==
+task+3c`, opcode `94` index 0 discard `24`, same monitor ID, cells 0/1/11 =
+258/0/player, unchanged globals, warp 1/killed 0, source tag 1 payload 1,
+live stack prefix `edc91,16724,0` walked from EBX (64-cell bound, five-byte
+alignment, capacity), then a VirtualQuery-writable check; pending is cleared
+before the single 4-byte write of 258 into `[EBX+1]`. The displaced
+`ADD ESI,[EAX+c]; CMP byte [ESI],8` replay after POPAD/POPFD, so their flags
+are fresh for the following `jb`.
+
+Prefilter (before any XMM/x87 capture, under saved flags): mode word 0 skips;
+mode 1 (armed) admits only the five published operand addresses
+(`code + pc + 1` for `f0c4b`, `e5da1`, `83a03`, `13b48`, `13b62`); mode 2
+(pending) additionally admits `[EDI-1] == 93` with ESI 40/45 (global slots
+8/9). Idle cost measured at ~0.01 µs per store versus ~0.54 µs for a full stub.
+
+Deviations and assumptions, with reasons:
+
+- PC convention: the contract's CODE offsets are taken as opcode-byte
+  addresses, so EDI at the seam (operand start) equals `code + pc + 1`. If the
+  convention were off by one, the published operand addresses never match
+  EDI, the prefilter never admits a store, nothing is written, and the
+  `chase_view_restore_state` line shows `arms` advancing with `seam_calls==0`.
+- Foreign monitors: while armed, a SelectMode assignment whose current
+  context validates as class `25e` with variable11 != player is ignored;
+  while pending, admission is by monitor ID only (the identity captured at
+  the destructor prefix), so a secondary monitor viewing the player cannot
+  reach the consume proof. `RestartAllMonitors` visiting other monitors first
+  therefore cannot defeat the ticket; any malformed context cancels.
+- Deserialization kind7: the existing mode-load observer (`419e06`, kind 7,
+  present only with telemetry diagnostics) clears arm/pending and advances the
+  epoch like the VM boundaries; the save-load reader `4a0880` is the site that
+  is always claimed with the option. Same-valued and direct selections of the main monitor
+  cancel (armed) or fail the consume proof (pending) as ratified.
+- Bounded expiry: pending is cancelled after 600 cockpit updates (about ten
+  seconds at 60 fps) as a cancellation-only bound; the run60 gate needed no
+  update between destructor and reset.
+- Arm re-attempts: one identity walk per cockpit lifetime and per re-entry
+  into mode 258 (a seam cancellation resets the attempt), never per frame.
+- Task termination with an unreadable task argument clears pending
+  conservatively; killed stores at the two PCs cancel unless they are a
+  well-formed zero store (`94`, index 6, ESI 30, current object == class-96
+  context, tag 1 payload 0).
+- `IdentityReader` and the provenance walkers now take the VM/registry roots
+  as parameters (defaults unchanged) so the fixture can alias them; production
+  values are the same globals as before.
+
+Gameplay acceptance (a gate run with the option on, reading the
+`chase_view_restore_state` counters) and native Windows execution remain
+unverified.

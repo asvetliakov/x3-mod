@@ -12,9 +12,9 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_chase_aim_sites as probe  # noqa: E402
 
 
-def synthetic_image(site_overrides=(), extra=()):
+def synthetic_image(site_overrides=(), extra=(), text_size=0x80000):
     """Create an objdump-readable one-section PE containing the two functions."""
-    text_va, text_size = 0x00401000, 0x80000
+    text_va = 0x00401000
     text = bytearray(b'\x90' * text_size)
 
     def put(va, data):
@@ -41,7 +41,7 @@ def synthetic_image(site_overrides=(), extra=()):
     struct.pack_into('<I', header, optional + 20, 0x1000)
     struct.pack_into('<I', header, optional + 28, probe.IMAGE_BASE)
     struct.pack_into('<II', header, optional + 32, 0x1000, 0x200)
-    struct.pack_into('<I', header, optional + 56, 0x81000)
+    struct.pack_into('<I', header, optional + 56, text_size + 0x1000)
     struct.pack_into('<I', header, optional + 60, header_size)
     struct.pack_into('<H', header, optional + 68, 3)
     struct.pack_into('<I', header, optional + 92, 16)

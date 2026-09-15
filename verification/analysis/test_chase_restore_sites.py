@@ -1,24 +1,26 @@
-"""Structural acceptance and refusal tests for the nine transition sites."""
+"""Structural acceptance and refusal tests for the seven view-restore sites."""
 import dataclasses
-import struct
 import tempfile
 import unittest
 from pathlib import Path
-import verify_chase_transition_sites as probe
+import verify_chase_restore_sites as probe
 from verification.analysis.test_chase_aim_sites import synthetic_image
-class TransitionSites(unittest.TestCase):
+class RestoreSites(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
-  cls.tmp=tempfile.TemporaryDirectory(prefix='x3-transition-sites-')
+  cls.tmp=tempfile.TemporaryDirectory(prefix='x3-restore-sites-')
   cls.exe=Path(cls.tmp.name)/'test.exe'
-  cls.data=synthetic_image(extra=tuple((s.va,s.expected) for s in probe.SITES))
+  cls.data=synthetic_image(extra=tuple((s.va,s.expected) for s in probe.SITES),text_size=0x140000)
   cls.exe.write_bytes(cls.data)
   cls.decoded=probe.decode(cls.exe)
   cls.image=probe.common.Image(cls.data)
  @classmethod
  def tearDownClass(cls):cls.tmp.cleanup()
  def test_production_specs(self):
-  self.assertTrue(probe.common.check_source_specs(probe.spec_table(probe.SOURCE.read_text()),probe.SITES)['ok'])
+  self.assertTrue(probe.common.check_source_specs(probe.spec_table(probe.SOURCE.read_text(),'restore_specs'),probe.SITES)['ok'])
+ def test_seven_sites_match_run60_proof_table(self):
+  expected={0x4a3ffd:'03700c803e08',0x4a2260:'538b5c240c',0x4a2420:'538b5c240c',0x49ea80:'83ec08558b6c2410',0x49c9a0:'5333db895e04',0x4a0880:'6aff68c8005300',0x52f298:'b8f4e55600'}
+  self.assertEqual({s.va:s.expected.hex() for s in probe.SITES},expected)
  def test_all_spans_are_whole_and_plain(self):
   for spec in probe.SITES:
    with self.subTest(site=spec.name):self.assertTrue(probe.common.inspect_site(self.image,spec,self.decoded[(spec.function_start,spec.function_end)])['ok'])
@@ -31,7 +33,6 @@ class TransitionSites(unittest.TestCase):
  def test_truncated_spans_rejected(self):
   for spec in probe.SITES:
    with self.subTest(site=spec.name):
-    # Remove the last decoded instruction boundary, even for one-byte endings.
     listing=[i for i in self.decoded[(spec.function_start,spec.function_end)] if i.end!=spec.end]
     self.assertFalse(probe.common.inspect_site(self.image,spec,listing)['whole_instructions'])
  def test_changed_byte_rejected_each_site(self):
@@ -39,7 +40,4 @@ class TransitionSites(unittest.TestCase):
    with self.subTest(site=spec.name):
     wrong=dataclasses.replace(spec,expected=bytes([spec.expected[0]^1])+spec.expected[1:])
     self.assertFalse(probe.common.inspect_site(self.image,wrong,self.decoded[(spec.function_start,spec.function_end)])['bytes_ok'])
- def test_updater_has_both_native_return_paths(self):
-  ends={s.va for s in probe.SITES if s.name.startswith('chase_update_end')}
-  self.assertEqual(ends,{0x4216c3,0x4216d3})
 if __name__=='__main__':unittest.main()

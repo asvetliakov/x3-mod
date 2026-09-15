@@ -41,6 +41,10 @@ bool field(std::uintptr_t,unsigned offset,std::uint32_t& out){
  out=0x12345678;return true;
 }
 void record(unsigned,std::uintptr_t,std::uint32_t,std::uint32_t=0,std::uint32_t=0,std::uint32_t=0){}
+// Restore-ticket callouts (X3M_CHASE_VIEW_RESTORE) are inert here; the CPU fixture drives them.
+void restore_on_update(std::uintptr_t,std::uint32_t){}
+void restore_on_destroy(std::uintptr_t,std::uint32_t,std::uint32_t,std::uint32_t){}
+void restore_on_load(){}
 #include "chase_transition_handle_under_test_inc.h"
 }
 }

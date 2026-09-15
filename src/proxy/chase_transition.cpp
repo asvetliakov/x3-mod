@@ -1,6 +1,7 @@
 #include "chase_transition.h"
 #include "chase_transition_core.h"
 #include "chase_transition_identity_core.h"
+#include "chase_transition_restore_core.h"
 #include "chase_camera.h"
 #include "chase_lead.h"
 #include "engine_patch.h"
@@ -29,8 +30,22 @@ constexpr engine_patch::SiteSpec specs[] = {
     {"chase_connect",0x00422cd0,{0x83,0xec,0x08,0x83,0xf8,0x09},6,0,0}
 };
 constexpr unsigned mandatory=6, site_count=9;
-engine_patch::Site sites[site_count];
-std::atomic<bool> enabled{false},diagnostic{false};
+// X3M_CHASE_VIEW_RESTORE=1 only (docs/reverse-engineering/chase-view-transition.md,
+// run60 lifecycle table): the shared optimized store seam plus six cancellation
+// boundaries. All plain whole-instruction copies; the seam's displaced ADD/CMP
+// replay after the stub restores GPR/flags, so their live flags are fresh.
+constexpr engine_patch::SiteSpec restore_specs[] = {
+    {"chase_restore_store",0x004a3ffd,{0x03,0x70,0x0c,0x80,0x3e,0x08},6,0,0},
+    {"chase_restore_task_complete",0x004a2260,{0x53,0x8b,0x5c,0x24,0x0c},5,0,0},
+    {"chase_restore_task_abort",0x004a2420,{0x53,0x8b,0x5c,0x24,0x0c},5,0,0},
+    {"chase_restore_vm_construct",0x0049c9a0,{0x53,0x33,0xdb,0x89,0x5e,0x04},6,0,0},
+    {"chase_restore_vm_clear",0x0049ea80,{0x83,0xec,0x08,0x55,0x8b,0x6c,0x24,0x10},8,0,0},
+    {"chase_restore_vm_load",0x004a0880,{0x6a,0xff,0x68,0xc8,0x00,0x53,0x00},7,0,0},
+    {"chase_restore_eh_adapter",0x0052f298,{0xb8,0xf4,0xe5,0x56,0x00},5,0,0}
+};
+constexpr unsigned restore_site_count=7, restore_eh_kind=6;
+engine_patch::Site sites[site_count],restore_sites[restore_site_count];
+std::atomic<bool> enabled{false},diagnostic{false},restore_enabled{false};
 bool initialized=false,timing=false;
 std::uint64_t frequency=0;
 detail::HandlerTiming handler_timing[site_count]{};
@@ -72,9 +87,11 @@ void snapshot(std::uintptr_t c,Snapshot& s) {
     if(field(c,0x1e0,s.target))s.valid|=64;
     if(field(c,0x130,s.boom))s.valid|=128;
 }
+// Process roots; the CPU fixture aliases them to fixture-owned memory.
+std::uint32_t vm_root=0x6085e4,native_registry_root=0x60850c,cockpit_registry_root=0x608504;
 bool active_handle(std::uintptr_t cockpit,std::uint32_t& handle) {
     std::uint32_t registry=0,table=0,bucket[2]{},link=0;
-    if(!field(0x608504,0,registry)||!field(registry,0,table)||!field(registry,0x10,handle)||!field(table,0,bucket))return false;
+    if(!field(cockpit_registry_root,0,registry)||!field(registry,0,table)||!field(registry,0x10,handle)||!field(table,0,bucket))return false;
     const auto n=bucket[1];
     if(!n||n>65536||(n&(n-1))||!field(bucket[0],4*((n-1)&handle),link))return false;
     for(unsigned i=0;link && i<32;++i){std::uint32_t row[3]{};if(!field(link,0,row))return false;
@@ -136,6 +153,169 @@ void record(unsigned kind,std::uintptr_t cockpit,std::uint32_t thread,std::uint3
     if(e.origin.flags&1)++read_failures;
     e.sequence=++sequence;e.qpc=now();window.push(e);
 }
+// ---- one-use rear-chase restore ticket (X3M_CHASE_VIEW_RESTORE=1) ----
+// The lock-protected state; the epoch is lock-free so the EH adapter can
+// cancel without acquiring anything. The filter words are read racily by the
+// store stub (mode 0 idle, 1 armed: operand addresses, 2 pending: also global
+// slot 8/9 stores); the full path re-validates everything under the lock.
+detail::RestoreState restore;
+std::atomic<std::uint32_t> restore_epoch{1};
+std::atomic<std::uint32_t> restore_filter[1+detail::restore_filter_count]{};
+std::atomic<std::uint64_t> restore_eh_bumps{0};
+detail::HandlerTiming restore_timing[restore_site_count]{};
+constexpr unsigned restore_pending_update_expiry=600;
+void restore_filter_publish() {
+    const std::uint32_t pcs[detail::restore_filter_count]={detail::restore_mode_pc,detail::restore_player_pc,
+        detail::restore_controller_pc,detail::restore_killed_pcs[0],detail::restore_killed_pcs[1]};
+    const std::uint32_t code=restore.armed||restore.pending?restore.arm_code:0;
+    for(unsigned i=0;i<detail::restore_filter_count;++i)restore_filter[1+i].store(code?code+pcs[i]+1:0,std::memory_order_relaxed);
+    restore_filter[0].store(restore.filter_mode(),std::memory_order_release);
+}
+bool restore_epoch_ok() {
+    const auto e=restore_epoch.load(std::memory_order_acquire);
+    // An epoch cancellation (EH adapter) must let a later admitted rear update re-arm.
+    if(restore.armed&&restore.arm_epoch!=e){restore.clear_arm(detail::cancel_epoch);restore.attempt_mode=0;}
+    if(restore.pending&&restore.pending_epoch!=e){restore.clear_pending(detail::cancel_epoch);restore.attempt_mode=0;}
+    return restore.armed||restore.pending;
+}
+bool writable_span(std::uintptr_t at,unsigned n) {
+    constexpr DWORD writable=PAGE_READWRITE|PAGE_EXECUTE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_WRITECOPY;
+    MEMORY_BASIC_INFORMATION a{},b{};
+    if(!at||!n||n>UINT32_MAX-at)return false;
+    return VirtualQuery(reinterpret_cast<void*>(at),&a,sizeof a)==sizeof a&&VirtualQuery(reinterpret_cast<void*>(at+n-1),&b,sizeof b)==sizeof b&&
+        a.State==MEM_COMMIT&&b.State==MEM_COMMIT&&!(a.Protect&PAGE_GUARD)&&!(b.Protect&PAGE_GUARD)&&(a.Protect&writable)&&(b.Protect&writable);
+}
+bool write_payload(std::uintptr_t at,std::uint32_t value) {
+    SIZE_T written=0;
+    return WriteProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(at),&value,4,&written)&&written==4;
+}
+// Arm from an admitted rear-chase update: one identity walk per lifetime and
+// per re-entry into mode 258, never per frame while armed.
+void restore_on_update(std::uintptr_t cockpit,std::uint32_t thread) {
+    (void)thread;
+    if(!restore_enabled.load(std::memory_order_relaxed))return;
+    const auto gen=state.generation(cockpit);
+    std::uint32_t mode=0;
+    if(!gen||!field(cockpit,0x150,mode))return;
+    restore_epoch_ok();
+    if(restore.pending){
+        if(++restore.pending_updates>restore_pending_update_expiry){restore.clear_pending(detail::cancel_expiry);restore_filter_publish();}
+        return;
+    }
+    if(restore.armed){
+        if(restore.arm_cockpit==cockpit&&restore.arm_generation==gen&&mode!=detail::restore_rear_mode){
+            restore.clear_arm(detail::cancel_mode_left);restore.attempt_generation=gen;restore.attempt_mode=mode;restore_filter_publish();}
+        return;
+    }
+    if(restore.attempt_generation==gen&&restore.attempt_mode==mode)return;
+    restore.attempt_generation=gen;restore.attempt_mode=mode;
+    if(mode!=detail::restore_rear_mode)return;
+    std::uint32_t connect=0,ship=0,view=0,handle=0,code=0;
+    if(!field(cockpit,0x1c0,connect)||connect||!field(cockpit,0xc,ship)||!field(cockpit,0x10,view)||
+       !ship||(ship&3)||view!=ship||!active_handle(cockpit,handle)){++restore.arm_refusals;return;}
+    detail::IdentityReader<decltype(&bytes)> reader{&bytes};reader.vm_root=vm_root;reader.registry_root=native_registry_root;
+    detail::Identity id;reader.capture(ship,0,id);
+    using I=detail::Identity;
+    constexpr std::uint32_t need=I::vm_bit|I::native_bit|I::player_bit|I::controller_bit|I::warp_bit|I::killed_bit;
+    if((id.valid&need)!=need||!id.player||id.native_script!=id.player||id.killed||!field(id.vm,8,code)||!code){++restore.arm_refusals;return;}
+    restore.armed=true;restore.arm_cockpit=std::uint32_t(cockpit);restore.arm_generation=gen;restore.arm_player=id.player;
+    restore.arm_controller=id.controller;restore.arm_native_script=id.native_script;restore.arm_code=code;
+    restore.arm_epoch=restore_epoch.load(std::memory_order_acquire);++restore.arms;
+    restore_filter_publish();
+}
+// Transfer to pending only at the measured warp destructor; any other
+// destructor clears the arm and a second destruction clears pending.
+void restore_on_destroy(std::uintptr_t cockpit,std::uint32_t caller,std::uint32_t ebp,std::uint32_t thread) {
+    if(!restore_enabled.load(std::memory_order_relaxed))return;
+    restore_epoch_ok();
+    if(restore.pending){restore.clear_pending(detail::cancel_second_destruction);restore_filter_publish();return;}
+    if(!restore.armed)return;
+    const auto* life=state.find(cockpit);
+    const std::uint64_t gen=life?life->generation:0;
+    if(cockpit!=restore.arm_cockpit||gen!=restore.arm_generation||caller!=detail::restore_destructor_caller){
+        restore.clear_arm(detail::cancel_destructor);restore.attempt_mode=0;restore_filter_publish();return;}
+    Origin o;detail::destructor_provenance(caller,ebp,o,bytes,code_address,vm_root);
+    std::uint32_t monitor=0,task_id=0;
+    const unsigned why=detail::transfer_proof(restore,o,bytes,vm_root,monitor,task_id);
+    if(why){restore.refuse(why);restore.clear_arm(detail::cancel_destructor);restore.attempt_mode=0;restore_filter_publish();return;}
+    restore.transfer(monitor,o.task,task_id,thread,restore_epoch.load(std::memory_order_acquire));
+    restore_filter_publish();
+}
+// Whether a SelectMode assignment belongs to the armed/pending main monitor.
+// Pending admits only the fresh monitor identity captured at the destructor
+// prefix; armed admits the monitor whose variable11 is the player. A validated
+// foreign monitor is ignored; a malformed context cancels.
+bool restore_store_is_ours(std::uint32_t esp,std::uint32_t eax,bool& malformed) {
+    std::uint32_t context=0,id=0,ref=0,desc[14]{};
+    detail::IdentityReader<decltype(&bytes)> r{&bytes};r.vm_root=vm_root;r.registry_root=native_registry_root;
+    malformed=!field(esp,0x20,context)||context!=eax||!r.root()||!detail::borrowed_context(r,context,detail::restore_monitor_class,id,desc)||
+        !detail::integer_cell(r,context,desc,11,ref);
+    if(malformed)return true;
+    return restore.pending?id==restore.pending_monitor:ref==restore.arm_player;
+}
+void restore_on_store(std::uint32_t* regs,std::uint32_t esp,std::uint32_t thread) {
+    ++restore.seam_calls;
+    if(!restore_epoch_ok()){restore_filter_publish();return;}
+    detail::SeamRegs s;s.eax=regs[7];s.ebx=regs[4];s.esi=regs[1];s.edi=regs[0];s.ebp=regs[2];s.esp=esp;s.thread=thread;
+    detail::SeamDecode d;
+    if(!detail::seam_decode(s,bytes,code_address,vm_root,d)){restore.refuse(detail::refuse_opcode);restore.clear_all(detail::cancel_seam_unreadable);restore.attempt_mode=0;restore_filter_publish();return;}
+    if(d.pc==detail::restore_mode_pc){
+        bool malformed=false;
+        if(!restore_store_is_ours(esp,s.eax,malformed))return;
+        if(restore.pending){
+            unsigned why=detail::seam_consume_proof(restore,s,d,restore_epoch.load(std::memory_order_acquire),bytes,code_address,vm_root);
+            if(!why&&!writable_span(s.ebx+1,4))why=detail::refuse_writable;
+            if(why){restore.refuse(why);restore.clear_pending(detail::cancel_proof);restore_filter_publish();return;}
+            // Clear pending immediately before the single source-payload write.
+            restore.take_pending();restore_filter_publish();
+            if(write_payload(s.ebx+1,detail::restore_rear_mode))++restore.consumed;
+            else{++restore.writes_failed;restore.refuse(detail::refuse_write);}
+            return;
+        }
+        restore.clear_arm(detail::cancel_selection);restore.attempt_mode=0;restore_filter_publish();return;
+    }
+    if(d.pc==detail::restore_player_pc||d.pc==detail::restore_controller_pc){
+        restore.clear_all(detail::cancel_identity_store);restore.attempt_mode=0;restore_filter_publish();return;}
+    if(d.pc==detail::restore_killed_pcs[0]||d.pc==detail::restore_killed_pcs[1]){
+        if(!detail::killed_store_is_zero(s,d,bytes,vm_root)){restore.clear_all(detail::cancel_killed_store);restore.attempt_mode=0;restore_filter_publish();}
+        return;
+    }
+    if(restore.pending&&d.opcode==0x93&&(s.esi==40||s.esi==45)){restore.clear_pending(detail::cancel_global_slot);restore_filter_publish();}
+}
+void restore_on_task(unsigned kind,std::uint32_t task) {
+    if(restore.pending&&(!task||task==restore.pending_task)){
+        restore.clear_pending(kind==1?detail::cancel_task_complete:detail::cancel_task_abort);restore_filter_publish();}
+}
+void restore_on_vm() {
+    restore_epoch.fetch_add(1,std::memory_order_acq_rel);
+    restore.clear_all(detail::cancel_epoch);restore.attempt_generation=0;restore.attempt_mode=0;restore_filter_publish();
+}
+// Deserialization kind7 (the existing mode-load observer, 0x419e06) is an
+// additional cancel: same epoch advance as the VM boundaries, no new site.
+void restore_on_load() {
+    if(!restore_enabled.load(std::memory_order_relaxed))return;
+    restore_on_vm();
+}
+void restore_handle(unsigned kind,std::uint32_t* regs) {
+    if(kind>=restore_site_count||!restore_enabled.load(std::memory_order_acquire))return;
+    if(kind==restore_eh_kind){
+        // Lock-free: native unwinding may pass through this adapter while
+        // another observer holds its lock on the same or another thread.
+        restore_epoch.fetch_add(1,std::memory_order_acq_rel);restore_eh_bumps.fetch_add(1,std::memory_order_relaxed);return;
+    }
+    const auto start=timing?now():0;
+    const auto thread=GetCurrentThreadId();
+    const auto esp=regs[3]+4;
+    {
+    Guard guard;
+    switch(kind){
+    case 0:restore_on_store(regs,esp,thread);break;
+    case 1:case 2:{std::uint32_t task=0;field(esp,8,task);restore_on_task(kind,task);}break;
+    case 3:case 4:case 5:restore_on_vm();break;
+    }
+    }
+    if(timing){const auto end=now();Guard guard;restore_timing[kind].add(start,end);}
+}
 void handle(unsigned kind,std::uint32_t* regs) {
     if(kind>=site_count || !enabled.load(std::memory_order_acquire) ||
        (kind>=mandatory && !diagnostic.load(std::memory_order_relaxed)))return;
@@ -154,14 +334,14 @@ void handle(unsigned kind,std::uint32_t* regs) {
         cockpit=regs[7];if(state.complete(cockpit,thread))record(1,cockpit,thread);break;
     case 2:
         chase_lead::native_timing_invalidate(0,thread);
-        if(field(esp,4,cockpit)){field(esp,0,caller);record(2,cockpit,thread,caller,0,regs[2]);chase_lead::native_timing_invalidate(cockpit,thread);state.destroy(cockpit);}break;
+        if(field(esp,4,cockpit)){field(esp,0,caller);record(2,cockpit,thread,caller,0,regs[2]);restore_on_destroy(cockpit,caller,regs[2],thread);chase_lead::native_timing_invalidate(cockpit,thread);state.destroy(cockpit);}break;
     case 3:
         // Even a failed argument read must revoke this thread's previous update.
         chase_lead::native_timing_invalidate(0,thread);
-        field(esp,4,cockpit);state.begin(cockpit,esp,thread);record(3,cockpit,thread);break;
+        field(esp,4,cockpit);state.begin(cockpit,esp,thread);record(3,cockpit,thread);restore_on_update(cockpit,thread);break;
     case 4:case 5:chase_lead::native_timing_invalidate(0,thread);state.end(regs[2]+4,thread);break;
     case 6:record(6,regs[7],thread,0x42e742,regs[6],regs[2]);break;
-    case 7:record(7,regs[2],thread,0x419e06,regs[5]);break;
+    case 7:record(7,regs[2],thread,0x419e06,regs[5]);restore_on_load();break;
     case 8:field(esp,0,caller);record(8,regs[1],thread,caller,regs[7]);break;
     }
     }
@@ -178,22 +358,55 @@ x3m_chase_transition_enter(unsigned kind,std::uint32_t* regs) {
     const unsigned mxcsr=0x1f80;asm volatile("ldmxcsr %0" :: "m"(mxcsr):"memory");
     x3m::chase_transition::handle(kind,regs);
 }
+extern "C" __attribute__((force_align_arg_pointer)) void __cdecl
+x3m_chase_restore_enter(unsigned kind,std::uint32_t* regs) {
+    x3m::PreserveCpuState cpu;
+    asm volatile("fninit" ::: "memory");
+    const unsigned mxcsr=0x1f80;asm volatile("ldmxcsr %0" :: "m"(mxcsr):"memory");
+    x3m::chase_transition::restore_handle(kind,regs);
+}
 namespace x3m::chase_transition {
 namespace {
-void* emit(unsigned kind,void*** next_out) {
-    engine_patch::Emitter e(192);if(!e.ok())return nullptr;void* start=e.here();
-    e.byte(0x9c);e.byte(0x60);e.byte(0xfc); // preserve DF, provide the C ABI's clear DF
+// Register-saving stub. With `filter` (the store seam) a prefilter runs under
+// the saved flags before any XMM/x87 capture: idle mode skips at one memory
+// compare; armed mode admits only the published operand addresses; pending
+// mode also admits optimized global stores (opcode 93) to slots 8/9. The
+// opcode byte at EDI-1 was fetched by the interpreter's own dispatch.
+void* emit_stub(unsigned kind,const void* callback,void*** next_out,const std::atomic<std::uint32_t>* filter) {
+    engine_patch::Emitter e(320);if(!e.ok())return nullptr;void* start=e.here();
+    e.byte(0x9c); // pushfd
+    const unsigned char* full_at=nullptr;const unsigned char* skip_at=nullptr;
+    if(filter){
+        constexpr unsigned prefilter=13+12*detail::restore_filter_count+13+10+9+9+5,full_path=116;
+        full_at=static_cast<const unsigned char*>(e.here())+prefilter;skip_at=full_at+full_path;
+        const auto word=[&](unsigned i){return std::uint32_t(reinterpret_cast<std::uintptr_t>(filter+i));};
+        e.byte(0x83);e.byte(0x3d);e.dword(word(0));e.byte(0);e.byte(0x0f);e.byte(0x84);e.rel32(skip_at); // cmp [mode],0; je skip
+        for(unsigned i=0;i<detail::restore_filter_count;++i){e.byte(0x3b);e.byte(0x3d);e.dword(word(1+i));e.byte(0x0f);e.byte(0x84);e.rel32(full_at);} // cmp edi,[addr]; je full
+        e.byte(0x83);e.byte(0x3d);e.dword(word(0));e.byte(2);e.byte(0x0f);e.byte(0x85);e.rel32(skip_at); // cmp [mode],2; jne skip
+        e.byte(0x80);e.byte(0x7f);e.byte(0xff);e.byte(0x93);e.byte(0x0f);e.byte(0x85);e.rel32(skip_at); // cmp byte [edi-1],0x93; jne skip
+        e.byte(0x83);e.byte(0xfe);e.byte(40);e.byte(0x0f);e.byte(0x84);e.rel32(full_at); // cmp esi,40; je full
+        e.byte(0x83);e.byte(0xfe);e.byte(45);e.byte(0x0f);e.byte(0x84);e.rel32(full_at); // cmp esi,45; je full
+        e.byte(0xe9);e.rel32(skip_at);
+        if(e.here()!=full_at)return nullptr;
+    }
+    e.byte(0x60);e.byte(0xfc); // pushad; provide the C ABI's clear DF (DF itself is in the saved flags)
     e.byte(0x81);e.byte(0xec);e.dword(0x80);
     for(unsigned i=0;i<8;++i){e.byte(0x0f);e.byte(0x11);e.byte(static_cast<unsigned char>(0x44|(i<<3)));e.byte(0x24);e.byte(static_cast<unsigned char>(i*16));}
     e.byte(0x8d);e.byte(0x84);e.byte(0x24);e.dword(0x80);e.byte(0x50);
-    e.byte(0x68);e.dword(kind);e.byte(0xe8);e.rel32(reinterpret_cast<const void*>(&x3m_chase_transition_enter));
+    e.byte(0x68);e.dword(kind);e.byte(0xe8);e.rel32(callback);
     e.byte(0x83);e.byte(0xc4);e.byte(8);
     for(unsigned i=0;i<8;++i){e.byte(0x0f);e.byte(0x10);e.byte(static_cast<unsigned char>(0x44|(i<<3)));e.byte(0x24);e.byte(static_cast<unsigned char>(i*16));}
-    e.byte(0x81);e.byte(0xc4);e.dword(0x80);e.byte(0x61);e.byte(0x9d);
+    e.byte(0x81);e.byte(0xc4);e.dword(0x80);e.byte(0x61);
+    if(filter&&e.here()!=skip_at)return nullptr;
+    e.byte(0x9d); // popfd
     const auto next=(reinterpret_cast<std::uintptr_t>(e.here())+6+3)&~std::uintptr_t(3);
     e.byte(0xff);e.byte(0x25);e.dword(std::uint32_t(next));
     while(e.ok()&&reinterpret_cast<std::uintptr_t>(e.here())<next)e.byte(0xcc);
     *next_out=reinterpret_cast<void**>(next);e.dword(0);return e.finish()?start:nullptr;
+}
+void* emit(unsigned kind,void*** next_out){return emit_stub(kind,reinterpret_cast<const void*>(&x3m_chase_transition_enter),next_out,nullptr);}
+void* emit_restore(unsigned kind,void*** next_out){
+    return emit_stub(kind,reinterpret_cast<const void*>(&x3m_chase_restore_enter),next_out,kind==0?restore_filter:nullptr);
 }
 bool restore_group(unsigned first,unsigned end) {
     bool okay=true;for(unsigned i=end;i-->first;)if(sites[i].patched_in&&!engine_patch::restore(sites[i]))okay=false;
@@ -207,6 +420,24 @@ bool install_group(unsigned first,unsigned end) {
             restore_group(first,end);return false;}
     }
     return true;
+}
+// Partial-install rollback: a refused/failed site restores every earlier one.
+bool restore_sites_restore() {
+    bool okay=true;for(unsigned i=restore_site_count;i-->0;)if(restore_sites[i].patched_in&&!engine_patch::restore(restore_sites[i]))okay=false;
+    return okay;
+}
+bool restore_sites_install(const engine_patch::SiteSpec* table) {
+    for(unsigned i=0;i<restore_site_count;++i){
+        if(!engine_patch::claim(restore_sites[i],table[i])){restore_sites_restore();return false;}
+        void** next=nullptr;void* stub=emit_restore(i,&next);
+        if(!stub||!next||!engine_patch::store_pointer(next,*restore_sites[i].entry)||!engine_patch::push_front(restore_sites[i],stub)){
+            restore_sites_restore();return false;}
+    }
+    return true;
+}
+bool restore_wanted() {
+    wchar_t setting[8]{};
+    return GetEnvironmentVariableW(L"X3M_CHASE_VIEW_RESTORE",setting,8)==1&&setting[0]==L'1';
 }
 }
 bool initialize() {
@@ -223,8 +454,21 @@ bool initialize() {
     log("chase_transition installed=%u diagnostics=%u mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=%u qpc_frequency=%llu identity_version=1 origin_pairs=6 identity_scope=admitted_events",unsigned(okay),unsigned(diag),unsigned(timing),frequency);
     for(unsigned i=0;i<site_count;++i)if(sites[i].patched_in||wanted)
         log("chase_transition_site index=%u site=0x%08lx patched=%u status=%s",i,static_cast<unsigned long>(specs[i].address),unsigned(sites[i].patched_in),sites[i].status);
+    // Default off: with the option unset nothing below is claimed and the
+    // interpreter operands are never read or written.
+    const bool restore_requested=restore_wanted();
+    const bool restore_okay=restore_requested&&okay&&engine_patch::install_window_open()&&restore_sites_install(restore_specs);
+    {Guard guard;restore={};restore_filter_publish();}
+    restore_enabled.store(restore_okay,std::memory_order_release);
+    if(restore_requested||restore_okay){
+        log("chase_view_restore installed=%u requested=%u sites=%u mutation=source_payload_258_at_0x%lx prefilter=armed_operand_addresses expiry_updates=%u",
+            unsigned(restore_okay),unsigned(restore_requested),restore_site_count,static_cast<unsigned long>(detail::restore_mode_pc),restore_pending_update_expiry);
+        for(unsigned i=0;i<restore_site_count;++i)
+            log("chase_view_restore_site index=%u site=0x%08lx patched=%u status=%s",i,static_cast<unsigned long>(restore_specs[i].address),unsigned(restore_sites[i].patched_in),restore_sites[i].status);
+    }
     SetLastError(error);return okay;
 }
+bool restore_installed(){return restore_enabled.load(std::memory_order_acquire);}
 bool installed(){return enabled.load(std::memory_order_acquire);}
 bool diagnostics_active(){return diagnostic.load(std::memory_order_acquire);}
 std::uint64_t generation(std::uintptr_t cockpit) noexcept {
@@ -249,6 +493,18 @@ void report(std::uint64_t frame) {
     if(timing)for(unsigned i=0;i<site_count;++i){const auto& c=durations[i];
         log("chase_transition_timing frame=%llu kind=%u calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=handler_after_admission_guards includes=thread_lookup_lock_wait_reads_lock_release excludes=stub_cpu_boundary_first_qpc_timing_aggregation native_work=excluded",
             frame,i,c.calls,c.samples,c.invalid,as_double(c.ticks)*micros,as_double(c.max_ticks)*micros);}
+    if(restore_installed()){
+        detail::RestoreState r;detail::HandlerTiming rt[restore_site_count]{};
+        {Guard guard;r=restore;for(unsigned i=0;i<restore_site_count;++i){rt[i]=restore_timing[i];restore_timing[i]={};}}
+        log("chase_view_restore_state frame=%llu armed=%u pending=%u arms=%llu arm_refusals=%llu transfers=%llu consumed=%llu writes_failed=%llu seam_calls=%llu eh_bumps=%llu epoch=%lu last_refusal=%u cancels=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu refusals=%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu",
+            frame,unsigned(r.armed),unsigned(r.pending),r.arms,r.arm_refusals,r.transfers,r.consumed,r.writes_failed,r.seam_calls,restore_eh_bumps.load(std::memory_order_relaxed),
+            static_cast<unsigned long>(restore_epoch.load(std::memory_order_relaxed)),r.last_refusal,
+            r.cancels[0],r.cancels[1],r.cancels[2],r.cancels[3],r.cancels[4],r.cancels[5],r.cancels[6],r.cancels[7],r.cancels[8],r.cancels[9],r.cancels[10],r.cancels[11],r.cancels[12],r.cancels[13],r.cancels[14],
+            r.refusals[0],r.refusals[1],r.refusals[2],r.refusals[3],r.refusals[4],r.refusals[5],r.refusals[6],r.refusals[7],r.refusals[8],r.refusals[9],r.refusals[10],r.refusals[11],r.refusals[12],r.refusals[13],r.refusals[14],r.refusals[15],r.refusals[16],r.refusals[17],r.refusals[18],r.refusals[19],r.refusals[20]);
+        if(timing)for(unsigned i=0;i<restore_site_count;++i)if(rt[i].calls)
+            log("chase_view_restore_timing frame=%llu kind=%u calls=%llu samples=%llu invalid_qpc=%llu total_us=%.3f max_us=%.3f scope=handler_after_prefilter native_work=excluded",
+                frame,i,rt[i].calls,rt[i].samples,rt[i].invalid,as_double(rt[i].ticks)*micros,as_double(rt[i].max_ticks)*micros);
+    }
     if(!diagnostics_active())return;
     log("chase_transition_window frame=%llu first=%u last=%u dropped=%llu lifetime_overflow=%llu thread_overflow=%llu origin_refusals_total=%llu suppressed_total=%llu",frame,out.first_used,out.last_used,out.dropped,over,threads,failed,skipped);
     auto print=[](const Event& e){
@@ -271,9 +527,11 @@ void report(std::uint64_t frame) {
     for(unsigned i=0;i<out.last_used;++i)print(out.last[(start+i)%32]);
 }
 void shutdown() {
+    restore_enabled.store(false,std::memory_order_release);
     diagnostic.store(false,std::memory_order_release);enabled.store(false,std::memory_order_release);
+    const bool view_restore=restore_sites_restore();
     const bool diag=restore_group(mandatory,site_count),base=restore_group(0,mandatory);
-    {Guard guard;for(auto& t:state.threads)t={};for(auto& l:state.lives)l={};}
-    log("chase_transition_shutdown mandatory_restored=%u diagnostic_restored=%u",unsigned(base),unsigned(diag));
+    {Guard guard;for(auto& t:state.threads)t={};for(auto& l:state.lives)l={};restore={};restore_filter_publish();}
+    log("chase_transition_shutdown mandatory_restored=%u diagnostic_restored=%u view_restore_restored=%u",unsigned(base),unsigned(diag),unsigned(view_restore));
 }
 }

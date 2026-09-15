@@ -70,3 +70,80 @@ load checks also pass. These do not execute the live game camera handler or
 verify native Windows. See [review 49](review-49-chase-aim-trace.md) and the
 [runtime summary](../../verification/results/chase-elevated-runtime-summary.json).
 The installed build remains the version at the top of `docs/status.md`.
+
+## 2026-09-15 chase view restore (X3M_CHASE_VIEW_RESTORE) CPU boundary
+
+Seven new sites from the run60 contract (`docs/reverse-engineering/chase-view-transition.md`,
+"Implementation" under the run60 section): the shared optimized store seam
+`4a3ffd` and six cancellation boundaries. Default off; `initialize()` claims
+none of them unless `X3M_CHASE_VIEW_RESTORE=1` and the base transition set is
+installed. Worktree branch rebased onto `24055db`; deep review passed the
+seam, cancellation sites, install/rollback and fail-closed proofs and its four
+should-fixes are applied (epoch cancellation resets the arm attempt; pending
+admission by monitor ID only; kind7 deserialization cancel on the existing
+mode-load observer; JSON evidence record). Not built or installed as a
+candidate.
+
+- Site verification against the installed EXE (SHA-256 `fdbf3418…`):
+  `python3 verification/probe/verify_chase_restore_sites.py` → PASS: seven
+  exact spans, whole instructions, no relative control, `4a4027` ends in
+  `jmp 4a3ffd` with `4a3ff0` falling through, and no direct branch anywhere in
+  `.text` targets a span interior. `verify_chase_transition_sites.py` still
+  PASS for the nine diagnostic sites (source check scoped to its own table).
+- Host: `PYTHONPATH=verification/probe python3 -m unittest
+  verification.analysis.test_chase_transition
+  verification.analysis.test_chase_transition_sites
+  verification.analysis.test_chase_restore_sites
+  verification.analysis.test_chase_camera.ChaseCameraLaunchOptions` → 24 tests
+  OK, including the new portable restore-core host (32 checks: decode, proof
+  order, bounded live stack, refusal subreasons) and the launcher option.
+- X3 CPU fixture: `python3 verification/probe/build_chase_transition_cpu.py`
+  (no Wine; audits `x3m_chase_transition_enter`, `x3m_chase_restore_enter` and
+  `x3m_chase_lead_enter`: no exception-runtime symbols, fnsave/frstor/stmxcsr/
+  fninit/ldmxcsr inventory, GetLastError first, SetLastError last), then
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_chase_transition_cpu.py` →
+  `stubs=18 restore_stubs=7 checks=722 failures=0`, record
+  `verification/results/chase-restore-cpu.json` (bottle X3, arm64, timings). Coverage through the actual
+  emitted stubs and, for install/rollback, the production `restore_sites_install`
+  on fixture-owned copies of the seven spans: GPR/flags/XMM/x87/MXCSR/LastError
+  and four-byte stack preservation on the idle-skip and full paths; partial
+  install (corrupted fourth span) rolls the first three back to original bytes;
+  seven-site install, execution through the patched spans with displaced
+  semantics intact, restore to original bytes, late-window refusal
+  (`late_claim`, bytes untouched); option off claims nothing; exactly-once
+  payload write (1→258) with the prefilter returning to idle; same-valued and
+  direct-caller selections; foreign-monitor selections ignored, malformed
+  context cancels; A→B→A player/controller stores; unknown global 8/9 store
+  while pending; killed zero keeps, nonzero cancels; yield/re-entry by another
+  task and by another thread; both task terminations (unrelated task keeps
+  pending); VM construct/clear/load epoch cancellation; EH-adapter lock-free
+  epoch bump observed at the next store; ten bad-tag/identity proofs, 65-cell
+  overflow and five-byte misalignment refusing without a write; arbitrary and
+  second destruction; wrong warp prefix; 600-update expiry; arm refusals and
+  one identity walk per lifetime/mode re-entry; a secondary monitor whose
+  variable11 is the player visited first while pending leaves the ticket
+  untouched and the main monitor then consumes once; arm → EH epoch bump →
+  admitted rear update re-arms → gate → consume once; kind7 deserialization
+  (existing mode-load observer) clears pending/arm, advances the epoch and
+  allows a later re-arm.
+- Paired benchmark (same harness, not game FPS): the seam stub's idle prefilter
+  skip costs 0.004 µs mean (best trial within noise, −0.017 µs; first run
+  0.012 µs) against 0.53 µs for a full register-saving stub with a disabled
+  callback (kinds 0–17). While armed the
+  stub admits only five published operand addresses; while pending it also
+  admits opcode-93 stores to global slots 8/9.
+- Clean DLL: `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build -j4`, then
+  `python3 verification/probe/check_no_x87.py build/d3d9.dll` → PASS, 63 roots,
+  225 reachable functions, 0 violations (clean `--clean-first` build on the
+  rebased tree). Worktree DLL SHA-256
+  `4886774ec62b61bb200988e121508f0c8aaf75528fc73105dd056e707cf925e0` (evidence
+  only; the candidate owner rebuilds from the reviewed commit).
+- Launcher: `./x3run --help` lists `--chase-view-restore`; `./x3run --camera
+  chase --chase-view-restore --dry-run` prints `X3M_CHASE_VIEW_RESTORE=1`,
+  without the flag `0`; the flag without `--camera chase` is a usage error.
+
+Not verified: live game behaviour (gameplay acceptance is a separate user run)
+and native Windows execution (documented Win32 only: VirtualQuery,
+WriteProcessMemory, GetEnvironmentVariableW, SRW lock, atomics).

@@ -684,6 +684,16 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(output['env']['X3M_CHASE_HUD_ANCHOR'], 'forward')
 
+    def test_view_restore_defaults_off_and_is_forwarded_in_chase_mode(self):
+        with mock.patch.dict(os.environ, {'X3M_CHASE_VIEW_RESTORE': '1'}):
+            code, output = self.invoke('--camera', 'chase')
+        self.assertEqual(code, 0)
+        self.assertEqual(output['env']['X3M_CHASE_VIEW_RESTORE'], '0')
+        code, output = self.invoke('--camera', 'chase', '--chase-view-restore')
+        self.assertEqual(code, 0)
+        self.assertEqual(output['env']['X3M_CHASE_VIEW_RESTORE'], '1')
+        self.assertEqual(self.invoke('--chase-view-restore')[0], 2)
+
     def test_forward_hud_anchor_requires_chase_mode(self):
         self.assertEqual(self.invoke('--chase-hud-anchor', 'forward')[0], 2)
         self.assertEqual(self.invoke('--camera', 'chase', '--chase-hud-anchor', 'invalid')[0], 2)

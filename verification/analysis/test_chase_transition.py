@@ -18,6 +18,12 @@ class TransitionCore(unittest.TestCase):
    subprocess.run(['c++','-std=c++17','-O2','-Wall','-Wextra','-Werror',str(ROOT/'verification/probe/chase_transition_identity_host.cpp'),'-o',str(exe)],check=True,capture_output=True,text=True)
    run=subprocess.run([str(exe)],check=True,capture_output=True,text=True)
    self.assertIn('checks PASS',run.stdout)
+ def test_restore_ticket_core(self):
+  with tempfile.TemporaryDirectory(prefix='x3-chase-restore-') as d:
+   exe=Path(d)/'fixture'
+   subprocess.run(['c++','-std=c++17','-O2','-Wall','-Wextra','-Werror',str(ROOT/'verification/probe/chase_transition_restore_host.cpp'),'-o',str(exe)],check=True,capture_output=True,text=True)
+   run=subprocess.run([str(exe)],check=True,capture_output=True,text=True)
+   self.assertIn('checks PASS',run.stdout)
  def test_bounded_event_supplement(self):
   source=(ROOT/'src/proxy/chase_transition.cpp').read_text()
   with tempfile.TemporaryDirectory(prefix='x3-transition-record-') as d:

@@ -110,14 +110,14 @@ struct Origin {
 };
 template<class Reader,class CodeRange>
 void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address,
-                std::uint32_t expected_command=0x30) {
+                std::uint32_t expected_command=0x30,std::uint32_t vm_root=0x6085e4) {
     auto field=[&](std::uintptr_t base,unsigned offset,auto& out){return bytes(base,offset,&out,sizeof out);};
     auto code_offset=[&](std::uint32_t code,std::uint32_t offset){std::uintptr_t at=0;unsigned char op=0;
         return code_address(code,offset,1,at)&&field(at,0,op);};
     std::uint32_t vm=0,code=0,command=0,return_pc=0;
     if(expected_command!=0x30 && expected_command!=1){o.flags|=1;return;}
     if(!field(ebp,4,return_pc)||return_pc!=0x4a3909||!field(ebp,0xc,o.task)||
-       !field(ebp,0x10,command)||command!=expected_command||!field(0x6085e4,0,vm)||
+       !field(ebp,0x10,command)||command!=expected_command||!field(vm_root,0,vm)||
        !field(vm,8,code)||!field(o.task,0x1c,o.pc)||!field(o.task,0x3c,o.context)) {o.flags|=1;return;}
     o.valid|=1;
     std::uintptr_t at=0;unsigned char op[5]{};
@@ -156,7 +156,8 @@ void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address,
 // Only this destructor caller inherits the cockpit dispatcher frame. A native
 // deleting destructor must not cause any dispatcher-frame or VM reads.
 template<class Reader,class CodeRange>
-void destructor_provenance(std::uint32_t caller,std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address) {
-    if(caller==0x42d402)provenance(ebp,o,bytes,code_address,1);
+void destructor_provenance(std::uint32_t caller,std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address,
+                           std::uint32_t vm_root=0x6085e4) {
+    if(caller==0x42d402)provenance(ebp,o,bytes,code_address,1,vm_root);
 }
 }

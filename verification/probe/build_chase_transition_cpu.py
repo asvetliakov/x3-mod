@@ -14,6 +14,7 @@ def build():
   subprocess.run(['i686-w64-mingw32-g++',*flags,'-c',str(ROOT/source),'-o',str(out)],check=True,cwd=ROOT)
   if not stem.endswith('audit'):objects.append(out)
  audit={'transition':audit_object(BUILD/'audit.o','x3m_chase_transition_enter'),
+        'restore':audit_object(BUILD/'audit.o','x3m_chase_restore_enter'),
         'lead':audit_object(BUILD/'lead_audit.o','x3m_chase_lead_enter')}
  exe=BUILD/'chase_transition_cpu_fixture.exe'
  subprocess.run(['i686-w64-mingw32-g++',*map(str,objects),'-static','-static-libgcc','-static-libstdc++','-o',str(exe)],check=True,cwd=ROOT)
