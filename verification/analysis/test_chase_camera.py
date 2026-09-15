@@ -165,29 +165,37 @@ class ChaseCameraPipeline(unittest.TestCase):
         self.assertLess(float(result[1]), 1e-12)
         self.assertGreater(float(result[2]), 0.1)  # previous-frame reference is demonstrably wrong
 
-    def test_new_default_frames_centred_anchor_at_72_point_5_percent(self):
-        self.d.tunables(offset_y=self.d.defaults()['offset_y'])
+    def test_new_default_frames_centred_anchor_at_75_percent(self):
+        offset_y = self.d.defaults()['offset_y']
+        self.d.tunables(offset_y=offset_y)
         result = self.d.frame(1 / 60, ship_pos=(0, 0, 0), boom=(0, 0, -200), half_vfov_tan=0.75)
         camera_space = vec_mat([-x for x in result['pos']], transpose(result['basis']))
         screen_y = 0.5 - 0.5 * camera_space[1] / (camera_space[2] * 0.75)
-        self.assertAlmostEqual(screen_y, 0.725, places=12)
+        self.assertAlmostEqual(screen_y, 0.5 + 0.5 * offset_y, places=12)
+        self.assertAlmostEqual(screen_y, 0.75, places=12)
 
     def test_elevated_default_projects_low_while_looking_down_and_preserves_distance(self):
-        self.d.tunables(**self.d.defaults())
+        # The 2026-09-16 defaults: near-parallel 0.5 degrees down with the
+        # anchor at 75% of screen height (chase-hud-reticle-survey.md).
+        defaults = self.d.defaults()
+        pitch_down_deg, offset_y = defaults['pitch_down_deg'], defaults['offset_y']
+        self.assertEqual((pitch_down_deg, offset_y), (0.5, 0.50))
+        self.d.tunables(**defaults)
         for vfov in (0.25, 0.5625, 0.75, 1.5):
             self.d.reset()
             r = self.d.frame(1 / 60, boom=(0, 40, -200), half_vfov_tan=vfov)
             self.assertEqual(r['verdict'], 0)
             ray = vec_mat([-x for x in r['pos']], transpose(r['basis']))
-            self.assertAlmostEqual(0.5 - ray[1] / ray[2] / vfov / 2, 0.725, places=12)
-            self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(13)), places=12)
+            self.assertAlmostEqual(0.5 - ray[1] / ray[2] / vfov / 2, 0.5 + 0.5 * offset_y, places=12)
+            self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(pitch_down_deg)), places=12)
             self.assertGreater(r['pos'][1], 0)
             self.assertLess(r['pos'][2], 0)
             self.assertAlmostEqual(r['distance'], 0.90 * math.hypot(40, 200), places=10)
-            alpha = math.radians(13) + math.atan(0.45 * vfov)
+            alpha = math.radians(pitch_down_deg) + math.atan(offset_y * vfov)
             self.assertAlmostEqual(math.atan2(r['pos'][1], -r['pos'][2]), alpha, places=12)
 
     def test_elevated_framing_handles_native_pitch_yaw_roll_and_ship_orientation(self):
+        offset_y = self.d.defaults()['offset_y']
         self.d.tunables(**{**self.d.defaults(), 'distance_scale': 1.7, 'pitch_down_deg': 10})
         ship = mat_mul(roll(0.8), yaw(1.2))
         native = mat_mul(roll(0.12), mat_mul(pitch(0.2), yaw(0.15)))
@@ -197,7 +205,7 @@ class ChaseCameraPipeline(unittest.TestCase):
         ray = vec_mat([a-b for a,b in zip(position,r['pos'])], transpose(r['basis']))
         native_ray = vec_mat([-x for x in boom], transpose(native))
         self.assertAlmostEqual(ray[0] / ray[2], native_ray[0] / native_ray[2], places=10)
-        self.assertAlmostEqual(ray[1] / ray[2], -0.45 * 0.75, places=10)
+        self.assertAlmostEqual(ray[1] / ray[2], -offset_y * 0.75, places=10)
         relative = mat_mul(r['basis'], transpose(ship))
         self.assertAlmostEqual(relative[7], -math.sin(math.radians(10)), places=12)
         self.assertAlmostEqual(relative[1], 0, places=12)  # native local roll removed
@@ -463,10 +471,10 @@ class ChaseCameraPipeline(unittest.TestCase):
         d = self.d.defaults()
         self.assertEqual(d['rot_tau'], 0.28)
         self.assertEqual(d['pos_tau'], 0.38)
-        self.assertEqual(d['pitch_down_deg'], 13.0)
+        self.assertEqual(d['pitch_down_deg'], 0.5)
         self.assertEqual(d['lag_clamp_deg'], 8.0)
         self.assertEqual(d['pos_lag_clamp'], 0.10)
-        self.assertEqual(d['offset_y'], 0.45)
+        self.assertEqual(d['offset_y'], 0.50)
         self.assertEqual(d['distance_scale'], 0.90)
         self.assertEqual(d['combat_tightness'], 0.0)
         self.assertEqual(d['max_dt'], 0.10)

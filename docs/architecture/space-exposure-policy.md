@@ -1,9 +1,10 @@
 # Exposure for X3's outdoor space scenes
 
-2026-09-14, updated 2026-09-15. Production source selects **Auto capped at
-+1.0 EV**; fixed EV 0 remains a comparison option. Run 27 visually accepted
-the earlier explicit +1.5-EV configuration. The user subsequently chose the
-lower ceiling as the default; installation state remains in `docs/status.md`.
+2026-09-14, updated 2026-09-16. Production source selects **Auto capped at
++1.3 EV**; fixed EV 0 remains a comparison option. Run 27 visually accepted
+the earlier explicit +1.5-EV configuration. The user chose +1.0 EV on
+2026-09-15 and raised it to +1.3 EV on 2026-09-16, after run 26;
+installation state remains in `docs/status.md`.
 The scene model is black cosmos, small stars, large colored
 nebulae, planets/suns, ships and transient effects. Indoor/hangar adaptation
 is not a design premise. The current implementation is described in
@@ -16,8 +17,8 @@ Published practice in other space games is collected separately in
 ## Current production policy
 
 The user preferred Auto to fixed EV 0, accepted the milder +1.5-EV comparison,
-and then explicitly selected **Auto with a +1.0 EV maximum** as the production
-and launcher default. Retain `--hdr-exposure fixed`, explicit manual EV, and the
+and then explicitly selected an Auto ceiling as the production and launcher
+default: +1.0 EV on 2026-09-15, **+1.3 EV since 2026-09-16**. Retain `--hdr-exposure fixed`, explicit manual EV, and the
 Ctrl+Shift+F9 Auto/fixed-0 comparison. Explicit manual EV remains authoritative;
 explicit EV limits remain supported. Standalone component defaults are unchanged.
 No metering equation, response time, highlight guard or tone curve changes here.

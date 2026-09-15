@@ -797,7 +797,7 @@ after the write-back exactly as in stage 1.
 
 ### Switches and defaults
 
-The 2026-09-15 production/launcher default is Auto capped at +1.0 EV by user
+The 2026-09-16 production/launcher default is Auto capped at +1.3 EV by user
 choice. Run 27 exercised and visually accepted the earlier explicit +1.5-EV
 configuration; see [current exposure policy](space-exposure-policy.md).
 Standalone `ExposureParams` and its historical fixtures retain the +2 maximum.
@@ -810,7 +810,7 @@ Installation status is recorded separately in [status](../status.md).
 | `X3M_HDR_LOOK` | `none` \| `golden` \| `punchy` | `none` | §3 triples through `agx.h::set_look` |
 | `X3M_HDR_CLAMP` | float > 0 | off (65504 uploaded) | §2 firefly guard, `min` on the decoded input |
 | `X3M_HDR_EXPOSURE` | `auto` \| `manual` \| `fixed` | `auto` | manual without an EV is EV 0 |
-| `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (−3..+1.0 in the production/launcher default; standalone components retain +2) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
+| `X3M_HDR_EV_MANUAL` | EV in [−16, 16] | unset | forces `manual` with that EV, clamped to [`X3M_HDR_EV_MIN`, `X3M_HDR_EV_MAX`] (−3..+1.3 in the production/launcher default; standalone components retain +2) so `exp2(EV)` stays inside the constant block's range; the `hdr_tonemap` line prints the requested value, `hdr_frame … ev=` the effective one; the chain does not run (deterministic; the fixtures) |
 | `X3M_HDR_EV` (alias `X3M_HDR_EV_OFFSET`) | EV in [−16, 16] | 0 | the offset added to the auto target. **Deviation from the §3 text**, where `X3M_HDR_EV` forced the EV: the orchestrator's stage-2 brief names `X3M_HDR_EV` as the offset and `X3M_HDR_EV_MANUAL` as the override, and that is what is implemented; the design's `X3M_HDR_EV_OFFSET` remains accepted as the alias |
 | `X3M_HDR_KEY`, `X3M_HDR_EV_MIN/MAX`, `X3M_HDR_ADAPT_UP/DOWN` | floats | 0.18, **−3/+1.0**, 0.4 s/1.2 s | production defaults; `exposure_reference.py`/standalone components retain +2; explicit limits remain supported |
 | `X3M_HDR_METER_BG` | scene-linear luminance in [1e-4, 64] | 1/512 | tiles whose geometric-mean luminance is below it are the black sky: excluded from the key rule (`--hdr-meter-bg`) |

@@ -2034,10 +2034,10 @@ void initialize_log(HMODULE module) {
     // the route's hooks and selector.
     hdr_requested=motion_output_requested && GetEnvironmentVariableW(L"X3M_HDR",setting,32)==1 && setting[0]==L'1';
     hdr_config=x3m::renderer::HdrConfig{};
-    // The selected production appearance is Auto capped at +1 EV. Keep
+    // The selected production appearance is Auto capped at +1.3 EV. Keep
     // standalone component defaults independent; fixed EV0 remains available.
     hdr_config.exposure=x3m::renderer::ExposureMode::Auto;
-    hdr_config.params.ev_max=1.f;
+    hdr_config.params.ev_max=1.3f;
     hdr_config.allow_auto_toggle=true;
     if(GetEnvironmentVariableW(L"X3M_HDR_TONEMAP",setting,32)>0 && (!wcscmp(setting,L"agx")||!wcscmp(setting,L"1")))hdr_config.tonemap=x3m::renderer::HdrTonemap::Agx;
     if(GetEnvironmentVariableW(L"X3M_HDR_DECODE",setting,32)>0){
@@ -2078,7 +2078,7 @@ void initialize_log(HMODULE module) {
     linear_material_config=x3m::renderer::LinearMaterialConfig{};
     // Production material mode uses a small readability floor. Keep the
     // shared config's zero default for explicit K=0 byte-identical artifacts.
-    linear_material_config.fill=0.03f;
+    linear_material_config.fill=0.05f;
     bool material_config_valid=true;
     const auto material_gain = [&](const wchar_t* name,float& output,float maximum=16.f) {
         SetLastError(ERROR_SUCCESS);

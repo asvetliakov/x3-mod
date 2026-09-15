@@ -1567,7 +1567,7 @@ def bgra8(data, index):
 # module's EV_MAX; the runner
 # must use the DLL default when X3M_HDR_EV_MAX is unset, because the reference
 # adaptation clamps with it.
-HDR_EV_MAX_DEFAULT = 1.0
+HDR_EV_MAX_DEFAULT = 1.3
 
 
 def hdr_env_params(hdr_env):

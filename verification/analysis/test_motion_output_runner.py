@@ -48,7 +48,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
         self.assertFalse(any(c['hdr_env'].get('X3M_FIXTURE_WRAP') == '1' for c in runner.CASES))
 
     def test_exposure_reference_uses_runtime_ceiling_and_explicit_override(self):
-        self.assertEqual(runner.hdr_env_params({})['ev_max'], 1.0)
+        self.assertEqual(runner.hdr_env_params({})['ev_max'], 1.3)
         self.assertEqual(runner.hdr_env_params({'X3M_HDR_EV_MAX': '1.5'})['ev_max'], 1.5)
 
     def test_all_legacy_hdr_cases_own_their_intended_exposure(self):

@@ -158,8 +158,8 @@ inline bool clamp_spring(Spring& s, double limit) {
 struct Tunables {
     double rot_tau = 0.28;          // s, orientation spring time constant (X3M_CHASE_ROT_TAU)
     double pos_tau = 0.38;          // s, boom-offset spring time constant (X3M_CHASE_POS_TAU)
-    double offset_y = 0.45;         // 72.5% screen height from a centred native anchor (X3M_CHASE_OFFSET_Y)
-    double pitch_down_deg = 13.0;   // 0 keeps legacy framing; (0,30] sets ship-relative downward look
+    double offset_y = 0.50;         // 75% screen height from a centred native anchor (X3M_CHASE_OFFSET_Y)
+    double pitch_down_deg = 0.5;    // near-parallel elevated framing (user default 2026-09-16); 0 keeps legacy framing; (0,30] sets ship-relative downward look
     double distance_scale = 0.90;   // multiplies the vanilla boom offset (X3M_CHASE_DISTANCE_SCALE)
     double lag_clamp_deg = 8.0;     // max orientation lag (X3M_CHASE_LAG_CLAMP_DEG)
     double pos_lag_clamp = 0.10;    // max |offset lag| as a fraction of the boom length (X3M_CHASE_POS_LAG_CLAMP)
