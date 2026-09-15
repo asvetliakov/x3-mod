@@ -44,12 +44,40 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | 25 | Consolidated loading, gate identity, forward HUD and sun-lane diagnostics | 0 | Completed as run60: forward HUD aligned, centre preferred; gate reset; trace analysis in progress |
 | 26 | Original hulls with cheap HDR emitters, chase view restore, elevated-camera reticle, replay candidates, loading intervals (A); optional linear sun-lane refusal buckets (B) | 1 | Session A completed as run65 (60 files): bolts brighter and liked; engines unchanged; loading possibly faster; **camera still reset at the gate**. Session B completed as run66 (55 files). Run65 triage: restore refused at the consume seam on the ref cell (2/2), engine gain refused on separate-alpha blend, loading stall 21.5 s again, replay predicates all pass; follow-ups in flight |
+| 27 | Next candidate: corrected chase restore, engine gain on separate-alpha, point-light root admission, original-program fill baseline, depth replay, mip bias/sharpen trial (A); linear sun lane after the state-gate fix (B) | 0 | Open: candidate build pending; commands below |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
 not rerun requests.
 
-## 26. Cheap HDR emitters, chase view restore and replay candidates — open
+## 27. Corrected restore, engine gain, point-light admission, depth replay — open
+
+Candidate build pending (see [status](../status.md) for the installed hash once
+installed). Original hulls, new defaults (camera 0.5°/0.50, EV ceiling 1.3).
+
+**Session A** (from the repository root):
+
+```sh
+./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --taa-mip-bias -0.5 --taa-sharpen 0.75 --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --point-light-root-admission --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
+```
+
+1. Load the usual save. Engines: are they now visibly brighter and bloomed
+   (the gain admitted no draws in run 26; that is fixed)? Bolts as before?
+2. Mip bias -0.5 and sharpen 0.75 are on for the first time on this build:
+   sharper textures at distance, any shimmer or over-sharpening? Say keep/drop.
+3. Rear chase view, fly through a gate: does the view stay in rear chase?
+4. Fly to the station of run 22/51 (docking modules that went black at range)
+   and press F8 once at about 1.2 km facing the modules, once close. With the
+   point-light option on the modules should stay lit at range.
+5. Optional short session A2: same command without `--point-light-root-admission`,
+   same station spot, one F8 at the same distance, for the frame-time and
+   appearance comparison.
+
+**Session B (optional, linear materials, diagnostics only):** the same command
+plus `--linear-materials --linear-distance-fade --sun-shadow-lane`, a minute of
+flight near a station. The sun-lane frames should now report `available=1`.
+
+## 26. Cheap HDR emitters, chase view restore and replay candidates — completed (run65/run66)
 
 Installed: DLL `5726a37b…` from `f2b7406` (see [status](../status.md)). No linear
 materials: this is the user's preferred original hull look. One session A covers
