@@ -127,3 +127,11 @@ application use different laws, including clamp/blend handling. Existing inputs
 do not recover physical roughness/metalness; automatic reflection/specular tuning
 remains a conditional artistic experiment. The full read-only reassessment is
 local at `/tmp/x3-material-critic-reassessment.md`; no production work followed.
+
+## Material scope clarification — 2026-09-15
+
+The user excludes roughness/metalness authoring that requires individual material
+art review. PBR is not planned without a texture overhaul; automatically deriving
+a useful approximation from existing assets remains unevaluated, not committed
+work. Existing-light arithmetic is separate from adding lights or changing models.
+See the [material allocation assessment](architecture/material-investment.md).
