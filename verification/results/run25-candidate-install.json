@@ -1,0 +1,362 @@
+{
+  "installed_utc": "2026-09-15T02:59:57.619070+00:00",
+  "source_commit": "155ac545d758bbf0abdded2394fb13fe82f8b504",
+  "candidate": "/tmp/x3-consolidated-candidate-XTH71F/candidate/d3d9.dll",
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "installed_sha256": "4c3ac81ee2193dd366c098635c78bf763ff3d19121d945062afc3b11882173d2",
+  "bytes": 14729266,
+  "rollback": "/tmp/x3-consolidated-candidate-XTH71F/rollback",
+  "rollback_sha256": "f6cf181bf20e3fa15c2b29a5c0ffe867979d6d0d8e978e0e8477ddf8d1c52857",
+  "unchanged": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "game_launched": false,
+  "build": {
+    "recorded_utc": "2026-09-15T02:57:53Z",
+    "candidate": {
+      "path": "/tmp/x3-consolidated-candidate-XTH71F/candidate/d3d9.dll",
+      "sha256": "4c3ac81ee2193dd366c098635c78bf763ff3d19121d945062afc3b11882173d2",
+      "bytes": 14729266,
+      "retained_first_build": true,
+      "candidate_directory_file_count": 1
+    },
+    "source": {
+      "worktree": "/tmp/x3-consolidated-candidate-XTH71F/source",
+      "commit": "155ac545d758bbf0abdded2394fb13fe82f8b504",
+      "detached": true,
+      "status_before_configure": "clean",
+      "status_after_build": "clean"
+    },
+    "toolchain": {
+      "toolchain_file": "cmake/mingw-i686.cmake",
+      "cmake": "4.4.3",
+      "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+      "objdump": "GNU Binutils 2.47.20260726",
+      "target": "32-bit Windows PE",
+      "native_windows_execution": "not performed"
+    },
+    "configure": {
+      "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build",
+      "elapsed_seconds": 2.25,
+      "result": "PASS",
+      "warning_error_matches": 0,
+      "log": "/tmp/x3-consolidated-candidate-XTH71F/configure.log"
+    },
+    "build": {
+      "command": "cmake --build build -j4",
+      "invocations": 1,
+      "elapsed_seconds": 11.46,
+      "result": "PASS",
+      "warning_error_matches": 0,
+      "log": "/tmp/x3-consolidated-candidate-XTH71F/build.log"
+    },
+    "host_audits": {
+      "no_x87": {
+        "command": "python3 verification/probe/check_no_x87.py /tmp/x3-consolidated-candidate-XTH71F/candidate/d3d9.dll",
+        "result": "PASS",
+        "reachable_functions": 225,
+        "violations": 0
+      },
+      "pe_exports": {
+        "command": "python3 tools/analysis/pe_exports.py /tmp/x3-consolidated-candidate-XTH71F/candidate/d3d9.dll",
+        "result": "PASS",
+        "machine": "0x014c",
+        "count": 17,
+        "names": [
+          "D3DPERF_BeginEvent",
+          "D3DPERF_EndEvent",
+          "D3DPERF_GetStatus",
+          "D3DPERF_QueryRepeatFrame",
+          "D3DPERF_SetMarker",
+          "D3DPERF_SetOptions",
+          "D3DPERF_SetRegion",
+          "DebugSetLevel",
+          "DebugSetMute",
+          "Direct3D9EnableMaximizedWindowedModeShim",
+          "Direct3DCreate9",
+          "Direct3DCreate9Ex",
+          "Direct3DCreate9On12",
+          "Direct3DCreate9On12Ex",
+          "Direct3DShaderValidatorCreate9",
+          "PSGPError",
+          "PSGPSampleTexture"
+        ]
+      }
+    },
+    "limitations": [
+      "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+      "Wine, game launch, installation, and candidate qualification are intentionally owned by the main agent."
+    ]
+  },
+  "load": {
+    "passed": true,
+    "status": "PASS",
+    "game_launched": false,
+    "bottle": {
+      "name": "X3",
+      "wine_arch": "arm64",
+      "environment": {
+        "FEX_X87REDUCEDPRECISION": "1",
+        "WINEMSYNC": "1"
+      },
+      "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+    },
+    "scope": "Selected console-fixture cases under CrossOver Preview: 17 D3D9 exports, forwarded entry points and ret-N fallbacks; the readonly case additionally checks the %LOCALAPPDATA% session-log fallback. Not a native-Windows run.",
+    "selected_case": "writable",
+    "dll_path": "/private/tmp/x3-consolidated-candidate-XTH71F/candidate/d3d9.dll",
+    "cases": {
+      "writable": {
+        "exit": 0,
+        "checks": 8,
+        "failures": 0,
+        "readonly": false,
+        "directory": "verification/probe/build/d3d9-exports-writable-20260915-065844-477865",
+        "trace": "/Users/asvetl/x3-mod/verification/probe/build/d3d9-exports-writable-20260915-065844-477865/x3-modern-captures/session-20260915-065847-204.log",
+        "trace_sha256": "94b8c07bd55f48c94db40848171ef6f772ec3e721ca89dbd9cd7aca32b1243ef",
+        "capture_dir": "Y:\\x3-mod\\verification\\probe\\build\\d3d9-exports-writable-20260915-065844-477865\\x3-modern-captures",
+        "source": "game",
+        "localappdata": "C:\\users\\crossover\\AppData\\Local",
+        "userprofile": "C:\\users\\crossover",
+        "exports_resolved": 17,
+        "calls": {
+          "D3DPERF_GetStatus": {
+            "name": "D3DPERF_GetStatus",
+            "result": "00000000"
+          },
+          "Direct3DCreate9On12": {
+            "name": "Direct3DCreate9On12",
+            "result": "00299968"
+          },
+          "Direct3D9EnableMaximizedWindowedModeShim": {
+            "name": "Direct3D9EnableMaximizedWindowedModeShim",
+            "result": "00000000",
+            "popped": "4"
+          },
+          "Direct3DCreate9On12Ex": {
+            "name": "Direct3DCreate9On12Ex",
+            "result": "8876086a",
+            "out": "00000000"
+          }
+        },
+        "export_lines": {
+          "Direct3DCreate9On12": {
+            "name": "Direct3DCreate9On12",
+            "forwarded": "1",
+            "unproxied": "1"
+          },
+          "Direct3D9EnableMaximizedWindowedModeShim": {
+            "name": "Direct3D9EnableMaximizedWindowedModeShim",
+            "forwarded": "0"
+          },
+          "Direct3DCreate9On12Ex": {
+            "name": "Direct3DCreate9On12Ex",
+            "forwarded": "0",
+            "unproxied": "0"
+          }
+        },
+        "on12_forwarded": true,
+        "on12ex_forwarded": false,
+        "dll_sha256": "4c3ac81ee2193dd366c098635c78bf763ff3d19121d945062afc3b11882173d2",
+        "exe_sha256": "6accfe1bf99acf648c44f74de126b7e37f6db2c407aecb93e2d1172fab98711d",
+        "env_lines": [
+          "ENV LOCALAPPDATA=C:\\users\\crossover\\AppData\\Local",
+          "ENV USERPROFILE=C:\\users\\crossover"
+        ]
+      }
+    },
+    "dll_sha256": "4c3ac81ee2193dd366c098635c78bf763ff3d19121d945062afc3b11882173d2",
+    "export_directory": {
+      "path": "/private/tmp/x3-consolidated-candidate-XTH71F/candidate/d3d9.dll",
+      "machine": "0x014c",
+      "image_base": "0x6fb40000",
+      "dll_name": "d3d9.dll",
+      "ordinal_base": 1,
+      "exports": [
+        {
+          "name": "D3DPERF_BeginEvent",
+          "ordinal": 1,
+          "hint": 0,
+          "rva": "0x9590",
+          "forwarder": null
+        },
+        {
+          "name": "D3DPERF_EndEvent",
+          "ordinal": 2,
+          "hint": 1,
+          "rva": "0x98f0",
+          "forwarder": null
+        },
+        {
+          "name": "D3DPERF_GetStatus",
+          "ordinal": 3,
+          "hint": 2,
+          "rva": "0x9c20",
+          "forwarder": null
+        },
+        {
+          "name": "D3DPERF_QueryRepeatFrame",
+          "ordinal": 4,
+          "hint": 3,
+          "rva": "0x9f50",
+          "forwarder": null
+        },
+        {
+          "name": "D3DPERF_SetMarker",
+          "ordinal": 5,
+          "hint": 4,
+          "rva": "0xa280",
+          "forwarder": null
+        },
+        {
+          "name": "D3DPERF_SetOptions",
+          "ordinal": 6,
+          "hint": 5,
+          "rva": "0xa900",
+          "forwarder": null
+        },
+        {
+          "name": "D3DPERF_SetRegion",
+          "ordinal": 7,
+          "hint": 6,
+          "rva": "0xa5c0",
+          "forwarder": null
+        },
+        {
+          "name": "DebugSetLevel",
+          "ordinal": 8,
+          "hint": 7,
+          "rva": "0x7140",
+          "forwarder": null
+        },
+        {
+          "name": "DebugSetMute",
+          "ordinal": 9,
+          "hint": 8,
+          "rva": "0xac30",
+          "forwarder": null
+        },
+        {
+          "name": "Direct3D9EnableMaximizedWindowedModeShim",
+          "ordinal": 10,
+          "hint": 9,
+          "rva": "0x71d3",
+          "forwarder": null
+        },
+        {
+          "name": "Direct3DCreate9",
+          "ordinal": 11,
+          "hint": 10,
+          "rva": "0x8300",
+          "forwarder": null
+        },
+        {
+          "name": "Direct3DCreate9Ex",
+          "ordinal": 12,
+          "hint": 11,
+          "rva": "0x8890",
+          "forwarder": null
+        },
+        {
+          "name": "Direct3DCreate9On12",
+          "ordinal": 13,
+          "hint": 12,
+          "rva": "0x8d00",
+          "forwarder": null
+        },
+        {
+          "name": "Direct3DCreate9On12Ex",
+          "ordinal": 14,
+          "hint": 13,
+          "rva": "0x9100",
+          "forwarder": null
+        },
+        {
+          "name": "Direct3DShaderValidatorCreate9",
+          "ordinal": 15,
+          "hint": 14,
+          "rva": "0xaf50",
+          "forwarder": null
+        },
+        {
+          "name": "PSGPError",
+          "ordinal": 16,
+          "hint": 15,
+          "rva": "0x7171",
+          "forwarder": null
+        },
+        {
+          "name": "PSGPSampleTexture",
+          "ordinal": 17,
+          "hint": 16,
+          "rva": "0x71a2",
+          "forwarder": null
+        }
+      ],
+      "names": [
+        "D3DPERF_BeginEvent",
+        "D3DPERF_EndEvent",
+        "D3DPERF_GetStatus",
+        "D3DPERF_QueryRepeatFrame",
+        "D3DPERF_SetMarker",
+        "D3DPERF_SetOptions",
+        "D3DPERF_SetRegion",
+        "DebugSetLevel",
+        "DebugSetMute",
+        "Direct3D9EnableMaximizedWindowedModeShim",
+        "Direct3DCreate9",
+        "Direct3DCreate9Ex",
+        "Direct3DCreate9On12",
+        "Direct3DCreate9On12Ex",
+        "Direct3DShaderValidatorCreate9",
+        "PSGPError",
+        "PSGPSampleTexture"
+      ]
+    },
+    "sources_before_build": {
+      "verification/probe/d3d9_exports_fixture.cpp": "f24ba719d8d7644709cf96e5ccce913daf3e3ac763208e05b91abcb61c3a5b80",
+      "verification/probe/build_d3d9_exports.sh": "2bca2bbfdbfa8a6b1505e09e70e7370a0bd43b318d4931d9ed66cb71ecb889c8",
+      "verification/probe/run_d3d9_exports.py": "61f5a7cc7da78ce0630bbe8adbcebd723f836567ace6b2da4d669142a8437a28",
+      "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
+      "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
+      "tools/analysis/pe_exports.py": "6b7548b440e1a476265a91ba26e5ec0a45bb184bbbb8e57b360a19786091ecea"
+    },
+    "binaries": {
+      "/Users/asvetl/x3-mod/verification/probe/build/d3d9_exports_fixture.exe": "6accfe1bf99acf648c44f74de126b7e37f6db2c407aecb93e2d1172fab98711d",
+      "/private/tmp/x3-consolidated-candidate-XTH71F/candidate/d3d9.dll": "4c3ac81ee2193dd366c098635c78bf763ff3d19121d945062afc3b11882173d2"
+    },
+    "limits": [
+      "Wine backend: three of the four naked forwarders reach Wine spec stubs and are resolved but not called; Direct3D9EnableMaximizedWindowedModeShim exercises the fallback path.",
+      "The read-only case relies on the bottle refusing CreateDirectoryW/_wfopen in a 0555 directory, which stands in for a Windows ACL denial.",
+      "Windows is cross-compiled, not verified."
+    ],
+    "report_sha256": "19fc9921098b9182cd602b40190fe5a2e794e5e9a526197614e0463a0217bf92"
+  },
+  "load_timing": {
+    "lock_wait_seconds": 5.499999999998562e-06,
+    "child_elapsed_seconds": 11.613012208,
+    "exit_code": 0
+  },
+  "install_timing": {
+    "lock_wait_seconds": 5.125000000001656e-06,
+    "child_elapsed_seconds": 0.193314333,
+    "exit_code": 0
+  },
+  "qualification_ledgers": [
+    "docs/verification/linear-material-constant-port.md",
+    "docs/verification/chase-hud-anchor.md",
+    "docs/reverse-engineering/chase-view-transition.md",
+    "docs/verification/loading-intervals.md",
+    "docs/verification/directional-shadows.md"
+  ],
+  "dry_run": {
+    "passed": true,
+    "path": "/tmp/x3-consolidated-candidate-XTH71F/run25-dry-run.txt",
+    "auto_ev_ceiling": 1.0,
+    "material_fill": 0.03,
+    "chase_hud_anchor": "forward",
+    "loading_intervals": true,
+    "sun_shadow_lane": true
+  },
+  "native_windows_verified": false
+}

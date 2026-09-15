@@ -826,3 +826,37 @@ near/far gain ≤2.0. Scene-linear readbacks precede exposure. Auto exposure mus
 be evaluated separately from the fixed-EV run51 baseline; no auto-EV difference
 against that baseline is an adaptation measurement. The result informs the fill
 default decision; it does not change the default automatically.
+
+
+## 24. Chase reset-writer telemetry — gate completed as run56
+
+Gate portion completed as `/tmp/x3-bottleX3-run56`; the user confirms a camera
+reset. Jumpdrive was not run because no suitable save is available. The trace
+recreates the cockpit, so the proposed same-lifetime restore would cancel.
+Analysis of a safe cross-recreation identity is in progress. Instructions below
+are retained as provenance; no repeat is currently requested.
+
+The recorded diagnostic command is:
+
+```sh
+./x3run --direct --camera chase --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --hdr --hdr-tonemap --hdr-bloom --linear-materials --material-fill 0.06 \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+The user may append `--hdr-ev-max 1.0` voluntarily; the default exposure limit
+and material-fill default remain unchanged. Start in rear chase view, make one
+gate jump, reselect rear chase if it resets, then make one jumpdrive jump. Do
+not press a view key during either transition. After each arrival wait a few
+seconds, report whether it reset, then verify the normal view keys still work.
+Report the snapshot path and the order of the two jumps. No view-restoration
+option is enabled.
+
+Analysis: identify the mode-1 writer's `next_pc`, the update ordering against
+cockpit `+0x1fc`, lifetime changes, and deltas in `+0x130`, `+0x160`, `+0xa8`
+and `+0x1c0`. [The ratified restore policy](../architecture/chase-view-restore-and-hud-anchor.md)
+is implemented only after these observations settle its prerequisite.

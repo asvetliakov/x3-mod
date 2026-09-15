@@ -13,26 +13,34 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`f6cf181bf20e3fa15c2b29a5c0ffe867979d6d0d8e978e0e8477ddf8d1c52857`
-(14,321,844 bytes), built once on Sol from reviewed clean source `a53cf8f`.
-Its direct-launch fill fallback is 0; it adds `--material-fill` and fill-refusal diagnostics to the previous
-feature set. The [install record](../verification/results/run23-candidate-install.json)
-binds the clean build (12.09 s, zero warnings), 225-function no-x87 audit,
-17 exports, X3 load check, scoped GPU/host qualification and verified installed
-bytes. The previous `53a0d8a7…` DLL and manifest are retained together for rollback.
-EXE and bottle configuration hashes are unchanged. The affected run23 launch
-passed one `--dry-run`; no game was launched.
+`4c3ac81ee2193dd366c098635c78bf763ff3d19121d945062afc3b11882173d2`
+(14,729,266 bytes), built once on Sol from reviewed clean source `155ac54`.
+The [install record](../verification/results/run25-candidate-install.json) binds
+the clean build (11.46 s, zero warnings), 225-function no-x87 audit, exact 17
+exports, eight-check X3 DLL load, scoped source/GPU evidence and installed-byte
+verification. Previous `f6cf181b…` DLL and manifest are retained together in
+`/tmp/x3-consolidated-candidate-XTH71F/rollback`. EXE and bottle configuration
+hashes are unchanged. Run25's affected launch passed `--dry-run`; no game launched.
 
-The installed DLL includes verified TAA, an FP16 scene target, AgX SDR writeback, and an Auto +1.5 EV fallback,
-and a fixed EV 0 comparison through Ctrl+Shift+F9. Ctrl+Shift+F10 switches bloom contribution. Bloom, linear materials, and linear
-emissions remain opt-in. Installed material coverage is **168 exact pairs / 137 originals**; installed default-off
-emission coverage is twenty exact SM2 DEFAULT/INSTANCE pairs.
+This build adds the reviewed native constant-port repair, `--chase-hud-anchor`
+(`centre` default), gate identity/provenance/geometry diagnostics, optional
+`--loading-intervals`, and default-off `--sun-shadow-lane` diagnostics. It applies
+no shadows and does not contain selective material exposure or chase restoration.
+Auto exposure now defaults to a **+1.0 EV ceiling**, fill to **0.03** with linear
+materials, including direct DLL fallback.
 
-The installed chase defaults remain 13° pitch, distance 0.9, rotation/position response 0.28/0.38 s, offset 0.45,
-and lag limits 8°/0.10. Vanilla camera is the default. Loading acceleration, predictive lead marker, central chase
-HUD, and the selected WRAP/motion fixes are included.
+Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
+and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
+137 original programs; bloom, linear materials and linear emissions remain opt-in.
+Chase defaults remain 13° pitch, distance 0.9, responses 0.28/0.38 s, offset 0.45,
+and lag limits 8°/0.10. Vanilla camera remains the default.
 
 ## Next user action
+
+**Run 25 is ready:** one save load and one gate transition, combining interval
+recording, cross-recreation identity, forward HUD placement and sun-lane
+coverage. No jumpdrive save is required. Use the [run command](verification/user-runs.md#25-consolidated-loading-gate-and-hud-diagnostic).
+
 
 **Run 23 is complete**, preserved at `/tmp/x3-bottleX3-run54` (153 referenced
 files), with four EV0/+1.5 far/near screenshots. The user reports brighter hulls
@@ -40,7 +48,7 @@ and subsequently chose **Auto capped at +1.0 EV and material fill 0.03** as
 the new defaults. The changes are reviewed (34 focused tests) and the current
 launcher now passes those values to the existing DLL. An affected dry-run
 confirmed Auto / EV max 1.0 / fill 0.03; vanilla dry-run also passed. Direct
-DLL fallbacks await the next consolidated candidate. The run54 brightness thresholds support fill, but
+DLL fallbacks are included in the current build. The run54 brightness thresholds support fill, but
 unmatched colour/reprojection evidence limits acceptance and does not establish
 a measured 0.03 comparison. The user also approved a selective-exposure
 feature: base hull shading at EV0, with reflections/specular/emission and other
@@ -63,12 +71,11 @@ establish safe cross-recreation identity before implementation. Static analysis
 also finds persistent script-mode and geometry resets; mode-only restoration
 would be incomplete. The [gate reconstruction](reverse-engineering/chase-view-transition.md#2026-09-15-run24-gate-reconstruction-snapshot-run56)
 now has reviewed identity/provenance/geometry diagnostics in source: 194 host
-checks, nine EXE sites and 334 X3 CPU checks pass. They await the consolidated
-candidate and one gate capture; restoration itself remains unimplemented. Jumpdrive shares
+checks, nine EXE sites and 334 X3 CPU checks pass. They are installed and await run25’s gate capture; restoration itself remains unimplemented. Jumpdrive shares
 the static warp path but remains gameplay-unverified.
 
 The chase HUD anchor (`centre` default) is now implemented and independently
-reviewed in source, separately from the fill candidate ([ledger](verification/chase-hud-anchor.md));
+reviewed in source, and installed in the consolidated candidate ([ledger](verification/chase-hud-anchor.md));
 81 host tests pass, with gameplay glyph calibration pending. The gate trace above now drives the view-restoration prerequisite. Shadows follow the ratified
 route-B order: sun-lit-share lane, replay feasibility without shading, then cascades;
 screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
@@ -77,19 +84,17 @@ in the shadow note. The default-off sun-share runtime lane is now integrated and
 independently reviewed: 216 extraction GPU cases, portable depth-history copying,
 and 11 actual-renderer cases / 66 byte-exact TAA frames pass. Composition
 exclusions, fallback and Reset are qualified within the recorded boundaries;
-missing shader variants remain unavailable through Reset. It awaits the next
-candidate; shadow replay and cascades remain unimplemented
+missing shader variants remain unavailable through Reset. It is installed for the diagnostic run; shadow replay and cascades remain unimplemented
 ([ledger](verification/directional-shadows.md)).
 The inherited PS3 constant-read-port violation is repaired and reviewed in
 source: legacy/fill GPU reports and 1,162 fade readbacks match retained
 baselines exactly ([repair ledger](verification/linear-material-constant-port.md)).
-Native Windows runtime remains unverified; this repair is not yet installed. Replay admission has a ratified managed-buffer
+Native Windows runtime remains unverified; this repair is now installed. Replay admission has a ratified managed-buffer
 feasibility boundary, with complete entry coverage and concurrency proof still
 required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
 exact wall-time attribution open. The bounded interval recorder is now independently
-reviewed and qualified in source (163 X3 CPU checks); it awaits the consolidated
-candidate and game capture ([verification](verification/loading-intervals.md)). The
+reviewed and qualified in source (163 X3 CPU checks); it is installed and awaits the game capture ([verification](verification/loading-intervals.md)). The
 existing counter analysis remains limited by overlap ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.
 
@@ -208,12 +213,10 @@ existing counter analysis remains limited by overlap ([analysis](reverse-enginee
 - **HDR scope:** FP16 and AgX work, but much of the scene is still
   compatibility-decoded gamma-space lighting. Scene-referred lighting, complete
   linear blending and verified HDR display output remain incomplete.
-- **Native Windows:** C++ source cross-compiles, but the material sanitizer has a
-  **known shader-validity blocker**: two distinct constant registers in one PS3
-  instruction, observed in all 108 converted pixel programs. CrossOver accepts
-  the shaders; native validity requires the separate repair now in progress. No
-  native-Windows runtime is verified. Depth provision, CreateDeviceEx adoption,
-  MRT/PS2.1, Reset/presentation, performance and HDR output remain gaps
+- **Native Windows:** C++ source cross-compiles and the known PS3 sanitizer
+  constant-read-port violation is repaired with CrossOver GPU parity evidence.
+  Native-Windows runtime is unverified. Depth provision, CreateDeviceEx
+  adoption, MRT/PS2.1, Reset/presentation, performance and HDR output remain gaps
   ([platform-portability.md](architecture/platform-portability.md)).
 - **Window/cursor:** the macOS menu bar remains open. The double cursor after
   alt-tab reproduces in vanilla (run 4, 2026-09-14: move the desktop cursor
