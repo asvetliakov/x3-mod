@@ -163,8 +163,7 @@ not linear composition and is never labelled so.
   engine candidate came with `sepalpha=1` (ONE/ONE/ADD colour, 11 of the 16
   logged samples) or the screen blend ONE/INVSRCCOLOR (5), so the original
   "separate alpha off" gate admitted zero draws. Screen refuses with the
-  distinct reason `screen_blend` (gaining `s` under `bg + s - s*bg` is not the
-  law); every other blend, sRGB write or op refuses as `blend`; unknown state
+  distinct reason `screen_blend` (gained screen `bg + G*s*(1-bg)` is not additive and darkens where the FP16 scene holds bg > 1); every other blend, sRGB write or op refuses as `blend`; unknown state
   and inactive redirect refuse silently (counted); the bracket routes
   (`--linear-emissions`, fade, screen) take precedence for a draw they admit.
   A failed bind restores at once; a failed restore is the existing

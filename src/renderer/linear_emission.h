@@ -55,8 +55,8 @@ LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* or
 // D3DBLENDOP codes: ONE = 2, INVSRCCOLOR = 4, ADD = 1). The separate alpha
 // factors are not inputs: the variant multiplies only rgb, so the ONE/ONE/ADD
 // colour law holds whatever SEPARATEALPHABLENDENABLE and the alpha triple are.
-// Screen (ONE/INVSRCCOLOR/ADD) is not additive: `bg + s - s*bg` gained would
-// darken where bg > 0, so it is a distinct refusal; everything else (blend
+// Screen (ONE/INVSRCCOLOR/ADD) is not additive: gained, `bg + G*s*(1-bg)`
+// darkens where bg > 1 (the FP16 scene admits that), so it is a distinct refusal; everything else (blend
 // off, sRGB write, other factors or ops) is the generic blend refusal.
 enum class SourceGainBlend : std::uint8_t { Admit = 0, Blend = 1, Screen = 2 };
 SourceGainBlend linear_emission_source_gain_blend(std::uint32_t blend_enable, std::uint32_t srgb_write,
