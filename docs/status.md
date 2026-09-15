@@ -33,8 +33,11 @@ source worktree is deleted, and the 17:00 manifest names only
 `/Users/asvetl/x3-mod/build/d3d9.dll`. Runs 62–64 (16:13–17:15) ran the packed
 screen-emission route with `materials=0`, so that DLL already carried an
 uncommitted decoupling. The `3f1b9941…` DLL is retained as the rollback; the
-proxy will log its own hash and effective options at startup from the next
-candidate on, so this cannot recur silently.
+proxy now logs its own hash, embedded source commit and effective `X3M_*`
+options at startup (`proxy_identity` / `proxy_options`, merged as `5eda356`,
+122 ms once per process under CrossOver; not in the installed `5726a37b…`
+build, rides the next candidate), and `manage.py install` records the DLL's
+embedded commit, so this cannot recur silently.
 
 This build adds, all default-off unless stated: `--chase-view-restore`,
 `--emission-source-gain G`, `--screen-emission-additive G`, `--shadow-replay-candidates`,
