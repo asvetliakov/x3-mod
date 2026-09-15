@@ -1,16 +1,16 @@
 {
  "fixture": "build/verification/point-light-admission/point_light_admission_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 5.6,
- "checks": 134,
+ "elapsed_s": 5.3,
+ "checks": 168,
  "failures": 0,
  "failure_lines": [],
  "bench_us": {
-  "native_admit": 0.0221,
-  "native_reject": 0.0219,
+  "native_admit": 0.0217,
+  "native_reject": 0.0217,
   "patched_admit": 0.0219,
-  "patched_root_walk": 0.0878,
-  "patched_memo_hit": 0.0227
+  "patched_root_walk": 0.0877,
+  "patched_memo_hit": 0.0232
  },
  "outcomes": {
   "admitted": "11",
@@ -24,8 +24,8 @@
   "root_rejected": "3"
  },
  "install_lines": [
-  "point_light_root_admission requested=0 patched=0 reason=disabled write=none site=0x004c27af detour=0x00000000 handler=0x00401b80",
-  "point_light_root_admission requested=1 patched=0 reason=bytes_mismatch write=none site=0x004c27af detour=0x00000000 handler=0x00401b80"
+  "point_light_root_admission requested=0 patched=0 reason=disabled write=none site=0x004c27af detour=0x00000000 handler=0x00401cc0",
+  "point_light_root_admission requested=1 patched=0 reason=bytes_mismatch write=none site=0x004c27af detour=0x00000000 handler=0x00401cc0"
  ],
  "bottle": {
   "name": "X3",

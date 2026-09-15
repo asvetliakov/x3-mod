@@ -17,7 +17,15 @@
 #include <cstring>
 #include <cstddef>
 #include <cstdarg>
-namespace x3m { void log(const char* format, ...) { static unsigned lines = 0; if (lines++ < 8) { std::va_list a; va_start(a, format); std::vprintf(format, a); va_end(a); std::printf("\n"); } } }
+// Telemetry lines are kept for the frame-line checks; the first install lines are printed for the runner.
+static char frame_lines[8][512]; static unsigned frame_line_count = 0;
+static char node_lines[80][512]; static unsigned node_line_count = 0;
+namespace x3m { void log(const char* format, ...) {
+    char text[512]; std::va_list a; va_start(a, format); std::vsnprintf(text, sizeof text, format, a); va_end(a);
+    if (!std::strncmp(text, "point_light_admission_frame ", 28)) { if (frame_line_count < 8) std::strcpy(frame_lines[frame_line_count++], text); return; }
+    if (!std::strncmp(text, "point_light_node ", 17)) { if (node_line_count < 80) std::strcpy(node_lines[node_line_count++], text); return; }
+    static unsigned lines = 0; if (lines++ < 8) std::printf("%s\n", text);
+} }
 namespace x3m::object_trace { bool executable_verified() { return true; } }
 namespace pla = x3m::point_light_admission;
 namespace core = x3m::point_light_admission::core;
@@ -158,9 +166,9 @@ int main() {
     check(pla::install_at(site_va()) && !std::strcmp(pla::state(), "ok"), "install_at synthetic site");
     if (!pla::detour_address()) { std::printf("FAIL install state=%s\nPOINT LIGHT ADMISSION CPU checks=%u failures=%u\n", pla::state(), checks, failures + 1); return 1; }
     unsigned char patched[core::site_length]; core::encode_site_patch(site_va(), std::uint32_t(pla::detour_address()), patched);
-    check(site_bytes_are(patched, core::site_length) && patched[0] == 0x0f && patched[1] == 0x8f && window_untouched_around_site(), "site bytes are jg detour and the rest of the window is untouched");
+    check(site_bytes_are(patched, core::site_length) && patched[0] == 0xe9 && patched[5] == 0x90 && window_untouched_around_site(), "site bytes are jmp detour; nop and the rest of the window is untouched");
     check(!std::strcmp(pla::write_path(), "plain") || !std::strcmp(pla::write_path(), "atomic"), "write path reported");
-    unsigned char detour_expected[core::detour_length]; core::encode_detour(std::uint32_t(pla::detour_address()), addr(reinterpret_cast<const void*>(&x3m_point_light_root_admits)), site_va() + 6, site_va() + 6 + core::site_rel32, detour_expected);
+    unsigned char detour_expected[core::detour_length]; core::encode_detour(std::uint32_t(pla::detour_address()), addr(reinterpret_cast<const void*>(&x3m_point_light_root_admits)), site_va() + 6, site_va() + 6 + core::site_rel32, addr(const_cast<std::uint32_t*>(&x3m_point_light_fast_admit)), detour_expected);
     check(!std::memcmp(reinterpret_cast<const void*>(pla::detour_address()), detour_expected, core::detour_length), "detour bytes as encoded");
     check(!pla::install_at(site_va()) && !std::strcmp(pla::state(), "already_installed"), "second install refused");
 
@@ -257,12 +265,60 @@ int main() {
         now = pla::stats(); check(now.walks == before.walks + 4 && now.memo_hits == before.memo_hits + 4, "memo: counters");
         check(now.frame > before.frame, "memo: frame serial advanced");
     }
+    // frame telemetry: counters since the last present(), the frame line's sums, the capture-frame samples, the reset
+    {
+        pla::present(7, 41, false); // drains everything above; not a capture frame: no node lines
+        check(frame_line_count == 1 && node_line_count == 0, "present logs one frame line, no samples on a plain frame");
+        frame_line_count = 0;
+        pla::Stats z = pla::stats();
+        check(z.tests == 0 && z.fast_admit == 0 && z.walks == 0 && z.memo_hits == 0 && z.outcomes[0] == 0 && z.outcomes[8] == 0 && z.samples == 0, "present resets the counters");
+        pla::begin_frame(true); // capture frame: sample the walked nodes
+        Node& other = pool[13]; node_set(other, addr(&root), 200, 1232, 0, 0);
+        Node& lonely = pool[15]; node_set(lonely, 0, 300, 5000, 0, 0);
+        check_path(run(900, node, light, 0x246, false), admit, light, "telemetry: fast admit 1");
+        check_path(run(1200, node, light, 0x246, false), admit, light, "telemetry: fast admit 2");
+        check_path(run(-7, other, light, 0x246, false), admit, light, "telemetry: fast admit 3");
+        check_path(run(1232, node, light, 0x246, false), admit, light, "telemetry: walk 1 (root admits)");
+        check_path(run(1300, other, light, 0x246, false), admit, light, "telemetry: walk 2 (root admits, other node)");
+        check_path(run(5000, lonely, light, 0x246, false), reject, light, "telemetry: walk 3 (node is root)");
+        check_path(run(1232, node, light, 0x246, false), admit, light, "telemetry: memo hit");
+        z = pla::stats();
+        check(z.tests == 7 && z.fast_admit == 3 && z.reject == 4 && z.walks == 3 && z.memo_hits == 1 && z.samples == 3, "telemetry: live counters");
+        pla::present(7, 42, true);
+        check(frame_line_count == 1 && node_line_count == 3, "capture frame: one frame line and three node lines");
+        unsigned long device = 0, frame = 0, tests = 0, fast = 0, rej = 0, walks = 0, hits = 0, ra = 0, rr = 0, cu = 0, cd = 0, cc = 0, nr = 0, ru = 0, lu = 0, rn = 0, smp = 0;
+        const int fields = std::sscanf(frame_lines[0], "point_light_admission_frame device=%lu frame=%lu tests=%lu fast_admit=%lu reject=%lu walks=%lu memo_hits=%lu root_admit=%lu root_reject=%lu chain_unreadable=%lu chain_too_deep=%lu chain_cycle=%lu node_is_root=%lu root_unreadable=%lu light_unreadable=%lu reach_negative=%lu samples=%lu",
+                                       &device, &frame, &tests, &fast, &rej, &walks, &hits, &ra, &rr, &cu, &cd, &cc, &nr, &ru, &lu, &rn, &smp);
+        check(fields == 17 && device == 7 && frame == 42, "frame line parses");
+        check(tests == fast + rej && rej == walks + hits && walks == ra + rr + cu + cd + cc + nr + ru + lu + rn, "frame line sums");
+        check(tests == 7 && fast == 3 && rej == 4 && walks == 3 && hits == 1 && ra == 2 && nr == 1 && rr == 0 && smp == 3, "frame line values");
+        unsigned long n_node = 0, n_root = 0; unsigned depth = 0; long dist = 0, reach = 0, rdist = 0, rreach = 0, nscale = 0, rscale = 0; char verdict[32] = {};
+        const int nf = std::sscanf(node_lines[0], "point_light_node device=%lu frame=%lu node=%lx root=%lx depth=%u dist=%ld reach=%ld root_dist=%ld root_reach=%ld verdict=%31s node_scale=%ld root_scale=%ld",
+                                   &device, &frame, &n_node, &n_root, &depth, &dist, &reach, &rdist, &rreach, verdict, &nscale, &rscale);
+        check(nf == 12 && n_node == addr(&node) && n_root == addr(&root) && depth == 1 && dist == 1232 && reach == 1200 && rdist == 3461 && rreach == 20536 && !std::strcmp(verdict, "root_admit") && nscale == 200 && rscale == 19536, "node line 1: the walked clamp with its root");
+        const int nf3 = std::sscanf(node_lines[2], "point_light_node device=%lu frame=%lu node=%lx root=%lx depth=%u dist=%ld reach=%ld root_dist=%ld root_reach=%ld verdict=%31s node_scale=%ld root_scale=%ld",
+                                    &device, &frame, &n_node, &n_root, &depth, &dist, &reach, &rdist, &rreach, verdict, &nscale, &rscale);
+        check(nf3 == 12 && n_node == addr(&lonely) && n_root == 0 && depth == 0 && dist == 5000 && reach == 1300 && rdist == 0 && rreach == 0 && !std::strcmp(verdict, "node_is_root") && nscale == 300 && rscale == 0, "node line 3: a root node reports no root");
+        frame_line_count = node_line_count = 0;
+        // the sample is bounded: 70 distinct walked nodes on a capture frame keep 64
+        pla::begin_frame(true);
+        static Node many[70];
+        for (unsigned i = 0; i < 70; ++i) { node_set(many[i], addr(&root), 200, 1232, 0, 0); run(1232, many[i], light, 0x246, false); }
+        z = pla::stats(); check(z.walks == 70 && z.samples == 64, "sample bounded at 64 of 70 walks");
+        pla::present(7, 43, true);
+        check(frame_line_count == 1 && node_line_count == 64, "64 node lines");
+        frame_line_count = node_line_count = 0;
+        pla::begin_frame(true); pla::present(7, 44, false); // capture flagged then not captured at present: nothing logged for nodes
+        check(node_line_count == 0, "no node lines without captured=true");
+        frame_line_count = node_line_count = 0;
+    }
     // cost: the same harness around the patched and the native site (diagnostic, not game FPS)
     const double patched_admit = bench_us(900, node, light), patched_root = bench_us(1232, node, light), patched_memo = bench_us(1232, node, light, false);
     {
         const pla::Stats after = pla::stats();
         check(after.memo_hits >= 20000, "memo bench answered from the memo");
     }
+    frame_line_count = node_line_count = 0;
     // rollback
     check(pla::shutdown() && !std::strcmp(pla::state(), "restored"), "shutdown restores");
     check(site_bytes_are(core::expected_site, core::site_length) && !std::memcmp(code, core::expected_window, core::window_length), "rollback bytes exact");
@@ -275,6 +331,8 @@ int main() {
     check(pla::install_at(site_va()) && pla::shutdown() && site_bytes_are(core::expected_site, core::site_length), "re-install and restore");
     x3m::engine_patch::close_install_window("fixture");
     check(!pla::install_at(site_va()) && !std::strcmp(pla::state(), "late_claim") && site_bytes_are(core::expected_site, core::site_length), "closed install window: late_claim, site untouched");
+    pla::present(7, 45, true);
+    check(frame_line_count == 0 && node_line_count == 0, "present logs nothing while the patch is not live");
     std::printf("POINT LIGHT ADMISSION CPU checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;
 }
