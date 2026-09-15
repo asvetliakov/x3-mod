@@ -2,20 +2,22 @@
 
 Design note for user objective 8, written 2026-09-15 after runs 19–21 and the ratified
 [ambient-occlusion-scale.md](ambient-occlusion-scale.md) (AO stays default-off; no sun-weighted
-"AO v2"). For ratification by the main session. **Nothing here is implemented.** Owning
+"AO v2"). Ratified route-B-first by the user on 2026-09-15. **Nothing here is implemented.** Owning
 implementation notes when built: this file; ledger `../verification/directional-shadows.md`.
 
 ## Decision
 
-Build **screen-space sun shadows (route A) first**, as one full-resolution quad at the route's
-scene-end hook before the TAA resolve: a view-space ray march toward the sun over the routed
-depth RT2, applied as an exact multiply of the sun-lit share of each pixel. Before either route
-ships, the converted materials must **expose a sun-lit share lane**: RT2 grows from `R32F` to
-`G32R32F` and every converted pair writes `oC2.g = lum(A·D0) / lum(L)` beside the depth, so the
-shadow multiplies only the sun lobe and never the fill light, point lights, emissive or lightmap
-terms. **Cascaded shadow maps (route B)** come later, reuse A's apply quad, and buy off-screen
-and hidden casters and long shadows at a per-draw replay cost (0.7–2.6 ms CPU at run-48 draw
-counts) that A does not pay.
+Build **cascaded shadow maps (route B)** after the fill term. The required order is:
+converted-material sun-lit-share lane, replay feasibility (Lock counter and one-cascade
+depth replay of routed draws, without shading), then cascades and the scene-end apply pass.
+**Screen-space sun shadows (route A) remain a fallback only if geometry replay proves
+infeasible.** The route-A specification below is retained for that fallback and the shared
+apply-pass design; it is not an implementation prerequisite.
+
+Before shadows ship, RT2 grows from `R32F` to `G32R32F`: depth stays in `.r` and `.g`
+records the sun's luminance share. This scalar approximation preserves zero-sun pixels;
+it approximates the per-channel result when the other light terms differ in hue (§2).
+Fill, point lights, emissive and lightmaps stay outside the numerator.
 
 ## 1. What exists and what the numbers are
 
@@ -222,20 +224,21 @@ shadows across a hull, true penumbra by PCF. It still cannot shadow from nodes t
 culled (a station behind the camera): that needs the proxy to traverse the scene graph and
 submit meshes itself, a private-structure step beyond this note.
 
-**Staged plan.** (1) Cascade 0 only, fitted to the own ship, casters = routed draws whose AABB
+**Staged plan.** (1) Replay feasibility, without shading: count Locks on recorded buffers and
+replay cascade 0 only, fitted to the own ship, casters = routed draws whose AABB
 meets the slice (5–20 draws): proves record/lease/replay on a bounded list with a fixture that
 replays synthetic geometry and checks the sun depth against an analytic projection.
-(2) Cascades 1–2 with culling and the cost line per cascade. (3) `min(s_A, s_B)`.
+(2) Cascades 1–2 with culling, the shared scene-end PCF apply, and the cost line per cascade.
+Route A is reserved for infeasible replay, not a required combined pass.
 
 ## 5. Order, and what the other buys later
 
-1. **Lane** (`G32R32F` RT2, `oC2.g = f`), re-qualified through the existing corpus. Needed by
-   both routes; no visible change on its own; per-pixel ≈ 5 slots.
-2. **Route A** behind `--sun-shadows`, default off, with the debug view and hotkey; one user
-   run on the acceptance above. Answers the appearance question objective 8 actually asks —
-   do sun shadows read on X3's ships and stations — at a flat cost.
-3. **Route B stage 1** only if the run asks for off-screen or long shadows; it inherits A's
-   apply and lane and pays for a replay admission contract.
+1. **Fill term**, qualified and offered for the user's appearance verdict.
+2. **Lane** (`G32R32F` RT2, `oC2.g = f`), re-qualified through the existing corpus.
+3. **Replay feasibility**: Lock counter and one-cascade depth replay of routed draws,
+   no shading; validate leases, resource revisions, analytic depth and scoped cost.
+4. **Cascades** with culling and the shared scene-end apply, after replay feasibility.
+5. **Route A only as fallback** if replay proves infeasible.
 
 | Step | Per-draw hot path | Scene end | Memory | Budget |
 | --- | --- | --- | --- | --- |
@@ -249,9 +252,9 @@ replays synthetic geometry and checks the sun depth against an analytic projecti
   emissive windows, lightmaps and point-lit hull inside shadows; a preview only, not shippable.
 - **Shadow-map sampling inside the converted pixel shaders**: a sampler, ~30 slots and a
   one-frame lag in 168 pairs, plus the replay it needs anyway; loses to B's scene-end apply.
-- **B first**: physically complete, but its cost scales with draw count (up to 5–8 ms at
-  run-48 peaks) and it reopens the replay admission contract before anyone has seen whether
-  sun shadows read at X3 scale. Loses on cost and risk.
+- **B first (selected)**: the user chose geometry-based shadows despite the estimated
+  draw-dependent cost. The replay-feasibility checkpoint measures that cost and resolves
+  the admission contract before cascades and shading are implemented.
 - **Sun-weighted GTAO** (the former "AO v2"): rejected by the user; it also stays bound to a
   world radius and would inherit AO's scale problem.
 

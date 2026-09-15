@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-15 (midday checkpoint). This is the short current handoff; the current
+Updated 2026-09-15 (resumed orchestration; fill qualification in progress). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -35,26 +35,20 @@ HUD, and the selected WRAP/motion fixes are included.
 
 ## Next user action
 
-Run 20 (snapshot run48) is complete on the installed `39b090d0…` build:
-asteroid triangle dropout fixed and accepted; step D bullets accepted (no
-fullscreen bracket in 50,654 frames); loading markers read menu 12.9 s and a
-21.7 s save-load stall; the far port was captured (37 px) and its radiance
-moves only 6 % between far and near; AO ran in the debug factor view for the
-whole session and is a few pixels wide at gameplay distances. No run is open. Run 22
-(snapshot run51) is complete on the installed `53a0d8a7…` build: trembling fixed and
-accepted, `--lod-scale` tested and left default-off, the module darkening owned by the
-point-light range cull. Next candidate: the `--material-fill` term
-([fill-light.md](architecture/fill-light.md), ratified, implementation in flight at
-the checkpoint; see the handoff) followed by run 23 at the run-51 spot. Then the
-chase items (view restore after sector change, HUD anchor) and cascaded shadow maps. Runs 19–22 are in the
-[completed-run archive](archive/user-runs-completed.md). Details in the
-[completed-run archive](archive/user-runs-completed.md). Run 19
-(snapshot run47) is complete: shimmer history drops gone (reason 3 at 0.01 %)
-but distant asteroids still lose triangles; bolts accepted at gain 1; AO runs
-but is invisible at the 2 m radius; the port pair was captured at one distance
-(57/54 px, same draw path, radiance within 3 %) and the user also sees the
-darkening on a ship. Details in the
-[completed-run archive](archive/user-runs-completed.md).
+No new game run yet. Material fill is merged (`294c155`); the follow-up review fixes
+and K=0.06 detached oracle are in progress, with K=0 GPU parity and live qualification
+next. The installed DLL, EXE and bottle configuration hashes were checked against the
+handoff and match. Shader artifacts are present (751 programs). After reviewed
+qualification, a clean Sol-built candidate will be installed with rollback retained and
+run 23 queued at the run-51 station spot (`--material-fill 0.06`, brackets 0.04/0.10).
+The fill default remains 0 pending the user's appearance verdict.
+
+Next: the ratified chase HUD anchor (`centre` default); a gate-jump and jumpdrive
+telemetry run must precede view-restoration implementation. Shadows follow the ratified
+route-B order: sun-lit-share lane, replay feasibility without shading, then cascades;
+screen-space shadows are fallback only. Existing loading-phase evidence is being
+reduced to attribute the 21.7 s save-load stall. Completed runs remain in the
+[run queue](verification/user-runs.md) and its archive.
 
 ## User decisions (2026-09-14)
 
@@ -120,8 +114,9 @@ darkening on a ship. Details in the
   ratio 1.29 near/far, dark fraction 0.25 → 0.02). Native behaviour, hence vanilla.
   Earlier LOD-step and fade explanations are withdrawn. Fix direction: an
   ambient/fill term in the converted materials (one MAD per pixel, also lights
-  black bays and night sides) or widening the engine's point-light admission
-  range (site not yet located). Decision pending.
+  black bays and night sides), ratified and merged; GPU qualification is pending.
+  Widening point-light range is rejected; optional root-object admission follows
+  the fill verdict and starts with disassembly.
   [station-material-distance.md](reverse-engineering/station-material-distance.md),
   "Run 22". `--lod-scale` is installed default-off and stays so: the user
   compared 3× against 1× and saw no visual difference (View Distance "Very
