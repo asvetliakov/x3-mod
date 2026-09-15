@@ -53,7 +53,10 @@ route-B order: sun-lit-share lane, replay feasibility without shading, then casc
 screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
 now covers all 108 pixel originals; the receiver/capability boundary is ratified
 in the shadow note, with portable depth-history channel copying required. No
-shadow lane or replay is implemented yet. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
+live shadow lane or replay is implemented yet. Shader extraction is in an isolated
+implementation checkout; replay admission now has a ratified managed-buffer
+feasibility boundary, with complete entry coverage and concurrency proof still
+required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
 exact wall-time attribution open ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.

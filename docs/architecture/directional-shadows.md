@@ -439,3 +439,189 @@ coverage, not claiming completion through fallback. Retain the existing user-run
 shadow-footprint acceptance (§3) where applicable to the map consumer. A later blended
 receiver contract, clipped/8-bit approximation and native runtime evidence remain
 unresolved, rather than being advertised as supported by the extraction count.
+
+## 9. Same-frame replay admission contract — ratified feasibility boundary (2026-09-15)
+
+**Ratified by the orchestrator as the feasibility boundary, not permission to
+enable live replay.** This addresses route B's first
+Lock counter and one-cascade depth producer. It does not change the accepted
+receiver lane. A quiet Lock trace is feasibility evidence, never permission to
+remove `motion_live_replay_available=false` (`src/proxy/capture.cpp:137`).
+
+### Selected minimum and evidence
+
+Use the existing process-wide application-admission monitor plus frame-local
+native geometry leases. Restrict the first producer to bounded, ordinary opaque
+routed indexed draws with the already-supported **readable MANAGED, non-DYNAMIC**
+VB/IB contracts, finite positions and exact index-range evidence. Exclude glass,
+cutouts, fade, UP, instancing and mutable texture inputs from this prototype;
+record their rejection counts. A partial diagnostic map is acceptable for replay
+feasibility, not a complete shadow map eligible for scene-color application.
+
+The portable qualifier already requires this buffer domain
+(`src/ownership/portable_managed_upload.cpp:22`); write evidence accepts ordinary
+flags 0/NOSYSLOCK and observes the mapping only before native Unlock
+(`src/ownership/d3d9_ownership.cpp:902,929`). The lease validates owner/reset
+generation, finite/index evidence and expected revisions, then supplies retained
+native buffers (`:1599,1704`). Its native AddRefs preserve allocation lifetime,
+not old contents. No extra lock/readback of application buffers is proposed.
+
+### Counter first: observe attempts, completion and the draw-to-replay interval
+
+Add optional VB/IB diagnostic bookends in `buffer_lock` **before native Lock**
+(`d3d9_ownership.cpp:859`) and after result publication; pair them with Unlock
+entry/completion (`:915`). Under the existing short registry synchronization,
+maintain a saturating per-allocation attempt serial and in-flight call count,
+plus successful pending-map state. Failed attempts remain visible; only native
+successful writes advance the existing content revision. Keep the native call
+outside the registry, and never hold a mutex across the application's mapping.
+Current `record_buffer_event` advances pending/revision after native success
+(`:835`), so it alone misses a Lock still executing at the boundary.
+
+For the bounded candidate set record allocation identity/generation, byte range,
+flags, thread, attempt serial and content revision at source capture and scene
+end. Report aggregate ordinary/READONLY/DISCARD/NOOVERWRITE attempts, failures,
+pending/in-flight maps, changed candidates and lease refusals; keep only bounded
+failure witnesses. Include any Lock after successful source submission, even a
+completed READONLY call, separately from actual content revision changes.
+Do not allocate or log per Lock/draw, hash buffers, insert sentinel writes or
+change returned pointers. A count of zero says only that the observed interval
+was quiet. Coverage-unknown/native-escape vetoes must accompany the report.
+
+### Source recording and exclusive scene-end replay
+
+1. Preallocate a bounded draw-record array, cascade target/depth attachment,
+   authored shader/declaration and retirement storage outside exclusivity.
+   Acquire a native VB/IB lease while the source's actual application references
+   are live; retain immutable submitted rows, declaration layout, stream/index
+   ranges and cull state. Commit the record only after successful original draw.
+   Reject a record if its Lock attempt serial/revision/pending state changed
+   during capture/submission. Also bracket source state capture/submission with
+   admission snapshots: require the sole root and unchanged `admitted_roots`
+   counter, so another ordinary native caller cannot silently invalidate the
+   source-state association. This is a source-record check, not replay exclusion.
+2. The two actual boundary paths, `compositor_pre` (`capture.cpp:688`) and
+   `scene_end_signal` (`:2213`), currently acquire the capture mutex without an
+   application ticket. Establish an outer `ApplicationAdmissionAbi` **before**
+   that mutex. Pass that specific boundary to the producer. After finishing lazy
+   bindings/composition and before AO/TAA, try `ReplayAdmissionAbi` on the sole
+   outer root; nested boundaries, other active roots, waiting callers or permanent
+   vetoes refuse immediately. Do not wait for another application while holding
+   the capture mutex. End exclusivity before ordinary scene-end consumers run.
+3. Under successful promotion, revalidate the sealed records, exact owner/reset
+   generation, pending/in-flight maps, expected revisions and synchronized
+   scene/query/stateblock state. The monitor must exclude new native application
+   dispatch through save, depth replay and restoration. Already-returned mappings
+   cause immediate refusal; mapped writers are not stopped by the monitor.
+   Invalid records can be omitted only while the output remains diagnostic with
+   explicit partial-map status; state/generation/coverage uncertainty refuses the
+   whole producer. No production shadow consumer may use that partial result.
+4. Bind a mod-owned R32F color target and ordinary compatible depth-stencil,
+   clear, and replay the admitted draws with the authored sun-depth pair. Capture
+   fresh state and explicit RT/depth references; pin every original binding until
+   restored. Use native entrypoints authorized for this exact segment, never a
+   general TLS bypass of wrapper admission. No RESZ, sampled depth FOURCC,
+   application shader compilation, resource allocation, Present/Reset, query
+   wait, message pumping or diagnostic callback belongs inside this segment.
+5. Restore fully before dropping the exclusive token. Then retire saved state,
+   geometry and temporary references outside the ownership registry; publish
+   diagnostics only after restoration. Reset attempt/loss/frame abort ends the
+   frame reservation and invalidates its generation; no lease survives into the
+   next frame. On restore failure use the existing state-loss safety response,
+   never report a valid map. Successful native submission needs no GPU wait:
+   later legal ordinary buffer Locks obey D3D resource-use synchronization.
+
+The monitor core already atomically promotes only one root and makes new outer
+entries wait without holding its mutex during native work
+(`src/ownership/application_admission.cpp:34,68`). VB/IB Lock/Unlock wrappers
+already enter it before native dispatch (`d3d9_forwarders_inc.h:1036,1093`), so
+an in-flight Lock prevents promotion even before pending metadata is published.
+This works only after the complete startup/callback/native-entry coverage in
+[motion-replay-exclusion.md](motion-replay-exclusion.md) is established. The
+loader still disables execution observation (`src/proxy/loader.cpp:197`).
+
+### DISCARD/NOOVERWRITE, alternatives and Windows
+
+Any writable Lock between source capture and replay invalidates the first
+prototype's lease, irrespective of range; READONLY still refuses while pending.
+DISCARD discards the entire VB/IB contents, so a retained COM pointer cannot
+recover a previous backing generation. NOOVERWRITE is an application promise
+about already-used ranges, not evidence that a later replay has retained the
+original bytes. Keep both outside the first managed-buffer producer; do not infer
+safety from equal pointers, static usage or a nonoverlapping offset alone.
+These restrictions follow the documented
+[Lock contract](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3dvertexbuffer9-lock)
+and [D3DLOCK semantics](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dlock).
+
+A later immutable mod-owned geometry snapshot could admit rewritten/dynamic
+inputs, but requires a proved copy boundary, payload storage, upload cost and
+range/lifetime contract; it still does not exclude concurrent device-state
+mutators. Revision-check-then-draw, the capture mutex alone and D3DCREATE_MULTITHREADED
+do not make the multi-call replay transaction atomic. Wine-private locks/layouts
+are excluded. Documented COM, D3D9 and portable C++ monitor primitives give the
+same enhancement path on native Windows; runtime behavior is not verified there.
+
+### Required coverage evidence before promotion can be enabled
+
+Coverage must be established by entry inventory and observed ownership, not a
+manually asserted `coverage_complete` flag. Inventory every generated normal-D3D9
+method and handwritten dispatch: factories/device creation, QueryInterface and
+returned interfaces, AddRef/Release and output adoption, buffers/textures/surfaces,
+ProcessVertices, query Issue/GetData, stateblock Apply/Capture, all device setters,
+scene transitions and Reset. Their root must precede capture/registry acquisition
+and native dispatch and remain active through native result/metadata publication.
+Exercise representative generic forwarders as well as hand-coded hooks with a
+native-entry barrier. Entry instrumentation must start before the first factory
+or application graphics object is returned. A successful unknown QI, Ex/native
+fallback, untracked late adoption, shared/external resource or raw-native pointer
+escape permanently vetoes the process before exposure. Prove the reviewed
+game/D3DX pointer routes actually receive owned wrappers; an import list or absence
+of escape events in a short trace is insufficient. Explicitly inventory mod-owned
+raw-native helpers and grant authority only to their bounded counted operations.
+
+All seven resource `SetPrivateData(D3DSPD_IUNKNOWN)` routes must latch a permanent
+veto **before** native AddRef, including failed registration and a second device;
+GUID spoofing cannot authorize the mod's private sidecar path. No FreePrivateData,
+Reset or quiet interval clears it. Install/validate outer window-chain admission
+before returning the device; game-WndProc-only wrapping does not cover a runtime
+hook ahead of it. Same-thread callback reentry during replay is an invariant
+failure, not permission to forward or synthesize an HRESULT. Qualified replay
+operations must exclude its known sources. Defer callback-capable retirement and
+diagnostics; child final Release ends its child ticket after native retirement
+but before parent application Release reenters capture. Preserve incoming and
+native-outgoing x87/MXCSR/LastError at each boundary. Never wait for application
+roots, window threads or GPU completion under capture/registry/exclusion. A Reset
+already active prevents promotion; one arriving later cannot dispatch until full
+restoration and token release. These are independent deep-review obligations,
+including failure/partial-save paths, before changing any live replay gate.
+
+### Cost, acceptance and blocking integration facts
+
+Counters add bounded metadata work at Lock/Unlock; source recording adds lease
+work and two short admission snapshots per selected draw; promotion occurs once
+per candidate scene. Measure those plus admission on ordinary calls, source
+capture time, replay submission/restoration time and refusal rates. Reuse the
+existing lease ceilings (4096/frame, 8192/process, 512 MiB charged allocations),
+with a smaller prototype list; no new per-draw allocation or payload copies.
+Report total routed draws, candidates, leased draws, admitted/replayed draws and
+rejection reasons together. Zero admissible live draws does **not** demonstrate
+replay feasibility, even when serialized synthetic geometry passes.
+
+Before live activation, deterministic fixtures must stop Lock before native
+return, hold a mapping across the boundary, race a new Lock/stateblock/query/Reset
+after promotion, and exercise failed Unlock, DISCARD/NOOVERWRITE refusal, wrapper
+recreation, final Release and partial restoration. Verify no early native
+dispatch, no stuck ticket/lease, preserved HRESULT/output/CPU/LastError, original
+state and analytic single-cascade depth. Tests run only when separately assigned
+to the parent's Wine queue; this design task ran none.
+
+**Blocking unknowns:** callback-free segment authority, outer window admission
+and raw-native helper coverage are not implemented by this proposal. The existing
+[game/D3DX audit](../reverse-engineering/game-callback-registration.md) follows
+mesh allocation through device slots 26/27 at D3DX `0x591cb0/0x591a9d`, supporting
+wrapped VB/IB delivery; it also identifies WndProc `0x4d3620` callback branches.
+It does not certify all dynamic escapes or window-chain entry ordering. Finish
+that bounded entry/fixture work before live promotion; a clean counter run cannot
+substitute. Parent must ratify the managed-only diagnostic boundary, source-record
+check and staged activation; useful admitted geometry and native Windows runtime
+remain separate acceptance gaps tracked by [platform portability](platform-portability.md).
