@@ -101,6 +101,8 @@ float effect_source_gain = 1.f;         // X3M_EFFECT_SOURCE_GAIN: the same gain
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
+bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom attenuation of the additive draw (bloom-per-source-attenuation.md, option 1)
+float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
@@ -186,6 +188,8 @@ struct Device : Hooks {
     ComparisonControls comparison;
     ComparisonNotice comparison_notice;
     bool comparison_report_pending = false;
+    char comparison_emitter_notice[40]{}; // last emitter-key result (Ctrl+Shift+F5/F6/F4); empty = show the bloom line
+
     std::uint64_t bloom_effective_frame = UINT64_MAX;
     bool bloom_effective_on = false;
     CompositorInvocation* compositor = nullptr; // capture mutex; invocation owns its CPU/native pins
@@ -907,13 +911,31 @@ void comparison_log(Device& ctx,const char* phase,const char* key,bool accepted)
         exposure.ready,exposure.frame_used,exposure.reason,ctx.comparison.bloom_requested,
         comparison_bloom_ready(ctx),bloom_effective,bloom_effective&&ctx.bloom_effective_on,comparison_bloom_reason(ctx));
 }
+// One emitter toggle: the MotionOutput state change is already logged with
+// its family and gain; this adds the key identity to the comparison record
+// and the notice line. state<0 is the refusal (option not requested, or gain
+// 1 so no variant exists); nothing is created or released either way.
+void comparison_emitter(Device& ctx,const char* key,const char* label,int state) noexcept {
+    // Appends, so two or three keys sampled in the same frame each keep their
+    // label; the caller clears the line before the first of them.
+    const std::size_t used=std::strlen(ctx.comparison_emitter_notice);
+    std::snprintf(ctx.comparison_emitter_notice+used,sizeof ctx.comparison_emitter_notice-used,"%s%s %s",
+        used?" ":"",label,state<0?"UNAVAILABLE":state?"ON":"OFF");
+    comparison_log(ctx,"request",key,state>=0);
+}
 void comparison_begin_frame(Device& ctx) noexcept {
     // Ordinary launches pay no comparison input/foreground polling. A
     // requested-but-refused capability still accepts the UNAVAILABLE notice.
     // Ctrl+Shift+F11 (ambient occlusion on/off) polls with the same sampler
     // when --ambient-occlusion is on; it has no notice and no report.
     const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;
-    if(!hdr_compare && !ambient_occlusion_requested)return;
+    // Emitter A/B keys (comparison-hotkeys.md): Ctrl+Shift+F5 the additive
+    // bullets, F6 the engine source gain, F4 the effect source gain (F7 is
+    // the telemetry marker and F8 the capture key). Any requested emitter
+    // option opens the sampler; the individual keys are polled unconditionally
+    // inside it so an unrequested option answers with a logged refusal.
+    const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || effect_source_gain!=1.f;
+    if(!hdr_compare && !ambient_occlusion_requested && !emitter_compare)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
     keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
@@ -921,9 +943,19 @@ void comparison_begin_frame(Device& ctx) noexcept {
     keys.exposure=hdr_compare && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
     keys.bloom=hdr_compare && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
     keys.ambient_occlusion=ambient_occlusion_requested && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
+    keys.screen_additive=(GetAsyncKeyState(VK_F5)&0x8000)!=0;
+    keys.engine_gain=(GetAsyncKeyState(VK_F6)&0x8000)!=0;
+    keys.effect_gain=(GetAsyncKeyState(VK_F4)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();
+    const bool emitter=action.screen_additive||action.engine_gain||action.effect_gain;
+    if(emitter)ctx.comparison_emitter_notice[0]='\0';
+    if(action.screen_additive)comparison_emitter(ctx,"ctrl_shift_f5","BULLETS",ctx.motion_output.screen_emission_additive_toggle());
+    if(action.engine_gain)comparison_emitter(ctx,"ctrl_shift_f6","ENGINES",ctx.motion_output.emission_source_gain_toggle(0));
+    if(action.effect_gain)comparison_emitter(ctx,"ctrl_shift_f4","EFFECTS",ctx.motion_output.emission_source_gain_toggle(1));
+    if(emitter){ctx.comparison_notice.show(GetTickCount64());ctx.comparison_report_pending=true;}
     if(!action.exposure && !action.bloom)return;
+    ctx.comparison_emitter_notice[0]='\0'; // an exposure/bloom press owns the second line again
     const bool boundary=!ctx.reset_active && !ctx.compositor && !ctx.bloom_busy
         && ctx.motion_output.comparison_boundary_available();
     if(action.exposure){
@@ -947,7 +979,8 @@ void comparison_notice_text(Device& ctx) noexcept {
     } else if(exposure.automatic)
         std::snprintf(first,sizeof first,"EXPOSURE AUTO%s",exposure.frame_used?"":" / WAITING");
     else std::snprintf(first,sizeof first,"FIXED EV %+.2f%s",double(exposure.ev),exposure.frame_used?"":" / WAITING");
-    if(!comparison_bloom_ready(ctx))std::snprintf(second,sizeof second,"BLOOM %s",
+    if(ctx.comparison_emitter_notice[0])std::snprintf(second,sizeof second,"%s",ctx.comparison_emitter_notice);
+    else if(!comparison_bloom_ready(ctx))std::snprintf(second,sizeof second,"BLOOM %s",
         !std::strcmp(comparison_bloom_reason(ctx),"waiting_scene")?"WAITING":"UNAVAILABLE");
     else std::snprintf(second,sizeof second,"BLOOM %s%s",ctx.comparison.bloom_requested?"ON":"OFF",
         ctx.bloom_effective_frame==ctx.frame && ctx.bloom_effective_on==ctx.comparison.bloom_requested?"":" REQUESTED");
@@ -1072,7 +1105,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     // stack-local saved state. Ordinary Reset during original is supported.
     if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
     ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.composition_scene_owner=false;
-    ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;
+    ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;ctx.comparison_emitter_notice[0]='\0';
     ctx.bloom_effective_frame=UINT64_MAX;
     revoke_compositor(ctx);
     ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
@@ -1856,7 +1889,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
     hooked.motion_output.configure_emission_source_gain(emission_source_gain,effect_source_gain);
     hooked.motion_output.configure_original_fill(original_fill);
-    hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain);
+    hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
@@ -2234,6 +2267,7 @@ void initialize_log(HMODULE module) {
     // materials: no bound, no bracket); exclusive with X3M_SCREEN_EMISSION=1,
     // which wins here as the launcher already refuses the combination.
     {screen_emission_additive_requested=false;screen_emission_additive_gain=1.f;
+     screen_emission_additive_alpha_requested=false;screen_emission_additive_alpha=1.f;wchar_t alpha_setting[32]{};
      SetLastError(ERROR_SUCCESS);
      const DWORD length=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_ADDITIVE",setting,32);
      wchar_t* end=nullptr;const float value=length&&length<32?wcstof(setting,&end):0.f;
@@ -2243,8 +2277,26 @@ void initialize_log(HMODULE module) {
          const bool conflict=screen_emission_requested;
          screen_emission_additive_requested=valid&&motion_output_requested&&hdr_requested&&!conflict;
          if(valid)screen_emission_additive_gain=value;
-         log("screen_emission_additive_mode requested=1 enabled=%u gain=%g gain_valid=%u motion=%u hdr=%u packed_conflict=%u",
-             screen_emission_additive_requested,double(screen_emission_additive_gain),unsigned(valid),motion_output_requested,hdr_requested,unsigned(conflict));}}
+         // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K (finite 0..1): the admitted
+         // additive draw writes k*a + D.a to the scene alpha the bloom extract
+         // weighs by, leaving the colour law G*q + D and every other emitter's
+         // authored alpha alone (bloom-per-source-attenuation.md, option 1).
+         // Absent or unparsable keeps the native law; it needs the option.
+         SetLastError(ERROR_SUCCESS);
+         wchar_t* alpha_end=nullptr;
+         const DWORD alpha_length=GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_ADDITIVE_ALPHA",alpha_setting,32);
+         const bool alpha_present=alpha_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND;
+         const float alpha_value=alpha_length&&alpha_length<32?wcstof(alpha_setting,&alpha_end):-1.f;
+         const bool alpha_valid=alpha_length&&alpha_length<32&&alpha_end!=alpha_setting&&!*alpha_end
+             &&std::isfinite(alpha_value)&&alpha_value>=0.f&&alpha_value<=1.f;
+         screen_emission_additive_alpha_requested=alpha_valid&&screen_emission_additive_requested;
+         screen_emission_additive_alpha=screen_emission_additive_alpha_requested?alpha_value:1.f;
+         char alpha_text[24];
+         if(screen_emission_additive_alpha_requested)std::snprintf(alpha_text,sizeof alpha_text,"%g",double(screen_emission_additive_alpha));
+         else std::snprintf(alpha_text,sizeof alpha_text,"native");
+         log("screen_emission_additive_mode requested=1 enabled=%u gain=%g gain_valid=%u motion=%u hdr=%u packed_conflict=%u alpha=%s alpha_requested=%u alpha_valid=%u",
+             screen_emission_additive_requested,double(screen_emission_additive_gain),unsigned(valid),motion_output_requested,hdr_requested,unsigned(conflict),
+             alpha_text,unsigned(alpha_present),unsigned(alpha_valid));}}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.

@@ -1119,19 +1119,33 @@ def fp16_codes_apart(actual,expected):
     return abs(fp16_code(actual)-fp16_code(expected))
 
 
-def validate_screen_additive(work,output,trace,gain=SCREEN_ADDITIVE_GAIN_RUN,width=64,height=64):
+def validate_screen_additive(work,output,trace,gain=SCREEN_ADDITIVE_GAIN_RUN,alpha=None,width=64,height=64):
     """The additive law D' = G q + D (alpha a + D.a) on every quad pixel of
     every admitted bolt within one FP16 code, the dark/bright backgrounds,
     values above 1.0 in the FP16 target, the PROJECTED refusal (native law
     at the samples) and the option's counters; the fixture itself requires
-    the exact blend/mask and shader restoration after each draw."""
+    the exact blend/mask and shader restoration after each draw.
+
+    With `alpha` (X3M_SCREEN_EMISSION_ADDITIVE_ALPHA = k, per-source bloom
+    attenuation, docs/architecture/bloom-per-source-attenuation.md option 1)
+    the alpha law is k*a + D.a while the colour lanes stay G q + D; k = 0 must
+    leave the destination alpha bit-exact. A device without the separate-alpha
+    or blend-factor cap refuses the draw to the native path: that is recorded
+    as a skip, not a failure."""
     lines=output.splitlines();traces=trace.splitlines()
+    if alpha is not None:
+        refusals={fields(line)['reason'] for line in traces if line.startswith('screen_emission_additive_refused ')}
+        if 'alpha_caps' in refusals or 'alpha_state' in refusals:
+            return dict(skipped=sorted(refusals & {'alpha_caps','alpha_state'})[0],alpha=alpha,gain=gain,
+                        reason='device caps or shadowed alpha state unavailable for the attenuation; every draw stayed native')
     assert any(line.startswith('RESULT PASS ') for line in lines) and not any(line.startswith('RESULT FAIL') for line in lines)
     checks=[fields(line) for line in lines if line.startswith('SCREEN_CHECKS ')]
     assert len(checks)==1 and int(checks[0]['frames'])==len(SCREEN_ADDITIVE_PLAN) and checks[0]['qualified']=='1' and checks[0]['benchmark']=='0'
     assert float(checks[0]['additive'])==gain and tuple(map(int,checks[0]['quad'].split(',')))==SCREEN_ADDITIVE_QUAD
     modes=[fields(line) for line in traces if line.startswith('screen_emission_additive_mode ')]
     assert modes and all(m['enabled']=='1' and float(m['gain'])==gain and m['gain_valid']=='1' and m['packed_conflict']=='0' for m in modes),modes
+    if alpha is None:assert all(m['alpha']=='native' and m['alpha_valid']=='0' for m in modes),modes
+    else:assert all(float(m['alpha'])==alpha and m['alpha_valid']=='1' for m in modes),modes
     assert not any(line.startswith('screen_emission_mode ') for line in traces),'the packed option stays off'
     variants=[fields(line) for line in traces if line.startswith('screen_emission_additive_variant ')]
     assert variants and all(v['transform']=='0' and int(v['create'],16)==0 and float(v['gain'])==gain for v in variants),variants
@@ -1141,8 +1155,12 @@ def validate_screen_additive(work,output,trace,gain=SCREEN_ADDITIVE_GAIN_RUN,wid
     assert [(int(r['frame']),int(r['source']),r['kind']) for r in rows]==[(f,i,k) for f,plan in enumerate(SCREEN_ADDITIVE_PLAN) for i,k in enumerate(plan)]
     samples={(int(r['frame']),int(r['source']),int(r['x'])):r for r in (fields(line) for line in lines if line.startswith('SCREEN_SAMPLE '))}
     q=[c*1. for c in SCREEN_TEXEL[:3]];a=SCREEN_TEXEL[3]
+    # The DLL quantises a k strictly between 0 and 1 into D3DRS_BLENDFACTOR,
+    # which is 8 bits a lane; 0 and 1 are the exact ZERO/ONE factors.
+    applied_alpha=None if alpha is None else alpha if alpha in (0.,1.) else int(alpha*255+.5)/255
     x0,y0,x1,y1=SCREEN_ADDITIVE_QUAD
-    result=dict(gain=gain,admitted=0,refused=0,bolts=[],above_one_pixels=0,max_after=0.,max_codes_apart=0)
+    result=dict(gain=gain,alpha='native' if alpha is None else alpha,applied_alpha=applied_alpha,admitted=0,refused=0,bolts=[],above_one_pixels=0,
+                max_after=0.,max_codes_apart=0,max_colour_codes_apart=0,max_alpha_codes_apart=0,alpha_exact_pixels=0,alpha_pixels=0)
     for r in rows:
         frame,source,kind=int(r['frame']),int(r['source']),r['kind']
         assert int(r['hr'],16)==0 and int(r['original_calls'])==1,(frame,source)
@@ -1164,9 +1182,19 @@ def validate_screen_additive(work,output,trace,gain=SCREEN_ADDITIVE_GAIN_RUN,wid
         for y in range(y0,y1):
             for x in range(x0,x1):
                 b=before[y*width+x];d=after[y*width+x]
-                expected=tuple(b[c]+gain*q[c] for c in range(3))+(b[3]+a,)
+                # The colour law is untouched by the attenuation; only the
+                # alpha the bloom extract weighs by changes to k*a + D.a.
+                expected=tuple(b[c]+gain*q[c] for c in range(3))+(b[3]+(a if alpha is None else applied_alpha*a),)
                 apart=max(fp16_codes_apart(d[c],expected[c]) for c in range(4))
                 assert apart<=1,(frame,source,x,y,'G q + D within one FP16 code',b,d,expected)
+                colour_apart=max(fp16_codes_apart(d[c],expected[c]) for c in range(3))
+                alpha_apart=fp16_codes_apart(d[3],expected[3])
+                result['max_colour_codes_apart']=max(result['max_colour_codes_apart'],colour_apart)
+                result['max_alpha_codes_apart']=max(result['max_alpha_codes_apart'],alpha_apart)
+                result['alpha_pixels']+=1;result['alpha_exact_pixels']+=int(alpha_apart==0)
+                # k = 0 writes nothing to alpha: the destination value must
+                # survive bit-exactly, not within a code.
+                if alpha==0.:assert d[3]==b[3],(frame,source,x,y,'k=0 leaves D.a exactly',b[3],d[3])
                 bolt['max_codes_apart']=max(bolt['max_codes_apart'],apart)
                 bolt['background_max']=max(bolt['background_max'],*b[:3]);bolt['background_min_red']=min(bolt['background_min_red'],b[0])
                 bolt['above_one']+=int(max(d[:3])>1.);bolt['max_after']=max(bolt['max_after'],*d[:3])
@@ -1362,7 +1390,13 @@ def main_screen(args):
           dict(name='screen-nomaterials-gain2',screen=1,witness=True,materials=0,gain=SCREEN_GAIN_RUN),
           # The additive option alone (no packed route, no emission/fade/material
           # route): G q + D in place, above 1.0, blend and shader restored.
-          dict(name='screen-additive-gain2',screen=0,materials=0,additive=SCREEN_ADDITIVE_GAIN_RUN)]
+          dict(name='screen-additive-gain2',screen=0,materials=0,additive=SCREEN_ADDITIVE_GAIN_RUN),
+          # Per-source bloom attenuation of the same draws: k = 0 (the alpha
+          # the bloom extract weighs by keeps the destination value exactly)
+          # and k = 0.5 (BLENDFACTOR; skipped with a recorded reason when the
+          # device lacks the cap). The colour law must be unchanged in both.
+          dict(name='screen-additive-alpha0',screen=0,materials=0,additive=SCREEN_ADDITIVE_GAIN_RUN,alpha=0.),
+          dict(name='screen-additive-alpha-half',screen=0,materials=0,additive=SCREEN_ADDITIVE_GAIN_RUN,alpha=.5)]
     for width,height in RESOLUTIONS:
         for pair in (0,1):
             for screen in ((0,1) if pair==0 else (1,0)):
@@ -1384,6 +1418,7 @@ def main_screen(args):
                        X3M_LINEAR_DISTANCE_FADE=str(materials),X3M_LINEAR_EMISSIONS='0' if run.get('additive') else '1',X3M_EMISSION_GAIN='1',
                        X3M_SCREEN_EMISSION=str(run['screen']),X3M_SCREEN_EMISSION_BOUND=str(run['screen']),X3M_SCREEN_EMISSION_GAIN=repr(run.get('gain',SCREEN_GAIN)),
                        X3M_SCREEN_EMISSION_ADDITIVE=repr(run.get('additive',0.)),
+                       X3M_SCREEN_EMISSION_ADDITIVE_ALPHA='' if run.get('alpha') is None else repr(run['alpha']),
                        X3M_OWNERSHIP='1',X3M_TAA='1',X3M_TAA_SENTINEL='2',X3M_TAA_SHARPEN='0',X3M_TAA_MIP_BIAS='-.5' if materials else '0',
                        X3M_FIXTURE_CAMERA='rotate',X3M_SCENE_HOOK='0',X3M_TELEMETRY='1',X3M_MOTION_FRAME_LOG='1',X3M_STATE_SHADOW='1',
                        X3M_MOTION_RT_MODE='lazy',X3M_TAA_DEBUG='0' if run.get('timing') else '1',
@@ -1403,7 +1438,7 @@ def main_screen(args):
             output=(work/'stdout.txt').read_text();trace=logs[0].read_text()
             caps=run.get('caps',1);fade=materials # the distance fade needs the linear-material route
             if run.get('timing'):case=validate_screen_timing(output,trace,run['screen'],run['width'],run['height'],fade)
-            elif run.get('additive'):case=validate_screen_additive(work,output,trace,run['additive'])
+            elif run.get('additive'):case=validate_screen_additive(work,output,trace,run['additive'],run.get('alpha'))
             else:
                 case=validate_screen_functional(output,trace,run['screen'],fade,1,caps,run.get('rect'),run.get('gain',SCREEN_GAIN))
                 case.update(validate_screen_pixels(work,run['screen'],fade,1,caps))

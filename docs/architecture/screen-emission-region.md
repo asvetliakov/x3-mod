@@ -474,6 +474,27 @@ no FP16 redirect (`hdr_state_ != Active`) or a missing variant refuse to native;
 `SetPixelShader` rolls the blend back; a failed restore after the draw sets `motion_state_lost_`
 exactly as a failed route undo does (`prepare_screen_additive` / `finish_screen_additive`).
 
+**Per-source bloom attenuation (2026-09-16).** `--screen-emission-additive-alpha K`
+(`X3M_SCREEN_EMISSION_ADDITIVE_ALPHA`, finite 0..1; requires this option; absent keeps the law
+above) makes the admitted draw write `K a + D.a` to the scene alpha, which is the bloom extract's
+per-pixel authored weight (`bloomPrefilter`, `scale = a*0.375 + (1-a)*0.05*weight`), while the
+colour law stays `G q + D`: the bolts' halo drops without touching their presented brightness or
+any other emitter's authored alpha (`bloom-per-source-attenuation.md`, option 1 in blend-state
+form). Implementation: separate-alpha blending for that draw only, applied after the program bind
+in the order `BLENDFACTOR` (only for a `K` strictly between 0 and 1), `SRCBLENDALPHA`
+(`ZERO` at 0, `ONE` at 1, else `BLENDFACTOR` with `K` quantised to eight bits in every lane — the
+colour law is ONE/ONE/ADD and reads no blend factor, so the shared constant cannot disturb it),
+`DESTBLENDALPHA = ONE`, `BLENDOPALPHA = ADD`, then `SEPARATEALPHABLENDENABLE = TRUE` last, and
+restored in reverse from the setter-hook shadow (`composition_blend[3..7]`, now including
+`BLENDFACTOR`) after the draw. The pixel program and its alpha output are untouched, so the
+alpha-tested bullet draws keep their native test. Fail closed before the first setter, draw
+unchanged and native: `alpha_state` when any of those five states is not shadowed, `alpha_caps`
+when `D3DPMISCCAPS_SEPARATEALPHABLEND` is missing or `D3DPBLENDCAPS_BLENDFACTOR` is missing for a
+`K` in (0, 1). A failed setter mid-sequence unwinds the states already applied, the program and
+`DESTBLEND`, exactly like the existing rollback. Ctrl+Shift+F5 turns the attenuation off with the
+rest of the option. Cost when absent: nothing; when on: four more `SetRenderState` before and after
+each admitted bullet draw (five with `BLENDFACTOR`).
+
 **Prerequisites (real minimum).** `--motion-output` (the shader/state hooks that identify the
 pair) and `--hdr` (the FP16 target). No TAA, ownership, bound, linear-material or tonemap
 dependency: the draw stays where it is, ordinary TAA motion handling of the (unrouted) bullet draw

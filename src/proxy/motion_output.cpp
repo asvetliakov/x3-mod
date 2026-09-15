@@ -219,11 +219,12 @@ constexpr D3DRENDERSTATETYPE shadow_states[motion_shadow_state_count] = {
     D3DRS_STENCILENABLE, D3DRS_CULLMODE, D3DRS_FILLMODE};
 // Blend states kept outside the indexed shadow: the nine-state fade check's
 // triple plus SEPARATEALPHABLENDENABLE, then the separate alpha triple that
-// only the source-gain refusal lines read (never a gate).
-constexpr unsigned composition_blend_count = 7;
+// only the source-gain refusal lines read (never a gate), then BLENDFACTOR,
+// which only the additive option's alpha attenuation writes and restores.
+constexpr unsigned composition_blend_count = 8;
 constexpr D3DRENDERSTATETYPE composition_blend_states[composition_blend_count] = {
     D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE,
-    D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA};
+    D3DRS_SRCBLENDALPHA, D3DRS_DESTBLENDALPHA, D3DRS_BLENDOPALPHA, D3DRS_BLENDFACTOR};
 constexpr unsigned composition_blend_index(D3DRENDERSTATETYPE state) noexcept {
     for (unsigned i = 0; i < composition_blend_count; ++i) if (composition_blend_states[i] == state) return i;
     return composition_blend_count;
@@ -333,7 +334,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
     shadow_.ps_source_gain_variant[0] = shadow_.ps_source_gain_variant[1] = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false;
     shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.ps_screen_variant = nullptr;
-    shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr;
+    shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
     drop_redirect();
     if (composition_) { composition_->detach(); composition_.reset(); }
@@ -599,7 +600,7 @@ void MotionOutput::configure_screen_emission(bool requested, float gain) noexcep
     screen_emission_gain_ = gain;
     if (screen_emission_requested_) { screen_additive_requested_ = false; screen_additive_gain_ = 1.f; } // exclusive in either configure order
 }
-void MotionOutput::configure_screen_emission_additive(bool requested, float gain) noexcept {
+void MotionOutput::configure_screen_emission_additive(bool requested, float gain, bool alpha_requested, float alpha) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
     // Exclusive with the packed route (the caller already refuses both; the
     // DLL keeps the packed route). No TAA/ownership/linear-material need: the
@@ -608,6 +609,17 @@ void MotionOutput::configure_screen_emission_additive(bool requested, float gain
     const bool valid = std::isfinite(gain) && gain >= 1.f && gain <= 8.f;
     screen_additive_requested_ = requested && valid && !screen_emission_requested_;
     screen_additive_gain_ = screen_additive_requested_ ? gain : 1.f;
+    // Per-source bloom attenuation (bloom-per-source-attenuation.md, option 1).
+    // The factor is quantised once here, never per draw: D3DCOLOR is 8 bits a
+    // lane, so the applied k is the rounded value and the log prints it.
+    const bool alpha_valid = alpha_requested && std::isfinite(alpha) && alpha >= 0.f && alpha <= 1.f;
+    screen_additive_alpha_requested_ = screen_additive_requested_ && alpha_valid;
+    screen_additive_alpha_ = screen_additive_alpha_requested_ ? alpha : 1.f;
+    // Only a k strictly between 0 and 1 needs the blend constant; 0 is ZERO
+    // and 1 is ONE, so those two need no D3DPBLENDCAPS_BLENDFACTOR.
+    screen_additive_alpha_constant_ = screen_additive_alpha_requested_ && screen_additive_alpha_ > 0.f && screen_additive_alpha_ < 1.f;
+    const DWORD quantised = DWORD(screen_additive_alpha_ * 255.f + .5f);
+    screen_additive_alpha_factor_ = (quantised << 24) | (quantised << 16) | (quantised << 8) | quantised;
 }
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
     if (device_) return; // Process-start configuration only.
@@ -1858,6 +1870,29 @@ void MotionOutput::log_ambient_occlusion_frame() noexcept {
         id_, frame_, a.attached, a.ran, a.reason, ao_gpu_us_, double(a.cpu_ticks), a.width, a.height, double(a.radius_px), ao_gpu_frame_,
         a.enabled, a.source, timing, a.applied, a.result, a.restore, a.failed_stage, ao_debug_);
 }
+// Runtime emitter A/B (comparison-hotkeys.md). Nothing is created, released
+// or reconfigured here: the flag only decides whether the per-draw admission
+// runs at all, so an off family draws exactly as it would without the option.
+// A source-gain family whose gain is 1 has no variant; its key is a logged
+// no-op. The additive option has no such case: gain 1 still draws with
+// DESTBLEND ONE (and the alpha attenuation, if any), so F5 switches it
+// whenever the option is requested, variant or not.
+int MotionOutput::screen_emission_additive_toggle() noexcept {
+    const bool available = screen_additive_requested_;
+    if (available) screen_additive_enabled_ = !screen_additive_enabled_;
+    log("screen_emission_additive_toggle device=%llu frame=%llu accepted=%u enabled=%u requested=%u gain=%g",
+        id_, frame_, unsigned(available), unsigned(screen_additive_enabled_), unsigned(screen_additive_requested_), double(screen_additive_gain_));
+    return available ? (screen_additive_enabled_ ? 1 : 0) : -1;
+}
+int MotionOutput::emission_source_gain_toggle(unsigned family) noexcept {
+    if (family > 1) return -1;
+    const bool available = emission_source_gain_requested_ && emission_source_gain_[family] != 1.f;
+    if (available) source_gain_enabled_[family] = !source_gain_enabled_[family];
+    log("emission_source_gain_toggle device=%llu frame=%llu family=%s accepted=%u enabled=%u requested=%u gain=%g",
+        id_, frame_, renderer::linear_emission_family_name(static_cast<renderer::LinearEmissionFamily>(family + 1)),
+        unsigned(available), unsigned(source_gain_enabled_[family]), unsigned(emission_source_gain_requested_), double(emission_source_gain_[family]));
+    return available ? (source_gain_enabled_[family] ? 1 : 0) : -1;
+}
 int MotionOutput::ambient_occlusion_toggle() noexcept {
     if (!ao_requested_) return -1;
     ao_enabled_ = !ao_enabled_;
@@ -2506,7 +2541,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.vs == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
         shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2603,7 +2638,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.ps == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant[0] = shadow_.ps_source_gain_variant[1] = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false; shadow_.ps_screen_variant = nullptr;
+        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant[0] = shadow_.ps_source_gain_variant[1] = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false; shadow_.ps_screen_variant = nullptr;
         shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2819,7 +2854,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.original_fill_pair = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2842,7 +2877,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
 }
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant[0] = shadow_.ps_source_gain_variant[1] = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false; shadow_.ps_screen_variant = nullptr;
+    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.screen_additive_index = screen_emission::pair_count; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant[0] = shadow_.ps_source_gain_variant[1] = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.source_gain_family = renderer::LinearEmissionFamily::None; shadow_.source_gain_pair = renderer::linear_emission_pair_count; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false; shadow_.ps_screen_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -3386,12 +3421,13 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             prepare_composition(call, route);
             // Additive option: its pair check is the only per-draw cost for
             // any other draw; never on a draw the bracket already took.
-            if (shadow_.screen_additive_pair && route.submit && !route.composition) prepare_screen_additive(call, route);
+            if (shadow_.screen_additive_pair && screen_additive_enabled_ && route.submit && !route.composition) prepare_screen_additive(call, route);
         }
     }
     // Source-only gain: a null pointer test when the option is off or the
     // bound pair is not one of the twenty; the bracket routes take precedence.
-    if (shadow_.source_gain_eligible_variant && !route.routed && !route.composition && route.submit) prepare_source_gain(call, route);
+    if (shadow_.source_gain_eligible_variant && source_gain_family_enabled(shadow_.source_gain_family)
+            && !route.routed && !route.composition && route.submit) prepare_source_gain(call, route);
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
         mark_cutout_candidate(route);
     if (telemetry::draw_enabled()) {
@@ -3708,10 +3744,12 @@ void MotionOutput::prepare_composition(const MotionDrawCall& call, MotionRoute& 
 void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRoute& route) noexcept {
     // Refusal reasons, each logged once per device (the counters are the
     // fixture's key 61 in total; the reason names are the log's vocabulary).
-    static constexpr const char* reasons[] = {"state", "draw_shape", "scene", "no_fp16_target", "no_variant", "srgb_sampler", "projected", "dither"};
+    static constexpr const char* reasons[] = {"state", "draw_shape", "scene", "no_fp16_target", "no_variant", "srgb_sampler", "projected", "dither",
+        "alpha_state", "alpha_caps"};
+    constexpr unsigned reason_count = sizeof reasons / sizeof reasons[0];
     const auto refuse = [&](unsigned reason) {
-        ++screen_additive_refused_;
-        if (reason < 8 && !(screen_additive_refusal_logged_ & (1u << reason))) {
+        ++screen_additive_refused_; ++screen_additive_frame_refused_;
+        if (reason < reason_count && !(screen_additive_refusal_logged_ & (1u << reason))) {
             screen_additive_refusal_logged_ |= 1u << reason;
             log("screen_emission_additive_refused device=%llu frame=%llu index=%lu reason=%s", id_, frame_, counters_.draws, reasons[reason]);
         }
@@ -3738,6 +3776,18 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     DWORD flags = 0;
     if (FAILED(native<GetStageFn>(GetTextureStageState)(device_, 0, D3DTSS_TEXTURETRANSFORMFLAGS, &flags))
         || (flags & D3DTTFF_PROJECTED)) { refuse(6); return; }
+    // Per-source bloom attenuation (bloom-per-source-attenuation.md, option 1):
+    // the alpha law becomes k*a + D.a for this draw only. Everything it needs
+    // is checked before the first setter, so a refusal leaves the draw native.
+    // The separate alpha triple and BLENDFACTOR must be shadowed: they are the
+    // values restored after the draw, and an unknown one cannot be put back.
+    if (screen_additive_alpha_requested_) {
+        bool alpha_known = true;
+        for (unsigned i = 4; i < composition_blend_count; ++i) alpha_known = alpha_known && shadow_.composition_blend_known[i];
+        if (!alpha_known) { refuse(8); return; }
+        if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_SEPARATEALPHABLEND)) { refuse(9); return; }
+        if (screen_additive_alpha_constant_ && !(caps_.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR)) { refuse(9); return; }
+    }
     HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_ONE);
     if (FAILED(hr)) { ++screen_additive_failures_; return; } // nothing applied: the draw stays native
     route.screen_additive = true;
@@ -3757,10 +3807,78 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             return;
         }
     }
-    ++screen_additive_admitted_;
+    if (screen_additive_alpha_requested_) {
+        const HRESULT alpha = apply_screen_additive_alpha();
+        if (FAILED(alpha)) {
+            // Unwind this draw completely: the alpha states applied so far,
+            // then the program and DESTBLEND, exactly like the PS rollback.
+            ++screen_additive_failures_;
+            const HRESULT alpha_back = restore_screen_additive_alpha();
+            HRESULT back = route.screen_additive_ps ? native<SetPsFn>(SetPixelShader)(device_, shadow_.ps) : S_OK;
+            const HRESULT destination = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+            if (SUCCEEDED(back)) back = destination;
+            if (FAILED(alpha_back) && SUCCEEDED(back)) back = alpha_back;
+            route.screen_additive = route.screen_additive_ps = false;
+            if (FAILED(back)) {
+                if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = back; }
+                ++counters_.restore_failures; invalidate_render_states(); invalidate_taa(TaaInvalidateSite::RestoreFailed);
+            }
+            return;
+        }
+        route.screen_additive_alpha = true;
+    }
+    ++screen_additive_admitted_; ++screen_additive_frame_admitted_;
+    if (shadow_.screen_additive_index < screen_emission::pair_count)
+        screen_additive_frame_pairs_ |= 1u << shadow_.screen_additive_index;
+}
+// The attenuation's render states in apply order. SEPARATEALPHABLENDENABLE is
+// last so the alpha triple is already in place when it starts to matter, and
+// first on the way back so the triple is inert again before it is restored.
+// BLENDFACTOR is only touched when k is strictly between 0 and 1.
+namespace {
+unsigned screen_additive_alpha_steps(float alpha, bool constant, DWORD factor,
+    D3DRENDERSTATETYPE* states, DWORD* values) noexcept {
+    unsigned count = 0;
+    if (constant) { states[count] = D3DRS_BLENDFACTOR; values[count++] = factor; }
+    states[count] = D3DRS_SRCBLENDALPHA;
+    values[count++] = alpha == 0.f ? D3DBLEND_ZERO : constant ? D3DBLEND_BLENDFACTOR : D3DBLEND_ONE;
+    states[count] = D3DRS_DESTBLENDALPHA; values[count++] = D3DBLEND_ONE;
+    states[count] = D3DRS_BLENDOPALPHA; values[count++] = D3DBLENDOP_ADD;
+    states[count] = D3DRS_SEPARATEALPHABLENDENABLE; values[count++] = TRUE;
+    return count;
+}
+} // namespace
+HRESULT MotionOutput::apply_screen_additive_alpha() noexcept {
+    D3DRENDERSTATETYPE states[5]{}; DWORD values[5]{};
+    const unsigned count = screen_additive_alpha_steps(screen_additive_alpha_, screen_additive_alpha_constant_,
+        screen_additive_alpha_factor_, states, values);
+    screen_additive_alpha_applied_ = 0;
+    for (unsigned i = 0; i < count; ++i) {
+        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, states[i], values[i]);
+        if (FAILED(hr)) return hr; // the caller unwinds exactly what was applied
+        ++screen_additive_alpha_applied_;
+    }
+    return S_OK;
+}
+// Back to the application's own values, which the setter hook shadowed
+// (composition_blend[3..7]); the admission refused unless every one of them
+// was known. Only the states this draw actually applied are written.
+HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
+    D3DRENDERSTATETYPE states[5]{}; DWORD values[5]{};
+    screen_additive_alpha_steps(screen_additive_alpha_, screen_additive_alpha_constant_,
+        screen_additive_alpha_factor_, states, values);
+    HRESULT first = S_OK;
+    for (unsigned i = screen_additive_alpha_applied_; i; --i) {
+        const unsigned index = composition_blend_index(states[i - 1]);
+        const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, states[i - 1], shadow_.composition_blend[index]);
+        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
+    }
+    screen_additive_alpha_applied_ = 0;
+    return first;
 }
 void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {
     HRESULT first = S_OK;
+    if (route.screen_additive_alpha) { const HRESULT hr = restore_screen_additive_alpha(); if (FAILED(hr)) first = hr; route.screen_additive_alpha = false; }
     if (route.screen_additive_ps) { const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps); if (FAILED(hr)) first = hr; }
     const HRESULT hr = native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the admitted value
     if (SUCCEEDED(first) && FAILED(hr)) first = hr;
@@ -3910,8 +4028,9 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
     shadow_.screen_pair = screen_emission_requested_ && shadow_.vs_registered && shadow_.ps_registered
         && screen_emission::admitted_pair(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.screen_eligible_variant = shadow_.screen_pair ? shadow_.ps_screen_variant : nullptr;
-    shadow_.screen_additive_pair = screen_additive_requested_ && shadow_.vs_registered && shadow_.ps_registered
-        && screen_emission::admitted_pair(shadow_.vs_hash, shadow_.ps_hash);
+    shadow_.screen_additive_index = screen_additive_requested_ && shadow_.vs_registered && shadow_.ps_registered
+        ? screen_emission::admitted_pair_index(shadow_.vs_hash, shadow_.ps_hash) : screen_emission::pair_count;
+    shadow_.screen_additive_pair = shadow_.screen_additive_index < screen_emission::pair_count;
     shadow_.fade_sampler_mask = distance_fade_requested_ && shadow_.vs_registered && shadow_.ps_registered
         ? renderer::linear_distance_fade_sampler_mask(shadow_.vs_hash, shadow_.ps_hash) : 0;
     // The fade-band arm keys on the pair identity alone (independent of the
@@ -5411,6 +5530,15 @@ void MotionOutput::log_screen_emission_frame() noexcept {
         id_, frame_, composition_counts_.packed_admitted, composition_counts_.packed_region_pixels,
         qpc_frequency_ ? ticks * 1000000u / qpc_frequency_ : 0u);
 }
+// One line per Present with telemetry on (the option itself stays free of
+// per-frame logging): which of the nine pairs actually drew additively this
+// frame, how many draws were refused, and whether the runtime key has the
+// option on. `pairs` is a hex bit mask over screen_emission::pairs indices.
+void MotionOutput::log_screen_additive_frame() noexcept {
+    log("screen_emission_additive_frame device=%llu frame=%llu admitted=%u refused=%u pairs=%03x toggled=%u",
+        id_, frame_, screen_additive_frame_admitted_, screen_additive_frame_refused_,
+        screen_additive_frame_pairs_, unsigned(screen_additive_enabled_));
+}
 void MotionOutput::after_present(HRESULT result) noexcept {
     report_xt_default_unavailable();
     report_mip_bias_game_write_failure();
@@ -5421,6 +5549,10 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     const auto stats = history_.stats();
     if (shimmer_trace_) log_shimmer_frame(unsigned(stats.previous), unsigned(stats.current), unsigned(committed));
     if (screen_emission_timing_) log_screen_emission_frame();
+    if (screen_additive_requested_) {
+        if (telemetry_) log_screen_additive_frame();
+        screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this frame only
+    }
     if (fade_refused_count_) log_fade_refused();
     if (emission_source_gain_requested_) {
         // One line per frame that saw at least one candidate draw (an eligible

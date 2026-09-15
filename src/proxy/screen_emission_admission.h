@@ -58,6 +58,16 @@ inline bool admitted_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     return false;
 }
 
+// Table index of an exact pair, or pair_count when it is not one of the nine.
+// The additive option's per-frame telemetry names the pairs it admitted with
+// a bit mask over these indices; no draw-path work depends on it.
+inline unsigned admitted_pair_index(std::uint64_t vertex, std::uint64_t pixel) noexcept {
+    if (!vertex || !pixel) return pair_count;
+    for (unsigned i = 0; i < pair_count; ++i)
+        if (pairs[i].vertex == vertex && pairs[i].pixel == pixel) return i;
+    return pair_count;
+}
+
 // The six original PS1.1 identities whose promoted producer is created at
 // registration (each serves one or two pairs).
 inline bool admitted_pixel_shader(std::uint64_t pixel) noexcept {

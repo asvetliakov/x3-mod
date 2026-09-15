@@ -39,6 +39,22 @@ int main(){
     CHECK(!chord.sample(unarmed).exposure);CHECK(!chord.sample(unarmed).exposure);
     unarmed.exposure=false;chord.sample(unarmed);unarmed.exposure=true;CHECK(chord.sample(unarmed).exposure);
 
+    // Emitter keys (F5 additive, F6 engine gain, F4 effect gain): the same
+    // chord, edge and focus rules, independent of each other and of F9/F10.
+    x3m::ComparisonControls emitters;
+    x3m::ComparisonKeys e{};e.foreground=true;e.control=e.shift=true;emitters.sample(e);
+    e.screen_additive=true;{const auto a=emitters.sample(e);CHECK(a.screen_additive&&!a.engine_gain&&!a.effect_gain&&!a.bloom);}
+    for(unsigned i=0;i<1000;++i){const auto a=emitters.sample(e);CHECK(!a.screen_additive);} // held is not a press
+    e.engine_gain=e.effect_gain=true;{const auto a=emitters.sample(e);CHECK(!a.screen_additive&&a.engine_gain&&a.effect_gain);}
+    e.shift=false;e.screen_additive=false;emitters.sample(e);e.shift=true;e.screen_additive=true;
+    CHECK(!emitters.sample(e).screen_additive); // the chord must be armed in the previous sample
+    CHECK(!emitters.sample(e).screen_additive); // and the key is now held
+    e.screen_additive=false;emitters.sample(e);e.screen_additive=true;CHECK(emitters.sample(e).screen_additive);
+    e.foreground=false;CHECK(!emitters.sample(e).screen_additive);
+    e.foreground=true;CHECK(!emitters.sample(e).screen_additive); // held through alt-tab
+    e.screen_additive=false;emitters.sample(e);e.screen_additive=true;CHECK(emitters.sample(e).screen_additive);
+    emitters.reset_focus();{const auto a=emitters.sample(e);CHECK(!a.screen_additive&&!a.engine_gain&&!a.effect_gain);}
+
     HdrPass hdr; IDirect3DPixelShader9 shader;
     hdr.config_.tonemap=HdrTonemap::Agx;hdr.config_.allow_auto_toggle=true;
     hdr.config_.exposure=ExposureMode::Manual;

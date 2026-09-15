@@ -219,6 +219,7 @@ struct Device : Hooks {
         }
     } comparison_notice;
     bool comparison_report_pending=false,bloom_effective_on=false;
+    char comparison_emitter_notice[40]{}; // inert mirror of the production field (Ctrl+Shift+F5/F6/F4 notice line)
     std::uint64_t bloom_effective_frame=UINT64_MAX;
     CompositorInvocation* compositor = nullptr;
     std::uint64_t reset_generation = 0;
