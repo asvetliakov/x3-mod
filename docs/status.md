@@ -169,8 +169,16 @@ further linear-hull processing is planned. Decisions this session:
   (`46dc822`): map vs CPU projection ≤1e-4, byte-identical presented twins,
   ≈40 µs + 1.3 µs/draw, no consumer yet; open before any consumer: alpha-tested
   casters write full-quad depth, DEVICELOST mid-transaction convention.
-- Run 27 candidate `215d8fbe…` from `46dc822` is installed and
-  [run 27](verification/user-runs.md) is queued; the original-program fill
+- Run 27 done as run68 (2026-09-16): engines brighter, halo from the shared
+  effects PS `8360f422…` now gained (split merged `a26eb9b`: 5 engine pairs under
+  `--emission-source-gain`, 15 effect pairs under new `--effect-source-gain`,
+  default 1); restore consumed on transits 1 and 3 but never re-armed on the
+  fresh generation (fixed `220d2e9`: bounded precondition retry, refusal
+  samples); mip bias -0.5 / sharpen 0.75 now defaults (`ca6ad2e`); point-light
+  telemetry merged (`7521b79`), option kept but dropped from the run command
+  (the cliff is barely visible under original shading). Run 28 candidate is
+  being built from `a26eb9b`; [run 28](verification/user-runs.md) is queued
+  with the original-fill A/B; the original-program fill
   (`--original-fill K`, option C) is reviewed and merged (`d864246`: 108/108
   programs, exact-power law, K=0 byte-identical, 92 GPU cases per K within one
   FP16 code) and rides the following candidate if the F8 baseline shows dark
