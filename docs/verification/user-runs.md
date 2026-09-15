@@ -63,12 +63,12 @@ unless you want it compared again.
 ./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
 ```
 
-1. Fire in empty space. The halo reproduced with the bolt option alone on the
-   run27 build, so first try the command with `--hdr-ev-max 1.0` added: if the
-   halo goes, it is the raised exposure ceiling blooming the additive bolt, and
-   the choice is between the ceiling and a lower bolt gain (try
-   `--screen-emission-additive 1.5` at the 1.3 ceiling). If it stays at 1.0 EV,
-   say so; the bolt route is then compared against run65. Engines stay under
+1. Halo isolation, two short relaunches firing in empty space: (a) the command
+   plus `--hdr-ev-max 1.0`; (b) the command plus `--taa-sharpen 0
+   --taa-mip-bias 0`. Report which one removes the halo (run65 had EV 1.0, no
+   sharpen, no mip bias; run68 had all three). If neither does, note the window
+   resolution of both sessions: run68's bloom working set was 21 MB against
+   run65's 13 MB and nothing logged explains it. Engines stay under
    `--emission-source-gain 2`; effect sprites are at gain 1 in this build.
 2. Rear chase, through a gate and back through the same gate, twice: the view
    should stay in rear chase on every transit now.
