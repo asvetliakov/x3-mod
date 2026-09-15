@@ -42,7 +42,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 23 | Material fill 0.06 at the run-51 station | 0 | Completed as snapshot run54; fill visibly works. User subsequently chose default 0.03 and Auto EV ceiling +1.0; defaults selected and applied |
 | 24 | Chase reset-writer telemetry: gate jump and jumpdrive | 0 | Gate portion completed as run56; user confirms reset. Jumpdrive not run (no suitable save); cross-recreation diagnostics prepared for run25 |
 
-| 25 | Consolidated loading, gate identity, forward HUD and sun-lane diagnostics | 1 | Ready |
+| 25 | Consolidated loading, gate identity, forward HUD and sun-lane diagnostics | 0 | Completed as run60: forward HUD aligned, centre preferred; gate reset; trace analysis in progress |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
@@ -62,37 +62,14 @@ is available. The shared static warp path is documented; another jumpdrive
 attempt is not a prerequisite for run25. Original instructions are archived
 under [Run 24](../archive/user-runs-completed.md#24-chase-reset-writer-telemetry--gate-completed-as-run56).
 
-## 25. Consolidated loading, gate and HUD diagnostic
+## 25. Consolidated diagnostic — completed
 
-One session collects the additional evidence needed for chase restoration and
-loading attribution, while checking forward HUD placement and sun-share
-coverage. Auto ceiling is +1.0 EV and fill is 0.03. The sun-share option is
-diagnostic only; it applies no shadows. Selective exposure and automatic chase
-restoration are not enabled.
-
-```sh
-./x3run --direct --camera chase --chase-hud-anchor forward \
-  --ownership --object-trace --object-lifetime \
-  --motion-output --taa --telemetry --camera-log 1 \
-  --loading-intervals --sun-shadow-lane \
-  --hdr --hdr-tonemap --hdr-bloom --linear-materials \
-  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
-  --fade-witness 1 --screen-emission \
-  --voice-decoder /tmp/x3-wma-plugin-v4 \
-  --capture-start 999999 --capture-frames 8
-```
-
-1. Load the save normally and wait several seconds after the scene appears.
-2. In rear chase view, briefly check whether the crosshair/distance group is
-   sensibly aligned with the ship’s forward firing direction. A screenshot is
-   useful if the placement looks wrong.
-3. Use one jump gate. Do not press view keys during the transition. After
-   arrival, wait several seconds, report whether the camera reset, then check
-   that the normal view keys still work. No jumpdrive is needed.
-4. Exit normally and report the printed snapshot path, HUD observation and
-   any new rendering or loading problem.
-
-Analysis: compare script IDs/native lifetimes, destructor ancestry, persistent
-mode and geometry across the gate; validate loading interval completeness and
-report per-thread/combined occupancy and uncovered intervals without assigning
-a causal residual; check sun-lane admitted coverage/refusals and TAA continuity.
+Received as `/tmp/x3-bottleX3-run60` (60 referenced files). The user reports
+that the forward crosshair/distance group is aligned, but prefers the screen
+centre default and may revisit forward anchoring after future camera tuning.
+Centre remains the default; forward remains opt-in. The gate transition still
+reset the view; this build records diagnostics and contains no restoration.
+Gate identity, loading intervals and sun-lane evidence are under analysis.
+The original command is preserved in the
+[Run 25 archive](../archive/user-runs-completed.md#25-consolidated-diagnostic--completed-as-run60).
+No repeat is requested at this checkpoint.

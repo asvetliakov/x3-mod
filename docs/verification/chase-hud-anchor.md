@@ -25,3 +25,13 @@ records the exact projection, lifetime policy and five-module test command.
 Source is integrated separately from the fill candidate. Installation is recorded
 only in [status](../status.md). View restoration remains unimplemented until the
 queued gate-jump/jumpdrive telemetry establishes the reset writer and ordering.
+
+## 2026-09-15 run25 / snapshot run60 user acceptance
+
+The user reports that the forward crosshair/distance group is aligned at the
+current camera settings. They prefer the screen-centre placement for now and
+may revisit forward anchoring after camera tuning. `centre` remains the default;
+`forward` remains opt-in. This is user gameplay evidence for the tested setup,
+not a measured glyph calibration across all camera settings. No code/default
+change is required. The concurrent gate-view reset concerns restoration, a
+separate feature not implemented in this diagnostic build.

@@ -37,10 +37,11 @@ and lag limits 8°/0.10. Vanilla camera remains the default.
 
 ## Next user action
 
-**Run 25 is ready:** one save load and one gate transition, combining interval
-recording, cross-recreation identity, forward HUD placement and sun-lane
-coverage. No jumpdrive save is required. Use the [run command](verification/user-runs.md#25-consolidated-loading-gate-and-hud-diagnostic).
-
+**Run 25 is received** as `/tmp/x3-bottleX3-run60` (60 referenced files). The
+user confirms forward HUD alignment but prefers **centre as the default**;
+forward remains opt-in for future camera tuning. The gate still resets the
+view, as restoration is not implemented. Gate identity, loading intervals and
+sun-lane evidence are under analysis; no repeat is requested yet.
 
 **Run 23 is complete**, preserved at `/tmp/x3-bottleX3-run54` (153 referenced
 files), with four EV0/+1.5 far/near screenshots. The user reports brighter hulls
@@ -76,7 +77,7 @@ establish safe cross-recreation identity before implementation. Static analysis
 also finds persistent script-mode and geometry resets; mode-only restoration
 would be incomplete. The [gate reconstruction](reverse-engineering/chase-view-transition.md#2026-09-15-run24-gate-reconstruction-snapshot-run56)
 now has reviewed identity/provenance/geometry diagnostics in source: 194 host
-checks, nine EXE sites and 334 X3 CPU checks pass. They are installed and await run25’s gate capture; restoration itself remains unimplemented. Jumpdrive shares
+checks, nine EXE sites and 334 X3 CPU checks pass. They are installed and are being analysed against run60; restoration itself remains unimplemented. Jumpdrive shares
 the static warp path but remains gameplay-unverified.
 
 The chase HUD anchor (`centre` default) is now implemented and independently
@@ -99,7 +100,7 @@ feasibility boundary, with complete entry coverage and concurrency proof still
 required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
 exact wall-time attribution open. The bounded interval recorder is now independently
-reviewed and qualified in source (163 X3 CPU checks); it is installed and awaits the game capture ([verification](verification/loading-intervals.md)). The
+reviewed and qualified in source (163 X3 CPU checks); it is installed and is being analysed against run60 ([verification](verification/loading-intervals.md)). The
 existing counter analysis remains limited by overlap ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.
 

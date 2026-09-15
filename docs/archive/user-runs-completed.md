@@ -860,3 +860,39 @@ Analysis: identify the mode-1 writer's `next_pc`, the update ordering against
 cockpit `+0x1fc`, lifetime changes, and deltas in `+0x130`, `+0x160`, `+0xa8`
 and `+0x1c0`. [The ratified restore policy](../architecture/chase-view-restore-and-hud-anchor.md)
 is implemented only after these observations settle its prerequisite.
+
+
+## 25. Consolidated diagnostic — completed as run60
+
+One session collects the additional evidence needed for chase restoration and
+loading attribution, while checking forward HUD placement and sun-share
+coverage. Auto ceiling is +1.0 EV and fill is 0.03. The sun-share option is
+diagnostic only; it applies no shadows. Selective exposure and automatic chase
+restoration are not enabled.
+
+```sh
+./x3run --direct --camera chase --chase-hud-anchor forward \
+  --ownership --object-trace --object-lifetime \
+  --motion-output --taa --telemetry --camera-log 1 \
+  --loading-intervals --sun-shadow-lane \
+  --hdr --hdr-tonemap --hdr-bloom --linear-materials \
+  --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast \
+  --fade-witness 1 --screen-emission \
+  --voice-decoder /tmp/x3-wma-plugin-v4 \
+  --capture-start 999999 --capture-frames 8
+```
+
+1. Load the save normally and wait several seconds after the scene appears.
+2. In rear chase view, briefly check whether the crosshair/distance group is
+   sensibly aligned with the ship’s forward firing direction. A screenshot is
+   useful if the placement looks wrong.
+3. Use one jump gate. Do not press view keys during the transition. After
+   arrival, wait several seconds, report whether the camera reset, then check
+   that the normal view keys still work. No jumpdrive is needed.
+4. Exit normally and report the printed snapshot path, HUD observation and
+   any new rendering or loading problem.
+
+Analysis: compare script IDs/native lifetimes, destructor ancestry, persistent
+mode and geometry across the gate; validate loading interval completeness and
+report per-thread/combined occupancy and uncovered intervals without assigning
+a causal residual; check sun-lane admitted coverage/refusals and TAA continuity.
