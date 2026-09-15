@@ -175,8 +175,10 @@ further linear-hull processing is planned. Decisions this session:
   depth-replay fixture is not funded until a lane-independent caster-candidate
   counter (`--shadow-replay-candidates`, in flight) answers four predicates in
   the next run.
-- Pre-existing host failure: `test_linear_material_live.test_production_control_flow`
-  fails to compile its mock on `main` (missing sun-lane fields); tracked, unowned.
+- Host suite: a census at `e15d499` found 11 pre-existing failures (stale mocks,
+  stale wiring literals, a moved fade baseline); all repaired without production
+  edits in `73772bf`. The canonical discovery run is green (1883 tests, 2
+  build-artifact skips) ([ledger](verification/host-suite-2026-09-15.md)).
 
 The run26 candidate is installed (see above) and
 [run 26](verification/user-runs.md) is queued: session A with original hulls,
