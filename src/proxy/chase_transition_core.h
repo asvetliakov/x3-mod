@@ -105,17 +105,19 @@ struct Origin {
     // bounded stack=8; flags: read/contract refusal=1, stack truncation=2,
     // more candidate pairs than retained=4. No guessed script source names.
     std::uint32_t valid=0,flags=0,task=0,pc=0,context=0,context_word0=0;
-    std::uint32_t returns[4]{},contexts[4]{};
+    std::uint32_t returns[6]{},contexts[6]{};
     unsigned count=0;
 };
 template<class Reader,class CodeRange>
-void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address) {
+void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address,
+                std::uint32_t expected_command=0x30) {
     auto field=[&](std::uintptr_t base,unsigned offset,auto& out){return bytes(base,offset,&out,sizeof out);};
     auto code_offset=[&](std::uint32_t code,std::uint32_t offset){std::uintptr_t at=0;unsigned char op=0;
         return code_address(code,offset,1,at)&&field(at,0,op);};
     std::uint32_t vm=0,code=0,command=0,return_pc=0;
+    if(expected_command!=0x30 && expected_command!=1){o.flags|=1;return;}
     if(!field(ebp,4,return_pc)||return_pc!=0x4a3909||!field(ebp,0xc,o.task)||
-       !field(ebp,0x10,command)||command!=0x30||!field(0x6085e4,0,vm)||
+       !field(ebp,0x10,command)||command!=expected_command||!field(0x6085e4,0,vm)||
        !field(vm,8,code)||!field(o.task,0x1c,o.pc)||!field(o.task,0x3c,o.context)) {o.flags|=1;return;}
     o.valid|=1;
     std::uintptr_t at=0;unsigned char op[5]{};
@@ -127,7 +129,7 @@ void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address)
     // exact opcode/command are stronger provenance than the generic return PC.
     // The interpreter subtracts one before its two-level dispatch: byte 0x82
     // reaches the native-call handler; 0x83 is the VM return instruction.
-    if(op[0]!=0x82||cmd!=0x30||group>(0x1454/24)-3||
+    if(op[0]!=0x82||cmd!=expected_command||group>(0x1454/24)-3||
        !field(vm,(group+2)*24,dispatch)||dispatch!=0x42d340){o.flags|=1;return;}
     o.valid|=2;
     // Task+3c holds the dispatch context, not the resolved method-table row.
@@ -147,8 +149,14 @@ void provenance(std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address)
         std::uint32_t context=0,word0=0,ret=0;
         std::memcpy(&context,stack+i*5+1,4);std::memcpy(&ret,stack+(i+1)*5+1,4);
         if((context&&((context&3)||!field(context,0,word0)))||!code_offset(code,ret)){o.flags|=1;continue;}
-        if(o.count==4){o.flags|=4;break;}
+        if(o.count==6){o.flags|=4;break;}
         o.contexts[o.count]=context;o.returns[o.count++]=ret;
     }
+}
+// Only this destructor caller inherits the cockpit dispatcher frame. A native
+// deleting destructor must not cause any dispatcher-frame or VM reads.
+template<class Reader,class CodeRange>
+void destructor_provenance(std::uint32_t caller,std::uint32_t ebp,Origin& o,Reader bytes,CodeRange code_address) {
+    if(caller==0x42d402)provenance(ebp,o,bytes,code_address,1);
 }
 }

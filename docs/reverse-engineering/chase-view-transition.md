@@ -413,3 +413,121 @@ JSON round trip, and writes `summary.json` / `timeline.json` there. Read-only
 selected script listings remain local/untracked. The EXE SHA-256 is unchanged
 from the earlier study. This documentation-only checkpoint did not require
 fixture execution or a production build.
+
+## 2026-09-15 consolidated gate identity diagnostic
+
+Source diagnostic following run56; no restoration ticket or engine-state write.
+It retains the existing nine sites, whole-instruction spans, emitted stubs,
+CPU/LastError boundary and installation/rollback groups. At destructor entry,
+only return caller `42d402` admits inherited EBP to the existing native-opcode
+walker, with dispatcher command **1** and matching runtime opcode operands.
+Other destructor callers perform no dispatcher-frame provenance read. Mode
+assignments still require command `30`. The 64-cell stack bound is unchanged;
+six candidate return/context pairs are now retained, and overflow/refusal flags
+remain explicit. Existing `context_returns` carries the first four; the new
+same-event detail row carries pairs five and six. No partial chain authorizes
+anything.
+
+### Read contracts and observable report
+
+`chase_transition_detail event=N` supplements the corresponding existing event:
+
+- `geometry_valid`: angles `+a8..b0` = 1, offset `+160..168` = 2,
+  lock `+120` = 4. Boom `+130..138` remains in the original row, under
+  `snapshot_valid & 128`. These are raw signed 32-bit geometry words and a
+  raw unsigned lock word, not converted angles/distances. Partial/unknown
+  cockpit lifetimes have no geometry reads; destructor entry samples while
+  the tracked cockpit is still live, irrespective of its removed registry entry.
+- `identity_valid` / `identity_refused` use bits VM root 1, native ship/script
+  scalar 2, global9 player 4, global8 controller 8, monitor ID 16, monitor
+  mode variable0 32, monitor ref-object variable11 64, class96 warp variable3
+  128, class96 killed variable6 256, player script-context membership 512,
+  controller membership 1024, native ship's script-context membership 2048.
+  Neither bit means unavailable/unattempted; refused means an attempted
+  read/contract failed. Valid scalar zero is separately observable and never
+  counts as a live player context. These bits establish bounded observations,
+  **not player ownership, identity continuity, an epoch or an atomic snapshot**.
+- `cell_tags` order is player, controller, mode, ref-object, warp, killed.
+  Only tag 1 is interpreted as an integer; unexpected tags/payloads remain
+  diagnostic data with their validity bit clear. Integer production is
+  established by `4a8600` (`4a8613` stores tag 1) and literal handlers such
+  as `4a277e`; tag 3 return-PC cells and tag 10 contexts are not integers.
+- `script_classes` gives resolved class IDs for native script, player,
+  controller and monitor. A resolved foreign monitor class is logged but its
+  monitor/mode/ref validity is refused; only exact class `25e` admits those
+  variables. Monitor context comes fresh from a verified native task origin,
+  never from a retained pointer or a global interpreter hook.
+
+The reader follows the layouts established above and rechecks roots each event.
+Static descriptors are contiguous 0x38-byte rows, with count at VM+1c and base
+at VM+20; selected rows must be inside that array, aligned to a row, self-point
+at +8, have nonnegative class IDs and bounded variable counts at +1c. The
+loader's temporary globals descriptor is ID 0 and becomes the sorted first
+row (`49d030`); global reads require that exact first-row identity. Static
+class96 resolution mirrors the signed binary search at `4b06f0`.
+
+Dynamic context IDs resolve through VM+12d0 with unsigned key `~id`, matching
+`49f1e0`. The returned context must contain that ID at +0 and a live registered
+class descriptor at +8. Before ship+94 is read, ship+8 must resolve to the exact
+ship through `*60850c` +14's native-body map (`43a4f0`, `4607dc..4607f4`).
+Both map readers check power-of-two bucket counts, readable rows and pointer
+arithmetic, scan at most 32 links, and refuse duplicate matching keys or any
+unfinished chain. Caps are conservative diagnostic limits: 4,096 classes
+(13 binary-search steps), 65,536 cells/class and 65,536 hash buckets. Every
+selected five-byte cell is checked against its owning class's variable count
+and a checked readable span. No engine call, refcount change, allocation or
+pointer retained for later dereference is introduced.
+
+Geometry and identity supplements run **after existing event suppression**.
+Animated geometry does not create events and no new registry walk runs per
+unchanged updater or per draw. The existing first16/last32 window bounds the
+extra detail rows to 48 per report; its dropped counter still describes events.
+Consequently this records continuity only at admitted events: it cannot detect
+all script-only selections while no cockpit exists or define cancellation.
+The expected gate report is a kind2 `f008a` free with return prefix
+`efbff,edba0,edbe3,1661c`, followed by fresh native pointers but equal valid
+native/global9/monitor-ref script IDs, then reset/restart geometry and mode.
+The fifth restart pair can now expose `16724`. These are expected observations,
+not predeclared successes; refusal, truncation or mismatches remain evidence.
+
+### Scoped source evidence and remaining work
+
+Host checks: 128 lifetime/provenance/timing checks, 29 identity checks,
+8 checks on actual extracted record/suppression code, and the existing
+29 callback-invalidation checks. The ordinary synthetic identity snapshot uses
+51 checked reads; 100 unchanged updates add **zero** supplement reads.
+Commands: `PYTHONPATH=verification/probe python3 -m unittest
+verification.analysis.test_chase_transition verification.analysis.test_chase_transition_sites`
+(10 tests); `python3 verification/probe/verify_chase_transition_sites.py --exe
+"$HOME/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe"`
+(nine real sites PASS); `python3 verification/probe/build_chase_transition_cpu.py`
+(MinGW compile and CPU audit PASS). The audit keeps GetLastError first and
+SetLastError last, with FNSAVE/FRSTOR, MXCSR and emitted XMM/GPR/flags preservation
+unchanged. The CPU fixture adds `--cpu-only` to avoid its unrelated stub benchmark.
+No DLL build, Wine execution, install or game launch occurred in this subtask;
+CPU fixture runtime and native Windows behavior remain unverified here.
+
+Owner-only CPU follow-up from the integrated checkout (after its build):
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py \
+  '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' \
+  --bottle X3 --no-update --workdir "$PWD/build/verification/chase-transition" \
+  "$PWD/build/verification/chase-transition/chase_transition_cpu_fixture.exe" --cpu-only
+```
+
+Record bottle name, WineArch, FEX_X87REDUCEDPRECISION and WINEMSYNC with that
+result. Runtime warp/identity/geometry evidence, VM/session/task abort boundaries,
+script-only selection cancellation and script/native mode synchronization remain
+prerequisites to restoration. No task-pointer-as-epoch assumption was introduced.
+
+### Independent review and owner CPU execution
+
+Independent source/evidence review passed with no blockers. Main ran the
+CPU-only command above under the single X3 Wine lock: 18 stubs, 334 checks,
+zero failures, exit 0, 2.057 s with negligible lock wait. No benchmark or game
+ran. The [compact record](../../verification/results/chase-gate-identity.json)
+binds actual source, fixture, build audit, report, bottle/emulation and timings.
+This verifies synthetic callback preservation, not live field continuity.
+The consolidated candidate still needs one gate reproduction to supply those
+observations; jumpdrive remains unverified without a separate request now.

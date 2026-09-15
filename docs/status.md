@@ -60,7 +60,9 @@ same-lifetime restore predicate would cancel; targeted reconstruction must
 establish safe cross-recreation identity before implementation. Static analysis
 also finds persistent script-mode and geometry resets; mode-only restoration
 would be incomplete. The [gate reconstruction](reverse-engineering/chase-view-transition.md#2026-09-15-run24-gate-reconstruction-snapshot-run56)
-requires consolidated identity/provenance/geometry diagnostics. Jumpdrive shares
+now has reviewed identity/provenance/geometry diagnostics in source: 194 host
+checks, nine EXE sites and 334 X3 CPU checks pass. They await the consolidated
+candidate and one gate capture; restoration itself remains unimplemented. Jumpdrive shares
 the static warp path but remains gameplay-unverified.
 
 The chase HUD anchor (`centre` default) is now implemented and independently

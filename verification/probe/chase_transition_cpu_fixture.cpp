@@ -88,7 +88,9 @@ static void benchmark(void* continuation,void* const* stubs){
       kind,trials,loops,sum_base/double(trials),sum_hook/double(trials),(sum_hook-sum_base)/double(trials),best_delta);
  }
 }
-int main(){
+int main(int argc,char** argv){
+ const bool cpu_only=argc==2&&!std::strcmp(argv[1],"--cpu-only");
+ if(argc>1&&!cpu_only){std::fprintf(stderr,"usage: chase_transition_cpu_fixture.exe [--cpu-only]\n");return 2;}
  for(unsigned i=0;i<sizeof fixture_xmm_seed;++i)fixture_xmm_seed[i]=static_cast<unsigned char>(i*37+9);
  x3m::engine_patch::Emitter tail(8);void* continuation=tail.here();tail.byte(0xc3);if(!tail.finish())return 2;
  transition::enabled.store(true);transition::diagnostic.store(true);
@@ -117,7 +119,7 @@ int main(){
   check(baseline.mxcsr==hooked.mxcsr,"MXCSR preserved");
  }
  for(unsigned kind=0;kind<9;++kind)check(transition::handler_timing[kind].calls==1,"each transition handler records one timed CPU-check call");
- benchmark(continuation,stubs);
+ if(!cpu_only)benchmark(continuation,stubs);
  std::printf("CHASE TRANSITION LEAD CPU stubs=18 checks=%u failures=%u\n",checks,failures);
  return failures?1:0;
 }

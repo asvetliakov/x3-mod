@@ -1,5 +1,6 @@
 #include "chase_transition.h"
 #include "chase_transition_core.h"
+#include "chase_transition_identity_core.h"
 #include "chase_camera.h"
 #include "chase_lead.h"
 #include "engine_patch.h"
@@ -46,6 +47,8 @@ struct Event {
     std::uint32_t thread=0,kind=0,cockpit=0,caller=0,requested=0,handle=0,valid=0;
     Snapshot before;
     Origin origin;
+    struct Geometry { std::uint32_t valid=0,lock=0;std::int32_t angles[3]{},offset[3]{}; } geometry;
+    detail::Identity identity;
 };
 struct Seen { std::uintptr_t cockpit=0;std::uint64_t generation=0;Event event;bool used=false; };
 Seen seen[4][detail::lifetime_capacity]{}, unknown_updates[detail::thread_capacity]{};
@@ -104,6 +107,7 @@ void record(unsigned kind,std::uintptr_t cockpit,std::uint32_t thread,std::uint3
     // Constructor entry and partial/unknown lifetimes must not read object fields.
     if(life&&life->complete){snapshot(cockpit,e.before);if(active_handle(cockpit,e.handle))e.valid|=1;else e.handle=0;}
     if(kind==6)detail::provenance(ebp,e.origin,bytes,code_address);
+    if(kind==2)detail::destructor_provenance(caller,ebp,e.origin,bytes,code_address);
     if(kind==3 && !life) {
         Seen* slot=nullptr;
         for(auto& row:unknown_updates)if(row.used&&row.event.thread==thread){slot=&row;break;}
@@ -119,6 +123,16 @@ void record(unsigned kind,std::uintptr_t cockpit,std::uint32_t thread,std::uint3
         if(prior.used&&prior.cockpit==cockpit&&prior.generation==e.generation&&same(prior.event,e)){++suppressed;return;}
         prior={cockpit,e.generation,e,true};
     }
+    // Supplement only an admitted event. Animated angles and identity walks
+    // neither change suppression nor add work on every updater/draw.
+    if(life&&life->complete){
+        if(field(cockpit,0xa8,e.geometry.angles))e.geometry.valid|=1;
+        if(field(cockpit,0x160,e.geometry.offset))e.geometry.valid|=2;
+        if(field(cockpit,0x120,e.geometry.lock))e.geometry.valid|=4;
+    }
+    detail::IdentityReader<decltype(&bytes)> identity_reader{&bytes};
+    identity_reader.capture((e.before.valid&4)?e.before.ship:0,
+        (e.origin.valid&7)==7?e.origin.context:0,e.identity);
     if(e.origin.flags&1)++read_failures;
     e.sequence=++sequence;e.qpc=now();window.push(e);
 }
@@ -140,7 +154,7 @@ void handle(unsigned kind,std::uint32_t* regs) {
         cockpit=regs[7];if(state.complete(cockpit,thread))record(1,cockpit,thread);break;
     case 2:
         chase_lead::native_timing_invalidate(0,thread);
-        if(field(esp,4,cockpit)){field(esp,0,caller);record(2,cockpit,thread,caller);chase_lead::native_timing_invalidate(cockpit,thread);state.destroy(cockpit);}break;
+        if(field(esp,4,cockpit)){field(esp,0,caller);record(2,cockpit,thread,caller,0,regs[2]);chase_lead::native_timing_invalidate(cockpit,thread);state.destroy(cockpit);}break;
     case 3:
         // Even a failed argument read must revoke this thread's previous update.
         chase_lead::native_timing_invalidate(0,thread);
@@ -206,7 +220,7 @@ bool initialize() {
     enabled.store(okay,std::memory_order_release);
     const bool diag=okay&&telemetry::enabled()&&install_group(mandatory,site_count);
     diagnostic.store(diag,std::memory_order_release);
-    log("chase_transition installed=%u diagnostics=%u mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=%u qpc_frequency=%llu",unsigned(okay),unsigned(diag),unsigned(timing),frequency);
+    log("chase_transition installed=%u diagnostics=%u mandatory_sites=6 diagnostic_sites=3 mode_writes=0 lifetime_capacity=64 thread_capacity=8 timing=%u qpc_frequency=%llu identity_version=1 origin_pairs=6 identity_scope=admitted_events",unsigned(okay),unsigned(diag),unsigned(timing),frequency);
     for(unsigned i=0;i<site_count;++i)if(sites[i].patched_in||wanted)
         log("chase_transition_site index=%u site=0x%08lx patched=%u status=%s",i,static_cast<unsigned long>(specs[i].address),unsigned(sites[i].patched_in),sites[i].status);
     SetLastError(error);return okay;
@@ -243,6 +257,14 @@ void report(std::uint64_t frame) {
             e.before.valid,e.before.mode,e.before.connect,e.before.ship,e.before.view,e.before.camera,e.before.sector,e.before.target,
             e.before.boom[0],e.before.boom[1],e.before.boom[2],e.origin.valid,e.origin.flags,e.origin.task,e.origin.pc,e.origin.context,e.origin.context_word0,e.origin.count,
             e.origin.contexts[0],e.origin.returns[0],e.origin.contexts[1],e.origin.returns[1],e.origin.contexts[2],e.origin.returns[2],e.origin.contexts[3],e.origin.returns[3]);
+        log("chase_transition_detail event=%llu geometry_valid=%lu angles_a8=%ld,%ld,%ld offset_160=%ld,%ld,%ld view_lock_120=%lu context_returns_extra=%08lx:%08lx,%08lx:%08lx identity_valid=%lu identity_refused=%lu vm=0x%08lx native_id=0x%08lx native_script=0x%08lx player_script=0x%08lx controller_script=0x%08lx monitor_script=0x%08lx script_mode=%lu monitor_ref=0x%08lx warp_phase=%lu killed=%lu cell_tags=%lu,%lu,%lu,%lu,%lu,%lu script_classes=%08lx,%08lx,%08lx,%08lx",
+            e.sequence,e.geometry.valid,e.geometry.angles[0],e.geometry.angles[1],e.geometry.angles[2],
+            e.geometry.offset[0],e.geometry.offset[1],e.geometry.offset[2],e.geometry.lock,
+            e.origin.contexts[4],e.origin.returns[4],e.origin.contexts[5],e.origin.returns[5],
+            e.identity.valid,e.identity.refused,e.identity.vm,e.identity.native_id,e.identity.native_script,
+            e.identity.player,e.identity.controller,e.identity.monitor,e.identity.mode,e.identity.ref,e.identity.warp,e.identity.killed,
+            e.identity.tags[0],e.identity.tags[1],e.identity.tags[2],e.identity.tags[3],e.identity.tags[4],e.identity.tags[5],
+            e.identity.class_ids[0],e.identity.class_ids[1],e.identity.class_ids[2],e.identity.class_ids[3]);
     };
     for(unsigned i=0;i<out.first_used;++i)print(out.first[i]);
     const unsigned start=out.last_used==32?out.next:0;

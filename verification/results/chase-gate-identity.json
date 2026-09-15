@@ -1,0 +1,42 @@
+{
+  "source_base": "e8c9d3b",
+  "sources": {
+    "src/proxy/chase_transition.cpp": "340006faac20325bae171360e2363d8df2e862901e570a3ff4967f5c6355fe92",
+    "src/proxy/chase_transition_core.h": "c0e6a4fb9fbfaabe3c663fde8651f2e9bc6396c8938deca92d67647763279a0c",
+    "src/proxy/chase_transition_identity_core.h": "459c8e2d77faa579d0ea25a702cd20541469f4c563714f5330f2b0d1c5bc4412"
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    }
+  },
+  "game_launched": false,
+  "restore_writes": false,
+  "host_tests": 10,
+  "host_checks": 194,
+  "real_exe_sites": 9,
+  "cpu_stubs": 18,
+  "cpu_checks": 334,
+  "cpu_failures": 0,
+  "fixture": "/tmp/x3-gate-identity-diagnostic/build/verification/chase-transition/chase_transition_cpu_fixture.exe",
+  "fixture_sha256": "910b2673bb05a7554e3661bbeced651fdefd14f2b59325e58d352b8fd52dffb2",
+  "report_path": "/tmp/x3-gate-identity-cpu-report.txt",
+  "report_sha256": "2779eb12bb0ae507b997b26acc75fe33ec5d8c787cdb2c3e8046e69e945c70c7",
+  "build_audit": "/tmp/x3-gate-identity-cpu-build.json",
+  "build_audit_sha256": "25a0182354a763fc7ec4c80232e43a9c6c43c87adbf11f6954da2fee475f5e33",
+  "timings": {
+    "lock_wait_seconds": 3.1669999999983656e-06,
+    "child_elapsed_seconds": 2.057237958,
+    "exit_code": 0
+  },
+  "identity_reads_per_admitted_synthetic_snapshot": 51,
+  "supplement_reads_over_100_unchanged_updates": 0,
+  "limits": [
+    "Synthetic CPU/LastError preservation; native Windows unverified",
+    "Live identity continuity, ancestry and geometry remain unmeasured",
+    "No restoration implementation or task-pointer epoch claim"
+  ]
+}
