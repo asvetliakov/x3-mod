@@ -19,6 +19,7 @@ import math
 import contextlib
 import io
 import json
+import os
 import sys
 from unittest import mock
 import random
@@ -670,6 +671,22 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
     def test_invalid_pitch_down_is_rejected_before_launch(self):
         for value in ('-1', '30.1', '90', 'nan', 'inf'):
             self.assertEqual(self.invoke('--camera', 'chase', '--chase-pitch-down-deg', value)[0], 2)
+
+    def test_hud_anchor_defaults_to_centre_and_clears_stale_environment(self):
+        for camera in ('vanilla', 'chase'):
+            with mock.patch.dict(os.environ, {'X3M_CHASE_HUD_ANCHOR': 'forward'}):
+                code, output = self.invoke('--camera', camera)
+            self.assertEqual(code, 0)
+            self.assertEqual(output['env']['X3M_CHASE_HUD_ANCHOR'], 'centre')
+
+    def test_forward_hud_anchor_is_forwarded_in_chase_mode(self):
+        code, output = self.invoke('--camera', 'chase', '--chase-hud-anchor', 'forward')
+        self.assertEqual(code, 0)
+        self.assertEqual(output['env']['X3M_CHASE_HUD_ANCHOR'], 'forward')
+
+    def test_forward_hud_anchor_requires_chase_mode(self):
+        self.assertEqual(self.invoke('--chase-hud-anchor', 'forward')[0], 2)
+        self.assertEqual(self.invoke('--camera', 'chase', '--chase-hud-anchor', 'invalid')[0], 2)
 
 
 if __name__ == '__main__':

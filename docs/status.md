@@ -46,8 +46,10 @@ DLL, EXE and bottle configuration still match the handoff. Run 23 is drafted for
 run-51 station spot (`--material-fill 0.06`, brackets 0.04/0.10), pending installation.
 The fill default remains 0 pending the user's appearance verdict.
 
-Next: the ratified chase HUD anchor (`centre` default); a gate-jump and jumpdrive
-telemetry run must precede view-restoration implementation. Shadows follow the ratified
+The chase HUD anchor (`centre` default) is now implemented and independently
+reviewed in source, separately from the fill candidate ([ledger](verification/chase-hud-anchor.md));
+81 host tests pass, with gameplay glyph calibration pending. A gate-jump and
+jumpdrive telemetry run must precede view-restoration implementation. Shadows follow the ratified
 route-B order: sun-lit-share lane, replay feasibility without shading, then cascades;
 screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
 now covers all 108 pixel originals; the receiver/capability boundary is ratified

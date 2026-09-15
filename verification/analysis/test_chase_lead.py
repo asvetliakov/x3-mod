@@ -33,7 +33,9 @@ class ChaseLeadHostTests(unittest.TestCase):
         source = (ROOT / 'src/proxy/chase_lead.cpp').read_text()
         names = [
             'read', 'field', 'writable_at', 'active', 'scope', 'projection', 'owned_marker', 'hide', 'note',
-            'gate', 'publish', 'final_fov', 'hud_texture_available', 'hud_scope', 'central_hud',
+            'gate', 'publish', 'hud_texture_available', 'hud_scope', 'owned_hud_nodes',
+            'reclaim_hud_anchor_slots', 'finalize_hud_anchor',
+            'final_fov', 'central_hud',
             'native_context', 'native_hook', 'handle', 'invalidate_pose', 'camera_context',
         ]
         with tempfile.TemporaryDirectory(prefix='x3-chase-lead-host-') as temporary:
@@ -50,7 +52,7 @@ class ChaseLeadHostTests(unittest.TestCase):
             self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
             run = subprocess.run([str(executable)], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            self.assertEqual(run.stdout, 'chase_lead_host scenarios=60 checks=194 failures=0\n')
+            self.assertEqual(run.stdout, 'chase_lead_host scenarios=69 checks=264 failures=0\n')
             self.assertEqual(run.stderr, '')
 
 

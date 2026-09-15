@@ -11,6 +11,7 @@
 #include "telemetry.h"
 #include <atomic>
 #include <cstring>
+#include <cwchar>
 
 static_assert(sizeof(void *) == 4, "Verified x86 engine ABI");
 namespace x3m::chase_lead {
@@ -40,11 +41,19 @@ std::atomic<bool> enabled{false};
 bool initialized = false;
 SRWLOCK lock = SRWLOCK_INIT;
 core::Identity pose{};
+std::int32_t pose_forward[3]{};
+bool pose_forward_valid = false;
 struct Slot {
     std::uint32_t frame = 0;
     core::Pending ticket{};
 };
 Slot pending[8]{};
+struct HudAnchorSlot {
+    core::Identity owner{};
+    std::int32_t forward[3]{};
+};
+HudAnchorSlot hud_anchor_pending[8]{};
+bool hud_anchor_forward = false;
 std::atomic<std::uint32_t> owner_thread{0};
 std::uint64_t frequency = 0;
 bool timing = false;
@@ -79,6 +88,10 @@ struct Counts {
 struct HudCounts {
     std::uint64_t reason[Count]{}, calls = 0, ticks = 0, max_ticks = 0;
 } hud_counts;
+struct HudAnchorCounts {
+    std::uint64_t applied = 0, refused = 0;
+    std::int32_t last_x = 0, last_y = 0;
+} hud_anchor_counts;
 
 bool read(std::uintptr_t base, unsigned offset, void *out, unsigned size) {
     return base && !(base & 3) && offset <= UINT32_MAX - base && size <= UINT32_MAX - base - offset &&
@@ -333,7 +346,9 @@ void publish(std::uint32_t *regs) {
     sample.reason = Committed;
     note(Committed, &sample);
 }
+void (finalize_hud_anchor)(std::uint32_t *regs);
 void final_fov(std::uint32_t *regs) {
+    finalize_hud_anchor(regs);
     core::Pending ticket;
     const auto update = chase_transition::current_update(regs[4]);
     AcquireSRWLockExclusive(&lock);
@@ -442,12 +457,120 @@ Reason hud_scope(const core::Identity &base, core::Identity &out) {
     }
     return hud_texture_available() ? Ready : Projection;
 }
+bool owned_hud_nodes(const core::Identity &owner, std::uint32_t nodes[5], unsigned &active_count) {
+    constexpr unsigned offsets[5] = {0, 0x208, 0x21c, 0x230, 0x294};
+    if (chase_transition::generation(owner.cockpit) != owner.generation)
+        return false;
+    std::uint32_t scene = 0;
+    if (!field(owner.cockpit, 4, scene) || scene != owner.scene)
+        return false;
+    active_count = 0;
+    for (unsigned i = 0; i < 5; ++i) {
+        std::uint32_t entry[2]{}, node_scene = 0, flags = 0;
+        if (!field(owner.overlay, offsets[i], entry))
+            return false;
+        if (!entry[0])
+            continue;
+        if (!entry[1] || !field(entry[1], 0x1c, node_scene) || node_scene != scene ||
+            !field(entry[1], 0x130, flags) || !(flags & 0x200) || (flags & 0xf000) ||
+            !writable_at(entry[1], 0x30, 8))
+            return false;
+        for (unsigned j = 0; j < i; ++j)
+            if (nodes[j] == entry[1])
+                return false;
+        nodes[i] = entry[1];
+        ++active_count;
+    }
+    return active_count && chase_transition::generation(owner.cockpit) == owner.generation &&
+           field(owner.cockpit, 4, scene) && scene == owner.scene;
+}
+void reclaim_hud_anchor_slots() {
+    HudAnchorSlot snapshot[8]{};
+    bool stale[8]{};
+    AcquireSRWLockExclusive(&lock);
+    std::memcpy(snapshot, hud_anchor_pending, sizeof snapshot);
+    ReleaseSRWLockExclusive(&lock);
+    for (unsigned i = 0; i < 8; ++i)
+        if (snapshot[i].owner.serial) {
+            const auto update = chase_transition::current_update(snapshot[i].owner.cockpit);
+            stale[i] = update.generation != snapshot[i].owner.generation ||
+                       update.serial != snapshot[i].owner.serial || update.thread != snapshot[i].owner.thread;
+        }
+    AcquireSRWLockExclusive(&lock);
+    for (unsigned i = 0; i < 8; ++i)
+        if (stale[i] && core::same(hud_anchor_pending[i].owner, snapshot[i].owner))
+            hud_anchor_pending[i] = {};
+    ReleaseSRWLockExclusive(&lock);
+}
+void finalize_hud_anchor(std::uint32_t *regs) {
+    if (!hud_anchor_forward)
+        return;
+    const auto update = chase_transition::current_update(regs[4]);
+    HudAnchorSlot ticket;
+    AcquireSRWLockExclusive(&lock);
+    for (auto &slot : hud_anchor_pending)
+        if (slot.owner.cockpit == regs[4] && (!update.serial || slot.owner.serial == update.serial)) {
+            if (slot.owner.serial == update.serial)
+                ticket = slot;
+            slot = {};
+        }
+    ReleaseSRWLockExclusive(&lock);
+    if (!ticket.owner.serial)
+        return;
+    core::Identity current;
+    auto r = hud_scope(ticket.owner, current);
+    if (r == Ready && !core::same(ticket.owner, current))
+        r = Identity;
+    core::Projection p;
+    core::Pixel pixel;
+    if (r == Ready && (!projection(current.cockpit, current.camera, p) ||
+                       !core::project_direction(p, ticket.forward, pixel)))
+        r = Projection;
+    std::uint32_t nodes[5]{};
+    unsigned active_count = 0;
+    if (r == Ready && !owned_hud_nodes(ticket.owner, nodes, active_count))
+        r = Marker;
+    std::int32_t positions[5][2]{};
+    if (r == Ready) {
+        constexpr std::int32_t native[5][2] = {{0, 9}, {-70, -10}, {70, -10}, {0, 40}, {1, -25}};
+        for (unsigned i = 0; i < 5; ++i) {
+            if (!nodes[i])
+                continue;
+            const std::int64_t x = std::int64_t(native[i][0]) + pixel.x;
+            const std::int64_t y = std::int64_t(native[i][1]) + pixel.y;
+            if (x < INT32_MIN || x > INT32_MAX || y < INT32_MIN || y > INT32_MAX) {
+                r = Projection;
+                break;
+            }
+            positions[i][0] = std::int32_t(x);
+            positions[i][1] = std::int32_t(y);
+        }
+    }
+    if (r == Ready)
+        for (unsigned i = 0; i < 5; ++i)
+            if (nodes[i])
+                std::memcpy(reinterpret_cast<void *>(nodes[i] + 0x30), positions[i], sizeof positions[i]);
+    AcquireSRWLockExclusive(&lock);
+    if (r == Ready) {
+        ++hud_anchor_counts.applied;
+        hud_anchor_counts.last_x = pixel.x;
+        hud_anchor_counts.last_y = pixel.y;
+    } else
+        ++hud_anchor_counts.refused;
+    ReleaseSRWLockExclusive(&lock);
+}
 void central_hud(std::uint32_t *regs) {
     if (!hud_enabled.load(std::memory_order_acquire) || !(regs[8] & 0x40))
         return;
+    if (hud_anchor_forward)
+        reclaim_hud_anchor_slots();
     core::Identity base;
+    std::int32_t forward[3]{};
+    bool forward_valid = false;
     AcquireSRWLockExclusive(&lock);
     base = pose;
+    std::memcpy(forward, pose_forward, sizeof forward);
+    forward_valid = pose_forward_valid;
     ReleaseSRWLockExclusive(&lock);
     core::Identity owner;
     Reason r = NoPose;
@@ -458,6 +581,22 @@ void central_hud(std::uint32_t *regs) {
         regs[8] &= ~0x40u;
     AcquireSRWLockExclusive(&lock);
     ++hud_counts.reason[r];
+    if (r == Ready && hud_anchor_forward) {
+        bool stored = false;
+        for (auto &slot : hud_anchor_pending)
+            if (slot.owner.cockpit == owner.cockpit && slot.owner.serial == owner.serial)
+                slot = {};
+        if (forward_valid)
+            for (auto &slot : hud_anchor_pending)
+                if (!slot.owner.serial) {
+                    slot.owner = owner;
+                    std::memcpy(slot.forward, forward, sizeof forward);
+                    stored = true;
+                    break;
+                }
+        if (!stored)
+            ++hud_anchor_counts.refused;
+    }
     ReleaseSRWLockExclusive(&lock);
 }
 // Timing witnesses are independent of display admission: internal and chase
@@ -655,6 +794,9 @@ bool initialize() {
         return installed();
     }
     initialized = true;
+    wchar_t anchor[16]{};
+    const DWORD anchor_length = GetEnvironmentVariableW(L"X3M_CHASE_HUD_ANCHOR", anchor, 16);
+    hud_anchor_forward = anchor_length == 7 && !std::wcscmp(anchor, L"forward");
     bool ok = chase_camera::installed() && chase_transition::installed() && object_trace::executable_verified() &&
               engine_patch::install_window_open() && []() {
                   unsigned char actual[sizeof hide_bytes]{};
@@ -691,8 +833,8 @@ bool initialize() {
     const bool native_ok = install_native_timing(hud_ok, native_status);
     log("chase_native_timing installed=%u status=%s sites=5 threshold_us=10000 scope=native_span_with_hook_overhead",
         unsigned(native_ok), native_ok ? "active" : native_status);
-    log("chase_central_hud installed=%u status=%s cleanup=native_when_extra_active", unsigned(hud_ok),
-        hud_ok ? "active" : hud_status);
+    log("chase_central_hud installed=%u status=%s cleanup=native_when_extra_active hud_anchor=%s", unsigned(hud_ok),
+        hud_ok ? "active" : hud_status, hud_anchor_forward ? "forward" : "centre");
     log("chase_lead installed=%u status=%s scope=applied_main_chase_same_sector native_solver=retained "
         "telemetry=%u",
         unsigned(ok), ok ? "active" : status, unsigned(timing));
@@ -713,13 +855,20 @@ void invalidate_pose() {
         return;
     AcquireSRWLockExclusive(&lock);
     pose = {};
+    pose_forward_valid = false;
+    std::memset(pose_forward, 0, sizeof pose_forward);
     ReleaseSRWLockExclusive(&lock);
+    if (hud_anchor_forward)
+        reclaim_hud_anchor_slots();
 }
-void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t camera, bool applied) {
+void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t camera, bool applied,
+                    const chase::Mat3 *camera_basis, const chase::Mat3 *view_rel) {
     if (!installed() || !applied)
         return;
     const auto update = chase_transition::current_update(cockpit);
     core::Identity next;
+    std::int32_t forward[3]{};
+    bool forward_valid = false;
     if (!update.serial)
         return;
     std::uint32_t expected = 0;
@@ -733,9 +882,21 @@ void camera_context(std::uintptr_t cockpit, std::uintptr_t ship, std::uintptr_t 
         next.generation = update.generation;
         next.serial = update.serial;
         next.thread = update.thread;
+        if (hud_anchor_forward && camera_basis && view_rel) {
+            auto ship_basis = chase::mul(chase::transpose(*view_rel), *camera_basis);
+            std::int32_t rows[12]{};
+            if (chase::orthonormalize(ship_basis) && chase::to_fixed(ship_basis, rows)) {
+                forward[0] = rows[8];
+                forward[1] = rows[9];
+                forward[2] = rows[10];
+                forward_valid = true;
+            }
+        }
     }
     AcquireSRWLockExclusive(&lock);
     pose = next;
+    std::memcpy(pose_forward, forward, sizeof forward);
+    pose_forward_valid = forward_valid;
     ReleaseSRWLockExclusive(&lock);
 }
 void report(std::uint64_t frame) {
@@ -743,12 +904,15 @@ void report(std::uint64_t frame) {
         return;
     Counts c;
     HudCounts h;
+    HudAnchorCounts a;
     native_timing::Window native;
     AcquireSRWLockExclusive(&lock);
     c = counts;
     h = hud_counts;
+    a = hud_anchor_counts;
     counts = {};
     hud_counts = {};
+    hud_anchor_counts = {};
     native = native_times.take();
     ReleaseSRWLockExclusive(&lock);
     const double us = frequency ? 1e6 / as_double(frequency) : 0;
@@ -772,10 +936,12 @@ void report(std::uint64_t frame) {
         for (unsigned i = 0; i < native.last_used; ++i) sample(native.last[(begin + i) % 4]);
     }
     log("chase_central_hud_window frame=%llu active=%u admitted=%llu no_pose=%llu lifetime=%llu read=%llu "
-        "scope=%llu identity=%llu cleanup_pending=%llu texture_unavailable=%llu calls=%llu total_us=%.3f max_us=%.3f",
+        "scope=%llu identity=%llu cleanup_pending=%llu texture_unavailable=%llu calls=%llu total_us=%.3f max_us=%.3f "
+        "hud_anchor=%s anchor_applied=%llu anchor_refused=%llu anchor_last_px=%ld,%ld",
         frame, unsigned(hud_enabled.load(std::memory_order_relaxed)), h.reason[Ready], h.reason[NoPose],
         h.reason[Lifetime], h.reason[Read], h.reason[Scope], h.reason[Identity], h.reason[Marker], h.reason[Projection],
-        h.calls, as_double(h.ticks) * us, as_double(h.max_ticks) * us);
+        h.calls, as_double(h.ticks) * us, as_double(h.max_ticks) * us, hud_anchor_forward ? "forward" : "centre",
+        a.applied, a.refused, long(a.last_x), long(a.last_y));
     log("chase_lead_window frame=%llu ready=%llu committed=%llu final_fov=%llu no_pose=%llu lifetime=%llu "
         "read=%llu scope=%llu identity=%llu projection=%llu marker=%llu unchanged=%llu calls=%llu total_us=%.3f "
         "max_us=%.3f samples=%llu omitted=%llu",

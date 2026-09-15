@@ -274,7 +274,8 @@ void handle(uint32_t* regs) {
     }
     const std::uint64_t handler_frame = stats_.frames;
     ReleaseSRWLockExclusive(&stats_lock);
-    chase_lead::camera_context(cockpit, ref_object, camera, written);
+    chase_lead::camera_context(cockpit, ref_object, camera, written, written ? &pose.basis : nullptr,
+                               written ? &pose.view_rel : nullptr);
     chase_fire::camera_context(cockpit, ref_object, camera, in.view_mode, in.connect_mode, in.flags_1a0, written, now);
     chase_aim_trace::camera_context(cockpit, ref_object, camera, in.view_mode, written, handler_frame);
 }

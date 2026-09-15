@@ -70,6 +70,26 @@ inline bool project(const Projection &p, const std::int32_t point[3], Pixel &out
     out = {std::int32_t(x), std::int32_t(y), v.z};
     return true;
 }
+inline bool project_direction(const Projection &p, const std::int32_t direction[3], Pixel &out) {
+    if (!valid(p))
+        return false;
+    const auto b = chase::from_fixed(p.basis);
+    const auto v = chase::mul(chase::Vec3{double(direction[0]), double(direction[1]), double(direction[2])},
+                              chase::transpose(b));
+    if (!(v.z > 0))
+        return false;
+    const int w = (p.screen[0] * (p.viewport[3] - p.viewport[2]) + 32768) / 65536;
+    const int h = (p.screen[1] * (p.viewport[1] - p.viewport[0]) + 32768) / 65536;
+    if (w <= 0 || h <= 0)
+        return false;
+    const double t = std::tan(chase::pi * double(p.fov) / 65536.0);
+    const double x = double(w / 2) * v.x / (v.z * t * (p.plane[0] / 65536.0));
+    const double y = -double(h / 2) * v.y / (v.z * t * (p.plane[1] / 65536.0));
+    if (!(x >= INT32_MIN && x <= INT32_MAX && y >= INT32_MIN && y <= INT32_MAX))
+        return false;
+    out = {std::int32_t(x), std::int32_t(y), v.z};
+    return true;
+}
 struct Pending {
     Identity owner{};
     Projection projection{};

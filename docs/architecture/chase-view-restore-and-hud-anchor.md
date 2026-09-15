@@ -1,9 +1,10 @@
 # Chase view: automatic restore after a sector change, and the central HUD anchor
 
 Design note, 2026-09-15, for two user requests on the installed chase camera
-(`--camera chase`, 13° pitch-down, `offset_y` 0.45, distance 0.90). Nothing here
-is implemented. Both items are behaviour changes and therefore **default off**
-until the user accepts them in a run. Evidence base: the chase notes
+(`--camera chase`, 13° pitch-down, `offset_y` 0.45, distance 0.90). Item 2 now
+has an isolated source implementation, defaulting to native centre placement;
+it is not built, installed or accepted in game. Item 1 remains unimplemented
+behind its telemetry prerequisite. Evidence base: the chase notes
 ([camera](chase-camera.md), [elevated geometry](elevated-chase-camera.md),
 [lead marker](chase-lead-marker.md), [central HUD](chase-central-hud.md)), the
 reverse-engineering studies ([external camera](../reverse-engineering/external-camera.md),
@@ -289,6 +290,46 @@ Option: `X3M_CHASE_HUD_ANCHOR=forward|centre` / `--chase-hud-anchor`, default
   straight. The user also reports whether the moving panels are acceptable and
   whether mouse steering (if used) feels wrong with the reticle above the
   neutral centre.
+
+### Source checkpoint (2026-09-15)
+
+The isolated implementation adds `--chase-hud-anchor forward|centre` and always
+sets `X3M_CHASE_HUD_ANCHOR`, so the default `centre` clears a stale shell value
+and performs no anchor ticket, projection or node write. `forward` retains the
+ship-forward row only from a successfully written chase pose. Central admission
+creates one of eight fixed update/lifetime tickets; the final-FOV seam consumes
+the matching ticket, rereads the final camera projection, and validates every
+active node's scene, screen flags and writable coordinate span before the first
+write. Coordinate overflow, duplicate nodes, lifetime changes and foreign or
+unwritable nodes refuse the entire group. The five native relative positions
+remain unchanged around the common projected offset. The callbacks allocate no
+memory and use no new hook or engine call.
+
+An update that bypasses `0x004213dd` can leave a ticket unconsumed. Each later
+central admission and pose invalidation now compares all retained tickets with
+`current_update(cockpit)` and reclaims only tokens whose generation, serial or
+thread is no longer live. A same-update ticket survives pose invalidation; eight
+successive interrupted updates recover all eight slots and the ninth update
+admits and applies normally.
+
+Focused host checks pass: **81 tests** with the exact command below: the lead,
+lead-site and camera modules account for 72 tests, while the camera-site and
+central-HUD installer modules add nine. The extracted production fixture now
+has **69 lead/HUD scenarios with 264 checks**. At 1280×768 the 13° common group
+offset is `(0,-118)` and matches a point 10⁷ units along the ship-forward ray
+within one pixel; the changed-final-FOV and documented unprojection round trip
+also agree within one pixel. Retaining the native crosshair origin `(0,9)` puts
+the node at `(0,-109)`. Existing evidence does not establish whether the glyph's
+visual hot spot is exactly at that node origin, so gameplay bolt alignment must
+settle any art calibration. The 5°/21° lag bounds, legacy row, behind-camera
+refusal, write-free centre default, interrupted-update recovery, and lifetime,
+scene-ownership and page-write negatives are covered. These checks establish
+portable source behavior and host geometry only. Gameplay alignment and native
+Windows execution remain unverified.
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_chase_lead verification.analysis.test_chase_lead_sites verification.analysis.test_chase_camera verification.analysis.test_chase_camera_site verification.analysis.test_chase_central_hud_install
+```
 
 ### Alternatives considered
 

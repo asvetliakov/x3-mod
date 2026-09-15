@@ -59,8 +59,13 @@ static void ReleaseSRWLockExclusive(SRWLOCK* value) { value->mutex.unlock(); }
 
 SRWLOCK lock{};
 core::Identity pose{};
+std::int32_t pose_forward[3]{};
+bool pose_forward_valid = false;
 struct Slot { std::uint32_t frame = 0; core::Pending ticket{}; };
 Slot pending[8]{};
+struct HudAnchorSlot { core::Identity owner{}; std::int32_t forward[3]{}; };
+HudAnchorSlot hud_anchor_pending[8]{};
+bool hud_anchor_forward = false;
 std::atomic<bool> enabled{true};
 std::atomic<bool> hud_enabled{true};
 std::atomic<bool> native_timing_enabled{false};
@@ -85,6 +90,7 @@ struct Counts {
     Sample first[4]{}, last{};
 } counts;
 struct HudCounts { std::uint64_t reason[Count]{}, calls = 0, ticks = 0, max_ticks = 0; } hud_counts;
+struct HudAnchorCounts { std::uint64_t applied = 0, refused = 0; std::int32_t last_x = 0, last_y = 0; } hud_anchor_counts;
 auto &reasons = counts.reason;
 static bool installed() { return enabled.load(); }
 static void native_timing_invalidate(std::uintptr_t cockpit, std::uint32_t thread) noexcept {
@@ -150,7 +156,7 @@ struct World {
     static constexpr std::uint32_t link = 0x1f000, defaults = 0x20000, screen = 0x21000;
     static constexpr std::uint32_t marker = 0x22000, stack = 0x23000;
     static constexpr std::uint32_t camera_rect = 0x24000, hud_rect = 0x25000;
-    static constexpr std::uint32_t texture_rows = 0x28000, textures = 0x29000;
+    static constexpr std::uint32_t texture_rows = 0x28000, textures = 0x29000, hud_nodes = 0x2b000;
     static constexpr std::uint32_t frame = 100;
     static constexpr std::uint32_t overlay = cockpit + 0x3ac;
     core::Identity identity{};
@@ -160,10 +166,12 @@ struct World {
     void reset() {
         engine_memory::bytes.clear(); engine_memory::unreadable.clear(); writable_addresses.clear();
         for (auto& slot : pending) slot = {};
-        pose = {}; std::fill(std::begin(reasons), std::end(reasons), 0);
+        for (auto& slot : hud_anchor_pending) slot = {};
+        pose = {}; std::memset(pose_forward, 0, sizeof pose_forward); pose_forward_valid = false;
+        std::fill(std::begin(reasons), std::end(reasons), 0);
         hide_calls = 0; hidden_entry = 0; hide_native_wrong_node = false;
-        enabled = true; hud_enabled = true; native_timing_enabled = false;
-        owner_thread = host_thread = 1; counts = {}; hud_counts = {}; native_times = {}; host_qpc = 0;
+        enabled = true; hud_enabled = true; native_timing_enabled = false; hud_anchor_forward = false;
+        owner_thread = host_thread = 1; counts = {}; hud_counts = {}; hud_anchor_counts = {}; native_times = {}; host_qpc = 0;
         chase_transition::cockpit = cockpit;
         chase_transition::update = {7, 11, 3};
 
@@ -243,6 +251,18 @@ struct World {
         engine_memory::put_bytes(marker + 0x30, native_xy, sizeof native_xy);
         engine_memory::put_bytes(overlay + 0x340, native_xy, sizeof native_xy);
         allow_write(marker + 0x30, 8); allow_write(overlay + 0x340, 8); allow_write(overlay + 0x3c, 8);
+
+        constexpr unsigned hud_offsets[5] = {0, 0x208, 0x21c, 0x230, 0x294};
+        constexpr std::int32_t hud_xy[5][2] = {{0, 9}, {-70, -10}, {70, -10}, {0, 40}, {1, -25}};
+        for (unsigned i = 0; i < 5; ++i) {
+            const std::uint32_t node = hud_nodes + i * 0x200;
+            const std::uint32_t hud_entry[2] = {1, node};
+            engine_memory::put_bytes(overlay + hud_offsets[i], hud_entry, sizeof hud_entry);
+            engine_memory::put(node + 0x1c, std::uint32_t(0x31000));
+            engine_memory::put(node + 0x130, std::uint32_t(0x200));
+            engine_memory::put_bytes(node + 0x30, hud_xy[i], sizeof hud_xy[i]);
+            allow_write(node + 0x30, 8);
+        }
 
         const std::int32_t point[3] = {240, 80, 1600};
         engine_memory::put_bytes(stack + 4 + 0xc0, point, sizeof point);
@@ -374,12 +394,12 @@ static void gate_read_failure() {
 static void owner_thread_callbacks() {
     ++scenarios; World world;
     pose = {}; owner_thread = 0; host_thread = 1;
-    camera_context(World::cockpit, World::ship, World::camera, true);
+    camera_context(World::cockpit, World::ship, World::camera, true, nullptr, nullptr);
     check(owner_thread == 1 && pose.serial == chase_transition::update.serial,
           "first valid camera context binds callback owner thread");
     const auto serial = pose.serial;
     host_thread = 2; ++chase_transition::update.serial;
-    camera_context(World::cockpit, World::ship, World::camera, true);
+    camera_context(World::cockpit, World::ship, World::camera, true, nullptr, nullptr);
     check(pose.serial == serial, "foreign camera callback cannot replace owner pose");
     auto refused = world.gate_regs(); handle(0, refused.data());
     check((refused[8] & 0x40) && pending_empty() && reasons[Ready] == 0,
@@ -672,6 +692,174 @@ static void central_texture_guard(TextureGuard guard) {
           "malformed or unavailable texture-15 state preserves native branch");
 }
 
+static core::Projection anchor_projection(double pitch_deg) {
+    core::Projection p{};
+    const auto basis = chase::local_pitch(-pitch_deg * chase::pi / 180.0);
+    chase::to_fixed(basis, p.basis);
+    p.fov = 0x4000;
+    p.plane[0] = 0x10000; p.plane[1] = 0xc000;
+    p.viewport[0] = p.viewport[2] = 0;
+    p.viewport[1] = p.viewport[3] = 65536;
+    p.screen[0] = 1280; p.screen[1] = 768;
+    return p;
+}
+
+static void hud_anchor_projection_geometry() {
+    ++scenarios; World world;
+    const std::int32_t forward[3] = {0, 0, 65536};
+    for (const auto expected : {std::pair<double, std::int32_t>{13, -118}, {5, -44}, {21, -196}}) {
+        const auto p = anchor_projection(expected.first);
+        core::Pixel direction{}, distant{};
+        const std::int32_t point[3] = {0, 0, 10000000};
+        check(core::project_direction(p, forward, direction), "forward direction projects");
+        check(core::project(p, point, distant), "distant point projects");
+        check(direction.x == 0 && std::abs(direction.y - expected.second) <= 1,
+              "pitch and lag produce the ratified forward anchor row");
+        check(std::abs(direction.x - distant.x) <= 1 && std::abs(direction.y - distant.y) <= 1,
+              "direction anchor matches a projected far forward ray within one pixel");
+        if (expected.first == 13) {
+            const auto basis = chase::from_fixed(p.basis);
+            const double t = std::tan(chase::pi * double(p.fov) / 65536.0);
+            const chase::Vec3 camera_ray = {double(direction.x) * 2.0 / 1280.0 * t,
+                                            -double(direction.y) * 2.0 / 768.0 * t * 0.75, 1};
+            const auto world_ray = chase::mul(camera_ray, basis);
+            const double scale = 65536.0 / chase::length(world_ray);
+            const std::int32_t roundtrip[3] = {std::int32_t(std::nearbyint(world_ray.x * scale)),
+                                               std::int32_t(std::nearbyint(world_ray.y * scale)),
+                                               std::int32_t(std::nearbyint(world_ray.z * scale))};
+            core::Pixel returned{};
+            check(core::project_direction(p, roundtrip, returned) &&
+                      std::abs(returned.x - direction.x) <= 1 && std::abs(returned.y - direction.y) <= 1,
+                  "documented unprojection returns the forward ray within one pixel");
+        }
+    }
+    auto legacy = anchor_projection(-std::atan(0.45 * 0.75) * 180.0 / chase::pi);
+    core::Pixel pixel{};
+    check(core::project_direction(legacy, forward, pixel) && pixel.x == 0 && std::abs(pixel.y - 172) <= 1,
+          "legacy zero-down geometry retains the ship-anchor row");
+    const std::int32_t behind[3] = {0, 0, -65536};
+    check(!core::project_direction(anchor_projection(13), behind, pixel),
+          "a non-forward camera-space direction is refused");
+}
+
+static void put_anchor_projection(World &world, const core::Projection &projected) {
+    world.put_projection(projected);
+    engine_memory::put_bytes(World::hud + 0x288, projected.viewport, sizeof projected.viewport);
+    engine_memory::put_bytes(World::hud + 0x300, projected.plane, sizeof projected.plane);
+    const std::uint32_t rectangle[6] = {0, 0, 1280, 768, 0, 0};
+    engine_memory::put_bytes(World::camera_rect, rectangle, sizeof rectangle);
+    engine_memory::put_bytes(World::hud_rect, rectangle, sizeof rectangle);
+    const std::int16_t dimensions[2] = {1280, 768};
+    engine_memory::put_bytes(World::screen + 4, dimensions, sizeof dimensions);
+}
+
+static void prepare_forward_anchor(World &world, double pitch_deg = 13) {
+    hud_anchor_forward = true;
+    host_thread = 3; owner_thread = 0;
+    const auto camera_basis = chase::local_pitch(-pitch_deg * chase::pi / 180.0);
+    const auto view_rel = camera_basis;
+    put_anchor_projection(world, anchor_projection(pitch_deg));
+    camera_context(World::cockpit, World::ship, World::camera, true, &camera_basis, &view_rel);
+    check(pose_forward_valid && pose_forward[0] == 0 && pose_forward[1] == 0 && pose_forward[2] == 65536,
+          "camera pose plumbing retains the written pose's ship-forward row");
+}
+
+static void hud_anchor_uses_changed_final_fov() {
+    ++scenarios; World world; prepare_forward_anchor(world);
+    auto central = world.central_regs(0x840); central_hud(central.data());
+    auto late = anchor_projection(13);
+    late.fov = 0x3000;
+    put_anchor_projection(world, late);
+    const std::int32_t forward[3] = {0, 0, 65536};
+    core::Pixel expected{};
+    check(core::project_direction(late, forward, expected), "changed final FOV remains projectable");
+    auto final = world.final_regs(); final_fov(final.data());
+    check(get<std::int32_t>(World::hud_nodes + 0x34) == 9 + expected.y,
+          "final seam anchors from the changed final FOV rather than gate-time FOV");
+    check(expected.y != -118 && hud_anchor_counts.last_y == expected.y && hud_anchor_counts.applied == 1,
+          "changed-FOV anchor accounting records the late projection");
+}
+
+static unsigned occupied_hud_anchor_slots() {
+    return unsigned(std::count_if(std::begin(hud_anchor_pending), std::end(hud_anchor_pending),
+                                  [](const HudAnchorSlot &slot) { return slot.owner.serial != 0; }));
+}
+
+static void live_update_invalidation_preserves_anchor_ticket() {
+    ++scenarios; World world; prepare_forward_anchor(world);
+    auto central = world.central_regs(0x840); central_hud(central.data());
+    invalidate_pose();
+    check(occupied_hud_anchor_slots() == 1,
+          "pose invalidation preserves an anchor ticket while its exact update token remains live");
+    auto final = world.final_regs(); final_fov(final.data());
+    check(hud_anchor_counts.applied == 1 && occupied_hud_anchor_slots() == 0,
+          "the live same-update ticket remains consumable at final FOV");
+}
+
+static void interrupted_updates_reclaim_anchor_tickets() {
+    ++scenarios; World world; prepare_forward_anchor(world);
+    const auto camera_basis = chase::local_pitch(-13.0 * chase::pi / 180.0);
+    const auto view_rel = camera_basis;
+    for (unsigned i = 0; i < 8; ++i) {
+        auto interrupted = world.central_regs(0x840); central_hud(interrupted.data());
+        ++chase_transition::update.serial;
+        invalidate_pose();
+        camera_context(World::cockpit, World::ship, World::camera, true, &camera_basis, &view_rel);
+    }
+    check(occupied_hud_anchor_slots() == 0,
+          "eight interrupted updates reclaim every revoked anchor ticket");
+    auto recovery = world.central_regs(0x840); central_hud(recovery.data());
+    check(occupied_hud_anchor_slots() == 1 && !(recovery[8] & 0x40),
+          "the next live update can admit after interrupted-update recovery");
+    auto final = world.final_regs(); final_fov(final.data());
+    check(hud_anchor_counts.applied == 1 && hud_anchor_counts.refused == 0 && occupied_hud_anchor_slots() == 0,
+          "recovered update applies and consumes exactly one anchor ticket");
+}
+
+static void hud_anchor_group_write() {
+    ++scenarios; World world; prepare_forward_anchor(world);
+    auto central = world.central_regs(0x840); central_hud(central.data());
+    check(central[8] == 0x800, "forward anchor preserves central admission");
+    auto final = world.final_regs(); final_fov(final.data());
+    constexpr unsigned offsets[5] = {0, 0x208, 0x21c, 0x230, 0x294};
+    constexpr std::int32_t native[5][2] = {{0, 9}, {-70, -10}, {70, -10}, {0, 40}, {1, -25}};
+    for (unsigned i = 0; i < 5; ++i) {
+        const auto node = get<std::uint32_t>(World::overlay + offsets[i] + 4);
+        check(get<std::int32_t>(node + 0x30) == native[i][0], "HUD group retains native horizontal layout");
+        check(get<std::int32_t>(node + 0x34) == native[i][1] - 118, "HUD group receives one common forward offset");
+    }
+    check(hud_anchor_counts.applied == 1 && hud_anchor_counts.refused == 0 &&
+              hud_anchor_counts.last_x == 0 && hud_anchor_counts.last_y == -118,
+          "anchor accounting records the applied projected offset");
+}
+
+static void hud_anchor_centre_is_write_free() {
+    ++scenarios; World world; host_thread = 3;
+    auto central = world.central_regs(0x840); central_hud(central.data());
+    auto final = world.final_regs(); final_fov(final.data());
+    check(get<std::int32_t>(World::hud_nodes + 0x34) == 9,
+          "default centre mode leaves the native crosshair coordinate untouched");
+    check(hud_anchor_counts.applied == 0 && hud_anchor_counts.refused == 0,
+          "default centre mode creates no anchor work or accounting");
+}
+
+enum class AnchorFault { Lifetime, ForeignScene, NonWritable };
+static void hud_anchor_write_guard(AnchorFault fault) {
+    ++scenarios; World world; prepare_forward_anchor(world);
+    auto central = world.central_regs(0x840); central_hud(central.data());
+    if (fault == AnchorFault::Lifetime)
+        ++chase_transition::update.generation;
+    else if (fault == AnchorFault::ForeignScene)
+        engine_memory::put(World::hud_nodes + 0x200 + 0x1c, std::uint32_t(0x32000));
+    else
+        writable_addresses.erase(World::hud_nodes + 0x400 + 0x30);
+    auto final = world.final_regs(); final_fov(final.data());
+    check(get<std::int32_t>(World::hud_nodes + 0x34) == 9,
+          "lifetime, ownership, and write failures make no partial HUD writes");
+    check(hud_anchor_counts.applied == 0 && hud_anchor_counts.refused == 1,
+          "failed final anchor validation is accounted once");
+}
+
 static void native_end_precedes_hud_refusal() {
     ++scenarios; World world;
     host_thread = owner_thread = 3; native_timing_enabled = true;
@@ -777,6 +965,14 @@ int main() {
     for (auto guard : {TextureGuard::CachedSurface, TextureGuard::SignedTotal,
                        TextureGuard::RequiredMetadata, TextureGuard::MissingRead})
         central_texture_guard(guard);
+    hud_anchor_projection_geometry();
+    hud_anchor_group_write();
+    hud_anchor_uses_changed_final_fov();
+    live_update_invalidation_preserves_anchor_ticket();
+    interrupted_updates_reclaim_anchor_tickets();
+    hud_anchor_centre_is_write_free();
+    for (auto fault : {AnchorFault::Lifetime, AnchorFault::ForeignScene, AnchorFault::NonWritable})
+        hud_anchor_write_guard(fault);
     native_end_precedes_hud_refusal();
     native_hook_complete_sequence();
     native_hook_context_failure_revokes();
