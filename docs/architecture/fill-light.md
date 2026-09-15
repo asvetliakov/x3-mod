@@ -156,6 +156,49 @@ tests cover 0 / 0.06 / 0.5; the transformer test keeps the frozen hash at fill 0
 slot ceilings at fill > 0; the detached GPU fixture (one Wine command under `wine_lock.py`)
 compares the law within one FP16 ulp.
 
+## Implementation
+
+Implemented 2026-09-15 in the transformer (`src/renderer/linear_material.cpp`,
+`linear_xt_material_inc.h`), launcher option `--material-fill K` /
+`X3M_MATERIAL_FILL`, finite 0..0.5, default 0.
+
+- `LinearMaterialConfig::fill`. At `k = 0` no `DEF` and no instruction are
+  emitted, and the whole converted corpus (1388 driver outputs across the hull,
+  glass and XT structural drivers, both depth modes, gains 0/1/4/16) is byte
+  identical to the fill-less build, verified by digest in
+  `verification/analysis/test_linear_material_fill.py`.
+- At `k > 0` one `def c215, k, 0, 0, 0` and one
+  `mad rSum.xyz, r12, c215.x, rSum` per converted pixel program; `r12` is the
+  decoded, `g_direct`-scaled `LightDir_Color0` the transformer already builds.
+  The vertex programs are untouched, so is the alpha chain.
+- **Lobe-sum destination** (unknown 1, settled by a host pass over the corpus).
+  The site is the family's albedo multiply: the unique `MUL`/`MAD` writing
+  `r1.xyz_pp` (hull, BUMPMAP, palette) or `oC0.xyz_pp` (asteroid, glass) whose
+  two first operands are whole-register RGB reads of distinct temporaries and
+  whose multiplier is the decoded albedo or a one-step composite of it
+  (`linear_material_fill_sum`, shared by the transformer and the host probe).
+  The fill `MAD` goes immediately before it. Zero or several candidates refuse
+  (no fill, `fill_applied=0`). All 90 hull/asteroid/palette and 4 glass pixel
+  programs resolve; the sum register is r1, r2, r3 or r4 depending on family.
+- **XT** multiplies a branch-dependent albedo in the two arms of one `IF`, so
+  its single `MAD` sits ahead of that branch, on the lobe sum both arms read
+  (`xt_fill_site`): the branch is the one whose `ELSE` separates the two
+  reviewed COLOR0 clamps, the sum is the non-clamp operand of each arm's
+  vertex-colour `ADD`, it must agree between the arms, survive unwritten from
+  the branch (first arm) or the `ELSE` (second arm) to that `ADD`, and feed an
+  albedo multiply. All 14 XT pixel programs resolve (r1, r0 or r5).
+- **Cost.** Zero per draw, zero uploads, no state, no resource: `c215` is a
+  shader-local `DEF` in no CTAB. One weighted slot per program, measured:
+  DEFAULT PS 178 → 179, BUMPMAP PS 190 → 191 with depth on, against the 512
+  budget. (The note's 168/180 ceilings predate the current depth export; the
+  measured delta is the +1 it predicted.)
+- **Logging.** `linear_material_mode ... fill=<K>` once at startup;
+  `linear_material_variant kind=ps ... fill_applied=0/1` per program, which is
+  where a fail-closed refusal is visible. Vertex lines carry `fill_applied=0`.
+- **Native Windows.** `def` + `mad` in ps_3_0 only; no new API use. Compiled
+  for i686 MinGW with the project's SSE2/four-byte-stack flags; runtime
+  unverified on Windows, as for every material change.
+
 ## 6. Unknowns
 
 1. One lobe-sum destination per program: the profile rows locate the directional multiplies, not

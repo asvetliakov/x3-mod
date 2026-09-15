@@ -16,7 +16,7 @@ Words read(const std::string& file){std::ifstream f(file,std::ios::binary|std::i
 int main(int argc,char**argv){try{
  require(argc==3,"program directory and local output required");
  const std::array<const char*,14> pixels{{"fffdabd910793aba","e6794b6ec37ff71a","5f82ecacd39529cd","f1b0e820c7b488c3","6733b119142c8d42","496049cec2066ed3","d51cf763125cb85a","31445adb0a62d134","fd58e6b7e8cf969c","dd87737d697c6764","d22f2ce2c740e6a7","1de3d2dde345a7e3","75fb9c6b05e28ea2","edaef099780fcafe"}};
- unsigned variants=0;const auto begin=std::chrono::steady_clock::now();
+ unsigned variants=0,fill_programs=0,fill_applied_count=0;const auto begin=std::chrono::steady_clock::now();
  for(unsigned stage=0;stage<2;++stage)for(unsigned i=0;i<(stage?14u:2u);++i){
   const std::string id=stage?std::string("ps_")+pixels[i]:i?"vs_37c34a7478544c14":"vs_494fe349b8bc12ec";
   const auto original=read(std::string(argv[1])+"/"+id+".bin");
@@ -34,6 +34,20 @@ int main(int argc,char**argv){try{
     auto alias=original;require(transform(alias,config,alias,depth,linear)==LinearMaterialResult::Applied&&alias==out,id+" alias");
     const auto path=std::string(argv[2])+"/"+id+"-"+std::to_string(depth)+"-"+std::to_string(linear)+"-"+std::to_string(gain)+".bin";
     std::ofstream f(path,std::ios::binary);f.write(reinterpret_cast<const char*>(out.data()),out.size()*4);require(bool(f),"write local variant");++variants;
+    // Constant fill (docs/architecture/fill-light.md). The XT law multiplies a
+    // branch-dependent albedo, so the single MAD sits ahead of that branch.
+    if(stage&&linear&&gain==1u){
+     Words zero,filled;bool zero_applied=true,applied=false;
+     require(linear_material_pixel_variant_fill(original.data(),original.size(),{1,1,1,0.f},zero,depth,zero_applied)==LinearMaterialResult::Applied&&!zero_applied&&zero==out,"fill zero byte-identical");
+     require(linear_material_pixel_variant_fill(original.data(),original.size(),{1,1,1,0.06f},filled,depth,applied)==LinearMaterialResult::Applied,"fill admission");
+     require(applied==(filled!=out),"only an applied fill changes the program");
+     ++fill_programs;fill_applied_count+=applied;
+     const auto fill_path=std::string(argv[2])+"/"+id+"-"+std::to_string(depth)+"-fill.dat";
+     std::ofstream g(fill_path,std::ios::binary);g.write(reinterpret_cast<const char*>(filled.data()),filled.size()*4);require(bool(g),"write local fill variant");
+     Words guard{91,92};const auto kept=guard;
+     for(float wrong:{-0.001f,0.5001f,std::numeric_limits<float>::quiet_NaN()})
+      require(linear_material_pixel_variant(original.data(),original.size(),{1,1,1,wrong},guard,depth)==LinearMaterialResult::InvalidConfig&&guard==kept,"invalid fill rollback");
+    }
    }
    Words out{91,92},saved=out,broken=original;broken.back()^=1;
    require(transform(broken,{},out,depth,linear)==LinearMaterialResult::UnsupportedShader&&out==saved,id+" corruption rollback");
@@ -56,5 +70,7 @@ int main(int argc,char**argv){try{
  Words guard{0,0},saved=guard;require(linear_material_pixel_variant(guard.data(),1393,{},guard)==LinearMaterialResult::UnsupportedShader&&guard==saved,"old bounded read guard");
  require(linear_material_xt_default_vertex_variant(nullptr,0,{},guard)==LinearMaterialResult::InvalidInput&&guard==saved,"null guard");
  const auto us=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-begin).count();
- std::cout<<"{\"programs\":16,\"pairs\":"<<pairs<<",\"variants\":"<<variants<<",\"checks\":"<<checks<<",\"elapsed_us_including_io\":"<<us<<"}\n";
+ std::cout<<"{\"programs\":16,\"pairs\":"<<pairs<<",\"variants\":"<<variants<<",\"checks\":"<<checks
+          <<",\"fill_pixel_programs\":"<<fill_programs<<",\"fill_applied\":"<<fill_applied_count
+          <<",\"elapsed_us_including_io\":"<<us<<"}\n";
  }catch(const std::exception&e){std::cerr<<e.what()<<"\n";return 1;}}

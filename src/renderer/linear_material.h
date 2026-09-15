@@ -11,6 +11,11 @@ struct LinearMaterialConfig {
     float direct_gain = 1.0f;
     float material_emissive_gain = 1.0f;
     float lightmap_emissive_gain = 1.0f;
+    // Constant hemispherical fill inside the converted law, tinted by the
+    // decoded sun register (docs/architecture/fill-light.md). Finite, 0..0.5.
+    // Zero is off and emits no instruction, so the programs stay byte-identical
+    // to a fill-less build. Pixel stage only; the vertex programs are unchanged.
+    float fill = 0.0f;
 };
 enum class LinearMaterialResult {
     Applied, InvalidInput, InvalidConfig, UnsupportedShader, ProfileMismatch,
@@ -34,6 +39,13 @@ struct LinearBumpMaterialAbi {
     static constexpr unsigned rgb_usage_index = 1;
 };
 bool linear_material_config_valid(const LinearMaterialConfig& config) noexcept;
+// Lobe-sum destination of an already validated converted pixel program: the
+// unique MUL/MAD that multiplies the accumulated direct lobes by the decoded
+// albedo register. Returns false, and the caller then emits no fill, when the
+// program has zero or several such destinations (fail closed). Pure bounded
+// scan of the passed words; no allocation, no D3D and no state.
+bool linear_material_fill_sum(const std::uint32_t* code, std::size_t words,
+    unsigned albedo_register, unsigned& sum_register, unsigned& instruction_dword) noexcept;
 // A native scalar changes only its semantic/component carrier. The live
 // transaction must copy the original wrap bit to the destination component,
 // preserving other bits and restoring application state after the draw.
@@ -81,6 +93,12 @@ LinearMaterialResult linear_material_vertex_variant(const std::uint32_t* origina
 LinearMaterialResult linear_material_pixel_variant(const std::uint32_t* original,
     std::size_t words, const LinearMaterialConfig& config,
     std::vector<std::uint32_t>& output, bool current_depth = true) noexcept;
+// The same transformation, additionally reporting whether the constant fill
+// entered this program: false for a zero configured fill and for a refused
+// (non-unique) lobe sum. Written on every return, including failures.
+LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t* original,
+    std::size_t words, const LinearMaterialConfig& config,
+    std::vector<std::uint32_t>& output, bool current_depth, bool& fill_applied) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

@@ -135,15 +135,55 @@ int main(int argc,char** argv) {
             "ps_5e056627e9ff3a8d",
             "ps_fce465befff2f623"};
         unsigned variants=0, instructions[2][2]{}, slots[2][2]{}, family_slots[2][2][2]{};
+        unsigned fill_programs=0, fill_applied_count=0, fill_slots[2]{}, fill_instructions=0;
         long long create_ns=0, palette_create_ns=0, family_create_ns[2]{};
         unsigned family_creates[2]{};
+        // Independent weighted-slot walk, reused by the fill variants.
+        auto weighted_slots=[&](const Words& result) {
+            unsigned executable=0, weighted=0;
+            std::array<unsigned,16> texture_dimensions{};
+            for(std::size_t at=1;at<result.size()-1;) {
+                const auto token=result[at], op=token&0xffffu;
+                const unsigned count=op==0xfffeu?(token>>16)&0x7fffu:(token>>24)&15u;
+                if(op==31 && (((result[at+2]>>28)&7)|((result[at+2]>>8)&24))==10)
+                    texture_dimensions.at(result[at+2]&0x7ff)=(result[at+1]>>27)&15;
+                if(op!=0xfffeu && op!=31 && op!=81) {
+                    ++executable;
+                    switch(op) {
+                    case 1: case 2: case 4: case 5: case 6: case 7: case 8: case 9:
+                    case 10: case 11: case 12: case 14: case 15: case 35: case 42: case 43: case 46: case 88:
+                        weighted+=1; break;
+                    case 18: case 39: case 90: weighted+=2; break;
+                    case 32: case 36: case 38: case 40: weighted+=3; break;
+                    case 66: {
+                        const auto dimension=texture_dimensions.at(result[at+3]&0x7ff);
+                        require(dimension==2 || dimension==3,"known sample slot dimension");
+                        weighted+=dimension==3?4:1; break;
+                    }
+                    default: require(false,"known SM3 slot cost");
+                    }
+                }
+                at+=count+1;
+            }
+            return std::pair<unsigned,unsigned>{executable,weighted};
+        };
         auto begin=std::chrono::steady_clock::now();
         for (unsigned program_index=0;program_index<std::size(names);++program_index) {
             const char* raw_name=names[program_index];
             const unsigned family=bump_program(raw_name)?1:0;
             const std::string name(raw_name); const bool vertex=name[0]=='v';
             const auto original=read(std::string(argv[1])+"/"+name+".bin");
-            auto transform=vertex?linear_material_vertex_variant:linear_material_pixel_variant;
+            auto transform=[vertex](const std::uint32_t* data,std::size_t count,const LinearMaterialConfig& config,
+                                    Words& out,bool depth,bool* applied=nullptr) {
+                bool entered=false;
+                if (!vertex) {
+                    const auto outcome=linear_material_pixel_variant_fill(data,count,config,out,depth,entered);
+                    if (applied) *applied=entered;
+                    return outcome;
+                }
+                if (applied) *applied=false; // The vertex stage carries no fill.
+                return linear_material_vertex_variant(data,count,config,out,depth);
+            };
             for (bool depth:{false,true}) {
                 Words motion;
                 require((vertex?material_motion_vertex_variant(original.data(),original.size(),motion,depth):
@@ -158,33 +198,7 @@ int main(int argc,char** argv) {
                     create_ns+=duration; if(program_index>=83) palette_create_ns+=duration; family_create_ns[family]+=duration; ++family_creates[family];
                     if (outcome!=LinearMaterialResult::Applied) std::cerr<<name<<" result="<<int(outcome)<<'\n';
                     require(outcome==LinearMaterialResult::Applied,"combined original admission");
-                    unsigned executable=0, weighted=0;
-                    std::array<unsigned,16> texture_dimensions{};
-                    for(std::size_t at=1;at<result.size()-1;) {
-                        const auto token=result[at], op=token&0xffffu;
-                        const unsigned count=op==0xfffeu?(token>>16)&0x7fffu:(token>>24)&15u;
-                        if(op==31 && (((result[at+2]>>28)&7)|((result[at+2]>>8)&24))==10)
-                            texture_dimensions.at(result[at+2]&0x7ff)=(result[at+1]>>27)&15;
-                        if(op!=0xfffeu && op!=31 && op!=81) {
-                            ++executable;
-                            // Independent documented table; unknown forms do
-                            // not silently inherit the common unit cost.
-                            switch(op) {
-                            case 1: case 2: case 4: case 5: case 6: case 7: case 8: case 9:
-                            case 10: case 11: case 12: case 14: case 15: case 35: case 42: case 43: case 46: case 88:
-                                weighted+=1; break;
-                            case 18: case 39: case 90: weighted+=2; break;
-                            case 32: case 36: case 38: case 40: weighted+=3; break;
-                            case 66: {
-                                const auto dimension=texture_dimensions.at(result[at+3]&0x7ff);
-                                require(dimension==2 || dimension==3,"known sample slot dimension");
-                                weighted+=dimension==3?4:1; break;
-                            }
-                            default: require(false,"known SM3 slot cost");
-                            }
-                        }
-                        at+=count+1;
-                    }
+                    const auto [executable,weighted]=weighted_slots(result);
                     instructions[vertex?0:1][depth]=std::max(instructions[vertex?0:1][depth],executable);
                     slots[vertex?0:1][depth]=std::max(slots[vertex?0:1][depth],weighted);
                     family_slots[family][vertex?0:1][depth]=std::max(family_slots[family][vertex?0:1][depth],weighted);
@@ -193,6 +207,35 @@ int main(int argc,char** argv) {
                     require(transform(alias.data(),alias.size(),config,alias,depth)==LinearMaterialResult::Applied && alias==result,"input/output alias");
                     write(std::string(argv[2])+"/"+name+"-"+std::to_string(depth)+"-"+std::to_string(int(gain_value))+".bin",result);
                     ++variants;
+                    // Constant fill (docs/architecture/fill-light.md): zero is
+                    // byte-identical, 0.06 adds exactly one MAD to the pixel
+                    // programs whose lobe sum is unique.
+                    if (gain_value==1.0f) {
+                        Words zero; bool zero_applied=true;
+                        const LinearMaterialConfig off{1.0f,1.0f,1.0f,0.0f};
+                        require(transform(original.data(),original.size(),off,zero,depth,&zero_applied)==LinearMaterialResult::Applied &&
+                            !zero_applied && zero==result,"fill zero is byte-identical");
+                        Words filled; bool applied=false;
+                        const LinearMaterialConfig on{1.0f,1.0f,1.0f,0.06f};
+                        require(transform(original.data(),original.size(),on,filled,depth,&applied)==LinearMaterialResult::Applied,"fill admission");
+                        require(!vertex || !applied,"vertex programs carry no fill");
+                        require(applied==(filled!=result),"only an applied fill changes the program");
+                        if (!vertex) {
+                            ++fill_programs; fill_applied_count+=applied;
+                            const auto measured=weighted_slots(filled);
+                            fill_slots[family]=std::max(fill_slots[family],measured.second);
+                            fill_instructions=std::max(fill_instructions,measured.first);
+                            require(measured.second<=512,"fill static slot budget");
+                        }
+                        write(std::string(argv[2])+"/"+name+"-"+std::to_string(depth)+"-fill.dat",filled);
+                        for (float invalid:{-0.001f,0.5001f,std::numeric_limits<float>::infinity(),
+                                            -std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()}) {
+                            LinearMaterialConfig bad; bad.fill=invalid;
+                            Words guard{91,92}; const auto saved=guard;
+                            require(transform(original.data(),original.size(),bad,guard,depth)==LinearMaterialResult::InvalidConfig &&
+                                guard==saved,"invalid fill rollback");
+                        }
+                    }
                 }
                 for (float invalid:{-1.0f,16.001f,std::numeric_limits<float>::infinity(),-std::numeric_limits<float>::infinity(),
                                     std::numeric_limits<float>::quiet_NaN()})
@@ -293,6 +336,9 @@ int main(int argc,char** argv) {
         const auto elapsed=std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-begin).count();
         std::cout<<"{\"programs\":115,\"pairs\":"<<pair_count<<",\"variants\":"<<variants<<",\"checks\":"<<checks
                  <<",\"elapsed_us_including_io_and_negative_checks\":"<<elapsed
+                 <<",\"fill_pixel_programs\":"<<fill_programs<<",\"fill_applied\":"<<fill_applied_count
+                 <<",\"fill_weighted_slots_default_bump\":["<<fill_slots[0]<<','<<fill_slots[1]<<']'
+                 <<",\"fill_max_executable_instructions\":"<<fill_instructions
                  <<",\"initial_creates_ns\":"<<create_ns
                  <<",\"palette_initial_creates_ns\":"<<palette_create_ns
                  <<",\"create_counts_default_bump\":["<<family_creates[0]<<','<<family_creates[1]<<']'

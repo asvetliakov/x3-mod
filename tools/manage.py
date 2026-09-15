@@ -87,6 +87,7 @@ def main():
     parser.add_argument('--material-direct-gain', type=float, default=None, help='Linear direct-light gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--material-emissive-gain', type=float, default=None, help='Linear scaled material-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--lightmap-emissive-gain', type=float, default=None, help='Linear lightmap-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
+    parser.add_argument('--material-fill', type=float, default=None, metavar='K', help='Constant hemispherical fill inside the converted material law, finite 0..0.5, default 0 = off (X3M_MATERIAL_FILL; requires --linear-materials): every converted pixel program adds k*decode(LightDir_Color0)*g_direct to its lobe sum before the albedo multiply, so faces that face no light source keep a floor tinted by the sector sun. At 0 the generated programs are byte-identical to a build without the option (docs/architecture/fill-light.md)')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', help='Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; default off)')
     parser.add_argument('--hdr-decode', choices=['gamma2.2', 'pow22', 'srgb', 'none'], default='gamma2.2', help='Engine-space decode before the tonemap and the meter (X3M_HDR_DECODE; requires --hdr-tonemap): gamma2.2 (default; pow22 is the same curve), srgb, or none for the A/B against the decoded transform')
@@ -223,6 +224,10 @@ def main():
         parser.error('Material gains require --linear-materials.')
     if any(value is not None and not 0.0 <= value <= 16.0 for value in material_gains.values()):
         parser.error('Material gains must be finite and within [0, 16].')
+    if args.material_fill is not None and not args.linear_materials:
+        parser.error('--material-fill requires --linear-materials.')
+    if args.material_fill is not None and not (math.isfinite(args.material_fill) and 0.0 <= args.material_fill <= 0.5):
+        parser.error('--material-fill must be finite and within [0, 0.5].')
     if args.hdr_bloom and (not args.hdr_tonemap or args.scene_hook == 'off'):
         parser.error('--hdr-bloom requires --hdr-tonemap and the scene hook.')
     if not args.hdr_tonemap and (args.hdr_exposure is not None or args.hdr_look != 'none' or args.hdr_decode != 'gamma2.2' or args.hdr_ev != 0.0 or args.hdr_ev_manual is not None or args.hdr_clamp != 0.0
@@ -360,6 +365,7 @@ def main():
         env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
         for name, value in material_gains.items():
             env[name] = str(value if value is not None else 1.0)
+        env['X3M_MATERIAL_FILL'] = repr(args.material_fill if args.material_fill is not None else 0.0)
         env['X3M_HDR_TONEMAP'] = 'agx' if args.hdr_tonemap else 'identity'
         env['X3M_HDR_BLOOM'] = '1' if args.hdr_bloom else '0'
         env['X3M_HDR_LOOK'] = args.hdr_look

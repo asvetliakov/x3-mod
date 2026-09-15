@@ -2418,7 +2418,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
                 if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
                 else release(combined);
                 if (material != renderer::LinearMaterialResult::UnsupportedShader)
-                    log("linear_material_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u",
+                    log("linear_material_variant device=%llu kind=vs original=%016llx transform=%u create=%08lx words=%u depth=%u fill_applied=0",
                         id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
             }
             if (linear_material_requested_) {
@@ -2535,17 +2535,20 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                 id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
             if (linear_material_requested_ && entry.variant) {
                 words.clear();
-                const auto material = renderer::linear_material_pixel_variant(
-                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_);
+                bool fill_applied = false;
+                const auto material = renderer::linear_material_pixel_variant_fill(
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, linear_material_config_, words, depth_enabled_, fill_applied);
                 IDirect3DPixelShader9* combined = nullptr;
                 HRESULT material_hr = E_FAIL;
                 if (material == renderer::LinearMaterialResult::Applied)
                     material_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &combined);
                 if (SUCCEEDED(material_hr) && combined) entry.material_variant = combined;
                 else release(combined);
+                // fill_applied=0 with a configured fill is the fail-closed
+                // refusal of a program without a unique lobe sum.
                 if (material != renderer::LinearMaterialResult::UnsupportedShader)
-                    log("linear_material_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
-                        id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_);
+                    log("linear_material_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u fill_applied=%u",
+                        id_, hash, unsigned(material), material_hr, unsigned(words.size()), depth_enabled_, unsigned(fill_applied));
             }
             if (linear_material_requested_) {
                 words.clear();

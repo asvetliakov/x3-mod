@@ -13,7 +13,7 @@ void require(bool yes,const std::string& why){if(!yes)throw std::runtime_error(w
 Words read(const std::string& file){std::ifstream f(file,std::ios::binary|std::ios::ate);require(bool(f),file);const auto n=f.tellg();require(n>0&&n%4==0,"size");Words w(std::size_t(n)/4);f.seekg(0);f.read(reinterpret_cast<char*>(w.data()),n);return w;}
 void write(const std::string& file,const Words&w){std::ofstream f(file,std::ios::binary);f.write(reinterpret_cast<const char*>(w.data()),w.size()*4);require(bool(f),"write");}
 int main(int argc,char**argv){try{
- require(argc==3,"program and output directories");unsigned variants=0;long long nanos=0;
+ require(argc==3,"program and output directories");unsigned variants=0;long long nanos=0;unsigned fill_programs=0,fill_applied_count=0;
  const char*vs[]={"c30104cb0efb6675","e2ad860d5fbb3e59","74fdc00d802b4027"};
  const char*ps[]={"a66fb1981ba755b2","ebc9b2b3f1564e9a","f31c9e2701c8eee4","9d49f288800f898d"};
  for(unsigned st=0;st<2;++st)for(unsigned k=0;k<(st?4u:3u);++k){
@@ -28,6 +28,19 @@ int main(int argc,char**argv){try{
     require(res==LinearMaterialResult::Applied,id+" result "+std::to_string(unsigned(res)));
     auto alias=w;require(transform(alias,{float(gain),float(gain),float(gain)},alias,depth)==res&&alias==out,"alias");
     write(std::string(argv[2])+"/"+id+"-"+std::to_string(depth)+"-"+std::to_string(gain)+".bin",out);++variants;
+    // Constant fill: zero keeps the program byte-identical; 0.06 enters the
+    // glass lobe sum exactly once (docs/architecture/fill-light.md).
+    if(st&&gain==1u){
+     Words zero,filled;bool zero_applied=true,applied=false;
+     require(linear_material_pixel_variant_fill(w.data(),w.size(),{1,1,1,0.f},zero,depth,zero_applied)==LinearMaterialResult::Applied&&!zero_applied&&zero==out,"fill zero byte-identical");
+     require(linear_material_pixel_variant_fill(w.data(),w.size(),{1,1,1,0.06f},filled,depth,applied)==LinearMaterialResult::Applied,"fill admission");
+     require(applied==(filled!=out),"only an applied fill changes the program");
+     ++fill_programs;fill_applied_count+=applied;
+     write(std::string(argv[2])+"/"+id+"-"+std::to_string(depth)+"-fill.dat",filled);
+     Words guard{91,92};const auto kept=guard;
+     for(float wrong:{-0.001f,0.5001f,std::numeric_limits<float>::quiet_NaN()})
+      require(linear_material_pixel_variant(w.data(),w.size(),{1,1,1,wrong},guard,depth)==LinearMaterialResult::InvalidConfig&&guard==kept,"invalid fill rollback");
+    }
    }
    Words out{91,92},saved=out,broken=w;broken.back()^=1;
    require(transform(broken,{},out,depth)==LinearMaterialResult::UnsupportedShader&&out==saved,"mutated original rollback");
@@ -38,5 +51,6 @@ int main(int argc,char**argv){try{
  unsigned pairs=0;
  for(unsigned v=0;v<3;++v)for(unsigned p=0;p<4;++p){const auto contract=linear_material_pair_contract(std::stoull(vs[v],nullptr,16),std::stoull(ps[p],nullptr,16));bool yes=(v==0)==(p<2);require(bool(contract.sampler_mask)==yes,"cross pair");if(yes){++pairs;require(contract.sampler_mask==7&&!contract.bump&&!contract.scalar_transport_count,"glass sampler/scalar contract");}}
  require(!linear_material_pair_reviewed(0x53a0a641107ed76cull,0xa66fb1981ba755b2ull),"foreign VS");
- std::cout<<"{\"pairs\":"<<pairs<<",\"programs\":7,\"variants\":"<<variants<<",\"transform_ns\":"<<nanos<<"}\n";
+ std::cout<<"{\"pairs\":"<<pairs<<",\"programs\":7,\"variants\":"<<variants<<",\"fill_pixel_programs\":"<<fill_programs
+          <<",\"fill_applied\":"<<fill_applied_count<<",\"transform_ns\":"<<nanos<<"}\n";
  }catch(const std::exception&e){std::cerr<<e.what()<<"\n";return 1;}}

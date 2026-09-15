@@ -60,6 +60,14 @@ Recording runtime hashes in test reports remains useful provenance.
   [palette transport](linear-palette-materials.md), [XT qualification](xt-materials.md)
   and [combined evidence](../verification/combined-glow-materials.md).
 
+- The constant material fill (`--material-fill`, [fill-light.md](fill-light.md))
+  is one shader-local `def c215` and one `mad` in ps_3_0 per converted pixel
+  program: documented D3D9 only, no new API use, no capability requirement and
+  nothing backend-specific. It compiles for i686 MinGW with the project's SSE2
+  and four-byte-stack flags. Default 0 keeps the generated programs byte
+  identical, so the portability position is unchanged when it is off. Its
+  native-Windows runtime behavior is unverified, like every material change.
+
 - The original four XT DEFAULT pairs still have malformed SM3 linkage under
   Microsoft's [matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)
   and are never used as portable ordinary fallbacks. The installed 14-pair XT
