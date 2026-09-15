@@ -1,24 +1,24 @@
 ==== writable exit=0
 ENV LOCALAPPDATA=C:\users\crossover\AppData\Local
 ENV USERPROFILE=C:\users\crossover
-MODULE Y:\x3-mod\verification\probe\build\d3d9-exports-writable-20260914-204337-758599\d3d9.dll readonly=0
-EXPORT name=D3DPERF_BeginEvent address=7a8f9590
-EXPORT name=D3DPERF_EndEvent address=7a8f98f0
-EXPORT name=D3DPERF_GetStatus address=7a8f9c20
-EXPORT name=D3DPERF_QueryRepeatFrame address=7a8f9f50
-EXPORT name=D3DPERF_SetMarker address=7a8fa280
-EXPORT name=D3DPERF_SetOptions address=7a8fa900
-EXPORT name=D3DPERF_SetRegion address=7a8fa5c0
-EXPORT name=DebugSetLevel address=7a8f7140
-EXPORT name=DebugSetMute address=7a8fac30
-EXPORT name=Direct3D9EnableMaximizedWindowedModeShim address=7a8f71d3
-EXPORT name=Direct3DCreate9 address=7a8f8300
-EXPORT name=Direct3DCreate9Ex address=7a8f8890
-EXPORT name=Direct3DCreate9On12 address=7a8f8d00
-EXPORT name=Direct3DCreate9On12Ex address=7a8f9100
-EXPORT name=Direct3DShaderValidatorCreate9 address=7a8faf50
-EXPORT name=PSGPError address=7a8f7171
-EXPORT name=PSGPSampleTexture address=7a8f71a2
+MODULE Y:\x3-mod\verification\probe\build\d3d9-exports-writable-20260915-025452-144591\d3d9.dll readonly=0
+EXPORT name=D3DPERF_BeginEvent address=7a8e9590
+EXPORT name=D3DPERF_EndEvent address=7a8e98f0
+EXPORT name=D3DPERF_GetStatus address=7a8e9c20
+EXPORT name=D3DPERF_QueryRepeatFrame address=7a8e9f50
+EXPORT name=D3DPERF_SetMarker address=7a8ea280
+EXPORT name=D3DPERF_SetOptions address=7a8ea900
+EXPORT name=D3DPERF_SetRegion address=7a8ea5c0
+EXPORT name=DebugSetLevel address=7a8e7140
+EXPORT name=DebugSetMute address=7a8eac30
+EXPORT name=Direct3D9EnableMaximizedWindowedModeShim address=7a8e71d3
+EXPORT name=Direct3DCreate9 address=7a8e8300
+EXPORT name=Direct3DCreate9Ex address=7a8e8890
+EXPORT name=Direct3DCreate9On12 address=7a8e8d00
+EXPORT name=Direct3DCreate9On12Ex address=7a8e9100
+EXPORT name=Direct3DShaderValidatorCreate9 address=7a8eaf50
+EXPORT name=PSGPError address=7a8e7171
+EXPORT name=PSGPSampleTexture address=7a8e71a2
 CHECK all seventeen system d3d9 export names resolve on the proxy PASS
 CALL name=D3DPERF_GetStatus result=00000000
 CHECK D3DPERF_GetStatus callable PASS

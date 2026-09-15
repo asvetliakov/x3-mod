@@ -18,6 +18,8 @@ msync: up and running.
 ==== seam-admission-on
 ==== production-jitter-on
 ==== seam-jitter-on
+==== production-zonly
+==== seam-zonly
 ==== production-taa-on
 ==== seam-taa-on
 ==== production-ownership-taa-on
@@ -116,3 +118,8 @@ msync: up and running.
 ==== bench-5120x1440-hdr-tonemap-taa-sharpen-on
 ==== seam-taa-cutout-blended
 ==== seam-taa-cutout-opaque
+==== seam-taa-fade-route-routed
+==== seam-taa-fade-route-routed-perdraw
+==== seam-taa-fade-route-masked
+==== seam-taa-fade-route-sentinel
+==== seam-taa-fade-route-hover
