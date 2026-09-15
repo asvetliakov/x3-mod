@@ -134,4 +134,4 @@ The user excludes roughness/metalness authoring that requires individual materia
 art review. PBR is not planned without a texture overhaul; automatically deriving
 a useful approximation from existing assets remains unevaluated, not committed
 work. Existing-light arithmetic is separate from adding lights or changing models.
-See the [material allocation assessment](architecture/material-investment.md).
+See the allocation assessment above.
