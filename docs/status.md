@@ -140,9 +140,23 @@ further linear-hull processing is planned. Decisions this session:
 - Sun-lane refusal diagnostics were recreated (the earlier unmerged worktree no
   longer existed), reviewed with fixes and merged (`7f23195`): 16 reason buckets,
   64-entry writer signature cache, run60 log parses identically.
-- In flight: `--emission-source-gain` (source-only multiply on the 20 additive
-  emission pairs) and, next, an additive-blend bolt option so bullets can exceed
-  1.0 without the packed bracket; the user prefers cost over exact blend law.
+- Emitters above 1.0 without brackets, both reviewed and merged: `--emission-source-gain G`
+  (`3ded947`, one MUL on the 20 additive emission pairs, requires `--hdr` only,
+  excludes `--linear-emissions`; 80 GPU cases exact) and `--screen-emission-additive G`
+  (`c40ee94`, the nine bullet pairs drawn in place with DESTBLEND ONE and a ps_2_0
+  gain variant, requires `--motion-output --hdr`, exclusive with `--screen-emission`;
+  bolt pixels above 1.0 within one FP16 code). The user prefers this over exact
+  blend law ([cost note](architecture/linear-emission-cost.md),
+  [screen-emission note](architecture/screen-emission-region.md) "Additive option").
+- Point-light admission site identified (`0x004c27a1`–`0x004c27af`, per node,
+  range 1000 world units; run-22 outcomes reproduced); no engine patch now
+  ([note](reverse-engineering/camera-and-lights.md)). With original hull shading
+  the docking-module darkening is native behaviour again (fill exists only in
+  converted materials).
+- Shadows: [replay gates](architecture/shadow-replay-gates.md) ratified; the
+  depth-replay fixture is not funded until a lane-independent caster-candidate
+  counter (`--shadow-replay-candidates`, in flight) answers four predicates in
+  the next run.
 - Pre-existing host failure: `test_linear_material_live.test_production_control_flow`
   fails to compile its mock on `main` (missing sun-lane fields); tracked, unowned.
 
