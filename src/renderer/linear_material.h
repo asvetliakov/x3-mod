@@ -122,6 +122,22 @@ LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t* ori
 LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t* original,
     std::size_t words, const LinearMaterialConfig& config,
     std::vector<std::uint32_t>& output, bool current_depth, bool& extraction_applied) noexcept;
+// Fill in linear light inside the ORIGINAL pixel programs (option C,
+// docs/architecture/original-shading-critique.md 1a): the ordinary motion/depth
+// variant of a reviewed original PS plus, immediately before its located
+// lobe-sum site, sum.xyz = encode(decode(max(sum,0)) + K*decode(LightDir_Color0))
+// with the exact 2.2 power law (32 weighted slots, r12/r13 scratch, one
+// shader-local `def c215 = (K, 1e-22, 2.2, 1/2.2)`). Nothing else in the
+// program changes: no linear materials, gains, decoded albedo or relocated
+// varyings. K must be finite in [0, 0.5]; K = 0 writes the plain motion variant
+// byte for byte and reports fill_applied = false. A program without a unique
+// lobe sum keeps the plain motion variant and reports fill_applied = false
+// (fail closed). Vertex programs and unreviewed programs are UnsupportedShader.
+// Pure, allocation-bounded, no D3D; input may alias output; failure leaves
+// output intact.
+LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint32_t* original,
+    std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
+    bool& fill_applied) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

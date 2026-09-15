@@ -149,6 +149,56 @@ mid-range error is seen. Acceptance, same reductions as fill-light §5: baseline
 to ≤ 0.10 and p10 ≥ 0.045, cylinder mean rise ≤ 0.03, module chroma within 0.03, far-dark
 same-surface median gain ≤ 2.0, `frame_end` unchanged; and the user's read at Auto +1.3.
 
+#### Implemented (2026-09-16): `--original-fill K`
+
+`--original-fill K` (`X3M_ORIGINAL_FILL`, finite 0..0.5, default 0 = off; requires `--hdr`,
+excludes `--linear-materials`, whose converted programs keep `--material-fill`). Source:
+`linear_material_original_fill_pixel_variant` (`src/renderer/linear_material.cpp`,
+`original_fill_transform`), registration/selection in `src/proxy/motion_output.cpp`, the env gate in
+`src/proxy/capture.cpp`, the option in `tools/manage.py`.
+
+- **Form: exact power law, not the gamma-2 approximation.** The instruction budget held for every
+  program (largest fill variant 183 of 512 weighted slots; originals' motion variants ≤ 151), so the
+  block is the exact `sum' = encode(decode(max(sum,ε)) + K·decode(max(C0,ε)))` with
+  `def c215 = (K, 1e-22, 2.2, 1/2.2)`: `max r12, sum, c215.y; pow r12.xyz ×3; mov r13, cL;
+  max r13, r13, c215.y; pow r13.xyz ×3; mad r12, r13, c215.x, r12; max r12, r12, c215.y;
+  pow sum.xyz ×3` — 14 instructions, **32 weighted slots per covered pixel** (the critique's
+  ≈29). `g_direct` is folded into K: K here multiplies `decode(C0)` directly, so it is not
+  numerically the run-54 `--material-fill` constant (which also carried `g_direct` and sat inside the
+  converted law); equivalence to run 54's look at equal K is unverified. ε keeps every POW on a
+  positive base per the DX9 exceptional-value rules; with K > 0 the site MAX floors the lobe sum at ε,
+  so a negative or NaN sum becomes ~0 where the unfilled program would have carried it on (a
+  behavioural difference from the original, none observed in the fixture, whose sums are ≥ 0);
+  ε^2.2 and ε^(1/2.2) vanish in the FP16 store. `c215` is the
+  converted route's fill register (free of every game-declared PS constant, max c23, and of the motion
+  ABI c216–c220); `cL` is the family's `LightDir_Color0` register (XT: c6); `c215` and `cL` are never read
+  in one instruction. r12/r13 sit above every original temporary; the motion body appended at END
+  writes its own temporaries first.
+- **Placement.** The variant is the ordinary motion/depth program of the original PS (the program the
+  routed draw already binds) plus the DEF before the first declaration and the block immediately
+  before the located site: `linear_material_fill_sum`'s albedo MUL/MAD (hull, asteroid, palette,
+  glass) or `xt_fill_site`'s two-armed albedo branch (XT), both on the original bytecode, plus
+  `fill_constant_free`. Nothing else changes: no transfer, gains, decoded albedo, relocated varyings or
+  XT repairs. K = 0 returns the motion variant byte for byte; a program without a unique site keeps
+  the motion variant and reports `fill_applied=0` (fail closed, logged as `original_fill_variant`).
+- **Coverage.** All 108 reviewed pixel programs of the 137 originals: hull 66, asteroid 4, palette 20,
+  glass 4, XT 14; the 29 vertex programs carry no fill (UnsupportedShader).
+- **Admission.** `refresh_linear_material_contract` marks the pair (`linear_material_pair_reviewed`,
+  both ordinary motion variants registered); `bind_variant_pair` substitutes the fill PS in the one
+  bind pair of the routed ordinary draw when `hdr_state_ == Active`, not on the material, XT-repaired,
+  sun-lane or fade-arm paths; the ordinary route's gate 4 already requires blend off, sRGB off and z
+  write on. Undo is the route's; no extra setter, getter or per-draw lookup. Frame line
+  `original_fill_frame ... admitted=N`. Reset/release clear the pointers with the other pair fields.
+- **Evidence.** [fill-light.md](../verification/fill-light.md) "Original fill (option C)": host oracle
+  `verification/analysis/test_original_fill.py` (`original_fill_structure.cpp`), detached GPU slice
+  `run_linear_material.py --original-fill` (K 0.03/0.05, black/0.10/0.40 faces, K=0 bit-exact). The
+  hull, asteroid, palette and glass faces are checked strictly (`base32 = S·A_eff`); the XT faces are
+  validated against a site sum read back from the original program itself, a weaker check that
+  assumes only XT's site-sum-plus-carrier structure. Not yet: the F8 pair acceptance of the verdict
+  above, native Windows, and the performance pass, deferred to the user run: 9 POW per pixel on every
+  routed opaque hull draw, so the run acceptance in fill-light.md requires the `frame_end` median
+  delta with `--original-fill 0.05` on versus off in the same sector.
+
 ## 2. Selective exposure
 
 The contract (B/e + H, background-metered Auto, exposed-linear TAA history Z = D/4, exposed-

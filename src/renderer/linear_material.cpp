@@ -1437,6 +1437,107 @@ LinearMaterialResult linear_material_xt_default_pixel_variant(const Word* origin
     const auto* p=xt_pixel(material_motion_fingerprint(original,words));
     return !p || p->bump ? LinearMaterialResult::UnsupportedShader : xt_transform(original,words,config,output,current_depth,false,*p,linear);
 }
+
+namespace {
+// Option C fill block (original-shading-critique.md 1a), exact power law on
+// the ORIGINAL encoded lobe sum: r12 = decode(max(sum, eps)), r13 =
+// decode(max(C0, eps)), sum.xyz = encode(max(r12 + K*r13, eps)). The eps
+// floors (c215.y) keep every POW on a strictly positive base per the DX9
+// exceptional-value rules and map NaN/negative inputs to eps (input first in
+// MAX); eps^2.2 and eps^(1/2.2) both vanish in the FP16 store. c215 is read
+// alone in every instruction (one float-constant port), the light colour is
+// staged through r13 first. r12/r13 are above every original temporary and
+// the motion body appended at END writes its own temporaries before reading.
+// 14 instructions, 32 weighted slots (9 POW x3 + 5).
+constexpr float original_fill_epsilon = 1e-22f;
+void original_fill_definition(Words& out, float fill) {
+    emit(out,def,{dst(constant,fill_constant,xyzw),bits(fill),bits(original_fill_epsilon),bits(2.2f),bits(1.0f/2.2f)});
+}
+void original_fill_block(Words& out, unsigned sum, unsigned light) {
+    emit(out,max_op,{dst(temp,12),src(temp,sum),lane(constant,fill_constant,1)});
+    for (unsigned c=0;c<3;++c) emit(out,pow_op,{dst(temp,12,1u<<c),lane(temp,12,c),lane(constant,fill_constant,2)});
+    emit(out,mov,{dst(temp,13),src(constant,light)});
+    emit(out,max_op,{dst(temp,13),src(temp,13),lane(constant,fill_constant,1)});
+    for (unsigned c=0;c<3;++c) emit(out,pow_op,{dst(temp,13,1u<<c),lane(temp,13,c),lane(constant,fill_constant,2)});
+    emit(out,mad,{dst(temp,12),src(temp,13),lane(constant,fill_constant,0),src(temp,12)});
+    emit(out,max_op,{dst(temp,12),src(temp,12),lane(constant,fill_constant,1)});
+    for (unsigned c=0;c<3;++c) emit(out,pow_op,{dst(temp,sum,1u<<c),lane(temp,12,c),lane(constant,fill_constant,3)});
+}
+// Fill-only path: the site finders, fill_constant_free and the proven
+// original -> motion partition of transform()/xt_transform(), none of their
+// conversion edits. The output is the motion variant plus the DEF and block.
+LinearMaterialResult original_fill_transform(const Word* original, std::size_t words, float fill,
+    Words& output, bool current_depth, bool& fill_applied) noexcept {
+    fill_applied=false;
+    if (!original || words<2) return LinearMaterialResult::InvalidInput;
+    if (!std::isfinite(fill) || fill<0.0f || fill>0.5f) return LinearMaterialResult::InvalidConfig;
+    if (words>1791 || original[0]!=0xffff0300u) return LinearMaterialResult::UnsupportedShader;
+    const auto hash=material_motion_fingerprint(original,words);
+    const XtPixel* xt=nullptr;
+    if (words>=1561) { xt=xt_pixel(hash); if (xt && xt->words!=words) xt=nullptr; }
+    const Pixel* p=xt ? nullptr : pixel_for(hash,words);
+    if (!xt && !p) return LinearMaterialResult::UnsupportedShader;
+    const MotionOutputProfile* row=xt ? material_motion_profile(xt->bump?xt_bump_vs:xt_default_vs,xt->hash) : selected_row(false,hash);
+    if (!row || row->pixel_fingerprint!=hash || row->pixel_dword_count!=words || row->pixel_constant_base!=216 ||
+        row->pixel_output_register!=1 || !row->depth_output) return LinearMaterialResult::ProfileMismatch;
+    const FamilyAbi abi=xt ? xt_abi(xt->bump) : family_abi(*p);
+    const unsigned temp_count=xt ? (xt->terra?7u:6u) : temporal_temporary_base(*p);
+    if (row->pixel_temporary_base!=temp_count) return LinearMaterialResult::ProfileMismatch;
+    try {
+        Structure s;
+        const bool proved=xt
+            ? structure(original,words,false,s,true,abi,temp_count,false,xt->bump,true) && xt_pixel_sites(original,s,*xt)
+            : structure(original,words,false,s,true,abi,temp_count,p->palette_style!=0,(p->bump && p->palette_style!=0) || p->glass_fresnel!=0) && pixel_sites(original,s,*p);
+        if (!proved) return LinearMaterialResult::ProfileMismatch;
+        unsigned sum=0, site=0, light=0; bool fill_site=false;
+        if (xt) {
+            fill_site=xt_fill_site(original,s,*xt,temp_count,sum,site) && fill_constant_free(original,s);
+            light=6; // XT LightDir_Color0 (xt profiles: u.value==6)
+        } else {
+            const unsigned albedo=(p->asteroid_layout || p->glass_fresnel) ? 0u :
+                p->palette_style ? (p->affine_end?(p->bump?1u:4u):1u) : (p->affine_end?(p->bump?4u:3u):1u);
+            fill_site=linear_material_fill_sum(original,words,albedo,sum,site) &&
+                sum<temp_count && sum!=albedo &&
+                (site==p->final_rgb || std::find(p->rgb.begin(),p->rgb.end(),site)!=p->rgb.end()) &&
+                fill_constant_free(original,s);
+            light=p->light0;
+        }
+        if (fill_site && (light>=212u || light==fill_constant)) fill_site=false; // never our own or the motion range
+        Words motion;
+        const auto mr=material_motion_pixel_variant_for(*row,original,words,motion,current_depth);
+        if (mr!=MaterialMotionResult::Applied)
+            return mr==MaterialMotionResult::AllocationFailure ? LinearMaterialResult::AllocationFailure : LinearMaterialResult::ProfileMismatch;
+        const bool depth=material_motion_pixel_writes_depth(*row,current_depth);
+        std::vector<Insertion> insertions;
+        if (!motion_insertions(original,words,motion,*row,false,depth,s,insertions)) return LinearMaterialResult::ProfileMismatch;
+        if (fill==0.0f || !fill_site) { output.swap(motion); return LinearMaterialResult::Applied; }
+        Words combined; combined.reserve(motion.size()+64); combined.push_back(original[0]);
+        std::size_t inserted=0;
+        for (std::size_t at=1; at<words;) {
+            while (inserted<insertions.size() && insertions[inserted].at==at) {
+                const auto& i=insertions[inserted++]; combined.insert(combined.end(),motion.begin()+i.begin,motion.begin()+i.end);
+            }
+            if (at==s.first_declaration) original_fill_definition(combined,fill);
+            if (original[at]==end_token) { combined.push_back(end_token); ++at; continue; }
+            const unsigned n=length(original[at]);
+            if (at==site) original_fill_block(combined,sum,light);
+            combined.insert(combined.end(),original+at,original+at+n+1);
+            at+=n+1;
+        }
+        if (inserted!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
+        Structure final_structure;
+        if (!structure(combined.data(),combined.size(),false,final_structure,false,abi,temp_count,false,false,xt!=nullptr))
+            return LinearMaterialResult::ResourceLimit;
+        output.swap(combined);
+        fill_applied=true;
+        return LinearMaterialResult::Applied;
+    } catch (...) { return LinearMaterialResult::AllocationFailure; }
+}
+} // namespace
+LinearMaterialResult linear_material_original_fill_pixel_variant(const Word* original, std::size_t words,
+    float fill, Words& output, bool current_depth, bool& fill_applied) noexcept {
+    return original_fill_transform(original,words,fill,output,current_depth,fill_applied);
+}
 } // namespace x3m::renderer
 
 namespace x3m::renderer {

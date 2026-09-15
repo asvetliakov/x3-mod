@@ -1136,6 +1136,173 @@ def validate_sun_share_report(text, cases=None):
                 max_gpu_subtraction_error=error, shader_extraction=True, live_receiver_qualification=False)
 
 
+ORIGINAL_FILLS = (0.03, 0.05)
+ORIGINAL_FILL_EPSILON = 1e-22
+# Fill law inside the original programs (original-shading-critique.md 1a):
+# base32 == S * A_eff within this envelope proves the case's lobe sum S from
+# the ORIGINAL program itself (A_eff measured on the pair's calibration case).
+ORIGINAL_FILL_BASE_REL_TOL, ORIGINAL_FILL_BASE_ABS_TOL = 2e-5, 1e-6
+ORIGINAL_FILL_RGBA32_REL_TOL = 1e-4  # pre-store law, FP32 POW on the device
+
+
+def original_fill_cases():
+    """Per pair of the fill slice: a calibration face (sun averted, vertex M=1,
+    so the original writes A_eff), a black face (M=0), and code-0.10/0.40
+    faces. Hull, asteroid, palette and glass carry the face in the vertex
+    colour, which the original PS adds to its lobe sum before the albedo
+    multiply; XT adds the vertex colour after the fill site, so its faces are
+    sun-lit lobes: diffuse coefficient .5, N.L .8, C0 .25 / 1.0, no specular."""
+    full = fixture_cases()
+    result = []
+    for pair in FILL_PAIRS:
+        seed = copy.deepcopy(next(row for row in full if row['pair'] == pair))
+        fixed = PAIRS[pair][0] in FIXED_VERTICES
+        seed.update(pair=pair, lights=1 if fixed else 0, reverse=0, affine=0, valid=1,
+                    fp16=1, flags=0, gains=[1., 1., 1.],
+                    diffuse=[.5, .25, .75, .75], lightmap=[0., 0., 0., .25],
+                    cube=[0., 0., 0., 1.], mask=0., material=[0., 0., 0.],
+                    point=[0., 0., 0.], dir0=[.375, .25, .5],
+                    dir1=[0., 0., 0.], normal=[0., 0., -1.], glow=0.,
+                    normal_sample=[.5, .5, 1., .5], binormal=[0., 1., 0.],
+                    tangent=[1., 0., 0.], camera=[0., 0., -4.])
+        xt = 148 <= pair < 162
+        def add(label, **changes):
+            c = copy.deepcopy(seed)
+            c.update(changes, id=len(result), label='original_fill_' + label, depth=len(result) & 1)
+            result.append(c)
+        add('calibration', material=[1., 1., 1.], sum=[1., 1., 1.])
+        add('black', sum=[0., 0., 0.])
+        if xt:
+            for face, colour in ((.10, .25), (.40, 1.)):
+                add('face_%.2f' % face, normal=[0., .6, .8], coefficients=[.5, 0., 0., 6.],
+                    dir0=[colour] * 3, sum=[face] * 3)
+        else:
+            for face in (.10, .40):
+                add('face_%.2f' % face, material=[face] * 3, sum=[face] * 3)
+    return result
+
+
+def original_fill_law(sum_code, light_code, fill):
+    """encode(decode(max(S,eps)) + K*decode(max(C0,eps))) per channel, float64."""
+    decode = lambda v: max(v, ORIGINAL_FILL_EPSILON) ** 2.2
+    return tuple(max(decode(s) + fill * decode(c), ORIGINAL_FILL_EPSILON) ** (1 / 2.2)
+                 for s, c in zip(sum_code, light_code))
+
+
+def validate_original_fill_report(text, cases, fill):
+    """The K variant against the law at the case's lobe sum, the K=0 variant bit-exact."""
+    f32 = lambda x: struct.unpack('<f', struct.pack('<f', x))[0]
+    lines = text.splitlines()
+    assert lines and lines[-1] == f'RESULT PASS cases={len(cases)}'
+    assert not any('FAIL' in line for line in lines)
+    invariants = re.findall(r'^INVARIANT id=(\d+) pixels=256 alpha_bad=0 motion_bad=0 depth_bad=0 rgb_bad=0 k0_bad=(\d+)$', text, re.M)
+    assert [int(cid) for cid, _ in invariants] == list(range(len(cases)))
+    # Measured: the K=0 variant's FP16/motion/depth pixels differing from the baseline, summed over the cases.
+    k0_bad_pixels = sum(int(bad) for _, bad in invariants)
+    assert k0_bad_pixels == 0, ('K=0 variant not bit-exact', k0_bad_pixels)
+    rows = re.findall(r'^OFILL id=(\d+) x=(\d+) y=(\d+) base32=(\S+) base16=(\S+) fill16=(\S+) fill32=(\S+)$', text, re.M)
+    assert len(rows) == 9 * len(cases)
+    parsed = {}
+    for cid, x, y, b32, b16, f16, f32_ in rows:
+        key = (int(cid), int(x), int(y))
+        assert key not in parsed and int(x) in (4, 8, 12) and int(y) in (4, 8, 12)
+        parsed[key] = tuple(tuple(map(float, v.split(','))) for v in (b32, b16, f16, f32_))
+    calibration = {}
+    for c in cases:
+        if c['label'].endswith('calibration'):
+            calibration[c['pair']] = {(x, y): parsed[(c['id'], x, y)][0][:3] for x in (4, 8, 12) for y in (4, 8, 12)}
+            for value in calibration[c['pair']].values():
+                assert all(math.isfinite(v) and v > 0 for v in value), (c['pair'], 'calibration face reads A_eff > 0')
+    max_codes = 0; max_rel32 = 0.; max_base_rel = 0.; checked = 0; xt_sums = {}
+    for c in cases:
+        if c['label'].endswith('calibration'):
+            continue
+        sum_code = tuple(f32(v) for v in c['sum']); light = tuple(f32(v) for v in c['dir0'])
+        xt = 148 <= c['pair'] < 162
+        for x in (4, 8, 12):
+            for y in (4, 8, 12):
+                base32, base16, fill16, fill32 = parsed[(c['id'], x, y)]
+                albedo = calibration[c['pair']][(x, y)]
+                # The original writes S*A_eff. Hull-type faces are the vertex
+                # colour exactly (strict); XT sun-lit faces are lobes whose
+                # exact BUMP arithmetic is not modelled here: their site sum is
+                # read back from the original itself (base32/A_eff) and only
+                # required near the intended face.
+                measured = tuple(base32[k] / albedo[k] for k in range(3))
+                wanted_sum = original_fill_law(measured if xt else sum_code, light, f32(fill))
+                for k in range(3):
+                    expected_base = sum_code[k] * albedo[k]
+                    if xt:
+                        # Lit XT faces (damage/BUMP lobes differ per technique): a
+                        # positive site sum of the intended order, recorded below.
+                        assert (measured[k] > .25 * sum_code[k]) if sum_code[k] else (base32[k] == 0.0), (c['id'], c['label'], k, measured[k], sum_code[k])
+                        xt_sums.setdefault((c['id'], k), measured[k])
+                    else:
+                        tolerance = ORIGINAL_FILL_BASE_REL_TOL * abs(expected_base) + ORIGINAL_FILL_BASE_ABS_TOL
+                        assert abs(base32[k] - expected_base) <= tolerance, (c['id'], c['label'], k, base32[k], expected_base)
+                        max_base_rel = max(max_base_rel, abs(base32[k] - expected_base) / max(abs(expected_base), 1e-3))
+                    want = wanted_sum[k] * albedo[k]
+                    rel32 = abs(fill32[k] - want) / max(abs(want), 1e-3)
+                    max_rel32 = max(max_rel32, rel32)
+                    assert rel32 <= ORIGINAL_FILL_RGBA32_REL_TOL, (c['id'], c['label'], k, fill32[k], want, rel32)
+                    codes = abs(_half_code(fill16[k]) - _half_code(ref.half(want)))
+                    max_codes = max(max_codes, codes)
+                    assert codes <= 1, (c['id'], c['label'], k, fill16[k], want, codes)
+                assert fill16[3] == base16[3] and fill32[3] == base32[3], (c['id'], 'alpha')
+                checked += 1
+    creates = re.findall(r'^CREATE stage=(vs|ps) key=(\S+) instructions=(\d+) words=(\d+) completed_ms=(\S+)$', text, re.M)
+    filled = sorted(key for stage, key, *_ in creates if stage == 'ps' and '_5_' in key and '_ofill_' in key)
+    zero = sorted(key for stage, key, *_ in creates if stage == 'ps' and '_6_' in key and '_ofill_0' in key)
+    assert len(filled) == len(set(filled)) == len(zero) == len({c['pair'] for c in cases}) * 2, 'one K and one K=0 PS per pair and depth'
+    allowed = ('CAPS ', 'CREATE ', 'INVARIANT ', 'OFILL ', 'RESULT PASS ')
+    assert all(line.startswith(allowed) for line in lines), 'unexpected original-fill output row'
+    return dict(cases=len(cases), pairs=len({c['pair'] for c in cases}), samples=checked, filled_ps=len(filled),
+                fp16_code_tolerance=1, max_fp16_code_error=max_codes,
+                rgba32_relative_tolerance=ORIGINAL_FILL_RGBA32_REL_TOL, max_rgba32_relative_error=max_rel32,
+                base_relative_tolerance=ORIGINAL_FILL_BASE_REL_TOL, max_base_relative_error=max_base_rel,
+                k0_bit_exact=k0_bad_pixels == 0, k0_compared_cases=len(invariants), k0_differing_pixels=k0_bad_pixels, alpha='exact',
+                xt_measured_site_sums={'%d:%d' % key: value for key, value in sorted(xt_sums.items())})
+
+
+def run_original_fill(args):
+    cases = original_fill_cases()
+    args.raw_dir.mkdir(parents=True, exist_ok=True)
+    case_file = args.raw_dir / 'cases.bin'
+    case_file.write_bytes(binary_cases(cases))
+    result_path = bottle.results_dir(ROOT) / 'original-fill-gpu.json'
+    inputs = original_provenance(cases, args.programs)
+    result = dict(passed=False, bottle=bottle.describe(), game_launched=False,
+                  render_contract=dict(sampler_indices=[0,1,2,3,4,5,6],sampler_srgb=False,srgb_write=False,msaa=False,targets=['RGBA16F/RGBA32F','RGBA32F','R32F']),
+                  scope=('--original-fill (option C): %d pairs of the fill slice x 4 faces (calibration, black, 0.10, 0.40) x K %s; the original program\'s '
+                         'plain motion PS as baseline, the K=0 variant bit-exact, the K variant against the exact law at the case lobe sum with A_eff measured on the calibration face. '
+                         'Detached; no live route or native Windows proof.') % (len(FILL_PAIRS), ORIGINAL_FILLS),
+                  timing_scope='No benchmark in the bounded original-fill correctness slice.',
+                  fills=list(ORIGINAL_FILLS), original_sha256=inputs, executable_sha256=sha(args.exe),
+                  code_sha256={name:sha(ROOT/name) for name in CODE_INPUTS}, runs={})
+    wine=Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine')
+    try:
+        for fill in ORIGINAL_FILLS:
+            report = args.raw_dir / ('report-%g.txt' % fill)
+            command=[str(wine),'--bottle',bottle.BOTTLE,'--no-update','--dll','d3d9=b',str(args.exe),'Z:'+str(args.programs),'Z:'+str(case_file),'--original-fill',repr(fill)]
+            with report.open('w') as out,(args.raw_dir/('wine-%g.log' % fill)).open('w') as err:
+                process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=1200)
+            assert process.returncode==0, 'fixture failed; see '+str(report)
+            result['runs'][repr(fill)] = dict(raw_report=str(report), exit_code=process.returncode,
+                                              **validate_original_fill_report(report.read_text(), cases, fill))
+        assert sha(args.exe)==result['executable_sha256'], 'executable changed'
+        assert result['code_sha256']=={name:sha(ROOT/name) for name in CODE_INPUTS}, 'fixture/core/reference changed during run'
+        assert all(sha(args.programs/name)==value for name,value in inputs.items()), 'original changed'
+        result['passed']=True
+    except BaseException as error:
+        result['error']=repr(error)
+        raise
+    finally:
+        destination=result_path if result['passed'] else args.raw_dir/'failed-result.json'
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        destination.write_text(json.dumps(result,indent=2)+'\n')
+        print(json.dumps({k:v for k,v in result.items() if k in ('passed','runs','error')}))
+
+
 def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--exe', type=Path, required=True, help='Previously built fixture EXE; this runner never builds')
@@ -1146,6 +1313,7 @@ def parse_arguments(argv=None):
     selection.add_argument('--glass-only', action='store_true', help='Run only new glass cases, retaining their original case IDs; skip unrelated timing passes')
     selection.add_argument('--sun-share', action='store_true', help='108 generated sun-share PS, normal and zero-sun cases; positive pixel evidence and exact color/alpha/motion/depth twins')
     selection.add_argument('--fill', action='store_true', help='Run the bounded K=0.06 sun-averted fill oracle slice')
+    selection.add_argument('--original-fill', action='store_true', help='Run the original-shading fill (option C) slice at K 0.03 and 0.05: calibration/black/0.10/0.40 faces per fill pair, K=0 bit-exact')
     return parser.parse_args(argv)
 
 
@@ -1153,6 +1321,8 @@ def main():
     args = parse_arguments()
     assert bottle.BOTTLE == 'X3', 'new fixtures require X3M_FIXTURE_BOTTLE=X3'
     assert not game_running(), 'game running; fixture refused'
+    if args.original_fill:
+        return run_original_fill(args)
     cases = sun_share_cases() if args.sun_share else alpha_cutout_cases() if args.alpha_test_cutout else fill_cases() if args.fill else fixture_cases()
     if args.glass_only: cases = [c for c in cases if c['pair'] >= glass_fixture.START]
     args.raw_dir.mkdir(parents=True, exist_ok=True)

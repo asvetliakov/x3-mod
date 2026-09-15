@@ -261,13 +261,16 @@ struct Pixel {
 struct Shaders {
   IDirect3DDevice9 *d;
   float fill;
+  // --original-fill K (option C): modes 5/6/7 are the original-fill PS with
+  // K, with K=0, and the plain motion PS; their VS is mode 1's.
+  float original_fill = 0.0f;
   D3DCAPS9 caps;
   Words originals[2][108];
   std::map<std::string, IDirect3DVertexShader9 *> vertices;
   std::map<std::string, IDirect3DPixelShader9 *> pixels;
   Shaders(IDirect3DDevice9 *device, const std::string &path,
-          const std::vector<Case>& cases, float fill_value = 0.0f)
-      : d(device), fill(fill_value) {
+          const std::vector<Case>& cases, float fill_value = 0.0f, float original_fill_value = 0.0f)
+      : d(device), fill(fill_value), original_fill(original_fill_value) {
     api(d->GetDeviceCaps(&caps));
     // Scoped runs require only their selected originals. Load each once, after
     // validating the case index; variant creation remains lazy in bind().
@@ -290,6 +293,12 @@ struct Shaders {
     const char *id =
         pixel ? pixel_ids[pair_p[c.pair]] : vertex_ids[pair_v[c.pair]];
     char buffer[128];
+    if (mode >= 5) {
+      if (!pixel) return key(c, 1, false);
+      std::snprintf(buffer, sizeof buffer, "%s_%u_%u_ofill_%.9g", id, mode, c.depth,
+                    mode == 5 ? original_fill : 0.0f);
+      return buffer;
+    }
     std::snprintf(buffer, sizeof buffer, "%s_%u_%u_%.9g_%.9g_%.9g", id, mode,
                   (mode || xt_default(c)) ? c.depth : 0, mode >= 2 ? c.f[0] : 0,
                   mode >= 2 ? c.f[1] : 0, mode >= 2 ? c.f[2] : 0);
@@ -317,7 +326,26 @@ struct Shaders {
       require(fill_applied==(pixel && fill>0.0f),"distance fade fill report");
     } else
 #endif
-    if (xt_default(c)) {
+    if (mode >= 5 && !pixel) return transform(c, 1, false);
+    if (mode >= 5) {
+      // Original fill (option C): the plain motion PS of the ORIGINAL program
+      // (mode 7; for the four XT DEFAULT pairs it reads the repaired VS's
+      // varyings like the game's PS does) and the fill variant with K (5) or
+      // K=0 (6), which must be the motion PS byte for byte.
+      Words motion;
+      require(material_motion_pixel_variant(original.data(), original.size(), motion, c.depth) ==
+              MaterialMotionResult::Applied, "original fill motion control");
+      if (mode == 7) output = motion;
+      else {
+        bool applied = false;
+        require(linear_material_original_fill_pixel_variant(original.data(), original.size(),
+                  mode == 5 ? original_fill : 0.0f, output, c.depth, applied) == LinearMaterialResult::Applied,
+                "original fill transform");
+        require(applied == (mode == 5), "original fill report");
+        if (mode == 6) require(output == motion, "K=0 original fill is the motion program");
+        else require(output.size() == motion.size() + 62, "original fill adds one DEF and 14 instructions");
+      }
+    } else if (xt_default(c)) {
       // No mode ever submits the incomplete original DEFAULT linkage. Mode 0
       // is the repaired ordinary pair with MRTs disabled, mode 1 enables MRTs.
       require((pixel ? linear_material_xt_default_pixel_variant(
@@ -565,7 +593,7 @@ struct Gpu {
             if (!which) {
               value[0]=threshold; value[1]=.35f;
               value[2]=(c.flags & 1024 ? .2f : .6f) + float(x)/32.f;
-              value[3]=shaders.fill > 0.0f ? 1.0f :
+              value[3]=(shaders.fill > 0.0f || shaders.original_fill > 0.0f) ? 1.0f :
                   (c.flags & 1024 ? .4f : .8f) - float(y)/32.f;
             } else {
               value[0]=(c.flags & 1024 ? .65f : .55f) + float(x)/64.f;
@@ -887,6 +915,53 @@ struct Gpu {
         }
     }
   }
+  // --original-fill: baseline (plain motion PS) in RGBA32F and FP16, the K=0
+  // variant bit-exact against the FP16 baseline, the K variant in FP16 and
+  // RGBA32F with alpha/motion/depth identical to the baseline. The runner
+  // owns the law oracle from the printed rows (calibration case per pair).
+  void test_original_fill(const Case &c) {
+    Case c32 = c; c32.fp16 = 0;
+    Case c16 = c; c16.fp16 = 1;
+    auto pass = [&](const Case& which, unsigned mode) {
+      state(which, mode);
+      api(d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1, 0));
+      draw(which);
+      return read(color[which.fp16].p, which.fp16 ? D3DFMT_A16B16G16R16F : D3DFMT_A32B32G32R32F);
+    };
+    const auto base32 = pass(c32, 7);
+    const auto base16 = pass(c16, 7);
+    const auto motion_before = read(motion.p, D3DFMT_A32B32G32R32F);
+    const auto depth_before = c.depth ? read(current.p, D3DFMT_R32F) : std::vector<Pixel>{};
+    const auto zero16 = pass(c16, 6);
+    const auto motion_zero = read(motion.p, D3DFMT_A32B32G32R32F);
+    const auto depth_zero = c.depth ? read(current.p, D3DFMT_R32F) : std::vector<Pixel>{};
+    const auto fill16 = pass(c16, 5);
+    const auto motion_after = read(motion.p, D3DFMT_A32B32G32R32F);
+    const auto depth_after = c.depth ? read(current.p, D3DFMT_R32F) : std::vector<Pixel>{};
+    const auto fill32 = pass(c32, 5);
+    unsigned alpha_bad = 0, motion_bad = 0, depth_bad = 0, rgb_bad = 0, k0_bad = 0;
+    for (unsigned i = 0; i < width * width; ++i) {
+      for (unsigned k = 0; k < 3; ++k)
+        rgb_bad += !std::isfinite(fill16[i].f[k]) || fill16[i].f[k] < 0 || !std::isfinite(fill32[i].f[k]) || fill32[i].f[k] < 0;
+      alpha_bad += std::memcmp(&base16[i].f[3], &fill16[i].f[3], 4) != 0 || std::memcmp(&base32[i].f[3], &fill32[i].f[3], 4) != 0;
+      motion_bad += std::memcmp(&motion_before[i], &motion_after[i], 16) != 0;
+      if (c.depth) depth_bad += std::memcmp(&depth_before[i].f[0], &depth_after[i].f[0], 4) != 0;
+      k0_bad += std::memcmp(&base16[i], &zero16[i], 16) != 0 || std::memcmp(&motion_before[i], &motion_zero[i], 16) != 0 ||
+                (c.depth && std::memcmp(&depth_before[i].f[0], &depth_zero[i].f[0], 4) != 0);
+    }
+    std::printf("INVARIANT id=%u pixels=%u alpha_bad=%u motion_bad=%u depth_bad=%u rgb_bad=%u k0_bad=%u\n",
+                c.id, width * width, alpha_bad, motion_bad, depth_bad, rgb_bad, k0_bad);
+    require(!alpha_bad && !motion_bad && !depth_bad && !rgb_bad && !k0_bad,
+            "original fill: alpha, temporal identity, finite RGB or K=0 bit identity");
+    for (unsigned y : {width / 4, width / 2, 3 * width / 4})
+      for (unsigned x : {width / 4, width / 2, 3 * width / 4}) {
+        const auto& b32 = base32[y * width + x]; const auto& b16 = base16[y * width + x];
+        const auto& f16 = fill16[y * width + x]; const auto& f32 = fill32[y * width + x];
+        std::printf("OFILL id=%u x=%u y=%u base32=%.9g,%.9g,%.9g,%.9g base16=%.9g,%.9g,%.9g,%.9g fill16=%.9g,%.9g,%.9g,%.9g fill32=%.9g,%.9g,%.9g,%.9g\n",
+                    c.id, x, y, b32.f[0], b32.f[1], b32.f[2], b32.f[3], b16.f[0], b16.f[1], b16.f[2], b16.f[3],
+                    f16.f[0], f16.f[1], f16.f[2], f16.f[3], f32.f[0], f32.f[1], f32.f[2], f32.f[3]);
+      }
+  }
   void classify_flat() {
     // Independent color-ramp sentinel: distinguish effective flat COLOR
     // interpolation from a backend that accepts FLAT but interpolates smoothly.
@@ -1027,15 +1102,20 @@ int main(int argc, char **argv) {
     const bool sun_mode=argc==4 && std::strcmp(argv[3],"--sun-share")==0;
     const bool cutout_mode=argc==4 && std::strcmp(argv[3],"--alpha-test-cutout")==0;
     const bool fill_mode=argc==5 && std::strcmp(argv[3],"--fill")==0;
+    const bool original_fill_mode=argc==5 && std::strcmp(argv[3],"--original-fill")==0;
     char* fill_end=nullptr;
     const float fill=fill_mode ? std::strtof(argv[4],&fill_end) : 0.0f;
     require(!fill_mode || (fill_end && *fill_end=='\0' && std::isfinite(fill) && fill>0.0f && fill<=0.5f),
             "fill must be finite and in (0,0.5]");
+    char* original_fill_end=nullptr;
+    const float original_fill=original_fill_mode ? std::strtof(argv[4],&original_fill_end) : 0.0f;
+    require(!original_fill_mode || (original_fill_end && *original_fill_end=='\0' && std::isfinite(original_fill) && original_fill>0.0f && original_fill<=0.5f),
+            "original fill must be finite and in (0,0.5]");
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     const bool fade_mode=argc==5 && std::strcmp(argv[3],"--distance-fade")==0;
-    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode,"args: programs cases [--distance-fade composite.bin] [--fill K]");
+    require(argc==3 || sun_mode || fade_mode || cutout_mode || fill_mode || original_fill_mode,"args: programs cases [--distance-fade composite.bin] [--fill K] [--original-fill K]");
 #else
-    require(argc == 3 || sun_mode || cutout_mode || fill_mode, "args: programs cases [--alpha-test-cutout] [--fill K]");
+    require(argc == 3 || sun_mode || cutout_mode || fill_mode || original_fill_mode, "args: programs cases [--alpha-test-cutout] [--fill K] [--original-fill K]");
 #endif
     std::ifstream file(argv[2], std::ios::binary);
     unsigned count = 0;
@@ -1074,7 +1154,7 @@ int main(int argc, char **argv) {
       api(factory->CreateDevice(0, D3DDEVTYPE_HAL, window,
                                 D3DCREATE_HARDWARE_VERTEXPROCESSING, &pp,
                                 &device.p));
-      Shaders shaders(device.p, argv[1], cases, fill);
+      Shaders shaders(device.p, argv[1], cases, fill, original_fill);
       std::printf("CAPS mrt=%lu vs_slots=%lu ps_slots=%lu\n",
                   shaders.caps.NumSimultaneousRTs,
                   shaders.caps.MaxVertexShader30InstructionSlots,
@@ -1082,6 +1162,13 @@ int main(int argc, char **argv) {
       require(shaders.caps.NumSimultaneousRTs >= 3, "three MRTs");
       if(sun_mode)sun_share_material_fixture(device.p,shaders,cases);
       else if (cutout_mode) alpha_test_cutout_fixture(device.p,shaders,cases);
+      else if (original_fill_mode) {
+        Gpu gpu(device.p, shaders, 16);
+        for (const auto &c : cases) {
+          require(c.pair < std::size(pair_v) && c.depth < 2, "case bounds");
+          gpu.test_original_fill(c);
+        }
+      }
       else {
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
       if (fade_mode) distance_fade_fixture(device.p,shaders,cases,argv[4]);

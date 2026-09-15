@@ -86,6 +86,7 @@ struct MotionRoute {
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
     bool linear_material = false; // Combined color+motion pair actually bound.
     bool source_gain = false;     // Source-gain PS bound natively for this draw; restored after it.
+    bool original_fill = false;   // Original-fill PS selected in the routed pair (undone with the route).
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     bool sun_receiver = false, sun_color_writer = false;
@@ -546,6 +547,12 @@ public:
     // calls. Gain 1 is off (no variant is created). Configure before attach.
     void configure_emission_source_gain(float gain) noexcept;
     bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
+    // Option C (docs/architecture/original-shading-critique.md 1a): fill in
+    // linear light inside the original hull pixel programs, finite 0..0.5, 0
+    // is off (no variant is created). Excludes linear materials; configure
+    // after configure_linear_materials and before attach.
+    void configure_original_fill(float fill) noexcept;
+    bool original_fill_requested() const noexcept { return original_fill_requested_; }
     void configure_linear_distance_fade(bool requested) noexcept;
     // Step C of docs/architecture/screen-emission-region.md: the packed screen
     // bracket (policy 8) for the nine SM1 screen pairs of
@@ -785,6 +792,7 @@ private:
                          IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
                          IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant (PS only; the VS stays original)
+                         IDirect3DPixelShader9* original_fill_variant = nullptr; // motion variant plus the option C fill block (PS only)
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IDirect3DPixelShader9* screen_additive_variant = nullptr; // additive option, gain != 1 only (AdditiveGain)
                          IUnknown* distance_fade_variant = nullptr;
@@ -807,6 +815,11 @@ private:
         // The bound PS's source-gain variant when the bound VS/PS is one of
         // the twenty reviewed pairs; null otherwise (one pointer test per draw).
         IDirect3DPixelShader9* source_gain_eligible_variant = nullptr;
+        // Original fill: the bound PS's fill variant and whether the bound
+        // VS/PS is a reviewed linear-material pair with both motion variants
+        // (refreshed with the pair identities, never at a draw).
+        IDirect3DPixelShader9* ps_original_fill_variant = nullptr;
+        bool original_fill_pair = false;
         IDirect3DPixelShader9* ps_screen_variant = nullptr;
         // Exact SM1 screen pair (screen_emission_admission.h) and its created
         // packed producer; shader eligibility only, admission is per draw.
@@ -1149,6 +1162,9 @@ private:
     struct { std::uint32_t admitted = 0, refused_blend = 0, refused_screen = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
     // Per-device sample caps, one per logged reason: blend, screen_blend, bind_failed.
     std::uint32_t source_gain_logged_[3]{};
+    bool original_fill_requested_ = false; // X3M_ORIGINAL_FILL=K (finite 0..0.5), exclusive with linear materials
+    float original_fill_ = 0.f;
+    std::uint32_t original_fill_draws_ = 0; // routed draws that bound the fill variant this frame (frame line only)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
     float screen_additive_gain_ = 1.f;
     // Additive draws: admitted (DESTBLEND ONE around the native draw), refused

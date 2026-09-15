@@ -94,6 +94,7 @@ bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen 
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
 float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
+float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
@@ -1845,6 +1846,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
     hooked.motion_output.configure_emission_source_gain(emission_source_gain);
+    hooked.motion_output.configure_original_fill(original_fill);
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
@@ -2184,6 +2186,25 @@ void initialize_log(HMODULE module) {
      const bool excluded=linear_emission_requested;
      if(!hdr_requested||excluded)emission_source_gain=1.f;
      if(!gain_valid||value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",emission_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),excluded?" refused=linear_emissions":"");}
+    // X3M_ORIGINAL_FILL=<k>: fill in linear light inside the ORIGINAL hull
+    // pixel programs (docs/architecture/original-shading-critique.md 1a,
+    // option C): finite 0..0.5, 0 (the launcher default) is off. The variant
+    // is the ordinary motion/depth program plus the fill block, so it needs
+    // the motion-output registry and the FP16 scene (X3M_HDR=1); no TAA,
+    // ownership or tonemap prerequisite. Unparsable or out of range keeps 0
+    // and logs.
+    {original_fill=0.f;bool fill_valid=true;float value=0.f;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD fill_length=GetEnvironmentVariableW(L"X3M_ORIGINAL_FILL",setting,32);
+     if(fill_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
+         wchar_t* end=nullptr;value=fill_length&&fill_length<32?wcstof(setting,&end):0.f;
+         if(fill_length&&fill_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=0.f&&value<=.5f)original_fill=value;else fill_valid=false;}
+     // Exclusive with the linear-material route: its converted programs carry
+     // their own fill (X3M_MATERIAL_FILL); the launcher rejects the pair of
+     // options, the DLL refuses with the reason logged.
+     const bool excluded=linear_material_requested;
+     if(!hdr_requested||excluded)original_fill=0.f;
+     if(!fill_valid||value!=0.f)log("original_fill_mode requested=1 enabled=%u hdr=%u linear_materials=%u fill=%g fill_valid=%u%s",original_fill!=0.f,hdr_requested,unsigned(excluded),double(original_fill),unsigned(fill_valid),excluded?" refused=linear_materials":"");}
     // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8; unset, 0 or invalid = off):
     // the additive option of the same nine screen pairs, drawn in place with
     // DESTBLEND ONE and a colour gain G into the FP16 target. Needs the

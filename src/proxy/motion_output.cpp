@@ -311,7 +311,7 @@ unsigned MotionOutput::device_references() const noexcept {
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
     for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; }
-    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.source_gain_variant) ++count; if (entry.second.screen_variant) ++count; if (entry.second.screen_additive_variant) ++count; if(entry.second.sun_motion_variant)++count; if(entry.second.sun_material_variant)++count; if(entry.second.sun_xt_variant)++count; }
+    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.source_gain_variant) ++count; if (entry.second.original_fill_variant) ++count; if (entry.second.screen_variant) ++count; if (entry.second.screen_additive_variant) ++count; if(entry.second.sun_motion_variant)++count; if(entry.second.sun_material_variant)++count; if(entry.second.sun_xt_variant)++count; }
     return count;
 }
 
@@ -331,7 +331,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
-    shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr;
+    shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false;
     shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.ps_screen_variant = nullptr;
     shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
@@ -351,7 +351,7 @@ void MotionOutput::release_resources() noexcept {
     release(sentinel_mrt_ps_); release(sun_sentinel_ps_);
     release(quad_vs_); release(quad_declaration_);
     for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); }
-    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.source_gain_variant); release(entry.second.screen_variant); release(entry.second.screen_additive_variant); release(entry.second.sun_motion_variant); release(entry.second.sun_material_variant); release(entry.second.sun_xt_variant); }
+    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.source_gain_variant); release(entry.second.original_fill_variant); release(entry.second.screen_variant); release(entry.second.screen_additive_variant); release(entry.second.sun_motion_variant); release(entry.second.sun_material_variant); release(entry.second.sun_xt_variant); }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
@@ -578,6 +578,11 @@ void MotionOutput::configure_emission_source_gain(float gain) noexcept {
 void MotionOutput::configure_linear_distance_fade(bool requested) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
     distance_fade_requested_ = requested && linear_material_requested_;
+}
+void MotionOutput::configure_original_fill(float fill) noexcept {
+    if (device_) return; // Creation-time shader variant: immutable after attach.
+    original_fill_requested_ = std::isfinite(fill) && fill > 0.f && fill <= .5f && !linear_material_requested_;
+    original_fill_ = original_fill_requested_ ? fill : 0.f;
 }
 void MotionOutput::configure_screen_emission(bool requested, float gain) noexcept {
     if (device_) return; // Process-start shader-cache configuration only.
@@ -2435,7 +2440,7 @@ void MotionOutput::before_reset() noexcept {
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
-    shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr;
+    shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false;
     shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr;
     // D3DPOOL_DEFAULT objects must not exist across Reset; shaders survive it.
     // The pass releases its histories, scratch and state block after RT1/RT2
@@ -2495,7 +2500,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.vs == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.original_fill_pair = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
         shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2592,7 +2597,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
     // Invalidate before map allocation, any early exit or owned-object
     // Release: a reentrant observer must never see the replaced pair contract.
     if (shader && shadow_.ps == shader) {
-        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.ps_screen_variant = nullptr;
+        shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false; shadow_.ps_screen_variant = nullptr;
         shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2612,6 +2617,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         release(entry.distance_fade_variant);
         release(entry.emission_variant);
         release(entry.source_gain_variant);
+        release(entry.original_fill_variant);
         release(entry.screen_variant);
         release(entry.screen_additive_variant);
         entry.hash = hash;
@@ -2722,6 +2728,26 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 #endif
             log("motion_output_variant device=%llu kind=ps original=%016llx transform=%u create=%08lx words=%u depth=%u",
                 id_, hash, unsigned(result), hr, unsigned(words.size()), renderer::material_motion_pixel_writes_depth(*entry.row, depth_enabled_));
+            // Option C fill (original-shading-critique.md 1a): the same motion
+            // variant with the fill block, created once here and selected in
+            // bind_variant_pair for the routed reviewed pair. fill_applied=0 is
+            // the fail-closed refusal of a program without a unique lobe sum:
+            // no object, the plain motion variant stays bound.
+            if (original_fill_requested_ && entry.variant) {
+                words.clear();
+                bool fill_applied = false;
+                const auto filled = renderer::linear_material_original_fill_pixel_variant(
+                    reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_, words, depth_enabled_, fill_applied);
+                IDirect3DPixelShader9* variant = nullptr;
+                HRESULT fill_hr = E_FAIL;
+                if (filled == renderer::LinearMaterialResult::Applied && fill_applied)
+                    fill_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &variant);
+                if (SUCCEEDED(fill_hr) && variant) entry.original_fill_variant = variant;
+                else release(variant);
+                if (filled != renderer::LinearMaterialResult::UnsupportedShader)
+                    log("original_fill_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g fill_applied=%u",
+                        id_, hash, unsigned(filled), fill_hr, unsigned(words.size()), depth_enabled_, double(original_fill_), unsigned(fill_applied));
+            }
             if (linear_material_requested_ && entry.variant) {
                 words.clear();
                 bool fill_applied = false;
@@ -2780,7 +2806,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
 
 void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
+    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.original_fill_pair = false; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.vs_registered = false; shadow_.vs_fade_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2803,7 +2829,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
 }
 void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.ps_screen_variant = nullptr;
+    shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.screen_pair = false; shadow_.screen_eligible_variant = nullptr; shadow_.screen_additive_pair = false; shadow_.ps_screen_additive_variant = nullptr; shadow_.ps_registered = false; shadow_.ps_fade_variant = nullptr; shadow_.ps_emission_variant = nullptr; shadow_.ps_source_gain_variant = nullptr; shadow_.source_gain_eligible_variant = nullptr; shadow_.ps_original_fill_variant = nullptr; shadow_.original_fill_pair = false; shadow_.ps_screen_variant = nullptr;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
@@ -2818,6 +2844,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_fade_variant = static_cast<IDirect3DPixelShader9*>(it->second.distance_fade_variant);
     shadow_.ps_emission_variant = it->second.emission_variant;
     shadow_.ps_source_gain_variant = it->second.source_gain_variant;
+    shadow_.ps_original_fill_variant = it->second.original_fill_variant;
     shadow_.ps_screen_variant = it->second.screen_variant;
     shadow_.ps_screen_additive_variant = it->second.screen_additive_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
@@ -3825,6 +3852,11 @@ void MotionOutput::refresh_linear_material_contract() noexcept {
         && (!shadow_.xt_default_pair || shadow_.xt_default_ready)
         ? renderer::linear_material_pair_contract(shadow_.vs_hash, shadow_.ps_hash) : renderer::LinearMaterialPairContract{};
     shadow_.material_contract = contract;
+    // Original fill: the draws the linear route would convert (the reviewed
+    // exact pairs) with both ordinary motion variants; the draw-time gates
+    // (opaque state, scene, FP16 target) are the ordinary route's.
+    shadow_.original_fill_pair = original_fill_requested_ && shadow_.ps_original_fill_variant && shadow_.vs_variant && shadow_.ps_variant
+        && shadow_.vs_registered && shadow_.ps_registered && renderer::linear_material_pair_reviewed(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.cutout_pair = linear_material_requested_ && cutout::pair(shadow_.vs_hash, shadow_.ps_hash);
     // Diagnostic only, and only while the trace is on: integer table lookup at
     // the shader setter, never at a draw.
@@ -3904,6 +3936,12 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         if(lane){ps=lane;route.sun_receiver=material&&shadow_.ps_sun_extraction;}
         else {sun_frame_.failed=true;sun_lane_failed_=true;}
     }
+    // Original fill: the same one bind pair, the PS being the motion variant
+    // with the fill block. Only the ordinary (non-material) route, never over
+    // an XT repaired or sun-lane program, only into the FP16 scene target.
+    bool fill = false;
+    if (shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
+        && ps == shadow_.ps_variant && !route.fade_arm && shadow_.ps_original_fill_variant) { ps = shadow_.ps_original_fill_variant; fill = true; }
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -3934,6 +3972,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         return bind_variant_pair(route, false);
     }
     route.linear_material = material && SUCCEEDED(hr);
+    if (fill && SUCCEEDED(hr)) route.original_fill = true;
     return hr;
 }
 
@@ -4686,6 +4725,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         cutout_coverage_missed_ = true; ++counters_.cutout_missed; invalidate_taa(TaaInvalidateSite::CutoutMissed);
     }
     if (route.routed && route.cutout && SUCCEEDED(result)) ++counters_.cutout_routed;
+    if (route.routed && route.original_fill && SUCCEEDED(result)) ++original_fill_draws_;
     if (route.source_gain) {
         route.source_gain = false;
         const HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
@@ -5353,6 +5393,10 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             log("emission_source_gain_frame device=%llu frame=%llu gain=%g admitted=%u refused_blend=%u refused_screen=%u refused_other=%u refused_unknown=%u refused_state=%u bind_failures=%u",
                 id_, frame_, double(emission_source_gain_), g.admitted, g.refused_blend, g.refused_screen, other, g.refused_unknown, g.refused_state, g.bind_failures);
         source_gain_counts_ = {}; // this frame only, logged or not
+    }
+    if (original_fill_requested_ && original_fill_draws_) {
+        log("original_fill_frame device=%llu frame=%llu fill=%g admitted=%u", id_, frame_, double(original_fill_), original_fill_draws_);
+        original_fill_draws_ = 0;
     }
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):

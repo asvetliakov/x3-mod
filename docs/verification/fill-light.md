@@ -121,3 +121,31 @@ cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelW
 python3 verification/probe/check_no_x87.py build/d3d9.dll                        # result PASS, reachable_functions=225, violations {}
 ./x3run --camera chase --motion-output --object-trace --ownership --object-lifetime --taa --hdr --hdr-tonemap --linear-materials --dry-run   # X3M_HDR_EV_MAX=1.3, X3M_MATERIAL_FILL=0.05
 ```
+
+### Original fill (option C), 2026-09-16
+
+`--original-fill K` (`X3M_ORIGINAL_FILL`; docs/architecture/original-shading-critique.md 1a
+"Implemented"): the exact-power fill block inside the ORIGINAL pixel programs' motion variants,
+no linear materials. Worktree commit rebased on `48d70c3` (renderer, fixture and runner inputs
+unchanged between `444478a` and `48d70c3`); scratch clean DLL `build/d3d9.dll` sha256 `e70c3d1c52555a3d…`
+(0 warnings; `check_no_x87.py` PASS, reachable_functions=230, violations {}); not a candidate.
+Bottle **X3**, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`; no game launch.
+
+| Slice | Result | Evidence |
+| --- | --- | --- |
+| Host oracle | PASS | `test_original_fill.py`, 6 tests: 108/108 reviewed PS covered (hull 66, asteroid 4, palette 20, glass 4, XT 14), 29 VS refused; K=0 byte-identical to the motion variant for every program and both depth modes; K 0.03/0.05 add exactly `def c215` + the 14-instruction block before the site (albedo MUL/MAD, or XT `if`), +32 weighted slots and +14 instructions each, largest variant 183/512; c215 read by no original; launcher gate (requires `--hdr`, excludes `--linear-materials`, 0..0.5, default `0.0`) and DLL gate substrings. |
+| Detached GPU, K 0.03 and 0.05 | PASS | `run_linear_material.py --original-fill`: 23 fill pairs × 4 faces (calibration M=1, black, 0.10, 0.40) = 92 cases per K, 621 RGB samples per K. Baseline = the original's plain motion PS; hull/asteroid/palette/glass faces prove `base32 = S·A_eff` to 4.7e-8 relative; XT faces take S from the original's own readback. K variant vs `encode(decode(S)+K·decode(C0))·A_eff`: FP16 code distance ≤ 1 (max 1), RGBA32F pre-store relative error ≤ 1e-4 (max 4.8e-7); alpha, motion and depth identical; the K=0 variant bit-exact against the baseline (measured: 92 compared cases per K, 0 differing pixels). Note `g_direct` is folded into K, so K is not numerically the run-54 `--material-fill` constant (equivalence unverified); with K>0 the site MAX floors a negative/NaN lobe sum at ε (~0), a behavioural difference from the unfilled program; the XT faces are validated against a site sum read back from the original (weaker than the hull families' strict `base32 = S·A_eff`). Child 9.17 s, lock wait 4 µs. [`original-fill-gpu.json`](../../verification/results/bottle-X3/original-fill-gpu.json) |
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_original_fill   # OK, 6 tests
+sh verification/probe/build_linear_material.sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_linear_material.py --exe verification/probe/build/linear_material_fixture.exe --original-fill --raw-dir <scratch>   # passed: true
+cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build && cmake --build build -j4 && python3 verification/probe/check_no_x87.py build/d3d9.dll
+./x3run --camera chase --motion-output --object-trace --ownership --object-lifetime --taa --hdr --hdr-tonemap --original-fill 0.05 --dry-run   # X3M_ORIGINAL_FILL=0.05, X3M_LINEAR_MATERIALS=0, X3M_MATERIAL_FILL=0.0
+```
+
+Open: the F8 pair acceptance of the critique's verdict (user run on an installed candidate), native
+Windows, and the performance pass, deferred to that run. Run acceptance adds to the critique's 1a
+criteria: the `frame_end` median delta with `--original-fill 0.05` on versus off in the same sector
+(9 POW per pixel on every routed opaque hull draw) must be reported and acceptable to the user. `test_linear_material_live.test_production_control_flow` fails to compile its extracted
+`composition_blend_count` snippet identically on the pristine base `444478a`; unrelated to this change.
