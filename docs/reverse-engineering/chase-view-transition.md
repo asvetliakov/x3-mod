@@ -857,6 +857,55 @@ Gameplay acceptance (a gate run with the option on, reading the
 `chase_view_restore_state` counters, the seam lines and the refusal samples)
 and native Windows execution remain unverified.
 
+### Run 28 (run78) pose gap
+
+Run78 (`/tmp/x3-bottleX3-run78/session-20260916-021954-212.log`, DLL
+`2b0969e5` from `a26eb9b`, `--chase-view-restore`) restored the rear view at
+both transits (`arms=3 transfers=2 consumed=2 writes_failed=0 seam_calls=2`,
+refusal 0 at the seam) but the chase pose landed late: transit 1 (generation
+1 to 2) `camera_state` frame 7338 invalid, 7339 valid (sector jump, reason 3)
+and `camera_cut=1` with the configured offset (`t.y` -37685.8 to -34638.2,
+`r21` -0.0980 to -0.0893) only at frame 7375; transit 2 frames 8627/8628 and
+8640. The gaps are 36 and 12 updates, and the `chase_camera` windows carry the
+cause directly: `refused_inactive` rose 0 to 36 over transit 1 and 36 to 48
+over transit 2, matching `arm_refusal_reasons=0,0,36..48` (`arm_view_not_ready`).
+The transition events show why: the fresh generation's first updates (events
+29/30, updates 7067/7068) carry `view=0x00000000` with `ship`, `camera` and
+mode 258 set, while event 33 (update 7103 = 7067 + 36) is the first with
+`view == ship`. During those updates the engine already ran its cockpit
+update and rendered its vanilla rear pose from the new cockpit (valid camera
+frames, `r21` -0.098, the vanilla `+0x160` boom), so the ship sat at screen
+centre; the chase camera's A1 admission (`+0x10 != 0 && +0x10 == +0xc`)
+refused every visit, and when `+0x10` bound, the cockpit-change gap snapped
+the chase pose in one frame: the visible jump. Cause (i); the restore arm's
+retries (`restore_arm_retry_cap` 64 > 36) never gated the camera and the
+engine did not hold a default view.
+
+Every one of those events already reported `active_handle=2 valid=1`: the
+registry active-control handle (`*0x00608504+0x10`, the walk of the native
+resolver `0x0041cd20` that `chase_fire::active_cockpit` and the restore
+arm's `active_handle` use) mapped to the new cockpit from its first update.
+Fix: `chase_transition::active_control_cockpit(cockpit)` (complete lifetime,
+generation nonzero, registry handle row maps to the cockpit; LastError
+preserved) and `chase_camera::admits_pose(ref, view, proof)`: a nonzero
+`+0x10` keeps the fire control's predicate unchanged; `+0x10 == 0` is admitted
+only with that proof and a nonzero aligned ref object. The walk runs only on
+`+0x10 == 0` visits. Cursor fire, lead and aim contexts still require the
+bound predicate (an unbound visit hands them an invalidated context). The
+`chase_camera` line gains `admitted_unbound`; the next gate run should show
+it equal to the transit's unbound update count and `camera_cut=1` on the
+first valid frame after the swap. The CPU fixture case "run78" proves the
+old admission refused view 0, the proof admits the first update of a
+complete generation, and partial, destroyed, foreign-handle, other-handle,
+misaligned, handle-0 and rebound cockpits refuse. The proof requires a
+nonzero active handle (a registry with no active control cannot match a
+stale zero-id row; `chase_fire::active_cockpit` keeps its older walk without
+that guard). The next run also reads the `snaps` / `coalesced` deltas per
+transit: with the pose applied from the first valid frame, the sector snap
+(`snap |= 4`) can now land mid-phase after `snap_coalesce_frames`, so one
+snap per transit is the expectation and a second one is the witness to
+examine. In-game timing remains unverified until the next run.
+
 ### Run65: consume refusal on the ref cell
 
 Run 26 (`/tmp/x3-bottleX3-run65/session-*.log`) armed three times, transferred

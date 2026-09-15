@@ -21,7 +21,13 @@
 // walk 0x0041cde0); the handler acts only on the active control cockpit, the
 // one whose ref view object (+0x10) is its ref object (+0xc), the predicate the
 // fire control uses. Every other cockpit's visit leaves the pipeline state,
-// the clock and the frame counters untouched (review 31 A1).
+// the clock and the frame counters untouched (review 31 A1). Run78 pose gap:
+// a fresh cockpit generation after a gate transit reaches the site with +0x10
+// still 0 for tens of updates while the engine already renders its rear view
+// from it; that unbound phase is admitted only when chase_transition proves
+// a complete lifetime whose registry active-control handle maps to the
+// cockpit (docs/reverse-engineering/chase-view-transition.md, "Run 28 (run78)
+// pose gap"). Fire, lead and aim contexts keep the bound predicate.
 //
 // Fail closed: exact executable (object_trace::executable_verified), exact
 // site bytes, install window (engine_patch), every engine pointer read
@@ -32,6 +38,13 @@
 // recreate cannot re-claim it, the install window is closed at the first
 // Present, and the handler needs no device).
 namespace x3m::chase_camera {
+// Pose admission for one cockpit visit (portable; the CPU fixture exercises
+// it): bound = the fire control's predicate; unbound = +0x10 still 0 on a
+// cockpit the registry active-control proof admits. Any other +0x10 refuses.
+inline bool admits_pose(std::uintptr_t ref_object, std::uintptr_t view_object, bool active_control) {
+    if (view_object != 0) return view_object == ref_object;
+    return ref_object != 0 && (ref_object & 3) == 0 && active_control;
+}
 struct FirstApplied {        // the static inferences of the first applied frame, logged once (review 31 O2/O3)
     bool captured = false, logged = false, native_base_domain = false;
     double domain_delta = 0;
@@ -52,7 +65,7 @@ struct Stats {
     std::uint64_t timed_calls = 0, handler_ticks = 0, handler_max_ticks = 0;
     bool requested = false, installed = false;
     const char* status = "disabled";
-    std::uint64_t frames = 0, applied = 0, refused = 0, inactive = 0, snaps = 0, coalesced = 0, clamps = 0, write_refused = 0, locked_frames = 0, scene_fixed = 0;
+    std::uint64_t frames = 0, applied = 0, refused = 0, inactive = 0, unbound = 0, snaps = 0, coalesced = 0, clamps = 0, write_refused = 0, locked_frames = 0, scene_fixed = 0;
     unsigned cockpits_seen = 0;   // distinct cockpit pointers reaching the site since the last report
     std::uint32_t last_verdict = 0, last_snap_reason = 0, view_mode = 0, connect_mode = 0, flags_1a0 = 0, tracking_mode = 0;
     bool target_locked = false;

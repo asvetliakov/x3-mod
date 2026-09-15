@@ -59,10 +59,18 @@ clock (`dt`), the pipeline state, `frames`/`applied`/`refused` or the
 snap flag are touched. Behind the predicate the old guard stays as defence: if
 the active cockpit pointer still changes between invocations the pipeline
 takes a gap (the next frame snaps rather than mixing two objects' poses and
-dt). The registry's active-control handle (`*(*0x00608504+0x10)`) is the
-alternative predicate, not used because that field is unconfirmed; the first
-run's `cockpits_seen` (distinct EBX values per 300-frame window) and
-`refused_inactive` tell how many cockpits reach the site.
+dt). The registry's active-control handle (`*(*0x00608504+0x10)`, the native
+resolver `0x0041cd20` walk) admits one more case: a fresh cockpit generation
+whose `+0x10` is still 0 (run78: 36 and 12 updates after a gate transit while
+the engine already renders its rear view from it) is admitted when
+`chase_transition::active_control_cockpit` proves a complete lifetime whose
+handle row maps to the cockpit (`admitted_unbound` in the report line;
+docs/reverse-engineering/chase-view-transition.md, "Run 28 (run78) pose
+gap"). Gameplay consequence of that phase: the chase pose is written from the
+first valid frame, but cursor-fire, lead and aim contexts stay cleared until
+`+0x10` binds (0.4-1.1 s in run78), as they would under a refusal. `cockpits_seen`
+(distinct EBX values per 300-frame window) and `refused_inactive` tell how
+many cockpits reach the site.
 
 | Read | Bytes | Use |
 | --- | --- | --- |
@@ -280,7 +288,7 @@ unset. `snap_coalesce_frames` (3) is compiled in.
   `boom_local` with `z < 0` and small `x`.
 - Per 300 frames and on capture frames (with `frame_end`): `chase_camera
   frame=… status=… frames=… applied=… refused=… refused_inactive=…
-  cockpits_seen=… snaps=… coalesced=… clamps=… write_refused=…
+  admitted_unbound=… cockpits_seen=… snaps=… coalesced=… clamps=… write_refused=…
   verdict=<0 applied|1 internal|2 not back view|3 other connect mode|4 invalid
   input|5 degenerate|6 numeric|7 verbatim basis (connect 3 / +0x1a0&4)|100
   read failure> snap_reason=… mode=… connect=… flags_1a0=0x… tracking=…
