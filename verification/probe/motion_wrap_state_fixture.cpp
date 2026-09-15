@@ -32,6 +32,7 @@ struct MotionRoute {
  HRESULT preparation_error=S_OK;
  bool depth=false,linear_material=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false,ps_set=false,vs_set=false,vs_constants_set=false,ps_constants_set=false;
  DWORD saved_write1=15,saved_write2=15,saved_wrap[6]{};std::uint8_t wrap_index[6]{},wrap_count=0,wrap_attempted=0;
+ bool fade_arm=false,sun_receiver=false; // fade-band arm and sun-share lane flags read by the bind path
 };
 static unsigned failures=0,checks=0,allocations=0;
 void* operator new(std::size_t n){++allocations;if(void*p=std::malloc(n))return p;throw std::bad_alloc();}
@@ -75,6 +76,7 @@ public:
   DWORD composition_blend[3]{};bool composition_blend_known[3]{};DWORD fill_mode=0;bool fill_mode_known=false;
   bool vs_reserved_written=false,ps_reserved_written=false;void*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
   bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
+  void*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
  explicit MotionOutput(Device&d):device_(&d){}
@@ -83,6 +85,12 @@ public:
  HRESULT bind_target(unsigned,void*){return S_OK;}
  bool cutout_reset_pending_=false; void probe_cutout_caps(bool){}
  bool composition_requested()const{return false;}
+ bool blend_shadow_requested()const{return false;}
+ // Sun-share lane (X3M_SUN_SHADOW_LANE): inert for the wrap-state seam; the
+ // extracted bind path only reads the flags and reports a failed creation.
+ bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
+ unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}
+ struct{bool failed=false,published=false,available=false,coverage_required=false;unsigned receivers=0,covered=0,untracked=0;}sun_frame_;
  bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam
  void invalidate_taa(TaaInvalidateSite){++taa_invalidations;}
  void resync_shadow(){invalidate_render_states();}

@@ -133,7 +133,9 @@ class EmissionLiveTests(unittest.TestCase):
             with self.subTest(frame=frame),self.assertRaises(AssertionError):
                 r.validate(text,missing,True)
         source=(r.ROOT/'verification/probe/motion_output_fixture.cpp').read_text()
-        self.assertIn('config.force_taa_readback = emissions && !emission_bench;',source)
+        # 155ac54 (sun-share runtime lane) added the sun lane as a second
+        # reason to force the readback; the emission arm is unchanged.
+        self.assertIn('config.force_taa_readback = sunlane || (emissions && !emission_bench);',source)
 
     def test_completion_timing_scope_and_sample_checks(self):
         text='\n'.join(f'EMISSION_TIMING sample={i} enabled=1 width=1920 height=1080 completed_ms={1+i*.1}' for i in range(8))

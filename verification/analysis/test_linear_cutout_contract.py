@@ -823,7 +823,9 @@ class LinearCutoutContractTests(unittest.TestCase):
         temporal = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
         self.assertIn('if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();', temporal)
         gate = extract_function(source, 'void MotionOutput::evaluate_draw(')
-        self.assertIn('test == 1 && color == 7 && shadow_.cutout_pair && cutout_draw_state()', gate)
+        # 7f23195 (sun-lane refusal buckets) records the cutout verdict the
+        # chain computed in cutout_ok; the arm and its order are unchanged.
+        self.assertIn('test == 1 && color == 7 && shadow_.cutout_pair && (cutout_ok = cutout_draw_state())', gate)
         reset = extract_function(source, 'void MotionOutput::before_reset(')
         self.assertIn('cutout_caps_ = cutout::Capability::Pending', reset)
         self.assertIn('cutout_reset_pending_ = true', reset)

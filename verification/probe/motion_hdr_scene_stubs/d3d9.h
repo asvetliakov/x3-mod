@@ -12,7 +12,7 @@ constexpr HRESULT S_OK = 0, S_FALSE = 1, E_FAIL = -1, E_ABORT = -2,
     D3DERR_NOTAVAILABLE = -6, D3DERR_INVALIDCALL = -7, D3DERR_NOTFOUND = -8;
 constexpr bool SUCCEEDED(HRESULT hr) { return hr >= 0; }
 constexpr bool FAILED(HRESULT hr) { return hr < 0; }
-enum D3DFORMAT { D3DFMT_UNKNOWN, D3DFMT_A16B16G16R16F, D3DFMT_A8R8G8B8 };
+enum D3DFORMAT { D3DFMT_UNKNOWN, D3DFMT_A16B16G16R16F, D3DFMT_A8R8G8B8, D3DFMT_G32R32F, D3DFMT_R32F };
 enum D3DPRIMITIVETYPE { D3DPT_TRIANGLELIST };
 enum D3DTEXTUREFILTERTYPE { D3DTEXF_POINT };
 enum D3DRENDERSTATETYPE { D3DRS_ZENABLE };
@@ -21,6 +21,7 @@ struct D3DCAPS9 {};
 struct D3DVIEWPORT9 { UINT X, Y, Width, Height; float MinZ, MaxZ; };
 struct RECT {};
 struct IUnknown {};
+struct IDirect3DResource9 {};
 struct IDirect3DBaseTexture9 {};
 struct IDirect3DPixelShader9 {};
 struct IDirect3DVertexShader9 {};

@@ -51,3 +51,22 @@ bottle references).
   `/private/tmp/claude-501/-Users-asvetl-x3-mod/77d6468d-b9c8-46ee-8005-c3ebf5171bf6/scratchpad/host-suite.txt`.
 - These 11 failures were not diagnosed further or fixed; this is a triage
   record only.
+
+## Repair (2026-09-15)
+
+All eleven were test/fixture drift behind reviewed production commits; no
+production source was changed. Per test, cause → fix:
+
+| Test | Cause | Fix |
+| --- | --- | --- |
+| `test_capture_bloom_lifetime` | `capture.cpp` calls `lod_scale::refresh()` on the Reset/Present paths; the fixture had no such namespace | added a no-op `lod_scale::refresh` stub to `capture_bloom_lifetime_fixture.cpp` |
+| `test_game_phase_sites` | 123f98d made `chase_transition::emit` a wrapper over the shared `emit_stub`, added seven restore sites and raised the reservation | extract `emit_stub` with `emit`, mirror `restore_filter_count` from its own header, `<atomic>` in the counting emitter; reserve 192→320, rows 9→16, arena used 10724→11792 (free 4592), old-selection 7056→8124 |
+| `test_linear_material_live` | sun-share lane, source-gain and additive-screen members/APIs added to `motion_output.h` | mirrored the new `ShaderEntry`/`Shadow`/`MotionRoute`/`Counters` members, `BoundaryState`, `SunShareFrame`, `SunUntrackedReason`, `AdditiveGain` and the sun-share/source-gain transform doubles in `linear_material_live_fixture.cpp` |
+| `test_motion_hdr_scene` | header now names `IDirect3DResource9`, `D3DFMT_G32R32F`/`D3DFMT_R32F`; two new out-of-line symbols | extended `motion_hdr_scene_stubs/d3d9.h`; added `LinearEmissionPass::coverage_valid` and `publish_shadow_replay_candidates` stubs |
+| `test_motion_wrap_states.test_production_transaction` | same sun-lane members reached the wrap-state seam | added the inert lane members and `blend_shadow_requested` to `motion_wrap_state_fixture.cpp` |
+| `test_linear_cutout_contract` | 7f23195 records the cutout verdict in `cutout_ok` | assertion updated to `... && (cutout_ok = cutout_draw_state())` |
+| `test_linear_emission_live` | 155ac54 made the sun lane a second reason to force the readback | assertion updated to `config.force_taa_readback = sunlane || (emissions && !emission_bench);` |
+| `test_motion_wrap_states.test_route_wiring` | c40ee94 turned the branch into a block and appended `prepare_screen_additive` | assertion matches the block and pins the composition-before-additive order |
+| `test_linear_distance_fade` | not golden bytes: the test compiles a frozen baseline from a pinned commit. 5b3b5c3 (PS3 constant-read port repair, reviewed, with GPU parity evidence in `linear-material-constant-port.md`) intentionally stages the sanitizer constant through a `mov`, so 104 pixel programs diverge from the 2cf65ae pin | `BASELINE` pin moved 2cf65ae → 5b3b5c3; 137 originals now byte-exact across three configurations. The repair delta itself stays proved against pre-repair 8722072 by `test_linear_material_constant_port.py` |
+| `test_linear_emission_fused_report` | runner drift from 3ded947: `run_linear_emission.py` hashed `ps_*-source-<g>.bin` in every MRT mode, but `linear_emission_fixture.cpp` only writes them under `--source-gain` | `source_gain_sha256` moved inside the `--source-gain` branch |
+| `test_linear_emission_sm1_transformer` | not a missing corpus (751 programs are present): `linear_emission_sm1_structure.cpp` asserted mode 5 is refused, but c40ee94 made 5 `AdditiveGain` | invalid-mode set changed to `{0,6,-1}` |

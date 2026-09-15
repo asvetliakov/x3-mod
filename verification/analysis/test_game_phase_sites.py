@@ -15,6 +15,7 @@ ROOT=Path(__file__).resolve().parents[2]
 
 
 COUNTING_EMITTER = r'''
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -47,23 +48,38 @@ extern "C" void x3m_chase_aim_enter(){}
 '''
 
 
+def restore_filter_count():
+    """The production constant the chase_transition stub's prefilter is sized by."""
+    header=(ROOT/'src/proxy/chase_transition_restore_core.h').read_text()
+    match=re.search(r'constexpr unsigned restore_filter_count=(\d+)',header)
+    if match is None:raise ValueError('restore_filter_count not found')
+    return int(match.group(1))
+
+
 def emitter_fixture_source():
+    # Since 123f98d (chase view restore ticket) chase_transition::emit is a thin
+    # wrapper over the shared register-saving emit_stub, so the stub is extracted
+    # with it and the one constant it reads is mirrored from its own header.
     emitters=(
-        ('resource_reader','resource_reader.cpp','emit_reader_stub','emit_reader_stub(&next)'),
-        ('game_phases','game_phases.cpp','emit','emit(0,&next)'),
-        ('chase_camera','chase_camera.cpp','emit_stub','emit_stub(&next)'),
-        ('chase_transition','chase_transition.cpp','emit','emit(0,&next)'),
-        ('chase_lead','chase_lead.cpp','emit','emit(0,&next)'),
-        ('chase_aim_trace','chase_aim_trace.cpp','emit','emit(0,&next)'),
+        ('resource_reader','resource_reader.cpp','emit_reader_stub','emit_reader_stub(&next)','',()),
+        ('game_phases','game_phases.cpp','emit','emit(0,&next)','',()),
+        ('chase_camera','chase_camera.cpp','emit_stub','emit_stub(&next)','',()),
+        ('chase_transition','chase_transition.cpp','emit','emit(0,&next)',
+         f'namespace detail {{ constexpr unsigned restore_filter_count={restore_filter_count()}; }}',
+         ('emit_stub',)),
+        ('chase_lead','chase_lead.cpp','emit','emit(0,&next)','',()),
+        ('chase_aim_trace','chase_aim_trace.cpp','emit','emit(0,&next)','',()),
     )
     chunks=[COUNTING_EMITTER]
     calls=[]
-    for label,filename,name,call in emitters:
+    for label,filename,name,call,prelude,helpers in emitters:
         source=(ROOT/'src/proxy'/filename).read_text()
         if filename=='game_phases.cpp':
             source=source.replace('void* emit(unsigned index,void*** next_out);','')
-        body=extract_named_function(source,name)
-        chunks.append(f'namespace {label} {{\n{body}\n}}')
+        bodies=[extract_named_function(source,helper) for helper in helpers]
+        bodies.append(extract_named_function(source,name))
+        body='\n'.join(bodies)
+        chunks.append(f'namespace {label} {{\n{prelude}\n{body}\n}}')
         calls.append(
             f'next=nullptr;last={{}};if(!{label}::{call}||!next)return 2;'
             f'std::printf("{label} %u %u\\n",last.reserve,last.used);')
@@ -134,9 +150,12 @@ class SourceAndReplay(unittest.TestCase):
         emitted={}
         for line in run.stdout.splitlines():
             name,reserve,used=line.split();emitted[name]=(int(reserve),int(used))
+        # chase_transition reserves 320 since 123f98d (chase view restore):
+        # emit() shares emit_stub with the filtered restore path, whose
+        # prefilter is sized into the same reservation. Emitted bytes unchanged.
         self.assertEqual(emitted,{
             'resource_reader':(48,32),'game_phases':(192,128),
-            'chase_camera':(160,124),'chase_transition':(192,128),
+            'chase_camera':(160,124),'chase_transition':(320,128),
             'chase_lead':(192,128),'chase_aim_trace':(176,128),
         })
 
@@ -157,9 +176,11 @@ class SourceAndReplay(unittest.TestCase):
         match=re.search(r'SiteSpec spec\{"resource_read",reader_va,\{\},(\d+),0,0\}',reader)
         self.assertIsNotNone(match)
         families['resource_reader']=[int(match.group(1))]
+        # chase_transition carries 16 rows since 123f98d added the seven
+        # byte-verified chase view restore sites.
         self.assertEqual({name:len(value) for name,value in families.items()},
                          {'resource_reader':1,'game_phases':47,'chase_camera':1,
-                          'chase_transition':9,'chase_lead':9,'chase_aim_trace':4})
+                          'chase_transition':16,'chase_lead':9,'chase_aim_trace':4})
         lead_rows=probe.common.parse_source_specs((ROOT/'src/proxy/chase_lead.cpp').read_text())
         self.assertEqual([row['name'] for row in lead_rows],[
             'chase_lead_gate','chase_lead_publish','chase_lead_final_fov',
@@ -196,8 +217,8 @@ class SourceAndReplay(unittest.TestCase):
             return True,cursor
 
         accepted,used=admit(capacity)
-        self.assertTrue(accepted);self.assertEqual(used,10724)
-        self.assertEqual(capacity-used,5660)
+        self.assertTrue(accepted);self.assertEqual(used,11792)
+        self.assertEqual(capacity-used,4592)
         self.assertGreaterEqual(capacity-used,max(reserve for reserve,_ in operations))
         self.assertEqual(admit(8192)[0],False)
         old_game=23
@@ -208,8 +229,8 @@ class SourceAndReplay(unittest.TestCase):
             selected=families[name][:old_game] if name=='game_phases' else families[name]
             for length in selected:
                 old_operations.extend(((length+23,claim_used(length)),(reserve,stub_used)))
-        self.assertEqual(admit(16384,old_operations),(True,7056))
-        self.assertEqual(admit(8192,old_operations),(True,7056))
+        self.assertEqual(admit(16384,old_operations),(True,8124))
+        self.assertEqual(admit(8192,old_operations),(True,8124))
         # The production '>' guard admits an exact fit and rejects one byte over.
         largest=max(reserve for reserve,_ in operations)
         self.assertEqual((8192-largest)+largest,8192)

@@ -1068,8 +1068,10 @@ def main():
         if args.mode in ('mrt-original','mrt-coverage','mrt-pass','mrt-fused','source-gain'):
             assert originals=={name:sha(args.programs/name) for name in originals},'original corpus changed during run'
             result['transformed_sha256']={f'ps_{name}-{g}.bin':sha(variants/f'ps_{name}-{g}.bin') for name in ORIGINAL_PS for g in range(5)}
-            result['source_gain_sha256']={f'ps_{name}-source-{g}.bin':sha(variants/f'ps_{name}-source-{g}.bin') for name in ORIGINAL_PS for g in range(4)}
+            # Only --source-gain writes the four -source-<g> variants per PS
+            # (linear_emission_fixture.cpp): every other mode leaves them absent.
             if args.mode=='source-gain':
+                result['source_gain_sha256']={f'ps_{name}-source-{g}.bin':sha(variants/f'ps_{name}-source-{g}.bin') for name in ORIGINAL_PS for g in range(4)}
                 assert all(sha(variants/f'ps_{name}-source-0.bin')==sha(args.programs/f'ps_{name}.bin') for name in ORIGINAL_PS),'gain 1 variant bytes differ from the original'
             if args.mode in ('mrt-coverage','mrt-pass','mrt-fused'):
                 result['coverage_transformed_sha256']={f'ps_{name}-{g}-coverage.bin':sha(variants/f'ps_{name}-{g}-coverage.bin') for name in ORIGINAL_PS for g in range(5)}

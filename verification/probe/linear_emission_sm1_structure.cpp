@@ -74,7 +74,8 @@ int main(int argc,char** argv) {
             }
             output=sentinel;
             require(linear_emission_sm1_pixel_variant(original.data(),original.size(),{1,LinearEmissionSm1Outputs::PackedScreen,true},output)==LinearEmissionResult::InvalidConfig && output==sentinel,"packed PP refused");
-            for(int invalid:{0,5,-1}) {
+            // 5 is AdditiveGain since c40ee94; 6 is the first unused enumerator.
+            for(int invalid:{0,6,-1}) {
                 output=sentinel;require(linear_emission_sm1_pixel_variant(original.data(),original.size(),{1,static_cast<LinearEmissionSm1Outputs>(invalid)},output)==LinearEmissionResult::InvalidConfig && output==sentinel,"invalid mode");
             }
             output=sentinel;require(linear_emission_sm1_pixel_variant(original.data(),60,{},output)==LinearEmissionResult::UnsupportedShader && output==sentinel,"bound");

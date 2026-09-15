@@ -143,6 +143,10 @@ void MotionOutput::release_composition_identity() noexcept {}
 renderer::LinearEmissionPass::~LinearEmissionPass() = default;
 renderer::AmbientOcclusionPass::~AmbientOcclusionPass() = default;
 bool renderer::LinearEmissionPass::reference_accounting_busy() const noexcept { return false; }
+bool renderer::LinearEmissionPass::coverage_valid() const noexcept { return true; }
+// Shadow-replay candidate publication is a separate per-frame diagnostic with
+// its own fixture; scene_end_hook only has to reach it.
+void MotionOutput::publish_shadow_replay_candidates() noexcept {}
 HRESULT MotionOutput::readback_surface(IDirect3DSurface9*, D3DFORMAT, unsigned, const wchar_t*,
                                      const wchar_t*, const char*, const char*, UINT, UINT) noexcept {
     active->calls.push_back(10); return S_OK;

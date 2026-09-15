@@ -55,6 +55,18 @@ def stats(data):
             if operand['register_type']==10: samplers.add(operand['register'])
     return slots,max(temps,default=-1)+1,len(samplers)
 
+# Frozen comparison point for the ordinary (mode 0) transform. It was 2cf65ae
+# until 5b3b5c3 ("Repair pixel shader constant read ports with GPU parity
+# evidence") intentionally changed every affected pixel variant: SM3 permits one
+# distinct float constant source per instruction, so the sanitizer's constant is
+# now staged through a full-precision mov. That reviewed delta is proved
+# instruction by instruction against pre-repair 8722072 in
+# test_linear_material_constant_port.py and recorded in
+# docs/verification/linear-material-constant-port.md, so this differential net
+# moves forward to the repaired implementation instead of restating that proof.
+BASELINE = '5b3b5c3'
+
+
 class DistanceFadeProducer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -68,11 +80,11 @@ class DistanceFadeProducer(unittest.TestCase):
         cls.work=Path(cls.temp.name)
         cls.driver=cls.work/'driver'
         baseline=cls.work/'baseline.cpp'
-        baseline.write_bytes(subprocess.check_output(['git','show','2cf65ae:src/renderer/linear_material.cpp'],cwd=ROOT))
+        baseline.write_bytes(subprocess.check_output(['git','show',BASELINE+':src/renderer/linear_material.cpp'],cwd=ROOT))
         # The XT fragment is included by that translation unit and has moved on
         # with the transformer, so the baseline compiles against its own copy.
         (cls.work/'linear_xt_material_inc.h').write_bytes(
-            subprocess.check_output(['git','show','2cf65ae:src/renderer/linear_xt_material_inc.h'],cwd=ROOT))
+            subprocess.check_output(['git','show',BASELINE+':src/renderer/linear_xt_material_inc.h'],cwd=ROOT))
         common=[compiler,'-std=c++17','-O2','-Wall','-Wextra','-Werror','-I',str(ROOT/'src/renderer'),
                 str(ROOT/'verification/probe/linear_distance_fade_structure.cpp'),str(ROOT/'src/renderer/material_motion.cpp')]
         for extra,target in (([str(ROOT/'src/renderer/linear_material.cpp')],cls.driver),

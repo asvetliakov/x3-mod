@@ -314,6 +314,7 @@ static unsigned shutdown_under_lock=0;
 static void shutdown() noexcept {if(hook_guard_depth)++shutdown_under_lock;}
 }
 namespace chase_camera { static void note_last_device() noexcept {} }
+namespace lod_scale { static void refresh() noexcept {} } // X3M_LOD_SCALE mirror refresh called from the Reset/Present paths (src/proxy/lod_scale.h); no-op on the host
 namespace resource_reader { static void report() noexcept {} }
 namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }
 namespace voice_dmo_fallback { static void shutdown() noexcept {} } // disarms the fault witness at the last device destroy (capture.cpp, voice DMO fallback hook)
