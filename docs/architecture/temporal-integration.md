@@ -775,8 +775,15 @@ coarse for the integrated result. The customary correction is a negative
 `D3DSAMP_MIPMAPLODBIAS` on the material samplers; the intended value here is
 **−0.5**, applied only while the jitter is active and only on the routed
 draws. Switch: `X3M_TAA_MIP_BIAS=<float>` (`tools/manage.py launch --taa
---taa-mip-bias -0.5`); unset or `0` is off and bit-identical to before, which
-the fixture proves ([taa-mip-bias.md](../verification/taa-mip-bias.md)).
+--taa-mip-bias <bias>`). **Since the user decision after run 27 (2026-09-16)
+−0.5 is the default whenever `--taa` is on**: the launcher always forwards
+`X3M_TAA_MIP_BIAS` in TAA mode (at −0.5 unless `--taa-mip-bias` overrides it),
+so a stale shell value cannot change it, and the DLL falls back to the same
+−0.5 when `X3M_TAA=1` and the variable is unset or unparsable. An explicit
+`--taa-mip-bias 0` (`X3M_TAA_MIP_BIAS=0`) still disables the bias and is
+bit-identical to the unbiased route, which the fixture proves
+([taa-mip-bias.md](../verification/taa-mip-bias.md)). Without TAA the bias
+stays off.
 
 **Why −0.5.** A mip level halves the sampling rate per axis (LOD +1 ≙ one
 octave). With the route's jitter sequence, four consecutive frames place the
@@ -869,9 +876,14 @@ Run 2 of iteration 9 ([iteration-09-run2.md](../verification/iteration-09-run2.m
 found no knob inside the resolve. The remedy is therefore outside it: a
 robust contrast-adaptive sharpen of the **display image only**, behind
 `X3M_TAA_SHARPEN=<0..1>` (`tools/manage.py launch --taa-sharpen`, requires
-`--taa`). 0 or unset is the pass off and every route is bit-identical to
-before (the sharpen program is not even created); 1 is the strongest
-setting.
+`--taa`). **Since the user decision after run 27 (2026-09-16) the default is
+0.75 whenever `--taa` is on**: the launcher always forwards
+`X3M_TAA_SHARPEN` in TAA mode (0.75 unless `--taa-sharpen` overrides it), so a
+stale shell value cannot change it, and the DLL falls back to the same 0.75
+when `X3M_TAA=1` and the variable is unset or unparsable. An explicit
+`--taa-sharpen 0` (`X3M_TAA_SHARPEN=0`) is the pass off and every route is
+bit-identical to the unsharpened one (the sharpen program is not even
+created); 1 is the strongest setting. Without TAA the sharpen stays off.
 
 **Algorithm** (`src/temporal/rcas.hlsl`, our HLSL reimplementation of the
 RCAS AMD published with FidelityFX Super Resolution 1.0, MIT): the five-tap

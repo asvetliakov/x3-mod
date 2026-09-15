@@ -517,7 +517,7 @@ public:
     // path (>= 0; 0 is the unweighted resolve); negative selects the derived
     // value (the write-back's exposure multiplier, see the latch).
     void configure_taa_k(float k) noexcept { taa_k_override_ = k; }
-    // X3M_TAA_MIP_BIAS=<float> (0: off, the default; -0.5 intended): the
+    // X3M_TAA_MIP_BIAS=<float> (-0.5 by default with the TAA resolve, 0: off): the
     // D3DSAMP_MIPMAPLODBIAS the route applies while the jitter is active to
     // every sampler stage a routed draw samples a mip chain through (texture
     // with more than one level and MIPFILTER other than NONE), set once per
@@ -617,8 +617,9 @@ public:
     void before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
     void sampler_state_failed(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
     // X3M_TAA_SHARPEN in [0, 1]: post-resolve RCAS of the display image
-    // (docs/architecture/temporal-integration.md "Post-resolve sharpen"); 0
-    // (default) leaves both routes bit-identical to the unsharpened ones. On
+    // (docs/architecture/temporal-integration.md "Post-resolve sharpen"); 0.75
+    // by default with the TAA resolve, and an explicit 0 leaves both routes
+    // bit-identical to the unsharpened ones. On
     // the 8-bit route the pass draws it in place of the copy-back; on the HDR
     // route the write-back's sharpened program draws it (configure_hdr's
     // HdrConfig::sharpen carries the same value to the pass).

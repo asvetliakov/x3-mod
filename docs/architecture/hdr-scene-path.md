@@ -1079,7 +1079,7 @@ the 8-bit route of temporal step 3 is untouched bit for bit; with
 `X3M_TAA=0` stages 1 and 2 are unchanged.
 
 * `X3M_TAA_SHARPEN=<0..1>` (`--taa-sharpen`, requires `--taa`; added after
-  stage 3): the write-back that samples the resolved image runs the RCAS
+  stage 3; default 0.75 with `--taa` since 2026-09-16, 0 disables): the write-back that samples the resolved image runs the RCAS
   variant of its program — identity+RCAS, or AgX on each of the five taps
   followed by RCAS, i.e. sharpened after the tonemap — and never touches the
   published history; 0 or unset keeps the stage-3 programs bit for bit

@@ -183,3 +183,22 @@ Run one at a time under the machine-wide Wine runner lock
 
 `build/d3d9.dll` SHA-256 (RelWithDebInfo, the DLL the motion-output suite
 ran): `43f8bc2d1e04bf7b9b86a87e826d92d9c7dbe2db1f0067f9410764b4b3cc8ffc`.
+
+## 2026-09-16 — sharpen 0.75 and mip bias −0.5 become the TAA defaults
+
+User decision after run 27: with `--taa` on, `X3M_TAA_SHARPEN=0.75` and
+`X3M_TAA_MIP_BIAS=-0.5` are the defaults. The launcher always forwards both in
+TAA mode (stale-shell-proof, like the chase framing constants) and drops them
+outside it; the DLL falls back to the same pair only when `X3M_TAA=1`, so a
+direct `WINEDLLOVERRIDES` start matches. An explicit `0` still disables either
+and keeps the bit-identical route (the sharpen program is not created).
+
+| Step | Result |
+| --- | --- |
+| `python3 -m unittest test_taa_image_defaults` (`PYTHONPATH=../probe`, from `verification/analysis`) | 6 tests OK (new module: defaults, stale-value override, explicit 0, dropped without TAA, refusals, DLL fallback gating) |
+| `python3 -m unittest` over the 17 launcher/TAA-adjacent analysis modules | 219 tests, 1 pre-existing failure unrelated to this change (`test_linear_material_live.test_production_control_flow`: the `composition_blend_index` extraction fails on the unmodified tree too) |
+| `cmake --build build -j4` + `check_no_x87.py build/d3d9.dll` | clean build; PASS, no violations over 230 reachable functions |
+| `./x3run --camera chase --motion-output --ownership --object-trace --object-lifetime --taa --hdr --hdr-tonemap --dry-run` | `X3M_TAA_MIP_BIAS=-0.5`, `X3M_TAA_SHARPEN=0.75`; with `--taa-sharpen 0 --taa-mip-bias 0` both `0.0` |
+
+`build/d3d9.dll` SHA-256 (RelWithDebInfo, this worktree, not an install
+candidate): `a2d6047d19edfefac095da5533922c7213a40b82564e81842311f57dd8f27f9c`.

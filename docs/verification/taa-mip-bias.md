@@ -166,3 +166,8 @@ reachable functions, no violation) and the analysis unit tests (712) pass.
 - The capture's own `sampler … state=8 bias=` lines show the application's
   value, because capture frames restore before every draw's diagnostics.
 - CrossOver Preview builtin D3D9 only; Windows is cross-compiled, not verified.
+
+2026-09-16: −0.5 became the default whenever `--taa` is on (launcher and DLL
+fallback); an explicit `0` still selects the bit-identical unbiased route the
+cases above prove. Evidence: [taa-sharpen.md](taa-sharpen.md), section
+"2026-09-16".

@@ -21,6 +21,12 @@ WINE = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOve
 # 2026-09-16, docs/architecture/chase-hud-reticle-survey.md); they match the
 # DLL's own fallback in src/proxy/chase_camera_math.h.
 CHASE_FRAMING_DEFAULTS = {'X3M_CHASE_PITCH_DOWN_DEG': 0.5, 'X3M_CHASE_OFFSET_Y': 0.50}
+# TAA image defaults the launcher always forwards in TAA mode (user selection
+# after run 27, 2026-09-16, docs/architecture/temporal-integration.md); they
+# match the DLL's own fallback in src/proxy/capture.cpp. An explicit 0 still
+# disables either one and keeps the bit-identical route.
+TAA_MIP_BIAS_DEFAULT = -0.5
+TAA_SHARPEN_DEFAULT = 0.75
 
 
 def digest(path):
@@ -114,8 +120,8 @@ def main():
     parser.add_argument('--taa', action='store_true', help='Run the temporal resolve at the bloom copy and present the resolved image (requires --motion-output; implies --motion-jitter; temporal step 3)')
     parser.add_argument('--taa-debug', action='store_true', help='Write the pre-resolve color, the resolved FP16 image and the presented main target (after the sharpen draw / copy-back or the HDR write-back) in capture frames (requires --taa)')
     parser.add_argument('--taa-k', type=float, default=None, help='Fixed k of the resolve luminance weighting on the FP16 scene, 0 = unweighted (X3M_TAA_K; requires --taa and --hdr; default: derived from the write-back exposure)')
-    parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; intended value -0.5 for the 4-sample jitter; default: off)')
-    parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; unset or 0 leaves the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
+    parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; the value for the 4-sample jitter; default -0.5 with --taa; 0 disables)')
+    parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
@@ -433,10 +439,16 @@ def main():
         env['X3M_TAA_DEBUG'] = '1' if args.taa_debug else '0'
         if args.taa_k is not None:
             env['X3M_TAA_K'] = repr(args.taa_k)
-        if args.taa_mip_bias is not None:
-            env['X3M_TAA_MIP_BIAS'] = repr(args.taa_mip_bias)
-        if args.taa_sharpen is not None:
-            env['X3M_TAA_SHARPEN'] = repr(args.taa_sharpen)
+        # The mip bias and the post-resolve sharpen are always forwarded in TAA
+        # mode, at the production defaults when unset, so a stale shell value
+        # can neither change nor enable them; an explicit 0 disables one and
+        # keeps its bit-identical route. Outside TAA mode both are dropped.
+        if args.taa:
+            env['X3M_TAA_MIP_BIAS'] = repr(TAA_MIP_BIAS_DEFAULT if args.taa_mip_bias is None else args.taa_mip_bias)
+            env['X3M_TAA_SHARPEN'] = repr(TAA_SHARPEN_DEFAULT if args.taa_sharpen is None else args.taa_sharpen)
+        else:
+            env.pop('X3M_TAA_MIP_BIAS', None)
+            env.pop('X3M_TAA_SHARPEN', None)
         env['X3M_TAA_SENTINEL'] = args.taa_sentinel
         env['X3M_CAMERA_CUT_DEG'] = repr(args.camera_cut_deg)
         env['X3M_CAMERA_LOG'] = str(args.camera_log)

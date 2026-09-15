@@ -63,14 +63,16 @@ bool motion_output_requested = false;
 bool motion_jitter_requested = false;
 bool taa_requested = false, taa_debug_requested = false;
 float taa_k_override = -1.f; // X3M_TAA_K (stage 3): fixed k of the resolve's luminance weighting on the HDR path; negative: derived from the exposure
-// X3M_TAA_MIP_BIAS=<float> (default 0 = off, bit-identical; -0.5 intended):
-// D3DSAMP_MIPMAPLODBIAS the route applies to the mip-mapped stages of routed
-// draws while the jitter is on (docs/architecture/temporal-integration.md,
-// "Mip LOD bias"); installs the light SetTexture/SetSamplerState hooks.
+// X3M_TAA_MIP_BIAS=<float> (default -0.5 with X3M_TAA=1, otherwise 0 = off,
+// bit-identical): D3DSAMP_MIPMAPLODBIAS the route applies to the mip-mapped
+// stages of routed draws while the jitter is on (docs/architecture/
+// temporal-integration.md, "Mip LOD bias"); installs the light
+// SetTexture/SetSamplerState hooks. An explicit 0 disables it.
 float taa_mip_bias = 0.f;
-// X3M_TAA_SHARPEN=<0..1> (requires X3M_TAA=1): post-resolve RCAS of the display
-// image on both routes (docs/architecture/temporal-integration.md,
-// "Post-resolve sharpen"); 0 or unset: off, bit-identical output.
+// X3M_TAA_SHARPEN=<0..1> (requires X3M_TAA=1, default 0.75 there): post-resolve
+// RCAS of the display image on both routes (docs/architecture/
+// temporal-integration.md, "Post-resolve sharpen"); an explicit 0 is off, with
+// bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
@@ -2036,13 +2038,18 @@ void initialize_log(HMODULE module) {
     // exposure (0 is a valid override, so a failed conversion, which wcstof
     // reports as 0, must not be taken: the whole string has to be consumed).
     if(GetEnvironmentVariableW(L"X3M_TAA_K",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=65504.f)taa_k_override=v;}
-    // X3M_TAA_MIP_BIAS=<bias> (-8 <= bias <= 8, whole string consumed; 0, unset
-    // or invalid: off): requires the route with the jitter (X3M_TAA=1 or
-    // X3M_MOTION_JITTER=1); the bias is applied only while the jitter is active.
+    // X3M_TAA_MIP_BIAS=<bias> (-8 <= bias <= 8, whole string consumed; unset or
+    // invalid: -0.5 with the TAA resolve on, otherwise off): requires the route
+    // with the jitter (X3M_TAA=1 or X3M_MOTION_JITTER=1); the bias is applied
+    // only while the jitter is active. An explicit 0 disables it (the launcher
+    // always forwards a value in TAA mode, so this fallback covers a direct
+    // WINEDLLOVERRIDES start).
+    taa_mip_bias=taa_requested?-0.5f:0.f;
     if(motion_jitter_requested && GetEnvironmentVariableW(L"X3M_TAA_MIP_BIAS",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=-8.f&&v<=8.f)taa_mip_bias=v;}
     // X3M_TAA_SHARPEN=<s> (0 <= s <= 1): the post-resolve sharpen; the whole
     // string must parse (0 is off, so a failed conversion must not be taken).
-    taa_sharpen=0.f;
+    // Unset or invalid with the resolve on: 0.75; off entirely without TAA.
+    taa_sharpen=taa_requested?0.75f:0.f;
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_SHARPEN",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_sharpen=v;}
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
