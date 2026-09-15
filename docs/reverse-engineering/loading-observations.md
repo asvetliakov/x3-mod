@@ -87,3 +87,45 @@ The 89-second presentation gap still lacks a complete attribution. Preserve that
 Since 2026-09-14 the proxy writes `loading_phase name=<menu_shown|save_load_begin|save_load_complete> frame=<n> elapsed_ms=<t> stall_ms=<g> device=<d> qpc=<q>` once per name per process, in every mode (no `X3M_GAME_PHASES`, no engine site), from the Present path (`game_phases::loading_phase_present`, value core `detail::LoadingPhases` in `game_phases_core.h`). `elapsed_ms` shares the `frame_end` origin (DllMain QPC). The derivation is Present cadence alone. In the local, untracked snapshots `/tmp/x3-bottleX3-run39`–`run46` (not in `verification/results/`) the splash frames 0–4 present ≤ 1.8 s apart, the menu load then holds frame 4 for 5.3–6.4 s, the menu presents at ≈45 fps for as long as the user dwells, and the save load holds one frame for 14–19 s; the tracked census JSON above shows a 12.55 s hold at frame 4 and an 88.6 s hold at frame 1578. The 3 s threshold is therefore a working assumption to be confirmed on run 20's log. A Present-to-Present gap of ≥ 3 s on the same device id and reset generation is a stall; the first stall's ending Present is `menu_shown`; the next stall is the save (or new-game) load, `save_load_begin` being the last Present before it (its own frame/stamp, but the line is written together with `save_load_complete` when the stall ends, since the proxy cannot know a gap will become a stall until the next Present arrives) and `save_load_complete` the Present ending it (`stall_ms` = the gap). Later stalls (sector change, return to menu) never re-emit, and once all three are written the Present path skips the clock. Cost: one QueryPerformanceCounter and a few compares per Present, no allocation or locking beyond the capture mutex already held. `tools/analysis/analyze_loading_phases.py::extract_loading_phases` reads the lines (`loading_phases` key of the report: `menu_ms`, `menu_to_save_ms`, `save_load_ms`). Limits: a menu load shorter than 3 s (faster machine, warm cache) would shift every marker one stall later; a ≥ 3 s stall between the first two Presents of the process is labelled `menu_shown`; the gap that spans a device change or an in-place Reset (`reset_generation`) only re-anchors and is never a stall, so a pause caused by the Reset itself does not consume a marker, but any other ≥ 3 s stall while in the menu is labelled as the save load; two devices presenting alternately never anchor a same-device gap and detect nothing. A true begin-time marker needs an engine site, not added here: the candidate is the save-load entry that opens the `.sav` gz stream (the `gzopen` import row, `savegame-gz-stream.md`), or the menu handler that starts it; validating it requires the exact instruction boundary at the installed EXE, the incoming edges (New Game and Load Game both reach it), and that the site is not reached by autosave or quick-save writes, checked with `verify_game_phase_sites.py` before any claim.
 
 First in-game readings, user run 20 (snapshot `/tmp/x3-bottleX3-run48/`, log `session-20260915-002408-212.log`, 335 MB, installed DLL `39b090d0…` from `77a649b`; log queried, never read whole): `menu_shown frame=4 elapsed_ms=12888 stall_ms=7136`, `save_load_begin frame=288 elapsed_ms=19214`, `save_load_complete frame=289 elapsed_ms=40917 stall_ms=21702`; `analyze_loading_phases.py --completed` derives `menu_ms=12888`, `menu_to_save_ms=6326`, `save_load_ms=21703` with 0 rejected, and the session runs on to `frame_end frame=600 elapsed_ms=45655`. All three markers fired once, in order, on device 1, and the 3 s rule labelled both stalls as intended: the 7.1 s hold at frame 4 is the menu load and the 21.7 s hold at frame 288 is the save load, matching the run-39–run46 shape (5.3–6.4 s menu, 14–19 s save) at the slower end. The working assumption of the threshold is therefore confirmed on a real session. The 21.7 s save load is the attribution target for the texture/mesh/inflate priorities above; the markers bound it but do not attribute it.
+
+
+### Run 48: bounded attribution of the save-load interval (2026-09-15)
+
+The marker QPC interval `11469072812824–11469289837332` spans exactly
+**21,702.451 ms**, frames 288→289 (`elapsed_ms=19214–40917`, rounded marker
+`stall_ms=21702`). Streamed queries of the existing 335 MB snapshot identify
+fully enclosed counter windows from 23.368 to 40.704 s, covering 17.337 s.
+Exclusive timing removes direct same-thread nested loading hooks; it does not
+serialize time across threads. Their summed exclusive loading-hook timers are
+**8.691 s**, with these largest
+contributors:
+
+| Hook category | Summed time | Calls |
+| --- | ---: | ---: |
+| CreateFileA | 3.430 s | 700 |
+| Mesh create, clean, adjacency and optimise | 2.851 s | 13,369 |
+| 2D texture helper | 0.891 s | 658 |
+| Directory enumeration | 0.874 s | 4,345 |
+| ReadFile | 0.281 s | 3,556 |
+| XML | 0.239 s | 790 |
+
+These are counter sums, **not a union of wall-time intervals**. The reports do
+not retain individual call intervals or thread identities needed to reconstruct
+that union. Boundary windows leave the first 4.154 s and last 0.212 s of the
+stall without wholly enclosed counter attribution.
+
+Resource-reader cumulative deltas in the enclosed samples show 2,075 calls,
+2,040 handled, 686.4 MB output and 3.118 s of outer fast-path time, including
+2.812 s inflate and 0.272 s read time. These timers overlap the loading-hook
+counters and must not be added to 8.691 s. In particular, subtracting 8.691 s
+from 21.702 s does **not** establish a 13.012 s residual. File opening and mesh
+processing are measured priorities; exact stall attribution remains open.
+A next diagnostic must retain timed call intervals with thread identity or
+another validated interval-attribution mechanism. No new loading instrumentation
+or game run was used for this reduction.
+
+Reproducer and validated compact result are local:
+`/tmp/x3-loading-run48-attribution/run48_attribution.py` and
+`run48_attribution.json` (input SHA-256 `dc3191c3…2369a87b`; 10 fully enclosed
+and 12 intersecting counter windows). The script streams the snapshot and checks
+newline completion, phase QPCs and boundary rules; it makes no residual claim.
