@@ -49,7 +49,10 @@ The fill default remains 0 pending the user's appearance verdict.
 Next: the ratified chase HUD anchor (`centre` default); a gate-jump and jumpdrive
 telemetry run must precede view-restoration implementation. Shadows follow the ratified
 route-B order: sun-lit-share lane, replay feasibility without shading, then cascades;
-screen-space shadows are fallback only. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
+screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
+now covers all 108 pixel originals; the receiver/capability boundary is ratified
+in the shadow note, with portable depth-history channel copying required. No
+shadow lane or replay is implemented yet. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
 exact wall-time attribution open ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.

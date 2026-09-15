@@ -277,3 +277,165 @@ Route A is reserved for infeasible replay, not a required combined pass.
   end (a Lock counter over one run).
 - **Far-pixel precision**: at 40 km (200,000 units) the depth quantization is 0.4 units
   (8 cm), far below `T`; at zf the march is meaningless and the term is 1 by the sentinel.
+
+## 8. Receiver publication contract — ratified for the first lane checkpoint (2026-09-15)
+
+**Status: ratified by the orchestrator for the first lane checkpoint.** This bounds the first
+default-off lane deployment. It preserves the ratified lane → replay feasibility
+→ cascades order; no screen-space shadow implementation is a prerequisite.
+The receiver exclusions, unclipped FP16 radiance domain and point-sampled `.r`
+history copy below are selected. Use `epsilon = 2^-20` (exactly representable). Earlier §2's five-slot estimate and
+§7's glass uncertainty are superseded as evidence by the
+[108-program extraction contract](../reverse-engineering/sun-share-material-contract.md).
+That contract measured 152 sun MADs and requires parallel RGB propagation; it
+does not yet prove generated shaders or framebuffer ownership.
+
+### Recommendation: source extraction and receiver validity are separate
+
+- Build and qualify extraction for **all 108 ordinary converted PS originals**:
+  90 hull/asteroid/palette, four glass, 14 XT. S includes the authored sun diffuse
+  and gloss, effective palette/albedo and XT occlusion; fill, D1, reflection,
+  point light and emission contribute only to L. Glass is not a zero-sun family.
+  Expose per-program extraction success independently of receiver admission,
+  so a blended glass refusal cannot masquerade as successful zero extraction.
+- Publish a receiver share only for ordinary unblended, depth-writing draws and
+  the exact already-qualified alpha-tested cutout state. Opaque glass is eligible
+  under the same state contract. The existing gate requires blend off and accepts
+  only the exact cutout arm (`src/proxy/motion_output.cpp:3674`); the alpha test
+  must discard color, depth and share together. Requalify its format-specific
+  capability query when RT2 changes (`motion_output.cpp:783`).
+- A receiver stores `(depth, f)`; invalid radiance/unsupported extraction with
+  valid ordinary depth stores `(depth, -1)`, distinguished from proved `f=0`.
+  The existing empty-depth clear remains `(-1,0)`. Validate `.r` and `.g` together
+  before consuming. Preserve depth `.r`, alpha, motion and discard ordering;
+  no later whole-register depth output may overwrite the share.
+- **Blended glass, native source-over cutout, detached fade and the fused
+  fade-band arm are not first-version receivers.** Native source-over cutout is
+  deliberately exempt from a TAA miss (`src/proxy/linear_cutout.h:24`), which
+  establishes no shadow-share validity. The fused fade arm masks RT2 entirely
+  (`motion_output.cpp:426,445`); neither its retained background depth nor a
+  source-only f describes the new owning color. Do not enable RT2 writes there
+  or infer opaque coverage from the fade threshold.
+- At scene end, exclude pixels covered by the **valid, same-frame composition
+  coverage M**, even if their RT2 still describes an earlier opaque receiver.
+  This conservatively excludes additive/screen composition too: their changes
+  to L also stale the denominator. If a successful later scene color draw has
+  no proved same-draw receiver update or conservative coverage (including native
+  blended glass and refused composition), mark the **shadow frame unavailable**
+  once an eligible receiver has been written. Do not guess overlap or reuse an
+  earlier share. This flag alone must not invalidate ordinary TAA. Unknown
+  coverage/state or failed publication also prevents shadow consumption.
+  This conservative first boundary may exclude many live frames; report admitted
+  receiver pixels and frame-refusal reasons before claiming useful coverage.
+
+### Final color and the scalar approximation
+
+First consumer domain: active FP16 owning target with the established gamma-2.2
+material encoding, finite nonnegative L and S, componentwise `S <= L`, and no
+output sanitizer clipping (`L <= 65504`). Compute S and L after the final material
+RGB instruction, before transfer overwrites r11 (`linear_material.cpp:1210`;
+`linear_xt_material_inc.h:282`). The sanitizer and encoder are explicit in
+`linear_material.cpp:570`. Any violated domain gets invalid share, not a
+sanitized numerator silently claimed to be exact. Eight-bit ownership and other
+compatibility decode modes are initially consumer-disabled: target clamping is
+another nonlinear operation not represented by the material ratio.
+
+For `Y(L) >= epsilon`, use `f = Y(S)/Y(L)`. Then
+`Y(L * (1 - f*(1-s))) = Y(L - (1-s)*S)` in real arithmetic. **Luminance is exact
+in this domain; RGB hue is generally approximate.** Encoded FP16 storage and
+blend rounding add numerical error, so this is not a bit-exact GPU claim. Exact
+black with zero S is valid f=0; nonzero sub-epsilon L is invalid in the first
+consumer policy. Saturation may guard roundoff but must not conceal an invalid
+S/L decomposition. Multiplying the encoded owning color by the gamma-encoded
+scalar preserves this identity only for the matching unclipped transfer.
+
+Clipped/displayed-radiance approximation is an alternative for later ratification,
+not the initial policy. Substituting sanitized L in the denominator does not
+restore the unclipped shadow law. Exact per-channel sun removal needs more than
+one scalar lane; a scalar with fixed f also cannot reproduce clipping transitions
+for every shadow strength s.
+
+### Fade ordering and a later blended-receiver alternative
+
+The detached producer emits linear source L into oC1 and conservative coverage
+into oC2, not the temporal RT2 contract (`linear_distance_fade.h:5`;
+`linear_material.cpp:1212`). Its source-over law is
+`Lnew = Q + (1-q)*decode(A)` (the owning
+[fade note](linear-distance-fade.md), composition equation). A future exact
+source attribution needs a matching `Snew = Qsun + (1-q)*Sbackground`, followed
+by a new ratio against **Lnew**. Blending source f values cannot compute it;
+the single existing depth also cannot represent separate shadow visibility of
+transparent foreground and background. Extending that semantic/storage contract
+is an alternative, not implied by proving glass's own S.
+
+The current exchange path publishes only after `finish`, target exchange and
+acknowledgement; the in-place path publishes its completed rectangle on successful
+`finish` (`motion_output.cpp:3429,3450`). Only then may coverage/validity describe
+the final owner. The proposed consumer runs after restored lazy bindings and all
+these brackets, before AO/TAA, at `scene_end_hook` (`motion_output.cpp:1491`).
+Never apply using an intermediate A/B/C, prepublication share or recovered-native
+color with a previously valid share. First-version coverage exclusion avoids
+changing this transaction or adding sun resources to the fade pool.
+
+### RT2 capability boundary, ordinary TAA and native Windows
+
+Keep the existing R32F path when the option is off or unavailable. Gate the
+G32R32F enhancement independently at device/format boundaries: three MRTs,
+`MRTINDEPENDENTBITDEPTHS`, render-target and point-sampling support through
+`CheckDeviceFormat`, depth-stencil compatibility and an actual mixed-format
+write/sample self-test beside the active RT0 and RGBA32F RT1. Cutout/masking needs
+the documented MRT post-pixel-operation capabilities and per-format queries;
+the existing HDR meter's isolated G32R32F allocation proves none of that MRT
+combination. These are documented D3D9 contracts on both platforms
+([MRT rules](https://learn.microsoft.com/en-us/windows/win32/direct3d9/multiple-render-targets),
+[format query](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3d9-checkdeviceformat)).
+
+Changing the allocation alone breaks shared consumers. TAA checks R32F explicitly
+(`src/renderer/temporal_pass.cpp:269`) and copies current depth into R32F history
+with StretchRect (`:310`); AO also rejects non-R32F input
+(`src/renderer/ambient_occlusion_pass.cpp:291`). **Recommend a point-sampled `.r`
+shader copy into the existing R32F history for enhanced RT2**, with format-aware
+input validation. Keep ordinary history and the off-path copy unchanged. This is
+a documented portable conversion, avoids requiring G32R32F→R32F StretchRect,
+and reuses the existing R32F histories. Same-format G32R32F history is a valid
+alternative but adds two enlarged histories. Driver-dependent conversion is not
+a portable prerequisite
+([StretchRect restrictions](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-stretchrect)).
+
+Make allocation/variant selection transactional: unavailable G32R32F or failed
+enhancement creation selects ordinary R32F and ordinary shader variants at a
+safe frame boundary. No G32R32F-specific failure may permanently disable baseline
+TAA. Reset/resize releases and rebuilds the selected resources; shared-state
+restoration failure keeps the existing TAA safety response. Readbacks must use
+the actual RT2 format/stride. Native Windows runtime remains unverified; future
+implementation must record that gap in [platform-portability.md](platform-portability.md),
+separately from documented-API source compatibility and cross-compilation.
+
+### Cost, acceptance and remaining decisions
+
+No per-draw shader transformation, allocations, constant upload or capability
+queries. Reuse cached route state; validity adds bounded draw/frame bookkeeping.
+The RE estimate is 2–12 dependency operations plus six reduction/output
+instructions, before branch/copy and finite-domain checks; count emitted weighted
+slots and register ownership for every variant, rather than retaining §2's +5.
+RT2 adds 4 B/px (3.75 MiB at 1280×768); the recommended depth-history copy adds
+one full-size draw in place of the existing copy, and the future consumer adds
+a coverage read where needed. Measure these costs; no measured FPS claim exists.
+
+Acceptance before release: all 108 source extractions and combined depth modes
+must preserve color/alpha and isolate diffuse/gloss/fill/XT tails; mutation,
+NaN/infinity, clipping, black/epsilon and output-order tests must refuse as above.
+The owner's detached fixture must verify f and scalar **luminance** separately
+from RGB hue error; opaque glass versus source-over glass; alpha-pass/reject
+coverage; interleaved opaque/fade/emission with publication failures; and invalid
+or absent M. Capability/allocation faults, option-off, resize and Reset must
+retain ordinary TAA, with no cross-format StretchRect dependency. This note's
+acceptance is factual/source/link review only; no build, Wine or game run occurred.
+
+The conservative boundary is accepted for proving the lane, not as evidence that
+shadows have useful gameplay coverage. Before cascades ship, measure live receiver
+coverage and refusal reasons; zero useful coverage requires fixing publication
+coverage, not claiming completion through fallback. Retain the existing user-run
+shadow-footprint acceptance (§3) where applicable to the map consumer. A later blended
+receiver contract, clipped/8-bit approximation and native runtime evidence remain
+unresolved, rather than being advertised as supported by the extraction count.
