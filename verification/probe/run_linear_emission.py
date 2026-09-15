@@ -440,6 +440,7 @@ ORIGINAL_PS = ('8360f422de08b5bd','9975b706e5a1c999','ff2473e73a6bdfa1','8559522
 ORIGINAL_VS = ('d5e1c75351ed3f04','32e75459998d0388','089091aab2d5eb13',
     '5b7a3ccd9e7df00a','6435a84d8ac5908e','89193868c61c3846','a520be365951c9dc','cfb2c31707d545bc')
 ORIGINAL_GAINS = (0.,.25,1.,4.,16.)
+SOURCE_GAINS = (1.,2.,3.5,8.)  # source-only encoded gain variants (gain 1 = original bytes)
 
 
 # Pair index is carried in the existing high flag bits. The first five values
@@ -789,6 +790,88 @@ def validate_mrt_report(text,data,cases,branch_experiment=False,actual_original=
 
 
 
+def source_gain_cases():
+    """Every reviewed pair, a flat and a 2x2-textured source, over a zero and a
+    non-zero background: 80 cases, one native draw plus four variant draws each."""
+    cases=[]
+    sources=(op(rect=(0,0,.75,.75),color=(.5,.25,.125,.125),fade=.75,gain=1.),
+             op(rect=(0,0,1,1),color=(.125,.375,.5,.5),fade=.5,gain=1.))
+    for profile in range(20):
+        for textured,source in enumerate(sources):
+            for background in (0,1):
+                c=dict(id=len(cases),label='source_gain',mode=1,mask=0,alpha=0,write=15,fault=0,pattern=0,
+                       flags=32|(profile<<16)|(64 if ORIGINAL_PAIRS[profile][0] in NO_FADE_VS else 0)|(4 if textured else 0)|(32768 if background else 0),
+                       actual_profile=profile,background=background,ops=[copy.deepcopy(source)])
+                for o in c['ops']:o['affine']=int(ORIGINAL_PAIRS[profile][1] in AFFINE_PS)
+                cases.append(c)
+    return cases
+
+
+def half_bits(value):
+    return struct.unpack('<H',struct.pack('<e',value))[0]
+
+
+def half_interval(value):
+    """The real interval an FP16 readback value stands for (half an ULP each way)."""
+    if value==0:return (0.,2.**-25)
+    exponent=max(math.frexp(value)[1]-1,-14)
+    spacing=2.**(exponent-10)
+    return (value-spacing/2,value+spacing/2)
+
+
+def validate_source_gain_report(text,data,cases):
+    """Law: gained = bg + G (native - bg) per colour channel, alpha bit-exact,
+    gain 1 bit-exact. Over the zero background the native readback is the
+    source itself, so the gained channel must be G x native within one FP16
+    code (unclipped); over a non-zero background the tolerance is the FP16
+    half-ULP interval of the native readback propagated through the law,
+    widened by one code."""
+    lines=text.splitlines()
+    rows=[dict(item.split('=',1) for item in line.split()[1:]) for line in lines if line.startswith('SOURCE_GAIN_CASE ')]
+    assert [int(r['id']) for r in rows]==[c['id'] for c in cases],'complete case list'
+    assert all(int(r['pair'])==c['actual_profile'] and int(r['background'])==c['background'] and r['draws']=='5' for r,c in zip(rows,cases))
+    assert any(line.startswith('SOURCE_GAIN_RESULT pass') for line in lines),'fixture result line'
+    n=WIDTH*HEIGHT*4;record=4+4*n*6
+    assert len(data)==record*len(cases),'raw record size'
+    per_gain={g:dict(channels=0,exact=0,within_one=0,max_codes=0,brighter=0,max_value=0.) for g in SOURCE_GAINS[1:]}
+    identity_channels=alpha_channels=covered_total=0
+    for i,c in enumerate(cases):
+        base=i*record;(cid,)=struct.unpack_from('<I',data,base);assert cid==c['id']
+        images=[struct.unpack_from(f'<{n}f',data,base+4+4*n*k) for k in range(6)]
+        cleared,native,identity,*gained=images
+        assert all(math.isfinite(v) for v in native),(c['id'],'finite native')
+        assert struct.pack(f'<{n}f',*identity)==struct.pack(f'<{n}f',*native),(c['id'],'gain 1 variant is not the native image')
+        identity_channels+=n
+        covered=[p for p in range(WIDTH*HEIGHT) if any(native[4*p+k]!=cleared[4*p+k] for k in range(3))]
+        assert covered,(c['id'],'native draw covered no pixel')
+        covered_total+=len(covered)
+        for g,image in zip(SOURCE_GAINS[1:],gained):
+            stat=per_gain[g]
+            for p in range(WIDTH*HEIGHT):
+                assert image[4*p+3]==native[4*p+3],(c['id'],g,p,'alpha changed')
+                alpha_channels+=1
+                for k in range(3):
+                    bg,s,v=cleared[4*p+k],native[4*p+k],image[4*p+k]
+                    assert math.isfinite(v) and v<CAP,(c['id'],g,p,k,'clipped or nonfinite')
+                    if c['background']==0:
+                        expected=half(g*s);codes=abs(half_bits(v)-half_bits(expected))
+                        assert codes<=1,(c['id'],g,p,k,v,expected,codes)
+                    else:
+                        lo,hi=half_interval(s)
+                        low,high=half(bg+g*(lo-bg)),half(bg+g*(hi-bg))
+                        codes=0 if low<=v<=high else min(abs(half_bits(v)-half_bits(low)),abs(half_bits(v)-half_bits(high)))
+                        assert codes<=1,(c['id'],g,p,k,v,(low,high),codes)
+                    stat['channels']+=1;stat['exact']+=codes==0;stat['within_one']+=codes<=1;stat['max_codes']=max(stat['max_codes'],codes)
+                    stat['max_value']=max(stat['max_value'],v)
+                    if s>bg:
+                        assert v>s,(c['id'],g,p,k,'not brighter');stat['brighter']+=1
+                    elif s==bg:
+                        assert v==s,(c['id'],g,p,k,'uncovered channel changed')
+    return dict(cases=len(cases),reviewed_pairs=20,source_gains=list(SOURCE_GAINS),identity_channels=identity_channels,alpha_channels_exact=alpha_channels,
+                covered_pixels=covered_total,per_gain={str(g):v for g,v in per_gain.items()},
+                law='gained = bg + G (native - bg) per colour channel; alpha and gain-1 bit-exact; blend state, draw order and alpha native')
+
+
 def validate_original_report(text,data,cases,coverage=False,component=False,fused_comparison=False):
     result=validate_mrt_report(text,data,cases,actual_original=True,coverage=coverage,component=component,fused_comparison=fused_comparison)
     energy_maximum=native_maximum=0.;alpha_count=0
@@ -893,7 +976,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--exe',type=Path,default=EXE)
     p.add_argument('--raw-dir',type=Path)
-    p.add_argument('--mode',choices=('ordered','mrt','mrt-branch','mrt-original','mrt-coverage','mrt-pass','mrt-fused'),default='ordered')
+    p.add_argument('--mode',choices=('ordered','mrt','mrt-branch','mrt-original','mrt-coverage','mrt-pass','mrt-fused','source-gain'),default='ordered')
     p.add_argument('--programs',type=Path,default=Path('/tmp/x3-shader-sweep/programs'))
     args=p.parse_args()
     if args.raw_dir is None:args.raw_dir=Path('/tmp/x3-linear-emission-gpu'+('-'+args.mode if args.mode!='ordered' else ''))
@@ -901,7 +984,7 @@ def main():
     assert not game_running(),'game running; refused'
     assert args.exe.is_file(),'build the detached EXE explicitly first'
     args.raw_dir.mkdir(parents=True,exist_ok=True)
-    cases=pass_cases() if args.mode in ('mrt-pass','mrt-fused') else coverage_cases() if args.mode=='mrt-coverage' else original_cases() if args.mode=='mrt-original' else mrt_cases() if args.mode!='ordered' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
+    cases=pass_cases() if args.mode in ('mrt-pass','mrt-fused') else coverage_cases() if args.mode=='mrt-coverage' else original_cases() if args.mode=='mrt-original' else source_gain_cases() if args.mode=='source-gain' else mrt_cases() if args.mode!='ordered' else fixture_cases();case_path=args.raw_dir/'cases.bin';case_path.write_bytes(binary_cases(cases))
     report=args.raw_dir/'report.txt';pixels=args.raw_dir/'pixels.bin'
     result=dict(passed=False,bottle=bottle.describe(),game_launched=False,
                 scope='Detached authored D3D9 ordered RGB/actual alpha, closed-world R32F mask producer, drift/cost/fault experiment; no live renderer or native Windows runtime qualification',
@@ -931,7 +1014,7 @@ def main():
         result.update(scope='Detached zero-emission PS3 compositor branch experiment against unchanged baseline; same38 authored MRT cases, no live route or native Windows runtime proof',
             timing_scope='Paired baseline/branch QPC through EVENT completion with alternating order, matching inputs, cached source textures and pre-window fences; native-reference/paired-image readback excluded. Dense union50%, sparse disjoint union3.125%; single-source compositions cover31.25% or1.5625% each',
             comparison='All successful candidate compositions are compared RGBA bit-for-bit from identical A/E/B; native/refusal cases do not execute a compositor. Every case retains the original native-B/zero-lane/alpha/depth checks')
-    if args.mode in ('mrt-original','mrt-coverage','mrt-pass','mrt-fused'):
+    if args.mode in ('mrt-original','mrt-coverage','mrt-pass','mrt-fused','source-gain'):
         originals={stage+'_'+name+'.bin':sha(args.programs/(stage+'_'+name+'.bin'))
                    for stage,names in (('vs',ORIGINAL_VS),('ps',ORIGINAL_PS)) for name in names}
         variants=args.raw_dir/'variants';variants.mkdir(exist_ok=True)
@@ -946,6 +1029,15 @@ def main():
                 'Original VS identity WVP, DEFAULT transformed UV versus INSTANCE direct UV, layout-specific c12/c10 fade and b0 fog paths are exercised; no live material/global constant ownership proof',
                 'Only shared ADD/ONE/ONE with full RGBA writes; inherited alpha tests are feasibility boundaries, not live admission',
                 'No source submission failure recovery, device-loss or HdrPass integration qualification'])
+    if args.mode=='source-gain':
+        result.update(scope='Detached source-only encoded gain of the twenty reviewed pairs: native ADD/ONE/ONE draw versus the colour-MUL PS variant in the same state over zero and non-zero FP16 backgrounds; no live route, bloom or native Windows runtime proof',
+            targets=dict(A='FP16 scene target (cleared background, native and gained images)',depth='D24S8',msaa=False,srgb=False),
+            tolerance=dict(zero_background='G x native within one FP16 code',nonzero_background='native half-ULP interval propagated through bg + G (native - bg), widened by one code',alpha='exact binary16',gain_1='exact image'),
+            timing_scope='No timing pass: the option adds one MUL per fragment and two native SetPixelShader calls per admitted draw',
+            source_shader_model='Eight unchanged original VS2; ten exact PS2.0/PS2.x programs versus 40 source-gain variants (10 identical at gain 1)',
+            limitations=['Fixture blend state is the admitted native ADD/ONE/ONE; the live admission predicate (blend shadow, HDR redirect active) is exercised by the DLL, not here',
+                'Finite texture/affine/fade inputs only; sources near the FP16 cap are not exercised (clipping refuses the case)',
+                'Native Windows untested; the variant is documented PS 2.0 bytecode'])
     if args.mode=='mrt-coverage':
         result.update(scope='Detached original three-output B/E/coverage producer, retained two-output parity, persistent FP16 RGB union and frame-clear experiment; no live route or native Windows runtime proof',
             timing_scope='QPC through EVENT completion; paired two/three-output two-source draws plus populated-mask clear only. Matching50% authored union, allocations/setup/readbacks outside; retained compositor evidence unchanged',
@@ -969,13 +1061,16 @@ def main():
             process=subprocess.run(command,stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=900)
         result['exit_code']=process.returncode
         assert process.returncode==0,'fixture failed; '+str(report)
-        result.update(validate_coverage_report(report.read_text(),pixels.read_bytes(),cases,True,args.mode=='mrt-fused') if args.mode in ('mrt-pass','mrt-fused') else validate_coverage_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-coverage' else validate_original_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-original' else validate_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='ordered' else validate_mrt_report(report.read_text(),pixels.read_bytes(),cases,args.mode=='mrt-branch'))
+        result.update(validate_coverage_report(report.read_text(),pixels.read_bytes(),cases,True,args.mode=='mrt-fused') if args.mode in ('mrt-pass','mrt-fused') else validate_coverage_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-coverage' else validate_original_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='mrt-original' else validate_source_gain_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='source-gain' else validate_report(report.read_text(),pixels.read_bytes(),cases) if args.mode=='ordered' else validate_mrt_report(report.read_text(),pixels.read_bytes(),cases,args.mode=='mrt-branch'))
         assert result['code_sha256']=={name:sha(ROOT/name) for name in INPUTS},'source changed during run'
         assert result['executable_sha256']==sha(args.exe),'EXE changed during run'
         assert result['cases_sha256']==sha(case_path),'case inputs changed during run'
-        if args.mode in ('mrt-original','mrt-coverage','mrt-pass','mrt-fused'):
+        if args.mode in ('mrt-original','mrt-coverage','mrt-pass','mrt-fused','source-gain'):
             assert originals=={name:sha(args.programs/name) for name in originals},'original corpus changed during run'
             result['transformed_sha256']={f'ps_{name}-{g}.bin':sha(variants/f'ps_{name}-{g}.bin') for name in ORIGINAL_PS for g in range(5)}
+            result['source_gain_sha256']={f'ps_{name}-source-{g}.bin':sha(variants/f'ps_{name}-source-{g}.bin') for name in ORIGINAL_PS for g in range(4)}
+            if args.mode=='source-gain':
+                assert all(sha(variants/f'ps_{name}-source-0.bin')==sha(args.programs/f'ps_{name}.bin') for name in ORIGINAL_PS),'gain 1 variant bytes differ from the original'
             if args.mode in ('mrt-coverage','mrt-pass','mrt-fused'):
                 result['coverage_transformed_sha256']={f'ps_{name}-{g}-coverage.bin':sha(variants/f'ps_{name}-{g}-coverage.bin') for name in ORIGINAL_PS for g in range(5)}
         result['passed']=True
@@ -985,6 +1080,6 @@ def main():
     finally:
         path=bottle.results_dir(ROOT)/('linear-emission-'+args.mode+'-gpu.json' if args.mode!='ordered' else 'linear-emission-gpu.json') if result['passed'] else args.raw_dir/'failed-result.json'
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(result,indent=2)+'\n')
-        print(json.dumps({k:result[k] for k in ('passed','cases','error','max_rgb_tolerance_fraction') if k in result}))
+        print(json.dumps({k:result[k] for k in ('passed','cases','error','max_rgb_tolerance_fraction','per_gain') if k in result}))
 
 if __name__=='__main__':main()

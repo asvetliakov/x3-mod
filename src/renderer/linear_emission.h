@@ -37,4 +37,16 @@ bool linear_emission_pair_reviewed(std::uint64_t vertex, std::uint64_t pixel) no
 LinearEmissionResult linear_emission_pixel_variant(const std::uint32_t* original,
     std::size_t words, const LinearEmissionConfig& config,
     std::vector<std::uint32_t>& output) noexcept;
+
+// Source-only encoded gain (docs/architecture/linear-emission-cost.md,
+// section 4, "Implemented"): the same ten exact PS2/PS2.x programs with one
+// `def c31 = (gain, 0, 0, 0)` before the declarations and one
+// `mul r0.xyz, r0, c31.x` immediately before the native `mov oC0, r0`. Every
+// original word, the native output MOV and raw alpha stay untouched; no
+// bracket, no extra output, no decode. Gain 1 returns the original words
+// (byte identity with no option). Gain is finite 1..8. Failure leaves output
+// intact; input may alias output. No D3D calls or per-draw work here.
+bool linear_emission_source_gain_valid(float gain) noexcept;
+LinearEmissionResult linear_emission_source_gain_variant(const std::uint32_t* original,
+    std::size_t words, float gain, std::vector<std::uint32_t>& output) noexcept;
 } // namespace x3m::renderer

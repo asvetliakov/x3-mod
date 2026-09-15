@@ -91,6 +91,7 @@ bool linear_distance_fade_requested = false;
 bool screen_emission_requested = false; // X3M_SCREEN_EMISSION=1: packed screen policy 8 (screen-emission-region.md step C)
 bool screen_emission_timing_requested = false; // X3M_SCREEN_EMISSION_TIMING=1: per-Present screen_emission_frame line, needs the option
 float screen_emission_gain = 1.f;       // X3M_SCREEN_EMISSION_GAIN: step E composition gain g, finite 0.5..8, default 1
+float emission_source_gain = 1.f;       // X3M_EMISSION_SOURCE_GAIN: source-only encoded gain of the twenty additive pairs, finite 1..8, 1 = off (requires X3M_HDR=1)
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
@@ -1837,6 +1838,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_linear_emissions(linear_emission_requested,emission_gain);
     hooked.motion_output.configure_linear_distance_fade(linear_distance_fade_requested);
     hooked.motion_output.configure_screen_emission(screen_emission_requested,screen_emission_gain);
+    hooked.motion_output.configure_emission_source_gain(emission_source_gain);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
@@ -2133,6 +2135,25 @@ void initialize_log(HMODULE module) {
          wchar_t* end=nullptr;const float value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
          if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=.5f&&value<=8.f)screen_emission_gain=value;else gain_valid=false;}
      if(asked)log("screen_emission_mode requested=1 enabled=%u hdr=%u taa=%u ownership=%u materials=%u policy=8 gain=%g gain_valid=%u",screen_emission_requested,screen_hdr,taa_requested,screen_ownership,linear_material_requested,double(screen_emission_gain),unsigned(gain_valid));}
+    // X3M_EMISSION_SOURCE_GAIN=<g>: source-only encoded gain of the twenty
+    // additive PS2 emission pairs (docs/architecture/linear-emission-cost.md,
+    // "Implemented"): finite 1..8, 1 (the launcher default) is off. Needs the
+    // FP16 scene (X3M_HDR=1, which itself needs X3M_MOTION_OUTPUT=1: the
+    // shader registration and state shadow live there); no linear-material,
+    // linear-emission, TAA or ownership prerequisite. Unparsable or out of
+    // range keeps 1 and logs.
+    {emission_source_gain=1.f;bool gain_valid=true;float value=1.f;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD gain_length=GetEnvironmentVariableW(L"X3M_EMISSION_SOURCE_GAIN",setting,32);
+     if(gain_length||GetLastError()!=ERROR_ENVVAR_NOT_FOUND){
+         wchar_t* end=nullptr;value=gain_length&&gain_length<32?wcstof(setting,&end):0.f;
+         if(gain_length&&gain_length<32&&end!=setting&&!*end&&std::isfinite(value)&&value>=1.f&&value<=8.f)emission_source_gain=value;else gain_valid=false;}
+     // Exclusive with the linear emission route: its bracket carries its own
+     // gain (X3M_EMISSION_GAIN) for the same pairs; the launcher rejects the
+     // pair of options, the DLL refuses with the reason logged.
+     const bool excluded=linear_emission_requested;
+     if(!hdr_requested||excluded)emission_source_gain=1.f;
+     if(!gain_valid||value!=1.f)log("emission_source_gain_mode requested=1 enabled=%u hdr=%u linear_emissions=%u gain=%g gain_valid=%u%s",emission_source_gain!=1.f,hdr_requested,unsigned(excluded),double(emission_source_gain),unsigned(gain_valid),excluded?" refused=linear_emissions":"");}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.

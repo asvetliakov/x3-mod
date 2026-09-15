@@ -949,6 +949,9 @@ constexpr const char *actual_vs[] = {"d5e1c75351ed3f04", "32e75459998d0388",
     "089091aab2d5eb13", "5b7a3ccd9e7df00a", "6435a84d8ac5908e",
     "89193868c61c3846", "a520be365951c9dc", "cfb2c31707d545bc"};
 constexpr float actual_gains[] = {0, .25f, 1, 4, 16};
+// Source-only encoded gain variants (linear_emission_source_gain_variant):
+// gain 1 is the byte-identical original, the rest one colour MUL.
+constexpr float source_gains[] = {1, 2, 3.5f, 8};
 constexpr unsigned actual_pairs[][2] = {{0,0},{1,1},{1,2},{2,3},{2,4},
     {3,1},{3,2},{4,5},{4,6},{4,7},{4,8},{5,0},{5,9},{6,3},{6,4},
     {7,5},{7,6},{7,7},{7,8},{0,9}};
@@ -979,12 +982,13 @@ struct MrtFixture : Fixture {
   bool use_branch = false, compare_compositors = false, actual = false, coverage_experiment = false, coverage_write = false;
   Com<IDirect3DVertexShader9> actual_vertices[8];
   Com<IDirect3DPixelShader9> actual_originals[10], actual_variants[10][5], coverage_variants[10][5];
+  Com<IDirect3DPixelShader9> source_gain_variants[10][4];
   std::vector<std::uint32_t> original_vertices[8], original_pixels[10];
   std::vector<IDirect3DTexture9 *> textures;
   Saved application;
   MrtFixture(IDirect3DDevice9 *device, unsigned w, unsigned h,
              bool branch_experiment = false, const char *programs = nullptr,
-             const char *variants = nullptr, bool coverage = false)
+             const char *variants = nullptr, bool coverage = false, bool source_gain = false)
       : Fixture(device, w, h, false), use_branch(branch_experiment),
         compare_compositors(branch_experiment && w == 16), actual(programs != nullptr), coverage_experiment(coverage), coverage_write(coverage), application(device) {
     target(composite, D3DFMT_A16B16G16R16F);
@@ -1016,6 +1020,15 @@ struct MrtFixture : Fixture {
           output.write(reinterpret_cast<const char *>(transformed.data()), transformed.size() * 4);
           need(bool(output), "local transformed output");
           api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(transformed.data()), &actual_variants[p][g].p));
+          if (source_gain && g < 4) {
+            need(linear_emission_source_gain_variant(saved.data(), saved.size(), source_gains[g], transformed) == LinearEmissionResult::Applied, "source-gain PS transform");
+            need(original_pixels[p] == saved, "source-gain transform mutated original");
+            need(g ? transformed.size() == saved.size() + 10 : transformed == saved, "source-gain variant shape");
+            std::ofstream gained(std::string(variants) + "/ps_" + actual_ps[p] + "-source-" + std::to_string(g) + ".bin", std::ios::binary);
+            gained.write(reinterpret_cast<const char *>(transformed.data()), transformed.size() * 4);
+            need(bool(gained), "local source-gain output");
+            api(d->CreatePixelShader(reinterpret_cast<const DWORD *>(transformed.data()), &source_gain_variants[p][g].p));
+          }
           if (coverage) {
             need(linear_emission_pixel_variant(saved.data(), saved.size(), {actual_gains[g], true}, transformed) == LinearEmissionResult::Applied, "coverage PS transform");
             need(original_pixels[p] == saved, "coverage transform mutated original");
@@ -1744,6 +1757,63 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
 }
 
 #include "linear_emission_pass_cases_inc.h"
+// Source-only encoded gain (docs/architecture/linear-emission-cost.md,
+// "Implemented"): every reviewed pair drawn natively (ADD/ONE/ONE into the
+// FP16 target over a cleared background), then with each source-gain variant
+// bound in the same state. Raw per case: cleared target, native, then the
+// four variant images (gain 1 must equal native bit for bit); the runner
+// owns the law `bg + G (native - bg)` and its FP16 tolerance.
+void source_gain_experiment(IDirect3DDevice9 *device,
+                            const std::vector<Case> &cases, const char *path,
+                            IDirect3DSurface9 *back, const char *programs,
+                            const char *variants) {
+  MrtFixture f(device, 16, 16, false, programs, variants, false, true);
+  std::ofstream raw(path, std::ios::binary);
+  need(bool(raw), "source-gain raw output");
+  unsigned draws = 0;
+  for (const auto &cs : cases) {
+    need(cs.ops.size() == 1, "one source per source-gain case");
+    f.initialize_mrt(cs);
+    const unsigned pair = f.profile(cs), pixel = actual_pixel(pair);
+    const bool dark = (cs.h.flags & 32768) == 0;
+    const D3DCOLOR background = dark ? 0 : D3DCOLOR_ARGB(128, 64, 128, 192);
+    auto clear_target = [&] {
+      f.single(*f.a);
+      api(device->SetDepthStencilSurface(f.depth.p));
+      f.base();
+      api(device->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, background, 1, 0));
+    };
+    auto capture = [&](std::vector<float> &out) {
+      api(device->EndScene());
+      f.fence();
+      out = f.read(*f.a, true);
+    };
+    raw.write(reinterpret_cast<const char *>(&cs.h.id), 4);
+    std::vector<float> image;
+    api(device->BeginScene());
+    clear_target();
+    capture(image);
+    raw.write(reinterpret_cast<const char *>(image.data()), image.size() * 4);
+    for (unsigned v = 0; v < 5; ++v) {
+      api(device->BeginScene());
+      clear_target();
+      f.source_state(cs, 0, *f.a, false);
+      if (v) api(device->SetPixelShader(f.source_gain_variants[pixel][v - 1].p));
+      f.quad(cs.ops[0], cs.h.flags);
+      ++draws;
+      capture(image);
+      raw.write(reinterpret_cast<const char *>(image.data()), image.size() * 4);
+    }
+    std::printf("SOURCE_GAIN_CASE id=%u pair=%u pixel=%u background=%u draws=5\n",
+                cs.h.id, pair, pixel, dark ? 0u : 1u);
+  }
+  need(bool(raw), "source-gain raw write");
+  f.single(f.scene);
+  api(device->SetRenderTarget(0, back));
+  std::printf("SOURCE_GAIN_TOTAL cases=%u draws=%u variants=40\n",
+              unsigned(cases.size()), draws);
+}
+
 int main(int argc, char **argv) {
   std::setvbuf(stdout, nullptr, _IONBF, 0);
   HWND window = nullptr;
@@ -1752,13 +1822,14 @@ int main(int argc, char **argv) {
     need(argc == 3 ||
              (argc == 4 && (std::strcmp(argv[3], "--mrt") == 0 ||
                             std::strcmp(argv[3], "--mrt-branch") == 0)) ||
-             (argc == 6 && (std::strcmp(argv[3], "--mrt-original") == 0 || std::strcmp(argv[3], "--mrt-coverage") == 0 || (std::strcmp(argv[3], "--mrt-pass") == 0 || std::strcmp(argv[3], "--mrt-fused") == 0))),
+             (argc == 6 && (std::strcmp(argv[3], "--mrt-original") == 0 || std::strcmp(argv[3], "--mrt-coverage") == 0 || std::strcmp(argv[3], "--source-gain") == 0 || (std::strcmp(argv[3], "--mrt-pass") == 0 || std::strcmp(argv[3], "--mrt-fused") == 0))),
          "arguments: cases.bin pixels.bin [--mrt|--mrt-branch]");
     bool mrt = argc >= 4;
     bool actual_original = argc == 6;
     bool fused_comparison = actual_original && std::strcmp(argv[3], "--mrt-fused") == 0;
     bool component = actual_original && (std::strcmp(argv[3], "--mrt-pass") == 0 || fused_comparison);
     bool coverage = actual_original && std::strcmp(argv[3], "--mrt-coverage") == 0;
+    bool source_gain = actual_original && std::strcmp(argv[3], "--source-gain") == 0;
     bool branch_experiment = mrt && std::strcmp(argv[3], "--mrt-branch") == 0;
     auto cases = load(argv[1]);
     WNDCLASSA wc{};
@@ -1832,7 +1903,9 @@ int main(int argc, char **argv) {
            "separate-alpha blend cap");
       Com<IDirect3DSurface9> back;
       api(device->GetRenderTarget(0, &back.p));
-      if (component) {
+      if (source_gain) {
+        source_gain_experiment(device.p, cases, argv[2], back.p, argv[4], argv[5]);
+      } else if (component) {
         EmissionPass retained;
         pass_experiment(device.p,cases,argv[2],back.p,argv[4],argv[5],retained,fused_comparison);
         need(retained.references()==4,"retained pass programs before native Reset");
@@ -1906,7 +1979,8 @@ int main(int argc, char **argv) {
     FreeLibrary(runtime);
     runtime = nullptr;
     UnregisterClassA("X3LinearEmissionFixture", GetModuleHandle(nullptr));
-    std::printf(fused_comparison ? "FUSED_RESULT pass cases=%u\n"
+    std::printf(source_gain ? "SOURCE_GAIN_RESULT pass cases=%u shaders=117\n"
+                : fused_comparison ? "FUSED_RESULT pass cases=%u\n"
                 : component ? "PASS_RESULT pass cases=%u shaders=528\n"
                 : coverage ? "COVERAGE_RESULT pass cases=%u shaders=381\n"
                 : actual_original ? "ORIGINAL_RESULT pass cases=%u shaders=77\n"

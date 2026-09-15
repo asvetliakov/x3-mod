@@ -79,6 +79,7 @@ struct MotionRoute {
     bool cutout_blend_known = false, cutout_source_over = false; // exact observed source-over triple: not a miss
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
     bool linear_material = false; // Combined color+motion pair actually bound.
+    bool source_gain = false;     // Source-gain PS bound natively for this draw; restored after it.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     bool sun_receiver = false, sun_color_writer = false;
@@ -512,6 +513,14 @@ public:
     // attach; gain is immutable thereafter. Variants always include coverage.
     void configure_linear_emissions(bool requested, float gain) noexcept;
     bool linear_emissions_requested() const noexcept { return linear_emission_requested_; }
+    // Source-only encoded gain of the same twenty additive pairs
+    // (docs/architecture/linear-emission-cost.md, "Implemented"): a PS
+    // variant with one colour MUL, selected per draw in the native
+    // ADD/ONE/ONE state while the FP16 scene target is active. No bracket,
+    // no composition, no per-draw work beyond two native SetPixelShader
+    // calls. Gain 1 is off (no variant is created). Configure before attach.
+    void configure_emission_source_gain(float gain) noexcept;
+    bool emission_source_gain_requested() const noexcept { return emission_source_gain_requested_; }
     void configure_linear_distance_fade(bool requested) noexcept;
     // Step C of docs/architecture/screen-emission-region.md: the packed screen
     // bracket (policy 8) for the nine SM1 screen pairs of
@@ -548,6 +557,9 @@ public:
     // per Present; on, one QPC and one log call.
     void configure_screen_emission_timing(bool requested) noexcept;
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
+    // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
+    // for the composition producers and for the source-gain admission.
+    bool blend_shadow_requested() const noexcept { return composition_requested() || emission_source_gain_requested_; }
     bool composition_operation_active() const noexcept { return composition_busy_; }
     bool draw_submission_blocked() const noexcept { return composition_busy_ || composition_state_lost_ || motion_state_lost_; }
     void configure_mip_bias(float bias) noexcept;
@@ -738,6 +750,7 @@ private:
                          IUnknown* xt_default_ordinary_variant = nullptr;
                          IDirect3DVertexShader9* xt_default_linear_variant = nullptr;
                          IDirect3DPixelShader9* emission_variant = nullptr;
+                         IDirect3DPixelShader9* source_gain_variant = nullptr; // colour-MUL variant (PS only; the VS stays original)
                          IDirect3DPixelShader9* screen_variant = nullptr; // step C packed producer (PS only; the VS stays original)
                          IUnknown* distance_fade_variant = nullptr;
                          bool registered = false; // Valid original, independent of motion support.
@@ -755,6 +768,10 @@ private:
         std::uint64_t vs_hash = 0, ps_hash = 0;
         bool vs_registered = false, ps_registered = false;
         IDirect3DPixelShader9* ps_emission_variant = nullptr;
+        IDirect3DPixelShader9* ps_source_gain_variant = nullptr;
+        // The bound PS's source-gain variant when the bound VS/PS is one of
+        // the twenty reviewed pairs; null otherwise (one pointer test per draw).
+        IDirect3DPixelShader9* source_gain_eligible_variant = nullptr;
         IDirect3DPixelShader9* ps_screen_variant = nullptr;
         // Exact SM1 screen pair (screen_emission_admission.h) and its created
         // packed producer; shader eligibility only, admission is per draw.
@@ -881,6 +898,7 @@ private:
     void report_mip_bias_game_write_failure() noexcept;
     void refresh_linear_emission_contract() noexcept;
     void prepare_composition(const MotionDrawCall&, MotionRoute&) noexcept;
+    void prepare_source_gain(const MotionDrawCall&, MotionRoute&) noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
     // fill mode, clip to the owning target); the counters, witness and log
@@ -1041,6 +1059,12 @@ private:
     renderer::LinearMaterialConfig linear_material_config_{};
     bool linear_emission_requested_ = false, distance_fade_requested_ = false, screen_emission_requested_ = false;
     float screen_emission_gain_ = 1.f;
+    bool emission_source_gain_requested_ = false;
+    float emission_source_gain_ = 1.f;
+    // Source-gain draw accounting (capture frame line only): admitted draws,
+    // refusals by blend state, by unknown state, by device state, bind failures.
+    struct { std::uint32_t admitted = 0, refused_blend = 0, refused_unknown = 0, refused_state = 0, bind_failures = 0; } source_gain_counts_;
+    std::uint32_t source_gain_logged_ = 0;
     unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
     fade_route::Hysteresis fade_hysteresis_; // per node identity; cleared at Reset
     unsigned composition_required_producers_ = 0;

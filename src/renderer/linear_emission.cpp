@@ -211,6 +211,9 @@ void source_output(Words& words,bool fade) {
 bool linear_emission_config_valid(const LinearEmissionConfig& config) noexcept {
     return std::isfinite(config.gain) && config.gain>=0 && config.gain<=16;
 }
+bool linear_emission_source_gain_valid(float gain) noexcept {
+    return std::isfinite(gain) && gain>=1 && gain<=8;
+}
 bool linear_emission_pair_reviewed(std::uint64_t vertex,std::uint64_t pixel) noexcept {
     for (const auto& pair:pairs) if (pair.vertex==vertex && pair.pixel==pixel) return true;
     return false;
@@ -248,6 +251,40 @@ LinearEmissionResult linear_emission_pixel_variant(const Word* original,std::siz
         Shape transformed;
         if (!structure(result.data(),result.size(),transformed,profile.model) || transformed.outputs!=(config.coverage?7u:3u) || transformed.texture!=1 ||
             transformed.arithmetic!=original_structure.arithmetic+(profile.fade?22u:21u)+(config.coverage?2u:0u)) return LinearEmissionResult::ResourceLimit;
+        output_words.swap(result);
+        return LinearEmissionResult::Applied;
+    } catch (...) { return LinearEmissionResult::AllocationFailure; }
+}
+LinearEmissionResult linear_emission_source_gain_variant(const Word* original,std::size_t count,
+    float gain,Words& output_words) noexcept {
+    if (!original || count<2) return LinearEmissionResult::InvalidInput;
+    if (!linear_emission_source_gain_valid(gain)) return LinearEmissionResult::InvalidConfig;
+    if (count>1108) return LinearEmissionResult::UnsupportedShader;
+    const auto hash=fingerprint(original,count);
+    const Profile* selected=nullptr;
+    for (const auto& profile:profiles) if (profile.pixel==hash && profile.words==count) { selected=&profile; break; }
+    if (!selected) return LinearEmissionResult::UnsupportedShader;
+    const auto& profile=*selected;
+    Shape original_structure;
+    if (!structure(original,count,original_structure,profile.model) || !original_shape(original,profile,original_structure)) return LinearEmissionResult::ProfileMismatch;
+    try {
+        Words result;
+        if (gain==1) {
+            // Byte identity: the option at gain 1 is the native program.
+            result.assign(original,original+count);
+            output_words.swap(result);
+            return LinearEmissionResult::Applied;
+        }
+        result.reserve(count+10);
+        result.insert(result.end(),original,original+profile.declaration);
+        emit(result,def,{dst(constant,31,15),bits(gain),bits(0),bits(0),bits(0)});
+        result.insert(result.end(),original+profile.declaration,original+profile.native_output);
+        // Colour lanes only; the native alpha in r0.w reaches oC0 unchanged.
+        emit(result,mul,{dst(temporary,0),src(temporary,0),lane(constant,31,0)});
+        result.insert(result.end(),original+profile.native_output,original+count);
+        Shape transformed;
+        if (!structure(result.data(),result.size(),transformed,profile.model) || transformed.outputs!=1u || transformed.texture!=1 ||
+            transformed.arithmetic!=original_structure.arithmetic+1u) return LinearEmissionResult::ResourceLimit;
         output_words.swap(result);
         return LinearEmissionResult::Applied;
     } catch (...) { return LinearEmissionResult::AllocationFailure; }

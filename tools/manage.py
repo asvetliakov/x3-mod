@@ -85,6 +85,7 @@ def main():
     parser.add_argument('--screen-emission-gain', type=float, default=None, metavar='G', help='Step E gain of the packed screen composition, finite 0.5..8, default 1 (X3M_SCREEN_EMISSION_GAIN; requires --screen-emission): the composed bullet is decode(native after) - decode(native before) scaled by G on the decoded scene, so 1 presents the native bolt exactly and larger values lift it into HDR for bloom and exposure (docs/architecture/screen-emission-region.md, step E)')
     parser.add_argument('--linear-emissions', action='store_true', help='Compose reviewed additive scene emissions in linear light (requires --motion-output --taa --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--emission-gain', type=float, default=None, help='Linear emission gain, finite 0..16, default 1 (requires --linear-emissions)')
+    parser.add_argument('--emission-source-gain', type=float, default=None, metavar='G', help='Source-only encoded gain of the twenty additive engine/effects emission pairs, finite 1..8, default 1 = off (X3M_EMISSION_SOURCE_GAIN; requires --hdr; excludes --linear-emissions, whose bracket carries its own --emission-gain; needs neither --linear-materials nor --taa): the pixel program of each pair multiplies its native colour output by G before the game\'s own ADD/ONE/ONE blend into the FP16 scene, so bloom and exposure pick the brighter emitters up; alpha, blend state and draw order stay native, and a pair drawn through any other blend stays native. Gain 1 creates no variant and is byte-identical to a build without the option (docs/architecture/linear-emission-cost.md, "Implemented")')
     parser.add_argument('--linear-materials', action='store_true', help='Evaluate the reviewed hull-material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--material-direct-gain', type=float, default=None, help='Linear direct-light gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--material-emissive-gain', type=float, default=None, help='Linear scaled material-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
@@ -227,6 +228,12 @@ def main():
         parser.error('--emission-gain requires --linear-emissions.')
     if args.emission_gain is not None and (not math.isfinite(args.emission_gain) or not 0 <= args.emission_gain <= 16):
         parser.error('--emission-gain must be finite and within [0,16].')
+    if args.emission_source_gain is not None and not args.hdr:
+        parser.error('--emission-source-gain requires --hdr.')
+    if args.emission_source_gain is not None and args.linear_emissions:
+        parser.error('--emission-source-gain excludes --linear-emissions (use --emission-gain inside the linear route).')
+    if args.emission_source_gain is not None and not (math.isfinite(args.emission_source_gain) and 1.0 <= args.emission_source_gain <= 8.0):
+        parser.error('--emission-source-gain must be finite and within [1, 8].')
     if args.linear_materials and (not args.motion_output or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
         parser.error('--linear-materials requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode.')
     material_gains = {'X3M_MATERIAL_DIRECT_GAIN': args.material_direct_gain, 'X3M_MATERIAL_EMISSIVE_GAIN': args.material_emissive_gain,
@@ -376,6 +383,7 @@ def main():
         env['X3M_AO_DEBUG'] = '1' if args.ao_debug else '0'
         env['X3M_AO_TIMING'] = '1' if args.ao_timing else '0'
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
+        env['X3M_EMISSION_SOURCE_GAIN'] = repr(args.emission_source_gain if args.emission_source_gain is not None else 1.0)
         env['X3M_LINEAR_MATERIALS'] = '1' if args.linear_materials else '0'
         for name, value in material_gains.items():
             env[name] = str(value if value is not None else 1.0)

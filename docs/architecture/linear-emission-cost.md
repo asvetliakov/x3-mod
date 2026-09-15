@@ -130,6 +130,61 @@ native draws get today. It must never be applied to screen/alpha blends, where
 source RGB is also the destination attenuation (`k·s > 1` goes negative).
 Cost estimate: unmeasurable at frame scale (two setter calls per draw).
 
+### Implemented (2026-09-15): `--emission-source-gain G`
+
+Option `--emission-source-gain G` (`X3M_EMISSION_SOURCE_GAIN`, finite 1..8,
+default `1.0` = off, launcher-validated) is the ratified first step. It is
+not linear composition and is never labelled so.
+
+- Transformer: `linear_emission_source_gain_variant` (`src/renderer/linear_emission.cpp`)
+  admits the same ten exact PS2.0/PS2.x programs of the twenty reviewed pairs
+  (same profile table and `structure`/`original_shape` proof as the linear
+  route) and inserts one `def c31 = (G, 0, 0, 0)` before the declarations and
+  one `mul r0.xyz, r0, c31.x` immediately before the untouched native
+  `mov_pp oC0, r0`. Every original word, the native output MOV and the raw alpha
+  lane are retained; +10 DWORDs, +1 arithmetic slot (max 8 of 64). Gain 1
+  returns the original bytes (byte identity: no option, no variant).
+- Proxy: `capture.cpp` reads the variable once (`emission_source_gain_mode`
+  line only when the value is not 1 or unparsable; out of range keeps 1).
+  `MotionOutput::configure_emission_source_gain` before attach; the variant is
+  created in `register_pixel_shader` (`emission_source_gain_variant` line),
+  the pair is identified at `SetVertexShader`/`SetPixelShader` by the existing
+  `linear_emission_pair_reviewed` lookup (one lookup per setter, cached as
+  `shadow_.source_gain_eligible_variant`), and `prepare_source_gain` binds the
+  variant natively for one draw when the shadowed state is exactly
+  ALPHABLENDENABLE on, SRCBLEND ONE, DESTBLEND ONE, BLENDOP ADD, separate
+  alpha off, SRGBWRITEENABLE off, the FP16 redirect is active and the scene
+  is bound; `after_draw` restores the application's program. Any other blend
+  (SRCALPHA, screen ONE/INVSRCCOLOR, separate alpha) refuses with an
+  `emission_source_gain_refused ... reason=blend` line (first 8), unknown state
+  and inactive redirect refuse silently (counted); the bracket routes
+  (`--linear-emissions`, fade, screen) take precedence for a draw they admit.
+  A failed bind restores at once; a failed restore is the existing
+  `motion_state_lost_` condition. Capture frames log
+  `emission_source_gain_frame ... admitted= refused_blend= refused_unknown=
+  refused_state= bind_failures=`.
+- Actual prerequisite: `--hdr` (FP16 scene target so values above 1 survive
+  for bloom/exposure). `--hdr` itself requires `--motion-output`, which owns
+  the shader registration, the pair identification and the render-state
+  shadow the admission reads; nothing else is required (no `--linear-materials`,
+  `--linear-emissions`, `--taa` or `--ownership`; the DLL gate reads
+  `hdr_requested` only). Exclusive with `--linear-emissions`: the launcher
+  rejects the pair and the DLL refuses the gain with
+  `emission_source_gain_mode ... refused=linear_emissions`, since the bracket
+  carries its own `--emission-gain` for the same pairs and a draw that route
+  admits would otherwise take precedence silently.
+- Cost: off = one null-pointer test per draw and one pointer copy per
+  `SetPixelShader`; on = two native `SetPixelShader` calls and about ten
+  compares per admitted draw, one MUL per fragment. No bracket, no copies, no
+  composition, no per-frame clear, no constant traffic.
+- Evidence: `verification/analysis/test_linear_emission_source_gain.py` (host
+  oracle over the 10 programs / 20 pairs: gain 1 identity, exact DEF+MUL
+  insertion, alpha and native output untouched; launcher and DLL gate) and
+  `run_linear_emission.py --mode source-gain` (fixture mode `--source-gain`:
+  80 cases, native vs. gain 1/2/3.5/8 over zero and non-zero FP16
+  backgrounds; law `bg + G (native - bg)`, alpha and gain-1 images bit-exact).
+  Ledger row: [screen-emission.md](../verification/screen-emission.md).
+
 ## 5. Options for the linear route, ranked
 
 | Rank | Option | Saving | Basis | Risk | Windows (documented D3D9) |
