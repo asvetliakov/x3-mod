@@ -53,8 +53,11 @@ route-B order: sun-lit-share lane, replay feasibility without shading, then casc
 screen-space shadows are fallback only. The [sun-share extraction contract](reverse-engineering/sun-share-material-contract.md)
 now covers all 108 pixel originals; the receiver/capability boundary is ratified
 in the shadow note, with portable depth-history channel copying required. No
-live shadow lane or replay is implemented yet. Shader extraction is in an isolated
-implementation checkout; replay admission now has a ratified managed-buffer
+live shadow lane or replay is implemented yet. Sun-share extraction is now
+reviewed and host-qualified in source (432 variants; 1,388 legacy outputs unchanged);
+GPU precision and live MRT qualification remain ([ledger](verification/directional-shadows.md)).
+A known inherited PS3 constant-read-port violation blocks native shader validity;
+the separate sanitizer repair is in progress. Replay admission has a ratified managed-buffer
 feasibility boundary, with complete entry coverage and concurrency proof still
 required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave
@@ -176,7 +179,10 @@ exact wall-time attribution open ([analysis](reverse-engineering/loading-observa
 - **HDR scope:** FP16 and AgX work, but much of the scene is still
   compatibility-decoded gamma-space lighting. Scene-referred lighting, complete
   linear blending and verified HDR display output remain incomplete.
-- **Native Windows:** Windows-compatible source cross-compiles, but no
+- **Native Windows:** C++ source cross-compiles, but the material sanitizer has a
+  **known shader-validity blocker**: two distinct constant registers in one PS3
+  instruction, observed in all 108 converted pixel programs. CrossOver accepts
+  the shaders; native validity requires the separate repair now in progress. No
   native-Windows runtime is verified. Depth provision, CreateDeviceEx adoption,
   MRT/PS2.1, Reset/presentation, performance and HDR output remain gaps
   ([platform-portability.md](architecture/platform-portability.md)).

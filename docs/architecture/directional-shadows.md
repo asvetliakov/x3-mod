@@ -2,7 +2,7 @@
 
 Design note for user objective 8, written 2026-09-15 after runs 19–21 and the ratified
 [ambient-occlusion-scale.md](ambient-occlusion-scale.md) (AO stays default-off; no sun-weighted
-"AO v2"). Ratified route-B-first by the user on 2026-09-15. **Nothing here is implemented.** Owning
+"AO v2"). Ratified route-B-first by the user on 2026-09-15. **Shader extraction is implemented and host-qualified; live lane/replay/shadow application remain unimplemented.** Owning
 implementation notes when built: this file; ledger `../verification/directional-shadows.md`.
 
 ## Decision
@@ -415,9 +415,10 @@ separately from documented-API source compatibility and cross-compilation.
 
 No per-draw shader transformation, allocations, constant upload or capability
 queries. Reuse cached route state; validity adds bounded draw/frame bookkeeping.
-The RE estimate is 2–12 dependency operations plus six reduction/output
-instructions, before branch/copy and finite-domain checks; count emitted weighted
-slots and register ownership for every variant, rather than retaining §2's +5.
+The implemented extraction adds 32–45 weighted slots including copies, branch
+handling and finite-domain checks (136–342 total). The earlier RE estimate of
+2–12 dependency operations plus six reduction/output instructions omitted those
+checks; §2's +5 estimate is superseded. GPU/register-pressure cost remains unmeasured.
 RT2 adds 4 B/px (3.75 MiB at 1280×768); the recommended depth-history copy adds
 one full-size draw in place of the existing copy, and the future consumer adds
 a coverage read where needed. Measure these costs; no measured FPS claim exists.

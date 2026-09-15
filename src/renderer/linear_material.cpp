@@ -1038,11 +1038,13 @@ const MotionOutputProfile* selected_row(bool vertex, std::uint64_t hash) noexcep
     }
     return nullptr;
 }
+#include "linear_sun_share_inc.h"
 #include "linear_xt_material_inc.h"
 
 LinearMaterialResult transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
-    Words& output, bool current_depth, bool vertex, bool fade = false, bool* fill_applied = nullptr) noexcept {
+    Words& output, bool current_depth, bool vertex, bool fade = false, bool* fill_applied = nullptr, bool* sun_extracted = nullptr) noexcept {
     if (fill_applied) *fill_applied=false;
+    if (sun_extracted) *sun_extracted=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
     // Bound the read before hashing; none of the reviewed original programs exceeds
@@ -1100,6 +1102,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
         // The detached fade producer exports no temporal MRTs or varyings.
         // Keep the original motion proof above, but omit its inserted bytes.
         if (fade) insertions.clear();
+        std::vector<SunSite> sun_sites;
         Words combined;
         combined.reserve(motion.size()+400);
         combined.push_back(original[0]);
@@ -1144,6 +1147,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
                 index(original[at+2])==(vertex?8u:7u)) { at+=n+1; continue; }
             if (fill && at==fill_at) fill_instruction(combined,fill_sum);
             const auto copied=combined.size();
+            if (sun_extracted) sun_sites.push_back({at,copied});
             combined.insert(combined.end(),original+at,original+at+n+1);
             if (palette && op!=0xfffe) {
                 if (op==dcl && kind(original[at+2])==(vertex?output_reg:input)) {
@@ -1223,6 +1227,15 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
         if (insertion_index!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final_structure;
         if (!structure(combined.data(),combined.size(),vertex,final_structure,false,abi,original_temp_count)) return LinearMaterialResult::ResourceLimit;
+        bool sun_proved=false;
+        if (sun_extracted) {
+            Structure enhanced;
+            const std::array<unsigned,2> seeds{p->color_source[0],p->color_source[1]};
+            if (!sun_share_variant(original, original_structure, combined, final_structure, sun_sites, seeds, p->final_rgb, sun_proved) ||
+                !structure(combined.data(),combined.size(),false,enhanced,false,abi,original_temp_count)) {
+                *sun_extracted=false; return LinearMaterialResult::ResourceLimit;
+            }
+        }
         if (fade) {
             // Execute the untouched native body first, then the linear body.
             // Sequential reuse of temporaries cannot alter already-written B
@@ -1273,6 +1286,7 @@ LinearMaterialResult transform(const Word* original, std::size_t words, const Li
             combined.swap(dual);
         }
         output.swap(combined);
+        if (sun_extracted) *sun_extracted=sun_proved;
         if (fill_applied) *fill_applied=fill;
         return LinearMaterialResult::Applied;
     } catch (...) { return LinearMaterialResult::AllocationFailure; }
@@ -1368,6 +1382,13 @@ LinearMaterialResult linear_material_pixel_variant(const Word* original, std::si
     const LinearMaterialConfig& config, Words& output, bool current_depth) noexcept {
     bool fill_applied=false;
     return linear_material_pixel_variant_fill(original,words,config,output,current_depth,fill_applied);
+}
+LinearMaterialResult linear_material_pixel_variant_sun_share(const Word* original, std::size_t words,
+    const LinearMaterialConfig& config, Words& output, bool current_depth, bool& extraction_applied) noexcept {
+    extraction_applied=false;
+    if (original && words>=1561 && words<=1791) if (const auto* p=xt_pixel(material_motion_fingerprint(original,words)))
+        return xt_transform(original,words,config,output,current_depth,false,*p,true,nullptr,&extraction_applied);
+    return transform(original,words,config,output,current_depth,false,false,nullptr,&extraction_applied);
 }
 bool linear_material_xt_default_pair(std::uint64_t vertex, std::uint64_t pixel) noexcept {
     const auto* p=xt_pixel(pixel);return vertex==xt_default_vs && p && !p->bump;

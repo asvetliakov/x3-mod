@@ -99,6 +99,18 @@ LinearMaterialResult linear_material_pixel_variant(const std::uint32_t* original
 LinearMaterialResult linear_material_pixel_variant_fill(const std::uint32_t* original,
     std::size_t words, const LinearMaterialConfig& config,
     std::vector<std::uint32_t>& output, bool current_depth, bool& fill_applied) noexcept;
+// Explicit opt-in ordinary material extraction. Existing APIs emit identical
+// shaders. Writes the sun luminance fraction to oC2.g AFTER motion/depth writes;
+// leaves oC2.r, color, alpha and discard unchanged. No fade producer support.
+// extraction_applied reports the program proof (not per-pixel radiance validity).
+// Invalid radiance or a refused extraction writes -1; proved zero sun writes 0.
+// Unknown/malformed inputs and resource collisions retain output unchanged.
+// With current_depth=false this does not establish any valid depth in oC2.r;
+// receiver consumers require ordinary same-draw depth independently.
+// Requires separate G32R32F MRT/state qualification before any live use.
+LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t* original,
+    std::size_t words, const LinearMaterialConfig& config,
+    std::vector<std::uint32_t>& output, bool current_depth, bool& extraction_applied) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

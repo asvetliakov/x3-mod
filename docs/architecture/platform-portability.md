@@ -67,7 +67,19 @@ Recording runtime hashes in test reports remains useful provenance.
   compiles for i686 MinGW with the project's SSE2 and four-byte-stack flags;
   X3 detached and live fixtures qualify its CrossOver behaviour. Default 0
   keeps the generated programs byte-identical, so the portability position is
-  unchanged when it is off. Native-Windows runtime remains unverified.
+  unchanged when it is off. Cross-compilation does not establish valid native
+  shader bytecode: the inherited sanitizer reads two distinct float constants
+  in one `MAX`, violating ps_3_0's one-constant read-port limit in all 108
+  ordinary PS programs. Native-Windows creation and runtime are therefore
+  blocked pending the isolated Sol sanitizer repair, not merely unverified.
+
+- The off-by-default directional sun-share extraction API has no live caller,
+  configuration change or resource allocation. Its reviewed host artifact
+  covers 108 originals / 152 sun MADs, but no GPU, Wine, game, Reset/recovery
+  or consumer integration. Its new instructions obey the ps_3_0 constant-port
+  rule; the inherited sanitizer blocker still prevents native-valid ordinary
+  shaders. See the [sun-share ledger](../verification/directional-shadows.md)
+  and [extraction contract](../reverse-engineering/sun-share-material-contract.md).
 
 - The original four XT DEFAULT pairs still have malformed SM3 linkage under
   Microsoft's [matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)

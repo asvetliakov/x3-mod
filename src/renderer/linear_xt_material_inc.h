@@ -173,8 +173,9 @@ void xt_default_geometry(Words& out) {
     emit(out,mul,{dst(output_reg,9,1),lane(temp,12,0),lane(temp,12,0)});
 }
 LinearMaterialResult xt_transform(const Word* original, std::size_t words, const LinearMaterialConfig& config,
-    Words& output, bool current_depth, bool vertex, const XtPixel& p, bool linear, bool* fill_applied = nullptr) noexcept {
+    Words& output, bool current_depth, bool vertex, const XtPixel& p, bool linear, bool* fill_applied = nullptr, bool* sun_extracted = nullptr) noexcept {
     if (fill_applied) *fill_applied=false;
+    if (sun_extracted) *sun_extracted=false;
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!linear_material_config_valid(config)) return LinearMaterialResult::InvalidConfig;
     const auto expected=vertex?(p.bump?xt_bump_vs:xt_default_vs):p.hash;
@@ -206,6 +207,7 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
         const bool depth=vertex?material_motion_vertex_exports_depth(*row,current_depth):material_motion_pixel_writes_depth(*row,current_depth);
         std::vector<Insertion> insertions;
         if (!motion_insertions(original,words,motion,*row,vertex,depth,s,insertions)) return LinearMaterialResult::ProfileMismatch;
+        std::vector<SunSite> sun_sites;
         Words combined; combined.reserve(motion.size()+1000); combined.push_back(original[0]);
         std::size_t inserted=0;
         for (std::size_t at=1;at<words;) {
@@ -257,7 +259,9 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
             }
             if (p.bump && op==dcl && kind(original[at+2])==(vertex?output_reg:input) && index(original[at+2])==(vertex?8u:7u)) {at+=n+1;continue;}
             if (fill && at==fill_at) fill_instruction(combined,fill_sum);
-            const auto copy=combined.size();combined.insert(combined.end(),original+at,original+at+n+1);
+            const auto copy=combined.size();
+            if (sun_extracted) sun_sites.push_back({at,copy});
+            combined.insert(combined.end(),original+at,original+at+n+1);
             if (op==dcl && kind(original[at+2])==(vertex?output_reg:input)) {
                 const auto number=index(original[at+2]);
                 if (p.bump && (number==(vertex?3u:2u) || number==(vertex?4u:3u))) combined[copy+2]|=8u<<16;
@@ -295,7 +299,21 @@ LinearMaterialResult xt_transform(const Word* original, std::size_t words, const
         if (inserted!=insertions.size()) return LinearMaterialResult::ProfileMismatch;
         Structure final;
         if (!structure(combined.data(),combined.size(),vertex,final,false,abi,vertex?7u:p.terra?7u:6u,false,false,true)) return LinearMaterialResult::ResourceLimit;
+        bool sun_proved=false;
+        if (sun_extracted) {
+            Structure enhanced;
+            std::array<unsigned,2> seeds{}; unsigned count=0;
+            for (const auto& u:p.lights) if (u.value==6) {
+                if (count>=seeds.size()) return LinearMaterialResult::ProfileMismatch;
+                seeds[count++]=u.operand;
+            }
+            if (!sun_share_variant(original,s,combined,final,sun_sites,seeds,p.final_rgb,sun_proved) ||
+                !structure(combined.data(),combined.size(),false,enhanced,false,abi,p.terra?7u:6u,false,false,true)) {
+                *sun_extracted=false; return LinearMaterialResult::ResourceLimit;
+            }
+        }
         output.swap(combined);
+        if (sun_extracted) *sun_extracted=sun_proved;
         if (fill_applied) *fill_applied=fill;
         return LinearMaterialResult::Applied;
     } catch (...) {return LinearMaterialResult::AllocationFailure;}
