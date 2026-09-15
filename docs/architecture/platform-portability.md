@@ -60,13 +60,14 @@ Recording runtime hashes in test reports remains useful provenance.
   [palette transport](linear-palette-materials.md), [XT qualification](xt-materials.md)
   and [combined evidence](../verification/combined-glow-materials.md).
 
-- The constant material fill (`--material-fill`, [fill-light.md](fill-light.md))
-  is one shader-local `def c215` and one `mad` in ps_3_0 per converted pixel
-  program: documented D3D9 only, no new API use, no capability requirement and
-  nothing backend-specific. It compiles for i686 MinGW with the project's SSE2
-  and four-byte-stack flags. Default 0 keeps the generated programs byte
-  identical, so the portability position is unchanged when it is off. Its
-  native-Windows runtime behavior is unverified, like every material change.
+- The constant material fill (`--material-fill`, source `a53cf8f`,
+  [ledger](../verification/fill-light.md)) is one shader-local `def c215` and
+  one `mad` in ps_3_0 per converted pixel program: documented D3D9 only, no
+  new API use, capability requirement or backend-specific dependency. It
+  compiles for i686 MinGW with the project's SSE2 and four-byte-stack flags;
+  X3 detached and live fixtures qualify its CrossOver behaviour. Default 0
+  keeps the generated programs byte-identical, so the portability position is
+  unchanged when it is off. Native-Windows runtime remains unverified.
 
 - The original four XT DEFAULT pairs still have malformed SM3 linkage under
   Microsoft's [matching rules](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/shader-model-3)
@@ -114,6 +115,13 @@ Recording runtime hashes in test reports remains useful provenance.
   production SSE2/stack contract. Run 18 accepts CrossOver chase aiming and
   stability; the installed lead-marker revision still needs gameplay alignment.
   Native-Windows runtime behavior remains unverified.
+
+- The optional chase HUD forward anchor (source `da2f17b`,
+  [ledger](../verification/chase-hud-anchor.md)) uses existing byte-verified
+  game seams and documented Windows memory APIs; it adds no Wine-private
+  dependency. Its 81 host checks and strict i686/SSE2 compilation establish
+  source-level portability, not native-Windows runtime or gameplay glyph/bolt
+  alignment, both of which remain unverified.
 
 - The finite-position observer now uses public descriptors, readable managed
   backing and observed wrapper Lock/Unlock transactions. The former exact-Wine
