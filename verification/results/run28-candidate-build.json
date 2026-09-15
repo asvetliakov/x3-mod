@@ -1,0 +1,190 @@
+{
+  "recorded_utc": "2026-09-15T21:57:22Z",
+  "run": 28,
+  "candidate": {
+    "path": "/tmp/x3-candidate-apjzhF/candidate/d3d9.dll",
+    "sha256": "2b0969e577e6f382a589b181a714f38c6a1eeda99f0c5ba4fe701367c4c4e7eb",
+    "bytes": 15850445,
+    "retained_first_build": true,
+    "candidate_directory_file_count": 1
+  },
+  "source": {
+    "worktree": "/tmp/x3-candidate-apjzhF/source",
+    "commit": "a26eb9b0c3f1740beaa4fe0c2fceef53fb67427d",
+    "commit_short": "a26eb9b",
+    "detached": true,
+    "status_before_configure": "clean",
+    "status_after_build": "clean"
+  },
+  "source_commit_marker": {
+    "command": "strings /tmp/x3-candidate-apjzhF/candidate/d3d9.dll | grep X3M_SOURCE_COMMIT",
+    "value": "X3M_SOURCE_COMMIT=a26eb9b0c3f1740beaa4fe0c2fceef53fb67427d",
+    "dirty_suffix": false,
+    "matches_worktree_head": true
+  },
+  "toolchain": {
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "cmake": "4.4.3",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "objdump": "GNU Binutils 2.47.20260726",
+    "target": "32-bit Windows PE",
+    "native_windows_execution": "not performed"
+  },
+  "configure": {
+    "command": "cmake -S . -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -B build",
+    "elapsed_seconds": 2.1,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-apjzhF/configure.log"
+  },
+  "build": {
+    "command": "cmake --build build -j4",
+    "invocations": 1,
+    "elapsed_seconds": 13.34,
+    "result": "PASS",
+    "warning_error_matches": 0,
+    "log": "/tmp/x3-candidate-apjzhF/build.log"
+  },
+  "host_audits": {
+    "no_x87": {
+      "command": "python3 verification/probe/check_no_x87.py /tmp/x3-candidate-apjzhF/candidate/d3d9.dll",
+      "result": "PASS",
+      "reachable_functions": 230,
+      "violations": 0,
+      "run27_reachable_functions": 229,
+      "delta_note": "+1 reachable vs the run 27 candidate; the root set is identical, so the extra function is internal to the changed emission source-gain family split (--effect-source-gain)",
+      "report": "/tmp/x3-candidate-apjzhF/no-x87.json"
+    },
+    "pe_exports": {
+      "command": "python3 tools/analysis/pe_exports.py /tmp/x3-candidate-apjzhF/candidate/d3d9.dll",
+      "result": "PASS",
+      "machine": "0x014c",
+      "count": 17,
+      "names": [
+        "D3DPERF_BeginEvent",
+        "D3DPERF_EndEvent",
+        "D3DPERF_GetStatus",
+        "D3DPERF_QueryRepeatFrame",
+        "D3DPERF_SetMarker",
+        "D3DPERF_SetOptions",
+        "D3DPERF_SetRegion",
+        "DebugSetLevel",
+        "DebugSetMute",
+        "Direct3D9EnableMaximizedWindowedModeShim",
+        "Direct3DCreate9",
+        "Direct3DCreate9Ex",
+        "Direct3DCreate9On12",
+        "Direct3DCreate9On12Ex",
+        "Direct3DShaderValidatorCreate9",
+        "PSGPError",
+        "PSGPSampleTexture"
+      ],
+      "matches_run27_names": true,
+      "report": "/tmp/x3-candidate-apjzhF/pe-exports.json"
+    }
+  },
+  "load": {
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_exports.py --dll /tmp/x3-candidate-apjzhF/candidate/d3d9.dll --case writable",
+    "result": "PASS",
+    "passed": true,
+    "status": "PASS",
+    "game_launched": false,
+    "bottle": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "selected_case": "writable",
+    "checks": 8,
+    "failures": 0,
+    "exit": 0,
+    "source": "game",
+    "on12_forwarded": true,
+    "exports_resolved": 17,
+    "elapsed_seconds": 22.47,
+    "owner_log": "/tmp/x3-candidate-apjzhF/load-owner.log",
+    "summary": "verification/results/bottle-X3/d3d9-exports-summary.json",
+    "summary_dll_sha256": "2b0969e577e6f382a589b181a714f38c6a1eeda99f0c5ba4fe701367c4c4e7eb",
+    "scope": "Eight-check X3 DLL load smoke under CrossOver Preview (writable case): 17 D3D9 exports, forwarded entry points and ret-N fallbacks. Not a native-Windows run."
+  },
+  "dry_run": {
+    "session_a": {
+      "command": "./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8 --dry-run",
+      "passed": true,
+      "exit_code": 0,
+      "path": "/tmp/x3-candidate-apjzhF/dry-run.txt",
+      "corrections": "none; run 28 session A accepted as written in docs/verification/user-runs.md section 28",
+      "env_checked": {
+        "X3M_SCREEN_EMISSION_ADDITIVE": "2.0",
+        "X3M_EMISSION_SOURCE_GAIN": "2.0",
+        "X3M_EFFECT_SOURCE_GAIN": "1.0",
+        "X3M_ORIGINAL_FILL": "0.0",
+        "X3M_TAA_MIP_BIAS": "-0.5",
+        "X3M_TAA_SHARPEN": "0.75",
+        "X3M_CHASE_VIEW_RESTORE": "1",
+        "X3M_CHASE_HUD_ANCHOR": "centre",
+        "X3M_HDR_EXPOSURE": "auto",
+        "X3M_SHADOW_REPLAY_DEPTH": "1",
+        "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+        "X3M_LINEAR_MATERIALS": "0",
+        "X3M_SUN_SHADOW_LANE": "0"
+      },
+      "notes": "mip bias -0.5 and sharpen 0.75 now come from the defaults, not the command line; X3M_POINT_LIGHT_ROOT_ADMISSION is absent because the option is out of the run 28 command",
+      "dll_override": "d3d9=n,b"
+    },
+    "session_a_original_fill": {
+      "command": "session A command plus --original-fill 0.05 --dry-run",
+      "passed": true,
+      "exit_code": 0,
+      "path": "/tmp/x3-candidate-apjzhF/dry-run-fill.txt",
+      "corrections": "none",
+      "env_checked": {
+        "X3M_ORIGINAL_FILL": "0.05"
+      },
+      "diff_from_session_a": "single line: X3M_ORIGINAL_FILL 0.0 -> 0.05",
+      "dll_override": "d3d9=n,b"
+    },
+    "launched": false
+  },
+  "qualification_ledgers": [
+    {
+      "path": "docs/verification/chase-cpu-boundary.md",
+      "rows": [
+        "2026-09-16 run68 correction: arm preconditions retry, refusal samples"
+      ]
+    },
+    {
+      "path": "docs/verification/screen-emission.md",
+      "rows": [
+        "2026-09-16 \u2014 Run 27 (run68): gain split by pair family, --emission-source-gain (engine, 5 pairs) and new --effect-source-gain (effect, 15 pairs, default 1), per-pair and per-family telemetry"
+      ]
+    },
+    {
+      "path": "docs/verification/point-light-admission.md",
+      "rows": [
+        "2026-09-16 \u2014 frame/node telemetry: point_light_admission_frame per frame, point_light_node samples on capture frames, counted admit branch"
+      ]
+    },
+    {
+      "path": "docs/verification/fill-light.md",
+      "rows": [
+        "2026-09-16 \u2014 Original fill (option C)"
+      ]
+    },
+    {
+      "path": "docs/verification/taa-sharpen.md",
+      "rows": [
+        "2026-09-16 \u2014 sharpen 0.75 and mip bias \u22120.5 become the TAA defaults"
+      ]
+    }
+  ],
+  "full_fixture_chain_rerun": false,
+  "native_windows_verified": false,
+  "installed": false,
+  "limitations": [
+    "Cross-compilation proves Windows-compatible PE production only; native Windows execution was not verified.",
+    "Changed-dependency qualification is reused from the worktree builds recorded in qualification_ledgers; the full fixture chain was not rerun on this candidate.",
+    "Installation and game launch are owned by the main session; nothing was installed here."
+  ]
+}

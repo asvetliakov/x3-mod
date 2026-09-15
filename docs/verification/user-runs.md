@@ -45,7 +45,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 25 | Consolidated loading, gate identity, forward HUD and sun-lane diagnostics | 0 | Completed as run60: forward HUD aligned, centre preferred; gate reset; trace analysis in progress |
 | 26 | Original hulls with cheap HDR emitters, chase view restore, elevated-camera reticle, replay candidates, loading intervals (A); optional linear sun-lane refusal buckets (B) | 1 | Session A completed as run65 (60 files): bolts brighter and liked; engines unchanged; loading possibly faster; **camera still reset at the gate**. Session B completed as run66 (55 files). Run65 triage: restore refused at the consume seam on the ref cell (2/2), engine gain refused on separate-alpha blend, loading stall 21.5 s again, replay predicates all pass; follow-ups in flight |
 | 27 | Next candidate: corrected chase restore, engine gain on separate-alpha, point-light root admission, original-program fill baseline, depth replay, mip bias/sharpen trial (A); linear sun lane after the state-gate fix (B) | 1 | Session A completed as run68 (108 files): engines brighter, halo around bolt impacts (weapon-effect sprites now gained), mip bias/sharpen kept as defaults, chase restore consumed on transits 1–2 but the view still reset on the return transit and no transfer on 3–4, docking modules partly dark with the point-light option (no per-node telemetry yet); A2 without the option in progress |
-| 28 | Next candidate: restore re-arm fix, emitter gain split (engines vs weapon effects), original-program fill A/B, point-light telemetry (opt-in) | 0 | Open: candidate build pending; commands below |
+| 28 | Next candidate: restore re-arm fix, emitter gain split (engines vs weapon effects), original-program fill A/B, point-light telemetry (opt-in) | 0 | Open: candidate `2b0969e5…` installed 2026-09-16; commands below |
 
 Completed run commands and instructions are preserved in
 [the completed-run archive](../archive/user-runs-completed.md); they are provenance,
@@ -53,7 +53,7 @@ not rerun requests.
 
 ## 28. Restore re-arm, emitter split and original fill — open
 
-Candidate build pending. Mip bias -0.5 and sharpen 0.75 are now defaults, as
+Installed: DLL `2b0969e5…` from `a26eb9b`. Mip bias -0.5 and sharpen 0.75 are now defaults, as
 are the raised camera and the 1.3 EV ceiling; the point-light option stays out
 unless you want it compared again.
 
@@ -63,10 +63,13 @@ unless you want it compared again.
 ./x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --voice-decoder /tmp/x3-wma-plugin-v4 --screen-emission-additive 2 --emission-source-gain 2 --shadow-replay-candidates --shadow-replay-depth --loading-intervals --capture-start 999999 --capture-frames 8
 ```
 
-1. Fire in empty space: the bolt halo should be gone (weapon-effect sprites are
-   back at gain 1 under the new `--effect-source-gain`, default 1) while engines
-   stay bright. If you want the halo back for comparison, add
-   `--effect-source-gain 2`.
+1. Fire in empty space. The halo reproduced with the bolt option alone on the
+   run27 build, so first try the command with `--hdr-ev-max 1.0` added: if the
+   halo goes, it is the raised exposure ceiling blooming the additive bolt, and
+   the choice is between the ceiling and a lower bolt gain (try
+   `--screen-emission-additive 1.5` at the 1.3 ceiling). If it stays at 1.0 EV,
+   say so; the bolt route is then compared against run65. Engines stay under
+   `--emission-source-gain 2`; effect sprites are at gain 1 in this build.
 2. Rear chase, through a gate and back through the same gate, twice: the view
    should stay in rear chase on every transit now.
 3. Original fill A/B at the run-22 station: one F8 at about 1.2 km facing the

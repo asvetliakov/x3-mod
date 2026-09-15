@@ -1,0 +1,20 @@
+{
+  "installed_utc": "2026-09-15T21:58:00.642504+00:00",
+  "source_commit": "a26eb9b0c3f1740beaa4fe0c2fceef53fb67427d",
+  "manifest_source_commit": "a26eb9b0c3f1740beaa4fe0c2fceef53fb67427d",
+  "candidate": "/tmp/x3-candidate-apjzhF/candidate/d3d9.dll",
+  "installed_dll": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "installed_sha256": "2b0969e577e6f382a589b181a714f38c6a1eeda99f0c5ba4fe701367c4c4e7eb",
+  "bytes": 15850445,
+  "rollback": "/tmp/x3-candidate-apjzhF/rollback",
+  "rollback_sha256": "215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32",
+  "unchanged": {
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+  },
+  "game_launched": false,
+  "install_timing_s": 0.06,
+  "build_record": "verification/results/run28-candidate-build.json",
+  "dry_run": "/tmp/x3-candidate-apjzhF/dry-run.txt",
+  "native_windows_verified": false
+}

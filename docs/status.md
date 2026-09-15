@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-16 (run27 candidate installed; run 27 queued). This is the short current handoff; the current
+Updated 2026-09-16 (run28 candidate installed; run 28 queued). This is the short current handoff; the current
 session handoff is [handoff-2026-09-15.md](handoff-2026-09-15.md). The day's narrative
 (chronology, superseded candidates, run-by-run detail, earlier prepared-design
 prose, stable-foundation prose) is in
@@ -13,25 +13,26 @@ Read history only for a relevant unresolved question. The
 ## Installed build
 
 Bottle **X3**, **CrossOver Preview.app**. Installed DLL SHA-256 is
-`215d8fbe5e06ae8090acf7871797972ba1203d87b32cd662f6a046c581649b32`
-(15,760,617 bytes), built once on Opus from clean committed main `46dc822`
-(2026-09-16; embedded marker `X3M_SOURCE_COMMIT=46dc822…`, no `-dirty`; the
-install manifest now records that commit). The
-[build record](../verification/results/run27-candidate-build.json) binds the
-clean build (12.21 s, zero warnings), 229-function no-x87 audit, exact 17
+`2b0969e577e6f382a589b181a714f38c6a1eeda99f0c5ba4fe701367c4c4e7eb`
+(15,850,445 bytes), built once on Opus from clean committed main `a26eb9b`
+(2026-09-16; marker `X3M_SOURCE_COMMIT=a26eb9b…`, no `-dirty`; the install
+manifest records that commit). The
+[build record](../verification/results/run28-candidate-build.json) binds the
+clean build (13.34 s, zero warnings), 230-function no-x87 audit, exact 17
 exports and the eight-check X3 DLL load; the
-[install record](../verification/results/run27-candidate-install.json) binds the
+[install record](../verification/results/run28-candidate-install.json) binds the
 installed bytes, unchanged EXE/bottle hashes and the rollback. The previous
-run26 DLL `5726a37b…` and manifest are in `/tmp/x3-candidate-h1qQTk/rollback`.
-Run 27's session A and B launches passed `--dry-run`; no game launched.
+run27 DLL `215d8fbe…` and manifest are in `/tmp/x3-candidate-apjzhF/rollback`.
+Run 28's session A and fill launches passed `--dry-run`; no game launched.
 
-This build adds, default-off unless stated: the corrected `--chase-view-restore`
-(cell16/cell17 proof, seam diagnostic), `--emission-source-gain` admitting the
-game's separate-alpha additive engines, `--point-light-root-admission`,
-`--shadow-replay-depth`, the lane-only sun-lane state-gate fix, and session
-identity logging (`proxy_identity` / `proxy_options`, 122 ms once at attach).
-New defaults: chase pitch 0.5° and offset 0.50, Auto exposure ceiling +1.3 EV,
-material fill 0.05 (linear materials only). It applies no shadows.
+This build adds, default-off unless stated: the restore re-arm fix (bounded
+precondition retry, refusal samples), the emitter family split (`--emission-source-gain`
+on the 5 engine pairs, new `--effect-source-gain` on the 15 effect pairs,
+default 1), `--original-fill K`, point-light admission telemetry, and the new
+TAA defaults mip bias -0.5 / sharpen 0.75. It keeps run27's restore proof,
+`--point-light-root-admission`, `--shadow-replay-depth`, the lane-only sun-lane
+fix and session identity logging. New defaults: camera 0.5°/0.50, EV ceiling
++1.3, fill 0.05 (linear only), mip bias -0.5, sharpen 0.75. No shadows applied.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
@@ -176,9 +177,11 @@ further linear-hull processing is planned. Decisions this session:
   fresh generation (fixed `220d2e9`: bounded precondition retry, refusal
   samples); mip bias -0.5 / sharpen 0.75 now defaults (`ca6ad2e`); point-light
   telemetry merged (`7521b79`), option kept but dropped from the run command
-  (the cliff is barely visible under original shading). Run 28 candidate is
-  being built from `a26eb9b`; [run 28](verification/user-runs.md) is queued
-  with the original-fill A/B; the original-program fill
+  (the cliff is barely visible under original shading). Run 28 candidate `2b0969e5…`
+  from `a26eb9b` is installed; [run 28](verification/user-runs.md) is queued
+  with the original-fill A/B. Open: the bolt halo reproduces with the bolt
+  option alone (user test on the run27 build), so the effect gain is not its
+  cause; leading suspect is the 1.0→1.3 EV ceiling (test `--hdr-ev-max 1.0`); the original-program fill
   (`--original-fill K`, option C) is reviewed and merged (`d864246`: 108/108
   programs, exact-power law, K=0 byte-identical, 92 GPU cases per K within one
   FP16 code) and rides the following candidate if the F8 baseline shows dark
