@@ -1,14 +1,14 @@
 # Material fill-light verification ledger
 
 Final review PASS, 2026-09-15. This is evidence for the default-off
-`--material-fill` implementation; it does not change feature acceptance,
-describe an installed build, or establish gameplay or native-Windows behaviour.
+`--material-fill` implementation; it does not by itself establish gameplay or
+native-Windows behaviour.
 
 ## Provenance and scope
 
 - Initial implementation: `294c155` (Constant hemispherical fill in the
-  converted material law). Follow-up corrections await their clean candidate
-  build.
+  converted material law). Its follow-up corrections and candidate
+  qualification are recorded in the contemporaneous handoff below.
 - Reported host build: `cmake --build build -j4` passed with zero warnings
   ([`/tmp/x3-fill-qualification-build.log`](/tmp/x3-fill-qualification-build.log)).
   `build_motion_output.sh` also passed
@@ -58,7 +58,8 @@ The K=0.06 oracle excludes the XT terraformer: its occlusion RGB also feeds an
 additive-emission source, so it is outside this isolated fill-law comparison.
 The K=0 live and detached checks do not prove a user-visible fill change.
 Gameplay appearance, gameplay performance, and native Windows runtime remain
-unverified. The candidate awaits a clean Sol build and has not been installed.
+unverified. The current installed-build description and compact install record
+are linked in the candidate handoff below.
 The change adds no per-draw work; this evidence includes no benchmark or FPS
 claim.
 
