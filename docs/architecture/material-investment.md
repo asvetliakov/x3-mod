@@ -103,3 +103,27 @@ This is a decision experiment, not a claim of statistically measured user prefer
 - Would a small family-level response calibration satisfy the user without material-by-material work? It is feasible to try; source facts cannot predict preference.
 - Which older-profile draws are actually necessary for the selected quality/LOD behavior? Converting unsubmitted profiles cannot improve that view.
 - How much useful receiver/caster coverage and replay cost will the existing sun diagnostics establish? Native Windows rendering remains unverified.
+
+## Critic reassessment after sparse-lighting clarification
+
+The same independent critic strengthens the existing hold: its earlier weighting
+of hypothetical multi-light and material-model gains was too generous for X3.
+Linear hulls remain optional; no blanket conversion, selective runtime, PBR or
+nebula-clamp work is justified without a demonstrated appearance need. The
+orchestrator retains that hold. No new implementation or user run is queued.
+
+The smallest proposed appearance experiment is existing targeted additive
+emission gain on one representative effect, after identifying its blend route.
+`--linear-emissions` already works independently of linear hulls; packed-screen
+and material-emission paths currently do not. This proposal does not reopen the
+accepted screen-emission gain 1 or authorize another gain bracket. Shadows remain
+the strongest prospective automatic hull enhancement and retain their existing
+route-B feasibility order.
+
+If a matched comparison favors original hull shading, a narrowly scoped original
+base plus emission/shadow path may be worth designing. Removing a gate alone is
+insufficient: original code-value sun attenuation and the current linear sun-share
+application use different laws, including clamp/blend handling. Existing inputs
+do not recover physical roughness/metalness; automatic reflection/specular tuning
+remains a conditional artistic experiment. The full read-only reassessment is
+local at `/tmp/x3-material-critic-reassessment.md`; no production work followed.

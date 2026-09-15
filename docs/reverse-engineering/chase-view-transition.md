@@ -531,3 +531,203 @@ binds actual source, fixture, build audit, report, bottle/emulation and timings.
 This verifies synthetic callback preservation, not live field continuity.
 The consolidated candidate still needs one gate reproduction to supply those
 observations; jumpdrive remains unverified without a separate request now.
+
+## 2026-09-15 run25 identity and restoration boundary (snapshot run60)
+
+The 12,909,476-byte log in `/tmp/x3-bottleX3-run60/`,
+`session-20260915-070402-216.log`, has SHA-256
+`6e899e03a2797f0338a395c6b1d7e1206410799474c5982e021d7a0ddc6647a2`.
+All 69 events have matching detail rows and thread 220. The captured gate now
+proves the formerly missing destructor/restart ancestry. Loading attribution
+belongs to its owning note and is not repeated here.
+
+### What the validity masks actually establish
+
+`identity_valid=399` means VM root, native body/script scalar, global player,
+global controller, warp and killed values succeeded. It does **not** validate
+a dynamic context. `identity_refused=3696` means monitor/mode/ref and all three
+dynamic membership checks failed. Without monitor provenance the refusal is
+3584 (the three membership checks); constructor rows use valid397/refused1536
+because no native body was sampled. Across the log there are 21/41/7 rows of
+these respective refusal patterns. Consequently **`script_mode=0` is unread
+placeholder data**, as are monitor-ref zero and the zero class IDs. The raw
+monitor ID is read before its later membership check fails. Do not infer a
+new script-mode behavior from those zeroes.
+
+The reader's dynamic lookup matches native `49f1e0` structurally. The static
+class and integer-cell checks also agree with the executable. The source,
+however, imposes a 65,536-bucket cap not present in native hash growth:
+`4efbf0` grows when occupied count reaches bucket count, and `4efeb0` reallocates
+and rehashes the selected bucket array. The player ID's key is `10587`
+(66,951), but allocated ID is not live count, so this does **not** prove that
+run60 exceeded the cap. The trace omits the failed subcheck and raw bucket count;
+the precise dynamic-refusal cause cannot be reconstructed from it. Raising a
+cap and claiming a measured repair would be unjustified. If the general reader
+is repaired, a bounded 32-link/single-bucket reader can validate arithmetic and
+power-of-two size without a small population cap; no scan scales with bucket
+count. Preserve duplicate/cycle/read/descriptor checks and report subreasons.
+
+A restoration callback need not use a fresh global hash search to establish the
+lifetime of its **current executing monitor context**. The native interpreter
+already supplies that borrowed context and is about to access its cells. At a
+proved interpreter seam, validate the current context ID, nonnull live class
+pointer, registered static descriptor identity `25e`, variable bounds and cell
+tags directly, together with task/context coherence. `4a8640` retains call
+contexts, `4a8240` frees a retained context only when reference count and live
+class are both zero, and the script member-store handler itself obtains cells
+from that current context. This is a scoped executing-context contract, not a
+claim that the failed registry checks passed. It is unsuitable for an arbitrary
+retained pointer or an asynchronously sampled inactive context. Player ownership
+can be bound independently by the **validated native body registry** plus
+native `+94 == global9`, both of which succeeded in this run, the exact warp
+sequence, and the cancellation epochs below. No player-context dereference is
+needed for this minimal restore.
+
+### Received gate witness and geometry
+
+- Event25: destructor `41ffc0`, caller `42d402`, CODE `f008a`; candidate return
+  prefix is exactly `efbff,edba0,edbe3,1661c`, followed by the terminal zero
+  return; `origin_flags=0`. Old cockpit `3f996ed8`, generation1, mode258,
+  native ID `8db`, player/native-script ID `fffefa78`, controller `ffff6eaf`,
+  raw monitor ID `ffff6eae`, VM `03b609c8`, task `705aa128`.
+- Event26/27: constructor/completion of `72206bd0`, generation2; no native
+  identity exists yet. Event29's native body ID is now `415`, while the valid
+  native-script/global-player/controller scalars remain unchanged.
+- Event29: initial mode0→1 writer `f0794`, same task `705aa128` and current
+  monitor context `199dee90`; complete return prefix
+  `efbbb,edb1b,e7b2d,edc98,16724`, then terminal zero, flags0. Activation and
+  destination publication follow (events30–32); UI reapplication34 happens
+  with warp0 and a different task, as in run56.
+- Geometry validity is 7. Old offset `(0,0,-17404)` and view lock1 become
+  `(0,0,0)` / lock0 on recreation and reset; angles and boom remain zero.
+  Manual rear selection restores the old offset/lock values. These are valid
+  measured fields, not values inferred from the refused script-mode reader.
+
+Thus the exact gate path and native/global identity continuity no longer need
+another diagnostic run. The old same-generation policy still cannot implement
+this gate, and copying native mode alone still loses script/native consistency.
+
+### Recommended mutation: the existing script assignment, before allocation
+
+Allow `RestartAllMonitors` to execute once, but replace the existing integer
+**source value of its `SelectMode(1)` assignment** with 258. The narrow point is
+CODE `f0c4b`, immediately before the interpreter writes monitor variable0.
+The argument was copied to the expression stack at `f0c48`; altering that live
+copy does not fabricate a task, invoke an extra script method, or retain an
+engine reference. Require monitor native-handle variable1 == 0. In this case
+`SelectMode` branches around its entire native geometry block at `f0849` and
+reaches `f0c48`; native allocation happens subsequently in `StartMonitor`.
+The engine then reads persistent mode258 and constructs its own fresh rear
+geometry. This also fixes later UI reapplications naturally. Do not use this
+mutation with a nonzero native cockpit handle: geometry may already have been
+set up for the original argument on that path.
+
+**Optimization matters:** on-disk `16 <index16> 24` (member copy then discard)
+is rewritten in place by `49e4f0` to `94 <index16> 24`. Global `15/24` becomes
+`93/24`. Native dispatch tables map 94→`4a4027` and 93→`4a3ff0`; both converge
+at **`4a3ffd`**, before destination-cell calculation. Hooking only `4a290d`
+(the unoptimized 16 handler) would miss the installed optimized script.
+
+At `4a3ffd`: EAX is destination context (current object for 94, first/global
+class descriptor for 93), ESI is five times the cell index, EBX is the live
+source tagged cell, EDI is CODE operand start, native ESP+18 is VM,
+ESP+20 is current context, and interpreter `[EBP+8]` is task. Validate actual
+runtime optimized opcode, index and discard byte at the expected PC; unrecognized
+code refuses. The six displaced bytes are `03 70 0c 80 3e 08`:
+`ADD ESI,[EAX+c]; CMP byte[ESI],8`. Their flags are live in the following
+conditional cleanup. Restore GPR/flags before replay. Original code then moves
+the source tag/payload to the destination, clears the source tag, advances EBX
+by5 and EDI by3, and dispatches normally. Changing only `[EBX+1]` from1 to258
+preserves original assignment/native execution counts. Require source and
+current destination tags1, source payload1, current monitor mode258, and a
+checked writable four-byte source span before this single mutation.
+
+The live interpreter stack must be bounded using **EBX**, task stack top+14 and
+capacity+10, with five-byte alignment and overflow checks. Task+18 and +1c are
+published at native calls/yields and can be stale at this internal opcode seam;
+do not reuse the native-dispatch provenance walker unchanged. The required
+current return prefix is `edc91` (SelectMode's caller) then `16724`
+(RestartAllMonitors' caller), with validated contexts and terminal root. Reuse
+fixed 64-cell bounds; ambiguous/missing/truncated proof cancels.
+
+### Minimal state machine and cancellation
+
+- Arm from an actually admitted rear chase update (258, connect0, controlled
+  reference/view == player, complete active cockpit), with native body/script
+  and global-player/controller identity checked. Store only scalar identities,
+  old lifetime token and local epoch/serial, not transferable native pointers.
+- Transfer to pending only at the now-measured warp destructor prefix above,
+  matching the arm's cockpit lifetime and player identity, live warp1 and
+  killed0. Capture current monitor ID, current task pointer **as opaque key**,
+  task ID+8, thread and local epoch. An arbitrary destructor clears the arm;
+  a second destruction clears pending. No registry-active-handle requirement
+  applies after native registry removal at `42d3f7`.
+- Consume at the assignment seam only for the same task/thread/epoch, exact
+  reset return prefix, same fresh current monitor identity, unchanged valid
+  global player/controller IDs, warp1/killed0, monitor-ref variable11 == player,
+  native-handle variable1 == 0, prior persistent mode258 and requested1.
+  Clear pending immediately before the one source-payload write. Failure of
+  any proof clears it without writing. The subsequent constructor belongs to
+  ordinary engine execution; it must not be used as a guessed completion timer.
+- The same shared store seam cancels on **any other SelectMode assignment for
+  the armed/pending main monitor**, including repeated same-valued selections
+  while no native cockpit exists. This covers both dynamic and direct calls:
+  the static asset has six direct SelectMode callers in OpenMonitor, SetTracking,
+  TrackPrevNext, NotifyClick and SetZoomAbsolute. A dynamic-call-only hook would
+  miss them. A selection before pending invalidates the arm.
+- Cancel at global-player setter CODE `e5da1` (cell9), controller setup `83a03`
+  (cell8), and nonzero killed stores `13b48`/`13b62` (class96 cell6); all are
+  optimized stores reaching the same seam. This catches A→B→A changes rather
+  than merely comparing the final identity. Current object/class/slot/runtime
+  code must match; malformed proof cancels conservatively. Additional unknown
+  global8/9 writes must not preserve pending; treating any store to those
+  global slots as cancellation is conservative and cheap while pending.
+- Normal task completion and task abort invalidate before their callbacks/free;
+  VM construction, content clear and save **load** advance a local epoch and
+  clear arm/pending before native work. Deserialization kind7 remains an
+  additional cancel. Thus same-address VM/task/ID reuse is insufficient.
+  Keep a bounded update/time expiry only as cancellation, never authorization.
+
+### Concrete lifecycle and exception boundaries
+
+| Native entry | Whole-instruction span | Contract |
+| --- | --- | --- |
+| `4a3ffd` | 6: `03 70 0c 80 3e 08` | Shared optimized member/global move; ABI above. |
+| `4a2260` | 5: `53 8b 5c 24 0c` | Normal task result/completion; original ESP+4=VM, +8=task. Invalidate before optional result callback and free. |
+| `4a2420` | 5: `53 8b 5c 24 0c` | Abort task; same arguments. Called by interpreter error and context-task cancellation `4a2520`. |
+| `49c9a0` | 6: `53 33 db 89 5e 04` | VM constructor, ESI=VM. Cancel/advance epoch before fields and map allocation. |
+| `49ea80` | 8: `83 ec 08 55 8b 6c 24 10` | VM content clear, original ESP+4=VM. It can refuse while tasks are active; cancellation even on refusal is conservative. Clears tasks, contexts and classes without relying exclusively on task-free wrappers. |
+| `4a0880` | 7: `6a ff 68 c8 00 53 00` | Actual VM save-load reader; VM comes from `*6085e4`. Called at `40507b` inside `404cc0`. `49f930`, called by `404530`, is the save writer and is **not** this load boundary. |
+| `52f298` | 5: `b8 f4 e5 56 00` | Interpreter-specific C++ EH adapter, then tail-jump to CRT handler `51305e`. Any invocation can conservatively bump an atomic cancellation epoch before original handling. No exception-layout decoding or lock acquisition is necessary. |
+
+Task allocation `4a21e0` inserts the new task in VM's task map via `4a220a`
+and stores returned ID at `4a220f` (task+8). ID allocator `4efcc0` wraps at
+`7ffffffe` and skips live keys; it does not promise never-reused IDs. The
+lifecycle boundaries, live task-map lookup and local epoch therefore matter.
+The EH adapter provides cancellation for native unwinding that bypasses ordinary
+script completion; it must use a minimal **lock-free** signal so an exception
+inside another observer cannot deadlock on that observer's lock. It replays the
+original MOV/tail-call path, preserving CPU/LastError and exception arguments.
+No observer lock or borrowed context survives native execution or a script yield.
+
+These seven new spans are ordinary instruction copies; the shared write site
+has no displaced branch and both optimized incoming paths reach its start.
+The original nine transition boundaries remain useful. With the new option off,
+do not claim/patch the new sites or alter interpreter operands; launcher/DLL
+default stays off. On the hot shared store path use a tiny prefilter for relevant
+runtime operand addresses/armed state before full CPU capture or checked reads;
+there is no per-draw work. Full ownership/provenance checks occur only on selected
+view/identity transitions. Implementation acceptance needs actual-emitter CPU,
+flag/LastError, rollback and native-byte tests; same-valued/direct script selection,
+A→B→A identity changes, yield/reentry, both task terminations, VM/load reuse,
+EH cancellation, bad tags/stack bounds and exactly-once stack movement belong in
+the focused fixture. These are implementation checks, not a request for another
+telemetry-only user run. Gameplay/native-Windows acceptance remains distinct.
+
+Local evidence: `/tmp/x3-run60-gate/proof.json` verifies the seven exact PE spans,
+optimized dispatch destinations, 69 event/detail pairs, gate ancestry, identity
+scalar agreement and geometry change. Raw targeted output is confined to that
+local directory. The current log cannot retrospectively reveal failed dynamic
+lookup subchecks; the borrowed current-context contract above avoids inventing
+those readings. No production source, Wine/game execution, build or install was
+performed in this reconstruction.

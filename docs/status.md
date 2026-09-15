@@ -113,6 +113,30 @@ union. This different loading sequence does not explain run48
 existing counter analysis remains limited by overlap ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.
 
+## Usage-limit checkpoint — no new work
+
+The user requested a stop after the gate contract and material critic finish.
+Both reports are complete; no new build, install or user run is queued.
+
+- Gate reconstruction now identifies the optimized script assignment boundary
+  `0x4a3ffd` / CODE `0xf0c4b`, with a proposed one-use warp ticket and seven
+  validated spans. It lets the engine regenerate camera geometry rather than
+  copying old pointers. The [owning note](reverse-engineering/chase-view-transition.md#2026-09-15-run25-identity-and-restoration-boundary-snapshot-run60)
+  and `/tmp/x3-run60-gate/proof.json` retain the contract. Implementation,
+  CPU/rollback/cancellation fixtures and independent hook review remain pending;
+  another telemetry-only run is not presently required.
+- The [critic reassessment](architecture/material-investment.md#critic-reassessment-after-sparse-lighting-clarification)
+  strengthens the existing material hold. Sparse lights and no PBR plan weaken
+  blanket conversion value; existing emission controls may suffice. Original-base
+  emission/shadows are conditional designs, not implemented alternatives.
+- Sun refusal diagnostics are saved **unmerged and unreviewed** in
+  `/tmp/x3-sun-lane-refusal-diag` (seven files). Ten focused tests passed; strict
+  syntax must be rerun after the final enum/log-name rename, then independent
+  review. Do not treat this worktree as a candidate or duplicate its work.
+- Reviewed buffer-lock observation is committed as `4a708af`; replay stays off.
+  Run60 observations are committed as `8fea701`. The three untracked fill result
+  JSON files are existing local artifacts and should remain untracked.
+
 ## User decisions (2026-09-14)
 
 - Fade route default-on accepted (`--no-linear-distance-fade` opts out).
