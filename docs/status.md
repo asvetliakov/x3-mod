@@ -26,8 +26,15 @@ no game launched.
 **Provenance caveat:** before this install the bottle held DLL `3f1b9941…`
 (14,905,020 bytes, installed 17:00 local), not the `4c3ac81e…` run25 build this
 file previously recorded; a `/tmp/x3-candidate-run26/` candidate (`6df394fe…`,
-09:06) and snapshots run61–run64 also exist without repo records. Their provenance
-is under triage; the `3f1b9941…` DLL is retained as the rollback.
+09:06) and snapshots run61–run64 also exist without repo records. Triage
+(log headers, build logs, `.codex`, temp build trees) could not tie either DLL
+to a commit: the session logs carry no proxy hash or env header, the run26
+source worktree is deleted, and the 17:00 manifest names only
+`/Users/asvetl/x3-mod/build/d3d9.dll`. Runs 62–64 (16:13–17:15) ran the packed
+screen-emission route with `materials=0`, so that DLL already carried an
+uncommitted decoupling. The `3f1b9941…` DLL is retained as the rollback; the
+proxy will log its own hash and effective options at startup from the next
+candidate on, so this cannot recur silently.
 
 This build adds, all default-off unless stated: `--chase-view-restore`,
 `--emission-source-gain G`, `--screen-emission-additive G`, `--shadow-replay-candidates`,
