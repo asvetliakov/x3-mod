@@ -69,8 +69,10 @@ in the shadow note, with portable depth-history channel copying required. No
 live shadow lane or replay is implemented yet. Sun-share extraction is now
 reviewed and host-qualified in source (432 variants; 1,388 legacy outputs unchanged);
 GPU precision and live MRT qualification remain ([ledger](verification/directional-shadows.md)).
-A known inherited PS3 constant-read-port violation blocks native shader validity;
-the separate sanitizer repair is in progress. Replay admission has a ratified managed-buffer
+The inherited PS3 constant-read-port violation is repaired and reviewed in
+source: legacy/fill GPU reports and 1,162 fade readbacks match retained
+baselines exactly ([repair ledger](verification/linear-material-constant-port.md)).
+Native Windows runtime remains unverified; this repair is not yet installed. Replay admission has a ratified managed-buffer
 feasibility boundary, with complete entry coverage and concurrency proof still
 required before activation. Existing loading-phase evidence bounds the stall at 21.702 s: file opens and
 mesh processing are large measured counter totals, but overlapping timers leave

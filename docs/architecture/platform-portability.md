@@ -65,20 +65,20 @@ Recording runtime hashes in test reports remains useful provenance.
   one `mad` in ps_3_0 per converted pixel program: documented D3D9 only, no
   new API use, capability requirement or backend-specific dependency. It
   compiles for i686 MinGW with the project's SSE2 and four-byte-stack flags;
-  X3 detached and live fixtures qualify its CrossOver behaviour. Default 0
-  keeps the generated programs byte-identical, so the portability position is
-  unchanged when it is off. Cross-compilation does not establish valid native
-  shader bytecode: the inherited sanitizer reads two distinct float constants
-  in one `MAX`, violating ps_3_0's one-constant read-port limit in all 108
-  ordinary PS programs. Native-Windows creation and runtime are therefore
-  blocked pending the isolated Sol sanitizer repair, not merely unverified.
+  X3 detached and live fixtures qualify its CrossOver behaviour. Explicit K=0 omits the fill instructions. The inherited two-constant `MAX`
+  violation is now repaired with full-precision temporary staging; the
+  [repair ledger](../verification/linear-material-constant-port.md) records
+  one-constant-source checks over 1,562 variants and exact retained CrossOver
+  GPU parity. Cross-compilation and CrossOver shader creation do not establish
+  native Windows creation or runtime, which remain unverified.
 
 - The off-by-default directional sun-share extraction API has no live caller,
   configuration change or resource allocation. Its reviewed host artifact
   covers 108 originals / 152 sun MADs, but no GPU, Wine, game, Reset/recovery
   or consumer integration. Its new instructions obey the ps_3_0 constant-port
-  rule; the inherited sanitizer blocker still prevents native-valid ordinary
-  shaders. See the [sun-share ledger](../verification/directional-shadows.md)
+  rule, and the separately reviewed sanitizer repair removes the known inherited
+  read-port violation. This does not extend its host-only qualification to GPU
+  or native execution. See the [sun-share ledger](../verification/directional-shadows.md)
   and [extraction contract](../reverse-engineering/sun-share-material-contract.md).
 
 - The original four XT DEFAULT pairs still have malformed SM3 linkage under

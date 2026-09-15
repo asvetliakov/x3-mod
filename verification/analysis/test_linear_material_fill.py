@@ -24,9 +24,9 @@ FILL = 0.06
 FILL_BITS = struct.unpack('<I', struct.pack('<f', FILL))[0]
 FILL_CONSTANT = 215
 LIGHT0_TEMPORARY = 12
-# Every non-fill variant of the three drivers, byte for byte, as the fill-less
-# build produces them: the fill is off by default and emits nothing at zero.
-ZERO_FILL_DIGEST = '3db6100189f38fa0b6300f6ff38c6871aa1a9adf59b5bd1bd91e93009c31dde8'
+# Every explicit zero-fill variant of the three drivers, byte for byte.
+# The constant-port migration is qualified in linear-material-constant-port.md.
+ZERO_FILL_DIGEST = '0e41b93663e77e7725a5d6bda8f5a84cff2193ee281af10519cf7cdda8267c6c'
 ZERO_FILL_OUTPUTS = 1388
 DRIVERS = ('linear_material_structure', 'glass_material_structure', 'xt_material_structure')
 
@@ -134,7 +134,7 @@ class LinearMaterialFillTests(unittest.TestCase):
         report = self.reports['linear_material_structure']
         base = [report['weighted_slots_default_vs_ps_depth_off_on'][1][1],
                 report['weighted_slots_bump_vs_ps_depth_off_on'][1][1]]
-        self.assertEqual(base, [178, 190])
+        self.assertEqual(base, [180, 192])
         self.assertEqual(report['fill_weighted_slots_default_bump'], [base[0] + 1, base[1] + 1])
         self.assertLessEqual(max(report['fill_weighted_slots_default_bump']), 512)
 

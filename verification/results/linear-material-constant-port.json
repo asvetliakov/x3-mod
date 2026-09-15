@@ -1,0 +1,90 @@
+{
+  "source_base": "0234178",
+  "material_cpp_sha256": "07fc5de2dc72a8084c5d2dd606277992c8d2c192eafa2f8a5661972b15a58e38",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "gpu_parity_passed": true,
+  "records": [
+    {
+      "slice": "legacy",
+      "cases": 4177,
+      "samples": 37593,
+      "creates": 1193,
+      "stable_rows": 47425,
+      "byte_identical_readbacks": 0,
+      "raw_report": "/tmp/x3-cport-new-legacy/report.txt",
+      "raw_sha256": "7450e6f953ed17b1028ab826e043d29aa6294b89a603a8988dcd89d550642000",
+      "summary_path": "/tmp/x3-material-constant-port/verification/results/bottle-X3/linear-material-gpu.json",
+      "summary_sha256": "776893d981e2044583c21b72810615645b6257642c3ae674b242839f9a05976c",
+      "timings": {
+        "lock_wait_seconds": 28.050258417,
+        "child_elapsed_seconds": 41.418637917000005,
+        "exit_code": 0
+      }
+    },
+    {
+      "slice": "fill",
+      "cases": 23,
+      "samples": 207,
+      "creates": 88,
+      "stable_rows": 701,
+      "byte_identical_readbacks": 0,
+      "raw_report": "/tmp/x3-cport-new-fill/report.txt",
+      "raw_sha256": "b23e2ad7ab569bd75720032df2b9ef279b13434d68d64f73735212e2286f7458",
+      "summary_path": "/tmp/x3-material-constant-port/verification/results/bottle-X3/linear-material-fill-gpu.json",
+      "summary_sha256": "bb2aba30db77448f163ec7bd4c45433c836e0d4dbcabea9327a656065744d947",
+      "timings": {
+        "lock_wait_seconds": 4.291999999999491e-06,
+        "child_elapsed_seconds": 6.470180917,
+        "exit_code": 0
+      }
+    },
+    {
+      "slice": "fade",
+      "cases": 78,
+      "samples": null,
+      "creates": 36,
+      "stable_rows": 189,
+      "byte_identical_readbacks": 1162,
+      "raw_report": "/tmp/x3-cport-new-fade/report.txt",
+      "raw_sha256": "966ff8f68c8da289e9e877730d512d8e9044dadf46de2bbdfcd5c88395ba7cea",
+      "summary_path": "/tmp/x3-material-constant-port/verification/results/bottle-X3/linear-distance-fade-cport.json",
+      "summary_sha256": "f3aee4fb1835f91bf581b23f69f70bacd02ca5f3f2170831ee617c23714bf4a3",
+      "timings": {
+        "lock_wait_seconds": 5.000000000001531e-06,
+        "child_elapsed_seconds": 8.738676208000001,
+        "exit_code": 0
+      }
+    }
+  ],
+  "comparator_path": "/tmp/x3-cport-compare.py",
+  "comparator_sha256": "e66c292c2147312d25fb89a26385578a7cfe8c9fb365a69259676f2c403660a2",
+  "ignored_report_fields": [
+    "CREATE instructions/words/completed_ms",
+    "TIMING and FADE_TIMING rows",
+    "scan_us",
+    "scan_us_max",
+    "scan_us_mean",
+    "completed_ms"
+  ],
+  "host_variants": {
+    "legacy": 904,
+    "fill": 216,
+    "fade": 10,
+    "sun_share": 432
+  },
+  "limits": [
+    "CrossOver GPU evidence; native Windows runtime unverified",
+    "Sun-share variants host-qualified only",
+    "Legacy has 54 finite/signed-zero/nonfinite source cases; fill/fade lack separate nonfinite cross-products",
+    "GPU timing not benchmarked"
+  ]
+}

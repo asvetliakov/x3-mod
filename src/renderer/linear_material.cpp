@@ -570,6 +570,15 @@ void fill_instruction(Words& out, unsigned sum) {
 struct Source { Word value, address = 0; };
 void sanitize(Words& out, bool vertex, unsigned target, Source source) {
     const unsigned base = vertex ? 248 : 212;
+    // ps_3_0 exposes one float-constant read port per instruction. Stage the
+    // admitted application constant without rewriting its source token, so the
+    // following clamp reads only the shader-local c212 literal.
+    if (!vertex && kind(source.value)==constant) {
+        if (source.value & relative)
+            emit(out,mov,{dst(temp,target),source.value,source.address});
+        else emit(out,mov,{dst(temp,target),source.value});
+        source={src(temp,target),0};
+    }
     // Input first in MAX/MIN is intentional: DX9's documented ordered
     // comparisons map NaN/-Inf to +0 and +Inf to the finite source cap.
     if (source.value & relative)
