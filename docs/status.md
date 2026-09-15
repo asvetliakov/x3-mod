@@ -45,13 +45,15 @@ sun-lane refusal buckets inside `--sun-shadow-lane`, and `--screen-emission` no
 longer requiring `--linear-materials`. It keeps the run25 features (native
 constant-port repair, `--chase-hud-anchor centre` default, gate diagnostics,
 `--loading-intervals`). It applies no shadows. Auto exposure ceiling +1.0 EV and
-fill 0.03 (fill only with linear materials) remain.
+fill 0.03 remain in the installed build; main now defaults to the raised camera
+(0.5° pitch, offset 0.50), fill 0.05 and EV ceiling 1.3 (`fdc85e4`, user
+decision after run 26), which ride the next candidate.
 
 Existing TAA, FP16 scene target, AgX SDR writeback, Ctrl+Shift+F9 EV0 comparison
 and Ctrl+Shift+F10 bloom toggle remain. Material coverage is 168 exact pairs /
 137 original programs; bloom, linear materials and linear emissions remain opt-in.
-Chase defaults remain 13° pitch, distance 0.9, responses 0.28/0.38 s, offset 0.45,
-and lag limits 8°/0.10. Vanilla camera remains the default.
+Chase defaults in the installed build are 13° pitch, distance 0.9, responses
+0.28/0.38 s, offset 0.45, lag limits 8°/0.10 (main: 0.5° pitch, offset 0.50). Vanilla camera remains the default.
 
 ## Next user action
 
