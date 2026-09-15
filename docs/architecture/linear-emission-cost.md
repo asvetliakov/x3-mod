@@ -197,6 +197,87 @@ not linear composition and is never labelled so.
   backgrounds; law `bg + G (native - bg)`, alpha and gain-1 images bit-exact).
   Ledger row: [screen-emission.md](../verification/screen-emission.md).
 
+### Family split (2026-09-16): `--emission-source-gain G` / `--effect-source-gain G`
+
+Run 27 (run68, `--emission-source-gain 2 --screen-emission-additive 2`, the
+first run admitting the separate-alpha ONE/ONE draws) showed a broad soft
+orange halo around the weapon impact point and brighter bolts. The halo is
+attributed, as a **hypothesis**, to the effect sprites (impact flashes, muzzle
+glows, explosions) among the twenty pairs receiving the same gain as the
+engine glow and bloom spreading them; the bolt brightness itself is the
+unchanged `--screen-emission-additive 2` and not part of this change. The gain
+is therefore split by pair family; the pair log below confirms or refutes the
+attribution in the next run.
+
+- Family table (`src/renderer/linear_emission.cpp`, `pairs[]` with a
+  `Family` per row; `linear_emission_pair_info` returns index and family,
+  `linear_emission_pair_reviewed` is `family != None`). Evidence per pair is
+  the archive alias that carries it (`verification/results/shader-sweep-aliases.json`,
+  [effects-engine-remaining-emission.md](../reverse-engineering/effects-engine-remaining-emission.md)
+  rows 1–15): the four pairs found only in `engine_0000/0001` (VS `32e75459`,
+  `5b7a3ccd` with PS `9975b706`, `ff2473e7`) are **engine**; the twelve pairs
+  found only in `effects_0000/0001` (VS `089091aa`, `6435a84d`, `a520be36`,
+  `cfb2c317`) are **effect**. The base `effects`/`effects2s`/`engine`/`engine2s`
+  aliases are byte-identical, so their pairs split by technique: DEFAULT VS
+  `d5e1c753` / PS `8360f422` (g_TexMatrix UV scroll through the ordinary
+  material dispatch; the only pair ever observed drawing in captured scene
+  frames, the historical cruising two-draw bursts, run 27's `admitted=2`
+  baseline over 6,442 frames) is **engine**; INSTANCE VS `89193868` / PS
+  `8360f422` (direct UV; the instanced-mesh sprite path `FUN_004bfd40` names
+  effect `"effects"` and technique `INSTANCE`, the same path as the bullets) is
+  **effect**; the two PS2.1 `f0c91793` pairs sit only in the base `effects`
+  alias (profile 2_b, never created in run 27) and are **effect**. Total 5
+  engine, 15 effect. Limits: the shared base PS means an impact drawn through
+  the ordinary material dispatch with DEFAULT would still take the engine gain,
+  and the run-27 log cannot name the pairs behind its `admitted=8` bursts
+  (frames 8260–8299 and others): only PS `8360f422` was created in that
+  session (10 `emission_source_gain_variant` lines, all for it), so both base
+  pairs are candidates. The per-pair first-admission line settles that.
+- Options: `--emission-source-gain G` now gains the engine family only;
+  `--effect-source-gain G` (`X3M_EFFECT_SOURCE_GAIN`, finite 1..8, default 1 =
+  original bytes) gains the effect family; same gate (`--hdr`, excludes
+  `--linear-emissions`), independent of each other. `configure_emission_source_gain(engine, effect)`;
+  `register_pixel_shader` creates one variant per family whose gain is not 1
+  (`emission_source_gain_variant ... family=`; PS `8360f422` gets both when
+  both gains are set), `refresh_linear_emission_contract` selects the bound
+  pair's family variant, a family at gain 1 has no variant and stays native
+  (byte identity as before).
+- Observability: `emission_source_gain_pair device= frame= vs= ps= family= gain=`
+  once per pair per device epoch (at most 20 lines); the frame line is now
+  `emission_source_gain_frame device= frame= gain= effect_gain= admitted=
+  admitted_engine= admitted_effect= refused_blend= refused_screen=
+  refused_other= refused_unknown= refused_state= bind_failures=`; and
+  `emission_source_gain_refused_state device= frame= vs= ps= family= hdr=
+  scene= open= recording= primitives= msaa= blend= src= dst= op= sepalpha=`
+  samples (16 per device epoch) name the predicate behind `refused_state`.
+- `refused_other` in run 27 (66,024 of 124,774 candidates) was entirely
+  `refused_state` (`refused_unknown` 0, `bind_failures` 0): the draw failed the
+  device-state predicate (`hdr_state_`, `route.scene`, `scene_open_`, state
+  block recording, zero primitives or MSAA) before the blend law ran, so no
+  blend triple exists for it by construction. Its shape is a constant 10 draws
+  per frame in 6,181 frames from the first candidate frame (1305) on, plus
+  6/4/2 per frame elsewhere, present in every capture frame (3510–3517,
+  4330–4337) as `d5e1c753`/`8360f422` `motion_input` rows with `admitted=0`
+  and regardless of firing; that matches the historical ~10-per-frame late
+  overlay population of the same pair
+  ([emission-draw-order.md](../reverse-engineering/emission-draw-order.md),
+  "924 late overlay draws"), i.e. `route.scene` false. Inference, not a
+  witness: the new state sample line is the witness. It is not engine glow
+  and is not admitted. No SRCALPHA/ONE or other premultiplied additive
+  population exists in runs 26/27 (`refused_blend` 0 in run 27; run 26's
+  blend refusals were all ONE/ONE/ADD with separate alpha, now admitted, or
+  the screen blend), so the truth table is unchanged: admitting SRCALPHA/ONE
+  would be valid for the colour law (`dst + a·G·s = dst + G·(a·s)`, alpha
+  untouched) but there is no draw to admit and fail-closed stays.
+- Evidence: host `test_linear_emission_source_gain.py` (family table: 20 rows
+  each with exactly one family in the source and through the compiled
+  lookup, 5 engine; launcher and DLL gates of both options; frame/pair/state
+  line grammar; fixture and runner coverage) and
+  `run_linear_emission.py --mode source-gain` with 40 `source_gain_family`
+  cases (the four variant slots run (engine, effect) = (2,1), (1,2), (8,1),
+  (1,8); the pair's family side is the gained image under the law, the other
+  side is bit-exact native).
+
 ## 5. Options for the linear route, ranked
 
 | Rank | Option | Saving | Basis | Risk | Windows (documented D3D9) |

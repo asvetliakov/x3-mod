@@ -1768,7 +1768,12 @@ void mrt_experiment(IDirect3DDevice9 *device, const std::vector<Case> &cases,
 // alpha 2 turns SEPARATEALPHABLENDENABLE on with SRCALPHA/INVSRCALPHA alpha
 // factors (admitted: colour law unchanged, alpha native); an op of kind 2
 // sets DESTBLEND INVSRCCOLOR (refused `screen_blend`: the variant is never
-// bound, every image must equal native).
+// bound, every image must equal native). Flag 8192 is the family split
+// (linear-emission-cost.md, "Family split"): the four variant slots hold the
+// configurations (engine, effect) = (2,1), (1,2), (8,1), (1,8) and the pair's
+// registry family (linear_emission_pair_info over the original fingerprints)
+// selects its effective gain; an effective gain of 1 binds nothing, so that
+// image must equal native bit for bit, as the proxy keeps that family native.
 void source_gain_experiment(IDirect3DDevice9 *device,
                             const std::vector<Case> &cases, const char *path,
                             IDirect3DSurface9 *back, const char *programs,
@@ -1781,7 +1786,15 @@ void source_gain_experiment(IDirect3DDevice9 *device,
     need(cs.ops.size() == 1, "one source per source-gain case");
     f.initialize_mrt(cs);
     const unsigned pair = f.profile(cs), pixel = actual_pixel(pair);
-    const bool dark = (cs.h.flags & 32768) == 0;
+    const bool dark = (cs.h.flags & 32768) == 0, split = (cs.h.flags & 8192) != 0;
+    using x3m::renderer::LinearEmissionFamily;
+    const auto info = x3m::renderer::linear_emission_pair_info(
+        local_fingerprint(f.original_vertices[actual_vertex(pair)]), local_fingerprint(f.original_pixels[pixel]));
+    need(info.family != LinearEmissionFamily::None && info.index == pair, "registry pair index and family");
+    constexpr float split_gains[4][2] = {{2, 1}, {1, 2}, {8, 1}, {1, 8}};
+    float effective[4];
+    for (unsigned v = 0; v < 4; ++v)
+      effective[v] = split ? split_gains[v][info.family == LinearEmissionFamily::Engine ? 0 : 1] : source_gains[v];
     const D3DCOLOR background = dark ? 0 : D3DCOLOR_ARGB(128, 64, 128, 192);
     auto clear_target = [&] {
       f.single(*f.a);
@@ -1817,8 +1830,12 @@ void source_gain_experiment(IDirect3DDevice9 *device,
           state[0], state[1], state[2], state[3], state[4]);
       need(v == 0 || now == verdict, "source-gain verdict stable across the case");
       verdict = now;
-      if (v && verdict == SourceGainBlend::Admit)
-        api(device->SetPixelShader(f.source_gain_variants[pixel][v - 1].p));
+      if (v && verdict == SourceGainBlend::Admit && effective[v - 1] != 1) {
+        unsigned slot = 4;
+        for (unsigned g = 0; g < 4; ++g) if (source_gains[g] == effective[v - 1]) slot = g;
+        need(slot < 4, "effective gain has a variant");
+        api(device->SetPixelShader(f.source_gain_variants[pixel][slot].p));
+      }
       f.quad(cs.ops[0], cs.h.flags);
       ++draws;
       capture(image);
@@ -1828,11 +1845,13 @@ void source_gain_experiment(IDirect3DDevice9 *device,
     need((cs.ops[0].kind != 2) == (verdict == SourceGainBlend::Admit), "additive op admitted");
     need((cs.h.alpha != 0) == (state[5] != 0), "separate alpha state as authored");
     std::printf("SOURCE_GAIN_CASE id=%u pair=%u pixel=%u background=%u draws=5 admission=%s "
-                "src=%lu dst=%lu sepalpha=%lu srcalpha=%lu dstalpha=%lu\n",
+                "src=%lu dst=%lu sepalpha=%lu srcalpha=%lu dstalpha=%lu family=%s split=%u effective=%g,%g,%g,%g\n",
                 cs.h.id, pair, pixel, dark ? 0u : 1u,
                 verdict == SourceGainBlend::Admit ? "admit" : verdict == SourceGainBlend::Screen ? "screen_blend" : "blend",
                 static_cast<unsigned long>(state[2]), static_cast<unsigned long>(state[3]), static_cast<unsigned long>(state[5]),
-                static_cast<unsigned long>(state[6]), static_cast<unsigned long>(state[7]));
+                static_cast<unsigned long>(state[6]), static_cast<unsigned long>(state[7]),
+                x3m::renderer::linear_emission_family_name(info.family), split ? 1u : 0u,
+                double(effective[0]), double(effective[1]), double(effective[2]), double(effective[3]));
   }
   need(bool(raw), "source-gain raw write");
   f.single(f.scene);
