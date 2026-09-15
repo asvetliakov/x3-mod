@@ -813,3 +813,100 @@ Deviations and assumptions, with reasons:
 Gameplay acceptance (a gate run with the option on, reading the
 `chase_view_restore_state` counters) and native Windows execution remain
 unverified.
+
+### Run65: consume refusal on the ref cell
+
+Run 26 (`/tmp/x3-bottleX3-run65/session-*.log`) armed three times, transferred
+twice at the measured warp destructor prefix and reached the store seam twice
+(`arms=3 transfers=2 seam_calls=2 consumed=0 writes_failed=0`), refusing both
+times with `last_refusal=10` (`refuse_ref_cell`) and `cancels[10]=2`
+(`cancel_proof`). Because `seam_consume_proof` is ordered, every earlier check
+passed on the real gate path: epoch/thread/task/task-ID, `[ESP+20] == EAX ==
+task+3c`, opcode `94` index 0 ESI 0 at PC `f0c4b`, borrowed context of class
+`25e`, monitor ID equal to the one captured at the destructor, **cell0 == 258**,
+**cell1 == 0**, unchanged global player/controller, warp1/killed0. Only
+`cell11 == player` failed. The source and live-stack checks sit after cell11 and
+stay unmeasured; both are now established statically below.
+
+Static decode uses the same asset and loader contract as
+[selection-native-vm.md](selection-native-vm.md#recovering-actual-compiled-method-names):
+`addon/04.cat:L/x3story.obj`, decoded SHA-256
+`ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a`, 280 CLAS
+classes, 1,812,069 CODE bytes, 669,066 instructions with `49e1a0` widths, all
+6,818 method entries aligned. Opcodes used below: `01/02/03/04` push 0/1/2/3,
+`05/06/07` push byte/word/dword, `0d/0e/0f` load local/global/member, `10`
+array index, `14/15/16` store local/global/member, `24` discard, `2b`
+instantiate class, `32/33/34` jmp/jt/jf, `82` native command, `83` return,
+`85` call by name, `86` call on class, `88` call on self, `6e` frame entry.
+The `0d`/`14` slot index is relative to the current expression top, so the last
+pushed argument is index 4 at depth 0; at depth 1 the single argument of a
+one-argument method is index 5. Class `25e` has 41 variables, so cell indices
+in the bytecode are the runtime cell indices the optimized `94` store uses.
+
+**Monitor creation through `SelectMode(1)`, with offsets.**
+
+| CODE | Bytes / operation | Effect |
+| --- | --- | --- |
+| `e7681` | `0x25d::Init` entry, `SE_ArrayAlloc` at `e768b` | Allocates the monitor array into class `25d` member2. |
+| `e7751`–`e7794` | `LOADL i`; `PUSHB 20` (`i==0`) or `PUSHB 60`; `SE_ReadText`/`SE_SPrintf` name | Builds the three constructor arguments for monitor `i`. |
+| `e7795` | `04 06 025e 2b 85 00000081` = `PUSH 3`(count), `PUSHW 606`, instantiate, `DYNCALL "Create"` | The only instantiation of class `25e` in the asset; loop runs `i=0..2` at game start. |
+| `e779f` | `LOADL i`; `LOADM 2`; store element | Publishes the new monitor as `monitors[i]`. |
+| `ef863` | `0x25e::Create` entry (3 args) | `STOREM 0 = 0` (`ef867`), `STOREM 1 = 0` (`ef86c`). |
+| `ef8a0` | `0d 0005 16 000b` = `LOADL 5; STOREM 11` | **cell11 = the middle constructor argument = 20 for the main monitor, 60 for the two side monitors.** |
+| `ef8b6`/`ef8bd` | `LOADL 4; STOREM 15` / `LOADL 6; STOREM 16` | cell15 = the name string (read by `GetName` at `efc5d`), cell16 = the monitor number (`IsActive` at `efc6f` compares it with `GetActiveMonitorNum`). |
+| `ef8c4` | `01 16 0011` = `PUSH 0; STOREM 17` | cell17, the ref-object cell, starts unset. |
+| `edb2b`–`edb34` | `LOADG 9; PUSH 1; PUSH 0; LOADM 2; INDEX; DYNCALL "SetRefObject"` in `0x25d::StartMainMonitor` | **cell17 of `monitors[0]` is a direct copy of global cell9, the player ship.** `0x25e::Show` compares `LOADM 17` with `LOADG 9` at `efb62`. |
+| `effad`/`effee` | `0x25e::SetRefObject`: `LOADL 4; STOREM 17` with Remove/AddEventListener | The only other store to cell17 in the asset. |
+| `16617`/`1661c` | `0x96::WarpToSector` calls `0x25d::StopAllMonitors` | Warp teardown; `edbde`/`edbe3` then `edb9b`/`edba0` reach `0x25e::Show`. |
+| `efbfa`/`efbff` | `Show` calls `0x25e::StopMonitor` | `Show` clears cell17 only when `SE_ObjectExists` fails (`efaee`, `efb0f`). |
+| `f0085`/`f008a` | `INS_CockpitFree`, then `f008b` `PUSH 0; STOREM 1` | Frees the native cockpit and zeroes cell1. cell0 is not touched. |
+| `1661d`–`1671a` | `LeaveSector`, `SA_CleanUpObjects`, `SA_FreeAllBodies`, `EnterSector`, `SetPos` on `LOADG 9`, `WarpEnterSector` | No write to global8/9 and no monitor cell write; the player ship survives the warp. |
+| `edc85`–`edc8c` | `02 02 01 0f 0002 10 85 000053ef` = `PUSH 1`(source), `PUSH 1`(argument count), `PUSH 0`, `LOADM 2`, `INDEX`, `DYNCALL "SelectMode"` | **`monitors[0].SelectMode(1)`; the requested value is the literal `PUSH 1`, tag 1 payload 1.** Returns to `edc91`, then `OpenLayout` at `edc93`/`edc98`. |
+| `f07cc` | `0x25e::SelectMode` entry, one argument | `arg==8` prologue skipped; at `f0832` `LOADM 1` is 0, so `f0849 JF f0c48` branches around the whole native geometry block. |
+| `f0c48` | `0d 0005` = `LOADL 5` | Copies the argument cell (tag 1, payload 1) to the expression top, the cell EBX addresses at the seam. |
+| `f0c4b` | `16 0000 24` (`94 0000 24` after `49e4f0`) | The hooked store `cell0 = requested`, then discard. |
+
+Cell0 is written only at `ef867` (Create), `ef944` (Destruct), `f0c4b`
+(SelectMode) and `f41dd`/`f42f7` (`SwitchViewCameraTypeTo`); none of them is on
+the warp path, so **258 genuinely persists to the seam**, as measured. Cell1 is
+written only at `ef86c`, `f008c` (the zero above) and `f01ca` (`StartMonitor`).
+
+**Answers.** cell11 is not a ref cell: it is a camera priority constant, read
+only by `StartMonitor` at `f0215` as `B3D_CameraSetPri(cell11, camera)` and by
+`ShowDust`/`ShowSpace`/`SetAllViewPorts`. It is assigned exactly once, inside
+the constructor during `0x25d::Init` at game start, and never again anywhere in
+the asset, so at `f0c4b` it holds **20** on the main monitor. The script Monitor
+object is not recreated by a gate (only the native cockpit is), which is why the
+monitor identity captured at the destructor already matched. cell0 is 258 and
+the requested source is the literal 1, both as assumed.
+
+**Corrected consume predicate.** Keep every check that already passed and
+replace `integer_cell(...,11,ref) && ref==player` with:
+
+- `integer_cell(...,16,number) && number==0` — the main monitor, a compile-time
+  constant from `Create`'s first argument; cheap and statically provable.
+- `cell(...,17,tag,ref) && ref==player` — the ref object, which
+  `StartMainMonitor` copies verbatim from the same global cell9 the proof
+  already validates. Compare the 4-byte payload and accept the tag that global
+  cell9 carries (tag 1 as measured in run65) or a heap tag, recording the
+  observed tag in a distinct refusal subreason rather than folding it into
+  `refuse_ref_cell`.
+
+Deferring the ref check to `SetTracking` is not viable: its `SelectMode` call at
+`f1b5e` runs only when cell1 is nonzero and cell0 == 4, so it is off the gate
+path entirely. `OpenLayout`'s `SelectMode(0)` at `e7b9f` applies only to
+monitors at or beyond the layout count, so the main monitor keeps the written
+258 until `0x25d::StartMonitor` → `Show` → `StartMonitor` → `INS_CockpitSetViewMode`
+at `f078f`; the run25 event29 prefix `efbbb,edb1b,e7b2d,edc98,16724` is exactly
+that chain and corroborates the decode.
+
+**Risks.** The cell17 tag is inferred, not measured: if the cell were rejected
+for its tag the ticket would refuse again, so the tag must be reported, not
+assumed. `Show` legitimately clears cell17 when the referenced object stops
+existing, which would refuse safely rather than write. This is the on-disk
+static asset; save-dependent patched bodies were not captured, and the
+optimizer only rewrites these same opcodes in place, leaving index and discard
+byte unchanged. Prose elsewhere calling cell11 the "monitor-ref cell" is wrong
+and should be read as cell17. Reproduction scripts (local, untracked):
+`/tmp/x3-run65-script/kc.py`, `d2.py`, over `/tmp/x3-camera-study/x3story.obj`.
+No game, Wine, build or install was run for this study.
