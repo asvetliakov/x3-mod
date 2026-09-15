@@ -113,7 +113,36 @@ union. This different loading sequence does not explain run48
 existing counter analysis remains limited by overlap ([analysis](reverse-engineering/loading-observations.md#run-48-bounded-attribution-of-the-save-load-interval-2026-09-15)). Completed runs remain in the
 [run queue](verification/user-runs.md) and its archive.
 
-## Usage-limit checkpoint — no new work
+## Session 2026-09-15 (resumed): decoupling, restore implementation, diagnostics
+
+The user now plays **without linear materials** and prefers that look; no
+further linear-hull processing is planned. Decisions this session:
+
+- `--screen-emission` is decoupled from `--linear-materials` and merged
+  (`409317e`): the only real dependencies were option gates plus the stage-0
+  sRGB sampler shadow, now fed by the option; the DLL gate also requires
+  ownership. Two independent reviews found no blocking issue; the no-materials
+  fixture cases match the materials-on twin and the newly active sampler hook
+  adds no measurable cost ([audit](architecture/linear-material-decoupling.md),
+  [ledger](verification/screen-emission.md)). Distance fade, the sun lane,
+  material gains/fill and the cutout route remain linear-material features.
+- `--linear-emissions` in its full-surface exchange shape is not pursued; its
+  gameplay cost was never measured. If brighter emitters are wanted, the first
+  step is a source-only encoded gain ([cost note](architecture/linear-emission-cost.md)).
+- Chase HUD: keep `centre`; the next run tries `--chase-pitch-down-deg 0.5
+  --chase-offset-y 0.50` so the forward vanishing point sits at screen centre
+  ([survey](architecture/chase-hud-reticle-survey.md)).
+- The run60 gate-restore contract is ratified; `--chase-view-restore` is
+  implemented in a worktree and under deep review (not merged, not installed).
+- Sun-lane refusal diagnostics were recreated (the earlier unmerged worktree no
+  longer existed), reviewed, and are receiving review fixes (not merged).
+- Pre-existing host failure: `test_linear_material_live.test_production_control_flow`
+  fails to compile its mock on `main` (missing sun-lane fields); tracked, unowned.
+
+No build, install or user run is queued yet; the next candidate batches the
+decoupling, restore option and refusal diagnostics.
+
+## Usage-limit checkpoint (earlier 2026-09-15)
 
 The user requested a stop after the gate contract and material critic finish.
 Both reports are complete; no new build, install or user run is queued.
