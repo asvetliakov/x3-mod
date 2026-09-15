@@ -6,7 +6,7 @@ Design note, 2026-09-15. Decision for the orchestrator; nothing here is implemen
 "Ambient occlusion inputs", the converted-material notes, the exposure, shadow and AO notes, and
 one new reduction of the run-51 captures (below; no Wine, no launch).
 
-**Ratified 2026-09-15 (orchestrator):** implement as designed, default 0 (off, byte-identical shaders), `--material-fill K`; first user run at 0.06 with 0.04 and 0.10 as brackets at the run-51 spot. The point-light-range patch (option C) is rejected.
+**Ratified 2026-09-15 (orchestrator):** implement as designed; amendment after review: the glass pairs take the fill on their albedo term too (their Fresnel/gloss law is unchanged), so all 108 converted programs carry it, default 0 (off, byte-identical shaders), `--material-fill K`; first user run at 0.06 with 0.04 and 0.10 as brackets at the run-51 spot. The point-light-range patch (option C) is rejected.
 
 ## Decision
 
